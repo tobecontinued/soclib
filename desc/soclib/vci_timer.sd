@@ -1,0 +1,11 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciTimer'
+	header_files = 'include/caba/target/vci_timer.h',
+	implementation_files = 'src/caba/target/vci_timer.cc',
+	uses = [
+		Uses('base_module'),
+		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1),
+		]

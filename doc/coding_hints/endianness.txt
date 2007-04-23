@@ -1,0 +1,46 @@
+
+Endianness
+==========
+
+First of all, use:
+#include "common/endian.h"
+
+Implicitly-typed functions
+--------------------------
+
+Endianness is always a tricky thing. Conditional compilation and
+defines can help us most of the time, but we can do something better
+with template meta-coding. Here is the useful part:
+
+There are four macros defined for 1, 2 and 4-bytes wide words, signed
+or not, they swap argument according to host's endianness, and the
+argument type.
+
+type_t machine_to_le(type_t to_swap);
+type_t machine_to_be(type_t to_swap);
+type_t be_to_machine(type_t to_swap);
+type_t le_to_machine(type_t to_swap);
+
+They are fully inlined and defined at compilation time, no worries about
+performance.
+
+If you want to pass some constant or SystemC-type to them, better cast
+the argument first:
+
+sc_signal<sc_uint<32> > s;
+....
+uint32_t my_result = le_to_machine((uint32_t)s.read());
+
+
+Explicit macros
+---------------
+
+uint32_machine_to_le(x)
+uint32_machine_to_be(x)
+uint32_be_to_machine(x)
+uint32_le_to_machine(x)
+
+uint16_machine_to_le(x)
+uint16_machine_to_be(x)
+uint16_be_to_machine(x)
+uint16_le_to_machine(x)

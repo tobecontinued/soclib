@@ -1,0 +1,16 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'Mips'
+	header_files = "include/caba/processor/mips.h",
+	implementation_files = [
+		"src/caba/processor/mips.cc",
+		"src/caba/processor/mips_jumps.cc",
+		"src/caba/processor/mips_decod.cc",
+		'src/caba/processor/mips_special.cc'
+		]
+	uses = [
+		Uses('base_module')
+		]
+

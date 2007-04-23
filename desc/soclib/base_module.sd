@@ -1,0 +1,6 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'BaseModule'
+	header_files = 'include/caba/util/base_module.h',

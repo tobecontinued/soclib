@@ -1,0 +1,10 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'TtyWrapper'
+	header_files = 'include/common/tty_wrapper.h',
+	implementation_files = 'src/common/tty_wrapper.cc',
+	uses = [
+		Uses('xterm_wrapper'),
+		]

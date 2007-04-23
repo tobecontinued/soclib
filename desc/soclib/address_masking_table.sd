@@ -1,0 +1,8 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'AddressMaskingTable'
+	header_files = 'include/common/address_masking_table.h',
+	implementation_files = 'src/common/address_masking_table.cc',
+	tmpl_parameters = ['data_t']

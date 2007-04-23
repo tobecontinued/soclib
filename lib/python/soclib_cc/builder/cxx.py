@@ -1,0 +1,105 @@
+
+# This file is part of SoCLIB.
+# 
+# SoCLIB is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# SoCLIB is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with SoCLIB; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+# 
+# Copyright (c) UPMC, Lip6, SoC
+#         Nicolas Pouillon <nipo@ssji.net>, 2007
+# 
+# Maintainers: nipo
+
+import os, os.path
+import popen2
+import action
+import fileops
+import mfparser
+from soclib_cc.config import config, Joined
+
+class CCompile(action.Action):
+	tool = 'CC'
+	def __init__(self, dest, src, defines = {}):
+		action.Action.__init__(self, [dest], [src], defines = defines)
+	def argSort(self, args):
+		libdirs = filter(lambda x:str(x).startswith('-L'), args)
+		libs = filter(lambda x:str(x).startswith('-l'), args)
+		args2 = filter(lambda x:x not in libs and x not in libdirs, args)
+		return args2+libdirs+libs
+	def call(self, what, args, disp_normal = True):
+		args = self.argSort(args)
+		cmd = Joined(args)
+		if disp_normal or config.verbose:
+			self.runningCommand(what, self.dests, cmd)
+		handle = popen2.Popen3(cmd, capturestderr = False)
+		handle.tochild.close()
+
+		r = handle.fromchild.read()
+		handle.fromchild.close()
+		rval = handle.wait()
+		if rval:
+			raise action.ActionFailed(rval, cmd)
+		return r
+	def _processDeps(self, filename):
+		if not filename.exists:
+			filename.generator.process()
+		args = [config.getTool(self.tool), '-MM', '-MT', 'foo.o']
+		args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
+		args += config.getCflags()
+		args.append(filename)
+		blob = self.call('deps', args, False)
+		from bblock import bblockize
+		return bblockize(mfparser.MfRule(blob).prerequisites)
+	def processDeps(self):
+		return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
+	def process(self):
+		fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
+		args = [config.getTool(self.tool),
+				'-c', '-o', self.dests[0]]
+		args += config.getCflags()
+		args += self.sources
+		self.call('compile', args)
+		self.dests[0].touch()
+
+class CxxCompile(CCompile):
+	tool = 'CXX'
+
+class CLink(CCompile):
+	tool = 'CC_LINKER'
+	def __init__(self, dest, objs):
+		action.Action.__init__(self, [dest], objs)
+	def processDeps(self):
+		return []
+	def process(self):
+		args = [config.getTool(self.tool),
+				'-o', self.dests[0]]
+		args += config.getLibs()
+		args += self.sources
+		self.call('link', args)
+
+class CxxLink(CLink):
+	tool = 'CXX_LINKER'
+
+if __name__ == '__main__':
+	import sys
+	cc = CxxCompile(sys.argv[1], sys.argv[2])
+	#print cc.processDeps()
+	can = cc.canBeProcessed()
+	must = cc.mustBeProcessed()
+	print "Can be processed:", can
+	print "Must be processed:", must
+	if can and must:
+		print "Processing...",
+		sys.stdout.flush()
+		cc.process()
+		print "done"

@@ -1,0 +1,12 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciFrameBuffer'
+	header_files = 'include/caba/target/vci_framebuffer.h',
+	implementation_files = 'src/caba/target/vci_framebuffer.cc',
+	uses = [
+		Uses('base_module'),
+		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2),
+		Uses('fb_controller', mode = 'common'),
+		]

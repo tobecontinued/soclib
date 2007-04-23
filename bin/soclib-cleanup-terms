@@ -1,0 +1,9 @@
+#!/bin/sh
+
+l=$(ps auxw | grep "xterm -S" | awk '{print $2}')
+test -z "$l" || kill $l
+
+for prog in soclib-xtty soclib-fb ; do
+	killall $prog 2>/dev/null
+done
+

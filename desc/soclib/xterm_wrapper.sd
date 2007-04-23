@@ -1,0 +1,7 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'XtermWrapper'
+	header_files = 'include/common/xterm_wrapper.h',
+	implementation_files = 'src/common/xterm_wrapper.cc',
