@@ -33,6 +33,7 @@ class MfRule:
 				lines[-1] += l
 			else:
 				lines.append(l)
+		lines = filter(lambda x:not x.startswith('#'), lines)
 		dest, prereq = lines[0].split(":",1)
 		self.rules = lines[1:]
 		self.dest = dest.strip()

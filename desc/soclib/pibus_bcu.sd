@@ -1,0 +1,12 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'PibusBcu'
+	header_files = "include/caba/interconnect/pibus_bcu.h",
+	implementation_files = "src/caba/interconnect/pibus_bcu.cc",
+	uses = [
+		Uses('base_module'),
+		Uses('mapping_table'),
+		]
+

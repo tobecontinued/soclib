@@ -1,0 +1,10 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciPiTargetWrapper'
+	header_files = 'include/caba/interconnect/vci_pi_target_wrapper.h',
+	implementation_files = 'src/caba/interconnect/vci_pi_target_wrapper.cc',
+	uses = [
+		Uses('base_module'),
+		]

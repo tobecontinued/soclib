@@ -1,0 +1,26 @@
+
+# -*- python -*-
+
+vci_params = dict(
+	cell_size = 4,
+	plen_size = 1,
+	addr_size = 32,
+	rerror_size = 1,
+	clen_size = 1,
+	rflag_size = 1,
+	srcid_size = 8,
+	pktid_size = 1,
+	trdid_size = 1,
+	wrplen_size = 1
+	)
+
+todo = Platform(
+	Uses('mips'),
+	Uses('vci_multi_ram', **vci_params),
+	Uses('vci_multi_tty', **vci_params),
+	Uses('vci_xcache', write_fifo_depth = 8, dcache_lines = 8, dcache_words = 4, icache_lines = 8, icache_words = 4, **vci_params),
+	Uses('pibus_bcu'),
+	Uses('vci_pi_target_wrapper', **vci_params),
+	Uses('vci_pi_initiator_wrapper', **vci_params),
+	Source('top.cc'),
+)

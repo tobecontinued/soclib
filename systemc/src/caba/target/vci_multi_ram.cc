@@ -22,6 +22,7 @@
  */
 
 #include "caba/target/vci_multi_ram.h"
+#include "common/endian.h"
 #include "common/elf_loader.h"
 
 namespace soclib {
@@ -70,6 +71,8 @@ tmpl(void)::reload()
 {
     for ( size_t i=0; i<m_vci_fsm.nbSegments(); ++i ) {
 		m_loader.load(&m_contents[i][0], m_vci_fsm.getBase(i), m_vci_fsm.getSize(i));
+        for ( size_t addr = 0; addr < m_vci_fsm.getSize(i)/vci_param::B; ++addr )
+            m_contents[i][addr] = le_to_machine(m_contents[i][addr]);
 	}
 }
 
