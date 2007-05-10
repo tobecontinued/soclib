@@ -21,6 +21,7 @@
  * Maintainers: nipo
  */
 
+#include "common/register.h"
 #include "caba/processor/mips.h"
 
 #define MIPS_DEBUG 0
@@ -295,6 +296,16 @@ Mips::Mips( sc_module_name insname, int ident )
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
+
+	for (size_t i=0; i<32; ++i ) {
+		SOCLIB_REG_RENAME_N(gpr, (int)i);
+		SOCLIB_REG_RENAME_N(cp0_reg, (int)i);
+	}
+	SOCLIB_REG_RENAME(pc);
+	SOCLIB_REG_RENAME(next_pc);
+	SOCLIB_REG_RENAME(hi);
+	SOCLIB_REG_RENAME(lo);
+	SOCLIB_REG_RENAME(m_interrupt_delayed);
 }
 
 Mips::~Mips()

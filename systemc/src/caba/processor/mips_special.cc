@@ -251,6 +251,9 @@ Mips::func_t const Mips::special_table[] = {
 
 	op4(  ill,  ill,  ill,  ill),
 	op4(  ill,  ill,  ill,  ill),
+
+	op4(  ill,  ill,  ill,  ill),
+	op4(  ill,  ill,  ill,  ill),
 };
 
 void Mips::op_special()

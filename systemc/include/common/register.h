@@ -23,6 +23,8 @@
 #ifndef SOCLIB_COMMON_REGISTER_H
 #define SOCLIB_COMMON_REGISTER_H
 
+#include <systemc.h>
+
 #if defined(NONAME_RENAME)
 #  define SOCLIB_REG_RENAME(reg)  reg.rename(#reg)
 #  define SOCLIB_REG_RENAME_NAME(name, reg)                               \
