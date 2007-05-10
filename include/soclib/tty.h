@@ -23,10 +23,14 @@
 #ifndef TTY_REGS_H
 #define TTY_REGS_H
 
+#include "soclib/io.h"
+
 enum SoclibTtyRegisters {
-    TTY_WRITE = 0x0,
-    TTY_STAUS = 0x4,
-    TTY_READ  = 0x8
+    TTY_WRITE = 0,
+    TTY_STAUS = 1,
+    TTY_READ  = 2,
+    /**/
+    TTY_SPAN  = 4,
 };
 
 #endif /* TTY_REGS_H */

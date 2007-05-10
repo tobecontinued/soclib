@@ -32,8 +32,9 @@ using namespace soclib;
 
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
-	int reg = ((int)addr & 0xc)>>2;
-	int timer = ((int)addr & 0xff0)>>4;
+    int cell = (int)addr / vci_param::B;
+	int reg = cell % TIMER_SPAN;
+	int timer = cell / TIMER_SPAN;
 
 	switch (reg) {
 	case TIMER_VALUE:
@@ -57,8 +58,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
-	int reg = ((int)addr & 0xc)>>2;
-	int timer = ((int)addr & 0xff0)>>4;
+    int cell = (int)addr / vci_param::B;
+	int reg = cell % TIMER_SPAN;
+	int timer = cell / TIMER_SPAN;
 
 	switch (reg) {
 	case TIMER_VALUE:

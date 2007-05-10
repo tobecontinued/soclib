@@ -112,7 +112,7 @@ tmpl(void)::print( std::ostream &o ) const
 
 tmpl(bool)::isAllBelow( output_t val ) const
 {
-    for ( size_t i=0; i<(1<<m_use_bits); ++i )
+    for ( size_t i=0; i<(size_t)(1<<m_use_bits); ++i )
         if ( m_table[i] >= val )
             return false;
     return true;

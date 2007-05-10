@@ -7,11 +7,11 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I$(SOCLIB)/include
+CFLAGS=-Wall -O2 -I$(SOCLIB)/include -I.
 
-default: ../a.out
+default: a.out
 
-../a.out : main.o uputs.o reset.o
+a.out : main.o uputs.o reset.o
 	$(LD) -T./ldscript -o $@ $^
 	$(OBJDUMP) -D $@ > aout.txt
 
@@ -23,5 +23,5 @@ default: ../a.out
 
 clean :
 	-rm -f *.o
-	-rm -f ../a.out
+	-rm -f a.out
 	-rm -f *.txt

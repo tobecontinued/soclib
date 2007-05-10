@@ -47,7 +47,7 @@ public:
 
     void print( std::ostream &o ) const
     {
-        o << "<soclib::exception::" << m_type << ": " << m_message;
+        o << "<soclib::exception::" << m_type << ": " << m_message << ">";
     }
 
     friend std::ostream &operator << (std::ostream &o, const Exception &e)

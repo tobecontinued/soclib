@@ -111,7 +111,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::Mips mips2("mips2", 2);
 	soclib::caba::Mips mips3("mips3", 3);
 
-	soclib::common::ElfLoader loader("a.out");
+	soclib::common::ElfLoader loader("soft_timer/bin.soft");
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", "vcitty1", "vcitty2", "vcitty3", NULL);

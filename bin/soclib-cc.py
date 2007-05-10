@@ -70,14 +70,14 @@ def main():
 	config.debug = opts.debug
 	config.quiet = opts.quiet
 
-	output = "a.out"
+	config.output = "system.x"
 	if opts.getpath:
 		print config.path
 		return 0
 	if opts.compile:
-		output = "mod.o"
+		config.output = "mod.o"
 	if opts.output:
-		output = opts.output
+		config.output = opts.output
 	if opts.platform:
 		if not config.quiet:
 			print "soclib-cc: Entering directory `%s'"%(
@@ -111,7 +111,7 @@ todo = Platform(
 		else:
 			todo.process()
 	elif opts.compile:
-		CxxCompile(output, args[0]).process()
+		CxxCompile(config.output, args[0]).process()
 	else:
 		print 'Not supported'
 		return 1

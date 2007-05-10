@@ -52,7 +52,7 @@ class Platform:
 				if not o in objs:
 					objs.append( o )
 					self.todo.add( o )
-		self.todo.add( *CxxLink('system.x', objs ).dests )
+		self.todo.add( *CxxLink(config.output, objs ).dests )
 	def process(self):
 		self.todo.process()
 	def clean(self):

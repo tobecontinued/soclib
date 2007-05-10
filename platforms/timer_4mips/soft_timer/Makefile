@@ -1,19 +1,21 @@
-#CC_PREFIX=$(CXTOOLS)/gcc_mips/obj/bin/mipsel-soclib-elf-
-CC_PREFIX=mipsel-unknown-elf-
 SOCLIB:=$(shell soclib-cc --getpath)
+ARCH=mipsel
+CC_PREFIX=$(ARCH)-unknown-elf-
+
+SOFT_IMAGE=bin.soft
+OBJS=main.o exception.o system.o
 
 CC = $(CC_PREFIX)gcc
 AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I$(SOCLIB)/include
+CFLAGS=-Wall -O2 -I. -I$(SOCLIB)/include
 
-default: ../a.out
+default: clean $(SOFT_IMAGE)
 
-../a.out : main.o it.o uputs.o procnum.o ldscript reset.o exception.o user.o
-	$(LD) -T./ldscript -o $@ $^
-	$(OBJDUMP) -D $@ > aout.txt
+$(SOFT_IMAGE): $(OBJS)
+	$(LD) -T ldscript -o $@ $^
 
 %.o: %.s
 	$(AS) $< -o $@
@@ -22,6 +24,4 @@ default: ../a.out
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 clean :
-	-rm -f *.o
-	-rm -f ../a.out
-	-rm -f *.txt
+	-rm -f $(SOFT_IMAGE) $(OBJS)

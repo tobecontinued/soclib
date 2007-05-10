@@ -20,25 +20,44 @@
  *
  * Maintainers: nipo
  */
-#ifndef TIMER_REGS_H
-#define TIMER_REGS_H
+#ifndef SOCLIB_IO__H
+#define SOCLIB_IO__H
 
-#include "soclib/io.h"
+#include <stdint.h>
 
-enum SoclibTimerRegisters {
-    TIMER_VALUE    = 0,
-    TIMER_MODE     = 1,
-    TIMER_PERIOD   = 2,
-    TIMER_RESETIRQ = 3,
-    TIMER_SPAN     = 4,
-};
+static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
+{
+	volatile uint32_t *addr = (uint32_t *)comp_base;
+	addr += reg;
 
-enum SoclibTimerMode {
-	TIMER_RUNNING = 1,
-	TIMER_IRQ_ENABLED = 2,
-};
+	*addr = val;
+}
 
-#endif /* TIMER_REGS_H */
+static inline uint32_t soclib_io_get(void *comp_base, int reg)
+{
+	volatile uint32_t *addr = (uint32_t *)comp_base;
+	addr += reg;
+
+	return *addr;
+}
+
+static inline void soclib_io_write8(void *comp_base, int reg, uint8_t val)
+{
+	volatile uint32_t *addr = (uint32_t *)comp_base;
+	addr += reg;
+
+	*(uint8_t *)addr = val;
+}
+
+static inline uint8_t soclib_io_read8(void *comp_base, int reg)
+{
+	volatile uint32_t *addr = (uint32_t *)comp_base;
+	addr += reg;
+
+	return *(uint8_t *)addr;
+}
+
+#endif /* SOCLIB_IO__H */
 
 // Local Variables:
 // tab-width: 4

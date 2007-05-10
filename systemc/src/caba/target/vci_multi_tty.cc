@@ -33,8 +33,9 @@ namespace caba {
 
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
-	int reg = (int)addr & 0xc;
-	int term_no = (int)addr >> 4;
+    int cell = (int)addr / vci_param::B;
+	int reg = cell % TTY_SPAN;
+	int term_no = cell / TTY_SPAN;
 	char _data = data;
 
 	switch (reg) {
@@ -55,8 +56,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
-	int reg = (int)addr & 0xc;
-	int term_no = (int)addr >> 4;
+    int cell = (int)addr / vci_param::B;
+	int reg = cell % TTY_SPAN;
+	int term_no = cell / TTY_SPAN;
 
 	switch (reg) {
 	case TTY_STAUS:
