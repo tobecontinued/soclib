@@ -23,7 +23,10 @@
 #ifndef SOCLIB_CABA_SIGNAL_VCI_BUFFERS_H_
 #define SOCLIB_CABA_SIGNAL_VCI_BUFFERS_H_
 
+#include <iostream>
 #include <systemc.h>
+#include "common/address_masking_table.h"
+#include "common/address_decoding_table.h"
 #include "caba/interface/vci_param.h"
 #include "caba/interface/vci_initiator.h"
 #include "caba/interface/vci_target.h"
@@ -33,7 +36,7 @@ namespace soclib { namespace caba {
 template <typename vci_param>
 class VciRspBuffer
 {
-	typename vci_param::cmdval_t  rspval;
+	typename vci_param::val_t  rspval;
 	typename vci_param::data_t    rdata;
 	bool                          reop;
 	typename vci_param::rerror_t  rerror;
@@ -41,6 +44,11 @@ class VciRspBuffer
 	typename vci_param::trdid_t   rtrdid;
 	typename vci_param::pktid_t   rpktid;
 public:
+    typedef soclib::common::AddressMaskingTable<uint32_t> routing_table_t;
+
+    typedef VciInitiator<vci_param> input_port_t;
+    typedef VciTarget<vci_param> output_port_t;
+
     inline bool val() const
     {
         return rspval;
@@ -51,12 +59,12 @@ public:
         return reop;
     }
     
-    inline typename vci_param::srcid_t srcid() const
+    inline uint32_t dest() const
     {
         return rsrcid;
     }
     
-	inline void initiatorPortWrite( VciInitiator<vci_param> &port ) const
+	inline void writeTo( output_port_t &port ) const
 	{
 		port.rspval = rspval;
 		port.rdata = rdata;
@@ -67,7 +75,7 @@ public:
 		port.rpktid = rpktid;
 	}
 
-	inline void targetPortRead( const VciTarget<vci_param> &port )
+	inline void readFrom( const input_port_t &port )
 	{
 		rspval = port.rspval;
 		rdata = port.rdata;
@@ -77,12 +85,35 @@ public:
 		rtrdid = port.rtrdid;
 		rpktid = port.rpktid;
 	}
+
+    inline int route( const routing_table_t &rt ) const
+    {
+        return rt[rsrcid];
+    }
+
+    friend std::ostream &operator << (std::ostream &o, const VciRspBuffer &b)
+    {
+        b.print(o);
+        return o;
+    }
+
+    void print( std::ostream &o ) const
+    {
+        o << "VciRspBuffer" << std::hex << std::endl
+          << " rspval: " << rspval << std::endl
+          << " rdata : " << rdata << std::endl
+          << " reop  : " << reop << std::endl
+          << " rerror: " << rerror << std::endl
+          << " rsrcid: " << rsrcid << std::endl
+          << " rtrdid: " << rtrdid << std::endl
+          << " rpktid: " << rpktid << std::endl;
+    }
 };
 
 template <typename vci_param>
 class VciCmdBuffer
 {
-	typename vci_param::cmdval_t  cmdval;
+	typename vci_param::val_t  cmdval;
 	typename vci_param::addr_t    address;
 	typename vci_param::be_t      be;
 	typename vci_param::cmd_t     cmd;
@@ -98,6 +129,11 @@ class VciCmdBuffer
 	typename vci_param::trdid_t   trdid;
 	typename vci_param::pktid_t   pktid;
 public:
+    typedef soclib::common::AddressDecodingTable<uint32_t, int> routing_table_t;
+
+    typedef VciInitiator<vci_param> output_port_t;
+    typedef VciTarget<vci_param> input_port_t;
+
     inline bool val() const
     {
         return cmdval;
@@ -108,12 +144,12 @@ public:
         return eop_;
     }
     
-    inline typename vci_param::addr_t dest() const
+    inline uint32_t dest() const
     {
         return address;
     }
     
-	inline void initiatorPortRead( const VciInitiator<vci_param> &port )
+	inline void readFrom( const input_port_t &port )
 	{
 		cmdval = port.cmdval;
 		address = port.address;
@@ -132,7 +168,7 @@ public:
 		pktid = port.pktid;
 	}
 
-	inline void targetPortWrite( VciTarget<vci_param> &port ) const
+	inline void writeTo( output_port_t &port ) const
 	{
 		port.cmdval = cmdval;
 		port.address = address;
@@ -150,6 +186,37 @@ public:
 		port.trdid = trdid;
 		port.pktid = pktid;
 	}
+
+    inline int route( const routing_table_t &rt ) const
+    {
+        return rt[address];
+    }
+
+    friend std::ostream &operator << (std::ostream &o, const VciCmdBuffer &b)
+    {
+        b.print(o);
+        return o;
+    }
+
+    void print( std::ostream &o ) const
+    {
+        o << "VciCmdBuffer" << std::hex << std::endl
+          << " cmdval : " << cmdval << std::endl
+          << " address: " << address << std::endl
+          << " be     : " << be << std::endl
+          << " cmd    : " << cmd << std::endl
+          << " contig : " << contig << std::endl
+          << " wdata  : " << wdata << std::endl
+          << " eop    : " << eop_ << std::endl
+          << " cons   : " << cons << std::endl
+          << " plen   : " << plen << std::endl
+          << " wrap   : " << wrap << std::endl
+          << " cfixed : " << cfixed << std::endl
+          << " clen   : " << clen << std::endl
+          << " srcid  : " << srcid << std::endl
+          << " trdid  : " << trdid << std::endl
+          << " pktid  : " << pktid << std::endl;
+    }
 };
 
 }}

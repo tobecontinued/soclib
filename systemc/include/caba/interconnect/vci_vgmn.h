@@ -27,89 +27,59 @@
 #include "caba/util/base_module.h"
 #include "caba/interface/vci_initiator.h"
 #include "caba/interface/vci_target.h"
+#include "caba/interface/vci_buffers.h"
 #include "common/address_decoding_table.h"
 #include "common/address_masking_table.h"
 #include "common/mapping_table.h"
 
 namespace soclib { namespace caba {
 
-template<
-	typename vci_param,
-	size_t NB_INITIAT,
-	size_t NB_TARGET,
-	size_t MIN_LATENCY,
-	size_t FIFO_DEPTH>
+namespace _vgmn {
+
+template<typename vci_pkt_t> class OutputPortQueue;
+template<typename vci_pkt_t> class InputRouter;
+template<typename router_t, typename queue_t> class MicroNetwork;
+
+}
+
+template<typename vci_param>
 class VciVgmn
-	: public soclib::caba::BaseModule
+    : public soclib::caba::BaseModule
 {
 public:
-	sc_in<bool> p_clk;
-	sc_in<bool> p_resetn;
+    sc_in<bool> p_clk;
+    sc_in<bool> p_resetn;
 
-	soclib::caba::VciInitiator<vci_param> p_to_target[NB_TARGET];
-	soclib::caba::VciTarget<vci_param> p_from_initiator[NB_INITIAT];
+    soclib::caba::VciInitiator<vci_param> *p_to_target;
+    soclib::caba::VciTarget<vci_param> *p_from_initiator;
 
 private:
-	soclib::common::AddressDecodingTable<uint32_t, int> m_target_from_addr;
-	soclib::common::AddressMaskingTable<uint32_t> m_initiator_from_srcid;
+    size_t m_nb_initiat;
+    size_t m_nb_target;
+    size_t m_min_latency;
+    size_t m_fifo_depth;
 
-	// TARGET FSMs
-	sc_signal<short int> I_ALLOC_VALUE[NB_TARGET]; // allocation register
-	sc_signal<bool> I_ALLOC_STATE[NB_TARGET]; // state of the target output port
+    typedef _vgmn::OutputPortQueue<soclib::caba::VciCmdBuffer<vci_param> > cmd_queue_t;
+    typedef _vgmn::OutputPortQueue<soclib::caba::VciRspBuffer<vci_param> > rsp_queue_t;
+    typedef _vgmn::InputRouter<cmd_queue_t> cmd_router_t;
+    typedef _vgmn::InputRouter<rsp_queue_t> rsp_router_t;
 
+    _vgmn::MicroNetwork<cmd_router_t,cmd_queue_t> *m_cmd_mn;
+    _vgmn::MicroNetwork<rsp_router_t,rsp_queue_t> *m_rsp_mn;
 
-	// INITIATOR FSMs
-	sc_signal<short int> T_ALLOC_VALUE[NB_INITIAT]; // allocation register
-	sc_signal<bool> T_ALLOC_STATE[NB_INITIAT]; // state of the initiator output port
-
-	//  CMD FIFOs
-
-	sc_signal<int>  CMD_FIFO_DATA   [NB_TARGET][NB_INITIAT][FIFO_DEPTH];
-	sc_signal<int>  CMD_FIFO_ADR    [NB_TARGET][NB_INITIAT][FIFO_DEPTH];
-	sc_signal<int>  CMD_FIFO_CMD    [NB_TARGET][NB_INITIAT][FIFO_DEPTH];
-	sc_signal<int>  CMD_FIFO_ID     [NB_TARGET][NB_INITIAT][FIFO_DEPTH];
-	sc_signal<int>  CMD_FIFO_PTR    [NB_TARGET][NB_INITIAT];
-	sc_signal<int>  CMD_FIFO_PTW    [NB_TARGET][NB_INITIAT];
-	sc_signal<int>  CMD_FIFO_STATE  [NB_TARGET][NB_INITIAT];
-
-	//  RSP FIFOs
-	sc_signal<int>  RSP_FIFO_DATA   [NB_INITIAT][NB_TARGET][FIFO_DEPTH];
-	sc_signal<int>  RSP_FIFO_CMD    [NB_INITIAT][NB_TARGET][FIFO_DEPTH];
-	sc_signal<int>  RSP_FIFO_PTR    [NB_INITIAT][NB_TARGET];
-	sc_signal<int>  RSP_FIFO_PTW    [NB_INITIAT][NB_TARGET];
-	sc_signal<int>  RSP_FIFO_STATE  [NB_INITIAT][NB_TARGET];
-
-	// TARGET DELAY_FIFOs
-	sc_signal<int>  I_DELAY_VCIDATA[NB_TARGET][MIN_LATENCY];
-	sc_signal<int>  I_DELAY_VCICMD [NB_TARGET][MIN_LATENCY];
-	sc_signal<bool> I_DELAY_VALID  [NB_TARGET][MIN_LATENCY];
-	sc_signal<short int> I_DELAY_PTR    [NB_TARGET];
-	sc_signal<bool>  I_DELAY_ACK    [NB_TARGET];
-
-	//  INITIATOR DELAY_FIFOs
-	sc_signal<int>  T_DELAY_VCIDATA[NB_INITIAT][MIN_LATENCY];
-	sc_signal<int>  T_DELAY_VCIADR [NB_INITIAT][MIN_LATENCY];
-	sc_signal<int>  T_DELAY_VCICMD [NB_INITIAT][MIN_LATENCY];
-	sc_signal<int>  T_DELAY_VCIID  [NB_INITIAT][MIN_LATENCY];
-	sc_signal<bool> T_DELAY_VALID  [NB_INITIAT][MIN_LATENCY];
-	sc_signal<short int> T_DELAY_PTR    [NB_INITIAT];
-
-	sc_signal<int>  GLOBAL_RSP_STATE[NB_INITIAT]; //  total number of words in RSP FIFOs
-	sc_signal<int>  GLOBAL_CMD_STATE[NB_TARGET];  //  total number of words in CMD FIFOs
-
-	// TRAFIC COUNTERS
-	sc_signal<int>  RSP_COUNTER    [NB_INITIAT][NB_TARGET]; // number of transmitted RSP words
-	sc_signal<int>  CMD_COUNTER    [NB_TARGET][NB_INITIAT]; // number of transmitted CMD words
-
-	void transition();
-	void genMoore();
+    void transition();
+    void genMoore();
 
 protected:
-	SC_HAS_PROCESS(VciVgmn);
+    SC_HAS_PROCESS(VciVgmn);
 
 public:
-	VciVgmn( sc_module_name name,
-			 const soclib::common::MappingTable &mt);
+    VciVgmn( sc_module_name name,
+              const soclib::common::MappingTable &mt,
+              size_t nb_initiat,
+              size_t nb_target,
+              size_t min_latency,
+              size_t fifo_depth );
 };
 
 }}

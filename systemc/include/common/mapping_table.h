@@ -66,7 +66,7 @@ public:
 
     AddressDecodingTable<addr_t, int> getRoutingTable( const IntTab &index, int default_index = 0 ) const;
 
-    AddressMaskingTable<addr_t> getIdMaskingTable( const int level ) const;
+    AddressMaskingTable<uint32_t> getIdMaskingTable( const int level ) const;
     
     void print( std::ostream &o ) const;
 

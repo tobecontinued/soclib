@@ -62,7 +62,7 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<8,8,4,8,4,vci_param> cache0("cache0", maptab,0);
+	soclib::caba::VciXCache<8,vci_param> cache0("cache0", maptab,0,8,4,8,4);
 
 	soclib::caba::Mips mips0("mips0", 0);
 

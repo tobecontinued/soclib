@@ -161,14 +161,14 @@ void MappingTable::print( std::ostream &o ) const
     }
 }
 
-AddressMaskingTable<MappingTable::addr_t>
+AddressMaskingTable<uint32_t>
 MappingTable::getIdMaskingTable( const int level ) const
 {
     int use = m_level_id_bits[level];
     int drop = 0;
     for ( size_t i=level+1; i<m_level_id_bits.level(); ++i )
         drop += m_level_id_bits[i];
-    return AddressMaskingTable<MappingTable::addr_t>( use, drop );
+    return AddressMaskingTable<uint32_t>( use, drop );
 }
 
 }}

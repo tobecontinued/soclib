@@ -119,6 +119,35 @@ public:
 		wrap    (ports.wrap);
 	}
 
+    inline bool getAck() const
+    {
+        return rspack;
+    }
+
+    inline bool getVal() const
+    {
+        return cmdval;
+    }
+
+    inline void setAck( bool x )
+    {
+        cmdack = x;
+    }
+
+    inline void setVal( bool x )
+    {
+        rspval = x;
+    }
+
+    inline bool iAccepted() const
+    {
+        return cmdval && cmdack;
+    }
+
+    inline bool peerAccepted() const
+    {
+        return rspval && rspack;
+    }
 
     void rspSetIds( typename vci_param::srcid_t srcid,
                     typename vci_param::trdid_t trdid,

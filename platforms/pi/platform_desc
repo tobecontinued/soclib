@@ -18,7 +18,7 @@ todo = Platform(
 	Uses('mips'),
 	Uses('vci_multi_ram', **vci_params),
 	Uses('vci_multi_tty', **vci_params),
-	Uses('vci_xcache', write_fifo_depth = 8, dcache_lines = 8, dcache_words = 4, icache_lines = 8, icache_words = 4, **vci_params),
+	Uses('vci_xcache', **vci_params),
 	Uses('pibus_bcu'),
 	Uses('vci_pi_target_wrapper', **vci_params),
 	Uses('vci_pi_initiator_wrapper', **vci_params),

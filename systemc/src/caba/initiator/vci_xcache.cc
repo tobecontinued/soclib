@@ -97,62 +97,105 @@ enum {
 #define tmpl(x)                                                         \
 template<                                                               \
     size_t WRITE_BUFFER_DEPTH,                                          \
-    size_t ICACHE_LINES,                                                \
-    size_t ICACHE_WORDS,                                                \
-    size_t DCACHE_LINES,                                                \
-    size_t DCACHE_WORDS,                                                \
     typename vci_param>                                                 \
 x VciXCache<                                                            \
     WRITE_BUFFER_DEPTH,                                                 \
-    ICACHE_LINES,                                                       \
-    ICACHE_WORDS,                                                       \
-    DCACHE_LINES,                                                       \
-    DCACHE_WORDS,                                                       \
     vci_param>
 
 tmpl(/**/)::VciXCache(
     sc_module_name name,
     const soclib::common::MappingTable &mt,
-    const soclib::common::IntTab &index )
+    const soclib::common::IntTab &index,
+    size_t icache_lines,
+    size_t icache_words,
+    size_t dcache_lines,
+    size_t dcache_words )
     : soclib::caba::BaseModule(name),
       m_cacheability_table(mt.getCacheabilityTable()),
-    r_dcache_fsm("DCACHE_FSM")
-      ,DCACHE_SAVE_ADDR("DCACHE_SAVE_ADDR")
-      ,DCACHE_SAVE_DATA("DCACHE_SAVE_DATA")
-      ,DCACHE_SAVE_TYPE("DCACHE_SAVE_TYPE")
-      ,DCACHE_SAVE_PREV("DCACHE_SAVE_PREV")
-      ,r_icache_fsm("ICACHE_FSM")
-      ,ICACHE_MISS_ADDR("ICACHE_MISS_ADDR")
-      ,ICACHE_REQ("ICACHE_REQ")
-      ,r_vci_cmd_fsm("VCI_CMD_FSM")
-      ,DCACHE_CMD_ADDR("DCACHE_CMD_ADDR")
-      ,DCACHE_CMD_DATA("DCACHE_CMD_DATA")
-      ,DCACHE_CMD_TYPE("DCACHE_CMD_TYPE")
-      ,DCACHE_MISS_ADDR("DCACHE_MISS_ADDR")
-      ,CMD_CPT("CMD_CPT")
-      ,r_vci_rsp_fsm("VCI_RSP_FSM")
-      ,RSP_CPT("RSP_CPT")
-      ,DCACHE_CPT_INIT("DCACHE_CPT_INIT")
-      ,ICACHE_CPT_INIT("ICACHE_CPT_INIT")
+      m_ident(mt.indexForId(index)),
+      s_dcache_lines(dcache_lines),
+      s_dcache_words(dcache_words),
+      s_icache_lines(icache_lines),
+      s_icache_words(icache_words),
+      s_icache_xshift (2),
+      s_icache_yshift ((int)log2(s_icache_words)+s_icache_xshift),
+      s_icache_xmask  (((1<<(int)log2(s_icache_words))-1)<<s_icache_xshift),
+      s_icache_zshift ((int)log2(s_icache_lines)+s_icache_yshift),
+      s_icache_ymask  (((1<<(int)log2(s_icache_lines))-1)<<s_icache_yshift),
+      s_icache_zmask  (((~0x0) << s_icache_zshift)),
+      s_dcache_xshift (2),
+      s_dcache_yshift ((int)log2(s_dcache_words)+s_dcache_xshift),
+      s_dcache_xmask  (((1<<(int)log2(s_dcache_words))-1)<<s_dcache_xshift),
+      s_dcache_zshift ((int)log2(s_dcache_lines)+s_dcache_yshift),
+      s_dcache_ymask  (((1<<(int)log2(s_dcache_lines))-1)<<s_dcache_yshift),
+      s_dcache_zmask  (((~0x0) << s_dcache_zshift)),
+      r_dcache_fsm("DCACHE_FSM"),
+      DCACHE_SAVE_ADDR("DCACHE_SAVE_ADDR"),
+      DCACHE_SAVE_DATA("DCACHE_SAVE_DATA"),
+      DCACHE_SAVE_TYPE("DCACHE_SAVE_TYPE"),
+      DCACHE_SAVE_PREV("DCACHE_SAVE_PREV"),
+      r_icache_fsm("ICACHE_FSM"),
+      ICACHE_MISS_ADDR("ICACHE_MISS_ADDR"),
+      ICACHE_REQ("ICACHE_REQ"),
+      r_vci_cmd_fsm("VCI_CMD_FSM"),
+      DCACHE_CMD_ADDR("DCACHE_CMD_ADDR"),
+      DCACHE_CMD_DATA("DCACHE_CMD_DATA"),
+      DCACHE_CMD_TYPE("DCACHE_CMD_TYPE"),
+      DCACHE_MISS_ADDR("DCACHE_MISS_ADDR"),
+      CMD_CPT("CMD_CPT"),
+      r_vci_rsp_fsm("VCI_RSP_FSM"),
+      RSP_CPT("RSP_CPT"),
+      DCACHE_CPT_INIT("DCACHE_CPT_INIT"),
+      ICACHE_CPT_INIT("ICACHE_CPT_INIT")
 {
+    assert(IS_POW_OF_2(icache_lines));
+    assert(IS_POW_OF_2(dcache_lines));
+    assert(IS_POW_OF_2(icache_words));
+    assert(IS_POW_OF_2(dcache_words));
+    assert(icache_words);
+    assert(dcache_words);
+    assert(icache_lines);
+    assert(dcache_lines);
+    assert(icache_words <= 16);
+    assert(dcache_words <= 16);
+    assert(icache_lines <= 1024);
+    assert(dcache_lines <= 1024);
+
+    DCACHE_DATA = new sc_signal<int>*[dcache_lines];
+    for ( size_t i=0; i<dcache_lines; ++i )
+        DCACHE_DATA[i] = new sc_signal<int>[dcache_words];
+
+    DCACHE_TAG = new sc_signal<int>[dcache_lines];
+
+    ICACHE_DATA = new sc_signal<int>*[icache_lines];
+    for ( size_t i=0; i<icache_lines; ++i )
+        ICACHE_DATA[i] = new sc_signal<int>[icache_words];
+
+    ICACHE_TAG = new sc_signal<int>[icache_lines];
+
+    ICACHE_MISS_BUF = new sc_signal<int>[icache_words];    
+    ICACHE_VAL_BUF = new sc_signal<bool>[icache_words];    
+    DCACHE_MISS_BUF = new sc_signal<int>[dcache_words];    
+    DCACHE_VAL_BUF = new sc_signal<bool>[dcache_words];    
+
 #ifdef NONAME_RENAME
-    for (size_t i=0; i<DCACHE_LINES; i++ ) {
-        for (size_t j=0; j<DCACHE_WORDS; j++ ) {
+    for (size_t i=0; i<s_dcache_lines; i++ ) {
+        for (size_t j=0; j<s_dcache_words; j++ ) {
             SOCLIB_REG_RENAME_N2(DCACHE_DATA, i, j);
         }
         SOCLIB_REG_RENAME_N(DCACHE_TAG, i);
     }
-    for (size_t i=0; i<ICACHE_LINES; i++ ) {
-        for (size_t j=0; j<ICACHE_WORDS; j++ ) {
+    for (size_t i=0; i<s_icache_lines; i++ ) {
+        for (size_t j=0; j<s_icache_words; j++ ) {
             SOCLIB_REG_RENAME_N2(ICACHE_DATA, i, j);
         }
         SOCLIB_REG_RENAME_N(ICACHE_TAG, i);
     }
-    for (size_t i=0; i<ICACHE_WORDS; i++ ) {
+    for (size_t i=0; i<s_icache_words; i++ ) {
         SOCLIB_REG_RENAME_N(ICACHE_MISS_BUF, i);
         SOCLIB_REG_RENAME_N(ICACHE_VAL_BUF, i);
     }
-    for (size_t i=0; i<DCACHE_WORDS; i++ ) {
+    for (size_t i=0; i<s_dcache_words; i++ ) {
         SOCLIB_REG_RENAME_N(DCACHE_MISS_BUF, i);
         SOCLIB_REG_RENAME_N(DCACHE_VAL_BUF, i);
     }
@@ -194,8 +237,6 @@ tmpl(/**/)::VciXCache(
 
 //    SAVE_HANDLER(save_state);
 #endif
-  
-    m_ident = mt.indexForId(index);
 }
 
 tmpl(void)::transition()
@@ -206,15 +247,15 @@ tmpl(void)::transition()
         r_vci_cmd_fsm = CMD_IDLE;
         r_vci_rsp_fsm = RSP_IDLE;
 
-        DCACHE_CPT_INIT = DCACHE_LINES - 1;
-        ICACHE_CPT_INIT = ICACHE_LINES - 1;
+        DCACHE_CPT_INIT = s_dcache_lines - 1;
+        ICACHE_CPT_INIT = s_icache_lines - 1;
         m_data_fifo.init();
         m_type_fifo.init();
         m_addr_fifo.init();
 
         ICACHE_REQ = false;
 
-        for(size_t i=0 ; i<DCACHE_WORDS ;i++)
+        for(size_t i=0 ; i<s_dcache_words ;i++)
             DCACHE_VAL_BUF[i] = false;
         ICACHE_MISS_ADDR = 0xffffffff;
 
@@ -292,8 +333,8 @@ tmpl(void)::transition()
     /////////////////////////////////////////////////////////////////////
     // The r_icache_fsm controls the following ressources:
     // - r_icache_fsm
-    // - ICACHE_DATA[ICACHE_WORDS,ICACHE_LINES]
-    // - ICACHE_TAG[ICACHE_LINES]
+    // - ICACHE_DATA[s_icache_words,s_icache_lines]
+    // - ICACHE_TAG[s_icache_lines]
     // - ICACHE_MISS_ADDR
     // - ICACHE_REQ set
     // - ICACHE_CPT_INIT
@@ -343,7 +384,7 @@ tmpl(void)::transition()
         const int y = (ICACHE_MISS_ADDR & s_icache_ymask) >> s_icache_yshift;
         const int z = (ICACHE_MISS_ADDR >> s_icache_zshift) | 0x80000000;
         ICACHE_TAG[y] = z;
-        for (size_t i=0 ; i<ICACHE_WORDS ; i++)
+        for (size_t i=0 ; i<s_icache_words ; i++)
             ICACHE_DATA[y][i] = ICACHE_MISS_BUF[i];
         r_icache_fsm = ICACHE_IDLE;
         m_cpt_icache_dir_write++;
@@ -355,14 +396,14 @@ tmpl(void)::transition()
     //////////////////////////////////////////////////////////////////////://///////////
     // The r_dcache_fsm controls the following ressources:
     // - r_dcache_fsm
-    // - DCACHE_DATA[DCACHE_WORDS,DCACHE_LINES]
-    // - DCACHE_TAG[DCACHE_LINES]
+    // - DCACHE_DATA[s_dcache_words,s_dcache_lines]
+    // - DCACHE_TAG[s_dcache_lines]
     // - DCACHE_SAVE_ADDR
     // - DCACHE_SAVE_TYPE
     // - DCACHE_SAVE_DATA
     // - DCACHE_SAVE_PREV
     // - DCACHE_CPT_INIT
-    // - DCACHE_VAL_BUF[DCACHE_WORDS] reset
+    // - DCACHE_VAL_BUF[s_dcache_words] reset
     // - fifo_put, data_fifo, addr_fifo, type_fifo
     //
     // The VALID bit for a cache line is the MSB bit in the TAG.
@@ -406,7 +447,7 @@ tmpl(void)::transition()
 
             if (dcache_read && ! dcache_hit) {
                 // cached read miss     
-                for(size_t i=0 ; i<DCACHE_WORDS ; i++)
+                for(size_t i=0 ; i<s_dcache_words ; i++)
                     DCACHE_VAL_BUF[i] = false;
                 r_dcache_fsm = DCACHE_MISS_REQ;
             } else if (dcache_unc) {
@@ -415,7 +456,7 @@ tmpl(void)::transition()
                     DCACHE_VAL_BUF[dcache_x] = false;
                 } else {
                     // uncached read miss
-                    for(size_t i=0 ; i<DCACHE_WORDS ; i++)
+                    for(size_t i=0 ; i<s_dcache_words ; i++)
                         DCACHE_VAL_BUF[i] = false;
                     r_dcache_fsm = DCACHE_UNC_REQ;
                 }
@@ -509,7 +550,7 @@ tmpl(void)::transition()
             
             if (dcache_read && ! dcache_hit) {
                 // cached read miss     
-                for(size_t i=0 ; i<DCACHE_WORDS ; i++)
+                for(size_t i=0 ; i<s_dcache_words ; i++)
                     DCACHE_VAL_BUF[i] = false;
                 r_dcache_fsm = DCACHE_MISS_REQ;
             } else if (dcache_unc) {
@@ -518,7 +559,7 @@ tmpl(void)::transition()
                     DCACHE_VAL_BUF[dcache_x] = false;
                 } else {
                     // uncached read miss
-                    for(size_t i=0 ; i<DCACHE_WORDS ; i++)
+                    for(size_t i=0 ; i<s_dcache_words ; i++)
                         DCACHE_VAL_BUF[i] = false;
                     r_dcache_fsm = DCACHE_UNC_REQ;
                 }
@@ -569,7 +610,7 @@ tmpl(void)::transition()
         const int y = (DCACHE_MISS_ADDR & s_dcache_ymask) >> s_dcache_yshift;
         const int z = (DCACHE_MISS_ADDR >> s_dcache_zshift) | 0x80000000;
         DCACHE_TAG[y] = z;
-        for (size_t i=0 ; i<DCACHE_WORDS ; i++)
+        for (size_t i=0 ; i<s_dcache_words ; i++)
             DCACHE_DATA[y][i] = DCACHE_MISS_BUF[i];
         r_dcache_fsm = DCACHE_IDLE;
         m_cpt_dcache_data_write++;
@@ -665,7 +706,7 @@ tmpl(void)::transition()
     case CMD_INS_MISS:
         if ( p_vci.cmdack.read() ) {
             CMD_CPT = CMD_CPT + 1;
-            if (CMD_CPT == ICACHE_WORDS - 1)
+            if (CMD_CPT == (int)s_icache_words - 1)
                 r_vci_cmd_fsm = CMD_IDLE;
         }
         break;
@@ -680,7 +721,7 @@ tmpl(void)::transition()
         DCACHE_MISS_ADDR = DCACHE_CMD_ADDR;
         if ( p_vci.cmdack.read() ) {
             CMD_CPT = CMD_CPT + 1;
-            if (CMD_CPT == DCACHE_WORDS - 1)
+            if (CMD_CPT == (int)s_dcache_words - 1)
                 r_vci_cmd_fsm = CMD_IDLE;
         }
         break;
@@ -732,9 +773,9 @@ tmpl(void)::transition()
     //////////////////////////////////////////////////////////////////////////
     // The VCI_RSP FSM controls the following ressources:
     // - r_vci_rsp_fsm:
-    // - ICACHE_MISS_BUF[ICACHE_WORDS]
-    // - DCACHE_MISS_BUF[DCACHE_WORDS]
-    // - DCACHE_VAL_BUF[DCACHE_WORDS] set
+    // - ICACHE_MISS_BUF[s_icache_words]
+    // - DCACHE_MISS_BUF[s_dcache_words]
+    // - DCACHE_VAL_BUF[s_dcache_words] set
     // - ICACHE_REQ reset
     // - CPT_RSP
     //
@@ -768,7 +809,7 @@ tmpl(void)::transition()
         if ( ! p_vci.rspval.read() )
             break;
 
-        if (RSP_CPT == ICACHE_WORDS) {
+        if (RSP_CPT == (int)s_icache_words) {
             printf("error in soclib_vci_xcache : \n");
             printf("illegal VCI response packet for instruction miss\n");
             sc_stop();
@@ -779,7 +820,7 @@ tmpl(void)::transition()
             if ( p_vci.rerror.read() == 0 ) {
                 r_vci_rsp_fsm = RSP_IDLE;
                 ICACHE_REQ = false;
-                if (RSP_CPT != ICACHE_WORDS - 1) {
+                if (RSP_CPT != (int)s_icache_words - 1) {
                     printf("error in soclib_vci_xcache : \n");
                     printf("illegal VCI response packet for instruction miss\n");
                     sc_stop();
@@ -810,7 +851,7 @@ tmpl(void)::transition()
         if ( ! p_vci.rspval.read() )
             break;
 
-        if (RSP_CPT == DCACHE_WORDS) {
+        if (RSP_CPT == (int)s_dcache_words) {
             printf("error in soclib_vci_xcache : \n");
             printf("illegal VCI response packet for data read miss");
             sc_stop();
@@ -820,7 +861,7 @@ tmpl(void)::transition()
         if ( p_vci.reop.read() ) {
             if ( p_vci.rerror.read() == 0 ) {
                 r_vci_rsp_fsm = RSP_IDLE;
-                if (RSP_CPT != DCACHE_WORDS - 1) {
+                if (RSP_CPT != (int)s_dcache_words - 1) {
                     printf("error in soclib_vci_xcache : \n");
                     printf("illegal VCI response packet for data read miss");
                     sc_stop();
@@ -838,7 +879,7 @@ tmpl(void)::transition()
         if ( ! p_vci.rspval.read() )
             break;
 
-        if (RSP_CPT == DCACHE_WORDS) {
+        if (RSP_CPT == (int)s_dcache_words) {
             printf("error in soclib_vci_xcache : \n");
             printf("illegal VCI response packet for data read burst");
             sc_stop();
@@ -849,7 +890,7 @@ tmpl(void)::transition()
         if ( p_vci.reop.read() ) {
             if ( p_vci.rerror.read() == 0 ) {
                 r_vci_rsp_fsm = RSP_IDLE;
-                if (RSP_CPT != DCACHE_WORDS - 1) {
+                if (RSP_CPT != (int)s_dcache_words - 1) {
                     printf("error in soclib_vci_xcache : \n");
                     printf("illegal VCI response packet for data read burst");
                     sc_stop();
@@ -1007,7 +1048,7 @@ tmpl(void)::genMoore()
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = (CMD_CPT == DCACHE_WORDS - 1);
+        p_vci.eop = (CMD_CPT == (int)s_dcache_words - 1);
         break;
 
     case CMD_INS_MISS:
@@ -1024,7 +1065,7 @@ tmpl(void)::genMoore()
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = (CMD_CPT == ICACHE_WORDS - 1);
+        p_vci.eop = (CMD_CPT == (int)s_icache_words - 1);
         break;
 
     } // end switch r_vci_cmd_fsm

@@ -37,10 +37,6 @@ namespace caba {
 
 template<
     size_t WRITE_BUFFER_DEPTH,
-    size_t ICACHE_LINES,
-    size_t ICACHE_WORDS,
-    size_t DCACHE_LINES,
-    size_t DCACHE_WORDS,
     typename vci_param>
 class VciXCache
     : public soclib::caba::BaseModule
@@ -59,37 +55,29 @@ private:
     // STRUCTURAL PARAMETERS
     int          m_ident;            //  VCI SRCID value
 
-    static_assert(IS_POW_OF_2(ICACHE_LINES));
-    static_assert(IS_POW_OF_2(DCACHE_LINES));
-    static_assert(IS_POW_OF_2(ICACHE_WORDS));
-    static_assert(IS_POW_OF_2(DCACHE_WORDS));
-    static_assert(ICACHE_WORDS);
-    static_assert(DCACHE_WORDS);
-    static_assert(ICACHE_LINES);
-    static_assert(DCACHE_LINES);
-    static_assert(ICACHE_WORDS <= 16);
-    static_assert(DCACHE_WORDS <= 16);
-    static_assert(ICACHE_LINES <= 1024);
-    static_assert(DCACHE_LINES <= 1024);
+    const size_t s_dcache_lines;
+    const size_t s_dcache_words;
+    const size_t s_icache_lines;
+    const size_t s_icache_words;
 
-    static const int s_icache_xshift = 2;
-    static const int s_icache_yshift = static_log2(ICACHE_WORDS)+s_icache_xshift;
-    static const int s_icache_xmask  = ((1<<static_log2(ICACHE_WORDS))-1)<<s_icache_xshift;
-    static const int s_icache_zshift = static_log2(ICACHE_LINES)+s_icache_yshift;
-    static const int s_icache_ymask  = ((1<<static_log2(ICACHE_LINES))-1)<<s_icache_yshift;
-    static const int s_icache_zmask  = ((~0x0) << s_icache_zshift);
+    const int s_icache_xshift;
+    const int s_icache_yshift;
+    const int s_icache_xmask;
+    const int s_icache_zshift;
+    const int s_icache_ymask;
+    const int s_icache_zmask;
 
-    static const int s_dcache_xshift  = 2;
-    static const int s_dcache_yshift  = static_log2(DCACHE_WORDS)+s_dcache_xshift;
-    static const int s_dcache_xmask   = ((1<<static_log2(DCACHE_WORDS))-1)<<s_dcache_xshift;
-    static const int s_dcache_zshift  = static_log2(DCACHE_LINES)+s_dcache_yshift;
-    static const int s_dcache_ymask   = ((1<<static_log2(DCACHE_LINES))-1)<<s_dcache_yshift;
-    static const int s_dcache_zmask   = ((~0x0) << s_dcache_zshift);
+    const int s_dcache_xshift;
+    const int s_dcache_yshift;
+    const int s_dcache_xmask;
+    const int s_dcache_zshift;
+    const int s_dcache_ymask;
+    const int s_dcache_zmask;
 
     // REGISTERS
     sc_signal<int> r_dcache_fsm;
-    sc_signal<int>         DCACHE_DATA[DCACHE_LINES][DCACHE_WORDS];
-    sc_signal<int>         DCACHE_TAG[DCACHE_LINES];
+    sc_signal<int>         **DCACHE_DATA;
+    sc_signal<int>         *DCACHE_TAG;
     sc_signal<int>         DCACHE_SAVE_ADDR;
     sc_signal<int>         DCACHE_SAVE_DATA;
     sc_signal<int>         DCACHE_SAVE_TYPE;
@@ -100,8 +88,8 @@ private:
     soclib::caba::GenericFifo<sc_uint<4>,WRITE_BUFFER_DEPTH>  m_type_fifo;
 
     sc_signal<int> r_icache_fsm;
-    sc_signal<int>         ICACHE_DATA[ICACHE_LINES][ICACHE_WORDS];
-    sc_signal<int>         ICACHE_TAG[ICACHE_LINES];
+    sc_signal<int>         **ICACHE_DATA;
+    sc_signal<int>         *ICACHE_TAG;
     sc_signal<int>         ICACHE_MISS_ADDR;
     sc_signal<bool>        ICACHE_REQ;
 
@@ -113,10 +101,10 @@ private:
     sc_signal<int>         CMD_CPT;        // counter for VCI request packet
       
     sc_signal<int> r_vci_rsp_fsm;
-    sc_signal<int>         ICACHE_MISS_BUF[ICACHE_WORDS];    
-    sc_signal<bool>        ICACHE_VAL_BUF[ICACHE_WORDS];    
-    sc_signal<int>         DCACHE_MISS_BUF[DCACHE_WORDS];    
-    sc_signal<bool>        DCACHE_VAL_BUF[DCACHE_WORDS];    
+    sc_signal<int>         *ICACHE_MISS_BUF;    
+    sc_signal<bool>        *ICACHE_VAL_BUF;    
+    sc_signal<int>         *DCACHE_MISS_BUF;    
+    sc_signal<bool>        *DCACHE_VAL_BUF;    
     sc_signal<int>         RSP_CPT;        // counter for VCI response packet
 
     sc_signal<int>         DCACHE_CPT_INIT;    // Counter for DCACHE initialisation
@@ -140,7 +128,11 @@ public:
     VciXCache(
         sc_module_name insname,
         const soclib::common::MappingTable &mt,
-        const soclib::common::IntTab &index);
+        const soclib::common::IntTab &index,
+        size_t icache_lines,
+        size_t icache_words,
+        size_t dcache_lines,
+        size_t dcache_words );
 
 private:
     void transition();

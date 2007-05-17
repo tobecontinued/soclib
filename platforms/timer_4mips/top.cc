@@ -101,10 +101,10 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<8,8,4,8,4,vci_param> cache0("cache0", maptab,0);
-	soclib::caba::VciXCache<8,8,4,8,4,vci_param> cache1("cache1", maptab,1);
-	soclib::caba::VciXCache<8,8,4,8,4,vci_param> cache2("cache2", maptab,2);
-	soclib::caba::VciXCache<8,8,4,8,4,vci_param> cache3("cache3", maptab,3);
+	soclib::caba::VciXCache<8,vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
+	soclib::caba::VciXCache<8,vci_param> cache1("cache1", maptab,IntTab(1),8,4,8,4);
+	soclib::caba::VciXCache<8,vci_param> cache2("cache2", maptab,IntTab(2),8,4,8,4);
+	soclib::caba::VciXCache<8,vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
 
 	soclib::caba::Mips mips0("mips0", 0);
 	soclib::caba::Mips mips1("mips1", 1);
@@ -118,7 +118,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 4);
 	soclib::caba::VciLocks<vci_param> vcilocks("vcilocks", IntTab(4), maptab); 
 	
-	soclib::caba::VciVgmn<vci_param,4,5,2,8> vgmn("vgmn",maptab);
+	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 4, 5, 2, 8);
 
 	//	Net-List
  

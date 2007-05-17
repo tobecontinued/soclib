@@ -5,10 +5,6 @@ class caba(VciCabaComponent):
 	classname = 'VciVgmn'
 	header_files = 'include/caba/interconnect/vci_vgmn.h',
 	implementation_files = 'src/caba/interconnect/vci_vgmn.cc',
-	tmpl_parameters = VciCabaComponent.tmpl_parameters + [
-		'nb_initiat', 'nb_target', 'min_latency', 'fifo_depth']
-	tmpl_instanciation = VciCabaComponent.tmpl_instanciation+\
-		',%(nb_initiat)s,%(nb_target)s,%(min_latency)s,%(fifo_depth)d'
 	uses = [
 		Uses('base_module'),
 		Uses('mapping_table'),

@@ -117,6 +117,36 @@ public:
 		wdata   (ports.wdata);
 		wrap    (ports.wrap);
 	}
+
+    inline bool getAck() const
+    {
+        return cmdack;
+    }
+
+    inline bool getVal() const
+    {
+        return rspval;
+    }
+
+    inline void setAck( bool x )
+    {
+        rspack = x;
+    }
+
+    inline void setVal( bool x )
+    {
+        cmdval = x;
+    }
+
+    inline bool iAccepted() const
+    {
+        return rspval && rspack;
+    }
+
+    inline bool peerAccepted() const
+    {
+        return cmdval && cmdack;
+    }
 };
 
 }}
