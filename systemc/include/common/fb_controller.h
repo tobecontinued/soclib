@@ -23,6 +23,8 @@
 #ifndef SOCLIB_COMMON_FB_CONTROLLER_H_
 #define SOCLIB_COMMON_FB_CONTROLLER_H_
 
+#include <inttypes.h>
+
 namespace soclib { namespace common {
 
 class FbController

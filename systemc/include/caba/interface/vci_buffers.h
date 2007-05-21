@@ -23,6 +23,7 @@
 #ifndef SOCLIB_CABA_SIGNAL_VCI_BUFFERS_H_
 #define SOCLIB_CABA_SIGNAL_VCI_BUFFERS_H_
 
+#include <inttypes.h>
 #include <iostream>
 #include <systemc.h>
 #include "common/address_masking_table.h"

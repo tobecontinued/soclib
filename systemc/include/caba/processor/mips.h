@@ -23,6 +23,7 @@
 #ifndef SOCLIB_CABA_MIPS_H_
 #define SOCLIB_CABA_MIPS_H_
 
+#include <inttypes.h>
 #include "caba/util/base_module.h"
 #include "common/endian.h"
 #include "caba/interface/xcache_processor_ports.h"

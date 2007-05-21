@@ -21,6 +21,7 @@
 # Maintainers: nipo
 
 import os, os.path
+import sys
 from utils import *
 
 __all__ = ['systemc', 'toolchain', 'build_env']
@@ -31,6 +32,7 @@ class systemc(Configurator):
 	includedir = '%(dir)s/include'
 	addinc = []
 	libs = ['-L%(libdir)s', '-lsystemc']
+
 	cflags = ['-I%(dir)s/include']
 
 class toolchain(Configurator):
@@ -46,7 +48,12 @@ class toolchain(Configurator):
 	
 	prefix = ''
 	cflags = ['-Wall', '-Wno-pmf-conversions']
-	libs = ['-lbfd']
+	if sys.platform in ['cygwin']:
+		libs = ['-lbfd', '-liberty', '-lintl']
+	elif sys.platform in ['darwin']:
+		libs = ['-lbfd', '-liberty', '-lintl']
+	else:
+		libs = ['-lbfd']
 	release_cflags = ['-O2']
 	release_libs = []
 	prof_cflags = ['-pg']
@@ -82,5 +89,13 @@ class build_env(Configurator):
 		toolchain_libs = toolchain_libs + self.toolchain.libs
 		return self.systemc.libs+toolchain_libs
 	def reposFile(self, name):
-		return os.path.join(self.repos, self.mode, name)
+		stupid_platform = sys.platform in ['cygwin']
+		if stupid_platform:
+			if len(name)>128:
+				name, ext = os.path.splitext(name)
+				name = 'long_name_'+hex(hash(name))+ext
+		r = os.path.join(self.repos, self.mode, name)
+		if stupid_platform:
+			r = r.replace(':','_')
+		return r
 

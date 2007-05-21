@@ -23,6 +23,7 @@
 #ifndef SOCLIB_MAPPING_TABLE_H
 #define SOCLIB_MAPPING_TABLE_H
 
+#include <inttypes.h>
 #include <list>
 #include <sstream>
 

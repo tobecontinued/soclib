@@ -23,6 +23,7 @@
 #ifndef SOCLIB_CABA_VCI_XCACHE_H
 #define SOCLIB_CABA_VCI_XCACHE_H
 
+#include <inttypes.h>
 #include <systemc.h>
 #include "common/static_assert.h"
 #include "common/static_log2.h"

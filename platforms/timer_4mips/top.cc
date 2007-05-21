@@ -287,6 +287,7 @@ int sc_main (int argc, char *argv[])
 		std::cout << e << std::endl;
 	} catch (...) {
 		std::cout << "Unknown exception occurred" << std::endl;
+		throw;
 	}
 	return 1;
 }

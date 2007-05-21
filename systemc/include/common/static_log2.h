@@ -23,6 +23,8 @@
 #ifndef SOCLIB_STATIC_LOG2_H_
 #define SOCLIB_STATIC_LOG2_H_
 
+#include <inttypes.h>
+
 namespace soclib { namespace common {
 
 template<uint32_t base_nb>

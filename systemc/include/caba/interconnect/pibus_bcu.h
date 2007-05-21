@@ -36,6 +36,7 @@
 #ifndef PIBUS_BCU_H_
 #define PIBUS_BCU_H_
 
+#include <inttypes.h>
 #include <systemc.h>
 #include "common/mapping_table.h"
 #include "caba/interface/pibus_signals.h"

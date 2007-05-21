@@ -29,6 +29,7 @@
 #include <signal.h>
 #include <termios.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <vector>
 
 namespace soclib { namespace common {
@@ -60,7 +61,9 @@ XtermWrapper::XtermWrapper(const std::string &name)
 		// And change our modes
 		struct termios attrs;
 		tcgetattr( m_fd, &attrs );
+#if defined(cfmakeraw)
 		cfmakeraw( &attrs );
+#endif
 		attrs.c_iflag |= IGNCR;
 		tcsetattr( m_fd, TCSANOW, &attrs );
 
@@ -85,7 +88,9 @@ XtermWrapper::XtermWrapper(const std::string &name)
 		// Set modes
 		struct termios attrs;
 		tcgetattr( fd, &attrs );
+#if defined(cfmakeraw)
 		cfmakeraw( &attrs );
+#endif
 		attrs.c_oflag |= ONLRET;
 		attrs.c_oflag &= ~ONLCR;
 		tcsetattr( fd, TCSANOW, &attrs );

@@ -24,6 +24,7 @@
 #ifndef SOCLIB_COMMON_ENDIAN_H_
 #define SOCLIB_COMMON_ENDIAN_H_
 
+#include <inttypes.h>
 #include <stdint.h>
 #include <sys/types.h>
 
