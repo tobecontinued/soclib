@@ -27,21 +27,25 @@ if [ "${0:0:1}" == "/" ] ; then
 else
 	cur_soclib_bin="${PWD}/$(dirname "$0")"
 fi
-cur_soclib="$(dirname "${cur_soclib_bin}")"
+soclib_base_path="$(dirname "${cur_soclib_bin}")"
 
 # Then append our python lib directory in front of python path
 if [ "${PYTHONPATH}" == "" ] ; then
-	PYTHONPATH="${cur_soclib}/lib/python"
+	PYTHONPATH="${soclib_base_path}/lib/python"
 else
-	PYTHONPATH="${cur_soclib}/lib/python:${PYTHONPATH}"
+	PYTHONPATH="${soclib_base_path}/lib/python:${PYTHONPATH}"
 fi
 export PYTHONPATH
+export soclib_base_path
 
 # And try out different pythons from the most recent ones
 # I basically dont trust default "python" command, it is often
 # the antic python-1.5.x on redhat enterprise :'(
 for py in python2.5 python2.4 python2.3 python ; do
 	if [ "$(type -p $py 2>/dev/null)" != "" ] ; then
-		exec $py "${cur_soclib}"/bin/soclib-cc.py $*
+		exec $py "${soclib_base_path}"/lib/python/soclib-cc-main.py $*
 	fi
 done
+
+echo "No python found, this is not good..."
+exit 2

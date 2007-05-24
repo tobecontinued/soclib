@@ -3,9 +3,9 @@
 
 class caba(CabaComponent):
 	classname = 'FifoReader'
-	header_files = "include/caba/coprocessor/fifo_reader.h",
+	header_files = "../../systemc/include/caba/coprocessor/fifo_reader.h",
 	implementation_files = [
-		"src/caba/coprocessor/fifo_reader.cc",
+		"../../systemc/src/caba/coprocessor/fifo_reader.cc",
 		]
 	uses = [
 		Uses('base_module'),

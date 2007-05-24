@@ -10,7 +10,7 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. -I$(SOCLIB)/include
+CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags)
 
 default: clean $(SOFT_IMAGE)
 

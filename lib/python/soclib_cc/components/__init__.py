@@ -25,9 +25,8 @@ import soclib_cc.component.component as component
 from soclib_cc.config import config
 import re
 
-def get_descs():
+def get_descs_in(base):
 	sdfile = re.compile('^[^.][a-zA-Z_-]+\\.sd$')
-	base = os.path.join(config.path, 'desc/soclib')
 	d = filter(sdfile.match, os.listdir(base))
 	glbl = {}
 	for n in component.__all__:
@@ -38,9 +37,23 @@ def get_descs():
 	for f in d:
 		name = os.path.join(base, f)
 		if os.path.isfile(name):
+			dirname = os.path.dirname(name)
 			locs = {}
 			execfile(name, glbl, locs)
+			for i in locs.itervalues():
+				i.mk_abs_paths(dirname)
 			all_c[f[:-3]] = locs
+	return all_c
+
+def get_descs():
+	all_c = {}
+	for base in config.desc_paths:
+		new_c = get_descs_in(base)
+		for k, v in new_c.iteritems():
+			if k in all_c:
+				all_c[k].update(v)
+			else:
+				all_c[k] = v
 	return all_c
 
 component_defs = get_descs()

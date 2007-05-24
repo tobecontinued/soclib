@@ -3,8 +3,8 @@
 
 class caba(CabaComponent):
 	classname = 'PibusBcu'
-	header_files = "include/caba/interconnect/pibus_bcu.h",
-	implementation_files = "src/caba/interconnect/pibus_bcu.cc",
+	header_files = "../../systemc/include/caba/interconnect/pibus_bcu.h",
+	implementation_files = "../../systemc/src/caba/interconnect/pibus_bcu.cc",
 	uses = [
 		Uses('base_module'),
 		Uses('mapping_table'),

@@ -3,5 +3,5 @@
 
 class common(CommonComponent):
 	classname = 'ProcessWrapper'
-	header_files = 'include/common/process_wrapper.h',
-	implementation_files = 'src/common/process_wrapper.cc',
+	header_files = '../../systemc/include/common/process_wrapper.h',
+	implementation_files = '../../systemc/src/common/process_wrapper.cc',

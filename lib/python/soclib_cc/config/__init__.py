@@ -24,6 +24,7 @@
 import os, os.path
 from pprint import pprint
 from utils import *
+import types
 
 __all__ = ['config', 'Joined']
 
@@ -33,6 +34,13 @@ import re
 class ConfigSpool:
 	_filter = re.compile("[a-z][a-z_]+")
 	_fmt = '%s:\n%s'
+
+	_desc_paths = []
+
+	def addDescPath(self, np):
+		if not np in self._desc_paths:
+			self._desc_paths.append(np)
+	addDescPath = classmethod(addDescPath)
 
 	def _pprint(self, obj, pf='  '):
 		def _repr(o):
@@ -51,20 +59,29 @@ class ConfigSpool:
 
 	def __iter__(self):
 		for i in filter(self._filter.match, dir(self)):
-			yield getattr(self, i)
+			obj = getattr(self, i)
+			if not isinstance(obj, (types.FunctionType, types.MethodType)):
+				yield obj
 
 	def __getitem__(self, name):
 		return getattr(self, name)
 
-_cur_soclib = os.path.abspath(
-	os.path.join(os.path.dirname(__file__), '../../../..'))
+_cur_soclib = os.getenv('soclib_base_path')
+assert(_cur_soclib)
+
+def include(filename, glbl):
+	name = os.path.join(_cur_soclib, filename)
+	if os.path.isfile(name):
+		execfile(name, glbl, {})
 
 def parseall():
 	import templates
 	config = ConfigSpool()
+	config.addDescPath('desc/soclib')
 	glbl = {'Configurator':Configurator,
 			'config':config,
-			'base':templates}
+			'base':templates,
+			'include':include}
 	for name in (os.path.join(_cur_soclib, 'etc', 'soclib.conf'),
 				 os.path.expanduser("~/.soclib/global.conf"),
 				 "soclib.conf"):
@@ -75,7 +92,7 @@ def parseall():
 	return config
 
 _configs = parseall()
-config = _configs.default(os.path.join(_cur_soclib))
+config = _configs.default(_cur_soclib, _configs._desc_paths)
 
 def change_config(name):
 	cc = getattr(_configs, name)

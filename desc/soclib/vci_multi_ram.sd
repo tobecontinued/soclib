@@ -3,8 +3,8 @@
 
 class caba(VciCabaComponent):
 	classname = 'VciMultiRam'
-	header_files = 'include/caba/target/vci_multi_ram.h',
-	implementation_files = 'src/caba/target/vci_multi_ram.cc',
+	header_files = '../../systemc/include/caba/target/vci_multi_ram.h',
+	implementation_files = '../../systemc/src/caba/target/vci_multi_ram.cc',
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2),

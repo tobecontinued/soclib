@@ -69,13 +69,24 @@ class build_env(Configurator):
 	debug = False
 	mode = 'release'
 	repos = 'repos'
+	include_paths = ['include']
+	common_include_paths = ['systemc/include']
 
-	def __init__(self, soclib_path):
+	def __init__(self, soclib_path, desc_paths):
 		self.path = soclib_path
-		self.cflags = [
-			'-I'+os.path.join(soclib_path, 'include'),
-			'-I'+os.path.join(soclib_path, 'systemc/include')
-			]
+		self.common_cflags = map(
+			lambda x:'-I'+os.path.join(soclib_path, x),
+			self.common_include_paths)
+		self.cflags = map(
+			lambda x:'-I'+os.path.join(soclib_path, x),
+			self.include_paths)+self.common_cflags
+		self.desc_paths = []
+		for dp in desc_paths:
+			self.addDescPath(dp)
+	def addDescPath(self, path):
+		np = os.path.abspath(os.path.join(self.path, path))
+		if not np in self.desc_paths:
+			self.desc_paths.append(np)
 	def getTool(self, name):
 		if name in self.toolchain.tool_map:
 			name = self.toolchain.tool_map[name]

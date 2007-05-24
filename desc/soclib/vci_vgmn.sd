@@ -3,8 +3,8 @@
 
 class caba(VciCabaComponent):
 	classname = 'VciVgmn'
-	header_files = 'include/caba/interconnect/vci_vgmn.h',
-	implementation_files = 'src/caba/interconnect/vci_vgmn.cc',
+	header_files = '../../systemc/include/caba/interconnect/vci_vgmn.h',
+	implementation_files = '../../systemc/src/caba/interconnect/vci_vgmn.cc',
 	uses = [
 		Uses('base_module'),
 		Uses('mapping_table'),

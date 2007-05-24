@@ -3,8 +3,8 @@
 
 class common(CommonComponent):
 	classname = 'MappingTable'
-	header_files = 'include/common/mapping_table.h',
-	implementation_files = 'src/common/mapping_table.cc',
+	header_files = '../../systemc/include/common/mapping_table.h',
+	implementation_files = '../../systemc/src/common/mapping_table.cc',
 	uses = [
 		Uses('address_decoding_table', input_t = 'uint32_t', output_t = 'bool'),
 		Uses('address_decoding_table', input_t = 'uint32_t', output_t = 'int'),

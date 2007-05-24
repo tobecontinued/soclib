@@ -7,7 +7,7 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I$(SOCLIB)/include -I.
+CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags)
 
 default: a.out
 

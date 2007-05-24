@@ -3,8 +3,8 @@
 
 class caba(VciCabaComponent):
 	classname = 'VciLocks'
-	header_files = 'include/caba/target/vci_locks.h',
-	implementation_files = 'src/caba/target/vci_locks.cc',
+	header_files = '../../systemc/include/caba/target/vci_locks.h',
+	implementation_files = '../../systemc/src/caba/target/vci_locks.cc',
 	uses = [
 		Uses('base_module')
 		]

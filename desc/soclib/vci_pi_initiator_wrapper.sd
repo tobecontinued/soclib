@@ -3,8 +3,8 @@
 
 class caba(VciCabaComponent):
 	classname = 'VciPiInitiatorWrapper'
-	header_files = 'include/caba/interconnect/vci_pi_initiator_wrapper.h',
-	implementation_files = 'src/caba/interconnect/vci_pi_initiator_wrapper.cc',
+	header_files = '../../systemc/include/caba/interconnect/vci_pi_initiator_wrapper.h',
+	implementation_files = '../../systemc/src/caba/interconnect/vci_pi_initiator_wrapper.cc',
 	uses = [
 		Uses('base_module'),
 		]

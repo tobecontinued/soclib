@@ -23,6 +23,7 @@
 from soclib_cc.builder.action import *
 from soclib_cc.builder.cxx import *
 from soclib_cc.builder.textfile import *
+import os, os.path
 
 __all__ = ['Component', 'VciCabaComponent', 'CabaComponent', 'CommonComponent']
 
@@ -48,6 +49,7 @@ class Component:
 	You will more likely use derived classes from this one, like
 	CabaComponent, VciCabaComponent or CommonComponent.
 	'''
+	relative_path_files = ['header_files', 'implementation_files']
 	mode = 'systemc'
 	namespace = ""
 	classname = ""
@@ -61,6 +63,20 @@ class Component:
 	def __init__(self, where, **args):
 		self.where = where
 		self.args = args
+	def mk_abs_paths(cls, basename):
+		for attr in cls.relative_path_files:
+			val = getattr(cls, attr)
+			def mkabs(name):
+				if os.path.isabs(name):
+					return name
+				else:
+					r = os.path.abspath(os.path.join(basename, name))
+					if config.debug:
+						print basename, name, r
+					return r
+			val = map(mkabs, val)
+			setattr(cls, attr, val)
+	mk_abs_paths = classmethod(mk_abs_paths)
 	def getBuilder(self, filename):
 		bn = self.baseName()
 		bn += '_'+os.path.splitext(os.path.basename(filename))[0]
@@ -102,8 +118,7 @@ class Component:
 		return params
 	def cxxSource(self, s):
 		source = ""
-		source += '#include "%s/%s/%s"\n'%(
-			config.path, self.mode, s)
+		source += '#include "%s"\n'%s
 		inst = 'class ' + self.namespace + self.classname
 		if self.tmpl_parameters:
 			if self.tmpl_instanciation:

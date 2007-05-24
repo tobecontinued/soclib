@@ -3,6 +3,6 @@
 
 class common(CommonComponent):
 	classname = 'AddressDecodingTable'
-	header_files = 'include/common/address_decoding_table.h',
-	implementation_files = 'src/common/address_decoding_table.cc',
+	header_files = '../../systemc/include/common/address_decoding_table.h',
+	implementation_files = '../../systemc/src/common/address_decoding_table.cc',
 	tmpl_parameters = ['input_t', 'output_t']

@@ -59,6 +59,9 @@ def main():
 	parser.add_option('--getpath', dest = 'getpath',
 					  action='store_true',
 					  help="Print soclib path")
+	parser.add_option('--getflags', dest = 'getflags',
+					  action='store', type = 'string',
+					  help="Print soclib path")
 	parser.add_option('-t', '--type', dest = 'type',
 					  action='store', type = 'string',
 					  help="Use a different configuration: *default")
@@ -74,6 +77,10 @@ def main():
 	if opts.getpath:
 		print config.path
 		return 0
+	if opts.getflags:
+		if opts.getflags == 'cflags':
+			print ' '.join(config.common_cflags)
+			return 0
 	if opts.compile:
 		config.output = "mod.o"
 	if opts.output:

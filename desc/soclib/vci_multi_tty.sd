@@ -3,8 +3,8 @@
 
 class caba(VciCabaComponent):
 	classname = 'VciMultiTty'
-	header_files = 'include/caba/target/vci_multi_tty.h',
-	implementation_files = 'src/caba/target/vci_multi_tty.cc',
+	header_files = '../../systemc/include/caba/target/vci_multi_tty.h',
+	implementation_files = '../../systemc/src/caba/target/vci_multi_tty.cc',
 	uses = [
 		Uses('base_module'),
 		Uses('process_wrapper'),
