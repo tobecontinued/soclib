@@ -69,8 +69,8 @@ class build_env(Configurator):
 	debug = False
 	mode = 'release'
 	repos = 'repos'
-	include_paths = ['include']
-	common_include_paths = ['systemc/include']
+	common_include_paths = ['include']
+	include_paths = ['systemc/include']
 
 	def __init__(self, soclib_path, desc_paths):
 		self.path = soclib_path
