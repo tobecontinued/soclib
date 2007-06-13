@@ -129,7 +129,7 @@ class Component:
 					self.tmpl_parameters))
 			params = fmt % self.getParams()
 			inst = 'template '+inst+'<'+params+' >'
-		source += inst+';\n'
+			source += inst+';\n'
 		return source
 	
 class CabaComponent(Component):
