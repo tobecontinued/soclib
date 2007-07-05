@@ -24,12 +24,14 @@
 #ifndef SOCLIB_EXCEPTION_H_
 #define SOCLIB_EXCEPTION_H_
 
+#include <exception>
 #include <string>
 #include <iostream>
 
 namespace soclib { namespace exception {
 
 class Exception
+    : std::exception
 {
     std::string m_type;
     std::string m_message;
@@ -40,9 +42,13 @@ public:
             : m_type(type), m_message(message)
     {}
 
-    const std::string &message() const
+    virtual ~Exception() throw()
     {
-        return m_message;
+    }
+
+    virtual const char * what() throw()
+    {
+        return m_message.c_str();
     }
 
     void print( std::ostream &o ) const

@@ -20,6 +20,7 @@
  */
 
 #include <cassert>
+#include <sstream>
 #include "common/mapping_table.h"
 
 namespace soclib { namespace common {
@@ -110,8 +111,13 @@ MappingTable::getLocalityTable( const IntTab &index ) const
 		MappingTable::addr_t addr = i->baseAddress();
 		bool val = (i->index().idMatches(index) );
 
-		if ( done[addr] && adt[addr] != val )
-			throw soclib::exception::RunTimeError("Inconherent Mapping Table");
+		if ( done[addr] && adt[addr] != val ) {
+            std::ostringstream oss;
+            oss << *this;
+			throw soclib::exception::RunTimeError(
+                std::string("Incoherent Mapping Table:\n")+
+                oss.str());
+        }
 		adt.set( addr, val );
 		done.set( addr, true );
 	}
@@ -141,8 +147,13 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 		MappingTable::addr_t addr = i->baseAddress();
 		int val = i->index()[index.level()];
 
-		if ( done[addr] && adt[addr] != val )
-			throw soclib::exception::RunTimeError("Inconherent Mapping Table");
+		if ( done[addr] && adt[addr] != val ) {
+            std::ostringstream oss;
+            oss << *this;
+			throw soclib::exception::RunTimeError(
+                std::string("Incoherent Mapping Table:\n")+
+                oss.str());
+        }
 		adt.set( addr, val );
 		done.set( addr, true );
 	}
