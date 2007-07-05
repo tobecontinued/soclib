@@ -38,16 +38,24 @@ void handle_display( uint32_t *fb, long width, long height, long asked_bpp )
 	
 	bpp = surface->format->BytesPerPixel;
 	for (;;) {
-		int line;
+		int line, col;
 		pause();
 		if(SDL_MUSTLOCK(surface)) {
 			if(SDL_LockSurface(surface) < 0)
 				return;
 		}
 		for ( line=0; line<height; line++ ) {
-			Uint8 *p = (Uint8 *)surface->pixels + line*surface->pitch;
-			void *cur = (char*)fb + line*width*asked_bpp/8;
-			memcpy(p, cur, width*bpp);
+			for ( col=0; col<width; ++col ) {
+				Uint32 *p = (Uint32*)((Uint8 *)surface->pixels + line*surface->pitch + col);
+				void *y = (char*)fb + (line*width+col)*asked_bpp/8;
+				void *u = (char*)fb + (line*width/2+width*height+col/2)*asked_bpp/8;
+				void *v = (char*)fb + (line*width/2+width*height*3/2+col/2)*asked_bpp/8;
+				
+				unsigned char r = y - 0.00004*u + 1.140*v;
+				unsigned char v = y - 0.395*u - 0.581*v;
+				unsigned char b = y + 2.032*u - 0.0005*v;
+				*p = (r<<16+v<<8+b);
+			}
 		}
 		if(SDL_MUSTLOCK(surface)) {
 			SDL_UnlockSurface(surface);
@@ -85,7 +93,7 @@ int main( int argc, char **argv )
 	file = argv[4];
 	
 	buffer_fd = open(file, O_RDONLY);
-	mmap_res = mmap(0, width*height*depth, PROT_READ, MAP_FILE|MAP_SHARED, buffer_fd, 0);
+	mmap_res = mmap(0, width*height*depth*2, PROT_READ, MAP_FILE|MAP_SHARED, buffer_fd, 0);
 	if ( ! mmap_res ) {
 		perror("mmap");
 		exit(2);
