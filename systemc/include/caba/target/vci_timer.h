@@ -43,7 +43,7 @@ private:
     void transition();
     void genMoore();
 
-	size_t n_irq;
+	size_t m_ntimer;
 
     sc_signal<typename vci_param::data_t> *r_value;
     sc_signal<typename vci_param::data_t> *r_period;
