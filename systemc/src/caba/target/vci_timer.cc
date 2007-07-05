@@ -23,8 +23,7 @@
 #include "common/register.h"
 #include "caba/target/vci_timer.h"
 
-namespace soclib {
-namespace caba {
+namespace soclib { namespace caba {
 
 using namespace soclib;
 
@@ -35,6 +34,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
     int cell = (int)addr / vci_param::B;
 	int reg = cell % TIMER_SPAN;
 	int timer = cell / TIMER_SPAN;
+
+    if (timer>=(int)m_ntimer)
+        return false;
 
 	switch (reg) {
 	case TIMER_VALUE:
@@ -62,6 +64,9 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	int reg = cell % TIMER_SPAN;
 	int timer = cell / TIMER_SPAN;
 
+    if (timer>=(int)m_ntimer)
+        return false;
+
 	switch (reg) {
 	case TIMER_VALUE:
 		data = r_value[timer].read();
@@ -88,7 +93,7 @@ tmpl(void)::transition()
 	if (!p_resetn) {
 		m_vci_fsm.reset();
 
-		for (size_t i = 0 ; i < n_irq ; i++) {
+		for (size_t i = 0 ; i < m_ntimer ; i++) {
 			r_value[i] = 0;
 			r_period[i] = 0;
 			r_counter[i] = 0;
@@ -102,7 +107,7 @@ tmpl(void)::transition()
 
 	// Increment value[i]
 	// decrement r_counter[i] & Set irq[i]
-	for(size_t i = 0 ; i < n_irq ; i++) {
+	for(size_t i = 0 ; i < m_ntimer ; i++) {
 		if ( ! (r_mode[i].read() & TIMER_RUNNING) )
 			continue;
 
@@ -121,7 +126,7 @@ tmpl(void)::genMoore()
 {
 	m_vci_fsm.genMoore();
 
-	for (size_t i = 0 ; i < n_irq ; i++)
+	for (size_t i = 0 ; i < m_ntimer ; i++)
 		p_irq[i] = r_irq[i].read() && (r_mode[i].read() & TIMER_IRQ_ENABLED);
 }
 
@@ -131,20 +136,19 @@ tmpl(/**/)::VciTimer(
     const MappingTable &mt,
     size_t nirq)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index))
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+      m_ntimer(nirq)
 {
 	m_vci_fsm.on_read_write(on_read, on_write);
 
-	n_irq = nirq;
+	r_value   = new sc_signal<typename vci_param::data_t>[m_ntimer];
+	r_period  = new sc_signal<typename vci_param::data_t>[m_ntimer];
+	r_counter = new sc_signal<typename vci_param::data_t>[m_ntimer];
+	r_mode    = new sc_signal<int>[m_ntimer];
+	r_irq     = new sc_signal<bool>[m_ntimer];
+	p_irq     = new sc_out<bool>[m_ntimer];
 
-	r_value   = new sc_signal<typename vci_param::data_t>[nirq];
-	r_period  = new sc_signal<typename vci_param::data_t>[nirq];
-	r_counter = new sc_signal<typename vci_param::data_t>[nirq];
-	r_mode    = new sc_signal<int>[nirq];
-	r_irq     = new sc_signal<bool>[nirq];
-	p_irq     = new sc_out<bool>[nirq];
-
-	for (size_t i = 0; i < n_irq; i++) {
+	for (size_t i = 0; i < m_ntimer; i++) {
 		SOCLIB_REG_RENAME_N(r_value, i);
 		SOCLIB_REG_RENAME_N(r_period, i);
 		SOCLIB_REG_RENAME_N(r_counter, i);

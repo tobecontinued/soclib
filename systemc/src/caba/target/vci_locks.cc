@@ -15,7 +15,7 @@
  * along with SoCLIB; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  *
- * Copyright (c) UPMC, Lip6, Asim
+ * Copyright (c) UPMC, Lip6
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
  * Maintainers: nipo

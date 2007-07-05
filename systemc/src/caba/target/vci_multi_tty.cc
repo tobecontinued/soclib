@@ -38,6 +38,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	int term_no = cell / TTY_SPAN;
 	char _data = data;
 
+    if (term_no>=(int)m_term.size())
+        return false;
+
 	switch (reg) {
 	case TTY_WRITE:
         if ( _data == '\a' ) {
@@ -59,6 +62,9 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
     int cell = (int)addr / vci_param::B;
 	int reg = cell % TTY_SPAN;
 	int term_no = cell / TTY_SPAN;
+
+    if (term_no>=(int)m_term.size())
+        return false;
 
 	switch (reg) {
 	case TTY_STAUS:
