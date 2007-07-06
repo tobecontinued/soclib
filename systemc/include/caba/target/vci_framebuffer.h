@@ -33,14 +33,12 @@
 namespace soclib {
 namespace caba {
 
-using namespace soclib;
-
 template<typename vci_param>
 class VciFrameBuffer
 	: public caba::BaseModule
 {
 private:
-    caba::VciTargetFsmHandler<vci_param, true, 2> m_vci_fsm;
+    caba::VciTargetFsm<vci_param, true, 2> m_vci_fsm;
 
     bool on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be);
     bool on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data);
@@ -49,15 +47,13 @@ private:
 
 	int m_defered_timeout;
 
-	unsigned long m_width, m_height;
-
 	common::FbController m_fb_controller;
 protected:
     SC_HAS_PROCESS(VciFrameBuffer);
 
 public:
-    sc_signal<bool> p_clk;
-    sc_signal<bool> p_resetn;
+    sc_in<bool> p_clk;
+    sc_in<bool> p_resetn;
     caba::VciTarget<vci_param> p_vci;
 
 	VciFrameBuffer(

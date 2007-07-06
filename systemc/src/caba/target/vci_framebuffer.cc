@@ -37,20 +37,35 @@ using namespace soclib;
 
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
-	addr /= 4;
-	if ( addr >= m_width*m_height )
-		return false;
-	m_fb_controller->pixelPut(addr%m_width, addr/m_width, data);
+    if (addr>m_fb_controller.m_width*m_fb_controller.m_height*2)
+        return false;
+
+    int index = addr/4;
+    uint32_t *tab = m_fb_controller.surface();
+	unsigned int cur = tab[index];
+    uint32_t mask = 0;
+
+    if ( be & 1 )
+        mask |= 0x000000ff;
+    if ( be & 2 )
+        mask |= 0x0000ff00;
+    if ( be & 4 )
+        mask |= 0x00ff0000;
+    if ( be & 8 )
+        mask |= 0xff000000;
+    
+    tab[index] = (cur & ~mask) | (data & mask);
+
 	m_defered_timeout = 30;
     return true;
 }
 
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
-	addr /= 4;
-	if ( addr >= m_width*m_height )
-		return false;
-	data = m_fb_controller->pixelGet(addr%m_width, addr/m_width);
+    if (addr>m_fb_controller.m_width*m_fb_controller.m_height*2)
+        return false;
+
+	data = m_fb_controller.surface()[addr/4];
 	return true;
 }
 
@@ -64,7 +79,7 @@ tmpl(void)::transition()
 	case 0:
 		break;
 	case 1:
-		m_fb_controller->update();
+		m_fb_controller.update();
 	default:
 		--m_defered_timeout;
 	}
@@ -84,15 +99,10 @@ tmpl(/**/)::VciFrameBuffer(
     unsigned long width,
     unsigned long height)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index))
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+      m_fb_controller((const char *)name, width, height)
 {
-	m_width = width;
-	m_height = height;
 	m_defered_timeout = 0;
-
-	m_fb_controller = new soclib::common::FbController(
-		(const char *)name,
-		m_width, m_height);
 
 	SC_METHOD(transition);
 	dont_initialize();
@@ -107,7 +117,6 @@ tmpl(/**/)::VciFrameBuffer(
 
 tmpl(/**/)::~VciFrameBuffer()
 {
-    delete m_fb_controller;
 }
 
 tmpl(void)::trace(sc_trace_file &tf, const std::string base_name, unsigned int what)

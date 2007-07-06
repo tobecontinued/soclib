@@ -24,29 +24,32 @@
 #define SOCLIB_COMMON_FB_CONTROLLER_H_
 
 #include <inttypes.h>
+#include "common/process_wrapper.h"
 
 namespace soclib { namespace common {
 
 class FbController
 {
 	int m_map_fd;
-    common::ProcessWrapper *m_screen_process;
+    soclib::common::ProcessWrapper *m_screen_process;
 
 	uint32_t *m_surface;
 
-	unsigned long m_width, m_height;
-
-    static const int m_bpp = 32;
 public:
-	VciFrameBuffer(
+	const unsigned long m_width, m_height;
+
+    inline uint32_t* surface() const
+    {
+        return m_surface;
+    }
+
+	FbController(
 		const std::string &basename,
 		unsigned long width,
 		unsigned long height);
 
-	~VciFrameBuffer();
+	~FbController();
 
-	uint32_t pixelGet(int x, int y);
-	void pixelPut(int x, int y, uint32_t pixel);
 	void update();
 };
 

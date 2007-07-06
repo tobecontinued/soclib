@@ -24,6 +24,11 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+
+#include <stdio.h>
+#include <termios.h>
+#include <sys/ioctl.h>
+
 #include <signal.h>
 #include <sys/select.h>
 #include <vector>
@@ -51,7 +56,18 @@ ProcessWrapper::ProcessWrapper(
         close(child_to_host[1]);
         m_fd_to_process = host_to_child[1];
         m_fd_from_process = child_to_host[0];
-    } else {
+
+        struct termios ts;
+        ioctl(m_fd_from_process, TCGETS, &ts);
+        ts.c_lflag &= ~ICANON;
+        ts.c_lflag &= ~ECHO;
+        ioctl(m_fd_from_process, TCSETS, &ts);
+
+        ioctl(m_fd_to_process, TCGETS, &ts);
+        ts.c_lflag &= ~ICANON;
+        ts.c_lflag &= ~ECHO;
+        ioctl(m_fd_to_process, TCSETS, &ts);
+   } else {
         // child
         close(host_to_child[1]);
         close(child_to_host[0]);
