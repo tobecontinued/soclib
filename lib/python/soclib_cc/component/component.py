@@ -49,13 +49,14 @@ class Component:
 	You will more likely use derived classes from this one, like
 	CabaComponent, VciCabaComponent or CommonComponent.
 	'''
-	relative_path_files = ['header_files', 'implementation_files']
+	relative_path_files = ['header_files', 'implementation_files', 'force_header_files']
 	mode = 'systemc'
 	namespace = ""
 	classname = ""
 	tmpl_parameters = []
 	tmpl_instanciation = ""
 	header_files = []
+	force_header_files = []
 	implementation_files = []
 	uses = []
 	default_parameters = {}
@@ -119,6 +120,8 @@ class Component:
 	def cxxSource(self, s):
 		source = ""
 		source += '#include "%s"\n'%s
+		for h in self.force_header_files:
+			source += '#include "%s"\n'%h
 		inst = 'class ' + self.namespace + self.classname
 		if self.tmpl_parameters:
 			if self.tmpl_instanciation:
@@ -128,8 +131,9 @@ class Component:
 				map(lambda x:'%%(%s)s'%x,
 					self.tmpl_parameters))
 			params = fmt % self.getParams()
-			inst = 'template '+inst+'<'+params+' >'
-			source += inst+';\n'
+			inst = inst+'<'+params+' >'
+		if '<' in inst:
+			source += 'template '+inst+';\n'
 		return source
 	
 class CabaComponent(Component):

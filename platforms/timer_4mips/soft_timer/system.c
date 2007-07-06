@@ -19,17 +19,17 @@ void interrupt_ex_handler(
 	void *dataptr, void *regtable,
 	void *stackptr)
 {
-/* 	uputs(__FUNCTION__); */
-/* 	putc(' '); */
-/* 	puti(type); */
-/* 	putc('\n'); */
-//	while(1);
+	uputs(__FUNCTION__);
+	putc(' ');
+	puti(type);
+	putc('\n');
+	while(1);
 }
 
 void interrupt_sys_handler(unsigned int irq)
 {
-/* 	uputs(__FUNCTION__); */
-/* 	putc('\n'); */
+	uputs(__FUNCTION__);
+	putc('\n');
 }
 
 void interrupt_hw_handler(unsigned int irq)

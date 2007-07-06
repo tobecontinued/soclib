@@ -2,13 +2,16 @@
 # -*- python -*-
 
 class caba(CabaComponent):
-	classname = 'Mips'
-	header_files = "../../systemc/include/caba/processor/mips.h",
+	classname = 'IssWrapper<soclib::common::MipsIss>'
+	header_files = "../../systemc/include/caba/processor/iss_wrapper.h",
 	implementation_files = [
-		"../../systemc/src/caba/processor/mips.cc",
-		"../../systemc/src/caba/processor/mips_jumps.cc",
-		"../../systemc/src/caba/processor/mips_decod.cc",
-		'../../systemc/src/caba/processor/mips_special.cc'
+		"../../systemc/src/caba/processor/iss_wrapper.cc",
+		"../../systemc/src/common/iss/mips.cc",
+		"../../systemc/src/common/iss/mips_instructions.cc",
+		]
+	force_header_files = [
+		"../../systemc/include/common/iss/mips.h",
+		"../../systemc/include/caba/processor/iss_wrapper.h",
 		]
 	uses = [
 		Uses('base_module')

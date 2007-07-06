@@ -2,7 +2,8 @@
 #include <cstdlib>
 
 #include "common/mapping_table.h"
-#include "caba/processor/mips.h"
+#include "common/iss/mips.h"
+#include "caba/processor/iss_wrapper.h"
 #include "caba/initiator/vci_xcache.h"
 #include "caba/target/vci_multi_ram.h"
 #include "caba/target/vci_multi_tty.h"
@@ -64,7 +65,7 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::VciXCache<8,vci_param> cache0("cache0", maptab,0,8,4,8,4);
 
-	soclib::caba::Mips mips0("mips0", 0);
+	soclib::caba::IssWrapper<soclib::common::MipsIss> mips0("mips0", 0);
 
 	soclib::common::ElfLoader loader("hello/a.out");
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
