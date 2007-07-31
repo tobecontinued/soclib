@@ -102,10 +102,10 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<8,vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
-	soclib::caba::VciXCache<8,vci_param> cache1("cache1", maptab,IntTab(1),8,4,8,4);
-	soclib::caba::VciXCache<8,vci_param> cache2("cache2", maptab,IntTab(2),8,4,8,4);
-	soclib::caba::VciXCache<8,vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
+	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
+	soclib::caba::VciXCache<vci_param> cache1("cache1", maptab,IntTab(1),8,4,8,4);
+	soclib::caba::VciXCache<vci_param> cache2("cache2", maptab,IntTab(2),8,4,8,4);
+	soclib::caba::VciXCache<vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
 
 	soclib::caba::IssWrapper<soclib::common::MipsIss> mips0("mips0", 0);
 	soclib::caba::IssWrapper<soclib::common::MipsIss> mips1("mips1", 1);

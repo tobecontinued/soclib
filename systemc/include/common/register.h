@@ -25,6 +25,19 @@
 
 #include <systemc.h>
 
+class scalar_t {
+    typedef     uint32_t                    reg_32_t;
+    typedef     uint8_t                     reg_8_t;
+    typedef     bool                        reg_bool_t;
+    };
+
+class sc_signal_t {
+    typedef     sc_signal<sc_uint<32> >     reg_32_t;
+    typedef     sc_signal<sc_uint<8> >      reg_8_t;
+    typedef     sc_signal<bool>             reg_bool_t;
+    };
+
+
 #if defined(NONAME_RENAME)
 #  define SOCLIB_REG_RENAME(reg)  reg.rename(#reg)
 #  define SOCLIB_REG_RENAME_NAME(name, reg)                               \

@@ -1,25 +1,15 @@
-/* -*- c++ -*-
- * This file is part of SoCLIB.
- *
- * SoCLIB is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * SoCLIB is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with SoCLIB; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
- *
- * Copyright (c) UPMC, Lip6, Asim
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
- *
- * Maintainers: nipo
- */
+//////////////////////////////////////////////////////////////////////////
+// File     : xcache_cache_ports.h
+// Date     : 17/07/2007
+// Copyright: UPMC/LIP6
+/////////////////////////////////////////////////////////////////////////
+// History
+// - 17/07/2007
+//   The DCACHE interface has been modified by A.Greiner :
+//   The "unc" signal has been supressed,
+//   and  replaced by a new code RU for the "type" signal.
+////////////////////////////////////////////////////////////////////////
+
 #ifndef SOCLIB_CABA_SIGNAL_XCACHE_PORTS_H_
 #define SOCLIB_CABA_SIGNAL_XCACHE_PORTS_H_
 
@@ -28,7 +18,7 @@
 
 namespace soclib { namespace caba {
 
-/**
+/*
  * DCACHE cache port
  */
 class DCacheCachePort
@@ -36,7 +26,6 @@ class DCacheCachePort
 public:
 	sc_in<bool>          req;
 	sc_in<sc_uint<4> >   type;
-	sc_in<bool>          unc;
 	sc_in<sc_uint<32> >  wdata;
 	sc_in<sc_uint<32> >  adr;
 	sc_out<bool>         frz;
@@ -48,16 +37,15 @@ public:
 	{
 		req    (sig.req);
 		type   (sig.type);
-		unc    (sig.unc);
 		wdata  (sig.wdata);
 		adr    (sig.adr);
-		frz   (sig.frz);
+		frz    (sig.frz);
 		rdata  (sig.rdata);
 		berr   (sig.berr);
 	}
 };
 
-/**
+/*
  * ICACHE cache port
  */
 class ICacheCachePort
@@ -82,7 +70,7 @@ public:
 
 }}
 
-#endif /* SOCLIB_CABA_SIGNAL_XCACHE_PORTS_H_ */
+#endif 
 
 // Local Variables:
 // tab-width: 4

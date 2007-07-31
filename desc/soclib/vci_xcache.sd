@@ -5,12 +5,6 @@ class caba(VciCabaComponent):
 	classname = 'VciXCache'
 	header_files = '../../systemc/include/caba/initiator/vci_xcache.h',
 	implementation_files = '../../systemc/src/caba/initiator/vci_xcache.cc',
-	tmpl_parameters = VciCabaComponent.tmpl_parameters + ['write_fifo_depth']
-	tmpl_instanciation = '%(write_fifo_depth)d,'+\
-						 VciCabaComponent.tmpl_instanciation
 	uses = [
 		Uses('mapping_table'),
 		]
-	default_parameters = {
-		'write_fifo_depth':8
-		}

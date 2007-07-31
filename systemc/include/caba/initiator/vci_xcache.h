@@ -1,25 +1,9 @@
-/* -*- c++ -*-
- * This file is part of SoCLIB.
- *
- * SoCLIB is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * SoCLIB is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with SoCLIB; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
- *
- * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
- *
- * Maintainers: nipo
- */
+//////////////////////////////////////////////////////////////////////////
+// File     : vci_xcache.h
+// Date     : 17/07/2007
+// Copyright: UPMC/LIP6
+/////////////////////////////////////////////////////////////////////////
+ 
 #ifndef SOCLIB_CABA_VCI_XCACHE_H
 #define SOCLIB_CABA_VCI_XCACHE_H
 
@@ -36,81 +20,78 @@
 namespace soclib {
 namespace caba {
 
-template<
-    size_t WRITE_BUFFER_DEPTH,
-    typename vci_param>
+template<typename    vci_param>
 class VciXCache
     : public soclib::caba::BaseModule
 {
 public:
     sc_in<bool> p_clk;
     sc_in<bool> p_resetn;
-    soclib::caba::ICacheCachePort p_icache;
-    soclib::caba::DCacheCachePort p_dcache;
-
-    soclib::caba::VciInitiator<vci_param> p_vci;
+    soclib::caba::ICacheCachePort           p_icache;
+    soclib::caba::DCacheCachePort           p_dcache;
+    soclib::caba::VciInitiator<vci_param>   p_vci;
 
 private:
-    soclib::common::AddressDecodingTable<uint32_t, bool> m_cacheability_table;
 
     // STRUCTURAL PARAMETERS
-    int          m_ident;            //  VCI SRCID value
+    soclib::common::AddressDecodingTable<uint32_t, bool> m_cacheability_table;
+    int                                                  m_ident;   
 
-    const size_t s_dcache_lines;
-    const size_t s_dcache_words;
-    const size_t s_icache_lines;
-    const size_t s_icache_words;
+    const int       s_dcache_lines;
+    const int       s_dcache_words;
+    const int       s_icache_lines;
+    const int       s_icache_words;
 
-    const int s_icache_xshift;
-    const int s_icache_yshift;
-    const int s_icache_xmask;
-    const int s_icache_zshift;
-    const int s_icache_ymask;
-    const int s_icache_zmask;
+    const int       s_icache_xshift;
+    const int       s_icache_yshift;
+    const int       s_icache_zshift;
+    const int       s_icache_xmask;
+    const int       s_icache_ymask;
+    const int       s_icache_zmask;
 
-    const int s_dcache_xshift;
-    const int s_dcache_yshift;
-    const int s_dcache_xmask;
-    const int s_dcache_zshift;
-    const int s_dcache_ymask;
-    const int s_dcache_zmask;
+    const int       s_dcache_xshift;
+    const int       s_dcache_yshift;
+    const int       s_dcache_zshift;
+    const int       s_dcache_xmask;
+    const int       s_dcache_ymask;
+    const int       s_dcache_zmask;
 
     // REGISTERS
-    sc_signal<int> r_dcache_fsm;
-    sc_signal<int>         **DCACHE_DATA;
-    sc_signal<int>         *DCACHE_TAG;
-    sc_signal<int>         DCACHE_SAVE_ADDR;
-    sc_signal<int>         DCACHE_SAVE_DATA;
-    sc_signal<int>         DCACHE_SAVE_TYPE;
-    sc_signal<int>         DCACHE_SAVE_PREV;
+    sc_signal<int>      r_dcache_fsm;
+    sc_signal<int>      **r_dcache_data;
+    sc_signal<int>      *r_dcache_tag;
+    sc_signal<int>      r_dcache_save_addr;
+    sc_signal<int>      r_dcache_save_data;
+    sc_signal<int>      r_dcache_save_type;
+    sc_signal<int>      r_dcache_save_prev;
 
-    soclib::caba::GenericFifo<sc_uint<32>,WRITE_BUFFER_DEPTH> m_data_fifo;
-    soclib::caba::GenericFifo<sc_uint<32>,WRITE_BUFFER_DEPTH> m_addr_fifo;
-    soclib::caba::GenericFifo<sc_uint<4>,WRITE_BUFFER_DEPTH>  m_type_fifo;
+    soclib::caba::GenericFifo<sc_uint<32>,8>  m_data_fifo;
+    soclib::caba::GenericFifo<sc_uint<32>,8>  m_addr_fifo;
+    soclib::caba::GenericFifo<sc_uint<4>,8>   m_type_fifo;
 
-    sc_signal<int> r_icache_fsm;
-    sc_signal<int>         **ICACHE_DATA;
-    sc_signal<int>         *ICACHE_TAG;
-    sc_signal<int>         ICACHE_MISS_ADDR;
-    sc_signal<bool>        ICACHE_REQ;
+    sc_signal<int>      r_icache_fsm;
+    sc_signal<int>      **r_icache_data;
+    sc_signal<int>      *r_icache_tag;
+    sc_signal<int>      r_icache_miss_addr;
+    sc_signal<bool>     r_icache_req;
 
-    sc_signal<int> r_vci_cmd_fsm;
-    sc_signal<int>         DCACHE_CMD_ADDR;
-    sc_signal<int>         DCACHE_CMD_DATA;
-    sc_signal<int>         DCACHE_CMD_TYPE;
-    sc_signal<int>         DCACHE_MISS_ADDR;
-    sc_signal<int>         CMD_CPT;        // counter for VCI request packet
+    sc_signal<int>      r_vci_cmd_fsm;
+    sc_signal<int>      r_dcache_cmd_addr;
+    sc_signal<int>      r_dcache_cmd_data;
+    sc_signal<int>      r_dcache_cmd_type;
+    sc_signal<int>      r_dcache_miss_addr;
+    sc_signal<int>      r_cmd_cpt;       
       
-    sc_signal<int> r_vci_rsp_fsm;
-    sc_signal<int>         *ICACHE_MISS_BUF;    
-    sc_signal<bool>        *ICACHE_VAL_BUF;    
-    sc_signal<int>         *DCACHE_MISS_BUF;    
-    sc_signal<bool>        *DCACHE_VAL_BUF;    
-    sc_signal<int>         RSP_CPT;        // counter for VCI response packet
+    sc_signal<int>      r_vci_rsp_fsm;
+    sc_signal<int>      *r_icache_miss_buf;    
+    sc_signal<int>      *r_dcache_miss_buf;    
+    sc_signal<bool>     r_dcache_unc_valid;    
+    sc_signal<int>      r_rsp_cpt;  
 
-    sc_signal<int>         DCACHE_CPT_INIT;    // Counter for DCACHE initialisation
-    sc_signal<int>         ICACHE_CPT_INIT;    // Counter for ICACHE initialisation
+    sc_signal<int>      r_dcache_cpt_init;   
+    sc_signal<int>      r_icache_cpt_init;  
 
+    // Activity counters
     uint32_t m_cpt_dcache_data_read;  // for DCACHE DATA READ
     uint32_t m_cpt_dcache_data_write; // for DCACHE DATA WRITE    
     uint32_t m_cpt_dcache_dir_read;   // for DCACHE DIR READ
@@ -130,10 +111,10 @@ public:
         sc_module_name insname,
         const soclib::common::MappingTable &mt,
         const soclib::common::IntTab &index,
-        size_t icache_lines,
-        size_t icache_words,
-        size_t dcache_lines,
-        size_t dcache_words );
+        int icache_lines,
+        int icache_words,
+        int dcache_lines,
+        int dcache_words );
 
 private:
     void transition();
