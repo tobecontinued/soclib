@@ -97,42 +97,36 @@ tmpl(void)::genMoore()
 	case soclib::common::Iss::MEM_LW:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::RW;
-		p_dcache.unc = false;
 		p_dcache.adr = d_adr;
 		p_dcache.wdata = 0;
 		break;
 	case soclib::common::Iss::MEM_SB:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::WB;
-		p_dcache.unc = false;
 		p_dcache.adr = d_adr;
 		p_dcache.wdata = d_wdata;
 		break;
 	case soclib::common::Iss::MEM_SH:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::WH;
-		p_dcache.unc = false;
 		p_dcache.adr = d_adr;
 		p_dcache.wdata = d_wdata;
 		break;
 	case soclib::common::Iss::MEM_SW:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::WW;
-		p_dcache.unc = false;
 		p_dcache.adr = d_adr;
 		p_dcache.wdata = d_wdata;
 		break;
 	case soclib::common::Iss::MEM_INVAL:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::RZ;
-		p_dcache.unc = false;
 		p_dcache.adr = d_adr;
 		p_dcache.wdata = 0;
 		break;
 	default:
 		p_dcache.req = false;
 		p_dcache.type = 0;
-		p_dcache.unc = false;
 		p_dcache.adr = 0;
 		p_dcache.wdata = 0;
 		break;
