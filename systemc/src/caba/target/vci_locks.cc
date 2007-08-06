@@ -33,7 +33,16 @@ tmpl(/**/)::VciLocks(
 	const soclib::common::IntTab &index,
 	const soclib::common::MappingTable &mt)
 	: soclib::caba::BaseModule(insname),
-	  m_segment(mt.getSegment(index))
+      r_vci_fsm("vci_fsm"),
+      r_buf_srcid("buf_srcid"),
+      r_buf_trdid("buf_trdid"),
+      r_buf_pktid("buf_pktid"),
+      r_buf_eop("buf_eop"),
+      r_buf_value("buf_value"),
+	  m_segment(mt.getSegment(index)),
+      p_resetn("resetn"),
+      p_clk("clk"),
+      p_vci("vci")
 {
 	m_contents = new bool[m_segment.size()/4];
 

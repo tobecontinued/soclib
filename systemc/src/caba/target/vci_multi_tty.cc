@@ -108,7 +108,11 @@ tmpl(/**/)::VciMultiTty(
     const MappingTable &mt,
     const char *first_name,
     ...)
-        : soclib::caba::BaseModule(name), m_vci_fsm(p_vci, mt.getSegmentList(index))
+    : soclib::caba::BaseModule(name),
+      m_vci_fsm(p_vci, mt.getSegmentList(index)),
+      p_clk("clk"),
+      p_resetn("resetn"),
+      p_vci("vci")
 {
 	m_vci_fsm.on_read_write(on_read, on_write);
 

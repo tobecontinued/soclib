@@ -1,4 +1,4 @@
-//////////////////////////////////////////////////////////////////////////
+// -*- c++ -*-
 // File     : xcache_cache_ports.h
 // Date     : 17/07/2007
 // Copyright: UPMC/LIP6
@@ -32,6 +32,16 @@ public:
 	sc_out<sc_uint<32> > rdata;
 	sc_out<bool>         berr; 
 
+    DCacheCachePort(const std::string &name = sc_gen_unique_name("dcache_cache"))
+		: req    ((name+"_req").c_str()),
+		  type   ((name+"_type").c_str()),
+		  wdata  ((name+"_wdata").c_str()),
+		  adr    ((name+"_adr").c_str()),
+		  frz    ((name+"_frz").c_str()),
+		  rdata  ((name+"_rdata").c_str()),
+		  berr   ((name+"_berr").c_str())
+	{
+	}
     
 	void operator () (DCacheSignals &sig)
 	{
@@ -58,6 +68,16 @@ public:
 	sc_out<sc_uint<32> >    ins;
 	sc_out<bool>            berr;
     
+    ICacheCachePort(const std::string &name = sc_gen_unique_name("icache_cache"))
+		: req    ((name+"_req").c_str()),
+		  adr    ((name+"_adr").c_str()),
+		  type   ((name+"_type").c_str()),
+		  frz    ((name+"_frz").c_str()),
+		  ins    ((name+"_ins").c_str()),
+		  berr   ((name+"_berr").c_str())
+	{
+	}
+
 	void operator () (ICacheSignals &sig) {
 		req   (sig.req);
 		adr   (sig.adr);

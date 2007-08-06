@@ -40,8 +40,8 @@ public:
 	sc_in<typename vci_param::ack_t>     rspack;
 	sc_out<typename vci_param::val_t>    rspval;
 	sc_out<typename vci_param::data_t>   rdata;
-	sc_out<bool>               reop;
-	sc_out<typename vci_param::rerror_t>  rerror;
+	sc_out<bool>                         reop;
+	sc_out<typename vci_param::rerror_t> rerror;
 	sc_out<typename vci_param::srcid_t>  rsrcid;
 	sc_out<typename vci_param::trdid_t > rtrdid;
 	sc_out<typename vci_param::pktid_t > rpktid;
@@ -54,14 +54,44 @@ public:
 	sc_in<typename vci_param::contig_t>  contig;
 	sc_in<typename vci_param::data_t>    wdata;
 	sc_in<typename vci_param::eop_t>     eop;
-	sc_in<typename vci_param::const_t>    cons;
+	sc_in<typename vci_param::const_t>   cons;
 	sc_in<typename vci_param::plen_t>    plen;
 	sc_in<typename vci_param::wrap_t>    wrap;
 	sc_in<typename vci_param::cfixed_t>  cfixed;
 	sc_in<typename vci_param::clen_t>    clen;
 	sc_in<typename vci_param::srcid_t>   srcid;
 	sc_in<typename vci_param::trdid_t>   trdid;
-	sc_in<typename vci_param::pktid_t>   pktid;
+	sc_in<typename vci_param::pktid_t>   pktid;  
+    
+#define __ren(x) x((name+"_" #x).c_str())
+    VciTarget(const std::string &name = sc_gen_unique_name("vci_target"))
+		: __ren(rspack),
+          __ren(rspval),
+          __ren(rdata),
+          __ren(reop),
+          __ren(rerror),
+          __ren(rsrcid),
+          __ren(rtrdid),
+          __ren(rpktid),
+          __ren(cmdack),
+          __ren(cmdval),
+          __ren(address),
+          __ren(be),
+          __ren(cmd),
+          __ren(contig),
+          __ren(wdata),
+          __ren(eop),
+          __ren(cons),
+          __ren(plen),
+          __ren(wrap),
+          __ren(cfixed),
+          __ren(clen),
+          __ren(srcid),
+          __ren(trdid),
+          __ren(pktid)
+	{
+	}
+#undef __ren
 
 	void operator()(VciSignals<vci_param> &sig)
 	{

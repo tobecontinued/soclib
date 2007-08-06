@@ -106,6 +106,12 @@ tmpl(/**/)::VciXCache(
     int dcache_words )
     : soclib::caba::BaseModule(name),
 
+      p_clk("clk"),
+      p_resetn("resetn"),
+      p_icache("icache"),
+      p_dcache("dcache"),
+      p_vci("vci"),
+
       m_cacheability_table(mt.getCacheabilityTable()),
       m_ident(mt.indexForId(index)),
 
@@ -128,24 +134,28 @@ tmpl(/**/)::VciXCache(
       s_dcache_ymask(((1<<(int)log2(s_dcache_lines))-1) << s_dcache_yshift),
       s_dcache_zmask((~0x0) << s_dcache_zshift),
 
-      r_dcache_fsm("DCACHE_FSM"),
+      r_dcache_fsm("r_dcache_fsm"),
       r_dcache_save_addr("r_dcache_save_addr"),
       r_dcache_save_data("r_dcache_save_data"),
       r_dcache_save_type("r_dcache_save_type"),
       r_dcache_save_prev("r_dcache_save_prev"),
 
-      r_icache_fsm("ICACHE_FSM"),
+      m_data_fifo("m_data_fifo"),
+      m_addr_fifo("m_addr_fifo"),
+      m_type_fifo("m_type_fifo"),
+
+      r_icache_fsm("r_icache_fsm"),
       r_icache_miss_addr("r_icache_miss_addr"),
       r_icache_req("r_icache_req"),
 
-      r_vci_cmd_fsm("VCI_CMD_FSM"),
+      r_vci_cmd_fsm("r_vci_cmd_fsm"),
       r_dcache_cmd_addr("r_dcache_cmd_addr"),
       r_dcache_cmd_data("r_dcache_cmd_data"),
       r_dcache_cmd_type("r_dcache_cmd_type"),
       r_dcache_miss_addr("r_dcache_miss_addr"),
       r_cmd_cpt("r_cmd_cpt"),
 
-      r_vci_rsp_fsm("VCI_RSP_FSM"),
+      r_vci_rsp_fsm("r_vci_rsp_fsm"),
       r_dcache_unc_valid("r_dcache_unc_valid"),
       r_rsp_cpt("r_rsp_cpt"),
 
@@ -180,7 +190,6 @@ tmpl(/**/)::VciXCache(
     r_icache_miss_buf = new sc_signal<int>[icache_words];    
     r_dcache_miss_buf = new sc_signal<int>[dcache_words];    
 
-#ifdef NONAME_RENAME
     for (int i=0; i<s_dcache_lines; i++ ) {
         for (int j=0; j<s_dcache_words; j++ ) {
             SOCLIB_REG_RENAME_N2(r_dcache_data, i, j);
@@ -193,18 +202,10 @@ tmpl(/**/)::VciXCache(
         }
         SOCLIB_REG_RENAME_N(r_icache_tag, i);
     }
-    for (int i=0; i<s_icache_words; i++ ) {
+    for (int i=0; i<s_icache_words; i++ )
         SOCLIB_REG_RENAME_N(r_icache_miss_buf, i);
-    }
-    for (int i=0; i<s_dcache_words; i++ ) {
+    for (int i=0; i<s_dcache_words; i++ )
         SOCLIB_REG_RENAME_N(r_dcache_miss_buf, i);
-    }
-
-    m_data_fifo.rename("DATA_FIFO");    // DCACHE data FIFO
-    m_addr_fifo.rename("ADDR_FIFO");    // DCACHE address FIFO
-    m_type_fifo.rename("TYPE_FIFO");    // DCACHE type FIFO
-
-#endif
 
     SC_METHOD(transition);
     dont_initialize();

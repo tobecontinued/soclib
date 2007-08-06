@@ -109,7 +109,13 @@ tmpl(/**/)::VciIcu(
     const MappingTable &mt,
     size_t nirq)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index))
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+      r_interrupt("interrupt"),
+      r_mask("mask"),
+      p_clk("clk"),
+      p_resetn("resetn"),
+      p_vci("vci"),
+      p_irq("irq")
 {
 	m_vci_fsm.on_read_write(on_read, on_write);
 

@@ -32,6 +32,10 @@ namespace soclib { namespace caba {
 
 tmpl(/**/)::IssWrapper( sc_module_name insname, int ident )
 	: BaseModule(insname),
+      p_icache("icache"),
+      p_dcache("dcache"),
+      p_resetn("resetn"),
+      p_clk("clk"),
 	  m_iss(ident)
 {
 	SC_METHOD(transition);

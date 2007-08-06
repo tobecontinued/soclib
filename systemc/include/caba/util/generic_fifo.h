@@ -97,15 +97,12 @@ public:
         return m_data[r_ptr];
     }
 
-#ifdef NONAME_RENAME
-    void rename(char *name)
+    GenericFifo(const std::string &name)
+        : r_ptr((name+"_r_ptr").c_str()),
+          r_ptw((name+"_r_ptw").c_str()),
+          r_fill_state((name+"_r_fill_state").c_str())
     {
-		SOCLIB_REG_RENAME_NAME(name, r_ptr);
-		SOCLIB_REG_RENAME_NAME(name, r_ptw);
-		SOCLIB_REG_RENAME_NAME(name, r_fill_state);
     }
-#endif
-
 };
 
 }}

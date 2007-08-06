@@ -34,7 +34,9 @@ x VciTargetFsm<vci_param,default_target,fifo_depth>
 tmpl(/**/)::VciTargetFsm(
     soclib::caba::VciTarget<vci_param> &vci,
     const std::list<soclib::common::Segment> &seglist )
-    : p_vci(vci), m_segments(seglist.begin(), seglist.end())
+    : p_vci(vci),
+      m_segments(seglist.begin(), seglist.end()),
+      m_rsp_info("m_rsp_info")
 {
 }
 

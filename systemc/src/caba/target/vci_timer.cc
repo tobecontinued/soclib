@@ -137,7 +137,10 @@ tmpl(/**/)::VciTimer(
     size_t nirq)
 	: caba::BaseModule(name),
 	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
-      m_ntimer(nirq)
+      m_ntimer(nirq),
+      p_clk("clk"),
+      p_resetn("resetn"),
+      p_vci("vci")
 {
 	m_vci_fsm.on_read_write(on_read, on_write);
 

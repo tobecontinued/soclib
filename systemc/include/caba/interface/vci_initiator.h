@@ -62,6 +62,36 @@ public:
 	sc_out<typename vci_param::trdid_t>   trdid;
 	sc_out<typename vci_param::pktid_t>   pktid;
 
+#define __ren(x) x((name+"_" #x).c_str())
+    VciInitiator(const std::string &name = sc_gen_unique_name("vci_initiator"))
+		: __ren(rspack),
+          __ren(rspval),
+          __ren(rdata),
+          __ren(reop),
+          __ren(rerror),
+          __ren(rsrcid),
+          __ren(rtrdid),
+          __ren(rpktid),
+          __ren(cmdack),
+          __ren(cmdval),
+          __ren(address),
+          __ren(be),
+          __ren(cmd),
+          __ren(contig),
+          __ren(wdata),
+          __ren(eop),
+          __ren(cons),
+          __ren(plen),
+          __ren(wrap),
+          __ren(cfixed),
+          __ren(clen),
+          __ren(srcid),
+          __ren(trdid),
+          __ren(pktid)
+	{
+	}
+#undef __ren
+
 	void operator()(VciSignals<vci_param> &sig)
 	{
 		cmdack  (sig.cmdack);
