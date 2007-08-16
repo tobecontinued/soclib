@@ -266,7 +266,7 @@ int _main(int argc, char *argv[])
 
 	char buf[1];
 
-	std::cin.getline(buf,2);
+	std::cin.getline(buf,1);
 	return EXIT_SUCCESS;
 #else
 	ncycles = 1;

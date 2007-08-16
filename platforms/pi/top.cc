@@ -159,7 +159,7 @@ int _main(int argc, char *argv[])
 	for (int i = 0; i < ncycles ; i++) {
 		sc_start(1);
 	  
-		if( 1 || (i % 10000) == 0) 
+		if( (i % 100000) == 0) 
 			std::cout
 				<< "Time elapsed: "<<i<<" cycles." << std::endl;
 	}
@@ -167,7 +167,7 @@ int _main(int argc, char *argv[])
 
 	char buf[1];
 
-	std::cin.getline(buf,2);
+	std::cin.getline(buf,1);
 	return EXIT_SUCCESS;
 #else
 	ncycles = 1;
