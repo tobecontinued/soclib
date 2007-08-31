@@ -687,7 +687,7 @@ MipsIss::use_t MipsIss::curInstructionUsesRegs()
 {
     use_t use = use_table[m_ins.i.op];
     if ( use == USE_SPECIAL )
-        return use_special_table[m_ins.i.op];
+        return use_special_table[m_ins.r.func];
     return use;
 }
 
