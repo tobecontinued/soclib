@@ -253,7 +253,7 @@ private:
 
     use_t curInstructionUsesRegs();
 
-    static func_t const special_table[64];
+    static use_t const use_table[64];
     static use_t const use_special_table[64];
 };
 

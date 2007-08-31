@@ -628,7 +628,7 @@ void MipsIss::op_special()
     (this->*func)();
 }
 
-#define use(x) &MipsIss::USE_##x
+#define use(x) MipsIss::USE_##x
 #define use4(x, y, z, t) use(x), use(y), use(z), use(t)
 
 MipsIss::use_t const MipsIss::use_table[]= {
@@ -683,7 +683,7 @@ MipsIss::use_t const MipsIss::use_special_table[] = {
         use4( NONE, NONE, NONE, NONE),
 };
 
-int MipsIss::curInstructionUsesRegs()
+MipsIss::use_t MipsIss::curInstructionUsesRegs()
 {
     use_t use = use_table[m_ins.i.op];
     if ( use == USE_SPECIAL )
