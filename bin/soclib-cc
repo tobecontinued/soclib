@@ -22,15 +22,18 @@
 # Maintainers: nipo
 
 # First detect current absolute path
-if [ "${0:0:1}" == "/" ] ; then
+case "$0" in
+    /*)
 	cur_soclib_bin="$(dirname "$0")"
-else
+	;;
+    *)
 	cur_soclib_bin="${PWD}/$(dirname "$0")"
-fi
+	;;
+esac
 soclib_base_path="$(dirname "${cur_soclib_bin}")"
 
 # Then append our python lib directory in front of python path
-if [ "${PYTHONPATH}" == "" ] ; then
+if [ "${PYTHONPATH}" = "" ] ; then
 	PYTHONPATH="${soclib_base_path}/lib/python"
 else
 	PYTHONPATH="${soclib_base_path}/lib/python:${PYTHONPATH}"
