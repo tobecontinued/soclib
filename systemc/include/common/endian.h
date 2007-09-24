@@ -156,6 +156,16 @@ template<typename io_t> struct swapper
 #define PACKED_BITFIELD(...) \
 struct { ENDIAN_BITFIELD(__VA_ARGS__); } __attribute__((packed))
 
+#define REG32_BITFIELD(...)                     \
+union {                                         \
+    struct {                                    \
+        PACKED_BITFIELD(                        \
+            __VA_ARGS__                         \
+					);                          \
+    } __attribute__((packed));                  \
+    uint32_t whole;                             \
+}
+
 #endif /* SOCLIB_COMMON_ENDIAN_H_ */
 
 // Local Variables:

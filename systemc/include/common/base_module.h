@@ -62,6 +62,15 @@ public:
 
 }
 
+#define SOCLIB_WARNING(x)                       \
+{                                               \
+    static bool warned = false;                 \
+    if ( !warned ) {                            \
+        std::cerr << x << std::endl;            \
+        warned = true;                          \
+    }                                           \
+}
+
 #endif /* SOCLIB_COMMON_BASE_MODULE_H_ */
 
 // Local Variables:
