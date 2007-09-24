@@ -26,7 +26,7 @@ from soclib_cc.config import config
 import re
 
 def get_descs_in(base):
-	sdfile = re.compile('^[^.][a-zA-Z_-]+\\.sd$')
+	sdfile = re.compile('^[^.][a-zA-Z0-9_-]+\\.sd$')
 	d = filter(sdfile.match, os.listdir(base))
 	glbl = {}
 	for n in component.__all__:
