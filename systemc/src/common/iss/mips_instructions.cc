@@ -24,11 +24,23 @@
  * $Id$
  *
  * History:
+ * - 2007-09-19
+ *   Nicolas Pouillon: Fix overflow
+ *
  * - 2007-06-15
  *   Nicolas Pouillon, Alain Greiner: Model created
  */
 
 #include "common/iss/mips.h"
+
+namespace {
+
+static inline bool overflow( uint32_t a, uint32_t b, uint32_t c )
+{
+    return ((b^(a+b+c))&~(a^b))>>31;
+}
+
+}
 
 namespace soclib { namespace common {
 
@@ -207,8 +219,8 @@ void MipsIss::op_bgtz()
 
 void MipsIss::op_addi()
 {
-    uint64_t tmp = (uint64_t)m_rs - (uint64_t)sign_ext16(m_ins.i.imd);
-    if ( (bool)(tmp&(uint64_t)((uint64_t)1<<32)) != (bool)(tmp&(1<<31)) )
+    uint64_t tmp = (uint64_t)m_rs + (uint64_t)sign_ext16(m_ins.i.imd);
+    if ( overflow( m_rs, sign_ext16(m_ins.i.imd), 0 ) )
         m_exception = X_OV;
     else
         r_gp[m_ins.i.rt] = tmp;
@@ -530,7 +542,7 @@ void MipsIss::special_divu()
 void MipsIss::special_add()
 {
     uint64_t tmp = (uint64_t)m_rs + (uint64_t)m_rt;
-    if ( (bool)(tmp&(uint64_t)((uint64_t)1<<32)) != (bool)(tmp&(1<<31)) )
+    if ( overflow( m_rs, m_rt, 0 ) )
         m_exception = X_OV;
     else
         r_gp[m_ins.r.rd] = tmp;
@@ -544,7 +556,7 @@ void MipsIss::special_addu()
 void MipsIss::special_sub()
 {
     uint64_t tmp = (uint64_t)m_rs - (uint64_t)m_rt;
-    if ( (bool)(tmp&(uint64_t)((uint64_t)1<<32)) != (bool)(tmp&(1<<31)) )
+    if ( overflow( ~m_rt, m_rs, 1 ) )
         m_exception = X_OV;
     else
         r_gp[m_ins.r.rd] = tmp;
