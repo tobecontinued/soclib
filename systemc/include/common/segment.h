@@ -103,7 +103,8 @@ public:
     inline bool contains( addr_t addr ) const
     {
         return ( addr >= m_base_address &&
-                 addr < m_base_address+m_size );
+                 ( addr < m_base_address+m_size
+                   || m_base_address+m_size < m_base_address) );
     }
 };
 

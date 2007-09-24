@@ -37,19 +37,27 @@ struct desc_t {
 	size_t length;
 };
 
+static inline uintptr_t carry( uintptr_t a, uintptr_t b )
+{
+    return (a+b) < a;
+}
+
 static void elf_do_load(bfd *exec, asection *sect, PTR descptr)
 {
 	desc_t *desc = (desc_t *)descptr;
     bfd_byte *data;
 
-	if ( ! (sect->flags & SEC_LOAD) )
-		return;
-
     uintptr_t lma = sect->lma;
 
-	if ( lma >= (desc->address+desc->length) ||
-		 desc->address >= (lma+sect->size) )
+	if ( lma >= (desc->address+desc->length) && !carry(desc->address, desc->length) ||
+		 desc->address >= (lma+sect->size) && !carry(sect->lma, sect->size) )
 		return;
+
+	if ( ! (sect->flags & SEC_LOAD) ) {
+        std::cerr << "Warning: section " << sect->name << " not loadable, not loaded" << std::endl;
+		return;
+    }
+
 
 	uintptr_t src_delta = 0, dst_delta = 0;
 
