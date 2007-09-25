@@ -44,6 +44,8 @@ public:
 		MEM_LB,
 		MEM_LBU,
 		MEM_LH,
+        MEM_LHBR, /* Load half byte-swapped, PPC */
+        MEM_LWR, /* Load word byte-swapped, PPC */
 		MEM_LHU,
 		MEM_LW,
 		MEM_SB,
@@ -84,6 +86,28 @@ public:
 		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_dest);
 		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_wdata);
 	}
+
+    inline bool addressNotAligned( uint32_t address, DataAccessType type )
+    {
+        switch (type) {
+        case MEM_NONE:
+        case MEM_INVAL:
+            return false;
+        case MEM_LB:
+        case MEM_LBU:
+        case MEM_SB:
+            return false;
+        case MEM_LH:
+        case MEM_LHBR:
+        case MEM_LHU:
+        case MEM_SH:
+            return (address&1);
+        case MEM_LWR:
+        case MEM_LW:
+        case MEM_SW:
+            return (address&3);
+        }
+    }
 
 	virtual ~Iss() {}
 

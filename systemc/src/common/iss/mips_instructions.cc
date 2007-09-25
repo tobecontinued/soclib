@@ -32,15 +32,7 @@
  */
 
 #include "common/iss/mips.h"
-
-namespace {
-
-static inline bool overflow( uint32_t a, uint32_t b, uint32_t c )
-{
-    return ((b^(a+b+c))&~(a^b))>>31;
-}
-
-}
+#include "commmon/arithmetics.h"
 
 namespace soclib { namespace common {
 

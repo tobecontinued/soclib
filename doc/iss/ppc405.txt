@@ -1,0 +1,49 @@
+
+==========
+PPC405 Iss
+==========
+
+Design
+======
+
+Encapsulation
+-------------
+
+First off, this iss uses prototypes defined for generic ISS, this
+allows to use this PPC in three simulation environments:
+
+ * CABA
+
+ * TLM/T
+
+ * TLM
+
+
+PPC Opcods
+----------
+
+PPC opcods are on first 6 bits of the instruction word. That's OK for
+a jump table. When opcod is 4 or 19, there is another field which is
+decoded: m_ins.[x/xo].func. This field is 10-bit long. If we create two
+(mostly hollow) jumptable, we'll get 8KB of useless data polluting our
+cache on each cycle. In order to compact those tables, we use a
+xor/shift folding scheme.
+
+create_ppc_tables.py assists folded jumptable creation. Adding a new
+opcode is matter of adding a new line in this file and reruning it.
+
+
+Code factoring
+--------------
+
+ * add/sub
+
+ * loads
+
+ * stores
+
+and all their derivates are implemented the same way, there are a few
+functions containing all the smart stuff, they are inlined and
+constant things are optimized-out.
+
+
