@@ -32,7 +32,7 @@
  */
 
 #include "common/iss/mips.h"
-#include "commmon/arithmetics.h"
+#include "common/arithmetics.h"
 
 namespace soclib { namespace common {
 
@@ -140,11 +140,6 @@ void MipsIss::run()
     // It will be overwritten by load & store instructions
     r_mem_type = MEM_NONE;
     (this->*func)();
-}
-
-static inline int32_t sign_ext16(uint16_t i)
-{
-    return (int16_t)i;
 }
 
 void MipsIss::op_bcond()
