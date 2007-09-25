@@ -28,17 +28,29 @@
 static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
-	addr += reg;
 
+#if __PPC__
+    reg <<= 2;
+    asm("stwbrx %0, %1, %2":: "b"(val), "b"(addr), "b"(reg) : "memory" );
+#else
+	addr += reg;
 	*addr = val;
+#endif
 }
 
 static inline uint32_t soclib_io_get(void *comp_base, int reg)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
-	addr += reg;
 
+#if __PPC__
+    uint32_t val;
+    reg <<= 2;
+    asm("lwbrx %0, %1, %2": "=b"(val): "b"(addr), "b"(reg) );
+    return val;
+#else
+	addr += reg;
 	return *addr;
+#endif
 }
 
 static inline void soclib_io_write8(void *comp_base, int reg, uint8_t val)

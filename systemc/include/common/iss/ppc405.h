@@ -28,6 +28,7 @@
 
 #include <systemc.h>
 #include "common/iss/iss.h"
+#include "common/static_assert.h"
 #include "common/endian.h"
 #include "common/register.h"
 
@@ -108,6 +109,7 @@ private:
     static const uint32_t except_addresses[];
 
     enum Dcrn {
+        DCR_PROCNUM,
         DCR_CRITICAL,
         DCR_EXTERNAL,
         DCR_MAX,
@@ -273,8 +275,10 @@ private:
         uint32_t reserved3:2,
         uint32_t ir:1,
         uint32_t dr:1,
-        uint32_t reserved4:4
+        uint32_t reserved4:4,
         ) msr_t;
+
+    static_assert(sizeof(msr_t) == 4);
 
 	// member variables used for communication between
 	// member functions (they are not registers)
@@ -312,20 +316,20 @@ public:
 	inline void getDataRequest(uint32_t &type, uint32_t &address, uint32_t &wdata)
 	{
 		address = r_mem_addr;
-		wdata = machine_to_be(r_mem_wdata);
+		wdata = soclib::endian::uint32_swap(r_mem_wdata);
 		type = r_mem_type;
 	}
 
 	inline void setRdata(bool error, uint32_t rdata)
 	{
 		m_dbe = error;
-		m_rdata = machine_to_be(rdata);
+		m_rdata = soclib::endian::uint32_swap(rdata);
 	}
 
 	inline void setInstruction(bool error, uint32_t val)
 	{
 		m_ibe = error;
-		m_instruction = machine_to_be(val);
+		m_instruction = soclib::endian::uint32_swap(val);
 	}
 
 
@@ -341,9 +345,9 @@ private:
 
     inline bool privsCheck()
     {
-        if ( ! r_msr.pr )
+        if ( r_msr.pr )
             m_exception = EXCEPT_PROGRAM;
-        return r_msr.pr;
+        return !r_msr.pr;
     }
 
     void trap( uint32_t, uint32_t, uint32_t );

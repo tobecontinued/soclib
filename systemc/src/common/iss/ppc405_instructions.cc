@@ -58,7 +58,7 @@ enum {
 
 uint32_t Ppc405Iss::sprfGet( enum Sprf sprf )
 {
-    if ( !r_msr.pr && sprf&SPR_PRIV_MASK ) {
+    if ( r_msr.pr && sprf&SPR_PRIV_MASK ) {
         m_exception = EXCEPT_PROGRAM;
         r_esr = ESR_PPR;
         return 0;
@@ -112,7 +112,7 @@ uint32_t Ppc405Iss::sprfGet( enum Sprf sprf )
 
 void Ppc405Iss::sprfSet( enum Sprf sprf, uint32_t val )
 {
-    if ( !r_msr.pr && sprf&SPR_PRIV_MASK ) {
+    if ( r_msr.pr && sprf&SPR_PRIV_MASK ) {
         m_exception = EXCEPT_PROGRAM;
         r_esr = ESR_PPR;
         return;
@@ -170,7 +170,7 @@ void Ppc405Iss::trap( uint32_t to, uint32_t a, uint32_t b )
 {
     if ( (to & TRAP_LT && (int32_t)a < (int32_t)b) ||
          (to & TRAP_GT && (int32_t)a > (int32_t)b) ||
-         (to & TRAP_EQ && (int32_t)a == (int32_t)b) ||
+         (to & TRAP_EQ && a == b) ||
          (to & TRAP_LTU && a < b) ||
          (to & TRAP_GTU && a > b) ) {
         m_exception = EXCEPT_DEBUG;
@@ -212,15 +212,18 @@ void Ppc405Iss::mem_store_imm( DataAccessType type, bool update, uint32_t data )
         data = data|(data<<8)|(data<<16)|(data<<24);
         break;
     case MEM_SH:
-        data = soclib::endian::uint16_swap(data);
+        data = data&0xffff;
         data = data|(data<<16);
         break;
     case MEM_SW:
-        data = soclib::endian::uint32_swap(data);
+        data = data;
         break;
     default:
         assert(0 && "How can store have this mnemonic ?");
     }
+#if PPC405_DEBUG
+    std::cout << m_name << " store imm " << std::dec << type << " @" << std::hex << address << ": " << data << std::endl;
+#endif
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_wdata = data;
@@ -238,15 +241,18 @@ void Ppc405Iss::mem_store_indexed( DataAccessType type, bool update, uint32_t da
         data = data|(data<<8)|(data<<16)|(data<<24);
         break;
     case MEM_SH:
-        data = soclib::endian::uint16_swap(data);
+        data = data&0xffff;
         data = data|(data<<16);
         break;
     case MEM_SW:
-        data = soclib::endian::uint32_swap(data);
+        data = data;
         break;
     default:
         assert(0 && "How can store have this mnemonic ?");
     }
+#if PPC405_DEBUG
+    std::cout << m_name << " store indexed " << std::dec << type << " @" << std::hex << address << ": " << data << std::endl;
+#endif
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_wdata = data;
@@ -846,6 +852,9 @@ void Ppc405Iss::op_mfdcr()
 {
 	if ( privsCheck() ) {
         uint32_t dcrn = PPC_SPLIT_FIELD(m_ins.xfx.opt);
+#if PPC405_DEBUG
+        std::cout << "Accessing DCR " << std::hex << dcrn << std::endl;
+#endif
         if ( dcrn >= DCR_MAX ) {
             m_exception = EXCEPT_PROGRAM;
             r_esr = ESR_PEU;
@@ -1123,7 +1132,7 @@ void Ppc405Iss::op_rfci()
 {
 	if ( privsCheck() ) {
         r_msr.whole = r_srr[3];
-        r_pc = r_srr[2];
+        m_next_pc = r_srr[2];
     }
 }
 
@@ -1131,7 +1140,7 @@ void Ppc405Iss::op_rfi()
 {
 	if ( privsCheck() ) {
         r_msr.whole = r_srr[1];
-        r_pc = r_srr[0];
+        m_next_pc = r_srr[0];
     }
 }
 

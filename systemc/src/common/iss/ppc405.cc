@@ -59,10 +59,15 @@ Ppc405Iss::~Ppc405Iss()
 
 void Ppc405Iss::reset()
 {
+    r_tb = 0;
     r_pc = RESET_ADDR;
     r_esr = 0;
+    r_dbe = false;
+    r_mem_type = MEM_NONE;
+    r_msr.whole = 0;
     for ( size_t i=0; i<DCR_MAX; ++i )
         r_dcr[i] = 0;
+    r_dcr[DCR_PROCNUM] = m_ident;
 }
 
 static inline std::string crTrad( uint32_t cr )
@@ -89,8 +94,13 @@ void Ppc405Iss::dump()
     std::cout
         << m_name << std::hex
         << " PC: " << r_pc
-        << " Ins: " << m_instruction
+        << " Ins: " << m_ins.ins
         << " lr: " << r_lr
+        << " msr " << r_msr.whole
+        << " .ce " << r_msr.ce
+        << " .ee " << r_msr.ee
+        << " .pr " << r_msr.pr
+        << " irq: " << m_irq
         << std::endl;
     for ( size_t i=0; i<32; ++i ) {
         std::cout << " " << std::dec << i << ": " << std::hex << std::showbase << r_gp[i];
@@ -105,6 +115,8 @@ void Ppc405Iss::dump()
 
 void Ppc405Iss::step()
 {
+    r_tb++;
+
 	m_ins.ins = m_instruction;
     m_next_pc = r_pc+4;
 
@@ -127,12 +139,17 @@ void Ppc405Iss::step()
         m_exception = EXCEPT_MACHINE_CHECK;
         r_esr = ESR_MCI;
     } else {
+#if PPC405_DEBUG
+        if (r_mem_type > MEM_NONE && r_mem_type < MEM_SB)
+            std::cout << m_name << " read to " << r_mem_dest << "(" << r_mem_type << ") from "
+                      << std::hex << r_mem_addr << ": " << m_rdata << std::endl;
+#endif
         switch (r_mem_type ) {
         case MEM_LW:
-            r_gp[r_mem_dest] = soclib::endian::uint32_swap(m_rdata);
+            r_gp[r_mem_dest] = m_rdata;
             break;
         case MEM_LWR:
-            r_gp[r_mem_dest] = m_rdata;
+            r_gp[r_mem_dest] = soclib::endian::uint32_swap(m_rdata);
             break;
         case MEM_LB:
             r_gp[r_mem_dest] = (int32_t)(int8_t)align(m_rdata, 3-r_mem_addr&0x3, 8);
@@ -150,7 +167,6 @@ void Ppc405Iss::step()
             r_gp[r_mem_dest] = align(m_rdata, 1-(r_mem_addr&0x2)/2, 16);
             break;
         }
-        r_mem_dest = 0;
         r_mem_type = MEM_NONE;
     }
 
@@ -162,7 +178,9 @@ void Ppc405Iss::step()
     }
 
     if (m_exception == EXCEPT_NONE) {
-//        dump();
+#if PPC405_DEBUG
+        dump();
+#endif
         run();
     }
 
@@ -171,7 +189,9 @@ void Ppc405Iss::step()
         return;
     }
 
-//    std::cout << m_name << " except: " << m_exception << std::endl;
+#if PPC405_DEBUG
+    std::cout << m_name << " except: " << m_exception << std::endl;
+#endif
 
     // 1/2 : Save status to SRR
     {
