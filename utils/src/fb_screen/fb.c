@@ -171,7 +171,7 @@ int main( int argc, char **argv )
 	sigaction (SIGUSR1, &sa, NULL);
 	sigaction (SIGTERM, &sa, NULL);
 
-	fcntl( 1, F_SETFL, O_DIRECT|O_ASYNC );
+	fcntl( 1, F_SETFL, O_ASYNC );
 
 	width = strtol(argv[1], NULL, 0);
 	height = strtol(argv[2], NULL, 0);
