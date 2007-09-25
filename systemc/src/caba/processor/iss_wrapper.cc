@@ -99,6 +99,8 @@ tmpl(void)::genMoore()
 	case soclib::common::Iss::MEM_LH:
 	case soclib::common::Iss::MEM_LHU:
 	case soclib::common::Iss::MEM_LW:
+	case soclib::common::Iss::MEM_LHBR:
+	case soclib::common::Iss::MEM_LWR:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::RW;
 		p_dcache.adr = d_adr;
@@ -128,7 +130,7 @@ tmpl(void)::genMoore()
 		p_dcache.adr = d_adr;
 		p_dcache.wdata = 0;
 		break;
-	default:
+	case soclib::common::Iss::MEM_NONE:
 		p_dcache.req = false;
 		p_dcache.type = 0;
 		p_dcache.adr = 0;
