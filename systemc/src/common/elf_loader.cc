@@ -115,6 +115,15 @@ void ElfLoader::load( void *buffer, uintptr_t address, size_t length )
 	bfd_map_over_sections(m_bfd, elf_hacks::elf_do_load, &desc);
 }
 
+void ElfLoader::print( std::ostream &o ) const
+{
+    struct bfd* m_bfd = (struct bfd*)m_bfd_ptr;
+	o << "<ElfLoader " << m_filename << std::endl
+      << " target: " << m_bfd->xvec->name << std::endl
+      << " endianness: " << m_bfd->xvec->byteorder << std::endl
+      << ">" << std::endl;
+}
+
 ElfLoader::~ElfLoader()
 {
     struct bfd* m_bfd = (struct bfd*)m_bfd_ptr;

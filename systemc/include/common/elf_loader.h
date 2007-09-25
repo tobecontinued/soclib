@@ -39,6 +39,14 @@ public:
 	ElfLoader( const std::string &filename );
 	void load( void *buffer, uintptr_t address, size_t length );
 	~ElfLoader();
+
+    void print( std::ostream &o ) const;
+
+    friend std::ostream &operator << (std::ostream &o, const ElfLoader &el)
+    {
+        el.print(o);
+        return o;
+    }
 };
 
 }}
