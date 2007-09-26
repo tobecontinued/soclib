@@ -46,6 +46,18 @@ static inline std::string mkname(uint32_t no)
 	return std::string(tmp);
 }
 
+static inline std::string crTrad( uint32_t cr )
+{
+    const char *orig = "<>=o";
+    char dest[5] = "    ";
+    
+    for ( size_t i=0; i<4; ++i )
+        if ( cr & (1<<i) )
+            dest[i] = orig[i];
+
+    return dest;
+}
+
 }
 
 Ppc405Iss::Ppc405Iss(uint32_t ident)
@@ -68,25 +80,6 @@ void Ppc405Iss::reset()
     for ( size_t i=0; i<DCR_MAX; ++i )
         r_dcr[i] = 0;
     r_dcr[DCR_PROCNUM] = m_ident;
-}
-
-static inline std::string crTrad( uint32_t cr )
-{
-
-    enum CompareResults {
-        CMP_LT = 1,
-        CMP_GT = 2,
-        CMP_EQ = 4,
-        CMP_SO = 8,
-    };
-
-    std::string r = "";
-    if ( cr & CMP_LT ) r += "<";
-    if ( cr & CMP_GT ) r += ">";
-    if ( cr & CMP_EQ ) r += "=";
-    if ( cr & CMP_SO ) r += "o";
-
-    return r;
 }
 
 void Ppc405Iss::dump()
@@ -125,49 +118,27 @@ void Ppc405Iss::step()
     // IRQs
     r_dcr[DCR_EXTERNAL] = !!(m_irq&(1<<IRQ_EXTERNAL));
     r_dcr[DCR_CRITICAL] = !!(m_irq&(1<<IRQ_CRITICAL_INPUT));
-    if ( r_msr.ee && r_dcr[DCR_EXTERNAL] )
-        m_exception = EXCEPT_EXTERNAL;
-    if ( r_msr.ce && r_dcr[DCR_CRITICAL] )
+
+    if ( r_msr.ce && r_dcr[DCR_CRITICAL] ) {
         m_exception = EXCEPT_CRITICAL;
+        goto handle_except;
+    }
+
+    if ( r_msr.ee && r_dcr[DCR_EXTERNAL] ) {
+        m_exception = EXCEPT_EXTERNAL;
+        goto handle_except;
+    }
 
     if (m_ibe) {
         m_exception = EXCEPT_INSTRUCTION_STORAGE;
         r_esr = ESR_DIZ;
+        goto handle_except;
     }
 
     if ( m_dbe ) {
         m_exception = EXCEPT_MACHINE_CHECK;
         r_esr = ESR_MCI;
-    } else {
-#if PPC405_DEBUG
-        if (r_mem_type > MEM_NONE && r_mem_type < MEM_SB)
-            std::cout << m_name << " read to " << r_mem_dest << "(" << r_mem_type << ") from "
-                      << std::hex << r_mem_addr << ": " << m_rdata << std::endl;
-#endif
-        switch (r_mem_type ) {
-        case MEM_LW:
-            r_gp[r_mem_dest] = m_rdata;
-            break;
-        case MEM_LWR:
-            r_gp[r_mem_dest] = soclib::endian::uint32_swap(m_rdata);
-            break;
-        case MEM_LB:
-            r_gp[r_mem_dest] = (int32_t)(int8_t)align(m_rdata, 3-r_mem_addr&0x3, 8);
-            break;
-        case MEM_LBU:
-            r_gp[r_mem_dest] = align(m_rdata, 3-r_mem_addr&0x3, 8);
-            break;
-        case MEM_LH:
-            r_gp[r_mem_dest] = (int32_t)(int16_t)align(m_rdata, 1-(r_mem_addr&0x2)/2, 16);
-            break;
-        case MEM_LHBR:
-            r_gp[r_mem_dest] = (int32_t)(int16_t)soclib::endian::uint16_swap(align(m_rdata, 1-(r_mem_addr&0x2)/2, 16));
-            break;
-        case MEM_LHU:
-            r_gp[r_mem_dest] = align(m_rdata, 1-(r_mem_addr&0x2)/2, 16);
-            break;
-        }
-        r_mem_type = MEM_NONE;
+        goto handle_except;
     }
 
     if ( r_dbe ) {
@@ -175,20 +146,46 @@ void Ppc405Iss::step()
         r_dbe = false;
         r_esr = ESR_DST;
         r_dear = r_mem_addr;
+        goto handle_except;
     }
 
-    if (m_exception == EXCEPT_NONE) {
+    switch (r_mem_type ) {
+    case MEM_LW:
+        r_gp[r_mem_dest] = m_rdata;
+        break;
+    case MEM_LWR:
+        r_gp[r_mem_dest] = soclib::endian::uint32_swap(m_rdata);
+        break;
+    case MEM_LB:
+        r_gp[r_mem_dest] = (int32_t)(int8_t)align(m_rdata, 3-r_mem_addr&0x3, 8);
+        break;
+    case MEM_LBU:
+        r_gp[r_mem_dest] = align(m_rdata, 3-r_mem_addr&0x3, 8);
+        break;
+    case MEM_LH:
+        r_gp[r_mem_dest] = (int32_t)(int16_t)align(m_rdata, 1-(r_mem_addr&0x2)/2, 16);
+        break;
+    case MEM_LHBR:
+        r_gp[r_mem_dest] = (int32_t)(int16_t)soclib::endian::uint16_swap(align(m_rdata, 1-(r_mem_addr&0x2)/2, 16));
+        break;
+    case MEM_LHU:
+        r_gp[r_mem_dest] = align(m_rdata, 1-(r_mem_addr&0x2)/2, 16);
+        break;
+    }
+    r_mem_type = MEM_NONE;
+
 #if PPC405_DEBUG
-        dump();
+    if (r_mem_type > MEM_NONE && r_mem_type < MEM_SB)
+        std::cout << m_name << " read to " << r_mem_dest << "(" << r_mem_type << ") from "
+                  << std::hex << r_mem_addr << ": " << m_rdata << std::endl;
+    dump();
 #endif
-        run();
-    }
+    run();
 
-    if (m_exception == EXCEPT_NONE) {
-        r_pc = m_next_pc;
-        return;
-    }
+    if (m_exception == EXCEPT_NONE)
+        goto no_except;
 
+  handle_except:
 #if PPC405_DEBUG
     std::cout << m_name << " except: " << m_exception << std::endl;
 #endif
@@ -229,7 +226,11 @@ void Ppc405Iss::step()
     }
 
     // 7: Load next instruction address
-    r_pc = r_evpr+except_addresses[m_exception];
+    m_next_pc = r_evpr+except_addresses[m_exception];
+
+  no_except:
+    r_pc = m_next_pc;
+    return;
 }
 
 }}
