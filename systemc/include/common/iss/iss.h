@@ -45,7 +45,7 @@ public:
 		MEM_LBU,
 		MEM_LH,
         MEM_LHBR, /* Load half byte-swapped, PPC */
-        MEM_LWR, /* Load word byte-swapped, PPC */
+        MEM_LWBR, /* Load word byte-swapped, PPC */
 		MEM_LHU,
 		MEM_LW,
 		MEM_SB,
@@ -58,7 +58,7 @@ protected:
 	uint32_t 	r_pc;			// Program Counter
 	uint32_t 	r_npc;			// Next Program Counter
 
-	uint32_t 	r_mem_type;  		// Data Cache access type
+	enum DataAccessType 	r_mem_type;  		// Data Cache access type
 	uint32_t 	r_mem_addr;  		// Data Cache address
 	uint32_t 	r_mem_wdata;  		// Data Cache data value (write)
 	uint32_t	r_mem_dest;  		// Data Cache destination register (read)
@@ -92,7 +92,6 @@ public:
         switch (type) {
         case MEM_NONE:
         case MEM_INVAL:
-            return false;
         case MEM_LB:
         case MEM_LBU:
         case MEM_SB:
@@ -102,7 +101,7 @@ public:
         case MEM_LHU:
         case MEM_SH:
             return (address&1);
-        case MEM_LWR:
+        case MEM_LWBR:
         case MEM_LW:
         case MEM_SW:
             return (address&3);
@@ -119,7 +118,10 @@ public:
 		address = r_pc;
 	}
 
-	inline void getDataRequest(uint32_t &type, uint32_t &address, uint32_t &wdata)
+	inline void getDataRequest(
+        enum DataAccessType &type,
+        uint32_t &address,
+        uint32_t &wdata)
 	{
 		address = r_mem_addr;
 		wdata = r_mem_wdata;

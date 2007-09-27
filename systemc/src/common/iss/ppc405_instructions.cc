@@ -725,7 +725,7 @@ void Ppc405Iss::op_lwarx()
 
 void Ppc405Iss::op_lwbrx()
 {
-    mem_load_indexed( MEM_LWR, false );
+    mem_load_indexed( MEM_LWBR, false );
 }
 
 void Ppc405Iss::op_lwz()

@@ -313,7 +313,7 @@ public:
 	void step();
 	void reset();
 
-	inline void getDataRequest(uint32_t &type, uint32_t &address, uint32_t &wdata)
+	inline void getDataRequest(enum DataAccessType &type, uint32_t &address, uint32_t &wdata)
 	{
 		address = r_mem_addr;
 		wdata = soclib::endian::uint32_swap(r_mem_wdata);

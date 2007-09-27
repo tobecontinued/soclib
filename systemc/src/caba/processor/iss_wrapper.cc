@@ -87,7 +87,8 @@ tmpl(void)::genMoore()
 	p_icache.req = true;
 	p_icache.adr = i_adr;
 
-	uint32_t d_type 	= 0;
+	enum soclib::common::Iss::DataAccessType
+        d_type = soclib::common::Iss::MEM_NONE;
 	uint32_t d_adr		= 0;
 	uint32_t d_wdata	= 0;
 	
@@ -100,7 +101,7 @@ tmpl(void)::genMoore()
 	case soclib::common::Iss::MEM_LHU:
 	case soclib::common::Iss::MEM_LW:
 	case soclib::common::Iss::MEM_LHBR:
-	case soclib::common::Iss::MEM_LWR:
+	case soclib::common::Iss::MEM_LWBR:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::RW;
 		p_dcache.adr = d_adr;

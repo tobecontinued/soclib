@@ -150,10 +150,12 @@ void Ppc405Iss::step()
     }
 
     switch (r_mem_type ) {
+    default:
+        break;
     case MEM_LW:
         r_gp[r_mem_dest] = m_rdata;
         break;
-    case MEM_LWR:
+    case MEM_LWBR:
         r_gp[r_mem_dest] = soclib::endian::uint32_swap(m_rdata);
         break;
     case MEM_LB:
