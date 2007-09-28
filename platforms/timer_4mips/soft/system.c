@@ -12,6 +12,19 @@ void puti(const int i)
 	if ( i>10 )
 		puti(i/10);
 	putc(i%10+'0');
+/* 	int j = i&0xf; */
+
+/* 	if ( i == 0 ) { */
+/* 		putc('0'); */
+/* 		return; */
+/* 	} */
+
+/* 	if ( i>j ) */
+/* 		puti(i>>4); */
+/* 	if ( j>9 ) */
+/* 		putc(j-10+'a'); */
+/* 	else */
+/* 		putc(j+'0'); */
 }
 
 void interrupt_ex_handler(

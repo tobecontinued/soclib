@@ -1,5 +1,4 @@
 SOCLIB:=$(shell soclib-cc --getpath)
-ARCH=powerpc
 CC_PREFIX=$(ARCH)-unknown-elf-
 
 SOFT_IMAGE=bin.soft

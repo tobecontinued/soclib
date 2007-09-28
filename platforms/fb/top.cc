@@ -13,8 +13,6 @@
 
 #include "segmentation.h"
 
-#define SEGTYPEMASK 0x00300000
-
 int _main(int argc, char *argv[])
 {
 	// Avoid repeating these everywhere
@@ -71,7 +69,7 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::IssWrapper<soclib::common::MipsIss> mips0("mips0", 0);
 
-	soclib::common::ElfLoader loader("fb_tester/bin.soft");
+	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", NULL);
@@ -183,10 +181,12 @@ int sc_main (int argc, char *argv[])
 {
 	try {
 		return _main(argc, argv);
+	} catch (std::exception &e) {
+		std::cout << e.what() << std::endl;
 	} catch (soclib::exception::Exception &e) {
-		std::cout << e << std::endl;
+		std::cout << e.what() << std::endl;
 	} catch (...) {
-		std::cout << "Unknown exception occurred" << std::endl;
+		std::cout << "Unknown exception occured" << std::endl;
 		throw;
 	}
 	return 1;
