@@ -90,7 +90,12 @@ class build_env(Configurator):
 	def getTool(self, name):
 		if name in self.toolchain.tool_map:
 			name = self.toolchain.tool_map[name]
-		return self.toolchain.prefix+name
+			if isinstance(name, str):
+				tool = name.split(' ')
+				return tool
+			else:
+				return [tool]
+		return [self.toolchain.prefix+name]
 	def getCflags(self):
 		toolchain_cflags = getattr(self.toolchain, self.mode+'_cflags')
 		toolchain_cflags = toolchain_cflags + self.toolchain.cflags

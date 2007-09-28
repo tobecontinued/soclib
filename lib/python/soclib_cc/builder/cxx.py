@@ -53,7 +53,7 @@ class CCompile(action.Action):
 	def _processDeps(self, filename):
 		if not filename.exists:
 			filename.generator.process()
-		args = [config.getTool(self.tool), '-MM', '-MT', 'foo.o']
+		args = config.getTool(self.tool)+['-MM', '-MT', 'foo.o']
 		args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
 		args += config.getCflags()
 		args.append(filename)
@@ -64,7 +64,7 @@ class CCompile(action.Action):
 		return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
 	def process(self):
 		fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
-		args = [config.getTool(self.tool),
+		args = config.getTool(self.tool) + [
 				'-c', '-o', self.dests[0]]
 		args += config.getCflags()
 		args += self.sources
@@ -81,7 +81,7 @@ class CLink(CCompile):
 	def processDeps(self):
 		return []
 	def process(self):
-		args = [config.getTool(self.tool),
+		args = config.getTool(self.tool) + [
 				'-o', self.dests[0]]
 		args += config.getLibs()
 		args += self.sources
