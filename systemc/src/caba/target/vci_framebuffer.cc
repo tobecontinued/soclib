@@ -101,8 +101,8 @@ tmpl(/**/)::VciFrameBuffer(
 	: caba::BaseModule(name),
 	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
       m_fb_controller((const char *)name, width, height),
-      p_resetn("resetn"),
       p_clk("clk"),
+      p_resetn("resetn"),
       p_vci("vci")
 {
 	m_defered_timeout = 0;

@@ -103,10 +103,10 @@ private:
 
     // member variables (internal registers)
 
+	uint32_t 	r_npc;			// Next Program Counter
     uint32_t    r_gp[32];       // General Registers
     uint32_t    r_hi;           // Multiply result (MSB bits)
     uint32_t    r_lo;           // Multiply result (LSB bits)
-    uint32_t    r_cp0[32];      // Coprocessor registers
 
     typedef union {
         struct {
@@ -134,6 +134,35 @@ private:
         uint32_t ins;
     } ins_t;
 
+    typedef REG32_BITFIELD(
+        uint32_t reserved0:16,
+        uint32_t im:6,
+        uint32_t sim:2,
+        uint32_t reserved1:2,
+        uint32_t kuo:1,
+        uint32_t ieo:1,
+        uint32_t kup:1,
+        uint32_t iep:1,
+        uint32_t kuc:1,
+        uint32_t iec:1,
+        ) status_t;
+
+    typedef REG32_BITFIELD(
+        uint32_t bd:1,
+        uint32_t reserved0:15,
+        uint32_t irq:6,
+        uint32_t swi:2,
+        uint32_t reserved1:2,
+        uint32_t xcode:4,
+        uint32_t reserved2:2,
+        ) cause_t;
+
+    status_t r_status;
+    cause_t r_cause;
+    uint32_t r_bar;
+    uint32_t r_epc;
+    uint32_t r_count;
+    
     // member variables used for communication between
     // member functions (they are not registers)
 
@@ -141,33 +170,34 @@ private:
     uint32_t    m_exception;
     uint32_t    m_rs;
     uint32_t    m_rt;
-    uint32_t    m_branch_address;
-    bool        m_branch_taken;
+    uint32_t    m_next_pc;
 
 public:
     MipsIss(uint32_t ident);
-    ~MipsIss();
 
+    void dump() const;
     void step();
-    void reset();
 
-private:
-    inline void print_registers()
+    inline void nullStep()
     {
-        for (int i=0;i<8;i++)
-        {
-            for (int j=0;j<4;j++)
-                printf("R%2.2d=%8.8x ",i*4+j,(int)r_gp[i*4+j]);
-            printf("\n");
-        }
-        printf("pc=%8.8x ",r_pc);
+        doneNullStep();
+        ++r_count;
     }
 
+    void reset();
+
+	inline void setInstruction(bool error, uint32_t val)
+	{
+		m_ibe = error;
+		m_ins.ins = val;
+	}
+
+private:
     void run();
 
     inline bool isInUserMode() const
     {
-        return (uint32_t)r_cp0[STATUS] & 0x2;
+        return r_status.kuc;
     }
 
     inline bool isHighPC() const
@@ -175,7 +205,7 @@ private:
         return (uint32_t)r_pc & 0x80000000;
     }
 
-    inline bool isPrivDataAddr( uint32_t addr) const
+    inline bool isPrivDataAddr( uint32_t addr ) const
     {
         return addr & 0x80000000;
     }
@@ -184,6 +214,9 @@ private:
 
     static func_t const opcod_table[64];
     static func_t const special_table[64];
+
+    void do_load( enum DataAccessType type );
+    void do_store( enum DataAccessType type, uint32_t data );
 
     void op_special();
     void op_bcond();
@@ -253,8 +286,12 @@ private:
 
     use_t curInstructionUsesRegs();
 
+    static const char* name_table[64];
     static use_t const use_table[64];
     static use_t const use_special_table[64];
+
+    uint32_t cp0Get( uint32_t reg ) const;
+    void cp0Set( uint32_t reg, uint32_t value );
 };
 
 }}

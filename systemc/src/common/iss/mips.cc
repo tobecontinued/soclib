@@ -29,6 +29,7 @@
  */
 
 #include "common/iss/mips.h"
+#include "common/arithmetics.h"
 
 namespace soclib { namespace common {
 
@@ -55,35 +56,56 @@ static inline std::string mkname(uint32_t no)
 MipsIss::MipsIss(uint32_t ident)
     : Iss(mkname(ident), ident)
 {
-    r_cp0[IDENT] = 0x80000000|ident;
-    r_cp0[INDEX] = ident;
-
+    SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_npc);
     for (size_t i=0; i<32; ++i ) {
         SOCLIB_REG_RENAME_N_NAME(m_name.c_str(), r_gp, (int)i);
-        SOCLIB_REG_RENAME_N_NAME(m_name.c_str(), r_cp0, (int)i);
     }
     SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_hi);
     SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_lo);
 }
 
-MipsIss::~MipsIss()
-{
-}
-
 void MipsIss::reset()
 {
-    r_pc = RESET_ADDRESS;
+    Iss::reset(RESET_ADDRESS);
     r_npc = RESET_ADDRESS + 4;
-    r_mem_type = MEM_NONE;
-    r_dbe = false;
-    r_cp0[STATUS] = 0;
+    r_status.whole = 0;
+}
+
+void MipsIss::dump() const
+{
+    std::cout
+        << std::hex << std::showbase
+        << m_name
+        << " PC: " << r_pc
+        << " Ins: " << m_ins.ins << std::endl
+        << std::dec
+        << " Status.ie " << r_status.iec
+        << " .im " << r_status.im
+        << " .um " << r_status.kuc << std::endl
+        << " op:  " << m_ins.i.op << " (" << name_table[m_ins.i.op] << ")" << std::endl
+        << " i rs: " << m_ins.i.rs
+        << " rt: "<<m_ins.i.rt
+        << " i: "<<std::hex << m_ins.i.imd
+        << std::endl << std::dec
+        << " r rs: " << m_ins.r.rs
+        << " rt: "<<m_ins.r.rt
+        << " rd: "<<m_ins.r.rd
+        << " sh: "<<m_ins.r.sh << std::hex
+        << " func: "<<m_ins.r.func
+        << std::endl
+        << " V rs: " << m_rs
+        << " rt: "<<m_rt
+        << std::endl;
+    for ( size_t i=0; i<32; ++i ) {
+        std::cout << " " << std::dec << i << ": " << std::hex << std::showbase << r_gp[i];
+        if ( i%8 == 7 )
+            std::cout << std::endl;
+    }
 }
 
 void MipsIss::step()
 {
-    // Copy instruction from ISS capsule to field-aware instruction
-    // word
-    m_ins.ins = m_instruction;
+    ++r_count;
 
     // The current instruction is executed in case of interrupt, but
     // the next instruction will be delayed.
@@ -102,116 +124,111 @@ void MipsIss::step()
     // Write Data bus error are related to an older instruction:
     // highest priority
 
-    // default values
+    m_next_pc = r_npc+4;
     m_exception = NO_EXCEPTION;
     bool hazard = false;
 
-    // Interrupt detection
-    if ( (uint32_t)r_cp0[STATUS] & (uint32_t)((m_irq&0x3f)<<10) &&
-         (uint32_t)r_cp0[STATUS] & 1 )
-        m_exception = X_INT;
-
-    if (m_ibe)
+    if (m_ibe) {
         m_exception = X_IBE;
+        goto handle_except;
+    }
 
-    // Synchronous Data bus error detection.
-    //
-    // If the previous instruction was a load, and there is no bus
-    // error, we complete the previous instruction.
-    //
+    if ( m_dbe ) {
+        m_exception = X_DBE;
+        r_bar = r_mem_addr;
+        goto handle_except;
+    }
+
     // We write the  r_gp[i], and we detect a possible data dependency,
     // in order to implement the delayed load behaviour.
-    if ( m_dbe ) {
-            m_exception = X_DBE;
-        r_cp0[BAR] = r_mem_addr;
-    } else {
-        if ( (r_mem_dest == m_ins.r.rs || r_mem_dest == m_ins.r.rt)
-             && curInstructionUsesRegs() && r_mem_dest )
+    if ( r_mem_type != MEM_NONE ) {
+        uint32_t reg_use = curInstructionUsesRegs();
+        if ( (reg_use & USE_S && r_mem_dest == m_ins.r.rs) ||
+             (reg_use & USE_T && r_mem_dest == m_ins.r.rt) )
             hazard = true;
-
-        switch (r_mem_type ) {
+        
+        switch (r_mem_type) {
         default:
-            hazard=false;
             break;
         case MEM_LW:
             r_gp[r_mem_dest] = m_rdata;
             break;
         case MEM_LB:
-            r_gp[r_mem_dest] = (int32_t)(int8_t)align(m_rdata, r_mem_addr&0x3, 8);
+            r_gp[r_mem_dest] = sign_ext8(align(m_rdata, r_mem_addr&0x3, 8));
             break;
         case MEM_LBU:
             r_gp[r_mem_dest] = align(m_rdata, r_mem_addr&0x3, 8);
             break;
         case MEM_LH:
-            r_gp[r_mem_dest] = (int32_t)(int16_t)align(m_rdata, (r_mem_addr&0x2)/2, 16);
+            r_gp[r_mem_dest] = sign_ext16(align(m_rdata, (r_mem_addr&0x2)/2, 16));
             break;
         case MEM_LHU:
             r_gp[r_mem_dest] = align(m_rdata, (r_mem_addr&0x2)/2, 16);
             break;
         }
         r_mem_dest = 0;
+        r_mem_type = MEM_NONE;
     }
 
-    // Asynchronous Data bus error detection
     if ( r_dbe ) {
         m_exception = X_DBE;
         r_dbe = false;
-        r_cp0[BAR] = r_mem_addr;
+        r_bar = r_mem_addr;
     }
 
-    // Execute instruction if no data dependency & no bus error
-    // The run() function can modify the following registers :
-    // r_gp[i], r_mem_type, r_mem_addr; r_mem_wdata, r_mem_dest, r_hi, r_lo
-    // as well as the m_exception, m_branch_address & m_branch_taken variables
-    if ( (m_exception == NO_EXCEPTION || m_exception == X_INT) && !hazard )
-        run();
-
-    switch (m_exception) {
-    case NO_EXCEPTION:
-        if (!hazard)
-        {
-            if (m_branch_taken) {
-                r_pc = r_npc;
-                r_npc = m_branch_address;
-            } else {
-                r_pc = r_npc;
-                r_npc = r_npc + 4;
-            }
-        }
-        break;
-    case X_INT:
-        // handling interrupts (the interrupted program must resume
-        // using EPC) delayed in case of branch
-        if (m_branch_taken) {
-            r_pc = r_npc;
-            r_npc = m_branch_address;
-            break;
-        } else
-            goto take_except;
-    default:
-        goto take_except;
-    }
-
-    goto normal_end;
- take_except:
 #if MIPS_DEBUG
-            std::cout
-                << m_name <<" exception: "<<m_exception<<std::endl
-                << " EPC: " << r_npc
-                << " CAUSE: " << ((m_exception << 2) | ((m_irq&0x3f)<<10))
-                << " STATUS: " << (((uint32_t)r_cp0[STATUS] & ~0x3f) |
-                                   (((uint32_t)r_cp0[STATUS] << 2) & 0x3c))
-                << std::endl;
+    dump();
 #endif
-    r_cp0[EPC] = r_npc;
-    r_cp0[CAUSE] = (m_exception << 2) | ((m_irq&0x3f)<<10);
-    r_cp0[STATUS] = (((uint32_t)r_cp0[STATUS] & ~0x3f) |
-                     (((uint32_t)r_cp0[STATUS] << 2) & 0x3c));
+    // run() can modify the following registers: r_gp[i], r_mem_type,
+    // r_mem_addr; r_mem_wdata, r_mem_dest, r_hi, r_lo, m_exception,
+    // m_next_pc
+    if ( ! hazard )
+        run();
+    else
+        goto house_keeping;
+
+    if ( m_exception == NO_EXCEPTION
+         && m_irq
+         && r_status.im & m_irq
+         && r_status.iec ) {
+        m_exception = X_INT;
+        goto handle_except;
+    }
+    
+    goto no_except;
+
+ handle_except:
+    {
+        bool branch_taken = m_next_pc != r_npc+4;
+
+        r_cause.xcode = m_exception;
+        r_cause.irq  = m_irq;
+        r_cause.bd = branch_taken;
+        r_status.kuo = r_status.kup;
+        r_status.ieo = r_status.iep;
+        r_status.kup = r_status.kuc;
+        r_status.iep = r_status.iec;
+        r_status.kuc = 0;
+        r_status.iec = 0;
+        r_epc = branch_taken ? r_pc : r_npc;
+#if MIPS_DEBUG
+        std::cout
+            << m_name <<" exception: "<<m_exception<<std::endl
+            << " epc: " << r_epc
+            << " bar: " << r_mem_addr
+            << " cause.xcode: " << r_cause.xcode
+            << " .bd: " << r_cause.bd
+            << " .irq: " << r_cause.irq
+            << std::endl;
+#endif
+    }
     r_pc = EXCEPT_ADDRESS;
     r_npc = EXCEPT_ADDRESS + 4;
-
- normal_end:
-    // House keeping
+    goto house_keeping;
+ no_except:
+    r_pc = r_npc;
+    r_npc = m_next_pc;
+ house_keeping:
     r_gp[0] = 0;
 }
 

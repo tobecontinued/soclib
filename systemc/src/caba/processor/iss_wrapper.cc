@@ -62,15 +62,17 @@ tmpl(void)::transition()
 	if (p_dcache.berr)
 		m_iss.setWriteBerr();
 
-	// Execute one cycle:
-	//
-	// Transmit interrupts, Instruction and Iberr, Data and Dberr, Run
-	if (!(p_icache.frz || p_dcache.frz)) {
-		char it = 0;
-		for ( size_t i=0; i<(size_t)iss_t::n_irq; i++ ) {
-			if (p_irq[i])
-				it |= 1 << i;
-		}
+	if ( p_icache.frz || p_dcache.frz || m_iss.isBusy() )
+        m_iss.nullStep();
+    else {
+        // Execute one cycle:
+        //
+        // Transmit interrupts, Instruction and Iberr, Data and Dberr,
+        // Run
+		uint32_t it = 0;
+		for ( size_t i=0; i<(size_t)iss_t::n_irq; i++ )
+			if (p_irq[i].read())
+				it |= (1<<i);
 		
 		m_iss.setIrq(it);
 		m_iss.setInstruction(p_icache.berr, p_icache.ins.read());

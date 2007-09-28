@@ -56,25 +56,6 @@ private:
         RESET_ADDR = 0xfffffffc,
     };
 
-    enum Offsets {
-        CRITICAL_INTERRUPT = 0x100,
-        MACHINE_CHECK = 0x200,
-        DATA_STORAGE = 0x300,
-        INSTRUCTION_STORAGE = 0x400,
-        EXTERNAL = 0x500,
-        ALIGNMENT = 0x600,
-        PROGRAM = 0x700,
-        FPU_UNAVAILABLE = 0x800,
-        SYSTEM_CALL = 0xc00,
-        APU_UNAVAILABLE = 0xf20,
-        PROGRAMMABLE_INTERVAL_TIMER = 0x1000,
-        FIXED_INTERVAL_TIMER = 0x1010,
-        WATCHDOG_TIMER = 0x1020,
-        DATA_TLB_MISS = 0x1100,
-        INSTRUCTION_TLB_MISS = 0x1200,
-        DEBUG = 0x2000,
-    };
-
     enum ExceptSyndrome {
         ESR_MCI = 1<<0,
         ESR_PIL = 1<<4,
@@ -308,12 +289,17 @@ private:
 
 public:
 	Ppc405Iss(uint32_t ident);
-	~Ppc405Iss();
+
+    void nullStep()
+    {
+        doneNullStep();
+        r_tb++;
+    }
 
 	void step();
 	void reset();
 
-	inline void getDataRequest(enum DataAccessType &type, uint32_t &address, uint32_t &wdata)
+	inline void getDataRequest(enum DataAccessType &type, uint32_t &address, uint32_t &wdata) const
 	{
 		address = r_mem_addr;
 		wdata = soclib::endian::uint32_swap(r_mem_wdata);
@@ -329,7 +315,7 @@ public:
 	inline void setInstruction(bool error, uint32_t val)
 	{
 		m_ibe = error;
-		m_instruction = soclib::endian::uint32_swap(val);
+		m_ins.ins = soclib::endian::uint32_swap(val);
 	}
 
 
@@ -357,7 +343,7 @@ private:
         r_xer.ca = ca;
     }
 
-    inline bool caGet()
+    inline bool caGet() const
     {
         return r_xer.ca;
     }
@@ -382,12 +368,7 @@ private:
         crSet( cr_no, cr );
     }
 
-    inline void crSet( uint32_t cr )
-    {
-        r_cr = cr;
-    }
-
-    inline uint32_t crGet( int no )
+    inline uint32_t crGet( int no ) const
     {
         return (r_cr>>((7-no)*4))&0xf;
     }
@@ -404,11 +385,6 @@ private:
         r_xer.so |= ov;
     }
 
-    inline uint32_t crGet()
-    {
-        return r_cr;
-    }
-
     void sprfSet( enum Sprf, uint32_t );
     uint32_t sprfGet( enum Sprf );
 
@@ -416,11 +392,11 @@ private:
     inline void mem_load_indexed( DataAccessType type, bool update );
     inline void mem_store_imm( DataAccessType type, bool update, uint32_t data );
     inline void mem_store_indexed( DataAccessType type, bool update, uint32_t data );
-    void do_add( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );
-    uint32_t do_addi( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );
-    void branch_cond( uint32_t next_pc_if_taken );
+    inline void do_add( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );
+    inline uint32_t do_addi( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );
+    inline void branch_cond( uint32_t next_pc_if_taken );
 
-    void dump();
+    void dump() const;
 
 #include "ppc405_ops.inc"
 

@@ -65,24 +65,18 @@ Ppc405Iss::Ppc405Iss(uint32_t ident)
 {
 }
 
-Ppc405Iss::~Ppc405Iss()
-{
-}
-
 void Ppc405Iss::reset()
 {
+    Iss::reset(RESET_ADDR);
     r_tb = 0;
-    r_pc = RESET_ADDR;
     r_esr = 0;
-    r_dbe = false;
-    r_mem_type = MEM_NONE;
     r_msr.whole = 0;
     for ( size_t i=0; i<DCR_MAX; ++i )
         r_dcr[i] = 0;
     r_dcr[DCR_PROCNUM] = m_ident;
 }
 
-void Ppc405Iss::dump()
+void Ppc405Iss::dump() const
 {
     std::cout
         << m_name << std::hex
@@ -110,7 +104,6 @@ void Ppc405Iss::step()
 {
     r_tb++;
 
-	m_ins.ins = m_instruction;
     m_next_pc = r_pc+4;
 
     m_exception = EXCEPT_NONE;
@@ -118,16 +111,6 @@ void Ppc405Iss::step()
     // IRQs
     r_dcr[DCR_EXTERNAL] = !!(m_irq&(1<<IRQ_EXTERNAL));
     r_dcr[DCR_CRITICAL] = !!(m_irq&(1<<IRQ_CRITICAL_INPUT));
-
-    if ( r_msr.ce && r_dcr[DCR_CRITICAL] ) {
-        m_exception = EXCEPT_CRITICAL;
-        goto handle_except;
-    }
-
-    if ( r_msr.ee && r_dcr[DCR_EXTERNAL] ) {
-        m_exception = EXCEPT_EXTERNAL;
-        goto handle_except;
-    }
 
     if (m_ibe) {
         m_exception = EXCEPT_INSTRUCTION_STORAGE;
@@ -138,14 +121,6 @@ void Ppc405Iss::step()
     if ( m_dbe ) {
         m_exception = EXCEPT_MACHINE_CHECK;
         r_esr = ESR_MCI;
-        goto handle_except;
-    }
-
-    if ( r_dbe ) {
-        m_exception = EXCEPT_DATA_STORAGE;
-        r_dbe = false;
-        r_esr = ESR_DST;
-        r_dear = r_mem_addr;
         goto handle_except;
     }
 
@@ -175,6 +150,24 @@ void Ppc405Iss::step()
         break;
     }
     r_mem_type = MEM_NONE;
+
+    if ( r_msr.ce && r_dcr[DCR_CRITICAL] ) {
+        m_exception = EXCEPT_CRITICAL;
+        goto handle_except;
+    }
+
+    if ( r_msr.ee && r_dcr[DCR_EXTERNAL] ) {
+        m_exception = EXCEPT_EXTERNAL;
+        goto handle_except;
+    }
+
+    if ( r_dbe ) {
+        m_exception = EXCEPT_DATA_STORAGE;
+        r_dbe = false;
+        r_esr = ESR_DST;
+        r_dear = r_mem_addr;
+        goto handle_except;
+    }
 
 #if PPC405_DEBUG
     if (r_mem_type > MEM_NONE && r_mem_type < MEM_SB)
@@ -232,7 +225,6 @@ void Ppc405Iss::step()
 
   no_except:
     r_pc = m_next_pc;
-    return;
 }
 
 }}

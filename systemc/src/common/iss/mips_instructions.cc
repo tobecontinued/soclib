@@ -32,114 +32,68 @@
  */
 
 #include "common/iss/mips.h"
+#include "common/base_module.h"
 #include "common/arithmetics.h"
 
 namespace soclib { namespace common {
 
-#define op(x) &MipsIss::op_##x
-#define op4(x, y, z, t) op(x), op(y), op(z), op(t)
-
-MipsIss::func_t const MipsIss::opcod_table[]= {
-    op4(special, bcond,    j,   jal),
-    op4(    beq,   bne, blez,  bgtz),
-
-    op4(   addi, addiu, slti, sltiu),
-    op4(   andi,   ori, xori,   lui),
-
-    op4(  copro,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(    ill,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(     lb,    lh,  ill,    lw),
-    op4(    lbu,   lhu,  ill,   ill),
-
-    op4(     sb,    sh,  ill,    sw),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(    ill,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(    ill,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-};
-
-#undef op
-#undef op4
-
-#if MIPS_DEBUG
-#define op4(x, y, z, t) op(x), op(y), op(z), op(t)
-#define op(x) #x
-
-static const char *name_table[] = {
-    op4(special, bcond,    j,   jal),
-    op4(    beq,   bne, blez,  bgtz),
-
-    op4(   addi, addiu, slti, sltiu),
-    op4(   andi,   ori, xori,   lui),
-
-    op4(  copro,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(    ill,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(     lb,    lh,  ill,    lw),
-    op4(    lbu,   lhu,  ill,   ill),
-
-    op4(     sb,    sh,  ill,    sw),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(    ill,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(    ill,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-};
-#undef op
-#undef op4
-#endif
-
-void MipsIss::run()
+namespace {
+// Avoid duplication of source code, this kind of op
+// is easy to bug, and should be easy to debug 
+static inline uint32_t sll( uint32_t reg, uint32_t sh )
 {
-    func_t func = opcod_table[m_ins.i.op];
-    m_rs = r_gp[m_ins.r.rs];
-    m_rt = r_gp[m_ins.r.rt];
-    m_branch_taken = false;
+    return reg << sh;
+}
+static inline uint32_t srl( uint32_t reg, uint32_t sh )
+{
+    return reg >> sh;
+}
+static inline uint32_t sra( uint32_t reg, uint32_t sh )
+{
+    if ( (int32_t)reg < 0 )
+        return (reg >> sh) | (~((1<<(32-sh))-1));
+    else
+        return reg >> sh;
+}
+}
 
-#if MIPS_DEBUG
-    std::cout
-        << std::hex << std::showbase
-        << m_name << std::endl
-        << " PC: " << r_pc
-        << " Ins: " << m_ins.ins << std::endl
-        << " op:  " << m_ins.i.op << " (" << name_table[m_ins.i.op] << ")" << std::endl
-        << std::dec
-        << " i rs: " << m_ins.i.rs
-        << " rt: "<<m_ins.i.rt
-        << " i: "<<std::hex << m_ins.i.imd
-        << std::endl << std::dec
-        << " r rs: " << m_ins.r.rs
-        << " rt: "<<m_ins.r.rt
-        << " rd: "<<m_ins.r.rd
-        << " sh: "<<m_ins.r.sh << std::hex
-        << " func: "<<m_ins.r.func
-        << std::endl
-        << " V rs: " << m_rs
-        << " rt: "<<m_rt
-        << std::endl;
-#endif
-
-    if (isHighPC() && isInUserMode()) {
-        m_exception = X_SYS;
+void MipsIss::do_load( enum DataAccessType type )
+{
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    if (isInUserMode() && isPrivDataAddr(address)) {
+        m_exception = X_ADEL;
         return;
     }
+    r_mem_type = type;
+    r_mem_addr = address;
+    r_mem_dest = m_ins.i.rt;
+#if MIPS_DEBUG
+    std::cout
+        << m_name << std::hex
+        << " load @" << address
+        << " (" << type << ")"
+        << std::endl;
+#endif    
+}
 
-    // We write the default value in this register
-    // It will be overwritten by load & store instructions
-    r_mem_type = MEM_NONE;
-    (this->*func)();
+void MipsIss::do_store( enum DataAccessType type, uint32_t data )
+{
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    if (isInUserMode() && isPrivDataAddr(address)) {
+        m_exception = X_ADES;
+        return;
+    }
+    r_mem_type = type;
+    r_mem_addr = address;
+    r_mem_wdata = data;
+#if MIPS_DEBUG
+    std::cout
+        << m_name << std::hex
+        << " store @" << address
+        << ": " << data
+        << " (" << type << ")"
+        << std::endl;
+#endif    
 }
 
 void MipsIss::op_bcond()
@@ -154,53 +108,81 @@ void MipsIss::op_bcond()
         r_gp[31] = r_pc+8;
 
     if (taken) {
-        m_branch_address = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
-        m_branch_taken = true;
+        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
+uint32_t MipsIss::cp0Get( uint32_t reg ) const
+{
+    switch(reg) {
+    case INDEX:
+        return m_ident;
+    case BAR:
+        return r_bar;
+    case COUNT:
+        return r_count;
+    case STATUS:
+        return r_status.whole;
+    case CAUSE:
+        return r_cause.whole;
+    case EPC:
+        return r_epc;
+    case IDENT:
+        return 0x80000000|m_ident;
+    default:
+        return 0;
+    }
+}
+
+void MipsIss::cp0Set( uint32_t reg, uint32_t val )
+{
+    switch(reg) {
+    case STATUS:
+        r_status.whole = val;
+        return;
+    default:
+        return;
+    }
+}
+
+// **Start**
+
 void MipsIss::op_j()
 {
-    m_branch_address = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
-    m_branch_taken = true;
+    m_next_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
 }
 
 void MipsIss::op_jal()
 {
     r_gp[31] = r_pc+8;
-    m_branch_address = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
-    m_branch_taken = true;
+    m_next_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
 }
 
 void MipsIss::op_beq()
 {
     if ( m_rs == m_rt ) {
-        m_branch_address = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
-        m_branch_taken = true;
+        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
 void MipsIss::op_bne()
 {
     if ( m_rs != m_rt ) {
-        m_branch_address = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
-        m_branch_taken = true;
+        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
 void MipsIss::op_blez()
 {
     if ( (int32_t)m_rs <= 0 ) {
-        m_branch_address = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
-        m_branch_taken = true;
+        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
 void MipsIss::op_bgtz()
 {
     if ( (int32_t)m_rs > 0 ) {
-        m_branch_address = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
-        m_branch_taken = true;
+        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
@@ -258,13 +240,16 @@ void MipsIss::op_copro()
     }
     switch (m_ins.r.rs) {
     case 4: // mtc0
-        r_cp0[m_ins.r.rd] = m_rt;
+        cp0Set( m_ins.r.rd, m_rt );
         break;
     case 0: // mfc0
-        r_gp[m_ins.r.rt] = r_cp0[m_ins.r.rd];
+        r_gp[m_ins.r.rt] = cp0Get( m_ins.r.rd );
         break;
     case 16: // rfe
-        r_cp0[STATUS] = (r_cp0[STATUS]&(~0xf)) | ((r_cp0[STATUS]>>2)&0xf);
+        r_status.kuc = r_status.kup;
+        r_status.iec = r_status.iep;
+        r_status.kup = r_status.kuo;
+        r_status.iep = r_status.ieo;
         break;
     default: // Not handled, so raise an exception
         op_ill();
@@ -278,132 +263,52 @@ void MipsIss::op_ill()
 
 void MipsIss::op_lb()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if (isInUserMode() && isPrivDataAddr(address)) {
-        m_exception = X_ADEL;
-        return;
-    }
-    r_mem_type = MEM_LB;
-    r_mem_addr = address;
-    r_mem_dest = m_ins.i.rt;
-
+    do_load(MEM_LB);
 }
 
 void MipsIss::op_lh()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if (isInUserMode() && isPrivDataAddr(address)) {
-        m_exception = X_ADEL;
-        return;
-    }
-    r_mem_type = MEM_LH;
-    r_mem_addr = address;
-    r_mem_dest = m_ins.i.rt;
+    do_load(MEM_LH);
 }
 
 void MipsIss::op_lw()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if (isInUserMode() && isPrivDataAddr(address)) {
-        m_exception = X_ADEL;
-        return;
-    }
     if ( m_ins.i.rt )
-        r_mem_type = MEM_LW;
+        do_load(MEM_LW);
     else {
-        static bool warned = false;
-        if ( !warned ) {
-            std::cout
-                << "If you intend to flush cache reading to $0," << std::endl
-                << "this is a hack, go get a processor aware of caches" << std::endl;
-            warned = true;
-        }
-        r_mem_type = MEM_INVAL;
+        SOCLIB_WARNING(
+            "If you intend to flush cache reading to $0,\n"
+            "this is a hack, go get a processor aware of caches");
+        do_load(MEM_INVAL);
     }
-    r_mem_addr = address;
-    r_mem_dest = m_ins.i.rt;
 }
 
 void MipsIss::op_lbu()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if (isInUserMode() && isPrivDataAddr(address)) {
-        m_exception = X_ADEL;
-        return;
-    }
-    r_mem_type = MEM_LBU;
-    r_mem_addr = address;
-    r_mem_dest = m_ins.i.rt;
+    do_load(MEM_LBU);
 }
 
 void MipsIss::op_lhu()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if (isInUserMode() && isPrivDataAddr(address)) {
-        m_exception = X_ADEL;
-        return;
-    }
-    r_mem_type = MEM_LHU;
-    r_mem_addr = address;
-    r_mem_dest = m_ins.i.rt;
+    do_load(MEM_LHU);
 }
 
 void MipsIss::op_sb()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if (isInUserMode() && isPrivDataAddr(address)) {
-        m_exception = X_ADES;
-        return;
-    }
-    uint8_t tmp = m_rt;
-    r_mem_type = MEM_SB;
-    r_mem_addr = address;
-    r_mem_wdata = tmp|(tmp << 8)|(tmp << 16)|(tmp << 24);
+    uint32_t tmp = m_rt&0xff;
+    do_store(MEM_SB, tmp|(tmp << 8)|(tmp << 16)|(tmp << 24));
 }
 
 void MipsIss::op_sh()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if (isInUserMode() && isPrivDataAddr(address)) {
-        m_exception = X_ADES;
-        return;
-    }
-    uint16_t tmp = m_rt;
-    r_mem_type = MEM_SH;
-    r_mem_addr = address;
-    r_mem_wdata = tmp | (tmp << 16);
+    uint32_t tmp = m_rt&0xffff;
+    do_store(MEM_SH, tmp|(tmp << 16));
 }
 
 void MipsIss::op_sw()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if (isInUserMode() && isPrivDataAddr(address)) {
-        m_exception = X_ADES;
-        return;
-    }
-    r_mem_type = MEM_SW;
-    r_mem_addr = address;
-    r_mem_wdata = m_rt;
+    do_store(MEM_SW, m_rt);
 }
-
-// Avoid duplication of source code, this kind of op
-// is easy to bug, and should be easy to debug 
-static inline uint32_t sll( uint32_t reg, uint32_t sh )
-{
-    return reg << sh;
-}
-static inline uint32_t srl( uint32_t reg, uint32_t sh )
-{
-    return (reg >> sh) & ((1<<(32-sh))-1);
-}
-static inline uint32_t sra( uint32_t reg, uint32_t sh )
-{
-    if ( (int32_t)reg < 0 )
-        return (reg >> sh) | (~((1<<(32-sh))-1));
-    else
-        return (reg >> sh) & ((1<<(32-sh))-1);
-}
-
 
 void MipsIss::special_sll()
 {
@@ -441,8 +346,7 @@ void MipsIss::special_jr()
         m_exception = X_ADEL;
         return;
     }
-    m_branch_address = m_rs;
-    m_branch_taken = true;
+    m_next_pc = m_rs;
 }
 
 void MipsIss::special_jalr()
@@ -452,8 +356,7 @@ void MipsIss::special_jalr()
         return;
     }
     r_gp[m_ins.r.rd] = r_pc+8;
-    m_branch_address = m_rs;
-    m_branch_taken = true;
+    m_next_pc = m_rs;
 }
 
 void MipsIss::special_sysc()
@@ -493,6 +396,7 @@ void MipsIss::special_mult()
     int64_t res = a*b;
     r_hi = res>>32;
     r_lo = res;
+    setInsDelay( 6 );
 }
 
 void MipsIss::special_multu()
@@ -502,6 +406,7 @@ void MipsIss::special_multu()
     uint64_t res = a*b;
     r_hi = res>>32;
     r_lo = res;
+    setInsDelay( 6 );
 }
 
 void MipsIss::special_div()
@@ -513,6 +418,7 @@ void MipsIss::special_div()
     }
     r_hi = (int32_t)m_rs % (int32_t)m_rt;
     r_lo = (int32_t)m_rs / (int32_t)m_rt;
+    setInsDelay( 31 );
 }
 
 void MipsIss::special_divu()
@@ -524,6 +430,7 @@ void MipsIss::special_divu()
     }
     r_hi = m_rs % m_rt;
     r_lo = m_rs / m_rt;
+    setInsDelay( 31 );
 }
 
 void MipsIss::special_add()
@@ -624,6 +531,80 @@ MipsIss::func_t const MipsIss::special_table[] = {
 void MipsIss::op_special()
 {
     func_t func = special_table[m_ins.r.func];
+    (this->*func)();
+}
+
+#define op(x) &MipsIss::op_##x
+#define op4(x, y, z, t) op(x), op(y), op(z), op(t)
+
+MipsIss::func_t const MipsIss::opcod_table[]= {
+    op4(special, bcond,    j,   jal),
+    op4(    beq,   bne, blez,  bgtz),
+
+    op4(   addi, addiu, slti, sltiu),
+    op4(   andi,   ori, xori,   lui),
+
+    op4(  copro,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill,   ill),
+
+    op4(    ill,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill,   ill),
+
+    op4(     lb,    lh,  ill,    lw),
+    op4(    lbu,   lhu,  ill,   ill),
+
+    op4(     sb,    sh,  ill,    sw),
+    op4(    ill,   ill,  ill,   ill),
+
+    op4(    ill,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill,   ill),
+
+    op4(    ill,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill,   ill),
+};
+
+#undef op
+#define op(x) #x
+
+const char *MipsIss::name_table[] = {
+    op4(special, bcond,    j,   jal),
+    op4(    beq,   bne, blez,  bgtz),
+
+    op4(   addi, addiu, slti, sltiu),
+    op4(   andi,   ori, xori,   lui),
+
+    op4(  copro,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill,   ill),
+
+    op4(    ill,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill,   ill),
+
+    op4(     lb,    lh,  ill,    lw),
+    op4(    lbu,   lhu,  ill,   ill),
+
+    op4(     sb,    sh,  ill,    sw),
+    op4(    ill,   ill,  ill,   ill),
+
+    op4(    ill,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill,   ill),
+
+    op4(    ill,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill,   ill),
+};
+#undef op
+#undef op4
+
+void MipsIss::run()
+{
+    func_t func = opcod_table[m_ins.i.op];
+    m_rs = r_gp[m_ins.r.rs];
+    m_rt = r_gp[m_ins.r.rt];
+
+    if (isHighPC() && isInUserMode()) {
+        m_exception = X_SYS;
+        return;
+    }
+
     (this->*func)();
 }
 

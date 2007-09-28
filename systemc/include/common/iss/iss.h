@@ -56,7 +56,6 @@ public:
 
 protected:
 	uint32_t 	r_pc;			// Program Counter
-	uint32_t 	r_npc;			// Next Program Counter
 
 	enum DataAccessType 	r_mem_type;  		// Data Cache access type
 	uint32_t 	r_mem_addr;  		// Data Cache address
@@ -64,7 +63,6 @@ protected:
 	uint32_t	r_mem_dest;  		// Data Cache destination register (read)
 	bool		r_dbe;			// Asynchronous Data Bus Error (write)
 
-	uint32_t   	m_instruction;
 	uint32_t	m_rdata;
 	uint32_t 	m_irq;
 	bool		m_ibe;
@@ -73,13 +71,24 @@ protected:
 	const uint32_t m_ident;
 	const std::string m_name;
 
+private:
+    // Instruction latency simulation
+    uint32_t m_ins_delay;
+
 public:
+    virtual ~Iss() {}
+
+    virtual void step() = 0;
+    virtual void nullStep() = 0;
+
+    virtual void reset() = 0;
+	virtual void setInstruction(bool error, uint32_t val) = 0;
+
 	Iss( const std::string &name, uint32_t ident )
 		: m_ident(ident),
 		  m_name(name)
 	{
 		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_pc);
-		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_npc);
 		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_dbe);
 		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_type);
 		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_addr);
@@ -87,11 +96,91 @@ public:
 		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_wdata);
 	}
 
-    inline bool addressNotAligned( uint32_t address, DataAccessType type )
+    inline void setInsDelay( uint32_t delay )
+    {
+        assert( delay > 0 );
+        m_ins_delay = delay-1;
+    }
+
+    inline bool isBusy()
+    {
+        return m_ins_delay;
+    }
+
+	virtual inline void getInstructionRequest(uint32_t &address) const
+	{
+		address = r_pc;
+	}
+
+	virtual inline void getDataRequest(
+        enum DataAccessType &type,
+        uint32_t &address,
+        uint32_t &wdata) const
+	{
+		address = r_mem_addr;
+		wdata = r_mem_wdata;
+		type = r_mem_type;
+	}
+
+	virtual inline void dataRequestAccepted()
+	{
+        switch (r_mem_type) {
+        case MEM_SB:
+        case MEM_SH:
+        case MEM_SW:
+            r_mem_type = MEM_NONE;
+            return;
+        case MEM_NONE:
+        case MEM_INVAL:
+        case MEM_LB:
+        case MEM_LBU:
+        case MEM_LH:
+        case MEM_LHBR:
+        case MEM_LHU:
+        case MEM_LWBR:
+        case MEM_LW:
+            return;
+        }
+	}
+
+	virtual inline void setWriteBerr()
+	{
+		r_dbe = true;
+	}
+
+	virtual inline void setRdata(bool error, uint32_t rdata)
+	{
+		m_dbe = error;
+		m_rdata = rdata;
+	}
+
+	virtual inline void setIrq(uint32_t irq)
+	{
+		m_irq = irq;
+	}
+
+protected:
+
+    void doneNullStep()
+    {
+        if ( m_ins_delay )
+            --m_ins_delay;
+    }
+
+    void reset( uint32_t reset_addr )
+    {
+        r_pc = reset_addr;
+        r_dbe = false;
+        r_mem_type = MEM_NONE;
+        m_ins_delay = 0;
+    }
+
+    static inline bool addressNotAligned( uint32_t address, DataAccessType type )
     {
         switch (type) {
         case MEM_NONE:
         case MEM_INVAL:
+            return false;
         case MEM_LB:
         case MEM_LBU:
         case MEM_SB:
@@ -107,51 +196,6 @@ public:
             return (address&3);
         }
     }
-
-	virtual ~Iss() {}
-
-	virtual void step() = 0;
-	virtual void reset() = 0;
-
-	inline void getInstructionRequest(uint32_t &address)
-	{
-		address = r_pc;
-	}
-
-	inline void getDataRequest(
-        enum DataAccessType &type,
-        uint32_t &address,
-        uint32_t &wdata)
-	{
-		address = r_mem_addr;
-		wdata = r_mem_wdata;
-		type = r_mem_type;
-	}
-
-	inline void setWriteBerr()
-	{
-		r_dbe = true;
-	}
-
-	inline void setRdata(bool error, uint32_t rdata)
-	{
-		m_dbe = error;
-		m_rdata = rdata;
-	}
-
-	inline void setInstruction(bool error, uint32_t val)
-	{
-		m_ibe = error;
-		m_instruction = val;
-	}
-
-	inline void setIrq(uint32_t irq)
-	{
-		m_irq = irq;
-	}
-
-protected:
-	virtual void run() = 0;
 };
 
 }}
