@@ -22,13 +22,13 @@
 #include "common/exception.h"
 #include "common/xterm_wrapper.h"
 
-#include <fcntl.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#include <termios.h>
+#include <fcntl.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/select.h>
 #include <vector>
 
@@ -36,7 +36,9 @@ namespace soclib { namespace common {
 
 XtermWrapper::XtermWrapper(const std::string &name)
 {
-    m_fd = getmpt();
+    int fds[2];
+    if ( socketpair( AF_UNIX, SOCK_STREAM, 0, fds ) < 0 )
+        throw soclib::exception::RunTimeError("socketpair() failed");
 
     m_pid = fork();
     if ( m_pid < 0 ) {
@@ -51,6 +53,10 @@ XtermWrapper::XtermWrapper(const std::string &name)
 		// simulated platform... Let's strip it.
 		char buf;
 		int r;
+
+        ::close(fds[0]);
+        m_fd = fds[1];
+
 		do {
 			r = ::read( m_fd, &buf, 1 );
 		} while( buf != '\n' && buf != '\r' );
@@ -58,43 +64,17 @@ XtermWrapper::XtermWrapper(const std::string &name)
 		// Change xterm CR/LF mode
 		::write( m_fd, "\x1b[20h", 5 );
 
-		// And change our modes
-		struct termios attrs;
-		tcgetattr( m_fd, &attrs );
-#if defined(cfmakeraw)
-		cfmakeraw( &attrs );
-#endif
-		attrs.c_iflag |= IGNCR;
-		tcsetattr( m_fd, TCSANOW, &attrs );
-
 		fcntl( m_fd, F_SETFL, O_NONBLOCK );
 		// The last char we want to strip is not always present,
 		// so dont block if not here
 		r = ::read( m_fd, &buf, 1 );
     } else {
-        // child
-		const char *pname = ptsname(m_fd);
-		const char maxlen = 16;
-
-        grantpt(m_fd);
-        unlockpt(m_fd);
-
+        const int maxlen = 10;
 		char pname_arg[maxlen];
-		int fd = open(pname, O_RDWR);
-        if ( fd < 0 )
-            goto error;
+		int fd = fds[0];
 		snprintf(pname_arg, maxlen, "-S0/%d", fd);
 
-		// Set modes
-		struct termios attrs;
-		tcgetattr( fd, &attrs );
-#if defined(cfmakeraw)
-		cfmakeraw( &attrs );
-#endif
-		attrs.c_oflag |= ONLRET;
-		attrs.c_oflag &= ~ONLCR;
-		tcsetattr( fd, TCSANOW, &attrs );
-
+        ::close(fds[1]);
         unlink(name.c_str());
 
         execlp("xterm", "xterm",
@@ -109,7 +89,6 @@ XtermWrapper::XtermWrapper(const std::string &name)
         /** \todo Replace this with some advertisement mechanism, and
          * report error back in parent process in a clean way
          */
-    error:
         ::kill(getppid(), SIGKILL);
         _exit(2);
     }
@@ -153,42 +132,6 @@ bool XtermWrapper::poll()
 void XtermWrapper::kill(int sig)
 {
     ::kill(m_pid, sig);
-}
-
-int XtermWrapper::getmpt()
-{
-    int pty;
-
-    /* Linux style */
-    pty = open("/dev/ptmx", O_RDWR|O_NOCTTY);
-    if ( pty >= 0 )
-        return pty;
-
-    /* scan Berkeley-style */
-    char name[] = "/dev/ptyp0";
-    int tty;
-    while (access(name, 0) == 0) {
-        if ((pty = open(name, O_RDWR)) >= 0) {
-            name[5] = 't';
-            if ((tty = open(name, O_RDWR)) >= 0) {
-                close(tty);
-                return pty;
-            }
-            name[5] = 'p';
-            close(pty);
-        }
-
-        /* get next pty name */
-        if (name[9] == 'f') {
-            name[8]++;
-            name[9] = '0';
-        } else if (name[9] == '9')
-            name[9] = 'a';
-        else
-            name[9]++;
-    }
-    errno = ENOENT;
-    return -1;
 }
 
 }}

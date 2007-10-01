@@ -34,7 +34,6 @@ class XtermWrapper
     pid_t m_pid;
     int m_fd;
 
-    static int getmpt();
 public:
     XtermWrapper(const std::string &name);
     
