@@ -42,8 +42,8 @@ public:
 private:
     std::list<soclib::common::Segment> m_segment_list;
     size_t m_addr_width;
-    const IntTab &m_level_addr_bits;
-    const IntTab &m_level_id_bits;
+    const IntTab m_level_addr_bits;
+    const IntTab m_level_id_bits;
     const addr_t m_cacheability_mask;
 
     MappingTable( const MappingTable& );
