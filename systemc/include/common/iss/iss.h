@@ -31,6 +31,7 @@
 #define _SOCLIB_ISS_H_
 
 #include <systemc.h>
+#include <cassert>
 #include "common/endian.h"
 #include "common/register.h"
 
@@ -88,12 +89,6 @@ public:
 		: m_ident(ident),
 		  m_name(name)
 	{
-		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_pc);
-		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_dbe);
-		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_type);
-		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_addr);
-		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_dest);
-		SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_mem_wdata);
 	}
 
     inline void setInsDelay( uint32_t delay )
