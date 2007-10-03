@@ -41,7 +41,7 @@ tmpl(/**/)::VciTargetFsm(
 }
 
 tmpl(void)::_on_read_write(
-    sc_module *owner_module,
+    soclib::caba::BaseModule *owner_module,
     wrapper_read_t *read_func,
     wrapper_write_t *write_func )
 {

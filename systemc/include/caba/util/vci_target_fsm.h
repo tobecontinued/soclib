@@ -26,9 +26,11 @@
 #include <systemc.h>
 #include <vector>
 #include <list>
+#include <cassert>
 #include "caba/interface/vci_target.h"
 #include "caba/util/generic_fifo.h"
 #include "common/mapping_table.h"
+#include "caba/util/base_module.h"
 
 namespace soclib {
 namespace caba {
@@ -62,8 +64,8 @@ using namespace soclib::common;
 #define __rcast2 bool (*)(SC_CURRENT_USER_MODULE *, int, typename vci_param::addr_t, typename vci_param::data_t &)
 #define __wcast2 bool (*)(SC_CURRENT_USER_MODULE *, int, typename vci_param::addr_t, typename vci_param::data_t, int)
 
-#define __rcast3 bool (*)(sc_module *, int, typename vci_param::addr_t, typename vci_param::data_t &)
-#define __wcast3 bool (*)(sc_module *, int, typename vci_param::addr_t, typename vci_param::data_t, int)
+#define __rcast3 bool (*)(soclib::caba::BaseModule *, int, typename vci_param::addr_t, typename vci_param::data_t &)
+#define __wcast3 bool (*)(soclib::caba::BaseModule *, int, typename vci_param::addr_t, typename vci_param::data_t, int)
 
 #define on_read_write(rf, wf)                                           \
 _on_read_write(this,                                                    \
@@ -122,13 +124,13 @@ private:
     typedef typename vci_param::addr_t addr_t;
     typedef typename vci_param::data_t data_t;
 
-    typedef bool wrapper_read_t(sc_module *, int segno, addr_t offset, data_t &data);
-    typedef bool wrapper_write_t(sc_module *, int segno, addr_t offset, data_t data, int be);
+    typedef bool wrapper_read_t(soclib::caba::BaseModule *, int segno, addr_t offset, data_t &data);
+    typedef bool wrapper_write_t(soclib::caba::BaseModule *, int segno, addr_t offset, data_t data, int be);
 
     wrapper_read_t *m_on_read_f;
     wrapper_write_t *m_on_write_f;
 
-    sc_module *m_owner;
+    soclib::caba::BaseModule *m_owner;
 
 public:
 
@@ -157,7 +159,7 @@ public:
      * component
      */
     void _on_read_write(
-        sc_module *owner_module,
+        soclib::caba::BaseModule *owner_module,
         wrapper_read_t *read_func,
         wrapper_write_t *write_func );
 
