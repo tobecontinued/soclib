@@ -59,12 +59,12 @@ public:
     {
         return reop;
     }
-    
+
     inline uint32_t dest() const
     {
         return rsrcid;
     }
-    
+
 	inline void writeTo( output_port_t &port ) const
 	{
 		port.rspval = rspval;
@@ -79,12 +79,12 @@ public:
 	inline void readFrom( const input_port_t &port )
 	{
 		rspval = port.rspval;
-		rdata = port.rdata;
+		rdata = (typename vci_param::data_t)port.rdata;
 		reop = port.reop;
-		rerror = port.rerror;
-		rsrcid = port.rsrcid;
-		rtrdid = port.rtrdid;
-		rpktid = port.rpktid;
+		rerror = (typename vci_param::rerror_t)port.rerror;
+		rsrcid = (typename vci_param::srcid_t)port.rsrcid;
+		rtrdid = (typename vci_param::trdid_t)port.rtrdid;
+		rpktid = (typename vci_param::pktid_t)port.rpktid;
 	}
 
     inline int route( const routing_table_t &rt ) const
@@ -144,45 +144,45 @@ public:
     {
         return eop_;
     }
-    
+
     inline uint32_t dest() const
     {
         return address;
     }
-    
+
 	inline void readFrom( const input_port_t &port )
 	{
 		cmdval = port.cmdval;
-		address = port.address;
-		be = port.be;	
-		cmd = port.cmd;	
-		contig = port.contig;
-		wdata = port.wdata;
-		eop_ = port.eop;	
-		cons = port.cons;	
-		plen = port.plen;	
-		wrap = port.wrap;	
-		cfixed = port.cfixed;
-		clen = port.clen;	
-		srcid = port.srcid;
-		trdid = port.trdid;
-		pktid = port.pktid;
+		address = (typename vci_param::addr_t)port.address;
+		be = (typename vci_param::be_t)port.be;
+		cmd = (typename vci_param::cmd_t)port.cmd;
+		contig = (typename vci_param::contig_t)port.contig;
+		wdata = (typename vci_param::data_t)port.wdata;
+		eop_ = (typename vci_param::eop_t)port.eop;
+		cons = (typename vci_param::const_t)port.cons;
+		plen = (typename vci_param::plen_t)port.plen;
+		wrap = (typename vci_param::wrap_t)port.wrap;
+		cfixed = (typename vci_param::cfixed_t)port.cfixed;
+		clen = (typename vci_param::clen_t)port.clen;
+		srcid = (typename vci_param::srcid_t)port.srcid;
+		trdid = (typename vci_param::trdid_t)port.trdid;
+		pktid = (typename vci_param::pktid_t)port.pktid;
 	}
 
 	inline void writeTo( output_port_t &port ) const
 	{
 		port.cmdval = cmdval;
 		port.address = address;
-		port.be = be;	
-		port.cmd = cmd;	
+		port.be = be;
+		port.cmd = cmd;
 		port.contig = contig;
 		port.wdata = wdata;
-		port.eop = eop_;	
-		port.cons = cons;	
-		port.plen = plen;	
-		port.wrap = wrap;	
+		port.eop = eop_;
+		port.cons = cons;
+		port.plen = plen;
+		port.wrap = wrap;
 		port.cfixed = cfixed;
-		port.clen = clen;	
+		port.clen = clen;
 		port.srcid = srcid;
 		port.trdid = trdid;
 		port.pktid = pktid;
