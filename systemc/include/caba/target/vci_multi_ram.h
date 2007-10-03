@@ -37,7 +37,7 @@ class VciMultiRam
 	: public soclib::caba::BaseModule
 {
     soclib::caba::VciTargetFsm<vci_param,true,2> m_vci_fsm;
-    soclib::common::ElfLoader &m_loader;
+    soclib::common::ElfLoader m_loader;
 
 	typedef unsigned int ram_t;
     ram_t **m_contents;

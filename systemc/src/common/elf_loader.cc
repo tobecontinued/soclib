@@ -103,6 +103,25 @@ ElfLoader::ElfLoader( const std::string &filename )
 	m_bfd_ptr = (void*)m_bfd;
 }
 
+ElfLoader::ElfLoader( const ElfLoader &ref )
+	: m_filename(ref.m_filename)
+{
+	if ( s_refcount == 0 )
+		bfd_init();
+	++s_refcount;
+
+	struct bfd *m_bfd = bfd_openr(m_filename.c_str(), NULL);
+	if ( !(bool)m_bfd )
+		throw soclib::exception::RunTimeError(
+            std::string("Cant open binary image ")+m_filename);
+	
+	if ( !bfd_check_format(m_bfd, bfd_object)
+		 && !(m_bfd->flags & EXEC_P))
+		throw soclib::exception::RunTimeError(
+            std::string("Invalid ELF format in image ")+m_filename);
+	m_bfd_ptr = (void*)m_bfd;
+}
+
 void ElfLoader::load( void *buffer, uintptr_t address, size_t length )
 {
 	struct bfd* m_bfd = (struct bfd*)m_bfd_ptr;

@@ -36,6 +36,7 @@ class ElfLoader
 	void *m_bfd_ptr;
 
 public:
+	ElfLoader( const ElfLoader &ref );
 	ElfLoader( const std::string &filename );
 	void load( void *buffer, uintptr_t address, size_t length );
 	~ElfLoader();
