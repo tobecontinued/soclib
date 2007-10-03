@@ -16,6 +16,8 @@
 //   to signal the uncached data availability, stored in r_dcache_miss_buf[0].
 ///////////////////////////////////////////////////////////////////////////////
 
+#include <math.h>
+#include <cassert>
 #include "caba/initiator/vci_xcache.h"
 
 namespace soclib { 

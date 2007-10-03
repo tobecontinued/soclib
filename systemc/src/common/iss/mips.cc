@@ -56,12 +56,6 @@ static inline std::string mkname(uint32_t no)
 MipsIss::MipsIss(uint32_t ident)
     : Iss(mkname(ident), ident)
 {
-    SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_npc);
-    for (size_t i=0; i<32; ++i ) {
-        SOCLIB_REG_RENAME_N_NAME(m_name.c_str(), r_gp, (int)i);
-    }
-    SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_hi);
-    SOCLIB_REG_RENAME_NAME(m_name.c_str(), r_lo);
 }
 
 void MipsIss::reset()
