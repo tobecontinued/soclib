@@ -2,14 +2,14 @@ SOCLIB:=$(shell soclib-cc --getpath)
 CC_PREFIX=$(ARCH)-unknown-elf-
 
 SOFT_IMAGE=bin.soft
-OBJS=main.o exception.o system.o
+OBJS=main.o exception.o system.o $(ADD_OBJS)
 
 CC = $(CC_PREFIX)gcc
 AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags)
+CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
 
 default: clean $(SOFT_IMAGE)
 
