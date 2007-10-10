@@ -23,6 +23,25 @@ static inline int procnum()
 
 #endif
 
+#ifdef __PPC__
+
+#define dcr_get(x)					\
+({unsigned int __val;				\
+__asm__("mfdcr %0, "#x:"=r"(__val));\
+__val;})
+
+#define spr_get(x)					\
+({unsigned int __val;				\
+__asm__("mfspr %0, "#x:"=r"(__val));\
+__val;})
+
+static inline int procnum()
+{
+    return dcr_get(0);
+}
+
+#endif
+
 static inline void putc(const char x)
 {
 	soclib_io_write8(

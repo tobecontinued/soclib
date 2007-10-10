@@ -14,7 +14,7 @@ OBJDUMP = $(CC_PREFIX)objdump
 
 CFLAGS=-Wall -O2 -I. -I../common -I$(TESTER_DIR) $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
 
-default: clean $(SOFT_IMAGE)
+all: test.res
 
 $(SOFT_IMAGE): $(OBJS)
 	$(LD) -T ../common/ldscript -o $@ $^
@@ -28,6 +28,6 @@ $(SOFT_IMAGE): $(OBJS)
 clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS)
 
-test.res: $(SOFT_IMAGE)
-	$(TESTER) $(SOFT_IMAGE) > test.out
-	cp test.out $@
+test.res: $(SOFT_IMAGE) $(TESTER)
+	$(TESTER) $(ARCH) $(SOFT_IMAGE) > test.out
+	mv test.out $@

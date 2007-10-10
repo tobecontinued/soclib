@@ -180,7 +180,7 @@ void Ppc405Iss::step()
         goto handle_except;
     }
 
-    goto no_exception;
+    goto no_except;
 
   handle_except:
 #if PPC405_DEBUG

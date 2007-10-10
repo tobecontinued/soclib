@@ -6,8 +6,10 @@
 int time(int *ret)
 {
 	int t;
-#ifdef __mips__
+#if defined(__mips__)
 	t = get_cp0(9);
+#elif defined(__PPC__)
+	t = spr_get(284);
 #else
 #error No cycle counter
 #endif

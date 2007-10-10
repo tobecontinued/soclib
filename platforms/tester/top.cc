@@ -3,6 +3,7 @@
 
 #include "common/mapping_table.h"
 #include "common/iss/mips.h"
+#include "common/iss/ppc405.h"
 #include "caba/processor/iss_wrapper.h"
 #include "caba/initiator/vci_xcache.h"
 #include "caba/target/vci_multi_ram.h"
@@ -11,6 +12,11 @@
 #include "caba/interconnect/vci_vgmn.h"
 
 #include "segmentation.h"
+
+typedef enum {
+	MIPSEL,
+	POWERPC,
+} arch_t;
 
 int _main(int argc, char *argv[])
 {
@@ -23,16 +29,33 @@ int _main(int argc, char *argv[])
 
 	::setenv("SOCLIB_TTY", "TERM", 1);
 
-	if ( argc < 2 )
-		throw soclib::exception::RunTimeError("Must pass binary image on command line !");
+	if ( argc < 3 )
+		throw soclib::exception::RunTimeError("Must pass architecture and binary image on command line !");
 
+	std::string arch_string = argv[1];
+	arch_t arch;
+	if ( arch_string == "mipsel" )
+		arch = MIPSEL;
+	else if ( arch_string == "powerpc" )
+		arch = POWERPC;
+	else
+		throw soclib::exception::RunTimeError("Incorrect architecture: "+arch_string);
 
 	// Mapping table
 
 	soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00300000);
 
-	maptab.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), true));
-	maptab.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), true));
+	switch ( arch ) {
+	case MIPSEL:
+		maptab.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), true));
+		maptab.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), true));
+		break;
+	case POWERPC:
+		maptab.add(Segment("ppc_boot", PPC_BOOT_BASE, PPC_BOOT_SIZE, IntTab(0), false));
+		maptab.add(Segment("ppc_special" , PPC_SPECIAL_BASE , PPC_SPECIAL_SIZE , IntTab(0), true));
+		break;
+	}
+
 	maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), true));
   
 	maptab.add(Segment("data" , DATA_BASE , DATA_SIZE , IntTab(1), true));
@@ -50,12 +73,12 @@ int _main(int argc, char *argv[])
    
 	soclib::caba::ICacheSignals signal_mips_icache0("signal_mips_icache0");
 	soclib::caba::DCacheSignals signal_mips_dcache0("signal_mips_dcache0");
-	sc_signal<bool> signal_mips0_it0("signal_mips0_it0"); 
-	sc_signal<bool> signal_mips0_it1("signal_mips0_it1"); 
-	sc_signal<bool> signal_mips0_it2("signal_mips0_it2"); 
-	sc_signal<bool> signal_mips0_it3("signal_mips0_it3"); 
-	sc_signal<bool> signal_mips0_it4("signal_mips0_it4"); 
-	sc_signal<bool> signal_mips0_it5("signal_mips0_it5");
+	sc_signal<bool> signal_cpu0_it0("signal_cpu0_it0"); 
+	sc_signal<bool> signal_cpu0_it1("signal_cpu0_it1"); 
+	sc_signal<bool> signal_cpu0_it2("signal_cpu0_it2"); 
+	sc_signal<bool> signal_cpu0_it3("signal_cpu0_it3"); 
+	sc_signal<bool> signal_cpu0_it4("signal_cpu0_it4"); 
+	sc_signal<bool> signal_cpu0_it5("signal_cpu0_it5");
 
 	soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
 
@@ -71,6 +94,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),16,8,16,8);
 
 	soclib::caba::IssWrapper<soclib::common::MipsIss> mips0("mips0", 0);
+	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc0("ppc0", 0);
 
 	soclib::common::ElfLoader loader(argv[1]);
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -82,24 +106,36 @@ int _main(int argc, char *argv[])
 
 	//	Net-List
  
-	mips0.p_clk(signal_clk);  
 	cache0.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
 
-	mips0.p_resetn(signal_resetn);  
 	cache0.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
-  
-	mips0.p_irq[0](signal_mips0_it0); 
-	mips0.p_irq[1](signal_mips0_it1); 
-	mips0.p_irq[2](signal_mips0_it2); 
-	mips0.p_irq[3](signal_mips0_it3); 
-	mips0.p_irq[4](signal_mips0_it4); 
-	mips0.p_irq[5](signal_mips0_it5); 
-	mips0.p_icache(signal_mips_icache0);
-	mips0.p_dcache(signal_mips_dcache0);
+
+	switch ( arch ) {
+	case MIPSEL:
+		mips0.p_clk(signal_clk);  
+		mips0.p_resetn(signal_resetn);  
+		mips0.p_irq[0](signal_cpu0_it0); 
+		mips0.p_irq[1](signal_cpu0_it1); 
+		mips0.p_irq[2](signal_cpu0_it2); 
+		mips0.p_irq[3](signal_cpu0_it3); 
+		mips0.p_irq[4](signal_cpu0_it4); 
+		mips0.p_irq[5](signal_cpu0_it5); 
+		mips0.p_icache(signal_mips_icache0);
+		mips0.p_dcache(signal_mips_dcache0);
+		break;
+	case POWERPC:
+		ppc0.p_clk(signal_clk);  
+		ppc0.p_resetn(signal_resetn);  
+		ppc0.p_irq[0](signal_cpu0_it0); 
+		ppc0.p_irq[1](signal_cpu0_it1); 
+		ppc0.p_icache(signal_mips_icache0);
+		ppc0.p_dcache(signal_mips_dcache0);
+		break;
+	}
         
 	cache0.p_icache(signal_mips_icache0);
 	cache0.p_dcache(signal_mips_dcache0);
