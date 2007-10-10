@@ -151,16 +151,6 @@ void Ppc405Iss::step()
     }
     r_mem_type = MEM_NONE;
 
-    if ( r_msr.ce && r_dcr[DCR_CRITICAL] ) {
-        m_exception = EXCEPT_CRITICAL;
-        goto handle_except;
-    }
-
-    if ( r_msr.ee && r_dcr[DCR_EXTERNAL] ) {
-        m_exception = EXCEPT_EXTERNAL;
-        goto handle_except;
-    }
-
     if ( r_dbe ) {
         m_exception = EXCEPT_DATA_STORAGE;
         r_dbe = false;
@@ -177,8 +167,20 @@ void Ppc405Iss::step()
 #endif
     run();
 
-    if (m_exception == EXCEPT_NONE)
-        goto no_except;
+    if (m_exception != EXCEPT_NONE)
+        goto handle_except;
+
+    if ( r_msr.ce && r_dcr[DCR_CRITICAL] ) {
+        m_exception = EXCEPT_CRITICAL;
+        goto handle_except;
+    }
+
+    if ( r_msr.ee && r_dcr[DCR_EXTERNAL] ) {
+        m_exception = EXCEPT_EXTERNAL;
+        goto handle_except;
+    }
+
+    goto no_exception;
 
   handle_except:
 #if PPC405_DEBUG

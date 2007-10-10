@@ -181,8 +181,10 @@ void MipsIss::step()
     else
         goto house_keeping;
 
-    if ( m_exception == NO_EXCEPTION
-         && m_irq
+    if ( m_exception != NO_EXCEPTION )
+        goto handle_except;
+
+    if ( m_irq
          && r_status.im & m_irq
          && r_status.iec ) {
         m_exception = X_INT;
