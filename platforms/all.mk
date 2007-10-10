@@ -4,7 +4,11 @@ SOCLIB:=$(shell soclib-cc --getpath)
 
 export ARCH
 
-default: test_soclib simulation.x a.out
+ifeq ($(NO_SOFT),)
+SOFT=a.out
+endif
+
+default: test_soclib simulation.x $(SOFT)
 
 test_soclib:
 	@test -z "$(SOCLIB)" && (\
@@ -16,7 +20,9 @@ simulation.x: $(PLATFORM_DESC)
 
 clean:
 	$(SOCLIB_CC) -p $(PLATFORM_DESC) -x
+ifeq ($(NO_SOFT),)
 	$(MAKE) -C soft clean
+endif
 	rm -rf repos
 
 a.out:

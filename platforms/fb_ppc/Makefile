@@ -1,2 +1,2 @@
 ARCH=powerpc
-include ../all.mf
+include ../all.mk

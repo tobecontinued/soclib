@@ -1,1 +1,1 @@
-include ../all.mf
+include ../all.mk
