@@ -114,6 +114,8 @@ public:
 
     void putc( char c )
     {
+        if ( c < ' ' && c != '\r' && c != '\n' )
+            c = '.';
         std::cout << c;
         std::cout.flush();
     }
