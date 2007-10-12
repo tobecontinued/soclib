@@ -57,8 +57,7 @@ static void elf_do_load(bfd *exec, asection *sect, PTR descptr)
         std::cerr << "Warning: section " << sect->name << " not loadable, not loaded" << std::endl;
 		return;
     }
-
-
+    
 	uintptr_t src_delta = 0, dst_delta = 0;
 
 	if ( desc->address < lma ) {
@@ -138,9 +137,24 @@ void ElfLoader::print( std::ostream &o ) const
 {
     struct bfd* m_bfd = (struct bfd*)m_bfd_ptr;
 	o << "<ElfLoader " << m_filename << std::endl
-      << " target: " << m_bfd->xvec->name << std::endl
+      << " target: " << arch() << std::endl
       << " endianness: " << m_bfd->xvec->byteorder << std::endl
       << ">" << std::endl;
+}
+
+std::string ElfLoader::arch() const
+{
+    struct bfd *m_bfd = (struct bfd*)m_bfd_ptr;
+    enum bfd_architecture arch = bfd_get_arch (m_bfd);
+    std::cout << "Arch " << (int)arch << std::endl;
+    switch(arch) {
+    case bfd_arch_mips:
+        return "mipsel";
+    case bfd_arch_powerpc:
+        return "powerpc";
+    default:
+        return "unknown";
+    }
 }
 
 ElfLoader::~ElfLoader()

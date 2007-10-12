@@ -41,6 +41,8 @@ public:
 	void load( void *buffer, uintptr_t address, size_t length );
 	~ElfLoader();
 
+    std::string arch() const;
+
     void print( std::ostream &o ) const;
 
     friend std::ostream &operator << (std::ostream &o, const ElfLoader &el)
