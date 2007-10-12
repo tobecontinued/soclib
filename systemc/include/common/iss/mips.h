@@ -74,6 +74,7 @@ private:
 
     enum Cp0Reg {
         INDEX = 0,
+        EXEC_CYCLES = 1,
         BAR = 8,
         COUNT = 9,
         STATUS = 12,
@@ -171,6 +172,7 @@ private:
     uint32_t    m_rs;
     uint32_t    m_rt;
     uint32_t    m_next_pc;
+    uint32_t    m_exec_cycles;
 
 public:
     MipsIss(uint32_t ident);

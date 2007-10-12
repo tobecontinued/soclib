@@ -184,6 +184,7 @@ void Ppc405Iss::mem_load_imm( DataAccessType type, bool update )
     uint32_t address = base + sign_ext16(m_ins.d.imm);
     if ( update )
         r_gp[m_ins.d.ra] = address;
+    assert( !addressNotAligned( address, type ) && "Unaligned memory access, compile with `-mstrict-align'" );
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_dest = m_ins.d.rd;
@@ -195,6 +196,7 @@ void Ppc405Iss::mem_load_indexed( DataAccessType type, bool update )
     uint32_t address = base + r_gp[m_ins.x.rb];
     if ( update )
         r_gp[m_ins.d.ra] = address;
+    assert( !addressNotAligned( address, type ) && "Unaligned memory access, compile with `-mstrict-align'" );
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_dest = m_ins.x.rs;
@@ -206,6 +208,7 @@ void Ppc405Iss::mem_store_imm( DataAccessType type, bool update, uint32_t data )
     uint32_t address = base + sign_ext16(m_ins.d.imm);
     if ( update )
         r_gp[m_ins.d.ra] = address;
+    assert( !addressNotAligned( address, type ) && "Unaligned memory access, compile with `-mstrict-align'" );
     switch(type) {
     case MEM_SB:
         data = data & 0xff;
@@ -235,6 +238,7 @@ void Ppc405Iss::mem_store_indexed( DataAccessType type, bool update, uint32_t da
     uint32_t address = base + r_gp[m_ins.x.rb];
     if ( update )
         r_gp[m_ins.d.ra] = address;
+    assert( !addressNotAligned( address, type ) && "Unaligned memory access, compile with `-mstrict-align'" );
     switch(type) {
     case MEM_SB:
         data = data & 0xff;
@@ -393,7 +397,7 @@ void Ppc405Iss::op_bc()
 
 void Ppc405Iss::op_bcctr()
 {
-    branch_cond( (r_ctr-!(m_ins.b.bo & BO2))<<2 );
+    branch_cond( (r_ctr-!(m_ins.b.bo & BO2))&~0x3 );
 }
 
 void Ppc405Iss::op_bclr()

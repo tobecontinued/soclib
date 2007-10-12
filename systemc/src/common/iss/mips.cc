@@ -63,6 +63,7 @@ void MipsIss::reset()
     Iss::reset(RESET_ADDRESS);
     r_npc = RESET_ADDRESS + 4;
     r_status.whole = 0;
+    m_exec_cycles = 0;
 }
 
 void MipsIss::dump() const
@@ -176,9 +177,10 @@ void MipsIss::step()
     // run() can modify the following registers: r_gp[i], r_mem_type,
     // r_mem_addr; r_mem_wdata, r_mem_dest, r_hi, r_lo, m_exception,
     // m_next_pc
-    if ( ! hazard )
+    if ( ! hazard ) {
+        m_exec_cycles++;
         run();
-    else
+    } else
         goto house_keeping;
 
     if ( m_exception != NO_EXCEPTION )

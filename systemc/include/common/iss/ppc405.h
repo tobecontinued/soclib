@@ -93,6 +93,7 @@ private:
         DCR_PROCNUM,
         DCR_CRITICAL,
         DCR_EXTERNAL,
+        DCR_EXEC_CYCLES,
         DCR_MAX,
     };
 
@@ -267,6 +268,8 @@ private:
 	ins_t m_ins;
 	enum ExceptCause m_exception;
     uint32_t m_next_pc;
+
+    uint32_t    m_exec_cycles;
 
     // Registers
 	uint32_t r_gp[32];

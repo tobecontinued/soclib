@@ -129,6 +129,8 @@ uint32_t MipsIss::cp0Get( uint32_t reg ) const
         return r_epc;
     case IDENT:
         return 0x80000000|m_ident;
+    case EXEC_CYCLES:
+        return m_exec_cycles;
     default:
         return 0;
     }

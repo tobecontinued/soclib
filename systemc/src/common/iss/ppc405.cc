@@ -74,6 +74,7 @@ void Ppc405Iss::reset()
     for ( size_t i=0; i<DCR_MAX; ++i )
         r_dcr[i] = 0;
     r_dcr[DCR_PROCNUM] = m_ident;
+    r_dcr[DCR_EXEC_CYCLES] = 0;
 }
 
 void Ppc405Iss::dump() const
@@ -126,6 +127,7 @@ void Ppc405Iss::step()
 
     switch (r_mem_type ) {
     default:
+        goto no_mem_access;
         break;
     case MEM_LW:
         r_gp[r_mem_dest] = m_rdata;
@@ -149,6 +151,15 @@ void Ppc405Iss::step()
         r_gp[r_mem_dest] = align(m_rdata, 1-(r_mem_addr&0x2)/2, 16);
         break;
     }
+#if PPC405_DEBUG
+    std::cout << m_name << std::hex
+              << " mem read " << r_mem_type
+              << " @: " << r_mem_addr
+              << " ->r" << r_mem_dest
+              << " data: " << r_gp[r_mem_dest]
+              << std::endl;
+#endif
+  no_mem_access:
     r_mem_type = MEM_NONE;
 
     if ( r_dbe ) {
@@ -165,6 +176,7 @@ void Ppc405Iss::step()
                   << std::hex << r_mem_addr << ": " << m_rdata << std::endl;
     dump();
 #endif
+    r_dcr[DCR_EXEC_CYCLES]++;
     run();
 
     if (m_exception != EXCEPT_NONE)
