@@ -14,7 +14,7 @@ CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
 default: clean $(SOFT_IMAGE)
 
 $(SOFT_IMAGE): $(OBJS)
-	$(LD) -T ldscript -o $@ $^
+	$(LD) -q -T ldscript -o $@ $^
 
 %.o: %.s
 	$(AS) $< -o $@

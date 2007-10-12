@@ -1,7 +1,7 @@
 SOCLIB:=$(shell soclib-cc --getpath)
 
 TESTER_DIR=$(SOCLIB)/platforms/tester
-TESTER=$(TESTER_DIR)/system.x
+TESTER=$(TESTER_DIR)/simulation.x
 
 TESTS=$(shell echo */test.mk)
 TESTRES=$(TESTS:.mk=.res)

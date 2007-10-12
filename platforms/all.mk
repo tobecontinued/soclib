@@ -16,10 +16,10 @@ test_soclib:
 	@test ! -z "$(SOCLIB)"
 
 simulation.x: $(PLATFORM_DESC)
-	$(SOCLIB_CC) -p $(PLATFORM_DESC)
+	$(SOCLIB_CC) -p $(PLATFORM_DESC) -o $@
 
 clean:
-	$(SOCLIB_CC) -p $(PLATFORM_DESC) -x
+	$(SOCLIB_CC) -p $(PLATFORM_DESC) -x -o $@
 ifeq ($(NO_SOFT),)
 	$(MAKE) -C soft clean
 endif
@@ -28,4 +28,4 @@ endif
 a.out:
 	$(MAKE) -C soft
 
-.PHONY: a.out
+.PHONY: a.out simulation.x
