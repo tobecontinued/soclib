@@ -23,6 +23,8 @@
 #ifndef SOCLIB_COMMON_ARITHMETICS_H
 #define SOCLIB_COMMON_ARITHMETICS_H
 
+#include <math.h>
+
 namespace soclib { namespace common {
 
 
@@ -50,6 +52,11 @@ static inline bool carry( uint32_t a, uint32_t b, uint32_t c )
 static inline bool overflow( uint32_t a, uint32_t b, uint32_t c )
 {
     return ((b^(a+b+c))&~(a^b))>>31;
+}
+
+static inline uint32_t uint32_log2(uint32_t n)
+{
+    return .5+log2(n);
 }
 
 }}

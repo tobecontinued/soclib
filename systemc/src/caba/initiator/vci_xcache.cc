@@ -18,6 +18,7 @@
 
 #include <math.h>
 #include <cassert>
+#include "common/arithmetics.h"
 #include "caba/initiator/vci_xcache.h"
 
 namespace soclib { 
@@ -41,8 +42,11 @@ static inline bool xcache_can_burst(
     soclib::caba::DCacheSignals::req_type_e old_cmd, int old_addr,
     soclib::caba::DCacheSignals::req_type_e new_cmd, int new_addr)
 {
-    return xcache_is_write(old_cmd) && xcache_is_write(new_cmd) &&
-        (new_addr == old_addr+4);
+              
+    bool res = xcache_is_write(old_cmd) && xcache_is_write(new_cmd) &&
+//        (new_addr == old_addr+4);
+        !((new_addr^old_addr)&~4095);
+    return res;
 }
 
 enum dcache_fsm_state_e {
@@ -123,17 +127,17 @@ tmpl(/**/)::VciXCache(
       s_icache_words(icache_words),
 
       s_icache_xshift(2),
-      s_icache_yshift((int)log2(s_icache_words) + s_icache_xshift),
-      s_icache_zshift((int)log2(s_icache_lines) + s_icache_yshift),
-      s_icache_xmask(((1<<(int)log2(s_icache_words))-1) << s_icache_xshift),
-      s_icache_ymask(((1<<(int)log2(s_icache_lines))-1) << s_icache_yshift),
+      s_icache_yshift(soclib::common::uint32_log2(s_icache_words) + s_icache_xshift),
+      s_icache_zshift(soclib::common::uint32_log2(s_icache_lines) + s_icache_yshift),
+      s_icache_xmask(((1<<soclib::common::uint32_log2(s_icache_words))-1) << s_icache_xshift),
+      s_icache_ymask(((1<<soclib::common::uint32_log2(s_icache_lines))-1) << s_icache_yshift),
       s_icache_zmask((~0x0) << s_icache_zshift),
 
       s_dcache_xshift(2),
-      s_dcache_yshift((int)log2(s_dcache_words) + s_dcache_xshift),
-      s_dcache_zshift((int)log2(s_dcache_lines) + s_dcache_yshift),
-      s_dcache_xmask(((1<<(int)log2(s_dcache_words))-1) << s_dcache_xshift),
-      s_dcache_ymask(((1<<(int)log2(s_dcache_lines))-1) << s_dcache_yshift),
+      s_dcache_yshift(soclib::common::uint32_log2(s_dcache_words) + s_dcache_xshift),
+      s_dcache_zshift(soclib::common::uint32_log2(s_dcache_lines) + s_dcache_yshift),
+      s_dcache_xmask(((1<<soclib::common::uint32_log2(s_dcache_words))-1) << s_dcache_xshift),
+      s_dcache_ymask(((1<<soclib::common::uint32_log2(s_dcache_lines))-1) << s_dcache_yshift),
       s_dcache_zmask((~0x0) << s_dcache_zshift),
 
       r_dcache_fsm("r_dcache_fsm"),
