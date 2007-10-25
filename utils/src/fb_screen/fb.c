@@ -184,6 +184,7 @@ int main( int argc, char **argv )
 		exit(2);
 	}
 	mmap_res = mmap(0, width*height*2, PROT_READ, MAP_FILE|MAP_SHARED, buffer_fd, 0);
+	memset(mmap_res, 128, width*height*2);
 	if ( mmap_res == (void*)-1 ) {
 		perror("mmap");
 		exit(2);
