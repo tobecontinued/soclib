@@ -70,9 +70,10 @@ tmpl(void)::transition()
 
     if ( p_vci.rspval.read() &&
          p_vci.rspack.read() ) {
-        m_current_req->gotRsp( p_vci );
+        VciInitiatorReq<vci_param> *req = m_current_req;
         if ( p_vci.reop.read() )
             m_current_req = NULL;
+        req->gotRsp( p_vci );
     }
 }
 
