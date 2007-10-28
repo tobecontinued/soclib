@@ -37,42 +37,8 @@ namespace caba {
 
 using namespace soclib::common;
 
-/** \cond DONT_SHOW
- * [Dont show this ugliness to Doxygen, it may be scared.]
- *
- * Why those big bad casts ?
- *
- * When component register on_read and on_write functions, it passes
- * pointer to member functions (ie functions like
- * ComponentName::on_read(...)). When we use them, we would like
- * pointers on standart functions (ie like func(...)), so we must cast
- * the pointers.
- *
- * The problem is C++ wont allow casing from one to the other
- * directly, event if it may be correct. We have to cast three times
- * in order to get what we want without warning.
- *
- * Hopefully enough SystemC declares SC_CURRENT_USER_MODULE which is a
- * typedef to current component type, this allows us to have some
- * generic defines for casts (defines names are expanded at usage time)
- *
- */
-
-#define __rcast1 bool (SC_CURRENT_USER_MODULE::*)(int, typename vci_param::addr_t, typename vci_param::data_t &)
-#define __wcast1 bool (SC_CURRENT_USER_MODULE::*)(int, typename vci_param::addr_t, typename vci_param::data_t, int)
-
-#define __rcast2 bool (*)(SC_CURRENT_USER_MODULE *, int, typename vci_param::addr_t, typename vci_param::data_t &)
-#define __wcast2 bool (*)(SC_CURRENT_USER_MODULE *, int, typename vci_param::addr_t, typename vci_param::data_t, int)
-
-#define __rcast3 bool (*)(soclib::caba::BaseModule *, int, typename vci_param::addr_t, typename vci_param::data_t &)
-#define __wcast3 bool (*)(soclib::caba::BaseModule *, int, typename vci_param::addr_t, typename vci_param::data_t, int)
-
-#define on_read_write(rf, wf)                                           \
-_on_read_write(this,                                                    \
-(__rcast3)(__rcast2)(__rcast1)&SC_CURRENT_USER_MODULE::rf,              \
-(__wcast3)(__wcast2)(__wcast1)&SC_CURRENT_USER_MODULE::wf )
-
-/** \endcond */
+#define __rcast3 bool (soclib::caba::BaseModule::*)(int, typename vci_param::addr_t, typename vci_param::data_t &)
+#define __wcast3 bool (soclib::caba::BaseModule::*)(int, typename vci_param::addr_t, typename vci_param::data_t, int)
 
 /**
  * \brief Full VCI Target port handler
@@ -124,11 +90,11 @@ private:
     typedef typename vci_param::addr_t addr_t;
     typedef typename vci_param::data_t data_t;
 
-    typedef bool wrapper_read_t(soclib::caba::BaseModule *, int segno, addr_t offset, data_t &data);
-    typedef bool wrapper_write_t(soclib::caba::BaseModule *, int segno, addr_t offset, data_t data, int be);
+    typedef bool (soclib::caba::BaseModule::*wrapper_read_t)(int segno, addr_t offset, data_t &data);
+    typedef bool (soclib::caba::BaseModule::*wrapper_write_t)(int segno, addr_t offset, data_t data, int be);
 
-    wrapper_read_t *m_on_read_f;
-    wrapper_write_t *m_on_write_f;
+    wrapper_read_t m_on_read_f;
+    wrapper_write_t m_on_write_f;
 
     soclib::caba::BaseModule *m_owner;
 
@@ -160,8 +126,14 @@ public:
      */
     void _on_read_write(
         soclib::caba::BaseModule *owner_module,
-        wrapper_read_t *read_func,
-        wrapper_write_t *write_func );
+        wrapper_read_t read_func,
+        wrapper_write_t write_func );
+
+#define on_read_write(rf, wf)                   \
+_on_read_write(this,                            \
+(__rcast3)&SC_CURRENT_USER_MODULE::rf,          \
+(__wcast3)&SC_CURRENT_USER_MODULE::wf )
+
 
     /**
      * \brief Desctructor

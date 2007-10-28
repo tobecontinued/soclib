@@ -1,0 +1,11 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciInitSimpleWriteReq'
+	header_files = '../../systemc/include/caba/util/vci_initiator_fsm.h',
+	implementation_files = '../../systemc/src/caba/util/vci_initiator/simple_write_req.cc',
+	uses = [
+		Uses('vci_initiator_simple_req'),
+		Uses('mapping_table'),
+		]

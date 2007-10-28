@@ -1,0 +1,10 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciInitiatorFsm'
+	header_files = '../../systemc/include/caba/util/vci_initiator_fsm.h',
+	implementation_files = '../../systemc/src/caba/util/vci_initiator_fsm.cc',
+	uses = [
+		Uses('mapping_table'),
+		]

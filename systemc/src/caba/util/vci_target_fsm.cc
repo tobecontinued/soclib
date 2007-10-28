@@ -42,8 +42,8 @@ tmpl(/**/)::VciTargetFsm(
 
 tmpl(void)::_on_read_write(
     soclib::caba::BaseModule *owner_module,
-    wrapper_read_t *read_func,
-    wrapper_write_t *write_func )
+    wrapper_read_t read_func,
+    wrapper_write_t write_func )
 {
     m_owner = owner_module;
     m_on_read_f = read_func;
@@ -100,7 +100,7 @@ tmpl(void)::transition()
                 {
                 case VCI_CMD_WRITE:
                     rsp_info.rdata = 0;
-                    if (m_on_write_f(m_owner, i, address, p_vci.wdata.read(), p_vci.be.read()))
+                    if ((m_owner->*m_on_write_f)(i, address, p_vci.wdata.read(), p_vci.be.read()))
                         m_state = TARGET_WRITE_RSP;
                     else {
                         m_state = TARGET_ERROR_RSP;
@@ -109,7 +109,7 @@ tmpl(void)::transition()
                     break;
 
                 case VCI_CMD_READ:
-                    if (m_on_read_f(m_owner, i, address, rdata)) {
+                    if ((m_owner->*m_on_read_f)(i, address, rdata)) {
                         m_state = TARGET_READ_RSP;
                         rsp_info.rdata = rdata;
                     } else {
