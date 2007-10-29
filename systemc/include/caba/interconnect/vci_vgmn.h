@@ -23,7 +23,7 @@
 #ifndef SOCLIB_CABA_VCI_VGMN_H_
 #define SOCLIB_CABA_VCI_VGMN_H_
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/util/base_module.h"
 #include "caba/interface/vci_initiator.h"
 #include "caba/interface/vci_target.h"
@@ -33,6 +33,8 @@
 #include "common/mapping_table.h"
 
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 namespace _vgmn {
 

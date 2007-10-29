@@ -21,11 +21,13 @@
  * Maintainers: nipo
  */
 
-#include <systemc.h>
+#include <systemc>
 #include <cassert>
 #include "caba/interconnect/vci_vgmn.h"
 
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 namespace _vgmn {
 

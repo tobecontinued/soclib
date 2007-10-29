@@ -23,10 +23,12 @@
 #ifndef SOCLIB_CABA_SIGNAL_VCI_PARAM_H_
 #define SOCLIB_CABA_SIGNAL_VCI_PARAM_H_
 
-#include <systemc.h>
+#include <systemc>
 #include "common/static_assert.h"
 
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 #define VCI_CMD_NOP 0
 #define VCI_CMD_READ 1
@@ -81,30 +83,30 @@ public:
 	typedef bool ack_t;
 	typedef bool val_t;
 	/* Request content */
-	typedef sc_uint<N> addr_t;
-	typedef sc_uint<B> be_t;
+	typedef sc_dt::sc_uint<N> addr_t;
+	typedef sc_dt::sc_uint<B> be_t;
 	typedef bool cfixed_t;
-	typedef sc_uint<Q> clen_t;
-	typedef sc_uint<2> cmd_t;
+	typedef sc_dt::sc_uint<Q> clen_t;
+	typedef sc_dt::sc_uint<2> cmd_t;
 	typedef bool contig_t;
-	typedef sc_uint<B*8> data_t;
+	typedef sc_dt::sc_uint<B*8> data_t;
 	typedef bool eop_t;
 	typedef bool const_t;
-	typedef sc_uint<K> plen_t;
+	typedef sc_dt::sc_uint<K> plen_t;
 	typedef bool wrap_t;
 	/* Response content */
-	typedef sc_uint<E> rerror_t;
+	typedef sc_dt::sc_uint<E> rerror_t;
 
 	/* The advanced signal types */
 	/* Request content */
 	typedef bool defd_t;
-	typedef sc_uint<W> wrplen_t;
+	typedef sc_dt::sc_uint<W> wrplen_t;
 	/* Response content */
-	typedef sc_uint<F> rflag_t;
+	typedef sc_dt::sc_uint<F> rflag_t;
 	/* Threading */
-	typedef sc_uint<S> srcid_t;
-	typedef sc_uint<T> trdid_t;
-	typedef sc_uint<P> pktid_t;
+	typedef sc_dt::sc_uint<S> srcid_t;
+	typedef sc_dt::sc_uint<T> trdid_t;
+	typedef sc_dt::sc_uint<P> pktid_t;
 };
 
 }}

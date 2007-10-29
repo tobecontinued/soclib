@@ -13,10 +13,12 @@
 #ifndef SOCLIB_CABA_SIGNAL_XCACHE_PORTS_H_
 #define SOCLIB_CABA_SIGNAL_XCACHE_PORTS_H_
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/interface/xcache_signals.h"
 
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 /*
  * DCACHE cache port
@@ -25,11 +27,11 @@ class DCacheCachePort
 {
 public:
 	sc_in<bool>          req;
-	sc_in<sc_uint<4> >   type;
-	sc_in<sc_uint<32> >  wdata;
-	sc_in<sc_uint<32> >  adr;
+	sc_in<sc_dt::sc_uint<4> >   type;
+	sc_in<sc_dt::sc_uint<32> >  wdata;
+	sc_in<sc_dt::sc_uint<32> >  adr;
 	sc_out<bool>         frz;
-	sc_out<sc_uint<32> > rdata;
+	sc_out<sc_dt::sc_uint<32> > rdata;
 	sc_out<bool>         berr; 
 
     DCacheCachePort(const std::string &name = sc_gen_unique_name("dcache_cache"))
@@ -62,10 +64,10 @@ class ICacheCachePort
 {
 public:
 	sc_in<bool> 	        req;
-	sc_in<sc_uint<32> >     adr; 
-	sc_in<sc_uint<2> >      type; 
+	sc_in<sc_dt::sc_uint<32> >     adr; 
+	sc_in<sc_dt::sc_uint<2> >      type; 
 	sc_out<bool> 	        frz;
-	sc_out<sc_uint<32> >    ins;
+	sc_out<sc_dt::sc_uint<32> >    ins;
 	sc_out<bool>            berr;
     
     ICacheCachePort(const std::string &name = sc_gen_unique_name("icache_cache"))

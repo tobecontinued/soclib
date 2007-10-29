@@ -23,20 +23,20 @@
 #ifndef SOCLIB_COMMON_BASE_MODULE_H_
 #define SOCLIB_COMMON_BASE_MODULE_H_
 
-#include <systemc.h>
+#include <systemc>
 #include <string>
 
 namespace soclib {
 
 class BaseModule
-    : public sc_module
+    : public sc_core::sc_module
 {
 private:
     std::string m_name;
 
 public:
-    BaseModule(const sc_module_name &name)
-            : sc_module(name), m_name((const char *)name)
+    BaseModule(const sc_core::sc_module_name &name)
+            : sc_core::sc_module(name), m_name((const char *)name)
     {
     }
 

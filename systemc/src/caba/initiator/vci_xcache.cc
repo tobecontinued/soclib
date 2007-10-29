@@ -777,13 +777,13 @@ tmpl(void)::transition()
 
     if ( fifo_put ) {
         if ( fifo_get ) {
-            m_data_fifo.put_and_get((sc_uint<32>)data_fifo);
-            m_addr_fifo.put_and_get((sc_uint<32>)addr_fifo);
-            m_type_fifo.put_and_get((sc_uint<4>)type_fifo);
+            m_data_fifo.put_and_get((sc_dt::sc_uint<32>)data_fifo);
+            m_addr_fifo.put_and_get((sc_dt::sc_uint<32>)addr_fifo);
+            m_type_fifo.put_and_get((sc_dt::sc_uint<4>)type_fifo);
         } else {
-            m_data_fifo.simple_put((sc_uint<32>)data_fifo);
-            m_addr_fifo.simple_put((sc_uint<32>)addr_fifo);
-            m_type_fifo.simple_put((sc_uint<4>)type_fifo);
+            m_data_fifo.simple_put((sc_dt::sc_uint<32>)data_fifo);
+            m_addr_fifo.simple_put((sc_dt::sc_uint<32>)addr_fifo);
+            m_type_fifo.simple_put((sc_dt::sc_uint<4>)type_fifo);
         }
     } else {
         if ( fifo_get ) {

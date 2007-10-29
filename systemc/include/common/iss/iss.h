@@ -30,12 +30,14 @@
 #ifndef _SOCLIB_ISS_H_
 #define _SOCLIB_ISS_H_
 
-#include <systemc.h>
+#include <systemc>
 #include <cassert>
 #include "common/endian.h"
 #include "common/register.h"
 
 namespace soclib { namespace common {
+
+using namespace sc_core;
 
 class Iss
 {

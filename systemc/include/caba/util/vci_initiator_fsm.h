@@ -23,7 +23,7 @@
 #ifndef INITIATOR_FSM_HANDLER_H
 #define INITIATOR_FSM_HANDLER_H
 
-#include <systemc.h>
+#include <systemc>
 #include <vector>
 #include <list>
 #include <cassert>
@@ -37,6 +37,8 @@
 
 namespace soclib {
 namespace caba {
+
+using namespace sc_core;
 
 template<typename vci_param>
 class VciInitiatorReq

@@ -37,12 +37,14 @@
 #define PIBUS_BCU_H_
 
 #include <inttypes.h>
-#include <systemc.h>
+#include <systemc>
 #include "common/mapping_table.h"
 #include "caba/interface/pibus_signals.h"
 #include "caba/util/base_module.h"
 
 namespace soclib { namespace caba {
+
+	using namespace sc_core;
 
 class PibusBcu 
 	: public soclib::caba::BaseModule
@@ -60,9 +62,9 @@ public:
 	sc_in<bool>				*p_req;
 	sc_out<bool>				*p_gnt;
 	sc_out<bool>				*p_sel;
-	sc_in<sc_uint<32> >			p_a;
+	sc_in<sc_dt::sc_uint<32> >			p_a;
 	sc_in<bool>				p_lock;
-	sc_in<sc_uint<2> >			p_ack;
+	sc_in<sc_dt::sc_uint<2> >			p_ack;
 	sc_out<bool>				p_tout;
 
 	//	CONSTRUCTOR

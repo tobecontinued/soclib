@@ -23,7 +23,8 @@
 #ifndef SOCLIB_COMMON_REGISTER_H
 #define SOCLIB_COMMON_REGISTER_H
 
-#include <systemc.h>
+#include <stdint.h>
+#include <systemc>
 
 class scalar_t {
     typedef     uint32_t                    reg_32_t;
@@ -32,9 +33,9 @@ class scalar_t {
     };
 
 class sc_signal_t {
-    typedef     sc_signal<sc_uint<32> >     reg_32_t;
-    typedef     sc_signal<sc_uint<8> >      reg_8_t;
-    typedef     sc_signal<bool>             reg_bool_t;
+    typedef     sc_core::sc_signal<sc_dt::sc_uint<32> >     reg_32_t;
+    typedef     sc_core::sc_signal<sc_dt::sc_uint<8> >      reg_8_t;
+    typedef     sc_core::sc_signal<bool>             reg_bool_t;
     };
 
 

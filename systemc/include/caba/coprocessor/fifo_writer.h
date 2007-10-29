@@ -23,13 +23,15 @@
 #ifndef SOCLIB_CABA_FIFO_WRITER_H
 #define SOCLIB_CABA_FIFO_WRITER_H
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/util/base_module.h"
 #include "caba/interface/fifo_ports.h"
 #include "common/process_wrapper.h"
 
 namespace soclib {
 namespace caba {
+
+using namespace sc_core;
 
 template <typename word_t>
 class FifoWriter

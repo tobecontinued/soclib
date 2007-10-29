@@ -23,10 +23,12 @@
 #ifndef SOCLIB_CABA_GENERIC_FIFO_H
 #define SOCLIB_CABA_GENERIC_FIFO_H
 
-#include <systemc.h>
+#include <systemc>
 #include "common/register.h"
 
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 template<typename data_t, int depth>
 class GenericFifo

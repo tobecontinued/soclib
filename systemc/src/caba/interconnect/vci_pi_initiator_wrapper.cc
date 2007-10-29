@@ -169,7 +169,7 @@ switch (r_fsm_state) {
 	p_vci.rspval 	= false;
 	p_pi.a 		= p_vci.address.read();
 	p_pi.read	= r_read;
-	p_pi.opc	= (sc_uint<4>)r_opc;
+	p_pi.opc	= (sc_dt::sc_uint<4>)r_opc;
 	p_pi.lock 	= !p_vci.eop;
         break;
 
@@ -196,7 +196,7 @@ switch (r_fsm_state) {
 	else			p_vci.rdata 	= p_pi.d.read();
 	p_pi.a 		= p_vci.address.read();
 	p_pi.read	= r_read;
-	p_pi.opc	= (sc_uint<4>)r_opc;
+	p_pi.opc	= (sc_dt::sc_uint<4>)r_opc;
 	p_pi.lock 	= !p_vci.eop;
         break;
 

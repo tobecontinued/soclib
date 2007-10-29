@@ -23,7 +23,7 @@
 #ifndef SOCLIB_VCI_MULTI_TTY_H
 #define SOCLIB_VCI_MULTI_TTY_H
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/util/vci_target_fsm.h"
 #include "caba/util/base_module.h"
 #include "common/tty_wrapper.h"
@@ -31,6 +31,8 @@
 
 namespace soclib {
 namespace caba {
+
+using namespace sc_core;
 
 template<typename vci_param>
 class VciMultiTty

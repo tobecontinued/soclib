@@ -24,12 +24,14 @@
 #ifndef VCI_PI_INITIATOR_WRAPPER_H_
 #define VCI_PI_INITIATOR_WRAPPER_H_
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/util/base_module.h"
 #include "caba/interface/pibus_initiator_ports.h"
 #include "caba/interface/vci_target.h"
 
 namespace soclib { namespace caba {
+
+	using namespace sc_core;
 
 template<typename vci_param>
 class VciPiInitiatorWrapper 

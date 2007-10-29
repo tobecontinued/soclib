@@ -8,7 +8,7 @@
 #define SOCLIB_CABA_VCI_XCACHE_H
 
 #include <inttypes.h>
-#include <systemc.h>
+#include <systemc>
 #include "common/static_assert.h"
 #include "common/static_log2.h"
 #include "caba/util/base_module.h"
@@ -19,6 +19,8 @@
 
 namespace soclib {
 namespace caba {
+
+    using namespace sc_core;
 
 template<typename    vci_param>
 class VciXCache
@@ -65,9 +67,9 @@ private:
     sc_signal<int>      r_dcache_save_type;
     sc_signal<int>      r_dcache_save_prev;
 
-    soclib::caba::GenericFifo<sc_uint<32>,8>  m_data_fifo;
-    soclib::caba::GenericFifo<sc_uint<32>,8>  m_addr_fifo;
-    soclib::caba::GenericFifo<sc_uint<4>,8>   m_type_fifo;
+    soclib::caba::GenericFifo<sc_dt::sc_uint<32>,8>  m_data_fifo;
+    soclib::caba::GenericFifo<sc_dt::sc_uint<32>,8>  m_addr_fifo;
+    soclib::caba::GenericFifo<sc_dt::sc_uint<4>,8>   m_type_fifo;
 
     sc_signal<int>      r_icache_fsm;
     sc_signal<int>      **r_icache_data;

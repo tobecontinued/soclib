@@ -13,9 +13,11 @@
 #ifndef SOCLIB_CABA_SIGNAL_XCACHE_SIGNALS_H_
 #define SOCLIB_CABA_SIGNAL_XCACHE_SIGNALS_H_
 
-#include <systemc.h>
+#include <systemc>
 
 namespace soclib { namespace caba {
+
+    using namespace sc_core;
 
 /*
  * DCACHE signals
@@ -33,11 +35,11 @@ public:
 	};
 	
 	sc_signal<bool>            req;   // valid request
-	sc_signal<sc_uint<4> >     type;  // request type
-	sc_signal<sc_uint<32> >    wdata; // data from processor
-	sc_signal<sc_uint<32> >    adr;   // address
+	sc_signal<sc_dt::sc_uint<4> >     type;  // request type
+	sc_signal<sc_dt::sc_uint<32> >    wdata; // data from processor
+	sc_signal<sc_dt::sc_uint<32> >    adr;   // address
 	sc_signal<bool>            frz;   // request not accepted
-	sc_signal<sc_uint<32> >    rdata; // data from cache
+	sc_signal<sc_dt::sc_uint<32> >    rdata; // data from cache
 	sc_signal<bool>            berr;  // bus or memory error 
 
 	DCacheSignals(std::string name_ = (std::string)sc_gen_unique_name("dcache"))
@@ -64,10 +66,10 @@ public:
 	};
 	
 	sc_signal<bool>             req;  // valid read request
-	sc_signal<sc_uint<32> >     adr;  // instruction address
-	sc_signal<sc_uint<2> >      type; // request type
+	sc_signal<sc_dt::sc_uint<32> >     adr;  // instruction address
+	sc_signal<sc_dt::sc_uint<2> >      type; // request type
 	sc_signal<bool>             frz;  // instruction not valid
-	sc_signal<sc_uint<32> >     ins;  // instruction
+	sc_signal<sc_dt::sc_uint<32> >     ins;  // instruction
 	sc_signal<bool>             berr; // bus or memory error
 	
 	ICacheSignals (std::string name_ = (std::string) sc_gen_unique_name ("icache"))

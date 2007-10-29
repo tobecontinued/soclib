@@ -23,10 +23,12 @@
 #ifndef SOCLIB_CABA_FIFO_PORTS_H
 #define SOCLIB_CABA_FIFO_PORTS_H
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/interface/fifo_signals.h"
 
 namespace soclib { namespace caba {
+
+	using namespace sc_core;
 
 template <typename word_t>
 struct FifoInput {

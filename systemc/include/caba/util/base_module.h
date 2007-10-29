@@ -30,11 +30,11 @@ class BaseModule
 {
     BaseModule();
 public:
-    BaseModule( sc_module_name &name )
+    BaseModule( sc_core::sc_module_name &name )
             : soclib::BaseModule(name)
     {}
 
-	virtual void trace(sc_trace_file &tf, const std::string base_name, unsigned int what)
+	virtual void trace(sc_core::sc_trace_file &tf, const std::string base_name, unsigned int what)
     {
     }
 };

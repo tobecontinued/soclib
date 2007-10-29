@@ -8,12 +8,12 @@ namespace soclib { namespace caba {
 class PibusInitiator
 {
 public:
-	sc_out<sc_uint<32> >		a;	// address
-	sc_out<sc_uint<4> >		opc;	// codop
+	sc_out<sc_dt::sc_uint<32> >		a;	// address
+	sc_out<sc_dt::sc_uint<4> >		opc;	// codop
 	sc_out<bool>			read;	// read transaction
 	sc_out<bool>			lock;	// burst transaction
-	sc_in<sc_uint<2> >		ack;	// response code
-	sc_inout<sc_uint<32> >		d;	// data
+	sc_in<sc_dt::sc_uint<2> >		ack;	// response code
+	sc_inout<sc_dt::sc_uint<32> >		d;	// data
 	sc_in<bool>			tout;	// time_out
 
 	void operator() (Pibus &sig)

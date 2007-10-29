@@ -25,7 +25,7 @@
 
 #include <inttypes.h>
 #include <iostream>
-#include <systemc.h>
+#include <systemc>
 #include "common/address_masking_table.h"
 #include "common/address_decoding_table.h"
 #include "caba/interface/vci_param.h"
@@ -33,6 +33,8 @@
 #include "caba/interface/vci_target.h"
 
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 template <typename vci_param>
 class VciRspBuffer

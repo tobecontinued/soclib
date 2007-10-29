@@ -29,7 +29,7 @@ platform:
 top.cc:
 -------8<--------------8<--------------8<--------------8<-------
 #include <iostream>
-#include <systemc.h>
+#include <systemc>
 #include "common/mapping_table.h"
 
 int sc_main(int argc, char **argv)

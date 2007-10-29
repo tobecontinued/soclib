@@ -1,7 +1,11 @@
 #ifndef SOCLIB_CABA_PIBUS_SIGNALS_H_
 #define SOCLIB_CABA_PIBUS_SIGNALS_H_
 
+#include <systemc>
+
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 class Pibus
 {
@@ -33,12 +37,12 @@ public:
 	};
 
 	// signals
-	sc_signal<sc_uint<4> >		opc;	// codop
+	sc_signal<sc_dt::sc_uint<4> >		opc;	// codop
 	sc_signal<bool>			lock;	// burst transaction when true
 	sc_signal<bool>			read;	// read transaction when true
-	sc_signal<sc_uint<32> >		a;	// address
-	sc_signal<sc_uint<2> >		ack;	// response
-	sc_signal<sc_uint<32> >		d;	// data (bidirectionnal)
+	sc_signal<sc_dt::sc_uint<32> >		a;	// address
+	sc_signal<sc_dt::sc_uint<2> >		ack;	// response
+	sc_signal<sc_dt::sc_uint<32> >		d;	// data (bidirectionnal)
 	sc_signal<bool>        		tout; 	// Time-Out
 
 #define ren(x) x(((std::string)(name_ + "_"#x)).c_str())

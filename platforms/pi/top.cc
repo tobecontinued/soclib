@@ -15,6 +15,7 @@
 
 int _main(int argc, char *argv[])
 {
+	using namespace sc_core;
 	// Avoid repeating these everywhere
 	using soclib::common::IntTab;
 	using soclib::common::Segment;

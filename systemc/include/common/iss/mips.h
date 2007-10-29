@@ -51,7 +51,6 @@
 #ifndef _SOCLIB_MIPS_ISS_H_
 #define _SOCLIB_MIPS_ISS_H_
 
-#include <systemc.h>
 #include "common/iss/iss.h"
 #include "common/endian.h"
 #include "common/register.h"

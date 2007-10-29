@@ -23,9 +23,11 @@
 #ifndef SOCLIB_CABA_FIFO_SIGNALS_H
 #define SOCLIB_CABA_FIFO_SIGNALS_H
 
-#include <systemc.h>
+#include <systemc>
 
 namespace soclib { namespace caba {
+
+	using namespace sc_core;
 
 template <typename word_t>
 class FifoSignals

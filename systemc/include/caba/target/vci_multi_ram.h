@@ -23,7 +23,7 @@
 #ifndef SOCLIB_CABA_MULTI_RAM_H
 #define SOCLIB_CABA_MULTI_RAM_H
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/util/vci_target_fsm.h"
 #include "caba/util/base_module.h"
 #include "common/mapping_table.h"
@@ -31,6 +31,8 @@
 
 namespace soclib {
 namespace caba {
+
+using namespace sc_core;
 
 template<typename vci_param>
 class VciMultiRam

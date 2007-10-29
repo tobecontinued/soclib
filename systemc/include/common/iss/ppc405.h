@@ -26,7 +26,6 @@
 #ifndef _SOCLIB_PPC405_ISS_H_
 #define _SOCLIB_PPC405_ISS_H_
 
-#include <systemc.h>
 #include "common/iss/iss.h"
 #include "common/static_assert.h"
 #include "common/endian.h"

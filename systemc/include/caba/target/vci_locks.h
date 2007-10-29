@@ -23,13 +23,15 @@
 #ifndef SOCLIB_CABA_VCI_LOCKS_H
 #define SOCLIB_CABA_VCI_LOCKS_H
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/util/base_module.h"
 #include "caba/interface/vci_target.h"
 #include "common/mapping_table.h"
 
 namespace soclib {
 namespace caba {
+
+using namespace sc_core;
 
 template<typename vci_param>
 class VciLocks

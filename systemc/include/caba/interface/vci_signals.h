@@ -24,10 +24,12 @@
 #define SOCLIB_CABA_SIGNAL_VCI_SIGNALS_H_
 
 #include <string>
-#include <systemc.h>
+#include <systemc>
 #include "caba/interface/vci_param.h"
 
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 /**
  * VCI Initiator port

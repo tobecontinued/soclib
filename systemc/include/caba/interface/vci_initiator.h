@@ -23,11 +23,13 @@
 #ifndef SOCLIB_CABA_SIGNAL_VCI_INITIATOR_H_
 #define SOCLIB_CABA_SIGNAL_VCI_INITIATOR_H_
 
-#include <systemc.h>
+#include <systemc>
 #include "caba/interface/vci_signals.h"
 #include "caba/interface/vci_param.h"
 
 namespace soclib { namespace caba {
+
+using namespace sc_core;
 
 /**
  * VCI Initiator port
