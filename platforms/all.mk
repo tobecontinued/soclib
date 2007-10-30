@@ -18,6 +18,16 @@ test_soclib:
 simulation.x: $(PLATFORM_DESC)
 	$(SOCLIB_CC) -p $(PLATFORM_DESC) -o $@
 
+ifeq ($(origin SIMULATION_ARGS),undefined)
+test:
+	@echo "No arguments to simulation, cant simulate anything"
+
+else
+test:
+	SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null
+
+endif
+
 clean:
 	$(SOCLIB_CC) -p $(PLATFORM_DESC) -x -o $@
 ifeq ($(NO_SOFT),)
