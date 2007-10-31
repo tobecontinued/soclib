@@ -104,8 +104,9 @@ public:
         return m_ins_delay;
     }
 
-	virtual inline void getInstructionRequest(uint32_t &address) const
+	virtual inline void getInstructionRequest(bool req, uint32_t &address) const
 	{
+        req = true;
 		address = r_pc;
 	}
 
@@ -177,7 +178,6 @@ protected:
         switch (type) {
         case MEM_NONE:
         case MEM_INVAL:
-            return false;
         case MEM_LB:
         case MEM_LBU:
         case MEM_SB:
@@ -192,6 +192,8 @@ protected:
         case MEM_SW:
             return (address&3);
         }
+        assert(0&&"This is impossible");
+        return false;
     }
 
     static inline bool isReadAccess( DataAccessType type )
@@ -210,8 +212,9 @@ protected:
         case MEM_SB:
         case MEM_SH:
         case MEM_SW:
-            break;
+            return false;
         }
+        assert(0&&"This is impossible");
         return false;
     }
 };

@@ -77,8 +77,7 @@ tmpl(void)::transition()
             m_iss.setRdata(p_dcache.berr, p_dcache.rdata.read());
             m_mem_type = soclib::common::Iss::MEM_NONE;
         }
-    } else
-        frozen |= p_dcache.frz.read();
+    }
 
 	if ( frozen || m_iss.isBusy() )
         m_iss.nullStep();
@@ -97,18 +96,12 @@ tmpl(void)::transition()
 
 tmpl(void)::genMoore()
 {
-	uint32_t i_adr		= 0;
+	uint32_t i_adr = 0;
+    bool req = false;
 
-	m_iss.getInstructionRequest( i_adr );
+	m_iss.getInstructionRequest( req, i_adr );
 	p_icache.req = true;
 	p_icache.adr = i_adr;
-
-	enum soclib::common::Iss::DataAccessType
-        d_type = soclib::common::Iss::MEM_NONE;
-	uint32_t d_adr		= 0;
-	uint32_t d_wdata	= 0;
-	
-	m_iss.getDataRequest( d_type, d_adr, d_wdata );
  
  	switch( m_mem_type ) {
 	case soclib::common::Iss::MEM_LB:
