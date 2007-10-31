@@ -335,7 +335,7 @@ tmpl(void)::transition()
         break;
     }
 
-    // dcache_address, dcache_unc_hit, dcache_hit, dcache_validreq 
+    // dcache_address, dcache_unc_hit, dcache_hit
     const int dcache_address  = (int)p_dcache.adr.read();
     const int dcache_x = (dcache_address & s_dcache_xmask) >> s_dcache_xshift;
     const int dcache_y = (dcache_address & s_dcache_ymask) >> s_dcache_yshift;
@@ -345,8 +345,6 @@ tmpl(void)::transition()
 
     const bool dcache_hit = (dcache_z == r_dcache_tag[dcache_y]);
     
-    const bool dcache_validreq = p_dcache.req.read() && icache_hit;
-
     bool    fifo_put = false;
     bool    fifo_get = false;
     int     data_fifo = 0;
@@ -484,7 +482,7 @@ tmpl(void)::transition()
         break;
 
     case DCACHE_IDLE:
-        if (dcache_validreq) {
+        if (p_dcache.req.read()) {
             r_dcache_save_addr = (int)p_dcache.adr.read();
             r_dcache_save_data = (int)p_dcache.wdata.read();
             r_dcache_save_type = dcache_req_type;
@@ -577,7 +575,7 @@ tmpl(void)::transition()
             m_cpt_dcache_dir_read++;
             m_cpt_fifo_write++;
 
-            if (! dcache_validreq) {
+            if (! p_dcache.req.read()) {
                 r_dcache_fsm = DCACHE_IDLE;
                 break;
             }
