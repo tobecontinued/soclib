@@ -6,9 +6,6 @@
 
 #define base(x) (void*)(x##_BASE)
 
-void uputs(const char *);
-void puti(const int i);
-
 #ifdef __mips__
 
 #define get_cp0(x)									\
@@ -58,3 +55,5 @@ static inline char getc()
 }
 
 #endif
+
+void exit(int retval);

@@ -1,6 +1,15 @@
-include test.mk
+TESTDIR?=.
+include $(TESTDIR)/test.mk
 
-VPATH=. ../common
+RESULT=test.res
+COMMON=$(TESTDIR)/../common
+BASE=$(TESTDIR)/..
+TESTER_DIR=$(shell soclib-cc --getpath)/platforms/tester
+TESTER=$(TESTER_DIR)/simulation.x
+
+ifeq ($(words $(ARCH)),1)
+
+VPATH=. $(COMMON)
 
 SOCLIB:=$(shell soclib-cc --getpath)
 CC_PREFIX=$(ARCH)-unknown-elf-
@@ -12,12 +21,12 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. -I../common -I$(TESTER_DIR) $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
+CFLAGS=-Wall -O2 -I. -I$(COMMON) -I$(TESTER_DIR) $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
 
-all: test.res
+all: $(RESULT)
 
 $(SOFT_IMAGE): $(OBJS)
-	$(LD) -T ../common/ldscript -o $@ $^
+	$(LD) -T $(COMMON)/ldscript -o $@ $^
 
 %.o: %.s
 	$(AS) $< -o $@
@@ -28,6 +37,41 @@ $(SOFT_IMAGE): $(OBJS)
 clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS)
 
-test.res: $(SOFT_IMAGE) $(TESTER)
+$(RESULT): $(SOFT_IMAGE) $(TESTER)
 	$(TESTER) $(ARCH) $(SOFT_IMAGE) > test.out
 	mv test.out $@
+
+$(TESTER):
+	make -C $(TESTER_DIR) $(patsubst $(TESTER_DIR)/%,%,$(TESTER))
+
+.PHONY: $(TESTER)
+
+else
+
+TESTDIR=../
+
+all: $(RESULT)
+
+$(RESULT): $(patsubst %,%/$(RESULT),$(ARCH))
+	cat $^ > $@
+
+.PHONY: $(RESULT)
+
+clean:
+	rm -rf $(ARCH) $(RESULT)
+
+define onetest
+
+$(1)/$(RESULT): $(1)
+	make -C $(1) -f $(COMMON)/Makefile TESTDIR=.. ARCH=$(1)
+
+$(1):
+	mkdir -p $(1)
+
+.PHONY: $(1)/$(RESULT)
+
+endef
+
+$(foreach bla,$(ARCH),$(eval $(call onetest,$(bla))))
+
+endif

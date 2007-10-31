@@ -1,4 +1,5 @@
 #include "system.h"
+#include "stdio.h"
 
 #if __mips__
 asm(
@@ -255,42 +256,42 @@ void _critical_input()
 
 void _watchdog()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _debug()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _machine_check()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _instruction_storage()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _program()
 {
-	uputs(__FUNCTION__);
+	printf(__FUNCTION__);
 }
 
 void _data_storage()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _data_tlb_miss()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _alignment()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _external()
@@ -305,17 +306,17 @@ void _syscall()
 
 void _programmable_interval_timer()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _fixed_interval_timer()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 void _instruction_tlb_miss()
 {
-    uputs(__FUNCTION__);
+    printf(__FUNCTION__);
 }
 
 #else

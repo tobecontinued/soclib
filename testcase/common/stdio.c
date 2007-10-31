@@ -175,10 +175,8 @@ void *malloc( unsigned long sz )
 
 void abort()
 {
-	soclib_io_set(
-		base(SIMHELPER),
-		SIMHELPER_EXCEPT_WITH_VAL,
-		1);
+	printf("Aborted\n");
+	exit(1);
 }
 
 void *memcpy( void *_dst, void *_src, unsigned long size )
@@ -189,4 +187,20 @@ void *memcpy( void *_dst, void *_src, unsigned long size )
 		*dst++ = *src++;
 	}
 	return _dst;
+}
+
+void exit(int retval)
+{
+	soclib_io_set(
+		base(SIMHELPER),
+		SIMHELPER_EXCEPT_WITH_VAL,
+		retval);
+	while(1)
+		;
+}
+
+void puts(const char *s)
+{
+	while (*s)
+		putc(*s++);
 }
