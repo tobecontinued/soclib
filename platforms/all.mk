@@ -23,7 +23,7 @@ test:
 	@echo "No arguments to simulation, cant simulate anything"
 
 else
-test:
+test: simulation.x
 	SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null
 
 endif
