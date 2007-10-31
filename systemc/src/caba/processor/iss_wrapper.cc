@@ -53,29 +53,54 @@ tmpl(/**/)::~IssWrapper()
 
 tmpl(void)::transition()
 {
+    using soclib::common::Iss;
+
 	if ( ! p_resetn.read() ) {
 		m_iss.reset();
-        m_mem_type = soclib::common::Iss::MEM_NONE;
+        m_ins_asked = false;
+        m_mem_type = Iss::MEM_NONE;
+        m_iss.getInstructionRequest( m_ins_asked, m_ins_addr );
 		return;
 	}
 
     bool frozen = false;
 
-	// Transmit asynchronous data bus error (write)
-	if (p_dcache.berr)
-		m_iss.setWriteBerr();
-
-    if ( p_icache.frz.read() )
-        frozen = true;
-    else
-		m_iss.setInstruction(p_icache.berr, p_icache.ins.read());
-
-    if ( m_mem_type != soclib::common::Iss::MEM_NONE ) {
-        if ( p_dcache.frz.read() ) {
+    if ( m_ins_asked ) {
+        if ( p_icache.frz.read() )
             frozen = true;
+        else
+            m_iss.setInstruction(p_icache.berr, p_icache.ins.read());
+    }
+
+    if ( m_mem_type != Iss::MEM_NONE ) {
+        if ((bool)p_dcache.berr.read()) {
+            switch(m_mem_type) {
+            case Iss::MEM_LB:
+            case Iss::MEM_LBU:
+            case Iss::MEM_LH:
+            case Iss::MEM_LHBR:
+            case Iss::MEM_LHU:
+            case Iss::MEM_LWBR:
+            case Iss::MEM_LW:
+                m_iss.setRdata(true, 0);
+                break;
+            case Iss::MEM_SB:
+            case Iss::MEM_SH:
+            case Iss::MEM_SW:
+                m_iss.setWriteBerr();
+                break;
+            case Iss::MEM_INVAL:
+            case Iss::MEM_NONE:
+                assert(0 && "Impossible");
+            }
+            m_mem_type = Iss::MEM_NONE;
         } else {
-            m_iss.setRdata(p_dcache.berr, p_dcache.rdata.read());
-            m_mem_type = soclib::common::Iss::MEM_NONE;
+            if ((bool)p_dcache.frz.read())
+                frozen = true;
+            else {
+                m_iss.setRdata(false, p_dcache.rdata.read());
+                m_mem_type = Iss::MEM_NONE;
+            }
         }
     }
 
@@ -92,55 +117,54 @@ tmpl(void)::transition()
 		m_iss.step();
         m_iss.getDataRequest( m_mem_type, m_mem_addr, m_mem_wdata );
 	}
+    m_iss.getInstructionRequest( m_ins_asked, m_ins_addr );
 }
 
 tmpl(void)::genMoore()
 {
-	uint32_t i_adr = 0;
-    bool req = false;
+    using soclib::common::Iss;
 
-	m_iss.getInstructionRequest( req, i_adr );
-	p_icache.req = true;
-	p_icache.adr = i_adr;
+	p_icache.req = m_ins_asked;
+	p_icache.adr = m_ins_addr;
  
  	switch( m_mem_type ) {
-	case soclib::common::Iss::MEM_LB:
-	case soclib::common::Iss::MEM_LBU:
-	case soclib::common::Iss::MEM_LH:
-	case soclib::common::Iss::MEM_LHU:
-	case soclib::common::Iss::MEM_LW:
-	case soclib::common::Iss::MEM_LHBR:
-	case soclib::common::Iss::MEM_LWBR:
+	case Iss::MEM_LB:
+	case Iss::MEM_LBU:
+	case Iss::MEM_LH:
+	case Iss::MEM_LHU:
+	case Iss::MEM_LW:
+	case Iss::MEM_LHBR:
+	case Iss::MEM_LWBR:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::RW;
 		p_dcache.adr = m_mem_addr;
 		p_dcache.wdata = 0;
 		break;
-	case soclib::common::Iss::MEM_SB:
+	case Iss::MEM_SB:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::WB;
 		p_dcache.adr = m_mem_addr;
 		p_dcache.wdata = m_mem_wdata;
 		break;
-	case soclib::common::Iss::MEM_SH:
+	case Iss::MEM_SH:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::WH;
 		p_dcache.adr = m_mem_addr;
 		p_dcache.wdata = m_mem_wdata;
 		break;
-	case soclib::common::Iss::MEM_SW:
+	case Iss::MEM_SW:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::WW;
 		p_dcache.adr = m_mem_addr;
 		p_dcache.wdata = m_mem_wdata;
 		break;
-	case soclib::common::Iss::MEM_INVAL:
+	case Iss::MEM_INVAL:
 		p_dcache.req = true;
 		p_dcache.type = DCacheSignals::RZ;
 		p_dcache.adr = m_mem_addr;
 		p_dcache.wdata = 0;
 		break;
-	case soclib::common::Iss::MEM_NONE:
+	case Iss::MEM_NONE:
 		p_dcache.req = false;
 		p_dcache.type = 0;
 		p_dcache.adr = 0;

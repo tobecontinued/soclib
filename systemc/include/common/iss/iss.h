@@ -104,7 +104,7 @@ public:
         return m_ins_delay;
     }
 
-	virtual inline void getInstructionRequest(bool req, uint32_t &address) const
+	virtual inline void getInstructionRequest(bool &req, uint32_t &address) const
 	{
         req = true;
 		address = r_pc;
