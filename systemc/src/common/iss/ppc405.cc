@@ -125,43 +125,6 @@ void Ppc405Iss::step()
         goto handle_except;
     }
 
-    switch (r_mem_type ) {
-    default:
-        goto no_mem_access;
-        break;
-    case MEM_LW:
-        r_gp[r_mem_dest] = m_rdata;
-        break;
-    case MEM_LWBR:
-        r_gp[r_mem_dest] = soclib::endian::uint32_swap(m_rdata);
-        break;
-    case MEM_LB:
-        r_gp[r_mem_dest] = (int32_t)(int8_t)align(m_rdata, 3-r_mem_addr&0x3, 8);
-        break;
-    case MEM_LBU:
-        r_gp[r_mem_dest] = align(m_rdata, 3-r_mem_addr&0x3, 8);
-        break;
-    case MEM_LH:
-        r_gp[r_mem_dest] = (int32_t)(int16_t)align(m_rdata, 1-(r_mem_addr&0x2)/2, 16);
-        break;
-    case MEM_LHBR:
-        r_gp[r_mem_dest] = (int32_t)(int16_t)soclib::endian::uint16_swap(align(m_rdata, 1-(r_mem_addr&0x2)/2, 16));
-        break;
-    case MEM_LHU:
-        r_gp[r_mem_dest] = align(m_rdata, 1-(r_mem_addr&0x2)/2, 16);
-        break;
-    }
-#if PPC405_DEBUG
-    std::cout << m_name << std::hex
-              << " mem read " << r_mem_type
-              << " @: " << r_mem_addr
-              << " ->r" << r_mem_dest
-              << " data: " << r_gp[r_mem_dest]
-              << std::endl;
-#endif
-  no_mem_access:
-    r_mem_type = MEM_NONE;
-
     if ( r_dbe ) {
         m_exception = EXCEPT_DATA_STORAGE;
         r_dbe = false;
@@ -170,12 +133,6 @@ void Ppc405Iss::step()
         goto handle_except;
     }
 
-#if PPC405_DEBUG
-    if (r_mem_type > MEM_NONE && r_mem_type < MEM_SB)
-        std::cout << m_name << " read to " << r_mem_dest << "(" << r_mem_type << ") from "
-                  << std::hex << r_mem_addr << ": " << m_rdata << std::endl;
-    dump();
-#endif
     r_dcr[DCR_EXEC_CYCLES]++;
     run();
 
@@ -239,6 +196,52 @@ void Ppc405Iss::step()
 
   no_except:
     r_pc = m_next_pc;
+}
+
+void Ppc405Iss::setRdata(bool error, uint32_t rdata)
+{
+    m_dbe = error;
+    if ( error ) {
+        r_mem_type = MEM_NONE;
+        return;
+    }
+
+    uint32_t data = soclib::endian::uint32_swap(rdata);
+    switch (r_mem_type ) {
+    default:
+        break;
+    case MEM_LW:
+        r_gp[r_mem_dest] = data;
+        break;
+    case MEM_LWBR:
+        r_gp[r_mem_dest] = soclib::endian::uint32_swap(data);
+        break;
+    case MEM_LB:
+        r_gp[r_mem_dest] = (int32_t)(int8_t)align(data, 3-r_mem_addr&0x3, 8);
+        break;
+    case MEM_LBU:
+        r_gp[r_mem_dest] = align(data, 3-r_mem_addr&0x3, 8);
+        break;
+    case MEM_LH:
+        r_gp[r_mem_dest] = (int32_t)(int16_t)align(data, 1-(r_mem_addr&0x2)/2, 16);
+        break;
+    case MEM_LHBR:
+        r_gp[r_mem_dest] = (int32_t)(int16_t)soclib::endian::uint16_swap(align(data, 1-(r_mem_addr&0x2)/2, 16));
+        break;
+    case MEM_LHU:
+        r_gp[r_mem_dest] = align(data, 1-(r_mem_addr&0x2)/2, 16);
+        break;
+    }
+#if PPC405_DEBUG
+    std::cout << m_name << std::hex
+              << " mem read " << r_mem_type
+              << " @: " << r_mem_addr
+              << " ->r" << r_mem_dest
+              << " data: " << data
+              << " updated: " << r_gp[r_mem_dest]
+              << std::endl;
+#endif
+    r_mem_type = MEM_NONE;
 }
 
 }}

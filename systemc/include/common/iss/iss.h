@@ -193,6 +193,27 @@ protected:
             return (address&3);
         }
     }
+
+    static inline bool isReadAccess( DataAccessType type )
+    {
+        switch (type) {
+        case MEM_LB:
+        case MEM_LBU:
+        case MEM_LH:
+        case MEM_LHBR:
+        case MEM_LHU:
+        case MEM_LWBR:
+        case MEM_LW:
+            return true;
+        case MEM_NONE:
+        case MEM_INVAL:
+        case MEM_SB:
+        case MEM_SH:
+        case MEM_SW:
+            break;
+        }
+        return false;
+    }
 };
 
 }}

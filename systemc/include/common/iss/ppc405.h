@@ -308,11 +308,7 @@ public:
 		type = r_mem_type;
 	}
 
-	inline void setRdata(bool error, uint32_t rdata)
-	{
-		m_dbe = error;
-		m_rdata = soclib::endian::uint32_swap(rdata);
-	}
+	void setRdata(bool error, uint32_t rdata);
 
 	inline void setInstruction(bool error, uint32_t val)
 	{

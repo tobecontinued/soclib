@@ -172,6 +172,7 @@ private:
     uint32_t    m_rt;
     uint32_t    m_next_pc;
     uint32_t    m_exec_cycles;
+    bool m_hazard;
 
 public:
     MipsIss(uint32_t ident);
@@ -182,6 +183,7 @@ public:
     inline void nullStep()
     {
         doneNullStep();
+        m_hazard = false;
         ++r_count;
     }
 
@@ -192,6 +194,8 @@ public:
 		m_ibe = error;
 		m_ins.ins = val;
 	}
+
+	void setRdata(bool error, uint32_t rdata);
 
 private:
     void run();

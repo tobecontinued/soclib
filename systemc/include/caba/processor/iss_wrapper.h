@@ -45,6 +45,9 @@ public:
 
 private:
 	iss_t m_iss;
+	enum soclib::common::Iss::DataAccessType m_mem_type;
+	uint32_t 	m_mem_addr;
+	uint32_t 	m_mem_wdata;
 	void transition();
 	void genMoore();
 

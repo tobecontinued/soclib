@@ -98,6 +98,56 @@ void MipsIss::dump() const
     }
 }
 
+void MipsIss::setRdata(bool error, uint32_t data)
+{
+    m_dbe = error;
+    if ( error ) {
+        r_mem_type = MEM_NONE;
+        return;
+    }
+
+    // We write the  r_gp[i], and we detect a possible data dependency,
+    // in order to implement the delayed load behaviour.
+    if ( isReadAccess(r_mem_type) ) {
+        uint32_t reg_use = curInstructionUsesRegs();
+        if ( reg_use & USE_S && r_mem_dest == m_ins.r.rs ||
+             reg_use & USE_T && r_mem_dest == m_ins.r.rt )
+            m_hazard = true;
+#if MIPS_DEBUG
+        std::cout
+            << m_name
+            << " read to " << r_mem_dest
+            << "(" << r_mem_type << ")"
+            << " from " << std::hex << r_mem_addr
+            << ": " << data
+            << " hazard: " << m_hazard
+            << std::endl;
+#endif
+    }
+
+    switch (r_mem_type) {
+    default:
+        m_hazard = false;
+        break;
+    case MEM_LW:
+        r_gp[r_mem_dest] = data;
+        break;
+    case MEM_LB:
+        r_gp[r_mem_dest] = sign_ext8(align(data, r_mem_addr&0x3, 8));
+        break;
+    case MEM_LBU:
+        r_gp[r_mem_dest] = align(data, r_mem_addr&0x3, 8);
+        break;
+    case MEM_LH:
+        r_gp[r_mem_dest] = sign_ext16(align(data, (r_mem_addr&0x2)/2, 16));
+        break;
+    case MEM_LHU:
+        r_gp[r_mem_dest] = align(data, (r_mem_addr&0x2)/2, 16);
+        break;
+    }
+    r_mem_type = MEM_NONE;
+}
+
 void MipsIss::step()
 {
     ++r_count;
@@ -121,7 +171,6 @@ void MipsIss::step()
 
     m_next_pc = r_npc+4;
     m_exception = NO_EXCEPTION;
-    bool hazard = false;
 
     if (m_ibe) {
         m_exception = X_IBE;
@@ -132,37 +181,6 @@ void MipsIss::step()
         m_exception = X_DBE;
         r_bar = r_mem_addr;
         goto handle_except;
-    }
-
-    // We write the  r_gp[i], and we detect a possible data dependency,
-    // in order to implement the delayed load behaviour.
-    if ( r_mem_type != MEM_NONE ) {
-        uint32_t reg_use = curInstructionUsesRegs();
-        if ( (reg_use & USE_S && r_mem_dest == m_ins.r.rs) ||
-             (reg_use & USE_T && r_mem_dest == m_ins.r.rt) )
-            hazard = true;
-        
-        switch (r_mem_type) {
-        default:
-            break;
-        case MEM_LW:
-            r_gp[r_mem_dest] = m_rdata;
-            break;
-        case MEM_LB:
-            r_gp[r_mem_dest] = sign_ext8(align(m_rdata, r_mem_addr&0x3, 8));
-            break;
-        case MEM_LBU:
-            r_gp[r_mem_dest] = align(m_rdata, r_mem_addr&0x3, 8);
-            break;
-        case MEM_LH:
-            r_gp[r_mem_dest] = sign_ext16(align(m_rdata, (r_mem_addr&0x2)/2, 16));
-            break;
-        case MEM_LHU:
-            r_gp[r_mem_dest] = align(m_rdata, (r_mem_addr&0x2)/2, 16);
-            break;
-        }
-        r_mem_dest = 0;
-        r_mem_type = MEM_NONE;
     }
 
     if ( r_dbe ) {
@@ -177,11 +195,13 @@ void MipsIss::step()
     // run() can modify the following registers: r_gp[i], r_mem_type,
     // r_mem_addr; r_mem_wdata, r_mem_dest, r_hi, r_lo, m_exception,
     // m_next_pc
-    if ( ! hazard ) {
+    if ( m_hazard ) {
+        m_hazard = false;
+        goto house_keeping;
+    } else {
         m_exec_cycles++;
         run();
-    } else
-        goto house_keeping;
+    }
 
     if ( m_exception != NO_EXCEPTION )
         goto handle_except;
