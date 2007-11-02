@@ -197,6 +197,17 @@ public:
 
 	void setRdata(bool error, uint32_t rdata);
 
+    // processor internal registers access API, used by
+    // debugger. Mips order is 32 general-purpose; sr; lo; hi; bad; cause; pc;
+
+    inline unsigned int get_register_count() const
+    {
+        return 32 + 6;
+    }
+
+    uint32_t get_register_value(unsigned int reg) const;
+    void set_register_value(unsigned int reg, uint32_t value);
+
 private:
     void run();
 

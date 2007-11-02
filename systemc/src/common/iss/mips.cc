@@ -29,6 +29,7 @@
  */
 
 #include "common/iss/mips.h"
+#include "common/endian.h"
 #include "common/arithmetics.h"
 
 namespace soclib { namespace common {
@@ -248,6 +249,63 @@ void MipsIss::step()
     r_npc = m_next_pc;
  house_keeping:
     r_gp[0] = 0;
+}
+
+uint32_t MipsIss::get_register_value(unsigned int reg) const
+{
+    switch (reg)
+        {
+        case 0:
+            return 0;
+        case 1 ... 31:
+            return soclib::endian::uint32_swap(r_gp[reg]);
+        case 32:
+            return soclib::endian::uint32_swap(r_status.whole);
+        case 33:
+            return soclib::endian::uint32_swap(r_lo);
+        case 34:
+            return soclib::endian::uint32_swap(r_hi);
+        case 35:
+            return soclib::endian::uint32_swap(r_bar);
+        case 36:
+            return soclib::endian::uint32_swap(r_cause.whole);
+        case 37:
+            return soclib::endian::uint32_swap(r_pc);
+        default:
+            return 0;
+        }
+}
+
+void MipsIss::set_register_value(unsigned int reg, uint32_t value)
+{
+    value = soclib::endian::uint32_swap(value);
+
+    switch (reg)
+        {
+        case 1 ... 31:
+            r_gp[reg] = value;
+            break;
+        case 32:
+            r_status.whole = value;
+            break;
+        case 33:
+            r_lo = value;
+            break;
+        case 34:
+            r_hi = value;
+            break;
+        case 35:
+            r_bar = value;
+            break;
+        case 36:
+            r_cause.whole = value;
+            break;
+        case 37:
+            r_pc = value;
+            break;
+        default:
+            break;
+        }
 }
 
 }}

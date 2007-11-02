@@ -157,6 +157,23 @@ public:
 		m_irq = irq;
 	}
 
+    // processor internal registers access API, used by
+    // debugger. Register numbering must match gdb packet order.
+
+    virtual inline unsigned int get_register_count() const
+    {
+        return 0;
+    }
+
+    virtual inline uint32_t get_register_value(unsigned int reg) const
+    {
+        return 0;
+    }
+
+    virtual inline void set_register_value(unsigned int reg, uint32_t value)
+    {
+    }
+
 protected:
 
     void doneNullStep()
@@ -213,6 +230,28 @@ protected:
         case MEM_SH:
         case MEM_SW:
             return false;
+        }
+        assert(0&&"This is impossible");
+        return false;
+    }
+
+    static inline bool isWriteAccess( DataAccessType type )
+    {
+        switch (type) {
+        case MEM_LB:
+        case MEM_LBU:
+        case MEM_LH:
+        case MEM_LHBR:
+        case MEM_LHU:
+        case MEM_LWBR:
+        case MEM_LW:
+        case MEM_NONE:
+        case MEM_INVAL:
+            return false;
+        case MEM_SB:
+        case MEM_SH:
+        case MEM_SW:
+            return true;
         }
         assert(0&&"This is impossible");
         return false;
