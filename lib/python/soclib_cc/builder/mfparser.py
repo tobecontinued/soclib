@@ -20,22 +20,30 @@
 # 
 # Maintainers: nipo
 
+__all__ = ["MfRule"]
+
+def bsfilter(spacer, l):
+	r = []
+	next_follows = False
+	for i in l:
+		nf = next_follows
+		if i.endswith('\\'):
+			next_follows = True
+			i = i[:-1]+spacer
+		else:
+			next_follows = False
+		if nf:
+			r[-1] += i
+		else:
+			r.append(i)
+	return r
+
 class MfRule:
 	def __init__(self, text):
-		lines = []
-		next_follows = False
-		for l in text.split('\n'):
-			nf = next_follows
-			if l.endswith('\\'):
-				next_follows = True
-				l = l[:-1]
-			if nf:
-				lines[-1] += l
-			else:
-				lines.append(l)
-		lines = filter(lambda x:not x.startswith('#'), lines)
+		lines = filter(lambda x:not x.startswith('#'),
+			bsfilter("", text.split('\n')))
 		dest, prereq = lines[0].split(":",1)
 		self.rules = lines[1:]
-		self.dest = dest.strip()
-		self.prerequisites = filter(None, map(
-			lambda x:x.strip(), prereq.split()))
+		self.dest = bsfilter(" ", dest.strip().split())
+		self.prerequisites = bsfilter(" ", filter(None, map(
+			lambda x:x.strip(), prereq.split())))
