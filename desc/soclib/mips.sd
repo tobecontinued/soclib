@@ -14,6 +14,14 @@ class caba(CabaComponent):
 		"../../systemc/include/caba/processor/iss_wrapper.h",
 		]
 	uses = [
-		Uses('base_module')
+		Uses('mips', mode="common"),
+		Uses('base_module'),
 		]
 
+class common(CommonComponent):
+	classname = 'MipsIss'
+	header_files = "../../systemc/include/common/iss/mips.h",
+	implementation_files = [
+		"../../systemc/src/common/iss/mips.cc",
+		"../../systemc/src/common/iss/mips_instructions.cc",
+		]

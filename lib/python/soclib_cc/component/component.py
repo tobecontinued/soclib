@@ -61,9 +61,10 @@ class Component:
 	uses = []
 	default_parameters = {}
 	
-	def __init__(self, where, **args):
+	def __init__(self, where, cmode, **args):
 		self.where = where
 		self.args = args
+		self.cmode = cmode
 	def mk_abs_paths(cls, basename):
 		for attr in cls.relative_path_files:
 			val = getattr(cls, attr)
@@ -91,7 +92,7 @@ class Component:
 		else:
 			return Noop()
 	def baseName(self):
-		basename = self.namespace + self.classname
+		basename = str(self.cmode) + '_' + self.namespace + self.classname
 		if self.tmpl_parameters:
 			args = self.getParams()
 			params = ",".join(

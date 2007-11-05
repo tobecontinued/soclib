@@ -15,6 +15,15 @@ class caba(CabaComponent):
 		"../../systemc/include/caba/processor/iss_wrapper.h",
 		]
 	uses = [
-		Uses('base_module')
+		Uses('ppc405', mode="common"),
+		Uses('base_module'),
 		]
 
+class common(CommonComponent):
+	classname = 'Ppc405Iss'
+	header_files = "../../systemc/include/common/iss/ppc405.h",
+	implementation_files = [
+		"../../systemc/src/common/iss/ppc405.cc",
+		"../../systemc/src/common/iss/ppc405_instructions.cc",
+		"../../systemc/src/common/iss/ppc405_jump_tables.cc",
+		]

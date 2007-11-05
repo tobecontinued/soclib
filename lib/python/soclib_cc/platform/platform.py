@@ -77,19 +77,21 @@ class Uses:
 		self.args = args
 		# This is for error feedback purposes
 		self.where = '%s:%d'%(traceback.extract_stack()[-2][0:2])
+	def __str__(self):
+		return '<Use %s %s>'%(self.name, self.mode)
 	def get(self, cdefs, mode = None, **inherited_args):
 		cdef = cdefs[self.name]
-		if mode is None and self.mode is not None:
+		if self.mode is not None:
 			mode = self.mode
 		args = copy(inherited_args)
 		args.update(self.args)
-		if mode not in cdefs and 'common' in cdef:
+		if mode not in cdef and 'common' in cdef:
 			mode = 'common'
 		if mode in cdef:
 			d = cdef[mode]
 		else:
 			raise NotFound(self.name, mode)
-		dinst = d(self.where, **args)
+		dinst = d(self.where, mode, **args)
 		uses = []
 		for u in d.uses:
 			uses += u.get(cdefs, mode, **args)
