@@ -9,7 +9,10 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
+CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS) $(DEBUG_CFLAGS)
+ifeq ($(ARCH),powerpc)
+CFLAGS+=-mcpu=405 -mstrict-align
+endif
 
 default: clean $(SOFT_IMAGE)
 
