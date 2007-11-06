@@ -316,6 +316,17 @@ public:
 		m_ins.ins = soclib::endian::uint32_swap(val);
 	}
 
+    // processor internal registers access API, used by
+    // debugger. PPC regs order is 32 32bits GPs, 32 64bits FPs, pc, ps, cnd, lr, cnt, xer, mq, fpscr
+
+    inline unsigned int get_register_count() const
+    {
+        return 32 + 32 + 8;
+    }
+
+    uint32_t get_register_value(unsigned int reg) const;
+    size_t get_register_size(unsigned int reg) const;
+    void set_register_value(unsigned int reg, uint32_t value);
 
 private:
 	void run();

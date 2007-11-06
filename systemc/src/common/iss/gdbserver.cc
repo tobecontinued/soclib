@@ -264,7 +264,10 @@ void GdbServer<CpuIss>::process_gdb_packet()
 
                 case 'p': {       // read single register
                     unsigned int reg = strtoul(data + 1, 0, 16);
-                    sprintf(buffer, "%08x", CpuIss::get_register_value(reg));
+                    char fmt[32];
+
+                    sprintf(fmt, "%%0%ux", CpuIss::get_register_size(reg) / 4);
+                    sprintf(buffer, fmt, CpuIss::get_register_value(reg));
                     write_packet(buffer);
                     return;
                 }
@@ -283,19 +286,29 @@ void GdbServer<CpuIss>::process_gdb_packet()
                 case 'g': {      // read all registers
                     char *b = buffer;
                     for (unsigned int i = 0; i < CpuIss::get_register_count(); i++)
-                        b += sprintf(b, "%08x", CpuIss::get_register_value(i));
+                        {
+                            char fmt[32];
+                            sprintf(fmt, "%%0%ux", CpuIss::get_register_size(i) / 4);
+                            b += sprintf(b, fmt, CpuIss::get_register_value(i));
+                        }
                     write_packet(buffer);
                     return;
                 }
 
                 case 'G': {       // write all registers
 
-                    char word[9] = { 0 };
+                    data++;
 
                     for (unsigned int i = 0; i < CpuIss::get_register_count(); i++)
                         {
-                            memcpy(word, data + 1 + i * 8, 8);
+                            size_t s = CpuIss::get_register_size(i) / 4;
+                            char word[s + 1];
+                            word[s] = 0;
+                            memcpy(word, data, s);
+                            if (strlen(word) != s)
+                                break;
                             CpuIss::set_register_value(i, strtoul(word, 0, 16));
+                            data += s;
                         }
 
                     write_packet("OK");

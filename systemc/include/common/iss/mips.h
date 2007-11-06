@@ -206,6 +206,12 @@ public:
     }
 
     uint32_t get_register_value(unsigned int reg) const;
+
+    inline size_t get_register_size(unsigned int reg) const
+    {
+        return 32;
+    }
+
     void set_register_value(unsigned int reg, uint32_t value);
 
 private:

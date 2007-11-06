@@ -174,6 +174,11 @@ public:
     {
     }
 
+    virtual inline size_t get_register_size(unsigned int reg) const
+    {
+        return 0;
+    }
+
 protected:
 
     void doneNullStep()

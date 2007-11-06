@@ -244,6 +244,74 @@ void Ppc405Iss::setRdata(bool error, uint32_t rdata)
     r_mem_type = MEM_NONE;
 }
 
+uint32_t Ppc405Iss::get_register_value(unsigned int reg) const
+{
+    switch (reg)
+        {
+        case 0 ... 31:
+            return r_gp[reg];
+        case 32 ... 63:         // FPU
+            return 0;
+        case 64:                // pc
+            return r_pc;
+        case 65:                // ps
+            return r_msr.whole;
+        case 66:                // cnd
+            return r_cr;
+        case 67:                // lr
+            return r_lr;
+        case 68:                // cnt
+            return r_ctr;
+        case 69:                // xer
+            return r_xer.whole;
+        case 70:                // mq
+            return 0;
+        case 71:                // fpscr
+            return 0;
+        default:
+            return 0;
+        }
+}
+
+size_t Ppc405Iss::get_register_size(unsigned int reg) const
+{
+    switch (reg)
+        {
+        case 32 ... 63:         // FPU
+            return 64;
+        default:
+            return 32;
+        }
+}
+
+void Ppc405Iss::set_register_value(unsigned int reg, uint32_t value)
+{
+    switch (reg)
+        {
+        case 0 ... 31:
+            r_gp[reg] = value;
+            break;
+        case 64:                // pc
+            r_pc = value;
+            break;
+        case 65:                // msr
+            r_msr.whole = value;
+            break;
+        case 66:                // cnd
+            r_cr = value;
+            break;
+        case 67:                // lr
+            r_lr = value;
+            break;
+        case 68:                // cnt
+            r_ctr = value;
+            break;
+        case 69:                // xer
+            r_xer.whole = value;
+            break;
+        }
+}
+
 }}
 
 // Local Variables:
