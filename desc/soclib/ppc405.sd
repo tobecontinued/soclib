@@ -6,9 +6,6 @@ class caba(CabaComponent):
 	header_files = "../../systemc/include/caba/processor/iss_wrapper.h",
 	implementation_files = [
 		"../../systemc/src/caba/processor/iss_wrapper.cc",
-		"../../systemc/src/common/iss/ppc405.cc",
-		"../../systemc/src/common/iss/ppc405_instructions.cc",
-		"../../systemc/src/common/iss/ppc405_jump_tables.cc",
 		]
 	force_header_files = [
 		"../../systemc/include/common/iss/ppc405.h",

@@ -6,8 +6,6 @@ class caba(CabaComponent):
 	header_files = "../../systemc/include/caba/processor/iss_wrapper.h",
 	implementation_files = [
 		"../../systemc/src/caba/processor/iss_wrapper.cc",
-		"../../systemc/src/common/iss/mips.cc",
-		"../../systemc/src/common/iss/mips_instructions.cc",
 		]
 	force_header_files = [
 		"../../systemc/include/common/iss/mips.h",
