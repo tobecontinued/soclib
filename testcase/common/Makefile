@@ -22,6 +22,9 @@ LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
 CFLAGS=-Wall -O2 -I. -I$(COMMON) -I$(TESTER_DIR) $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
+ifeq ($(ARCH),powerpc)
+CFLAGS+=-mcpu=405 -mstrict-align
+endif
 
 all: $(RESULT)
 
