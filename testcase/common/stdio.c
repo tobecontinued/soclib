@@ -193,7 +193,7 @@ void exit(int retval)
 {
 	soclib_io_set(
 		base(SIMHELPER),
-		SIMHELPER_END_WITH_VAL,
+		SIMHELPER_END_WITH_RETVAL,
 		retval);
 	while(1)
 		;
