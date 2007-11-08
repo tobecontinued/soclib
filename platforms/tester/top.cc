@@ -94,10 +94,10 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),16,8,16,8);
 
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips0("mips0", 0);
-	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc0("ppc0", 0);
+	soclib::caba::IssWrapper<soclib::common::MipsIss> *mips0;
+	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> *ppc0;
 
-	soclib::common::ElfLoader loader(argv[1]);
+	soclib::common::ElfLoader loader(argv[2]);
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", NULL);
@@ -117,24 +117,26 @@ int _main(int argc, char *argv[])
 
 	switch ( arch ) {
 	case MIPSEL:
-		mips0.p_clk(signal_clk);  
-		mips0.p_resetn(signal_resetn);  
-		mips0.p_irq[0](signal_cpu0_it0); 
-		mips0.p_irq[1](signal_cpu0_it1); 
-		mips0.p_irq[2](signal_cpu0_it2); 
-		mips0.p_irq[3](signal_cpu0_it3); 
-		mips0.p_irq[4](signal_cpu0_it4); 
-		mips0.p_irq[5](signal_cpu0_it5); 
-		mips0.p_icache(signal_mips_icache0);
-		mips0.p_dcache(signal_mips_dcache0);
+		mips0 = new soclib::caba::IssWrapper<soclib::common::MipsIss>("mips0", 0);
+		mips0->p_clk(signal_clk);  
+		mips0->p_resetn(signal_resetn);  
+		mips0->p_irq[0](signal_cpu0_it0); 
+		mips0->p_irq[1](signal_cpu0_it1); 
+		mips0->p_irq[2](signal_cpu0_it2); 
+		mips0->p_irq[3](signal_cpu0_it3); 
+		mips0->p_irq[4](signal_cpu0_it4); 
+		mips0->p_irq[5](signal_cpu0_it5); 
+		mips0->p_icache(signal_mips_icache0);
+		mips0->p_dcache(signal_mips_dcache0);
 		break;
 	case POWERPC:
-		ppc0.p_clk(signal_clk);  
-		ppc0.p_resetn(signal_resetn);  
-		ppc0.p_irq[0](signal_cpu0_it0); 
-		ppc0.p_irq[1](signal_cpu0_it1); 
-		ppc0.p_icache(signal_mips_icache0);
-		ppc0.p_dcache(signal_mips_dcache0);
+		ppc0 = new soclib::caba::IssWrapper<soclib::common::Ppc405Iss>("ppc0", 0);
+		ppc0->p_clk(signal_clk);  
+		ppc0->p_resetn(signal_resetn);  
+		ppc0->p_irq[0](signal_cpu0_it0); 
+		ppc0->p_irq[1](signal_cpu0_it1); 
+		ppc0->p_icache(signal_mips_icache0);
+		ppc0->p_dcache(signal_mips_dcache0);
 		break;
 	}
         
@@ -178,15 +180,13 @@ int _main(int argc, char *argv[])
 
 int sc_main (int argc, char *argv[])
 {
+	int r = EXIT_FAILURE;
 	try {
-		return _main(argc, argv);
-	} catch (soclib::exception::Exception &e) {
-		std::cout << e.what() << std::endl;
-	} catch (std::exception &e) {
+		r = _main(argc, argv);
+	} catch (const std::exception &e) {
 		std::cout << e.what() << std::endl;
 	} catch (...) {
 		std::cout << "Unknown exception occured" << std::endl;
-		throw;
 	}
-	return 1;
+	return r;
 }

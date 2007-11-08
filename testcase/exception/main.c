@@ -18,8 +18,5 @@ void main(void)
 #error Unsupported arch
 #endif
 
-	soclib_io_set(
-		base(SIMHELPER),
-		SIMHELPER_END_WITH_RETVAL,
-		1);
+	exit(1);
 }

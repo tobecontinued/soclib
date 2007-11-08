@@ -40,8 +40,10 @@ $(SOFT_IMAGE): $(OBJS)
 clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS)
 
-$(RESULT): $(SOFT_IMAGE) $(TESTER)
-	$(TESTER) $(ARCH) $(SOFT_IMAGE) > test.out
+$(RESULT): $(SOFT_IMAGE) $(TESTER) $(COMMON)/Makefile
+	$(TESTER) $(ARCH) $(SOFT_IMAGE) > test.out \
+		|| (cat test.out ; rm test.out ; exit 1)
+	cat test.out
 	mv test.out $@
 
 $(TESTER):

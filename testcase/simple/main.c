@@ -7,10 +7,7 @@
 
 int main(void)
 {
-	soclib_io_set(
-		base(SIMHELPER),
-		SIMHELPER_END_WITH_RETVAL,
-		0);
+	exit(0);
 	while(1)
 		;
 }

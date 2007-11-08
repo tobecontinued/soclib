@@ -31,7 +31,7 @@
 namespace soclib { namespace exception {
 
 class Exception
-    : std::exception
+    : public std::exception
 {
     std::string m_type;
     std::string m_message;
@@ -46,7 +46,7 @@ public:
     {
     }
 
-    virtual const char * what() throw()
+    virtual const char * what() const throw()
     {
         return m_message.c_str();
     }
@@ -64,7 +64,7 @@ public:
 };
 
 class ValueError
-    : Exception
+    : public Exception
 {
 public:
     ValueError( const std::string &message )
@@ -73,7 +73,7 @@ public:
 };
 
 class Collision
-    : Exception
+    : public Exception
 {
 public:
     Collision( const std::string &message )
@@ -82,7 +82,7 @@ public:
 };
 
 class RunTimeError
-    : Exception
+    : public Exception
 {
 public:
     RunTimeError( const std::string &message )
