@@ -5,10 +5,19 @@ SOCLIB:=$(shell soclib-cc --getpath)
 export ARCH
 
 ifeq ($(NO_SOFT),)
-SOFT=a.out
+SOFT=soft/bin.soft
 endif
 
 default: test_soclib simulation.x $(SOFT)
+
+ifeq ($(NO_SOFT),)
+
+.PHONY: $(SOFT)
+
+$(SOFT):
+	$(MAKE) -C soft bin.soft
+
+endif
 
 test_soclib:
 	@test -z "$(SOCLIB)" && (\
@@ -23,7 +32,7 @@ test:
 	@echo "No arguments to simulation, cant simulate anything"
 
 else
-test: simulation.x
+test: simulation.x $(SOFT)
 	SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null
 
 endif

@@ -43,13 +43,14 @@ void interrupt_ex_handler(
 	putc(' ');
 	puti(type);
 	putc('\n');
-	while(1);
+	exit(1);
 }
 
 void interrupt_sys_handler(unsigned int irq)
 {
 	uputs(__FUNCTION__);
 	putc('\n');
+	exit(1);
 }
 
 void interrupt_hw_handler(unsigned int irq)
@@ -85,4 +86,5 @@ void interrupt_hw_handler(unsigned int irq)
 		break;
 	}
 
+	exit(1);
 }

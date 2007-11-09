@@ -231,10 +231,15 @@ void *malloc( unsigned long sz )
 
 void abort()
 {
+	exit(1);
+}
+
+void exit(int level)
+{
 	soclib_io_set(
 		base(SIMHELPER),
 		SIMHELPER_EXCEPT_WITH_VAL,
-		1);
+		level);
 }
 
 void *memcpy( void *_dst, void *_src, unsigned long size )

@@ -34,6 +34,8 @@ int _main(int argc, char *argv[])
 	// Mapping table
 
 	std::string arch_string = loader.arch();
+	if ( arch_string == "unknown" )
+		arch_string = argv[1];
 
 	std::cout << arch_string << " binary archive..." << std::endl;
 	arch_t arch;

@@ -14,10 +14,15 @@ ifeq ($(ARCH),powerpc)
 CFLAGS+=-mcpu=405 -mstrict-align
 endif
 
+MAY_CLEAN=$(shell test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean)
+
 default: clean $(SOFT_IMAGE)
 
-$(SOFT_IMAGE): $(OBJS)
-	$(LD) -q -T ldscript -o $@ $^
+$(SOFT_IMAGE): $(MAY_CLEAN) arch_stamp $(OBJS)
+	$(LD) -q -T ldscript -o $@ $(filter %.o,$^)
+
+arch_stamp:
+	echo $(ARCH) > $@
 
 %.o: %.s
 	$(AS) $< -o $@
@@ -26,4 +31,4 @@ $(SOFT_IMAGE): $(OBJS)
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 clean :
-	-rm -f $(SOFT_IMAGE) $(OBJS)
+	-rm -f $(SOFT_IMAGE) $(OBJS) arch_stamp
