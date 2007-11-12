@@ -44,10 +44,14 @@ inline int soclib_modes_to_os(int soclib_mode)
 	do_mode(FD_ACCESS_O_TRUNC, O_TRUNC);
 	do_mode(FD_ACCESS_O_APPEND, O_APPEND);
 	do_mode(FD_ACCESS_O_NONBLOCK, O_NONBLOCK);
+#ifdef O_SYNC
 	do_mode(FD_ACCESS_O_SYNC, O_SYNC);
+#endif
 //	do_mode(FD_ACCESS_O_DIRECT, O_DIRECT);
 //	do_mode(FD_ACCESS_O_LARGEFILE, O_LARGEFILE);
+#ifdef O_DIRECTORY
 	do_mode(FD_ACCESS_O_DIRECTORY, O_DIRECTORY);
+#endif
 	do_mode(FD_ACCESS_O_NOFOLLOW, O_NOFOLLOW);
 //	do_mode(FD_ACCESS_O_NOATIME, O_NOATIME);
 	do_mode(FD_ACCESS_O_NDELAY, O_NDELAY);

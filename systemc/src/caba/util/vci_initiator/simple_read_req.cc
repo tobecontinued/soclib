@@ -73,7 +73,7 @@ tmpl(bool)::putCmd( VciInitiator<vci_param> &p_vci, uint32_t id ) const
 
 tmpl(void)::gotRsp( const VciInitiator<vci_param> &p_vci )
 {
-    size_t &rsp_ptr = VciInitiatorSimpleReq<vci_param>::m_rsp_ptr;
+    size_t rsp_ptr = VciInitiatorSimpleReq<vci_param>::m_rsp_ptr;
     const size_t len = VciInitiatorSimpleReq<vci_param>::m_len;
     uint8_t * const dest_buffer = VciInitiatorSimpleReq<vci_param>::m_dest_buffer;
     const uint32_t base_addr = VciInitiatorSimpleReq<vci_param>::m_base_addr;
@@ -92,7 +92,8 @@ tmpl(void)::gotRsp( const VciInitiator<vci_param> &p_vci )
         data >>= 8;
     }
     
-    rsp_ptr = VciInitiatorSimpleReq<vci_param>::next_addr(rsp_ptr);
+    VciInitiatorSimpleReq<vci_param>::m_rsp_ptr
+        = VciInitiatorSimpleReq<vci_param>::next_addr(rsp_ptr);
 
     VciInitiatorReq<vci_param>::gotRsp( p_vci );
 }
