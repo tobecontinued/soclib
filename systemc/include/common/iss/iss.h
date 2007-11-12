@@ -191,6 +191,8 @@ protected:
     {
         r_pc = reset_addr;
         r_dbe = false;
+        m_ibe = false;
+        m_dbe = false;
         r_mem_type = MEM_NONE;
         m_ins_delay = 0;
     }

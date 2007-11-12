@@ -68,6 +68,7 @@ Ppc405Iss::Ppc405Iss(uint32_t ident)
 void Ppc405Iss::reset()
 {
     Iss::reset(RESET_ADDR);
+    r_evpr = 0xdead0000;
     r_tb = 0;
     r_esr = 0;
     r_msr.whole = 0;
