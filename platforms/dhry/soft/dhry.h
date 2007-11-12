@@ -401,7 +401,7 @@ typedef int     One_Thirty;
 typedef int     One_Fifty;
 typedef char    Capital_Letter;
 typedef int     Boolean;
-typedef char    Str_30 [31];
+typedef char    Str_30 [31] __attribute__ ((aligned (4)));
 typedef int     Arr_1_Dim [50];
 typedef int     Arr_2_Dim [50] [50];
 
