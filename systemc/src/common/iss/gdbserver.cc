@@ -15,6 +15,7 @@ namespace soclib { namespace common {
 
 template<typename CpuIss> int GdbServer<CpuIss>::socket_ = -1;
 template<typename CpuIss> int GdbServer<CpuIss>::asocket_ = -1;
+template<typename CpuIss> typename GdbServer<CpuIss>::State GdbServer<CpuIss>::init_state_ = Running;
 template<typename CpuIss> std::vector<GdbServer<CpuIss> *> GdbServer<CpuIss>::list_;
 template<typename CpuIss> unsigned int GdbServer<CpuIss>::current_id_ = 0;
 template<typename CpuIss> std::map<uint32_t, bool> GdbServer<CpuIss>::break_exec_;
@@ -49,10 +50,11 @@ void GdbServer<CpuIss>::network_init()
 }
 
 template<typename CpuIss>
-GdbServer<CpuIss>::GdbServer(uint32_t ident, bool start_frozen)
+GdbServer<CpuIss>::GdbServer(uint32_t ident)
     : CpuIss(ident),
+      mem_type_(CpuIss::MEM_NONE),
       mem_count_(0),
-      state_(start_frozen ? Frozen : Running)
+      state_(init_state_)
     {
         if (list_.empty())
             network_init();
@@ -134,9 +136,9 @@ int GdbServer<CpuIss>::write_packet(char *data_)
             fprintf(stderr, "[GDB] sending packet data '%s'\n", data);
 #endif
 
-            write(asocket_, "$", 1);
-            write(asocket_, data, len);
-            write(asocket_, end, 3);
+            send(asocket_, "$", 1, MSG_DONTWAIT | MSG_NOSIGNAL);
+            send(asocket_, data, len, MSG_DONTWAIT | MSG_NOSIGNAL);
+            send(asocket_, end, 3, MSG_DONTWAIT | MSG_NOSIGNAL);
 
             if (read(asocket_, &ack, 1) < 1)
                 {
@@ -201,14 +203,14 @@ char * GdbServer<CpuIss>::read_packet(char *buffer, size_t size)
     end[3] = 0;
     if (chksum != strtoul(end + 1, 0, 16))
         {
-            write(asocket_, "-", 1);
+            send(asocket_, "-", 1, MSG_DONTWAIT | MSG_NOSIGNAL);
 #ifdef GDBSERVER_DEBUG
             fprintf(stderr, "[GDB] bad packet checksum\n");
 #endif
             return 0;
         }
 
-    write(asocket_, "+", 1);
+    send(asocket_, "+", 1, MSG_DONTWAIT | MSG_NOSIGNAL);
 
     return data;
 }
@@ -224,6 +226,12 @@ void GdbServer<CpuIss>::process_gdb_packet()
         {
             switch (data[0])
                 {
+                case 'k':       // Kill
+                    write_packet("OK");
+                    cleanup();
+                    sc_stop();
+                    break;
+
                 case 'D': // Detach
                     write_packet("OK");
                     cleanup();
@@ -474,8 +482,10 @@ void GdbServer<CpuIss>::try_accept()
             asocket_ = accept(socket_, (struct sockaddr*)&addr, &addr_size);
 
             if (asocket_ >= 0)
-                // freeze all processors on new connections
-                change_all_states(MemWait);
+                {
+                    // freeze all processors on new connections
+                    change_all_states(MemWait);
+                }
         }
 }
 

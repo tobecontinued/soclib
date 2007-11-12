@@ -37,6 +37,7 @@
 
 #include <systemc.h>
 #include "common/iss/iss.h"
+#include "common/exception.h"
 #include "common/endian.h"
 #include "common/register.h"
 
@@ -82,7 +83,7 @@ public:
         port_ = port;
     }
 
-    GdbServer(uint32_t ident, bool start_frozen = false);
+    GdbServer(uint32_t ident);
 
     void step();
 
@@ -121,6 +122,19 @@ public:
             }
         else
             CpuIss::setRdata(error, rdata);
+    }
+
+    inline void getInstructionRequest(bool &req, uint32_t &address) const
+	{
+        if (state_ == Frozen)
+            req = false;
+        else
+            CpuIss::getInstructionRequest(req, address);
+	}
+
+    static inline void start_frozen(bool frozen = true)
+    {
+        init_state_ = frozen ? Frozen : Running;
     }
 
 private:
@@ -195,6 +209,7 @@ private:
             Frozen,             // processor is frozen
         };
 
+    static State init_state_;
     State state_;
 
     static inline void change_all_states(State s)
