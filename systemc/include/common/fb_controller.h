@@ -31,6 +31,7 @@ namespace soclib { namespace common {
 class FbController
 {
 	int m_map_fd;
+    bool m_headless_mode;
     soclib::common::ProcessWrapper *m_screen_process;
 
 	uint32_t *m_surface;

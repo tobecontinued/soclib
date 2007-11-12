@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <cstdlib>
 
 #include "common/endian.h"
 #include "common/exception.h"
@@ -65,8 +66,11 @@ FbController::FbController(
 	}
 	
 	memset(m_surface, 0, m_width*m_height*2);
-	
-	{
+
+    char *soclib_fb = std::getenv("SOCLIB_FB");
+    m_headless_mode = ( soclib_fb && !strcmp(soclib_fb, "HEADLESS") );
+    
+	if (m_headless_mode == false) {
         std::vector<std::string> argv;
         std::ostringstream o;
 
@@ -85,12 +89,14 @@ FbController::FbController(
 
 FbController::~FbController()
 {
-    delete m_screen_process;
+	if (m_headless_mode == false)
+        delete m_screen_process;
 }
 
 void FbController::update()
 {
-	m_screen_process->write("", 1);
+	if (m_headless_mode == false)
+        m_screen_process->write("", 1);
 }
 
 }}
