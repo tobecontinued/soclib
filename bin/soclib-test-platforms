@@ -1,0 +1,25 @@
+#!/bin/sh
+
+sb=$(dirname $0)
+if [ "${sb:0:1}" != "/" ] ; then
+	sb=${PWD}/${sb}
+fi
+
+SOCLIB_DIR=$(dirname ${sb})
+
+cd ${SOCLIB_DIR}
+svn up
+
+export PATH=${SOCLIB_DIR}/bin:$PATH
+export SOCLIB_TTY=TERM
+export SOCLIB_FB=HEADLESS
+
+cd ${SOCLIB_DIR}/platforms
+make -k soft_clean
+make test || exit 1
+
+cd ${SOCLIB_DIR}/testcase
+make -k clean
+make || exit 1
+
+exit 0

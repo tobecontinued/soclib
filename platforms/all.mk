@@ -37,12 +37,14 @@ test: simulation.x $(SOFT)
 
 endif
 
-clean:
+clean: soft_clean
 	$(SOCLIB_CC) -p $(PLATFORM_DESC) -x -o $@
+	rm -rf repos
+
+soft_clean:
 ifeq ($(NO_SOFT),)
 	$(MAKE) -C soft clean
 endif
-	rm -rf repos
 
 a.out:
 	$(MAKE) -C soft
