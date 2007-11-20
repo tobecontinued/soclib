@@ -30,10 +30,15 @@ namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-#define VCI_CMD_NOP 0
-#define VCI_CMD_READ 1
-#define VCI_CMD_WRITE 2
-#define VCI_CMD_LOCKED_READ 3
+namespace VCI_CMD {
+enum {
+    NOP,
+    READ,
+    WRITE,
+    LOCKED_READ,
+    STORE_COND = NOP,
+};
+}
 
 /**
  * VCI parameters grouped in a single class

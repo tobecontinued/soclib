@@ -987,7 +987,7 @@ tmpl(void)::genMoore()
         p_vci.address = r_dcache_cmd_addr & ~0x3;
         p_vci.be = 0xF;
         p_vci.plen = 0;
-        p_vci.cmd = VCI_CMD_READ;
+        p_vci.cmd = VCI_CMD::READ;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
         p_vci.srcid  = m_ident;
@@ -1021,7 +1021,7 @@ tmpl(void)::genMoore()
             assert(0);
         }
         p_vci.plen   = 0;
-        p_vci.cmd    = VCI_CMD_WRITE;
+        p_vci.cmd    = VCI_CMD::WRITE;
         p_vci.trdid  = 0;
         p_vci.pktid  = WRITE_PKTID;
         p_vci.srcid  = m_ident;
@@ -1047,7 +1047,7 @@ tmpl(void)::genMoore()
         p_vci.address = (r_dcache_cmd_addr & ~s_dcache_xmask) + (r_cmd_cpt << 2);
         p_vci.be     = 0xF;
         p_vci.plen   = 0;
-        p_vci.cmd    = VCI_CMD_READ;
+        p_vci.cmd    = VCI_CMD::READ;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
         p_vci.srcid  = m_ident;
@@ -1064,7 +1064,7 @@ tmpl(void)::genMoore()
         p_vci.address = (r_icache_miss_addr & ~s_icache_xmask) + (r_cmd_cpt << 2);
         p_vci.be     = 0xF;
         p_vci.plen   = 0;
-        p_vci.cmd    = VCI_CMD_READ;
+        p_vci.cmd    = VCI_CMD::READ;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
         p_vci.srcid  = m_ident;

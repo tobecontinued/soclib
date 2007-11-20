@@ -76,7 +76,7 @@ tmpl(bool)::putCmd( VciInitiator<vci_param> &p_vci, uint32_t id ) const
     p_vci.cmdval = true;
     p_vci.address = (base_addr+cmd_ptr)&~3;
 	p_vci.be = be;
-	p_vci.cmd = VCI_CMD_WRITE;
+	p_vci.cmd = VCI_CMD::WRITE;
 	p_vci.contig = 1;
     p_vci.wdata = data;
 	p_vci.eop = ending;

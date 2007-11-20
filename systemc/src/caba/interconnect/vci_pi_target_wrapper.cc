@@ -112,7 +112,7 @@ switch (r_fsm_state) {
 	p_vci.wdata	= 0;
 	p_vci.plen	= 0;
 	p_vci.be	= 0xF;
-	p_vci.cmd	= VCI_CMD_READ;
+	p_vci.cmd	= VCI_CMD::READ;
 	if (r_lock == true)	p_vci.eop = false;
 	else			p_vci.eop = true;
 	p_pi.ack = Pibus::ACK_WAT;
@@ -146,7 +146,7 @@ switch (r_fsm_state) {
 	else if (r_opc.read() == Pibus::OPC_BY2)	p_vci.be = 0x4;
 	else if (r_opc.read() == Pibus::OPC_BY3)	p_vci.be = 0x8;
 	else						p_vci.be = 0x0;
-	p_vci.cmd	= VCI_CMD_WRITE;
+	p_vci.cmd	= VCI_CMD::WRITE;
 	if (r_lock == true)	p_vci.eop = false;
 	else			p_vci.eop = true;
 	p_pi.ack = Pibus::ACK_WAT;

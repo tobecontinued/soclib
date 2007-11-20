@@ -98,7 +98,7 @@ tmpl(void)::transition()
 
                 switch (p_vci.cmd.read())
                 {
-                case VCI_CMD_WRITE:
+                case VCI_CMD::WRITE:
                     rsp_info.rdata = 0;
                     if ((m_owner->*m_on_write_f)(i, address, p_vci.wdata.read(), p_vci.be.read()))
                         m_state = TARGET_WRITE_RSP;
@@ -108,7 +108,7 @@ tmpl(void)::transition()
                     }
                     break;
 
-                case VCI_CMD_READ:
+                case VCI_CMD::READ:
                     if ((m_owner->*m_on_read_f)(i, address, rdata)) {
                         m_state = TARGET_READ_RSP;
                         rsp_info.rdata = rdata;

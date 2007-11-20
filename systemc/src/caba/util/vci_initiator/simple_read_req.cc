@@ -54,7 +54,7 @@ tmpl(bool)::putCmd( VciInitiator<vci_param> &p_vci, uint32_t id ) const
     p_vci.cmdval = true;
     p_vci.address = (base_addr+cmd_ptr)&~3;
 	p_vci.be = (1<<vci_param::B)-1;
-	p_vci.cmd = VCI_CMD_READ;
+	p_vci.cmd = VCI_CMD::READ;
 	p_vci.contig = 1;
 //  p_vci.wdata;
 	p_vci.eop = ending;
