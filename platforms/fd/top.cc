@@ -152,8 +152,6 @@ int sc_main (int argc, char *argv[])
 {
 	try {
 		return _main(argc, argv);
-	} catch (soclib::exception::Exception &e) {
-		std::cout << e.what() << std::endl;
 	} catch (std::exception &e) {
 		std::cout << e.what() << std::endl;
 	} catch (...) {

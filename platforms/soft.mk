@@ -2,7 +2,7 @@ SOCLIB:=$(shell soclib-cc --getpath)
 CC_PREFIX=$(ARCH)-unknown-elf-
 
 SOFT_IMAGE=bin.soft
-OBJS=main.o exception.o system.o $(ADD_OBJS)
+OBJS?=main.o exception.o system.o $(ADD_OBJS)
 
 CC = $(CC_PREFIX)gcc
 AS = $(CC_PREFIX)as

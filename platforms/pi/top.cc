@@ -66,7 +66,7 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::IssWrapper<soclib::common::MipsIss> mips0("mips0", 0);
 
-	soclib::common::ElfLoader loader("soft/a.out");
+	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty0", NULL);
 	
@@ -185,8 +185,6 @@ int sc_main (int argc, char *argv[])
 	try {
 		return _main(argc, argv);
 	} catch (std::exception &e) {
-		std::cout << e.what() << std::endl;
-	} catch (soclib::exception::Exception &e) {
 		std::cout << e.what() << std::endl;
 	} catch (...) {
 		std::cout << "Unknown exception occured" << std::endl;

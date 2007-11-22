@@ -202,8 +202,6 @@ int sc_main (int argc, char *argv[])
 		return _main(argc, argv);
 	} catch (std::exception &e) {
 		std::cout << e.what() << std::endl;
-	} catch (soclib::exception::Exception &e) {
-		std::cout << e.what() << std::endl;
 	} catch (...) {
 		std::cout << "Unknown exception occured" << std::endl;
 		throw;
