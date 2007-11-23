@@ -28,17 +28,17 @@
 
 namespace soclib { namespace caba {
 
-using namespace sc_core;
+namespace {
+template<int W>
+struct fast_int_t {};
 
-namespace VCI_CMD {
-enum {
-    NOP,
-    READ,
-    WRITE,
-    LOCKED_READ,
-    STORE_COND = NOP,
-};
+template<> struct fast_int_t<8> { typedef uint8_t int_t; };
+template<> struct fast_int_t<16> { typedef uint16_t int_t; };
+template<> struct fast_int_t<32> { typedef uint32_t int_t; };
+template<> struct fast_int_t<64> { typedef uint64_t int_t; };
 }
+
+using namespace sc_core;
 
 /**
  * VCI parameters grouped in a single class
@@ -112,6 +112,26 @@ public:
 	typedef sc_dt::sc_uint<S> srcid_t;
 	typedef sc_dt::sc_uint<T> trdid_t;
 	typedef sc_dt::sc_uint<P> pktid_t;
+
+
+    typedef typename fast_int_t<addr_size>::int_t fast_addr_t;
+    typedef typename fast_int_t<cell_size*8>::int_t fast_data_t;
+
+    enum {
+        CMD_NOP,
+        CMD_READ,
+        CMD_WRITE,
+        CMD_LOCKED_READ,
+        CMD_STORE_COND = CMD_NOP,
+    };
+
+    static const unsigned int _err_mask = (1<<rerror_size)-1;
+    typedef enum {
+        ERR_NORMAL = 0 & _err_mask,
+        ERR_GENERAL_DATA_ERROR = 1 & _err_mask,
+        ERR_BAD_DATA = 5 & _err_mask,
+        ERR_ABORT_DISCONNECT = 7 & _err_mask,
+    } vci_error_e;
 };
 
 }}

@@ -9,10 +9,10 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS) $(DEBUG_CFLAGS)
-ifeq ($(ARCH),powerpc)
-CFLAGS+=-mcpu=405 -mstrict-align
-endif
+mipsel_CFLAGS=-mips2 -mno-branch-likely
+powerpc_CFLAGS=-mcpu=405 -mstrict-align
+
+CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS)
 
 MAY_CLEAN=$(shell test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean)
 

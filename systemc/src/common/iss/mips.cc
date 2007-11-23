@@ -65,6 +65,7 @@ void MipsIss::reset()
     r_npc = RESET_ADDRESS + 4;
     r_status.whole = 0;
     m_exec_cycles = 0;
+    r_gp[0] = 0;
 }
 
 void MipsIss::dump() const
@@ -131,7 +132,11 @@ void MipsIss::setRdata(bool error, uint32_t data)
         m_hazard = false;
         break;
     case MEM_LW:
+    case MEM_LL:
         r_gp[r_mem_dest] = data;
+        break;
+    case MEM_SC:
+        r_gp[r_mem_dest] = !data;
         break;
     case MEM_LB:
         r_gp[r_mem_dest] = sign_ext8(align(data, r_mem_addr&0x3, 8));

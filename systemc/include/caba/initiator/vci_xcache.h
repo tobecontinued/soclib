@@ -1,3 +1,4 @@
+// -*- c++ -*-
 //////////////////////////////////////////////////////////////////////////
 // File     : vci_xcache.h
 // Date     : 17/07/2007
@@ -9,8 +10,6 @@
 
 #include <inttypes.h>
 #include <systemc>
-#include "common/static_assert.h"
-#include "common/static_log2.h"
 #include "caba/util/base_module.h"
 #include "caba/util/generic_fifo.h"
 #include "caba/interface/vci_initiator.h"
@@ -26,6 +25,87 @@ template<typename    vci_param>
 class VciXCache
     : public soclib::caba::BaseModule
 {
+    typedef uint32_t addr_t;
+    typedef uint32_t data_t;
+    typedef uint32_t tag_t;
+
+    enum dcache_fsm_state_e {
+        DCACHE_INIT,
+        DCACHE_IDLE,
+        DCACHE_WRITE_UPDT,
+        DCACHE_WRITE_REQ,
+        DCACHE_MISS_REQ,
+        DCACHE_MISS_WAIT,
+        DCACHE_MISS_UPDT,
+        DCACHE_UNC_REQ,
+        DCACHE_UNC_WAIT,
+        DCACHE_INVAL,
+        DCACHE_ERROR,
+    };
+
+    enum icache_fsm_state_e {
+        ICACHE_INIT,
+        ICACHE_IDLE,
+        ICACHE_WAIT,
+        ICACHE_UPDT,
+        ICACHE_ERROR,
+    };
+
+    enum cmd_fsm_state_e {
+        CMD_IDLE,
+        CMD_DATA_MISS,
+        CMD_DATA_UNC,
+        CMD_DATA_WRITE,
+        CMD_DATA_SWAP_READ,
+        CMD_DATA_SWAP_WRITE,
+        CMD_INS_MISS,
+    };
+
+    enum rsp_fsm_state_e {
+        RSP_IDLE,
+        RSP_INS_MISS,
+        RSP_INS_ERROR_WAIT,
+        RSP_INS_ERROR,
+        RSP_INS_OK,
+        RSP_DATA_MISS,
+        RSP_DATA_UNC,
+        RSP_DATA_WRITE,
+        RSP_DATA_READ_ERROR_WAIT,
+        RSP_DATA_READ_ERROR,
+        RSP_DATA_MISS_OK,
+        RSP_DATA_UNC_OK,
+        RSP_DATA_SWAP_WAIT_READ,
+        RSP_DATA_SWAP_WAIT_WRITE,
+        RSP_DATA_WRITE_ERROR,
+        RSP_DATA_WRITE_ERROR_WAIT,
+    };
+
+    enum {
+        READ_PKTID,
+        WRITE_PKTID,
+        SWAP_PKTID,
+    };
+
+    typedef struct d_req_s {
+        addr_t addr;
+        data_t data;
+        data_t prev;
+        DCacheSignals::req_type_e type;
+
+        friend std::ostream &operator <<(std::ostream &o, d_req_s r)
+        {
+            return o;
+        }
+
+        bool operator ==( const d_req_s &other ) const
+        {
+            return other.data == data &&
+                other.addr == addr &&
+                other.prev == prev &&
+                other.type == type;
+        }
+    } d_req_t;
+
 public:
     sc_in<bool> p_clk;
     sc_in<bool> p_resetn;
@@ -37,61 +117,50 @@ private:
 
     // STRUCTURAL PARAMETERS
     soclib::common::AddressDecodingTable<uint32_t, bool> m_cacheability_table;
-    int                                                  m_ident;   
+    int m_ident;   
 
-    const int       s_dcache_lines;
-    const int       s_dcache_words;
-    const int       s_icache_lines;
-    const int       s_icache_words;
+    const size_t  s_dcache_lines;
+    const size_t  s_dcache_words;
+    const size_t  s_icache_lines;
+    const size_t  s_icache_words;
 
-    const int       s_icache_xshift;
-    const int       s_icache_yshift;
-    const int       s_icache_zshift;
-    const int       s_icache_xmask;
-    const int       s_icache_ymask;
-    const int       s_icache_zmask;
+    const soclib::common::AddressMaskingTable<addr_t> m_i_x;
+    const soclib::common::AddressMaskingTable<addr_t> m_i_y;
+    const soclib::common::AddressMaskingTable<addr_t> m_i_z;
+    const size_t  m_icache_yzmask;
 
-    const int       s_dcache_xshift;
-    const int       s_dcache_yshift;
-    const int       s_dcache_zshift;
-    const int       s_dcache_xmask;
-    const int       s_dcache_ymask;
-    const int       s_dcache_zmask;
+    const soclib::common::AddressMaskingTable<addr_t> m_d_x;
+    const soclib::common::AddressMaskingTable<addr_t> m_d_y;
+    const soclib::common::AddressMaskingTable<addr_t> m_d_z;
+    const size_t  m_dcache_yzmask;
 
     // REGISTERS
-    sc_signal<int>      r_dcache_fsm;
-    sc_signal<int>      **r_dcache_data;
-    sc_signal<int>      *r_dcache_tag;
-    sc_signal<int>      r_dcache_save_addr;
-    sc_signal<int>      r_dcache_save_data;
-    sc_signal<int>      r_dcache_save_type;
-    sc_signal<int>      r_dcache_save_prev;
+    sc_signal<dcache_fsm_state_e>      r_dcache_fsm;
+    sc_signal<data_t>      **r_dcache_data;
+    sc_signal<tag_t>      *r_dcache_tag;
+    sc_signal<d_req_t>      r_dcache_save;
 
-    soclib::caba::GenericFifo<sc_dt::sc_uint<32>,8>  m_data_fifo;
-    soclib::caba::GenericFifo<sc_dt::sc_uint<32>,8>  m_addr_fifo;
-    soclib::caba::GenericFifo<sc_dt::sc_uint<4>,8>   m_type_fifo;
+    soclib::caba::GenericFifo<d_req_t,8>  m_dreq_fifo;
 
-    sc_signal<int>      r_icache_fsm;
-    sc_signal<int>      **r_icache_data;
-    sc_signal<int>      *r_icache_tag;
-    sc_signal<int>      r_icache_miss_addr;
+    sc_signal<icache_fsm_state_e>      r_icache_fsm;
+    sc_signal<data_t>      **r_icache_data;
+    sc_signal<tag_t>      *r_icache_tag;
+    sc_signal<addr_t>      r_icache_miss_addr;
     sc_signal<bool>     r_icache_req;
 
-    sc_signal<int>      r_vci_cmd_fsm;
-    sc_signal<int>      r_dcache_cmd_addr;
-    sc_signal<int>      r_dcache_cmd_data;
-    sc_signal<int>      r_dcache_cmd_type;
-    sc_signal<int>      r_dcache_miss_addr;
-    sc_signal<int>      r_cmd_cpt;       
+    sc_signal<cmd_fsm_state_e>      r_vci_cmd_fsm;
+    sc_signal<d_req_t>      r_dcache_cmd;
+    sc_signal<addr_t>      r_dcache_miss_addr;
+    sc_signal<size_t>      r_cmd_cpt;       
       
-    sc_signal<int>      r_vci_rsp_fsm;
-    sc_signal<int>      *r_icache_miss_buf;    
-    sc_signal<int>      *r_dcache_miss_buf;    
+    sc_signal<rsp_fsm_state_e>      r_vci_rsp_fsm;
+    sc_signal<data_t>      *r_icache_miss_buf;    
+    sc_signal<data_t>      *r_dcache_miss_buf;    
     sc_signal<bool>     r_dcache_unc_valid;    
-    sc_signal<int>      r_rsp_cpt;  
+    sc_signal<size_t>      r_rsp_cpt;  
 
-    sc_signal<int>      r_dcache_cpt_init;   
-    sc_signal<int>      r_icache_cpt_init;  
+    sc_signal<size_t>      r_dcache_cpt_init;   
+    sc_signal<size_t>      r_icache_cpt_init;  
 
     // Activity counters
     uint32_t m_cpt_dcache_data_read;  // for DCACHE DATA READ
@@ -113,15 +182,18 @@ public:
         sc_module_name insname,
         const soclib::common::MappingTable &mt,
         const soclib::common::IntTab &index,
-        int icache_lines,
-        int icache_words,
-        int dcache_lines,
-        int dcache_words );
+        size_t icache_lines,
+        size_t icache_words,
+        size_t dcache_lines,
+        size_t dcache_words );
 
 private:
     void transition();
     void genMoore();
     void genMealy();
+
+    static inline bool can_burst(const d_req_t &old, const d_req_t &next);
+    static inline bool is_write(soclib::caba::DCacheSignals::req_type_e cmd);
 };
 
 }}

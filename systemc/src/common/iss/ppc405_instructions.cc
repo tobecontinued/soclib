@@ -188,6 +188,13 @@ void Ppc405Iss::mem_load_imm( DataAccessType type, bool update )
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_dest = m_ins.d.rd;
+#if PPC405_DEBUG
+    std::cout << m_name << std::hex
+              << " mem read imm " << dataAccessTypeName(type)
+              << " @: " << address
+              << " ->r" << m_ins.d.rd
+              << std::endl;
+#endif
 }
 
 void Ppc405Iss::mem_load_indexed( DataAccessType type, bool update )
@@ -200,6 +207,13 @@ void Ppc405Iss::mem_load_indexed( DataAccessType type, bool update )
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_dest = m_ins.x.rs;
+#if PPC405_DEBUG
+    std::cout << m_name << std::hex
+              << " mem read indexed " << dataAccessTypeName(type)
+              << " @: " << address
+              << " ->r" << m_ins.x.rs
+              << std::endl;
+#endif
 }
 
 void Ppc405Iss::mem_store_imm( DataAccessType type, bool update, uint32_t data )
@@ -225,7 +239,11 @@ void Ppc405Iss::mem_store_imm( DataAccessType type, bool update, uint32_t data )
         assert(0 && "How can store have this mnemonic ?");
     }
 #if PPC405_DEBUG
-    std::cout << m_name << " store imm " << std::dec << type << " @" << std::hex << address << ": " << data << std::endl;
+    std::cout << m_name << " store imm "
+              << dataAccessTypeName(type)
+              << " @" << std::hex << address
+              << ": " << data
+              << std::endl;
 #endif
     r_mem_type = type;
     r_mem_addr = address;
@@ -723,10 +741,7 @@ void Ppc405Iss::op_lswx()
 
 void Ppc405Iss::op_lwarx()
 {
-    // Must check for alignment when implementing
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
-	// assert( 0 && "TODO" );
+    mem_load_indexed( MEM_LL, false );
 }
 
 void Ppc405Iss::op_lwbrx()
@@ -1308,10 +1323,8 @@ void Ppc405Iss::op_stwbrx()
 
 void Ppc405Iss::op_stwcx()
 {
-    // Must check for alignment when implementing
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
-	// assert(0 && "TODO");
+    mem_store_indexed( MEM_SC, false, r_gp[m_ins.x.rs] );
+    r_mem_dest = m_ins.x.rs;
 }
 
 void Ppc405Iss::op_stwu()

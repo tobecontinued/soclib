@@ -85,12 +85,12 @@ tmpl(void)::transition()
 			r_vci_fsm = ERROR_RSP;
 		else {
 			switch (p_vci.cmd.read()) {
-			case VCI_CMD::READ:
+			case vci_param::CMD_READ:
 				r_buf_value = m_contents[cell];
 				m_contents[cell] = true;
 				r_vci_fsm = READ_RSP;
 				break;
-			case VCI_CMD::WRITE:
+			case vci_param::CMD_WRITE:
 				m_contents[cell] = false;
 				r_vci_fsm = WRITE_RSP;
 				break;

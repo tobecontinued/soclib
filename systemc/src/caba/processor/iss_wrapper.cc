@@ -82,6 +82,9 @@ tmpl(void)::transition()
             case Iss::MEM_LHU:
             case Iss::MEM_LWBR:
             case Iss::MEM_LW:
+            case Iss::MEM_SWAP:
+            case Iss::MEM_LL:
+            case Iss::MEM_SC:
                 m_iss.setRdata(true, 0);
                 break;
             case Iss::MEM_SB:
@@ -94,12 +97,14 @@ tmpl(void)::transition()
                 assert(0 && "Impossible");
             }
             m_mem_type = Iss::MEM_NONE;
+            m_iss.clearDataRequest();
         } else {
             if ((bool)p_dcache.frz.read())
                 frozen = true;
             else {
                 m_iss.setRdata(false, p_dcache.rdata.read());
                 m_mem_type = Iss::MEM_NONE;
+                m_iss.clearDataRequest();
             }
         }
     }
@@ -157,6 +162,23 @@ tmpl(void)::genMoore()
 		p_dcache.type = DCacheSignals::WW;
 		p_dcache.adr = m_mem_addr;
 		p_dcache.wdata = m_mem_wdata;
+		break;
+	case Iss::MEM_SC:
+		p_dcache.req = true;
+		p_dcache.type = DCacheSignals::SC;
+		p_dcache.adr = m_mem_addr;
+		p_dcache.wdata = m_mem_wdata;
+		break;
+	case Iss::MEM_SWAP:
+		p_dcache.req = true;
+		p_dcache.type = DCacheSignals::SWAP;
+		p_dcache.adr = m_mem_addr;
+		p_dcache.wdata = m_mem_wdata;
+		break;
+	case Iss::MEM_LL:
+		p_dcache.req = true;
+		p_dcache.type = DCacheSignals::LL;
+		p_dcache.adr = m_mem_addr;
 		break;
 	case Iss::MEM_INVAL:
 		p_dcache.req = true;

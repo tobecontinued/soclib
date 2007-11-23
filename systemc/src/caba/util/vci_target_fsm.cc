@@ -35,6 +35,8 @@ tmpl(/**/)::VciTargetFsm(
     soclib::caba::VciTarget<vci_param> &vci,
     const std::list<soclib::common::Segment> &seglist )
     : p_vci(vci),
+      m_atomic(0),
+      m_atomic_timeout_base(0),
       m_segments(seglist.begin(), seglist.end()),
       m_rsp_info("m_rsp_info")
 {
@@ -57,6 +59,7 @@ tmpl(/**/)::~VciTargetFsm()
 tmpl(void)::reset()
 {
     m_state = TARGET_IDLE;
+    m_atomic.clearAll();
 
     m_rsp_info.init();
 }
@@ -64,6 +67,12 @@ tmpl(void)::reset()
 tmpl(void)::transition()
 {
 	rsp_info_t rsp_info;
+
+    if ( m_atomic_timeout_base )
+        if ( ! --m_atomic_timeout ) {
+            m_atomic.clearNext();
+            m_atomic_timeout = m_atomic_timeout_base;
+        }
 
 	if ( p_vci.cmdval.read() &&
          p_vci.cmdack.read() )
@@ -74,8 +83,7 @@ tmpl(void)::transition()
         case TARGET_WRITE_RSP:
         case TARGET_READ_RSP:
         {
-            addr_t address = p_vci.address.read();
-            data_t rdata = 0;
+            const addr_t address = p_vci.address.read();
             /*
              * This variable tracks whether at least one segment was
              * reached, if we are not default target, this variable
@@ -83,7 +91,7 @@ tmpl(void)::transition()
              */
             bool reached = false;
 
-            rsp_info.error = false;
+            rsp_info.error = vci_param::ERR_NORMAL;
 
             std::vector<soclib::common::Segment>::const_iterator seg;
             size_t i=0;
@@ -94,27 +102,46 @@ tmpl(void)::transition()
                     continue;
 
                 reached = true;
-                address -= seg->baseAddress();
+                addr_t offset = address - seg->baseAddress();
 
                 switch (p_vci.cmd.read())
                 {
-                case VCI_CMD::WRITE:
+                case vci_param::CMD_WRITE:
+                    m_atomic.accessDone( address );
                     rsp_info.rdata = 0;
-                    if ((m_owner->*m_on_write_f)(i, address, p_vci.wdata.read(), p_vci.be.read()))
+                    if ((m_owner->*m_on_write_f)(i, offset, p_vci.wdata.read(), p_vci.be.read()))
                         m_state = TARGET_WRITE_RSP;
                     else {
                         m_state = TARGET_ERROR_RSP;
-                        rsp_info.error = true;
+                        rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
                     }
                     break;
 
-                case VCI_CMD::READ:
-                    if ((m_owner->*m_on_read_f)(i, address, rdata)) {
+                case vci_param::CMD_STORE_COND:
+                    if ( ! m_atomic.isAtomic( address, p_vci.srcid.read() ) ) {
+                        rsp_info.rdata = 1;
+                        m_state = TARGET_WRITE_RSP;
+                        break;
+                    }
+                    rsp_info.rdata = 0;
+
+                    m_atomic.doStoreConditional( address, p_vci.srcid.read() );
+                    if ((m_owner->*m_on_write_f)(i, offset, p_vci.wdata.read(), p_vci.be.read()))
+                        m_state = TARGET_WRITE_RSP;
+                    else {
+                        m_state = TARGET_ERROR_RSP;
+                        rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
+                    }
+                    break;
+
+                case vci_param::CMD_LOCKED_READ:
+                    m_atomic.doLoadLinked( address, p_vci.srcid.read() );
+                case vci_param::CMD_READ:
+                    if ((m_owner->*m_on_read_f)(i, offset, rsp_info.rdata)) {
                         m_state = TARGET_READ_RSP;
-                        rsp_info.rdata = rdata;
                     } else {
                         m_state = TARGET_ERROR_RSP;
-                        rsp_info.error = true;
+                        rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
                         rsp_info.rdata = 0x0bad0bad;
                     }
                     break;
@@ -145,6 +172,12 @@ tmpl(void)::transition()
             m_rsp_info.simple_put( rsp_info );
     } else
         m_rsp_info.simple_get();
+}
+
+tmpl(void)::LlScEnable( size_t n, size_t timeout )
+{
+    m_atomic.resize(n);
+    m_atomic_timeout_base = m_atomic_timeout = timeout/n;
 }
 
 tmpl(void)::genMoore()

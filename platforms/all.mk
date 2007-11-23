@@ -2,6 +2,8 @@ PLATFORM_DESC=platform_desc
 SOCLIB_CC=soclib-cc
 SOCLIB:=$(shell soclib-cc --getpath)
 
+TEST_OUTPUT=test.out
+
 export ARCH
 
 ifeq ($(NO_SOFT),)
@@ -32,8 +34,12 @@ test:
 	@echo "No arguments to simulation, cant simulate anything"
 
 else
-test: simulation.x $(SOFT)
-	SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null
+test: $(TEST_OUTPUT) post_test
+
+post_test:
+
+$(TEST_OUTPUT): simulation.x $(SOFT)
+	SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null 2>&1 > $@
 
 endif
 

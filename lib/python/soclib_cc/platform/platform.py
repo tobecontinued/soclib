@@ -85,6 +85,15 @@ class Uses:
 			mode = self.mode
 		args = copy(inherited_args)
 		args.update(self.args)
+		for k in args.keys():
+			newv = args[k]
+			if not '%' in str(newv):
+				continue
+			v = None
+			while newv != v:
+				v = newv
+				newv = newv%inherited_args
+			args[k] = v
 		if mode not in cdef and 'common' in cdef:
 			mode = 'common'
 		if mode in cdef:

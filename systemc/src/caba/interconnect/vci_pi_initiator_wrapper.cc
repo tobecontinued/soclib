@@ -61,11 +61,11 @@ switch (r_fsm_state) {
 		r_srcid		= (int)p_vci.srcid.read();
 		r_pktid		= (int)p_vci.pktid.read();
 		r_trdid		= (int)p_vci.trdid.read();
-		if 	(p_vci.cmd.read() == VCI_CMD::READ)  r_read = true;
-		else if (p_vci.cmd.read() == VCI_CMD::WRITE) r_read = false;
+		if 	(p_vci.cmd.read() == vci_param::CMD_READ)  r_read = true;
+		else if (p_vci.cmd.read() == vci_param::CMD_WRITE) r_read = false;
 		else 	{
       			printf("ERROR : The vci_pi_initiator_wrapper accepts only\n");
-      			printf("VCI_CMD::READ and VCI_CMD::WRITE commands\n");
+      			printf("vci_param::CMD_READ and vci_param::CMD_WRITE commands\n");
 			exit(1);
         		} 
 		if      (p_vci.be.read() == 0xF) 	r_opc = Pibus::OPC_WDU;

@@ -39,10 +39,7 @@ void interrupt_ex_handler(
 	void *dataptr, void *regtable,
 	void *stackptr)
 {
-	uputs(__FUNCTION__);
-	putc(' ');
-	puti(type);
-	putc('\n');
+	printf("Exception at 0x%x: 0x%x\n", execptr, type);
 	exit(1);
 }
 

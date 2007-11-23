@@ -11,4 +11,5 @@ class caba(VciCabaComponent):
 		',%(default_target)s,%(fifo_depth)d'
 	uses = [
 		Uses('mapping_table'),
+		Uses('linked_access_buffer', addr_t = 'uint%(addr_size)s_t', id_t = 'unsigned int'),
 		]

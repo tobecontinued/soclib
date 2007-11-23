@@ -54,8 +54,22 @@ public:
 		MEM_SB,
 		MEM_SH,
 		MEM_SW,
+		MEM_LL,
+		MEM_SC,
+		MEM_SWAP,
 		MEM_INVAL
 	};
+
+    static inline const char* dataAccessTypeName( enum DataAccessType e )
+    {
+        static const char *const type_names[15] =
+            {"NONE", "LB", "LBU", "LH", "LHBR",
+             "LWBR", "LHU", "LW", "SB", "SH",
+             "SW", "LL", "SC", "SWAP", "INVAL" };
+        if ( e > MEM_INVAL )
+            return "Invalid";
+        return type_names[e];
+    }
 
 protected:
 	uint32_t 	r_pc;			// Program Counter
@@ -81,11 +95,11 @@ private:
 public:
     virtual ~Iss() {}
 
-    virtual void step() = 0;
-    virtual void nullStep() = 0;
+    void step();
+    void nullStep();
 
-    virtual void reset() = 0;
-	virtual void setInstruction(bool error, uint32_t val) = 0;
+    void reset();
+	void setInstruction(bool error, uint32_t val);
 
 	Iss( const std::string &name, uint32_t ident )
 		: m_ident(ident),
@@ -104,13 +118,13 @@ public:
         return m_ins_delay;
     }
 
-	virtual inline void getInstructionRequest(bool &req, uint32_t &address) const
+	inline void getInstructionRequest(bool &req, uint32_t &address) const
 	{
         req = true;
 		address = r_pc;
 	}
 
-	virtual inline void getDataRequest(
+	inline void getDataRequest(
         enum DataAccessType &type,
         uint32_t &address,
         uint32_t &wdata) const
@@ -120,39 +134,26 @@ public:
 		type = r_mem_type;
 	}
 
-	virtual inline void dataRequestAccepted()
+	inline void clearDataRequest()
 	{
-        switch (r_mem_type) {
-        case MEM_SB:
-        case MEM_SH:
-        case MEM_SW:
-            r_mem_type = MEM_NONE;
-            return;
-        case MEM_NONE:
-        case MEM_INVAL:
-        case MEM_LB:
-        case MEM_LBU:
-        case MEM_LH:
-        case MEM_LHBR:
-        case MEM_LHU:
-        case MEM_LWBR:
-        case MEM_LW:
-            return;
-        }
+		r_mem_addr = 0;
+		r_mem_wdata = 0;
+		r_mem_type = MEM_NONE;
+        r_mem_dest = 0;
 	}
 
-	virtual inline void setWriteBerr()
+	inline void setWriteBerr()
 	{
 		r_dbe = true;
 	}
 
-	virtual inline void setRdata(bool error, uint32_t rdata)
+	inline void setRdata(bool error, uint32_t rdata)
 	{
 		m_dbe = error;
 		m_rdata = rdata;
 	}
 
-	virtual inline void setIrq(uint32_t irq)
+	inline void setIrq(uint32_t irq)
 	{
 		m_irq = irq;
 	}
@@ -214,6 +215,9 @@ protected:
         case MEM_LWBR:
         case MEM_LW:
         case MEM_SW:
+        case MEM_LL:
+        case MEM_SC:
+        case MEM_SWAP:
             return (address&3);
         }
         assert(0&&"This is impossible");
@@ -230,6 +234,9 @@ protected:
         case MEM_LHU:
         case MEM_LWBR:
         case MEM_LW:
+        case MEM_LL:
+        case MEM_SC:
+        case MEM_SWAP:
             return true;
         case MEM_NONE:
         case MEM_INVAL:
@@ -252,12 +259,15 @@ protected:
         case MEM_LHU:
         case MEM_LWBR:
         case MEM_LW:
+        case MEM_LL:
         case MEM_NONE:
         case MEM_INVAL:
             return false;
         case MEM_SB:
         case MEM_SH:
         case MEM_SW:
+        case MEM_SC:
+        case MEM_SWAP:
             return true;
         }
         assert(0&&"This is impossible");

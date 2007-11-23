@@ -268,6 +268,11 @@ void MipsIss::op_lb()
     do_load(MEM_LB);
 }
 
+void MipsIss::op_ll()
+{
+    do_load(MEM_LL);
+}
+
 void MipsIss::op_lh()
 {
     do_load(MEM_LH);
@@ -310,6 +315,12 @@ void MipsIss::op_sh()
 void MipsIss::op_sw()
 {
     do_store(MEM_SW, m_rt);
+}
+
+void MipsIss::op_sc()
+{
+    do_store(MEM_SC, m_rt);
+    r_mem_dest = m_ins.i.rt;
 }
 
 void MipsIss::special_sll()
@@ -493,6 +504,42 @@ void MipsIss::special_sltu()
     r_gp[m_ins.r.rd] = (bool)(m_rs < m_rt);
 }
 
+void MipsIss::special_tlt()
+{
+    if ((int32_t)m_rs < (int32_t)m_rt)
+        m_exception = X_TR;
+}
+
+void MipsIss::special_tltu()
+{
+    if (m_rs < m_rt)
+        m_exception = X_TR;
+}
+
+void MipsIss::special_tge()
+{
+    if ((int32_t)m_rs >= (int32_t)m_rt)
+        m_exception = X_TR;
+}
+
+void MipsIss::special_tgeu()
+{
+    if (m_rs >= m_rt)
+        m_exception = X_TR;
+}
+
+void MipsIss::special_teq()
+{
+    if (m_rs == m_rt)
+        m_exception = X_TR;
+}
+
+void MipsIss::special_tne()
+{
+    if (m_rs != m_rt)
+        m_exception = X_TR;
+}
+
 void MipsIss::special_ill()
 {
     m_exception = X_RI;
@@ -520,8 +567,8 @@ MipsIss::func_t const MipsIss::special_table[] = {
         op4(  ill,  ill,  slt, sltu),
         op4(  ill,  ill,  ill,  ill),
 
-        op4(  ill,  ill,  ill,  ill),
-        op4(  ill,  ill,  ill,  ill),
+        op4(  tge, tgeu,  tlt, tltu),
+        op4(  teq,  ill,  tne,  ill),
 
         op4(  ill,  ill,  ill,  ill),
         op4(  ill,  ill,  ill,  ill),
@@ -558,10 +605,10 @@ MipsIss::func_t const MipsIss::opcod_table[]= {
     op4(     sb,    sh,  ill,    sw),
     op4(    ill,   ill,  ill,   ill),
 
-    op4(    ill,   ill,  ill,   ill),
+    op4(     ll,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
 
-    op4(    ill,   ill,  ill,   ill),
+    op4(     sc,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
 };
 
@@ -587,10 +634,10 @@ const char *MipsIss::name_table[] = {
     op4(     sb,    sh,  ill,    sw),
     op4(    ill,   ill,  ill,   ill),
 
-    op4(    ill,   ill,  ill,   ill),
+    op4(     ll,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
 
-    op4(    ill,   ill,  ill,   ill),
+    op4(     sc,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
 };
 #undef op
@@ -632,10 +679,10 @@ MipsIss::use_t const MipsIss::use_table[]= {
        use4(     ST,    ST, NONE,    ST),
        use4(   NONE,  NONE, NONE,  NONE),
 
-       use4(   NONE,  NONE, NONE,  NONE),
+       use4(      S,  NONE, NONE,  NONE),
        use4(   NONE,  NONE, NONE,  NONE),
 
-       use4(   NONE,  NONE, NONE,  NONE),
+       use4(     ST,  NONE, NONE,  NONE),
        use4(   NONE,  NONE, NONE,  NONE),
 };
 

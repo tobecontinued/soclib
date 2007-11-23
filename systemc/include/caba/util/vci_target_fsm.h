@@ -32,6 +32,8 @@
 #include "common/mapping_table.h"
 #include "caba/util/base_module.h"
 
+#include "common/linked_access_buffer.h"
+
 namespace soclib {
 namespace caba {
 
@@ -73,6 +75,12 @@ private:
 
     VciTarget<vci_param> &p_vci;
 
+    soclib::common::LinkedAccessBuffer<
+        typename vci_param::fast_addr_t,
+        unsigned int> m_atomic;
+    size_t m_atomic_timeout_base;
+    size_t m_atomic_timeout;
+
     std::vector<soclib::common::Segment> m_segments;
 
     enum vci_target_fsm_state_e m_state;
@@ -88,6 +96,7 @@ private:
     typedef struct rsp_info_s rsp_info_t;
 
     soclib::caba::GenericFifo<rsp_info_t, fifo_depth> m_rsp_info;
+    bool m_ll_sc_supported;
 
     typedef typename vci_param::addr_t addr_t;
     typedef typename vci_param::data_t data_t;
@@ -136,6 +145,12 @@ _on_read_write(this,                            \
 (__rcast3)&SC_CURRENT_USER_MODULE::rf,          \
 (__wcast3)&SC_CURRENT_USER_MODULE::wf )
 
+    /**
+     * \brief Enable LL/SC
+     * \param n Number of entries supported
+     * \param timeout Average timeout for one entry
+     */
+    void LlScEnable( size_t n, size_t timeout );
 
     /**
      * \brief Desctructor

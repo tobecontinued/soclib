@@ -1,3 +1,4 @@
+// -*- c++ -*-
 /////////////////////////////////////////////////////////////////////////////
 // File     : vci_xcache.cc
 // Date     : 17/07/2007
@@ -16,7 +17,6 @@
 //   to signal the uncached data availability, stored in r_dcache_miss_buf[0].
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <math.h>
 #include <cassert>
 #include "common/arithmetics.h"
 #include "caba/initiator/vci_xcache.h"
@@ -24,92 +24,43 @@
 namespace soclib { 
 namespace caba {
 
+#define XCACHE_DEBUG 0
 #define LINE_VALID 0x80000000
 
-static inline bool xcache_is_write(soclib::caba::DCacheSignals::req_type_e cmd)
+#define tmpl(x)  template<typename vci_param> x VciXCache<vci_param>
+
+tmpl(inline bool)::is_write(soclib::caba::DCacheSignals::req_type_e cmd)
 {
     switch(cmd) {
     case soclib::caba::DCacheSignals::WW:
     case soclib::caba::DCacheSignals::WH:
     case soclib::caba::DCacheSignals::WB:
+        // Dont put LL/SC/SW as they should not burst
         return true;
     default:
         return false;
     }
 }
 
-static inline bool xcache_can_burst(
-    soclib::caba::DCacheSignals::req_type_e old_cmd, int old_addr,
-    soclib::caba::DCacheSignals::req_type_e new_cmd, int new_addr)
+tmpl(inline bool)::can_burst(const d_req_t &old, const d_req_t &next)
 {
               
-    bool res = xcache_is_write(old_cmd) && xcache_is_write(new_cmd) &&
-//        (new_addr == old_addr+4);
-        !((new_addr^old_addr)&~4095);
+    bool res = is_write(old.type) && is_write(next.type) &&
+//        (next.addr == old.addr+4);
+        !((next.addr^old.addr)&~4095);
     return res;
 }
 
-enum dcache_fsm_state_e {
-    DCACHE_INIT,
-    DCACHE_IDLE,
-    DCACHE_WRITE_UPDT,
-    DCACHE_WRITE_REQ,
-    DCACHE_MISS_REQ,
-    DCACHE_MISS_WAIT,
-    DCACHE_MISS_UPDT,
-    DCACHE_UNC_REQ,
-    DCACHE_UNC_WAIT,
-    DCACHE_INVAL,
-    DCACHE_ERROR,
-};
-
-enum icache_fsm_state_e {
-    ICACHE_INIT,
-    ICACHE_IDLE,
-    ICACHE_WAIT,
-    ICACHE_UPDT,
-    ICACHE_ERROR,
-};
-
-enum cmd_fsm_state_e {
-    CMD_IDLE,
-    CMD_DATA_MISS,
-    CMD_DATA_UNC,
-    CMD_DATA_WRITE,
-    CMD_INS_MISS,
-};
-
-enum rsp_fsm_state_e {
-    RSP_IDLE,
-    RSP_INS_MISS,
-    RSP_INS_ERROR_WAIT,
-    RSP_INS_ERROR,
-    RSP_INS_OK,
-    RSP_DATA_MISS,
-    RSP_DATA_UNC,
-    RSP_DATA_WRITE,
-    RSP_DATA_READ_ERROR_WAIT,
-    RSP_DATA_READ_ERROR,
-    RSP_DATA_READ_OK,
-    RSP_DATA_WRITE_ERROR,
-    RSP_DATA_WRITE_ERROR_WAIT,
-};
-
-enum {
-    READ_PKTID,
-    WRITE_PKTID,
-};
-
-#define tmpl(x)  template<typename vci_param> x VciXCache<vci_param>
+using soclib::common::uint32_log2;
 
 tmpl(/**/)::VciXCache(
     sc_module_name name,
     const soclib::common::MappingTable &mt,
     const soclib::common::IntTab &index,
-    int icache_lines,
-    int icache_words,
-    int dcache_lines,
-    int dcache_words )
+    size_t icache_lines,
+    size_t icache_words,
+    size_t dcache_lines,
+    size_t dcache_words )
     : soclib::caba::BaseModule(name),
 
       p_clk("clk"),
@@ -126,38 +77,29 @@ tmpl(/**/)::VciXCache(
       s_icache_lines(icache_lines),
       s_icache_words(icache_words),
 
-      s_icache_xshift(2),
-      s_icache_yshift(soclib::common::uint32_log2(s_icache_words) + s_icache_xshift),
-      s_icache_zshift(soclib::common::uint32_log2(s_icache_lines) + s_icache_yshift),
-      s_icache_xmask(((1<<soclib::common::uint32_log2(s_icache_words))-1) << s_icache_xshift),
-      s_icache_ymask(((1<<soclib::common::uint32_log2(s_icache_lines))-1) << s_icache_yshift),
-      s_icache_zmask((~0x0) << s_icache_zshift),
+      m_i_x( uint32_log2(s_icache_words), uint32_log2(vci_param::B) ),
+      m_i_y( uint32_log2(s_icache_lines), uint32_log2(s_icache_words) + uint32_log2(vci_param::B) ),
+      m_i_z( vci_param::N-uint32_log2(s_icache_lines) - uint32_log2(s_icache_words) - uint32_log2(vci_param::B),
+             uint32_log2(s_icache_lines) + uint32_log2(s_icache_words) + uint32_log2(vci_param::B) ),
+      m_icache_yzmask((~0)<<(uint32_log2(s_icache_words) + uint32_log2(vci_param::B))),
 
-      s_dcache_xshift(2),
-      s_dcache_yshift(soclib::common::uint32_log2(s_dcache_words) + s_dcache_xshift),
-      s_dcache_zshift(soclib::common::uint32_log2(s_dcache_lines) + s_dcache_yshift),
-      s_dcache_xmask(((1<<soclib::common::uint32_log2(s_dcache_words))-1) << s_dcache_xshift),
-      s_dcache_ymask(((1<<soclib::common::uint32_log2(s_dcache_lines))-1) << s_dcache_yshift),
-      s_dcache_zmask((~0x0) << s_dcache_zshift),
+      m_d_x( uint32_log2(s_dcache_words), uint32_log2(vci_param::B) ),
+      m_d_y( uint32_log2(s_dcache_lines), uint32_log2(s_dcache_words) + uint32_log2(vci_param::B) ),
+      m_d_z( vci_param::N-uint32_log2(s_dcache_lines) - uint32_log2(s_dcache_words) - uint32_log2(vci_param::B),
+             uint32_log2(s_dcache_lines) + uint32_log2(s_dcache_words) + uint32_log2(vci_param::B) ),
+      m_dcache_yzmask((~0)<<(uint32_log2(s_dcache_words) + uint32_log2(vci_param::B))),
 
       r_dcache_fsm("r_dcache_fsm"),
-      r_dcache_save_addr("r_dcache_save_addr"),
-      r_dcache_save_data("r_dcache_save_data"),
-      r_dcache_save_type("r_dcache_save_type"),
-      r_dcache_save_prev("r_dcache_save_prev"),
+      r_dcache_save("r_dcache_save"),
 
-      m_data_fifo("m_data_fifo"),
-      m_addr_fifo("m_addr_fifo"),
-      m_type_fifo("m_type_fifo"),
+      m_dreq_fifo("m_dreq_fifo"),
 
       r_icache_fsm("r_icache_fsm"),
       r_icache_miss_addr("r_icache_miss_addr"),
       r_icache_req("r_icache_req"),
 
       r_vci_cmd_fsm("r_vci_cmd_fsm"),
-      r_dcache_cmd_addr("r_dcache_cmd_addr"),
-      r_dcache_cmd_data("r_dcache_cmd_data"),
-      r_dcache_cmd_type("r_dcache_cmd_type"),
+      r_dcache_cmd("r_dcache_cmd"),
       r_dcache_miss_addr("r_dcache_miss_addr"),
       r_cmd_cpt("r_cmd_cpt"),
 
@@ -181,36 +123,36 @@ tmpl(/**/)::VciXCache(
     assert(icache_lines <= 1024);
     assert(dcache_lines <= 1024);
 
-    r_dcache_data = new sc_signal<int>*[dcache_lines];
-    for ( int i=0; i<dcache_lines; ++i )
-        r_dcache_data[i] = new sc_signal<int>[dcache_words];
+    r_dcache_data = new sc_signal<data_t>*[dcache_lines];
+    for ( size_t i=0; i<dcache_lines; ++i )
+        r_dcache_data[i] = new sc_signal<data_t>[dcache_words];
 
-    r_dcache_tag = new sc_signal<int>[dcache_lines];
+    r_dcache_tag = new sc_signal<tag_t>[dcache_lines];
 
-    r_icache_data = new sc_signal<int>*[icache_lines];
-    for ( int i=0; i<icache_lines; ++i )
-        r_icache_data[i] = new sc_signal<int>[icache_words];
+    r_icache_data = new sc_signal<data_t>*[icache_lines];
+    for ( size_t i=0; i<icache_lines; ++i )
+        r_icache_data[i] = new sc_signal<data_t>[icache_words];
 
-    r_icache_tag = new sc_signal<int>[icache_lines];
+    r_icache_tag = new sc_signal<tag_t>[icache_lines];
 
-    r_icache_miss_buf = new sc_signal<int>[icache_words];    
-    r_dcache_miss_buf = new sc_signal<int>[dcache_words];    
+    r_icache_miss_buf = new sc_signal<data_t>[icache_words];    
+    r_dcache_miss_buf = new sc_signal<data_t>[dcache_words];    
 
-    for (int i=0; i<s_dcache_lines; i++ ) {
-        for (int j=0; j<s_dcache_words; j++ ) {
+    for (size_t i=0; i<s_dcache_lines; i++ ) {
+        for (size_t j=0; j<s_dcache_words; j++ ) {
             SOCLIB_REG_RENAME_N2(r_dcache_data, i, j);
         }
         SOCLIB_REG_RENAME_N(r_dcache_tag, i);
     }
-    for (int i=0; i<s_icache_lines; i++ ) {
-        for (int j=0; j<s_icache_words; j++ ) {
+    for (size_t i=0; i<s_icache_lines; i++ ) {
+        for (size_t j=0; j<s_icache_words; j++ ) {
             SOCLIB_REG_RENAME_N2(r_icache_data, i, j);
         }
         SOCLIB_REG_RENAME_N(r_icache_tag, i);
     }
-    for (int i=0; i<s_icache_words; i++ )
+    for (size_t i=0; i<s_icache_words; i++ )
         SOCLIB_REG_RENAME_N(r_icache_miss_buf, i);
-    for (int i=0; i<s_dcache_words; i++ )
+    for (size_t i=0; i<s_dcache_words; i++ )
         SOCLIB_REG_RENAME_N(r_dcache_miss_buf, i);
 
     SC_METHOD(transition);
@@ -253,9 +195,7 @@ tmpl(void)::transition()
 
         r_dcache_cpt_init = s_dcache_lines - 1;
         r_icache_cpt_init = s_icache_lines - 1;
-        m_data_fifo.init();
-        m_type_fifo.init();
-        m_addr_fifo.init();
+        m_dreq_fifo.init();
 
         r_icache_req = false;
 
@@ -275,81 +215,37 @@ tmpl(void)::transition()
         return;
     }
 
-    // icache_address & icache_hit
-    const int icache_address = (int)p_icache.adr.read();
-    const int icache_y = (icache_address & s_icache_ymask) >> s_icache_yshift;
-    const int icache_z = (icache_address >> s_icache_zshift) | LINE_VALID;
+    ICacheSignals::req_type_e icache_req_type =
+        (ICacheSignals::req_type_e)(int)p_icache.type.read();
+    const bool icache_req = p_icache.req.read();
+    const addr_t icache_address = p_icache.adr.read();
+
+    const int icache_y = m_i_y[icache_address];
+    const tag_t icache_z = m_i_z[icache_address] | LINE_VALID;
     const bool icache_hit = (icache_z == r_icache_tag[icache_y]);
 
-    // dcache_read, dcache_write, dcache_inval, dcache_unc
-    // the dcache_req_type contains the data request, possibly
-    // modified to take into account the cacheability table.
+    const DCacheSignals::req_type_e dcache_type =
+        (DCacheSignals::req_type_e)(int)p_dcache.type.read();
+    const bool dcache_req = p_dcache.req.read();
+    const addr_t dcache_address  = p_dcache.adr.read();
 
-    int  dcache_req_type = (int)p_dcache.type.read(); 
-
-    bool dcache_read  ; // cached read request
-    bool dcache_unc   ; // uncached request 
-    bool dcache_inval ; // line invalidate request
-    bool dcache_write ; // write request
-
-    switch(dcache_req_type) {
-    case soclib::caba::DCacheSignals::RW:
-        if (m_cacheability_table[p_dcache.adr.read()]) {
-            dcache_read  = true;
-            dcache_unc   = false;
-            dcache_inval = false;
-            dcache_write = false;
-        } else {
-            dcache_read  = false;
-            dcache_unc   = true;
-            dcache_inval = false;
-            dcache_write = false;
-            dcache_req_type  = soclib::caba::DCacheSignals::RU;
-        }
-        break;
-    case soclib::caba::DCacheSignals::RU:
-        dcache_read  = false;
-        dcache_unc   = true;
-        dcache_inval = false;
-        dcache_write = false;
-        break;
-    case soclib::caba::DCacheSignals::RZ:
-        dcache_read  = false;
-        dcache_unc   = false;
-        dcache_inval = true;
-        dcache_write = false;
-        break;
-    case soclib::caba::DCacheSignals::WW:
-    case soclib::caba::DCacheSignals::WH:
-    case soclib::caba::DCacheSignals::WB:
-        dcache_read  = false;
-        dcache_unc   = false;
-        dcache_inval = false;
-        dcache_write = true;
-        break;
-    default:
-        dcache_read  = false;
-        dcache_unc   = false;
-        dcache_inval = false;
-        dcache_write = false;
-        break;
-    }
-
-    // dcache_address, dcache_unc_hit, dcache_hit
-    const int dcache_address  = (int)p_dcache.adr.read();
-    const int dcache_x = (dcache_address & s_dcache_xmask) >> s_dcache_xshift;
-    const int dcache_y = (dcache_address & s_dcache_ymask) >> s_dcache_yshift;
-    const int dcache_z = (dcache_address >> s_dcache_zshift) | LINE_VALID;
-
-    const bool dcache_unc_hit = (r_dcache_unc_valid && dcache_address == r_dcache_miss_addr); 
-
+    const int dcache_x = m_d_x[dcache_address];
+    const int dcache_y = m_d_y[dcache_address];
+    const tag_t dcache_z = m_d_z[dcache_address] | LINE_VALID;
+    const bool dcache_unc_hit = (r_dcache_unc_valid.read() && dcache_address == r_dcache_miss_addr); 
     const bool dcache_hit = (dcache_z == r_dcache_tag[dcache_y]);
     
-    bool    fifo_put = false;
+    bool    fifo_put_dcache_save = false;
     bool    fifo_get = false;
-    int     data_fifo = 0;
-    int     addr_fifo = 0;
-    int     type_fifo = 0;
+#if XCACHE_DEBUG
+    std::cout
+        << name()
+        << " dcache: " << r_dcache_fsm
+        << " icache: " << r_icache_fsm
+        << " cmd: " << r_vci_cmd_fsm
+        << " rsp: " << r_vci_rsp_fsm
+        << std::endl;
+#endif
 
     /////////////////////////////////////////////////////////////////////
     // The ICACHE FSM controls the following ressources:
@@ -379,7 +275,7 @@ tmpl(void)::transition()
     // - p_icache.frz = false
     ///////////////////////////////////////////////////////////////////////
 
-    switch((enum icache_fsm_state_e)(int)r_icache_fsm.read()) {
+    switch(r_icache_fsm.read()) {
 
     case ICACHE_INIT:
         r_icache_tag[r_icache_cpt_init] = 0;
@@ -390,12 +286,13 @@ tmpl(void)::transition()
         break;
     
     case ICACHE_IDLE:
-        if ( p_icache.req.read() ) {
-            assert((int)p_icache.type.read() != soclib::caba::ICacheSignals::RU &&
+        if ( icache_req ) {
+            assert(icache_req_type != ICacheSignals::RU &&
                    "Only cached instruction fetch are supported");
+
             if ( ! icache_hit ) {
                 r_icache_fsm = ICACHE_WAIT;
-                r_icache_miss_addr = icache_address & (s_icache_zmask | s_icache_ymask);
+                r_icache_miss_addr = icache_address & m_icache_yzmask;
                 r_icache_req = true;
             }
             m_cpt_icache_dir_read++;
@@ -415,15 +312,13 @@ tmpl(void)::transition()
         break;
 
     case ICACHE_UPDT:
-    {
         r_icache_tag[icache_y] = icache_z;
-        for (int i=0 ; i<s_icache_words ; i++)
+        for (size_t i=0 ; i<s_icache_words ; i++)
             r_icache_data[icache_y][i] = r_icache_miss_buf[i];
         r_icache_fsm = ICACHE_IDLE;
         m_cpt_icache_dir_write++;
         m_cpt_icache_data_write++;
         break;
-    }
     
     } // end switch r_icache_fsm
 
@@ -432,18 +327,14 @@ tmpl(void)::transition()
     // - r_dcache_fsm
     // - r_dcache_data[s_dcache_words,s_dcache_lines]
     // - r_dcache_tag[s_dcache_lines]
-    // - r_dcache_save_addr
-    // - r_dcache_save_type
-    // - r_dcache_save_data
-    // - r_dcache_save_prev
+    // - r_dcache_save
     // - r_dcache_cpt_init
     // - r_dcache_unc_valid reset
-    // - fifo_put, data_fifo, addr_fifo, type_fifo
+    // - fifo_put_dcache_save, dreq
     //
     // The VALID bit for a cache line is the MSB bit in the TAG.
-    // In the IDLE state, the processor request is saved in the r_dcache_save_addr,
-    // r_dcache_save_data, r_dcache_save_type registers.
-    // The data  read in the cache is saved in r_dcache_save_prev.
+    // In the IDLE state, the processor request is saved in r_dcache_save.
+    // The data  read in the cache is saved in r_dcache_save.prev.
     // The request type takes into account the cacheability_table.
     //
     // There is five mutually exclusive conditions to exit the IDLE state:
@@ -471,7 +362,7 @@ tmpl(void)::transition()
     // - p_dcache.berr = true
     ///////////////////////////////////////////////////////////////////////////////////
 
-    switch ((enum dcache_fsm_state_e)(int)r_dcache_fsm.read()) {
+    switch (r_dcache_fsm.read()) {
 
     case DCACHE_INIT:
         r_dcache_tag[r_dcache_cpt_init] = 0;
@@ -481,76 +372,103 @@ tmpl(void)::transition()
         m_cpt_dcache_dir_write++;
         break;
 
-    case DCACHE_IDLE:
-        if (p_dcache.req.read()) {
-            r_dcache_save_addr = (int)p_dcache.adr.read();
-            r_dcache_save_data = (int)p_dcache.wdata.read();
-            r_dcache_save_type = dcache_req_type;
-            r_dcache_save_prev = r_dcache_data[dcache_y][dcache_x];
+    case DCACHE_WRITE_REQ:
+        fifo_put_dcache_save = true;
 
-            if (dcache_read && ! dcache_hit) {      // cached read miss     
-                r_dcache_fsm = DCACHE_MISS_REQ;
-            } else if (dcache_unc) {
-                if (dcache_unc_hit) {               // uncached read hit
-                    r_dcache_unc_valid = false;
-                } else {                            // uncached read miss
-                    r_dcache_fsm = DCACHE_UNC_REQ;
-                }
-            } else if (dcache_write) {
-                if (dcache_hit) {                   // write hit    
-                    r_dcache_fsm = DCACHE_WRITE_UPDT;
-                } else {                            // write miss
-                    r_dcache_fsm = DCACHE_WRITE_REQ;
-                }
-            } else if (dcache_inval && dcache_hit) { // line invalidate    
-                r_dcache_fsm = DCACHE_INVAL;
-            }
-            m_cpt_dcache_data_read++;
-            m_cpt_dcache_dir_read++;
+        if (! m_dreq_fifo.wok())
+            break;
+            
+        if (! dcache_req) {
+                r_dcache_fsm = DCACHE_IDLE;
+                break;
         }
+        m_cpt_fifo_write++;
+    case DCACHE_IDLE:
+    {
+        d_req_t dr;
+        if (! dcache_req)
+                break;
+
+        m_cpt_dcache_data_read++;
+        m_cpt_dcache_dir_read++;
+        
+        dr.addr = dcache_address;
+        dr.data = p_dcache.wdata.read();
+        dr.type = dcache_type;
+        dr.prev = r_dcache_data[dcache_y][dcache_x];
+
+        switch(dcache_type) {
+        case DCacheSignals::RW:
+            if ( m_cacheability_table[dcache_address] ) {
+                if ( ! dcache_hit )
+                    r_dcache_fsm = DCACHE_MISS_REQ;
+                break;
+            } else {
+                dr.type = DCacheSignals::RU;
+                // and fallback to uncached miss
+            }
+        case DCacheSignals::RU:
+        case DCacheSignals::LL:
+        case DCacheSignals::SC:
+        case DCacheSignals::SWAP:
+            if ( dcache_unc_hit ) {
+#if XCACHE_DEBUG
+                std::cout << name() << " Unc hit" << std::endl;
+#endif
+                r_dcache_unc_valid = false;
+            } else {
+#if XCACHE_DEBUG
+                std::cout << name() << " Unc miss" << std::endl;
+#endif
+                r_dcache_fsm = DCACHE_UNC_REQ;
+            }
+            break;
+        case DCacheSignals::RZ:
+            if ( dcache_hit )
+                r_dcache_fsm = DCACHE_INVAL;
+            break;
+        case DCacheSignals::WW:
+        case DCacheSignals::WH:
+        case DCacheSignals::WB:
+            if (dcache_hit)
+                r_dcache_fsm = DCACHE_WRITE_UPDT;
+            else
+                r_dcache_fsm = DCACHE_WRITE_REQ;
+            break;
+        }
+
+        r_dcache_save = dr;
         break;
+    }
 
     case DCACHE_WRITE_UPDT:
     {
-        const int x    = (r_dcache_save_addr & s_dcache_xmask) >> s_dcache_xshift;
-        const int y    = (r_dcache_save_addr & s_dcache_ymask) >> s_dcache_yshift;
-        const soclib::caba::DCacheSignals::req_type_e type = 
-            (soclib::caba::DCacheSignals::req_type_e)(int)r_dcache_save_type;
-        const int byte = r_dcache_save_addr & 0x3;
-        switch(type) {
-        case soclib::caba::DCacheSignals::WW:
-                r_dcache_data[y][x] = r_dcache_save_data;
+        const d_req_t req = r_dcache_save.read();
+        const int x = m_d_x[req.addr];
+        const int y = m_d_y[req.addr];
+        const int byte = req.addr & 0x3;
+        switch(req.type) {
+        case DCacheSignals::WW:
+            r_dcache_data[y][x] = req.data;
             break;
-        case soclib::caba::DCacheSignals::WH:
-                if (byte == 0) {
-                    r_dcache_data[y][x] =
-                    (r_dcache_save_prev         & 0xFFFF0000) |
-                    (r_dcache_save_data         & 0x0000FFFF) ;
-                } else {
-                    r_dcache_data[y][x] =
-                    (r_dcache_save_prev         & 0x0000FFFF) |
-                    ((r_dcache_save_data << 16) & 0xFFFF0000) ;
-                }
+        case DCacheSignals::WH:
+        {
+            data_t mask = 0xffff << (byte*8);
+            data_t new_data = req.data << (byte*8);
+            r_dcache_data[y][x] =
+                (req.prev & ~mask) |
+                (new_data &  mask) ;
             break;
-        case soclib::caba::DCacheSignals::WB:
-                if (byte == 0) {
-                    r_dcache_data[y][x] =
-                    (r_dcache_save_prev         & 0xFFFFFF00) |
-                    (r_dcache_save_data         & 0x000000FF) ;
-                } else if (byte == 1) {
-                    r_dcache_data[y][x] =
-                    (r_dcache_save_prev         & 0xFFFF00FF) |
-                    ((r_dcache_save_data << 8 ) & 0x0000FF00) ;
-                } else if (byte == 2) {
-                    r_dcache_data[y][x] =
-                    (r_dcache_save_prev         & 0xFF00FFFF) |
-                    ((r_dcache_save_data << 16) & 0x00FF0000) ;
-                } else {
-                    r_dcache_data[y][x] =
-                    (r_dcache_save_prev         & 0x00FFFFFF) |
-                    ((r_dcache_save_data << 24) & 0xFF000000) ;
-                }
+        }
+        case DCacheSignals::WB:
+        {
+            data_t mask = 0xff << (byte*8);
+            data_t new_data = req.data << (byte*8);
+            r_dcache_data[y][x] =
+                (req.prev & ~mask) |
+                (new_data &  mask);
             break;
+        }
         default:
             assert(!"There should be nothing but write requests in DCACHE_WRITE_UPDT");
         } // end switch 
@@ -559,55 +477,9 @@ tmpl(void)::transition()
         break;
     }
 
-    case DCACHE_WRITE_REQ:
-        fifo_put = true;
-        data_fifo = r_dcache_save_data;
-        addr_fifo = r_dcache_save_addr;
-        type_fifo = r_dcache_save_type;
-
-        if (m_data_fifo.wok()) {
-            r_dcache_save_addr = (int)p_dcache.adr.read();
-            r_dcache_save_data = (int)p_dcache.wdata.read();
-            r_dcache_save_type = dcache_req_type;
-            r_dcache_save_prev = r_dcache_data[dcache_y][dcache_x];
-
-            m_cpt_dcache_data_read++;
-            m_cpt_dcache_dir_read++;
-            m_cpt_fifo_write++;
-
-            if (! p_dcache.req.read()) {
-                r_dcache_fsm = DCACHE_IDLE;
-                break;
-            }
-            
-            if (dcache_read && ! dcache_hit) {          // cached read miss     
-                r_dcache_fsm = DCACHE_MISS_REQ;
-            } else if (dcache_unc) {
-                if (dcache_unc_hit) {                   // uncached read hit
-                    r_dcache_unc_valid = false;
-                } else {                                // uncached read miss
-                    r_dcache_fsm = DCACHE_UNC_REQ;
-                }
-            } else if (dcache_write) {
-                if (dcache_hit) {                       // write hit    
-                    r_dcache_fsm = DCACHE_WRITE_UPDT;
-                } else {                                // write miss
-                    r_dcache_fsm = DCACHE_WRITE_REQ;
-                }
-            } else if (dcache_inval && dcache_hit) {    // line invalidate    
-                r_dcache_fsm = DCACHE_INVAL;
-            } else {                                    // cached read hit
-                r_dcache_fsm = DCACHE_IDLE;
-            }
-        }
-        break;
-
     case DCACHE_MISS_REQ:
-        fifo_put = true;
-        data_fifo = r_dcache_save_data;
-        addr_fifo = r_dcache_save_addr;
-        type_fifo = r_dcache_save_type;
-        if (m_data_fifo.wok()) {
+        fifo_put_dcache_save = true;
+        if (m_dreq_fifo.wok()) {
             r_dcache_fsm = DCACHE_MISS_WAIT;
             m_cpt_fifo_write++;
         }
@@ -616,16 +488,16 @@ tmpl(void)::transition()
     case DCACHE_MISS_WAIT:
         if (r_vci_rsp_fsm == RSP_DATA_READ_ERROR)
             r_dcache_fsm = DCACHE_ERROR;
-        if (r_vci_rsp_fsm == RSP_DATA_READ_OK)
+        if (r_vci_rsp_fsm == RSP_DATA_MISS_OK)
             r_dcache_fsm = DCACHE_MISS_UPDT;
         break;
 
     case DCACHE_MISS_UPDT:
     {
-        const int y = (r_dcache_miss_addr & s_dcache_ymask) >> s_dcache_yshift;
-        const int z = (r_dcache_miss_addr >> s_dcache_zshift) | LINE_VALID;
+        const int y = m_d_y[r_dcache_miss_addr];
+        const tag_t z = m_d_z[r_dcache_miss_addr] | LINE_VALID;
         r_dcache_tag[y] = z;
-        for (int i=0 ; i<s_dcache_words ; i++)
+        for (size_t i=0 ; i<s_dcache_words ; i++)
             r_dcache_data[y][i] = r_dcache_miss_buf[i];
         r_dcache_fsm = DCACHE_IDLE;
         m_cpt_dcache_data_write++;
@@ -634,11 +506,8 @@ tmpl(void)::transition()
     }
 
     case DCACHE_UNC_REQ:
-        fifo_put = true;
-        data_fifo = r_dcache_save_data;
-        addr_fifo = r_dcache_save_addr;
-        type_fifo = r_dcache_save_type;
-        if (m_data_fifo.wok()) {
+        fifo_put_dcache_save = true;
+        if (m_dreq_fifo.wok()) {
             r_dcache_fsm = DCACHE_UNC_WAIT;
             m_cpt_fifo_write++;
         }
@@ -647,7 +516,7 @@ tmpl(void)::transition()
     case DCACHE_UNC_WAIT:
         if (r_vci_rsp_fsm == RSP_DATA_READ_ERROR)
             r_dcache_fsm = DCACHE_ERROR;
-        if (r_vci_rsp_fsm == RSP_DATA_READ_OK)
+        if (r_vci_rsp_fsm == RSP_DATA_UNC_OK)
             r_dcache_fsm = DCACHE_IDLE;
         break;
 
@@ -656,28 +525,23 @@ tmpl(void)::transition()
         break;
         
     case DCACHE_INVAL:
-    {
-        const int y = (r_dcache_save_addr & s_dcache_ymask) >> s_dcache_yshift;
-        r_dcache_tag[y] = 0;
+        r_dcache_tag[m_d_y[r_dcache_save.read().addr]] = 0;
         r_dcache_fsm = DCACHE_IDLE;
         m_cpt_dcache_dir_write++;
         break;
-    }
 
     } // end switch r_dcache_fsm
 
     ////////////////////////////////////////////////////////////////////////////
     // The VCI_CMD FSM controls the following ressources:
     // - r_vci_cmd_fsm
-    // - r_dcache_cmd_data
-    // - r_dcache_cmd_addr
-    // - r_dcache_cmd_type
+    // - r_dcache_cmd
     // - r_dcache_miss_addr
     // - r_cmd_cpt
     // - fifo_get
     //
     // This FSM handles requests from both the DCACHE controler
-    // (m_data_fifo non empty) and the ICACHE controler (r_icache_req).
+    // (m_dreq_fifo non empty) and the ICACHE controler (r_icache_req).
     // There is  4 VCI transaction types :
     // - INS_MISS
     // - DATA_MISS
@@ -688,36 +552,43 @@ tmpl(void)::transition()
     // exit simultaneously the IDLE state.
     // In case of successive write at consecutive addressses, this FSM buids
     // write burst of variable lengths:
-    // A request is consumed from the m_data_fifo each time the CMD and RSP FSMs
+    // A request is consumed from the m_dreq_fifo each time the CMD and RSP FSMs
     // are in IDLE state, or the CMD FSM is in CMD_DATA_WRITE state, and there is
     // another write request at address + 4.
     //////////////////////////////////////////////////////////////////////////////
 
-    switch ((enum cmd_fsm_state_e)(int)r_vci_cmd_fsm.read()) {
+    switch (r_vci_cmd_fsm.read()) {
     
     case CMD_IDLE:
         r_cmd_cpt = 0;
         if (r_vci_rsp_fsm == RSP_IDLE) {
             if (r_icache_req.read()) {
                 r_vci_cmd_fsm = CMD_INS_MISS;
-            } else if (m_data_fifo.rok()) {
+            } else if (m_dreq_fifo.rok()) {
+                d_req_t req = m_dreq_fifo.read();
+                r_dcache_cmd = req;
                 m_cpt_fifo_read++;
                 fifo_get = true;
-                r_dcache_cmd_data   = m_data_fifo.read();
-                r_dcache_cmd_addr   = m_addr_fifo.read();
-                r_dcache_cmd_type   = (int)m_type_fifo.read();
                 
-                switch((soclib::caba::DCacheSignals::req_type_e)
-                       (int)m_type_fifo.read()) {
-                case soclib::caba::DCacheSignals::RW:
+                switch(req.type) {
+                case DCacheSignals::RW:
                     r_vci_cmd_fsm = CMD_DATA_MISS;
                     break;
-                case soclib::caba::DCacheSignals::RU:
+                case DCacheSignals::SC:
+                case DCacheSignals::LL:
+                case DCacheSignals::RU:
                     r_vci_cmd_fsm = CMD_DATA_UNC;
                     break;
-                default:
+                case DCacheSignals::SWAP:
+                    r_vci_cmd_fsm = CMD_DATA_SWAP_READ;
+                    break;
+                case DCacheSignals::WW:
+                case DCacheSignals::WH:
+                case DCacheSignals::WB:
                     r_vci_cmd_fsm = CMD_DATA_WRITE;
                     break;
+                case DCacheSignals::RZ:
+                    assert(0&&"This should not happen");
                 }
             }
         }
@@ -726,68 +597,64 @@ tmpl(void)::transition()
     case CMD_INS_MISS:
         if ( p_vci.cmdack.read() ) {
             r_cmd_cpt = r_cmd_cpt + 1;
-            if (r_cmd_cpt == (int)s_icache_words - 1)
+            if (r_cmd_cpt == s_icache_words - 1)
                 r_vci_cmd_fsm = CMD_IDLE;
         }
         break;
 
     case CMD_DATA_UNC:
-        r_dcache_miss_addr = r_dcache_cmd_addr;
+        r_dcache_miss_addr = r_dcache_cmd.read().addr;
+        // Fallback
+    case CMD_DATA_SWAP_WRITE:
         if ( p_vci.cmdack.read() )
             r_vci_cmd_fsm = CMD_IDLE;
         break;
 
+    case CMD_DATA_SWAP_READ:
+        r_dcache_miss_addr = r_dcache_cmd.read().addr;
+        if ( p_vci.cmdack.read() )
+            r_vci_cmd_fsm = CMD_DATA_SWAP_WRITE;
+        break;
+
     case CMD_DATA_MISS:
-        r_dcache_miss_addr = r_dcache_cmd_addr;
+        r_dcache_miss_addr = r_dcache_cmd.read().addr;
         if ( p_vci.cmdack.read() ) {
             r_cmd_cpt = r_cmd_cpt + 1;
-            if (r_cmd_cpt == (int)s_dcache_words - 1)
+            if (r_cmd_cpt == s_dcache_words - 1)
                 r_vci_cmd_fsm = CMD_IDLE;
         }
         break;
 
     case CMD_DATA_WRITE:
-        if ( p_vci.cmdack.read() ) {
-            if ( ! m_data_fifo.rok() ||
-                 ! xcache_can_burst(
-                        (soclib::caba::DCacheSignals::req_type_e)(int)m_type_fifo.read(), 
-                        (int)m_addr_fifo.read(),
-                        (soclib::caba::DCacheSignals::req_type_e)(int)r_dcache_cmd_type, 
-                        r_dcache_cmd_addr ) ) {
-                r_vci_cmd_fsm = CMD_IDLE;
-            } else {
-                fifo_get = true;
-                r_dcache_cmd_data   = (int)m_data_fifo.read();
-                r_dcache_cmd_addr   = (int)m_addr_fifo.read();
-                r_dcache_cmd_type   = (int)m_type_fifo.read();
-            }
+        if ( ! p_vci.cmdack.read() )
+            break;
+
+        if ( m_dreq_fifo.rok() && can_burst( m_dreq_fifo.read(), r_dcache_cmd.read() ) ) {
+            fifo_get = true;
+            r_dcache_cmd = m_dreq_fifo.read();
+        } else {
+            r_vci_cmd_fsm = CMD_IDLE;
         }
         break;
     } // end  switch r_vci_cmd_fsm
 
     //////////////////////////////////////////////////////////////////////////
-    //  m_data_fifo, ADR_FIFO and m_type_fifo
-    //  These FIFOs are used as a write buffer and contain the requests from
+    //  m_dreq_fifo
+    //  This FIFO is used as a write buffer and contains the requests from
     //  the DCACHE controler to the VCI controler.
-    //  They are controlled by the fifo_put signal (defined by r_dcache_fsm)
+    //  It is controlled by the fifo_put_dcache_save signal (defined by r_dcache_fsm)
     //  and the fifo_get signal (defined by r_vci_cmd_fsm)
     //////////////////////////////////////////////////////////////////////////
 
-    if ( fifo_put ) {
+    if ( fifo_put_dcache_save ) {
         if ( fifo_get ) {
-            m_data_fifo.put_and_get((sc_dt::sc_uint<32>)data_fifo);
-            m_addr_fifo.put_and_get((sc_dt::sc_uint<32>)addr_fifo);
-            m_type_fifo.put_and_get((sc_dt::sc_uint<4>)type_fifo);
+            m_dreq_fifo.put_and_get(r_dcache_save);
         } else {
-            m_data_fifo.simple_put((sc_dt::sc_uint<32>)data_fifo);
-            m_addr_fifo.simple_put((sc_dt::sc_uint<32>)addr_fifo);
-            m_type_fifo.simple_put((sc_dt::sc_uint<4>)type_fifo);
+            m_dreq_fifo.simple_put(r_dcache_save);
         }
     } else {
         if ( fifo_get ) {
-        m_data_fifo.simple_get();
-        m_addr_fifo.simple_get();
-        m_type_fifo.simple_get();
+        m_dreq_fifo.simple_get();
         }
     }
 
@@ -811,7 +678,7 @@ tmpl(void)::transition()
     // ICACHE or DCACHE FSM.
     //////////////////////////////////////////////////////////////////////////
 
-    switch ((enum rsp_fsm_state_e)(int)r_vci_rsp_fsm.read()) {
+    switch (r_vci_rsp_fsm.read()) {
 
     case RSP_IDLE:
         if (r_vci_cmd_fsm != CMD_IDLE)
@@ -820,14 +687,18 @@ tmpl(void)::transition()
         r_rsp_cpt = 0;
         if (r_icache_req.read()) {
             r_vci_rsp_fsm = RSP_INS_MISS;
-        } else if (m_data_fifo.rok()) {
-            switch ((soclib::caba::DCacheSignals::req_type_e)
-                    (int)m_type_fifo.read()) {
-            case soclib::caba::DCacheSignals::RW:
+        } else if (m_dreq_fifo.rok()) {
+            switch (m_dreq_fifo.read().type) {
+            case DCacheSignals::RW:
                 r_vci_rsp_fsm = RSP_DATA_MISS;
                 break;
-            case soclib::caba::DCacheSignals::RU:
+            case DCacheSignals::RU:
+            case DCacheSignals::LL:
+            case DCacheSignals::SC:
                 r_vci_rsp_fsm = RSP_DATA_UNC;
+                break;
+            case DCacheSignals::SWAP:
+                r_vci_rsp_fsm = RSP_DATA_SWAP_WAIT_READ;
                 break;
             default:
                 r_vci_rsp_fsm = RSP_DATA_WRITE;
@@ -840,20 +711,20 @@ tmpl(void)::transition()
         if ( ! p_vci.rspval.read() )
             break;
 
-        assert(r_rsp_cpt != (int)s_icache_words && 
+        assert(r_rsp_cpt != s_icache_words && 
                "illegal VCI response packet for instruction miss");
         r_rsp_cpt = r_rsp_cpt + 1;
-        r_icache_miss_buf[r_rsp_cpt] = (int)p_vci.rdata.read();
+        r_icache_miss_buf[r_rsp_cpt] = (data_t)p_vci.rdata.read();
         if ( p_vci.reop.read() ) {
-            if ( p_vci.rerror.read() == 0 ) {
+            if ( p_vci.rerror.read() == vci_param::ERR_NORMAL ) {
                 r_vci_rsp_fsm = RSP_INS_OK;
-                assert(r_rsp_cpt == (int)s_icache_words - 1 &&
+                assert(r_rsp_cpt == s_icache_words - 1 &&
                        "illegal VCI response packet for instruction miss");
             } else {
                 r_vci_rsp_fsm = RSP_INS_ERROR;
             }
         } else {
-            if ( p_vci.rerror.read() != 0 )
+            if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
                 r_vci_rsp_fsm = RSP_INS_ERROR_WAIT;
         }
         break;
@@ -879,21 +750,21 @@ tmpl(void)::transition()
         if ( ! p_vci.rspval.read() )
             break;
 
-        assert(r_rsp_cpt != (int)s_dcache_words &&
+        assert(r_rsp_cpt != s_dcache_words &&
                "illegal VCI response packet for data read miss");
 
         r_rsp_cpt = r_rsp_cpt + 1;
-        r_dcache_miss_buf[r_rsp_cpt] = (int)p_vci.rdata.read();
+        r_dcache_miss_buf[r_rsp_cpt] = (data_t)p_vci.rdata.read();
         if ( p_vci.reop.read() ) {
-            if ( p_vci.rerror.read() == 0 ) {
-                r_vci_rsp_fsm = RSP_DATA_READ_OK;
-                assert(r_rsp_cpt == (int)s_dcache_words - 1 &&
+            if ( p_vci.rerror.read() == vci_param::ERR_NORMAL ) {
+                r_vci_rsp_fsm = RSP_DATA_MISS_OK;
+                assert(r_rsp_cpt == s_dcache_words - 1 &&
                        "illegal VCI response packet for data read miss");
             } else {
                 r_vci_rsp_fsm = RSP_DATA_READ_ERROR;
             }
         } else {
-            if ( p_vci.rerror.read() != 0 )
+            if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
                 r_vci_rsp_fsm = RSP_DATA_READ_ERROR_WAIT;
         }
         break;
@@ -903,14 +774,13 @@ tmpl(void)::transition()
             break;
 
         if ( p_vci.reop.read() ) {
-            if ( p_vci.rerror.read() == 0 ) {
+            if ( p_vci.rerror.read() == vci_param::ERR_NORMAL )
                 r_vci_rsp_fsm = RSP_IDLE;
-            } else {
+            else
                 r_vci_rsp_fsm = RSP_DATA_WRITE_ERROR;
-            }
         } else {
-            if ( p_vci.rerror.read() != 0 )
-            r_vci_rsp_fsm = RSP_DATA_WRITE_ERROR_WAIT;
+            if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+                r_vci_rsp_fsm = RSP_DATA_WRITE_ERROR_WAIT;
         }
         break;
 
@@ -921,16 +791,49 @@ tmpl(void)::transition()
         assert(p_vci.reop.read() &&
                "illegal VCI response packet for data read uncached");
 
-        if ( p_vci.rerror.read() == 0 ) {
-            r_dcache_miss_buf[0] = (int)p_vci.rdata.read();
+        if ( p_vci.rerror.read() == vci_param::ERR_NORMAL ) {
+            r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
             r_dcache_unc_valid = true;
-            r_vci_rsp_fsm = RSP_DATA_READ_OK;
+            r_vci_rsp_fsm = RSP_DATA_UNC_OK;
         } else {
             r_vci_rsp_fsm = RSP_DATA_READ_ERROR;
         }
         break;
 
-    case RSP_DATA_READ_OK:
+    case RSP_DATA_SWAP_WAIT_READ:
+        if ( ! p_vci.rspval.read() )
+            break;
+
+        assert( ! p_vci.reop.read() &&
+               "short VCI response packet for data swap");
+
+        if ( p_vci.rerror.read() == vci_param::ERR_NORMAL ) {
+            r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
+            r_vci_rsp_fsm = RSP_DATA_SWAP_WAIT_WRITE;
+        } else {
+            r_vci_rsp_fsm = RSP_DATA_READ_ERROR_WAIT;
+        }
+        break;
+
+    case RSP_DATA_SWAP_WAIT_WRITE:
+        if ( ! p_vci.rspval.read() )
+            break;
+
+        assert(p_vci.reop.read() &&
+               "long VCI response packet for data swap");
+
+        if ( p_vci.rerror.read() == vci_param::ERR_NORMAL ) {
+            r_dcache_unc_valid = true;
+            r_vci_rsp_fsm = RSP_DATA_UNC_OK;
+        } else {
+            r_vci_rsp_fsm = RSP_DATA_READ_ERROR;
+        }
+        break;
+
+    case RSP_DATA_UNC_OK:
+    case RSP_DATA_MISS_OK:
+    case RSP_DATA_READ_ERROR:
+    case RSP_DATA_WRITE_ERROR:
         r_vci_rsp_fsm = RSP_IDLE;
         break;
 
@@ -942,20 +845,12 @@ tmpl(void)::transition()
             r_vci_rsp_fsm = RSP_DATA_READ_ERROR;
         break;
 
-    case RSP_DATA_READ_ERROR:
-        r_vci_rsp_fsm = RSP_IDLE;
-        break;
-
     case RSP_DATA_WRITE_ERROR_WAIT:
         if ( ! p_vci.rspval.read() )
             break;
 
         if ( p_vci.reop.read() )
             r_vci_rsp_fsm = RSP_DATA_WRITE_ERROR;
-        break;
-
-    case RSP_DATA_WRITE_ERROR:
-        r_vci_rsp_fsm = RSP_IDLE;
         break;
     } // end switch r_vci_rsp_fsm
 }
@@ -976,7 +871,10 @@ tmpl(void)::genMoore()
 
     // VCI CMD
 
-    switch ((enum cmd_fsm_state_e)(int)r_vci_cmd_fsm.read()) {
+    const d_req_t req = r_dcache_cmd.read();
+    const int subcell = req.addr & 0x3;
+
+    switch (r_vci_cmd_fsm.read()) {
 
     case CMD_IDLE:
         p_vci.cmdval  = false;
@@ -984,10 +882,25 @@ tmpl(void)::genMoore()
 
     case CMD_DATA_UNC:
         p_vci.cmdval = true;
-        p_vci.address = r_dcache_cmd_addr & ~0x3;
-        p_vci.be = 0xF;
+        p_vci.address = req.addr & ~0x3;
+        switch(req.type) {
+        case DCacheSignals::RU:
+            p_vci.be  = 0xF;
+            p_vci.cmd = vci_param::CMD_READ;
+            break;
+        case DCacheSignals::LL:
+            p_vci.be  = 0xF;
+            p_vci.cmd = vci_param::CMD_LOCKED_READ;
+            break;
+        case DCacheSignals::SC:
+            p_vci.wdata = req.data;
+            p_vci.be  = 0xF;
+            p_vci.cmd = vci_param::CMD_STORE_COND;
+            break;
+        default:
+            assert(0);
+        }
         p_vci.plen = 0;
-        p_vci.cmd = VCI_CMD::READ;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
         p_vci.srcid  = m_ident;
@@ -999,29 +912,61 @@ tmpl(void)::genMoore()
         p_vci.eop    = true;
         break;
 
-    case CMD_DATA_WRITE:
-    {
-        int subcell = r_dcache_cmd_addr & 0x3;
-
+    case CMD_DATA_SWAP_READ:
         p_vci.cmdval = true;
-        p_vci.address = r_dcache_cmd_addr & ~0x3;
-        p_vci.wdata   = r_dcache_cmd_data << subcell*8;
+        p_vci.address = req.addr;
+        p_vci.be  = 0xF;
+        p_vci.cmd = vci_param::CMD_READ;
+        p_vci.plen = 0;
+        p_vci.trdid  = 0;
+        p_vci.pktid  = SWAP_PKTID;
+        p_vci.srcid  = m_ident;
+        p_vci.cons   = false;
+        p_vci.wrap   = false;
+        p_vci.contig = false;
+        p_vci.clen   = 0;
+        p_vci.cfixed = false;
+        p_vci.eop    = false;
+        break;
 
-        switch((soclib::caba::DCacheSignals::req_type_e)(int)r_dcache_cmd_type) {
-        case soclib::caba::DCacheSignals::WW:
+    case CMD_DATA_SWAP_WRITE:
+        p_vci.cmdval = true;
+        p_vci.wdata   = req.data;
+        p_vci.address = req.addr;
+        p_vci.be      = 0xf;
+        p_vci.plen   = 0;
+        p_vci.cmd    = vci_param::CMD_WRITE;
+        p_vci.trdid  = 0;
+        p_vci.pktid  = SWAP_PKTID;
+        p_vci.srcid  = m_ident;
+        p_vci.cons   = false;
+        p_vci.wrap   = false;
+        p_vci.contig = false;
+        p_vci.clen   = 0;
+        p_vci.cfixed = false;
+        p_vci.eop = true;
+        break;
+
+    case CMD_DATA_WRITE:
+        p_vci.cmdval = true;
+        p_vci.address = req.addr & ~0x3;
+        p_vci.wdata   = req.data << subcell*8;
+
+        switch(req.type) {
+        case DCacheSignals::WW:
             p_vci.be      = 0xF;
             break;
-        case soclib::caba::DCacheSignals::WH:
+        case DCacheSignals::WH:
             p_vci.be      = 3 << subcell;
             break;
-        case soclib::caba::DCacheSignals::WB:
+        case DCacheSignals::WB:
             p_vci.be      = 1 << subcell;
             break;
         default:
             assert(0);
         }
         p_vci.plen   = 0;
-        p_vci.cmd    = VCI_CMD::WRITE;
+        p_vci.cmd    = vci_param::CMD_WRITE;
         p_vci.trdid  = 0;
         p_vci.pktid  = WRITE_PKTID;
         p_vci.srcid  = m_ident;
@@ -1032,22 +977,17 @@ tmpl(void)::genMoore()
         p_vci.cfixed = false;
 
         p_vci.eop = ! (
-            m_data_fifo.rok() &&
-            xcache_can_burst(
-                (soclib::caba::DCacheSignals::req_type_e)
-                (int)m_type_fifo.read(), m_addr_fifo.read(),
-                (soclib::caba::DCacheSignals::req_type_e)
-                (int)r_dcache_cmd_type, r_dcache_cmd_addr )
+            m_dreq_fifo.rok() &&
+            can_burst( m_dreq_fifo.read(), req )
             );
         break;
-    }
 
     case CMD_DATA_MISS:
         p_vci.cmdval = true;
-        p_vci.address = (r_dcache_cmd_addr & ~s_dcache_xmask) + (r_cmd_cpt << 2);
+        p_vci.address = (req.addr & m_dcache_yzmask) + (r_cmd_cpt << 2);
         p_vci.be     = 0xF;
         p_vci.plen   = 0;
-        p_vci.cmd    = VCI_CMD::READ;
+        p_vci.cmd    = vci_param::CMD_READ;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
         p_vci.srcid  = m_ident;
@@ -1056,15 +996,15 @@ tmpl(void)::genMoore()
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = (r_cmd_cpt == (int)s_dcache_words - 1);
+        p_vci.eop = (r_cmd_cpt == s_dcache_words - 1);
         break;
 
     case CMD_INS_MISS:
         p_vci.cmdval = true;
-        p_vci.address = (r_icache_miss_addr & ~s_icache_xmask) + (r_cmd_cpt << 2);
+        p_vci.address = (r_icache_miss_addr & m_icache_yzmask) + (r_cmd_cpt << 2);
         p_vci.be     = 0xF;
         p_vci.plen   = 0;
-        p_vci.cmd    = VCI_CMD::READ;
+        p_vci.cmd    = vci_param::CMD_READ;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
         p_vci.srcid  = m_ident;
@@ -1073,7 +1013,7 @@ tmpl(void)::genMoore()
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = (r_cmd_cpt == (int)s_icache_words - 1);
+        p_vci.eop = (r_cmd_cpt == s_icache_words - 1);
         break;
 
     } // end switch r_vci_cmd_fsm
@@ -1092,7 +1032,7 @@ tmpl(void)::genMoore()
 // - In the IDLE state, p_dcache.frz is true when there is a cached read miss,
 //   or an uncached read miss.
 // - In the WRITE_REQ state, p_dcache.frz is true when there is a cached read miss,
-//   or an uncached read miss, or when the m_data_fifo is full.
+//   or an uncached read miss, or when the m_dreq_fifo is full.
 // - p_dcache.frz is true in all other states.
 // The p_dcache.rdata signal is read in r_dcache_miss_buf[0] in case
 // of an uncached read, and is read in the cache in all other cases.
@@ -1113,12 +1053,12 @@ tmpl(void)::genMealy()
         switch(r_icache_fsm) {
         case ICACHE_IDLE:
         {
-            const int icache_address = (int)p_icache.adr.read();
-            const int x = (icache_address & s_icache_xmask) >> s_icache_xshift;
-            const int y = (icache_address & s_icache_ymask) >> s_icache_yshift;
-            const int z = (icache_address & s_icache_zmask) >> s_icache_zshift;
-            p_icache.frz = ((int)(z | LINE_VALID) != (int)r_icache_tag[y]);
-            p_icache.ins = (uint32_t)r_icache_data[y][x];
+            const addr_t icache_address = (addr_t)p_icache.adr.read();
+            const int x = m_i_x[icache_address];
+            const int y = m_i_y[icache_address];
+            const tag_t z = m_i_z[icache_address];
+            p_icache.frz = (z | LINE_VALID) != r_icache_tag[y];
+            p_icache.ins = (data_t)r_icache_data[y][x];
             break;
         }
         case ICACHE_ERROR:
@@ -1140,46 +1080,55 @@ tmpl(void)::genMealy()
     if ( p_dcache.req.read() ) {
 
         //  dcache_hit & dcache_unc_hit
-        const int dcache_address = (int)p_dcache.adr.read();
-        const int x = (dcache_address & s_dcache_xmask) >> s_dcache_xshift;
-        const int y = (dcache_address & s_dcache_ymask) >> s_dcache_yshift;
-        const int z = (dcache_address & s_dcache_zmask) >> s_dcache_zshift;
-        const bool dcache_hit = ((int)(z | LINE_VALID) == (int)r_dcache_tag[y]);
-        const bool dcache_unc_hit = r_dcache_unc_valid;
+        const addr_t dcache_address = p_dcache.adr.read();
+        const int x = m_d_x[dcache_address];
+        const int y = m_d_y[dcache_address];
+        const tag_t z = m_d_z[dcache_address];
+        const bool dcache_hit = (z | LINE_VALID) == r_dcache_tag[y];
+        const bool dcache_unc_hit = (r_dcache_unc_valid &&
+                                     dcache_address == r_dcache_miss_addr);
 
         // Sanity check
-        if (dcache_unc_hit)
-            assert(dcache_address == r_dcache_miss_addr &&
-                    "CPU changed requested address on DCACHE during uncached read");
+        if (r_dcache_unc_valid.read())
+            if (dcache_address != r_dcache_miss_addr) {
+                std::cout << name() << "Assertion failed: "
+                          << "CPU changed requested address on DCACHE during uncached read"
+                          << " old addr: " << std::hex << (uint32_t)r_dcache_miss_addr
+                          << " new addr: " << (uint32_t)dcache_address
+                          << std::endl;
+                abort();
+            }
 
         // if the write buffer is not full, we must have the same behaviour
         // in the DCACHE_WRITE_REQ state as in the IDLE state.
         // Freeze CPU in all other states.
-        switch ((enum dcache_fsm_state_e)(int)r_dcache_fsm.read()) {
+        switch (r_dcache_fsm.read()) {
         case DCACHE_WRITE_REQ:
-            if ( ! m_data_fifo.wok() ) {
+            if ( ! m_dreq_fifo.wok() ) {
                 // write buffer full
                 p_dcache.frz = true;
                 p_dcache.rdata = 0;
                 break;
             }
         case DCACHE_IDLE:
-            switch((soclib::caba::DCacheSignals::req_type_e)
-                   (int)p_dcache.type.read()) {
-            case soclib::caba::DCacheSignals::RW:
+            switch((DCacheSignals::req_type_e)(int)p_dcache.type.read()) {
+            case DCacheSignals::RW:
                 if (m_cacheability_table[dcache_address]) {
                     p_dcache.frz = ! dcache_hit;
-                    p_dcache.rdata = (uint32_t)r_dcache_data[y][x];
+                    p_dcache.rdata = (data_t)r_dcache_data[y][x];
                     break;
                 } // else uncacheable, fallback to uncached read case
-            case soclib::caba::DCacheSignals::RU:
+            case DCacheSignals::RU:
+            case DCacheSignals::LL:
+            case DCacheSignals::SC:
+            case DCacheSignals::SWAP:
                 p_dcache.frz = ! dcache_unc_hit;
-                p_dcache.rdata = (uint32_t)r_dcache_miss_buf[0];
+                p_dcache.rdata = (data_t)r_dcache_miss_buf[0];
                 break;
-            case soclib::caba::DCacheSignals::WW:
-            case soclib::caba::DCacheSignals::WH:
-            case soclib::caba::DCacheSignals::WB:
-            case soclib::caba::DCacheSignals::RZ:
+            case DCacheSignals::WW:
+            case DCacheSignals::WH:
+            case DCacheSignals::WB:
+            case DCacheSignals::RZ:
                 p_dcache.frz = false;
                 p_dcache.rdata = 0xffffffff;
                 break;

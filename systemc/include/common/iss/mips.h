@@ -260,12 +260,14 @@ private:
     void op_ill();
     void op_lb();
     void op_lh();
+    void op_ll();
     void op_lw();
     void op_lbu();
     void op_lhu();
     void op_sb();
     void op_sh();
     void op_sw();
+    void op_sc();
     void op_cache();
 
     void special_sll();
@@ -297,6 +299,13 @@ private:
     void special_slt();
     void special_sltu();
     void special_ill();
+
+    void special_tlt();
+    void special_tltu();
+    void special_tge();
+    void special_tgeu();
+    void special_teq();
+    void special_tne();
 
     typedef enum {
         USE_NONE = 0,

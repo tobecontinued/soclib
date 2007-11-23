@@ -211,7 +211,17 @@ void Ppc405Iss::setRdata(bool error, uint32_t rdata)
     switch (r_mem_type ) {
     default:
         break;
+    case MEM_SC:
+    {
+        int cr = 0;
+        if ( data == 0 ) cr |= CMP_EQ;
+        if ( r_xer.so ) cr |= CMP_SO;
+        crSet( 0, cr );
+        break;
+    }
     case MEM_LW:
+    case MEM_LL:
+    case MEM_SWAP:
         r_gp[r_mem_dest] = data;
         break;
     case MEM_LWBR:
@@ -235,7 +245,7 @@ void Ppc405Iss::setRdata(bool error, uint32_t rdata)
     }
 #if PPC405_DEBUG
     std::cout << m_name << std::hex
-              << " mem read " << r_mem_type
+              << " mem read ret " << dataAccessTypeName(r_mem_type)
               << " @: " << r_mem_addr
               << " ->r" << r_mem_dest
               << " data: " << data
