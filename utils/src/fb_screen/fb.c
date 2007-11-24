@@ -44,9 +44,11 @@
 # error Need to know endianess
 #endif
 
+static int do_exit = 0;
+
 void sig_catcher( int sig )
 {
-	exit(0);
+	do_exit = 1;
 }
 
 void handle_display( uint8_t *fb, long width, long height, long asked_bpp )
@@ -73,9 +75,19 @@ void handle_display( uint8_t *fb, long width, long height, long asked_bpp )
 		exit(3);
 	}
 
-	for (;;) {
+	while (!do_exit) {
 		int line, col;
-		getchar();
+		SDL_Event event;
+		if ( feof(stdin) )
+			exit(0);
+		if ( getchar() < 0 )
+			exit(0);
+		while ( SDL_PollEvent(&event) ) {
+			switch (event.type) {
+            case SDL_QUIT:
+                exit(0);
+			}
+		}
 		if(SDL_MUSTLOCK(surface)) {
 			if(SDL_LockSurface(surface) < 0)
 				return;
