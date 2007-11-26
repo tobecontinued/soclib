@@ -16,6 +16,7 @@ vci_params = dict(
 
 todo = Platform(
 	Uses('mips'),
+	Uses('gdb_mips'),
 	Uses('vci_locks', **vci_params),
 	Uses('vci_multi_ram', **vci_params),
 	Uses('vci_multi_tty', **vci_params),
