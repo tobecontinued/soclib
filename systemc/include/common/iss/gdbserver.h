@@ -143,6 +143,7 @@ private:
     static int write_packet(char *data);
     static char *read_packet(char *buffer, size_t size);
     void process_gdb_packet();
+    void process_monitor_packet(char *data);
     static void try_accept();
     bool process_mem_access();
     void cleanup();
@@ -161,6 +162,7 @@ private:
     uint8_t *mem_buff_;
     uint8_t *mem_ptr_;
     static unsigned int current_id_;
+    static unsigned int step_id_; // can be used to force single step on a specific processor
 
     static std::map<uint32_t, bool> break_exec_;
     static std::list<GdbWatchPoint> break_access_;
@@ -203,10 +205,11 @@ private:
 
     enum State
         {
-            Running,            // processor is running
-            Step,               // processor is running single step
+            Running,
+            StepWait,
+            Step,
             MemWait,            // waiting for memory operation end before freeze
-            Frozen,             // processor is frozen
+            Frozen,
         };
 
     static State init_state_;

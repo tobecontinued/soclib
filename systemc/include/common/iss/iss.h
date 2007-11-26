@@ -101,6 +101,11 @@ public:
     void reset();
 	void setInstruction(bool error, uint32_t val);
 
+    inline const std::string & name() const
+    {
+        return m_name;
+    }
+
 	Iss( const std::string &name, uint32_t ident )
 		: m_ident(ident),
 		  m_name(name)
