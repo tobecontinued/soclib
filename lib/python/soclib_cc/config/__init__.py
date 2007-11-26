@@ -75,14 +75,13 @@ def include(filename, glbl):
 		execfile(name, glbl, {})
 
 def parseall():
-	import templates
 	config = ConfigSpool()
 	config.addDescPath('desc/soclib')
-	glbl = {'Configurator':Configurator,
+	glbl = {'Config':Config,
 			'config':config,
-			'base':templates,
 			'include':include}
-	for name in (os.path.join(_cur_soclib, 'etc', 'soclib.conf'),
+	for name in (os.path.join(os.path.dirname(__file__), 'templates.py'),
+				 os.path.join(_cur_soclib, 'etc', 'soclib.conf'),
 				 os.path.expanduser("~/.soclib/global.conf"),
 				 "soclib.conf"):
 		if os.path.isfile(name):
@@ -92,7 +91,8 @@ def parseall():
 	return config
 
 _configs = parseall()
-config = _configs.default(_cur_soclib, _configs._desc_paths)
+config = _configs.default
+config.doConfigure(_cur_soclib, _configs._desc_paths)
 
 def change_config(name):
 	cc = getattr(_configs, name)

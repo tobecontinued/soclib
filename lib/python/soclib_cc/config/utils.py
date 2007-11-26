@@ -23,43 +23,48 @@
 import re
 import os, os.path
 
-__all__ = ['Configurator']
+__all__ = ['Config']
 
-class MagicGetter:
-	def __init__(self, obj):
-		self.obj = obj
-	def __getitem__(self, name):
-		return getattr(self.obj, name)
-
-class Configurator:
+class Config:
 	_filter = re.compile("[a-z][a-z_]+")
-	def _do_expands(cls):
-		for name in filter(cls._filter.match, dir(cls)):
-			at = getattr(cls, name)
-			if isinstance(at, (list, tuple)):
-				at = map(cls._do_expand, at)
-			elif isinstance(at, str):
-				at = cls._do_expand(at)
-			setattr(cls, name, at)
-	_do_expands = classmethod(_do_expands)
-	
-	def _do_expand(cls, new):
-		mg = MagicGetter(cls)
-		old = ''
-		while old != new:
-			old = new
-			new = new%mg
-			new = os.path.expandvars(new)
-		return new
-	_do_expand = classmethod(_do_expand)
-
-	def __init__(self, **kwargs):
+	def _do_expands(self):
 		for name in filter(self._filter.match, dir(self)):
 			at = getattr(self, name)
 			if isinstance(at, (list, tuple)):
-				at = ' '.join(map(lambda x:'"%s"'%x, at))
+				at = map(self._do_expand, at)
+			elif isinstance(at, str):
+				at = self._do_expand(at)
 			setattr(self, name, at)
+	
+	def _do_expand(self, new):
+		old = ''
+		while old != new:
+			old = new
+			new = new%self
+			new = os.path.expandvars(new)
+		return new
+
+	def onInit(self):
+		pass
+
+	def __init__(self, base = None, **kwargs):
+		import operator, new, inspect
+		if base is not None:
+			for k, v in base.__dict__.iteritems():
+				if operator.isCallable(v) and inspect.ismethod(v):
+					v = v.im_func
+					v = new.instancemethod(v, self, self.__class__)
+				setattr(self, k, v)
 		for k, v in kwargs.iteritems():
+			if operator.isCallable(v):
+				v = new.instancemethod(v, self, self.__class__)
 			setattr(self, k, v)
+		for name in filter(self._filter.match, dir(self)):
+			at = getattr(self, name)
+			#if isinstance(at, (list, tuple)):
+			#	at = ' '.join(map(lambda x:'"%s"'%x, at))
+			setattr(self, name, at)
+		self.onInit()
+
 	def __getitem__(self, name):
 		return getattr(self, name)
