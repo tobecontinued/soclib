@@ -11,6 +11,13 @@
 
 #define GDBSERVER_DEBUG
 
+#ifndef MSG_DONTWAIT
+#define MSG_DONTWAIT 0
+#endif
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 namespace soclib { namespace common {
 
 template<typename CpuIss> int GdbServer<CpuIss>::socket_ = -1;
