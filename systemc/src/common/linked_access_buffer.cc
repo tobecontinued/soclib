@@ -29,96 +29,15 @@ namespace soclib { namespace common {
 
 #define tmpl(...) template<typename addr_t, typename id_t> __VA_ARGS__ LinkedAccessBuffer<addr_t, id_t>
 
-tmpl(typename LinkedAccessBuffer<addr_t, id_t>::entry_t &)::lookup_create( addr_t address )
+tmpl()::LinkedAccessBuffer( size_t n_entry = 0 )
+       : m_access(n_entry ? (new entry_t[n_entry]) : NULL), m_n_entry(n_entry)
 {
-	entry_t *e = lookup(address);
-	if ( e != NULL )
-		return *e;
-	return m_access[next()];
 }
 
-tmpl(typename LinkedAccessBuffer<addr_t, id_t>::entry_t *)::lookup( addr_t address )
+tmpl()::~LinkedAccessBuffer()
 {
-	for ( size_t i=0; i<m_n_entry; ++i )
-		if ( address == m_access[i].address )
-			return &m_access[i];
-	return NULL;
-}
-
-tmpl(const typename LinkedAccessBuffer<addr_t, id_t>::entry_t *)::lookup( addr_t address ) const
-{
-	for ( size_t i=0; i<m_n_entry; ++i )
-		if ( address == m_access[i].address )
-			return &m_access[i];
-	return NULL;
-}
-
-tmpl(/**/)::LinkedAccessBuffer( size_t n_entry = 0 )
-		   : m_access(NULL), m_n_entry(0), m_ptr(0)
-{
-	resize( n_entry );
-}
-
-tmpl(void)::resize( size_t n_entry )
-{
-	if ( n_entry == 0 )
-		n_entry = 1;
-	if ( m_access != NULL )
-		delete [] m_access;
-	m_access = new entry_t[n_entry];
-	m_n_entry = n_entry;
-	m_ptr = 0;
-
-}
-
-tmpl(/**/)::~LinkedAccessBuffer()
-{
-	delete [] m_access;
-}
-
-tmpl(void)::clearAll()
-{
-	for ( size_t i=0; i<m_n_entry; ++i )
-		m_access[i].invalidate();
-}
-
-tmpl(void)::clearNext()
-{
-	m_access[next()].invalidate();
-}
-
-tmpl(void)::accessDone( addr_t address )
-{
-	entry_t *e = lookup(address);
-	if ( e != NULL )
-		e->invalidate();
-}
-
-tmpl(void)::doLoadLinked( addr_t address, id_t id )
-{
-	entry_t &e = lookup_create(address);
-	if ( e.address == address ) {
-		if ( e.id == id )
-			e.atomic = true;
-		else
-			return;
-	} else
-		e.set(address, id);
-}
-
-tmpl(void)::doStoreConditional( addr_t address, id_t id )
-{
-	entry_t *e = lookup(address);
-	if ( e != NULL )
-		e->do_atomic(address, id);
-}
-
-tmpl(bool)::isAtomic( addr_t address, id_t id ) const
-{
-	const entry_t *e = lookup(address);
-	if ( e == NULL )
-		return false;
-	return e->is_atomic( address, id );
+    if ( m_access )
+        delete [] m_access;
 }
 
 }}

@@ -46,7 +46,6 @@ tmpl(/**/)::VciMultiRam(
       p_vci("vci")
 {
 	m_vci_fsm.on_read_write(on_read, on_write);
-    m_vci_fsm.LlScEnable( 8, 128 );
 	
 	SC_METHOD(transition);
 	dont_initialize();

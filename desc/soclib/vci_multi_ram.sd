@@ -7,7 +7,7 @@ class caba(VciCabaComponent):
 	implementation_files = '../../systemc/src/caba/target/vci_multi_ram.cc',
 	uses = [
 		Uses('base_module'),
-		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2),
+		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2, support_llsc = 'true'),
 		Uses('elf_loader'),
 		Uses('mapping_table'),
 		]

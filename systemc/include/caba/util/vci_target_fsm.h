@@ -61,7 +61,8 @@ using namespace soclib::common;
 template<
     typename vci_param,
     bool default_target,
-    size_t fifo_depth>
+    size_t fifo_depth,
+    bool support_llsc = false>
 class VciTargetFsm
 {
 private:
@@ -78,8 +79,6 @@ private:
     soclib::common::LinkedAccessBuffer<
         typename vci_param::fast_addr_t,
         unsigned int> m_atomic;
-    size_t m_atomic_timeout_base;
-    size_t m_atomic_timeout;
 
     std::vector<soclib::common::Segment> m_segments;
 
@@ -96,7 +95,6 @@ private:
     typedef struct rsp_info_s rsp_info_t;
 
     soclib::caba::GenericFifo<rsp_info_t, fifo_depth> m_rsp_info;
-    bool m_ll_sc_supported;
 
     typedef typename vci_param::addr_t addr_t;
     typedef typename vci_param::data_t data_t;
@@ -144,13 +142,6 @@ public:
 _on_read_write(this,                            \
 (__rcast3)&SC_CURRENT_USER_MODULE::rf,          \
 (__wcast3)&SC_CURRENT_USER_MODULE::wf )
-
-    /**
-     * \brief Enable LL/SC
-     * \param n Number of entries supported
-     * \param timeout Average timeout for one entry
-     */
-    void LlScEnable( size_t n, size_t timeout );
 
     /**
      * \brief Desctructor

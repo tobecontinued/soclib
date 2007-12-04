@@ -31,29 +31,26 @@ template<typename addr_t, typename id_t>
 struct LinkedAccessEntry
 {
 	addr_t address;
-	id_t id;
 	bool atomic;
 
 	inline void invalidate()
 	{
 		address = 0;
-		id = 0;
 		atomic = false;
 	}
-    inline void set( addr_t addr, id_t i )
+	inline void invalidate(addr_t addr)
+	{
+        if ( address == addr )
+            atomic = false;
+	}
+    inline void set( addr_t addr )
     {
         address = addr;
-        id = i;
         atomic = true;
     }
-    inline bool is_atomic( addr_t addr, id_t i ) const
+    inline bool is_atomic( addr_t addr ) const
     {
-        return addr == addr && id == i && atomic;
-    }
-    inline void do_atomic( addr_t addr, id_t i )
-    {
-        if ( is_atomic( addr, i ) )
-            invalidate();
+        return addr == addr && atomic;
     }
 };
 
@@ -61,31 +58,35 @@ template<typename addr_t, typename id_t>
 class LinkedAccessBuffer
 {
 	typedef LinkedAccessEntry<addr_t, id_t> entry_t;
-	entry_t * m_access;
-	size_t m_n_entry;
-	size_t m_ptr;
-
-    inline size_t next() {
-        size_t r = m_ptr;
-        m_ptr = (m_ptr+1)%m_n_entry;
-        return r;
-    }
-
-	entry_t &lookup_create( addr_t address );
-
-	entry_t *lookup( addr_t address );
-	const entry_t *lookup( addr_t address ) const;
+	entry_t * const m_access;
+	const size_t m_n_entry;
 public:
 	LinkedAccessBuffer( size_t n_entry );
-	void resize( size_t n_entry );
 	~LinkedAccessBuffer();
 
-	void clearAll();
-	void clearNext();
-	void accessDone( addr_t address );
-	void doLoadLinked( addr_t address, id_t id );
-	void doStoreConditional( addr_t address, id_t id );
-	bool isAtomic( addr_t address, id_t id ) const;
+	void clearAll()
+    {
+        for ( size_t i=0; i<m_n_entry; ++i )
+            m_access[i].invalidate();
+    }
+
+	void accessDone( addr_t address )
+    {
+        for ( size_t i=0; i<m_n_entry; ++i )
+            m_access[i].invalidate(address);
+    }
+
+	void doLoadLinked( addr_t address, id_t id )
+    {
+        assert(id < m_n_entry && "Access out of bounds");
+        m_access[id].set(address);
+    }
+
+	bool isAtomic( addr_t address, id_t id ) const
+    {
+        assert(id < m_n_entry && "Access out of bounds");
+        return m_access[id].is_atomic(address);
+    }
 };
 
 }}

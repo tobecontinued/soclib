@@ -7,5 +7,5 @@ class caba(VciCabaComponent):
 	implementation_files = '../../systemc/src/caba/target/vci_simhelper.cc',
 	uses = [
 		Uses('base_module'),
-		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1),
+		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
 		]

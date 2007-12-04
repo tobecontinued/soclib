@@ -28,15 +28,14 @@
 namespace soclib {
 namespace caba {
 
-#define tmpl(x) template<typename vci_param,bool default_target,size_t fifo_depth>\
-x VciTargetFsm<vci_param,default_target,fifo_depth>
+#define tmpl(x) template<typename vci_param,bool default_target,size_t fifo_depth,bool support_llsc> \
+    x VciTargetFsm<vci_param,default_target,fifo_depth,support_llsc>
 
 tmpl(/**/)::VciTargetFsm(
     soclib::caba::VciTarget<vci_param> &vci,
     const std::list<soclib::common::Segment> &seglist )
     : p_vci(vci),
-      m_atomic(0),
-      m_atomic_timeout_base(0),
+      m_atomic(support_llsc ? (1<<vci_param::S) : 0),
       m_segments(seglist.begin(), seglist.end()),
       m_rsp_info("m_rsp_info")
 {
@@ -67,12 +66,6 @@ tmpl(void)::reset()
 tmpl(void)::transition()
 {
 	rsp_info_t rsp_info;
-
-    if ( m_atomic_timeout_base )
-        if ( ! --m_atomic_timeout ) {
-            m_atomic.clearNext();
-            m_atomic_timeout = m_atomic_timeout_base;
-        }
 
 	if ( p_vci.cmdval.read() &&
          p_vci.cmdack.read() )
@@ -107,7 +100,8 @@ tmpl(void)::transition()
                 switch (p_vci.cmd.read())
                 {
                 case vci_param::CMD_WRITE:
-                    m_atomic.accessDone( address );
+                    if ( support_llsc )
+                        m_atomic.accessDone( address );
                     rsp_info.rdata = 0;
                     if ((m_owner->*m_on_write_f)(i, offset, p_vci.wdata.read(), p_vci.be.read()))
                         m_state = TARGET_WRITE_RSP;
@@ -118,6 +112,7 @@ tmpl(void)::transition()
                     break;
 
                 case vci_param::CMD_STORE_COND:
+                    assert(support_llsc && "Received a SC on a non-SC-supporting target");
                     if ( ! m_atomic.isAtomic( address, p_vci.srcid.read() ) ) {
                         rsp_info.rdata = 1;
                         m_state = TARGET_WRITE_RSP;
@@ -125,7 +120,7 @@ tmpl(void)::transition()
                     }
                     rsp_info.rdata = 0;
 
-                    m_atomic.doStoreConditional( address, p_vci.srcid.read() );
+                    m_atomic.accessDone( address );
                     if ((m_owner->*m_on_write_f)(i, offset, p_vci.wdata.read(), p_vci.be.read()))
                         m_state = TARGET_WRITE_RSP;
                     else {
@@ -135,6 +130,7 @@ tmpl(void)::transition()
                     break;
 
                 case vci_param::CMD_LOCKED_READ:
+                    assert(support_llsc && "Received a LL on a non-LL-supporting target");
                     m_atomic.doLoadLinked( address, p_vci.srcid.read() );
                 case vci_param::CMD_READ:
                     if ((m_owner->*m_on_read_f)(i, offset, rsp_info.rdata)) {
@@ -172,12 +168,6 @@ tmpl(void)::transition()
             m_rsp_info.simple_put( rsp_info );
     } else
         m_rsp_info.simple_get();
-}
-
-tmpl(void)::LlScEnable( size_t n, size_t timeout )
-{
-    m_atomic.resize(n);
-    m_atomic_timeout_base = m_atomic_timeout = timeout/n;
 }
 
 tmpl(void)::genMoore()

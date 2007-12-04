@@ -9,5 +9,5 @@ class caba(VciCabaComponent):
 		Uses('base_module'),
 		Uses('process_wrapper'),
 		Uses('tty_wrapper'),
-		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1),
+		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
 		]

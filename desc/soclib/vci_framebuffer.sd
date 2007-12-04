@@ -7,6 +7,6 @@ class caba(VciCabaComponent):
 	implementation_files = '../../systemc/src/caba/target/vci_framebuffer.cc',
 	uses = [
 		Uses('base_module'),
-		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2),
+		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2, support_llsc = 'false'),
 		Uses('fb_controller', mode = 'common'),
 		]
