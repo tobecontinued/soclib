@@ -38,7 +38,7 @@ namespace soclib { namespace common {
 #define PPC_PVR(own, pcf, cas, pcl, aid) \
 (((own&0xfff)<<20)|((pcf&0xf)<<16)|((cas&0x3f)<<10)|((pcl&0xf)<<6)|((aid&0x3f)))
 
-#define PPC_SPLIT_FIELD(x) ((((x)>>5)|((x)<<5))&0x3ff)
+#define PPC_SPLIT_FIELD(x) (((((unsigned)x)>>5)|(((unsigned)x)<<5))&0x3ff)
 
 class Ppc405Iss
 	: public soclib::common::Iss

@@ -72,13 +72,13 @@ uint32_t Ppc405Iss::sprfGet( enum Sprf sprf )
         return r_ctr;
     case SPR_SRR0:
     case SPR_SRR1:
-        return r_srr[PPC_SPLIT_FIELD(sprf)-SPR_SRR0];
+        return r_srr[PPC_SPLIT_FIELD(sprf) - 0x01a /*SPR_SRR0*/];
     case SPR_USPRG0:
     case SPR_SPRG4_RO:
     case SPR_SPRG5_RO:
     case SPR_SPRG6_RO:
     case SPR_SPRG7_RO:
-        return r_sprg[PPC_SPLIT_FIELD(sprf)-SPR_USPRG0];
+        return r_sprg[PPC_SPLIT_FIELD(sprf) - 0x100 /*SPR_USPRG0*/];
     case SPR_SPRG0_RW:
     case SPR_SPRG1_RW:
     case SPR_SPRG2_RW:
@@ -87,7 +87,7 @@ uint32_t Ppc405Iss::sprfGet( enum Sprf sprf )
     case SPR_SPRG5_RW:
     case SPR_SPRG6_RW:
     case SPR_SPRG7_RW:
-        return r_sprg[PPC_SPLIT_FIELD(sprf)-SPR_SPRG0_RW];
+        return r_sprg[PPC_SPLIT_FIELD(sprf) - 0x110 /*SPR_SPRG0_RW*/];
     case SPR_TBL:
         return r_tb;
     case SPR_TBU:
@@ -102,7 +102,7 @@ uint32_t Ppc405Iss::sprfGet( enum Sprf sprf )
         return r_evpr;
     case SPR_SRR2:
     case SPR_SRR3:
-        return r_srr[PPC_SPLIT_FIELD(sprf)-SPR_SRR2+2];
+        return r_srr[PPC_SPLIT_FIELD(sprf) - 0x3de + 2 /*SPR_SRR2+2*/];
     default:
         m_exception = EXCEPT_PROGRAM;
         r_esr = ESR_PEU;
@@ -129,7 +129,7 @@ void Ppc405Iss::sprfSet( enum Sprf sprf, uint32_t val )
         break;
     case SPR_SRR0:
     case SPR_SRR1:
-        r_srr[PPC_SPLIT_FIELD(sprf)-SPR_SRR0] = val;
+        r_srr[PPC_SPLIT_FIELD(sprf) - 0x1a /*SPR_SRR0*/] = val;
         break;
     case SPR_SPRG0_RW:
     case SPR_SPRG1_RW:
@@ -139,7 +139,7 @@ void Ppc405Iss::sprfSet( enum Sprf sprf, uint32_t val )
     case SPR_SPRG5_RW:
     case SPR_SPRG6_RW:
     case SPR_SPRG7_RW:
-        r_sprg[PPC_SPLIT_FIELD(sprf)-SPR_SPRG0_RW] = val;
+        r_sprg[PPC_SPLIT_FIELD(sprf) - 0x110 /*SPR_SPRG0_RW*/] = val;
         break;
     case SPR_TBL:
         r_tb = (r_tb & 0xffffffff00000000LL) | val;
@@ -158,7 +158,7 @@ void Ppc405Iss::sprfSet( enum Sprf sprf, uint32_t val )
         break;
     case SPR_SRR2:
     case SPR_SRR3:
-        r_srr[PPC_SPLIT_FIELD(sprf)-SPR_SRR2+2] = val;
+        r_srr[PPC_SPLIT_FIELD(sprf) - 0x3de + 2 /*SPR_SRR2+2*/] = val;
         break;
     default:
         m_exception = EXCEPT_PROGRAM;
