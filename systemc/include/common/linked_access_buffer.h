@@ -24,6 +24,7 @@
 #define SOCLIB_COMMON_LINKED_ACCESS_BUFFER_H_
 
 #include <stdint.h>
+#include <assert.h>
 
 namespace soclib { namespace common {
 
