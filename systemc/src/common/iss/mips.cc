@@ -222,6 +222,10 @@ void MipsIss::step()
     goto no_except;
 
  handle_except:
+
+    if ( exceptionBypassed( m_exception ) )
+        goto stick;
+
     {
         bool branch_taken = m_next_pc != r_npc+4;
 
@@ -253,6 +257,7 @@ void MipsIss::step()
     r_pc = r_npc;
     r_npc = m_next_pc;
  house_keeping:
+ stick:
     r_gp[0] = 0;
 }
 

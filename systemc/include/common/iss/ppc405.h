@@ -290,6 +290,22 @@ private:
     uint32_t r_dear;
 
 public:
+
+    int cpuCauseToSignal( uint32_t cause )
+    {
+        switch (cause)
+            {
+            case EXCEPT_PROGRAM:
+                return 4;       // GDB SIGILL
+            case EXCEPT_DEBUG:
+                return 5;       // GDB SIGTRAP
+            case EXCEPT_ALIGNMENT:
+                return 10;      // GDB SIGBUS
+            default:
+                return 11;      // GDB SIGSEGV
+            }
+    }
+
 	Ppc405Iss(uint32_t ident);
 
     void nullStep()
@@ -327,6 +343,9 @@ public:
     uint32_t get_register_value(unsigned int reg) const;
     size_t get_register_size(unsigned int reg) const;
     void set_register_value(unsigned int reg, uint32_t value);
+
+protected:
+    void exceptionProcess( uint32_t cause );
 
 private:
 	void run();

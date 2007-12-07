@@ -5,11 +5,12 @@
 #include <poll.h>
 
 #include <stdint.h>
+#include <signal.h>
 
 #include "common/iss/gdbserver.h"
 #include "common/exception.h"
 
-#define GDBSERVER_DEBUG
+//#define GDBSERVER_DEBUG
 
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0
@@ -32,7 +33,22 @@ template<typename CpuIss> std::list<GdbWatchPoint> GdbServer<CpuIss>::break_acce
 template<typename CpuIss> uint16_t GdbServer<CpuIss>::port_ = 2346;
 
 template<typename CpuIss>
-void GdbServer<CpuIss>::network_init()
+void GdbServer<CpuIss>::signal_handler(int sig)
+{
+    if (asocket_ >= 0 && list_[0]->state_ == Running)
+        {
+            change_all_states(MemWait);
+            char buffer[32];
+            sprintf(buffer, "T02thread:1;"); // GDB SIGINT
+            write_packet(buffer);
+            std::cerr << "All processors are now Frozen. Hit CTRL-C again to exit." << std::endl;
+        }
+    else
+        exit(0);
+}
+
+template<typename CpuIss>
+void GdbServer<CpuIss>::global_init()
 {
     socket_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -55,6 +71,8 @@ void GdbServer<CpuIss>::network_init()
 
     if (listen(socket_, 1) < 0)
         throw soclib::exception::RunTimeError("GdbServer: Unable to listen()");
+
+    signal(SIGINT, signal_handler);
 }
 
 template<typename CpuIss>
@@ -62,10 +80,11 @@ GdbServer<CpuIss>::GdbServer(uint32_t ident)
     : CpuIss(ident),
       mem_type_(CpuIss::MEM_NONE),
       mem_count_(0),
+      catch_execeptions_(true),
       state_(init_state_)
     {
         if (list_.empty())
-            network_init();
+            global_init();
 
         id_ = list_.size();
         list_.push_back(this);
@@ -250,6 +269,30 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                     step_id_ = id;
                     write_packet("OK");
                     return;
+                }
+        }
+
+    if (i >= 2 && !strcmp(tokens[0], "except"))
+        {
+            bool value = atoi(tokens[1]) != 0;
+
+            if (i == 2)
+                {
+                    for (unsigned int i = 0; i < list_.size(); i++)
+                        list_[i]->catch_execeptions_ = value;
+                    write_packet("OK");
+                    return;
+                }
+            else
+                {
+                    unsigned int id = atoi(tokens[2]);
+
+                    if (id > 0 && id <= list_.size())
+                        {
+                            list_[id]->catch_execeptions_ = value;
+                            write_packet("OK");
+                            return;
+                        }
                 }
         }
 
@@ -814,6 +857,20 @@ void GdbServer<CpuIss>::cleanup()
 
     close(asocket_);
     asocket_ = -1;
+}
+
+template<typename CpuIss>
+bool GdbServer<CpuIss>::exceptionBypassed( uint32_t cause )
+{
+    if (!catch_execeptions_)
+        return false;
+
+    char buffer[32];
+    sprintf(buffer, "T%02xthread:%x;", CpuIss::cpuCauseToSignal(cause), id_ + 1);
+    write_packet(buffer);
+    state_ = Frozen;
+
+    return true;
 }
 
 template<typename CpuIss>

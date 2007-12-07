@@ -134,12 +134,16 @@ public:
 
     static inline void start_frozen(bool frozen = true)
     {
-        init_state_ = frozen ? Frozen : Running;
+        init_state_ = frozen ? MemWait : Running;
     }
 
 private:
 
-    static void network_init();
+    static void signal_handler(int sig);
+
+    bool exceptionBypassed( uint32_t cause );
+
+    static void global_init();
     static int write_packet(char *data);
     static char *read_packet(char *buffer, size_t size);
     void process_gdb_packet();
@@ -163,6 +167,7 @@ private:
     uint8_t *mem_ptr_;
     static unsigned int current_id_;
     static unsigned int step_id_; // can be used to force single step on a specific processor
+    bool catch_execeptions_;
 
     static std::map<uint32_t, bool> break_exec_;
     static std::list<GdbWatchPoint> break_access_;

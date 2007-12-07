@@ -157,6 +157,19 @@ void Ppc405Iss::step()
     std::cout << m_name << " except: " << m_exception << std::endl;
 #endif
 
+    switch ( m_exception )
+        {
+        case (EXCEPT_NONE):
+        case (EXCEPT_EXTERNAL):
+        case (EXCEPT_SYSCALL):
+        case (EXCEPT_PI_TIMER):
+        case (EXCEPT_FI_TIMER):
+            break;
+        default:
+            if (exceptionBypassed( m_exception ))
+                goto stick;
+        }
+
     // 1/2 : Save status to SRR
     {
         int except_base = 0;
@@ -197,6 +210,8 @@ void Ppc405Iss::step()
 
   no_except:
     r_pc = m_next_pc;
+  stick:
+    ;
 }
 
 void Ppc405Iss::setRdata(bool error, uint32_t rdata)

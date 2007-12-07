@@ -34,6 +34,7 @@
 #include <cassert>
 #include "common/endian.h"
 #include "common/register.h"
+#include <signal.h>
 
 namespace soclib { namespace common {
 
@@ -186,6 +187,16 @@ public:
     }
 
 protected:
+
+    virtual bool exceptionBypassed( uint32_t cause )
+    {
+        return false;
+    }
+
+    virtual int cpuCauseToSignal( uint32_t cause )
+    {
+        return 5;       // GDB SIGTRAP
+    }
 
     void doneNullStep()
     {
