@@ -201,7 +201,7 @@ public:
     {
         rspval = true;
         rdata = 0;
-        rerror = true;
+        rerror = false;
         reop = eop;
     }
     inline void rspWrite( bool eop )
