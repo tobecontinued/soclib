@@ -37,8 +37,9 @@ void GdbServer<CpuIss>::signal_handler(int sig)
 {
     if (asocket_ >= 0 && list_[0]->state_ == Running)
         {
-            change_all_states(MemWait);
             char buffer[32];
+            change_all_states(MemWait);
+            current_id_ = 0;
             sprintf(buffer, "T02thread:1;"); // GDB SIGINT
             write_packet(buffer);
             std::cerr << "All processors are now Frozen. Hit CTRL-C again to exit." << std::endl;
@@ -868,6 +869,8 @@ bool GdbServer<CpuIss>::exceptionBypassed( uint32_t cause )
     char buffer[32];
     sprintf(buffer, "T%02xthread:%x;", CpuIss::cpuCauseToSignal(cause), id_ + 1);
     write_packet(buffer);
+    change_all_states(MemWait);
+    current_id_ = id_;
     state_ = Frozen;
 
     return true;
