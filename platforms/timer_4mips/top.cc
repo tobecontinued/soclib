@@ -113,6 +113,9 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXCache<vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
 
 #ifdef USE_GDB_SERVER
+	// uncomment this line if you want processors frozen at boot
+	// soclib::common::GdbServer<soclib::common::MipsIss>::start_frozen();
+
 	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> > mips0("mips0", 0);
 	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> > mips1("mips1", 1);
 	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> > mips2("mips2", 2);

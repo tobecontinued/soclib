@@ -10,6 +10,12 @@
 #include "caba/target/vci_multi_tty.h"
 #include "caba/interconnect/vci_vgmn.h"
 
+//#define USE_GDB_SERVER
+
+#ifdef USE_GDB_SERVER
+#include "common/iss/gdbserver.h"
+#endif
+
 #include "segmentation.h"
 
 int _main(int argc, char *argv[])
@@ -82,10 +88,20 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXCache<vci_param> cache2("cache2", maptab,IntTab(2),8,4,8,4);
 	soclib::caba::VciXCache<vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
 
+#ifdef USE_GDB_SERVER
+	// uncomment this line if you want processors frozen at boot
+	// soclib::common::GdbServer<soclib::common::Ppc405Iss>::start_frozen();
+
+	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> > ppc4050("ppc4050", 0);
+	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> > ppc4051("ppc4051", 1);
+	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> > ppc4052("ppc4052", 2);
+	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> > ppc4053("ppc4053", 3);
+#else
 	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc4050("ppc4050", 0);
 	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc4051("ppc4051", 1);
 	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc4052("ppc4052", 2);
 	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc4053("ppc4053", 3);
+#endif
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);

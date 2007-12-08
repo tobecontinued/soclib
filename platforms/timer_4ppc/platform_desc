@@ -16,6 +16,7 @@ vci_params = dict(
 
 todo = Platform(
 	Uses('ppc405'),
+	Uses('gdb_ppc405'),
 	Uses('vci_multi_ram', **vci_params),
 	Uses('vci_multi_tty', **vci_params),
 	Uses('vci_timer', **vci_params),
