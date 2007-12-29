@@ -95,9 +95,9 @@ config = _configs.default
 config.doConfigure(_cur_soclib, _configs._desc_paths)
 
 def change_config(name):
-	cc = getattr(_configs, name)
+	newconf = getattr(_configs, name)
 	from soclib_cc import config
-	newconf = cc(_cur_soclib, _configs._desc_paths)
+	newconf.doConfigure(_cur_soclib, _configs._desc_paths)
 	config.config.__dict__ = newconf.__dict__
 	for n in dir(newconf):
 		setattr(config.config, n, getattr(newconf, n))
