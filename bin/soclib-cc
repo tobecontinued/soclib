@@ -45,7 +45,7 @@ export soclib_base_path
 # I basically dont trust default "python" command, it is often
 # the antic python-1.5.x on redhat enterprise :'(
 for py in python2.5 python2.4 python2.3 python ; do
-	if [ "$(type -p $py 2>/dev/null)" != "" ] ; then
+	if $py -c "import sys;sys.exit(0)" ; then
 		exec $py "${soclib_base_path}"/lib/python/soclib-cc-main.py $*
 	fi
 done
