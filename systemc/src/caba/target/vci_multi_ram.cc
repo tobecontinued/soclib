@@ -40,7 +40,37 @@ tmpl(/**/)::VciMultiRam(
     )
 	: caba::BaseModule(insname),
 	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
-      m_loader(loader),
+      m_loader(new common::ElfLoader(loader)),
+      p_resetn("resetn"),
+      p_clk("clk"),
+      p_vci("vci")
+{
+	m_vci_fsm.on_read_write(on_read, on_write);
+	
+	SC_METHOD(transition);
+	dont_initialize();
+	sensitive << p_clk.pos();
+	
+	SC_METHOD(genMoore);
+	dont_initialize();
+	sensitive << p_clk.neg();
+	
+	m_contents = new ram_t*[m_vci_fsm.nbSegments()];
+	
+	size_t word_size = vci_param::B; // B is VCI's cell size
+	for ( size_t i=0; i<m_vci_fsm.nbSegments(); ++i ) {
+		m_contents[i] = new ram_t[(m_vci_fsm.getSize(i)+word_size-1)/word_size];
+	}
+}
+
+tmpl(/**/)::VciMultiRam(
+	sc_module_name insname,
+	const IntTab &index,
+	const MappingTable &mt
+    )
+	: caba::BaseModule(insname),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+      m_loader(NULL),
       p_resetn("resetn"),
       p_clk("clk"),
       p_vci("vci")
@@ -68,12 +98,16 @@ tmpl(/**/)::~VciMultiRam()
 	for (size_t i=0; i<m_vci_fsm.nbSegments(); ++i)
 		delete [] m_contents[i];
 	delete [] m_contents;
+    delete m_loader;
 }
 
 tmpl(void)::reload()
 {
+    if ( m_loader == NULL )
+        return;
+
     for ( size_t i=0; i<m_vci_fsm.nbSegments(); ++i ) {
-		m_loader.load(&m_contents[i][0], m_vci_fsm.getBase(i), m_vci_fsm.getSize(i));
+		m_loader->load(&m_contents[i][0], m_vci_fsm.getBase(i), m_vci_fsm.getSize(i));
         for ( size_t addr = 0; addr < m_vci_fsm.getSize(i)/vci_param::B; ++addr )
             m_contents[i][addr] = le_to_machine(m_contents[i][addr]);
 	}
