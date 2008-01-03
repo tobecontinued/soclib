@@ -67,7 +67,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         return false;
 
 	switch (reg) {
-	case TTY_STAUS:
+	case TTY_STATUS:
 		data = m_term[term_no]->hasData();
 		return true;
 	case TTY_READ:
