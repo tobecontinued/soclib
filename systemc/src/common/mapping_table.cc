@@ -41,9 +41,12 @@ void MappingTable::add( const Segment &seg )
 {
     std::list<Segment>::iterator i;
 
-    if ( seg.index().level() != m_level_addr_bits.level() )
-        throw soclib::exception::ValueError("Not the same level");
-    
+    if ( seg.index().level() != m_level_addr_bits.level() ) {
+        std::ostringstream o;
+        o << seg << " is not the same level as the mapping table.";
+        throw soclib::exception::ValueError(o.str());
+    }
+
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
@@ -52,6 +55,13 @@ void MappingTable::add( const Segment &seg )
             std::ostringstream o;
             o << seg << " bumps in " << s;
             throw soclib::exception::Collision(o.str());
+        }
+        if ( m_cacheability_mask & s.baseAddress() == m_cacheability_mask & seg.baseAddress() &&
+             s.cacheable() != seg.cacheable() ) {
+            std::ostringstream oss;
+            oss << "Segment " << s
+                << " has a different cacheability attribute with same MSBs than " << seg << std::endl;
+			throw soclib::exception::RunTimeError(oss.str());
         }
     }
     m_segment_list.push_back(seg);
@@ -113,10 +123,11 @@ MappingTable::getLocalityTable( const IntTab &index ) const
 
 		if ( done[addr] && adt[addr] != val ) {
             std::ostringstream oss;
-            oss << *this;
-			throw soclib::exception::RunTimeError(
-                std::string("Incoherent Mapping Table:\n")+
-                oss.str());
+            oss << "Incoherent Mapping Table:" << std::endl
+                << "Segment " << *i << " targets different component than other segments with same MSBs" << std::endl
+                << "Mapping table:" << std::endl
+                << *this;
+			throw soclib::exception::RunTimeError(oss.str());
         }
 		adt.set( addr, val );
 		done.set( addr, true );
@@ -149,10 +160,11 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 
 		if ( done[addr] && adt[addr] != val ) {
             std::ostringstream oss;
-            oss << *this;
-			throw soclib::exception::RunTimeError(
-                std::string("Incoherent Mapping Table:\n")+
-                oss.str());
+            oss << "Incoherent Mapping Table:" << std::endl
+                << "Segment " << *i << " targets different cluster than other segments with same MSBs" << std::endl
+                << "Mapping table:" << std::endl
+                << *this;
+			throw soclib::exception::RunTimeError(oss.str());
         }
 		adt.set( addr, val );
 		done.set( addr, true );
