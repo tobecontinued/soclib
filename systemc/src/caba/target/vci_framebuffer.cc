@@ -40,7 +40,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
     if (addr>m_fb_controller.m_width*m_fb_controller.m_height*2)
         return false;
 
-    int index = addr/4;
+    int index = addr / vci_param::B;
     uint32_t *tab = m_fb_controller.surface();
 	unsigned int cur = tab[index];
     uint32_t mask = 0;
@@ -65,7 +65,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
     if (addr>m_fb_controller.m_width*m_fb_controller.m_height*2)
         return false;
 
-	data = m_fb_controller.surface()[addr/4];
+	data = m_fb_controller.surface()[addr / vci_param::B];
 	return true;
 }
 

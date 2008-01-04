@@ -44,7 +44,7 @@ tmpl(/**/)::VciLocks(
       p_clk("clk"),
       p_vci("vci")
 {
-	m_contents = new bool[m_segment.size()/4];
+	m_contents = new bool[m_segment.size() / vci_param::B];
 
 	SC_METHOD(transition);
 	dont_initialize();
@@ -63,14 +63,14 @@ tmpl(/**/)::~VciLocks()
 tmpl(void)::transition()
 {
 	if (!p_resetn) {
-		for (size_t i=0; i<m_segment.size()/4; ++i)
+		for (size_t i=0; i<m_segment.size() / vci_param::B; ++i)
 			m_contents[i] = false;
 		r_vci_fsm = IDLE;
 		return;
 	}
 
 	typename vci_param::addr_t address = p_vci.address.read();
-	uint32_t cell = (address-m_segment.baseAddress())/4;
+	uint32_t cell = (address-m_segment.baseAddress()) / vci_param::B;
 
 	switch (r_vci_fsm) {
 	case IDLE:

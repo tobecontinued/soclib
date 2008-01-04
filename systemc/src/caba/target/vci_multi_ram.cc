@@ -122,7 +122,7 @@ tmpl(void)::reset()
 
 tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
 {
-    int index = addr/4;
+    int index = addr / vci_param::B;
     ram_t *tab = m_contents[seg];
 	unsigned int cur = tab[index];
     uint32_t mask = 0;
@@ -143,7 +143,7 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
 
 tmpl(bool)::on_read(size_t seg, vci_addr_t addr, vci_data_t &data )
 {
-	data = m_contents[seg][addr/4];
+	data = m_contents[seg][addr / vci_param::B];
 	return true;
 }
 
