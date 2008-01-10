@@ -27,6 +27,7 @@ template<typename CpuIss> typename GdbServer<CpuIss>::State GdbServer<CpuIss>::i
 template<typename CpuIss> std::vector<GdbServer<CpuIss> *> GdbServer<CpuIss>::list_;
 template<typename CpuIss> unsigned int GdbServer<CpuIss>::current_id_ = 0;
 template<typename CpuIss> unsigned int GdbServer<CpuIss>::step_id_ = 0;
+template<typename CpuIss> bool GdbServer<CpuIss>::ctrl_c_ = false;
 template<typename CpuIss> std::map<uint32_t, bool> GdbServer<CpuIss>::break_exec_;
 template<typename CpuIss> std::list<GdbWatchPoint> GdbServer<CpuIss>::break_access_;
 
@@ -37,12 +38,8 @@ void GdbServer<CpuIss>::signal_handler(int sig)
 {
     if (asocket_ >= 0 && list_[0]->state_ == Running)
         {
-            char buffer[32];
-            change_all_states(MemWait);
-            current_id_ = 0;
-            sprintf(buffer, "T02thread:1;"); // GDB SIGINT
-            write_packet(buffer);
             std::cerr << "All processors are now Frozen. Hit CTRL-C again to exit." << std::endl;
+            ctrl_c_ = true;
         }
     else
         exit(0);
@@ -219,9 +216,14 @@ char * GdbServer<CpuIss>::read_packet(char *buffer, size_t size)
         }
  end:
 
-    // malformed packets
+    // malformed packet
     if (!data || !end || data >= end)
-        return 0;
+        {
+#ifdef GDBSERVER_DEBUG
+            fprintf(stderr, "[GDB] malformed packet %i bytes\n", res);
+#endif
+            return 0;
+        }
 
 #ifdef GDBSERVER_DEBUG
     fprintf(stderr, "[GDB] packet with checksum %02x: %s\n", chksum, data);
@@ -825,14 +827,28 @@ void GdbServer<CpuIss>::watch_mem_access()
 template<typename CpuIss>
 bool GdbServer<CpuIss>::check_break_points()
 {
+    char buffer[32];
+
     if (break_exec_.find(CpuIss::r_pc) != break_exec_.end())
         {
             change_all_states(MemWait);
             current_id_ = id_;
 
-            char buffer[32];
             sprintf(buffer, "T05thread:%x;", id_ + 1);
             write_packet(buffer);
+
+            return true;
+        }
+
+    if (ctrl_c_)
+        {
+            change_all_states(MemWait);
+            current_id_ = id_;
+
+            sprintf(buffer, "T02thread:%x;", id_ + 1);
+            write_packet(buffer);
+
+            ctrl_c_ = false;
 
             return true;
         }
@@ -884,8 +900,11 @@ void GdbServer<CpuIss>::step()
         {
             static unsigned int counter = 0;
 
-            if (asocket_ < 0 && !(counter++ % 128))
-                try_accept();
+            if (!(counter++ % 256))
+                {
+                    if (asocket_ < 0)
+                        try_accept();
+                }
         }
 
     if (state_ == StepWait)
