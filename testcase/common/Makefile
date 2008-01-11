@@ -9,7 +9,7 @@ TESTER=$(TESTER_DIR)/simulation.x
 
 ifeq ($(words $(ARCH)),1)
 
-VPATH=. $(COMMON)
+VPATH=$(TESTDIR) $(COMMON)
 
 SOCLIB:=$(shell soclib-cc --getpath)
 CC_PREFIX=$(ARCH)-unknown-elf-
@@ -22,14 +22,16 @@ LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
 CFLAGS=-Wall -O2 -I. -I$(COMMON) -I$(TESTER_DIR) $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
-ifeq ($(ARCH),powerpc)
-CFLAGS+=-mcpu=405 -mstrict-align
-endif
+
+mipsel_CFLAGS=-mips2 -mno-branch-likely
+powerpc_CFLAGS=-mcpu=405 -mstrict-align
+
+CFLAGS+=$($(ARCH)_CFLAGS)
 
 all: $(RESULT)
 
-$(SOFT_IMAGE): $(OBJS)
-	$(LD) -T $(COMMON)/ldscript -o $@ $^
+$(SOFT_IMAGE): $(OBJS) $(COMMON)/ldscript
+	$(LD) -T $(COMMON)/ldscript -o $@ $(OBJS)
 
 %.o: %.s
 	$(AS) $< -o $@
@@ -42,7 +44,7 @@ clean :
 
 $(RESULT): $(SOFT_IMAGE) $(TESTER) $(COMMON)/Makefile
 	$(TESTER) $(ARCH) $(SOFT_IMAGE) > test.out \
-		|| (cat test.out ; rm test.out ; exit 1)
+		|| (r=$$? ; cat test.out ; mv test.out test.fail ; echo "Test failed in $$PWD, errorlevel: $$r" ; exit 1)
 	cat test.out
 	mv test.out $@
 

@@ -61,8 +61,13 @@ MipsIss::MipsIss(uint32_t ident)
 
 void MipsIss::reset()
 {
-    Iss::reset(RESET_ADDRESS);
+    r_pc = RESET_ADDRESS;
     r_npc = RESET_ADDRESS + 4;
+    r_dbe = false;
+    m_ibe = false;
+    m_dbe = false;
+    r_mem_req = false;
+    m_ins_delay = 0;
     r_status.whole = 0;
     m_exec_cycles = 0;
     r_gp[0] = 0;
@@ -100,11 +105,11 @@ void MipsIss::dump() const
     }
 }
 
-void MipsIss::setRdata(bool error, uint32_t data)
+void MipsIss::setDataResponse(bool error, uint32_t data)
 {
     m_dbe = error;
+    r_mem_req = false;
     if ( error ) {
-        r_mem_type = MEM_NONE;
         return;
     }
 
@@ -119,39 +124,49 @@ void MipsIss::setRdata(bool error, uint32_t data)
         std::cout
             << m_name
             << " read to " << r_mem_dest
-            << "(" << r_mem_type << ")"
+            << "(" << dataAccessTypeName(r_mem_type) << ")"
             << " from " << std::hex << r_mem_addr
             << ": " << data
             << " hazard: " << m_hazard
             << std::endl;
 #endif
     }
+#if MIPS_DEBUG
+    if ( isWriteAccess(r_mem_type) )
+        std::cout
+            << m_name
+            << " write "
+            << "(" << dataAccessTypeName(r_mem_type) << ")"
+            << " to " << std::hex << r_mem_addr
+            << " OK"
+            << std::endl;
+#endif
 
     switch (r_mem_type) {
-    default:
+    case WRITE_BYTE:
+    case WRITE_WORD:
+    case WRITE_HALF:
+    case LINE_INVAL:
         m_hazard = false;
         break;
-    case MEM_LW:
-    case MEM_LL:
+    case READ_WORD:
+    case READ_LINKED:
         r_gp[r_mem_dest] = data;
         break;
-    case MEM_SC:
+    case STORE_COND:
         r_gp[r_mem_dest] = !data;
         break;
-    case MEM_LB:
-        r_gp[r_mem_dest] = sign_ext8(align(data, r_mem_addr&0x3, 8));
+    case READ_BYTE:
+        r_gp[r_mem_dest] = r_mem_unsigned ?
+            (data & 0xff) :
+            sign_ext8(data);
         break;
-    case MEM_LBU:
-        r_gp[r_mem_dest] = align(data, r_mem_addr&0x3, 8);
-        break;
-    case MEM_LH:
-        r_gp[r_mem_dest] = sign_ext16(align(data, (r_mem_addr&0x2)/2, 16));
-        break;
-    case MEM_LHU:
-        r_gp[r_mem_dest] = align(data, (r_mem_addr&0x2)/2, 16);
+    case READ_HALF:
+        r_gp[r_mem_dest] = r_mem_unsigned ?
+            (data & 0xffff) :
+            sign_ext16(data);
         break;
     }
-    r_mem_type = MEM_NONE;
 }
 
 void MipsIss::step()
@@ -198,9 +213,9 @@ void MipsIss::step()
 #if MIPS_DEBUG
     dump();
 #endif
-    // run() can modify the following registers: r_gp[i], r_mem_type,
-    // r_mem_addr; r_mem_wdata, r_mem_dest, r_hi, r_lo, m_exception,
-    // m_next_pc
+    // run() can modify the following registers: r_gp[i], r_mem_req,
+    // r_mem_type, r_mem_addr; r_mem_wdata, r_mem_dest, r_hi, r_lo,
+    // m_exception, m_next_pc
     if ( m_hazard ) {
         m_hazard = false;
         goto house_keeping;
@@ -261,7 +276,7 @@ void MipsIss::step()
     r_gp[0] = 0;
 }
 
-uint32_t MipsIss::get_register_value(unsigned int reg) const
+uint32_t MipsIss::getDebugRegisterValue(unsigned int reg) const
 {
     switch (reg)
         {
@@ -286,7 +301,7 @@ uint32_t MipsIss::get_register_value(unsigned int reg) const
         }
 }
 
-void MipsIss::set_register_value(unsigned int reg, uint32_t value)
+void MipsIss::setDebugRegisterValue(unsigned int reg, uint32_t value)
 {
     value = soclib::endian::uint32_swap(value);
 

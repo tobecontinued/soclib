@@ -178,7 +178,7 @@ void Ppc405Iss::trap( uint32_t to, uint32_t a, uint32_t b )
     }
 }
 
-void Ppc405Iss::mem_load_imm( DataAccessType type, bool update )
+void Ppc405Iss::mem_load_imm( DataAccessType type, bool update, bool reversed, bool unsigned_ )
 {
     uint32_t base = (m_ins.d.ra || update) ? r_gp[m_ins.d.ra] : 0;
     uint32_t address = base + sign_ext16(m_ins.d.imm);
@@ -190,9 +190,12 @@ void Ppc405Iss::mem_load_imm( DataAccessType type, bool update )
             return;
         }
     //    assert( !addressNotAligned( address, type ) && "Unaligned memory access, compile with `-mstrict-align'" );
+    r_mem_req = true;
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_dest = m_ins.d.rd;
+    r_mem_reversed = reversed;
+    r_mem_unsigned = unsigned_;
 #if PPC405_DEBUG
     std::cout << m_name << std::hex
               << " mem read imm " << dataAccessTypeName(type)
@@ -202,7 +205,7 @@ void Ppc405Iss::mem_load_imm( DataAccessType type, bool update )
 #endif
 }
 
-void Ppc405Iss::mem_load_indexed( DataAccessType type, bool update )
+void Ppc405Iss::mem_load_indexed( DataAccessType type, bool update, bool reversed, bool unsigned_ )
 {
     uint32_t base = (m_ins.x.ra || update) ? r_gp[m_ins.x.ra] : 0;
     uint32_t address = base + r_gp[m_ins.x.rb];
@@ -214,9 +217,12 @@ void Ppc405Iss::mem_load_indexed( DataAccessType type, bool update )
             return;
         }
     //    assert( !addressNotAligned( address, type ) && "Unaligned memory access, compile with `-mstrict-align'" );
+    r_mem_req = true;
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_dest = m_ins.x.rs;
+    r_mem_reversed = reversed;
+    r_mem_unsigned = unsigned_;
 #if PPC405_DEBUG
     std::cout << m_name << std::hex
               << " mem read indexed " << dataAccessTypeName(type)
@@ -239,15 +245,15 @@ void Ppc405Iss::mem_store_imm( DataAccessType type, bool update, uint32_t data )
         }
     //    assert( !addressNotAligned( address, type ) && "Unaligned memory access, compile with `-mstrict-align'" );
     switch(type) {
-    case MEM_SB:
+    case WRITE_BYTE:
         data = data & 0xff;
         data = data|(data<<8)|(data<<16)|(data<<24);
         break;
-    case MEM_SH:
+    case WRITE_HALF:
         data = data&0xffff;
         data = data|(data<<16);
         break;
-    case MEM_SW:
+    case WRITE_WORD:
         data = data;
         break;
     default:
@@ -260,6 +266,7 @@ void Ppc405Iss::mem_store_imm( DataAccessType type, bool update, uint32_t data )
               << ": " << data
               << std::endl;
 #endif
+    r_mem_req = true;
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_wdata = data;
@@ -278,23 +285,28 @@ void Ppc405Iss::mem_store_indexed( DataAccessType type, bool update, uint32_t da
         }
     // assert( !addressNotAligned( address, type ) && "Unaligned memory access, compile with `-mstrict-align'" );
     switch(type) {
-    case MEM_SB:
+    case WRITE_BYTE:
         data = data & 0xff;
         data = data|(data<<8)|(data<<16)|(data<<24);
         break;
-    case MEM_SH:
+    case WRITE_HALF:
         data = data&0xffff;
         data = data|(data<<16);
         break;
-    case MEM_SW:
+    case WRITE_WORD:
         data = data;
         break;
     default:
         assert(0 && "How can store have this mnemonic ?");
     }
 #if PPC405_DEBUG
-    std::cout << m_name << " store indexed " << std::dec << type << " @" << std::hex << address << ": " << data << std::endl;
+    std::cout << m_name << " store indexed "
+              << dataAccessTypeName(type)
+              << " @" << std::hex << address
+              << ": " << data
+              << std::endl;
 #endif
+    r_mem_req = true;
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_wdata = data;
@@ -675,67 +687,67 @@ void Ppc405Iss::op_isync()
 
 void Ppc405Iss::op_lbz()
 {
-    mem_load_imm( MEM_LB, false );
+    mem_load_imm( READ_BYTE, false, false, false );
 }
 
 void Ppc405Iss::op_lbzu()
 {
-    mem_load_imm( MEM_LB, true );
+    mem_load_imm( READ_BYTE, true, false, false );
 }
 
 void Ppc405Iss::op_lbzux()
 {
-    mem_load_indexed( MEM_LBU, true );
+    mem_load_indexed( READ_BYTE, true, false, true );
 }
 
 void Ppc405Iss::op_lbzx()
 {
-    mem_load_indexed( MEM_LBU, false );
+    mem_load_indexed( READ_BYTE, false, false, true );
 }
 
 void Ppc405Iss::op_lha()
 {
-    mem_load_imm( MEM_LH, false );
+    mem_load_imm( READ_HALF, false, false, false );
 }
 
 void Ppc405Iss::op_lhau()
 {
-    mem_load_imm( MEM_LH, true );
+    mem_load_imm( READ_HALF, true, false, false );
 }
 
 void Ppc405Iss::op_lhaux()
 {
-    mem_load_indexed( MEM_LH, true );
+    mem_load_indexed( READ_HALF, true, false, false );
 }
 
 void Ppc405Iss::op_lhax()
 {
-    mem_load_indexed( MEM_LH, false );
+    mem_load_indexed( READ_HALF, false, false, false );
 }
 
 void Ppc405Iss::op_lhbrx()
 {
-    mem_load_indexed( MEM_LHBR, false );
+    mem_load_indexed( READ_HALF, false, true, false );
 }
 
 void Ppc405Iss::op_lhz()
 {
-    mem_load_imm( MEM_LHU, false );
+    mem_load_imm( READ_HALF, false, false, true );
 }
 
 void Ppc405Iss::op_lhzu()
 {
-    mem_load_imm( MEM_LHU, true );
+    mem_load_imm( READ_HALF, true, false, true );
 }
 
 void Ppc405Iss::op_lhzux()
 {
-    mem_load_indexed( MEM_LHU, true );
+    mem_load_indexed( READ_HALF, true, false, true );
 }
 
 void Ppc405Iss::op_lhzx()
 {
-    mem_load_indexed( MEM_LHU, false );
+    mem_load_indexed( READ_HALF, false, false, true );
 }
 
 void Ppc405Iss::op_lmw()
@@ -761,32 +773,32 @@ void Ppc405Iss::op_lswx()
 
 void Ppc405Iss::op_lwarx()
 {
-    mem_load_indexed( MEM_LL, false );
+    mem_load_indexed( READ_LINKED, false, false, false );
 }
 
 void Ppc405Iss::op_lwbrx()
 {
-    mem_load_indexed( MEM_LWBR, false );
+    mem_load_indexed( READ_WORD, false, true, false );
 }
 
 void Ppc405Iss::op_lwz()
 {
-    mem_load_imm( MEM_LW, false );
+    mem_load_imm( READ_WORD, false, false, false );
 }
 
 void Ppc405Iss::op_lwzu()
 {
-    mem_load_imm( MEM_LW, true );
+    mem_load_imm( READ_WORD, true, false, false );
 }
 
 void Ppc405Iss::op_lwzux()
 {
-    mem_load_indexed( MEM_LW, true );
+    mem_load_indexed( READ_WORD, true, false, false );
 }
 
 void Ppc405Iss::op_lwzx()
 {
-    mem_load_indexed( MEM_LW, false );
+    mem_load_indexed( READ_WORD, false, false, false );
 }
 
 void Ppc405Iss::op_macchw()
@@ -1267,47 +1279,47 @@ void Ppc405Iss::op_srw()
 
 void Ppc405Iss::op_stb()
 {
-    mem_store_imm( MEM_SB, false, r_gp[m_ins.d.rd] );
+    mem_store_imm( WRITE_BYTE, false, r_gp[m_ins.d.rd] );
 }
 
 void Ppc405Iss::op_stbu()
 {
-	mem_store_imm( MEM_SB, true, r_gp[m_ins.d.rd] );
+	mem_store_imm( WRITE_BYTE, true, r_gp[m_ins.d.rd] );
 }
 
 void Ppc405Iss::op_stbux()
 {
-	mem_store_indexed( MEM_SB, true, r_gp[m_ins.x.rs] );
+	mem_store_indexed( WRITE_BYTE, true, r_gp[m_ins.x.rs] );
 }
 
 void Ppc405Iss::op_stbx()
 {
-	mem_store_indexed( MEM_SB, false, r_gp[m_ins.x.rs] );
+	mem_store_indexed( WRITE_BYTE, false, r_gp[m_ins.x.rs] );
 }
 
 void Ppc405Iss::op_sth()
 {
-	mem_store_imm( MEM_SH, false, r_gp[m_ins.d.rd] );
+	mem_store_imm( WRITE_HALF, false, r_gp[m_ins.d.rd] );
 }
 
 void Ppc405Iss::op_sthbrx()
 {
-	mem_store_indexed( MEM_SH, false, soclib::endian::uint16_swap(r_gp[m_ins.x.rs]) );
+	mem_store_indexed( WRITE_HALF, false, soclib::endian::uint16_swap(r_gp[m_ins.x.rs]) );
 }
 
 void Ppc405Iss::op_sthu()
 {
-	mem_store_imm( MEM_SH, true, r_gp[m_ins.d.rd] );
+	mem_store_imm( WRITE_HALF, true, r_gp[m_ins.d.rd] );
 }
 
 void Ppc405Iss::op_sthux()
 {
-	mem_store_indexed( MEM_SH, true, r_gp[m_ins.x.rs] );
+	mem_store_indexed( WRITE_HALF, true, r_gp[m_ins.x.rs] );
 }
 
 void Ppc405Iss::op_sthx()
 {
-	mem_store_indexed( MEM_SH, false, r_gp[m_ins.x.rs] );
+	mem_store_indexed( WRITE_HALF, false, r_gp[m_ins.x.rs] );
 }
 
 void Ppc405Iss::op_stmw()
@@ -1333,33 +1345,33 @@ void Ppc405Iss::op_stswx()
 
 void Ppc405Iss::op_stw()
 {
-	mem_store_imm( MEM_SW, false, r_gp[m_ins.d.rd] );
+	mem_store_imm( WRITE_WORD, false, r_gp[m_ins.d.rd] );
 }
 
 void Ppc405Iss::op_stwbrx()
 {
-    mem_store_indexed( MEM_SW, false, soclib::endian::uint32_swap(r_gp[m_ins.x.rs]) );
+    mem_store_indexed( WRITE_WORD, false, soclib::endian::uint32_swap(r_gp[m_ins.x.rs]) );
 }
 
 void Ppc405Iss::op_stwcx()
 {
-    mem_store_indexed( MEM_SC, false, r_gp[m_ins.x.rs] );
+    mem_store_indexed( STORE_COND, false, r_gp[m_ins.x.rs] );
     r_mem_dest = m_ins.x.rs;
 }
 
 void Ppc405Iss::op_stwu()
 {
-	mem_store_imm( MEM_SW, true, r_gp[m_ins.d.rd] );
+	mem_store_imm( WRITE_WORD, true, r_gp[m_ins.d.rd] );
 }
 
 void Ppc405Iss::op_stwux()
 {
-    mem_store_indexed( MEM_SW, true, r_gp[m_ins.x.rs] );
+    mem_store_indexed( WRITE_WORD, true, r_gp[m_ins.x.rs] );
 }
 
 void Ppc405Iss::op_stwx()
 {
-    mem_store_indexed( MEM_SW, false, r_gp[m_ins.x.rs] );
+    mem_store_indexed( WRITE_WORD, false, r_gp[m_ins.x.rs] );
 }
 
 void Ppc405Iss::op_subf()

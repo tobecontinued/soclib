@@ -76,7 +76,7 @@ void GdbServer<CpuIss>::global_init()
 template<typename CpuIss>
 GdbServer<CpuIss>::GdbServer(uint32_t ident)
     : CpuIss(ident),
-      mem_type_(CpuIss::MEM_NONE),
+      mem_req_(false),
       mem_count_(0),
       catch_execeptions_(true),
       state_(init_state_)
@@ -410,8 +410,8 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     unsigned int reg = strtoul(data + 1, 0, 16);
                     char fmt[32];
 
-                    sprintf(fmt, "%%0%ux", CpuIss::get_register_size(reg) / 4);
-                    sprintf(buffer, fmt, CpuIss::get_register_value(reg));
+                    sprintf(fmt, "%%0%ux", CpuIss::getDebugRegisterSize(reg) / 4);
+                    sprintf(buffer, fmt, CpuIss::getDebugRegisterValue(reg));
                     write_packet(buffer);
                     return;
                 }
@@ -422,18 +422,18 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     assert(*end == '=');
                     uint32_t value = strtoul(end + 1, 0, 16);
 
-                    CpuIss::set_register_value(reg, value);
+                    CpuIss::setDebugRegisterValue(reg, value);
                     write_packet("OK");
                     return;
                 }
 
                 case 'g': {      // read all registers
                     char *b = buffer;
-                    for (unsigned int i = 0; i < CpuIss::get_register_count(); i++)
+                    for (unsigned int i = 0; i < CpuIss::getDebugRegisterCount(); i++)
                         {
                             char fmt[32];
-                            sprintf(fmt, "%%0%ux", CpuIss::get_register_size(i) / 4);
-                            b += sprintf(b, fmt, CpuIss::get_register_value(i));
+                            sprintf(fmt, "%%0%ux", CpuIss::getDebugRegisterSize(i) / 4);
+                            b += sprintf(b, fmt, CpuIss::getDebugRegisterValue(i));
                         }
                     write_packet(buffer);
                     return;
@@ -443,15 +443,15 @@ void GdbServer<CpuIss>::process_gdb_packet()
 
                     data++;
 
-                    for (unsigned int i = 0; i < CpuIss::get_register_count(); i++)
+                    for (unsigned int i = 0; i < CpuIss::getDebugRegisterCount(); i++)
                         {
-                            size_t s = CpuIss::get_register_size(i) / 4;
+                            size_t s = CpuIss::getDebugRegisterSize(i) / 4;
                             char word[s + 1];
                             word[s] = 0;
                             memcpy(word, data, s);
                             if (strlen(word) != s)
                                 break;
-                            CpuIss::set_register_value(i, strtoul(word, 0, 16));
+                            CpuIss::setDebugRegisterValue(i, strtoul(word, 0, 16));
                             data += s;
                         }
 
@@ -466,8 +466,9 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     assert(*end == ',');
                     size_t len = strtoul(end + 1, 0, 16);
 
+                    mem_req_ = true;
                     mem_error_ = 0;
-                    mem_type_ = CpuIss::MEM_LB;
+                    mem_type_ = CpuIss::READ_BYTE;
                     mem_addr_ = addr;
                     mem_len_ = mem_count_ = len;
                     mem_buff_ = mem_ptr_ = (uint8_t*)malloc(len);
@@ -482,8 +483,9 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     size_t len = strtoul(end + 1, &end, 16);
                     assert(*end == ':');
 
+                    mem_req_ = true;
                     mem_error_ = 0;
-                    mem_type_ = CpuIss::MEM_SB;
+                    mem_type_ = CpuIss::WRITE_BYTE;
                     mem_addr_ = addr;
                     mem_len_ = mem_count_ = len;
                     mem_buff_ = mem_ptr_ = (uint8_t*)malloc(len);
@@ -503,7 +505,7 @@ void GdbServer<CpuIss>::process_gdb_packet()
 
                 case 'c': {      // continue [optional resume addr in hex]
                     if (data[1])
-                        CpuIss::r_pc = strtoul(data + 1, 0, 16);
+                        CpuIss::setDebugPC(strtoul(data + 1, 0, 16));
 
                     change_all_states(Running);
                     return;
@@ -512,7 +514,7 @@ void GdbServer<CpuIss>::process_gdb_packet()
                 case 's': {      // continue single step [optional resume addr in hex]
                     if (data[1])
                         {       // continue at specified address
-                            CpuIss::r_pc = strtoul(data + 1, 0, 16);
+                            CpuIss::setDebugPC(strtoul(data + 1, 0, 16));
                             state_ = Step;
                         }
                     else
@@ -704,14 +706,17 @@ bool GdbServer<CpuIss>::process_mem_access()
             write_packet("E0d");
 
             free(mem_buff_);
-            mem_type_ = CpuIss::MEM_NONE;
+            mem_req_ = false;
             mem_count_ = 0;
             return false;
         }
 
+    if (!mem_req_)
+        return false;
+
     switch (mem_type_)
         {
-        case CpuIss::MEM_LB: {
+        case CpuIss::READ_BYTE: {
             do
                 {
                     *mem_ptr_++ = mem_data_ >> (8 * (mem_addr_ & 3));
@@ -732,12 +737,12 @@ bool GdbServer<CpuIss>::process_mem_access()
             write_packet(packet);
 
             free(mem_buff_);
-            mem_type_ = CpuIss::MEM_NONE;
+            mem_req_ = false;
 
             break;
         }
 
-        case CpuIss::MEM_SB: {
+        case CpuIss::WRITE_BYTE: {
             mem_addr_++;
             mem_count_--;
 
@@ -749,7 +754,7 @@ bool GdbServer<CpuIss>::process_mem_access()
 
             write_packet("OK");
             free(mem_buff_);
-            mem_type_ = CpuIss::MEM_NONE;
+            mem_req_ = false;
 
             break;
         }
@@ -766,31 +771,32 @@ void GdbServer<CpuIss>::watch_mem_access()
 {
     if (!break_access_.empty())
         {
+            bool req;
             Iss::DataAccessType type;
             uint32_t address, data;
 
             uint8_t mask;
-            CpuIss::getDataRequest(type, address, data);
+            CpuIss::getDataRequest(req, type, address, data);
 
+            if (!req)
+                return;
             switch(type)
                 {
                 default:
                     mask = 0;
                     break;
 
-                case Iss::MEM_SB:
-                case Iss::MEM_SH:
-                case Iss::MEM_SW:
+                case Iss::WRITE_WORD:
+                case Iss::WRITE_HALF:
+                case Iss::WRITE_BYTE:
+                case Iss::STORE_COND:
                     mask = GdbWatchPoint::a_write;
                     break;
 
-                case Iss::MEM_LB:
-                case Iss::MEM_LBU:
-                case Iss::MEM_LH:
-                case Iss::MEM_LHBR:
-                case Iss::MEM_LHU:
-                case Iss::MEM_LWBR:
-                case Iss::MEM_LW:
+                case Iss::READ_WORD:
+                case Iss::READ_HALF:
+                case Iss::READ_BYTE:
+                case Iss::READ_LINKED:
                     mask = GdbWatchPoint::a_read;
                     break;
                 }
@@ -829,7 +835,7 @@ bool GdbServer<CpuIss>::check_break_points()
 {
     char buffer[32];
 
-    if (break_exec_.find(CpuIss::r_pc) != break_exec_.end())
+    if (break_exec_.find(CpuIss::getDebugPC()) != break_exec_.end())
         {
             change_all_states(MemWait);
             current_id_ = id_;
@@ -863,7 +869,7 @@ void GdbServer<CpuIss>::cleanup()
         {
             GdbServer & gs = *list_[i];
 
-            gs.mem_type_ = CpuIss::MEM_NONE;
+            gs.mem_req_ = false;
             if (gs.mem_count_)
                 free(gs.mem_buff_);
 

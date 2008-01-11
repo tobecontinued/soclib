@@ -103,10 +103,28 @@ private:
 
     // member variables (internal registers)
 
+	uint32_t 	r_pc;			// Program Counter
 	uint32_t 	r_npc;			// Next Program Counter
     uint32_t    r_gp[32];       // General Registers
     uint32_t    r_hi;           // Multiply result (MSB bits)
     uint32_t    r_lo;           // Multiply result (LSB bits)
+
+    bool        r_mem_req;
+    bool        r_mem_unsigned;
+	enum DataAccessType 	r_mem_type;  		// Data Cache access type
+	uint32_t 	r_mem_addr;  		// Data Cache address
+	uint32_t 	r_mem_wdata;  		// Data Cache data value (write)
+	uint32_t	r_mem_dest;  		// Data Cache destination register (read)
+	bool		r_dbe;			// Asynchronous Data Bus Error (write)
+
+	uint32_t	m_rdata;
+	uint32_t 	m_irq;
+	bool		m_ibe;
+	bool		m_dbe;
+
+    // Instruction latency simulation
+    uint32_t m_ins_delay;
+
 
     typedef union {
         struct {
@@ -180,12 +198,50 @@ public:
     void dump() const;
     void step();
 
-    inline void nullStep()
+    inline void nullStep( uint32_t time_passed = 1 )
     {
-        doneNullStep();
+        if ( m_ins_delay ) {
+            if ( m_ins_delay > time_passed )
+                m_ins_delay -= time_passed;
+            else
+                m_ins_delay = 0;
+        }
         m_hazard = false;
         ++r_count;
     }
+
+    inline uint32_t isBusy()
+    {
+        return m_ins_delay;
+    }
+
+	inline void getInstructionRequest(bool &req, uint32_t &address) const
+	{
+        req = true;
+		address = r_pc;
+	}
+
+	inline void getDataRequest(
+        bool &valid,
+        enum DataAccessType &type,
+        uint32_t &address,
+        uint32_t &wdata) const
+	{
+        valid = r_mem_req;
+		address = r_mem_addr;
+		wdata = r_mem_wdata;
+		type = r_mem_type;
+	}
+
+	inline void setWriteBerr()
+	{
+		r_dbe = true;
+	}
+
+	inline void setIrq(uint32_t irq)
+	{
+		m_irq = irq;
+	}
 
     void reset();
 
@@ -195,27 +251,44 @@ public:
 		m_ins.ins = val;
 	}
 
-	void setRdata(bool error, uint32_t rdata);
+	void setDataResponse(bool error, uint32_t rdata);
 
     // processor internal registers access API, used by
     // debugger. Mips order is 32 general-purpose; sr; lo; hi; bad; cause; pc;
 
-    inline unsigned int get_register_count() const
+    inline unsigned int getDebugRegisterCount() const
     {
         return 32 + 6;
     }
 
-    uint32_t get_register_value(unsigned int reg) const;
+    uint32_t getDebugRegisterValue(unsigned int reg) const;
 
-    inline size_t get_register_size(unsigned int reg) const
+    inline size_t getDebugRegisterSize(unsigned int reg) const
     {
         return 32;
     }
 
-    void set_register_value(unsigned int reg, uint32_t value);
+    void setDebugRegisterValue(unsigned int reg, uint32_t value);
+
+    inline uint32_t getDebugPC() const
+    {
+        return r_pc;
+    }
+
+    inline void setDebugPC(uint32_t pc)
+    {
+        r_pc = pc;
+        r_npc = pc+4;
+    }
 
 private:
     void run();
+
+    inline void setInsDelay( uint32_t delay )
+    {
+        assert( delay > 0 );
+        m_ins_delay = delay-1;
+    }
 
     inline bool isInUserMode() const
     {
@@ -237,7 +310,7 @@ private:
     static func_t const opcod_table[64];
     static func_t const special_table[64];
 
-    void do_load( enum DataAccessType type );
+    void do_load( enum DataAccessType type, bool unsigned_ );
     void do_store( enum DataAccessType type, uint32_t data );
 
     void op_special();

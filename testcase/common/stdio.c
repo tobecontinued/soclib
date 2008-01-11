@@ -177,6 +177,7 @@ void abort()
 {
 	printf("Aborted\n");
 	exit(1);
+	while(1);
 }
 
 void *memcpy( void *_dst, void *_src, unsigned long size )

@@ -1,4 +1,4 @@
-/*\
+/* -*- coding: utf-8 -*-
  * This file is part of SoCLIB.
  * SoCLIB is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -138,6 +138,7 @@ do {                              \
 
 #define LOAD(type, addr)                                   \
 do {                                                       \
+   r_mem_req = true;                                       \
    r_mem_type = type;                                      \
    r_mem_addr = addr;                                      \
    r_mem_dest = ins_rd;                                    \
@@ -145,6 +146,7 @@ do {                                                       \
 
 #define STORE(type, addr, data)                            \
 do {                                                       \
+   r_mem_req = true;                                       \
    r_mem_type  = type;                                     \
    r_mem_addr  = addr;                                     \
    r_mem_wdata = data;                                     \
@@ -194,22 +196,22 @@ namespace soclib {
       {
       }
 
-      void MicroBlazeIss::setRdata(bool error, uint32_t data)
+      void MicroBlazeIss::setDataResponse(bool error, uint32_t data)
       {
          m_dbe = error;
+		 r_mem_req = false;
          if (error) {
-             r_mem_type = MEM_NONE;
              return;
          }
 
          switch (r_mem_type) {
-         case MEM_LBU:
-            r_gpr[r_mem_dest] = (data >> ((r_mem_addr & 3) << 3)) & 0xFF;
+         case READ_BYTE:
+            r_gpr[r_mem_dest] = data & 0xFF;
             break;
-         case MEM_LHU:
-            r_gpr[r_mem_dest] = soclib::endian::uint16_swap((data >> ((r_mem_addr & 2) << 3)) & 0xFFFF);
+         case READ_HALF:
+            r_gpr[r_mem_dest] = soclib::endian::uint16_swap(data & 0xffff);
             break;
-         case MEM_LW:
+         case READ_WORD:
             r_gpr[r_mem_dest] = soclib::endian::uint32_swap(data);
             break;
          default:
@@ -220,7 +222,6 @@ namespace soclib {
 #endif
             break;
          }
-         r_mem_type = MEM_NONE;
       }
 
       /*\
@@ -681,7 +682,7 @@ printf("imm 0x%04x\n", ins_imm);
 printf("lbu r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
 #endif
                addr = r_gpr[ins_ra] + r_gpr[ins_rb];
-               LOAD(MEM_LBU, addr);
+               LOAD(READ_BYTE, addr);
                next_pc = r_npc + 4;
                break;
                  
@@ -690,7 +691,7 @@ printf("lbu r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
 printf("lbui r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
 #endif
                addr = r_gpr[ins_ra] + IMM_OP;
-               LOAD(MEM_LBU, addr);
+               LOAD(READ_BYTE, addr);
                next_pc = r_npc + 4;
                break;
             
@@ -703,7 +704,7 @@ printf("lhu r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                   r_esr = (ins_rd << 5) | UNALIGNED_DATA_ACCESS_EXCEPTION;
                   HANDLE_EXCEPTION;
                }
-               LOAD(MEM_LHU, addr);
+               LOAD(READ_HALF, addr);
                next_pc = r_npc + 4;
                break;
 
@@ -716,7 +717,7 @@ printf("lhui r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                   r_esr = (ins_rd << 5) | UNALIGNED_DATA_ACCESS_EXCEPTION;
                   HANDLE_EXCEPTION;
                }
-               LOAD(MEM_LHU, addr);
+               LOAD(READ_HALF, addr);
                next_pc = r_npc + 4;
                break;
             
@@ -729,7 +730,7 @@ printf("lw r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                   r_esr = (1 << 11) | (ins_rd << 5) | UNALIGNED_DATA_ACCESS_EXCEPTION;
                   HANDLE_EXCEPTION;
                }
-               LOAD(MEM_LW, addr);
+               LOAD(READ_WORD, addr);
                next_pc = r_npc + 4;
                break;
               
@@ -742,7 +743,7 @@ printf("lwi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                   r_esr = (1 << 11) | (ins_rd << 5) | UNALIGNED_DATA_ACCESS_EXCEPTION;
                   HANDLE_EXCEPTION;
                }
-               LOAD(MEM_LW, addr);
+               LOAD(READ_WORD, addr);
                next_pc = r_npc + 4;
                break;
            
@@ -933,7 +934,7 @@ printf("sb r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
 #endif
                data = r_gpr[ins_rd] & 0xFF;
                addr = r_gpr[ins_ra] + r_gpr[ins_rb];
-               STORE(MEM_SB, addr, (data << 24) | (data << 16) | (data << 8) | data);
+               STORE(WRITE_BYTE, addr, (data << 24) | (data << 16) | (data << 8) | data);
                next_pc = r_npc + 4;
                break;
             
@@ -943,7 +944,7 @@ printf("sbi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
 #endif
                data = r_gpr[ins_rd] & 0xFF;
                addr = r_gpr[ins_ra] + IMM_OP;
-               STORE(MEM_SB, addr, (data << 24) | (data << 16) | (data << 8) | data);
+               STORE(WRITE_BYTE, addr, (data << 24) | (data << 16) | (data << 8) | data);
                next_pc = r_npc + 4;
                break;
            
@@ -992,7 +993,7 @@ printf("sh r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                   r_esr =  (1 << 10) |(ins_rd << 5) | UNALIGNED_DATA_ACCESS_EXCEPTION;
                   HANDLE_EXCEPTION;
                }
-               STORE(MEM_SH, addr, (data << 16) | data);
+               STORE(WRITE_HALF, addr, (data << 16) | data);
                next_pc = r_npc + 4;
                break;
                      
@@ -1006,7 +1007,7 @@ printf("shi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                   r_esr =  (1 << 10) |(ins_rd << 5) | UNALIGNED_DATA_ACCESS_EXCEPTION;
                   HANDLE_EXCEPTION;
                }
-               STORE(MEM_SH, addr, (data << 16) | data);
+               STORE(WRITE_HALF, addr, (data << 16) | data);
                next_pc = r_npc + 4;
                break;
                      
@@ -1019,7 +1020,7 @@ printf("sw r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                   r_esr = (1 << 11) | (1 << 10) | (ins_rd << 5) | UNALIGNED_DATA_ACCESS_EXCEPTION;
                   HANDLE_EXCEPTION;
                }
-               STORE(MEM_SW, addr, soclib::endian::uint32_swap(r_gpr[ins_rd]));
+               STORE(WRITE_WORD, addr, soclib::endian::uint32_swap(r_gpr[ins_rd]));
                next_pc = r_npc + 4;
                break;
                      
@@ -1032,7 +1033,7 @@ printf("swi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                   r_esr = (1 << 11) | (1 << 10) | (ins_rd << 5) | UNALIGNED_DATA_ACCESS_EXCEPTION;
                   HANDLE_EXCEPTION;
                }
-               STORE(MEM_SW, addr, soclib::endian::uint32_swap(r_gpr[ins_rd]));
+               STORE(WRITE_WORD, addr, soclib::endian::uint32_swap(r_gpr[ins_rd]));
                next_pc = r_npc + 4;
                break;
                      

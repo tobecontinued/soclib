@@ -264,6 +264,22 @@ private:
 	// member variables used for communication between
 	// member functions (they are not registers)
 
+	uint32_t 	r_pc;
+
+    bool        r_mem_req;
+    bool        r_mem_unsigned;
+    bool        r_mem_reversed;
+	enum DataAccessType 	r_mem_type;
+	uint32_t 	r_mem_addr;
+	uint32_t 	r_mem_wdata;
+	uint32_t	r_mem_dest;
+	bool		r_dbe;
+	bool		m_ibe;
+	bool		m_dbe;
+	uint32_t 	m_irq;
+
+    uint32_t m_ins_delay;
+
 	ins_t m_ins;
 	enum ExceptCause m_exception;
     uint32_t m_next_pc;
@@ -308,23 +324,30 @@ public:
 
 	Ppc405Iss(uint32_t ident);
 
-    void nullStep()
+	void reset();
+
+    inline uint32_t isBusy()
     {
-        doneNullStep();
-        r_tb++;
+        return m_ins_delay;
     }
 
 	void step();
-	void reset();
+    void nullStep( uint32_t time_passed = 1 )
+    {
+        if ( m_ins_delay ) {
+            if ( m_ins_delay > time_passed )
+                m_ins_delay -= time_passed;
+            else
+                m_ins_delay = 0;
+        }
+        r_tb++;
+    }
 
-	inline void getDataRequest(enum DataAccessType &type, uint32_t &address, uint32_t &wdata) const
+	inline void getInstructionRequest(bool &req, uint32_t &address) const
 	{
-		address = r_mem_addr;
-		wdata = soclib::endian::uint32_swap(r_mem_wdata);
-		type = r_mem_type;
+        req = true;
+		address = r_pc;
 	}
-
-	void setRdata(bool error, uint32_t rdata);
 
 	inline void setInstruction(bool error, uint32_t val)
 	{
@@ -332,23 +355,60 @@ public:
 		m_ins.ins = soclib::endian::uint32_swap(val);
 	}
 
+	inline void getDataRequest(bool &valid, enum DataAccessType &type,
+                               uint32_t &address, uint32_t &wdata) const
+	{
+        valid = r_mem_req;
+		address = r_mem_addr;
+		wdata = soclib::endian::uint32_swap(r_mem_wdata);
+		type = r_mem_type;
+	}
+
+	void setDataResponse(bool error, uint32_t rdata);
+
+	inline void setWriteBerr()
+	{
+		r_dbe = true;
+	}
+
+	inline void setIrq(uint32_t irq)
+	{
+		m_irq = irq;
+	}
+
     // processor internal registers access API, used by
     // debugger. PPC regs order is 32 32bits GPs, 32 64bits FPs, pc, ps, cnd, lr, cnt, xer, mq, fpscr
 
-    inline unsigned int get_register_count() const
+    inline unsigned int getDebugRegisterCount() const
     {
         return 32 + 32 + 8;
     }
 
-    uint32_t get_register_value(unsigned int reg) const;
-    size_t get_register_size(unsigned int reg) const;
-    void set_register_value(unsigned int reg, uint32_t value);
+    uint32_t getDebugRegisterValue(unsigned int reg) const;
+    size_t getDebugRegisterSize(unsigned int reg) const;
+    void setDebugRegisterValue(unsigned int reg, uint32_t value);
+
+    inline uint32_t getDebugPC() const
+    {
+        return r_pc;
+    }
+
+    inline void setDebugPC(uint32_t pc)
+    {
+        r_pc = pc;
+    }
 
 protected:
     void exceptionProcess( uint32_t cause );
 
 private:
 	void run();
+
+    inline void setInsDelay( uint32_t delay )
+    {
+        assert( delay > 0 );
+        m_ins_delay = delay-1;
+    }
 
 	typedef void (Ppc405Iss::*func_t)();
 
@@ -416,8 +476,8 @@ private:
     void sprfSet( enum Sprf, uint32_t );
     uint32_t sprfGet( enum Sprf );
 
-    inline void mem_load_imm( DataAccessType type, bool update );
-    inline void mem_load_indexed( DataAccessType type, bool update );
+    inline void mem_load_imm( DataAccessType type, bool update, bool, bool );
+    inline void mem_load_indexed( DataAccessType type, bool update, bool, bool );
     inline void mem_store_imm( DataAccessType type, bool update, uint32_t data );
     inline void mem_store_indexed( DataAccessType type, bool update, uint32_t data );
     inline void do_add( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );

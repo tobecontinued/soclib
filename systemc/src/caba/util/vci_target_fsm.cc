@@ -89,7 +89,7 @@ tmpl(void)::transition()
             std::vector<soclib::common::Segment>::const_iterator seg;
             size_t i=0;
             for ( seg = m_segments.begin();
-                  seg < m_segments.end() && !reached;
+                  seg != m_segments.end() && !reached;
                   ++i, ++seg ) {
                 if ( ! seg->contains(address) )
                     continue;
@@ -106,7 +106,10 @@ tmpl(void)::transition()
                     if ((m_owner->*m_on_write_f)(i, offset, p_vci.wdata.read(), p_vci.be.read()))
                         m_state = TARGET_WRITE_RSP;
                     else {
-                        m_state = TARGET_ERROR_RSP;
+                        if ( p_vci.eop.read() )
+                            m_state = TARGET_IDLE;
+                        else
+                            m_state = TARGET_ERROR_RSP;
                         rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
                     }
                     break;
@@ -124,7 +127,10 @@ tmpl(void)::transition()
                     if ((m_owner->*m_on_write_f)(i, offset, p_vci.wdata.read(), p_vci.be.read()))
                         m_state = TARGET_WRITE_RSP;
                     else {
-                        m_state = TARGET_ERROR_RSP;
+                        if ( p_vci.eop.read() )
+                            m_state = TARGET_IDLE;
+                        else
+                            m_state = TARGET_ERROR_RSP;
                         rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
                     }
                     break;
@@ -136,7 +142,10 @@ tmpl(void)::transition()
                     if ((m_owner->*m_on_read_f)(i, offset, rsp_info.rdata)) {
                         m_state = TARGET_READ_RSP;
                     } else {
-                        m_state = TARGET_ERROR_RSP;
+                        if ( p_vci.eop.read() )
+                            m_state = TARGET_IDLE;
+                        else
+                            m_state = TARGET_ERROR_RSP;
                         rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
                         rsp_info.rdata = 0x0bad0bad;
                     }
@@ -144,8 +153,17 @@ tmpl(void)::transition()
                 }
             }
 
-            if ( default_target && !reached )
-                m_state = TARGET_ERROR_RSP;
+            if ( !reached ) {
+                if ( default_target ) {
+                    rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
+                    if ( p_vci.eop.read() )
+                        m_state = TARGET_IDLE;
+                    else
+                        m_state = TARGET_ERROR_RSP;
+                } else {
+                    assert(0&&"Receiving wrong req and not default target");
+                }
+            }
 
             break;
         }
@@ -153,7 +171,7 @@ tmpl(void)::transition()
         case TARGET_ERROR_RSP :
             if ( p_vci.eop.read() )
                 m_state = TARGET_IDLE;
-            rsp_info.error = true;
+            rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
             break;
         }
 
@@ -166,7 +184,7 @@ tmpl(void)::transition()
             m_rsp_info.put_and_get( rsp_info );
         else
             m_rsp_info.simple_put( rsp_info );
-    } else
+    } else if ( p_vci.rspval.read() && p_vci.rspack.read() )
         m_rsp_info.simple_get();
 }
 

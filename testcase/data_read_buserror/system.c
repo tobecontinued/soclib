@@ -5,6 +5,7 @@ void interrupt_ex_handler(
 	void *dataptr, void *regtable,
 	void *stackptr)
 {
+	printf("OK, got exception\n");
 	exit(0);
 }
 

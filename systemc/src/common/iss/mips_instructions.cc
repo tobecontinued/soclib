@@ -57,21 +57,24 @@ static inline uint32_t sra( uint32_t reg, uint32_t sh )
 }
 }
 
-void MipsIss::do_load( enum DataAccessType type )
+void MipsIss::do_load( enum DataAccessType type, bool unsigned_ )
 {
     uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
     if (isInUserMode() && isPrivDataAddr(address)) {
         m_exception = X_ADEL;
         return;
     }
+    r_mem_req = true;
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_dest = m_ins.i.rt;
+    r_mem_unsigned = unsigned_;
 #if MIPS_DEBUG
     std::cout
         << m_name << std::hex
         << " load @" << address
-        << " (" << type << ")"
+        << " (" << dataAccessTypeName(type) << ")"
+        << " -> r" << std::dec << m_ins.i.rt
         << std::endl;
 #endif    
 }
@@ -83,6 +86,7 @@ void MipsIss::do_store( enum DataAccessType type, uint32_t data )
         m_exception = X_ADES;
         return;
     }
+    r_mem_req = true;
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_wdata = data;
@@ -91,7 +95,7 @@ void MipsIss::do_store( enum DataAccessType type, uint32_t data )
         << m_name << std::hex
         << " store @" << address
         << ": " << data
-        << " (" << type << ")"
+        << " (" << dataAccessTypeName(type) << ")"
         << std::endl;
 #endif    
 }
@@ -265,61 +269,61 @@ void MipsIss::op_ill()
 
 void MipsIss::op_lb()
 {
-    do_load(MEM_LB);
+    do_load(READ_BYTE, false);
 }
 
 void MipsIss::op_ll()
 {
-    do_load(MEM_LL);
+    do_load(READ_LINKED, false);
 }
 
 void MipsIss::op_lh()
 {
-    do_load(MEM_LH);
+    do_load(READ_HALF, false);
 }
 
 void MipsIss::op_lw()
 {
     if ( m_ins.i.rt )
-        do_load(MEM_LW);
+        do_load(READ_WORD, false);
     else {
         SOCLIB_WARNING(
             "If you intend to flush cache reading to $0,\n"
             "this is a hack, go get a processor aware of caches");
-        do_load(MEM_INVAL);
+        do_load(LINE_INVAL, false);
     }
 }
 
 void MipsIss::op_lbu()
 {
-    do_load(MEM_LBU);
+    do_load(READ_BYTE, true);
 }
 
 void MipsIss::op_lhu()
 {
-    do_load(MEM_LHU);
+    do_load(READ_HALF, true);
 }
 
 void MipsIss::op_sb()
 {
     uint32_t tmp = m_rt&0xff;
-    do_store(MEM_SB, tmp|(tmp << 8)|(tmp << 16)|(tmp << 24));
+    do_store(WRITE_BYTE, tmp|(tmp << 8)|(tmp << 16)|(tmp << 24));
 }
 
 void MipsIss::op_sh()
 {
     uint32_t tmp = m_rt&0xffff;
-    do_store(MEM_SH, tmp|(tmp << 16));
+    do_store(WRITE_HALF, tmp|(tmp << 16));
 }
 
 void MipsIss::op_sw()
 {
-    do_store(MEM_SW, m_rt);
+    do_store(WRITE_WORD, m_rt);
 }
 
 void MipsIss::op_sc()
 {
-    do_store(MEM_SC, m_rt);
+    do_store(STORE_COND, m_rt);
     r_mem_dest = m_ins.i.rt;
 }
 

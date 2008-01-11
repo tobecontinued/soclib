@@ -93,17 +93,18 @@ public:
             CpuIss::nullStep();        
     }
 
-    inline void getDataRequest(enum Iss::DataAccessType &type, uint32_t &address, uint32_t &wdata) const
+    inline void getDataRequest(bool &req, enum Iss::DataAccessType &type, uint32_t &address, uint32_t &wdata) const
     {
         if (state_ == Frozen)
             {
+                req = mem_req_;
                 address = mem_addr_;
                 wdata = mem_data_;
                 type = mem_type_;
             }
         else
             {
-                CpuIss::getDataRequest(type, address, wdata);
+                CpuIss::getDataRequest(req, type, address, wdata);
             }
     }
 
@@ -113,7 +114,7 @@ public:
             CpuIss::setWriteBerr();
     }
 
-	inline void setRdata(bool error, uint32_t rdata)
+	inline void setDataResponse(bool error, uint32_t rdata)
     {
         if (state_ == Frozen)
             {
@@ -121,7 +122,7 @@ public:
                 mem_data_ = rdata;
             }
         else
-            CpuIss::setRdata(error, rdata);
+            CpuIss::setDataResponse(error, rdata);
     }
 
     inline void getInstructionRequest(bool &req, uint32_t &address) const
@@ -154,6 +155,7 @@ private:
     void watch_mem_access();
     bool check_break_points();
 
+    bool mem_req_;
     Iss::DataAccessType mem_type_;
     uint32_t mem_addr_;
     uint32_t mem_data_;

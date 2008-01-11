@@ -56,8 +56,6 @@ class VciXCache
         CMD_DATA_MISS,
         CMD_DATA_UNC,
         CMD_DATA_WRITE,
-        CMD_DATA_SWAP_READ,
-        CMD_DATA_SWAP_WRITE,
         CMD_INS_MISS,
     };
 
@@ -74,8 +72,6 @@ class VciXCache
         RSP_DATA_READ_ERROR,
         RSP_DATA_MISS_OK,
         RSP_DATA_UNC_OK,
-        RSP_DATA_SWAP_WAIT_READ,
-        RSP_DATA_SWAP_WAIT_WRITE,
         RSP_DATA_WRITE_ERROR,
         RSP_DATA_WRITE_ERROR_WAIT,
     };
@@ -83,7 +79,6 @@ class VciXCache
     enum {
         READ_PKTID,
         WRITE_PKTID,
-        SWAP_PKTID,
     };
 
     typedef struct d_req_s {
@@ -91,9 +86,17 @@ class VciXCache
         data_t data;
         data_t prev;
         DCacheSignals::req_type_e type;
+        bool cached;
 
         friend std::ostream &operator <<(std::ostream &o, d_req_s r)
         {
+            o << "<dreq: "
+              << std::dec
+              << "(" << r.type << ")"
+              << std::hex
+              <<"@" << r.addr
+              << ": " << r.data
+              << ">" << std::endl;
             return o;
         }
 

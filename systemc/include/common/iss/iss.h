@@ -44,63 +44,34 @@ class Iss
 {
 public:
 	enum DataAccessType {
-		MEM_NONE,
-		MEM_LB,
-		MEM_LBU,
-		MEM_LH,
-        MEM_LHBR, /* Load half byte-swapped, PPC */
-        MEM_LWBR, /* Load word byte-swapped, PPC */
-		MEM_LHU,
-		MEM_LW,
-		MEM_SB,
-		MEM_SH,
-		MEM_SW,
-		MEM_LL,
-		MEM_SC,
-		MEM_SWAP,
-		MEM_INVAL
+		READ_WORD,
+        READ_HALF,
+        READ_BYTE,
+		LINE_INVAL,
+		WRITE_WORD,
+		WRITE_HALF,
+		WRITE_BYTE,
+		STORE_COND,
+		READ_LINKED,
 	};
 
     static inline const char* dataAccessTypeName( enum DataAccessType e )
     {
         static const char *const type_names[15] =
-            {"NONE", "LB", "LBU", "LH", "LHBR",
-             "LWBR", "LHU", "LW", "SB", "SH",
-             "SW", "LL", "SC", "SWAP", "INVAL" };
-        if ( e > MEM_INVAL )
+            { "READ_WORD", "READ_HALF", "READ_BYTE", "LINE_INVAL", "WRITE_WORD",
+              "WRITE_HALF", "WRITE_BYTE", "STORE_COND", "READ_LINKED" };
+        if ( e > READ_LINKED )
             return "Invalid";
         return type_names[e];
     }
 
 protected:
-	uint32_t 	r_pc;			// Program Counter
-
-	enum DataAccessType 	r_mem_type;  		// Data Cache access type
-	uint32_t 	r_mem_addr;  		// Data Cache address
-	uint32_t 	r_mem_wdata;  		// Data Cache data value (write)
-	uint32_t	r_mem_dest;  		// Data Cache destination register (read)
-	bool		r_dbe;			// Asynchronous Data Bus Error (write)
-
-	uint32_t	m_rdata;
-	uint32_t 	m_irq;
-	bool		m_ibe;
-	bool		m_dbe;
 
 	const uint32_t m_ident;
 	const std::string m_name;
 
-private:
-    // Instruction latency simulation
-    uint32_t m_ins_delay;
-
 public:
     virtual ~Iss() {}
-
-    void step();
-    void nullStep();
-
-    void reset();
-	void setInstruction(bool error, uint32_t val);
 
     inline const std::string & name() const
     {
@@ -113,78 +84,34 @@ public:
 	{
 	}
 
-    inline void setInsDelay( uint32_t delay )
-    {
-        assert( delay > 0 );
-        m_ins_delay = delay-1;
-    }
+    // ISS <-> Wrapper API
 
-    inline bool isBusy()
-    {
-        return m_ins_delay;
-    }
+    virtual void reset() = 0;
 
-	inline void getInstructionRequest(bool &req, uint32_t &address) const
-	{
-        req = true;
-		address = r_pc;
-	}
+    virtual uint32_t isBusy() = 0;
+    virtual void step() = 0;
+    virtual void nullStep( uint32_t time_passed = 1 ) = 0;
 
-	inline void getDataRequest(
-        enum DataAccessType &type,
-        uint32_t &address,
-        uint32_t &wdata) const
-	{
-		address = r_mem_addr;
-		wdata = r_mem_wdata;
-		type = r_mem_type;
-	}
+    virtual void getInstructionRequest(bool &req, uint32_t &addr) const = 0;
+	virtual void setInstruction(bool error, uint32_t val) = 0;
 
-	inline void clearDataRequest()
-	{
-		r_mem_addr = 0;
-		r_mem_wdata = 0;
-		r_mem_type = MEM_NONE;
-        r_mem_dest = 0;
-	}
+	virtual void getDataRequest(bool &req, enum DataAccessType &type,
+                                uint32_t &addr, uint32_t &data) const = 0;
+	virtual void setDataResponse(bool error, uint32_t rdata) = 0;
+    virtual void setWriteBerr() = 0;
 
-	inline void setWriteBerr()
-	{
-		r_dbe = true;
-	}
-
-	inline void setRdata(bool error, uint32_t rdata)
-	{
-		m_dbe = error;
-		m_rdata = rdata;
-	}
-
-	inline void setIrq(uint32_t irq)
-	{
-		m_irq = irq;
-	}
+	virtual void setIrq(uint32_t irq) = 0;
 
     // processor internal registers access API, used by
     // debugger. Register numbering must match gdb packet order.
 
-    virtual inline unsigned int get_register_count() const
-    {
-        return 0;
-    }
+    virtual unsigned int getDebugRegisterCount() const = 0;
+    virtual uint32_t getDebugRegisterValue(unsigned int reg) const = 0;
+    virtual void setDebugRegisterValue(unsigned int reg, uint32_t value) = 0;
+    virtual size_t getDebugRegisterSize(unsigned int reg) const = 0;
 
-    virtual inline uint32_t get_register_value(unsigned int reg) const
-    {
-        return 0;
-    }
-
-    virtual inline void set_register_value(unsigned int reg, uint32_t value)
-    {
-    }
-
-    virtual inline size_t get_register_size(unsigned int reg) const
-    {
-        return 0;
-    }
+    virtual uint32_t getDebugPC() const = 0;
+    virtual void setDebugPC(uint32_t) = 0;
 
 protected:
 
@@ -198,42 +125,20 @@ protected:
         return 5;       // GDB SIGTRAP
     }
 
-    void doneNullStep()
-    {
-        if ( m_ins_delay )
-            --m_ins_delay;
-    }
-
-    void reset( uint32_t reset_addr )
-    {
-        r_pc = reset_addr;
-        r_dbe = false;
-        m_ibe = false;
-        m_dbe = false;
-        r_mem_type = MEM_NONE;
-        m_ins_delay = 0;
-    }
-
     static inline bool addressNotAligned( uint32_t address, DataAccessType type )
     {
         switch (type) {
-        case MEM_NONE:
-        case MEM_INVAL:
-        case MEM_LB:
-        case MEM_LBU:
-        case MEM_SB:
+        case LINE_INVAL:
+		case WRITE_BYTE:
+        case READ_BYTE:
             return false;
-        case MEM_LH:
-        case MEM_LHBR:
-        case MEM_LHU:
-        case MEM_SH:
+        case READ_HALF:
+		case WRITE_HALF:
             return (address&1);
-        case MEM_LWBR:
-        case MEM_LW:
-        case MEM_SW:
-        case MEM_LL:
-        case MEM_SC:
-        case MEM_SWAP:
+        case READ_LINKED:
+        case READ_WORD:
+		case WRITE_WORD:
+		case STORE_COND:
             return (address&3);
         }
         assert(0&&"This is impossible");
@@ -243,22 +148,16 @@ protected:
     static inline bool isReadAccess( DataAccessType type )
     {
         switch (type) {
-        case MEM_LB:
-        case MEM_LBU:
-        case MEM_LH:
-        case MEM_LHBR:
-        case MEM_LHU:
-        case MEM_LWBR:
-        case MEM_LW:
-        case MEM_LL:
-        case MEM_SC:
-        case MEM_SWAP:
+        case READ_LINKED:
+        case READ_WORD:
+        case READ_HALF:
+        case READ_BYTE:
+		case STORE_COND:
             return true;
-        case MEM_NONE:
-        case MEM_INVAL:
-        case MEM_SB:
-        case MEM_SH:
-        case MEM_SW:
+        case LINE_INVAL:
+		case WRITE_WORD:
+		case WRITE_HALF:
+		case WRITE_BYTE:
             return false;
         }
         assert(0&&"This is impossible");
@@ -268,22 +167,16 @@ protected:
     static inline bool isWriteAccess( DataAccessType type )
     {
         switch (type) {
-        case MEM_LB:
-        case MEM_LBU:
-        case MEM_LH:
-        case MEM_LHBR:
-        case MEM_LHU:
-        case MEM_LWBR:
-        case MEM_LW:
-        case MEM_LL:
-        case MEM_NONE:
-        case MEM_INVAL:
+        case READ_LINKED:
+        case READ_WORD:
+        case READ_HALF:
+        case READ_BYTE:
+        case LINE_INVAL:
             return false;
-        case MEM_SB:
-        case MEM_SH:
-        case MEM_SW:
-        case MEM_SC:
-        case MEM_SWAP:
+		case WRITE_WORD:
+		case WRITE_HALF:
+		case WRITE_BYTE:
+		case STORE_COND:
             return true;
         }
         assert(0&&"This is impossible");

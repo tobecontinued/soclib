@@ -1,4 +1,4 @@
-/*\
+/* -*- coding: utf-8 -*-
  * This file is part of SoCLIB.
  * SoCLIB is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -115,7 +115,6 @@ namespace soclib {
          // (quite important for the comparisons and shifts implementation)
          uint32_t r_gpr[32]; // General Purpose Registers 
          uint32_t r_imm;     // Temporate Register
-         uint32_t r_npc ;    // Next Program Counter, r_pc is in Iss
          uint32_t r_msr;     // Machine Status Register
          uint32_t r_ear;     // Exception address Register 
          uint32_t r_esr;     // Exception Status Register   
@@ -129,6 +128,19 @@ namespace soclib {
          bool     m_dbe;     // Data bus error
          bool     m_w;       // Unaligned access type
          uint32_t m_rx;      // Register in use when an unaligned access occurs
+
+		 uint32_t 	r_pc;			// Program Counter
+         uint32_t r_npc ;    // Next Program Counter
+		 bool        r_mem_req;
+		 enum DataAccessType 	r_mem_type;  		// Data Cache access type
+		 uint32_t 	r_mem_addr;  		// Data Cache address
+		 uint32_t 	r_mem_wdata;  		// Data Cache data value (write)
+		 uint32_t	r_mem_dest;  		// Data Cache destination register (read)
+		 bool		r_dbe;			// Asynchronous Data Bus Error (write)
+
+		 uint32_t	m_rdata;
+		 uint32_t 	m_irq;
+		 bool		m_ibe;
 
       public:
          /*\
@@ -146,8 +158,12 @@ namespace soclib {
          \*/
          void reset(void)
          {
-            Iss::reset(RESET_VECTOR);
+            r_pc = RESET_VECTOR;
             r_npc = RESET_VECTOR + 4;
+			r_dbe = false;
+			m_ibe = false;
+			m_dbe = false;
+			r_mem_req = false;
             r_gpr[0] = 0;
             r_msr    = 0;
             r_ear    = 0;
@@ -166,9 +182,39 @@ namespace soclib {
          /*\
           * Useless single stepping
          \*/
-         inline void nullStep()
+         inline void nullStep( uint32_t cycles = 1 )
          {
-         };
+         }
+
+		  inline uint32_t isBusy() {return 0;}
+
+		  inline void getInstructionRequest(bool &req, uint32_t &address) const
+		  {
+			  req = true;
+			  address = r_pc;
+		  }
+
+		  inline void getDataRequest(
+			  bool &valid,
+			  enum DataAccessType &type,
+			  uint32_t &address,
+			  uint32_t &wdata) const
+		  {
+			  valid = r_mem_req;
+			  address = r_mem_addr;
+			  wdata = r_mem_wdata;
+			  type = r_mem_type;
+		  }
+
+		  inline void setWriteBerr()
+		  {
+			  r_dbe = true;
+		  }
+
+		  inline void setIrq(uint32_t irq)
+		  {
+			  m_irq = irq;
+		  }
 
          /*\
           * Feeds the Iss with an instruction to execute and an error
@@ -183,27 +229,37 @@ namespace soclib {
          /*\
           * API for memory access through the Iss
          \*/
-         void setRdata(bool error, uint32_t rdata);
+         void setDataResponse(bool error, uint32_t rdata);
 
-#if 0
          // processor internal registers access API, used by
-         // debugger. Mips order is 32 general-purpose; sr; lo; hi; bad; cause; pc;
+         // debugger.
 
-         inline unsigned int get_register_count() const
+         inline unsigned int getDebugRegisterCount() const
          {
-             return 32 + 6;
+             return 0;
          }
 
-         uint32_t get_register_value(unsigned int reg) const;
+         uint32_t getDebugRegisterValue(unsigned int reg) const
+		  { return 0; }
 
-         inline size_t get_register_size(unsigned int reg) const
+         inline size_t getDebugRegisterSize(unsigned int reg) const
          {
              return 32;
          }
 
-          void set_register_value(unsigned int reg, uint32_t value);
-#endif
+		 void setDebugRegisterValue(unsigned int reg, uint32_t value)
+		  {}
 
+		 inline uint32_t getDebugPC() const
+		 {
+			 return r_pc;
+		 }
+
+		 inline void setDebugPC(uint32_t pc)
+		 {
+			 r_pc = pc;
+			 r_npc = pc+4;
+		 }
       };
    }
 }

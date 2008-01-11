@@ -26,15 +26,15 @@ class DCacheSignals
 {
 public:
 	enum req_type_e {
-		RW = 0x0,       // Read cached
-		RU = 0x4,       // Read uncached Word
-		RZ = 0x7,       // Line Invalidate
-		WW = 0x8,       // Write Word
-		WH = 0x9,       // Write Half
-		WB = 0xA,       // Write Byte
-		SC = 0xB,       // Store Conditional word
-		SWAP = 0xC,       // Swap word
-		LL = 0xD,       // Load Linked word
+		READ_WORD,
+        READ_HALF,
+        READ_BYTE,
+		LINE_INVAL,
+		WRITE_WORD,
+		WRITE_HALF,
+		WRITE_BYTE,
+		STORE_COND,
+		READ_LINKED,
 	};
 
 	sc_signal<bool>            req;   // valid request

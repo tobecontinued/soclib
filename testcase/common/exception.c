@@ -281,7 +281,7 @@ void _program()
 
 void _data_storage()
 {
-    printf(__FUNCTION__);
+	interrupt_ex_handler(0,0,0,0,0);
 }
 
 void _data_tlb_miss()

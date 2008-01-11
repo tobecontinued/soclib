@@ -62,6 +62,8 @@ int _main(int argc, char *argv[])
 	maptab.add(Segment("data" , DATA_BASE , DATA_SIZE , IntTab(1), true));
   
 	maptab.add(Segment("loc0" , LOC0_BASE , LOC0_SIZE , IntTab(1), true));
+
+	maptab.add(Segment("unc"  , UNC_BASE  , UNC_SIZE  , IntTab(1), false));
   
 	maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(2), false));
 

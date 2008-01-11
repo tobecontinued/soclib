@@ -82,5 +82,9 @@ SECTIONS
    . = ALIGN(4);
    _end = .;
    _heap = .;
-   _stack = 0x10010000;
+   _stack = 0x10010000-16;
+   . = 0x10200000;
+   .unc  : {
+      *(.unc)
+   }
 }

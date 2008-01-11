@@ -25,6 +25,7 @@
 
 #include "common/iss/ppc405.h"
 #include "common/endian.h"
+#include "common/arithmetics.h"
 
 namespace soclib { namespace common {
 
@@ -67,7 +68,11 @@ Ppc405Iss::Ppc405Iss(uint32_t ident)
 
 void Ppc405Iss::reset()
 {
-    Iss::reset(RESET_ADDR);
+    r_pc = RESET_ADDR;
+    r_dbe = false;
+    m_ibe = false;
+    m_dbe = false;
+    r_mem_req = false;
     r_evpr = 0xdead0000;
     r_tb = 0;
     r_esr = 0;
@@ -116,12 +121,14 @@ void Ppc405Iss::step()
 
     if (m_ibe) {
         m_exception = EXCEPT_INSTRUCTION_STORAGE;
+        m_ibe = false;
         r_esr = ESR_DIZ;
         goto handle_except;
     }
 
     if ( m_dbe ) {
         m_exception = EXCEPT_MACHINE_CHECK;
+        m_dbe = false;
         r_esr = ESR_MCI;
         goto handle_except;
     }
@@ -135,6 +142,9 @@ void Ppc405Iss::step()
     }
 
     r_dcr[DCR_EXEC_CYCLES]++;
+#if PPC405_DEBUG
+    dump();
+#endif
     run();
 
     if (m_exception != EXCEPT_NONE)
@@ -214,19 +224,38 @@ void Ppc405Iss::step()
     ;
 }
 
-void Ppc405Iss::setRdata(bool error, uint32_t rdata)
+void Ppc405Iss::setDataResponse(bool error, uint32_t rdata)
 {
+    r_mem_req = false;
     m_dbe = error;
+
+    uint32_t data = rdata;
+    // Swap if PPC does _not_ want reversed data (BE)
+    if ( ! r_mem_reversed )
+        data = soclib::endian::uint32_swap(data);
+
+#if PPC405_DEBUG
+    std::cout << m_name << std::hex
+              << " mem access ret " << dataAccessTypeName(r_mem_type)
+              << " @: " << r_mem_addr
+              << " ->r" << r_mem_dest
+              << " rdata: " << data
+              << (r_mem_reversed ? " reversed" : "")
+              << " error: " << error
+              << std::endl;
+#endif
+
     if ( error ) {
-        r_mem_type = MEM_NONE;
         return;
     }
 
-    uint32_t data = soclib::endian::uint32_swap(rdata);
     switch (r_mem_type ) {
-    default:
+    case WRITE_BYTE:
+    case WRITE_WORD:
+    case WRITE_HALF:
+    case LINE_INVAL:
         break;
-    case MEM_SC:
+    case STORE_COND:
     {
         int cr = 0;
         if ( data == 0 ) cr |= CMP_EQ;
@@ -234,43 +263,24 @@ void Ppc405Iss::setRdata(bool error, uint32_t rdata)
         crSet( 0, cr );
         break;
     }
-    case MEM_LW:
-    case MEM_LL:
-    case MEM_SWAP:
+    case READ_WORD:
+    case READ_LINKED:
         r_gp[r_mem_dest] = data;
         break;
-    case MEM_LWBR:
-        r_gp[r_mem_dest] = soclib::endian::uint32_swap(data);
+    case READ_BYTE:
+        r_gp[r_mem_dest] = r_mem_unsigned ?
+            (data & 0xff) :
+            sign_ext8(data);
         break;
-    case MEM_LB:
-        r_gp[r_mem_dest] = (int32_t)(int8_t)align(data, 3-r_mem_addr&0x3, 8);
-        break;
-    case MEM_LBU:
-        r_gp[r_mem_dest] = align(data, 3-r_mem_addr&0x3, 8);
-        break;
-    case MEM_LH:
-        r_gp[r_mem_dest] = (int32_t)(int16_t)align(data, 1-(r_mem_addr&0x2)/2, 16);
-        break;
-    case MEM_LHBR:
-        r_gp[r_mem_dest] = (int32_t)(int16_t)soclib::endian::uint16_swap(align(data, 1-(r_mem_addr&0x2)/2, 16));
-        break;
-    case MEM_LHU:
-        r_gp[r_mem_dest] = align(data, 1-(r_mem_addr&0x2)/2, 16);
+    case READ_HALF:
+        r_gp[r_mem_dest] = r_mem_unsigned ?
+            (data & 0xffff) :
+            sign_ext16(data);
         break;
     }
-#if PPC405_DEBUG
-    std::cout << m_name << std::hex
-              << " mem read ret " << dataAccessTypeName(r_mem_type)
-              << " @: " << r_mem_addr
-              << " ->r" << r_mem_dest
-              << " data: " << data
-              << " updated: " << r_gp[r_mem_dest]
-              << std::endl;
-#endif
-    r_mem_type = MEM_NONE;
 }
 
-uint32_t Ppc405Iss::get_register_value(unsigned int reg) const
+uint32_t Ppc405Iss::getDebugRegisterValue(unsigned int reg) const
 {
     switch (reg)
         {
@@ -299,7 +309,7 @@ uint32_t Ppc405Iss::get_register_value(unsigned int reg) const
         }
 }
 
-size_t Ppc405Iss::get_register_size(unsigned int reg) const
+size_t Ppc405Iss::getDebugRegisterSize(unsigned int reg) const
 {
     switch (reg)
         {
@@ -310,7 +320,7 @@ size_t Ppc405Iss::get_register_size(unsigned int reg) const
         }
 }
 
-void Ppc405Iss::set_register_value(unsigned int reg, uint32_t value)
+void Ppc405Iss::setDebugRegisterValue(unsigned int reg, uint32_t value)
 {
     switch (reg)
         {
