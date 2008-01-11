@@ -208,6 +208,9 @@ private:
     // listen port
     static uint16_t port_;
 
+    // CtrlC pressed
+    static bool ctrl_c_;
+
     enum State
         {
             Running,
