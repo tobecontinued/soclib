@@ -84,7 +84,6 @@ tmpl(void)::transition()
     if ( dreq && !dfrz )
         m_iss.setDataResponse(dberr, p_dcache.rdata.read());
     else if ( dberr ) {
-        std::cout << name() << "Write berr" << std::endl;
         m_iss.setWriteBerr();
     }
 
