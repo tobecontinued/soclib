@@ -574,39 +574,40 @@ tmpl(void)::transition()
     switch (r_vci_cmd_fsm.read()) {
     
     case CMD_IDLE:
+        if (r_vci_rsp_fsm != RSP_IDLE)
+            break;
+
         r_cmd_cpt = 0;
-        if (r_vci_rsp_fsm == RSP_IDLE) {
-            if (r_icache_req.read()) {
-                r_vci_cmd_fsm = CMD_INS_MISS;
-            } else if (m_dreq_fifo.rok()) {
-                d_req_t req = m_dreq_fifo.read();
+        if (r_icache_req.read()) {
+            r_vci_cmd_fsm = CMD_INS_MISS;
+        } else if (m_dreq_fifo.rok()) {
+            d_req_t req = m_dreq_fifo.read();
 #if XCACHE_DEBUG
-                std::cout << "Serving " << req << std::endl;
+            std::cout << name() << " Serving " << req << std::endl;
 #endif
-                r_dcache_cmd = req;
-                m_cpt_fifo_read++;
-                fifo_get = true;
+            r_dcache_cmd = req;
+            m_cpt_fifo_read++;
+            fifo_get = true;
                 
-                switch(req.type) {
-                case DCacheSignals::READ_WORD:
-                case DCacheSignals::READ_HALF:
-                case DCacheSignals::READ_BYTE:
-                    if ( req.cached ) {
-                        r_vci_cmd_fsm = CMD_DATA_MISS;
-                        break;
-                    }
-                case DCacheSignals::STORE_COND:
-                case DCacheSignals::READ_LINKED:
-                    r_vci_cmd_fsm = CMD_DATA_UNC;
+            switch(req.type) {
+            case DCacheSignals::READ_WORD:
+            case DCacheSignals::READ_HALF:
+            case DCacheSignals::READ_BYTE:
+                if ( req.cached ) {
+                    r_vci_cmd_fsm = CMD_DATA_MISS;
                     break;
-                case DCacheSignals::WRITE_WORD:
-                case DCacheSignals::WRITE_HALF:
-                case DCacheSignals::WRITE_BYTE:
-                    r_vci_cmd_fsm = CMD_DATA_WRITE;
-                    break;
-                case DCacheSignals::LINE_INVAL:
-                    assert(0&&"This should not happen");
                 }
+            case DCacheSignals::STORE_COND:
+            case DCacheSignals::READ_LINKED:
+                r_vci_cmd_fsm = CMD_DATA_UNC;
+                break;
+            case DCacheSignals::WRITE_WORD:
+            case DCacheSignals::WRITE_HALF:
+            case DCacheSignals::WRITE_BYTE:
+                r_vci_cmd_fsm = CMD_DATA_WRITE;
+                break;
+            case DCacheSignals::LINE_INVAL:
+                assert(0&&"This should not happen");
             }
         }
         break;
@@ -690,6 +691,8 @@ tmpl(void)::transition()
     switch (r_vci_rsp_fsm.read()) {
 
     case RSP_IDLE:
+        assert( ! p_vci.rspval.read() && "Unexpected response" );
+
         if (r_vci_cmd_fsm != CMD_IDLE)
             break;
 
@@ -697,11 +700,13 @@ tmpl(void)::transition()
         if (r_icache_req.read()) {
             r_vci_rsp_fsm = RSP_INS_MISS;
         } else if (m_dreq_fifo.rok()) {
-            switch (m_dreq_fifo.read().type) {
+            d_req_t req = m_dreq_fifo.read();
+
+            switch (req.type) {
             case DCacheSignals::READ_WORD:
             case DCacheSignals::READ_HALF:
             case DCacheSignals::READ_BYTE:
-                if ( m_dreq_fifo.read().cached ) {
+                if ( req.cached ) {
                     r_vci_rsp_fsm = RSP_DATA_MISS;
                     break;
                 }
@@ -709,8 +714,13 @@ tmpl(void)::transition()
             case DCacheSignals::STORE_COND:
                 r_vci_rsp_fsm = RSP_DATA_UNC;
                 break;
-            default:
+            case DCacheSignals::WRITE_WORD:
+            case DCacheSignals::WRITE_HALF:
+            case DCacheSignals::WRITE_BYTE:
                 r_vci_rsp_fsm = RSP_DATA_WRITE;
+                break;
+            case DCacheSignals::LINE_INVAL:
+                assert(0&&"This should not happen");
                 break;
             }
         }

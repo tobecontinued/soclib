@@ -206,7 +206,7 @@ public:
     }
     inline void rspWrite( bool eop )
     {
-        rspRead(0, eop);
+        rspRead(eop, 0);
     }
     void rspNop()
     {
