@@ -1,6 +1,10 @@
 SOCLIB:=$(shell soclib-cc --getpath)
 CC_PREFIX=$(ARCH)-unknown-elf-
 
+ifeq ($(ARCH),microblaze)
+CC_PREFIX=mb-
+endif
+
 SOFT_IMAGE=bin.soft
 OBJS?=main.o exception.o system.o $(ADD_OBJS)
 
@@ -11,6 +15,8 @@ OBJDUMP = $(CC_PREFIX)objdump
 
 mipsel_CFLAGS=-mips2 -mno-branch-likely
 powerpc_CFLAGS=-mcpu=405 -mstrict-align
+microblaze_CFLAGS=-mno-xl-soft-div -mno-xl-soft-mul
+microblaze_LDFLAGS=-nostdlib
 
 CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS)
 
@@ -19,7 +25,7 @@ MAY_CLEAN=$(shell test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean)
 default: clean $(SOFT_IMAGE)
 
 $(SOFT_IMAGE): $(MAY_CLEAN) arch_stamp $(OBJS)
-	$(LD) -q -T ldscript -o $@ $(filter %.o,$^)
+	$(LD) -q $($(ARCH)_LDFLAGS) -T ldscript -o $@ $(filter %.o,$^)
 
 arch_stamp:
 	echo $(ARCH) > $@
