@@ -14,6 +14,10 @@ VPATH=$(TESTDIR) $(COMMON)
 SOCLIB:=$(shell soclib-cc --getpath)
 CC_PREFIX=$(ARCH)-unknown-elf-
 
+ifeq ($(ARCH),microblaze)
+CC_PREFIX=mb-
+endif
+
 SOFT_IMAGE=bin.soft
 
 CC = $(CC_PREFIX)gcc
@@ -25,6 +29,7 @@ CFLAGS=-Wall -O2 -I. -I$(COMMON) -I$(TESTER_DIR) $(shell soclib-cc --getflags=cf
 
 mipsel_CFLAGS=-mips2 -mno-branch-likely
 powerpc_CFLAGS=-mcpu=405 -mstrict-align
+microblaze_CFLAGS=-mno-xl-soft-div -mno-xl-soft-mul
 
 CFLAGS+=$($(ARCH)_CFLAGS)
 

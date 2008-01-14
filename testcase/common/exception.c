@@ -173,7 +173,7 @@ asm(
     ".set pop						\n"
     );
 
-#elif PPC
+#elif __PPC__
 
 asm(
     ".section        \".text\",\"ax\",@progbits \n\t"
@@ -318,6 +318,48 @@ void _instruction_tlb_miss()
 {
     printf(__FUNCTION__);
 }
+
+#elif __MICROBLAZE__
+
+asm(
+    ".section        .mb_boot,\"ax\",@progbits			\n"
+	".extern __start			\n\t"
+	".extern _stack_top			\n\t"
+    ".extern interrupt_hw_handler		\n\t"
+    ".extern interrupt_sys_handler		\n\t"
+    ".extern interrupt_ex_handler		\n\t"
+	".globl  __boot			\n\t"
+	".ent    __boot			\n\t"
+    "\n"
+    "__boot:			\n\t"
+    "bri .Lgo			\n\t"
+
+    ".org 0x08			\n\t"
+    "\n"
+    "bri interrupt_sys_handler			\n\t"
+
+    ".org 0x10			\n\t"
+    "\n"
+    "bri interrupt_hw_handler			\n\t"
+
+    ".org 0x18			\n\t"
+    "\n"
+    "bri interrupt_ex_handler			\n\t"
+
+    ".org 0x20			\n\t"
+    "\n"
+    "bri interrupt_ex_handler			\n\t"
+
+    ".text			\n\t"
+    ".org 0x50			\n\t"
+    ".Lgo:			\n\t"
+	"addik   r1, r0, _stack			\n\t"
+	"bri     main			\n\t"
+    "\n"
+    "_boot_end:			\n\t"
+	"bri 	_boot_end			\n\t"
+	".end	_boot			\n\t"
+    );
 
 #else
 #error Unsupported arch

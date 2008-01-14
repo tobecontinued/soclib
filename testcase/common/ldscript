@@ -1,5 +1,11 @@
 SECTIONS
 {
+	. = 0;
+    .mb_boot : {
+	    *(.mb_boot)
+	    *(.mb_boot.*)
+	}
+
 	special_base = 0x00500000;
 	. = special_base;
     .ppc_special : {

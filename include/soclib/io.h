@@ -25,6 +25,16 @@
 
 #include <stdint.h>
 
+static inline uint32_t __uint32_swap(uint32_t x)
+{
+    return (
+        ( (x & 0xff)   << 24 ) |
+        ( (x & 0xff00) <<  8 ) |
+        ( (x >>  8) & 0xff00 ) |
+        ( (x >> 24) &   0xff )
+        );
+}
+
 static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
@@ -34,6 +44,9 @@ static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
     asm("stwbrx %0, %1, %2":: "b"(val), "b"(addr), "b"(reg) : "memory" );
 #else
 	addr += reg;
+#if defined(__MICROBLAZE__)
+    val = __uint32_swap(val);
+#endif
 	*addr = val;
 #endif
 }
@@ -41,15 +54,19 @@ static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
 static inline uint32_t soclib_io_get(void *comp_base, int reg)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
+    uint32_t val;
 
 #if __PPC__
-    uint32_t val;
     reg <<= 2;
     asm("lwbrx %0, %1, %2": "=b"(val): "b"(addr), "b"(reg) );
     return val;
 #else
 	addr += reg;
-	return *addr;
+    val = *addr;
+#if defined(__MICROBLAZE__)
+    val = __uint32_swap(val);
+#endif
+	return val;
 #endif
 }
 

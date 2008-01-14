@@ -14,6 +14,8 @@ void main(void)
 	asm volatile("syscall\n\tnop");
 #elif defined(__PPC__)
 	asm volatile("sc");
+#elif defined(__MICROBLAZE__)
+    asm volatile("bralid r0, 0x8\n\tnop");
 #else
 #error Unsupported arch
 #endif

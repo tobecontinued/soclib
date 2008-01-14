@@ -10,6 +10,9 @@ int time(int *ret)
 	t = get_cp0(9);
 #elif defined(__PPC__)
 	t = spr_get(284);
+#elif defined(__MICROBLAZE__)
+#warning Microblaze has no cycle counter
+    t = 0;
 #else
 #error No cycle counter
 #endif

@@ -3,6 +3,7 @@
 
 #include "common/mapping_table.h"
 #include "common/iss/mips.h"
+#include "common/iss/microblaze.h"
 #include "common/iss/ppc405.h"
 #include "caba/processor/iss_wrapper.h"
 #include "caba/initiator/vci_xcache.h"
@@ -16,6 +17,7 @@
 typedef enum {
 	MIPSEL,
 	POWERPC,
+    MICROBLAZE,
 } arch_t;
 
 int _main(int argc, char *argv[])
@@ -39,6 +41,8 @@ int _main(int argc, char *argv[])
 		arch = MIPSEL;
 	else if ( arch_string == "powerpc" )
 		arch = POWERPC;
+	else if ( arch_string == "microblaze" )
+		arch = MICROBLAZE;
 	else
 		throw soclib::exception::RunTimeError("Incorrect architecture: "+arch_string);
 
@@ -55,16 +59,19 @@ int _main(int argc, char *argv[])
 		maptab.add(Segment("ppc_boot", PPC_BOOT_BASE, PPC_BOOT_SIZE, IntTab(0), false));
 		maptab.add(Segment("ppc_special" , PPC_SPECIAL_BASE , PPC_SPECIAL_SIZE , IntTab(0), true));
 		break;
+	case MICROBLAZE:
+		maptab.add(Segment("mb_boot", MB_BOOT_BASE, MB_BOOT_SIZE, IntTab(0), false));
+		break;
 	}
 
 	maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), true));
-  
+
 	maptab.add(Segment("data" , DATA_BASE , DATA_SIZE , IntTab(1), true));
-  
+
 	maptab.add(Segment("loc0" , LOC0_BASE , LOC0_SIZE , IntTab(1), true));
 
 	maptab.add(Segment("unc"  , UNC_BASE  , UNC_SIZE  , IntTab(1), false));
-  
+
 	maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(2), false));
 
 	maptab.add(Segment("simhelper", SIMHELPER_BASE  , SIMHELPER_SIZE  , IntTab(3), false));
@@ -73,14 +80,14 @@ int _main(int argc, char *argv[])
 
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
-   
+
 	soclib::caba::ICacheSignals signal_mips_icache0("signal_mips_icache0");
 	soclib::caba::DCacheSignals signal_mips_dcache0("signal_mips_dcache0");
-	sc_signal<bool> signal_cpu0_it0("signal_cpu0_it0"); 
-	sc_signal<bool> signal_cpu0_it1("signal_cpu0_it1"); 
-	sc_signal<bool> signal_cpu0_it2("signal_cpu0_it2"); 
-	sc_signal<bool> signal_cpu0_it3("signal_cpu0_it3"); 
-	sc_signal<bool> signal_cpu0_it4("signal_cpu0_it4"); 
+	sc_signal<bool> signal_cpu0_it0("signal_cpu0_it0");
+	sc_signal<bool> signal_cpu0_it1("signal_cpu0_it1");
+	sc_signal<bool> signal_cpu0_it2("signal_cpu0_it2");
+	sc_signal<bool> signal_cpu0_it3("signal_cpu0_it3");
+	sc_signal<bool> signal_cpu0_it4("signal_cpu0_it4");
 	sc_signal<bool> signal_cpu0_it5("signal_cpu0_it5");
 
 	soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
@@ -90,12 +97,13 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> signal_vci_vcimultiram0("signal_vci_vcimultiram0");
 	soclib::caba::VciSignals<vci_param> signal_vci_vcimultiram1("signal_vci_vcimultiram1");
 
-	sc_signal<bool> signal_tty_irq0("signal_tty_irq0"); 
+	sc_signal<bool> signal_tty_irq0("signal_tty_irq0");
 
 	// Components
 
 	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),16,8,16,8);
 
+	soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> *mb0;
 	soclib::caba::IssWrapper<soclib::common::MipsIss> *mips0;
 	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> *ppc0;
 
@@ -108,7 +116,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 1, 4, 2, 8);
 
 	//	Net-List
- 
+
 	cache0.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
@@ -120,28 +128,36 @@ int _main(int argc, char *argv[])
 	switch ( arch ) {
 	case MIPSEL:
 		mips0 = new soclib::caba::IssWrapper<soclib::common::MipsIss>("mips0", 0);
-		mips0->p_clk(signal_clk);  
-		mips0->p_resetn(signal_resetn);  
-		mips0->p_irq[0](signal_cpu0_it0); 
-		mips0->p_irq[1](signal_cpu0_it1); 
-		mips0->p_irq[2](signal_cpu0_it2); 
-		mips0->p_irq[3](signal_cpu0_it3); 
-		mips0->p_irq[4](signal_cpu0_it4); 
-		mips0->p_irq[5](signal_cpu0_it5); 
+		mips0->p_clk(signal_clk);
+		mips0->p_resetn(signal_resetn);
+		mips0->p_irq[0](signal_cpu0_it0);
+		mips0->p_irq[1](signal_cpu0_it1);
+		mips0->p_irq[2](signal_cpu0_it2);
+		mips0->p_irq[3](signal_cpu0_it3);
+		mips0->p_irq[4](signal_cpu0_it4);
+		mips0->p_irq[5](signal_cpu0_it5);
 		mips0->p_icache(signal_mips_icache0);
 		mips0->p_dcache(signal_mips_dcache0);
 		break;
 	case POWERPC:
 		ppc0 = new soclib::caba::IssWrapper<soclib::common::Ppc405Iss>("ppc0", 0);
-		ppc0->p_clk(signal_clk);  
-		ppc0->p_resetn(signal_resetn);  
-		ppc0->p_irq[0](signal_cpu0_it0); 
-		ppc0->p_irq[1](signal_cpu0_it1); 
+		ppc0->p_clk(signal_clk);
+		ppc0->p_resetn(signal_resetn);
+		ppc0->p_irq[0](signal_cpu0_it0);
+		ppc0->p_irq[1](signal_cpu0_it1);
 		ppc0->p_icache(signal_mips_icache0);
 		ppc0->p_dcache(signal_mips_dcache0);
 		break;
+	case MICROBLAZE:
+		mb0 = new soclib::caba::IssWrapper<soclib::common::MicroBlazeIss>("mb0", 0);
+		mb0->p_clk(signal_clk);
+		mb0->p_resetn(signal_resetn);
+		mb0->p_irq[0](signal_cpu0_it0);
+		mb0->p_icache(signal_mips_icache0);
+		mb0->p_dcache(signal_mips_dcache0);
+		break;
 	}
-        
+
 	cache0.p_icache(signal_mips_icache0);
 	cache0.p_dcache(signal_mips_dcache0);
 	cache0.p_vci(signal_vci_m0);
@@ -152,7 +168,7 @@ int _main(int argc, char *argv[])
 	vcitty.p_clk(signal_clk);
 	vcitty.p_resetn(signal_resetn);
 	vcitty.p_vci(signal_vci_tty);
-	vcitty.p_irq[0](signal_tty_irq0); 
+	vcitty.p_irq[0](signal_tty_irq0);
 
 	vcisimhelper.p_clk(signal_clk);
 	vcisimhelper.p_resetn(signal_resetn);

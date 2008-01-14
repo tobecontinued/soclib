@@ -16,6 +16,7 @@ vci_params = dict(
 
 todo = Platform(
 	Uses('mips'),
+	Uses('microblaze'),
 	Uses('ppc405'),
 	Uses('vci_multi_ram', **vci_params),
 	Uses('vci_simhelper', **vci_params),
