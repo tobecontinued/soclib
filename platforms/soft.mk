@@ -13,10 +13,7 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-mipsel_CFLAGS=-mips2 -mno-branch-likely
-powerpc_CFLAGS=-mcpu=405 -mstrict-align
-microblaze_CFLAGS=-mno-xl-soft-div -mno-xl-soft-mul
-microblaze_LDFLAGS=-nostdlib
+include $(SOCLIB)/etc/soft_flags.mk
 
 CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS)
 

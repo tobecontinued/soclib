@@ -27,16 +27,14 @@ OBJDUMP = $(CC_PREFIX)objdump
 
 CFLAGS=-Wall -O2 -I. -I$(COMMON) -I$(TESTER_DIR) $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
 
-mipsel_CFLAGS=-mips2 -mno-branch-likely
-powerpc_CFLAGS=-mcpu=405 -mstrict-align
-microblaze_CFLAGS=-mno-xl-soft-div -mno-xl-soft-mul
+include $(SOCLIB)/etc/soft_flags.mk
 
 CFLAGS+=$($(ARCH)_CFLAGS)
 
 all: $(RESULT)
 
 $(SOFT_IMAGE): $(OBJS) $(COMMON)/ldscript
-	$(LD) -T $(COMMON)/ldscript -o $@ $(OBJS)
+	$(LD) -T $(COMMON)/ldscript $($(ARCH)_LDFLAGS) -o $@ $(OBJS)
 
 %.o: %.s
 	$(AS) $< -o $@
