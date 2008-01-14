@@ -29,7 +29,7 @@
  * Fairly complete rewritting and adaptation to the new Iss stuff by
  * Fred during the winter vacations of the same year.
 \*/
-#define MBDEBUG 1
+#define MBDEBUG 0
 
 #include "common/iss/microblaze.h"
 #include "common/endian.h"
@@ -59,6 +59,7 @@
 #define OP_MUL        0x10
 #define OP_BS         0x11
 #define OP_IDIV       0x12
+#define OP_FSL        0x13
 #define OP_MULI       0x18
 #define OP_BSI        0x19
 
@@ -79,7 +80,7 @@
 
 #define OP_IMM        0x2C
 #define OP_RTBD       0x2D
-#define OP_BRI        0x2E // for bri brid brlid brai braid 
+#define OP_BRI        0x2E // for bri brid brlid brai braid
 #define OP_BRNI       0x2F // for beqi bnei blti blei bgti bgei
 
 #define OP_LBU        0x30
@@ -106,7 +107,7 @@
 #define MSR_BE        0x1
 #define MSR_IE        0x2
 // Quite strange but defined so in the doc !
-#define MSR_C         0x80000004 
+#define MSR_C         0x80000004
 #define MSR_BIP       0x8
 #define MSR_DZ        0x40
 #define MSR_EIP       0x200
@@ -121,10 +122,10 @@ do {                              \
 #define GET_CARRY ((r_msr >> 2) & 1)
 
 /*\
- * 32 bit extension of a 16 bit number
+ * 32 bit extension of a 16 bit or a 8 bit number
 \*/
-#define SEXT16(imm) (((imm)&0x8000)?0xFFFF0000|(imm):(imm)) 
-#define SEXT8(imm) (((imm)&0x80)?0xFFFFFF00|(imm):(imm)) 
+#define SEXT16(imm) (((imm)&0x8000)?0xFFFF0000|(imm):(imm))
+#define SEXT8(imm) (((imm)&0x80)?0xFFFFFF00|(imm):(imm))
 
 /*\
  * Conditional computation of the immediate value: a pure rhs
@@ -132,7 +133,7 @@ do {                              \
 #define IMM_OP ((uint32_t)(m_imm ? (r_imm | ins_imm) : SEXT16(ins_imm)))
 
 /*\
- * Memory accesses to fit the current SoCLib Iss strategy 
+ * Memory accesses to fit the current SoCLib Iss strategy
  * The type, addr, dest and wdata fields are inherited from Iss
 \*/
 
@@ -173,22 +174,22 @@ namespace soclib {
       }
 
       const MicroBlazeIss::IFormat MicroBlazeIss::OpcodeTable[] = {
-         {OP_ADD,    TYPEA},  {OP_RSUB,   TYPEA},  {OP_ADDC,   TYPEA},  {OP_RSUBC,   TYPEA},  
-         {OP_ADDK,   TYPEA},  {OP_CMP,    TYPEA},  {OP_ADDKC,  TYPEA},  {OP_RSUBKC,  TYPEA}, 
+         {OP_ADD,    TYPEA},  {OP_RSUB,   TYPEA},  {OP_ADDC,   TYPEA},  {OP_RSUBC,   TYPEA},
+         {OP_ADDK,   TYPEA},  {OP_CMP,    TYPEA},  {OP_ADDKC,  TYPEA},  {OP_RSUBKC,  TYPEA},
          {OP_ADDI,   TYPEB},  {OP_RSUBI,  TYPEB},  {OP_ADDIC,  TYPEB},  {OP_RSUBIC,  TYPEB},
-         {OP_ADDIK,  TYPEB},  {OP_RSUBIK, TYPEB},  {OP_ADDIKC, TYPEB},  {OP_RSUBIKC, TYPEB}, 
-         {OP_MUL,    TYPEA},  {OP_BS,     TYPEA},  {OP_IDIV,   TYPEA},  {OP_RES,     TYPEN}, 
-         {OP_RES,    TYPEN},  {OP_RES,    TYPEN},  {OP_RES,    TYPEN},  {OP_RES,     TYPEN}, 
-         {OP_MULI,   TYPEB},  {OP_BSI,    TYPEB},  {OP_RES,    TYPEN},  {OP_RES,     TYPEN}, 
-         {OP_RES,    TYPEN},  {OP_RES,    TYPEN},  {OP_RES,    TYPEN},  {OP_RES,     TYPEN}, 
+         {OP_ADDIK,  TYPEB},  {OP_RSUBIK, TYPEB},  {OP_ADDIKC, TYPEB},  {OP_RSUBIKC, TYPEB},
+         {OP_MUL,    TYPEA},  {OP_BS,     TYPEA},  {OP_IDIV,   TYPEA},  {OP_RES,     TYPEN},
+         {OP_RES,    TYPEN},  {OP_RES,    TYPEN},  {OP_RES,    TYPEN},  {OP_RES,     TYPEN},
+         {OP_MULI,   TYPEB},  {OP_BSI,    TYPEB},  {OP_RES,    TYPEN},  {OP_FSL,     TYPEB},
+         {OP_RES,    TYPEN},  {OP_RES,    TYPEN},  {OP_RES,    TYPEN},  {OP_RES,     TYPEN},
          {OP_OR,     TYPEA},  {OP_AND,    TYPEA},  {OP_XOR,    TYPEA},  {OP_ANDN,    TYPEA},
-         {OP_SEXT,   TYPEA},  {OP_MFS,    TYPEB},  {OP_BR,     TYPEA},  {OP_BRNC,    TYPEA},  
-         {OP_ORI,    TYPEB},  {OP_ANDI,   TYPEB},  {OP_XORI,   TYPEB},  {OP_ANDNI,   TYPEB},  
-         {OP_IMM,    TYPEB},  {OP_RTBD,   TYPEB},  {OP_BRI,    TYPEB},  {OP_BRNI,    TYPEB},  
-         {OP_LBU,    TYPEA},  {OP_LHU,    TYPEA},  {OP_LW,     TYPEA},  {OP_RES,     TYPEN}, 
-         {OP_SB,     TYPEA},  {OP_SH,     TYPEA},  {OP_SW,     TYPEA},  {OP_RES,     TYPEN}, 
-         {OP_LBUI,   TYPEB},  {OP_LHUI,   TYPEB},  {OP_LWI,    TYPEB},  {OP_RES,     TYPEN}, 
-         {OP_SBI,    TYPEB},  {OP_SHI,    TYPEB},  {OP_SWI,    TYPEB},  {OP_RES,     TYPEN}, 
+         {OP_SEXT,   TYPEA},  {OP_MFS,    TYPEB},  {OP_BR,     TYPEA},  {OP_BRNC,    TYPEA},
+         {OP_ORI,    TYPEB},  {OP_ANDI,   TYPEB},  {OP_XORI,   TYPEB},  {OP_ANDNI,   TYPEB},
+         {OP_IMM,    TYPEB},  {OP_RTBD,   TYPEB},  {OP_BRI,    TYPEB},  {OP_BRNI,    TYPEB},
+         {OP_LBU,    TYPEA},  {OP_LHU,    TYPEA},  {OP_LW,     TYPEA},  {OP_RES,     TYPEN},
+         {OP_SB,     TYPEA},  {OP_SH,     TYPEA},  {OP_SW,     TYPEA},  {OP_RES,     TYPEN},
+         {OP_LBUI,   TYPEB},  {OP_LHUI,   TYPEB},  {OP_LWI,    TYPEB},  {OP_RES,     TYPEN},
+         {OP_SBI,    TYPEB},  {OP_SHI,    TYPEB},  {OP_SWI,    TYPEB},  {OP_RES,     TYPEN}
       };
 
       MicroBlazeIss::MicroBlazeIss(uint32_t ident)
@@ -260,13 +261,13 @@ namespace soclib {
          \*/
          uint32_t  data;
          uint32_t  addr;
-        
+
          char ins_opcode;
          int  ins_rd;
          int  ins_ra;
          int  ins_rb;
          int  ins_imm;
-         
+
 
          bool exception = false;
 
@@ -278,12 +279,12 @@ namespace soclib {
          if (m_ibe) {
              r_esr = INSTRUCTION_BUS_ERROR_EXCEPTION;
              exception = true;
-         } 
+         }
          if (m_dbe) {
              r_esr = DATA_BUS_ERROR_EXCEPTION;
              r_ear = r_mem_addr;
              exception = true;
-         } 
+         }
          if (r_dbe) {
              r_esr = DATA_BUS_ERROR_EXCEPTION;
              r_ear = r_mem_addr;
@@ -315,7 +316,7 @@ namespace soclib {
          /* Decode the current instruction */
          IDecode(m_ir, &ins_opcode, &ins_rd, &ins_ra, &ins_rb, &ins_imm);
 #if MBDEBUG
-printf("0x%08x : ", r_pc);
+printf("%8s 0x%08x : ", name().c_str(), r_pc);
 #endif
          switch (ins_opcode) {
             case OP_ADD:
@@ -326,7 +327,7 @@ printf("add r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                SET_CARRY(r_gpr[ins_rd] < r_gpr[ins_ra]);
                next_pc = r_npc + 4;
                break;
-              
+
             case OP_ADDC:
 #if MBDEBUG
 printf("addc r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -335,7 +336,7 @@ printf("addc r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                SET_CARRY(r_gpr[ins_rd] < r_gpr[ins_ra]);
                next_pc = r_npc + 4;
                break;
-               
+
             case OP_ADDK:
 #if MBDEBUG
 printf("addk r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -343,7 +344,7 @@ printf("addk r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                r_gpr[ins_rd] = r_gpr[ins_ra] + r_gpr[ins_rb];
                next_pc = r_npc + 4;
                break;
-                
+
             case OP_ADDKC:
 #if MBDEBUG
 printf("addkc r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -351,7 +352,7 @@ printf("addkc r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                r_gpr[ins_rd] = r_gpr[ins_ra] + r_gpr[ins_rb] + GET_CARRY;
                next_pc = r_npc + 4;
                break;
-               
+
             case OP_ADDI:
 #if MBDEBUG
 printf("addi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -360,7 +361,7 @@ printf("addi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                SET_CARRY(r_gpr[ins_rd] < r_gpr[ins_ra]);
                next_pc = r_npc + 4;
                break;
-               
+
             case OP_ADDIC:
 #if MBDEBUG
 printf("addic r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -385,15 +386,15 @@ printf("addikc r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                r_gpr[ins_rd] = r_gpr[ins_ra] + IMM_OP + GET_CARRY;
                next_pc = r_npc + 4;
                break;
-            
+
             case OP_AND:
 #if MBDEBUG
 printf("and r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
 #endif
-               r_gpr[ins_rd] = r_gpr[ins_ra] & r_gpr[ins_rb]; 
+               r_gpr[ins_rd] = r_gpr[ins_ra] & r_gpr[ins_rb];
                next_pc = r_npc + 4;
                break;
-             
+
             case OP_ANDI:
 #if MBDEBUG
 printf("andi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -406,15 +407,15 @@ printf("andi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
 #if MBDEBUG
 printf("andn r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
 #endif
-               r_gpr[ins_rd] = r_gpr[ins_ra] & ~r_gpr[ins_rb]; 
+               r_gpr[ins_rd] = r_gpr[ins_ra] & ~r_gpr[ins_rb];
                next_pc = r_npc + 4;
                break;
-            
+
             case OP_ANDNI:
 #if MBDEBUG
 printf("andni r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
 #endif
-               r_gpr[ins_rd] = r_gpr[ins_ra] & ~IMM_OP; 
+               r_gpr[ins_rd] = r_gpr[ins_ra] & ~IMM_OP;
                next_pc = r_npc + 4;
                break;
 
@@ -443,14 +444,14 @@ printf("blt%s r%d, r%d\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_rb);
 printf("ble%s r%d, r%d\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_rb);
 #endif
                      branch = (int32_t)r_gpr[ins_ra] <= 0;
-                     break;  
+                     break;
                   case 0x4:// for bgt
 #if MBDEBUG
 printf("bgt%s r%d, r%d\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_rb);
 #endif
                      branch = (int32_t)r_gpr[ins_ra] > 0;
                      break;
-                  case 0x5:// for bge 
+                  case 0x5:// for bge
 #if MBDEBUG
 printf("bge%s r%d, r%d\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_rb);
 #endif
@@ -462,11 +463,11 @@ printf("bge%s r%d, r%d\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_rb);
                }
 
                next_pc = r_pc + (!branch ? 8 : r_gpr[ins_rb]);
-              
+
                if (!(ins_rd & 0x10) && branch)
                   m_cancel = true;
                break;
-             
+
             case OP_BRNI:
                switch (ins_rd & 0xf) {
                   case 0x0:// for beqi
@@ -492,7 +493,7 @@ printf("blti%s r%d, 0x%x\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_imm);
 printf("blei%s r%d, 0x%x\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_imm);
 #endif
                      branch = (int32_t)r_gpr[ins_ra] <= 0;
-                     break;  
+                     break;
                   case 0x4:// for bgti
 #if MBDEBUG
 printf("bgti%s r%d, 0x%x\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_imm);
@@ -512,23 +513,23 @@ printf("bgei%s r%d, 0x%x\n", ins_rd & 0x10 ? "d" : "", ins_ra, ins_imm);
 
                // + seems to have precedence over ?: finally :)
                next_pc = r_pc + (!branch ? 8 : IMM_OP);
-              
+
                if (!(ins_rd & 0x10) && branch)
                   m_cancel = true;
                break;
-              
+
             case OP_BR://br bra brd brad brld brald
-               if (ins_ra & 0x04)  
-                  r_gpr[ins_rd] = r_pc; 
-                            
+               if (ins_ra & 0x04)
+                  r_gpr[ins_rd] = r_pc;
+
                if (ins_ra & 0x08)
-                  next_pc = r_gpr[ins_rb]; 
+                  next_pc = r_gpr[ins_rb];
                else
-                  next_pc = r_pc + r_gpr[ins_rb];   
-                     
+                  next_pc = r_pc + r_gpr[ins_rb];
+
                if (!(ins_ra & 0x10)) { // Delay slot
                   m_cancel = true;
-                  if ((ins_ra & 0x0C) == 0x0C) // for BRK
+                  if ((ins_ra & 0x1F) == 0x0C) // it is a brk
                      r_msr |= MSR_BIP;
                }
 #if MBDEBUG
@@ -537,26 +538,26 @@ char a, l, d, b;
 l = ins_ra & 0x04;
 a = ins_ra & 0x08;
 d = ins_ra & 0x10;
-b = (ins_ra & 0x0C) == 0x0C;
+b = (ins_ra & 0x1F) == 0x0C;
 if (b) printf("brk r%d, r%d\n", ins_rd, ins_rb);
 else if (!l) printf("br%s%s r%d\n", a ? "a" : "", d ? "d" : "", ins_rb);
 else printf("br%sl%s r%d, r%d\n", a ? "a" : "", d ? "d" : "", ins_rd, ins_rb);
 }
 #endif
                break;
-            
+
             case OP_BRI://bri brai brid braid brlid bralid
-               if (ins_ra & 0x04)  
-                  r_gpr[ins_rd] = r_pc; 
-                            
+               if (ins_ra & 0x04)
+                  r_gpr[ins_rd] = r_pc;
+
                if (ins_ra & 0x08) // for BRA
-                  next_pc = IMM_OP; 
+                  next_pc = IMM_OP;
                else
-                  next_pc = r_pc + IMM_OP;   
-                     
+                  next_pc = r_pc + IMM_OP;
+
                if (!(ins_ra & 0x10)) { // Delay slot
                   m_cancel = true;
-                  if ((ins_ra & 0x0C) == 0x0C) // for BRK
+                  if ((ins_ra & 0x1F) == 0x0C) // it is a brki
                      r_msr |= MSR_BIP;
                }
 #if MBDEBUG
@@ -565,14 +566,14 @@ char a, l, d, b;
 l = ins_ra & 0x04;
 a = ins_ra & 0x08;
 d = ins_ra & 0x10;
-b = (ins_ra & 0x0C) == 0x0C;
+b = (ins_ra & 0x1F) == 0x0C;
 if (b) printf("brki r%d, 0x%x\n", ins_rd, ins_imm);
 else if (!l) printf("br%si%s 0x%x\n", a ? "a" : "", d ? "d" : "", ins_imm);
 else printf("br%sli%s r%d, 0x%x\n", a ? "a" : "", d ? "d" : "", ins_rd, ins_imm);
 }
 #endif
                break;
-            
+
             case OP_BS:
                if (ins_imm & 0x400) { // S == 1, left shift
                   r_gpr[ins_rd] = r_gpr[ins_ra] << (r_gpr[ins_rb] & 0x1F);
@@ -623,8 +624,8 @@ printf("bsrli r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                   }
                }
                next_pc = r_npc + 4;
-               break;      
-            
+               break;
+
             case OP_CMP: // or RSUBK
                if (ins_imm & 1) {
                   uint32_t rd = r_gpr[ins_rb] + ~r_gpr[ins_ra] + 1;
@@ -667,16 +668,28 @@ printf("idiv%s r%d, r%d, r%d\n", ins_imm & 2 ? "u" : "", ins_rd, ins_ra, ins_rb)
 
                next_pc = r_npc + 4;
                break;
-          
-               
-            case OP_IMM: 
+
+            case OP_FSL:
+               if ((ins_imm & 0xE0) != 0) {
+                  fprintf(stderr, "Currently unsupported Iss FSL operation at pc = 0x%08x\n", r_pc);
+               } else
+#if MBDEBUG
+printf("get r%d, fsl%x\n", ins_rd, ins_imm);
+#endif
+               if ((ins_imm & 0x07) != 0)
+                  fprintf(stderr, "Currently get operation only for procid retrieval at pc = 0x%08x\n", r_pc);
+               r_gpr[ins_rd] = m_ident; // As far as I understood
+               next_pc = r_npc + 4;
+               break;
+
+            case OP_IMM:
 #if MBDEBUG
 printf("imm 0x%04x\n", ins_imm);
 #endif
                r_imm =  ins_imm << 16;
                next_pc = r_npc + 4;
                break;
-                  
+
             case OP_LBU:
 #if MBDEBUG
 printf("lbu r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -685,7 +698,7 @@ printf("lbu r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                LOAD(READ_BYTE, addr);
                next_pc = r_npc + 4;
                break;
-                 
+
             case OP_LBUI://
 #if MBDEBUG
 printf("lbui r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -694,7 +707,7 @@ printf("lbui r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                LOAD(READ_BYTE, addr);
                next_pc = r_npc + 4;
                break;
-            
+
             case OP_LHU:
 #if MBDEBUG
 printf("lhu r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -720,7 +733,7 @@ printf("lhui r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                LOAD(READ_HALF, addr);
                next_pc = r_npc + 4;
                break;
-            
+
             case OP_LW:
 #if MBDEBUG
 printf("lw r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -733,7 +746,7 @@ printf("lw r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                LOAD(READ_WORD, addr);
                next_pc = r_npc + 4;
                break;
-              
+
             case OP_LWI:
 #if MBDEBUG
 printf("lwi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -746,7 +759,7 @@ printf("lwi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                LOAD(READ_WORD, addr);
                next_pc = r_npc + 4;
                break;
-           
+
             case OP_MFS:
 #if MBDEBUG
 printf("mfs r%d, r%d\n", ins_rd, ins_imm & 7);
@@ -775,15 +788,15 @@ printf("mfs r%d, r%d\n", ins_rd, ins_imm & 7);
                      case 0x0:
                         r_gpr[ins_rd] = r_pc;
                         break;
-                 
+
                      case 0x1:
                         r_gpr[ins_rd] = r_msr;
                         break;
-                  
+
                      case 0x3:
                         r_gpr[ins_rd] = r_ear;
                         break;
-                  
+
                      case 0x5:
                         r_gpr[ins_rd] = r_esr;
                         break;
@@ -791,11 +804,11 @@ printf("mfs r%d, r%d\n", ins_rd, ins_imm & 7);
                      default:
                         printf("op_mfs has some errors, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                         break;
-                  }   
-               }         
+                  }
+               }
                next_pc = r_npc + 4;
                break;
-               
+
             case OP_MUL:
 #if MBDEBUG
 printf("mul r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -803,7 +816,7 @@ printf("mul r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                r_gpr[ins_rd] = r_gpr[ins_ra] * r_gpr[ins_rb];
                next_pc = r_npc + 4;
                break;
-          
+
             case OP_MULI:
 #if MBDEBUG
 printf("muli r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -816,18 +829,18 @@ printf("muli r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
 #if MBDEBUG
 printf("or r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
 #endif
-               r_gpr[ins_rd] = r_gpr[ins_ra] | r_gpr[ins_rb]; 
+               r_gpr[ins_rd] = r_gpr[ins_ra] | r_gpr[ins_rb];
                next_pc = r_npc + 4;
                break;
-              
+
             case OP_ORI:
 #if MBDEBUG
 printf("ori r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
 #endif
-               r_gpr[ins_rd] = r_gpr[ins_ra] | IMM_OP; 
+               r_gpr[ins_rd] = r_gpr[ins_ra] | IMM_OP;
                next_pc = r_npc + 4;
                break;
-              
+
             case OP_RSUB:
 #if MBDEBUG
 printf("rsub r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -836,7 +849,7 @@ printf("rsub r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                SET_CARRY(r_gpr[ins_rd] > r_gpr[ins_ra]);
                next_pc = r_npc + 4;
                break;
-                     
+
             case OP_RSUBC:
 #if MBDEBUG
 printf("rsubc r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -845,7 +858,7 @@ printf("rsubc r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                SET_CARRY(r_gpr[ins_rd] > r_gpr[ins_ra]);
                next_pc = r_npc + 4;
                break;
-            
+
             case OP_RSUBKC:
 #if MBDEBUG
 printf("rsubkc r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -853,7 +866,7 @@ printf("rsubkc r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                r_gpr[ins_rd] =  r_gpr[ins_rb] +  ~r_gpr[ins_ra] + GET_CARRY;
                next_pc = r_npc + 4;
                break;
-              
+
             case OP_RSUBI:
 #if MBDEBUG
 printf("rsubi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -862,7 +875,7 @@ printf("rsubi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                SET_CARRY(r_gpr[ins_rd] > IMM_OP);
                next_pc = r_npc + 4;
                break;
-                     
+
             case OP_RSUBIC:
 #if MBDEBUG
 printf("rsubic r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -871,7 +884,7 @@ printf("rsubic r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                SET_CARRY(r_gpr[ins_rd] > IMM_OP);
                next_pc = r_npc + 4;
                break;
-            
+
             case OP_RSUBIK:
 #if MBDEBUG
 printf("rsubik r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -879,7 +892,7 @@ printf("rsubik r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                r_gpr[ins_rd] =  IMM_OP +  ~r_gpr[ins_ra] + 1;
                next_pc = r_npc + 4;
                break;
-                     
+
             case OP_RSUBIKC:
 #if MBDEBUG
 printf("rsubikc r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -887,7 +900,7 @@ printf("rsubikc r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                r_gpr[ins_rd] =  IMM_OP + ~r_gpr[ins_ra] + GET_CARRY;
                next_pc = r_npc + 4;
                break;
-                     
+
             case OP_RTBD:
                switch(ins_rd) {
                   case 0x12: // RTBD
@@ -896,14 +909,14 @@ printf("rtbd r%d, 0x%x\n", ins_ra, ins_imm);
 #endif
                      r_msr &= ~MSR_BIP;
                      break;
-            
+
                   case 0x11: // RTID
 #if MBDEBUG
 printf("rtid r%d, 0x%x\n", ins_ra, ins_imm);
 #endif
                      r_msr |= MSR_IE;
                      break;
-          
+
                   case 0x14: // RTED
 #if MBDEBUG
 printf("rted r%d, 0x%x\n", ins_ra, ins_imm);
@@ -911,7 +924,7 @@ printf("rted r%d, 0x%x\n", ins_ra, ins_imm);
                      r_msr |=  MSR_EE;
                      r_msr &=  ~MSR_EIP;
                      break;
-            
+
                   case 0x10: // RTSD
 #if MBDEBUG
 printf("rtsd r%d, 0x%x\n", ins_ra, ins_imm);
@@ -925,9 +938,9 @@ printf("rtsd r%d, 0x%x\n", ins_ra, ins_imm);
                // Very strange, ... I would have expected a IMM_OP here but
                // I doubled checked the doc and it looks like it is really a
                // SEXT16.
-               next_pc = r_gpr[ins_ra] + SEXT16(ins_imm);   
+               next_pc = r_gpr[ins_ra] + SEXT16(ins_imm);
                break;
-            
+
             case OP_SB:
 #if MBDEBUG
 printf("sb r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -937,7 +950,7 @@ printf("sb r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                STORE(WRITE_BYTE, addr, (data << 24) | (data << 16) | (data << 8) | data);
                next_pc = r_npc + 4;
                break;
-            
+
             case OP_SBI:
 #if MBDEBUG
 printf("sbi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -947,7 +960,7 @@ printf("sbi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                STORE(WRITE_BYTE, addr, (data << 24) | (data << 16) | (data << 8) | data);
                next_pc = r_npc + 4;
                break;
-           
+
             case OP_SEXT:
 #if MBDEBUG
 printf("sext r%d, r%d\n", ins_rd, ins_ra);
@@ -956,33 +969,33 @@ printf("sext r%d, r%d\n", ins_rd, ins_ra);
                   case 0x61: //sext16
                      r_gpr[ins_rd] = SEXT16(r_gpr[ins_ra]);
                      break;
-                                 
+
                   case 0x60: //sext8
                      r_gpr[ins_rd] = SEXT8(r_gpr[ins_ra]);
                      break;
-                                 
+
                   case 0x01: //sra
                      r_gpr[ins_rd] = (int32_t)r_gpr[ins_ra] >> 1;
                      SET_CARRY(r_gpr[ins_ra] & 0x1);
                      break;
-                           
+
                   case 0x21: //src
                      r_gpr[ins_rd] = (r_gpr[ins_ra] >> 1) | (GET_CARRY << 31);
-                     SET_CARRY(r_gpr[ins_ra]& 0x1); 
+                     SET_CARRY(r_gpr[ins_ra]& 0x1);
                      break;
 
                   case 0x41: //srl
                      r_gpr[ins_rd] = r_gpr[ins_ra] >> 1;
-                     SET_CARRY(r_gpr[ins_ra]& 0x1); 
+                     SET_CARRY(r_gpr[ins_ra]& 0x1);
                      break;
-               
+
                   default :
                      printf("op_sext has some errors, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                      break;
-               }            
+               }
                next_pc = r_npc + 4;
-               break;  
-               
+               break;
+
             case OP_SH:
 #if MBDEBUG
 printf("sh r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -996,7 +1009,7 @@ printf("sh r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                STORE(WRITE_HALF, addr, (data << 16) | data);
                next_pc = r_npc + 4;
                break;
-                     
+
             case OP_SHI:
 #if MBDEBUG
 printf("shi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -1010,7 +1023,7 @@ printf("shi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                STORE(WRITE_HALF, addr, (data << 16) | data);
                next_pc = r_npc + 4;
                break;
-                     
+
             case OP_SW:
 #if MBDEBUG
 printf("sw r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
@@ -1023,7 +1036,7 @@ printf("sw r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                STORE(WRITE_WORD, addr, soclib::endian::uint32_swap(r_gpr[ins_rd]));
                next_pc = r_npc + 4;
                break;
-                     
+
             case OP_SWI:
 #if MBDEBUG
 printf("swi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -1036,7 +1049,7 @@ printf("swi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                STORE(WRITE_WORD, addr, soclib::endian::uint32_swap(r_gpr[ins_rd]));
                next_pc = r_npc + 4;
                break;
-                     
+
 
             case OP_XOR:
 #if MBDEBUG
@@ -1045,7 +1058,7 @@ printf("xor r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                r_gpr[ins_rd] = r_gpr[ins_ra] ^ r_gpr[ins_rb];
                next_pc = r_npc + 4;
                break;
-              
+
             case OP_XORI:
 #if MBDEBUG
 printf("xori r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
@@ -1053,11 +1066,11 @@ printf("xori r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                r_gpr[ins_rd] = r_gpr[ins_ra] ^ IMM_OP;
                next_pc = r_npc + 4;
                break;
-            
+
             default :
                fprintf(stderr, "Found an illegal instruction op_code, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                break;
-               
+
          }
          /*\
           * Ensures that we leave here with a zeroed r0
@@ -1072,7 +1085,7 @@ printf("xori r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
          /*\
           * Check for interruptions
          \*/
-         if (!m_delay && m_irq && (r_msr & MSR_IE)
+         if (m_irq && !m_delay && (r_msr & MSR_IE)
                && !(r_msr & MSR_EIP) && !(r_msr & MSR_BIP)) {
             r_gpr[14] = r_pc;
             r_pc = INTERRUPT_VECTOR;
