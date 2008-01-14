@@ -98,7 +98,7 @@ public:
         if (state_ == Frozen)
             {
                 req = mem_req_;
-                address = mem_addr_;
+                address = mem_addr_ & ~3;
                 wdata = mem_data_;
                 type = mem_type_;
             }

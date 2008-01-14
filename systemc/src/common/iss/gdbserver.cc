@@ -468,7 +468,7 @@ void GdbServer<CpuIss>::process_gdb_packet()
 
                     mem_req_ = true;
                     mem_error_ = 0;
-                    mem_type_ = CpuIss::READ_BYTE;
+                    mem_type_ = CpuIss::READ_WORD;
                     mem_addr_ = addr;
                     mem_len_ = mem_count_ = len;
                     mem_buff_ = mem_ptr_ = (uint8_t*)malloc(len);
@@ -716,7 +716,7 @@ bool GdbServer<CpuIss>::process_mem_access()
 
     switch (mem_type_)
         {
-        case CpuIss::READ_BYTE: {
+        case CpuIss::READ_WORD: {
             do
                 {
                     *mem_ptr_++ = mem_data_ >> (8 * (mem_addr_ & 3));
@@ -885,7 +885,7 @@ void GdbServer<CpuIss>::cleanup()
 template<typename CpuIss>
 bool GdbServer<CpuIss>::exceptionBypassed( uint32_t cause )
 {
-    if (!catch_execeptions_)
+    if (asocket_ < 0 || !catch_execeptions_)
         return false;
 
     char buffer[32];
