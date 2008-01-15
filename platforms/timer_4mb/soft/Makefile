@@ -8,10 +8,12 @@ CFLAGS = -O3 -mno-xl-soft-div -mno-xl-soft-mul -I$(SOCLIB)/include -I$(SOCLIB)/t
 %.o : %.s; $(CC) $(CFLAGS) -c $< -o $@
 
 bin.soft   : a.out
+main.o : system.h
+system.o : system.h
 
-a.out : boot.o uputs.o main.o
+a.out : boot.o it.o system.o main.o ldscript
 	mb-ld -g -nostdlib -T ldscript -o $@ $^
 realclean: clean
 	$(RM) a.out
 clean:
-	$(RM) boot.o uputs.o main.o
+	$(RM) boot.o system.o main.o

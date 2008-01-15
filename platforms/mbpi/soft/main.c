@@ -2,6 +2,17 @@
 #include "uputs.h"
 #define ttyputs(x) uputs(0x00400000, x)
 
+#define get_fsl(x)                         \
+({unsigned int __fsl_x;                    \
+  __asm__("get %0, rfsl"#x:"=r"(__fsl_x)); \
+  __fsl_x;\
+})
+
+static inline int procnum()
+{
+    return get_fsl(0);
+}
+
 #define MAZEX 20
 #define MAZEY 40
 #define INITSEED 1
@@ -14,7 +25,7 @@ static long maze[MAZEX][MAZEY];
 #define mod_diff(x,y)(((x)-(y))&0x7fffffff)
 #define two_to_the_31 ((unsigned long)0x80000000)
 static long A[56]= {-1};
-long*gb_fptr= A;
+long *gb_fptr= A;
 
 long gb_flip_cycle(void)
 {
@@ -225,7 +236,7 @@ int fact(int n)
 
 int main(void)
 {
-   ttyputs("Hello world\n");
+   ttyputs("Hello world on processor "); phint(procnum()); ttyputs("\n");
    ttyputs("Computing 7! recursively\n");
    phint(fact(7)); ttyputs("\n");
    ttyputs("Solving a random maze using Lee algorithm\n");

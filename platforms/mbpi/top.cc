@@ -50,7 +50,7 @@ int _main(int argc, char *argv[])
 
    soclib::caba::VciXCache<vci_param> cache("cache", maptab,0,8,4,8,4);
 
-   soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb("mb", 0);
+   soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb("mb", 12);
 
    soclib::common::ElfLoader loader("soft/a.out");
    soclib::caba::VciMultiRam<vci_param> vcimultiram("vcimultiram", IntTab(0), maptab, loader);

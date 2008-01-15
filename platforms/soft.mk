@@ -1,5 +1,5 @@
 SOCLIB:=$(shell soclib-cc --getpath)
-CC_PREFIX=$(ARCH)-unknown-elf-
+CC_PREFIX=$(ARCH)-cass-elf-
 
 ifeq ($(ARCH),microblaze)
 CC_PREFIX=mb-
