@@ -12,24 +12,18 @@ ifeq ($(words $(ARCH)),1)
 VPATH=$(TESTDIR) $(COMMON)
 
 SOCLIB:=$(shell soclib-cc --getpath)
-CC_PREFIX=$(ARCH)-unknown-elf-
-
-ifeq ($(ARCH),microblaze)
-CC_PREFIX=mb-
-endif
 
 SOFT_IMAGE=bin.soft
 
+include $(SOCLIB)/etc/soft_flags.mk
+
+CC_PREFIX=$($(ARCH)_CC_PREFIX)
 CC = $(CC_PREFIX)gcc
 AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. -I$(COMMON) -I$(TESTER_DIR) $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS)
-
-include $(SOCLIB)/etc/soft_flags.mk
-
-CFLAGS+=$($(ARCH)_CFLAGS)
+CFLAGS=-Wall -O2 -I. -I$(COMMON) -I$(TESTER_DIR) $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS) $($(ARCH)_CFLAGS)
 
 all: $(RESULT)
 

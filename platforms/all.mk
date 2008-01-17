@@ -27,7 +27,7 @@ test_soclib:
 	@test ! -z "$(SOCLIB)"
 
 simulation.x: $(PLATFORM_DESC)
-	$(SOCLIB_CC) -v -t local -p $(PLATFORM_DESC) -o $@
+	$(SOCLIB_CC) -p $(PLATFORM_DESC) -o $@
 
 ifeq ($(origin SIMULATION_ARGS),undefined)
 test:

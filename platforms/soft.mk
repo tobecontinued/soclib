@@ -1,19 +1,15 @@
 SOCLIB:=$(shell soclib-cc --getpath)
-CC_PREFIX=$(ARCH)-cass-elf-
-
-ifeq ($(ARCH),microblaze)
-CC_PREFIX=mb-
-endif
 
 SOFT_IMAGE=bin.soft
 OBJS?=main.o exception.o system.o $(ADD_OBJS)
 
+include $(SOCLIB)/etc/soft_flags.mk
+
+CC_PREFIX=$($(ARCH)_CC_PREFIX)
 CC = $(CC_PREFIX)gcc
 AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
-
-include $(SOCLIB)/etc/soft_flags.mk
 
 CFLAGS=-Wall -O2 -I. $(shell soclib-cc --getflags=cflags) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS)
 
