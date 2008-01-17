@@ -63,9 +63,36 @@ public:
         init(vals);
     }
 
+    IntTab( const IntTab &ref )
+    {
+        init(&ref.m_values[0]);
+    }
+
+    template<typename T>
+    IntTab( const std::vector<T> &v )
+    {
+        value_t vals[s_max_level];
+        size_t i=0;
+        while ( i < v.size() ) {
+            vals[i] = v[i];
+            ++i;
+        }
+        while ( i < s_max_level ) {
+            vals[i] = -1;
+            ++i;
+        }
+        init(vals);
+    }
+
     IntTab( const value_t *vals )
     {
         init(vals);
+    }
+
+    const IntTab &operator=( const IntTab &ref )
+    {
+        init(&ref.m_values[0]);
+        return *this;
     }
 
 private:
