@@ -46,8 +46,8 @@ tmpl(inline bool)::can_burst(const d_req_t &old, const d_req_t &next)
 {
               
     bool res = is_write(old.type) && is_write(next.type) &&
-//        (next.addr == old.addr+4);
-        !((next.addr^old.addr)&~4095);
+        (next.addr&~(vci_param::B-1) == old.addr&~(vci_param::B-1)+4);
+//        !((next.addr^old.addr)&~4095);
     return res;
 }
 
