@@ -28,13 +28,14 @@
 #include <inttypes.h>
 #include "caba/util/base_module.h"
 #include "common/endian.h"
+#include "common/iss/iss.h"
 #include "caba/interface/xcache_processor_ports.h"
 
 namespace soclib { namespace caba {
 
 template<typename iss_t>
 class IssWrapper
-	: soclib::caba::BaseModule
+	: public soclib::caba::BaseModule
 {
 public:
 	soclib::caba::ICacheProcessorPort p_icache;
