@@ -1,0 +1,15 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'TopCell'
+	header_files = '../../systemc/include/common/topcell/topcell.h',
+	implementation_files = [
+		'../../systemc/src/common/topcell/topcell.cc',
+		'../../systemc/src/common/topcell/topcell_parser.cc',
+		'../../systemc/src/common/topcell/topcell_lexer.cc',
+	]
+	uses = [
+		Uses('elf_loader'),
+		Uses('mapping_table'),
+		]

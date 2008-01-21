@@ -116,6 +116,10 @@ tmpl(/**/)::VciFrameBuffer(
 	sensitive << p_clk.neg();
 
 	m_vci_fsm.on_read_write(on_read, on_write);
+
+    portRegister("clk", p_clk);
+    portRegister("resetn", p_resetn);
+    portRegister("vci", p_vci);
 }
 
 tmpl(/**/)::~VciFrameBuffer()

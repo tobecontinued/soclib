@@ -61,6 +61,10 @@ tmpl(/**/)::VciMultiRam(
 	for ( size_t i=0; i<m_vci_fsm.nbSegments(); ++i ) {
 		m_contents[i] = new ram_t[(m_vci_fsm.getSize(i)+word_size-1)/word_size];
 	}
+
+    portRegister("clk", p_clk);
+    portRegister("resetn", p_resetn);
+    portRegister("vci", p_vci);
 }
 
 tmpl(/**/)::VciMultiRam(
@@ -91,6 +95,10 @@ tmpl(/**/)::VciMultiRam(
 	for ( size_t i=0; i<m_vci_fsm.nbSegments(); ++i ) {
 		m_contents[i] = new ram_t[(m_vci_fsm.getSize(i)+word_size-1)/word_size];
 	}
+
+    portRegister("clk", p_clk);
+    portRegister("resetn", p_resetn);
+    portRegister("vci", p_vci);
 }
 
 tmpl(/**/)::~VciMultiRam()

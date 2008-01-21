@@ -25,6 +25,8 @@
 #include <cassert>
 #include "caba/interconnect/vci_vgmn.h"
 
+#define VGMN_DEBUG 0
+
 namespace soclib { namespace caba {
 
 using namespace sc_core;
@@ -311,6 +313,9 @@ public:
             assert( m_waiting_packet == NULL );
             m_waiting_packet = new vci_pkt_t();
             m_waiting_packet->readFrom( port );
+#if VGMN_DEBUG
+            std::cout << "VGMN accepting " << *m_waiting_packet << std::endl;
+#endif
             if ( m_dest == NULL )
                 m_dest = m_output_fifos[m_waiting_packet->route( m_routing_table )];
         } else {
@@ -443,6 +448,11 @@ tmpl(/**/)::VciVgmn(
     SC_METHOD(genMoore);
     dont_initialize();
     sensitive << p_clk.neg();
+
+    portRegister("clk", p_clk);
+    portRegister("resetn", p_resetn);
+    portRegisterN("from_initiator", p_from_initiator, nb_attached_initiat);
+    portRegisterN("to_target", p_to_target, nb_attached_target);
 }
 
 }}

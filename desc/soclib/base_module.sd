@@ -4,3 +4,5 @@
 class caba(CabaComponent):
 	classname = 'BaseModule'
 	header_files = '../../systemc/include/caba/util/base_module.h',
+	implementation_files = '../../systemc/src/caba/util/base_module.cc',
+

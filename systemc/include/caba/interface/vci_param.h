@@ -24,6 +24,7 @@
 #define SOCLIB_CABA_SIGNAL_VCI_PARAM_H_
 
 #include <systemc>
+#include <sstream>
 #include "common/static_assert.h"
 
 namespace soclib { namespace caba {
@@ -39,6 +40,18 @@ template<> struct fast_int_t<64> { typedef uint64_t int_t; };
 }
 
 using namespace sc_core;
+
+static std::string VciParamsString(
+    int b, int k, int n, int e, int q,
+    int f, int s, int p, int t, int w )
+{
+    std::ostringstream o;
+    o << "vci_param<"
+      << b << ',' << k << ',' << n << ',' << e << ','
+      << q << ',' << f << ',' << s << ',' << p << ','
+      << t << ',' << w << '>';
+    return o.str();
+}
 
 /**
  * VCI parameters grouped in a single class
@@ -132,6 +145,14 @@ public:
         ERR_BAD_DATA = 5 & _err_mask,
         ERR_ABORT_DISCONNECT = 7 & _err_mask,
     } vci_error_e;
+
+    static std::string string( const std::string &name = "" )
+    {
+        std::string vp = VciParamsString(B,K,N,E,Q,F,S,P,T,W);
+        if ( name == "" )
+            return vp;
+        return name+'<'+vp+'>';
+    }
 };
 
 }}

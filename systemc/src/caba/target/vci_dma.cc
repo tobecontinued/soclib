@@ -175,6 +175,12 @@ tmpl(/**/)::VciDma(
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
+
+    portRegister("clk", p_clk);
+    portRegister("resetn", p_resetn);
+    portRegister("vci_target", p_vci_target);
+    portRegister("vci_initiator", p_vci_initiator);
+    portRegister("irq", p_irq);
 }
 
 }}

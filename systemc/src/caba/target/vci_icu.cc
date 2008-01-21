@@ -133,6 +133,12 @@ tmpl(/**/)::VciIcu(
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
+
+    portRegister("clk", p_clk);
+    portRegister("resetn", p_resetn);
+    portRegister("vci", p_vci);
+    portRegister("irq", p_irq);
+    portRegisterN("irq_in", p_irq_in, m_nirq);
 }
 
 }}

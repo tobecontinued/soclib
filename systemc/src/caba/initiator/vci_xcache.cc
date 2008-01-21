@@ -20,6 +20,7 @@
 #include <cassert>
 #include "common/arithmetics.h"
 #include "caba/initiator/vci_xcache.h"
+#include "caba/inst/inst.h"
 
 namespace soclib { 
 namespace caba {
@@ -46,7 +47,7 @@ tmpl(inline bool)::can_burst(const d_req_t &old, const d_req_t &next)
 {
               
     bool res = is_write(old.type) && is_write(next.type) &&
-        (next.addr&~(vci_param::B-1) == old.addr&~(vci_param::B-1)+4);
+        ((addr_t)(next.addr&~(vci_param::B-1)) == old.addr&~(vci_param::B-1)+4);
 //        !((next.addr^old.addr)&~4095);
     return res;
 }
@@ -183,6 +184,12 @@ tmpl(/**/)::VciXCache(
     p_dcache.frz  (p_dcache.req);
     p_dcache.rdata(p_dcache.adr);
 #endif
+
+    portRegister( "clk", p_clk );
+    portRegister( "resetn", p_resetn );
+    portRegister( "icache", p_icache );
+    portRegister( "dcache", p_dcache );
+    portRegister( "vci", p_vci );
 }
 
 tmpl(void)::transition()
@@ -1049,7 +1056,6 @@ tmpl(void)::genMealy()
 
         //  dcache_hit & dcache_unc_hit
         const addr_t dcache_address = p_dcache.adr.read();
-        const addr_t dcache_word_address = dcache_address & ~0x3;
         const addr_t dcache_subcell = dcache_address & 0x3;
         const int x = m_d_x[dcache_address];
         const int y = m_d_y[dcache_address];

@@ -1,0 +1,53 @@
+
+vci_param<4,1,32,1,1,1,8,1,1,1>
+
+mapping table (4) (8) 0x03000000
+
+new caba vgmn "vgmn0"
+  param n_targets = 4
+  param n_initiators = 2
+  param min_latency = 2
+  param fifo_size = 8
+
+new caba mips "mips0"
+  param ident = 0
+
+new caba xcache "cache0"
+  id (1)
+  param icache_lines = 16
+  param icache_words = 8
+  param dcache_lines = 16
+  param dcache_words = 8
+  conn icache to mips0.icache
+  conn dcache to mips0.dcache
+  conn vci to vgmn0.from_initiator[1]
+
+new caba ram "ram0"
+  id (2)
+  conn vci to vgmn0.to_target[2]
+  param loads = "dma.bin"
+  segment "text"  0x00400000 0x00050000 cached
+  segment "data"  0x10000000 0x00030000 cached
+  segment "reset" 0xbfc00000 0x00010000 cached
+  segment "excep" 0x80000080 0x00010000 cached
+
+new caba tty "tty0"
+  id (1)
+  segment "tty"   0xc0200000 0x00000100 uncached
+  conn vci to vgmn0.to_target[1]
+  param names = [ tty0 ]
+
+new caba dma "dma0"
+  id (0)
+  segment "dma" 0xd1200000 0x00000100 uncached
+  conn vci_target     to vgmn0.to_target[0]
+  conn vci_initiator to vgmn0.from_initiator[0]
+  param buffer_size = 128
+  conn irq to mips0.irq[0]
+
+new caba framebuffer "fb0"
+  id (3)
+  segment "fb" 0xe2200000 0x0001f400 uncached
+  conn vci to vgmn0.to_target[3]
+  param width = 320
+  param height = 200

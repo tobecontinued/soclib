@@ -26,6 +26,7 @@
 #include <systemc>
 #include "caba/interface/vci_param.h"
 #include "caba/interface/vci_signals.h"
+#include "caba/inst/inst.h"
 
 namespace soclib {
 namespace caba {
@@ -213,6 +214,12 @@ public:
         rspval = false;
     }
 };
+
+namespace inst {
+register_signal_for_port_with_t(typename vci_param,
+                                VciTarget<vci_param>,
+                                VciSignals<vci_param>);
+}
 
 }}
 

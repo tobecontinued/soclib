@@ -102,6 +102,31 @@ tmpl(void)::genMoore()
 		p_irq[i] = m_term[i]->hasData();
 }
 
+tmpl(void)::init(const std::vector<std::string> &names)
+{
+	m_vci_fsm.on_read_write(on_read, on_write);
+
+    for ( std::vector<std::string>::const_iterator i = names.begin();
+          i != names.end();
+          ++i )
+		m_term.push_back(soclib::common::allocateTty(*i));
+
+	p_irq = new sc_out<bool>[m_term.size()];
+    
+	SC_METHOD(transition);
+	dont_initialize();
+	sensitive << p_clk.pos();
+
+	SC_METHOD(genMoore);
+	dont_initialize();
+	sensitive << p_clk.neg();
+
+    portRegister("clk", p_clk);
+    portRegister("resetn", p_resetn);
+    portRegister("vci", p_vci);
+    portRegisterN("irq", p_irq, m_term.size());
+}
+
 tmpl(/**/)::VciMultiTty(
     sc_module_name name,
     const IntTab &index,
@@ -114,28 +139,33 @@ tmpl(/**/)::VciMultiTty(
       p_resetn("resetn"),
       p_vci("vci")
 {
-	m_vci_fsm.on_read_write(on_read, on_write);
-
 	va_list va_tty;
 
 	va_start (va_tty, first_name);
+    std::vector<std::string> args;
 	const char *cur_tty = first_name;
 	while (cur_tty) {
-		m_term.push_back(soclib::common::allocateTty(cur_tty));
+        args.push_back(cur_tty);
 
 		cur_tty = va_arg( va_tty, char * );
 	}
 	va_end( va_tty );
 
-	p_irq = new sc_out<bool>[m_term.size()];
+    init(args);
+}
 
-	SC_METHOD(transition);
-	dont_initialize();
-	sensitive << p_clk.pos();
-
-	SC_METHOD(genMoore);
-	dont_initialize();
-	sensitive << p_clk.neg();
+tmpl(/**/)::VciMultiTty(
+    sc_module_name name,
+    const IntTab &index,
+    const MappingTable &mt,
+    const std::vector<std::string> &names )
+    : soclib::caba::BaseModule(name),
+      m_vci_fsm(p_vci, mt.getSegmentList(index)),
+      p_clk("clk"),
+      p_resetn("resetn"),
+      p_vci("vci")
+{
+    init(names);
 }
 
 tmpl(/**/)::~VciMultiTty()

@@ -47,6 +47,12 @@ tmpl(/**/)::IssWrapper( sc_module_name insname, int ident )
 	dont_initialize();
 	sensitive << p_clk.neg();
 
+    portRegister( "clk", p_clk );
+    portRegister( "resetn", p_resetn );
+    portRegister( "icache", p_icache );
+    portRegister( "dcache", p_dcache );
+    portRegisterN( "irq", &p_irq[0], (size_t)iss_t::n_irq );
+
     /*
      * Ensure both the Xcache and the ISS have the same opcods
      * values...

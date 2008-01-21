@@ -50,6 +50,7 @@ private:
 
     unsigned long r_counter;
 
+	void init(const std::vector<std::string> &names );
 protected:
     SC_HAS_PROCESS(VciMultiTty);
 
@@ -65,6 +66,11 @@ public:
 		const MappingTable &mt,
         const char *first_name,
         ...);
+	VciMultiTty(
+		sc_module_name name,
+		const IntTab &index,
+		const MappingTable &mt,
+        const std::vector<std::string> &names );
 
     ~VciMultiTty();
 

@@ -1,0 +1,8 @@
+// -*- c++ -*-
+#ifndef SIGNAL_WRAPPER
+#define SIGNAL_WRAPPER
+
+#include "signal_wrapper.h"
+#include "signal_wrapper.hxx"
+
+#endif

@@ -1,0 +1,15 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'CabaFactory'
+	implementation_files = '../../systemc/src/caba/inst/caba_factory.cc',
+	uses = [
+		Uses('mips'),
+		Uses('gdb_mips'),
+		Uses('microblaze'),
+		Uses('gdb_microblaze'),
+		Uses('ppc405'),
+		Uses('gdb_ppc405'),
+		Uses('inst_arg'),
+		]

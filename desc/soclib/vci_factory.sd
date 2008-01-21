@@ -1,0 +1,22 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciFactory'
+	header_files = '../../systemc/include/caba/inst/vci_factory.h',
+	implementation_files = '../../systemc/src/caba/inst/vci_factory.cc',
+	uses = [
+		Uses('vci_dma'),
+		Uses('vci_fd_access'),
+		Uses('vci_framebuffer'),
+		Uses('vci_icu'),
+		Uses('vci_locks'),
+		Uses('vci_multi_ram'),
+		Uses('vci_multi_tty'),
+		#Uses('vci_pi_initiator_wrapper'),
+		#Uses('vci_pi_target_wrapper'),
+		Uses('vci_simhelper'),
+		Uses('vci_timer'),
+		Uses('vci_vgmn'),
+		Uses('vci_xcache'),
+		]
