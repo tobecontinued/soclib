@@ -889,6 +889,7 @@ bool GdbServer<CpuIss>::exceptionBypassed( uint32_t cause )
         return false;
 
     char buffer[32];
+    fprintf(stderr, "Exception caught on processor %s with cause = %08x\n", CpuIss::name().c_str(), cause);
     sprintf(buffer, "T%02xthread:%x;", CpuIss::cpuCauseToSignal(cause), id_ + 1);
     write_packet(buffer);
     change_all_states(MemWait);

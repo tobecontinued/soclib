@@ -129,7 +129,7 @@ tmpl(void)::genMoore()
 		p_vci.rspWrite( r_buf_eop.read() );
 		break;
 	case READ_RSP:
-		p_vci.rspRead( r_buf_eop.read(), r_buf_value.read() );
+		p_vci.rspRead( r_buf_eop.read(), r_buf_value.read() ? -1 : 0 );
 		break;
 	case ERROR_RSP:
 		p_vci.rspError( r_buf_eop.read() );

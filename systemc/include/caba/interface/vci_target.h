@@ -201,7 +201,7 @@ public:
     void rspRead( bool eop, typename vci_param::data_t data )
     {
         rspval = true;
-        rdata = 0;
+        rdata = data;
         rerror = false;
         reop = eop;
     }
