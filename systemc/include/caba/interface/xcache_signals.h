@@ -1,14 +1,30 @@
-//////////////////////////////////////////////////////////////////////////
-// File     : xcache_signals.h
-// Date     : 17/07/2007
-// Copyright: UPMC/LIP6
-/////////////////////////////////////////////////////////////////////////
-// History
-// - 17/07/2007
-//   The DCACHE interface has been modified by A.Greiner :
-//   The "unc" signal has been supressed,
-//   and  replaced by a new code RU for the "type" signal.
-////////////////////////////////////////////////////////////////////////
+/* -*- c++ -*-
+ *
+ * SOCLIB_LGPL_HEADER_BEGIN
+ * 
+ * This file is part of SoCLib, GNU LGPLv2.1.
+ * 
+ * SoCLib is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation; version 2.1 of the License.
+ * 
+ * SoCLib is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with SoCLib; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ * 
+ * SOCLIB_LGPL_HEADER_END
+ *
+ * Copyright (c) UPMC, Lip6, SoC
+ *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
+ *
+ * Maintainers: nipo
+ */
 
 #ifndef SOCLIB_CABA_SIGNAL_XCACHE_SIGNALS_H_
 #define SOCLIB_CABA_SIGNAL_XCACHE_SIGNALS_H_

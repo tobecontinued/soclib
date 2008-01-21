@@ -1,10 +1,13 @@
-/////////////////////////////////////////////////////////////////////
-//  File: vci_pi_target_wrapper.cc 
-//  Author: Alain Greiner  
-//  Date: 15/04/2007   
-// Copyright : UPMC - LIP6
-//  This program is released under the GNU Public License 
-/////////////////////////////////////////////////////////////////////
+/* -*- c++ -*-
+ *
+ * SOCLIB_LGPL_HEADER_BEGIN
+ * SOCLIB_LGPL_HEADER_END
+ *
+ * Copyright (c) UPMC, Lip6, SoC
+ *         Alain Greiner <alain.greiner@lip6.fr>, 2006
+ *
+ * Maintainers: alain nipo
+ */
 
 #include "caba/interconnect/vci_pi_target_wrapper.h"  
 #include "common/register.h"
