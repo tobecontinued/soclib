@@ -103,7 +103,7 @@ def doConfigure(self, soclib_path, desc_paths):
 	self.cflags = map(
 		lambda x:'-I'+os.path.join(soclib_path, x),
 		self.include_paths)+self.common_cflags
-	self.desc_paths = []
+	self.desc_paths = ["."]
 	for dp in desc_paths:
 		self.addDescPath(dp)
 
