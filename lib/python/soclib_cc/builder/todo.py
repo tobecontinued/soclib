@@ -64,9 +64,14 @@ class ToDo:
 			todo = self.todo[i]
 			todo.clean()
 	def process(self):
+		import sys
 		self.prepare()
-		for i in xrange(len(self.todo)-1,-1,-1):
+		l = len(self.todo)
+		for i in xrange(l-1,-1,-1):
 			todo = self.todo[i]
+			if config.progress_bar:
+				sys.stdout.write('\r'+'+'*(l-i)+'-'*i)
+				sys.stdout.flush()
 			if todo.mustBeProcessed():
 				try:
 					todo.process()

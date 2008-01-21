@@ -45,7 +45,7 @@ class CCompile(action.Action):
 		cmd = Joined(args)
 		if disp_normal or config.verbose:
 			self.runningCommand(what, self.dests, cmd)
-		handle = popen2.Popen3(cmd, capturestderr = False)
+		handle = popen2.Popen4(cmd)
 		handle.tochild.close()
 
 		r = handle.fromchild.read()
@@ -72,7 +72,10 @@ class CCompile(action.Action):
 				'-c', '-o', self.dests[0]]
 		args += config.getCflags()
 		args += self.sources
-		self.call('compile', args)
+		r = self.call('compile', args)
+		if r:
+			print
+			print r
 		self.dests[0].touch()
 
 class CxxCompile(CCompile):
@@ -89,7 +92,10 @@ class CLink(CCompile):
 				'-o', self.dests[0]]
 		args += config.getLibs()
 		args += self.sources
-		self.call('link', args)
+		r = self.call('link', args)
+		if r:
+			print
+			print r
 
 class CxxLink(CLink):
 	tool = 'CXX_LINKER'

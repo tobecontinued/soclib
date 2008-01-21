@@ -41,6 +41,9 @@ def main():
 	parser.add_option('-d', '--debug', dest = 'debug',
 					  action='store_true',
 					  help="Print too much things")
+	parser.add_option('-P', '--progress_bar', dest = 'progress_bar',
+					  action='store_true',
+					  help="Print evolution with a progress bar")
 	parser.add_option('-q', '--quiet', dest = 'quiet',
 					  action='store_true',
 					  help="Print nothing but errors")
@@ -76,6 +79,9 @@ def main():
 	config.verbose = opts.verbose
 	config.debug = opts.debug
 	config.quiet = opts.quiet
+	if opts.progress_bar:
+		config.progress_bar = True
+		config.quiet = True
 
 	config.output = "system.x"
 	if opts.getpath:
@@ -126,6 +132,8 @@ todo = Platform(
 	else:
 		print 'Not supported'
 		return 1
+	if config.progress_bar:
+		print
 	return 0
 
 if __name__ == '__main__':

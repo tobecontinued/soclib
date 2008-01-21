@@ -53,7 +53,7 @@ test_soclib:
 	@test ! -z "$(SOCLIB)"
 
 simulation.x: $(PLATFORM_DESC)
-	$(SOCLIB_CC) -p $(PLATFORM_DESC) -o $@
+	$(SOCLIB_CC) -P -p $(PLATFORM_DESC) -o $@
 
 ifeq ($(origin SIMULATION_ARGS),undefined)
 test:
@@ -70,7 +70,7 @@ $(TEST_OUTPUT): simulation.x $(SOFT)
 endif
 
 clean: soft_clean
-	$(SOCLIB_CC) -p $(PLATFORM_DESC) -x -o $@
+	$(SOCLIB_CC) -P -p $(PLATFORM_DESC) -x -o $@
 	rm -rf repos
 
 soft_clean:

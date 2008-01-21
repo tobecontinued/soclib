@@ -117,6 +117,7 @@ config.build_env = Config(
 	verbose = False,
 	quiet = False,
 	debug = False,
+	progress_bar = False,
 	mode = 'release',
 	repos = 'repos',
 	common_include_paths = ['include'],
