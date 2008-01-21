@@ -1413,12 +1413,12 @@ void Ppc405Iss::op_sync()
 
 void Ppc405Iss::op_tw()
 {
-	trap( r_gp[m_ins.x.rs], r_gp[m_ins.x.ra], r_gp[m_ins.x.rb] );
+	trap( m_ins.x.rs, r_gp[m_ins.x.ra], r_gp[m_ins.x.rb] );
 }
 
 void Ppc405Iss::op_twi()
 {
-	trap( r_gp[m_ins.d.rd], r_gp[m_ins.d.ra], sign_ext16(m_ins.d.imm) );
+	trap( m_ins.d.rd, r_gp[m_ins.d.ra], sign_ext16(m_ins.d.imm) );
 }
 
 void Ppc405Iss::op_wrtee()

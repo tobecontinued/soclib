@@ -276,6 +276,35 @@ void MipsIss::step()
     r_gp[0] = 0;
 }
 
+int MipsIss::cpuCauseToSignal( uint32_t cause ) const
+{
+    switch (cause) {
+    case X_INT:
+        return 2; // Interrupt
+    case X_MOD:
+    case X_TLBL:
+    case X_TLBS:
+        return 5; // Trap (nothing better)
+    case X_ADEL:
+    case X_ADES:
+    case X_IBE:
+    case X_DBE:
+        return 11; // SEGV
+    case X_SYS:
+    case X_BP:
+    case X_TR:
+    case X_reserved:
+        return 5; // Trap/breakpoint
+    case X_RI:
+    case X_CPU:
+        return 4; // Illegal instruction
+    case X_OV:
+    case X_FPE:
+        return 8; // Floating point exception
+    };
+    return 5;       // GDB SIGTRAP                                                                                                                                                                
+}
+
 uint32_t MipsIss::getDebugRegisterValue(unsigned int reg) const
 {
     switch (reg)
@@ -327,6 +356,7 @@ void MipsIss::setDebugRegisterValue(unsigned int reg, uint32_t value)
             break;
         case 37:
             r_pc = value;
+            r_npc = value+4;
             break;
         default:
             break;

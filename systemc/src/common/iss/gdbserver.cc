@@ -410,7 +410,7 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     unsigned int reg = strtoul(data + 1, 0, 16);
                     char fmt[32];
 
-                    sprintf(fmt, "%%0%ux", CpuIss::getDebugRegisterSize(reg) / 4);
+                    sprintf(fmt, "%%0%ux", (unsigned int)CpuIss::getDebugRegisterSize(reg) / 4);
                     sprintf(buffer, fmt, CpuIss::getDebugRegisterValue(reg));
                     write_packet(buffer);
                     return;
@@ -432,7 +432,7 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     for (unsigned int i = 0; i < CpuIss::getDebugRegisterCount(); i++)
                         {
                             char fmt[32];
-                            sprintf(fmt, "%%0%ux", CpuIss::getDebugRegisterSize(i) / 4);
+                            sprintf(fmt, "%%0%ux", (unsigned int)CpuIss::getDebugRegisterSize(i) / 4);
                             b += sprintf(b, fmt, CpuIss::getDebugRegisterValue(i));
                         }
                     write_packet(buffer);

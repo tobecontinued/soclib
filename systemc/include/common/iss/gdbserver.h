@@ -127,9 +127,10 @@ public:
 
     inline void getInstructionRequest(bool &req, uint32_t &address) const
 	{
-        if (state_ == Frozen)
+        if (state_ == Frozen) {
+            address = 0;
             req = false;
-        else
+        } else
             CpuIss::getInstructionRequest(req, address);
 	}
 

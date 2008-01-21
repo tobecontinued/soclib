@@ -281,6 +281,8 @@ public:
         r_npc = pc+4;
     }
 
+    int cpuCauseToSignal( uint32_t cause ) const;
+
 private:
     void run();
 

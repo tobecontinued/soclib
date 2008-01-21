@@ -120,7 +120,7 @@ protected:
         return false;
     }
 
-    virtual int cpuCauseToSignal( uint32_t cause )
+    virtual int cpuCauseToSignal( uint32_t cause ) const
     {
         return 5;       // GDB SIGTRAP
     }
