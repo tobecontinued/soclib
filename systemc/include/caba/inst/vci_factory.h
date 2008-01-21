@@ -23,6 +23,7 @@ class VciFactory
 	static factory_func_t vgmn;
 	static factory_func_t xcache;
 	static factory_func_t dma;
+	static factory_func_t icu;
 	static soclib::common::Factory<soclib::caba::BaseModule> fb_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> ram_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> tty_factory;
@@ -30,6 +31,7 @@ class VciFactory
 	static soclib::common::Factory<soclib::caba::BaseModule> vgmn_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> xcache_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> dma_factory;
+	static soclib::common::Factory<soclib::caba::BaseModule> icu_factory;
 };
 
 }}

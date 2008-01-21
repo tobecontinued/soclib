@@ -127,6 +127,20 @@ tmpl(BaseModule&)::dma(
 	return tmp;
 }
 
+tmpl(BaseModule&)::icu(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	BaseModule &tmp =
+		*new VciIcu<vci_param>(
+        name.c_str(),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        env.get<MappingTable>("mapping_table"),
+        args.get<int>("nirq") );
+	return tmp;
+}
+
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  fb_factory(vci_param::string("framebuffer"), &framebuffer);
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
@@ -141,5 +155,7 @@ tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  xcache_factory(vci_param::string("xcache"), &xcache);
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  dma_factory(vci_param::string("dma"), &dma);
+tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
+ icu_factory(vci_param::string("icu"), &icu);
 
 }}
