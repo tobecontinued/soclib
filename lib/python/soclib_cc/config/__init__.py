@@ -35,7 +35,7 @@ class ConfigSpool:
 	_filter = re.compile("[a-z][a-z_]+")
 	_fmt = '%s:\n%s'
 
-	_desc_paths = []
+	_desc_paths = ["."]
 
 	def addDescPath(self, np):
 		if not np in self._desc_paths:
