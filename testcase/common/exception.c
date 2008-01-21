@@ -43,9 +43,9 @@ asm(
 
     "	sw	$8,	0*4($sp)		        \n" /* EPC reg */
 
-    "	andi	$9,	$1,	0x7c			\n" /* extract cause */
+    "	andi	$9,	$1,	0x3c			\n" /* extract cause */
     "	beq	$9,	$0,	interrupt_hw		\n"
-    "	li	$10,	32				\n"
+    "	li	$10,	(8<<2)				\n"
     "	beq	$9,	$10,	interrupt_sys		\n"
 
     /*************************************************************
