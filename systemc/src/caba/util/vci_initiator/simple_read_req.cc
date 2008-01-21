@@ -85,13 +85,13 @@ tmpl(void)::gotRsp( const VciInitiator<vci_param> &p_vci )
 
     typename VciInitiatorReq<vci_param>::data_t data = p_vci.rdata;
 
-    const int vci_addr = (base_addr+rsp_ptr)&~3;
-    const int delta = vci_addr-base_addr;
+    const uint32_t vci_addr = (base_addr+rsp_ptr)&~3;
+    const uint32_t delta = vci_addr-base_addr;
 
-    for ( int i=0; i<vci_param::B; ++i ) {
-        const int addr = vci_addr+i;
-        if ( addr >= (int)base_addr &&
-            addr < (int)base_addr+len ) {
+    for ( uint32_t i=0; i<(uint32_t)vci_param::B; ++i ) {
+        const uint32_t addr = vci_addr+i;
+        if ( addr >= base_addr &&
+            addr < base_addr+len ) {
             dest_buffer[delta+i] = data;
         }
         data >>= 8;
