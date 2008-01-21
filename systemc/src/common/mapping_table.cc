@@ -37,6 +37,25 @@ MappingTable::MappingTable(
 {
 }
 
+MappingTable::MappingTable( const MappingTable &ref )
+        : m_segment_list(ref.m_segment_list),
+          m_addr_width(ref.m_addr_width),
+          m_level_addr_bits(ref.m_level_addr_bits),
+          m_level_id_bits(ref.m_level_id_bits),
+          m_cacheability_mask(ref.m_cacheability_mask)
+{
+}
+
+const MappingTable &MappingTable::operator=( const MappingTable &ref )
+{
+    m_segment_list = ref.m_segment_list;
+    m_addr_width = ref.m_addr_width;
+    m_level_addr_bits = ref.m_level_addr_bits;
+    m_level_id_bits = ref.m_level_id_bits;
+    m_cacheability_mask = ref.m_cacheability_mask;
+    return *this;
+}
+
 void MappingTable::add( const Segment &seg )
 {
     std::list<Segment>::iterator i;
