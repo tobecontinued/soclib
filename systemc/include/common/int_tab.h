@@ -23,6 +23,7 @@
 #ifndef SOCLIB_INT_TAB_H_
 #define SOCLIB_INT_TAB_H_
 
+#include <vector>
 #include "common/exception.h"
 
 namespace soclib { namespace common {
