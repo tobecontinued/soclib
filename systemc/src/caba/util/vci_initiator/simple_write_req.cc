@@ -67,7 +67,7 @@ tmpl(bool)::putCmd( VciInitiator<vci_param> &p_vci, uint32_t id ) const
     const uint32_t vci_addr = (base_addr+cmd_ptr)&~3;
     const uint32_t delta = vci_addr-base_addr;
 
-    for ( uint32_t i=vci_param::B-1; i>=0; --i ) {
+    for ( int i=vci_param::B-1; i>=0; --i ) {
         const uint32_t addr = vci_addr+i;
         data <<= 8;
         be <<= 1;
