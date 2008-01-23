@@ -25,20 +25,19 @@
  * Authors: Franck Vedrine <franck.vedrine@cea.fr>, 2008
  */
 
-#ifndef SOCLIB_CABA_PVDC_BASIC_FILTERH
-#define SOCLIB_CABA_PVDC_BASIC_FILTERH
+#ifndef SOCLIB_CABA_PVDC_ADVANCED_FILTERH
+#define SOCLIB_CABA_PVDC_ADVANCED_FILTERH
 
 #include "caba/util/base_module.h"
 #include "caba/interface/vci_initiator.h"
 #include "caba/interface/vci_target.h"
 
-#include <list>
 #include <set>
 
 namespace soclib { namespace caba {
 
 template <typename vci_param>
-class BasicVciFilter : public soclib::caba::BaseModule {
+class AdvancedVciFilter : public soclib::caba::BaseModule {
   private:
    std::ostream* plog_file;
    bool fDefaultMode;
@@ -59,20 +58,31 @@ class BasicVciFilter : public soclib::caba::BaseModule {
       sc_in<typename vci_param::wrap_t>    wrap;
       sc_in<typename vci_param::ack_t>     rspack;
 
+      // sc_in<typename vci_param::defd_t>    defd;
+      // sc_in<typename vci_param::wrplen_t>  wrplen;
+      sc_in<typename vci_param::srcid_t>   srcid;
+      sc_in<typename vci_param::trdid_t>   trdid;
+      sc_in<typename vci_param::pktid_t>   pktid;
+
       sc_out<typename vci_param::ack_t>    cmdack;
       sc_out<typename vci_param::val_t>    rspval;
    	sc_out<typename vci_param::data_t>   rdata;
       sc_out<typename vci_param::eop_t>    reop;
    	sc_out<typename vci_param::rerror_t> rerror;
+      
+      sc_out<typename vci_param::srcid_t>  rsrcid;
+      sc_out<typename vci_param::trdid_t>  rtrdid;
+      sc_out<typename vci_param::pktid_t>  rpktid;
 
 #define __ren(x) x((name+"_in_" #x).c_str())
       In(const std::string &name)
          :  __ren(cmdval), __ren(address), __ren(be), __ren(cfixed), __ren(clen), __ren(cmd),
             __ren(contig), __ren(wdata), __ren(eop), __ren(cons), __ren(plen), __ren(wrap),
-            __ren(rspack),
+            __ren(rspack), __ren(srcid), __ren(trdid), __ren(pktid),
 #undef __ren
 #define __ren(x) x((name+"_out_" #x).c_str())
-           __ren(cmdack), __ren(rspval), __ren(rdata), __ren(reop), __ren(rerror) {}
+           __ren(cmdack), __ren(rspval), __ren(rdata), __ren(reop), __ren(rerror), __ren(rsrcid),
+           __ren(rtrdid), __ren(rpktid) {}
 #undef __ren
 
       void operator()(VciSignals<vci_param> &sig)
@@ -90,11 +100,19 @@ class BasicVciFilter : public soclib::caba::BaseModule {
             wrap    (sig.wrap);
             rspack  (sig.rspack);
             
+            srcid   (sig.srcid);
+            trdid   (sig.trdid);
+            pktid   (sig.pktid);
+            
             cmdack  (sig.cmdack);
             rspval  (sig.rspval);
             rdata   (sig.rdata);
             reop    (sig.reop);
             rerror  (sig.rerror);
+
+            rsrcid  (sig.rsrcid);
+            rtrdid  (sig.rtrdid);
+            rpktid  (sig.rpktid);
          }
 
 	   void operator()(VciInitiator<vci_param> &ports) // To see : create a VciSignals between the ports
@@ -112,11 +130,19 @@ class BasicVciFilter : public soclib::caba::BaseModule {
             wrap    (ports.wrap);
             rspack  (ports.rspack);
             
+            srcid   (ports.srcid);
+            trdid   (ports.trdid);
+            pktid   (ports.pktid);
+            
             cmdack  (ports.cmdack);
             rspval  (ports.rspval);
             rdata   (ports.rdata);
             reop    (ports.reop);
             rerror  (ports.rerror);
+
+            rsrcid  (ports.rsrcid);
+            rtrdid  (ports.rtrdid);
+            rpktid  (ports.rpktid);
          }
    };
 
@@ -126,6 +152,10 @@ class BasicVciFilter : public soclib::caba::BaseModule {
    	sc_in<typename vci_param::data_t>    rdata;
       sc_in<typename vci_param::eop_t>     reop;
    	sc_in<typename vci_param::rerror_t>  rerror;
+      
+      sc_in<typename vci_param::srcid_t>   rsrcid;
+      sc_in<typename vci_param::trdid_t>   rtrdid;
+      sc_in<typename vci_param::pktid_t>   rpktid;
       
       sc_out<typename vci_param::val_t>    cmdval;
       sc_out<typename vci_param::addr_t>   address;
@@ -141,14 +171,19 @@ class BasicVciFilter : public soclib::caba::BaseModule {
       sc_out<typename vci_param::wrap_t>   wrap;
       sc_out<typename vci_param::ack_t>    rspack;
 
+      sc_out<typename vci_param::srcid_t>  srcid;
+      sc_out<typename vci_param::trdid_t>  trdid;
+      sc_out<typename vci_param::pktid_t>  pktid;
+
       Out(const std::string &name)
 #define __ren(x) x((name+"_in_" #x).c_str())
          :  __ren(cmdack), __ren(rspval), __ren(rdata), __ren(reop), __ren(rerror),
+            __ren(rsrcid), __ren(rtrdid), __ren(rpktid),
 #undef __ren
 #define __ren(x) x((name+"_out_" #x).c_str())
             __ren(cmdval), __ren(address), __ren(be), __ren(cfixed), __ren(clen), __ren(cmd),
             __ren(contig), __ren(wdata), __ren(eop), __ren(cons), __ren(plen), __ren(wrap),
-            __ren(rspack) {}
+            __ren(rspack), __ren(srcid), __ren(trdid), __ren(pktid) {}
 #undef __ren
 
       void operator()(VciSignals<vci_param> &sig)
@@ -157,6 +192,10 @@ class BasicVciFilter : public soclib::caba::BaseModule {
             rdata   (sig.rdata);
             reop    (sig.reop);
             rerror  (sig.rerror);
+
+            rsrcid  (sig.rsrcid);
+            rtrdid  (sig.rtrdid);
+            rpktid  (sig.rpktid);
 
             cmdval  (sig.cmdval);
             address (sig.address);
@@ -171,6 +210,10 @@ class BasicVciFilter : public soclib::caba::BaseModule {
             plen    (sig.plen);
             wrap    (sig.wrap);
             rspack  (sig.rspack);
+
+            srcid   (sig.srcid);
+            trdid   (sig.trdid);
+            pktid   (sig.pktid);
          }
 
       void operator()(VciTarget<vci_param> &ports)
@@ -179,6 +222,10 @@ class BasicVciFilter : public soclib::caba::BaseModule {
             rdata   (ports.rdata);
             reop    (ports.reop);
             rerror  (ports.rerror);
+
+            rsrcid  (ports.rsrcid);
+            rtrdid  (ports.rtrdid);
+            rpktid  (ports.rpktid);
 
             cmdval  (ports.cmdval);
             address (ports.address);
@@ -193,6 +240,10 @@ class BasicVciFilter : public soclib::caba::BaseModule {
             plen    (ports.plen);
             wrap    (ports.wrap);
             rspack  (ports.rspack);
+
+            srcid   (ports.srcid);
+            trdid   (ports.trdid);
+            pktid   (ports.pktid);
          }
    };
 
@@ -234,54 +285,76 @@ class BasicVciFilter : public soclib::caba::BaseModule {
       typename vci_param::addr_t address;
       typename vci_param::contig_t contig;
       typename vci_param::plen_t plen;
-      int uLength;
+      typename vci_param::srcid_t srcid;
+      typename vci_param::trdid_t trdid;
+      typename vci_param::pktid_t pktid;
       
+      Packet(const Out& out)
+         :  cmd(0), address(0), contig(0), plen(0),
+            srcid(out.rsrcid), trdid(out.rtrdid), pktid(out.rpktid) {}
      public:
       Packet(const In& in)
-         :  cmd(in.cmd), address(in.address), contig(in.contig), plen(in.plen), uLength(0) {}
+         :  cmd(in.cmd), address(in.address), contig(in.contig), plen(in.plen),
+            srcid(in.srcid), trdid(in.trdid), pktid(in.pktid) {}
       Packet(const Packet& source)
          :  cmd(source.cmd), address(source.address), contig(source.contig), plen(source.plen),
-            uLength(source.uLength) {}
-      int& length() { return uLength; }
+            srcid(source.srcid), trdid(source.trdid), pktid(source.pktid) {}
+
+      struct Less : public std::less<Packet*> {
+        public:
+         bool operator()(Packet* ppFst, Packet* ppSnd) const
+            {  return (ppFst->pktid < ppSnd->pktid)
+                  || ((ppFst->pktid == ppSnd->pktid) && (ppFst->srcid < ppSnd->srcid));
+            }
+      };
    };
    class PacketsList {
      private:
-      std::list<Packet*> lpContent;
+      typedef std::set<Packet*, typename Packet::Less> Packets;
+      Packets lpContent;
 
      public:
       PacketsList() {}
       PacketsList(const PacketsList& source)
-         {  for (typename std::list<Packet*>::const_iterator iter = source.lpContent.begin();
+         {  for (typename Packets::const_iterator iter = source.lpContent.begin();
                   iter != source.lpContent.end(); ++iter)
                if (*iter) lpContent.push_back(new Packet(**iter));
          }
       ~PacketsList()
-         {  for (typename std::list<Packet*>::iterator iter = lpContent.begin(); iter != lpContent.end(); ++iter)
+         {  for (typename Packets::iterator iter = lpContent.begin(); iter != lpContent.end(); ++iter)
                if (*iter) delete *iter;
          }
       int count() const { return lpContent.size(); }
-      void add(const Packet& packet) { lpContent.push_back(new Packet(packet)); }
-      Packet& last() const { return *lpContent.front(); }
-      void pop()
-         {  Packet* last = lpContent.front();
-            lpContent.pop_front();
-            if (last) delete last;
-         } 
+      void add(const In& in) { lpContent.insert(new Packet(in)); }
+      Packet* remove(const Out& out)
+         {  Packet pLocate(out);
+            typename std::set<Packet*, typename Packet::Less>::iterator iter = lpContent.find(&pLocate);
+            Packet* pResult = NULL;
+            if (iter != lpContent.end()) {
+               pResult = *iter;
+               lpContent.erase(iter);
+            };
+            return pResult;
+         }
    };
 
    class AddressInterval {
      private:
       typename vci_param::addr_t aMin, aMax;
+      typename vci_param::srcid_t src_id;
 
      public:
-      AddressInterval() : aMin(0), aMax(0) {}
-      AddressInterval(typename vci_param::addr_t aMinSource)
-         :  aMin(aMinSource), aMax(aMinSource + vci_param::B) {}
-      AddressInterval(typename vci_param::addr_t aMinSource, int plen)
-         :  aMin(aMinSource), aMax(aMinSource + plen * vci_param::B) {}
+      AddressInterval(typename vci_param::srcid_t src_idSource)
+         :  aMin(0), aMax(0), src_id(src_idSource) {}
+      AddressInterval(typename vci_param::srcid_t src_idSource,
+            typename vci_param::addr_t aMinSource)
+         :  aMin(aMinSource), aMax(aMinSource + vci_param::B), src_id(src_idSource) {}
+      AddressInterval(typename vci_param::srcid_t src_idSource,
+            typename vci_param::addr_t aMinSource, int plen)
+         :  aMin(aMinSource), aMax(aMinSource + plen * vci_param::B), src_id(src_idSource) {}
 
       AddressInterval& operator=(const AddressInterval& source)
-         {  aMin = source.aMin; aMax = source.aMax; return *this; }
+         {  aMin = source.aMin; aMax = source.aMax; src_id = source.src_id; return *this; }
       bool operator<(const AddressInterval& source) const
          {  return aMax < source.aMin; }
       bool operator>(const AddressInterval& source) const
@@ -295,23 +368,28 @@ class BasicVciFilter : public soclib::caba::BaseModule {
                aMax = source.aMax;
          }
       bool isValid() const { return aMax > aMin; }
-      bool remove(const AddressInterval& source, AddressInterval*& paiOther, bool& fError)
+      bool remove(AdvancedVciFilter& filter, const AddressInterval& source, AddressInterval*& paiOther, bool& fError)
          {  fError = source.aMin < aMin || source.aMax > aMax;
             bool fResult = (source.aMin <= aMin && source.aMax >= aMax);
             if (!fResult) {
                if (aMin < source.aMin) {
+                  filter.assume(src_id == source.src_id);
                   if (aMax > source.aMax) {
-                     paiOther = new AddressInterval(source.aMax, aMax);
+                     paiOther = new AddressInterval(src_id, source.aMax, aMax);
                      aMax = source.aMin;
                   }
                   else // aMax == source.aMax
                      aMax = source.aMin;
                }
                else { // aMin == source.aMin
-                  if (aMax > source.aMax)
+                  if (aMax > source.aMax) {
+                     filter.assume(src_id == source.src_id);
                      aMin = source.aMax;
+                  };
                };
-            };
+            }
+            else
+               filter.assume(src_id == source.src_id);
             return fResult;
          }
    };
@@ -323,10 +401,10 @@ class BasicVciFilter : public soclib::caba::BaseModule {
       LockedAddress() {}
       LockedAddress(const LockedAddress& source) : saiAddresses(source.saiAddresses) {}
 
-      void add(typename vci_param::addr_t aAddress);
-      void add(typename vci_param::addr_t aAddress, int plen);
-      void remove(typename vci_param::addr_t aAddress);
-      void remove(typename vci_param::addr_t aAddress, int plen);
+      void add(typename vci_param::srcid_t srcid, typename vci_param::addr_t aAddress);
+      void add(typename vci_param::srcid_t srcid, typename vci_param::addr_t aAddress, int plen);
+      void remove(AdvancedVciFilter& filter, typename vci_param::srcid_t srcid, typename vci_param::addr_t aAddress);
+      void remove(AdvancedVciFilter& filter, typename vci_param::srcid_t srcid, typename vci_param::addr_t aAddress, int plen);
       int count() const { return saiAddresses.size(); }
    };
 
@@ -365,10 +443,10 @@ class BasicVciFilter : public soclib::caba::BaseModule {
    typename vci_param::rerror_t  rerrorPrevious;
 
   protected:
-   SC_HAS_PROCESS(BasicVciFilter);
+   SC_HAS_PROCESS(AdvancedVciFilter);
 
   public:
-   BasicVciFilter(sc_module_name insname)
+   AdvancedVciFilter(sc_module_name insname)
       :  soclib::caba::BaseModule(insname), plog_file(NULL), fDefaultMode(true),
          in((const char*) insname), out((const char*) insname),
          sRequestState(SIdle), sResponseState(SIdle), uReset(0), packetAddress(0),
@@ -443,7 +521,7 @@ class BasicVciFilter : public soclib::caba::BaseModule {
 #include <systemc.h>
 #include <fstream>
 
-#include "caba/verification/bvci_filter.h"
+#include "caba/verification/avci_filter.h"
 
 // A component with a vci iniator
 template<typename vci_param>
@@ -474,7 +552,7 @@ int sc_main(int ac, char *av[]) {
 
   std::ofstream log_file("verif.log");
   soclib::caba::VciSignals<MyVciParams> vciSignalsVerif("VciSignals_verif");
-  soclib::caba::BasicVciFilter<MyVciParams> vciFilter("VciFilter_verif");
+  soclib::caba::AdvancedVciFilter<MyVciParams> vciFilter("VciFilter_verif");
   vciFilter.p_clk(clk);
   vciFilter.setLogOut(log_file);
   // vciFilter.activateFilter();
@@ -492,5 +570,5 @@ int sc_main(int ac, char *av[]) {
 
 */
 
-#endif // SOCLIB_CABA_PVDC_BASIC_FILTERH
+#endif // SOCLIB_CABA_PVDC_ADVANCED_FILTERH
 

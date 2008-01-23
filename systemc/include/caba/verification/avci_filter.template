@@ -25,16 +25,16 @@
  * Authors: Franck Vedrine <franck.vedrine@cea.fr>, 2008
  */
 
-#ifndef SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
-#define SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
+#ifndef SOCLIB_CABA_PVDC_ADVANCED_FILTERTEMPLATE
+#define SOCLIB_CABA_PVDC_ADVANCED_FILTERTEMPLATE
 
-#include "caba/verification/bvci_filter.h"
+#include "caba/verification/avci_filter.h"
 
 namespace soclib { namespace caba {
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::testHandshake() { // see p 41, 42, verified on the waveforms
+AdvancedVciFilter<vci_param>::testHandshake() { // see p 41, 42, verified on the waveforms
    switch (sRequestState) {
       case SIdle:
          if (in.cmdval) {
@@ -124,8 +124,9 @@ BasicVciFilter<vci_param>::testHandshake() { // see p 41, 42, verified on the wa
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::LockedAddress::add(typename vci_param::addr_t aAddress) {
-  AddressInterval aiInterval(aAddress);
+AdvancedVciFilter<vci_param>::LockedAddress::add(typename vci_param::srcid_t srcid,
+      typename vci_param::addr_t aAddress) {
+  AddressInterval aiInterval(srcid, aAddress);
    typename std::set<AddressInterval>::iterator iter = saiAddresses.find(aiInterval);
    if (iter == saiAddresses.end())
       saiAddresses.insert(iter, aiInterval);
@@ -152,8 +153,9 @@ BasicVciFilter<vci_param>::LockedAddress::add(typename vci_param::addr_t aAddres
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::LockedAddress::add(typename vci_param::addr_t aAddress, int plen) {
-   AddressInterval aiInterval(aAddress, plen);
+AdvancedVciFilter<vci_param>::LockedAddress::add(typename vci_param::srcid_t srcid,
+      typename vci_param::addr_t aAddress, int plen) {
+   AddressInterval aiInterval(srcid, aAddress, plen);
    typename std::set<AddressInterval>::iterator iter = saiAddresses.find(aiInterval);
    if (iter == saiAddresses.end())
       saiAddresses.insert(iter, aiInterval);
@@ -180,13 +182,14 @@ BasicVciFilter<vci_param>::LockedAddress::add(typename vci_param::addr_t aAddres
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::LockedAddress::remove(typename vci_param::addr_t aAddress) {
-   AddressInterval aiInterval(aAddress);
+AdvancedVciFilter<vci_param>::LockedAddress::remove(AdvancedVciFilter& filter,
+      typename vci_param::srcid_t srcid, typename vci_param::addr_t aAddress) {
+   AddressInterval aiInterval(srcid, aAddress);
    typename std::set<AddressInterval>::iterator iter = saiAddresses.find(aiInterval);
    if (iter != saiAddresses.end()) {
       AddressInterval* paiOther = NULL;
       bool fExtern = false;
-      bool fDelete = const_cast<AddressInterval&>(*iter).remove(aiInterval, paiOther, fExtern);
+      bool fDelete = const_cast<AddressInterval&>(*iter).remove(filter, aiInterval, paiOther, fExtern);
       if (fDelete)
          saiAddresses.erase(iter);
       else if (paiOther) {
@@ -198,13 +201,14 @@ BasicVciFilter<vci_param>::LockedAddress::remove(typename vci_param::addr_t aAdd
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::LockedAddress::remove(typename vci_param::addr_t aAddress, int plen) {
-   AddressInterval aiInterval(aAddress, plen);
+AdvancedVciFilter<vci_param>::LockedAddress::remove(AdvancedVciFilter& filter,
+      typename vci_param::srcid_t srcid, typename vci_param::addr_t aAddress, int plen) {
+   AddressInterval aiInterval(srcid, aAddress, plen);
    typename std::set<AddressInterval>::iterator iter = saiAddresses.find(aiInterval);
    if (iter != saiAddresses.end()) {
       AddressInterval* paiOther = NULL;
       bool fExtern = false;
-      bool fDelete = const_cast<AddressInterval&>(*iter).remove(aiInterval, paiOther, fExtern);
+      bool fDelete = const_cast<AddressInterval&>(*iter).remove(filter, aiInterval, paiOther, fExtern);
       if (fDelete)
          saiAddresses.erase(iter);
       else if (paiOther) {
@@ -216,7 +220,7 @@ BasicVciFilter<vci_param>::LockedAddress::remove(typename vci_param::addr_t aAdd
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::acquireRequestCell() {
+AdvancedVciFilter<vci_param>::acquireRequestCell() {
    if (uRequestCells == 0) {
       if (packetClen > 0) {
          ++packetClen;
@@ -239,12 +243,12 @@ BasicVciFilter<vci_param>::acquireRequestCell() {
       packetWrap = in.wrap;
       assume(!packetWrap || (packetContig && ((packetPlen-1 & packetPlen) == 0)));
       packetCons = in.cons;
-      plPendingPackets.add(Packet(in));
+      plPendingPackets.add(in);
       if (packetCmd == 3) { // Locked read
          if (packetContig)
-            laLockedAddresses.add(packetAddress, packetPlen);
+            laLockedAddresses.add(in.srcid, packetAddress, packetPlen);
          else
-            laLockedAddresses.add(packetAddress);
+            laLockedAddresses.add(in.srcid, packetAddress);
       };
    }
    else {
@@ -261,7 +265,6 @@ BasicVciFilter<vci_param>::acquireRequestCell() {
       };
    };
    ++uRequestCells;
-   ++plPendingPackets.last().length();
    if (in.eop) {
       assume(!packetPlen || packetPlen == uRequestCells);
       uRequestCells = 0;
@@ -271,27 +274,26 @@ BasicVciFilter<vci_param>::acquireRequestCell() {
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::acquireResponseCell() {
+AdvancedVciFilter<vci_param>::acquireResponseCell() {
    if (uResponseCells == 0) {
       assume(plPendingPackets.count() > 0);
-      const Packet& packet = plPendingPackets.last();
-      if (packet.cmd == 2) { // Write
-         if (packet.contig)
-            laLockedAddresses.remove(packet.address, packet.plen);
-         else
-            laLockedAddresses.remove(packet.address);
+      {  Packet* pPacket = plPendingPackets.remove(out);
+         assume(pPacket);
+         if (pPacket->cmd == 2) { // Write
+            if (pPacket->contig)
+               laLockedAddresses.remove(*this, out.rsrcid, pPacket->address, pPacket->plen);
+            else
+               laLockedAddresses.remove(*this, out.rsrcid, pPacket->address);
+         };
+         if (pPacket) delete pPacket;
       };
    };
    ++uResponseCells;
-   --plPendingPackets.last().length();
-   if (out.reop) {
-      assume(plPendingPackets.last().length() == 0);
-      plPendingPackets.pop();
+   if (out.reop)
       uResponseCells = 0;
-   };
 }
 
 }} // end of namespace soclib::caba
 
-#endif // SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
+#endif // SOCLIB_CABA_PVDC_ADVANCED_FILTERTEMPLATE
 

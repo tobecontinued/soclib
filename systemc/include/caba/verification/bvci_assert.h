@@ -8,7 +8,7 @@
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
  * 
- * SoCLib is distributed in the hope that it will be useful, but
+ * SoCLib is distributed observedSignals the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -25,8 +25,8 @@
  * Authors: Franck Vedrine <franck.vedrine@cea.fr>, 2008
  */
 
-#ifndef SOCLIB_CABA_PVDC_BASIC_FILTERH
-#define SOCLIB_CABA_PVDC_BASIC_FILTERH
+#ifndef SOCLIB_CABA_PVDC_BASIC_ASSERTH
+#define SOCLIB_CABA_PVDC_BASIC_ASSERTH
 
 #include "caba/util/base_module.h"
 #include "caba/interface/vci_initiator.h"
@@ -38,168 +38,15 @@
 namespace soclib { namespace caba {
 
 template <typename vci_param>
-class BasicVciFilter : public soclib::caba::BaseModule {
+class BasicVciAssert : public soclib::caba::BaseModule {
   private:
    std::ostream* plog_file;
    bool fDefaultMode;
 
   public:
-   struct In {
-      sc_in<typename vci_param::val_t>     cmdval;
-      sc_in<typename vci_param::addr_t>    address;
-      sc_in<typename vci_param::be_t>      be;
-      sc_in<typename vci_param::cfixed_t>  cfixed;
-      sc_in<typename vci_param::clen_t>    clen;
-      sc_in<typename vci_param::cmd_t>     cmd;
-      sc_in<typename vci_param::contig_t>  contig;
-      sc_in<typename vci_param::data_t>    wdata;
-      sc_in<typename vci_param::eop_t>     eop;
-      sc_in<typename vci_param::const_t>   cons;
-      sc_in<typename vci_param::plen_t>    plen;
-      sc_in<typename vci_param::wrap_t>    wrap;
-      sc_in<typename vci_param::ack_t>     rspack;
-
-      sc_out<typename vci_param::ack_t>    cmdack;
-      sc_out<typename vci_param::val_t>    rspval;
-   	sc_out<typename vci_param::data_t>   rdata;
-      sc_out<typename vci_param::eop_t>    reop;
-   	sc_out<typename vci_param::rerror_t> rerror;
-
-#define __ren(x) x((name+"_in_" #x).c_str())
-      In(const std::string &name)
-         :  __ren(cmdval), __ren(address), __ren(be), __ren(cfixed), __ren(clen), __ren(cmd),
-            __ren(contig), __ren(wdata), __ren(eop), __ren(cons), __ren(plen), __ren(wrap),
-            __ren(rspack),
-#undef __ren
-#define __ren(x) x((name+"_out_" #x).c_str())
-           __ren(cmdack), __ren(rspval), __ren(rdata), __ren(reop), __ren(rerror) {}
-#undef __ren
-
-      void operator()(VciSignals<vci_param> &sig)
-         {  cmdval  (sig.cmdval);
-            address (sig.address);
-            be      (sig.be);
-            cfixed  (sig.cfixed);
-            clen    (sig.clen);
-            cmd     (sig.cmd);
-            contig  (sig.contig);
-            wdata   (sig.wdata);
-            eop     (sig.eop);
-            cons    (sig.cons);
-            plen    (sig.plen);
-            wrap    (sig.wrap);
-            rspack  (sig.rspack);
-            
-            cmdack  (sig.cmdack);
-            rspval  (sig.rspval);
-            rdata   (sig.rdata);
-            reop    (sig.reop);
-            rerror  (sig.rerror);
-         }
-
-	   void operator()(VciInitiator<vci_param> &ports) // To see : create a VciSignals between the ports
-         {  cmdval  (ports.cmdval);
-            address (ports.address);
-            be      (ports.be);
-            cfixed  (ports.cfixed);
-            clen    (ports.clen);
-            cmd     (ports.cmd);
-            contig  (ports.contig);
-            wdata   (ports.wdata);
-            eop     (ports.eop);
-            cons    (ports.cons);
-            plen    (ports.plen);
-            wrap    (ports.wrap);
-            rspack  (ports.rspack);
-            
-            cmdack  (ports.cmdack);
-            rspval  (ports.rspval);
-            rdata   (ports.rdata);
-            reop    (ports.reop);
-            rerror  (ports.rerror);
-         }
-   };
-
-   struct Out {
-      sc_in<typename vci_param::ack_t>     cmdack;
-      sc_in<typename vci_param::val_t>     rspval;
-   	sc_in<typename vci_param::data_t>    rdata;
-      sc_in<typename vci_param::eop_t>     reop;
-   	sc_in<typename vci_param::rerror_t>  rerror;
-      
-      sc_out<typename vci_param::val_t>    cmdval;
-      sc_out<typename vci_param::addr_t>   address;
-      sc_out<typename vci_param::be_t>     be;
-      sc_out<typename vci_param::cfixed_t> cfixed;
-      sc_out<typename vci_param::clen_t>   clen;
-      sc_out<typename vci_param::cmd_t>    cmd;
-      sc_out<typename vci_param::contig_t> contig;
-      sc_out<typename vci_param::data_t>   wdata;
-      sc_out<typename vci_param::eop_t>    eop;
-      sc_out<typename vci_param::const_t>  cons;
-      sc_out<typename vci_param::plen_t>   plen;
-      sc_out<typename vci_param::wrap_t>   wrap;
-      sc_out<typename vci_param::ack_t>    rspack;
-
-      Out(const std::string &name)
-#define __ren(x) x((name+"_in_" #x).c_str())
-         :  __ren(cmdack), __ren(rspval), __ren(rdata), __ren(reop), __ren(rerror),
-#undef __ren
-#define __ren(x) x((name+"_out_" #x).c_str())
-            __ren(cmdval), __ren(address), __ren(be), __ren(cfixed), __ren(clen), __ren(cmd),
-            __ren(contig), __ren(wdata), __ren(eop), __ren(cons), __ren(plen), __ren(wrap),
-            __ren(rspack) {}
-#undef __ren
-
-      void operator()(VciSignals<vci_param> &sig)
-         {  cmdack  (sig.cmdack);
-            rspval  (sig.rspval);
-            rdata   (sig.rdata);
-            reop    (sig.reop);
-            rerror  (sig.rerror);
-
-            cmdval  (sig.cmdval);
-            address (sig.address);
-            be      (sig.be);
-            cfixed  (sig.cfixed);
-            clen    (sig.clen);
-            cmd     (sig.cmd);
-            contig  (sig.contig);
-            wdata   (sig.wdata);
-            eop     (sig.eop);
-            cons    (sig.cons);
-            plen    (sig.plen);
-            wrap    (sig.wrap);
-            rspack  (sig.rspack);
-         }
-
-      void operator()(VciTarget<vci_param> &ports)
-         {  cmdack  (ports.cmdack);
-            rspval  (ports.rspval);
-            rdata   (ports.rdata);
-            reop    (ports.reop);
-            rerror  (ports.rerror);
-
-            cmdval  (ports.cmdval);
-            address (ports.address);
-            be      (ports.be);
-            cfixed  (ports.cfixed);
-            clen    (ports.clen);
-            cmd     (ports.cmd);
-            contig  (ports.contig);
-            wdata   (ports.wdata);
-            eop     (ports.eop);
-            cons    (ports.cons);
-            plen    (ports.plen);
-            wrap    (ports.wrap);
-            rspack  (ports.rspack);
-         }
-   };
-
+   VciSignals<vci_param>& observedSignals;
    sc_in<bool> p_clk;
    sc_in<bool> resetn;
-   In in;
-   Out out;
 
   private:
    void assume(bool fCondition) const
@@ -214,13 +61,13 @@ class BasicVciFilter : public soclib::caba::BaseModule {
 
    int uReset;
    void setReset(int uResetSource = 8)
-      {  if (!out.rspack && !in.cmdval)
+      {  if (!observedSignals.rspack && !observedSignals.cmdval)
             uReset = 0;
          else
             uReset = uResetSource;
       }
    void testReset() // see p.31
-      {  if (!in.cmdval && !out.cmdack && !out.rspval && !in.rspack)
+      {  if (!observedSignals.cmdval && !observedSignals.cmdack && !observedSignals.rspval && !observedSignals.rspack)
             uReset = 0;
          else {
             assume(uReset > 1);
@@ -237,8 +84,8 @@ class BasicVciFilter : public soclib::caba::BaseModule {
       int uLength;
       
      public:
-      Packet(const In& in)
-         :  cmd(in.cmd), address(in.address), contig(in.contig), plen(in.plen), uLength(0) {}
+      Packet(const VciSignals<vci_param>& observedSignals)
+         :  cmd(observedSignals.cmd), address(observedSignals.address), contig(observedSignals.contig), plen(observedSignals.plen), uLength(0) {}
       Packet(const Packet& source)
          :  cmd(source.cmd), address(source.address), contig(source.contig), plen(source.plen),
             uLength(source.uLength) {}
@@ -365,20 +212,15 @@ class BasicVciFilter : public soclib::caba::BaseModule {
    typename vci_param::rerror_t  rerrorPrevious;
 
   protected:
-   SC_HAS_PROCESS(BasicVciFilter);
+   SC_HAS_PROCESS(BasicVciAssert);
 
   public:
-   BasicVciFilter(sc_module_name insname)
+   BasicVciAssert(VciSignals<vci_param>& observedSignalsReference, sc_module_name insname)
       :  soclib::caba::BaseModule(insname), plog_file(NULL), fDefaultMode(true),
-         in((const char*) insname), out((const char*) insname),
+         observedSignals(observedSignalsReference),
          sRequestState(SIdle), sResponseState(SIdle), uReset(0), packetAddress(0),
          uRequestCells(0), uResponseCells(0), cmdvalPrevious(0)
-      {  SC_METHOD(transition);
-         dont_initialize();
-         sensitive << in.cmdval << in.address << in.be << in.cfixed << in.clen << in.cmd
-            << in.contig << in.wdata << in.eop << in.cons << in.plen << in.wrap << in.rspack
-            << out.cmdack << out.rspval << out.rdata << out.reop << out.rerror;
-         SC_METHOD(reset);
+      {  SC_METHOD(reset);
          dont_initialize();
          sensitive << resetn.pos();
          
@@ -388,47 +230,27 @@ class BasicVciFilter : public soclib::caba::BaseModule {
       }
    void reset()
       {  setReset(); }
-   void transition()
-      {  out.cmdval = in.cmdval;
-         out.address = in.address;
-         out.be = in.be;
-         out.cfixed = in.cfixed;
-         out.clen = in.clen;
-         out.cmd = in.cmd;
-         out.contig = in.contig;
-         out.wdata = in.wdata;
-         out.eop = in.eop;
-         out.cons = in.cons;
-         out.plen = in.plen;
-         out.wrap = in.wrap;
-         out.rspack = in.rspack;
-         in.cmdack = out.cmdack;
-         in.rspval = out.rspval;
-         in.rdata = out.rdata;
-         in.reop = out.reop;
-         in.rerror = out.rerror;
-      }
    void filter() 
       {  testHandshake();
          if (uReset > 0) testReset();
 
-         cmdvalPrevious = in.cmdval;
-         addressPrevious = in.address;
-         bePrevious = in.be;
-         cfixedPrevious = in.cfixed;
-         clenPrevious = in.clen;
-         cmdPrevious = in.cmd;
-         contigPrevious = in.contig;
-         wdataPrevious = in.wdata;
-         eopPrevious = in.eop;
-         consPrevious = in.cons;
-         plenPrevious = in.plen;
-         wrapPrevious = in.wrap;
+         cmdvalPrevious = observedSignals.cmdval;
+         addressPrevious = observedSignals.address;
+         bePrevious = observedSignals.be;
+         cfixedPrevious = observedSignals.cfixed;
+         clenPrevious = observedSignals.clen;
+         cmdPrevious = observedSignals.cmd;
+         contigPrevious = observedSignals.contig;
+         wdataPrevious = observedSignals.wdata;
+         eopPrevious = observedSignals.eop;
+         consPrevious = observedSignals.cons;
+         plenPrevious = observedSignals.plen;
+         wrapPrevious = observedSignals.wrap;
 
-         rspvalPrevious = out.rspval;
-         rdataPrevious = out.rdata;
-         reopPrevious = out.reop;
-         rerrorPrevious = out.rerror;
+         rspvalPrevious = observedSignals.rspval;
+         rdataPrevious = observedSignals.rdata;
+         reopPrevious = observedSignals.reop;
+         rerrorPrevious = observedSignals.rerror;
       }
    bool isFinished() const { return plPendingPackets.count() == 0 && laLockedAddresses.count() == 0; }
    
@@ -443,7 +265,7 @@ class BasicVciFilter : public soclib::caba::BaseModule {
 #include <systemc.h>
 #include <fstream>
 
-#include "caba/verification/bvci_filter.h"
+#include "caba/verification/bvci_assert.h"
 
 // A component with a vci iniator
 template<typename vci_param>
@@ -473,18 +295,14 @@ int sc_main(int ac, char *av[]) {
   soclib::caba::VciSignals<MyVciParams> vciSignals("VciSignals");
 
   std::ofstream log_file("verif.log");
-  soclib::caba::VciSignals<MyVciParams> vciSignalsVerif("VciSignals_verif");
-  soclib::caba::BasicVciFilter<MyVciParams> vciFilter("VciFilter_verif");
-  vciFilter.p_clk(clk);
-  vciFilter.setLogOut(log_file);
-  // vciFilter.activateFilter();
-  vciFilter.in(vciSignals);
-  vciFilter.out(vciSignalsVerif);
+  soclib::caba::BasicVciAssert<MyVciParams> vciAssert(vciSignals, "VciAssert_verif");
+  vciAssert.p_clk(clk);
+  vciAssert.setLogOut(log_file);
   
   vciFst.p_clk(clk);
   vciFst.p_vci(vciSignals);
   vciSnd.p_clk(clk);
-  vciSnd.p_vci(vciSignalsVerif);
+  vciSnd.p_vci(vciSignals);
 
   sc_start(clk, -1);
   return 0;
@@ -492,5 +310,5 @@ int sc_main(int ac, char *av[]) {
 
 */
 
-#endif // SOCLIB_CABA_PVDC_BASIC_FILTERH
+#endif // SOCLIB_CABA_PVDC_BASIC_ASSERTH
 

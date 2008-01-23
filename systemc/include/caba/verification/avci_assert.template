@@ -8,7 +8,7 @@
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
  * 
- * SoCLib is distributed in the hope that it will be useful, but
+ * SoCLib is distributed observedSignals the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -25,56 +25,56 @@
  * Authors: Franck Vedrine <franck.vedrine@cea.fr>, 2008
  */
 
-#ifndef SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
-#define SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
+#ifndef SOCLIB_CABA_PVDC_ADVANCED_ASSERTTEMPLATE
+#define SOCLIB_CABA_PVDC_ADVANCED_ASSERTTEMPLATE
 
-#include "caba/verification/bvci_filter.h"
+#include "caba/verification/avci_assert.h"
 
 namespace soclib { namespace caba {
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::testHandshake() { // see p 41, 42, verified on the waveforms
+AdvancedVciAssert<vci_param>::testHandshake() { // see p 41, 42, verified on the waveforms
    switch (sRequestState) {
       case SIdle:
-         if (in.cmdval) {
+         if (observedSignals.cmdval) {
             acquireRequestCell();
-            if (out.cmdack)
+            if (observedSignals.cmdack)
                sRequestState = SSync;
             else
                sRequestState = SValid;
          }
-         else if (out.cmdack)
+         else if (observedSignals.cmdack)
             sRequestState = SDefault_Ack;
          break;
       case SValid:
-         assume(in.cmdval);
-         assume((in.address == addressPrevious) && (in.be == bePrevious)
-            && (in.cfixed == cfixedPrevious) && (in.clen == clenPrevious)
-            && (in.cmd == cmdPrevious) && (in.contig == contigPrevious)
-            && (in.wdata == wdataPrevious) && (in.eop == eopPrevious)
-            && (in.cons == consPrevious) && (in.plen == plenPrevious)
-            && (in.wrap == wrapPrevious));
-         if (out.cmdack)
+         assume(observedSignals.cmdval);
+         assume((observedSignals.address == addressPrevious) && (observedSignals.be == bePrevious)
+            && (observedSignals.cfixed == cfixedPrevious) && (observedSignals.clen == clenPrevious)
+            && (observedSignals.cmd == cmdPrevious) && (observedSignals.contig == contigPrevious)
+            && (observedSignals.wdata == wdataPrevious) && (observedSignals.eop == eopPrevious)
+            && (observedSignals.cons == consPrevious) && (observedSignals.plen == plenPrevious)
+            && (observedSignals.wrap == wrapPrevious));
+         if (observedSignals.cmdack)
             sRequestState = SSync;
          break;
       case SDefault_Ack:
-         assume(out.cmdack);
-         if (in.cmdval) {
+         assume(observedSignals.cmdack);
+         if (observedSignals.cmdval) {
             acquireRequestCell();
             sRequestState = SSync;
          };
          break;
       case SSync:
-         if (!in.cmdval) {
-            if (!out.cmdack)
+         if (!observedSignals.cmdval) {
+            if (!observedSignals.cmdack)
                sRequestState = SIdle;
             else
                sRequestState = SDefault_Ack;
          }
          else {
             acquireRequestCell();
-            if (!out.cmdack)
+            if (!observedSignals.cmdack)
                sRequestState = SValid;
          };
          break;
@@ -82,40 +82,40 @@ BasicVciFilter<vci_param>::testHandshake() { // see p 41, 42, verified on the wa
  
    switch (sResponseState) {
       case SIdle:
-         if (out.rspval) {
+         if (observedSignals.rspval) {
             acquireResponseCell();
-            if (in.rspack)
+            if (observedSignals.rspack)
                sResponseState = SSync;
             else
                sResponseState = SValid;
          }
-         else if (in.rspack)
+         else if (observedSignals.rspack)
             sResponseState = SDefault_Ack;
          break;
       case SValid:
-         assume(out.rspval);
-         assume((out.rdata == rdataPrevious) && (out.reop == reopPrevious)
-            && (out.rerror == rerrorPrevious));
-         if (in.rspack)
+         assume(observedSignals.rspval);
+         assume((observedSignals.rdata == rdataPrevious) && (observedSignals.reop == reopPrevious)
+            && (observedSignals.rerror == rerrorPrevious));
+         if (observedSignals.rspack)
             sResponseState = SSync;
          break;
       case SDefault_Ack:
-         assume(in.rspack);
-         if (out.rspval) {
+         assume(observedSignals.rspack);
+         if (observedSignals.rspval) {
             acquireResponseCell();
             sResponseState = SSync;
          };
          break;
       case SSync:
-         if (!out.rspval) {
-            if (!in.rspack)
+         if (!observedSignals.rspval) {
+            if (!observedSignals.rspack)
                sResponseState = SIdle;
             else
                sResponseState = SDefault_Ack;
          }
          else {
             acquireResponseCell();
-            if (!in.rspack)
+            if (!observedSignals.rspack)
                sResponseState = SValid;
          };
          break;
@@ -124,8 +124,9 @@ BasicVciFilter<vci_param>::testHandshake() { // see p 41, 42, verified on the wa
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::LockedAddress::add(typename vci_param::addr_t aAddress) {
-  AddressInterval aiInterval(aAddress);
+AdvancedVciAssert<vci_param>::LockedAddress::add(typename vci_param::srcid_t srcid,
+      typename vci_param::addr_t aAddress) {
+  AddressInterval aiInterval(srcid, aAddress);
    typename std::set<AddressInterval>::iterator iter = saiAddresses.find(aiInterval);
    if (iter == saiAddresses.end())
       saiAddresses.insert(iter, aiInterval);
@@ -152,8 +153,9 @@ BasicVciFilter<vci_param>::LockedAddress::add(typename vci_param::addr_t aAddres
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::LockedAddress::add(typename vci_param::addr_t aAddress, int plen) {
-   AddressInterval aiInterval(aAddress, plen);
+AdvancedVciAssert<vci_param>::LockedAddress::add(typename vci_param::srcid_t srcid,
+      typename vci_param::addr_t aAddress, int plen) {
+   AddressInterval aiInterval(srcid, aAddress, plen);
    typename std::set<AddressInterval>::iterator iter = saiAddresses.find(aiInterval);
    if (iter == saiAddresses.end())
       saiAddresses.insert(iter, aiInterval);
@@ -180,13 +182,14 @@ BasicVciFilter<vci_param>::LockedAddress::add(typename vci_param::addr_t aAddres
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::LockedAddress::remove(typename vci_param::addr_t aAddress) {
-   AddressInterval aiInterval(aAddress);
+AdvancedVciAssert<vci_param>::LockedAddress::remove(AdvancedVciAssert& filter,
+      typename vci_param::srcid_t srcid, typename vci_param::addr_t aAddress) {
+   AddressInterval aiInterval(srcid, aAddress);
    typename std::set<AddressInterval>::iterator iter = saiAddresses.find(aiInterval);
    if (iter != saiAddresses.end()) {
       AddressInterval* paiOther = NULL;
       bool fExtern = false;
-      bool fDelete = const_cast<AddressInterval&>(*iter).remove(aiInterval, paiOther, fExtern);
+      bool fDelete = const_cast<AddressInterval&>(*iter).remove(filter, aiInterval, paiOther, fExtern);
       if (fDelete)
          saiAddresses.erase(iter);
       else if (paiOther) {
@@ -198,13 +201,14 @@ BasicVciFilter<vci_param>::LockedAddress::remove(typename vci_param::addr_t aAdd
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::LockedAddress::remove(typename vci_param::addr_t aAddress, int plen) {
-   AddressInterval aiInterval(aAddress, plen);
+AdvancedVciAssert<vci_param>::LockedAddress::remove(AdvancedVciAssert& filter,
+      typename vci_param::srcid_t srcid, typename vci_param::addr_t aAddress, int plen) {
+   AddressInterval aiInterval(srcid, aAddress, plen);
    typename std::set<AddressInterval>::iterator iter = saiAddresses.find(aiInterval);
    if (iter != saiAddresses.end()) {
       AddressInterval* paiOther = NULL;
       bool fExtern = false;
-      bool fDelete = const_cast<AddressInterval&>(*iter).remove(aiInterval, paiOther, fExtern);
+      bool fDelete = const_cast<AddressInterval&>(*iter).remove(filter, aiInterval, paiOther, fExtern);
       if (fDelete)
          saiAddresses.erase(iter);
       else if (paiOther) {
@@ -216,53 +220,52 @@ BasicVciFilter<vci_param>::LockedAddress::remove(typename vci_param::addr_t aAdd
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::acquireRequestCell() {
+AdvancedVciAssert<vci_param>::acquireRequestCell() {
    if (uRequestCells == 0) {
       if (packetClen > 0) {
          ++packetClen;
-         assume(in.clen == packetClen && packetCmd == in.cmd && packetCfixed == in.cfixed);
+         assume(observedSignals.clen == packetClen && packetCmd == observedSignals.cmd && packetCfixed == observedSignals.cfixed);
          --packetClen;
          if (packetCfixed)
-            assume(packetContig == in.contig && packetWrap == in.wrap
-                  && packetCons == in.cons && packetPlen == in.plen);
+            assume(packetContig == observedSignals.contig && packetWrap == observedSignals.wrap
+                  && packetCons == observedSignals.cons && packetPlen == observedSignals.plen);
       }
       else {
-         packetClen = in.clen;
+         packetClen = observedSignals.clen;
          ++packetClen;
-         packetCmd = in.cmd;
-         packetCfixed = in.cfixed;
+         packetCmd = observedSignals.cmd;
+         packetCfixed = observedSignals.cfixed;
       };
       --packetClen;
-      packetAddress = in.address;
-      packetPlen = in.plen;
-      packetContig = in.contig;
-      packetWrap = in.wrap;
+      packetAddress = observedSignals.address;
+      packetPlen = observedSignals.plen;
+      packetContig = observedSignals.contig;
+      packetWrap = observedSignals.wrap;
       assume(!packetWrap || (packetContig && ((packetPlen-1 & packetPlen) == 0)));
-      packetCons = in.cons;
-      plPendingPackets.add(Packet(in));
+      packetCons = observedSignals.cons;
+      plPendingPackets.add(observedSignals);
       if (packetCmd == 3) { // Locked read
          if (packetContig)
-            laLockedAddresses.add(packetAddress, packetPlen);
+            laLockedAddresses.add(observedSignals.srcid, packetAddress, packetPlen);
          else
-            laLockedAddresses.add(packetAddress);
+            laLockedAddresses.add(observedSignals.srcid, packetAddress);
       };
    }
    else {
-      assume(packetClen == in.clen && packetCmd == in.cmd && packetPlen == in.plen);
+      assume(packetClen == observedSignals.clen && packetCmd == observedSignals.cmd && packetPlen == observedSignals.plen);
       if (packetCons) {
-         assume(packetCfixed == in.cfixed && packetAddress == in.address
-            && packetContig == in.contig && packetWrap == in.wrap && packetCons == in.cons);
+         assume(packetCfixed == observedSignals.cfixed && packetAddress == observedSignals.address
+            && packetContig == observedSignals.contig && packetWrap == observedSignals.wrap && packetCons == observedSignals.cons);
       }
       else if (packetContig) {
          packetAddress += vci_param::B; // cell_size()
          if (packetWrap && (uRequestCells > packetPlen))
             packetAddress -= packetPlen*vci_param::B;
-         assume(packetAddress == in.address);
+         assume(packetAddress == observedSignals.address);
       };
    };
    ++uRequestCells;
-   ++plPendingPackets.last().length();
-   if (in.eop) {
+   if (observedSignals.eop) {
       assume(!packetPlen || packetPlen == uRequestCells);
       uRequestCells = 0;
       packetAddress = 0;
@@ -271,27 +274,26 @@ BasicVciFilter<vci_param>::acquireRequestCell() {
 
 template <typename vci_param>
 void
-BasicVciFilter<vci_param>::acquireResponseCell() {
+AdvancedVciAssert<vci_param>::acquireResponseCell() {
    if (uResponseCells == 0) {
       assume(plPendingPackets.count() > 0);
-      const Packet& packet = plPendingPackets.last();
-      if (packet.cmd == 2) { // Write
-         if (packet.contig)
-            laLockedAddresses.remove(packet.address, packet.plen);
-         else
-            laLockedAddresses.remove(packet.address);
+      {  Packet* pPacket = plPendingPackets.remove(observedSignals);
+         assume(pPacket);
+         if (pPacket->cmd == 2) { // Write
+            if (pPacket->contig)
+               laLockedAddresses.remove(*this, observedSignals.rsrcid, pPacket->address, pPacket->plen);
+            else
+               laLockedAddresses.remove(*this, observedSignals.rsrcid, pPacket->address);
+         };
+         if (pPacket) delete pPacket;
       };
    };
    ++uResponseCells;
-   --plPendingPackets.last().length();
-   if (out.reop) {
-      assume(plPendingPackets.last().length() == 0);
-      plPendingPackets.pop();
+   if (observedSignals.reop)
       uResponseCells = 0;
-   };
 }
 
 }} // end of namespace soclib::caba
 
-#endif // SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
+#endif // SOCLIB_CABA_PVDC_ADVANCED_ASSERTTEMPLATE
 
