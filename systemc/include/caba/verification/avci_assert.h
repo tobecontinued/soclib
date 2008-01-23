@@ -259,7 +259,7 @@ class AdvancedVciAssert : public soclib::caba::BaseModule {
          
          SC_METHOD(filter);
          dont_initialize();
-         sensitive << p_clk.neg();
+         sensitive << p_clk.pos();
       }
    void reset()
       {  setReset(); }
