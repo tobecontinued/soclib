@@ -1,0 +1,128 @@
+/* -*- c++ -*-
+ *
+ * SOCLIB_LGPL_HEADER_BEGIN
+ * 
+ * This file is part of SoCLib, GNU LGPLv2.1.
+ * 
+ * SoCLib is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation; version 2.1 of the License.
+ * 
+ * SoCLib is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with SoCLib; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ * 
+ * SOCLIB_LGPL_HEADER_END
+ *
+ * Copyright (c) CEA
+ *
+ * Authors: Franck Vedrine <franck.vedrine@cea.fr>, 2008
+ */
+
+#ifndef SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
+#define SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
+
+#include "caba/verification/bvci_filter.h"
+
+namespace soclib { namespace caba {
+
+template <typename vci_param>
+void
+BasicVciFilter<vci_param>::testHandshake() { // see p 41, 42, verified on the waveforms
+   switch (sRequestState) {
+      case SIdle:
+         if (in.cmdval) {
+            acquireRequestCell();
+            if (out.cmdack)
+               sRequestState = SSync;
+            else
+               sRequestState = SValid;
+         }
+         else if (out.cmdack)
+            sRequestState = SDefault_Ack;
+         break;
+      case SValid:
+         assume(in.cmdval);
+         assume((in.address == addressPrevious) && (in.be == bePrevious)
+            && (in.cfixed == cfixedPrevious) && (in.clen == clenPrevious)
+            && (in.cmd == cmdPrevious) && (in.contig == contigPrevious)
+            && (in.wdata == wdataPrevious) && (in.eop == eopPrevious)
+            && (in.cons == consPrevious) && (in.plen == plenPrevious)
+            && (in.wrap == wrapPrevious));
+         if (out.cmdack)
+            sRequestState = SSync;
+         break;
+      case SDefault_Ack:
+         assume(out.cmdack);
+         if (in.cmdval) {
+            acquireRequestCell();
+            sRequestState = SSync;
+         };
+         break;
+      case SSync:
+         if (!in.cmdval) {
+            if (!out.cmdack)
+               sRequestState = SIdle;
+            else
+               sRequestState = SDefault_Ack;
+         }
+         else {
+            acquireRequestCell();
+            if (!out.cmdack)
+               sRequestState = SValid;
+         };
+         break;
+   };
+ 
+   switch (sResponseState) {
+      case SIdle:
+         if (out.rspval) {
+            acquireResponseCell();
+            if (in.rspack)
+               sResponseState = SSync;
+            else
+               sResponseState = SValid;
+         }
+         else if (in.rspack)
+            sResponseState = SDefault_Ack;
+         break;
+      case SValid:
+         assume(out.rspval);
+         assume((out.rdata == rdataPrevious) && (out.reop == reopPrevious)
+            && (out.rerror == rerrorPrevious));
+         if (in.rspack)
+            sResponseState = SSync;
+         break;
+      case SDefault_Ack:
+         assume(in.rspack);
+         if (out.rspval) {
+            acquireResponseCell();
+            sResponseState = SSync;
+         };
+         break;
+      case SSync:
+         if (!out.rspval) {
+            if (!in.rspack)
+               sResponseState = SIdle;
+            else
+               sResponseState = SDefault_Ack;
+         }
+         else {
+            acquireResponseCell();
+            if (!in.rspack)
+               sResponseState = SValid;
+         };
+         break;
+   };
+}
+
+}} // end of namespace soclib::caba
+
+#endif // SOCLIB_CABA_PVDC_BASIC_FILTERTEMPLATE
+

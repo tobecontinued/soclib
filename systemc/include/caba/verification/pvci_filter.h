@@ -50,7 +50,7 @@ class PVciFilter : public soclib::caba::BaseModule {
       sc_in<typename vci_param::data_t>    wdata;
 
    	sc_out<typename vci_param::data_t>    rdata;
-      sc_out<typename vci_param::ack_t>     rspack;
+      sc_out<typename vci_param::ack_t>     cmdack;
    	sc_out<typename vci_param::rerror_t>  rerror;
 
 
@@ -59,7 +59,7 @@ class PVciFilter : public soclib::caba::BaseModule {
          : __ren(val), __ren(eop), __ren(cmd), __ren(address), __ren(be), __ren(wdata),
 #undef __ren
 #define __ren(x) x((name+"_out_" #x).c_str())
-           __ren(rdata), __ren(rspack), __ren(rerror) {}
+           __ren(rdata), __ren(cmdack), __ren(rerror) {}
 #undef __ren
 
       void operator()(VciSignals<vci_param> &sig)
@@ -70,7 +70,7 @@ class PVciFilter : public soclib::caba::BaseModule {
             be      (sig.be);
             wdata   (sig.wdata);
             rdata   (sig.rdata);
-            rspack  (sig.rspack);
+            cmdack  (sig.cmdack);
             rerror  (sig.rerror);
          }
 
@@ -82,14 +82,14 @@ class PVciFilter : public soclib::caba::BaseModule {
             be      (ports.be);
             wdata   (ports.wdata);
             rdata   (ports.rdata);
-            rspack  (ports.rspack);
+            cmdack  (ports.cmdack);
             rerror  (ports.rerror);
          }
    };
 
    struct Out {
    	sc_in<typename vci_param::data_t>    rdata;
-      sc_in<typename vci_param::ack_t>     rspack;
+      sc_in<typename vci_param::ack_t>     cmdack;
    	sc_in<typename vci_param::rerror_t>  rerror;
 
       sc_out<typename vci_param::val_t>    val;
@@ -101,7 +101,7 @@ class PVciFilter : public soclib::caba::BaseModule {
 
       Out(const std::string &name)
 #define __ren(x) x((name+"_in_" #x).c_str())
-         : __ren(rdata), __ren(rspack), __ren(rerror),
+         : __ren(rdata), __ren(cmdack), __ren(rerror),
 #undef __ren
 #define __ren(x) x((name+"_out_" #x).c_str())
            __ren(val), __ren(eop), __ren(cmd), __ren(address), __ren(be), __ren(wdata) {}
@@ -109,7 +109,7 @@ class PVciFilter : public soclib::caba::BaseModule {
 
       void operator()(VciSignals<vci_param> &sig)
          {  rdata   (sig.rdata);
-            rspack  (sig.rspack);
+            cmdack  (sig.cmdack);
             rerror  (sig.rerror);
             
             val     (sig.cmdval);
@@ -122,7 +122,7 @@ class PVciFilter : public soclib::caba::BaseModule {
 
       void operator()(VciTarget<vci_param> &ports)
          {  rdata   (ports.rdata);
-            rspack  (ports.rspack);
+            cmdack  (ports.cmdack);
             rerror  (ports.rerror);
 
             val     (ports.cmdval);
@@ -151,32 +151,32 @@ class PVciFilter : public soclib::caba::BaseModule {
             case PHSSNone:
                if (in.val) {
                   acquireCell();
-                  if (out.rspack)
+                  if (out.cmdack)
                      phssHandshakeState = PHSSAckVal;
                   else
                      phssHandshakeState = PHSSValTriggered;
                };
                // else // rule R2 p.16
-               //   assume(!out.rspack);
+               //   assume(!out.cmdack);
                break;
             case PHSSValTriggered:
                assume(in.val);
                assume((in.address == addressPrevious) && (in.be == bePrevious) // rule R1 p.16
                   && (in.cmd == cmdPrevious) && (in.wdata == wdataPrevious)
                   && (in.eop == eopPrevious));
-               if (out.rspack)
+               if (out.cmdack)
                   phssHandshakeState = PHSSAckVal;
                break;
             case PHSSAckVal:
                if (!in.val) {
-                  if (!out.rspack)
+                  if (!out.cmdack)
                      phssHandshakeState = PHSSNone;
                   else
                      phssHandshakeState = PHSSNone; // rule R2 p.16
                }
                else {
                   acquireCell();
-                  if (!out.rspack) // rule R3 p.16
+                  if (!out.cmdack) // rule R3 p.16
                      // assume((out.rdata == rdataPrevious) && (out.rerror == rerrorPrevious));
                      phssHandshakeState = PHSSValTriggered;
                };
@@ -186,13 +186,13 @@ class PVciFilter : public soclib::caba::BaseModule {
 
    int uReset;
    void setReset(int uResetSource = 8)
-      {  if (!out.rspack && !in.val)
+      {  if (!out.cmdack && !in.val)
             uReset = 0;
          else
             uReset = uResetSource;
       }
    void testReset() // see p.11
-      {  if (!out.rspack && !in.val)
+      {  if (!out.cmdack && !in.val)
             uReset = 0;
          else {
             assume(uReset > 1);
@@ -201,7 +201,7 @@ class PVciFilter : public soclib::caba::BaseModule {
       }
 
    typename vci_param::addr_t aPreviousAddress;
-   int uPackets;
+   int uCells;
    void acquireCell()
       {  if (fDefaultMode) {
             unsigned int uBE = in.be.read(); // see p.21
@@ -212,15 +212,15 @@ class PVciFilter : public soclib::caba::BaseModule {
                   assume(uBE & 3 == 0 || uBE & 3 == 3);
             };
          };
-         if (uPackets == 0)
+         if (uCells == 0)
             aPreviousAddress = in.address;
          else { // see p.13
             aPreviousAddress += vci_param::B; // cell_size()
             assume(aPreviousAddress == in.address);
          };
-         ++uPackets;
+         ++uCells;
          if (in.eop) {
-            uPackets = 0;
+            uCells = 0;
             aPreviousAddress = 0;
          };
       }
@@ -241,12 +241,12 @@ class PVciFilter : public soclib::caba::BaseModule {
    PVciFilter(sc_module_name insname)
       :  soclib::caba::BaseModule(insname), plog_file(NULL), fDefaultMode(true),
          in((const char*) insname), out((const char*) insname),
-         phssHandshakeState(PHSSNone), uReset(0), aPreviousAddress(0), uPackets(0),
+         phssHandshakeState(PHSSNone), uReset(0), aPreviousAddress(0), uCells(0),
          valPrevious(0)
       {  SC_METHOD(transition);
          dont_initialize();
          sensitive << in.val << in.eop << in.cmd << in.address
-            << in.be << in.wdata << out.rdata << out.rspack << out.rerror;
+            << in.be << in.wdata << out.rdata << out.cmdack << out.rerror;
          SC_METHOD(reset);
          dont_initialize();
          sensitive << resetn.pos();
@@ -265,7 +265,7 @@ class PVciFilter : public soclib::caba::BaseModule {
          out.be = in.be;
          out.wdata = in.wdata;
          in.rdata = out.rdata;
-         in.rspack = out.rspack;
+         in.cmdack = out.cmdack;
          in.rerror = out.rerror;
       }
    void filter() 

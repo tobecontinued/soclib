@@ -57,32 +57,32 @@ class PVciAssert : public soclib::caba::BaseModule {
             case PHSSNone:
                if (observedSignals.cmdval) {
                   acquireCell();
-                  if (observedSignals.rspack)
+                  if (observedSignals.cmdack)
                      phssHandshakeState = PHSSAckVal;
                   else
                      phssHandshakeState = PHSSValTriggered;
                };
                // else // rule R2 p.16
-               //   assume(!observedSignals.rspack);
+               //   assume(!observedSignals.cmdack);
                break;
             case PHSSValTriggered:
                assume(observedSignals.cmdval);
                assume((observedSignals.address == addressPrevious) && (observedSignals.be == bePrevious) // rule R1 p.16
                   && (observedSignals.cmd == cmdPrevious) && (observedSignals.wdata == wdataPrevious)
                   && (observedSignals.eop == eopPrevious));
-               if (observedSignals.rspack)
+               if (observedSignals.cmdack)
                   phssHandshakeState = PHSSAckVal;
                break;
             case PHSSAckVal:
                if (!observedSignals.cmdval) {
-                  if (!observedSignals.rspack)
+                  if (!observedSignals.cmdack)
                      phssHandshakeState = PHSSNone;
                   else
                      phssHandshakeState = PHSSNone; // rule R2 p.16
                }
                else {
                   acquireCell();
-                  if (!observedSignals.rspack) // rule R3 p.16
+                  if (!observedSignals.cmdack) // rule R3 p.16
                      // assume((observedSignals.rdata == rdataPrevious) && (observedSignals.rerror == rerrorPrevious));
                      phssHandshakeState = PHSSValTriggered;
                };
@@ -92,13 +92,13 @@ class PVciAssert : public soclib::caba::BaseModule {
 
    int uReset;
    void setReset(int uResetSource = 8)
-      {  if (!observedSignals.rspack && !observedSignals.cmdval)
+      {  if (!observedSignals.cmdack && !observedSignals.cmdval)
             uReset = 0;
          else
             uReset = uResetSource;
       }
    void testReset() // see p.11
-      {  if (!observedSignals.rspack && !observedSignals.cmdval)
+      {  if (!observedSignals.cmdack && !observedSignals.cmdval)
             uReset = 0;
          else {
             assume(uReset > 1);
@@ -107,7 +107,7 @@ class PVciAssert : public soclib::caba::BaseModule {
       }
 
    typename vci_param::addr_t aPreviousAddress;
-   int uPackets;
+   int uCells;
    void acquireCell()
       {  if (fDefaultMode) {
             unsigned int uBE = observedSignals.be.read(); // see p.21
@@ -118,15 +118,15 @@ class PVciAssert : public soclib::caba::BaseModule {
                   assume(uBE & 3 == 0 || uBE & 3 == 3);
             };
          };
-         if (uPackets == 0)
+         if (uCells == 0)
             aPreviousAddress = observedSignals.address;
          else { // see p.13
             aPreviousAddress += vci_param::B; // cell_size()
             assume(aPreviousAddress == observedSignals.address);
          };
-         ++uPackets;
+         ++uCells;
          if (observedSignals.eop) {
-            uPackets = 0;
+            uCells = 0;
             aPreviousAddress = 0;
          };
       }
@@ -144,7 +144,7 @@ class PVciAssert : public soclib::caba::BaseModule {
    PVciAssert(VciSignals<vci_param>& observedSignalsReference, sc_module_name insname)
       :  soclib::caba::BaseModule(insname), plog_file(NULL), fDefaultMode(true),
          observedSignals(observedSignalsReference), phssHandshakeState(PHSSNone), uReset(0),
-         aPreviousAddress(0), uPackets(0), valPrevious(0)
+         aPreviousAddress(0), uCells(0), valPrevious(0)
       {  SC_METHOD(reset);
          dont_initialize();
          sensitive << resetn.pos();
