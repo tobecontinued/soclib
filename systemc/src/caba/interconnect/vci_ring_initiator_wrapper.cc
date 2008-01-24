@@ -143,8 +143,6 @@ tmpl(void)::transition()
 {
 	if(p_resetn == false) { 
 		r_fsm_state = NEG_IDLE;
-		r_neg_ack_ok = false;
-		r_data_eop = false; 
 		return;
 	} 
 

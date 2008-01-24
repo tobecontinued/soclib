@@ -218,7 +218,6 @@ tmpl(void)::transition()
 {
 	if(p_resetn == false) { 
 		r_fsm_state = TAR_IDLE;
-		r_ring_neg_mux = RING;
 		return;
 	} // end reset
 
