@@ -24,7 +24,8 @@
 #
 # Maintainers: nipo
 
-PLATFORM_DESC=platform_desc
+PLATFORM_DESC?=platform_desc
+SOCLIB_CC_ARGS?=-p $(PLATFORM_DESC)
 SOCLIB_CC=soclib-cc
 SOCLIB:=$(shell soclib-cc --getpath)
 
@@ -33,16 +34,16 @@ TEST_OUTPUT=test.out
 export ARCH
 
 ifeq ($(NO_SOFT),)
-SOFT=soft/bin.soft
+SOFT?=soft/bin.soft
 endif
 
-default: test_soclib simulation.x $(SOFT)
+all: test_soclib simulation.x $(SOFT)
 
 ifeq ($(NO_SOFT),)
 
-.PHONY: $(SOFT)
+.PHONY: soft/bin.soft
 
-$(SOFT):
+soft/bin.soft:
 	$(MAKE) -C soft bin.soft
 
 endif
@@ -53,7 +54,7 @@ test_soclib:
 	@test ! -z "$(SOCLIB)"
 
 simulation.x: $(PLATFORM_DESC)
-	$(SOCLIB_CC) -P -p $(PLATFORM_DESC) -o $@
+	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) -o $@
 
 ifeq ($(origin SIMULATION_ARGS),undefined)
 test:
@@ -70,7 +71,7 @@ $(TEST_OUTPUT): simulation.x $(SOFT)
 endif
 
 clean: soft_clean
-	$(SOCLIB_CC) -P -p $(PLATFORM_DESC) -x -o $@
+	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) -x -o $@
 	rm -rf repos
 
 soft_clean:
