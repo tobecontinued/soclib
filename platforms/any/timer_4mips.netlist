@@ -25,6 +25,9 @@
 #
 # Maintainers: nipo
 
+default with_gdb = 0
+default start_frozen = 0
+
 vci_param<4,1,32,1,1,1,8,1,1,1>
 
 mapping table (8) (8) 0x00300000
@@ -37,6 +40,8 @@ new caba vgmn "vgmn0"
 
 new caba mips "mips0"
   param ident = 0
+  param with_gdb = $with_gdb
+  param start_frozen = $start_frozen
 
 new caba xcache "cache0"
   id (0)
@@ -50,6 +55,7 @@ new caba xcache "cache0"
 
 new caba mips "mips1"
   param ident = 1
+  param with_gdb = $with_gdb
 
 new caba xcache "cache1"
   id (1)
@@ -63,6 +69,7 @@ new caba xcache "cache1"
 
 new caba mips "mips2"
   param ident = 2
+  param with_gdb = $with_gdb
 
 new caba xcache "cache2"
   id (2)
@@ -76,6 +83,7 @@ new caba xcache "cache2"
 
 new caba mips "mips3"
   param ident = 3
+  param with_gdb = $with_gdb
 
 new caba xcache "cache3"
   id (3)
