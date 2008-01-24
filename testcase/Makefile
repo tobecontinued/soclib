@@ -26,18 +26,15 @@
 
 SOCLIB:=$(shell soclib-cc --getpath)
 
-TESTER_DIR=$(SOCLIB)/platforms/tester
-TESTER=$(TESTER_DIR)/simulation.x
+TESTER_DIR=$(shell pwd)
+TESTER=$(TESTER_DIR)/tester.netlist
 
 TESTS=$(shell echo */test.mk)
 TESTRES=$(TESTS:.mk=.res)
 
 export TESTER_DIR TESTER
 
-all: tester
-
-tester:
-	make -C $(TESTER_DIR)
+all:
 
 %:
 	@for d in $(patsubst %/test.mk,%,$(TESTS)) ; do \

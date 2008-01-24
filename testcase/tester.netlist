@@ -1,0 +1,86 @@
+#!/usr/bin/env soclib-simulate-any
+#
+# SOCLIB_LGPL_HEADER_BEGIN
+# 
+# This file is part of SoCLib, GNU LGPLv2.1.
+# 
+# SoCLib is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation; version 2.1 of the License.
+# 
+# SoCLib is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+# 
+# You should have received a copy of the GNU Lesser General Public
+# License along with SoCLib; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301 USA
+# 
+# SOCLIB_LGPL_HEADER_END
+#
+# Copyright (c) UPMC, Lip6, SoC
+#         Nicolas Pouillon <nipo@ssji.net>, 2008
+#
+# Maintainers: nipo
+
+default with_gdb = 0
+default start_frozen = 0
+
+vci_param<4,1,32,1,1,1,8,1,1,1>
+
+mapping table (8) (8) 0x00300000
+
+new caba vgmn "vgmn0"
+  param n_targets = 4
+  param n_initiators = 1
+  param min_latency = 2
+  param fifo_size = 8
+
+new caba $arch "cpu0"
+  param ident = 0
+  param with_gdb = $with_gdb
+  param start_frozen = $start_frozen
+
+new caba xcache "cache0"
+  id (0)
+  param icache_lines = 16
+  param icache_words = 8
+  param dcache_lines = 16
+  param dcache_words = 8
+  conn icache to cpu0.icache
+  conn dcache to cpu0.dcache
+  conn vci to vgmn0.from_initiator[0]
+
+new caba ram "ram0"
+  id (0)
+  conn vci to vgmn0.to_target[0]
+  param loads = $binary
+  segment "text"  0x00400000 0x00050000 cached
+  segment "data"  0x10000000 0x00010000 cached
+  segment "reset" 0x80000080 0x00010000 cached
+  segment "excep" 0xbfc00000 0x00010000 cached
+  segment "loc0"  0x20000000 0x00001000 cached
+  segment "unc"   0x10200000 0x00001000 uncached
+  segment "ppc_boot" 0xffffff80 0x00000080 uncached
+  segment "ppc_special" 0x00500000 0x00010000 cached
+  segment "mb_boot" 0x00000000 0x00008000 cached
+
+new caba tty "tty0"
+  id (1)
+  segment "tty"   0xc0200000 0x00000100 uncached
+  conn vci to vgmn0.to_target[1]
+  param names = [ tty0 ]
+
+new caba timer "timer0"
+  id (2)
+  segment "timer" 0xb0200000 0x00000100 uncached
+  conn vci to vgmn0.to_target[2]
+  param nirq = 1
+  conn irq[0] to cpu0.irq[0]
+
+new caba simhelper "sh0"
+  id (3)
+  segment "simhelper" 0xd0200000 0x00000010 uncached
+  conn vci to vgmn0.to_target[3]

@@ -30,8 +30,10 @@ include $(TESTDIR)/test.mk
 RESULT=test.res
 COMMON=$(TESTDIR)/../common
 BASE=$(TESTDIR)/..
-TESTER_DIR=$(shell soclib-cc --getpath)/platforms/tester
-TESTER=$(TESTER_DIR)/simulation.x
+
+mipsel_CPU=mips
+powerpc_CPU=ppc405
+microblaze_CPU=microblaze
 
 ifeq ($(words $(ARCH)),1)
 
@@ -66,13 +68,10 @@ clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS)
 
 $(RESULT): $(SOFT_IMAGE) $(TESTER) $(COMMON)/Makefile
-	$(TESTER) $(ARCH) $(SOFT_IMAGE) > test.out \
+	SOCLIB_TTY=TERM $(TESTER) arch=$($(ARCH)_CPU) binary=$(SOFT_IMAGE) sim_max_cycles=1000000 sim_default_retval=1 > test.out \
 		|| (r=$$? ; cat test.out ; mv test.out test.fail ; echo "Test failed in $$PWD, errorlevel: $$r" ; exit 1)
 	cat test.out
 	mv test.out $@
-
-$(TESTER):
-	make -C $(TESTER_DIR) $(patsubst $(TESTER_DIR)/%,%,$(TESTER))
 
 .PHONY: $(TESTER)
 
