@@ -188,6 +188,8 @@ TopCell::TopCell( const std::string &filename, int argc, const char *const *argv
         }
     }
     assert(topcell_in);
+    topcell_line = 1;
+    topcell_column = 0;
     if ( topcell_parse() )
         throw soclib::exception::RunTimeError("Parse error");
     topcell_parser_retval = NULL;
