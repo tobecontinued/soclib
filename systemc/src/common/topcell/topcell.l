@@ -33,7 +33,7 @@ static std::string topcell_quoted;
 
 %option nounput noyywrap prefix="topcell_"
 
-%x quoted
+%x quoted incl
 
 QUOTE [\"']
 
@@ -57,9 +57,31 @@ QUOTE [\"']
 
 }
 
+<incl>[ \t]*      /* eat the whitespace */
+<incl>[^ \t\n]+   { /* got the include file name */
+        yyin = fopen( yytext, "r" );
+
+        if ( ! yyin )
+            throw soclib::exception::RunTimeError(std::string("Cant find file `")+yytext+"'");
+
+        yypush_buffer_state(yy_create_buffer( yyin, YY_BUF_SIZE ));
+
+        BEGIN(INITIAL);
+        }
+
+<<EOF>> {
+           yypop_buffer_state();
+
+           if ( !YY_CURRENT_BUFFER )
+               yyterminate();
+        }
+
 <INITIAL>{
 #[^\n]*
 
+include             BEGIN(incl);
+set							{ topcell_column += yyleng; return SET; }
+default						{ topcell_column += yyleng; return DEFAULT; }
 new							{ topcell_column += yyleng; return NEW; }
 param						{ topcell_column += yyleng; return PARAM; }
 conn						{ topcell_column += yyleng; return CONN; }
@@ -72,6 +94,11 @@ id							{ topcell_column += yyleng; return ID; }
 "mapping table"				{ topcell_column += yyleng; return MAPPING_TABLE; }
 
 {QUOTE}                     { topcell_column += yyleng; topcell_quoted = ""; BEGIN(quoted); }
+
+\$[[:alpha:]][[:alnum:]_\[\]]*	{
+                              topcell_lval.string = new std::string(yytext+1);
+                              topcell_column += yyleng; return VAR;
+                            }
 
 0[xX][[:digit:]a-fA-F]+		{
                               topcell_lval.numeral = strtoll(yytext, 0, 16);

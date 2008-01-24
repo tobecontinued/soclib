@@ -158,7 +158,7 @@ const std::string Id::type() const {return "Id";}
 
 } // End namespace soclib::common::topcell
 
-TopCell::TopCell( const std::string &filename )
+TopCell::TopCell( const std::string &filename, int argc, const char *const *argv )
     : m_clk("clk"),
       m_resetn("resetn"),
       m_wrapped_clk( m_clk ),
@@ -166,6 +166,27 @@ TopCell::TopCell( const std::string &filename )
 {
     topcell_in = std::fopen(filename.c_str(), "r");
     topcell_parser_retval = this;
+    int argvno = 1;
+    for ( int i=0; i<argc; ++i ) {
+        std::string raw = argv[i];
+        
+        if ( size_t n = raw.find("=") ) {
+            std::string left(raw, 0, n);
+            std::string right(raw, n+1);
+            if ( right[0] <= '9' && right[0] >= '0' ) {
+                std::istringstream val(right);
+                uint32_t v;
+                val >> v;
+                m_env.add(left, (int)v);
+            } else {
+                m_env.add(left, right);
+            }
+        } else {
+            std::ostringstream argname;
+            argname << "argv[" << argvno << "]";
+            m_env.add(argname.str(), raw);
+        }
+    }
     assert(topcell_in);
     if ( topcell_parse() )
         throw soclib::exception::RunTimeError("Parse error");
@@ -188,18 +209,29 @@ void TopCell::reset()
 }
 
 
-void TopCell::run()
+int TopCell::run()
 {
     reset();
-    std::cout << "Running for an infinite time" << std::endl;
-    sc_core::sc_start();
+    if ( m_env.has("sim_max_cycles" ) ) {
+        uint32_t max = m_env.get<int>("sim_max_cycles");
+        return run(max);
+    } else {
+        std::cout << "Running for an infinite time" << std::endl;
+        sc_core::sc_start();
+    }
+    if ( m_env.has("sim_default_retval" ) )
+        return m_env.get<int>("sim_default_retval" );
+    return 0;
 }
 
-void TopCell::run( const uint32_t ncycles )
+int TopCell::run( const uint32_t ncycles )
 {
     reset();
     std::cout << "Running for " << ncycles << " cycles" << std::endl;
     sc_core::sc_start(sc_core::sc_time(ncycles, sc_core::SC_NS));
+    if ( m_env.has("sim_default_retval" ) )
+        return m_env.get<int>("sim_default_retval" );
+    return 0;
 }
 
 template<typename base_t>

@@ -210,6 +210,7 @@ extern char *topcell_text;
 #ifdef YY_HEADER_EXPORT_START_CONDITIONS
 #define INITIAL 0
 #define quoted 1
+#define incl 2
 
 #endif
 
@@ -284,9 +285,9 @@ extern int topcell_lex (void);
 #undef YY_DECL
 #endif
 
-#line 86 "topcell.l"
+#line 139 "topcell.l"
 
 
-#line 291 "topcell_lexer.hh"
+#line 292 "topcell_lexer.hh"
 #undef topcell_IN_HEADER
 #endif /* topcell_HEADER_H */

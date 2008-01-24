@@ -49,12 +49,15 @@
      UNCACHED = 265,
      VCI_PARAM = 266,
      MAPPING_TABLE = 267,
-     SIGNAME = 268,
-     NAME = 269,
-     QNAME = 270,
-     NUMERAL = 271,
-     HEX = 272,
-     MODE = 273
+     SET = 268,
+     DEFAULT = 269,
+     SIGNAME = 270,
+     NAME = 271,
+     QNAME = 272,
+     VAR = 273,
+     NUMERAL = 274,
+     HEX = 275,
+     MODE = 276
    };
 #endif
 /* Tokens.  */
@@ -68,21 +71,25 @@
 #define UNCACHED 265
 #define VCI_PARAM 266
 #define MAPPING_TABLE 267
-#define SIGNAME 268
-#define NAME 269
-#define QNAME 270
-#define NUMERAL 271
-#define HEX 272
-#define MODE 273
+#define SET 268
+#define DEFAULT 269
+#define SIGNAME 270
+#define NAME 271
+#define QNAME 272
+#define VAR 273
+#define NUMERAL 274
+#define HEX 275
+#define MODE 276
 
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 20 "topcell.yy"
+#line 46 "topcell.yy"
 {
   bool cacheable;
+  bool forced;
   uint32_t numeral;
   std::string *string;
   soclib::common::IntTab *int_tab;
@@ -95,7 +102,7 @@ typedef union YYSTYPE
   enum soclib::common::inst_mode_e mode;
 }
 /* Line 1489 of yacc.c.  */
-#line 99 "topcell_parser.hh"
+#line 106 "topcell_parser.hh"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1

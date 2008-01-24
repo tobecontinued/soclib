@@ -59,7 +59,7 @@ InstArgBaseItem &InstArg::get( const std::string &name )
 	}
 	throw soclib::exception::RunTimeError(
 		std::string("Cant find item `")+name+
-		"' in environment");
+		"' in InstArg");
 }
 
 void InstArg::add( InstArgBaseItem*item )

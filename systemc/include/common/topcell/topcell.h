@@ -66,10 +66,10 @@ class TopCell
 	soclib::common::Factory<base_t> & get_factory( const std::string &cell );
 	void finalize();
 public:
-	TopCell( const std::string &filename );
-	void run();
+	TopCell( const std::string &filename, int argc, const char *const*argv );
+	int run();
 	void reset();
-	void run(const uint32_t ncycles);
+	int run(const uint32_t ncycles);
 	void prepare( enum inst_mode_e mode,
 				  const std::string &cell,
 				  const std::string &name,

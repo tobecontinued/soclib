@@ -84,12 +84,15 @@
      UNCACHED = 265,
      VCI_PARAM = 266,
      MAPPING_TABLE = 267,
-     SIGNAME = 268,
-     NAME = 269,
-     QNAME = 270,
-     NUMERAL = 271,
-     HEX = 272,
-     MODE = 273
+     SET = 268,
+     DEFAULT = 269,
+     SIGNAME = 270,
+     NAME = 271,
+     QNAME = 272,
+     VAR = 273,
+     NUMERAL = 274,
+     HEX = 275,
+     MODE = 276
    };
 #endif
 /* Tokens.  */
@@ -103,12 +106,15 @@
 #define UNCACHED 265
 #define VCI_PARAM 266
 #define MAPPING_TABLE 267
-#define SIGNAME 268
-#define NAME 269
-#define QNAME 270
-#define NUMERAL 271
-#define HEX 272
-#define MODE 273
+#define SET 268
+#define DEFAULT 269
+#define SIGNAME 270
+#define NAME 271
+#define QNAME 272
+#define VAR 273
+#define NUMERAL 274
+#define HEX 275
+#define MODE 276
 
 
 
@@ -116,17 +122,43 @@
 /* Copy the first part of user declarations.  */
 #line 1 "topcell.yy"
 
+/*
+ * SOCLIB_LGPL_HEADER_BEGIN
+ * 
+ * This file is part of SoCLib, GNU LGPLv2.1.
+ * 
+ * SoCLib is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation; version 2.1 of the License.
+ * 
+ * SoCLib is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with SoCLib; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ * 
+ * SOCLIB_LGPL_HEADER_END
+ *
+ * Copyright (c) UPMC, Lip6, SoC
+ *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ *
+ * Maintainers: nipo
+ */
 #include "globals.h"
 #include "common/topcell/topcell_lexer.hh"
 #include "caba/interface/vci_param.h"
 
 int yyerror(char *msg)
 {
-	std::cout
-		<< "Error at " << topcell_line
-		<< ":" << topcell_column
-		<< " " << msg << std::endl;
-	return 0;
+    std::cout
+        << "Error at " << topcell_line
+        << ":" << topcell_column
+        << " " << msg << std::endl;
+    return 0;
 }
 
 
@@ -151,9 +183,10 @@ int yyerror(char *msg)
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 20 "topcell.yy"
+#line 46 "topcell.yy"
 {
   bool cacheable;
+  bool forced;
   uint32_t numeral;
   std::string *string;
   soclib::common::IntTab *int_tab;
@@ -166,7 +199,7 @@ typedef union YYSTYPE
   enum soclib::common::inst_mode_e mode;
 }
 /* Line 187 of yacc.c.  */
-#line 170 "topcell_parser.cc"
+#line 203 "topcell_parser.cc"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
@@ -179,7 +212,7 @@ typedef union YYSTYPE
 
 
 /* Line 216 of yacc.c.  */
-#line 183 "topcell_parser.cc"
+#line 216 "topcell_parser.cc"
 
 #ifdef short
 # undef short
@@ -392,22 +425,22 @@ union yyalloc
 #endif
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL  5
+#define YYFINAL  3
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   70
+#define YYLAST   89
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  28
+#define YYNTOKENS  31
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  19
+#define YYNNTS  25
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  32
+#define YYNRULES  48
 /* YYNRULES -- Number of states.  */
-#define YYNSTATES  81
+#define YYNSTATES  100
 
 /* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
 #define YYUNDEFTOK  2
-#define YYMAXUTOK   273
+#define YYMAXUTOK   276
 
 #define YYTRANSLATE(YYX)						\
   ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
@@ -419,12 +452,12 @@ static const yytype_uint8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      23,    24,     2,     2,    20,     2,    27,     2,     2,     2,
+      26,    27,     2,     2,    24,     2,    30,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      19,    22,    21,     2,     2,     2,     2,     2,     2,     2,
+      23,    22,    25,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,    25,     2,    26,     2,     2,     2,     2,     2,     2,
+       2,    28,     2,    29,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -442,7 +475,7 @@ static const yytype_uint8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
        5,     6,     7,     8,     9,    10,    11,    12,    13,    14,
-      15,    16,    17,    18
+      15,    16,    17,    18,    19,    20,    21
 };
 
 #if YYDEBUG
@@ -450,37 +483,44 @@ static const yytype_uint8 yytranslate[] =
    YYRHS.  */
 static const yytype_uint8 yyprhs[] =
 {
-       0,     0,     3,     7,    12,    35,    36,    39,    45,    46,
-      49,    52,    55,    58,    61,    65,    69,    73,    77,    82,
-      84,    86,    90,    92,    96,   100,   102,   106,   110,   112,
-     114,   116,   118
+       0,     0,     3,     8,     9,    12,    17,    22,    27,    32,
+      37,    39,    41,    46,    69,    70,    73,    79,    80,    83,
+      86,    89,    92,    95,    99,   103,   107,   111,   115,   120,
+     122,   124,   128,   130,   134,   138,   140,   144,   148,   150,
+     152,   154,   156,   158,   160,   162,   164,   166,   168
 };
 
 /* YYRHS -- A `-1'-separated list of the rules' RHS.  */
 static const yytype_int8 yyrhs[] =
 {
-      29,     0,    -1,    31,    30,    32,    -1,    12,    39,    39,
-      17,    -1,    11,    19,    16,    20,    16,    20,    16,    20,
-      16,    20,    16,    20,    16,    20,    16,    20,    16,    20,
-      16,    20,    16,    21,    -1,    -1,    32,    33,    -1,     3,
-      18,    14,    15,    34,    -1,    -1,    34,    35,    -1,     5,
-      36,    -1,     4,    43,    -1,     7,    39,    -1,     8,    37,
-      -1,    14,    22,    16,    -1,    14,    22,    41,    -1,    14,
-      22,    39,    -1,    14,    22,    44,    -1,    15,    17,    17,
-      38,    -1,     9,    -1,    10,    -1,    23,    40,    24,    -1,
-      16,    -1,    40,    20,    16,    -1,    25,    42,    26,    -1,
-      44,    -1,    42,    20,    44,    -1,    45,     6,    46,    -1,
-      13,    -1,    14,    -1,    15,    -1,    44,    -1,    14,    27,
-      45,    -1
+      32,     0,    -1,    33,    37,    36,    38,    -1,    -1,    33,
+      34,    -1,    35,    16,    22,    53,    -1,    35,    16,    22,
+      47,    -1,    35,    16,    22,    45,    -1,    35,    16,    22,
+      52,    -1,    35,    16,    22,    18,    -1,    13,    -1,    14,
+      -1,    12,    45,    45,    51,    -1,    11,    23,    51,    24,
+      51,    24,    51,    24,    51,    24,    51,    24,    51,    24,
+      51,    24,    51,    24,    51,    24,    51,    25,    -1,    -1,
+      38,    39,    -1,     3,    21,    50,    17,    40,    -1,    -1,
+      40,    41,    -1,     5,    42,    -1,     4,    49,    -1,     7,
+      45,    -1,     8,    43,    -1,    16,    22,    53,    -1,    16,
+      22,    47,    -1,    16,    22,    45,    -1,    16,    22,    52,
+      -1,    16,    22,    18,    -1,    17,    51,    51,    44,    -1,
+       9,    -1,    10,    -1,    26,    46,    27,    -1,    51,    -1,
+      46,    24,    51,    -1,    28,    48,    29,    -1,    50,    -1,
+      48,    24,    50,    -1,    54,     6,    55,    -1,    52,    -1,
+      18,    -1,    53,    -1,    18,    -1,    15,    -1,    16,    -1,
+      17,    -1,    19,    -1,    20,    -1,    50,    -1,    16,    30,
+      54,    -1
 };
 
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
-static const yytype_uint8 yyrline[] =
+static const yytype_uint16 yyrline[] =
 {
-       0,    74,    74,    76,    87,   100,   101,   104,   112,   113,
-     116,   117,   118,   119,   122,   123,   124,   125,   128,   131,
-     132,   135,   138,   139,   142,   145,   146,   149,   152,   153,
-     154,   157,   160
+       0,   106,   106,   108,   109,   112,   116,   120,   124,   128,
+     134,   135,   138,   149,   162,   163,   166,   174,   175,   178,
+     179,   180,   181,   184,   185,   186,   187,   188,   210,   213,
+     214,   217,   220,   221,   224,   227,   228,   231,   234,   235,
+     241,   242,   247,   248,   249,   252,   253,   256,   259
 };
 #endif
 
@@ -490,12 +530,14 @@ static const yytype_uint8 yyrline[] =
 static const char *const yytname[] =
 {
   "$end", "error", "$undefined", "NEW", "CONN", "PARAM", "TO", "ID",
-  "SEGMENT", "CACHED", "UNCACHED", "VCI_PARAM", "MAPPING_TABLE", "SIGNAME",
-  "NAME", "QNAME", "NUMERAL", "HEX", "MODE", "'<'", "','", "'>'", "'='",
-  "'('", "')'", "'['", "']'", "'.'", "$accept", "base", "maptab",
-  "vci_params", "module_inst_list", "module_inst", "spec_list", "spec",
-  "parameter", "segdecl", "cacheability", "int_tab", "numerals", "array",
-  "name_list", "connection", "anyname", "portname", "sigspec", 0
+  "SEGMENT", "CACHED", "UNCACHED", "VCI_PARAM", "MAPPING_TABLE", "SET",
+  "DEFAULT", "SIGNAME", "NAME", "QNAME", "VAR", "NUMERAL", "HEX", "MODE",
+  "'='", "'<'", "','", "'>'", "'('", "')'", "'['", "']'", "'.'", "$accept",
+  "base", "settings", "setting", "setter", "maptab", "vci_params",
+  "module_inst_list", "module_inst", "spec_list", "spec", "parameter",
+  "segdecl", "cacheability", "int_tab", "numerals", "array", "name_list",
+  "connection", "anyname", "anynum", "namenovar", "numnovar", "portname",
+  "sigspec", 0
 };
 #endif
 
@@ -505,27 +547,30 @@ static const char *const yytname[] =
 static const yytype_uint16 yytoknum[] =
 {
        0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
-     265,   266,   267,   268,   269,   270,   271,   272,   273,    60,
-      44,    62,    61,    40,    41,    91,    93,    46
+     265,   266,   267,   268,   269,   270,   271,   272,   273,   274,
+     275,   276,    61,    60,    44,    62,    40,    41,    91,    93,
+      46
 };
 # endif
 
 /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
 static const yytype_uint8 yyr1[] =
 {
-       0,    28,    29,    30,    31,    32,    32,    33,    34,    34,
-      35,    35,    35,    35,    36,    36,    36,    36,    37,    38,
-      38,    39,    40,    40,    41,    42,    42,    43,    44,    44,
-      44,    45,    46
+       0,    31,    32,    33,    33,    34,    34,    34,    34,    34,
+      35,    35,    36,    37,    38,    38,    39,    40,    40,    41,
+      41,    41,    41,    42,    42,    42,    42,    42,    43,    44,
+      44,    45,    46,    46,    47,    48,    48,    49,    50,    50,
+      51,    51,    52,    52,    52,    53,    53,    54,    55
 };
 
 /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
 static const yytype_uint8 yyr2[] =
 {
-       0,     2,     3,     4,    22,     0,     2,     5,     0,     2,
-       2,     2,     2,     2,     3,     3,     3,     3,     4,     1,
+       0,     2,     4,     0,     2,     4,     4,     4,     4,     4,
+       1,     1,     4,    22,     0,     2,     5,     0,     2,     2,
+       2,     2,     2,     3,     3,     3,     3,     3,     4,     1,
        1,     3,     1,     3,     3,     1,     3,     3,     1,     1,
-       1,     1,     3
+       1,     1,     1,     1,     1,     1,     1,     1,     3
 };
 
 /* YYDEFACT[STATE-NAME] -- Default rule to reduce with in state
@@ -533,45 +578,49 @@ static const yytype_uint8 yyr2[] =
    means the default is an error.  */
 static const yytype_uint8 yydefact[] =
 {
-       0,     0,     0,     0,     0,     1,     0,     5,     0,     0,
-       0,     2,     0,    22,     0,     0,     0,     6,     0,     0,
-      21,     3,     0,     0,    23,     0,     0,     8,     0,     7,
-       0,     0,     0,     0,     0,     9,     0,    28,    29,    30,
-      11,    31,     0,     0,    10,    12,     0,    13,     0,     0,
-       0,     0,     0,     0,    27,    14,     0,    16,    15,    17,
-       0,     0,     0,     0,    25,    19,    20,    18,     0,    32,
-       0,    24,     0,    26,     0,     0,     0,     0,     0,     0,
-       4
+       3,     0,     0,     1,     0,    10,    11,     4,     0,     0,
+       0,     0,     0,    14,    41,    45,    46,     0,    40,     0,
+       0,     0,     2,     0,    42,    43,    44,     9,     0,     7,
+       6,     8,     5,     0,    32,     0,     0,    15,     0,    39,
+       0,    35,    38,     0,    31,    12,     0,     0,     0,    34,
+      33,     0,     0,    36,    17,     0,    16,     0,     0,     0,
+       0,     0,    18,     0,    20,    47,     0,     0,    19,    21,
+       0,    22,     0,     0,     0,     0,     0,     0,    37,    27,
+      25,    24,    26,    23,     0,     0,     0,    29,    30,    28,
+       0,    48,     0,     0,     0,     0,     0,     0,     0,    13
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     2,     7,     3,    11,    17,    29,    35,    44,    47,
-      67,    10,    14,    58,    63,    40,    41,    42,    54
+      -1,     1,     2,     7,     8,    13,     9,    22,    37,    56,
+      62,    68,    71,    89,    21,    33,    30,    40,    64,    65,
+      17,    42,    18,    66,    78
 };
 
 /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
    STATE-NUM.  */
-#define YYPACT_NINF -50
+#define YYPACT_NINF -28
 static const yytype_int8 yypact[] =
 {
-       2,     1,    22,    16,     8,   -50,     6,   -50,    10,    15,
-       6,    29,    17,   -50,   -14,    18,    19,   -50,    14,    20,
-     -50,   -50,    24,    23,   -50,    26,    25,   -50,    27,    11,
-      28,    12,    30,     6,    31,   -50,    33,   -50,   -50,   -50,
-     -50,   -50,    36,    32,   -50,   -50,    34,   -50,    35,    38,
-     -11,    39,    37,    40,   -50,   -50,    12,   -50,   -50,   -50,
-      -1,    41,    12,    -9,   -50,   -50,   -50,   -50,    42,   -50,
-      12,   -50,    43,   -50,    44,    45,    46,    48,    50,    49,
-     -50
+     -28,    14,    23,   -28,    15,   -28,   -28,   -28,    24,    30,
+       6,    22,    27,   -28,   -28,   -28,   -28,    34,   -28,    -8,
+       6,    27,    51,     6,   -28,   -28,   -28,   -28,    46,   -28,
+     -28,   -28,   -28,   -11,   -28,     6,    45,   -28,    41,   -28,
+      -7,   -28,   -28,     6,   -28,   -28,    46,     6,    46,   -28,
+     -28,    50,    47,   -28,   -28,     6,    44,    48,    46,    52,
+      27,    57,   -28,     6,   -28,   -28,    63,    54,   -28,   -28,
+       6,   -28,    55,    62,    13,     6,     6,    53,   -28,   -28,
+     -28,   -28,   -28,   -28,    37,    56,    46,   -28,   -28,   -28,
+       6,   -28,    58,     6,    60,     6,    61,     6,    64,   -28
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -50,   -50,   -50,   -50,   -50,   -50,   -50,   -50,   -50,   -50,
-     -50,   -10,   -50,   -50,   -50,   -50,   -49,   -15,   -50
+     -28,   -28,   -28,   -28,   -28,   -28,   -28,   -28,   -28,   -28,
+     -28,   -28,   -28,   -28,   -15,   -28,     7,   -28,   -28,   -27,
+     -20,   -17,   -14,     0,   -28
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -581,41 +630,44 @@ static const yytype_int8 yypgoto[] =
 #define YYTABLE_NINF -1
 static const yytype_uint8 yytable[] =
 {
-      15,    59,    37,    38,    39,    55,    19,    64,    65,    66,
-      20,    70,     9,     1,    56,    31,    32,    71,    33,    34,
-       4,    73,     5,    45,     8,    37,    38,    39,     6,     9,
-      12,    13,    16,    18,    23,    21,    24,    22,    25,    26,
-      57,    27,    49,    30,    43,    28,    46,    69,    36,    48,
-       0,    51,    53,    61,    50,    52,    60,     0,    72,     0,
-      75,    68,    77,    74,     0,    76,    79,    62,    78,     0,
-      80
+      34,    41,    31,    38,    29,    32,    35,    24,    25,    26,
+      27,    15,    16,    43,     3,    45,    44,    48,    20,    51,
+      28,    53,    49,    50,    14,    15,    16,    52,    24,    25,
+      26,    79,    15,    16,     4,    57,     5,     6,    10,    20,
+      11,    28,    12,    72,    19,    69,    87,    88,    58,    59,
+      75,    60,    61,    20,    36,    84,    85,    82,    23,    80,
+      83,    24,    25,    26,    39,    47,    46,    54,    67,    73,
+      92,    55,    63,    94,    70,    96,    74,    98,    77,    76,
+      90,    81,    93,    86,    95,    97,    91,     0,     0,    99
 };
 
 static const yytype_int8 yycheck[] =
 {
-      10,    50,    13,    14,    15,    16,    20,    56,     9,    10,
-      24,    20,    23,    11,    25,     4,     5,    26,     7,     8,
-      19,    70,     0,    33,    16,    13,    14,    15,    12,    23,
-      20,    16,     3,    16,    20,    17,    16,    18,    14,    16,
-      50,    15,     6,    16,    14,    20,    15,    62,    20,    16,
-      -1,    17,    14,    16,    22,    20,    17,    -1,    16,    -1,
-      16,    20,    16,    20,    -1,    20,    16,    27,    20,    -1,
-      21
+      20,    28,    19,    23,    19,    19,    21,    15,    16,    17,
+      18,    19,    20,    24,     0,    35,    27,    24,    26,    46,
+      28,    48,    29,    43,    18,    19,    20,    47,    15,    16,
+      17,    18,    19,    20,    11,    55,    13,    14,    23,    26,
+      16,    28,    12,    63,    22,    60,     9,    10,     4,     5,
+      70,     7,     8,    26,     3,    75,    76,    74,    24,    74,
+      74,    15,    16,    17,    18,    24,    21,    17,    16,     6,
+      90,    24,    24,    93,    17,    95,    22,    97,    16,    24,
+      24,    74,    24,    30,    24,    24,    86,    -1,    -1,    25
 };
 
 /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
    symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,    11,    29,    31,    19,     0,    12,    30,    16,    23,
-      39,    32,    20,    16,    40,    39,     3,    33,    16,    20,
-      24,    17,    18,    20,    16,    14,    16,    15,    20,    34,
-      16,     4,     5,     7,     8,    35,    20,    13,    14,    15,
-      43,    44,    45,    14,    36,    39,    15,    37,    16,     6,
-      22,    17,    20,    14,    46,    16,    25,    39,    41,    44,
-      17,    16,    27,    42,    44,     9,    10,    38,    20,    45,
-      20,    26,    16,    44,    20,    16,    20,    16,    20,    16,
-      21
+       0,    32,    33,     0,    11,    13,    14,    34,    35,    37,
+      23,    16,    12,    36,    18,    19,    20,    51,    53,    22,
+      26,    45,    38,    24,    15,    16,    17,    18,    28,    45,
+      47,    52,    53,    46,    51,    45,     3,    39,    51,    18,
+      48,    50,    52,    24,    27,    51,    21,    24,    24,    29,
+      51,    50,    51,    50,    17,    24,    40,    51,     4,     5,
+       7,     8,    41,    24,    49,    50,    54,    16,    42,    45,
+      17,    43,    51,     6,    22,    51,    24,    16,    55,    18,
+      45,    47,    52,    53,    51,    51,    30,     9,    10,    44,
+      24,    54,    51,    24,    51,    24,    51,    24,    51,    25
 };
 
 #define yyerrok		(yyerrstatus = 0)
@@ -1123,80 +1175,90 @@ yydestruct (yymsg, yytype, yyvaluep)
 
   switch (yytype)
     {
-      case 13: /* "SIGNAME" */
-#line 39 "topcell.yy"
+      case 15: /* "SIGNAME" */
+#line 69 "topcell.yy"
 	{ delete (yyvaluep->string); };
-#line 1130 "topcell_parser.cc"
+#line 1182 "topcell_parser.cc"
 	break;
-      case 14: /* "NAME" */
-#line 39 "topcell.yy"
+      case 16: /* "NAME" */
+#line 69 "topcell.yy"
 	{ delete (yyvaluep->string); };
-#line 1135 "topcell_parser.cc"
+#line 1187 "topcell_parser.cc"
 	break;
-      case 15: /* "QNAME" */
-#line 39 "topcell.yy"
+      case 17: /* "QNAME" */
+#line 69 "topcell.yy"
 	{ delete (yyvaluep->string); };
-#line 1140 "topcell_parser.cc"
+#line 1192 "topcell_parser.cc"
 	break;
-      case 34: /* "spec_list" */
-#line 68 "topcell.yy"
+      case 18: /* "VAR" */
+#line 69 "topcell.yy"
+	{ delete (yyvaluep->string); };
+#line 1197 "topcell_parser.cc"
+	break;
+      case 40: /* "spec_list" */
+#line 100 "topcell.yy"
 	{ delete (yyvaluep->spec_list); };
-#line 1145 "topcell_parser.cc"
+#line 1202 "topcell_parser.cc"
 	break;
-      case 35: /* "spec" */
-#line 56 "topcell.yy"
+      case 41: /* "spec" */
+#line 88 "topcell.yy"
 	{ delete (yyvaluep->spec); };
-#line 1150 "topcell_parser.cc"
+#line 1207 "topcell_parser.cc"
 	break;
-      case 36: /* "parameter" */
-#line 56 "topcell.yy"
+      case 42: /* "parameter" */
+#line 88 "topcell.yy"
 	{ delete (yyvaluep->spec); };
-#line 1155 "topcell_parser.cc"
+#line 1212 "topcell_parser.cc"
 	break;
-      case 37: /* "segdecl" */
-#line 59 "topcell.yy"
+      case 43: /* "segdecl" */
+#line 91 "topcell.yy"
 	{ delete (yyvaluep->segment); };
-#line 1160 "topcell_parser.cc"
+#line 1217 "topcell_parser.cc"
 	break;
-      case 39: /* "int_tab" */
-#line 50 "topcell.yy"
+      case 45: /* "int_tab" */
+#line 82 "topcell.yy"
 	{ delete (yyvaluep->int_tab); };
-#line 1165 "topcell_parser.cc"
+#line 1222 "topcell_parser.cc"
 	break;
-      case 40: /* "numerals" */
-#line 53 "topcell.yy"
+      case 46: /* "numerals" */
+#line 85 "topcell.yy"
 	{ delete (yyvaluep->int_vector); };
-#line 1170 "topcell_parser.cc"
+#line 1227 "topcell_parser.cc"
 	break;
-      case 41: /* "array" */
-#line 65 "topcell.yy"
+      case 47: /* "array" */
+#line 97 "topcell.yy"
 	{ delete (yyvaluep->name_list); };
-#line 1175 "topcell_parser.cc"
+#line 1232 "topcell_parser.cc"
 	break;
-      case 42: /* "name_list" */
-#line 65 "topcell.yy"
+      case 48: /* "name_list" */
+#line 97 "topcell.yy"
 	{ delete (yyvaluep->name_list); };
-#line 1180 "topcell_parser.cc"
+#line 1237 "topcell_parser.cc"
 	break;
-      case 43: /* "connection" */
-#line 62 "topcell.yy"
+      case 49: /* "connection" */
+#line 94 "topcell.yy"
 	{ delete (yyvaluep->connection); };
-#line 1185 "topcell_parser.cc"
+#line 1242 "topcell_parser.cc"
 	break;
-      case 44: /* "anyname" */
-#line 47 "topcell.yy"
+      case 50: /* "anyname" */
+#line 79 "topcell.yy"
 	{ delete (yyvaluep->string); };
-#line 1190 "topcell_parser.cc"
+#line 1247 "topcell_parser.cc"
 	break;
-      case 45: /* "portname" */
-#line 47 "topcell.yy"
+      case 52: /* "namenovar" */
+#line 79 "topcell.yy"
 	{ delete (yyvaluep->string); };
-#line 1195 "topcell_parser.cc"
+#line 1252 "topcell_parser.cc"
 	break;
-      case 46: /* "sigspec" */
-#line 65 "topcell.yy"
+      case 54: /* "portname" */
+#line 79 "topcell.yy"
+	{ delete (yyvaluep->string); };
+#line 1257 "topcell_parser.cc"
+	break;
+      case 55: /* "sigspec" */
+#line 97 "topcell.yy"
 	{ delete (yyvaluep->name_list); };
-#line 1200 "topcell_parser.cc"
+#line 1262 "topcell_parser.cc"
 	break;
 
       default:
@@ -1504,167 +1566,277 @@ yyreduce:
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
-        case 3:
-#line 77 "topcell.yy"
+        case 5:
+#line 112 "topcell.yy"
     {
-		 soclib::common::inst::InstArg &env = topcell_parser_retval->env();
-		 env.add( "mapping_table",
-           soclib::common::MappingTable(
-             env.get<int>("addr_size"), *(yyvsp[(2) - (4)].int_tab), *(yyvsp[(3) - (4)].int_tab), (yyvsp[(4) - (4)].numeral) ) );
-		 delete (yyvsp[(2) - (4)].int_tab);
-		 delete (yyvsp[(3) - (4)].int_tab);
-		;}
+                           soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+                           if ( (yyvsp[(1) - (4)].forced) || !env.has(*(yyvsp[(2) - (4)].string)) ) env.add(*(yyvsp[(2) - (4)].string), (int)(yyvsp[(4) - (4)].numeral)); delete (yyvsp[(2) - (4)].string);
+                          ;}
     break;
 
-  case 4:
-#line 90 "topcell.yy"
+  case 6:
+#line 116 "topcell.yy"
     {
-			   soclib::common::inst::InstArg &env = topcell_parser_retval->env();
-			   env.add( "vci_param", *new std::string(
-                 soclib::caba::VciParamsString(
-			     (yyvsp[(3) - (22)].numeral), (yyvsp[(5) - (22)].numeral), (yyvsp[(7) - (22)].numeral), (yyvsp[(9) - (22)].numeral), (yyvsp[(11) - (22)].numeral), (yyvsp[(13) - (22)].numeral), (yyvsp[(15) - (22)].numeral), (yyvsp[(17) - (22)].numeral), (yyvsp[(19) - (22)].numeral), (yyvsp[(21) - (22)].numeral) ) ) );
-			   env.add( "addr_size", *new int((yyvsp[(7) - (22)].numeral)) );
-			   env.add( "srcid_size", *new int((yyvsp[(15) - (22)].numeral)) );
-             ;}
+                           soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+                           if ( (yyvsp[(1) - (4)].forced) || !env.has(*(yyvsp[(2) - (4)].string)) ) env.add(*(yyvsp[(2) - (4)].string), *(yyvsp[(4) - (4)].name_list)); delete (yyvsp[(4) - (4)].name_list); delete (yyvsp[(2) - (4)].string);
+                          ;}
     break;
 
   case 7:
-#line 105 "topcell.yy"
+#line 120 "topcell.yy"
     {
-			   topcell_parser_retval->prepare((yyvsp[(2) - (5)].mode), *(yyvsp[(3) - (5)].string), *(yyvsp[(4) - (5)].string), (yyvsp[(5) - (5)].spec_list));
-			   delete (yyvsp[(3) - (5)].string);
-			   delete (yyvsp[(4) - (5)].string);
-			  ;}
+                           soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+                           if ( (yyvsp[(1) - (4)].forced) || !env.has(*(yyvsp[(2) - (4)].string)) ) env.add(*(yyvsp[(2) - (4)].string), *(yyvsp[(4) - (4)].int_tab)); delete (yyvsp[(4) - (4)].int_tab); delete (yyvsp[(2) - (4)].string);
+                          ;}
     break;
 
   case 8:
-#line 112 "topcell.yy"
-    { (yyval.spec_list) = topcell_parser_retval->new_args(); ;}
+#line 124 "topcell.yy"
+    {
+                           soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+                           if ( (yyvsp[(1) - (4)].forced) || !env.has(*(yyvsp[(2) - (4)].string)) ) env.add(*(yyvsp[(2) - (4)].string), *(yyvsp[(4) - (4)].string)); delete (yyvsp[(4) - (4)].string); delete (yyvsp[(2) - (4)].string);
+                          ;}
     break;
 
   case 9:
-#line 113 "topcell.yy"
-    { (yyvsp[(2) - (2)].spec)->setIn(*(yyvsp[(1) - (2)].spec_list)); (yyval.spec_list)=(yyvsp[(1) - (2)].spec_list); delete (yyvsp[(2) - (2)].spec); ;}
+#line 128 "topcell.yy"
+    {
+                           soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+                           env.add(*(yyvsp[(2) - (4)].string), env.get(*(yyvsp[(4) - (4)].string))); delete (yyvsp[(4) - (4)].string); delete (yyvsp[(2) - (4)].string);
+                          ;}
     break;
 
   case 10:
-#line 116 "topcell.yy"
-    { (yyval.spec) = (yyvsp[(2) - (2)].spec); ;}
+#line 134 "topcell.yy"
+    { (yyval.forced) = true; ;}
     break;
 
   case 11:
-#line 117 "topcell.yy"
-    { (yyval.spec) = (yyvsp[(2) - (2)].connection); ;}
+#line 135 "topcell.yy"
+    { (yyval.forced) = false; ;}
     break;
 
   case 12:
-#line 118 "topcell.yy"
-    { (yyval.spec) = new soclib::common::topcell::Id(*(yyvsp[(2) - (2)].int_tab)); delete (yyvsp[(2) - (2)].int_tab); ;}
+#line 139 "topcell.yy"
+    {
+         soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+         env.add( "mapping_table",
+           soclib::common::MappingTable(
+             env.get<int>("addr_size"), *(yyvsp[(2) - (4)].int_tab), *(yyvsp[(3) - (4)].int_tab), (yyvsp[(4) - (4)].numeral) ) );
+         delete (yyvsp[(2) - (4)].int_tab);
+         delete (yyvsp[(3) - (4)].int_tab);
+        ;}
     break;
 
   case 13:
-#line 119 "topcell.yy"
-    { (yyval.spec) = (yyvsp[(2) - (2)].segment); ;}
-    break;
-
-  case 14:
-#line 122 "topcell.yy"
-    { (yyval.spec) = new soclib::common::topcell::Param<int>(*(yyvsp[(1) - (3)].string), (yyvsp[(3) - (3)].numeral)); delete (yyvsp[(1) - (3)].string); ;}
-    break;
-
-  case 15:
-#line 123 "topcell.yy"
-    { (yyval.spec) = new soclib::common::topcell::Param<std::vector<std::string> >(*(yyvsp[(1) - (3)].string), *(yyvsp[(3) - (3)].name_list)); delete (yyvsp[(3) - (3)].name_list); delete (yyvsp[(1) - (3)].string); ;}
+#line 152 "topcell.yy"
+    {
+               soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+               env.add( "vci_param", *new std::string(
+                 soclib::caba::VciParamsString(
+                 (yyvsp[(3) - (22)].numeral), (yyvsp[(5) - (22)].numeral), (yyvsp[(7) - (22)].numeral), (yyvsp[(9) - (22)].numeral), (yyvsp[(11) - (22)].numeral), (yyvsp[(13) - (22)].numeral), (yyvsp[(15) - (22)].numeral), (yyvsp[(17) - (22)].numeral), (yyvsp[(19) - (22)].numeral), (yyvsp[(21) - (22)].numeral) ) ) );
+               env.add( "addr_size", *new int((yyvsp[(7) - (22)].numeral)) );
+               env.add( "srcid_size", *new int((yyvsp[(15) - (22)].numeral)) );
+             ;}
     break;
 
   case 16:
-#line 124 "topcell.yy"
-    { (yyval.spec) = new soclib::common::topcell::Param<soclib::common::IntTab>(*(yyvsp[(1) - (3)].string), *(yyvsp[(3) - (3)].int_tab)); delete (yyvsp[(3) - (3)].int_tab); delete (yyvsp[(1) - (3)].string); ;}
+#line 167 "topcell.yy"
+    {
+               topcell_parser_retval->prepare((yyvsp[(2) - (5)].mode), *(yyvsp[(3) - (5)].string), *(yyvsp[(4) - (5)].string), (yyvsp[(5) - (5)].spec_list));
+               delete (yyvsp[(3) - (5)].string);
+               delete (yyvsp[(4) - (5)].string);
+              ;}
     break;
 
   case 17:
-#line 125 "topcell.yy"
-    { (yyval.spec) = new soclib::common::topcell::Param<std::string>(*(yyvsp[(1) - (3)].string), *(yyvsp[(3) - (3)].string)); delete (yyvsp[(3) - (3)].string); delete (yyvsp[(1) - (3)].string); ;}
+#line 174 "topcell.yy"
+    { (yyval.spec_list) = topcell_parser_retval->new_args(); ;}
     break;
 
   case 18:
-#line 128 "topcell.yy"
-    { (yyval.segment) = new soclib::common::topcell::Segment( *(yyvsp[(1) - (4)].string), (yyvsp[(2) - (4)].numeral), (yyvsp[(3) - (4)].numeral), (yyvsp[(4) - (4)].cacheable) ); delete (yyvsp[(1) - (4)].string); ;}
+#line 175 "topcell.yy"
+    { (yyvsp[(2) - (2)].spec)->setIn(*(yyvsp[(1) - (2)].spec_list)); (yyval.spec_list)=(yyvsp[(1) - (2)].spec_list); delete (yyvsp[(2) - (2)].spec); ;}
     break;
 
   case 19:
-#line 131 "topcell.yy"
-    { (yyval.cacheable) = true; ;}
+#line 178 "topcell.yy"
+    { (yyval.spec) = (yyvsp[(2) - (2)].spec); ;}
     break;
 
   case 20:
-#line 132 "topcell.yy"
-    { (yyval.cacheable) = false; ;}
+#line 179 "topcell.yy"
+    { (yyval.spec) = (yyvsp[(2) - (2)].connection); ;}
     break;
 
   case 21:
-#line 135 "topcell.yy"
-    { (yyvsp[(2) - (3)].int_vector)->push_back(-1); (yyval.int_tab) = new soclib::common::IntTab(*(yyvsp[(2) - (3)].int_vector)); delete (yyvsp[(2) - (3)].int_vector); ;}
+#line 180 "topcell.yy"
+    { (yyval.spec) = new soclib::common::topcell::Id(*(yyvsp[(2) - (2)].int_tab)); delete (yyvsp[(2) - (2)].int_tab); ;}
     break;
 
   case 22:
-#line 138 "topcell.yy"
-    { (yyval.int_vector) = new std::vector<int>(); (yyval.int_vector)->push_back((yyvsp[(1) - (1)].numeral)); ;}
+#line 181 "topcell.yy"
+    { (yyval.spec) = (yyvsp[(2) - (2)].segment); ;}
     break;
 
   case 23:
-#line 139 "topcell.yy"
-    { (yyvsp[(1) - (3)].int_vector)->push_back((yyvsp[(3) - (3)].numeral)); (yyval.int_vector)=(yyvsp[(1) - (3)].int_vector); ;}
+#line 184 "topcell.yy"
+    { (yyval.spec) = new soclib::common::topcell::Param<int>(*(yyvsp[(1) - (3)].string), (yyvsp[(3) - (3)].numeral)); delete (yyvsp[(1) - (3)].string); ;}
     break;
 
   case 24:
-#line 142 "topcell.yy"
-    { (yyval.name_list) = (yyvsp[(2) - (3)].name_list); ;}
+#line 185 "topcell.yy"
+    { (yyval.spec) = new soclib::common::topcell::Param<std::vector<std::string> >(*(yyvsp[(1) - (3)].string), *(yyvsp[(3) - (3)].name_list)); delete (yyvsp[(3) - (3)].name_list); delete (yyvsp[(1) - (3)].string); ;}
     break;
 
   case 25:
-#line 145 "topcell.yy"
-    { (yyval.name_list) = new std::vector<std::string>(); (yyval.name_list)->push_back(*(yyvsp[(1) - (1)].string)); delete (yyvsp[(1) - (1)].string); ;}
+#line 186 "topcell.yy"
+    { (yyval.spec) = new soclib::common::topcell::Param<soclib::common::IntTab>(*(yyvsp[(1) - (3)].string), *(yyvsp[(3) - (3)].int_tab)); delete (yyvsp[(3) - (3)].int_tab); delete (yyvsp[(1) - (3)].string); ;}
     break;
 
   case 26:
-#line 146 "topcell.yy"
-    { (yyvsp[(1) - (3)].name_list)->push_back(*(yyvsp[(3) - (3)].string)); (yyval.name_list)=(yyvsp[(1) - (3)].name_list); delete (yyvsp[(3) - (3)].string); ;}
+#line 187 "topcell.yy"
+    { (yyval.spec) = new soclib::common::topcell::Param<std::string>(*(yyvsp[(1) - (3)].string), *(yyvsp[(3) - (3)].string)); delete (yyvsp[(3) - (3)].string); delete (yyvsp[(1) - (3)].string); ;}
     break;
 
   case 27:
-#line 149 "topcell.yy"
-    { (yyval.connection) = new soclib::common::topcell::Conn(*(yyvsp[(1) - (3)].string), (*(yyvsp[(3) - (3)].name_list))[0], (*(yyvsp[(3) - (3)].name_list))[1]); delete (yyvsp[(1) - (3)].string); delete (yyvsp[(3) - (3)].name_list); ;}
+#line 188 "topcell.yy"
+    {
+                  soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+                  soclib::common::inst::InstArgBaseItem &_item = env.get(*(yyvsp[(3) - (3)].string));
+				  typedef soclib::common::inst::InstArgItem<int> int_item_t;
+				  typedef soclib::common::inst::InstArgItem<std::string> str_item_t;
+				  typedef soclib::common::inst::InstArgItem<std::vector<std::string> > str_vect_item_t;
+				  typedef soclib::common::inst::InstArgItem<soclib::common::IntTab> inttab_item_t;
+				  if ( int_item_t *item = dynamic_cast<int_item_t*>(&_item) )
+				    (yyval.spec) = new soclib::common::topcell::Param<int>(*(yyvsp[(1) - (3)].string), **item);
+				  else if ( str_item_t *item = dynamic_cast<str_item_t*>(&_item) )
+				    (yyval.spec) = new soclib::common::topcell::Param<std::string>(*(yyvsp[(1) - (3)].string), **item);
+				  else if ( str_vect_item_t *item = dynamic_cast<str_vect_item_t*>(&_item) )
+				    (yyval.spec) = new soclib::common::topcell::Param<std::vector<std::string> >(*(yyvsp[(1) - (3)].string), **item);
+				  else if ( inttab_item_t *item = dynamic_cast<inttab_item_t*>(&_item) ) {
+				    (yyval.spec) = new soclib::common::topcell::Param<soclib::common::IntTab>(*(yyvsp[(1) - (3)].string), **item);
+				  } else throw soclib::exception::RunTimeError(
+				  	std::string("Trying to get an incompatible type when getting variable `")
+					+(*(yyvsp[(1) - (3)].string))+"'");
+                  delete (yyvsp[(1) - (3)].string);
+                  ;}
     break;
 
   case 28:
-#line 152 "topcell.yy"
-    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+#line 210 "topcell.yy"
+    { (yyval.segment) = new soclib::common::topcell::Segment( *(yyvsp[(1) - (4)].string), (yyvsp[(2) - (4)].numeral), (yyvsp[(3) - (4)].numeral), (yyvsp[(4) - (4)].cacheable) ); delete (yyvsp[(1) - (4)].string); ;}
     break;
 
   case 29:
-#line 153 "topcell.yy"
-    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+#line 213 "topcell.yy"
+    { (yyval.cacheable) = true; ;}
     break;
 
   case 30:
-#line 154 "topcell.yy"
-    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+#line 214 "topcell.yy"
+    { (yyval.cacheable) = false; ;}
     break;
 
   case 31:
-#line 157 "topcell.yy"
-    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+#line 217 "topcell.yy"
+    { (yyvsp[(2) - (3)].int_vector)->push_back(-1); (yyval.int_tab) = new soclib::common::IntTab(*(yyvsp[(2) - (3)].int_vector)); delete (yyvsp[(2) - (3)].int_vector); ;}
     break;
 
   case 32:
-#line 160 "topcell.yy"
+#line 220 "topcell.yy"
+    { (yyval.int_vector) = new std::vector<int>(); (yyval.int_vector)->push_back((yyvsp[(1) - (1)].numeral)); ;}
+    break;
+
+  case 33:
+#line 221 "topcell.yy"
+    { (yyvsp[(1) - (3)].int_vector)->push_back((yyvsp[(3) - (3)].numeral)); (yyval.int_vector)=(yyvsp[(1) - (3)].int_vector); ;}
+    break;
+
+  case 34:
+#line 224 "topcell.yy"
+    { (yyval.name_list) = (yyvsp[(2) - (3)].name_list); ;}
+    break;
+
+  case 35:
+#line 227 "topcell.yy"
+    { (yyval.name_list) = new std::vector<std::string>(); (yyval.name_list)->push_back(*(yyvsp[(1) - (1)].string)); delete (yyvsp[(1) - (1)].string); ;}
+    break;
+
+  case 36:
+#line 228 "topcell.yy"
+    { (yyvsp[(1) - (3)].name_list)->push_back(*(yyvsp[(3) - (3)].string)); (yyval.name_list)=(yyvsp[(1) - (3)].name_list); delete (yyvsp[(3) - (3)].string); ;}
+    break;
+
+  case 37:
+#line 231 "topcell.yy"
+    { (yyval.connection) = new soclib::common::topcell::Conn(*(yyvsp[(1) - (3)].string), (*(yyvsp[(3) - (3)].name_list))[0], (*(yyvsp[(3) - (3)].name_list))[1]); delete (yyvsp[(1) - (3)].string); delete (yyvsp[(3) - (3)].name_list); ;}
+    break;
+
+  case 38:
+#line 234 "topcell.yy"
+    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+    break;
+
+  case 39:
+#line 235 "topcell.yy"
+    {
+                   soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+                   (yyval.string) = new std::string(env.get<std::string>(*(yyvsp[(1) - (1)].string)));
+                  ;}
+    break;
+
+  case 40:
+#line 241 "topcell.yy"
+    { (yyval.numeral) = (yyvsp[(1) - (1)].numeral) ;}
+    break;
+
+  case 41:
+#line 242 "topcell.yy"
+    {
+                   soclib::common::inst::InstArg &env = topcell_parser_retval->env();
+                   (yyval.numeral) = env.get<int>(*(yyvsp[(1) - (1)].string));
+                 ;}
+    break;
+
+  case 42:
+#line 247 "topcell.yy"
+    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+    break;
+
+  case 43:
+#line 248 "topcell.yy"
+    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+    break;
+
+  case 44:
+#line 249 "topcell.yy"
+    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+    break;
+
+  case 45:
+#line 252 "topcell.yy"
+    { (yyval.numeral) = (yyvsp[(1) - (1)].numeral) ;}
+    break;
+
+  case 46:
+#line 253 "topcell.yy"
+    { (yyval.numeral) = (yyvsp[(1) - (1)].numeral) ;}
+    break;
+
+  case 47:
+#line 256 "topcell.yy"
+    { (yyval.string) = (yyvsp[(1) - (1)].string); ;}
+    break;
+
+  case 48:
+#line 259 "topcell.yy"
     { (yyval.name_list) = new std::vector<std::string>(); (yyval.name_list)->push_back(*(yyvsp[(1) - (3)].string)); (yyval.name_list)->push_back(*(yyvsp[(3) - (3)].string)); delete (yyvsp[(1) - (3)].string); delete (yyvsp[(3) - (3)].string); ;}
     break;
 
 
 /* Line 1267 of yacc.c.  */
-#line 1668 "topcell_parser.cc"
+#line 1840 "topcell_parser.cc"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -1878,6 +2050,6 @@ yyreturn:
 }
 
 
-#line 163 "topcell.yy"
+#line 262 "topcell.yy"
 
 
