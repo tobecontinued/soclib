@@ -47,6 +47,8 @@
 
 #include "segmentation.h"
 
+//soclib::common::IntTab a(8);
+
 int _main(int argc, char *argv[])
 {
 	using namespace sc_core;
