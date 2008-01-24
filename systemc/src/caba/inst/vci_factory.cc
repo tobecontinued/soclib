@@ -181,6 +181,18 @@ tmpl(BaseModule&)::locks(
         env.get<MappingTable>("mapping_table") );
 }
 
+tmpl(BaseModule&)::simhelper(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	return
+		*new VciSimhelper<vci_param>(
+        name.c_str(),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        env.get<MappingTable>("mapping_table") );
+}
+
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  fb_factory(vci_param::string("framebuffer"), &framebuffer);
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
@@ -199,5 +211,7 @@ tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  icu_factory(vci_param::string("icu"), &icu);
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  locks_factory(vci_param::string("locks"), &locks);
+tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
+ simhelper_factory(vci_param::string("simhelper"), &simhelper);
 
 }}
