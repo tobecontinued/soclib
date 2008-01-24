@@ -52,6 +52,7 @@ class CCompile(action.Action):
 		handle.fromchild.close()
 		rval = handle.wait()
 		if rval:
+			print r
 			raise action.ActionFailed(rval, cmd)
 		return r
 	def _processDeps(self, filename):
