@@ -179,8 +179,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::RingRegister<vci_param> ringregister("ringregister");
 	
 	// Ring interne signals
-	soclib::caba::RingNegSignals<vci_param> signal_ani_neg[10];
-	soclib::caba::RingDataSignals<vci_param> signal_ani_data[10];
+	soclib::caba::RingSignals<vci_param> signal_ani[10];
 
 	//	Net-List
 	mips0.p_clk(signal_clk);  
@@ -307,64 +306,44 @@ int _main(int argc, char *argv[])
 
 
 	// wrapper connection
-	cache0_wrapper.p_rni(signal_ani_neg[9]);
-	cache0_wrapper.p_rdi(signal_ani_data[9]);
-	cache0_wrapper.p_rno(signal_ani_neg[0]);
-	cache0_wrapper.p_rdo(signal_ani_data[0]);
+	cache0_wrapper.p_ri(signal_ani[9]);
+	cache0_wrapper.p_ro(signal_ani[0]);
 	cache0_wrapper.p_vci(signal_vci_m0);
 
-	cache1_wrapper.p_rni(signal_ani_neg[0]);
-	cache1_wrapper.p_rdi(signal_ani_data[0]);
-	cache1_wrapper.p_rno(signal_ani_neg[1]);
-	cache1_wrapper.p_rdo(signal_ani_data[1]);
+	cache1_wrapper.p_ri(signal_ani[0]);
+	cache1_wrapper.p_ro(signal_ani[1]);
 	cache1_wrapper.p_vci(signal_vci_m1);
 
-	cache2_wrapper.p_rni(signal_ani_neg[1]);
-	cache2_wrapper.p_rdi(signal_ani_data[1]);
-	cache2_wrapper.p_rno(signal_ani_neg[2]);
-	cache2_wrapper.p_rdo(signal_ani_data[2]);
+	cache2_wrapper.p_ri(signal_ani[1]);
+	cache2_wrapper.p_ro(signal_ani[2]);
 	cache2_wrapper.p_vci(signal_vci_m2);
 
-	cache3_wrapper.p_rni(signal_ani_neg[2]);
-	cache3_wrapper.p_rdi(signal_ani_data[2]);
-	cache3_wrapper.p_rno(signal_ani_neg[3]);
-	cache3_wrapper.p_rdo(signal_ani_data[3]);
+	cache3_wrapper.p_ri(signal_ani[2]);
+	cache3_wrapper.p_ro(signal_ani[3]);
 	cache3_wrapper.p_vci(signal_vci_m3);
 
-	multiram0_wrapper.p_rni(signal_ani_neg[3]);
-	multiram0_wrapper.p_rdi(signal_ani_data[3]);
-	multiram0_wrapper.p_rno(signal_ani_neg[4]);
-	multiram0_wrapper.p_rdo(signal_ani_data[4]);
+	multiram0_wrapper.p_ri(signal_ani[3]);
+	multiram0_wrapper.p_ro(signal_ani[4]);
 	multiram0_wrapper.p_vci(signal_vci_vcimultiram0);
 
-	multiram1_wrapper.p_rni(signal_ani_neg[4]);
-	multiram1_wrapper.p_rdi(signal_ani_data[4]);
-	multiram1_wrapper.p_rno(signal_ani_neg[5]);
-	multiram1_wrapper.p_rdo(signal_ani_data[5]);
+	multiram1_wrapper.p_ri(signal_ani[4]);
+	multiram1_wrapper.p_ro(signal_ani[5]);
 	multiram1_wrapper.p_vci(signal_vci_vcimultiram1);
 
-	tty_wrapper.p_rni(signal_ani_neg[5]);
-	tty_wrapper.p_rdi(signal_ani_data[5]);
-	tty_wrapper.p_rno(signal_ani_neg[6]);
-	tty_wrapper.p_rdo(signal_ani_data[6]);
+	tty_wrapper.p_ri(signal_ani[5]);
+	tty_wrapper.p_ro(signal_ani[6]);
 	tty_wrapper.p_vci(signal_vci_tty);
 
-	timer_wrapper.p_rni(signal_ani_neg[6]);
-	timer_wrapper.p_rdi(signal_ani_data[6]);
-	timer_wrapper.p_rno(signal_ani_neg[7]);
-	timer_wrapper.p_rdo(signal_ani_data[7]);
+	timer_wrapper.p_ri(signal_ani[6]);
+	timer_wrapper.p_ro(signal_ani[7]);
 	timer_wrapper.p_vci(signal_vci_vcitimer);
 
-	locks_wrapper.p_rni(signal_ani_neg[7]);
-	locks_wrapper.p_rdi(signal_ani_data[7]);
-	locks_wrapper.p_rno(signal_ani_neg[8]);
-	locks_wrapper.p_rdo(signal_ani_data[8]);
+	locks_wrapper.p_ri(signal_ani[7]);
+	locks_wrapper.p_ro(signal_ani[8]);
 	locks_wrapper.p_vci(signal_vci_vcilocks);
 
-	ringregister.p_rni(signal_ani_neg[8]);
-	ringregister.p_rdi(signal_ani_data[8]);
-	ringregister.p_rno(signal_ani_neg[9]);
-	ringregister.p_rdo(signal_ani_data[9]);
+	ringregister.p_ri(signal_ani[8]);
+	ringregister.p_ro(signal_ani[9]);
 
 	int ncycles;
 #ifndef SOCVIEW

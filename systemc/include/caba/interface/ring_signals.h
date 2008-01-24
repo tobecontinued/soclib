@@ -52,29 +52,13 @@ enum{
 };
 
 template <typename vci_param>
-class RingNegSignals
+class RingSignals
 {
 public:
 	// signals
 	sc_signal<sc_uint<2> >     	   	ring_neg_cmd;        
 	sc_signal<typename vci_param::srcid_t>  ring_neg_srcid;   
 	sc_signal<typename vci_param::srcid_t>  ring_neg_msblsb;
-	
-#define ren(x) x(((std::string)(name_ + "_"#x)).c_str())
-	RingNegSignals(std::string name_ = (std::string)sc_gen_unique_name("ring_neg_signals"))
-	  : ren(ring_neg_cmd),
-	  ren(ring_neg_srcid),
-	  ren(ring_neg_msblsb)
-	  {
-	  }
-#undef ren
-};
-
-template <typename vci_param>
-class RingDataSignals
-{
-public:
-	// signals
 	sc_signal<sc_uint<2> >              	ring_data_cmd;    
 	sc_signal<typename vci_param::eop_t>    ring_data_eop;   
 	sc_signal<typename vci_param::be_t>     ring_data_be;    
@@ -83,10 +67,12 @@ public:
 	sc_signal<typename vci_param::addr_t>   ring_data_adresse;
 	sc_signal<typename vci_param::data_t>   ring_data;
 	sc_signal<typename vci_param::rerror_t> ring_data_error;
-
 #define ren(x) x(((std::string)(name_ + "_"#x)).c_str())
-	RingDataSignals(std::string name_ = (std::string)sc_gen_unique_name("ring_data_signals"))
-	  : ren(ring_data_cmd),
+	RingSignals(std::string name_ = (std::string)sc_gen_unique_name("ring_signals"))
+	  : ren(ring_neg_cmd),
+	  ren(ring_neg_srcid),
+	  ren(ring_neg_msblsb),
+	  ren(ring_data_cmd),
 	  ren(ring_data_eop),
 	  ren(ring_data_be),
 	  ren(ring_data_srcid),

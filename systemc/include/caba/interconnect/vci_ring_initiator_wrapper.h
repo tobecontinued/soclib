@@ -46,10 +46,8 @@ public:
 	// ports
 	sc_in<bool> 					p_clk;
 	sc_in<bool>   					p_resetn;
-	soclib::caba::RingNegINPort<vci_param> 		p_rni;
-	soclib::caba::RingDataINPort<vci_param> 	p_rdi;
-	soclib::caba::RingNegOUTPort<vci_param> 	p_rno;
-	soclib::caba::RingDataOUTPort<vci_param>	p_rdo;
+	soclib::caba::RingINPort<vci_param> 		p_ri;
+	soclib::caba::RingOUTPort<vci_param> 		p_ro;
 	soclib::caba::VciTarget<vci_param>		p_vci;
 	
 	// constructor / destructor
