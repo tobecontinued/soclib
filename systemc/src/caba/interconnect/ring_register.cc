@@ -1,10 +1,28 @@
-/////////////////////////////////////////////////////////////////////
-//  File: vci_pi_initiator_wrapper.cc  
-//  Author: Alain Greiner 
-//  Date: 15/04/2007 
-//  Copyright : UPMC - LIP6
-//  This program is released under the GNU General Public License 
-/////////////////////////////////////////////////////////////////////
+/*
+ * SOCLIB_LGPL_HEADER_BEGIN
+ * 
+ * This file is part of SoCLib, GNU LGPLv2.1.
+ * 
+ * SoCLib is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation; version 2.1 of the License.
+ * 
+ * SoCLib is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with SoCLib; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ * 
+ * SOCLIB_LGPL_HEADER_END
+ *
+ * Author   : Yang GAO 
+ * Date     : 28/09/2007
+ * Copyright: UPMC - LIP6
+ */
 
 #include "caba/interconnect/ring_register.h"
 #include "common/register.h"
@@ -47,18 +65,8 @@ tmpl(void)::transition()
 		p_rdo.ring_data_adresse = 0;      
 		p_rdo.ring_data = 0;              
 		p_rdo.ring_data_error = 0;
-
-		// add for new version
-//	p_rdo.ring_data_plen  = 0; 
-//	p_rdo.ring_data_trdid = 0;
-//	p_rdo.ring_data_cons  = false;
-//	p_rdo.ring_data_wrap  = false;
-//	p_rdo.ring_data_contig= false;
-//	p_rdo.ring_data_clen  = 0;
-//	p_rdo.ring_data_cfixed= false;
-
 		
-	return;
+		return;
 	} 
 
     //output of the neg anneau  
@@ -76,15 +84,6 @@ tmpl(void)::transition()
     p_rdo.ring_data = p_rdi.ring_data.read();              
     p_rdo.ring_data_error = p_rdi.ring_data_error.read();
 
-    // add for new version
-//   p_rdo.ring_data_plen  = p_rdi.ring_data_plen.read();                 
-//   p_rdo.ring_data_trdid = p_rdi.ring_data_trdid.read();                 
-//   p_rdo.ring_data_cons  = p_rdi.ring_data_cons.read();                 
-//   p_rdo.ring_data_wrap  = p_rdi.ring_data_wrap.read();                
-//   p_rdo.ring_data_contig= p_rdi.ring_data_contig.read();
-//   p_rdo.ring_data_clen  = p_rdi.ring_data_clen.read();
-//   p_rdo.ring_data_cfixed= p_rdi.ring_data_cfixed.read();
-
-};  // end Transition()
+}  // end Transition()
 
 }} // end namespace

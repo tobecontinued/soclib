@@ -1,12 +1,28 @@
-/////////////////////////////////////////////////////////////////////
-// File     : vci_ring_target_wrapper.h
-// Author   : Yang GAO 
-// Date     : 28/09/2007
-// Copyright: UPMC - LIP6
-// This program is released under the GNU Public License 
-//
-// This component is a target wrapper for generic VCI anneau-ani. 
-/////////////////////////////////////////////////////////////////////
+/*
+ * SOCLIB_LGPL_HEADER_BEGIN
+ * 
+ * This file is part of SoCLib, GNU LGPLv2.1.
+ * 
+ * SoCLib is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation; version 2.1 of the License.
+ * 
+ * SoCLib is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with SoCLib; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ * 
+ * SOCLIB_LGPL_HEADER_END
+ *
+ * Author   : Yang GAO 
+ * Date     : 28/09/2007
+ * Copyright: UPMC - LIP6
+ */
 
 #include <iostream>
 #include <stdarg.h>
@@ -43,7 +59,16 @@ sensitive << p_rni.ring_neg_cmd
           << p_vci.cmdack
           << p_rdi.ring_data_cmd
           << p_rdi.ring_data_adresse
-          << cible_reserve;
+          << r_cible_reserve;
+
+SC_METHOD(Mux);
+dont_initialize();
+sensitive << p_rdi.ring_data_cmd
+	  << r_fsm_state 
+	  << r_cible_ack_ok
+	  << r_cible_ext
+	  << p_vci.rspval
+	  << p_vci.reop;
 
 SC_METHOD (genMoore);
 dont_initialize();
@@ -60,18 +85,16 @@ sensitive << p_clk.neg()
           << p_rdi.ring_data_srcid
           << p_rdi.ring_data_pktid
           << p_vci.rspval
-          << p_vci.reop
-          << cible_ext
-          << cible_ack_ok;
+          << r_cible_ext;
 
 SC_METHOD(ANI_Output);
 dont_initialize();
-sensitive << ring_data_cmd_p
+sensitive << r_ring_data_cmd_p
           << p_rni.ring_neg_cmd
-          << ring_neg_mux
+          << r_ring_neg_mux
           << p_rni.ring_neg_srcid
           << p_rni.ring_neg_msblsb
-          << ring_data_mux
+          << r_ring_data_mux
           << p_vci.reop
           << p_vci.rsrcid
           << p_vci.rpktid
@@ -109,16 +132,16 @@ va_end (listeBaseAdr);
 /////////////////////////////////////////////
 tmpl(void)::Decoder()
 {
-	cible_ack_ok = false;
+	r_cible_ack_ok = false;
 	if(((p_rni.ring_neg_cmd.read()== NEG_REQ_READ)||(p_rni.ring_neg_cmd.read()== NEG_REQ_WRITE))
-  	&&(cible_reserve == false)
+  	&&(r_cible_reserve == false)
   	&&(p_vci.cmdack.read() == true)){
         
         	for(int i=0;i<s_nseg;i++)
         	{
             		if ((int)p_rni.ring_neg_msblsb.read() == CIBLE_ID[i])
             		{
-				cible_ack_ok = true;
+				r_cible_ack_ok = true;
 				break;
 	    		}
 		}  
@@ -137,12 +160,56 @@ tmpl(void)::Decoder()
 	if(((p_rdi.ring_data_cmd.read()== DATA_REQ_READ)||(p_rdi.ring_data_cmd.read()== DATA_REQ_WRITE))
 	&&(id_match == true)
 	&&(p_vci.cmdack.read() == true)){
-		cible_ext = true;  
+		r_cible_ext = true;  
 	}else{
-		cible_ext = false;  	
+		r_cible_ext = false;  	
 	}
 
-}; 
+} 
+
+/////////////////////////////////////////////
+// 	neg and data anneau mux       
+/////////////////////////////////////////////
+tmpl(void)::Mux()
+{
+	r_ring_data_cmd_p = p_rdi.ring_data_cmd.read();	
+	r_ring_data_mux = RING;
+	r_trans_end = false;
+
+	switch(r_fsm_state) {
+	    case TAR_IDLE :
+		if(r_cible_ack_ok == true){
+			r_ring_neg_mux = LOCAL;
+		}else{
+			r_ring_neg_mux = RING;
+		}
+	    	break;
+
+	    case TAR_RESERVE_FIRST :
+		r_ring_neg_mux = RING;
+		if(r_cible_ext == true){
+	    		r_ring_data_cmd_p = DATA_EMPTY;
+	    	}
+	    	break;	
+	
+	    case TAR_RESERVE :
+		r_ring_neg_mux = RING;
+		if((r_cible_ext == true)
+		&&(p_vci.rspval.read() == true)){
+	    		r_ring_data_cmd_p = DATA_RES;
+	    		r_ring_data_mux = LOCAL;
+	    	}	
+	    	if((p_vci.rspval.read() == true)
+		  &&(p_vci.reop.read() == true)
+		  &&(p_rdi.ring_data_cmd.read() == DATA_EMPTY)){
+	    		r_ring_data_mux = LOCAL;
+	    		r_ring_data_cmd_p = DATA_RES;
+			r_trans_end = true;
+	    	}		
+	    	break;
+	} // end switch 
+
+}
 
 ////////////////////////////////
 //	transition 
@@ -151,13 +218,13 @@ tmpl(void)::transition()
 {
 	if(p_resetn == false) { 
 		r_fsm_state = TAR_IDLE;
-		ring_neg_mux = RING;
+		r_ring_neg_mux = RING;
 		return;
 	} // end reset
 
 	switch(r_fsm_state) {
 		case TAR_IDLE :
-			if(cible_ack_ok == true) {
+			if(r_cible_ack_ok == true) {
 				r_fsm_state = TAR_RESERVE_FIRST;
 			}else{
 				r_fsm_state = TAR_IDLE;
@@ -165,7 +232,7 @@ tmpl(void)::transition()
 			break;
 
 		case TAR_RESERVE_FIRST :	//the first word of request
-			if(cible_ext == true) {
+			if(r_cible_ext == true) {
 				r_fsm_state = TAR_RESERVE;
 			}else{
 				r_fsm_state = TAR_RESERVE_FIRST;
@@ -173,14 +240,14 @@ tmpl(void)::transition()
 			break;	
 	
 		case TAR_RESERVE :
-			if(trans_end == true){
+			if(r_trans_end == true){
 				r_fsm_state = TAR_IDLE; 
 			}else {
 				r_fsm_state = TAR_RESERVE;
 			}
 			break;
 		} // end switch TAR_FSM
-};  // end Transition()
+}  // end Transition()
 
 /////////////////////////////////////////////
 // 	GenMoore()     
@@ -189,40 +256,31 @@ tmpl(void)::genMoore()
 {
 	switch(r_fsm_state) {
 		case TAR_IDLE :
-			cible_reserve = false;
+			r_cible_reserve = false;
 			break;
 		case TAR_RESERVE_FIRST :
-			cible_reserve = true;
+			r_cible_reserve = true;
 			break;
 		case TAR_RESERVE :
-			cible_reserve = true;
+			r_cible_reserve = true;
 			break;
 	} // end switch
 
-}; // end GenMoore
+} // end GenMoore
 
 /////////////////////////////////////////////
 // 	GenMealy()       
 /////////////////////////////////////////////
 tmpl(void)::genMealy()
 {
-	ring_data_cmd_p = p_rdi.ring_data_cmd.read();	
 	p_vci.cmdval = false;
-	ring_data_mux = RING;
-	trans_end = false;
 
 	switch(r_fsm_state) {
 	    case TAR_IDLE :
-		if(cible_ack_ok == true){
-			ring_neg_mux = LOCAL;
-		}else{
-			ring_neg_mux = RING;
-		}
 	    	break;
 
 	    case TAR_RESERVE_FIRST :
-		ring_neg_mux = RING;
-		if(cible_ext == true){
+		if(r_cible_ext == true){
 	    		p_vci.cmdval = true;	
 	    		p_vci.address = p_rdi.ring_data_adresse.read();	
 	    		p_vci.be = p_rdi.ring_data_be.read();     	
@@ -231,16 +289,12 @@ tmpl(void)::genMealy()
 	    		p_vci.eop = p_rdi.ring_data_eop.read();    	
 	    		p_vci.srcid = p_rdi.ring_data_srcid.read();  
 			p_vci.pktid = p_rdi.ring_data_pktid.read();
-	    		ring_data_cmd_p = DATA_EMPTY;
 	    	}
 	    	break;	
 	
 	    case TAR_RESERVE :
-		ring_neg_mux = RING;
-		if((cible_ext == true)
+		if((r_cible_ext == true)
 		&&(p_vci.rspval.read() == true)){
-	    		ring_data_cmd_p = DATA_RES;
-	    		ring_data_mux = LOCAL;
 	    		p_vci.cmdval = true;	
 	    		p_vci.address = p_rdi.ring_data_adresse.read();	
 	    		p_vci.be = p_rdi.ring_data_be.read();     	
@@ -250,16 +304,9 @@ tmpl(void)::genMealy()
 	    		p_vci.srcid = p_rdi.ring_data_srcid.read(); 
  			p_vci.pktid = p_rdi.ring_data_pktid.read();
 	    	}	
-	    	if((p_vci.rspval.read() == true)
-		  &&(p_vci.reop.read() == true)
-		  &&(p_rdi.ring_data_cmd.read() == DATA_EMPTY)){
-	    		ring_data_mux = LOCAL;
-	    		ring_data_cmd_p = DATA_RES;
-			trans_end = true;
-	    	}		
 	    	break;
 	} // end switch 
-}; // end GenMealy
+} // end GenMealy
 
 /////////////////////////////////////////////
 // 	ANI_Output()       
@@ -268,7 +315,7 @@ tmpl(void)::ANI_Output()
 {
 	
 	/* ANNEAU NEG OUTPUT MUX */
-	if(ring_neg_mux == LOCAL){
+	if(r_ring_neg_mux == LOCAL){
 		p_rno.ring_neg_cmd  = NEG_ACK;
 		p_rno.ring_neg_srcid = p_rni.ring_neg_srcid.read();
 		p_rno.ring_neg_msblsb = p_rni.ring_neg_msblsb.read();
@@ -280,8 +327,8 @@ tmpl(void)::ANI_Output()
 	}		
 
 	/* ANNEAU DATA OUTPUT MUX */		
-	if(ring_data_mux == LOCAL){
-		p_rdo.ring_data_cmd = ring_data_cmd_p;
+	if(r_ring_data_mux == LOCAL){
+		p_rdo.ring_data_cmd = r_ring_data_cmd_p;
 		p_rdo.ring_data_eop = p_vci.reop.read();   
 		p_rdo.ring_data_be = 0;    
 		p_rdo.ring_data_srcid = p_vci.rsrcid.read();  
@@ -293,7 +340,7 @@ tmpl(void)::ANI_Output()
  
 
 	}else {			//RING
-		p_rdo.ring_data_cmd = ring_data_cmd_p;
+		p_rdo.ring_data_cmd = r_ring_data_cmd_p;
 		p_rdo.ring_data_eop = p_rdi.ring_data_eop.read();   
 		p_rdo.ring_data_be = p_rdi.ring_data_be.read();    
 		p_rdo.ring_data_srcid = p_rdi.ring_data_srcid.read();  
@@ -303,6 +350,6 @@ tmpl(void)::ANI_Output()
 		p_rdo.ring_data_error = p_rdi.ring_data_error.read();  
 		p_vci.rspack = false;
 	}	
-}; // end ANI_Output
+} // end ANI_Output
 
 }} // end namespace

@@ -1,12 +1,28 @@
-/////////////////////////////////////////////////////////////////////
-// File     : vci_ring_initiator_wrapper.h
-// Author   : Yang GAO 
-// Date     : 28/09/2007
-// Copyright: UPMC - LIP6
-// This program is released under the GNU Public License 
-//
-// This component is a initiator wrapper for generic VCI anneau-ani. 
-/////////////////////////////////////////////////////////////////////
+/*
+ * SOCLIB_LGPL_HEADER_BEGIN
+ * 
+ * This file is part of SoCLib, GNU LGPLv2.1.
+ * 
+ * SoCLib is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation; version 2.1 of the License.
+ * 
+ * SoCLib is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with SoCLib; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA
+ * 
+ * SOCLIB_LGPL_HEADER_END
+ *
+ * Author   : Yang GAO 
+ * Date     : 28/09/2007
+ * Copyright: UPMC - LIP6
+ */
 
 #ifndef VCI_RING_INITIATOR_WRAPPER_H_
 #define VCI_RING_INITIATOR_WRAPPER_H_
@@ -48,19 +64,20 @@ private:
 	// internal registers
 	sc_signal<int>		r_fsm_state;	  //automate
 	
-	sc_signal<bool>         neg_ack_ok;       //negotiating is succeed 
-	sc_signal<bool>         data_eop;         //the lasted mot of a paquet 
+	sc_signal<bool>         r_neg_ack_ok;       //negotiating is succeed 
+	sc_signal<bool>         r_data_eop;         //the lasted mot of a paquet 
 	
-	sc_signal<bool>         ring_neg_mux;	  //1 local, 0 ring
-	sc_signal<bool>         ring_data_mux;    //1 local, 0 ring
+	sc_signal<bool>         r_ring_neg_mux;	  //1 local, 0 ring
+	sc_signal<bool>         r_ring_data_mux;    //1 local, 0 ring
 	
-	sc_signal<sc_uint<2> >	ring_data_cmd_p;
+	sc_signal<sc_uint<2> >	r_ring_data_cmd_p;
 
 	// methods
 	void transition();
 	void genMealy();
 	void ANI_Output();
 	void Decoder();
+	void Mux();
 
 };
 
