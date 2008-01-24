@@ -99,6 +99,8 @@ private:
     };
     typedef struct rsp_info_s rsp_info_t;
 
+    rsp_info_t m_served_word;
+
     soclib::caba::GenericFifo<rsp_info_t, fifo_depth> m_rsp_info;
 
     typedef typename vci_param::addr_t addr_t;
@@ -237,6 +239,16 @@ _on_read_write(this,                            \
     inline size_t nbSegments() const
     {
         return m_segments.size();
+    }
+
+    /**
+     * \brief Get source ID for current served transaction
+     *
+     * \return the source ID
+     */
+    inline int currentSourceId() const
+    {
+        return m_served_word.srcid;
     }
 };
 

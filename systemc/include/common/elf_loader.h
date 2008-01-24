@@ -50,6 +50,11 @@ public:
 
     void print( std::ostream &o ) const;
 
+    inline const std::string & filename() const
+    {
+        return m_filename;
+    }
+
     friend std::ostream &operator << (std::ostream &o, const ElfLoader &el)
     {
         el.print(o);

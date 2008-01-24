@@ -70,11 +70,14 @@ tmpl(void)::reset()
 
 tmpl(void)::transition()
 {
-	rsp_info_t rsp_info;
-
 	if ( p_vci.cmdval.read() &&
          p_vci.cmdack.read() )
     {
+        m_served_word.srcid = p_vci.srcid.read();
+        m_served_word.trdid = p_vci.trdid.read();
+        m_served_word.pktid = p_vci.pktid.read();
+        m_served_word.eop = p_vci.eop.read();
+
         switch(m_state)
         {
         case TARGET_IDLE:
@@ -89,7 +92,7 @@ tmpl(void)::transition()
              */
             bool reached = false;
 
-            rsp_info.error = vci_param::ERR_NORMAL;
+            m_served_word.error = vci_param::ERR_NORMAL;
 
             std::vector<soclib::common::Segment>::const_iterator seg;
             size_t i=0;
@@ -107,7 +110,7 @@ tmpl(void)::transition()
                 case vci_param::CMD_WRITE:
                     if ( support_llsc )
                         m_atomic.accessDone( address );
-                    rsp_info.rdata = 0;
+                    m_served_word.rdata = 0;
                     if ((m_owner->*m_on_write_f)(i, offset, p_vci.wdata.read(), p_vci.be.read()))
                         m_state = TARGET_WRITE_RSP;
                     else {
@@ -115,18 +118,18 @@ tmpl(void)::transition()
                             m_state = TARGET_IDLE;
                         else
                             m_state = TARGET_ERROR_RSP;
-                        rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
+                        m_served_word.error = vci_param::ERR_GENERAL_DATA_ERROR;
                     }
                     break;
 
                 case vci_param::CMD_STORE_COND:
                     assert(support_llsc && "Received a SC on a non-SC-supporting target");
                     if ( ! m_atomic.isAtomic( address, p_vci.srcid.read() ) ) {
-                        rsp_info.rdata = 1;
+                        m_served_word.rdata = 1;
                         m_state = TARGET_WRITE_RSP;
                         break;
                     }
-                    rsp_info.rdata = 0;
+                    m_served_word.rdata = 0;
 
                     m_atomic.accessDone( address );
                     if ((m_owner->*m_on_write_f)(i, offset, p_vci.wdata.read(), p_vci.be.read()))
@@ -136,7 +139,7 @@ tmpl(void)::transition()
                             m_state = TARGET_IDLE;
                         else
                             m_state = TARGET_ERROR_RSP;
-                        rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
+                        m_served_word.error = vci_param::ERR_GENERAL_DATA_ERROR;
                     }
                     break;
 
@@ -144,15 +147,15 @@ tmpl(void)::transition()
                     assert(support_llsc && "Received a LL on a non-LL-supporting target");
                     m_atomic.doLoadLinked( address, p_vci.srcid.read() );
                 case vci_param::CMD_READ:
-                    if ((m_owner->*m_on_read_f)(i, offset, rsp_info.rdata)) {
+                    if ((m_owner->*m_on_read_f)(i, offset, m_served_word.rdata)) {
                         m_state = TARGET_READ_RSP;
                     } else {
                         if ( p_vci.eop.read() )
                             m_state = TARGET_IDLE;
                         else
                             m_state = TARGET_ERROR_RSP;
-                        rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
-                        rsp_info.rdata = 0x0bad0bad;
+                        m_served_word.error = vci_param::ERR_GENERAL_DATA_ERROR;
+                        m_served_word.rdata = 0x0bad0bad;
                     }
                     break;
                 }
@@ -160,7 +163,7 @@ tmpl(void)::transition()
 
             if ( !reached ) {
                 if ( default_target ) {
-                    rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
+                    m_served_word.error = vci_param::ERR_GENERAL_DATA_ERROR;
                     if ( p_vci.eop.read() )
                         m_state = TARGET_IDLE;
                     else
@@ -176,19 +179,14 @@ tmpl(void)::transition()
         case TARGET_ERROR_RSP :
             if ( p_vci.eop.read() )
                 m_state = TARGET_IDLE;
-            rsp_info.error = vci_param::ERR_GENERAL_DATA_ERROR;
+            m_served_word.error = vci_param::ERR_GENERAL_DATA_ERROR;
             break;
         }
 
-        rsp_info.srcid = p_vci.srcid.read();
-        rsp_info.trdid = p_vci.trdid.read();
-        rsp_info.pktid = p_vci.pktid.read();
-        rsp_info.eop = p_vci.eop.read();
-
         if ( p_vci.rspval.read() && p_vci.rspack.read() )
-            m_rsp_info.put_and_get( rsp_info );
+            m_rsp_info.put_and_get( m_served_word );
         else
-            m_rsp_info.simple_put( rsp_info );
+            m_rsp_info.simple_put( m_served_word );
     } else if ( p_vci.rspval.read() && p_vci.rspack.read() )
         m_rsp_info.simple_get();
 }
