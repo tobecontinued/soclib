@@ -24,13 +24,29 @@
 #
 # Maintainers: nipo
 
-DESTDIR=../../bin
 X11_DIR=/usr/X11R6
+
+soclib-xtty_LIBS=-L$(X11_DIR)/lib -lX11 -lXpm
+soclib-xtty_old.o_CFLAGS=-I$(X11_DIR)/include
 
 BIN=soclib-xtty
 
-include common.mk
+CC=gcc
+CFLAGS+=-Wall -O2
 
-soclib-xtty:: xtty.o
-soclib-xtty_LIBS=-L$(X11_DIR)/lib -lX11 -lXpm
-soclib-xtty_old.o_CFLAGS=-I$(X11_DIR)/include
+all: $(BIN)
+
+soclib-xtty: xtty.o
+	$(CC) -o $@ $^ $($@_LIBS) $(LDFLAGS)
+
+%.o: %.c
+	$(CC) -c -o $@ $< $($@_CFLAGS) $(CFLAGS)
+
+clean:
+	rm -f *~ *.o $(BIN)
+
+install: $(BIN)
+	cp $< $(DEST)
+
+uninstall:
+	-rm $(DEST)/$(BIN)

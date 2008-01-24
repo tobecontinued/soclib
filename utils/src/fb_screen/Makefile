@@ -26,13 +26,18 @@
 
 CFLAGS=`sdl-config --cflags` -Wall -O2
 LIBS=`sdl-config --libs`
+BIN=soclib-fb
 
-default: soclib-fb
+all: $(BIN)
 
-all: soclib-fb
-
-soclib-fb: fb.o
+$(BIN): fb.o
 	$(CC) -o $@ $^ $(LIBS)
 
 clean:
-	rm -f *.o soclib-fb
+	rm -f *.o $(BIN)
+
+install: $(BIN)
+	cp $< $(DEST)
+
+uninstall:
+	-rm $(DEST)/$(BIN)

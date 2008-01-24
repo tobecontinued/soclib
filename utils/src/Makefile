@@ -24,22 +24,21 @@
 #
 # Maintainers: nipo
 
-SUBDIRS=xtty fb_screen
-BINS=xtty/soclib-xtty fb_screen/soclib-fb
-DEST=../../bin
+SUBDIRS=xtty fb_screen soclib-simulate-any
+DEST=$(shell soclib-cc --getpath)/bin
 
-all:: default
-	@true
+export DEST
 
-install:: all
-	cp $(BINS) $(DEST)
+all:
 
-uninstall::
-	for i in $(BINS) ; do \
-		rm -f $(DEST)/$$(basename $$i) ; \
-	done
+install: all
 
-%:
-	for i in $(SUBDIRS) ; do \
+%: foo
+	@for i in $(SUBDIRS) ; do \
 		$(MAKE) -C $$i $@ ; \
 	done
+
+.PHONY: foo
+
+foo:
+

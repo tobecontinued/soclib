@@ -20,25 +20,20 @@
 # SOCLIB_GPL_HEADER_END
 #
 # Copyright (c) UPMC, Lip6, SoC
-#         Nicolas Pouillon <nipo@ssji.net>, 2007
+#         Nicolas Pouillon <nipo@ssji.net>, 2008
 #
 # Maintainers: nipo
 
-CC=gcc
-CFLAGS+=-Wall -O2
+all: soclib-simulate-any
 
-all::
-	@true
-
-default:: $(BIN)
-	@true
-
-%:
-	$(CC) -o $@ $^ $($@_LIBS) $(LDFLAGS)
-
-%.o: %.c
-	$(CC) -c -o $@ $< $($@_CFLAGS) $(CFLAGS)
+soclib-simulate-any: platform_desc top.cc
+	soclib-cc -p platform_desc -o $@ -P
 
 clean:
-	rm -f *~ *.o $(BIN)
+	rm -f top.o soclib-simulate-any
 
+install: soclib-simulate-any
+	cp $< $(DEST)
+
+uninstall:
+	-rm $(DEST)/soclib-simulate-any
