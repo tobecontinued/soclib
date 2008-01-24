@@ -39,92 +39,36 @@ namespace soclib { namespace caba {
 
 using soclib::caba::IssWrapper;
 
-BaseModule &mips(
+template<typename iss_t>
+BaseModule &inst_caba_cpu(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
 {
-	BaseModule &tmp =
-		*new IssWrapper<soclib::common::MipsIss>(
-        name.c_str(),
-        args.get<int>("ident") );
-	return tmp;
-}
-
-BaseModule &gdb_mips(
-    const std::string &name,
-    ::soclib::common::inst::InstArg &args,
-    ::soclib::common::inst::InstArg &env )
-{
-	if ( args.has("start_frozen") )
-		soclib::common::GdbServer<soclib::common::MipsIss>::start_frozen();
-	BaseModule &tmp =
-		*new IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> >(
-        name.c_str(),
-        args.get<int>("ident") );
-	return tmp;
-}
-
-BaseModule &ppc405(
-    const std::string &name,
-    ::soclib::common::inst::InstArg &args,
-    ::soclib::common::inst::InstArg &env )
-{
-	BaseModule &tmp =
-		*new IssWrapper<soclib::common::Ppc405Iss>(
-        name.c_str(),
-        args.get<int>("ident") );
-	return tmp;
-}
-
-BaseModule &gdb_ppc405(
-    const std::string &name,
-    ::soclib::common::inst::InstArg &args,
-    ::soclib::common::inst::InstArg &env )
-{
-	if ( args.has("start_frozen") )
-		soclib::common::GdbServer<soclib::common::Ppc405Iss>::start_frozen();
-	BaseModule &tmp =
-		*new IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> >(
-        name.c_str(),
-        args.get<int>("ident") );
-	return tmp;
-}
-
-BaseModule &microblaze(
-    const std::string &name,
-    ::soclib::common::inst::InstArg &args,
-    ::soclib::common::inst::InstArg &env )
-{
-	BaseModule &tmp =
-		*new IssWrapper<soclib::common::MicroBlazeIss>(
-        name.c_str(),
-        args.get<int>("ident") );
-	return tmp;
-}
-
-BaseModule &gdb_microblaze(
-    const std::string &name,
-    ::soclib::common::inst::InstArg &args,
-    ::soclib::common::inst::InstArg &env )
-{
-	if ( args.has("start_frozen") )
-		soclib::common::GdbServer<soclib::common::MicroBlazeIss>::start_frozen();
-	BaseModule &tmp =
-		*new IssWrapper<soclib::common::GdbServer<soclib::common::MicroBlazeIss> >(
-        name.c_str(),
-        args.get<int>("ident") );
-	return tmp;
+	using soclib::common::GdbServer;
+	if ( args.has("with_gdb") && args.get<int>("with_gdb")  ) {
+		if ( args.has("start_frozen") )
+			GdbServer<iss_t>::start_frozen(args.get<int>("start_frozen"));
+		return
+			*new IssWrapper<GdbServer<iss_t> >(
+				name.c_str(),
+				args.get<int>("ident") );
+	} else {
+		return
+			*new IssWrapper<iss_t>(
+				name.c_str(),
+				args.get<int>("ident") );
+	}
 }
 
 namespace {
 
-soclib::common::Factory<soclib::caba::BaseModule> mips_factory("mips", &mips);
-soclib::common::Factory<soclib::caba::BaseModule> gdb_mips_factory("gdb_mips", &gdb_mips);
-soclib::common::Factory<soclib::caba::BaseModule> ppc405_factory("ppc405", &ppc405);
-soclib::common::Factory<soclib::caba::BaseModule> gdb_ppc405_factory("gdb_ppc405", &gdb_ppc405);
-soclib::common::Factory<soclib::caba::BaseModule> microblaze_factory("microblaze", &microblaze);
-soclib::common::Factory<soclib::caba::BaseModule> gdb_microblaze_factory("gdb_microblaze", &gdb_microblaze);
+using soclib::common::Factory;
+using soclib::caba::BaseModule;
+
+Factory<BaseModule> mips_factory("mips", &inst_caba_cpu<soclib::common::MipsIss>);
+Factory<BaseModule> ppc405_factory("ppc405", &inst_caba_cpu<soclib::common::Ppc405Iss>);
+Factory<BaseModule> microblaze_factory("microblaze", &inst_caba_cpu<soclib::common::MicroBlazeIss>);
 
 }
 
