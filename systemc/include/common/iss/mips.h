@@ -64,8 +64,7 @@
 
 namespace soclib { namespace common {
 
-template <bool little_endian>
-class MipsMetaIss
+class MipsIss
     : public soclib::common::Iss
 {
 public:
@@ -199,7 +198,7 @@ private:
     bool m_hazard;
 
 public:
-    MipsMetaIss(uint32_t ident);
+    MipsIss(uint32_t ident);
 
     void dump() const;
     void step();
@@ -227,7 +226,7 @@ public:
 		address = r_pc;
 	}
 
-	inline void getDataRequest(
+	virtual inline void getDataRequest(
         bool &valid,
         enum DataAccessType &type,
         uint32_t &address,
@@ -235,7 +234,7 @@ public:
 	{
         valid = r_mem_req;
 		address = r_mem_addr;
-		wdata = little_endian ? r_mem_wdata : soclib::endian::uint32_swap(r_mem_wdata);
+		wdata = r_mem_wdata;
 		type = r_mem_type;
 	}
 
@@ -251,13 +250,13 @@ public:
 
     void reset();
 
-	inline void setInstruction(bool error, uint32_t val)
+	virtual inline void setInstruction(bool error, uint32_t val)
 	{
 		m_ibe = error;
-		m_ins.ins = little_endian ? val : soclib::endian::uint32_swap(val);
+		m_ins.ins = val;
 	}
 
-	void setDataResponse(bool error, uint32_t rdata);
+    void setDataResponse(bool error, uint32_t rdata);
 
     // processor internal registers access API, used by
     // debugger. Mips order is 32 general-purpose; sr; lo; hi; bad; cause; pc;
@@ -267,14 +266,14 @@ public:
         return 32 + 6;
     }
 
-    uint32_t getDebugRegisterValue(unsigned int reg) const;
+    virtual uint32_t getDebugRegisterValue(unsigned int reg) const;
 
     inline size_t getDebugRegisterSize(unsigned int reg) const
     {
         return 32;
     }
 
-    void setDebugRegisterValue(unsigned int reg, uint32_t value);
+    virtual void setDebugRegisterValue(unsigned int reg, uint32_t value);
 
     inline uint32_t getDebugPC() const
     {
@@ -313,7 +312,7 @@ private:
         return addr & 0x80000000;
     }
 
-    typedef void (MipsMetaIss::*func_t)();
+    typedef void (MipsIss::*func_t)();
 
     static func_t const opcod_table[64];
     static func_t const special_table[64];
@@ -404,14 +403,64 @@ private:
 
     uint32_t cp0Get( uint32_t reg ) const;
     void cp0Set( uint32_t reg, uint32_t value );
+
+    // Make sure users dont try to instanciate MipsIss class
+    virtual inline void please_use_MipsElIss_or_MipsEbIss() = 0;
 };
 
-// MipsIss is deprecated, use MipsElIss instead
-typedef __attribute__ ((deprecated)) MipsMetaIss<true> MipsIss;
+class MipsElIss
+    : public MipsIss
+{
+public:
+    MipsElIss(uint32_t ident)
+        : MipsIss(ident)
+    {}
+private:
+    virtual inline void please_use_MipsElIss_or_MipsEbIss()
+    {}
+};
 
-typedef MipsMetaIss<true> MipsElIss;
+class MipsEbIss
+    : public MipsIss
+{
+public:
+    MipsEbIss(uint32_t ident)
+        : MipsIss(ident)
+    {}
 
-typedef MipsMetaIss<false> MipsEbIss;
+	inline void getDataRequest(
+        bool &valid,
+        enum DataAccessType &type,
+        uint32_t &address,
+        uint32_t &wdata) const
+	{
+        uint32_t data;
+        MipsIss::getDataRequest(valid, type, address, data);
+        wdata = soclib::endian::uint32_swap(data);
+	}
+
+	inline void setInstruction(bool error, uint32_t val)
+	{
+        MipsIss::setInstruction(error, soclib::endian::uint32_swap(val));
+	}
+
+    void setDataResponse(bool error, uint32_t rdata);
+
+    uint32_t getDebugRegisterValue(unsigned int reg) const
+    {
+        return soclib::endian::uint32_swap(
+            MipsIss::getDebugRegisterValue(reg));
+    }
+
+    void setDebugRegisterValue(unsigned int reg, uint32_t value)
+    {
+        MipsIss::setDebugRegisterValue(reg,soclib::endian::uint32_swap(value));
+    }
+
+private:
+    virtual inline void please_use_MipsElIss_or_MipsEbIss()
+    {}
+};
 
 }}
 

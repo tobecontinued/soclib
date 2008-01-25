@@ -4,7 +4,7 @@
 # Mips Little endian (MipsElIss)
 
 class caba(CabaComponent):
-	classname = 'IssWrapper<soclib::common::MipsMetaIss<true> >'
+	classname = 'IssWrapper<soclib::common::MipsElIss>'
 	header_files = "../../systemc/include/caba/processor/iss_wrapper.h",
 	implementation_files = [
 		"../../systemc/src/caba/processor/iss_wrapper.cc",
@@ -19,9 +19,8 @@ class caba(CabaComponent):
 		]
 
 class common(CommonComponent):
-	classname = 'MipsMetaIss<true>'
+	classname = 'MipsElIss'
 	header_files = "../../systemc/include/common/iss/mips.h",
-	implementation_files = [
-		"../../systemc/src/common/iss/mips.cc",
-		"../../systemc/src/common/iss/mips_instructions.cc",
+	uses = [
+		Uses('mips', mode="common"),
 		]

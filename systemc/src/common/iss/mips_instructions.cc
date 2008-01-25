@@ -62,8 +62,7 @@ static inline uint32_t sra( uint32_t reg, uint32_t sh )
 }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::do_load( enum DataAccessType type, bool unsigned_ )
+void MipsIss::do_load( enum DataAccessType type, bool unsigned_ )
 {
     uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
     if (isInUserMode() && isPrivDataAddr(address)) {
@@ -85,8 +84,7 @@ void MipsMetaIss<little_endian>::do_load( enum DataAccessType type, bool unsigne
 #endif    
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::do_store( enum DataAccessType type, uint32_t data )
+void MipsIss::do_store( enum DataAccessType type, uint32_t data )
 {
     uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
     if (isInUserMode() && isPrivDataAddr(address)) {
@@ -107,8 +105,7 @@ void MipsMetaIss<little_endian>::do_store( enum DataAccessType type, uint32_t da
 #endif    
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_bcond()
+void MipsIss::op_bcond()
 {
     bool taken;
 
@@ -124,8 +121,7 @@ void MipsMetaIss<little_endian>::op_bcond()
     }
 }
 
-template <bool little_endian>
-uint32_t MipsMetaIss<little_endian>::cp0Get( uint32_t reg ) const
+uint32_t MipsIss::cp0Get( uint32_t reg ) const
 {
     switch(reg) {
     case INDEX:
@@ -149,8 +145,7 @@ uint32_t MipsMetaIss<little_endian>::cp0Get( uint32_t reg ) const
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::cp0Set( uint32_t reg, uint32_t val )
+void MipsIss::cp0Set( uint32_t reg, uint32_t val )
 {
     switch(reg) {
     case STATUS:
@@ -163,53 +158,46 @@ void MipsMetaIss<little_endian>::cp0Set( uint32_t reg, uint32_t val )
 
 // **Start**
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_j()
+void MipsIss::op_j()
 {
     m_next_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_jal()
+void MipsIss::op_jal()
 {
     r_gp[31] = r_pc+8;
     m_next_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_beq()
+void MipsIss::op_beq()
 {
     if ( m_rs == m_rt ) {
         m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_bne()
+void MipsIss::op_bne()
 {
     if ( m_rs != m_rt ) {
         m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_blez()
+void MipsIss::op_blez()
 {
     if ( (int32_t)m_rs <= 0 ) {
         m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_bgtz()
+void MipsIss::op_bgtz()
 {
     if ( (int32_t)m_rs > 0 ) {
         m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_addi()
+void MipsIss::op_addi()
 {
     uint64_t tmp = (uint64_t)m_rs + (uint64_t)sign_ext16(m_ins.i.imd);
     if ( overflow( m_rs, sign_ext16(m_ins.i.imd), 0 ) )
@@ -218,52 +206,44 @@ void MipsMetaIss<little_endian>::op_addi()
         r_gp[m_ins.i.rt] = tmp;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_addiu()
+void MipsIss::op_addiu()
 {
     r_gp[m_ins.i.rt] = m_rs + sign_ext16(m_ins.i.imd);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_slti()
+void MipsIss::op_slti()
 {
     r_gp[m_ins.i.rt] = (bool)
         ((int32_t)m_rs < sign_ext16(m_ins.i.imd));
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_sltiu()
+void MipsIss::op_sltiu()
 {
     r_gp[m_ins.i.rt] = (bool)
         ((uint32_t)m_rs < (uint32_t)sign_ext16(m_ins.i.imd));
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_andi()
+void MipsIss::op_andi()
 {
     r_gp[m_ins.i.rt] = m_rs & m_ins.i.imd;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_ori()
+void MipsIss::op_ori()
 {
     r_gp[m_ins.i.rt] = m_rs | m_ins.i.imd;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_xori()
+void MipsIss::op_xori()
 {
     r_gp[m_ins.i.rt] = m_rs ^ m_ins.i.imd;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_lui()
+void MipsIss::op_lui()
 {
     r_gp[m_ins.i.rt] = m_ins.i.imd << 16;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_copro()
+void MipsIss::op_copro()
 {
     if (isInUserMode()) {
         m_exception = X_CPU;
@@ -287,32 +267,27 @@ void MipsMetaIss<little_endian>::op_copro()
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_ill()
+void MipsIss::op_ill()
 {
     m_exception = X_RI;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_lb()
+void MipsIss::op_lb()
 {
     do_load(READ_BYTE, false);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_ll()
+void MipsIss::op_ll()
 {
     do_load(READ_LINKED, false);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_lh()
+void MipsIss::op_lh()
 {
     do_load(READ_HALF, false);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_lw()
+void MipsIss::op_lw()
 {
     if ( m_ins.i.rt )
         do_load(READ_WORD, false);
@@ -324,83 +299,70 @@ void MipsMetaIss<little_endian>::op_lw()
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_lbu()
+void MipsIss::op_lbu()
 {
     do_load(READ_BYTE, true);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_lhu()
+void MipsIss::op_lhu()
 {
     do_load(READ_HALF, true);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_sb()
+void MipsIss::op_sb()
 {
     uint32_t tmp = m_rt&0xff;
     do_store(WRITE_BYTE, tmp|(tmp << 8)|(tmp << 16)|(tmp << 24));
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_sh()
+void MipsIss::op_sh()
 {
     uint32_t tmp = m_rt&0xffff;
     do_store(WRITE_HALF, tmp|(tmp << 16));
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_sw()
+void MipsIss::op_sw()
 {
     do_store(WRITE_WORD, m_rt);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_sc()
+void MipsIss::op_sc()
 {
     do_store(STORE_COND, m_rt);
     r_mem_dest = m_ins.i.rt;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_sll()
+void MipsIss::special_sll()
 {
     r_gp[m_ins.r.rd] = sll(m_rt, m_ins.r.sh);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_srl()
+void MipsIss::special_srl()
 {
     r_gp[m_ins.r.rd] = srl(m_rt, m_ins.r.sh);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_sra()
+void MipsIss::special_sra()
 {
     r_gp[m_ins.r.rd] = sra(m_rt, m_ins.r.sh);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_sllv()
+void MipsIss::special_sllv()
 {
     r_gp[m_ins.r.rd] = sll(m_rt, m_rs&0x1f );
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_srlv()
+void MipsIss::special_srlv()
 {
     r_gp[m_ins.r.rd] = srl(m_rt, m_rs&0x1f );
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_srav()
+void MipsIss::special_srav()
 {
     r_gp[m_ins.r.rd] = sra(m_rt, m_rs&0x1f );
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_jr()
+void MipsIss::special_jr()
 {
     if (isPrivDataAddr(m_rs) && isInUserMode()) {
         m_exception = X_ADEL;
@@ -409,8 +371,7 @@ void MipsMetaIss<little_endian>::special_jr()
     m_next_pc = m_rs;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_jalr()
+void MipsIss::special_jalr()
 {
     if (isPrivDataAddr(m_rs) && isInUserMode()) {
         m_exception = X_ADEL;
@@ -420,44 +381,37 @@ void MipsMetaIss<little_endian>::special_jalr()
     m_next_pc = m_rs;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_sysc()
+void MipsIss::special_sysc()
 {
     m_exception = X_SYS;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_brek()
+void MipsIss::special_brek()
 {
     m_exception = X_BP;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_mfhi()
+void MipsIss::special_mfhi()
 {
     r_gp[m_ins.r.rd] = r_hi;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_mthi()
+void MipsIss::special_mthi()
 {
     r_hi = m_rs;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_mflo()
+void MipsIss::special_mflo()
 {
     r_gp[m_ins.r.rd] = r_lo;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_mtlo()
+void MipsIss::special_mtlo()
 {
     r_lo = m_rs;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_mult()
+void MipsIss::special_mult()
 {
     int64_t a = (int32_t)m_rs;
     int64_t b = (int32_t)m_rt;
@@ -467,8 +421,7 @@ void MipsMetaIss<little_endian>::special_mult()
     setInsDelay( 6 );
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_multu()
+void MipsIss::special_multu()
 {
     uint64_t a = m_rs;
     uint64_t b = m_rt;
@@ -478,8 +431,7 @@ void MipsMetaIss<little_endian>::special_multu()
     setInsDelay( 6 );
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_div()
+void MipsIss::special_div()
 {
     if ( ! m_rt ) {
         r_hi = random();
@@ -491,8 +443,7 @@ void MipsMetaIss<little_endian>::special_div()
     setInsDelay( 31 );
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_divu()
+void MipsIss::special_divu()
 {
     if ( ! m_rt ) {
         r_hi = random();
@@ -504,8 +455,7 @@ void MipsMetaIss<little_endian>::special_divu()
     setInsDelay( 31 );
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_add()
+void MipsIss::special_add()
 {
     uint64_t tmp = (uint64_t)m_rs + (uint64_t)m_rt;
     if ( overflow( m_rs, m_rt, 0 ) )
@@ -514,14 +464,12 @@ void MipsMetaIss<little_endian>::special_add()
         r_gp[m_ins.r.rd] = tmp;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_addu()
+void MipsIss::special_addu()
 {
     r_gp[m_ins.r.rd] = m_rs + m_rt;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_sub()
+void MipsIss::special_sub()
 {
     uint64_t tmp = (uint64_t)m_rs - (uint64_t)m_rt;
     if ( overflow( ~m_rt, m_rs, 1 ) )
@@ -530,101 +478,86 @@ void MipsMetaIss<little_endian>::special_sub()
         r_gp[m_ins.r.rd] = tmp;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_subu()
+void MipsIss::special_subu()
 {
     r_gp[m_ins.r.rd] = m_rs - m_rt;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_and()
+void MipsIss::special_and()
 {
     r_gp[m_ins.r.rd] = m_rs & m_rt;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_or()
+void MipsIss::special_or()
 {
     r_gp[m_ins.r.rd] = m_rs | m_rt;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_xor()
+void MipsIss::special_xor()
 {
     r_gp[m_ins.r.rd] = m_rs ^ m_rt;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_nor()
+void MipsIss::special_nor()
 {
     r_gp[m_ins.r.rd] = ~(m_rs | m_rt);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_slt()
+void MipsIss::special_slt()
 {
     r_gp[m_ins.r.rd] = (bool)((int32_t)m_rs < (int32_t)m_rt);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_sltu()
+void MipsIss::special_sltu()
 {
     r_gp[m_ins.r.rd] = (bool)(m_rs < m_rt);
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_tlt()
+void MipsIss::special_tlt()
 {
     if ((int32_t)m_rs < (int32_t)m_rt)
         m_exception = X_TR;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_tltu()
+void MipsIss::special_tltu()
 {
     if (m_rs < m_rt)
         m_exception = X_TR;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_tge()
+void MipsIss::special_tge()
 {
     if ((int32_t)m_rs >= (int32_t)m_rt)
         m_exception = X_TR;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_tgeu()
+void MipsIss::special_tgeu()
 {
     if (m_rs >= m_rt)
         m_exception = X_TR;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_teq()
+void MipsIss::special_teq()
 {
     if (m_rs == m_rt)
         m_exception = X_TR;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_tne()
+void MipsIss::special_tne()
 {
     if (m_rs != m_rt)
         m_exception = X_TR;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::special_ill()
+void MipsIss::special_ill()
 {
     m_exception = X_RI;
 }
 
-#define op(x) &MipsMetaIss<little_endian>::special_##x
+#define op(x) &MipsIss::special_##x
 #define op4(x, y, z, t) op(x), op(y), op(z), op(t)
 
-template <bool little_endian>
-typename MipsMetaIss<little_endian>::func_t const MipsMetaIss<little_endian>::special_table[] = {
+MipsIss::func_t const MipsIss::special_table[] = {
         op4(  sll,  ill,  srl,  sra),
         op4( sllv,  ill, srlv, srav),
 
@@ -653,18 +586,16 @@ typename MipsMetaIss<little_endian>::func_t const MipsMetaIss<little_endian>::sp
 #undef op
 #undef op4
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::op_special()
+void MipsIss::op_special()
 {
     func_t func = special_table[m_ins.r.func];
     (this->*func)();
 }
 
-#define op(x) &MipsMetaIss<little_endian>::op_##x
+#define op(x) &MipsIss::op_##x
 #define op4(x, y, z, t) op(x), op(y), op(z), op(t)
 
-template <bool little_endian>
-typename MipsMetaIss<little_endian>::func_t const MipsMetaIss<little_endian>::opcod_table[]= {
+MipsIss::func_t const MipsIss::opcod_table[]= {
     op4(special, bcond,    j,   jal),
     op4(    beq,   bne, blez,  bgtz),
 
@@ -693,8 +624,7 @@ typename MipsMetaIss<little_endian>::func_t const MipsMetaIss<little_endian>::op
 #undef op
 #define op(x) #x
 
-template <bool little_endian>
-const char *MipsMetaIss<little_endian>::name_table[] = {
+const char *MipsIss::name_table[] = {
     op4(special, bcond,    j,   jal),
     op4(    beq,   bne, blez,  bgtz),
 
@@ -722,8 +652,7 @@ const char *MipsMetaIss<little_endian>::name_table[] = {
 #undef op
 #undef op4
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::run()
+void MipsIss::run()
 {
     func_t func = opcod_table[m_ins.i.op];
     m_rs = r_gp[m_ins.r.rs];
@@ -737,11 +666,10 @@ void MipsMetaIss<little_endian>::run()
     (this->*func)();
 }
 
-#define use(x) MipsMetaIss<little_endian>::USE_##x
+#define use(x) MipsIss::USE_##x
 #define use4(x, y, z, t) use(x), use(y), use(z), use(t)
 
-template <bool little_endian>
-typename MipsMetaIss<little_endian>::use_t const MipsMetaIss<little_endian>::use_table[]= {
+MipsIss::use_t const MipsIss::use_table[]= {
        use4(SPECIAL,    ST, NONE,  NONE),
        use4(     ST,    ST,    S,     S),
 
@@ -767,8 +695,7 @@ typename MipsMetaIss<little_endian>::use_t const MipsMetaIss<little_endian>::use
        use4(   NONE,  NONE, NONE,  NONE),
 };
 
-template <bool little_endian>
-typename MipsMetaIss<little_endian>::use_t const MipsMetaIss<little_endian>::use_special_table[] = {
+MipsIss::use_t const MipsIss::use_special_table[] = {
         use4(    T, NONE,    T,    T),
         use4(    T, NONE,    T,    T),
 
@@ -794,8 +721,7 @@ typename MipsMetaIss<little_endian>::use_t const MipsMetaIss<little_endian>::use
         use4( NONE, NONE, NONE, NONE),
 };
 
-template <bool little_endian>
-typename MipsMetaIss<little_endian>::use_t MipsMetaIss<little_endian>::curInstructionUsesRegs()
+MipsIss::use_t MipsIss::curInstructionUsesRegs()
 {
     use_t use = use_table[m_ins.i.op];
     if ( use == USE_SPECIAL )

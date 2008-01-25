@@ -1,0 +1,20 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'MipsIss'
+	header_files = "../../systemc/include/common/iss/mips.h",
+	implementation_files = [
+		"../../systemc/src/common/iss/mips.cc",
+		"../../systemc/src/common/iss/mips_instructions.cc",
+		]
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'MipsIss'
+	header_files = "../../systemc/include/common/iss/mips.h",
+	implementation_files = [
+		"../../systemc/src/common/iss/mips.cc",
+		"../../systemc/src/common/iss/mips_instructions.cc",
+		]

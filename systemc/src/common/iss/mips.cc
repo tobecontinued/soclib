@@ -59,14 +59,12 @@ static inline std::string mkname(uint32_t no)
 
 }
 
-template <bool little_endian>
-MipsMetaIss<little_endian>::MipsMetaIss(uint32_t ident)
+MipsIss::MipsIss(uint32_t ident)
     : Iss(mkname(ident), ident)
 {
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::reset()
+void MipsIss::reset()
 {
     r_pc = RESET_ADDRESS;
     r_npc = RESET_ADDRESS + 4;
@@ -80,8 +78,7 @@ void MipsMetaIss<little_endian>::reset()
     r_gp[0] = 0;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::dump() const
+void MipsIss::dump() const
 {
     std::cout
         << std::hex << std::showbase
@@ -113,17 +110,13 @@ void MipsMetaIss<little_endian>::dump() const
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::setDataResponse(bool error, uint32_t data)
+void MipsIss::setDataResponse(bool error, uint32_t data)
 {
     m_dbe = error;
     r_mem_req = false;
     if ( error ) {
         return;
     }
-
-    if (!little_endian)
-        data = soclib::endian::uint32_swap(data);
 
     // We write the  r_gp[i], and we detect a possible data dependency,
     // in order to implement the delayed load behaviour.
@@ -181,8 +174,7 @@ void MipsMetaIss<little_endian>::setDataResponse(bool error, uint32_t data)
     }
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::step()
+void MipsIss::step()
 {
     ++r_count;
 
@@ -289,8 +281,7 @@ void MipsMetaIss<little_endian>::step()
     r_gp[0] = 0;
 }
 
-template <bool little_endian>
-int MipsMetaIss<little_endian>::cpuCauseToSignal( uint32_t cause ) const
+int MipsIss::cpuCauseToSignal( uint32_t cause ) const
 {
     switch (cause) {
     case X_INT:
@@ -319,53 +310,34 @@ int MipsMetaIss<little_endian>::cpuCauseToSignal( uint32_t cause ) const
     return 5;       // GDB SIGTRAP                                                                                                                                                                
 }
 
-template <bool little_endian>
-uint32_t MipsMetaIss<little_endian>::getDebugRegisterValue(unsigned int reg) const
+uint32_t MipsIss::getDebugRegisterValue(unsigned int reg) const
 {
-    uint32_t value;
-
     switch (reg)
         {
         case 0:
-            value = 0;
-            break;
+            return 0;
         case 1 ... 31:
-            value = (r_gp[reg]);
-            break;
+            return soclib::endian::uint32_swap(r_gp[reg]);
         case 32:
-            value = (r_status.whole);
-            break;
+            return soclib::endian::uint32_swap(r_status.whole);
         case 33:
-            value = (r_lo);
-            break;
+            return soclib::endian::uint32_swap(r_lo);
         case 34:
-            value = (r_hi);
-            break;
+            return soclib::endian::uint32_swap(r_hi);
         case 35:
-            value = (r_bar);
-            break;
+            return soclib::endian::uint32_swap(r_bar);
         case 36:
-            value = (r_cause.whole);
-            break;
+            return soclib::endian::uint32_swap(r_cause.whole);
         case 37:
-            value = (r_pc);
-            break;
+            return soclib::endian::uint32_swap(r_pc);
         default:
-            value = 0;
-            break;
+            return 0;
         }
-
-    if (little_endian)
-        value = soclib::endian::uint32_swap(value);
-
-    return value;
 }
 
-template <bool little_endian>
-void MipsMetaIss<little_endian>::setDebugRegisterValue(unsigned int reg, uint32_t value)
+void MipsIss::setDebugRegisterValue(unsigned int reg, uint32_t value)
 {
-    if (little_endian)
-        value = soclib::endian::uint32_swap(value);
+    value = soclib::endian::uint32_swap(value);
 
     switch (reg)
         {
@@ -394,6 +366,11 @@ void MipsMetaIss<little_endian>::setDebugRegisterValue(unsigned int reg, uint32_
         default:
             break;
         }
+}
+
+void MipsEbIss::setDataResponse(bool error, uint32_t data)
+{
+    MipsIss::setDataResponse(error, soclib::endian::uint32_swap(data));
 }
 
 }}
