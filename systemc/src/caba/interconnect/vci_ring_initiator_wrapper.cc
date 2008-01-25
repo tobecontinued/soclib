@@ -19,7 +19,7 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Author   : Yang GAO 
+ * Author   : Franck WAJSBÜRT, Yang GAO 
  * Date     : 28/09/2007
  * Copyright: UPMC - LIP6
  */
@@ -183,11 +183,22 @@ tmpl(void)::genMealy()
 	switch(r_fsm_state) {
 	case NEG_IDLE :
         	if((p_ri.ring_neg_cmd.read() == NEG_EMPTY)&&(p_vci.cmdval.read() == true)) {
-                        if(p_vci.cmd.read() == vci_param::CMD_READ){
-				p_ro.ring_neg_cmd = NEG_REQ_READ;   //read request 
-			}else{
-				p_ro.ring_neg_cmd = NEG_REQ_WRITE;  //write request
-			}  
+			switch(p_vci.cmd.read()) {
+	 	       	case vci_param::CMD_READ:
+				p_ro.ring_neg_cmd = NEG_REQ_READ;	//read request 
+	 	           	break;
+	 	       	case vci_param::CMD_WRITE:
+				p_ro.ring_neg_cmd = NEG_REQ_WRITE;  	//write request
+	 	           	break;
+	 	       	case vci_param::CMD_LOCKED_READ:
+	 	           	p_ro.ring_neg_cmd = NEG_REQ_LOCKED_READ;//locked read request
+	 	           	break;
+	 	       	case vci_param::CMD_STORE_COND:
+	 	           	p_ro.ring_neg_cmd = NEG_REQ_STORE_COND;	//store conditional request
+	 	           	break;
+	 	       	default:
+	 	           	assert(0);
+	 	       	}
         	}else{
 			p_ro.ring_neg_cmd = p_ri.ring_neg_cmd.read();
 		}
@@ -201,11 +212,22 @@ tmpl(void)::genMealy()
 		if(r_ring_data_cmd_p.read() == DATA_EMPTY){
 			p_vci.cmdack = true;
 			if(p_vci.cmdval.read() == true){
-                        	if(p_vci.cmd.read() == vci_param::CMD_READ){
-					p_ro.ring_data_cmd = DATA_REQ_READ;
-				}else{
-					p_ro.ring_data_cmd = DATA_REQ_WRITE;
-				}
+				switch(p_vci.cmd.read()) {
+	 			case vci_param::CMD_READ:
+					p_ro.ring_data_cmd = DATA_REQ_READ;	  //read request 
+	 			   	break;
+	 			case vci_param::CMD_WRITE:
+					p_ro.ring_data_cmd = DATA_REQ_WRITE;  	  //write request
+	 			   	break;
+	 			case vci_param::CMD_LOCKED_READ:
+	 			   	p_ro.ring_data_cmd = DATA_REQ_LOCKED_READ;//locked read request
+	 			   	break;
+	 			case vci_param::CMD_STORE_COND:
+	 			   	p_ro.ring_data_cmd = DATA_REQ_STORE_COND; //store conditional request
+	 			   	break;
+	 			default:
+	 			   	assert(0);
+	 			}
 			}
 		}
 	break;	

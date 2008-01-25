@@ -19,7 +19,7 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Author   : Yang GAO 
+ * Author   : Franck WAJSBÜRT, Yang GAO 
  * Date     : 28/09/2007
  * Copyright: UPMC - LIP6
  */
@@ -32,23 +32,27 @@
 namespace soclib { namespace caba {
 
 enum{
-    NEG_EMPTY	   = 0,  //empty
-    NEG_REQ_READ   = 1,  //read request
-    NEG_REQ_WRITE  = 2,  //write request
-    NEG_ACK	   = 3   //ack
+    NEG_EMPTY	   	= 0,  	//empty
+    NEG_REQ_READ   	= 1, 	//read request
+    NEG_REQ_WRITE  	= 2,  	//write request
+    NEG_REQ_LOCKED_READ = 3,  	//locked read request
+    NEG_REQ_STORE_COND 	= 4,	//store conditionnal request
+    NEG_ACK	   	= 5   	//ack
 };
 
 // ANNEAU_DATA STATES
 enum{
-    DATA_EMPTY     = 0,  //empty
-    DATA_REQ_READ  = 1,  //read request
-    DATA_REQ_WRITE = 2,  //write request 
-    DATA_RES	   = 3   //answer
+    DATA_EMPTY    	 = 0, 	//empty
+    DATA_REQ_READ  	 = 1,  	//read request
+    DATA_REQ_WRITE 	 = 2,  	//write request 
+    DATA_REQ_LOCKED_READ = 3,  	//locked read request
+    DATA_REQ_STORE_COND  = 4,	//store conditionnal request
+    DATA_RES	   	 = 5   	//answer
 };
 
 enum{
-    RING           = 0,   //request
-    LOCAL          = 1    //empty
+    RING  = 0,   //request
+    LOCAL = 1    //empty
 };
 
 template <typename vci_param>
@@ -56,10 +60,10 @@ class RingSignals
 {
 public:
 	// signals
-	sc_signal<sc_uint<2> >     	   	ring_neg_cmd;        
+	sc_signal<sc_uint<3> >     	   	ring_neg_cmd;        
 	sc_signal<typename vci_param::srcid_t>  ring_neg_srcid;   
 	sc_signal<typename vci_param::srcid_t>  ring_neg_msblsb;
-	sc_signal<sc_uint<2> >              	ring_data_cmd;    
+	sc_signal<sc_uint<3> >              	ring_data_cmd;    
 	sc_signal<typename vci_param::eop_t>    ring_data_eop;   
 	sc_signal<typename vci_param::be_t>     ring_data_be;    
 	sc_signal<typename vci_param::srcid_t>  ring_data_srcid;

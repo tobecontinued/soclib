@@ -19,7 +19,7 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Author   : Yang GAO 
+ * Author   : Franck WAJSBÜRT, Yang GAO 
  * Date     : 28/09/2007
  * Copyright: UPMC - LIP6
  */
@@ -38,10 +38,10 @@ template <typename vci_param>
 class RingINPort
 {
 public:
-	sc_in<sc_uint<2> >     	            ring_neg_cmd;     
+	sc_in<sc_uint<3> >     	            ring_neg_cmd;     
 	sc_in<typename vci_param::srcid_t>  ring_neg_srcid;   
 	sc_in<typename vci_param::srcid_t>  ring_neg_msblsb;
-	sc_in<sc_uint<2> >                  ring_data_cmd;    
+	sc_in<sc_uint<3> >                  ring_data_cmd;    
 	sc_in<typename vci_param::eop_t>    ring_data_eop;   
 	sc_in<typename vci_param::be_t>     ring_data_be;    
 	sc_in<typename vci_param::srcid_t>  ring_data_srcid;
@@ -88,10 +88,10 @@ template <typename vci_param>
 class RingOUTPort
 {
 public:
-	sc_out<sc_uint<2> >     	         ring_neg_cmd;     
+	sc_out<sc_uint<3> >     	         ring_neg_cmd;     
 	sc_out<typename vci_param::srcid_t>  ring_neg_srcid;   
 	sc_out<typename vci_param::srcid_t>  ring_neg_msblsb;
-	sc_out<sc_uint<2> >                  ring_data_cmd;    
+	sc_out<sc_uint<3> >                  ring_data_cmd;    
 	sc_out<typename vci_param::eop_t>    ring_data_eop;   
 	sc_out<typename vci_param::be_t>     ring_data_be;    
 	sc_out<typename vci_param::srcid_t>  ring_data_srcid;

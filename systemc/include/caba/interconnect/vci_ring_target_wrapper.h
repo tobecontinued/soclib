@@ -19,7 +19,7 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Author   : Yang GAO 
+ * Author   : Franck WAJSBÜRT, Yang GAO 
  * Date     : 28/09/2007
  * Copyright: UPMC - LIP6
  */
@@ -74,7 +74,7 @@ private:
 	sc_signal<bool>         r_ring_neg_mux;   //1 local, 0 ring
 	sc_signal<bool>         r_ring_data_mux;  //1 local, 0 ring
 
-	sc_signal<sc_uint<2> >	r_ring_data_cmd_p;
+	sc_signal<sc_uint<3> >	r_ring_data_cmd_p;
 	sc_signal<bool>         r_cible_ext;
 	sc_signal<bool>		r_trans_end;
 

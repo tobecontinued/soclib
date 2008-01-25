@@ -19,7 +19,7 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Author   : Yang GAO 
+ * Author   : Franck WAJSBÜRT, Yang GAO 
  * Date     : 28/09/2007
  * Copyright: UPMC - LIP6
  */
@@ -133,7 +133,7 @@ va_end (listeBaseAdr);
 tmpl(void)::Decoder()
 {
 	r_cible_ack_ok = false;
-	if(((p_ri.ring_neg_cmd.read()== NEG_REQ_READ)||(p_ri.ring_neg_cmd.read()== NEG_REQ_WRITE))
+	if(((p_ri.ring_neg_cmd.read()>= NEG_REQ_READ)&&(p_ri.ring_neg_cmd.read()<= NEG_REQ_STORE_COND))
   	&&(r_cible_reserve == false)
   	&&(p_vci.cmdack.read() == true)){
         
@@ -157,7 +157,7 @@ tmpl(void)::Decoder()
 		}
 	}  
 
-	if(((p_ri.ring_data_cmd.read()== DATA_REQ_READ)||(p_ri.ring_data_cmd.read()== DATA_REQ_WRITE))
+	if(((p_ri.ring_data_cmd.read()>= DATA_REQ_READ)&&(p_ri.ring_data_cmd.read()<= DATA_REQ_STORE_COND))
 	&&(id_match == true)
 	&&(p_vci.cmdack.read() == true)){
 		r_cible_ext = true;  

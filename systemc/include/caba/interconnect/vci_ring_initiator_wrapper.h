@@ -19,7 +19,7 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Author   : Yang GAO 
+ * Author   : Franck WAJSBÜRT, Yang GAO 
  * Date     : 28/09/2007
  * Copyright: UPMC - LIP6
  */
@@ -62,13 +62,13 @@ private:
 	// internal registers
 	sc_signal<int>		r_fsm_state;	  //automate
 	
-	sc_signal<bool>         r_neg_ack_ok;       //negotiating is succeed 
-	sc_signal<bool>         r_data_eop;         //the lasted mot of a paquet 
+	sc_signal<bool>         r_neg_ack_ok;     //negotiating is succeed 
+	sc_signal<bool>         r_data_eop;       //the lasted mot of a paquet 
 	
 	sc_signal<bool>         r_ring_neg_mux;	  //1 local, 0 ring
-	sc_signal<bool>         r_ring_data_mux;    //1 local, 0 ring
+	sc_signal<bool>         r_ring_data_mux;  //1 local, 0 ring
 	
-	sc_signal<sc_uint<2> >	r_ring_data_cmd_p;
+	sc_signal<sc_uint<3> >	r_ring_data_cmd_p;
 
 	// methods
 	void transition();
