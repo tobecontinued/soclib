@@ -29,6 +29,8 @@ all: soclib-simulate-any
 soclib-simulate-any: platform_desc top.cc
 	soclib-cc -p platform_desc -o $@ -P
 
+.PHONY: soclib-simulate-any
+
 clean:
 	rm -f top.o soclib-simulate-any
 

@@ -1,4 +1,5 @@
 /*
+ *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
  * This file is part of SoCLib, GNU LGPLv2.1.
@@ -19,43 +20,29 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Copyright (c) UPMC, Lip6, Asim
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ * Copyright (c) UPMC, Lip6, SoC
+ *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
  * Maintainers: nipo
  */
-#ifndef MWMR_CONTROLLER_REGISTERS_H
-#define MWMR_CONTROLLER_REGISTERS_H
 
-#include "io.h"
+#define	TEXT_BASE	0x00400000
+#define	TEXT_SIZE	0x00050000
 
-enum SoclibMwmrRegisters {
-    MWMR_IOREG_MAX = 16,
-    MWMR_RESET = MWMR_IOREG_MAX,
-    MWMR_CONFIG_FIFO_WAY,
-    MWMR_CONFIG_FIFO_NO,
-    MWMR_CONFIG_STATE_ADDR,
-    MWMR_CONFIG_OFFSET_ADDR,
-    MWMR_CONFIG_LOCK_ADDR,
-    MWMR_CONFIG_DEPTH,
-    MWMR_CONFIG_WIDTH,
-    MWMR_CONFIG_BASE_ADDR,
-    MWMR_CONFIG_RUNNING,
-};
+#define	RESET_BASE	0xBFC00000
+#define	RESET_SIZE	0x00010000
 
-enum SoclibMwmrWay {
-    MWMR_TO_COPROC,
-    MWMR_FROM_COPROC,
-};
+#define	EXCEP_BASE	0x80000080
+#define	EXCEP_SIZE	0x00010000
 
-#endif /* MWMR_CONTROLLER_REGISTERS_H */
+#define	DATA_BASE	0x10000000
+#define	DATA_SIZE	0x00010000
 
-// Local Variables:
-// tab-width: 4
-// c-basic-offset: 4
-// c-file-offsets:((innamespace . 0)(inline-open . 0))
-// indent-tabs-mode: nil
-// End:
+#define	TTY_BASE	0xC0200000
+#define	TTY_SIZE	0x00000100
 
-// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+#define	MWMR0_BASE	0xd0200000
+#define	MWMR0_SIZE	0x00000100
 
+#define	MWMR1_BASE	0xe0200000
+#define	MWMR1_SIZE	0x00000100

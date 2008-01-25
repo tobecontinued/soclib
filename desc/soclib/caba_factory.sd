@@ -13,5 +13,7 @@ class caba(CabaComponent):
 		Uses('gdb_microblaze'),
 		Uses('ppc405'),
 		Uses('gdb_ppc405'),
+		Uses('fifo_reader', word_t = 'uint32_t'),
+		Uses('fifo_writer', word_t = 'uint32_t'),
 		Uses('inst_arg'),
 		]

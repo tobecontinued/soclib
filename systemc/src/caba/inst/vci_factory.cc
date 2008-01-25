@@ -35,6 +35,7 @@
 #include "caba/target/vci_multi_tty.h"
 #include "caba/target/vci_simhelper.h"
 #include "caba/target/vci_timer.h"
+#include "caba/target/vci_mwmr_controller.h"
 #include "caba/interconnect/vci_vgmn.h"
 #include "caba/initiator/vci_xcache.h"
 #include "caba/inst/vci_factory.h"
@@ -193,6 +194,23 @@ tmpl(BaseModule&)::simhelper(
         env.get<MappingTable>("mapping_table") );
 }
 
+tmpl(BaseModule&)::mwmr_controller(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	return
+		*new VciMwmrController<vci_param, 32>(
+        name.c_str(),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        env.get<MappingTable>("mapping_table"),
+        args.get<int>("plaps"),
+        args.get<int>("n_to_coproc"),
+        args.get<int>("n_from_coproc"),
+        args.get<int>("n_config"),
+        args.get<int>("n_status") );
+}
+
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  fb_factory(vci_param::string("framebuffer"), &framebuffer);
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
@@ -213,5 +231,7 @@ tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  locks_factory(vci_param::string("locks"), &locks);
 tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
  simhelper_factory(vci_param::string("simhelper"), &simhelper);
+tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
+ mwmr_controller_factory(vci_param::string("mwmr_controller"), &mwmr_controller);
 
 }}

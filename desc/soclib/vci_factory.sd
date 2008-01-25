@@ -13,6 +13,7 @@ class caba(VciCabaComponent):
 		Uses('vci_locks'),
 		Uses('vci_multi_ram'),
 		Uses('vci_multi_tty'),
+		Uses('vci_mwmr_controller', fifo_depth = 32),
 		#Uses('vci_pi_initiator_wrapper'),
 		#Uses('vci_pi_target_wrapper'),
 		Uses('vci_simhelper'),

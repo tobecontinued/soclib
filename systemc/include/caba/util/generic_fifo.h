@@ -51,9 +51,9 @@ public:
         r_fill_state = 0;
     }
 
-    inline int filled_status() const
+    inline uint32_t filled_status() const
     {
-        return (int)r_fill_state;
+        return (uint32_t)r_fill_state;
     }
 
     void simple_put(const data_t &din)

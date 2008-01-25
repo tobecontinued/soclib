@@ -40,8 +40,11 @@ tmpl(/**/)::FifoWriter(
 	sc_module_name insname,
     const std::string &bin,
     const std::vector<std::string> &argv )
-	: soclib::caba::BaseModule(insname),
-      m_wrapper( bin, argv )
+           : soclib::caba::BaseModule(insname),
+           p_clk("clk"),
+           p_resetn("resetn"),
+           p_fifo("fifo"),
+           m_wrapper( bin, argv )
 {
 	SC_METHOD(transition);
 	dont_initialize();
@@ -52,6 +55,10 @@ tmpl(/**/)::FifoWriter(
 	sensitive << p_clk.neg();
 
 	m_buffer = 0;
+
+    portRegister("clk", p_clk);
+    portRegister("resetn", p_resetn);
+    portRegister("fifo", p_fifo);
 }
 
 tmpl(void)::transition()

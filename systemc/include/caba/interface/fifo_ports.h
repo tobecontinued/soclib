@@ -30,6 +30,7 @@
 
 #include <systemc>
 #include "caba/interface/fifo_signals.h"
+#include "caba/inst/inst.h"
 
 namespace soclib { namespace caba {
 
@@ -40,6 +41,14 @@ struct FifoInput {
 	sc_in<word_t> data;
 	sc_out<bool> r;
 	sc_in<bool> rok;
+
+#define __ren(x) x((name+"_" #x).c_str())
+	FifoInput(const std::string &name = sc_gen_unique_name("fifo_input"))
+		: __ren(data),
+          __ren(r),
+          __ren(rok)
+	{}
+#undef __ren
 
 	void operator() (FifoSignals<word_t> &sig)
 	{
@@ -62,6 +71,14 @@ struct FifoOutput {
 	sc_in<bool> wok;
 	sc_out<bool> w;
 
+#define __ren(x) x((name+"_" #x).c_str())
+	FifoOutput(const std::string &name = sc_gen_unique_name("fifo_output"))
+		: __ren(data),
+          __ren(wok),
+          __ren(w)
+	{}
+#undef __ren
+
 	void operator() (FifoSignals<word_t> &sig)
 	{
 		data(sig.data);
@@ -76,6 +93,15 @@ struct FifoOutput {
 		w(port.w);
 	}
 };
+
+namespace inst {
+register_signal_for_port_with_t(typename word_t,
+                                FifoOutput<word_t>,
+                                FifoSignals<word_t>);
+register_signal_for_port_with_t(typename word_t,
+                                FifoInput<word_t>,
+                                FifoSignals<word_t>);
+}
 
 }}
 

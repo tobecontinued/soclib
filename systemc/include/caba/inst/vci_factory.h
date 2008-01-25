@@ -53,6 +53,7 @@ class VciFactory
 	static factory_func_t dma;
 	static factory_func_t icu;
 	static factory_func_t simhelper;
+	static factory_func_t mwmr_controller;
 	static soclib::common::Factory<soclib::caba::BaseModule> fb_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> ram_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> tty_factory;
@@ -63,6 +64,7 @@ class VciFactory
 	static soclib::common::Factory<soclib::caba::BaseModule> dma_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> icu_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> simhelper_factory;
+	static soclib::common::Factory<soclib::caba::BaseModule> mwmr_controller_factory;
 };
 
 }}

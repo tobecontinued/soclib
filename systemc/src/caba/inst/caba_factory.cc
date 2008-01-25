@@ -34,10 +34,14 @@
 #include "caba/util/base_module.h"
 #include "common/inst/factory.h"
 #include "common/inst/inst_arg.h"
+#include "caba/coprocessor/fifo_reader.h"
+#include "caba/coprocessor/fifo_writer.h"
 
 namespace soclib { namespace caba {
 
 using soclib::caba::IssWrapper;
+
+namespace {
 
 template<typename iss_t>
 BaseModule &inst_caba_cpu(
@@ -61,7 +65,19 @@ BaseModule &inst_caba_cpu(
 	}
 }
 
-namespace {
+
+template<typename module_t>
+BaseModule &inst_fifo_rw(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	return
+		*new module_t(
+			name.c_str(),
+			args.get<std::string>("bin"),
+			args.get<std::vector<std::string> >("argv") );
+}
 
 using soclib::common::Factory;
 using soclib::caba::BaseModule;
@@ -70,6 +86,8 @@ Factory<BaseModule> mipsel_factory("mipsel", &inst_caba_cpu<soclib::common::Mips
 Factory<BaseModule> mipseb_factory("mipseb", &inst_caba_cpu<soclib::common::MipsEbIss>);
 Factory<BaseModule> ppc405_factory("ppc405", &inst_caba_cpu<soclib::common::Ppc405Iss>);
 Factory<BaseModule> microblaze_factory("microblaze", &inst_caba_cpu<soclib::common::MicroBlazeIss>);
+Factory<BaseModule> fifo_reader_factory("fifo_reader", &inst_fifo_rw<FifoReader<uint32_t> >);
+Factory<BaseModule> fifo_writer_factory("fifo_writer", &inst_fifo_rw<FifoWriter<uint32_t> >);
 
 }
 
