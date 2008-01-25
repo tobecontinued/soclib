@@ -1,0 +1,27 @@
+
+# -*- python -*-
+
+vci_params = dict(
+	cell_size = 4,
+	plen_size = 1,
+	addr_size = 32,
+	rerror_size = 1,
+	clen_size = 1,
+	rflag_size = 1,
+	srcid_size = 8,
+	pktid_size = 1,
+	trdid_size = 1,
+	wrplen_size = 1
+	)
+
+todo = Platform(
+	Uses('mips'),
+	Uses('vci_multi_ram', **vci_params),
+	Uses('vci_multi_tty', **vci_params),
+	Uses('vci_simhelper', **vci_params),
+	Uses('ring_register', **vci_params),
+	Uses('vci_ring_initiator_wrapper', **vci_params),
+	Uses('vci_ring_target_wrapper', **vci_params),
+	Uses('vci_xcache', **vci_params),
+	Source('top.cc'),
+)
