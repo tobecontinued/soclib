@@ -1,8 +1,10 @@
 
 # -*- python -*-
 
+# Mips Little endian (MipsElIss)
+
 class caba(CabaComponent):
-	classname = 'IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> >'
+	classname = 'IssWrapper<soclib::common::GdbServer<soclib::common::MipsMetaIss<true> > >'
 	header_files = "../../systemc/include/caba/processor/iss_wrapper.h",
 	implementation_files = [
 		"../../systemc/src/caba/processor/iss_wrapper.cc",
@@ -14,11 +16,11 @@ class caba(CabaComponent):
 		]
 	uses = [
 		Uses('base_module'),
-		Uses('gdb_mips', mode='common'),
+		Uses('gdb_mipsel', mode='common'),
 		]
 
 class common(CommonComponent):
-	classname = 'GdbServer<soclib::common::MipsIss>'
+	classname = 'GdbServer<soclib::common::MipsMetaIss<true> >'
 	header_files = "../../systemc/include/caba/processor/gdbserver.h",
 	implementation_files = [
 		"../../systemc/src/common/iss/gdbserver.cc",
@@ -28,5 +30,5 @@ class common(CommonComponent):
 		"../../systemc/include/common/iss/gdbserver.h",
 		]
 	uses = [
-		Uses('mips', mode="common"),
+		Uses('mipsel', mode="common"),
 		]

@@ -66,7 +66,8 @@ namespace {
 using soclib::common::Factory;
 using soclib::caba::BaseModule;
 
-Factory<BaseModule> mips_factory("mips", &inst_caba_cpu<soclib::common::MipsIss>);
+Factory<BaseModule> mipsel_factory("mipsel", &inst_caba_cpu<soclib::common::MipsElIss>);
+Factory<BaseModule> mipseb_factory("mipseb", &inst_caba_cpu<soclib::common::MipsEbIss>);
 Factory<BaseModule> ppc405_factory("ppc405", &inst_caba_cpu<soclib::common::Ppc405Iss>);
 Factory<BaseModule> microblaze_factory("microblaze", &inst_caba_cpu<soclib::common::MicroBlazeIss>);
 

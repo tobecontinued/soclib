@@ -64,7 +64,8 @@
 
 namespace soclib { namespace common {
 
-class MipsIss
+template <bool little_endian>
+class MipsMetaIss
     : public soclib::common::Iss
 {
 public:
@@ -198,7 +199,7 @@ private:
     bool m_hazard;
 
 public:
-    MipsIss(uint32_t ident);
+    MipsMetaIss(uint32_t ident);
 
     void dump() const;
     void step();
@@ -234,7 +235,7 @@ public:
 	{
         valid = r_mem_req;
 		address = r_mem_addr;
-		wdata = r_mem_wdata;
+		wdata = little_endian ? r_mem_wdata : soclib::endian::uint32_swap(r_mem_wdata);
 		type = r_mem_type;
 	}
 
@@ -253,7 +254,7 @@ public:
 	inline void setInstruction(bool error, uint32_t val)
 	{
 		m_ibe = error;
-		m_ins.ins = val;
+		m_ins.ins = little_endian ? val : soclib::endian::uint32_swap(val);
 	}
 
 	void setDataResponse(bool error, uint32_t rdata);
@@ -312,7 +313,7 @@ private:
         return addr & 0x80000000;
     }
 
-    typedef void (MipsIss::*func_t)();
+    typedef void (MipsMetaIss::*func_t)();
 
     static func_t const opcod_table[64];
     static func_t const special_table[64];
@@ -404,6 +405,13 @@ private:
     uint32_t cp0Get( uint32_t reg ) const;
     void cp0Set( uint32_t reg, uint32_t value );
 };
+
+// MipsIss is deprecated, use MipsElIss instead
+typedef __attribute__ ((deprecated)) MipsMetaIss<true> MipsIss;
+
+typedef MipsMetaIss<true> MipsElIss;
+
+typedef MipsMetaIss<false> MipsEbIss;
 
 }}
 

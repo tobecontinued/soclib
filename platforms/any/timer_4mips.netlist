@@ -27,6 +27,7 @@
 
 default with_gdb = 0
 default start_frozen = 0
+default arch = mipsel
 
 vci_param<4,1,32,1,1,1,8,1,1,1>
 
@@ -38,7 +39,7 @@ new caba vgmn "vgmn0"
   param min_latency = 2
   param fifo_size = 8
 
-new caba mips "mips0"
+new caba $arch "mips0"
   param ident = 0
   param with_gdb = $with_gdb
   param start_frozen = $start_frozen
@@ -53,7 +54,7 @@ new caba xcache "cache0"
   conn dcache to mips0.dcache
   conn vci to vgmn0.from_initiator[0]
 
-new caba mips "mips1"
+new caba $arch "mips1"
   param ident = 1
   param with_gdb = $with_gdb
 
@@ -67,7 +68,7 @@ new caba xcache "cache1"
   conn dcache to mips1.dcache
   conn vci to vgmn0.from_initiator[1]
 
-new caba mips "mips2"
+new caba $arch "mips2"
   param ident = 2
   param with_gdb = $with_gdb
 
@@ -81,7 +82,7 @@ new caba xcache "cache2"
   conn dcache to mips2.dcache
   conn vci to vgmn0.from_initiator[2]
 
-new caba mips "mips3"
+new caba $arch "mips3"
   param ident = 3
   param with_gdb = $with_gdb
 

@@ -123,7 +123,7 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),512,8,512,8);
 
-	soclib::caba::IssWrapper<soclib::common::MipsIss> *mips0;
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> *mips0;
 	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> *ppc0;
 
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -145,7 +145,7 @@ int _main(int argc, char *argv[])
 
 	switch ( arch ) {
 	case MIPSEL:
-		mips0 = new soclib::caba::IssWrapper<soclib::common::MipsIss>("mips0", 0);
+		mips0 = new soclib::caba::IssWrapper<soclib::common::MipsElIss>("mips0", 0);
 		mips0->p_clk(signal_clk);  
 		mips0->p_resetn(signal_resetn);  
 		mips0->p_irq[0](signal_cpu0_it0); 

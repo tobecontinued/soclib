@@ -1,0 +1,34 @@
+
+# -*- python -*-
+
+# Mips Big endian (MipsEbIss)
+
+class caba(CabaComponent):
+	classname = 'IssWrapper<soclib::common::GdbServer<soclib::common::MipsMetaIss<false> > >'
+	header_files = "../../systemc/include/caba/processor/iss_wrapper.h",
+	implementation_files = [
+		"../../systemc/src/caba/processor/iss_wrapper.cc",
+		]
+	force_header_files = [
+		"../../systemc/include/common/iss/mips.h",
+		"../../systemc/include/common/iss/gdbserver.h",
+		"../../systemc/include/caba/processor/iss_wrapper.h",
+		]
+	uses = [
+		Uses('base_module'),
+		Uses('gdb_mipseb', mode='common'),
+		]
+
+class common(CommonComponent):
+	classname = 'GdbServer<soclib::common::MipsMetaIss<false> >'
+	header_files = "../../systemc/include/caba/processor/gdbserver.h",
+	implementation_files = [
+		"../../systemc/src/common/iss/gdbserver.cc",
+		]
+	force_header_files = [
+		"../../systemc/include/common/iss/mips.h",
+		"../../systemc/include/common/iss/gdbserver.h",
+		]
+	uses = [
+		Uses('mipseb', mode="common"),
+		]

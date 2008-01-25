@@ -145,17 +145,17 @@ int _main(int argc, char *argv[])
 
 #ifdef USE_GDB_SERVER
 	// uncomment this line if you want processors frozen at boot
-	// soclib::common::GdbServer<soclib::common::MipsIss>::start_frozen();
+	// soclib::common::GdbServer<soclib::common::MipsElIss>::start_frozen();
 
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> > mips0("mips0", 0);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> > mips1("mips1", 1);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> > mips2("mips2", 2);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsIss> > mips3("mips3", 3);
+	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips0("mips0", 0);
+	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips1("mips1", 1);
+	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips2("mips2", 2);
+	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips3("mips3", 3);
 #else
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips0("mips0", 0);
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips1("mips1", 1);
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips2("mips2", 2);
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips3("mips3", 3);
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips0("mips0", 0);
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips1("mips1", 1);
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips2("mips2", 2);
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips3("mips3", 3);
 #endif
 
 	soclib::common::ElfLoader loader("soft/bin.soft");

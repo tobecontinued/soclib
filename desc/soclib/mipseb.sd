@@ -1,0 +1,27 @@
+
+# -*- python -*-
+
+# Mips Big endian (MipsEbIss)
+
+class caba(CabaComponent):
+	classname = 'IssWrapper<soclib::common::MipsMetaIss<false> >'
+	header_files = "../../systemc/include/caba/processor/iss_wrapper.h",
+	implementation_files = [
+		"../../systemc/src/caba/processor/iss_wrapper.cc",
+		]
+	force_header_files = [
+		"../../systemc/include/common/iss/mips.h",
+		"../../systemc/include/caba/processor/iss_wrapper.h",
+		]
+	uses = [
+		Uses('mipseb', mode="common"),
+		Uses('base_module'),
+		]
+
+class common(CommonComponent):
+	classname = 'MipsMetaIss<false>'
+	header_files = "../../systemc/include/common/iss/mips.h",
+	implementation_files = [
+		"../../systemc/src/common/iss/mips.cc",
+		"../../systemc/src/common/iss/mips_instructions.cc",
+		]

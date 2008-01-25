@@ -121,10 +121,10 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXCache<vci_param> cache2("cache2", maptab,IntTab(2),8,4,8,4);
 	soclib::caba::VciXCache<vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
 
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips0("mips0", 0);
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips1("mips1", 1);
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips2("mips2", 2);
-	soclib::caba::IssWrapper<soclib::common::MipsIss> mips3("mips3", 3);
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips0("mips0", 0);
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips1("mips1", 1);
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips2("mips2", 2);
+	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips3("mips3", 3);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);

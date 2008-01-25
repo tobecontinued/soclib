@@ -35,7 +35,7 @@ new caba vgmn "vgmn0"
   param min_latency = 2
   param fifo_size = 8
 
-new caba mips "mips0"
+new caba mipsel "mips0"
   param ident = 0
 #  param start_frozen = 1
 #  param with_gdb = 1

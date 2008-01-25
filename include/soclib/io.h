@@ -39,6 +39,12 @@ static inline uint32_t __uint32_swap(uint32_t x)
         );
 }
 
+#if defined(__MICROBLAZE__) || defined(MIPSEB)
+#define SOCLIB_IO_BIG_ENDIAN
+#else
+#define SOCLIB_IO_LITTLE_ENDIAN
+#endif
+
 static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
@@ -48,7 +54,7 @@ static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
     asm("stwbrx %0, %1, %2":: "b"(val), "b"(addr), "b"(reg) : "memory" );
 #else
 	addr += reg;
-#if defined(__MICROBLAZE__)
+#ifdef SOCLIB_IO_BIG_ENDIAN
     val = __uint32_swap(val);
 #endif
 	*addr = val;
@@ -67,7 +73,7 @@ static inline uint32_t soclib_io_get(void *comp_base, int reg)
 #else
 	addr += reg;
     val = *addr;
-#if defined(__MICROBLAZE__)
+#ifdef SOCLIB_IO_BIG_ENDIAN
     val = __uint32_swap(val);
 #endif
 	return val;
