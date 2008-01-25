@@ -1,0 +1,27 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'IssWrapper<soclib::common::Nios2fIss>'
+	header_files = "../../systemc/include/caba/processor/iss_wrapper.h",
+	implementation_files = [
+		"../../systemc/src/caba/processor/iss_wrapper.cc",
+		]
+	force_header_files = [
+		"../../systemc/include/common/iss/nios2_fast.h",
+		"../../systemc/include/caba/processor/iss_wrapper.h",
+		]
+	uses = [
+		Uses('nios2_fast', mode="common"),
+		Uses('base_module'),
+		]
+
+class common(CommonComponent):
+	classname = 'Nios2fIss'
+	header_files = "../../systemc/include/common/iss/nios2_fast.h",
+	implementation_files = [
+		"../../systemc/src/common/iss/nios2_fast.cc",
+		"../../systemc/src/common/iss/nios2_fast_itype_instructions.cc",
+		"../../systemc/src/common/iss/nios2_fast_rtype_instructions.cc",
+		"../../systemc/src/common/iss/nios2_fast_custom_instructions.cc",
+		]
