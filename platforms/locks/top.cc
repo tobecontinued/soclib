@@ -36,7 +36,9 @@
 #include "caba/target/vci_multi_ram.h"
 #include "caba/target/vci_multi_tty.h"
 #include "caba/target/vci_simhelper.h"
-#include "caba/interconnect/vci_vgmn.h"
+#include "caba/interconnect/ring_register.h"
+#include "caba/interconnect/vci_ring_initiator_wrapper.h"
+#include "caba/interconnect/vci_ring_target_wrapper.h"
 
 #include "segmentation.h"
 
@@ -131,10 +133,21 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty0", NULL);
 	soclib::caba::VciSimhelper<vci_param> vcisimhelper("vcisimhelper",	IntTab(2), maptab);
 	
-	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 4, 3, 2, 8);
+	// Ring wrappers	
+	soclib::caba::VciRingInitiatorWrapper<vci_param> cache0_wrapper("cache0_wrapper");
+	soclib::caba::VciRingInitiatorWrapper<vci_param> cache1_wrapper("cache1_wrapper");
+	soclib::caba::VciRingInitiatorWrapper<vci_param> cache2_wrapper("cache2_wrapper");
+	soclib::caba::VciRingInitiatorWrapper<vci_param> cache3_wrapper("cache3_wrapper");
+	soclib::caba::VciRingTargetWrapper<vci_param> multiram0_wrapper("multiram0_wrapper",4,0xbf,0x00,0x80,0x10);
+	soclib::caba::VciRingTargetWrapper<vci_param> tty_wrapper("tty_wrapper",1,0xc0);
+	soclib::caba::VciRingTargetWrapper<vci_param> simhelper_wrapper("simhelper_wrapper",1,0xd0);
+
+	soclib::caba::RingRegister<vci_param> ringregister("ringregister");
+	
+	// Ring interne signals
+	soclib::caba::RingSignals<vci_param> signal_ani[8];
 
 	//	Net-List
- 
 	mips0.p_clk(signal_clk);  
 	mips1.p_clk(signal_clk);  
 	mips2.p_clk(signal_clk);  
@@ -218,17 +231,57 @@ int _main(int argc, char *argv[])
 	vcisimhelper.p_resetn(signal_resetn);
 	vcisimhelper.p_vci(signal_vci_simhelper);
 
-	vgmn.p_clk(signal_clk);
-	vgmn.p_resetn(signal_resetn);
+	// wrapper clock signals
+	cache0_wrapper.p_clk(signal_clk);
+	cache1_wrapper.p_clk(signal_clk);
+	cache2_wrapper.p_clk(signal_clk);
+	cache3_wrapper.p_clk(signal_clk);
+	multiram0_wrapper.p_clk(signal_clk);
+	tty_wrapper.p_clk(signal_clk);
+	simhelper_wrapper.p_clk(signal_clk);
+	ringregister.p_clk(signal_clk);
 
-	vgmn.p_from_initiator[0](signal_vci_m0);
-	vgmn.p_from_initiator[1](signal_vci_m1);
-	vgmn.p_from_initiator[2](signal_vci_m2);
-	vgmn.p_from_initiator[3](signal_vci_m3);
+	// wrapper resetn signals
+	cache0_wrapper.p_resetn(signal_resetn);
+	cache1_wrapper.p_resetn(signal_resetn);
+	cache2_wrapper.p_resetn(signal_resetn);
+	cache3_wrapper.p_resetn(signal_resetn);
+	multiram0_wrapper.p_resetn(signal_resetn);
+	tty_wrapper.p_resetn(signal_resetn);
+	simhelper_wrapper.p_resetn(signal_resetn);
+	ringregister.p_resetn(signal_resetn);
 
-	vgmn.p_to_target[0](signal_vci_vcimultiram0);
-	vgmn.p_to_target[1](signal_vci_tty);
-	vgmn.p_to_target[2](signal_vci_simhelper);
+	// wrapper connection
+	cache0_wrapper.p_ri(signal_ani[0]);
+	cache0_wrapper.p_ro(signal_ani[1]);
+	cache0_wrapper.p_vci(signal_vci_m0);
+
+	cache1_wrapper.p_ri(signal_ani[1]);
+	cache1_wrapper.p_ro(signal_ani[2]);
+	cache1_wrapper.p_vci(signal_vci_m1);
+
+	cache2_wrapper.p_ri(signal_ani[2]);
+	cache2_wrapper.p_ro(signal_ani[3]);
+	cache2_wrapper.p_vci(signal_vci_m2);
+
+	cache3_wrapper.p_ri(signal_ani[3]);
+	cache3_wrapper.p_ro(signal_ani[4]);
+	cache3_wrapper.p_vci(signal_vci_m3);
+
+	multiram0_wrapper.p_ri(signal_ani[4]);
+	multiram0_wrapper.p_ro(signal_ani[5]);
+	multiram0_wrapper.p_vci(signal_vci_vcimultiram0);
+
+	tty_wrapper.p_ri(signal_ani[5]);
+	tty_wrapper.p_ro(signal_ani[6]);
+	tty_wrapper.p_vci(signal_vci_tty);
+
+	simhelper_wrapper.p_ri(signal_ani[6]);
+	simhelper_wrapper.p_ro(signal_ani[7]);
+	simhelper_wrapper.p_vci(signal_vci_simhelper);
+
+	ringregister.p_ri(signal_ani[7]);
+	ringregister.p_ro(signal_ani[0]);
 
 	sc_start(0);
 	signal_resetn = false;

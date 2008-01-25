@@ -19,7 +19,9 @@ todo = Platform(
 	Uses('vci_multi_ram', **vci_params),
 	Uses('vci_multi_tty', **vci_params),
 	Uses('vci_simhelper', **vci_params),
-	Uses('vci_vgmn', **vci_params),
+	Uses('ring_register', **vci_params),
+	Uses('vci_ring_initiator_wrapper', **vci_params),
+	Uses('vci_ring_target_wrapper', **vci_params),
 	Uses('vci_xcache', **vci_params),
 	Source('top.cc'),
 )
