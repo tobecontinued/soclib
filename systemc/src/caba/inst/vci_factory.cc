@@ -42,9 +42,10 @@
 
 namespace soclib { namespace caba {
 
-#define tmpl(t) template<typename vci_param> t VciFactory<vci_param>
+namespace {
 
-tmpl(BaseModule&)::framebuffer(
+template<typename vci_param>
+BaseModule& framebuffer(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -59,7 +60,8 @@ tmpl(BaseModule&)::framebuffer(
 	return tmp;
 }
 
-tmpl(BaseModule&)::ram(
+template<typename vci_param>
+BaseModule& ram(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -81,7 +83,8 @@ tmpl(BaseModule&)::ram(
 	return *tmp;
 }
 
-tmpl(BaseModule&)::tty(
+template<typename vci_param>
+BaseModule& tty(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -95,7 +98,8 @@ tmpl(BaseModule&)::tty(
 	return tmp;
 }
 
-tmpl(BaseModule&)::timer(
+template<typename vci_param>
+BaseModule& timer(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -109,7 +113,8 @@ tmpl(BaseModule&)::timer(
 	return tmp;
 }
 
-tmpl(BaseModule&)::vgmn(
+template<typename vci_param>
+BaseModule& vgmn(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     soclib::common::inst::InstArg &env )
@@ -125,7 +130,8 @@ tmpl(BaseModule&)::vgmn(
 	return tmp;
 }
 
-tmpl(BaseModule&)::xcache(
+template<typename vci_param>
+BaseModule& xcache(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -142,7 +148,8 @@ tmpl(BaseModule&)::xcache(
 	return tmp;
 }
 
-tmpl(BaseModule&)::dma(
+template<typename vci_param>
+BaseModule& dma(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -156,7 +163,8 @@ tmpl(BaseModule&)::dma(
 	return tmp;
 }
 
-tmpl(BaseModule&)::icu(
+template<typename vci_param>
+BaseModule& icu(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -170,7 +178,8 @@ tmpl(BaseModule&)::icu(
 	return tmp;
 }
 
-tmpl(BaseModule&)::locks(
+template<typename vci_param>
+BaseModule& locks(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -182,7 +191,8 @@ tmpl(BaseModule&)::locks(
         env.get<MappingTable>("mapping_table") );
 }
 
-tmpl(BaseModule&)::simhelper(
+template<typename vci_param>
+BaseModule& simhelper(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -194,7 +204,8 @@ tmpl(BaseModule&)::simhelper(
         env.get<MappingTable>("mapping_table") );
 }
 
-tmpl(BaseModule&)::mwmr_controller(
+template<typename vci_param>
+BaseModule& mwmr_controller(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
@@ -211,27 +222,25 @@ tmpl(BaseModule&)::mwmr_controller(
         args.get<int>("n_status") );
 }
 
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- fb_factory(vci_param::string("framebuffer"), &framebuffer);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- ram_factory(vci_param::string("ram"), &ram);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- tty_factory(vci_param::string("tty"), &tty);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- timer_factory(vci_param::string("timer"), &timer);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- vgmn_factory(vci_param::string("vgmn"), &vgmn);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- xcache_factory(vci_param::string("xcache"), &xcache);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- dma_factory(vci_param::string("dma"), &dma);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- icu_factory(vci_param::string("icu"), &icu);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- locks_factory(vci_param::string("locks"), &locks);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- simhelper_factory(vci_param::string("simhelper"), &simhelper);
-tmpl(soclib::common::Factory<soclib::caba::BaseModule>)::
- mwmr_controller_factory(vci_param::string("mwmr_controller"), &mwmr_controller);
+#undef tmpl
+
+}
+
+#define register_factory(x) \
+template<typename vci_param> \
+soclib::common::Factory<soclib::caba::BaseModule> \
+VciFactory<vci_param>::x##_factory(vci_param::string(#x), &x<vci_param>)
+
+register_factory(framebuffer);
+register_factory(ram);
+register_factory(tty);
+register_factory(timer);
+register_factory(vgmn);
+register_factory(xcache);
+register_factory(dma);
+register_factory(icu);
+register_factory(locks);
+register_factory(simhelper);
+register_factory(mwmr_controller);
 
 }}

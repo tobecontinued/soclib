@@ -42,19 +42,7 @@ namespace soclib { namespace caba {
 template<typename vci_param>
 class VciFactory
 {
-	typedef typename soclib::common::Factory<soclib::caba::BaseModule>::factory_func_t factory_func_t;
-	static factory_func_t framebuffer;
-	static factory_func_t ram;
-	static factory_func_t tty;
-	static factory_func_t timer;
-	static factory_func_t locks;
-	static factory_func_t vgmn;
-	static factory_func_t xcache;
-	static factory_func_t dma;
-	static factory_func_t icu;
-	static factory_func_t simhelper;
-	static factory_func_t mwmr_controller;
-	static soclib::common::Factory<soclib::caba::BaseModule> fb_factory;
+	static soclib::common::Factory<soclib::caba::BaseModule> framebuffer_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> ram_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> tty_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> timer_factory;

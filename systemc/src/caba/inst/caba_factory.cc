@@ -30,6 +30,7 @@
 #include "common/iss/mips.h"
 #include "common/iss/ppc405.h"
 #include "common/iss/microblaze.h"
+#include "common/iss/nios2_fast.h"
 #include "common/iss/gdbserver.h"
 #include "caba/util/base_module.h"
 #include "common/inst/factory.h"
@@ -43,14 +44,14 @@ using soclib::caba::IssWrapper;
 
 namespace {
 
-template<typename iss_t>
+template<typename iss_t, bool with_gdb>
 BaseModule &inst_caba_cpu(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
 {
 	using soclib::common::GdbServer;
-	if ( args.has("with_gdb") && args.get<int>("with_gdb")  ) {
+	if ( with_gdb && args.has("with_gdb") && args.get<int>("with_gdb")  ) {
 		if ( args.has("start_frozen") )
 			GdbServer<iss_t>::start_frozen(args.get<int>("start_frozen"));
 		return
@@ -82,10 +83,11 @@ BaseModule &inst_fifo_rw(
 using soclib::common::Factory;
 using soclib::caba::BaseModule;
 
-Factory<BaseModule> mipsel_factory("mipsel", &inst_caba_cpu<soclib::common::MipsElIss>);
-Factory<BaseModule> mipseb_factory("mipseb", &inst_caba_cpu<soclib::common::MipsEbIss>);
-Factory<BaseModule> ppc405_factory("ppc405", &inst_caba_cpu<soclib::common::Ppc405Iss>);
-Factory<BaseModule> microblaze_factory("microblaze", &inst_caba_cpu<soclib::common::MicroBlazeIss>);
+Factory<BaseModule> mipsel_factory("mipsel", &inst_caba_cpu<soclib::common::MipsElIss, true>);
+Factory<BaseModule> mipseb_factory("mipseb", &inst_caba_cpu<soclib::common::MipsEbIss, true>);
+Factory<BaseModule> nios2_factory("nios2", &inst_caba_cpu<soclib::common::Nios2fIss, false>);
+Factory<BaseModule> ppc405_factory("ppc405", &inst_caba_cpu<soclib::common::Ppc405Iss, true>);
+Factory<BaseModule> microblaze_factory("microblaze", &inst_caba_cpu<soclib::common::MicroBlazeIss, false>);
 Factory<BaseModule> fifo_reader_factory("fifo_reader", &inst_fifo_rw<FifoReader<uint32_t> >);
 Factory<BaseModule> fifo_writer_factory("fifo_writer", &inst_fifo_rw<FifoWriter<uint32_t> >);
 
