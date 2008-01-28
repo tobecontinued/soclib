@@ -68,7 +68,7 @@ int printf(const char *fmt, ...)
 
 	while (*fmt) {
 		while ((*fmt != '%') && (*fmt)) {
-			putc(*fmt++);
+			putchar(*fmt++);
 			count++;
 		}
 		if (*fmt) {
@@ -89,11 +89,11 @@ int printf(const char *fmt, ...)
 			case ' ':
 				goto again;
 			case '%':
-				putc('%');
+				putchar('%');
 				count++;
 				goto next;
 			case 'c':
-				putc(va_arg(ap, int));
+				putchar(va_arg(ap, int));
 				count++;
 				goto next;
 			case 'd':
@@ -101,7 +101,7 @@ int printf(const char *fmt, ...)
 				val = va_arg(ap, int);
 				if (val < 0) {
 					val = -val;
-					putc('-');
+					putchar('-');
 					count++;
 				}
 				tmp = buf + SIZE_OF_BUF;
@@ -159,12 +159,12 @@ int printf(const char *fmt, ...)
 				}
 				break;
 			default:
-				putc(*fmt);
+				putchar(*fmt);
 				count++;
 				goto next;
 			}
 			while (*tmp) {
-				putc(*tmp++);
+				putchar(*tmp++);
 				count++;
 			}
 		next:
@@ -231,8 +231,9 @@ void exit(int retval)
 		;
 }
 
-void puts(const char *s)
+int puts(const char *s)
 {
 	while (*s)
-		putc(*s++);
+		putchar(*s++);
+	return 0;
 }

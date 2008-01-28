@@ -29,6 +29,13 @@
 #include "system.h"
 #include "stdio.h"
 
+void interrupt_ex_handler(
+	unsigned int type, void *execptr,
+	void *dataptr, void *regtable,
+	void *stackptr);
+void interrupt_sys_handler(unsigned int irq);
+void interrupt_hw_handler(unsigned int irq);
+
 #if __mips__
 asm(
     ".section        .excep,\"ax\",@progbits			\n"

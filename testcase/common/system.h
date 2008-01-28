@@ -88,15 +88,16 @@ static inline int procnum()
 
 #endif /* platform switch */
 
-static inline void putc(const char x)
+static inline int putchar(const int x)
 {
 	soclib_io_write8(
 		base(TTY),
 		procnum()*TTY_SPAN+TTY_WRITE,
-		x);
+		(char)x);
+	return (char)x;
 }
 
-static inline char getc()
+static inline int getchar()
 {
 	return soclib_io_read8(
 		base(TTY),

@@ -33,7 +33,7 @@
 
 #include "segmentation.h"
 
-void main(void)
+int main(void)
 {
 	int i;
 	for (i=0; i<10000; ++i)
@@ -49,4 +49,5 @@ void main(void)
 #endif
 
 	exit(1);
+	return 1;
 }

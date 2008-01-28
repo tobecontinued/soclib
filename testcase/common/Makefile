@@ -31,7 +31,7 @@ RESULT=test.res
 COMMON=$(TESTDIR)/../common
 BASE=$(TESTDIR)/..
 
-mipsel_CPU=mips
+mipsel_CPU=mipsel
 powerpc_CPU=ppc405
 microblaze_CPU=microblaze
 
