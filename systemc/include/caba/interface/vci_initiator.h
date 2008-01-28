@@ -185,6 +185,26 @@ public:
     {
         return cmdval && cmdack;
     }
+
+    inline bool toPeerEnd() const
+    {
+        return peerAccepted() && eop;
+    }
+
+    friend sc_core::sc_sensitive &operator <<(
+        sc_core::sc_sensitive &ss,
+        VciInitiator<vci_param> &sig )
+    {
+        ss << sig.rspval
+           << sig.rdata
+           << sig.reop
+           << sig.rerror
+           << sig.rsrcid
+           << sig.rtrdid
+           << sig.rpktid
+           << sig.cmdack;
+        return ss;
+    }
 };
 
 namespace inst {

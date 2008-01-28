@@ -53,6 +53,8 @@ class VciFactory
 	static soclib::common::Factory<soclib::caba::BaseModule> icu_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> simhelper_factory;
 	static soclib::common::Factory<soclib::caba::BaseModule> mwmr_controller_factory;
+	static soclib::common::Factory<soclib::caba::BaseModule> local_crossbar_factory;
+	static soclib::common::Factory<soclib::caba::BaseModule> simple_crossbar_factory;
 };
 
 }}

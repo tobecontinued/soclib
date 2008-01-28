@@ -187,6 +187,11 @@ public:
         return rspval && rspack;
     }
 
+    inline bool toPeerEnd() const
+    {
+        return peerAccepted() && reop;
+    }
+
     void rspSetIds( typename vci_param::srcid_t srcid,
                     typename vci_param::trdid_t trdid,
                     typename vci_param::pktid_t pktid )
@@ -217,6 +222,29 @@ public:
     void rspNop()
     {
         rspval = false;
+    }
+
+    friend sc_core::sc_sensitive &operator <<(
+        sc_core::sc_sensitive &ss,
+        VciTarget<vci_param> &sig )
+    {
+        ss << sig.rspack
+           << sig.cmdval
+           << sig.address
+           << sig.be
+           << sig.cmd
+           << sig.contig
+           << sig.wdata
+           << sig.eop
+           << sig.cons
+           << sig.plen
+           << sig.wrap
+           << sig.cfixed
+           << sig.clen
+           << sig.srcid
+           << sig.trdid
+           << sig.pktid;
+        return ss;
     }
 };
 

@@ -19,5 +19,6 @@ class caba(VciCabaComponent):
 		Uses('vci_simhelper'),
 		Uses('vci_timer'),
 		Uses('vci_vgmn'),
+		Uses('vci_local_crossbar'),
 		Uses('vci_xcache'),
 		]

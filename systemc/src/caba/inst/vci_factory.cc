@@ -37,6 +37,8 @@
 #include "caba/target/vci_timer.h"
 #include "caba/target/vci_mwmr_controller.h"
 #include "caba/interconnect/vci_vgmn.h"
+#include "caba/interconnect/vci_simple_crossbar.h"
+#include "caba/interconnect/vci_local_crossbar.h"
 #include "caba/initiator/vci_xcache.h"
 #include "caba/inst/vci_factory.h"
 
@@ -222,6 +224,35 @@ BaseModule& mwmr_controller(
         args.get<int>("n_status") );
 }
 
+template<typename vci_param>
+BaseModule& local_crossbar(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	return
+		*new VciLocalCrossbar<vci_param>(
+        name.c_str(),
+        env.get<MappingTable>("mapping_table"),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("n_initiators"),
+        args.get<int>("n_targets") );
+}
+
+template<typename vci_param>
+BaseModule& simple_crossbar(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	return
+		*new VciSimpleCrossbar<vci_param>(
+        name.c_str(),
+        env.get<MappingTable>("mapping_table"),
+        args.get<int>("n_initiators"),
+        args.get<int>("n_targets") );
+}
+
 #undef tmpl
 
 }
@@ -242,5 +273,7 @@ register_factory(icu);
 register_factory(locks);
 register_factory(simhelper);
 register_factory(mwmr_controller);
+register_factory(local_crossbar);
+register_factory(simple_crossbar);
 
 }}
