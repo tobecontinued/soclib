@@ -43,10 +43,11 @@ namespace caba {
 namespace inst {
 
 class BasePort {
-	const std::string m_port_name;
+	std::string m_port_name;
 	std::string m_owner_name;
 protected:
 	bool m_connected;
+	BaseSignal *m_signal;
 public:
 	BasePort( const std::string & );
 	BasePort( const BasePort & );
@@ -59,6 +60,10 @@ public:
 	const std::string fullName() const
 	{
 		return m_owner_name + '.' + m_port_name;
+	}
+	inline void rename( const std::string &name )
+	{
+		m_port_name = name;
 	}
 	inline bool isNamed( const std::string &name ) const
 	{

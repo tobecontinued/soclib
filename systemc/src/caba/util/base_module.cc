@@ -88,14 +88,15 @@ namespace inst {
 
 BasePort::BasePort( const std::string &name )
 	: m_port_name(name),
-      m_connected(false)
+      m_connected(false),
+      m_signal(NULL)
 {
 }
 
 BasePort::BasePort( const BasePort &port )
 	: m_port_name(port.m_port_name),
 	  m_owner_name(port.m_owner_name),
-      m_connected(false)
+      m_connected(false), m_signal(NULL)
 {
 }
 

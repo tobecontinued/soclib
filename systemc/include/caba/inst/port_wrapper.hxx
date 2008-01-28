@@ -68,7 +68,10 @@ Port<port_t, sig_t>::operator /( BasePort &port )
 template <typename port_t, typename sig_t> BaseSignal&
 Port<port_t, sig_t>::alone()
 {
+	if ( m_signal )
+		return *m_signal;
 	Signal<sig_t> &sig = Signal<sig_t>::create();
+	m_signal = &sig;
 	sig / *this;
 	return sig;
 }
