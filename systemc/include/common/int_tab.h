@@ -74,6 +74,13 @@ public:
         init(&ref.m_values[0]);
     }
 
+    IntTab( const IntTab &ref, int nindex )
+    {
+        init(&ref.m_values[0]);
+        m_values[m_level] = nindex;
+        m_values[++m_level] = -1;
+    }
+
     template<typename T>
     IntTab( const std::vector<T> &v )
     {
