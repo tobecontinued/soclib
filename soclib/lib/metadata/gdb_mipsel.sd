@@ -1,0 +1,18 @@
+
+# -*- python -*-
+
+# Mips Little endian (MipsElIss)
+
+class common(CommonComponent):
+	classname = 'GdbServer<soclib::common::MipsElIss>'
+	header_files = "../include/iss/gdbserver.h",
+	implementation_files = [
+		"../src/iss/gdbserver.cpp",
+		]
+	force_header_files = [
+		"../include/iss/mips.h",
+		"../include/iss/gdbserver.h",
+		]
+	uses = [
+		Uses('mipsel', mode="common"),
+		]

@@ -1,0 +1,16 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'GdbServer<soclib::common::MicroBlazeIss>'
+	header_files = "../include/iss/gdbserver.h",
+	implementation_files = [
+		"../src/iss/gdbserver.cpp",
+		]
+	force_header_files = [
+		"../include/iss/microblaze.h",
+		"../include/iss/gdbserver.h",
+		]
+	uses = [
+		Uses('microblaze', mode="common"),
+		]

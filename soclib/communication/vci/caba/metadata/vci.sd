@@ -1,0 +1,10 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	header_files = ['../source/include/vci_signals.h',
+					'../source/include/vci_initiator.h',
+					'../source/include/vci_target.h',
+					'../source/include/vci_buffers.h',
+					'../source/include/vci_param.h',
+					]

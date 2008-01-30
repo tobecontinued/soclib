@@ -1,8 +1,0 @@
-
-# -*- python -*-
-
-class common(CommonComponent):
-	classname = 'LinkedAccessBuffer'
-	header_files = '../../systemc/include/common/linked_access_buffer.h',
-	implementation_files = '../../systemc/src/common/linked_access_buffer.cc',
-	tmpl_parameters = ['addr_t', 'id_t']

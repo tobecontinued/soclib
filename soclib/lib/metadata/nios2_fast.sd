@@ -1,0 +1,12 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'Nios2fIss'
+	header_files = "../include/iss/nios2_fast.h",
+	implementation_files = [
+		"../src/iss/nios2_fast.cpp",
+		"../src/iss/nios2_fast_itype_instructions.cpp",
+		"../src/iss/nios2_fast_rtype_instructions.cpp",
+		"../src/iss/nios2_fast_custom_instructions.cpp",
+		]

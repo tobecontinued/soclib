@@ -1,0 +1,12 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciSimpleCrossbar'
+	header_files = '../source/include/vci_simple_crossbar.h',
+	implementation_files = '../source/src/vci_simple_crossbar.cpp',
+	uses = [
+		Uses('base_module'),
+		Uses('mapping_table'),
+		Uses('vci'),
+		]

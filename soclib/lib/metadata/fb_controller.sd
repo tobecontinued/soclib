@@ -1,0 +1,10 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'FbController'
+	header_files = '../include/fb_controller.h',
+	implementation_files = '../src/fb_controller.cpp',
+	uses = [
+		Uses('process_wrapper'),
+		]

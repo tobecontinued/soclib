@@ -1,0 +1,14 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciSimhelper'
+	header_files = ['../source/include/vci_simhelper.h',
+					'../../include/simhelper.h',
+					]
+	implementation_files = '../source/src/vci_simhelper.cpp',
+	uses = [
+		Uses('base_module'),
+		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
+		Uses('vci'),
+		]

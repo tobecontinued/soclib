@@ -1,0 +1,6 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'GenericFifo'
+	header_files = '../include/caba/generic_fifo.h',

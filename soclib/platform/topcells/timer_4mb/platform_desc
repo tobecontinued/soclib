@@ -1,0 +1,26 @@
+
+# -*- python -*-
+
+vci_params = dict(
+	cell_size = 4,
+	plen_size = 1,
+	addr_size = 32,
+	rerror_size = 1,
+	clen_size = 1,
+	rflag_size = 1,
+	srcid_size = 8,
+	pktid_size = 1,
+	trdid_size = 1,
+	wrplen_size = 1
+	)
+
+todo = Platform(
+	Source('top.cpp', uses = [
+	Uses('microblaze'),
+	Uses('vci_ram', **vci_params),
+	Uses('vci_multi_tty', **vci_params),
+	Uses('vci_timer', **vci_params),
+	Uses('vci_vgmn', **vci_params),
+	Uses('vci_xcache', **vci_params),
+	]),
+)

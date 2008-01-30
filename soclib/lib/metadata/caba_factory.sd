@@ -1,0 +1,20 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'CabaFactory'
+	implementation_files = '../src/caba/inst/caba_factory.cpp',
+	uses = [
+		Uses('nios2_fast'),
+		Uses('mipsel'),
+		Uses('gdb_mipsel'),
+		Uses('mipseb'),
+		Uses('gdb_mipseb'),
+		Uses('microblaze'),
+		Uses('gdb_microblaze'),
+		Uses('ppc405'),
+		Uses('gdb_ppc405'),
+		Uses('fifo_reader', word_t = 'uint32_t'),
+		Uses('fifo_writer', word_t = 'uint32_t'),
+		Uses('inst_arg'),
+		]

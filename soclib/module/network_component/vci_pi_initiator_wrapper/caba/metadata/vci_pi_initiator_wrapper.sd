@@ -1,0 +1,12 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciPiInitiatorWrapper'
+	header_files = '../source/include/vci_pi_initiator_wrapper.h',
+	implementation_files = '../source/src/vci_pi_initiator_wrapper.cpp',
+	uses = [
+		Uses('base_module'),
+		Uses('pibus'),
+		Uses('vci'),
+		]

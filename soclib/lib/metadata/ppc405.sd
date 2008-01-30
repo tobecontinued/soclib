@@ -1,0 +1,11 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'Ppc405Iss'
+	header_files = "../include/iss/ppc405.h",
+	implementation_files = [
+		"../src/iss/ppc405.cpp",
+		"../src/iss/ppc405_instructions.cpp",
+		"../src/iss/ppc405_jump_tables.cpp",
+		]

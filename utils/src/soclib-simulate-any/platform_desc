@@ -16,7 +16,9 @@ vci_params = dict(
 
 todo = Platform(
 	Uses('caba_factory'),
-	Uses('topcell'),
 	Uses('vci_factory', **vci_params),
-	Source('top.cc'),
+	Source('top.cpp', uses = [
+	Uses('topcell'),
+	Uses('exception'),
+	]),
 )

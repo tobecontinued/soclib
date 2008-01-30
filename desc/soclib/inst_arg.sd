@@ -1,7 +1,0 @@
-
-# -*- python -*-
-
-class common(CommonComponent):
-	classname = 'CommonFactory'
-	header_files = '../../systemc/include/common/inst/inst_arg.h',
-	implementation_files = '../../systemc/src/common/inst/inst_arg.cc',

@@ -1,0 +1,7 @@
+
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'ProcessWrapper'
+	header_files = '../include/process_wrapper.h',
+	implementation_files = '../src/process_wrapper.cpp',

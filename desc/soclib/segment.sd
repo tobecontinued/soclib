@@ -1,7 +1,0 @@
-
-# -*- python -*-
-
-class common(CommonComponent):
-	classname = 'Segment'
-	header_files = '../../systemc/include/common/segment.h',
-	implementation_files = '../../systemc/src/common/segment.cc',

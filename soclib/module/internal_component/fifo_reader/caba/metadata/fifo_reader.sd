@@ -1,0 +1,15 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'FifoReader'
+	header_files = "../source/include/fifo_reader.h",
+	implementation_files = [
+		"../source/src/fifo_reader.cpp",
+		]
+	uses = [
+		Uses('base_module'),
+		Uses('process_wrapper'),
+		Uses('fifo'),
+		]
+	tmpl_parameters = ['word_t']

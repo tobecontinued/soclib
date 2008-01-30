@@ -1,0 +1,13 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	classname = 'VciXCache'
+	header_files = '../source/include/vci_xcache.h',
+	implementation_files = '../source/src/vci_xcache.cpp',
+	uses = [
+		Uses('base_module'),
+		Uses('mapping_table'),
+		Uses('vci'),
+		Uses('xcache'),
+		]

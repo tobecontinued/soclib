@@ -1,0 +1,8 @@
+# -*- python -*-
+
+class common(CommonComponent):
+	classname = 'MicroBlazeIss'
+	header_files = "../include/iss/microblaze.h",
+	implementation_files = [
+		"../src/iss/microblaze.cpp",
+		]

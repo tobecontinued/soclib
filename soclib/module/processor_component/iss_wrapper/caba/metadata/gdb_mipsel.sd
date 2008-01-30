@@ -1,0 +1,20 @@
+
+# -*- python -*-
+
+# Mips Little endian (MipsElIss)
+
+class caba(CabaComponent):
+	classname = 'IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> >'
+	header_files = "../source/include/iss_wrapper.h",
+	implementation_files = [
+		"../source/src/iss_wrapper.cpp",
+		]
+	force_header_files = [
+		"iss/mips.h",
+		"iss/gdbserver.h",
+		]
+	uses = [
+		Uses('base_module'),
+		Uses('gdb_mipsel', mode='common'),
+		Uses('xcache'),
+		]

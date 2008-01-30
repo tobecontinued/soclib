@@ -1,0 +1,17 @@
+
+# -*- python -*-
+
+class caba(CabaComponent):
+	classname = 'IssWrapper<soclib::common::Ppc405Iss>'
+	header_files = "../source/include/iss_wrapper.h",
+	implementation_files = [
+		"../source/src/iss_wrapper.cpp",
+		]
+	force_header_files = [
+		"iss/ppc405.h",
+		]
+	uses = [
+		Uses('ppc405', mode="common"),
+		Uses('base_module'),
+		Uses('xcache'),
+		]

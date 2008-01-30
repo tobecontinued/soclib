@@ -1,0 +1,7 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	header_files = ['../source/include/fifo_signals.h',
+					'../source/include/fifo_ports.h',
+					]

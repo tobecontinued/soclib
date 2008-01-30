@@ -1,0 +1,8 @@
+
+# -*- python -*-
+
+class caba(VciCabaComponent):
+	header_files = ['../source/include/pibus_initiator_ports.h',
+					'../source/include/pibus_signals.h',
+					'../source/include/pibus_target_ports.h',
+					]

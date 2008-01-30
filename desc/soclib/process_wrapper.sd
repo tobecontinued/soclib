@@ -1,7 +1,0 @@
-
-# -*- python -*-
-
-class common(CommonComponent):
-	classname = 'ProcessWrapper'
-	header_files = '../../systemc/include/common/process_wrapper.h',
-	implementation_files = '../../systemc/src/common/process_wrapper.cc',
