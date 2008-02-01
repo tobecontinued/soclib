@@ -44,7 +44,7 @@ namespace caba {
 using namespace sc_core;
 
 template<typename vci_param>
-class VciHetRom
+class VciHeterogeneousRom
 	: public soclib::caba::BaseModule
 {
     soclib::caba::VciTargetFsm<vci_param,true,2,false> m_vci_fsm;
@@ -72,7 +72,7 @@ class VciHetRom
     const MappingTable &m_mt;
 
 protected:
-	SC_HAS_PROCESS(VciHetRom);
+	SC_HAS_PROCESS(VciHeterogeneousRom);
 
 public:
     typedef typename vci_param::addr_t vci_addr_t;
@@ -84,12 +84,12 @@ public:
     sc_in<bool> p_clk;
     soclib::caba::VciTarget<vci_param> p_vci;
 
-    VciHetRom(
+    VciHeterogeneousRom(
         sc_module_name insname,
         const IntTab &index,
         const MappingTable &mt);
 
-    ~VciHetRom();
+    ~VciHeterogeneousRom();
 
 private:
     bool on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be);

@@ -27,7 +27,7 @@
  * Maintainers: becoulet
  */
 
-#include "../include/vci_het_rom.h"
+#include "../include/vci_heterogeneous_rom.h"
 #include "soclib_endian.h"
 #include "elf_loader.h"
 
@@ -36,9 +36,9 @@ namespace caba {
 
 using namespace soclib;
 
-#define tmpl(x) template<typename vci_param> x VciHetRom<vci_param>
+#define tmpl(x) template<typename vci_param> x VciHeterogeneousRom<vci_param>
 
-tmpl(/**/)::VciHetRom(
+tmpl(/**/)::VciHeterogeneousRom(
 	sc_module_name insname,
 	const IntTab &index,
 	const MappingTable &mt
@@ -69,7 +69,7 @@ tmpl(/**/)::VciHetRom(
         m_assoc[i] = 0;
 }
 
-tmpl(/**/)::~VciHetRom()
+tmpl(/**/)::~VciHeterogeneousRom()
 {
 }
 
