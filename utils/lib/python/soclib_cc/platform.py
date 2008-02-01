@@ -31,7 +31,7 @@ from soclib_cc.config import config
 from soclib_cc.builder.todo import ToDo
 from soclib_cc.builder.cxx import CxxCompile, CxxLink
 
-__all__ = ['Platform', 'Uses', 'Source']
+__all__ = ['TlmtPlatform', 'Platform', 'Uses', 'Source']
 
 class NotFound(Exception):
 	def __init__(self, name, mode):
@@ -41,9 +41,6 @@ class Platform:
 	"""
 	Platform definition, should be passed an arbitrary number of
 	Uses() and Source() statements that constitutes the platform.
-
-	Only caba is supported for now, but the whole design is tlmt
-	ready.
 	"""
 	mode = 'caba'
 	def __init__(self, *components):
@@ -63,6 +60,9 @@ class Platform:
 		self.todo.process()
 	def clean(self):
 		self.todo.clean()
+
+class TlmtPlatform(Platform):
+	mode = 'tlmt'
 
 class Uses:
 	"""

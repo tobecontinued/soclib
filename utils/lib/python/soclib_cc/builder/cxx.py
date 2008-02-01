@@ -55,13 +55,16 @@ class CCompile(action.Action):
 			print r
 			raise action.ActionFailed(rval, cmd)
 		return r
-	def _processDeps(self, filename):
-		if not filename.exists:
-			filename.generator.process()
-		args = config.getTool(self.tool)+['-MM', '-MT', 'foo.o']
+	def command_line(self):
+		args = config.getTool(self.tool)
 		args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
 		args += map(lambda x:'-I%s'%x, self.options['inc_paths'])
 		args += config.getCflags()
+		return args
+	def _processDeps(self, filename):
+		if not filename.exists:
+			filename.generator.process()
+		args = self.command_line()+['-MM', '-MT', 'foo.o']
 		args.append(filename)
 		blob = self.call('deps', args, False)
 		from bblock import bblockize
@@ -70,11 +73,8 @@ class CCompile(action.Action):
 		return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
 	def process(self):
 		fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
-		args = config.getTool(self.tool) + [
+		args = self.command_line() + [
 				'-c', '-o', self.dests[0]]
-		args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
-		args += map(lambda x:'-I%s'%x, self.options['inc_paths'])
-		args += config.getCflags()
 		args += self.sources
 		r = self.call('compile', args)
 		if r:

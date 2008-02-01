@@ -29,7 +29,7 @@ from soclib_cc.builder.cxx import *
 from soclib_cc.builder.textfile import *
 import os, os.path
 
-__all__ = ['Component', 'VciCabaComponent', 'CabaComponent', 'CommonComponent']
+__all__ = ['Component', 'VciCabaComponent', 'CabaComponent', 'CommonComponent', 'TlmtComponent', 'VciTlmtComponent']
 
 class UndefinedParam(Exception):
 	def __init__(self, where, comp, param):
@@ -64,6 +64,7 @@ class Component:
 	implementation_files = []
 	uses = []
 	default_parameters = {}
+	defines = {}
 	
 	def __init__(self, where, cmode, **args):
 		self.where = where
@@ -112,6 +113,7 @@ class Component:
 			return CxxCompile(
 				config.reposFile(bn+"."+config.toolchain.obj_ext),
 				tx.dests[0],
+				defines = self.defines,
 				inc_paths = incls)
 		else:
 			return Noop()
@@ -122,6 +124,11 @@ class Component:
 			params = ",".join(
 				map(lambda x:'%s=%s'%(x,args[x]),
 					self.tmpl_parameters))
+			basename += "_" + params.replace(' ', '_')
+		if self.defines:
+			params = ",".join(
+				map(lambda x:'%s=%s'%x,
+					self.defines.iteritems()))
 			basename += "_" + params.replace(' ', '_')
 		return basename
 	def results(self):
@@ -163,6 +170,9 @@ class Component:
 	
 class CabaComponent(Component):
 	namespace = 'soclib::caba::'
+	
+class TlmtComponent(Component):
+	namespace = 'soclib::tlmt::'
 
 class CommonComponent(Component):
 	namespace = 'soclib::common::'
@@ -177,3 +187,9 @@ class VciCabaComponent(CabaComponent):
 		'soclib::caba::VciParams<%(cell_size)s,%(plen_size)s,%(addr_size)s,'+
 		'%(rerror_size)s,%(clen_size)s,%(rflag_size)s,%(srcid_size)s,'+
 		'%(pktid_size)s,%(trdid_size)s,%(wrplen_size)s>')
+
+class VciTlmtComponent(TlmtComponent):
+	tmpl_parameters = [
+		'addr_t', 'data_t']
+	tmpl_instanciation = (
+		'soclib::tlmt::VciParams<%(addr_t)s,%(data_t)s>')

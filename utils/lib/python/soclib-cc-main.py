@@ -34,6 +34,15 @@ from soclib_cc.builder.cxx import CxxCompile
 from optparse import OptionParser
 
 def main():
+	def define_callback(option, opt, value, parser):
+		cell, mode, define = value.split(":", 2)
+		try:
+			name, val = define.split('=', 1)
+		except:
+			name = define
+			val = ''
+		from soclib_cc.components import component_defs
+		component_defs[cell][mode].defines[name] = val
 	parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
 	parser.add_option('-v', '--verbose', dest = 'verbose',
 					  action='store_true',
@@ -44,6 +53,9 @@ def main():
 	parser.add_option('-P', '--progress_bar', dest = 'progress_bar',
 					  action='store_true',
 					  help="Print evolution with a progress bar")
+	parser.add_option('-D', '--define', nargs = 1, type = "string",
+					  action='callback', callback = define_callback,
+					  help="cell_name:mode:DEFINE=VALUE")
 	parser.add_option('-q', '--quiet', dest = 'quiet',
 					  action='store_true',
 					  help="Print nothing but errors")
@@ -71,7 +83,7 @@ def main():
 					  help="Print soclib path")
 	parser.add_option('--getflags', dest = 'getflags',
 					  action='store', type = 'string',
-					  help="Print soclib path")
+					  help="Get a configuration value")
 	parser.add_option('-t', '--type', dest = 'type',
 					  action='store', type = 'string',
 					  help="Use a different configuration: *default")
