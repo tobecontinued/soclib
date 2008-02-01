@@ -26,31 +26,8 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-class caba(CabaComponent):
-	classname = 'BaseModule'
-	header_files = [ '../include/caba/caba_base_module.h',
-					 '../include/caba/inst/inst.h',
-					 '../include/caba/inst/port_wrapper',
-					 '../include/caba/inst/port_wrapper.hxx',
-					 '../include/caba/inst/signal_wrapper.h',
-					 '../include/caba/inst/port_traits.h',
-					 '../include/caba/inst/port_wrapper.h',
-					 '../include/caba/inst/signal_wrapper',
-					 '../include/caba/inst/signal_wrapper.hxx' ]
-	implementation_files = '../src/caba/caba_base_module.cpp',
-	uses = [
-		Uses('base_module', mode = 'common'),
-		]
-
-class tlmt(TlmtComponent):
-	classname = 'BaseModule'
-	header_files = [ '../include/tlmt/tlmt_base_module.h',]
-	uses = [
-		Uses('base_module', mode = 'common'),
-		Uses('tlmt'),
-		]
-
-class common(CommonComponent):
-	classname = 'BaseModule'
-	header_files = [ '../include/base_module.h',
-					 ]
+class tlmt(VciTlmtComponent):
+	header_files = ['../source/include/vci_ports.h',
+					'../source/include/vci_packets.h',
+					'../source/include/vci_param.h',
+					]

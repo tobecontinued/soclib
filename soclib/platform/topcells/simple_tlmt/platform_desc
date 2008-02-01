@@ -1,0 +1,16 @@
+
+# -*- python -*-
+
+vci_params = dict(
+	addr_t = 'uint32_t',
+	data_t = 'uint32_t',
+	)
+
+todo = TlmtPlatform(
+	Source('top.cpp', uses = [
+	Uses('vci_simple_initiator', **vci_params),
+	Uses('vci_simple_target', **vci_params),
+	Uses('vci_vgmn', **vci_params),
+	Uses('vci_ram', **vci_params),
+	]),
+)
