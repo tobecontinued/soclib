@@ -28,7 +28,7 @@ SOCLIB=$(shell soclib-cc --getpath)
 
 all: clean
 	mkdir headers
-	cp $$(grep -Erl 'include.*soclib_io\.h' $(SOCLIB)/soclib/module) headers/
+	cp $$(grep -Erl 'include.*soclib_io\.h' $(SOCLIB)/soclib/module | grep -v svn) headers/
 	cp $(SOCLIB)/soclib/lib/include/soclib_io.h headers/
 
 install: all
