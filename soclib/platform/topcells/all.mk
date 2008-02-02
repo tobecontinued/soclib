@@ -28,13 +28,25 @@ PLATFORM_DESC?=platform_desc
 SOCLIB_CC_ARGS?=-p $(PLATFORM_DESC)
 SOCLIB_CC=soclib-cc
 SOCLIB:=$(shell soclib-cc --getpath)
-
 TEST_OUTPUT=test.out
 
 export ARCH
 
+include $(SOCLIB)/utils/conf/soft_flags.mk
+
+CC=$($(ARCH)_CC_PREFIX)gcc
+HAS_CC:=$(shell which $(CC) 2>&1 > /dev/null && echo ok)
+ifneq ($(HAS_CC),ok)
+NO_SOFT=1
+NO_TEST=No compiler for $(ARCH)
+endif
+
 ifeq ($(NO_SOFT),)
 SOFT?=soft/bin.soft
+endif
+
+ifndef SIMULATION_ARGS
+NO_TEST=No simulation args
 endif
 
 all: test_soclib simulation.x $(SOFT)
@@ -56,10 +68,10 @@ test_soclib:
 simulation.x: $(PLATFORM_DESC)
 	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) -o $@
 
-ifeq ($(origin SIMULATION_ARGS),undefined)
+ifdef NO_TEST
 
 test:
-	@echo "No arguments to simulation, cant simulate anything"
+	@echo "Test disabled: $(NO_TEST)"
 
 else
 
