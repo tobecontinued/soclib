@@ -113,7 +113,7 @@ void MipsIss::op_bcond()
     taken ^= (bool)(m_ins.i.rt & 1);
 
     // and link ?
-    if (m_ins.i.rt & 0x20)
+    if (m_ins.i.rt & 0x10)
         r_gp[31] = r_pc+8;
 
     if (taken) {
