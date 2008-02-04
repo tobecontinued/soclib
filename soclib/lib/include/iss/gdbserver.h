@@ -177,6 +177,11 @@ private:
     static unsigned int step_id_; // can be used to force single step on a specific processor
     bool catch_execeptions_;
 
+#ifdef GDB_PC_TRACE
+    uint32_t pc_trace_table[GDB_PC_TRACE];
+    unsigned int pc_trace_index;
+#endif
+
     static std::map<uint32_t, bool> break_exec_;
     static std::list<GdbWatchPoint> break_access_;
 

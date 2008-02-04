@@ -860,8 +860,14 @@ template<typename CpuIss>
 bool GdbServer<CpuIss>::check_break_points()
 {
     char buffer[32];
+    uint32_t pc = CpuIss::getDebugPC();
 
-    if (break_exec_.find(CpuIss::getDebugPC()) != break_exec_.end())
+#ifdef GDB_PC_TRACE
+    pc_trace_index = (pc_trace_index + 1) % GDB_PC_TRACE;
+    pc_trace_table[pc_trace_index] = pc;
+#endif
+
+    if (break_exec_.find(pc) != break_exec_.end())
         {
             change_all_states(MemWait);
             current_id_ = id_;
@@ -917,6 +923,16 @@ bool GdbServer<CpuIss>::exceptionBypassed( uint32_t cause )
     char buffer[32];
     fprintf(stderr, "Exception caught on processor %s with cause = %08x\n", CpuIss::name().c_str(), cause);
     sprintf(buffer, "T%02xthread:%x;", CpuIss::cpuCauseToSignal(cause), id_ + 1);
+
+#ifdef GDB_PC_TRACE
+    fprintf(stderr, "PC values before exception: ");
+
+    for (unsigned int i = 0; i < GDB_PC_TRACE; i++)
+        fprintf(stderr, "%08x, ", pc_trace_table[(pc_trace_index - i) % GDB_PC_TRACE]);
+
+    fprintf(stderr, "\n");
+#endif
+
     write_packet(buffer);
     change_all_states(MemWait);
     current_id_ = id_;
