@@ -1,16 +1,17 @@
 # -*- python -*-
 
-class caba(CabaComponent):
-	classname = 'IssWrapper<soclib::common::MicroBlazeIss>'
-	header_files = "../source/include/iss_wrapper.h",
+CabaModule('microblaze',
+	classname = 'IssWrapper<soclib::common::MicroBlazeIss>',
+	header_files = ["../source/include/iss_wrapper.h",],
 	implementation_files = [
 		"../source/src/iss_wrapper.cpp",
-		]
+		],
 	force_header_files = [
 		"iss/microblaze.h",
-		]
+		],
 	uses = [
 		Uses('microblaze', mode="common"),
 		Uses('base_module'),
 		Uses('xcache'),
-		]
+		],
+)

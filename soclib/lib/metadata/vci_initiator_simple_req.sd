@@ -1,13 +1,14 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	classname = 'VciInitiatorSimpleReq'
-	header_files = '../include/caba/vci/vci_initiator_fsm.h',
-	implementation_files = '../src/caba/vci/vci_initiator/simple_req.cpp',
+VciCabaModule('vci_initiator_simple_req',
+	classname = 'VciInitiatorSimpleReq',
+	header_files = ['../include/caba/vci/vci_initiator_fsm.h',],
+	implementation_files = ['../src/caba/vci/vci_initiator/simple_req.cpp',],
 	uses = [
 		Uses('vci_initiator_req'),
 		Uses('mapping_table'),
 		Uses('base_module'),
 		Uses('vci'),
-		]
+		],
+)

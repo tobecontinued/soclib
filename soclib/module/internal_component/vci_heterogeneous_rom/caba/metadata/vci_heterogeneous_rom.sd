@@ -1,14 +1,15 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	classname = 'VciHeterogeneousRom'
-	header_files = '../source/include/vci_heterogeneous_rom.h',
-	implementation_files = '../source/src/vci_heterogeneous_rom.cpp',
+VciCabaModule('vci_heterogeneous_rom',
+	classname = 'VciHeterogeneousRom',
+	header_files = ['../source/include/vci_heterogeneous_rom.h',],
+	implementation_files = ['../source/src/vci_heterogeneous_rom.cpp',],
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2, support_llsc = 'false'),
 		Uses('elf_loader'),
 		Uses('mapping_table'),
 		Uses('vci'),
-		]
+		],
+)

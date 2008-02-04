@@ -1,15 +1,16 @@
 
 # -*- python -*-
 
-class caba(CabaComponent):
-	classname = 'FifoWriter'
-	header_files = "../source/include/fifo_writer.h",
+CabaModule('fifo_writer',
+	classname = 'FifoWriter',
+	header_files = ["../source/include/fifo_writer.h",],
 	implementation_files = [
 		"../source/src/fifo_writer.cpp",
-		]
+		],
 	uses = [
 		Uses('base_module'),
 		Uses('process_wrapper'),
 		Uses('fifo'),
-		]
-	tmpl_parameters = ['word_t']
+		],
+	tmpl_parameters = ['word_t'],
+)

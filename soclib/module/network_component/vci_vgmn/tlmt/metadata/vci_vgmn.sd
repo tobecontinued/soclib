@@ -26,16 +26,18 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-class tlmt(VciTlmtComponent):
-	classname = 'VciVgmn'
-	header_files = '../source/include/vci_vgmn.h',
+VciTlmtModule('vci_vgmn',
+	classname = 'VciVgmn',
+	header_files = [
+	'../source/include/vci_vgmn.h',],
 	implementation_files = [
 		'../source/src/vci_vgmn.cpp',
-		]
+		],
 	uses = [
 		Uses('base_module'),
 		Uses('mapping_table'),
 		Uses('vci_cmd_arb_rsp_rout'),
 		Uses('vci_rsp_arb_cmd_rout'),
 		Uses('vci'),
-		]
+		],
+)

@@ -26,13 +26,14 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-class tlmt(VciTlmtComponent):
-	classname = 'VciRam'
-	header_files = '../source/include/vci_ram.h',
-	implementation_files = '../source/src/vci_ram.cpp',
+VciTlmtModule('vci_ram',
+	classname = 'VciRam',
+	header_files = ['../source/include/vci_ram.h',],
+	implementation_files = ['../source/src/vci_ram.cpp',],
 	uses = [
 		Uses('base_module'),
 		Uses('elf_loader'),
 		Uses('mapping_table'),
 		Uses('vci'),
-		]
+		],
+)

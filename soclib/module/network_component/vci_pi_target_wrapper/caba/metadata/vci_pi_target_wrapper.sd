@@ -1,12 +1,13 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	classname = 'VciPiTargetWrapper'
-	header_files = '../source/include/vci_pi_target_wrapper.h',
-	implementation_files = '../source/src/vci_pi_target_wrapper.cpp',
+VciCabaModule('vci_pi_target_wrapper',
+	classname = 'VciPiTargetWrapper',
+	header_files = ['../source/include/vci_pi_target_wrapper.h',],
+	implementation_files = ['../source/src/vci_pi_target_wrapper.cpp',],
 	uses = [
 		Uses('base_module'),
 		Uses('pibus'),
 		Uses('vci'),
-		]
+		],
+)

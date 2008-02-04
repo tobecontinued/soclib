@@ -1,19 +1,20 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	classname = 'VciMwmrController'
+VciCabaModule('vci_mwmr_controller',
+	classname = 'VciMwmrController',
 	header_files = ['../source/include/vci_mwmr_controller.h',
 					'../../include/mwmr_controller.h',
-					]
-	implementation_files = '../source/src/vci_mwmr_controller.cpp',
-	tmpl_parameters = VciCabaComponent.tmpl_parameters + [
-		'fifo_depth']
-	tmpl_instanciation = VciCabaComponent.tmpl_instanciation+\
-		',%(fifo_depth)d'
+					],
+	implementation_files = ['../source/src/vci_mwmr_controller.cpp',],
+	tmpl_parameters = VciCabaModule.tmpl_parameters + [
+		'fifo_depth'],
+	tmpl_instanciation = VciCabaModule.tmpl_instanciation+\
+		',%(fifo_depth)d',
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
 		Uses('vci'),
 		Uses('fifo'),
-		]
+		],
+)

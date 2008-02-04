@@ -1,7 +1,8 @@
 
 # -*- python -*-
 
-class common(CommonComponent):
-	classname = 'BaseModule'
+CommonModule('exception',
+	classname = 'BaseModule',
 	header_files = [ '../include/exception.h',
-					 ]
+					 ],
+	)

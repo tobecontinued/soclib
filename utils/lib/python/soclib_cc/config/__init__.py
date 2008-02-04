@@ -70,7 +70,10 @@ class ConfigSpool:
 	def __getitem__(self, name):
 		return getattr(self, name)
 
-_cur_soclib = os.getenv('soclib_base_path')
+_cur_soclib = os.path.abspath(
+	os.path.join(
+	os.path.dirname(__file__),
+	'../../../../..'))
 assert(_cur_soclib)
 
 def include(filename, glbl):

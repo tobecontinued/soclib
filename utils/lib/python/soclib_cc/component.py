@@ -29,7 +29,12 @@ from soclib_cc.builder.cxx import *
 from soclib_cc.builder.textfile import *
 import os, os.path
 
-__all__ = ['Component', 'VciCabaComponent', 'CabaComponent', 'CommonComponent', 'TlmtComponent', 'VciTlmtComponent']
+__all__ = ['VciCabaModule', 'CabaModule',
+		   'CommonModule',
+		   'TlmtModule', 'VciTlmtModule',
+		   'Port',
+		   'Parameter',
+		   'CabaSignals','TlmtSignals']
 
 class UndefinedParam(Exception):
 	def __init__(self, where, comp, param):
@@ -41,20 +46,23 @@ class UndefinedParam(Exception):
 		return '\n%s:error: parameter %s not defined for component %s'%(
 			self.where, self.param, self.comp)
 
-class Component:
-	'''
-	A platform component definition, this can be anything, from
-	actual hardware component to simple utility. This is the
-	base for template-based separated compilation.
+class NoSuchComponent(Exception):
+	pass
 
-	You sould have to define the attributes according to your
-	component. See desc/soclib/*.sd for examples.
+global all_registry
+all_registry = {}
 
-	You will more likely use derived classes from this one, like
-	CabaComponent, VciCabaComponent or CommonComponent.
-	'''
-	relative_path_files = ['header_files', 'implementation_files', 'force_header_files']
-	mode = 'systemc'
+class Module:
+	module_attrs = ['namespace',
+					'classname',
+					'tmpl_parameters',
+					'tmpl_instanciation',
+					'header_files',
+					'force_header_files',
+					'implementation_files',
+					'uses',
+					'default_parameters',
+					'defines',]
 	namespace = ""
 	classname = ""
 	tmpl_parameters = []
@@ -65,16 +73,80 @@ class Component:
 	uses = []
 	default_parameters = {}
 	defines = {}
-	
-	def __init__(self, where, cmode, **args):
+
+	class __metaclass__(type):
+		def __new__(cls, name, bases, dct):
+			self = type.__new__(cls, name, bases, dct)
+			if hasattr(self, "mode"):
+				self.registry = {}
+				global all_registry
+				all_registry[self.mode] = self
+			return self
+
+	def __init__(self, name, **attrs):
+		self.__attrs = {}
+		base_attrs = self.__class__.__dict__
+		for i in self.module_attrs:
+			self.__attrs[i] = getattr(self, i)
+			if i in attrs:
+				self.__attrs[i] = attrs[i]
+		import traceback
+		filename = traceback.extract_stack()[-2][0]
+		self.mk_abs_paths(os.path.dirname(filename))
+		global all_registry
+		r = all_registry[self.mode]
+		all_registry[self.mode].register(name, self)
+
+	def get(cls, name):
+		if not name in cls.registry:
+			return cls.__bases__[0].get(name)
+		return cls.mode, cls.registry[name]
+	get = classmethod(get)
+	def register(cls, name, v):
+		cls.registry[name] = v
+	register = classmethod(register)
+	def getAll(cls):
+		return cls.registry
+	getAll = classmethod(getAll)
+		
+	def __call__(self, where, mode, **args):
+		return _Component(where, mode, self.__attrs, **args)
+	def mk_abs_paths(self, basename):
+		relative_path_files = ['header_files', 'implementation_files', 'force_header_files']
+		def mkabs(name):
+			if os.path.isabs(name):
+				return name
+			else:
+				r = os.path.abspath(os.path.join(basename, name))
+				if config.debug:
+					print basename, name, r
+				return r
+		for attr in relative_path_files:
+			self.__attrs['abs_'+attr] = map(
+				mkabs, self.__attrs[attr])
+## 	def __getattr__(self, name):
+## 		if name.startswith('_'):
+## 			raise AttributeError
+## 		return self.__attrs[name]
+	def __repr__(self):
+		r = '<%s\n'%self.__class__.__name__
+		for l in 'abs_header_files', 'abs_force_header_files', 'abs_implementation_files':
+			for s in self.__attrs[l]:
+				r += os.path.isfile(s) and " + " or " - "
+				r += s+'\n'
+			return r+' >'
+
+class _Component:
+	def __init__(self, where, mode, attrs, **args):
+		self.__dict__.update(attrs)
 		self.where = where
 		self.args = args
-		self.cmode = cmode
+		self.mode = mode
 		self.deps = []
-		from soclib_cc.components import component_defs
 		for u in self.uses:
-			u.do(component_defs, cmode, **args)
+			u.do(mode, **args)
 			self.deps.append(u.builder)
+
 	def withDeps(self):
 		r = (self,)
 		for d in self.deps:
@@ -87,20 +159,6 @@ class Component:
 			p = os.path.dirname(i)
 			if not p in incls:
 				incls.append(p)
-	def mk_abs_paths(cls, basename):
-		for attr in cls.relative_path_files:
-			val = getattr(cls, attr)
-			def mkabs(name):
-				if os.path.isabs(name):
-					return name
-				else:
-					r = os.path.abspath(os.path.join(basename, name))
-					if config.debug:
-						print basename, name, r
-					return r
-			val = map(mkabs, val)
-			setattr(cls, 'abs_'+attr, val)
-	mk_abs_paths = classmethod(mk_abs_paths)
 	def getBuilder(self, filename):
 		bn = self.baseName()
 		bn += '_'+os.path.splitext(os.path.basename(filename))[0]
@@ -118,7 +176,7 @@ class Component:
 		else:
 			return Noop()
 	def baseName(self):
-		basename = str(self.cmode) + '_' + self.namespace + self.classname
+		basename = str(self.mode) + '_' + self.namespace + self.classname
 		if self.tmpl_parameters:
 			args = self.getParams()
 			params = ",".join(
@@ -167,17 +225,20 @@ class Component:
 		if '<' in inst:
 			source += 'template '+inst+';\n'
 		return source
-	
-class CabaComponent(Component):
-	namespace = 'soclib::caba::'
-	
-class TlmtComponent(Component):
-	namespace = 'soclib::tlmt::'
 
-class CommonComponent(Component):
+class CommonModule(Module):
+	mode = 'common'
 	namespace = 'soclib::common::'
 
-class VciCabaComponent(CabaComponent):
+class CabaModule(CommonModule):
+	mode = 'caba'
+	namespace = 'soclib::caba::'
+	
+class TlmtModule(CommonModule):
+	mode = 'tlmt'
+	namespace = 'soclib::tlmt::'
+
+class VciCabaModule(CabaModule):
 	tmpl_parameters = [
 		'cell_size', 'plen_size', 'addr_size',
 		'rerror_size', 'clen_size', 'rflag_size',
@@ -188,8 +249,35 @@ class VciCabaComponent(CabaComponent):
 		'%(rerror_size)s,%(clen_size)s,%(rflag_size)s,%(srcid_size)s,'+
 		'%(pktid_size)s,%(trdid_size)s,%(wrplen_size)s>')
 
-class VciTlmtComponent(TlmtComponent):
+class VciTlmtModule(TlmtModule):
 	tmpl_parameters = [
 		'addr_t', 'data_t']
-	tmpl_instanciation = (
-		'soclib::tlmt::VciParams<%(addr_t)s,%(data_t)s>')
+	tmpl_instanciation = [
+		'soclib::tlmt::VciParams<%(addr_t)s,%(data_t)s>']
+
+def Port(name, count):
+	return None
+
+class Parameter:
+	def __init__(self, type, name):
+		self.__type = type
+		self.__name = name
+
+class CabaSignals(CabaModule):
+	pass
+
+class TlmtSignals(TlmtModule):
+	pass
+
+def getDesc(mode, name):
+	r = all_registry[mode]
+	try:
+		return r.get(name)
+	except NoSuchComponent, e:
+		raise NoSuchComponent("%s: %s"%(mode, name))
+
+def getAllDescs():
+	r = ()
+	for name, cl in all_registry.iteritems():
+		r += (name, cl.getAll()),
+	return r

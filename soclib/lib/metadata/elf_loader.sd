@@ -1,7 +1,8 @@
 
 # -*- python -*-
 
-class common(Component):
-	classname = 'ElfLoader'
-	header_files = '../include/elf_loader.h',
-	implementation_files = '../src/elf_loader.cpp',
+CommonModule('elf_loader',
+	classname = 'ElfLoader',
+	header_files = ['../include/elf_loader.h',],
+	implementation_files = ['../src/elf_loader.cpp',],
+)

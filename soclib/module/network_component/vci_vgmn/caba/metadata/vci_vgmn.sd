@@ -1,12 +1,13 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	classname = 'VciVgmn'
-	header_files = '../source/include/vci_vgmn.h',
-	implementation_files = '../source/src/vci_vgmn.cpp',
+VciCabaModule('vci_vgmn',
+	classname = 'VciVgmn',
+	header_files = ['../source/include/vci_vgmn.h',],
+	implementation_files = ['../source/src/vci_vgmn.cpp',],
 	uses = [
 		Uses('base_module'),
 		Uses('mapping_table'),
 		Uses('vci'),
-		]
+		],
+)

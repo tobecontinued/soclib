@@ -1,7 +1,8 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	header_files = ['../source/include/vci_ring_ports.h',
-					'../source/include/vci_ring_signals.h',
-					]
+CabaSignals('vci_ring',
+			headers = ['../source/include/vci_ring_ports.h',
+					   '../source/include/vci_ring_signals.h',
+					   ],
+	)

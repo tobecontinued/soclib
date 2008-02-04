@@ -1,7 +1,8 @@
 
 # -*- python -*-
 
-class common(CommonComponent):
-	classname = 'CommonFactory'
-	header_files = '../include/inst/inst_arg.h',
-	implementation_files = '../src/inst/inst_arg.cpp',
+CommonModule('inst_arg',
+	classname = 'CommonFactory',
+	header_files = ['../include/inst/inst_arg.h',],
+	implementation_files = ['../src/inst/inst_arg.cpp',],
+)

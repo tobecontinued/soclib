@@ -3,9 +3,10 @@
 
 # Mips Little endian (MipsElIss)
 
-class common(CommonComponent):
-	classname = 'MipsElIss'
-	header_files = "../include/iss/mips.h",
+CommonModule('mipsel',
+	classname = 'MipsElIss',
+	header_files = ["../include/iss/mips.h",],
 	uses = [
 		Uses('mips', mode="common"),
-		]
+		],
+)

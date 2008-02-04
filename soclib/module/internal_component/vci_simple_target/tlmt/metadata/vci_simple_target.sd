@@ -26,12 +26,13 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-class tlmt(VciTlmtComponent):
-	classname = 'VciSimpleTarget'
-	header_files = '../source/include/vci_simple_target.h',
-	implementation_files = '../source/src/vci_simple_target.cpp',
+VciTlmtModule('vci_simple_target',
+	classname = 'VciSimpleTarget',
+	header_files = ['../source/include/vci_simple_target.h',],
+	implementation_files = ['../source/src/vci_simple_target.cpp',],
 	uses = [
 		Uses('base_module'),
 		Uses('mapping_table'),
 		Uses('vci'),
-		]
+		],
+)

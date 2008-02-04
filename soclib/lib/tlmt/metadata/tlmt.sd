@@ -26,7 +26,7 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-class common(CommonComponent):
+CommonModule('tlmt',
 	header_files = [
 		'../include/tlmt',
 		'../include/tlmt_callback.h',
@@ -51,4 +51,5 @@ class common(CommonComponent):
 		'../include/tlmt_time',
 		'../include/tlmt_time.h',
 		'../include/tlmt_time.hxx',
-		]
+		],
+)

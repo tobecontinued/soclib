@@ -1,12 +1,12 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	classname = 'VciDma'
+VciCabaModule('vci_dma',
+	classname = 'VciDma',
 	header_files = ['../source/include/vci_dma.h',
 					'../../include/dma.h',
-					]
-	implementation_files = '../source/src/vci_dma.cpp',
+					],
+	implementation_files = ['../source/src/vci_dma.cpp',],
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
@@ -14,4 +14,5 @@ class caba(VciCabaComponent):
 		Uses('vci_initiator_simple_write_req'),
 		Uses('vci_initiator_fsm'),
 		Uses('vci'),
-		]
+		],
+)

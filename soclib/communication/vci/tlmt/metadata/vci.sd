@@ -26,8 +26,9 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-class tlmt(VciTlmtComponent):
+TlmtSignals('vci',
 	header_files = ['../source/include/vci_ports.h',
 					'../source/include/vci_packets.h',
 					'../source/include/vci_param.h',
-					]
+					],
+	)

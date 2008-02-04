@@ -3,17 +3,18 @@
 
 # Mips Big endian (MipsEbIss)
 
-class caba(CabaComponent):
-	classname = 'IssWrapper<soclib::common::MipsEbIss>'
-	header_files = "../source/include/iss_wrapper.h",
+CabaModule('mipseb',
+	classname = 'IssWrapper<soclib::common::MipsEbIss>',
+	header_files = ["../source/include/iss_wrapper.h",],
 	implementation_files = [
 		"../source/src/iss_wrapper.cpp",
-		]
+		],
 	force_header_files = [
 		"iss/mips.h",
-		]
+		],
 	uses = [
 		Uses('mipseb', mode="common"),
 		Uses('base_module'),
 		Uses('xcache'),
-		]
+		],
+)

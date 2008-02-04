@@ -1,16 +1,17 @@
 
 # -*- python -*-
 
-class common(CommonComponent):
-	classname = 'TopCell'
-	header_files = '../include/topcell/topcell.h',
+CommonModule('topcell',
+	classname = 'TopCell',
+	header_files = ['../include/topcell/topcell.h',],
 	implementation_files = [
 		'../src/topcell/topcell.cpp',
 		'../src/topcell/topcell_parser.cpp',
 		'../src/topcell/topcell_lexer.cpp',
-	]
+	],
 	uses = [
 		Uses('elf_loader'),
 		Uses('mapping_table'),
 		Uses('vci', mode = 'caba'),
-		]
+		],
+)

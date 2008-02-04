@@ -1,7 +1,8 @@
 
 # -*- python -*-
 
-class common(CommonComponent):
-	classname = 'Segment'
-	header_files = '../include/segment.h',
-	implementation_files = '../src/segment.cpp',
+CommonModule('segment',
+	classname = 'Segment',
+	header_files = ['../include/segment.h',],
+	implementation_files = ['../src/segment.cpp',],
+)

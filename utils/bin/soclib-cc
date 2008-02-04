@@ -44,7 +44,6 @@ else
 	PYTHONPATH="${soclib_base_path}/utils/lib/python:${PYTHONPATH}"
 fi
 export PYTHONPATH
-export soclib_base_path
 
 # And try out different pythons from the most recent ones
 # I basically dont trust default "python" command, it is often

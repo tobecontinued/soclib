@@ -1,17 +1,18 @@
 
 # -*- python -*-
 
-class caba(CabaComponent):
-	classname = 'IssWrapper<soclib::common::Nios2fIss>'
-	header_files = "../source/include/iss_wrapper.h",
+CabaModule('nios2_fast',
+	classname = 'IssWrapper<soclib::common::Nios2fIss>',
+	header_files = ["../source/include/iss_wrapper.h",],
 	implementation_files = [
 		"../source/src/iss_wrapper.cpp",
-		]
+		],
 	force_header_files = [
 		"iss/nios2_fast.h",
-		]
+		],
 	uses = [
 		Uses('nios2_fast', mode="common"),
 		Uses('base_module'),
 		Uses('xcache'),
-		]
+		],
+)

@@ -1,10 +1,10 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	classname = 'VciFactory'
-	header_files = '../include/caba/vci/vci_factory.h',
-	implementation_files = '../src/caba/vci/vci_factory.cpp',
+VciCabaModule('vci_factory',
+	classname = 'VciFactory',
+	header_files = ['../include/caba/vci/vci_factory.h',],
+	implementation_files = ['../src/caba/vci/vci_factory.cpp',],
 	uses = [
 		Uses('vci_dma'),
 		Uses('vci_fd_access'),
@@ -21,4 +21,5 @@ class caba(VciCabaComponent):
 		Uses('vci_vgmn'),
 		Uses('vci_local_crossbar'),
 		Uses('vci_xcache'),
-		]
+		],
+)

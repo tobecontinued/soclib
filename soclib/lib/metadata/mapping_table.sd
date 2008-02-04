@@ -1,13 +1,14 @@
 
 # -*- python -*-
 
-class common(CommonComponent):
-	classname = 'MappingTable'
-	header_files = '../include/mapping_table.h',
-	implementation_files = '../src/mapping_table.cpp',
+CommonModule('mapping_table',
+	classname = 'MappingTable',
+	header_files = ['../include/mapping_table.h',],
+	implementation_files = ['../src/mapping_table.cpp',],
 	uses = [
 		Uses('address_decoding_table', input_t = 'uint32_t', output_t = 'bool'),
 		Uses('address_decoding_table', input_t = 'uint32_t', output_t = 'int'),
 		Uses('address_masking_table', data_t = 'uint32_t'),
 		Uses('segment'),
-		]
+		],
+)

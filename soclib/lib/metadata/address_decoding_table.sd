@@ -1,8 +1,9 @@
 
 # -*- python -*-
 
-class common(CommonComponent):
-	classname = 'AddressDecodingTable'
-	header_files = '../include/address_decoding_table.h',
-	implementation_files = '../src/address_decoding_table.cpp',
-	tmpl_parameters = ['input_t', 'output_t']
+CommonModule('address_decoding_table',
+	classname = 'AddressDecodingTable',
+	header_files = ['../include/address_decoding_table.h',],
+	implementation_files = ['../src/address_decoding_table.cpp',],
+	tmpl_parameters = ['input_t', 'output_t'],
+)

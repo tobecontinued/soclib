@@ -26,14 +26,16 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-class tlmt(VciTlmtComponent):
-	classname = 'VciRspArbCmdRout'
-	header_files = '../source/include/vci_rsp_arb_cmd_rout.h',
+VciTlmtModule('vci_rsp_arb_cmd_rout',
+	classname = 'VciRspArbCmdRout',
+	header_files = [
+	'../source/include/vci_rsp_arb_cmd_rout.h',],
 	implementation_files = [
 		'../source/src/vci_rsp_arb_cmd_rout.cpp',
-		]
+		],
 	uses = [
 		Uses('base_module'),
 		Uses('mapping_table'),
 		Uses('vci'),
-		]
+		],
+)

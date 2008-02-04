@@ -30,6 +30,7 @@ from copy import copy
 from soclib_cc.config import config
 from soclib_cc.builder.todo import ToDo
 from soclib_cc.builder.cxx import CxxCompile, CxxLink
+import component
 
 __all__ = ['TlmtPlatform', 'Platform', 'Uses', 'Source']
 
@@ -46,10 +47,9 @@ class Platform:
 	def __init__(self, *components):
 		self.components = components
 		self.todo = ToDo()
-		from soclib_cc.components import component_defs
 		objs = []
 		for c in components:
-			c.do(component_defs, self.mode)
+			c.do(self.mode)
 			for todo in c.todo():
 				for o in todo.results():
 					if not o in objs:
@@ -85,10 +85,10 @@ class Uses:
 		self.where = '%s:%d'%(traceback.extract_stack()[-2][0:2])
 	def __str__(self):
 		return '<Use %s %s>'%(self.name, self.mode)
-	def do(self, cdefs, mode = None, **inherited_args):
-		cdef = cdefs[self.name]
+	def do(self, mode = None, **inherited_args):
 		if self.mode is not None:
 			mode = self.mode
+		mode, cdef = component.getDesc(mode, self.name)
 		args = copy(inherited_args)
 		args.update(self.args)
 		for k in args.keys():
@@ -100,13 +100,7 @@ class Uses:
 				v = newv
 				newv = newv%inherited_args
 			args[k] = v
-		if mode not in cdef and 'common' in cdef:
-			mode = 'common'
-		if mode in cdef:
-			d = cdef[mode]
-		else:
-			raise NotFound(self.name, mode)
-		self.builder = d(self.where, mode, **args)
+		self.builder = cdef(self.where, mode, **args)
 	def todo(self):
 		return self.builder.withDeps()
 
@@ -129,12 +123,13 @@ class Source:
 		self.defines = defines
 		self.deps = []
 		self.incs = []
-	def do(self, cdefs, mode = None, **args):
+	def do(self, mode = None, **args):
 		for u in self.uses:
-			u.do(cdefs, mode, **args)
+			u.do(mode, **args)
 			self.deps += u.todo()
 			u.builder.getIncl(self.incs)
 		obj = os.path.splitext(self.source_file)[0]+'.'+config.toolchain.obj_ext
+		obj = os.path.abspath(obj)
 		self.builder = CxxCompile(obj, self.source_file, defines = self.defines, inc_paths = self.incs)
 	def todo(self):
 		return self.deps + [self.builder]

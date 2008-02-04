@@ -1,8 +1,9 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
+CabaSignals('xcache',
 	header_files = ['../source/include/xcache_signals.h',
 					'../source/include/xcache_cache_ports.h',
 					'../source/include/xcache_processor_ports.h',
 					]
+)

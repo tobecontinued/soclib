@@ -41,8 +41,8 @@ def main():
 		except:
 			name = define
 			val = ''
-		from soclib_cc.components import component_defs
-		component_defs[cell][mode].defines[name] = val
+		from soclib_cc import component
+		component.getDel(mode, cell).defines[name] = val
 	parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
 	parser.add_option('-v', '--verbose', dest = 'verbose',
 					  action='store_true',
@@ -90,6 +90,7 @@ def main():
 	opts, args = parser.parse_args()
 	if opts.type:
 		change_config(opts.type)
+	config.getDescs()
 	config.mode = opts.mode
 	config.verbose = opts.verbose
 	config.debug = opts.debug
@@ -103,20 +104,10 @@ def main():
 		print config.path
 		return 0
 	if opts.list_descs:
-		from soclib_cc.components import component_defs
-		def l(name, cd):
-			for impl, desc in cd.iteritems():
-				print name+"("+impl+"): ", '<'
-				for l in desc.header_files, desc.force_header_files, desc.implementation_files:
-					for s in l:
-						if os.path.isfile(s):
-							print " +",
-						else:
-							print " -",
-						print s
-				print ' >'
-		for k, v in component_defs.iteritems():
-			l(k, v)
+		from soclib_cc.component import getAllDescs, CabaModule
+		for name, v in getAllDescs():
+			for impl, desc in v.iteritems():
+				print name, impl, desc
 		return 0
 	if opts.getflags:
 		if opts.getflags == 'cflags':

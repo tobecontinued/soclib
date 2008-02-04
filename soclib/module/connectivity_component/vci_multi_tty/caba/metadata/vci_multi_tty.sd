@@ -1,16 +1,17 @@
 
 # -*- python -*-
 
-class caba(VciCabaComponent):
-	classname = 'VciMultiTty'
+VciCabaModule('vci_multi_tty',
+	classname = 'VciMultiTty',
 	header_files = ['../source/include/vci_multi_tty.h',
 					'../../include/tty.h'
-					]
-	implementation_files = '../source/src/vci_multi_tty.cpp',
+					],
+	implementation_files = ['../source/src/vci_multi_tty.cpp',],
 	uses = [
 		Uses('base_module'),
 		Uses('process_wrapper'),
 		Uses('tty_wrapper'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
 		Uses('vci'),
-		]
+		],
+)
