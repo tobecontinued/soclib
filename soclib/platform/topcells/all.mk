@@ -80,7 +80,7 @@ test: $(TEST_OUTPUT) post_test
 post_test:
 
 $(TEST_OUTPUT): simulation.x $(SOFT)
-	SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null 2>&1 > $@
+	SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null 2>&1 | tee $@
 
 .PHONY: $(TEST_OUTPUT)
 
