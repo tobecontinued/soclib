@@ -10,9 +10,12 @@ CabaModule('ppc405',
 	force_header_files = [
 		"iss/ppc405.h",
 		],
+		   ports = [
+	Port('xcache_processor_icache', 'p_icache'),
+	Port('xcache_processor_dcache', 'p_dcache'),
+	],
 	uses = [
 		Uses('ppc405', mode="common"),
 		Uses('base_module'),
-		Uses('xcache'),
 		],
 )

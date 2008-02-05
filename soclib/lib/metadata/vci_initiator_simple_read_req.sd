@@ -8,7 +8,7 @@ VciCabaModule('vci_initiator_simple_read_req',
 	uses = [
 		Uses('vci_initiator_simple_req'),
 		Uses('base_module'),
-		Uses('mapping_table'),
-		Uses('vci'),
+		Uses('mapping_table', 'common'),
+		Uses('vci_initiator', 'caba_port'),
 		],
 )

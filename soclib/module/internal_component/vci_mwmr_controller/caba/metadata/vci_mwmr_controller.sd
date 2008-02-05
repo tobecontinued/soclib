@@ -11,10 +11,14 @@ VciCabaModule('vci_mwmr_controller',
 		'fifo_depth'],
 	tmpl_instanciation = VciCabaModule.tmpl_instanciation+\
 		',%(fifo_depth)d',
+			  ports = [
+	Port('vci_target', 'p_vci_target'),
+	Port('vci_initiator', 'p_vci_initiator'),
+	Port('fifo_input', 'p_from_coproc'),
+	Port('fifo_output', 'p_to_coproc'),
+	],
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
-		Uses('vci'),
-		Uses('fifo'),
 		],
 )

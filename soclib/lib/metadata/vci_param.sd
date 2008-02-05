@@ -1,0 +1,7 @@
+
+# -*- python -*-
+
+CabaModule('vci_param',
+	classname = 'VciParams',
+	header_files = ['../include/vci_param.h',],
+)

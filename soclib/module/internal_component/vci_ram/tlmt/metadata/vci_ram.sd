@@ -30,10 +30,12 @@ VciTlmtModule('vci_ram',
 	classname = 'VciRam',
 	header_files = ['../source/include/vci_ram.h',],
 	implementation_files = ['../source/src/vci_ram.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci'),
+	],
 	uses = [
 		Uses('base_module'),
-		Uses('elf_loader'),
-		Uses('mapping_table'),
-		Uses('vci'),
+		Uses('elf_loader', 'common'),
+		Uses('mapping_table', 'common'),
 		],
 )

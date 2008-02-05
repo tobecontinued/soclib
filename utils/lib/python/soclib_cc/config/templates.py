@@ -98,11 +98,6 @@ def reposFile(self, name):
 		r = r.replace(':','_')
 	return r
 
-def getDescs(self):
-	from soclib_cc.components import get_descs_in
-	for base in self.desc_paths:
-		get_descs_in(base)
-
 def doConfigure(self, soclib_path, desc_paths):
 	import os
 	self.path = soclib_path
@@ -115,6 +110,9 @@ def doConfigure(self, soclib_path, desc_paths):
 	self.desc_paths = ["."]
 	for dp in desc_paths:
 		self.addDescPath(dp)
+## 	print self.desc_paths
+## 	import sys
+## 	sys.exit(0)
 	
 config.build_env = Config(
 	# toolchain = 
@@ -133,5 +131,4 @@ config.build_env = Config(
 	getLibs = getLibs,
 	reposFile = reposFile,
 	doConfigure = doConfigure,
-	getDescs = getDescs,
 	)

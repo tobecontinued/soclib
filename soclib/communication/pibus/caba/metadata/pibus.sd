@@ -1,9 +1,19 @@
 
 # -*- python -*-
 
-CabaSignals('pibus',
-	header_files = ['../source/include/pibus_initiator_ports.h',
-					'../source/include/pibus_signals.h',
-					'../source/include/pibus_target_ports.h',
-					],
-	)
+CabaSignal('pibus',
+		   classname = 'Pibus',
+		   header_files = ['../source/include/pibus_signals.h'],
+		   )
+
+CabaPort('pibus_initiator',
+		 classname = 'PibusInitiator',
+		 header_files = ['../source/include/pibus_initiator_ports.h'],
+		 )
+
+CabaPort('pibus_target',
+		 classname = 'PibusTarget',
+		 header_files = ['../source/include/pibus_target_ports.h'],
+		 )
+
+						   

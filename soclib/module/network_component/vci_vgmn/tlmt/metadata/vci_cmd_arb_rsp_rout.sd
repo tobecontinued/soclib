@@ -32,9 +32,11 @@ VciTlmtModule('vci_cmd_arb_rsp_rout',
 	implementation_files = [
 		'../source/src/vci_cmd_arb_rsp_rout.cpp',
 		],
+			  ports = [
+	Port('vci_initiator', 'p_vci_to_target'),
+	],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table'),
-		Uses('vci'),
+		Uses('mapping_table', 'common'),
 		],
 )

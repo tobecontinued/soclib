@@ -5,8 +5,10 @@ VciCabaModule('vci_locks',
 	classname = 'VciLocks',
 	header_files = ['../source/include/vci_locks.h',],
 	implementation_files = ['../source/src/vci_locks.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci'),
+	],
 	uses = [
 		Uses('base_module'),
-		Uses('vci'),
 		],
 )

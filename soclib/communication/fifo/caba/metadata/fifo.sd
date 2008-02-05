@@ -1,8 +1,18 @@
 
 # -*- python -*-
 
-CabaSignals('fifo',
-			headers = ['../source/include/fifo_signals.h',
-					   '../source/include/fifo_ports.h',
-					   ],
-)
+CabaSignal('fifo',
+			classname = 'FifoSignals',
+			header_files = ['../source/include/fifo_signals.h'],
+			)
+
+CabaPort('fifo_output',
+		 classname = 'FifoOutput',
+		 header_files = ['../source/include/fifo_ports.h'],
+		 )
+
+CabaPort('fifo_input',
+		 classname = 'FifoInput',
+		 header_files = ['../source/include/fifo_ports.h'],
+		 )
+

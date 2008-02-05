@@ -5,9 +5,11 @@ VciCabaModule('vci_pi_initiator_wrapper',
 	classname = 'VciPiInitiatorWrapper',
 	header_files = ['../source/include/vci_pi_initiator_wrapper.h',],
 	implementation_files = ['../source/src/vci_pi_initiator_wrapper.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci'),
+	Port('pibus_initiator', 'p_pi'),
+	],
 	uses = [
 		Uses('base_module'),
-		Uses('pibus'),
-		Uses('vci'),
 		],
 )

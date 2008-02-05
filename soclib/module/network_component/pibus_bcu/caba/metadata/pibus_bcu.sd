@@ -7,8 +7,8 @@ CabaModule('pibus_bcu',
 	implementation_files = ["../source/src/pibus_bcu.cpp",],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table'),
-		Uses('pibus'),
+		Uses('mapping_table', 'common'),
+		Uses('pibus', mode = 'caba_signal'),
 		],
 )
 

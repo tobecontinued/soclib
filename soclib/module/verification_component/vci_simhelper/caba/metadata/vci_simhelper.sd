@@ -7,9 +7,11 @@ VciCabaModule('vci_simhelper',
 					'../../include/simhelper.h',
 					],
 	implementation_files = ['../source/src/vci_simhelper.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci'),
+	],
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
-		Uses('vci'),
 		],
 )

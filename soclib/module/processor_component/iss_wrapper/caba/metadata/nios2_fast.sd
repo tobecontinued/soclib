@@ -10,9 +10,12 @@ CabaModule('nios2_fast',
 	force_header_files = [
 		"iss/nios2_fast.h",
 		],
+		   ports = [
+	Port('xcache_processor_icache', 'p_icache'),
+	Port('xcache_processor_dcache', 'p_dcache'),
+	],
 	uses = [
 		Uses('nios2_fast', mode="common"),
 		Uses('base_module'),
-		Uses('xcache'),
 		],
 )

@@ -30,9 +30,11 @@ from copy import copy
 from soclib_cc.config import config
 from soclib_cc.builder.todo import ToDo
 from soclib_cc.builder.cxx import CxxCompile, CxxLink
-import component
+from component_builder import ComponentBuilder
 
 __all__ = ['TlmtPlatform', 'Platform', 'Uses', 'Source']
+
+from soclib_desc.component import Uses
 
 class NotFound(Exception):
 	def __init__(self, name, mode):
@@ -63,46 +65,6 @@ class Platform:
 
 class TlmtPlatform(Platform):
 	mode = 'tlmt'
-
-class Uses:
-	"""
-	A statement declaring the platform uses a specific component (in a
-	global meaning, ie hardware component or utility).
-
-	name is the name of the component, it the filename as in
-	desc/soclib/[component].sd
-
-	mode should be left alone unless specifically targetting a mode
-
-	args is the list of arguments useful for compile-time definition
-	(ie template parameters)
-	"""
-	def __init__(self, name, mode = None, **args):
-		self.name = name
-		self.mode = mode
-		self.args = args
-		# This is for error feedback purposes
-		self.where = '%s:%d'%(traceback.extract_stack()[-2][0:2])
-	def __str__(self):
-		return '<Use %s %s>'%(self.name, self.mode)
-	def do(self, mode = None, **inherited_args):
-		if self.mode is not None:
-			mode = self.mode
-		mode, cdef = component.getDesc(mode, self.name)
-		args = copy(inherited_args)
-		args.update(self.args)
-		for k in args.keys():
-			newv = args[k]
-			if not '%' in str(newv):
-				continue
-			v = None
-			while newv != v:
-				v = newv
-				newv = newv%inherited_args
-			args[k] = v
-		self.builder = cdef(self.where, mode, **args)
-	def todo(self):
-		return self.builder.withDeps()
 
 class Source:
 	'''

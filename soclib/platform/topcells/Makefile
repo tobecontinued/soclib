@@ -30,5 +30,5 @@ all:
 
 %:
 	for i in $(subdirs) ; do \
-		make -C "$$i" $@ || exit 1; \
+		$(MAKE) -C "$$i" $@ || exit 1; \
 	done

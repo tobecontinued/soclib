@@ -6,8 +6,8 @@ VciCabaModule('vci_initiator_fsm',
 	header_files = ['../include/caba/vci/vci_initiator_fsm.h',],
 	implementation_files = ['../src/caba/vci/vci_initiator_fsm.cpp',],
 	uses = [
-		Uses('mapping_table'),
+		Uses('mapping_table', 'common'),
 		Uses('base_module'),
-		Uses('vci'),
+		Uses('vci_initiator', 'caba_port'),
 		],
 )

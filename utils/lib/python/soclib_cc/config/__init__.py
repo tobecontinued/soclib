@@ -39,7 +39,7 @@ class ConfigSpool:
 	_filter = re.compile("[a-z][a-z_]+")
 	_fmt = '%s:\n%s'
 
-	_desc_paths = ["."]
+	_desc_paths = ["soclib/communication", 'soclib/lib', 'soclib/module']
 
 	def addDescPath(self, np):
 		if not np in self._desc_paths:
@@ -83,7 +83,6 @@ def include(filename, glbl):
 
 def parseall():
 	config = ConfigSpool()
-	config.addDescPath('desc/soclib')
 	glbl = {'Config':Config,
 			'config':config,
 			'include':include}

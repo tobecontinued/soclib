@@ -7,10 +7,12 @@ CabaModule('fifo_writer',
 	implementation_files = [
 		"../source/src/fifo_writer.cpp",
 		],
+		   ports = [
+	Port('fifo_input', 'p_fifo'),
+	],
 	uses = [
 		Uses('base_module'),
-		Uses('process_wrapper'),
-		Uses('fifo'),
+		Uses('process_wrapper', 'common'),
 		],
 	tmpl_parameters = ['word_t'],
 )

@@ -1,9 +1,32 @@
 
 # -*- python -*-
 
-CabaSignals('xcache',
-	header_files = ['../source/include/xcache_signals.h',
-					'../source/include/xcache_cache_ports.h',
-					'../source/include/xcache_processor_ports.h',
-					]
-)
+CabaSignal('xcache_icache',
+			classname = 'ICacheSignals',
+			header_files = ['../source/include/xcache_signals.h'],
+			)
+
+CabaSignal('xcache_dcache',
+			classname = 'DCacheSignals',
+			header_files = ['../source/include/xcache_signals.h'],
+			)
+
+CabaPort('xcache_cache_icache',
+		 classname = 'ICacheCachePort',
+		 header_files = ['../source/include/xcache_cache_ports.h'],
+		 )
+
+CabaPort('xcache_cache_dcache',
+		 classname = 'DCacheCachePort',
+		 header_files = ['../source/include/xcache_cache_ports.h'],
+		 )
+
+CabaPort('xcache_processor_icache',
+		 classname = 'ICacheProcessorPort',
+		 header_files = ['../source/include/xcache_processor_ports.h'],
+		 )
+
+CabaPort('xcache_processor_dcache',
+		 classname = 'DCacheProcessorPort',
+		 header_files = ['../source/include/xcache_processor_ports.h'],
+		 )

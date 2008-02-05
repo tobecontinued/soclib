@@ -7,8 +7,8 @@ VciCabaModule('vci_initiator_simple_req',
 	implementation_files = ['../src/caba/vci/vci_initiator/simple_req.cpp',],
 	uses = [
 		Uses('vci_initiator_req'),
-		Uses('mapping_table'),
+		Uses('mapping_table', 'common'),
 		Uses('base_module'),
-		Uses('vci'),
+		Uses('vci_initiator', 'caba_port'),
 		],
 )

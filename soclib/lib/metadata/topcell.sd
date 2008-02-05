@@ -10,8 +10,8 @@ CommonModule('topcell',
 		'../src/topcell/topcell_lexer.cpp',
 	],
 	uses = [
-		Uses('elf_loader'),
-		Uses('mapping_table'),
-		Uses('vci', mode = 'caba'),
+		Uses('elf_loader', 'common'),
+		Uses('mapping_table', 'common'),
+#		Uses('vci', mode = 'caba'),
 		],
 )

@@ -7,11 +7,13 @@ VciCabaModule('vci_multi_tty',
 					'../../include/tty.h'
 					],
 	implementation_files = ['../source/src/vci_multi_tty.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci'),
+	],
 	uses = [
 		Uses('base_module'),
-		Uses('process_wrapper'),
-		Uses('tty_wrapper'),
+		Uses('process_wrapper', 'common'),
+		Uses('tty_wrapper', 'common'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
-		Uses('vci'),
 		],
 )

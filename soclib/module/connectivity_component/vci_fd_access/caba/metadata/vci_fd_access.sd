@@ -7,12 +7,15 @@ VciCabaModule('vci_fd_access',
 					'../../include/fd_access.h'
 					],
 	implementation_files = ['../source/src/vci_fd_access.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci_target'),
+	Port('vci_initiator', 'p_vci_initiator'),
+	],
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
 		Uses('vci_initiator_simple_read_req'),
 		Uses('vci_initiator_simple_write_req'),
 		Uses('vci_initiator_fsm'),
-		Uses('vci'),
 		],
 )

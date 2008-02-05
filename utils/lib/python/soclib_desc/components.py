@@ -39,10 +39,10 @@ def get_descs_in(base):
 		for f in files:
 			d.append(os.path.join(root,f))
 	glbl = {}
-	import soclib_cc.component as component
+	import component
 	for n in component.__all__:
 		glbl[n] = getattr(component, n)
-	from soclib_cc.platform import Uses
+	from soclib_desc.component import Uses
 	glbl['Uses'] = Uses
 	all_c = {}
 	for f in d:
@@ -51,3 +51,7 @@ def get_descs_in(base):
 			dirname = os.path.dirname(name)
 			locs = {}
 			execfile(name, glbl, locs)
+
+def getDescs(desc_paths):
+	for base in desc_paths:
+		get_descs_in(base)

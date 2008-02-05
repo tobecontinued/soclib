@@ -30,9 +30,11 @@ VciTlmtModule('vci_simple_initiator',
 	classname = 'VciSimpleInitiator',
 	header_files = ['../source/include/vci_simple_initiator.h',],
 	implementation_files = ['../source/src/vci_simple_initiator.cpp',],
+			  ports = [
+	Port('vci_initiator', 'p_vci'),
+	],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table'),
-		Uses('vci'),
+		Uses('mapping_table', 'common'),
 		],
 )

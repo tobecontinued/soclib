@@ -5,8 +5,11 @@ VciCabaModule('vci_local_crossbar',
 	classname = 'VciLocalCrossbar',
 	header_files = ['../source/include/vci_local_crossbar.h',],
 	implementation_files = ['../source/src/vci_local_crossbar.cpp',],
+			  ports = [
+	Port('vci_initiator', 'p_to_target'),
+	Port('vci_target', 'p_from_initiator'),
+	],
 	uses = [
 		Uses('vci_simple_crossbar'),
-		Uses('vci'),
 		],
 )

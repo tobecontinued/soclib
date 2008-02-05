@@ -6,6 +6,6 @@ CommonModule('fb_controller',
 	header_files = ['../include/fb_controller.h',],
 	implementation_files = ['../src/fb_controller.cpp',],
 	uses = [
-		Uses('process_wrapper'),
+		Uses('process_wrapper', 'common'),
 		],
 )

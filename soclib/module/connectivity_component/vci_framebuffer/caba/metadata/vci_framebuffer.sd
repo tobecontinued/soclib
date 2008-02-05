@@ -5,10 +5,12 @@ VciCabaModule('vci_framebuffer',
 	classname = 'VciFrameBuffer',
 	header_files = ['../source/include/vci_framebuffer.h',],
 	implementation_files = ['../source/src/vci_framebuffer.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci'),
+	],
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2, support_llsc = 'false'),
 		Uses('fb_controller', mode = 'common'),
-		Uses('vci'),
 		],
 )

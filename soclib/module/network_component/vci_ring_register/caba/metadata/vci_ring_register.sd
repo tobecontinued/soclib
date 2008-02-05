@@ -5,9 +5,11 @@ VciCabaModule('vci_ring_register',
 	classname = 'RingRegister',
 	header_files = ['../source/include/vci_ring_register.h',],
 	implementation_files = ['../source/src/vci_ring_register.cpp',],
+			  ports = [
+	Port('vci_ring_in', 'p_ring_in'),
+	Port('vci_ring_out', 'p_ring_out'),
+	],
 	uses = [
 		Uses('base_module'),
-		Uses('vci_ring'),
-		Uses('vci'),
 		],
 )

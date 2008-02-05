@@ -18,7 +18,7 @@ todo = Platform(
 	Uses('caba_factory'),
 	Uses('vci_factory', **vci_params),
 	Source('top.cpp', uses = [
-	Uses('topcell'),
-	Uses('exception'),
+	Uses('topcell', mode = 'common'),
+	Uses('exception', mode = 'common'),
 	]),
 )

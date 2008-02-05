@@ -47,7 +47,7 @@ TlmtModule('base_module',
 	header_files = [ '../include/tlmt/tlmt_base_module.h',],
 	uses = [
 		Uses('base_module', mode = 'common'),
-		Uses('tlmt'),
+		Uses('tlmt', mode = 'common'),
 		],
 )
 

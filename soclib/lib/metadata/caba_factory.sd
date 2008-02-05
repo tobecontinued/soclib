@@ -16,6 +16,6 @@ CabaModule('caba_factory',
 		Uses('gdb_ppc405'),
 		Uses('fifo_reader', word_t = 'uint32_t'),
 		Uses('fifo_writer', word_t = 'uint32_t'),
-		Uses('inst_arg'),
+		Uses('inst_arg', mode = 'common'),
 		],
 )

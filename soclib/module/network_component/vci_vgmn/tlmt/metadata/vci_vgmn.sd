@@ -35,9 +35,8 @@ VciTlmtModule('vci_vgmn',
 		],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table'),
+		Uses('mapping_table', 'common'),
 		Uses('vci_cmd_arb_rsp_rout'),
 		Uses('vci_rsp_arb_cmd_rout'),
-		Uses('vci'),
 		],
 )

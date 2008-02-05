@@ -1,8 +1,26 @@
 
 # -*- python -*-
 
-CabaSignals('vci_ring',
-			headers = ['../source/include/vci_ring_ports.h',
-					   '../source/include/vci_ring_signals.h',
-					   ],
-	)
+CabaSignal('vci_ring',
+			classname = 'RingSignals',
+			header_files = ['../source/include/vci_ring_signals.h'],
+		   uses = [
+	Uses('vci_param', 'caba'),
+	]
+			)
+
+CabaPort('vci_ring_in',
+		 classname = 'RingINPort',
+		 header_files = ['../source/include/vci_ring_ports.h'],
+		   uses = [
+	Uses('vci_param', 'caba'),
+	]
+		 )
+
+CabaPort('vci_ring_out',
+		 classname = 'RingOUTPort',
+		 header_files = ['../source/include/vci_ring_ports.h'],
+		   uses = [
+	Uses('vci_param', 'caba'),
+	]
+		 )
