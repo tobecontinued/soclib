@@ -1,0 +1,10 @@
+
+This platform adapts itself to mutekh configuration. Add a symbolic
+link to the mutekh directory and ensure mutekh sources are configured
+before running make.
+
+ln -s ~/mystuff/mutekh
+make
+
+See MutekH quick start guide for Soclib for more informations.
+

@@ -1,0 +1,40 @@
+
+# -*- python -*-
+
+locs = {}
+execfile('mutekh/.config.py', {}, locs)
+
+vci_params = dict(
+	cell_size = 4,
+	plen_size = 1,
+	addr_size = 32,
+	rerror_size = 1,
+	clen_size = 1,
+	rflag_size = 1,
+	srcid_size = 8,
+	pktid_size = 1,
+	trdid_size = 1,
+	wrplen_size = 1
+	)
+
+if locs['CONFIG_CPU_PPC'] == 'defined':
+  cpu = 'gdb_ppc405'
+elif locs['CONFIG_CPU_MIPS'] == 'defined':
+  if locs['CONFIG_CPU_ENDIAN_BIG'] == 'defined':
+    cpu = 'gdb_mipseb'
+  else:
+    cpu = 'gdb_mipsel'
+
+todo = Platform(
+	Source('top.cc', uses=[
+		Uses(cpu),
+		Uses('vci_locks', **vci_params),
+		Uses('vci_ram', **vci_params),
+		Uses('vci_heterogeneous_rom', **vci_params),
+		Uses('vci_multi_tty', **vci_params),
+		Uses('vci_timer', **vci_params),
+		Uses('vci_icu', **vci_params),
+		Uses('vci_vgmn', **vci_params),
+		Uses('vci_xcache', **vci_params),
+	])
+)
