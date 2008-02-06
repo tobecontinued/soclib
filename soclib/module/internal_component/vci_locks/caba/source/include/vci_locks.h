@@ -44,6 +44,7 @@ class VciLocks
 {
 	enum vci_target_fsm_state_e {
 		IDLE,
+		WAIT_IDLE,
 		WRITE_RSP,
 		READ_RSP,
 		ERROR_RSP,

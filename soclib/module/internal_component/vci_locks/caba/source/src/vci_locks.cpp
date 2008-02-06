@@ -26,6 +26,8 @@
  * Maintainers: nipo
  */
 
+#include <stdlib.h>
+
 #include "../include/vci_locks.h"
 
 namespace soclib {
@@ -117,8 +119,13 @@ tmpl(void)::transition()
 	case READ_RSP:
 	case ERROR_RSP:
 		if ( p_vci.rspack.read() )
-			r_vci_fsm = IDLE;
+            r_vci_fsm = rand() % 2 ? IDLE : WAIT_IDLE;
 		break;
+
+        // randomly add a dummy cycle to get rid of live locks
+	case WAIT_IDLE:
+        r_vci_fsm = IDLE;
+        break;
 	}
 }
 
@@ -127,6 +134,7 @@ tmpl(void)::genMoore()
 	p_vci.rspSetIds( r_buf_srcid.read(), r_buf_trdid.read(), r_buf_pktid.read() );
 
 	switch (r_vci_fsm) {
+	case WAIT_IDLE:
 	case IDLE:
 		p_vci.rspNop();
 		break;
