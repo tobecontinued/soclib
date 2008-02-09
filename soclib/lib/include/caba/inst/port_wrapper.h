@@ -30,6 +30,7 @@
 #define PORT_WRAPPER_H
 
 #include <string>
+#include <iostream>
 
 namespace soclib { namespace caba { namespace inst {
 class BasePort;

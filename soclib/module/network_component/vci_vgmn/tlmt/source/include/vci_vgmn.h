@@ -26,6 +26,8 @@
  *     François Pêcheux <fancois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  */
+#ifndef SOCLIB_TLMT_VCI_VGMN_H
+#define SOCLIB_TLMT_VCI_VGMN_H
 
 #include <tlmt>
 #include <vector>
@@ -51,3 +53,5 @@ public:
 };
 
 }}
+
+#endif

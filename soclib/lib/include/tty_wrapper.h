@@ -29,6 +29,8 @@
 #ifndef SOCLIB_TTY_WRAPPER_H
 #define SOCLIB_TTY_WRAPPER_H
 
+#include <string>
+
 namespace soclib { namespace common {
 
 class TtyWrapper

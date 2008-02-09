@@ -25,6 +25,8 @@
  *
  * Maintainers: nipo
  */
+#ifndef SOCLIB_COMMON_TOPCELL_H
+#define SOCLIB_COMMON_TOPCELL_H
 
 #include <systemc>
 #include <stdint.h>
@@ -79,3 +81,5 @@ public:
 };
 
 }}
+
+#endif

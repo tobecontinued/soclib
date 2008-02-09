@@ -28,6 +28,7 @@
 #ifndef SOCLIB_COMMON_LINKED_ACCESS_BUFFER_H_
 #define SOCLIB_COMMON_LINKED_ACCESS_BUFFER_H_
 
+#include <sys/types.h>
 #include <stdint.h>
 #include <assert.h>
 

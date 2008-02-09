@@ -26,6 +26,8 @@
  *     François Pêcheux <fancois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  */
+#ifndef SOCLIB_TLMT_VCI_RAM_H
+#define SOCLIB_TLMT_VCI_RAM_H
 
 #include <tlmt>
 #include "vci_ports.h"
@@ -80,3 +82,4 @@ public:
 
 }}
 
+#endif

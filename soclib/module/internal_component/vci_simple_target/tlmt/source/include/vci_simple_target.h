@@ -26,6 +26,8 @@
  *     François Pêcheux <fancois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  */
+#ifndef SOCLIB_TLMT_SIMPLE_TARGET_H
+#define SOCLIB_TLMT_SIMPLE_TARGET_H
 
 #include <tlmt>
 #include "tlmt_base_module.h"
@@ -51,3 +53,4 @@ public:
 
 }}
 
+#endif

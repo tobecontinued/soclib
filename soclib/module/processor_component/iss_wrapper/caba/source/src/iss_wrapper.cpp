@@ -27,7 +27,6 @@
  *
  * $Id$
  */
-#include "iss.h"
 #include "../include/iss_wrapper.h"
 #include "xcache_signals.h"
 #include "static_assert.h"

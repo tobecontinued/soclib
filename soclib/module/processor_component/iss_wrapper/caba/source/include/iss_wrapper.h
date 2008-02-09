@@ -33,7 +33,6 @@
 #include <inttypes.h>
 #include "caba_base_module.h"
 #include "soclib_endian.h"
-#include "iss.h"
 #include "xcache_processor_ports.h"
 
 namespace soclib { namespace caba {
