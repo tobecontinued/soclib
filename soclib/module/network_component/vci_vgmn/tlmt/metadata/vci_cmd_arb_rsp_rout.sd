@@ -26,8 +26,11 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-VciTlmtModule('vci_cmd_arb_rsp_rout',
-	classname = 'VciCmdArbRspRout',
+Module('tlmt:vci_cmd_arb_rsp_rout',
+	classname = 'soclib::tlmt::VciCmdArbRspRout',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param')
+	],
 	header_files = ['../source/include/vci_cmd_arb_rsp_rout.h',],
 	implementation_files = [
 		'../source/src/vci_cmd_arb_rsp_rout.cpp',
@@ -37,6 +40,6 @@ VciTlmtModule('vci_cmd_arb_rsp_rout',
 	],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table', 'common'),
+		Uses('common:mapping_table'),
 		],
 )

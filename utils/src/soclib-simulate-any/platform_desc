@@ -1,7 +1,14 @@
 
 # -*- python -*-
 
-vci_params = dict(
+
+todo = Platform('caba', 'top.cpp',
+				uses = [
+	Uses('caba_factory'),
+	Uses('vci_factory'),
+	Uses('common:topcell'),
+	Uses('common:exception'),
+	],
 	cell_size = 4,
 	plen_size = 1,
 	addr_size = 32,
@@ -12,13 +19,4 @@ vci_params = dict(
 	pktid_size = 1,
 	trdid_size = 1,
 	wrplen_size = 1
-	)
-
-todo = Platform(
-	Uses('caba_factory'),
-	Uses('vci_factory', **vci_params),
-	Source('top.cpp', uses = [
-	Uses('topcell', mode = 'common'),
-	Uses('exception', mode = 'common'),
-	]),
 )

@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CommonModule('exception',
-	classname = 'BaseModule',
+Module('common:exception',
+	classname = 'soclib::common::BaseModule',
 	header_files = [ '../include/exception.h',
 					 ],
 	)

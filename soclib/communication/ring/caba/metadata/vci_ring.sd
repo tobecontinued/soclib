@@ -1,26 +1,30 @@
 
 # -*- python -*-
 
-CabaSignal('vci_ring',
-			classname = 'RingSignals',
-			header_files = ['../source/include/vci_ring_signals.h'],
-		   uses = [
-	Uses('vci_param', 'caba'),
+Signal('caba:vci_ring',
+	   classname = 'soclib::caba::RingSignals',
+	   accepts = {'caba:vci_ring_in':1,
+				  'caba:vci_ring_out':1},
+	   header_files = ['../source/include/vci_ring_signals.h'],
+	   uses = [
+	Uses('caba:vci_param'),
 	]
-			)
+	   )
 
-CabaPort('vci_ring_in',
-		 classname = 'RingINPort',
-		 header_files = ['../source/include/vci_ring_ports.h'],
-		   uses = [
-	Uses('vci_param', 'caba'),
+PortDecl('caba:vci_ring_in',
+	 classname = 'soclib::caba::RingINPort',
+	 signal = 'caba:vci_ring',
+	 header_files = ['../source/include/vci_ring_ports.h'],
+	 uses = [
+	Uses('caba:vci_param'),
 	]
-		 )
+	 )
 
-CabaPort('vci_ring_out',
-		 classname = 'RingOUTPort',
-		 header_files = ['../source/include/vci_ring_ports.h'],
-		   uses = [
-	Uses('vci_param', 'caba'),
+PortDecl('caba:vci_ring_out',
+	 classname = 'soclib::caba::RingOUTPort',
+	 signal = 'caba:vci_ring',
+	 header_files = ['../source/include/vci_ring_ports.h'],
+	 uses = [
+	Uses('caba:vci_param'),
 	]
-		 )
+	 )

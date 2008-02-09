@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_ram',
-	classname = 'VciMultiRam',
+Module('caba:vci_ram',
+	classname = 'soclib::caba::VciMultiRam',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_ram.h',],
 	implementation_files = ['../source/src/vci_ram.cpp',],
 			  ports = [
@@ -11,7 +14,7 @@ VciCabaModule('vci_ram',
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2, support_llsc = 'true'),
-		Uses('elf_loader', 'common'),
-		Uses('mapping_table', 'common'),
+		Uses('common:elf_loader'),
+		Uses('common:mapping_table'),
 		],
 )

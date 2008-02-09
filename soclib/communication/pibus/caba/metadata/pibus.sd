@@ -1,19 +1,23 @@
 
 # -*- python -*-
 
-CabaSignal('pibus',
-		   classname = 'Pibus',
-		   header_files = ['../source/include/pibus_signals.h'],
-		   )
+Signal('caba:pibus',
+	   classname = 'soclib::caba::Pibus',
+	   accepts = {'caba:pibus_initiator':16,
+				  'caba:pibus_target':16},
+	   header_files = ['../source/include/pibus_signals.h'],
+	   )
 
-CabaPort('pibus_initiator',
-		 classname = 'PibusInitiator',
-		 header_files = ['../source/include/pibus_initiator_ports.h'],
-		 )
+PortDecl('caba:pibus_initiator',
+	 classname = 'soclib::caba::PibusInitiator',
+	 signal = 'caba:pibus',
+	 header_files = ['../source/include/pibus_initiator_ports.h'],
+	 )
 
-CabaPort('pibus_target',
-		 classname = 'PibusTarget',
-		 header_files = ['../source/include/pibus_target_ports.h'],
-		 )
+PortDecl('caba:pibus_target',
+	 classname = 'soclib::caba::PibusTarget',
+	 signal = 'caba:pibus',
+	 header_files = ['../source/include/pibus_target_ports.h'],
+	 )
 
 						   

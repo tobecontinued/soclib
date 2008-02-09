@@ -32,7 +32,12 @@ from soclib_cc.builder.todo import ToDo
 from soclib_cc.builder.cxx import CxxCompile, CxxLink
 from component_builder import ComponentBuilder
 
-__all__ = ['TlmtPlatform', 'Platform', 'Uses', 'Source']
+try:
+	set
+except:
+	from sets import Set as set
+
+__all__ = ['Platform', 'Uses']
 
 from soclib_desc.component import Uses
 
@@ -45,53 +50,41 @@ class Platform:
 	Platform definition, should be passed an arbitrary number of
 	Uses() and Source() statements that constitutes the platform.
 	"""
-	mode = 'caba'
-	def __init__(self, *components):
-		self.components = components
+	def fullyQualifiedModuleName(self, name):
+		if not ':' in name:
+			return 'caba:'+name
+		return name
+	def putArgs(self, d):
+		pass
+	def addObj(self, o):
+		if not o in self.objs:
+			self.objs.add(o)
+			self.todo.add(o)
+	def __init__(self, mode, source_file, uses = [], defines = {}, **params):
+		component = Source(mode, source_file, uses, defines, **params)
 		self.todo = ToDo()
-		objs = []
-		for c in components:
-			c.do(self.mode)
-			for todo in c.todo():
-				for o in todo.results():
-					if not o in objs:
-						objs.append( o )
-						self.todo.add( o )
-		self.todo.add( *CxxLink(config.output, objs ).dests )
+		self.objs = set()
+		builder = component.builder(self)
+		all = builder.withDeps()
+		for b in all:
+			for o in b.results():
+				self.addObj( o )
+		self.todo.add( *CxxLink(config.output, self.objs ).dests )
 	def process(self):
 		self.todo.process()
 	def clean(self):
 		self.todo.clean()
 
-class TlmtPlatform(Platform):
-	mode = 'tlmt'
-
-class Source:
-	'''
-	A statement declaring use for a user-defined c++ file to compile
-	and link with the platform. There is no template instanciation
-	feature with this file, only defines (set of -Dx=y)
-
-	source_file is the relative name to the source file
-
-	all other named arguments will be set as defines when compiling:
-
-	Source('top.cpp', defines = {'test_arg' = '42'}) will add -Dtest_arg=42 on
-	compilation command line for top.cpp
-	'''
-	def __init__(self, source_file, uses = [], defines = {}):
-		self.source_file = os.path.abspath(source_file)
-		self.uses = uses
-		self.defines = defines
-		self.deps = []
-		self.incs = []
-	def do(self, mode = None, **args):
-		for u in self.uses:
-			u.do(mode, **args)
-			self.deps += u.todo()
-			u.builder.getIncl(self.incs)
-		obj = os.path.splitext(self.source_file)[0]+'.'+config.toolchain.obj_ext
-		obj = os.path.abspath(obj)
-		self.builder = CxxCompile(obj, self.source_file, defines = self.defines, inc_paths = self.incs)
-	def todo(self):
-		return self.deps + [self.builder]
+def Source(mode, source_file, uses = [], defines = {}, **params):
+	name = mode+':'+hex(hash(source_file))
+	from soclib_desc.module import Module
+	m = Module(name,
+			   uses = uses,
+			   defines = defines,
+			   implementation_files = [source_file],
+			   local = True,
+			   )
+	filename = traceback.extract_stack()[-3][0]
+	d = os.path.abspath(os.path.dirname(filename))
+	m.mk_abs_paths(d)
+	return Uses(name, **params)

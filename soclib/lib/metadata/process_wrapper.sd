@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CommonModule('process_wrapper',
-	classname = 'ProcessWrapper',
+Module('common:process_wrapper',
+	classname = 'soclib::common::ProcessWrapper',
 	header_files = ['../include/process_wrapper.h',],
 	implementation_files = ['../src/process_wrapper.cpp',],
 )

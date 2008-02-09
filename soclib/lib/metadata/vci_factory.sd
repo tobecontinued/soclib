@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_factory',
-	classname = 'VciFactory',
+Module('caba:vci_factory',
+	classname = 'soclib::caba::VciFactory',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../include/caba/vci/vci_factory.h',],
 	implementation_files = ['../src/caba/vci/vci_factory.cpp',],
 	uses = [

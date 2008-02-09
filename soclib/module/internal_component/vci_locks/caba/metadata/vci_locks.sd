@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_locks',
-	classname = 'VciLocks',
+Module('caba:vci_locks',
+	classname = 'soclib::caba::VciLocks',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_locks.h',],
 	implementation_files = ['../source/src/vci_locks.cpp',],
 			  ports = [

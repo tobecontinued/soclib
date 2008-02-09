@@ -1,26 +1,26 @@
 
 # -*- python -*-
 
-CabaSignal('vci',
-		   classname = 'VciSignals',
-		   header_files = ['../source/include/vci_signals.h'],
-		   uses = [
-	Uses('vci_param', 'caba'),
-	]
-		   )
+Signal('caba:vci',
+	   tmpl_parameters = [parameter.Module('vci_param', 'vci_param')],
+	   classname = 'soclib::caba::VciSignals',
+	   header_files = ['../source/include/vci_signals.h'],
+	   accepts = {
+	'caba:vci_initiator': 1,
+	'caba:vci_target': 1,
+	},
+	   )
 
-CabaPort('vci_initiator',
-		 classname = 'VciInitiator',
-		 header_files = ['../source/include/vci_initiator.h'],
-		   uses = [
-	Uses('vci_param', 'caba'),
-	]
-		 )
+PortDecl('caba:vci_initiator',
+	 tmpl_parameters = [parameter.Module('vci_param', 'vci_param')],
+	 classname = 'soclib::caba::VciInitiator',
+	 signal = 'caba:vci',
+	 header_files = ['../source/include/vci_initiator.h'],
+	 )
 
-CabaPort('vci_target',
-		 classname = 'VciTarget',
-		 header_files = ['../source/include/vci_target.h'],
-		   uses = [
-	Uses('vci_param', 'caba'),
-	]
-		 )
+PortDecl('caba:vci_target',
+	 tmpl_parameters = [parameter.Module('vci_param', 'vci_param')],
+	 classname = 'soclib::caba::VciTarget',
+	 signal = 'caba:vci',
+	 header_files = ['../source/include/vci_target.h'],
+	 )

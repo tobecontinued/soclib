@@ -1,11 +1,11 @@
 
 # -*- python -*-
 
-CommonModule('fb_controller',
-	classname = 'FbController',
+Module('common:fb_controller',
+	classname = 'soclib::common::FbController',
 	header_files = ['../include/fb_controller.h',],
 	implementation_files = ['../src/fb_controller.cpp',],
 	uses = [
-		Uses('process_wrapper', 'common'),
+		Uses('common:process_wrapper'),
 		],
 )

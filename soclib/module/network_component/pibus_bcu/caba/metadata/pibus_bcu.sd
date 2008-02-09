@@ -1,14 +1,14 @@
 
 # -*- python -*-
 
-CabaModule('pibus_bcu',
-	classname = 'PibusBcu',
+Module('caba:pibus_bcu',
+	classname = 'soclib::caba::PibusBcu',
 	header_files = ["../source/include/pibus_bcu.h",],
 	implementation_files = ["../source/src/pibus_bcu.cpp",],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table', 'common'),
-		Uses('pibus', mode = 'caba_signal'),
+		Uses('common:mapping_table'),
+		Uses('caba:pibus'),
 		],
 )
 

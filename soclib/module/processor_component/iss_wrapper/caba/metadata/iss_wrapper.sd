@@ -1,0 +1,23 @@
+
+# -*- python -*-
+
+# Mips Little endian (MipsElIss)
+
+Module('caba:iss_wrapper',
+	   classname = 'soclib::caba::IssWrapper',
+	   header_files = ["../source/include/iss_wrapper.h",],
+	   implementation_files = [
+	"../source/src/iss_wrapper.cpp",
+	],
+	   tmpl_parameters = [
+	parameter.Module('iss_t'),
+	],
+	   ports = [
+	Port('xcache_processor_icache', 'p_icache'),
+	Port('xcache_processor_dcache', 'p_dcache'),
+	],
+	   uses = [
+	Uses('base_module'),
+	Uses('common:iss'),
+	],
+)

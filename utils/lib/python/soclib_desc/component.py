@@ -28,96 +28,55 @@ import traceback
 import copy
 
 from module import *
+import parameter, types
 
-__all__ = ['VciCabaModule', 'CabaModule',
-		   'CommonModule',
-		   'TlmtModule', 'VciTlmtModule',
-		   'Port',
-		   'Parameter',
-		   'CabaSignal','TlmtSignal',
-		   'CabaPort','TlmtPort']
-
-class CommonModule(Module):
-	klass = 'common'
-	namespace = 'soclib::common::'
-
-class CabaModule(CommonModule):
-	klass = 'caba'
-	namespace = 'soclib::caba::'
-	
-class TlmtModule(CommonModule):
-	klass = 'tlmt'
-	namespace = 'soclib::tlmt::'
-
-class VciCabaModule(CabaModule):
-	tmpl_parameters = [
-		'cell_size', 'plen_size', 'addr_size',
-		'rerror_size', 'clen_size', 'rflag_size',
-		'srcid_size', 'pktid_size', 'trdid_size',
-		'wrplen_size']
-	tmpl_instanciation = (
-		'soclib::caba::VciParams<%(cell_size)s,%(plen_size)s,%(addr_size)s,'+
-		'%(rerror_size)s,%(clen_size)s,%(rflag_size)s,%(srcid_size)s,'+
-		'%(pktid_size)s,%(trdid_size)s,%(wrplen_size)s>')
-
-class VciTlmtModule(TlmtModule):
-	tmpl_parameters = ['addr_t', 'data_t']
-	tmpl_instanciation = 'soclib::tlmt::VciParams<%(addr_t)s,%(data_t)s>'
+__all__ = ['Module', 'PortDecl',
+		   'parameter', 'types',
+		   'Signal','Port']
 
 class Port:
-	def __init__(self, type, name, count = 0):
+	def __init__(self, type, name, count = None):
 		self.__type = type
 		self.__name = name
 		self.__count = count
 		self.__owner = None
+	def setModule(self, module):
+		self.__type = module.fullyQualifiedModuleName(self.__type)
+		self.__module = module
 	def getUse(self, module):
-		self.__mode = module.klass+'_port'
-		mode, ptype = getDesc(self.__mode, self.__type)
-		module['uses'].append(Uses(self.__type, self.__mode))
-	def registerIn(self, module):
-		self.__owner = module
-		if self.__count == 0:
-			n = self.__name
-			module.addPort(n, self)
-		else:
-			for i in range(self.__count):
-				n = '%s[%d]'%(self.__name, i)
-				module.addPort(n, self)
+		ptype = Module.getRegistered(self.__type)
+		module.addUse(Uses(self.__type))
+	def getInfo(self):
+		ptype = Module.getRegistered(self.__type)
+		return self.__name, ptype, self.__count
 	def __str__(self):
-		mode, ptype = getDesc(self.__mode, self.__type)
+		ptype = Module.getRegistered(self.__type)
 		return '<port: %s %s>'%(self.__name, str(ptype['header_files']))
-
-class Parameter:
-	def __init__(self, type, name):
-		self.__type = type
-		self.__name = name
 
 class Signal(Module):
 	tb_delta = -3
-	def __init__(self, name, classname, header_files, uses = [], accepts = {}):
-		Module.__init__(self, name, mode = self.klass,
-						header_files = header_files,
-						uses = uses)
+	def __init__(self, name, **kwargs):
+		accepts = kwargs['accepts']
+		del kwargs['accepts']
+		Module.__init__(self, name, **kwargs)
 		self.accepts = accepts
+
+	def resolveRefsFor(self):
+		Module.resolveRefsFor(self)
+		naccepts = {}
+		for type, count in self.accepts.iteritems():
+			rtype = self.getRegistered(type)
+			naccepts[rtype] = count
+		self.accepts = naccepts
 
 class PortDecl(Module):
 	tb_delta = -3
-	def __init__(self, name, classname, header_files, uses = []):
-		Module.__init__(self, name, mode = self.klass,
-						header_files = header_files,
-						uses = uses)
-
-class CabaSignal(Signal):
-	klass = 'caba_signal'
-
-class CabaPort(PortDecl):
-	klass = 'caba_port'
-
-class TlmtSignal(Signal):
-	klass = 'tlmt_signal'
-
-class TlmtPort(PortDecl):
-	klass = 'tlmt_port'
+	def __init__(self, name, **kwargs):
+		Module.__init__(self, name, **kwargs)
+	def resolveRefsFor(self):
+		Module.resolveRefsFor(self)
+		if self['signal'] is not None:
+			self.setAttr('signal', self.getRegistered(self['signal']))
 
 class Uses:
 	"""
@@ -127,26 +86,26 @@ class Uses:
 	name is the name of the component, it the filename as in
 	desc/soclib/[component].sd
 
-	mode should be left alone unless specifically targetting a mode
-
 	args is the list of arguments useful for compile-time definition
 	(ie template parameters)
 	"""
-	def __init__(self, name, mode = None, **args):
+	def __init__(self, name, **args):
 		self.name = name
-		self.mode = mode
 		self.args = args
 		# This is for error feedback purposes
 		self.where = '%s:%d'%(traceback.extract_stack()[-2][0:2])
+	def clone(self, **args):
+		a = args
+		a.update(self.args)
+		return self.__class__(self.name, **a)
 	def __str__(self):
-		return '<Use %s %s>'%(self.name, self.mode)
-	def do(self, mode = None, **inherited_args):
-		if self.mode is not None:
-			mode = self.mode
-		from soclib_desc import component
-		mode, cdef = component.getDesc(mode, self.name)
-		args = copy.copy(inherited_args)
+		return '<Use %s>'%(self.name)
+	def builder(self, parent):
+		self.name = parent.fullyQualifiedModuleName(self.name)
+		from soclib_desc import specialization
+		args = {}
 		args.update(self.args)
+		parent.putArgs(args)
 		for k in args.keys():
 			newv = args[k]
 			if not '%' in str(newv):
@@ -154,9 +113,19 @@ class Uses:
 			v = None
 			while newv != v:
 				v = newv
-				newv = newv%inherited_args
+				newv = newv%args
 			args[k] = v
+		spec = specialization.Specialization(self.name, **args)
 		from soclib_cc import component_builder
-		self.builder = component_builder.ComponentBuilder(mode, cdef, self.where, **args)
-	def todo(self):
-		return self.builder.withDeps()
+		return component_builder.ComponentBuilder(spec, self.where)
+	def __repr__(self):
+		return str(self)
+	def __cmp__(self, other):
+		return (
+			cmp(self.name, other.name) or
+			cmp(self.args, other.args)
+			)
+	def __hash__(self):
+		return (
+			hash(self.name)+
+			hash(`self.args`))

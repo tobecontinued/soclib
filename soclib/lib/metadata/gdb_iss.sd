@@ -1,0 +1,16 @@
+
+# -*- python -*-
+
+Module('common:gdb_iss',
+	classname = 'soclib::common::GdbServer',
+	header_files = ["../include/iss/gdbserver.h",],
+	implementation_files = [
+		"../src/iss/gdbserver.cpp",
+		],
+	   tmpl_parameters = [
+	parameter.Module('gdb_iss_t'),
+	],
+	   uses = [
+	Uses('iss'),
+	],
+)

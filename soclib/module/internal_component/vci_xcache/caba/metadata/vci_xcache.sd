@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_xcache',
-	classname = 'VciXCache',
+Module('caba:vci_xcache',
+	classname = 'soclib::caba::VciXCache',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = [
 	'../source/include/vci_xcache.h',
 	],
@@ -11,21 +14,21 @@ VciCabaModule('vci_xcache',
 	],
 	uses = [
 	Uses('base_module'),
-	Uses('mapping_table', 'common'),
+	Uses('common:mapping_table'),
 	],
 	ports = [
 	Port('vci_initiator', 'p_vci'),
 	Port('xcache_cache_icache', 'p_icache'),
 	Port('xcache_cache_dcache', 'p_dcache'),
-	Port('reset_in', 'p_resetn'),
+	Port('bit_in', 'p_resetn'),
 	Port('clock_in', 'p_clk'),
 	],
 	instance_parameters = [
-	Parameter('MappingTable', 'mt'),
-	Parameter('IntTab', 'ident'),
-	Parameter('size_t', 'icache_lines'),
-	Parameter('size_t', 'icache_words'),
-	Parameter('size_t', 'dcache_lines'),
-	Parameter('size_t', 'dcache_words'),
+	parameter.MappingTable('mt'),
+	parameter.IntTab('ident'),
+	parameter.Int('icache_lines'),
+	parameter.Int('icache_words'),
+	parameter.Int('dcache_lines'),
+	parameter.Int('dcache_words'),
 	],
 )

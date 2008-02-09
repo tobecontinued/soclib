@@ -2,48 +2,57 @@
 import os, os.path
 import sys
 import traceback
+import warnings
 
-__all__ = ['Module', 'getDesc', 'getAllDescs']
+__all__ = ['Module']
 
 class NoSuchComponent(Exception):
 	pass
 
-class AllRegistry:
-	def __init__(self):
-		self.__reg = {}
-	def all(self):
-		return self.__reg
-	def register(self, cl, name, obj):
-		m = self.getClass(cl)
-		m[name] = obj
-	def get(self, cl, name):
-		m = self.getClass(cl)
-		return cl, m[name]
-	def getClass(self, cl):
-		if cl in self.__reg:
-			return self.__reg[cl]
-		r = {}
-		self.__reg[cl] = r
-		return r
-
-global all_registry
-all_registry = AllRegistry()
-
 class Module:
+	# class part
+	__reg = {}
+	__not_done_registering = ()
+	
+	def __register(cls, name, obj):
+#		print 'Registering', name, obj
+		cls.__reg[name] = obj
+		Module.__not_done_registering += obj,
+	__register = classmethod(__register)
+
+	def getRegistered(cls, name):
+		cls.resolveRefs()
+#		print 'Getting', name
+		try:
+			return cls.__reg[name]
+		except KeyError:
+			raise NoSuchComponent("`%s`"%(name))
+	getRegistered = classmethod(getRegistered)
+
+	def allRegistered(cls):
+		cls.resolveRefs()
+		return cls.__reg
+	allRegistered = classmethod(allRegistered)
+
+	def resolveRefs(cls):
+		r = Module.__not_done_registering
+		Module.__not_done_registering = ()
+		for module in r:
+			module.resolveRefsFor()
+	resolveRefs = classmethod(resolveRefs)
+
+	# instance part
 	module_attrs = {
-		'namespace' : '',
 		'classname' : '',
 		'tmpl_parameters' : [],
-		'tmpl_instanciation' : "",
 		'header_files' : [],
-		'force_header_files' : [],
 		'implementation_files' : [],
 		'uses' : [],
-		'default_parameters' : {},
 		'defines' : {},
 		'ports' : [],
-		'mode' : None,
+		'signal' : None,
 		'instance_parameters' : [],
+		'local' : False,
 		}
 	tb_delta = -2
 
@@ -59,28 +68,55 @@ class Module:
 			if not name in self.module_attrs:
 				sys.stderr.write("Spurious %s in %s declration\n"%(name, typename))
 			self.__attrs[name] = value
+		self.__attrs['uses'] = set(self.__attrs['uses'])
 		filename = traceback.extract_stack()[self.tb_delta][0]
 		self.mk_abs_paths(os.path.dirname(filename))
-		self.registerMe()
-		for p in self['ports']:
-			p.getUse(self)
-	def addPort(self, name, port):
-		self.ports[name] = port
-		
-	def registerMe(self):
-		global all_registry
-		override = all_registry.register(self.klass, self.__typename, self)
+		self.__register(self.__typename, self)
+
+	def fullyQualifiedModuleName(self, name):
+		if not ':' in name:
+			mode = self.__typename.split(':',1)[0]
+			return mode + ':' + name
+		return name
+
 	def __getitem__(self, name):
-		return self.__attrs[name]
+		import copy
+		return copy.copy(self.__attrs[name])
 
 	def mk_abs_paths(self, basename):
-		relative_path_files = ['header_files', 'implementation_files', 'force_header_files']
+		relative_path_files = ['header_files', 'implementation_files']
 		def mkabs(name):
 			return os.path.isabs(name) \
 				   and name \
 				   or os.path.abspath(os.path.join(basename, name))
 		for attr in relative_path_files:
 			self.__attrs['abs_'+attr] = map(mkabs, self.__attrs[attr])
+
+	def setAttr(self, name, value):
+		self.__attrs[name] = value
+
+	def resolveRefsFor(self):
+#		print 'Resolving refs for', self
+		for p in self['ports']:
+			p.setModule(self)
+			p.getUse(self)
+		for p in self['tmpl_parameters']:
+			p.setModule(self)
+
+	def addUse(self, u):
+#		print 'Adding', u, 'to', self
+#		assert not (
+#			self.__typename == u.name)
+		from component import Uses
+		self.__attrs['uses'].add(Uses(u.name, **u.args))
+
+	def getUses(self, args):
+		from component import Uses
+		r = set()
+#		r.add(Uses(self.__typename, **args))
+		for i in self.__attrs['uses']:
+			r.add(i.clone(**args))
+		return r
 
 	def getInfo(self):
 		r = '<%s\n'%self.__class__.__name__
@@ -91,14 +127,7 @@ class Module:
 			return r+' >'
 
 	def __str__(self):
-		return '<%s %s>'%(self.klass, self.__typename)
+		return '<%s>'%(self.__typename)
 
-def getDesc(klass, name):
-	try:
-		return all_registry.get(klass, name)
-	except KeyError:
-		raise NoSuchComponent("%s: %s"%(klass, name))
-
-def getAllDescs():
-	return all_registry.all()
-
+	def __repr__(self):
+		return 'soclib_desc.module.Module.getRegistered(%r)'%(self.__typename)

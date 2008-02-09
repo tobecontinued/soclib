@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_heterogeneous_rom',
-	classname = 'VciHeterogeneousRom',
+Module('caba:vci_heterogeneous_rom',
+	classname = 'soclib::caba::VciHeterogeneousRom',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_heterogeneous_rom.h',],
 	implementation_files = ['../source/src/vci_heterogeneous_rom.cpp',],
 			  ports = [
@@ -11,7 +14,7 @@ VciCabaModule('vci_heterogeneous_rom',
 	uses = [
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2, support_llsc = 'false'),
-		Uses('elf_loader', 'common'),
-		Uses('mapping_table', 'common'),
+		Uses('common:elf_loader'),
+		Uses('common:mapping_table'),
 		],
 )

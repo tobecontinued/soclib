@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CommonModule('mapping_table',
-	classname = 'MappingTable',
+Module('common:mapping_table',
+	classname = 'soclib::common::MappingTable',
 	header_files = ['../include/mapping_table.h',],
 	implementation_files = ['../src/mapping_table.cpp',],
 	uses = [

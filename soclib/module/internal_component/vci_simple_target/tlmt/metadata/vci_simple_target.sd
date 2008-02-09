@@ -26,8 +26,11 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-VciTlmtModule('vci_simple_target',
-	classname = 'VciSimpleTarget',
+Module('tlmt:vci_simple_target',
+	classname = 'soclib::tlmt::VciSimpleTarget',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param')
+	],
 	header_files = ['../source/include/vci_simple_target.h',],
 	implementation_files = ['../source/src/vci_simple_target.cpp',],
 			  ports = [
@@ -35,6 +38,6 @@ VciTlmtModule('vci_simple_target',
 	],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table', 'common'),
+		Uses('common:mapping_table'),
 		],
 )

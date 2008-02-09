@@ -1,9 +1,11 @@
 
 # -*- python -*-
 
-CommonModule('address_masking_table',
-	classname = 'AddressMaskingTable',
+Module('common:address_masking_table',
+	classname = 'soclib::common::AddressMaskingTable',
 	header_files = ['../include/address_masking_table.h',],
 	implementation_files = ['../src/address_masking_table.cpp',],
-	tmpl_parameters = ['data_t'],
+	tmpl_parameters = [
+	parameter.Type('data_t'),
+	],
 )

@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_simple_crossbar',
-	classname = 'VciSimpleCrossbar',
+Module('caba:vci_simple_crossbar',
+	classname = 'soclib::caba::VciSimpleCrossbar',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_simple_crossbar.h',],
 	implementation_files = ['../source/src/vci_simple_crossbar.cpp',],
 			  ports = [
@@ -11,6 +14,6 @@ VciCabaModule('vci_simple_crossbar',
 	],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table', 'common'),
+		Uses('common:mapping_table'),
 		],
 )

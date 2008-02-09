@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_pi_initiator_wrapper',
-	classname = 'VciPiInitiatorWrapper',
+Module('caba:vci_pi_initiator_wrapper',
+	classname = 'soclib::caba::VciPiInitiatorWrapper',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_pi_initiator_wrapper.h',],
 	implementation_files = ['../source/src/vci_pi_initiator_wrapper.cpp',],
 			  ports = [

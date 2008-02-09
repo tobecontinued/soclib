@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_ring_register',
-	classname = 'RingRegister',
+Module('caba:vci_ring_register',
+	classname = 'soclib::caba::RingRegister',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_ring_register.h',],
 	implementation_files = ['../source/src/vci_ring_register.cpp',],
 			  ports = [

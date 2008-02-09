@@ -30,7 +30,7 @@ import sys
 import soclib_cc
 from soclib_cc.config import config, change_config
 from soclib_cc.builder.cxx import CxxCompile
-from soclib_desc import components
+from soclib_desc.component import Module
 
 from optparse import OptionParser
 
@@ -42,8 +42,7 @@ def main():
 		except:
 			name = define
 			val = ''
-		from soclib_desc import component
-		component.getDel(mode, cell).defines[name] = val
+		Module.getRegistered(mode, cell).defines[name] = val
 	parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
 	parser.add_option('-v', '--verbose', dest = 'verbose',
 					  action='store_true',
@@ -91,6 +90,10 @@ def main():
 	opts, args = parser.parse_args()
 	if opts.type:
 		change_config(opts.type)
+	if opts.getpath:
+		print config.path
+		return 0
+	from soclib_desc import components
 	components.getDescs(config.desc_paths)
 	config.mode = opts.mode
 	config.verbose = opts.verbose
@@ -101,14 +104,9 @@ def main():
 		config.quiet = True
 
 	config.output = "system.x"
-	if opts.getpath:
-		print config.path
-		return 0
 	if opts.list_descs:
-		from soclib_desc.component import getAllDescs
-		for name, v in getAllDescs().iteritems():
-			for impl, desc in v.iteritems():
-				print name, impl, desc.getInfo()
+		for name, desc in Module.allRegistered().iteritems():
+			print name, desc.getInfo()
 		return 0
 	if opts.getflags:
 		if opts.getflags == 'cflags':

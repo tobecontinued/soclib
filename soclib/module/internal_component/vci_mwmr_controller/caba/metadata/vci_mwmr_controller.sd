@@ -1,16 +1,16 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_mwmr_controller',
-	classname = 'VciMwmrController',
+Module('caba:vci_mwmr_controller',
+	classname = 'soclib::caba::VciMwmrController',
 	header_files = ['../source/include/vci_mwmr_controller.h',
 					'../../include/mwmr_controller.h',
 					],
 	implementation_files = ['../source/src/vci_mwmr_controller.cpp',],
-	tmpl_parameters = VciCabaModule.tmpl_parameters + [
-		'fifo_depth'],
-	tmpl_instanciation = VciCabaModule.tmpl_instanciation+\
-		',%(fifo_depth)d',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	parameter.Int('fifo_depth'),
+	],
 			  ports = [
 	Port('vci_target', 'p_vci_target'),
 	Port('vci_initiator', 'p_vci_initiator'),

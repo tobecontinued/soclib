@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CabaModule('caba_factory',
-	classname = 'CabaFactory',
+Module('caba:caba_factory',
+	classname = 'soclib::caba::CabaFactory',
 	implementation_files = ['../src/caba/inst/caba_factory.cpp',],
 	uses = [
 		Uses('nios2_fast'),
@@ -16,6 +16,6 @@ CabaModule('caba_factory',
 		Uses('gdb_ppc405'),
 		Uses('fifo_reader', word_t = 'uint32_t'),
 		Uses('fifo_writer', word_t = 'uint32_t'),
-		Uses('inst_arg', mode = 'common'),
+		Uses('common:inst_arg'),
 		],
 )

@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CommonModule('inst_arg',
-	classname = 'CommonFactory',
+Module('common:inst_arg',
+	classname = 'soclib::common::CommonFactory',
 	header_files = ['../include/inst/inst_arg.h',],
 	implementation_files = ['../src/inst/inst_arg.cpp',],
 )

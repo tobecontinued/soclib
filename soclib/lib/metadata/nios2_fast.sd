@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CommonModule('nios2_fast',
-	classname = 'Nios2fIss',
+Module('common:nios2_fast',
+	classname = 'soclib::common::Nios2fIss',
 	header_files = ["../include/iss/nios2_fast.h",],
 	implementation_files = [
 		"../src/iss/nios2_fast.cpp",

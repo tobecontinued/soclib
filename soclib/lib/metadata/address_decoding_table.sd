@@ -1,9 +1,12 @@
 
 # -*- python -*-
 
-CommonModule('address_decoding_table',
-	classname = 'AddressDecodingTable',
+Module('common:address_decoding_table',
+	classname = 'soclib::common::AddressDecodingTable',
 	header_files = ['../include/address_decoding_table.h',],
 	implementation_files = ['../src/address_decoding_table.cpp',],
-	tmpl_parameters = ['input_t', 'output_t'],
+	tmpl_parameters = [
+	parameter.Type('input_t'),
+	parameter.Type('output_t'),
+	],
 )

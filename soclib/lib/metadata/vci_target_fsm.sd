@@ -1,18 +1,20 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_target_fsm',
-	classname = 'VciTargetFsm',
+Module('caba:vci_target_fsm',
+	classname = 'soclib::caba::VciTargetFsm',
 	header_files = ['../include/caba/vci/vci_target_fsm.h',],
 	implementation_files = ['../src/caba/vci/vci_target_fsm.cpp',],
-	tmpl_parameters = VciCabaModule.tmpl_parameters + [
-		'default_target', 'fifo_depth', 'support_llsc'],
-	tmpl_instanciation = VciCabaModule.tmpl_instanciation+\
-		',%(default_target)s,%(fifo_depth)d,%(support_llsc)s',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	parameter.Bool('default_target'),
+	parameter.Int('fifo_depth'),
+	parameter.Bool('support_llsc'),
+	],
 	uses = [
-		Uses('mapping_table', 'common'),
-		Uses('linked_access_buffer', 'common', addr_t = 'uint%(addr_size)s_t', id_t = 'unsigned int'),
-		Uses('vci_target', 'caba_port'),
+		Uses('common:mapping_table'),
+		Uses('common:linked_access_buffer', addr_t = 'uint%(addr_size)s_t', id_t = 'unsigned int'),
+		Uses('vci_target'),
 		Uses('generic_fifo'),
 		],
 )

@@ -1,18 +1,22 @@
 
 # -*- python -*-
 
-CabaSignal('fifo',
-			classname = 'FifoSignals',
-			header_files = ['../source/include/fifo_signals.h'],
-			)
+Signal('caba:fifo',
+	   accepts = {'caba:fifo_output':1,
+				  'caba:fifo_input':1},
+	   classname = 'soclib::caba::FifoSignals',
+	   header_files = ['../source/include/fifo_signals.h'],
+	   )
 
-CabaPort('fifo_output',
-		 classname = 'FifoOutput',
-		 header_files = ['../source/include/fifo_ports.h'],
-		 )
+PortDecl('caba:fifo_output',
+	 classname = 'soclib::caba::FifoOutput',
+	 signal = 'caba:fifo',
+	 header_files = ['../source/include/fifo_ports.h'],
+	 )
 
-CabaPort('fifo_input',
-		 classname = 'FifoInput',
-		 header_files = ['../source/include/fifo_ports.h'],
-		 )
+PortDecl('caba:fifo_input',
+	 classname = 'soclib::caba::FifoInput',
+	 signal = 'caba:fifo',
+	 header_files = ['../source/include/fifo_ports.h'],
+	 )
 

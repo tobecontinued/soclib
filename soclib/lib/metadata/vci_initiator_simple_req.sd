@@ -1,14 +1,17 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_initiator_simple_req',
-	classname = 'VciInitiatorSimpleReq',
+Module('caba:vci_initiator_simple_req',
+	classname = 'soclib::caba::VciInitiatorSimpleReq',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../include/caba/vci/vci_initiator_fsm.h',],
 	implementation_files = ['../src/caba/vci/vci_initiator/simple_req.cpp',],
 	uses = [
 		Uses('vci_initiator_req'),
-		Uses('mapping_table', 'common'),
+		Uses('common:mapping_table'),
 		Uses('base_module'),
-		Uses('vci_initiator', 'caba_port'),
+		Uses('vci_initiator'),
 		],
 )

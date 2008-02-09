@@ -1,16 +1,26 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_vgmn',
-	classname = 'VciVgmn',
+Module('caba:vci_vgmn',
+	classname = 'soclib::caba::VciVgmn',
+	tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_vgmn.h',],
 	implementation_files = ['../source/src/vci_vgmn.cpp',],
-			  ports = [
-	Port('vci_initiator', 'p_to_target'),
-	Port('vci_target', 'p_from_initiator'),
+	ports = [
+	    Port('vci_initiator', 'p_to_target'),
+	    Port('vci_target', 'p_from_initiator'),
+	],
+	instance_parameters = [
+        parameter.MappingTable('mt'),
+        parameter.Int('n_initiator'),
+        parameter.Int('n_target'),
+        parameter.Int('min_latency'),
+        parameter.Int('fifo_depth'),
 	],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table', 'common'),
+		Uses('common:mapping_table'),
 		],
 )

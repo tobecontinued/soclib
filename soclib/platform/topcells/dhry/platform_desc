@@ -1,7 +1,17 @@
 
 # -*- python -*-
 
-vci_params = dict(
+todo = Platform(
+	'caba', 'top.cpp',
+	uses = [
+	Uses('iss_wrapper', iss_t = 'common:mipsel'),
+	Uses('iss_wrapper', iss_t = 'common:ppc405'),
+	Uses('vci_ram'),
+	Uses('vci_simhelper'),
+	Uses('vci_multi_tty'),
+	Uses('vci_vgmn'),
+	Uses('vci_xcache'),
+	],
 	cell_size = 4,
 	plen_size = 1,
 	addr_size = 32,
@@ -12,16 +22,4 @@ vci_params = dict(
 	pktid_size = 1,
 	trdid_size = 1,
 	wrplen_size = 1
-	)
-
-todo = Platform(
-	Source('top.cpp', uses = [
-	Uses('mipsel'),
-	Uses('ppc405'),
-	Uses('vci_ram', **vci_params),
-	Uses('vci_simhelper', **vci_params),
-	Uses('vci_multi_tty', **vci_params),
-	Uses('vci_vgmn', **vci_params),
-	Uses('vci_xcache', **vci_params),
-	]),
 )

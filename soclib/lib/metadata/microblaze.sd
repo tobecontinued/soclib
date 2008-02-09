@@ -1,7 +1,7 @@
 # -*- python -*-
 
-CommonModule('microblaze',
-	classname = 'MicroBlazeIss',
+Module('common:microblaze',
+	classname = 'soclib::common::MicroBlazeIss',
 	header_files = ["../include/iss/microblaze.h",],
 	implementation_files = [
 		"../src/iss/microblaze.cpp",

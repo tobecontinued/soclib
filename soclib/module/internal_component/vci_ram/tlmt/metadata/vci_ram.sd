@@ -26,8 +26,11 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-VciTlmtModule('vci_ram',
-	classname = 'VciRam',
+Module('tlmt:vci_ram',
+	classname = 'soclib::tlmt::VciRam',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param')
+	],
 	header_files = ['../source/include/vci_ram.h',],
 	implementation_files = ['../source/src/vci_ram.cpp',],
 			  ports = [
@@ -35,7 +38,7 @@ VciTlmtModule('vci_ram',
 	],
 	uses = [
 		Uses('base_module'),
-		Uses('elf_loader', 'common'),
-		Uses('mapping_table', 'common'),
+		Uses('common:elf_loader'),
+		Uses('common:mapping_table'),
 		],
 )

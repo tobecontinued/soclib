@@ -1,19 +1,22 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_multi_tty',
-	classname = 'VciMultiTty',
-	header_files = ['../source/include/vci_multi_tty.h',
-					'../../include/tty.h'
-					],
-	implementation_files = ['../source/src/vci_multi_tty.cpp',],
-			  ports = [
+Module('caba:vci_multi_tty',
+	   classname = 'soclib::caba::VciMultiTty',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
+	   header_files = ['../source/include/vci_multi_tty.h',
+					   '../../include/tty.h'
+					   ],
+	   implementation_files = ['../source/src/vci_multi_tty.cpp',],
+	   ports = [
 	Port('vci_target', 'p_vci'),
 	],
-	uses = [
-		Uses('base_module'),
-		Uses('process_wrapper', 'common'),
-		Uses('tty_wrapper', 'common'),
-		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
-		],
+	   uses = [
+	Uses('base_module'),
+	Uses('common:process_wrapper'),
+	Uses('common:tty_wrapper') ,
+	Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
+	],
 )

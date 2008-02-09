@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CommonModule('ppc405',
-	classname = 'Ppc405Iss',
+Module('common:ppc405',
+	classname = 'soclib::common::Ppc405Iss',
 	header_files = ["../include/iss/ppc405.h",],
 	implementation_files = [
 		"../src/iss/ppc405.cpp",

@@ -26,8 +26,8 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-CommonModule('tlmt',
-	header_files = [
+Module('common:tlmt',
+	   header_files = [
 		'../include/tlmt',
 		'../include/tlmt_callback.h',
 		'../include/tlmt_if',

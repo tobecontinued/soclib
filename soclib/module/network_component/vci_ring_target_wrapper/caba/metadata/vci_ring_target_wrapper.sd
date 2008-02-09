@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_ring_target_wrapper',
-	classname = 'VciRingTargetWrapper',
+Module('caba:vci_ring_target_wrapper',
+	classname = 'soclib::caba::VciRingTargetWrapper',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_ring_target_wrapper.h',],
 	implementation_files = ['../source/src/vci_ring_target_wrapper.cpp',],
 			  ports = [

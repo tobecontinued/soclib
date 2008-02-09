@@ -102,6 +102,8 @@ class CLink(CCompile):
 		if r:
 			print
 			print r
+	def mustBeProcessed(self):
+		return True
 
 class CxxLink(CLink):
 	tool = 'CXX_LINKER'

@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CabaModule('fifo_writer',
-	classname = 'FifoWriter',
+Module('caba:fifo_writer',
+	classname = 'soclib::caba::FifoWriter',
 	header_files = ["../source/include/fifo_writer.h",],
 	implementation_files = [
 		"../source/src/fifo_writer.cpp",
@@ -12,7 +12,9 @@ CabaModule('fifo_writer',
 	],
 	uses = [
 		Uses('base_module'),
-		Uses('process_wrapper', 'common'),
+		Uses('common:process_wrapper'),
 		],
-	tmpl_parameters = ['word_t'],
+	tmpl_parameters = [
+	parameter.Type('word_t'),
+	],
 )

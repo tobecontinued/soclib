@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CommonModule('segment',
-	classname = 'Segment',
+Module('common:segment',
+	classname = 'soclib::common::Segment',
 	header_files = ['../include/segment.h',],
 	implementation_files = ['../src/segment.cpp',],
 )

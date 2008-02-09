@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_icu',
-	classname = 'VciIcu',
+Module('caba:vci_icu',
+	classname = 'soclib::caba::VciIcu',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_icu.h',
 					'../../include/icu.h',
 					],

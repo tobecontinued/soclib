@@ -1,8 +1,8 @@
 
 # -*- python -*-
 
-CommonModule('elf_loader',
-	classname = 'ElfLoader',
+Module('common:elf_loader',
+	classname = 'soclib::common::ElfLoader',
 	header_files = ['../include/elf_loader.h',],
 	implementation_files = ['../src/elf_loader.cpp',],
 )

@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_dma',
-	classname = 'VciDma',
+Module('caba:vci_dma',
+	classname = 'soclib::caba::VciDma',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_dma.h',
 					'../../include/dma.h',
 					],

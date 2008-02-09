@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_timer',
-	classname = 'VciTimer',
+Module('caba:vci_timer',
+	classname = 'soclib::caba::VciTimer',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_timer.h',
 					'../../include/timer.h',
 					],

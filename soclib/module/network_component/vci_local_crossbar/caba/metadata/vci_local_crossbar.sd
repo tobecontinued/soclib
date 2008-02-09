@@ -1,8 +1,11 @@
 
 # -*- python -*-
 
-VciCabaModule('vci_local_crossbar',
-	classname = 'VciLocalCrossbar',
+Module('caba:vci_local_crossbar',
+	classname = 'soclib::caba::VciLocalCrossbar',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param'),
+	],
 	header_files = ['../source/include/vci_local_crossbar.h',],
 	implementation_files = ['../source/src/vci_local_crossbar.cpp',],
 			  ports = [

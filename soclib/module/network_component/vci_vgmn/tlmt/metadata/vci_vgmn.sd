@@ -26,8 +26,11 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-VciTlmtModule('vci_vgmn',
-	classname = 'VciVgmn',
+Module('tlmt:vci_vgmn',
+	classname = 'soclib::tlmt::VciVgmn',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', 'vci_param')
+	],
 	header_files = [
 	'../source/include/vci_vgmn.h',],
 	implementation_files = [
@@ -35,7 +38,7 @@ VciTlmtModule('vci_vgmn',
 		],
 	uses = [
 		Uses('base_module'),
-		Uses('mapping_table', 'common'),
+		Uses('common:mapping_table'),
 		Uses('vci_cmd_arb_rsp_rout'),
 		Uses('vci_rsp_arb_cmd_rout'),
 		],

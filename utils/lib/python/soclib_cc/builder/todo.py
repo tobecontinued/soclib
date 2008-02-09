@@ -70,7 +70,16 @@ class ToDo:
 		for i in xrange(l-1,-1,-1):
 			todo = self.todo[i]
 			if config.progress_bar:
-				sys.stdout.write('\r'+'+'*(l-i)+'-'*i)
+				left = 0
+				pb = '='*(l-i)
+				for pi in range(i-1,-1,-1):
+					if self.todo[pi].mustBeProcessed():
+						left += 1
+						pb += " "
+					else:
+						pb += "+"
+				sys.stdout.write('\r['+''.join(pb)+']')
+				sys.stdout.write(' %d left '%left)
 				sys.stdout.flush()
 			if todo.mustBeProcessed():
 				try:

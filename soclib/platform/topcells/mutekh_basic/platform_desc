@@ -4,7 +4,26 @@
 locs = {}
 execfile('mutekh/.config.py', {}, locs)
 
-vci_params = dict(
+if locs['CONFIG_CPU_PPC'] == 'defined':
+  cpu = 'ppc405'
+elif locs['CONFIG_CPU_MIPS'] == 'defined':
+  if locs['CONFIG_CPU_ENDIAN_BIG'] == 'defined':
+    cpu = 'mipseb'
+  else:
+    cpu = 'mipsel'
+
+todo = Platform('caba', 'top.cc',
+                uses=[
+		Uses('iss_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:'+cpu),
+		Uses('vci_locks'),
+		Uses('vci_ram'),
+		Uses('vci_heterogeneous_rom'),
+		Uses('vci_multi_tty'),
+		Uses('vci_timer'),
+		Uses('vci_icu'),
+		Uses('vci_vgmn'),
+		Uses('vci_xcache'),
+	],
 	cell_size = 4,
 	plen_size = 1,
 	addr_size = 32,
@@ -15,26 +34,4 @@ vci_params = dict(
 	pktid_size = 1,
 	trdid_size = 1,
 	wrplen_size = 1
-	)
-
-if locs['CONFIG_CPU_PPC'] == 'defined':
-  cpu = 'gdb_ppc405'
-elif locs['CONFIG_CPU_MIPS'] == 'defined':
-  if locs['CONFIG_CPU_ENDIAN_BIG'] == 'defined':
-    cpu = 'gdb_mipseb'
-  else:
-    cpu = 'gdb_mipsel'
-
-todo = Platform(
-	Source('top.cc', uses=[
-		Uses(cpu),
-		Uses('vci_locks', **vci_params),
-		Uses('vci_ram', **vci_params),
-		Uses('vci_heterogeneous_rom', **vci_params),
-		Uses('vci_multi_tty', **vci_params),
-		Uses('vci_timer', **vci_params),
-		Uses('vci_icu', **vci_params),
-		Uses('vci_vgmn', **vci_params),
-		Uses('vci_xcache', **vci_params),
-	])
 )

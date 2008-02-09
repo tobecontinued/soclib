@@ -2,7 +2,13 @@
 import os, os.path
 from soclib_cc.builder.action import *
 from soclib_cc.builder.cxx import *
+from soclib_cc.builder.bblock import *
 from soclib_cc.builder.textfile import *
+
+try:
+	set
+except:
+	from sets import Set as set
 
 class UndefinedParam(Exception):
 	def __init__(self, where, comp, param):
@@ -24,100 +30,98 @@ class ComponentInstanciationError(Exception):
 		return '\n%s:error: component %s: %s'%(
 			self.where, self.comp, self.err)
 
-class ComponentBuilder:
-	def __init__(self, mode, cdef, where, **args):
-		self.module = cdef
-		self.where = where
-		self.args = args
-		self.mode = mode
-		self.deps = []
-		from soclib_desc import component
-		for u in self.module['uses']:
-			try:
-				u.do(mode, **args)
-			except component.NoSuchComponent:
-				raise ComponentInstanciationError(where, u.name, 'not found')
-			except ComponentInstanciationError, e:
-				raise ComponentInstanciationError(where, u.name, str(e))
-			self.deps.append(u.builder)
+class TooSimple(Exception):
+	pass
 
+class ComponentBuilder:
+	def __init__(self, spec, where, local = False):
+		self.specialization = spec
+#		print self.specialization
+		self.where = where
+		self.deps = []
+		self.local = self.specialization.descAttr('local')
+		from soclib_desc import component, module
+		self.deepdeps = set()#(self,))
+		try:
+			self.deps = self.specialization.getAllBuilders()
+#			self.deps.remove(self)
+			for b in self.deps:
+				self.deepdeps |= b.withDeps()
+#		except module.NoSuchComponent:
+#			raise ComponentInstanciationError(where, u.name, 'not found')
+		except RuntimeError:
+			raise ComponentInstanciationError(where, spec, 'infinite loop')
+		except ComponentInstanciationError, e:
+			raise ComponentInstanciationError(where, spec, str(e))
+		self.headers = set()
+		for d in self.withDeps():
+			d.getHeaders(self.headers)
+	def getHeaders(self, incls):
+		for i in self.specialization.descAttr('abs_header_files'):
+			incls.add(i)
 	def withDeps(self):
-		r = (self,)
-		for d in self.deps:
-			r += d.withDeps()
-		return r
-	def getIncl(self, incls):
-		for d in self.deps:
-			d.getIncl(incls)
-		for i in self.module['abs_header_files']:
-			p = os.path.dirname(i)
-			if not p in incls:
-				incls.append(p)
+		return self.deepdeps | set([self])
+	def getParamHeaders(self):
+		h = set()
+		pb = self.specialization.getParamBuilders()
+		for builder in pb:
+			for b in builder.withDeps():
+				b.getHeaders(h)
+#		print 'ParamHeaders for', self, pb, h
+		return h
 	def getBuilder(self, filename):
 		bn = self.baseName()
 		bn += '_'+os.path.splitext(os.path.basename(filename))[0]
-		if self.module['abs_implementation_files']:
-			from config import config
+		from config import config
+		source = self.cxxSource(filename)
+		if source:
 			tx = CxxSource(
-					config.reposFile(bn+".cpp"),
-					self.cxxSource(filename))
-			incls = []
-			self.getIncl(incls)
-			return CxxCompile(
-					config.reposFile(bn+"."+config.toolchain.obj_ext),
-					tx.dests[0],
-					defines = self.module['defines'],
-					inc_paths = incls)
+				config.reposFile(bn+".cpp"),
+				source)
+			src = tx.dests[0]
 		else:
-			return Noop()
+			src = filename
+		incls = set(map(os.path.dirname, self.headers))
+		if self.local:
+			out = bn+"."+config.toolchain.obj_ext
+		else:
+			out = config.reposFile(bn+"."+config.toolchain.obj_ext)
+		return CxxCompile(
+			dest = out,
+			src = src,
+			defines = self.specialization.descAttr('defines'),
+			inc_paths = incls)
 	def baseName(self):
-		basename = self.mode+'_%(namespace)s%(classname)s'%self.module 
-		if self.module['tmpl_parameters']:
-			args = self.getParams()
-			params = ",".join(
-					map(lambda x:'%s=%s'%(x,args[x]),
-							self.module['tmpl_parameters']))
-			basename += "_" + params.replace(' ', '_')
-		if self.module['defines']:
-			params = ",".join(
-					map(lambda x:'%s=%s'%x,
-							self.module['defines'].iteritems()))
+		basename = self.specialization.descAttr('classname')
+		tp = self.specialization.getTmplParams()
+		if tp:
+			basename += "_" + tp.replace(' ', '_')
+		params = ",".join(
+			map(lambda x:'%s=%s'%x,
+				self.specialization.descAttr('defines').iteritems()))
+		if params:
 			basename += "_" + params.replace(' ', '_')
 		return basename
 	def results(self):
-		builders = map(self.getBuilder, self.module['abs_implementation_files'])
+		builders = map(self.getBuilder, self.specialization.descAttr('abs_implementation_files'))
 		return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
-	def getParams(self):
-		params = {}
-		for k in self.module['tmpl_parameters']:
-			v = None
-			if k in self.args:
-				v = self.args[k]
-			elif k in self.module['default_parameters']:
-				v = self.module['default_parameters'][k]
-				from config import config
-				if config.verbose:
-					print "Using default param %s=%s for component %s used at %s"%(
-							k, v, self.module['classname'], self.where)
-			if v is None:
-				raise UndefinedParam(self.where, self.module['classname'], k)
-			params[k] = v
-		return params
 	def cxxSource(self, s):
 		source = ""
-		source += '#include "%s"\n'%s
-		for h in self.module['force_header_files']:
+		for h in map(os.path.basename, self.getParamHeaders()):
 			source += '#include "%s"\n'%h
-		inst = 'class %(namespace)s%(classname)s'%self.module
-		if self.module['tmpl_parameters']:
-			if self.module['tmpl_instanciation']:
-				fmt = self.module['tmpl_instanciation']
-			else:
-				fmt = ','.join(
-				map(lambda x:'%%(%s)s'%x,
-						self.module['tmpl_parameters']))
-			params = fmt % self.getParams()
-			inst = inst+'<'+params+' >'
-		if '<' in inst:
+		source += '#include "%s"\n'%s
+		inst = 'class '+self.specialization.getType()
+		if not '<' in inst:
+			return ''
+		else:
 			source += 'template '+inst+';\n'
 		return source
+
+	def __hash__(self):
+		return hash(self.specialization)
+
+	def __str__(self):
+		return '<builder %s>'%self.specialization
+
+	def __repr__(self):
+		return str(self)
