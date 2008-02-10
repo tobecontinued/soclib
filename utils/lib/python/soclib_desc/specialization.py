@@ -3,8 +3,10 @@ import module
 from component import Uses
 
 class Specialization:
-	def __init__(self, mname, **args):
-		self.__cdef = module.Module.getRegistered(mname)
+	def __init__(self, mod, **args):
+		if not isinstance(mod, module.Module):
+			mod = module.Module.getRegistered(mod)
+		self.__cdef =  mod
 		self.__args = args
 	def putArgs(self, d):
 		d.update(self.__args)

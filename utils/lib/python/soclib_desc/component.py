@@ -59,15 +59,15 @@ class Signal(Module):
 		accepts = kwargs['accepts']
 		del kwargs['accepts']
 		Module.__init__(self, name, **kwargs)
-		self.accepts = accepts
+		self.setAttr('accepts', accepts)
 
 	def resolveRefsFor(self):
 		Module.resolveRefsFor(self)
 		naccepts = {}
-		for type, count in self.accepts.iteritems():
+		for type, count in self['accepts'].iteritems():
 			rtype = self.getRegistered(type)
 			naccepts[rtype] = count
-		self.accepts = naccepts
+		self.setAttr('accepts', naccepts)
 
 class PortDecl(Module):
 	tb_delta = -3
