@@ -70,7 +70,7 @@ FbController::FbController(
         throw soclib::exception::RunTimeError("Cant mmap file");
 	}
 	
-	memset(m_surface, 0, m_width*m_height*2);
+	memset(m_surface, 128, m_width*m_height*2);
 
     char *soclib_fb = std::getenv("SOCLIB_FB");
     m_headless_mode = ( soclib_fb && !strcmp(soclib_fb, "HEADLESS") );
