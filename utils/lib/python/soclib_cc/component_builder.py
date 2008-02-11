@@ -109,6 +109,9 @@ class ComponentBuilder:
 		source = ""
 		for h in map(os.path.basename, self.getParamHeaders()):
 			source += '#include "%s"\n'%h
+		from config import config
+		for h in config.toolchain.always_include:
+			source += '#include <%s>\n'%h
 		source += '#include "%s"\n'%s
 		inst = 'class '+self.specialization.getType()
 		if not '<' in inst:

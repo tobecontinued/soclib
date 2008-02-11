@@ -55,6 +55,7 @@ config.toolchain = Config(
 	prefix = '',
 	cflags = ['-Wall', '-Wno-pmf-conversions'],
 	libs = libs,
+	always_include = ['sys/types.h', 'inttypes.h'],	
 	release_cflags = ['-O2'],
 	release_libs = [],
 	prof_cflags = ['-pg'],
