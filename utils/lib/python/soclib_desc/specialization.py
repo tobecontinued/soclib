@@ -50,7 +50,7 @@ class Specialization:
 		return component_builder.ComponentBuilder(self, None)
 
 	def __hash__(self):
-		return hash(self.__cdef)+hash(str(self.__args))
+		return hash(self.__cdef)^hash(str(self.__args))
 
 	def __str__(self):
 		return '<Specialization of %s: %r>'%(

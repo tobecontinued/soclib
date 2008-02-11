@@ -127,5 +127,5 @@ class Uses:
 			)
 	def __hash__(self):
 		return (
-			hash(self.name)+
+			hash(self.name)^
 			hash(`self.args`))
