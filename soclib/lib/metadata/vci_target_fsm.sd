@@ -8,7 +8,6 @@ Module('caba:vci_target_fsm',
 	   tmpl_parameters = [
 	parameter.Module('vci_param', 'vci_param'),
 	parameter.Bool('default_target'),
-	parameter.Int('fifo_depth'),
 	parameter.Bool('support_llsc'),
 	],
 	uses = [

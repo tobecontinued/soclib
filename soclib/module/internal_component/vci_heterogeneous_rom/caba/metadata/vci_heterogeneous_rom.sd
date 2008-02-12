@@ -13,7 +13,7 @@ Module('caba:vci_heterogeneous_rom',
 	],
 	uses = [
 		Uses('base_module'),
-		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2, support_llsc = 'false'),
+		Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 		Uses('common:elf_loader'),
 		Uses('common:mapping_table'),
 		],

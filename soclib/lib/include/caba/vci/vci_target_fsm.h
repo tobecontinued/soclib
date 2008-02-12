@@ -66,7 +66,6 @@ using namespace soclib::common;
 template<
     typename vci_param,
     bool default_target,
-    size_t fifo_depth,
     bool support_llsc = false>
 class VciTargetFsm
 {
@@ -101,7 +100,8 @@ private:
 
     rsp_info_t m_served_word;
 
-    soclib::caba::GenericFifo<rsp_info_t, fifo_depth> m_rsp_info;
+    const size_t m_fifo_depth;
+    soclib::caba::GenericFifo<rsp_info_t> m_rsp_info;
 
     typedef typename vci_param::addr_t addr_t;
     typedef typename vci_param::data_t data_t;
@@ -127,7 +127,8 @@ public:
      */
     VciTargetFsm(
         VciTarget<vci_param> &_vci,
-        const std::list<soclib::common::Segment> &seglist );
+        const std::list<soclib::common::Segment> &seglist,
+        const size_t fifo_depth );
 
     /**
      * \brief Callback setting

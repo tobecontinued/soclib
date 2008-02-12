@@ -33,7 +33,6 @@
 namespace soclib { namespace caba {
 
 namespace Mwmr {
-template<size_t fifo_depth>
 struct fifo_state_s {
 	uint32_t state_address;
 	uint32_t offset_address;
@@ -44,11 +43,11 @@ struct fifo_state_s {
 	bool running;
 	enum SoclibMwmrWay way;
 	uint32_t timer;
-    GenericFifo<uint32_t,fifo_depth> *fifo;
+    GenericFifo<uint32_t> *fifo;
 };
 }
 
-#define tmpl(t) template<typename vci_param, size_t fifo_depth> t VciMwmrController<vci_param, fifo_depth>
+#define tmpl(t) template<typename vci_param> t VciMwmrController<vci_param>
 
 #define check_fifo() if ( ! m_config_fifo ) return false
 
@@ -99,7 +98,7 @@ tmpl(void)::elect()
 		fifo_state_t *st = &m_all_state[i];
 		if ( st->timer == 0 && st->running &&
 			 (( st->way == MWMR_TO_COPROC )
-			  ? (st->fifo->filled_status() + st->burst_size < fifo_depth)
+			  ? (st->fifo->filled_status() + st->burst_size < m_fifo_depth)
 			  : (st->fifo->filled_status() >= st->burst_size)
 				 ) ) {
 			m_current = st;
@@ -562,13 +561,15 @@ tmpl(/**/)::VciMwmrController(
     const IntTab &index,
     const MappingTable &mt,
 	const size_t plaps,
+	const size_t fifo_depth,
 	const size_t n_to_coproc,
 	const size_t n_from_coproc,
 	const size_t n_config,
 	const size_t n_status )
 		   : caba::BaseModule(name),
-		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(index)),
+		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(index), 1),
            m_ident(mt.indexForId(index)),
+           m_fifo_depth(fifo_depth),
            m_plaps(plaps),
            m_n_to_coproc(n_to_coproc),
            m_n_from_coproc(n_from_coproc),
@@ -616,13 +617,13 @@ tmpl(/**/)::VciMwmrController(
         std::ostringstream o;
         o << "fifo_from_coproc[" << i << "]";
         m_from_coproc_state[i].way = MWMR_FROM_COPROC;
-        m_from_coproc_state[i].fifo = new GenericFifo<uint32_t,fifo_depth>(o.str());
+        m_from_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_depth);
     }
     for ( size_t i = 0; i<m_n_to_coproc; ++i ) {
         std::ostringstream o;
         o << "fifo_to_coproc[" << i << "]";
         m_to_coproc_state[i].way = MWMR_TO_COPROC;
-        m_to_coproc_state[i].fifo = new GenericFifo<uint32_t,fifo_depth>(o.str());
+        m_to_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_depth);
     }
     reset();
 }

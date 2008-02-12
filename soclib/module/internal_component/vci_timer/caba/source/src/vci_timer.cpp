@@ -141,7 +141,7 @@ tmpl(/**/)::VciTimer(
     const MappingTable &mt,
     size_t nirq)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index), 1),
       m_ntimer(nirq),
       p_clk("clk"),
       p_resetn("resetn"),

@@ -49,6 +49,7 @@ new caba mwmr_controller "mwmr0"
   param n_config = 0
   param n_status = 0
   param plaps = 128
+  param fifo_depth = 32
   segment "mwmr0" 0xd0200000 0x00000100 uncached
   conn vci_initiator to vgmn0.from_initiator[0]
   conn vci_target to vgmn0.to_target[0]

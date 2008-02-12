@@ -13,7 +13,7 @@ Module('caba:vci_framebuffer',
 	],
 	   uses = [
 	Uses('base_module'),
-	Uses('vci_target_fsm', default_target = 'true', fifo_depth = 2, support_llsc = 'false'),
+	Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 	Uses('common:fb_controller'),
 	],
 )

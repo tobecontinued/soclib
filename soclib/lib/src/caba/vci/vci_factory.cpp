@@ -213,11 +213,12 @@ BaseModule& mwmr_controller(
     ::soclib::common::inst::InstArg &env )
 {
 	return
-		*new VciMwmrController<vci_param, 32>(
+		*new VciMwmrController<vci_param>(
         name.c_str(),
         args.get<soclib::common::IntTab>("_vci_id"),
         env.get<MappingTable>("mapping_table"),
         args.get<int>("plaps"),
+        args.get<int>("fifo_size"),
         args.get<int>("n_to_coproc"),
         args.get<int>("n_from_coproc"),
         args.get<int>("n_config"),

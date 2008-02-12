@@ -45,7 +45,7 @@ class VciFrameBuffer
 	: public caba::BaseModule
 {
 private:
-    caba::VciTargetFsm<vci_param, true, 2> m_vci_fsm;
+    caba::VciTargetFsm<vci_param, true> m_vci_fsm;
 
     bool on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be);
     bool on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data);

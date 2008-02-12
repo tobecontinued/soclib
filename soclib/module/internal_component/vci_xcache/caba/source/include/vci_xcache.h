@@ -165,7 +165,7 @@ private:
     sc_signal<tag_t>      *r_dcache_tag;
     sc_signal<d_req_t>      r_dcache_save;
 
-    soclib::caba::GenericFifo<d_req_t,8>  m_dreq_fifo;
+    soclib::caba::GenericFifo<d_req_t>  m_dreq_fifo;
 
     sc_signal<icache_fsm_state_e>      r_icache_fsm;
     sc_signal<data_t>      **r_icache_data;

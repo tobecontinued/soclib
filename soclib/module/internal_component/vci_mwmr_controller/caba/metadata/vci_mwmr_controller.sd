@@ -9,7 +9,6 @@ Module('caba:vci_mwmr_controller',
 	implementation_files = ['../source/src/vci_mwmr_controller.cpp',],
 	   tmpl_parameters = [
 	parameter.Module('vci_param', 'vci_param'),
-	parameter.Int('fifo_depth'),
 	],
 			  ports = [
 	Port('vci_target', 'p_vci_target'),
@@ -19,6 +18,6 @@ Module('caba:vci_mwmr_controller',
 	],
 	uses = [
 		Uses('base_module'),
-		Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
+		Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 		],
 )

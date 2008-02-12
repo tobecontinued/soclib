@@ -42,16 +42,15 @@ namespace soclib { namespace caba {
 using namespace sc_core;
 
 namespace Mwmr {
-template<size_t fifo_depth>
 struct fifo_state_s;
 }
 
-    template<typename vci_param, size_t fifo_depth>
+    template<typename vci_param>
 class VciMwmrController
 	: public caba::BaseModule
 {
 private:
-    soclib::caba::VciTargetFsm<vci_param, true, 1> m_vci_target_fsm;
+    soclib::caba::VciTargetFsm<vci_param, true> m_vci_target_fsm;
     const uint32_t m_ident;
 
     bool on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be);
@@ -61,6 +60,7 @@ private:
     void genMoore();
     void elect();
 
+    const size_t m_fifo_depth;
     const size_t m_plaps;
     const size_t m_n_to_coproc;
     const size_t m_n_from_coproc;
@@ -68,7 +68,7 @@ private:
     const size_t m_n_config;
     const size_t m_n_status;
 
-	typedef struct Mwmr::fifo_state_s<fifo_depth> fifo_state_t;
+	typedef struct Mwmr::fifo_state_s fifo_state_t;
 	fifo_state_t *m_all_state;
 	fifo_state_t *m_to_coproc_state;
 	fifo_state_t *m_from_coproc_state;
@@ -110,6 +110,7 @@ public:
 		const IntTab &index,
 		const MappingTable &mt,
 		const size_t plaps,
+        const size_t fifo_depth,
 		const size_t n_to_coproc,
 		const size_t n_from_coproc,
 		const size_t n_config,

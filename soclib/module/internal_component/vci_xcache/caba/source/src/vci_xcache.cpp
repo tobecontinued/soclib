@@ -116,7 +116,7 @@ tmpl(/**/)::VciXCache(
       r_dcache_fsm("r_dcache_fsm"),
       r_dcache_save("r_dcache_save"),
 
-      m_dreq_fifo("m_dreq_fifo"),
+      m_dreq_fifo("m_dreq_fifo", 8),
 
       r_icache_fsm("r_icache_fsm"),
       r_icache_miss_addr("r_icache_miss_addr"),

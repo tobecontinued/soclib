@@ -44,7 +44,7 @@ tmpl(/**/)::VciMultiRam(
     common::ElfLoader &loader
     )
 	: caba::BaseModule(insname),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index), 2),
       m_loader(new common::ElfLoader(loader)),
       p_resetn("resetn"),
       p_clk("clk"),
@@ -78,7 +78,7 @@ tmpl(/**/)::VciMultiRam(
 	const MappingTable &mt
     )
 	: caba::BaseModule(insname),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index), 2),
       m_loader(NULL),
       p_resetn("resetn"),
       p_clk("clk"),

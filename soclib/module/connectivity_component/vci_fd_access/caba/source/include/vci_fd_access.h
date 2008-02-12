@@ -44,7 +44,7 @@ class VciFdAccess
 	: public caba::BaseModule
 {
 private:
-    soclib::caba::VciTargetFsm<vci_param, true, 1> m_vci_target_fsm;
+    soclib::caba::VciTargetFsm<vci_param, true> m_vci_target_fsm;
     soclib::caba::VciInitiatorFsm<vci_param> m_vci_init_fsm;
     typedef typename soclib::caba::VciInitiatorReq<vci_param> req_t;
 

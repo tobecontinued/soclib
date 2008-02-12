@@ -16,7 +16,7 @@ Module('caba:vci_fd_access',
 	],
 	   uses = [
 	Uses('base_module'),
-	Uses('vci_target_fsm', default_target = 'true', fifo_depth = 1, support_llsc = 'false'),
+	Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 	Uses('vci_initiator_simple_read_req'),
 	Uses('vci_initiator_simple_write_req'),
 	Uses('vci_initiator_fsm'),

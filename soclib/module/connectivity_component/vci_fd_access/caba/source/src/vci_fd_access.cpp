@@ -266,7 +266,7 @@ tmpl(/**/)::VciFdAccess(
     const IntTab &index,
     const MappingTable &mt)
 	: caba::BaseModule(name),
-	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(index)),
+	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(index), 1),
 	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(index)),
       p_clk("clk"),
       p_resetn("resetn"),

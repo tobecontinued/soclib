@@ -87,7 +87,7 @@ tmpl(/**/)::VciSimhelper(
     const IntTab &index,
     const MappingTable &mt)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index), 1),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci")

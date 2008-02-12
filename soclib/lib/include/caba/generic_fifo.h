@@ -35,14 +35,15 @@ namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-template<typename data_t, int depth>
+template<typename data_t>
 class GenericFifo
 {
 public:
-    data_t m_data[depth];
+    data_t *m_data;
     sc_signal<int>    r_ptr;
     sc_signal<int>    r_ptw;
     sc_signal<int>    r_fill_state;
+    int m_depth;
 
     void init()
     {
@@ -58,9 +59,9 @@ public:
 
     void simple_put(const data_t &din)
     {
-        if (r_fill_state != depth) { 
+        if (r_fill_state != m_depth) { 
             r_fill_state = r_fill_state + 1;
-            r_ptw = (r_ptw + 1) % depth;
+            r_ptw = (r_ptw + 1) % m_depth;
             m_data[r_ptw] = din; 
         }
     }
@@ -69,22 +70,22 @@ public:
     {
         if (r_fill_state != 0) {
             r_fill_state = r_fill_state - 1;
-            r_ptr = (r_ptr + 1) % depth;
+            r_ptr = (r_ptr + 1) % m_depth;
         }
     }
 
     void put_and_get(const data_t &din)
     {
-        if (r_fill_state == depth) {
+        if (r_fill_state == m_depth) {
             r_fill_state = r_fill_state - 1;
-            r_ptr = (r_ptr + 1) % depth;
+            r_ptr = (r_ptr + 1) % m_depth;
         } else if (r_fill_state == 0) {
             r_fill_state = r_fill_state + 1;
-            r_ptw = (r_ptw + 1) % depth;
+            r_ptw = (r_ptw + 1) % m_depth;
             m_data[r_ptw] = din; 
         } else {
-            r_ptr = (r_ptr + 1) % depth;
-            r_ptw = (r_ptw + 1) % depth;
+            r_ptr = (r_ptr + 1) % m_depth;
+            r_ptw = (r_ptw + 1) % m_depth;
             m_data[r_ptw] = din; 
         }
     }
@@ -96,7 +97,7 @@ public:
 
     inline bool wok() const
     {
-        return (r_fill_state != depth);
+        return (r_fill_state != m_depth);
     }
 
     inline const data_t &read() const
@@ -104,11 +105,18 @@ public:
         return m_data[r_ptr];
     }
 
-    GenericFifo(const std::string &name)
-        : r_ptr((name+"_r_ptr").c_str()),
+    GenericFifo(const std::string &name, size_t depth)
+        : m_data(new data_t[depth]),
+          r_ptr((name+"_r_ptr").c_str()),
           r_ptw((name+"_r_ptw").c_str()),
-          r_fill_state((name+"_r_fill_state").c_str())
+          r_fill_state((name+"_r_fill_state").c_str()),
+          m_depth(depth)
     {
+    }
+
+    ~GenericFifo()
+    {
+        delete [] m_data;
     }
 };
 

@@ -175,7 +175,7 @@ tmpl(/**/)::VciDma(
     const MappingTable &mt,
 	const size_t burst_size )
 	: caba::BaseModule(name),
-	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(index)),
+	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(index), 1),
 	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(index)),
 	  m_len(0),
 	  m_data(burst_size, (uint8_t)0),

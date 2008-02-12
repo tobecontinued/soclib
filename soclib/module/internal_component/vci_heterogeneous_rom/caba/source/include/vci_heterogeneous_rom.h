@@ -47,7 +47,7 @@ template<typename vci_param>
 class VciHeterogeneousRom
 	: public soclib::caba::BaseModule
 {
-    soclib::caba::VciTargetFsm<vci_param,true,2,false> m_vci_fsm;
+    soclib::caba::VciTargetFsm<vci_param,true,false> m_vci_fsm;
 
     typedef uint32_t rom_t;
 

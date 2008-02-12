@@ -33,16 +33,18 @@
 namespace soclib {
 namespace caba {
 
-#define tmpl(x) template<typename vci_param,bool default_target,size_t fifo_depth,bool support_llsc> \
-    x VciTargetFsm<vci_param,default_target,fifo_depth,support_llsc>
+#define tmpl(x) template<typename vci_param,bool default_target,bool support_llsc> \
+    x VciTargetFsm<vci_param,default_target,support_llsc>
 
 tmpl(/**/)::VciTargetFsm(
     soclib::caba::VciTarget<vci_param> &vci,
-    const std::list<soclib::common::Segment> &seglist )
+    const std::list<soclib::common::Segment> &seglist,
+    const size_t fifo_depth )
     : p_vci(vci),
       m_atomic(support_llsc ? (1<<vci_param::S) : 0),
       m_segments(seglist.begin(), seglist.end()),
-      m_rsp_info("m_rsp_info")
+      m_fifo_depth(fifo_depth),
+      m_rsp_info("m_rsp_info", fifo_depth)
 {
 }
 

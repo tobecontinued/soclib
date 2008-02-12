@@ -104,7 +104,7 @@ tmpl(/**/)::VciFrameBuffer(
     unsigned long width,
     unsigned long height)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index), 2),
       m_fb_controller((const char *)name, width, height),
       p_clk("clk"),
       p_resetn("resetn"),
