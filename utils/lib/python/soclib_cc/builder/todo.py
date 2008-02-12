@@ -90,6 +90,10 @@ class ToDo:
 					print "soclib-cc: *** Action failed with return value `%s'. Stop."%e.rval
 					if config.verbose:
 						print "soclib-cc: Failed action: `%s'"%e.action
+					if self.actions:
+						print "soclib-cc: Waiting for unfinished jobs"
+						while self.actions:
+							self.wait()
 					sys.exit(1)
 			elif config.verbose:
 				print 'No need to redo', todo

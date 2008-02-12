@@ -46,7 +46,11 @@ class MfRule:
 	def __init__(self, text):
 		lines = filter(lambda x:not x.startswith('#'),
 			bsfilter("", text.split('\n')))
-		dest, prereq = lines[0].split(":",1)
+		try:
+			dest, prereq = lines[0].split(":",1)
+		except ValueError:
+			print lines[0]
+			raise
 		self.rules = lines[1:]
 		self.dest = bsfilter(" ", dest.strip().split())
 		self.prerequisites = bsfilter(" ", filter(None, map(

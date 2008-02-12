@@ -121,6 +121,8 @@ class Action:
 		return self.__depends
 	def mustBeProcessed(self):
 		deps = self.getDepends()
+		if not check_exist(deps):
+			return True
 		newest_src = get_newest(deps, ignore_absent = False)
 		oldest_dest = get_oldest(self.dests, ignore_absent = True)
 		return (newest_src > oldest_dest) or not check_exist(self.dests)

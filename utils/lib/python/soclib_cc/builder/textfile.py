@@ -36,12 +36,8 @@ class Textfile(Action):
 	def processDeps(self):
 		return [self.pargen.dests[0]]
 	def process(self):
-		if self.dests[0].exists():
-			fd = open(str(self.dests[0]), "r")
-			buf = fd.read()
-			fd.close()
-			if buf == self.options['contents']:
-				return
+		if not self.mustBeProcessed():
+			return
 		self.runningCommand('gen', self.dests, '')
 		self.pargen.process()
 		fd = open(str(self.dests[0]), "w")
@@ -49,6 +45,13 @@ class Textfile(Action):
 		fd.close()
 		self.dests[0].touch()
 		Action.process(self)
+	def mustBeProcessed(self):
+		if not self.dests[0].exists():
+			return True
+		fd = open(str(self.dests[0]), "r")
+		buf = fd.read()
+		fd.close()
+		return not buf == self.options['contents']
 
 class CxxSource(Textfile):
 	pass

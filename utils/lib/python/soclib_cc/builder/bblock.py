@@ -39,31 +39,32 @@ class BBlock:
 		assert( filename not in _global_bblock_registry )
 		_global_bblock_registry[filename] = self
 		self.generator = generator
+		self.rehash()
+	def touch(self):
+		self.rehash()
+	def rehash(self):
 		if self.filename is '':
 			self.last_mod = os.stat('.').st_mtime
 		else:
-			self.touch()
-	def touch(self):
-		if os.path.exists(self.filename):
-			self.last_mod = os.stat(self.filename).st_mtime
-		else:
-			self.last_mod = -1
+			if os.path.exists(self.filename):
+				self.last_mod = os.stat(self.filename).st_mtime
+			else:
+				self.last_mod = -1
+		self.__exists = self.filename is '' or os.path.exists(self.filename)
 	def delete(self):
-		self.last_mod = -1
 		os.unlink(self.filename)
+		self.rehash()
 	def generate(self):
 		self.generator.process()
 	def __str__(self):
 		return self.filename
 	def exists(self):
-		return self.filename is '' or \
-				   os.path.exists(self.filename)
+		return self.__exists
 	def clean(self):
 		if os.path.isfile(self.filename):
 			if not config.quiet:
 				print 'Deleting', self.filename
-			os.unlink(self.filename)
-			self.last_mod = -1
+			self.delete()
 	def __hash__(self):
 		return hash(self.filename)
 
