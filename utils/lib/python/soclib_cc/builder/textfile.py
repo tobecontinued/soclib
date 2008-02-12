@@ -29,13 +29,14 @@ from fileops import CreateDir
 from action import Action
 
 class Textfile(Action):
+	priority = 50
 	def __init__(self, output, contents):
 		Action.__init__(self, [output], [], contents = contents)
 		self.pargen = CreateDir(os.path.dirname(str(self.dests[0])))
 	def processDeps(self):
 		return [self.pargen.dests[0]]
 	def process(self):
-		if self.dests[0].exists:
+		if self.dests[0].exists():
 			fd = open(str(self.dests[0]), "r")
 			buf = fd.read()
 			fd.close()
@@ -47,6 +48,7 @@ class Textfile(Action):
 		fd.write(self.options['contents'])
 		fd.close()
 		self.dests[0].touch()
+		Action.process(self)
 
 class CxxSource(Textfile):
 	pass

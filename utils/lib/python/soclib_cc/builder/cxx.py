@@ -32,6 +32,7 @@ import mfparser
 from soclib_cc.config import config, Joined
 
 class CCompile(action.Action):
+	priority = 100
 	tool = 'CC'
 	def __init__(self, dest, src, defines = {}, inc_paths = []):
 		action.Action.__init__(self, [dest], [src], defines = defines, inc_paths = inc_paths)
@@ -45,16 +46,7 @@ class CCompile(action.Action):
 		cmd = Joined(args)
 		if disp_normal or config.verbose:
 			self.runningCommand(what, self.dests, cmd)
-		handle = popen2.Popen4(cmd)
-		handle.tochild.close()
-
-		r = handle.fromchild.read()
-		handle.fromchild.close()
-		rval = handle.wait()
-		if rval:
-			print r
-			raise action.ActionFailed(rval, cmd)
-		return r
+		self.launch(cmd)
 	def command_line(self):
 		args = config.getTool(self.tool)
 		args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
@@ -62,11 +54,15 @@ class CCompile(action.Action):
 		args += config.getCflags()
 		return args
 	def _processDeps(self, filename):
-		if not filename.exists:
+		if not filename.exists():
 			filename.generator.process()
 		args = self.command_line()+['-MM', '-MT', 'foo.o']
 		args.append(filename)
-		blob = self.call('deps', args, False)
+		args = self.argSort(args)
+		cmd = Joined(args)
+		stdout, stdin = popen2.popen2(cmd)
+		stdin.close()
+		blob = stdout.read()
 		from bblock import bblockize
 		return bblockize(mfparser.MfRule(blob).prerequisites)
 	def processDeps(self):
@@ -81,6 +77,7 @@ class CCompile(action.Action):
 			print
 			print r
 		self.dests[0].touch()
+		action.Action.process(self)
 	def results(self):
 		return self.dests
 
@@ -88,6 +85,7 @@ class CxxCompile(CCompile):
 	tool = 'CXX'
 
 class CLink(CCompile):
+	priority = 200
 	tool = 'CC_LINKER'
 	def __init__(self, dest, objs):
 		action.Action.__init__(self, [dest], objs)
@@ -102,6 +100,7 @@ class CLink(CCompile):
 		if r:
 			print
 			print r
+		action.Action.process(self)
 	def mustBeProcessed(self):
 		return True
 

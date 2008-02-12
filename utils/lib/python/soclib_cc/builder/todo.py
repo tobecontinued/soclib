@@ -25,62 +25,64 @@
 # Maintainers: nipo
 
 import sys
+import os, os.path
 from soclib_cc.config import config
 from bblock import bblockize
-from action import Noop, ActionFailed
+from action import Noop, ActionFailed, Action
+
+def cr(x):
+	return not isinstance(x, Noop)
 
 class ToDo:
 	def __init__(self, *dests):
 		self.dests = []
 		self.add(*dests)
 		self.prepared = False
+		d = config.reposFile('')
+		if not os.path.isdir(d):
+			os.makedirs(d)
+		self.actions = 0
+		self.max_actions = config.toolchain.max_processes
 	def add(self, *dests):
 		self.dests += bblockize(dests)
-	def _prepare_one(self, d):
-		d = d.generator
-		if isinstance(d, Noop) or d in self.todo:
-			return
-		insind = 0
-		for prereq in d.getDepends():
-			try:
-				ni = self.todo.index(prereq)
-				insind = min((ni, insind))
-			except ValueError:
-				pass
-			self._prepare_one(prereq)
-		self.todo.insert(insind, d)
+	def _getall(self, dests):
+		bbs = set(dests)
+		todo = set()
+		while bbs:
+			bb = bbs.pop()
+			gen = bb.generator
+			bbs |= set(gen.getDepends())
+			todo.add(gen)
+		todo = filter(cr, todo)
+		todo.sort()
+		return todo
 	def prepare(self):
 		if self.prepared:
 			return
 		self.todo = []
-		for d in self.dests:
-			self._prepare_one(d)
-		if config.debug:
-			print "ToDo:", self.todo
+		self.todo = self._getall(self.dests)
 		self.prepared = True
 	def clean(self):
 		self.prepare()
 		for i in xrange(len(self.todo)-1,-1,-1):
 			todo = self.todo[i]
 			todo.clean()
+	def wait(self):
+		Action.wait()
+		self.actions -= 1
+		self.progressBar()
 	def process(self):
 		import sys
 		self.prepare()
 		l = len(self.todo)
-		for i in xrange(l-1,-1,-1):
-			todo = self.todo[i]
-			if config.progress_bar:
-				left = 0
-				pb = '='*(l-i)
-				for pi in range(i-1,-1,-1):
-					if self.todo[pi].mustBeProcessed():
-						left += 1
-						pb += " "
-					else:
-						pb += "+"
-				sys.stdout.write('\r['+''.join(pb)+']')
-				sys.stdout.write(' %d left '%left)
-				sys.stdout.flush()
+		for pi in self.todo:
+			pi.todoRehash()
+		left = self.todo[:]
+		left.reverse()
+		while left:
+			todo = left.pop()
+			while not todo.canBeProcessed():
+				self.wait()
 			if todo.mustBeProcessed():
 				try:
 					todo.process()
@@ -91,3 +93,21 @@ class ToDo:
 					sys.exit(1)
 			elif config.verbose:
 				print 'No need to redo', todo
+			self.progressBar()
+			if todo.isBackground():
+				self.actions += 1
+				if self.actions >= self.max_actions:
+					self.wait()
+			todo.todoRehash(True)
+		while self.actions:
+			self.wait()
+		self.progressBar()
+	def progressBar(self):
+		if not config.progress_bar:
+			return
+		pb = ""
+		for pi in self.todo:
+			pb += pi.todoInfo()
+		sys.stdout.write('\r['+pb+']')
+		sys.stdout.write(' %d left '%(pb.count(' ')))
+		sys.stdout.flush()

@@ -48,14 +48,19 @@ def dump(name, deps):
 
 class DepUnpickler(pickle.Unpickler):
 	def __init__(self, filename):
-		fd = open(filename, 'r')
+		try:
+			fd = open(filename, 'r')
+#			print 'loading back depends %s'%filename
+		except IOError:
+#			print '%s not loadable'%filename
+			raise MustRehash()
 		pickle.Unpickler.__init__(self, fd)
 		self.last_mod = os.stat(filename).st_mtime
 	def persistent_load(self, ident):
 		mode,ide = ident.split(':',1)
 		if mode == 'BBlock':
 			r = bblock.bblockize1(ide)
-			if r.exists and r.last_mod > self.last_mod:
+			if r.exists() and r.last_mod > self.last_mod:
 				raise MustRehash()
 			return r
 

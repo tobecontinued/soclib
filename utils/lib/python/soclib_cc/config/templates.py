@@ -62,6 +62,7 @@ config.toolchain = Config(
 	prof_libs = ['-pg'],
 	debug_cflags = ['-ggdb'],
 	debug_libs = [],
+	max_processes = 1,
 	)
 
 

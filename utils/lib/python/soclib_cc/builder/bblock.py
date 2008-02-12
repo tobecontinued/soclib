@@ -40,32 +40,32 @@ class BBlock:
 		_global_bblock_registry[filename] = self
 		self.generator = generator
 		if self.filename is '':
-			self.exists = True
 			self.last_mod = os.stat('.').st_mtime
 		else:
-			self.exists = os.path.exists(self.filename)
-			if self.exists:
-				self.last_mod = os.stat(filename).st_mtime
-			else:
-				self.last_mod = -1
+			self.touch()
 	def touch(self):
-		self.exists = True
-		self.last_mod = time.time()
+		if os.path.exists(self.filename):
+			self.last_mod = os.stat(self.filename).st_mtime
+		else:
+			self.last_mod = -1
 	def delete(self):
 		self.last_mod = -1
-		self.exists = False
 		os.unlink(self.filename)
 	def generate(self):
 		self.generator.process()
 	def __str__(self):
 		return self.filename
+	def exists(self):
+		return self.filename is '' or \
+				   os.path.exists(self.filename)
 	def clean(self):
 		if os.path.isfile(self.filename):
 			if not config.quiet:
 				print 'Deleting', self.filename
 			os.unlink(self.filename)
 			self.last_mod = -1
-			self.exists = False
+	def __hash__(self):
+		return hash(self.filename)
 
 def bblockize1(f, gen = None):
 	if config.debug:

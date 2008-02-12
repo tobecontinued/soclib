@@ -32,8 +32,10 @@ class CreateDir(Action):
 	def __init__(self, directory):
 		Action.__init__(self, [directory], [])
 	def process(self):
-		if self.dests[0].exists:
+		if self.dests[0].exists():
 			return
 		self.runningCommand('gen', self.dests, 'mkdir')
 		os.makedirs(str(self.dests[0]))
 		self.dests[0].touch()
+		Action.process(self)
+

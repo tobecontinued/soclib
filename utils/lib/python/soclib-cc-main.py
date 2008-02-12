@@ -87,6 +87,10 @@ def main():
 	parser.add_option('-t', '--type', dest = 'type',
 					  action='store', type = 'string',
 					  help="Use a different configuration: *default")
+	parser.add_option('-j', '--jobs', dest = 'jobs',
+					  action='store', type = 'int',
+					  default = 0,
+					  help="Allow n parallel jobs")
 	opts, args = parser.parse_args()
 	if opts.type:
 		change_config(opts.type)
@@ -99,6 +103,8 @@ def main():
 	config.verbose = opts.verbose
 	config.debug = opts.debug
 	config.quiet = opts.quiet
+	if opts.jobs:
+		config.toolchain.max_processes = opts.jobs
 	if opts.progress_bar:
 		config.progress_bar = True
 		config.quiet = True
