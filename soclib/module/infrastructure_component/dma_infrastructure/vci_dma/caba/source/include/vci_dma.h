@@ -59,6 +59,7 @@ private:
 	uint32_t m_dst;
 	uint32_t m_len;
 	uint32_t m_offset;
+    bool m_must_finish;
 	bool m_irq_enabled;
 	bool r_irq;
 

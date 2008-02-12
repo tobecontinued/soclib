@@ -33,7 +33,8 @@ enum SoclibDmaRegisters {
     DMA_SRC,
     DMA_DST,
     DMA_LEN,
-    DMA_IRQ_ENABLED,
+    DMA_RESET,
+    DMA_IRQ_DISABLED,
 };
 
 #endif /* DMA_REGS_H */

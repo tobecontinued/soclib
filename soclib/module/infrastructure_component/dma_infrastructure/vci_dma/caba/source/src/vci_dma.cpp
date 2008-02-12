@@ -46,9 +46,13 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
     case DMA_LEN:
 		m_len = data;
 		return true;
-    case DMA_IRQ_ENABLED:
+    case DMA_RESET:
+        m_must_finish = true;
+        m_irq_enabled = false;
 		r_irq = false;
-		m_irq_enabled = data;
+        return true;
+    case DMA_IRQ_DISABLED:
+		m_irq_enabled = !data;
 		return true;
 	};
 	return false;
@@ -59,6 +63,7 @@ tmpl(void)::ended()
 	if ( m_irq_enabled )
 		r_irq = true;
 	m_len = 0;
+    m_must_finish = 0;
 	m_handling = false;
 }
 
@@ -67,16 +72,24 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
     int cell = (int)addr / vci_param::B;
 
 	switch ((enum SoclibDmaRegisters)cell) {
-	default:
-		data = m_len != 0;
+	case DMA_SRC:
+		data = m_src;
 		return true;
+    case DMA_DST:
+		data = m_dst;
+		return true;
+	case DMA_LEN:
+		data = m_len;
+		return true;
+    default:
+        return false;
 	}
 	return false;
 }
 
 tmpl(void)::read_done( req_t *req )
 {
-	if ( !req->failed() ) {
+	if ( !req->failed() && !m_must_finish ) {
 		ssize_t remaining = (ssize_t)m_len-(size_t)m_offset;
 
 		ssize_t burst = m_data.size();
@@ -96,7 +109,7 @@ tmpl(void)::read_done( req_t *req )
 tmpl(void)::write_finish( req_t *req )
 {
 	m_offset += m_data.size();
-	if ( !req->failed() )
+	if ( !req->failed() && !m_must_finish )
 		next_req();
 	else {
 		ended();
@@ -133,6 +146,7 @@ tmpl(void)::transition()
 		m_irq_enabled = false;
 		m_len = 0;
 		m_handling = false;
+        m_must_finish = false;
 		return;
 	}
 
