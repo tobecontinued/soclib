@@ -35,6 +35,7 @@
 #ifndef _SOCLIB_GDBSERVER_ISS_H_
 #define _SOCLIB_GDBSERVER_ISS_H_
 
+#include <stdint.h>
 #include <vector>
 #include <list>
 #include <map>

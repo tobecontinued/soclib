@@ -30,6 +30,7 @@
 
 #include <systemc>
 #include <sstream>
+#include <inttypes.h>
 #include "static_assert.h"
 
 namespace soclib { namespace caba {

@@ -26,6 +26,7 @@
  * Maintainers: nipo
  */
 
+#include <stdint.h>
 #include "vci_initiator_fsm.h"
 #include "register.h"
 #include "base_module.h"

@@ -27,6 +27,7 @@
  * $Id$
  */
 
+#include <stdint.h>
 #include "base_module.h"
 #include "ppc405.h"
 #include "soclib_endian.h"

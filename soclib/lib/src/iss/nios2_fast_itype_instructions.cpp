@@ -48,6 +48,7 @@
  * 
  */
 
+#include <stdint.h>
 #include "base_module.h"
 #include "nios2_fast.h"
 

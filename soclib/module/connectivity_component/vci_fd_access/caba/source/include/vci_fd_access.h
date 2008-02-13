@@ -28,6 +28,7 @@
 #ifndef SOCLIB_VCI_FD_ACCESS_H
 #define SOCLIB_VCI_FD_ACCESS_H
 
+#include <stdint.h>
 #include <systemc>
 #include "vci_target_fsm.h"
 #include "vci_initiator_fsm.h"

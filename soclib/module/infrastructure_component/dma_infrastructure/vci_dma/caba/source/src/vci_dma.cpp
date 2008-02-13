@@ -24,6 +24,7 @@
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  */
 
+#include <stdint.h>
 #include "register.h"
 #include "../include/vci_dma.h"
 #include "dma.h"

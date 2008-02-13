@@ -28,6 +28,7 @@
 #ifndef INITIATOR_FSM_HANDLER_H
 #define INITIATOR_FSM_HANDLER_H
 
+#include <stdint.h>
 #include <systemc>
 #include <vector>
 #include <list>
