@@ -1,0 +1,20 @@
+# -*- python -*-
+
+Signal('caba:dspin',
+	accepts = {'caba:dspin_output':1,
+		   'caba:dspin_input':1},
+	classname = 'soclib::caba::DspinSignals',
+	header_files = ['../source/include/dspin_interface.h'],
+      )
+
+PortDecl('caba:dspin_output',
+	classname = 'soclib::caba::DspinOutput',
+	signal = 'caba:dspin',
+	header_files = ['../source/include/dspin_interface.h'],
+	)
+
+PortDecl('caba:dspin_input',
+	classname = 'soclib::caba::DspinInput',
+	signal = 'caba:dspin',
+	header_files = ['../source/include/dspin_interface.h'],
+	)

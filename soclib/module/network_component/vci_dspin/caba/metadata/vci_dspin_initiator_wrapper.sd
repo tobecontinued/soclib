@@ -1,0 +1,24 @@
+# -*- python -*-
+
+Module('caba:vci_dspin_initiator_wrapper',
+	classname = 'soclib::caba::VciDspinInitiatorWrapper',
+	tmpl_parameters = [
+	    parameter.Module('vci_param', 'vci_param'),
+	    parameter.Int('dspin_data_size'),
+	    parameter.Int('dspin_fifo_size'),
+	],
+	header_files = ['../source/include/vci_dspin_initiator_wrapper.h',],
+	implementation_files = ['../source/src/vci_dspin_initiator_wrapper.cpp',],
+	ports = [
+	    Port('vci_target', 'p_vci'),
+	    Port('dspin_output', 'p_dspin_out'),
+	    Port('dspin_input', 'p_dspin_in'),
+	],
+	instance_parameters = [
+	    parameter.MappingTable('mt'),
+	],
+	uses = [
+	    Uses('base_module'),
+	    Uses('common:mapping_table'),
+	],
+)

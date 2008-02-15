@@ -1,0 +1,30 @@
+# -*- python -*-
+
+Module('caba:dspin_router',
+	classname = 'soclib::caba::DspinRouter',
+	tmpl_parameters = [
+	    parameter.Module('vci_param', 'vci_param'),
+	    parameter.Int('dspin_data_size'),
+	    parameter.Int('dspin_fifo_size'),
+	],
+	header_files = ['../source/include/dspin_router.h',],
+	implementation_files = ['../source/src/dspin_router.cpp',],
+	ports = [	    
+	    Port('dspin_output', 'p_dspin_out[0]'),
+	    Port('dspin_output', 'p_dspin_out[1]'),
+	    Port('dspin_output', 'p_dspin_out[2]'),
+	    Port('dspin_output', 'p_dspin_out[3]'),
+	    Port('dspin_output', 'p_dspin_out[4]'),
+	    Port('dspin_input', 'p_dspin_in[0]'),
+	    Port('dspin_input', 'p_dspin_in[1]'),
+	    Port('dspin_input', 'p_dspin_in[2]'),
+	    Port('dspin_input', 'p_dspin_in[3]'),
+	    Port('dspin_input', 'p_dspin_in[4]'),
+	],
+	instance_parameters = [
+	    parameter.Int('indent'),
+	],
+	uses = [
+	    Uses('base_module'),
+	],
+)
