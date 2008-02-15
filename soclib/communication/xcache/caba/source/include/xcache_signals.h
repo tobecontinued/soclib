@@ -78,15 +78,8 @@ public:
 class ICacheSignals
 {
 public:
-	enum req_type_e {
-		RI = 0x0,       // Read
-		RZ = 0x1,       // Line Invalidate
-		RU = 0x2,       // Read Uncached
-	};
-
 	sc_signal<bool>             req;  // valid read request
 	sc_signal<sc_dt::sc_uint<32> >     adr;  // instruction address
-	sc_signal<sc_dt::sc_uint<2> >      type; // request type
 	sc_signal<bool>             frz;  // instruction not valid
 	sc_signal<sc_dt::sc_uint<32> >     ins;  // instruction
 	sc_signal<bool>             berr; // bus or memory error
@@ -94,7 +87,6 @@ public:
 	ICacheSignals (std::string name_ = (std::string) sc_gen_unique_name ("icache"))
 		: req    (((std::string) (name_ + "_req" )).c_str()),
 		  adr    (((std::string) (name_ + "_adr" )).c_str()),
-		  type   (((std::string) (name_ + "_type")).c_str()),
 		  frz    (((std::string) (name_ + "_frz" )).c_str()),
 		  ins    (((std::string) (name_ + "_ins" )).c_str()),
 		  berr   (((std::string) (name_ + "_berr")).c_str())

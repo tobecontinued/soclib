@@ -81,7 +81,6 @@ class ICacheCachePort
 public:
 	sc_in<bool> 	        req;
 	sc_in<sc_dt::sc_uint<32> >     adr; 
-	sc_in<sc_dt::sc_uint<2> >      type; 
 	sc_out<bool> 	        frz;
 	sc_out<sc_dt::sc_uint<32> >    ins;
 	sc_out<bool>            berr;
@@ -89,7 +88,6 @@ public:
     ICacheCachePort(const std::string &name = sc_gen_unique_name("icache_cache"))
 		: req    ((name+"_req").c_str()),
 		  adr    ((name+"_adr").c_str()),
-		  type   ((name+"_type").c_str()),
 		  frz    ((name+"_frz").c_str()),
 		  ins    ((name+"_ins").c_str()),
 		  berr   ((name+"_berr").c_str())
@@ -99,7 +97,6 @@ public:
 	void operator () (ICacheSignals &sig) {
 		req   (sig.req);
 		adr   (sig.adr);
-		type  (sig.type);
 		frz  (sig.frz);
 		ins   (sig.ins);
 		berr  (sig.berr);

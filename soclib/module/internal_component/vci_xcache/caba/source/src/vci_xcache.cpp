@@ -245,8 +245,6 @@ tmpl(void)::transition()
         return;
     }
 
-    ICacheSignals::req_type_e icache_req_type =
-        (ICacheSignals::req_type_e)(int)p_icache.type.read();
     const bool icache_req = p_icache.req.read();
     const addr_t icache_address = p_icache.adr.read();
 
@@ -317,9 +315,6 @@ tmpl(void)::transition()
     
     case ICACHE_IDLE:
         if ( icache_req ) {
-            assert(icache_req_type != ICacheSignals::RU &&
-                   "Only cached instruction fetch are supported");
-
             if ( ! icache_hit ) {
                 r_icache_fsm = ICACHE_WAIT;
                 r_icache_miss_addr = icache_address & m_icache_yzmask;
