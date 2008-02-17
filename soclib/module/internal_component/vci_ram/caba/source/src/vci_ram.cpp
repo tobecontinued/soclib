@@ -41,7 +41,7 @@ tmpl(/**/)::VciMultiRam(
 	sc_module_name insname,
 	const IntTab &index,
 	const MappingTable &mt,
-    common::ElfLoader &loader
+    const common::ElfLoader &loader
     )
 	: caba::BaseModule(insname),
 	  m_vci_fsm(p_vci, mt.getSegmentList(index), 2),

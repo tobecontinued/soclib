@@ -64,7 +64,7 @@ public:
         sc_module_name insname,
         const IntTab &index,
         const MappingTable &mt,
-        soclib::common::ElfLoader &loader);
+        const soclib::common::ElfLoader &loader);
     VciMultiRam(
         sc_module_name insname,
         const IntTab &index,
