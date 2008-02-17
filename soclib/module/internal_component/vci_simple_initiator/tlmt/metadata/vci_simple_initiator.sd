@@ -29,7 +29,7 @@
 Module('tlmt:vci_simple_initiator',
 	classname = 'soclib::tlmt::VciSimpleInitiator',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param')
+	parameter.Module('vci_param',  default = 'vci_param')
 	],
 	header_files = ['../source/include/vci_simple_initiator.h',],
 	implementation_files = ['../source/src/vci_simple_initiator.cpp',],

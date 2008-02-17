@@ -4,7 +4,7 @@
 Module('caba:vci_xcache',
 	classname = 'soclib::caba::VciXCache',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param'),
+	parameter.Module('vci_param', default = 'vci_param'),
 	],
 	header_files = [
 	'../source/include/vci_xcache.h',
@@ -20,11 +20,11 @@ Module('caba:vci_xcache',
 	Port('vci_initiator', 'p_vci'),
 	Port('xcache_cache_icache', 'p_icache'),
 	Port('xcache_cache_dcache', 'p_dcache'),
-	Port('bit_in', 'p_resetn'),
-	Port('clock_in', 'p_clk'),
+	Port('bit_in', 'p_resetn', auto = 'resetn'),
+	Port('clock_in', 'p_clk', auto = 'clock'),
 	],
 	instance_parameters = [
-	parameter.MappingTable('mt'),
+	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
 	parameter.IntTab('ident'),
 	parameter.Int('icache_lines'),
 	parameter.Int('icache_words'),

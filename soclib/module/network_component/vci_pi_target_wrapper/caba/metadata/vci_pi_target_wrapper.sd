@@ -4,7 +4,7 @@
 Module('caba:vci_pi_target_wrapper',
 	classname = 'soclib::caba::VciPiTargetWrapper',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param'),
+	parameter.Module('vci_param',  default = 'vci_param'),
 	],
 	header_files = ['../source/include/vci_pi_target_wrapper.h',],
 	implementation_files = ['../source/src/vci_pi_target_wrapper.cpp',],

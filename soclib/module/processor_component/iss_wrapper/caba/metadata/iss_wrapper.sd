@@ -15,9 +15,17 @@ Module('caba:iss_wrapper',
 	   ports = [
 	Port('xcache_processor_icache', 'p_icache'),
 	Port('xcache_processor_dcache', 'p_dcache'),
+	Port('bit_in', 'p_resetn', auto = 'resetn'),
+	Port('clock_in', 'p_clk', auto = 'clock'),
 	],
 	   uses = [
 	Uses('base_module'),
 	Uses('common:iss'),
 	],
+	instance_parameters = [
+	parameter.Int('ident'),
+	],
+	   extensions = [
+	'dsx:cpu=wrapper',
+   ],
 )

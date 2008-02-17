@@ -4,7 +4,7 @@
 Module('caba:vci_framebuffer',
 	   classname = 'soclib::caba::VciFrameBuffer',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param'),
+	parameter.Module('vci_param',  default = 'vci_param'),
 	],
 	   header_files = ['../source/include/vci_framebuffer.h',],
 	   implementation_files = ['../source/src/vci_framebuffer.cpp',],
@@ -16,4 +16,8 @@ Module('caba:vci_framebuffer',
 	Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 	Uses('common:fb_controller'),
 	],
+	   extensions = [
+	'dsx:addressable',
+	'dsx:max_segments=1',
+   ],
 )

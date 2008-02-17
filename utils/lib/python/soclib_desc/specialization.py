@@ -30,6 +30,12 @@ class Specialization:
 	def descAttr(self, name):
 		return self.__cdef[name]
 
+	def getParam(self, name):
+		try:
+			return self.__args[name]
+		except:
+			return self.__cdef[name]
+
 	def getAllBuilders(self):
 		r = set()
 		for i in self.__cdef.getUses(self.__args):
@@ -38,6 +44,9 @@ class Specialization:
 		for i in self.__cdef['tmpl_parameters']:
 			r |= i.getAllBuilders(self.__args)
 		return r
+
+	def getUse(self):
+		return self.__cdef.getUse(**self.__args)
 
 	def getParamBuilders(self):
 		r = set()

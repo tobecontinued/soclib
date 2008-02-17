@@ -4,7 +4,7 @@
 Module('caba:vci_multi_tty',
 	   classname = 'soclib::caba::VciMultiTty',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param'),
+	parameter.Module('vci_param',  default = 'vci_param'),
 	],
 	   header_files = ['../source/include/vci_multi_tty.h',
 					   '../../include/tty.h'
@@ -19,4 +19,8 @@ Module('caba:vci_multi_tty',
 	Uses('common:tty_wrapper') ,
 	Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 	],
+	   extensions = [
+	'dsx:addressable',
+	'dsx:max_segments=1',
+   ],
 )

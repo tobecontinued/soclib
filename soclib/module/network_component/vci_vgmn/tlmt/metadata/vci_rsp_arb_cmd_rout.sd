@@ -31,7 +31,7 @@ Module('tlmt:vci_rsp_arb_cmd_rout',
 	header_files = [
 	'../source/include/vci_rsp_arb_cmd_rout.h',],
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param')
+	parameter.Module('vci_param',  default = 'vci_param')
 	],
 
 	implementation_files = [

@@ -35,11 +35,12 @@ __all__ = ['Module', 'PortDecl',
 		   'Signal','Port']
 
 class Port:
-	def __init__(self, type, name, count = None):
+	def __init__(self, type, name, count = None, auto = None):
 		self.__type = type
 		self.__name = name
 		self.__count = count
 		self.__owner = None
+		self.__auto = auto
 	def setModule(self, module):
 		self.__type = module.fullyQualifiedModuleName(self.__type)
 		self.__module = module
@@ -48,7 +49,7 @@ class Port:
 		module.addUse(Uses(self.__type))
 	def getInfo(self):
 		ptype = Module.getRegistered(self.__type)
-		return self.__name, ptype, self.__count
+		return self.__name, ptype, self.__count, self.__auto
 	def __str__(self):
 		ptype = Module.getRegistered(self.__type)
 		return '<port: %s %s>'%(self.__name, str(ptype['header_files']))

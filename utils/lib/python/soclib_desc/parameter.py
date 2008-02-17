@@ -1,13 +1,12 @@
 
-import types
-
 class ParameterError(Exception): pass
 
 class Base:
 	valid_types = ()
-	def __init__(self, name, default = None):
+	def __init__(self, name, default = None, auto = None):
 		self.name = name
 		self.default = default
+		self.auto = auto
 
 	def setModule(self, module):
 		self.owner = module
@@ -16,11 +15,20 @@ class Base:
 		raise ParameterError("Base parameter has not type")
 		
 	def get(self, env, values):
+		value = None
 		if self.name in values:
 			value = values[self.name]
-		else:
-			assert self.default is not None
+		if value is None and self.auto:
+			method, key = self.auto.split(':', 1)
+			if method == 'env':
+				if key in env:
+					value = env[key]
+			else:
+				raise ValueError('Auto method %s not implemented in %s'%(method, self))
+		if value is None:
 			value = self.default
+		if value is None:
+			raise ValueError("Pleasy give a value for parameter `%s'"%self.name)
 		self.assertValid(value)
 		return value
 	def assertValid(self, value):
@@ -35,6 +43,9 @@ class Base:
 
 	def getParamBuilders(self, args):
 		return set()
+
+	def instValue(self, env, param):
+		return self.get(env, param)
 	
 	def argval(self, args):
 		try:
@@ -46,20 +57,19 @@ class Base:
 
 class Bool(Base):
 	valid_types = (bool)
-	def __init__(self, name, default = None):
-		Base.__init__(self, name, bool(default))
+	def __init__(self, name, default = None, auto = None):
+		Base.__init__(self, name, bool(default), auto)
 	
 	def getTmplType(self, args):
 		value = self.argval(args)
 		return str(value).lower()
 
 class Int(Base):
-	valid_types = (int)
-	def __init__(self, name, default = None, min_ = None, max_ = None):
-		Base.__init__(self, name, default)
-		self.min = min_
-		self.max = max_
-
+	valid_types = (int, long)
+	def __init__(self, name, default = None, min = None, max = None, auto = None):
+		Base.__init__(self, name, default, auto)
+		self.min = min
+		self.max = max
 	
 	def getTmplType(self, args):
 		return self.argval(args)
@@ -71,13 +81,23 @@ class Int(Base):
 		if self.min is not None and value < self.min:
 			raise ParameterError("Invalid value `%s' for parameter `%s': below %d"%(value, self.name, self.min))
 
-class IntTab(Base):
-	valid_types = (types.IntTab)
+	def instValue(self, env, param):
+		v = Base.instValue(self, env, param)
+		if v < 4096:
+			return '%d'%v
+		else:
+			return '0x%08x'%v
 
-class MappingTable(Base):
-	valid_types = (types.MappingTable)
-	def get(self, env, values):
-		return env['mapping_table']
+class String(Base):
+	valid_types = (str)
+	def instValue(self, env, param):
+		return '"%s"'%Base.instValue(self, env, param)
+
+class IntTab(Base):
+	valid_types = (tuple)
+	def instValue(self, env, param):
+		v = Base.instValue(self, env, param)
+		return 'soclib::common::IntTab(%s)'%(', '.join(map(str, v)))
 
 class Type(Base):
 	valid_types = (str, unicode)
@@ -86,20 +106,21 @@ class Type(Base):
 		return self.argval(args)
 
 class Module(Base):
-	def __init__(self, name, typename = None):
-		Base.__init__(self, name, typename)
-
+	def __init__(self, name, typename = None, default = None, auto = None):
+		Base.__init__(self, name, default, auto)
+		self.typename = typename
+		
 	def __getSpec(self, args):
 		value = self.argval(args)
 		from specialization import Specialization
 		name = self.owner.fullyQualifiedModuleName(value)
 		return Specialization(name, **args)
 
-	def get(self, env, values):
-		assert not "implemented"
-
 	def setModule(self, module):
 		Base.setModule(self, module)
+
+	def assertValid(self, value):
+		assert value.typename() == self.typename
 
 	def getTmplType(self, args):
 		return self.__getSpec(args).getType()
@@ -116,3 +137,15 @@ class Module(Base):
 		builders.add(spec.builder())
 		return builders
 
+	def inst(self, env, param):
+		return Base.instValue(self, env, param)
+
+	def instValue(self, env, param):
+		r = Base.instValue(self, env, param)
+		return r.ref()
+
+class Reference:
+	def __init__(self, name):
+		self.__name = name
+	def name(self):
+		return self.__name

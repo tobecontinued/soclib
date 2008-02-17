@@ -4,16 +4,16 @@
 Module('caba:vci_vgmn',
 	classname = 'soclib::caba::VciVgmn',
 	tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param'),
+	parameter.Module('vci_param',  default = 'vci_param'),
 	],
 	header_files = ['../source/include/vci_vgmn.h',],
 	implementation_files = ['../source/src/vci_vgmn.cpp',],
 	ports = [
-	    Port('vci_initiator', 'p_to_target'),
-	    Port('vci_target', 'p_from_initiator'),
+	    Port('vci_initiator', 'p_to_target', parameter.Reference('n_target')),
+	    Port('vci_target', 'p_from_initiator', parameter.Reference('n_initiator')),
 	],
 	instance_parameters = [
-        parameter.MappingTable('mt'),
+        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
         parameter.Int('n_initiator'),
         parameter.Int('n_target'),
         parameter.Int('min_latency'),

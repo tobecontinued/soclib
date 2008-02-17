@@ -4,7 +4,7 @@
 Module('caba:vci_initiator_fsm',
 	classname = 'soclib::caba::VciInitiatorFsm',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param'),
+	parameter.Module('vci_param',  default = 'vci_param'),
 	],
 	header_files = ['../include/caba/vci/vci_initiator_fsm.h',],
 	implementation_files = ['../src/caba/vci/vci_initiator_fsm.cpp',],

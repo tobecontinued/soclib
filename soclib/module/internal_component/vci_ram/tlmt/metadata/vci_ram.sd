@@ -29,7 +29,7 @@
 Module('tlmt:vci_ram',
 	classname = 'soclib::tlmt::VciRam',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param')
+	parameter.Module('vci_param',  default = 'vci_param')
 	],
 	header_files = ['../source/include/vci_ram.h',],
 	implementation_files = ['../source/src/vci_ram.cpp',],

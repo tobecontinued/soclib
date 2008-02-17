@@ -60,7 +60,7 @@ class Platform:
 		if not o in self.objs:
 			self.objs.add(o)
 			self.todo.add(o)
-	def __init__(self, mode, source_file, uses = [], defines = {}, **params):
+	def __init__(self, mode, source_file, uses = [], defines = {}, output = None, **params):
 		component = Source(mode, source_file, uses, defines, **params)
 		self.todo = ToDo()
 		self.objs = set()
@@ -69,7 +69,9 @@ class Platform:
 		for b in all:
 			for o in b.results():
 				self.addObj( o )
-		self.todo.add( *CxxLink(config.output, self.objs ).dests )
+		if output is None:
+			output = config.output
+		self.todo.add( *CxxLink(output, self.objs ).dests )
 	def process(self):
 		self.todo.process()
 	def clean(self):

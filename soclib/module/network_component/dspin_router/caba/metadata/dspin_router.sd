@@ -3,7 +3,7 @@
 Module('caba:dspin_router',
 	classname = 'soclib::caba::DspinRouter',
 	tmpl_parameters = [
-	    parameter.Module('vci_param', 'vci_param'),
+	    parameter.Module('vci_param',  default = 'vci_param'),
 	    parameter.Int('dspin_data_size'),
 	    parameter.Int('dspin_fifo_size'),
 	],

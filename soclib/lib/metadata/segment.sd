@@ -5,4 +5,13 @@ Module('common:segment',
 	classname = 'soclib::common::Segment',
 	header_files = ['../include/segment.h',],
 	implementation_files = ['../src/segment.cpp',],
+	   instance_parameters = [
+	parameter.Int('address'),
+	parameter.Int('size'),
+	parameter.IntTab('ident'),
+	parameter.Int('cacheable'),
+		],
+	   extensions = [
+	'dsx:configurator=segment',
+	]
 )

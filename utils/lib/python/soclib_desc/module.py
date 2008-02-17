@@ -53,6 +53,7 @@ class Module:
 		'signal' : None,
 		'instance_parameters' : [],
 		'local' : False,
+		'extensions' : [],
 		}
 	tb_delta = -2
 
@@ -102,6 +103,10 @@ class Module:
 			p.getUse(self)
 		for p in self['tmpl_parameters']:
 			p.setModule(self)
+
+	def getUse(self, **args):
+		from component import Uses
+		return Uses(self.__typename, **args)
 
 	def addUse(self, u):
 #		print 'Adding', u, 'to', self

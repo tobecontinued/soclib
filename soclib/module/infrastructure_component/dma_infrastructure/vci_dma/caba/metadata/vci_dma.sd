@@ -4,7 +4,7 @@
 Module('caba:vci_dma',
 	classname = 'soclib::caba::VciDma',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param'),
+	parameter.Module('vci_param',  default = 'vci_param'),
 	],
 	header_files = ['../source/include/vci_dma.h',
 					'../../include/dma.h',
@@ -21,4 +21,8 @@ Module('caba:vci_dma',
 		Uses('vci_initiator_simple_write_req'),
 		Uses('vci_initiator_fsm'),
 		],
+	   extensions = [
+	'dsx:addressable',
+	'dsx:max_segments=1',
+   ],
 )

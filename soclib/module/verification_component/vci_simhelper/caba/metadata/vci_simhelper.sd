@@ -4,7 +4,7 @@
 Module('caba:vci_simhelper',
 	classname = 'soclib::caba::VciSimhelper',
 	   tmpl_parameters = [
-	parameter.Module('vci_param', 'vci_param'),
+	parameter.Module('vci_param',  default = 'vci_param'),
 	],
 	header_files = ['../source/include/vci_simhelper.h',
 					'../../include/simhelper.h',
@@ -17,4 +17,8 @@ Module('caba:vci_simhelper',
 		Uses('base_module'),
 		Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 		],
+	   extensions = [
+	'dsx:addressable',
+	'dsx:max_segments=1',
+   ],
 )
