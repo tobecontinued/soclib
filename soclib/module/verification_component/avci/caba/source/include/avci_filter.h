@@ -28,7 +28,7 @@
 #ifndef SOCLIB_CABA_PVDC_ADVANCED_FILTERH
 #define SOCLIB_CABA_PVDC_ADVANCED_FILTERH
 
-#include "caba_base_module.h"
+#include "caba/caba_base_module.h"
 #include "vci_initiator.h"
 #include "vci_target.h"
 
@@ -39,8 +39,8 @@ namespace soclib { namespace caba {
 template <typename vci_param>
 class AdvancedVciFilter : public soclib::caba::BaseModule {
   private:
-   std::ostream* plog_file;
-   bool fDefaultMode;
+   std::ostream* m_log_file;
+   bool m_default_mode;
 
   public:
    struct In {
@@ -248,34 +248,39 @@ class AdvancedVciFilter : public soclib::caba::BaseModule {
    };
 
    sc_in<bool> p_clk;
-   sc_in<bool> resetn;
-   In in;
-   Out out;
+   sc_in<bool> p_resetn;
+   In p_in;
+   Out p_out;
 
   private:
-   void assume(bool fCondition) const
+   enum Direction { DIn, DOut };
+   void assume(bool fCondition, const char* szError, Direction dDirection) const
       {  if (!fCondition)
-            (plog_file ? *plog_file : (std::ostream&) std::cout) << "Protocol Error!!!\n";
+            (m_log_file ? *m_log_file : (std::ostream&) std::cout)
+               << "ERROR : Protocol Error \""<< szError <<"\"on "<< name()
+               << " for the packet " << ((dDirection == DOut) ? m_nb_response_packets : m_nb_request_packets)
+               << ", the cell " << ((dDirection == DOut) ? m_response_cells : m_request_cells)
+               << " issued from " << ((dDirection == DOut) ? ((const char*) "response") : ((const char*) "request")) << " !!!\n";
       }
 
    enum State { SIdle, SValid, SDefault_Ack, SSync };
-   State sRequestState, sResponseState;
+   State m_request_state, m_response_state;
 
    void testHandshake(); // see p 41, 42, verified on the waveforms
 
-   int uReset;
+   int m_reset;
    void setReset(int uResetSource = 8)
-      {  if (!out.rspack && !in.cmdval)
-            uReset = 0;
+      {  if (!p_out.rspack && !p_in.cmdval)
+            m_reset = 0;
          else
-            uReset = uResetSource;
+            m_reset = uResetSource;
       }
    void testReset() // see p.31
-      {  if (!in.cmdval && !out.cmdack && !out.rspval && !in.rspack)
-            uReset = 0;
+      {  if (!p_in.cmdval && !p_out.cmdack && !p_out.rspval && !p_in.rspack)
+            m_reset = 0;
          else {
-            assume(uReset > 1);
-            --uReset;
+            assume(m_reset > 1, "Violation in the protocol : the reset command had no effect", DIn);
+            --m_reset;
          };
       }
 
@@ -289,13 +294,13 @@ class AdvancedVciFilter : public soclib::caba::BaseModule {
       typename vci_param::trdid_t trdid;
       typename vci_param::pktid_t pktid;
       
-      Packet(const Out& out)
+      Packet(const Out& p_out)
          :  cmd(0), address(0), contig(0), plen(0),
-            srcid(out.rsrcid), trdid(out.rtrdid), pktid(out.rpktid) {}
+            srcid(p_out.rsrcid), trdid(p_out.rtrdid), pktid(p_out.rpktid) {}
      public:
-      Packet(const In& in)
-         :  cmd(in.cmd), address(in.address), contig(in.contig), plen(in.plen),
-            srcid(in.srcid), trdid(in.trdid), pktid(in.pktid) {}
+      Packet(const In& p_in)
+         :  cmd(p_in.cmd), address(p_in.address), contig(p_in.contig), plen(p_in.plen),
+            srcid(p_in.srcid), trdid(p_in.trdid), pktid(p_in.pktid) {}
       Packet(const Packet& source)
          :  cmd(source.cmd), address(source.address), contig(source.contig), plen(source.plen),
             srcid(source.srcid), trdid(source.trdid), pktid(source.pktid) {}
@@ -325,9 +330,9 @@ class AdvancedVciFilter : public soclib::caba::BaseModule {
                if (*iter) delete *iter;
          }
       int count() const { return lpContent.size(); }
-      void add(const In& in) { lpContent.insert(new Packet(in)); }
-      Packet* remove(const Out& out)
-         {  Packet pLocate(out);
+      void add(const In& p_in) { lpContent.insert(new Packet(p_in)); }
+      Packet* remove(const Out& p_out)
+         {  Packet pLocate(p_out);
             typename std::set<Packet*, typename Packet::Less>::iterator iter = lpContent.find(&pLocate);
             Packet* pResult = NULL;
             if (iter != lpContent.end()) {
@@ -373,7 +378,9 @@ class AdvancedVciFilter : public soclib::caba::BaseModule {
             bool fResult = (source.aMin <= aMin && source.aMax >= aMax);
             if (!fResult) {
                if (aMin < source.aMin) {
-                  filter.assume(src_id == source.src_id);
+                  filter.assume(src_id == source.src_id,
+                        (((std::string("Conflict access : a locked was set by the initiator ")
+                        += src_id) += " and accessed by the initiator ") += source.src_id).c_str(), DIn);
                   if (aMax > source.aMax) {
                      paiOther = new AddressInterval(src_id, source.aMax, aMax);
                      aMax = source.aMin;
@@ -383,13 +390,17 @@ class AdvancedVciFilter : public soclib::caba::BaseModule {
                }
                else { // aMin == source.aMin
                   if (aMax > source.aMax) {
-                     filter.assume(src_id == source.src_id);
+                     filter.assume(src_id == source.src_id,
+                        (((std::string("Conflict access : a locked was set by the initiator ")
+                        += src_id) += " and accessed by the initiator ") += source.src_id).c_str(), DIn);
                      aMin = source.aMax;
                   };
                };
             }
             else
-               filter.assume(src_id == source.src_id);
+               filter.assume(src_id == source.src_id,
+                  (((std::string("Conflict access : a locked was set by the initiator ")
+                  += src_id) += " and accessed by the initiator ") += source.src_id).c_str(), DIn);
             return fResult;
          }
    };
@@ -408,111 +419,113 @@ class AdvancedVciFilter : public soclib::caba::BaseModule {
       int count() const { return saiAddresses.size(); }
    };
 
-   PacketsList plPendingPackets;
-   LockedAddress laLockedAddresses;
+   PacketsList m_pending_packets;
+   LockedAddress m_locked_addresses;
 
-   typename vci_param::clen_t packetClen;
-   typename vci_param::cfixed_t packetCfixed;
-   typename vci_param::addr_t packetAddress;
-   typename vci_param::plen_t packetPlen;
-   typename vci_param::cmd_t packetCmd;
-   typename vci_param::contig_t packetContig;
-   typename vci_param::wrap_t packetWrap;
-   typename vci_param::const_t packetCons;
+   typename vci_param::clen_t m_packet_clen;
+   typename vci_param::cfixed_t m_packet_cfixed;
+   typename vci_param::addr_t m_packet_address;
+   typename vci_param::plen_t m_packet_plen;
+   typename vci_param::cmd_t m_packet_cmd;
+   typename vci_param::contig_t m_packet_contig;
+   typename vci_param::wrap_t m_packet_wrap;
+   typename vci_param::const_t m_packet_cons;
    
-   int uRequestCells, uResponseCells;
+   int m_request_cells, m_response_cells;
+   int m_nb_request_packets, m_nb_response_packets;
    void acquireRequestCell();
    void acquireResponseCell();
 
-   typename vci_param::val_t     cmdvalPrevious;
-   typename vci_param::addr_t    addressPrevious;
-   typename vci_param::be_t      bePrevious;
-   typename vci_param::cfixed_t  cfixedPrevious;
-   typename vci_param::clen_t    clenPrevious;
-   typename vci_param::cmd_t     cmdPrevious;
-   typename vci_param::contig_t  contigPrevious;
-   typename vci_param::data_t    wdataPrevious;
-   typename vci_param::eop_t     eopPrevious;
-   typename vci_param::const_t   consPrevious;
-   typename vci_param::plen_t    plenPrevious;
-   typename vci_param::wrap_t    wrapPrevious;
+   typename vci_param::val_t     m_cmdval_previous;
+   typename vci_param::addr_t    m_address_previous;
+   typename vci_param::be_t      m_be_previous;
+   typename vci_param::cfixed_t  m_cfixed_previous;
+   typename vci_param::clen_t    m_clen_previous;
+   typename vci_param::cmd_t     m_cmd_previous;
+   typename vci_param::contig_t  m_contig_previous;
+   typename vci_param::data_t    m_wdata_previous;
+   typename vci_param::eop_t     m_eop_previous;
+   typename vci_param::const_t   m_cons_previous;
+   typename vci_param::plen_t    m_plen_previous;
+   typename vci_param::wrap_t    m_wrap_previous;
 
-   typename vci_param::val_t     rspvalPrevious;
-   typename vci_param::data_t    rdataPrevious;
-   typename vci_param::eop_t     reopPrevious;
-   typename vci_param::rerror_t  rerrorPrevious;
+   typename vci_param::val_t     m_rspval_previous;
+   typename vci_param::data_t    m_rdata_previous;
+   typename vci_param::eop_t     m_reop_previous;
+   typename vci_param::rerror_t  m_rerror_previous;
 
   protected:
    SC_HAS_PROCESS(AdvancedVciFilter);
 
   public:
    AdvancedVciFilter(sc_module_name insname)
-      :  soclib::caba::BaseModule(insname), plog_file(NULL), fDefaultMode(true),
-         in((const char*) insname), out((const char*) insname),
-         sRequestState(SIdle), sResponseState(SIdle), uReset(0), packetAddress(0),
-         uRequestCells(0), uResponseCells(0), cmdvalPrevious(0)
-      {  SC_METHOD(transition);
+      :  soclib::caba::BaseModule(insname), m_log_file(NULL), m_default_mode(true),
+         p_in((const char*) insname), p_out((const char*) insname),
+         m_request_state(SIdle), m_response_state(SIdle), m_reset(0), m_packet_address(0),
+         m_request_cells(0), m_response_cells(0), m_nb_request_packets(0), m_nb_response_packets(0),
+         m_cmdval_previous(0)
+      {  SC_METHOD(copy);
          dont_initialize();
-         sensitive << in.cmdval << in.address << in.be << in.cfixed << in.clen << in.cmd
-            << in.contig << in.wdata << in.eop << in.cons << in.plen << in.wrap << in.rspack
-            << out.cmdack << out.rspval << out.rdata << out.reop << out.rerror;
+         sensitive << p_in.cmdval << p_in.address << p_in.be << p_in.cfixed << p_in.clen << p_in.cmd
+            << p_in.contig << p_in.wdata << p_in.eop << p_in.cons << p_in.plen << p_in.wrap << p_in.rspack
+            << p_out.cmdack << p_out.rspval << p_out.rdata << p_out.reop << p_out.rerror;
          SC_METHOD(reset);
          dont_initialize();
-         sensitive << resetn.pos();
+         sensitive << p_resetn.pos();
          
-         SC_METHOD(filter);
+         SC_METHOD(transition);
          dont_initialize();
          sensitive << p_clk.pos();
       }
    void reset()
       {  setReset(); }
-   void transition()
-      {  out.cmdval = in.cmdval;
-         out.address = in.address;
-         out.be = in.be;
-         out.cfixed = in.cfixed;
-         out.clen = in.clen;
-         out.cmd = in.cmd;
-         out.contig = in.contig;
-         out.wdata = in.wdata;
-         out.eop = in.eop;
-         out.cons = in.cons;
-         out.plen = in.plen;
-         out.wrap = in.wrap;
-         out.rspack = in.rspack;
-         in.cmdack = out.cmdack;
-         in.rspval = out.rspval;
-         in.rdata = out.rdata;
-         in.reop = out.reop;
-         in.rerror = out.rerror;
+   void copy()
+      {  p_out.cmdval = p_in.cmdval;
+         p_out.address = p_in.address;
+         p_out.be = p_in.be;
+         p_out.cfixed = p_in.cfixed;
+         p_out.clen = p_in.clen;
+         p_out.cmd = p_in.cmd;
+         p_out.contig = p_in.contig;
+         p_out.wdata = p_in.wdata;
+         p_out.eop = p_in.eop;
+         p_out.cons = p_in.cons;
+         p_out.plen = p_in.plen;
+         p_out.wrap = p_in.wrap;
+         p_out.rspack = p_in.rspack;
+         p_in.cmdack = p_out.cmdack;
+         p_in.rspval = p_out.rspval;
+         p_in.rdata = p_out.rdata;
+         p_in.reop = p_out.reop;
+         p_in.rerror = p_out.rerror;
       }
-   void filter() 
+   void transition() 
       {  testHandshake();
-         if (uReset > 0) testReset();
+         if (m_reset > 0) testReset();
 
-         cmdvalPrevious = in.cmdval;
-         addressPrevious = in.address;
-         bePrevious = in.be;
-         cfixedPrevious = in.cfixed;
-         clenPrevious = in.clen;
-         cmdPrevious = in.cmd;
-         contigPrevious = in.contig;
-         wdataPrevious = in.wdata;
-         eopPrevious = in.eop;
-         consPrevious = in.cons;
-         plenPrevious = in.plen;
-         wrapPrevious = in.wrap;
+         m_cmdval_previous = p_in.cmdval;
+         m_address_previous = p_in.address;
+         m_be_previous = p_in.be;
+         m_cfixed_previous = p_in.cfixed;
+         m_clen_previous = p_in.clen;
+         m_cmd_previous = p_in.cmd;
+         m_contig_previous = p_in.contig;
+         m_wdata_previous = p_in.wdata;
+         m_eop_previous = p_in.eop;
+         m_cons_previous = p_in.cons;
+         m_plen_previous = p_in.plen;
+         m_wrap_previous = p_in.wrap;
 
-         rspvalPrevious = out.rspval;
-         rdataPrevious = out.rdata;
-         reopPrevious = out.reop;
-         rerrorPrevious = out.rerror;
+         m_rspval_previous = p_out.rspval;
+         m_rdata_previous = p_out.rdata;
+         m_reop_previous = p_out.reop;
+         m_rerror_previous = p_out.rerror;
       }
-   bool isFinished() const { return plPendingPackets.count() == 0 && laLockedAddresses.count() == 0; }
+   bool isFinished() const { return m_pending_packets.count() == 0 && m_locked_addresses.count() == 0; }
    
-   void setLogOut(std::ostream& osOut) { plog_file = &osOut; }
-   void setDefaultMode() { fDefaultMode = true; }
-   void setFreeMode() { fDefaultMode = false; }
+   void setLogOut(std::ostream& osOut) { m_log_file = &osOut; }
+   void setDefaultMode() { m_default_mode = true; }
+   void setFreeMode() { m_default_mode = false; }
 };
 
 }} // end of namespace soclib::caba
@@ -556,8 +569,8 @@ int sc_main(int ac, char *av[]) {
   vciFilter.p_clk(clk);
   vciFilter.setLogOut(log_file);
   // vciFilter.activateFilter();
-  vciFilter.in(vciSignals);
-  vciFilter.out(vciSignalsVerif);
+  vciFilter.p_in(vciSignals);
+  vciFilter.p_out(vciSignalsVerif);
   
   vciFst.p_clk(clk);
   vciFst.p_vci(vciSignals);

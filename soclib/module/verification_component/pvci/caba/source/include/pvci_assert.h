@@ -28,7 +28,7 @@
 #ifndef SOCLIB_CABA_PVDC_ASSERTH
 #define SOCLIB_CABA_PVDC_ASSERTH
 
-#include "caba_base_module.h"
+#include "caba/caba_base_module.h"
 #include "vci_initiator.h"
 #include "vci_target.h"
 
@@ -37,138 +37,145 @@ namespace soclib { namespace caba {
 template <typename vci_param>
 class PVciAssert : public soclib::caba::BaseModule {
   private:
-   std::ostream* plog_file;
-   bool fDefaultMode;
+   std::ostream* m_log_file;
+   bool m_default_mode;
 
   public:
-   VciSignals<vci_param>& observedSignals;
+   VciSignals<vci_param>& r_observed_signals;
    sc_in<bool> p_clk;
-   sc_in<bool> resetn;
+   sc_in<bool> p_resetn;
    
   private:
-   void assume(bool fCondition) const
+   enum Direction { DIn, DOut };
+   void assume(bool fCondition, const char* szError, Direction dDirection) const
       {  if (!fCondition)
-            (plog_file ? *plog_file : (std::ostream&) std::cout) << "Protocol Error!!!\n";
+            (m_log_file ? *m_log_file : (std::ostream&) std::cout)
+               << "ERROR : Protocol Error \""<< szError <<"\"on "<< name()
+               << " for the packet " << m_nb_packets << ", the cell " << m_cells
+               << " issued from " << ((dDirection == DOut) ? ((const char*) "response") : ((const char*) "request")) << " !!!\n";
       }
    enum PeripheralHandShakeState { PHSSNone, PHSSValTriggered, PHSSAckVal };
-   PeripheralHandShakeState phssHandshakeState;
+   PeripheralHandShakeState m_handshake_state;
    void testHandshake() // verified on the waveforms of p.18-20
-      {  switch (phssHandshakeState) {
+      {  switch (m_handshake_state) {
             case PHSSNone:
-               if (observedSignals.cmdval) {
+               if (r_observed_signals.cmdval) {
                   acquireCell();
-                  if (observedSignals.cmdack)
-                     phssHandshakeState = PHSSAckVal;
+                  if (r_observed_signals.cmdack)
+                     m_handshake_state = PHSSAckVal;
                   else
-                     phssHandshakeState = PHSSValTriggered;
+                     m_handshake_state = PHSSValTriggered;
                };
                // else // rule R2 p.16
-               //   assume(!observedSignals.cmdack);
+               //   assume(!r_observed_signals.cmdack);
                break;
             case PHSSValTriggered:
-               assume(observedSignals.cmdval);
-               assume((observedSignals.address == addressPrevious) && (observedSignals.be == bePrevious) // rule R1 p.16
-                  && (observedSignals.cmd == cmdPrevious) && (observedSignals.wdata == wdataPrevious)
-                  && (observedSignals.eop == eopPrevious));
-               if (observedSignals.cmdack)
-                  phssHandshakeState = PHSSAckVal;
+               assume(r_observed_signals.cmdval, "The peripheral protocol does not accept \"bubble\" in a VCI command packet", DIn);
+               assume((r_observed_signals.address == m_address_previous) && (r_observed_signals.be == m_be_previous) // rule R1 p.16
+                  && (r_observed_signals.cmd == m_cmd_previous) && (r_observed_signals.wdata == m_data_previous)
+                  && (r_observed_signals.eop == m_eop_previous),
+                  "The peripheral protocol does not accept \"change\" during acknowledgement", DIn);
+               if (r_observed_signals.cmdack)
+                  m_handshake_state = PHSSAckVal;
                break;
             case PHSSAckVal:
-               if (!observedSignals.cmdval) {
-                  if (!observedSignals.cmdack)
-                     phssHandshakeState = PHSSNone;
+               if (!r_observed_signals.cmdval) {
+                  if (!r_observed_signals.cmdack)
+                     m_handshake_state = PHSSNone;
                   else
-                     phssHandshakeState = PHSSNone; // rule R2 p.16
+                     m_handshake_state = PHSSNone; // rule R2 p.16
                }
                else {
                   acquireCell();
-                  if (!observedSignals.cmdack) // rule R3 p.16
-                     // assume((observedSignals.rdata == rdataPrevious) && (observedSignals.rerror == rerrorPrevious));
-                     phssHandshakeState = PHSSValTriggered;
+                  if (!r_observed_signals.cmdack) // rule R3 p.16
+                     // assume((r_observed_signals.rdata == rdataPrevious) && (r_observed_signals.rerror == rerrorPrevious));
+                     m_handshake_state = PHSSValTriggered;
                };
                break;
          };
       }
 
-   int uReset;
+   int m_reset;
    void setReset(int uResetSource = 8)
-      {  if (!observedSignals.cmdack && !observedSignals.cmdval)
-            uReset = 0;
+      {  if (!r_observed_signals.cmdack && !r_observed_signals.cmdval)
+            m_reset = 0;
          else
-            uReset = uResetSource;
+            m_reset = uResetSource;
       }
    void testReset() // see p.11
-      {  if (!observedSignals.cmdack && !observedSignals.cmdval)
-            uReset = 0;
+      {  if (!r_observed_signals.cmdack && !r_observed_signals.cmdval)
+            m_reset = 0;
          else {
-            assume(uReset > 1);
-            --uReset;
+            assume(m_reset > 1, "Violation in the peripheral protocol : the reset command had no effect", DIn);
+            --m_reset;
          };
       }
 
-   typename vci_param::addr_t aPreviousAddress;
-   int uCells;
+   typename vci_param::addr_t m_previous_address;
+   int m_cells;
+   int m_nb_packets;
    void acquireCell()
-      {  if (fDefaultMode) {
-            unsigned int uBE = observedSignals.be.read(); // see p.21
+      {  if (m_default_mode) {
+            unsigned int uBE = r_observed_signals.be.read(); // see p.21
             if (uBE >= 4) {
                if (uBE >> 2 <= 2)
-                  assume(uBE & 3 == 0);
+                  assume(uBE & 3 == 0, "The peripheral protocol accepts only VCI BE corresponding to known formats", DIn);
                else // uBE >> 2 == 3
-                  assume(uBE & 3 == 0 || uBE & 3 == 3);
+                  assume(uBE & 3 == 0 || uBE & 3 == 3, "The peripheral protocol accepts only VCI BE corresponding to known formats", DIn);
             };
          };
-         if (uCells == 0)
-            aPreviousAddress = observedSignals.address;
+         if (m_cells == 0)
+            m_previous_address = r_observed_signals.address;
          else { // see p.13
-            aPreviousAddress += vci_param::B; // cell_size()
-            assume(aPreviousAddress == observedSignals.address);
+            m_previous_address += vci_param::B; // cell_size()
+            assume(m_previous_address == r_observed_signals.address, "The peripheral protocol accepts only increasing addresses in a given packet", DIn);
          };
-         ++uCells;
-         if (observedSignals.eop) {
-            uCells = 0;
-            aPreviousAddress = 0;
+         ++m_cells;
+         if (r_observed_signals.eop) {
+            m_cells = 0;
+            m_previous_address = 0;
+            ++m_nb_packets;
          };
       }
-   typename vci_param::val_t      valPrevious;
-   typename vci_param::eop_t      eopPrevious;
-   typename vci_param::cmd_t      cmdPrevious; // = rd
-   typename vci_param::addr_t     addressPrevious;
-   typename vci_param::be_t       bePrevious;
-   typename vci_param::data_t     wdataPrevious;
+   typename vci_param::val_t      m_val_previous;
+   typename vci_param::eop_t      m_eop_previous;
+   typename vci_param::cmd_t      m_cmd_previous; // = rd
+   typename vci_param::addr_t     m_address_previous;
+   typename vci_param::be_t       m_be_previous;
+   typename vci_param::data_t     m_data_previous;
 
   protected:
    SC_HAS_PROCESS(PVciAssert);
 
   public:
    PVciAssert(VciSignals<vci_param>& observedSignalsReference, sc_module_name insname)
-      :  soclib::caba::BaseModule(insname), plog_file(NULL), fDefaultMode(true),
-         observedSignals(observedSignalsReference), phssHandshakeState(PHSSNone), uReset(0),
-         aPreviousAddress(0), uCells(0), valPrevious(0)
+      :  soclib::caba::BaseModule(insname), m_log_file(NULL), m_default_mode(true),
+         r_observed_signals(observedSignalsReference), m_handshake_state(PHSSNone), m_reset(0),
+         m_previous_address(0), m_cells(0), m_nb_packets(0), m_val_previous(0)
       {  SC_METHOD(reset);
          dont_initialize();
-         sensitive << resetn.pos();
+         sensitive << p_resetn.pos();
 
-         SC_METHOD(filter);
+         SC_METHOD(transition);
          dont_initialize();
          sensitive << p_clk.pos();
       }
    void reset()
       {  setReset(); }
-   void filter() 
+   void transition() 
       {  testHandshake();
-         if (uReset > 0) testReset();
+         if (m_reset > 0) testReset();
 
-         valPrevious = observedSignals.cmdval;
-         eopPrevious = observedSignals.eop;
-         cmdPrevious = observedSignals.cmd;
-         addressPrevious = observedSignals.address;
-         bePrevious = observedSignals.be;
-         wdataPrevious = observedSignals.wdata;
+         m_val_previous = r_observed_signals.cmdval;
+         m_eop_previous = r_observed_signals.eop;
+         m_cmd_previous = r_observed_signals.cmd;
+         m_address_previous = r_observed_signals.address;
+         m_be_previous = r_observed_signals.be;
+         m_data_previous = r_observed_signals.wdata;
       }
-   void setLogOut(std::ostream& osOut) { plog_file = &osOut; }
-   void setDefaultMode() { fDefaultMode = true; }
-   void setFreeMode() { fDefaultMode = false; }
+   void setLogOut(std::ostream& osOut) { m_log_file = &osOut; }
+   void setDefaultMode() { m_default_mode = true; }
+   void setFreeMode() { m_default_mode = false; }
 };
 
 }} // end of namespace soclib::caba

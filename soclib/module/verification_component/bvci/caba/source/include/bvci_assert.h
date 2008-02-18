@@ -8,7 +8,7 @@
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
  * 
- * SoCLib is distributed observedSignals the hope that it will be useful, but
+ * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
@@ -28,7 +28,7 @@
 #ifndef SOCLIB_CABA_PVDC_BASIC_ASSERTH
 #define SOCLIB_CABA_PVDC_BASIC_ASSERTH
 
-#include "caba_base_module.h"
+#include "caba/caba_base_module.h"
 #include "vci_initiator.h"
 #include "vci_target.h"
 
@@ -40,38 +40,43 @@ namespace soclib { namespace caba {
 template <typename vci_param>
 class BasicVciAssert : public soclib::caba::BaseModule {
   private:
-   std::ostream* plog_file;
-   bool fDefaultMode;
+   std::ostream* m_log_file;
+   bool m_default_mode;
 
   public:
-   VciSignals<vci_param>& observedSignals;
+   VciSignals<vci_param>& r_observed_signals;
    sc_in<bool> p_clk;
-   sc_in<bool> resetn;
+   sc_in<bool> p_resetn;
 
   private:
-   void assume(bool fCondition) const
+   enum Direction { DIn, DOut };
+   void assume(bool fCondition, const char* szError, Direction dDirection) const
       {  if (!fCondition)
-            (plog_file ? *plog_file : (std::ostream&) std::cout) << "Protocol Error!!!\n";
+            (m_log_file ? *m_log_file : (std::ostream&) std::cout)
+               << "ERROR : Protocol Error \""<< szError <<"\"on "<< name()
+               << " for the packet " << ((dDirection == DOut) ? m_nb_response_packets : m_nb_request_packets)
+               << ", the cell " << ((dDirection == DOut) ? m_response_cells : m_request_cells)
+               << " issued from " << ((dDirection == DOut) ? ((const char*) "response") : ((const char*) "request")) << " !!!\n";
       }
 
    enum State { SIdle, SValid, SDefault_Ack, SSync };
-   State sRequestState, sResponseState;
+   State m_request_state, m_response_state;
 
    void testHandshake(); // see p 41, 42, verified on the waveforms
 
-   int uReset;
+   int m_reset;
    void setReset(int uResetSource = 8)
-      {  if (!observedSignals.rspack && !observedSignals.cmdval)
-            uReset = 0;
+      {  if (!r_observed_signals.rspack && !r_observed_signals.cmdval)
+            m_reset = 0;
          else
-            uReset = uResetSource;
+            m_reset = uResetSource;
       }
    void testReset() // see p.31
-      {  if (!observedSignals.cmdval && !observedSignals.cmdack && !observedSignals.rspval && !observedSignals.rspack)
-            uReset = 0;
+      {  if (!r_observed_signals.cmdval && !r_observed_signals.cmdack && !r_observed_signals.rspval && !r_observed_signals.rspack)
+            m_reset = 0;
          else {
-            assume(uReset > 1);
-            --uReset;
+            assume(m_reset > 1, "Violation in the protocol : the reset command had no effect", DIn);
+            --m_reset;
          };
       }
 
@@ -84,8 +89,8 @@ class BasicVciAssert : public soclib::caba::BaseModule {
       int uLength;
       
      public:
-      Packet(const VciSignals<vci_param>& observedSignals)
-         :  cmd(observedSignals.cmd), address(observedSignals.address), contig(observedSignals.contig), plen(observedSignals.plen), uLength(0) {}
+      Packet(const VciSignals<vci_param>& r_observed_signals)
+         :  cmd(r_observed_signals.cmd), address(r_observed_signals.address), contig(r_observed_signals.contig), plen(r_observed_signals.plen), uLength(0) {}
       Packet(const Packet& source)
          :  cmd(source.cmd), address(source.address), contig(source.contig), plen(source.plen),
             uLength(source.uLength) {}
@@ -177,86 +182,88 @@ class BasicVciAssert : public soclib::caba::BaseModule {
       int count() const { return saiAddresses.size(); }
    };
 
-   PacketsList plPendingPackets;
-   LockedAddress laLockedAddresses;
+   PacketsList m_pending_packets;
+   LockedAddress m_locked_addresses;
 
-   typename vci_param::clen_t packetClen;
-   typename vci_param::cfixed_t packetCfixed;
-   typename vci_param::addr_t packetAddress;
-   typename vci_param::plen_t packetPlen;
-   typename vci_param::cmd_t packetCmd;
-   typename vci_param::contig_t packetContig;
-   typename vci_param::wrap_t packetWrap;
-   typename vci_param::const_t packetCons;
+   typename vci_param::clen_t m_packet_clen;
+   typename vci_param::cfixed_t m_packet_cfixed;
+   typename vci_param::addr_t m_packet_address;
+   typename vci_param::plen_t m_packet_plen;
+   typename vci_param::cmd_t m_packet_cmd;
+   typename vci_param::contig_t m_packet_contig;
+   typename vci_param::wrap_t m_packet_wrap;
+   typename vci_param::const_t m_packet_cons;
    
-   int uRequestCells, uResponseCells;
+   int m_request_cells, m_response_cells;
+   int m_nb_request_packets, m_nb_response_packets;
    void acquireRequestCell();
    void acquireResponseCell();
 
-   typename vci_param::val_t     cmdvalPrevious;
-   typename vci_param::addr_t    addressPrevious;
-   typename vci_param::be_t      bePrevious;
-   typename vci_param::cfixed_t  cfixedPrevious;
-   typename vci_param::clen_t    clenPrevious;
-   typename vci_param::cmd_t     cmdPrevious;
-   typename vci_param::contig_t  contigPrevious;
-   typename vci_param::data_t    wdataPrevious;
-   typename vci_param::eop_t     eopPrevious;
-   typename vci_param::const_t   consPrevious;
-   typename vci_param::plen_t    plenPrevious;
-   typename vci_param::wrap_t    wrapPrevious;
+   typename vci_param::val_t     m_cmdval_previous;
+   typename vci_param::addr_t    m_address_previous;
+   typename vci_param::be_t      m_be_previous;
+   typename vci_param::cfixed_t  m_cfixed_previous;
+   typename vci_param::clen_t    m_clen_previous;
+   typename vci_param::cmd_t     m_cmd_previous;
+   typename vci_param::contig_t  m_contig_previous;
+   typename vci_param::data_t    m_wdata_previous;
+   typename vci_param::eop_t     m_eop_previous;
+   typename vci_param::const_t   m_cons_previous;
+   typename vci_param::plen_t    m_plen_previous;
+   typename vci_param::wrap_t    m_wrap_previous;
 
-   typename vci_param::val_t     rspvalPrevious;
-   typename vci_param::data_t    rdataPrevious;
-   typename vci_param::eop_t     reopPrevious;
-   typename vci_param::rerror_t  rerrorPrevious;
+   typename vci_param::val_t     m_rspval_previous;
+   typename vci_param::data_t    m_rdata_previous;
+   typename vci_param::eop_t     m_reop_previous;
+   typename vci_param::rerror_t  m_rerror_previous;
 
   protected:
    SC_HAS_PROCESS(BasicVciAssert);
 
   public:
    BasicVciAssert(VciSignals<vci_param>& observedSignalsReference, sc_module_name insname)
-      :  soclib::caba::BaseModule(insname), plog_file(NULL), fDefaultMode(true),
-         observedSignals(observedSignalsReference),
-         sRequestState(SIdle), sResponseState(SIdle), uReset(0), packetAddress(0),
-         uRequestCells(0), uResponseCells(0), cmdvalPrevious(0)
+      :  soclib::caba::BaseModule(insname), m_log_file(NULL), m_default_mode(true),
+         r_observed_signals(observedSignalsReference),
+         m_request_state(SIdle), m_response_state(SIdle), m_reset(0), m_packet_address(0),
+         m_request_cells(0), m_response_cells(0), m_nb_request_packets(0), m_nb_response_packets(0),
+         m_cmdval_previous(0)
       {  SC_METHOD(reset);
          dont_initialize();
-         sensitive << resetn.pos();
+         sensitive << p_resetn.pos();
          
-         SC_METHOD(filter);
+         SC_METHOD(transition);
          dont_initialize();
          sensitive << p_clk.pos();
       }
    void reset()
       {  setReset(); }
-   void filter() 
+   void transition() 
       {  testHandshake();
-         if (uReset > 0) testReset();
+         if (m_reset > 0) testReset();
 
-         cmdvalPrevious = observedSignals.cmdval;
-         addressPrevious = observedSignals.address;
-         bePrevious = observedSignals.be;
-         cfixedPrevious = observedSignals.cfixed;
-         clenPrevious = observedSignals.clen;
-         cmdPrevious = observedSignals.cmd;
-         contigPrevious = observedSignals.contig;
-         wdataPrevious = observedSignals.wdata;
-         eopPrevious = observedSignals.eop;
-         consPrevious = observedSignals.cons;
-         plenPrevious = observedSignals.plen;
-         wrapPrevious = observedSignals.wrap;
+         m_cmdval_previous = r_observed_signals.cmdval;
+         m_address_previous = r_observed_signals.address;
+         m_be_previous = r_observed_signals.be;
+         m_cfixed_previous = r_observed_signals.cfixed;
+         m_clen_previous = r_observed_signals.clen;
+         m_cmd_previous = r_observed_signals.cmd;
+         m_contig_previous = r_observed_signals.contig;
+         m_wdata_previous = r_observed_signals.wdata;
+         m_eop_previous = r_observed_signals.eop;
+         m_cons_previous = r_observed_signals.cons;
+         m_plen_previous = r_observed_signals.plen;
+         m_wrap_previous = r_observed_signals.wrap;
 
-         rspvalPrevious = observedSignals.rspval;
-         rdataPrevious = observedSignals.rdata;
-         reopPrevious = observedSignals.reop;
-         rerrorPrevious = observedSignals.rerror;
+         m_rspval_previous = r_observed_signals.rspval;
+         m_rdata_previous = r_observed_signals.rdata;
+         m_reop_previous = r_observed_signals.reop;
+         m_rerror_previous = r_observed_signals.rerror;
       }
-   bool isFinished() const { return plPendingPackets.count() == 0 && laLockedAddresses.count() == 0; }
+   bool isFinished() const { return m_pending_packets.count() == 0 && m_locked_addresses.count() == 0; }
    
-   void setLogOut(std::ostream& osOut) { plog_file = &osOut; }
-   void setDefaultMode() { fDefaultMode = true; }
-   void setFreeMode() { fDefaultMode = false; }
+   void setLogOut(std::ostream& osOut) { m_log_file = &osOut; }
+   void setDefaultMode() { m_default_mode = true; }
+   void setFreeMode() { m_default_mode = false; }
 };
 
 }} // end of namespace soclib::caba
