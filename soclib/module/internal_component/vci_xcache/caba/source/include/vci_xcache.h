@@ -110,16 +110,48 @@ class VciXCache
         DCacheSignals::req_type_e type;
         bool cached;
 
+
         friend std::ostream &operator <<(std::ostream &o, d_req_s r)
         {
             o << "<dreq: "
               << std::dec
-              << "(" << r.type << ")"
-              << std::hex
-              <<"@" << r.addr
+              << "( " << r.type << " )"
+              << std::hex << std::showbase
+              << " @ " << r.addr
               << ": " << r.data
+              << " prev " << r.prev
+              << " cached " << std::dec << r.cached
               << ">" << std::endl;
             return o;
+        }
+
+        friend std::istream &operator >>(std::istream &i, d_req_s &r)
+        {
+			int type;
+			std::string dreq, po, pc, at, sc, prev, cached, close;
+			i >> dreq >> po
+			  >> type
+			  >> pc >> at
+			  >> std::hex
+			  >> r.addr
+			  >> sc
+			  >> r.data
+			  >> prev
+			  >> r.prev
+			  >> cached
+			  >> std::dec
+			  >> r.cached
+			  >> close;
+			assert(dreq == "<dreq:");
+			assert(po == "(");
+			assert(pc == ")");
+			assert(at == "@");
+			assert(sc == ":");
+			assert(prev == "prev");
+			assert(cached == "cached");
+			assert(close == ">");
+			r.type = (DCacheSignals::req_type_e)type;
+            return i;
         }
 
         bool operator ==( const d_req_s &other ) const
@@ -127,7 +159,8 @@ class VciXCache
             return other.data == data &&
                 other.addr == addr &&
                 other.prev == prev &&
-                other.type == type;
+                other.type == type &&
+				other.cached == cached;
         }
     } d_req_t;
 
