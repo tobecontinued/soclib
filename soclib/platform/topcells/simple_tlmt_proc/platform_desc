@@ -3,7 +3,7 @@
 
 todo = Platform('tlmt', 'top.cpp',
 				uses = [
-	Uses('vci_iss_xcache', iss_t = 'common:mipsel'),
+	Uses('vci_xcache', iss_t = 'common:mipsel'),
 	Uses('vci_simple_target'),
 	Uses('vci_vgmn'),
 	Uses('vci_ram'),

@@ -41,7 +41,7 @@
 namespace soclib { namespace tlmt {
 
 template<typename iss_t,typename vci_param>
-class VciIssXcache
+class VciXcache
     : public soclib::tlmt::BaseModule
 {
     tlmt_core::tlmt_thread_context c0;
@@ -65,13 +65,13 @@ class VciIssXcache
     genericCache<vci_param> m_icache ;
 
 protected:
-    SC_HAS_PROCESS(VciIssXcache);
+    SC_HAS_PROCESS(VciXcache);
 
 public:
     soclib::tlmt::VciInitiator<vci_param> p_vci;
     tlmt_core::tlmt_in<bool> *p_irq;
 
-    VciIssXcache( sc_core::sc_module_name name, int id );
+    VciXcache( sc_core::sc_module_name name, int id );
 
     tlmt_core::tlmt_return &rspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
 									 const tlmt_core::tlmt_time &time,

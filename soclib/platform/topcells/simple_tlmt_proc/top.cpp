@@ -4,12 +4,12 @@
 #include "vci_ports.h"
 #include "mapping_table.h"
 #include "vci_vgmn.h"
-#include "vci_iss_xcache.h"
+#include "vci_xcache.h"
 #include "vci_simple_target.h"
 #include "vci_multi_tty.h"
 #include "vci_ram.h"
 #include "segmentation.h"
-#include "iss/mips.h"
+#include "mips.h"
 
 int sc_main(int argc, char **argv)
 {
@@ -35,7 +35,7 @@ int sc_main(int argc, char **argv)
 
 	soclib::tlmt::VciVgmn<vci_param> vgmn(1,2,maptab,10);
 
-	soclib::tlmt::VciIssXcache<soclib::common::MipsElIss,vci_param> i("init",0);
+	soclib::tlmt::VciXcache<soclib::common::MipsElIss,vci_param> i("init",0);
 	//soclib::tlmt::VciSimpleTarget<vci_param> t("target");
 
 	soclib::common::ElfLoader loader("soft/bin.soft");

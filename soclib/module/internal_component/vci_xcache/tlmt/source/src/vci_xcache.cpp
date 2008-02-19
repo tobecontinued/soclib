@@ -27,16 +27,14 @@
  *     Nicolas Pouillon <nipo@ssji.net>
  */
 
-#include "../include/vci_iss_xcache.h"
-//#include "../include/write_buffer.h"
-//#include "../include/generic_cache.h"
+#include "../include/vci_xcache.h"
 
 namespace soclib
 {
   namespace tlmt
   {
 
-#define tmpl(x) template<typename iss_t, typename vci_param> x VciIssXcache<iss_t,vci_param>
+#define tmpl(x) template<typename iss_t, typename vci_param> x VciXcache<iss_t,vci_param>
 
     tmpl (tlmt_core::tlmt_return &)::rspReceived (soclib::tlmt:: vci_rsp_packet < vci_param > *pkt,
 						  const tlmt_core:: tlmt_time & time, void *private_data)
@@ -364,35 +362,24 @@ namespace soclib
 
     }
 
-    tmpl ( /**/)::VciIssXcache (sc_core::sc_module_name name,
-				int id):soclib::tlmt::BaseModule (name),
-      m_iss (id), m_wbuf (100), m_vci_pending (false), m_counter (0),
-      m_lookahead (10), m_dcache (16, 8), m_icache (16, 8), p_vci ("vci",
-								   new
-								   tlmt_core::
-								   tlmt_callback
-								   <
-								   VciIssXcache,
-								   soclib::
-								   tlmt::
-								   vci_rsp_packet
-								   <
-								   vci_param >
-								   *>(this,
-								      &VciIssXcache
-								      < iss_t,
-								      vci_param
-								      >::
-								      rspReceived),
-								   &c0)
+  tmpl ( /**/)::VciXcache(
+	  sc_core::sc_module_name name,
+	  int id )
+			   : soclib::tlmt::BaseModule (name),
+			   m_iss (id), m_wbuf (100), m_vci_pending (false),
+			   m_counter (0), m_lookahead (10), m_dcache (16, 8),
+			   m_icache (16, 8),
+			   p_vci("vci",
+					 new tlmt_core::tlmt_callback<VciXcache,vci_rsp_packet<vci_param>*>(
+						 this,&VciXcache<iss_t,vci_param>::rspReceived),&c0)
     {
 	    p_irq = (tlmt_core::tlmt_in<bool>*)malloc(sizeof(tlmt_core::tlmt_in<bool>)*iss_t::n_irq);
 	    for (int32_t i = 0 ; i < iss_t::n_irq ; i++) {
 		std::ostringstream o;
 		o << "irq[" << i << "]";
 	        new(&p_irq[i])tlmt_core::tlmt_in<bool> (o.str(),
-		       new tlmt_core::tlmt_callback < VciIssXcache,
-                   bool >(this, &VciIssXcache < iss_t,
+		       new tlmt_core::tlmt_callback < VciXcache,
+                   bool >(this, &VciXcache < iss_t,
                                      vci_param >::irqReceived, (void*)(long)i));
 	    }
       m_iss.reset ();
