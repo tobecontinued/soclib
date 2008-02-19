@@ -107,8 +107,9 @@ public:
 
 	VciMwmrController(
 		sc_module_name name,
-		const IntTab &index,
 		const MappingTable &mt,
+		const IntTab &srcid,
+		const IntTab &tgtid,
 		const size_t plaps,
         const size_t fifo_depth,
 		const size_t n_to_coproc,

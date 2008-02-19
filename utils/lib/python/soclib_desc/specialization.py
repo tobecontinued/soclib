@@ -17,12 +17,34 @@ class Specialization:
 				return str(x.getTmplType(self.__args))
 			return ','.join(map(func, tp))
 		return ''
+
+	def getModuleName(self):
+		return self.__cdef.getModuleName()
 		
 	def getType(self):
 		tp = self.getTmplParams()
 		if tp:
 			tp = '<'+tp+'> '
 		return self.__cdef['classname']+tp
+
+	def getConstant(self, name):
+		from specialization import Specialization
+		c = self.descAttr('constants')
+		if name in c:
+			return c[name]
+		for u in self.__cdef['tmpl_parameters']:
+			try:
+				tn = u.argval(self.__args)
+				n = self.__cdef.fullyQualifiedModuleName(tn)
+				return Specialization(n, **self.__args).getConstant(name)
+			except Exception, e:
+				pass
+		for u in self.__cdef.getUses(self.__args):
+			try:
+				return u.specialization().getConstant(name)
+			except Exception, e:
+				pass
+		raise ValueError('Constant %s not found in %s'%(name, self.getModuleName()))
 
 	def fullyQualifiedModuleName(self, name):
 		return self.__cdef.fullyQualifiedModuleName(name)

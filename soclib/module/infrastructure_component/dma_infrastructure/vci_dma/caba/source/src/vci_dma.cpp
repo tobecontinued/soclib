@@ -172,12 +172,13 @@ tmpl(void)::genMoore()
 
 tmpl(/**/)::VciDma(
     sc_module_name name,
-    const IntTab &index,
     const MappingTable &mt,
+    const IntTab &srcid,
+    const IntTab &tgtid,
 	const size_t burst_size )
 	: caba::BaseModule(name),
-	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(index), 1),
-	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(index)),
+	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid), 1),
+	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(srcid)),
 	  m_len(0),
 	  m_data(burst_size, (uint8_t)0),
       p_clk("clk"),

@@ -1,8 +1,6 @@
 
 # -*- python -*-
 
-# Mips Little endian (MipsElIss)
-
 Module('caba:iss_wrapper',
 	   classname = 'soclib::caba::IssWrapper',
 	   header_files = ["../source/include/iss_wrapper.h",],
@@ -15,6 +13,7 @@ Module('caba:iss_wrapper',
 	   ports = [
 	Port('xcache_processor_icache', 'p_icache'),
 	Port('xcache_processor_dcache', 'p_dcache'),
+	Port('bit_in', 'p_irq', parameter.Constant('n_irq')),
 	Port('bit_in', 'p_resetn', auto = 'resetn'),
 	Port('clock_in', 'p_clk', auto = 'clock'),
 	],
@@ -27,5 +26,6 @@ Module('caba:iss_wrapper',
 	],
 	   extensions = [
 	'dsx:cpu=wrapper',
+	'dsx:mapping_type=processor',
    ],
 )

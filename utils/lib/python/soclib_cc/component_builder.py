@@ -43,14 +43,15 @@ class ComponentBuilder:
 		from soclib_desc import component, module
 		self.deepdeps = set()#(self,))
 		try:
+#			print self
 			self.deps = self.specialization.getAllBuilders()
 #			self.deps.remove(self)
 			for b in self.deps:
 				self.deepdeps |= b.withDeps()
 #		except module.NoSuchComponent:
 #			raise ComponentInstanciationError(where, u.name, 'not found')
-		except RuntimeError:
-			raise ComponentInstanciationError(where, spec, 'infinite loop')
+		except RuntimeError, e:
+			raise ComponentInstanciationError(where, spec, e)
 		except ComponentInstanciationError, e:
 			raise ComponentInstanciationError(where, spec, str(e))
 		self.headers = set()

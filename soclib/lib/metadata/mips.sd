@@ -8,4 +8,7 @@ Module('common:mips',
 		"../src/iss/mips.cpp",
 		"../src/iss/mips_instructions.cpp",
 		],
+	   constants = {
+	'n_irq':6
+	},
 )

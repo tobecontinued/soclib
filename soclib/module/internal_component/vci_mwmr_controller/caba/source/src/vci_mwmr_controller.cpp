@@ -558,8 +558,9 @@ void dealloc_elems(elem_t *elems, size_t n)
 
 tmpl(/**/)::VciMwmrController(
     sc_module_name name,
-    const IntTab &index,
     const MappingTable &mt,
+    const IntTab &srcid,
+    const IntTab &tgtid,
 	const size_t plaps,
 	const size_t fifo_depth,
 	const size_t n_to_coproc,
@@ -567,8 +568,8 @@ tmpl(/**/)::VciMwmrController(
 	const size_t n_config,
 	const size_t n_status )
 		   : caba::BaseModule(name),
-		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(index), 1),
-           m_ident(mt.indexForId(index)),
+		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid), 1),
+           m_ident(mt.indexForId(srcid)),
            m_fifo_depth(fifo_depth),
            m_plaps(plaps),
            m_n_to_coproc(n_to_coproc),

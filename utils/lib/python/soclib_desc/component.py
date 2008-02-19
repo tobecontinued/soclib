@@ -35,23 +35,27 @@ __all__ = ['Module', 'PortDecl',
 		   'Signal','Port']
 
 class Port:
-	def __init__(self, type, name, count = None, auto = None):
+	def __init__(self, type, name, count = None, auto = None, **args):
 		self.__type = type
 		self.__name = name
 		self.__count = count
 		self.__owner = None
 		self.__auto = auto
+		self.__args = args
 	def setModule(self, module):
 		self.__type = module.fullyQualifiedModuleName(self.__type)
 		self.__module = module
 	def getUse(self, module):
-		ptype = Module.getRegistered(self.__type)
-		module.addUse(Uses(self.__type))
+		from specialization import Specialization
+		ptype = Specialization(self.__type, **self.__args)
+		module.addUse(Uses(self.__type, **self.__args))
 	def getInfo(self):
-		ptype = Module.getRegistered(self.__type)
+		from specialization import Specialization
+		ptype = Specialization(self.__type, **self.__args)
 		return self.__name, ptype, self.__count, self.__auto
 	def __str__(self):
-		ptype = Module.getRegistered(self.__type)
+		from specialization import Specialization
+		ptype = Specialization(self.__type, **self.__args)
 		return '<port: %s %s>'%(self.__name, str(ptype['header_files']))
 
 class Signal(Module):
@@ -101,20 +105,32 @@ class Uses:
 		return self.__class__(self.name, **a)
 	def __str__(self):
 		return '<Use %s>'%(self.name)
+	def specialization(self):
+		from specialization import Specialization
+		return Specialization(self.name, **self.args)
 	def builder(self, parent):
 		self.name = parent.fullyQualifiedModuleName(self.name)
 		from soclib_desc import specialization
 		args = {}
 		args.update(self.args)
 		parent.putArgs(args)
-		for k in args.keys():
-			newv = args[k]
+		def resolve(newv):
 			if not '%' in str(newv):
-				continue
+				return newv
 			v = None
 			while newv != v:
 				v = newv
 				newv = newv%args
+			v = v.replace('"', '\\"')
+			return v
+		for k in args.keys():
+			v = args[k]
+			if isinstance(v, list):
+				v = map(resolve, v)
+			elif isinstance(v, str):
+				v = resolve(v)
+			else:
+				v = resolve(str(v))
 			args[k] = v
 		spec = specialization.Specialization(self.name, **args)
 		from soclib_cc import component_builder

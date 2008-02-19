@@ -31,4 +31,7 @@ Module('caba:vci_xcache',
 	parameter.Int('dcache_lines'),
 	parameter.Int('dcache_words'),
 	],
+	   extensions = [
+	'dsx:get_ident=ident:p_vci',
+   ],
 )

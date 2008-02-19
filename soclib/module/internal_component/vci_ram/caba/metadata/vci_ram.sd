@@ -25,6 +25,8 @@ Module('caba:vci_ram',
 	parameter.Module('loader', 'common:elf_loader', auto='env:loader'),
 	],
 	   extensions = [
-	'dsx:addressable',
+	'dsx:addressable=ident',
+	'dsx:get_ident=ident:p_vci',
+	'dsx:mapping_type=memory',
    ],
 )

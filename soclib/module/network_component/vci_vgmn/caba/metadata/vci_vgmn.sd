@@ -11,6 +11,8 @@ Module('caba:vci_vgmn',
 	ports = [
 	    Port('vci_initiator', 'p_to_target', parameter.Reference('n_target')),
 	    Port('vci_target', 'p_from_initiator', parameter.Reference('n_initiator')),
+		Port('bit_in', 'p_resetn', auto = 'resetn'),
+		Port('clock_in', 'p_clk', auto = 'clock'),
 	],
 	instance_parameters = [
         parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
@@ -23,4 +25,7 @@ Module('caba:vci_vgmn',
 		Uses('base_module'),
 		Uses('common:mapping_table'),
 		],
+	   extensions = [
+	'dsx:interconnect=root',
+	],
 )

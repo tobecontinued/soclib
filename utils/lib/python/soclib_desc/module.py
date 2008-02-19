@@ -54,6 +54,7 @@ class Module:
 		'instance_parameters' : [],
 		'local' : False,
 		'extensions' : [],
+		'constants' : {},
 		}
 	tb_delta = -2
 
@@ -73,6 +74,9 @@ class Module:
 		filename = traceback.extract_stack()[self.tb_delta][0]
 		self.mk_abs_paths(os.path.dirname(filename))
 		self.__register(self.__typename, self)
+
+	def getModuleName(self):
+		return self.__typename
 
 	def fullyQualifiedModuleName(self, name):
 		if not ':' in name:

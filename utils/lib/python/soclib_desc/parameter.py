@@ -93,6 +93,13 @@ class String(Base):
 	def instValue(self, env, param):
 		return '"%s"'%Base.instValue(self, env, param)
 
+class StringArray(Base):
+	valid_types = (list)
+	def instValue(self, env, param):
+		v = Base.instValue(self, env, param)
+		return 'stringArray(%s)'%(
+			', '.join(map(lambda x:'"%s"'%(x%param).replace('"', '\\"'), v)))
+
 class IntTab(Base):
 	valid_types = (tuple)
 	def instValue(self, env, param):
@@ -145,6 +152,12 @@ class Module(Base):
 		return r.ref()
 
 class Reference:
+	def __init__(self, name):
+		self.__name = name
+	def name(self):
+		return self.__name
+
+class Constant:
 	def __init__(self, name):
 		self.__name = name
 	def name(self):

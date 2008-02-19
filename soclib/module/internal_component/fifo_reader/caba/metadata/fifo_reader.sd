@@ -9,11 +9,17 @@ Module('caba:fifo_reader',
 		],
 		   ports = [
 	Port('fifo_output', 'p_fifo'),
+	Port('bit_in', 'p_resetn', auto = 'resetn'),
+	Port('clock_in', 'p_clk', auto = 'clock'),
 	],
 	uses = [
 		Uses('base_module'),
 		Uses('common:process_wrapper'),
 		],
+	instance_parameters = [
+        parameter.String('binary'),
+        parameter.StringArray('argv'),
+	],
 	tmpl_parameters = [
 	parameter.Type('word_t'),
 	],

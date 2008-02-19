@@ -159,8 +159,9 @@ BaseModule& dma(
 	BaseModule &tmp =
 		*new VciDma<vci_param>(
         name.c_str(),
-        args.get<soclib::common::IntTab>("_vci_id"),
         env.get<MappingTable>("mapping_table"),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<soclib::common::IntTab>("_vci_id"),
         args.get<int>("buffer_size") );
 	return tmp;
 }
@@ -215,8 +216,9 @@ BaseModule& mwmr_controller(
 	return
 		*new VciMwmrController<vci_param>(
         name.c_str(),
-        args.get<soclib::common::IntTab>("_vci_id"),
         env.get<MappingTable>("mapping_table"),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<soclib::common::IntTab>("_vci_id"),
         args.get<int>("plaps"),
         args.get<int>("fifo_size"),
         args.get<int>("n_to_coproc"),

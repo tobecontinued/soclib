@@ -264,11 +264,12 @@ tmpl(void)::genMoore()
 
 tmpl(/**/)::VciFdAccess(
     sc_module_name name,
-    const IntTab &index,
-    const MappingTable &mt)
+    const MappingTable &mt,
+    const IntTab &srcid,
+    const IntTab &tgtid )
 	: caba::BaseModule(name),
-	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(index), 1),
-	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(index)),
+	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid), 1),
+	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(srcid)),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci_target("vci_target"),

@@ -83,8 +83,9 @@ public:
 
 	VciDma(
 		sc_module_name name,
-		const soclib::common::IntTab &index,
 		const soclib::common::MappingTable &mt,
+		const soclib::common::IntTab &srcid,
+		const soclib::common::IntTab &tgtid,
 		const size_t burst_size );
 };
 

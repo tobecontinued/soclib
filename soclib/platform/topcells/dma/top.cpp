@@ -113,7 +113,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 1);
 	soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(4), maptab, FB_WIDTH, FB_HEIGHT); 
 
-	soclib::caba::VciDma<vci_param> vcidma("vcidma", IntTab(0), maptab, 128); 
+	soclib::caba::VciDma<vci_param> vcidma("vcidma", maptab, IntTab(0), IntTab(0), 128); 
 
 	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 2, 6, 2, 8);
 
