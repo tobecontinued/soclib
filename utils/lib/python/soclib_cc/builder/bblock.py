@@ -52,7 +52,10 @@ class BBlock:
 				self.last_mod = -1
 		self.__exists = self.filename is '' or os.path.exists(self.filename)
 	def delete(self):
-		os.unlink(self.filename)
+		try:
+			os.unlink(self.filename)
+		except OSError:
+			pass
 		self.rehash()
 	def generate(self):
 		self.generator.process()

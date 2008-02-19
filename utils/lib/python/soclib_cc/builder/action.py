@@ -125,7 +125,10 @@ class Action:
 			return True
 		newest_src = get_newest(deps, ignore_absent = False)
 		oldest_dest = get_oldest(self.dests, ignore_absent = True)
-		return (newest_src > oldest_dest) or not check_exist(self.dests)
+		r = (newest_src > oldest_dest) or not check_exist(self.dests)
+		if r:
+			map(lambda x:x.delete(), self.dests)
+		return r
 	def _depList(self):
 		return self.sources+self.processDeps()
 	def canBeProcessed(self):
