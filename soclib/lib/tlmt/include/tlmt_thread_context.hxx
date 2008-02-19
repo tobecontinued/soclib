@@ -79,6 +79,12 @@ void tlmt_thread_context::set_time( const tlmt_time &t )
         m_time = t;
 }
 
+void tlmt_thread_context::update_time( const tlmt_time &t )
+{
+	if (t>m_time)
+        	m_time = t;
+}
+
 }
 
 #endif

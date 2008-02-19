@@ -67,6 +67,8 @@ public:
 	inline void add_time( const tlmt_time &offset );
 
 	inline void set_time( const tlmt_time &t );
+
+	inline void update_time( const tlmt_time &t );
 };
 
 }

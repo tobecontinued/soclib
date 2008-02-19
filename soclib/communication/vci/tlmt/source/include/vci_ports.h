@@ -36,12 +36,12 @@
 namespace soclib { namespace tlmt {
 
 template<typename vci_param>
-class VciInitiatorPort;
+class VciInitiator;
 
 template<typename vci_param>
-class VciTargetPort
+class VciTarget
 {
-	friend class VciInitiatorPort<vci_param>;
+	friend class VciInitiator<vci_param>;
 public:
 	typedef tlmt_core::tlmt_callback_base<vci_cmd_packet<vci_param>*> *callback_t;
 
@@ -50,7 +50,7 @@ private:
 	tlmt_core::tlmt_in<vci_cmd_packet<vci_param>*> cmd_in;
 
 public:
-	VciTargetPort(const std::string &name, callback_t cb, tlmt_core::tlmt_thread_context *opt_ref = NULL)
+	VciTarget(const std::string &name, callback_t cb, tlmt_core::tlmt_thread_context *opt_ref = NULL)
 		: rsp_out(name+"_rsp_out", opt_ref),
 		  cmd_in(name+"_cmd_in", cb)
 	{}
@@ -60,7 +60,7 @@ public:
 		return rsp_out.send(pkt, time);
 	}
 
-	inline void operator()( VciInitiatorPort<vci_param> &peer );
+	inline void operator()( VciInitiator<vci_param> &peer );
 
 	inline tlmt_core::tlmt_time peer_time() const
 	{
@@ -79,7 +79,7 @@ public:
 };
 
 template<typename vci_param>
-class VciInitiatorPort
+class VciInitiator
 {
 public:
 	typedef tlmt_core::tlmt_callback_base<vci_rsp_packet<vci_param>*> *callback_t;
@@ -89,7 +89,7 @@ private:
 	tlmt_core::tlmt_in<vci_rsp_packet<vci_param>*> rsp_in;
 
 public:
-	VciInitiatorPort(const std::string &name, callback_t cb, tlmt_core::tlmt_thread_context *opt_ref = NULL)
+	VciInitiator(const std::string &name, callback_t cb, tlmt_core::tlmt_thread_context *opt_ref = NULL)
 		: cmd_out(name+"_cmd_out", opt_ref),
 		  rsp_in(name+"_rsp_in", cb)
 	{}
@@ -99,7 +99,7 @@ public:
 		return cmd_out.send(pkt, time);
 	}
 
-	inline void operator()( VciTargetPort<vci_param> &peer );
+	inline void operator()( VciTarget<vci_param> &peer );
 
 	inline const tlmt_core::tlmt_time &peer_time() const
 	{
@@ -118,13 +118,13 @@ public:
 };
 
 template<typename vci_param>
-void VciTargetPort<vci_param>::operator()( VciInitiatorPort<vci_param> &peer )
+void VciTarget<vci_param>::operator()( VciInitiator<vci_param> &peer )
 {
 	peer(*this);
 }
 
 template<typename vci_param>
-void VciInitiatorPort<vci_param>::operator()( VciTargetPort<vci_param> &peer )
+void VciInitiator<vci_param>::operator()( VciTarget<vci_param> &peer )
 {
 	peer.rsp_out(rsp_in);
 	cmd_out(peer.cmd_in);

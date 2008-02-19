@@ -40,7 +40,7 @@ class vci_cmd_packet
 public:
 	typename vci_param::cmd_t cmd;
 	typename vci_param::addr_t *address;
-	unsigned int *be;
+	unsigned int be;
 	bool contig;
 	typename vci_param::data_t *buf;
 	size_t length;
@@ -57,6 +57,7 @@ public:
 	typename vci_param::cmd_t cmd;
 	size_t length;
 	bool eop;
+	uint32_t error;
 	uint32_t srcid;
 	uint32_t trdid;
 	uint32_t pktid;

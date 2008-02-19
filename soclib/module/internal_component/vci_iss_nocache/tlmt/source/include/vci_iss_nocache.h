@@ -23,35 +23,46 @@
  * Maintainers: fpecheux, nipo
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
- *     Emmanuel Viaud <emmanuel.viaud@lip6.fr>
+ *     François Pêcheux <fancois.pecheux@lip6.fr>
+ *     Nicolas Pouillon <nipo@ssji.net>
  */
-#ifndef SOCLIB_TLMT_VCI_VGMN_H
-#define SOCLIB_TLMT_VCI_VGMN_H
+
 
 #include <tlmt>
-#include <vector>
-#include <sstream>
+#include "tlmt_base_module.h"
+#include "vci_ports.h"
 
-#include "mapping_table.h"
-#include "vci_cmd_arb_rsp_rout.h"
-#include "vci_rsp_arb_cmd_rout.h"
+#include <inttypes.h>
+#include "soclib_endian.h"
 
 namespace soclib { namespace tlmt {
 
-template<typename vci_param>
-class VciVgmn
+template<typename iss_t,typename vci_param>
+class VciIssNocache
+    : public soclib::tlmt::BaseModule
 {
-public:
-    std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> m_CmdArbRspRout;
-    std::vector<typename soclib::tlmt::VciRspArbCmdRout<vci_param> *> m_RspArbCmdRout;
+    tlmt_core::tlmt_thread_context c0;
+    sc_core::sc_event e0;
+	tlmt_core::tlmt_return m_return;
+    iss_t m_iss;
 
-    VciVgmn(int nb_init,
-			int nb_target,
-			const soclib::common::MappingTable &mt,
-			tlmt_core::tlmt_time delay);
+protected:
+    SC_HAS_PROCESS(VciIssNocache);
+
+public:
+    soclib::tlmt::VciInitiator<vci_param> p_vci;
+    soclib::tlmt::SynchroInPort p_in;
+
+    VciIssNocache( sc_core::sc_module_name name, int id );
+
+    tlmt_core::tlmt_return &callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+									 const tlmt_core::tlmt_time &time,
+									 void *private_data);
+    tlmt_core::tlmt_return &callback_synchro(soclib::tlmt::synchro_packet *pkt,
+									 const tlmt_core::tlmt_time &time,
+									 void *private_data);
+    void behavior();
 };
 
 }}
 
-#endif

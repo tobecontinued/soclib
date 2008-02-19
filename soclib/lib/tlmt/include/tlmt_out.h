@@ -49,7 +49,7 @@ public:
 		: sc_core::sc_port<tlmt_if<data_t>,0>(name.c_str()),
 		  m_thread_context(opt_ref)
 	{
-		std::cout << "tlmt_out " << name << " ctor" << std::endl;
+		// std::cout << "tlmt_out " << name << " ctor" << std::endl;
 	}
 
 	~tlmt_out()

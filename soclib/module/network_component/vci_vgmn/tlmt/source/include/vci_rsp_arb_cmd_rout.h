@@ -23,8 +23,8 @@
  * Maintainers: fpecheux, nipo
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <fancois.pecheux@lip6.fr>
- *     Nicolas Pouillon <nipo@ssji.net>
+ *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     Emmanuel Viaud <emmanuel.viaud@lip6.fr>
  */
 
 #ifndef VCI_CMD_ARB_RSP_ROUT_H
@@ -55,7 +55,7 @@ protected:
 	SC_HAS_PROCESS(VciRspArbCmdRout);
 
 public:
-	soclib::tlmt::VciTargetPort<vci_param> p_vci;
+	soclib::tlmt::VciTarget<vci_param> p_vci;
 
     VciRspArbCmdRout( sc_core::sc_module_name name,
 					  const soclib::common::MappingTable &mt,

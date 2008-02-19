@@ -53,7 +53,7 @@ public:
 		: sc_core::sc_port<tlmt_if<data_t>,0>(name.c_str()),
 		  m_interf(cb)
 	{
-		std::cout << "tlmt_in " << name << " ctor" << std::endl;
+		// std::cout << "tlmt_in " << name << " ctor" << std::endl;
 		bind(m_interf);
 	}
 

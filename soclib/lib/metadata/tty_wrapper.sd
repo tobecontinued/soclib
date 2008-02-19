@@ -7,5 +7,6 @@ Module('common:tty_wrapper',
 	implementation_files = ['../src/tty_wrapper.cpp',],
 	uses = [
 		Uses('xterm_wrapper'),
+		Uses('process_wrapper'),
 		],
 )

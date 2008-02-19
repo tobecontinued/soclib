@@ -52,15 +52,17 @@ tmpl(void)::behavior()
 	uint32_t localbuf[32];
 
 	for(;;) {
-		cmd.length = 4;
-		addresses[0] = 0xBFC00000;
-		addresses[1] = 0xBFC00004;
-		addresses[2] = 0xBFC00008;
-		addresses[3] = 0xBFC0000c;
-		cmd.address = addresses;
-		cmd.buf = localbuf;
-		cmd.cmd = vci_param::CMD_READ;
-		cmd.srcid = 0;
+                cmd.cmd = vci_param::CMD_READ;
+                addresses[0] = 0xBFC00000;
+                cmd.address = addresses;
+                cmd.be = 0xF;
+                cmd.contig = 0;
+                cmd.buf = localbuf;
+                cmd.length = 1;
+                cmd.eop = 1;
+                cmd.srcid = 0;
+                cmd.trdid = 0;
+                cmd.pktid = 0;
 
 		tlmt_core::tlmt_return ret;
 		ret = p_vci.send(&cmd, c0.time());
@@ -68,10 +70,29 @@ tmpl(void)::behavior()
 		sc_core::wait(e0);
 
 		std::cout << std::hex << localbuf[0] << std::endl;
-		std::cout << std::hex << localbuf[1] << std::endl;
-		std::cout << std::hex << localbuf[2] << std::endl;
-		std::cout << std::hex << localbuf[3] << std::endl;
 		std::cout << std::dec;
+
+		localbuf[0]++;
+
+		std::cout << std::hex << localbuf[0] << std::endl;
+		std::cout << std::dec;
+
+                cmd.cmd = vci_param::CMD_WRITE;
+                addresses[0] = 0xBFC00000;
+                cmd.address = addresses;
+                cmd.be = 0xF;
+                cmd.contig = 0;
+                cmd.buf = localbuf;
+                cmd.length = 1;
+                cmd.eop = 1;
+                cmd.srcid = 0;
+                cmd.trdid = 0;
+                cmd.pktid = 0;
+
+                ret = p_vci.send(&cmd, c0.time());
+                std::cout << name() << "ret.time=" << ret.time() << std::endl;
+                sc_core::wait(e0);
+
 	}
 }
 

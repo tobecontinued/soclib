@@ -39,6 +39,8 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 										void *private_data)
 {
 
+//std::cout << name() << " callback" << std::endl;
+
 	// First, find the right segment using the first address of the packet
 	
 	std::list<soclib::common::Segment>::iterator seg;	
@@ -63,6 +65,7 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 		std::cout << "Address does not match any segment" << std::endl ;
 	}
 
+/*
 	soclib::tlmt::vci_rsp_packet<vci_param> rsp;
 
 	std::cout << "packet size=" << pkt->length << std::endl ;
@@ -70,6 +73,7 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 
 	std::cout << "Demande de temps: " << p_vci.peer_time() << std::endl;
 	std::cout << "Demande d'activite: " << p_vci.peer_active() << std::endl;
+*/
 	return m_return;
 }
 
@@ -79,24 +83,30 @@ tmpl(tlmt_core::tlmt_return&)::callback_read(size_t seg_index,
 											 const tlmt_core::tlmt_time &time,
 											 void *private_data)
 {
-	std::cout << "callback_read" << std::endl;
+	// std::cout << "callback_read" << std::endl;
 	size_t i,packet_size;
 
 	packet_size=pkt->length;
-	for (i=0;i<packet_size;i++)
-	{
-		pkt->buf[i]= m_contents[seg_index][(pkt->address[i]-s.baseAddress()) / 4];
+	if (pkt->contig) {
+		for (i=0;i<packet_size;i++) {
+			pkt->buf[i]= m_contents[seg_index][((pkt->address[0]+i*4)-s.baseAddress()) / 4];
+		}
+	} else {
+		for (i=0;i<packet_size;i++) {
+			pkt->buf[i]= m_contents[seg_index][(pkt->address[i]-s.baseAddress()) / 4];
+		}
 	}
-	std::cout << "time callback_read=" << time << std::endl;
+	// std::cout << "time callback_read=" << time << std::endl;
 
 	rsp.cmd=pkt->cmd;
 	rsp.length=pkt->length;
 	rsp.srcid=pkt->srcid;
 	rsp.pktid=pkt->pktid;
 	rsp.trdid=pkt->trdid;
+	rsp.error=0;
 
-	p_vci.send(&rsp, time+tlmt_core::tlmt_time(42));
-	m_return.set_time(time+tlmt_core::tlmt_time(42));
+	p_vci.send(&rsp, time+tlmt_core::tlmt_time(pkt->length+5));
+	m_return.set_time(time+tlmt_core::tlmt_time(pkt->length+5));
 	return m_return;
 }
 
@@ -106,7 +116,7 @@ tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
 											  const tlmt_core::tlmt_time &time,
 											  void *private_data)
 {
-	std::cout << "callback_write" << std::endl;
+	// std::cout << "callback_write" << std::endl;
 	size_t i,packet_size;
 
 	packet_size=pkt->length;
@@ -116,7 +126,7 @@ tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
 		ram_t *tab = m_contents[seg_index];
 		unsigned int cur = tab[index];
 		uint32_t mask = 0;
-		unsigned int be=pkt->be[i];
+		unsigned int be=pkt->be;
 
 		if ( be & 1 )
 			mask |= 0x000000ff;
@@ -135,7 +145,8 @@ tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
 	rsp.pktid=pkt->pktid;
 	rsp.trdid=pkt->trdid;
 
-	p_vci.send(&rsp, time+tlmt_core::tlmt_time(42));
+	p_vci.send(&rsp, time+tlmt_core::tlmt_time(pkt->length+5));
+	m_return.set_time(time+tlmt_core::tlmt_time(pkt->length+5));
 
 	return m_return;
 }

@@ -38,11 +38,13 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 										const tlmt_core::tlmt_time &time,
 										void *private_data)
 {
-	std::cout << "VciRspArbCmdRout::callback" << std::endl;
+	// std::cout << "VciRspArbCmdRout::callback" << std::endl;
 
 	uint32_t address = pkt->address[0];
+	printf("address=%8.8x\n",address);
 	unsigned int dest_index = m_routing_table[address];
 
+	printf("dest_index=%u\n",dest_index);
 	if ( dest_index >= 0 ) {
 		m_CmdArbRspRout[dest_index]->put(pkt,m_index,time+m_delay);
 	} else {

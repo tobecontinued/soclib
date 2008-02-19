@@ -76,6 +76,10 @@ void MipsIss::reset()
     r_status.whole = 0;
     m_exec_cycles = 0;
     r_gp[0] = 0;
+
+    m_hazard=false;
+    m_irq=0;
+    m_exception = NO_EXCEPTION;
 }
 
 void MipsIss::dump() const
@@ -86,6 +90,7 @@ void MipsIss::dump() const
         << " PC: " << r_pc
         << " Ins: " << m_ins.ins << std::endl
         << std::dec
+        << " Cause.xcode: " << r_cause.xcode << std::endl
         << " Status.ie " << r_status.iec
         << " .im " << r_status.im
         << " .um " << r_status.kuc << std::endl

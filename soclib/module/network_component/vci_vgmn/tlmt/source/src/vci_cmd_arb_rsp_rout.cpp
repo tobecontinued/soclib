@@ -47,7 +47,7 @@ tmpl(void)::behavior()
 {
 	while (1) {
 		int decision=through_fifo();
-		std::cout << "decision=" << decision << std::endl;
+		// std::cout << "decision=" << decision << std::endl;
 		switch (decision) {
 		case -1:	// no packet available
 			sc_core::wait(e0);
@@ -62,8 +62,10 @@ tmpl(void)::behavior()
 				packet_time=c0.time();
 			tlmt_core::tlmt_return ret;
 			ret=p_vci.send(m_fifos_pkt[decision],packet_time);
+			// std::cout << std::dec <<  name() << " ret.time=" << ret.time() << std::endl;
 			c0.set_time(ret.time());
 			m_fifos_pkt[decision]=NULL;
+			sc_core::wait(e0); // should be optimized here
 		}
 		break;
 		}
@@ -78,7 +80,7 @@ tmpl(void)::setRspArbCmdRout(std::vector<typename soclib::tlmt::VciRspArbCmdRout
 tmpl(void)::put(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,uint32_t idx,
 				const tlmt_core::tlmt_time &time)
 {
-	std::cout << "put" << std::endl;
+	// std::cout << "put" << std::endl;
 	m_fifos_pkt[idx]=pkt;
 	m_fifos_time[idx]=time;
 	e0.notify(sc_core::SC_ZERO_TIME);

@@ -26,43 +26,42 @@
  *     François Pêcheux <fancois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  */
-#ifndef SOCLIB_TLMT_VCI_RAM_H
-#define SOCLIB_TLMT_VCI_RAM_H
 
 #include <tlmt>
 #include "vci_ports.h"
 #include "tlmt_base_module.h"
 #include "mapping_table.h"
-#include "soclib_endian.h"
-#include "elf_loader.h"
+#include "tty_wrapper.h"
 
 namespace soclib { namespace tlmt {
 
 template<typename vci_param>
-class VciRam 
+class VciMultiTty
     : public soclib::tlmt::BaseModule
 {
 private:
 	soclib::common::IntTab m_index;
 	soclib::common::MappingTable m_mt;
-	soclib::common::ElfLoader *m_loader;
+        std::list<soclib::common::Segment> m_segments;
+	std::vector<soclib::common::TtyWrapper*> m_term;
 
-	std::list<soclib::common::Segment> m_segments;
-	typedef typename vci_param::data_t ram_t;
-	ram_t **m_contents;
 	tlmt_core::tlmt_return m_return;
 	vci_rsp_packet<vci_param> rsp;
 
+	unsigned long r_counter;
+
 protected:
-    SC_HAS_PROCESS(VciRam);
+    SC_HAS_PROCESS(VciMultiTty);
 public:
     soclib::tlmt::VciTarget<vci_param> p_vci;
+    tlmt_core::tlmt_out<bool> p_out;
 
-    VciRam(
+    VciMultiTty(
 		sc_core::sc_module_name name,
 		const soclib::common::IntTab &index,
 		const soclib::common::MappingTable &mt,
-		common::ElfLoader &loader);
+		const char *first_name,
+		...);
 
     tlmt_core::tlmt_return &callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
 									 const tlmt_core::tlmt_time &time,
@@ -82,4 +81,3 @@ public:
 
 }}
 
-#endif

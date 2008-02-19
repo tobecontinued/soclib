@@ -42,7 +42,7 @@ class VciSimpleTarget
 private:
 	tlmt_core::tlmt_return m_return;
 public:
-    soclib::tlmt::VciTargetPort<vci_param> p_vci;
+    soclib::tlmt::VciTarget<vci_param> p_vci;
 
     VciSimpleTarget(sc_core::sc_module_name name);
 

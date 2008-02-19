@@ -42,7 +42,7 @@ public:
 	tlmt_module( sc_core::sc_module_name name )
 		: sc_core::sc_module(name)
 	{
-		std::cout << "tlmt_module " << name << " ctor" << std::endl;
+		// std::cout << "tlmt_module " << name << " ctor" << std::endl;
 	}
 
 	virtual ~tlmt_module()
