@@ -34,6 +34,17 @@ namespace soclib { namespace caba {
 
 #define tmpl(t) template<typename vci_param> t AdvancedVciAssert<vci_param>
 
+tmpl(void)::writeError(const char* szError, Direction dDirection) const {
+   (m_log_file ? *m_log_file : (std::ostream&) std::cout)
+      << "ERROR : Protocol Error \""<< szError <<"\"on "<< name()
+      << " for the packet " << ((dDirection == DOut) ? m_nb_response_packets : m_nb_request_packets)
+      << ", the cell " << ((dDirection == DOut) ? m_response_cells : m_request_cells)
+      << " issued from " << ((dDirection == DOut) ? ((const char*) "response") : ((const char*) "request")) << " !!!\n";
+}
+
+tmpl(void)::reset()
+   {  setReset(m_default_reset); }
+
 tmpl(void)::testHandshake() { // see p 41, 42, verified on the waveforms
    switch (m_request_state) {
       case SIdle:
@@ -102,7 +113,7 @@ tmpl(void)::testHandshake() { // see p 41, 42, verified on the waveforms
             m_response_state = SSync;
          break;
       case SDefault_Ack:
-         assume(r_observed_signals.rspack, "The protocol requires default request acknowledgement", DIn);
+         assume(r_observed_signals.rspack, "The protocol requires default response acknowledgement", DIn);
          if (r_observed_signals.rspval) {
             acquireResponseCell();
             m_response_state = SSync;

@@ -203,13 +203,10 @@ class BasicVciFilter : public soclib::caba::BaseModule {
 
   private:
    enum Direction { DIn, DOut };
+   void writeError(const char* szError, Direction dDirection) const;
    void assume(bool fCondition, const char* szError, Direction dDirection) const
       {  if (!fCondition)
-            (m_log_file ? *m_log_file : (std::ostream&) std::cout)
-               << "ERROR : Protocol Error \""<< szError <<"\"on "<< name()
-               << " for the packet " << ((dDirection == DOut) ? m_nb_response_packets : m_nb_request_packets)
-               << ", the cell " << ((dDirection == DOut) ? m_response_cells : m_request_cells)
-               << " issued from " << ((dDirection == DOut) ? ((const char*) "response") : ((const char*) "request")) << " !!!\n";
+            writeError(szError, dDirection);
       }
 
    enum State { SIdle, SValid, SDefault_Ack, SSync };
@@ -369,6 +366,7 @@ class BasicVciFilter : public soclib::caba::BaseModule {
    typename vci_param::data_t    m_rdata_previous;
    typename vci_param::eop_t     m_reop_previous;
    typename vci_param::rerror_t  m_rerror_previous;
+   int m_default_reset;
 
   protected:
    SC_HAS_PROCESS(BasicVciFilter);
@@ -379,7 +377,7 @@ class BasicVciFilter : public soclib::caba::BaseModule {
          p_in((const char*) insname), p_out((const char*) insname),
          m_request_state(SIdle), m_response_state(SIdle), m_reset(0), m_packet_address(0),
          m_request_cells(0), m_response_cells(0), m_nb_request_packets(0), m_nb_response_packets(0),
-         m_cmdval_previous(0)
+         m_cmdval_previous(0), m_default_reset(8)
       {  SC_METHOD(copy);
          dont_initialize();
          sensitive << p_in.cmdval << p_in.address << p_in.be << p_in.cfixed << p_in.clen << p_in.cmd
@@ -393,8 +391,9 @@ class BasicVciFilter : public soclib::caba::BaseModule {
          dont_initialize();
          sensitive << p_clk.pos();
       }
-   void reset()
-      {  setReset(); }
+   void setDefaultReset(int uDefaultReset) { m_default_reset = uDefaultReset; }
+   void reset();
+
    void copy()
       {  p_out.cmdval = p_in.cmdval;
          p_out.address = p_in.address;

@@ -141,12 +141,15 @@ class PVciFilter : public soclib::caba::BaseModule {
 
   private:
    enum Direction { DIn, DOut };
+   void writeError(const char* szError, Direction dDirection) const
+      {  (m_log_file ? *m_log_file : (std::ostream&) std::cout)
+            << "ERROR : Protocol Error \""<< szError <<"\"on "<< name()
+            << " for the packet " << m_nb_packets << ", the cell " << m_cells
+            << " issued from " << ((dDirection == DOut) ? ((const char*) "response") : ((const char*) "request")) << " !!!\n";
+      }
    void assume(bool fCondition, const char* szError, Direction dDirection) const
       {  if (!fCondition)
-            (m_log_file ? *m_log_file : (std::ostream&) std::cout)
-               << "ERROR : Protocol Error \""<< szError <<"\"on "<< name()
-               << " for the packet " << m_nb_packets << ", the cell " << m_cells
-               << " issued from " << ((dDirection == DOut) ? ((const char*) "response") : ((const char*) "request")) << " !!!\n";
+            writeError(szError, dDirection);
       }
    enum PeripheralHandShakeState { PHSSNone, PHSSValTriggered, PHSSAckVal };
    PeripheralHandShakeState m_handshake_state;
@@ -241,6 +244,8 @@ class PVciFilter : public soclib::caba::BaseModule {
   	typename vci_param::data_t     m_rdata_previous;
   	typename vci_param::rerror_t   m_rerror_previous;
 
+   int m_default_reset;
+
   protected:
    SC_HAS_PROCESS(PVciFilter);
 
@@ -249,7 +254,7 @@ class PVciFilter : public soclib::caba::BaseModule {
       :  soclib::caba::BaseModule(insname), m_log_file(NULL), m_default_mode(true),
          p_in((const char*) insname), p_out((const char*) insname),
          m_handshake_state(PHSSNone), m_reset(0), m_previous_address(0), m_cells(0),
-         m_nb_packets(0), m_val_previous(0)
+         m_nb_packets(0), m_val_previous(0), m_default_reset(8)
       {  SC_METHOD(copy);
          dont_initialize();
          sensitive << p_in.val << p_in.eop << p_in.cmd << p_in.address
@@ -262,8 +267,9 @@ class PVciFilter : public soclib::caba::BaseModule {
          dont_initialize();
          sensitive << p_clk.pos();
       }
+   void setDefaultReset(int uDefaultReset) { m_default_reset = uDefaultReset; }
    void reset()
-      {  setReset(); }
+      {  setReset(m_default_reset); }
    void copy()
       {  p_out.val = p_in.val;
          p_out.eop = p_in.eop;
