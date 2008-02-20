@@ -27,5 +27,6 @@ Module('caba:vci_vgmn',
 		],
 	   extensions = [
 	'dsx:interconnect=root',
+	'dsx:mapping_type=interconnect',
 	],
 )
