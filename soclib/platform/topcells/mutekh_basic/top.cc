@@ -33,7 +33,7 @@ int _main(int argc, char *argv[])
 # if defined(CONFIG_CPU_ENDIAN_BIG)
 	typedef soclib::common::MipsEbIss Processor;
 # elif defined(CONFIG_CPU_ENDIAN_LITTLE)
-	typedef soclib::common::MipsEbIss Processor;
+	typedef soclib::common::MipsElIss Processor;
 # else
 #  error No endian configuration defined
 # endif

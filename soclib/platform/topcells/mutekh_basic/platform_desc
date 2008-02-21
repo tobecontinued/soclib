@@ -11,6 +11,8 @@ elif locs['CONFIG_CPU_MIPS'] == 'defined':
     cpu = 'mipseb'
   else:
     cpu = 'mipsel'
+else:
+  raise ValueError('No suitable cpu found in mutekh configuration')
 
 todo = Platform('caba', 'top.cc',
                 uses=[
