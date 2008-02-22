@@ -30,7 +30,7 @@ namespace soclib { namespace caba {
 
     using namespace sc_core;
 
-    template<typename vci_param, int dspin_data_size, int dspin_fifo_size>
+    template<int dspin_data_size, int dspin_fifo_size>
 	class DspinRouter
 	: public soclib::caba::BaseModule
 	{

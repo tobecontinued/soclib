@@ -26,7 +26,7 @@
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<typename vci_param, int dspin_data_size, int dspin_fifo_size> x DspinRouter<vci_param, dspin_data_size, dspin_fifo_size>
+#define tmpl(x) template<int dspin_data_size, int dspin_fifo_size> x DspinRouter<dspin_data_size, dspin_fifo_size>
 
     ////////////////////////////////
     //      constructor
