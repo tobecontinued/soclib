@@ -42,6 +42,23 @@
 
 namespace soclib { namespace common {
 
+#define COPROC_REGNUM(no, sel) (((no)<<3)+sel)
+
+enum Cp0Reg {
+    INDEX = COPROC_REGNUM(0,0),
+    BAR = COPROC_REGNUM(8,0),
+    COUNT = COPROC_REGNUM(9,0),
+    STATUS = COPROC_REGNUM(12,0),
+    CAUSE = COPROC_REGNUM(13,0),
+    EPC = COPROC_REGNUM(14,0),
+    IDENT = COPROC_REGNUM(15,1),
+    CONFIG_1 = COPROC_REGNUM(16,1),
+
+    // Implementation dependant,
+    // count of non-frozen cycles
+    EXEC_CYCLES = COPROC_REGNUM(9,6),
+};
+
 namespace {
 // Avoid duplication of source code, this kind of op
 // is easy to bug, and should be easy to debug 
@@ -121,9 +138,9 @@ void MipsIss::op_bcond()
     }
 }
 
-uint32_t MipsIss::cp0Get( uint32_t reg ) const
+uint32_t MipsIss::cp0Get( uint32_t reg, uint32_t sel ) const
 {
-    switch(reg) {
+    switch(COPROC_REGNUM(reg,sel)) {
     case INDEX:
         return m_ident;
     case BAR:
@@ -140,14 +157,18 @@ uint32_t MipsIss::cp0Get( uint32_t reg ) const
         return 0x80000000|m_ident;
     case EXEC_CYCLES:
         return m_exec_cycles;
+    case CONFIG_1:
+        return 0x80000000
+            | ((uint32_log2(m_icache_line_size)-1)<<19)
+            | ((uint32_log2(m_dcache_line_size)-1)<<10);
     default:
         return 0;
     }
 }
 
-void MipsIss::cp0Set( uint32_t reg, uint32_t val )
+void MipsIss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
 {
-    switch(reg) {
+    switch(COPROC_REGNUM(reg, sel)) {
     case STATUS:
         r_status.whole = val;
         return;
@@ -243,20 +264,30 @@ void MipsIss::op_lui()
     r_gp[m_ins.i.rt] = m_ins.i.imd << 16;
 }
 
+enum {
+    MFC0 = 0,
+    MFC1 = 1,
+    MFC2 = 2,
+    MTC0 = 4,
+    MTC1 = 5,
+    MTC2 = 6,
+    RFE = 16,
+};
+
 void MipsIss::op_copro()
 {
     if (isInUserMode()) {
         m_exception = X_CPU;
         return;
     }
-    switch (m_ins.r.rs) {
-    case 4: // mtc0
-        cp0Set( m_ins.r.rd, m_rt );
+    switch (m_ins.coproc.action) {
+    case MTC0:
+        cp0Set( m_ins.coproc.rd, m_ins.coproc.sel, m_rt );
         break;
-    case 0: // mfc0
-        r_gp[m_ins.r.rt] = cp0Get( m_ins.r.rd );
+    case MFC0:
+        r_gp[m_ins.coproc.rt] = cp0Get( m_ins.coproc.rd, m_ins.coproc.sel );
         break;
-    case 16: // rfe
+    case RFE:
         r_status.kuc = r_status.kup;
         r_status.iec = r_status.iep;
         r_status.kup = r_status.kuo;
@@ -295,6 +326,33 @@ void MipsIss::op_lw()
         SOCLIB_WARNING(
             "If you intend to flush cache reading to $0,\n"
             "this is a hack, go get a processor aware of caches");
+        do_load(LINE_INVAL, false);
+    }
+}
+
+#define CACHE_OP(what, cache) ((what)<<2+(cache))
+enum {
+    ICACHE,
+    DCACHE,
+    TCACHE,
+    SCACHE,
+};
+
+enum {
+    INDEX_INVAL,
+    LOAD_TAG,
+    STORE_TAG,
+    DEP,
+    HIT_INVAL,
+    FILL,
+    HIT_WB,
+    FETCH_AND_LOCK,
+};
+
+void MipsIss::op_cache()
+{
+    switch (m_ins.i.rt) {
+    case CACHE_OP(HIT_INVAL,DCACHE):
         do_load(LINE_INVAL, false);
     }
 }
@@ -586,6 +644,18 @@ MipsIss::func_t const MipsIss::special_table[] = {
 #undef op
 #undef op4
 
+void MipsIss::op_special2()
+{
+    switch ( m_ins.r.func ) {
+    case 2: // MUL
+        r_gp[m_ins.r.rd] = m_rs*m_rt;
+        setInsDelay( 15 );
+        break;
+    default:
+        op_ill();
+    }
+}
+
 void MipsIss::op_special()
 {
     func_t func = special_table[m_ins.r.func];
@@ -606,13 +676,13 @@ MipsIss::func_t const MipsIss::opcod_table[]= {
     op4(    ill,   ill,  ill,   ill),
 
     op4(    ill,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
+    op4(special2,  ill,  ill,   ill),
 
     op4(     lb,    lh,  ill,    lw),
     op4(    lbu,   lhu,  ill,   ill),
 
     op4(     sb,    sh,  ill,    sw),
-    op4(    ill,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill, cache),
 
     op4(     ll,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
@@ -635,13 +705,13 @@ const char *MipsIss::name_table[] = {
     op4(    ill,   ill,  ill,   ill),
 
     op4(    ill,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
+    op4(special2,  ill,  ill,   ill),
 
     op4(     lb,    lh,  ill,    lw),
     op4(    lbu,   lhu,  ill,   ill),
 
     op4(     sb,    sh,  ill,    sw),
-    op4(    ill,   ill,  ill,   ill),
+    op4(    ill,   ill,  ill, cache),
 
     op4(     ll,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
@@ -680,13 +750,13 @@ MipsIss::use_t const MipsIss::use_table[]= {
        use4(   NONE,  NONE, NONE,  NONE),
 
        use4(   NONE,  NONE, NONE,  NONE),
-       use4(   NONE,  NONE, NONE,  NONE),
+       use4(     ST,  NONE, NONE,  NONE),
 
        use4(      S,     S, NONE,     S),
        use4(      S,     S, NONE,  NONE),
 
        use4(     ST,    ST, NONE,    ST),
-       use4(   NONE,  NONE, NONE,  NONE),
+       use4(   NONE,  NONE, NONE,    ST),
 
        use4(      S,  NONE, NONE,  NONE),
        use4(   NONE,  NONE, NONE,  NONE),

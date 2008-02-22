@@ -54,7 +54,7 @@ void puti(const int i)
 uint32_t run_cycles()
 {
 #if defined(__mips__)
-	return get_cp0(1);
+	return get_cp0(9,6);
 #elif defined(__PPC__)
 	return dcr_get(3);
 #else

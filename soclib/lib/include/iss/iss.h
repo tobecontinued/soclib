@@ -118,6 +118,8 @@ public:
     virtual uint32_t getDebugPC() const = 0;
     virtual void setDebugPC(uint32_t) = 0;
 
+    virtual void setCacheLineSize( size_t icache_line, size_t dcache_line ) {}
+
 protected:
 
     virtual bool exceptionBypassed( uint32_t cause )

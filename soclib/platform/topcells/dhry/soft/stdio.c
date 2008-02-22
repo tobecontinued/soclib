@@ -35,7 +35,7 @@ int time(int *ret)
 {
 	int t;
 #if defined(__mips__)
-	t = get_cp0(9);
+	t = get_cp0(9,0);
 #elif defined(__PPC__)
 	t = spr_get(284);
 #else

@@ -1,5 +1,5 @@
-mipsel_CFLAGS=-mips2 -mno-branch-likely -gstabs+
-mipseb_CFLAGS=-mips2 -mno-branch-likely -gstabs+
+mipsel_CFLAGS=-mips32 -mno-branch-likely -gstabs+
+mipseb_CFLAGS=-mips32 -mno-branch-likely -gstabs+
 powerpc_CFLAGS=-mcpu=405 -mstrict-align -gstabs+
 microblaze_CFLAGS=-mno-xl-soft-div -mno-xl-soft-mul -gstabs+
 microblaze_LDFLAGS=-nostdlib

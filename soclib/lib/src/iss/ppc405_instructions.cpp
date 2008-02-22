@@ -547,9 +547,7 @@ void Ppc405Iss::op_dcbf()
 
 void Ppc405Iss::op_dcbi()
 {
-	// No cache support
-    m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
+    mem_load_indexed( LINE_INVAL, false, false, false );
 }
 
 void Ppc405Iss::op_dcbst()

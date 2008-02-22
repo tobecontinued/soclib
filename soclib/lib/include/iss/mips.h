@@ -76,17 +76,6 @@ private:
         RESET_ADDRESS   = 0xbfc00000
     };
 
-    enum Cp0Reg {
-        INDEX = 0,
-        EXEC_CYCLES = 1,
-        BAR = 8,
-        COUNT = 9,
-        STATUS = 12,
-        CAUSE = 13,
-        EPC = 14,
-        IDENT = 15,
-    };
-
     enum ExceptCause {
         X_INT,      // Interrupt
         X_MOD,      // TLB Modification
@@ -152,6 +141,14 @@ private:
                     uint32_t sh:5,
                     uint32_t func:6
                     ) r;
+                PACKED_BITFIELD(
+                    uint32_t op:6,
+                    uint32_t action:5,
+                    uint32_t rt:5,
+                    uint32_t rd:5,
+                    uint32_t zero:8,
+                    uint32_t sel:3
+                    ) coproc;
             } __attribute__((packed));
         } __attribute__((packed));
         uint32_t ins;
@@ -196,6 +193,9 @@ private:
     uint32_t    m_next_pc;
     uint32_t    m_exec_cycles;
     bool m_hazard;
+
+    size_t m_icache_line_size;
+    size_t m_dcache_line_size;
 
 public:
     MipsIss(uint32_t ident);
@@ -288,6 +288,8 @@ public:
 
     int cpuCauseToSignal( uint32_t cause ) const;
 
+    void setCacheLineSize( size_t icache_line, size_t dcache_line );
+
 private:
     void run();
 
@@ -321,6 +323,7 @@ private:
     void do_store( enum DataAccessType type, uint32_t data );
 
     void op_special();
+    void op_special2();
     void op_bcond();
     void op_j();
     void op_jal();
@@ -401,8 +404,8 @@ private:
     static use_t const use_table[64];
     static use_t const use_special_table[64];
 
-    uint32_t cp0Get( uint32_t reg ) const;
-    void cp0Set( uint32_t reg, uint32_t value );
+    uint32_t cp0Get( uint32_t reg, uint32_t sel ) const;
+    void cp0Set( uint32_t reg, uint32_t sel, uint32_t value );
 
     // Make sure users dont try to instanciate MipsIss class
     virtual inline void please_use_MipsElIss_or_MipsEbIss() = 0;

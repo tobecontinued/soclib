@@ -38,14 +38,14 @@ void uputs(const char *);
 
 #ifdef __mips__
 
-#define get_cp0(x)									\
+#define get_cp0(x, sel)									\
 ({unsigned int __cp0_x;								\
-__asm__("mfc0 %0, $"#x:"=r"(__cp0_x));	\
+__asm__("mfc0 %0, $"#x", "#sel:"=r"(__cp0_x));	\
 __cp0_x;})
 
 static inline int procnum()
 {
-    return (get_cp0(15)&0x3ff);
+    return (get_cp0(15,1)&0x3ff);
 }
 
 #endif

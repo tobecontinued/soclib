@@ -62,6 +62,8 @@ static inline std::string mkname(uint32_t no)
 MipsIss::MipsIss(uint32_t ident)
     : Iss(mkname(ident), ident)
 {
+    m_icache_line_size = 0;
+    m_dcache_line_size = 0;
 }
 
 void MipsIss::reset()
@@ -376,6 +378,12 @@ void MipsIss::setDebugRegisterValue(unsigned int reg, uint32_t value)
 void MipsEbIss::setDataResponse(bool error, uint32_t data)
 {
     MipsIss::setDataResponse(error, soclib::endian::uint32_swap(data));
+}
+
+void MipsIss::setCacheLineSize( size_t icache_line, size_t dcache_line )
+{
+    m_icache_line_size = icache_line;
+    m_dcache_line_size = dcache_line;
 }
 
 }}

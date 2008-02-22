@@ -91,7 +91,7 @@ void interrupt_hw_handler(unsigned int irq)
 		ti = soclib_io_get(
 			base(TIMER),
 			procnum()*TIMER_SPAN+TIMER_VALUE);
-//		puti(get_cp0(9));
+//		puti(get_cp0(9,0));
 		puti(ti);
 		putc('\n');
 		putc('\n');

@@ -91,24 +91,21 @@ uint32_t atomic_inc( uint32_t *addr )
 
 void lock_lock( uint32_t *lock )
 {
-	uint32_t n = procnum()+1;
 	__asm__ __volatile__(
 		".set push        \n\t"
 		".set noreorder   \n\t"
 		".set noat        \n\t"
 		"1:               \n\t"
 		"ll    $2, 0(%0)  \n\t"
-		"beq   $2, %1, 2f \n\t"
-		"nop              \n\t"
 		"bnez  $2, 1b     \n\t"
-		"or    $1, $0, %1 \n\t"
+		"ori   $1, $0, 1  \n\t"
 		"sc    $1, 0(%0)  \n\t"
 		"beqz  $1, 1b     \n\t"
 		"nop              \n\t"
 		"2:               \n\t"
 		".set pop         \n\t"
 		:
-		: "p"(lock), "r"(n)
+		: "p"(lock)
 		: "$1", "$2", "memory"
 		);
 }
