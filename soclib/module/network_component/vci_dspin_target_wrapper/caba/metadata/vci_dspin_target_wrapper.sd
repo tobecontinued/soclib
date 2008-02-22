@@ -17,6 +17,5 @@ Module('caba:vci_dspin_target_wrapper',
 	],
 	uses = [
 	    Uses('base_module'),
-#	    Uses('common:mapping_table'),
 	],
 )
