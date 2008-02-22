@@ -454,6 +454,18 @@ void MipsIss::special_mfhi()
     r_gp[m_ins.r.rd] = r_hi;
 }
 
+void MipsIss::special_movn()
+{
+    if ( m_rt != 0 )
+        r_gp[m_ins.r.rd] = m_rs;
+}
+
+void MipsIss::special_movz()
+{
+    if ( m_rt == 0 )
+        r_gp[m_ins.r.rd] = m_rs;
+}
+
 void MipsIss::special_mthi()
 {
     r_hi = m_rs;
@@ -619,7 +631,7 @@ MipsIss::func_t const MipsIss::special_table[] = {
         op4(  sll,  ill,  srl,  sra),
         op4( sllv,  ill, srlv, srav),
 
-        op4(   jr, jalr,  ill,  ill),
+        op4(   jr, jalr, movz, movn),
         op4( sysc, brek,  ill,  ill),
 
         op4( mfhi, mthi, mflo, mtlo),

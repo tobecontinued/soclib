@@ -364,6 +364,8 @@ private:
     void special_sysc();
     void special_brek();
     void special_mfhi();
+    void special_movn();
+    void special_movz();
     void special_mthi();
     void special_mflo();
     void special_mtlo();
