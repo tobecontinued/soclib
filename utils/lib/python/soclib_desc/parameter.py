@@ -101,7 +101,7 @@ class StringArray(Base):
 			', '.join(map(lambda x:'"%s"'%(x%param).replace('"', '\\"'), v)))
 
 class IntTab(Base):
-	valid_types = (tuple)
+	valid_types = (tuple, list)
 	def instValue(self, env, param):
 		v = Base.instValue(self, env, param)
 		return 'soclib::common::IntTab(%s)'%(', '.join(map(str, v)))
