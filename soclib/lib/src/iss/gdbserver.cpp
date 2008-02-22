@@ -105,7 +105,7 @@ GdbServer<CpuIss>::GdbServer(uint32_t ident)
       mem_req_(false),
       mem_count_(0),
       catch_execeptions_(true),
-      state_(init_state_)
+      state_(init_state())
     {
         if (list_.empty())
             global_init();
@@ -1016,6 +1016,19 @@ void GdbServer<CpuIss>::step()
                     state_ = MemWait;
                 }
         }
+}
+
+template<typename CpuIss>
+typename GdbServer<CpuIss>::State GdbServer<CpuIss>::init_state()
+{
+    const char *env_val = getenv("SOCLIB_GDB");
+    if ( env_val ) {
+        if ( !strcmp( env_val, "START_FROZEN" ) )
+            return MemWait;
+        if ( !strcmp( env_val, "START_RUNNING" ) )
+            return Running;
+    }
+    return init_state_;
 }
 
 }}

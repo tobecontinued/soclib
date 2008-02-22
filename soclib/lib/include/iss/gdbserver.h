@@ -235,6 +235,7 @@ private:
         };
 
     static State init_state_;
+    static State init_state();
     State state_;
 
     static inline void change_all_states(State s)
