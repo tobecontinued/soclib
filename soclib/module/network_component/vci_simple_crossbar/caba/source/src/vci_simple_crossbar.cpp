@@ -28,10 +28,14 @@
 #include <systemc>
 #include <cassert>
 #include "../include/vci_simple_crossbar.h"
+#include "alloc_elems.h"
 
 #define CROSSBAR_DEBUG 0
 
 namespace soclib { namespace caba {
+
+using soclib::common::alloc_elems;
+using soclib::common::dealloc_elems;
 
 using namespace sc_core;
 
@@ -150,8 +154,8 @@ tmpl(/**/)::VciSimpleCrossbar(
 		   : soclib::caba::BaseModule(name),
 		   p_clk("clk"),
 		   p_resetn("resetn"),
-		   p_to_target(new soclib::caba::VciInitiator<vci_param>[nb_attached_target]),
-		   p_from_initiator(new soclib::caba::VciTarget<vci_param>[nb_attached_initiat])
+		   p_to_target(alloc_elems<VciInitiator<vci_param> >("to_target", nb_attached_target)),
+		   p_from_initiator(alloc_elems<VciTarget<vci_param> >("from_initiator", nb_attached_initiat))
 {
 	soclib::common::IntTab dt = default_target;
 	if ( &default_target == &s_default_target )
