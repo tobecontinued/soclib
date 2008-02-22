@@ -24,21 +24,18 @@
 #
 # Maintainers: nipo
 
-SUBDIRS=xtty fb_screen soclib-simulate-any headers pipe2fb
-DEST=$(shell soclib-cc --getpath)/utils/bin
+BIN=soclib-pipe2fb
 
-export DEST
+all: $(BIN)
 
-all:
+$(BIN): pipe2fb.o fb_controller.o
+	$(CC) -o $@ $^ $(LIBS)
 
-install: all
+clean:
+	rm -f *.o $(BIN)
 
-%: foo
-	@for i in $(SUBDIRS) ; do \
-		$(MAKE) -C $$i $@ ; \
-	done
+install: $(BIN)
+	cp $< $(DEST)
 
-.PHONY: foo
-
-foo:
-
+uninstall:
+	-rm $(DEST)/$(BIN)
