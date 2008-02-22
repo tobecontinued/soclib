@@ -38,5 +38,6 @@ typedef short int16_t;
 typedef char int8_t;
 
 typedef int ssize_t;
+typedef uint32_t size_t;
 
 #endif

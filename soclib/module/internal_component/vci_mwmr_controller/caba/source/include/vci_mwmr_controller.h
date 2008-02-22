@@ -75,11 +75,16 @@ private:
 
 	sc_signal<uint32_t> *r_config;
 
+	sc_signal<bool> r_pending_reset;
+
+    sc_signal<bool>     r_status_modified;
 	sc_signal<uint32_t> r_init_fsm;
+	sc_signal<uint32_t> r_rsp_fsm;
 	sc_signal<uint32_t> r_cmd_count;
 	sc_signal<uint32_t> r_rsp_count;
-	sc_signal<uint32_t> r_current_offset;
-	sc_signal<uint32_t> r_current_status;
+	sc_signal<uint32_t> r_current_rptr;
+	sc_signal<uint32_t> r_current_wptr;
+	sc_signal<uint32_t> r_current_usage;
 
 	enum SoclibMwmrWay m_config_way;
 	size_t m_config_no;

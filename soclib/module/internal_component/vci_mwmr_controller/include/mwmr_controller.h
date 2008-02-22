@@ -34,12 +34,10 @@ enum SoclibMwmrRegisters {
     MWMR_RESET = MWMR_IOREG_MAX,
     MWMR_CONFIG_FIFO_WAY,
     MWMR_CONFIG_FIFO_NO,
-    MWMR_CONFIG_STATE_ADDR,
-    MWMR_CONFIG_OFFSET_ADDR,
-    MWMR_CONFIG_LOCK_ADDR,
+    MWMR_CONFIG_STATUS_ADDR,
     MWMR_CONFIG_DEPTH,
     MWMR_CONFIG_WIDTH,
-    MWMR_CONFIG_BASE_ADDR,
+    MWMR_CONFIG_BUFFER_ADDR,
     MWMR_CONFIG_RUNNING,
 };
 
@@ -47,6 +45,16 @@ enum SoclibMwmrWay {
     MWMR_TO_COPROC,
     MWMR_FROM_COPROC,
 };
+
+typedef struct
+{
+	uint32_t rptr;
+	uint32_t wptr;
+	uint32_t usage;
+	uint32_t lock;
+} soclib_mwmr_status_s;
+
+#define SOCLIB_MWMR_STATUS_INITIALIZER {0,0,0,0}
 
 #endif /* MWMR_CONTROLLER_REGISTERS_H */
 

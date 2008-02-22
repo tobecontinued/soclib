@@ -27,18 +27,20 @@
 #include "register.h"
 #include "../include/vci_mwmr_controller.h"
 #include "mwmr_controller.h"
+#include "alloc_elems.h"
 
 #define MWMR_CONTROLLER_DEBUG 0
 
 namespace soclib { namespace caba {
 
+using soclib::common::alloc_elems;
+using soclib::common::dealloc_elems;
+
 namespace Mwmr {
 struct fifo_state_s {
-	uint32_t state_address;
-	uint32_t offset_address;
-	uint32_t lock_address;
+	uint32_t status_address;
 	uint32_t depth;
-	uint32_t base_address;
+	uint32_t buffer_address;
 	uint32_t burst_size;
 	bool running;
 	enum SoclibMwmrWay way;
@@ -54,26 +56,31 @@ struct fifo_state_s {
 typedef enum {
 	INIT_IDLE,
 	INIT_LOCK_TAKE_LL,
-	INIT_LOCK_TAKE_LL_W,
+    INIT_LOCK_TAKE_LL_W,
 	INIT_LOCK_TAKE_SC,
-	INIT_LOCK_TAKE_SC_W,
-	INIT_STATUS_READ,
-	INIT_STATUS_READ_W,
-	INIT_OFFSET_READ,
-	INIT_OFFSET_READ_W,
+    INIT_LOCK_TAKE_SC_W,
+	INIT_STATUS_READ_RPTR,
+	INIT_STATUS_READ_WPTR,
+	INIT_STATUS_READ_USAGE,
 	INIT_DECIDE,
 	INIT_DATA_WRITE,
-	INIT_DATA_WRITE_W,
 	INIT_DATA_READ,
-	INIT_DATA_READ_W,
-	INIT_OFFSET_WRITE,
-	INIT_OFFSET_WRITE_W,
-	INIT_STATUS_WRITE,
-	INIT_STATUS_WRITE_W,
-	INIT_LOCK_RELEASE,
-	INIT_LOCK_RELEASE_W,
+	INIT_STATUS_WRITE_RPTR,
+	INIT_STATUS_WRITE_WPTR,
+	INIT_STATUS_WRITE_USAGE,
+	INIT_STATUS_WRITE_LOCK,
 	INIT_DONE,
 } InitFsmState;
+
+typedef enum {
+    RSP_IDLE,
+    RSP_STATUS_READ_RPTR,
+    RSP_STATUS_READ_WPTR,
+    RSP_STATUS_READ_USAGE,
+    RSP_DATA_READ_W,
+    RSP_DATA_WRITE_W,
+    RSP_STATUS_WAIT,
+} RspFsmState;
 
 tmpl(void)::rehashConfigFifo()
 {
@@ -96,6 +103,7 @@ tmpl(void)::elect()
 	for ( size_t _i=0; _i<m_n_all; ++_i ) {
 		size_t i = (m_current_no+_i)%m_n_all;
 		fifo_state_t *st = &m_all_state[i];
+#if 0
 		if ( st->timer == 0 && st->running &&
 			 (( st->way == MWMR_TO_COPROC )
 			  ? (st->fifo->filled_status() + st->burst_size < m_fifo_depth)
@@ -105,6 +113,17 @@ tmpl(void)::elect()
 			m_current_no = i;
 			return;
 		}
+#else
+		if ( st->timer == 0 && st->running &&
+			 (( st->way == MWMR_TO_COPROC )
+			  ? (st->fifo->empty())
+			  : (st->fifo->full())
+				 ) ) {
+			m_current = st;
+			m_current_no = i;
+			return;
+		}
+#endif
 	}
 }
 
@@ -123,7 +142,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 	switch ((enum SoclibMwmrRegisters)cell) {
 	case MWMR_RESET:
-		reset();
+        r_pending_reset = true;
 		return true;
 	case MWMR_CONFIG_FIFO_WAY:
 		m_config_way = data == MWMR_FROM_COPROC ? MWMR_FROM_COPROC : MWMR_TO_COPROC;
@@ -133,17 +152,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		m_config_no = data;
 		rehashConfigFifo();
 		return true;
-    case MWMR_CONFIG_STATE_ADDR:
+    case MWMR_CONFIG_STATUS_ADDR:
 		check_fifo();
-		m_config_fifo->state_address = data;
-		return true;
-    case MWMR_CONFIG_OFFSET_ADDR:
-		check_fifo();
-		m_config_fifo->offset_address = data;
-		return true;
-    case MWMR_CONFIG_LOCK_ADDR:
-		check_fifo();
-		m_config_fifo->lock_address = data;
+		m_config_fifo->status_address = data;
 		return true;
     case MWMR_CONFIG_DEPTH:
 		check_fifo();
@@ -153,9 +164,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		check_fifo();
 		m_config_fifo->burst_size = data;
 		return true;
-    case MWMR_CONFIG_BASE_ADDR:
+    case MWMR_CONFIG_BUFFER_ADDR:
 		check_fifo();
-		m_config_fifo->base_address = data;
+		m_config_fifo->buffer_address = data;
 		return true;
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
@@ -187,17 +198,9 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	case MWMR_CONFIG_FIFO_NO:
 		data = m_config_no;
 		return true;
-    case MWMR_CONFIG_STATE_ADDR:
+    case MWMR_CONFIG_STATUS_ADDR:
 		check_fifo();
-		data = m_config_fifo->state_address;
-		return true;
-    case MWMR_CONFIG_OFFSET_ADDR:
-		check_fifo();
-		data = m_config_fifo->offset_address;
-		return true;
-    case MWMR_CONFIG_LOCK_ADDR:
-		check_fifo();
-		data = m_config_fifo->lock_address;
+		data = m_config_fifo->status_address;
 		return true;
     case MWMR_CONFIG_DEPTH:
 		check_fifo();
@@ -207,9 +210,9 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 		check_fifo();
 		data = m_config_fifo->burst_size;
 		return true;
-    case MWMR_CONFIG_BASE_ADDR:
+    case MWMR_CONFIG_BUFFER_ADDR:
 		check_fifo();
-		data = m_config_fifo->base_address;
+		data = m_config_fifo->buffer_address;
 		return true;
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
@@ -235,8 +238,10 @@ tmpl(void)::reset()
 tmpl(void)::transition()
 {
 	if (!p_resetn) {
+        r_pending_reset = false;
 		m_vci_target_fsm.reset();
         r_init_fsm = INIT_IDLE;
+        r_rsp_fsm = RSP_IDLE;
 		reset();
 		return;
 	}
@@ -254,22 +259,30 @@ tmpl(void)::transition()
 	case INIT_IDLE:
 		if ( m_current )
 			r_init_fsm = INIT_LOCK_TAKE_LL;
-		else
+		else {
+            if ( r_pending_reset ) {
+                reset();
+                break;
+            }
 			elect();
+        }
 		break;
 
+	case INIT_STATUS_WRITE_RPTR:
+	case INIT_STATUS_READ_RPTR:
 	case INIT_LOCK_TAKE_LL:
 	case INIT_LOCK_TAKE_SC:
-	case INIT_STATUS_READ:
-	case INIT_OFFSET_READ:
-	case INIT_STATUS_WRITE:
-	case INIT_OFFSET_WRITE:
-	case INIT_LOCK_RELEASE:
+	case INIT_STATUS_READ_WPTR:
+	case INIT_STATUS_READ_USAGE:
+	case INIT_STATUS_WRITE_WPTR:
+	case INIT_STATUS_WRITE_USAGE:
+	case INIT_STATUS_WRITE_LOCK:
 		if ( p_vci_initiator.cmdack.read() )
 			// Select next state...
 			r_init_fsm = r_init_fsm+1;
 		break;
-		
+
+
 	case INIT_LOCK_TAKE_LL_W:
 		if ( !p_vci_initiator.rspval.read() )
 			break;
@@ -280,103 +293,161 @@ tmpl(void)::transition()
 	case INIT_LOCK_TAKE_SC_W:
 		if ( !p_vci_initiator.rspval.read() )
 			break;
+        r_status_modified = false;
 		r_init_fsm = ( p_vci_initiator.rdata.read() == 0 )
-			? INIT_STATUS_READ
+			? INIT_STATUS_READ_RPTR
 			: INIT_DONE;
 		break;
 
-	case INIT_STATUS_READ_W:
-		if ( !p_vci_initiator.rspval.read() )
-			break;
-		r_current_status = p_vci_initiator.rdata.read();
-		r_init_fsm = INIT_OFFSET_READ;
-		break;
-	case INIT_OFFSET_READ_W:
-		if ( !p_vci_initiator.rspval.read() )
-			break;
-		r_current_offset = p_vci_initiator.rdata.read();
-		r_init_fsm = INIT_DECIDE;
-		break;
-
 	case INIT_DECIDE:
+        if (r_rsp_fsm.read() != RSP_IDLE)
+            break;
 #if MWMR_CONTROLLER_DEBUG
         std::cout << name() << " deciding for " << m_current_no
-                  << ", status: " << r_current_status.read()
-                  << ", offset: " << r_current_offset.read()
+                  << ", status: " << r_current_usage.read()
+                  << ", rptr: " << r_current_rptr.read()
+                  << ", wptr: " << r_current_wptr.read()
                   << ": " << std::endl;
 #endif
 		if ( m_current->way == MWMR_FROM_COPROC ) {
-			if ( r_current_status + m_current->burst_size <= m_current->depth ) {
+			if ( r_current_usage + m_current->burst_size <= m_current->depth ) {
 				r_cmd_count = m_current->burst_size;
                 r_rsp_count = m_current->burst_size;
 				r_init_fsm = INIT_DATA_WRITE;
+                r_status_modified = true;
 #if MWMR_CONTROLLER_DEBUG
                 std::cout << name() << " goint to read from coproc " << m_current->burst_size << " words" << std::endl;
 #endif
+                break;
 			}
 		} else {
-			if ( r_current_status >= m_current->burst_size ) {
+			if ( r_current_usage >= m_current->burst_size ) {
 				r_cmd_count = m_current->burst_size;
                 r_rsp_count = m_current->burst_size;
 				r_init_fsm = INIT_DATA_READ;
+                r_status_modified = true;
 #if MWMR_CONTROLLER_DEBUG
                 std::cout << name() << " goint to put " << m_current->burst_size << " words to coproc" << std::endl;
 #endif
+                break;
 			}
 		}
+        if ( r_status_modified.read() ) {
+            r_init_fsm = INIT_STATUS_WRITE_RPTR;
+        } else {
+            r_init_fsm = INIT_STATUS_WRITE_LOCK;
+        }
 		break;
 	case INIT_DATA_WRITE:
 		if ( p_vci_initiator.cmdack.read() ) {
 			if ( r_cmd_count == 1 )
-				r_init_fsm = INIT_DATA_WRITE_W;
+				r_init_fsm = INIT_DECIDE;
 			r_cmd_count = r_cmd_count-1;
-            r_current_status = r_current_status+1;
-            r_current_offset = (r_current_offset + 1) % m_current->depth;
+            r_current_usage = r_current_usage+1;
+            r_current_wptr = (r_current_wptr + 1) % m_current->depth;
             current_fifo_get = true;
 		}
-		if ( p_vci_initiator.rspval.read() )
-			r_rsp_count = r_rsp_count-1;
 		break;
 	case INIT_DATA_READ:
 		if ( p_vci_initiator.cmdack.read() ) {
 			if ( r_cmd_count == 1 )
-				r_init_fsm = INIT_DATA_READ_W;
+				r_init_fsm = INIT_DECIDE;
 			r_cmd_count = r_cmd_count-1;
-            r_current_status = r_current_status-1;
-            r_current_offset = (r_current_offset + 1) % m_current->depth;
-		}
-		if ( p_vci_initiator.rspval.read() ) {
-            current_fifo_put = true;
-			r_rsp_count = r_rsp_count-1;
-        }
-		break;
-	case INIT_DATA_WRITE_W:
-		if ( p_vci_initiator.rspval.read() ) {
-			if ( r_rsp_count == 1 )
-				r_init_fsm = INIT_OFFSET_WRITE;
-			r_rsp_count = r_rsp_count-1;
-		}
-		break;
-	case INIT_DATA_READ_W:
-		if ( p_vci_initiator.rspval.read() ) {
-            current_fifo_put = true;
-			if ( r_rsp_count == 1 )
-				r_init_fsm = INIT_OFFSET_WRITE;
-			r_rsp_count = r_rsp_count-1;
+            r_current_usage = r_current_usage-1;
+            r_current_rptr = (r_current_rptr + 1) % m_current->depth;
 		}
 		break;
 
-	case INIT_LOCK_RELEASE_W:
-	case INIT_STATUS_WRITE_W:
-	case INIT_OFFSET_WRITE_W:
-		if ( p_vci_initiator.rspval.read() )
-			r_init_fsm = r_init_fsm+1;
-		break;
     case INIT_DONE:
+        if ( r_rsp_fsm.read() != RSP_IDLE )
+            break;
         m_current->timer = m_plaps;
         m_current = NULL;
         r_init_fsm = INIT_IDLE;
 	}
+
+    switch ((RspFsmState)r_rsp_fsm.read()) {
+    case RSP_IDLE:
+        switch ((InitFsmState)r_init_fsm.read()) {
+        case INIT_STATUS_READ_RPTR:
+            r_rsp_count = 3;
+            r_rsp_fsm = RSP_STATUS_READ_RPTR;
+            break;
+        case INIT_DATA_WRITE:
+            r_rsp_fsm = RSP_DATA_WRITE_W;
+            break;
+        case INIT_DATA_READ:
+            r_rsp_fsm = RSP_DATA_READ_W;
+            break;
+        case INIT_STATUS_WRITE_RPTR:
+            r_rsp_count = 4;
+            r_rsp_fsm = RSP_STATUS_WAIT;
+            break;
+        case INIT_STATUS_WRITE_LOCK:
+            r_rsp_count = 1;
+            r_rsp_fsm = RSP_STATUS_WAIT;
+            break;
+        default:
+            break;
+        }
+        break;
+
+	case RSP_DATA_WRITE_W:
+#if MWMR_CONTROLLER_DEBUG
+        std::cout << name() << " waiting for write " << r_rsp_count.read() << " words to go" << std::endl;
+#endif
+		if ( p_vci_initiator.rspval.read() ) {
+			if ( r_rsp_count == 1 )
+				r_rsp_fsm = RSP_IDLE;
+			r_rsp_count = r_rsp_count-1;
+		}
+		break;
+	case RSP_DATA_READ_W:
+#if MWMR_CONTROLLER_DEBUG
+        std::cout << name() << " waiting for read " << r_rsp_count.read() << " words to go" << std::endl;
+#endif
+		if ( p_vci_initiator.rspval.read() ) {
+            current_fifo_put = true;
+			if ( r_rsp_count == 1 )
+				r_rsp_fsm = RSP_IDLE;
+			r_rsp_count = r_rsp_count-1;
+		}
+		break;
+    case RSP_STATUS_READ_RPTR:
+#if MWMR_CONTROLLER_DEBUG
+        std::cout << name() << " waiting for rptr" << std::endl;
+#endif
+        r_current_rptr = p_vci_initiator.rdata.read();
+		if ( p_vci_initiator.rspval.read() )
+            r_rsp_fsm = RSP_STATUS_READ_WPTR;
+        break;
+    case RSP_STATUS_READ_WPTR:
+#if MWMR_CONTROLLER_DEBUG
+        std::cout << name() << " waiting for wptr" << std::endl;
+#endif
+        r_current_wptr = p_vci_initiator.rdata.read();
+		if ( p_vci_initiator.rspval.read() )
+            r_rsp_fsm = RSP_STATUS_READ_USAGE;
+        break;
+    case RSP_STATUS_READ_USAGE:
+#if MWMR_CONTROLLER_DEBUG
+        std::cout << name() << " waiting for usage" << std::endl;
+#endif
+        r_current_usage = p_vci_initiator.rdata.read();
+		if ( p_vci_initiator.rspval.read() )
+            r_rsp_fsm = RSP_IDLE;
+        break;
+    case RSP_STATUS_WAIT:
+#if MWMR_CONTROLLER_DEBUG
+        std::cout << name() << " waiting for status write " << r_rsp_count.read() << " words to go" << std::endl;
+#endif
+		if ( p_vci_initiator.rspval.read() ) {
+			if ( r_rsp_count == 1 )
+				r_rsp_fsm = RSP_IDLE;
+			r_rsp_count = r_rsp_count-1;
+		}
+		break;
+    }
 
     for ( size_t i = 0; i<m_n_from_coproc; ++i ) {
         fifo_state_t *st = &m_from_coproc_state[i];
@@ -427,21 +498,14 @@ tmpl(void)::genMoore()
 	switch ((InitFsmState)r_init_fsm.read()) {
 	case INIT_LOCK_TAKE_LL_W:
 	case INIT_LOCK_TAKE_SC_W:
-	case INIT_STATUS_READ_W:
-	case INIT_OFFSET_READ_W:
-	case INIT_STATUS_WRITE_W:
-	case INIT_OFFSET_WRITE_W:
-	case INIT_LOCK_RELEASE_W:
 	case INIT_IDLE:
 	case INIT_DECIDE:
-	case INIT_DATA_READ_W:
-	case INIT_DATA_WRITE_W:
     case INIT_DONE:
 		p_vci_initiator.cmdval = false;
 		break;
 	case INIT_LOCK_TAKE_LL:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->lock_address;
+		p_vci_initiator.address = m_current->status_address+3*vci_param::B;
 		p_vci_initiator.cmd = vci_param::CMD_LOCKED_READ;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
@@ -449,31 +513,38 @@ tmpl(void)::genMoore()
 	case INIT_LOCK_TAKE_SC:
 		p_vci_initiator.cmdval = true;
 		p_vci_initiator.wdata = 1;
-		p_vci_initiator.address = m_current->lock_address;
+		p_vci_initiator.address = m_current->status_address+3*vci_param::B;
 		p_vci_initiator.cmd = vci_param::CMD_STORE_COND;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
 		break;
-	case INIT_STATUS_READ:
+	case INIT_STATUS_READ_RPTR:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->state_address;
+		p_vci_initiator.address = m_current->status_address;
 		p_vci_initiator.cmd = vci_param::CMD_READ;
 		p_vci_initiator.be = 0xf;
-		p_vci_initiator.eop = true;
+		p_vci_initiator.eop = false;
 		break;
-	case INIT_OFFSET_READ:
+	case INIT_STATUS_READ_WPTR:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->offset_address;
+		p_vci_initiator.address = m_current->status_address+vci_param::B;
+		p_vci_initiator.cmd = vci_param::CMD_READ;
+		p_vci_initiator.be = 0xf;
+		p_vci_initiator.eop = false;
+		break;
+	case INIT_STATUS_READ_USAGE:
+		p_vci_initiator.cmdval = true;
+		p_vci_initiator.address = m_current->status_address+vci_param::B*2;
 		p_vci_initiator.cmd = vci_param::CMD_READ;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
 		break;
 	case INIT_DATA_WRITE:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->base_address + r_current_offset*4;
+		p_vci_initiator.address = m_current->buffer_address + r_current_wptr*4;
 		p_vci_initiator.wdata = m_current->fifo->read();
 #if MWMR_CONTROLLER_DEBUG
-        std::cout << name() << " putting @" << (m_current->base_address + r_current_offset*4) << ": " << m_current->fifo->read() << " on VCI" << std::endl;
+        std::cout << name() << " putting @" << (m_current->buffer_address + r_current_wptr*4) << ": " << m_current->fifo->read() << " on VCI" << std::endl;
 #endif
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
@@ -481,33 +552,41 @@ tmpl(void)::genMoore()
 		break;
 	case INIT_DATA_READ:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->base_address + r_current_offset*4;
+		p_vci_initiator.address = m_current->buffer_address + r_current_rptr*4;
 		p_vci_initiator.cmd = vci_param::CMD_READ;
 #if MWMR_CONTROLLER_DEBUG
-        std::cout << name() << " reading data @" << (m_current->base_address + r_current_offset*4) << std::endl;
+        std::cout << name() << " reading data @" << (m_current->buffer_address + r_current_rptr*4) << std::endl;
 #endif
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = (r_cmd_count==1);
 		break;
-	case INIT_OFFSET_WRITE:
+	case INIT_STATUS_WRITE_RPTR:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->offset_address;
-		p_vci_initiator.wdata = r_current_offset.read();
+		p_vci_initiator.address = m_current->status_address;
+		p_vci_initiator.wdata = r_current_rptr.read();
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
-		p_vci_initiator.eop = true;
+		p_vci_initiator.eop = false;
 		break;
-	case INIT_STATUS_WRITE:
+	case INIT_STATUS_WRITE_WPTR:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->state_address;
-		p_vci_initiator.wdata = r_current_status.read();
+		p_vci_initiator.address = m_current->status_address+vci_param::B;
+		p_vci_initiator.wdata = r_current_wptr.read();
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
-		p_vci_initiator.eop = true;
+		p_vci_initiator.eop = false;
 		break;
-	case INIT_LOCK_RELEASE:
+	case INIT_STATUS_WRITE_USAGE:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->lock_address;
+		p_vci_initiator.address = m_current->status_address+vci_param::B*2;
+		p_vci_initiator.wdata = r_current_usage.read();
+		p_vci_initiator.cmd = vci_param::CMD_WRITE;
+		p_vci_initiator.be = 0xf;
+		p_vci_initiator.eop = false;
+		break;
+	case INIT_STATUS_WRITE_LOCK:
+		p_vci_initiator.cmdval = true;
+		p_vci_initiator.address = m_current->status_address+vci_param::B*3;
 		p_vci_initiator.wdata = 0;
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
@@ -536,26 +615,6 @@ tmpl(void)::genMoore()
     }
 }
 
-template<typename elem_t>
-elem_t *alloc_elems(const std::string &prefix, size_t n)
-{
-	elem_t *elem = (elem_t*)malloc(sizeof(elem_t)*n);
-	for ( size_t i=0; i<n; ++i ) {
-		std::ostringstream o;
-		o << prefix << "[" << i << "]";
-		new(&elem[i]) elem_t(o.str().c_str());
-	}
-	return elem;
-}
-
-template<typename elem_t>
-void dealloc_elems(elem_t *elems, size_t n)
-{
-	for ( size_t i = 0; i<n; ++i )
-		elems[i].~elem_t();
-	free(elems);
-}
-
 tmpl(/**/)::VciMwmrController(
     sc_module_name name,
     const MappingTable &mt,
@@ -582,10 +641,12 @@ tmpl(/**/)::VciMwmrController(
            m_from_coproc_state(&m_all_state[m_n_to_coproc]),
            r_config(alloc_elems<sc_signal<uint32_t> >("r_config", n_config)),
            r_init_fsm("init_fsm"),
+           r_rsp_fsm("rsp_fsm"),
            r_cmd_count("cmd_count"),
            r_rsp_count("rsp_count"),
-           r_current_offset("current_offset"),
-           r_current_status("current_status"),
+           r_current_rptr("current_rptr"),
+           r_current_wptr("current_wptr"),
+           r_current_usage("current_status"),
 		   p_clk("clk"),
 		   p_resetn("resetn"),
 		   p_vci_target("vci_target"),

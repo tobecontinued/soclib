@@ -37,7 +37,7 @@ Module('caba:vci_mwmr_controller',
 	],
 	   extensions = [
 	'dsx:addressable=tgtid',
-	'dsx:get_ident=srcid:p_vci_target,tgtid:p_vci_initiator',
+	'dsx:get_ident=tgtid:p_vci_target,srcid:p_vci_initiator',
 	'dsx:max_segments=1',
    ],
 )

@@ -27,21 +27,26 @@
  */
 
 #include "soclib/mwmr_controller.h"
+#include "stdint.h"
 
 typedef struct mwmr_s {
-	volatile unsigned int usage;
 	uint32_t lock;
-	volatile unsigned int readp;
-	volatile unsigned int writep;
     const unsigned int width;
 	const unsigned int gdepth;
     uint32_t *const buffer;
+	volatile soclib_mwmr_status_s status;
 } mwmr_t;
 
 #define MWMR_INITIALIZER(width, depth, data) \
-	{ 0, 0, 0, 0, width, width*depth, data }
+	{ 0, width, width*depth, data, SOCLIB_MWMR_STATUS_INITIALIZER }
 
 void
 mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
 			  unsigned int no, const mwmr_t *mwmr );
 
+void mwmr_config( void *coproc, unsigned int no, const uint32_t val );
+
+uint32_t mwmr_status( void *coproc, unsigned int no );
+
+void mwmr_write( mwmr_t *mwmr, const void *buffer, size_t size );
+void mwmr_read( mwmr_t *mwmr, void *buffer, size_t size );
