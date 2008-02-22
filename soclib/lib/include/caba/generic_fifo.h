@@ -38,12 +38,12 @@ using namespace sc_core;
 template<typename data_t>
 class GenericFifo
 {
-public:
     data_t *m_data;
     sc_signal<int>    r_ptr;
     sc_signal<int>    r_ptw;
     sc_signal<int>    r_fill_state;
     int m_depth;
+public:
 
     void init()
     {
@@ -55,6 +55,16 @@ public:
     inline uint32_t filled_status() const
     {
         return (uint32_t)r_fill_state;
+    }
+
+    inline bool empty() const
+    {
+        return !(uint32_t)r_fill_state;
+    }
+
+    inline bool full() const
+    {
+        return r_fill_state == m_depth;
     }
 
     void simple_put(const data_t &din)
