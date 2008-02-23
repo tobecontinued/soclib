@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "fb_controller.h"
 
@@ -38,6 +39,7 @@ int main(int argc, char **argv)
     int i, flags;
     int getsize_each_time = 1, do_get_size = 1;
 	unsigned char *frame_buffer;
+	int has_fb = 1;
 
     struct sigaction sa;
     
@@ -54,13 +56,41 @@ int main(int argc, char **argv)
 	width = atoi(argv[1]);
 	height = atoi(argv[2]);
     
-    frame_buffer = fb_init(width, height);
+	{
+		char *env = getenv("SOCLIB_FB");
+		if ( env && !strcmp(env, "HEADLESS") )
+			has_fb = 0;
+	}
+
+	if ( has_fb )
+		frame_buffer = fb_init(width, height);
+	else
+		frame_buffer = malloc(width*height);
+
+    flags = fcntl(0, F_GETFL);
+    flags &= ~O_NONBLOCK;
+    fcntl(0, F_SETFL, flags);
 
     while ( ! must_quit ) {
-		if ( read( 0, frame_buffer, width*height ) <= 0 )
-			must_quit = 1;
-		fb_update();
+		int y;
+		for ( y=0; y<height; ++y ) {
+			int x = 0;
+			while ( x < width ) {
+				int r = read( 0, frame_buffer+y*width+x, width-x );
+				if ( r < 0 ) {
+					sleep(1);
+					if ( errno == EAGAIN )
+						continue;
+					goto quit;
+				}
+				x += r;
+			}
+			if ( has_fb )
+				fb_update();
+		}
 	}
-	fb_cleanup();
+  quit:
+	if ( has_fb )
+		fb_cleanup();
 	return 0;
 }
