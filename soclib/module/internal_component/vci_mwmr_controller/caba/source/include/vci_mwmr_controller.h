@@ -60,7 +60,8 @@ private:
     void genMoore();
     void elect();
 
-    const size_t m_fifo_depth;
+    const size_t m_fifo_to_coproc_depth;
+    const size_t m_fifo_from_coproc_depth;
     const size_t m_plaps;
     const size_t m_n_to_coproc;
     const size_t m_n_from_coproc;
@@ -116,7 +117,8 @@ public:
 		const IntTab &srcid,
 		const IntTab &tgtid,
 		const size_t plaps,
-        const size_t fifo_depth,
+        const size_t fifo_to_coproc_depth,
+        const size_t fifo_from_coproc_depth,
 		const size_t n_to_coproc,
 		const size_t n_from_coproc,
 		const size_t n_config,

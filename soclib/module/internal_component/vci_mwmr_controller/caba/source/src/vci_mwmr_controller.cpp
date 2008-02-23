@@ -106,7 +106,7 @@ tmpl(void)::elect()
 #if 0
 		if ( st->timer == 0 && st->running &&
 			 (( st->way == MWMR_TO_COPROC )
-			  ? (st->fifo->filled_status() + st->burst_size < m_fifo_depth)
+			  ? (st->fifo->filled_status() + st->burst_size < m_fifo_to_coproc_depth)
 			  : (st->fifo->filled_status() >= st->burst_size)
 				 ) ) {
 			m_current = st;
@@ -621,7 +621,8 @@ tmpl(/**/)::VciMwmrController(
     const IntTab &srcid,
     const IntTab &tgtid,
 	const size_t plaps,
-	const size_t fifo_depth,
+	const size_t fifo_to_coproc_depth,
+	const size_t fifo_from_coproc_depth,
 	const size_t n_to_coproc,
 	const size_t n_from_coproc,
 	const size_t n_config,
@@ -629,7 +630,8 @@ tmpl(/**/)::VciMwmrController(
 		   : caba::BaseModule(name),
 		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid), 1),
            m_ident(mt.indexForId(srcid)),
-           m_fifo_depth(fifo_depth),
+           m_fifo_to_coproc_depth(fifo_to_coproc_depth),
+           m_fifo_from_coproc_depth(fifo_from_coproc_depth),
            m_plaps(plaps),
            m_n_to_coproc(n_to_coproc),
            m_n_from_coproc(n_from_coproc),
@@ -679,13 +681,13 @@ tmpl(/**/)::VciMwmrController(
         std::ostringstream o;
         o << "fifo_from_coproc[" << i << "]";
         m_from_coproc_state[i].way = MWMR_FROM_COPROC;
-        m_from_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_depth);
+        m_from_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_from_coproc_depth);
     }
     for ( size_t i = 0; i<m_n_to_coproc; ++i ) {
         std::ostringstream o;
         o << "fifo_to_coproc[" << i << "]";
         m_to_coproc_state[i].way = MWMR_TO_COPROC;
-        m_to_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_depth);
+        m_to_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_to_coproc_depth);
     }
     reset();
 }
