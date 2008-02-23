@@ -307,31 +307,34 @@ tmpl(void)::transition()
                   << ", status: " << r_current_usage.read()
                   << ", rptr: " << r_current_rptr.read()
                   << ", wptr: " << r_current_wptr.read()
-                  << ": " << std::endl;
+                  << ": ";
 #endif
 		if ( m_current->way == MWMR_FROM_COPROC ) {
 			if ( r_current_usage + m_current->burst_size <= m_current->depth ) {
-				r_cmd_count = m_current->burst_size;
-                r_rsp_count = m_current->burst_size;
+				r_cmd_count = m_current->burst_size/vci_param::B;
+                r_rsp_count = m_current->burst_size/vci_param::B;
 				r_init_fsm = INIT_DATA_WRITE;
                 r_status_modified = true;
 #if MWMR_CONTROLLER_DEBUG
-                std::cout << name() << " goint to read from coproc " << m_current->burst_size << " words" << std::endl;
+                std::cout << "going to read from coproc " << m_current->burst_size/vci_param::B << " words" << std::endl;
 #endif
                 break;
 			}
 		} else {
 			if ( r_current_usage >= m_current->burst_size ) {
-				r_cmd_count = m_current->burst_size;
-                r_rsp_count = m_current->burst_size;
+				r_cmd_count = m_current->burst_size/vci_param::B;
+                r_rsp_count = m_current->burst_size/vci_param::B;
 				r_init_fsm = INIT_DATA_READ;
                 r_status_modified = true;
 #if MWMR_CONTROLLER_DEBUG
-                std::cout << name() << " goint to put " << m_current->burst_size << " words to coproc" << std::endl;
+                std::cout << "going to put " << m_current->burst_size/vci_param::B << " words to coproc" << std::endl;
 #endif
                 break;
 			}
 		}
+#if MWMR_CONTROLLER_DEBUG
+        std::cout << "going to bail out: no room for transfer" << std::endl;
+#endif
         if ( r_status_modified.read() ) {
             r_init_fsm = INIT_STATUS_WRITE_RPTR;
         } else {
@@ -343,8 +346,8 @@ tmpl(void)::transition()
 			if ( r_cmd_count == 1 )
 				r_init_fsm = INIT_DECIDE;
 			r_cmd_count = r_cmd_count-1;
-            r_current_usage = r_current_usage+1;
-            r_current_wptr = (r_current_wptr + 1) % m_current->depth;
+            r_current_usage = r_current_usage+vci_param::B;
+            r_current_wptr = (r_current_wptr + vci_param::B) % m_current->depth;
             current_fifo_get = true;
 		}
 		break;
@@ -353,8 +356,8 @@ tmpl(void)::transition()
 			if ( r_cmd_count == 1 )
 				r_init_fsm = INIT_DECIDE;
 			r_cmd_count = r_cmd_count-1;
-            r_current_usage = r_current_usage-1;
-            r_current_rptr = (r_current_rptr + 1) % m_current->depth;
+            r_current_usage = r_current_usage-vci_param::B;
+            r_current_rptr = (r_current_rptr + vci_param::B) % m_current->depth;
 		}
 		break;
 
@@ -541,10 +544,10 @@ tmpl(void)::genMoore()
 		break;
 	case INIT_DATA_WRITE:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->buffer_address + r_current_wptr*4;
+		p_vci_initiator.address = m_current->buffer_address + r_current_wptr;
 		p_vci_initiator.wdata = m_current->fifo->read();
 #if MWMR_CONTROLLER_DEBUG
-        std::cout << name() << " putting @" << (m_current->buffer_address + r_current_wptr*4) << ": " << m_current->fifo->read() << " on VCI" << std::endl;
+        std::cout << name() << " putting @" << (m_current->buffer_address + r_current_wptr) << ": " << m_current->fifo->read() << " on VCI" << std::endl;
 #endif
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
@@ -552,10 +555,10 @@ tmpl(void)::genMoore()
 		break;
 	case INIT_DATA_READ:
 		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->buffer_address + r_current_rptr*4;
+		p_vci_initiator.address = m_current->buffer_address + r_current_rptr;
 		p_vci_initiator.cmd = vci_param::CMD_READ;
 #if MWMR_CONTROLLER_DEBUG
-        std::cout << name() << " reading data @" << (m_current->buffer_address + r_current_rptr*4) << std::endl;
+        std::cout << name() << " reading data @" << (m_current->buffer_address + r_current_rptr) << std::endl;
 #endif
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = (r_cmd_count==1);
@@ -648,7 +651,7 @@ tmpl(/**/)::VciMwmrController(
            r_rsp_count("rsp_count"),
            r_current_rptr("current_rptr"),
            r_current_wptr("current_wptr"),
-           r_current_usage("current_status"),
+           r_current_usage("current_usage"),
 		   p_clk("clk"),
 		   p_resetn("resetn"),
 		   p_vci_target("vci_target"),
