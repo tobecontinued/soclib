@@ -570,7 +570,7 @@ void MipsIss::special_mult()
     r_hi = res>>32;
     r_lo = res;
     if (m_rt)
-        setInsDelay( __builtin_clz(m_rt) );
+        setInsDelay( 3 );
 }
 
 void MipsIss::special_multu()
@@ -581,7 +581,7 @@ void MipsIss::special_multu()
     r_hi = res>>32;
     r_lo = res;
     if (m_rt)
-        setInsDelay( __builtin_clz(m_rt) );
+        setInsDelay( 3 );
 }
 
 void MipsIss::special_div()
@@ -594,7 +594,7 @@ void MipsIss::special_div()
     r_hi = (int32_t)m_rs % (int32_t)m_rt;
     r_lo = (int32_t)m_rs / (int32_t)m_rt;
     if (m_rt)
-        setInsDelay( __builtin_clz(m_rt) );
+        setInsDelay( __builtin_clz(m_rt)+1 );
 }
 
 void MipsIss::special_divu()
@@ -607,7 +607,7 @@ void MipsIss::special_divu()
     r_hi = m_rs % m_rt;
     r_lo = m_rs / m_rt;
     if (m_rt)
-        setInsDelay( __builtin_clz(m_rt) );
+        setInsDelay( __builtin_clz(m_rt)+1 );
 }
 
 void MipsIss::special_add()
@@ -747,7 +747,7 @@ void MipsIss::op_special2()
     case 2: // MUL
         r_gp[m_ins.r.rd] = m_rs*m_rt;
         if (m_rt)
-            setInsDelay( __builtin_clz(m_rt) );
+            setInsDelay( 3 );
         break;
     default:
         op_ill();
