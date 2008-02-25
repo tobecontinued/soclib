@@ -36,10 +36,17 @@
 
 #if __mips__
 
+#if __mips >= 32
 #define get_cp0(x, sel)									\
 ({unsigned int __cp0_x;								\
 __asm__("mfc0 %0, $"#x", "#sel:"=r"(__cp0_x));	\
 __cp0_x;})
+#else
+#define get_cp0(x, sel)									\
+({unsigned int __cp0_x;								\
+__asm__("mfc0 %0, $"#x:"=r"(__cp0_x));	\
+__cp0_x;})
+#endif
 
 static inline int procnum()
 {

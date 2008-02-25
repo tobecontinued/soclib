@@ -192,7 +192,11 @@ asm(
 
     /* get CPU id and adjust stack */
 
+#if __mips >= 32
     "mfc0	$8,	$15, 1				\n"
+#else
+    "mfc0	$8,	$15				\n"
+#endif
     "la         $sp,	_stack - 16	\n"
 	"andi   $8, $8, 0x3ff		\n"
     "sll	$8,	$8,	10		\n"
