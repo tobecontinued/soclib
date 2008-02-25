@@ -110,6 +110,7 @@ private:
 	uint32_t 	r_mem_wdata;  		// Data Cache data value (write)
 	uint32_t	r_mem_dest;  		// Data Cache destination register (read)
 	bool		r_dbe;			// Asynchronous Data Bus Error (write)
+    int         r_mem_shift;
 
 	uint32_t	m_rdata;
 	uint32_t 	m_irq;
@@ -197,8 +198,10 @@ private:
     size_t m_icache_line_size;
     size_t m_dcache_line_size;
 
+    const bool m_little_endian;
+
 public:
-    MipsIss(uint32_t ident);
+    MipsIss(uint32_t ident, bool little_endian);
 
     void dump() const;
     void step();
@@ -319,8 +322,9 @@ private:
     static func_t const opcod_table[64];
     static func_t const special_table[64];
 
-    void do_load( enum DataAccessType type, bool unsigned_ );
-    void do_store( enum DataAccessType type, uint32_t data );
+    void do_load( uint32_t address, enum DataAccessType type,
+                  bool unsigned_, int shift = 0 );
+    void do_store( uint32_t address, enum DataAccessType type, uint32_t data );
 
     void op_special();
     void op_special2();
@@ -345,11 +349,15 @@ private:
     void op_lh();
     void op_ll();
     void op_lw();
+    void op_lwl();
+    void op_lwr();
     void op_lbu();
     void op_lhu();
     void op_sb();
     void op_sh();
     void op_sw();
+    void op_swl();
+    void op_swr();
     void op_sc();
     void op_cache();
 
@@ -418,7 +426,7 @@ class MipsElIss
 {
 public:
     MipsElIss(uint32_t ident)
-        : MipsIss(ident)
+        : MipsIss(ident, true)
     {}
 private:
     virtual inline void please_use_MipsElIss_or_MipsEbIss()
@@ -430,7 +438,7 @@ class MipsEbIss
 {
 public:
     MipsEbIss(uint32_t ident)
-        : MipsIss(ident)
+        : MipsIss(ident, false)
     {}
 
 	inline void getDataRequest(

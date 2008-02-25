@@ -43,13 +43,6 @@ static const uint32_t NO_EXCEPTION = (uint32_t)-1;
 
 namespace {
 
-static inline uint32_t align( uint32_t data, int shift, int width )
-{
-    uint32_t mask = (1<<width)-1;
-    uint32_t ret = data >>= shift*width;
-    return ret & mask;
-}
-
 static inline std::string mkname(uint32_t no)
 {
     char tmp[32];
@@ -59,8 +52,9 @@ static inline std::string mkname(uint32_t no)
 
 }
 
-MipsIss::MipsIss(uint32_t ident)
-    : Iss(mkname(ident), ident)
+    MipsIss::MipsIss(uint32_t ident, bool little_endian)
+        : Iss(mkname(ident), ident),
+          m_little_endian(little_endian)
 {
     m_icache_line_size = 0;
     m_dcache_line_size = 0;
@@ -162,6 +156,21 @@ void MipsIss::setDataResponse(bool error, uint32_t data)
         m_hazard = false;
         break;
     case READ_WORD:
+        if ( r_mem_shift ) {
+            uint32_t mask = (uint32_t)-1;
+
+            if ( r_mem_shift < 0 ) {
+                int shift = -r_mem_shift;
+                mask >>= (8*shift);
+                data >>= (8*shift);
+            } else {
+                mask <<= (8*r_mem_shift);
+                data <<= (8*r_mem_shift);
+            }
+            data |= r_gp[r_mem_dest]&~mask;
+        }
+        r_gp[r_mem_dest] = data;
+        break;
     case READ_LINKED:
         r_gp[r_mem_dest] = data;
         break;

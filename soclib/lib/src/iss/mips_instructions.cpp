@@ -40,6 +40,8 @@
 #include "base_module.h"
 #include "arithmetics.h"
 
+#include <strings.h>
+
 namespace soclib { namespace common {
 
 #define COPROC_REGNUM(no, sel) (((no)<<3)+sel)
@@ -79,18 +81,35 @@ static inline uint32_t sra( uint32_t reg, uint32_t sh )
 }
 }
 
-void MipsIss::do_load( enum DataAccessType type, bool unsigned_ )
+void MipsIss::do_load( uint32_t address, enum DataAccessType type, bool unsigned_, int shift )
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
     if (isInUserMode() && isPrivDataAddr(address)) {
         m_exception = X_ADEL;
         return;
+    }
+    switch (type) {
+    case READ_BYTE:
+    case LINE_INVAL:
+        break;
+    case READ_HALF:
+        if ( address & 1 ) {
+            m_exception = X_ADEL;
+            return;
+        }
+        break;
+    default:
+        if ( address & 3 ) {
+            m_exception = X_ADEL;
+            return;
+        }
+        break;
     }
     r_mem_req = true;
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_dest = m_ins.i.rt;
     r_mem_unsigned = unsigned_;
+    r_mem_shift = shift;
 #if MIPS_DEBUG
     std::cout
         << m_name << std::hex
@@ -101,12 +120,27 @@ void MipsIss::do_load( enum DataAccessType type, bool unsigned_ )
 #endif    
 }
 
-void MipsIss::do_store( enum DataAccessType type, uint32_t data )
+void MipsIss::do_store( uint32_t address, enum DataAccessType type, uint32_t data )
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
     if (isInUserMode() && isPrivDataAddr(address)) {
         m_exception = X_ADES;
         return;
+    }
+    switch (type) {
+    case WRITE_BYTE:
+        break;
+    case WRITE_HALF:
+        if ( address & 1 ) {
+            m_exception = X_ADEL;
+            return;
+        }
+        break;
+    default:
+        if ( address & 3 ) {
+            m_exception = X_ADEL;
+            return;
+        }
+        break;
     }
     r_mem_req = true;
     r_mem_type = type;
@@ -305,29 +339,56 @@ void MipsIss::op_ill()
 
 void MipsIss::op_lb()
 {
-    do_load(READ_BYTE, false);
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_load( address, READ_BYTE, false);
 }
 
 void MipsIss::op_ll()
 {
-    do_load(READ_LINKED, false);
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_load( address, READ_LINKED, false);
 }
 
 void MipsIss::op_lh()
 {
-    do_load(READ_HALF, false);
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_load( address, READ_HALF, false);
 }
 
 void MipsIss::op_lw()
 {
-    if ( m_ins.i.rt )
-        do_load(READ_WORD, false);
-    else {
+    if ( m_ins.i.rt ) {
+        uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+        do_load( address, READ_WORD, false);
+    } else {
+        uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
         SOCLIB_WARNING(
             "If you intend to flush cache reading to $0,\n"
             "this is a hack, go get a processor aware of caches");
-        do_load(LINE_INVAL, false);
+        do_load( address, LINE_INVAL, false);
     }
+}
+
+void MipsIss::op_lwl()
+{
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t w = address&3;
+    do_load( address&~3, READ_WORD, false,
+             m_little_endian
+             ? (3-w)
+             : w
+             );
+}
+
+void MipsIss::op_lwr()
+{
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t w = address&3;
+    do_load( address&~3, READ_WORD, false,
+             m_little_endian
+             ? -w
+             : -(3-w)
+             );
 }
 
 #define CACHE_OP(what, cache) ((what)<<2+(cache))
@@ -352,41 +413,49 @@ enum {
 void MipsIss::op_cache()
 {
     switch (m_ins.i.rt) {
-    case CACHE_OP(HIT_INVAL,DCACHE):
-        do_load(LINE_INVAL, false);
+    case CACHE_OP(HIT_INVAL,DCACHE): {
+        uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+        do_load( address, LINE_INVAL, false);
+    }
     }
 }
 
 void MipsIss::op_lbu()
 {
-    do_load(READ_BYTE, true);
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_load( address, READ_BYTE, true);
 }
 
 void MipsIss::op_lhu()
 {
-    do_load(READ_HALF, true);
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_load( address, READ_HALF, true);
 }
 
 void MipsIss::op_sb()
 {
     uint32_t tmp = m_rt&0xff;
-    do_store(WRITE_BYTE, tmp|(tmp << 8)|(tmp << 16)|(tmp << 24));
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_store(address, WRITE_BYTE, tmp|(tmp << 8)|(tmp << 16)|(tmp << 24));
 }
 
 void MipsIss::op_sh()
 {
     uint32_t tmp = m_rt&0xffff;
-    do_store(WRITE_HALF, tmp|(tmp << 16));
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_store(address, WRITE_HALF, tmp|(tmp << 16));
 }
 
 void MipsIss::op_sw()
 {
-    do_store(WRITE_WORD, m_rt);
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_store(address, WRITE_WORD, m_rt);
 }
 
 void MipsIss::op_sc()
 {
-    do_store(STORE_COND, m_rt);
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_store(address, STORE_COND, m_rt);
     r_mem_dest = m_ins.i.rt;
 }
 
@@ -488,7 +557,8 @@ void MipsIss::special_mult()
     int64_t res = a*b;
     r_hi = res>>32;
     r_lo = res;
-    setInsDelay( 6 );
+    if (m_rt)
+        setInsDelay( __builtin_clz(m_rt) );
 }
 
 void MipsIss::special_multu()
@@ -498,7 +568,8 @@ void MipsIss::special_multu()
     uint64_t res = a*b;
     r_hi = res>>32;
     r_lo = res;
-    setInsDelay( 6 );
+    if (m_rt)
+        setInsDelay( __builtin_clz(m_rt) );
 }
 
 void MipsIss::special_div()
@@ -510,7 +581,8 @@ void MipsIss::special_div()
     }
     r_hi = (int32_t)m_rs % (int32_t)m_rt;
     r_lo = (int32_t)m_rs / (int32_t)m_rt;
-    setInsDelay( 31 );
+    if (m_rt)
+        setInsDelay( __builtin_clz(m_rt) );
 }
 
 void MipsIss::special_divu()
@@ -522,7 +594,8 @@ void MipsIss::special_divu()
     }
     r_hi = m_rs % m_rt;
     r_lo = m_rs / m_rt;
-    setInsDelay( 31 );
+    if (m_rt)
+        setInsDelay( __builtin_clz(m_rt) );
 }
 
 void MipsIss::special_add()
@@ -661,7 +734,8 @@ void MipsIss::op_special2()
     switch ( m_ins.r.func ) {
     case 2: // MUL
         r_gp[m_ins.r.rd] = m_rs*m_rt;
-        setInsDelay( 15 );
+        if (m_rt)
+            setInsDelay( __builtin_clz(m_rt) );
         break;
     default:
         op_ill();
@@ -690,8 +764,8 @@ MipsIss::func_t const MipsIss::opcod_table[]= {
     op4(    ill,   ill,  ill,   ill),
     op4(special2,  ill,  ill,   ill),
 
-    op4(     lb,    lh,  ill,    lw),
-    op4(    lbu,   lhu,  ill,   ill),
+    op4(     lb,    lh,  lwl,    lw),
+    op4(    lbu,   lhu,  lwr,   ill),
 
     op4(     sb,    sh,  ill,    sw),
     op4(    ill,   ill,  ill, cache),
