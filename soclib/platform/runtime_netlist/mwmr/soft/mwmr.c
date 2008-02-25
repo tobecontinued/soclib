@@ -96,7 +96,6 @@ mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
 	soclib_io_set( coproc, MWMR_CONFIG_FIFO_NO, no );
 	soclib_io_set( coproc, MWMR_CONFIG_STATUS_ADDR, (uint32_t)&mwmr->status );
 	soclib_io_set( coproc, MWMR_CONFIG_DEPTH, mwmr->gdepth );
-	soclib_io_set( coproc, MWMR_CONFIG_WIDTH, mwmr->width );
 	soclib_io_set( coproc, MWMR_CONFIG_BUFFER_ADDR, (uint32_t)mwmr->buffer );
 	soclib_io_set( coproc, MWMR_CONFIG_RUNNING, 1 );
 }

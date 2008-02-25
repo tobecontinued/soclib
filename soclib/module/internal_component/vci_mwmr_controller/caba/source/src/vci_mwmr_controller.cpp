@@ -41,7 +41,6 @@ struct fifo_state_s {
 	uint32_t status_address;
 	uint32_t depth;
 	uint32_t buffer_address;
-	uint32_t burst_size;
 	bool running;
 	enum SoclibMwmrWay way;
 	uint32_t timer;
@@ -106,8 +105,8 @@ tmpl(void)::elect()
 #if 0
 		if ( st->timer == 0 && st->running &&
 			 (( st->way == MWMR_TO_COPROC )
-			  ? (st->fifo->filled_status() + st->burst_size < m_fifo_to_coproc_depth)
-			  : (st->fifo->filled_status() >= st->burst_size)
+			  ? (st->fifo->empty())
+			  : (st->fifo->full())
 				 ) ) {
 			m_current = st;
 			m_current_no = i;
@@ -160,10 +159,6 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		check_fifo();
 		m_config_fifo->depth = data;
 		return true;
-    case MWMR_CONFIG_WIDTH:
-		check_fifo();
-		m_config_fifo->burst_size = data;
-		return true;
     case MWMR_CONFIG_BUFFER_ADDR:
 		check_fifo();
 		m_config_fifo->buffer_address = data;
@@ -205,10 +200,6 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
     case MWMR_CONFIG_DEPTH:
 		check_fifo();
 		data = m_config_fifo->depth;
-		return true;
-    case MWMR_CONFIG_WIDTH:
-		check_fifo();
-		data = m_config_fifo->burst_size;
 		return true;
     case MWMR_CONFIG_BUFFER_ADDR:
 		check_fifo();
@@ -310,24 +301,24 @@ tmpl(void)::transition()
                   << ": ";
 #endif
 		if ( m_current->way == MWMR_FROM_COPROC ) {
-			if ( r_current_usage + m_current->burst_size <= m_current->depth ) {
-				r_cmd_count = m_current->burst_size/vci_param::B;
-                r_rsp_count = m_current->burst_size/vci_param::B;
+			if ( r_current_usage + m_fifo_from_coproc_depth <= m_current->depth ) {
+				r_cmd_count = m_fifo_from_coproc_depth/vci_param::B;
+                r_rsp_count = m_fifo_from_coproc_depth/vci_param::B;
 				r_init_fsm = INIT_DATA_WRITE;
                 r_status_modified = true;
 #if MWMR_CONTROLLER_DEBUG
-                std::cout << "going to read from coproc " << m_current->burst_size/vci_param::B << " words" << std::endl;
+                std::cout << "going to read from coproc " << m_fifo_from_coproc_depth/vci_param::B << " words" << std::endl;
 #endif
                 break;
 			}
 		} else {
-			if ( r_current_usage >= m_current->burst_size ) {
-				r_cmd_count = m_current->burst_size/vci_param::B;
-                r_rsp_count = m_current->burst_size/vci_param::B;
+			if ( r_current_usage >= m_fifo_to_coproc_depth ) {
+				r_cmd_count = m_fifo_to_coproc_depth/vci_param::B;
+                r_rsp_count = m_fifo_to_coproc_depth/vci_param::B;
 				r_init_fsm = INIT_DATA_READ;
                 r_status_modified = true;
 #if MWMR_CONTROLLER_DEBUG
-                std::cout << "going to put " << m_current->burst_size/vci_param::B << " words to coproc" << std::endl;
+                std::cout << "going to put " << m_fifo_to_coproc_depth/vci_param::B << " words to coproc" << std::endl;
 #endif
                 break;
 			}
