@@ -466,7 +466,7 @@ void MipsIss::op_swl()
         op_sw();
         return;
     }
-    std::cout << name() << " Unimplemented opcod swl!" << std::endl;
+    std::cout << name() << " Unimplemented opcod swl for address=" << address << " and le=" << m_little_endian << "!" << std::endl;
     m_exception = X_RI;
 }
 
@@ -477,7 +477,7 @@ void MipsIss::op_swr()
         op_sw();
         return;
     }
-    std::cout << name() << " Unimplemented opcod swr!" << std::endl;
+    std::cout << name() << " Unimplemented opcod swr for address=" << address << " and le=" << m_little_endian << "!" << std::endl;
     m_exception = X_RI;
 }
 
