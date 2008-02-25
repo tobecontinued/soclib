@@ -81,19 +81,19 @@ int main(void)
 
 		*(uint32_t*)&test_b[0] = 0x11223344;
 		*(uint32_t*)&test_b[4] = 0x55667788;
-		test((uint32_t)&test_b[0+1], 0x11223344);
+		test((uint32_t)&test_b[0], 0x11223344);
 #if defined MIPSEL
-		test((uint32_t)&test_b[1+1], 0x88112233);
-		test((uint32_t)&test_b[2+1], 0x77881122);
-		test((uint32_t)&test_b[3+1], 0x66778811);
+		test((uint32_t)&test_b[1], 0x88112233);
+		test((uint32_t)&test_b[2], 0x77881122);
+		test((uint32_t)&test_b[3], 0x66778811);
 #elif defined MIPSEB
-		test((uint32_t)&test_b[1+1], 0x22334455);
-		test((uint32_t)&test_b[2+1], 0x33445566);
-		test((uint32_t)&test_b[3+1], 0x44556677);
+		test((uint32_t)&test_b[1], 0x22334455);
+		test((uint32_t)&test_b[2], 0x33445566);
+		test((uint32_t)&test_b[3], 0x44556677);
 #else
 #error Not supported
 #endif
-		test((uint32_t)&test_b[4+1], 0x55667788);
+		test((uint32_t)&test_b[4], 0x55667788);
 	}
 
 	{

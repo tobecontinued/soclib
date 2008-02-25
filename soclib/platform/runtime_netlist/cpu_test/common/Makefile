@@ -32,6 +32,7 @@ COMMON=$(TESTDIR)/../common
 BASE=$(TESTDIR)/..
 
 mipsel_CPU=mipsel
+mipseb_CPU=mipseb
 powerpc_CPU=ppc405
 microblaze_CPU=microblaze
 
