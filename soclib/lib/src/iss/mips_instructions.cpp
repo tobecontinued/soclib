@@ -462,7 +462,7 @@ void MipsIss::op_sw()
 void MipsIss::op_swl()
 {
     uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if ( address & 3 == m_little_endian ? 3 : 0 ) {
+    if ( (address & 3) == (m_little_endian ? 3 : 0) ) {
         op_sw();
         return;
     }
@@ -473,7 +473,7 @@ void MipsIss::op_swl()
 void MipsIss::op_swr()
 {
     uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    if ( address & 3 == m_little_endian ? 0 : 3 ) {
+    if ( (address & 3) == (m_little_endian ? 0 : 3) ) {
         op_sw();
         return;
     }
