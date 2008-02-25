@@ -176,7 +176,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
     uint32_t cell = (int)addr / vci_param::B;
 
 	if ( cell < m_n_status ) {
-		data = p_config[cell].read();
+		data = p_status[cell].read();
 		return true;
 	}
 
