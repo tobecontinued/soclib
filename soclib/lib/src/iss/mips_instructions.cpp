@@ -439,6 +439,13 @@ void MipsIss::op_sb()
     do_store(address, WRITE_BYTE, tmp|(tmp << 8)|(tmp << 16)|(tmp << 24));
 }
 
+void MipsIss::op_sc()
+{
+    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    do_store(address, STORE_COND, m_rt);
+    r_mem_dest = m_ins.i.rt;
+}
+
 void MipsIss::op_sh()
 {
     uint32_t tmp = m_rt&0xffff;
@@ -452,11 +459,16 @@ void MipsIss::op_sw()
     do_store(address, WRITE_WORD, m_rt);
 }
 
-void MipsIss::op_sc()
+void MipsIss::op_swl()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-    do_store(address, STORE_COND, m_rt);
-    r_mem_dest = m_ins.i.rt;
+    std::cout << name() << " Unimplemented opcod swl!" << std::endl;
+    m_exception = X_RI;
+}
+
+void MipsIss::op_swr()
+{
+    std::cout << name() << " Unimplemented opcod swr!" << std::endl;
+    m_exception = X_RI;
 }
 
 void MipsIss::special_sll()
@@ -767,8 +779,8 @@ MipsIss::func_t const MipsIss::opcod_table[]= {
     op4(     lb,    lh,  lwl,    lw),
     op4(    lbu,   lhu,  lwr,   ill),
 
-    op4(     sb,    sh,  ill,    sw),
-    op4(    ill,   ill,  ill, cache),
+    op4(     sb,    sh,  swl,    sw),
+    op4(    ill,   ill,  swr, cache),
 
     op4(     ll,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
@@ -793,11 +805,11 @@ const char *MipsIss::name_table[] = {
     op4(    ill,   ill,  ill,   ill),
     op4(special2,  ill,  ill,   ill),
 
-    op4(     lb,    lh,  ill,    lw),
-    op4(    lbu,   lhu,  ill,   ill),
+    op4(     lb,    lh,  lwl,    lw),
+    op4(    lbu,   lhu,  lwr,   ill),
 
-    op4(     sb,    sh,  ill,    sw),
-    op4(    ill,   ill,  ill, cache),
+    op4(     sb,    sh,  swl,    sw),
+    op4(    ill,   ill,  swr, cache),
 
     op4(     ll,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
@@ -838,11 +850,11 @@ MipsIss::use_t const MipsIss::use_table[]= {
        use4(   NONE,  NONE, NONE,  NONE),
        use4(     ST,  NONE, NONE,  NONE),
 
-       use4(      S,     S, NONE,     S),
-       use4(      S,     S, NONE,  NONE),
+       use4(      S,     S,    S,     S),
+       use4(      S,     S,    S,  NONE),
 
-       use4(     ST,    ST, NONE,    ST),
-       use4(   NONE,  NONE, NONE,    ST),
+       use4(     ST,    ST,   ST,    ST),
+       use4(   NONE,  NONE,   ST,    ST),
 
        use4(      S,  NONE, NONE,  NONE),
        use4(   NONE,  NONE, NONE,  NONE),
