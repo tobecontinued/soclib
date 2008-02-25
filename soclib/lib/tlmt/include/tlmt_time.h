@@ -32,7 +32,6 @@
 #define TLMT_CORE_TLMT_TIME_H
 
 #include <iostream>
-#include <systemc>
 
 namespace tlmt_core {
 
@@ -41,8 +40,10 @@ class tlmt_time
 public:
 	typedef uint32_t val_t;
 
+	static inline const tlmt_time max();
+
 private:
-	uint32_t m_value;
+	val_t m_value;
 
 public:
 	inline tlmt_time( val_t val = 0 );

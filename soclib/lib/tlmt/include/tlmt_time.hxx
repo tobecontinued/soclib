@@ -27,11 +27,10 @@
  *     Nicolas Pouillon <nipo@ssji.net>
  */
 
+#include <limits>
 
 #ifndef TLMT_CORE_TLMT_TIME_HXX
 #define TLMT_CORE_TLMT_TIME_HXX
-
-#include <systemc>
 
 namespace tlmt_core {
 
@@ -107,6 +106,11 @@ bool tlmt_time::operator==( const tlmt_time &t ) const
 bool tlmt_time::operator!=( const tlmt_time &t ) const
 {
 	return m_value != t.m_value;
+}
+
+const tlmt_time tlmt_time::max()
+{
+	return tlmt_time(std::numeric_limits<val_t>::max());
 }
 
 }
