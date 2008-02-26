@@ -103,67 +103,6 @@ class VciXCache
         WRITE_PKTID,
     };
 
-    typedef struct d_req_s {
-        addr_t addr;
-        data_t data;
-        data_t prev;
-        DCacheSignals::req_type_e type;
-        bool cached;
-
-
-        friend std::ostream &operator <<(std::ostream &o, d_req_s r)
-        {
-            o << "<dreq: "
-              << std::dec
-              << "( " << r.type << " )"
-              << std::hex << std::showbase
-              << " @ " << r.addr
-              << ": " << r.data
-              << " prev " << r.prev
-              << " cached " << std::dec << r.cached
-              << ">" << std::endl;
-            return o;
-        }
-
-        friend std::istream &operator >>(std::istream &i, d_req_s &r)
-        {
-			int type;
-			std::string dreq, po, pc, at, sc, prev, cached, close;
-			i >> dreq >> po
-			  >> type
-			  >> pc >> at
-			  >> std::hex
-			  >> r.addr
-			  >> sc
-			  >> r.data
-			  >> prev
-			  >> r.prev
-			  >> cached
-			  >> std::dec
-			  >> r.cached
-			  >> close;
-			assert(dreq == "<dreq:");
-			assert(po == "(");
-			assert(pc == ")");
-			assert(at == "@");
-			assert(sc == ":");
-			assert(prev == "prev");
-			assert(cached == "cached");
-			assert(close == ">");
-			r.type = (DCacheSignals::req_type_e)type;
-            return i;
-        }
-
-        bool operator ==( const d_req_s &other ) const
-        {
-            return other.data == data &&
-                other.addr == addr &&
-                other.prev == prev &&
-                other.type == type &&
-				other.cached == cached;
-        }
-    } d_req_t;
-
 public:
     sc_in<bool> p_clk;
     sc_in<bool> p_resetn;
@@ -193,25 +132,37 @@ private:
     const size_t  m_dcache_yzmask;
 
     // REGISTERS
-    sc_signal<dcache_fsm_state_e>      r_dcache_fsm;
+    sc_signal<int>      r_dcache_fsm;
     sc_signal<data_t>      **r_dcache_data;
     sc_signal<tag_t>      *r_dcache_tag;
-    sc_signal<d_req_t>      r_dcache_save;
+    sc_signal<addr_t>      r_dcache_addr_save;
+    sc_signal<data_t>      r_dcache_data_save;
+    sc_signal<data_t>      r_dcache_prev_save;
+    sc_signal<int>         r_dcache_type_save;
+    sc_signal<bool>        r_dcache_cached_save;
 
-    soclib::caba::GenericFifo<d_req_t>  m_dreq_fifo;
+    GenericFifo<addr_t>      m_dreq_addr_fifo;
+    GenericFifo<data_t>      m_dreq_data_fifo;
+    GenericFifo<data_t>      m_dreq_prev_fifo;
+    GenericFifo<int>         m_dreq_type_fifo;
+    GenericFifo<bool>        m_dreq_cached_fifo;
 
-    sc_signal<icache_fsm_state_e>      r_icache_fsm;
+    sc_signal<int>      r_icache_fsm;
     sc_signal<data_t>      **r_icache_data;
     sc_signal<tag_t>      *r_icache_tag;
     sc_signal<addr_t>      r_icache_miss_addr;
     sc_signal<bool>     r_icache_req;
 
-    sc_signal<cmd_fsm_state_e>      r_vci_cmd_fsm;
-    sc_signal<d_req_t>      r_dcache_cmd;
+    sc_signal<int>      r_vci_cmd_fsm;
+    sc_signal<addr_t>      r_dcache_addr_cmd;
+    sc_signal<data_t>      r_dcache_data_cmd;
+    sc_signal<data_t>      r_dcache_prev_cmd;
+    sc_signal<int>         r_dcache_type_cmd;
+    sc_signal<bool>        r_dcache_cached_cmd;
     sc_signal<addr_t>      r_dcache_miss_addr;
     sc_signal<size_t>      r_cmd_cpt;       
       
-    sc_signal<rsp_fsm_state_e>      r_vci_rsp_fsm;
+    sc_signal<int>      r_vci_rsp_fsm;
     sc_signal<data_t>      *r_icache_miss_buf;    
     sc_signal<data_t>      *r_dcache_miss_buf;    
     sc_signal<bool>     r_dcache_unc_valid;    
@@ -252,7 +203,9 @@ private:
     void genMoore();
     void genMealy();
 
-    static inline bool can_burst(const d_req_t &old, const d_req_t &next);
+    static inline bool can_burst(
+        DCacheSignals::req_type_e old_type, addr_t old_addr,
+        DCacheSignals::req_type_e new_type, addr_t new_addr );
     static inline bool is_write(soclib::caba::DCacheSignals::req_type_e cmd);
 };
 
