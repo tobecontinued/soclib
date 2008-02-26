@@ -118,7 +118,8 @@ public:
     virtual uint32_t getDebugPC() const = 0;
     virtual void setDebugPC(uint32_t) = 0;
 
-    virtual void setCacheLineSize( size_t icache_line, size_t dcache_line ) {}
+    virtual void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {}
+    virtual void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {}
 
 protected:
 

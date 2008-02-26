@@ -33,7 +33,18 @@
 
 namespace soclib { namespace caba {
 
-    using namespace sc_core;
+using namespace sc_core;
+
+struct CacheInfo {
+    uint32_t line_bytes;
+    uint32_t associativity;
+    uint32_t n_lines;
+};
+
+struct XCacheInfo {
+    struct CacheInfo icache;
+    struct CacheInfo dcache;
+};
 
 /*
  * DCACHE signals

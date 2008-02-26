@@ -1169,6 +1169,18 @@ tmpl(void)::genMealy()
 
 }
 
+tmpl(XCacheInfo)::getCacheInfo() const
+{
+    struct XCacheInfo info;
+    info.icache.line_bytes = 4*s_icache_words;
+    info.icache.associativity = 1;
+    info.icache.n_lines = s_icache_lines;
+    info.dcache.line_bytes = 4*s_dcache_words;
+    info.dcache.associativity = 1;
+    info.dcache.n_lines = s_dcache_lines;
+    return info;
+}
+
 }}
 
 // Local Variables:

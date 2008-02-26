@@ -52,12 +52,15 @@ static inline std::string mkname(uint32_t no)
 
 }
 
-    MipsIss::MipsIss(uint32_t ident, bool little_endian)
-        : Iss(mkname(ident), ident),
-          m_little_endian(little_endian)
+MipsIss::MipsIss(uint32_t ident, bool little_endian)
+    : Iss(mkname(ident), ident),
+      m_little_endian(little_endian)
 {
-    m_icache_line_size = 0;
-    m_dcache_line_size = 0;
+    m_config.whole = 0;
+    m_config.m = 1;
+    m_config.be = m_little_endian ? 0 : 1;
+
+    m_config1.whole = 0;
 }
 
 void MipsIss::reset()
@@ -389,10 +392,56 @@ void MipsEbIss::setDataResponse(bool error, uint32_t data)
     MipsIss::setDataResponse(error, soclib::endian::uint32_swap(data));
 }
 
-void MipsIss::setCacheLineSize( size_t icache_line, size_t dcache_line )
+
+
+void MipsIss::setICacheInfo( size_t line_size, size_t assoc, size_t n_lines )
 {
-    m_icache_line_size = icache_line;
-    m_dcache_line_size = dcache_line;
+    m_config1.ia = assoc-1;
+    switch (n_lines) {
+    case 64: m_config1.is = 0; break;
+    case 128: m_config1.is = 1; break;
+    case 256: m_config1.is = 2; break;
+    case 512: m_config1.is = 3; break;
+    case 1024: m_config1.is = 4; break;
+    case 2048: m_config1.is = 5; break;
+    case 4096: m_config1.is = 6; break;
+    default: m_config1.is = 7; break;
+    }
+    switch (line_size) {
+    case 0: m_config1.il = 0; break;
+    case 4: m_config1.il = 1; break;
+    case 8: m_config1.il = 2; break;
+    case 16: m_config1.il = 3; break;
+    case 32: m_config1.il = 4; break;
+    case 64: m_config1.il = 5; break;
+    case 128: m_config1.il = 6; break;
+    default: m_config1.il = 7; break;
+    }
+}
+
+void MipsIss::setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines )
+{
+    m_config1.da = assoc-1;
+    switch (n_lines) {
+    case 64: m_config1.ds = 0; break;
+    case 128: m_config1.ds = 1; break;
+    case 256: m_config1.ds = 2; break;
+    case 512: m_config1.ds = 3; break;
+    case 1024: m_config1.ds = 4; break;
+    case 2048: m_config1.ds = 5; break;
+    case 4096: m_config1.ds = 6; break;
+    default: m_config1.ds = 7; break;
+    }
+    switch (line_size) {
+    case 0: m_config1.dl = 0; break;
+    case 4: m_config1.dl = 1; break;
+    case 8: m_config1.dl = 2; break;
+    case 16: m_config1.dl = 3; break;
+    case 32: m_config1.dl = 4; break;
+    case 64: m_config1.dl = 5; break;
+    case 128: m_config1.dl = 6; break;
+    default: m_config1.dl = 7; break;
+    }
 }
 
 }}

@@ -133,6 +133,18 @@ tmpl(void)::genMoore()
     }
 }
 
+tmpl(void)::setCacheInfo( const struct XCacheInfo &info )
+{
+    m_iss.setICacheInfo( info.icache.line_bytes,
+                         info.icache.associativity,
+                         info.icache.n_lines );
+
+    m_iss.setDCacheInfo( info.dcache.line_bytes,
+                         info.dcache.associativity,
+                         info.dcache.n_lines );
+
+}
+
 }}
 
 // Local Variables:

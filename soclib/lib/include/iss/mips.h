@@ -178,6 +178,38 @@ private:
         uint32_t reserved2:2,
         ) cause_t;
 
+    typedef REG32_BITFIELD(
+        uint32_t m:1,
+        uint32_t mmu_size:6,
+        uint32_t is:3,
+        uint32_t il:3,
+        uint32_t ia:3,
+        uint32_t ds:3,
+        uint32_t dl:3,
+        uint32_t da:3,
+        uint32_t c2:1,
+        uint32_t md:1,
+        uint32_t pc:1,
+        uint32_t wr:1,
+        uint32_t ca:1,
+        uint32_t ep:1,
+        uint32_t fp:1,
+        ) config1_t;
+
+    typedef REG32_BITFIELD(
+        uint32_t m:1,
+        uint32_t k23:3,
+        uint32_t ku:3,
+        uint32_t impl:9,
+        uint32_t be:1,
+        uint32_t at:2,
+        uint32_t ar:3,
+        uint32_t mt:3,
+        uint32_t zero:3,
+        uint32_t vi:1,
+        uint32_t k0:3,
+        ) config_t;
+
     status_t r_status;
     cause_t r_cause;
     uint32_t r_bar;
@@ -195,8 +227,8 @@ private:
     uint32_t    m_exec_cycles;
     bool m_hazard;
 
-    size_t m_icache_line_size;
-    size_t m_dcache_line_size;
+    config_t m_config;
+    config1_t m_config1;
 
     const bool m_little_endian;
 
@@ -291,7 +323,8 @@ public:
 
     int cpuCauseToSignal( uint32_t cause ) const;
 
-    void setCacheLineSize( size_t icache_line, size_t dcache_line );
+    void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
+    void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
 
 private:
     void run();

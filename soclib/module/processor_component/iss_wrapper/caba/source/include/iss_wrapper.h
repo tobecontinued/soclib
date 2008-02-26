@@ -59,6 +59,8 @@ protected:
 public:
 	IssWrapper( sc_module_name insname, int ident );
 	~IssWrapper();
+
+    void setCacheInfo( const struct XCacheInfo &info );
 };
 
 }}

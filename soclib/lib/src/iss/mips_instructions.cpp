@@ -54,6 +54,7 @@ enum Cp0Reg {
     CAUSE = COPROC_REGNUM(13,0),
     EPC = COPROC_REGNUM(14,0),
     IDENT = COPROC_REGNUM(15,1),
+    CONFIG = COPROC_REGNUM(16,0),
     CONFIG_1 = COPROC_REGNUM(16,1),
 
     // Implementation dependant,
@@ -191,10 +192,10 @@ uint32_t MipsIss::cp0Get( uint32_t reg, uint32_t sel ) const
         return 0x80000000|m_ident;
     case EXEC_CYCLES:
         return m_exec_cycles;
+    case CONFIG:
+        return m_config.whole;
     case CONFIG_1:
-        return 0x80000000
-            | ((uint32_log2(m_icache_line_size)-1)<<19)
-            | ((uint32_log2(m_dcache_line_size)-1)<<10);
+        return m_config1.whole;
     default:
         return 0;
     }

@@ -245,6 +245,8 @@ public:
         size_t dcache_lines,
         size_t dcache_words );
 
+    struct XCacheInfo getCacheInfo() const;
+
 private:
     void transition();
     void genMoore();
