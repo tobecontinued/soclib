@@ -130,7 +130,8 @@ class Module(Base):
 		Base.setModule(self, module)
 
 	def assertValid(self, value):
-		assert value.typename() == self.typename
+		if value.typename() != self.typename:
+			raise ValueError('Incorrect value type for %s: %s != %s'%(self, value.typename(), self.typename))
 
 	def getTmplType(self, args):
 		return self.__getSpec(args).getType()
