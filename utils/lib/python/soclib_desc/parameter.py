@@ -55,6 +55,9 @@ class Base:
 				raise ParameterError("No parameter `%s' specified for %r"%(self.name, self.owner))
 			return self.default
 
+	def __str__(self):
+		return '<Parameter %s: %s>'%(self.__class__.__name__, self.name)
+
 class Bool(Base):
 	valid_types = (bool)
 	def __init__(self, name, default = None, auto = None):
