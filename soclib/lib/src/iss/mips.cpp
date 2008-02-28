@@ -52,9 +52,9 @@ static inline std::string mkname(uint32_t no)
 
 }
 
-MipsIss::MipsIss(uint32_t ident, bool little_endian)
+MipsIss::MipsIss(uint32_t ident, bool mips_little_endian)
     : Iss(mkname(ident), ident),
-      m_little_endian(little_endian)
+      m_little_endian(mips_little_endian)
 {
     m_config.whole = 0;
     m_config.m = 1;

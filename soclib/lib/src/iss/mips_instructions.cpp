@@ -467,7 +467,8 @@ void MipsIss::op_swl()
         do_store(address&~3, WRITE_WORD, m_rt);
         return;
     }
-    std::cout << name() << " Unimplemented opcod swl for address=" << address << " and le=" << m_little_endian << "!" << std::endl;
+    std::cout << name() << " Unimplemented opcod swl for address&3=" << (address&3)
+              << " on a " << (m_little_endian?"LE":"BE") << " Mips !" << std::endl;
     m_exception = X_RI;
 }
 
@@ -478,7 +479,8 @@ void MipsIss::op_swr()
         do_store(address&~3, WRITE_WORD, m_rt);
         return;
     }
-    std::cout << name() << " Unimplemented opcod swr for address=" << address << " and le=" << m_little_endian << "!" << std::endl;
+    std::cout << name() << " Unimplemented opcod swr for address&3=" << (address&3)
+              << " on a " << (m_little_endian?"LE":"BE") << " Mips !" << std::endl;
     m_exception = X_RI;
 }
 
