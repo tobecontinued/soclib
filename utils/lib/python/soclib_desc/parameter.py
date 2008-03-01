@@ -156,10 +156,20 @@ class Module(Base):
 		return r.ref()
 
 class Reference:
-	def __init__(self, name):
+	def __init__(self, name, mode = 'val'):
 		self.__name = name
-	def name(self):
-		return self.__name
+		self.__mode = mode
+	def setValue(self, args, value):
+		args[self.__name] = value
+	def getValue(self, args):
+		if not self.__name in args:
+			return None
+		if self.__mode == 'val':
+			return args[self.__name]
+		elif self.__mode == 'len':
+			return len(args[self.__name])
+		else:
+			raise ValueError("Unsupported mode %s for parameter.Reference"%self.__mode)
 
 class Constant:
 	def __init__(self, name):
