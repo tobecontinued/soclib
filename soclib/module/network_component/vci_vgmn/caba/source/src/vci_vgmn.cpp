@@ -142,6 +142,9 @@ public:
     {
         assert(!full());
         ++m_usage;
+#if VGMN_DEBUG
+        std::cout << "VGMN pushing data " << data << " usage: " << m_usage << std::endl;
+#endif
         m_data[m_wptr] = data;
         m_wptr = (m_wptr+1)%m_size;
     }
@@ -218,7 +221,7 @@ public:
     
     void transition( const output_port_t &port )
     {
-        if (! port.getAck())
+        if (port.iProposed() && ! port.peerAccepted())
             return;
 
         vci_pkt_t *pkt = NULL;
@@ -238,6 +241,11 @@ public:
             }
         }
 
+#if VGMN_DEBUG
+        if (pkt)
+            std::cout << "VGMN popped packet " << *pkt << std::endl;
+#endif
+
         vci_pkt_t *tmp = m_output_delay_line.shift(pkt);
         if ( tmp != NULL )
             delete tmp;
@@ -250,6 +258,9 @@ public:
         vci_pkt_t *pkt = m_output_delay_line.head();
 
         if (pkt != NULL) {
+#if VGMN_DEBUG
+            std::cout << "VGMN packet on VCI " << *pkt << std::endl;
+#endif
             pkt->writeTo(port);
         } else
             port.setVal(false);
@@ -320,8 +331,12 @@ public:
 #if VGMN_DEBUG
             std::cout << "VGMN accepting " << *m_waiting_packet << std::endl;
 #endif
-            if ( m_dest == NULL )
+            if ( m_dest == NULL ) {
+#if VGMN_DEBUG
+                std::cout << " routed to port " << m_waiting_packet->route( m_routing_table ) << std::endl;
+#endif
                 m_dest = m_output_fifos[m_waiting_packet->route( m_routing_table )];
+            }
         } else {
             // No packet locally waiting nor on port, no need to
             // go further
