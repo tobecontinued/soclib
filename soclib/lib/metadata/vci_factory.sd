@@ -23,6 +23,7 @@ Module('caba:vci_factory',
 		Uses('vci_timer'),
 		Uses('vci_vgmn'),
 		Uses('vci_local_crossbar'),
+		Uses('vci_simple_crossbar'),
 		Uses('vci_xcache'),
 		],
 )

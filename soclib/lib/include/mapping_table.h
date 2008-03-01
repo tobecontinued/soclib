@@ -72,6 +72,8 @@ public:
 
     AddressDecodingTable<addr_t, int> getRoutingTable( const IntTab &index, int default_index = 0 ) const;
 
+    AddressDecodingTable<uint32_t, bool> getIdLocalityTable( const IntTab &index ) const;
+
     AddressMaskingTable<uint32_t> getIdMaskingTable( const int level ) const;
     
     void print( std::ostream &o ) const;
@@ -84,7 +86,7 @@ public:
 
     inline unsigned int indexForId( const IntTab &index ) const
     {
-        return index*m_level_addr_bits;
+        return index*m_level_id_bits;
     }
 };
 

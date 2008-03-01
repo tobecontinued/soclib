@@ -174,7 +174,7 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
           i != m_segment_list.end();
           i++ ) {
         if ( ! i->index().idMatches(index) ) {
-			std::cout << i->index() << " does not match " << index << std::endl;
+//			std::cout << i->index() << " does not match " << index << std::endl;
 			continue;
 		}
 
@@ -199,7 +199,9 @@ void MappingTable::print( std::ostream &o ) const
 {
     std::list<Segment>::const_iterator i;
 
-    o << "Mapping table: ad:" << m_level_addr_bits << std::endl;
+    o << "Mapping table: ad:" << m_level_addr_bits
+      << " id:" << m_level_id_bits
+      << std::endl;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
@@ -215,6 +217,39 @@ MappingTable::getIdMaskingTable( const int level ) const
     for ( size_t i=level+1; i<m_level_id_bits.level(); ++i )
         drop += m_level_id_bits[i];
     return AddressMaskingTable<uint32_t>( use, drop );
+}
+
+AddressDecodingTable<uint32_t, bool>
+MappingTable::getIdLocalityTable( const IntTab &index ) const
+{
+	size_t nbits = m_level_id_bits.sum(index.level());
+    size_t id_width = m_level_id_bits.sum();
+
+    AddressDecodingTable<uint32_t, bool> adt(nbits, id_width-nbits);
+	adt.reset(true);
+
+    AddressDecodingTable<uint32_t, bool> done(nbits, id_width-nbits);
+	done.reset(false);
+
+    std::list<Segment>::const_iterator i;
+    for ( i = m_segment_list.begin();
+          i != m_segment_list.end();
+          i++ ) {
+		uint32_t id = indexForId(i->index());
+		bool val = i->index().idMatches(index);
+
+		if ( done[id] && adt[id] != val ) {
+            std::ostringstream oss;
+            oss << "Incoherent Mapping Table:" << std::endl
+                << "Segment " << *i << " targets different component than other segments with same ID MSBs" << std::endl
+                << "Mapping table:" << std::endl
+                << *this;
+			throw soclib::exception::RunTimeError(oss.str());
+        }
+		adt.set( id, val );
+		done.set( id, true );
+	}
+    return adt;
 }
 
 }}

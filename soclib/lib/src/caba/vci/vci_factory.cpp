@@ -239,6 +239,7 @@ BaseModule& local_crossbar(
         name.c_str(),
         env.get<MappingTable>("mapping_table"),
         args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<soclib::common::IntTab>("_vci_id"),
         args.get<int>("n_initiators"),
         args.get<int>("n_targets") );
 }

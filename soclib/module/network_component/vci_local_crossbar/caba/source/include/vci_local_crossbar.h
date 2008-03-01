@@ -29,17 +29,46 @@
 #define SOCLIB_CABA_VCI_LOCAL_CROSSBAR_H_
 
 #include <systemc>
-#include "../include/vci_simple_crossbar.h"
+#include "caba_base_module.h"
+#include "vci_initiator.h"
+#include "vci_target.h"
+#include "vci_buffers.h"
+#include "mapping_table.h"
 
 namespace soclib { namespace caba {
 
+namespace _local_crossbar {
+template<typename pkt_t> class Crossbar;
+}
+
 template<typename vci_param>
 class VciLocalCrossbar
-    : public VciSimpleCrossbar<vci_param>
+    : public BaseModule
 {
 public:
-    soclib::caba::VciInitiator<vci_param> &p_initiator_to_up;
-    soclib::caba::VciTarget<vci_param> &p_target_to_up;
+    sc_in<bool> p_clk;
+    sc_in<bool> p_resetn;
+
+    VciInitiator<vci_param> *p_to_target;
+    VciTarget<vci_param> *p_to_initiator;
+    VciTarget<vci_param> p_target_to_up;
+    VciInitiator<vci_param> p_initiator_to_up;
+
+private:
+    size_t m_nb_attached_initiat;
+    size_t m_nb_attached_target;
+
+    VciInitiator<vci_param> **m_ports_to_target;
+    VciTarget<vci_param> **m_ports_to_initiator;
+
+    typedef _local_crossbar::Crossbar<VciCmdBuffer<vci_param> > cmd_crossbar_t;
+    typedef _local_crossbar::Crossbar<VciRspBuffer<vci_param> > rsp_crossbar_t;
+
+    void transition();
+    void genMealy();
+
+	cmd_crossbar_t *m_cmd_crossbar;
+	rsp_crossbar_t *m_rsp_crossbar;
 
 protected:
     SC_HAS_PROCESS(VciLocalCrossbar);
@@ -47,9 +76,11 @@ protected:
 public:
     VciLocalCrossbar( sc_module_name name,
 					  const soclib::common::MappingTable &mt,
-					  const soclib::common::IntTab &index,
-					  size_t nb_initiat,
-					  size_t nb_target );
+					  const soclib::common::IntTab &srcid,
+					  const soclib::common::IntTab &tgtid,
+					  size_t nb_attached_initiat,
+					  size_t nb_attached_target );
+    ~VciLocalCrossbar();
 };
 
 }}
