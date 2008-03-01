@@ -24,6 +24,9 @@
  *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
  * Based on previous works by Etienne Faure & Alain Greiner, 2005
+ *
+ * E. Faure: Communications matérielles-logicielles dans les systèmes
+ * sur puce orientés télécommunications.  PhD thesis, UPMC, 2007
  */
 
 #include "register.h"
