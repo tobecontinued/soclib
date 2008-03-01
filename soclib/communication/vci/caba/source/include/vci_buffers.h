@@ -53,6 +53,7 @@ class VciRspBuffer
 	typename vci_param::pktid_t   rpktid;
 public:
     typedef soclib::common::AddressMaskingTable<uint32_t> routing_table_t;
+    typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;
 
     typedef VciInitiator<vci_param> input_port_t;
     typedef VciTarget<vci_param> output_port_t;
@@ -99,6 +100,11 @@ public:
         return rt[rsrcid];
     }
 
+    inline bool isLocal( const locality_table_t &lt ) const
+    {
+        return lt[rsrcid];
+    }
+
     friend std::ostream &operator << (std::ostream &o, const VciRspBuffer &b)
     {
         b.print(o);
@@ -138,6 +144,7 @@ class VciCmdBuffer
 	typename vci_param::pktid_t   pktid;
 public:
     typedef soclib::common::AddressDecodingTable<uint32_t, int> routing_table_t;
+    typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;
 
     typedef VciInitiator<vci_param> output_port_t;
     typedef VciTarget<vci_param> input_port_t;
@@ -198,6 +205,11 @@ public:
     inline int route( const routing_table_t &rt ) const
     {
         return rt[address];
+    }
+
+    inline bool isLocal( const locality_table_t &lt ) const
+    {
+        return lt[address];
     }
 
     friend std::ostream &operator << (std::ostream &o, const VciCmdBuffer &b)

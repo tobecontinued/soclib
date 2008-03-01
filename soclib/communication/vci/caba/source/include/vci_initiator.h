@@ -176,6 +176,11 @@ public:
         cmdval = x;
     }
 
+    inline bool iProposed() const
+    {
+        return cmdval;
+    }
+
     inline bool iAccepted() const
     {
         return rspval && rspack;
@@ -189,6 +194,11 @@ public:
     inline bool toPeerEnd() const
     {
         return peerAccepted() && eop;
+    }
+
+    void cmdNop()
+    {
+        cmdval = false;
     }
 
     friend sc_core::sc_sensitive &operator <<(

@@ -177,6 +177,11 @@ public:
         rspval = x;
     }
 
+    inline bool iProposed() const
+    {
+        return rspval;
+    }
+
     inline bool iAccepted() const
     {
         return cmdval && cmdack;
