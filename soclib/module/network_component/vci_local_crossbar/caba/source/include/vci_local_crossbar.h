@@ -23,6 +23,8 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
+ * Based on previous works by Alain Greiner, 2005
+ *
  * Maintainers: nipo
  */
 #ifndef SOCLIB_CABA_VCI_LOCAL_CROSSBAR_H_

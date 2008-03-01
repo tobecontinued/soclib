@@ -22,6 +22,7 @@
  *
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ *         Alexandre Becoulet <alexandre.becoulet@lip6.fr>, 2007
  *
  * Maintainers: nipo
  */

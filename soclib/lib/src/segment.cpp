@@ -21,6 +21,8 @@
  *
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ *
+ * Based on previous works by Francois Pecheux & Alain Greiner
  */
 
 #include "segment.h"

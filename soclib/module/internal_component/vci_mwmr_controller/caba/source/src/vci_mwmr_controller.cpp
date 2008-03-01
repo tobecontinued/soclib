@@ -22,6 +22,8 @@
  *
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2008
+ *
+ * Based on previous works by Etienne Faure & Alain Greiner, 2005
  */
 
 #include "register.h"

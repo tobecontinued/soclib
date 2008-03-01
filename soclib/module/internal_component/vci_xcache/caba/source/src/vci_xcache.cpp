@@ -211,7 +211,7 @@ tmpl(/**/)::VciXCache(
         << p_icache.req
         << p_icache.adr;
         
-#if defined(SYSTEMCASS_SPECIFIC)
+#if 0 && defined(SYSTEMCASS_SPECIFIC)
     p_icache.frz  (p_icache.req);
     p_icache.ins  (p_icache.req);
     p_icache.frz  (p_icache.adr);

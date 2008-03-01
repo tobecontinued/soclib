@@ -23,6 +23,8 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
+ * Based on previous works by Franck Wajsburt, 2005
+ *
  * Maintainers: nipo
  */
 #ifndef SOCLIB_VCI_ICU_H

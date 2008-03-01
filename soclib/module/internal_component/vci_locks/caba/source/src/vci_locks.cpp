@@ -21,6 +21,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6
+ *         Alain Greiner <alain.greiner@lip6.fr>, 2003-2007
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
  * Maintainers: nipo

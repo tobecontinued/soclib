@@ -22,6 +22,8 @@
  *
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ *
+ * Based on previous works by Alain Greiner, 2004
  */
 
 #include "timer.h"

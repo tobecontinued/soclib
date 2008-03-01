@@ -22,6 +22,7 @@
  *
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ *         Alain Greiner <alain.greiner@lip6.fr>, 2003
  *
  * Maintainers: nipo
  */

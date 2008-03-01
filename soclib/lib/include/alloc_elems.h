@@ -21,7 +21,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, Asim
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
  * Maintainers: nipo
  */
