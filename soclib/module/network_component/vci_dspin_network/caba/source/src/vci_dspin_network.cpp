@@ -254,53 +254,53 @@ namespace soclib { namespace caba {
     tmpl(/**/)::~VciDspinNetwork()
     {
 	for( int y = 0; y < Y ; y++ ){
-		delete [] p_from_initiator[y];
-		delete [] p_to_target[y];
+		free( p_from_initiator[y] );
+		free( p p_to_target[y] );
 
-		delete [] s_req_EW[y];
-		delete [] s_req_WE[y];
-		delete [] s_req_RW[y];
-		delete [] s_req_WR[y];
+		free( p s_req_EW[y] );
+		free( p s_req_WE[y] );
+		free( p s_req_RW[y] );
+		free( p s_req_WR[y] );
 
-		delete [] s_rsp_EW[y];
-		delete [] s_rsp_WE[y];
-		delete [] s_rsp_RW[y];
-		delete [] s_rsp_WR[y];
+		free( p s_rsp_EW[y] );
+		free( p s_rsp_WE[y] );
+		free( p s_rsp_RW[y] );
+		free( p s_rsp_WR[y] );
 
 		if( y < Y - 1){
-		    delete [] s_req_NS[y];
-		    delete [] s_req_SN[y];
-		    delete [] s_rsp_NS[y];
-		    delete [] s_rsp_SN[y];
+		    free( s_req_NS[y] );
+		    free( s_req_SN[y] );
+		    free( s_rsp_NS[y] );
+		    free( s_rsp_SN[y] );
 		}
 
-		delete [] t_initiator_wrapper[y];
-		delete [] t_target_wrapper[y];
-		delete [] t_req_router[y];
-		delete [] t_rsp_router[y];
+		free( t_initiator_wrapper[y] );
+		free( t_target_wrapper[y] );
+		free( t_req_router[y] );
+		free( t_rsp_router[y] );
 	}
 
-	delete [] p_from_initiator;
-	delete [] p_to_target;
+	free( p_from_initiator);
+	free( p_to_target);
 
-	delete [] s_req_NS;
-	delete [] s_req_SN;
-	delete [] s_req_EW;
-	delete [] s_req_WE;
-	delete [] s_req_RW;
-	delete [] s_req_WR;
+	free( s_req_NS);
+	free( s_req_SN);
+	free( s_req_EW);
+	free( s_req_WE);
+	free( s_req_RW);
+	free( s_req_WR);
 
-	delete [] s_rsp_NS;
-	delete [] s_rsp_SN;
-	delete [] s_rsp_EW;
-	delete [] s_rsp_WE;
-	delete [] s_rsp_RW;
-	delete [] s_rsp_WR;
+	free( s_rsp_NS);
+	free( s_rsp_SN);
+	free( s_rsp_EW);
+	free( s_rsp_WE);
+	free( s_rsp_RW);
+	free( s_rsp_WR);
 
-	delete [] t_initiator_wrapper;
-	delete [] t_target_wrapper;
-	delete [] t_req_router;
-	delete [] t_rsp_router;
+	free( t_initiator_wrapper);
+	free( t_target_wrapper);
+	free( t_req_router);
+	free( t_rsp_router);
     }
 }}
 
