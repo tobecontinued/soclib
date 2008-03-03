@@ -52,6 +52,7 @@ namespace soclib { namespace caba {
 
 	    private:
 	    	int Y;
+		int X;
 
 	    	// signal vci
 		soclib::caba::VciSignals<vci_param>** s_to_initiator_wrapper;
@@ -82,10 +83,10 @@ namespace soclib { namespace caba {
 	    	soclib::caba::DspinSignals<dspin_data_size>** s_rsp_WR;
 
 	    	//dspin
-		soclib::caba::VciDspinInitiatorWrapper<vci_param, dspin_data_size, dspin_fifo_size>** t_initiator_wrapper;
-		soclib::caba::VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size, dspin_srcid_msb_size>** t_targer_wrapper;
-		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>** t_req_router;
-		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>** t_rsp_router;
+		soclib::caba::VciDspinInitiatorWrapper<vci_param, dspin_data_size, dspin_fifo_size>*** t_initiator_wrapper;
+		soclib::caba::VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size, dspin_srcid_msb_size>*** t_targer_wrapper;
+		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>*** t_req_router;
+		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>*** t_rsp_router;
 
 		//checker
 		static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
