@@ -72,6 +72,7 @@ public:
 		  m_lt(lt),
           m_non_local_target(non_local_target)
 	{
+        reset();
 	}
 
 	void reset()
