@@ -84,9 +84,13 @@ class ComponentBuilder:
 			src = filename
 		incls = set(map(os.path.dirname, self.headers))
 		if self.local:
+			try:
+				t = config.type
+			except:
+				t = 'unknown'
 			out = os.path.join(
 				os.path.dirname(filename),
-				config.type+bn+"."+config.toolchain.obj_ext)
+				t+'_'+bn+"."+config.toolchain.obj_ext)
 		else:
 			out = config.reposFile(bn+"."+config.toolchain.obj_ext)
 		return CxxCompile(
