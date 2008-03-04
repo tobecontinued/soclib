@@ -33,7 +33,6 @@
 #include "mips.h"
 #include "iss_wrapper.h"
 #include "vci_xcache.h"
-#include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_framebuffer.h"
@@ -64,9 +63,8 @@ int _main(int argc, char *argv[])
 	maptab.add(Segment("loc0" , LOC0_BASE , LOC0_SIZE , IntTab(1), true));
   
 	maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(2), false));
-	maptab.add(Segment("timer", TIMER_BASE, TIMER_SIZE, IntTab(3), false));
 
-	maptab.add(Segment("fb", FB_BASE, FB_SIZE, IntTab(4), false));
+	maptab.add(Segment("fb", FB_BASE, FB_SIZE, IntTab(3), false));
 
 	// Signals
 
@@ -86,7 +84,6 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
 	soclib::caba::VciSignals<vci_param> signal_vci_vcimultiram0("signal_vci_vcimultiram0");
-	soclib::caba::VciSignals<vci_param> signal_vci_vcitimer("signal_vci_vcitimer");
 	soclib::caba::VciSignals<vci_param> signal_vci_vcifb("signal_vci_vcifb");
 	soclib::caba::VciSignals<vci_param> signal_vci_vcimultiram1("signal_vci_vcimultiram1");
 
@@ -102,10 +99,9 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", NULL);
-	soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 1);
-	soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(4), maptab, FB_WIDTH, FB_HEIGHT); 
+	soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(3), maptab, FB_WIDTH, FB_HEIGHT); 
 
-	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 1, 5, 2, 8);
+	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 1, 4, 2, 8);
 
 	//	Net-List
  
@@ -114,14 +110,12 @@ int _main(int argc, char *argv[])
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
 	vcifb.p_clk(signal_clk);
-	vcitimer.p_clk(signal_clk);
   
 	mips0.p_resetn(signal_resetn);  
 	cache0.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
 	vcifb.p_resetn(signal_resetn);
-	vcitimer.p_resetn(signal_resetn);
   
 	mips0.p_irq[0](signal_mips0_it0); 
 	mips0.p_irq[1](signal_mips0_it1); 
@@ -138,9 +132,6 @@ int _main(int argc, char *argv[])
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
 
-	vcitimer.p_vci(signal_vci_vcitimer);
-	vcitimer.p_irq[0](signal_mips0_it0); 
-  
 	vcifb.p_vci(signal_vci_vcifb);
   
 	vcimultiram1.p_vci(signal_vci_vcimultiram1);
@@ -158,8 +149,7 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[0](signal_vci_vcimultiram0);
 	vgmn.p_to_target[1](signal_vci_vcimultiram1);
 	vgmn.p_to_target[2](signal_vci_tty);
-	vgmn.p_to_target[3](signal_vci_vcitimer);
-	vgmn.p_to_target[4](signal_vci_vcifb);
+	vgmn.p_to_target[3](signal_vci_vcifb);
 
 
 	int ncycles;
