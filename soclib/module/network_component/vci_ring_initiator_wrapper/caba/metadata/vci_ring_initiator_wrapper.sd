@@ -9,7 +9,7 @@ Module('caba:vci_ring_initiator_wrapper',
 	header_files = ['../source/include/vci_ring_initiator_wrapper.h',],
 	implementation_files = ['../source/src/vci_ring_initiator_wrapper.cpp',],
 			  ports = [
-	Port('vci_target', 'p_from_initiator'),
+	Port('vci_target', 'p_to_initiator'),
 	Port('vci_ring_in', 'p_ring_in'),
 	Port('vci_ring_out', 'p_ring_out'),
 	],

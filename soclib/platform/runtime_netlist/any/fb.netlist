@@ -46,7 +46,7 @@ new caba xcache "cache0"
   param dcache_words = 8
   conn icache to mips0.icache
   conn dcache to mips0.dcache
-  conn vci to vgmn0.from_initiator[0]
+  conn vci to vgmn0.to_initiator[0]
 
 new caba ram "ram0"
   id (0)

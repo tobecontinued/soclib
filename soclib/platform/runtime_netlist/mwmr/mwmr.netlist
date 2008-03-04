@@ -52,7 +52,7 @@ new caba mwmr_controller "mwmr0"
   param fifo_from_coproc_depth = 8
   param fifo_to_coproc_depth = 0
   segment "mwmr0" 0xd0200000 0x00000100 uncached
-  conn vci_initiator to vgmn0.from_initiator[0]
+  conn vci_initiator to vgmn0.to_initiator[0]
   conn vci_target to vgmn0.to_target[0]
   conn from_coproc[0] to reader0.fifo
 
@@ -70,7 +70,7 @@ new caba mwmr_controller "mwmr1"
   param fifo_from_coproc_depth = 0
   param fifo_to_coproc_depth = 8
   segment "mwmr1" 0xe0200000 0x00000100 uncached
-  conn vci_initiator to vgmn0.from_initiator[1]
+  conn vci_initiator to vgmn0.to_initiator[1]
   conn vci_target to vgmn0.to_target[1]
   conn to_coproc[0] to writer0.fifo
 
@@ -87,7 +87,7 @@ new caba xcache "cache0"
   param dcache_words = 8
   conn icache to mips0.icache
   conn dcache to mips0.dcache
-  conn vci to vgmn0.from_initiator[2]
+  conn vci to vgmn0.to_initiator[2]
 
 new caba ram "ram0"
   id (2)

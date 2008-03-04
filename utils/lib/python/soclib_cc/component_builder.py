@@ -86,7 +86,7 @@ class ComponentBuilder:
 		if self.local:
 			out = os.path.join(
 				os.path.dirname(filename),
-				bn+"."+config.toolchain.obj_ext)
+				config.type+bn+"."+config.toolchain.obj_ext)
 		else:
 			out = config.reposFile(bn+"."+config.toolchain.obj_ext)
 		return CxxCompile(

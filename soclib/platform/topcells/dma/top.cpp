@@ -169,8 +169,8 @@ int _main(int argc, char *argv[])
 	vcidma.p_vci_initiator(signal_vci_dmai);
 	vcidma.p_irq(signal_dma_irq);
 
-	vgmn.p_from_initiator[0](signal_vci_dmai);
-	vgmn.p_from_initiator[1](signal_vci_m0);
+	vgmn.p_to_initiator[0](signal_vci_dmai);
+	vgmn.p_to_initiator[1](signal_vci_m0);
 
 	vgmn.p_to_target[0](signal_vci_dmat);
 	vgmn.p_to_target[1](signal_vci_vcimultiram1);

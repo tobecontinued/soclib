@@ -163,6 +163,9 @@ MappingTable::getLocalityTable( const IntTab &index ) const
 AddressDecodingTable<MappingTable::addr_t, int>
 MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 {
+    std::cout << "Get routing table for " << index << " defaut target " << default_index << std::endl;
+    std::cout << "Level for " << index << " " << index.level() << std::endl;
+
 	size_t before = m_level_addr_bits.sum(index.level());
 	size_t at = m_level_addr_bits[index.level()];
     AddressDecodingTable<MappingTable::addr_t, int> adt(at, m_addr_width-at-before);
@@ -176,24 +179,29 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
           i != m_segment_list.end();
           i++ ) {
         if ( ! i->index().idMatches(index) ) {
-//			std::cout << i->index() << " does not match " << index << std::endl;
 			continue;
 		}
 
 		MappingTable::addr_t addr = i->baseAddress();
 		int val = i->index()[index.level()];
+        
+        std::cout << " -> " << *i << " dest: " << val << std::endl;
 
 		if ( done[addr] && adt[addr] != val ) {
             std::ostringstream oss;
-            oss << "Incoherent Mapping Table:" << std::endl
-                << "Segment " << *i << " targets different cluster than other segments with same MSBs" << std::endl
+            oss << "Incoherent Mapping Table: for " << index << std::endl
+                << "Segment " << *i << " targets different target (or cluster) than other segments with same routing bits" << std::endl
                 << "Mapping table:" << std::endl
                 << *this;
 			throw soclib::exception::RunTimeError(oss.str());
         }
 		adt.set( addr, val );
 		done.set( addr, true );
+
+        std::cout << adt << std::endl;
+
 	}
+    std::cout << index << adt << std::endl;
     return adt;
 }
 

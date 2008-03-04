@@ -136,14 +136,14 @@ tmpl(void)::transition()
         return;
     }
 
-    m_cmd_crossbar->transition( p_from_initiator, p_to_target );
-    m_rsp_crossbar->transition( p_to_target, p_from_initiator );
+    m_cmd_crossbar->transition( p_to_initiator, p_to_target );
+    m_rsp_crossbar->transition( p_to_target, p_to_initiator );
 }
 
 tmpl(void)::genMealy()
 {
-    m_cmd_crossbar->genMealy( p_from_initiator, p_to_target );
-    m_rsp_crossbar->genMealy( p_to_target, p_from_initiator );
+    m_cmd_crossbar->genMealy( p_to_initiator, p_to_target );
+    m_rsp_crossbar->genMealy( p_to_target, p_to_initiator );
 }
 
 tmpl(/**/)::VciSimpleCrossbar(
@@ -157,7 +157,7 @@ tmpl(/**/)::VciSimpleCrossbar(
 		   p_clk("clk"),
 		   p_resetn("resetn"),
 		   p_to_target(alloc_elems<VciInitiator<vci_param> >("to_target", nb_attached_target)),
-		   p_from_initiator(alloc_elems<VciTarget<vci_param> >("from_initiator", nb_attached_initiat))
+		   p_to_initiator(alloc_elems<VciTarget<vci_param> >("to_initiator", nb_attached_initiat))
 {
 	soclib::common::IntTab dt = default_target;
 	if ( &default_target == &s_default_target )
@@ -180,13 +180,13 @@ tmpl(/**/)::VciSimpleCrossbar(
     sensitive << p_clk.neg();
 
 	for ( size_t i=0; i<nb_attached_initiat; ++i )
-		sensitive << p_from_initiator[i];
+		sensitive << p_to_initiator[i];
 	for ( size_t i=0; i<nb_attached_target; ++i )
 		sensitive << p_to_target[i];
 
     portRegister("clk", p_clk);
     portRegister("resetn", p_resetn);
-    portRegisterN("from_initiator", p_from_initiator, nb_attached_initiat);
+    portRegisterN("to_initiator", p_to_initiator, nb_attached_initiat);
     portRegisterN("to_target", p_to_target, nb_attached_target);
 }
 

@@ -51,7 +51,7 @@ new caba xcache "cache0"
   param dcache_words = 8
   conn icache to ppc4050.icache
   conn dcache to ppc4050.dcache
-  conn vci to vgmn0.from_initiator[0]
+  conn vci to vgmn0.to_initiator[0]
 
 new caba ppc405 "ppc4051"
   param ident = 1
@@ -65,7 +65,7 @@ new caba xcache "cache1"
   param dcache_words = 8
   conn icache to ppc4051.icache
   conn dcache to ppc4051.dcache
-  conn vci to vgmn0.from_initiator[1]
+  conn vci to vgmn0.to_initiator[1]
 
 new caba ppc405 "ppc4052"
   param ident = 2
@@ -79,7 +79,7 @@ new caba xcache "cache2"
   param dcache_words = 8
   conn icache to ppc4052.icache
   conn dcache to ppc4052.dcache
-  conn vci to vgmn0.from_initiator[2]
+  conn vci to vgmn0.to_initiator[2]
 
 new caba ppc405 "ppc4053"
   param ident = 3
@@ -93,7 +93,7 @@ new caba xcache "cache3"
   param dcache_words = 8
   conn icache to ppc4053.icache
   conn dcache to ppc4053.dcache
-  conn vci to vgmn0.from_initiator[3]
+  conn vci to vgmn0.to_initiator[3]
 
 new caba ram "ram0"
   id (0)

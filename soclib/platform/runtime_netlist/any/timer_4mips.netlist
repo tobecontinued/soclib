@@ -52,7 +52,7 @@ new caba xcache "cache0"
   param dcache_words = 8
   conn icache to mips0.icache
   conn dcache to mips0.dcache
-  conn vci to vgmn0.from_initiator[0]
+  conn vci to vgmn0.to_initiator[0]
 
 new caba $arch "mips1"
   param ident = 1
@@ -66,7 +66,7 @@ new caba xcache "cache1"
   param dcache_words = 8
   conn icache to mips1.icache
   conn dcache to mips1.dcache
-  conn vci to vgmn0.from_initiator[1]
+  conn vci to vgmn0.to_initiator[1]
 
 new caba $arch "mips2"
   param ident = 2
@@ -80,7 +80,7 @@ new caba xcache "cache2"
   param dcache_words = 8
   conn icache to mips2.icache
   conn dcache to mips2.dcache
-  conn vci to vgmn0.from_initiator[2]
+  conn vci to vgmn0.to_initiator[2]
 
 new caba $arch "mips3"
   param ident = 3
@@ -94,7 +94,7 @@ new caba xcache "cache3"
   param dcache_words = 8
   conn icache to mips3.icache
   conn dcache to mips3.dcache
-  conn vci to vgmn0.from_initiator[3]
+  conn vci to vgmn0.to_initiator[3]
 
 new caba ram "ram0"
   id (0)

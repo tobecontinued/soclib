@@ -232,10 +232,10 @@ int _main(int argc, char *argv[]) {
 	vcitty.p_irq[2](signal_tty_irq2);
 	vcitty.p_irq[3](signal_tty_irq3);
 
-	vgmn.p_from_initiator[0](signal_vci_m0);
-	vgmn.p_from_initiator[1](signal_vci_m1);
-	vgmn.p_from_initiator[2](signal_vci_m2);
-	vgmn.p_from_initiator[3](signal_vci_m3);
+	vgmn.p_to_initiator[0](signal_vci_m0);
+	vgmn.p_to_initiator[1](signal_vci_m1);
+	vgmn.p_to_initiator[2](signal_vci_m2);
+	vgmn.p_to_initiator[3](signal_vci_m3);
 
 	vgmn.p_to_target[0](signal_vci_vcimultiram0);
 	vgmn.p_to_target[1](signal_vci_vcimultiram1);

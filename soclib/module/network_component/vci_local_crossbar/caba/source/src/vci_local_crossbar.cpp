@@ -221,8 +221,8 @@ tmpl(/**/)::VciLocalCrossbar(
 
 tmpl(/**/)::~VciLocalCrossbar()
 {
-    soclib::common::dealloc_elems(p_to_initiator, m_nb_attached_target);
-    soclib::common::dealloc_elems(p_to_target, m_nb_attached_initiat);
+    soclib::common::dealloc_elems(p_to_initiator, m_nb_attached_initiat);
+    soclib::common::dealloc_elems(p_to_target, m_nb_attached_target);
 }
 
 }}

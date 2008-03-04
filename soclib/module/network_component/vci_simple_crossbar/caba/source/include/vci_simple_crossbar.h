@@ -58,7 +58,7 @@ public:
     sc_in<bool> p_resetn;
 
     soclib::caba::VciInitiator<vci_param> *p_to_target;
-    soclib::caba::VciTarget<vci_param> *p_from_initiator;
+    soclib::caba::VciTarget<vci_param> *p_to_initiator;
 
 private:
     size_t m_nb_initiat;

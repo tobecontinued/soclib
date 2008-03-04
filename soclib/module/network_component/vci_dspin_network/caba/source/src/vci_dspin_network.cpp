@@ -45,7 +45,7 @@ namespace soclib { namespace caba {
 	//
 	// VCI_Interfaces
 	//
-	p_from_initiator = new soclib::caba::VciTarget<vci_param>*[height_network];
+	p_to_initiator = new soclib::caba::VciTarget<vci_param>*[height_network];
 	p_to_target = new soclib::caba::VciInitiator<vci_param>*[height_network];
 
 
@@ -87,7 +87,7 @@ namespace soclib { namespace caba {
 	t_rsp_router = new soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>**[height_network];
 
 	for( int y = 0; y < height_network ; y++ ){
-	    p_from_initiator[y] = alloc_elems<soclib::caba::DspinSignals<dspin_data_size> >( "p_from_initiator", width_network);
+	    p_to_initiator[y] = alloc_elems<soclib::caba::DspinSignals<dspin_data_size> >( "p_to_initiator", width_network);
 	    p_to_target[y] = alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target", width_network);
 
 	    s_to_initiator_wrapper[y] = alloc_elems<soclib::caba::VciSignals<vci_param> >("s_to_initiator_wrapper", width_network); 
@@ -146,7 +146,7 @@ namespace soclib { namespace caba {
 		//
 		// VCI <=> Wrapper
 		//
-		p_from_initiator[y][x](s_to_initiator_wrapper[y][x]);
+		p_to_initiator[y][x](s_to_initiator_wrapper[y][x]);
 		p_to_target[y][x](s_to_target_wrapper[y][x]);
 
 		t_initiator_wrapper[y][x]->p_vci(s_to_initiator_wrapper[y][x]);
@@ -215,7 +215,7 @@ namespace soclib { namespace caba {
 
 	for( int y = 0; y < Y ; y++ ){
 
-	    dealloc_elems( p_from_initiator[y], X);
+	    dealloc_elems( p_to_initiator[y], X);
 	    dealloc_elems( p_to_target[y], X);
 
 	    dealloc_elems( s_req_NS[y], X);
@@ -245,7 +245,7 @@ namespace soclib { namespace caba {
 	    delete [] t_rsp_router[y];
 	}
 
-	delete [] p_from_initiator;
+	delete [] p_to_initiator;
 	delete [] p_to_target;
 
 	delete [] s_req_NS;

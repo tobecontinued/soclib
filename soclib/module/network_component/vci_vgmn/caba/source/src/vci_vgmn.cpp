@@ -430,14 +430,14 @@ tmpl(void)::transition()
         return;
     }
 
-    m_cmd_mn->transition( p_from_initiator, p_to_target );
-    m_rsp_mn->transition( p_to_target, p_from_initiator );
+    m_cmd_mn->transition( p_to_initiator, p_to_target );
+    m_rsp_mn->transition( p_to_target, p_to_initiator );
 }
 
 tmpl(void)::genMoore()
 {
-    m_cmd_mn->genMoore( p_from_initiator, p_to_target );
-    m_rsp_mn->genMoore( p_to_target, p_from_initiator );
+    m_cmd_mn->genMoore( p_to_initiator, p_to_target );
+    m_rsp_mn->genMoore( p_to_target, p_to_initiator );
 }
 
 tmpl(/**/)::VciVgmn(
@@ -449,7 +449,7 @@ tmpl(/**/)::VciVgmn(
     size_t fifo_depth )
     : soclib::caba::BaseModule(name)
 {
-    p_from_initiator = new soclib::caba::VciTarget<vci_param>[nb_attached_initiat];
+    p_to_initiator = new soclib::caba::VciTarget<vci_param>[nb_attached_initiat];
     p_to_target = new soclib::caba::VciInitiator<vci_param>[nb_attached_target];
     m_cmd_mn = new _vgmn::MicroNetwork<cmd_router_t,cmd_queue_t>(
         nb_attached_initiat, nb_attached_target,
@@ -472,7 +472,7 @@ tmpl(/**/)::VciVgmn(
 
     portRegister("clk", p_clk);
     portRegister("resetn", p_resetn);
-    portRegisterN("from_initiator", p_from_initiator, nb_attached_initiat);
+    portRegisterN("to_initiator", p_to_initiator, nb_attached_initiat);
     portRegisterN("to_target", p_to_target, nb_attached_target);
 }
 

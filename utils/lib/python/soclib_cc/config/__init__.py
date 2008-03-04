@@ -99,6 +99,7 @@ def parseall():
 _configs = parseall()
 config = _configs.default
 config.doConfigure(_cur_soclib, _configs._desc_paths)
+config.type = 'default'
 
 def change_config(name):
 	newconf = getattr(_configs, name)
@@ -107,6 +108,7 @@ def change_config(name):
 	config.config.__dict__ = newconf.__dict__
 	for n in dir(newconf):
 		setattr(config.config, n, getattr(newconf, n))
+	config.type = name
 
 def Joined(i):
 	return ' '.join(map(lambda x:'"%s"'%x, i))

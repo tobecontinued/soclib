@@ -145,7 +145,7 @@ int _main(int argc, char *argv[])
 	vgmn.p_clk(signal_clk);
 	vgmn.p_resetn(signal_resetn);
 
-	vgmn.p_from_initiator[0](signal_vci_m0);
+	vgmn.p_to_initiator[0](signal_vci_m0);
 
 	vgmn.p_to_target[0](signal_vci_vcimultiram0);
 	vgmn.p_to_target[1](signal_vci_vcimultiram1);

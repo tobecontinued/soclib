@@ -48,7 +48,7 @@ new caba xcache "cache0"
   param dcache_words = 8
   conn icache to mips0.icache
   conn dcache to mips0.dcache
-  conn vci to vgmn0.from_initiator[1]
+  conn vci to vgmn0.to_initiator[1]
 
 new caba ram "ram0"
   id (2)
@@ -69,7 +69,7 @@ new caba dma "dma0"
   id (0)
   segment "dma" 0xd1200000 0x00001000 uncached
   conn vci_target     to vgmn0.to_target[0]
-  conn vci_initiator to vgmn0.from_initiator[0]
+  conn vci_initiator to vgmn0.to_initiator[0]
   param buffer_size = 128
   conn irq to mips0.irq[0]
 
