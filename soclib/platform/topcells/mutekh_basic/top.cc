@@ -289,9 +289,9 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[4](signal_vci_vcilocks);
 	vgmn.p_to_target[5](signal_vci_icu);
 
-	sc_start(0);
+	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
-	sc_start(1);
+	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 	sc_start();
 

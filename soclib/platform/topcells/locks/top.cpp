@@ -230,11 +230,12 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[1](signal_vci_tty);
 	vgmn.p_to_target[2](signal_vci_simhelper);
 
-	sc_start(0);
+	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
-	sc_start(1);
+	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 	sc_start();
+	return EXIT_SUCCESS;
 }
 
 int sc_main (int argc, char *argv[])

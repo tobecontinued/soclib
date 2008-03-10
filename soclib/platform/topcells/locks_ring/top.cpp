@@ -283,11 +283,12 @@ int _main(int argc, char *argv[])
 	ringregister.p_ri(signal_ani[7]);
 	ringregister.p_ro(signal_ani[0]);
 
-	sc_start(0);
+	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
-	sc_start(1);
+	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 	sc_start();
+	return EXIT_SUCCESS;
 }
 
 int sc_main (int argc, char *argv[])

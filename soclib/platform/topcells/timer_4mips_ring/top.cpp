@@ -360,17 +360,15 @@ int _main(int argc, char *argv[])
 		exit(1);
 	}
 
-	sc_start(0);
+	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
 
-	sc_start(1);
+	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 
-	for (int i = 1; i < ncycles ; i++) {
-		sc_start(1);
-		if((i % 10000) == 0) 
-			std::cout
-				<< "Time elapsed: "<<i<<" cycles." << std::endl;
+	for (int i = 1; i < ncycles ; i+=10000) {
+		sc_start(sc_core::sc_time(10000, SC_NS));
+		std::cout << "Time elapsed: "<<i<<" cycles." << std::endl;
 	}
 	std::cout << "Hit ENTER to end simulation" << std::endl;
 
@@ -381,9 +379,9 @@ int _main(int argc, char *argv[])
 #else
 
 	ncycles = 1;
-	sc_start(0);
+	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
-	sc_start(1);
+	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 
 	debug();
