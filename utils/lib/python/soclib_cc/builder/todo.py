@@ -68,8 +68,8 @@ class ToDo:
 			todo = self.todo[i]
 			todo.clean()
 	def wait(self):
-		Action.wait()
-		self.actions -= 1
+		ndone = Action.wait()
+		self.actions -= ndone
 		self.progressBar()
 	def process(self):
 		import sys
