@@ -26,6 +26,7 @@
 #include "exception.h"
 #include "process_wrapper.h"
 
+#include <cassert>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -102,14 +103,30 @@ ProcessWrapper::~ProcessWrapper()
     close(m_fd_from_process);
 }
 
-ssize_t ProcessWrapper::read( void *buffer, size_t len )
+ssize_t ProcessWrapper::read( void *buffer, size_t len, bool block )
 {
-    return ::read( m_fd_from_process, buffer, len );
+    size_t done = 0;
+    while ( done < len ) {
+        ssize_t r = ::read( m_fd_from_process, (uint8_t*)buffer+done, len-done );
+        if ( !block )
+            return r;
+        assert(r>0);
+        done += r;
+    }
+    return done;
 }
 
-ssize_t ProcessWrapper::write( const void *buffer, size_t len )
+ssize_t ProcessWrapper::write( const void *buffer, size_t len, bool block )
 {
-    return ::write( m_fd_to_process, buffer, len );
+    size_t done = 0;
+    while ( done < len ) {
+        ssize_t r = ::write( m_fd_to_process, (uint8_t*)buffer+done, len-done );
+        if ( !block )
+            return r;
+        assert(r>0);
+        done += r;
+    }
+    return done;
 }
 
 bool ProcessWrapper::poll()

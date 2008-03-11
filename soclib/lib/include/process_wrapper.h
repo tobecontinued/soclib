@@ -47,8 +47,8 @@ public:
     
     ~ProcessWrapper();
 
-    ssize_t read( void *buffer, size_t len );
-    ssize_t write( const void *buffer, size_t len );
+    ssize_t read( void *buffer, size_t len, bool block = false );
+    ssize_t write( const void *buffer, size_t len, bool block = false );
     bool poll();
     void kill(int sig);
 };
