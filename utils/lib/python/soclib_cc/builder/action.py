@@ -80,16 +80,20 @@ class Action:
 	def wait(cls):
 		try:
 			pid, rval = os.wait()
-			cls.__done(pid)
-			return 1
+			return int(cls.__done(pid))
 		except OSError:
 			ks = cls.__handles.keys()
+			c = 0
 			for pid in ks:
-				cls.__done(pid)
-			return len(ks)
+				if cls.__done(pid):
+					c += 1
+			return c
 	@classmethod
 	def __done(cls, pid):
-		self = cls.__handles[pid]
+		try:
+			self = cls.__handles[pid]
+		except KeyError:
+			return False
 		del self.__handles[pid]
 		output = self.__fromchild.read()
 		self.__fromchild.close()
@@ -102,6 +106,7 @@ class Action:
 		del self.__command
 		for d in self.dests:
 			d.touch()
+		return True
 	def isBackground(self):
 		return self.__pid
 
