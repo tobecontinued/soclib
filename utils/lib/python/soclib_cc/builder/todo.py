@@ -68,7 +68,19 @@ class ToDo:
 			todo = self.todo[i]
 			todo.clean()
 	def wait(self):
-		ndone = Action.wait()
+		try:
+			ndone = Action.wait()
+		except ActionFailed, e:
+			print "soclib-cc: *** Action failed with return value `%s'. Stop."%e.rval
+			if config.verbose:
+				print "soclib-cc: Failed action: `%s'"%e.action
+			if self.actions:
+				print "soclib-cc: Waiting for unfinished jobs"
+				while True:
+					try:
+						self.wait()
+					except:
+						sys.exit(1)
 		self.actions -= ndone
 		self.progressBar()
 	def process(self):
@@ -77,34 +89,29 @@ class ToDo:
 		l = len(self.todo)
 		for pi in self.todo:
 			pi.todoRehash()
-		left = self.todo[:]
-		left.reverse()
-		while left:
-			todo = left.pop()
-			while not todo.canBeProcessed():
-				self.wait()
-			if todo.mustBeProcessed():
-				try:
-					todo.process()
-				except ActionFailed, e:
-					print "soclib-cc: *** Action failed with return value `%s'. Stop."%e.rval
-					if config.verbose:
-						print "soclib-cc: Failed action: `%s'"%e.action
-					if self.actions:
-						print "soclib-cc: Waiting for unfinished jobs"
-						while self.actions:
+		while True:
+			try:
+				left = self.todo[:]
+				left.reverse()
+				while left:
+					todo = left.pop()
+					while not todo.canBeProcessed():
+						self.wait()
+					if todo.mustBeProcessed():
+						todo.process()
+					elif config.verbose:
+						print 'No need to redo', todo
+					self.progressBar()
+					if todo.isBackground():
+						self.actions += 1
+						if self.actions >= self.max_actions:
 							self.wait()
-					sys.exit(1)
-			elif config.verbose:
-				print 'No need to redo', todo
-			self.progressBar()
-			if todo.isBackground():
-				self.actions += 1
-				if self.actions >= self.max_actions:
+					todo.todoRehash(True)
+				while self.actions:
 					self.wait()
-			todo.todoRehash(True)
-		while self.actions:
-			self.wait()
+			except OSError:
+				continue
+			break
 		self.progressBar()
 	def progressBar(self):
 		if not config.progress_bar:

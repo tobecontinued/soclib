@@ -78,18 +78,18 @@ class Action:
 		self.__class__.__handles[self.__handle.pid] = self
 	@classmethod
 	def wait(cls):
-		try:
-			pid, rval = os.wait()
-			return int(cls.__done(pid))
-		except OSError:
-			ks = cls.__handles.keys()
-			c = 0
-			for pid in ks:
-				if cls.__done(pid):
-					c += 1
-			return c
+#		try:
+		pid, rval = os.wait()
+		return int(cls.__done(pid, rval))
+#		except OSError:
+#			ks = cls.__handles.keys()
+#			c = 0
+#			for pid in ks:
+#				if cls.__done(pid):
+#					c += 1
+#			return c
 	@classmethod
-	def __done(cls, pid):
+	def __done(cls, pid, rval):
 		try:
 			self = cls.__handles[pid]
 		except KeyError:
@@ -97,9 +97,9 @@ class Action:
 		del self.__handles[pid]
 		output = self.__fromchild.read()
 		self.__fromchild.close()
-		if output:
+		if rval:
 			sys.stdout.write(output)
-			raise ActionFailed(-1, self.__command)
+			raise ActionFailed(rval, self.__command)
 		self.__pid = 0
 		del self.__handle
 		del self.__fromchild
