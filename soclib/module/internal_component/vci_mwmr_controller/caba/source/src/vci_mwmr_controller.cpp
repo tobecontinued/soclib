@@ -303,10 +303,13 @@ tmpl(void)::transition()
                   << ", status: " << r_current_usage.read()
                   << ", rptr: " << r_current_rptr.read()
                   << ", wptr: " << r_current_wptr.read()
+                  << ", fifo full: " << m_current->fifo->full()
+                  << ", fifo empty: " << m_current->fifo->empty()
                   << ": ";
 #endif
 		if ( m_current->way == MWMR_FROM_COPROC ) {
-			if ( r_current_usage + m_fifo_from_coproc_depth <= m_current->depth ) {
+			if ( r_current_usage + m_fifo_from_coproc_depth <= m_current->depth &&
+                 m_current->fifo->full() ) {
 				r_cmd_count = m_fifo_from_coproc_depth/vci_param::B;
                 r_rsp_count = m_fifo_from_coproc_depth/vci_param::B;
 				r_init_fsm = INIT_DATA_WRITE;
@@ -317,7 +320,8 @@ tmpl(void)::transition()
                 break;
 			}
 		} else {
-			if ( r_current_usage >= m_fifo_to_coproc_depth ) {
+			if ( r_current_usage >= m_fifo_to_coproc_depth &&
+                 m_current->fifo->empty() ) {
 				r_cmd_count = m_fifo_to_coproc_depth/vci_param::B;
                 r_rsp_count = m_fifo_to_coproc_depth/vci_param::B;
 				r_init_fsm = INIT_DATA_READ;
@@ -470,6 +474,10 @@ tmpl(void)::transition()
     for ( size_t i = 0; i<m_n_to_coproc; ++i ) {
         fifo_state_t *st = &m_to_coproc_state[i];
         bool coproc_took_data = p_to_coproc[i].w.read() && p_to_coproc[i].wok.read();
+#if MWMR_CONTROLLER_DEBUG
+        if (coproc_took_data)
+            std::cout << name() << " put " << std::hex << p_to_coproc[i].data.read() << " to fifo" << std::endl;
+#endif
         bool vci_gave_data = false;
         if ( st == m_current )
             vci_gave_data = current_fifo_put;
@@ -607,10 +615,6 @@ tmpl(void)::genMoore()
     for ( size_t i = 0; i<m_n_to_coproc; ++i ) {
         p_to_coproc[i].w = m_to_coproc_state[i].fifo->rok();
         p_to_coproc[i].data = m_to_coproc_state[i].fifo->read();
-#if MWMR_CONTROLLER_DEBUG
-        if (m_to_coproc_state[i].fifo->rok())
-            std::cout << name() << " putting " << std::hex << m_to_coproc_state[i].fifo->read() << " to fifo" << std::endl;
-#endif
     }
 }
 
