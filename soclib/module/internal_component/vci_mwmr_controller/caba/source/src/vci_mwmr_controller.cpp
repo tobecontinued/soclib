@@ -34,7 +34,9 @@
 #include "mwmr_controller.h"
 #include "alloc_elems.h"
 
+#ifndef MWMR_CONTROLLER_DEBUG
 #define MWMR_CONTROLLER_DEBUG 0
+#endif
 
 namespace soclib { namespace caba {
 

@@ -33,7 +33,9 @@
 #include "../include/vci_local_crossbar.h"
 #include "alloc_elems.h"
 
-#define CROSSBAR_DEBUG 1
+#ifndef CROSSBAR_DEBUG
+#define CROSSBAR_DEBUG 0
+#endif
 
 namespace soclib { namespace caba {
 

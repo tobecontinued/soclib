@@ -31,7 +31,9 @@
 #include <cassert>
 #include "../include/vci_vgmn.h"
 
+#ifndef VGMN_DEBUG
 #define VGMN_DEBUG 0
+#endif
 
 namespace soclib { namespace caba {
 

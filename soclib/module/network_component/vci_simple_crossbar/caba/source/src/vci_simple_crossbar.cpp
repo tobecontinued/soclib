@@ -32,7 +32,9 @@
 #include "../include/vci_simple_crossbar.h"
 #include "alloc_elems.h"
 
+#ifndef CROSSBAR_DEBUG
 #define CROSSBAR_DEBUG 0
+#endif
 
 namespace soclib { namespace caba {
 

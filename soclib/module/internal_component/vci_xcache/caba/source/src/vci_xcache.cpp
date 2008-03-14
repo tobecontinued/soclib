@@ -48,7 +48,10 @@
 namespace soclib { 
 namespace caba {
 
+#ifndef XCACHE_DEBUG
 #define XCACHE_DEBUG 0
+#endif
+
 #define LINE_VALID 0x80000000
 
 #define tmpl(x)  template<typename vci_param> x VciXCache<vci_param>
