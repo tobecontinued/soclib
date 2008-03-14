@@ -119,6 +119,9 @@ class Module:
 		from component import Uses
 		self.__attrs['uses'].add(Uses(u.name, **u.args))
 
+	def addDefine(self, name, val):
+		self.__attrs['defines'][name] = val
+
 	def getUses(self, args):
 		from component import Uses
 		r = set()

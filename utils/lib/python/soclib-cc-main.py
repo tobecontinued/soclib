@@ -35,14 +35,9 @@ from soclib_desc.component import Module
 from optparse import OptionParser
 
 def main():
+	todef = []
 	def define_callback(option, opt, value, parser):
-		cell, mode, define = value.split(":", 2)
-		try:
-			name, val = define.split('=', 1)
-		except:
-			name = define
-			val = ''
-		Module.getRegistered(mode, cell).defines[name] = val
+		todef.append(value)
 	parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
 	parser.add_option('-v', '--verbose', dest = 'verbose',
 					  action='store_true',
@@ -99,6 +94,19 @@ def main():
 		return 0
 	from soclib_desc import components
 	components.getDescs(config.desc_paths)
+
+	for value in todef:
+		ms = value.split(":")
+		define = ms[-1]
+		cell = ':'.join(ms[:-1])
+		try:
+			name, val = define.split('=', 1)
+		except:
+			name = define
+			val = ''
+		Module.getRegistered(cell).addDefine(name, val)
+
+
 	config.mode = opts.mode
 	config.verbose = opts.verbose
 	config.debug = opts.debug
