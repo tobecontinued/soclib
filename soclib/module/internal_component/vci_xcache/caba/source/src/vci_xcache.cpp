@@ -43,6 +43,7 @@
 
 #include <cassert>
 #include "arithmetics.h"
+#include "alloc_elems.h"
 #include "../include/vci_xcache.h"
 
 namespace soclib { 
@@ -165,36 +166,25 @@ tmpl(/**/)::VciXCache(
     assert(dcache_lines <= 1024);
 
     r_dcache_data = new sc_signal<data_t>*[dcache_lines];
-    for ( size_t i=0; i<dcache_lines; ++i )
-        r_dcache_data[i] = new sc_signal<data_t>[dcache_words];
+    for ( size_t i=0; i<dcache_lines; ++i ) {
+        std::ostringstream o;
+        o << "dcache_data[" << i << "]";
+        r_dcache_data[i] = soclib::common::alloc_elems<sc_signal<data_t> >(o.str(), dcache_words);
+    }
 
-    r_dcache_tag = new sc_signal<tag_t>[dcache_lines];
+    r_dcache_tag = soclib::common::alloc_elems<sc_signal<tag_t> >("dcache_tag", dcache_lines);
 
     r_icache_data = new sc_signal<data_t>*[icache_lines];
-    for ( size_t i=0; i<icache_lines; ++i )
-        r_icache_data[i] = new sc_signal<data_t>[icache_words];
-
-    r_icache_tag = new sc_signal<tag_t>[icache_lines];
-
-    r_icache_miss_buf = new sc_signal<data_t>[icache_words];    
-    r_dcache_miss_buf = new sc_signal<data_t>[dcache_words];    
-
-    for (size_t i=0; i<s_dcache_lines; i++ ) {
-        for (size_t j=0; j<s_dcache_words; j++ ) {
-            SOCLIB_REG_RENAME_N2(r_dcache_data, i, j);
-        }
-        SOCLIB_REG_RENAME_N(r_dcache_tag, i);
+    for ( size_t i=0; i<icache_lines; ++i ) {
+        std::ostringstream o;
+        o << "icache_data[" << i << "]";
+        r_icache_data[i] = soclib::common::alloc_elems<sc_signal<data_t> >(o.str(), icache_words);
     }
-    for (size_t i=0; i<s_icache_lines; i++ ) {
-        for (size_t j=0; j<s_icache_words; j++ ) {
-            SOCLIB_REG_RENAME_N2(r_icache_data, i, j);
-        }
-        SOCLIB_REG_RENAME_N(r_icache_tag, i);
-    }
-    for (size_t i=0; i<s_icache_words; i++ )
-        SOCLIB_REG_RENAME_N(r_icache_miss_buf, i);
-    for (size_t i=0; i<s_dcache_words; i++ )
-        SOCLIB_REG_RENAME_N(r_dcache_miss_buf, i);
+
+    r_icache_tag = soclib::common::alloc_elems<sc_signal<tag_t> >("icache_tag", icache_lines);
+
+    r_icache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("icache_miss_buff", icache_words);;
+    r_dcache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("dcache_miss_buff", dcache_words);
 
     SC_METHOD(transition);
     dont_initialize();
@@ -213,7 +203,7 @@ tmpl(/**/)::VciXCache(
         << p_dcache.req
         << p_icache.req
         << p_icache.adr;
-        
+
 #if 0 && defined(SYSTEMCASS_SPECIFIC)
     p_icache.frz  (p_icache.req);
     p_icache.ins  (p_icache.req);
