@@ -16,4 +16,9 @@ Module('caba:vci_simple_crossbar',
 		Uses('base_module'),
 		Uses('common:mapping_table'),
 		],
+	   extensions = [
+	'dsx:obtain_ident_method=port',
+	'dsx:interconnect=root',
+	'dsx:mapping_type=interconnect',
+	],
 )
