@@ -54,8 +54,7 @@ class CCompile(action.Action):
 		args += config.getCflags()
 		return args
 	def _processDeps(self, filename):
-		if not filename.exists():
-			filename.generator.process()
+		filename.generator.process()
 		args = self.command_line()+['-MM', '-MT', 'foo.o']
 		args.append(filename)
 		args = self.argSort(args)

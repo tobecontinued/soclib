@@ -27,6 +27,7 @@
 import os, os.path
 from fileops import CreateDir
 from action import Action
+from soclib_cc.config import config
 
 class Textfile(Action):
 	priority = 50
@@ -51,7 +52,7 @@ class Textfile(Action):
 		fd = open(str(self.dests[0]), "r")
 		buf = fd.read()
 		fd.close()
-		return not buf == self.options['contents']
+		return buf != self.options['contents']
 
 class CxxSource(Textfile):
 	pass
