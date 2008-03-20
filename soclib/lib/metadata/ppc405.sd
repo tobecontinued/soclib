@@ -9,4 +9,10 @@ Module('common:ppc405',
 		"../src/iss/ppc405_instructions.cpp",
 		"../src/iss/ppc405_jump_tables.cpp",
 		],
+	  extensions = [
+	'dsx:cpu=powerpc405'
+	],
+	   constants = {
+	'n_irq':2
+	},
 )

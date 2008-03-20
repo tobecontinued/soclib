@@ -9,4 +9,7 @@ Module('common:mipseb',
 	uses = [
 		Uses('common:mips'),
 		],
+	  extensions = [
+	'dsx:cpu=mipseb'
+	],
 )
