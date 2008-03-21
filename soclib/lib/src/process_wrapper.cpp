@@ -74,8 +74,6 @@ ProcessWrapper::ProcessWrapper(
         tcsetattr(m_fd_to_process, TCSANOW, &ts);
    } else {
         // child
-        close(host_to_child[1]);
-        close(child_to_host[0]);
         const char *c_cmd = cmd.c_str();
         char **c_argv = new char *[argv.size()+1];
     
@@ -86,6 +84,8 @@ ProcessWrapper::ProcessWrapper(
         close(1);
         dup2(host_to_child[0], 0);
         dup2(child_to_host[1], 1);
+        for ( int i=3; i<1024; ++i )
+            close(i);
         execvp(c_cmd, c_argv);
         perror("execv");
         /** \todo Replace this with some advertisement mechanism, and
