@@ -298,6 +298,7 @@ void Ppc405Iss::mem_store_indexed( DataAccessType type, bool update, uint32_t da
         data = data&0xffff;
         data = data|(data<<16);
         break;
+    case STORE_COND:
     case WRITE_WORD:
         data = data;
         break;
