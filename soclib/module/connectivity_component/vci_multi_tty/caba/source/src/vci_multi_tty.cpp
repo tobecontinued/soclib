@@ -103,8 +103,9 @@ tmpl(void)::genMoore()
 {
 	m_vci_fsm.genMoore();
 
-	for ( size_t i=0; i<m_term.size(); i++ )
-		p_irq[i] = m_term[i]->hasData();
+    if ( r_counter % 1024 == 0 )
+        for ( size_t i=0; i<m_term.size(); i++ )
+            p_irq[i] = m_term[i]->hasData();
 }
 
 tmpl(void)::init(const std::vector<std::string> &names)
