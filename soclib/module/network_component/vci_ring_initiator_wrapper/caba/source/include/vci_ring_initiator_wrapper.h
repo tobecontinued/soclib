@@ -52,8 +52,7 @@ public:
 	
 	// constructor / destructor
 	VciRingInitiatorWrapper(sc_module_name	insname);
-public:
-//private:
+private:
         enum fsm_state_e {
 		NEG_IDLE,  	//idle
 		NEG_ACK_WAIT,  	//wait for the result of negotiating
