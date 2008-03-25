@@ -65,7 +65,7 @@ tmpl(void)::transition()
 		p_ro.ring_data_adresse = 0;      
 		p_ro.ring_data = 0;              
 		p_ro.ring_data_error = 0;
-		
+		p_ro.ring_data_num = 0;	
 		return;
 	} 
 
@@ -83,6 +83,7 @@ tmpl(void)::transition()
     p_ro.ring_data_adresse = p_ri.ring_data_adresse.read();      
     p_ro.ring_data = p_ri.ring_data.read();              
     p_ro.ring_data_error = p_ri.ring_data_error.read();
+    p_ro.ring_data_num = p_ri.ring_data_num.read();
 
 }  // end Transition()
 
