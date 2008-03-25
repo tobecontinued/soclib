@@ -31,28 +31,28 @@
 
 namespace soclib { namespace caba {
 
-enum{
-    NEG_EMPTY	   	= 0,  	//empty
-    NEG_REQ_READ   	= 1, 	//read request
-    NEG_REQ_WRITE  	= 2,  	//write request
-    NEG_REQ_LOCKED_READ = 3,  	//locked read request
-    NEG_REQ_STORE_COND 	= 4,	//store conditionnal request
-    NEG_ACK	   	= 5   	//ack
+enum {
+    NEG_EMPTY,  		//empty
+    NEG_REQ_READ, 		//read request
+    NEG_REQ_WRITE,  		//write request
+    NEG_REQ_LOCKED_READ,  	//locked read request
+    NEG_REQ_STORE_COND,		//store conditionnal request
+    NEG_ACK,	   	   	//ack
 };
 
 // ANNEAU_DATA STATES
-enum{
-    DATA_EMPTY    	 = 0, 	//empty
-    DATA_REQ_READ  	 = 1,  	//read request
-    DATA_REQ_WRITE 	 = 2,  	//write request 
-    DATA_REQ_LOCKED_READ = 3,  	//locked read request
-    DATA_REQ_STORE_COND  = 4,	//store conditionnal request
-    DATA_RES	   	 = 5   	//answer
+enum {
+    DATA_EMPTY, 		//empty
+    DATA_REQ_READ,  		//read request
+    DATA_REQ_WRITE,  		//write request 
+    DATA_REQ_LOCKED_READ,  	//locked read request
+    DATA_REQ_STORE_COND,	//store conditionnal request
+    DATA_RES,	   	    	//answer
 };
 
-enum{
-    RING  = 0,   //request
-    LOCAL = 1    //empty
+enum {
+    RING,   //request
+    LOCAL,  //empty
 };
 
 template <typename vci_param>
