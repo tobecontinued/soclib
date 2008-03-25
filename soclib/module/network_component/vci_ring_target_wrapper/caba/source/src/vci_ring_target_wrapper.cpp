@@ -55,11 +55,23 @@ sensitive << p_clk.pos();
 SC_METHOD(Decoder);
 dont_initialize();
 sensitive << p_ri.ring_neg_cmd
+          << p_ri.ring_neg_srcid
           << p_ri.ring_neg_msblsb
           << p_vci.cmdack
           << p_ri.ring_data_cmd
           << p_ri.ring_data_adresse
-          << r_cible_reserve;
+          << p_ri.ring_data_srcid
+          << r_cible_reserve
+	  << p_ri.ring_data_num
+	  << r_counter_req;
+
+SC_METHOD(Req_Counter);
+dont_initialize();
+sensitive << p_clk.pos();
+
+SC_METHOD(Res_Counter);
+dont_initialize();
+sensitive << p_clk.pos();
 
 SC_METHOD(Mux);
 dont_initialize();
@@ -72,7 +84,7 @@ sensitive << p_ri.ring_data_cmd
 
 SC_METHOD (genMoore);
 dont_initialize();
-sensitive << p_clk.neg();
+sensitive << r_fsm_state;
 
 SC_METHOD (genMealy);
 dont_initialize();
@@ -106,7 +118,9 @@ sensitive << r_ring_data_cmd_p
           << p_ri.ring_data_pktid
           << p_ri.ring_data_adresse
           << p_ri.ring_data
-          << p_ri.ring_data_error;
+          << p_ri.ring_data_num
+          << p_ri.ring_data_error
+          << r_counter_res;
 
 CIBLE_ID = (int *)malloc(s_nseg*(sizeof(int)));
 
@@ -128,6 +142,35 @@ va_end (listeBaseAdr);
 } //  end constructor
 
 /////////////////////////////////////////////
+// 	Counter       
+/////////////////////////////////////////////
+tmpl(void)::Req_Counter()	// accepter the request from ring
+{
+	sc_uint<4> tmp_counter = r_counter_req;
+	if (r_fsm_state == TAR_IDLE)
+		r_counter_req = 0;
+
+	else if (r_cible_ext && ( (r_fsm_state == TAR_RESERVE_FIRST) || (p_vci.rspval.read() == true) ) )  {
+		tmp_counter++;
+		r_counter_req = tmp_counter;
+	} 	
+}
+
+tmpl(void)::Res_Counter()	// send the response to ring
+{
+	sc_uint<4> tmp_counter = r_counter_res;
+
+	if (r_fsm_state == TAR_IDLE)
+		r_counter_res = 0;
+
+	else if (r_ring_data_mux == LOCAL) {
+		tmp_counter++;
+		r_counter_res = tmp_counter;	
+	}
+
+}
+
+/////////////////////////////////////////////
 // 	Decoder       
 /////////////////////////////////////////////
 tmpl(void)::Decoder()
@@ -142,6 +185,7 @@ tmpl(void)::Decoder()
             		if ((int)p_ri.ring_neg_msblsb.read() == CIBLE_ID[i])
             		{
 				r_cible_ack_ok = true;
+				r_reserve_srcid = p_ri.ring_neg_srcid.read();
 				break;
 	    		}
 		}  
@@ -159,8 +203,10 @@ tmpl(void)::Decoder()
 
 	if(((p_ri.ring_data_cmd.read()>= DATA_REQ_READ)&&(p_ri.ring_data_cmd.read()<= DATA_REQ_STORE_COND))
 	&&(id_match == true)
-	&&(p_vci.cmdack.read() == true)){
-		r_cible_ext = true;  
+	&&(p_vci.cmdack.read() == true)
+	&&(p_ri.ring_data_srcid.read() == r_reserve_srcid)
+	&&(p_ri.ring_data_num.read() == r_counter_req)){
+		r_cible_ext = true; 
 	}else{
 		r_cible_ext = false;  	
 	}
@@ -272,8 +318,7 @@ tmpl(void)::genMoore()
 /////////////////////////////////////////////
 tmpl(void)::genMealy()
 {
-	p_vci.cmdval = false;
-
+	p_vci.cmdval = false;	
 	switch(r_fsm_state) {
 	    case TAR_IDLE :
 	    	break;
@@ -333,7 +378,8 @@ tmpl(void)::ANI_Output()
 		p_ro.ring_data_srcid = p_vci.rsrcid.read();  
 		p_ro.ring_data_pktid = p_vci.rpktid.read(); 
 		p_ro.ring_data_adresse = 0x00000000;
-		p_ro.ring_data = p_vci.rdata.read();        
+		p_ro.ring_data = p_vci.rdata.read();
+		p_ro.ring_data_num = r_counter_res;       
 		p_ro.ring_data_error = p_vci.rerror.read(); 
 		p_vci.rspack = true;
  
@@ -346,6 +392,7 @@ tmpl(void)::ANI_Output()
 		p_ro.ring_data_pktid = p_ri.ring_data_pktid.read(); 
 		p_ro.ring_data_adresse = p_ri.ring_data_adresse.read();
 		p_ro.ring_data = p_ri.ring_data.read();        
+		p_ro.ring_data_num = p_ri.ring_data_num.read();        
 		p_ro.ring_data_error = p_ri.ring_data_error.read();  
 		p_vci.rspack = false;
 	}	
