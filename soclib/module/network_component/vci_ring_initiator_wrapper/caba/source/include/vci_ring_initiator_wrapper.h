@@ -52,8 +52,8 @@ public:
 	
 	// constructor / destructor
 	VciRingInitiatorWrapper(sc_module_name	insname);
-
-private:
+public:
+//private:
         enum fsm_state_e {
 		NEG_IDLE,  	//idle
 		NEG_ACK_WAIT,  	//wait for the result of negotiating
@@ -69,6 +69,8 @@ private:
 	sc_signal<bool>         r_ring_data_mux;  //1 local, 0 ring
 	
 	sc_signal<sc_uint<3> >	r_ring_data_cmd_p;
+	sc_signal<sc_uint<4> >	r_counter_req;
+	sc_signal<sc_uint<4> >	r_counter_res;
 
 	// methods
 	void transition();
@@ -76,6 +78,8 @@ private:
 	void ANI_Output();
 	void Decoder();
 	void Mux();
+	void Res_Counter();
+	void Req_Counter();
 
 };
 

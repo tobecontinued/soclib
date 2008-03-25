@@ -53,7 +53,17 @@ sensitive << p_ri.ring_neg_cmd
           << p_ri.ring_data_cmd
           << p_ri.ring_data_srcid
           << p_ri.ring_data_eop
-          << p_vci.rspack;
+          << p_vci.rspack
+	  << p_ri.ring_data_num
+	  << r_counter_res;
+
+SC_METHOD(Req_Counter);
+dont_initialize();
+sensitive << p_clk.pos();
+
+SC_METHOD(Res_Counter);
+dont_initialize();
+sensitive << p_clk.pos();
 
 SC_METHOD(Mux);
 dont_initialize();
@@ -79,6 +89,7 @@ sensitive << p_ri.ring_data_cmd
           << p_vci.srcid
           << p_vci.rspack
           << p_ri.ring_data
+          << p_ri.ring_data_num
           << p_ri.ring_data_eop
           << p_ri.ring_data_error
           << p_ri.ring_data_pktid
@@ -97,6 +108,38 @@ sensitive << p_ri.ring_data_cmd
 } //  end constructor
 
 /////////////////////////////////////////////
+//	counter
+/////////////////////////////////////////////
+tmpl(void)::Req_Counter()
+{
+	sc_uint<4> tmp_counter = r_counter_req;
+	if (r_fsm_state != NEG_DATA) {
+		r_counter_req = 0;
+	}
+
+	if (r_ring_data_mux == LOCAL)
+	{
+		tmp_counter++;
+		r_counter_req = tmp_counter;
+	}
+}
+
+tmpl(void)::Res_Counter()
+{
+	sc_uint<4> tmp_counter = r_counter_res;
+
+	if (r_fsm_state != NEG_DATA)
+		r_counter_res = 0;
+
+	else if((p_ri.ring_data_cmd.read() == DATA_RES)&&(p_ri.ring_data_srcid.read() == p_vci.srcid.read())
+   	 &&(p_vci.rspack.read() == true)&&(p_ri.ring_data_num.read() == r_counter_res)) {
+		tmp_counter++;
+		r_counter_res = tmp_counter;	
+	}
+
+}
+
+/////////////////////////////////////////////
 // 	Decoder       
 /////////////////////////////////////////////
 tmpl(void)::Decoder()
@@ -109,7 +152,8 @@ tmpl(void)::Decoder()
 	}
 
 	if((p_ri.ring_data_cmd.read() == DATA_RES) && (p_ri.ring_data_srcid.read() == p_vci.srcid.read())
-     	&&(p_ri.ring_data_eop.read() == true) && (p_vci.rspack.read() == true)) 
+     	&&(p_ri.ring_data_eop.read() == true) && (p_vci.rspack.read() == true)
+	&&(p_ri.ring_data_num.read() == r_counter_res)) 
 	{ 
 		r_data_eop = true; 
 	} else{
@@ -204,8 +248,11 @@ tmpl(void)::genMealy()
 		}
 	break;
 	case NEG_ACK_WAIT :
-		if(r_neg_ack_ok == true){p_ro.ring_neg_cmd = NEG_EMPTY; }
-
+		if(r_neg_ack_ok == true){
+			p_ro.ring_neg_cmd = NEG_EMPTY; 
+		} else { 
+			p_ro.ring_neg_cmd = p_ri.ring_neg_cmd.read();
+		}
 	break;
 	case NEG_DATA :
 		p_ro.ring_neg_cmd = p_ri.ring_neg_cmd.read();
@@ -240,15 +287,17 @@ tmpl(void)::genMealy()
 /////////////////////////////////////////////
 tmpl(void)::ANI_Output()
 {
+
 	if((p_ri.ring_data_cmd.read() == DATA_RES)&&(p_ri.ring_data_srcid.read() == p_vci.srcid.read())
-   		&&(p_vci.rspack.read() == true)) {
+   		&&(p_vci.rspack.read() == true)&&(p_ri.ring_data_num.read() == r_counter_res)) {
 		r_ring_data_cmd_p = DATA_EMPTY;
-	}else {
+
+	} else {
 		r_ring_data_cmd_p = p_ri.ring_data_cmd.read();
 	}
 
 	/* VCI OUTPUT */
-	if((p_ri.ring_data_cmd.read() == DATA_RES)&&(p_ri.ring_data_srcid.read() == p_vci.srcid.read())) {
+	if((p_ri.ring_data_cmd.read() == DATA_RES)&&(p_ri.ring_data_srcid.read() == p_vci.srcid.read())&&(p_ri.ring_data_num.read() == r_counter_res)) {
 		p_vci.rspval = true;
 		p_vci.rdata =  p_ri.ring_data.read();
 		p_vci.reop = p_ri.ring_data_eop.read();
@@ -283,7 +332,8 @@ tmpl(void)::ANI_Output()
 		p_ro.ring_data_pktid = p_vci.pktid.read(); 
 		p_ro.ring_data_adresse = p_vci.address.read();
 		p_ro.ring_data = p_vci.wdata.read();        
-		p_ro.ring_data_error = false;//VCI.RERROR.read();  
+		p_ro.ring_data_error = false;//VCI.RERROR.read(); 
+		p_ro.ring_data_num = r_counter_req; 
 	}else {			//RING
 		p_ro.ring_data_eop = p_ri.ring_data_eop.read();   
 		p_ro.ring_data_be = p_ri.ring_data_be.read();    
@@ -291,6 +341,7 @@ tmpl(void)::ANI_Output()
 		p_ro.ring_data_pktid = p_ri.ring_data_pktid.read(); 
 		p_ro.ring_data_adresse = p_ri.ring_data_adresse.read();
 		p_ro.ring_data = p_ri.ring_data.read();        
+		p_ro.ring_data_num = p_ri.ring_data_num.read();
 		p_ro.ring_data_error = p_ri.ring_data_error.read(); 
 
 	}
