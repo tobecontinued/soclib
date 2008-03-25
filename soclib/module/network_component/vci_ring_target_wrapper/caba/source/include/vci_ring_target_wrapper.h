@@ -54,8 +54,7 @@ public:
 	VciRingTargetWrapper(sc_module_name	insname,
 				int nseg,
 				int base_adr, ...);
-public:
-//private:
+private:
 	enum fsm_state_e {
 		TAR_IDLE,
 		TAR_RESERVE_FIRST,
@@ -70,7 +69,7 @@ public:
 
 	sc_signal<bool>		r_cible_ack_ok;   
 	sc_signal<bool>		r_cible_reserve;
-	sc_signal<sc_uint<8> >	r_reserve_srcid;
+	sc_signal<typename vci_param::srcid_t>	r_reserve_srcid;
 
 	sc_signal<bool>         r_ring_neg_mux;   //1 local, 0 ring
 	sc_signal<bool>         r_ring_data_mux;  //1 local, 0 ring
