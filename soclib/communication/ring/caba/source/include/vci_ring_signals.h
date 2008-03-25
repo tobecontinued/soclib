@@ -71,6 +71,7 @@ public:
 	sc_signal<typename vci_param::addr_t>   ring_data_adresse;
 	sc_signal<typename vci_param::data_t>   ring_data;
 	sc_signal<typename vci_param::rerror_t> ring_data_error;
+	sc_signal<sc_uint<4> >	                ring_data_num;
 #define ren(x) x(((std::string)(name_ + "_"#x)).c_str())
 	RingSignals(std::string name_ = (std::string)sc_gen_unique_name("ring_signals"))
 	  : ren(ring_neg_cmd),
@@ -83,7 +84,8 @@ public:
 	  ren(ring_data_pktid),
 	  ren(ring_data_adresse),
 	  ren(ring_data),
-	  ren(ring_data_error)
+	  ren(ring_data_error),
+	  ren(ring_data_num)
 	  {
 	  }
 #undef ren

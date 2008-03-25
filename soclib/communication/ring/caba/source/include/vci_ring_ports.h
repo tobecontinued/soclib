@@ -49,6 +49,7 @@ public:
 	sc_in<typename vci_param::addr_t>   ring_data_adresse;
 	sc_in<typename vci_param::data_t>   ring_data;
 	sc_in<typename vci_param::rerror_t> ring_data_error;
+	sc_in<sc_uint<4> >	                ring_data_num;
 
     RingINPort(const std::string &name = sc_gen_unique_name("ring_in"))
 		: ring_neg_cmd    	((name+"neg_cmd").c_str()),
@@ -61,7 +62,8 @@ public:
 		  ring_data_pktid  	((name+"data_pktid").c_str()),
 		  ring_data_adresse ((name+"data_adresse").c_str()),
 		  ring_data  		((name+"data_data").c_str()),
-		  ring_data_error   ((name+"data_error").c_str())
+		  ring_data_error   ((name+"data_error").c_str()),
+		  ring_data_num     ((name+"data_num").c_str())
 	{
 	}
     
@@ -78,6 +80,7 @@ public:
 		ring_data_adresse  	(sig.ring_data_adresse);			
 		ring_data  		    (sig.ring_data);		
 		ring_data_error   	(sig.ring_data_error);	
+		ring_data_num   	(sig.ring_data_num);	
 	}
 };
 
@@ -99,6 +102,7 @@ public:
 	sc_out<typename vci_param::addr_t>   ring_data_adresse;
 	sc_out<typename vci_param::data_t>   ring_data;
 	sc_out<typename vci_param::rerror_t> ring_data_error;
+	sc_out<sc_uint<4> >	                 ring_data_num;
 	
     RingOUTPort(const std::string &name = sc_gen_unique_name("ring_out"))
 		: ring_neg_cmd    	((name+"neg_cmd").c_str()),
@@ -111,7 +115,8 @@ public:
 		  ring_data_pktid  	((name+"data_pktid").c_str()),
 		  ring_data_adresse ((name+"data_adresse").c_str()),
 		  ring_data  		((name+"data_data").c_str()),
-		  ring_data_error   ((name+"data_error").c_str())
+		  ring_data_error   ((name+"data_error").c_str()),
+		  ring_data_num     ((name+"data_num").c_str())
 	{
 	}
     
@@ -128,6 +133,7 @@ public:
 		ring_data_adresse  	(sig.ring_data_adresse);			
 		ring_data  		    (sig.ring_data);		
 		ring_data_error   	(sig.ring_data_error);		
+		ring_data_num   	(sig.ring_data_num);		
 	}
 };
 
