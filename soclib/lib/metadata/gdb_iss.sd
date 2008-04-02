@@ -13,4 +13,7 @@ Module('common:gdb_iss',
 	   uses = [
 	Uses('iss'),
 	],
+	   extensions = [
+	'dsx:cpu=wrapper:gdb_iss_t',
+   ],
 )
