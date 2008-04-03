@@ -85,6 +85,7 @@ static inline uint32_t sra( uint32_t reg, uint32_t sh )
 void MipsIss::do_load( uint32_t address, enum DataAccessType type, bool unsigned_, int shift )
 {
     if (isInUserMode() && isPrivDataAddr(address)) {
+        r_mem_addr = address;
         m_exception = X_ADEL;
         return;
     }
@@ -94,12 +95,14 @@ void MipsIss::do_load( uint32_t address, enum DataAccessType type, bool unsigned
         break;
     case READ_HALF:
         if ( address & 1 ) {
+            r_mem_addr = address;
             m_exception = X_ADEL;
             return;
         }
         break;
     default:
         if ( address & 3 ) {
+            r_mem_addr = address;
             m_exception = X_ADEL;
             return;
         }
@@ -124,6 +127,7 @@ void MipsIss::do_load( uint32_t address, enum DataAccessType type, bool unsigned
 void MipsIss::do_store( uint32_t address, enum DataAccessType type, uint32_t data )
 {
     if (isInUserMode() && isPrivDataAddr(address)) {
+        r_mem_addr = address;
         m_exception = X_ADES;
         return;
     }
@@ -132,12 +136,14 @@ void MipsIss::do_store( uint32_t address, enum DataAccessType type, uint32_t dat
         break;
     case WRITE_HALF:
         if ( address & 1 ) {
+            r_mem_addr = address;
             m_exception = X_ADEL;
             return;
         }
         break;
     default:
         if ( address & 3 ) {
+            r_mem_addr = address;
             m_exception = X_ADEL;
             return;
         }
@@ -517,6 +523,7 @@ void MipsIss::special_srav()
 void MipsIss::special_jr()
 {
     if (isPrivDataAddr(m_rs) && isInUserMode()) {
+        r_mem_addr = m_rs;
         m_exception = X_ADEL;
         return;
     }
@@ -526,6 +533,7 @@ void MipsIss::special_jr()
 void MipsIss::special_jalr()
 {
     if (isPrivDataAddr(m_rs) && isInUserMode()) {
+        r_mem_addr = m_rs;
         m_exception = X_ADEL;
         return;
     }
@@ -756,12 +764,56 @@ MipsIss::func_t const MipsIss::special_table[] = {
 
 void MipsIss::op_special2()
 {
+    enum {
+        MADD = 0,
+        MADDU = 1,
+        MUL = 2,
+        MSUB = 4,
+        MSUBU = 5,
+    };
+
     switch ( m_ins.r.func ) {
-    case 2: // MUL
+    case MUL:
         r_gp[m_ins.r.rd] = m_rs*m_rt;
         if (m_rt)
             setInsDelay( 3 );
         break;
+    case MSUB: {
+        int64_t tmp = ((int64_t)r_hi)<<32 | (int64_t)r_lo;
+        tmp -= (int64_t)m_rs*(int64_t)m_rt;
+        r_hi = tmp>>32;
+        r_lo = tmp;
+        if (m_rt)
+            setInsDelay( 6 );
+        break;
+    }
+    case MSUBU: {
+        uint64_t tmp = ((uint64_t)r_hi)<<32 | (uint64_t)r_lo;
+        tmp -= (uint64_t)m_rs*(uint64_t)m_rt;
+        r_hi = tmp>>32;
+        r_lo = tmp;
+        if (m_rt)
+            setInsDelay( 6 );
+        break;
+    }
+    case MADD: {
+        int64_t tmp = ((int64_t)r_hi)<<32 | (int64_t)r_lo;
+        tmp += (int64_t)m_rs*(int64_t)m_rt;
+        r_hi = tmp>>32;
+        r_lo = tmp;
+        if (m_rt)
+            setInsDelay( 6 );
+        break;
+    }
+    case MADDU: {
+        uint64_t tmp = ((uint64_t)r_hi)<<32 | (uint64_t)r_lo;
+        tmp += (uint64_t)m_rs*(uint64_t)m_rt;
+        r_hi = tmp>>32;
+        r_lo = tmp;
+        if (m_rt)
+            setInsDelay( 6 );
+        break;
+    }
     default:
         op_ill();
     }
