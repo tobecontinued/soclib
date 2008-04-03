@@ -467,6 +467,8 @@ tmpl(void)::transition()
         case DCacheSignals::LINE_INVAL:
             if ( dcache_hit )
                 r_dcache_fsm = DCACHE_INVAL;
+            else
+                r_dcache_fsm = DCACHE_IDLE;
             break;
         case DCacheSignals::WRITE_WORD:
         case DCacheSignals::WRITE_HALF:
