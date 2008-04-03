@@ -28,7 +28,6 @@ Module('caba:vci_local_crossbar',
 		Uses('common:mapping_table'),
 		],
 	   extensions = [
-	'dsx:obtain_ident_method=port',
 	'dsx:interconnect',
 	'dsx:mapping_type=interconnect',
 	'dsx:get_ident=srcid:p_initiator_to_up,tgtid:p_target_to_up',
