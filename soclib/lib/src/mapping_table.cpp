@@ -120,12 +120,25 @@ MappingTable::getCacheabilityTable() const
 {
     AddressDecodingTable<MappingTable::addr_t, bool> adt(m_cacheability_mask);
 	adt.reset(false);
+    AddressDecodingTable<MappingTable::addr_t, bool> done(m_cacheability_mask);
+	done.reset(false);
 
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
-          i++ )
-		adt.set( i->baseAddress(), i->cacheable() );
+          i++ ) {
+        MappingTable::addr_t addr = i->baseAddress();
+        if ( done[addr] && adt[addr] != i->cacheable() ) {
+            std::ostringstream oss;
+            oss << "Incoherent Mapping Table:" << std::endl
+                << "Segment " << *i << " has different cacheability than other segment with same masked address" << std::endl
+                << "Mapping table:" << std::endl
+                << *this;
+			throw soclib::exception::RunTimeError(oss.str());
+        }
+		adt.set( addr, i->cacheable() );
+        done.set( addr, true );
+    }
     return adt;
 }
 
@@ -203,6 +216,7 @@ void MappingTable::print( std::ostream &o ) const
 
     o << "Mapping table: ad:" << m_level_addr_bits
       << " id:" << m_level_id_bits
+      << " cacheability mask: " << std::hex << std::showbase << m_cacheability_mask
       << std::endl;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
