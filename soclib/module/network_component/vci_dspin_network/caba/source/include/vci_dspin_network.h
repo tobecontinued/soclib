@@ -4,17 +4,23 @@
   * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
   *
   * SOCLIB_LGPL_HEADER_BEGIN
+  * 
+  * This file is part of SoCLib, GNU LGPLv2.1.
+  * 
   * SoCLib is free software; you can redistribute it and/or modify it
   * under the terms of the GNU Lesser General Public License as published
   * by the Free Software Foundation; version 2.1 of the License.
+  * 
   * SoCLib is distributed in the hope that it will be useful, but
   * WITHOUT ANY WARRANTY; without even the implied warranty of
   * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   * Lesser General Public License for more details.
+  * 
   * You should have received a copy of the GNU Lesser General Public
   * License along with SoCLib; if not, write to the Free Software
   * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
   * 02110-1301 USA
+  * 
   * SOCLIB_LGPL_HEADER_END
   */
 
@@ -36,7 +42,7 @@ namespace soclib { namespace caba {
 
     using namespace sc_core;
 
-    template<typename vci_param, int dspin_data_size, int dspin_fifo_size, int dspin_srcid_msb_size>
+    template<typename vci_param, int dspin_data_size, int dspin_fifo_size>
 	class VciDspinNetwork
 	: public soclib::caba::BaseModule
 	{
@@ -84,7 +90,7 @@ namespace soclib { namespace caba {
 
 	    	//dspin
 		soclib::caba::VciDspinInitiatorWrapper<vci_param, dspin_data_size, dspin_fifo_size>*** t_initiator_wrapper;
-		soclib::caba::VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size, dspin_srcid_msb_size>*** t_targer_wrapper;
+		soclib::caba::VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size>*** t_targer_wrapper;
 		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>*** t_req_router;
 		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>*** t_rsp_router;
 
@@ -93,9 +99,9 @@ namespace soclib { namespace caba {
 
 	    public:
 		VciDspinNetwork( sc_module_name name,
-			const soclib::common::MappingTable &mt,
-			int width_network,   //X
-			int height_network); //Y
+						 const soclib::common::MappingTable &mt,
+						 size_t width_network,   //X
+						 size_t height_network); //Y
 
 		~VciDspinNetwork();
 	}

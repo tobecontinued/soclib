@@ -4,17 +4,23 @@
   * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
   *
   * SOCLIB_LGPL_HEADER_BEGIN
+  * 
+  * This file is part of SoCLib, GNU LGPLv2.1.
+  * 
   * SoCLib is free software; you can redistribute it and/or modify it
   * under the terms of the GNU Lesser General Public License as published
   * by the Free Software Foundation; version 2.1 of the License.
+  * 
   * SoCLib is distributed in the hope that it will be useful, but
   * WITHOUT ANY WARRANTY; without even the implied warranty of
   * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   * Lesser General Public License for more details.
+  * 
   * You should have received a copy of the GNU Lesser General Public
   * License along with SoCLib; if not, write to the Free Software
   * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
   * 02110-1301 USA
+  * 
   * SOCLIB_LGPL_HEADER_END
   */
 
@@ -23,16 +29,34 @@
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<typename vci_param, int dspin_data_size, int dspin_fifo_size, int dspin_srcid_msb_size> x VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size, dspin_srcid_msb_size>
+#define tmpl(x) template<typename vci_param, int dspin_data_size, int dspin_fifo_size> x VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size>
 
     ////////////////////////////////
     //      constructor
     ////////////////////////////////
 
-    tmpl(/**/)::VciDspinTargetWrapper(sc_module_name insname)
+    tmpl(/**/)::VciDspinTargetWrapper(sc_module_name insname,
+									  const soclib::common::MappingTable &mt)
 	       : soclib::caba::BaseModule(insname),
-	       fifo_req("FIFO_REQ", dspin_fifo_size),
-	       fifo_rsp("FIFO_RSP", dspin_fifo_size)
+			   p_clk("clk"),
+			   p_resetn("resetn"),
+			   p_dspin_out("dspin_out"),
+			   p_dspin_in("dspin_in"),
+			   p_vci("vci"),
+			   r_fsm_state_req("fsm_state_req"),
+			   r_fsm_state_rsp("fsm_state_rsp"),
+			   r_cmd("cmd"),
+			   r_be("be"),
+			   r_srcid("srcid"),
+			   r_msbad("msbad"),
+			   r_lsbad("lsbad"),
+			   r_pktid("pktid"),
+			   r_trdid("trdid"),
+			   r_cons("cons"),
+			   r_contig("contig"),
+			   m_get_msb(mt.getIdMaskingTable(0)),
+			   fifo_req("FIFO_REQ", dspin_fifo_size),
+			   fifo_rsp("FIFO_RSP", dspin_fifo_size)
     {
 	SC_METHOD (transition);
 	dont_initialize();
@@ -41,17 +65,6 @@ namespace soclib { namespace caba {
 	dont_initialize();
 	sensitive  << p_clk.neg();
 
-	SOCLIB_REG_RENAME(r_fsm_state_req);
-	SOCLIB_REG_RENAME(r_fsm_state_rsp);
-	SOCLIB_REG_RENAME(r_cmd);
-	SOCLIB_REG_RENAME(r_be);
-	SOCLIB_REG_RENAME(r_msbad);
-	SOCLIB_REG_RENAME(r_lsbad);
-	SOCLIB_REG_RENAME(r_cons);
-	SOCLIB_REG_RENAME(r_contig);
-	SOCLIB_REG_RENAME(r_srcid);
-	SOCLIB_REG_RENAME(r_pktid);
-	SOCLIB_REG_RENAME(r_trdid);
 
     } //  end constructor
 
@@ -64,7 +77,7 @@ namespace soclib { namespace caba {
 	    tmp = tmp + (val >> i);
 	}
 	return (tmp & 1 == 1);
-    };
+    }
 
     ////////////////////////////////
     //      transition
@@ -159,7 +172,7 @@ namespace soclib { namespace caba {
 	    case RSP_HEADER :
 		rsp_fifo_write = p_vci.rspval.read();
 		if((p_vci.rspval.read() == true) && (fifo_rsp.wok() == true)) { 
-		    rsp_fifo_data = ((sc_uint<36>)p_vci.rsrcid.read() >>(vci_param::S - dspin_srcid_msb_size)) |// take only the MSB bits
+		    rsp_fifo_data = (sc_uint<36>)(m_get_msb[p_vci.rsrcid.read()]) |// take only the MSB bits
 			(((sc_uint<36>)p_vci.rsrcid.read())<<8) |
 			(((sc_uint<36>)p_vci.rpktid.read() & 0x03) << 18) |
 			(((sc_uint<36>)p_vci.rtrdid.read() & 0x0f) << 20) |
@@ -189,7 +202,7 @@ namespace soclib { namespace caba {
 	if((rsp_fifo_write == true) && (rsp_fifo_read == false)) { fifo_rsp.simple_put(rsp_fifo_data); } 
 	if((rsp_fifo_write == true) && (rsp_fifo_read == true))  { fifo_rsp.put_and_get(rsp_fifo_data); } 
 	if((rsp_fifo_write == false) && (rsp_fifo_read == true)) { fifo_rsp.simple_get(); }
-    }; // end transition
+    } // end transition
 
     ////////////////////////////////
     //      genMealy
@@ -260,7 +273,7 @@ namespace soclib { namespace caba {
 	p_dspin_out.write = fifo_rsp.rok();
 	p_dspin_out.data = fifo_rsp.read();
 
-    }; // end genMoore
+    } // end genMoore
 
 }} // end namespace
 

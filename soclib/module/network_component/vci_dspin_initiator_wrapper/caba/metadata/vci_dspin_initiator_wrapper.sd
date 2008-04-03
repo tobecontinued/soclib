@@ -10,6 +10,8 @@ Module('caba:vci_dspin_initiator_wrapper',
 	header_files = ['../source/include/vci_dspin_initiator_wrapper.h',],
 	implementation_files = ['../source/src/vci_dspin_initiator_wrapper.cpp',],
 	ports = [
+		Port('bit_in', 'p_resetn', auto = 'resetn'),
+		Port('clock_in', 'p_clk', auto = 'clock'),
 	    Port('vci_target', 'p_vci'),
 	    Port('dspin_output', 'p_dspin_out'),
 	    Port('dspin_input', 'p_dspin_in'),
@@ -20,5 +22,11 @@ Module('caba:vci_dspin_initiator_wrapper',
 	uses = [
 	    Uses('base_module'),
 	    Uses('common:mapping_table'),
+	],
+	   extensions = [
+	'dsx:obtain_ident_method=port',
+	'dsx:interconnect',
+	'dsx:mapping_type=interconnect',
+	'dsx:get_ident=srcid:p_dspin_out,tgtid:p_dspin_in',
 	],
 )

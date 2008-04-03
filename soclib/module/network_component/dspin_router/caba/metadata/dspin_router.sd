@@ -8,22 +8,21 @@ Module('caba:dspin_router',
 	],
 	header_files = ['../source/include/dspin_router.h',],
 	implementation_files = ['../source/src/dspin_router.cpp',],
-	ports = [	    
-	    Port('dspin_output', 'p_dspin_out[0]'),
-	    Port('dspin_output', 'p_dspin_out[1]'),
-	    Port('dspin_output', 'p_dspin_out[2]'),
-	    Port('dspin_output', 'p_dspin_out[3]'),
-	    Port('dspin_output', 'p_dspin_out[4]'),
-	    Port('dspin_input', 'p_dspin_in[0]'),
-	    Port('dspin_input', 'p_dspin_in[1]'),
-	    Port('dspin_input', 'p_dspin_in[2]'),
-	    Port('dspin_input', 'p_dspin_in[3]'),
-	    Port('dspin_input', 'p_dspin_in[4]'),
+	ports = [
+		Port('bit_in', 'p_resetn', auto = 'resetn'),
+		Port('clock_in', 'p_clk', auto = 'clock'),
+	    Port('dspin_output', 'p_out', 5),
+	    Port('dspin_input', 'p_in', 5),
 	],
 	instance_parameters = [
 	    parameter.Int('indent'),
 	],
 	uses = [
 	    Uses('base_module'),
+	],
+	   extensions = [
+	'dsx:interconnect=root',
+	'dsx:mapping_type=interconnect',
+	'dsx:obtain_ident_method=param:indent',
 	],
 )

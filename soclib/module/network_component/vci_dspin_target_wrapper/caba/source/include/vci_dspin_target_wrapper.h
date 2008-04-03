@@ -4,17 +4,23 @@
   * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
   *
   * SOCLIB_LGPL_HEADER_BEGIN
+  * 
+  * This file is part of SoCLib, GNU LGPLv2.1.
+  * 
   * SoCLib is free software; you can redistribute it and/or modify it
   * under the terms of the GNU Lesser General Public License as published
   * by the Free Software Foundation; version 2.1 of the License.
+  * 
   * SoCLib is distributed in the hope that it will be useful, but
   * WITHOUT ANY WARRANTY; without even the implied warranty of
   * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   * Lesser General Public License for more details.
+  * 
   * You should have received a copy of the GNU Lesser General Public
   * License along with SoCLib; if not, write to the Free Software
   * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
   * 02110-1301 USA
+  * 
   * SOCLIB_LGPL_HEADER_END
   */
 
@@ -22,6 +28,7 @@
 #define VCI_DSPIN_TARGET_WRAPPER_H_
 
 #include <systemc>
+#include "mapping_table.h"
 #include "caba_base_module.h"
 #include "vci_initiator.h"
 #include "generic_fifo.h"
@@ -31,7 +38,7 @@ namespace soclib { namespace caba {
 
     using namespace sc_core;
 
-    template<typename vci_param, int dspin_data_size, int dspin_fifo_size, int dspin_srcid_msb_size>
+    template<typename vci_param, int dspin_data_size, int dspin_fifo_size>
 	class VciDspinTargetWrapper
 	: public soclib::caba::BaseModule
 	{
@@ -66,7 +73,9 @@ namespace soclib { namespace caba {
 	    soclib::caba::VciInitiator<vci_param>      	p_vci;
 
 	    // constructor / destructor
-	    VciDspinTargetWrapper(sc_module_name    insname);
+	    VciDspinTargetWrapper(
+			sc_module_name insname,
+			const soclib::common::MappingTable &mt);
 
 	    private:
 	    // internal registers
@@ -83,6 +92,9 @@ namespace soclib { namespace caba {
 	    sc_signal<sc_uint<vci_param::T> >		r_trdid;
 	    sc_signal<bool >				r_cons;
 	    sc_signal<bool >				r_contig;
+
+		// SRCID extraction utility
+		soclib::common::AddressMaskingTable<uint32_t> m_get_msb;
 
 	    // deux fifos req and rsp
 	    soclib::caba::GenericFifo<sc_uint<dspin_data_size> >  fifo_req;

@@ -4,17 +4,23 @@
   * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
   *
   * SOCLIB_LGPL_HEADER_BEGIN
+  * 
+  * This file is part of SoCLib, GNU LGPLv2.1.
+  * 
   * SoCLib is free software; you can redistribute it and/or modify it
   * under the terms of the GNU Lesser General Public License as published
   * by the Free Software Foundation; version 2.1 of the License.
+  * 
   * SoCLib is distributed in the hope that it will be useful, but
   * WITHOUT ANY WARRANTY; without even the implied warranty of
   * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   * Lesser General Public License for more details.
+  * 
   * You should have received a copy of the GNU Lesser General Public
   * License along with SoCLib; if not, write to the Free Software
   * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
   * 02110-1301 USA
+  * 
   * SOCLIB_LGPL_HEADER_END
   */
 
@@ -22,6 +28,8 @@
 #include "register.h"
 #include <cstdlib>
 #include <cassert>
+#include <sstream>
+#include "alloc_elems.h"
 #include <new>
 
 namespace soclib { namespace caba {
@@ -48,13 +56,18 @@ namespace soclib { namespace caba {
 	  malloc(sizeof(soclib::caba::GenericFifo<sc_uint<dspin_data_size> >)*5);
 
 	for( int i = 0 ;i < 5; i++ ){
-	    SOCLIB_REG_RENAME(r_alloc_out[i]);
-	    SOCLIB_REG_RENAME(r_alloc_in[i]);
-	    SOCLIB_REG_RENAME(r_index_out[i]);
-	    SOCLIB_REG_RENAME(r_index_in[i]);
-	    new(&fifo_in[i]) soclib::caba::GenericFifo<sc_uint<dspin_data_size> >("FIFO_IN", dspin_fifo_size) ;
-	    new(&fifo_out[i]) soclib::caba::GenericFifo<sc_uint<dspin_data_size> >("FIFO_OUT", dspin_fifo_size) ;
+		std::ostringstream o;
+		o << i;
+	    new(&fifo_in[i]) soclib::caba::GenericFifo<sc_uint<dspin_data_size> >(std::string("FIFO_IN_")+o.str(), dspin_fifo_size) ;
+	    new(&fifo_out[i]) soclib::caba::GenericFifo<sc_uint<dspin_data_size> >(std::string("FIFO_OUT")+o.str(), dspin_fifo_size) ;
 	}
+
+	p_out = soclib::common::alloc_elems<DspinOutput<dspin_data_size> >("out", 5);
+	p_in = soclib::common::alloc_elems<DspinInput<dspin_data_size> >("in", 5);
+	r_alloc_out = soclib::common::alloc_elems<sc_signal<int> >("alloc_out", 5);
+	r_alloc_in = soclib::common::alloc_elems<sc_signal<int> >("alloc_in", 5);
+	r_index_out = soclib::common::alloc_elems<sc_signal<int> >("index_out", 5);
+	r_index_in = soclib::common::alloc_elems<sc_signal<int> >("index_in", 5);
 
 	XLOCAL =  indent & 0x0000000F;
 	YLOCAL = (indent & 0x000000F0) >> 4;
