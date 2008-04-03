@@ -40,7 +40,8 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 {
 	// std::cout << "VciRspArbCmdRout::callback" << std::endl;
 
-	uint32_t address = pkt->address[0];
+	//uint32_t address = pkt->address[0];
+	uint32_t address = pkt->address;
 	printf("address=%8.8x\n",address);
 	unsigned int dest_index = m_routing_table[address];
 

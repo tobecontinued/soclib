@@ -52,7 +52,8 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
         for (seg_index=0,seg = m_segments.begin();
                  seg != m_segments.end() && !reached; ++seg_index, ++seg ) {
                 soclib::common::Segment &s = *seg;
-                if (!s.contains(pkt->address[0]))
+                //if (!s.contains(pkt->address[0]))
+                if (!s.contains(pkt->address))
                         continue;
                 reached=true;
                 switch(pkt->cmd)
@@ -88,7 +89,8 @@ tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
 	  void *private_data)
 {
 
-    int cell = (pkt->address[0]-s.baseAddress()) / 4;
+    //int cell = (pkt->address[0]-s.baseAddress()) / 4;
+    int cell = (pkt->address-s.baseAddress()) / 4;
     int reg = cell % TTY_SPAN;
     int term_no = cell / TTY_SPAN;
     char _data = (char)pkt->buf[0];
@@ -112,7 +114,7 @@ tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
     }
 
 	// std::cout << "callback_write" << std::endl;
-        rsp.cmd=pkt->cmd;
+        //rsp.cmd=pkt->cmd;
         rsp.length=pkt->length;
         rsp.srcid=pkt->srcid;
         rsp.pktid=pkt->pktid;

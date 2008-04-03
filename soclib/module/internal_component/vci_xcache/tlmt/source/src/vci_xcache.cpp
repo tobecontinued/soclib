@@ -39,11 +39,11 @@ namespace soclib
     tmpl (tlmt_core::tlmt_return &)::rspReceived (soclib::tlmt:: vci_rsp_packet < vci_param > *pkt,
 						  const tlmt_core:: tlmt_time & time, void *private_data)
     {
-      if (pkt->cmd == vci_param::CMD_WRITE)
+      if (pkt->pktid == vci_param::CMD_WRITE)
 	m_write_error = (pkt->error != 0);
       else
 	m_write_error = false;
-      if (pkt->cmd == vci_param::CMD_READ)
+      if (pkt->pktid == vci_param::CMD_READ)
 	m_read_error = (pkt->error != 0);
       else
 	m_read_error = false;
@@ -154,11 +154,15 @@ namespace soclib
 		m_cmd.be = 0x3 << address & 0x2;
 	      else if (m_wbuf.getType () == iss_t::WRITE_BYTE)
 		m_cmd.be = 0x1 << address & 0x3;
-	      m_addresses_tab[0] = address;
+	      //m_addresses_tab[0] = address;
 	      m_cmd.contig = true;
-	      m_cmd.address = m_addresses_tab;
+	      //m_cmd.address = m_addresses_tab;
+	      m_cmd.address = address;
 	      m_cmd.cmd = vci_param::CMD_WRITE;
 	      m_cmd.buf = m_write_buffer;
+	      m_cmd.srcid = 0;
+	      m_cmd.trdid = 0;
+	      m_cmd.pktid = vci_param::CMD_WRITE;
 	      uint32_t i;
 	      bool notlast = true;
 	      for (i = 0; notlast == true; i++)
@@ -191,21 +195,23 @@ namespace soclib
 	      if (0)
 		{		// rajouter le code pour vérifier que l'adresse est non cachée       
 		  m_cmd.cmd = vci_param::CMD_READ;
-		  m_addresses_tab[0] = data_addr & m_dcache.get_yzmask ();	// a revoir
-		  m_cmd.address = m_addresses_tab;
+		  //m_addresses_tab[0] = data_addr & m_dcache.get_yzmask ();	// a revoir
+		  //m_cmd.address = m_addresses_tab;
+		  m_cmd.address = data_addr & m_dcache.get_yzmask ();
 		  if (data_type == iss_t::READ_WORD)
 		    m_cmd.be = 0xF;
 		  else if (data_type == iss_t::READ_HALF)
 		    m_cmd.be = 0x3 << data_addr & 0x2;
 		  else if (data_type == iss_t::READ_BYTE)
 		    m_cmd.be = 0x1 << data_addr & 0x3;
-		  m_cmd.contig = false;
+		  //m_cmd.contig = false;
+		  m_cmd.contig = true;
 		  m_cmd.buf = m_read_buffer;
 		  m_cmd.length = 1;
-		  m_cmd.eop = 1;
 		  m_cmd.srcid = 0;
 		  m_cmd.trdid = 0;
-		  m_cmd.pktid = 0;
+		  //m_cmd.pktid = 0;
+		  m_cmd.pktid = vci_param::CMD_READ;
 
 		  tlmt_core::tlmt_return ret;
 		  ret = p_vci.send (&m_cmd, c0.time ());
@@ -221,13 +227,17 @@ namespace soclib
 		      c0.update_time (m_rsptime);
 		    }
 
-		  m_addresses_tab[0] = data_addr & m_dcache.get_yzmask ();
-		  m_cmd.address = m_addresses_tab;
+		  //m_addresses_tab[0] = data_addr & m_dcache.get_yzmask ();
+		  //m_cmd.address = m_addresses_tab;
+		  m_cmd.address = data_addr & m_dcache.get_yzmask ();
 		  m_cmd.cmd = vci_param::CMD_READ;
 		  m_cmd.length = m_dcache.get_nwords ();
 		  m_cmd.buf = m_read_buffer;
 		  m_cmd.be = 0xF;
 		  m_cmd.contig = true;
+		  m_cmd.srcid = 0;
+		  m_cmd.trdid = 0;
+		  m_cmd.pktid = vci_param::CMD_READ;
 		  p_vci.send (&m_cmd, c0.time ());
 		  m_vci_pending = true;
 		  wait (m_rsp_received);
@@ -338,13 +348,17 @@ namespace soclib
 		  wait (m_rsp_received);
 		  c0.update_time (m_rsptime);
 		}
-	      m_addresses_tab[0] = ins_addr & m_icache.get_yzmask ();
-	      m_cmd.address = m_addresses_tab;
+	      //m_addresses_tab[0] = ins_addr & m_icache.get_yzmask ();
+	      //m_cmd.address = m_addresses_tab;
+	      m_cmd.address = ins_addr & m_icache.get_yzmask ();
 	      m_cmd.cmd = vci_param::CMD_READ;
 	      m_cmd.length = m_icache.get_nwords ();
 	      m_cmd.buf = m_read_buffer_ins;
 	      m_cmd.be = 0xF;
 	      m_cmd.contig = true;
+              m_cmd.srcid = 0;
+	      m_cmd.trdid = 0;
+	      m_cmd.pktid = vci_param::CMD_READ;
 	      p_vci.send (&m_cmd, c0.time ());
 	      m_vci_pending = true;
 	      wait (m_rsp_received);

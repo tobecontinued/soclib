@@ -53,13 +53,13 @@ tmpl(void)::behavior()
 
 	for(;;) {
                 cmd.cmd = vci_param::CMD_READ;
-                addresses[0] = 0xBFC00000;
-                cmd.address = addresses;
+                //addresses[0] = 0xBFC00000;
+                //cmd.address = addresses;
+                cmd.address = 0xBFC00000;
                 cmd.be = 0xF;
-                cmd.contig = 0;
+                cmd.contig = true;
                 cmd.buf = localbuf;
                 cmd.length = 1;
-                cmd.eop = 1;
                 cmd.srcid = 0;
                 cmd.trdid = 0;
                 cmd.pktid = 0;
@@ -78,13 +78,13 @@ tmpl(void)::behavior()
 		std::cout << std::dec;
 
                 cmd.cmd = vci_param::CMD_WRITE;
-                addresses[0] = 0xBFC00000;
-                cmd.address = addresses;
+                //addresses[0] = 0xBFC00000;
+                //cmd.address = addresses;
+                cmd.address = 0xBFC00000;
                 cmd.be = 0xF;
-                cmd.contig = 0;
+                cmd.contig = true;
                 cmd.buf = localbuf;
                 cmd.length = 1;
-                cmd.eop = 1;
                 cmd.srcid = 0;
                 cmd.trdid = 0;
                 cmd.pktid = 0;

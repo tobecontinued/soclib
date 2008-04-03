@@ -49,7 +49,8 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 	for (seg_index=0,seg = m_segments.begin(); 
 		 seg != m_segments.end() && !reached; ++seg_index, ++seg ) {
 		soclib::common::Segment &s = *seg;
-		if (!s.contains(pkt->address[0]))
+		//if (!s.contains(pkt->address[0]))
+		if (!s.contains(pkt->address))
 			continue;
 		reached=true;
 		switch(pkt->cmd)
@@ -65,15 +66,6 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 		std::cout << "Address does not match any segment" << std::endl ;
 	}
 
-/*
-	soclib::tlmt::vci_rsp_packet<vci_param> rsp;
-
-	std::cout << "packet size=" << pkt->length << std::endl ;
-	p_vci.send(&rsp, time+tlmt_core::tlmt_time(42));
-
-	std::cout << "Demande de temps: " << p_vci.peer_time() << std::endl;
-	std::cout << "Demande d'activite: " << p_vci.peer_active() << std::endl;
-*/
 	return m_return;
 }
 
@@ -89,16 +81,18 @@ tmpl(tlmt_core::tlmt_return&)::callback_read(size_t seg_index,
 	packet_size=pkt->length;
 	if (pkt->contig) {
 		for (i=0;i<packet_size;i++) {
-			pkt->buf[i]= m_contents[seg_index][((pkt->address[0]+i*4)-s.baseAddress()) / 4];
+			//pkt->buf[i]= m_contents[seg_index][((pkt->address[0]+i*4)-s.baseAddress()) / 4];
+			pkt->buf[i]= m_contents[seg_index][((pkt->address+i*4)-s.baseAddress()) / 4];
 		}
 	} else {
 		for (i=0;i<packet_size;i++) {
-			pkt->buf[i]= m_contents[seg_index][(pkt->address[i]-s.baseAddress()) / 4];
+			//pkt->buf[i]= m_contents[seg_index][(pkt->address[i]-s.baseAddress()) / 4];
+			pkt->buf[i]= m_contents[seg_index][(pkt->address-s.baseAddress()) / 4];
 		}
 	}
 	// std::cout << "time callback_read=" << time << std::endl;
 
-	rsp.cmd=pkt->cmd;
+	//rsp.cmd=pkt->cmd;
 	rsp.length=pkt->length;
 	rsp.srcid=pkt->srcid;
 	rsp.pktid=pkt->pktid;
@@ -122,7 +116,8 @@ tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
 	packet_size=pkt->length;
 	for (i=0;i<packet_size;i++)
 	{
-		uint32_t index = (pkt->address[i]-s.baseAddress()) / 4;
+		//uint32_t index = (pkt->address[i]-s.baseAddress()) / 4;
+		uint32_t index = (pkt->address-s.baseAddress()) / 4;
 		ram_t *tab = m_contents[seg_index];
 		unsigned int cur = tab[index];
 		uint32_t mask = 0;
@@ -139,7 +134,7 @@ tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
 
 		tab[index] = (cur & ~mask) | (pkt->buf[i] & mask);
 	}
-	rsp.cmd=pkt->cmd;
+	//rsp.cmd=pkt->cmd;
 	rsp.length=pkt->length;
 	rsp.srcid=pkt->srcid;
 	rsp.pktid=pkt->pktid;
