@@ -36,7 +36,6 @@ template<typename data_t>
 class fifo_cmd_packet
 {
 public:
-	typename data_t::cmd_t cmd;
 	typename data_t::data_t *buf;
 	size_t length;
 };
