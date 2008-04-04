@@ -45,7 +45,7 @@ static inline uint32_t __uint32_swap(uint32_t x)
 #define SOCLIB_IO_LITTLE_ENDIAN
 #endif
 
-static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
+static inline void soclib_io_set(void *comp_base, size_t reg, uint32_t val)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
 
@@ -61,7 +61,7 @@ static inline void soclib_io_set(void *comp_base, int reg, uint32_t val)
 #endif
 }
 
-static inline uint32_t soclib_io_get(void *comp_base, int reg)
+static inline uint32_t soclib_io_get(void *comp_base, size_t reg)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
     uint32_t val;
@@ -80,7 +80,7 @@ static inline uint32_t soclib_io_get(void *comp_base, int reg)
 #endif
 }
 
-static inline void soclib_io_write8(void *comp_base, int reg, uint8_t val)
+static inline void soclib_io_write8(void *comp_base, size_t reg, uint8_t val)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
 	addr += reg;
@@ -88,7 +88,7 @@ static inline void soclib_io_write8(void *comp_base, int reg, uint8_t val)
 	*(uint8_t *)addr = val;
 }
 
-static inline uint8_t soclib_io_read8(void *comp_base, int reg)
+static inline uint8_t soclib_io_read8(void *comp_base, size_t reg)
 {
 	volatile uint32_t *addr = (uint32_t *)comp_base;
 	addr += reg;
