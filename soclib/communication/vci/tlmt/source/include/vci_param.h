@@ -42,8 +42,10 @@ public:
 
 
 	typedef enum {
-		CMD_READ	= 0x00,
-		CMD_WRITE	= 0x01
+		CMD_READ,
+		CMD_WRITE,
+		CMD_LOCKED_READ,
+		CMD_STORE_COND,
 	} cmd_t;
 };
 
