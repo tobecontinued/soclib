@@ -34,6 +34,13 @@
 #include "tlmt_base_module.h"
 #include "vci_ports.h"
 
+template<typename vci_param>
+struct fifo_struct{
+  bool event;
+  typename soclib::tlmt::vci_cmd_packet<vci_param> *pkt;
+  tlmt_core::tlmt_time time;
+};
+
 namespace soclib { namespace tlmt {
 
 template<typename vci_param>
@@ -41,43 +48,41 @@ class VciRspArbCmdRout;
 
 template<typename vci_param>
 class VciCmdArbRspRout
-	: public soclib::tlmt::BaseModule
+  : public soclib::tlmt::BaseModule
 {
-	tlmt_core::tlmt_thread_context c0;
-	sc_core::sc_event e0;
-	std::vector<typename soclib::tlmt::VciRspArbCmdRout<vci_param> *> m_RspArbCmdRout;
-	std::vector<typename soclib::tlmt::vci_cmd_packet<vci_param> *> m_fifos_pkt;
-	std::vector<tlmt_core::tlmt_time> m_fifos_time;
-	uint32_t m_index;
-	uint32_t m_nbinit;
-	size_t m_selected_port;
-	tlmt_core::tlmt_time m_delay;
-	tlmt_core::tlmt_return m_return;
-
+  tlmt_core::tlmt_thread_context c0;
+  sc_core::sc_event e0;
+  std::vector<typename soclib::tlmt::VciRspArbCmdRout<vci_param> *> m_RspArbCmdRout;
+  uint32_t m_index;
+  uint32_t m_nbinit;
+  size_t m_selected_port;
+  tlmt_core::tlmt_time m_delay;
+  tlmt_core::tlmt_return m_return;
+  fifo_struct<vci_param> *fifos;
+  
 protected:
-	SC_HAS_PROCESS(VciCmdArbRspRout);
+  SC_HAS_PROCESS(VciCmdArbRspRout);
 
 public:
-	soclib::tlmt::VciInitiator<vci_param> p_vci;
+  soclib::tlmt::VciInitiator<vci_param> p_vci;
 
-	VciCmdArbRspRout( sc_core::sc_module_name name,
-					  uint32_t idx,
-					  uint32_t nb_init,
-					  tlmt_core::tlmt_time dl );
+  VciCmdArbRspRout( sc_core::sc_module_name name,
+		    uint32_t idx,
+		    uint32_t nb_init,
+		    tlmt_core::tlmt_time dl );
 
-	tlmt_core::tlmt_return &callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-									 const tlmt_core::tlmt_time &time,
-									 void *private_data);
-	void behavior();
-
-	void setRspArbCmdRout(std::vector<typename soclib::tlmt::VciRspArbCmdRout<vci_param> *> &RspArbCmdRout);
-
-	void put(soclib::tlmt::vci_cmd_packet<vci_param> *pkt, uint32_t idx,
-			 const tlmt_core::tlmt_time &time);
-
-	int through_fifo();
+  tlmt_core::tlmt_return &callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+				   const tlmt_core::tlmt_time &time,
+				   void *private_data);
+  void behavior();
+  
+  void setRspArbCmdRout(std::vector<typename soclib::tlmt::VciRspArbCmdRout<vci_param> *> &RspArbCmdRout);
+  
+  void put(soclib::tlmt::vci_cmd_packet<vci_param> *pkt, uint32_t idx, const tlmt_core::tlmt_time &time);
+  
+  int through_fifo();
 };
-
+  
 }}
 
 #endif

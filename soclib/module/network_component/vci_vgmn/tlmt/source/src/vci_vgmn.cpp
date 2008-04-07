@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, nipo
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     François Pêcheux <fancois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  */
 
