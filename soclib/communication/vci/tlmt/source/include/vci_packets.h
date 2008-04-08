@@ -43,7 +43,7 @@ public:
 	uint32_t be;
 	bool contig;
 	typename vci_param::data_t *buf;
-	size_t length;
+	size_t nwords;
 	uint32_t srcid;
 	uint32_t trdid;
 	uint32_t pktid;
@@ -53,7 +53,8 @@ template<typename vci_param>
 class vci_rsp_packet
 {
 public:
-	size_t length;
+	typename vci_param::cmd_t cmd;
+	size_t nwords;
 	uint32_t error;
 	uint32_t srcid;
 	uint32_t trdid;
