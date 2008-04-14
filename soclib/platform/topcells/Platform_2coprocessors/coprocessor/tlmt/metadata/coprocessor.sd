@@ -23,31 +23,19 @@
 # Maintainers: fpecheux, nipo
 #
 # Copyright (c) UPMC / Lip6, 2008
-#     François Pêcheux <francois.pecheux@lip6.fr>
+#     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-PortDecl('tlmt:vci_initiator',
-		 classname = 'soclib::tlmt::VciInitiatorPort',
-		 header_files = ['../source/include/vci_ports.h',
-						 '../source/include/vci_packets.h',
-						 '../source/include/vci_param.h',
-						 ],
-		 )
-
-PortDecl('tlmt:vci_target',
-		 classname = 'soclib::tlmt::VciTargetPort',
-		 header_files = ['../source/include/vci_ports.h',
-						 '../source/include/vci_packets.h',
-						 '../source/include/vci_param.h',
-						 ],
-		 )
-
-Module('tlmt:vci_param',
-	   classname = 'soclib::tlmt::VciParams',
-	   tmpl_parameters = [
-		parameter.Type('addr_t'),
-		parameter.Type('data_t'),
-		parameter.Int('nbytes'),
-		],
-	   header_files = ['../source/include/vci_param.h',],
-)
+Module('tlmt:coprocessor',
+       classname = 'soclib::tlmt::Coprocessor',
+       tmpl_parameters = [parameter.Module('vci_param',  default = 'vci_param')	],
+       header_files = ['../source/include/coprocessor.h',],
+       implementation_files = ['../source/src/coprocessor.cpp',],
+       ports = [Port('fifo_initiator', 'p_read_fifo'),
+                Port('fifo_initiator', 'p_write_fifo'),
+                Port('tlmt_in', 'p_status'),
+                Port('tlmt_in', 'p_config'),
+                ],
+       uses = [Uses('base_module'),
+               ],
+       )

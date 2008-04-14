@@ -1,0 +1,15 @@
+
+# -*- python -*-
+
+
+todo = Platform('tlmt', 'top.cpp',
+                uses = [Uses('vci_simple_initiator'),
+                        Uses('vci_vgmn'),
+                        Uses('vci_ram'),
+                        Uses('vci_mwmr_controller'),
+                        Uses('coprocessor'),
+                        ],
+                addr_t = 'uint32_t',
+                data_t = 'uint32_t',
+                nbytes = '4',
+                )

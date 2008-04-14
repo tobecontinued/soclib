@@ -23,31 +23,21 @@
 # Maintainers: fpecheux, nipo
 #
 # Copyright (c) UPMC / Lip6, 2008
-#     François Pêcheux <francois.pecheux@lip6.fr>
+#     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
-PortDecl('tlmt:vci_initiator',
-		 classname = 'soclib::tlmt::VciInitiatorPort',
-		 header_files = ['../source/include/vci_ports.h',
-						 '../source/include/vci_packets.h',
-						 '../source/include/vci_param.h',
-						 ],
-		 )
-
-PortDecl('tlmt:vci_target',
-		 classname = 'soclib::tlmt::VciTargetPort',
-		 header_files = ['../source/include/vci_ports.h',
-						 '../source/include/vci_packets.h',
-						 '../source/include/vci_param.h',
-						 ],
-		 )
-
-Module('tlmt:vci_param',
-	   classname = 'soclib::tlmt::VciParams',
+Module('tlmt:vci_simple_initiator',
+	classname = 'soclib::tlmt::VciSimpleInitiator',
 	   tmpl_parameters = [
-		parameter.Type('addr_t'),
-		parameter.Type('data_t'),
-		parameter.Int('nbytes'),
+	parameter.Module('vci_param',  default = 'vci_param')
+	],
+	header_files = ['../source/include/vci_simple_initiator.h',],
+	implementation_files = ['../source/src/vci_simple_initiator.cpp',],
+			  ports = [
+	Port('vci_initiator', 'p_vci'),
+	],
+	uses = [
+		Uses('base_module'),
+		Uses('common:mapping_table'),
 		],
-	   header_files = ['../source/include/vci_param.h',],
 )
