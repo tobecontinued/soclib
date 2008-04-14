@@ -82,6 +82,7 @@ public:
 	{
 		return cmd_out.send(pkt, time);
 	}
+	inline void operator() (FifoTarget<data_t> &peer ) ;
 };
 
 template<typename data_t>

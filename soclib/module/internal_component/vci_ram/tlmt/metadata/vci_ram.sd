@@ -23,7 +23,7 @@
 # Maintainers: fpecheux, nipo
 #
 # Copyright (c) UPMC / Lip6, 2008
-#     François Pêcheux <francois.pecheux@lip6.fr>
+#     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
 Module('tlmt:vci_ram',
@@ -39,6 +39,7 @@ Module('tlmt:vci_ram',
 	uses = [
 		Uses('base_module'),
 		Uses('common:elf_loader'),
+		Uses('common:linked_access_buffer', id_t = 'uint32_t'),
 		Uses('common:mapping_table'),
 		],
 )

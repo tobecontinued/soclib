@@ -23,24 +23,19 @@
 # Maintainers: fpecheux, nipo
 #
 # Copyright (c) UPMC / Lip6, 2008
-#     François Pêcheux <francois.pecheux@lip6.fr>
+#     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
 Module('tlmt:vci_multi_tty',
-	classname = 'soclib::tlmt::VciMultiTty',
-	header_files = ['../source/include/vci_multi_tty.h',
-			'../../include/tty.h'],
-	implementation_files = ['../source/src/vci_multi_tty.cpp',],
-			  ports = [
-	Port('vci_target', 'p_vci'),
-	Port('tlmt_out', 'p_out', data_t = 'bool'),
-	],
-	   tmpl_parameters = [
-	parameter.Module('vci_param', default = 'tlmt:vci_param'),
-	],
-	uses = [
-		Uses('tlmt:base_module'),
-		Uses('common:tty_wrapper'),
-		Uses('common:mapping_table'),
-		],
-)
+       classname = 'soclib::tlmt::VciMultiTty',
+       tmpl_parameters = [parameter.Module('vci_param',  default = 'vci_param')],
+       header_files = ['../source/include/vci_multi_tty.h',
+                       '../../include/tty.h',
+                       ],
+       implementation_files = ['../source/src/vci_multi_tty.cpp',],
+       ports = [Port('vci_target', 'p_vci'),],
+       uses = [Uses('base_module'),
+               Uses('common:tty_wrapper'),
+               Uses('common:mapping_table'),
+               ],
+       )

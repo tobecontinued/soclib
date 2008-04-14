@@ -27,12 +27,12 @@
 #     Alain Greiner <alain.greiner@lip6.fr>
 
 PortDecl('tlmt:fifo_initiator',
-		 classname = 'soclib::tlmt::VciInitiatorPort',
+		 classname = 'soclib::tlmt::FifoInitiator',
 		 header_files = ['../source/include/fifo_ports.h',
 				 '../source/include/fifo_packets.h'],)
 
 PortDecl('tlmt:fifo_target',
-		 classname = 'soclib::tlmt::VciTargetPort',
+		 classname = 'soclib::tlmt::FifoTarget',
 		 header_files = ['../source/include/fifo_ports.h',
 				 '../source/include/fifo_packets.h'],)
 

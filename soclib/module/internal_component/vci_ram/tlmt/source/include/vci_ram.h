@@ -9,14 +9,6 @@
 #include "elf_loader.h"
 #include "linked_access_buffer.h"
 
-template<typename vci_param>
-struct line_table{
-  typename vci_param::addr_t address;
-  uint32_t                   srcid;
-  line_table<vci_param>*     previous;
-  line_table<vci_param>*     next;
-};
-
 namespace soclib { namespace tlmt {
 
 template<typename vci_param>
@@ -24,20 +16,19 @@ class VciRam
   : public soclib::tlmt::BaseModule
 {
  private:
+
   uint32_t m_id;
   soclib::common::IntTab m_index;
   soclib::common::MappingTable m_mt;
   soclib::common::ElfLoader *m_loader;
-
   std::list<soclib::common::Segment> m_segments;
   typedef typename vci_param::data_t ram_t;
   ram_t **m_contents;
-  tlmt_core::tlmt_return m_return;
-  vci_rsp_packet<vci_param> rsp;
 
-  line_table<vci_param> *tableLL_begin;
-  line_table<vci_param> *tableLL_end;
-  //soclib::common::LinkedAccessBuffer<typename vci_param::addr_t,uint32_t> m_atomic;
+  soclib::common::LinkedAccessBuffer<typename vci_param::addr_t,uint32_t> m_atomic;
+
+  tlmt_core::tlmt_return m_return;
+  vci_rsp_packet<vci_param> m_rsp;
 
  protected:
   SC_HAS_PROCESS(VciRam);
@@ -76,12 +67,6 @@ class VciRam
 					      const tlmt_core::tlmt_time &time,
 					      void *private_data);
   
-  void insertLineTable(typename vci_param::addr_t address, uint32_t srcid);
-  void removeLineTable(typename vci_param::addr_t address);
-  bool existsAddress(typename vci_param::addr_t address);
-  bool isOwner(typename vci_param::addr_t address, uint32_t srcid);
-  void showTable();
-
 };
 
 }}

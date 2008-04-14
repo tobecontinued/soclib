@@ -1,170 +1,243 @@
-/* -*- mode: c++; coding: utf-8 -*-
- *
- * SOCLIB_LGPL_HEADER_BEGIN
- * 
- * This file is part of SoCLib, GNU LGPLv2.1.
- * 
- * SoCLib is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation; version 2.1 of the License.
- * 
- * SoCLib is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with SoCLib; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301 USA
- * 
- * SOCLIB_LGPL_HEADER_END
- *
- * Maintainers: fpecheux, nipo
- *
- * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
- *     Nicolas Pouillon <nipo@ssji.net>
- */
-
 #include "vci_param.h"
-#include "../include/vci_multi_tty.h"
+#include "vci_multi_tty.h"
 #include "tty.h"
-
 #include <stdarg.h>
 
+#ifndef MULTI_TTY_DEBUG
+#define MULTI_TTY_DEBUG 1
+#endif
 
 namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x VciMultiTty<vci_param>
 
-tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-	const tlmt_core::tlmt_time &time,
-	void *private_data)
-{
-	// std::cout << name() << " callback" << std::endl;
+  tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+					  const tlmt_core::tlmt_time &time,
+					  void *private_data)
+  {
+    std::list<soclib::common::Segment>::iterator seg;
+    size_t segIndex;
+    for (segIndex=0,seg = segList.begin();seg != segList.end(); ++segIndex, ++seg ){
+      soclib::common::Segment &s = *seg;
 
-	// First, find the right segment using the first address of the packet
+      if (!s.contains(pkt->address))
+	continue;
+      switch(pkt->cmd){
+      case vci_param::CMD_READ:
+	return callback_read(segIndex,s,pkt,time,private_data);
+	break;
+      case vci_param::CMD_WRITE:
+	return callback_write(segIndex,s,pkt,time,private_data);
+	break;
+      default:
+	return m_return;
+	break;
+      }
+    }
+    std::cout << "Address does not match any segment" << std::endl;
+    return m_return;
+  }
+    
+  tmpl(tlmt_core::tlmt_return&)::callback_read(size_t segIndex,
+					       soclib::common::Segment &s,
+					       soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+					       const tlmt_core::tlmt_time &time,
+					       void *private_data){
+      
+#if MULTI_TTY_DEBUG
+    std::cout << "[TTY] Receive a read packet with time = "  << time << std::endl;
+#endif
+      
+    uint32_t localbuf[32];
+    int cell, reg, term_no;
+      
+    for(unsigned int i=0; i<pkt->nwords;i++){
+
+      if (pkt->contig) {
+	cell = (int)(((pkt->address+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes);
+      }
+      else{
+	cell = (int)((pkt->address - s.baseAddress()) / vci_param::nbytes); // always write in the same address
+      }
+      
+      reg = cell % TTY_SPAN;
+      term_no = cell / TTY_SPAN;
+
+#if MULTI_TTY_DEBUG
+      std::cout << "[TTY] term_no=" << term_no << " reg=" << reg << std::endl;
+#endif
 	
-        std::list<soclib::common::Segment>::iterator seg;
-        bool reached = false;
-        size_t seg_index;
-        for (seg_index=0,seg = m_segments.begin();
-                 seg != m_segments.end() && !reached; ++seg_index, ++seg ) {
-                soclib::common::Segment &s = *seg;
-                //if (!s.contains(pkt->address[0]))
-                if (!s.contains(pkt->address))
-                        continue;
-                reached=true;
-                switch(pkt->cmd)
-                {
-                case vci_param::CMD_READ:
-                        return callback_read(seg_index,s,pkt,time,private_data);
-                case vci_param::CMD_WRITE:
-                        return callback_write(seg_index,s,pkt,time,private_data);
-		case vci_param::CMD_LOCKED_READ:
-		case vci_param::CMD_STORE_COND:
-                	return m_return;
-			break;
-                }
-                return m_return;
-        }
-        if (!reached) {
-                std::cout << "Address does not match any segment" << std::endl ;
-        }
+      if (term_no>=(int)m_term.size()){
 
+#if MULTI_TTY_DEBUG
+	std::cout << "term_no (" << term_no <<") greater than the maximum (" << m_term.size() << ")" << std::endl;
+#endif
+
+	// remplir paquet d'erreur
+	m_rsp.error = true;
 	return m_return;
-}
-
-tmpl(tlmt_core::tlmt_return&)::callback_read(size_t seg_index,
-	 soclib::common::Segment &s,
-	 soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-	 const tlmt_core::tlmt_time &time,
-	 void *private_data)
-{
-	// std::cout << "callback_read" << std::endl;
-	return m_return;
-}
-
-tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
-	  soclib::common::Segment &s,
-	  soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-	  const tlmt_core::tlmt_time &time,
-	  void *private_data)
-{
-
-    //int cell = (pkt->address[0]-s.baseAddress()) / 4;
-    int cell = (pkt->address-s.baseAddress()) / 4;
-    int reg = cell % TTY_SPAN;
-    int term_no = cell / TTY_SPAN;
-    char _data = (char)pkt->buf[0];
-
-    switch (reg) {
-    case TTY_WRITE:
-
-        if ( _data == '\a' ) {
-            char tmp[32];
-            size_t ret = snprintf(tmp, sizeof(tmp), "[%10ld] ", r_counter);
-
-            for ( size_t i=0; i<ret; ++i )
-                m_term[term_no]->putc( tmp[i] );
-        } else
-	{
-            m_term[term_no]->putc( _data );
+      }
+	
+      switch (reg) {
+      case TTY_STATUS:
+	localbuf[i] = m_term[term_no]->hasData();
+	m_rsp.error = false;
+	break;
+	  
+      case TTY_READ:
+	if (m_term[term_no]->hasData()) {
+	  char tmp = m_term[term_no]->getc();
+	  localbuf[i] = tmp;
 	}
+	m_rsp.error = false;
 	break;
-    default:
+	
+      default:
+	//error message
+	m_rsp.error = true;
 	break;
+      }
     }
 
-	// std::cout << "callback_write" << std::endl;
-        //rsp.cmd=pkt->cmd;
-        rsp.nwords=pkt->nwords;
-        rsp.srcid=pkt->srcid;
-        rsp.pktid=pkt->pktid;
-        rsp.trdid=pkt->trdid;
+    pkt->buf = localbuf;
+      
+    m_rsp.nwords = pkt->nwords;
+    m_rsp.srcid  = pkt->srcid;
+    m_rsp.trdid  = pkt->trdid;
+    m_rsp.pktid  = pkt->pktid;
 
-        p_vci.send(&rsp, time+tlmt_core::tlmt_time(pkt->nwords+5));
-        m_return.set_time(time+tlmt_core::tlmt_time(pkt->nwords+5));
+#if MULTI_TTY_DEBUG
+    std::cout << "[TTY] Send answer with time = " << time + tlmt_core::tlmt_time(50) << std::endl;
+#endif
 
-	p_out.send(true, time+tlmt_core::tlmt_time(pkt->nwords+5));
-	return m_return;
-}
+    p_vci.send(&m_rsp, time + tlmt_core::tlmt_time(50)) ;
+    m_return.set_time(time + tlmt_core::tlmt_time(50));
+    return m_return;
+  }
+    
+  tmpl(tlmt_core::tlmt_return&)::callback_write(size_t segIndex,
+						soclib::common::Segment &s,
+						soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+						const tlmt_core::tlmt_time &time,
+						void *private_data) {
 
-tmpl(/**/)::VciMultiTty(
-	sc_core::sc_module_name name,
-	const soclib::common::IntTab &index,
-	const soclib::common::MappingTable &mt,
-	const char *first_name,
-	...)
-		   : soclib::tlmt::BaseModule(name),
-		   m_index(index),
-		   m_mt(mt),
-		   p_vci("vci", new tlmt_core::tlmt_callback<VciMultiTty,soclib::tlmt::vci_cmd_packet<vci_param> *>(
-				   this, &VciMultiTty<vci_param>::callback)),
-		   p_out("out")
-{
-    m_segments = m_mt.getSegmentList(m_index);
+#if MULTI_TTY_DEBUG
+    std::cout << "[TTY] Receive a write packet with time = "  << time << std::endl;
+#endif
+      
+    int cell, reg, term_no;
+    char data;
 
+    for(unsigned int i=0; i<pkt->nwords;i++){
+      if (pkt->contig) {
+	cell = (int)(((pkt->address+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes);
+      }
+      else{
+	cell = (int)((pkt->address - s.baseAddress()) / vci_param::nbytes); // always write in the same address
+      }
+
+      reg = cell % TTY_SPAN;
+      term_no = cell / TTY_SPAN;
+      data = pkt->buf[i];
+
+#if MULTI_TTY_DEBUG
+      std::cout << "[TTY] term_no=" << term_no << " reg=" << reg << " data=" << data << std::endl;
+#endif
+
+      if (term_no>=(int)m_term.size()){
+#if MULTI_TTY_DEBUG
+	std::cout << "term_no (" << term_no <<") greater than the maximum (" << m_term.size() << ")" << std::endl;
+#endif
+
+	// remplir paquet d'erreur
+	m_rsp.error= true;
+	return m_return;  
+      }
+	
+      switch (reg) {
+      case TTY_WRITE:
+	if ( data == '\a' ) {
+	  char tmp[32];
+	  size_t ret = snprintf(tmp, sizeof(tmp), "[%d] ", (int)time);
+
+	  for ( size_t i=0; i<ret; ++i )
+	    m_term[term_no]->putc( tmp[i] );
+	} 
+	else
+	  m_term[term_no]->putc( data );
+	break;
+	m_rsp.error = false;
+
+      default:
+	//error message
+	m_rsp.error= true;
+	break;
+      }
+	
+    }
+      
+    m_rsp.nwords = pkt->nwords;
+    m_rsp.srcid  = pkt->srcid;
+    m_rsp.pktid  = pkt->pktid;
+    m_rsp.trdid  = pkt->trdid;
+      
+#if MULTI_TTY_DEBUG
+    std::cout << "[TTY] Send answer with time = " << time + tlmt_core::tlmt_time(50) << std::endl;
+#endif
+
+    p_vci.send(&m_rsp, time + tlmt_core::tlmt_time(50));
+    m_return.set_time(time + tlmt_core::tlmt_time(50));
+      
+    return m_return;
+  }
+
+  tmpl(void)::init(const std::vector<std::string> &names){
+    segList=m_mt.getSegmentList(m_index);
+    int j=0;
+
+    for(std::vector<std::string>::const_iterator i = names.begin();i != names.end();++i){
+      m_term.push_back(soclib::common::allocateTty(*i));
+
+      std::ostringstream tmpName;
+      tmpName << "irq" << j;
+      p_irq.push_back(new tlmt_core::tlmt_out<bool>(tmpName.str().c_str(),NULL));
+      j++;
+    }
+  }
+
+  tmpl(/**/)::VciMultiTty(sc_core::sc_module_name name,
+			  const soclib::common::IntTab &index,
+			  const soclib::common::MappingTable &mt,
+			  const char *first_name,
+			  ...)
+    : tlmt_core::tlmt_module(name),
+      m_index(index),
+      m_mt(mt),
+      p_vci("vci", new tlmt_core::tlmt_callback<VciMultiTty,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciMultiTty<vci_param>::callback))
+  {
     va_list va_tty;
-
     va_start (va_tty, first_name);
-    std::vector<std::string> args;
+    std::vector<std::string> names;
     const char *cur_tty = first_name;
     while (cur_tty) {
-        args.push_back(cur_tty);
-
-        cur_tty = va_arg( va_tty, char * );
+      names.push_back(cur_tty);
+      cur_tty = va_arg( va_tty, char * );
     }
     va_end( va_tty );
+    init(names);
+  }
 
-    for ( std::vector<std::string>::const_iterator i = args.begin();
-          i != args.end();
-          ++i )
-        m_term.push_back(soclib::common::allocateTty(*i));
+  tmpl(/**/)::VciMultiTty(sc_core::sc_module_name name,
+			  const soclib::common::IntTab &index,
+			  const soclib::common::MappingTable &mt,
+			  const std::vector<std::string> &names)
+    : tlmt_core::tlmt_module(name),
+      m_index(index),
+      m_mt(mt),
+      p_vci("vci", new tlmt_core::tlmt_callback<VciMultiTty,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciMultiTty<vci_param>::callback))
+  {
+    init(names);
+  }
 
-	r_counter=0;
 }
-
-
-}}
+}

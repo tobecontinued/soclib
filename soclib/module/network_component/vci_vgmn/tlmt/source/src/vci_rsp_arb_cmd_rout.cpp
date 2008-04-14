@@ -46,7 +46,6 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 
 	//printf("dest_index=%u\n",dest_index);
 	if ( dest_index >= 0 && dest_index<m_CmdArbRspRout.size()) {
-	  pkt->trdid = dest_index;
 	  m_CmdArbRspRout[dest_index]->put(pkt,m_index,time+m_delay);
 	} else {
 	  std::cout << "Erreur d'adressage. " << std::endl;

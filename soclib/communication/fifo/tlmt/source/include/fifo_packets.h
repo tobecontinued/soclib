@@ -37,7 +37,7 @@ class fifo_cmd_packet
 {
 public:
 	typename data_t::data_t *buf;
-	size_t nwords;
+  size_t nwords; //length;
 };
 
 }}

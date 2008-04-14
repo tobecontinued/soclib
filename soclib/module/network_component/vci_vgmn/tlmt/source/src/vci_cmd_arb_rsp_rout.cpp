@@ -177,7 +177,6 @@ namespace soclib { namespace tlmt {
       m_delay(dl),
       p_vci("vci", new tlmt_core::tlmt_callback<VciCmdArbRspRout,soclib::tlmt::vci_rsp_packet<vci_param> *>(this, &VciCmdArbRspRout<vci_param>::callback), &c0)
   {
-#warning WITH_THREAD
 
     m_selected_port=0;
 
