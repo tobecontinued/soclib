@@ -33,12 +33,13 @@
 
 namespace soclib { namespace tlmt {
 
-template<typename _addr_t, typename _data_t>
+template<typename _addr_t, typename _data_t, int nb>
 class VciParams
 {
 public:
 	typedef _addr_t addr_t;
 	typedef _data_t data_t;
+    static const int nbytes = nb;
 
 
 	typedef enum {

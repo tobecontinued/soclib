@@ -47,7 +47,7 @@ namespace soclib
 	m_read_error = (pkt->error != 0);
       else
 	m_read_error = false;
-      m_rsptime = time + tlmt_core::tlmt_time (pkt->length);
+      m_rsptime = time + tlmt_core::tlmt_time (pkt->nwords);
       m_vci_pending = false;
       m_rsp_received.notify (sc_core::SC_ZERO_TIME);
 
@@ -171,7 +171,7 @@ namespace soclib
 		  m_write_buffer[i] = m_wbuf.popData ();
 		  notlast = m_wbuf.notlastWrite ();
 		}
-	      m_cmd.length = i;
+	      m_cmd.nwords = i;
 	      p_vci.send (&m_cmd, c0.time ());
 	      m_vci_pending = true;
 	    }			// end if write burst
@@ -207,7 +207,7 @@ namespace soclib
 		  //m_cmd.contig = false;
 		  m_cmd.contig = true;
 		  m_cmd.buf = m_read_buffer;
-		  m_cmd.length = 1;
+		  m_cmd.nwords = 1;
 		  m_cmd.srcid = 0;
 		  m_cmd.trdid = 0;
 		  //m_cmd.pktid = 0;
@@ -231,7 +231,7 @@ namespace soclib
 		  //m_cmd.address = m_addresses_tab;
 		  m_cmd.address = data_addr & m_dcache.get_yzmask ();
 		  m_cmd.cmd = vci_param::CMD_READ;
-		  m_cmd.length = m_dcache.get_nwords ();
+		  m_cmd.nwords = m_dcache.get_nwords ();
 		  m_cmd.buf = m_read_buffer;
 		  m_cmd.be = 0xF;
 		  m_cmd.contig = true;
@@ -301,7 +301,7 @@ namespace soclib
 	         m_addresses_tab[0]=data_addr;
 	         m_cmd.address = m_addresses_tab ;
 	         m_cmd.cmd = vci_param::CMD_READ_LOCKED ;
-	         m_cmd.length = 1 ;
+	         m_cmd.nwords = 1 ;
 	         m_cmd.buf = m_read_buffer ;
 	         m_cmd.be = 0xF ;
 	         p_vci.send( &m_cmd, c0.time() ) ;
@@ -322,7 +322,7 @@ namespace soclib
 	         m_addresses_tab[0]=data_addr;
 	         m_cmd.address = m_addresses_tab ;
 	         m_cmd.cmd = vci_param::CMD_WRITE_COND ;
-	         m_cmd.length = 1 ;
+	         m_cmd.nwords = 1 ;
 	         m_write_buffer[0] = data_wdata ;
 	         m_cmd.buf = m_write_buffer ;
 	         m_cmd.be = 0xF ;
@@ -352,7 +352,7 @@ namespace soclib
 	      //m_cmd.address = m_addresses_tab;
 	      m_cmd.address = ins_addr & m_icache.get_yzmask ();
 	      m_cmd.cmd = vci_param::CMD_READ;
-	      m_cmd.length = m_icache.get_nwords ();
+	      m_cmd.nwords = m_icache.get_nwords ();
 	      m_cmd.buf = m_read_buffer_ins;
 	      m_cmd.be = 0xF;
 	      m_cmd.contig = true;

@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, alain
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     Francois Pecheux <fancois.pecheux@lip6.fr>
+ *     Francois Pecheux <francois.pecheux@lip6.fr>
  *     Alain Greiner <alain.greiner@lip6.fr>
  */
 
@@ -53,7 +53,6 @@ template<typename vci_param>
 class vci_rsp_packet
 {
 public:
-	typename vci_param::cmd_t cmd;
 	size_t nwords;
 	uint32_t error;
 	uint32_t srcid;

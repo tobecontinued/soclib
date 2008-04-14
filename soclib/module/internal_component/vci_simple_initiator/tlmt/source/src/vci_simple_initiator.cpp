@@ -52,6 +52,7 @@ tmpl(void)::behavior()
 	uint32_t localbuf[32];
 
 	for(;;) {
+std::cout << "ici" << std::endl;
                 cmd.cmd = vci_param::CMD_READ;
                 //addresses[0] = 0xBFC00000;
                 //cmd.address = addresses;
@@ -59,7 +60,7 @@ tmpl(void)::behavior()
                 cmd.be = 0xF;
                 cmd.contig = true;
                 cmd.buf = localbuf;
-                cmd.length = 1;
+                cmd.nwords = 1;
                 cmd.srcid = 0;
                 cmd.trdid = 0;
                 cmd.pktid = 0;
@@ -84,7 +85,7 @@ tmpl(void)::behavior()
                 cmd.be = 0xF;
                 cmd.contig = true;
                 cmd.buf = localbuf;
-                cmd.length = 1;
+                cmd.nwords = 1;
                 cmd.srcid = 0;
                 cmd.trdid = 0;
                 cmd.pktid = 0;

@@ -11,4 +11,5 @@ todo = Platform('tlmt', 'top.cpp',
 	],
 	addr_t = 'uint32_t',
 	data_t = 'uint32_t',
+	nbytes = '4',
 )

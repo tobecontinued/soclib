@@ -13,7 +13,7 @@
 
 int sc_main(int argc, char **argv)
 {
-	typedef soclib::tlmt::VciParams<uint32_t,uint32_t> vci_param;
+	typedef soclib::tlmt::VciParams<uint32_t,uint32_t,4> vci_param;
 
 	// Avoid repeating these everywhere
 	using soclib::common::IntTab;
@@ -39,7 +39,7 @@ int sc_main(int argc, char **argv)
 	//soclib::tlmt::VciSimpleTarget<vci_param> t("target");
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
-	soclib::tlmt::VciRam<vci_param> ram("ram", IntTab(0), maptab, loader);
+	soclib::tlmt::VciRam<vci_param> ram("ram", 0, IntTab(0), maptab, loader);
 	soclib::tlmt::VciMultiTty<vci_param> tty("tty", IntTab(1), maptab, "tty0", NULL);
 
 	std::cout << "ram initialisee" << std::endl;

@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, nipo
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <fancois.pecheux@lip6.fr>
+ *     Francois Pecheux <francois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  */
 
@@ -179,7 +179,6 @@ namespace soclib { namespace tlmt {
   {
 #warning WITH_THREAD
 
-    //std::cout << "WITH_THREAD" << std::endl;
     m_selected_port=0;
 
     fifos = new fifo_struct<vci_param>[m_nbinit];

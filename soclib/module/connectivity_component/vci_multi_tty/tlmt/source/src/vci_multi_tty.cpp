@@ -62,6 +62,10 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
                         return callback_read(seg_index,s,pkt,time,private_data);
                 case vci_param::CMD_WRITE:
                         return callback_write(seg_index,s,pkt,time,private_data);
+		case vci_param::CMD_LOCKED_READ:
+		case vci_param::CMD_STORE_COND:
+                	return m_return;
+			break;
                 }
                 return m_return;
         }
@@ -115,15 +119,15 @@ tmpl(tlmt_core::tlmt_return&)::callback_write(size_t seg_index,
 
 	// std::cout << "callback_write" << std::endl;
         //rsp.cmd=pkt->cmd;
-        rsp.length=pkt->length;
+        rsp.nwords=pkt->nwords;
         rsp.srcid=pkt->srcid;
         rsp.pktid=pkt->pktid;
         rsp.trdid=pkt->trdid;
 
-        p_vci.send(&rsp, time+tlmt_core::tlmt_time(pkt->length+5));
-        m_return.set_time(time+tlmt_core::tlmt_time(pkt->length+5));
+        p_vci.send(&rsp, time+tlmt_core::tlmt_time(pkt->nwords+5));
+        m_return.set_time(time+tlmt_core::tlmt_time(pkt->nwords+5));
 
-	p_out.send(true, time+tlmt_core::tlmt_time(pkt->length+5));
+	p_out.send(true, time+tlmt_core::tlmt_time(pkt->nwords+5));
 	return m_return;
 }
 

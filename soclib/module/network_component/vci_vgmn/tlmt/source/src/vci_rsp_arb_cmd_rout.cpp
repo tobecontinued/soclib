@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, nipo
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <fancois.pecheux@lip6.fr>
+ *     Francois Pecheux <francois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  */
 
@@ -40,7 +40,7 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 {
 	// std::cout << "VciRspArbCmdRout::callback" << std::endl;
 
-	uint32_t address = pkt->address[0];
+	uint32_t address = pkt->address;
 	//printf("address=%8.8x\n",address);
 	unsigned int dest_index = m_routing_table[address];
 
@@ -50,7 +50,6 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 	  m_CmdArbRspRout[dest_index]->put(pkt,m_index,time+m_delay);
 	} else {
 	  std::cout << "Erreur d'adressage. " << std::endl;
-#warning return error
 	}
 	return m_return;
 }

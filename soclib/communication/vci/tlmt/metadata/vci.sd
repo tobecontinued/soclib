@@ -47,6 +47,7 @@ Module('tlmt:vci_param',
 	   tmpl_parameters = [
 		parameter.Int('addr_t'),
 		parameter.Int('data_t'),
+		parameter.Int('nbytes'),
 		],
 	   header_files = ['../source/include/vci_param.h',],
 )
