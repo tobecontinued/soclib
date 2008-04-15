@@ -62,6 +62,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		r_period[timer] = data;
 		break;
 	}
+    m_cpt_write++;
 	return true;
 }
 
@@ -91,6 +92,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 		data = r_irq[timer].read();
 		break;
 	}
+    m_cpt_read++;
 
 	return true;
 }
@@ -99,6 +101,8 @@ tmpl(void)::transition()
 {
 	if (!p_resetn) {
 		m_vci_fsm.reset();
+        m_cpt_read = 0;
+        m_cpt_write = 0;
 
 		for (size_t i = 0 ; i < m_ntimer ; i++) {
 			r_value[i] = 0;

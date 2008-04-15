@@ -78,6 +78,10 @@ tmpl(void)::transition()
 		for (size_t i=0; i<m_segment.size() / vci_param::B; ++i)
 			m_contents[i] = false;
 		r_vci_fsm = IDLE;
+        m_cpt_read = 0; 
+        m_cpt_write = 0;
+        m_cpt_error = 0;
+        m_cpt_idle = 0; 
 		return;
 	}
 
@@ -101,13 +105,16 @@ tmpl(void)::transition()
 				r_buf_value = m_contents[cell];
 				m_contents[cell] = true;
 				r_vci_fsm = READ_RSP;
+                m_cpt_read++;
 				break;
 			case vci_param::CMD_WRITE:
 				m_contents[cell] = false;
 				r_vci_fsm = WRITE_RSP;
+                m_cpt_write++;
 				break;
 			default:
 				r_vci_fsm = ERROR_RSP;
+                m_cpt_error++;
 				break;
 			}
 		}
@@ -126,6 +133,7 @@ tmpl(void)::transition()
         // randomly add a dummy cycle to get rid of live locks
 	case WAIT_IDLE:
         r_vci_fsm = IDLE;
+        m_cpt_idle++;
         break;
 	}
 }

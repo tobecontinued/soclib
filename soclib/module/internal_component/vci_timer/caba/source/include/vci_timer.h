@@ -60,6 +60,10 @@ private:
     sc_signal<int> *r_mode;
     sc_signal<bool> *r_irq;
 
+    // Activity counters
+    uint32_t m_cpt_read;   // Count READ access
+    uint32_t m_cpt_write;  // Count WRITE access
+
 protected:
     SC_HAS_PROCESS(VciTimer);
 

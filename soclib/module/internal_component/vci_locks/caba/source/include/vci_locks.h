@@ -58,6 +58,12 @@ class VciLocks
     sc_signal<typename vci_param::eop_t>   r_buf_eop;
     sc_signal<bool>   r_buf_value;
 
+    // Activity counters
+    uint32_t m_cpt_read;   // READ (teset and set) access 
+    uint32_t m_cpt_write;  // WRITE (reset) access
+    uint32_t m_cpt_error;  // ERROR count
+    uint32_t m_cpt_idle;   // IDLE cycles count
+
 	soclib::common::Segment m_segment;
 	bool *m_contents;
 

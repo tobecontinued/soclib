@@ -56,6 +56,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
                 m_term[term_no]->putc( tmp[i] );
         } else
             m_term[term_no]->putc( _data );
+        m_cpt_write++;
 		return true;
 	default:
 		return false;
@@ -81,6 +82,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
             data = tmp;
         }
         return true;
+        m_cpt_read++;
 	default:
 		return false;
 	}

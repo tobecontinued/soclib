@@ -80,6 +80,11 @@ private:
 	void reset();
 
 	void trace(sc_trace_file &tf, const std::string base_name, unsigned int what);
+
+    // Activity counters
+    uint32_t m_cpt_read;   // Count READ access
+    uint32_t m_cpt_write;  // Count WRITE access
+    uint32_t m_cpt_idle;   // Count IDLE Cycles
 };
 
 }}

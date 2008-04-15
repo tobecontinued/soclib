@@ -56,6 +56,11 @@ private:
     unsigned long r_counter;
 
 	void init(const std::vector<std::string> &names );
+
+    // Activity counters
+    uint32_t m_cpt_read;   // READ access
+    uint32_t m_cpt_write;  // WRITE access
+
 protected:
     SC_HAS_PROCESS(VciMultiTty);
 

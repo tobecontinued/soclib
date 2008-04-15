@@ -131,6 +131,9 @@ tmpl(void)::reset()
 	for ( size_t i=0; i<m_vci_fsm.nbSegments(); ++i ) {
 		memset(&m_contents[i][0], 0, m_vci_fsm.getSize(i));
 	}
+    m_cpt_read = 0;
+    m_cpt_write = 0;
+    m_cpt_idle = 0;
 }
 
 tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
@@ -150,6 +153,7 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
         mask |= 0xff000000;
     
     tab[index] = (cur & ~mask) | (data & mask);
+    m_cpt_write++;
 
     return true;
 }
@@ -157,6 +161,7 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
 tmpl(bool)::on_read(size_t seg, vci_addr_t addr, vci_data_t &data )
 {
 	data = m_contents[seg][addr / vci_param::B];
+    m_cpt_read++;
 	return true;
 }
 
