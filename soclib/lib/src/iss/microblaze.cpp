@@ -29,7 +29,7 @@
  * Fairly complete rewritting and adaptation to the new Iss stuff by
  * Fred during the winter vacations of the same year.
 \*/
-#define MBDEBUG 0
+#define MBDEBUG 1
 
 #include "microblaze.h"
 #include "soclib_endian.h"
@@ -250,8 +250,8 @@ namespace soclib {
 
       void MicroBlazeIss::step(void)
       {
-         bool branch;
-         int  next_pc;
+         bool branch = 0xdeadbeef;
+         int  next_pc = 0xdeadbeef;
          /*\
           * Local variable used to build the value send on the
           * interconnect.
@@ -265,8 +265,8 @@ namespace soclib {
          char ins_opcode;
          int  ins_rd;
          int  ins_ra;
-         int  ins_rb;
-         int  ins_imm;
+         int  ins_rb = 0xdeadbeef;
+         int  ins_imm = 0xdeadbeef;
 
 
          bool exception = false;
@@ -761,29 +761,38 @@ printf("lwi r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                break;
 
             case OP_MFS:
-#if MBDEBUG
-printf("mfs r%d, r%d\n", ins_rd, ins_imm & 7);
-#endif
                if ((ins_imm & 0xc000) == 0xc000) { // mts
                   switch(ins_imm & 0x7) {
                      case 0x1:
+#if MBDEBUG
+printf("mts r%d, r%d\n", ins_rd, ins_imm & 7);
+#endif
                         r_msr = r_gpr[ins_ra];
                         break;
                      default:
-                        printf("op_mts has some errors, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
+                        printf("mts has some errors, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                         break;
                   }
                } else if ((ins_imm & 0xc000) == 0x0) { //msrclr or msrset
-                  if (ins_ra == 0x0) { //msrset
+                  if ((ins_ra & 1) == 0x0) { //msrset
+#if MBDEBUG
+printf("msrset r%d, %d\n", ins_rd, ins_imm & 7);
+#endif
                      r_gpr[ins_rd] = r_msr;
                      r_msr |= ins_imm;
-                  } else if (ins_ra == 0x1) { //msrclr
+                  } else if ((ins_ra & 1)== 0x1) { //msrclr
+#if MBDEBUG
+printf("msrclr r%d, %d\n", ins_rd, ins_imm & 7);
+#endif
                      r_gpr[ins_rd] = r_msr;
                      r_msr &= ~ins_imm;
                   } else {
                      printf("msrclr or msrset has some errors, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                   }
                } else if ((ins_imm & 0xc000) == 0x8000) { //mfs
+#if MBDEBUG
+printf("mfs r%d, r%d\n", ins_rd, ins_imm & 7);
+#endif
                   switch (ins_imm &0x7) {
                      case 0x0:
                         r_gpr[ins_rd] = r_pc;
@@ -802,7 +811,7 @@ printf("mfs r%d, r%d\n", ins_rd, ins_imm & 7);
                         break;
 
                      default:
-                        printf("op_mfs has some errors, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
+                        printf("mfs has some errors, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
                         break;
                   }
                }
@@ -1068,7 +1077,7 @@ printf("xori r%d, r%d, 0x%x\n", ins_rd, ins_ra, ins_imm);
                break;
 
             default :
-               fprintf(stderr, "Found an illegal instruction op_code, please check r%d, r%d, r%d\n", ins_rd, ins_ra, ins_rb);
+               fprintf(stderr, "Found an illegal instruction op_code at pc = 0x%08x, please check r%d, r%d, r%d\n", r_pc, ins_rd, ins_ra, ins_rb);
                break;
 
          }
