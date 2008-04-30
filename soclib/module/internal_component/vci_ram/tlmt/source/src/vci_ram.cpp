@@ -69,15 +69,14 @@ namespace soclib { namespace tlmt {
     std::cout << "[RAM " << m_id <<"] Receive from source " << pkt->srcid <<" a Read packet " << pkt->pktid << " with time = "  << time << std::endl;
 #endif
 
-    if (pkt->contig) {
-      for (size_t i=0;i<pkt->nwords;i++){
-	pkt->buf[i]= m_contents[segIndex][((pkt->address+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes];
-      }
-    }
-    else{
-      for (size_t i=0;i<pkt->nwords;i++){
-	pkt->buf[i]= m_contents[segIndex][(pkt->address - s.baseAddress()) / vci_param::nbytes]; // always write in the same address
-      }
+    typename vci_param::addr_t address;
+    for (size_t i=0;i<pkt->nwords;i++){
+      if (pkt->contig) 
+	address = (pkt->address+(i*vci_param::nbytes)) - s.baseAddress();
+      else
+	address = pkt->address - s.baseAddress(); //always the same address
+
+      pkt->buf[i]= m_contents[segIndex][address / vci_param::nbytes];
     }
 
     tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords + 5); 
@@ -109,17 +108,15 @@ namespace soclib { namespace tlmt {
     std::cout << "[RAM " << m_id <<"] Receive from source " << pkt->srcid <<" a Locked Read packet " << pkt->pktid << " with time = "  << time << std::endl;
 #endif
 
-    if (pkt->contig) {
-      for (size_t i=0; i<pkt->nwords; i++){
-	pkt->buf[i]= m_contents[segIndex][((pkt->address+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes];
-	m_atomic.doLoadLinked(pkt->address + (i*vci_param::nbytes), pkt->srcid);
-      }
-    }
-    else{
-      for (size_t i=0; i<pkt->nwords; i++){
-	pkt->buf[i]= m_contents[segIndex][(pkt->address - s.baseAddress()) / vci_param::nbytes]; // always write in the same address
-	m_atomic.doLoadLinked(pkt->address, pkt->srcid);
-      }
+    typename vci_param::addr_t address;
+    for (size_t i=0; i<pkt->nwords; i++){
+      if (pkt->contig)
+	address = (pkt->address+(i*vci_param::nbytes)) - s.baseAddress();
+      else
+	address = pkt->address - s.baseAddress(); //always the same address
+
+      pkt->buf[i]= m_contents[segIndex][address / vci_param::nbytes];
+      m_atomic.doLoadLinked(address, pkt->srcid);
     }
 
     tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords + 5); 
@@ -157,17 +154,20 @@ namespace soclib { namespace tlmt {
     }     
 #endif
 
-    uint32_t index;
+    typename vci_param::addr_t address;
     for (size_t i=0; i<pkt->nwords; i++){
       if(pkt->contig)
-	index = ((pkt->address+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes;
+	address = (pkt->address+(i*vci_param::nbytes)) - s.baseAddress();
       else
-	index = (pkt->address - s.baseAddress()) / vci_param::nbytes;
+	address = pkt->address - s.baseAddress();
 
-      ram_t *tab = m_contents[segIndex];
+      m_atomic.accessDone(address);
+
+      uint32_t index   = address / vci_param::nbytes;
+      ram_t *tab       = m_contents[segIndex];
       unsigned int cur = tab[index];
-      uint32_t mask = 0;
-      unsigned int be=pkt->be;
+      uint32_t mask    = 0;
+      unsigned int be  = pkt->be;
 
       if ( be & 1 )
 	mask |= 0x000000ff;
@@ -221,22 +221,18 @@ namespace soclib { namespace tlmt {
 
     for (size_t i=0; i<pkt->nwords; i++){
       if(pkt->contig)
-	address = (pkt->address + (i*vci_param::nbytes));
+	address = (pkt->address + (i*vci_param::nbytes)) - s.baseAddress();
       else
-	address = pkt->address;
+	address = pkt->address - s.baseAddress();
 	
       if(m_atomic.isAtomic(address,pkt->srcid)){
 	m_atomic.accessDone(address);
       
-#if VCI_RAM_DEBUG
-	std::cout << "[RAM " << m_id << "] STORE CONDITIONNEL OK" << std::endl;
-#endif
-	
-	uint32_t index = (address - s.baseAddress()) / vci_param::nbytes;
-	ram_t *tab = m_contents[segIndex];
+	uint32_t index   = address / vci_param::nbytes;
+	ram_t *tab       = m_contents[segIndex];
 	unsigned int cur = tab[index];
-	uint32_t mask = 0;
-	unsigned int be=pkt->be;
+	uint32_t mask    = 0;
+	unsigned int be  = pkt->be;
 	
 	if ( be & 1 )
 	  mask |= 0x000000ff;
@@ -248,14 +244,10 @@ namespace soclib { namespace tlmt {
 	  mask |= 0xff000000;
       
 	tab[index] = (cur & ~mask) | (pkt->buf[i] & mask);
-	pkt->buf[i] = 1;
+	pkt->buf[i] = 0;
       }
       else{
-	pkt->buf[i] = 0;
-
-#if VCI_RAM_DEBUG
-	std::cout << "[RAM " << m_id << "] STORE CONDITIONNEL NOT OK" << std::endl;
-#endif
+	pkt->buf[i] = 1;
       }
     }
 
