@@ -26,7 +26,7 @@
 
 PLATFORM_DESC?=platform_desc
 SOCLIB_CC_ARGS?=-p $(PLATFORM_DESC)
-SOCLIB_CC=soclib-cc
+SOCLIB_CC=soclib-cc -v
 SOCLIB:=$(shell soclib-cc --getpath)
 TEST_OUTPUT=test.out
 
