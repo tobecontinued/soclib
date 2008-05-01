@@ -32,7 +32,7 @@
  * Authors: Daniel Gracia Perez (daniel.gracia-perez@cea.fr)
  */
 
-#include "arm966.h"
+#include "arm7tdmi.h"
 #include "unisim/component/cxx/processor/arm/cpu.tcc"
 #include "unisim/component/cxx/processor/arm/exception.tcc"
 
@@ -43,7 +43,7 @@ namespace processor {
 namespace arm {
 
 template
-class CPU<ARM966E_S_Config>;
+class CPU<ARM7TDMI_Config>;
 
 }
 }
@@ -60,24 +60,22 @@ namespace {
 static inline std::string mkname(uint32_t no)
 {
     char tmp[32];
-    snprintf(tmp, 32, "arm966es_iss%d", (int)no);
+    snprintf(tmp, 32, "arm7tdmi_iss%d", (int)no);
     return std::string(tmp);
 }
 
 }
 
 typedef unisim::component::cxx::processor::arm::CPU<
-		unisim::component::cxx::processor::arm::ARM966E_S_Config>
+		unisim::component::cxx::processor::arm::ARM7TDMI_Config>
 		inherited_CPU;
 
-ARM966Iss::ARM966Iss(uint32_t ident) :
+ARM7TDMIIss::ARM7TDMIIss(uint32_t ident) :
 	inherited_CPU(this),
 	Iss(mkname(ident), ident) {
-	arm966es_initram = false;
-	arm966es_vinithi = true;
 }
 
-ARM966Iss::~ARM966Iss() {}
+ARM7TDMIIss::~ARM7TDMIIss() {}
 
 
 /************************************************************************/
@@ -87,44 +85,44 @@ ARM966Iss::~ARM966Iss() {}
 // ISS <-> Wrapper API
  	
 void 
-ARM966Iss::
+ARM7TDMIIss::
 reset() {
 	// reinitialize variables to its initial state
 	Reset();
 }
  	
 uint32_t 
-ARM966Iss::
+ARM7TDMIIss::
 isBusy() {
 	return IsBusy();
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 step() {
 	Step();
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 nullStep( uint32_t time_passed) {
 	NullStep(time_passed);
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 getInstructionRequest(bool &req, uint32_t &addr) const {
 	GetInstructionRequest(req, addr);
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 setInstruction(bool error, uint32_t val) {
 	SetInstruction(error, val);
 }
  	
 void 
-ARM966Iss::
+ARM7TDMIIss::
 getDataRequest(bool &req, enum DataAccessType &type,
              uint32_t &addr, uint32_t &data) const {
 	// TODO
@@ -134,67 +132,67 @@ getDataRequest(bool &req, enum DataAccessType &type,
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 setDataResponse(bool error, uint32_t rdata) {
 	SetDataResponse(error, rdata);
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 setWriteBerr() {
 	SetWriteBerr();
 }
  	
 void 
-ARM966Iss::
+ARM7TDMIIss::
 setIrq(uint32_t irq) {
 	SetIrq(irq);
 }
 	
 unsigned int 
-ARM966Iss::
+ARM7TDMIIss::
 getDebugRegisterCount() const {
 	return GetDebugRegisterCount();
 }
 
 uint32_t 
-ARM966Iss::
+ARM7TDMIIss::
 getDebugRegisterValue(unsigned int reg) const {
 	return GetDebugRegisterValue(reg);
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 setDebugRegisterValue(unsigned int reg, uint32_t value) {
 	SetDebugRegisterValue(reg, value);
 }
 
 size_t 
-ARM966Iss::
+ARM7TDMIIss::
 getDebugRegisterSize(unsigned int reg) const {
 	return GetDebugRegisterSize(reg);
 }
 	
 uint32_t 
-ARM966Iss:: 
+ARM7TDMIIss:: 
 getDebugPC() const {
 	return GetDebugPC();
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 setDebugPC(uint32_t pc) {
 	SetDebugPC(pc);
 }
 
 void
-ARM966Iss::
+ARM7TDMIIss::
 setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
 	SetICacheInfo(line_size, assoc, n_lines);
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
 	SetDCacheInfo(line_size, assoc, n_lines);
 }
@@ -208,73 +206,73 @@ setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
 /************************************************************************/
 	
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrInvalidateBlock(uint32_t set, uint32_t way) {
 	// TODO
 }
 
 void
-ARM966Iss::
+ARM7TDMIIss::
 PrFlushBlock(uint32_t set, uint32_t way) {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrCleanBlock(uint32_t set, uint32_t way) {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrReset() {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrInvalidate() {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrInvalidateSet(uint32_t set) {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrInvalidateBlock(address_t addr) {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrFlushBlock(address_t addr) {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrCleanBlock(address_t addr) {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrZeroBlock(address_t addr) {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrWrite(address_t addr, const uint8_t *buffer, uint32_t size) {
 	// TODO
 }
 
 void 
-ARM966Iss::
+ARM7TDMIIss::
 PrRead(address_t addr, uint8_t *buffer, uint32_t size) {
 	// TODO
 }

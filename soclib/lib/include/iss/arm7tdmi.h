@@ -33,8 +33,8 @@
  */
 
 
-#ifndef _SOCLIB_ARM966_ISS_H_
-#define _SOCLIB_ARM966_ISS_H_
+#ifndef _SOCLIB_ARM7TDMI_ISS_H_
+#define _SOCLIB_ARM7TDMI_ISS_H_
 
 #include "unisim/component/cxx/processor/arm/cpu.hh"
 #include "unisim/component/cxx/processor/arm/memory_op.hh"
@@ -44,11 +44,11 @@
 namespace soclib {
 namespace common {
 
-class ARM966Iss :
+class ARM7TDMIIss :
 	public unisim::component::cxx::processor::arm::CPU<
-		unisim::component::cxx::processor::arm::ARM966E_S_Config> ,
+		unisim::component::cxx::processor::arm::ARM7TDMI_Config> ,
 	public unisim::component::cxx::processor::arm::CacheInterface< 
-		unisim::component::cxx::processor::arm::ARM966E_S_Config::address_t>,
+		unisim::component::cxx::processor::arm::ARM7TDMI_Config::address_t>,
 	public soclib::common::Iss { 
 
 private:
@@ -57,8 +57,8 @@ private:
 public:
 	static const int n_irq = 2;
 	
-	ARM966Iss(uint32_t ident);
-	~ARM966Iss();
+	ARM7TDMIIss(uint32_t ident);
+	~ARM7TDMIIss();
 
 
 	/************************************************************************/
@@ -140,5 +140,5 @@ public:
 } // end of namespace common
 } // end of namespace soclib
 
-#endif // _SOCLIB_ARM966_ISS_H_
+#endif // _SOCLIB_ARM7TDMI_ISS_H_
 

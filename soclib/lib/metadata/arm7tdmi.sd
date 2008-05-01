@@ -1,0 +1,24 @@
+
+# -*- python -*-
+
+Module('common:arm7tdmi',
+	classname = 'soclib::common::ARM7TDMIIss',
+	header_files = ["../include/iss/arm7tdmi.h",
+		"../include/iss/unisim/component/cxx/processor/arm/cpu.hh",
+		"../include/iss/unisim/component/cxx/processor/arm/cpu.tcc",
+		"../include/iss/unisim/component/cxx/processor/arm/cpu.soclib_step_cycle.tcc",
+		"../include/iss/unisim/component/cxx/processor/arm/config.hh",
+		"../include/iss/unisim/component/cxx/processor/arm/exception.hh",
+		"../include/iss/unisim/component/cxx/processor/arm/exception.tcc",
+		"../include/iss/unisim/component/cxx/processor/arm/cache/config.hh",
+		"../include/iss/unisim/component/cxx/processor/arm/cache/types.hh",
+	],
+	implementation_files = [
+		"../src/iss/unisim/component/cxx/processor/arm/coprocessor/arm966e_s/cp15.cc",
+		"../src/iss/unisim/component/cxx/processor/arm/tcm/tcm.cc",
+		"../src/iss/arm7tdmi.cpp",
+		],
+	   constants = {
+	'n_irq':2
+	},
+)
