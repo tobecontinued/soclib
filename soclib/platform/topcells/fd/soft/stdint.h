@@ -37,9 +37,9 @@ typedef int int32_t;
 typedef short int16_t;
 typedef char int8_t;
 
-typedef int ssize_t;
 typedef int off_t;
 
-typedef uint32_t size_t;
+typedef unsigned int size_t;
+typedef int ssize_t;
 
 #endif
