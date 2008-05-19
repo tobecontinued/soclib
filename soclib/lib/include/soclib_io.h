@@ -29,6 +29,8 @@
 
 #include <stdint.h>
 
+#define DO_MEMORY_SYNC asm volatile("" ::: "memory")
+
 static inline uint32_t __uint32_swap(uint32_t x)
 {
     return (
@@ -58,6 +60,7 @@ static inline void soclib_io_set(void *comp_base, size_t reg, uint32_t val)
     val = __uint32_swap(val);
 #endif
 	*addr = val;
+    DO_MEMORY_SYNC;
 #endif
 }
 
@@ -76,6 +79,7 @@ static inline uint32_t soclib_io_get(void *comp_base, size_t reg)
 #ifdef SOCLIB_IO_BIG_ENDIAN
     val = __uint32_swap(val);
 #endif
+    DO_MEMORY_SYNC;
 	return val;
 #endif
 }
@@ -86,6 +90,7 @@ static inline void soclib_io_write8(void *comp_base, size_t reg, uint8_t val)
 	addr += reg;
 
 	*(uint8_t *)addr = val;
+    DO_MEMORY_SYNC;
 }
 
 static inline uint8_t soclib_io_read8(void *comp_base, size_t reg)
@@ -93,6 +98,7 @@ static inline uint8_t soclib_io_read8(void *comp_base, size_t reg)
 	volatile uint32_t *addr = (uint32_t *)comp_base;
 	addr += reg;
 
+    DO_MEMORY_SYNC;
 	return *(uint8_t *)addr;
 }
 
