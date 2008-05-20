@@ -448,6 +448,8 @@ tmpl(void)::transition()
             if ( dr_cached ) {
                 if ( ! dcache_hit )
                     r_dcache_fsm = DCACHE_MISS_REQ;
+                else
+                    r_dcache_fsm = DCACHE_IDLE;
                 break;
             }
         case DCacheSignals::READ_LINKED:
