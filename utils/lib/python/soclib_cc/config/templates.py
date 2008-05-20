@@ -80,22 +80,28 @@ def getTool(self, name):
 		else:
 			return [tool]
 	return [self.toolchain.prefix+name]
-def getCflags(self):
-	toolchain_cflags = getattr(self.toolchain, self.mode+'_cflags')
+def getCflags(self, mode=None):
+	if mode is None:
+		mode = self.mode
+	toolchain_cflags = getattr(self.toolchain, mode+'_cflags')
 	toolchain_cflags = toolchain_cflags + self.toolchain.cflags
 	return toolchain_cflags+self.cflags+self.systemc.cflags
-def getLibs(self):
-	toolchain_libs = getattr(self.toolchain, self.mode+'_libs')
+def getLibs(self, mode=None):
+	if mode is None:
+		mode = self.mode
+	toolchain_libs = getattr(self.toolchain, mode+'_libs')
 	toolchain_libs = toolchain_libs + self.toolchain.libs
 	return self.systemc.libs+toolchain_libs
-def reposFile(self, name):
+def reposFile(self, name, mode=None):
+	if mode is None:
+		mode = self.mode
 	import os, sys
 	stupid_platform = sys.platform in ['cygwin']
 	if stupid_platform:
 		if len(name)>128:
 			name, ext = os.path.splitext(name)
 			name = 'long_name_'+hex(hash(name))+ext
-	r = os.path.join(self.repos, self.mode, name)
+	r = os.path.join(self.repos, mode, name)
 	if stupid_platform:
 		r = r.replace(':','_')
 	return r

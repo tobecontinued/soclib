@@ -104,6 +104,13 @@ class StringArray(Base):
 						  +["NULL"])
 		return 'stringArray(%s)'%(elems)
 
+class IntArray(Base):
+	valid_types = (list)
+	def instValue(self, env, param):
+		v = Base.instValue(self, env, param)
+		elems = ', '.join(map(str, v))
+		return 'intArray(%d, %s)'%(len(v), elems)
+
 class IntTab(Base):
 	valid_types = (tuple, list)
 	def instValue(self, env, param):

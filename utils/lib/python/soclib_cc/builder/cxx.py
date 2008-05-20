@@ -34,8 +34,9 @@ from soclib_cc.config import config, Joined
 class CCompile(action.Action):
 	priority = 100
 	tool = 'CC'
-	def __init__(self, dest, src, defines = {}, inc_paths = []):
+	def __init__(self, dest, src, defines = {}, inc_paths = [], force_debug = False):
 		action.Action.__init__(self, [dest], [src], defines = defines, inc_paths = inc_paths)
+		self.mode = force_debug and "debug" or None
 	def argSort(self, args):
 		libdirs = filter(lambda x:str(x).startswith('-L'), args)
 		libs = filter(lambda x:str(x).startswith('-l'), args)
@@ -51,7 +52,7 @@ class CCompile(action.Action):
 		args = config.getTool(self.tool)
 		args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
 		args += map(lambda x:'-I%s'%x, self.options['inc_paths'])
-		args += config.getCflags()
+		args += config.getCflags(self.mode)
 		return args
 	def _processDeps(self, filename):
 		filename.generator.process()

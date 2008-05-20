@@ -55,6 +55,7 @@ class Module:
 		'local' : False,
 		'extensions' : [],
 		'constants' : {},
+		"debug" : False,
 		}
 	tb_delta = -2
 

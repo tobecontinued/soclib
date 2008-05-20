@@ -38,6 +38,9 @@ def main():
 	todef = []
 	def define_callback(option, opt, value, parser):
 		todef.append(value)
+	todb = []
+	def buggy_callback(option, opt, value, parser):
+		todb.append(value)
 	parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
 	parser.add_option('-v', '--verbose', dest = 'verbose',
 					  action='store_true',
@@ -50,6 +53,9 @@ def main():
 					  help="Print evolution with a progress bar")
 	parser.add_option('-D', '--define', nargs = 1, type = "string",
 					  action='callback', callback = define_callback,
+					  help="cell_name:mode:DEFINE=VALUE")
+	parser.add_option('-b', '--buggy', nargs = 1, type = "string",
+					  action='callback', callback = buggy_callback,
 					  help="cell_name:mode:DEFINE=VALUE")
 	parser.add_option('-q', '--quiet', dest = 'quiet',
 					  action='store_true',
@@ -106,6 +112,8 @@ def main():
 			val = ''
 		Module.getRegistered(cell).addDefine(name, val)
 
+	for value in todb:
+		Module.getRegistered(value).setAttr('debug', True)
 
 	config.mode = opts.mode
 	config.verbose = opts.verbose

@@ -35,6 +35,8 @@ class TooSimple(Exception):
 
 class ComponentBuilder:
 	def __init__(self, spec, where, local = False):
+		self.force_debug = spec.descAttr('debug')
+		self.force_mode = self.force_debug and "debug" or None
 		self.specialization = spec
 #		print self.specialization
 		self.where = where
@@ -77,7 +79,7 @@ class ComponentBuilder:
 		source = self.cxxSource(filename)
 		if source:
 			tx = CxxSource(
-				config.reposFile(bn+".cpp"),
+				config.reposFile(bn+".cpp", self.force_mode),
 				source)
 			src = tx.dests[0]
 		else:
@@ -92,12 +94,13 @@ class ComponentBuilder:
 				os.path.dirname(filename),
 				t+'_'+bn+"."+config.toolchain.obj_ext)
 		else:
-			out = config.reposFile(bn+"."+config.toolchain.obj_ext)
+			out = config.reposFile(bn+"."+config.toolchain.obj_ext, self.force_mode)
 		return CxxCompile(
 			dest = out,
 			src = src,
 			defines = self.specialization.descAttr('defines'),
-			inc_paths = incls)
+			inc_paths = incls,
+			force_debug = self.force_debug)
 	def baseName(self):
 		basename = self.specialization.descAttr('classname')
 		tp = self.specialization.getTmplParams()
