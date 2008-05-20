@@ -78,6 +78,8 @@ public:
 
     AddressMaskingTable<uint32_t> getIdMaskingTable( const int level ) const;
     
+    addr_t *getCoherenceTable() const;
+
     void print( std::ostream &o ) const;
 
     friend std::ostream &operator << (std::ostream &o, const MappingTable &mt)

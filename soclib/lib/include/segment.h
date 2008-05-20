@@ -45,16 +45,22 @@ class Segment
     size_t m_size;
     IntTab m_target_index;
     bool   m_cacheability;
+    bool   m_initiator;
+    IntTab m_initiator_index;
 
 public:
     Segment( const std::string &name,
              addr_t base_address,
              size_t size,
-             const IntTab &index,
-             bool cacheability )
+             const IntTab &target_index,
+             bool cacheability,
+             bool initiator = false,
+             const IntTab &initiator_index = soclib::common::IntTab() )
             : m_name(name), m_base_address(base_address),
-              m_size(size), m_target_index(index),
-              m_cacheability(cacheability)
+              m_size(size), m_target_index(target_index),
+              m_cacheability(cacheability),
+              m_initiator(initiator),
+              m_initiator_index(initiator_index)
     {
     }
 
@@ -68,6 +74,8 @@ public:
         m_size = ref.m_size;
         m_target_index = ref.m_target_index;
         m_cacheability = ref.m_cacheability;
+        m_initiator = ref.m_initiator;
+        m_initiator_index = ref.m_initiator_index;
 
         return *this;
     }
@@ -87,6 +95,11 @@ public:
         return m_cacheability;
     }
 
+    inline bool initiator() const
+    {
+        return m_initiator;
+    }
+
     inline const std::string &name() const
     {
         return m_name;
@@ -95,6 +108,11 @@ public:
     inline const IntTab &index() const
     {
         return m_target_index;
+    }
+
+    inline const IntTab &initiator_index() const
+    {
+        return m_initiator_index;
     }
 
     bool isOverlapping( const Segment &other ) const;

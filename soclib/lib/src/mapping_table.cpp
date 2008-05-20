@@ -210,6 +210,22 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
     return adt;
 }
 
+MappingTable::addr_t *MappingTable::getCoherenceTable() const
+{
+    addr_t *ret = new addr_t[1<<m_level_id_bits.sum()];
+    std::list<Segment>::const_iterator i;
+    for ( i = m_segment_list.begin();
+          i != m_segment_list.end();
+          i++ ) {
+        if( i->initiator() ) {
+            int val = i->initiator_index()*m_level_id_bits;
+            assert( val < (1<<m_level_id_bits.sum()) );
+            ret[val] = i->baseAddress();
+        }
+    }
+    return ret;
+}
+
 void MappingTable::print( std::ostream &o ) const
 {
     std::list<Segment>::const_iterator i;

@@ -46,7 +46,10 @@ void Segment::print( std::ostream &o ) const
       << "@0x" << std::hex << m_base_address << ", "
       << "0x" << m_size << " bytes, "
       << m_target_index << ", "
-      << (m_cacheability?"cached":"uncached") << ">";
+      << (m_cacheability?"cached":"uncached");
+    if ( m_initiator )
+        o << " init " << m_initiator_index;
+    o << ">";
 }
 
 }}
