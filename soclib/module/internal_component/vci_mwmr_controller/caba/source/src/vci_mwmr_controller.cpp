@@ -217,7 +217,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
         if ( m_use_llsc )
-            assert(m_config_fifo->lock_address && "You must not configure lock address with a LL-SC protocol, looks like a protocol mismatch");
+            assert(m_config_fifo->lock_address==0 && "You must not configure lock address with a LL-SC protocol, looks like a protocol mismatch");
 		m_config_fifo->running = !!data;
 		return true;
 	}
@@ -776,6 +776,8 @@ tmpl(/**/)::VciMwmrController(
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
+
+    memset(m_all_state, 0, sizeof(*m_all_state)*m_n_all);
 
     portRegister("clk", p_clk);
     portRegister("resetn", p_resetn);
