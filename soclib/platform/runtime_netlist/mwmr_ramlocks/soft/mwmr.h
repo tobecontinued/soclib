@@ -33,11 +33,12 @@ typedef struct mwmr_s {
     const unsigned int width;
 	const unsigned int gdepth;
     uint32_t *const buffer;
+	uint32_t *lock;
 	volatile soclib_mwmr_status_s status;
 } mwmr_t;
 
-#define MWMR_INITIALIZER(width, depth, data) \
-	{ 0, width, width*depth, data, SOCLIB_MWMR_STATUS_INITIALIZER }
+#define MWMR_INITIALIZER(width, depth, data, lock)						   \
+	{ width, width*depth, data, (lock), SOCLIB_MWMR_STATUS_INITIALIZER }
 
 void
 mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,

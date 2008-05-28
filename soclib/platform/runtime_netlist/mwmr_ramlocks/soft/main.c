@@ -21,31 +21,34 @@
  * SOCLIB_GPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2008
+ *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
  *
  * Maintainers: nipo
  */
 
 #include "soclib/mwmr_controller.h"
-#include "stdint.h"
+#include "system.h"
+#include "mwmr.h"
 
-typedef struct mwmr_s {
-    const unsigned int width;
-	const unsigned int gdepth;
-    uint32_t *const buffer;
-	volatile soclib_mwmr_status_s status;
-} mwmr_t;
+#include "../segmentation.h"
 
-#define MWMR_INITIALIZER(width, depth, data) \
-	{ 0, width, width*depth, data, SOCLIB_MWMR_STATUS_INITIALIZER }
+static const int period[4] = {10000};
 
-void
-mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
-			  unsigned int no, const mwmr_t *mwmr );
+#define WIDTH 4
+#define DEPTH 16
 
-void mwmr_config( void *coproc, unsigned int no, const uint32_t val );
+int main(void)
+{
+	uputs("Hello from processor ");
+	putchar(procnum()+'0');
+	putchar('\n');
 
-uint32_t mwmr_status( void *coproc, unsigned int no );
+	uint32_t data[WIDTH*DEPTH];
+	mwmr_t mwmr = MWMR_INITIALIZER(WIDTH, DEPTH, data, (uint32_t*)base(LOCK));
 
-void mwmr_write( mwmr_t *mwmr, const void *buffer, size_t size );
-void mwmr_read( mwmr_t *mwmr, void *buffer, size_t size );
+	mwmr_hw_init(base(MWMR0), MWMR_FROM_COPROC, 0, &mwmr);
+	mwmr_hw_init(base(MWMR1), MWMR_TO_COPROC, 0, &mwmr);
+	while(1)
+		;
+	return 0;
+}

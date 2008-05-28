@@ -35,6 +35,7 @@ Module('caba:vci_mwmr_controller',
         parameter.Int('n_from_coproc'),
         parameter.Int('n_config'),
         parameter.Int('n_status'),
+        parameter.Bool('use_llsc'),
 	],
 	   extensions = [
 	'dsx:addressable=tgtid',

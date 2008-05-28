@@ -21,31 +21,50 @@
  * SOCLIB_GPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2008
+ *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
  *
  * Maintainers: nipo
  */
 
-#include "soclib/mwmr_controller.h"
-#include "stdint.h"
+#ifndef USER_H_
+#define USER_H_
 
-typedef struct mwmr_s {
-    const unsigned int width;
-	const unsigned int gdepth;
-    uint32_t *const buffer;
-	volatile soclib_mwmr_status_s status;
-} mwmr_t;
+#include "soclib/tty.h"
+#include "../segmentation.h"
 
-#define MWMR_INITIALIZER(width, depth, data) \
-	{ 0, width, width*depth, data, SOCLIB_MWMR_STATUS_INITIALIZER }
+#define base(x) (void*)(x##_BASE)
 
-void
-mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
-			  unsigned int no, const mwmr_t *mwmr );
+void uputs(const char *);
+void puti(const int i);
 
-void mwmr_config( void *coproc, unsigned int no, const uint32_t val );
+#ifdef __mips__
 
-uint32_t mwmr_status( void *coproc, unsigned int no );
+#define get_cp0(x, sel)									\
+({unsigned int __cp0_x;								\
+__asm__("mfc0 %0, $"#x", "#sel:"=r"(__cp0_x));	\
+__cp0_x;})
 
-void mwmr_write( mwmr_t *mwmr, const void *buffer, size_t size );
-void mwmr_read( mwmr_t *mwmr, void *buffer, size_t size );
+static inline int procnum()
+{
+    return (get_cp0(15,1)&0x3ff);
+}
+
+#endif
+
+static inline int putchar(const int x)
+{
+	soclib_io_write8(
+		base(TTY),
+		procnum()*TTY_SPAN+TTY_WRITE,
+		(char)x);
+	return x;
+}
+
+static inline int getc()
+{
+	return soclib_io_read8(
+		base(TTY),
+		procnum()*TTY_SPAN+TTY_READ);
+}
+
+#endif

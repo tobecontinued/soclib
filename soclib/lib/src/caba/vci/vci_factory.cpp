@@ -225,7 +225,8 @@ BaseModule& mwmr_controller(
         args.get<int>("n_to_coproc"),
         args.get<int>("n_from_coproc"),
         args.get<int>("n_config"),
-        args.get<int>("n_status") );
+        args.get<int>("n_status"),
+        (bool)args.get<int>("use_llsc") );
 }
 
 template<typename vci_param>

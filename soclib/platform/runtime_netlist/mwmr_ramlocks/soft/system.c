@@ -21,31 +21,48 @@
  * SOCLIB_GPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2008
+ *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
  *
  * Maintainers: nipo
  */
 
-#include "soclib/mwmr_controller.h"
-#include "stdint.h"
+#include "system.h"
+#include "soclib/timer.h"
 
-typedef struct mwmr_s {
-    const unsigned int width;
-	const unsigned int gdepth;
-    uint32_t *const buffer;
-	volatile soclib_mwmr_status_s status;
-} mwmr_t;
+void uputs(const char *str)
+{
+	while (*str)
+		putchar(*str++);
+}
 
-#define MWMR_INITIALIZER(width, depth, data) \
-	{ 0, width, width*depth, data, SOCLIB_MWMR_STATUS_INITIALIZER }
+void puti(const int i)
+{
+	if ( i>10 )
+		puti(i/10);
+	putchar(i%10+'0');
+}
 
-void
-mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
-			  unsigned int no, const mwmr_t *mwmr );
+void interrupt_ex_handler(
+	unsigned int type, void *execptr,
+	void *dataptr, void *regtable,
+	void *stackptr)
+{
+	uputs(__FUNCTION__);
+	putchar(' ');
+	puti(type);
+	putchar('\n');
+	while(1);
+}
 
-void mwmr_config( void *coproc, unsigned int no, const uint32_t val );
+void interrupt_sys_handler(unsigned int irq)
+{
+	uputs(__FUNCTION__);
+	putchar('\n');
+}
 
-uint32_t mwmr_status( void *coproc, unsigned int no );
-
-void mwmr_write( mwmr_t *mwmr, const void *buffer, size_t size );
-void mwmr_read( mwmr_t *mwmr, void *buffer, size_t size );
+void interrupt_hw_handler(unsigned int irq)
+{
+	uputs(__FUNCTION__);
+	puti(irq);
+	putchar('\n');
+}

@@ -21,31 +21,23 @@
  * SOCLIB_GPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2008
+ *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
  *
  * Maintainers: nipo
  */
 
-#include "soclib/mwmr_controller.h"
-#include "stdint.h"
+#ifndef STDINT_REPLACEMENT_H
+#define STDINT_REPLACEMENT_H
 
-typedef struct mwmr_s {
-    const unsigned int width;
-	const unsigned int gdepth;
-    uint32_t *const buffer;
-	volatile soclib_mwmr_status_s status;
-} mwmr_t;
+typedef unsigned int uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char uint8_t;
 
-#define MWMR_INITIALIZER(width, depth, data) \
-	{ 0, width, width*depth, data, SOCLIB_MWMR_STATUS_INITIALIZER }
+typedef int int32_t;
+typedef short int16_t;
+typedef char int8_t;
 
-void
-mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
-			  unsigned int no, const mwmr_t *mwmr );
+typedef int ssize_t;
+typedef uint32_t size_t;
 
-void mwmr_config( void *coproc, unsigned int no, const uint32_t val );
-
-uint32_t mwmr_status( void *coproc, unsigned int no );
-
-void mwmr_write( mwmr_t *mwmr, const void *buffer, size_t size );
-void mwmr_read( mwmr_t *mwmr, void *buffer, size_t size );
+#endif

@@ -33,7 +33,7 @@ vci_param<4,1,32,1,1,1,8,1,1,1>
 mapping table (8) (8) 0x00300000
 
 new caba vgmn "vgmn0"
-  param n_targets = 4
+  param n_targets = 5
   param n_initiators = 3
   param min_latency = 2
   param fifo_size = 8
@@ -44,7 +44,7 @@ new caba fifo_reader "reader0"
 
 new caba mwmr_controller "mwmr0"
   id (0)
-  param use_llsc = 1
+  param use_llsc = 0
   param n_from_coproc = 1
   param n_to_coproc = 0
   param n_config = 0
@@ -63,7 +63,7 @@ new caba fifo_writer "writer0"
 
 new caba mwmr_controller "mwmr1"
   id (1)
-  param use_llsc = 1
+  param use_llsc = 0
   param n_from_coproc = 0
   param n_to_coproc = 1
   param n_config = 0
@@ -105,3 +105,8 @@ new caba tty "tty0"
   segment "tty"   0xc0200000 0x00000100 uncached
   conn vci to vgmn0.to_target[3]
   param names = [ tty0 ]
+
+new caba locks "locks"
+  id (4)
+  segment "locks"   0xf0200000 0x00000100 uncached
+  conn vci to vgmn0.to_target[4]

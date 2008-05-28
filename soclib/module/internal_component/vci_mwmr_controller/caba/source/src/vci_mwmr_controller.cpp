@@ -48,6 +48,7 @@ struct fifo_state_s {
 	uint32_t status_address;
 	uint32_t depth;
 	uint32_t buffer_address;
+	uint32_t lock_address;
 	bool running;
 	enum SoclibMwmrWay way;
 	uint32_t timer;
@@ -61,6 +62,8 @@ struct fifo_state_s {
 
 typedef enum {
 	INIT_IDLE,
+	INIT_LOCK_TAKE_RAMLOCK,
+	INIT_LOCK_TAKE_RAMLOCK_W,
 	INIT_LOCK_TAKE_LL,
     INIT_LOCK_TAKE_LL_W,
 	INIT_LOCK_TAKE_SC,
@@ -74,9 +77,34 @@ typedef enum {
 	INIT_STATUS_WRITE_RPTR,
 	INIT_STATUS_WRITE_WPTR,
 	INIT_STATUS_WRITE_USAGE,
+	INIT_STATUS_WAIT,
 	INIT_STATUS_WRITE_LOCK,
+	INIT_STATUS_WRITE_RAMLOCK,
 	INIT_DONE,
 } InitFsmState;
+
+static const char *init_states[] = {
+	"INIT_IDLE",
+	"INIT_LOCK_TAKE_RAMLOCK",
+	"INIT_LOCK_TAKE_RAMLOCK_W",
+	"INIT_LOCK_TAKE_LL",
+    "INIT_LOCK_TAKE_LL_W",
+	"INIT_LOCK_TAKE_SC",
+    "INIT_LOCK_TAKE_SC_W",
+	"INIT_STATUS_READ_RPTR",
+	"INIT_STATUS_READ_WPTR",
+	"INIT_STATUS_READ_USAGE",
+	"INIT_DECIDE",
+	"INIT_DATA_WRITE",
+	"INIT_DATA_READ",
+	"INIT_STATUS_WRITE_RPTR",
+	"INIT_STATUS_WRITE_WPTR",
+	"INIT_STATUS_WRITE_USAGE",
+	"INIT_STATUS_WAIT",
+	"INIT_STATUS_WRITE_LOCK",
+	"INIT_STATUS_WRITE_RAMLOCK",
+	"INIT_DONE",
+};
 
 typedef enum {
     RSP_IDLE,
@@ -87,6 +115,16 @@ typedef enum {
     RSP_DATA_WRITE_W,
     RSP_STATUS_WAIT,
 } RspFsmState;
+
+static const char *rsp_states[] = {
+    "RSP_IDLE",
+    "RSP_STATUS_READ_RPTR",
+    "RSP_STATUS_READ_WPTR",
+    "RSP_STATUS_READ_USAGE",
+    "RSP_DATA_READ_W",
+    "RSP_DATA_WRITE_W",
+    "RSP_STATUS_WAIT",
+};
 
 tmpl(void)::rehashConfigFifo()
 {
@@ -170,8 +208,16 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		check_fifo();
 		m_config_fifo->buffer_address = data;
 		return true;
+    case MWMR_CONFIG_LOCK_ADDR:
+        if ( m_use_llsc )
+            assert(!"You must not configure lock address with a LL-SC protocol, looks like a protocol mismatch");
+		check_fifo();
+		m_config_fifo->lock_address = data;
+		return true;
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
+        if ( m_use_llsc )
+            assert(m_config_fifo->lock_address && "You must not configure lock address with a LL-SC protocol, looks like a protocol mismatch");
 		m_config_fifo->running = !!data;
 		return true;
 	}
@@ -211,6 +257,12 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
     case MWMR_CONFIG_BUFFER_ADDR:
 		check_fifo();
 		data = m_config_fifo->buffer_address;
+		return true;
+    case MWMR_CONFIG_LOCK_ADDR:
+        if ( m_use_llsc )
+            assert(!"You must not read lock address with a LL-SC protocol, looks like a protocol mismatch");
+		check_fifo();
+		data = m_config_fifo->lock_address;
 		return true;
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
@@ -253,10 +305,16 @@ tmpl(void)::transition()
 		if ( m_all_state[i].timer )
 			m_all_state[i].timer--;
 
+#if MWMR_CONTROLLER_DEBUG
+    if ((InitFsmState)r_init_fsm.read() != INIT_IDLE || r_rsp_fsm.read() != RSP_IDLE) {
+        std::cout << name() << " init: " << init_states[r_init_fsm.read()] << " rsp: " << rsp_states[r_rsp_fsm.read()] << std::endl;
+    }
+#endif
+
 	switch ((InitFsmState)r_init_fsm.read()) {
 	case INIT_IDLE:
 		if ( m_current )
-			r_init_fsm = INIT_LOCK_TAKE_LL;
+			r_init_fsm = m_use_llsc ? INIT_LOCK_TAKE_LL : INIT_LOCK_TAKE_RAMLOCK;
 		else {
             if ( r_pending_reset ) {
                 reset();
@@ -269,17 +327,35 @@ tmpl(void)::transition()
 	case INIT_STATUS_WRITE_RPTR:
 	case INIT_STATUS_READ_RPTR:
 	case INIT_LOCK_TAKE_LL:
+	case INIT_LOCK_TAKE_RAMLOCK:
 	case INIT_LOCK_TAKE_SC:
 	case INIT_STATUS_READ_WPTR:
 	case INIT_STATUS_READ_USAGE:
 	case INIT_STATUS_WRITE_WPTR:
-	case INIT_STATUS_WRITE_USAGE:
-	case INIT_STATUS_WRITE_LOCK:
 		if ( p_vci_initiator.cmdack.read() )
 			// Select next state...
 			r_init_fsm = r_init_fsm+1;
 		break;
 
+	case INIT_STATUS_WRITE_USAGE:
+        if ( p_vci_initiator.cmdack.read() ) {
+            if ( m_use_llsc )
+                r_init_fsm = INIT_STATUS_WRITE_LOCK;
+            else
+                r_init_fsm = INIT_STATUS_WAIT;
+        }
+        break;
+
+	case INIT_STATUS_WAIT:
+		if ( p_vci_initiator.cmdack.read() )
+			r_init_fsm = INIT_STATUS_WRITE_RAMLOCK;
+		break;
+
+	case INIT_STATUS_WRITE_LOCK:
+	case INIT_STATUS_WRITE_RAMLOCK:
+		if ( p_vci_initiator.cmdack.read() )
+			r_init_fsm = INIT_DONE;
+		break;
 
 	case INIT_LOCK_TAKE_LL_W:
 		if ( !p_vci_initiator.rspval.read() )
@@ -295,6 +371,14 @@ tmpl(void)::transition()
 		r_init_fsm = ( p_vci_initiator.rdata.read() == 0 )
 			? INIT_STATUS_READ_RPTR
 			: INIT_DONE;
+		break;
+	case INIT_LOCK_TAKE_RAMLOCK_W:
+		if ( !p_vci_initiator.rspval.read() )
+			break;
+        r_status_modified = false;
+		r_init_fsm = ( p_vci_initiator.rdata.read() == 0 )
+			? INIT_STATUS_READ_RPTR
+			: INIT_LOCK_TAKE_RAMLOCK;
 		break;
 
 	case INIT_DECIDE:
@@ -340,7 +424,7 @@ tmpl(void)::transition()
         if ( r_status_modified.read() ) {
             r_init_fsm = INIT_STATUS_WRITE_RPTR;
         } else {
-            r_init_fsm = INIT_STATUS_WRITE_LOCK;
+            r_init_fsm = m_use_llsc ? INIT_STATUS_WRITE_LOCK : INIT_STATUS_WRITE_RAMLOCK;
         }
 		break;
 	case INIT_DATA_WRITE:
@@ -385,9 +469,10 @@ tmpl(void)::transition()
             r_rsp_fsm = RSP_DATA_READ_W;
             break;
         case INIT_STATUS_WRITE_RPTR:
-            r_rsp_count = 4;
+            r_rsp_count = m_use_llsc ? 4 : 3;
             r_rsp_fsm = RSP_STATUS_WAIT;
             break;
+        case INIT_STATUS_WRITE_RAMLOCK:
         case INIT_STATUS_WRITE_LOCK:
             r_rsp_count = 1;
             r_rsp_fsm = RSP_STATUS_WAIT;
@@ -505,12 +590,21 @@ tmpl(void)::genMoore()
 	p_vci_initiator.rspack = true;
 
 	switch ((InitFsmState)r_init_fsm.read()) {
+	case INIT_LOCK_TAKE_RAMLOCK_W:
 	case INIT_LOCK_TAKE_LL_W:
+	case INIT_STATUS_WAIT:
 	case INIT_LOCK_TAKE_SC_W:
 	case INIT_IDLE:
 	case INIT_DECIDE:
     case INIT_DONE:
 		p_vci_initiator.cmdval = false;
+		break;
+	case INIT_LOCK_TAKE_RAMLOCK:
+		p_vci_initiator.cmdval = true;
+		p_vci_initiator.address = m_current->lock_address;
+		p_vci_initiator.cmd = vci_param::CMD_READ;
+		p_vci_initiator.be = 0xf;
+		p_vci_initiator.eop = true;
 		break;
 	case INIT_LOCK_TAKE_LL:
 		p_vci_initiator.cmdval = true;
@@ -591,11 +685,19 @@ tmpl(void)::genMoore()
 		p_vci_initiator.wdata = r_current_usage.read();
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
-		p_vci_initiator.eop = false;
+		p_vci_initiator.eop = ! m_use_llsc;
 		break;
 	case INIT_STATUS_WRITE_LOCK:
 		p_vci_initiator.cmdval = true;
 		p_vci_initiator.address = m_current->status_address+vci_param::B*3;
+		p_vci_initiator.wdata = 0;
+		p_vci_initiator.cmd = vci_param::CMD_WRITE;
+		p_vci_initiator.be = 0xf;
+		p_vci_initiator.eop = true;
+		break;
+	case INIT_STATUS_WRITE_RAMLOCK:
+		p_vci_initiator.cmdval = true;
+		p_vci_initiator.address = m_current->lock_address;
 		p_vci_initiator.wdata = 0;
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
@@ -631,7 +733,8 @@ tmpl(/**/)::VciMwmrController(
 	const size_t n_to_coproc,
 	const size_t n_from_coproc,
 	const size_t n_config,
-	const size_t n_status )
+	const size_t n_status,
+    const bool use_llsc )
 		   : caba::BaseModule(name),
 		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid), 1),
            m_ident(mt.indexForId(srcid)),
@@ -643,6 +746,7 @@ tmpl(/**/)::VciMwmrController(
            m_n_all(n_to_coproc+n_from_coproc),
            m_n_config(n_config),
            m_n_status(n_status),
+           m_use_llsc(use_llsc),
            m_all_state(new fifo_state_t[m_n_all]),
            m_to_coproc_state(m_all_state),
            m_from_coproc_state(&m_all_state[m_n_to_coproc]),

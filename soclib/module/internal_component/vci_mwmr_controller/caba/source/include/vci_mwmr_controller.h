@@ -73,6 +73,7 @@ private:
     const size_t m_n_all;
     const size_t m_n_config;
     const size_t m_n_status;
+    const bool m_use_llsc;
 
 	typedef struct Mwmr::fifo_state_s fifo_state_t;
 	fifo_state_t *m_all_state;
@@ -127,7 +128,8 @@ public:
 		const size_t n_to_coproc,
 		const size_t n_from_coproc,
 		const size_t n_config,
-		const size_t n_status );
+		const size_t n_status,
+        const bool use_llsc );
 };
 
 }}
