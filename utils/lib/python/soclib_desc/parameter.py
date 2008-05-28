@@ -67,6 +67,10 @@ class Bool(Base):
 		value = self.argval(args)
 		return str(value).lower()
 
+	def instValue(self, env, param):
+		value = Base.instValue(self, env, param)
+		return str(value).lower()
+
 class Int(Base):
 	valid_types = (int, long)
 	def __init__(self, name, default = None, min = None, max = None, auto = None):
