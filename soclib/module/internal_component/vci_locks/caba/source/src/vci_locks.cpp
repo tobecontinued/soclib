@@ -27,6 +27,8 @@
  * Maintainers: nipo
  */
 
+#include <iostream>
+#include <iomanip>
 #include <stdlib.h>
 
 #include "../include/vci_locks.h"
@@ -48,12 +50,15 @@ tmpl(/**/)::VciLocks(
       r_buf_eop("buf_eop"),
       r_buf_value("buf_value"),
 	  m_segment(mt.getSegment(index)),
+           m_contents(new bool[m_segment.size() / vci_param::B]),
+#if SOCLIB_CABA_VCI_LOCKS_DEBUG
+           m_taker_srcid(new uint32_t[m_segment.size() / vci_param::B]),
+           m_max_seen(0),
+#endif
       p_resetn("resetn"),
       p_clk("clk"),
       p_vci("vci")
 {
-	m_contents = new bool[m_segment.size() / vci_param::B];
-
 	SC_METHOD(transition);
 	dont_initialize();
 	sensitive << p_clk.pos();
@@ -70,6 +75,9 @@ tmpl(/**/)::VciLocks(
 tmpl(/**/)::~VciLocks()
 {
 	delete [] m_contents;
+#if SOCLIB_CABA_VCI_LOCKS_DEBUG
+    delete [] m_taker_srcid;
+#endif
 }
 
 tmpl(void)::transition()
@@ -88,6 +96,18 @@ tmpl(void)::transition()
 	typename vci_param::addr_t address = p_vci.address.read();
 	uint32_t cell = (address-m_segment.baseAddress()) / vci_param::B;
 
+#if SOCLIB_CABA_VCI_LOCKS_DEBUG
+    if ( m_max_seen ) {
+        std::cout << name() << " ";
+        for ( size_t i=0; i<m_max_seen; ++i )
+            if ( m_contents[i] )
+                std::cout << std::hex << std::setw(2) << std::noshowbase << m_taker_srcid[i];
+            else
+                std::cout << "--";
+        std::cout << std::endl;
+    }
+#endif
+
 	switch (r_vci_fsm) {
 	case IDLE:
 		if ( ! p_vci.cmdval.read() )
@@ -103,12 +123,28 @@ tmpl(void)::transition()
 			switch (p_vci.cmd.read()) {
 			case vci_param::CMD_READ:
 				r_buf_value = m_contents[cell];
+#if SOCLIB_CABA_VCI_LOCKS_DEBUG
+                std::cout << name() << " srcid " << p_vci.srcid.read()
+                          << " getting lock " << cell
+                          << ( m_contents[cell] ? " already taken" : " ok")
+                          << std::endl;
+                if ( m_contents[cell] == false )
+                    m_taker_srcid[cell] = p_vci.srcid.read();
+                if ( cell >= m_max_seen )
+                    m_max_seen = cell+1;
+#endif
 				m_contents[cell] = true;
 				r_vci_fsm = READ_RSP;
                 m_cpt_read++;
 				break;
 			case vci_param::CMD_WRITE:
 				m_contents[cell] = false;
+#if SOCLIB_CABA_VCI_LOCKS_DEBUG
+                std::cout << name() << " srcid " << p_vci.srcid.read()
+                          << " releasing lock " << cell
+                          << std::endl;
+                m_taker_srcid[cell] = -1;
+#endif
 				r_vci_fsm = WRITE_RSP;
                 m_cpt_write++;
 				break;

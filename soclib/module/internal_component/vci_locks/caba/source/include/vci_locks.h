@@ -29,6 +29,8 @@
 #ifndef SOCLIB_CABA_VCI_LOCKS_H
 #define SOCLIB_CABA_VCI_LOCKS_H
 
+#define SOCLIB_CABA_VCI_LOCKS_DEBUG 0
+
 #include <systemc>
 #include "caba_base_module.h"
 #include "vci_target.h"
@@ -66,6 +68,11 @@ class VciLocks
 
 	soclib::common::Segment m_segment;
 	bool *m_contents;
+
+#if SOCLIB_CABA_VCI_LOCKS_DEBUG
+    uint32_t *m_taker_srcid;
+    size_t m_max_seen;
+#endif
 
 protected:
 	SC_HAS_PROCESS(VciLocks);
