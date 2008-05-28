@@ -51,7 +51,8 @@
 #ifndef _SOCLIB_NIOS2_ISS_H_
 #define _SOCLIB_NIOS2_ISS_H_
 
-#include <systemc.h>
+#include <systemc>
+#include <fstream>
 #include "iss.h"
 #include "soclib_endian.h"
 #include "register.h"
@@ -307,7 +308,7 @@ private:
 	static func_t const RTypeTable[64];
 	static func_t const customInstTable[256];
 
-	ofstream memTrace;
+	std::ofstream memTrace;
 
 	void op_addi();
 	void op_andhi();
