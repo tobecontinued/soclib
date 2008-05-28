@@ -35,7 +35,7 @@ install: all
 
 %: foo
 	@for i in $(SUBDIRS) ; do \
-		$(MAKE) -C $$i $@ ; \
+		$(MAKE) -C $$i $@ || exit 1 ; \
 	done
 
 .PHONY: foo
