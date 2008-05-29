@@ -445,6 +445,10 @@ tmpl(void)::transition()
         case DCacheSignals::READ_WORD:
         case DCacheSignals::READ_HALF:
         case DCacheSignals::READ_BYTE:
+#if XCACHE_DEBUG
+            std::cout << name() << " dcache read @" << std::hex << dcache_address
+                      << " " << ( m_cacheability_table[dcache_address] ? "cached" : "uncached" ) << std::endl;
+#endif
             if ( dr_cached ) {
                 if ( ! dcache_hit )
                     r_dcache_fsm = DCACHE_MISS_REQ;
@@ -1167,6 +1171,9 @@ tmpl(void)::genMealy()
             switch((DCacheSignals::req_type_e)(int)p_dcache.type.read()) {
             case DCacheSignals::READ_HALF: {
                 uint32_t d;
+#if XCACHE_DEBUG
+                std::cout << name() << " mealy read_half " << ( m_cacheability_table[dcache_address] ? "cached" : "uncached" ) << std::endl;
+#endif
                 if (m_cacheability_table[dcache_address]) {
                     p_dcache.frz = ! dcache_hit;
                     d = (data_t)r_dcache_data[y][x];
@@ -1180,6 +1187,9 @@ tmpl(void)::genMealy()
             }
             case DCacheSignals::READ_BYTE: {
                 uint32_t d;
+#if XCACHE_DEBUG
+                std::cout << name() << " mealy read_byte " << ( m_cacheability_table[dcache_address] ? "cached" : "uncached" ) << std::endl;
+#endif
                 if (m_cacheability_table[dcache_address]) {
                     p_dcache.frz = ! dcache_hit;
                     d = (data_t)r_dcache_data[y][x];
@@ -1192,6 +1202,9 @@ tmpl(void)::genMealy()
                 break;
             }
             case DCacheSignals::READ_WORD:
+#if XCACHE_DEBUG
+                std::cout << name() << " mealy read_word " << ( m_cacheability_table[dcache_address] ? "cached" : "uncached" ) << std::endl;
+#endif
                 if (m_cacheability_table[dcache_address]) {
                     p_dcache.frz = ! dcache_hit;
                     p_dcache.rdata = (data_t)r_dcache_data[y][x];
