@@ -345,7 +345,7 @@ public:
             else
                 m_ins_delay = 0;
         }
-        r_tb++;
+        r_tb += time_passed;
     }
 
 	inline void getInstructionRequest(bool &req, uint32_t &address) const

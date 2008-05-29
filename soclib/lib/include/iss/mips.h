@@ -247,7 +247,7 @@ public:
                 m_ins_delay = 0;
         }
         m_hazard = false;
-        ++r_count;
+        r_count += time_passed;
     }
 
     inline uint32_t isBusy()
