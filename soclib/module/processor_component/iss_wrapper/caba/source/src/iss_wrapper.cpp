@@ -90,7 +90,7 @@ tmpl(void)::transition()
     bool dberr = p_dcache.berr.read();
     bool frozen = m_iss.isBusy() || p_icache.frz.read() || dfrz;
 
-    if ( p_icache.req.read() )
+    if ( p_icache.req.read() && ! p_icache.frz.read() )
         m_iss.setInstruction(p_icache.berr, p_icache.ins.read());
 
     if ( dreq && !dfrz )
