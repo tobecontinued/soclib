@@ -24,3 +24,20 @@ PortDecl('caba:vci_target',
 	 signal = 'caba:vci',
 	 header_files = ['../source/include/vci_target.h'],
 	 )
+
+Module('caba:vci_param',
+	   classname = 'soclib::caba::VciParams',
+	   tmpl_parameters = [
+		parameter.Int('cell_size'),
+		parameter.Int('plen_size'),
+		parameter.Int('addr_size'),
+		parameter.Int('rerror_size'),
+		parameter.Int('clen_size'),
+		parameter.Int('rflag_size'),
+		parameter.Int('srcid_size'),
+		parameter.Int('pktid_size'),
+		parameter.Int('trdid_size'),
+		parameter.Int('wrplen_size'),
+		],
+	   header_files = ['../source/include/vci_param.h',],
+)
