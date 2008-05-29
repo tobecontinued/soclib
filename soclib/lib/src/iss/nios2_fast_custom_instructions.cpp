@@ -49,6 +49,7 @@
  */
 
 #include "nios2_fast.h"
+#include <math.h>
 
 namespace soclib {
 namespace common {
