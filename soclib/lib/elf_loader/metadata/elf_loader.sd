@@ -1,0 +1,18 @@
+
+# -*- python -*-
+
+Module('common:elf_loader',
+	classname = 'soclib::common::ElfLoader',
+	header_files = ['../include/elf_loader.h',],
+	implementation_files = ['../src/elf_loader.cpp',],
+	   instance_parameters = [
+	parameter.String('binary', auto = 'env:binary'),
+	],
+	uses = [
+		Uses('common:exception'),
+		],
+	   extensions = [
+	'dsx:configurator',
+	'dsx:noname'
+	]
+)

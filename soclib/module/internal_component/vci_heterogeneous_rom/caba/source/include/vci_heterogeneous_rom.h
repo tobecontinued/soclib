@@ -96,8 +96,6 @@ private:
     bool on_read( size_t seg, vci_addr_t addr, vci_data_t &data );
     void transition();
     void genMoore();
-
-    void trace(sc_trace_file &tf, const std::string base_name, unsigned int what);
 };
 
 }}

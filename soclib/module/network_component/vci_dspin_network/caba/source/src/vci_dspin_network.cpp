@@ -207,9 +207,6 @@ namespace soclib { namespace caba {
 
 	Y = height_network;
 	X = width_network;
-
-	portRegister("clk", p_clk);
-	portRegister("resetn", p_resetn);
     }
 
     tmpl(/**/)::~VciDspinNetwork()

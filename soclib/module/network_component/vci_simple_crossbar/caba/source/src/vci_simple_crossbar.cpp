@@ -185,11 +185,6 @@ tmpl(/**/)::VciSimpleCrossbar(
 		sensitive << p_to_initiator[i];
 	for ( size_t i=0; i<nb_attached_target; ++i )
 		sensitive << p_to_target[i];
-
-    portRegister("clk", p_clk);
-    portRegister("resetn", p_resetn);
-    portRegisterN("to_initiator", p_to_initiator, nb_attached_initiat);
-    portRegisterN("to_target", p_to_target, nb_attached_target);
 }
 
 tmpl(soclib::common::IntTab)::s_default_target;

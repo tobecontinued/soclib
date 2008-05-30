@@ -83,8 +83,6 @@ public:
         const std::vector<std::string> &names );
 
     ~VciMultiTty();
-
-	void trace(sc_trace_file &tf, const std::string base_name, unsigned int what);
 };
 
 }}

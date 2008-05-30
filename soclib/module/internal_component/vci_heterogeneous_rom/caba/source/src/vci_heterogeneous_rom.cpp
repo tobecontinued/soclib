@@ -60,10 +60,6 @@ tmpl(/**/)::VciHeterogeneousRom(
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
-	
-    portRegister("clk", p_clk);
-    portRegister("resetn", p_resetn);
-    portRegister("vci", p_vci);
 
     for (ssize_t i = 0; i < vci_param::S; i++)
         m_assoc[i] = 0;
@@ -135,13 +131,6 @@ tmpl(void)::transition()
 tmpl(void)::genMoore()
 {
 	m_vci_fsm.genMoore();
-}
-
-tmpl(void)::trace(
-	sc_trace_file &tf,
-	const std::string base_name,
-	unsigned int what)
-{
 }
 
 }}

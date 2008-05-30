@@ -55,10 +55,6 @@ tmpl(/**/)::FifoWriter(
 	sensitive << p_clk.neg();
 
 	m_buffer = 0;
-
-    portRegister("clk", p_clk);
-    portRegister("resetn", p_resetn);
-    portRegister("fifo", p_fifo);
 }
 
 tmpl(void)::transition()

@@ -128,11 +128,6 @@ tmpl(void)::init(const std::vector<std::string> &names)
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
-
-    portRegister("clk", p_clk);
-    portRegister("resetn", p_resetn);
-    portRegister("vci", p_vci);
-    portRegisterN("irq", p_irq, m_term.size());
 }
 
 tmpl(/**/)::VciMultiTty(
@@ -182,11 +177,6 @@ tmpl(/**/)::~VciMultiTty()
         delete m_term[i];
 
 	delete[] p_irq;
-}
-
-tmpl(void)::trace(sc_trace_file &tf, const std::string base_name, unsigned int what)
-{
-
 }
 
 }}

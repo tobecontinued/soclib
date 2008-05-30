@@ -103,11 +103,6 @@ public:
 	}
 };
 
-namespace inst {
-register_signal_for_port(ICacheProcessorPort,ICacheSignals);
-register_signal_for_port(DCacheProcessorPort,DCacheSignals);
-}
-
 }}
 
 #endif 

@@ -24,7 +24,7 @@
 #
 # Maintainers: nipo
 
-SUBDIRS=xtty fb_screen soclib-simulate-any headers pipe2fb
+SUBDIRS=xtty fb_screen headers pipe2fb
 DEST=$(shell soclib-cc --getpath)/utils/bin
 
 export DEST

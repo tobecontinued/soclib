@@ -205,13 +205,6 @@ tmpl(/**/)::VciLocalCrossbar(
         mt.getIdLocalityTable(srcid),
         nb_attached_initiat );
 
-    portRegister("clk", p_clk);
-    portRegister("resetn", p_resetn);
-    portRegisterN("to_initiator", p_to_initiator, nb_attached_initiat);
-    portRegisterN("to_target", p_to_target, nb_attached_target);
-    portRegister("target_to_up", p_target_to_up);
-    portRegister("initiator_to_up", p_initiator_to_up);
-
     m_ports_to_initiator = new VciTarget<vci_param>*[nb_attached_initiat+1];
     for (size_t i=0; i<nb_attached_initiat; ++i)
         m_ports_to_initiator[i] = &p_to_initiator[i];

@@ -30,7 +30,6 @@
 
 #include <systemc>
 #include "fifo_signals.h"
-#include "caba/inst/inst.h"
 
 namespace soclib { namespace caba {
 
@@ -93,15 +92,6 @@ struct FifoOutput {
 		w(port.w);
 	}
 };
-
-namespace inst {
-register_signal_for_port_with_t(typename word_t,
-                                FifoOutput<word_t>,
-                                FifoSignals<word_t>);
-register_signal_for_port_with_t(typename word_t,
-                                FifoInput<word_t>,
-                                FifoSignals<word_t>);
-}
 
 }}
 

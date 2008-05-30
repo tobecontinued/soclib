@@ -779,15 +779,6 @@ tmpl(/**/)::VciMwmrController(
 
     memset(m_all_state, 0, sizeof(*m_all_state)*m_n_all);
 
-    portRegister("clk", p_clk);
-    portRegister("resetn", p_resetn);
-    portRegister("vci_target", p_vci_target);
-    portRegister("vci_initiator", p_vci_initiator);
-	portRegisterN("from_coproc", p_from_coproc, n_from_coproc);
-	portRegisterN("to_coproc", p_to_coproc, n_to_coproc);
-	portRegisterN("config", p_config, n_config);
-	portRegisterN("status", p_status, n_status);
-
     for ( size_t i = 0; i<m_n_from_coproc; ++i ) {
         std::ostringstream o;
         o << "fifo_from_coproc[" << i << "]";

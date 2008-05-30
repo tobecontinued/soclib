@@ -1,8 +1,0 @@
-
-# -*- python -*-
-
-Module('common:xterm_wrapper',
-	classname = 'soclib::common::XtermWrapper',
-	header_files = ['../include/xterm_wrapper.h',],
-	implementation_files = ['../src/xterm_wrapper.cpp',],
-)

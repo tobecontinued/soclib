@@ -71,8 +71,6 @@ public:
 		unsigned long height);
 
     ~VciFrameBuffer();
-
-	void trace(sc_trace_file &tf, const std::string base_name, unsigned int what);
 };
 
 }}
