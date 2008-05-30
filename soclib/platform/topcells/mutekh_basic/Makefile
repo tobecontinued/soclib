@@ -16,3 +16,5 @@ clean:
 	$(SOCLIB_CC) -p $(PLATFORM_DESC) -x
 	rm -rf repos
 
+all:
+	exit 0
