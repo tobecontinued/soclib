@@ -55,7 +55,7 @@ int _main(int argc, char *argv[])
 	maptab.add(Segment("excep", DSX_SEGMENT_EXCEP_ADDR, DSX_SEGMENT_EXCEP_SIZE, IntTab(0), true));
 	maptab.add(Segment("text" , DSX_SEGMENT_TEXT_ADDR, DSX_SEGMENT_TEXT_SIZE , IntTab(0), true));
   
-	maptab.add(Segment("data" , DSX_SEGMENT_DATA_CACHED_ADDR, DSX_SEGMENT_DATA_CACHED_SIZE, IntTab(1), false));
+	maptab.add(Segment("data" , DSX_SEGMENT_DATA_CACHED_ADDR, DSX_SEGMENT_DATA_CACHED_SIZE, IntTab(1), true));
 	maptab.add(Segment("udata" , DSX_SEGMENT_DATA_UNCACHED_ADDR, DSX_SEGMENT_DATA_UNCACHED_SIZE, IntTab(1), false));
 
 	maptab.add(Segment("tty"  , DSX_SEGMENT_TTY_ADDR, DSX_SEGMENT_TTY_SIZE, IntTab(2), false));
