@@ -214,12 +214,6 @@ tmpl(/**/)::VciXCache(
     p_dcache.frz  (p_dcache.req);
     p_dcache.rdata(p_dcache.adr);
 #endif
-
-    portRegister( "clk", p_clk );
-    portRegister( "resetn", p_resetn );
-    portRegister( "icache", p_icache );
-    portRegister( "dcache", p_dcache );
-    portRegister( "vci", p_vci );
 }
 
 tmpl(void)::transition()

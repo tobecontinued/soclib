@@ -42,7 +42,7 @@
 //#define USE_GDB_SERVER
 
 #ifdef USE_GDB_SERVER
-#include "iss/gdbserver.h"
+#include "gdbserver.h"
 #endif
 
 #include "segmentation.h"
