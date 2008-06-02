@@ -6,4 +6,8 @@ Module('common:microblaze',
 	implementation_files = [
 		"../src/iss/microblaze.cpp",
 		],
+	uses = [
+		Uses('common:base_module'),
+		Uses('common:iss'),
+		],
 )

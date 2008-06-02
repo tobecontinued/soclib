@@ -11,6 +11,7 @@ Module('common:ppc405',
 		],
 	   uses = [
 	Uses('common:iss'),
+	Uses('common:base_module'),
 	],
 	  extensions = [
 	'dsx:cpu=powerpc405'
