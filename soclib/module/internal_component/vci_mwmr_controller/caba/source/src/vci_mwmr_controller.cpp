@@ -347,7 +347,7 @@ tmpl(void)::transition()
         break;
 
 	case INIT_STATUS_WAIT:
-		if ( p_vci_initiator.cmdack.read() )
+		if ( r_rsp_fsm.read() == RSP_IDLE )
 			r_init_fsm = INIT_STATUS_WRITE_RAMLOCK;
 		break;
 
