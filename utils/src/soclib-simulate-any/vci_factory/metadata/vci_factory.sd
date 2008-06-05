@@ -1,0 +1,32 @@
+
+# -*- python -*-
+
+Module('caba:vci_factory',
+	classname = 'soclib::caba::VciFactory',
+	   tmpl_parameters = [
+	parameter.Module('vci_param',  default = 'vci_param'),
+	],
+	header_files = ['../include/vci_factory.h',],
+	implementation_files = ['../src/vci_factory.cpp',],
+	uses = [
+		Uses('vci_dma'),
+		Uses('vci_fd_access'),
+		Uses('vci_framebuffer'),
+		Uses('vci_icu'),
+		Uses('vci_locks'),
+		Uses('vci_ram'),
+		Uses('vci_multi_tty'),
+		Uses('vci_mwmr_controller', fifo_depth = 32),
+		#Uses('vci_pi_initiator_wrapper'),
+		#Uses('vci_pi_target_wrapper'),
+		Uses('vci_simhelper'),
+		Uses('vci_timer'),
+		Uses('vci_vgmn'),
+		Uses('vci_local_crossbar'),
+		Uses('vci_simple_crossbar'),
+		Uses('vci_xcache'),
+
+		Uses('common:inst_arg'),
+		Uses('caba:caba_factory'),
+		],
+)

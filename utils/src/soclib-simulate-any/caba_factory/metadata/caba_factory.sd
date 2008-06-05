@@ -1,0 +1,31 @@
+
+# -*- python -*-
+
+Module('caba:caba_factory',
+	classname = 'soclib::caba::CabaFactory',
+	header_files = [
+	'../include/inst.h',
+	'../include/port_traits.h',
+	'../include/port_wrapper',
+	'../include/port_wrapper.h',
+	'../include/port_wrapper.hxx',
+	'../include/signal_wrapper',
+	'../include/signal_wrapper.h',
+	'../include/signal_wrapper.hxx',
+	],
+	implementation_files = ['../src/caba_factory.cpp',],
+	uses = [
+		Uses('iss_wrapper', iss_t = 'common:nios2_fast'),
+		Uses('iss_wrapper', iss_t = 'common:mipsel'),
+		Uses('iss_wrapper', iss_t = 'common:mipseb'),
+		Uses('iss_wrapper', iss_t = 'common:microblaze'),
+		Uses('iss_wrapper', iss_t = 'common:ppc405'),
+		Uses('iss_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:mipsel'),
+		Uses('iss_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:mipseb'),
+		Uses('iss_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:microblaze'),
+		Uses('iss_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:ppc405'),
+		Uses('fifo_reader', word_t = 'uint32_t'),
+		Uses('fifo_writer', word_t = 'uint32_t'),
+		Uses('common:inst_arg'),
+		],
+)

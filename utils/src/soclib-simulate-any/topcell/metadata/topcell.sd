@@ -1,0 +1,19 @@
+
+# -*- python -*-
+
+Module('common:topcell',
+	classname = 'soclib::common::TopCell',
+	header_files = ['../include/topcell.h',],
+	implementation_files = [
+		'../src/topcell.cpp',
+		'../src/topcell_parser.cpp',
+		'../src/topcell_lexer.cpp',
+	],
+	uses = [
+		Uses('common:elf_loader'),
+		Uses('common:mapping_table'),
+		Uses('common:inst_arg'),
+		Uses('caba:caba_factory'),
+		Uses('caba:vci_factory'),
+		],
+)

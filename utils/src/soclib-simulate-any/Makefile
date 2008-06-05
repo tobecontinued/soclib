@@ -20,25 +20,22 @@
 # SOCLIB_GPL_HEADER_END
 #
 # Copyright (c) UPMC, Lip6, SoC
-#         Nicolas Pouillon <nipo@ssji.net>, 2007
+#         Nicolas Pouillon <nipo@ssji.net>, 2008
 #
 # Maintainers: nipo
 
-SUBDIRS=xtty fb_screen soclib-simulate-any headers pipe2fb
-DEST=$(shell soclib-cc --getpath)/utils/bin
+all: soclib-simulate-any
 
-export DEST
+soclib-simulate-any: platform_desc top.cpp
+	soclib-cc -p platform_desc -o $@
 
-all:
+.PHONY: soclib-simulate-any
 
-install: all
+clean:
+	rm -f top.o soclib-simulate-any
 
-%: foo
-	@for i in $(SUBDIRS) ; do \
-		$(MAKE) -C $$i $@ || exit 1 ; \
-	done
+install: soclib-simulate-any
+	cp $< $(DEST)
 
-.PHONY: foo
-
-foo:
-
+uninstall:
+	-rm $(DEST)/soclib-simulate-any
