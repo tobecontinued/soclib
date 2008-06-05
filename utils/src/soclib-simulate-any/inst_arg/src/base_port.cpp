@@ -56,11 +56,11 @@ Port<sc_core::sc_in<bool>, sc_core::sc_signal<bool> >::connectTo( BaseSignal &_s
 	typedef Signal<sc_core::sc_signal<bool> > wrapped_signal_t;
 
 	if ( ck_t *sig = dynamic_cast<ck_t*>(&_sig) ) {
-		std::cout << "Connecting clock " << fullName() << std::endl;
+//		std::cout << "Connecting clock " << fullName() << std::endl;
 		m_port(sig->get());
         m_connected = true;
 	} else if ( wrapped_signal_t *sig = dynamic_cast<wrapped_signal_t*>(&_sig) ) {
-		std::cout << "Connecting " << fullName() << std::endl;
+//		std::cout << "Connecting " << fullName() << std::endl;
 		m_port(sig->get());
         m_connected = true;
 	} else

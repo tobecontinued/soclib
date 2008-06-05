@@ -52,7 +52,7 @@ Port<port_t, sig_t>::connectTo( BaseSignal &_sig )
 	typedef Signal<sig_t> wrapped_signal_t;
 
 	if ( wrapped_signal_t *sig = dynamic_cast<wrapped_signal_t*>(&_sig) ) {
-		std::cout << "Connecting " << fullName() << std::endl;
+//		std::cout << "Connecting " << fullName() << std::endl;
 		m_port(sig->get());
 		m_connected = true;
 	} else
