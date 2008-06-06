@@ -27,7 +27,7 @@
 all: soclib-simulate-any
 
 soclib-simulate-any: platform_desc top.cpp
-	soclib-cc -p platform_desc -o $@
+	soclib-cc -P -p platform_desc -o $@
 
 .PHONY: soclib-simulate-any
 
