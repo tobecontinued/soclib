@@ -68,10 +68,13 @@ static inline std::string crTrad( uint32_t cr )
 Ppc405Iss::Ppc405Iss(uint32_t ident)
 	: Iss(mkname(ident), ident)
 {
+    reset();
 }
 
 void Ppc405Iss::reset()
 {
+    m_exec_cycles = 0;
+    m_ins_delay = 0;
     r_pc = RESET_ADDR;
     r_dbe = false;
     m_ibe = false;
