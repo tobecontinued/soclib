@@ -36,6 +36,19 @@ mipseb_CPU=mipseb
 powerpc_CPU=ppc405
 microblaze_CPU=microblaze
 
+ARCH_ORIG:=$(ARCH)
+ARCH:=
+define decl_arch
+
+$(1)_DISABLE_1=
+$(1)_DISABLE_=$(1)
+ARCH:=$$(ARCH) $$($(1)_DISABLE_$$(DISABLE_$(1)))
+
+endef
+$(foreach bla,$(ARCH_ORIG),$(eval $(call decl_arch,$(bla))))
+
+ARCH:=$(strip $(ARCH))
+
 ifeq ($(words $(ARCH)),1)
 
 VPATH=$(TESTDIR) $(COMMON)
@@ -65,7 +78,8 @@ $(SOFT_IMAGE): $(OBJS) $(COMMON)/ldscript
 	$(AS) $< -o $@
 
 %.o : %.c
-	$(CC) -o $@ $(CFLAGS) -c $<
+	$(CC) -o $@ $(CFLAGS) -c $< \
+		|| (echo "Compilation failed in $$PWD, ARCH=$(ARCH)" ; exit 1)
 
 clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS)
