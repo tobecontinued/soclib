@@ -1,0 +1,39 @@
+
+# -*- python -*-
+
+Module('caba:vci_xcache_wrapper',
+	classname = 'soclib::caba::VciXcacheWrapper',
+	tmpl_parameters = [
+		parameter.Module('vci_param', default = 'vci_param'),
+		parameter.Module('iss_t'),
+		],
+	header_files = [
+		'../source/include/vci_xcache_wrapper.h',
+		],
+	implementation_files = [
+		'../source/src/vci_xcache_wrapper.cpp',
+		],
+	uses = [
+		Uses('base_module'),
+		Uses('common:iss'),
+		Uses('common:mapping_table'),
+		],
+	ports = [
+		Port('vci_initiator', 'p_vci'),
+		Port('bit_in','p_irq', parameter.Constant('n_irq')),
+		Port('bit_in', 'p_resetn', auto = 'resetn'),
+		Port('clock_in', 'p_clk', auto = 'clock'),
+		],
+	instance_parameters = [
+		parameter.Int('ident'),
+		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+		parameter.IntTab('index'),
+		parameter.Int('icache_lines'),
+		parameter.Int('icache_words'),
+		parameter.Int('dcache_lines'),
+		parameter.Int('dcache_words'),
+		],
+	extensions = [
+		'dsx:get_ident=ident:p_vci',
+   		],
+)
