@@ -36,6 +36,7 @@
 #ifndef _SOCLIB_ARM966_ISS_H_
 #define _SOCLIB_ARM966_ISS_H_
 
+#include "iss.h" 
 #include "unisim/component/cxx/processor/arm/cpu.hh"
 #include "unisim/component/cxx/processor/arm/memory_op.hh"
 #include "unisim/component/cxx/processor/arm/config.hh"

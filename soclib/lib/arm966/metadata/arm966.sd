@@ -13,6 +13,9 @@ Module('common:arm966',
 		"../include/iss/unisim/component/cxx/processor/arm/cache/config.hh",
 		"../include/iss/unisim/component/cxx/processor/arm/cache/types.hh",
 	],
+	uses = [
+		Uses('common:iss'),
+	],
 	implementation_files = [
 		"../src/iss/unisim/component/cxx/processor/arm/coprocessor/arm966e_s/cp15.cc",
 		"../src/iss/unisim/component/cxx/processor/arm/tcm/tcm.cc",
