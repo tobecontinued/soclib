@@ -71,10 +71,22 @@ void MipsIss::reset()
     m_ibe = false;
     m_dbe = false;
     r_mem_req = false;
+    r_mem_unsigned = false;
+    r_mem_addr = 0;
+    r_mem_wdata = 0;
+    r_mem_dest = 0;
+    r_mem_shift = 0;
+    m_ins_delay = 0;
     m_ins_delay = 0;
     r_status.whole = 0;
+    r_cause.whole = 0;
     m_exec_cycles = 0;
+    m_rs = m_rt = 0;
     r_gp[0] = 0;
+    r_count = 0;
+
+    for(int i = 0; i<32; i++)
+        r_gp[i] = 0;
 
     m_hazard=false;
     m_irq=0;
