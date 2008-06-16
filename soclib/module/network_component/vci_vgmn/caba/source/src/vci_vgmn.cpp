@@ -35,6 +35,14 @@
 #define VGMN_DEBUG 0
 #endif
 
+#if VGMN_DEBUG
+#define DEBUG_BEGIN do { do{} while(0)
+#define DEBUG_END } while(0)
+#else
+#define DEBUG_BEGIN do { if (0) { do{} while(0)
+#define DEBUG_END } } while(0)
+#endif
+
 namespace soclib { namespace caba {
 
 using namespace sc_core;
@@ -146,9 +154,9 @@ public:
     {
         assert(!full());
         ++m_usage;
-#if VGMN_DEBUG
+DEBUG_BEGIN;
         std::cout << "VGMN pushing data " << data << " usage: " << m_usage << std::endl;
-#endif
+DEBUG_END;
         m_data[m_wptr] = data;
         m_wptr = (m_wptr+1)%m_size;
     }
@@ -245,10 +253,10 @@ public:
             }
         }
 
-#if VGMN_DEBUG
+DEBUG_BEGIN;
         if (pkt)
             std::cout << "VGMN popped packet " << *pkt << std::endl;
-#endif
+DEBUG_END;
 
         vci_pkt_t *tmp = m_output_delay_line.shift(pkt);
         if ( tmp != NULL )
@@ -262,9 +270,9 @@ public:
         vci_pkt_t *pkt = m_output_delay_line.head();
 
         if (pkt != NULL) {
-#if VGMN_DEBUG
+DEBUG_BEGIN;
             std::cout << "VGMN packet on VCI " << *pkt << std::endl;
-#endif
+DEBUG_END;
             pkt->writeTo(port);
         } else
             port.setVal(false);
@@ -332,13 +340,13 @@ public:
             assert( m_waiting_packet == NULL );
             m_waiting_packet = new vci_pkt_t();
             m_waiting_packet->readFrom( port );
-#if VGMN_DEBUG
+DEBUG_BEGIN;
             std::cout << "VGMN accepting " << *m_waiting_packet << std::endl;
-#endif
+DEBUG_END;
             if ( m_dest == NULL ) {
-#if VGMN_DEBUG
+DEBUG_BEGIN;
                 std::cout << " routed to port " << m_waiting_packet->route( m_routing_table ) << std::endl;
-#endif
+DEBUG_END;
                 m_dest = m_output_fifos[m_waiting_packet->route( m_routing_table )];
             }
         } else {
