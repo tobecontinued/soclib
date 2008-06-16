@@ -41,7 +41,7 @@ namespace soclib { namespace tlmt {
       return m_return;
     }
     //send error message
-    tlmt_core::tlmt_time delay = 5; 
+    tlmt_core::tlmt_time delay = 1; 
 
     m_rsp.error  = true;
     m_rsp.nwords = pkt->nwords;
@@ -66,7 +66,7 @@ namespace soclib { namespace tlmt {
 					       void *private_data)
   {
 #if VCI_RAM_DEBUG
-    std::cout << "[RAM " << m_id <<"] Receive from source " << pkt->srcid <<" a Read packet " << pkt->pktid << " with time = "  << time << std::endl;
+    std::cout << "[RAM " << m_id <<"] Receive from source " << pkt->srcid <<" a Read packet " << pkt->pktid << " Time = "  << time << std::endl;
 #endif
 
     typename vci_param::addr_t address;
@@ -79,7 +79,7 @@ namespace soclib { namespace tlmt {
       pkt->buf[i]= m_contents[segIndex][address / vci_param::nbytes];
     }
 
-    tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords + 5); 
+    tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords); 
     m_rsp.error  = false;
     m_rsp.nwords = pkt->nwords;
     m_rsp.srcid  = pkt->srcid;
@@ -87,7 +87,7 @@ namespace soclib { namespace tlmt {
     m_rsp.trdid  = pkt->trdid;
 
 #if VCI_RAM_DEBUG
-    std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " with time = "  << time + delay << std::endl;
+    std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " Time = "  << time + delay << std::endl;
 #endif
 
     p_vci.send(&m_rsp, time + delay);
@@ -105,7 +105,7 @@ namespace soclib { namespace tlmt {
 						      void *private_data)
   {
 #if VCI_RAM_DEBUG
-    std::cout << "[RAM " << m_id <<"] Receive from source " << pkt->srcid <<" a Locked Read packet " << pkt->pktid << " with time = "  << time << std::endl;
+    std::cout << "[RAM " << m_id <<"] Receive from source " << pkt->srcid <<" a Locked Read packet " << pkt->pktid << " Time = "  << time << std::endl;
 #endif
 
     typename vci_param::addr_t address;
@@ -119,7 +119,7 @@ namespace soclib { namespace tlmt {
       m_atomic.doLoadLinked(address, pkt->srcid);
     }
 
-    tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords + 5); 
+    tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords); 
     m_rsp.error  = false;
     m_rsp.nwords = pkt->nwords;
     m_rsp.srcid  = pkt->srcid;
@@ -127,7 +127,7 @@ namespace soclib { namespace tlmt {
     m_rsp.trdid  = pkt->trdid;
 
 #if VCI_RAM_DEBUG
-    std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " with time = "  << time + delay << std::endl;
+    std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " Time = "  << time + delay << std::endl;
 #endif
 
     p_vci.send(&m_rsp, time + delay);
@@ -145,7 +145,7 @@ namespace soclib { namespace tlmt {
 						void *private_data)
   {
 #if VCI_RAM_DEBUG
-    std::cout << "[RAM " << m_id << "] Receive from source " << pkt->srcid <<" a Write packet "<< pkt->pktid << " with time = "  << time << std::endl;
+    std::cout << "[RAM " << m_id << "] Receive from source " << pkt->srcid <<" a Write packet "<< pkt->pktid << " Time = "  << time << std::endl;
     for(uint32_t j=0;j< pkt->nwords; j++){
       if(pkt->contig)
 	std::cout << std::hex << "[" << (pkt->address + (j*vci_param::nbytes)) << "] = " << pkt->buf[j] << std::dec << std::endl;
@@ -181,7 +181,7 @@ namespace soclib { namespace tlmt {
       tab[index] = (cur & ~mask) | (pkt->buf[i] & mask);
     }
 
-    tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords + 5); 
+    tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords);
     m_rsp.error  = false;
     m_rsp.nwords = pkt->nwords;
     m_rsp.srcid  = pkt->srcid;
@@ -189,10 +189,11 @@ namespace soclib { namespace tlmt {
     m_rsp.trdid  = pkt->trdid;
     
 #if VCI_RAM_DEBUG
-    std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " with time = "  << time + delay  << std::endl;
+    std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " Time = "  << time + delay  << std::endl;
 #endif
 
     p_vci.send(&m_rsp,  time + delay);
+    m_return.set_time(time + delay);
     return m_return;
   }
 
@@ -200,17 +201,17 @@ namespace soclib { namespace tlmt {
   // CALLBACK FUNCTION TO STORE CONDITIONNEL COMMAND
   //////////////////////////////////////////////////////////////////////////////////////////
   tmpl(tlmt_core::tlmt_return&)::callback_store_cond(size_t segIndex,
-						soclib::common::Segment &s,
-						soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-						const tlmt_core::tlmt_time &time,
-						void *private_data)
+						     soclib::common::Segment &s,
+						     soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+						     const tlmt_core::tlmt_time &time,
+						     void *private_data)
   {
     typename vci_param::addr_t address;
     
-    tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords + 5); 
+    tlmt_core::tlmt_time delay = tlmt_core::tlmt_time(pkt->nwords);
 
 #if VCI_RAM_DEBUG
-    std::cout << "[RAM " << m_id << "] Receive from source " << pkt->srcid <<" a Store Conditionnel packet "<< pkt->pktid << " with time = "  << time << std::endl;
+    std::cout << "[RAM " << m_id << "] Receive from source " << pkt->srcid <<" a Store Conditionnel packet "<< pkt->pktid << " Time = "  << time << std::endl;
     for(uint32_t j=0;j< pkt->nwords; j++){
       if(pkt->contig)
 	std::cout << std::hex << "[" << (pkt->address + (j*vci_param::nbytes)) << "] = " << pkt->buf[j] << std::dec << std::endl;
@@ -258,10 +259,11 @@ namespace soclib { namespace tlmt {
     m_rsp.trdid  = pkt->trdid;
     
 #if VCI_RAM_DEBUG
-    std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " with time = "  << time + delay  << std::endl;
+    std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " Time = "  << time + delay  << std::endl;
 #endif
 
     p_vci.send(&m_rsp,  time + delay);
+    m_return.set_time(time + delay);
     return m_return;
   }
 
