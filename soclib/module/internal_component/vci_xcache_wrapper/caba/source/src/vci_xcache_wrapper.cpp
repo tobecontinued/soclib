@@ -191,9 +191,6 @@ tmpl(/**/)::VciXcacheWrapper(
     dont_initialize();
     sensitive << p_clk.neg();
 
-    portRegister( "clk", p_clk );
-    portRegister( "resetn", p_resetn );
-    portRegister( "vci", p_vci );
 }
 
 ////////////////////////
