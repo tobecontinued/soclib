@@ -37,63 +37,50 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_rsp_packet<vci_param> 
 										const tlmt_core::tlmt_time &time,
 										void *private_data)
 {
-	std::cout << name() << " callback" << std::endl;
+	c0.update_time(time);
+	std::cout << name() << " callback time = " << c0.time() << std::endl;
+	std::cout << "Fini !" << std::endl;
 	e0.notify(sc_core::SC_ZERO_TIME);
-	c0.set_time(time);
-	std::cout << " c0.time=" << c0.time() << std::endl;
-	std::cout << " Fini !" << std::endl;
 	return m_return;
 }
 
 tmpl(void)::behavior()
 {
 	soclib::tlmt::vci_cmd_packet<vci_param> cmd;
-	uint32_t addresses[32];
 	uint32_t localbuf[32];
 
 	for(;;) {
-std::cout << "ici" << std::endl;
-                cmd.cmd = vci_param::CMD_READ;
-                //addresses[0] = 0xBFC00000;
-                //cmd.address = addresses;
-                cmd.address = 0xBFC00000;
-                cmd.be = 0xF;
-                cmd.contig = true;
-                cmd.buf = localbuf;
-                cmd.nwords = 1;
-                cmd.srcid = 0;
-                cmd.trdid = 0;
-                cmd.pktid = 0;
+                cmd.cmd     = vci_param::CMD_READ;
+                cmd.address = 0x10000000;
+                cmd.be      = 0xF;
+                cmd.contig  = true;
+                cmd.buf     = localbuf;
+                cmd.nwords  = 1;
+                cmd.srcid   = 0;
+                cmd.trdid   = 0;
+                cmd.pktid   = 0;
 
-		tlmt_core::tlmt_return ret;
-		ret = p_vci.send(&cmd, c0.time());
-		std::cout << name() << "ret.time=" << ret.time() << std::endl;
+		std::cout << name() << " send time = " << c0.time() << std::endl;
+		p_vci.send(&cmd, c0.time());
 		sc_core::wait(e0);
 
-		std::cout << std::hex << localbuf[0] << std::endl;
-		std::cout << std::dec;
+		std::cout << name() << " read data = " << std::hex << localbuf[0] << std::dec << std::endl;
 
 		localbuf[0]++;
 
-		std::cout << std::hex << localbuf[0] << std::endl;
-		std::cout << std::dec;
+                cmd.cmd     = vci_param::CMD_WRITE;
+		cmd.address = 0x10000000;
+                cmd.be      = 0xF;
+                cmd.contig  = true;
+                cmd.buf     = localbuf;
+                cmd.nwords  = 1;
+                cmd.srcid   = 0;
+                cmd.trdid   = 0;
+                cmd.pktid   = 0;
 
-                cmd.cmd = vci_param::CMD_WRITE;
-                //addresses[0] = 0xBFC00000;
-                //cmd.address = addresses;
-                cmd.address = 0xBFC00000;
-                cmd.be = 0xF;
-                cmd.contig = true;
-                cmd.buf = localbuf;
-                cmd.nwords = 1;
-                cmd.srcid = 0;
-                cmd.trdid = 0;
-                cmd.pktid = 0;
-
-                ret = p_vci.send(&cmd, c0.time());
-                std::cout << name() << "ret.time=" << ret.time() << std::endl;
+		std::cout << name() << " send time = " << c0.time() << std::endl;
+                p_vci.send(&cmd, c0.time());
                 sc_core::wait(e0);
-
 	}
 }
 
