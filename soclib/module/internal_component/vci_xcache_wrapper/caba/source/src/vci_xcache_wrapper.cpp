@@ -46,13 +46,64 @@
 namespace soclib { 
 namespace caba {
 
-#ifndef XCACHE_DEBUG
-#define XCACHE_DEBUG 0
+#ifndef XCACHE_WRAPPER_DEBUG
+#define XCACHE_WRAPPER_DEBUG 0
 #endif
 
 #define LINE_VALID 0x80000000
 
-#define tmpl(x)  template<typename vci_param, typename iss_t> x VciXcacheWrapper<vci_param, iss_t>
+#if XCACHE_WRAPPER_DEBUG
+namespace {
+const char *dcache_fsm_state_str[] = {
+        "DCACHE_INIT",
+        "DCACHE_IDLE",
+        "DCACHE_WRITE_UPDT",
+        "DCACHE_WRITE_REQ",
+        "DCACHE_MISS_REQ",
+        "DCACHE_MISS_WAIT",
+        "DCACHE_MISS_UPDT",
+        "DCACHE_UNC_REQ",
+        "DCACHE_UNC_WAIT",
+        "DCACHE_INVAL",
+        "DCACHE_ERROR",
+    };
+
+const char *icache_fsm_state_str[] = {
+        "ICACHE_INIT",
+        "ICACHE_IDLE",
+        "ICACHE_WAIT",
+        "ICACHE_UPDT",
+        "ICACHE_ERROR",
+    };
+
+const char *cmd_fsm_state_str[] = {
+        "CMD_IDLE",
+        "CMD_DATA_MISS",
+        "CMD_DATA_UNC",
+        "CMD_DATA_WRITE",
+        "CMD_INS_MISS",
+    };
+
+const char *rsp_fsm_state_str[] = {
+        "RSP_IDLE",
+        "RSP_INS_MISS",
+        "RSP_INS_ERROR_WAIT",
+        "RSP_INS_ERROR",
+        "RSP_INS_OK",
+        "RSP_DATA_MISS",
+        "RSP_DATA_UNC",
+        "RSP_DATA_WRITE",
+        "RSP_DATA_READ_ERROR_WAIT",
+        "RSP_DATA_READ_ERROR",
+        "RSP_DATA_MISS_OK",
+        "RSP_DATA_UNC_OK",
+        "RSP_DATA_WRITE_ERROR",
+        "RSP_DATA_WRITE_ERROR_WAIT",
+    };
+}
+#endif
+
+#define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciXcacheWrapper<vci_param, iss_t>
 
 ///////////////////////////////////////
 tmpl(inline bool)::is_write(type_t cmd)
@@ -77,6 +128,37 @@ tmpl(inline bool)::can_burst(type_t old_type, addr_t old_addr,
     return res;
 }
 
+tmpl(typename VciXcacheWrapper<vci_param, iss_t>::data_t &)::icache_data( size_t way, size_t set, size_t word )
+{
+    return r_icache_data[(way*m_icache_sets*m_icache_words)+(set*m_icache_words)+word];
+}
+
+tmpl(typename VciXcacheWrapper<vci_param, iss_t>::tag_t &)::icache_tag( size_t way, size_t set )
+{
+    return r_icache_tag[(way*m_icache_sets)+set];
+}
+
+tmpl(typename VciXcacheWrapper<vci_param, iss_t>::data_t &)::dcache_data( size_t way, size_t set, size_t word )
+{
+    return r_dcache_data[(way*m_dcache_sets*m_dcache_words)+(set*m_dcache_words)+word];
+}
+
+tmpl(typename VciXcacheWrapper<vci_param, iss_t>::tag_t &)::dcache_tag( size_t way, size_t set )
+{
+    return r_dcache_tag[(way*m_dcache_sets)+set];
+}
+
+tmpl(std::string)::dump_dcache_line( size_t way, size_t set )
+{
+    std::ostringstream o;
+    o << std::hex << "<D wst=" << way << "/" << set << "/" << dcache_tag(way,set)
+      << ":";
+    for ( size_t x=0; x<m_dcache_words; ++x )
+        o << " " << dcache_data(way, set, x);
+    o << ">";
+    return o.str();
+}
+
 using soclib::common::uint32_log2;
 
 /////////////////////////////
@@ -99,12 +181,12 @@ tmpl(/**/)::VciXcacheWrapper(
       m_srcid(mt.indexForId(index)),
       m_iss(proc_id),
 
-      m_icache_sets(icache_sets),
-      m_icache_words(icache_words),
-      m_icache_ways(icache_ways),
       m_dcache_sets(dcache_sets),
       m_dcache_words(dcache_words),
       m_dcache_ways(dcache_ways),
+      m_icache_sets(icache_sets),
+      m_icache_words(icache_words),
+      m_icache_ways(icache_ways),
 
       m_i_x( uint32_log2(m_icache_words), uint32_log2(vci_param::B) ),
       m_i_y( uint32_log2(m_icache_sets), uint32_log2(m_icache_words) + uint32_log2(vci_param::B) ),
@@ -174,12 +256,6 @@ tmpl(/**/)::VciXcacheWrapper(
     r_icache_data = new data_t[m_icache_ways*m_icache_sets*m_icache_words];
     r_icache_tag  = new tag_t[m_icache_ways*m_icache_sets];
 
-    #define ICACHE_DATA(i,j,k) r_icache_data[(i*m_icache_sets*m_icache_words)+(j*m_icache_words)+k]
-    #define ICACHE_TAG(i,j)    r_icache_tag[(i*m_icache_sets)+j]
-
-    #define DCACHE_DATA(i,j,k) r_dcache_data[(i*m_dcache_sets*m_dcache_words)+(j*m_dcache_words)+k]
-    #define DCACHE_TAG(i,j)    r_dcache_tag[(i*m_dcache_sets)+j]
-
     r_icache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("icache_miss_buff", icache_words);;
     r_dcache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("dcache_miss_buff", dcache_words);
 
@@ -191,6 +267,8 @@ tmpl(/**/)::VciXcacheWrapper(
     dont_initialize();
     sensitive << p_clk.neg();
 
+    m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
+    m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
 }
 
 ////////////////////////
@@ -247,8 +325,8 @@ tmpl(void)::transition()
     bool    icache_frz = false;
     bool    icache_hit = false;
     addr_t  icache_address;
-    size_t  icache_way;
-    data_t  icache_ins;
+    size_t  icache_way = 0;
+    data_t  icache_ins = 0;
 
     m_iss.getInstructionRequest( icache_req, icache_address );
 
@@ -256,10 +334,10 @@ tmpl(void)::transition()
     const int   icache_y = m_i_y[icache_address];
     const tag_t icache_z = m_i_z[icache_address] | LINE_VALID;
     for(size_t way = 0 ; way < m_icache_ways ; way++) {
-        if(icache_z == ICACHE_TAG(way, icache_y)) {
+        if(icache_z == icache_tag(way, icache_y)) {
             icache_way = way;
             icache_hit = true;
-            icache_ins = ICACHE_DATA(icache_way, icache_y, icache_x);
+            icache_ins = icache_data(icache_way, icache_y, icache_x);
         }
     } // end for
 
@@ -304,10 +382,10 @@ tmpl(void)::transition()
     bool      dcache_frz = false;
     bool      dcache_hit = false;
     addr_t    dcache_address;
-    size_t    dcache_way;
+    size_t    dcache_way = 0;
     type_t    dcache_type;
     data_t    dcache_wdata;
-    data_t    dcache_rdata;
+    data_t    dcache_rdata = 0;
 
     m_iss.getDataRequest( dcache_req, dcache_type, dcache_address, dcache_wdata );
 
@@ -317,70 +395,87 @@ tmpl(void)::transition()
 
     bool   dcache_cached = false;
     if ( dcache_req ) {
-        if ( (dcache_type == iss_t::READ_LINKED) || (dcache_type == iss_t::STORE_COND) ) {
+        if ( (dcache_type == iss_t::READ_LINKED) || (dcache_type == iss_t::STORE_COND) )
             dcache_cached = false;
-        } else {
+        else
             dcache_cached = m_cacheability_table[dcache_address];
+
+        if ( dcache_cached ) {
+            for (size_t way = 0 ; way < m_dcache_ways ; way++) {
+                if ( dcache_z == dcache_tag(way, dcache_y) ) {
+                    dcache_way = way;
+                    dcache_hit = true;
+                    dcache_rdata = dcache_data(dcache_way, dcache_y, dcache_x);
+                }
+            } // end for
+        } else {
+            dcache_hit = (r_dcache_unc_valid.read() && (dcache_address == r_dcache_miss_addr)); 
+            dcache_rdata = r_dcache_miss_buf[0];
         }
+
+#if XCACHE_WRAPPER_DEBUG
+        std::cout << name() << " dcache request" << std::hex
+                  << " " << iss_t::dataAccessTypeName(dcache_type)
+                  << " @" << dcache_address
+                  << " cached: " << dcache_cached;
+        if ( dcache_cached )
+            std::cout << " wst: " << dcache_way << "/" << dcache_y << "/" << dcache_z;
+        std::cout << " hit: " << dcache_hit
+                  << " data: " << dcache_rdata
+                  << std::endl;
+#endif
     }
 
-    if ( dcache_cached ) {
-        for(size_t way = 0 ; way < m_icache_ways ; way++) {
-            if( dcache_z == DCACHE_TAG(way, dcache_y) ) {
-                dcache_way = way;
-                dcache_hit = true;
-                dcache_rdata = DCACHE_DATA(dcache_way, dcache_y, dcache_x);
-            } 
-        } // end for
-    } else {
-        dcache_hit = (r_dcache_unc_valid && (dcache_address == r_dcache_miss_addr)); 
-        dcache_rdata = r_dcache_miss_buf[0];
-    }
-
-    if ((dcache_fsm_state_e)r_dcache_fsm.read() == DCACHE_ERROR) {
+    switch ((dcache_fsm_state_e)r_dcache_fsm.read()) {
+    case DCACHE_ERROR:
         dcache_frz = false;
         m_iss.setDataResponse( true, 0 );
-
-    } else if (((dcache_fsm_state_e)r_dcache_fsm.read() == DCACHE_WRITE_REQ) && 
-        !m_dreq_addr_fifo.wok() && dcache_req ) {
-        dcache_frz = true;
-
-    } else if (((dcache_fsm_state_e)r_dcache_fsm.read() == DCACHE_IDLE) ||
-        ((dcache_fsm_state_e)r_dcache_fsm.read() == DCACHE_WRITE_REQ) ) {
+        break;
+    case DCACHE_WRITE_REQ:
+        if ( !m_dreq_addr_fifo.wok() && dcache_req ) {
+            dcache_frz = true;
+            break;
+        }
+    case DCACHE_IDLE:
         if ( !dcache_req ) {
             dcache_frz = false;
-        } else {
-            switch(dcache_type) {
-            case iss_t::READ_WORD:
-            case iss_t::READ_HALF:
+            break;
+        }
+        switch (dcache_type) {
+        case iss_t::READ_WORD:
+        case iss_t::READ_HALF:
+        case iss_t::READ_BYTE:
+        case iss_t::READ_LINKED:
+        case iss_t::STORE_COND:
+            switch (dcache_type) {
             case iss_t::READ_BYTE:
-            case iss_t::READ_LINKED:
-            case iss_t::STORE_COND:
-                if ( dcache_type == iss_t::READ_BYTE) {
-                    dcache_rdata = 0xFF & (dcache_rdata >> (8*(dcache_address & 0x3)));
-                    dcache_rdata = dcache_rdata | (dcache_rdata<<8) | 
-                                    (dcache_rdata<<16) | (dcache_rdata<<24);
-                } else if ( dcache_type == iss_t::READ_HALF) {
-                    dcache_rdata = 0xFFFF & (dcache_rdata >> (8*(dcache_address & 0x2)));
-                    dcache_rdata = dcache_rdata | (dcache_rdata<<16);
-                }
-                if ( dcache_hit ) {
-                    dcache_frz = false;
-                    m_iss.setDataResponse( false, dcache_rdata );
-                } else {
-                    dcache_frz = true;
-                }
-            break;
-            case iss_t::WRITE_WORD:
-            case iss_t::WRITE_HALF:
-            case iss_t::WRITE_BYTE:
-            case iss_t::LINE_INVAL:
+                dcache_rdata = 0xFF & (dcache_rdata >> (8*(dcache_address & 0x3)));
+                dcache_rdata = dcache_rdata | (dcache_rdata<<8) | 
+                    (dcache_rdata<<16) | (dcache_rdata<<24);
+                break;
+            case iss_t::READ_HALF:
+                dcache_rdata = 0xFFFF & (dcache_rdata >> (8*(dcache_address & 0x2)));
+                dcache_rdata = dcache_rdata | (dcache_rdata<<16);
+                break;
+            default: {}
+            }
+            if ( dcache_hit ) {
                 dcache_frz = false;
-                m_iss.setDataResponse( false, 0xFFFFFFFF );
+                m_iss.setDataResponse( false, dcache_rdata );
+            } else {
+                dcache_frz = true;
+            }
             break;
-            } // end switch dcache_type
-        } // end if dcache_req
-    } else { // end if IDLE or WRITE_REQ
+        case iss_t::WRITE_WORD:
+        case iss_t::WRITE_HALF:
+        case iss_t::WRITE_BYTE:
+        case iss_t::LINE_INVAL:
+            dcache_frz = false;
+            m_iss.setDataResponse( false, 0 );
+            break;
+        } // end switch dcache_type
+        break;
+    default:
         dcache_frz = dcache_req; 
     }
     
@@ -398,10 +493,10 @@ tmpl(void)::transition()
 #if XCACHE_WRAPPER_DEBUG
     std::cout
         << name()
-        << " dcache: " << r_dcache_fsm
-        << " icache: " << r_icache_fsm
-        << " cmd: " << r_vci_cmd_fsm
-        << " rsp: " << r_vci_rsp_fsm
+        << " dcache: " << dcache_fsm_state_str[r_dcache_fsm]
+        << " icache: " << icache_fsm_state_str[r_icache_fsm]
+        << " cmd: " << cmd_fsm_state_str[r_vci_cmd_fsm]
+        << " rsp: " << rsp_fsm_state_str[r_vci_rsp_fsm]
         << std::endl;
 #endif
 
@@ -424,7 +519,7 @@ tmpl(void)::transition()
     switch((icache_fsm_state_e)r_icache_fsm.read()) {
     case ICACHE_INIT:
         for(size_t way = 0 ; way < m_icache_ways ; way++) {
-            ICACHE_TAG(way, r_icache_cpt_init) = 0;
+            icache_tag(way, r_icache_cpt_init) = 0;
         }
         r_icache_cpt_init = r_icache_cpt_init - 1;
         if (r_icache_cpt_init == 0) r_icache_fsm = ICACHE_IDLE;
@@ -457,13 +552,13 @@ tmpl(void)::transition()
         // selecting a victim 
         size_t victim = 0x1000;
         for(size_t way = 0 ; way < m_icache_ways ; way++) {
-            if((ICACHE_TAG(way, set) & 0x80000000) == 0) victim = way;
+            if((icache_tag(way, set) & 0x80000000) == 0) victim = way;
         }
         if (victim > 0xFFF) victim = m_cpt_fifo_write % m_icache_ways;
         // cache update
-        ICACHE_TAG(victim, set) = tag;
+        icache_tag(victim, set) = tag;
         for (size_t i=0 ; i<m_icache_words ; i++) {
-            ICACHE_DATA(victim, set, i) = r_icache_miss_buf[i];
+            icache_data(victim, set, i) = r_icache_miss_buf[i];
         }
         r_icache_fsm = ICACHE_IDLE;
         m_cpt_icache_dir_write++;
@@ -506,7 +601,7 @@ tmpl(void)::transition()
 
     case DCACHE_INIT:
         for(size_t way = 0 ; way < m_dcache_ways ; way++) {
-            DCACHE_TAG(way, r_dcache_cpt_init) = 0;
+            dcache_tag(way, r_dcache_cpt_init) = 0;
         }
         r_dcache_cpt_init = r_dcache_cpt_init - 1;
         if (r_dcache_cpt_init == 0) r_dcache_fsm = DCACHE_IDLE;
@@ -534,32 +629,39 @@ tmpl(void)::transition()
         case iss_t::READ_WORD:
         case iss_t::READ_HALF:
         case iss_t::READ_BYTE:
-            if ( ! dcache_hit ) {
-                if ( dcache_cached )    r_dcache_fsm = DCACHE_MISS_REQ;
-                else                    r_dcache_fsm = DCACHE_UNC_REQ;
-            } else {
+            if ( dcache_hit ) {
                 r_dcache_fsm = DCACHE_IDLE; 
-                if (dcache_cached )     r_dcache_unc_valid = false;
+                if (!dcache_cached)
+                    r_dcache_unc_valid = false;
+            } else {
+                if (dcache_cached)
+                    r_dcache_fsm = DCACHE_MISS_REQ;
+                else
+                    r_dcache_fsm = DCACHE_UNC_REQ;
             }
         break;
         case iss_t::READ_LINKED:
         case iss_t::STORE_COND:
-            if ( ! dcache_hit ) {
-                r_dcache_fsm = DCACHE_UNC_REQ;
-            } else {
+            if ( dcache_hit ) {
                 r_dcache_fsm = DCACHE_IDLE; 
                 r_dcache_unc_valid = false;
+            } else {
+                r_dcache_fsm = DCACHE_UNC_REQ;
             }
         break;
         case iss_t::LINE_INVAL:
-            if ( dcache_hit )           r_dcache_fsm = DCACHE_INVAL;
-            else                        r_dcache_fsm = DCACHE_IDLE;
+            if ( dcache_hit )
+                r_dcache_fsm = DCACHE_INVAL;
+            else
+                r_dcache_fsm = DCACHE_IDLE;
         break;
         case iss_t::WRITE_WORD:
         case iss_t::WRITE_HALF:
         case iss_t::WRITE_BYTE:
-            if (dcache_hit)             r_dcache_fsm = DCACHE_WRITE_UPDT;
-            else                        r_dcache_fsm = DCACHE_WRITE_REQ;
+            if (dcache_hit && dcache_cached)
+                r_dcache_fsm = DCACHE_WRITE_UPDT;
+            else
+                r_dcache_fsm = DCACHE_WRITE_REQ;
         break;
         } // end switch dcache_type
 
@@ -579,16 +681,17 @@ tmpl(void)::transition()
         size_t  way  = r_dcache_way_save;
         size_t  word = m_d_x[r_dcache_addr_save];
         size_t  set  = m_d_y[r_dcache_addr_save];
-        switch(r_dcache_type_save) {
+        assert((m_d_z[r_dcache_addr_save] | LINE_VALID) == dcache_tag(way, set));
+        switch((type_t)r_dcache_type_save.read()) {
         case iss_t::WRITE_WORD:
-            DCACHE_DATA(way, set, word) = new_data;
+            dcache_data(way, set, word) = new_data;
         break;
         case iss_t::WRITE_HALF:
             {
             int byte = r_dcache_addr_save & 0x2; 
             data_t mask = 0xffff << (byte*8);
             new_data = new_data << (byte*8);
-            DCACHE_DATA(way, set, word) = (prev_data & ~mask) | (new_data &  mask) ;
+            dcache_data(way, set, word) = (prev_data & ~mask) | (new_data &  mask) ;
             }
         break;
         case iss_t::WRITE_BYTE:
@@ -596,7 +699,7 @@ tmpl(void)::transition()
             int byte = r_dcache_addr_save & 0x3; 
             data_t mask = 0xff << (byte*8);
             new_data = new_data << (byte*8);
-            DCACHE_DATA(way, set, word) = (prev_data & ~mask) | (new_data &  mask) ;
+            dcache_data(way, set, word) = (prev_data & ~mask) | (new_data &  mask) ;
             }
         break;
         default:
@@ -626,16 +729,19 @@ tmpl(void)::transition()
         {
         size_t set = (size_t)m_d_y[r_dcache_miss_addr];
         tag_t tag = (tag_t)m_d_z[r_dcache_miss_addr] | LINE_VALID;
+        assert(m_cacheability_table[r_dcache_miss_addr]);
+
         // selecting a victim 
-        size_t victim = 0x1000;
-        for(size_t way = 0 ; way < m_dcache_ways ; way++) {
-            if((DCACHE_TAG(way, set) & 0x80000000) == 0) victim = way;
-        }
-        if (victim > 0xFFF) victim = m_cpt_fifo_write % m_dcache_ways;
+        size_t way;
+        for(way = 0 ; way < m_dcache_ways ; way++)
+            if((dcache_tag(way, set) & 0x80000000) == 0)
+                break;
+        if (way >= m_dcache_ways)
+            way = m_cpt_fifo_write % m_dcache_ways;
         // cache update
-        DCACHE_TAG(victim, set) = tag;
+        dcache_tag(way, set) = tag;
         for (size_t i=0 ; i<m_icache_words ; i++) {
-            DCACHE_DATA(victim, set, i) = r_dcache_miss_buf[i];
+            dcache_data(way, set, i) = r_dcache_miss_buf[i];
         }
         r_dcache_fsm = DCACHE_IDLE;
         m_cpt_dcache_data_write++;
@@ -666,9 +772,17 @@ tmpl(void)::transition()
         {
         size_t set = (size_t)m_d_y[r_dcache_addr_save];
         tag_t tag = (tag_t)m_d_z[r_dcache_addr_save] | LINE_VALID;
-        for(size_t way = 0 ; way < m_dcache_ways ; way++) {
-            if(DCACHE_TAG(way, set) == tag) DCACHE_TAG(way, set) = 0;
+        bool did_once = false;
+#if XCACHE_WRAPPER_DEBUG
+        std::cout << name() << " Invalidating st: " << std::hex << set << '/' << tag << std::endl; 
+#endif
+        for (size_t way = 0 ; way < m_dcache_ways ; way++) {
+            if (dcache_tag(way, set) == tag) {
+                dcache_tag(way, set) = 0;
+                did_once = true;
+            }
         }
+        assert(did_once);
         r_dcache_fsm = DCACHE_IDLE;
         m_cpt_dcache_dir_write++;
         }
@@ -713,7 +827,7 @@ tmpl(void)::transition()
             addr_t  req_addr    = m_dreq_addr_fifo.read();
             data_t  req_data    = m_dreq_data_fifo.read();
             bool    req_cached  = m_dreq_cached_fifo.read();
-            type_t  req_type    = m_dreq_type_fifo.read();
+            type_t  req_type    = (type_t)m_dreq_type_fifo.read();
             r_dcache_addr_cmd = req_addr;
             r_dcache_data_cmd = req_data;
             r_dcache_type_cmd = req_type;
@@ -725,8 +839,10 @@ tmpl(void)::transition()
             case iss_t::READ_WORD:
             case iss_t::READ_HALF:
             case iss_t::READ_BYTE:
-                if ( req_cached )   r_vci_cmd_fsm = CMD_DATA_MISS;
-                else                r_vci_cmd_fsm = CMD_DATA_UNC;
+                if ( req_cached )
+                    r_vci_cmd_fsm = CMD_DATA_MISS;
+                else
+                    r_vci_cmd_fsm = CMD_DATA_UNC;
             break;
             case iss_t::STORE_COND:
             case iss_t::READ_LINKED:
@@ -771,9 +887,9 @@ tmpl(void)::transition()
             break;
 
         if ( m_dreq_addr_fifo.rok() &&
-             can_burst( m_dreq_type_fifo.read(),
+             can_burst( (type_t)m_dreq_type_fifo.read(),
                         m_dreq_addr_fifo.read(),
-                        r_dcache_type_cmd.read(),
+                        (type_t)r_dcache_type_cmd.read(),
                         r_dcache_addr_cmd.read() ) ) {
             fifo_get = true;
             r_dcache_addr_cmd = m_dreq_addr_fifo.read();
@@ -847,7 +963,7 @@ tmpl(void)::transition()
         if (r_icache_req.read()) {
             r_vci_rsp_fsm = RSP_INS_MISS;
         } else if (m_dreq_addr_fifo.rok()) {
-            type_t req_type = m_dreq_type_fifo.read();
+            type_t req_type = (type_t)m_dreq_type_fifo.read();
             bool req_cached = m_dreq_cached_fifo.read();
 
             switch (req_type) {
@@ -913,8 +1029,6 @@ tmpl(void)::transition()
     case RSP_INS_ERROR:
         r_vci_rsp_fsm = RSP_IDLE;
         r_icache_req = false;
-        // signaling an asynchronous bus error
-        m_iss.setWriteBerr();
     break;
 
     case RSP_DATA_MISS:
@@ -1014,7 +1128,7 @@ tmpl(void)::genMoore()
 
     addr_t req_addr = r_dcache_addr_cmd.read();
     data_t req_data = r_dcache_data_cmd.read();
-    type_t req_type = r_dcache_type_cmd.read();
+    type_t req_type = (type_t)r_dcache_type_cmd.read();
 
     switch ((cmd_fsm_state_e)r_vci_cmd_fsm.read()) {
     case CMD_IDLE:
@@ -1024,7 +1138,7 @@ tmpl(void)::genMoore()
     case CMD_DATA_UNC:
         p_vci.cmdval = true;
         p_vci.address = req_addr & ~0x3;
-        switch( r_dcache_type_cmd ) {
+        switch( (type_t)r_dcache_type_cmd.read() ) {
         case iss_t::READ_WORD:
             p_vci.wdata = 0;
             p_vci.be  = 0xF;
@@ -1070,7 +1184,7 @@ tmpl(void)::genMoore()
         p_vci.address = req_addr & ~0x3;
         p_vci.wdata   = req_data << (req_addr & 0x3)*8;
 
-        switch( r_dcache_type_cmd ) {
+        switch( (type_t)r_dcache_type_cmd.read() ) {
         case iss_t::WRITE_WORD:
             p_vci.be      = 0xF;
             break;
@@ -1096,7 +1210,8 @@ tmpl(void)::genMoore()
 
         p_vci.eop = ! (
             m_dreq_addr_fifo.rok() &&
-            can_burst(  m_dreq_type_fifo.read(), m_dreq_addr_fifo.read(), req_type, req_addr ) );
+            can_burst( (type_t)m_dreq_type_fifo.read(), m_dreq_addr_fifo.read(),
+                       (type_t)req_type, req_addr ) );
         break;
 
     case CMD_DATA_MISS:

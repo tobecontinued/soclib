@@ -154,13 +154,13 @@ private:
     sc_signal<addr_t>       r_dcache_addr_save;
     sc_signal<data_t>       r_dcache_data_save;
     sc_signal<data_t>       r_dcache_prev_save;
-    sc_signal<type_t>       r_dcache_type_save;
+    sc_signal<int>          r_dcache_type_save;
     sc_signal<size_t>       r_dcache_way_save;
     sc_signal<bool>         r_dcache_cached_save;
 
     GenericFifo<addr_t>     m_dreq_addr_fifo;
     GenericFifo<data_t>     m_dreq_data_fifo;
-    GenericFifo<type_t>     m_dreq_type_fifo;
+    GenericFifo<int>        m_dreq_type_fifo;
     GenericFifo<bool>       m_dreq_cached_fifo;
 
     sc_signal<int>          r_icache_fsm;
@@ -171,7 +171,7 @@ private:
     sc_signal<addr_t>       r_dcache_addr_cmd;
     sc_signal<data_t>       r_dcache_data_cmd;
     sc_signal<data_t>       r_dcache_prev_cmd;
-    sc_signal<type_t>       r_dcache_type_cmd;
+    sc_signal<int>          r_dcache_type_cmd;
     sc_signal<bool>         r_dcache_cached_cmd;
     sc_signal<addr_t>       r_dcache_miss_addr;
     sc_signal<size_t>       r_cmd_cpt;       
@@ -216,9 +216,17 @@ public:
 private:
     void transition();
     void genMoore();
-    static inline bool can_burst(   type_t old_type, addr_t old_addr,
-                                    type_t new_type, addr_t new_addr );
+    static inline bool can_burst( type_t old_type, addr_t old_addr,
+                                  type_t new_type, addr_t new_addr );
     static inline bool is_write(type_t cmd);
+
+    inline data_t &icache_data( size_t way, size_t set, size_t word );
+    inline tag_t &icache_tag( size_t way, size_t set );
+
+    inline data_t &dcache_data( size_t way, size_t set, size_t word );
+    inline tag_t &dcache_tag( size_t way, size_t set );
+
+    std::string dump_dcache_line(size_t way, size_t set);
 };
 
 }}
