@@ -4,7 +4,7 @@
 #include <stdarg.h>
 
 #ifndef MULTI_TTY_DEBUG
-#define MULTI_TTY_DEBUG 1
+#define MULTI_TTY_DEBUG 0
 #endif
 
 namespace soclib { namespace tlmt {
@@ -48,8 +48,9 @@ namespace soclib { namespace tlmt {
     std::cout << "[TTY] Receive a read packet with time = "  << time << std::endl;
 #endif
       
-    uint32_t localbuf[32];
+    uint32_t localbuf[200];
     int cell, reg, term_no;
+    tlmt_core::tlmt_time delay = pkt->nwords + (pkt->nwords-1);
       
     for(unsigned int i=0; i<pkt->nwords;i++){
 
@@ -110,8 +111,8 @@ namespace soclib { namespace tlmt {
     std::cout << "[TTY] Send answer with time = " << time + tlmt_core::tlmt_time(50) << std::endl;
 #endif
 
-    p_vci.send(&m_rsp, time + tlmt_core::tlmt_time(50)) ;
-    m_return.set_time(time + tlmt_core::tlmt_time(50));
+    p_vci.send(&m_rsp, time + delay) ;
+    m_return.set_time(time + delay);
     return m_return;
   }
     
@@ -127,6 +128,7 @@ namespace soclib { namespace tlmt {
       
     int cell, reg, term_no;
     char data;
+    tlmt_core::tlmt_time delay = pkt->nwords + (pkt->nwords-1);
 
     for(unsigned int i=0; i<pkt->nwords;i++){
       if (pkt->contig) {
@@ -185,8 +187,8 @@ namespace soclib { namespace tlmt {
     std::cout << "[TTY] Send answer with time = " << time + tlmt_core::tlmt_time(50) << std::endl;
 #endif
 
-    p_vci.send(&m_rsp, time + tlmt_core::tlmt_time(50));
-    m_return.set_time(time + tlmt_core::tlmt_time(50));
+    p_vci.send(&m_rsp, time + delay);
+    m_return.set_time(time + delay);
       
     return m_return;
   }
