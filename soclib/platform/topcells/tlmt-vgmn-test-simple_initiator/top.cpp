@@ -7,45 +7,49 @@
 #include "vci_simple_initiator.h"
 #include "vci_simple_target.h"
 #include "vci_ram.h"
-#include "segmentation.h"
 
 int sc_main(int argc, char **argv)
 {
 	typedef soclib::tlmt::VciParams<uint32_t,uint32_t,4> vci_param;
 
-	// Avoid repeating these everywhere
-	using soclib::common::IntTab;
-	using soclib::common::Segment;
+	/////////////////////////////////////////////////////////////////////////////
+	// SOFT 
+	/////////////////////////////////////////////////////////////////////////////
+	soclib::common::ElfLoader loader("soft/bin.soft");
+  
+	/////////////////////////////////////////////////////////////////////////////
+	// MAPPING TABLE 
+	/////////////////////////////////////////////////////////////////////////////
+	soclib::common::MappingTable maptab(32, soclib::common::IntTab(8), soclib::common::IntTab(8), 0x00200000);
 
-	// Mapping table
-
-	soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00300000);
-
-	maptab.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), true));
-	maptab.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), true));
-	maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), true));
-
-	maptab.add(Segment("data" , DATA_BASE , DATA_SIZE , IntTab(1), true));
-
-	maptab.add(Segment("loc0" , LOC0_BASE , LOC0_SIZE , IntTab(1), true));
-
-	maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(2), false));
-	maptab.add(Segment("timer", TIMER_BASE, TIMER_SIZE, IntTab(3), false));
-
+	maptab.add(soclib::common::Segment("boot",  0xbfc00000,       2048, soclib::common::IntTab(1), 1));
+	maptab.add(soclib::common::Segment("cram0", 0x10000000, 0x00100000, soclib::common::IntTab(0), 1));
+	maptab.add(soclib::common::Segment("cram1", 0x20000000, 0x00100000, soclib::common::IntTab(1), 1));
+	maptab.add(soclib::common::Segment("excep", 0x80000080,       2048, soclib::common::IntTab(1), 1));
+	maptab.add(soclib::common::Segment("tty0",  0x90200000,         32, soclib::common::IntTab(2), 0));
+	maptab.add(soclib::common::Segment("uram0", 0x10200000, 0x00100000, soclib::common::IntTab(0), 0));
+	maptab.add(soclib::common::Segment("uram1", 0x20200000, 0x00100000, soclib::common::IntTab(1), 0));
+	
+	/////////////////////////////////////////////////////////////////////////////
+	// VCI_VGMN 
+	/////////////////////////////////////////////////////////////////////////////
 	soclib::tlmt::VciVgmn<vci_param> vgmn(1,1,maptab,10);
 
+	/////////////////////////////////////////////////////////////////////////////
+	// VCI_SIMPLE_INITIATOR 
+	/////////////////////////////////////////////////////////////////////////////
 	soclib::tlmt::VciSimpleInitiator<vci_param> i("init");
-	//soclib::tlmt::VciSimpleTarget<vci_param> t("target");
-
-	soclib::common::ElfLoader loader("soft/bin.soft");
-	soclib::tlmt::VciRam<vci_param> ram("ram", 0, IntTab(0), maptab, loader);
-
-	std::cout << "ram initialisee" << std::endl;
-
-	//i.p_vci(t.p_vci);
 	i.p_vci(vgmn.m_RspArbCmdRout[0]->p_vci);
+
+	/////////////////////////////////////////////////////////////////////////////
+	// VCI_RAM
+	/////////////////////////////////////////////////////////////////////////////
+	soclib::tlmt::VciRam<vci_param> ram("ram", 0, soclib::common::IntTab(0), maptab, loader);
 	vgmn.m_CmdArbRspRout[0]->p_vci(ram.p_vci);
 
+	/////////////////////////////////////////////////////////////////////////////
+	// START
+	/////////////////////////////////////////////////////////////////////////////
 	sc_core::sc_start();
 	return 0;
 }
