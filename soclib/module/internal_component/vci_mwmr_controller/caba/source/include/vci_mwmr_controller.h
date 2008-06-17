@@ -76,9 +76,9 @@ private:
     const bool m_use_llsc;
 
 	typedef struct Mwmr::fifo_state_s fifo_state_t;
-	fifo_state_t *m_all_state;
-	fifo_state_t *m_to_coproc_state;
-	fifo_state_t *m_from_coproc_state;
+	fifo_state_t * const m_all_state;
+	fifo_state_t * const m_to_coproc_state;
+	fifo_state_t * const m_from_coproc_state;
 
 	sc_signal<uint32_t> *r_config;
 
@@ -93,12 +93,17 @@ private:
 	sc_signal<uint32_t> r_current_wptr;
 	sc_signal<uint32_t> r_current_usage;
 
+    uint32_t m_n_elect;
+    uint32_t m_n_lock_spin;
+    uint32_t m_n_bailout;
+    uint32_t m_n_xfers;
+
 	enum SoclibMwmrWay m_config_way;
 	size_t m_config_no;
 	fifo_state_t *m_config_fifo;
 
 	fifo_state_t *m_current;
-	size_t m_current_no;
+	size_t m_last_elected;
 
 	void rehashConfigFifo();
 

@@ -38,6 +38,14 @@
 #define MWMR_CONTROLLER_DEBUG 0
 #endif
 
+#if MWMR_CONTROLLER_DEBUG
+#define DEBUG_BEGIN do { do{} while(0)
+#define DEBUG_END } while(0)
+#else
+#define DEBUG_BEGIN do { if (0) { do{} while(0)
+#define DEBUG_END } } while(0)
+#endif
+
 namespace soclib { namespace caba {
 
 using soclib::common::alloc_elems;
@@ -53,6 +61,8 @@ struct fifo_state_s {
 	enum SoclibMwmrWay way;
 	uint32_t timer;
     GenericFifo<uint32_t> *fifo;
+    uint32_t in_words;
+    uint32_t out_words;
 };
 }
 
@@ -83,6 +93,17 @@ typedef enum {
 	INIT_DONE,
 } InitFsmState;
 
+typedef enum {
+    RSP_IDLE,
+    RSP_STATUS_READ_RPTR,
+    RSP_STATUS_READ_WPTR,
+    RSP_STATUS_READ_USAGE,
+    RSP_DATA_READ_W,
+    RSP_DATA_WRITE_W,
+    RSP_STATUS_WAIT,
+} RspFsmState;
+
+#if MWMR_CONTROLLER_DEBUG
 static const char *init_states[] = {
 	"INIT_IDLE",
 	"INIT_LOCK_TAKE_RAMLOCK",
@@ -106,16 +127,6 @@ static const char *init_states[] = {
 	"INIT_DONE",
 };
 
-typedef enum {
-    RSP_IDLE,
-    RSP_STATUS_READ_RPTR,
-    RSP_STATUS_READ_WPTR,
-    RSP_STATUS_READ_USAGE,
-    RSP_DATA_READ_W,
-    RSP_DATA_WRITE_W,
-    RSP_STATUS_WAIT,
-} RspFsmState;
-
 static const char *rsp_states[] = {
     "RSP_IDLE",
     "RSP_STATUS_READ_RPTR",
@@ -125,6 +136,7 @@ static const char *rsp_states[] = {
     "RSP_DATA_WRITE_W",
     "RSP_STATUS_WAIT",
 };
+#endif
 
 tmpl(void)::rehashConfigFifo()
 {
@@ -138,37 +150,57 @@ tmpl(void)::rehashConfigFifo()
 		: m_n_from_coproc;
 	if ( m_config_no < max_no )
 		m_config_fifo = &base[m_config_no];
-	else
+    else
 		m_config_fifo = NULL;
 }
 
 tmpl(void)::elect()
 {
-	for ( size_t _i=0; _i<m_n_all; ++_i ) {
-		size_t i = (m_current_no+_i)%m_n_all;
+DEBUG_BEGIN;
+    std::cout << name() << " elect, last one: " << m_last_elected << " ";
+DEBUG_END;
+	for ( size_t _i=1; _i<=m_n_all; ++_i ) {
+		size_t i = (m_last_elected+_i)%m_n_all;
 		fifo_state_t *st = &m_all_state[i];
-#if 0
-		if ( st->timer == 0 && st->running &&
-			 (( st->way == MWMR_TO_COPROC )
-			  ? (st->fifo->empty())
-			  : (st->fifo->full())
-				 ) ) {
-			m_current = st;
-			m_current_no = i;
-			return;
-		}
-#else
-		if ( st->timer == 0 && st->running &&
-			 (( st->way == MWMR_TO_COPROC )
-			  ? (st->fifo->empty())
-			  : (st->fifo->full())
-				 ) ) {
-			m_current = st;
-			m_current_no = i;
-			return;
-		}
-#endif
+
+DEBUG_BEGIN;
+        std::cout << i;
+DEBUG_END;
+
+		if ( st->timer != 0 ) {
+DEBUG_BEGIN;
+            std::cout << "!T";
+DEBUG_END;
+            continue;
+        }
+
+		if ( ! st->running ) {
+DEBUG_BEGIN;
+            std::cout << "!R";
+DEBUG_END;
+            continue;
+        }
+
+		if ( ! (( st->way == MWMR_TO_COPROC )
+                ? (st->fifo->empty())
+                : (st->fifo->full())) ) {
+DEBUG_BEGIN;
+            std::cout << "!D";
+DEBUG_END;
+            continue;
+        }
+
+        m_current = st;
+        m_last_elected = i;
+        break;
 	}
+DEBUG_BEGIN;
+    if ( m_current ) {
+        std::cout << " new one: " << m_last_elected << std::endl;
+    } else {
+        std::cout << " none" << std::endl;
+    }
+DEBUG_END;
 }
 
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
@@ -180,9 +212,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		return true;
 	}
 
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
     std::cout << name() << " on write cell " << cell << " data: " << std::hex << data << std::endl;
-#endif
+DEBUG_END;
 
 	switch ((enum SoclibMwmrRegisters)cell) {
 	case MWMR_RESET:
@@ -233,9 +265,9 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 		return true;
 	}
 
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
     std::cout << name() << " on read cell " << cell << std::endl;
-#endif
+DEBUG_END;
 
 	switch ((enum SoclibMwmrRegisters)cell) {
 	case MWMR_RESET:
@@ -282,6 +314,7 @@ tmpl(void)::reset()
 	for ( size_t i=0; i<m_n_all; ++i ) {
 		m_all_state[i].running = false;
 		m_all_state[i].timer = 0;
+		m_all_state[i].fifo->init();
 	}
 }
 
@@ -321,12 +354,15 @@ tmpl(void)::transition()
                 break;
             }
 			elect();
+            if ( m_current )
+                m_n_elect++;
         }
 		break;
 
+	case INIT_LOCK_TAKE_LL:
+        m_n_lock_spin++;
 	case INIT_STATUS_WRITE_RPTR:
 	case INIT_STATUS_READ_RPTR:
-	case INIT_LOCK_TAKE_LL:
 	case INIT_LOCK_TAKE_RAMLOCK:
 	case INIT_LOCK_TAKE_SC:
 	case INIT_STATUS_READ_WPTR:
@@ -370,7 +406,7 @@ tmpl(void)::transition()
         r_status_modified = false;
 		r_init_fsm = ( p_vci_initiator.rdata.read() == 0 )
 			? INIT_STATUS_READ_RPTR
-			: INIT_DONE;
+			: INIT_LOCK_TAKE_LL;
 		break;
 	case INIT_LOCK_TAKE_RAMLOCK_W:
 		if ( !p_vci_initiator.rspval.read() )
@@ -384,25 +420,26 @@ tmpl(void)::transition()
 	case INIT_DECIDE:
         if (r_rsp_fsm.read() != RSP_IDLE)
             break;
-#if MWMR_CONTROLLER_DEBUG
-        std::cout << name() << " deciding for " << m_current_no
+DEBUG_BEGIN;
+        std::cout << name() << " deciding for " << m_last_elected
                   << ", status: " << r_current_usage.read()
                   << ", rptr: " << r_current_rptr.read()
                   << ", wptr: " << r_current_wptr.read()
-                  << ", fifo full: " << m_current->fifo->full()
-                  << ", fifo empty: " << m_current->fifo->empty()
+                  << ", fifo: " << m_current->fifo->filled_status()
+                  << "/" << (m_current->way == MWMR_FROM_COPROC ? m_fifo_from_coproc_depth : m_fifo_to_coproc_depth)
                   << ": ";
-#endif
+DEBUG_END;
 		if ( m_current->way == MWMR_FROM_COPROC ) {
-			if ( r_current_usage + m_fifo_from_coproc_depth <= m_current->depth &&
+            if ( r_current_usage + m_fifo_from_coproc_depth <= m_current->depth &&
                  m_current->fifo->full() ) {
 				r_cmd_count = m_fifo_from_coproc_depth/vci_param::B;
                 r_rsp_count = m_fifo_from_coproc_depth/vci_param::B;
 				r_init_fsm = INIT_DATA_WRITE;
                 r_status_modified = true;
-#if MWMR_CONTROLLER_DEBUG
+                m_n_xfers++;
+DEBUG_BEGIN;
                 std::cout << "going to read from coproc " << m_fifo_from_coproc_depth/vci_param::B << " words" << std::endl;
-#endif
+DEBUG_END;
                 break;
 			}
 		} else {
@@ -412,18 +449,20 @@ tmpl(void)::transition()
                 r_rsp_count = m_fifo_to_coproc_depth/vci_param::B;
 				r_init_fsm = INIT_DATA_READ;
                 r_status_modified = true;
-#if MWMR_CONTROLLER_DEBUG
+                m_n_xfers++;
+DEBUG_BEGIN;
                 std::cout << "going to put " << m_fifo_to_coproc_depth/vci_param::B << " words to coproc" << std::endl;
-#endif
+DEBUG_END;
                 break;
 			}
 		}
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << "going to bail out: no room for transfer" << std::endl;
-#endif
+DEBUG_END;
         if ( r_status_modified.read() ) {
             r_init_fsm = INIT_STATUS_WRITE_RPTR;
         } else {
+            m_n_bailout++;
             r_init_fsm = m_use_llsc ? INIT_STATUS_WRITE_LOCK : INIT_STATUS_WRITE_RAMLOCK;
         }
 		break;
@@ -483,9 +522,9 @@ tmpl(void)::transition()
         break;
 
 	case RSP_DATA_WRITE_W:
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << name() << " waiting for write " << r_rsp_count.read() << " words to go" << std::endl;
-#endif
+DEBUG_END;
 		if ( p_vci_initiator.rspval.read() ) {
 			if ( r_rsp_count == 1 )
 				r_rsp_fsm = RSP_IDLE;
@@ -493,9 +532,9 @@ tmpl(void)::transition()
 		}
 		break;
 	case RSP_DATA_READ_W:
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << name() << " waiting for read " << r_rsp_count.read() << " words to go" << std::endl;
-#endif
+DEBUG_END;
 		if ( p_vci_initiator.rspval.read() ) {
             current_fifo_put = true;
 			if ( r_rsp_count == 1 )
@@ -504,33 +543,33 @@ tmpl(void)::transition()
 		}
 		break;
     case RSP_STATUS_READ_RPTR:
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << name() << " waiting for rptr" << std::endl;
-#endif
+DEBUG_END;
         r_current_rptr = p_vci_initiator.rdata.read();
 		if ( p_vci_initiator.rspval.read() )
             r_rsp_fsm = RSP_STATUS_READ_WPTR;
         break;
     case RSP_STATUS_READ_WPTR:
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << name() << " waiting for wptr" << std::endl;
-#endif
+DEBUG_END;
         r_current_wptr = p_vci_initiator.rdata.read();
 		if ( p_vci_initiator.rspval.read() )
             r_rsp_fsm = RSP_STATUS_READ_USAGE;
         break;
     case RSP_STATUS_READ_USAGE:
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << name() << " waiting for usage" << std::endl;
-#endif
+DEBUG_END;
         r_current_usage = p_vci_initiator.rdata.read();
 		if ( p_vci_initiator.rspval.read() )
             r_rsp_fsm = RSP_IDLE;
         break;
     case RSP_STATUS_WAIT:
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << name() << " waiting for status write " << r_rsp_count.read() << " words to go" << std::endl;
-#endif
+DEBUG_END;
 		if ( p_vci_initiator.rspval.read() ) {
 			if ( r_rsp_count == 1 )
 				r_rsp_fsm = RSP_IDLE;
@@ -546,9 +585,9 @@ tmpl(void)::transition()
         if ( st == m_current )
             vci_took_data = current_fifo_get;
         if ( coproc_sent_data ) {
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
             std::cout << name() << " getting " << std::hex << p_from_coproc[i].data.read() << " from coproc" << std::endl;
-#endif
+DEBUG_END;
             if ( vci_took_data )
                 st->fifo->put_and_get(p_from_coproc[i].data.read());
             else
@@ -557,21 +596,26 @@ tmpl(void)::transition()
             if ( vci_took_data )
                 st->fifo->simple_get();
         }
+
+        if ( vci_took_data )
+            st->out_words++;
+        if ( coproc_sent_data )
+            st->in_words++;
     }
     for ( size_t i = 0; i<m_n_to_coproc; ++i ) {
         fifo_state_t *st = &m_to_coproc_state[i];
         bool coproc_took_data = p_to_coproc[i].w.read() && p_to_coproc[i].wok.read();
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         if (coproc_took_data)
             std::cout << name() << " put " << std::hex << p_to_coproc[i].data.read() << " to fifo" << std::endl;
-#endif
+DEBUG_END;
         bool vci_gave_data = false;
         if ( st == m_current )
             vci_gave_data = current_fifo_put;
         if ( vci_gave_data ) {
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
             std::cout << name() << " getting " << std::hex << p_vci_initiator.rdata.read() << " from vci" << std::endl;
-#endif
+DEBUG_END;
             if ( coproc_took_data )
                 st->fifo->put_and_get(p_vci_initiator.rdata.read());
             else
@@ -580,6 +624,11 @@ tmpl(void)::transition()
             if ( coproc_took_data )
                 st->fifo->simple_get();
         }
+
+        if ( vci_gave_data )
+            st->in_words++;
+        if ( coproc_took_data )
+            st->out_words++;
     }
 }
 
@@ -646,9 +695,9 @@ tmpl(void)::genMoore()
 		p_vci_initiator.cmdval = true;
 		p_vci_initiator.address = m_current->buffer_address + r_current_wptr;
 		p_vci_initiator.wdata = m_current->fifo->read();
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << name() << " putting @" << (m_current->buffer_address + r_current_wptr) << ": " << m_current->fifo->read() << " on VCI" << std::endl;
-#endif
+DEBUG_END;
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = (r_cmd_count==1);
@@ -657,9 +706,9 @@ tmpl(void)::genMoore()
 		p_vci_initiator.cmdval = true;
 		p_vci_initiator.address = m_current->buffer_address + r_current_rptr;
 		p_vci_initiator.cmd = vci_param::CMD_READ;
-#if MWMR_CONTROLLER_DEBUG
+DEBUG_BEGIN;
         std::cout << name() << " reading data @" << (m_current->buffer_address + r_current_rptr) << std::endl;
-#endif
+DEBUG_END;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = (r_cmd_count==1);
 		break;
@@ -758,6 +807,10 @@ tmpl(/**/)::VciMwmrController(
            r_current_rptr("current_rptr"),
            r_current_wptr("current_wptr"),
            r_current_usage("current_usage"),
+           m_n_elect(0),
+           m_n_lock_spin(0),
+           m_n_bailout(0),
+           m_n_xfers(0),
 		   p_clk("clk"),
 		   p_resetn("resetn"),
 		   p_vci_target("vci_target"),
@@ -791,11 +844,42 @@ tmpl(/**/)::VciMwmrController(
         m_to_coproc_state[i].way = MWMR_TO_COPROC;
         m_to_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_to_coproc_depth);
     }
-    reset();
 }
 
 tmpl(/**/)::~VciMwmrController()
 {
+    std::cout << std::dec;
+
+    for ( size_t i = 0; i<m_n_from_coproc; ++i ) {
+        fifo_state_t *st = &m_from_coproc_state[i];
+        std::cout << name()
+                  << " from coproc " << i
+                  << ": in_words: " << st->in_words
+                  << ", out_words: " << st->out_words
+                  << ", fifo: " << st->fifo->filled_status()
+                  << "/" << (st->way == MWMR_FROM_COPROC ? m_fifo_from_coproc_depth : m_fifo_to_coproc_depth)
+                  << std::endl;
+            
+    }
+    for ( size_t i = 0; i<m_n_to_coproc; ++i ) {
+        fifo_state_t *st = &m_to_coproc_state[i];
+        std::cout << name()
+                  << " to coproc " << i
+                  << ": in_words: " << st->in_words
+                  << ", out_words: " << st->out_words
+                  << ", fifo: " << st->fifo->filled_status()
+                  << "/" << (st->way == MWMR_FROM_COPROC ? m_fifo_from_coproc_depth : m_fifo_to_coproc_depth)
+                  << std::endl;
+            
+    }
+
+    std::cout << name()
+              << " elects: " <<  m_n_elect
+              << ", spins: " <<  m_n_lock_spin
+              << ", bailouts: " <<  m_n_bailout
+              << ", xfers: " <<  m_n_xfers
+              << std::endl;
+
     for ( size_t i = 0; i<m_n_all; ++i )
         delete m_all_state[i].fifo;
     dealloc_elems(p_from_coproc, m_n_from_coproc); 

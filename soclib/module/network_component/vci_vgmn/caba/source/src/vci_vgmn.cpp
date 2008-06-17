@@ -30,6 +30,7 @@
 #include <systemc>
 #include <cassert>
 #include "../include/vci_vgmn.h"
+#include "alloc_elems.h"
 
 #ifndef VGMN_DEBUG
 #define VGMN_DEBUG 0
@@ -402,6 +403,12 @@ public:
         }
     }
 
+    ~MicroNetwork()
+    {
+        delete [] m_router;
+        delete [] m_queue;
+    }
+
     void reset()
     {
         for ( size_t i=0; i<m_in_size; ++i )
@@ -457,10 +464,12 @@ tmpl(/**/)::VciVgmn(
     size_t nb_attached_target,
     size_t min_latency,
     size_t fifo_depth )
-    : soclib::caba::BaseModule(name)
+           : soclib::caba::BaseModule(name),
+           m_nb_initiat(nb_attached_initiat),
+           m_nb_target(nb_attached_target)
 {
-    p_to_initiator = new soclib::caba::VciTarget<vci_param>[nb_attached_initiat];
-    p_to_target = new soclib::caba::VciInitiator<vci_param>[nb_attached_target];
+    p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("to_initiator", nb_attached_initiat);
+    p_to_target = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("to_target", nb_attached_target);
     m_cmd_mn = new _vgmn::MicroNetwork<cmd_router_t,cmd_queue_t>(
         nb_attached_initiat, nb_attached_target,
         min_latency, fifo_depth,
@@ -479,6 +488,14 @@ tmpl(/**/)::VciVgmn(
     SC_METHOD(genMoore);
     dont_initialize();
     sensitive << p_clk.neg();
+}
+
+tmpl(/**/)::~VciVgmn()
+{
+    delete m_rsp_mn;
+    delete m_cmd_mn;
+    soclib::common::dealloc_elems(p_to_initiator, m_nb_initiat);
+    soclib::common::dealloc_elems(p_to_target, m_nb_target);
 }
 
 }}

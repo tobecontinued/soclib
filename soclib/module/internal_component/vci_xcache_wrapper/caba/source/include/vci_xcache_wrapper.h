@@ -213,6 +213,8 @@ public:
         size_t dcache_words,
         size_t dcache_ways );
 
+    ~VciXcacheWrapper();
+
 private:
     void transition();
     void genMoore();

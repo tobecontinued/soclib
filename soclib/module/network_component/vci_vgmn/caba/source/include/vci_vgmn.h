@@ -65,8 +65,6 @@ public:
 private:
     size_t m_nb_initiat;
     size_t m_nb_target;
-    size_t m_min_latency;
-    size_t m_fifo_depth;
 
     typedef _vgmn::OutputPortQueue<soclib::caba::VciCmdBuffer<vci_param> > cmd_queue_t;
     typedef _vgmn::OutputPortQueue<soclib::caba::VciRspBuffer<vci_param> > rsp_queue_t;
@@ -89,6 +87,8 @@ public:
               size_t nb_target,
               size_t min_latency,
               size_t fifo_depth );
+
+    ~VciVgmn();
 };
 
 }}

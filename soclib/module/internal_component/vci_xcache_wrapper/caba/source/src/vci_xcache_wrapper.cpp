@@ -1,23 +1,23 @@
 /* -*- c++ -*-
  *
  * SOCLIB_LGPL_HEADER_BEGIN
- * 
+ *
  * This file is part of SoCLib, GNU LGPLv2.1.
- * 
+ *
  * SoCLib is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
- * 
+ *
  * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
- * 
+ *
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
@@ -33,7 +33,7 @@
 //   The VCI_XCACHE and the ISS_WRAPPER components have been merged, in order
 //   to increase the simulation speed: this VCI_XCACHE_WRAPPER component
 //   is directly wrapping the processsor ISS, allowing a direct communication
-//   between the processor and the cache. 
+//   between the processor and the cache.
 //   The number of associativity levels is now a parameter for both the data
 //   and the instruction cache.
 ///////////////////////////////////////////////////////////////////////////////
@@ -43,7 +43,7 @@
 #include "alloc_elems.h"
 #include "../include/vci_xcache_wrapper.h"
 
-namespace soclib { 
+namespace soclib {
 namespace caba {
 
 #ifndef XCACHE_WRAPPER_DEBUG
@@ -256,13 +256,13 @@ tmpl(/**/)::VciXcacheWrapper(
     r_icache_data = new data_t[m_icache_ways*m_icache_sets*m_icache_words];
     r_icache_tag  = new tag_t[m_icache_ways*m_icache_sets];
 
-    r_icache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("icache_miss_buff", icache_words);;
+    r_icache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("icache_miss_buff", icache_words);
     r_dcache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("dcache_miss_buff", dcache_words);
 
     SC_METHOD(transition);
     dont_initialize();
     sensitive << p_clk.pos();
-  
+
     SC_METHOD(genMoore);
     dont_initialize();
     sensitive << p_clk.neg();
@@ -271,12 +271,19 @@ tmpl(/**/)::VciXcacheWrapper(
     m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
 }
 
-////////////////////////
-tmpl(void)::transition()
-////////////////////////
-{
 
-    /////////// reset ///////////
+tmpl(/**/)::~VciXcacheWrapper()
+{
+    delete [] r_dcache_data;
+    delete [] r_dcache_tag;
+    delete [] r_icache_data;
+    delete [] r_icache_tag;
+    soclib::common::dealloc_elems(r_icache_miss_buf, m_icache_words);
+    soclib::common::dealloc_elems(r_dcache_miss_buf, m_dcache_words);
+}
+
+tmpl(void)::transition()
+{
     if ( ! p_resetn.read() ) {
         m_iss.reset();
 
@@ -312,7 +319,7 @@ tmpl(void)::transition()
     }
 
     /////////// processor instruction request //////////////////////////////
-    // The processor requests are taken into account only 
+    // The processor requests are taken into account only
     // in the ICACHE_IDLE state, and the processor is frozen in case of MISS.
     //
     // Error handling : Instruction Bus Errors are synchronous events.
@@ -358,14 +365,14 @@ tmpl(void)::transition()
             icache_frz = false;
         }
     }
-    
+
     //////////// processor data request  //////////////////////////////////
-    // The processor requests are taken into account only 
+    // The processor requests are taken into account only
     // in the DCACHE_IDLE and DCACHE_WRITE_REQ states :
     // - In the IDLE state, the processor is frozen when
     //   there is a cached read miss, or an uncached read miss.
     // - In the WRITE_REQ state, the processor is frozen when
-    //   there is a cached read miss, or an uncached read miss, 
+    //   there is a cached read miss, or an uncached read miss,
     //   or when the fifo (write buffer) is full.
     // - In all other states, the processor is frozen for any
     //   data request.
@@ -409,7 +416,7 @@ tmpl(void)::transition()
                 }
             } // end for
         } else {
-            dcache_hit = (r_dcache_unc_valid.read() && (dcache_address == r_dcache_miss_addr)); 
+            dcache_hit = (r_dcache_unc_valid.read() && (dcache_address == r_dcache_miss_addr));
             dcache_rdata = r_dcache_miss_buf[0];
         }
 
@@ -450,7 +457,7 @@ tmpl(void)::transition()
             switch (dcache_type) {
             case iss_t::READ_BYTE:
                 dcache_rdata = 0xFF & (dcache_rdata >> (8*(dcache_address & 0x3)));
-                dcache_rdata = dcache_rdata | (dcache_rdata<<8) | 
+                dcache_rdata = dcache_rdata | (dcache_rdata<<8) |
                     (dcache_rdata<<16) | (dcache_rdata<<24);
                 break;
             case iss_t::READ_HALF:
@@ -476,13 +483,13 @@ tmpl(void)::transition()
         } // end switch dcache_type
         break;
     default:
-        dcache_frz = dcache_req; 
+        dcache_frz = dcache_req;
     }
-    
+
     /////////// execute one iss cycle //////////////////
     if ( icache_frz || dcache_frz || m_iss.isBusy() ) {
          m_iss.nullStep();
-    } else {                
+    } else {
         uint32_t it = 0;
         for ( size_t i=0; i<(size_t)iss_t::n_irq; i++ )
             if (p_irq[i].read()) it |= (1<<i);
@@ -549,7 +556,7 @@ tmpl(void)::transition()
         {
         size_t set = (size_t)m_i_y[r_icache_miss_addr];
         tag_t  tag  = (tag_t)m_i_z[r_icache_miss_addr] | LINE_VALID;
-        // selecting a victim 
+        // selecting a victim
         size_t victim = 0x1000;
         for(size_t way = 0 ; way < m_icache_ways ; way++) {
             if((icache_tag(way, set) & 0x80000000) == 0) victim = way;
@@ -577,13 +584,13 @@ tmpl(void)::transition()
     // - r_dcache_unc_valid reset
     // - fifo_put, dreq
     // The VALID bit for a cache line is the MSB bit in the TAG.
-    // In the IDLE & WRITE_REQ states, the processor request is saved in the 
+    // In the IDLE & WRITE_REQ states, the processor request is saved in the
     // r_dcache_*_save registers.
     // There is five mutually exclusive conditions to exit the IDLE state:
     // - CACHED READ MISS => to the MISS_REQ state (to post the request in the FIFO),
     // then to the MISS_WAIT state (waiting the cache line), then to the MISS_UPDT
     // (to update the cache), and finally to the IDLE state.
-    // - UNCACHED READ  => to the UNC_REQ state (to post the request in the FIFO), 
+    // - UNCACHED READ  => to the UNC_REQ state (to post the request in the FIFO),
     // then to the UNC_WAIT state, and finally to the IDLE state.
     // - CACHE INVALIDATE HIT => to the INVAL state for one cycle, then IDLE.
     // - WRITE MISS => directly to the WRITE_REQ state (to post the request in the FIFO)
@@ -630,7 +637,7 @@ tmpl(void)::transition()
         case iss_t::READ_HALF:
         case iss_t::READ_BYTE:
             if ( dcache_hit ) {
-                r_dcache_fsm = DCACHE_IDLE; 
+                r_dcache_fsm = DCACHE_IDLE;
                 if (!dcache_cached)
                     r_dcache_unc_valid = false;
             } else {
@@ -643,7 +650,7 @@ tmpl(void)::transition()
         case iss_t::READ_LINKED:
         case iss_t::STORE_COND:
             if ( dcache_hit ) {
-                r_dcache_fsm = DCACHE_IDLE; 
+                r_dcache_fsm = DCACHE_IDLE;
                 r_dcache_unc_valid = false;
             } else {
                 r_dcache_fsm = DCACHE_UNC_REQ;
@@ -688,7 +695,7 @@ tmpl(void)::transition()
         break;
         case iss_t::WRITE_HALF:
             {
-            int byte = r_dcache_addr_save & 0x2; 
+            int byte = r_dcache_addr_save & 0x2;
             data_t mask = 0xffff << (byte*8);
             new_data = new_data << (byte*8);
             dcache_data(way, set, word) = (prev_data & ~mask) | (new_data &  mask) ;
@@ -696,7 +703,7 @@ tmpl(void)::transition()
         break;
         case iss_t::WRITE_BYTE:
             {
-            int byte = r_dcache_addr_save & 0x3; 
+            int byte = r_dcache_addr_save & 0x3;
             data_t mask = 0xff << (byte*8);
             new_data = new_data << (byte*8);
             dcache_data(way, set, word) = (prev_data & ~mask) | (new_data &  mask) ;
@@ -704,7 +711,7 @@ tmpl(void)::transition()
         break;
         default:
             assert(!"There should be nothing but write requests in DCACHE_WRITE_UPDT");
-        } // end switch 
+        } // end switch
         m_cpt_dcache_data_write++;
         r_dcache_fsm = DCACHE_WRITE_REQ;
         }
@@ -731,7 +738,7 @@ tmpl(void)::transition()
         tag_t tag = (tag_t)m_d_z[r_dcache_miss_addr] | LINE_VALID;
         assert(m_cacheability_table[r_dcache_miss_addr]);
 
-        // selecting a victim 
+        // selecting a victim
         size_t way;
         for(way = 0 ; way < m_dcache_ways ; way++)
             if((dcache_tag(way, set) & 0x80000000) == 0)
@@ -767,14 +774,14 @@ tmpl(void)::transition()
     case DCACHE_ERROR:
         r_dcache_fsm = DCACHE_IDLE;
     break;
-        
+
     case DCACHE_INVAL:
         {
         size_t set = (size_t)m_d_y[r_dcache_addr_save];
         tag_t tag = (tag_t)m_d_z[r_dcache_addr_save] | LINE_VALID;
         bool did_once = false;
 #if XCACHE_WRAPPER_DEBUG
-        std::cout << name() << " Invalidating st: " << std::hex << set << '/' << tag << std::endl; 
+        std::cout << name() << " Invalidating st: " << std::hex << set << '/' << tag << std::endl;
 #endif
         for (size_t way = 0 ; way < m_dcache_ways ; way++) {
             if (dcache_tag(way, set) == tag) {
@@ -802,7 +809,7 @@ tmpl(void)::transition()
     // There is  4 VCI transaction types :
     // - INS_MISS
     // - DATA_MISS
-    // - DATA_UNC 
+    // - DATA_UNC
     // - DATA_WRITE
     // The ICACHE requests have the highest priority.
     // There is at most one (CMD/RSP) VCI transaction, as both CMD_FSM and RSP_FSM
@@ -815,7 +822,7 @@ tmpl(void)::transition()
     //////////////////////////////////////////////////////////////////////////////
 
     switch ((cmd_fsm_state_e)r_vci_cmd_fsm.read()) {
-    
+
     case CMD_IDLE:
         if (r_vci_rsp_fsm != RSP_IDLE)
             break;
@@ -834,7 +841,7 @@ tmpl(void)::transition()
             r_dcache_cached_cmd = req_cached;
             m_cpt_fifo_read++;
             fifo_get = true;
-                
+
             switch(req_type) {
             case iss_t::READ_WORD:
             case iss_t::READ_HALF:
@@ -947,7 +954,7 @@ tmpl(void)::transition()
     // In case of Write Bus Error the VCI_RSP FSM goes to the RSP_DATA_WRITE_ERROR
     // state, and the asynchronous error is directly signaled to the ISS.
     // In case of Read Bus Error, the VCI_RSP FSM goes to the RSP_INS_ERROR
-    // or RSP_DATA_READ_ERROR state, and the error is signaled by the 
+    // or RSP_DATA_READ_ERROR state, and the error is signaled by the
     // ICACHE FSM or by the DCACHE FSM.
     //////////////////////////////////////////////////////////////////////////
 
@@ -996,7 +1003,7 @@ tmpl(void)::transition()
         if ( ! p_vci.rspval.read() )
             break;
 
-        assert(r_rsp_cpt != m_icache_words && 
+        assert(r_rsp_cpt != m_icache_words &&
                "illegal VCI response packet for instruction miss");
         r_rsp_cpt = r_rsp_cpt + 1;
         r_icache_miss_buf[r_rsp_cpt] = (data_t)p_vci.rdata.read();
