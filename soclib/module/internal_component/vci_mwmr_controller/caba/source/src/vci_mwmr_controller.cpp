@@ -310,6 +310,7 @@ tmpl(void)::reset()
 	m_config_way = MWMR_TO_COPROC;
 	m_config_no = 0;
 	m_config_fifo = NULL;
+    m_last_elected = 0;
 
 	for ( size_t i=0; i<m_n_all; ++i ) {
 		m_all_state[i].running = false;
@@ -811,6 +812,11 @@ tmpl(/**/)::VciMwmrController(
            m_n_lock_spin(0),
            m_n_bailout(0),
            m_n_xfers(0),
+           m_config_way(MWMR_TO_COPROC),
+           m_config_no(0),
+           m_config_fifo(NULL),
+           m_current(NULL),
+           m_last_elected(0),
 		   p_clk("clk"),
 		   p_resetn("resetn"),
 		   p_vci_target("vci_target"),

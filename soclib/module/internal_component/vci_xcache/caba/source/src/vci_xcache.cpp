@@ -216,6 +216,25 @@ tmpl(/**/)::VciXCache(
 #endif
 }
 
+tmpl(/**/)::~VciXCache()
+{
+    for ( size_t i=0; i<s_dcache_lines; ++i )
+        soclib::common::dealloc_elems(r_dcache_data[i], s_dcache_words);
+
+    soclib::common::dealloc_elems(r_dcache_tag, s_dcache_lines);
+
+    for ( size_t i=0; i<s_icache_lines; ++i )
+        soclib::common::dealloc_elems(r_icache_data[i], s_icache_words);
+
+    soclib::common::dealloc_elems(r_icache_tag, s_icache_lines);
+
+    soclib::common::dealloc_elems(r_icache_miss_buf, s_icache_words);;
+    soclib::common::dealloc_elems(r_dcache_miss_buf, s_dcache_words);
+
+    delete [] r_dcache_data;
+    delete [] r_icache_data;
+}
+
 tmpl(void)::transition()
 {
     if ( ! p_resetn.read() ) {

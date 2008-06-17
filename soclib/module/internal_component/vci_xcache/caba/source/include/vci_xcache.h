@@ -198,6 +198,8 @@ public:
 
     struct XCacheInfo getCacheInfo() const;
 
+    ~VciXCache();
+
 private:
     void transition();
     void genMoore();

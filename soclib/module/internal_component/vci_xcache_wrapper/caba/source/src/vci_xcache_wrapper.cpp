@@ -200,6 +200,11 @@ tmpl(/**/)::VciXcacheWrapper(
              uint32_log2(m_dcache_sets) + uint32_log2(m_dcache_words) + uint32_log2(vci_param::B) ),
       m_dcache_yzmask((~0)<<(uint32_log2(m_dcache_words) + uint32_log2(vci_param::B))),
 
+      r_dcache_data(new data_t[m_dcache_ways*m_dcache_sets*m_dcache_words]),
+      r_dcache_tag(new tag_t[m_dcache_ways*m_dcache_sets]),
+      r_icache_data(new data_t[m_icache_ways*m_icache_sets*m_icache_words]),
+      r_icache_tag(new tag_t[m_icache_ways*m_icache_sets]),
+
       r_dcache_fsm("r_dcache_fsm"),
       r_dcache_addr_save("r_dcache_addr_save"),
       r_dcache_data_save("r_dcache_data_save"),
@@ -250,11 +255,10 @@ tmpl(/**/)::VciXcacheWrapper(
     assert(icache_ways <= 16);
     assert(dcache_ways <= 16);
 
-    r_dcache_data = new data_t[m_dcache_ways*m_dcache_sets*m_dcache_words];
-    r_dcache_tag  = new tag_t[m_dcache_ways*m_dcache_sets];
-
-    r_icache_data = new data_t[m_icache_ways*m_icache_sets*m_icache_words];
-    r_icache_tag  = new tag_t[m_icache_ways*m_icache_sets];
+    memset(r_dcache_data, 0, sizeof(data_t)*(m_dcache_ways*m_dcache_sets*m_dcache_words));
+    memset(r_dcache_tag, 0, sizeof(tag_t)*(m_dcache_ways*m_dcache_sets));
+    memset(r_icache_data, 0, sizeof(data_t)*(m_icache_ways*m_icache_sets*m_icache_words));
+    memset(r_icache_tag, 0, sizeof(tag_t)*(m_icache_ways*m_icache_sets));
 
     r_icache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("icache_miss_buff", icache_words);
     r_dcache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("dcache_miss_buff", dcache_words);
@@ -285,6 +289,11 @@ tmpl(/**/)::~VciXcacheWrapper()
 tmpl(void)::transition()
 {
     if ( ! p_resetn.read() ) {
+        memset(r_dcache_data, 0, sizeof(data_t)*(m_dcache_ways*m_dcache_sets*m_dcache_words));
+        memset(r_dcache_tag, 0, sizeof(tag_t)*(m_dcache_ways*m_dcache_sets));
+        memset(r_icache_data, 0, sizeof(data_t)*(m_icache_ways*m_icache_sets*m_icache_words));
+        memset(r_icache_tag, 0, sizeof(tag_t)*(m_icache_ways*m_icache_sets));
+
         m_iss.reset();
 
         r_dcache_fsm = DCACHE_INIT;
