@@ -25,10 +25,26 @@ independant of simulation abstraction level (caba, tlmt, ...)
 Code
 ----
 
-IssWrapper<MipsElIss>        IssWrapper<IssProfiler<MipsElIss> >
+replace your current wrapped iss declaration:
 
-Here the code example is with mipsel ISS, but any ISS may be used,
-with any endianness.
+IssWrapper<MipsElIss>
+
+with
+
+IssWrapper<IssProfiler<MipsElIss> >
+
+This code example is with mipsel ISS, but any ISS may be used, with
+any endianness.
+
+Under DSX, replace
+
+iss_t = 'common:mipsel'
+
+with
+
+iss_t = 'common:iss_profiler',
+profiler_iss_t = 'common:mipsel',
+
 
 Output
 ------
