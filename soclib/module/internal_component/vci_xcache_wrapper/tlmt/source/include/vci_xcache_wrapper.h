@@ -73,7 +73,9 @@ namespace soclib { namespace tlmt {
     enum cmd_fsm_state_e {
       CMD_IDLE,
       CMD_DATA_MISS,
-      CMD_DATA_UNC,
+      CMD_DATA_UNC_READ,
+      CMD_DATA_UNC_STORE_COND,
+      CMD_DATA_UNC_READ_LINKED,
       CMD_DATA_WRITE,
       CMD_INS_MISS,
     };

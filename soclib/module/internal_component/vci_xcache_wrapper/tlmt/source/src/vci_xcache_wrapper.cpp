@@ -25,7 +25,7 @@
  * Copyright (c) UPMC / Lip6, 2008
  *     François Pêcheux <francois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
- *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr> 
+ *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
 
@@ -306,7 +306,7 @@ namespace soclib{ namespace tlmt {
 
     //A read or write data can be inserted in the buffer when the buffer is not full or 
     //the buffer is full but the VCI FSM is in a state that one data will be removed the buffer
-    bool push_ok = (!m_buf.full() || m_vci_cmd_fsm==CMD_DATA_MISS || m_vci_cmd_fsm==CMD_DATA_UNC || m_vci_cmd_fsm==CMD_DATA_WRITE);
+    bool push_ok = (!m_buf.full() || m_vci_cmd_fsm==CMD_DATA_MISS || m_vci_cmd_fsm==CMD_DATA_UNC_READ || m_vci_cmd_fsm==CMD_DATA_UNC_READ_LINKED || m_vci_cmd_fsm==CMD_DATA_UNC_STORE_COND || m_vci_cmd_fsm==CMD_DATA_WRITE);
 
     switch ((dcache_fsm_state_e)m_dcache_fsm) {
 
@@ -566,13 +566,16 @@ namespace soclib{ namespace tlmt {
 	  case iss_t::READ_WORD:
 	  case iss_t::READ_HALF:
 	  case iss_t::READ_BYTE:
-	    if(m_cacheability_table[m_buf.getAddress()]){
+	    if(m_cacheability_table[m_buf.getAddress()])
 	      m_vci_cmd_fsm = CMD_DATA_MISS;
-	      break;
-	    }
+	    else
+	      m_vci_cmd_fsm = CMD_DATA_UNC_READ;
+	    break;
 	  case iss_t::STORE_COND:
+	    m_vci_cmd_fsm = CMD_DATA_UNC_STORE_COND;
+	    break;
 	  case iss_t::READ_LINKED:
-	    m_vci_cmd_fsm = CMD_DATA_UNC;
+	    m_vci_cmd_fsm = CMD_DATA_UNC_READ_LINKED;
 	    break;
 	  case iss_t::WRITE_WORD:
 	  case iss_t::WRITE_HALF:
@@ -590,7 +593,6 @@ namespace soclib{ namespace tlmt {
 #if MY_XCACHE_DEBUG
       std::cout << " CMD_INS_MISS";
 #endif
-
       m_cmd.cmd     = vci_param::CMD_READ;
       m_cmd.nwords  = m_icache.get_nwords();
       m_cmd.address = ins_addr & m_icache.get_yzmask ();
@@ -605,16 +607,53 @@ namespace soclib{ namespace tlmt {
       m_vci_cmd_fsm = CMD_IDLE;
       break;
         
-    case CMD_DATA_UNC:
+    case CMD_DATA_UNC_READ:
 #if MY_XCACHE_DEBUG
-      std::cout << " CMD_DATA_UNC";
+      std::cout << " CMD_DATA_UNC_READ";
 #endif
+      m_cmd.cmd     = vci_param::CMD_READ;
+      m_cmd.nwords  = 1;
+      m_cmd.address = m_buf.getAddress() & ~0x3;
+      m_cmd.buf     = m_read_buffer;
+      m_cmd.be      = 0xF;
+      m_cmd.contig  = true;
+      m_cmd.srcid   = m_id;
+      m_cmd.trdid   = 0;
+      m_cmd.pktid   = 0;
+      m_buf.popData();
+      
+      p_vci.send (&m_cmd, c0.time ());
+      m_vci_cmd_fsm = CMD_IDLE;
+      break;
 
-      if(m_buf.getType() == iss_t::STORE_COND){
+    case CMD_DATA_UNC_READ_LINKED:
+#if MY_XCACHE_DEBUG
+      std::cout << " CMD_DATA_UNC_READ_LINKED";
+#endif
+      m_cmd.cmd     = vci_param::CMD_LOCKED_READ;
+      m_cmd.nwords  = 1;
+      m_cmd.address = m_buf.getAddress() & ~0x3;
+      m_cmd.buf     = m_read_buffer;
+      m_cmd.be      = 0xF;
+      m_cmd.contig  = true;
+      m_cmd.srcid   = m_id;
+      m_cmd.trdid   = 0;
+      m_cmd.pktid   = 0;
+      m_buf.popData();
+
+      p_vci.send (&m_cmd, c0.time ());
+      m_vci_cmd_fsm = CMD_IDLE;
+      break;
+
+    case CMD_DATA_UNC_STORE_COND:
+      {
+#if MY_XCACHE_DEBUG
+	std::cout << " CMD_DATA_UNC_STORE_COND";
+#endif
 	typename vci_param::addr_t address = m_buf.getAddress ();
 	m_write_buffer[0] = m_buf.popData ();
-
-	m_cmd.cmd     = vci_param::CMD_WRITE;
+	
+	m_cmd.cmd     = vci_param::CMD_STORE_COND;
 	m_cmd.nwords  = 1;
 	m_cmd.address = address & ~0x3;
 	m_cmd.buf     = m_write_buffer;
@@ -623,27 +662,14 @@ namespace soclib{ namespace tlmt {
 	m_cmd.srcid   = m_id;
 	m_cmd.trdid   = 0;
 	m_cmd.pktid   = 0;
-
+	
 	m_vci_write = true;
-      }
-      else{
-	m_cmd.cmd     = vci_param::CMD_READ;
-	m_cmd.nwords  = 1;
-	m_cmd.address = m_buf.getAddress() & ~0x3;
-	m_cmd.buf     = m_read_buffer;
-	m_cmd.be      = 0xF;
-	m_cmd.contig  = true;
-	m_cmd.srcid   = m_id;
-	m_cmd.trdid   = 0;
-	m_cmd.pktid   = 0;
-	m_buf.popData();
+	p_vci.send (&m_cmd, c0.time ());
+	m_vci_cmd_fsm = CMD_IDLE;
+	break;
       }
 
-      p_vci.send (&m_cmd, c0.time ());
-      m_vci_cmd_fsm = CMD_IDLE;
-      break;
-
-    case CMD_DATA_MISS:
+   case CMD_DATA_MISS:
 #if MY_XCACHE_DEBUG
       std::cout << " CMD_DATA_MISS";
 #endif
@@ -664,36 +690,37 @@ namespace soclib{ namespace tlmt {
       break;
 
     case CMD_DATA_WRITE:
+      {
 #if MY_XCACHE_DEBUG
-      std::cout << " CMD_DATA_WRITE";
+	std::cout << " CMD_DATA_WRITE";
 #endif
-
-      typename vci_param::addr_t address = m_buf.getAddress ();
-      const int subcell = address & 0x3;      
-
-      if (m_buf.getType () == iss_t::WRITE_WORD)
-	m_cmd.be = 0xF;
-      else if (m_buf.getType () == iss_t::WRITE_HALF)
-	m_cmd.be = 3 << subcell;
-      else if (m_buf.getType () == iss_t::WRITE_BYTE)
-	m_cmd.be = 1 << subcell;
-
-      //the write vci transaction have only one word
-      m_write_buffer[0] = m_buf.popData ();
-
-      m_cmd.cmd     = vci_param::CMD_WRITE;
-      m_cmd.nwords  = 1;
-      m_cmd.address = address & ~0x3;
-      m_cmd.buf     = m_write_buffer;
-      m_cmd.contig  = true;
-      m_cmd.srcid   = m_id;
-      m_cmd.trdid   = 0;
-      m_cmd.pktid   = 0;
-      
-      m_vci_write = true;
-      p_vci.send (&m_cmd, c0.time());
-      m_vci_cmd_fsm = CMD_IDLE;
-      break;
+	typename vci_param::addr_t address = m_buf.getAddress ();
+	const int subcell = address & 0x3;      
+	
+	if (m_buf.getType () == iss_t::WRITE_WORD)
+	  m_cmd.be = 0xF;
+	else if (m_buf.getType () == iss_t::WRITE_HALF)
+	  m_cmd.be = 3 << subcell;
+	else if (m_buf.getType () == iss_t::WRITE_BYTE)
+	  m_cmd.be = 1 << subcell;
+	
+	//the write vci transaction have only one word
+	m_write_buffer[0] = m_buf.popData ();
+	
+	m_cmd.cmd     = vci_param::CMD_WRITE;
+	m_cmd.nwords  = 1;
+	m_cmd.address = address & ~0x3;
+	m_cmd.buf     = m_write_buffer;
+	m_cmd.contig  = true;
+	m_cmd.srcid   = m_id;
+	m_cmd.trdid   = 0;
+	m_cmd.pktid   = 0;
+	
+	m_vci_write = true;
+	p_vci.send (&m_cmd, c0.time());
+	m_vci_cmd_fsm = CMD_IDLE;
+	break;
+      }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -854,6 +881,7 @@ namespace soclib{ namespace tlmt {
       std::cout << " RSP_DATA_WRITE_UNC" << std::endl;
 #endif
       wait (m_rsp_received);
+      data_rdata = m_write_buffer[0];
       m_dcache_unc_valid = true;
 	
       //Blocked until processor time greater or equal to vci_response time
