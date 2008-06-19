@@ -30,20 +30,20 @@ if [ "${sb:0:1}" != "/" ] ; then
 	sb=${PWD}/${sb}
 fi
 
-SOCLIB_DIR=$(dirname ${sb})
+SOCLIB_DIR=$(dirname $(dirname ${sb}))
 
 cd ${SOCLIB_DIR}
 svn up
 
-export PATH=${SOCLIB_DIR}/bin:$PATH
+export PATH=${SOCLIB_DIR}/utils/bin:$PATH
 export SOCLIB_TTY=TERM
 export SOCLIB_FB=HEADLESS
 
-cd ${SOCLIB_DIR}/platforms
+cd ${SOCLIB_DIR}/soclib/platform/topcells
 make -k soft_clean
 make test || exit 1
 
-cd ${SOCLIB_DIR}/testcase
+cd ${SOCLIB_DIR}/soclib/platform/runtime_netlist/cpu_test
 make -k clean
 make || exit 1
 
