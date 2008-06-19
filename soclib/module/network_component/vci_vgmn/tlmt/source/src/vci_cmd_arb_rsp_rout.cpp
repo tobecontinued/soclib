@@ -20,12 +20,13 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, nipo
+ * Maintainers: fpecheux, nipo, alinev
  *
  * Copyright (c) UPMC / Lip6, 2008
  *     Francois Pecheux <francois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
- */
+ *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
+*/
 
 #include <limits>
 #include "../include/vci_rsp_arb_cmd_rout.h"
@@ -39,15 +40,20 @@ namespace soclib { namespace tlmt {
 					  const tlmt_core::tlmt_time &time,
 					  void *private_data)
   {
+    m_RspArbCmdRout[pkt->srcid]->stop_sending();
     m_RspArbCmdRout[pkt->srcid]->p_vci.send(pkt,time+m_delay);
     return m_return;
+  }
+
+  tmpl(tlmt_core::tlmt_time)::getTime(){
+    return c0.time();
   }
   
   tmpl(void)::behavior()
   {
     while (1) {
       int decision=through_fifo();
-      //std::cout << "decision=" << decision << std::endl;
+
       switch (decision) {
       case -1:	// no packet available
 	sc_core::wait(e0);
@@ -57,12 +63,9 @@ namespace soclib { namespace tlmt {
 	break;
       default:	// decision contains the index of the destination target
 	{
-	  tlmt_core::tlmt_time packet_time=fifos[decision].time;
-	  if (packet_time<c0.time())
-	    packet_time=c0.time();
-	  tlmt_core::tlmt_return ret;
 	  //std::cout << "[CMD_ARB_RSP_ROUT " << fifos[decision].pkt->trdid << "] send packet from source " << decision << std::endl;
-	  ret=p_vci.send(fifos[decision].pkt,packet_time);
+	  tlmt_core::tlmt_return ret;
+	  ret=p_vci.send(fifos[decision].pkt,fifos[decision].time);
 	  c0.set_time(ret.time());
 	  fifos[decision].event=false;
 	  //sc_core::wait(e0); // should be optimized here
@@ -89,82 +92,66 @@ namespace soclib { namespace tlmt {
   tmpl(int)::through_fifo()
   {
     tlmt_core::tlmt_time min_time=std::numeric_limits<uint32_t>::max();
-    int min_index=-1;
-    bool min_found=false;
-    int idx=-1;
-    int high_priority_index=-1;
-    tlmt_core::tlmt_time packet_time;
-    bool packet_condition=false;
-    int available_packets=0;
+    int min_index = -1;
+    int available_packets = 0;
     
-    for (int j=m_nbinit-1;j>=0;j--) {
-      // Do the round robin, starting with initiators with
-      // lower priority
-      
-      uint32_t k=(m_selected_port+j);
-      if (k>=m_nbinit)
-	k-=m_nbinit;
+    for (unsigned int i = m_selected_port + 1; i != m_selected_port+m_nbinit+1; ++i ) {
+      int k = i%m_nbinit;
       
       // Do not take inactive initiators into account
       // when looking for the fifo with smallest timestamp
       if (!m_RspArbCmdRout[k]->p_vci.peer_active())
 	continue;
       
-      // If the packet is a real one, get its time directly,
+      // If the initiator send a packet to this target, get its time directly,
       // If not, get the original time of the initiator and add the interconnect
       // delay to compare comparable times
       if (fifos[k].event) {
-	packet_time=fifos[k].time;
-	packet_condition=true;
-	//std::cout << "target=" << fifos[k].pkt->trdid << " source = " << k << " time = " << packet_time << " have packet = " << packet_condition << std::endl;
+	available_packets++;
+	//If fifo time is lesser than vgmn time, then the time is updating
+	if(c0.time() > fifos[k].time)
+	  fifos[k].time = c0.time();
       }
       else {
-	packet_time=m_RspArbCmdRout[k]->p_vci.peer_time()+m_delay;
-	packet_condition=false;
-	//std::cout << "source = " << k << " time = " << packet_time << " have packet = " << packet_condition << std::endl;
-      }
-      
-      
-      // If the fifo k contains a packet with the smallest timestamp
-      // (real of false), modify the min variables. min_index indicates
-      // the initiator with the smallest timestamp. min_found indicates
-      // that a minimum has been found
-      if (packet_time < min_time) {
-	min_time=packet_time;
-	min_index=k;
-	min_found=true;
-      } 
-      else if (packet_time==min_time && !fifos[min_index].event) {
-	min_index=k;
-      }
-      
-      if (packet_condition) {
-	if (packet_time<=c0.time()) {
-	  high_priority_index=k;
+	fifos[k].time = m_RspArbCmdRout[k]->p_vci.peer_time()+m_delay;
+	//if the initiator is sending a packet to other target, 
+	//verify if the cmd target has a time greater than time initiator plus the delay interconnect
+	//in affirmative case, it updates the fifo time with the cmd target time
+	//because it is not possible that this target receive a packet with a inferior time
+	if(m_RspArbCmdRout[k]->is_sending()){
+	  if(m_RspArbCmdRout[k]->getCmdTime() > fifos[k].time)
+	    fifos[k].time = m_RspArbCmdRout[k]->getCmdTime();
 	}
-	available_packets++;
+      }
+      
+      // If the fifo k contains a packet with the smallest timestamp, modify the min variables. 
+      // min_index indicates the initiator with the smallest timestamp.
+      if(fifos[k].time < min_time) {
+	 min_time = fifos[k].time;
+	 min_index = k;
+      }
+      else if(fifos[k].time == min_time && !fifos[min_index].event) {
+	//if the min_index priority initiator has not packet for that target,
+	//verify if it is sending a packet to other target. In affirmative case, 
+	//min_index receive the index of current initiator. This action prevents deadlock.
+	if (m_RspArbCmdRout[min_index]->is_sending()) {
+	  min_index = k;
+	}
       }
     }
-    //std::cout << "min_index = " << min_index << std::endl;
-    
+
     if (available_packets==0) {
-      idx=-1;
+      return -1;
     } else {
-      if (high_priority_index != -1) {
-	idx=high_priority_index;
-      } else {
-	if (fifos[min_index].event) {
-	  idx=min_index;
-	  m_selected_port=(min_index+1)%m_nbinit;
-	}
-	else {
-	  idx=-2;
-	}
+      if (fifos[min_index].event) {
+	m_selected_port = min_index;
+	return min_index;
       }
-      
-    } 
-    
-    return idx;
+      else {
+	return -2;
+      }
+    }
+    return -1;
   }
   
   tmpl(/***/)::VciCmdArbRspRout( sc_core::sc_module_name name,

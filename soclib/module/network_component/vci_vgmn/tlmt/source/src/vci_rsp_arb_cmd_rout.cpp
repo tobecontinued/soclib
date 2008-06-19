@@ -46,6 +46,8 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 
 	//printf("dest_index=%u\n",dest_index);
 	if ( dest_index >= 0 && dest_index<m_CmdArbRspRout.size()) {
+	  start_sending();
+	  m_dest = dest_index;
 	  m_CmdArbRspRout[dest_index]->put(pkt,m_index,time+m_delay);
 	} else {
 	  std::cout << "Erreur d'adressage " <<  address  << std::endl;
@@ -56,6 +58,26 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 tmpl(void)::setCmdArbRspRout(std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> &CmdArbRspRout)
 {
 	m_CmdArbRspRout=CmdArbRspRout;
+}
+
+tmpl(tlmt_core::tlmt_time)::getCmdTime()
+{
+	return m_CmdArbRspRout[m_dest]->getTime();
+}
+
+tmpl(bool)::is_sending()
+{
+	return m_sending;
+}
+
+tmpl(void)::start_sending()
+{
+	m_sending = true;
+}
+
+tmpl(void)::stop_sending()
+{
+	m_sending = false;
 }
 
 tmpl(/**/)::VciRspArbCmdRout( sc_core::sc_module_name name,
@@ -69,6 +91,8 @@ tmpl(/**/)::VciRspArbCmdRout( sc_core::sc_module_name name,
 		   p_vci("vci", new tlmt_core::tlmt_callback<VciRspArbCmdRout,soclib::tlmt::vci_cmd_packet<vci_param> *>(
 				   this, &VciRspArbCmdRout<vci_param>::callback), &c0)
 {
+  m_sending = false;
+  m_dest = 0;
 }
 
 }}

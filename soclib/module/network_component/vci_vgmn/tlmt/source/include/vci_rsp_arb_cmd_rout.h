@@ -42,30 +42,42 @@ class VciCmdArbRspRout;
 
 template<typename vci_param>
 class VciRspArbCmdRout
-	: public soclib::tlmt::BaseModule
+  : public soclib::tlmt::BaseModule
 {
-	std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> m_CmdArbRspRout;
-	tlmt_core::tlmt_thread_context c0;
-	const soclib::common::AddressDecodingTable<uint32_t, int> m_routing_table;
-	uint32_t m_index;
-	tlmt_core::tlmt_time m_delay;
-	tlmt_core::tlmt_return m_return;
+  std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> m_CmdArbRspRout;
+  tlmt_core::tlmt_thread_context c0;
+  const soclib::common::AddressDecodingTable<uint32_t, int> m_routing_table;
+  uint32_t m_index;
+  tlmt_core::tlmt_time m_delay;
+  tlmt_core::tlmt_return m_return;
+  int m_dest;
+  bool m_sending;
 
 protected:
-	SC_HAS_PROCESS(VciRspArbCmdRout);
+  SC_HAS_PROCESS(VciRspArbCmdRout);
 
 public:
-	soclib::tlmt::VciTarget<vci_param> p_vci;
+  soclib::tlmt::VciTarget<vci_param> p_vci;
 
-    VciRspArbCmdRout( sc_core::sc_module_name name,
-					  const soclib::common::MappingTable &mt,
-					  uint32_t idx,
-					  tlmt_core::tlmt_time dl );
+  VciRspArbCmdRout( sc_core::sc_module_name name,
+		    const soclib::common::MappingTable &mt,
+		    uint32_t idx,
+		    tlmt_core::tlmt_time dl );
 
-	tlmt_core::tlmt_return &callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-									 const tlmt_core::tlmt_time &time,
-									 void *private_data);
-	void setCmdArbRspRout(std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> &CmdArbRspRout);
+  tlmt_core::tlmt_return &callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+				   const tlmt_core::tlmt_time &time,
+				   void *private_data);
+
+  void setCmdArbRspRout(std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> &CmdArbRspRout);
+
+  bool is_sending();
+
+  void start_sending();
+
+  void stop_sending();
+
+  tlmt_core::tlmt_time getCmdTime();
+
 };
 
 }}

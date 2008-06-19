@@ -81,6 +81,9 @@ public:
   void put(soclib::tlmt::vci_cmd_packet<vci_param> *pkt, uint32_t idx, const tlmt_core::tlmt_time &time);
   
   int through_fifo();
+
+  tlmt_core::tlmt_time getTime();
+
 };
   
 }}
