@@ -28,7 +28,7 @@
 l=$(ps auxw | grep "xterm -S" | awk '{print $2}')
 test -z "$l" || kill $l
 
-for prog in soclib-xtty soclib-fb soclib-pipe2fb ; do
+for prog in soclib-xtty soclib-fb soclib-pipe2fb exe.wrapped_task ; do
 	killall $prog 2>/dev/null
 done
 
