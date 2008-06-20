@@ -72,6 +72,12 @@ class PibusBcu
 	: public soclib::caba::BaseModule
 {
 
+	//	STRUCTURAL PARAMETERS
+	const soclib::common::AddressDecodingTable<uint32_t, int> m_target_table;
+	const size_t m_nb_master;	// number of masters on the bus
+	const size_t m_nb_target;	// number of slaves on the bus
+	const uint32_t m_time_out;	// Time-out value
+
 protected:
 
 	SC_HAS_PROCESS(PibusBcu);
@@ -104,12 +110,6 @@ private:
 	sc_signal<size_t>	r_tout_counter;		// time-out counter
 	sc_signal<size_t>	*r_req_counter;		// number of requests (per master)
 	sc_signal<uint32_t>	*r_wait_counter;	// number of wait cycles (per master)
-
-	//	STRUCTURAL PARAMETERS
-	soclib::common::AddressDecodingTable<uint32_t, int> m_target_table;
-	size_t m_nb_master;	// number of masters on the bus
-	size_t m_nb_target;	// number of slaves on the bus
-	uint32_t m_time_out;	// Time-out value
 
 	// 	FSM states
 	enum fms_state_e {

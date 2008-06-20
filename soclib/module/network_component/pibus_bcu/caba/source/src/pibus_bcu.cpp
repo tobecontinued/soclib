@@ -27,7 +27,7 @@
  */
 
 #include "../include/pibus_bcu.h"
-#include "register.h"
+#include "alloc_elems.h"
 
 #define Pibus soclib::caba::Pibus
 
@@ -42,21 +42,26 @@ PibusBcu::PibusBcu (	sc_module_name 				name,
                         size_t 					nb_master,
                         size_t 					nb_slave,
                         uint32_t 				time_out)
-	: soclib::caba::BaseModule(name)
+	: soclib::caba::BaseModule(name),
+      m_target_table(maptab.getRoutingTable(soclib::common::IntTab())),
+      m_nb_master(nb_master),
+      m_nb_target(nb_slave),
+      m_time_out(time_out),
+      p_clk("clk"),
+      p_resetn("resetn"),
+      p_req(soclib::common::alloc_elems<sc_in<bool> >("req", m_nb_master)),
+      p_gnt(soclib::common::alloc_elems<sc_out<bool> >("gnt", m_nb_master)),
+      p_sel(soclib::common::alloc_elems<sc_out<bool> >("sel", m_nb_target)),
+      p_a("a"),
+      p_lock("lock"),
+      p_ack("ack"),
+      p_tout("tout"),
+      r_fsm_state("fsm_state"),
+      r_current_master("current_master"),
+      r_tout_counter("tout_counter"),
+      r_req_counter(soclib::common::alloc_elems<sc_signal<size_t> >("req_counter", m_nb_master)),
+      r_wait_counter(soclib::common::alloc_elems<sc_signal<uint32_t> >("wait_counter", m_nb_master))
 {
-	m_target_table 	= maptab.getRoutingTable(soclib::common::IntTab());
-	m_time_out	= time_out;
-	m_nb_master	= nb_master;
-	m_nb_target	= nb_slave;
-	
-	// The number of p_req, p_gnt, p_sel ports and the number of counters
-	// depend on the m_nb_master & m_nb_target parameters
-	p_req		= new 	sc_in<bool>[m_nb_master];
-	p_gnt		= new 	sc_out<bool>[m_nb_master];
-	p_sel		= new 	sc_out<bool>[m_nb_target];
-	r_req_counter 	= new	sc_signal<size_t>[m_nb_master];
-	r_wait_counter 	= new	sc_signal<uint32_t>[m_nb_master];
-
 	SC_METHOD(transition);
 	dont_initialize();
 	sensitive << p_clk.pos();
@@ -76,23 +81,15 @@ PibusBcu::PibusBcu (	sc_module_name 				name,
 	if (!m_target_table.isAllBelow( m_nb_target )) 
 		throw soclib::exception::ValueError(
            "At least one target index is larger than the number of targets");
-  
-	SOCLIB_REG_RENAME(r_fsm_state);
-	SOCLIB_REG_RENAME(r_current_master);
-	SOCLIB_REG_RENAME(r_tout_counter);
-	for (size_t i=0; i<m_nb_master; ++i) {
-		SOCLIB_REG_RENAME_N(r_wait_counter, (int)i);
-		SOCLIB_REG_RENAME_N(r_req_counter, (int)i);
-	}
 }
 
 PibusBcu::~PibusBcu()
 {
-    delete [] p_req;
-    delete [] p_gnt;
-    delete [] p_sel;
-    delete [] r_req_counter;
-    delete [] r_wait_counter;
+    soclib::common::dealloc_elems(p_req, m_nb_master);
+    soclib::common::dealloc_elems(p_gnt, m_nb_master);
+    soclib::common::dealloc_elems(p_sel, m_nb_target);
+    soclib::common::dealloc_elems(r_req_counter, m_nb_master);
+    soclib::common::dealloc_elems(r_wait_counter, m_nb_master);
 }
 
 /////////////////////////////////////

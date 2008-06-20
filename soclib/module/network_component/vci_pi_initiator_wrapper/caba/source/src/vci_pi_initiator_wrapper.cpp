@@ -40,7 +40,20 @@ namespace soclib { namespace caba {
 ////////////////////////////////
 
 tmpl(/**/)::VciPiInitiatorWrapper(sc_module_name insname)
-  : soclib::caba::BaseModule(insname)
+		   : soclib::caba::BaseModule(insname),
+		   p_clk("clk"),
+		   p_resetn("resetn"),
+		   p_gnt("gnt"),
+		   p_req("req"),
+		   p_pi("pi"),
+		   p_vci("vci"),
+		   r_fsm_state("fsm_state"),
+		   r_wdata("wdata"),
+		   r_srcid("srcid"),
+		   r_pktid("pktid"),
+		   r_trdid("trdid"),
+		   r_opc("opc"),
+		   r_read("read")
 {
 SC_METHOD (transition);
 dont_initialize();
@@ -53,16 +66,7 @@ sensitive  << p_vci.address;
 sensitive  << p_vci.eop;
 sensitive  << p_pi.ack;
 sensitive  << p_pi.d;
-
-SOCLIB_REG_RENAME(r_fsm_state);
-SOCLIB_REG_RENAME(r_wdata);
-SOCLIB_REG_RENAME(r_srcid);
-SOCLIB_REG_RENAME(r_pktid);
-SOCLIB_REG_RENAME(r_trdid);
-SOCLIB_REG_RENAME(r_opc);
-SOCLIB_REG_RENAME(r_read);
-
-} //  end constructor
+}
 
 ////////////////////////////////
 //	transition 
@@ -162,7 +166,7 @@ switch (r_fsm_state) {
         	} 
         break;
         } // end switch fsm
-}; // end transition
+}
 
 ////////////////////////////////
 //	genMealy
@@ -241,6 +245,6 @@ switch (r_fsm_state) {
 	else			p_vci.rdata 	= p_pi.d.read();
 	break;
         } // end switch
-}; // end genMealy
+}
 
 }} // end namespace

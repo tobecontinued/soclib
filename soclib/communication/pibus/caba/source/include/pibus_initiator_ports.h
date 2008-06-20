@@ -44,6 +44,18 @@ public:
 	sc_inout<sc_dt::sc_uint<32> >		d;	// data
 	sc_in<bool>			tout;	// time_out
 
+#define __ren(x) x((name+"_" #x).c_str())
+    PibusInitiator(const std::string &name = sc_gen_unique_name("pibus_initiator"))
+		: __ren(a),
+          __ren(opc),
+          __ren(read),
+          __ren(lock),
+          __ren(ack),
+          __ren(d),
+          __ren(tout)
+	{}
+#undef __ren
+
 	void operator() (Pibus &sig)
 	{
 		a	(sig.a);

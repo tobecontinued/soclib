@@ -22,7 +22,16 @@ namespace  soclib { namespace caba {
 //	constructor
 /////////////////////////////////////////////////////////////////////
 tmpl(/**/)::VciPiTargetWrapper(sc_module_name insname)
-  : soclib::caba::BaseModule(insname)
+		   : soclib::caba::BaseModule(insname),
+		   p_clk("clk"),
+		   p_resetn("resetn"),
+		   p_sel("sel"),
+		   p_pi("pi"),
+		   p_vci("vci"),
+		   r_fsm_state("fsm_state"),
+		   r_adr("adr"),
+		   r_opc("opc"),
+		   r_lock("lock")
 {
 SC_METHOD (transition);
 dont_initialize();
@@ -35,14 +44,7 @@ sensitive << p_vci.rdata;
 sensitive << p_vci.rspval;
 sensitive << p_vci.rerror;
 sensitive << p_pi.d;
-	
-SOCLIB_REG_RENAME(r_fsm_state);
-SOCLIB_REG_RENAME(r_adr);
-SOCLIB_REG_RENAME(r_lock);
-SOCLIB_REG_RENAME(r_opc);
-SOCLIB_REG_RENAME(r_lock);
-
-} //  end constructor
+}
 
 /*****************************************************************************
 	transition 
@@ -57,7 +59,7 @@ if (p_resetn == false) {
 
 switch (r_fsm_state) {
 	case FSM_IDLE:
-	if (p_sel) {
+		if (p_sel.read()) {
 		r_adr 	= p_pi.a.read();
 		r_lock 	= p_pi.lock.read();
 		r_opc	= p_pi.opc.read();
