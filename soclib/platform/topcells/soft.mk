@@ -41,7 +41,7 @@ OBJDUMP = $(CC_PREFIX)objdump
 
 CFLAGS=-Wall -O2 -I. -I$(HW_HEADERS) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb
 
-MAY_CLEAN=$(shell test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean)
+MAY_CLEAN=$(shell test -r arch_stamp && (test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean))
 
 default: clean $(SOFT_IMAGE)
 
