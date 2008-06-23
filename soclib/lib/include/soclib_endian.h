@@ -47,6 +47,9 @@
 
 #else
 
+#define __LITTLE_ENDIAN 1234
+#define __BIG_ENDIAN    4321
+
 #  ifdef __LITTLE_ENDIAN__
 #    define __BYTE_ORDER __LITTLE_ENDIAN
 #  endif
