@@ -35,8 +35,8 @@
 #define XCACHE_DEBUG 0
 #endif
 
-#ifndef MY_XCACHE_DEBUG
-#define MY_XCACHE_DEBUG 0
+#ifndef FSM_DEBUG
+#define FSM_DEBUG 0
 #endif
 
 namespace soclib{ namespace tlmt {
@@ -90,18 +90,18 @@ namespace soclib{ namespace tlmt {
     c0.add_time(t);
   }
 
-
   tmpl (/**/)::VciXcacheWrapper(sc_core::sc_module_name name,
-				int id,
+				const soclib::common::IntTab &index,
 				const soclib::common::MappingTable &mt,
 				size_t icache_lines,
 				size_t icache_words,
 				size_t dcache_lines,
-				size_t dcache_words )
+				size_t dcache_words,
+				size_t simulation_time )
     : soclib::tlmt::BaseModule (name),
-      m_id(id),
       m_cacheability_table(mt.getCacheabilityTable()),
-      m_iss(id),
+      m_id(mt.indexForId(index)),
+      m_iss(mt.indexForId(index)),
       m_buf(100), 
       m_dcache(dcache_lines, dcache_words),
       m_icache(icache_lines, icache_words),
@@ -116,8 +116,10 @@ namespace soclib{ namespace tlmt {
 					      new tlmt_core::tlmt_callback<VciXcacheWrapper, bool>(this,&VciXcacheWrapper<iss_t, vci_param>::irqReceived, (void*)(long)i));
     }
 
-    m_counter           = 0;
-    m_lookahead         = 10; 
+    m_simulation_time  = simulation_time;
+    m_counter          = 0;
+    m_lookahead        = 10; 
+    m_cpt_lookhead     = 0;
    
     m_dcache_fsm       = DCACHE_INIT;
     m_icache_fsm       = ICACHE_INIT;
@@ -142,10 +144,81 @@ namespace soclib{ namespace tlmt {
     m_read_error       = false;
     m_write_error      = false;
 
-    //the last parameter(1) must be modified by dcache_lines
-    m_iss.setDCacheInfo(32,1,1);
+    m_iss.setDCacheInfo(32,1,dcache_lines);
     m_iss.setICacheInfo(32,1,icache_lines);
     m_iss.reset ();
+
+#if FSM_DEBUG
+    char fileName[50];
+    sprintf (fileName, "xcache%d.txt", m_id);
+    pFile = fopen(fileName,"w");
+#endif
+
+    SC_THREAD(execLoop);
+  }
+
+  tmpl (/**/)::VciXcacheWrapper(sc_core::sc_module_name name,
+				const soclib::common::IntTab &index,
+				const soclib::common::MappingTable &mt,
+				size_t icache_lines,
+				size_t icache_words,
+				size_t dcache_lines,
+				size_t dcache_words )
+    : soclib::tlmt::BaseModule (name),
+      m_cacheability_table(mt.getCacheabilityTable()),
+      m_id(mt.indexForId(index)),
+      m_iss(mt.indexForId(index)),
+      m_buf(100), 
+      m_dcache(dcache_lines, dcache_words),
+      m_icache(icache_lines, icache_words),
+      p_vci("vci", new tlmt_core::tlmt_callback<VciXcacheWrapper,vci_rsp_packet<vci_param>*>(this,&VciXcacheWrapper<iss_t,vci_param>::rspReceived),&c0)
+  {
+    
+    p_irq = (tlmt_core::tlmt_in<bool>*)malloc(sizeof(tlmt_core::tlmt_in<bool>)*iss_t::n_irq);
+    for (int32_t i = 0 ; i < iss_t::n_irq ; i++) {
+      std::ostringstream o;
+      o << "irq[" << i << "]";
+      new(&p_irq[i])tlmt_core::tlmt_in<bool> (o.str(), 
+					      new tlmt_core::tlmt_callback<VciXcacheWrapper, bool>(this,&VciXcacheWrapper<iss_t, vci_param>::irqReceived, (void*)(long)i));
+    }
+
+    m_simulation_time  = std::numeric_limits<size_t>::max();
+    m_counter          = 0;
+    m_lookahead        = 10; 
+    m_cpt_lookhead     = 0;
+   
+    m_dcache_fsm       = DCACHE_INIT;
+    m_icache_fsm       = ICACHE_INIT;
+    m_vci_cmd_fsm      = CMD_IDLE;
+    m_vci_rsp_fsm      = RSP_IDLE;
+    
+    m_dcache_cpt_init  = dcache_lines;
+    m_icache_cpt_init  = icache_lines;
+    
+    m_rsp_vci_time     = 0;
+    m_req_icache_time  = 0;
+
+    m_vci_write        = false;
+    m_icache_req       = false;
+    m_dcache_miss_req  = false;
+    m_dcache_unc_req   = false;
+    m_dcache_unc_valid = false;
+
+    m_icache_frz       = false;
+    m_dcache_frz       = false;
+
+    m_read_error       = false;
+    m_write_error      = false;
+
+    m_iss.setDCacheInfo(32,1,dcache_lines);
+    m_iss.setICacheInfo(32,1,icache_lines);
+    m_iss.reset ();
+
+#if FSM_DEBUG
+    char fileName[50];
+    sprintf (fileName, "xcache%d.txt", m_id);
+    pFile = fopen(fileName,"w");
+#endif
 
     SC_THREAD(execLoop);
   }
@@ -153,12 +226,10 @@ namespace soclib{ namespace tlmt {
   tmpl (void)::execLoop ()
   {
     
-    while(c0.time()<tlmt_core::tlmt_time(1000000000)){
-      //for (;;){
+    while(c0.time()<tlmt_core::tlmt_time(m_simulation_time)){
+      //while(true){
 
       enum iss_t::DataAccessType data_type;
-
-
       typename vci_param::addr_t ins_addr = 0;
       typename vci_param::data_t ins_rdata;
       bool                       ins_asked = false;
@@ -204,9 +275,10 @@ namespace soclib{ namespace tlmt {
 	//m_iss.dump();
 	m_iss.step();
 	c0.add_time(1);
-            
+
 	m_counter++;
 	if (m_counter >= m_lookahead){
+	  m_cpt_lookhead++;
 	  m_counter = 0;
 	  wait (sc_core::SC_ZERO_TIME);
 	}
@@ -225,8 +297,8 @@ namespace soclib{ namespace tlmt {
 			     uint32_t & ins_rdata, bool & ins_ber)
   {
 
-#if MY_XCACHE_DEBUG
-    std::cout << "N_CYCLES " << std::dec << c0.time() << " IREQ = " << icache_req << std::hex << " I_ADDR = " << ins_addr << " DREQ = " << dcache_req << " D_ADDR = " << data_addr << " D_WRITE = " << data_wdata << std::dec;
+#if FSM_DEBUG
+    fprintf (pFile,"[XCACHE %d] NCYCLES %d IREQ = %d I_ADDR = %.8x DREQ = %d D_ADDR = %.8x D_WRITE = %.8x", m_id, (((int) c0.time()) + 1), icache_req, ins_addr, dcache_req, data_addr, data_wdata);
 #endif
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -236,8 +308,8 @@ namespace soclib{ namespace tlmt {
     switch((icache_fsm_state_e)m_icache_fsm) {
 
     case ICACHE_INIT:
-#if MY_XCACHE_DEBUG
-      std::cout << " ICACHE_INIT";
+#if FSM_DEBUG
+      fprintf (pFile," ICACHE_INIT");
 #endif
       m_icache_frz = true;
       m_icache_cpt_init = m_icache_cpt_init - 1;
@@ -246,8 +318,8 @@ namespace soclib{ namespace tlmt {
       break;
     
     case ICACHE_IDLE:
-#if MY_XCACHE_DEBUG
-      std::cout << " ICACHE_IDLE";
+#if FSM_DEBUG
+      fprintf (pFile," ICACHE_IDLE");
 #endif
       if ( icache_req ) {
 	if (m_icache.miss (ins_addr)){
@@ -267,8 +339,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case ICACHE_WAIT:
-#if MY_XCACHE_DEBUG
-      std::cout << " ICACHE_WAIT";
+#if FSM_DEBUG
+      fprintf (pFile," ICACHE_WAIT");
 #endif
       if (m_vci_rsp_fsm == RSP_INS_OK)
 	m_icache_fsm = ICACHE_UPDT;
@@ -277,8 +349,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case ICACHE_ERROR:
-#if MY_XCACHE_DEBUG
-      std::cout << " ICACHE_ERROR";
+#if FSM_DEBUG
+      fprintf (pFile," ICACHE_ERROR");
 #endif
 
 #if XCACHE_DEBUG
@@ -289,8 +361,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case ICACHE_UPDT:
-#if MY_XCACHE_DEBUG
-      std::cout << " ICACHE_UPDT";
+#if FSM_DEBUG
+      fprintf (pFile," ICACHE_UPDT");
 #endif
       ins_ber   = m_read_error;
       m_icache.update(ins_addr & m_icache.get_yzmask (), m_read_buffer_ins);
@@ -311,8 +383,8 @@ namespace soclib{ namespace tlmt {
     switch ((dcache_fsm_state_e)m_dcache_fsm) {
 
     case DCACHE_INIT:
-#if MY_XCACHE_DEBUG
-      std::cout << " DCACHE_INIT";
+#if FSM_DEBUG
+      fprintf (pFile," DCACHE_INIT");
 #endif
       m_dcache_frz = true;
       m_dcache_cpt_init = m_dcache_cpt_init - 1;
@@ -321,14 +393,21 @@ namespace soclib{ namespace tlmt {
       break;
 
     case DCACHE_WRITE_REQ:
-#if MY_XCACHE_DEBUG
-      std::cout << " DCACHE_WRITE_REQ";
+#if FSM_DEBUG
+      fprintf (pFile," DCACHE_WRITE_REQ");
 #endif
+
+      if(!push_ok){
+	if(dcache_req)
+	  m_dcache_frz = true;
+	break;
+      }
+
       m_dcache_fsm = DCACHE_IDLE;
     case DCACHE_IDLE:
       {
-#if MY_XCACHE_DEBUG
-	std::cout << " DCACHE_IDLE";
+#if FSM_DEBUG
+	fprintf (pFile," DCACHE_IDLE");
 #endif
 	m_dcache_frz = false;
 
@@ -394,8 +473,10 @@ namespace soclib{ namespace tlmt {
 	  break;
 	case iss_t::LINE_INVAL:
 	  data_rdata = -1;
-	  if(!m_dcache.miss(data_addr))
+	  if(!m_dcache.miss(data_addr)){
+	    m_dcache.inval (data_addr & ~0x3);
 	    m_dcache_fsm = DCACHE_INVAL;
+	  }
 	  else
 	    m_dcache_fsm = DCACHE_IDLE;
 	  break;
@@ -446,8 +527,8 @@ namespace soclib{ namespace tlmt {
             
     case DCACHE_WRITE_UPDT:
       {
-#if MY_XCACHE_DEBUG
-	std::cout << " DCACHE_WRITE_UPDT";
+#if FSM_DEBUG
+	fprintf (pFile," DCACHE_WRITE_UPDT");
 #endif
 	if(dcache_req)
 	  m_dcache_frz = true;
@@ -456,15 +537,15 @@ namespace soclib{ namespace tlmt {
       }
         
     case DCACHE_MISS_REQ:
-#if MY_XCACHE_DEBUG
-      std::cout << " DCACHE_MISS_REQ";
+#if FSM_DEBUG
+      fprintf (pFile," DCACHE_MISS_REQ");
 #endif
       m_dcache_fsm = DCACHE_MISS_WAIT;
       break;
         
     case DCACHE_MISS_WAIT:
-#if MY_XCACHE_DEBUG
-      std::cout << " DCACHE_MISS_WAIT";
+#if FSM_DEBUG
+      fprintf (pFile," DCACHE_MISS_WAIT");
 #endif
       if (m_vci_rsp_fsm == RSP_DATA_READ_ERROR)
 	m_dcache_fsm = DCACHE_ERROR;
@@ -474,8 +555,8 @@ namespace soclib{ namespace tlmt {
         
     case DCACHE_MISS_UPDT:
       {
-#if MY_XCACHE_DEBUG
-	std::cout << " DCACHE_MISS_UPDT";
+#if FSM_DEBUG
+	fprintf (pFile," DCACHE_MISS_UPDT");
 #endif
             
 	data_ber = m_read_error;
@@ -497,15 +578,15 @@ namespace soclib{ namespace tlmt {
       }
         
     case DCACHE_UNC_REQ:
-#if MY_XCACHE_DEBUG
-      std::cout << " DCACHE_UNC_REQ";
+#if FSM_DEBUG
+      fprintf (pFile," DCACHE_UNC_REQ");
 #endif
       m_dcache_fsm = DCACHE_UNC_WAIT;
       break;
 
     case DCACHE_UNC_WAIT:
-#if MY_XCACHE_DEBUG
-      std::cout << " DCACHE_UNC_WAIT";
+#if FSM_DEBUG
+      fprintf (pFile," DCACHE_UNC_WAIT");
 #endif
       data_ber = m_read_error;
       if (m_vci_rsp_fsm == RSP_DATA_READ_ERROR)
@@ -515,8 +596,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case DCACHE_ERROR:
-#if MY_XCACHE_DEBUG
-      std::cout << " DCACHE_ERROR";
+#if FSM_DEBUG
+      fprintf (pFile," DCACHE_ERROR");
 #endif
 
 #if XCACHE_DEBUG
@@ -526,12 +607,13 @@ namespace soclib{ namespace tlmt {
       break;
         
     case DCACHE_INVAL:
-#if MY_XCACHE_DEBUG
-      std::cout << " DCACHE_INVAL";
+#if FSM_DEBUG
+      fprintf (pFile," DCACHE_INVAL");
 #endif
-      m_dcache.inval (data_addr & ~0x3);
+      if(dcache_req)
+	m_dcache_frz = true;
       data_ber = false;
-      data_rdata = 0;
+      //data_rdata = 0;
       m_dcache_fsm = DCACHE_IDLE;
       break;
     }
@@ -543,8 +625,8 @@ namespace soclib{ namespace tlmt {
     switch ((cmd_fsm_state_e)m_vci_cmd_fsm) {
     
     case CMD_IDLE:
-#if MY_XCACHE_DEBUG
-      std::cout << " CMD_IDLE";
+#if FSM_DEBUG
+      fprintf (pFile," CMD_IDLE");
 #endif
       if (m_vci_rsp_fsm != RSP_IDLE)
 	break;
@@ -590,8 +672,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case CMD_INS_MISS:
-#if MY_XCACHE_DEBUG
-      std::cout << " CMD_INS_MISS";
+#if FSM_DEBUG
+      fprintf (pFile," CMD_INS_MISS");
 #endif
       m_cmd.cmd     = vci_param::CMD_READ;
       m_cmd.nwords  = m_icache.get_nwords();
@@ -608,8 +690,8 @@ namespace soclib{ namespace tlmt {
       break;
         
     case CMD_DATA_UNC_READ:
-#if MY_XCACHE_DEBUG
-      std::cout << " CMD_DATA_UNC_READ";
+#if FSM_DEBUG
+      fprintf (pFile," CMD_DATA_UNC");
 #endif
       m_cmd.cmd     = vci_param::CMD_READ;
       m_cmd.nwords  = 1;
@@ -627,8 +709,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case CMD_DATA_UNC_READ_LINKED:
-#if MY_XCACHE_DEBUG
-      std::cout << " CMD_DATA_UNC_READ_LINKED";
+#if FSM_DEBUG
+      fprintf (pFile," CMD_DATA_UNC");
 #endif
       m_cmd.cmd     = vci_param::CMD_LOCKED_READ;
       m_cmd.nwords  = 1;
@@ -647,8 +729,8 @@ namespace soclib{ namespace tlmt {
 
     case CMD_DATA_UNC_STORE_COND:
       {
-#if MY_XCACHE_DEBUG
-	std::cout << " CMD_DATA_UNC_STORE_COND";
+#if FSM_DEBUG
+	fprintf (pFile," CMD_DATA_UNC");
 #endif
 	typename vci_param::addr_t address = m_buf.getAddress ();
 	m_write_buffer[0] = m_buf.popData ();
@@ -669,9 +751,9 @@ namespace soclib{ namespace tlmt {
 	break;
       }
 
-   case CMD_DATA_MISS:
-#if MY_XCACHE_DEBUG
-      std::cout << " CMD_DATA_MISS";
+    case CMD_DATA_MISS:
+#if FSM_DEBUG
+      fprintf (pFile," CMD_DATA_MISS");
 #endif
       m_cmd.cmd     = vci_param::CMD_READ;
       m_cmd.nwords  = m_dcache.get_nwords();
@@ -691,8 +773,8 @@ namespace soclib{ namespace tlmt {
 
     case CMD_DATA_WRITE:
       {
-#if MY_XCACHE_DEBUG
-	std::cout << " CMD_DATA_WRITE";
+#if FSM_DEBUG
+	fprintf (pFile," CMD_DATA_WRITE");
 #endif
 	typename vci_param::addr_t address = m_buf.getAddress ();
 	const int subcell = address & 0x3;      
@@ -703,12 +785,21 @@ namespace soclib{ namespace tlmt {
 	  m_cmd.be = 3 << subcell;
 	else if (m_buf.getType () == iss_t::WRITE_BYTE)
 	  m_cmd.be = 1 << subcell;
-	
+
 	//the write vci transaction have only one word
-	m_write_buffer[0] = m_buf.popData ();
-	
+	//m_write_buffer[0] = m_buf.popData ();
+      
+	uint32_t i;
+	bool notlast = true;
+	for (i = 0; notlast == true; i++){
+	  //notlast = m_buf.notlastWrite ();
+	  notlast = false;
+	  m_write_buffer[i] = m_buf.popData ();
+	}
+
 	m_cmd.cmd     = vci_param::CMD_WRITE;
-	m_cmd.nwords  = 1;
+	//m_cmd.nwords  = 1;
+	m_cmd.nwords  = i;
 	m_cmd.address = address & ~0x3;
 	m_cmd.buf     = m_write_buffer;
 	m_cmd.contig  = true;
@@ -730,8 +821,8 @@ namespace soclib{ namespace tlmt {
     switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
 
     case RSP_IDLE:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_IDLE" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_IDLE\n");
 #endif
 
       if (m_icache_req && c0.time()>m_req_icache_time) {
@@ -766,8 +857,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case RSP_INS_MISS:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_INS_MISS" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_INS_MISS\n");
 #endif
       wait (m_rsp_received);
         
@@ -779,30 +870,30 @@ namespace soclib{ namespace tlmt {
       break;
 
     case RSP_INS_OK:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_INS_OK" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_INS_OK\n");
 #endif
       m_vci_rsp_fsm = RSP_IDLE;
       m_icache_req = false;
       break;
 
     case RSP_INS_ERROR_WAIT:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_INS_ERROR_WAIT" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_INS_ERROR_WAIT\n");
 #endif
       break;
         
     case RSP_INS_ERROR:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_INS_ERROR" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_INS_ERROR\n");
 #endif
       m_vci_rsp_fsm = RSP_IDLE;
       m_icache_req = false;
       break;
         
     case RSP_DATA_MISS:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_DATA_MISS" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_MISS\n");
 #endif
       wait (m_rsp_received);
         
@@ -814,8 +905,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case RSP_DATA_WRITE:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_DATA_WRITE" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_WRITE\n");
 #endif
       wait (m_rsp_received);
         
@@ -836,8 +927,8 @@ namespace soclib{ namespace tlmt {
 	m_vci_rsp_fsm = RSP_WAIT_TIME;
       break;
     case RSP_WAIT_TIME:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_WAIT_TIME" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_WRITE\n");
 #endif
       //Blocked until processor time greater or equal to vci_response time
       //This is necessary the write vci transaction does not blocking the processor 
@@ -851,8 +942,8 @@ namespace soclib{ namespace tlmt {
       }
       break;
     case RSP_DATA_UNC:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_DATA_UNC" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_UNC\n");
 #endif
       wait (m_rsp_received);
       
@@ -877,8 +968,8 @@ namespace soclib{ namespace tlmt {
       }
       break;
     case RSP_DATA_WRITE_UNC:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_DATA_WRITE_UNC" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_UNC\n");
 #endif
       wait (m_rsp_received);
       data_rdata = m_write_buffer[0];
@@ -899,8 +990,8 @@ namespace soclib{ namespace tlmt {
 	m_vci_rsp_fsm = RSP_UNC_WAIT_TIME;
       break;
     case RSP_UNC_WAIT_TIME:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_UNC_WAIT_TIME" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_UNC\n");
 #endif
       //Blocked until processor time greater or equal to vci_response time
       //This is necessary the write vci transaction does not blocking the processor 
@@ -915,8 +1006,8 @@ namespace soclib{ namespace tlmt {
       break;
 
     case RSP_DATA_WRITE_ERROR:
-#if MY_XCACHE_DEBUG
-      std::cout << " DATA_WRITE_ERROR" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," DATA_WRITE_ERROR\n");
 #endif
 #if XCACHE_DEBUG
       std::cout << "[XCACHE] data WRITE berr" << std::endl;
@@ -924,8 +1015,8 @@ namespace soclib{ namespace tlmt {
     case RSP_DATA_UNC_OK:
     case RSP_DATA_MISS_OK:
     case RSP_DATA_READ_ERROR:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_DATA_..." << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_...\n");
 #endif
       m_dcache_miss_req = false;
       m_dcache_unc_req = false;
@@ -933,16 +1024,20 @@ namespace soclib{ namespace tlmt {
       break;
 
     case RSP_DATA_READ_ERROR_WAIT:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_DATA_READ_ERROR_WAIT" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_READ_ERROR_WAIT\n");
 #endif
       break;
 
     case RSP_DATA_WRITE_ERROR_WAIT:
-#if MY_XCACHE_DEBUG
-      std::cout << " RSP_DATA_WRITE_ERROR_WAIT" << std::endl;
+#if FSM_DEBUG
+      fprintf (pFile," RSP_DATA_WRITE_ERROR_WAIT\n");
 #endif
       break;
     }
+  }
+
+  tmpl(size_t)::getNLookhead(){
+    return m_cpt_lookhead;
   }
 }}

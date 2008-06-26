@@ -112,6 +112,7 @@ namespace soclib { namespace tlmt {
 
   private:
     
+    FILE *      pFile;
     uint32_t    m_id;
     iss_t       m_iss;
 
@@ -126,8 +127,9 @@ namespace soclib { namespace tlmt {
     tlmt_core::tlmt_time                      m_rsp_vci_time;
     tlmt_core::tlmt_return                    m_return;
     tlmt_core::tlmt_thread_context            c0;
-    uint32_t                                  m_counter;
-    uint32_t                                  m_lookahead;
+    size_t                                    m_counter;
+    size_t                                    m_lookahead;
+    size_t                                    m_simulation_time;
 
     //BUFFER OF READ AND WRITE DATA
     buffer<iss_t,vci_param> m_buf;
@@ -159,18 +161,30 @@ namespace soclib { namespace tlmt {
 
     size_t                 m_dcache_cpt_init;   
     size_t                 m_icache_cpt_init;  
+    size_t                 m_cpt_lookhead;  
 
   protected:
     SC_HAS_PROCESS(VciXcacheWrapper);
 
   public:
     VciXcacheWrapper(sc_core::sc_module_name name,
-		     int id, 
+		     const soclib::common::IntTab &index,
 		     const soclib::common::MappingTable &mt,
 		     size_t icache_lines,
 		     size_t icache_words,
 		     size_t dcache_lines,
 		     size_t dcache_words );
+
+    VciXcacheWrapper(sc_core::sc_module_name name,
+		     const soclib::common::IntTab &index,
+		     const soclib::common::MappingTable &mt,
+		     size_t icache_lines,
+		     size_t icache_words,
+		     size_t dcache_lines,
+		     size_t dcache_words,
+		     size_t simulation_time);
+
+    size_t getNLookhead();
 
   private:
 

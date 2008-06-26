@@ -90,6 +90,12 @@ namespace soclib { namespace tlmt {
     std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " Time = "  << time + delay << std::endl;
 #endif
 
+    m_cpt_cycle = time + delay;
+    m_cpt_read_packet++;
+    m_cpt_read += pkt->nwords;
+    if(pkt->nwords == 1)
+      m_cpt_read_1++;
+
     p_vci.send(&m_rsp, time + delay);
     m_return.set_time(time+ delay);
     return m_return;
@@ -129,6 +135,12 @@ namespace soclib { namespace tlmt {
 #if VCI_RAM_DEBUG
     std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " Time = "  << time + delay << std::endl;
 #endif
+
+    m_cpt_cycle = time + delay;
+    m_cpt_read_packet++;
+    m_cpt_read += pkt->nwords;
+    if(pkt->nwords == 1)
+      m_cpt_read_1++;
 
     p_vci.send(&m_rsp, time + delay);
     m_return.set_time(time+ delay);
@@ -187,6 +199,12 @@ namespace soclib { namespace tlmt {
     m_rsp.srcid  = pkt->srcid;
     m_rsp.pktid  = pkt->pktid;
     m_rsp.trdid  = pkt->trdid;
+
+    m_cpt_cycle = time + delay;
+    m_cpt_write_packet++;
+    m_cpt_write += pkt->nwords;
+    if(pkt->nwords == 1)
+      m_cpt_write_1++;
     
 #if VCI_RAM_DEBUG
     std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " Time = "  << time + delay  << std::endl;
@@ -262,6 +280,12 @@ namespace soclib { namespace tlmt {
     std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a anwser packet " << pkt->pktid << " Time = "  << time + delay  << std::endl;
 #endif
 
+    m_cpt_cycle = time + delay;
+    m_cpt_write_packet++;
+    m_cpt_write += pkt->nwords;
+    if(pkt->nwords == 1)
+      m_cpt_write_1++;
+
     p_vci.send(&m_rsp,  time + delay);
     m_return.set_time(time + delay);
     return m_return;
@@ -306,9 +330,62 @@ namespace soclib { namespace tlmt {
 
     //initialize the control table LL/SC
     m_atomic.clearAll();
+
+    m_cpt_cycle        = 0;
+    m_cpt_read         = 0;
+    m_cpt_read_1       = 0;
+    m_cpt_read_packet  = 0;
+    m_cpt_write        = 0;
+    m_cpt_write_1      = 0;
+    m_cpt_write_packet = 0;
   }
 
   tmpl(/**/)::~VciRam(){}
+
+  tmpl(int)::getNCycles()
+  {
+    return m_cpt_cycle;
+  }
+  
+  tmpl(int)::getActiveCycles()
+  {
+    return (m_cpt_read + m_cpt_write);
+  }
+  
+  tmpl(int)::getIdleCycles()
+  {
+    return (m_cpt_cycle - (m_cpt_read + m_cpt_write));
+  }
+  
+  tmpl(int)::getNReadPacket()
+  {
+    return m_cpt_read_packet;
+  }
+  
+  tmpl(int)::getNWritePacket()
+  {
+    return m_cpt_write_packet;
+  }
+  
+  tmpl(int)::getNReadPacket_1word()
+  {
+    return m_cpt_read_1;
+  }
+  
+  tmpl(int)::getNWritePacket_1word()
+  {
+    return m_cpt_write_1;
+  }
+  
+  tmpl(int)::getNReadPacket_Nwords()
+  {
+    return (m_cpt_read_packet - m_cpt_read_1);
+  }
+  
+  tmpl(int)::getNWritePacket_Nwords()
+  {
+    return (m_cpt_write_packet - m_cpt_write_1);
+  }
  
 }}
 

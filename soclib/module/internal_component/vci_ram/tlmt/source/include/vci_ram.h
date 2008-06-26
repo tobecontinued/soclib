@@ -30,6 +30,18 @@ class VciRam
   tlmt_core::tlmt_return m_return;
   vci_rsp_packet<vci_param> m_rsp;
 
+    // Activity counters
+  uint32_t m_cpt_cycle;   // Count Cycles
+
+  uint32_t m_cpt_read;   // Count READ access
+  uint32_t m_cpt_write;  // Count WRITE access
+  
+  uint32_t m_cpt_read_packet;   // Count READ packet
+  uint32_t m_cpt_read_1;        // Count READ packet of 1 word
+  
+  uint32_t m_cpt_write_packet;  // Count WRITE packet
+  uint32_t m_cpt_write_1;       // Count WRITE packet of 1 word
+  
  protected:
   SC_HAS_PROCESS(VciRam);
  public:
@@ -66,7 +78,16 @@ class VciRam
 					      soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
 					      const tlmt_core::tlmt_time &time,
 					      void *private_data);
-  
+
+  int getNCycles();
+  int getActiveCycles();
+  int getIdleCycles();
+  int getNReadPacket();
+  int getNWritePacket();
+  int getNReadPacket_1word();
+  int getNWritePacket_1word();
+  int getNReadPacket_Nwords();
+  int getNWritePacket_Nwords();
 };
 
 }}
