@@ -51,6 +51,10 @@ namespace soclib { namespace tlmt {
     uint32_t localbuf[200];
     int cell, reg, term_no;
     tlmt_core::tlmt_time delay = pkt->nwords + (pkt->nwords-1);
+
+    m_cpt_idle = m_cpt_idle + ((int)time - m_cpt_cycle);
+    m_cpt_cycle = (int)(time + delay);
+    m_cpt_read++;
       
     for(unsigned int i=0; i<pkt->nwords;i++){
 
@@ -130,6 +134,9 @@ namespace soclib { namespace tlmt {
     char data;
     tlmt_core::tlmt_time delay = pkt->nwords + (pkt->nwords-1);
 
+    m_cpt_idle = m_cpt_idle + ((int)time - m_cpt_cycle);
+    m_cpt_cycle = (int)(time + delay);
+    m_cpt_write++;
     for(unsigned int i=0; i<pkt->nwords;i++){
       if (pkt->contig) {
 	cell = (int)(((pkt->address+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes);
@@ -205,6 +212,10 @@ namespace soclib { namespace tlmt {
       p_irq.push_back(new tlmt_core::tlmt_out<bool>(tmpName.str().c_str(),NULL));
       j++;
     }
+    m_cpt_cycle = 0;
+    m_cpt_idle = 0;
+    m_cpt_read = 0;
+    m_cpt_write = 0;
   }
 
   tmpl(/**/)::VciMultiTty(sc_core::sc_module_name name,
@@ -239,6 +250,26 @@ namespace soclib { namespace tlmt {
       p_vci("vci", new tlmt_core::tlmt_callback<VciMultiTty,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciMultiTty<vci_param>::callback))
   {
     init(names);
+  }
+
+  tmpl(size_t)::getTotalCycles(){
+    return m_cpt_cycle;
+  }
+
+  tmpl(size_t)::getActiveCycles(){
+    return (m_cpt_cycle - m_cpt_idle);
+  }
+
+  tmpl(size_t)::getIdleCycles(){
+    return m_cpt_idle;
+  }
+
+  tmpl(size_t)::getNRead(){
+    return m_cpt_read;
+  }
+
+  tmpl(size_t)::getNWrite(){
+    return m_cpt_write;
   }
 
 }

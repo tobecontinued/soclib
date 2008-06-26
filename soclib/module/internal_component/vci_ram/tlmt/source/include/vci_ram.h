@@ -79,7 +79,7 @@ class VciRam
 					      const tlmt_core::tlmt_time &time,
 					      void *private_data);
 
-  int getNCycles();
+  int getTotalCycles();
   int getActiveCycles();
   int getIdleCycles();
   int getNReadPacket();

@@ -63,8 +63,10 @@ namespace soclib{ namespace tlmt {
     m_rsp_vci_time = time;
     
     //m_vci_write is active when the vci transaction command is WRITE  (m_cmd.cmd == vci_param::CMD_WRITE)
-    if(!m_vci_write)
+    if(!m_vci_write){
+      m_cpt_idle = m_cpt_idle + (int)(time - c0.time());
       update_time(time);
+    }
     
     m_rsp_received.notify (sc_core::SC_ZERO_TIME);
     
@@ -119,15 +121,27 @@ namespace soclib{ namespace tlmt {
     m_simulation_time  = simulation_time;
     m_counter          = 0;
     m_lookahead        = 10; 
-    m_cpt_lookhead     = 0;
+
+    m_cpt_lookhead             = 0;
+    m_cpt_idle                 = 0;
+
+    m_icache_cpt_init          = icache_lines;
+    m_icache_cpt_cache_read    = 0;
+    m_icache_cpt_uncache_read  = 0;
+
+    m_dcache_cpt_init          = dcache_lines;
+    m_dcache_cpt_cache_read    = 0;
+    m_dcache_cpt_uncache_read  = 0;
+    m_dcache_cpt_cache_write   = 0;
+    m_dcache_cpt_uncache_write = 0;
+
+    m_cpt_fifo_read            = 0;
+    m_cpt_fifo_write           = 0;
    
     m_dcache_fsm       = DCACHE_INIT;
     m_icache_fsm       = ICACHE_INIT;
     m_vci_cmd_fsm      = CMD_IDLE;
     m_vci_rsp_fsm      = RSP_IDLE;
-    
-    m_dcache_cpt_init  = dcache_lines;
-    m_icache_cpt_init  = icache_lines;
     
     m_rsp_vci_time     = 0;
     m_req_icache_time  = 0;
@@ -185,15 +199,27 @@ namespace soclib{ namespace tlmt {
     m_simulation_time  = std::numeric_limits<size_t>::max();
     m_counter          = 0;
     m_lookahead        = 10; 
-    m_cpt_lookhead     = 0;
-   
+
+    m_cpt_lookhead             = 0;
+    m_cpt_idle                 = 0;
+
+    m_icache_cpt_init          = icache_lines;
+    m_icache_cpt_cache_read    = 0;
+    m_icache_cpt_uncache_read  = 0;
+
+    m_dcache_cpt_init          = dcache_lines;
+    m_dcache_cpt_cache_read    = 0;
+    m_dcache_cpt_uncache_read  = 0;
+    m_dcache_cpt_cache_write   = 0;
+    m_dcache_cpt_uncache_write = 0;
+
+    m_cpt_fifo_read            = 0;
+    m_cpt_fifo_write           = 0;
+
     m_dcache_fsm       = DCACHE_INIT;
     m_icache_fsm       = ICACHE_INIT;
     m_vci_cmd_fsm      = CMD_IDLE;
     m_vci_rsp_fsm      = RSP_IDLE;
-    
-    m_dcache_cpt_init  = dcache_lines;
-    m_icache_cpt_init  = icache_lines;
     
     m_rsp_vci_time     = 0;
     m_req_icache_time  = 0;
@@ -259,6 +285,7 @@ namespace soclib{ namespace tlmt {
 	m_iss.setWriteBerr ();
 
       if(m_iss.isBusy() || m_icache_frz || m_dcache_frz){
+	m_cpt_idle++;
 	add_time(1);
       }
       else{
@@ -323,12 +350,14 @@ namespace soclib{ namespace tlmt {
 #endif
       if ( icache_req ) {
 	if (m_icache.miss (ins_addr)){
+	  m_icache_cpt_uncache_read++;
 	  m_icache_frz = true;
 	  m_icache_req = true;
 	  m_req_icache_time = c0.time();
 	  m_icache_fsm = ICACHE_WAIT;
 	}
 	else{
+	  m_icache_cpt_cache_read++;
 	  m_icache_frz = false;
 	  ins_ber = false;
 	  ins_rdata = m_icache.read(ins_addr & ~0x3);
@@ -425,6 +454,8 @@ namespace soclib{ namespace tlmt {
 	  if(m_cacheability_table[data_addr]){
 	    if (m_dcache.miss (data_addr)){
 	      if(push_ok){
+		m_dcache_cpt_uncache_read++;
+		m_cpt_fifo_write++;
 		m_buf.push (data_addr, data_type, data_wdata, c0.time() + tlmt_core::tlmt_time(1));
 		m_dcache_miss_req = true;
 		m_dcache_fsm = DCACHE_MISS_REQ;
@@ -432,6 +463,7 @@ namespace soclib{ namespace tlmt {
 	      m_dcache_frz = true;
 	    }
 	    else{
+	      m_dcache_cpt_cache_read++;
 	      data_ber = false;
 	      typename vci_param::data_t data = m_dcache.read (data_addr & ~0x3);
 
@@ -450,6 +482,27 @@ namespace soclib{ namespace tlmt {
 	    break;
 	  }
 	case iss_t::READ_LINKED:
+	  if(m_dcache_unc_valid){
+#if XCACHE_DEBUG
+	    std::cout << "[XCACHE] Unc hit" << std::endl;
+#endif
+	    m_dcache_unc_valid = false;
+	    m_dcache_fsm = DCACHE_IDLE;
+	  }
+	  else{
+#if XCACHE_DEBUG
+	    std::cout << "[XCACHE] Unc miss" << std::endl;
+#endif
+	    if(push_ok){
+	      m_dcache_cpt_uncache_read++;
+	      m_cpt_fifo_write++;
+	      m_buf.push (data_addr, data_type, data_wdata, c0.time() + tlmt_core::tlmt_time(1));
+	      m_dcache_unc_req = true;
+	      m_dcache_fsm = DCACHE_UNC_REQ;
+	    }
+	    m_dcache_frz = true;
+	  }
+	  break;
 	case iss_t::STORE_COND:
 
 	  if(m_dcache_unc_valid){
@@ -464,6 +517,8 @@ namespace soclib{ namespace tlmt {
 	    std::cout << "[XCACHE] Unc miss" << std::endl;
 #endif
 	    if(push_ok){
+	      m_dcache_cpt_uncache_write++;
+	      m_cpt_fifo_write++;
 	      m_buf.push (data_addr, data_type, data_wdata, c0.time() + tlmt_core::tlmt_time(1));
 	      m_dcache_unc_req = true;
 	      m_dcache_fsm = DCACHE_UNC_REQ;
@@ -474,6 +529,7 @@ namespace soclib{ namespace tlmt {
 	case iss_t::LINE_INVAL:
 	  data_rdata = -1;
 	  if(!m_dcache.miss(data_addr)){
+	    m_dcache_cpt_cache_write++;
 	    m_dcache.inval (data_addr & ~0x3);
 	    m_dcache_fsm = DCACHE_INVAL;
 	  }
@@ -485,6 +541,10 @@ namespace soclib{ namespace tlmt {
 	case iss_t::WRITE_BYTE:
 	  if (!m_dcache.miss(data_addr)){
 	    if(push_ok){
+	      m_dcache_cpt_cache_write++;
+	      m_dcache_cpt_uncache_write++;
+	      m_cpt_fifo_write++;
+
 	      typename vci_param::data_t previous_data = m_dcache.read(data_addr & ~0x3);
 	      typename vci_param::data_t mask, data, new_data = 0;
 	      int byte = data_addr & 0x3;
@@ -513,6 +573,8 @@ namespace soclib{ namespace tlmt {
 	  }
 	  else{
 	    if(push_ok){
+	      m_dcache_cpt_uncache_write++;
+	      m_cpt_fifo_write++;
 	      m_buf.push (data_addr, data_type, data_wdata, c0.time() + tlmt_core::tlmt_time(1));
 	      m_dcache_frz = false;
 	      m_dcache_fsm = DCACHE_WRITE_REQ;
@@ -642,7 +704,6 @@ namespace soclib{ namespace tlmt {
       }
       else if (!m_buf.empty()){
 	if(c0.time()>m_buf.getTime()){
-
 	  enum iss_t::DataAccessType req_type = m_buf.getType ();
 	  switch(req_type) {
 	  case iss_t::READ_WORD:
@@ -703,6 +764,7 @@ namespace soclib{ namespace tlmt {
       m_cmd.trdid   = 0;
       m_cmd.pktid   = 0;
       m_buf.popData();
+      m_cpt_fifo_read++;
       
       p_vci.send (&m_cmd, c0.time ());
       m_vci_cmd_fsm = CMD_IDLE;
@@ -722,6 +784,7 @@ namespace soclib{ namespace tlmt {
       m_cmd.trdid   = 0;
       m_cmd.pktid   = 0;
       m_buf.popData();
+      m_cpt_fifo_read++;
 
       p_vci.send (&m_cmd, c0.time ());
       m_vci_cmd_fsm = CMD_IDLE;
@@ -734,6 +797,7 @@ namespace soclib{ namespace tlmt {
 #endif
 	typename vci_param::addr_t address = m_buf.getAddress ();
 	m_write_buffer[0] = m_buf.popData ();
+	m_cpt_fifo_read++;
 	
 	m_cmd.cmd     = vci_param::CMD_STORE_COND;
 	m_cmd.nwords  = 1;
@@ -766,6 +830,7 @@ namespace soclib{ namespace tlmt {
       m_cmd.pktid   = 0;
 	
       m_buf.popData ();
+      m_cpt_fifo_read++;
 
       p_vci.send (&m_cmd, c0.time ());
       m_vci_cmd_fsm = CMD_IDLE;
@@ -795,6 +860,7 @@ namespace soclib{ namespace tlmt {
 	  //notlast = m_buf.notlastWrite ();
 	  notlast = false;
 	  m_write_buffer[i] = m_buf.popData ();
+	  m_cpt_fifo_read++;
 	}
 
 	m_cmd.cmd     = vci_param::CMD_WRITE;
@@ -1037,7 +1103,68 @@ namespace soclib{ namespace tlmt {
     }
   }
 
+  tmpl(size_t)::getTotalCycles(){
+    return c0.time();
+  }
+
+  tmpl(size_t)::getActiveCycles(){
+    return ((int)c0.time() - m_cpt_idle);
+  }
+
+  tmpl(size_t)::getIdleCycles(){
+    return m_cpt_idle;
+  }
+
   tmpl(size_t)::getNLookhead(){
     return m_cpt_lookhead;
   }
+
+  tmpl(size_t)::getNIcache_Cache_Read(){
+    return m_icache_cpt_cache_read;
+  }
+
+  tmpl(size_t)::getNIcache_Uncache_Read(){
+    return m_icache_cpt_uncache_read;
+  }
+
+  tmpl(size_t)::getNDcache_Cache_Read(){
+    return m_dcache_cpt_cache_read;
+  }
+
+  tmpl(size_t)::getNDcache_Uncache_Read(){
+    return m_dcache_cpt_uncache_read;
+  }
+
+  tmpl(size_t)::getNDcache_Cache_Write(){
+    return m_dcache_cpt_cache_write;
+  }
+
+  tmpl(size_t)::getNDcache_Uncache_Write(){
+    return m_dcache_cpt_uncache_write;
+  }
+
+  tmpl(size_t)::getNFifo_Read(){
+    return m_cpt_fifo_read;
+  }
+
+  tmpl(size_t)::getNFifo_Write(){
+    return m_cpt_fifo_write;
+  }
+
+  tmpl(size_t)::getNTotal_Cache_Read(){
+    return (m_icache_cpt_cache_read + m_dcache_cpt_cache_read);
+  }
+
+  tmpl(size_t)::getNTotal_Uncache_Read(){
+    return (m_icache_cpt_uncache_read + m_dcache_cpt_uncache_read);
+  }
+
+  tmpl(size_t)::getNTotal_Cache_Write(){
+    return m_dcache_cpt_cache_write;
+  }
+
+  tmpl(size_t)::getNTotal_Uncache_Write(){
+    return m_dcache_cpt_uncache_write;
+  }
+
 }}

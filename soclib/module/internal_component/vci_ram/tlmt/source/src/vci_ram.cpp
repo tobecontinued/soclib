@@ -342,7 +342,7 @@ namespace soclib { namespace tlmt {
 
   tmpl(/**/)::~VciRam(){}
 
-  tmpl(int)::getNCycles()
+  tmpl(int)::getTotalCycles()
   {
     return m_cpt_cycle;
   }

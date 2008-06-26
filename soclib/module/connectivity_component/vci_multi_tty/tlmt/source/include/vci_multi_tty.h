@@ -22,6 +22,11 @@ class VciMultiTty
   tlmt_core::tlmt_return m_return;
   vci_rsp_packet<vci_param> m_rsp;
 
+  size_t m_cpt_read;
+  size_t m_cpt_write;
+  size_t m_cpt_cycle;
+  size_t m_cpt_idle;
+
 protected:
   SC_HAS_PROCESS(VciMultiTty);
 public:
@@ -54,6 +59,17 @@ public:
 					 void *private_data);
 
   void init(const std::vector<std::string> &names);
+
+  size_t getNRead();
+
+  size_t getNWrite();
+
+  size_t getTotalCycles();
+
+  size_t getActiveCycles();
+
+  size_t getIdleCycles();
+
 };
 }}
 

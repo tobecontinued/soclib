@@ -159,9 +159,21 @@ namespace soclib { namespace tlmt {
     
     tlmt_core::tlmt_time   m_req_icache_time;
 
-    size_t                 m_dcache_cpt_init;   
-    size_t                 m_icache_cpt_init;  
     size_t                 m_cpt_lookhead;  
+    size_t                 m_cpt_idle;
+
+    size_t                 m_icache_cpt_init;
+    size_t                 m_icache_cpt_cache_read;
+    size_t                 m_icache_cpt_uncache_read;
+
+    size_t                 m_dcache_cpt_init;
+    size_t                 m_dcache_cpt_cache_read;
+    size_t                 m_dcache_cpt_uncache_read;
+    size_t                 m_dcache_cpt_cache_write;
+    size_t                 m_dcache_cpt_uncache_write;
+
+    size_t                 m_cpt_fifo_read;
+    size_t                 m_cpt_fifo_write;
 
   protected:
     SC_HAS_PROCESS(VciXcacheWrapper);
@@ -184,7 +196,22 @@ namespace soclib { namespace tlmt {
 		     size_t dcache_words,
 		     size_t simulation_time);
 
+    size_t getTotalCycles();
+    size_t getActiveCycles();
+    size_t getIdleCycles();
     size_t getNLookhead();
+    size_t getNIcache_Cache_Read();
+    size_t getNIcache_Uncache_Read();
+    size_t getNDcache_Cache_Read();
+    size_t getNDcache_Uncache_Read();
+    size_t getNDcache_Cache_Write();
+    size_t getNDcache_Uncache_Write();
+    size_t getNFifo_Read();
+    size_t getNFifo_Write();
+    size_t getNTotal_Cache_Read();
+    size_t getNTotal_Uncache_Read();
+    size_t getNTotal_Cache_Write();
+    size_t getNTotal_Uncache_Write();
 
   private:
 
