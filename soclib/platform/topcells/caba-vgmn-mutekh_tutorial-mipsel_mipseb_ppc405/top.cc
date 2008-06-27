@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 
+#include "mutekh/.config.h"
 #include "mapping_table.h"
 #if defined(CONFIG_CPU_MIPS)
 #include "mips.h"
@@ -18,7 +19,6 @@
 #include "vci_icu.h"
 #include "vci_vgmn.h"
 
-#include "mutekh/.config.h"
 #include "soclib_addresses.h"
 
 #define SEGTYPEMASK 0x00300000
