@@ -2,8 +2,11 @@
 #include <cstdlib>
 
 #include "mapping_table.h"
-#include "ppc405.h"
+#if defined(CONFIG_CPU_MIPS)
 #include "mips.h"
+#else
+#include "ppc405.h"
+#endif
 #include "gdbserver.h"
 #include "iss_wrapper.h"
 #include "vci_xcache.h"
