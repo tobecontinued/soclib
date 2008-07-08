@@ -46,10 +46,10 @@ namespace soclib {
 namespace common {
 
 class ARM966Iss :
-	public unisim::component::cxx::processor::arm::CPU<
-		unisim::component::cxx::processor::arm::ARM966E_S_Config> ,
+	protected unisim::component::cxx::processor::arm::CPU<
+		unisim::component::cxx::processor::arm::ARM966E_S_DebugConfig> ,
 	public unisim::component::cxx::processor::arm::CacheInterface< 
-		unisim::component::cxx::processor::arm::ARM966E_S_Config::address_t>,
+		unisim::component::cxx::processor::arm::ARM966E_S_DebugConfig::address_t>,
 	public soclib::common::Iss { 
 
 private:
@@ -84,7 +84,15 @@ public:
  	
     void setIrq(uint32_t irq);
 	
-    // processor internal registers access API, used by
+	/************************************************************************/
+	/* Methods required by the ISS Wrapper                              END */
+	/************************************************************************/
+    
+	/************************************************************************/
+	/* Methods required by the ISS Wrapper (Debugger)                 START */
+	/************************************************************************/
+	
+	// processor internal registers access API, used by
     // debugger. Register numbering must match gdb packet order.
 
     unsigned int getDebugRegisterCount() const;
@@ -99,7 +107,7 @@ public:
     void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
 
 	/************************************************************************/
-	/* Methods required by the ISS Wrapper                              END */
+	/* Methods required by the ISS Wrapper (Debugger)                   END */
 	/************************************************************************/
 
 	/************************************************************************/

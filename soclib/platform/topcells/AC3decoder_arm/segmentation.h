@@ -36,8 +36,8 @@
  
 /* TODO : check addresses to work accordingly to the ARM966 processor */
 // #define RESET_BASE  0xffff0000
-#define RESET_BASE	0xf0000000
-#define RESET_SIZE  0x0fffffff
+#define RESET_BASE	0xffff0000
+#define RESET_SIZE  0x00001000
 // #define	RESET_BASE	0xBFC00000
 // #define	RESET_SIZE	0x00000200
 
@@ -45,7 +45,7 @@
 // #define	EXCEP_SIZE	0x00010000
 
 #define	TEXT_BASE	0x00000000
-#define	TEXT_SIZE	0x00001000
+#define	TEXT_SIZE	0x00000100
 
 #define	DATA_BASE	0x04000000
 #define	DATA_SIZE	0x00001000
@@ -56,14 +56,5 @@
 #define	TTY_BASE	0xC0200000
 #define	TTY_SIZE	0x00000258
 
-#define	TIMER_BASE	0xA0200000
-#define	TIMER_SIZE	0x00000100
 
-#define	DMA_BASE	0xD1200000
-#define	DMA_SIZE	0x00001000
 
-#define FB_WIDTH 320
-#define FB_HEIGHT 200
-
-#define	FB_BASE	0xE2200000
-#define	FB_SIZE	FB_WIDTH*FB_HEIGHT*2

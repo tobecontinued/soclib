@@ -67,7 +67,7 @@ static inline std::string mkname(uint32_t no)
 }
 
 typedef unisim::component::cxx::processor::arm::CPU<
-		unisim::component::cxx::processor::arm::ARM966E_S_Config>
+		unisim::component::cxx::processor::arm::ARM966E_S_DebugConfig>
 		inherited_CPU;
 
 ARM966Iss::ARM966Iss(uint32_t ident) :
@@ -210,30 +210,35 @@ setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
 void 
 ARM966Iss::
 PrInvalidateBlock(uint32_t set, uint32_t way) {
+	inherited_CPU::external_memory_request = true;
 	// TODO
 }
 
 void
 ARM966Iss::
 PrFlushBlock(uint32_t set, uint32_t way) {
+	inherited_CPU::external_memory_request = true;
 	// TODO
 }
 
 void 
 ARM966Iss::
 PrCleanBlock(uint32_t set, uint32_t way) {
+	inherited_CPU::external_memory_request = true;
 	// TODO
 }
 
 void 
 ARM966Iss::
 PrReset() {
+	inherited_CPU::external_memory_request = true;
 	// TODO
 }
 
 void 
 ARM966Iss::
 PrInvalidate() {
+	inherited_CPU::external_memory_request = true;
 	// TODO
 }
 
@@ -241,42 +246,49 @@ void
 ARM966Iss::
 PrInvalidateSet(uint32_t set) {
 	// TODO
+	inherited_CPU::external_memory_request = true;
 }
 
 void 
 ARM966Iss::
 PrInvalidateBlock(address_t addr) {
 	// TODO
+	inherited_CPU::external_memory_request = true;
 }
 
 void 
 ARM966Iss::
 PrFlushBlock(address_t addr) {
 	// TODO
+	inherited_CPU::external_memory_request = true;
 }
 
 void 
 ARM966Iss::
 PrCleanBlock(address_t addr) {
 	// TODO
+	inherited_CPU::external_memory_request = true;
 }
 
 void 
 ARM966Iss::
 PrZeroBlock(address_t addr) {
 	// TODO
+	inherited_CPU::external_memory_request = true;
 }
 
 void 
 ARM966Iss::
 PrWrite(address_t addr, const uint8_t *buffer, uint32_t size) {
 	// TODO
+	inherited_CPU::external_memory_request = true;
 }
 
 void 
 ARM966Iss::
 PrRead(address_t addr, uint8_t *buffer, uint32_t size) {
 	// TODO
+	inherited_CPU::external_memory_request = true;
 }
 
 /************************************************************************/
