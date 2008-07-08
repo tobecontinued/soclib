@@ -30,6 +30,13 @@ SOCLIB_CC=soclib-cc
 SOCLIB:=$(shell soclib-cc --getpath)
 TEST_OUTPUT=test.out
 
+ifneq ($(SOCLIB_CC_MODE),)
+SOCLIB_CC_ADD_ARGS+= -m $(SOCLIB_CC_MODE)
+endif
+ifneq ($(SOCLIB_CC_TYPE),)
+SOCLIB_CC_ADD_ARGS+= -t $(SOCLIB_CC_TYPE)
+endif
+
 export ARCH
 
 include $(SOCLIB)/utils/conf/soft_flags.mk
@@ -66,7 +73,7 @@ test_soclib:
 	@test ! -z "$(SOCLIB)"
 
 simulation.x: $(PLATFORM_DESC)
-	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) -o $@
+	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -o $@
 
 ifdef NO_TEST
 
@@ -87,7 +94,7 @@ $(TEST_OUTPUT): simulation.x $(SOFT)
 endif
 
 clean: soft_clean
-	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) -x -o $@
+	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -x -o $@
 	rm -rf repos
 
 soft_clean:
