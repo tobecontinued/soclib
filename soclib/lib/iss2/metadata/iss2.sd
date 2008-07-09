@@ -1,0 +1,7 @@
+
+# -*- python -*-
+
+Module('common:iss2',
+	   classname = 'soclib::common::Iss2',
+	   header_files = ["../include/iss2.h",],
+)
