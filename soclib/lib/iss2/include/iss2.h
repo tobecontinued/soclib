@@ -141,6 +141,15 @@ public:
     struct InstructionRequest {
         bool valid;
         addr_t addr;
+        enum ExecMode mode;
+
+        void print( std::ostream &o ) const;
+
+        friend std::ostream &operator << (std::ostream &o, const struct InstructionRequest &ir)
+        {
+            ir.print(o);
+            return o;
+        }
     };
 
     /**
@@ -163,6 +172,15 @@ public:
         data_t wdata;
         enum DataOperationType type;
         be_t be;
+        enum ExecMode mode;
+
+        void print( std::ostream &o ) const;
+
+        friend std::ostream &operator << (std::ostream &o, const struct DataRequest &ir)
+        {
+            ir.print(o);
+            return o;
+        }
     };
 
     /**
@@ -177,6 +195,14 @@ public:
         bool valid;
         bool error;
         data_t instruction;
+
+        void print( std::ostream &o ) const;
+
+        friend std::ostream &operator << (std::ostream &o, const struct InstructionResponse &ir)
+        {
+            ir.print(o);
+            return o;
+        }
     };
 
     /**
@@ -196,6 +222,14 @@ public:
         bool valid;
         bool error;
         data_t rdata;
+
+        void print( std::ostream &o ) const;
+
+        friend std::ostream &operator << (std::ostream &o, const struct DataResponse &ir)
+        {
+            ir.print(o);
+            return o;
+        }
     };
 
 protected:
