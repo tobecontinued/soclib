@@ -312,7 +312,7 @@ private:
 
 public:
 
-    int cpuCauseToSignal( uint32_t cause )
+    int cpuCauseToSignal( uint32_t cause ) const
     {
         switch (cause)
             {

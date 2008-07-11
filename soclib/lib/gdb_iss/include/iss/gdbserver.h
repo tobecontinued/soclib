@@ -93,10 +93,10 @@ public:
 
     void step();
 
-    inline void nullStep()
+    inline void nullStep( uint32_t i=1 )
     {
         if (state_ != Frozen)
-            CpuIss::nullStep();        
+            CpuIss::nullStep(i);        
     }
 
     inline void getDataRequest(bool &req, enum Iss::DataAccessType &type, uint32_t &address, uint32_t &wdata) const
@@ -145,11 +145,11 @@ public:
         init_state_ = frozen ? MemWait : Running;
     }
 
+    bool exceptionBypassed( uint32_t cause );
+
 private:
 
     static void signal_handler(int sig);
-
-    bool exceptionBypassed( uint32_t cause );
 
     static void global_init();
     static int write_packet(char *data);

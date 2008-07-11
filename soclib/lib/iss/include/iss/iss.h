@@ -121,8 +121,6 @@ public:
     virtual void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {}
     virtual void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {}
 
-protected:
-
     virtual bool exceptionBypassed( uint32_t cause )
     {
         return false;

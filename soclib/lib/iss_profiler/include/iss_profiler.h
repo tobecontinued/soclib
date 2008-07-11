@@ -66,17 +66,17 @@ public:
         CpuIss::step();
     }
 
-    inline void nullStep()
+    inline void nullStep( uint32_t i=1 )
     {
         log(false);
-        CpuIss::nullStep();
+        CpuIss::nullStep(i);
     }
 
-    inline void getInstructionRequest(bool &req, uint32_t &address)
+    inline void getInstructionRequest(bool &req, uint32_t &address) const
 	{
         CpuIss::getInstructionRequest(req, address);
-        m_did_req_pc = req;
-        m_last_pc = address;
+        ((IssProfiler<CpuIss>*)this)->m_did_req_pc = req;
+        ((IssProfiler<CpuIss>*)this)->m_last_pc = address;
 	}
 };
 
