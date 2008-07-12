@@ -56,7 +56,7 @@ class VciXcacheWrapper
     typedef uint32_t addr_t;
     typedef uint32_t data_t;
     typedef uint32_t tag_t;
-    typedef typename iss_t::DataAccessType type_t;
+    typedef typename iss_t::DataOperationType data_op_t;
 
 
     enum dcache_fsm_state_e {
@@ -151,6 +151,7 @@ private:
 
     // REGISTERS
     sc_signal<int>          r_dcache_fsm;
+    sc_signal<typename iss_t::be_t>  r_dcache_be_save;
     sc_signal<addr_t>       r_dcache_addr_save;
     sc_signal<data_t>       r_dcache_data_save;
     sc_signal<data_t>       r_dcache_prev_save;
@@ -159,6 +160,7 @@ private:
     sc_signal<bool>         r_dcache_cached_save;
 
     GenericFifo<addr_t>     m_dreq_addr_fifo;
+    GenericFifo<typename iss_t::be_t> m_dreq_be_fifo;
     GenericFifo<data_t>     m_dreq_data_fifo;
     GenericFifo<int>        m_dreq_type_fifo;
     GenericFifo<bool>       m_dreq_cached_fifo;
@@ -168,6 +170,7 @@ private:
     sc_signal<bool>         r_icache_req;
 
     sc_signal<int>          r_vci_cmd_fsm;
+    sc_signal<typename iss_t::be_t>  r_dcache_be_cmd;
     sc_signal<addr_t>       r_dcache_addr_cmd;
     sc_signal<data_t>       r_dcache_data_cmd;
     sc_signal<data_t>       r_dcache_prev_cmd;
@@ -218,9 +221,10 @@ public:
 private:
     void transition();
     void genMoore();
-    static inline bool can_burst( type_t old_type, addr_t old_addr,
-                                  type_t new_type, addr_t new_addr );
-    static inline bool is_write(type_t cmd);
+    static inline data_t be_to_mask( typename iss_t::be_t );
+    static inline bool can_burst( data_op_t old_type, addr_t old_addr,
+                                  data_op_t new_type, addr_t new_addr );
+    static inline bool is_write(data_op_t cmd);
 
     inline data_t &icache_data( size_t way, size_t set, size_t word );
     inline tag_t &icache_tag( size_t way, size_t set );
