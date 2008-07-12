@@ -53,14 +53,14 @@ config.toolchain = Config(
 	lib_ext = 'a',
 	
 	prefix = '',
-	cflags = ['-Wall', '-Wno-pmf-conversions'],
+	cflags = ['-Wall', '-Wno-pmf-conversions', '-DSOCLIB'],
 	libs = libs,
 	always_include = ['sys/types.h', 'inttypes.h'],	
-	release_cflags = ['-O2'],
+	release_cflags = ['-O2', '-DSOCLIB_MODE_RELEASE'],
 	release_libs = [],
-	prof_cflags = ['-pg'],
+	prof_cflags = ['-pg', '-DSOCLIB_MODE_PROFILE'],
 	prof_libs = ['-pg'],
-	debug_cflags = ['-ggdb'],
+	debug_cflags = ['-ggdb', '-DSOCLIB_MODE_DEBUG'],
 	debug_libs = [],
 	max_processes = 1,
 	)
