@@ -1,4 +1,5 @@
 
+import parameter
 import module
 from component import Uses
 
@@ -27,20 +28,28 @@ class Specialization:
 			tp = '<'+tp+'> '
 		return self.__cdef['classname']+tp
 
+#	def getConstant(self, name, p=''):
 	def getConstant(self, name):
 		from specialization import Specialization
 		c = self.descAttr('constants')
+#		print p, "Looking for constant", name, "in", self.getModuleName()
 		if name in c:
+#			print p, "found directly"
 			return c[name]
 		for u in self.__cdef['tmpl_parameters']:
 			try:
+#				print p, "Looking in tmpl ", u
 				tn = u.argval(self.__args)
 				n = self.__cdef.fullyQualifiedModuleName(tn)
 				return Specialization(n, **self.__args).getConstant(name)
+			except parameter.ParameterError:
+				raise
 			except Exception, e:
+#				print p, "Error", e
 				pass
 		for u in self.__cdef.getUses(self.__args):
 			try:
+#				print p, "Looking in use ", u
 				return u.specialization().getConstant(name)
 			except Exception, e:
 				pass
