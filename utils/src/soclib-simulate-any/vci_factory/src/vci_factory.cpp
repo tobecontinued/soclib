@@ -40,6 +40,10 @@
 #include "vci_simple_crossbar.h"
 #include "vci_local_crossbar.h"
 #include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
+#include "mips.h"
+#include "ppc405.h"
+#include "ississ2.h"
 #include "vci_factory.h"
 
 namespace soclib {
@@ -356,6 +360,90 @@ ModuleHolder& simple_crossbar(
 	return *mh;
 }
 
+template<typename vci_param>
+ModuleHolder& xcache_mipsel(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	typedef soclib::common::IssIss2< ::soclib::common::MipsElIss> iss_t;
+	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
+	mod_t *module =
+		new mod_t(
+        name.c_str(),
+		args.get<int>("ident"),
+        env.get<MappingTable>("mapping_table"),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_sets"),
+        args.get<int>("icache_words"),
+        args.get<int>("icache_ways"),
+        args.get<int>("dcache_sets"),
+        args.get<int>("dcache_words"),
+        args.get<int>("dcache_ways") );
+	ModuleHolder *mh = new ModuleHolder(module);
+	mh->portRegister("clk", module->p_clk);
+	mh->portRegister("resetn", module->p_resetn);
+	mh->portRegister("vci", module->p_vci);
+	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
+	return *mh;
+}
+
+template<typename vci_param>
+ModuleHolder& xcache_mipseb(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	typedef soclib::common::IssIss2< ::soclib::common::MipsEbIss> iss_t;
+	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
+	mod_t *module =
+		new mod_t(
+        name.c_str(),
+		args.get<int>("ident"),
+        env.get<MappingTable>("mapping_table"),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_sets"),
+        args.get<int>("icache_words"),
+        args.get<int>("icache_ways"),
+        args.get<int>("dcache_sets"),
+        args.get<int>("dcache_words"),
+        args.get<int>("dcache_ways") );
+	ModuleHolder *mh = new ModuleHolder(module);
+	mh->portRegister("clk", module->p_clk);
+	mh->portRegister("resetn", module->p_resetn);
+	mh->portRegister("vci", module->p_vci);
+	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
+	return *mh;
+}
+
+template<typename vci_param>
+ModuleHolder& xcache_ppc405(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	typedef soclib::common::IssIss2< ::soclib::common::Ppc405Iss> iss_t;
+	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
+	mod_t *module =
+		new mod_t(
+        name.c_str(),
+		args.get<int>("ident"),
+        env.get<MappingTable>("mapping_table"),
+        args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_sets"),
+        args.get<int>("icache_words"),
+        args.get<int>("icache_ways"),
+        args.get<int>("dcache_sets"),
+        args.get<int>("dcache_words"),
+        args.get<int>("dcache_ways") );
+	ModuleHolder *mh = new ModuleHolder(module);
+	mh->portRegister("clk", module->p_clk);
+	mh->portRegister("resetn", module->p_resetn);
+	mh->portRegister("vci", module->p_vci);
+	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
+	return *mh;
+}
+
 #undef tmpl
 
 }
@@ -378,5 +466,10 @@ register_factory(simhelper);
 register_factory(mwmr_controller);
 register_factory(local_crossbar);
 register_factory(simple_crossbar);
+
+register_factory(xcache_mipsel);
+register_factory(xcache_mipseb);
+register_factory(xcache_ppc405);
+
 
 }}
