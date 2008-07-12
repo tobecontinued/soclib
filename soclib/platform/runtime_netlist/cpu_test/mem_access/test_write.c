@@ -26,30 +26,26 @@
  * Maintainers: nipo
  */
 
-#include "system.h"
-#include "stdio.h"
-
 #include "data.h"
 
-#include "soclib/simhelper.h"
-
-#include "segmentation.h"
-
-volatile struct data_test uncached __attribute__((section (".unc")));
-volatile struct data_test cached;
-
-int main(void)
+void test_write(volatile struct data_test* d)
 {
-	test_write(&uncached);
-	test_assert(&uncached);
-	test_write(&cached);
-	test_assert(&cached);
-	test_write2(&uncached);
-	test_assert(&uncached);
-	test_write2(&cached);
-	test_assert(&cached);
+	d->i32 = 0x01020304;
+	d->i16[0] = 0x0506;
+	d->i16[1] = 0x0708;
+	d->i8[0] = 0x09;
+	d->i8[1] = 0x0a;
+	d->i8[2] = 0x0b;
+	d->i8[3] = 0x0c;
+}
 
-	exit(0);
-	while(1)
-		;
+void test_write2(volatile struct data_test* d)
+{
+	d->i8[3] = 0x0c;
+	d->i16[0] = 0x0506;
+	d->i8[1] = 0x0a;
+	d->i32 = 0x01020304;
+	d->i8[2] = 0x0b;
+	d->i16[1] = 0x0708;
+	d->i8[0] = 0x09;
 }

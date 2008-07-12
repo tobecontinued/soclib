@@ -24,5 +24,5 @@
 #
 # Maintainers: nipo
 
-OBJS=main.o exception.o stdio.o system.o
+OBJS=main.o exception.o stdio.o system.o test_write.o test_assert.o
 ARCH=mipsel mipseb powerpc microblaze

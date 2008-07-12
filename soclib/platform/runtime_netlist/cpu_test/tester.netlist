@@ -38,19 +38,15 @@ new caba vgmn "vgmn0"
   param min_latency = 2
   param fifo_size = 8
 
-new caba $arch "cpu0"
-  param ident = 0
-  param with_gdb = $with_gdb
-  param start_frozen = $start_frozen
-
-new caba xcache "cache0"
+new caba $cache_arch "cpu0"
   id (0)
-  param icache_lines = 16
+  param ident = 0
+  param icache_sets = 16
   param icache_words = 8
-  param dcache_lines = 16
+  param icache_ways = 1
+  param dcache_sets = 16
   param dcache_words = 8
-  conn icache to cpu0.icache
-  conn dcache to cpu0.dcache
+  param dcache_ways = 1
   conn vci to vgmn0.to_initiator[0]
 
 new caba ram "ram0"
