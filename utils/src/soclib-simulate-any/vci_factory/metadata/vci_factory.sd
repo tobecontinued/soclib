@@ -29,6 +29,7 @@ Module('caba:vci_factory',
 		Uses('vci_xcache_wrapper', iss_t = "common:ississ2", iss2_t = "common:mipsel"),
 		Uses('vci_xcache_wrapper', iss_t = "common:ississ2", iss2_t = "common:mipseb"),
 		Uses('vci_xcache_wrapper', iss_t = "common:ississ2", iss2_t = "common:ppc405"),
+		Uses('vci_xcache_wrapper', iss_t = "common:ississ2", iss2_t = "common:microblaze"),
 
 		Uses('common:inst_arg'),
 		Uses('caba:caba_factory'),
