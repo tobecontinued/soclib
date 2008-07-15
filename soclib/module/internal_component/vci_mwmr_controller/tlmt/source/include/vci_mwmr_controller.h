@@ -19,14 +19,17 @@ struct channel_struct{
 template<typename vci_param>
 struct fifos_struct{
   typename vci_param::data_t *data;
+  bool                       empty;
   bool                       full;
   tlmt_core::tlmt_time       time;
+  uint32_t                   n_elements;
 };
 
 template<typename vci_param>
 struct request_struct{
   typename vci_param::data_t *data;
   bool                       pending;
+  uint32_t                   n_elements;
   tlmt_core::tlmt_time       time;
 };
 
@@ -62,8 +65,9 @@ class VciMwmrController
   ////////////////////// signals /////////////////////////////////
   sc_core::sc_event m_vci_event;
   sc_core::sc_event m_fifo_event;
-  sc_core::sc_event m_active_coprocessor_event;
+  sc_core::sc_event m_active_event;
 
+  FILE     * pFile;
   uint32_t m_srcid;
   uint32_t m_destid;
   uint32_t m_pktid;
@@ -73,9 +77,9 @@ class VciMwmrController
   uint32_t m_write_channels;
   uint32_t m_config_registers;
   uint32_t m_status_registers;
-  uint32_t m_waiting_time; 
+  uint32_t m_waiting_time;
+  uint32_t m_end_simulation_time;
   bool     m_reset_request; 
-  bool     m_active_coprocessor; 
 
   tlmt_core::tlmt_return    m_return;
   vci_cmd_packet<vci_param> m_cmd;
@@ -84,8 +88,6 @@ class VciMwmrController
  protected:
   SC_HAS_PROCESS(VciMwmrController);
  public:
-  tlmt_core::tlmt_in<bool> p_state;
-
   soclib::tlmt::VciInitiator<vci_param> p_vci_initiator;
   soclib::tlmt::VciTarget<vci_param>    p_vci_target;
 
@@ -96,21 +98,15 @@ class VciMwmrController
   std::vector<soclib::tlmt::FifoTarget<vci_param> *> p_write_fifo;
 
   VciMwmrController(sc_core::sc_module_name name,
-		    uint32_t src,
-		    const soclib::common::IntTab &initiator_index,
-		    uint32_t dest,
-		    const soclib::common::IntTab &target_index,
 		    const soclib::common::MappingTable &mt,
-		    uint32_t read_fifo_depth,
-		    uint32_t write_fifo_depth,
+		    const soclib::common::IntTab &initiator_index,
+		    const soclib::common::IntTab &target_index,
+		    uint32_t read_fifo_depth,  //in words
+		    uint32_t write_fifo_depth, //in words
 		    uint32_t n_read_channels,
 		    uint32_t n_write_channels,
 		    uint32_t n_config,
 		    uint32_t n_status);
-  
-  tlmt_core::tlmt_return &setStateCoprocessor(bool state,
-					      const tlmt_core::tlmt_time &time,
-					      void *private_data);
 
   tlmt_core::tlmt_return &vciRspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
 					 const tlmt_core::tlmt_time &time,
@@ -146,7 +142,8 @@ class VciMwmrController
   void updateStatus(typename vci_param::addr_t status_address, uint32_t *status);
   void readFromChannel(uint32_t fifo_index, uint32_t *status);
   void writeToChannel(uint32_t fifo_index, uint32_t *status);
-  void releasePendingFifos();
+  void releasePendingReadFifo(uint32_t fifo_index);
+  void releasePendingWriteFifo(uint32_t fifo_index);
 };
 
 }}

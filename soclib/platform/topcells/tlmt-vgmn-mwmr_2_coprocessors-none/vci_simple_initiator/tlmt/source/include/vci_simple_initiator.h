@@ -38,11 +38,6 @@ template<typename vci_param>
 
     void configureMwmr(typename vci_param::addr_t address, int n_read_channels, int n_write_channels, int read_depth, int write_depth);
 
-    void readMwmr(typename vci_param::addr_t address, int n_read_channels, int n_write_channels);
-    void resetMwmr(typename vci_param::addr_t address);
-    void writeConfigCoprocessor(typename vci_param::addr_t address, int n_config_registers);
-    void readStatusCoprocessor(typename vci_param::addr_t address, int n_status_registers);
-    void resetCoprocessor(typename vci_param::addr_t address);
     void configureChannelStatus(int n_channels);
   };
  

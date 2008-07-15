@@ -311,6 +311,7 @@ namespace soclib{ namespace tlmt {
 	}
       }
     }
+    sc_core::sc_stop();
   }
 
   tmpl (void)::xcacheAccess (bool & icache_req,

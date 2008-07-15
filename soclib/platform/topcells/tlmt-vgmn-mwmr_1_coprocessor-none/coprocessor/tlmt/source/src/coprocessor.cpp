@@ -47,9 +47,6 @@ namespace soclib { namespace tlmt {
     int idx = (int)private_data;
     m_config_register[idx] = data;
 
-    if(idx == 0) //m_config_register[0] = active coprocessor
-      m_active_event.notify(sc_core::SC_ZERO_TIME);
-
     return m_return;
   }
 
@@ -74,64 +71,59 @@ namespace soclib { namespace tlmt {
     typename vci_param::data_t read_buffer[m_read_fifo_depth];
     uint32_t counter = 0;
 
-    //while(true){
-      wait(m_active_event);
-      p_state.send(true,c0.time());
 
-      int count = 0;
-      while(count<10){
-	count++;
-
-	//write
-	for(uint32_t i=0; i < m_write_fifo_depth; i++){
-	  write_buffer[i] = counter;
-	  counter += 1;
-	}
+    int count = 0;
+    while(count<10){
+      count++;
       
-	for(uint32_t j = 0; j < m_write_channels; j++){
-	  m_cmd.nwords  = m_write_fifo_depth;
-	  m_cmd.buf = write_buffer;
+      //write
+      for(uint32_t i=0; i < m_write_fifo_depth; i++){
+	write_buffer[i] = counter;
+	counter += 1;
+      }
+      
+      for(uint32_t j = 0; j < m_write_channels; j++){
+	m_cmd.nwords  = m_write_fifo_depth;
+	m_cmd.buf = write_buffer;
 	
 #if COPROCESSOR_DEBUG
-	  std::cout << "[COPROCESSOR " << m_id << "] Write FIFO " << j << " with time " << c0.time() << " number of executions "<< count << std::endl;
-	  for(uint32_t i=0; i<m_write_fifo_depth;i++)
-	    std::cout << std::hex << "[ " << i <<" ] =  " << write_buffer[i] << std::dec << std::endl;
+	std::cout << "[COPROCESSOR " << m_id << "] Write FIFO " << j << " with time " << c0.time() << " number of executions "<< count << std::endl;
+	for(uint32_t i=0; i<m_write_fifo_depth;i++)
+	  std::cout << std::hex << "[ " << i <<" ] =  " << write_buffer[i] << std::dec << std::endl;
 #endif
-
-	  p_write_fifo[j]->send(&m_cmd, c0.time());
-	  wait(m_rsp_write);
-	  c0.add_time(m_write_fifo_depth);
+	
+	p_write_fifo[j]->send(&m_cmd, c0.time());
+	wait(m_rsp_write);
+	c0.add_time(m_write_fifo_depth);
 
 #if COPROCESSOR_DEBUG
-	  std::cout << "[COPROCESSOR " << m_id << "] Awnser Write FIFO " << j << " with time " << c0.time() << " number of executions "<< count << std::endl;
+	std::cout << "[COPROCESSOR " << m_id << "] Awnser Write FIFO " << j << " with time " << c0.time() << " number of executions "<< count << std::endl;
 #endif
-	}
-
-	//calcule time
-	c0.add_time(500);
-
-	// read
-	for(uint32_t j = 0; j < m_read_channels; j++){
-	  m_cmd.nwords  = m_read_fifo_depth;
-	  m_cmd.buf = read_buffer;
-
-#if COPROCESSOR_DEBUG
-	  std::cout << "[COPROCESSOR " << m_id << "] Read FIFO " << j << " with time " << c0.time() << " number of executions "<< count << std::endl;
-#endif
-
-	  p_read_fifo[j]->send(&m_cmd, c0.time());
-	  wait(m_rsp_read);
-	  c0.add_time(m_read_fifo_depth);
-
-#if COPROCESSOR_DEBUG
-	  std::cout << "[COPROCESSOR " << m_id << "] Awnser Read FIFO " << j << " with time " << c0.time() << " number of executions "<< count << std::endl;
-	  for(uint32_t i=0; i<m_read_fifo_depth;i++)
-	    std::cout << std::hex << "[ " << i <<" ] =  " << read_buffer[i] << std::dec << std::endl;
-#endif
-	}
       }
-      p_state.send(false,c0.time());
-      //}
+
+      //calcule time
+      c0.add_time(500);
+
+      // read
+      for(uint32_t j = 0; j < m_read_channels; j++){
+	m_cmd.nwords  = m_read_fifo_depth;
+	m_cmd.buf = read_buffer;
+	
+#if COPROCESSOR_DEBUG
+	std::cout << "[COPROCESSOR " << m_id << "] Read FIFO " << j << " with time " << c0.time() << " number of executions "<< count << std::endl;
+#endif
+
+	p_read_fifo[j]->send(&m_cmd, c0.time());
+	wait(m_rsp_read);
+	c0.add_time(m_read_fifo_depth);
+
+#if COPROCESSOR_DEBUG
+	std::cout << "[COPROCESSOR " << m_id << "] Awnser Read FIFO " << j << " with time " << c0.time() << " number of executions "<< count << std::endl;
+	for(uint32_t i=0; i<m_read_fifo_depth;i++)
+	  std::cout << std::hex << "[ " << i <<" ] =  " << read_buffer[i] << std::dec << std::endl;
+#endif
+      }
+    }
   }
 
   tmpl(/**/)::Coprocessor(sc_core::sc_module_name name,
@@ -149,8 +141,7 @@ namespace soclib { namespace tlmt {
       m_read_channels(n_read_channels),
       m_write_channels(n_write_channels),
       m_config_registers(n_config),
-      m_status_registers(n_status),
-      p_state("state",NULL)
+      m_status_registers(n_status)
   {
     //READ FIFO PORTS
     for(uint32_t i=0;i<m_read_channels;i++){

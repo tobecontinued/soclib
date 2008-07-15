@@ -35,7 +35,6 @@ class Coprocessor
  protected:
   SC_HAS_PROCESS(Coprocessor);
  public:
-  tlmt_core::tlmt_out<bool> p_state;
 
   std::vector<tlmt_core::tlmt_in<typename vci_param::data_t> *>  p_config;
   std::vector<tlmt_core::tlmt_in<typename vci_param::data_t*> *> p_status;

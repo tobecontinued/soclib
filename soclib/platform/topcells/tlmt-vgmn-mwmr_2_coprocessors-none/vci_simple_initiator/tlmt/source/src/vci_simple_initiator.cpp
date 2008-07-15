@@ -23,130 +23,6 @@ namespace soclib { namespace tlmt {
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // READ THE MWMR REGISTERS
-  //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(void)::readMwmr(typename vci_param::addr_t address, int n_read_channels, int n_write_channels)
-  {
-    typename vci_param::data_t localbuf[32];
-
-    address += 0x00000044; // WAY
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // READ ALL READ MWMR
-    //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-    for(int i = 0; i<n_read_channels; i++){
-
-      //SET THE CURRENT MWMR 
-      localbuf[0] = 0x00000001;
-      localbuf[1] = i;
-
-      m_cmd.cmd     = vci_param::CMD_WRITE;
-      m_cmd.nwords  = 2;
-      m_cmd.address = address;
-      m_cmd.buf     = localbuf;
-      m_cmd.srcid   = m_srcid;
-      m_cmd.trdid   = 0;
-      m_cmd.pktid   = m_pktid;
-      m_cmd.contig  = true;
-      
-#if SIMPLE_INITIATOR_DEBUG
-      std::cout << "[Initiator " << m_srcid << "] Send packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-
-      p_vci.send(&m_cmd, c0.time());
-      sc_core::wait(m_vci_event);
-
-#if SIMPLE_INITIATOR_DEBUG
-      std::cout << "[Initiator "<< m_srcid << "] Receive Response packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-      m_pktid++;
-
-      //READ THE CURRENT READ MWMR
-      m_cmd.cmd     = vci_param::CMD_READ;
-      m_cmd.nwords  = 6;
-      m_cmd.address = address;
-      m_cmd.buf     = localbuf;
-      m_cmd.srcid   = m_srcid;
-      m_cmd.trdid   = 0;
-      m_cmd.pktid   = m_pktid;
-      m_cmd.contig  = true;
-
-#if SIMPLE_INITIATOR_DEBUG
-      std::cout << "[Initiator " << m_srcid << "] Send packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-
-      p_vci.send(&m_cmd, c0.time());
-      sc_core::wait(m_vci_event);
-
-#if SIMPLE_INITIATOR_DEBUG
-      std::cout << "[Initiator "<< m_srcid << "] Receive Response packet " << m_pktid << " with time = " << c0.time() << std::endl;
-      std::cout << std::hex;
-      for(unsigned int j=0; j<m_cmd.nwords; j++)
-	std::cout << "[" << (address+(j*vci_param::nbytes)) << "] = " << localbuf[j] << std::endl;
-      std::cout << std::dec;
-#endif
-      m_pktid++;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // READ ALL WRITE MWMR
-    //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-    for(int i = 0; i<n_write_channels; i++){
-
-      //SET THE CURRENT MWMR
-      localbuf[0] = 0x00000000;
-      localbuf[1] = i;
-
-      m_cmd.cmd     = vci_param::CMD_WRITE;
-      m_cmd.nwords  = 2;
-      m_cmd.address = address;
-      m_cmd.buf     = localbuf;
-      m_cmd.srcid   = m_srcid;
-      m_cmd.trdid   = 0;
-      m_cmd.pktid   = m_pktid;
-      m_cmd.contig  = true;
-      
-#if SIMPLE_INITIATOR_DEBUG
-      std::cout << "[Initiator " << m_srcid << "] Send packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-
-      p_vci.send(&m_cmd, c0.time());
-      sc_core::wait(m_vci_event);
-
-#if SIMPLE_INITIATOR_DEBUG
-      std::cout << "[Initiator "<< m_srcid << "] Receive Response packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-      m_pktid++;
-
-      //READ THE CURRENT WRITE MWMR
-      m_cmd.cmd     = vci_param::CMD_READ;
-      m_cmd.nwords  = 6;
-      m_cmd.address = address;
-      m_cmd.buf     = localbuf;
-      m_cmd.srcid   = m_srcid;
-      m_cmd.trdid   = 0;
-      m_cmd.pktid   = m_pktid;
-      m_cmd.contig  = true;
-
-#if SIMPLE_INITIATOR_DEBUG
-      std::cout << "[Initiator " << m_srcid << "] Send packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-
-      p_vci.send(&m_cmd, c0.time());
-      sc_core::wait(m_vci_event);
-
-#if SIMPLE_INITIATOR_DEBUG
-      std::cout << "[Initiator "<< m_srcid << "] Receive Response packet " << m_pktid << " with time = " << c0.time() << std::endl;
-      std::cout << std::hex;
-      for(unsigned int j=0; j<m_cmd.nwords; j++)
-	std::cout << "[" << (address+(j*vci_param::nbytes)) << "] = " << localbuf[j] << std::endl;
-      std::cout << std::dec;
-#endif
-      m_pktid++;
-    }
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CONFIGURE CHANNEL STATUS 
   //////////////////////////////////////////////////////////////////////////////////////////////// ///////
   tmpl(void)::configureChannelStatus(int n_channels) 
@@ -160,10 +36,10 @@ namespace soclib { namespace tlmt {
 #endif
 
     for (int i = 0; i < n_channels; i++){
-      localbuf[0] = current_address + (4*vci_param::nbytes); // read index  (read pointer)
-      localbuf[1] = current_address + (4*vci_param::nbytes); // write index (write pointer)
-      localbuf[2] = 0;                                       // content     (number of elements in the channel)
-      localbuf[3] = 0;                                       // lock
+      localbuf[0] = 0; // read index  (read pointer)
+      localbuf[1] = 0; // write index (write pointer)
+      localbuf[2] = 0; // content     (number of elements in the channel)
+      localbuf[3] = 0; // lock
 
       m_cmd.cmd     = vci_param::CMD_WRITE;
       m_cmd.nwords  = 4;
@@ -199,15 +75,13 @@ namespace soclib { namespace tlmt {
   {
     typename vci_param::addr_t current_address;
     typename vci_param::data_t localbuf[32];
-    //uint32_t read_depth      = CHANNEL_DEPTH;   
-    //uint32_t write_depth     = CHANNEL_DEPTH;   
 
     address += 0x00000044; // WAY
     current_address = RAM_BASE;
 
     //CHANNELS FROM COPROCESSEUR
     for (int i = 0; i < n_read_channels; i++){
-      localbuf[0] = 0x00000001;             // 1 = MWMR_FROM_COPROC = READ
+      localbuf[0] = 0;                      // 0 = MWMR_FROM_COPROC = READ
       localbuf[1] = i;                      // NO
       localbuf[2] = current_address;        // STATUS_ADDRESS
     
@@ -215,12 +89,13 @@ namespace soclib { namespace tlmt {
 
       localbuf[3] = read_depth;             // DEPTH
       localbuf[4] = current_address;        // BASE_ADDRESS 
-      localbuf[5] = 0x00000001;             // RUNNING 
+      localbuf[5] = 0x00000000;             // LOCK
+      localbuf[6] = 0x00000001;             // RUNNING 
 
       current_address += read_depth;        // n bytes to fifo
 
       m_cmd.cmd     = vci_param::CMD_WRITE;
-      m_cmd.nwords  = 6;
+      m_cmd.nwords  = 7;
       m_cmd.address = address;
       m_cmd.buf     = localbuf;
       m_cmd.srcid   = m_srcid;
@@ -246,7 +121,7 @@ namespace soclib { namespace tlmt {
 
     //CHANNELS TO COPROCESSEUR
     for (int i = 0; i < n_write_channels; i++){
-      localbuf[0] = 0x00000000;             // 0 = MWMR_TO_COPROC = WRITE
+      localbuf[0] = 1;                      // 1 = MWMR_TO_COPROC = WRITE
       localbuf[1] = i;
       localbuf[2] = current_address;        // STATUS_ADDRESS
       
@@ -254,11 +129,12 @@ namespace soclib { namespace tlmt {
 
       localbuf[3] = write_depth;            // DEPTH
       localbuf[4] = current_address;        // BASE_ADDRESS 
-      localbuf[5] = 0x00000001;             // RUNNING 
+      localbuf[5] = 0x00000000;             // LOCK
+      localbuf[6] = 0x00000001;             // RUNNING 
       current_address += write_depth;       // n bytes to fifo
 
       m_cmd.cmd     = vci_param::CMD_WRITE;
-      m_cmd.nwords  = 6;
+      m_cmd.nwords  = 7;
       m_cmd.address = address;
       m_cmd.buf     = localbuf;
       m_cmd.srcid   = m_srcid;
@@ -281,142 +157,6 @@ namespace soclib { namespace tlmt {
     }
   }
 
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // RESET MWMR
-  //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(void)::resetMwmr(typename vci_param::addr_t address)
-  {
-    typename vci_param::data_t localbuf[32];
-
-    address  += 0x00000040; //RESET
-
-    m_cmd.cmd     = vci_param::CMD_WRITE;
-    m_cmd.nwords  = 1;
-    m_cmd.address = address;
-    m_cmd.buf     = localbuf;
-    m_cmd.srcid   = m_srcid;
-    m_cmd.trdid   = 0;
-    m_cmd.pktid   = m_pktid;
-    m_cmd.contig  = true;
-      
-#if SIMPLE_INITIATOR_DEBUG
-    std::cout << "[Initiator " << m_srcid << "] Send packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-
-    p_vci.send(&m_cmd, c0.time());
-    sc_core::wait(m_vci_event);
-
-#if SIMPLE_INITIATOR_DEBUG
-    std::cout << "[Initiator "<< m_srcid << "] Receive Response packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-    m_pktid++;
-
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // WRITE CONFIG COPROCESSOR
-  //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(void)::writeConfigCoprocessor(typename vci_param::addr_t address, int n_config_registers)
-  {
-    typename vci_param::data_t localbuf[32];
-
-    for(int i = 0; i<n_config_registers;i++){
-      localbuf[i]  = i;
-    }
-
-    m_cmd.cmd     = vci_param::CMD_WRITE;
-    m_cmd.nwords  = n_config_registers;
-    m_cmd.address = address;
-    m_cmd.buf     = localbuf;
-    m_cmd.srcid   = m_srcid;
-    m_cmd.trdid   = 0;
-    m_cmd.pktid   = m_pktid;
-    m_cmd.contig  = true;
-      
-#if SIMPLE_INITIATOR_DEBUG
-    std::cout << "[Initiator " << m_srcid << "] Send packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-
-    p_vci.send(&m_cmd, c0.time());
-    sc_core::wait(m_vci_event);
-
-#if SIMPLE_INITIATOR_DEBUG
-    std::cout << "[Initiator "<< m_srcid << "] Receive Response packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-    m_pktid++;
-
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // RESET COPROCESSOR
-  //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(void)::resetCoprocessor(typename vci_param::addr_t address)
-  {
-    typename vci_param::data_t localbuf[32];
-
-    localbuf[0]  = 1;
-
-    m_cmd.cmd     = vci_param::CMD_WRITE;
-    m_cmd.nwords  = 1;
-    m_cmd.address = address;
-    m_cmd.buf     = localbuf;
-    m_cmd.srcid   = m_srcid;
-    m_cmd.trdid   = 0;
-    m_cmd.pktid   = m_pktid;
-    m_cmd.contig  = true;
-      
-#if SIMPLE_INITIATOR_DEBUG
-    std::cout << "[Initiator " << m_srcid << "] Send packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-
-    p_vci.send(&m_cmd, c0.time());
-    sc_core::wait(m_vci_event);
-
-#if SIMPLE_INITIATOR_DEBUG
-    std::cout << "[Initiator "<< m_srcid << "] Receive Response packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-    m_pktid++;
-
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // READ STATUS COPROCESSOR
-  //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(void)::readStatusCoprocessor(typename vci_param::addr_t address, int n_status_registers)
-  {
-    typename vci_param::data_t localbuf[32];
-
-    for(int i = 0; i<n_status_registers;i++){
-      localbuf[i]  = 0xFFFFFFFF;
-    }
-
-    m_cmd.cmd     = vci_param::CMD_READ;
-    m_cmd.nwords  = n_status_registers;
-    m_cmd.address = address;
-    m_cmd.buf     = localbuf;
-    m_cmd.srcid   = m_srcid;
-    m_cmd.trdid   = 0;
-    m_cmd.pktid   = m_pktid;
-    m_cmd.contig  = true;
-      
-#if SIMPLE_INITIATOR_DEBUG
-    std::cout << "[Initiator " << m_srcid << "] Send packet " << m_pktid << " with time = " << c0.time() << std::endl;
-#endif
-
-    p_vci.send(&m_cmd, c0.time());
-    sc_core::wait(m_vci_event);
-
-#if SIMPLE_INITIATOR_DEBUG
-    std::cout << "[Initiator "<< m_srcid << "] Receive Response packet " << m_pktid << " with time = " << c0.time() << std::endl;
-    std::cout << std::hex;
-    for(unsigned int j=0; j<m_cmd.nwords; j++)
-      std::cout << "[" << (address+(j*vci_param::nbytes)) << "] = " << localbuf[j] << std::endl;
-    std::cout << std::dec;
-#endif
-    m_pktid++;
-  }
-
   tmpl(void)::behavior()
   {
     typename vci_param::addr_t address;
@@ -435,13 +175,8 @@ namespace soclib { namespace tlmt {
     configureMwmr(address,1,0,CHANNEL_DEPTH,CHANNEL_DEPTH);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // RESET COPROCESSOR
+    // DISABLE THE INITIATOR THREAD
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
-    address = MWMR0_BASE;
-    resetCoprocessor(address);
-    address = MWMR1_BASE;
-    resetCoprocessor(address);
-
     c0.disable();
   }
 

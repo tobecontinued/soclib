@@ -79,21 +79,20 @@ int sc_main(int argc, char **argv)
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR 0
   /////////////////////////////////////////////////////////////////////////////
-  uint32_t read_fifo_depth = 12; 
+  uint32_t read_fifo_depth = 48; 
   uint32_t write_fifo_depth = read_fifo_depth; //when a single coprocessor is used the read_fifo and write_fifo must have the same depth
-  uint32_t n_read_channel = 2;
-  uint32_t n_write_channel = 2;
-  uint32_t n_config = 3;
-  uint32_t n_status = 3;
+  uint32_t n_read_channel = 1;
+  uint32_t n_write_channel = 1;
+  uint32_t n_config = 0;
+  uint32_t n_status = 0;
 
-  soclib::tlmt::VciMwmrController<vci_param> mwmr0("mwmr0", 1, IntTab(1), 1, IntTab(1), maptab, read_fifo_depth, write_fifo_depth, n_read_channel, n_write_channel, n_config, n_status);
+  soclib::tlmt::VciMwmrController<vci_param> mwmr0("mwmr0", maptab, IntTab(1), IntTab(1), read_fifo_depth, write_fifo_depth, n_read_channel, n_write_channel, n_config, n_status);
 
   mwmr0.p_vci_initiator(vgmn.m_RspArbCmdRout[1]->p_vci);
   vgmn.m_CmdArbRspRout[1]->p_vci(mwmr0.p_vci_target);
 
-  soclib::tlmt::Coprocessor<vci_param> coprocessor0("coprocessor0",0,read_fifo_depth, write_fifo_depth, n_read_channel, n_write_channel, n_config, n_status);
+  soclib::tlmt::Coprocessor<vci_param> coprocessor0("coprocessor0",0,read_fifo_depth/4, write_fifo_depth/4, n_read_channel, n_write_channel, n_config, n_status);
 
-  coprocessor0.p_state(mwmr0.p_state);
 
   for(uint32_t i=0; i<n_read_channel; i++)
     (*mwmr0.p_read_fifo[i])(*coprocessor0.p_read_fifo[i]);
