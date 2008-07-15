@@ -84,7 +84,7 @@ void Mips32Iss::do_mem_access( addr_t address,
     m_dreq.type = operation;
     m_dreq.mode = r_cpu_mode;
 
-#ifdel SOCLIB_MODULE_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << name()
         << " do_mem_access: " << m_dreq
