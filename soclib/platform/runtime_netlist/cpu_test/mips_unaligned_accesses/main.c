@@ -83,10 +83,12 @@ int main(void)
 		*(uint32_t*)&test_b[4] = 0x55667788;
 		test((uint32_t)&test_b[0], 0x11223344);
 #if defined MIPSEL
+#warning mipsel
 		test((uint32_t)&test_b[1], 0x88112233);
 		test((uint32_t)&test_b[2], 0x77881122);
 		test((uint32_t)&test_b[3], 0x66778811);
 #elif defined MIPSEB
+#warning mipseb
 		test((uint32_t)&test_b[1], 0x22334455);
 		test((uint32_t)&test_b[2], 0x33445566);
 		test((uint32_t)&test_b[3], 0x44556677);
@@ -122,6 +124,46 @@ int main(void)
 		assert(a.i4 == 0x55667788);
 	}
 
+#ifdef SOCLIB_MIPS32
+	{
+		volatile truc_t a;
+		a.i[0] = 0;
+		a.i[1] = 0;
+#if defined MIPSEL
+		a.i1 = 0x88112233;
+		assert(a.i0 == 0x11223300);
+		assert(a.i4 == 0x00000088);
+#else
+		a.i1 = 0x22334455;
+		assert(a.i0 == 0x00223344);
+		assert(a.i4 == 0x55000000);
+#endif
+
+		a.i[0] = 0;
+		a.i[1] = 0;
+#if defined MIPSEL
+		a.i2 = 0x77881122;
+		assert(a.i0 == 0x11220000);
+		assert(a.i4 == 0x00007788);
+#else
+		a.i2 = 0x33445566;
+		assert(a.i0 == 0x00003344);
+		assert(a.i4 == 0x55660000);
+#endif
+
+		a.i[0] = 0;
+		a.i[1] = 0;
+#if defined MIPSEL
+		a.i3 = 0x66778811;
+		assert(a.i0 == 0x11000000);
+		assert(a.i4 == 0x00667788);
+#else
+		a.i3 = 0x44556677;
+		assert(a.i0 == 0x00000044);
+		assert(a.i4 == 0x55667700);
+#endif
+	}
+#endif /* SOCLIB_MIPS32 */
 
 	exit(0);
 	while(1)

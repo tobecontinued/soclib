@@ -25,5 +25,5 @@
 # Maintainers: nipo
 
 OBJS=main.o exception.o stdio.o system.o test.o
-ARCH=mipsel mipseb
+ARCH=mipsel mipseb mips32el mips32eb
 ADD_CFLAGS= -O3

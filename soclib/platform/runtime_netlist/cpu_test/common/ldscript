@@ -73,7 +73,7 @@ SECTIONS
 		*(.ppc_boot.*)
     }
 
-   . = 0x80000080;
+   . = 0x80000000;
    .excep : {
 		*(.excep)
 		*(.excep.*)

@@ -40,6 +40,14 @@ void interrupt_hw_handler(unsigned int irq);
 asm(
     ".section        .excep,\"ax\",@progbits			\n"
 
+#if SOCLIB_MIPS32
+	".space 0x180    \n"
+#elif SOCLIB_MIPS_R3000
+	".space 0x80    \n"
+#else
+#error Unknown mips flavor
+#endif
+
     ".globl mips_interrupt_entry				\n"
     "mips_interrupt_entry:					\n"
     ".set push							\n"
@@ -187,7 +195,11 @@ asm(
     ".set push						\n"
     ".set noreorder					\n"
 
+#ifdef SOCLIB_MIPS_R3000
     "li        $8,   0x0000FF15  			\n"
+#else
+    "li        $8,   0x0000FF01  			\n"
+#endif
     "mtc0      $8,	$12         			\n"
 
     /* get CPU id and adjust stack */
