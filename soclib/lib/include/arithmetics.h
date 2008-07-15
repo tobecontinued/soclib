@@ -65,6 +65,30 @@ static inline uint32_t uint32_log2(uint32_t n)
     return (uint32_t)(0.5f+log2(n));
 }
 
+template<typename T>
+static inline T clz( T n )
+{
+#if __GNUC__
+    if ( sizeof(T) == sizeof(unsigned int) )
+        return __builtin_clz(n);
+    else if ( sizeof(T) == sizeof(unsigned long) )
+        return __builtin_clzl(n);
+    else
+#endif
+    {
+        for ( int i = 31; i>=0; --i )
+            if ( (1<<i)&n )
+                return 31-i;
+        return 32;
+    }
+}
+
+template<typename T>
+static inline T clo( T n )
+{
+    return clz(~n);
+}
+
 }}
 
 #endif /* SOCLIB_COMMON_ARITHMETICS_H */
