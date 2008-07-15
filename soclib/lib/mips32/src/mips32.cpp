@@ -21,16 +21,11 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6
- *    Nicolas Pouillon <nipo@ssji.net>, 2007
- *    Alain Greiner <alain.greiner@lip6.fr>, 2007
+ *    Nicolas Pouillon <nipo@ssji.net>, 2008
  *
  * Maintainers: nipo
  *
  * $Id$
- *
- * History:
- * - 2007-06-15
- *     Nicolas Pouillon, Alain Greiner: Model created
  */
 
 #include "mips32.h"
@@ -40,12 +35,6 @@
 static const uint32_t EXCEPT_ADDRESS = 0x80000180;
 
 namespace soclib { namespace common {
-
-#ifndef SOCLIB_MODULE_DEBUG
-#define MIPS32_DEBUG 0
-#else
-#define MIPS32_DEBUG 1
-#endif
 
 Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_little_endian)
     : Iss2(name, ident),
@@ -184,14 +173,14 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
         r_bar = m_dreq.addr;
     }
 
-#if MIPS32_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     dump();
 #endif
     // run() can modify the following registers: r_gp[i], r_mem_req,
     // r_mem_type, m_dreq.addr; r_mem_wdata, r_mem_dest, r_hi, r_lo,
     // m_exception, m_next_pc
     if ( m_hazard ) {
-#if MIPS32_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
         std::cout << name() << " hazard, seeing next cycle" << std::endl;
 #endif
         m_hazard = false;
@@ -227,7 +216,7 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
         r_cause.bd = branch_taken;
         // TODO: Implement correct exception handling
         r_epc = branch_taken ? r_pc : r_npc;
-#if MIPS32_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
         std::cout
             << m_name <<" exception: "<<m_exception<<std::endl
             << " epc: " << r_epc
@@ -243,7 +232,7 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
     r_npc = except_address + 4;
     goto house_keeping;
  no_except:
-#if MIPS32_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " No except, pc:" << r_pc << " next pc:" << r_npc << std::endl;
 #endif
     if (m_skip_next_instruction) {

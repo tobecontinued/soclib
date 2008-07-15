@@ -21,19 +21,11 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
- *         Alain Greiner <alain.greiner@lip6.fr>, 2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
  * Maintainers: nipo
  *
  * $Id$
- *
- * History:
- * - 2007-09-19
- *   Nicolas Pouillon: Fix overflow
- *
- * - 2007-06-15
- *   Nicolas Pouillon, Alain Greiner: Model created
  */
 
 #include "mips32.h"
@@ -43,12 +35,6 @@
 #include <strings.h>
 
 namespace soclib { namespace common {
-
-#ifndef SOCLIB_MODULE_DEBUG
-#define MIPS32_DEBUG 0
-#else
-#define MIPS32_DEBUG 1
-#endif
 
 #define COPROC_REGNUM(no, sel) (((no)<<3)+sel)
 

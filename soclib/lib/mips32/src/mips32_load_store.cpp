@@ -21,19 +21,11 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
- *         Alain Greiner <alain.greiner@lip6.fr>, 2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
  * Maintainers: nipo
  *
  * $Id$
- *
- * History:
- * - 2007-09-19
- *   Nicolas Pouillon: Fix overflow
- *
- * - 2007-06-15
- *   Nicolas Pouillon, Alain Greiner: Model created
  */
 
 #include "mips32.h"
@@ -43,12 +35,6 @@
 #include <strings.h>
 
 namespace soclib { namespace common {
-
-#ifndef SOCLIB_MODULE_DEBUG
-#define MIPS32_DEBUG 0
-#else
-#define MIPS32_DEBUG 1
-#endif
 
 namespace {
 template<typename data_t>
@@ -98,7 +84,7 @@ void Mips32Iss::do_mem_access( addr_t address,
     m_dreq.type = operation;
     m_dreq.mode = r_cpu_mode;
 
-#if MIPS32_DEBUG
+#ifdel SOCLIB_MODULE_DEBUG
     std::cout
         << name()
         << " do_mem_access: " << m_dreq
@@ -125,7 +111,7 @@ void Mips32Iss::setData(const struct DataResponse &rsp)
     if ( !rsp.valid )
         return;
 
-#if MIPS32_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << name()
         << " setData: " << rsp
@@ -172,7 +158,7 @@ void Mips32Iss::setData(const struct DataResponse &rsp)
         data_t sdata = soclib::endian::uint32_swap(data) >> (8 * (4-byte_count));
         data_t mask = be_to_mask<data_t>((1 << byte_count) - 1);
         data = sdata & mask;
-#if MIPS32_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << name()
         << " BE swapping"
@@ -210,7 +196,7 @@ void Mips32Iss::setData(const struct DataResponse &rsp)
     mask <<= 8*r_mem_offset_byte_in_reg;
 
     data_t new_data = (data&mask) | (r_gp[r_mem_dest]&~mask);
-#if MIPS32_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << name()
         << " setData: " << rsp
