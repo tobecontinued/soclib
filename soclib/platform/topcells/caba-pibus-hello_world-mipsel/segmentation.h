@@ -57,7 +57,7 @@
 #define	RESET_BASE	0xBFC00000
 #define	RESET_SIZE	0x00010000
 
-#define	EXCEP_BASE	0x80000080
+#define	EXCEP_BASE	0x80000000
 #define	EXCEP_SIZE	0x00010000
 
 /////////////////////////////////////////////////////////////////
