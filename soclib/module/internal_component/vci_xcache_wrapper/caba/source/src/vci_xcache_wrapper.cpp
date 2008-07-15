@@ -47,7 +47,11 @@ namespace soclib {
 namespace caba {
 
 #ifndef XCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
+#define XCACHE_WRAPPER_DEBUG 1
+#else
 #define XCACHE_WRAPPER_DEBUG 0
+#endif
 #endif
 
 #define LINE_VALID 0x80000000
@@ -353,7 +357,7 @@ tmpl(void)::transition()
     size_t  icache_way = 0;
     data_t  icache_ins = 0;
 
-    typename iss_t::InstructionRequest ireq;
+    typename iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
     m_iss.getInstructionRequest( ireq );
 
     const int   icache_x = m_i_x[ireq.addr];
@@ -373,7 +377,7 @@ tmpl(void)::transition()
 #endif
 
     {
-        typename iss_t::InstructionResponse irsp = {false, false, 0};
+        typename iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
 
         switch ((icache_fsm_state_e)r_icache_fsm.read()) {
         case ICACHE_IDLE:
@@ -418,11 +422,11 @@ tmpl(void)::transition()
     size_t    dcache_way = 0;
     data_t    dcache_rdata = 0;
 
-    typename iss_t::DataRequest dreq = {false, 0, 0, iss_t::DATA_READ, 0};
+    typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     m_iss.getDataRequest( dreq );
 
     addr_t dcache_addr = dreq.addr;
-    typename iss_t::ExternalAccessType xtn_opcod = (typename iss_t::ExternalAccessType)dreq.addr;
+    typename iss_t::ExternalAccessType xtn_opcod = (typename iss_t::ExternalAccessType)(dreq.addr/4);
 
     bool   dcache_cached = false;
     if ( dreq.valid ) {
@@ -467,7 +471,7 @@ tmpl(void)::transition()
 #endif
     }
 
-    typename iss_t::DataResponse drsp = {false, false, 0};
+    typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
     switch ((dcache_fsm_state_e)r_dcache_fsm.read()) {
     case DCACHE_ERROR:
         drsp.valid = true;

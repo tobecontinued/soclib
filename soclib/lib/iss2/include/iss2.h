@@ -45,13 +45,14 @@
 
 #include <inttypes.h>
 #include <signal.h>
+#include <iostream>
 
 namespace soclib { namespace common {
 
 /**
  * Iss2 API abstract class
  *
- * This ISS aims to define a common simulation behaviour for any
+ * This Iss aims to define a common simulation behaviour for any
  * 32-bit simple-issue processor.
  *
  * Iss conforming to this API may be used by:
@@ -62,12 +63,15 @@ namespace soclib { namespace common {
  * Cache wrappers at least include:
  *  - XCacheWrapper (Simple I/D cache)
  *  - ccXCacheWrapper (coherent I/D cache)
- *  - VCacheWrapper (Virtual I/D cache)
+ *  - VCacheWrapper (MMU-enabled I/D cache)
  *
  * Some instrumentation classes also implement this API and may be
  * used between the Iss and the wrapper, including:
  *  - GdbServer
  *  - IssProfiler
+ *
+ * You may want to use first-generation Iss instanciating them through
+ * an IssIss2 wrapper. See soclib/lib/ississ2.
  */
 class Iss2
 {
@@ -151,6 +155,7 @@ public:
             return o;
         }
     };
+#define ISS_IREQ_INITIALIZER {false, 0, ::soclib::common::Iss2::MODE_HYPER}
 
     /**
      * Data request, only significant if `valid' is asserted.
@@ -182,6 +187,7 @@ public:
             return o;
         }
     };
+#define ISS_DREQ_INITIALIZER {false, 0, 0, ::soclib::common::Iss2::DATA_READ, 0, ::soclib::common::Iss2::MODE_HYPER}
 
     /**
      * Instruction response.
@@ -204,6 +210,7 @@ public:
             return o;
         }
     };
+#define ISS_IRSP_INITIALIZER {false, false, 0}
 
     /**
      * Data response.
@@ -231,6 +238,7 @@ public:
             return o;
         }
     };
+#define ISS_DRSP_INITIALIZER {false, false, 0}
 
 protected:
 

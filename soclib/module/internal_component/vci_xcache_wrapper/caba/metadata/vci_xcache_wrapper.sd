@@ -42,4 +42,5 @@ Module('caba:vci_xcache_wrapper',
 		'dsx:cpu=wrapper:iss_t',
 		'dsx:mapping_type=processor',
    		],
+#	   debug = True,
 )
