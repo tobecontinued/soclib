@@ -34,8 +34,6 @@
 
 namespace soclib { namespace caba {
 
-using namespace sc_core;
-
 /**
  * VCI Initiator port
  */
@@ -43,35 +41,35 @@ template <typename vci_param>
 class VciSignals
 {
 public:
-	sc_signal<typename vci_param::ack_t>     rspack;
-	sc_signal<typename vci_param::val_t>     rspval;
-	sc_signal<typename vci_param::data_t>    rdata;
-	sc_signal<bool>                          reop;
-	sc_signal<typename vci_param::rerror_t>  rerror;
-	sc_signal<typename vci_param::srcid_t>   rsrcid;
-	sc_signal<typename vci_param::trdid_t >  rtrdid;
-	sc_signal<typename vci_param::pktid_t >  rpktid;
+	sc_core::sc_signal<typename vci_param::ack_t>     rspack;
+	sc_core::sc_signal<typename vci_param::val_t>     rspval;
+	sc_core::sc_signal<typename vci_param::data_t>    rdata;
+	sc_core::sc_signal<bool>                          reop;
+	sc_core::sc_signal<typename vci_param::rerror_t>  rerror;
+	sc_core::sc_signal<typename vci_param::srcid_t>   rsrcid;
+	sc_core::sc_signal<typename vci_param::trdid_t >  rtrdid;
+	sc_core::sc_signal<typename vci_param::pktid_t >  rpktid;
 
-	sc_signal<typename vci_param::ack_t>     cmdack;
-	sc_signal<typename vci_param::val_t>     cmdval;
-	sc_signal<typename vci_param::addr_t>    address;
-	sc_signal<typename vci_param::be_t>      be;
-	sc_signal<typename vci_param::cmd_t>     cmd;
-	sc_signal<typename vci_param::contig_t>  contig;
-	sc_signal<typename vci_param::data_t>    wdata;
-	sc_signal<typename vci_param::eop_t>     eop;
-	sc_signal<typename vci_param::const_t>   cons;
-	sc_signal<typename vci_param::plen_t>    plen;
-	sc_signal<typename vci_param::wrap_t>    wrap;
-	sc_signal<typename vci_param::cfixed_t>  cfixed;
-	sc_signal<typename vci_param::clen_t>    clen;
-	sc_signal<typename vci_param::srcid_t>   srcid;
-	sc_signal<typename vci_param::trdid_t>   trdid;
-	sc_signal<typename vci_param::pktid_t>   pktid; 
+	sc_core::sc_signal<typename vci_param::ack_t>     cmdack;
+	sc_core::sc_signal<typename vci_param::val_t>     cmdval;
+	sc_core::sc_signal<typename vci_param::addr_t>    address;
+	sc_core::sc_signal<typename vci_param::be_t>      be;
+	sc_core::sc_signal<typename vci_param::cmd_t>     cmd;
+	sc_core::sc_signal<typename vci_param::contig_t>  contig;
+	sc_core::sc_signal<typename vci_param::data_t>    wdata;
+	sc_core::sc_signal<typename vci_param::eop_t>     eop;
+	sc_core::sc_signal<typename vci_param::const_t>   cons;
+	sc_core::sc_signal<typename vci_param::plen_t>    plen;
+	sc_core::sc_signal<typename vci_param::wrap_t>    wrap;
+	sc_core::sc_signal<typename vci_param::cfixed_t>  cfixed;
+	sc_core::sc_signal<typename vci_param::clen_t>    clen;
+	sc_core::sc_signal<typename vci_param::srcid_t>   srcid;
+	sc_core::sc_signal<typename vci_param::trdid_t>   trdid;
+	sc_core::sc_signal<typename vci_param::pktid_t>   pktid; 
 
 #define ren(x) x(((std::string)(name_ + "_"#x)).c_str())
 
-    VciSignals(std::string name_ = (std::string)sc_gen_unique_name("vci"))
+    VciSignals(std::string name_ = (std::string)sc_core::sc_gen_unique_name("vci"))
         : ren(rspack),
           ren(rspval),
           ren(rdata), 
@@ -99,6 +97,36 @@ public:
     {
     }
 #undef ren
+
+    void trace( sc_core::sc_trace_file* tf, const std::string &name )
+    {
+#define __trace(x) sc_core::sc_trace(tf, x, name+"_"+#x)
+        __trace(rspack);
+        __trace(rspval);
+        __trace(rdata); 
+        __trace(reop);  
+        __trace(rerror);
+        __trace(rsrcid);
+        __trace(rtrdid);
+        __trace(rpktid);
+        __trace(cmdack);
+        __trace(cmdval);
+        __trace(address);
+        __trace(be);    
+        __trace(cmd);   
+        __trace(contig);
+        __trace(wdata); 
+        __trace(eop);   
+        __trace(cons);  
+        __trace(plen);  
+        __trace(wrap);  
+        __trace(cfixed);
+        __trace(clen);  
+        __trace(srcid); 
+        __trace(trdid); 
+        __trace(pktid);
+#undef __trace
+    }
 };
 
 }}
