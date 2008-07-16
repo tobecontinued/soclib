@@ -83,6 +83,8 @@ int main(int argc, char **argv)
 						continue;
 					goto quit;
 				}
+				if ( r == 0 )
+					goto quit;
 				x += r;
 			}
 			if ( has_fb )
