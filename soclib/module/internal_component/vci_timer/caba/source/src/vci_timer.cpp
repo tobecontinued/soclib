@@ -27,7 +27,7 @@
  */
 
 #include "timer.h"
-#include "register.h"
+#include "alloc_elems.h"
 #include "../include/vci_timer.h"
 
 namespace soclib { namespace caba {
@@ -56,6 +56,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 	case TIMER_MODE:
 		r_mode[timer] = (int)data & 0x3;
+        // Reset the timer if set running
+        if ( data & TIMER_RUNNING )
+			r_counter[timer] = r_period[timer].read();
 		break;
 
 	case TIMER_PERIOD:
@@ -149,26 +152,17 @@ tmpl(/**/)::VciTimer(
 	: caba::BaseModule(name),
 	  m_vci_fsm(p_vci, mt.getSegmentList(index), 1),
       m_ntimer(nirq),
+      r_value(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("value", m_ntimer)),
+      r_period(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("period", m_ntimer)),
+      r_counter(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("counter", m_ntimer)),
+      r_mode(soclib::common::alloc_elems<sc_signal<int> >("mode", m_ntimer)),
+      r_irq(soclib::common::alloc_elems<sc_signal<bool> >("irq", m_ntimer)),
       p_clk("clk"),
       p_resetn("resetn"),
-      p_vci("vci")
+      p_vci("vci"),
+      p_irq(soclib::common::alloc_elems<sc_out<bool> >("irq", m_ntimer))
 {
 	m_vci_fsm.on_read_write(on_read, on_write);
-
-	r_value   = new sc_signal<typename vci_param::data_t>[m_ntimer];
-	r_period  = new sc_signal<typename vci_param::data_t>[m_ntimer];
-	r_counter = new sc_signal<typename vci_param::data_t>[m_ntimer];
-	r_mode    = new sc_signal<int>[m_ntimer];
-	r_irq     = new sc_signal<bool>[m_ntimer];
-	p_irq     = new sc_out<bool>[m_ntimer];
-
-	for (size_t i = 0; i < m_ntimer; i++) {
-		SOCLIB_REG_RENAME_N(r_value, i);
-		SOCLIB_REG_RENAME_N(r_period, i);
-		SOCLIB_REG_RENAME_N(r_counter, i);
-		SOCLIB_REG_RENAME_N(r_mode, i);
-		SOCLIB_REG_RENAME_N(r_irq, i);
-	}
 
 	SC_METHOD(transition);
 	dont_initialize();
@@ -177,6 +171,16 @@ tmpl(/**/)::VciTimer(
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
+}
+
+tmpl(/**/)::~VciTimer()
+{
+    soclib::common::dealloc_elems(r_value, m_ntimer);
+    soclib::common::dealloc_elems(r_period, m_ntimer);
+    soclib::common::dealloc_elems(r_counter, m_ntimer);
+    soclib::common::dealloc_elems(r_mode, m_ntimer);
+    soclib::common::dealloc_elems(r_irq, m_ntimer);
+    soclib::common::dealloc_elems(p_irq, m_ntimer);
 }
 
 }}

@@ -78,6 +78,8 @@ public:
 		const soclib::common::IntTab &index,
 		const soclib::common::MappingTable &mt,
         size_t nirq);
+
+	~VciTimer();
 };
 
 }}
