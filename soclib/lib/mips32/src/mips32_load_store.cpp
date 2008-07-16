@@ -181,6 +181,9 @@ void Mips32Iss::setData(const struct DataResponse &rsp)
         data = soclib::common::sign_ext8(data);
         byte_count = 4;
         break;
+    case 8:
+        data = !data;
+        break;
     case -2:
         data = data & 0xffff;
         byte_count = 4;
@@ -343,7 +346,7 @@ void Mips32Iss::op_sc()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext16(m_ins.i.imd);
     check_align(address, 4);
-    do_mem_access(address, 4, 0, m_ins.i.rt, 0, r_gp[m_ins.i.rt], DATA_SC);
+    do_mem_access(address, 4, 8, m_ins.i.rt, 0, r_gp[m_ins.i.rt], DATA_SC);
 }
 
 }}
