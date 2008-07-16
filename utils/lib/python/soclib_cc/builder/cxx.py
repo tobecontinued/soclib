@@ -37,6 +37,8 @@ class CCompile(action.Action):
 	def __init__(self, dest, src, defines = {}, inc_paths = [], force_debug = False):
 		action.Action.__init__(self, [dest], [src], defines = defines, inc_paths = inc_paths)
 		self.mode = force_debug and "debug" or None
+		if force_debug:
+			defines["SOCLIB_MODULE_DEBUG"] = '1'
 	def argSort(self, args):
 		libdirs = filter(lambda x:str(x).startswith('-L'), args)
 		libs = filter(lambda x:str(x).startswith('-l'), args)

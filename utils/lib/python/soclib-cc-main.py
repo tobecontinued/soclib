@@ -56,7 +56,10 @@ def main():
 					  help="cell_name:mode:DEFINE=VALUE")
 	parser.add_option('-b', '--buggy', nargs = 1, type = "string",
 					  action='callback', callback = buggy_callback,
-					  help="cell_name:mode:DEFINE=VALUE")
+					  help="Put module in debug mode (disable opt, ...)")
+	parser.add_option('-1', '--one-module', nargs = 1, type = "string",
+					  action='store', dest = 'one_module',
+					  help="Only try to compile one module")
 	parser.add_option('-q', '--quiet', dest = 'quiet',
 					  action='store_true',
 					  help="Print nothing but errors")
@@ -126,6 +129,21 @@ def main():
 		config.quiet = True
 
 	config.output = "system.x"
+	if opts.one_module:
+		from soclib_cc.builder.todo import ToDo
+		from soclib_desc.component import Uses
+		from soclib_desc.module import Module
+		mod = Module.getRegistered(opts.one_module)
+		todo = ToDo()
+		class foo:
+			def fullyQualifiedModuleName(self, d):
+				return d
+			def putArgs(self, d):
+				pass
+		for o in mod.getUse().builder(foo()).results():
+			todo.add(o)
+		todo.process()
+		return 0
 	if opts.list_descs:
 		for name, desc in Module.allRegistered().iteritems():
 			print name, desc.getInfo()
