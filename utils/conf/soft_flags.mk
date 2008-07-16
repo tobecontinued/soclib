@@ -1,8 +1,14 @@
 mipseb_CC_PREFIX=mips-unknown-elf-
-mipseb_CFLAGS=-mips32 -mno-branch-likely -gstabs+
+mipseb_CFLAGS=-mips32 -mno-branch-likely -gstabs+ -DSOCLIB_MIPS_R3000
 
 mipsel_CC_PREFIX=mipsel-unknown-elf-
-mipsel_CFLAGS=-mips32 -mno-branch-likely -gstabs+
+mipsel_CFLAGS=-mips32 -mno-branch-likely -gstabs+ -DSOCLIB_MIPS_R3000
+
+mips32eb_CC_PREFIX=mips-unknown-elf-
+mips32eb_CFLAGS=-mips32 -mno-branch-likely -gstabs+ -DSOCLIB_MIPS32
+
+mips32el_CC_PREFIX=mipsel-unknown-elf-
+mips32el_CFLAGS=-mips32 -mno-branch-likely -gstabs+ -DSOCLIB_MIPS32
 
 powerpc_CC_PREFIX=powerpc-unknown-elf-
 powerpc_CFLAGS=-mcpu=405 -mstrict-align -gstabs+
