@@ -290,9 +290,12 @@ void Mips32Iss::op_lwl()
     int dest_byte = m_little_endian ?
         (3 - w):
         (w);
+    int byte_count = m_little_endian ?
+        (1 + w):
+        (4 - w);
     if ( m_little_endian )
         address &= ~3;
-    do_mem_access(address, 4, 0, m_ins.i.rt, dest_byte, 0, DATA_READ);
+    do_mem_access(address, byte_count, 0, m_ins.i.rt, dest_byte, 0, DATA_READ);
 }
 
 void Mips32Iss::op_swl()
