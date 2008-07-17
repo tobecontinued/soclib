@@ -1242,8 +1242,10 @@ void Ppc405Iss::op_sc()
 
 void Ppc405Iss::op_slw()
 {
-	uint32_t n = r_gp[m_ins.x.rb]&0x3f;
+	uint32_t n = r_gp[m_ins.x.rb]&0x1f;
     uint32_t tmp = r_gp[m_ins.x.rs] << n;
+    if ( r_gp[m_ins.x.rb] & 0x20 )
+        tmp = 0;
     r_gp[m_ins.x.ra] = tmp;
     if ( m_ins.x.rc )
         crSetSigned( 0, tmp, 0 );
@@ -1251,9 +1253,11 @@ void Ppc405Iss::op_slw()
 
 void Ppc405Iss::op_sraw()
 {
-	uint32_t n = r_gp[m_ins.x.rb]&0x3f;
+	uint32_t n = r_gp[m_ins.x.rb]&0x1f;
     int32_t a = r_gp[m_ins.x.rs];
     int32_t tmp = a >> n;
+    if ( r_gp[m_ins.x.rb] & 0x20 )
+        tmp = 0;
     r_gp[m_ins.x.ra] = tmp;
     caSet( a<0 ? !!(a&((1<<n)-1)) : 0 );
     if ( m_ins.x.rc )
@@ -1273,9 +1277,10 @@ void Ppc405Iss::op_srawi()
 
 void Ppc405Iss::op_srw()
 {
-	uint32_t n = r_gp[m_ins.x.rb]&0x3f;
-    uint32_t a = r_gp[m_ins.x.rs];
-    uint32_t tmp = a >> n;
+	uint32_t n = r_gp[m_ins.x.rb]&0x1f;
+    uint32_t tmp = r_gp[m_ins.x.rs] >> n;
+    if ( r_gp[m_ins.x.rb] & 0x20 )
+        tmp = 0;
     r_gp[m_ins.x.ra] = tmp;
     if ( m_ins.x.rc )
         crSetSigned( 0, tmp, 0 );

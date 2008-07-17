@@ -109,6 +109,23 @@ static inline uint16_t uint16_swap(uint16_t x)
     return ((x << 8) | (x >> 8));
 }
 
+static inline uint32_t uint32_swap16(uint32_t x)
+{
+#if 0
+    return (
+        ( (x & 0xff)   << 8 ) |
+        ( (x & 0xff00) >> 8 ) |
+        ( (x >> 8) & 0xff0000 ) |
+        ( (x << 8) & 0xff000000 )
+        );
+#elif 0
+    uint32_t tmp = uint32_swap(x);
+    return (tmp<<16) | (tmp>>16);
+#else
+    return uint16_swap(x) | (uint16_swap(x>>16)<<16);
+#endif
+}
+
 template<size_t t> struct baset;
 template<> struct baset<4> { typedef uint32_t base_t; };
 template<> struct baset<2> { typedef uint16_t base_t; };

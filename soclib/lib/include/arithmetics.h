@@ -47,7 +47,7 @@ static inline int32_t sign_ext8( int8_t val )
 static inline int32_t sign_ext26( int32_t val )
 {
     uint32_t ext = (val&(1<<25)) ? 0xfc000000 : 0;
-    return val|ext;
+    return (val&0x03ffffff)|ext;
 }
 
 static inline bool carry( uint32_t a, uint32_t b, uint32_t c )
@@ -66,6 +66,20 @@ static inline uint32_t uint32_log2(uint32_t n)
 }
 
 template<typename T>
+static inline T extract_bits( T word, int le_bit, int size )
+{
+    return ((1<<size)-1) & (word>>le_bit);
+}
+
+template<typename T>
+static inline T insert_bits( T word, T to_insert, int le_bit, int size )
+{
+    T mask = ((1<<size)-1)<<le_bit;
+    T ti = to_insert << le_bit;
+    return (ti & mask) | (word & ~mask);
+}
+
+template<typename T>
 static inline T clz( T n )
 {
 #if __GNUC__
@@ -76,10 +90,11 @@ static inline T clz( T n )
     else
 #endif
     {
-        for ( int i = 31; i>=0; --i )
+        const int t = sizeof(T)*8;
+        for ( int i = t-1; i>=0; --i )
             if ( (1<<i)&n )
-                return 31-i;
-        return 32;
+                return t-1-i;
+        return t;
     }
 }
 

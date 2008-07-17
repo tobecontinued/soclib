@@ -31,6 +31,7 @@
 #include "mips32.h"
 #include "base_module.h"
 #include "arithmetics.h"
+#include "soclib_endian.h"
 
 namespace soclib { namespace common {
 
@@ -49,16 +50,16 @@ void Mips32Iss::op_special3()
 	};
 
     switch ( m_ins.r.func ) {
-    case EXT:
+    case EXT: {
 		size_t size = m_ins.r.rd + 1;
 		size_t lsb = m_ins.r.sh;
-        r_gp[m_ins.r.rt] = (r_gp[m_ins.r.rs] >> lsb) & ((1<<size)-1);
+        r_gp[m_ins.r.rt] = extract_bits(r_gp[m_ins.r.rs], lsb, size);
         break;
+    }
     case INS: {
 		size_t lsb = m_ins.r.sh;
 		size_t msb = m_ins.r.rd;
-		data_t mask = (1<<(msb+1)) ^ (1<<lsb);
-        r_gp[m_ins.r.rt] = ((r_gp[m_ins.r.rs]<<lsb) & mask) | (r_gp[m_ins.r.rt] & ~mask);
+        r_gp[m_ins.r.rt] = insert_bits(r_gp[m_ins.r.rt], r_gp[m_ins.r.rs], lsb, msb-lsb+1);
         break;
 	}
 	case BSHFL: {
@@ -70,13 +71,13 @@ void Mips32Iss::op_special3()
 			r_gp[m_ins.r.rd] = sign_ext16(r_gp[m_ins.r.rt]);
 			break;
 		case WSBH: {
-			data_t tmp = soclib::endian::uint16_swap(r_gp[m_ins.r.rt]);
-			data_t tmp2 = soclib::endian::uint16_swap(r_gp[m_ins.r.rt]>>16);
-			tmp |= tmp2<<16;
-			r_gp[m_ins.r.rd] = tmp;
+			r_gp[m_ins.r.rd] = soclib::endian::uint32_swap16(r_gp[m_ins.r.rt]);
 			break;
 		}
+        default:
+            op_ill();
 		}
+        break;
 	}
     default:
         op_ill();
