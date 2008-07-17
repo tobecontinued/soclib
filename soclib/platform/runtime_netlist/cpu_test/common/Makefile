@@ -27,6 +27,7 @@
 TESTDIR?=.
 include $(TESTDIR)/test.mk
 
+MAX_CYCLES?=100000
 RESULT=test.res
 COMMON=$(TESTDIR)/../common
 BASE=$(TESTDIR)/..
@@ -87,7 +88,7 @@ clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS)
 
 $(RESULT): $(SOFT_IMAGE) $(TESTER) $(COMMON)/Makefile
-	SOCLIB_TTY=TERM $(TESTER) cache_arch=xcache_$($(ARCH)_CPU) arch=$($(ARCH)_CPU) binary=$(SOFT_IMAGE) sim_max_cycles=100000 sim_default_retval=1 > test.out \
+	SOCLIB_TTY=TERM $(TESTER) cache_arch=xcache_$($(ARCH)_CPU) arch=$($(ARCH)_CPU) binary=$(SOFT_IMAGE) sim_max_cycles=$(MAX_CYCLES) sim_default_retval=1 > test.out \
 		|| (r=$$? ; cat test.out ; mv test.out test.fail ; echo "Test failed in $$PWD, errorlevel: $$r" ; exit 1)
 	cat test.out
 	mv test.out $@
@@ -111,7 +112,7 @@ clean:
 define onetest
 
 $(1)/$(RESULT): $(1)
-	make -C $(1) -f $(COMMON)/Makefile TESTDIR=.. ARCH=$(1)
+	$(MAKE) -C $(1) -f $(COMMON)/Makefile TESTDIR=.. ARCH=$(1)
 
 $(1):
 	mkdir -p $(1)
