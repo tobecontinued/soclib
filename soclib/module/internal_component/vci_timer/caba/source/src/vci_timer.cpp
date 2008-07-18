@@ -156,7 +156,7 @@ tmpl(/**/)::VciTimer(
       r_period(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("period", m_ntimer)),
       r_counter(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("counter", m_ntimer)),
       r_mode(soclib::common::alloc_elems<sc_signal<int> >("mode", m_ntimer)),
-      r_irq(soclib::common::alloc_elems<sc_signal<bool> >("irq", m_ntimer)),
+      r_irq(soclib::common::alloc_elems<sc_signal<bool> >("saved_irq", m_ntimer)),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci"),
