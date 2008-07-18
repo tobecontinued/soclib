@@ -46,17 +46,9 @@
 namespace soclib {
 namespace caba {
 
-#ifndef XCACHE_WRAPPER_DEBUG
-#ifdef SOCLIB_MODULE_DEBUG
-#define XCACHE_WRAPPER_DEBUG 1
-#else
-#define XCACHE_WRAPPER_DEBUG 0
-#endif
-#endif
-
 #define LINE_VALID 0x80000000
 
-#if XCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 namespace {
 const char *dcache_fsm_state_str[] = {
         "DCACHE_INIT",
@@ -372,7 +364,7 @@ tmpl(void)::transition()
         }
     } // end for
 
-#if XCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
         std::cout << name() << " icache request: " << ireq << std::endl;
 #endif
 
@@ -462,7 +454,7 @@ tmpl(void)::transition()
             dcache_rdata = r_dcache_miss_buf[0];
         }
 
-#if XCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
         std::cout << name()
                   << " dcache request: " << dreq
                   << " cached: " << dcache_cached
@@ -509,7 +501,7 @@ tmpl(void)::transition()
     }
     m_iss.setData( drsp );
 
-#if XCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     if ( drsp.valid )
         std::cout << name() << " Data rsp: " << drsp << std::endl;
 #endif
@@ -522,7 +514,7 @@ tmpl(void)::transition()
         m_iss.executeNCycles(1, it);
     }
 
-#if XCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << name()
         << " dcache: " << dcache_fsm_state_str[r_dcache_fsm]
@@ -715,7 +707,7 @@ tmpl(void)::transition()
         switch((data_op_t)r_dcache_type_save.read()) {
         case iss_t::DATA_WRITE: {
             data_t mask = be_to_mask(r_dcache_be_save.read());
-#if XCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
             std::cout << name() << " upd @" << std::hex << r_dcache_addr_save.read()
                       << " old: " << prev_data
                       << " new: " << new_data
@@ -796,7 +788,7 @@ tmpl(void)::transition()
         size_t set = (size_t)m_d_y[r_dcache_addr_save];
         tag_t tag = (tag_t)m_d_z[r_dcache_addr_save] | LINE_VALID;
         bool did_once = false;
-#if XCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
         std::cout << name() << " Invalidating st: " << std::hex << set << '/' << tag << std::endl;
 #endif
         for (size_t way = 0 ; way < m_dcache_ways ; way++) {

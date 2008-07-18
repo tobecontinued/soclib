@@ -32,11 +32,7 @@
 #include "../include/vci_vgmn.h"
 #include "alloc_elems.h"
 
-#ifndef VGMN_DEBUG
-#define VGMN_DEBUG 0
-#endif
-
-#if VGMN_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 #define DEBUG_BEGIN do { do{} while(0)
 #define DEBUG_END } while(0)
 #else

@@ -30,4 +30,5 @@ Module('caba:vci_vgmn',
 	'dsx:mapping_type=interconnect',
 	'dsx:obtain_ident_method=port',
 	],
+#	   debug = True,
 )
