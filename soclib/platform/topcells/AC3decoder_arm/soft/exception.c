@@ -31,12 +31,12 @@ asm(
 	"   ldr r4, ttyaddr			\n"	//load the TTY address
 	"   str r3, [r4]			\n"	//store the message in the TTY to print the first part of the message
 	);
-//asm volatile("" ::: "memory");
+asm volatile("" ::: "memory");
 asm(
 	"   ldr r3, message + 4			\n"	//load the last part of the message
 	"   str r3, [r4]			\n"	//store the message in the TTy to print the last part of th emessage
    );
-//asm volatile("" ::: "memory");
+asm volatile("" ::: "memory");
 asm(
 	"	b main_asm				\n"
 	"   b main				\n"
