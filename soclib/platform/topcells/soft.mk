@@ -27,7 +27,7 @@
 SOCLIB:=$(shell soclib-cc --getpath)
 
 SOFT_IMAGE=bin.soft
-OBJS?=main.o exception.o system.o stdlib.o stdio.o $(ADD_OBJS)
+OBJS?=main.o exception.o system.o $(ADD_OBJS)
 
 include $(SOCLIB)/utils/conf/soft_flags.mk
 

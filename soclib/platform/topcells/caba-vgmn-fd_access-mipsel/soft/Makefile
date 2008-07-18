@@ -1,2 +1,2 @@
-ADD_OBJS=fcntl.o
+ADD_OBJS= stdlib.o stdio.o fcntl.o
 include ../../soft.mk
