@@ -60,11 +60,6 @@ int _main(int argc, char *argv[]) {
 
 	maptab.add(Segment("data", DATA_BASE, DATA_SIZE, IntTab(1), true));
 
-	maptab.add(Segment("loc0", LOC0_BASE, LOC0_SIZE, IntTab(1), true));
-	maptab.add(Segment("loc1", LOC1_BASE, LOC1_SIZE, IntTab(1), true));
-	maptab.add(Segment("loc2", LOC2_BASE, LOC2_SIZE, IntTab(1), true));
-	maptab.add(Segment("loc3", LOC3_BASE, LOC3_SIZE, IntTab(1), true));
-
 	maptab.add(Segment("tty", TTY_BASE, TTY_SIZE, IntTab(2), false));
 	maptab.add(Segment("timer", TIMER_BASE, TIMER_SIZE, IntTab(3), false));
 	maptab.add(Segment("locks", LOCKS_BASE, LOCKS_SIZE, IntTab(4), false));

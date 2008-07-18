@@ -47,24 +47,6 @@
 #define	DATA_BASE	0x02000000
 #define	DATA_SIZE	0x00080000
 
-/////////////////////////////////////////////////////////
-//	local data segments 
-//	
-/////////////////////////////////////////////////////////
-
-#define	LOC0_BASE	0xD0200000
-#define	LOC0_SIZE	0x00001000
-
-#define	LOC1_BASE	0xD0210000
-#define	LOC1_SIZE	0x00001000
-
-#define	LOC2_BASE	0xD0220000
-#define	LOC2_SIZE	0x00001000
-
-#define	LOC3_BASE	0xD0230000
-#define	LOC3_SIZE	0x00001000
-
-
 //////////////////////////////////////////////////////////
 //	System TTY and private TTYs
 //	

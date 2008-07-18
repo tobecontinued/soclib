@@ -26,44 +26,66 @@
  * Maintainers: nipo
  */
 
-#ifndef USER_H_
-#define USER_H_
+#include <stdarg.h>
+#include "system.h"
 
-#include "soclib/tty.h"
 #include "../segmentation.h"
 
-#define base(x) (void*)(x##_BASE)
+#include "soclib/simhelper.h"
 
-void uputs(const char *);
-void puti(const int i);
+#include "stdlib.h"
 
-#ifdef __mips__
+static void *heap_pointer = 0;
+extern void _heap();
 
-#define get_cp0(x, sel)									\
-({unsigned int __cp0_x;								\
-__asm__("mfc0 %0, $"#x", "#sel:"=r"(__cp0_x));	\
-__cp0_x;})
-
-static inline int procnum()
+static inline char *align(char *ptr)
 {
-    return (get_cp0(15,1)&0x3ff);
+	return (void*)((unsigned long)(ptr+15)&~0xf);
 }
 
+void *malloc( size_t sz )
+{
+	char *rp;
+	if ( ! heap_pointer )
+		heap_pointer = align((void*)_heap);
+	rp = heap_pointer;
+	heap_pointer = align(rp+sz);
+	return rp;
+}
+
+void exit(int level)
+{
+#ifdef SIMHELPER_BASE
+	soclib_io_set(
+		base(SIMHELPER),
+		SIMHELPER_END_WITH_RETVAL,
+		level);
+#else
+# warning No simhelper, exit will do an infinite loop
 #endif
-
-static inline void putc(const char x)
-{
-	soclib_io_write8(
-		base(TTY),
-		procnum()*TTY_SPAN+TTY_WRITE,
-		x);
+	while(1);
 }
 
-static inline char getc()
+void abort()
 {
-	return soclib_io_read8(
-		base(TTY),
-		procnum()*TTY_SPAN+TTY_READ);
+	exit(1);
 }
 
-#endif
+void *memcpy( void *_dst, void *_src, size_t size )
+{
+	uint32_t *dst = _dst;
+	uint32_t *src = _src;
+	if ( ! ((uint32_t)dst & 3) && ! ((uint32_t)src & 3) )
+		while (size > 3) {
+			*dst++ = *src++;
+			size -= 4;
+		}
+
+	unsigned char *cdst = (char*)dst;
+	unsigned char *csrc = (char*)src;
+
+	while (size--) {
+		*cdst++ = *csrc++;
+	}
+	return _dst;
+}

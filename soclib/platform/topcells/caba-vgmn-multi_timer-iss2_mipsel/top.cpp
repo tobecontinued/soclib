@@ -1,5 +1,4 @@
 /*
- *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
  * This file is part of SoCLib, GNU LGPLv2.1.
@@ -40,8 +39,6 @@
 #include "vci_vgmn.h"
 
 #include "segmentation.h"
-
-//soclib::common::IntTab a(8);
 
 int _main(int argc, char *argv[])
 {

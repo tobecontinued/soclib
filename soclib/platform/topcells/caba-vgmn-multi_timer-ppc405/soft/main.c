@@ -28,22 +28,32 @@
 
 #include "soclib/timer.h"
 #include "system.h"
+#include "stdio.h"
 
 #include "../segmentation.h"
 
 static const int period[4] = {10000, 11000, 12000, 13000};
 
+void irq_handler(int irq)
+{
+	uint32_t ti;
+	ti = soclib_io_get(
+		base(TIMER),
+		procnum()*TIMER_SPAN+TIMER_VALUE);
+	printf("IRQ %d received at cycle %d on cpu %d\n\n", irq, ti, procnum());
+	soclib_io_set(
+		base(TIMER),
+		procnum()*TIMER_SPAN+TIMER_RESETIRQ,
+		0);
+}
+
 int main(void)
 {
 	const int cpu = procnum();
 
-	uputs("Hello from processor ");
-	putc(procnum()+'0');
-	putc('\n');
+	printf("Hello from processor %d\n", procnum());
 	
-	uputs("Setting period ");
-	puti(period[cpu]);
-	putc('\n');
+	set_irq_handler(irq_handler);
 
 	soclib_io_set(
 		base(TIMER),
@@ -54,7 +64,6 @@ int main(void)
 		procnum()*TIMER_SPAN+TIMER_MODE,
 		TIMER_RUNNING|TIMER_IRQ_ENABLED);
 	
-//	*(int *)0 = 42;
 	while (1);
 	return 0;
 }

@@ -29,6 +29,7 @@
 #include "soclib/timer.h"
 #include "soclib/simhelper.h"
 #include "system.h"
+#include "fcntl.h"
 
 #include "../segmentation.h"
 
@@ -38,7 +39,7 @@ int main(void)
 	char c[80];
 	int i;
 
-	uputs("Hello from here\n");
+	puts("Hello from here\n");
 	
 	{
 		int fd = open("test", O_RDONLY, 0);
@@ -46,7 +47,7 @@ int main(void)
 			char *bla = c+i;
 			read(fd, bla, 27);
 			(bla)[27] = 0;
-			uputs(bla);
+			puts(bla);
 			lseek(fd, 0, 0);
 		}
 		close(fd);
@@ -55,7 +56,7 @@ int main(void)
 	{
 		int fd = open("test2", O_WRONLY|O_CREAT, 0644);
 		if ( fd < 0 ) {
-			uputs("Failed open\n");
+			puts("Failed open\n");
 			puti(errno);
 		}
 		for ( i=0; i<26; ++i ) {

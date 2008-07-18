@@ -28,7 +28,19 @@
 
 #include "system.h"
 #include "stdio.h"
-#include "soclib/timer.h"
+#include "stdlib.h"
+
+#undef putchar
+int putchar(const int x)
+{
+	return __inline_putchar(x);
+}
+
+#undef getchar
+int getchar()
+{
+	return __inline_getchar();
+}
 
 int puts(const char *str)
 {
@@ -37,35 +49,93 @@ int puts(const char *str)
 	return 0;
 }
 
-extern uint32_t lock;
+void puti(const int i)
+{
+	if ( i>10 )
+		puti(i/10);
+	putchar(i%10+'0');
+}
+
+uint32_t run_cycles()
+{
+#if defined(__mips__)
+# if __mips >= 32
+	return get_cp0(9,6);
+# else
+	return 0;
+# endif
+#elif defined(__PPC__)
+	return dcr_get(3);
+#else
+	return 0;
+#endif
+}
+
+uint32_t cpu_cycles()
+{
+#if defined(__mips__)
+# if __mips >= 32
+	return get_cp0(9, 0);
+# else
+	return get_cp0(9);
+# endif
+#elif defined(__PPC__)
+	return dcr_get(284);
+#else
+	return 0;
+#endif
+}
 
 void interrupt_ex_handler(
 	unsigned int type, void *execptr,
 	void *dataptr, void *regtable,
 	void *stackptr)
 {
-	lock_lock(&lock);
-	printf("%s type=0x%x at 0x%x dptr=0x%x\n", __FUNCTION__, type, (uint32_t)execptr, (uint32_t)dataptr);
-	lock_unlock(&lock);
+	printf("Exception at 0x%x: 0x%x\n", execptr, type);
 	exit(1);
 }
 
 void interrupt_sys_handler(unsigned int irq)
 {
-	printf("%s irq=%d\n", __FUNCTION__, irq);
+	printf("Exception: %s\n", __FUNCTION__);
 	exit(1);
+}
+
+irq_handler_t *user_irq_handler = 0;
+
+void set_irq_handler(irq_handler_t *handler)
+{
+	user_irq_handler = handler;
 }
 
 void interrupt_hw_handler(unsigned int irq)
 {
-	printf("%s irq=%d\n", __FUNCTION__, irq);
-	exit(1);
+	int i;
+
+/* 	printf("Exception: %s irq %d\n", __FUNCTION__, irq); */
+
+	for (i=0; i<8;++i) {
+		if (irq&1)
+			break;
+		irq>>=1;
+	}
+
+	if ( user_irq_handler )
+		user_irq_handler(irq);
+	else
+		exit(1);
 }
 
 static inline volatile uint32_t ll( uint32_t *addr )
 {
 	uint32_t ret;
+#if __mips__
 	__asm__ __volatile__("ll %0, 0(%1)":"=r"(ret):"p"(addr));
+#elif __PPC__
+	__asm__ __volatile__("lwarx %0, 0, %1":"=r"(ret):"p"(addr));
+#else
+# error Please implement ll for your arch
+#endif
 	return ret;
 }
 
@@ -74,8 +144,22 @@ static inline volatile uint32_t ll( uint32_t *addr )
  */
 static inline volatile uint32_t sc( uint32_t *addr, uint32_t value )
 {
-	__asm__ __volatile__("sc %0, 0(%1)":"=r"(value):"p"(addr), "0"(value):"memory");
-	return !value;
+	uint32_t ret;
+#if __mips__
+	__asm__ __volatile__("sc %0, 0(%1)":"=r"(ret):"p"(addr), "0"(value):"memory");
+	ret = !ret;
+#elif __PPC__
+	ret = 0;
+	__asm__ __volatile__("stwcx. %2, 0, %1    \n\t"
+						 "mfcr   %0    \n\t"
+						 :"=r"(ret)
+						 :"p"(addr), "r"(value)
+						 :"memory");
+	ret = ! (ret&0x20000000);
+#else
+# error Please implement sc for your arch
+#endif
+	return ret;
 }
 
 uint32_t atomic_inc( uint32_t *addr )
@@ -91,6 +175,14 @@ uint32_t atomic_inc( uint32_t *addr )
 
 void lock_lock( uint32_t *lock )
 {
+#if 1
+	uint32_t failed;
+	do {
+		while ( ll(lock) != 0 )
+			;
+		failed = sc(lock, 1);
+	} while (failed);
+#elif defined(__mips__)
 	__asm__ __volatile__(
 		".set push        \n\t"
 		".set noreorder   \n\t"
@@ -105,9 +197,26 @@ void lock_lock( uint32_t *lock )
 		"2:               \n\t"
 		".set pop         \n\t"
 		:
-		: "p"(lock)
-		: "$1", "$2", "memory"
+		: "p"(lock), "m"(*lock)
+		: "$1", "$2"
 		);
+#elif __PPC__
+	uint32_t tmp;
+	asm volatile(
+		"1:			\n"
+		"	lwarx	%0,0,%1         \n"
+		"   cmpi    0, 0, %0, 0           \n"
+		"   bne		1b				\n"
+		"	ori		%0,%0,1		\n"
+		"   stwcx.	%0,0,%1		\n"
+		"	bne-	1b		\n"
+		"2:                \n"
+		: "=&r" (tmp)
+		: "p" (lock), "m" (*lock)
+		);
+#else
+# error Please implement lock_lock for your arch
+#endif
 }
 
 void lock_unlock( uint32_t *lock )

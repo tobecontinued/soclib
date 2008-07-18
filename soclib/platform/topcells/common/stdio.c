@@ -35,7 +35,11 @@ int time(int *ret)
 {
 	int t;
 #if defined(__mips__)
+# if __mips >= 32
 	t = get_cp0(9,0);
+# else
+	t = get_cp0(9);
+# endif
 #elif defined(__PPC__)
 	t = spr_get(284);
 #else
@@ -102,7 +106,7 @@ int printf(const char *fmt, ...)
 
 	while (*fmt) {
 		while ((*fmt != '%') && (*fmt)) {
-			putc(*fmt++);
+			putchar(*fmt++);
 			count++;
 		}
 		if (*fmt) {
@@ -123,11 +127,11 @@ int printf(const char *fmt, ...)
 			case ' ':
 				goto again;
 			case '%':
-				putc('%');
+				putchar('%');
 				count++;
 				goto next;
 			case 'c':
-				putc(va_arg(ap, int));
+				putchar(va_arg(ap, int));
 				count++;
 				goto next;
 			case 'd':
@@ -135,7 +139,7 @@ int printf(const char *fmt, ...)
 				val = va_arg(ap, int);
 				if (val < 0) {
 					val = -val;
-					putc('-');
+					putchar('-');
 					count++;
 				}
 				tmp = buf + SIZE_OF_BUF;
@@ -193,12 +197,12 @@ int printf(const char *fmt, ...)
 				}
 				break;
 			default:
-				putc(*fmt);
+				putchar(*fmt);
 				count++;
 				goto next;
 			}
 			while (*tmp) {
-				putc(*tmp++);
+				putchar(*tmp++);
 				count++;
 			}
 		next:
@@ -238,53 +242,3 @@ int strcmp( const char *ref0, const char *ref1 )
 	return strcmp_b(((char*)iref0)-1, ((char*)iref1)-1);
 }
 #endif
-
-static void *heap_pointer = 0;
-extern void _heap();
-
-static inline char *align(char *ptr)
-{
-	return (void*)((unsigned long)(ptr+15)&~0xf);
-}
-
-void *malloc( unsigned long sz )
-{
-	char *rp;
-	if ( ! heap_pointer )
-		heap_pointer = align((void*)_heap);
-	rp = heap_pointer;
-	heap_pointer = align(rp+sz);
-	return rp;
-}
-
-void abort()
-{
-	exit(1);
-}
-
-void exit(int level)
-{
-	soclib_io_set(
-		base(SIMHELPER),
-		SIMHELPER_EXCEPT_WITH_VAL,
-		level);
-}
-
-void *memcpy( void *_dst, void *_src, unsigned long size )
-{
-	uint32_t *dst = _dst;
-	uint32_t *src = _src;
-	if ( ! ((uint32_t)dst & 3) && ! ((uint32_t)src & 3) )
-		while (size > 3) {
-			*dst++ = *src++;
-			size -= 4;
-		}
-
-	unsigned char *cdst = (char*)dst;
-	unsigned char *csrc = (char*)src;
-
-	while (size--) {
-		*cdst++ = *csrc++;
-	}
-	return _dst;
-}

@@ -32,38 +32,89 @@
 #include "soclib/tty.h"
 #include "../segmentation.h"
 
+#include "stdint.h"
+
+void lock_lock( uint32_t * );
+void lock_unlock( uint32_t * );
+uint32_t atomic_inc( uint32_t * );
+
 #define base(x) (void*)(x##_BASE)
 
-void uputs(const char *);
+int puts(const char *);
 void puti(const int i);
+
+uint32_t run_cycles();
+uint32_t cpu_cycles();
+
+typedef void irq_handler_t(int);
+void set_irq_handler(irq_handler_t *handler);
 
 #ifdef __mips__
 
+#if __mips >= 32
 #define get_cp0(x, sel)									\
 ({unsigned int __cp0_x;								\
 __asm__("mfc0 %0, $"#x", "#sel:"=r"(__cp0_x));	\
 __cp0_x;})
+#else
+#define get_cp0(x)									\
+({unsigned int __cp0_x;								\
+__asm__("mfc0 %0, $"#x:"=r"(__cp0_x));	\
+__cp0_x;})
+#endif
 
 static inline int procnum()
 {
+#if __mips >= 32
     return (get_cp0(15,1)&0x3ff);
+#else
+    return (get_cp0(15)&0x3ff);
+#endif
 }
 
 #endif
 
-static inline void putc(const char x)
+#ifdef __PPC__
+
+#define dcr_get(x)					\
+({unsigned int __val;				\
+__asm__("mfdcr %0, "#x:"=r"(__val));\
+__val;})
+
+#define spr_get(x)					\
+({unsigned int __val;				\
+__asm__("mfspr %0, "#x:"=r"(__val));\
+__val;})
+
+static inline int procnum()
+{
+    return dcr_get(0);
+}
+
+#endif
+
+#define putchar __inline_putchar
+static inline int putchar(const int x)
 {
 	soclib_io_write8(
 		base(TTY),
-		procnum()*TTY_SPAN+TTY_WRITE,
+#if TTY_SIZE > 0x10
+		procnum()*TTY_SPAN+
+#endif
+		TTY_WRITE,
 		x);
+	return x;
 }
 
-static inline char getc()
+#define getchar __inline_getchar
+static inline int getchar()
 {
 	return soclib_io_read8(
 		base(TTY),
-		procnum()*TTY_SPAN+TTY_READ);
+#if TTY_SIZE > 0x10
+		procnum()*TTY_SPAN+
+#endif
+		TTY_READ);
 }
 
 #endif

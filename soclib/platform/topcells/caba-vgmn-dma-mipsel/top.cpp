@@ -54,7 +54,7 @@ int _main(int argc, char *argv[])
 
 	// Mapping table
 
-	soclib::common::MappingTable maptab(32, IntTab(4), IntTab(4), 0x03000000);
+	soclib::common::MappingTable maptab(32, IntTab(4), IntTab(4), 0x00300000);
 
 	maptab.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(5), true));
 	maptab.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(5), true));

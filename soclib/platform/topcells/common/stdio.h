@@ -25,50 +25,27 @@
  *
  * Maintainers: nipo
  */
+#ifndef STDIO_H_
+#define STDIO_H_
 
-SECTIONS
-{
-   . = 0x80000000;
-   .excep : {
-		*(.excep)
-		*(.excep.*)
-   }
+#define assert(x) \
+do {																	\
+	if ( !(x) ) {														\
+		printf("Assertion `%s' failed !!!\n", #x);		\
+	}																	\
+} while (0)
+/* #define assert(x) \ */
+/* do {																	\ */
+/* 	if ( !(x) ) {														\ */
+/* 		printf("Assertion `%s' failed !!!\n", #x);		\ */
+/* 		abort();														\ */
+/* 	}																	\ */
+/* } while (0) */
 
-   . = 0xbfc00000;
-   .reset : {
-		*(.reset)
-		*(.reset.*)
-   }
+char *strcpy( char *dst, const char *src );
+int printf( const char *fmt, ... );
+int strcmp( const char *, const char *);
+void *memcpy( void *_dst, void *_src, unsigned long size );
 
-   . = 0x00400000;
-   .text : {
-      *(.text)
-   }
-   . = 0x10000000;
-   .rodata : {
-      *(.rodata)
-      . = ALIGN(4);
-   }
-   .data  : {
-      *(.data)
-   }
-   .sdata : {
-      *(.lit8)
-      *(.lit4)
-      *(.sdata)
-   }
-   _gp = .;
-   . = ALIGN(4);
-   _edata = .;
-   .sbss  : {
-      *(.sbss)
-      *(.scommon)
-   }
-   .bss   : {
-      *(.bss)
-      *(COMMON)
-   }
-   . = ALIGN(4);
-   _end = .;
-   _stack = 0x10000000 + 0x00001000;
-}
+#endif
+

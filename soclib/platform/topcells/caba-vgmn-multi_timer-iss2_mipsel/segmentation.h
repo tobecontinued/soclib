@@ -63,7 +63,7 @@
 /////////////////////////////////////////////////////////////////
 
 #define	DATA_BASE	0x10000000
-#define	DATA_SIZE	0x00010000
+#define	DATA_SIZE	0x00020000
 
 /////////////////////////////////////////////////////////
 //	local data segments 
@@ -86,7 +86,7 @@
 ///////////////////////////////////////////////////////////
 
 #define	TTY_BASE	0xC0200000
-#define	TTY_SIZE	0x00000258
+#define	TTY_SIZE	0x00000040
 
 #define	TIMER_BASE	0xB0200000
 #define	TIMER_SIZE	0x00000100

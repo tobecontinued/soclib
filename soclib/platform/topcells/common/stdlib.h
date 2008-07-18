@@ -26,49 +26,7 @@
  * Maintainers: nipo
  */
 
-SECTIONS
-{
-   . = 0x80000000;
-   .excep : {
-		*(.excep)
-		*(.excep.*)
-   }
-
-   . = 0xbfc00000;
-   .reset : {
-		*(.reset)
-		*(.reset.*)
-   }
-
-   . = 0x00400000;
-   .text : {
-      *(.text)
-   }
-   . = 0x10000000;
-   .rodata : {
-      *(.rodata)
-      . = ALIGN(4);
-   }
-   .data  : {
-      *(.data)
-   }
-   .sdata : {
-      *(.lit8)
-      *(.lit4)
-      *(.sdata)
-   }
-   _gp = .;
-   . = ALIGN(4);
-   _edata = .;
-   .sbss  : {
-      *(.sbss)
-      *(.scommon)
-   }
-   .bss   : {
-      *(.bss)
-      *(COMMON)
-   }
-   . = ALIGN(4);
-   _end = .;
-   _stack = 0x10000000 + 0x00001000;
-}
+void *malloc(size_t);
+void free(void*);
+void exit(int);
+void abort();

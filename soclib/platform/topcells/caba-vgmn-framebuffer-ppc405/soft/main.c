@@ -35,18 +35,18 @@ int main(void)
 {
 	uint8_t base = 0;
 
-	uputs("Hello from processor ");
-	putc(procnum()+'0');
-	putc('\n');
+	puts("Hello from processor ");
+	putchar(procnum()+'0');
+	putchar('\n');
 	
 	while(1) {
 		uint8_t *fb = FB_BASE;
 		uint32_t x, y;
 
 		for (x=0; x<FB_HEIGHT; ++x) {
-			uputs("Filling Y ");
+			puts("Filling Y ");
 			puti(x);
-			putc('\n');
+			putchar('\n');
 			
 			uint8_t lum = (base<<7)+x;
 			for (y=0; y<FB_WIDTH; ++y) {
@@ -55,9 +55,9 @@ int main(void)
 		}
 
 		for (x=0; x<FB_HEIGHT; ++x) {
-			uputs("Filling C ");
+			puts("Filling C ");
 			puti(x);
-			putc('\n');
+			putchar('\n');
 			
 			uint8_t lum = (base<<2)+x;
 			for (y=0; y<FB_WIDTH/2; ++y) {

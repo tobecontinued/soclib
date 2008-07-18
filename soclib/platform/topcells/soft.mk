@@ -27,9 +27,11 @@
 SOCLIB:=$(shell soclib-cc --getpath)
 
 SOFT_IMAGE=bin.soft
-OBJS?=main.o exception.o system.o $(ADD_OBJS)
+OBJS?=main.o exception.o system.o stdlib.o stdio.o $(ADD_OBJS)
 
 include $(SOCLIB)/utils/conf/soft_flags.mk
+
+VPATH=. ../../common
 
 HW_HEADERS=$(SOCLIB)/utils/include
 
@@ -39,14 +41,14 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. -I$(HW_HEADERS) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb
+CFLAGS=-Wall -O2 -I. -I$(HW_HEADERS) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb -I../../common
 
 MAY_CLEAN=$(shell test -r arch_stamp && (test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean))
 
 default: clean $(SOFT_IMAGE)
 
-$(SOFT_IMAGE): $(MAY_CLEAN) arch_stamp $(OBJS)
-	$(LD) -q $($(ARCH)_LDFLAGS) -T ldscript -o $@ $(filter %.o,$^)
+$(SOFT_IMAGE): ldscript $(MAY_CLEAN) arch_stamp $(OBJS)
+	$(LD) -q $($(ARCH)_LDFLAGS) -T $(filter %ldscript,$^) -o $@ $(filter %.o,$^)
 
 arch_stamp:
 	echo $(ARCH) > $@

@@ -25,50 +25,19 @@
  *
  * Maintainers: nipo
  */
+#ifndef FCNTL_H_
+#define FCNTL_H_
 
-SECTIONS
-{
-   . = 0x80000000;
-   .excep : {
-		*(.excep)
-		*(.excep.*)
-   }
+#include "soclib/fd_access.h"
 
-   . = 0xbfc00000;
-   .reset : {
-		*(.reset)
-		*(.reset.*)
-   }
+#include "stdint.h"
 
-   . = 0x00400000;
-   .text : {
-      *(.text)
-   }
-   . = 0x10000000;
-   .rodata : {
-      *(.rodata)
-      . = ALIGN(4);
-   }
-   .data  : {
-      *(.data)
-   }
-   .sdata : {
-      *(.lit8)
-      *(.lit4)
-      *(.sdata)
-   }
-   _gp = .;
-   . = ALIGN(4);
-   _edata = .;
-   .sbss  : {
-      *(.sbss)
-      *(.scommon)
-   }
-   .bss   : {
-      *(.bss)
-      *(COMMON)
-   }
-   . = ALIGN(4);
-   _end = .;
-   _stack = 0x10000000 + 0x00001000;
-}
+extern int errno;
+
+int open( const char *path, const int how, const int mode );
+int close( const int fd );
+int read( const int fd, const void *buffer, const size_t len );
+int write( const int fd, const void *buffer, const size_t len );
+int lseek( const int fd, const off_t offset, int whence );
+
+#endif
