@@ -32,8 +32,6 @@
 #include "soclib_endian.h"
 #include "arithmetics.h"
 
-static const uint32_t EXCEPT_ADDRESS = 0x80000180;
-
 namespace soclib { namespace common {
 
 Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_little_endian)
@@ -207,8 +205,8 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
     if ( debugExceptionBypassed( m_exception ) )
         goto stick;
 
-    addr_t except_address = exceptAddr((enum ExceptCause)m_exception);
     {
+        addr_t except_address = exceptAddr((enum ExceptCause)m_exception);
         bool branch_taken = m_next_pc != r_npc+4;
 
         r_cause.xcode = m_exception;
@@ -227,9 +225,9 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
             << " exception address: " << except_address
             << std::endl;
 #endif
+        r_pc = except_address;
+        r_npc = except_address + 4;
     }
-    r_pc = except_address;
-    r_npc = except_address + 4;
     goto house_keeping;
  no_except:
 #ifdef SOCLIB_MODULE_DEBUG
