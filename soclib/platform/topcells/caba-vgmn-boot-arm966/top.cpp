@@ -274,6 +274,10 @@ int _main(int argc, char *argv[])
 
 	sc_close_vcd_trace_file(tf);
 	std::cin.getline(buf,2);
+#ifdef PROFILE_ARM966
+	std::cout << "Calling EndProfile" << std::endl;
+//	arm0.EndProfile();
+#endif
 	return EXIT_SUCCESS;
 #else
 	ncycles = 1;
