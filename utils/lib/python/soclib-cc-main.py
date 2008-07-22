@@ -75,6 +75,13 @@ def main():
 	parser.add_option('--list-files', dest = 'list_files',
 					  action='store', nargs = 1, type = 'string',
 					  help="List files belonging to a given module")
+	parser.add_option('--complete-name', dest = 'complete_name',
+					  action='store', nargs = 1, type = 'string',
+					  help="Complete module name starting with ...")
+	parser.add_option('--complete-separator', dest = 'complete_separator',
+					  action='store', nargs = 1, type = 'string',
+					  default = '',
+					  help="Complete words splitted by this arg")
 	parser.add_option('-x', '--clean', dest = 'clean',
 					  action='store_true',
 					  help="Clean all outputs, only compatible with -p")
@@ -167,6 +174,19 @@ def main():
 		else:
 			print "Please give arg 'long' or 'names'"
 			return 1
+		return 0
+	if opts.complete_name is not None:
+		completions = set()
+		suffix = opts.complete_name
+		for sep in opts.complete_separator:
+			suffix = suffix.split(sep)[-1]
+		prefix_len = len(opts.complete_name)-len(suffix)
+		from soclib_desc.module import Module
+		for name in Module.allRegistered().iterkeys():
+			if name.startswith(opts.complete_name):
+				client = name[prefix_len:]
+				completions.add(client)
+		print '\n'.join(completions)
 		return 0
 	if opts.getflags:
 		if opts.getflags == 'cflags':
