@@ -66,9 +66,15 @@ def main():
 	parser.add_option('-c', '--compile', dest = 'compile',
 					  action='store_true',
 					  help="Do a simple compilation, not a linkage")
-	parser.add_option('-l', '--list-descs', dest = 'list_descs',
-					  action='store_true',
-					  help="List known descriptions")
+	parser.add_option('-l', dest = 'list_descs',
+					  action='store_const', const = "long",
+					  help="List known descriptions == --list-descs=long")
+	parser.add_option('--list-descs', dest = 'list_descs',
+					  action='store', nargs = 1, type = 'string',
+					  help="List known descriptions. arg may be 'long' or 'names'")
+	parser.add_option('--list-files', dest = 'list_files',
+					  action='store', nargs = 1, type = 'string',
+					  help="List files belonging to a given module")
 	parser.add_option('-x', '--clean', dest = 'clean',
 					  action='store_true',
 					  help="Clean all outputs, only compatible with -p")
@@ -144,9 +150,23 @@ def main():
 			todo.add(o)
 		todo.process()
 		return 0
-	if opts.list_descs:
-		for name, desc in Module.allRegistered().iteritems():
-			print name, desc.getInfo()
+	if opts.list_files:
+		from soclib_desc.module import Module
+		m = Module.getRegistered(opts.list_files)
+		for h in m['abs_header_files']+m['abs_implementation_files']:
+			print h
+		return 0
+	if opts.list_descs is not None:
+		from soclib_desc.module import Module
+		if opts.list_descs == 'long':
+			for name, desc in Module.allRegistered().iteritems():
+				print name, desc.getInfo()
+		elif opts.list_descs == 'names':
+			for name in Module.allRegistered().iterkeys():
+				print name
+		else:
+			print "Please give arg 'long' or 'names'"
+			return 1
 		return 0
 	if opts.getflags:
 		if opts.getflags == 'cflags':
