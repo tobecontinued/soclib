@@ -127,10 +127,44 @@ void
 ARM966Iss::
 getDataRequest(bool &req, enum DataAccessType &type,
              uint32_t &addr, uint32_t &data) const {
-	// TODO
 	bool is_read;
 	int size;
 	GetDataRequest(req, is_read, size, addr, data);
+	if(req) {
+		if(is_read) {
+			switch(size) {
+			case 1:
+				type = READ_BYTE;
+				break;
+			case 2:
+				type = READ_HALF;
+				break;
+			case 4:
+				type = READ_WORD;
+				break;
+			default:
+				std::cerr << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << ": ERROR: invalid read size (" << size << ")" << std::endl;
+				exit(-1);
+				break;
+			}
+		} else {
+			switch(size) {
+			case 1:
+				type = WRITE_BYTE;
+				break;
+			case 2:
+				type = WRITE_HALF;
+				break;
+			case 4:
+				type = WRITE_WORD;
+				break;
+			default:
+				std::cerr << __FUNCTION__ << ":" << __FILE__ << ":" << __LINE__ << ": ERROR: invalid write size (" << size << ")" << std::endl;
+				exit(-1);
+				break;
+			}
+		}
+	}
 }
 
 void 
