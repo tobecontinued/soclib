@@ -30,7 +30,7 @@ import sys
 import soclib_cc
 from soclib_cc.config import config, change_config
 from soclib_cc.builder.cxx import CxxCompile
-from soclib_desc.component import Module
+from soclib_desc.module import Module
 
 from optparse import OptionParser
 
@@ -145,7 +145,6 @@ def main():
 	if opts.one_module:
 		from soclib_cc.builder.todo import ToDo
 		from soclib_desc.component import Uses
-		from soclib_desc.module import Module
 		mod = Module.getRegistered(opts.one_module)
 		todo = ToDo()
 		class foo:
@@ -158,13 +157,11 @@ def main():
 		todo.process()
 		return 0
 	if opts.list_files:
-		from soclib_desc.module import Module
 		m = Module.getRegistered(opts.list_files)
 		for h in m['abs_header_files']+m['abs_implementation_files']:
 			print h
 		return 0
 	if opts.list_descs is not None:
-		from soclib_desc.module import Module
 		if opts.list_descs == 'long':
 			for name, desc in Module.allRegistered().iteritems():
 				print name, desc.getInfo()
@@ -181,7 +178,6 @@ def main():
 		for sep in opts.complete_separator:
 			suffix = suffix.split(sep)[-1]
 		prefix_len = len(opts.complete_name)-len(suffix)
-		from soclib_desc.module import Module
 		for name in Module.allRegistered().iterkeys():
 			if name.startswith(opts.complete_name):
 				client = name[prefix_len:]
