@@ -36,21 +36,12 @@
 
 void uputs(const char *);
 void puti(const int i);
+void putc(const char);
+char getc(void);
+
+void simpleAdd(void);
 
 
-static inline void putc(const char x)
-{
-	soclib_io_write8(
-		base(TTY),
-		TTY_WRITE,
-		x);
-}
 
-static inline char getc(void)
-{
-	return soclib_io_read8(
-		base(TTY),
-		TTY_READ);
-}
 
 #endif
