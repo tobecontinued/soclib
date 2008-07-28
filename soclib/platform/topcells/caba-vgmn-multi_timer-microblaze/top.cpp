@@ -5,10 +5,11 @@
 #include "microblaze.h"
 #include "iss_wrapper.h"
 #include "vci_xcache.h"
-#include "vci_timer.h"
+#include "vci_pci.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_vgmn.h"
+#define MBTRACE
 
 int _main(int argc, char *argv[])
 {
@@ -24,7 +25,8 @@ int _main(int argc, char *argv[])
    soclib::common::MappingTable maptab(32, IntTab(12), IntTab(3), 0x00F00000);
    maptab.add(Segment("tout" , 0x00000000, 0x0000FFFF, IntTab(0), true));
    maptab.add(Segment("tty"  , 0x00400000, 0x00000258, IntTab(1), false));
-   maptab.add(Segment("timer", 0x00500000, 0x00000100, IntTab(2), false));
+   maptab.add(Segment("pci", 0x00500000, 0x000FFFF, IntTab(2), false));
+
 
    // Signals
    sc_clock    signal_clk("signal_clk");
@@ -45,7 +47,9 @@ int _main(int argc, char *argv[])
    soclib::caba::ICacheSignals signal_mb_icache3("signal_mb_icache3");
    soclib::caba::DCacheSignals signal_mb_dcache3("signal_mb_dcache3");
    sc_signal<bool> signal_mb3_it("signal_mb3_it"); 
-
+   
+   sc_signal<bool> signal_pci_it("signal_pci_it"); 
+   
    soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
    soclib::caba::VciSignals<vci_param> signal_vci_m1("signal_vci_m1");
    soclib::caba::VciSignals<vci_param> signal_vci_m2("signal_vci_m2");
@@ -53,12 +57,28 @@ int _main(int argc, char *argv[])
 
    soclib::caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
    soclib::caba::VciSignals<vci_param> signal_vci_vcimultiram0("signal_vci_vcimultiram0");
-   soclib::caba::VciSignals<vci_param> signal_vci_vcitimer("signal_vci_vcitimer");
-
+   soclib::caba::VciSignals<vci_param> signal_vci_vcipci0("signal_vci_vcipci0");
+   soclib::caba::VciSignals<vci_param> signal_vci_vcipci1("signal_vci_vcipci1");
+   
    sc_signal<bool> signal_tty_irq0("signal_tty_irq0"); 
    sc_signal<bool> signal_tty_irq1("signal_tty_irq1"); 
    sc_signal<bool> signal_tty_irq2("signal_tty_irq2"); 
    sc_signal<bool> signal_tty_irq3("signal_tty_irq3"); 
+   
+   		sc_signal_rv<4>   Cbe("Cbe")      ;
+   			sc_signal<bool> Idsel    ;
+   			sc_signal<bool> Idsel2    ;
+   			sc_signal_resolved Frame("Frame")   ;
+   			sc_signal_resolved Devsel("Devsel")  ;
+   			sc_signal_resolved Irdy("Irdy")    ;
+   			sc_signal<bool> Req1("Req1")    ;
+   			sc_signal_resolved Trdy("Trdy")   ;  
+   			sc_signal_resolved Inta    ;
+   			sc_signal_resolved Stop("Stop")    ;
+   			sc_signal<bool> Req0("Req0")       ;
+   			//sc_inout<bool> Req64	;
+   			sc_signal_resolved Par("Par")      ;
+   			sc_signal_rv<32>   AD32("AD32")       ;
 
    // Components
 
@@ -75,7 +95,8 @@ int _main(int argc, char *argv[])
    soclib::common::ElfLoader loader("soft/bin.soft");
    soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
    soclib::caba::VciMultiTty<vci_param> vcitty("vcitty", IntTab(1), maptab, "vcitty0", "vcitty1", "vcitty2", "vcitty3", NULL);
-   soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(2), maptab, 4);
+   soclib::caba::VciPci<vci_param> vcipci0("vcipci0", IntTab(2), maptab, 23);
+   soclib::caba::VciPci<vci_param> vcipci1("vcipci1", IntTab(4), maptab, 23);
    
    soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 4, 3, 2, 8);
 
@@ -90,8 +111,9 @@ int _main(int argc, char *argv[])
    cache2.p_clk(signal_clk);
    cache3.p_clk(signal_clk);
    vcimultiram0.p_clk(signal_clk);
-   vcitimer.p_clk(signal_clk);
-  
+   vcipci0.p_clk(signal_clk);
+   vcipci1.p_clk(signal_clk);
+   
    mb0.p_resetn(signal_resetn);  
    mb1.p_resetn(signal_resetn);  
    mb2.p_resetn(signal_resetn);  
@@ -101,8 +123,9 @@ int _main(int argc, char *argv[])
    cache2.p_resetn(signal_resetn);
    cache3.p_resetn(signal_resetn);
    vcimultiram0.p_resetn(signal_resetn);
-   vcitimer.p_resetn(signal_resetn);
-  
+   vcipci0.p_resetn(signal_resetn);
+   vcipci1.p_resetn(signal_resetn);
+   
    mb0.p_irq[0](signal_mb0_it); 
    mb0.p_icache(signal_mb_icache0);
    mb0.p_dcache(signal_mb_dcache0);
@@ -137,13 +160,39 @@ int _main(int argc, char *argv[])
 
    vcimultiram0.p_vci(signal_vci_vcimultiram0);
 
-   vcitimer.p_vci(signal_vci_vcitimer);
-   vcitimer.p_irq[0](signal_mb0_it); 
-   vcitimer.p_irq[1](signal_mb1_it); 
-   vcitimer.p_irq[2](signal_mb2_it); 
-   vcitimer.p_irq[3](signal_mb3_it); 
+   vcipci0.p_vci(signal_vci_vcipci0);
+   vcipci0.p_irq(signal_mb0_it); 
+         vcipci0.p_Cbe(Cbe);
+          vcipci0.p_clkpci(signal_clk);
+       vcipci0.p_Sysrst(signal_resetn);
+        vcipci0.p_Idsel(Idsel);
+         vcipci0.p_Frame(Frame);
+          vcipci0.p_Devsel(Devsel);
+           vcipci0.p_Irdy(Irdy);
+           vcipci0.p_Gnt(Req0);
+            vcipci0.p_Trdy(Trdy);
+             vcipci0.p_Inta(Inta);
+              vcipci0.p_Stop(Stop);
+               vcipci0.p_Req(Req0);
+               vcipci0.p_Par(Par);
+                vcipci0.p_AD32(AD32);
   
-
+   vcipci1.p_vci(signal_vci_vcipci1);
+   vcipci1.p_irq(signal_mb1_it); 
+           vcipci1.p_Cbe(Cbe);
+          vcipci1.p_clkpci(signal_clk);
+       vcipci1.p_Sysrst(signal_resetn);
+        vcipci1.p_Idsel(Idsel2);
+         vcipci1.p_Frame(Frame);
+          vcipci1.p_Devsel(Devsel);
+           vcipci1.p_Irdy(Irdy);
+           vcipci1.p_Gnt(Req1);
+            vcipci1.p_Trdy(Trdy);
+             vcipci1.p_Inta(Inta);
+              vcipci1.p_Stop(Stop);
+               vcipci1.p_Req(Req1);
+               vcipci1.p_Par(Par);
+                vcipci1.p_AD32(AD32); 
    vcitty.p_clk(signal_clk);
    vcitty.p_resetn(signal_resetn);
    vcitty.p_vci(signal_vci_tty);
@@ -162,16 +211,27 @@ int _main(int argc, char *argv[])
 
    vgmn.p_to_target[0](signal_vci_vcimultiram0);
    vgmn.p_to_target[1](signal_vci_tty);
-   vgmn.p_to_target[2](signal_vci_vcitimer);
+   vgmn.p_to_target[2](signal_vci_vcipci0);
+   
 
 #ifdef MBTRACE
    sc_trace_file *tf = sc_create_vcd_trace_file("sc_dump");
  
    sc_trace(tf, signal_clk,    "clk");
-   sc_trace(tf, signal_resetn, "rst_n");
-   sc_trace(tf, signal_vci_m0.address, "vci_m0_addr");
-   sc_trace(tf, signal_mb_icache0.req, "icache0_req");
-   sc_trace(tf, signal_mb_icache0.adr, "icache0_addr");
+   sc_trace(tf, AD32, "AD32");   
+   sc_trace(tf, Frame, "Frame");
+      sc_trace(tf, Devsel, "Devsel");
+        sc_trace(tf, Irdy, "Irdy"); 
+        sc_trace(tf, Trdy, "Trdy"); 
+        sc_trace(tf, Par, "Par"); 
+        sc_trace(tf, Req0, "Req0");
+	      sc_trace(tf, Req1, "Req1");
+      sc_trace(tf, Stop, "Stop");
+  sc_trace(tf, Cbe, "Cbe");
+	 
+ //  sc_trace(tf, signal_vci_m0.address, "vci_m0_addr");
+ //  sc_trace(tf, signal_mb_icache0.req, "icache0_req");
+ //  sc_trace(tf, signal_mb_icache0.adr, "icache0_addr");
 #endif
 
    int ncycles = 1000000;

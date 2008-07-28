@@ -8,11 +8,11 @@
  * along with MutekH; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  *
- * Author: Frédéric Pétrot <Frederic.Petrot@imag.fr>
+ * Author: Dominique Houzet <houzet@lis.inpg.fr>
 \*/
 
 #include "stdint.h"
-#include "soclib/timer.h"
+#include "soclib/pci.h"
 #include "system.h"
 
 static const int period[4] = {10000, 11000, 12000, 13000};
@@ -20,33 +20,28 @@ static const int period[4] = {10000, 11000, 12000, 13000};
 int main(void)
 {
    const int cpu = procnum();
+   int cpt;
 
-   uputs("Hello from processor ");
+   uputs("Salut du processeur ");
    puti(cpu);
    putc('\n');
    
-#if 0
-   soclib_io_set(
-      base(TIMER),
-      procnum()*TIMER_SPAN+TIMER_PERIOD,
-      uint32_swap(period[cpu]));
-   soclib_io_set(
-      base(TIMER),
-      procnum()*TIMER_SPAN+TIMER_MODE,
-      uint32_swap(TIMER_RUNNING|TIMER_IRQ_ENABLED));
-#else
-   soclib_io_set(
-      base(TIMER),
-      procnum()*TIMER_SPAN+TIMER_PERIOD,
-      period[cpu]);
-   soclib_io_set(
-      base(TIMER),
-      procnum()*TIMER_SPAN+TIMER_MODE,
-      TIMER_RUNNING|TIMER_IRQ_ENABLED);
-#endif
+
+if (cpu==0) { soclib_io_set(base(PCI),PCI_NB,0);  
+ soclib_io_set(base(PCI),PCI_ADR,23);
+   soclib_io_set(base(PCI),PCI_VALUE,8);
+   soclib_io_set(base(PCI),PCI_VALUE,12);
+   soclib_io_set(base(PCI),PCI_VALUE,14);
+     soclib_io_set(base(PCI),PCI_VALUE,16);    
+   soclib_io_set( base(PCI),PCI_MODE,PCI_DMA_READ_NO_IRQ ); 
+   soclib_io_set(base(PCI),PCI_NB,16);  
    
-   while (1)
-      putc('.');
+
+  
+   while (1) {
+      putc('.');  
+      cpt=soclib_io_get(base(PCI), PCI_VALUE);  puti(cpt); putc(' ');
+} }
    return 0;
 }
 

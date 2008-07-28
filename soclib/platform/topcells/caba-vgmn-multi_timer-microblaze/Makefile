@@ -1,3 +1,3 @@
 ARCH=microblaze
-SIMULATION_ARGS=100000
+SIMULATION_ARGS=10000
 include ../all.mk
