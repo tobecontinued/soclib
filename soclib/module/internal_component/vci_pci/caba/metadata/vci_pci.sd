@@ -1,0 +1,47 @@
+
+# -*- python -*-
+
+Module('caba:vci_pci',
+	classname = 'soclib::caba::VciPci',
+	   tmpl_parameters = [
+	parameter.Module('vci_param',  default = 'vci_param'),
+	],
+	header_files = ['../source/include/vci_pci.h',
+					'../source/include/pci.h',
+					],
+	implementation_files = ['../source/src/vci_pci.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci'),
+	Port('bit_in', 'p_resetn', auto = 'resetn'),
+	Port('bit_out', 'p_irq', auto = 'irq'),
+	Port('clock_in', 'p_clk', auto = 'clock'),
+	Port('clock_in', 'p_clkpci', auto = 'clockpci'),
+	Port('bit_in', 'p_Sysrst', auto = 'sysrstn'),
+	Port('bit_in', 'p_Idsel', auto = 'idsel'),
+	Port('bit_in', 'p_Frame', auto = 'frame'),
+	Port('bit_in', 'p_Devsel', auto = 'devsel'),
+	Port('bit_in', 'p_Irdy', auto = 'irdy'),
+	Port('bit_in', 'p_Gnt', auto = 'gnt'),
+	Port('bit_in', 'p_Trdy', auto = 'trdy'),
+	Port('bit_out', 'p_Inta', auto = 'inta'),
+	Port('bit_in', 'p_Stop', auto = 'stop'),
+	Port('bit_out', 'p_Req', auto = 'req'),
+	Port('bit_in', 'p_Par', auto = 'par'),
+	Port('word_in', 'p_AD32', auto = 'AD32'),
+	Port('word_in', 'p_Cbe', auto = 'Cbe'),
+	],
+	uses = [
+		Uses('base_module'),
+		Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
+		],
+	instance_parameters = [
+		parameter.IntTab('ident'),
+        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+        parameter.Int('badrvalue'),
+	],
+	   extensions = [
+	'dsx:addressable=ident',
+	'dsx:get_ident=ident:p_vci',
+	'dsx:max_segments=1',
+   ],
+)
