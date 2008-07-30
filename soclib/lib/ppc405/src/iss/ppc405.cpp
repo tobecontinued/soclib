@@ -149,7 +149,7 @@ void Ppc405Iss::step()
     }
 
     r_dcr[DCR_EXEC_CYCLES]++;
-#if PPC405_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     dump();
 #endif
     run();
@@ -170,7 +170,7 @@ void Ppc405Iss::step()
     goto no_except;
 
   handle_except:
-#if PPC405_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout << m_name << " except: " << m_exception << std::endl;
 #endif
 
@@ -241,7 +241,7 @@ void Ppc405Iss::setDataResponse(bool error, uint32_t rdata)
     if ( ! r_mem_reversed )
         data = soclib::endian::uint32_swap(data);
 
-#if PPC405_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout << m_name << std::hex
               << " mem access ret " << dataAccessTypeName(r_mem_type)
               << " @: " << r_mem_addr

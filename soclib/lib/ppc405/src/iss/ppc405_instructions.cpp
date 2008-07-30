@@ -201,7 +201,7 @@ void Ppc405Iss::mem_load_imm( DataAccessType type, bool update, bool reversed, b
     r_mem_dest = m_ins.d.rd;
     r_mem_reversed = reversed;
     r_mem_unsigned = unsigned_;
-#if PPC405_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout << m_name << std::hex
               << " mem read imm " << dataAccessTypeName(type)
               << " @: " << address
@@ -228,7 +228,7 @@ void Ppc405Iss::mem_load_indexed( DataAccessType type, bool update, bool reverse
     r_mem_dest = m_ins.x.rs;
     r_mem_reversed = reversed;
     r_mem_unsigned = unsigned_;
-#if PPC405_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout << m_name << std::hex
               << " mem read indexed " << dataAccessTypeName(type)
               << " @: " << address
@@ -264,7 +264,7 @@ void Ppc405Iss::mem_store_imm( DataAccessType type, bool update, uint32_t data )
     default:
         assert(0 && "How can store have this mnemonic ?");
     }
-#if PPC405_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout << m_name << " store imm "
               << dataAccessTypeName(type)
               << " @" << std::hex << address
@@ -305,7 +305,7 @@ void Ppc405Iss::mem_store_indexed( DataAccessType type, bool update, uint32_t da
     default:
         assert(0 && "How can store have this mnemonic ?");
     }
-#if PPC405_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout << m_name << " store indexed "
               << dataAccessTypeName(type)
               << " @" << std::hex << address
@@ -909,7 +909,7 @@ void Ppc405Iss::op_mfdcr()
 {
 	if ( privsCheck() ) {
         uint32_t dcrn = PPC_SPLIT_FIELD(m_ins.xfx.opt);
-#if PPC405_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
         std::cout << "Accessing DCR " << std::hex << dcrn << std::endl;
 #endif
         if ( dcrn >= DCR_MAX ) {

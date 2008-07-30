@@ -19,4 +19,5 @@ Module('common:ppc405',
 	   constants = {
 	'n_irq':2
 	},
+#	   debug =True,
 )
