@@ -104,6 +104,16 @@ static inline T clo( T n )
     return clz(~n);
 }
 
+template<typename T>
+static inline T clamp( T min, T n, T max )
+{
+    if ( n < min )
+        return min;
+    if ( n > max )
+        return max;
+    return n;
+}
+
 }}
 
 #endif /* SOCLIB_COMMON_ARITHMETICS_H */
