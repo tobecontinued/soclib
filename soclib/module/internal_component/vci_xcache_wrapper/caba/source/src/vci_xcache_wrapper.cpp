@@ -377,7 +377,7 @@ tmpl(void)::transition()
                 irsp.valid = icache_hit;
                 irsp.instruction = icache_ins;
             } else {
-                irsp.valid = false;
+                irsp.valid = true;
             }
             break;
         case ICACHE_ERROR:
