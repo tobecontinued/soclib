@@ -57,10 +57,8 @@ MipsIss::MipsIss(uint32_t ident, bool mips_little_endian)
       m_little_endian(mips_little_endian)
 {
     m_config.whole = 0;
-    m_config.m = 1;
+//    m_config.m = 1;
     m_config.be = m_little_endian ? 0 : 1;
-
-    m_config1.whole = 0;
 }
 
 void MipsIss::reset()
@@ -80,7 +78,6 @@ void MipsIss::reset()
     m_ins_delay = 0;
     r_status.whole = 0;
     r_cause.whole = 0;
-    m_exec_cycles = 0;
     m_rs = m_rt = 0;
     r_gp[0] = 0;
     r_count = 0;
@@ -141,7 +138,7 @@ void MipsIss::setDataResponse(bool error, uint32_t data)
         if ( reg_use & USE_S && r_mem_dest == m_ins.r.rs ||
              reg_use & USE_T && r_mem_dest == m_ins.r.rt )
             m_hazard = true;
-#if MIPS_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
         std::cout
             << m_name
             << " read to " << r_mem_dest
@@ -152,7 +149,7 @@ void MipsIss::setDataResponse(bool error, uint32_t data)
             << std::endl;
 #endif
     }
-#if MIPS_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     if ( isWriteAccess(r_mem_type) )
         std::cout
             << m_name
@@ -246,7 +243,7 @@ void MipsIss::step()
         r_bar = r_mem_addr;
     }
 
-#if MIPS_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     dump();
 #endif
     // run() can modify the following registers: r_gp[i], r_mem_req,
@@ -256,7 +253,6 @@ void MipsIss::step()
         m_hazard = false;
         goto house_keeping;
     } else {
-        m_exec_cycles++;
         run();
     }
 
@@ -290,7 +286,7 @@ void MipsIss::step()
         r_status.kuc = 0;
         r_status.iec = 0;
         r_epc = branch_taken ? r_pc : r_npc;
-#if MIPS_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
         std::cout
             << m_name <<" exception: "<<m_exception<<std::endl
             << " epc: " << r_epc
@@ -402,58 +398,6 @@ void MipsIss::setDebugRegisterValue(unsigned int reg, uint32_t value)
 void MipsEbIss::setDataResponse(bool error, uint32_t data)
 {
     MipsIss::setDataResponse(error, soclib::endian::uint32_swap(data));
-}
-
-
-
-void MipsIss::setICacheInfo( size_t line_size, size_t assoc, size_t n_lines )
-{
-    m_config1.ia = assoc-1;
-    switch (n_lines) {
-    case 64: m_config1.is = 0; break;
-    case 128: m_config1.is = 1; break;
-    case 256: m_config1.is = 2; break;
-    case 512: m_config1.is = 3; break;
-    case 1024: m_config1.is = 4; break;
-    case 2048: m_config1.is = 5; break;
-    case 4096: m_config1.is = 6; break;
-    default: m_config1.is = 7; break;
-    }
-    switch (line_size) {
-    case 0: m_config1.il = 0; break;
-    case 4: m_config1.il = 1; break;
-    case 8: m_config1.il = 2; break;
-    case 16: m_config1.il = 3; break;
-    case 32: m_config1.il = 4; break;
-    case 64: m_config1.il = 5; break;
-    case 128: m_config1.il = 6; break;
-    default: m_config1.il = 7; break;
-    }
-}
-
-void MipsIss::setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines )
-{
-    m_config1.da = assoc-1;
-    switch (n_lines) {
-    case 64: m_config1.ds = 0; break;
-    case 128: m_config1.ds = 1; break;
-    case 256: m_config1.ds = 2; break;
-    case 512: m_config1.ds = 3; break;
-    case 1024: m_config1.ds = 4; break;
-    case 2048: m_config1.ds = 5; break;
-    case 4096: m_config1.ds = 6; break;
-    default: m_config1.ds = 7; break;
-    }
-    switch (line_size) {
-    case 0: m_config1.dl = 0; break;
-    case 4: m_config1.dl = 1; break;
-    case 8: m_config1.dl = 2; break;
-    case 16: m_config1.dl = 3; break;
-    case 32: m_config1.dl = 4; break;
-    case 64: m_config1.dl = 5; break;
-    case 128: m_config1.dl = 6; break;
-    default: m_config1.dl = 7; break;
-    }
 }
 
 }}

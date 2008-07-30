@@ -44,22 +44,15 @@
 
 namespace soclib { namespace common {
 
-#define COPROC_REGNUM(no, sel) (((no)<<3)+sel)
-
 enum Cp0Reg {
-    INDEX = COPROC_REGNUM(0,0),
-    BAR = COPROC_REGNUM(8,0),
-    COUNT = COPROC_REGNUM(9,0),
-    STATUS = COPROC_REGNUM(12,0),
-    CAUSE = COPROC_REGNUM(13,0),
-    EPC = COPROC_REGNUM(14,0),
-    IDENT = COPROC_REGNUM(15,1),
-    CONFIG = COPROC_REGNUM(16,0),
-    CONFIG_1 = COPROC_REGNUM(16,1),
-
-    // Implementation dependant,
-    // count of non-frozen cycles
-    EXEC_CYCLES = COPROC_REGNUM(9,6),
+    INDEX = 0,
+    BAR = 8,
+    COUNT = 9,
+    STATUS = 12,
+    CAUSE = 13,
+    EPC = 14,
+    IDENT = 15,
+    CONFIG = 16,
 };
 
 namespace {
@@ -114,7 +107,7 @@ void MipsIss::do_load( uint32_t address, enum DataAccessType type, bool unsigned
     r_mem_dest = m_ins.i.rt;
     r_mem_unsigned = unsigned_;
     r_mem_shift = shift;
-#if MIPS_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << m_name << std::hex
         << " load @" << address
@@ -153,7 +146,7 @@ void MipsIss::do_store( uint32_t address, enum DataAccessType type, uint32_t dat
     r_mem_type = type;
     r_mem_addr = address;
     r_mem_wdata = data;
-#if MIPS_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << m_name << std::hex
         << " store @" << address
@@ -179,9 +172,9 @@ void MipsIss::op_bcond()
     }
 }
 
-uint32_t MipsIss::cp0Get( uint32_t reg, uint32_t sel ) const
+uint32_t MipsIss::cp0Get( uint32_t reg ) const
 {
-    switch(COPROC_REGNUM(reg,sel)) {
+    switch(reg) {
     case INDEX:
         return m_ident;
     case BAR:
@@ -196,20 +189,16 @@ uint32_t MipsIss::cp0Get( uint32_t reg, uint32_t sel ) const
         return r_epc;
     case IDENT:
         return 0x80000000|m_ident;
-    case EXEC_CYCLES:
-        return m_exec_cycles;
     case CONFIG:
         return m_config.whole;
-    case CONFIG_1:
-        return m_config1.whole;
     default:
         return 0;
     }
 }
 
-void MipsIss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
+void MipsIss::cp0Set( uint32_t reg, uint32_t val )
 {
-    switch(COPROC_REGNUM(reg, sel)) {
+    switch(reg) {
     case STATUS:
         r_status.whole = val;
         return;
@@ -305,28 +294,24 @@ void MipsIss::op_lui()
     r_gp[m_ins.i.rt] = m_ins.i.imd << 16;
 }
 
-enum {
-    MFC0 = 0,
-    MFC1 = 1,
-    MFC2 = 2,
-    MTC0 = 4,
-    MTC1 = 5,
-    MTC2 = 6,
-    RFE = 16,
-};
-
 void MipsIss::op_copro()
 {
+    enum {
+        MFC = 0,
+        MTC = 4,
+        RFE = 16,
+    };
+
     if (isInUserMode()) {
         m_exception = X_CPU;
         return;
     }
     switch (m_ins.coproc.action) {
-    case MTC0:
-        cp0Set( m_ins.coproc.rd, m_ins.coproc.sel, m_rt );
+    case MTC:
+        cp0Set( m_ins.coproc.rd, m_rt );
         break;
-    case MFC0:
-        r_gp[m_ins.coproc.rt] = cp0Get( m_ins.coproc.rd, m_ins.coproc.sel );
+    case MFC:
+        r_gp[m_ins.coproc.rt] = cp0Get( m_ins.coproc.rd );
         break;
     case RFE:
         r_status.kuc = r_status.kup;
@@ -396,35 +381,6 @@ void MipsIss::op_lwr()
              ? -w
              : -(3-w)
              );
-}
-
-#define CACHE_OP(what, cache) ((what)<<2+(cache))
-enum {
-    ICACHE,
-    DCACHE,
-    TCACHE,
-    SCACHE,
-};
-
-enum {
-    INDEX_INVAL,
-    LOAD_TAG,
-    STORE_TAG,
-    DEP,
-    HIT_INVAL,
-    FILL,
-    HIT_WB,
-    FETCH_AND_LOCK,
-};
-
-void MipsIss::op_cache()
-{
-    switch (m_ins.i.rt) {
-    case CACHE_OP(HIT_INVAL,DCACHE): {
-        uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
-        do_load( address, LINE_INVAL, false);
-    }
-    }
 }
 
 void MipsIss::op_lbu()
@@ -762,63 +718,6 @@ MipsIss::func_t const MipsIss::special_table[] = {
 #undef op
 #undef op4
 
-void MipsIss::op_special2()
-{
-    enum {
-        MADD = 0,
-        MADDU = 1,
-        MUL = 2,
-        MSUB = 4,
-        MSUBU = 5,
-    };
-
-    switch ( m_ins.r.func ) {
-    case MUL:
-        r_gp[m_ins.r.rd] = m_rs*m_rt;
-        if (m_rt)
-            setInsDelay( 3 );
-        break;
-    case MSUB: {
-        int64_t tmp = ((int64_t)r_hi)<<32 | (int64_t)r_lo;
-        tmp -= (int64_t)m_rs*(int64_t)m_rt;
-        r_hi = tmp>>32;
-        r_lo = tmp;
-        if (m_rt)
-            setInsDelay( 6 );
-        break;
-    }
-    case MSUBU: {
-        uint64_t tmp = ((uint64_t)r_hi)<<32 | (uint64_t)r_lo;
-        tmp -= (uint64_t)m_rs*(uint64_t)m_rt;
-        r_hi = tmp>>32;
-        r_lo = tmp;
-        if (m_rt)
-            setInsDelay( 6 );
-        break;
-    }
-    case MADD: {
-        int64_t tmp = ((int64_t)r_hi)<<32 | (int64_t)r_lo;
-        tmp += (int64_t)m_rs*(int64_t)m_rt;
-        r_hi = tmp>>32;
-        r_lo = tmp;
-        if (m_rt)
-            setInsDelay( 6 );
-        break;
-    }
-    case MADDU: {
-        uint64_t tmp = ((uint64_t)r_hi)<<32 | (uint64_t)r_lo;
-        tmp += (uint64_t)m_rs*(uint64_t)m_rt;
-        r_hi = tmp>>32;
-        r_lo = tmp;
-        if (m_rt)
-            setInsDelay( 6 );
-        break;
-    }
-    default:
-        op_ill();
-    }
-}
-
 void MipsIss::op_special()
 {
     func_t func = special_table[m_ins.r.func];
@@ -839,13 +738,13 @@ MipsIss::func_t const MipsIss::opcod_table[]= {
     op4(    ill,   ill,  ill,   ill),
 
     op4(    ill,   ill,  ill,   ill),
-    op4(special2,  ill,  ill,   ill),
+    op4(    ill,  ill,  ill,   ill),
 
     op4(     lb,    lh,  lwl,    lw),
     op4(    lbu,   lhu,  lwr,   ill),
 
     op4(     sb,    sh,  swl,    sw),
-    op4(    ill,   ill,  swr, cache),
+    op4(    ill,   ill,  swr,   ill),
 
     op4(     ll,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),
@@ -868,13 +767,13 @@ const char *MipsIss::name_table[] = {
     op4(    ill,   ill,  ill,   ill),
 
     op4(    ill,   ill,  ill,   ill),
-    op4(special2,  ill,  ill,   ill),
+    op4(    ill,  ill,  ill,   ill),
 
     op4(     lb,    lh,  lwl,    lw),
     op4(    lbu,   lhu,  lwr,   ill),
 
     op4(     sb,    sh,  swl,    sw),
-    op4(    ill,   ill,  swr, cache),
+    op4(    ill,   ill,  swr,   ill),
 
     op4(     ll,   ill,  ill,   ill),
     op4(    ill,   ill,  ill,   ill),

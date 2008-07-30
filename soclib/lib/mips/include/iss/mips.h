@@ -180,24 +180,6 @@ private:
 
     typedef REG32_BITFIELD(
         uint32_t m:1,
-        uint32_t mmu_size:6,
-        uint32_t is:3,
-        uint32_t il:3,
-        uint32_t ia:3,
-        uint32_t ds:3,
-        uint32_t dl:3,
-        uint32_t da:3,
-        uint32_t c2:1,
-        uint32_t md:1,
-        uint32_t pc:1,
-        uint32_t wr:1,
-        uint32_t ca:1,
-        uint32_t ep:1,
-        uint32_t fp:1,
-        ) config1_t;
-
-    typedef REG32_BITFIELD(
-        uint32_t m:1,
         uint32_t k23:3,
         uint32_t ku:3,
         uint32_t impl:9,
@@ -224,11 +206,9 @@ private:
     uint32_t    m_rs;
     uint32_t    m_rt;
     uint32_t    m_next_pc;
-    uint32_t    m_exec_cycles;
     bool m_hazard;
 
     config_t m_config;
-    config1_t m_config1;
 
     const bool m_little_endian;
 
@@ -323,9 +303,6 @@ public:
 
     int cpuCauseToSignal( uint32_t cause ) const;
 
-    void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
-    void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
-
 private:
     void run();
 
@@ -360,7 +337,6 @@ private:
     void do_store( uint32_t address, enum DataAccessType type, uint32_t data );
 
     void op_special();
-    void op_special2();
     void op_bcond();
     void op_j();
     void op_jal();
@@ -392,7 +368,6 @@ private:
     void op_swl();
     void op_swr();
     void op_sc();
-    void op_cache();
 
     void special_sll();
     void special_srl();
@@ -447,8 +422,8 @@ private:
     static use_t const use_table[64];
     static use_t const use_special_table[64];
 
-    uint32_t cp0Get( uint32_t reg, uint32_t sel ) const;
-    void cp0Set( uint32_t reg, uint32_t sel, uint32_t value );
+    uint32_t cp0Get( uint32_t reg ) const;
+    void cp0Set( uint32_t reg, uint32_t value );
 
     // Make sure users dont try to instanciate MipsIss class
     virtual inline void please_use_MipsElIss_or_MipsEbIss() = 0;

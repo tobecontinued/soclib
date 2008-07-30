@@ -15,4 +15,5 @@ Module('common:mips',
 	   constants = {
 	'n_irq':6
 	},
+#	   debug = True,
 )
