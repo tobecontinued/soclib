@@ -29,6 +29,7 @@
  */
 
 #include "mips32.h"
+#include "base_module.h"
 #include "soclib_endian.h"
 #include "arithmetics.h"
 
@@ -207,14 +208,14 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
             std::cout << name() << " Ignoring irqs " << irq_bit_field << std::endl;
 #endif
     }
+
+    if ( m_exception != NO_EXCEPTION && debugExceptionBypassed( m_exception ) )
+        m_exception = NO_EXCEPTION;
     
     if (  m_exception == NO_EXCEPTION || r_status.exl || r_status.erl )
         goto no_except;
 
  handle_except:
-
-    if ( debugExceptionBypassed( m_exception ) )
-        goto stick;
 
     {
         addr_t except_address = exceptBaseAddr();
