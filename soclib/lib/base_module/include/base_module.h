@@ -67,13 +67,14 @@ public:
 
 }
 
-#define SOCLIB_WARNING(x)                       \
-do {                                            \
-    static bool warned = false;                 \
-    if ( !warned ) {                            \
-        std::cerr << x << std::endl;            \
-        warned = true;                          \
-    }                                           \
+#define SOCLIB_WARNING(x)                                               \
+do {                                                                    \
+    static bool warned##__LINE__ = false;                               \
+    if ( !warned##__LINE__ ) {                                          \
+        std::cerr << "Warning at " << __FILE__ << ':' << __LINE__       \
+                  << std::endl << x << std::endl;                       \
+        warned##__LINE__ = true;                                        \
+    }                                                                   \
 } while(0)
 
 #endif /* SOCLIB_COMMON_BASE_MODULE_H_ */
