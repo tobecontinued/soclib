@@ -38,11 +38,11 @@ Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_littl
     : Iss2(name, ident),
       m_little_endian(default_little_endian)
 {
-    m_config.whole = 0;
-    m_config.m = 1;
-    m_config.be = m_little_endian ? 0 : 1;
+    r_config.whole = 0;
+    r_config.m = 1;
+    r_config.be = m_little_endian ? 0 : 1;
 
-    m_config1.whole = 0;
+    r_config1.whole = 0;
 }
 
 void Mips32Iss::reset()
@@ -58,12 +58,13 @@ void Mips32Iss::reset()
     r_mem_dest = 0;
     m_skip_next_instruction = false;
     m_ins_delay = 0;
-    r_status.whole = 0;
+    r_status.whole = 0x400004;
     r_cause.whole = 0;
     m_exec_cycles = 0;
     r_gp[0] = 0;
     m_sleeping = false;
     r_count = 0;
+    r_compare = 0;
 
     for(int i = 0; i<32; i++)
         r_gp[i] = 0;
@@ -105,12 +106,17 @@ void Mips32Iss::dump() const
 
 uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
 {
+    m_exception = NO_EXCEPTION;
+
     if ( m_sleeping ) {
-        if ( irq_bit_field
-             && (r_status.im & irq_bit_field)
+        if ( ((r_status.im>>2) & irq_bit_field)
              && r_status.ie ) {
             m_exception = X_INT;
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << name() << " IRQ while sleeping" << std::endl;
+#endif
         } else {
+            r_count += ncycle;
             return ncycle;
         }
     }
@@ -123,6 +129,9 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
         }
         m_hazard = false;
         r_count += t;
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << name() << " Frozen " << m_ireq_ok << m_dreq_ok<< " " << m_ins_delay << std::endl;
+#endif
         return t;
     }
 
@@ -152,7 +161,6 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
     // highest priority
 
     m_next_pc = r_npc+4;
-    m_exception = NO_EXCEPTION;
 
     if (m_ibe) {
         m_exception = X_IBE;
@@ -189,16 +197,19 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
     }
 
     if ( m_exception == NO_EXCEPTION
-         && irq_bit_field
-         && (r_status.im & irq_bit_field)
+         && ((r_status.im>>2) & irq_bit_field)
          && r_status.ie ) {
         m_exception = X_INT;
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;
+    } else {
+        if ( irq_bit_field )
+            std::cout << name() << " Ignoring irqs " << irq_bit_field << std::endl;
+#endif
     }
     
-    if (  m_exception != NO_EXCEPTION && ! r_status.exl && ! r_status.erl )
-        goto handle_except;
-
-    goto no_except;
+    if (  m_exception == NO_EXCEPTION || r_status.exl || r_status.erl )
+        goto no_except;
 
  handle_except:
 
@@ -206,33 +217,49 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
         goto stick;
 
     {
-        addr_t except_address = exceptAddr((enum ExceptCause)m_exception);
+        addr_t except_address = exceptBaseAddr();
         bool branch_taken = m_next_pc != r_npc+4;
 
+        if ( r_status.exl ) {
+            except_address += 0x180;
+        } else {
+            if ( m_sleeping && m_exception == X_INT ) {
+                r_cause.bd = 0;
+                r_epc = r_pc;
+                m_sleeping = false;
+            } else {
+                r_cause.bd = branch_taken;
+                if ( branch_taken )
+                    r_epc = r_pc;
+                else
+                    r_epc = r_npc;
+            }
+            except_address += exceptOffsetAddr(m_exception);
+        }
+        r_cause.ce = 0;
         r_cause.xcode = m_exception;
         r_cause.ip  = irq_bit_field<<2;
-        r_cause.bd = branch_taken;
-        // TODO: Implement correct exception handling
-        r_epc = branch_taken ? r_pc : r_npc;
+        r_status.exl = 1;
+
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout
             << m_name <<" exception: "<<m_exception<<std::endl
             << " epc: " << r_epc
+            << " error_epc: " << r_error_epc
             << " bar: " << m_dreq.addr
             << " cause.xcode: " << r_cause.xcode
             << " .bd: " << r_cause.bd
             << " .ip: " << r_cause.ip
+            << " status.exl: " << r_status.exl
+            << " .erl: " << r_status.erl
             << " exception address: " << except_address
             << std::endl;
 #endif
-        r_pc = except_address;
-        r_npc = except_address + 4;
+
+        m_next_pc = except_address;
+        m_skip_next_instruction = true;
     }
-    goto house_keeping;
  no_except:
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " No except, pc:" << r_pc << " next pc:" << r_npc << std::endl;
-#endif
     if (m_skip_next_instruction) {
         r_pc = m_next_pc;
         r_npc = m_next_pc+4;
@@ -334,65 +361,61 @@ void Mips32Iss::debugSetRegisterValue(unsigned int reg, debug_register_t value)
         }
 }
 
+namespace {
+static size_t lines_to_s( size_t lines )
+{
+    return clamp<size_t>(0, uint32_log2(lines)-6, 7);
+}
+static size_t line_size_to_l( size_t line_size )
+{
+    if ( line_size == 0 )
+        return 0;
+    return clamp<size_t>(1, uint32_log2(line_size/4)+1, 7);
+}
+}
+
 void Mips32Iss::setICacheInfo( size_t line_size, size_t assoc, size_t n_lines )
 {
-    m_config1.ia = assoc-1;
-    switch (n_lines) {
-    case 64: m_config1.is = 0; break;
-    case 128: m_config1.is = 1; break;
-    case 256: m_config1.is = 2; break;
-    case 512: m_config1.is = 3; break;
-    case 1024: m_config1.is = 4; break;
-    case 2048: m_config1.is = 5; break;
-    case 4096: m_config1.is = 6; break;
-    default: m_config1.is = 7; break;
-    }
-    switch (line_size) {
-    case 0: m_config1.il = 0; break;
-    case 4: m_config1.il = 1; break;
-    case 8: m_config1.il = 2; break;
-    case 16: m_config1.il = 3; break;
-    case 32: m_config1.il = 4; break;
-    case 64: m_config1.il = 5; break;
-    case 128: m_config1.il = 6; break;
-    default: m_config1.il = 7; break;
-    }
+    r_config1.ia = assoc-1;
+    r_config1.is = lines_to_s(n_lines);
+    r_config1.il = line_size_to_l(line_size);
 }
 
 void Mips32Iss::setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines )
 {
-    m_config1.da = assoc-1;
-    switch (n_lines) {
-    case 64: m_config1.ds = 0; break;
-    case 128: m_config1.ds = 1; break;
-    case 256: m_config1.ds = 2; break;
-    case 512: m_config1.ds = 3; break;
-    case 1024: m_config1.ds = 4; break;
-    case 2048: m_config1.ds = 5; break;
-    case 4096: m_config1.ds = 6; break;
-    default: m_config1.ds = 7; break;
-    }
-    switch (line_size) {
-    case 0: m_config1.dl = 0; break;
-    case 4: m_config1.dl = 1; break;
-    case 8: m_config1.dl = 2; break;
-    case 16: m_config1.dl = 3; break;
-    case 32: m_config1.dl = 4; break;
-    case 64: m_config1.dl = 5; break;
-    case 128: m_config1.dl = 6; break;
-    default: m_config1.dl = 7; break;
+    r_config1.da = assoc-1;
+    r_config1.ds = lines_to_s(n_lines);
+    r_config1.dl = line_size_to_l(line_size);
+}
+
+Mips32Iss::addr_t Mips32Iss::exceptOffsetAddr( enum ExceptCause cause ) const
+{
+    if ( r_cause.iv ) {
+        if ( r_status.bev || !r_intctl.vs )
+            return 0x200;
+        else {
+            int vn;
+
+            if ( r_config3.veic )
+                vn = r_cause.ip>>2;
+            else {
+                // TODO
+                SOCLIB_WARNING("Handling exception offset address when iv and !bev is still to do !");
+                vn = 0;
+            }
+            return 0x200 + vn * (r_intctl.vs<<5);
+        }
+    } else {
+        return 0x180;
     }
 }
 
-Mips32Iss::addr_t Mips32Iss::exceptAddr( enum ExceptCause cause ) const
+Mips32Iss::addr_t Mips32Iss::exceptBaseAddr() const
 {
-    addr_t except_address = r_ebase & 0xfffff000;
-    switch (cause) {
-    default:
-        except_address += r_cause.iv ? 0x200 : 0x180;
-        break;
-    }
-    return except_address;
+    if ( r_status.bev )
+        return 0xbfc00200;
+    else
+        return r_ebase & 0xfffff000;
 }
 
 }}

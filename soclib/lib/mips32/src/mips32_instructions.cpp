@@ -179,6 +179,11 @@ void Mips32Iss::op_lui()
 
 void Mips32Iss::op_cop0()
 {
+    if (!cp0Enabled()) {
+        m_exception = X_CPU;
+        return;
+    }
+
     enum {
         MF = 0,
         MT = 4,
@@ -191,24 +196,31 @@ void Mips32Iss::op_cop0()
         WAIT = 0x20,
     };
 
-    if (isInUserMode()) {
-        m_exception = X_CPU;
-        return;
-    }
     if ( m_ins.coproc.action & CO1 ) {
         uint32_t co = m_ins.ins & 0x3f;
         switch (co) {
         case ERET:
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << name() << " ERET ";
+#endif
             if ( r_status.erl ) {
-                assert(0&&"TODO");
-                // TODO
-                //next_addr = r_error_epc;
-                //r_status.erl = 0;
+                m_next_pc = r_error_epc;
+                r_status.erl = 0;
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << "erl";
+#endif
             } else {
                 m_next_pc = r_epc;
-                m_skip_next_instruction = true;
                 r_status.exl = 0;
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << " exl";
+#endif
             }
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << " next_pc: " << m_next_pc << std::endl;
+#endif
+            m_skip_next_instruction = true;
+            update_mode();
             break;
         case WAIT:
             m_sleeping = true;

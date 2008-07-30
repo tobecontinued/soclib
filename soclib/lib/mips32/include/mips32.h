@@ -166,7 +166,10 @@ private:
     enum Iss2::ExecMode r_cpu_mode;
 
     typedef REG32_BITFIELD(
-        uint32_t cu:4,
+        uint32_t cu3:1,
+        uint32_t cu2:1,
+        uint32_t cu1:1,
+        uint32_t cu0:1,
         uint32_t rp:1,
         uint32_t fr:1,
         uint32_t re:1,
@@ -205,6 +208,14 @@ private:
         ) cause_t;
 
     typedef REG32_BITFIELD(
+        uint32_t ipti:3,
+        uint32_t ippci:3,
+        uint32_t zero:16,
+        uint32_t vs:5,
+        uint32_t zero2:5
+        ) intctl_t;
+
+    typedef REG32_BITFIELD(
         uint32_t m:1,
         uint32_t mmu_size:6,
         uint32_t is:3,
@@ -236,12 +247,41 @@ private:
         uint32_t k0:3,
         ) config_t;
 
+    typedef REG32_BITFIELD(
+        uint32_t m:1,
+        uint32_t tu:3,
+        uint32_t ts:4,
+        uint32_t tl:4,
+        uint32_t ta:4,
+        uint32_t su:4,
+        uint32_t ss:4,
+        uint32_t sl:4,
+        uint32_t sa:4,
+        ) config2_t;
+
+    typedef REG32_BITFIELD(
+        uint32_t M:1,
+        uint32_t reserved0:20,
+        uint32_t dspp:1,
+        uint32_t reserved1:2,
+        uint32_t lpa:1,
+        uint32_t veic:1,
+        uint32_t vint:1,
+        uint32_t sp:1,
+        uint32_t reserved2:1,
+        uint32_t mt:1,
+        uint32_t sm:1,
+        uint32_t tl:1
+        ) config3_t;
+
     status_t r_status;
     cause_t r_cause;
-    uint32_t r_ebase;
-    uint32_t r_bar;
-    uint32_t r_epc;
+    addr_t r_ebase;
+    addr_t r_bar;
+    addr_t r_epc;
+    addr_t r_error_epc;
     uint32_t r_count;
+    uint32_t r_compare;
 
     bool m_sleeping;
     
@@ -254,8 +294,11 @@ private:
     uint32_t    m_exec_cycles;
     bool m_hazard;
 
-    config_t m_config;
-    config1_t m_config1;
+    config_t r_config;
+    config1_t r_config1;
+    config2_t r_config2;
+    config3_t r_config3;
+    intctl_t r_intctl;
 
     const bool m_little_endian;
 
@@ -339,7 +382,8 @@ private:
         m_ins_delay = delay-1;
     }
 
-    addr_t exceptAddr( enum ExceptCause cause ) const;
+    addr_t exceptOffsetAddr( enum ExceptCause cause ) const;
+    addr_t exceptBaseAddr() const;
 
     inline bool isInUserMode() const
     {
@@ -464,6 +508,7 @@ private:
     static use_t const use_table[64];
     static use_t const use_special_table[64];
 
+    bool cp0Enabled() const;
     uint32_t cp0Get( uint32_t reg, uint32_t sel ) const;
     void cp0Set( uint32_t reg, uint32_t sel, uint32_t value );
 
@@ -481,7 +526,6 @@ public:
         : Mips32Iss(name, ident, true)
     {}
 
-private:
     void please_instanciate_Mips32ElIss_or_Mips32EbIss() {}
 };
 
@@ -511,7 +555,6 @@ public:
         Mips32Iss::debugSetRegisterValue(reg,soclib::endian::uint32_swap(value));
     }
 
-private:
     void please_instanciate_Mips32ElIss_or_Mips32EbIss() {}
 };
 

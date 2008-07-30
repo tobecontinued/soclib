@@ -36,18 +36,26 @@
 
 namespace soclib { namespace common {
 
+#define MIPS32_CPUID 0x00163200
+
 #define COPROC_REGNUM(no, sel) (((no)<<3)+sel)
 
 enum Cp0Reg {
     INDEX = COPROC_REGNUM(0,0),
     BAR = COPROC_REGNUM(8,0),
     COUNT = COPROC_REGNUM(9,0),
+    COMPARE = COPROC_REGNUM(11,0),
     STATUS = COPROC_REGNUM(12,0),
+    INTCTL = COPROC_REGNUM(12,1),
     CAUSE = COPROC_REGNUM(13,0),
     EPC = COPROC_REGNUM(14,0),
+    CPUID = COPROC_REGNUM(15,0),
     EBASE = COPROC_REGNUM(15,1),
     CONFIG = COPROC_REGNUM(16,0),
     CONFIG_1 = COPROC_REGNUM(16,1),
+    CONFIG_2 = COPROC_REGNUM(16,2),
+    CONFIG_3 = COPROC_REGNUM(16,3),
+    ERROR_EPC = COPROC_REGNUM(30,0),
 
     // Implementation dependant,
     // count of non-frozen cycles
@@ -68,37 +76,73 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
         return r_bar;
     case COUNT:
         return r_count;
+    case COMPARE:
+        return r_compare;
     case STATUS:
         return r_status.whole;
+    case INTCTL:
+        return r_intctl.whole;
     case CAUSE:
         return r_cause.whole;
     case EPC:
         return r_epc;
+    case CPUID:
+        return MIPS32_CPUID;
     case EBASE:
         return r_ebase;
     case EXEC_CYCLES:
         return m_exec_cycles;
     case CONFIG:
-        return m_config.whole;
+        return r_config.whole;
     case CONFIG_1:
-        return m_config1.whole;
+        return r_config1.whole;
+    case CONFIG_2:
+        return r_config2.whole;
+    case CONFIG_3:
+        return r_config3.whole;
+    case ERROR_EPC:
+        return r_error_epc;
     default:
         return 0;
     }
 }
 
+#define EBASE_WRITE_MASK 0x3ffff000
+#define INTCTL_WRITE_MASK 0xfc0
+#define CAUSE_WRITE_MASK 0x8c00300
+
 void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
 {
     switch(COPROC_REGNUM(reg, sel)) {
+    case COMPARE:
+        r_compare = val;
+        break;
+    case COUNT:
+        r_count = val;
+        break;
     case STATUS:
         r_status.whole = val;
         return;
     case EBASE:
-        r_ebase = merge(r_ebase, val, 0x3ffff000);
+        r_ebase = merge(r_ebase, val, EBASE_WRITE_MASK);
         break;
+    case INTCTL:
+        r_intctl.whole = merge(r_intctl.whole, val, 0xfc0);
+        break;
+    case EPC:
+        r_epc = val;
+    case CAUSE:
+        r_cause.whole = merge(r_cause.whole, val, CAUSE_WRITE_MASK);
+    case ERROR_EPC:
+        r_error_epc = val;
     default:
         return;
     }
+}
+
+bool Mips32Iss::cp0Enabled() const
+{
+    return r_status.ksu != MIPS32_USER_MODE || r_status.cu0;
 }
 
 void Mips32Iss::update_mode()

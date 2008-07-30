@@ -61,8 +61,13 @@ static inline uint32_t sra( uint32_t reg, uint32_t sh )
 
 void Mips32Iss::special_sll()
 {
-    // EHB is hidden here if sh == 3 and r[tsd] == 0
-    r_gp[m_ins.r.rd] = sll(r_gp[m_ins.i.rt], m_ins.r.sh);
+    // EHB is hidden here if sh == 3 and r[tsd] == 0, ie ins = 0xc0
+    // That is ugly !
+    if ( m_ins.ins == 0xc0 ) {
+        update_mode();
+    } else {
+        r_gp[m_ins.r.rd] = sll(r_gp[m_ins.i.rt], m_ins.r.sh);
+    }
 }
 
 void Mips32Iss::special_srl()
