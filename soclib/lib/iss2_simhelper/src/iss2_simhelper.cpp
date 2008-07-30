@@ -28,21 +28,21 @@
 #include <iostream>
 #include <systemc>
 
-#include "iss_simhelper.h"
+#include "iss2_simhelper.h"
 
 namespace soclib { namespace common {
 
 template<typename iss_t>
-bool IssSimhelper<iss_t>::exceptionBypassed( uint32_t cause )
+bool Iss2Simhelper<iss_t>::debugExceptionBypassed( uint32_t cause )
 {
-    int signal = iss_t::cpuCauseToSignal(cause);
+    int signal = iss_t::debugCpuCauseToSignal(cause);
     if ( signal == 5 )
         sc_core::sc_stop();
-    return iss_t::exceptionBypassed(cause);
+    return iss_t::debugExceptionBypassed(cause);
 }
 
 template<typename iss_t>
-IssSimhelper<iss_t>::~IssSimhelper()
+Iss2Simhelper<iss_t>::~Iss2Simhelper()
 {
 }
 

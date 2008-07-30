@@ -1,4 +1,5 @@
-/*
+/* -*- c++ -*-
+ *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
  * This file is part of SoCLib, GNU LGPLv2.1.
@@ -23,31 +24,37 @@
  *         Nicolas Pouillon <nipo@ssji.net>
  *
  * Maintainers: nipo
+ *
+ * $Id$
+ *
  */
 
-#include <iostream>
-#include <systemc>
+#ifndef _SOCLIB_ISS2_SIMHELPER_ISS_H_
+#define _SOCLIB_ISS2_SIMHELPER_ISS_H_
 
-#include "iss_simhelper.h"
+#include <stdint.h>
+#include "iss2.h"
 
 namespace soclib { namespace common {
 
-template<typename iss_t>
-bool IssSimhelper<iss_t>::exceptionBypassed( uint32_t cause )
+template<typename CpuIss>
+class Iss2Simhelper
+    : public CpuIss
 {
-    int signal = iss_t::cpuCauseToSignal(cause);
-    if ( signal == 5 )
-        sc_core::sc_stop();
-    return iss_t::exceptionBypassed(cause);
-}
+public:
 
-template<typename iss_t>
-IssSimhelper<iss_t>::~IssSimhelper()
-{
-}
+    Iss2Simhelper(const std::string &name, uint32_t ident)
+        : CpuIss(name, ident)
+    {}
+
+    virtual ~Iss2Simhelper();
+
+    bool debugExceptionBypassed( uint32_t );
+};
 
 }}
 
+#endif
 
 // Local Variables:
 // tab-width: 4
