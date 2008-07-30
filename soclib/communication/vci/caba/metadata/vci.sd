@@ -25,6 +25,15 @@ PortDecl('caba:vci_target',
 	 header_files = ['../source/include/vci_target.h'],
 	 )
 
+Module('caba:vci_buffers',
+	   header_files = ['../source/include/vci_buffers.h'],
+	   uses = [
+		Uses('common:address_decoding_table', input_t = 'uint32_t', output_t = 'bool'),
+		Uses('common:address_decoding_table', input_t = 'uint32_t', output_t = 'int'),
+		Uses('common:address_masking_table', data_t = 'uint32_t'),
+	],
+	 )
+
 Module('caba:vci_param',
 	   classname = 'soclib::caba::VciParams',
 	   tmpl_parameters = [
