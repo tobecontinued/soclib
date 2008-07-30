@@ -275,7 +275,7 @@ void Mips32Iss::op_ill()
     m_exception = X_RI;
 }
 
-#define CACHE_OP(what, cache) ((what)<<2+(cache))
+#define CACHE_OP(what, cache) (((what)<<2)+(cache))
 enum {
     ICACHE,
     DCACHE,
@@ -296,11 +296,17 @@ enum {
 
 void Mips32Iss::op_cache()
 {
+    uint32_t address =  (r_gp[m_ins.i.rs] + sign_ext16(m_ins.i.imd))&~3;
+
     switch (m_ins.i.rt) {
-    case CACHE_OP(HIT_INVAL,DCACHE): {
-        uint32_t address =  r_gp[m_ins.i.rs] + sign_ext16(m_ins.i.imd);
-        do_mem_access(XTN_DCACHE_INVAL, 4, false, 0, 0, address, XTN_WRITE);
-    }
+    case CACHE_OP(HIT_INVAL,DCACHE):
+        do_mem_access(4*XTN_DCACHE_INVAL, 4, false, 0, 0, address, XTN_WRITE);
+        break;
+    default:
+        std::cout << name() << " Unsupported cache operation "
+                  << std::hex << m_ins.i.rt
+                  << " @" << address << std::endl;
+        break;
     }
 }
 
