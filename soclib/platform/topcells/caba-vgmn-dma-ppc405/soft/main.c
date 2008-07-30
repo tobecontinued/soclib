@@ -26,44 +26,61 @@
  * Maintainers: nipo
  */
 
-#include "soclib/timer.h"
-#include "system.h"
+#include "soclib/dma.h"
 #include "stdio.h"
+#include "system.h"
+#include "stdlib.h"
 
 #include "../segmentation.h"
 
-static const int period[4] = {10000, 11000, 12000, 13000};
-
-void irq_handler(int irq)
+void quit(int unused)
 {
-	uint32_t ti;
-	ti = soclib_io_get(
-		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_VALUE);
-	printf("IRQ %d received at cycle %d on cpu %d\n\n", irq, ti, procnum());
-	soclib_io_set(
-		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_RESETIRQ,
-		0);
+	printf("IRQ received, dma finished its job, quitting\n");
+	exit(0);
 }
 
 int main(void)
 {
-	const int cpu = procnum();
+	uint8_t offset = 0;
+	char _fb[FB_SIZE];
 
 	printf("Hello from processor %d\n", procnum());
 	
-	set_irq_handler(irq_handler);
-
-	soclib_io_set(
-		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_PERIOD,
-		period[cpu]);
-	soclib_io_set(
-		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_MODE,
-		TIMER_RUNNING|TIMER_IRQ_ENABLED);
+	set_irq_handler(quit);
+	enable_hw_irq(0);
+	irq_enable();
 	
-	while (1);
+	while(1) {
+		uint32_t x, y;
+		char *fb = _fb;
+
+		for (x=0; x<FB_HEIGHT; ++x) {
+			puts("Filling Y ");
+			puti(x);
+			putchar('\n');
+			
+			uint8_t lum = (offset<<7)+x;
+			for (y=0; y<FB_WIDTH; ++y) {
+				*fb++ = lum++;
+			}
+		}
+
+		for (x=0; x<FB_HEIGHT; ++x) {
+			puts("Filling C ");
+			puti(x);
+			putchar('\n');
+			
+			uint8_t lum = (offset<<2)+x;
+			for (y=0; y<FB_WIDTH/2; ++y) {
+				*fb++ = lum--;
+			}
+			fb += FB_WIDTH/2;
+		}
+		soclib_io_set( base(DMA), DMA_DST, FB_BASE );
+		soclib_io_set( base(DMA), DMA_SRC, _fb );
+		soclib_io_set( base(DMA), DMA_IRQ_DISABLED, 0 );
+		soclib_io_set( base(DMA), DMA_LEN, FB_SIZE );
+		++offset;
+	}
 	return 0;
 }

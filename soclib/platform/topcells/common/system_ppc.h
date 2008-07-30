@@ -21,49 +21,50 @@
  * SOCLIB_GPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
  * Maintainers: nipo
  */
 
-#include "soclib/timer.h"
-#include "system.h"
-#include "stdio.h"
 
-#include "../segmentation.h"
+#define dcr_get(x)					\
+({unsigned int __val;				\
+__asm__("mfdcr %0, "#x:"=r"(__val));\
+__val;})
 
-static const int period[4] = {10000, 11000, 12000, 13000};
+#define spr_get(x)					\
+({unsigned int __val;				\
+__asm__("mfspr %0, "#x:"=r"(__val));\
+__val;})
 
-void irq_handler(int irq)
+static inline void
+irq_disable(void)
 {
-	uint32_t ti;
-	ti = soclib_io_get(
-		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_VALUE);
-	printf("IRQ %d received at cycle %d on cpu %d\n\n", irq, ti, procnum());
-	soclib_io_set(
-		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_RESETIRQ,
-		0);
+	uint32_t tmp;
+
+	asm volatile (
+		"mfmsr %0		\n\t"
+		"and %0, %0, %1		\n\t"
+		"mtmsr %0		\n\t"
+		: "=r" (tmp)
+		: "r" (~0x8000)
+		);
 }
 
-int main(void)
+static inline void
+irq_enable(void)
 {
-	const int cpu = procnum();
+	uint32_t tmp;
 
-	printf("Hello from processor %d\n", procnum());
-	
-	set_irq_handler(irq_handler);
+	asm volatile (
+		"mfmsr %0		\n\t"
+		"ori %0, %0, 0x8000	\n\t"
+		"mtmsr %0		\n\t"
+		: "=r" (tmp)
+		);
+}
 
-	soclib_io_set(
-		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_PERIOD,
-		period[cpu]);
-	soclib_io_set(
-		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_MODE,
-		TIMER_RUNNING|TIMER_IRQ_ENABLED);
-	
-	while (1);
-	return 0;
+static inline int procnum()
+{
+    return dcr_get(0);
 }

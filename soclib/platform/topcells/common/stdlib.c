@@ -53,6 +53,19 @@ void *malloc( size_t sz )
 	return rp;
 }
 
+void trap()
+{
+#if defined(__mips__)
+# if __mips >= 32
+	asm volatile("teq $0, $0");
+# else
+	asm volatile("break");
+# endif
+#elif defined(PPC)
+	asm volatile("trap");
+#endif
+}
+
 void exit(int level)
 {
 #ifdef SIMHELPER_BASE
@@ -61,8 +74,9 @@ void exit(int level)
 		SIMHELPER_END_WITH_RETVAL,
 		level);
 #else
-# warning No simhelper, exit will do an infinite loop
+# warning No simhelper, exit will do a trap and an infinite loop
 #endif
+	trap();
 	while(1);
 }
 

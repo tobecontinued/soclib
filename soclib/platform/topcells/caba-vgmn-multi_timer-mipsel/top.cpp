@@ -42,7 +42,9 @@
 //#define USE_GDB_SERVER
 
 #ifdef USE_GDB_SERVER
-#include "gdbserver.h"
+# include "gdbserver.h"
+#else
+# include "iss_simhelper.h"
 #endif
 
 #include "segmentation.h"
@@ -151,10 +153,10 @@ int _main(int argc, char *argv[])
 	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips2("mips2", 2);
 	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips3("mips3", 3);
 #else
-	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips0("mips0", 0);
-	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips1("mips1", 1);
-	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips2("mips2", 2);
-	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips3("mips3", 3);
+	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > mips0("mips0", 0);
+	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > mips1("mips1", 1);
+	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > mips2("mips2", 2);
+	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > mips3("mips3", 3);
 #endif
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
@@ -280,41 +282,17 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[3](signal_vci_vcitimer);
 	vgmn.p_to_target[4](signal_vci_vcilocks);
 
-
-	int ncycles;
-#ifndef SOCVIEW
-	if (argc == 2) {
-		ncycles = std::atoi(argv[1]);
-	} else {
-		std::cerr
-			<< std::endl
-			<< "The number of simulation cycles must "
-			   "be defined in the command line"
-			<< std::endl;
-		exit(1);
-	}
-
-	sc_start(sc_core::sc_time(0, SC_NS));
-	signal_resetn = false;
-
-	sc_start(sc_core::sc_time(1, SC_NS));
-	signal_resetn = true;
-
-	for (int i = 0; i < ncycles ; i+=10000) {
-		sc_start(sc_core::sc_time(100000, SC_NS));
-		std::cout << "Time elapsed: "<<i<<" cycles." << std::endl;
-	}
-	return EXIT_SUCCESS;
-#else
-	ncycles = 1;
 	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
 	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 
+#ifdef SOCVIEW
 	debug();
-	return EXIT_SUCCESS;
+#else
+	sc_start();
 #endif
+	return EXIT_SUCCESS;
 }
 
 int sc_main (int argc, char *argv[])

@@ -30,7 +30,7 @@
 #include <cstdlib>
 
 #include "mapping_table.h"
-#include "mips.h"
+#include "ppc405.h"
 #include "iss_wrapper.h"
 #include "vci_xcache.h"
 #include "vci_simhelper.h"
@@ -56,8 +56,8 @@ int _main(int argc, char *argv[])
 
 	soclib::common::MappingTable maptab(32, IntTab(4), IntTab(4), 0x00300000);
 
-	maptab.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(5), true));
-	maptab.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(5), true));
+	maptab.add(Segment("ppc_boot", PPC_BOOT_BASE, PPC_BOOT_SIZE, IntTab(5), false));
+	maptab.add(Segment("ppc_special", PPC_SPECIAL_BASE, PPC_SPECIAL_SIZE, IntTab(5), true));
 	maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(5), true));
   
 	maptab.add(Segment("data" , DATA_BASE , DATA_SIZE , IntTab(1), true));
@@ -76,14 +76,10 @@ int _main(int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
    
-	soclib::caba::ICacheSignals signal_mips_icache0("signal_mips_icache0");
-	soclib::caba::DCacheSignals signal_mips_dcache0("signal_mips_dcache0");
-	sc_signal<bool> signal_mips0_it0("signal_mips0_it0"); 
-	sc_signal<bool> signal_mips0_it1("signal_mips0_it1"); 
-	sc_signal<bool> signal_mips0_it2("signal_mips0_it2"); 
-	sc_signal<bool> signal_mips0_it3("signal_mips0_it3"); 
-	sc_signal<bool> signal_mips0_it4("signal_mips0_it4"); 
-	sc_signal<bool> signal_mips0_it5("signal_mips0_it5");
+	soclib::caba::ICacheSignals signal_ppc_icache0("signal_ppc_icache0");
+	soclib::caba::DCacheSignals signal_ppc_dcache0("signal_ppc_dcache0");
+	sc_signal<bool> signal_ppc0_it0("signal_ppc0_it0"); 
+	sc_signal<bool> signal_ppc0_it1("signal_ppc0_it1"); 
 
 	soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
 
@@ -102,7 +98,7 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(1),8,4,8,4);
 
-	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips0("mips0", 0);
+	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc0("ppc0", 0);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(5), maptab, loader);
@@ -117,7 +113,7 @@ int _main(int argc, char *argv[])
 
 	//	Net-List
  
-	mips0.p_clk(signal_clk);  
+	ppc0.p_clk(signal_clk);  
 	cache0.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
@@ -125,7 +121,7 @@ int _main(int argc, char *argv[])
 	simhelper.p_clk(signal_clk);
 	vcidma.p_clk(signal_clk);
   
-	mips0.p_resetn(signal_resetn);  
+	ppc0.p_resetn(signal_resetn);  
 	cache0.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
@@ -133,17 +129,13 @@ int _main(int argc, char *argv[])
 	simhelper.p_resetn(signal_resetn);
 	vcidma.p_resetn(signal_resetn);
   
-	mips0.p_irq[0](signal_mips0_it0);
-	mips0.p_irq[1](signal_mips0_it1); 
-	mips0.p_irq[2](signal_mips0_it2); 
-	mips0.p_irq[3](signal_mips0_it3); 
-	mips0.p_irq[4](signal_mips0_it4); 
-	mips0.p_irq[5](signal_mips0_it5); 
-	mips0.p_icache(signal_mips_icache0);
-	mips0.p_dcache(signal_mips_dcache0);
+	ppc0.p_irq[0](signal_ppc0_it0);
+	ppc0.p_irq[1](signal_ppc0_it1); 
+	ppc0.p_icache(signal_ppc_icache0);
+	ppc0.p_dcache(signal_ppc_dcache0);
         
-	cache0.p_icache(signal_mips_icache0);
-	cache0.p_dcache(signal_mips_dcache0);
+	cache0.p_icache(signal_ppc_icache0);
+	cache0.p_dcache(signal_ppc_dcache0);
 	cache0.p_vci(signal_vci_m0);
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
@@ -164,7 +156,7 @@ int _main(int argc, char *argv[])
 
 	vcidma.p_vci_target(signal_vci_dmat);
 	vcidma.p_vci_initiator(signal_vci_dmai);
-	vcidma.p_irq(signal_mips0_it0);
+	vcidma.p_irq(signal_ppc0_it0);
 
 	vgmn.p_to_initiator[0](signal_vci_dmai);
 	vgmn.p_to_initiator[1](signal_vci_m0);

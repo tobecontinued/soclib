@@ -4,7 +4,7 @@
 
 todo = Platform('caba', 'top.cpp',
 				uses = [
-	Uses('iss_wrapper', iss_t = 'common:ppc405'),
+	Uses('iss_wrapper', iss_t = 'common:iss_simhelper', simhelper_iss_t = 'common:ppc405'),
 	Uses('iss_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:ppc405'),
 	Uses('vci_ram'),
 	Uses('vci_multi_tty'),

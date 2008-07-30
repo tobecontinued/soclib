@@ -64,7 +64,7 @@ uint32_t run_cycles()
 # else
 	return 0;
 # endif
-#elif defined(__PPC__)
+#elif defined(PPC)
 	return dcr_get(3);
 #else
 	return 0;
@@ -79,7 +79,7 @@ uint32_t cpu_cycles()
 # else
 	return get_cp0(9);
 # endif
-#elif defined(__PPC__)
+#elif defined(PPC)
 	return dcr_get(284);
 #else
 	return 0;
@@ -108,20 +108,50 @@ void set_irq_handler(irq_handler_t *handler)
 	user_irq_handler = handler;
 }
 
+void enable_hw_irq(unsigned int n)
+{
+#if __mips__
+# if __mips >= 32
+	uint32_t status = get_cp0(12, 0);
+# else
+	uint32_t status = get_cp0(12);
+# endif
+	status |= 1<<(10+n);
+# if __mips >= 32
+	set_cp0(12, 0, status);
+# else
+	set_cp0(12, status);
+# endif
+#elif PPC
+	uint32_t msr;
+	asm("mfmsr %0":"=r"(msr));
+	if ( n ) {
+		// external
+		msr |= (1<<(31-16));
+	} else {
+		// critical
+		msr |= (1<<(31-14));
+	}
+	asm("mtmsr %0"::"r"(msr));
+#else
+# error Please implement enable_hw_irq for your arch
+#endif
+}
+
 void interrupt_hw_handler(unsigned int irq)
 {
 	int i;
 
-/* 	printf("Exception: %s irq %d\n", __FUNCTION__, irq); */
+//	printf("Exception: %s irq %d\n", __FUNCTION__, irq);
 
-	for (i=0; i<8;++i) {
+	for (i=0; i<6;++i) {
 		if (irq&1)
 			break;
 		irq>>=1;
 	}
 
 	if ( user_irq_handler )
-		user_irq_handler(irq);
+		user_irq_handler(i);
 	else
 		exit(1);
 }
@@ -131,7 +161,7 @@ static inline volatile uint32_t ll( uint32_t *addr )
 	uint32_t ret;
 #if __mips__
 	__asm__ __volatile__("ll %0, 0(%1)":"=r"(ret):"p"(addr));
-#elif __PPC__
+#elif PPC
 	__asm__ __volatile__("lwarx %0, 0, %1":"=r"(ret):"p"(addr));
 #else
 # error Please implement ll for your arch
@@ -148,7 +178,7 @@ static inline volatile uint32_t sc( uint32_t *addr, uint32_t value )
 #if __mips__
 	__asm__ __volatile__("sc %0, 0(%1)":"=r"(ret):"p"(addr), "0"(value):"memory");
 	ret = !ret;
-#elif __PPC__
+#elif PPC
 	ret = 0;
 	__asm__ __volatile__("stwcx. %2, 0, %1    \n\t"
 						 "mfcr   %0    \n\t"
@@ -162,12 +192,12 @@ static inline volatile uint32_t sc( uint32_t *addr, uint32_t value )
 	return ret;
 }
 
-uint32_t atomic_inc( uint32_t *addr )
+uint32_t atomic_add( uint32_t *addr, uint32_t delta )
 {
 	uint32_t val, failed;
 	do {
 		val = ll(addr);
-		val += 1;
+		val += delta;
 		failed = sc(addr, val);
 	} while (failed);
 	return val;
@@ -200,7 +230,7 @@ void lock_lock( uint32_t *lock )
 		: "p"(lock), "m"(*lock)
 		: "$1", "$2"
 		);
-#elif __PPC__
+#elif PPC
 	uint32_t tmp;
 	asm volatile(
 		"1:			\n"
@@ -222,4 +252,19 @@ void lock_lock( uint32_t *lock )
 void lock_unlock( uint32_t *lock )
 {
 	*lock = 0;
+}
+
+void pause()
+{
+#if defined(__mips__)
+# if __mips >= 32
+	__asm__ __volatile__("wait");
+# else
+#  warning No pause for this architecture
+# endif
+#elif PPC
+	asm volatile("nap");
+#else
+# error Please implement pause for your arch
+#endif
 }

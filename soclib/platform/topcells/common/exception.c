@@ -79,7 +79,7 @@ asm(
 
     "	sw	$8,	0*4($sp)		        \n" /* EPC reg */
 
-    "	andi	$9,	$1,	0x3c			\n" /* extract cause */
+    "	andi	$9,	$1,	0x7c			\n" /* extract cause */
     "	beq	$9,	$0,	interrupt_hw		\n"
     "	li	$10,	(8<<2)				\n"
     "	beq	$9,	$10,	interrupt_sys		\n"
@@ -133,8 +133,8 @@ asm(
     **************************************************************/
     "interrupt_hw:					\n"
 
-    "	srl	$4,	$1,	8			\n"
-    "	andi	$4,	$4,	0xff			\n"
+    "	srl	$4,	$1,	10			\n"
+    "	andi	$4,	$4,	0x3f			\n"
 
     "	la		$1,	interrupt_hw_handler	\n"
     "	jalr	$1					\n"
@@ -173,10 +173,11 @@ asm(
     "	addu	$sp,	4*32				\n"
 
     ".set noreorder					\n"
-    "	jr	$26					\n"
+
 #if __mips >= 32
-    "	nop 					\n"
+    "	eret 					\n"
 #else
+    "	jr	$26					\n"
     "	rfe						\n"
 #endif
 
@@ -193,11 +194,14 @@ asm(
     ".set noreorder					\n"
 
 #if __mips >= 32
-    "li        $8,   0x0000FF01  			\n"
-#else
-    "li        $8,   0x0000FF15  			\n"
-#endif
+    "mfc0      $8,	$12         			\n"
+//    "ori       $8,   0x00000000  			\n"
+    "andi      $8,   0x0000ffff  			\n"
     "mtc0      $8,	$12         			\n"
+#else
+    "li        $8,   0x00000000  			\n"
+    "mtc0      $8,	$12         			\n"
+#endif
 
     /* get CPU id and adjust stack */
 
@@ -214,9 +218,16 @@ asm(
     /* setup global data pointer */
     "la	   $gp,   _gp					\n"
 
+#if __mips >= 32
+	"la $8, main \n"
+	"mtc0 $8, $30 \n"
+	"ei			\n"
+	"eret      \n"
+#else
     "la         $8,   main				\n"
     "j          $8					\n"
     "nop						\n"
+#endif
     "							\n"
     ".set pop						\n"
     );
@@ -299,7 +310,7 @@ except_entry_long(instruction_tlb_miss, _instruction_tlb_miss, rfi);
 
 void _critical_input()
 {
-	interrupt_hw_handler(2);
+	interrupt_hw_handler(0);
 }
 
 void _watchdog()
@@ -344,7 +355,7 @@ void _alignment()
 
 void _external()
 {
-	interrupt_hw_handler(4);
+	interrupt_hw_handler(1);
 }
 
 void _syscall()

@@ -27,18 +27,28 @@
  */
 
 #include "soclib/dma.h"
+#include "stdio.h"
 #include "system.h"
+#include "stdlib.h"
 
 #include "../segmentation.h"
+
+void quit(int unused)
+{
+	printf("IRQ received, dma finished its job, quitting\n");
+	exit(0);
+}
 
 int main(void)
 {
 	uint8_t offset = 0;
 	char _fb[FB_SIZE];
 
-	puts("Hello from processor ");
-	putchar(procnum()+'0');
-	putchar('\n');
+	printf("Hello from processor %d\n", procnum());
+	
+	set_irq_handler(quit);
+	enable_hw_irq(0);
+	irq_enable();
 	
 	while(1) {
 		uint32_t x, y;
@@ -68,6 +78,7 @@ int main(void)
 		}
 		soclib_io_set( base(DMA), DMA_DST, FB_BASE );
 		soclib_io_set( base(DMA), DMA_SRC, _fb );
+		soclib_io_set( base(DMA), DMA_IRQ_DISABLED, 0 );
 		soclib_io_set( base(DMA), DMA_LEN, FB_SIZE );
 		++offset;
 	}

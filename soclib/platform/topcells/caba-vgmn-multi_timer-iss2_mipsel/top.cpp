@@ -31,6 +31,7 @@
 #include "mapping_table.h"
 #include "mips.h"
 #include "ississ2.h"
+#include "iss_simhelper.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
@@ -120,10 +121,10 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > cache0("cache0", 0, maptab,IntTab(0), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > cache1("cache1", 1, maptab,IntTab(1), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > cache2("cache2", 2, maptab,IntTab(2), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > cache3("cache3", 3, maptab,IntTab(3), 1,8,4, 1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache0("cache0", 0, maptab,IntTab(0), 1,8,4, 1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache1("cache1", 1, maptab,IntTab(1), 1,8,4, 1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache2("cache2", 2, maptab,IntTab(2), 1,8,4, 1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache3("cache3", 3, maptab,IntTab(3), 1,8,4, 1,8,4);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -224,41 +225,17 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[3](signal_vci_vcitimer);
 	vgmn.p_to_target[4](signal_vci_vcilocks);
 
-
-	int ncycles;
-#ifndef SOCVIEW
-	if (argc == 2) {
-		ncycles = std::atoi(argv[1]);
-	} else {
-		std::cerr
-			<< std::endl
-			<< "The number of simulation cycles must "
-			   "be defined in the command line"
-			<< std::endl;
-		exit(1);
-	}
-
-	sc_start(sc_core::sc_time(0, SC_NS));
-	signal_resetn = false;
-
-	sc_start(sc_core::sc_time(1, SC_NS));
-	signal_resetn = true;
-
-	for (int i = 0; i < ncycles ; i+=10000) {
-		sc_start(sc_core::sc_time(100000, SC_NS));
-		std::cout << "Time elapsed: "<<i<<" cycles." << std::endl;
-	}
-	return EXIT_SUCCESS;
-#else
-	ncycles = 1;
 	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
 	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 
+#ifdef SOCVIEW
 	debug();
-	return EXIT_SUCCESS;
+#else
+	sc_start();
 #endif
+	return EXIT_SUCCESS;
 }
 
 int sc_main (int argc, char *argv[])

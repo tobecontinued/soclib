@@ -40,7 +40,7 @@ int time(int *ret)
 # else
 	t = get_cp0(9);
 # endif
-#elif defined(__PPC__)
+#elif defined(PPC)
 	t = spr_get(284);
 #else
 #error No cycle counter
