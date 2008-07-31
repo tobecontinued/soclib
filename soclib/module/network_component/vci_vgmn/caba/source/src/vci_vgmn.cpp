@@ -384,7 +384,7 @@ public:
         size_t min_latency, size_t fifo_size,
         const routing_table_t &rt )
     {
-        mid_fifo_t *fifos[in_size];
+        mid_fifo_t *fifos[out_size];
 
         m_in_size = in_size;
         m_out_size = out_size;
