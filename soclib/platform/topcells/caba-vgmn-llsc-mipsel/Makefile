@@ -1,6 +1,8 @@
 ARCH=mipsel
 SIMULATION_ARGS=100000
-include ../all.mk
+SOCLIB?=$(shell soclib-cc --getpath)
+export SOCLIB
+include $(SOCLIB)/soclib/platform/topcells/all.mk
 
 post_test: test.out
 	for i in 0 1 2 3 ; do \

@@ -1,2 +1,4 @@
 OBJS= stdlib.o stdio.o exception.o system.o multi_timer_4cpu_main.o
-include ../../soft.mk
+SOCLIB?=$(shell soclib-cc --getpath)
+export SOCLIB
+include $(SOCLIB)/soclib/platform/topcells/soft.mk

@@ -24,14 +24,16 @@
 #
 # Maintainers: nipo
 
-SOCLIB:=$(shell soclib-cc --getpath)
+SOCLIB?=$(shell soclib-cc --getpath)
+export SOCLIB
 
 SOFT_IMAGE=bin.soft
 OBJS?=main.o exception.o system.o $(ADD_OBJS)
 
+COMMON=$(SOCLIB)/soclib/platform/topcells/common
 include $(SOCLIB)/utils/conf/soft_flags.mk
 
-VPATH=. ../../common
+VPATH=. $(COMMON)
 
 HW_HEADERS=$(SOCLIB)/utils/include
 
@@ -41,7 +43,7 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. -I$(HW_HEADERS) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb -I../../common
+CFLAGS=-Wall -O2 -I. -I$(HW_HEADERS) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb -I$(COMMON)
 
 MAY_CLEAN=$(shell test -r arch_stamp && (test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean))
 

@@ -1,3 +1,5 @@
 ARCH=mipsel
 SIMULATION_ARGS=
-include ../all.mk
+SOCLIB?=$(shell soclib-cc --getpath)
+export SOCLIB
+include $(SOCLIB)/soclib/platform/topcells/all.mk

@@ -1,2 +1,4 @@
 ADD_OBJS= stdlib.o stdio.o
-include ../../soft.mk
+SOCLIB?=$(shell soclib-cc --getpath)
+export SOCLIB
+include $(SOCLIB)/soclib/platform/topcells/soft.mk

@@ -1,4 +1,9 @@
 AM_CPPFLAGS+=-D__STDC_CONSTANT_MACROS
 ARCH=arm966
 SIMULATION_ARGS=1320000
-include ../all.mk
+SOCLIB?=$(shell soclib-cc --getpath)
+ifndef UNISIM
+NO_TEST=External unisim library needed
+endif
+export SOCLIB
+include $(SOCLIB)/soclib/platform/topcells/all.mk

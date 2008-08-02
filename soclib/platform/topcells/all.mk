@@ -27,7 +27,8 @@
 PLATFORM_DESC?=platform_desc
 SOCLIB_CC_ARGS?=-p $(PLATFORM_DESC)
 SOCLIB_CC=soclib-cc
-SOCLIB:=$(shell soclib-cc --getpath)
+SOCLIB?=$(shell soclib-cc --getpath)
+export SOCLIB
 TEST_OUTPUT=test.out
 
 ifneq ($(SOCLIB_CC_MODE),)

@@ -1,2 +1,4 @@
 OBJS= reset.o exceptionProcessing.o softwareException.o system.o main.o  
-include ../../soft.mk
+SOCLIB?=$(shell soclib-cc --getpath)
+export SOCLIB
+include $(SOCLIB)/soclib/platform/topcells/soft.mk
