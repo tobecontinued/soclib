@@ -81,7 +81,8 @@ class VciParams
 	// This is a check for a pow of 2
     static_assert(!((cell_size)&(cell_size-1)));
 	static_assert(plen_size <= 9);
-    static_assert(addr_size <= 32);
+    // We need more than 32 bits for addr, so we dont check
+    //static_assert(addr_size <= 32);
 	static_assert(rerror_size <= 3);
 	static_assert(clen_size <= 8);
     // We need more than 5 bits for srcid, so we dont check
