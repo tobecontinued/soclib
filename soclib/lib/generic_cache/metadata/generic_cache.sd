@@ -1,0 +1,8 @@
+
+# -*- python -*-
+
+Module('caba:generic_cache',
+	classname = 'soclib::GenericCache',
+	header_files = ['../include/generic_cache.h',],
+	uses = [Uses('common:mapping_table'),],
+)
