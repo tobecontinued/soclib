@@ -21,29 +21,42 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6
- *         Alain Greiner <alain.greiner@lip6.fr> 2008
+ *         Alain Greiner <alain.greiner@lip6.fr> July 2008
  *
  * Maintainers: alain
  */
+
+////////////////////////////////////////////////////////////////////////////
+// This object is a generic Write Buffer, providing a re-ordering service
+// for write bursts.
+// A write request is accepted if the buffer is empty, or if the buffer
+// contains data in the same cache line.
+//
+// It has two constructor parameters :
+// - std::string    name
+// - size_t         nwords : number of words
+// It has one template parameter :
+// - addr_t defines the address format
+////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_WRITE_BUFFER_H
 #define SOCLIB_WRITE_BUFFER_H
 
 #include <systemc>
+#include <cassert>
 
-namespace soclib { namespace caba {
+namespace soclib { 
 
 using namespace sc_core;
 
 //////////////////////////////
-template<   typename addr_t,
-            typename type_t,
-            typename be_t,
-            typename data_t,
-            typename iss_t>
+template<typename addr_t>
 class WriteBuffer
 //////////////////////////////
 {
+    typedef uint32_t    data_t;
+    typedef uint32_t    be_t;
+
     sc_signal<addr_t>   r_address;      // cache line base address
     sc_signal<size_t>   r_min;          // smallest valid word index
     sc_signal<size_t>   r_max;          // largest valid word index
@@ -53,8 +66,9 @@ class WriteBuffer
 
     size_t              m_nwords;       // buffer size (number of words)
     addr_t              m_mask;         // cache line mask
-    
+ 
 public:
+
     /////////////
     void reset()
     /////////////
@@ -74,35 +88,34 @@ public:
         return ( r_empty || (r_address == (addr & ~m_mask)) ) ;
     }
     ///////////////////////////////////////////////////
-    void write(addr_t addr, type_t type , data_t  data)
+    void write(addr_t addr, be_t be , data_t  data)
     ///////////////////////////////////////////////////
     {
-        size_t byte = (size_t)(addr & 0x3) ;
         size_t word = (size_t)((addr &  m_mask) >> 2) ;
         addr_t line = addr & ~m_mask ;
 
+        // update r_address & r_empty
         if ( r_empty ) {
             r_address = line ;
         } else {
             assert( r_address == line );
         }
-        r_empty   = false ;
-        if ( type == iss_t::WRITE_WORD ) {
-            r_data[word] = data ;
-            r_be[word] = 0xF ;
-        } else if ( type == iss_t::WRITE_HALF ) {
-            data_t mask = 0xFFFF << (byte * 8) ;
-            data_t wdata = data << (byte * 8) ;
-            r_data[word] = (r_data[word] & ~mask) | (wdata & mask) ;
-            r_be[word]   = r_be[word] | 0x3 << byte ;
-        } else if ( type == iss_t::WRITE_BYTE ) {
-            data_t mask = 0xFF << (byte * 8) ;
-            data_t wdata = data << (byte * 8) ;
-            r_data[word] = (r_data[word] & ~mask) | (wdata & mask) ;
-            r_be[word]   = r_be[word] | 0x1 << byte ;
-        } else {
-            assert("this case should not happen in the write buffer");
+        r_empty = false ;
+
+        // update r_be
+        r_be[word]   = r_be[word] | be ;
+
+        // update r_data, building a mask from the be value
+        data_t  data_mask = 0;
+        be_t    be_up = (1<<(sizeof(data_t)-1));
+        for (size_t i = 0 ; i < sizeof(data_t) ; ++i) {
+            data_mask <<= 8;
+            if ( be_up & be ) data_mask |= 0xff;
+            be <<= 1;
         }
+        r_data[word] = (r_data[word] & ~data_mask) | (data & data_mask) ;
+
+        // update r_min & r_max
         if ( r_min > word ) r_min = word;
         if ( r_max < word ) r_max = word;
     }
@@ -158,7 +171,7 @@ public:
     }
 };
 
-}}
+} // end name space soclib
 
 #endif /* SOCLIB_WRITE_BUFFER_H */
 

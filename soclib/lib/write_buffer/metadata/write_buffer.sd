@@ -2,6 +2,6 @@
 # -*- python -*-
 
 Module('caba:write_buffer',
-	classname = 'soclib::caba::WriteBuffer',
-	header_files = ['../include/caba/write_buffer.h',],
+	classname = 'soclib::WriteBuffer',
+	header_files = ['../include/write_buffer.h',],
 )
