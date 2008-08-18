@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <assert.h>
+#include <systemc>
 
 namespace soclib { namespace common {
 
