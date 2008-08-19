@@ -150,7 +150,7 @@ tmpl(/**/)::VciTimer(
     const MappingTable &mt,
     size_t nirq)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index), 1),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
       m_ntimer(nirq),
       r_value(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("value", m_ntimer)),
       r_period(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("period", m_ntimer)),

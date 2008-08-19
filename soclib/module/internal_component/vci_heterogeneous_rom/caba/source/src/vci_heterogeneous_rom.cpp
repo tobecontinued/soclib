@@ -44,7 +44,7 @@ tmpl(/**/)::VciHeterogeneousRom(
 	const MappingTable &mt
     )
 	: caba::BaseModule(insname),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index), 2),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
       m_groups(),
       m_mt(mt),
       p_resetn("resetn"),

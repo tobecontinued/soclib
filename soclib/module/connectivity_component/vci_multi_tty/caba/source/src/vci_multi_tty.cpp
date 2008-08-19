@@ -137,7 +137,7 @@ tmpl(/**/)::VciMultiTty(
     const char *first_name,
     ...)
     : soclib::caba::BaseModule(name),
-      m_vci_fsm(p_vci, mt.getSegmentList(index), 1),
+      m_vci_fsm(p_vci, mt.getSegmentList(index)),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci")
@@ -163,7 +163,7 @@ tmpl(/**/)::VciMultiTty(
     const MappingTable &mt,
     const std::vector<std::string> &names )
     : soclib::caba::BaseModule(name),
-      m_vci_fsm(p_vci, mt.getSegmentList(index), 1),
+      m_vci_fsm(p_vci, mt.getSegmentList(index)),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci")
