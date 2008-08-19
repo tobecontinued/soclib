@@ -96,6 +96,21 @@ const char *rsp_fsm_state_str[] = {
 
 #define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciXcacheWrapper<vci_param, iss_t>
 
+tmpl(inline typename VciXcacheWrapper<vci_param, iss_t>::data_t)::be_to_mask( typename iss_t::be_t be )
+{
+    size_t i;
+    data_t ret = 0;
+    const typename iss_t::be_t be_up = (1<<(sizeof(data_t)-1));
+
+    for (i=0; i<sizeof(data_t); ++i) {
+        ret <<= 8;
+        if ( be_up & be )
+            ret |= 0xff;
+        be <<= 1;
+    }
+    return ret;
+}
+
 using soclib::common::uint32_log2;
 
 /////////////////////////////////
@@ -104,7 +119,7 @@ tmpl(/**/)::VciXcacheWrapper(
     sc_module_name name,
     int proc_id,
     const soclib::common::MappingTable &mt,
-    const soclib::common::IntTab &initiator_index,
+    const soclib::common::IntTab &index,
     size_t icache_ways,
     size_t icache_sets,
     size_t icache_words,
@@ -116,11 +131,11 @@ tmpl(/**/)::VciXcacheWrapper(
 
       p_clk("clk"),
       p_resetn("resetn"),
-      p_vci("vci_ini"),
+      p_vci("vci"),
 
       m_cacheability_table(mt.getCacheabilityTable()),
       m_iss(this->name(), proc_id),
-      m_srcid(mt.indexForId(initiator_index)),
+      m_srcid(mt.indexForId(index)),
 
       m_dcache_ways(dcache_ways),
       m_dcache_words(dcache_words),
@@ -161,6 +176,8 @@ tmpl(/**/)::VciXcacheWrapper(
     r_icache_miss_buf = new data_t[icache_words];
     r_dcache_miss_buf = new data_t[dcache_words];
 
+    assert((icache_words*vci_param::B) < (1<<vci_param::K) && "I need more PLEN bits");
+
     SC_METHOD(transition);
     dont_initialize();
     sensitive << p_clk.pos();
@@ -169,7 +186,9 @@ tmpl(/**/)::VciXcacheWrapper(
     dont_initialize();
     sensitive << p_clk.neg();
 
-} // end constructor
+    m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
+    m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
+}
 
 /////////////////////////////////
 tmpl(/**/)::~VciXcacheWrapper()
@@ -183,15 +202,15 @@ tmpl(/**/)::~VciXcacheWrapper()
 tmpl(void)::print_cpi()
 ////////////////////////
 {
-    std::cout << "CPU " << m_srcid << " : CPI = "
-        << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl ;
+    std::cout << name() << " CPU " << m_srcid << " : CPI = "
+              << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl;
 }
 ////////////////////////
 tmpl(void)::print_stats()
 ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
-    std::cout << "CPU " << m_srcid << std::endl;
+    std::cout << name() << std::endl;
     std::cout << "- CPI                = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
     std::cout << "- READ RATE          = " << (float)m_cpt_read/run_cycles << std::endl ;
     std::cout << "- WRITE RATE         = " << (float)m_cpt_write/run_cycles << std::endl;
@@ -215,7 +234,6 @@ tmpl(void)::transition()
 //////////////////////////
 {
     if ( ! p_resetn.read() ) {
-
         m_iss.reset();
 
         // FSM states
@@ -279,7 +297,8 @@ tmpl(void)::transition()
     }
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name << std::endl
+    std::cout
+        << name()
         << " dcache fsm: " << dcache_fsm_state_str[r_dcache_fsm]
         << " icache fsm: " << icache_fsm_state_str[r_icache_fsm]
         << " cmd fsm: " << cmd_fsm_state_str[r_vci_cmd_fsm]
@@ -313,7 +332,7 @@ std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name << std::e
     m_iss.getInstructionRequest( ireq );
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << " Instruction Request: " << ireq << std::endl;
+    std::cout << name() << " Instruction Request: " << ireq << std::endl;
 #endif
 
     switch(r_icache_fsm) {
@@ -350,6 +369,7 @@ std::cout << " Instruction Request: " << ireq << std::endl;
 
     case ICACHE_ERROR:
         r_icache_fsm = ICACHE_IDLE;
+        irsp.valid          = true;
         irsp.error          = true;
         break;
 
@@ -371,7 +391,7 @@ std::cout << " Instruction Request: " << ireq << std::endl;
     m_iss.setInstruction( irsp );
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << " Instruction Response: " << irsp << std::endl
+    std::cout << name() << " Instruction Response: " << irsp << std::endl;
 #endif
 
     //////////////////////////////////////////////////////////////////////://///////////
@@ -425,30 +445,39 @@ std::cout << " Instruction Response: " << irsp << std::endl
     m_iss.getDataRequest( dreq );
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << " Data Request: " << dreq << std::endl;
+    std::cout << name() << " Data Request: " << dreq << std::endl;
 #endif
 
     switch ( r_dcache_fsm ) {
 
     case DCACHE_WRITE_REQ:
         // try to post the write request in the write buffer
-        if ( !r_dcache_write_req ) {    // no previous write transaction
-            if ( r_wbuf.wok(r_dcache_addr_save) ) {   // write request in the same cache line
+        if ( !r_dcache_write_req ) {
+            // no previous write transaction
+            if ( r_wbuf.wok(r_dcache_addr_save) ) {
+                // write request in the same cache line
                 r_wbuf.write(r_dcache_addr_save, r_dcache_be_save, r_dcache_wdata_save);
+
                 // closing the write packet if uncached
-                if ( !r_dcache_cached_save ) r_dcache_write_req = true ;
-            } else {    // close the write packet if write request not in the same cache line
+                if ( !r_dcache_cached_save )
+                    r_dcache_write_req = true ;
+            } else {
+                // close the write packet if write request not in the same cache line
                 r_dcache_write_req = true;
                 m_cost_write_frz++;
-                break;  //  posting not possible : stay in DCACHE_WRITEREQ state
+                break;
+                //  posting not possible : stay in DCACHE_WRITEREQ state
             }
-        } else {    //  previous write transaction not completed
+        } else {
+            //  previous write transaction not completed
             m_cost_write_frz++;
-            break;  //  posting not possible : stay in DCACHE_WRITEREQ state
+            break;
+            //  posting not possible : stay in DCACHE_WRITEREQ state
         }
 
         // close the write packet if the next processor request is not a write
-        if ( !dreq.valid || (dreq.type != iss_t::DATA_WRITE) ) r_dcache_write_req = true ;
+        if ( !dreq.valid || dreq.type != iss_t::DATA_WRITE )
+            r_dcache_write_req = true ;
 
         // The next state and the processor request parameters are computed
         // as in the DCACHE_IDLE state (see below ...)
@@ -462,10 +491,14 @@ std::cout << " Data Request: " << dreq << std::endl;
             m_cpt_dcache_dir_read += m_dcache_ways;
 
             // dcache_cached evaluation
-            if ( (dreq.type == iss_t::DATA_LL)  || (dreq.type == iss_t::DATA_SC) ||
-                 (dreq.type == iss_t::XTN_READ) || (dreq.type == iss_t::XTN_WRITE) ) {
+            switch (dreq.type) {
+            case iss_t::DATA_LL:
+            case iss_t::DATA_SC:
+            case iss_t::XTN_READ:
+            case iss_t::XTN_WRITE:
                 dcache_cached = false;
-            } else {
+                break;
+            default:
                 dcache_cached = m_cacheability_table[dreq.addr];
             }
 
@@ -473,7 +506,7 @@ std::cout << " Data Request: " << dreq << std::endl;
             if ( dcache_cached ) {
                 dcache_hit = r_dcache.read(dreq.addr, &dcache_rdata);
             } else {
-                dcache_hit = ( !r_dcache_unc_req && (dreq.addr == r_dcache_addr_save) );
+                dcache_hit = ( !r_dcache_unc_req && dreq.addr == r_dcache_addr_save && r_dcache_miss_buf_unc_valid );
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
@@ -486,6 +519,7 @@ std::cout << " Data Request: " << dreq << std::endl;
                         r_dcache_fsm = DCACHE_IDLE;
                         drsp.valid = true;
                         drsp.rdata = dcache_rdata;
+                        r_dcache_miss_buf_unc_valid = false;
                     } else {
                         if ( dcache_cached ) {
                             m_cpt_data_miss++;
@@ -527,13 +561,14 @@ std::cout << " Data Request: " << dreq << std::endl;
             r_dcache_rdata_save     = dcache_rdata;
             r_dcache_cached_save    = dcache_cached;
 
-        } else {    // end if dcache_req
+        } else {
+            // if no dcache_req
             r_dcache_fsm = DCACHE_IDLE;
         }
         // processor request are not accepted in the WRITE_REQUEST state
         // when the write buffer is not writeable
         if ( (r_dcache_fsm == DCACHE_WRITE_REQ) &&
-                    (r_dcache_write_req || !r_wbuf.wok(r_dcache_addr_save)) ) {
+             (r_dcache_write_req || !r_wbuf.wok(r_dcache_addr_save)) ) {
             drsp.valid = false;
         }
         break;
@@ -541,16 +576,9 @@ std::cout << " Data Request: " << dreq << std::endl;
     case DCACHE_WRITE_UPDT:
     {
         m_cpt_dcache_data_write++;
-        data_t mask = 0;
-        be_t be_up = (1<<(sizeof(data_t)-1));
-        be_t be    = r_dcache_be_save;
-        for (size_t i=0; i<sizeof(data_t); ++i) {
-            mask <<= 8;
-            if ( be_up & be ) mask |= 0xff;
-            be <<= 1;
-        }
+        data_t mask = be_to_mask(r_dcache_be_save);
         data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
-        r_dcache.write(r_dcache_addr_save, wdata);
+        assert(r_dcache.write(r_dcache_addr_save, wdata) && "Write on miss ignores data");
         r_dcache_fsm = DCACHE_WRITE_REQ;
         break;
     }
@@ -558,8 +586,10 @@ std::cout << " Data Request: " << dreq << std::endl;
     case DCACHE_MISS_WAIT:
         if ( dreq.valid ) m_cost_data_miss_frz++;
         if ( !r_dcache_miss_req ) {
-            if ( r_vci_rsp_data_error )     r_dcache_fsm = DCACHE_ERROR;
-            else                            r_dcache_fsm = DCACHE_MISS_UPDT;
+            if ( r_vci_rsp_data_error )
+                r_dcache_fsm = DCACHE_ERROR;
+            else
+                r_dcache_fsm = DCACHE_MISS_UPDT;
         }
         break;
 
@@ -568,7 +598,8 @@ std::cout << " Data Request: " << dreq << std::endl;
         addr_t  ad  = r_dcache_addr_save;
         data_t* buf = r_dcache_miss_buf;
         data_t  victim_index = 0;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
+        if ( dreq.valid )
+            m_cost_data_miss_frz++;
         m_cpt_dcache_data_write++;
         m_cpt_dcache_dir_write++;
         r_dcache.update(ad, buf, &victim_index);
@@ -579,8 +610,10 @@ std::cout << " Data Request: " << dreq << std::endl;
     case DCACHE_UNC_WAIT:
         if ( dreq.valid ) m_cost_unc_read_frz++;
         if ( !r_dcache_unc_req ) {
-            if ( r_vci_rsp_data_error )     r_dcache_fsm = DCACHE_ERROR;
-            else                            r_dcache_fsm = DCACHE_IDLE;
+            if ( r_vci_rsp_data_error )
+                r_dcache_fsm = DCACHE_ERROR;
+            else
+                r_dcache_fsm = DCACHE_IDLE;
         }
         break;
 
@@ -596,20 +629,21 @@ std::cout << " Data Request: " << dreq << std::endl;
         r_dcache.inval(r_dcache_addr_save);
         r_dcache_fsm = DCACHE_IDLE;
         break;
-
-    } // end switch r_dcache_fsm
+    }
 
     m_iss.setData( drsp );
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << " Data Response: " << drsp << std::endl;
+    std::cout << name() << " Data Response: " << drsp << std::endl;
 #endif
 
     /////////// execute one iss cycle /////////////////////////////////
     {
-    uint32_t it = 0;
-    for (size_t i=0; i<(size_t)iss_t::n_irq; i++) if(p_irq[i].read()) it |= (1<<i);
-    m_iss.executeNCycles(1,it);
+        uint32_t it = 0;
+        for (size_t i=0; i<(size_t)iss_t::n_irq; i++)
+            if(p_irq[i].read())
+                it |= (1<<i);
+        m_iss.executeNCycles(1, it);
     }
 
     ////////////// number of frozen cycles //////////////////////////
@@ -643,7 +677,8 @@ std::cout << " Data Response: " << drsp << std::endl;
     switch (r_vci_cmd_fsm) {
 
     case CMD_IDLE:
-        if (r_vci_rsp_fsm != RSP_IDLE) break;
+        if (r_vci_rsp_fsm != RSP_IDLE)
+            break;
 
         r_vci_cmd_cpt = 0;
         if ( r_icache_miss_req ) {
@@ -677,20 +712,23 @@ std::cout << " Data Response: " << drsp << std::endl;
 
     case CMD_DATA_MISS:
         if ( p_vci.cmdack.read() ) {
-            if ( r_vci_cmd_cpt == (m_dcache_words - 1) ) r_vci_cmd_fsm = CMD_IDLE;
+            if ( r_vci_cmd_cpt == (m_dcache_words - 1) )
+                r_vci_cmd_fsm = CMD_IDLE;
             r_vci_cmd_cpt = r_vci_cmd_cpt + 1;
         }
         break;
 
     case CMD_INS_MISS:
         if ( p_vci.cmdack.read() ) {
-            if ( r_vci_cmd_cpt == (m_icache_words - 1) ) r_vci_cmd_fsm = CMD_IDLE;
+            if ( r_vci_cmd_cpt == (m_icache_words - 1) )
+                r_vci_cmd_fsm = CMD_IDLE;
             r_vci_cmd_cpt = r_vci_cmd_cpt + 1;
         }
         break;
 
     case CMD_DATA_UNC:
-        if ( p_vci.cmdack.read() ) r_vci_cmd_fsm = CMD_IDLE;
+        if ( p_vci.cmdack.read() )
+            r_vci_cmd_fsm = CMD_IDLE;
         break;
 
     } // end  switch r_vci_cmd_fsm
@@ -732,10 +770,14 @@ std::cout << " Data Response: " << drsp << std::endl;
         if (r_vci_cmd_fsm != CMD_IDLE) break;
 
         r_vci_rsp_cpt = 0;
-        if      ( r_icache_miss_req )       r_vci_rsp_fsm = RSP_INS_MISS;
-        else if ( r_dcache_write_req )      r_vci_rsp_fsm = RSP_DATA_WRITE;
-        else if ( r_dcache_miss_req )       r_vci_rsp_fsm = RSP_DATA_MISS;
-        else if ( r_dcache_unc_req )        r_vci_rsp_fsm = RSP_DATA_UNC;
+        if      ( r_icache_miss_req )
+            r_vci_rsp_fsm = RSP_INS_MISS;
+        else if ( r_dcache_write_req )
+            r_vci_rsp_fsm = RSP_DATA_WRITE;
+        else if ( r_dcache_miss_req )
+            r_vci_rsp_fsm = RSP_DATA_MISS;
+        else if ( r_dcache_unc_req )
+            r_vci_rsp_fsm = RSP_DATA_UNC;
         break;
 
     case RSP_INS_MISS:
@@ -752,7 +794,8 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_icache_miss_req = false;
             r_vci_rsp_fsm = RSP_IDLE;
         }
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_vci_rsp_ins_error = true;
+        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+            r_vci_rsp_ins_error = true;
         break;
 
     case RSP_DATA_MISS:
@@ -769,7 +812,8 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_dcache_miss_req = false;
             r_vci_rsp_fsm = RSP_IDLE;
         }
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_vci_rsp_data_error = true;
+        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+            r_vci_rsp_data_error = true;
         break;
 
     case RSP_DATA_WRITE:
@@ -780,7 +824,8 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_vci_rsp_fsm = RSP_IDLE;
             r_dcache_write_req = false;
         }
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) m_iss.setWriteBerr();
+        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+            m_iss.setWriteBerr();
         break;
 
     case RSP_DATA_UNC:
@@ -790,9 +835,11 @@ std::cout << " Data Response: " << drsp << std::endl;
         assert(p_vci.reop.read() &&
                "illegal VCI response packet for data read uncached");
         r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
+        r_dcache_miss_buf_unc_valid = true;
         r_vci_rsp_fsm = RSP_IDLE;
         r_dcache_unc_req = false;
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_vci_rsp_data_error = true;
+        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+            r_vci_rsp_data_error = true;
         break;
 
     } // end switch r_vci_rsp_fsm
