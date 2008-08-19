@@ -55,202 +55,247 @@
 #include <systemc>
 #include <cassert>
 #include "arithmetics.h"
+#include "static_assert.h"
 #include "mapping_table.h"
 
 namespace soclib { 
-
-using soclib::common::uint32_log2;
 
 //////////////////////////
 template<typename addr_t>
 class GenericCache 
 //////////////////////////
 {
+    typedef uint32_t    data_t;
+    typedef uint32_t    tag_t;
 
-private:
+    data_t              *r_data ;
+    tag_t               *r_tag ;
+    bool                *r_val ;
+    bool                *r_lru ;
 
-#define CACHE_DATA(way, set, word)  r_data[(way*m_sets*m_words)+(set*m_words)+word]
-#define CACHE_TAG(way, set)         r_tag[(way*m_sets)+set]
-#define CACHE_VAL(way, set)         r_val[(way*m_sets)+set]
-#define CACHE_LRU(way, set)         r_lru[(way*m_sets)+set]
+    size_t              m_ways;	
+    size_t              m_sets;	
+    size_t              m_words;
 
-typedef uint32_t    data_t;
-typedef uint32_t    tag_t;
+    const soclib::common::AddressMaskingTable<addr_t>  m_x ;
+    const soclib::common::AddressMaskingTable<addr_t>  m_y ;
+    const soclib::common::AddressMaskingTable<addr_t>  m_z ;
 
-data_t              *r_data ;
-tag_t               *r_tag ;
-bool                *r_val ;
-bool                *r_lru ;
+    inline data_t &cache_data(size_t way, size_t set, size_t word)
+    {
+        return r_data[(way*m_sets*m_words)+(set*m_words)+word];
+    }
 
-size_t              m_words;
-size_t              m_sets;	
-size_t              m_ways;	
+    inline tag_t &cache_tag(size_t way, size_t set)
+    {
+        return r_tag[(way*m_sets)+set];
+    }
 
-const soclib::common::AddressMaskingTable<addr_t>  m_x ;
-const soclib::common::AddressMaskingTable<addr_t>  m_y ;
-const soclib::common::AddressMaskingTable<addr_t>  m_z ;
+    inline bool &cache_val(size_t way, size_t set)
+    {
+        return r_val[(way*m_sets)+set];
+    }
+
+    inline bool &cache_lru(size_t way, size_t set)
+    {
+        return r_lru[(way*m_sets)+set];
+    }
 
 public:
 
-//////////////////////////////////////////////
-GenericCache(   const std::string   &name,
-                size_t              nways, 
-                size_t              nsets, 
-                size_t              nwords)
-//////////////////////////////////////////////
-    :
-    m_words(nwords),
-    m_sets(nsets),
-    m_ways(nways),
+    GenericCache(   const std::string   &name,
+                    size_t              nways, 
+                    size_t              nsets, 
+                    size_t              nwords)
+        : m_ways(nways),
+          m_sets(nsets),
+          m_words(nwords),
 
-	m_x( uint32_log2(nwords), 2),
-    m_y( uint32_log2(nsets ), uint32_log2(nwords) + 2),
-	m_z( 32, uint32_log2(nsets) + uint32_log2(nwords) + 2)
-{
-    assert(!((nways) & (nways - 1)));
-    assert(!((nsets) & (nsets - 1)));
-    assert(!((nwords) & (nwords - 1)));
-    assert(nwords);
-    assert(nsets);
-    assert(nways);
-    assert(nwords <= 64);
-    assert(nsets <= 1024);
-    assert(nways <= 16);
+#define l2 soclib::common::uint32_log2
 
-    r_data = new data_t[nways*nsets*nwords];
-    r_tag  = new tag_t[nways*nsets];
-    r_val  = new bool[nways*nsets];
-    r_lru  = new bool[nways*nsets];
-}
+          m_x( l2(nwords), l2(sizeof(data_t))),
+          m_y( l2(nsets), l2(nwords) + l2(sizeof(data_t))),
+          m_z( 8*sizeof(addr_t) - l2(nsets) - l2(nwords) - l2(sizeof(data_t)),
+               l2(nsets) + l2(nwords) + l2(sizeof(data_t)))
 
-//////////////////
-~GenericCache()
-//////////////////
-{
-    delete [] r_data;
-    delete [] r_tag;
-    delete [] r_val;
-    delete [] r_lru;
-}
+#undef l2
+    {
+        assert(IS_POW_OF_2(nways));
+        assert(IS_POW_OF_2(nsets));
+        assert(IS_POW_OF_2(nwords));
+        assert(nwords);
+        assert(nsets);
+        assert(nways);
+        assert(nwords <= 64);
+        assert(nsets <= 1024);
+        assert(nways <= 16);
 
-/////////////////////
-inline void reset( )
-/////////////////////
-{
-    for ( size_t n = 0 ; n < (m_sets*m_ways) ; n++ ) {
-        r_val[n] = false;
-        r_lru[n] = false;
+#ifdef GENERIC_CACHE_DEBUG
+        std::cout
+            << " m_x: " << m_x
+            << " m_y: " << m_y
+            << " m_z: " << m_z
+            << std::endl;
+#endif
+
+        r_data = new data_t[nways*nsets*nwords];
+        r_tag  = new tag_t[nways*nsets];
+        r_val  = new bool[nways*nsets];
+        r_lru  = new bool[nways*nsets];
     }
-}
 
-//////////////////////////////////////////
-inline bool read( addr_t ad, data_t* dt)
-//////////////////////////////////////////
-{
-    bool        hit  = false;
-    tag_t       tag  = m_z[ad];
-    size_t      set  = m_y[ad];
-    size_t      word = m_x[ad];
-    for ( size_t way = 0 ; way < m_ways && !hit ; way++ ) {
-        if ( (tag == CACHE_TAG(way, set)) && CACHE_VAL(way, set) ) {
-            hit = true;
-            *dt = CACHE_DATA(way, set, word);
-            CACHE_LRU(way, set) = true;
-        }
-     }
-    return hit;
-}
-
-///////////////////////////////////////////
-inline bool write( addr_t ad, data_t dt )
-///////////////////////////////////////////
-{
-    bool        hit  = false;
-    tag_t       tag  = m_z[ad];
-    size_t      set  = m_y[ad];
-    size_t      word = m_x[ad];
-    for ( size_t way = 0 ; way < m_ways && !hit ; way++ ) {
-        if ( (tag == CACHE_TAG(way, set)) && CACHE_VAL(way, set) ) {
-            hit     = true;
-            CACHE_DATA(way, set, word) = dt;
-            CACHE_LRU(way, set) = true;
-        }
-     }
-    return hit;
-}
-
-///////////////////////////////
-inline bool inval( addr_t ad )
-///////////////////////////////
-{
-    bool        hit = false;
-    tag_t       tag = m_z[ad];
-    size_t      set = m_y[ad];
-    for ( size_t way = 0 ; way < m_ways && !hit ; way++ ) {
-        if ( (tag == CACHE_TAG(way, set)) && CACHE_VAL(way, set) ) {
-            hit     = true;
-            CACHE_VAL(way, set) = false;
-            CACHE_LRU(way, set) = false;
-        }
-     }
-    return hit;
-}
-
-//////////////////////////////////////////////////////////////////////
-inline bool update( addr_t ad, data_t* buf, data_t* victim )
-/////////////////////////////////////////////////////////////////////
-// This function implements a pseudo LRU policy:
-// 1 - First we search an invalid way
-// 2 - If all ways are valid, we search  the first "non recent" way
-// 3 - If all ways are recent, they are all transformed to "non recent"
-//   and we select the way with index 0. 
-// This function returns true, il a cache line has been removed,
-// and the victim line index is returned in the victim parameter.
-//////////////////////////////////////////////////////////////////////
-{
-    tag_t       tag     = m_z[ad];
-    size_t      set     = m_y[ad];
-    bool        found   = false;
-    bool        cleanup = false;
-    size_t      selway  = 0;
-
-    for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-        if ( !CACHE_VAL(way, set) ) {
-            found   = true;
-            cleanup = false;
-            selway  = way;
-        }
+    ~GenericCache()
+    {
+        delete [] r_data;
+        delete [] r_tag;
+        delete [] r_val;
+        delete [] r_lru;
     }
-    if ( !found ) { // No invalid way
+
+    inline void reset( )
+    {
+        memset(r_data, 0, sizeof(*r_data)*m_ways*m_sets*m_words);
+        memset(r_tag, 0, sizeof(*r_tag)*m_ways*m_sets);
+        memset(r_val, 0, sizeof(*r_val)*m_ways*m_sets);
+        memset(r_lru, 0, sizeof(*r_lru)*m_ways*m_sets);
+    }
+
+    inline bool read( addr_t ad, data_t* dt)
+    {
+        const tag_t       tag  = m_z[ad];
+        const size_t      set  = m_y[ad];
+        const size_t      word = m_x[ad];
+#ifdef GENERIC_CACHE_DEBUG
+        std::cout << "Reading data at " << ad << ", "
+                  << " s/t=" << set << '/' << tag
+                  << ", ";
+#endif
+        for ( size_t way = 0; way < m_ways; way++ ) {
+            if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
+                *dt = cache_data(way, set, word);
+                cache_lru(way, set) = true;
+#ifdef GENERIC_CACHE_DEBUG
+                std::cout << "hit"
+                          << " w/s/t=" << way << '/' << set << '/' << tag
+                          << " = " << *dt << std::endl;
+#endif
+                return true;
+            }
+        }
+#ifdef GENERIC_CACHE_DEBUG
+        std::cout << "miss" << std::endl;
+#endif
+        return false;
+    }
+
+    inline bool write( addr_t ad, data_t dt )
+    {
+        const tag_t       tag  = m_z[ad];
+        const size_t      set  = m_y[ad];
+        const size_t      word = m_x[ad];
+#ifdef GENERIC_CACHE_DEBUG
+        std::cout << "Writing data at " << ad << ", "
+                  << " s/t=" << set << '/' << tag
+                  << ", ";
+#endif
+        for ( size_t way = 0; way < m_ways; way++ ) {
+            if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
+                cache_data(way, set, word) = dt;
+                cache_lru(way, set) = true;
+#ifdef GENERIC_CACHE_DEBUG
+                std::cout << "hit"
+                          << " w/s/t=" << way << '/' << set << '/' << tag
+                          << std::endl;
+#endif
+                return true;
+            }
+        }
+#ifdef GENERIC_CACHE_DEBUG
+        std::cout << "miss" << std::endl;
+#endif
+        return false;
+    }
+
+    inline bool inval( addr_t ad )
+    {
+        bool        hit = false;
+        const tag_t       tag = m_z[ad];
+        const size_t      set = m_y[ad];
+#ifdef GENERIC_CACHE_DEBUG
+        std::cout << "Invalidating data at " << ad << ", "
+                  << " s/t=" << set << '/' << tag
+                  << ", ";
+#endif
+        for ( size_t way = 0 ; way < m_ways && !hit ; way++ ) {
+            if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
+                hit     = true;
+                cache_val(way, set) = false;
+                cache_lru(way, set) = false;
+#ifdef GENERIC_CACHE_DEBUG
+                std::cout << "hit"
+                          << " w/s/t=" << way << '/' << set << '/' << tag
+                          << " ";
+#endif
+            }
+        }
+#ifdef GENERIC_CACHE_DEBUG
+        std::cout << std::endl;
+#endif
+        return hit;
+    }
+
+  	/// This function implements a pseudo LRU policy:
+    // 1 - First we search an invalid way
+    // 2 - If all ways are valid, we search  the first "non recent" way
+    // 3 - If all ways are recent, they are all transformed to "non recent"
+    //   and we select the way with index 0. 
+    // This function returns true, il a cache line has been removed,
+    // and the victim line index is returned in the victim parameter.
+    inline bool update( addr_t ad, data_t* buf, addr_t* victim )
+    {
+        tag_t       tag     = m_z[ad];
+        size_t      set     = m_y[ad];
+        bool        found   = false;
+        bool        cleanup = false;
+        size_t      selway  = 0;
+
         for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-            if ( !CACHE_LRU(way, set) ) {
+            if ( !cache_val(way, set) ) {
                 found   = true;
-                cleanup = true;
+                cleanup = false;
                 selway  = way;
             }
         }
-    }
-    if ( !found ) { // No old way => all ways become recent
-        for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-            CACHE_LRU(way, set) = false;
+        if ( !found ) { // No invalid way
+            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
+                if ( !cache_lru(way, set) ) {
+                    found   = true;
+                    cleanup = true;
+                    selway  = way;
+                }
+            }
         }
-        cleanup = true;
-        selway  = 0;
+        if ( !found ) { // No old way => all ways become recent
+            for ( size_t way = 0; way < m_ways; way++ ) {
+                cache_lru(way, set) = false;
+            }
+            cleanup = true;
+            selway  = 0;
+        }
+
+        *victim = (addr_t)((cache_tag(selway, set) * m_sets) + set);
+        cache_tag(selway, set) = tag;
+        cache_val(selway, set) = true;
+        cache_lru(selway, set) = true;
+        for ( size_t word = 0 ; word < m_words ; word++ ) {
+            cache_data(selway, set, word) = buf[word] ;
+        }
+        return cleanup;
     }
 
-    *victim = (data_t)((CACHE_TAG(selway, set) * m_sets) + set);
-    CACHE_TAG(selway, set) = tag;
-    CACHE_VAL(selway, set) = true;
-    CACHE_LRU(selway, set) = true;
-    for ( size_t word = 0 ; word < m_words ; word++ ) {
-        CACHE_DATA(selway, set, word) = buf[word] ;
-    }
-    return cleanup;
-}
+};
 
-}; // end GenericCache
-
-} // end namespace soclib
+} // namespace soclib
 
 #endif
 
