@@ -537,7 +537,8 @@ tmpl(void)::transition()
                 case iss_t::XTN_READ:
                 case iss_t::XTN_WRITE:
                     // only DCACHE INVALIDATE request are supported
-                    r_dcache_fsm = DCACHE_INVAL;
+                    if ( dreq.addr/4 == iss_t::XTN_DCACHE_INVAL )
+                        r_dcache_fsm = DCACHE_INVAL;
                     drsp.valid = true;
                     drsp.rdata = 0;
                     break;
@@ -626,7 +627,7 @@ tmpl(void)::transition()
 
     case DCACHE_INVAL:
         m_cpt_dcache_dir_read += m_dcache_ways;
-        r_dcache.inval(r_dcache_addr_save);
+        r_dcache.inval(r_dcache_wdata_save);
         r_dcache_fsm = DCACHE_IDLE;
         break;
     }
