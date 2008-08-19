@@ -95,7 +95,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips0("mips0", 0);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
-	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
+	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty0", NULL);
 	
 	soclib::caba::PibusBcu bcu("bcu", maptab, 1, 2, 100);

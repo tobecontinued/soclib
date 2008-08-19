@@ -114,7 +114,7 @@ int _main (int argc, char *argv[])
 
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty", NULL);
 
-	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram", IntTab(0), maptab, loader);
+	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram", IntTab(0), maptab, loader);
 
 	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab,1,2,2,8);
 
