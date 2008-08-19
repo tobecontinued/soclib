@@ -48,7 +48,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,6,32,1,1,1,8,1,1,1> vci_param;
 
 	// Mapping table
 	soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00300000);
@@ -108,13 +108,13 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips0("mips0", 0, maptab,IntTab(0), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips1("mips1", 1, maptab,IntTab(1), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips2("mips2", 2, maptab,IntTab(2), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips3("mips3", 3, maptab,IntTab(3), 1,8,4, 1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips0("mips0", 0, maptab,IntTab(0), 4,1,8, 4,1,8);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips1("mips1", 1, maptab,IntTab(1), 4,1,8, 4,1,8);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips2("mips2", 2, maptab,IntTab(2), 4,1,8, 4,1,8);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips3("mips3", 3, maptab,IntTab(3), 4,1,8, 4,1,8);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
-	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
+	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty0", NULL);
 	soclib::caba::VciSimhelper<vci_param> vcisimhelper("vcisimhelper",	IntTab(2), maptab);
 	

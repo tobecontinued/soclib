@@ -49,7 +49,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,6,32,1,1,1,8,1,1,1> vci_param;
 
 	// Mapping table
 
@@ -121,14 +121,14 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache0("cache0", 0, maptab,IntTab(0), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache1("cache1", 1, maptab,IntTab(1), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache2("cache2", 2, maptab,IntTab(2), 1,8,4, 1,8,4);
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache3("cache3", 3, maptab,IntTab(3), 1,8,4, 1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache0("cache0", 0, maptab,IntTab(0), 4,1,8, 4,1,8);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache1("cache1", 1, maptab,IntTab(1), 4,1,8, 4,1,8);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache2("cache2", 2, maptab,IntTab(2), 4,1,8, 4,1,8);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > > cache3("cache3", 3, maptab,IntTab(3), 4,1,8, 4,1,8);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
-	soclib::caba::VciMultiRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
-	soclib::caba::VciMultiRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
+	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
+	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", "vcitty1", "vcitty2", "vcitty3", NULL);
 	soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 4);
 	soclib::caba::VciLocks<vci_param> vcilocks("vcilocks", IntTab(4), maptab); 
