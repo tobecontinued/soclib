@@ -32,6 +32,7 @@
 #include "register.h"
 #include "../include/vci_mwmr_controller.h"
 #include "mwmr_controller.h"
+#include "generic_fifo.h"
 #include "alloc_elems.h"
 
 #ifndef MWMR_CONTROLLER_DEBUG
@@ -786,7 +787,7 @@ tmpl(/**/)::VciMwmrController(
 	const size_t n_status,
     const bool use_llsc )
 		   : caba::BaseModule(name),
-		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid), 1),
+		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid)),
            m_ident(mt.indexForId(srcid)),
            m_fifo_to_coproc_depth(fifo_to_coproc_depth),
            m_fifo_from_coproc_depth(fifo_from_coproc_depth),
