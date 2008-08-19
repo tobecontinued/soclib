@@ -33,7 +33,6 @@
 #include <list>
 #include <cassert>
 #include "vci_target.h"
-#include "generic_fifo.h"
 #include "mapping_table.h"
 #include "caba/caba_base_module.h"
 
@@ -59,9 +58,6 @@ using namespace soclib::common;
  * \param VCI_TMPL_PARAM_DECL VCI fields parameters
  * \param default_target whether the FSM must handle out-of-segments
  * queries answering a VCI Error packed.
- * \param fifo_depth depth of internal fifo for handling requests. If
- * 2 or more, this allow pipelining of queries. Component latency for
- * answering will be 1+fifo_depth.
  */
 template<
     typename vci_param,
@@ -69,14 +65,8 @@ template<
     bool support_llsc = false>
 class VciTargetFsm
 {
+    void handle_one();
 private:
-
-    enum vci_target_fsm_state_e {
-        TARGET_IDLE,
-        TARGET_WRITE_RSP,
-        TARGET_READ_RSP,
-        TARGET_ERROR_RSP,
-    };
 
     VciTarget<vci_param> &p_vci;
 
@@ -86,22 +76,37 @@ private:
 
     std::vector<soclib::common::Segment> m_segments;
 
-    enum vci_target_fsm_state_e m_state;
-
-    struct rsp_info_s {
+    struct tx_info_s {
+        typename vci_param::cmd_t cmd;
+        typename vci_param::addr_t addr;
+        typename vci_param::addr_t base_addr;
         typename vci_param::srcid_t srcid;
         typename vci_param::trdid_t trdid;
         typename vci_param::pktid_t pktid;
         typename vci_param::data_t  rdata;
+        typename vci_param::data_t  wdata;
         typename vci_param::eop_t   eop;
+        typename vci_param::be_t   be;
         typename vci_param::rerror_t error;
+        typename vci_param::plen_t plen;
     };
-    typedef struct rsp_info_s rsp_info_t;
+    typedef struct tx_info_s tx_info_t;
 
-    rsp_info_t m_served_word;
+    tx_info_t m_current_cmd;
 
-    const size_t m_fifo_depth;
-    soclib::caba::GenericFifo<rsp_info_t> m_rsp_info;
+    enum mode_t {
+        MODE_IDLE,
+        MODE_INOUT_QUERY,
+        MODE_SIZED_READ,
+        MODE_SIZED_WRITE,
+        MODE_SIZED_READ_FLUSH_CMD,
+        MODE_FLUSH_CMD,
+    };
+    mode_t m_mode;
+    size_t m_cmd_word;
+    size_t m_cells_to_go;
+
+    bool m_send_rsp;
 
     typedef typename vci_param::addr_t addr_t;
     typedef typename vci_param::data_t data_t;
@@ -127,8 +132,12 @@ public:
      */
     VciTargetFsm(
         VciTarget<vci_param> &_vci,
+        const std::list<soclib::common::Segment> &seglist );
+
+    VciTargetFsm(
+        VciTarget<vci_param> &_vci,
         const std::list<soclib::common::Segment> &seglist,
-        const size_t fifo_depth );
+        size_t fifo_depth ) __attribute__((deprecated));
 
     /**
      * \brief Callback setting
@@ -244,7 +253,12 @@ _on_read_write(this,                            \
      */
     inline int currentSourceId() const
     {
-        return m_served_word.srcid;
+        return m_current_cmd.srcid;
+    }
+
+    inline const std::string name() const
+    {
+        return m_owner->name()+"_target_fsm";
     }
 };
 
