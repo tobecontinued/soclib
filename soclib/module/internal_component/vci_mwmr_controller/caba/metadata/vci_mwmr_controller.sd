@@ -22,6 +22,7 @@ Module('caba:vci_mwmr_controller',
 	],
 	uses = [
 		Uses('base_module'),
+		Uses('caba:generic_fifo', data_t = 'uint32_t'),
 		Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 		],
 	instance_parameters = [
