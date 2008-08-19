@@ -100,16 +100,16 @@ ModuleHolder& ram(
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
 {
-	VciMultiRam<vci_param> *module;
+	VciRam<vci_param> *module;
 	if ( args.has("loads") ) {
 		soclib::common::ElfLoader el(args.get<std::string>("loads"));
-		module = new VciMultiRam<vci_param>(
+		module = new VciRam<vci_param>(
 			name.c_str(),
 			args.get<soclib::common::IntTab>("_vci_id"),
 			env.get<MappingTable>("mapping_table"),
 			el );
 	} else {
-		module = new VciMultiRam<vci_param>(
+		module = new VciRam<vci_param>(
 			name.c_str(),
 			args.get<soclib::common::IntTab>("_vci_id"),
 			env.get<MappingTable>("mapping_table") );
@@ -376,12 +376,12 @@ ModuleHolder& xcache_mipsel(
 		args.get<int>("ident"),
         env.get<MappingTable>("mapping_table"),
         args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_ways"),
         args.get<int>("icache_sets"),
         args.get<int>("icache_words"),
-        args.get<int>("icache_ways"),
+        args.get<int>("dcache_ways"),
         args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words"),
-        args.get<int>("dcache_ways") );
+        args.get<int>("dcache_words") );
 	ModuleHolder *mh = new ModuleHolder(module);
 	mh->portRegister("clk", module->p_clk);
 	mh->portRegister("resetn", module->p_resetn);
@@ -404,12 +404,12 @@ ModuleHolder& xcache_mipseb(
 		args.get<int>("ident"),
         env.get<MappingTable>("mapping_table"),
         args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_ways"),
         args.get<int>("icache_sets"),
         args.get<int>("icache_words"),
-        args.get<int>("icache_ways"),
+        args.get<int>("dcache_ways"),
         args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words"),
-        args.get<int>("dcache_ways") );
+        args.get<int>("dcache_words") );
 	ModuleHolder *mh = new ModuleHolder(module);
 	mh->portRegister("clk", module->p_clk);
 	mh->portRegister("resetn", module->p_resetn);
@@ -432,12 +432,12 @@ ModuleHolder& xcache_mips32el(
 		args.get<int>("ident"),
         env.get<MappingTable>("mapping_table"),
         args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_ways"),
         args.get<int>("icache_sets"),
         args.get<int>("icache_words"),
-        args.get<int>("icache_ways"),
+        args.get<int>("dcache_ways"),
         args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words"),
-        args.get<int>("dcache_ways") );
+        args.get<int>("dcache_words") );
 	ModuleHolder *mh = new ModuleHolder(module);
 	mh->portRegister("clk", module->p_clk);
 	mh->portRegister("resetn", module->p_resetn);
@@ -460,12 +460,12 @@ ModuleHolder& xcache_mips32eb(
 		args.get<int>("ident"),
         env.get<MappingTable>("mapping_table"),
         args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_ways"),
         args.get<int>("icache_sets"),
         args.get<int>("icache_words"),
-        args.get<int>("icache_ways"),
+        args.get<int>("dcache_ways"),
         args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words"),
-        args.get<int>("dcache_ways") );
+        args.get<int>("dcache_words") );
 	ModuleHolder *mh = new ModuleHolder(module);
 	mh->portRegister("clk", module->p_clk);
 	mh->portRegister("resetn", module->p_resetn);
@@ -488,12 +488,12 @@ ModuleHolder& xcache_ppc405(
 		args.get<int>("ident"),
         env.get<MappingTable>("mapping_table"),
         args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_ways"),
         args.get<int>("icache_sets"),
         args.get<int>("icache_words"),
-        args.get<int>("icache_ways"),
+        args.get<int>("dcache_ways"),
         args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words"),
-        args.get<int>("dcache_ways") );
+        args.get<int>("dcache_words") );
 	ModuleHolder *mh = new ModuleHolder(module);
 	mh->portRegister("clk", module->p_clk);
 	mh->portRegister("resetn", module->p_resetn);
@@ -516,12 +516,12 @@ ModuleHolder& xcache_microblaze(
 		args.get<int>("ident"),
         env.get<MappingTable>("mapping_table"),
         args.get<soclib::common::IntTab>("_vci_id"),
+        args.get<int>("icache_ways"),
         args.get<int>("icache_sets"),
         args.get<int>("icache_words"),
-        args.get<int>("icache_ways"),
+        args.get<int>("dcache_ways"),
         args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words"),
-        args.get<int>("dcache_ways") );
+        args.get<int>("dcache_words") );
 	ModuleHolder *mh = new ModuleHolder(module);
 	mh->portRegister("clk", module->p_clk);
 	mh->portRegister("resetn", module->p_resetn);
