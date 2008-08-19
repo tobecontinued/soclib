@@ -1,25 +1,25 @@
 /*
  * SOCLIB_LGPL_HEADER_BEGIN
- * 
+ *
  * This file is part of SoCLib, GNU LGPLv2.1.
- * 
+ *
  * SoCLib is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
- * 
+ *
  * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
- * 
+ *
  * SOCLIB_LGPL_HEADER_END
  *
- * Author   : Franck WAJSBÜRT, Yang GAO 
+ * Author   : Franck WAJSBÜRT, Yang GAO
  * Date     : 28/09/2007
  * Copyright: UPMC - LIP6
  */
@@ -134,36 +134,36 @@ tmpl(void)::Res_Counter()
 	else if((p_ri.ring_data_cmd.read() == DATA_RES)&&(p_ri.ring_data_srcid.read() == p_vci.srcid.read())
    	 &&(p_vci.rspack.read() == true)&&(p_ri.ring_data_num.read() == r_counter_res)) {
 		tmp_counter++;
-		r_counter_res = tmp_counter;	
+		r_counter_res = tmp_counter;
 	}
 
 }
 
 /////////////////////////////////////////////
-// 	Decoder       
+// 	Decoder
 /////////////////////////////////////////////
 tmpl(void)::Decoder()
 {
-	if((p_ri.ring_neg_cmd.read() == NEG_ACK) && (p_ri.ring_neg_srcid.read() == p_vci.srcid.read())) 
-	{ 
-		r_neg_ack_ok = true; 
+	if((p_ri.ring_neg_cmd.read() == NEG_ACK) && (p_ri.ring_neg_srcid.read() == p_vci.srcid.read()))
+	{
+		r_neg_ack_ok = true;
 	} else{
-		r_neg_ack_ok = false; 
+		r_neg_ack_ok = false;
 	}
 
 	if((p_ri.ring_data_cmd.read() == DATA_RES) && (p_ri.ring_data_srcid.read() == p_vci.srcid.read())
      	&&(p_ri.ring_data_eop.read() == true) && (p_vci.rspack.read() == true)
-	&&(p_ri.ring_data_num.read() == r_counter_res)) 
-	{ 
-		r_data_eop = true; 
+	&&(p_ri.ring_data_num.read() == r_counter_res))
+	{
+		r_data_eop = true;
 	} else{
-		r_data_eop = false; 
+		r_data_eop = false;
 	}
 
 }
 
 /////////////////////////////////////////////
-// 	neg and data anneau mux       
+// 	neg and data anneau mux
 /////////////////////////////////////////////
 tmpl(void)::Mux()
 {
@@ -181,14 +181,14 @@ tmpl(void)::Mux()
 }
 
 ////////////////////////////////
-//	transition 
+//	transition
 ////////////////////////////////
-tmpl(void)::transition()       
+tmpl(void)::transition()
 {
-	if(p_resetn == false) { 
+	if(p_resetn == false) {
 		r_fsm_state = NEG_IDLE;
 		return;
-	} 
+	}
 
 	switch(r_fsm_state) {
 	case NEG_IDLE :
@@ -196,14 +196,14 @@ tmpl(void)::transition()
         		r_fsm_state = NEG_ACK_WAIT;
         	}else {
         		r_fsm_state = NEG_IDLE;
-        	} 
+        	}
 	break;
 	case NEG_ACK_WAIT :
-		if(r_neg_ack_ok == true) { 
-			r_fsm_state = NEG_DATA; 
+		if(r_neg_ack_ok == true) {
+			r_fsm_state = NEG_DATA;
         	}else {
         		r_fsm_state = NEG_ACK_WAIT;
-        	} 
+        	}
 	break;
 	case NEG_DATA :
         	if(r_data_eop == true) {
@@ -211,13 +211,13 @@ tmpl(void)::transition()
         	}
         	else {
         		r_fsm_state = NEG_DATA;
-        	} 
-	break;   
+        	}
+	break;
 	} // end switch INIT_FSM
 }  // end Transition()
 
 /////////////////////////////////////////////
-// 	GenMealy()       
+// 	GenMealy()
 /////////////////////////////////////////////
 tmpl(void)::genMealy()
 {
@@ -229,7 +229,7 @@ tmpl(void)::genMealy()
         	if((p_ri.ring_neg_cmd.read() == NEG_EMPTY)&&(p_vci.cmdval.read() == true)) {
 			switch(p_vci.cmd.read()) {
 	 	       	case vci_param::CMD_READ:
-				p_ro.ring_neg_cmd = NEG_REQ_READ;	//read request 
+				p_ro.ring_neg_cmd = NEG_REQ_READ;	//read request
 	 	           	break;
 	 	       	case vci_param::CMD_WRITE:
 				p_ro.ring_neg_cmd = NEG_REQ_WRITE;  	//write request
@@ -249,8 +249,8 @@ tmpl(void)::genMealy()
 	break;
 	case NEG_ACK_WAIT :
 		if(r_neg_ack_ok == true){
-			p_ro.ring_neg_cmd = NEG_EMPTY; 
-		} else { 
+			p_ro.ring_neg_cmd = NEG_EMPTY;
+		} else {
 			p_ro.ring_neg_cmd = p_ri.ring_neg_cmd.read();
 		}
 	break;
@@ -261,7 +261,7 @@ tmpl(void)::genMealy()
 			if(p_vci.cmdval.read() == true){
 				switch(p_vci.cmd.read()) {
 	 			case vci_param::CMD_READ:
-					p_ro.ring_data_cmd = DATA_REQ_READ;	  //read request 
+					p_ro.ring_data_cmd = DATA_REQ_READ;	  //read request
 	 			   	break;
 	 			case vci_param::CMD_WRITE:
 					p_ro.ring_data_cmd = DATA_REQ_WRITE;  	  //write request
@@ -277,13 +277,13 @@ tmpl(void)::genMealy()
 	 			}
 			}
 		}
-	break;	
-	} // end switch 
+	break;
+	} // end switch
 
 } // end GenMealy
 
 /////////////////////////////////////////////
-// 	ANI_Output()       
+// 	ANI_Output()
 /////////////////////////////////////////////
 tmpl(void)::ANI_Output()
 {
@@ -304,7 +304,7 @@ tmpl(void)::ANI_Output()
 		p_vci.rerror = p_ri.ring_data_error.read();
 		p_vci.rsrcid = p_ri.ring_data_srcid.read();
 		p_vci.rpktid = p_ri.ring_data_pktid.read();
-	
+
 	}else {
 		p_vci.rspval = false;
 		p_vci.rdata = 0x00000000;
@@ -321,28 +321,32 @@ tmpl(void)::ANI_Output()
 		p_ro.ring_neg_msblsb = (p_vci.address.read() & 0xFF000000) >> 24;
 	}else {			//RING
 		p_ro.ring_neg_srcid = p_ri.ring_neg_srcid.read();
-		p_ro.ring_neg_msblsb = p_ri.ring_neg_msblsb.read();	
-	}		
+		p_ro.ring_neg_msblsb = p_ri.ring_neg_msblsb.read();
+	}
 
-	/* ANNEAU DATA OUTPUT MUX */		
-	if(r_ring_data_mux == LOCAL){
-		p_ro.ring_data_eop = p_vci.eop.read();   
-		p_ro.ring_data_be = p_vci.be.read();    
-		p_ro.ring_data_srcid = p_vci.srcid.read(); 
-		p_ro.ring_data_pktid = p_vci.pktid.read(); 
+	/* ANNEAU DATA OUTPUT MUX */
+	if(r_ring_data_mux == LOCAL) {
+		assert( ! ( p_vci.cmd.read() == vci_param::CMD_READ
+					&& p_vci.plen.read() != 0
+					&& p_vci.eop.read() )
+				&& "Ring does not support short packets !" );
+		p_ro.ring_data_eop = p_vci.eop.read();
+		p_ro.ring_data_be = p_vci.be.read();
+		p_ro.ring_data_srcid = p_vci.srcid.read();
+		p_ro.ring_data_pktid = p_vci.pktid.read();
 		p_ro.ring_data_adresse = p_vci.address.read();
-		p_ro.ring_data = p_vci.wdata.read();        
-		p_ro.ring_data_error = false;//VCI.RERROR.read(); 
-		p_ro.ring_data_num = r_counter_req; 
+		p_ro.ring_data = p_vci.wdata.read();
+		p_ro.ring_data_error = false;//VCI.RERROR.read();
+		p_ro.ring_data_num = r_counter_req;
 	}else {			//RING
-		p_ro.ring_data_eop = p_ri.ring_data_eop.read();   
-		p_ro.ring_data_be = p_ri.ring_data_be.read();    
-		p_ro.ring_data_srcid = p_ri.ring_data_srcid.read();  
-		p_ro.ring_data_pktid = p_ri.ring_data_pktid.read(); 
+		p_ro.ring_data_eop = p_ri.ring_data_eop.read();
+		p_ro.ring_data_be = p_ri.ring_data_be.read();
+		p_ro.ring_data_srcid = p_ri.ring_data_srcid.read();
+		p_ro.ring_data_pktid = p_ri.ring_data_pktid.read();
 		p_ro.ring_data_adresse = p_ri.ring_data_adresse.read();
-		p_ro.ring_data = p_ri.ring_data.read();        
+		p_ro.ring_data = p_ri.ring_data.read();
 		p_ro.ring_data_num = p_ri.ring_data_num.read();
-		p_ro.ring_data_error = p_ri.ring_data_error.read(); 
+		p_ro.ring_data_error = p_ri.ring_data_error.read();
 
 	}
 
