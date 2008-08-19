@@ -457,7 +457,7 @@ tmpl(/**/)::VciPci(
     const MappingTable &mt,
     size_t badrval)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index), 1),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
       m_badr(badrval),
       p_clk("clk"),
       p_resetn("resetn"),
