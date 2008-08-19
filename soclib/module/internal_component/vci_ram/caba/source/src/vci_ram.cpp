@@ -35,16 +35,16 @@ namespace caba {
 
 using namespace soclib;
 
-#define tmpl(x) template<typename vci_param> x VciMultiRam<vci_param>
+#define tmpl(x) template<typename vci_param> x VciRam<vci_param>
 
-tmpl(/**/)::VciMultiRam(
+tmpl(/**/)::VciRam(
 	sc_module_name insname,
 	const IntTab &index,
 	const MappingTable &mt,
     const common::ElfLoader &loader
     )
 	: caba::BaseModule(insname),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index), 2),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
       m_loader(new common::ElfLoader(loader)),
       p_resetn("resetn"),
       p_clk("clk"),
@@ -68,13 +68,13 @@ tmpl(/**/)::VciMultiRam(
 	}
 }
 
-tmpl(/**/)::VciMultiRam(
+tmpl(/**/)::VciRam(
 	sc_module_name insname,
 	const IntTab &index,
 	const MappingTable &mt
     )
 	: caba::BaseModule(insname),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index), 2),
+	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
       m_loader(NULL),
       p_resetn("resetn"),
       p_clk("clk"),
@@ -98,7 +98,7 @@ tmpl(/**/)::VciMultiRam(
 	}
 }
 
-tmpl(/**/)::~VciMultiRam()
+tmpl(/**/)::~VciRam()
 {
 	for (size_t i=0; i<m_vci_fsm.nbSegments(); ++i)
 		delete [] m_contents[i];

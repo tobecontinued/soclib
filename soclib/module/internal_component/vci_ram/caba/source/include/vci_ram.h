@@ -40,7 +40,7 @@ namespace caba {
 using namespace sc_core;
 
 template<typename vci_param>
-class VciMultiRam
+class VciRam
 	: public soclib::caba::BaseModule
 {
     soclib::caba::VciTargetFsm<vci_param,true,true> m_vci_fsm;
@@ -50,7 +50,7 @@ class VciMultiRam
     ram_t **m_contents;
 
 protected:
-	SC_HAS_PROCESS(VciMultiRam);
+	SC_HAS_PROCESS(VciRam);
 
 public:
     typedef typename vci_param::addr_t vci_addr_t;
@@ -60,16 +60,16 @@ public:
     sc_in<bool> p_clk;
     soclib::caba::VciTarget<vci_param> p_vci;
 
-    VciMultiRam(
+    VciRam(
         sc_module_name insname,
         const IntTab &index,
         const MappingTable &mt,
         const soclib::common::ElfLoader &loader);
-    VciMultiRam(
+    VciRam(
         sc_module_name insname,
         const IntTab &index,
         const MappingTable &mt);
-    ~VciMultiRam();
+    ~VciRam();
 
 private:
     bool on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be);
@@ -83,6 +83,34 @@ private:
     uint32_t m_cpt_read;   // Count READ access
     uint32_t m_cpt_write;  // Count WRITE access
     uint32_t m_cpt_idle;   // Count IDLE Cycles
+};
+
+template<typename vci_param>
+class VciMultiRam
+    : public VciRam<vci_param>
+{
+	void ____please_rename_VciMultiRam_usages_to_VciRam___() __attribute__((deprecated))
+	{}
+  public:
+    VciMultiRam(
+        sc_module_name insname,
+        const IntTab &index,
+        const MappingTable &mt,
+        const soclib::common::ElfLoader &loader)
+		__attribute__((deprecated))
+		: VciRam<vci_param>(insname, index, mt, loader)
+	{
+		____please_rename_VciMultiRam_usages_to_VciRam___();
+	}
+    VciMultiRam(
+        sc_module_name insname,
+        const IntTab &index,
+        const MappingTable &mt)
+		__attribute__((deprecated))
+		: VciRam<vci_param>(insname, index, mt)
+	{
+		____please_rename_VciMultiRam_usages_to_VciRam___();
+	}
 };
 
 }}

@@ -2,7 +2,7 @@
 # -*- python -*-
 
 Module('caba:vci_ram',
-	classname = 'soclib::caba::VciMultiRam',
+	classname = 'soclib::caba::VciRam',
 	   tmpl_parameters = [
 	parameter.Module('vci_param',  default = 'vci_param'),
 	],
