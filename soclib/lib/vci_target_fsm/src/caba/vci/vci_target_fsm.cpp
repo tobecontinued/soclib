@@ -28,6 +28,7 @@
 
 #include "vci_target_fsm.h"
 #include "register.h"
+#include "arithmetics.h"
 #include "base_module.h"
 #ifdef SOCLIB_MODULE_DEBUG
 # include "vci_buffers.h"
@@ -186,6 +187,8 @@ tmpl(void)::handle_one()
 
 tmpl(void)::transition()
 {
+    using soclib::common::ctz;
+
     if ( p_vci.peerAccepted() ) {
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout
@@ -245,7 +248,7 @@ tmpl(void)::transition()
                     }
                     handle_one();
                     m_send_rsp = true;
-                    m_cells_to_go = (m_current_cmd.plen+vci_param::B-1)/vci_param::B;
+                    m_cells_to_go = (m_current_cmd.plen+ctz(m_current_cmd.be)+vci_param::B-1)/vci_param::B;
                     break;
                 case vci_param::CMD_WRITE:
                     if ( m_current_cmd.eop ) {
@@ -256,7 +259,7 @@ tmpl(void)::transition()
                     } else {
                         m_mode = MODE_SIZED_WRITE;
                         handle_one();
-                        m_cells_to_go = (m_current_cmd.plen+vci_param::B-1)/vci_param::B;
+                        m_cells_to_go = (m_current_cmd.plen+ctz(m_current_cmd.be)+vci_param::B-1)/vci_param::B;
                     }
                     break;
                 default:
