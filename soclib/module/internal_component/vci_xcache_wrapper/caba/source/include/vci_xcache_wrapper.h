@@ -142,7 +142,8 @@ private:
 
     data_t                  *r_icache_miss_buf;
     data_t                  *r_dcache_miss_buf;
-    sc_signal<bool> r_dcache_miss_buf_unc_valid;
+    sc_signal<bool>         r_icache_buf_unc_valid;
+    sc_signal<bool>         r_dcache_buf_unc_valid;
 
     WriteBuffer<addr_t>     r_wbuf;
     GenericCache<addr_t>    r_icache;
