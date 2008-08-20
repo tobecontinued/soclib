@@ -79,7 +79,8 @@ tmpl(void)::gotRsp( const VciInitiator<vci_param> &p_vci )
         m_failed = true;
 
     if ( p_vci.reop.read() ) {
-        assert( m_sent_packets == m_received_packets &&
+        assert( (m_sent_packets == m_received_packets
+                 || m_received_packets == 1) &&
                 "Sent and received packets are not as numerous" );
         // Beware this call equals `delete this` dont call anything
         // afterwards

@@ -40,7 +40,7 @@ x VciInitSimpleReadReq<vci_param>
 
 tmpl(/**/)::VciInitSimpleReadReq(
     uint8_t *local_buffer, uint32_t base_addr, size_t len )
-    : VciInitiatorSimpleReq<vci_param>( local_buffer, base_addr, len )
+           : VciInitiatorSimpleReq<vci_param>( local_buffer, base_addr, len )
 {
 }
 
@@ -55,17 +55,19 @@ tmpl(bool)::putCmd( VciInitiator<vci_param> &p_vci, uint32_t id ) const
     const size_t len = VciInitiatorSimpleReq<vci_param>::m_len;
     const uint32_t packet = VciInitiatorReq<vci_param>::m_packet;
     const uint32_t thread = VciInitiatorReq<vci_param>::m_thread;
-    bool ending = this->next_addr(cmd_ptr)>=len;
+    bool ending =
+        true;
+//    this->next_addr(cmd_ptr)>=len;
 
     p_vci.cmdval = true;
-    p_vci.address = (base_addr+cmd_ptr)&~3;
+    p_vci.address = (base_addr+cmd_ptr)&~(vci_param::B-1);
 	p_vci.be = (1<<vci_param::B)-1;
 	p_vci.cmd = vci_param::CMD_READ;
 	p_vci.contig = 1;
 //  p_vci.wdata;
 	p_vci.eop = ending;
 	p_vci.cons = true;
-	p_vci.plen = len;
+	p_vci.plen = (len + (base_addr%vci_param::B) + vci_param::B - 1)&~(vci_param::B-1);
 	p_vci.wrap = 0;
 	p_vci.cfixed = 1;
 //	TODO: clen
@@ -86,7 +88,7 @@ tmpl(void)::gotRsp( const VciInitiator<vci_param> &p_vci )
 
     typename VciInitiatorReq<vci_param>::data_t data = p_vci.rdata;
 
-    const uint32_t vci_addr = (base_addr+rsp_ptr)&~3;
+    const uint32_t vci_addr = (base_addr+rsp_ptr)&~(vci_param::B-1);
     const uint32_t delta = vci_addr-base_addr;
 
     for ( uint32_t i=0; i<(uint32_t)vci_param::B; ++i ) {

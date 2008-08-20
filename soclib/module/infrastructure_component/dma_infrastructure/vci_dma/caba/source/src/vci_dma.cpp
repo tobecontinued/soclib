@@ -177,7 +177,7 @@ tmpl(/**/)::VciDma(
     const IntTab &tgtid,
 	const size_t burst_size )
 	: caba::BaseModule(name),
-	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid), 1),
+	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid)),
 	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(srcid)),
 	  m_len(0),
 	  m_data(burst_size, (uint8_t)0),
@@ -188,6 +188,9 @@ tmpl(/**/)::VciDma(
       p_irq("irq")
 {
 	m_vci_target_fsm.on_read_write(on_read, on_write);
+
+    assert(burst_size && "Useless DMA with no buffer");
+    assert(burst_size < (1<<vci_param::K) && "I will be unable to create requests that big");
 
 	SC_METHOD(transition);
 	dont_initialize();

@@ -107,6 +107,8 @@ private:
 
 	void rehashConfigFifo();
 
+    static_assert(vci_param::K >= 2);
+
 protected:
     SC_HAS_PROCESS(VciMwmrController);
 

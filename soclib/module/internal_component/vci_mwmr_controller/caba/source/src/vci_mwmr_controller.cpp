@@ -80,8 +80,6 @@ typedef enum {
 	INIT_LOCK_TAKE_SC,
     INIT_LOCK_TAKE_SC_W,
 	INIT_STATUS_READ_RPTR,
-	INIT_STATUS_READ_WPTR,
-	INIT_STATUS_READ_USAGE,
 	INIT_DECIDE,
 	INIT_DATA_WRITE,
 	INIT_DATA_READ,
@@ -90,6 +88,7 @@ typedef enum {
 	INIT_STATUS_WRITE_USAGE,
 	INIT_STATUS_WAIT,
 	INIT_STATUS_WRITE_LOCK,
+	INIT_STATUS_WRITE_LOCK_NOT_STATUS,
 	INIT_STATUS_WRITE_RAMLOCK,
 	INIT_DONE,
 } InitFsmState;
@@ -114,8 +113,6 @@ static const char *init_states[] = {
 	"INIT_LOCK_TAKE_SC",
     "INIT_LOCK_TAKE_SC_W",
 	"INIT_STATUS_READ_RPTR",
-	"INIT_STATUS_READ_WPTR",
-	"INIT_STATUS_READ_USAGE",
 	"INIT_DECIDE",
 	"INIT_DATA_WRITE",
 	"INIT_DATA_READ",
@@ -124,6 +121,7 @@ static const char *init_states[] = {
 	"INIT_STATUS_WRITE_USAGE",
 	"INIT_STATUS_WAIT",
 	"INIT_STATUS_WRITE_LOCK",
+	"INIT_STATUS_WRITE_LOCK_NOT_STATUS",
 	"INIT_STATUS_WRITE_RAMLOCK",
 	"INIT_DONE",
 };
@@ -367,8 +365,6 @@ tmpl(void)::transition()
 	case INIT_STATUS_READ_RPTR:
 	case INIT_LOCK_TAKE_RAMLOCK:
 	case INIT_LOCK_TAKE_SC:
-	case INIT_STATUS_READ_WPTR:
-	case INIT_STATUS_READ_USAGE:
 	case INIT_STATUS_WRITE_WPTR:
 		if ( p_vci_initiator.cmdack.read() )
 			// Select next state...
@@ -390,6 +386,7 @@ tmpl(void)::transition()
 		break;
 
 	case INIT_STATUS_WRITE_LOCK:
+	case INIT_STATUS_WRITE_LOCK_NOT_STATUS:
 	case INIT_STATUS_WRITE_RAMLOCK:
 		if ( p_vci_initiator.cmdack.read() )
 			r_init_fsm = INIT_DONE;
@@ -465,7 +462,9 @@ DEBUG_END;
             r_init_fsm = INIT_STATUS_WRITE_RPTR;
         } else {
             m_n_bailout++;
-            r_init_fsm = m_use_llsc ? INIT_STATUS_WRITE_LOCK : INIT_STATUS_WRITE_RAMLOCK;
+            r_init_fsm = m_use_llsc
+                ? INIT_STATUS_WRITE_LOCK_NOT_STATUS
+                : INIT_STATUS_WRITE_RAMLOCK;
         }
 		break;
 	case INIT_DATA_WRITE:
@@ -514,7 +513,7 @@ DEBUG_END;
             r_rsp_fsm = RSP_STATUS_WAIT;
             break;
         case INIT_STATUS_WRITE_RAMLOCK:
-        case INIT_STATUS_WRITE_LOCK:
+        case INIT_STATUS_WRITE_LOCK_NOT_STATUS:
             r_rsp_count = 1;
             r_rsp_fsm = RSP_STATUS_WAIT;
             break;
@@ -528,7 +527,7 @@ DEBUG_BEGIN;
         std::cout << name() << " waiting for write " << r_rsp_count.read() << " words to go" << std::endl;
 DEBUG_END;
 		if ( p_vci_initiator.rspval.read() ) {
-			if ( r_rsp_count == 1 )
+			if ( r_rsp_count == 1 || p_vci_initiator.reop.read() )
 				r_rsp_fsm = RSP_IDLE;
 			r_rsp_count = r_rsp_count-1;
 		}
@@ -573,7 +572,7 @@ DEBUG_BEGIN;
         std::cout << name() << " waiting for status write " << r_rsp_count.read() << " words to go" << std::endl;
 DEBUG_END;
 		if ( p_vci_initiator.rspval.read() ) {
-			if ( r_rsp_count == 1 )
+			if ( r_rsp_count == 1 || p_vci_initiator.reop.read() )
 				r_rsp_fsm = RSP_IDLE;
 			r_rsp_count = r_rsp_count-1;
 		}
@@ -640,6 +639,7 @@ tmpl(void)::genMoore()
 
 	p_vci_initiator.rspack = true;
 
+    size_t plen = 0;
 	switch ((InitFsmState)r_init_fsm.read()) {
 	case INIT_LOCK_TAKE_RAMLOCK_W:
 	case INIT_LOCK_TAKE_LL_W:
@@ -656,6 +656,7 @@ tmpl(void)::genMoore()
 		p_vci_initiator.cmd = vci_param::CMD_READ;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
+        plen = 1;
 		break;
 	case INIT_LOCK_TAKE_LL:
 		p_vci_initiator.cmdval = true;
@@ -663,6 +664,7 @@ tmpl(void)::genMoore()
 		p_vci_initiator.cmd = vci_param::CMD_LOCKED_READ;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
+        plen = 1;
 		break;
 	case INIT_LOCK_TAKE_SC:
 		p_vci_initiator.cmdval = true;
@@ -671,26 +673,14 @@ tmpl(void)::genMoore()
 		p_vci_initiator.cmd = vci_param::CMD_STORE_COND;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
+        plen = 1;
 		break;
 	case INIT_STATUS_READ_RPTR:
 		p_vci_initiator.cmdval = true;
 		p_vci_initiator.address = m_current->status_address;
 		p_vci_initiator.cmd = vci_param::CMD_READ;
 		p_vci_initiator.be = 0xf;
-		p_vci_initiator.eop = false;
-		break;
-	case INIT_STATUS_READ_WPTR:
-		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->status_address+vci_param::B;
-		p_vci_initiator.cmd = vci_param::CMD_READ;
-		p_vci_initiator.be = 0xf;
-		p_vci_initiator.eop = false;
-		break;
-	case INIT_STATUS_READ_USAGE:
-		p_vci_initiator.cmdval = true;
-		p_vci_initiator.address = m_current->status_address+vci_param::B*2;
-		p_vci_initiator.cmd = vci_param::CMD_READ;
-		p_vci_initiator.be = 0xf;
+        plen = 3;
 		p_vci_initiator.eop = true;
 		break;
 	case INIT_DATA_WRITE:
@@ -721,6 +711,7 @@ DEBUG_END;
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = false;
+        plen = m_use_llsc ? 4 : 3;
 		break;
 	case INIT_STATUS_WRITE_WPTR:
 		p_vci_initiator.cmdval = true;
@@ -729,6 +720,7 @@ DEBUG_END;
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = false;
+        plen = m_use_llsc ? 4 : 3;
 		break;
 	case INIT_STATUS_WRITE_USAGE:
 		p_vci_initiator.cmdval = true;
@@ -737,8 +729,11 @@ DEBUG_END;
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = ! m_use_llsc;
+        plen = m_use_llsc ? 4 : 3;
 		break;
 	case INIT_STATUS_WRITE_LOCK:
+        plen = 4;
+	case INIT_STATUS_WRITE_LOCK_NOT_STATUS:
 		p_vci_initiator.cmdval = true;
 		p_vci_initiator.address = m_current->status_address+vci_param::B*3;
 		p_vci_initiator.wdata = 0;
@@ -753,11 +748,12 @@ DEBUG_END;
 		p_vci_initiator.cmd = vci_param::CMD_WRITE;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
+        plen = 1;
 		break;
 	}
 	p_vci_initiator.contig = true;
 	p_vci_initiator.cons = 1;
-	p_vci_initiator.plen = 0;
+	p_vci_initiator.plen = plen*vci_param::B;
 	p_vci_initiator.wrap = 0;
 	p_vci_initiator.cfixed = true;
 	p_vci_initiator.clen = 0;
