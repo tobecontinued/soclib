@@ -99,9 +99,34 @@ static inline T clz( T n )
 }
 
 template<typename T>
+static inline T ctz( T n )
+{
+#if __GNUC__
+    if ( sizeof(T) == sizeof(unsigned int) )
+        return __builtin_ctz(n);
+    else if ( sizeof(T) == sizeof(unsigned long) )
+        return __builtin_ctzl(n);
+    else
+#endif
+    {
+        const int t = sizeof(T)*8;
+        for ( int i = 0; i<t; ++i )
+            if ( (1<<i)&n )
+                return i;
+        return 0;
+    }
+}
+
+template<typename T>
 static inline T clo( T n )
 {
     return clz(~n);
+}
+
+template<typename T>
+static inline T cto( T n )
+{
+    return ctz(~n);
 }
 
 template<typename T>
