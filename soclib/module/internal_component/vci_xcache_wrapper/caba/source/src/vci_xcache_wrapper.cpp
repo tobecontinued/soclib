@@ -102,7 +102,8 @@ const char *rsp_fsm_state_str[] = {
 #endif
 
 #define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciXcacheWrapper<vci_param, iss_t>
-
+ 
+/////////////////////////////////////////////////////////////////////////////////////////////////
 tmpl(inline typename VciXcacheWrapper<vci_param, iss_t>::data_t)::be_to_mask( typename iss_t::be_t be )
 {
     size_t i;
@@ -176,6 +177,9 @@ tmpl(/**/)::VciXcacheWrapper(
       r_vci_rsp_ins_error("r_vci_rsp_ins_error"),
       r_vci_rsp_data_error("r_vci_rsp_data_error"),
       r_vci_rsp_cpt("r_vci_rsp_cpt"),
+
+      r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
+      r_icache_buf_unc_valid("r_icache_buf_unc_valid"),
 
       r_wbuf("wbuf", dcache_words ),
       r_icache("icache", icache_ways, icache_sets, icache_words),
@@ -261,9 +265,11 @@ tmpl(void)::transition()
         r_dcache_unc_req     = false;
         r_dcache_write_req   = false;
 
-        // error signals from the VCI RSP FSM to the ICACHE or DCACHE FSMs
-        r_vci_rsp_data_error = false;
-        r_vci_rsp_ins_error = false;
+        // signals from the VCI RSP FSM to the ICACHE or DCACHE FSMs
+        r_dcache_buf_unc_valid = false;
+        r_icache_buf_unc_valid = false;
+        r_vci_rsp_data_error   = false;
+        r_vci_rsp_ins_error    = false;
 
         // activity counters
         m_cpt_dcache_data_read  = 0;
@@ -320,17 +326,20 @@ tmpl(void)::transition()
     // - r_icache_fsm
     // - r_icache (instruction cache access)
     // - r_icache_addr_save
+    // - r_icache_buf_unc_valid 
     // - r_icache_miss_req set
+    // - r_icache_unc_req set
     // - r_icache_unc_req set
     // - r_vci_rsp_ins_error reset
     // - ireq & irsp structures for communication with the processor
     //
     // Processor requests are taken into account only in the IDLE state.
-    // Only cached read requests are supported.
-    // In case of MISS, the controller writes the missing address line in the
-    // r_icache_addr_save register and sets the r_icache_miss_req flip-flop.
-    // The r_icache_miss_req flip-flop is reset by the VCI_RSP FSM,
-    // when the VCI transaction is completed.
+    // In case of MISS, or in case of uncached instruction, the FSM 
+    // writes the missing address line in the  r_icache_addr_save register 
+    // and sets the r_icache_miss_req (or the r_icache_unc_req) flip-flop.
+    // The request flip-flop is reset by the VCI_RSP FSM when the VCI 
+    // transaction is completed. 
+    // The r_icache_buf_unc_valid is set in case of uncached access.
     // In case of bus error, the VCI_RSP FSM sets the r_vci_rsp_ins_error
     // flip-flop. It is reset by the ICACHE FSM.
     ///////////////////////////////////////////////////////////////////////
@@ -355,7 +364,7 @@ tmpl(void)::transition()
             if ( icache_cached ) {
                 icache_hit = r_icache.read(ireq.addr, &icache_ins);
             } else {
-                icache_hit = ( !r_icache_unc_req && (ireq.addr == r_icache_addr_save) );
+                icache_hit = ( r_icache_buf_unc_valid && (ireq.addr == r_icache_addr_save) );
                 icache_ins = r_icache_miss_buf[0];
             }
             if ( ! icache_hit ) {
@@ -369,6 +378,8 @@ tmpl(void)::transition()
                     r_icache_fsm = ICACHE_UNC_WAIT;
                     r_icache_unc_req = true;
                 } 
+            } else {
+                r_icache_buf_unc_valid = false;
             }
             m_cpt_icache_dir_read += m_icache_ways;
             m_cpt_icache_data_read += m_icache_ways;
@@ -394,15 +405,16 @@ tmpl(void)::transition()
         if ( !r_icache_miss_req ) {
             if ( r_vci_rsp_ins_error ) {
                 r_icache_fsm = ICACHE_ERROR;
-                r_vci_rsp_ins_error = false;
             } else {
                 r_icache_fsm = ICACHE_IDLE;
+                r_icache_buf_unc_valid = true;
             }
         }
         break;
 
     case ICACHE_ERROR:
         r_icache_fsm = ICACHE_IDLE;
+        r_vci_rsp_ins_error = false;
         irsp.valid          = true;
         irsp.error          = true;
         break;
@@ -540,7 +552,7 @@ tmpl(void)::transition()
             if ( dcache_cached ) {
                 dcache_hit = r_dcache.read(dreq.addr, &dcache_rdata);
             } else {
-                dcache_hit = ( !r_dcache_unc_req && dreq.addr == r_dcache_addr_save && r_dcache_miss_buf_unc_valid );
+                dcache_hit = ( (dreq.addr == r_dcache_addr_save) && r_dcache_buf_unc_valid );
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
@@ -553,7 +565,7 @@ tmpl(void)::transition()
                         r_dcache_fsm = DCACHE_IDLE;
                         drsp.valid = true;
                         drsp.rdata = dcache_rdata;
-                        r_dcache_miss_buf_unc_valid = false;
+                        r_dcache_buf_unc_valid = false;
                     } else {
                         if ( dcache_cached ) {
                             m_cpt_data_miss++;
@@ -649,6 +661,7 @@ tmpl(void)::transition()
                 r_dcache_fsm = DCACHE_ERROR;
             else
                 r_dcache_fsm = DCACHE_IDLE;
+                r_dcache_buf_unc_valid = true;
         }
         break;
 
@@ -874,7 +887,6 @@ tmpl(void)::transition()
         assert(p_vci.reop.read() &&
                "illegal VCI response packet for uncached read data");
         r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
-        r_dcache_miss_buf_unc_valid = true;
         r_vci_rsp_fsm = RSP_IDLE;
         r_dcache_unc_req = false;
         if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
