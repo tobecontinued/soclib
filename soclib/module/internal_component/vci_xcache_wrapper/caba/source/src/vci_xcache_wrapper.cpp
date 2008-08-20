@@ -50,6 +50,10 @@
 //   requests, each request is transmited as a single VCI transaction.
 //   Both the data & instruction caches can be flushed in one single cycle.
 //   Finally, new activity counters have been introduced for instrumentation.
+// - 19/08/2008
+//   The VCI CMD FSM has been modified to send single cell packet in case of MISS.
+//   The uncached mode (using the mapping table) has been introduced  in the
+//   ICACHE FSM.
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <cassert>
@@ -73,13 +77,15 @@ const char *dcache_fsm_state_str[] = {
     };
 const char *icache_fsm_state_str[] = {
         "ICACHE_IDLE",
-        "ICACHE_WAIT",
-        "ICACHE_UPDT",
+        "ICACHE_MISS_WAIT",
+        "ICACHE_MISS_UPDT",
+        "ICACHE_UNC_WAIT",
         "ICACHE_ERROR",
     };
 const char *cmd_fsm_state_str[] = {
         "CMD_IDLE",
         "CMD_INS_MISS",
+        "CMD_INS_UNC",
         "CMD_DATA_MISS",
         "CMD_DATA_UNC",
         "CMD_DATA_WRITE",
@@ -87,6 +93,7 @@ const char *cmd_fsm_state_str[] = {
 const char *rsp_fsm_state_str[] = {
         "RSP_IDLE",
         "RSP_INS_MISS",
+        "RSP_INS_UNC",
         "RSP_DATA_MISS",
         "RSP_DATA_UNC",
         "RSP_DATA_WRITE",
@@ -158,6 +165,7 @@ tmpl(/**/)::VciXcacheWrapper(
       r_icache_fsm("r_icache_fsm"),
       r_icache_addr_save("r_icache_addr_save"),
       r_icache_miss_req("r_icache_miss_req"),
+      r_icache_unc_req("r_icache_unc_req"),
 
       r_vci_cmd_fsm("r_vci_cmd_fsm"),
       r_vci_cmd_min("r_vci_cmd_min"),
@@ -313,6 +321,7 @@ tmpl(void)::transition()
     // - r_icache (instruction cache access)
     // - r_icache_addr_save
     // - r_icache_miss_req set
+    // - r_icache_unc_req set
     // - r_vci_rsp_ins_error reset
     // - ireq & irsp structures for communication with the processor
     //
@@ -340,13 +349,26 @@ tmpl(void)::transition()
     case ICACHE_IDLE:
         if ( ireq.valid ) {
             data_t  icache_ins = 0;
-            bool    icache_hit = r_icache.read(ireq.addr, &icache_ins);
+            bool    icache_hit = false;
+            bool    icache_cached = m_cacheability_table[ireq.addr];
+            // icache_hit & icache_ins evaluation
+            if ( icache_cached ) {
+                icache_hit = r_icache.read(ireq.addr, &icache_ins);
+            } else {
+                icache_hit = ( !r_icache_unc_req && (ireq.addr == r_icache_addr_save) );
+                icache_ins = r_icache_miss_buf[0];
+            }
             if ( ! icache_hit ) {
                 m_cpt_ins_miss++;
                 m_cost_ins_miss_frz++;
-                r_icache_fsm = ICACHE_WAIT;
                 r_icache_addr_save = ireq.addr;
-                r_icache_miss_req = true;
+                if ( icache_cached ) {
+                    r_icache_fsm = ICACHE_MISS_WAIT;
+                    r_icache_miss_req = true;
+                } else {
+                    r_icache_fsm = ICACHE_UNC_WAIT;
+                    r_icache_unc_req = true;
+                } 
             }
             m_cpt_icache_dir_read += m_icache_ways;
             m_cpt_icache_data_read += m_icache_ways;
@@ -355,14 +377,26 @@ tmpl(void)::transition()
         }
         break;
 
-    case ICACHE_WAIT:
+    case ICACHE_MISS_WAIT:
         m_cost_ins_miss_frz++;
         if ( !r_icache_miss_req ) {
             if ( r_vci_rsp_ins_error ) {
                 r_icache_fsm = ICACHE_ERROR;
                 r_vci_rsp_ins_error = false;
             } else {
-                r_icache_fsm = ICACHE_UPDT;
+                r_icache_fsm = ICACHE_MISS_UPDT;
+            }
+        }
+        break;
+
+    case ICACHE_UNC_WAIT:
+        m_cost_ins_miss_frz++;
+        if ( !r_icache_miss_req ) {
+            if ( r_vci_rsp_ins_error ) {
+                r_icache_fsm = ICACHE_ERROR;
+                r_vci_rsp_ins_error = false;
+            } else {
+                r_icache_fsm = ICACHE_IDLE;
             }
         }
         break;
@@ -373,7 +407,7 @@ tmpl(void)::transition()
         irsp.error          = true;
         break;
 
-    case ICACHE_UPDT:
+    case ICACHE_MISS_UPDT:
     {
         addr_t  ad  = r_icache_addr_save;
         data_t* buf = r_icache_miss_buf;
@@ -663,16 +697,19 @@ tmpl(void)::transition()
     // This FSM handles requests from both the DCACHE FSM & the ICACHE FSM.
     // There is 4 request types, with the following priorities :
     // 1 - Instruction Miss     : r_icache_miss_req
-    // 2 - Data Write           : r_dcache_write_req
-    // 3 - Data Read Miss       : r_dcache_miss_req
-    // 4 - Data Read Uncached   : r_dcache_unc_req
+    // 2 - Instruction Uncached : r_icache_unc_req
+    // 3 - Data Write           : r_dcache_write_req
+    // 4 - Data Read Miss       : r_dcache_miss_req
+    // 5 - Data Read Uncached   : r_dcache_unc_req
     // There is at most one (CMD/RSP) VCI transaction, as both CMD_FSM
     // and RSP_FSM exit simultaneously the IDLE state.
     //
-    // According to the VCI advanced specification, all read requests packets
-    // (read Uncached, Miss data, Miss instruction) are one word packets.
+    // VCI formats:
+    // According to the VCI advanced specification, all read command packets
+    // (Uncached, Miss data, Miss instruction) are one word packets.
     // For write burst packets, all words must be in the same cache line,
     // and addresses must be contiguous (the BE field is 0 in case of "holes").
+    // The PLEN VCI field is always documented.
     //////////////////////////////////////////////////////////////////////////////
 
     switch (r_vci_cmd_fsm) {
@@ -684,6 +721,9 @@ tmpl(void)::transition()
         r_vci_cmd_cpt = 0;
         if ( r_icache_miss_req ) {
             r_vci_cmd_fsm = CMD_INS_MISS;
+            m_cpt_imiss_transaction++;
+        } else if ( r_icache_unc_req ) {
+            r_vci_cmd_fsm = CMD_INS_UNC;
             m_cpt_imiss_transaction++;
         } else if ( r_dcache_write_req ) {
             r_vci_cmd_fsm = CMD_DATA_WRITE;
@@ -712,24 +752,12 @@ tmpl(void)::transition()
         break;
 
     case CMD_DATA_MISS:
-        if ( p_vci.cmdack.read() ) {
-            if ( r_vci_cmd_cpt == (m_dcache_words - 1) )
-                r_vci_cmd_fsm = CMD_IDLE;
-            r_vci_cmd_cpt = r_vci_cmd_cpt + 1;
-        }
-        break;
-
-    case CMD_INS_MISS:
-        if ( p_vci.cmdack.read() ) {
-            if ( r_vci_cmd_cpt == (m_icache_words - 1) )
-                r_vci_cmd_fsm = CMD_IDLE;
-            r_vci_cmd_cpt = r_vci_cmd_cpt + 1;
-        }
-        break;
-
     case CMD_DATA_UNC:
-        if ( p_vci.cmdack.read() )
+    case CMD_INS_MISS:
+    case CMD_INS_UNC:
+        if ( p_vci.cmdack.read() ) {
             r_vci_cmd_fsm = CMD_IDLE;
+        }
         break;
 
     } // end  switch r_vci_cmd_fsm
@@ -740,9 +768,10 @@ tmpl(void)::transition()
     // - r_icache_miss_buf[m_icache_words]
     // - r_dcache_miss_buf[m_dcache_words]
     // - r_icache_miss_req reset
+    // - r_icache_unc_req reset
     // - r_dcache_miss_req reset
-    // - r_icache_cleanup_req reset
-    // - r_dcache_cleanup_req reset
+    // - r_dcache_unc_req reset
+    // - r_icache_write_req reset
     // - r_vci_rsp_data_error set
     // - r_vci_rsp_ins_error set
     // - r_vci_rsp_cpt
@@ -771,32 +800,41 @@ tmpl(void)::transition()
         if (r_vci_cmd_fsm != CMD_IDLE) break;
 
         r_vci_rsp_cpt = 0;
-        if      ( r_icache_miss_req )
-            r_vci_rsp_fsm = RSP_INS_MISS;
-        else if ( r_dcache_write_req )
-            r_vci_rsp_fsm = RSP_DATA_WRITE;
-        else if ( r_dcache_miss_req )
-            r_vci_rsp_fsm = RSP_DATA_MISS;
-        else if ( r_dcache_unc_req )
-            r_vci_rsp_fsm = RSP_DATA_UNC;
+        if      ( r_icache_miss_req )       r_vci_rsp_fsm = RSP_INS_MISS;
+        else if ( r_icache_unc_req )        r_vci_rsp_fsm = RSP_INS_UNC;
+        else if ( r_dcache_write_req )      r_vci_rsp_fsm = RSP_DATA_WRITE;
+        else if ( r_dcache_miss_req )       r_vci_rsp_fsm = RSP_DATA_MISS;
+        else if ( r_dcache_unc_req )        r_vci_rsp_fsm = RSP_DATA_UNC;
         break;
 
     case RSP_INS_MISS:
         m_cost_imiss_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
-        assert(r_vci_rsp_cpt != m_icache_words &&
-               "illegal VCI response packet for instruction miss");
+        assert( (r_vci_rsp_cpt < m_icache_words) &&
+               "The VCI response packet for instruction miss is too long" );
         r_vci_rsp_cpt = r_vci_rsp_cpt + 1;
         r_icache_miss_buf[r_vci_rsp_cpt] = (data_t)p_vci.rdata.read();
         if ( p_vci.reop.read() ) {
-            assert(r_vci_rsp_cpt == m_icache_words - 1 &&
-                   "illegal VCI response packet for instruction miss");
+            assert( (r_vci_rsp_cpt == m_icache_words - 1) &&
+                   "The VCI response packet for instruction miss is too short");
             r_icache_miss_req = false;
             r_vci_rsp_fsm = RSP_IDLE;
         }
         if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
             r_vci_rsp_ins_error = true;
+        break;
+
+    case RSP_INS_UNC:
+        m_cost_imiss_transaction++;
+        if ( ! p_vci.rspval.read() )
+            break;
+        assert(p_vci.reop.read() &&
+               "illegal VCI response packet for uncached instruction");
+        r_icache_miss_buf[0] = (data_t)p_vci.rdata.read();
+        r_vci_rsp_fsm = RSP_IDLE;
+        r_icache_unc_req = false;
+        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_vci_rsp_ins_error = true;
         break;
 
     case RSP_DATA_MISS:
@@ -834,7 +872,7 @@ tmpl(void)::transition()
         if ( ! p_vci.rspval.read() )
             break;
         assert(p_vci.reop.read() &&
-               "illegal VCI response packet for data read uncached");
+               "illegal VCI response packet for uncached read data");
         r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
         r_dcache_miss_buf_unc_valid = true;
         r_vci_rsp_fsm = RSP_IDLE;
@@ -931,7 +969,7 @@ tmpl(void)::genMoore()
 
     case CMD_DATA_MISS:
         p_vci.cmdval = true;
-        p_vci.address = (r_dcache_addr_save & m_dcache_yzmask) + (r_vci_cmd_cpt<<2) ;
+        p_vci.address = r_dcache_addr_save & m_dcache_yzmask;
         p_vci.be     = 0xF;
         p_vci.plen   = m_dcache_words << 2;
         p_vci.cmd    = vci_param::CMD_READ;
@@ -943,12 +981,12 @@ tmpl(void)::genMoore()
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = ( r_vci_cmd_cpt == (m_dcache_words - 1) );
+        p_vci.eop = true;
         break;
 
     case CMD_INS_MISS:
         p_vci.cmdval = true;
-        p_vci.address = (r_icache_addr_save & m_icache_yzmask) + (r_vci_cmd_cpt<<2) ;
+        p_vci.address = r_icache_addr_save & m_icache_yzmask;
         p_vci.be     = 0xF;
         p_vci.plen   = m_icache_words << 2;
         p_vci.cmd    = vci_param::CMD_READ;
@@ -960,7 +998,24 @@ tmpl(void)::genMoore()
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = ( r_vci_cmd_cpt == (m_icache_words - 1) );
+        p_vci.eop = true;
+        break;
+
+    case CMD_INS_UNC:
+        p_vci.cmdval = true;
+        p_vci.address = r_icache_addr_save & ~0x3;
+        p_vci.be     = 0xF;
+        p_vci.plen   = 4;
+        p_vci.cmd    = vci_param::CMD_READ;
+        p_vci.trdid  = 0;
+        p_vci.pktid  = 0;
+        p_vci.srcid  = m_srcid;
+        p_vci.cons   = false;
+        p_vci.wrap   = false;
+        p_vci.contig = true;
+        p_vci.clen   = 0;
+        p_vci.cfixed = false;
+        p_vci.eop = true;
         break;
 
     } // end switch r_vci_cmd_fsm

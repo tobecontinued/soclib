@@ -53,7 +53,6 @@ class VciXcacheWrapper
     typedef uint32_t    data_t;
     typedef uint32_t    tag_t;
     typedef uint32_t    be_t;
-    typedef typename iss_t::DataOperationType data_op_t;
 
     enum dcache_fsm_state_e {
         DCACHE_IDLE,
@@ -68,14 +67,16 @@ class VciXcacheWrapper
 
     enum icache_fsm_state_e {
         ICACHE_IDLE,
-        ICACHE_WAIT,
-        ICACHE_UPDT,
+        ICACHE_MISS_WAIT,
+        ICACHE_MISS_UPDT,
+        ICACHE_UNC_WAIT,
         ICACHE_ERROR,
     };
 
     enum cmd_fsm_state_e {
         CMD_IDLE,
         CMD_INS_MISS,
+        CMD_INS_UNC,
         CMD_DATA_MISS,
         CMD_DATA_UNC,
         CMD_DATA_WRITE,
@@ -84,6 +85,7 @@ class VciXcacheWrapper
     enum rsp_fsm_state_e {
         RSP_IDLE,
         RSP_INS_MISS,
+        RSP_INS_UNC,
         RSP_DATA_MISS,
         RSP_DATA_UNC,
         RSP_DATA_WRITE,
@@ -116,7 +118,7 @@ private:
     sc_signal<addr_t>       r_dcache_addr_save;
     sc_signal<data_t>       r_dcache_wdata_save;
     sc_signal<data_t>       r_dcache_rdata_save;
-    sc_signal<data_op_t>       r_dcache_type_save;
+    sc_signal<int>          r_dcache_type_save;
     sc_signal<be_t>         r_dcache_be_save;
     sc_signal<bool>         r_dcache_cached_save;
     sc_signal<bool>         r_dcache_miss_req;
@@ -126,6 +128,7 @@ private:
     sc_signal<int>          r_icache_fsm;
     sc_signal<addr_t>       r_icache_addr_save;
     sc_signal<bool>         r_icache_miss_req;
+    sc_signal<bool>         r_icache_unc_req;
 
     sc_signal<int>          r_vci_cmd_fsm;
     sc_signal<size_t>       r_vci_cmd_min;
