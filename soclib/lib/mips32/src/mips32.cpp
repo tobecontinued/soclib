@@ -113,6 +113,7 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
         if ( ((r_status.im>>2) & irq_bit_field)
              && r_status.ie ) {
             m_exception = X_INT;
+            m_sleeping = false;
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << name() << " IRQ while sleeping" << std::endl;
 #endif
