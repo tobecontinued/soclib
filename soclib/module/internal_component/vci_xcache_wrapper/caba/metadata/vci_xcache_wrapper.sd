@@ -16,7 +16,7 @@ Module('caba:vci_xcache_wrapper',
 	uses = [
 		Uses('caba:base_module'),
 		Uses('caba:write_buffer'),
-		Uses('caba:generic_cache'),
+		Uses('caba:generic_cache', addr_t = 'uint32_t'),
 		Uses('common:iss2'),
 		Uses('common:mapping_table'),
 		],

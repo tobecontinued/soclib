@@ -4,5 +4,9 @@
 Module('caba:generic_cache',
 	classname = 'soclib::GenericCache',
 	header_files = ['../include/generic_cache.h',],
-	uses = [Uses('common:mapping_table'),],
+	   tmpl_parameters = [
+	parameter.Type('addr_t'),
+	],
+	uses = [Uses('common:mapping_table'),
+			Uses('common:address_masking_table', data_t = '%(addr_t)s'),],
 )
