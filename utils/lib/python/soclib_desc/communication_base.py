@@ -1,5 +1,5 @@
 
-from component import PortDecl, Signal
+from component import PortDecl, Signal, Module
 import parameter
 
 Signal('caba:clock',
@@ -58,3 +58,19 @@ PortDecl('caba:clock_in',
 		 classname = 'sc_core::sc_clock_in',
 		   header_files = []
 		 )
+
+Module('sc:uint',
+	   classname = "sc_core::sc_uint",
+	   tmpl_parameters = [
+	parameter.Int('W'),
+	],
+	   global_header_files = ["systemc",],
+	   )
+
+Module('sc:int',
+	   classname = "sc_core::sc_int",
+	   tmpl_parameters = [
+	parameter.Int('W'),
+	],
+	   global_header_files = ["systemc",],
+	   )

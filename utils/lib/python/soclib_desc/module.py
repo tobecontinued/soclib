@@ -46,6 +46,7 @@ class Module:
 		'classname' : '',
 		'tmpl_parameters' : [],
 		'header_files' : [],
+		'global_header_files' : [],
 		'implementation_files' : [],
 		'uses' : [],
 		'defines' : {},
@@ -97,6 +98,7 @@ class Module:
 				   or os.path.abspath(os.path.join(basename, name))
 		for attr in relative_path_files:
 			self.__attrs['abs_'+attr] = map(mkabs, self.__attrs[attr])
+		self.__attrs['abs_header_files'] += self.__attrs['global_header_files']
 
 	def setAttr(self, name, value):
 		self.__attrs[name] = value
@@ -133,7 +135,7 @@ class Module:
 
 	def getInfo(self):
 		r = '<%s\n'%self.__class__.__name__
-		for l in 'abs_header_files', 'abs_force_header_files', 'abs_implementation_files':
+		for l in 'abs_header_files', 'abs_force_header_files', 'abs_implementation_files', 'global_header_files':
 			for s in self.__attrs[l]:
 				r += os.path.isfile(s) and " + " or " - "
 				r += s+'\n'
