@@ -50,7 +50,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> vci_param;
 
 	// Mapping table
 
@@ -107,7 +107,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSimhelper<vci_param> simhelper("vcitsimhelper", IntTab(3), maptab);
 	soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(4), maptab, FB_WIDTH, FB_HEIGHT); 
 
-	soclib::caba::VciDma<vci_param> vcidma("vcidma", maptab, IntTab(0), IntTab(0), 128); 
+	soclib::caba::VciDma<vci_param> vcidma("vcidma", maptab, IntTab(0), IntTab(0), 1<<(vci_param::K-1)); 
 
 	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 2, 6, 2, 8);
 

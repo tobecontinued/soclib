@@ -54,11 +54,7 @@ SOFT?=soft/bin.soft
 endif
 
 ifeq ($(shell test -r disabled && echo disabled),disabled)
-NO_TEST=Test disabled by "disabled" file
-endif
-
-ifndef SIMULATION_ARGS
-NO_TEST=No simulation args
+NO_TEST=Test disabled by "disabled" file: $(shell cat disabled)
 endif
 
 all: test_soclib simulation.x $(SOFT)

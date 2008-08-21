@@ -164,40 +164,17 @@ int _main(int argc, char *argv[])
 	bcu.p_ack(pibus.ack);
 	bcu.p_tout(pibus.tout);
 
-	int ncycles;
+	sc_start(sc_core::sc_time(0, SC_NS));
+	signal_resetn = false;
+	sc_start(sc_core::sc_time(1, SC_NS));
+	signal_resetn = true;
+
 #ifndef SOCVIEW
-	if (argc == 2) {
-		ncycles = std::atoi(argv[1]);
-	} else {
-		std::cerr
-			<< std::endl
-			<< "The number of simulation cycles must "
-			   "be defined in the command line"
-			<< std::endl;
-		exit(1);
-	}
-
-	sc_start(sc_core::sc_time(0, SC_NS));
-	signal_resetn = false;
-
-	sc_start(sc_core::sc_time(1, SC_NS));
-	signal_resetn = true;
-
-	for (int i = 0; i < ncycles ; i+=10000) {
-		sc_start(sc_core::sc_time(10000, SC_NS));
-		std::cout << "Time elapsed: "<<i<<" cycles." << std::endl;
-	}
-	return EXIT_SUCCESS;
+	sc_start(sc_core::sc_time(10000, SC_NS));
 #else
-	ncycles = 1;
-	sc_start(sc_core::sc_time(0, SC_NS));
-	signal_resetn = false;
-	sc_start(sc_core::sc_time(1, SC_NS));
-	signal_resetn = true;
-
 	debug();
-	return EXIT_SUCCESS;
 #endif
+	return EXIT_SUCCESS;
 }
 
 int sc_main (int argc, char *argv[])

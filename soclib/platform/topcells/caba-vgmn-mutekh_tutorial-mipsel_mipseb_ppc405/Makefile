@@ -4,6 +4,9 @@ SOCLIB:=$(shell soclib-cc --getpath)
 
 default: test_soclib simulation.x
 
+test:
+	true
+
 test_soclib:
 	@test -z "$(SOCLIB)" && (\
 	echo "You must have soclib-cc in your $$PATH" ; exit 1 ) || exit 0
