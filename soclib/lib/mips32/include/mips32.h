@@ -109,7 +109,6 @@ private:
     int r_mem_offset_byte_in_reg;
     uint32_t r_mem_dest;
 
-    bool r_dbe;
 	data_t	m_rdata;
 	bool		m_ibe;
 	bool		m_dbe;
@@ -326,7 +325,7 @@ public:
 
 	inline void setWriteBerr()
 	{
-		r_dbe = true;
+		m_dbe = true;
 	}
 
     void reset();

@@ -109,7 +109,6 @@ private:
 	uint32_t 	r_mem_addr;  		// Data Cache address
 	uint32_t 	r_mem_wdata;  		// Data Cache data value (write)
 	uint32_t	r_mem_dest;  		// Data Cache destination register (read)
-	bool		r_dbe;			// Asynchronous Data Bus Error (write)
     int         r_mem_shift;
 
 	uint32_t	m_rdata;
@@ -255,7 +254,7 @@ public:
 
 	inline void setWriteBerr()
 	{
-		r_dbe = true;
+		m_dbe = true;
 	}
 
 	inline void setIrq(uint32_t irq)

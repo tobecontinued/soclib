@@ -65,7 +65,6 @@ void MipsIss::reset()
 {
     r_pc = RESET_ADDRESS;
     r_npc = RESET_ADDRESS + 4;
-    r_dbe = false;
     m_ibe = false;
     m_dbe = false;
     r_mem_req = false;
@@ -215,7 +214,7 @@ void MipsIss::step()
     // 2 - read data bus errors are synchronous events, signaled in
     // the m_dbe variable
     // 3 - write data bus errors are asynchonous events signaled in
-    // the r_dbe flip-flop
+    // the m_dbe flip-flop
     // Instuction bus errors are related to the current instruction:
     // lowest priority.
     // Read Data bus errors are related to the previous instruction:
@@ -228,19 +227,15 @@ void MipsIss::step()
 
     if (m_ibe) {
         m_exception = X_IBE;
+        m_ibe = false;
         goto handle_except;
     }
 
     if ( m_dbe ) {
         m_exception = X_DBE;
+        m_dbe = false;
         r_bar = r_mem_addr;
         goto handle_except;
-    }
-
-    if ( r_dbe ) {
-        m_exception = X_DBE;
-        r_dbe = false;
-        r_bar = r_mem_addr;
     }
 
 #ifdef SOCLIB_MODULE_DEBUG
