@@ -37,8 +37,6 @@ void quit(int unused)
 {
 	int i;
 	printf("IRQ received, dma finished its job, quitting\n");
-	for ( i=0; i<1000000; ++i )
-		asm volatile("nop");
 	exit(0);
 }
 
