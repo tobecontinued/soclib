@@ -62,7 +62,7 @@ uint32_t run_cycles()
 # if __mips >= 32
 	return get_cp0(9,6);
 # else
-	return 0;
+	return cpu_cycles();
 # endif
 #elif defined(PPC)
 	return dcr_get(3);
