@@ -1,5 +1,5 @@
 #include "system.h"
-#include "soclib/PCI.h"
+#include "soclib/pci.h"
 
 void uputs(const char *str)
 {
@@ -16,7 +16,7 @@ void puti(const int i)
 
 void interrupt_handler(void)
 {
-   soclib_io_set(base(PCI), procnum()*PCI_SPAN+PCI_RESETIRQ, 0);
+   soclib_io_set(base(PCI), procnum()*PCI_NB+PCI_RESETIRQ, 0);
    uputs("\nInterruption caught on proc "); puti(procnum()); uputs(" at time ");
    puti(soclib_io_get(base(PCI), PCI_VALUE)); uputs("\n");
 }
