@@ -53,6 +53,10 @@ ifeq ($(NO_SOFT),)
 SOFT?=soft/bin.soft
 endif
 
+ifeq ($(shell test -r disabled && echo disabled),disabled)
+NO_TEST=Test disabled by "disabled" file
+endif
+
 ifndef SIMULATION_ARGS
 NO_TEST=No simulation args
 endif
@@ -88,7 +92,7 @@ test: $(TEST_OUTPUT) post_test
 post_test:
 
 $(TEST_OUTPUT): simulation.x $(SOFT)
-	SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null 2>&1 | tee $@
+	set -o pipefail ; SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null 2>&1 | tee $@
 
 .PHONY: $(TEST_OUTPUT)
 
