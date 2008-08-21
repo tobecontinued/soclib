@@ -4,7 +4,7 @@
 #include "soclib/tty.h"
 
 #define TTY_BASE   0x00400000
-#define PCI_BASE 0x00500000
+#define TIMER_BASE 0x00500000
 #define base(x) (volatile char *)x ## _BASE
 
 #define get_fsl(x)                        \
