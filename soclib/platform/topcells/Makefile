@@ -24,11 +24,27 @@
 #
 # Maintainers: nipo
 
-subdirs=$(patsubst %/platform_desc,%,$(shell echo */platform_desc))
+SUBDIRS=$(patsubst %/platform_desc,%,$(shell echo */platform_desc))
 
 all:
+	$(MAKE) $(patsubst %,%/$@,$(SUBDIRS))
 
-%:
-	for i in $(subdirs) ; do \
-		$(MAKE) -C "$$i" $@ || exit 1; \
-	done
+clean:
+	$(MAKE) $(patsubst %,%/$@,$(SUBDIRS))
+
+soft_clean:
+	$(MAKE) $(patsubst %,%/$@,$(SUBDIRS))
+
+test:
+	$(MAKE) $(patsubst %,%/$@,$(SUBDIRS))
+
+define subdir
+
+$(1)/%: $(1)
+	$$(MAKE) -C "$(1)" $$*
+
+endef
+
+$(eval $(foreach s,$(SUBDIRS),$(call subdir,$(s))))
+
+.NOTPARALLEL :
