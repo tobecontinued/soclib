@@ -42,6 +42,7 @@ tmpl(/**/)::VciInitiatorReq()
       m_failed(false),
       m_on_done_module(NULL),
       m_on_done_func(NULL),
+      m_expected_packets(0),
       m_sent_packets(0),
       m_received_packets(0)
 {
@@ -67,9 +68,11 @@ tmpl(void)::setDone( BaseModule *module, on_t callback )
     m_on_done_func = callback;
 }
 
-tmpl(void)::cmdOk()
+tmpl(void)::cmdOk( bool last )
 {
     m_sent_packets++;
+    if ( last && m_expected_packets == 0 )
+        m_expected_packets = m_sent_packets;
 }
 
 tmpl(void)::gotRsp( const VciInitiator<vci_param> &p_vci )
@@ -79,9 +82,13 @@ tmpl(void)::gotRsp( const VciInitiator<vci_param> &p_vci )
         m_failed = true;
 
     if ( p_vci.reop.read() ) {
-        assert( (m_sent_packets == m_received_packets
-                 || m_received_packets == 1) &&
-                "Sent and received packets are not as numerous" );
+        if ( m_received_packets != m_expected_packets ) {
+            std::cout << "Sent and received cells are not as numerous"
+                      << " expected " << m_expected_packets
+                      << " and received " << m_received_packets
+                      << std::endl;
+            abort();
+        }
         // Beware this call equals `delete this` dont call anything
         // afterwards
         (m_on_done_module->*m_on_done_func)(this);

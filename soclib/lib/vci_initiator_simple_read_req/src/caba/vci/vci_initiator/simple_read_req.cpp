@@ -42,6 +42,8 @@ tmpl(/**/)::VciInitSimpleReadReq(
     uint8_t *local_buffer, uint32_t base_addr, size_t len )
            : VciInitiatorSimpleReq<vci_param>( local_buffer, base_addr, len )
 {
+    VciInitiatorReq<vci_param>::m_expected_packets =
+        (base_addr%vci_param::B+len+vci_param::B-1)/vci_param::B;
 }
 
 tmpl(/**/)::~VciInitSimpleReadReq()

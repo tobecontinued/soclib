@@ -61,6 +61,7 @@ protected:
 
     BaseModule *m_on_done_module;
     on_t m_on_done_func;
+    uint32_t m_expected_packets;
 private:
     uint32_t m_sent_packets;
     uint32_t m_received_packets;
@@ -73,7 +74,7 @@ public:
     void setThread( trd_t );
     void setPacket( pkt_t );
     void setDone( BaseModule *module, on_t callback );
-    virtual void cmdOk();
+    virtual void cmdOk( bool );
     virtual bool putCmd( VciInitiator<vci_param> &p_pvi, uint32_t ) const = 0;
     virtual void gotRsp( const VciInitiator<vci_param> &p_pvi );
     inline bool failed() const
@@ -106,7 +107,7 @@ protected:
 public:
     VciInitiatorSimpleReq( uint8_t *, uint32_t, size_t );
     virtual ~VciInitiatorSimpleReq();
-    virtual void cmdOk();
+    virtual void cmdOk( bool );
 };
 
 template<typename vci_param>

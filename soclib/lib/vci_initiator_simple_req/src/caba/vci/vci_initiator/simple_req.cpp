@@ -52,9 +52,9 @@ tmpl(/**/)::~VciInitiatorSimpleReq()
 {
 }
 
-tmpl(void)::cmdOk()
+tmpl(void)::cmdOk(bool last)
 {
-    VciInitiatorReq<vci_param>::cmdOk();
+    VciInitiatorReq<vci_param>::cmdOk(last);
     m_cmd_ptr = next_addr(m_cmd_ptr);
 }
 

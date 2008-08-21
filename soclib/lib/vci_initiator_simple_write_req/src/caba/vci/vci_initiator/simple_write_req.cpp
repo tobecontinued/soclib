@@ -46,6 +46,7 @@ tmpl(/**/)::VciInitSimpleWriteReq(
 //               << "vci: " << base_addr
 //               << " <- buf: " << (uint32_t)local_buffer
 //               << " / " << len << std::endl;
+    VciInitiatorReq<vci_param>::m_expected_packets = 1;
 }
 
 tmpl(/**/)::~VciInitSimpleWriteReq()

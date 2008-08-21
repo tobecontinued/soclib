@@ -29,6 +29,9 @@
 #include "vci_initiator_fsm.h"
 #include "register.h"
 #include "base_module.h"
+#ifdef SOCLIB_MODULE_DEBUG
+# include "vci_buffers.h"
+#endif
 
 namespace soclib {
 namespace caba {
@@ -66,15 +69,24 @@ tmpl(void)::transition()
 	if ( m_current_req == NULL )
         return;
 
-    if ( p_vci.cmdval.read() &&
-         p_vci.cmdack.read() ) {
-        m_current_req->cmdOk();
+    if ( p_vci.peerAccepted() ) {
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << "ifsm peer accepted command" << std::endl;
+#endif
+        m_current_req->cmdOk(p_vci.eop.read());
         if ( p_vci.eop.read() )
             m_current_req_gone = true;
     }
 
-    if ( p_vci.rspval.read() &&
-         p_vci.rspack.read() ) {
+    if ( p_vci.iAccepted() ) {
+#ifdef SOCLIB_MODULE_DEBUG
+        VciRspBuffer<vci_param> buf;
+        buf.readFrom(p_vci);
+        std::cout
+            << "ifsm got response: "
+            << buf
+            << std::endl;
+#endif
         VciInitiatorReq<vci_param> *req = m_current_req;
         if ( p_vci.reop.read() )
             m_current_req = NULL;
