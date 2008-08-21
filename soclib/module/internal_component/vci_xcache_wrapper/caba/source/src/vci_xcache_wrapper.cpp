@@ -178,8 +178,8 @@ tmpl(/**/)::VciXcacheWrapper(
       r_vci_rsp_data_error("r_vci_rsp_data_error"),
       r_vci_rsp_cpt("r_vci_rsp_cpt"),
 
-      r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
       r_icache_buf_unc_valid("r_icache_buf_unc_valid"),
+      r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
 
       r_wbuf("wbuf", dcache_words ),
       r_icache("icache", icache_ways, icache_sets, icache_words),
@@ -377,6 +377,7 @@ tmpl(void)::transition()
                 } else {
                     r_icache_fsm = ICACHE_UNC_WAIT;
                     r_icache_unc_req = true;
+                    r_icache_buf_unc_valid = false;
                 } 
             } else {
                 r_icache_buf_unc_valid = false;
@@ -402,7 +403,7 @@ tmpl(void)::transition()
 
     case ICACHE_UNC_WAIT:
         m_cost_ins_miss_frz++;
-        if ( !r_icache_miss_req ) {
+        if ( !r_icache_unc_req ) {
             if ( r_vci_rsp_ins_error ) {
                 r_icache_fsm = ICACHE_ERROR;
             } else {
@@ -845,9 +846,11 @@ tmpl(void)::transition()
         assert(p_vci.reop.read() &&
                "illegal VCI response packet for uncached instruction");
         r_icache_miss_buf[0] = (data_t)p_vci.rdata.read();
+        r_icache_buf_unc_valid = true;
         r_vci_rsp_fsm = RSP_IDLE;
         r_icache_unc_req = false;
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_vci_rsp_ins_error = true;
+        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+            r_vci_rsp_ins_error = true;
         break;
 
     case RSP_DATA_MISS:
@@ -935,21 +938,23 @@ tmpl(void)::genMoore()
             p_vci.wdata = 0;
             p_vci.be  = r_dcache_be_save.read();
             p_vci.cmd = vci_param::CMD_READ;
+            p_vci.plen = fls(r_dcache_be_save.read())-ffs(r_dcache_be_save.read())+1;
             break;
         case iss_t::DATA_LL:
             p_vci.wdata = 0;
             p_vci.be  = 0xF;
             p_vci.cmd = vci_param::CMD_LOCKED_READ;
+            p_vci.plen = 4;
             break;
         case iss_t::DATA_SC:
             p_vci.wdata = r_dcache_wdata_save.read();
             p_vci.be  = 0xF;
             p_vci.cmd = vci_param::CMD_STORE_COND;
+            p_vci.plen = 4;
             break;
         default:
             assert("this should not happen");
         }
-        p_vci.plen = 4;
         p_vci.trdid  = 0;
         p_vci.pktid  = 0;
         p_vci.srcid  = m_srcid;
@@ -966,7 +971,11 @@ tmpl(void)::genMoore()
         p_vci.address = r_wbuf.getAddress(r_vci_cmd_cpt);
         p_vci.wdata   = r_wbuf.getData(r_vci_cmd_cpt);
         p_vci.be      = r_wbuf.getBe(r_vci_cmd_cpt);
-        p_vci.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
+        p_vci.plen    = fls(r_wbuf.getBe(r_vci_cmd_max))
+            - ffs(r_wbuf.getBe(r_vci_cmd_min))
+            + (r_vci_cmd_max - r_vci_cmd_min) * vci_param::B
+            + 1;
+//        p_vci.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
         p_vci.cmd     = vci_param::CMD_WRITE;
         p_vci.trdid   = 0;
         p_vci.pktid   = 0;

@@ -30,9 +30,7 @@
 #include "register.h"
 #include "arithmetics.h"
 #include "base_module.h"
-#ifdef SOCLIB_MODULE_DEBUG
-# include "vci_buffers.h"
-#endif
+#include "vci_buffers.h"
 
 namespace soclib {
 namespace caba {
@@ -92,6 +90,7 @@ tmpl(void)::handle_one()
     size_t seg_no=0;
     addr_t address = m_current_cmd.addr;
     addr_t offset = 0;
+    m_current_cmd.error = 0;
     while ( seg != m_segments.end() && !reached ) {
         if ( seg->contains(address) ) {
 #ifdef SOCLIB_MODULE_DEBUG
@@ -226,7 +225,7 @@ tmpl(void)::transition()
     switch ( m_mode ) {
     case MODE_IDLE:
         if ( p_vci.iAccepted() ) {
-            m_current_cmd.addr = p_vci.address.read();
+            m_current_cmd.addr = p_vci.address.read() & ~(vci_param::B-1);
             m_current_cmd.cmd = p_vci.cmd.read();
             m_current_cmd.be = p_vci.be.read();
             m_current_cmd.srcid = p_vci.srcid.read();
@@ -239,9 +238,9 @@ tmpl(void)::transition()
             if ( m_current_cmd.plen ) {
                 switch ( m_current_cmd.cmd ) {
                 case vci_param::CMD_READ:
-                    if ( m_current_cmd.eop )
+                    if ( m_current_cmd.eop ) {
                         m_mode = MODE_SIZED_READ;
-                    else {
+                    } else {
                         m_mode = MODE_SIZED_READ_FLUSH_CMD;
                         m_current_cmd.base_addr = m_current_cmd.addr;
                         m_cmd_word = 0;
@@ -249,6 +248,7 @@ tmpl(void)::transition()
                     handle_one();
                     m_send_rsp = true;
                     m_cells_to_go = (m_current_cmd.plen+ctz(m_current_cmd.be)+vci_param::B-1)/vci_param::B;
+                    m_current_cmd.eop = m_cells_to_go == 1;
                     break;
                 case vci_param::CMD_WRITE:
                     if ( m_current_cmd.eop ) {
@@ -259,6 +259,7 @@ tmpl(void)::transition()
                     } else {
                         m_mode = MODE_SIZED_WRITE;
                         handle_one();
+                        m_current_cmd.base_addr = m_current_cmd.addr;
                         m_cells_to_go = (m_current_cmd.plen+ctz(m_current_cmd.be)+vci_param::B-1)/vci_param::B;
                     }
                     break;
@@ -288,7 +289,22 @@ tmpl(void)::transition()
         if ( p_vci.iAccepted() ) {
             m_cells_to_go--;
             m_current_cmd.addr += vci_param::B;
-            assert( m_current_cmd.addr == p_vci.address.read() );
+            if ( m_current_cmd.addr != p_vci.address.read() ) {
+                std::cerr
+                    << name()
+                    << "Uncontiguous addresses in write command," << std::hex
+                    << " expected " << m_current_cmd.addr
+                    << " and got " << p_vci.address.read()
+                    << " base_address " << m_current_cmd.base_addr
+                    << std::endl;
+                VciCmdBuffer<vci_param> buf;
+                buf.readFrom( p_vci );
+                std::cout
+                    << name()
+                    << " current command: " << buf
+                    << std::endl;
+                abort();
+            }
             m_current_cmd.wdata = p_vci.wdata.read();
             m_current_cmd.be = p_vci.be.read();
             m_current_cmd.eop = p_vci.eop.read();
