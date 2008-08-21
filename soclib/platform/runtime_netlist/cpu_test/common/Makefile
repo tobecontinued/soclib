@@ -88,8 +88,8 @@ clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS)
 
 $(RESULT): $(SOFT_IMAGE) $(TESTER) $(COMMON)/Makefile
-	SOCLIB_TTY=TERM $(TESTER) cache_arch=xcache_$($(ARCH)_CPU) arch=$($(ARCH)_CPU) binary=$(SOFT_IMAGE) sim_max_cycles=$(MAX_CYCLES) sim_default_retval=1 > test.out \
-		|| (r=$$? ; cat test.out ; mv test.out test.fail ; echo "Test failed in $$PWD, errorlevel: $$r" ; exit 1)
+	SOCLIB_TTY=TERM $(TESTER) cache_arch=xcache_$($(ARCH)_CPU) arch=$($(ARCH)_CPU) binary=$(SOFT_IMAGE) sim_max_cycles=$(MAX_CYCLES) sim_default_retval=1 &> test.out \
+		|| (r=$$? ; tail test.out ; mv test.out test.fail ; echo "Test failed in $$PWD, errorlevel: $$r" | tee -a test.fail ; exit 1)
 	cat test.out
 	mv test.out $@
 
