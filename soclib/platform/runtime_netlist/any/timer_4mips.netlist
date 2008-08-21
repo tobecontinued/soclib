@@ -29,7 +29,7 @@ default with_gdb = 0
 default start_frozen = 0
 default arch = mipsel
 
-vci_param<4,1,32,1,1,1,8,1,1,1>
+vci_param<4,8,32,1,1,1,8,1,1,1>
 
 mapping table (8) (8) 0x00300000
 
