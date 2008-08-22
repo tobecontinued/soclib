@@ -35,8 +35,6 @@ void interrupt_ex_handler(
 	void *dataptr, void *regtable,
 	void *stackptr)
 {
-	exit(0);
-
 	int i;
 	printf("Exception at %p, hoping we except from %p\n", execptr, bug_addr);
 	for ( i=0; i<1000; i++ )
