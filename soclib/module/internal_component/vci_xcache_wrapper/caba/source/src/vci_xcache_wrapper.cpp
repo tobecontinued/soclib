@@ -406,6 +406,7 @@ tmpl(void)::transition()
         if ( !r_icache_unc_req ) {
             if ( r_vci_rsp_ins_error ) {
                 r_icache_fsm = ICACHE_ERROR;
+                r_vci_rsp_ins_error = false;
             } else {
                 r_icache_fsm = ICACHE_IDLE;
                 r_icache_buf_unc_valid = true;
@@ -441,7 +442,7 @@ tmpl(void)::transition()
     std::cout << name() << " Instruction Response: " << irsp << std::endl;
 #endif
 
-    //////////////////////////////////////////////////////////////////////://///////////
+    ///////////////////////////////////////////////////////////////////////////////////
     // The DCACHE FSM controls the following ressources:
     // - r_dcache_fsm
     // - r_dcache (data cache access)
@@ -451,6 +452,7 @@ tmpl(void)::transition()
     // - r_dcache_type_save
     // - r_dcache_be_save
     // - r_dcache_cached_save
+    // - r_dcache_buf_unc_valid
     // - r_dcache_miss_req set
     // - r_dcache_unc_req set
     // - r_dcache_write_req set
@@ -609,8 +611,7 @@ tmpl(void)::transition()
             r_dcache_rdata_save     = dcache_rdata;
             r_dcache_cached_save    = dcache_cached;
 
-        } else {
-            // if no dcache_req
+        } else {    // if no dcache_req
             r_dcache_fsm = DCACHE_IDLE;
         }
         // processor request are not accepted in the WRITE_REQUEST state
@@ -626,7 +627,7 @@ tmpl(void)::transition()
         m_cpt_dcache_data_write++;
         data_t mask = be_to_mask(r_dcache_be_save);
         data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
-        assert(r_dcache.write(r_dcache_addr_save, wdata) && "Write on miss ignores data");
+        r_dcache.write(r_dcache_addr_save, wdata);
         r_dcache_fsm = DCACHE_WRITE_REQ;
         break;
     }
@@ -658,11 +659,12 @@ tmpl(void)::transition()
     case DCACHE_UNC_WAIT:
         if ( dreq.valid ) m_cost_unc_read_frz++;
         if ( !r_dcache_unc_req ) {
-            if ( r_vci_rsp_data_error )
+            if ( r_vci_rsp_data_error ) {
                 r_dcache_fsm = DCACHE_ERROR;
-            else
+            } else {
                 r_dcache_fsm = DCACHE_IDLE;
                 r_dcache_buf_unc_valid = true;
+            }
         }
         break;
 
@@ -695,7 +697,6 @@ tmpl(void)::transition()
         m_iss.executeNCycles(1, it);
     }
 
-    ////////////// number of frozen cycles //////////////////////////
     if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) )
         m_cpt_frz_cycles++;
 
@@ -938,7 +939,8 @@ tmpl(void)::genMoore()
             p_vci.wdata = 0;
             p_vci.be  = r_dcache_be_save.read();
             p_vci.cmd = vci_param::CMD_READ;
-            p_vci.plen = fls(r_dcache_be_save.read())-ffs(r_dcache_be_save.read())+1;
+//          p_vci.plen = fls(r_dcache_be_save.read())-ffs(r_dcache_be_save.read())+1;
+            p_vci.plen = 4;
             break;
         case iss_t::DATA_LL:
             p_vci.wdata = 0;
@@ -971,11 +973,11 @@ tmpl(void)::genMoore()
         p_vci.address = r_wbuf.getAddress(r_vci_cmd_cpt);
         p_vci.wdata   = r_wbuf.getData(r_vci_cmd_cpt);
         p_vci.be      = r_wbuf.getBe(r_vci_cmd_cpt);
-        p_vci.plen    = fls(r_wbuf.getBe(r_vci_cmd_max))
-            - ffs(r_wbuf.getBe(r_vci_cmd_min))
-            + (r_vci_cmd_max - r_vci_cmd_min) * vci_param::B
-            + 1;
-//        p_vci.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
+//      p_vci.plen    = fls(r_wbuf.getBe(r_vci_cmd_max))
+//          - ffs(r_wbuf.getBe(r_vci_cmd_min))
+//          + (r_vci_cmd_max - r_vci_cmd_min) * vci_param::B
+//          + 1;
+        p_vci.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
         p_vci.cmd     = vci_param::CMD_WRITE;
         p_vci.trdid   = 0;
         p_vci.pktid   = 0;
