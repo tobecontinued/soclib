@@ -79,6 +79,7 @@ void Mips32Iss::dump() const
         << std::hex << std::showbase
         << m_name
         << " PC: " << r_pc
+        << " NPC: " << r_npc
         << " Ins: " << m_ins.ins << std::endl
         << std::dec
         << " Cause.xcode: " << r_cause.xcode << std::endl
@@ -225,10 +226,19 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
                 m_sleeping = false;
             } else {
                 r_cause.bd = branch_taken;
-                if ( branch_taken )
-                    r_epc = r_pc;
-                else
-                    r_epc = r_npc;
+                addr_t epc;
+                if ( m_exception == X_DBE ) {
+                    // A synchronous DBE is signalled for the
+                    // instruction following...
+                    // If it is asynchronous, we're lost :'(
+                    epc = r_pc-4;
+                } else {
+                    if ( branch_taken )
+                        epc = r_pc;
+                    else
+                        epc = r_npc;
+                }
+                r_epc = epc;
             }
             except_address += exceptOffsetAddr(m_exception);
         }

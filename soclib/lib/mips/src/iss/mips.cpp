@@ -280,7 +280,13 @@ void MipsIss::step()
         r_status.iep = r_status.iec;
         r_status.kuc = 0;
         r_status.iec = 0;
-        r_epc = branch_taken ? r_pc : r_npc;
+        if ( m_exception == X_DBE )
+            // A synchronous DBE is signalled for the
+            // instruction following...
+            // If it is asynchronous, we're lost :'(
+            r_epc = r_pc-4;
+        else
+            r_epc = branch_taken ? r_pc : r_npc;
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout
             << m_name <<" exception: "<<m_exception<<std::endl
