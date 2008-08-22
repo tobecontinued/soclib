@@ -32,11 +32,24 @@ TESTER=$(TESTER_DIR)/tester.netlist
 TESTS=$(shell echo */test.mk)
 TESTRES=$(TESTS:.mk=.res)
 
+SUBDIRS=$(patsubst %/test.mk,%,$(shell echo */test.mk))
+
 export TESTER_DIR TESTER
 
-all:
+all: test
 
-%:
-	@for d in $(patsubst %/test.mk,%,$(TESTS)) ; do \
-		$(MAKE) -C $$d -f ../common/Makefile $@ || exit 1 ; \
-	done
+define subdir
+
+$(1)/%: $(1)
+	$$(MAKE) -C "$(1)" -f ../common/Makefile $$*
+
+endef
+
+$(eval $(foreach s,$(SUBDIRS),$(call subdir,$(s))))
+
+
+test: $(patsubst %,%/test,$(SUBDIRS))
+
+clean: $(patsubst %,%/clean,$(SUBDIRS))
+
+.NOTPARALLEL :
