@@ -46,7 +46,7 @@ Mips32Iss::func_t const Mips32Iss::opcod_table[]= {
     op4(   addi, addiu, slti, sltiu),
     op4(   andi,   ori, xori,   lui),
 
-    op4(   cop0,   ill,  ill,   ill),
+    op4(   cop0,   ill, cop2,   ill),
     op4(    ill,   ill,  ill,   ill),
 
     op4(    ill,   ill,  ill,   ill),

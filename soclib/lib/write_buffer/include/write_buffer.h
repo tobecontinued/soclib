@@ -85,7 +85,9 @@ public:
     bool wok(addr_t addr)
     ///////////////////////////////////////////////////
     {
-        return ( r_empty || (r_address == (addr & ~m_mask)) ) ;
+        addr_t address = addr & ~m_mask;
+        return ( r_empty || (r_address == address) ) ;
+        //return ( r_empty || (r_address == (addr & ~m_mask)) ) ;
     }
     ///////////////////////////////////////////////////
     void write(addr_t addr, be_t be , data_t  data)
@@ -135,7 +137,10 @@ public:
     addr_t inline getAddress(size_t word)
     //////////////////////////////////////
     {
-        return ( r_address + (addr_t)(word << 2) );
+        addr_t address = r_address;
+        address += (addr_t)(word << 2);
+        return address;
+        //return ( r_address + (addr_t)(word << 2) );
     } 
     ///////////////////////////////////
     data_t inline getData(size_t word)

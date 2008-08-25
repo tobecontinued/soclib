@@ -29,6 +29,7 @@
 #define SOCLIB_ADDRESS_MASKING_TABLE_H
 
 #include <iostream>
+#include <systemc>
 
 namespace soclib { namespace common {
 

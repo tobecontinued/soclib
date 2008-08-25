@@ -97,7 +97,8 @@ void Iss2::DataRequest::print( std::ostream &o ) const
       << (valid ? "   valid" : " invalid")
       << " type " << type_str(type);
     if ( type == XTN_READ || type == XTN_WRITE )
-        o << " (" << xtn_str((enum ExternalAccessType)addr) << ")";
+        //o << " (" << xtn_str((enum ExternalAccessType)addr) << ")";
+        o << " (" << xtn_str((enum ExternalAccessType)(addr/4)) << ")";
     else
         o << " @ " << std::hex << std::showbase << addr;
     o << " wdata " << std::hex << std::showbase << wdata

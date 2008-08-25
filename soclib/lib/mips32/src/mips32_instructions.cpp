@@ -252,7 +252,7 @@ void Mips32Iss::op_cop2()
         MF = 0,
         MT = 4,
     };
-
+    
     if (isInUserMode()) {
         m_exception = X_CPU;
         return;
@@ -260,10 +260,12 @@ void Mips32Iss::op_cop2()
 
     switch (m_ins.coproc.action) {
     case MT:
-        do_mem_access(m_ins.coproc.rd*4, 4, 0, 0, 0, r_gp[m_ins.i.rt], XTN_WRITE);
+        //do_mem_access(m_ins.coproc.rd*4, 4, 0, 0, 0, r_gp[m_ins.i.rt], XTN_WRITE);
+        do_mem_access(r_gp[m_ins.coproc.rd]*4, 4, 0, 0, 0, r_gp[m_ins.i.rt], XTN_WRITE);
         break;
     case MF:
-        do_mem_access(m_ins.coproc.rd*4, 4, 0, m_ins.i.rt, 0, 0, XTN_READ);
+        //do_mem_access(m_ins.coproc.rd*4, 4, 0, m_ins.i.rt, 0, 0, XTN_READ);
+        do_mem_access(r_gp[m_ins.coproc.rd]*4, 4, 0, m_ins.i.rt, 0, 0, XTN_READ);
         break;
     default: // Not handled, so raise an exception
         op_ill();
