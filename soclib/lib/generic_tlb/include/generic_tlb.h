@@ -39,9 +39,6 @@
 namespace soclib { 
 namespace caba {
 
-    //typedef uint32_t addr36_t;
-    //typedef sc_dt::sc_uint<36> addr36_t;
-
     // define ET state of PTE 
     enum {  
         UNMAPPED,
@@ -87,6 +84,11 @@ namespace caba {
         PTE_D_SHIFT  = 24,
     };
 
+    enum {  
+        PAGE_M_NBITS = 22,
+        PAGE_K_NBITS = 12,
+    };
+
 using soclib::common::uint32_log2;
 
 template<typename addr_t>
@@ -100,7 +102,6 @@ class GenericTlb
     size_t    m_sets_shift;
     size_t    m_sets_mask;
 
-//    uint32_t  *m_ppn; 
     addr_t  *m_ppn; 
     uint32_t  *m_vpn;
     size_t    *m_et;
@@ -113,8 +114,6 @@ class GenericTlb
     bool      *m_dirty;
 
     // access methods 
-    //inline uint32_t &ppn(size_t i, size_t j)
-    //    { return m_ppn[(i*m_nsets)+j]; }
     inline addr_t &ppn(size_t i, size_t j)
         { return m_ppn[(i*m_nsets)+j]; }
 
@@ -173,7 +172,6 @@ public:
         m_page_shift    = nbits;    // nomber of page offset bits 
     }
 
-//    m_ppn           = new uint32_t[nways * nsets];
     m_ppn           = new addr_t[nways * nsets];
     m_vpn           = new uint32_t[nways * nsets];
     m_lru           = new bool[nways * nsets];
