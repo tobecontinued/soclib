@@ -142,8 +142,6 @@ tmpl(/**/)::VciVCacheWrapper(
     size_t dtlb_m_sets,
     size_t dtlb_k_ways,
     size_t dtlb_k_sets,
-    size_t page_m_nbits,    
-    size_t page_k_nbits,    
     size_t icache_ways,
     size_t icache_sets,
     size_t icache_words,
@@ -171,9 +169,6 @@ tmpl(/**/)::VciVCacheWrapper(
       m_dtlb_k_ways(dtlb_k_ways),
       m_dtlb_k_sets(dtlb_k_sets),
 
-      m_page_m_nbits(page_m_nbits),
-      m_page_k_nbits(page_k_nbits),
-
       m_icache_ways(icache_ways),
       m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
       m_icache_words(icache_words),
@@ -182,10 +177,10 @@ tmpl(/**/)::VciVCacheWrapper(
       m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
       m_dcache_words(dcache_words),
 
-      ivcache_m_tlb(itlb_m_ways,itlb_m_sets,page_m_nbits),
-      ivcache_k_tlb(itlb_k_ways,itlb_k_sets,page_k_nbits),
-      dvcache_m_tlb(dtlb_m_ways,dtlb_m_sets,page_m_nbits),
-      dvcache_k_tlb(dtlb_k_ways,dtlb_k_sets,page_k_nbits),
+      ivcache_m_tlb(itlb_m_ways,itlb_m_sets,PAGE_M_NBITS),
+      ivcache_k_tlb(itlb_k_ways,itlb_k_sets,PAGE_K_NBITS),
+      dvcache_m_tlb(dtlb_m_ways,dtlb_m_sets,PAGE_M_NBITS),
+      dvcache_k_tlb(dtlb_k_ways,dtlb_k_sets,PAGE_K_NBITS),
 
       r_dvcache_fsm("r_dvcache_fsm"),
       r_dcache_addr_save("r_dcache_addr_save"),
@@ -553,7 +548,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             }
         
             //hix_p if the PTP is not changed
-            if ((r_tlb_ptpr == r_itlb_ptpr_save) && ((ireq.addr>>m_page_m_nbits) == r_itlb_id1_save) && (r_itlb_et_save == PTD)) 
+            if ((r_tlb_ptpr == r_itlb_ptpr_save) && ((ireq.addr>>PAGE_M_NBITS) == r_itlb_id1_save) && (r_itlb_et_save == PTD)) 
             {
                 ivcache_hit_p = true;
             } 
@@ -565,11 +560,11 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             // data physique address
             if (ivcache_hit_t_m)
             {
-                ipaddr = (addr36_t)(((addr36_t)itlb_ppn_save << m_page_m_nbits) | (ireq.addr & OFFSET_M_MASK));
+                ipaddr = (addr36_t)(((addr36_t)itlb_ppn_save << PAGE_M_NBITS) | (ireq.addr & OFFSET_M_MASK));
             }
             else if (ivcache_hit_t_k)
             {
-                ipaddr = (addr36_t)(((addr36_t)itlb_ppn_save << m_page_k_nbits) | (ireq.addr & OFFSET_K_MASK));
+                ipaddr = (addr36_t)(((addr36_t)itlb_ppn_save << PAGE_K_NBITS) | (ireq.addr & OFFSET_K_MASK));
             }
 
         }
@@ -594,7 +589,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 {
                     // walk page table 
                     r_ivcache_fsm = IVCACHE_TLB1_WAIT;
-                    r_ivcache_miss_addr = (addr36_t)(r_tlb_ptpr | ((ireq.addr>>m_page_m_nbits)<<2));
+                    r_ivcache_miss_addr = (addr36_t)(r_tlb_ptpr | ((ireq.addr>>PAGE_M_NBITS)<<2));
                     r_itlb_req = true;
                     break;
                 }
@@ -603,7 +598,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 {
                     // walk page table 
                     addr_t itlb_ptp = r_itlb_ptp;
-                    r_ivcache_miss_addr = (addr36_t)(itlb_ptp | (((ireq.addr&PTD_ID2_MASK)>>m_page_k_nbits) << 2));
+                    r_ivcache_miss_addr = (addr36_t)(itlb_ptp | (((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
                     r_itlb_req = true;
                     r_ivcache_fsm = IVCACHE_TLB2_WAIT;
                     break;
@@ -736,13 +731,13 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             // renew tlb save register
         	r_itlb_et_save = (r_itlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT;	
             r_itlb_ptpr_save = r_tlb_ptpr;
-            r_itlb_id1_save = ireq.addr>>m_page_m_nbits;	
+            r_itlb_id1_save = ireq.addr>>PAGE_M_NBITS;	
             switch((r_itlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT) { 
             case PTD: // 4K page TLB
             {
                 addr_t itlb_ptp = (r_itlb_miss_rsp & PTD_PTP_MASK) << 8; 
                 r_itlb_ptp = itlb_ptp;
-                r_ivcache_miss_addr = (addr36_t)(itlb_ptp | (((ireq.addr&PTD_ID2_MASK)>>m_page_k_nbits) << 2));
+                r_ivcache_miss_addr = (addr36_t)(itlb_ptp | (((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
                 r_itlb_req = true;
                 r_ivcache_fsm = IVCACHE_TLB2_WAIT;
                 break;
@@ -1215,15 +1210,20 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
  
             if (dreq.type == iss_t::XTN_READ) 
             {
-                if ((addr_t)xtn_opcod == iss_t::XTN_BAD_VADDR) 
-                {
-                    //dcache_rdata = (uint32_t)r_bvar;   // for debug     
-                    dcache_rdata = (uint32_t)0x6;     
-                } 
-                else 
-                {
+                switch(xtn_opcod) {
+                case iss_t::XTN_ERR_TYPE:
                     //dcache_rdata = (uint32_t)r_err_type;
                     dcache_rdata = (uint32_t)0x4;
+                    break;
+                case iss_t::XTN_BAD_VADDR:
+                    //dcache_rdata = (uint32_t)r_bvar;   // for debug     
+                    dcache_rdata = (uint32_t)0x6;                
+                    break;
+                case iss_t::XTN_READ_PTPR:
+                    dcache_rdata = (uint32_t)r_tlb_ptpr;
+                    break;
+                default:
+                    break;
                 }
                 drsp.valid = true;
                 drsp.rdata = dcache_rdata;
@@ -1317,7 +1317,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 }
 
                 //hix_p if the PTP is not changed
-                if ((r_tlb_ptpr == r_dtlb_ptpr_save) && ((dreq.addr>>m_page_m_nbits) == r_dtlb_id1_save) && (r_dtlb_et_save == PTD)) 
+                if ((r_tlb_ptpr == r_dtlb_ptpr_save) && ((dreq.addr>>PAGE_M_NBITS) == r_dtlb_id1_save) && (r_dtlb_et_save == PTD)) 
                 {
                     dvcache_hit_p = true;
                 } 
@@ -1328,11 +1328,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 // data physique address
                 if (dvcache_hit_t_m)
                 {
-                    dpaddr = (addr36_t)(((addr36_t)dtlb_ppn_save << m_page_m_nbits) | (dreq.addr & OFFSET_M_MASK));
+                    dpaddr = (addr36_t)(((addr36_t)dtlb_ppn_save << PAGE_M_NBITS) | (dreq.addr & OFFSET_M_MASK));
                 }
                 else if (dvcache_hit_t_k)
                 {
-                    dpaddr = (addr36_t)(((addr36_t)dtlb_ppn_save << m_page_k_nbits) | (dreq.addr & OFFSET_K_MASK));
+                    dpaddr = (addr36_t)(((addr36_t)dtlb_ppn_save << PAGE_K_NBITS) | (dreq.addr & OFFSET_K_MASK));
                 }
             }
 
@@ -1362,7 +1362,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                  || ((dvcache_hit_t_m || dvcache_hit_t_k) && is_write(dreq.type) && !dpte_info.d))
                 {
                     // save_data and save_type need not be set
-                    r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>m_page_m_nbits)<<2));
+                    r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
                     r_dcache_type_save      = iss_t::DATA_READ;
                     r_dcache_wdata_save     = 0xFFFFFFFF;
                     r_dcache_be_save        = 0xF;
@@ -1377,8 +1377,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 {
                     // walk page table 
                     addr_t dtlb_ptp = r_dtlb_ptp; 
-                    r_dtlb_pte_addr = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>m_page_k_nbits) << 2));
-                    r_dcache_addr_save = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>m_page_k_nbits) << 2));
+                    r_dtlb_pte_addr = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
+                    r_dcache_addr_save = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
                     r_dcache_type_save      = iss_t::DATA_READ;
                     r_dcache_wdata_save     = 0xFFFFFFFF;
                     r_dcache_be_save        = 0xF;
@@ -1672,14 +1672,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             // renew tlb save register
             r_dtlb_et_save = (r_dtlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT;
             r_dtlb_ptpr_save = r_tlb_ptpr;
-            r_dtlb_id1_save = dreq.addr>>m_page_m_nbits;
+            r_dtlb_id1_save = dreq.addr>>PAGE_M_NBITS;
             switch((r_dtlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
             case PTD:
             {
                 addr_t dtlb_ptp = (r_dtlb_miss_rsp & PTD_PTP_MASK) << 8;
                 r_dtlb_ptp = (r_dtlb_miss_rsp & PTD_PTP_MASK) << 8; 
-                r_dcache_addr_save = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>m_page_k_nbits) << 2));
-                r_dtlb_pte_addr = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>m_page_k_nbits) << 2));
+                r_dcache_addr_save = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
+                r_dtlb_pte_addr = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
                 r_dcache_type_save      = iss_t::DATA_READ;
                 r_dcache_wdata_save     = 0xFFFFFFFF;
                 r_dcache_be_save        = 0xF;
@@ -1705,7 +1705,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     r_dvcache_fsm = DVCACHE_TLB_ERROR;
                     break;
                 }
-                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>m_page_m_nbits)<<2));
+                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
                 r_dcache_type_save      = iss_t::DATA_LL;
                 r_dcache_wdata_save     = 0xFFFFFFFF;
                 r_dcache_be_save        = 0xF;
@@ -1739,7 +1739,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     } 
                     else 
                     {
-                        r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>m_page_m_nbits)<<2));
+                        r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
                         r_dcache_type_save      = iss_t::DATA_LL;
                         r_dcache_wdata_save     = 0xFFFFFFFF;
                         r_dcache_be_save        = 0xF;
@@ -1781,7 +1781,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else
             {
-                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>m_page_m_nbits)<<2));
+                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
                 r_dcache_type_save = iss_t::DATA_SC;
                 if ( is_write(dreq.type) )
                 {
@@ -1810,7 +1810,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else if ( r_dtlb_ll_req ) 
             {
-                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>m_page_m_nbits)<<2));
+                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
                 r_dcache_type_save      = iss_t::DATA_LL;
                 r_dcache_wdata_save     = 0xFFFFFFFF;
                 r_dcache_be_save        = 0xF;
@@ -2233,21 +2233,11 @@ std::cout << " Data Response: " << drsp << std::endl;
 
     case CMD_ITLB_MISS:     
     case CMD_ITLB_LL: 
-    case CMD_ITLB_SC:     
+    case CMD_ITLB_SC:    
+    case CMD_INS_MISS: 
         if (p_vci.cmdack.read())
         {
             r_vci_cmd_fsm = CMD_IDLE;
-        }
-        break;
-
-    case CMD_INS_MISS:
-        if ( p_vci.cmdack.read() ) 
-        {
-            if ( r_vci_cmd_cpt == (m_icache_words - 1) )
-            {
-                r_vci_cmd_fsm = CMD_IDLE;
-            }
-            r_vci_cmd_cpt = r_vci_cmd_cpt + 1;
         }
         break;
 
@@ -2255,20 +2245,10 @@ std::cout << " Data Response: " << drsp << std::endl;
     case CMD_DTLB_LL: 
     case CMD_DTLB_SC:     
     case CMD_DATA_UNC:
+    case CMD_DATA_MISS:
         if ( p_vci.cmdack.read() )
         {
             r_vci_cmd_fsm = CMD_IDLE;
-        }
-        break;
-
-    case CMD_DATA_MISS:
-        if ( p_vci.cmdack.read() ) 
-        {
-            if ( r_vci_cmd_cpt == (m_dcache_words - 1) ) 
-            {
-                r_vci_cmd_fsm = CMD_IDLE;
-            }
-            r_vci_cmd_cpt = r_vci_cmd_cpt + 1;
         }
         break;
 
@@ -2425,14 +2405,14 @@ std::cout << " Data Response: " << drsp << std::endl;
         if ( ! p_vci.rspval.read() )
             break;
 
-        assert(r_vci_rsp_cpt != m_icache_words && 
-               "illegal VCI response packet for instruction miss");
+        assert( (r_vci_rsp_cpt < m_icache_words) && 
+               "The VCI response packet for instruction miss is too long");
         r_vci_rsp_cpt = r_vci_rsp_cpt + 1;
         r_icache_miss_buf[r_vci_rsp_cpt] = (data_t)p_vci.rdata.read();
         if ( p_vci.reop.read() ) 
         {
-            assert(r_vci_rsp_cpt == m_icache_words - 1 &&
-                       "illegal VCI response packet for instruction miss");
+            assert( (r_vci_rsp_cpt == m_icache_words - 1) &&
+                       "The VCI response packet for instruction miss is too short");
             r_icache_miss_req = false;
             r_vci_rsp_fsm = RSP_IDLE;
                 
@@ -2577,7 +2557,7 @@ tmpl(void)::genMoore()
     addr36_t ivcache_req_addr = r_ivcache_miss_addr.read(); 
     addr36_t dvcache_req_addr = r_dcache_addr_save.read();
 
-    switch (r_vci_cmd_fsm.read()) {
+    switch (r_vci_cmd_fsm) {
 
     case CMD_IDLE:
         p_vci.cmdval  = false;
@@ -2654,7 +2634,7 @@ tmpl(void)::genMoore()
     case CMD_INS_MISS:
     {
         p_vci.cmdval = true;
-        p_vci.address = (addr36_t)((ivcache_req_addr & m_icache_yzmask) + (r_vci_cmd_cpt<<2)) ;
+        p_vci.address = (addr36_t)(ivcache_req_addr & m_icache_yzmask);
         p_vci.wdata   = 0;
         p_vci.be     = 0xF;
         p_vci.plen   = m_icache_words << 2;
@@ -2667,7 +2647,7 @@ tmpl(void)::genMoore()
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = ( r_vci_cmd_cpt == (m_icache_words - 1) );
+        p_vci.eop = true;
         break;
     }
     case CMD_DTLB_MISS:     
@@ -2709,9 +2689,9 @@ tmpl(void)::genMoore()
     case CMD_DTLB_SC:     
         p_vci.cmdval = true;
         p_vci.address = (addr36_t)dvcache_req_addr & ~0x3;     // address of PTE
-        p_vci.wdata   = r_dcache_wdata_save.read();    // already modify the access bit and dirty bit, and send store to memory 
+        p_vci.wdata   = r_dcache_wdata_save.read();     
         p_vci.be = 0xF;
-        p_vci.plen = 0;
+        p_vci.plen = 4;
         p_vci.cmd = vci_param::CMD_STORE_COND;
         p_vci.trdid  = 0;
         p_vci.pktid  = WRITE_PKTID;
@@ -2746,7 +2726,7 @@ tmpl(void)::genMoore()
         default:
             assert("this should not happen");
         }
-        p_vci.plen = 1;
+        p_vci.plen = 4;
         p_vci.trdid  = 0;
         p_vci.pktid  = 0;
         p_vci.srcid  = m_srcid;
@@ -2778,7 +2758,7 @@ tmpl(void)::genMoore()
 
     case CMD_DATA_MISS:
         p_vci.cmdval = true;
-        p_vci.address = (addr36_t)(dvcache_req_addr & m_dcache_yzmask) + (r_vci_cmd_cpt<<2) ;
+        p_vci.address = (addr36_t)(dvcache_req_addr & m_dcache_yzmask);
         p_vci.wdata   = 0;
         p_vci.be     = 0xF;
         p_vci.plen   = m_dcache_words << 2;
@@ -2791,7 +2771,7 @@ tmpl(void)::genMoore()
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = ( r_vci_cmd_cpt == (m_dcache_words - 1) );
+        p_vci.eop = true;
         break;
 
     } // end switch r_vci_cmd_fsm

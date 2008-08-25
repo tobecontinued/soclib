@@ -152,6 +152,7 @@ class VciVCacheWrapper
         XTN_ERR_INTERNAL,   // Internal error
     };
 
+
 public:
     sc_in<bool>                             p_clk;
     sc_in<bool>                             p_resetn;
@@ -173,9 +174,6 @@ private:
     const size_t  m_dtlb_m_sets;
     const size_t  m_dtlb_k_ways;
     const size_t  m_dtlb_k_sets;
-
-    const size_t  m_page_m_nbits;
-    const size_t  m_page_k_nbits;
 
     const size_t  m_icache_ways;
     const size_t  m_icache_yzmask;
@@ -323,8 +321,6 @@ public:
         size_t dtlb_m_sets,
         size_t dtlb_k_ways,
         size_t dtlb_k_sets,
-        size_t page_m_nbits,
-        size_t page_k_nbits,
         size_t icache_ways,
         size_t icache_sets,
         size_t icache_words,
