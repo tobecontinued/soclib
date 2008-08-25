@@ -53,7 +53,6 @@ class VciCcXcacheWrapper
     typedef uint32_t    data_t;
     typedef uint32_t    tag_t;
     typedef uint32_t    be_t;
-    typedef uint32_t    type_t;
 
     enum dcache_fsm_state_e {
         DCACHE_IDLE,
@@ -72,8 +71,9 @@ class VciCcXcacheWrapper
 
     enum icache_fsm_state_e {
         ICACHE_IDLE,
-        ICACHE_WAIT,
-        ICACHE_UPDT,
+        ICACHE_MISS_WAIT,
+        ICACHE_MISS_UPDT,
+        ICACHE_UNC_WAIT,
         ICACHE_ERROR,
         ICACHE_CC_INVAL,
     };
@@ -81,6 +81,7 @@ class VciCcXcacheWrapper
     enum cmd_fsm_state_e {
         CMD_IDLE,
         CMD_INS_MISS,
+        CMD_INS_UNC,
         CMD_DATA_MISS,
         CMD_DATA_UNC,
         CMD_DATA_WRITE,
@@ -91,6 +92,7 @@ class VciCcXcacheWrapper
     enum rsp_fsm_state_e {
         RSP_IDLE,
         RSP_INS_MISS,
+        RSP_INS_UNC,
         RSP_DATA_MISS,
         RSP_DATA_UNC,
         RSP_DATA_WRITE,
@@ -136,7 +138,7 @@ private:
     sc_signal<addr_t>       r_dcache_addr_save;
     sc_signal<data_t>       r_dcache_wdata_save;
     sc_signal<data_t>       r_dcache_rdata_save;
-    sc_signal<type_t>       r_dcache_type_save;
+    sc_signal<int>          r_dcache_type_save;
     sc_signal<be_t>         r_dcache_be_save;
     sc_signal<bool>         r_dcache_cached_save;
     sc_signal<bool>         r_dcache_cleanup_req;
@@ -149,6 +151,7 @@ private:
     sc_signal<int>          r_icache_fsm_save;
     sc_signal<addr_t>       r_icache_addr_save;
     sc_signal<bool>         r_icache_miss_req;
+    sc_signal<bool>         r_icache_unc_req;
     sc_signal<bool>         r_icache_cleanup_req;
     sc_signal<data_t>       r_icache_cleanup_line;
 
@@ -164,6 +167,8 @@ private:
 
     data_t                  *r_icache_miss_buf;    
     data_t                  *r_dcache_miss_buf;    
+    sc_signal<bool>         r_icache_buf_unc_valid;
+    sc_signal<bool>         r_dcache_buf_unc_valid;
 
     data_t                  *r_tgt_buf;
     bool                    *r_tgt_val;
@@ -184,38 +189,38 @@ private:
     GenericCache<addr_t>    r_dcache;
 
     // Activity counters
-    uint32_t m_cpt_dcache_data_read;  // DCACHE DATA READ
-    uint32_t m_cpt_dcache_data_write; // DCACHE DATA WRITE
-    uint32_t m_cpt_dcache_dir_read;   // DCACHE DIR READ
-    uint32_t m_cpt_dcache_dir_write;  // DCACHE DIR WRITE
+    uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
+    uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
+    uint32_t m_cpt_dcache_dir_read;         // DCACHE DIR READ
+    uint32_t m_cpt_dcache_dir_write;        // DCACHE DIR WRITE
 
-    uint32_t m_cpt_icache_data_read;  // ICACHE DATA READ
-    uint32_t m_cpt_icache_data_write; // ICACHE DATA WRITE
-    uint32_t m_cpt_icache_dir_read;   // ICACHE DIR READ
-    uint32_t m_cpt_icache_dir_write;  // ICACHE DIR WRITE
+    uint32_t m_cpt_icache_data_read;        // ICACHE DATA READ
+    uint32_t m_cpt_icache_data_write;       // ICACHE DATA WRITE
+    uint32_t m_cpt_icache_dir_read;         // ICACHE DIR READ
+    uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
 
-    uint32_t m_cpt_cc_update;         // number of coherence update packets 
-    uint32_t m_cpt_cc_inval;          // number of coherence inval packets
+    uint32_t m_cpt_cc_update;               // number of coherence update packets 
+    uint32_t m_cpt_cc_inval;                // number of coherence inval packets
 
-    uint32_t m_cpt_frz_cycles;	      // number of cycles where the cpu is frozen
-    uint32_t m_cpt_total_cycles;	  // total number of cycles 
+    uint32_t m_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
+    uint32_t m_cpt_total_cycles;	        // total number of cycles 
 
-    uint32_t m_cpt_read;              // total number of read instructions
-    uint32_t m_cpt_write;             // total number of write instructions
-    uint32_t m_cpt_data_miss;         // number of read miss
-    uint32_t m_cpt_ins_miss;          // number of instruction miss
-    uint32_t m_cpt_unc_read;          // number of read uncached
-    uint32_t m_cpt_write_cached;      // number of cached write
+    uint32_t m_cpt_read;                    // total number of read instructions
+    uint32_t m_cpt_write;                   // total number of write instructions
+    uint32_t m_cpt_data_miss;               // number of read miss
+    uint32_t m_cpt_ins_miss;                // number of instruction miss
+    uint32_t m_cpt_unc_read;                // number of read uncached
+    uint32_t m_cpt_write_cached;            // number of cached write
 
-    uint32_t m_cost_write_frz;        // number of frozen cycles related to write buffer         
-    uint32_t m_cost_data_miss_frz;    // number of frozen cycles related to data miss
-    uint32_t m_cost_unc_read_frz;     // number of frozen cycles related to uncached read
-    uint32_t m_cost_ins_miss_frz;     // number of frozen cycles related to ins miss
+    uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer         
+    uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss
+    uint32_t m_cost_unc_read_frz;           // number of frozen cycles related to uncached read
+    uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss
 
-    uint32_t m_cpt_imiss_transaction; // number of VCI instruction miss transactions
-    uint32_t m_cpt_dmiss_transaction; // number of VCI data miss transactions
-    uint32_t m_cpt_unc_transaction;   // number of VCI uncached read transactions
-    uint32_t m_cpt_write_transaction; // number of VCI write transactions
+    uint32_t m_cpt_imiss_transaction;       // number of VCI instruction miss transactions
+    uint32_t m_cpt_dmiss_transaction;       // number of VCI data miss transactions
+    uint32_t m_cpt_unc_transaction;         // number of VCI uncached read transactions
+    uint32_t m_cpt_write_transaction;       // number of VCI write transactions
 
     uint32_t m_cost_imiss_transaction;      // cumulated duration for VCI IMISS transactions
     uint32_t m_cost_dmiss_transaction;      // cumulated duration for VCI DMISS transactions
@@ -251,6 +256,8 @@ private:
     void transition();
 
     void genMoore();
+
+    static inline data_t be_to_mask( typename iss_t::be_t );
 
 };
 
