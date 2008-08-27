@@ -99,6 +99,7 @@ private:
 
 	uint32_t 	r_pc;			// Program Counter
 	uint32_t 	r_npc;			// Next Program Counter
+	uint32_t 	r_ppc;			// Previous Program Counter
     uint32_t    r_gp[32];       // General Registers
     uint32_t    r_hi;           // Multiply result (MSB bits)
     uint32_t    r_lo;           // Multiply result (LSB bits)
@@ -111,6 +112,9 @@ private:
 	uint32_t	r_mem_dest;  		// Data Cache destination register (read)
     int         r_mem_shift;
 
+    bool        r_branch;        // Identify a branch inst
+    bool        r_branch_delay;  // Identify a branch delayed slot
+    
 	uint32_t	m_rdata;
 	uint32_t 	m_irq;
 	bool		m_ibe;
@@ -416,10 +420,14 @@ private:
     } use_t;
 
     use_t curInstructionUsesRegs();
+    bool  curInstructionIsBranch();
 
     static const char* name_table[64];
     static use_t const use_table[64];
     static use_t const use_special_table[64];
+
+    static bool  const bd_table[64];
+    static bool  const bd_special_table[64];
 
     uint32_t cp0Get( uint32_t reg ) const;
     void cp0Set( uint32_t reg, uint32_t value );

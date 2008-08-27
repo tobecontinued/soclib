@@ -65,6 +65,9 @@ void MipsIss::reset()
 {
     r_pc = RESET_ADDRESS;
     r_npc = RESET_ADDRESS + 4;
+    r_ppc = RESET_ADDRESS - 4; // just for init
+    r_branch = false;
+    r_branch_delay = false;
     m_ibe = false;
     m_dbe = false;
     r_mem_req = false;
@@ -114,6 +117,7 @@ void MipsIss::dump() const
         << std::endl
         << " V rs: " << m_rs
         << " rt: "<<m_rt
+        << " delayed slot: " << std::boolalpha << r_branch_delay
         << std::endl;
     for ( size_t i=0; i<32; ++i ) {
         std::cout << " " << std::dec << i << ": " << std::hex << std::showbase << r_gp[i];
@@ -226,6 +230,7 @@ void MipsIss::step()
     m_exception = NO_EXCEPTION;
 
     if (m_ibe) {
+        r_branch_delay = r_branch;
         m_exception = X_IBE;
         m_ibe = false;
         goto handle_except;
@@ -238,6 +243,8 @@ void MipsIss::step()
         goto handle_except;
     }
 
+    r_branch_delay = r_branch;
+
 #ifdef SOCLIB_MODULE_DEBUG
     dump();
 #endif
@@ -249,6 +256,7 @@ void MipsIss::step()
         goto house_keeping;
     } else {
         run();
+        r_branch = curInstructionIsBranch();
     }
 
     if ( m_exception != NO_EXCEPTION )
@@ -269,24 +277,20 @@ void MipsIss::step()
         goto stick;
 
     {
-        bool branch_taken = m_next_pc != r_npc+4;
-
         r_cause.xcode = m_exception;
         r_cause.irq  = m_irq;
-        r_cause.bd = branch_taken;
+        r_cause.bd = r_branch_delay;
         r_status.kuo = r_status.kup;
         r_status.ieo = r_status.iep;
         r_status.kup = r_status.kuc;
         r_status.iep = r_status.iec;
         r_status.kuc = 0;
         r_status.iec = 0;
-        if ( m_exception == X_DBE )
-            // A synchronous DBE is signalled for the
-            // instruction following...
-            // If it is asynchronous, we're lost :'(
-            r_epc = r_pc-4;
-        else
-            r_epc = branch_taken ? r_pc : r_npc;
+        // 4 distinct cases according to exception type and delayed slot
+        if ( m_exception == X_DBE)
+            r_epc = (r_branch_delay) ? r_ppc - 4 : r_ppc;
+        else 
+            r_epc = (r_branch_delay) ? r_pc - 4 : r_pc; 
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout
             << m_name <<" exception: "<<m_exception<<std::endl
@@ -302,6 +306,7 @@ void MipsIss::step()
     r_npc = EXCEPT_ADDRESS + 4;
     goto house_keeping;
  no_except:
+    r_ppc = r_pc;
     r_pc = r_npc;
     r_npc = m_next_pc;
  house_keeping:

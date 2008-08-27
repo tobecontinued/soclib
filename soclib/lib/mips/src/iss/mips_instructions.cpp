@@ -861,6 +861,84 @@ MipsIss::use_t MipsIss::curInstructionUsesRegs()
     return use;
 }
 
+bool const MipsIss::bd_special_table[] = {
+    /*sll,  ill,  srl,  sra,*/
+    false, false, false, false,
+    /*sllv,  ill, srlv, srav,*/
+    false, false, false, false,
+    /*jr, jalr, movz, movn,*/
+    true, true, false, false,
+    /*sysc, brek,  ill,  ill,*/
+    false, false, false, false,
+    /*mfhi, mthi, mflo, mtlo,*/
+    false, false, false, false,
+    /*ill,  ill,  ill,  ill,*/
+    false, false, false, false,
+    /*mult,multu,  div, divu,*/
+    false, false, false, false,
+    /*ill,  ill,  ill,  ill,*/
+    false, false, false, false,
+    /*add, addu,  sub, subu,*/
+    false, false, false, false,
+    /*and,   or,  xor,  nor,*/
+    false, false, false, false,
+    /*ill,  ill,  slt, sltu,*/
+    false, false, false, false,
+    /*ill,  ill,  ill,  ill,*/
+    false, false, false, false,
+    /*tge, tgeu,  tlt, tltu,*/
+    false, false, false, false,
+    /*teq,  ill,  tne,  ill,*/
+    false, false, false, false,
+    /*ill,  ill,  ill,  ill,*/
+    false, false, false, false,
+    /*ill,  ill,  ill,  ill,*/
+    false, false, false, false,
+};
+bool const MipsIss::bd_table[]= {
+    /*special, bcond,    j,   jal,*/
+    false, true, true, true,
+    /*beq,   bne, blez,  bgtz,*/
+    true, true, true, true,
+    /*addi, addiu, slti, sltiu,*/
+    false, false, false, false,
+    /*andi,   ori, xori,   lui,*/
+    false, false, false, false,
+    /*copro,   ill,  ill,   ill,*/
+    false, false, false, false,
+    /*ill,   ill,  ill,   ill,*/
+    false, false, false, false,
+    /*ill,   ill,  ill,   ill,*/
+    false, false, false, false,
+    /*ill,  ill,  ill,   ill*/
+    false, false, false, false,
+    /*lb,    lh,  lwl,    lw,*/
+    false, false, false, false,
+    /*lbu,   lhu,  lwr,   ill,*/
+    false, false, false, false,
+    /*sb,    sh,  swl,    sw,*/
+    false, false, false, false,
+    /*ill,   ill,  swr,   ill,*/
+    false, false, false, false,
+    /*ll,   ill,  ill,   ill,*/
+    false, false, false, false,
+    /*ill,   ill,  ill,   ill,*/
+    false, false, false, false,
+    /*sc,   ill,  ill,   ill,*/
+    false, false, false, false,
+    /*ill,   ill,  ill,   ill,*/
+    false, false, false, false,
+};
+bool MipsIss::curInstructionIsBranch()
+{
+    bool branch;
+    if (m_ins.i.op != 0)
+        branch = bd_table[m_ins.i.op];
+    else /* special */
+        branch = bd_special_table[m_ins.r.func];
+    return branch;
+}
+
 }}
 
 // Local Variables:
