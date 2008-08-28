@@ -36,19 +36,19 @@
  
 /* TODO : check addresses to work accordingly to the ARM966 processor */
 // #define RESET_BASE  0xffff0000
-#define RESET_BASE	0xffff0000
-#define RESET_SIZE  0x00001000
+#define RESET_BASE	0x00000000
+#define RESET_SIZE  0x00002000
 // #define	RESET_BASE	0xBFC00000
 // #define	RESET_SIZE	0x00000200
 
 // #define	EXCEP_BASE	0x80000080
 // #define	EXCEP_SIZE	0x00010000
 
-#define	TEXT_BASE	0x00000000
-#define	TEXT_SIZE	0x00000100
+#define	TEXT_BASE	0x00002000
+#define	TEXT_SIZE	0x03ffe000
 
 #define	DATA_BASE	0x04000000
-#define	DATA_SIZE	0x00001000
+#define	DATA_SIZE	0x04000000
 
 #define	LOC0_BASE	0x20000000
 #define	LOC0_SIZE	0x00001000

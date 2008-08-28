@@ -88,13 +88,13 @@ int _main(int argc, char *argv[])
 
 	// Mapping table
 
-	soclib::common::MappingTable maptab(32, IntTab(4), IntTab(4), 0x00200000);
+	soclib::common::MappingTable maptab(32, IntTab(4), IntTab(4), 0x10000000);
 
 	maptab.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), false));
 //	maptab.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(5), false));
-	maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(1), false));
+	maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), false));
   
-	maptab.add(Segment("data" , DATA_BASE , DATA_SIZE , IntTab(1), false));
+	maptab.add(Segment("data" , DATA_BASE , DATA_SIZE , IntTab(0), false));
   
 //	maptab.add(Segment("loc0" , LOC0_BASE , LOC0_SIZE , IntTab(1), false));
   
