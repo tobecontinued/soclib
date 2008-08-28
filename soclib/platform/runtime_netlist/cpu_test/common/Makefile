@@ -54,23 +54,21 @@ all: test
 
 test: $(RESULT)
 
-$(RESULT): $(patsubst %,%/$(RESULT),$(ARCH))
-	cat $^ > $@
-
-.PHONY: $(RESULT)
+$(RESULT): $(patsubst %,%/$(RESULT),$(ARCH)) FORCE
+	cat $(filter %/$(RESULT),$^) > $@
 
 clean:
 	rm -rf $(ARCH) $(RESULT)
 
 define onetest
 
-$(1)/%: $(1)
+$(1)/%: $(1) FORCE
 	$(MAKE) -C $(1) -f $(COMMON)/run_test.mk "$$*" ARCH=$(1)
 
 $(1):
 	mkdir -p $(1)
 
-.PHONY: $(1)/$(RESULT)
+FORCE:
 
 endef
 
