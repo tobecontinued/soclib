@@ -1,7 +1,7 @@
 /* -*- c++ -*-
  * File : vci_vcache_wrapper.h
  * Copyright (c) UPMC, Lip6, SoC
- * Authors : Alain Greiner, Yang GAO
+ * Authors : Alain GREINER, Yang GAO
  *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
@@ -56,48 +56,49 @@ class VciVCacheWrapper
     typedef sc_dt::sc_uint<36> addr36_t;
 
     enum ivcache_fsm_state_e {  
-        IVCACHE_CACHE_INIT, // 00.instruction vcache cache init
-        IVCACHE_TLB_INIT,   // 01.instruction vcache tlb init
-        IVCACHE_IDLE,       // 02.instruction vcache idle
-        IVCACHE_BIS,        // 03.instruction vcache redo in cache
-        IVCACHE_TLB1_WAIT,  // 04.instruction vcache tlb miss ptd or pte read wait
-        IVCACHE_T1_LL_WAIT, // 05.instruction vcache tlb miss ll response wait 
-        IVCACHE_T1_SC_WAIT, // 06.instruction vcache tlb miss sc response wait 
-        IVCACHE_TLB1_UPDT,  // 07.instruction vcache tlb update if it has one level page table
-        IVCACHE_TLB2_WAIT,  // 08.instruction vcache tlb miss pte read wait
-        IVCACHE_T2_LL_WAIT, // 09.instruction vcache tlb miss ll response wait 
-        IVCACHE_T2_SC_WAIT, // 0a.instruction vcache tlb miss sc response wait 
-        IVCACHE_TLB2_UPDT,  // 0b.instruction vcache tlb update if it has two levels page table
-        IVCACHE_TLB_ERROR,  // 0c.instruction vcache tlb error
-        IVCACHE_TLB_INVAL,  // 0d.instruction vcache tlb invalid from processor
-        IVCACHE_CACHE_INVAL,// 0e.instruction vcache cache invalid from processor
-        IVCACHE_MISS_WAIT,  // 0f.instruction vcache cache cached read miss wait
-        IVCACHE_MISS_UPDT,  // 10.instruction vcache cache cached read miss update
-        IVCACHE_CACHE_ERR,  // 11.instruction vcache cache error
+        IVCACHE_IDLE,           // 00.instruction vcache idle
+        IVCACHE_BIS,            // 01.instruction vcache redo in cache
+        IVCACHE_TLB1_WAIT,      // 02.instruction vcache tlb miss ptd or pte read wait
+        IVCACHE_T1_LL_WAIT,     // 03.instruction vcache tlb miss ll response wait 
+        IVCACHE_T1_SC_WAIT,     // 04.instruction vcache tlb miss sc response wait 
+        IVCACHE_TLB1_UPDT,      // 05.instruction vcache tlb update if it has one level page table
+        IVCACHE_TLB2_WAIT,      // 06.instruction vcache tlb miss pte read wait
+        IVCACHE_T2_LL_WAIT,     // 07.instruction vcache tlb miss ll response wait 
+        IVCACHE_T2_SC_WAIT,     // 08.instruction vcache tlb miss sc response wait 
+        IVCACHE_TLB2_UPDT,      // 09.instruction vcache tlb update if it has two levels page table
+        IVCACHE_TLB_FLUSH,      // 0a.instruction vcache tlb flush
+        IVCACHE_CACHE_FLUSH,    // 0b.instruction vcache cache flush
+        IVCACHE_TLB_INVAL,      // 0c.instruction vcache tlb invalid from processor
+        IVCACHE_CACHE_INVAL1,   // 0d.instruction vcache cache invalid from processor, consult TLB
+        IVCACHE_CACHE_INVAL2,   // 0e.instruction vcache cache invalid from processor, cache invalidate
+        IVCACHE_MISS_WAIT,      // 0f.instruction vcache cache cached read miss wait
+        IVCACHE_UNC_WAIT,       // 10.instruction vcache cache uncached read miss wait
+        IVCACHE_MISS_UPDT,      // 11.instruction vcache cache cached read miss update
+        IVCACHE_ERROR,          // 12.instruction vcache error
     };
 
     enum dvcache_fsm_state_e {  
-        DVCACHE_CACHE_INIT, // 00.data vcache cache init
-        DVCACHE_TLB_INIT,   // 01.data vcache tlb init
-        DVCACHE_IDLE,       // 02.data vcache idle
-        DVCACHE_BIS,        // 03.data vcache redo in cache
-        DVCACHE_TLB1_WAIT,  // 04.data vcache tlb miss ptd or pte read wait
-        DVCACHE_T1_LL_WAIT, // 05.data vcache tlb miss ll response wait
-        DVCACHE_T1_SC_WAIT, // 06.data vcache tlb miss sc response wait 
-        DVCACHE_TLB1_UPDT,  // 07.data vcache tlb update if it has one level page table
-        DVCACHE_TLB2_WAIT,  // 08.data vcache tlb miss pte read wait
-        DVCACHE_T2_LL_WAIT, // 09.data vcache tlb miss ll response wait
-        DVCACHE_T2_SC_WAIT, // 0a.data vcache tlb miss sc response wait 
-        DVCACHE_TLB2_UPDT,  // 0b.data vcache tlb update if it has two levels page table 
-        DVCACHE_TLB_ERROR,  // 0c.data vcache tlb error
-        DVCACHE_TLB_INVAL,  // 0d.data vcache tlb invalid from processor
-        DVCACHE_WRITE_UPDT, // 0e.data vcache cache write update
-        DVCACHE_WRITE_REQ,  // 0f.data vcache cache write request
-        DVCACHE_MISS_WAIT,  // 10.data vcache cache cached read miss wait
-        DVCACHE_MISS_UPDT,  // 11.data vcache cache read miss update
-        DVCACHE_UNC_WAIT,   // 12.data vcache cache uncached read miss wait
-        DVCACHE_CACHE_ERR,  // 13.data vcache cache error
-        DVCACHE_CACHE_INVAL,// 14.data vcache cache invalid from processor
+        DVCACHE_IDLE,           // 00.data vcache idle
+        DVCACHE_BIS,            // 01.data vcache redo in cache
+        DVCACHE_TLB1_WAIT,      // 02.data vcache tlb miss ptd or pte read wait
+        DVCACHE_T1_LL_WAIT,     // 03.data vcache tlb miss ll response wait
+        DVCACHE_T1_SC_WAIT,     // 04.data vcache tlb miss sc response wait 
+        DVCACHE_TLB1_UPDT,      // 05.data vcache tlb update if it has one level page table
+        DVCACHE_TLB2_WAIT,      // 06.data vcache tlb miss pte read wait
+        DVCACHE_T2_LL_WAIT,     // 07.data vcache tlb miss ll response wait
+        DVCACHE_T2_SC_WAIT,     // 08.data vcache tlb miss sc response wait 
+        DVCACHE_TLB2_UPDT,      // 09.data vcache tlb update if it has two levels page table 
+        DVCACHE_TLB_FLUSH,      // 0a.data vcache tlb flush
+        DVCACHE_CACHE_FLUSH,    // 0b.data vcache cache flush
+        DVCACHE_TLB_INVAL,      // 0c.data vcache tlb invalid from processor
+        DVCACHE_CACHE_INVAL1,   // 0d.data vcache cache invalid from processor, consult TLB
+        DVCACHE_CACHE_INVAL2,   // 0e.data vcache cache invalid from processor, cache invalidate
+        DVCACHE_WRITE_UPDT,     // 0f.data vcache cache write update
+        DVCACHE_WRITE_REQ,      // 10.data vcache cache write request
+        DVCACHE_MISS_WAIT,      // 1a.data vcache cache cached read miss wait
+        DVCACHE_MISS_UPDT,      // 12.data vcache cache read miss update
+        DVCACHE_UNC_WAIT,       // 13.data vcache cache uncached read miss wait
+        DVCACHE_ERROR,          // 14.data vcache error
     };
 
     enum cmd_fsm_state_e {      
@@ -106,12 +107,13 @@ class VciVCacheWrapper
         CMD_ITLB_LL,        // 02.vci instruction vcache tlb miss linked load request
         CMD_ITLB_SC,        // 03.vci instruction vcache tlb miss store conditional request
         CMD_INS_MISS,       // 04.vci instruction vcache cache miss request
-        CMD_DTLB_MISS,      // 05.vci data vcache tlb miss ptd or pte request
-        CMD_DTLB_LL,        // 06.vci data vcache tlb miss linked load request
-        CMD_DTLB_SC,        // 07.vci data vcache tlb miss store conditional request
-        CMD_DATA_UNC,       // 08.vci data vcache cache uncached read miss request
-        CMD_DATA_MISS,      // 09.vci data vcache cache read miss request
-        CMD_DATA_WRITE,     // 0a.vci data vcache cache write request
+        CMD_INS_UNC,        // 05.vci instruction vcache cache uncached miss request
+        CMD_DTLB_MISS,      // 06.vci data vcache tlb miss ptd or pte request
+        CMD_DTLB_LL,        // 07.vci data vcache tlb miss linked load request
+        CMD_DTLB_SC,        // 08.vci data vcache tlb miss store conditional request
+        CMD_DATA_UNC,       // 09.vci data vcache cache uncached read miss request
+        CMD_DATA_MISS,      // 0a.vci data vcache cache read miss request
+        CMD_DATA_WRITE,     // 0b.vci data vcache cache write request
     };
 
     enum rsp_fsm_state_e {       
@@ -120,17 +122,13 @@ class VciVCacheWrapper
         RSP_ITLB_LL,        // 02.vci instruction vcache tlb miss linked load response
         RSP_ITLB_SC,        // 03.vci instruction vcache tlb miss store conditional response
         RSP_INS_MISS,       // 04.vci instruction vcache cache miss
-        RSP_DTLB_MISS,      // 05.vci data vcache tlb miss read ptd or pte response
-        RSP_DTLB_LL,        // 06.vci data vcache tlb miss linked load response
-        RSP_DTLB_SC,        // 07.vci data vcache tlb miss store conditional response
-        RSP_DATA_MISS,      // 08.vci data vcache cache read miss response 
-        RSP_DATA_UNC,       // 09.vci data vcache cache uncached read miss response
-        RSP_DATA_WRITE,     // 0a.vci data vcache cache write response
-    };
-
-    enum {
-        READ_PKTID,
-        WRITE_PKTID,
+        RSP_INS_UNC,        // 05.vci instruction vcache cache uncached miss
+        RSP_DTLB_MISS,      // 06.vci data vcache tlb miss read ptd or pte response
+        RSP_DTLB_LL,        // 07.vci data vcache tlb miss linked load response
+        RSP_DTLB_SC,        // 08.vci data vcache tlb miss store conditional response
+        RSP_DATA_MISS,      // 09.vci data vcache cache read miss response 
+        RSP_DATA_UNC,       // 0a.vci data vcache cache uncached read miss response
+        RSP_DATA_WRITE,     // 0b.vci data vcache cache write response
     };
 
     // TLB Mode
@@ -142,16 +140,17 @@ class VciVCacheWrapper
     };
 
     // Error Type
-    enum xtn_err_type_e {
-        XTN_ERR_NONE,       // None
-        XTN_ERR_ACC_BUS,    // Access bus error
-        XTN_ERR_PROTECTION, // Protection error
-        XTN_ERR_PRIVI_VIOLA,// Privilege violation error
-        XTN_ERR_INVAL_ADR,  // Invalid address error
-        XTN_ERR_TRANS,      // Translation error
-        XTN_ERR_INTERNAL,   // Internal error
+    enum mmu_error_type_e {
+        MMU_NONE                 = 0x0,  // None
+        MMU_PT1_UNMAPPED         = 0x1,  // Page fault on Page Table 1           (non fatal)
+        MMU_PT2_UNMAPPED         = 0x2,  // Page fault on Page Table 2           (non fatal)
+        MMU_PRIVILEGE_VIOLATION  = 0x4,  // Protected access in user mode        (user error)
+        MMU_WRITE_VIOLATION      = 0x8,  // write access to a non writable page  (user error)
+        MMU_EXEC_VIOLATION       = 0x10, // exec access to a non exec page       (user error)
+        MMU_PT1_ILLEGAL_ACCESS   = 0x20, // Bus Error accessing Table 1          (kernel error)
+        MMU_PT2_ILLEGAL_ACCESS   = 0x40, // Bus Error accessing Table 2          (kernel error)
+        MMU_CACHE_ILLEGAL_ACCESS = 0x80, // Bus Error in cache access            (kernel error)
     };
-
 
 public:
     sc_in<bool>                             p_clk;
@@ -192,7 +191,7 @@ private:
     sc_signal<addr_t>   r_tlb_ptpr; // page table pointer register
     sc_signal<int>      r_tlb_mode; // tlb mode register
 
-    // REGISTERS
+    // Data cache REGISTERS
     sc_signal<int>          r_dvcache_fsm;
     sc_signal<addr36_t>     r_dcache_addr_save;
     sc_signal<data_t>       r_dcache_wdata_save;
@@ -202,10 +201,11 @@ private:
     sc_signal<bool>         r_dcache_cached_save; 
     sc_signal<addr36_t>     r_dtlb_pte_addr;
     sc_signal<addr_t>       r_dtlb_ptpr_save;
-    sc_signal<addr_t>       r_dtlb_ptp;
+    sc_signal<addr36_t>     r_dtlb_ptp;
     sc_signal<addr_t>       r_dtlb_id1_save;
     sc_signal<size_t>       r_dtlb_et_save;
     sc_signal<addr_t>       r_dtlb_ppn_save;
+    sc_signal<bool>         r_dtlb_page_k_save;
     sc_signal<bool>         r_dcache_buf_unc_valid; 
 
     // request registers
@@ -216,18 +216,25 @@ private:
     sc_signal<bool>         r_dtlb_ll_req;
     sc_signal<bool>         r_dtlb_sc_req;
 
+    // Instruction cache REGISTERS
     sc_signal<int>          r_ivcache_fsm;
     sc_signal<addr36_t>     r_ivcache_miss_addr;
     sc_signal<data_t>       r_ivcache_miss_data;
-    sc_signal<bool>         r_icache_miss_req;
-    sc_signal<bool>         r_itlb_req;
-    sc_signal<bool>         r_itlb_ll_req;
-    sc_signal<bool>         r_itlb_sc_req;
     sc_signal<addr_t>       r_itlb_ptpr_save;
-    sc_signal<addr_t>       r_itlb_ptp;
+    sc_signal<addr36_t>     r_itlb_ptp;
     sc_signal<addr_t>       r_itlb_id1_save;
     sc_signal<size_t>       r_itlb_et_save;
     sc_signal<addr_t>       r_itlb_ppn_save;
+    sc_signal<bool>         r_icache_xtn_end;
+    sc_signal<bool>         r_itlb_page_k_save;
+    sc_signal<bool>         r_icache_buf_unc_valid;
+
+    // request registers
+    sc_signal<bool>         r_icache_miss_req;
+    sc_signal<bool>         r_icache_unc_req;
+    sc_signal<bool>         r_itlb_req;
+    sc_signal<bool>         r_itlb_ll_req;
+    sc_signal<bool>         r_itlb_sc_req;
 
     sc_signal<int>          r_vci_cmd_fsm;
     sc_signal<size_t>       r_vci_cmd_min;       
@@ -236,7 +243,6 @@ private:
 
     sc_signal<int>          r_vci_rsp_fsm;
     sc_signal<size_t>       r_vci_rsp_cpt;
-  
     sc_signal<data_t>       r_itlb_miss_rsp;
     sc_signal<data_t>       r_dtlb_miss_rsp;
     sc_signal<bool>         r_ivcache_rsp_error;
@@ -245,19 +251,15 @@ private:
     data_t                  *r_icache_miss_buf;    
     data_t                  *r_dcache_miss_buf;  
 
-    sc_signal<data_t>       r_err_type; // error type register
-    sc_signal<data_t>       r_ivcache_err;
-    sc_signal<data_t>       r_dvcache_err;
+    sc_signal<data_t>       r_ivcache_error_type;
+    sc_signal<data_t>       r_dvcache_error_type;
 
-    sc_signal<addr_t>       r_bvar;     // bad virtual address register
-    sc_signal<addr_t>       r_i_bvar;     
-    sc_signal<addr_t>       r_d_bvar;     
+    sc_signal<addr_t>       r_ivcache_bad_vaddr;     
+    sc_signal<addr_t>       r_dvcache_bad_vaddr;     
 
     // special command registers
     sc_signal<bool>         r_context_sw_itlb;
     sc_signal<bool>         r_context_sw_dtlb;
-    sc_signal<bool>         r_icache_flush;
-    sc_signal<bool>         r_dcache_flush;
 
     WriteBuffer<addr36_t>     r_wbuf;
     GenericCache<addr36_t>    r_icache;
