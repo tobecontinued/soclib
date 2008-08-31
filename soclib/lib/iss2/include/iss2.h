@@ -133,8 +133,10 @@ public:
         XTN_ICACHE_PREFETCH,
         XTN_DCACHE_PREFETCH,
         XTN_SYNC,
-        XTN_ERR_TYPE,
-        XTN_BAD_VADDR,
+        XTN_INS_ERROR_TYPE,
+        XTN_DATA_ERROR_TYPE,
+        XTN_INS_BAD_VADDR,
+        XTN_DATA_BAD_VADDR,
     };
 
     /**

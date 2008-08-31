@@ -67,8 +67,10 @@ static const char *xtn_str(Iss2::ExternalAccessType type)
         rstr(XTN_ICACHE_PREFETCH);
         rstr(XTN_DCACHE_PREFETCH);
         rstr(XTN_SYNC);
-        rstr(XTN_ERR_TYPE);
-        rstr(XTN_BAD_VADDR);
+        rstr(XTN_INS_ERROR_TYPE);
+        rstr(XTN_DATA_ERROR_TYPE);
+        rstr(XTN_INS_BAD_VADDR);
+        rstr(XTN_DATA_BAD_VADDR);
     default: return "invalid";
     }
 }
