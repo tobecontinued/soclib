@@ -219,17 +219,17 @@ setDebugPC(uint32_t pc) {
 	SetDebugPC(pc);
 }
 
-void
-ARM7TDMIIss::
-setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
-	SetICacheInfo(line_size, assoc, n_lines);
-}
-
-void 
-ARM7TDMIIss::
-setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
-	SetDCacheInfo(line_size, assoc, n_lines);
-}
+//void
+//ARM7TDMIIss::
+//setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
+//	SetICacheInfo(line_size, assoc, n_lines);
+//}
+//
+//void 
+//ARM7TDMIIss::
+//setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
+//	SetDCacheInfo(line_size, assoc, n_lines);
+//}
 
 /************************************************************************/
 /* Methods required by the ISS Wrapper                              END */

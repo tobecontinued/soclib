@@ -95,8 +95,8 @@ public:
     uint32_t getDebugPC() const;
     void setDebugPC(uint32_t);
 
-	void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
-    void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
+	// void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
+    // void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
 
 	/************************************************************************/
 	/* Methods required by the ISS Wrapper                              END */

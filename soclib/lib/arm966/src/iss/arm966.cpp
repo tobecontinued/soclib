@@ -221,17 +221,17 @@ setDebugPC(uint32_t pc) {
 	SetDebugPC(pc);
 }
 
-void
-ARM966Iss::
-setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
-	SetICacheInfo(line_size, assoc, n_lines);
-}
-
-void 
-ARM966Iss::
-setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
-	SetDCacheInfo(line_size, assoc, n_lines);
-}
+//void
+//ARM966Iss::
+//setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
+//	SetICacheInfo(line_size, assoc, n_lines);
+//}
+//
+//void 
+//ARM966Iss::
+//setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {
+//	SetDCacheInfo(line_size, assoc, n_lines);
+//}
 
 /************************************************************************/
 /* Methods required by the ISS Wrapper                              END */
