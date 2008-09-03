@@ -1,0 +1,53 @@
+{
+typedef uint32_t function_t;
+
+#define FnInvalid              0x00000000
+#define FnNop                  0x00000001
+#define FnIntBasic             0x00000002
+#define FnIntExtended          0x00000004
+
+#define FnBranch               0x10000000
+#define FnConditionalBranch    0x10000001
+#define FnBranchLinkReg        0x10000002
+#define FnCondRegister         0x10000004
+#define FnBranchLink           0x10000008
+
+#define FnSysCall              0x20000000
+#define FnSysRegister          0x20000001
+#define FnMac                  0x20000002
+
+#define FnLoad                 0x40000000
+#define FnLoadByte             0x40000001
+#define FnStore                0x40000002
+#define FnStoreByte            0x40000004
+
+}
+
+/** Functions **/
+var function : {function_t}
+constructor action initialize_function() {
+  function = FnInvalid;
+}
+
+group_reg_simple_compute.initialize_function =	{ function = FnIntBasic; }
+group_imm_simple_compute.initialize_function =  { function = FnIntBasic; }
+group_reg_cond_compute.initialize_function   =  { function = FnIntBasic; }
+group_imm_cond_compute.initialize_function   =  { function = FnIntBasic; }
+group_monadic_compute.initialize_function    =  { function = FnIntBasic; }
+group_reg_select_compute.initialize_function =  { function = FnIntBasic; }
+group_imm_select_compute.initialize_function =  { function = FnIntBasic; }
+group_5oprands_compute.initialize_function   =  { function = FnIntBasic; }
+group_mono_reg_compute.initialize_function   =  { function = FnIntBasic; }
+group_psw_compute.initialize_function        =  { function = FnIntBasic; }
+group_no_dependencies_compute.initialize_function   =  { function = FnIntBasic; }
+
+group_reg_mul_compute.initialize_function =   { function = FnIntExtended; }
+group_imm_mul_compute.initialize_function =   { function = FnIntExtended; }
+
+group_load_word.initialize_function  =  { function = FnLoad; }
+group_load_bytes.initialize_function =  { function = FnLoad; }
+group_store.initialize_function      =  { function = FnStore; }
+
+group_branch.initialize_function          = { function = FnBranch; }
+group_pc_imm_jump.initialize_function     = { function = FnBranch; }
+group_pc_link_jump.initialize_function    = { function = FnBranchLink; }

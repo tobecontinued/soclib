@@ -37,7 +37,7 @@ all: cpu/st231_isa.cpp cpu/st231_isa.hh
 # --- ISA related --------------------------------------------------------------
 
 isa:
-	svn co https://unisim.org/svn/projects/st231/trunk/src/isa
+	svn export https://unisim.org/svn/projects/st231/trunk/src/isa
 
 #genisslib:
 #	svn co https://unisim.org/svn//public/tools/GenISSLib/trunk genisslib
@@ -54,7 +54,7 @@ cpu/st231_isa.cpp cpu/st231_isa.hh: isa cpu isa/st231.isa $(wildcard isa/*.isa)
 # --- CPU related --------------------------------------------------------------
 
 cpu:
-	svn co https://unisim.org/svn/projects/st231/trunk/src/functional_simulator cpu
+	svn export https://unisim.org/svn/projects/st231/trunk/src/functional_simulator cpu
 
 # --- cleans -------------------------------------------------------------------
 
