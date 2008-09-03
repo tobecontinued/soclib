@@ -3,6 +3,7 @@
 ################################################################################
 #  Copyright (c) 2008, INRIA
 #  All rights reserved.
+#  Authors: Sylvain Girbal
 #
 #  Redistribution and use in source and binary forms, with or without modification,
 #  are permitted provided that the following conditions are met:
@@ -57,9 +58,6 @@ cpu:
 	svn export https://unisim.org/svn/projects/st231/trunk/src/functional_simulator cpu
 
 # --- cleans -------------------------------------------------------------------
-
-distclean: clean
-	rm -rf isa genisslib cpu
 
 clean:
 	rm -rf st231_isa.cpp st231_isa.hh

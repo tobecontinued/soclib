@@ -1,36 +1,35 @@
-/*
- *  Copyright (c) 2008,
- *  Commissariat a l'Energie Atomique (CEA)
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without 
- *  modification, are permitted provided that the following conditions are met:
- *
- *   - Redistributions of source code must retain the above copyright notice, 
- *     this list of conditions and the following disclaimer.
- *
- *   - Redistributions in binary form must reproduce the above copyright notice,
- *     this list of conditions and the following disclaimer in the documentation
- *     and/or other materials provided with the distribution.
- *
- *   - Neither the name of CEA nor the names of its contributors may be used to
- *     endorse or promote products derived from this software without specific 
- *     prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- *  ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY 
- *  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; 
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND 
- *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
- *  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Authors: Daniel Gracia Perez (daniel.gracia-perez@cea.fr)
- */
+/////////////////////////////////////////////////////////////////////////////////
+//                                   BSD LICENSE
+/////////////////////////////////////////////////////////////////////////////////
+//  Copyright (c) 2008, INRIA
+//  All rights reserved.
+//  Authors: Sylvain Girbal
+//
+//  Redistribution and use in source and binary forms, with or without modification,
+//  are permitted provided that the following conditions are met:
+//
+//   - Redistributions of source code must retain the above copyright notice, this
+//     list of conditions and the following disclaimer.
+//   - Redistributions in binary form must reproduce the above copyright notice,
+//     this list of conditions and the following disclaimer in the documentation
+//     and/or other materials provided with the distribution.
+//   - Neither the name of the INRIA nor the names of its contributors may be used
+//     to endorse or promote products derived from this software without specific
+//     prior written permission.
+//
+//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+//  DISCLAIMED.
+//  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+//  OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+//  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+//  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+////////////////////////////////////////////////////////////////////////////////
 
 #include "st231.hh"
 
@@ -58,7 +57,7 @@ ST231iss::ST231iss(uint32_t ident)
 ST231iss::~ST231iss() {}
 
 /************************************************************************/
-/* Methods required by the ISS Wrapper                            START */
+/* Methods required by the ISS Wrapper                                  */
 /************************************************************************/
 
 // ISS <-> Wrapper API
@@ -171,106 +170,6 @@ void ST231iss::setICacheInfo( size_t line_size, size_t assoc, size_t n_lines )
 void ST231iss::setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) 
 { inherited_CPU::SetDCacheInfo(line_size, assoc, n_lines);
 }
-
-/************************************************************************/
-/* Methods required by the ISS Wrapper                              END */
-/************************************************************************/
-
-/************************************************************************/
-/* Methods required by the cache interface                        START */
-/************************************************************************/
-
-/*
-
-void 
-ST231iss::
-PrInvalidateBlock(uint32_t set, uint32_t way) {
-	inherited_CPU::external_memory_request = true;
-	// TODO
-}
-
-void
-ST231iss::
-PrFlushBlock(uint32_t set, uint32_t way) {
-	inherited_CPU::external_memory_request = true;
-	// TODO
-}
-
-void 
-ST231iss::
-PrCleanBlock(uint32_t set, uint32_t way) {
-	inherited_CPU::external_memory_request = true;
-	// TODO
-}
-
-void 
-ST231iss::
-PrReset() {
-	inherited_CPU::external_memory_request = true;
-	// TODO
-}
-
-void 
-ST231iss::
-PrInvalidate() {
-	inherited_CPU::external_memory_request = true;
-	// TODO
-}
-
-void 
-ST231iss::
-PrInvalidateSet(uint32_t set) {
-	// TODO
-	inherited_CPU::external_memory_request = true;
-}
-
-void 
-ST231iss::
-PrInvalidateBlock(address_t addr) {
-	// TODO
-	inherited_CPU::external_memory_request = true;
-}
-
-void 
-ST231iss::
-PrFlushBlock(address_t addr) {
-	// TODO
-	inherited_CPU::external_memory_request = true;
-}
-
-void 
-ST231iss::
-PrCleanBlock(address_t addr) {
-	// TODO
-	inherited_CPU::external_memory_request = true;
-}
-
-void 
-ST231iss::
-PrZeroBlock(address_t addr) {
-	// TODO
-	inherited_CPU::external_memory_request = true;
-}
-
-void 
-ST231iss::
-PrWrite(address_t addr, const uint8_t *buffer, uint32_t size) {
-	// TODO
-	inherited_CPU::external_memory_request = true;
-}
-
-void 
-ST231iss::
-PrRead(address_t addr, uint8_t *buffer, uint32_t size) {
-	// TODO
-	inherited_CPU::external_memory_request = true;
-}
-
-*/
-
-/************************************************************************/
-/* Methods required by the cache interface                          END */
-/************************************************************************/
 
 }
 }
