@@ -6,7 +6,7 @@
                                     BSD LICENSE
 ********************************************************************************
 Copyright (c) 2006, INRIA
-Authors: Zheng LI (zheng.x.li@inria.fr)
+Authors: Sylvain Girbal
 
 All rights reserved.
 
