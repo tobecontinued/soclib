@@ -37,74 +37,74 @@ namespace caba {
 
 #ifdef VCACHE_WRAPPER_DEBUG
 namespace {
-const char *ivcache_fsm_state_str[] = {
-        "IVCACHE_IDLE",
-        "IVCACHE_BIS",       
-        "IVCACHE_TLB1_WAIT",  
-        "IVCACHE_T1_LL_WAIT",  
-        "IVCACHE_T1_SC_WAIT",  
-        "IVCACHE_TLB1_UPDT",  
-        "IVCACHE_TLB2_WAIT",  
-        "IVCACHE_T2_LL_WAIT",  
-        "IVCACHE_T2_SC_WAIT",  
-        "IVCACHE_TLB2_UPDT",  
-        "IVCACHE_TLB_FLUSH", 
-        "IVCACHE_CACHE_FLUSH", 
-        "IVCACHE_TLB_INVAL",  
-        "IVCACHE_CACHE_INVAL1",
-        "IVCACHE_CACHE_INVAL2",
-        "IVCACHE_MISS_WAIT",
-        "IVCACHE_UNC_WAIT",  
-        "IVCACHE_MISS_UPDT",  
-        "IVCACHE_ERROR", 	
+const char *icache_fsm_state_str[] = {
+        "ICACHE_IDLE",
+        "ICACHE_BIS",       
+        "ICACHE_TLB1_READ",  
+        "ICACHE_TLB1_WRITE",  
+        "ICACHE_TLB1_UPDT",  
+        "ICACHE_TLB2_READ",  
+        "ICACHE_TLB2_WRITE",  
+        "ICACHE_TLB2_UPDT",  
+        "ICACHE_TLB_FLUSH", 
+        "ICACHE_CACHE_FLUSH", 
+        "ICACHE_TLB_INVAL",  
+        "ICACHE_TLB_INVAL_DONE",  
+        "ICACHE_CACHE_INVAL",
+        "ICACHE_CACHE_INVAL_DONE",
+        "ICACHE_MISS_WAIT",
+        "ICACHE_UNC_WAIT",  
+        "ICACHE_MISS_UPDT",  
+        "ICACHE_ERROR", 	
     };
-const char *dvcache_fsm_state_str[] = {
-        "DVCACHE_IDLE",       
-        "DVCACHE_BIS",       
-        "DVCACHE_TLB1_WAIT",  
-        "DVCACHE_T1_LL_WAIT", 
-        "DVCACHE_T1_SC_WAIT",  
-        "DVCACHE_TLB1_UPDT",  
-        "DVCACHE_TLB2_WAIT",  
-        "DVCACHE_T2_LL_WAIT", 
-        "DVCACHE_T2_SC_WAIT",  
-        "DVCACHE_TLB2_UPDT",   
-        "DVCACHE_TLB_FLUSH",   
-        "DVCACHE_CACHE_FLUSH", 
-        "DVCACHE_TLB_INVAL",
-        "DVCACHE_CACHE_INVAL1",
-        "DVCACHE_CACHE_INVAL2",
-        "DVCACHE_WRITE_UPDT", 
-        "DVCACHE_WRITE_REQ",  
-        "DVCACHE_MISS_WAIT",  
-        "DVCACHE_MISS_UPDT",  
-        "DVCACHE_UNC_WAIT",   
-        "DVCACHE_ERROR",  
+const char *dcache_fsm_state_str[] = {
+        "DCACHE_IDLE",       
+        "DCACHE_BIS",       
+        "DCACHE_TLB1_READ",  
+        "DCACHE_TLB1_WRITE", 
+        "DCACHE_TLB1_UPDT",  
+        "DCACHE_TLB2_READ",  
+        "DCACHE_TLB2_WRITE", 
+        "DCACHE_TLB2_UPDT",   
+        "DCACHE_CTXT_SWITCH",   
+        "DCACHE_ICACHE_FLUSH", 
+        "DCACHE_DCACHE_FLUSH", 
+        "DCACHE_ITLB_INVAL",
+        "DCACHE_DTLB_INVAL",
+        "DCACHE_DTLB_INVAL_DONE",
+        "DCACHE_ICACHE_INVAL",
+        "DCACHE_DCACHE_INVAL",
+        "DCACHE_DCACHE_INVAL_DONE",
+        "DCACHE_WRITE_UPDT", 
+        "DCACHE_WRITE_DIRTY",
+        "DCACHE_WRITE_REQ",  
+        "DCACHE_MISS_WAIT",  
+        "DCACHE_MISS_UPDT",  
+        "DCACHE_UNC_WAIT",   
+        "DCACHE_ERROR",  
     };
 const char *cmd_fsm_state_str[] = {
         "CMD_IDLE",           
-        "CMD_ITLB_MISS",      
-        "CMD_ITLB_LL",       
-        "CMD_ITLB_SC",       
+        "CMD_ITLB_READ",      
+        "CMD_ITLB_WRITE",       
         "CMD_INS_MISS",     
         "CMD_INS_UNC",     
-        "CMD_DTLB_MISS",    
-        "CMD_DTLB_LL",       
-        "CMD_DTLB_SC",        
+        "CMD_DTLB_READ",    
+        "CMD_DTLB_WRITE",       
+        "CMD_DTLB_DIRTY",       
         "CMD_DATA_UNC",     
         "CMD_DATA_MISS",    
         "CMD_DATA_WRITE",    
     };
 const char *rsp_fsm_state_str[] = {
         "RSP_IDLE",                  
-        "RSP_ITLB_MISS",             
-        "RSP_ITLB_LL",               
-        "RSP_ITLB_SC",               
+        "RSP_ITLB_READ",             
+        "RSP_ITLB_WRITE",               
         "RSP_INS_MISS",   
         "RSP_INS_UNC",           
-        "RSP_DTLB_MISS",            
-        "RSP_DTLB_LL",             
-        "RSP_DTLB_SC",              
+        "RSP_DTLB_READ",            
+        "RSP_DTLB_WRITE",             
+        "RSP_DTLB_DIRTY",             
         "RSP_DATA_MISS",             
         "RSP_DATA_UNC",              
         "RSP_DATA_WRITE",            
@@ -180,21 +180,22 @@ tmpl(/**/)::VciVCacheWrapper(
       m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
       m_dcache_words(dcache_words),
 
-      ivcache_m_tlb(itlb_m_ways,itlb_m_sets,PAGE_M_NBITS),
-      ivcache_k_tlb(itlb_k_ways,itlb_k_sets,PAGE_K_NBITS),
-      dvcache_m_tlb(dtlb_m_ways,dtlb_m_sets,PAGE_M_NBITS),
-      dvcache_k_tlb(dtlb_k_ways,dtlb_k_sets,PAGE_K_NBITS),
+      icache_m_tlb(itlb_m_ways,itlb_m_sets,PAGE_M_NBITS),
+      icache_k_tlb(itlb_k_ways,itlb_k_sets,PAGE_K_NBITS),
+      dcache_m_tlb(dtlb_m_ways,dtlb_m_sets,PAGE_M_NBITS),
+      dcache_k_tlb(dtlb_k_ways,dtlb_k_sets,PAGE_K_NBITS),
 
-      r_dvcache_fsm("r_dvcache_fsm"),
-      r_dcache_addr_save("r_dcache_addr_save"),
+      r_dcache_fsm("r_dcache_fsm"),
+      r_dcache_paddr_save("r_dcache_paddr_save"),
       r_dcache_wdata_save("r_dcache_wdata_save"),
       r_dcache_rdata_save("r_dcache_rdata_save"),
       r_dcache_type_save("r_dcache_type_save"),
       r_dcache_be_save("r_dcache_be_save"),
       r_dcache_cached_save("r_dcache_cached_save"),
+      r_dcache_tlb_paddr("r_dcache_tlb_paddr"),
 
-      r_ivcache_fsm("r_ivcache_fsm"),
-      r_ivcache_miss_addr("r_ivcache_miss_addr"),
+      r_icache_fsm("r_icache_fsm"),
+      r_icache_paddr_save("r_icache_paddr_save"),
 
       r_vci_cmd_fsm("r_vci_cmd_fsm"),
       r_vci_cmd_min("r_vci_cmd_min"),
@@ -203,8 +204,8 @@ tmpl(/**/)::VciVCacheWrapper(
 
       r_vci_rsp_fsm("r_vci_rsp_fsm"),
       r_vci_rsp_cpt("r_vci_rsp_cpt"),
-      r_ivcache_rsp_error("r_ivcache_rsp_error"),
-      r_dvcache_rsp_error("r_dvcache_rsp_error"),
+      r_vci_rsp_ins_error("r_vci_rsp_ins_error"),
+      r_vci_rsp_data_error("r_vci_rsp_data_error"),
 
       r_wbuf("wbuf", dcache_words ),
       r_icache("icache", icache_ways, icache_sets, icache_words),
@@ -225,19 +226,12 @@ tmpl(/**/)::VciVCacheWrapper(
     m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
 }
 
-/*************************************************/
+/////////////////////////////////////
 tmpl(/**/)::~VciVCacheWrapper()
-/*************************************************/
+/////////////////////////////////////
 {
     delete [] r_icache_miss_buf;
     delete [] r_dcache_miss_buf;
-}
-
-/************************************************/
-tmpl(inline bool)::is_write(data_op_t cmd)
-/************************************************/
-{
-    return cmd == iss_t::DATA_WRITE;
 }
 
 ////////////////////////
@@ -279,8 +273,8 @@ tmpl(void)::transition()
     {
         m_iss.reset();
 
-        r_dvcache_fsm = DVCACHE_IDLE;
-        r_ivcache_fsm = IVCACHE_IDLE;
+        r_dcache_fsm = DCACHE_IDLE;
+        r_icache_fsm = ICACHE_IDLE;
         r_vci_cmd_fsm = CMD_IDLE;
         r_vci_rsp_fsm = RSP_IDLE;
 
@@ -289,39 +283,40 @@ tmpl(void)::transition()
         r_icache.reset();
         r_dcache.reset();
 
-        r_tlb_mode = TLBS_DEACTIVE;
+        icache_m_tlb.reset();    
+        icache_k_tlb.reset();    
+        dcache_m_tlb.reset();    
+        dcache_k_tlb.reset();   
 
-        r_icache_miss_req = false;
-        r_icache_unc_req = false;
-        r_itlb_req    = false;
-        r_itlb_ll_req = false;
-        r_itlb_sc_req = false;
+        r_mmu_mode = TLBS_DEACTIVE;
 
-        r_dcache_miss_req  = false;
-        r_dcache_unc_req   = false;
-        r_dcache_write_req = false;
-        r_dtlb_req         = false;
-        r_dtlb_ll_req      = false;
-        r_dtlb_sc_req      = false;
+        r_icache_miss_req      = false;
+        r_icache_unc_req       = false;
+        r_icache_tlb_read_req  = false;
+        r_icache_tlb_write_req = false;
+
+        r_dcache_miss_req      = false;
+        r_dcache_unc_req       = false;
+        r_dcache_write_req     = false;
+        r_dcache_tlb_read_req  = false;
+        r_dcache_tlb_write_req = false;
+        r_dcache_tlb_dirty_req = false;
+        r_dcache_xtn_req       = false;
 
         r_dcache_buf_unc_valid = false;
         r_icache_buf_unc_valid = false;
 
-        r_ivcache_rsp_error = false;
-        r_dvcache_rsp_error = false;
+        r_vci_rsp_ins_error = false;
+        r_vci_rsp_data_error = false;
 
-        r_itlb_ptpr_save = 0;
-        r_itlb_id1_save = 0;
-        r_itlb_et_save = 0;
+        r_icache_id1_save = 0;
+        r_icache_ppn_save = 0;
 
-        r_dtlb_ptpr_save = 0;
-        r_dtlb_id1_save = 0;
-        r_dtlb_et_save = 0;
+        r_dcache_id1_save = 0;
+        r_dcache_ppn_save = 0;
 
-        r_icache_xtn_end = false;
-
-        r_ivcache_error_type = MMU_NONE;
-        r_dvcache_error_type = MMU_NONE;
+        r_icache_error_type = MMU_NONE;
+        r_dcache_error_type = MMU_NONE;
 
         // activity counters
         m_cpt_dcache_data_read  = 0;
@@ -364,8 +359,8 @@ tmpl(void)::transition()
 
 #ifdef VCACHE_WRAPPER_DEBUG
 std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name() 
-        << " dvcache fsm: " << dvcache_fsm_state_str[r_dvcache_fsm]
-        << " ivcache fsm: " << ivcache_fsm_state_str[r_ivcache_fsm]
+        << " dcache fsm: " << dcache_fsm_state_str[r_dcache_fsm]
+        << " icache fsm: " << icache_fsm_state_str[r_icache_fsm]
         << " cmd fsm: " << cmd_fsm_state_str[r_vci_cmd_fsm]
         << " rsp fsm: " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
 #endif
@@ -385,58 +380,46 @@ std::cout << name() << " Instruction Request: " << ireq << std::endl;
     typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
 
     m_iss.getDataRequest( dreq );
-    typename iss_t::ExternalAccessType xtn_opcod = (typename iss_t::ExternalAccessType)(dreq.addr/4);
 
 #ifdef VCACHE_WRAPPER_DEBUG
 std::cout << name() << " Data Request: " << dreq << std::endl;
 #endif
 
     ////////////////////////////////////////////////////////////////////////////////////////
-    // The IVCACHE FSM controls the following ressources:
-    // - r_ivcache_fsm
-    // - r_ivcache_miss_addr 
-    // - r_ivcache_miss_data
-    // - r_itlb_ppn_save
-    // - r_itlb_et_save 	
-    // - r_itlb_ptpr_save 
-    // - r_itlb_id1_save 
-    // - r_itlb_ptp
-    // - r_itlb_req
-    // - r_icache_miss_req
-    // - r_icache_unc_req
-    // - r_itlb_ll_req
-    // - r_itlb_sc_req
-    // - r_icache_buf_unc_valid
+    //      ICACHE_FSM
     //
-    // - r_ivcache_rsp_error
-    // - r_ivcache_error_type
-    // - r_ivcache_bad_vaddr
-    //
-    // In case of MISS, the controller writes a request in the r_ivcache_miss_addr register and
-    // sets the request flip-flop(r_itlb_req, r_icache_miss_req or r_icache_unc_req) and these 
-    // request flip-flops are reset by the VCI_RSP controller, when the reponse instruction is 
-    // ready in the IVCACHE buffer.
-    //
-    // There is 9 mutually exclusive conditions to exit the IDLE state:
-    // - Context switch => TLB_FLUSH state (flush TLB)
-    // - Flush cache => CACHE_FLUSH state (flush cache)
-    // - Invalidate a TLB entry => TLB_INVAL
-    // - Invalidate a cache line => CACHE_INVAL1
-    // - TLB miss(in case hit_p miss) => TLB1_WAIT
-    // - TLB miss(in case hit_p hit) => TLB2_WAIT
-    // - Hit in TLB but PPN changed => BIS
-    // - Cached read miss => MISS_REQ
-    // - Uncache read miss => UNC_REQ
+    // There is 9 mutually exclusive conditions to exit the IDLE state.
+    // Four configurations corresponding to an XTN request from processor,
+    // - Flush TLB (in case of Context switch) => TLB_FLUSH state 
+    // - Flush cache => CACHE_FLUSH state 
+    // - Invalidate a TLB entry => TLB_INVAL state
+    // - Invalidate a cache line => CACHE_INVAL state
+    // Five configurations corresponding to various TLB or cache MISS :
+    // - TLB miss(in case hit_p miss) => TLB1_READ state
+    // - TLB miss(in case hit_p hit) => TLB2_READ state
+    // - Hit in TLB but PPN changed => BIS state
+    // - Cached read miss => MISS_REQ state
+    // - Uncache read miss => UNC_REQ state
     // 
-    // The r_ivcache_rsp_error flip-flop is set by the VCI_RSP controller and reset by IVCACHE-FSM 
-    // when its state is in IVCACHE_ERROR. 
+    // In case of MISS, the controller writes a request in the r_icache_paddr_save register 
+    // and sets the corresponding request flip-flop : r_icache_tlb_read_req, r_icache_miss_req 
+    // or r_icache_unc_req. These request flip-flops are reset by the VCI_RSP controller 
+    // when the response is ready in the ICACHE buffer.
     //
-    //--------------------------------------------------------------------- 
+    // The DCACHE FSM signals XTN processor requests using the r_dcache_xtn_req flip-flop. 
+    // The request opcod and the address to be invalidated are transmitted
+    // in the r_dcache_paddr_save & r_dcache_wdata_save registers respectively.
+    // The request flip-flop is reset by the ICACHE_FSM when the operation is completed.
+    //
+    // The r_vci_rsp_ins_error flip-flop is set by the VCI_RSP FSM and reset
+    // by the ICACHE-FSM in the ICACHE_ERROR state.
+    //
+    //----------------------------------------------------------------------------------- 
     // Instruction TLB: 
     //  
     // - int        ET          (00: unmapped; 01: unused or PTD)
     //                          (10: PTE new;  11: PTE old      )
-    // - bool       uncachable  (uncached bit)
+    // - bool       cachable    (cached bit)
     // - bool       writable    (** not used alwayse false) 
     // - bool       executable  (executable bit)
     // - bool       user        (access in user mode allowed)
@@ -446,125 +429,133 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     // - uint32_t   ppn         (physical page number)
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    switch(r_ivcache_fsm) {
+    switch(r_icache_fsm) {
 
-    case IVCACHE_IDLE:
+    ////////////////
+    case ICACHE_IDLE:
     {
-        addr36_t ipaddr;                                // instruction physique address
-        data_t  icache_ins = 0;
-        bool ivcache_hit_c = false;
-        bool icache_cached;
+        pte_info_t  icache_pte_info;
+        addr36_t    ipaddr          = 0;                                
+        data_t      icache_ins      = 0;
+        bool        icache_hit_c    = false;
+        bool        icache_cached   = false;
+        bool        icache_hit_t_m  = false;
+        bool        icache_hit_t_k  = false;
+        bool        icache_hit_x    = false;
+        bool        icache_hit_p    = false;
+        size_t      icache_tlb_way  = 0;
+        size_t      icache_tlb_set  = 0;
 
-        pte_info_t ipte_info;
-        bool ivcache_hit_t_m,ivcache_hit_t_k,ivcache_hit_x,ivcache_hit_p;
-        size_t i_way = 0;
-        size_t i_set = 0;
-        addr_t itlb_ppn_save = r_itlb_ppn_save; 
+        // icache_hit_t_m, icache_hit_t_k, icache_hit_x, icache_hit_p 
+        // icache_pte_info, icache_tlb_way, icache_tlb_set & ipaddr computation
+        // cacheability evaluation
 
-        // icache_hit_t_m, icache_hit_t_k, icache_hit_x, icache_hit_p & ipaddr computation
-        if ( r_tlb_mode == TLBS_DEACTIVE || r_tlb_mode == ITLB_D_DTLB_A ) 
+        if ( r_mmu_mode == TLBS_DEACTIVE || r_mmu_mode == ITLB_D_DTLB_A ) 
         {
-            ipaddr = ireq.addr;         // instruction physique address
-            ivcache_hit_t_m = true;     // 4M page tlb hit
-            ivcache_hit_t_k = true;     // 4K page tlb hit
-            ivcache_hit_x = true;       // physique page is not changed
-            ivcache_hit_p = true;       // PTP is not changed
+            icache_hit_t_m  = true;         // 4M page tlb hit
+            icache_hit_t_k  = true;         // 4K page tlb hit
+            icache_cached = m_cacheability_table[ireq.addr];
         } 
         else 
         { 
-            // hit tlb
-            ivcache_hit_t_m = ivcache_m_tlb.translate(ireq.addr, &ipaddr, &ipte_info, &i_way, &i_set); // 4M page tlb hit
-            ivcache_hit_t_k = ivcache_k_tlb.translate(ireq.addr, &ipaddr, &ipte_info, &i_way, &i_set); // 4K page tlb hit
-            
-            // hit_x if the page is not changed
-            if (ivcache_hit_t_m) 
+            icache_hit_t_m = icache_m_tlb.translate(ireq.addr, &ipaddr, &icache_pte_info, 
+                                                    &icache_tlb_way, &icache_tlb_set); 
+            icache_hit_t_k = icache_k_tlb.translate(ireq.addr, &ipaddr, &icache_pte_info, 
+                                                    &icache_tlb_way, &icache_tlb_set); 
+
+            icache_cached = m_cacheability_table[ipaddr] || icache_pte_info.c; 
+        }
+
+        if ( r_mmu_mode == TLBS_DEACTIVE || r_mmu_mode == ITLB_D_DTLB_A ) 
+        {
+            ipaddr = ireq.addr;
+            icache_hit_x    = true;         // physical page is not changed
+            icache_hit_p    = true;         // PTP is not changed
+        } 
+        else 
+        { 
+            if (icache_hit_t_m) 
             {
-                ivcache_hit_x = (r_itlb_ppn_save == ivcache_m_tlb.getppn(ireq.addr));
-                ipaddr = (addr36_t)(((addr36_t)itlb_ppn_save << PAGE_M_NBITS) | (ireq.addr & OFFSET_M_MASK));
+                ipaddr = (addr36_t)(((addr36_t)r_icache_ppn_save << PAGE_M_NBITS) | 
+                                    (ireq.addr & OFFSET_M_MASK));
+                icache_hit_x = (r_icache_ppn_save == icache_m_tlb.getppn(ireq.addr));
             } 
-            else if (ivcache_hit_t_k) 
+            else if (icache_hit_t_k) 
             {
-                ivcache_hit_x = (r_itlb_ppn_save == ivcache_k_tlb.getppn(ireq.addr));
-                ipaddr = (addr36_t)(((addr36_t)itlb_ppn_save << PAGE_K_NBITS) | (ireq.addr & OFFSET_K_MASK));
+                ipaddr = (addr36_t)(((addr36_t)r_icache_ppn_save << PAGE_K_NBITS) | 
+                                    (ireq.addr & OFFSET_K_MASK));
+                icache_hit_x = (r_icache_ppn_save == icache_k_tlb.getppn(ireq.addr));
             } 
             else 
             {
-                ivcache_hit_x = false;
                 ipaddr = 0;
+                icache_hit_x = false;
             }
         
-            //hix_p if the PTP is not changed
-            ivcache_hit_p = ((r_tlb_ptpr == r_itlb_ptpr_save) && ((ireq.addr>>PAGE_M_NBITS) == r_itlb_id1_save) && (r_itlb_et_save == PTD)); 
+            icache_hit_p = (((ireq.addr>>PAGE_M_NBITS) == r_icache_id1_save) && r_icache_ptba_ok);  
         }
 
-        // tlb flush
-        if (dreq.valid && 
-            (dreq.type == iss_t::XTN_WRITE) && (xtn_opcod == iss_t::XTN_PTPR)) 
-        {
-                r_ivcache_fsm = IVCACHE_TLB_FLUSH;   
-                break;
-        }
-        // ivcache flush
-        if (dreq.valid && 
-            (dreq.type == iss_t::XTN_WRITE) && (xtn_opcod == iss_t::XTN_ICACHE_FLUSH)) 
-        {
-                r_ivcache_fsm = IVCACHE_CACHE_FLUSH;   
-                r_icache_xtn_end = true;
-                break;
-        }
-        // itlb inval
-        if (dreq.valid && 
-            (dreq.type == iss_t::XTN_WRITE) && (xtn_opcod == iss_t::XTN_ITLB_INVAL)) 
-        {
-                r_ivcache_fsm = IVCACHE_TLB_INVAL;   
-                r_icache_xtn_end = true;
-                break;
-        }
-        // ivcache inval
-        if (dreq.valid && 
-            (dreq.type == iss_t::XTN_WRITE) && (xtn_opcod == iss_t::XTN_ICACHE_INVAL)) 
-        {
-                r_ivcache_fsm = IVCACHE_CACHE_INVAL1;   
-                r_icache_xtn_end = true;
-                break;
-        }
+        // Decoding processor XTN requests
 
+        if (r_dcache_xtn_req)
+        {
+            if ((int)r_dcache_type_save == (int)iss_t::XTN_PTPR)  
+            {
+                r_icache_fsm = ICACHE_TLB_FLUSH;   
+                break;
+            }
+            if ((int)r_dcache_type_save == (int)iss_t::XTN_ICACHE_FLUSH)
+            {
+                r_icache_fsm = ICACHE_CACHE_FLUSH;   
+                break;
+            }
+            if ((int)r_dcache_type_save == (int)iss_t::XTN_ITLB_INVAL) 
+            {
+                r_icache_fsm = ICACHE_TLB_INVAL;   
+                break;
+            }
+            if ((int)r_dcache_type_save == (int)iss_t::XTN_ICACHE_INVAL) 
+            {
+                r_icache_fsm = ICACHE_CACHE_INVAL;   
+                break;
+            }
+        } // end if xtn_req
 
         if ( ireq.valid ) 
         {
             m_cpt_icache_dir_read += m_icache_ways;
             m_cpt_icache_data_read += m_icache_ways;
 
-            icache_cached = m_cacheability_table[ipaddr];   // verify cached or not  
-            // hit cache
+            // icache_hit_c & icache_ins
             if ( icache_cached )
             {
-                ivcache_hit_c = r_icache.read(ipaddr, &icache_ins);
+                icache_hit_c = r_icache.read(ipaddr, &icache_ins);
             }
             else
             {
-                ivcache_hit_c = ( r_icache_buf_unc_valid && (ipaddr == r_ivcache_miss_addr) );
+                icache_hit_c = ( r_icache_buf_unc_valid && (ipaddr == r_icache_paddr_save) );
                 icache_ins = r_icache_miss_buf[0];
             }
 
-            if ( r_tlb_mode == TLBS_ACTIVE || r_tlb_mode == ITLB_A_DTLB_D ) 
+            if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
             {
-                if ( ivcache_hit_t_m || ivcache_hit_t_k ) 
+                if ( icache_hit_t_m || icache_hit_t_k ) 
                 {
                     // check access rights
-                    if ( !ipte_info.u && (ireq.mode == iss_t::MODE_USER)) 
+
+                    if ( !icache_pte_info.u && (ireq.mode == iss_t::MODE_USER)) 
                     {
-                        r_ivcache_error_type = r_ivcache_error_type | MMU_PRIVILEGE_VIOLATION;  // Privilege violation error
-                        r_ivcache_bad_vaddr = ireq.addr;
+                        r_icache_error_type = r_icache_error_type | MMU_PRIVILEGE_VIOLATION;  
+                        r_icache_bad_vaddr = ireq.addr;
                         irsp.valid = true;
                         irsp.error = true;
                         irsp.instruction = 0;
                         break;
                     }
-                    if ( !ipte_info.x ) 
+                    if ( !icache_pte_info.x ) 
                     {
-                        r_ivcache_error_type = r_ivcache_error_type | MMU_EXEC_VIOLATION;  // Protection error
-                        r_ivcache_bad_vaddr = ireq.addr;
+                        r_icache_error_type = r_icache_error_type | MMU_EXEC_VIOLATION;  
+                        r_icache_bad_vaddr = ireq.addr;
                         irsp.valid = true;
                         irsp.error = true;
                         irsp.instruction = 0;
@@ -572,61 +563,64 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                     }
                 }
 
-                // update LRU and write ppn save register
-                if ( ivcache_hit_t_m )
+                // update LRU and save ppn and page type
+
+                if ( icache_hit_t_m )
                 {  
-                    ivcache_m_tlb.setlru(i_way,i_set);     
-                    r_itlb_ppn_save = ivcache_m_tlb.getppn(ireq.addr);
-                    r_itlb_page_k_save = false;
+                    icache_m_tlb.setlru(icache_tlb_way,icache_tlb_set);     
+                    r_icache_ppn_save = icache_m_tlb.getppn(ireq.addr);
+                    r_icache_page_k_save = false;
                 }
-                else if ( ivcache_hit_t_k )
+                else if ( icache_hit_t_k )
                 {
-                    ivcache_k_tlb.setlru(i_way,i_set);    
-                    r_itlb_ppn_save = ivcache_k_tlb.getppn(ireq.addr);
-                    r_itlb_page_k_save = true;
+                    icache_k_tlb.setlru(icache_tlb_way,icache_tlb_set);    
+                    r_icache_ppn_save = icache_k_tlb.getppn(ireq.addr);
+                    r_icache_page_k_save = true;
                 }
 
-                if ((!ivcache_hit_t_m && !ivcache_hit_t_k) && !ivcache_hit_p) 
+                // compute next state in case of uncorrect physical address
+
+                if ( !icache_hit_t_m && !icache_hit_t_k && !icache_hit_p )
                 {
-                    // walk page table 
-                    r_ivcache_fsm = IVCACHE_TLB1_WAIT;
-                    r_ivcache_miss_addr = (addr36_t)(r_tlb_ptpr | ((ireq.addr>>PAGE_M_NBITS)<<2));
-                    r_itlb_req = true;
+                    // walk page table  level 1
+                    r_icache_paddr_save = (addr36_t)(r_mmu_ptpr | ((ireq.addr>>PAGE_M_NBITS)<<2));
+                    r_icache_tlb_read_req = true;
+                    r_icache_fsm = ICACHE_TLB1_READ;
                     break;
                 }
 
-                if ((!ivcache_hit_t_m && !ivcache_hit_t_k) && ivcache_hit_p ) 
+                if ( !icache_hit_t_m && !icache_hit_t_k && icache_hit_p ) 
                 {
-                    // walk page table 
-                    addr36_t itlb_ptp = r_itlb_ptp;
-                    r_ivcache_miss_addr = (addr36_t)(itlb_ptp | (((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
-                    r_itlb_req = true;
-                    r_ivcache_fsm = IVCACHE_TLB2_WAIT;
+                    // walk page table level 2
+                    r_icache_paddr_save = (addr36_t)r_icache_ptba_save | 
+                                          (addr36_t)(((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
+                    r_icache_tlb_read_req = true;
+                    r_icache_fsm = ICACHE_TLB2_READ;
                     break;
                 }
 
-                if ( (ivcache_hit_t_m || ivcache_hit_t_k) && !ivcache_hit_x ) 
+                if ( (icache_hit_t_m || icache_hit_t_k) && !icache_hit_x && icache_cached ) 
                 {
-                    r_ivcache_fsm = IVCACHE_BIS;
+                    r_icache_fsm = ICACHE_BIS;
                     break;
                 }
-            }
+            } // end if MMU activated
 
-            if ((ivcache_hit_t_m || ivcache_hit_t_k) && ivcache_hit_x ) 
+            if ((icache_hit_t_m || icache_hit_t_k) && icache_hit_x ) 
             {
-                if ( ! ivcache_hit_c ) 
+                if ( ! icache_hit_c ) 
                 {
                     m_cpt_ins_miss++;
                     m_cost_ins_miss_frz++;
-                    r_ivcache_miss_addr = ipaddr;
+                    r_icache_paddr_save = ipaddr;
                     if ( icache_cached ) 
                     {
-                        r_ivcache_fsm = IVCACHE_MISS_WAIT;
+                        r_icache_fsm = ICACHE_MISS_WAIT;
                         r_icache_miss_req = true;
                     } 
                     else 
                     {
-                        r_ivcache_fsm = IVCACHE_UNC_WAIT;
+                        r_icache_fsm = ICACHE_UNC_WAIT;
                         r_icache_unc_req = true;
                         r_icache_buf_unc_valid = false;
                     } 
@@ -634,362 +628,328 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 else 
                 {
                     r_icache_buf_unc_valid = false;
-                    r_ivcache_fsm = IVCACHE_IDLE;
+                    r_icache_fsm = ICACHE_IDLE;
                 }
-                irsp.valid = (ivcache_hit_c && ivcache_hit_x && (ivcache_hit_t_m || ivcache_hit_t_k));
+                irsp.valid = (icache_hit_c && icache_hit_x && (icache_hit_t_m || icache_hit_t_k));
                 irsp.instruction = icache_ins;
             }
-            
         }
         break;
     }
-
-    case IVCACHE_BIS: 
+    ////////////////
+    case ICACHE_BIS: 
     {
-        addr36_t ipaddr;                                // instruction physique address
-        data_t  icache_ins = 0;
-        bool icache_cached = false;
-        bool ivcache_hit_c = false;
-        addr_t itlb_ppn_save = r_itlb_ppn_save;
+        addr36_t    ipaddr          = 0; 
+        data_t      icache_ins      = 0;
+        bool        icache_hit      = false;
 
-        if ( r_itlb_page_k_save )
+        // acces is always cached in this state
+        if ( r_icache_page_k_save )
         {
-            ipaddr = (addr36_t)(((addr36_t)itlb_ppn_save << PAGE_K_NBITS) | (ireq.addr & OFFSET_K_MASK));
-        }
-        else 
-        {
-            ipaddr = (addr36_t)(((addr36_t)itlb_ppn_save << PAGE_M_NBITS) | (ireq.addr & OFFSET_M_MASK));
-        }
-
-        icache_cached = m_cacheability_table[ipaddr];
-        if ( icache_cached )
-        {
-            ivcache_hit_c = r_icache.read(ipaddr, &icache_ins);
+            ipaddr = (addr36_t)(((addr36_t)r_icache_ppn_save << PAGE_K_NBITS) | (ireq.addr & OFFSET_K_MASK));
         }
         else
-        {
-            ivcache_hit_c = ( r_icache_buf_unc_valid && (ipaddr == r_ivcache_miss_addr) );
-            icache_ins = r_icache_miss_buf[0];
+        { 
+            ipaddr = (addr36_t)(((addr36_t)r_icache_ppn_save << PAGE_M_NBITS) | (ireq.addr & OFFSET_M_MASK));
         }
 
-        if ( ! ivcache_hit_c ) 
+        icache_hit = r_icache.read(ipaddr, &icache_ins);
+ 
+        if ( !icache_hit )
         {
             m_cpt_ins_miss++;
             m_cost_ins_miss_frz++;
-            r_ivcache_miss_addr = ipaddr;
-            if ( icache_cached ) 
-            {
-                r_ivcache_fsm = IVCACHE_MISS_WAIT;
-                r_icache_miss_req = true;
-            } 
-            else 
-            {
-                r_ivcache_fsm = IVCACHE_UNC_WAIT;
-                r_icache_unc_req = true;
-                r_icache_buf_unc_valid = false;
-            } 
+            r_icache_paddr_save = ipaddr;
+            r_icache_fsm = ICACHE_MISS_WAIT;
+            r_icache_miss_req = true;
         } 
         else
         {
-            r_icache_buf_unc_valid = false;
-            r_ivcache_fsm = IVCACHE_IDLE; 
+            r_icache_fsm = ICACHE_IDLE; 
         }
 
-        irsp.valid = ivcache_hit_c;
+        irsp.valid = icache_hit;
+        irsp.error = false;
         irsp.instruction = icache_ins;
         break;
     }
-
-    case IVCACHE_TLB1_WAIT:
+    //////////////////////
+    case ICACHE_TLB1_READ:
     {
-        if ( !r_itlb_req && !r_ivcache_rsp_error) // vci response ok
+        if ( !r_icache_tlb_read_req && !r_vci_rsp_ins_error) // vci response ok
         {  
-            // renew tlb save register
-        	r_itlb_et_save = (r_itlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT;	
-            r_itlb_ptpr_save = r_tlb_ptpr;
-            r_itlb_id1_save = ireq.addr>>PAGE_M_NBITS;
-	
-            switch((r_itlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT) { 
-            case PTD:    // 4K page TLB
-            {
-                addr36_t itlb_ptp = (addr36_t)(r_itlb_miss_rsp & PTD_PTP_MASK) << 12; 
-                r_itlb_ptp = itlb_ptp;
-                r_ivcache_miss_addr = (addr36_t)(itlb_ptp | (((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
-                r_itlb_req = true;
-                r_ivcache_fsm = IVCACHE_TLB2_WAIT;
+            switch((r_vci_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) { 
+            case PTD:               // 4K page TLB
+        	    r_icache_ptba_ok      = true;	
+                r_icache_ptba_save    = (addr36_t)(r_vci_rsp_itlb_miss & PTD_PTP_MASK) << 12; 
+                r_icache_id1_save     = ireq.addr >> PAGE_M_NBITS;
+                r_icache_paddr_save   = (addr36_t)(r_vci_rsp_itlb_miss & PTD_PTP_MASK) << 12 |
+                                        (addr36_t)(((ireq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2); 
+                r_icache_fsm          = ICACHE_TLB2_READ;
+                r_icache_tlb_read_req = true;
                 break;
-            }
-            case PTE_NEW:// 4M page TLB (not marked)   
-                r_ivcache_fsm = IVCACHE_T1_LL_WAIT;
-                r_itlb_ll_req = true;
-                break;  
-            case PTE_OLD:// 4M page TLB (already marked)
-                r_ivcache_fsm = IVCACHE_TLB1_UPDT;
+            case PTE_NEW:           // 4M page TLB (not marked)   
+        	    r_icache_ptba_ok       = false;	
+                r_icache_pte_update    = r_vci_rsp_itlb_miss | PTE_ET_MASK;
+                r_icache_fsm           = ICACHE_TLB1_WRITE;
+                r_icache_tlb_write_req = true;
+                break; 
+            case PTE_OLD:           // 4M page TLB (already marked)
+        	    r_icache_ptba_ok       = false;	
+                r_icache_pte_update    = r_vci_rsp_itlb_miss;
+                r_icache_fsm           = ICACHE_TLB1_UPDT;
                 break;
-            default:     // unmapped
-                r_ivcache_error_type = r_ivcache_error_type | MMU_PT1_UNMAPPED;  
-                r_ivcache_bad_vaddr = ireq.addr;
-                r_ivcache_fsm = IVCACHE_ERROR;
+            default:                // unmapped
+        	    r_icache_ptba_ok    = false;	
+                r_icache_error_type = r_icache_error_type | MMU_PT1_UNMAPPED;  
+                r_icache_bad_vaddr  = ireq.addr;
+                r_icache_fsm        = ICACHE_ERROR;
                 break;
-            }
+            } // end switch ET
         }
 
-        if ( !r_itlb_req && r_ivcache_rsp_error ) // vci response error
+        if ( !r_icache_tlb_read_req && r_vci_rsp_ins_error ) // vci response error
         {  
-            r_ivcache_fsm = IVCACHE_ERROR;
-            r_ivcache_error_type = r_ivcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
-            r_ivcache_bad_vaddr = ireq.addr;
+            r_icache_fsm = ICACHE_ERROR;
+            r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+            r_icache_bad_vaddr = ireq.addr;
         }
         break;
     }
-
-    case IVCACHE_T1_LL_WAIT:  
-        if (!r_itlb_ll_req)
-        { 
-            if ( r_ivcache_rsp_error ) 
-            {
-                r_ivcache_fsm = IVCACHE_ERROR;
-                r_ivcache_error_type = r_ivcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    // Access bus error
-                r_ivcache_bad_vaddr = ireq.addr;
-            } 
-            else  
-            {
-                r_ivcache_fsm = IVCACHE_T1_SC_WAIT;  
-                r_itlb_sc_req = true;
-                r_ivcache_miss_data = r_itlb_miss_rsp | PTE_ET_MASK;
-            }
-        } 
-        break;
-
-    case IVCACHE_T1_SC_WAIT:  
-        if (!r_itlb_sc_req) 
-        {
-            if ( r_ivcache_rsp_error ) 
-            {
-                r_ivcache_fsm = IVCACHE_ERROR;
-                r_ivcache_error_type = r_ivcache_error_type | MMU_PT1_ILLEGAL_ACCESS;      // Access bus error
-                r_ivcache_bad_vaddr = ireq.addr;
-            } 
-            else if ( r_itlb_ll_req ) // ll-sc not successful
-            {         
-                r_ivcache_fsm = IVCACHE_T1_LL_WAIT;
-            } 
-            else  
-            {
-                r_ivcache_fsm = IVCACHE_TLB1_UPDT;    // TLB update
-            }
-        } 
-        break;
-
-    case IVCACHE_TLB1_UPDT: // update 4M page TLB
+    ///////////////////////
+    case ICACHE_TLB1_WRITE:  
     {
-        bool write = false;
-        ivcache_m_tlb.update(r_itlb_miss_rsp,ireq.addr,write);
-        r_ivcache_fsm = IVCACHE_IDLE;
+        if (!r_icache_tlb_write_req)
+        { 
+            if ( r_vci_rsp_ins_error ) 
+            {
+                r_icache_fsm = ICACHE_ERROR;
+                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
+                r_icache_bad_vaddr = ireq.addr;
+            } 
+            else  
+            {
+                r_icache_fsm = ICACHE_TLB1_UPDT;  
+            }
+        } 
         break;
     }
-
-    case IVCACHE_TLB2_WAIT:
+    //////////////////////
+    case ICACHE_TLB1_UPDT:
     {
-        if ( !r_itlb_req && !r_ivcache_rsp_error) 
+        icache_m_tlb.update(r_icache_pte_update,ireq.addr); 
+        r_icache_fsm = ICACHE_IDLE;
+        break;
+    }
+    /////////////////////
+    case ICACHE_TLB2_READ:
+    {
+        if ( !r_icache_tlb_read_req && !r_vci_rsp_ins_error) // VCI response ok
         {
-            switch((r_itlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
-            case PTE_NEW:   // to set PTE accessed  
-                r_ivcache_fsm = IVCACHE_T2_LL_WAIT;
-                r_itlb_ll_req = true;
+            switch((r_vci_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
+            case PTE_NEW:               // not marked
+                r_icache_pte_update    = r_vci_rsp_itlb_miss | PTE_ET_MASK;
+                r_icache_fsm           = ICACHE_TLB2_WRITE;
+                r_icache_tlb_write_req = true;
                 break;  
-            case PTE_OLD:   
-                r_ivcache_fsm = IVCACHE_TLB2_UPDT;
+            case PTE_OLD:               // already marked
+                r_icache_pte_update    = r_vci_rsp_itlb_miss;
+                r_icache_fsm           = ICACHE_TLB2_UPDT;
                 break;
-            default:
-                r_ivcache_error_type = r_ivcache_error_type | MMU_PT2_UNMAPPED;      // Translation error
-                r_ivcache_bad_vaddr = ireq.addr;
-                r_ivcache_fsm = IVCACHE_ERROR;
+            default:                    // unmapped
+                r_icache_error_type = r_icache_error_type | MMU_PT2_UNMAPPED;  
+                r_icache_bad_vaddr = ireq.addr;
+                r_icache_fsm = ICACHE_ERROR;
                 break;
             }
         }
 
-        if ( !r_itlb_req && r_ivcache_rsp_error ) 
+        if ( !r_icache_tlb_read_req && r_vci_rsp_ins_error ) // VCI response error
         {
-            r_ivcache_fsm = IVCACHE_ERROR;
-            r_ivcache_error_type = r_ivcache_error_type | MMU_PT2_ILLEGAL_ACCESS;    // Access bus error
-            r_ivcache_bad_vaddr = ireq.addr;
+            r_icache_fsm = ICACHE_ERROR;
+            r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_ACCESS;
+            r_icache_bad_vaddr = ireq.addr;
         }
         break;
     }
-
-    case IVCACHE_T2_LL_WAIT:  
-        if (!r_itlb_ll_req) 
+    /////////////////////////
+    case ICACHE_TLB2_WRITE:
+    {  
+        if (!r_icache_tlb_write_req) 
         {
-            if ( r_ivcache_rsp_error ) 
+            if ( r_vci_rsp_ins_error ) 
             {
-                r_ivcache_fsm = IVCACHE_ERROR;
-                r_ivcache_error_type = r_ivcache_error_type | MMU_PT2_ILLEGAL_ACCESS;    // Access bus error
-                r_ivcache_bad_vaddr = ireq.addr;
+                r_icache_fsm = ICACHE_ERROR;
+                r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_ACCESS;  
+                r_icache_bad_vaddr = ireq.addr;
             } 
             else  
             {
-                r_ivcache_fsm = IVCACHE_T2_SC_WAIT;  
-                r_itlb_sc_req = true;
-                r_ivcache_miss_data = r_itlb_miss_rsp | PTE_ET_MASK;
+                r_icache_fsm = ICACHE_TLB2_UPDT;  
             }
         } 
         break;
-
-    case IVCACHE_T2_SC_WAIT:  
-        if (!r_itlb_sc_req)
-        { 
-            if ( r_ivcache_rsp_error ) 
-            {
-                r_ivcache_fsm = IVCACHE_ERROR;
-                r_ivcache_error_type = r_ivcache_error_type | MMU_PT2_ILLEGAL_ACCESS;    // Access bus error
-                r_ivcache_bad_vaddr = ireq.addr;
-            } 
-            else if (r_itlb_ll_req)     // ll-sc not successful
-            {         
-                r_ivcache_fsm = IVCACHE_T2_LL_WAIT;
-            } 
-            else  
-            {
-                r_ivcache_fsm = IVCACHE_TLB2_UPDT;  // TLB update
-            }
-        } 
-        break;
-
-    case IVCACHE_TLB2_UPDT: // update 4K page TLB
+    }
+    /////////////////////
+    case ICACHE_TLB2_UPDT: 
     {
-        bool write = false;
-        ivcache_k_tlb.update(r_itlb_miss_rsp,ireq.addr,write);
-        r_ivcache_fsm = IVCACHE_IDLE;
+        icache_k_tlb.update(r_icache_pte_update,ireq.addr); 
+        r_icache_fsm = ICACHE_IDLE;  
         break;
     }
-
-    case IVCACHE_TLB_FLUSH:
+    /////////////////////
+    case ICACHE_TLB_FLUSH:
     {
-        bool all = (bool)!r_context_sw_itlb;
-        ivcache_m_tlb.flush(all);    // initiale instruction TLB
-        ivcache_k_tlb.flush(all);    // initiale instruction TLB
-        r_ivcache_fsm = IVCACHE_IDLE;
-        r_context_sw_itlb = false;
+        icache_m_tlb.flush(false);    // global entries are not invalidated
+        icache_k_tlb.flush(false);    // global entries are not invalidated
+        r_dcache_xtn_req = false;
+        r_icache_fsm = ICACHE_IDLE;
         break;
     }
-
-    case IVCACHE_CACHE_FLUSH:
+    ////////////////////////
+    case ICACHE_CACHE_FLUSH:
+    {
         r_icache.reset();
-        r_ivcache_fsm = IVCACHE_IDLE;
+        r_dcache_xtn_req = false;
+        r_icache_fsm = ICACHE_IDLE;
         break;
-
-    case IVCACHE_TLB_INVAL:  
+    }
+    /////////////////////
+    case ICACHE_TLB_INVAL:  
     {
-    	addr_t invadr = dreq.wdata;
-        bool itlb_m_hit = ivcache_m_tlb.translate(invadr); 
-        bool itlb_k_hit = ivcache_k_tlb.translate(invadr);
- 
-		if (itlb_m_hit)
+        if ( icache_m_tlb.translate(r_dcache_wdata_save) )
         {
-            ivcache_m_tlb.inval(invadr);
+            r_icache_page_k_save = false; 
+            r_icache_fsm = ICACHE_TLB_INVAL_DONE;
         }
-        else if (itlb_k_hit)
+        else if ( icache_k_tlb.translate(r_dcache_wdata_save) )
         {
-        	ivcache_k_tlb.inval(invadr);
-        }
-	
-        r_ivcache_fsm = IVCACHE_IDLE;
-        break;
-	}
-
-    case IVCACHE_CACHE_INVAL1:
-    {	
-        addr_t invadr = dreq.wdata;
-        addr36_t  ipaddr;                       // instruction physique address
-        bool itlb_m_hit, itlb_k_hit;
-
-        if ( r_tlb_mode == TLBS_ACTIVE || r_tlb_mode == ITLB_A_DTLB_D ) 
-        {
-            itlb_m_hit = ivcache_m_tlb.translate(invadr, &ipaddr); 
-            itlb_k_hit = ivcache_k_tlb.translate(invadr, &ipaddr); 
-        } 
-        else 
-        {
-            ipaddr = invadr;                    // instruction physique address
-            itlb_m_hit = true; 
-            itlb_k_hit = true;
-        }
-
-        if ( itlb_m_hit || itlb_k_hit )
-        {
-            r_ivcache_fsm = IVCACHE_CACHE_INVAL2;
-            r_ivcache_miss_addr = ipaddr;
+            r_icache_page_k_save = true; 
+            r_icache_fsm = ICACHE_TLB_INVAL_DONE;
         }
         else
         {
-            r_ivcache_fsm = IVCACHE_IDLE;
+            r_icache_fsm = ICACHE_IDLE;
+            r_dcache_xtn_req = false;
+        }
+        break;
+	}
+    ///////////////////////////
+    case ICACHE_TLB_INVAL_DONE:
+    {
+		if (r_icache_page_k_save)   
+        {
+            icache_k_tlb.inval(r_dcache_wdata_save);
+        }
+        else
+        {
+            icache_m_tlb.inval(r_dcache_wdata_save);
+        }
+        r_icache_fsm = ICACHE_IDLE;
+        r_dcache_xtn_req = false;
+        break;
+    }
+    ////////////////////////
+    case ICACHE_CACHE_INVAL:
+    {	
+        addr36_t    ipaddr;                     
+        bool        itlb_m_hit;
+        bool        itlb_k_hit;
+
+        if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
+        {
+            itlb_m_hit = icache_m_tlb.translate(r_dcache_wdata_save, &ipaddr); 
+            itlb_k_hit = icache_k_tlb.translate(r_dcache_wdata_save, &ipaddr); 
+        } 
+        else 
+        {
+            ipaddr = (addr36_t)r_dcache_wdata_save;
+            itlb_m_hit = true; 
+            itlb_k_hit = true;
+        }
+        if ( itlb_m_hit || itlb_k_hit )
+        {
+            r_icache_fsm = ICACHE_CACHE_INVAL_DONE;
+            r_icache_paddr_save = ipaddr;
+        }
+        else
+        {
+            r_icache_fsm = ICACHE_IDLE;
+            r_dcache_xtn_req = false; 
         }
         break;
     }
-
-    case IVCACHE_CACHE_INVAL2:
-        r_icache.inval(r_ivcache_miss_addr);   
-        r_ivcache_fsm = IVCACHE_IDLE;
+    /////////////////////////////
+    case ICACHE_CACHE_INVAL_DONE:
+    {
+        r_icache.inval(r_icache_paddr_save);   
+        r_icache_fsm = ICACHE_IDLE;
+        r_dcache_xtn_req = false;
         break;
-
-    case IVCACHE_MISS_WAIT:
+    }
+    ///////////////////////
+    case ICACHE_MISS_WAIT:
+    {
         m_cost_ins_miss_frz++;
         if ( !r_icache_miss_req )
         {
-            if ( r_ivcache_rsp_error ) 
+            if ( r_vci_rsp_ins_error ) 
             {
-                r_ivcache_fsm = IVCACHE_ERROR;
-                r_ivcache_error_type = r_ivcache_error_type | MMU_CACHE_ILLEGAL_ACCESS;    // Access bus error
-                r_ivcache_bad_vaddr = ireq.addr;
+                r_icache_fsm = ICACHE_ERROR;
+                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_icache_bad_vaddr = ireq.addr;
             } 
             else 
             {
-                r_ivcache_fsm = IVCACHE_MISS_UPDT;  // TLB update
+                r_icache_fsm = ICACHE_MISS_UPDT;  
             } 
         }
         break;
-
-    case IVCACHE_UNC_WAIT:
+    }
+    ////////////////////
+    case ICACHE_UNC_WAIT:
+    {
         m_cost_ins_miss_frz++;
         if ( !r_icache_unc_req ) 
         {
-            if ( r_ivcache_rsp_error ) 
+            if ( r_vci_rsp_ins_error ) 
             {
-                r_ivcache_fsm = IVCACHE_ERROR;
-                r_ivcache_error_type = r_ivcache_error_type | MMU_CACHE_ILLEGAL_ACCESS;    // Access bus error
-                r_ivcache_bad_vaddr = ireq.addr;
+                r_icache_fsm = ICACHE_ERROR;
+                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_ACCESS;    
+                r_icache_bad_vaddr = ireq.addr;
             } 
             else 
             {
-                r_ivcache_fsm = IVCACHE_IDLE;
+                r_icache_fsm = ICACHE_IDLE;
                 r_icache_buf_unc_valid = true;
             }
         }
         break;
-
-    case IVCACHE_MISS_UPDT:
+    }
+    //////////////////////
+    case ICACHE_MISS_UPDT:
     {
-        addr36_t ipaddr = r_ivcache_miss_addr;
+        addr36_t ipaddr = r_icache_paddr_save;
         data_t* buf = r_icache_miss_buf;
         addr36_t  victim_index = 0;
         m_cpt_icache_dir_write++;
         m_cpt_icache_data_write++;
         m_cost_ins_miss_frz++;
         r_icache.update(ipaddr, buf, &victim_index);
-        r_ivcache_fsm = IVCACHE_IDLE;
+        r_icache_fsm = ICACHE_IDLE;
         break;
     }
-
-    case IVCACHE_ERROR:
-        r_ivcache_rsp_error = false;
+    ///////////////////
+    case ICACHE_ERROR:
+    {
+        r_vci_rsp_ins_error = false;
         irsp.valid = true;
         irsp.error = true;
         irsp.instruction = 0; 
-        r_ivcache_fsm = IVCACHE_IDLE;
+        r_icache_fsm = ICACHE_IDLE;
         break;
-    
-    } // end switch r_ivcache_fsm
+    }
+    } // end switch r_icache_fsm
 
     m_iss.setInstruction( irsp );
 
@@ -997,60 +957,38 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 std::cout << name() << " Instruction Response: " << irsp << std::endl;
 #endif
 
-    //////////////////////////////////////////////////////////////////////://///////////
-    // The DVCACHE FSM controls the following ressources:
-    // - r_dvcache_fsm
-    // - r_dcache_addr_save
-    // - r_dcache_type_save
-    // - r_dcache_wdata_save
-    // - r_dcache_be_save
-    // - r_dcache_rdata_save
-    // - r_dcache_cached_save
-    // - r_dcache_buf_unc_valid 
+    ////////////////////////////////////////////////////////////////////////////////////
+    //      DCACHE FSM 
+    //
+    // Both the Cacheability Table, and the MMU cached bit are used to define
+    // the cacheability.
     // 
-    // - r_tlb_ptpr
-    // - r_tlb_mode
-    // - r_dtlb_ppn_save
-    // - r_dtlb_et_save 	
-    // - r_dtlb_ptpr_save 
-    // - r_dtlb_id1_save 
-    // - r_dtlb_ptp
-    // - r_dtlb_req
-    // - r_dcache_miss_req
-    // - r_dcache_unc_req
-    // - r_dcache_write_req
-    // - r_dtlb_ll_req
-    // - r_dtlb_sc_req
+    // There is 14 mutually exclusive conditions to exit the IDLE state.
+    // Seven configurations corresponding to an XTN request from processor:
+    // - Context switch => CTXT_SWITCH state
+    // - Flush dcache => DCACHE_FLUSH state 
+    // - Flush icache => ICACHE_FLUSH state 
+    // - Invalidate a dtlb entry => DTLB_INVAL state
+    // - Invalidate a itlb entry => ITLB_INVAL state
+    // - Invalidate a dcache line => DCACHE_INVAL state
+    // - Invalidate a icache line => ICACHE_INVAL state
+    // Seven configurations corresponding to various read miss or write requests: 
+    // - TLB miss(in case hit_p miss) => TLB1_READ state
+    // - TLB miss(in case hit_p hit) => TLB2_READ state
+    // - Hit in TLB but PPN changed => BIS state
+    // - Cached read miss => MISS_REQ state
+    // - Uncache read miss => UNC_REQ state
+    // - Write hit => WRITE_UPDT state
+    // - Write miss => WRITE_REQ
     //
-    // - r_dvcache_rsp_error
-    // - r_dvcache_error_type
-    // - r_dvcache_bad_vaddr
-    //
-    // In the IDLE state, the processor request is saved in r_dcache_save.
-    // The request type takes into account the cacheability_table and uncached
-    // bit of PTE.
-    //
-    // There is 11 mutually exclusive conditions to exit the IDLE state:
-    // - Context switch => TLB_FLUSH state (flush TLB)
-    // - Flush cache => CACHE_FLUSH state (flush cache)
-    // - Invalidate a TLB entry => TLB_INVAL
-    // - Invalidate a cache line => CACHE_INVAL1
-    // - TLB miss(in case hit_p miss) => TLB1_WAIT
-    // - TLB miss(in case hit_p hit) => TLB2_WAIT
-    // - Hit in TLB but PPN changed => BIS
-    // - Cached read miss => MISS_REQ
-    // - Uncache read miss => UNC_REQ
-    // - Write hit => WRITE_UPDT
-    // - Write miss or after update cache when write hit => WRITE_REQ
-    //
-    // The r_dvcache_rsp_error flip-flop is set by the VCI_RSP controller and reset 
-    // by DVCACHE-FSM when its state is in DVCACHE_ERROR. 
+    // The r_vci_rsp_data_error flip-flop is set by the VCI_RSP controller and reset 
+    // by DCACHE-FSM when its state is in DCACHE_ERROR. 
     //--------------------------------------------------------------------- 
     // Data TLB: 
     //  
     // - int        ET          (00: unmapped; 01: unused or PTD)
     //                          (10: PTE new;  11: PTE old      )
-    // - bool       uncachable  (uncached bit)
+    // - bool       cachable    (cached bit)
     // - bool       writable    (writable bit) 
     // - bool       executable  (** not used alwayse false)
     // - bool       user        (access in user mode allowed)
@@ -1060,15 +998,17 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     // - uint32_t   ppn         (physical page number)
     ////////////////////////////////////////////////////////////////////////////////////////
 
-    switch (r_dvcache_fsm) {
+    switch (r_dcache_fsm) {
 
-    case DVCACHE_WRITE_REQ:
+    //////////////////////
+    case DCACHE_WRITE_REQ:
+    {
         // try to post the write request in the write buffer
         if ( !r_dcache_write_req )     // no previous write transaction     
         {
-            if ( r_wbuf.wok(r_dcache_addr_save) )   // write request in the same cache line 
+            if ( r_wbuf.wok(r_dcache_paddr_save) )   // write request in the same cache line 
             {    
-                r_wbuf.write(r_dcache_addr_save, r_dcache_be_save, r_dcache_wdata_save);
+                r_wbuf.write(r_dcache_paddr_save, r_dcache_be_save, r_dcache_wdata_save);
                 // closing the write packet if uncached
                 if ( !r_dcache_cached_save )
                 { 
@@ -1089,268 +1029,325 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         }
 
         // close the write packet if the next processor request is not a write 
-        if ( !dreq.valid || !is_write(dreq.type)) 
+        if ( !dreq.valid || (dreq.type != iss_t::DATA_WRITE)) 
         {
             r_dcache_write_req = true ;
         }
         
         // The next state and the processor request parameters are computed 
         // as in the DCACHE_IDLE state (see below ...)
-
-    case DVCACHE_IDLE:
+    }
+    /////////////////
+    case DCACHE_IDLE:
     {
         if (dreq.valid) 
         {
-            addr36_t  dpaddr;                           // data physique address
-            pte_info_t dpte_info;
-            bool dvcache_hit_t_m,dvcache_hit_t_k,dvcache_hit_x,dvcache_hit_p;
-            size_t d_way = 0;
-            size_t d_set = 0;
-            
-            bool dvcache_hit_c = false;
-            data_t dcache_rdata = 0;
-            bool dcache_cached; 
-            addr_t dtlb_ppn_save = r_dtlb_ppn_save;
+            pte_info_t  dcache_pte_info;
+            int         xtn_opcod       = (int)dreq.addr/4;
+            addr36_t    dpaddr          = 0;
+            bool        dcache_hit_t_m  = false;
+            bool        dcache_hit_t_k  = false;
+            bool        dcache_hit_x    = false;
+            bool        dcache_hit_p    = false;
+            size_t      dcache_tlb_way  = 0;
+            size_t      dcache_tlb_set  = 0;
+            bool        dcache_hit_c    = false;
+            data_t      dcache_rdata    = 0;
+            bool        dcache_cached   = false; 
 
             m_cpt_dcache_data_read += m_dcache_ways;
             m_cpt_dcache_dir_read += m_dcache_ways;
 
-            if ( r_tlb_mode == TLBS_DEACTIVE || r_tlb_mode == ITLB_A_DTLB_D ) 
+            // Evaluating dcache_hit_t, dcache_hit_x, dcache_hit_p, dcache_hit_c,
+            // dcache_pte_info, dcache_tlb_way, dcache_tlb_set & dpaddr
+            // cacheability evaluation
+
+            if ( r_mmu_mode == TLBS_DEACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
             {
-                dpaddr = dreq.addr;              // data physique address
-                dvcache_hit_t_m = true;          // 4M page tlb hit
-                dvcache_hit_t_k = true;          // 4K page tlb hit
-                dvcache_hit_x = true;            // ppn no change hit
-                dvcache_hit_p = true;            // ptp no change hit
+                dcache_hit_t_m = true;          // 4M page tlb hit
+                dcache_hit_t_k = true;          // 4K page tlb hit
+
+
+                dcache_cached = m_cacheability_table[dreq.addr] && 
+                                ((dreq.type != iss_t::DATA_LL)  && (dreq.type != iss_t::DATA_SC) &&
+                                 (dreq.type != iss_t::XTN_READ) && (dreq.type != iss_t::XTN_WRITE));     
             } 
             else 
             {
-                //hix_t if hit in TLB 
-                dvcache_hit_t_m = dvcache_m_tlb.translate(dreq.addr, &dpaddr, &dpte_info, &d_way, &d_set); // 4M page tlb hit
-                dvcache_hit_t_k = dvcache_k_tlb.translate(dreq.addr, &dpaddr, &dpte_info, &d_way, &d_set); // 4K page tlb hit
-                //hit_x if the page is not changed
-                if (dvcache_hit_t_m) 
+                dcache_hit_t_m = dcache_m_tlb.translate(dreq.addr, &dpaddr, &dcache_pte_info, 
+                                                        &dcache_tlb_way, &dcache_tlb_set); 
+                dcache_hit_t_k = dcache_k_tlb.translate(dreq.addr, &dpaddr, &dcache_pte_info, 
+                                                        &dcache_tlb_way, &dcache_tlb_set);
+
+                dcache_cached = ( m_cacheability_table[dpaddr] && 
+                                 ((dreq.type != iss_t::DATA_LL) && (dreq.type != iss_t::DATA_SC) &&
+                                  (dreq.type != iss_t::XTN_READ) && (dreq.type != iss_t::XTN_WRITE)))|| 
+                                dcache_pte_info.c;     
+            }
+
+            if ( r_mmu_mode == TLBS_DEACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
+            {
+                dpaddr = dreq.addr;             // data physical address
+                dcache_hit_x = true;            // ppn no change hit
+                dcache_hit_p = true;            // ptp no change hit
+            } 
+            else 
+            {
+                if (dcache_hit_t_m) 
                 {
-                    dvcache_hit_x = (r_dtlb_ppn_save == dvcache_m_tlb.getppn(dreq.addr));
-                    dpaddr = (addr36_t)(((addr36_t)dtlb_ppn_save << PAGE_M_NBITS) | (dreq.addr & OFFSET_M_MASK));
+                    dpaddr = (addr36_t)(((addr36_t)r_dcache_ppn_save << PAGE_M_NBITS) 
+                                            | (dreq.addr & OFFSET_M_MASK));
+                    dcache_hit_x = (r_dcache_ppn_save == dcache_m_tlb.getppn(dreq.addr));
                 } 
-                else if (dvcache_hit_t_k) 
+                else if (dcache_hit_t_k) 
                 {
-                    dvcache_hit_x = (r_dtlb_ppn_save == dvcache_k_tlb.getppn(dreq.addr));
-                    dpaddr = (addr36_t)(((addr36_t)dtlb_ppn_save << PAGE_K_NBITS) | (dreq.addr & OFFSET_K_MASK));
+                    dpaddr = (addr36_t)(((addr36_t)r_dcache_ppn_save << PAGE_K_NBITS) 
+                                            | (dreq.addr & OFFSET_K_MASK));
+                    dcache_hit_x = (r_dcache_ppn_save == dcache_k_tlb.getppn(dreq.addr));
                 } 
                 else 
                 {
-                    dvcache_hit_x = false;
                     dpaddr = 0;
+                    dcache_hit_x = false;
                 }
-
-                //hix_p if the PTP is not changed
-                dvcache_hit_p = ((r_tlb_ptpr == r_dtlb_ptpr_save) && ((dreq.addr>>PAGE_M_NBITS) == r_dtlb_id1_save) && (r_dtlb_et_save == PTD)); 
+                dcache_hit_p = (((dreq.addr>>PAGE_M_NBITS) == r_dcache_id1_save) && r_dcache_ptba_ok ); 
             }
  
+            // Decoding READ XTN requests from processor
+            // They are executed in this DCACHE_IDLE state
+
             if (dreq.type == iss_t::XTN_READ) 
             {
                 switch(xtn_opcod) {
                 case iss_t::XTN_INS_ERROR_TYPE:
-                    dcache_rdata = (uint32_t)r_ivcache_error_type;
-                    r_ivcache_error_type = MMU_NONE;
+                    dcache_rdata = (uint32_t)r_icache_error_type;
+                    r_icache_error_type = MMU_NONE;
                     break;
                 case iss_t::XTN_DATA_ERROR_TYPE:
-                    dcache_rdata = (uint32_t)r_dvcache_error_type;
-                    r_dvcache_error_type = MMU_NONE;
+                    dcache_rdata = (uint32_t)r_dcache_error_type;
+                    r_dcache_error_type = MMU_NONE;
                     break;
                 case iss_t::XTN_INS_BAD_VADDR:
-                    dcache_rdata = (uint32_t)r_ivcache_bad_vaddr;       
+                    dcache_rdata = (uint32_t)r_icache_bad_vaddr;       
                     break;
                 case iss_t::XTN_DATA_BAD_VADDR:
-                    dcache_rdata = (uint32_t)r_dvcache_bad_vaddr;        
+                    dcache_rdata = (uint32_t)r_dcache_bad_vaddr;        
                     break;
                 case iss_t::XTN_PTPR:
-                    dcache_rdata = (uint32_t)r_tlb_ptpr;
+                    dcache_rdata = (uint32_t)r_mmu_ptpr;
                     break;
                 default:
                     break;
                 }
                 drsp.valid = true;
+                drsp.error = false;
                 drsp.rdata = dcache_rdata;
                 break;
             }
 
+            // Decoding WRITE XTN requests from processor
+            // If there is no privilege violation, they are not executed in this DCACHE_IDLE state,
+            // but in the next state, because they generally require access to the caches or the TLBs 
+
             if (dreq.type == iss_t::XTN_WRITE) 
             {
-                switch(xtn_opcod) {    // address indicate to do which operation
-                case iss_t::XTN_PTPR:    // context switch flush TLB
+                drsp.valid = false;
+                drsp.error = false;
+                drsp.rdata = 0;
+                r_dcache_wdata_save = dreq.wdata;   
+                switch(xtn_opcod) {     
+
+                case iss_t::XTN_PTPR:       // context switch : checking the kernel mode
+                                            // both instruction & data TLBs must be flushed
                     if (dreq.mode == iss_t::MODE_KERNEL) 
                     {
-                        r_tlb_ptpr = dreq.wdata;
-                        r_dvcache_fsm = DVCACHE_TLB_FLUSH;
-                        r_context_sw_itlb = true;
-                        r_context_sw_dtlb = true;
-                        r_ivcache_error_type = MMU_NONE;
-                        r_dvcache_error_type = MMU_NONE;
+                        r_mmu_ptpr = dreq.wdata;
+                        r_icache_error_type = MMU_NONE;
+                        r_dcache_error_type = MMU_NONE;
+                        r_dcache_type_save = dreq.addr/4; 
+                        r_dcache_fsm = DCACHE_CTXT_SWITCH;
+                        r_dcache_xtn_req = true;
                     } 
                     else 
                     { 
-                        r_dvcache_error_type = MMU_PRIVILEGE_VIOLATION;  // Privilege violation error
+                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION; 
+                        r_dcache_bad_vaddr  = dreq.addr;
                         drsp.valid = true;
                         drsp.error = true;
-                        drsp.rdata = 0;
-
                     }
                     break;
-                case iss_t::XTN_TLB_EN:
+
+                case iss_t::XTN_TLB_EN:     // modifying TLBs mode : checking the kernel mode
                     if (dreq.mode == iss_t::MODE_KERNEL) 
                     {
-                        r_tlb_mode = (int)dreq.wdata;
+                        r_mmu_mode = (int)dreq.wdata;
                         drsp.valid = true;
                     } 
                     else 
                     {
-                        r_dvcache_error_type = r_dvcache_error_type | MMU_PRIVILEGE_VIOLATION;  // Privilege violation error
+                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION; 
+                        r_dcache_bad_vaddr  = dreq.addr;
                         drsp.valid = true;
                         drsp.error = true;
-                        drsp.rdata = 0;
-
                     }
                     break;
-                case iss_t::XTN_DCACHE_FLUSH:
-                    r_dvcache_fsm = DVCACHE_CACHE_FLUSH;   // dvcache flush
+
+                case iss_t::XTN_DTLB_INVAL:     //  checking the kernel mode
+                    if (dreq.mode == iss_t::MODE_KERNEL) 
+                    {
+                        r_dcache_fsm = DCACHE_DTLB_INVAL;  
+                    } 
+                    else 
+                    {
+                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION; 
+                        r_dcache_bad_vaddr  = dreq.addr;
+                        drsp.valid = true;
+                        drsp.error = true;
+                    }
                     break;
-                case iss_t::XTN_DTLB_INVAL:
-                    r_dvcache_fsm = DVCACHE_TLB_INVAL;   // ivcache inval
+
+                case iss_t::XTN_ITLB_INVAL:     //  checking the kernel mode
+                    if (dreq.mode == iss_t::MODE_KERNEL) 
+                    {
+                        r_dcache_fsm = DCACHE_ITLB_INVAL;  
+                        r_dcache_xtn_req = true;
+                        r_dcache_type_save = dreq.addr/4;
+                    } 
+                    else 
+                    {
+                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION; 
+                        r_dcache_bad_vaddr  = dreq.addr;
+                        drsp.valid = true;
+                        drsp.error = true;
+                    }
                     break;
-                case iss_t::XTN_DCACHE_INVAL:
-                    r_dvcache_fsm = DVCACHE_CACHE_INVAL1;   // ivcache inval
+
+                case iss_t::XTN_DCACHE_INVAL:   // cache inval can be executed in user mode.
+                    r_dcache_fsm = DCACHE_DCACHE_INVAL;
                     break;
+
+                case iss_t::XTN_DCACHE_FLUSH:   // cache flush can be executed in user mode.
+                    r_dcache_fsm = DCACHE_DCACHE_FLUSH; 
+                    break;
+
+                case iss_t::XTN_ICACHE_INVAL:   // cache inval can be executed in user mode.
+                    r_dcache_fsm = DCACHE_ICACHE_INVAL;
+                    r_dcache_type_save = dreq.addr/4; 
+                    r_dcache_xtn_req = true; 
+                    break;
+
+                case iss_t::XTN_ICACHE_FLUSH:   // cache flush can be executed in user mode.
+                    r_dcache_fsm = DCACHE_ICACHE_FLUSH;
+                    r_dcache_type_save = dreq.addr/4; 
+                    r_dcache_xtn_req = true; 
+                    break;
+
                 default:
-                    if ( r_icache_xtn_end )
-                    {
-                        drsp.valid = true;
-                        r_icache_xtn_end = false;
-                    }
+                    r_dcache_error_type = r_dcache_error_type | MMU_UNDEFINED_XTN; 
+                    r_dcache_bad_vaddr  = dreq.addr;
+                    drsp.valid = true;
+                    drsp.error = true;
                     break;
-                }
+                } // end switch xtn_opcod
+
                 break;
-            }
+            } // end if XTN_WRITE
 
-            // dcache_cached evaluation
-            if ((dreq.type == iss_t::DATA_LL) || (dreq.type == iss_t::DATA_SC) ||
-                (dreq.type == iss_t::XTN_READ)|| (dreq.type == iss_t::XTN_WRITE)) 
-            {
-                dcache_cached = false;
-            } 
-            else 
-            {
-                dcache_cached = m_cacheability_table[dpaddr];     
-            }
 
-            if ( r_tlb_mode == TLBS_ACTIVE || r_tlb_mode == ITLB_D_DTLB_A ) 
-            {
-                if ( dvcache_hit_t_m || dvcache_hit_t_k ) 
-                {
-                    // check access rights
-                    if (!dpte_info.u && (dreq.mode == iss_t::MODE_USER)) 
-                    {
-                        r_dvcache_error_type = r_dvcache_error_type | MMU_PRIVILEGE_VIOLATION;  // Privilege violation error
-                        r_dvcache_bad_vaddr = dreq.addr;
-                        drsp.valid = true;
-                        drsp.error = true;
-                        drsp.rdata = 0;
-                        break;
-                    }
-                    // TLB hit, verify the access right
-                    if ( is_write(dreq.type) && !dpte_info.w ) 
-                    {
-                        r_dvcache_error_type = r_dvcache_error_type | MMU_EXEC_VIOLATION;  // Protection error
-                        r_dvcache_bad_vaddr = dreq.addr;
-                        drsp.valid = true;
-                        drsp.error = true;
-                        drsp.rdata = 0;
-                        break;
-                    }
-
-                    if ( dpte_info.uc )   // set is non cacheable
-                    {
-                        dcache_cached = false;
-                    }    
-                    r_dcache_cached_save = dcache_cached;               
-                }
-
-                // update LRU, dirty and write ppn save register
-                if (dvcache_hit_t_m) 
-                {
-                    dvcache_m_tlb.setdirty(d_way,d_set,is_write(dreq.type));
-                    dvcache_m_tlb.setlru(d_way,d_set);
-                    r_dtlb_ppn_save = dvcache_m_tlb.getppn(dreq.addr);
-                    r_dtlb_page_k_save = false;
-                } 
-                else if ( dvcache_hit_t_k ) 
-                {
-                    dvcache_k_tlb.setdirty(d_way,d_set,is_write(dreq.type));
-                    dvcache_k_tlb.setlru(d_way,d_set);
-                    r_dtlb_ppn_save = dvcache_k_tlb.getppn(dreq.addr);
-                    r_dtlb_page_k_save = true;
-                }
-
-                if ((!dvcache_hit_p && (!dvcache_hit_t_m && !dvcache_hit_t_k)) 
-                 || ((dvcache_hit_t_m || dvcache_hit_t_k) && is_write(dreq.type) && !dpte_info.d))
-                {
-                    // save_data and save_type need not be set
-                    r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
-                    r_dcache_type_save      = iss_t::DATA_READ;
-                    r_dcache_wdata_save     = 0xFFFFFFFF;
-                    r_dcache_be_save        = 0xF;
-                    r_dcache_rdata_save     = 0xFFFFFFFF;
-                    r_dcache_cached_save    = false;
-                    r_dtlb_req              = true;
-                    r_dvcache_fsm = DVCACHE_TLB1_WAIT;
-                    break;
-                }
-
-                if ( dvcache_hit_p && (!dvcache_hit_t_m && !dvcache_hit_t_k))
-                {
-                    // walk page table 
-                    addr36_t dtlb_ptp = r_dtlb_ptp; 
-                    r_dtlb_pte_addr = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
-                    r_dcache_addr_save = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
-                    r_dcache_type_save      = iss_t::DATA_READ;
-                    r_dcache_wdata_save     = 0xFFFFFFFF;
-                    r_dcache_be_save        = 0xF;
-                    r_dcache_rdata_save     = 0xFFFFFFFF;
-                    r_dcache_cached_save    = false;
-                    r_dtlb_req              = true;
-                    r_dvcache_fsm = DVCACHE_TLB2_WAIT;
-                    break;
-                }
-
-                if ( (dvcache_hit_t_m || dvcache_hit_t_k) && !dvcache_hit_x )
-                {
-                    r_dvcache_fsm = DVCACHE_BIS;
-                    break;
-                }
-            }
+            // dcache_hit_c & dcache_rdata
 
             if ( dcache_cached ) 
             {
-                dvcache_hit_c = r_dcache.read(dpaddr, &dcache_rdata);
+                dcache_hit_c = r_dcache.read(dpaddr, &dcache_rdata);
             } 
             else 
             {
-                dvcache_hit_c = ((dpaddr == r_dcache_addr_save) && r_dcache_buf_unc_valid ); 
+                dcache_hit_c = ((dpaddr == r_dcache_paddr_save) && r_dcache_buf_unc_valid ); 
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
-            if ((dvcache_hit_t_m || dvcache_hit_t_k) && dvcache_hit_x)
+            if  ((r_mmu_mode == TLBS_ACTIVE) || (r_mmu_mode == ITLB_D_DTLB_A)) 
+            {
+                // Checking access rights
+
+                if ( dcache_hit_t_m || dcache_hit_t_k ) 
+                {
+                    if (!dcache_pte_info.u && (dreq.mode == iss_t::MODE_USER)) 
+                    {
+                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION;  
+                        r_dcache_bad_vaddr = dreq.addr;
+                        drsp.valid = true;
+                        drsp.error = true;
+                        drsp.rdata = 0;
+                        break;
+                    }
+                    if (!dcache_pte_info.w && (dreq.type == iss_t::DATA_WRITE)) 
+                    {
+                        r_dcache_error_type = r_dcache_error_type | MMU_WRITE_VIOLATION;  
+                        r_dcache_bad_vaddr = dreq.addr;
+                        drsp.valid = true;
+                        drsp.error = true;
+                        drsp.rdata = 0;
+                        break;
+                    }
+                }
+
+                // update LRU, save ppn and page type
+
+                if (dcache_hit_t_m) 
+                {
+                    dcache_m_tlb.setlru(dcache_tlb_way,dcache_tlb_set);
+                    r_dcache_ppn_save = dcache_m_tlb.getppn(dreq.addr);
+                    r_dcache_page_k_save = false;
+                } 
+                else if ( dcache_hit_t_k ) 
+                {
+                    dcache_k_tlb.setlru(dcache_tlb_way,dcache_tlb_set);
+                    r_dcache_ppn_save = dcache_k_tlb.getppn(dreq.addr);
+                    r_dcache_page_k_save = true;
+                }
+
+                // compute next state in case of uncorrect physical address
+
+                if ( !dcache_hit_p && !dcache_hit_t_m && !dcache_hit_t_k ) 
+                {
+                    // walk page table level 1
+                    r_dcache_tlb_paddr      = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                    r_dcache_tlb_read_req   = true;
+                    r_dcache_fsm            = DCACHE_TLB1_READ;
+                    break;
+                }
+
+                if ( dcache_hit_p && !dcache_hit_t_m && !dcache_hit_t_k )
+                {
+                    // walk page table level 2
+                    r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save | 
+                                          (addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2); 
+                    r_dcache_tlb_read_req = true;
+                    r_dcache_fsm = DCACHE_TLB2_READ;
+                    break;
+                }
+
+                if ( (dcache_hit_t_m || dcache_hit_t_k) && !dcache_hit_x && 
+                     dcache_cached && (dreq.type == iss_t::DATA_READ) )
+                {
+                    r_dcache_fsm = DCACHE_BIS;
+                    break;
+                }
+            } // end if MMU activated
+
+            // We have now a correct physical address
+
+            if ((dcache_hit_t_m || dcache_hit_t_k) && dcache_hit_x)
             {
                 switch( dreq.type ) {
                     case iss_t::DATA_READ:
                     case iss_t::DATA_LL:
                     case iss_t::DATA_SC:
                         m_cpt_read++;
-                        if ( dvcache_hit_c ) 
+                        if ( dcache_hit_c ) 
                         {
-                            r_dvcache_fsm = DVCACHE_IDLE;
+                            r_dcache_fsm = DCACHE_IDLE;
                             drsp.valid = true;
                             drsp.rdata = dcache_rdata;
                             r_dcache_buf_unc_valid = false;
@@ -1362,502 +1359,370 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                                 m_cpt_data_miss++;
                                 m_cost_data_miss_frz++;
                                 r_dcache_miss_req = true;
-                                r_dvcache_fsm = DVCACHE_MISS_WAIT;
+                                r_dcache_fsm = DCACHE_MISS_WAIT;
                             } 
                             else 
                             {
                                 m_cpt_unc_read++;
                                 m_cost_unc_read_frz++;
                                 r_dcache_unc_req = true;
-                                r_dvcache_fsm = DVCACHE_UNC_WAIT;
+                                r_dcache_fsm = DCACHE_UNC_WAIT;
                             }
                         }
                         break;
-                    case iss_t::XTN_READ:
-                    case iss_t::XTN_WRITE:
-                        // only DCACHE INVALIDATE request are supported
-                        //r_dcache_fsm = DCACHE_INVAL;
-                        //drsp.valid = true;
-                        break;
                     case iss_t::DATA_WRITE:
                         m_cpt_write++;
-                        if ( dvcache_hit_c && dcache_cached ) 
+                        if ( dcache_hit_c && dcache_cached )    // cache update required
                         {
-                            r_dvcache_fsm = DVCACHE_WRITE_UPDT;
+                            r_dcache_fsm = DCACHE_WRITE_UPDT;
                             m_cpt_write_cached++;
                         } 
-                        else 
+                        else if ( !dcache_pte_info.d && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   // dirty bit update required
                         {
-                            r_dvcache_fsm = DVCACHE_WRITE_REQ;
+                            if (dcache_hit_t_m) 
+                            {
+                                r_dcache_pte_update = dcache_m_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
+                                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                            }
+                            else
+                            {                
+                                r_dcache_pte_update = dcache_k_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
+                                r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save|(addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
+                            }
+                            r_dcache_tlb_dirty_req  = true;
+                            r_dcache_fsm            = DCACHE_WRITE_DIRTY;
+                        }
+                        else                                    // no cache update, not dirty bit update
+                        {
+                            r_dcache_fsm = DCACHE_WRITE_REQ;
                         }
                         drsp.valid = true;
                         drsp.rdata = 0;
                         break;
+                    default:
+                        break;
                 } // end switch dreq.type
 
-                r_dcache_addr_save      = dpaddr;
-                r_dcache_type_save      = dreq.type;
-                r_dcache_wdata_save     = dreq.wdata;
-                r_dcache_be_save        = dreq.be;
-                r_dcache_rdata_save     = dcache_rdata;
-                r_dcache_cached_save    = dcache_cached;
+                r_dcache_paddr_save       = dpaddr;
+                r_dcache_type_save        = dreq.type;
+                r_dcache_wdata_save       = dreq.wdata;
+                r_dcache_be_save          = dreq.be;
+                r_dcache_rdata_save       = dcache_rdata;
+                r_dcache_cached_save      = dcache_cached;
+                r_dcache_dirty_save       = dcache_pte_info.d;
+                r_dcache_tlb_set_save     = dcache_tlb_set;
+                r_dcache_tlb_way_save     = dcache_tlb_way;
             }
-        }
+        } // end if dreq.valid
         else 
-        {    // end if dcache_req
-            r_dvcache_fsm = DVCACHE_IDLE;
+        {   
+            r_dcache_fsm = DCACHE_IDLE;
         }
-        // processor request are not accepted in the WRITE_REQUEST state 
+
+        // processor request are not accepted in the WRITE_REQ state 
         // when the write buffer is not writeable
-        if ((r_dvcache_fsm == DVCACHE_WRITE_REQ) && 
-            (r_dcache_write_req || !r_wbuf.wok(r_dcache_addr_save))) 
+
+        if ((r_dcache_fsm == DCACHE_WRITE_REQ) && 
+            (r_dcache_write_req || !r_wbuf.wok(r_dcache_paddr_save))) 
         {
             drsp.valid = false;
         }
         break;
     }
-
-    case DVCACHE_BIS:
+    /////////////////
+    case DCACHE_BIS:
     {
-        addr36_t  dpaddr;                           // data physique address
-        
-        bool dvcache_hit_c = false;
-        data_t dcache_rdata = 0;
-        bool dcache_cached = false;
-        addr_t dtlb_ppn_save = r_dtlb_ppn_save;
+        addr36_t    dpaddr          = 0;        
+        bool        dcache_hit      = false;
+        data_t      dcache_rdata    = 0;
 
-        if ( r_dtlb_page_k_save ) 
-        {
-            dpaddr = (addr36_t)(((addr36_t)dtlb_ppn_save << PAGE_K_NBITS) | (dreq.addr & OFFSET_K_MASK));
-        } 
-        else  
-        {
-            dpaddr = (addr36_t)(((addr36_t)dtlb_ppn_save << PAGE_M_NBITS) | (dreq.addr & OFFSET_M_MASK));
+        if ( r_dcache_page_k_save )
+        { 
+            dpaddr = (addr36_t)(((addr36_t)r_dcache_ppn_save << PAGE_K_NBITS) | (dreq.addr & OFFSET_K_MASK));
+        }
+        else
+        {  
+            dpaddr = (addr36_t)(((addr36_t)r_dcache_ppn_save << PAGE_M_NBITS) | (dreq.addr & OFFSET_M_MASK));
         }
  
-        dcache_cached = (m_cacheability_table[dpaddr] && r_dcache_cached_save );
-        if ( dcache_cached ) 
+        // acces always cached in this state
+
+        dcache_hit = r_dcache.read(dpaddr, &dcache_rdata);
+
+        if ( !dcache_hit ) 
         {
-            dvcache_hit_c = r_dcache.read(dpaddr, &dcache_rdata);
-        } 
-        else 
-        {
-            dvcache_hit_c = ((dpaddr == r_dcache_addr_save) && r_dcache_buf_unc_valid ); 
-            dcache_rdata = r_dcache_miss_buf[0];
+            m_cpt_data_miss++;
+            m_cost_data_miss_frz++;
+            r_dcache_miss_req   = true;
+            r_dcache_paddr_save = dpaddr;
+            r_dcache_fsm        = DCACHE_MISS_WAIT;
         }
-
-        switch( dreq.type ) {
-            case iss_t::DATA_READ:
-            case iss_t::DATA_LL:
-            case iss_t::DATA_SC:
-                m_cpt_read++;
-                if ( dvcache_hit_c ) 
-                {
-                    r_dvcache_fsm = DVCACHE_IDLE;
-                    drsp.valid = true;
-                    drsp.rdata = dcache_rdata;
-                    r_dcache_buf_unc_valid = false;
-                } 
-                else 
-                {
-                    if ( dcache_cached ) 
-                    {
-                        m_cpt_data_miss++;
-                        m_cost_data_miss_frz++;
-                        r_dcache_miss_req = true;
-                        r_dvcache_fsm = DVCACHE_MISS_WAIT;
-                    } 
-                    else 
-                    {
-                        m_cpt_unc_read++;
-                        m_cost_unc_read_frz++;
-                        r_dcache_unc_req = true;
-                        r_dvcache_fsm = DVCACHE_UNC_WAIT;
-                    }
-                }
-                break;
-            case iss_t::XTN_READ:
-            case iss_t::XTN_WRITE:
-                // only DCACHE INVALIDATE request are supported
-                //r_dcache_fsm = DCACHE_INVAL;
-                //drsp.valid = true;
-                break;
-            case iss_t::DATA_WRITE:
-                m_cpt_write++;
-                if ( dvcache_hit_c && dcache_cached ) 
-                {
-                    r_dvcache_fsm = DVCACHE_WRITE_UPDT;
-                    m_cpt_write_cached++;
-                } 
-                else 
-                {
-                    r_dvcache_fsm = DVCACHE_WRITE_REQ;
-                }
-                drsp.valid = true;
-                drsp.rdata = 0;
-                break;
-        } // end switch dreq.type
-
-        r_dcache_addr_save      = dpaddr;
-        r_dcache_type_save      = dreq.type;
-        r_dcache_wdata_save     = dreq.wdata;
-        r_dcache_be_save        = dreq.be;
-        r_dcache_rdata_save     = dcache_rdata;
-        r_dcache_cached_save    = dcache_cached;
+        else
+        {
+            r_dcache_fsm = DCACHE_IDLE;
+        }
+        drsp.valid = dcache_hit;
+        drsp.error = false;
+        drsp.rdata = dcache_rdata;
         break;
     }
-
-    case DVCACHE_TLB1_WAIT:
+    //////////////////////
+    case DCACHE_TLB1_READ:
     {
-        if ( !r_dtlb_req && !r_dvcache_rsp_error ) 
+        if ( !r_dcache_tlb_read_req && !r_vci_rsp_data_error ) // VCI response ok
         {
-            bool d = (((r_dtlb_miss_rsp & PTE_D_MASK)>> PTE_D_SHIFT) == 1) ? true : false;
-            // renew tlb save register
-            r_dtlb_et_save = (r_dtlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT;
-            r_dtlb_ptpr_save = r_tlb_ptpr;
-            r_dtlb_id1_save = dreq.addr>>PAGE_M_NBITS;
-
-            switch((r_dtlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
-            case PTD:
-            {
-                addr36_t dtlb_ptp = (addr36_t)(r_dtlb_miss_rsp & PTD_PTP_MASK) << 12;
-                r_dtlb_ptp = dtlb_ptp;
-                r_dcache_addr_save = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
-                r_dtlb_pte_addr = (addr36_t)(dtlb_ptp | (((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
-                r_dcache_type_save      = iss_t::DATA_READ;
-                r_dcache_wdata_save     = 0xFFFFFFFF;
-                r_dcache_be_save        = 0xF;
-                r_dcache_rdata_save     = 0xFFFFFFFF;
-                r_dcache_cached_save    = false;
-                r_dtlb_req              = true;
-                r_dvcache_fsm = DVCACHE_TLB2_WAIT;
+            switch((r_vci_rsp_dtlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
+            case PTD:                   // 4K page
+                r_dcache_ptba_ok       = true;
+                r_dcache_ptba_save     = (addr36_t)(r_vci_rsp_dtlb_miss & PTD_PTP_MASK) << 12;  
+                r_dcache_id1_save      = dreq.addr>>PAGE_M_NBITS;
+                r_dcache_tlb_paddr    = (addr36_t)((r_vci_rsp_dtlb_miss & PTD_PTP_MASK) << 12) | 
+                                        (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
+                r_dcache_tlb_read_req  = true;
+                r_dcache_fsm           = DCACHE_TLB2_READ;
                 break;
-            }
-            case PTE_NEW:   // to set PTE accessed  
-                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
-                r_dcache_type_save      = iss_t::DATA_LL;
-                r_dcache_wdata_save     = 0xFFFFFFFF;
-                r_dcache_be_save        = 0xF;
-                r_dcache_rdata_save     = 0xFFFFFFFF;
-                r_dcache_cached_save    = false;
-                r_dtlb_ll_req           = true;
-                r_dvcache_fsm = DVCACHE_T1_LL_WAIT;
+            case PTE_NEW:               // 4M page (not marked)
+                r_dcache_ptba_ok       = false;
+                r_dcache_tlb_paddr    = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                r_dcache_tlb_write_req = true;
+                r_dcache_fsm           = DCACHE_TLB1_WRITE;
+                r_dcache_pte_update    = r_vci_rsp_dtlb_miss | PTE_ET_MASK;     
                 break;  
-            case PTE_OLD:                
-                if ( is_write(dreq.type) && !d ) 
-                { 
-                    r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
-                    r_dcache_type_save      = iss_t::DATA_LL;
-                    r_dcache_wdata_save     = 0xFFFFFFFF;
-                    r_dcache_be_save        = 0xF;
-                    r_dcache_rdata_save     = 0xFFFFFFFF;
-                    r_dcache_cached_save    = false;
-                    r_dtlb_ll_req           = true;
-                    r_dvcache_fsm = DVCACHE_T1_LL_WAIT;
-                } 
-                else 
-                { 
-                    r_dvcache_fsm = DVCACHE_TLB1_UPDT;
-                }
+            case PTE_OLD:                // 4M page (already marked)
+                r_dcache_ptba_ok       = false;
+                r_dcache_pte_update    = r_vci_rsp_dtlb_miss;
+                r_dcache_fsm           = DCACHE_TLB1_UPDT;
                 break;
-            default:    // unmapped
-                r_dvcache_error_type = r_dvcache_error_type | MMU_PT1_UNMAPPED;  // Invalid address error     
-                r_dvcache_bad_vaddr = dreq.addr;
-                r_dvcache_fsm = DVCACHE_ERROR;
+            default:                    // unmapped
+                r_dcache_ptba_ok       = false;
+                r_dcache_error_type    = r_dcache_error_type | MMU_PT1_UNMAPPED;       
+                r_dcache_bad_vaddr     = dreq.addr;
+                r_dcache_fsm           = DCACHE_ERROR;
                 break;
-            }
+            } // end switch ET
         }
 
-        if (!r_dtlb_req && r_dvcache_rsp_error) 
+        if (!r_dcache_tlb_read_req && r_vci_rsp_data_error) // VCI response error 
         {
-            r_dvcache_fsm = DVCACHE_ERROR; 
-            r_dvcache_error_type = r_dvcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    // Access bus error 
-            r_dvcache_bad_vaddr = dreq.addr;
+            r_dcache_fsm = DCACHE_ERROR; 
+            r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+            r_dcache_bad_vaddr = dreq.addr;
         }
         break;
     }
-
-    case DVCACHE_T1_LL_WAIT:
-        if (!r_dtlb_ll_req) 
+    //////////////////////
+    case DCACHE_TLB1_WRITE:
+    {
+        if (!r_dcache_tlb_write_req) 
         {
-            if ( r_dvcache_rsp_error ) 
+            if ( r_vci_rsp_data_error ) 
             {
-                r_dvcache_fsm = DVCACHE_ERROR;  
-                r_dvcache_error_type = r_dvcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    // Access bus error 
-                r_dvcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;  
+                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
+                r_dcache_bad_vaddr = dreq.addr;
             } 
             else
             {
-                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
-                r_dcache_type_save = iss_t::DATA_SC;
-                if ( is_write(dreq.type) )
-                {
-                    r_dcache_wdata_save = r_dtlb_miss_rsp | PTE_ET_MASK | PTE_D_MASK;
-                }
-                else
-                { 
-                    r_dcache_wdata_save = r_dtlb_miss_rsp | PTE_ET_MASK;
-                }
-                r_dcache_be_save = 0xF;
-                r_dcache_cached_save = false;
-                r_dtlb_sc_req = true;
-                r_dvcache_fsm = DVCACHE_T1_SC_WAIT; 
+                r_dcache_fsm = DCACHE_TLB1_UPDT; 
             }
         }
         break;
-
-    case DVCACHE_T1_SC_WAIT:  
-        if (!r_dtlb_sc_req) 
-        {
-            if ( r_dvcache_rsp_error ) 
-            {
-                r_dvcache_fsm = DVCACHE_ERROR;
-                r_dvcache_error_type = r_dvcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    // Access bus error 
-                r_dvcache_bad_vaddr = dreq.addr;
-            } 
-            else if ( r_dtlb_ll_req ) 
-            {
-                r_dcache_addr_save = (addr36_t)(r_tlb_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
-                r_dcache_type_save      = iss_t::DATA_LL;
-                r_dcache_wdata_save     = 0xFFFFFFFF;
-                r_dcache_be_save        = 0xF;
-                r_dcache_rdata_save     = 0xFFFFFFFF;
-                r_dcache_cached_save    = false;
-                r_dvcache_fsm = DVCACHE_T1_LL_WAIT;
-            } 
-            else 
-            {
-                r_dvcache_fsm = DVCACHE_TLB1_UPDT;  // TLB update
-            }
-        } 
-        break;
-
-    case DVCACHE_TLB1_UPDT: // update data TLB
-        dvcache_m_tlb.update(r_dtlb_miss_rsp,dreq.addr,is_write(dreq.type));
-        r_dvcache_fsm = DVCACHE_IDLE;
-        break;
-
-    case DVCACHE_TLB2_WAIT:
+    }
+    //////////////////////
+    case DCACHE_TLB1_UPDT: 
     {
-        if (!r_dtlb_req && !r_dvcache_rsp_error) 
+        dcache_m_tlb.update(r_dcache_pte_update,dreq.addr);
+        r_dcache_fsm = DCACHE_IDLE;
+        break;
+    }
+    /////////////////////
+    case DCACHE_TLB2_READ:
+    {
+        if (!r_dcache_tlb_read_req && !r_vci_rsp_data_error) // VCI response ok
         {
-            bool d  = (((r_dtlb_miss_rsp & PTE_D_MASK)>> PTE_D_SHIFT) == 1) ? true : false;
-            switch((r_dtlb_miss_rsp & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
-            case PTE_NEW:   // to set PTE accessed  
-                r_dcache_addr_save   = r_dtlb_pte_addr;
-                r_dcache_type_save   = iss_t::DATA_LL;
-                r_dcache_wdata_save  = 0xFFFFFFFF;
-                r_dcache_be_save     = 0xF;
-                r_dcache_rdata_save  = 0xFFFFFFFF;
-                r_dcache_cached_save = false;
-                r_dtlb_ll_req        = true;
-                r_dvcache_fsm = DVCACHE_T2_LL_WAIT;
+            switch((r_vci_rsp_dtlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
+            case PTE_NEW:               // not marked  
+                r_dcache_tlb_write_req = true;
+                r_dcache_fsm           = DCACHE_TLB2_WRITE;
+                r_dcache_pte_update    = r_vci_rsp_dtlb_miss | PTE_ET_MASK;     
                 break;  
-            case PTE_OLD:
-                if ( is_write(dreq.type) && !d ) 
-                { 
-                    r_dcache_addr_save   = r_dtlb_pte_addr;
-                    r_dcache_type_save   = iss_t::DATA_LL;
-                    r_dcache_wdata_save  = 0xFFFFFFFF;
-                    r_dcache_be_save     = 0xF;
-                    r_dcache_rdata_save  = 0xFFFFFFFF;
-                    r_dcache_cached_save = false;
-                    r_dtlb_ll_req        = true;
-                    r_dvcache_fsm = DVCACHE_T2_LL_WAIT;
-                } 
-                else 
-                { 
-                    r_dvcache_fsm = DVCACHE_TLB2_UPDT;
-                }
+            case PTE_OLD:               // already marked
+                r_dcache_fsm           = DCACHE_TLB2_UPDT;
+                r_dcache_pte_update    = r_vci_rsp_dtlb_miss;     
                 break;
             default:    
-                r_dvcache_error_type = r_dvcache_error_type | MMU_PT2_UNMAPPED;  // Translation error
-                r_dvcache_bad_vaddr = dreq.addr;
-                r_dvcache_fsm = DVCACHE_ERROR;
+                r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED; 
+                r_dcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;
                 break;
             }
         }
 
-        if (!r_dtlb_req && r_dvcache_rsp_error) 
+        if (!r_dcache_tlb_read_req && r_vci_rsp_data_error)  // VCI response error
         {
-            r_dvcache_fsm = DVCACHE_ERROR;
-            r_dvcache_error_type = r_dvcache_error_type | MMU_PT2_ILLEGAL_ACCESS;  // Access bus error
-            r_dvcache_bad_vaddr = dreq.addr;
+            r_dcache_fsm = DCACHE_ERROR;
+            r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS; 
+            r_dcache_bad_vaddr = dreq.addr;
         }
         break;
     }
-
-    case DVCACHE_T2_LL_WAIT:
-        if (!r_dtlb_ll_req) 
+    ////////////////////////
+    case DCACHE_TLB2_WRITE:
+    {
+        if (!r_dcache_tlb_write_req) 
         {
-            if ( r_dvcache_rsp_error ) 
+            if ( r_vci_rsp_data_error ) 
             {
-                r_dvcache_fsm = DVCACHE_ERROR;  
-                r_dvcache_error_type = r_dvcache_error_type | MMU_PT2_ILLEGAL_ACCESS;  // Access bus error
-                r_dvcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;  
+                r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS; 
+                r_dcache_bad_vaddr = dreq.addr;
             } 
             else  
             {
-                r_dcache_addr_save = r_dtlb_pte_addr;
-                r_dcache_type_save = iss_t::DATA_SC;
-                if ( is_write(dreq.type) )
-                {
-                    r_dcache_wdata_save = r_dtlb_miss_rsp | PTE_ET_MASK | PTE_D_MASK;
-                }
-                else
-                { 
-                    r_dcache_wdata_save = r_dtlb_miss_rsp | PTE_ET_MASK;
-                }
-                r_dcache_be_save = 0xF;
-                r_dcache_cached_save = false;
-                r_dtlb_sc_req = true;
-                r_dvcache_fsm = DVCACHE_T2_SC_WAIT; 
+                r_dcache_fsm = DCACHE_TLB2_UPDT; 
             }
         }
         break;
-
-    case DVCACHE_T2_SC_WAIT:  
-        if (!r_dtlb_sc_req) 
-        {
-            if ( r_dvcache_rsp_error ) 
-            {
-                r_dvcache_fsm = DVCACHE_ERROR;
-                r_dvcache_error_type = r_dvcache_error_type | MMU_PT2_ILLEGAL_ACCESS;  // Access bus error
-                r_dvcache_bad_vaddr = dreq.addr;
-            } 
-            else if ( r_dtlb_ll_req ) 
-            {
-                r_dcache_addr_save   = r_dtlb_pte_addr;
-                r_dcache_type_save   = iss_t::DATA_LL;
-                r_dcache_wdata_save  = 0xFFFFFFFF;
-                r_dcache_be_save     = 0xF;
-                r_dcache_rdata_save  = 0xFFFFFFFF;
-                r_dcache_cached_save = false;
-                r_dvcache_fsm = DVCACHE_T2_LL_WAIT;
-            } 
-            else  
-            {
-                r_dvcache_fsm = DVCACHE_TLB2_UPDT;  // TLB update
-            }
-        } 
-        break;
-
-    case DVCACHE_TLB2_UPDT:   // update TLB
-        dvcache_k_tlb.update(r_dtlb_miss_rsp,dreq.addr,is_write(dreq.type));
-        r_dvcache_fsm = DVCACHE_IDLE;
-        break;
-
-    case DVCACHE_TLB_FLUSH:
+    }
+    //////////////////////
+    case DCACHE_TLB2_UPDT:  
     {
-        bool all = (bool)!r_context_sw_dtlb;
-        dvcache_m_tlb.flush(all);     // initiale 4M page TLB
-        dvcache_k_tlb.flush(all);     // initiale 4K page TLB
-        r_dvcache_fsm = DVCACHE_IDLE;
-        if (r_context_sw_dtlb) 
-        { 
+        dcache_k_tlb.update(r_dcache_pte_update,dreq.addr);
+        r_dcache_fsm = DCACHE_IDLE;
+        break;
+    }
+    ///////////////////////
+    case DCACHE_CTXT_SWITCH:
+    {
+        dcache_m_tlb.flush(false);      // global entries are not invalidated   
+        dcache_k_tlb.flush(false);      // global entries are not invalidated
+        if ( !r_dcache_xtn_req ) 
+        {
+            r_dcache_fsm = DCACHE_IDLE;
             drsp.valid = true; 
         }
-        r_context_sw_dtlb = false;
         break;
     }
-
-    case DVCACHE_CACHE_FLUSH:
-        r_dcache.reset();
-        r_dvcache_fsm = DVCACHE_IDLE;
-        drsp.valid = true;
-        break;
-
-    case DVCACHE_TLB_INVAL: // the page swap out 
+    ////////////////////////
+    case DCACHE_ICACHE_FLUSH:
+    case DCACHE_ICACHE_INVAL:
+    case DCACHE_ITLB_INVAL:
     {
-        addr_t invadr = dreq.wdata;
-        bool dvcache_hit_t_m = dvcache_m_tlb.translate(invadr); 
-        bool dvcache_hit_t_k = dvcache_k_tlb.translate(invadr); 
-		if (dvcache_hit_t_m)
+        if ( !r_dcache_xtn_req ) 
         {
-            dvcache_m_tlb.inval(invadr);
+            r_dcache_fsm = DCACHE_IDLE;
+            drsp.valid = true;
         }
-        else if (dvcache_hit_t_k)
-        {
-        	dvcache_k_tlb.inval(invadr);
-        }
-        r_dvcache_fsm = DVCACHE_IDLE;
+        break;
+    }
+    ////////////////////////
+    case DCACHE_DCACHE_FLUSH:
+    {
+        r_dcache.reset();
+        r_dcache_fsm = DCACHE_IDLE;
         drsp.valid = true;
         break;
     }
+    //////////////////////
+    case DCACHE_DTLB_INVAL: 
+    {
+        if ( dcache_m_tlb.translate(r_dcache_wdata_save) ) 
+        {
+            r_dcache_page_k_save = false;
+            r_dcache_fsm         = DCACHE_DTLB_INVAL_DONE;
+        }
+        else if ( dcache_k_tlb.translate(r_dcache_wdata_save) ) 
+        {
+            r_dcache_page_k_save = true;
+            r_dcache_fsm         = DCACHE_DTLB_INVAL_DONE;
+        }
+        else 
+        {
+            r_dcache_fsm = DCACHE_IDLE;
+            drsp.valid = true;
+        }
+        break;
+    }
+    ////////////////////////////
+    case DCACHE_DTLB_INVAL_DONE:
+    {
+        if ( r_dcache_page_k_save ) 
+        {
+            dcache_k_tlb.inval(r_dcache_wdata_save);
+        }
+        else
+        {
+            dcache_m_tlb.inval(r_dcache_wdata_save);
+        }
 
-    case DVCACHE_CACHE_INVAL1:
+        r_dcache_fsm = DCACHE_IDLE;
+        drsp.valid = true;
+        break;
+    }
+    ////////////////////////
+    case DCACHE_DCACHE_INVAL:
     {
         m_cpt_dcache_dir_read += m_dcache_ways;
         addr_t invadr = dreq.wdata;
         addr36_t dpaddr;
         bool dtlb_m_hit, dtlb_k_hit; 
 
-        if ( r_tlb_mode == TLBS_ACTIVE || r_tlb_mode == ITLB_D_DTLB_A ) 
+        if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_D_DTLB_A ) 
         {
-            dtlb_m_hit = dvcache_m_tlb.translate(invadr, &dpaddr); 
-            dtlb_k_hit = dvcache_k_tlb.translate(invadr, &dpaddr); 
+            dtlb_m_hit = dcache_m_tlb.translate(invadr, &dpaddr); 
+            dtlb_k_hit = dcache_k_tlb.translate(invadr, &dpaddr); 
         } 
         else 
         {
-            dpaddr = invadr;                    // instruction physique address
+            dpaddr = invadr;  
             dtlb_m_hit = true; 
             dtlb_k_hit = true;
         }
 
         if ( dtlb_m_hit || dtlb_k_hit )
         {
-            r_ivcache_fsm = IVCACHE_CACHE_INVAL2;
-            r_dcache_addr_save = dpaddr;
+            r_icache_fsm = ICACHE_CACHE_INVAL_DONE;
+            r_dcache_paddr_save = dpaddr;
         }
         else
         {
-            r_ivcache_fsm = IVCACHE_IDLE;
+            r_icache_fsm = ICACHE_IDLE;
             drsp.valid = true;
         }
-
         break;
     }
-
-    case DVCACHE_CACHE_INVAL2:
-        r_dcache.inval(r_dcache_addr_save);
+    /////////////////////////////
+    case DCACHE_DCACHE_INVAL_DONE:
+        r_dcache.inval(r_dcache_paddr_save);
         drsp.valid = true;
-        r_dvcache_fsm = DVCACHE_IDLE;
+        r_dcache_fsm = DCACHE_IDLE;
         break;
 
-    case DVCACHE_WRITE_UPDT:
-    {
-        m_cpt_dcache_data_write++;
-        data_t mask = be_to_mask(r_dcache_be_save);
-        data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
-        assert(r_dcache.write(r_dcache_addr_save, wdata) && "Write on miss ignores data");
-        r_dvcache_fsm = DVCACHE_WRITE_REQ;
-        break;
-    }
- 
-    case DVCACHE_MISS_WAIT:
-        if ( dreq.valid ) 
-        {
-            m_cost_data_miss_frz++;
+    /////////////////////
+    case DCACHE_MISS_WAIT:
+        if ( dreq.valid )
+        {  
+            m_cost_data_miss_frz++; 
         }
 
         if ( !r_dcache_miss_req ) 
         {
-            if ( r_dvcache_rsp_error ) 
+            if ( r_vci_rsp_data_error ) 
             {
-                r_dvcache_fsm = DVCACHE_ERROR;
-                r_dvcache_error_type = r_dvcache_error_type | MMU_CACHE_ILLEGAL_ACCESS;  // Access bus error
-                r_dvcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;
+                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_dcache_bad_vaddr = dreq.addr;
             } 
             else 
             {
-                r_dvcache_fsm = DVCACHE_MISS_UPDT;  // TLB update
+                r_dcache_fsm = DCACHE_MISS_UPDT; 
             } 
         } 
         break;
-
-    case DVCACHE_MISS_UPDT:
+    /////////////////////
+    case DCACHE_MISS_UPDT:
     {
-        addr36_t ad = r_dcache_addr_save;
+        addr36_t ad = r_dcache_paddr_save;
         data_t* buf = r_dcache_miss_buf;
         addr36_t  victim_index = 0;
         if ( dreq.valid )
@@ -1867,39 +1732,98 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         m_cpt_dcache_data_write++;
         m_cpt_dcache_dir_write++;
         r_dcache.update(ad, buf, &victim_index);
-        r_dvcache_fsm = DVCACHE_IDLE;
+        r_dcache_fsm = DCACHE_IDLE;
         break;
     }
- 
-    case DVCACHE_UNC_WAIT:
+    //////////////////////
+    case DCACHE_UNC_WAIT:
+    {
         if ( dreq.valid )
-        { 
+        {  
             m_cost_unc_read_frz++;
         }
+
         if ( !r_dcache_unc_req ) 
         {
-            if ( r_dvcache_rsp_error ) 
+            if ( r_vci_rsp_data_error ) 
             {
-                r_dvcache_fsm = DVCACHE_ERROR;
-                r_dvcache_error_type = r_dvcache_error_type | MMU_CACHE_ILLEGAL_ACCESS;  // Access bus error
-                r_dvcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;
+                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_dcache_bad_vaddr = dreq.addr;
             } 
             else 
             {
-                r_dvcache_fsm = DVCACHE_IDLE;  // TLB update
+                r_dcache_fsm = DCACHE_IDLE; 
             } 
         }
         break;
+    }
+    ///////////////////////
+    case DCACHE_WRITE_UPDT:
+    {
+        m_cpt_dcache_data_write++;
+        data_t mask = be_to_mask(r_dcache_be_save);
+        data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
+        assert(r_dcache.write(r_dcache_paddr_save, wdata) && "Write on miss ignores data");
+        if ( !r_dcache_dirty_save && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   
+        {
+            if ( r_dcache_page_k_save )
+            { 
+                r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
+                r_dcache_pte_update = dcache_k_tlb.getpte(r_dcache_tlb_way_save,r_dcache_tlb_set_save) | PTE_D_MASK;
+            }
+            else
+            {
+                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                r_dcache_pte_update = dcache_m_tlb.getpte(r_dcache_tlb_way_save,r_dcache_tlb_set_save) | PTE_D_MASK;
+            }
+            r_dcache_fsm = DCACHE_WRITE_DIRTY;
+            r_dcache_tlb_write_req  = true;
+        }
+        else
+        {
+            r_dcache_fsm = DCACHE_WRITE_REQ;
+        }
+        break;
+    }
+    ////////////////////////
+    case DCACHE_WRITE_DIRTY:
+    {
+        if ( r_dcache_page_k_save ) 
+        {
+            dcache_k_tlb.setdirty(r_dcache_tlb_way_save, r_dcache_tlb_set_save);
+        }
+        else
+        {
+            dcache_m_tlb.setdirty(r_dcache_tlb_way_save, r_dcache_tlb_set_save);
+        }
 
-    case DVCACHE_ERROR:
-        r_dvcache_rsp_error = false;
+        if ( !r_dcache_tlb_write_req ) 
+        {
+            if ( r_vci_rsp_data_error )
+            {
+                r_dcache_fsm = DCACHE_ERROR;
+                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_dcache_bad_vaddr = dreq.addr;
+            }
+            else
+            {
+                r_dcache_fsm = DCACHE_WRITE_REQ;
+            }
+        }
+        break;
+    }
+    /////////////////
+    case DCACHE_ERROR:
+    {
+        r_vci_rsp_data_error = false;
         drsp.valid = true;
         drsp.error = true;
         drsp.rdata = 0;
-        r_dvcache_fsm = DVCACHE_IDLE;
+        r_dcache_fsm = DCACHE_IDLE;
         break;
-        
-    } // end switch r_dvcache_fsm
+    }   
+    } // end switch r_dcache_fsm
 
     m_iss.setData( drsp );
 
@@ -1921,79 +1845,70 @@ std::cout << " Data Response: " << drsp << std::endl;
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    // The VCI_CMD FSM controls the following ressources:
-    // - r_vci_cmd_fsm
-    // - r_vci_cmd_cpt
-    // - r_vci_cmd_min
-    // - r_vci_cmd_max
+    //     VCI_CMD FSM 
     //
-    // This FSM handles requests from both the DVCACHE controler
-    // (request registers) and the IVCACHE controler (request registers).
-    // There is 11 VCI transaction types :
-    // - INS_TLB_MISS
-    // - INS_TLB_LL
-    // - INS_TLB_SC
+    // This FSM handles requests from both the DCACHE controler
+    // (request registers) and the ICACHE controler (request registers).
+    // There is 10 VCI transaction types :
+    // - INS_TLB_READ
+    // - INS_TLB_WRITE
     // - INS_MISS
     // - INS_UNC_MISS
-    // - DATA_TLB_MISS
-    // - DATA_TLB_LL
-    // - DATA_TLB_SC
+    // - DATA_TLB_READ
+    // - DATA_TLB_WRITE
+    // - DATA_TLB_DIRTY
     // - DATA_MISS
     // - DATA_UNC 
     // - DATA_WRITE
-    // The IVCACHE requests have the highest priority.
+    // The ICACHE requests have the highest priority.
     // There is at most one (CMD/RSP) VCI transaction, as both CMD_FSM and RSP_FSM
     // exit simultaneously the IDLE state.
     //////////////////////////////////////////////////////////////////////////////
 
-    switch (r_vci_cmd_fsm.read()) {
+    switch (r_vci_cmd_fsm) {
     
     case CMD_IDLE:
         if (r_vci_rsp_fsm != RSP_IDLE)
             break;
 
         r_vci_cmd_cpt = 0;
-        if (r_itlb_req.read())              // ITLB miss request 
+
+        if (r_icache_tlb_read_req)           
         {            
-            r_vci_cmd_fsm = CMD_ITLB_MISS;
+            r_vci_cmd_fsm = CMD_ITLB_READ;
             m_cpt_itlbmiss_transaction++; 
         } 
-        else if (r_itlb_ll_req.read())      // ITLB Linked Load request
+        else if (r_icache_tlb_write_req)      
         {  
-            r_vci_cmd_fsm = CMD_ITLB_LL;
+            r_vci_cmd_fsm = CMD_ITLB_WRITE;
             m_cpt_itlbmiss_transaction++; 
         } 
-        else if (r_itlb_sc_req.read())      // ITLB store conditional request
-        {  
-            r_vci_cmd_fsm = CMD_ITLB_SC;
-            m_cpt_itlbmiss_transaction++; 
-        } 
-        else if (r_icache_miss_req.read())   // ICACHE instruction miss request
+        else if (r_icache_miss_req) 
         {    
             r_vci_cmd_fsm = CMD_INS_MISS;
             m_cpt_imiss_transaction++; 
         }
-        else if (r_icache_unc_req.read())   // ICACHE instruction uncached miss request
+        else if (r_icache_unc_req) 
         {    
             r_vci_cmd_fsm = CMD_INS_UNC;
             m_cpt_imiss_transaction++; 
         }  
-        else if (r_dtlb_req.read())         // DTLB miss request
+        else if (r_dcache_tlb_read_req) 
         {            
-            r_vci_cmd_fsm = CMD_DTLB_MISS;
+            r_vci_cmd_fsm = CMD_DTLB_READ;
             m_cpt_dtlbmiss_transaction++; 
         } 
-        else if (r_dtlb_ll_req.read())      // DTLB Linked Load request
+        else if (r_dcache_tlb_write_req) 
         {  
-            r_vci_cmd_fsm = CMD_DTLB_LL;
+            r_vci_cmd_fsm = CMD_DTLB_WRITE;
             m_cpt_dtlbmiss_transaction++; 
         } 
-        else if (r_dtlb_sc_req.read())      // DTLB store conditional request
+        else if (r_dcache_tlb_dirty_req) 
         {  
-            r_vci_cmd_fsm = CMD_DTLB_SC;
+            r_vci_cmd_fsm = CMD_DTLB_DIRTY;
             m_cpt_dtlbmiss_transaction++; 
         } 
-        else if (r_dcache_write_req.read()) // DCACHE write request
+        else if (r_dcache_write_req)
         {
             r_vci_cmd_fsm = CMD_DATA_WRITE;
             r_vci_cmd_cpt = r_wbuf.getMin();
@@ -2002,39 +1917,18 @@ std::cout << " Data Response: " << drsp << std::endl;
             m_cpt_write_transaction++; 
             m_length_write_transaction += (r_wbuf.getMax() - r_wbuf.getMin() + 1);
         }
-        else if (r_dcache_miss_req.read())  // DCACHE read request
+        else if (r_dcache_miss_req)  
         {
             r_vci_cmd_fsm = CMD_DATA_MISS;
             m_cpt_dmiss_transaction++; 
         }
-        else if (r_dcache_unc_req.read())   // DCACHE uncached read request
+        else if (r_dcache_unc_req)  
         {
             r_vci_cmd_fsm = CMD_DATA_UNC;
             m_cpt_unc_transaction++; 
         }
         break;
 
-    case CMD_ITLB_MISS:     
-    case CMD_ITLB_LL: 
-    case CMD_ITLB_SC:    
-    case CMD_INS_MISS: 
-    case CMD_INS_UNC:
-        if (p_vci.cmdack.read())
-        {
-            r_vci_cmd_fsm = CMD_IDLE;
-        }
-        break;
-
-    case CMD_DTLB_MISS:     
-    case CMD_DTLB_LL: 
-    case CMD_DTLB_SC:     
-    case CMD_DATA_UNC:
-    case CMD_DATA_MISS:
-        if ( p_vci.cmdack.read() )
-        {
-            r_vci_cmd_fsm = CMD_IDLE;
-        }
-        break;
 
     case CMD_DATA_WRITE:
         if ( p_vci.cmdack.read() ) 
@@ -2042,42 +1936,29 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_vci_cmd_cpt = r_vci_cmd_cpt + 1;
             if (r_vci_cmd_cpt == r_vci_cmd_max) 
             {
-                r_vci_cmd_fsm = CMD_IDLE ;
-                r_wbuf.reset() ;
+                r_vci_cmd_fsm = CMD_IDLE;
+                r_wbuf.reset();
             }
         }
         break;
+
+    default:
+        if ( p_vci.cmdack.read() )
+        {  
+            r_vci_cmd_fsm = CMD_IDLE;
+        }
+        break;
+
     } // end  switch r_vci_cmd_fsm
 
     //////////////////////////////////////////////////////////////////////////
-    // The VCI_RSP FSM controls the following ressources:
-    // - r_vci_rsp_fsm:
-    // - r_icache_miss_buf[icache_words]
-    // - r_dcache_miss_buf[dcache_words]
-    // - r_icache_buf_unc_valid set
-    // - r_dcache_buf_unc_valid set
-    // - r_itlb_req reset
-    // - r_icache_miss_req reset
-    // - r_icache_unc_req reset
-    // - r_itlb_ll_req reset
-    // - r_itlb_sc_req reset
-    // - r_dtlb_req reset
-    // - r_dcache_write_req reset
-    // - r_dcache_miss_req reset
-    // - r_dcache_unc_req reset
-    // - r_dtlb_ll_req reset
-    // - r_dtlb_sc_req reset
-    // - r_vci_rsp_cpt
-    // - r_itlb_miss_rsp set
-    // - r_dtlb_miss_rsp set
-    // - r_ivcache_rsp_error set
-    // - r_dvcache_rsp_error set
+    //      VCI_RSP FSM 
     //
     // This FSM is synchronized with the VCI_CMD FSM, as both FSMs exit the
     // IDLE state simultaneously.
     //////////////////////////////////////////////////////////////////////////
 
-    switch (r_vci_rsp_fsm.read()) {
+    switch (r_vci_rsp_fsm) {
 
     case RSP_IDLE:
         assert( ! p_vci.rspval.read() && "Unexpected response" );
@@ -2086,53 +1967,49 @@ std::cout << " Data Response: " << drsp << std::endl;
             break;
 
         r_vci_rsp_cpt = 0;
-        if (r_itlb_req.read())              // ITLB miss response
+        if (r_icache_tlb_read_req)          // ITLB miss response
         {            
-            r_vci_rsp_fsm = RSP_ITLB_MISS;
+            r_vci_rsp_fsm = RSP_ITLB_READ;
         } 
-        else if (r_itlb_ll_req.read())      // ITLB linked load response
+        else if (r_icache_tlb_write_req)    // ITLB linked load response
         {   
-            r_vci_rsp_fsm = RSP_ITLB_LL;
+            r_vci_rsp_fsm = RSP_ITLB_WRITE;
         } 
-        else if (r_itlb_sc_req.read())      // ITLB store conditional response
-        {   
-            r_vci_rsp_fsm = RSP_ITLB_SC;
-        } 
-        else if (r_icache_miss_req.read())   // ICACHE cached miss response
+        else if (r_icache_miss_req)         // ICACHE cached miss response
         {   
             r_vci_rsp_fsm = RSP_INS_MISS;
         }
-        else if (r_icache_unc_req.read())   // ICACHE uncached miss response
+        else if (r_icache_unc_req)          // ICACHE uncached miss response
         {   
             r_vci_rsp_fsm = RSP_INS_UNC;
         }  
-        else if (r_dtlb_req.read())         // ITLB miss response
+        else if (r_dcache_tlb_read_req)     // ITLB miss response
         {
-            r_vci_rsp_fsm = RSP_DTLB_MISS; 
+            r_vci_rsp_fsm = RSP_DTLB_READ; 
         }
-        else if (r_dtlb_ll_req.read())      // ITLB linked load response
+        else if (r_dcache_tlb_write_req)    // ITLB linked load response
         {
-            r_vci_rsp_fsm = RSP_DTLB_LL; 
+            r_vci_rsp_fsm = RSP_DTLB_WRITE; 
         }
-        else if (r_dtlb_sc_req.read())      // ITLB store conditional response
+        else if (r_dcache_tlb_dirty_req)    // ITLB store conditional response
         {
-            r_vci_rsp_fsm = RSP_DTLB_SC; 
+            r_vci_rsp_fsm = RSP_DTLB_DIRTY; 
         }
-        else if (r_dcache_write_req.read()) // DCACHE write request
+        else if (r_dcache_write_req)        // DCACHE write request
         {
             r_vci_rsp_fsm = RSP_DATA_WRITE;
         }
-        else if (r_dcache_miss_req.read())  // DCACHE read request
+        else if (r_dcache_miss_req)         // DCACHE read request
         {
             r_vci_rsp_fsm = RSP_DATA_MISS;
         }
-        else if (r_dcache_unc_req.read())   // DCACHE uncached read request
+        else if (r_dcache_unc_req)          // DCACHE uncached read request
         {
             r_vci_rsp_fsm = RSP_DATA_UNC;
         }
         break;
 
-    case RSP_ITLB_MISS:
+    case RSP_ITLB_READ:
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2141,52 +2018,28 @@ std::cout << " Data Response: " << drsp << std::endl;
 
         if ( !p_vci.rerror.read() ) 
         {
-            r_itlb_miss_rsp = (int)p_vci.rdata.read();
+            r_vci_rsp_itlb_miss = (int)p_vci.rdata.read();
         } 
         else 
         {
-            r_ivcache_rsp_error = true;
+            r_vci_rsp_ins_error = true;
         }
-        r_itlb_req = false;
+        r_icache_tlb_read_req = false;
         r_vci_rsp_fsm = RSP_IDLE;
         break;
 
-    case RSP_ITLB_LL:
+    case RSP_ITLB_WRITE:
         if ( ! p_vci.rspval.read() )
             break;
 
         assert(p_vci.reop.read() &&
-               "illegal VCI response packet for data read uncached");
-
-        if ( !p_vci.rerror.read() ) // linked load is successful
-        {   
-            r_itlb_miss_rsp = (int)p_vci.rdata.read();
-        } 
-        else 
-        {
-            r_ivcache_rsp_error = true;
-        }
-        r_itlb_ll_req = false;
-        r_vci_rsp_fsm = RSP_IDLE;
-        break;
-
-    case RSP_ITLB_SC:
-        if ( ! p_vci.rspval.read() )
-            break;
-
-        assert(p_vci.reop.read() &&
-               "illegal VCI response packet for data read uncached");
+               "illegal VCI response packet for write tlb");
 
         if ( p_vci.rerror.read() ) 
         {
-            r_ivcache_rsp_error = true;
+            r_vci_rsp_ins_error = true;
         }
-        //} else if ((int)p_vci.rdata.read() == 0) {  // store conditional is not successful 
-        else if ((int)p_vci.rdata.read() == 1) // store conditional is not successful, this for debug ??? after we should modify it
-        {  
-            r_itlb_ll_req = true;
-        }
-        r_itlb_sc_req = false;
+        r_icache_tlb_write_req = false;
         r_vci_rsp_fsm = RSP_IDLE;
         break;
 
@@ -2210,7 +2063,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         } 
         if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
         {
-            r_ivcache_rsp_error = true;
+            r_vci_rsp_ins_error = true;
         }
         break;
 
@@ -2229,11 +2082,11 @@ std::cout << " Data Response: " << drsp << std::endl;
 
         if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
         {
-            r_ivcache_rsp_error = true;
+            r_vci_rsp_ins_error = true;
         }
         break;
 
-    case RSP_DTLB_MISS:
+    case RSP_DTLB_READ:
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2242,53 +2095,65 @@ std::cout << " Data Response: " << drsp << std::endl;
 
         if ( !p_vci.rerror.read() ) 
         {
-            r_dtlb_miss_rsp = (int)p_vci.rdata.read();
+            r_vci_rsp_dtlb_miss = (int)p_vci.rdata.read();
         }
         else 
         {
-            r_dvcache_rsp_error = true;
+            r_vci_rsp_data_error = true;
         }
-        r_dtlb_req = false;
+        r_dcache_tlb_read_req = false;
         r_vci_rsp_fsm = RSP_IDLE;
         break;
 
-    case RSP_DTLB_LL:
+    case RSP_DTLB_WRITE:
         if ( ! p_vci.rspval.read() )
             break;
 
         assert(p_vci.reop.read() &&
-               "illegal VCI response packet for data read uncached");
-
-        if ( !p_vci.rerror.read() ) // linked load is successful
-        {   
-            r_dtlb_miss_rsp = (int)p_vci.rdata.read();
-        } 
-        else 
-        {
-            r_dvcache_rsp_error = true;
-        }
-        r_dtlb_ll_req = false;
-        r_vci_rsp_fsm = RSP_IDLE;
-        break;
-
-    case RSP_DTLB_SC:
-        if ( ! p_vci.rspval.read() )
-            break;
-
-        assert(p_vci.reop.read() &&
-               "illegal VCI response packet for data read uncached");
+               "illegal VCI response packet for write tlb");
 
         if ( p_vci.rerror.read() ) 
-        {
-            r_dvcache_rsp_error = true;
+        {   
+            r_vci_rsp_data_error = true;
         }
-        //} else if ((int)p_vci.rdata.read() == 0) {  // store conditional is not successful
-        else if ((int)p_vci.rdata.read() == 1) // store conditional is not successful, this for debug ??? after we should modify it
-        {  
-            r_dtlb_ll_req = true;
-        }
-        r_dtlb_sc_req = false;
+        r_dcache_tlb_write_req = false;
         r_vci_rsp_fsm = RSP_IDLE;
+        break;
+
+    case RSP_DTLB_DIRTY:
+        if ( ! p_vci.rspval.read() )
+            break;
+
+        assert(p_vci.reop.read() &&
+               "illegal VCI response packet for write tlb");
+
+        if ( p_vci.rerror.read() ) 
+        {   
+            r_vci_rsp_data_error = true;
+        }
+        r_dcache_tlb_dirty_req = false;
+        r_vci_rsp_fsm = RSP_IDLE;
+        break;
+
+    case RSP_DATA_UNC:
+        m_cost_dmiss_transaction++;
+        if ( ! p_vci.rspval.read() ) 
+            break;
+
+        assert(p_vci.reop.read() &&
+               "illegal VCI response packet for data read uncached");
+
+        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) 
+        {
+            r_vci_rsp_data_error = true;
+        }
+        else
+        {
+            r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
+            r_dcache_buf_unc_valid = true;
+        }
+        r_vci_rsp_fsm = RSP_IDLE;
+        r_dcache_unc_req = false;
         break;
 
     case RSP_DATA_MISS:
@@ -2310,7 +2175,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         } 
         if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
         {
-            r_dvcache_rsp_error = true;
+            r_vci_rsp_data_error = true;
         }
         break;
 
@@ -2330,41 +2195,27 @@ std::cout << " Data Response: " << drsp << std::endl;
         }
         break;
 
-    case RSP_DATA_UNC:
-        m_cost_dmiss_transaction++;
-        if ( ! p_vci.rspval.read() ) 
-            break;
-
-        assert(p_vci.reop.read() &&
-               "illegal VCI response packet for data read uncached");
-
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) 
-        {
-            r_dvcache_rsp_error = true;
-        }
-        else
-        {
-            r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
-            r_dcache_buf_unc_valid = true;
-        }
-        r_vci_rsp_fsm = RSP_IDLE;
-        r_dcache_unc_req = false;
-        break;
-
     } // end switch r_vci_rsp_fsm
-}
-//////////////////////////////////////////////////////////////////////////////////
-//   genMoore method 
-//   The Moore signals are p_vci 
-//////////////////////////////////////////////////////////////////////////////////
+} // end transition()
+
+///////////////////////
 tmpl(void)::genMoore()
+///////////////////////
 {
     // VCI initiator response
+
     p_vci.rspack = true;
 
     // VCI initiator command
-    addr36_t ivcache_req_addr = r_ivcache_miss_addr.read(); 
-    addr36_t dvcache_req_addr = r_dcache_addr_save.read();
+
+    p_vci.trdid  = 0;
+    p_vci.pktid  = 0;
+    p_vci.srcid  = m_srcid;
+    p_vci.cons   = false;
+    p_vci.wrap   = false;
+    p_vci.contig = true;
+    p_vci.clen   = 0;
+    p_vci.cfixed = false;
 
     switch (r_vci_cmd_fsm) {
 
@@ -2375,194 +2226,103 @@ tmpl(void)::genMoore()
         p_vci.be      = 0;
         p_vci.plen    = 0;
         p_vci.cmd     = vci_param::CMD_WRITE;
-        p_vci.trdid   = 0;
-        p_vci.pktid   = 0;
-        p_vci.srcid   = 0;
-        p_vci.cons    = false;
-        p_vci.wrap    = false;
-        p_vci.contig  = false;
-        p_vci.clen    = 0;
-        p_vci.cfixed  = false;
         p_vci.eop     = false;
         break;
 
-    case CMD_ITLB_MISS:     
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)ivcache_req_addr & ~0x3;
+    case CMD_ITLB_READ:     
+        p_vci.cmdval  = true;
+        p_vci.address = r_icache_paddr_save.read() & ~0x3;
         p_vci.wdata   = 0;
-        p_vci.be = 0xF;
-        p_vci.plen = 4;
-        p_vci.cmd = vci_param::CMD_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop    = true;
+        p_vci.be      = 0xF;
+        p_vci.plen    = 4;
+        p_vci.cmd     = vci_param::CMD_READ;
+        p_vci.eop     = true;
         break;
 
-    case CMD_ITLB_LL: 
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)ivcache_req_addr & ~0x3;
-        p_vci.wdata   = 0;
-        p_vci.be = 0xF;
-        p_vci.plen = 4;
-        p_vci.cmd = vci_param::CMD_LOCKED_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop    = true;
-        break;
-
-    case CMD_ITLB_SC:   
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)ivcache_req_addr & ~0x3;   // address of PTE
-        p_vci.wdata   = (data_t)r_ivcache_miss_data;   
-        p_vci.be = 0xF;
-        p_vci.plen = 4;
-        p_vci.cmd = vci_param::CMD_STORE_COND;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop    = true;
+    case CMD_ITLB_WRITE: 
+        p_vci.cmdval  = true;
+        p_vci.address = r_icache_paddr_save.read() & ~0x3;
+        p_vci.wdata   = r_icache_pte_update.read();
+        p_vci.be      = 0x8;
+        p_vci.plen    = 4;
+        p_vci.cmd     = vci_param::CMD_WRITE;
+        p_vci.eop     = true;
         break;
 
     case CMD_INS_MISS:
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)(ivcache_req_addr & m_icache_yzmask);
+        p_vci.cmdval  = true;
+        p_vci.address = r_icache_paddr_save.read() & m_icache_yzmask;
         p_vci.wdata   = 0;
-        p_vci.be     = 0xF;
-        p_vci.plen   = m_icache_words << 2;
-        p_vci.cmd    = vci_param::CMD_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop = true;
+        p_vci.be      = 0xF;
+        p_vci.plen    = m_icache_words << 2;
+        p_vci.cmd     = vci_param::CMD_READ;
+        p_vci.eop     = true;
         break;
-    
 
     case CMD_INS_UNC:
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)ivcache_req_addr & ~0x3;
+        p_vci.cmdval  = true;
+        p_vci.address = r_icache_paddr_save.read() & ~0x3;
         p_vci.wdata   = 0;
-        p_vci.be     = 0xF;
-        p_vci.plen   = 4;
-        p_vci.cmd    = vci_param::CMD_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop = true;
+        p_vci.be      = 0xF;
+        p_vci.plen    = 4;
+        p_vci.cmd     = vci_param::CMD_READ;
+        p_vci.eop     = true;
         break;
 
-    case CMD_DTLB_MISS:     
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)dvcache_req_addr & ~0x3;
+    case CMD_DTLB_READ:     
+        p_vci.cmdval  = true;
+        p_vci.address = r_dcache_tlb_paddr.read() & ~0x3;
         p_vci.wdata   = 0;
-        p_vci.be = 0xF;
-        p_vci.plen = 4;
-        p_vci.cmd = vci_param::CMD_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop    = true;
+        p_vci.be      = 0xF;
+        p_vci.plen    = 4;
+        p_vci.cmd     = vci_param::CMD_READ;
+        p_vci.eop     = true;
         break;
 
-    case CMD_DTLB_LL:     
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)dvcache_req_addr & ~0x3;
-        p_vci.wdata   = 0;
-        p_vci.be = 0xF;
-        p_vci.plen = 4;
-        p_vci.cmd = vci_param::CMD_LOCKED_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop    = true;
+    case CMD_DTLB_WRITE:     
+        p_vci.cmdval  = true;
+        p_vci.address = r_dcache_tlb_paddr.read() & ~0x3;
+        p_vci.wdata   = r_dcache_pte_update.read();
+        p_vci.be      = 0x8;
+        p_vci.plen    = 4;
+        p_vci.cmd     = vci_param::CMD_WRITE;
+        p_vci.eop     = true;
         break;
 
-    case CMD_DTLB_SC:     
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)dvcache_req_addr & ~0x3;     // address of PTE
-        p_vci.wdata   = r_dcache_wdata_save.read();     
-        p_vci.be = 0xF;
-        p_vci.plen = 4;
-        p_vci.cmd = vci_param::CMD_STORE_COND;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = false;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop    = true;
+    case CMD_DTLB_DIRTY:     
+        p_vci.cmdval  = true;
+        p_vci.address = r_dcache_tlb_paddr.read() & ~0x3;
+        p_vci.wdata   = r_dcache_pte_update.read();
+        p_vci.be      = 0x1;
+        p_vci.plen    = 4;
+        p_vci.cmd     = vci_param::CMD_WRITE;
+        p_vci.eop     = true;
         break;
 
     case CMD_DATA_UNC:
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)dvcache_req_addr & ~0x3;
+        p_vci.cmdval  = true;
+        p_vci.address = r_dcache_paddr_save.read() & ~0x3;
+        p_vci.plen    = 4;
+        p_vci.eop     = true;
         switch(r_dcache_type_save) {
         case iss_t::DATA_READ:
             p_vci.wdata = 0;
-            p_vci.be  = r_dcache_be_save.read();
-            p_vci.cmd = vci_param::CMD_READ;
+            p_vci.be    = r_dcache_be_save.read();
+            p_vci.cmd   = vci_param::CMD_READ;
             break;
         case iss_t::DATA_LL:
             p_vci.wdata = 0;
-            p_vci.be  = 0xF;
-            p_vci.cmd = vci_param::CMD_LOCKED_READ;
+            p_vci.be    = 0xF;
+            p_vci.cmd   = vci_param::CMD_LOCKED_READ;
             break;
         case iss_t::DATA_SC:
             p_vci.wdata = r_dcache_wdata_save.read();
-            p_vci.be  = 0xF;
-            p_vci.cmd = vci_param::CMD_STORE_COND;
+            p_vci.be    = 0xF;
+            p_vci.cmd   = vci_param::CMD_STORE_COND;
             break;
         default:
             assert("this should not happen");
         }
-        p_vci.plen = 4;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop    = true;
         break;
 
     case CMD_DATA_WRITE:
@@ -2572,33 +2332,17 @@ tmpl(void)::genMoore()
         p_vci.be      = r_wbuf.getBe(r_vci_cmd_cpt);
         p_vci.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
         p_vci.cmd     = vci_param::CMD_WRITE;
-        p_vci.trdid   = 0;
-        p_vci.pktid   = 0;
-        p_vci.srcid   = m_srcid;
-        p_vci.cons    = false;
-        p_vci.wrap    = false;
-        p_vci.contig  = true;
-        p_vci.clen    = 0;
-        p_vci.cfixed  = false;
         p_vci.eop     = (r_vci_cmd_cpt == r_vci_cmd_max);
         break;
 
     case CMD_DATA_MISS:
-        p_vci.cmdval = true;
-        p_vci.address = (addr36_t)(dvcache_req_addr & m_dcache_yzmask);
+        p_vci.cmdval  = true;
+        p_vci.address = r_dcache_paddr_save.read() & m_dcache_yzmask;
         p_vci.wdata   = 0;
-        p_vci.be     = 0xF;
-        p_vci.plen   = m_dcache_words << 2;
-        p_vci.cmd    = vci_param::CMD_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = 0;
-        p_vci.srcid  = m_srcid;
-        p_vci.cons   = false;
-        p_vci.wrap   = false;
-        p_vci.contig = true;
-        p_vci.clen   = 0;
-        p_vci.cfixed = false;
-        p_vci.eop = true;
+        p_vci.be      = 0xF;
+        p_vci.plen    = m_dcache_words << 2;
+        p_vci.cmd     = vci_param::CMD_READ;
+        p_vci.eop     = true;
         break;
 
     } // end switch r_vci_cmd_fsm

@@ -50,7 +50,7 @@ namespace caba {
     // PTE information struct
     typedef struct pte_info_s {
         size_t et;     
-        bool uc;
+        bool c;
         bool w;
         bool x;
         bool u;
@@ -60,28 +60,27 @@ namespace caba {
 
     enum {  
         PTE_ET_MASK   = 0xC0000000,
-        PTE_UC_MASK   = 0x20000000,
-        PTE_W_MASK    = 0x10000000,
-        PTE_X_MASK    = 0x08000000,
-        PTE_U_MASK    = 0x04000000,
-        PTE_G_MASK    = 0x02000000,
-        PTE_D_MASK    = 0x01000000,
+        PTE_C_MASK    = 0x00000020,
+        PTE_W_MASK    = 0x00000010,
+        PTE_X_MASK    = 0x00000008,
+        PTE_U_MASK    = 0x00000004,
+        PTE_G_MASK    = 0x00000002,
+        PTE_D_MASK    = 0x00000001,
         PTD_PTP_MASK  = 0x00FFFFFF,
         PTD_ID2_MASK  = 0x003FF000,
-        PPN_M_MASK    = 0x00003FFF,
-        PPN_I_MASK    = 0x000003FF,
+        PPN_M_MASK    = 0x000FFFC0,
         OFFSET_K_MASK = 0x00000FFF,
         OFFSET_M_MASK = 0x003FFFFF,
     };
 
     enum {  
         PTE_ET_SHIFT = 30,
-        PTE_UC_SHIFT = 29,
-        PTE_W_SHIFT  = 28,
-        PTE_X_SHIFT  = 27,
-        PTE_U_SHIFT  = 26,
-        PTE_G_SHIFT  = 25,
-        PTE_D_SHIFT  = 24,
+        PTE_C_SHIFT  = 5,
+        PTE_W_SHIFT  = 4,
+        PTE_X_SHIFT  = 3,
+        PTE_U_SHIFT  = 2,
+        PTE_G_SHIFT  = 1,
+        PTE_D_SHIFT  = 0,
     };
 
     enum {  
@@ -102,11 +101,11 @@ class GenericTlb
     size_t    m_sets_shift;
     size_t    m_sets_mask;
 
-    addr_t  *m_ppn; 
+    uint32_t  *m_ppn; 
     uint32_t  *m_vpn;
     size_t    *m_et;
     bool      *m_lru;
-    bool      *m_uncachable;
+    bool      *m_cachable;
     bool      *m_writable;
     bool      *m_executable;
     bool      *m_user;
@@ -114,7 +113,7 @@ class GenericTlb
     bool      *m_dirty;
 
     // access methods 
-    inline addr_t &ppn(size_t i, size_t j)
+    inline uint32_t &ppn(size_t i, size_t j)
         { return m_ppn[(i*m_nsets)+j]; }
 
     inline uint32_t &vpn(size_t i, size_t j)
@@ -126,8 +125,8 @@ class GenericTlb
     inline size_t &et(size_t i, size_t j)
         { return m_et[(i*m_nsets)+j]; }
 
-    inline bool &uncachable(size_t i, size_t j)
-        { return m_uncachable[(i*m_nsets)+j]; }
+    inline bool &cachable(size_t i, size_t j)
+        { return m_cachable[(i*m_nsets)+j]; }
 
     inline bool &writable(size_t i, size_t j)
         { return m_writable[(i*m_nsets)+j]; }
@@ -151,39 +150,47 @@ public:
 //////////////////////////////////////////////////////////////
     GenericTlb(size_t nways, size_t nsets, size_t nbits)
     {
-    m_nways = nways;
-    m_nsets = nsets;
+        m_nways = nways;
+        m_nsets = nsets;
  
-    m_sets_shift = uint32_log2(nsets);
-    //m_sets_mask = ((1<<(int)uint32_log2(nsets))-1) << m_sets_shift; // this for debug TLB
-    m_sets_mask = (1<<(int)uint32_log2(nsets))-1;
+        m_sets_shift = uint32_log2(nsets);
+        //m_sets_mask = ((1<<(int)uint32_log2(nsets))-1) << m_sets_shift; // this for debug TLB
+        m_sets_mask = (1<<(int)uint32_log2(nsets))-1;
 
-    assert(IS_POW_OF_2(nsets));
-    assert(IS_POW_OF_2(nways));
-    assert(nsets <= 64);
-    assert(nways <= 64);
+        assert(IS_POW_OF_2(nsets));
+        assert(IS_POW_OF_2(nways));
+        assert(nsets <= 64);
+        assert(nways <= 64);
 
-    if((nbits < 10) || (nbits > 28) ){
-        printf("Error in the genericTlb component\n");
-        printf("The nbits parameter must be in the range [10,28]\n");
-        exit(1);
-    } else {
-        m_page_mask     = 0xFFFFFFFF >> (32 - nbits);
-        m_page_shift    = nbits;    // nomber of page offset bits 
-    }
+        if((nbits < 10) || (nbits > 28) ){
+            printf("Error in the genericTlb component\n");
+            printf("The nbits parameter must be in the range [10,28]\n");
+            exit(1);
+        } else {
+            m_page_mask     = 0xFFFFFFFF >> (32 - nbits);
+            m_page_shift    = nbits;    // nomber of page offset bits 
+        }
 
-    m_ppn           = new addr_t[nways * nsets];
-    m_vpn           = new uint32_t[nways * nsets];
-    m_lru           = new bool[nways * nsets];
-    m_et            = new size_t[nways * nsets];
-    m_uncachable    = new bool[nways * nsets];
-    m_writable      = new bool[nways * nsets];
-    m_executable    = new bool[nways * nsets];
-    m_user          = new bool[nways * nsets];
-    m_global        = new bool[nways * nsets];
-    m_dirty         = new bool[nways * nsets];
+        m_ppn        = new uint32_t[nways * nsets];
+        m_vpn        = new uint32_t[nways * nsets];
+        m_lru        = new bool[nways * nsets];
+        m_et         = new size_t[nways * nsets];
+        m_cachable   = new bool[nways * nsets];
+        m_writable   = new bool[nways * nsets];
+        m_executable = new bool[nways * nsets];
+        m_user       = new bool[nways * nsets];
+        m_global     = new bool[nways * nsets];
+        m_dirty      = new bool[nways * nsets];
 
     } // end constructor
+
+/////////////////////////////////////////////////////////////
+//  This method resets all the TLB entry.
+/////////////////////////////////////////////////////////////
+    inline void reset() 
+    {
+        memset(m_et, UNMAPPED, sizeof(*m_et)*m_nways*m_nsets);
+    } // end reset
 
 /////////////////////////////////////////////////////////
 //  This method returns "false" in case of MISS
@@ -201,7 +208,7 @@ public:
             if((et(way,set) > 1) &&     // PTE
                (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) { // TLB hit 
                 pte_info->et = et(way,set);
-                pte_info->uc = uncachable(way,set);
+                pte_info->c = cachable(way,set);
                 pte_info->w = writable(way,set);
                 pte_info->x = executable(way,set);
                 pte_info->u = user(way,set);
@@ -209,7 +216,7 @@ public:
                 pte_info->d = dirty(way,set);
                 *tw = way;
                 *ts = set;
-                *paddress = (addr_t)(ppn(way,set) << m_page_shift) | (addr_t)(vaddress & m_page_mask);
+                *paddress = (addr_t)((addr_t)ppn(way,set) << m_page_shift) | (addr_t)(vaddress & m_page_mask);
                 return true;   
             } // end if
         } // end for
@@ -226,7 +233,7 @@ public:
         for(size_t way = 0; way < m_nways; way++) {
             if((et(way,set) > 1) &&     // PTE
                (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) { // TLB hit 
-                *paddress = (addr_t)(ppn(way,set) << m_page_shift) | (addr_t)(vaddress & m_page_mask);
+                *paddress = (addr_t)((addr_t)ppn(way,set) << m_page_shift) | (addr_t)(vaddress & m_page_mask);
                 return true;   
             } 
         } 
@@ -278,11 +285,32 @@ public:
     inline void setlru(size_t way,size_t set)   
     {
         m_lru[way*m_nsets+set] = true;  // set bit lru for recently used
-//       for(size_t n = 0; n < m_nways; n++) {   // gg : for what?
-//           if (n == way)   m_lru[n*m_nsets+set] = true;
-//           else            m_lru[n*m_nsets+set] = false;
-//       } // end for
     } // end setlru()
+
+//////////////////////////////////////////////////////////////
+//  This method modifies all LRU bits of a given set :
+//  The LRU bit of the accessed descriptor is set to true,
+//  all other LRU bits in the set are reset to false.
+/////////////////////////////////////////////////////////////
+    inline uint32_t getpte(size_t way,size_t set)   
+    {
+        uint32_t pte = (uint32_t)(((~0)>>(m_page_shift-4)) & ppn(way,set)) << 6 | (PTE_ET_MASK & (et(way,set) << PTE_ET_SHIFT)); 
+
+        if ( cachable(way,set) )
+            pte = pte | PTE_C_MASK;
+        if ( writable(way,set) )
+            pte = pte | PTE_W_MASK;
+        if ( executable(way,set) )
+            pte = pte | PTE_X_MASK;
+        if ( user(way,set) )
+            pte = pte | PTE_U_MASK;
+        if ( global(way,set) )
+            pte = pte | PTE_G_MASK;
+        if ( dirty(way,set) )
+            pte = pte | PTE_D_MASK;
+
+        return pte;
+    } // end getpte()
 
 /////////////////////////////////////////////////////////////
 //  This method return the index of the least recently
@@ -313,7 +341,7 @@ public:
 /////////////////////////////////////////////////////////////
 //  This method writes a new entry in the TLB.
 /////////////////////////////////////////////////////////////
-    inline void update(size_t pte, size_t vaddress, bool write) 
+    inline void update(size_t pte, size_t vaddress) 
     {
         
         size_t set = (vaddress >> m_page_shift) & m_sets_mask;
@@ -327,15 +355,16 @@ public:
         }
         
         m_vpn[way*m_nsets+set] = vaddress >> (m_page_shift + m_sets_shift);
-        m_ppn[way*m_nsets+set] = (addr_t)((addr_t)pte << m_page_shift) >> m_page_shift;  
+        //m_ppn[way*m_nsets+set] = (addr_t)((addr_t)pte << m_page_shift) >> m_page_shift;  
+        m_ppn[way*m_nsets+set] = ( pte << (m_page_shift - 10) ) >> (m_page_shift - 4);  
 
-        m_uncachable[way*m_nsets+set] = (((pte & PTE_UC_MASK) >> PTE_UC_SHIFT) == 1) ? true : false;
+        m_cachable[way*m_nsets+set] = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
         m_executable[way*m_nsets+set] = (((pte & PTE_X_MASK)  >> PTE_X_SHIFT) == 1) ? true : false;
         m_user[way*m_nsets+set]       = (((pte & PTE_U_MASK)  >> PTE_U_SHIFT) == 1) ? true : false;
         m_global[way*m_nsets+set]     = (((pte & PTE_G_MASK)  >> PTE_G_SHIFT) == 1) ? true : false;
         m_writable[way*m_nsets+set]   = (((pte & PTE_W_MASK)  >> PTE_W_SHIFT) == 1) ? true : false;       
+        m_dirty[way*m_nsets+set]      = (((pte & PTE_D_MASK)  >> PTE_D_SHIFT) == 1) ? true : false; 
         m_et[way*m_nsets+set]         = PTE_OLD; 
-        m_dirty[way*m_nsets+set]      = write;
 
     } // end update()
 
@@ -356,16 +385,16 @@ public:
 /////////////////////////////////////////////////////////////
 //  This method writes a new entry in the TLB.
 /////////////////////////////////////////////////////////////
-    inline void setdirty(size_t way, size_t set, bool write)
+    inline void setdirty(size_t way, size_t set)
     {
-        m_dirty[way*m_nsets+set] = write;
+        m_dirty[way*m_nsets+set] = true;
 
     } // end setdirty()
 
 /////////////////////////////////////////////////////////////
 //  This method get physique page number in the TLB.
 /////////////////////////////////////////////////////////////
-    inline addr_t getppn(uint32_t vaddress)
+    inline uint32_t getppn(uint32_t vaddress)
     {
         size_t set = (vaddress >> m_page_shift) & m_sets_mask; 
         for(size_t way = 0; way < m_nways; way++) {
