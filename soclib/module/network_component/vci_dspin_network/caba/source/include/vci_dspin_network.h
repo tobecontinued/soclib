@@ -46,6 +46,14 @@ namespace soclib { namespace caba {
 	class VciDspinNetwork
 	: public soclib::caba::BaseModule
 	{
+           enum{
+                NORTH   = 0,
+                SOUTH   = 1,
+                EAST    = 2,
+                WEST    = 3,
+                LOCAL   = 4
+            };
+
 	    public:
 		sc_in<bool>		p_clk;
 		sc_in<bool>		p_resetn;
@@ -57,8 +65,8 @@ namespace soclib { namespace caba {
 	    SC_HAS_PROCESS(VciDspinNetwork);
 
 	    private:
-	    	int Y;
-		int X;
+	    	size_t Y;
+		size_t X;
 
 	    	// signal vci
 		soclib::caba::VciSignals<vci_param>** s_to_initiator_wrapper;
@@ -90,7 +98,7 @@ namespace soclib { namespace caba {
 
 	    	//dspin
 		soclib::caba::VciDspinInitiatorWrapper<vci_param, dspin_data_size, dspin_fifo_size>*** t_initiator_wrapper;
-		soclib::caba::VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size>*** t_targer_wrapper;
+		soclib::caba::VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size>*** t_target_wrapper;
 		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>*** t_req_router;
 		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>*** t_rsp_router;
 
@@ -104,7 +112,8 @@ namespace soclib { namespace caba {
 						 size_t height_network); //Y
 
 		~VciDspinNetwork();
-	}
-}} // end 
+	};
+}}
+//end
 
 #endif //VCI_DSPIN_NETWORK_H_
