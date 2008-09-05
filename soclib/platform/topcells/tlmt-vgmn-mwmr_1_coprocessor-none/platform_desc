@@ -1,7 +1,6 @@
 
 # -*- python -*-
 
-
 todo = Platform('tlmt', 'top.cpp',
                 uses = [Uses('vci_simple_initiator'),
                         Uses('vci_vgmn'),
