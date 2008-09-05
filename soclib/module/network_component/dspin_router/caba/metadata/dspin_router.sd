@@ -19,6 +19,7 @@ Module('caba:dspin_router',
 	],
 	uses = [
 	    Uses('base_module'),
+	    Uses('generic_fifo'),
 	],
 	   extensions = [
 	'dsx:interconnect=root',
