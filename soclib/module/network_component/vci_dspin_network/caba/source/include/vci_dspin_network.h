@@ -69,10 +69,6 @@ namespace soclib { namespace caba {
 		size_t X;
 
 	    	// signal vci
-		soclib::caba::VciSignals<vci_param>** s_to_initiator_wrapper;
-		soclib::caba::VciSignals<vci_param>** s_to_target_wrapper;
-
-		
 	    	// signal dspin
 		//
 		// signal between routers
