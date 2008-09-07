@@ -182,15 +182,15 @@ namespace soclib { namespace caba {
 		t_req_router[y][x]->p_out[EAST](s_req_EW[y+1][x+1]);
 		t_req_router[y][x]->p_out[WEST](s_req_WE[y+1][x+1]);
 
-		t_rsp_router[y][x]->p_in[NORTH](s_req_SN[y+2][x+1]);
-		t_rsp_router[y][x]->p_in[SOUTH](s_req_NS[y][x+1]);
-		t_rsp_router[y][x]->p_in[EAST](s_req_WE[y+1][x+2]);
-		t_rsp_router[y][x]->p_in[WEST](s_req_EW[y+1][x]);
+		t_rsp_router[y][x]->p_in[NORTH] (s_rsp_SN[y+2][x+1]);
+		t_rsp_router[y][x]->p_in[SOUTH] (s_rsp_NS[y][x+1]);
+		t_rsp_router[y][x]->p_in[EAST]  (s_rsp_WE[y+1][x+2]);
+		t_rsp_router[y][x]->p_in[WEST]  (s_rsp_EW[y+1][x]);
 
-		t_rsp_router[y][x]->p_out[NORTH](s_req_NS[y+1][x+1]);
-		t_rsp_router[y][x]->p_out[SOUTH](s_req_SN[y+1][x+1]);
-		t_rsp_router[y][x]->p_out[EAST](s_req_EW[y+1][x+1]);
-		t_rsp_router[y][x]->p_out[WEST](s_req_WE[y+1][x+1]);
+		t_rsp_router[y][x]->p_out[NORTH](s_rsp_NS[y+1][x+1]);
+		t_rsp_router[y][x]->p_out[SOUTH](s_rsp_SN[y+1][x+1]);
+		t_rsp_router[y][x]->p_out[EAST] (s_rsp_EW[y+1][x+1]);
+		t_rsp_router[y][x]->p_out[WEST] (s_rsp_WE[y+1][x+1]);
 
 	    }
 	}
