@@ -1136,6 +1136,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 case iss_t::XTN_PTPR:
                     dcache_rdata = (uint32_t)r_mmu_ptpr;
                     break;
+                case iss_t::XTN_TLB_MODE:
+                    dcache_rdata = (uint32_t)r_mmu_mode;
+                    break;
                 default:
                     break;
                 }
@@ -1177,7 +1180,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     }
                     break;
 
-                case iss_t::XTN_TLB_EN:     // modifying TLBs mode : checking the kernel mode
+                case iss_t::XTN_TLB_MODE:     // modifying TLBs mode : checking the kernel mode
                     if (dreq.mode == iss_t::MODE_KERNEL) 
                     {
                         r_mmu_mode = (int)dreq.wdata;

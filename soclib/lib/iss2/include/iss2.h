@@ -123,7 +123,7 @@ public:
      */
     enum ExternalAccessType {
         XTN_PTPR,
-        XTN_TLB_EN,
+        XTN_TLB_MODE,
         XTN_ICACHE_FLUSH,
         XTN_DCACHE_FLUSH,
         XTN_ITLB_INVAL,

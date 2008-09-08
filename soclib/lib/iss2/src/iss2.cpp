@@ -57,7 +57,7 @@ static const char *xtn_str(Iss2::ExternalAccessType type)
 {
     switch(type) {
         rstr(XTN_PTPR);
-        rstr(XTN_TLB_EN);
+        rstr(XTN_TLB_MODE);
         rstr(XTN_ICACHE_FLUSH);
         rstr(XTN_DCACHE_FLUSH);
         rstr(XTN_ITLB_INVAL);
