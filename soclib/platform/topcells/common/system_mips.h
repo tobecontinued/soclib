@@ -91,3 +91,19 @@ static inline int procnum()
     return (get_cp0(15)&0x3ff);
 #endif
 }
+
+#if __mips >= 32
+
+static inline void set_cp2(uint32_t val, uint32_t reg)
+{
+asm volatile(
+"mtc2 %0, %1"::"r"(val),"r"(reg));
+}
+
+static inline void get_cp2(uint32_t *val, uint32_t reg)
+{
+asm volatile(
+"mfc2 %0, %1":"r="(*val):"r"(reg));
+}
+
+#endif
