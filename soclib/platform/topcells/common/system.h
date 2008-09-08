@@ -67,6 +67,8 @@ void pause();
 #define putchar __inline_putchar
 static inline int putchar(const int x)
 {
+#ifdef MMU
+
 	uint32_t tlb_mode = 0;
 	get_cp2(&tlb_mode,1);
 
@@ -92,13 +94,22 @@ static inline int putchar(const int x)
 		x);
 
 	}
-
+#else
+	soclib_io_write8(
+		base(TTY),
+#if TTY_SIZE > 0x10
+		procnum()*TTY_SPAN+
+#endif
+		TTY_WRITE,
+		x);
+#endif	//end define MMU
 	return x;
 }
 
 #define getchar __inline_getchar
 static inline int getchar()
 {
+#ifdef MMU
 	uint32_t tlb_mode = 0;
 	get_cp2(&tlb_mode,1);
 
@@ -120,6 +131,14 @@ static inline int getchar()
 #endif
 		TTY_READ);
 	}
+#else
+	return soclib_io_read8(
+		base(TTY),
+#if TTY_SIZE > 0x10
+		procnum()*TTY_SPAN+
+#endif
+		TTY_READ);
+#endif	// end define MMU
 }
 
 #endif
