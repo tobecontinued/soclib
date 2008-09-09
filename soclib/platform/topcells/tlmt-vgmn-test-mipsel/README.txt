@@ -2,7 +2,7 @@ To use a certain number of MIPS processors,set the following environment variabl
 NPROCS
 
 For example:
-export NPROCS=3
+export NPROCS=4
 
 It will do a simulation with three MIPS processors.
 
