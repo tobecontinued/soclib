@@ -34,20 +34,6 @@ std::vector<std::string> stringArray(
     return ret;
 }
 
-std::vector<int> intArray(
-    const int length, ... )
-{
-	int i;
-    std::vector<int> ret;
-	va_list arg;
-	va_start(arg, length);
-
-	for (i=0; i<length; ++i) {
-		ret.push_back(va_arg(arg, int));
-	};
-	va_end(arg);
-    return ret;
-}
 
 int sc_main(int argc, char **argv)
 {
@@ -59,6 +45,33 @@ int sc_main(int argc, char **argv)
   size_t dcache_size     = 1024;
   size_t icache_size     = 1024;
   size_t network_latence = 3;
+
+
+
+  char * ncpu_env; //env variable that says the number of MIPS processors to be used
+  unsigned int ncpu;
+  std::string  soft;
+  unsigned int vci_parm;
+
+  ncpu_env = getenv("NPROCS");
+
+  if (ncpu_env==NULL) {
+    printf("WARNING : You have to specify the number of processors to be used in the simulation in the NPROCS variable\n");
+    printf("Using 1 processor\n");
+    ncpu = 1;
+  }else {
+    ncpu = atoi( ncpu_env );
+    std::cout << "CPUs:" <<  ncpu << std::endl;
+  }
+
+  std::ostringstream s_ncpu; 
+  s_ncpu << ncpu;
+
+  soft = "soft/bin"+s_ncpu.str()+"proc.soft";
+  vci_parm = ncpu + 2;
+
+  std::cout << "Software:" << soft << std::endl;
+
 
   if(argc > 1)
     simulation_time = atoi(argv[1]);
@@ -73,8 +86,11 @@ int sc_main(int argc, char **argv)
 
   ftime(&initial);
 
-  // Configurator instanciateOnStack
-  soclib::common::ElfLoader loader("soft/bin2proc.soft");
+  //Configurator instanciateOnStack  
+
+  soclib::common::ElfLoader loader(soft); 
+
+
   soclib::common::MappingTable mapping_table(32, soclib::common::IntTab(8), soclib::common::IntTab(8), 0x00200000);
   
   // Configurator configure
@@ -91,21 +107,26 @@ int sc_main(int argc, char **argv)
   /////////////////////////////////////////////////////////////////////////////
   // VCI_VGMN 
   /////////////////////////////////////////////////////////////////////////////
-  soclib::tlmt::VciVgmn<vci_param> vgmn(4,5,mapping_table,network_latence);
+  soclib::tlmt::VciVgmn<vci_param> vgmn(vci_parm,5,mapping_table,network_latence);
+
+
+
 
   /////////////////////////////////////////////////////////////////////////////
-  // VCI_XCACHE 1
+  // VCI_XCACHE 
   /////////////////////////////////////////////////////////////////////////////
-  soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> mips0("mips0", soclib::common::IntTab(0), mapping_table, icache_size, 8, dcache_size, 8, simulation_time);
 
-  mips0.p_vci(vgmn.m_RspArbCmdRout[0]->p_vci);
+  soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> * mips[4];
 
-  /////////////////////////////////////////////////////////////////////////////
-  // VCI_XCACHE 2
-  /////////////////////////////////////////////////////////////////////////////
-  soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> mips1("mips1", soclib::common::IntTab(1), mapping_table, icache_size, 8, dcache_size, 8, simulation_time);
 
-  mips1.p_vci(vgmn.m_RspArbCmdRout[1]->p_vci);
+  for (int i=0 ; i < ncpu ; i++) {
+    std::ostringstream cpu_name;
+    cpu_name << "mips" << i;
+    mips[i] = new soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param>((cpu_name.str()).c_str(), soclib::common::IntTab(i), mapping_table, icache_size, 8, dcache_size, 8, simulation_time);
+    mips[i]->p_vci(vgmn.m_RspArbCmdRout[i]->p_vci);
+
+  }
+  
 
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR TG
@@ -118,9 +139,9 @@ int sc_main(int argc, char **argv)
   n_config        = 0;
   n_status        = 0;
 
-  soclib::tlmt::VciMwmrController<vci_param> tg_ctrl("tg_ctrl", mapping_table, soclib::common::IntTab(2), soclib::common::IntTab(3), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status);
+  soclib::tlmt::VciMwmrController<vci_param> tg_ctrl("tg_ctrl", mapping_table, soclib::common::IntTab(ncpu), soclib::common::IntTab(3), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status);
 
-  tg_ctrl.p_vci_initiator(vgmn.m_RspArbCmdRout[2]->p_vci);
+  tg_ctrl.p_vci_initiator(vgmn.m_RspArbCmdRout[ncpu]->p_vci);
   vgmn.m_CmdArbRspRout[3]->p_vci(tg_ctrl.p_vci_target);
 
   soclib::tlmt::FifoReader<vci_param>  tg("tg", "bash", stringArray("bash", "-c", "while cat \"plan.jpg\" ; do true ; done", NULL),write_depth);
@@ -137,9 +158,9 @@ int sc_main(int argc, char **argv)
   n_config        = 0;
   n_status        = 0;
 
-  soclib::tlmt::VciMwmrController<vci_param> ramdac_ctrl("ramdac_ctrl", mapping_table, soclib::common::IntTab(3), soclib::common::IntTab(4), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status);
+  soclib::tlmt::VciMwmrController<vci_param> ramdac_ctrl("ramdac_ctrl", mapping_table, soclib::common::IntTab( ncpu+1 ), soclib::common::IntTab(4), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status);
 
-  ramdac_ctrl.p_vci_initiator(vgmn.m_RspArbCmdRout[3]->p_vci);
+  ramdac_ctrl.p_vci_initiator(vgmn.m_RspArbCmdRout[ncpu+1]->p_vci);
   vgmn.m_CmdArbRspRout[4]->p_vci(ramdac_ctrl.p_vci_target);
 
   soclib::tlmt::FifoWriter<vci_param>  ramdac("ramdac", "soclib-pipe2fb", stringArray("soclib-pipe2fb", "48", "48", NULL),read_depth);
@@ -166,7 +187,7 @@ int sc_main(int argc, char **argv)
   soclib::tlmt::VciMultiTty<vci_param> vcitty("tty0",soclib::common::IntTab(2), mapping_table, "TTY0", NULL);
 
   vgmn.m_CmdArbRspRout[2]->p_vci(vcitty.p_vci);
-  (*vcitty.p_irq[0])(mips0.p_irq[0]);
+  (*vcitty.p_irq[0])(mips[0]->p_irq[0]);
  
   /////////////////////////////////////////////////////////////////////////////
   // START
