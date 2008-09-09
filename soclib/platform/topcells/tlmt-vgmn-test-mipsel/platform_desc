@@ -2,7 +2,7 @@
 # -*- python -*-
 
 
-todo = Platform('tlmt', 'top1proc.cpp',
+todo = Platform('tlmt', 'top.cpp',
                 uses = [Uses('vci_vgmn'),
                         Uses('vci_ram'),
                         Uses('vci_xcache_wrapper',iss_t = 'common:mipsel'),
