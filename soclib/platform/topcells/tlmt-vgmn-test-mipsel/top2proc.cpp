@@ -74,7 +74,7 @@ int sc_main(int argc, char **argv)
   ftime(&initial);
 
   // Configurator instanciateOnStack
-  soclib::common::ElfLoader loader("soft/bin.soft");
+  soclib::common::ElfLoader loader("soft/bin2proc.soft");
   soclib::common::MappingTable mapping_table(32, soclib::common::IntTab(8), soclib::common::IntTab(8), 0x00200000);
   
   // Configurator configure
@@ -91,33 +91,21 @@ int sc_main(int argc, char **argv)
   /////////////////////////////////////////////////////////////////////////////
   // VCI_VGMN 
   /////////////////////////////////////////////////////////////////////////////
-  soclib::tlmt::VciVgmn<vci_param> vgmn(3,5,mapping_table,network_latence);
+  soclib::tlmt::VciVgmn<vci_param> vgmn(4,5,mapping_table,network_latence);
 
   /////////////////////////////////////////////////////////////////////////////
-  // VCI_XCACHE 
+  // VCI_XCACHE 1
   /////////////////////////////////////////////////////////////////////////////
   soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> mips0("mips0", soclib::common::IntTab(0), mapping_table, icache_size, 8, dcache_size, 8, simulation_time);
 
   mips0.p_vci(vgmn.m_RspArbCmdRout[0]->p_vci);
 
   /////////////////////////////////////////////////////////////////////////////
-  // MWMR AND COPROCESSOR RAMDAC
+  // VCI_XCACHE 2
   /////////////////////////////////////////////////////////////////////////////
-  read_depth      = 96;
-  write_depth     = 0;
-  n_read_channel  = 1;
-  n_write_channel = 0;
-  n_config        = 0;
-  n_status        = 0;
+  soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> mips1("mips1", soclib::common::IntTab(1), mapping_table, icache_size, 8, dcache_size, 8, simulation_time);
 
-  soclib::tlmt::VciMwmrController<vci_param> ramdac_ctrl("ramdac_ctrl", mapping_table, soclib::common::IntTab(2), soclib::common::IntTab(4), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status);
-
-  ramdac_ctrl.p_vci_initiator(vgmn.m_RspArbCmdRout[2]->p_vci);
-  vgmn.m_CmdArbRspRout[4]->p_vci(ramdac_ctrl.p_vci_target);
-
-  soclib::tlmt::FifoWriter<vci_param>  ramdac("ramdac", "soclib-pipe2fb", stringArray("soclib-pipe2fb", "48", "48", NULL),read_depth);
-
-  (*ramdac_ctrl.p_read_fifo[0])(ramdac.p_fifo);
+  mips1.p_vci(vgmn.m_RspArbCmdRout[1]->p_vci);
 
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR TG
@@ -130,14 +118,34 @@ int sc_main(int argc, char **argv)
   n_config        = 0;
   n_status        = 0;
 
-  soclib::tlmt::VciMwmrController<vci_param> tg_ctrl("tg_ctrl", mapping_table, soclib::common::IntTab(1), soclib::common::IntTab(3), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status);
+  soclib::tlmt::VciMwmrController<vci_param> tg_ctrl("tg_ctrl", mapping_table, soclib::common::IntTab(2), soclib::common::IntTab(3), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status);
 
-  tg_ctrl.p_vci_initiator(vgmn.m_RspArbCmdRout[1]->p_vci);
+  tg_ctrl.p_vci_initiator(vgmn.m_RspArbCmdRout[2]->p_vci);
   vgmn.m_CmdArbRspRout[3]->p_vci(tg_ctrl.p_vci_target);
 
   soclib::tlmt::FifoReader<vci_param>  tg("tg", "bash", stringArray("bash", "-c", "while cat \"plan.jpg\" ; do true ; done", NULL),write_depth);
 
   (*tg_ctrl.p_write_fifo[0])(tg.p_fifo);
+
+
+  /////////////////////////////////////////////////////////////////////////////
+  // MWMR AND COPROCESSOR RAMDAC
+  /////////////////////////////////////////////////////////////////////////////
+  read_depth      = 96;
+  write_depth     = 0;
+  n_read_channel  = 1;
+  n_write_channel = 0;
+  n_config        = 0;
+  n_status        = 0;
+
+  soclib::tlmt::VciMwmrController<vci_param> ramdac_ctrl("ramdac_ctrl", mapping_table, soclib::common::IntTab(3), soclib::common::IntTab(4), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status);
+
+  ramdac_ctrl.p_vci_initiator(vgmn.m_RspArbCmdRout[3]->p_vci);
+  vgmn.m_CmdArbRspRout[4]->p_vci(ramdac_ctrl.p_vci_target);
+
+  soclib::tlmt::FifoWriter<vci_param>  ramdac("ramdac", "soclib-pipe2fb", stringArray("soclib-pipe2fb", "48", "48", NULL),read_depth);
+
+  (*ramdac_ctrl.p_read_fifo[0])(ramdac.p_fifo);
 
   /////////////////////////////////////////////////////////////////////////////
   // RAM
