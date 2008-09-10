@@ -116,7 +116,7 @@ int sc_main(int argc, char **argv)
   // VCI_XCACHE 
   /////////////////////////////////////////////////////////////////////////////
 
-  soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> * mips[4];
+  soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> * mips[ncpu]; 
 
 
   for (int i=0 ; i < ncpu ; i++) {
