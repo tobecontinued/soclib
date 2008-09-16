@@ -1,0 +1,33 @@
+
+# -*- python -*-
+
+Module('caba:vci_simple_ram',
+	classname = 'soclib::caba::VciSimpleRam',
+	   tmpl_parameters = [
+	parameter.Module('vci_param',  default = 'vci_param'),
+	],
+	header_files = ['../source/include/vci_simple_ram.h',],
+	implementation_files = ['../source/src/vci_simple_ram.cpp',],
+			  ports = [
+	Port('vci_target', 'p_vci'),
+	Port('bit_in', 'p_resetn', auto = 'resetn'),
+	Port('clock_in', 'p_clk', auto = 'clock'),
+	],
+	uses = [
+		Uses('base_module'),
+	 	Uses('common:linked_access_buffer', 
+			addr_t = 'sc_dt::sc_uint<%(addr_size)s> ', id_t = 'sc_dt::sc_uint<%(srcid_size)s> '),
+		Uses('common:elf_loader'),
+		Uses('common:mapping_table'),
+		],
+	instance_parameters = [
+	parameter.IntTab('ident'),
+	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+	parameter.Module('loader', 'common:elf_loader', auto='env:loader'),
+	],
+	   extensions = [
+	'dsx:addressable=ident',
+	'dsx:get_ident=ident:p_vci',
+	'dsx:mapping_type=memory',
+   ],
+)
