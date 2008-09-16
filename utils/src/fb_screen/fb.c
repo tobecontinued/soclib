@@ -124,8 +124,9 @@ void handle_display( uint8_t *fb, long width, long height, long asked_bpp )
 			for ( col=0; col<width; ++col ) {
 #ifndef DEBUG
 				float yy  = fb[line*width+col]/128.-1.;
-				float cb = fb[width*height	   + (line/2)*width + col/2]/128.-1.;
-				float cr = fb[width*height*3/2 + (line/2)*width + col/2]/128.-1.;
+                float cb = fb[width*height     + (line/2)*(width/2) + col/2]/128.-1.;
+                float cr = fb[width*height*5/4 + (line/2)*(width/2) + col/2]/128.-1.;
+
 /*
   cb *= .436;
   cr *= .615;
