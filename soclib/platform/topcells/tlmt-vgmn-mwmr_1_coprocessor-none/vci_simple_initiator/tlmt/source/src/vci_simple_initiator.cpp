@@ -12,13 +12,12 @@ namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x VciSimpleInitiator<vci_param>
 
-  tmpl(tlmt_core::tlmt_return&)::rspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-					     const tlmt_core::tlmt_time &time,
-					     void *private_data)
+  tmpl(void)::rspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+			  const tlmt_core::tlmt_time &time,
+			  void *private_data)
   {
     c0.update_time(time);
     m_vci_event.notify(sc_core::SC_ZERO_TIME);
-    return m_return;
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -25,7 +25,6 @@ class Coprocessor
   uint32_t *m_status_register;
 
   tlmt_core::tlmt_thread_context c0;
-  tlmt_core::tlmt_return m_return;
   fifo_cmd_packet<vci_param> m_cmd;
 
   sc_core::sc_event m_rsp_write;
@@ -51,21 +50,21 @@ class Coprocessor
 	      uint32_t n_config,
 	      uint32_t n_status);
   
-  tlmt_core::tlmt_return &writeConfigReceived(typename vci_param::data_t data,
-					      const tlmt_core::tlmt_time &time,
-					      void *private_data);
+  void writeConfigReceived(typename vci_param::data_t data,
+			   const tlmt_core::tlmt_time &time,
+			   void *private_data);
 
-  tlmt_core::tlmt_return &readStatusReceived(typename vci_param::data_t *data,
-					     const tlmt_core::tlmt_time &time,
-					     void *private_data);
+  void readStatusReceived(typename vci_param::data_t *data,
+			  const tlmt_core::tlmt_time &time,
+			  void *private_data);
 
-  tlmt_core::tlmt_return &readReponseReceived(int data,
-					      const tlmt_core::tlmt_time &time,
-					      void *private_data);
+  void readReponseReceived(int data,
+			   const tlmt_core::tlmt_time &time,
+			   void *private_data);
 
-  tlmt_core::tlmt_return &writeReponseReceived(int data,
-					       const tlmt_core::tlmt_time &time,
-					       void *private_data);
+  void writeReponseReceived(int data,
+			    const tlmt_core::tlmt_time &time,
+			    void *private_data);
 
   void execLoop();
 };

@@ -13,7 +13,6 @@ template<typename vci_param>
   {
     tlmt_core::tlmt_thread_context c0;
     sc_core::sc_event m_vci_event;
-    tlmt_core::tlmt_return m_return;
 
     uint32_t m_srcid;
     uint32_t m_pktid;
@@ -30,9 +29,9 @@ template<typename vci_param>
 
     VciSimpleInitiator( sc_core::sc_module_name name, uint32_t index, uint32_t dt, tlmt_core::tlmt_time st);
 
-    tlmt_core::tlmt_return &rspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-					const tlmt_core::tlmt_time &time,
-					void *private_data);
+    void rspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+		     const tlmt_core::tlmt_time &time,
+		     void *private_data);
 
     void behavior();
 

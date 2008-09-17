@@ -12,54 +12,47 @@ namespace soclib { namespace tlmt {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   // RECEIVE REPONSE OF A READ REQUEST 
   //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(tlmt_core::tlmt_return&)::readReponseReceived(int data,
-						     const tlmt_core::tlmt_time &time,
-						     void *private_data)
+  tmpl(void)::readReponseReceived(int data,
+				  const tlmt_core::tlmt_time &time,
+				  void *private_data)
   {
     //update time
     c0.update_time(time);
-
     m_rsp_read.notify(sc_core::SC_ZERO_TIME);
-    return m_return;
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   // RECEIVE REPONSE OF A WRITE REQUEST 
   //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(tlmt_core::tlmt_return&)::writeReponseReceived(int data,
-						      const tlmt_core::tlmt_time &time,
-						      void *private_data)
+  tmpl(void)::writeReponseReceived(int data,
+				   const tlmt_core::tlmt_time &time,
+				   void *private_data)
   {
     //update time
     c0.update_time(time);
-
     m_rsp_write.notify(sc_core::SC_ZERO_TIME);
-    return m_return;
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   // RECEIVE A REQUEST TO WRITE TO A CONFIGURATION REGISTER 
   //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(tlmt_core::tlmt_return&)::writeConfigReceived(typename vci_param::data_t data,
-						     const tlmt_core::tlmt_time &time,
-						     void *private_data)
+  tmpl(void)::writeConfigReceived(typename vci_param::data_t data,
+				  const tlmt_core::tlmt_time &time,
+				  void *private_data)
   {
     int idx = (int)private_data;
     m_config_register[idx] = data;
-
-    return m_return;
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   // RECEIVE A REQUEST TO READ FROM A STATUS REGISTER 
   //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-  tmpl(tlmt_core::tlmt_return&)::readStatusReceived(typename vci_param::data_t *data,
-						    const tlmt_core::tlmt_time &time,
-						    void *private_data)
+  tmpl(void)::readStatusReceived(typename vci_param::data_t *data,
+				 const tlmt_core::tlmt_time &time,
+				 void *private_data)
   {
     int idx = (int)private_data;
     *data = m_status_register[idx];
-    return m_return;
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
