@@ -52,14 +52,13 @@ tmpl(/**/)::FifoReader(sc_core::sc_module_name name,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // RECEIVE REPONSE OF A WRITE REQUEST 
 //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-tmpl(tlmt_core::tlmt_return&)::writeReponseReceived(int data,
-                                                    const tlmt_core::tlmt_time &time,
-                                                    void *private_data)
+tmpl(void)::writeReponseReceived(int data,
+                                 const tlmt_core::tlmt_time &time,
+                                 void *private_data)
 {
     //update time
     c0.update_time(time);
     m_rsp_write.notify(sc_core::SC_ZERO_TIME);
-    return m_return;
 }
 
 tmpl(void)::execLoop()

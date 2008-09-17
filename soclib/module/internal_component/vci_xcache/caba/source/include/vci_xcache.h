@@ -116,6 +116,7 @@ private:
     soclib::common::AddressDecodingTable<uint32_t, bool> m_cacheability_table;
     int m_ident;   
 
+    const size_t  m_simulation_time;
     const size_t  s_dcache_lines;
     const size_t  s_dcache_words;
     const size_t  s_icache_lines;
@@ -182,6 +183,7 @@ private:
     uint32_t m_cpt_icache_dir_write;  // for ICACHE DIR WRITE
     uint32_t m_cpt_fifo_read;         // for FIFO READ
     uint32_t m_cpt_fifo_write;        // for FIFO WRITE
+    uint32_t m_cpt_cycles;            // for NUMBER OF CYCLES
 
 protected:
     SC_HAS_PROCESS(VciXCache);
@@ -195,6 +197,16 @@ public:
         size_t icache_words,
         size_t dcache_lines,
         size_t dcache_words );
+
+    VciXCache(
+        sc_module_name insname,
+        const soclib::common::MappingTable &mt,
+        const soclib::common::IntTab &index,
+        size_t icache_lines,
+        size_t icache_words,
+        size_t dcache_lines,
+        size_t dcache_words,
+        size_t simulation_time );
 
     struct XCacheInfo getCacheInfo() const;
 

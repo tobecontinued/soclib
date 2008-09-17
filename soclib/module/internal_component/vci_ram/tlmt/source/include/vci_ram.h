@@ -27,10 +27,9 @@ class VciRam
 
   soclib::common::LinkedAccessBuffer<typename vci_param::addr_t,uint32_t> m_atomic;
 
-  tlmt_core::tlmt_return m_return;
   vci_rsp_packet<vci_param> m_rsp;
 
-    // Activity counters
+  // Activity counters
   uint32_t m_cpt_cycle;   // Count Cycles
 
   uint32_t m_cpt_read;   // Count READ access
@@ -55,29 +54,29 @@ class VciRam
   
   ~VciRam();
 
-  tlmt_core::tlmt_return &callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-				   const tlmt_core::tlmt_time &time,
-				   void *private_data);
+  void callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		const tlmt_core::tlmt_time &time,
+		void *private_data);
   
-  tlmt_core::tlmt_return &callback_read(size_t segIndex,soclib::common::Segment &s,
-					soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					const tlmt_core::tlmt_time &time,
-					void *private_data);
+  void callback_read(size_t segIndex,soclib::common::Segment &s,
+		     soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		     const tlmt_core::tlmt_time &time,
+		     void *private_data);
   
-  tlmt_core::tlmt_return &callback_locked_read(size_t segIndex,soclib::common::Segment &s,
-					       soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					       const tlmt_core::tlmt_time &time,
-					       void *private_data);
+  void callback_locked_read(size_t segIndex,soclib::common::Segment &s,
+			    soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			    const tlmt_core::tlmt_time &time,
+			    void *private_data);
 
-  tlmt_core::tlmt_return &callback_write(size_t segIndex,soclib::common::Segment &s,
-					 soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					 const tlmt_core::tlmt_time &time,
-					 void *private_data);
+  void callback_write(size_t segIndex,soclib::common::Segment &s,
+		      soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		      const tlmt_core::tlmt_time &time,
+		      void *private_data);
 
-  tlmt_core::tlmt_return &callback_store_cond(size_t segIndex,soclib::common::Segment &s,
-					      soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					      const tlmt_core::tlmt_time &time,
-					      void *private_data);
+  void callback_store_cond(size_t segIndex,soclib::common::Segment &s,
+			   soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			   const tlmt_core::tlmt_time &time,
+			   void *private_data);
 
   int getTotalCycles();
   int getActiveCycles();

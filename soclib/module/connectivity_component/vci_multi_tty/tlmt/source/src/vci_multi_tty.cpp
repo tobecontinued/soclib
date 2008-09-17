@@ -11,9 +11,9 @@ namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x VciMultiTty<vci_param>
 
-  tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					  const tlmt_core::tlmt_time &time,
-					  void *private_data)
+  tmpl(void)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		       const tlmt_core::tlmt_time &time,
+		       void *private_data)
   {
     std::list<soclib::common::Segment>::iterator seg;
     size_t segIndex;
@@ -24,25 +24,24 @@ namespace soclib { namespace tlmt {
 	continue;
       switch(pkt->cmd){
       case vci_param::CMD_READ:
-	return callback_read(segIndex,s,pkt,time,private_data);
+	callback_read(segIndex,s,pkt,time,private_data);
 	break;
       case vci_param::CMD_WRITE:
-	return callback_write(segIndex,s,pkt,time,private_data);
+	callback_write(segIndex,s,pkt,time,private_data);
 	break;
       default:
-	return m_return;
 	break;
       }
+      return;
     }
     std::cout << "Address does not match any segment" << std::endl;
-    return m_return;
   }
     
-  tmpl(tlmt_core::tlmt_return&)::callback_read(size_t segIndex,
-					       soclib::common::Segment &s,
-					       soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					       const tlmt_core::tlmt_time &time,
-					       void *private_data){
+  tmpl(void)::callback_read(size_t segIndex,
+			    soclib::common::Segment &s,
+			    soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			    const tlmt_core::tlmt_time &time,
+			    void *private_data){
       
 #if MULTI_TTY_DEBUG
     std::cout << "[TTY] Receive a read packet with time = "  << time << std::endl;
@@ -80,7 +79,7 @@ namespace soclib { namespace tlmt {
 
 	// remplir paquet d'erreur
 	m_rsp.error = true;
-	return m_return;
+	return;
       }
 	
       switch (reg) {
@@ -116,15 +115,13 @@ namespace soclib { namespace tlmt {
 #endif
 
     p_vci.send(&m_rsp, time + delay) ;
-    m_return.set_time(time + delay);
-    return m_return;
   }
     
-  tmpl(tlmt_core::tlmt_return&)::callback_write(size_t segIndex,
-						soclib::common::Segment &s,
-						soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-						const tlmt_core::tlmt_time &time,
-						void *private_data) {
+  tmpl(void)::callback_write(size_t segIndex,
+			     soclib::common::Segment &s,
+			     soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			     const tlmt_core::tlmt_time &time,
+			     void *private_data) {
 
 #if MULTI_TTY_DEBUG
     std::cout << "[TTY] Receive a write packet with time = "  << time << std::endl;
@@ -160,7 +157,7 @@ namespace soclib { namespace tlmt {
 
 	// remplir paquet d'erreur
 	m_rsp.error= true;
-	return m_return;  
+	return;  
       }
 	
       switch (reg) {
@@ -195,9 +192,6 @@ namespace soclib { namespace tlmt {
 #endif
 
     p_vci.send(&m_rsp, time + delay);
-    m_return.set_time(time + delay);
-      
-    return m_return;
   }
 
   tmpl(void)::init(const std::vector<std::string> &names){

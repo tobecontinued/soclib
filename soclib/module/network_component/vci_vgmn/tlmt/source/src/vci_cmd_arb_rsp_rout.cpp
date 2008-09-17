@@ -36,13 +36,13 @@ namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x VciCmdArbRspRout<vci_param>
 
-  tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-					  const tlmt_core::tlmt_time &time,
-					  void *private_data)
+  tmpl(void)::callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+		       const tlmt_core::tlmt_time &time,
+		       void *private_data)
   {
+    c0.update_time(time+tlmt_core::tlmt_time(1));
     m_RspArbCmdRout[pkt->srcid]->stop_sending();
     m_RspArbCmdRout[pkt->srcid]->p_vci.send(pkt,time+m_delay);
-    return m_return;
   }
 
   tmpl(tlmt_core::tlmt_time)::getTime(){
@@ -64,9 +64,7 @@ namespace soclib { namespace tlmt {
       default:	// decision contains the index of the destination target
 	{
 	  //std::cout << "[CMD_ARB_RSP_ROUT " << fifos[decision].pkt->trdid << "] send packet from source " << decision << std::endl;
-	  tlmt_core::tlmt_return ret;
-	  ret=p_vci.send(fifos[decision].pkt,fifos[decision].time);
-	  c0.set_time(ret.time());
+	  p_vci.send(fifos[decision].pkt,fifos[decision].time);
 	  fifos[decision].event=false;
 	  //sc_core::wait(e0); // should be optimized here
 	}

@@ -57,7 +57,6 @@ class VciCmdArbRspRout
   uint32_t m_nbinit;
   size_t m_selected_port;
   tlmt_core::tlmt_time m_delay;
-  tlmt_core::tlmt_return m_return;
   fifo_struct<vci_param> *fifos;
   
 protected:
@@ -71,9 +70,10 @@ public:
 		    uint32_t nb_init,
 		    tlmt_core::tlmt_time dl );
 
-  tlmt_core::tlmt_return &callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-				   const tlmt_core::tlmt_time &time,
-				   void *private_data);
+  void callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+		const tlmt_core::tlmt_time &time,
+		void *private_data);
+
   void behavior();
   
   void setRspArbCmdRout(std::vector<typename soclib::tlmt::VciRspArbCmdRout<vci_param> *> &RspArbCmdRout);

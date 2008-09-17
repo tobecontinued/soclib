@@ -55,9 +55,9 @@ public:
 		  cmd_in(name+"_cmd_in", cb)
 	{}
 
-	tlmt_core::tlmt_return &send(vci_rsp_packet<vci_param> *pkt, const tlmt_core::tlmt_time &time)
+	inline void send(vci_rsp_packet<vci_param> *pkt, const tlmt_core::tlmt_time &time)
 	{
-		return rsp_out.send(pkt, time);
+		rsp_out.send(pkt, time);
 	}
 
 	inline void operator()( VciInitiator<vci_param> &peer );
@@ -94,9 +94,9 @@ public:
 		  rsp_in(name+"_rsp_in", cb)
 	{}
 
-	tlmt_core::tlmt_return &send(vci_cmd_packet<vci_param> *pkt, const tlmt_core::tlmt_time &time)
+	inline void send(vci_cmd_packet<vci_param> *pkt, const tlmt_core::tlmt_time &time)
 	{
-		return cmd_out.send(pkt, time);
+		cmd_out.send(pkt, time);
 	}
 
 	inline void operator()( VciTarget<vci_param> &peer );

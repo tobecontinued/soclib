@@ -49,7 +49,6 @@ private:
     uint32_t                       m_fifo_depth;
 
     tlmt_core::tlmt_thread_context c0;
-    tlmt_core::tlmt_return         m_return;
     fifo_cmd_packet<vci_param>     m_cmd;
     sc_core::sc_event              m_rsp_read;
 
@@ -64,9 +63,9 @@ public:
                 const std::vector<std::string> &argv,
                 uint32_t fifo_depth);
 
-    tlmt_core::tlmt_return &readReponseReceived(int data,
-                                                const tlmt_core::tlmt_time &time,
-                                                void *private_data);
+    void readReponseReceived(int data,
+                             const tlmt_core::tlmt_time &time,
+                             void *private_data);
 
 private:
     void execLoop();

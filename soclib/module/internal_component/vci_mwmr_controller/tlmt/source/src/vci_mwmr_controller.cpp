@@ -17,23 +17,22 @@ namespace soclib { namespace tlmt {
   /////////////////////////////////////////////////////////////////////////////  
   // CALLBACK FUNCTION FOR A COMMAND SENT (INITIATOR VCI)
   /////////////////////////////////////////////////////////////////////////////  
-  tmpl(tlmt_core::tlmt_return&)::vciRspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-						const tlmt_core::tlmt_time &time,
-						void *private_data)
+  tmpl(void)::vciRspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+			     const tlmt_core::tlmt_time &time,
+			     void *private_data)
   {
     //Update the time local
     c0.update_time(time);
     m_vci_event.notify(sc_core::SC_ZERO_TIME);
-    return m_return;
   }
 
   /////////////////////////////////////////////////////////////////////////////  
   // FUNCTION TO RECEIVE COMMANDS FROM NETWORK (TARGET VCI)
   // Packets to target vci DO NOT UPDATE the local time 
   /////////////////////////////////////////////////////////////////////////////  
-  tmpl(tlmt_core::tlmt_return&)::vciCmdReceived(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-						const tlmt_core::tlmt_time &time,
-						void *private_data)
+  tmpl(void)::vciCmdReceived(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			     const tlmt_core::tlmt_time &time,
+			     void *private_data)
   {
     std::list<soclib::common::Segment>::iterator seg;	
     size_t segIndex;
@@ -45,15 +44,15 @@ namespace soclib { namespace tlmt {
 
       switch(pkt->cmd){
       case vci_param::CMD_READ:
-	return vciCmdReceived_read(segIndex,s,pkt,time,private_data);
+	vciCmdReceived_read(segIndex,s,pkt,time,private_data);
 	break;
       case vci_param::CMD_WRITE:
-	return vciCmdReceived_write(segIndex,s,pkt,time,private_data);
+	vciCmdReceived_write(segIndex,s,pkt,time,private_data);
 	break;
       default:
 	break;
       }
-      return m_return;
+      return;
     }
     //send error message
     m_rsp.error  = true;
@@ -69,19 +68,17 @@ namespace soclib { namespace tlmt {
     
     typename tlmt_core::tlmt_time delay = 1;
     p_vci_target.send(&m_rsp, (time + delay));
-    m_return.set_time(time + delay);
-    return m_return;
   }
 
   /////////////////////////////////////////////////////////////////////////////  
   // FUNCTION TO RECEIVE READ COMMAND FROM NETWORK (TARGET VCI)
   // Packets to target vci DO NOT UPDATE the local time 
   /////////////////////////////////////////////////////////////////////////////  
-  tmpl(tlmt_core::tlmt_return&)::vciCmdReceived_read(size_t segIndex,
-						     soclib::common::Segment &s,
-						     soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-						     const tlmt_core::tlmt_time &time,
-						     void *private_data)
+  tmpl(void)::vciCmdReceived_read(size_t segIndex,
+				  soclib::common::Segment &s,
+				  soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+				  const tlmt_core::tlmt_time &time,
+				  void *private_data)
   {
     int reg;
     typename tlmt_core::tlmt_time delay = pkt->nwords;
@@ -150,19 +147,17 @@ namespace soclib { namespace tlmt {
 #endif
     
     p_vci_target.send(&m_rsp, (time + delay)) ;
-    m_return.set_time(time + delay);
-    return m_return;
   }
 
   /////////////////////////////////////////////////////////////////////////////  
   // FUNCTION TO RECEIVE WRITE COMMAND FROM NETWORK (TARGET VCI)
   // Packets to target vci DO NOT UPDATE the local time 
   /////////////////////////////////////////////////////////////////////////////  
-  tmpl(tlmt_core::tlmt_return&)::vciCmdReceived_write(size_t segIndex,
-						      soclib::common::Segment &s,
-						      soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-						      const tlmt_core::tlmt_time &time,
-						      void *private_data)
+  tmpl(void)::vciCmdReceived_write(size_t segIndex,
+				   soclib::common::Segment &s,
+				   soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+				   const tlmt_core::tlmt_time &time,
+				   void *private_data)
   {
     int reg;
     typename tlmt_core::tlmt_time delay = pkt->nwords;
@@ -237,16 +232,14 @@ namespace soclib { namespace tlmt {
 #endif
 
     p_vci_target.send(&m_rsp, (c0.time() + delay));
-    m_return.set_time(c0.time() + delay);
-    return m_return;
   }
 
   /////////////////////////////////////////////////////////////////////////////  
   // CALLBACK FUNCTION FOR THE READ REQUEST FROM COPROCESSOR
   /////////////////////////////////////////////////////////////////////////////  
-  tmpl(tlmt_core::tlmt_return&)::readRequestReceived(soclib::tlmt::fifo_cmd_packet<vci_param> *req,
-						     const tlmt_core::tlmt_time &time,
-						     void *private_data)
+  tmpl(void)::readRequestReceived(soclib::tlmt::fifo_cmd_packet<vci_param> *req,
+				  const tlmt_core::tlmt_time &time,
+				  void *private_data)
   {
     int index = (int)private_data;
 
@@ -286,15 +279,14 @@ namespace soclib { namespace tlmt {
       m_read_request[index].n_elements = req->nwords;
       m_read_request[index].time = m_read_fifo[index].time;
     } 
-    return m_return;
   }
 
   /////////////////////////////////////////////////////////////////////////////  
   // CALLBACK FUNCTION FOR THE WRITE REQUEST FROM COPROCESSOR
   /////////////////////////////////////////////////////////////////////////////  
-  tmpl(tlmt_core::tlmt_return&)::writeRequestReceived(soclib::tlmt::fifo_cmd_packet<vci_param> *req,
-						      const tlmt_core::tlmt_time &time,
-						      void *private_data)
+  tmpl(void)::writeRequestReceived(soclib::tlmt::fifo_cmd_packet<vci_param> *req,
+				   const tlmt_core::tlmt_time &time,
+				   void *private_data)
   {
     int index = (int)private_data;
 
@@ -336,8 +328,6 @@ namespace soclib { namespace tlmt {
       m_write_request[index].n_elements = req->nwords;
       m_write_request[index].time = m_write_fifo[index].time;
     }
-
-    return m_return;
   }
 
   /////////////////////////////////////////////////////////////////////////////  

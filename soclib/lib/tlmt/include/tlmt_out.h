@@ -55,10 +55,9 @@ public:
 	~tlmt_out()
 	{}
 
-	//void send(data_t data, const tlmt_time &time)
-	tlmt_return &send(data_t data, const tlmt_time &time)
+	void send(data_t data, const tlmt_time &time)
 	{
-		return (*this)->receive(data, time);
+	  (*this)->receive(data, time);
 	}
 
 	tlmt_thread_context *get_thread_context() const

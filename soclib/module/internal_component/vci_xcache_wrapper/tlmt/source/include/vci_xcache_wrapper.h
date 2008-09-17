@@ -125,7 +125,6 @@ namespace soclib { namespace tlmt {
     soclib::tlmt::vci_cmd_packet<vci_param>   m_cmd;
     sc_core::sc_event                         m_rsp_received;
     tlmt_core::tlmt_time                      m_rsp_vci_time;
-    tlmt_core::tlmt_return                    m_return;
     tlmt_core::tlmt_thread_context            c0;
     size_t                                    m_counter;
     size_t                                    m_lookahead;
@@ -215,12 +214,12 @@ namespace soclib { namespace tlmt {
 
   private:
 
-    tlmt_core::tlmt_return &rspReceived(soclib::tlmt:: vci_rsp_packet < vci_param > *pkt,
-                                        const tlmt_core:: tlmt_time & time, void *private_data);
+    void rspReceived(soclib::tlmt:: vci_rsp_packet < vci_param > *pkt,
+		     const tlmt_core:: tlmt_time & time, void *private_data);
     
-    tlmt_core::tlmt_return &irqReceived(bool,
-                                        const tlmt_core::tlmt_time &time,
-                                        void *private_data);
+    void irqReceived(bool,
+		     const tlmt_core::tlmt_time &time,
+		     void *private_data);
 
     void update_time(tlmt_core::tlmt_time t);
 

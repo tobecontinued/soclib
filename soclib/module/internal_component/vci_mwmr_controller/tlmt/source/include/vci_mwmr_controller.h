@@ -81,7 +81,6 @@ class VciMwmrController
   uint32_t m_end_simulation_time;
   bool     m_reset_request; 
 
-  tlmt_core::tlmt_return    m_return;
   vci_cmd_packet<vci_param> m_cmd;
   vci_rsp_packet<vci_param> m_rsp;
 
@@ -108,31 +107,31 @@ class VciMwmrController
 		    uint32_t n_config,
 		    uint32_t n_status);
 
-  tlmt_core::tlmt_return &vciRspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-					 const tlmt_core::tlmt_time &time,
-					 void *private_data);
+  void vciRspReceived(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+		      const tlmt_core::tlmt_time &time,
+		      void *private_data);
 
-  tlmt_core::tlmt_return &vciCmdReceived(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					 const tlmt_core::tlmt_time &time,
-					 void *private_data);
+  void vciCmdReceived(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		      const tlmt_core::tlmt_time &time,
+		      void *private_data);
   
-  tlmt_core::tlmt_return &vciCmdReceived_read(size_t segIndex,soclib::common::Segment &s,
-					      soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					      const tlmt_core::tlmt_time &time,
-					      void *private_data);
+  void vciCmdReceived_read(size_t segIndex,soclib::common::Segment &s,
+			   soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			   const tlmt_core::tlmt_time &time,
+			   void *private_data);
   
-  tlmt_core::tlmt_return &vciCmdReceived_write(size_t segIndex,soclib::common::Segment &s,
-					       soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					       const tlmt_core::tlmt_time &time,
-					       void *private_data);
+  void vciCmdReceived_write(size_t segIndex,soclib::common::Segment &s,
+			    soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			    const tlmt_core::tlmt_time &time,
+			    void *private_data);
   
-  tlmt_core::tlmt_return &readRequestReceived(soclib::tlmt::fifo_cmd_packet<vci_param> *req,
-					      const tlmt_core::tlmt_time &time,
-					      void *private_data);
+  void readRequestReceived(soclib::tlmt::fifo_cmd_packet<vci_param> *req,
+			   const tlmt_core::tlmt_time &time,
+			   void *private_data);
 
-  tlmt_core::tlmt_return &writeRequestReceived(soclib::tlmt::fifo_cmd_packet<vci_param> *req,
-					       const tlmt_core::tlmt_time &time,
-					       void *private_data);
+  void writeRequestReceived(soclib::tlmt::fifo_cmd_packet<vci_param> *req,
+			    const tlmt_core::tlmt_time &time,
+			    void *private_data);
 
   void reset();
   void execLoop();

@@ -39,10 +39,9 @@ namespace tlmt_core {
 
 #define tmpl(...) template<typename data_t> __VA_ARGS__ tlmt_if<data_t>
 
-//tmpl(void)::receive(data_t cmd, const tlmt_time &time)
-tmpl(tlmt_return&)::receive(data_t cmd, const tlmt_time &time)
+tmpl(void)::receive(data_t cmd, const tlmt_time &time)
 {
-	return (*m_cb)(cmd, time);
+  (*m_cb)(cmd, time);
 }
 
 tmpl(const tlmt_time)::get_thread_time() const

@@ -44,8 +44,8 @@ namespace soclib{ namespace tlmt {
 #define tmpl(x) template<typename iss_t, typename vci_param> x VciXcacheWrapper<iss_t,vci_param>
 
 
-  tmpl (tlmt_core::tlmt_return &)::rspReceived (soclib::tlmt:: vci_rsp_packet < vci_param > *pkt,
-						const tlmt_core:: tlmt_time & time, void *private_data)
+  tmpl (void)::rspReceived (soclib::tlmt:: vci_rsp_packet < vci_param > *pkt,
+			    const tlmt_core:: tlmt_time & time, void *private_data)
   {
     if (m_cmd.cmd == vci_param::CMD_WRITE)
       m_write_error = (pkt->error != 0);
@@ -69,16 +69,13 @@ namespace soclib{ namespace tlmt {
     }
     
     m_rsp_received.notify (sc_core::SC_ZERO_TIME);
-    
-    return m_return;
   }
 
-  tmpl (tlmt_core::tlmt_return &)::irqReceived (bool v, const tlmt_core::
-						tlmt_time & time, void *private_data)
+  tmpl (void)::irqReceived (bool v, const tlmt_core::
+			    tlmt_time & time, void *private_data)
   {
     int no = (int)(long)private_data;
     std::cout << name () << " callback_synchro " << no << " " << v << std::endl;
-    return m_return;
   }
 
   tmpl (void)::update_time(tlmt_core::tlmt_time t){

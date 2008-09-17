@@ -9,9 +9,9 @@ namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x VciRam<vci_param>
 
-  tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					  const tlmt_core::tlmt_time &time,
-					  void *private_data)
+  tmpl(void)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		       const tlmt_core::tlmt_time &time,
+		       void *private_data)
   {
     // First, find the right segment using the first address of the packet
     std::list<soclib::common::Segment>::iterator seg;	
@@ -38,7 +38,6 @@ namespace soclib { namespace tlmt {
       default:
 	break;
       }
-      return m_return;
     }
     //send error message
     tlmt_core::tlmt_time delay = 1; 
@@ -54,16 +53,13 @@ namespace soclib { namespace tlmt {
     std::cout << "[RAM " << m_id << "] Send to source "<< pkt->srcid << " a error packet with time = "  << time + delay << std::endl;
 #endif
     p_vci.send(&m_rsp, time + delay);
-    m_return.set_time(time + delay);
-
-    return m_return;
   }
 
-  tmpl(tlmt_core::tlmt_return&)::callback_read(size_t segIndex,
-					       soclib::common::Segment &s,
-					       soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					       const tlmt_core::tlmt_time &time,
-					       void *private_data)
+  tmpl(void)::callback_read(size_t segIndex,
+			    soclib::common::Segment &s,
+			    soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			    const tlmt_core::tlmt_time &time,
+			    void *private_data)
   {
 #if VCI_RAM_DEBUG
     std::cout << "[RAM " << m_id <<"] Receive from source " << pkt->srcid <<" a Read packet " << pkt->pktid << " Time = "  << time << std::endl;
@@ -97,18 +93,16 @@ namespace soclib { namespace tlmt {
       m_cpt_read_1++;
 
     p_vci.send(&m_rsp, time + delay);
-    m_return.set_time(time+ delay);
-    return m_return;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // CALLBACK FUNCTION TO LOCKED READ COMMAND
   //////////////////////////////////////////////////////////////////////////////////////////
-  tmpl(tlmt_core::tlmt_return&)::callback_locked_read(size_t segIndex,
-						      soclib::common::Segment &s,
-						      soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-						      const tlmt_core::tlmt_time &time,
-						      void *private_data)
+  tmpl(void)::callback_locked_read(size_t segIndex,
+				   soclib::common::Segment &s,
+				   soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+				   const tlmt_core::tlmt_time &time,
+				   void *private_data)
   {
 #if VCI_RAM_DEBUG
     std::cout << "[RAM " << m_id <<"] Receive from source " << pkt->srcid <<" a Locked Read packet " << pkt->pktid << " Time = "  << time << std::endl;
@@ -143,18 +137,16 @@ namespace soclib { namespace tlmt {
       m_cpt_read_1++;
 
     p_vci.send(&m_rsp, time + delay);
-    m_return.set_time(time+ delay);
-    return m_return;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // CALLBACK FUNCTION TO WRITE COMMAND
   //////////////////////////////////////////////////////////////////////////////////////////
-  tmpl(tlmt_core::tlmt_return&)::callback_write(size_t segIndex,
-						soclib::common::Segment &s,
-						soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-						const tlmt_core::tlmt_time &time,
-						void *private_data)
+  tmpl(void)::callback_write(size_t segIndex,
+			     soclib::common::Segment &s,
+			     soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+			     const tlmt_core::tlmt_time &time,
+			     void *private_data)
   {
 #if VCI_RAM_DEBUG
     std::cout << "[RAM " << m_id << "] Receive from source " << pkt->srcid <<" a Write packet "<< pkt->pktid << " Time = "  << time << std::endl;
@@ -211,18 +203,16 @@ namespace soclib { namespace tlmt {
 #endif
 
     p_vci.send(&m_rsp,  time + delay);
-    m_return.set_time(time + delay);
-    return m_return;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // CALLBACK FUNCTION TO STORE CONDITIONNEL COMMAND
   //////////////////////////////////////////////////////////////////////////////////////////
-  tmpl(tlmt_core::tlmt_return&)::callback_store_cond(size_t segIndex,
-						     soclib::common::Segment &s,
-						     soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-						     const tlmt_core::tlmt_time &time,
-						     void *private_data)
+  tmpl(void)::callback_store_cond(size_t segIndex,
+				  soclib::common::Segment &s,
+				  soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+				  const tlmt_core::tlmt_time &time,
+				  void *private_data)
   {
     typename vci_param::addr_t address;
     
@@ -287,8 +277,6 @@ namespace soclib { namespace tlmt {
       m_cpt_write_1++;
 
     p_vci.send(&m_rsp,  time + delay);
-    m_return.set_time(time + delay);
-    return m_return;
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////

@@ -50,7 +50,6 @@ private:
     uint32_t                       m_depth_fifo;
 
     tlmt_core::tlmt_thread_context c0;
-    tlmt_core::tlmt_return         m_return;
     fifo_cmd_packet<vci_param>     m_cmd;
     sc_core::sc_event              m_rsp_write;
 
@@ -65,9 +64,9 @@ public:
                 const std::vector<std::string> &argv,
 		uint32_t depth_fifo);
 
-    tlmt_core::tlmt_return &writeReponseReceived(int data,
-                                                 const tlmt_core::tlmt_time &time,
-                                                 void *private_data);
+     void writeReponseReceived(int data,
+			      const tlmt_core::tlmt_time &time,
+			      void *private_data);
 private:
 
     void execLoop();

@@ -30,10 +30,6 @@
 #include "vci_param.h"
 #include "../include/fifo_writer.h"
 
-//#include "register.h"
-//#include "base_module.h"
-//#include "soclib_endian.h"
-
 namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x FifoWriter<vci_param>
@@ -55,14 +51,13 @@ tmpl(/**/)::FifoWriter(sc_core::sc_module_name name,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // RECEIVE REPONSE OF A READ REQUEST 
 //////////////////////////////////////////////////////////////////////////////////////////////// ///////
-tmpl(tlmt_core::tlmt_return&)::readReponseReceived(int data,
-                                                   const tlmt_core::tlmt_time &time,
-                                                   void *private_data)
+tmpl(void)::readReponseReceived(int data,
+                                const tlmt_core::tlmt_time &time,
+                                void *private_data)
 {
     //update time
     c0.update_time(time);
     m_rsp_read.notify(sc_core::SC_ZERO_TIME);
-    return m_return;
 }
 
 tmpl(void)::execLoop()

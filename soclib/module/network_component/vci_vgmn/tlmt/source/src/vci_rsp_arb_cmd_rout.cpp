@@ -34,9 +34,9 @@ namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x VciRspArbCmdRout<vci_param>
 
-tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-										const tlmt_core::tlmt_time &time,
-										void *private_data)
+tmpl(void)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		     const tlmt_core::tlmt_time &time,
+		     void *private_data)
 {
 	// std::cout << "VciRspArbCmdRout::callback" << std::endl;
 
@@ -52,7 +52,6 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 	} else {
 	  std::cout << "Erreur d'adressage " <<  address  << std::endl;
 	}
-	return m_return;
 }
 
 tmpl(void)::setCmdArbRspRout(std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> &CmdArbRspRout)

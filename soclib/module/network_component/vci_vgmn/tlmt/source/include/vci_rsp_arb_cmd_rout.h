@@ -49,7 +49,6 @@ class VciRspArbCmdRout
   const soclib::common::AddressDecodingTable<uint32_t, int> m_routing_table;
   uint32_t m_index;
   tlmt_core::tlmt_time m_delay;
-  tlmt_core::tlmt_return m_return;
   int m_dest;
   bool m_sending;
 
@@ -64,9 +63,9 @@ public:
 		    uint32_t idx,
 		    tlmt_core::tlmt_time dl );
 
-  tlmt_core::tlmt_return &callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-				   const tlmt_core::tlmt_time &time,
-				   void *private_data);
+  void callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		const tlmt_core::tlmt_time &time,
+		void *private_data);
 
   void setCmdArbRspRout(std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> &CmdArbRspRout);
 

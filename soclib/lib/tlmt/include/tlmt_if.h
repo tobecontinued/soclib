@@ -58,8 +58,7 @@ public:
 	virtual ~tlmt_if()
 	{}
 
-	//inline void receive(data_t cmd, const tlmt_time &time);
-	inline tlmt_return &receive(data_t cmd, const tlmt_time &time);
+	inline void receive(data_t cmd, const tlmt_time &time);
 
     virtual void register_port(
 		sc_core::sc_port_base& port_,

@@ -19,7 +19,6 @@ class VciMultiTty
   soclib::common::MappingTable m_mt;
   std::list<soclib::common::Segment> segList;
 
-  tlmt_core::tlmt_return m_return;
   vci_rsp_packet<vci_param> m_rsp;
 
   size_t m_cpt_read;
@@ -44,19 +43,19 @@ public:
 	     const soclib::common::MappingTable &mt,
 	     const std::vector<std::string> &names);
  
-  tlmt_core::tlmt_return &callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-				   const tlmt_core::tlmt_time &time,
-				   void *private_data);
+  void callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		const tlmt_core::tlmt_time &time,
+		void *private_data);
   
-  tlmt_core::tlmt_return &callback_read(size_t segIndex,soclib::common::Segment &s,
-					soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					const tlmt_core::tlmt_time &time,
-					void *private_data);
+  void callback_read(size_t segIndex,soclib::common::Segment &s,
+		     soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		     const tlmt_core::tlmt_time &time,
+		     void *private_data);
   
-  tlmt_core::tlmt_return &callback_write(size_t segIndex,soclib::common::Segment &s,
-					 soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-					 const tlmt_core::tlmt_time &time,
-					 void *private_data);
+  void callback_write(size_t segIndex,soclib::common::Segment &s,
+		      soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		      const tlmt_core::tlmt_time &time,
+		      void *private_data);
 
   void init(const std::vector<std::string> &names);
 

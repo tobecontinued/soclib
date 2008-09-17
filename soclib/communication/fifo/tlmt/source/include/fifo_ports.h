@@ -55,9 +55,9 @@ public:
 		  cmd_in(name+"_cmd_in", cb)
 	{}
 
-	tlmt_core::tlmt_return &send(int pkt, const tlmt_core::tlmt_time &time)
+	void send(int pkt, const tlmt_core::tlmt_time &time)
 	{
-		return rsp_out.send(pkt, time);
+	  rsp_out.send(pkt, time);
 	}
 	inline void operator() (FifoInitiator<data_t> &peer ) ;
 };
@@ -78,9 +78,9 @@ public:
 		  rsp_in(name+"_rsp_in", cb)
 	{}
 
-	tlmt_core::tlmt_return &send(fifo_cmd_packet<data_t> *pkt, const tlmt_core::tlmt_time &time)
+	void send(fifo_cmd_packet<data_t> *pkt, const tlmt_core::tlmt_time &time)
 	{
-		return cmd_out.send(pkt, time);
+	  cmd_out.send(pkt, time);
 	}
 	inline void operator() (FifoTarget<data_t> &peer ) ;
 };

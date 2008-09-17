@@ -101,6 +101,142 @@ tmpl(/**/)::VciXCache(
 
       m_cacheability_table(mt.getCacheabilityTable()),
       m_ident(mt.indexForId(index)),
+      m_simulation_time(std::numeric_limits<size_t>::max()),
+
+      s_dcache_lines(dcache_lines),
+      s_dcache_words(dcache_words),
+      s_icache_lines(icache_lines),
+      s_icache_words(icache_words),
+
+      m_i_x( uint32_log2(s_icache_words), uint32_log2(vci_param::B) ),
+      m_i_y( uint32_log2(s_icache_lines), uint32_log2(s_icache_words) + uint32_log2(vci_param::B) ),
+      m_i_z( vci_param::N-uint32_log2(s_icache_lines) - uint32_log2(s_icache_words) - uint32_log2(vci_param::B),
+             uint32_log2(s_icache_lines) + uint32_log2(s_icache_words) + uint32_log2(vci_param::B) ),
+      m_icache_yzmask((~0)<<(uint32_log2(s_icache_words) + uint32_log2(vci_param::B))),
+
+      m_d_x( uint32_log2(s_dcache_words), uint32_log2(vci_param::B) ),
+      m_d_y( uint32_log2(s_dcache_lines), uint32_log2(s_dcache_words) + uint32_log2(vci_param::B) ),
+      m_d_z( vci_param::N-uint32_log2(s_dcache_lines) - uint32_log2(s_dcache_words) - uint32_log2(vci_param::B),
+             uint32_log2(s_dcache_lines) + uint32_log2(s_dcache_words) + uint32_log2(vci_param::B) ),
+      m_dcache_yzmask((~0)<<(uint32_log2(s_dcache_words) + uint32_log2(vci_param::B))),
+
+      r_dcache_fsm("r_dcache_fsm"),
+      r_dcache_addr_save("r_dcache_addr_save"),
+      r_dcache_data_save("r_dcache_data_save"),
+      r_dcache_prev_save("r_dcache_prev_save"),
+      r_dcache_type_save("r_dcache_type_save"),
+      r_dcache_cached_save("r_dcache_cached_save"),
+
+      m_dreq_addr_fifo("m_dreq_addr_fifo", 8),
+      m_dreq_data_fifo("m_dreq_data_fifo", 8),
+      m_dreq_prev_fifo("m_dreq_prev_fifo", 8),
+      m_dreq_type_fifo("m_dreq_type_fifo", 8),
+      m_dreq_cached_fifo("m_dreq_cached_fifo", 8),
+
+      r_icache_fsm("r_icache_fsm"),
+      r_icache_miss_addr("r_icache_miss_addr"),
+      r_icache_req("r_icache_req"),
+
+      r_vci_cmd_fsm("r_vci_cmd_fsm"),
+      r_dcache_addr_cmd("r_dcache_addr_cmd"),
+      r_dcache_data_cmd("r_dcache_data_cmd"),
+      r_dcache_prev_cmd("r_dcache_prev_cmd"),
+      r_dcache_type_cmd("r_dcache_type_cmd"),
+      r_dcache_cached_cmd("r_dcache_cached_cmd"),
+      r_dcache_miss_addr("r_dcache_miss_addr"),
+      r_cmd_cpt("r_cmd_cpt"),
+
+      r_vci_rsp_fsm("r_vci_rsp_fsm"),
+      r_dcache_unc_valid("r_dcache_unc_valid"),
+      r_rsp_cpt("r_rsp_cpt"),
+
+      r_dcache_cpt_init("r_dcache_cpt_init"),
+      r_icache_cpt_init("r_icache_cpt_init")
+{
+    assert(IS_POW_OF_2(icache_lines));
+    assert(IS_POW_OF_2(dcache_lines));
+    assert(IS_POW_OF_2(icache_words));
+    assert(IS_POW_OF_2(dcache_words));
+    assert(icache_words);
+    assert(dcache_words);
+    assert(icache_lines);
+    assert(dcache_lines);
+    assert(icache_words <= 16);
+    assert(dcache_words <= 16);
+    assert(icache_lines <= 1024);
+    assert(dcache_lines <= 1024);
+
+    r_dcache_data = new sc_signal<data_t>*[dcache_lines];
+    for ( size_t i=0; i<dcache_lines; ++i ) {
+        std::ostringstream o;
+        o << "dcache_data[" << i << "]";
+        r_dcache_data[i] = soclib::common::alloc_elems<sc_signal<data_t> >(o.str(), dcache_words);
+    }
+
+    r_dcache_tag = soclib::common::alloc_elems<sc_signal<tag_t> >("dcache_tag", dcache_lines);
+
+    r_icache_data = new sc_signal<data_t>*[icache_lines];
+    for ( size_t i=0; i<icache_lines; ++i ) {
+        std::ostringstream o;
+        o << "icache_data[" << i << "]";
+        r_icache_data[i] = soclib::common::alloc_elems<sc_signal<data_t> >(o.str(), icache_words);
+    }
+
+    r_icache_tag = soclib::common::alloc_elems<sc_signal<tag_t> >("icache_tag", icache_lines);
+
+    r_icache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("icache_miss_buff", icache_words);;
+    r_dcache_miss_buf = soclib::common::alloc_elems<sc_signal<data_t> >("dcache_miss_buff", dcache_words);
+
+    SC_METHOD(transition);
+    dont_initialize();
+    sensitive << p_clk.pos();
+  
+    SC_METHOD(genMoore);
+    dont_initialize();
+    sensitive << p_clk.neg();
+
+    SC_METHOD (genMealy);
+    dont_initialize();
+    sensitive
+        << p_clk.neg()
+        << p_dcache.type
+        << p_dcache.adr
+        << p_dcache.req
+        << p_icache.req
+        << p_icache.adr;
+
+#if 0 && defined(SYSTEMCASS_SPECIFIC)
+    p_icache.frz  (p_icache.req);
+    p_icache.ins  (p_icache.req);
+    p_icache.frz  (p_icache.adr);
+    p_icache.ins  (p_icache.adr);
+    p_dcache.frz  (p_dcache.type);
+    p_dcache.frz  (p_dcache.adr);
+    p_dcache.frz  (p_dcache.req);
+    p_dcache.rdata(p_dcache.adr);
+#endif
+}
+
+tmpl(/**/)::VciXCache(
+    sc_module_name name,
+    const soclib::common::MappingTable &mt,
+    const soclib::common::IntTab &index,
+    size_t icache_lines,
+    size_t icache_words,
+    size_t dcache_lines,
+    size_t dcache_words,
+    size_t simulation_time )
+    : soclib::caba::BaseModule(name),
+
+      p_clk("clk"),
+      p_resetn("resetn"),
+      p_icache("icache"),
+      p_dcache("dcache"),
+      p_vci("vci"),
+
+      m_cacheability_table(mt.getCacheabilityTable()),
+      m_ident(mt.indexForId(index)),
+      m_simulation_time(simulation_time),
 
       s_dcache_lines(dcache_lines),
       s_dcache_words(dcache_words),
@@ -237,6 +373,9 @@ tmpl(/**/)::~VciXCache()
 
 tmpl(void)::transition()
 {
+    if(m_cpt_cycles == m_simulation_time)
+        sc_stop();
+
     if ( ! p_resetn.read() ) {
         r_dcache_fsm = DCACHE_INIT;
         r_icache_fsm = ICACHE_INIT;
@@ -265,6 +404,7 @@ tmpl(void)::transition()
         m_cpt_icache_dir_write = 0;
         m_cpt_fifo_read  = 0;
         m_cpt_fifo_write = 0;
+        m_cpt_cycles = 0;
 
         return;
     }
@@ -289,6 +429,7 @@ tmpl(void)::transition()
     
     bool    fifo_put_dcache_save = false;
     bool    fifo_get = false;
+
 #if XCACHE_DEBUG
     std::cout
         << name()
@@ -966,6 +1107,20 @@ tmpl(void)::genMoore()
 
     case CMD_IDLE:
         p_vci.cmdval  = false;
+        p_vci.address = 0;
+        p_vci.wdata   = 0;
+        p_vci.be      = 0;
+        p_vci.plen    = 0;
+        p_vci.cmd     = vci_param::CMD_WRITE;
+        p_vci.trdid   = 0;
+        p_vci.pktid   = 0;
+        p_vci.srcid   = 0;
+        p_vci.cons    = false;
+        p_vci.wrap    = false;
+        p_vci.contig  = false;
+        p_vci.clen    = 0;
+        p_vci.cfixed  = false;
+        p_vci.eop     = false;
         break;
 
     case CMD_DATA_UNC:
@@ -975,28 +1130,32 @@ tmpl(void)::genMoore()
         case DCacheSignals::READ_WORD:
             p_vci.be  = 0xF;
             p_vci.cmd = vci_param::CMD_READ;
+            p_vci.plen   = 4;
             break;
         case DCacheSignals::READ_HALF:
             p_vci.be  = 3 << subcell;
             p_vci.cmd = vci_param::CMD_READ;
+            p_vci.plen   = 2;
             break;
         case DCacheSignals::READ_BYTE:
             p_vci.be  = 1 << subcell;
             p_vci.cmd = vci_param::CMD_READ;
+            p_vci.plen   = 1;
             break;
         case DCacheSignals::READ_LINKED:
             p_vci.be  = 0xF;
             p_vci.cmd = vci_param::CMD_LOCKED_READ;
+            p_vci.plen   = 4;
             break;
         case DCacheSignals::STORE_COND:
             p_vci.wdata = req_data;
             p_vci.be  = 0xF;
             p_vci.cmd = vci_param::CMD_STORE_COND;
+            p_vci.plen   = 4;
             break;
         default:
             assert(0);
         }
-        p_vci.plen = 0;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
         p_vci.srcid  = m_ident;
@@ -1026,7 +1185,7 @@ tmpl(void)::genMoore()
         default:
             assert(0);
         }
-        p_vci.plen   = 0;
+        p_vci.plen   = 4;
         p_vci.cmd    = vci_param::CMD_WRITE;
         p_vci.trdid  = 0;
         p_vci.pktid  = WRITE_PKTID;
@@ -1051,7 +1210,7 @@ tmpl(void)::genMoore()
         p_vci.cmdval = true;
         p_vci.address = (req_addr & m_dcache_yzmask) + (r_cmd_cpt << 2);
         p_vci.be     = 0xF;
-        p_vci.plen   = 0;
+        p_vci.plen   = s_dcache_words << 2;
         p_vci.cmd    = vci_param::CMD_READ;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
@@ -1068,7 +1227,7 @@ tmpl(void)::genMoore()
         p_vci.cmdval = true;
         p_vci.address = (r_icache_miss_addr & m_icache_yzmask) + (r_cmd_cpt << 2);
         p_vci.be     = 0xF;
-        p_vci.plen   = 0;
+        p_vci.plen   = s_icache_words << 2;
         p_vci.cmd    = vci_param::CMD_READ;
         p_vci.trdid  = 0;
         p_vci.pktid  = READ_PKTID;
@@ -1082,6 +1241,7 @@ tmpl(void)::genMoore()
         break;
 
     } // end switch r_vci_cmd_fsm
+    m_cpt_cycles++;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
