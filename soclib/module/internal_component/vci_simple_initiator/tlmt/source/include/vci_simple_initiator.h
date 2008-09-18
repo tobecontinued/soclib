@@ -41,7 +41,6 @@ class VciSimpleInitiator
 {
     tlmt_core::tlmt_thread_context c0;
     sc_core::sc_event e0;
-	tlmt_core::tlmt_return m_return;
 
 protected:
     SC_HAS_PROCESS(VciSimpleInitiator);
@@ -51,9 +50,10 @@ public:
 
     VciSimpleInitiator( sc_core::sc_module_name name );
 
-    tlmt_core::tlmt_return &callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-									 const tlmt_core::tlmt_time &time,
-									 void *private_data);
+    void callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+		  const tlmt_core::tlmt_time &time,
+		  void *private_data);
+
     void behavior();
 };
 

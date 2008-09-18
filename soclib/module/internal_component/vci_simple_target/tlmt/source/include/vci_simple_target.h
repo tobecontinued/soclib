@@ -39,16 +39,14 @@ template<typename vci_param>
 class VciSimpleTarget 
     : public soclib::tlmt::BaseModule
 {
-private:
-	tlmt_core::tlmt_return m_return;
 public:
     soclib::tlmt::VciTarget<vci_param> p_vci;
 
     VciSimpleTarget(sc_core::sc_module_name name);
 
-    tlmt_core::tlmt_return &callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-									 const tlmt_core::tlmt_time &time,
-									 void *private_data);
+    void callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		  const tlmt_core::tlmt_time &time,
+		  void *private_data);
 };
 
 }}

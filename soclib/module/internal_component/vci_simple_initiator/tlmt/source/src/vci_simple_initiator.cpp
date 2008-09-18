@@ -33,15 +33,14 @@ namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x VciSimpleInitiator<vci_param>
 
-tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
-										const tlmt_core::tlmt_time &time,
-										void *private_data)
+tmpl(void)::callback(soclib::tlmt::vci_rsp_packet<vci_param> *pkt,
+		     const tlmt_core::tlmt_time &time,
+		     void *private_data)
 {
 	c0.update_time(time);
 	std::cout << name() << " callback time = " << c0.time() << std::endl;
 	std::cout << "Fini !" << std::endl;
 	e0.notify(sc_core::SC_ZERO_TIME);
-	return m_return;
 }
 
 tmpl(void)::behavior()

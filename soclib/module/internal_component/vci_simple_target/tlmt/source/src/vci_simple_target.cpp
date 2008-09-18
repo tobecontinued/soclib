@@ -33,9 +33,9 @@ namespace soclib { namespace tlmt {
 
 #define tmpl(x) template<typename vci_param> x VciSimpleTarget<vci_param>
 
-tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
-										const tlmt_core::tlmt_time &time,
-										void *private_data)
+tmpl(void)::callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,
+		     const tlmt_core::tlmt_time &time,
+		     void *private_data)
 {
 	soclib::tlmt::vci_rsp_packet<vci_param> rsp;
 
@@ -44,7 +44,6 @@ tmpl(tlmt_core::tlmt_return&)::callback(soclib::tlmt::vci_cmd_packet<vci_param> 
 
 	std::cout << " Demande de temps: " << p_vci.peer_time() << std::endl;
 	std::cout << " Demande d'activite: " << p_vci.peer_active() << std::endl;
-	return m_return;
 }
 
 tmpl(/**/)::VciSimpleTarget(sc_core::sc_module_name name)
