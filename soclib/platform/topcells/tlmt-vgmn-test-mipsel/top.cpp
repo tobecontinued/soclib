@@ -87,9 +87,7 @@ int sc_main(int argc, char **argv)
   ftime(&initial);
 
   //Configurator instanciateOnStack  
-
   soclib::common::ElfLoader loader(soft); 
-
 
   soclib::common::MappingTable mapping_table(32, soclib::common::IntTab(8), soclib::common::IntTab(8), 0x00200000);
   
