@@ -303,10 +303,12 @@ private:
     uint32_t m_cost_unc_transaction;        // cumulated duration for VCI UNC transactions
     uint32_t m_cost_write_transaction;      // cumulated duration for VCI WRITE transactions
     uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
-    
-    uint32_t m_cpt_itlbmiss_transaction;
-    uint32_t m_cpt_dtlbmiss_transaction;
 
+    uint32_t m_cpt_ins_tlb_miss;            // number of instruction tlb miss
+    uint32_t m_cpt_data_tlb_miss;           // number of data tlb miss
+    
+    uint32_t m_cpt_itlbmiss_transaction;    // number of itlb miss transactions
+    uint32_t m_cpt_dtlbmiss_transaction;    // number of dtlb miss transactions
 
 protected:
     SC_HAS_PROCESS(VciVCacheWrapper);

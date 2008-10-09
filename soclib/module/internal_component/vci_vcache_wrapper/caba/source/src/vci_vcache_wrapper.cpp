@@ -193,9 +193,21 @@ tmpl(/**/)::VciVCacheWrapper(
       r_dcache_be_save("r_dcache_be_save"),
       r_dcache_cached_save("r_dcache_cached_save"),
       r_dcache_tlb_paddr("r_dcache_tlb_paddr"),
+      r_dcache_miss_req("r_dcache_miss_req"),
+      r_dcache_unc_req("r_dcache_unc_req"),
+      r_dcache_write_req("r_dcache_write_req"),
+      r_dcache_tlb_read_req("r_dcache_tlb_read_req"),
+      r_dcache_tlb_write_req("r_dcache_tlb_write_req"),
+      r_dcache_tlb_dirty_req("r_dcache_tlb_dirty_req"),
+      r_dcache_xtn_req("r_dcache_xtn_req"),
 
       r_icache_fsm("r_icache_fsm"),
       r_icache_paddr_save("r_icache_paddr_save"),
+      r_icache_miss_data("r_icache_miss_data"),
+      r_icache_miss_req("r_icache_miss_req"),
+      r_icache_unc_req("r_icache_unc_req"),
+      r_icache_tlb_read_req("r_icache_tlb_read_req"),
+      r_icache_tlb_write_req("r_icache_tlb_write_req"),
 
       r_vci_cmd_fsm("r_vci_cmd_fsm"),
       r_vci_cmd_min("r_vci_cmd_min"),
@@ -204,6 +216,8 @@ tmpl(/**/)::VciVCacheWrapper(
 
       r_vci_rsp_fsm("r_vci_rsp_fsm"),
       r_vci_rsp_cpt("r_vci_rsp_cpt"),
+      r_vci_rsp_itlb_miss("r_vci_rsp_itlb_miss"),
+      r_vci_rsp_dtlb_miss("r_vci_rsp_dtlb_miss"),
       r_vci_rsp_ins_error("r_vci_rsp_ins_error"),
       r_vci_rsp_data_error("r_vci_rsp_data_error"),
 
@@ -241,6 +255,7 @@ tmpl(void)::print_cpi()
     std::cout << "CPU " << m_srcid << " : CPI = " 
         << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl ;
 }
+
 ////////////////////////
 tmpl(void)::print_stats()
 ////////////////////////
@@ -303,8 +318,12 @@ tmpl(void)::transition()
         r_dcache_tlb_dirty_req = false;
         r_dcache_xtn_req       = false;
 
-        r_dcache_buf_unc_valid = false;
+        r_icache_page_k_save   = false;
+        r_dcache_page_k_save   = false;
+        r_dcache_dirty_save    = false;
+
         r_icache_buf_unc_valid = false;
+        r_dcache_buf_unc_valid = false;
 
         r_vci_rsp_ins_error = false;
         r_vci_rsp_data_error = false;
@@ -314,6 +333,9 @@ tmpl(void)::transition()
 
         r_dcache_id1_save = 0;
         r_dcache_ppn_save = 0;
+
+        r_icache_ptba_ok  = false;
+        r_dcache_ptba_ok  = false;
 
         r_icache_error_type = MMU_NONE;
         r_dcache_error_type = MMU_NONE;
@@ -354,6 +376,11 @@ tmpl(void)::transition()
         m_cost_write_transaction = 0;
         m_length_write_transaction = 0;
 
+        m_cpt_ins_tlb_miss  = 0;            
+        m_cpt_data_tlb_miss = 0;                
+
+        m_cpt_itlbmiss_transaction = 0;    
+        m_cpt_dtlbmiss_transaction = 0;    
         return;
     }
 
@@ -586,6 +613,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                     r_icache_paddr_save = (addr36_t)(r_mmu_ptpr | ((ireq.addr>>PAGE_M_NBITS)<<2));
                     r_icache_tlb_read_req = true;
                     r_icache_fsm = ICACHE_TLB1_READ;
+                    m_cost_ins_miss_frz++;
+                    m_cpt_ins_tlb_miss++;
                     break;
                 }
 
@@ -596,12 +625,16 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                                           (addr36_t)(((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
                     r_icache_tlb_read_req = true;
                     r_icache_fsm = ICACHE_TLB2_READ;
+                    m_cost_ins_miss_frz++;
+                    m_cpt_ins_tlb_miss++;
                     break;
                 }
 
                 if ( (icache_hit_t_m || icache_hit_t_k) && !icache_hit_x && icache_cached ) 
                 {
                     r_icache_fsm = ICACHE_BIS;
+                    m_cpt_ins_miss++;
+                    m_cost_ins_miss_frz++;
                     break;
                 }
             } // end if MMU activated
@@ -676,6 +709,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     //////////////////////
     case ICACHE_TLB1_READ:
     {
+        m_cost_ins_miss_frz++;
         if ( !r_icache_tlb_read_req && !r_vci_rsp_ins_error) // vci response ok
         {  
             switch((r_vci_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) { 
@@ -719,6 +753,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     ///////////////////////
     case ICACHE_TLB1_WRITE:  
     {
+        m_cost_ins_miss_frz++;
         if (!r_icache_tlb_write_req)
         { 
             if ( r_vci_rsp_ins_error ) 
@@ -737,6 +772,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     //////////////////////
     case ICACHE_TLB1_UPDT:
     {
+        m_cost_ins_miss_frz++;
         icache_m_tlb.update(r_icache_pte_update,ireq.addr); 
         r_icache_fsm = ICACHE_IDLE;
         break;
@@ -744,6 +780,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////
     case ICACHE_TLB2_READ:
     {
+        m_cost_ins_miss_frz++;
         if ( !r_icache_tlb_read_req && !r_vci_rsp_ins_error) // VCI response ok
         {
             switch((r_vci_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
@@ -775,6 +812,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////////
     case ICACHE_TLB2_WRITE:
     {  
+        m_cost_ins_miss_frz++;
         if (!r_icache_tlb_write_req) 
         {
             if ( r_vci_rsp_ins_error ) 
@@ -793,6 +831,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////
     case ICACHE_TLB2_UPDT: 
     {
+        m_cost_ins_miss_frz++;
         icache_k_tlb.update(r_icache_pte_update,ireq.addr); 
         r_icache_fsm = ICACHE_IDLE;  
         break;
@@ -1318,6 +1357,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     r_dcache_tlb_paddr      = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
                     r_dcache_tlb_read_req   = true;
                     r_dcache_fsm            = DCACHE_TLB1_READ;
+                    m_cost_data_miss_frz++;
+                    m_cpt_data_tlb_miss++;
                     break;
                 }
 
@@ -1328,6 +1369,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                                           (addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2); 
                     r_dcache_tlb_read_req = true;
                     r_dcache_fsm = DCACHE_TLB2_READ;
+                    m_cost_data_miss_frz++;
+                    m_cpt_data_tlb_miss++;
                     break;
                 }
 
@@ -1335,6 +1378,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                      dcache_cached && (dreq.type == iss_t::DATA_READ) )
                 {
                     r_dcache_fsm = DCACHE_BIS;
+                    m_cpt_data_miss++;
+                    m_cost_data_miss_frz++;
                     break;
                 }
             } // end if MMU activated
@@ -1472,6 +1517,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     //////////////////////
     case DCACHE_TLB1_READ:
     {
+        m_cost_data_miss_frz++;
         if ( !r_dcache_tlb_read_req && !r_vci_rsp_data_error ) // VCI response ok
         {
             switch((r_vci_rsp_dtlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
@@ -1516,6 +1562,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     //////////////////////
     case DCACHE_TLB1_WRITE:
     {
+        m_cost_data_miss_frz++;
         if (!r_dcache_tlb_write_req) 
         {
             if ( r_vci_rsp_data_error ) 
@@ -1534,6 +1581,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     //////////////////////
     case DCACHE_TLB1_UPDT: 
     {
+        m_cost_data_miss_frz++;
         dcache_m_tlb.update(r_dcache_pte_update,dreq.addr);
         r_dcache_fsm = DCACHE_IDLE;
         break;
@@ -1541,6 +1589,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     /////////////////////
     case DCACHE_TLB2_READ:
     {
+        m_cost_data_miss_frz++;
         if (!r_dcache_tlb_read_req && !r_vci_rsp_data_error) // VCI response ok
         {
             switch((r_vci_rsp_dtlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
@@ -1572,6 +1621,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     ////////////////////////
     case DCACHE_TLB2_WRITE:
     {
+        m_cost_data_miss_frz++;
         if (!r_dcache_tlb_write_req) 
         {
             if ( r_vci_rsp_data_error ) 
@@ -1590,6 +1640,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     //////////////////////
     case DCACHE_TLB2_UPDT:  
     {
+        m_cost_data_miss_frz++;
         dcache_k_tlb.update(r_dcache_pte_update,dreq.addr);
         r_dcache_fsm = DCACHE_IDLE;
         break;
@@ -1684,12 +1735,12 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
         if ( dtlb_m_hit || dtlb_k_hit )
         {
-            r_icache_fsm = ICACHE_CACHE_INVAL_DONE;
+            r_dcache_fsm = DCACHE_DCACHE_INVAL_DONE;
             r_dcache_paddr_save = dpaddr;
         }
         else
         {
-            r_icache_fsm = ICACHE_IDLE;
+            r_dcache_fsm = DCACHE_IDLE;
             drsp.valid = true;
         }
         break;
@@ -2013,6 +2064,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         break;
 
     case RSP_ITLB_READ:
+        m_cpt_itlbmiss_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2032,6 +2084,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         break;
 
     case RSP_ITLB_WRITE:
+        m_cpt_itlbmiss_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2090,6 +2143,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         break;
 
     case RSP_DTLB_READ:
+        m_cpt_dtlbmiss_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2109,6 +2163,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         break;
 
     case RSP_DTLB_WRITE:
+        m_cpt_dtlbmiss_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2124,6 +2179,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         break;
 
     case RSP_DTLB_DIRTY:
+        m_cpt_dtlbmiss_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
