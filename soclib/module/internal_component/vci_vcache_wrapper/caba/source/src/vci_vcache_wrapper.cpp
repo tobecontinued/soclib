@@ -199,6 +199,7 @@ tmpl(/**/)::VciVCacheWrapper(
       r_dcache_tlb_read_req("r_dcache_tlb_read_req"),
       r_dcache_tlb_write_req("r_dcache_tlb_write_req"),
       r_dcache_tlb_dirty_req("r_dcache_tlb_dirty_req"),
+      r_dcache_tlb_ptba_read("r_dcache_tlb_ptba_read"),
       r_dcache_xtn_req("r_dcache_xtn_req"),
 
       r_icache_fsm("r_icache_fsm"),
@@ -316,6 +317,7 @@ tmpl(void)::transition()
         r_dcache_tlb_read_req  = false;
         r_dcache_tlb_write_req = false;
         r_dcache_tlb_dirty_req = false;
+        r_dcache_tlb_ptba_read = false;
         r_dcache_xtn_req       = false;
 
         r_icache_page_k_save   = false;
@@ -1431,14 +1433,28 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                             {
                                 r_dcache_pte_update = dcache_m_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
                                 r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                                r_dcache_tlb_dirty_req  = true;
+                                r_dcache_fsm            = DCACHE_WRITE_DIRTY;
+
                             }
                             else
-                            {                
-                                r_dcache_pte_update = dcache_k_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
-                                r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save|(addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
+                            {   
+                                if (dcache_hit_p) 
+                                {
+                                    r_dcache_pte_update = dcache_k_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
+                                    r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save|(addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
+                                    r_dcache_tlb_dirty_req  = true;
+                                    r_dcache_fsm            = DCACHE_WRITE_DIRTY;
+                                }
+                                else
+                                {
+                                    r_dcache_pte_update = dcache_k_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
+                                    r_dcache_tlb_paddr      = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                                    r_dcache_tlb_read_req   = true;
+                                    r_dcache_tlb_ptba_read  = true;
+                                    r_dcache_fsm            = DCACHE_TLB1_READ;
+                                }
                             }
-                            r_dcache_tlb_dirty_req  = true;
-                            r_dcache_fsm            = DCACHE_WRITE_DIRTY;
                         }
                         else                                    // no cache update, not dirty bit update
                         {
@@ -1525,14 +1541,23 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 r_dcache_ptba_ok       = true;
                 r_dcache_ptba_save     = (addr36_t)(r_vci_rsp_dtlb_miss & PTD_PTP_MASK) << 12;  
                 r_dcache_id1_save      = dreq.addr>>PAGE_M_NBITS;
-                r_dcache_tlb_paddr    = (addr36_t)((r_vci_rsp_dtlb_miss & PTD_PTP_MASK) << 12) | 
-                                        (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
-                r_dcache_tlb_read_req  = true;
-                r_dcache_fsm           = DCACHE_TLB2_READ;
+                r_dcache_tlb_paddr     = (addr36_t)((r_vci_rsp_dtlb_miss & PTD_PTP_MASK) << 12) | 
+                                         (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
+                if ( r_dcache_tlb_ptba_read )
+                {
+                    r_dcache_tlb_ptba_read  = false;
+                    r_dcache_tlb_dirty_req  = true;
+                    r_dcache_fsm            = DCACHE_WRITE_DIRTY;
+                }
+                else
+                {
+                    r_dcache_tlb_read_req  = true;
+                    r_dcache_fsm           = DCACHE_TLB2_READ;
+                }
                 break;
             case PTE_NEW:               // 4M page (not marked)
                 r_dcache_ptba_ok       = false;
-                r_dcache_tlb_paddr    = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                r_dcache_tlb_paddr     = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
                 r_dcache_tlb_write_req = true;
                 r_dcache_fsm           = DCACHE_TLB1_WRITE;
                 r_dcache_pte_update    = r_vci_rsp_dtlb_miss | PTE_ET_MASK;     
@@ -1719,21 +1744,21 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         m_cpt_dcache_dir_read += m_dcache_ways;
         addr_t invadr = dreq.wdata;
         addr36_t dpaddr;
-        bool dtlb_m_hit, dtlb_k_hit; 
+        bool dcache_hit_t_m, dcache_hit_t_k; 
 
         if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_D_DTLB_A ) 
         {
-            dtlb_m_hit = dcache_m_tlb.translate(invadr, &dpaddr); 
-            dtlb_k_hit = dcache_k_tlb.translate(invadr, &dpaddr); 
+            dcache_hit_t_m = dcache_m_tlb.translate(invadr, &dpaddr); 
+            dcache_hit_t_k = dcache_k_tlb.translate(invadr, &dpaddr); 
         } 
         else 
         {
             dpaddr = invadr;  
-            dtlb_m_hit = true; 
-            dtlb_k_hit = true;
+            dcache_hit_t_m = true; 
+            dcache_hit_t_k = true;
         }
 
-        if ( dtlb_m_hit || dtlb_k_hit )
+        if ( dcache_hit_t_m || dcache_hit_t_k )
         {
             r_dcache_fsm = DCACHE_DCACHE_INVAL_DONE;
             r_dcache_paddr_save = dpaddr;

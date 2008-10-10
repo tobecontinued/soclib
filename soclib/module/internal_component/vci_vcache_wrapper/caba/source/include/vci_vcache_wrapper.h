@@ -221,7 +221,7 @@ private:
     sc_signal<bool>         r_dcache_tlb_read_req;
     sc_signal<bool>         r_dcache_tlb_write_req;
     sc_signal<bool>         r_dcache_tlb_dirty_req;
-
+    sc_signal<bool>         r_dcache_tlb_ptba_read;
     sc_signal<bool>         r_dcache_xtn_req; 
 
     // ICACHE FSM REGISTERS
