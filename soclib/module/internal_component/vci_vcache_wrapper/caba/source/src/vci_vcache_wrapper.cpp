@@ -892,21 +892,21 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     case ICACHE_CACHE_INVAL:
     {	
         addr36_t    ipaddr;                     
-        bool        itlb_m_hit;
-        bool        itlb_k_hit;
+        bool        icache_hit_t_m;
+        bool        icache_hit_t_k;
 
         if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
         {
-            itlb_m_hit = icache_m_tlb.translate(r_dcache_wdata_save, &ipaddr); 
-            itlb_k_hit = icache_k_tlb.translate(r_dcache_wdata_save, &ipaddr); 
+            icache_hit_t_m = icache_m_tlb.translate(r_dcache_wdata_save, &ipaddr); 
+            icache_hit_t_k = icache_k_tlb.translate(r_dcache_wdata_save, &ipaddr); 
         } 
         else 
         {
             ipaddr = (addr36_t)r_dcache_wdata_save;
-            itlb_m_hit = true; 
-            itlb_k_hit = true;
+            icache_hit_t_m = true; 
+            icache_hit_t_k = true;
         }
-        if ( itlb_m_hit || itlb_k_hit )
+        if ( icache_hit_t_m || icache_hit_t_k )
         {
             r_icache_fsm = ICACHE_CACHE_INVAL_DONE;
             r_icache_paddr_save = ipaddr;
@@ -1051,7 +1051,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 // closing the write packet if uncached
                 if ( !r_dcache_cached_save )
                 { 
-                    r_dcache_write_req = true ;
+                    r_dcache_write_req = true;
                 }
             } 
             else 
@@ -1070,7 +1070,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         // close the write packet if the next processor request is not a write 
         if ( !dreq.valid || (dreq.type != iss_t::DATA_WRITE)) 
         {
-            r_dcache_write_req = true ;
+            r_dcache_write_req = true;
         }
         
         // The next state and the processor request parameters are computed 
@@ -1832,7 +1832,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 r_dcache_pte_update = dcache_m_tlb.getpte(r_dcache_tlb_way_save,r_dcache_tlb_set_save) | PTE_D_MASK;
             }
             r_dcache_fsm = DCACHE_WRITE_DIRTY;
-            r_dcache_tlb_write_req  = true;
+            r_dcache_tlb_dirty_req  = true;
         }
         else
         {
@@ -1852,7 +1852,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             dcache_m_tlb.setdirty(r_dcache_tlb_way_save, r_dcache_tlb_set_save);
         }
 
-        if ( !r_dcache_tlb_write_req ) 
+        if ( !r_dcache_tlb_dirty_req ) 
         {
             if ( r_vci_rsp_data_error )
             {
