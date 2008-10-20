@@ -99,6 +99,14 @@ static inline T clz( T n )
 }
 
 template<typename T>
+static inline T fls( T n )
+{
+    if (n == 0)
+        return 0;
+    return 8*sizeof(n)-clz(n);
+}
+
+template<typename T>
 static inline T ctz( T n )
 {
 #if __GNUC__
@@ -138,6 +146,8 @@ static inline T clamp( T min, T n, T max )
         return max;
     return n;
 }
+
+
 
 }}
 

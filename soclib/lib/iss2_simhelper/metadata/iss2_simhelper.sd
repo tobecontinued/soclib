@@ -11,7 +11,7 @@ Module('common:iss2_simhelper',
 	parameter.Module('simhelper_iss_t'),
 	],
 	   uses = [
-	Uses('iss'),
+	Uses('iss2'),
 	],
 	   extensions = [
 	'dsx:cpu=wrapper:simhelper_iss_t',

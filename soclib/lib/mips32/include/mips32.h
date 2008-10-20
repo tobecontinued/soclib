@@ -39,6 +39,8 @@
 #ifndef _SOCLIB_MIPS32_ISS_H_
 #define _SOCLIB_MIPS32_ISS_H_
 
+#include <cassert>
+
 #include "iss2.h"
 #include "soclib_endian.h"
 #include "register.h"
