@@ -41,6 +41,10 @@ enum{
 	DSPIN_CONTIG	= 0x08000000
 };
 
+enum{
+    	DSPINPLUS_EOP   = 0x1,
+};
+
 /***  DSPIN SIGNALS  ***/
 template<int dspin_data_size>
 class DspinSignals {
