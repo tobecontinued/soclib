@@ -113,48 +113,67 @@ class GenericTlb
     bool      *m_dirty;
 
     // access methods 
-    inline uint32_t &ppn(size_t i, size_t j)
-        { return m_ppn[(i*m_nsets)+j]; }
+    inline uint32_t &ppn(size_t way, size_t set)
+    { 
+        return m_ppn[(way*m_nsets)+set]; 
+    }
 
-    inline uint32_t &vpn(size_t i, size_t j)
-        { return m_vpn[(i*m_nsets)+j]; }
+    inline uint32_t &vpn(size_t way, size_t set)
+    { 
+        return m_vpn[(way*m_nsets)+set]; 
+    }
 
-    inline bool &lru(size_t i, size_t j)
-        { return m_lru[(i*m_nsets)+j]; }
+    inline bool &lru(size_t way, size_t set)
+    { 
+        return m_lru[(way*m_nsets)+set]; 
+    }
 
-    inline size_t &et(size_t i, size_t j)
-        { return m_et[(i*m_nsets)+j]; }
+    inline size_t &et(size_t way, size_t set)
+    { 
+        return m_et[(way*m_nsets)+set]; 
+    }
 
-    inline bool &cachable(size_t i, size_t j)
-        { return m_cachable[(i*m_nsets)+j]; }
+    inline bool &cachable(size_t way, size_t set)
+    { 
+        return m_cachable[(way*m_nsets)+set]; 
+    }
 
-    inline bool &writable(size_t i, size_t j)
-        { return m_writable[(i*m_nsets)+j]; }
+    inline bool &writable(size_t way, size_t set)
+    { 
+        return m_writable[(way*m_nsets)+set]; 
+    }
 
-    inline bool &executable(size_t i, size_t j)
-        { return m_executable[(i*m_nsets)+j]; }
+    inline bool &executable(size_t way, size_t set)
+    { 
+        return m_executable[(way*m_nsets)+set]; 
+    }
 
-    inline bool &user(size_t i, size_t j)
-        { return m_user[(i*m_nsets)+j]; }
+    inline bool &user(size_t way, size_t set)
+    { 
+        return m_user[(way*m_nsets)+set]; 
+    }
 
-    inline bool &global(size_t i, size_t j)
-        { return m_global[(i*m_nsets)+j]; }
+    inline bool &global(size_t way, size_t set)
+    { 
+        return m_global[(way*m_nsets)+set]; 
+    }
 
-    inline bool &dirty(size_t i, size_t j)
-        { return m_dirty[(i*m_nsets)+j]; }
+    inline bool &dirty(size_t way, size_t set)
+    { 
+        return m_dirty[(way*m_nsets)+set]; 
+    }
 
 public:
-//////////////////////////////////////////////////////////////
-// constructor checks parameters, allocates the memory
-// and computes m_page_mask, m_sets_mask and m_sets_shift
-//////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    // constructor checks parameters, allocates the memory
+    // and computes m_page_mask, m_sets_mask and m_sets_shift
+    //////////////////////////////////////////////////////////////
     GenericTlb(size_t nways, size_t nsets, size_t nbits)
     {
         m_nways = nways;
         m_nsets = nsets;
  
         m_sets_shift = uint32_log2(nsets);
-        //m_sets_mask = ((1<<(int)uint32_log2(nsets))-1) << m_sets_shift; // this for debug TLB
         m_sets_mask = (1<<(int)uint32_log2(nsets))-1;
 
         assert(IS_POW_OF_2(nsets));
@@ -162,13 +181,16 @@ public:
         assert(nsets <= 64);
         assert(nways <= 64);
 
-        if((nbits < 10) || (nbits > 28) ){
+        if((nbits < 10) || (nbits > 28) )
+        {
             printf("Error in the genericTlb component\n");
             printf("The nbits parameter must be in the range [10,28]\n");
             exit(1);
-        } else {
-            m_page_mask     = 0xFFFFFFFF >> (32 - nbits);
-            m_page_shift    = nbits;    // nomber of page offset bits 
+        } 
+        else 
+        {
+            m_page_mask  = 0xFFFFFFFF >> (32 - nbits);
+            m_page_shift = nbits;    // nomber of page offset bits 
         }
 
         m_ppn        = new uint32_t[nways * nsets];
@@ -184,19 +206,33 @@ public:
 
     } // end constructor
 
-/////////////////////////////////////////////////////////////
-//  This method resets all the TLB entry.
-/////////////////////////////////////////////////////////////
+    ~GenericTlb()
+    {
+        delete [] m_ppn;
+        delete [] m_vpn;
+        delete [] m_lru;
+        delete [] m_et;
+        delete [] m_cachable;
+        delete [] m_writable;
+        delete [] m_executable;
+        delete [] m_user;
+        delete [] m_global;
+        delete [] m_dirty;
+    }
+
+    /////////////////////////////////////////////////////////////
+    //  This method resets all the TLB entry.
+    /////////////////////////////////////////////////////////////
     inline void reset() 
     {
         memset(m_et, UNMAPPED, sizeof(*m_et)*m_nways*m_nsets);
-    } // end reset
+    } 
 
-/////////////////////////////////////////////////////////
-//  This method returns "false" in case of MISS
-//  In case of HIT, the physical address, 
-//  the pte informations, way and set are returned. 
-/////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+    //  This method returns "false" in case of MISS
+    //  In case of HIT, the physical address, 
+    //  the pte informations, way and set are returned. 
+    /////////////////////////////////////////////////////////
     inline bool translate(  uint32_t vaddress,      // virtual address
                             addr_t *paddress,     // return physique address
                             pte_info_t *pte_info,   // return pte information
@@ -204,9 +240,11 @@ public:
                             size_t *ts )            // return set   
     {
         size_t set = (vaddress >> m_page_shift) & m_sets_mask; 
-        for(size_t way = 0; way < m_nways; way++) {
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
             if((et(way,set) > 1) &&     // PTE
-               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) { // TLB hit 
+               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) // TLB hit
+            {  
                 pte_info->et = et(way,set);
                 pte_info->c = cachable(way,set);
                 pte_info->w = writable(way,set);
@@ -218,21 +256,23 @@ public:
                 *ts = set;
                 *paddress = (addr_t)((addr_t)ppn(way,set) << m_page_shift) | (addr_t)(vaddress & m_page_mask);
                 return true;   
-            } // end if
-        } // end for
+            } 
+        } 
         return false;
     } // end translate()
 
-/////////////////////////////////////////////////////////
-//  This method returns "false" in case of MISS
-//  In case of HIT, the physical page number is returned. 
-/////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+    //  This method returns "false" in case of MISS
+    //  In case of HIT, the physical page number is returned. 
+    /////////////////////////////////////////////////////////
     inline bool translate(uint32_t vaddress, addr_t *paddress) 
     {
         size_t set = (vaddress >> m_page_shift) & m_sets_mask; 
-        for(size_t way = 0; way < m_nways; way++) {
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
             if((et(way,set) > 1) &&     // PTE
-               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) { // TLB hit 
+               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) // TLB hit
+            {  
                 *paddress = (addr_t)((addr_t)ppn(way,set) << m_page_shift) | (addr_t)(vaddress & m_page_mask);
                 return true;   
             } 
@@ -240,58 +280,65 @@ public:
         return false;
     } // end translate()
 
-/////////////////////////////////////////////////////////
-//  This method returns "false" in case of MISS
-//  In case of HIT, the physical address, 
-//  the cached bit, the writable bit, the executable bit, 
-//  the protecte bit, and the dirty bit are returned.
-//  The dirty bit is updated if necessary.
-/////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+    //  This method returns "false" in case of MISS
+    //  In case of HIT, the physical address, 
+    //  the cached bit, the writable bit, the executable bit, 
+    //  the protecte bit, and the dirty bit are returned.
+    //  The dirty bit is updated if necessary.
+    /////////////////////////////////////////////////////////
     inline bool translate(uint32_t vaddress) 
     {
         size_t set = (vaddress >> m_page_shift) & m_sets_mask; 
-        for(size_t way = 0; way < m_nways; way++) {
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
             if((et(way,set) > 1) &&     // PTE
-               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) { // TLB hit 
+               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift))))  // TLB hit
+            { 
                  return true;   
-            } // end if
-        } // end for
+            } 
+        } 
         return false;
     } // end translate()
 
-/////////////////////////////////////////////////////////////
-//  This method resets all VALID bits in one cycle,
-//  when the the argument is true.
-//  Locked descriptors are preserved when it is false.
-/////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////
+    //  This method resets all VALID bits in one cycle,
+    //  when the the argument is true.
+    //  Locked descriptors are preserved when it is false.
+    /////////////////////////////////////////////////////////////
     inline void flush(bool all) 
     {
-        for(size_t way = 0; way < m_nways; way++) {
-            for(size_t set = 0; set < m_nsets; set++) {
-                if(global(way,set)) {
-                    if(all) m_et[way*m_nsets+set] = UNMAPPED;  // forced reset, the locked page invalid too
-                } else {
-                    m_et[way*m_nsets+set] = UNMAPPED;  // not forced reset, the locked page conserve
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
+            for(size_t set = 0; set < m_nsets; set++) 
+            {
+                if(global(way,set)) 
+                {
+                    if(all) et(way,set) = UNMAPPED;  // forced reset, the locked page invalid too
+                } 
+                else 
+                {
+                    et(way,set) = UNMAPPED; // not forced reset, the locked page conserve  
                 }
-            } // end for way
-        } // end for set
+            } 
+        } 
     } // end flush
 
-//////////////////////////////////////////////////////////////
-//  This method modifies all LRU bits of a given set :
-//  The LRU bit of the accessed descriptor is set to true,
-//  all other LRU bits in the set are reset to false.
-/////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    //  This method modifies all LRU bits of a given set :
+    //  The LRU bit of the accessed descriptor is set to true,
+    //  all other LRU bits in the set are reset to false.
+    /////////////////////////////////////////////////////////////
     inline void setlru(size_t way,size_t set)   
     {
-        m_lru[way*m_nsets+set] = true;  // set bit lru for recently used
+        lru(way,set) = true;  // set bit lru for recently used
     } // end setlru()
 
-//////////////////////////////////////////////////////////////
-//  This method modifies all LRU bits of a given set :
-//  The LRU bit of the accessed descriptor is set to true,
-//  all other LRU bits in the set are reset to false.
-/////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    //  This method modifies all LRU bits of a given set :
+    //  The LRU bit of the accessed descriptor is set to true,
+    //  all other LRU bits in the set are reset to false.
+    /////////////////////////////////////////////////////////////
     inline uint32_t getpte(size_t way,size_t set)   
     {
         uint32_t pte = (uint32_t)(((~0)>>(m_page_shift-4)) & ppn(way,set)) << 6 | (PTE_ET_MASK & (et(way,set) << PTE_ET_SHIFT)); 
@@ -312,97 +359,105 @@ public:
         return pte;
     } // end getpte()
 
-/////////////////////////////////////////////////////////////
-//  This method return the index of the least recently
-//  used descriptor in the associative set.
-/////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////
+    //  This method return the index of the least recently
+    //  used descriptor in the associative set.
+    /////////////////////////////////////////////////////////////
     inline size_t getlru(size_t set)
     {
         size_t defaul = 0;
         
         // check val bit firstly, replace the invalid PTE
-        for(size_t way = 0; way < m_nways; way++) {
-            if(et(way,set) == UNMAPPED) {
+        for(size_t way = 0; way < m_nways; way++) 
+        {
+            if( et(way,set) == UNMAPPED ) 
+            {
                 return way;
             }
         } 
 
         // then we check bit lock ... 
-        for(size_t way = 0; way < m_nways; way++) {
-            if(!global(way,set)) {
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
+            if( !global(way,set) ) 
+            {
                 defaul = way;
-                if(!lru(way,set)) return way;
-            } // end if
-        } // end for
+                if( !lru(way,set) ) return way;
+            } 
+        } 
 
         return defaul;
     } // end getlru()
 
-/////////////////////////////////////////////////////////////
-//  This method writes a new entry in the TLB.
-/////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////
+    //  This method writes a new entry in the TLB.
+    /////////////////////////////////////////////////////////////
     inline void update(size_t pte, size_t vaddress) 
     {
         
         size_t set = (vaddress >> m_page_shift) & m_sets_mask;
         size_t way = getlru(set);
 
-        for(size_t i = 0; i < m_nways; i++) {
-            if (vpn(i,set) == (vaddress >> (m_page_shift + m_sets_shift))) {
+        for(size_t i = 0; i < m_nways; i++) 
+        {
+            if (vpn(i,set) == (vaddress >> (m_page_shift + m_sets_shift))) 
+            {
                 way = i;
                 break;
             }
         }
         
-        m_vpn[way*m_nsets+set] = vaddress >> (m_page_shift + m_sets_shift);
-        //m_ppn[way*m_nsets+set] = (addr_t)((addr_t)pte << m_page_shift) >> m_page_shift;  
-        m_ppn[way*m_nsets+set] = ( pte << (m_page_shift - 10) ) >> (m_page_shift - 4);  
+        vpn(way,set) = vaddress >> (m_page_shift + m_sets_shift);
+        ppn(way,set) = ( pte << (m_page_shift - 10) ) >> (m_page_shift - 4);  
 
-        m_cachable[way*m_nsets+set] = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
-        m_executable[way*m_nsets+set] = (((pte & PTE_X_MASK)  >> PTE_X_SHIFT) == 1) ? true : false;
-        m_user[way*m_nsets+set]       = (((pte & PTE_U_MASK)  >> PTE_U_SHIFT) == 1) ? true : false;
-        m_global[way*m_nsets+set]     = (((pte & PTE_G_MASK)  >> PTE_G_SHIFT) == 1) ? true : false;
-        m_writable[way*m_nsets+set]   = (((pte & PTE_W_MASK)  >> PTE_W_SHIFT) == 1) ? true : false;       
-        m_dirty[way*m_nsets+set]      = (((pte & PTE_D_MASK)  >> PTE_D_SHIFT) == 1) ? true : false; 
-        m_et[way*m_nsets+set]         = PTE_OLD; 
+        cachable(way,set)   = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        executable(way,set) = (((pte & PTE_X_MASK)  >> PTE_X_SHIFT) == 1) ? true : false;
+        user(way,set)       = (((pte & PTE_U_MASK)  >> PTE_U_SHIFT) == 1) ? true : false;
+        global(way,set)     = (((pte & PTE_G_MASK)  >> PTE_G_SHIFT) == 1) ? true : false;
+        writable(way,set)   = (((pte & PTE_W_MASK)  >> PTE_W_SHIFT) == 1) ? true : false;       
+        dirty(way,set)      = (((pte & PTE_D_MASK)  >> PTE_D_SHIFT) == 1) ? true : false; 
+        et(way,set)         = PTE_OLD; 
 
     } // end update()
 
-//////////////////////////////////////////////////////////////
-//  This method invalidates a TLB entry
-//  identified by the virtual page number.
-//////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    //  This method invalidates a TLB entry
+    //  identified by the virtual page number.
+    //////////////////////////////////////////////////////////////
     inline void inval(uint32_t vaddress)
     {
         size_t set = (vaddress >> m_page_shift) & m_sets_mask;
-        for(size_t way = 0; way < m_nways; way++) {
-            if(vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift))) {
-                if ( !global(way,set) ) m_et[way*m_nsets+set] = UNMAPPED;
-            } // end if
-        } // end for way
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
+            if(vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift))) 
+            {
+                if ( !global(way,set) ) et(way,set) = UNMAPPED;
+            } 
+        } 
     } // end inval()
 
-/////////////////////////////////////////////////////////////
-//  This method writes a new entry in the TLB.
-/////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////
+    //  This method writes a new entry in the TLB.
+    /////////////////////////////////////////////////////////////
     inline void setdirty(size_t way, size_t set)
     {
-        m_dirty[way*m_nsets+set] = true;
-
+        dirty(way,set) = true;
     } // end setdirty()
 
-/////////////////////////////////////////////////////////////
-//  This method get physique page number in the TLB.
-/////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////
+    //  This method get physique page number in the TLB.
+    /////////////////////////////////////////////////////////////
     inline uint32_t getppn(uint32_t vaddress)
     {
         size_t set = (vaddress >> m_page_shift) & m_sets_mask; 
-        for(size_t way = 0; way < m_nways; way++) {
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
             if((et(way,set) > 1) &&     // PTE
-               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) { // TLB hit 
-                return m_ppn[way*m_nsets+set];   
-            } // end if
-        } // end for
+               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) // TLB hit
+            {  
+                return ppn(way,set);   
+            } 
+        } 
         return 0; 
 
     } // end getppn()
