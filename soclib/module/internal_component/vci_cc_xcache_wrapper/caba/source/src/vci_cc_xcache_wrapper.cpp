@@ -104,6 +104,7 @@ const char *tgt_fsm_state_str[] = {
         "TGT_IDLE",
         "TGT_UPDT_WORD",
         "TGT_UPDT_DATA",
+        "TGT_DONE",
         "TGT_RSP",
     };
 }
@@ -414,6 +415,7 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
             r_tgt_trdid = p_vci_tgt.trdid.read();
             r_tgt_pktid = p_vci_tgt.pktid.read();
             r_tgt_addr = (addr_t)p_vci_tgt.wdata.read() * m_dcache_words * 4;
+            r_tgt_update = false; 
             if (cell == 0) {                        // invalidate 
                 if ( ! p_vci_tgt.eop.read() ) {
                     std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
@@ -421,8 +423,7 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
                     exit(0);
                 }
                 r_tgt_cpt = 1;
-                r_tgt_update = false; 
-                r_vci_tgt_fsm = TGT_RSP;
+                r_vci_tgt_fsm = TGT_DONE;
                 m_cpt_cc_inval++ ;
             } else {                                // update
                 if ( p_vci_tgt.eop.read() ) {
@@ -431,7 +432,6 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
                     exit(0);
                 }
                 r_tgt_cpt = 2;
-                r_tgt_update = true; 
                 r_vci_tgt_fsm = TGT_UPDT_WORD;
                 m_cpt_cc_update++ ;
             }
@@ -464,16 +464,22 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
             r_tgt_cpt = r_tgt_cpt.read() + 1;
             if (p_vci_tgt.eop.read()) {
                 r_tgt_update = true;
-                r_vci_tgt_fsm = TGT_RSP;
+                r_vci_tgt_fsm = TGT_DONE;
             }
         }
         break;
 
-    case TGT_RSP:
+    case TGT_DONE:
         if (p_vci_tgt.rspack.read()) {
-            r_vci_tgt_fsm = TGT_IDLE; 
+            r_vci_tgt_fsm = TGT_RSP; 
             r_tgt_icache_req = true;
             r_tgt_dcache_req = true;
+        }
+        break;
+
+    case TGT_RSP:
+        if ( !r_tgt_icache_req && !r_tgt_dcache_req ) {
+            r_vci_tgt_fsm = TGT_IDLE; 
         }
         break;
 
@@ -524,7 +530,6 @@ std::cout << " Instruction Request: " << ireq << std::endl;
     case ICACHE_IDLE:
         if ( r_tgt_icache_req ) {   // external request
             if ( ireq.valid ) m_cost_ins_miss_frz++;
-            r_tgt_icache_req = false;
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
             break;
@@ -564,7 +569,6 @@ std::cout << " Instruction Request: " << ireq << std::endl;
     case ICACHE_MISS_WAIT:
         m_cost_ins_miss_frz++;
         if ( r_tgt_icache_req ) {   // external request
-            r_tgt_icache_req = false;
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
             break;
@@ -581,7 +585,6 @@ std::cout << " Instruction Request: " << ireq << std::endl;
     case ICACHE_UNC_WAIT:
         m_cost_ins_miss_frz++;
         if ( r_tgt_icache_req ) {   // external request
-            r_tgt_icache_req = false;
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
             break;
@@ -628,6 +631,7 @@ std::cout << " Instruction Request: " << ireq << std::endl;
         if ( ireq.valid ) m_cost_ins_miss_frz++;
         m_cpt_icache_dir_read += m_icache_ways;
         r_icache.inval(ad);
+        r_tgt_icache_req = false;
         r_icache_fsm = r_icache_fsm_save;
         break;
     }
@@ -710,7 +714,6 @@ std::cout << " Data Request: " << dreq << std::endl;
 
     case DCACHE_WRITE_REQ: 
 	    if ( r_tgt_dcache_req ) {   // external request
-            r_tgt_dcache_req = false;
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
             break;
@@ -741,7 +744,6 @@ std::cout << " Data Request: " << dreq << std::endl;
 
     case DCACHE_IDLE:
 	    if ( r_tgt_dcache_req ) {   // external request
-            r_tgt_dcache_req = false;
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
             break;
@@ -851,7 +853,6 @@ std::cout << " Data Request: " << dreq << std::endl;
     case DCACHE_MISS_WAIT:
         if ( dreq.valid ) m_cost_data_miss_frz++;
 	    if ( r_tgt_dcache_req ) {   // external request
-            r_tgt_dcache_req = false;
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
             break;
@@ -884,7 +885,6 @@ std::cout << " Data Request: " << dreq << std::endl;
     case DCACHE_UNC_WAIT:
         if ( dreq.valid ) m_cost_unc_read_frz++;
 	    if ( r_tgt_dcache_req ) {   // external request
-            r_tgt_dcache_req = false;
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
             break;
@@ -947,6 +947,7 @@ std::cout << " Data Request: " << dreq << std::endl;
         data_t* buf     = r_tgt_buf;
         data_t  victim  = 0;
         r_dcache.update( ad, buf, &victim);
+        r_tgt_dcache_req = false;
         r_dcache_fsm = r_dcache_fsm_save;
         break;
     }
@@ -954,11 +955,13 @@ std::cout << " Data Request: " << dreq << std::endl;
     {
         addr_t  ad      = r_tgt_addr;
         r_dcache.inval( ad );
+        r_tgt_dcache_req = false;
         r_dcache_fsm = r_dcache_fsm_save;
         break;
     }
 
     case DCACHE_CC_NOP:     // no external hit
+        r_tgt_dcache_req = false;
         r_dcache_fsm = r_dcache_fsm_save;
         break;
         
@@ -1370,7 +1373,7 @@ tmpl(void)::genMoore()
         p_vci_tgt.rspval  = false;
         break;
 
-    case TGT_RSP:
+    case TGT_DONE:
         p_vci_tgt.cmdack  = false;
         p_vci_tgt.rspval  = true;
         p_vci_tgt.rsrcid  = r_tgt_srcid.read();
@@ -1379,6 +1382,11 @@ tmpl(void)::genMoore()
         p_vci_tgt.rdata   = 0;
         p_vci_tgt.rerror  = 0;
         p_vci_tgt.reop = true;
+        break;
+
+    case TGT_RSP:
+        p_vci_tgt.cmdack  = false;
+        p_vci_tgt.rspval  = false;
         break;
 
     } // end switch TGT_FSM

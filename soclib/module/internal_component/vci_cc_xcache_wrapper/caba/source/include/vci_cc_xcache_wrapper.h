@@ -104,6 +104,7 @@ class VciCcXcacheWrapper
         TGT_IDLE,
         TGT_UPDT_WORD,
         TGT_UPDT_DATA,
+        TGT_DONE,
         TGT_RSP,
     };
 
