@@ -193,56 +193,61 @@ private:
     sc_signal<int>          r_mmu_mode;             // tlb mode register
 
     // DCACHE FSM REGISTERS
-    sc_signal<int>          r_dcache_fsm;           // state register
-    sc_signal<addr36_t>     r_dcache_paddr_save;    // physical address
-    sc_signal<data_t>       r_dcache_wdata_save;    // write data
-    sc_signal<data_t>       r_dcache_rdata_save;    // read data
-    sc_signal<type_t>       r_dcache_type_save;     // access type
-    sc_signal<be_t>         r_dcache_be_save;       // byte enable
-    sc_signal<bool>         r_dcache_cached_save;   // used by the write buffer
-    sc_signal<addr36_t>     r_dcache_tlb_paddr;     // physical address of tlb miss
-    sc_signal<bool>         r_dcache_dirty_save;    // used for TLB dirty bit update
-    sc_signal<size_t>       r_dcache_tlb_set_save;  // used for TLB dirty bit update
-    sc_signal<size_t>       r_dcache_tlb_way_save;  // used for TLB dirty bit update
-    sc_signal<addr_t>       r_dcache_id1_save;      // used by the PT1 bypass
-    sc_signal<addr36_t>     r_dcache_ptba_save;     // used by the PT1 bypass
-    sc_signal<bool>         r_dcache_ptba_ok;       // used by the PT1 bypass
-    sc_signal<data_t>       r_dcache_pte_update;    // used for page table update
-    sc_signal<addr_t>       r_dcache_ppn_save;      // used for speculative cache access
-    sc_signal<bool>         r_dcache_page_k_save;   // used in the BIS state
-    sc_signal<bool>         r_dcache_buf_unc_valid; // used for uncached read
+    sc_signal<int>          r_dcache_fsm;               // state register
+    sc_signal<addr36_t>     r_dcache_paddr_save;        // physical address
+    sc_signal<data_t>       r_dcache_wdata_save;        // write data
+    sc_signal<data_t>       r_dcache_rdata_save;        // read data
+    sc_signal<type_t>       r_dcache_type_save;         // access type
+    sc_signal<be_t>         r_dcache_be_save;           // byte enable
+    sc_signal<bool>         r_dcache_cached_save;       // used by the write buffer
+    sc_signal<addr36_t>     r_dcache_tlb_paddr;         // physical address of tlb miss
+    sc_signal<bool>         r_dcache_dirty_save;        // used for TLB dirty bit update
+    sc_signal<size_t>       r_dcache_tlb_set_save;      // used for TLB dirty bit update
+    sc_signal<size_t>       r_dcache_tlb_way_save;      // used for TLB dirty bit update
+    sc_signal<addr_t>       r_dcache_id1_save;          // used by the PT1 bypass
+    sc_signal<addr36_t>     r_dcache_ptba_save;         // used by the PT1 bypass
+    sc_signal<bool>         r_dcache_ptba_ok;           // used by the PT1 bypass
+    sc_signal<data_t>       r_dcache_pte_update;        // used for page table update
+    sc_signal<tag_t>        r_dcache_ppn_save;          // used for speculative cache access
+    sc_signal<tag_t>        r_dcache_vpn_save;          // used for speculative cache access
+    sc_signal<bool>         r_dcache_page_k_save;       // used for write dirty bit
+    sc_signal<bool>         r_dtlb_translation_valid;   // used for speculative address
+    sc_signal<bool>         r_dcache_buf_unc_valid;     // used for uncached read
+    sc_signal<bool>         r_dcache_hit_p_save;        // used to save hit_p in case BIS
 
-    sc_signal<data_t>       r_dcache_error_type;    // software visible register
-    sc_signal<addr_t>       r_dcache_bad_vaddr;     // software visible register 
 
-    sc_signal<bool>         r_dcache_miss_req;
-    sc_signal<bool>         r_dcache_unc_req;
-    sc_signal<bool>         r_dcache_write_req;
-    sc_signal<bool>         r_dcache_tlb_read_req;
-    sc_signal<bool>         r_dcache_tlb_write_req;
-    sc_signal<bool>         r_dcache_tlb_dirty_req;
-    sc_signal<bool>         r_dcache_tlb_ptba_read;
-    sc_signal<bool>         r_dcache_xtn_req; 
+    sc_signal<data_t>       r_dcache_error_type;        // software visible register
+    sc_signal<addr_t>       r_dcache_bad_vaddr;         // software visible register 
+
+    sc_signal<bool>         r_dcache_miss_req;          // used for cached read miss
+    sc_signal<bool>         r_dcache_unc_req;           // used for uncached read miss
+    sc_signal<bool>         r_dcache_write_req;         // used for write 
+    sc_signal<bool>         r_dcache_tlb_read_req;      // used for tlb ptba or pte read 
+    sc_signal<bool>         r_dcache_tlb_write_req;     // used for tlb entry type update
+    sc_signal<bool>         r_dcache_tlb_dirty_req;     // used for tlb dirty bit update 
+    sc_signal<bool>         r_dcache_tlb_ptba_read;     // used for tlb ptba read when write dirty bit 
+    sc_signal<bool>         r_dcache_xtn_req;           // used for xtn write for ICACHE
 
     // ICACHE FSM REGISTERS
-    sc_signal<int>          r_icache_fsm;           // state register
-    sc_signal<addr36_t>     r_icache_paddr_save;    // physical address
-    sc_signal<data_t>       r_icache_miss_data;
-    sc_signal<addr_t>       r_icache_id1_save;      // used by the PT1 bypass
-    sc_signal<addr36_t>     r_icache_ptba_save;     // used by the PT1 bypass
-    sc_signal<bool>         r_icache_ptba_ok;       // used by the PT1 bypass
-    sc_signal<data_t>       r_icache_pte_update;    // used for page table update
-    sc_signal<addr_t>       r_icache_ppn_save;      // used for speculative cache access
-    sc_signal<bool>         r_icache_page_k_save;
-    sc_signal<bool>         r_icache_buf_unc_valid;
+    sc_signal<int>          r_icache_fsm;               // state register
+    sc_signal<addr36_t>     r_icache_paddr_save;        // physical address
+    sc_signal<addr_t>       r_icache_id1_save;          // used by the PT1 bypass
+    sc_signal<addr36_t>     r_icache_ptba_save;         // used by the PT1 bypass
+    sc_signal<bool>         r_icache_ptba_ok;           // used by the PT1 bypass
+    sc_signal<data_t>       r_icache_pte_update;        // used for page table update
+    sc_signal<tag_t>        r_icache_ppn_save;          // used for speculative cache access
+    sc_signal<tag_t>        r_icache_vpn_save;          // used for speculative cache access
+    sc_signal<bool>         r_icache_page_k_save;       // used for write dirty bit
+    sc_signal<bool>         r_itlb_translation_valid;   // used for speculative physical address
+    sc_signal<bool>         r_icache_buf_unc_valid;     // used for uncached read
 
-    sc_signal<data_t>       r_icache_error_type;    // software visible registers
-    sc_signal<addr_t>       r_icache_bad_vaddr;     // software visible registers
+    sc_signal<data_t>       r_icache_error_type;        // software visible registers
+    sc_signal<addr_t>       r_icache_bad_vaddr;         // software visible registers
 
-    sc_signal<bool>         r_icache_miss_req;
-    sc_signal<bool>         r_icache_unc_req;
-    sc_signal<bool>         r_icache_tlb_read_req;
-    sc_signal<bool>         r_icache_tlb_write_req;
+    sc_signal<bool>         r_icache_miss_req;          // used for cached read miss
+    sc_signal<bool>         r_icache_unc_req;           // used for uncached read miss
+    sc_signal<bool>         r_icache_tlb_read_req;      // used for tlb ptba or pte read
+    sc_signal<bool>         r_icache_tlb_write_req;     // used for tlb entry type update
 
     // VCI_CMD FSM REGISTERS
     sc_signal<int>          r_vci_cmd_fsm;

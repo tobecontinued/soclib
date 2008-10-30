@@ -444,24 +444,6 @@ public:
         dirty(way,set) = true;
     } // end setdirty()
 
-    /////////////////////////////////////////////////////////////
-    //  This method get physique page number in the TLB.
-    /////////////////////////////////////////////////////////////
-    inline uint32_t getppn(uint32_t vaddress)
-    {
-        size_t set = (vaddress >> m_page_shift) & m_sets_mask; 
-        for( size_t way = 0; way < m_nways; way++ ) 
-        {
-            if((et(way,set) > 1) &&     // PTE
-               (vpn(way,set) == (vaddress >> (m_page_shift + m_sets_shift)))) // TLB hit
-            {  
-                return ppn(way,set);   
-            } 
-        } 
-        return 0; 
-
-    } // end getppn()
-
 }; // GenericTlb
 
 }}
