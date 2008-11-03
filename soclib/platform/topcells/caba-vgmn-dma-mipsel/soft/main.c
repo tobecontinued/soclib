@@ -53,7 +53,9 @@ int main(void)
 	
 	while(1) {
 		uint32_t x, y;
-		char *fb = _fb;
+		char *fb;
+
+    fb = _fb;
 
 		for (x=0; x<FB_HEIGHT; ++x) {
 			puts("Filling Y ");
