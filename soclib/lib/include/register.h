@@ -37,11 +37,6 @@ class scalar_t {
     typedef     bool                        reg_bool_t;
     };
 
-class sc_signal_t {
-    typedef     sc_core::sc_signal<sc_dt::sc_uint<32> >     reg_32_t;
-    typedef     sc_core::sc_signal<sc_dt::sc_uint<8> >      reg_8_t;
-    typedef     sc_core::sc_signal<bool>             reg_bool_t;
-    };
 
 
 #if defined(NONAME_RENAME)
