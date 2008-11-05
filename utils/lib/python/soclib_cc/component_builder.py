@@ -114,7 +114,9 @@ class ComponentBuilder:
 		return basename
 	def results(self):
 		builders = map(self.getBuilder, self.specialization.descAttr('abs_implementation_files'))
-		return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
+		objects = bblockize(self.specialization.descAttr('abs_object_files'))
+		map(lambda x:x.setIsBlob(True), objects)
+		return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
 	def cxxSource(self, s):
 		source = ""
 		for h in map(os.path.basename, self.getParamHeaders()):

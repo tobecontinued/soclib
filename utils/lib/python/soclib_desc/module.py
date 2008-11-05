@@ -16,6 +16,8 @@ class Module:
 	
 	def __register(cls, name, obj):
 #		print 'Registering', name, obj
+		if name in cls.__reg:
+			print "Warning ! module %s registered twice..."%name
 		cls.__reg[name] = obj
 		Module.__not_done_registering += obj,
 	__register = classmethod(__register)
@@ -48,6 +50,7 @@ class Module:
 		'header_files' : [],
 		'global_header_files' : [],
 		'implementation_files' : [],
+		'object_files' : [],
 		'uses' : [],
 		'defines' : {},
 		'ports' : [],
@@ -91,7 +94,7 @@ class Module:
 		return copy.copy(self.__attrs[name])
 
 	def mk_abs_paths(self, basename):
-		relative_path_files = ['header_files', 'implementation_files']
+		relative_path_files = ['header_files', 'implementation_files', 'object_files']
 		def mkabs(name):
 			return os.path.isabs(name) \
 				   and name \
@@ -135,11 +138,11 @@ class Module:
 
 	def getInfo(self):
 		r = '<%s\n'%self.__class__.__name__
-		for l in 'abs_header_files', 'abs_force_header_files', 'abs_implementation_files', 'global_header_files':
+		for l in 'abs_header_files', 'abs_force_header_files', 'abs_implementation_files', 'abs_object_files', 'global_header_files':
 			for s in self.__attrs[l]:
 				r += os.path.isfile(s) and " + " or " - "
 				r += s+'\n'
-			return r+' >'
+		return r+' >'
 
 	def __str__(self):
 		return '<%s>'%(self.__typename)

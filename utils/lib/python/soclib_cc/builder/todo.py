@@ -35,6 +35,7 @@ def cr(x):
 
 class ToDo:
 	def __init__(self, *dests):
+		self.has_blob = False
 		self.dests = []
 		self.add(*dests)
 		self.prepared = False
@@ -45,6 +46,8 @@ class ToDo:
 		self.max_actions = config.toolchain.max_processes
 	def add(self, *dests):
 		self.dests += bblockize(dests)
+		for d in self.dests:
+			self.has_blob |= d.is_blob
 	def _getall(self, dests):
 		bbs = set(dests)
 		todo = set()
@@ -72,6 +75,19 @@ class ToDo:
 			ndone = Action.wait()
 		except ActionFailed, e:
 			print "soclib-cc: *** Action failed with return value `%s'. Stop."%e.rval
+			if self.has_blob:
+				print '***********************************************'
+				print '***********************************************'
+				print '**** WARNING, YOU USED BINARY-ONLY MODULES ****'
+				print '***********************************************'
+				print '***********************************************'
+				print 'If you compilation failed because of linkage, this is most'
+				print 'likely a mismatch between expected libraries from a binary'
+				print 'only module and your system libraries (libstdc++, SystemC, ...)'
+				print
+				print "\x1b[91mPlease don't report any error about binary modules"
+				print "to SoCLib-CC maintainers, they'll ignore your requests.\x1b[m"
+				print 
 			if config.verbose:
 				print "soclib-cc: Failed action: `%s'"%e.action
 			if self.actions:

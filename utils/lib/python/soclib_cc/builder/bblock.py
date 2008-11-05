@@ -32,6 +32,7 @@ _global_bblock_registry = {}
 
 class BBlock:
 	def __init__(self, filename, generator = None):
+		self.is_blob = False
 		if generator is None:
 			from action import Noop
 			generator = Noop()
@@ -42,6 +43,8 @@ class BBlock:
 		self.rehash()
 	def touch(self):
 		self.rehash()
+	def setIsBlob(self, val = True):
+		self.is_blob = val
 	def rehash(self):
 		if self.filename is '':
 			self.last_mod = os.stat('.').st_mtime
