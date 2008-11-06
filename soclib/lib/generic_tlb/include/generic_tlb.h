@@ -384,8 +384,14 @@ public:
                 defaul = way;
                 if( !lru(way,set) ) return way;
             } 
-        } 
-
+        }
+        
+        // reset lru bits of four ways
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
+            if (!global(way,set) && way != defaul) lru(way,set) = false; 
+        }
+ 
         return defaul;
     } // end getlru()
 
