@@ -41,6 +41,7 @@
 //   to signal the uncached data availability, stored in r_dcache_miss_buf[0].
 ///////////////////////////////////////////////////////////////////////////////
 
+#include <limits>
 #include <cassert>
 #include "arithmetics.h"
 #include "alloc_elems.h"

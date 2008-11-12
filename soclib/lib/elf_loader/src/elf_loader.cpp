@@ -29,6 +29,8 @@ extern "C" {
 }
 
 #include <algorithm>
+#include <string.h>
+
 #include "exception.h"
 #include "elf_loader.h"
 

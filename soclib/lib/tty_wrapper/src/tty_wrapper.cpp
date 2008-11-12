@@ -28,8 +28,11 @@
 #include "process_wrapper.h"
 #include "xterm_wrapper.h"
 #include "tty_wrapper.h"
+
 #include <iostream>
 #include <fstream>
+#include <string.h>
+#include <stdlib.h>
 
 namespace soclib { namespace common {
 
