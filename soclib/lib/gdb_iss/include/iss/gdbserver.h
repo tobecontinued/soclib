@@ -42,41 +42,13 @@
 #include <algorithm>
 
 #include <systemc.h>
+#include "interval_set.hh"
 #include "iss.h"
 #include "exception.h"
 #include "soclib_endian.h"
 #include "register.h"
 
 namespace soclib { namespace common {
-
-struct GdbWatchPoint
-{
-    static const uint8_t a_read = 1;
-    static const uint8_t a_write = 2;
-    static const uint8_t a_rw = 3;
-
-    inline GdbWatchPoint(uint32_t address, size_t len, uint8_t type)
-        : address_(address),
-          len_(len),
-          type_(type)
-    {
-    }
-
-    inline bool match(uint32_t address)
-    {
-        return address >= address_ && address < address_ + len_;
-    }
-
-    inline bool operator== (const GdbWatchPoint &it) const
-    {
-        return it.address_ == address_ &&
-            it.type_ == type_;
-    }
-
-    uint32_t address_;
-    size_t len_;
-    uint8_t type_;
-};
 
 template<typename CpuIss>
 class GdbServer
@@ -183,37 +155,11 @@ private:
     unsigned int pc_trace_index;
 #endif
 
+    typedef dpp::interval_set<uint32_t, dpp::interval_bound_inclusive<uint32_t> > address_set_t;
+
     static std::map<uint32_t, bool> break_exec_;
-    static std::list<GdbWatchPoint> break_access_;
-
-    static inline void access_break_add(const GdbWatchPoint &it)
-    {
-        break_access_.push_back(it);
-    }
-
-    static inline void access_break_remove(const GdbWatchPoint &it)
-    {
-        typename std::list<GdbWatchPoint>::iterator i;
-
-        i = std::find(break_access_.begin(), break_access_.end(), it);
-
-        if (i != break_access_.end())
-            break_access_.erase(i);
-    }
-
-    static inline uint8_t access_break_check(uint32_t address, uint8_t type)
-    {
-        typename std::list<GdbWatchPoint>::iterator i;
-
-        for (i = break_access_.begin();
-             i != break_access_.end(); i++)
-            {
-                if (i->address_ == address && (i->type_ & type))
-                    return i->type_;
-            }
-
-        return 0;
-    }
+    static address_set_t break_read_access_;
+    static address_set_t break_write_access_;
 
     // listen socket
     static int socket_;

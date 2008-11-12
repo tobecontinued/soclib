@@ -3,7 +3,9 @@
 
 Module('common:gdb_iss',
 	classname = 'soclib::common::GdbServer',
-	header_files = ["../include/iss/gdbserver.h",],
+	header_files = ["../include/iss/gdbserver.h",
+			"../include/interval_set.hh",
+			],
 	implementation_files = [
 		"../src/iss/gdbserver.cpp",
 		],

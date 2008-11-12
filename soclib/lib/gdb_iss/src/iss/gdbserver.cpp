@@ -55,7 +55,8 @@ template<typename CpuIss> unsigned int GdbServer<CpuIss>::current_id_ = 0;
 template<typename CpuIss> unsigned int GdbServer<CpuIss>::step_id_ = 0;
 template<typename CpuIss> bool GdbServer<CpuIss>::ctrl_c_ = false;
 template<typename CpuIss> std::map<uint32_t, bool> GdbServer<CpuIss>::break_exec_;
-template<typename CpuIss> std::list<GdbWatchPoint> GdbServer<CpuIss>::break_access_;
+template<typename CpuIss> typename GdbServer<CpuIss>::address_set_t GdbServer<CpuIss>::break_read_access_;
+template<typename CpuIss> typename GdbServer<CpuIss>::address_set_t GdbServer<CpuIss>::break_write_access_;
 
 template<typename CpuIss> uint16_t GdbServer<CpuIss>::port_ = 2346;
 
@@ -666,23 +667,26 @@ void GdbServer<CpuIss>::process_gdb_packet()
 
                         case '2': // write watch point
                             if (data[0] == 'Z')
-                                access_break_add(GdbWatchPoint(addr, len, GdbWatchPoint::a_write));
+                                break_write_access_ |= address_set_t(addr, addr + len - 1);
                             else
-                                access_break_remove(GdbWatchPoint(addr, len, GdbWatchPoint::a_write));
+                                break_write_access_ &= ~address_set_t(addr, addr + len - 1);
                             break;
 
                         case '3': // read watch point
                             if (data[0] == 'Z')
-                                access_break_add(GdbWatchPoint(addr, len, GdbWatchPoint::a_read));
+                                break_read_access_ |= address_set_t(addr, addr + len - 1);
                             else
-                                access_break_remove(GdbWatchPoint(addr, len, GdbWatchPoint::a_read));
+                                break_read_access_ &= ~address_set_t(addr, addr + len - 1);
                             break;
 
                         case '4': // access watch point
-                            if (data[0] == 'Z')
-                                access_break_add(GdbWatchPoint(addr, len, GdbWatchPoint::a_rw));
-                            else
-                                access_break_remove(GdbWatchPoint(addr, len, GdbWatchPoint::a_rw));
+                            if (data[0] == 'Z') {
+                                break_read_access_ |= address_set_t(addr, addr + len - 1);
+                                break_write_access_ |= address_set_t(addr, addr + len - 1);
+                            } else {
+                                break_read_access_ &= ~address_set_t(addr, addr + len - 1);
+                                break_write_access_ &= ~address_set_t(addr, addr + len - 1);
+                            }
                             break;
 
                         default:
@@ -795,13 +799,12 @@ bool GdbServer<CpuIss>::process_mem_access()
 template<typename CpuIss>
 void GdbServer<CpuIss>::watch_mem_access()
 {
-    if (!break_access_.empty())
+    if (!break_read_access_.empty() || !break_write_access_.empty())
         {
             bool req;
             Iss::DataAccessType type;
             uint32_t address, data;
 
-            uint8_t mask;
             CpuIss::getDataRequest(req, type, address, data);
 
             if (!req)
@@ -809,50 +812,40 @@ void GdbServer<CpuIss>::watch_mem_access()
             switch(type)
                 {
                 default:
-                    mask = 0;
                     break;
 
                 case Iss::WRITE_WORD:
                 case Iss::WRITE_HALF:
                 case Iss::WRITE_BYTE:
                 case Iss::STORE_COND:
-                    mask = GdbWatchPoint::a_write;
+                    if (break_write_access_[address]) {
+                        char buffer[32];
+
+                        change_all_states(MemWait); // all processors will end their memory access
+                        state_ = Frozen; // except the current processor
+                        current_id_ = id_;
+                        sprintf(buffer, "T05thread:%x;watch:%x;", id_ + 1, address);
+                        write_packet(buffer);
+                    }
                     break;
 
                 case Iss::READ_WORD:
                 case Iss::READ_HALF:
                 case Iss::READ_BYTE:
                 case Iss::READ_LINKED:
-                    mask = GdbWatchPoint::a_read;
+                    if (break_read_access_[address]) {
+                        char buffer[32];
+
+                        change_all_states(MemWait); // all processors will end their memory access
+                        state_ = Frozen; // except the current processor
+                        current_id_ = id_;
+                        sprintf(buffer, "T05thread:%x;rwatch:%x;", id_ + 1, address);
+                        write_packet(buffer);
+                    }
+
                     break;
                 }
 
-            if (mask && (mask = access_break_check(address, mask)))
-                {
-                    change_all_states(MemWait); // all processors will end their memory access
-                    state_ = Frozen; // except the current processor
-                    current_id_ = id_;
-                    const char *reason;
-
-                    switch (mask)
-                        {
-                        case (GdbWatchPoint::a_write):
-                            reason = "watch";
-                            break;
-
-                        case (GdbWatchPoint::a_read):
-                            reason = "rwatch";
-                            break;
-
-                        default:
-                            reason = "awatch";
-                            break;
-                        }
-
-                    char buffer[32];
-                    sprintf(buffer, "T05thread:%x;%s:%x;", id_ + 1, reason, address);
-                    write_packet(buffer);
-                }
         }
 }
 
@@ -906,7 +899,8 @@ void GdbServer<CpuIss>::cleanup()
                 free(gs.mem_buff_);
 
             gs.break_exec_.clear();
-            gs.break_access_.clear();
+            gs.break_read_access_.clear();
+            gs.break_write_access_.clear();
             gs.state_ = Running;
         }
 
