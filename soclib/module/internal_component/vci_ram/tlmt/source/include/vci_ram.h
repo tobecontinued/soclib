@@ -52,6 +52,11 @@ class VciRam
 	 const soclib::common::MappingTable &mt,
 	 common::ElfLoader &loader);
   
+  VciRam(sc_core::sc_module_name name,
+	 const soclib::common::IntTab &index,
+	 const soclib::common::MappingTable &mt,
+	 common::ElfLoader &loader);
+
   ~VciRam();
 
   void callback(soclib::tlmt::vci_cmd_packet<vci_param> *pkt,

@@ -117,6 +117,28 @@ int _main(int argc, char **argv)
   size_t dcache_size     = 1024;
   size_t icache_size     = 1024;
   size_t network_latence = 2;
+  
+  char * ncpu_env; //env variable that says the number of MIPS processors to be used
+  unsigned int ncpu;
+  std::string  soft;
+  unsigned int n_initiators;
+
+  ncpu_env = getenv("NPROCS");
+
+  if (ncpu_env==NULL) {
+    printf("WARNING : You have to specify the number of processors to be used in the simulation in the NPROCS variable\n");
+    printf("Using 1 processor\n");
+    ncpu = 1;
+  }else {
+    ncpu = atoi( ncpu_env );
+    std::cout << "CPUs:" <<  ncpu << std::endl;
+  }
+
+  std::ostringstream s_ncpu; 
+  s_ncpu << ncpu;
+
+  soft = "soft/bin"+s_ncpu.str()+"proc.soft";
+  n_initiators = ncpu + 2;
 
   if(argc > 1)
     simulation_time = atoi(argv[1]);
@@ -132,7 +154,7 @@ int _main(int argc, char **argv)
   ftime(&initial);
 
 	// Configurator instanciateOnStack
-	soclib::common::ElfLoader loader("soft/bin1proc.soft");
+	soclib::common::ElfLoader loader(soft);
 	soclib::common::MappingTable mapping_table(32, soclib::common::IntTab(8), soclib::common::IntTab(8), 0x00200000);
 
 	// Configurator configure
@@ -147,56 +169,125 @@ int _main(int argc, char **argv)
 	mapping_table.add(soclib::common::Segment("uram1", 0x20200000, 0x00100000, soclib::common::IntTab(1), 0));
 
 	// Component instanciateOnStack
+
+	////////////////////////////////////////////////
+	// VGMN
+	////////////////////////////////////////////////
+	soclib::caba::VciVgmn<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  vgmn0("vgmn0", mapping_table, n_initiators, 5, network_latence, 8);
+
+	////////////////////////////////////////////////
+	// XCACHE + MIPS
+	////////////////////////////////////////////////
+	soclib::caba::VciXCache<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  * xcache[ncpu]; 
+	soclib::caba::IssWrapper<soclib::common::MipsElIss>  * mips[ncpu];
+
+	for (unsigned int i=0 ; i < ncpu ; i++) {
+	  std::ostringstream cpu_name;
+	  cpu_name << "mips" << i;
+	  mips[i] = new soclib::caba::IssWrapper<soclib::common::MipsElIss>((cpu_name.str()).c_str(),i);
+
+	  std::ostringstream obj_name;
+	  obj_name << "xcache" << i;
+	  xcache[i] = new soclib::caba::VciXCache<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >((obj_name.str()).c_str(), mapping_table, soclib::common::IntTab(i), icache_size, 8, dcache_size, 8, simulation_time);
+	}
+
+	////////////////////////////////////////////////
+	// MWMR CONTROLLER TG
+	////////////////////////////////////////////////
 	soclib::caba::FifoReader<uint32_t>  tg("tg", "bash", stringArray("bash", "-c", "while cat \"plan.jpg\" ; do true ; done", NULL));
+	soclib::caba::VciMwmrController<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tg_ctrl("tg_ctrl", mapping_table, soclib::common::IntTab(ncpu), soclib::common::IntTab(3), 64, 0, 8, 0, 1, 0, 0, true);
+
+	////////////////////////////////////////////////
+	// MWMR CONTROLLER RAMDAC
+	////////////////////////////////////////////////
 	soclib::caba::FifoWriter<uint32_t>  ramdac("ramdac", "soclib-pipe2fb", stringArray("soclib-pipe2fb", "48", "48", NULL));
-	soclib::caba::IssWrapper<soclib::common::MipsElIss>  mips0("mips0", 0);
-	soclib::caba::VciMultiTty<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tty0("tty0", soclib::common::IntTab(2), mapping_table, stringArray("tty0", NULL));
-	soclib::caba::VciMwmrController<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ramdac_ctrl("ramdac_ctrl", mapping_table, soclib::common::IntTab(2), soclib::common::IntTab(4), 64, 96, 0, 1, 0, 0, 0, true);
-	soclib::caba::VciMwmrController<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tg_ctrl("tg_ctrl", mapping_table, soclib::common::IntTab(1), soclib::common::IntTab(3), 64, 0, 8, 0, 1, 0, 0, true);
+	soclib::caba::VciMwmrController<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ramdac_ctrl("ramdac_ctrl", mapping_table, soclib::common::IntTab(ncpu+1), soclib::common::IntTab(4), 64, 96, 0, 1, 0, 0, 0, true);
+
+
+	////////////////////////////////////////////////
+	// RAM
+	////////////////////////////////////////////////
 	soclib::caba::VciRam<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ram0("ram0", soclib::common::IntTab(0), mapping_table, loader);
 	soclib::caba::VciRam<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ram1("ram1", soclib::common::IntTab(1), mapping_table, loader);
-	soclib::caba::VciVgmn<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  vgmn0("vgmn0", mapping_table, 3, 5, network_latence, 8);
-	soclib::caba::VciXCache<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  xcache0("xcache0", mapping_table, soclib::common::IntTab(0), icache_size, 8, dcache_size, 8);
 
-	// Signal instanciateOnStack
-	// not mips0_p_irq_0_;
-	// not mips0_p_irq_1_;
-	// not mips0_p_irq_2_;
-	// not mips0_p_irq_3_;
-	// not mips0_p_irq_4_;
-	// not mips0_p_irq_5_;
-	// not tty0_p_irq_0_;
+	////////////////////////////////////////////////
+	// TTY
+	////////////////////////////////////////////////
+	soclib::caba::VciMultiTty<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tty0("tty0", soclib::common::IntTab(2), mapping_table, stringArray("tty0", NULL));
+
+
 	sc_core::sc_clock clock("clock");
 	sc_core::sc_signal<bool> resetn("resetn");
-	soclib::caba::DCacheSignals mips0_p_dcache_to_xcache0_p_dcache("mips0_p_dcache_to_xcache0_p_dcache");
-	soclib::caba::FifoSignals<uint32_t>  ramdac_ctrl_p_to_coproc_0__to_ramdac_p_fifo("ramdac_ctrl_p_to_coproc_0__to_ramdac_p_fifo");
+
+	soclib::caba::DCacheSignals *mips_p_dcache_to_xcache_p_dcache[ncpu];
+	soclib::caba::ICacheSignals *mips_p_icache_to_xcache_p_icache[ncpu];
+	sc_core::sc_signal<bool> *mips_p_irq[ncpu][6];
+	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> > *vgmn0_p_to_initiator_to_xcache_p_vci[ncpu];
+
+	for (unsigned int i=0 ; i < ncpu ; i++) {
+	  std::ostringstream dcache;
+	  dcache << "mips" << i << "_p_dcache_to_xcache" << i << "_p_dcache";
+	  mips_p_dcache_to_xcache_p_dcache[i] = new soclib::caba::DCacheSignals((dcache.str()).c_str());
+
+	  std::ostringstream icache;
+	  icache << "mips" << i << "_p_icache_to_xcache" << i << "_p_icache";
+	  mips_p_icache_to_xcache_p_icache[i] = new soclib::caba::ICacheSignals((icache.str()).c_str());
+
+	  std::ostringstream irq;
+	  for (int j = 0; j < 6 ; j++){
+	    irq << "mips" << i << "_p_irq_" << j;
+	    mips_p_irq[i][j] = new sc_core::sc_signal<bool>((irq.str()).c_str());
+	  }
+
+	  std::ostringstream vgmn;
+	  vgmn << "vgmn0_p_to_initiator_" << i << "_to_xcache" << i << "_p_vci";
+	  vgmn0_p_to_initiator_to_xcache_p_vci[i] = new soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >((vgmn.str()).c_str());
+	}
+
 	soclib::caba::FifoSignals<uint32_t>  tg_ctrl_p_from_coproc_0__to_tg_p_fifo("tg_ctrl_p_from_coproc_0__to_tg_p_fifo");
-	soclib::caba::ICacheSignals mips0_p_icache_to_xcache0_p_icache("mips0_p_icache_to_xcache0_p_icache");
+	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tg_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator("tg_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator");
+	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tg_ctrl_p_vci_target_to_vgmn0_p_to_target_3_("tg_ctrl_p_vci_target_to_vgmn0_p_to_target_3_");
+
+	soclib::caba::FifoSignals<uint32_t>  ramdac_ctrl_p_to_coproc_0__to_ramdac_p_fifo("ramdac_ctrl_p_to_coproc_0__to_ramdac_p_fifo");
+	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ramdac_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator("ramdac_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator");
+	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ramdac_ctrl_p_vci_target_to_vgmn0_p_to_target_4_("ramdac_ctrl_p_vci_target_to_vgmn0_p_to_target_4_");
+
+
 	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ram0_p_vci_to_vgmn0_p_to_target_0_("ram0_p_vci_to_vgmn0_p_to_target_0_");
 	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ram1_p_vci_to_vgmn0_p_to_target_1_("ram1_p_vci_to_vgmn0_p_to_target_1_");
-	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ramdac_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator_2_("ramdac_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator_2_");
-	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  ramdac_ctrl_p_vci_target_to_vgmn0_p_to_target_4_("ramdac_ctrl_p_vci_target_to_vgmn0_p_to_target_4_");
-	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tg_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator_1_("tg_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator_1_");
-	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tg_ctrl_p_vci_target_to_vgmn0_p_to_target_3_("tg_ctrl_p_vci_target_to_vgmn0_p_to_target_3_");
+
 	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  tty0_p_vci_to_vgmn0_p_to_target_2_("tty0_p_vci_to_vgmn0_p_to_target_2_");
-	soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> >  vgmn0_p_to_initiator_0__to_xcache0_p_vci("vgmn0_p_to_initiator_0__to_xcache0_p_vci");
+
 
 	// Component configure
-	mips0.setCacheInfo(xcache0.getCacheInfo());
+	vgmn0.p_clk(clock);
+	vgmn0.p_resetn(resetn);
+	for (unsigned int i=0 ; i < ncpu ; i++)
+	  vgmn0.p_to_initiator[i](*vgmn0_p_to_initiator_to_xcache_p_vci[i]);
+	vgmn0.p_to_initiator[ncpu](tg_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator);
+	vgmn0.p_to_initiator[ncpu+1](ramdac_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator);
+	vgmn0.p_to_target[0](ram0_p_vci_to_vgmn0_p_to_target_0_);
+	vgmn0.p_to_target[1](ram1_p_vci_to_vgmn0_p_to_target_1_);
+	vgmn0.p_to_target[2](tty0_p_vci_to_vgmn0_p_to_target_2_);
+	vgmn0.p_to_target[3](tg_ctrl_p_vci_target_to_vgmn0_p_to_target_3_);
+	vgmn0.p_to_target[4](ramdac_ctrl_p_vci_target_to_vgmn0_p_to_target_4_);
 
-	// Signal configure
+	for (unsigned int i=0 ; i < ncpu ; i++) {
+	  mips[i]->setCacheInfo(xcache[i]->getCacheInfo());
+	  mips[i]->p_clk(clock);
+	  mips[i]->p_resetn(resetn);
+	  mips[i]->p_dcache(*mips_p_dcache_to_xcache_p_dcache[i]);
+	  mips[i]->p_icache(*mips_p_icache_to_xcache_p_icache[i]);
+	  for (int j = 0 ; j < 6 ; j++)
+	    mips[i]->p_irq[j](*mips_p_irq[i][j]);
 
-	// Component connect
-	mips0.p_clk(clock);
-	mips0.p_dcache(mips0_p_dcache_to_xcache0_p_dcache);
-	mips0.p_icache(mips0_p_icache_to_xcache0_p_icache);
-	mips0.p_irq[0](*new sc_core::sc_signal<bool>("mips0_p_irq_0_"));
-	mips0.p_irq[1](*new sc_core::sc_signal<bool>("mips0_p_irq_1_"));
-	mips0.p_irq[2](*new sc_core::sc_signal<bool>("mips0_p_irq_2_"));
-	mips0.p_irq[3](*new sc_core::sc_signal<bool>("mips0_p_irq_3_"));
-	mips0.p_irq[4](*new sc_core::sc_signal<bool>("mips0_p_irq_4_"));
-	mips0.p_irq[5](*new sc_core::sc_signal<bool>("mips0_p_irq_5_"));
-	mips0.p_resetn(resetn);
+	  xcache[i]->p_clk(clock);
+	  xcache[i]->p_resetn(resetn);
+	  xcache[i]->p_dcache(*mips_p_dcache_to_xcache_p_dcache[i]);
+	  xcache[i]->p_icache(*mips_p_icache_to_xcache_p_icache[i]);
+	  xcache[i]->p_vci(*vgmn0_p_to_initiator_to_xcache_p_vci[i]);
+	}
+
 	ram0.p_clk(clock);
 	ram0.p_resetn(resetn);
 	ram0.p_vci(ram0_p_vci_to_vgmn0_p_to_target_0_);
@@ -209,7 +300,7 @@ int _main(int argc, char **argv)
 	ramdac_ctrl.p_clk(clock);
 	ramdac_ctrl.p_resetn(resetn);
 	ramdac_ctrl.p_to_coproc[0](ramdac_ctrl_p_to_coproc_0__to_ramdac_p_fifo);
-	ramdac_ctrl.p_vci_initiator(ramdac_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator_2_);
+	ramdac_ctrl.p_vci_initiator(ramdac_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator);
 	ramdac_ctrl.p_vci_target(ramdac_ctrl_p_vci_target_to_vgmn0_p_to_target_4_);
 	tg.p_clk(clock);
 	tg.p_fifo(tg_ctrl_p_from_coproc_0__to_tg_p_fifo);
@@ -217,35 +308,20 @@ int _main(int argc, char **argv)
 	tg_ctrl.p_clk(clock);
 	tg_ctrl.p_from_coproc[0](tg_ctrl_p_from_coproc_0__to_tg_p_fifo);
 	tg_ctrl.p_resetn(resetn);
-	tg_ctrl.p_vci_initiator(tg_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator_1_);
+	tg_ctrl.p_vci_initiator(tg_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator);
 	tg_ctrl.p_vci_target(tg_ctrl_p_vci_target_to_vgmn0_p_to_target_3_);
 	tty0.p_clk(clock);
 	tty0.p_irq[0](*new sc_core::sc_signal<bool>("tty0_p_irq_0_"));
 	tty0.p_resetn(resetn);
 	tty0.p_vci(tty0_p_vci_to_vgmn0_p_to_target_2_);
-	vgmn0.p_clk(clock);
-	vgmn0.p_resetn(resetn);
-	vgmn0.p_to_initiator[0](vgmn0_p_to_initiator_0__to_xcache0_p_vci);
-	vgmn0.p_to_initiator[1](tg_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator_1_);
-	vgmn0.p_to_initiator[2](ramdac_ctrl_p_vci_initiator_to_vgmn0_p_to_initiator_2_);
-	vgmn0.p_to_target[0](ram0_p_vci_to_vgmn0_p_to_target_0_);
-	vgmn0.p_to_target[1](ram1_p_vci_to_vgmn0_p_to_target_1_);
-	vgmn0.p_to_target[2](tty0_p_vci_to_vgmn0_p_to_target_2_);
-	vgmn0.p_to_target[3](tg_ctrl_p_vci_target_to_vgmn0_p_to_target_3_);
-	vgmn0.p_to_target[4](ramdac_ctrl_p_vci_target_to_vgmn0_p_to_target_4_);
-	xcache0.p_clk(clock);
-	xcache0.p_dcache(mips0_p_dcache_to_xcache0_p_dcache);
-	xcache0.p_icache(mips0_p_icache_to_xcache0_p_icache);
-	xcache0.p_resetn(resetn);
-	xcache0.p_vci(vgmn0_p_to_initiator_0__to_xcache0_p_vci);
 
-run(resetn);
+	run(resetn);
 
-  ftime(&final);
+	ftime(&final);
 
-  std::cout << "Execution Time = " << (int)((1000.0 * (final.time - initial.time))+ (final.millitm - initial.millitm)) << std::endl << std::endl;
+	std::cout << "Execution Time = " << (int)((1000.0 * (final.time - initial.time))+ (final.millitm - initial.millitm)) << std::endl << std::endl;
 
-  return 0;
+	return 0;
 }
 
 void quit(int)

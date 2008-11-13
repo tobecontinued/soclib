@@ -171,8 +171,9 @@ namespace soclib { namespace tlmt {
 	} 
 	else
 	  m_term[term_no]->putc( data );
-	break;
+
 	m_rsp.error = false;
+	break;
 
       default:
 	//error message

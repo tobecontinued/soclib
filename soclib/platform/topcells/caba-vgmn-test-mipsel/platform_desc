@@ -1,7 +1,7 @@
 # -*- python -*-
 
 
-todo = Platform('caba', 'top1proc.cpp',
+todo = Platform('caba', 'top.cpp',
                 uses = [Uses('iss_wrapper', iss_t = 'common:mipsel'),
                         Uses('vci_ram'),
                         Uses('vci_multi_tty'),

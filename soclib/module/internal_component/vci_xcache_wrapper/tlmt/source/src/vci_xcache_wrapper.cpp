@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, nipo, alinev
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     FranÃ§ois PÃªcheux <francois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
@@ -98,8 +98,6 @@ namespace soclib{ namespace tlmt {
 				size_t dcache_words,
 				size_t simulation_time )
     : soclib::tlmt::BaseModule (name),
-      m_cacheability_table(mt.getCacheabilityTable()),
-      m_id(mt.indexForId(index)),
       m_iss(mt.indexForId(index)),
       m_buf(100), 
       m_dcache(dcache_lines, dcache_words),
@@ -115,9 +113,11 @@ namespace soclib{ namespace tlmt {
 					      new tlmt_core::tlmt_callback<VciXcacheWrapper, bool>(this,&VciXcacheWrapper<iss_t, vci_param>::irqReceived, (void*)(long)i));
     }
 
-    m_simulation_time  = simulation_time;
-    m_counter          = 0;
-    m_lookahead        = 10; 
+    m_cacheability_table = mt.getCacheabilityTable();
+    m_id                 = mt.indexForId(index);
+    m_simulation_time    = simulation_time;
+    m_counter            = 0;
+    m_lookahead          = 10; 
 
     m_cpt_lookhead             = 0;
     m_cpt_idle                 = 0;
@@ -176,10 +176,8 @@ namespace soclib{ namespace tlmt {
 				size_t dcache_lines,
 				size_t dcache_words )
     : soclib::tlmt::BaseModule (name),
-      m_cacheability_table(mt.getCacheabilityTable()),
-      m_id(mt.indexForId(index)),
       m_iss(mt.indexForId(index)),
-      m_buf(100), 
+      m_buf(100),
       m_dcache(dcache_lines, dcache_words),
       m_icache(icache_lines, icache_words),
       p_vci("vci", new tlmt_core::tlmt_callback<VciXcacheWrapper,vci_rsp_packet<vci_param>*>(this,&VciXcacheWrapper<iss_t,vci_param>::rspReceived),&c0)
@@ -193,9 +191,11 @@ namespace soclib{ namespace tlmt {
 					      new tlmt_core::tlmt_callback<VciXcacheWrapper, bool>(this,&VciXcacheWrapper<iss_t, vci_param>::irqReceived, (void*)(long)i));
     }
 
-    m_simulation_time  = std::numeric_limits<size_t>::max();
-    m_counter          = 0;
-    m_lookahead        = 10; 
+    m_cacheability_table = mt.getCacheabilityTable();
+    m_id                 = mt.indexForId(index);
+    m_simulation_time    = std::numeric_limits<size_t>::max();
+    m_counter            = 0;
+    m_lookahead          = 10; 
 
     m_cpt_lookhead             = 0;
     m_cpt_idle                 = 0;

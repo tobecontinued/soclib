@@ -117,7 +117,7 @@ int sc_main(int argc, char **argv)
   soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> * mips[ncpu]; 
 
 
-  for (int i=0 ; i < ncpu ; i++) {
+  for (unsigned int i=0 ; i < ncpu ; i++) {
     std::ostringstream cpu_name;
     cpu_name << "mips" << i;
     mips[i] = new soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param>((cpu_name.str()).c_str(), soclib::common::IntTab(i), mapping_table, icache_size, 8, dcache_size, 8, simulation_time);
@@ -168,14 +168,14 @@ int sc_main(int argc, char **argv)
   /////////////////////////////////////////////////////////////////////////////
   // RAM
   /////////////////////////////////////////////////////////////////////////////
-  soclib::tlmt::VciRam<vci_param> ram0("ram0", 0, soclib::common::IntTab(0), mapping_table, loader);
+  soclib::tlmt::VciRam<vci_param> ram0("ram0", soclib::common::IntTab(0), mapping_table, loader);
 
   vgmn.m_CmdArbRspRout[0]->p_vci(ram0.p_vci);
 
   /////////////////////////////////////////////////////////////////////////////
   // RAM
   /////////////////////////////////////////////////////////////////////////////
-  soclib::tlmt::VciRam<vci_param> ram1("ram1", 1, soclib::common::IntTab(1), mapping_table, loader);
+  soclib::tlmt::VciRam<vci_param> ram1("ram1", soclib::common::IntTab(1), mapping_table, loader);
 
   vgmn.m_CmdArbRspRout[1]->p_vci(ram1.p_vci);
 

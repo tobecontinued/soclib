@@ -1098,10 +1098,6 @@ namespace soclib { namespace tlmt {
 				uint32_t n_status)
     : soclib::tlmt::BaseModule(name),
       m_mt(mt),
-      m_initiator_index(initiator_index),
-      m_srcid(mt.indexForId(initiator_index)),
-      m_target_index(target_index),
-      m_destid(mt.indexForId(target_index)),
       m_read_fifo_depth(read_fifo_depth),
       m_write_fifo_depth(write_fifo_depth),
       m_read_channels(n_read_channels),
@@ -1111,8 +1107,10 @@ namespace soclib { namespace tlmt {
       p_vci_initiator("vci_initiator", new tlmt_core::tlmt_callback<VciMwmrController,soclib::tlmt::vci_rsp_packet<vci_param> *>(this, &VciMwmrController<vci_param>::vciRspReceived),&c0),
       p_vci_target("vci_target", new tlmt_core::tlmt_callback<VciMwmrController,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciMwmrController<vci_param>::vciCmdReceived))
   {
-    m_initiator_segments = m_mt.getSegmentList(m_initiator_index);
-    m_target_segments = m_mt.getSegmentList(m_target_index);
+    m_srcid = m_mt.indexForId(initiator_index);
+    m_destid = m_mt.indexForId(target_index);
+    m_initiator_segments = m_mt.getSegmentList(initiator_index);
+    m_target_segments = m_mt.getSegmentList(target_index);
     
 #if MWMR_CONTROLLER_DEBUG
     char fileName[50];

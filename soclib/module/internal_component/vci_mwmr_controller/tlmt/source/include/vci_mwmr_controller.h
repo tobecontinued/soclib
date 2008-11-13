@@ -40,8 +40,6 @@ class VciMwmrController
   : public soclib::tlmt::BaseModule
 {
  private:
-  soclib::common::IntTab m_initiator_index;
-  soclib::common::IntTab m_target_index;
   soclib::common::MappingTable m_mt;
   std::list<soclib::common::Segment> m_initiator_segments;
   std::list<soclib::common::Segment> m_target_segments;

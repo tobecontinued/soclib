@@ -328,6 +328,54 @@ namespace soclib { namespace tlmt {
     m_cpt_write_packet = 0;
   }
 
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // CONSTRUCTOR
+  //////////////////////////////////////////////////////////////////////////////////////////
+  tmpl(/**/)::VciRam(
+		     sc_core::sc_module_name name,
+		     const soclib::common::IntTab &index,
+		     const soclib::common::MappingTable &mt,
+		     common::ElfLoader &loader)
+    : soclib::tlmt::BaseModule(name),
+      m_index(index),
+      m_mt(mt),
+      m_loader(new common::ElfLoader(loader)),
+      m_atomic(8),// 8 equals to maximal number of initiator
+      p_vci("vci", new tlmt_core::tlmt_callback<VciRam,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciRam<vci_param>::callback))
+  {
+    m_id = m_mt.indexForId(index);
+    m_segments=m_mt.getSegmentList(m_index);
+    m_contents = new ram_t*[m_segments.size()];
+    size_t word_size = sizeof(typename vci_param::data_t);
+
+    std::list<soclib::common::Segment>::iterator seg;
+    size_t i;
+    for (i=0, seg = m_segments.begin(); seg != m_segments.end(); ++i, ++seg ) {
+      soclib::common::Segment &s = *seg;
+      m_contents[i] = new ram_t[(s.size()+word_size-1)/word_size];
+    }
+    
+    if ( m_loader ){
+      for (i=0, seg = m_segments.begin(); seg != m_segments.end(); ++i, ++seg ) {
+	soclib::common::Segment &s = *seg;
+	m_loader->load(&m_contents[i][0], s.baseAddress(), s.size());
+	for (size_t addr = 0; addr < s.size()/word_size; ++addr )
+	  m_contents[i][addr] = le_to_machine(m_contents[i][addr]);
+      }
+    }
+
+    //initialize the control table LL/SC
+    m_atomic.clearAll();
+
+    m_cpt_cycle        = 0;
+    m_cpt_read         = 0;
+    m_cpt_read_1       = 0;
+    m_cpt_read_packet  = 0;
+    m_cpt_write        = 0;
+    m_cpt_write_1      = 0;
+    m_cpt_write_packet = 0;
+  }
+
   tmpl(/**/)::~VciRam(){}
 
   tmpl(int)::getTotalCycles()
