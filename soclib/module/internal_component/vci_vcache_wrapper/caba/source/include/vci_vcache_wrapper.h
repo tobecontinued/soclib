@@ -223,7 +223,7 @@ private:
     sc_signal<bool>         r_dcache_unc_req;           // used for uncached read miss
     sc_signal<bool>         r_dcache_write_req;         // used for write 
     sc_signal<bool>         r_dcache_tlb_read_req;      // used for tlb ptba or pte read 
-    sc_signal<bool>         r_dcache_tlb_write_req;     // used for tlb entry type update
+    sc_signal<bool>         r_dcache_tlb_et_req;        // used for tlb entry type update
     sc_signal<bool>         r_dcache_tlb_dirty_req;     // used for tlb dirty bit update 
     sc_signal<bool>         r_dcache_tlb_ptba_read;     // used for tlb ptba read when write dirty bit 
     sc_signal<bool>         r_dcache_xtn_req;           // used for xtn write for ICACHE
@@ -247,7 +247,7 @@ private:
     sc_signal<bool>         r_icache_miss_req;          // used for cached read miss
     sc_signal<bool>         r_icache_unc_req;           // used for uncached read miss
     sc_signal<bool>         r_icache_tlb_read_req;      // used for tlb ptba or pte read
-    sc_signal<bool>         r_icache_tlb_write_req;     // used for tlb entry type update
+    sc_signal<bool>         r_icache_tlb_et_req;        // used for tlb entry type update
 
     // VCI_CMD FSM REGISTERS
     sc_signal<int>          r_vci_cmd_fsm;
@@ -263,10 +263,8 @@ private:
     sc_signal<bool>         r_vci_rsp_ins_error;
     sc_signal<bool>         r_vci_rsp_data_error;
 
-
     data_t                  *r_icache_miss_buf;    
     data_t                  *r_dcache_miss_buf;  
-
 
     WriteBuffer<addr36_t>     r_wbuf;
     GenericCache<addr36_t>    r_icache;

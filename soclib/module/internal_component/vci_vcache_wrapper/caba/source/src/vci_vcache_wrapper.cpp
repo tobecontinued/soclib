@@ -31,7 +31,7 @@
 namespace soclib { 
 namespace caba {
 
-#define VCACHE_WRAPPER_DEBUG
+//#define VCACHE_WRAPPER_DEBUG
 
 #ifdef VCACHE_WRAPPER_DEBUG
 namespace {
@@ -195,7 +195,7 @@ tmpl(/**/)::VciVCacheWrapper(
       r_dcache_unc_req("r_dcache_unc_req"),
       r_dcache_write_req("r_dcache_write_req"),
       r_dcache_tlb_read_req("r_dcache_tlb_read_req"),
-      r_dcache_tlb_write_req("r_dcache_tlb_write_req"),
+      r_dcache_tlb_et_req("r_dcache_tlb_et_req"),
       r_dcache_tlb_dirty_req("r_dcache_tlb_dirty_req"),
       r_dcache_tlb_ptba_read("r_dcache_tlb_ptba_read"),
       r_dcache_xtn_req("r_dcache_xtn_req"),
@@ -205,7 +205,7 @@ tmpl(/**/)::VciVCacheWrapper(
       r_icache_miss_req("r_icache_miss_req"),
       r_icache_unc_req("r_icache_unc_req"),
       r_icache_tlb_read_req("r_icache_tlb_read_req"),
-      r_icache_tlb_write_req("r_icache_tlb_write_req"),
+      r_icache_tlb_et_req("r_icache_tlb_et_req"),
 
       r_vci_cmd_fsm("r_vci_cmd_fsm"),
       r_vci_cmd_min("r_vci_cmd_min"),
@@ -306,13 +306,13 @@ tmpl(void)::transition()
         r_icache_miss_req        = false;
         r_icache_unc_req         = false;
         r_icache_tlb_read_req    = false;
-        r_icache_tlb_write_req   = false;
+        r_icache_tlb_et_req      = false;
 
         r_dcache_miss_req        = false;
         r_dcache_unc_req         = false;
         r_dcache_write_req       = false;
         r_dcache_tlb_read_req    = false;
-        r_dcache_tlb_write_req   = false;
+        r_dcache_tlb_et_req      = false;
         r_dcache_tlb_dirty_req   = false;
         r_dcache_tlb_ptba_read   = false;
         r_dcache_xtn_req         = false;
@@ -701,21 +701,21 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 r_icache_fsm          = ICACHE_TLB2_READ;
                 break;
             case PTE_NEW:           // 4M page TLB (not marked)   
-        	    r_icache_ptba_ok       = false;	
-                r_icache_pte_update    = r_vci_rsp_itlb_miss | PTE_ET_MASK;
-                r_icache_tlb_write_req = true;
-                r_icache_fsm           = ICACHE_TLB1_WRITE;
+        	    r_icache_ptba_ok    = false;	
+                r_icache_pte_update = r_vci_rsp_itlb_miss | PTE_ET_MASK;
+                r_icache_tlb_et_req = true;
+                r_icache_fsm        = ICACHE_TLB1_WRITE;
                 break; 
             case PTE_OLD:           // 4M page TLB (already marked)
-        	    r_icache_ptba_ok       = false;	
-                r_icache_pte_update    = r_vci_rsp_itlb_miss;
-                r_icache_fsm           = ICACHE_TLB1_UPDT;
+        	    r_icache_ptba_ok    = false;	
+                r_icache_pte_update = r_vci_rsp_itlb_miss;
+                r_icache_fsm        = ICACHE_TLB1_UPDT;
                 break;
             default:                // unmapped
-        	    r_icache_ptba_ok       = false;	
-                r_icache_error_type    = r_icache_error_type | MMU_PT1_UNMAPPED;  
-                r_icache_bad_vaddr     = ireq.addr;
-                r_icache_fsm           = ICACHE_ERROR;
+        	    r_icache_ptba_ok    = false;	
+                r_icache_error_type = r_icache_error_type | MMU_PT1_UNMAPPED;  
+                r_icache_bad_vaddr  = ireq.addr;
+                r_icache_fsm        = ICACHE_ERROR;
                 break;
             } // end switch ET
         }
@@ -732,7 +732,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     case ICACHE_TLB1_WRITE:  
     {
         m_cost_ins_miss_frz++;
-        if (!r_icache_tlb_write_req)
+        if (!r_icache_tlb_et_req)
         { 
             if ( r_vci_rsp_ins_error ) 
             {
@@ -763,17 +763,17 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             switch((r_vci_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
             case PTE_NEW:               // not marked
-                r_icache_pte_update    = r_vci_rsp_itlb_miss | PTE_ET_MASK;
-                r_icache_tlb_write_req = true;
-                r_icache_fsm           = ICACHE_TLB2_WRITE;
+                r_icache_pte_update = r_vci_rsp_itlb_miss | PTE_ET_MASK;
+                r_icache_tlb_et_req = true;
+                r_icache_fsm        = ICACHE_TLB2_WRITE;
                 break;  
             case PTE_OLD:               // already marked
-                r_icache_fsm           = ICACHE_TLB2_UPDT;
-                r_icache_pte_update    = r_vci_rsp_itlb_miss;
+                r_icache_fsm        = ICACHE_TLB2_UPDT;
+                r_icache_pte_update = r_vci_rsp_itlb_miss;
                 break;
             default:                    // unmapped
-                r_icache_error_type    = r_icache_error_type | MMU_PT2_UNMAPPED;  
-                r_icache_bad_vaddr     = ireq.addr;
+                r_icache_error_type = r_icache_error_type | MMU_PT2_UNMAPPED;  
+                r_icache_bad_vaddr  = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
                 break;
             }
@@ -791,7 +791,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     case ICACHE_TLB2_WRITE:
     {  
         m_cost_ins_miss_frz++;
-        if (!r_icache_tlb_write_req) 
+        if (!r_icache_tlb_et_req) 
         {
             if ( r_vci_rsp_ins_error ) 
             {
@@ -1542,22 +1542,22 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 }
                 break;
             case PTE_NEW:               // 4M page (not marked)
-                r_dcache_ptba_ok       = false;
-                r_dcache_tlb_paddr     = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
-                r_dcache_pte_update    = r_vci_rsp_dtlb_miss | PTE_ET_MASK;  
-                r_dcache_tlb_write_req = true;
-                r_dcache_fsm           = DCACHE_TLB1_WRITE;
+                r_dcache_ptba_ok    = false;
+                r_dcache_tlb_paddr  = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                r_dcache_pte_update = r_vci_rsp_dtlb_miss | PTE_ET_MASK;  
+                r_dcache_tlb_et_req = true;
+                r_dcache_fsm        = DCACHE_TLB1_WRITE;
                 break;  
-            case PTE_OLD:                // 4M page (already marked)
-                r_dcache_ptba_ok       = false;
-                r_dcache_pte_update    = r_vci_rsp_dtlb_miss;
-                r_dcache_fsm           = DCACHE_TLB1_UPDT;
+            case PTE_OLD:             // 4M page (already marked)
+                r_dcache_ptba_ok    = false;
+                r_dcache_pte_update = r_vci_rsp_dtlb_miss;
+                r_dcache_fsm        = DCACHE_TLB1_UPDT;
                 break;
-            default:                    // unmapped
-                r_dcache_ptba_ok       = false;
-                r_dcache_error_type    = r_dcache_error_type | MMU_PT1_UNMAPPED;       
-                r_dcache_bad_vaddr     = dreq.addr;
-                r_dcache_fsm           = DCACHE_ERROR;
+            default:                 // unmapped
+                r_dcache_ptba_ok    = false;
+                r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED;       
+                r_dcache_bad_vaddr  = dreq.addr;
+                r_dcache_fsm        = DCACHE_ERROR;
                 break;
             } // end switch ET
         }
@@ -1574,7 +1574,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     case DCACHE_TLB1_WRITE:
     {
         m_cost_data_miss_frz++;
-        if (!r_dcache_tlb_write_req) 
+        if (!r_dcache_tlb_et_req) 
         {
             if ( r_vci_rsp_data_error ) 
             {
@@ -1605,13 +1605,13 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             switch((r_vci_rsp_dtlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
             case PTE_NEW:               // not marked  
-                r_dcache_tlb_write_req = true;
-                r_dcache_pte_update    = r_vci_rsp_dtlb_miss | PTE_ET_MASK;     
-                r_dcache_fsm           = DCACHE_TLB2_WRITE;
+                r_dcache_tlb_et_req = true;
+                r_dcache_pte_update = r_vci_rsp_dtlb_miss | PTE_ET_MASK;     
+                r_dcache_fsm        = DCACHE_TLB2_WRITE;
                 break;  
             case PTE_OLD:               // already marked
-                r_dcache_pte_update    = r_vci_rsp_dtlb_miss;   
-                r_dcache_fsm           = DCACHE_TLB2_UPDT;
+                r_dcache_pte_update = r_vci_rsp_dtlb_miss;   
+                r_dcache_fsm        = DCACHE_TLB2_UPDT;
                 break;
             default:    
                 r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED; 
@@ -1633,7 +1633,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     case DCACHE_TLB2_WRITE:
     {
         m_cost_data_miss_frz++;
-        if (!r_dcache_tlb_write_req) 
+        if (!r_dcache_tlb_et_req) 
         {
             if ( r_vci_rsp_data_error ) 
             {
@@ -1947,7 +1947,7 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_vci_cmd_fsm = CMD_ITLB_READ;
             m_cpt_itlbmiss_transaction++; 
         } 
-        else if (r_icache_tlb_write_req)      
+        else if (r_icache_tlb_et_req)      
         {  
             r_vci_cmd_fsm = CMD_ITLB_WRITE;
             m_cpt_itlbmiss_transaction++; 
@@ -1967,7 +1967,7 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_vci_cmd_fsm = CMD_DTLB_READ;
             m_cpt_dtlbmiss_transaction++; 
         } 
-        else if (r_dcache_tlb_write_req) 
+        else if (r_dcache_tlb_et_req) 
         {  
             r_vci_cmd_fsm = CMD_DTLB_WRITE;
             m_cpt_dtlbmiss_transaction++; 
@@ -2040,7 +2040,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         {            
             r_vci_rsp_fsm = RSP_ITLB_READ;
         } 
-        else if (r_icache_tlb_write_req)    // ITLB linked load response
+        else if (r_icache_tlb_et_req)       // ITLB linked load response
         {   
             r_vci_rsp_fsm = RSP_ITLB_WRITE;
         } 
@@ -2056,7 +2056,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         {
             r_vci_rsp_fsm = RSP_DTLB_READ; 
         }
-        else if (r_dcache_tlb_write_req)    // ITLB linked load response
+        else if (r_dcache_tlb_et_req)       // ITLB linked load response
         {
             r_vci_rsp_fsm = RSP_DTLB_WRITE; 
         }
@@ -2110,7 +2110,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         {
             r_vci_rsp_ins_error = true;
         }
-        r_icache_tlb_write_req = false;
+        r_icache_tlb_et_req = false;
         r_vci_rsp_fsm = RSP_IDLE;
         break;
 
@@ -2189,7 +2189,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         {   
             r_vci_rsp_data_error = true;
         }
-        r_dcache_tlb_write_req = false;
+        r_dcache_tlb_et_req = false;
         r_vci_rsp_fsm = RSP_IDLE;
         break;
 
