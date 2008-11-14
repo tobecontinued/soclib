@@ -44,9 +44,9 @@ struct desc_t {
 	size_t length;
 };
 
-static inline uintptr_t carry( uintptr_t a, uintptr_t b )
+static inline uintptr_t carry( uintptr_t a, uintptr_t b, uintptr_t m )
 {
-    return (a+b) < a;
+    return ((a+b)&m) < a;
 }
 
 static void elf_do_load(bfd *exec, asection *sect, PTR descptr)
@@ -54,30 +54,60 @@ static void elf_do_load(bfd *exec, asection *sect, PTR descptr)
 	desc_t *desc = (desc_t *)descptr;
     bfd_byte *data;
 
-    uintptr_t lma = sect->lma;
+    uintptr_t mask = (uintptr_t)-1;
+    if ( (size_t)bfd_get_arch_size(exec) < sizeof(uintptr_t)*8 )
+        mask = ((uintptr_t)1<<bfd_get_arch_size(exec))-1;
+#ifdef ELF_LOADER_DEBUG
+    std::cout << "Elf file " << bfd_get_arch_size(exec) << " bits. address mask: " << std::hex << mask << std::endl;
+#endif
 
-	if ( lma >= (desc->address+desc->length) && !carry(desc->address, desc->length) ||
-		 desc->address >= (lma+sect->size) && !carry(sect->lma, sect->size) )
+    uintptr_t lma = sect->lma & mask;
+    uintptr_t desc_addr = desc->address & mask;
+
+	if ( lma >= (desc_addr+desc->length) && !carry(desc_addr, desc->length, mask) ||
+		 desc_addr >= (lma+sect->size) && !carry(lma, sect->size, mask) ) {
+#ifdef ELF_LOADER_DEBUG
+        std::cout << "No overlap between"
+              << " section " << sect->name
+              << " @" << std::hex << lma
+              << " " << std::dec << sect->size << " bytes"
+              << "and desc @" << std::hex << desc_addr
+              << " " << std::dec << desc->length << " bytes"
+              << std::endl;
+#endif
 		return;
+    }
+
+#ifdef ELF_LOADER_DEBUG
+    std::cout << "Loading"
+              << " section " << sect->name
+              << " @" << std::hex << lma
+              << " " << std::dec << sect->size << " bytes"
+              << "and desc @" << std::hex << desc_addr
+              << " " << std::dec << desc->length << " bytes"
+              << std::endl;
+#endif
 
 	if ( ! (sect->flags & SEC_LOAD) ) {
+#ifndef ELF_LOADER_DEBUG
         std::cerr << "Warning: section " << sect->name << " not loadable, not loaded" << std::endl;
+#endif
 		return;
     }
     
 	uintptr_t src_delta = 0, dst_delta = 0;
 
-	if ( desc->address < lma ) {
-		dst_delta = lma - desc->address;
+	if ( desc_addr < lma ) {
+		dst_delta = lma - desc_addr;
 	} else {
-		src_delta = desc->address - lma;
+		src_delta = desc_addr - lma;
 	}
 	size_t length = std::min<size_t>( desc->length - dst_delta,
 									  sect->size - src_delta );
     if ( length < sect->size - src_delta )
         std::cerr
             << "Warning: Truncating section "<<sect->name
-            << " when loading at 0x"<< std::hex << desc->address << std::endl;
+            << " when loading at 0x"<< std::hex << desc_addr << std::endl;
 
     if (!bfd_malloc_and_get_section(exec, sect, &data))
         throw soclib::exception::RunTimeError(std::string("Unable to get section: ") + sect->name);
