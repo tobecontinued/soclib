@@ -103,7 +103,7 @@ asm volatile(
 static inline void get_cp2(uint32_t *val, uint32_t reg)
 {
 asm volatile(
-"mfc2 %0, %1":"r="(*val):"r"(reg));
+"mfc2 %0, %1":"=r"(*val):"r"(reg));
 }
 
 #endif
