@@ -791,7 +791,9 @@ void MipsIss::run()
     m_rt = r_gp[m_ins.r.rt];
 
     if (isHighPC() && isInUserMode()) {
-        m_exception = X_SYS;
+        m_exception = X_ADEL;
+        r_mem_addr = r_pc;
+
         return;
     }
 
