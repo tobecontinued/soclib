@@ -48,8 +48,8 @@ ProcessWrapper::ProcessWrapper(
     int host_to_child[2];
     int child_to_host[2];
     
-    pipe(&host_to_child[0]);
-    pipe(&child_to_host[0]);
+    assert(pipe(&host_to_child[0]) == 0);
+    assert(pipe(&child_to_host[0]) == 0);
 
     m_pid = fork();
     if ( m_pid < 0 ) {

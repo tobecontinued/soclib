@@ -57,6 +57,7 @@
 #include "arithmetics.h"
 #include "static_assert.h"
 #include "mapping_table.h"
+#include <cstring>
 
 namespace soclib { 
 
@@ -154,10 +155,10 @@ public:
 
     inline void reset( )
     {
-        memset(r_data, 0, sizeof(*r_data)*m_ways*m_sets*m_words);
-        memset(r_tag, 0, sizeof(*r_tag)*m_ways*m_sets);
-        memset(r_val, 0, sizeof(*r_val)*m_ways*m_sets);
-        memset(r_lru, 0, sizeof(*r_lru)*m_ways*m_sets);
+        std::memset(r_data, 0, sizeof(*r_data)*m_ways*m_sets*m_words);
+        std::memset(r_tag, 0, sizeof(*r_tag)*m_ways*m_sets);
+        std::memset(r_val, 0, sizeof(*r_val)*m_ways*m_sets);
+        std::memset(r_lru, 0, sizeof(*r_lru)*m_ways*m_sets);
     }
 
     inline bool read( addr_t ad, data_t* dt)

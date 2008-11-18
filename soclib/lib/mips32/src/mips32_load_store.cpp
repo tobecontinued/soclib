@@ -134,8 +134,8 @@ void Mips32Iss::setData(const struct DataResponse &rsp)
     case DATA_SC:
     case XTN_READ: {
         uint32_t reg_use = curInstructionUsesRegs();
-        if ( reg_use & USE_S && r_mem_dest == m_ins.r.rs ||
-             reg_use & USE_T && r_mem_dest == m_ins.r.rt )
+        if ( (reg_use & USE_S && r_mem_dest == m_ins.r.rs) ||
+             (reg_use & USE_T && r_mem_dest == m_ins.r.rt) )
             m_hazard = true;
         break;
     }

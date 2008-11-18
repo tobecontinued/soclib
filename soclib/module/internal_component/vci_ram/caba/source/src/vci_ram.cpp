@@ -29,6 +29,7 @@
 #include "vci_ram.h"
 #include "soclib_endian.h"
 #include "elf_loader.h"
+#include <cstring>
 
 namespace soclib {
 namespace caba {
@@ -121,7 +122,7 @@ tmpl(void)::reload()
 tmpl(void)::reset()
 {
 	for ( size_t i=0; i<m_vci_fsm.nbSegments(); ++i ) {
-		memset(&m_contents[i][0], 0, m_vci_fsm.getSize(i));
+        std::memset(&m_contents[i][0], 0, m_vci_fsm.getSize(i));
 	}
     m_cpt_read = 0;
     m_cpt_write = 0;
