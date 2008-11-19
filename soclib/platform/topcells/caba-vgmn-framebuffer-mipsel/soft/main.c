@@ -31,24 +31,20 @@
 
 #include "../segmentation.h"
 
-static const int period[4] = {10000};
+#include <stdio.h>
 
 int main(void)
 {
 	uint8_t base = 0;
 
-	puts("Hello from processor ");
-	putchar(procnum()+'0');
-	putchar('\n');
+	printf("Hello from processor %d\n", procnum());
 	
 	while(1) {
 		uint8_t *fb = FB_BASE;
 		uint32_t x, y;
 
 		for (x=0; x<FB_HEIGHT; ++x) {
-			puts("Filling Y ");
-			puti(x);
-			putchar('\n');
+			printf("Filling Y %d\n", x);
 			
 			uint8_t lum = (base<<7)+x;
 			for (y=0; y<FB_WIDTH; ++y) {
@@ -56,16 +52,13 @@ int main(void)
 			}
 		}
 
-		for (x=0; x<FB_HEIGHT; ++x) {
-			puts("Filling C ");
-			puti(x);
-			putchar('\n');
+		for (x=0; x<FB_HEIGHT/2; ++x) {
+			printf("Filling C %d\n", x);
 			
 			uint8_t lum = (base<<2)+x;
 			for (y=0; y<FB_WIDTH/2; ++y) {
 				*fb++ = lum--;
 			}
-			fb += FB_WIDTH/2;
 		}
 		++base;
 	}

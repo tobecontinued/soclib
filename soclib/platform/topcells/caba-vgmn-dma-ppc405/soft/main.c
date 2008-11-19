@@ -55,9 +55,7 @@ int main(void)
 		char *fb = _fb;
 
 		for (x=0; x<FB_HEIGHT; ++x) {
-			puts("Filling Y ");
-			puti(x);
-			putchar('\n');
+			printf("Filling Y %d\n", x);
 			
 			uint8_t lum = (offset<<7)+x;
 			for (y=0; y<FB_WIDTH; ++y) {
@@ -65,16 +63,13 @@ int main(void)
 			}
 		}
 
-		for (x=0; x<FB_HEIGHT; ++x) {
-			puts("Filling C ");
-			puti(x);
-			putchar('\n');
+		for (x=0; x<FB_HEIGHT/2; ++x) {
+			printf("Filling C %d\n", x);
 			
 			uint8_t lum = (offset<<2)+x;
 			for (y=0; y<FB_WIDTH/2; ++y) {
 				*fb++ = lum--;
 			}
-			fb += FB_WIDTH/2;
 		}
 		soclib_io_set( base(DMA), DMA_DST, FB_BASE );
 		soclib_io_set( base(DMA), DMA_SRC, _fb );
