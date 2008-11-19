@@ -275,7 +275,6 @@ uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
         r_npc = m_next_pc;
     }
  house_keeping:
- stick:
     r_gp[0] = 0;
     return ncycle;
 }
