@@ -39,13 +39,7 @@
 #include "vci_locks.h"
 #include "vci_vgmn.h"
 
-//#define USE_GDB_SERVER
-
-#ifdef USE_GDB_SERVER
-# include "gdbserver.h"
-#else
-# include "iss_simhelper.h"
-#endif
+#include "iss_simhelper.h"
 
 #include "segmentation.h"
 
@@ -144,20 +138,10 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXCache<vci_param> cache2("cache2", maptab,IntTab(2),8,4,8,4);
 	soclib::caba::VciXCache<vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
 
-#ifdef USE_GDB_SERVER
-	// uncomment this line if you want processors frozen at boot
-	// soclib::common::GdbServer<soclib::common::MipsElIss>::start_frozen();
-
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips0("mips0", 0);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips1("mips1", 1);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips2("mips2", 2);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips3("mips3", 3);
-#else
 	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > mips0("mips0", 0);
 	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > mips1("mips1", 1);
 	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > mips2("mips2", 2);
 	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > mips3("mips3", 3);
-#endif
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);

@@ -13,7 +13,7 @@ Module('common:gdb_iss',
 	parameter.Module('gdb_iss_t'),
 	],
 	   uses = [
-	Uses('common:iss'),
+	Uses('common:iss2'),
 	Uses('common:exception'),
 	],
 	   extensions = [

@@ -43,6 +43,7 @@
 //#define USE_GDB_SERVER
 
 #ifdef USE_GDB_SERVER
+# warning Beware GDB Server is now using ISS v2 API
 #include "iss/gdbserver.h"
 #endif
 

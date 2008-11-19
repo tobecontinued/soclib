@@ -5,18 +5,21 @@ locs = {}
 execfile('mutekh/.config.py', {}, locs)
 
 if locs['CONFIG_CPU_PPC'] == 'defined':
-  cpu = 'ppc405'
+  cpu = "ississ2"
+  add = {'iss2_t':'common:ppc405'}
 elif locs['CONFIG_CPU_MIPS'] == 'defined':
+  add = {}
   if locs['CONFIG_CPU_ENDIAN_BIG'] == 'defined':
-    cpu = 'mipseb'
+    cpu = 'mips32eb'
   else:
-    cpu = 'mipsel'
+    cpu = 'mips32el'
 else:
   raise ValueError('No suitable cpu found in mutekh configuration')
 
 todo = Platform('caba', 'top.cc',
                 uses=[
-		Uses('iss_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:'+cpu),
+		Uses('vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:'+cpu, **add),
+		Uses('vci_xcache_wrapper', iss_t = 'common:'+cpu, **add),
 		Uses('vci_locks'),
 		Uses('vci_ram'),
 		Uses('vci_heterogeneous_rom'),
@@ -24,10 +27,9 @@ todo = Platform('caba', 'top.cc',
 		Uses('vci_timer'),
 		Uses('vci_icu'),
 		Uses('vci_vgmn'),
-		Uses('vci_xcache'),
 	],
 	cell_size = 4,
-	plen_size = 1,
+	plen_size = 9,
 	addr_size = 32,
 	rerror_size = 1,
 	clen_size = 1,

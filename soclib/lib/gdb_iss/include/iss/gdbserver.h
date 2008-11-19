@@ -43,7 +43,7 @@
 
 #include <systemc.h>
 #include "interval_set.hh"
-#include "iss.h"
+#include "iss2.h"
 #include "exception.h"
 #include "soclib_endian.h"
 #include "register.h"
@@ -61,29 +61,30 @@ public:
         port_ = port;
     }
 
-    GdbServer(uint32_t ident);
+    GdbServer(const std::string &name, uint32_t ident);
 
-    void step();
+    uint32_t executeNCycles( uint32_t ncycle, uint32_t irq_bit_field );
 
-    inline void nullStep( uint32_t i=1 )
+    inline void getDataRequest(struct CpuIss::DataRequest &dreq) const
     {
-        if (state_ != Frozen)
-            CpuIss::nullStep(i);        
-    }
-
-    inline void getDataRequest(bool &req, enum Iss::DataAccessType &type, uint32_t &address, uint32_t &wdata) const
-    {
+        GdbServer<CpuIss> *_this = const_cast<GdbServer<CpuIss> *>(this);
         if (state_ == Frozen)
             {
-                req = mem_req_;
-                address = mem_addr_ & ~3;
-                wdata = mem_data_;
-                type = mem_type_;
+                dreq.valid = mem_req_;
+                dreq.addr = mem_addr_ & ~3;
+                dreq.wdata = mem_data_ << (8 * (mem_addr_ & 3));
+                dreq.type = mem_type_;
+                if ( mem_type_ == CpuIss::DATA_READ )
+                    dreq.be = 0xf;
+                else
+                    dreq.be = 1 << (mem_addr_ & 3);
+                dreq.mode = CpuIss::MODE_HYPER;
             }
         else
             {
-                CpuIss::getDataRequest(req, type, address, wdata);
+                CpuIss::getDataRequest(dreq);
             }
+        _this->pending_data_request_ = dreq.valid;
     }
 
     inline void setWriteBerr()
@@ -92,24 +93,37 @@ public:
             CpuIss::setWriteBerr();
     }
 
-	inline void setDataResponse(bool error, uint32_t rdata)
+	inline void setData(const struct CpuIss::DataResponse &drsp)
     {
+        
         if (state_ == Frozen)
             {
-                mem_error_ = error;
-                mem_data_ = rdata;
+                if ( pending_data_request_ && mem_type_ == CpuIss::DATA_READ )
+                {
+                    mem_rsp_valid_ = drsp.valid;
+                    mem_error_ = drsp.error;
+                    mem_data_ = drsp.rdata;
+                }
             }
         else
-            CpuIss::setDataResponse(error, rdata);
+            CpuIss::setData(drsp);
+        pending_data_request_ &= !drsp.valid;
     }
 
-    inline void getInstructionRequest(bool &req, uint32_t &address) const
+	inline void setInstruction(const struct CpuIss::InstructionResponse &irsp)
+    {
+        CpuIss::setInstruction(irsp);
+        pending_ins_request_ &= !irsp.valid;
+    }
+
+    inline void getInstructionRequest(struct CpuIss::InstructionRequest &ireq) const
 	{
-        if (state_ == Frozen) {
-            address = 0;
-            req = false;
-        } else
-            CpuIss::getInstructionRequest(req, address);
+        GdbServer<CpuIss> *_this = const_cast<GdbServer<CpuIss> *>(this);
+        if (state_ == Frozen)
+            ireq.valid = false;
+        else
+            CpuIss::getInstructionRequest(ireq);
+        _this->pending_ins_request_ = ireq.valid;
 	}
 
     static inline void start_frozen(bool frozen = true)
@@ -117,14 +131,14 @@ public:
         init_state_ = frozen ? MemWait : Running;
     }
 
-    bool exceptionBypassed( uint32_t cause );
+    bool debugExceptionBypassed( uint32_t cause );
 
 private:
 
     static void signal_handler(int sig);
 
     static void global_init();
-    static int write_packet(char *data);
+    static int write_packet(const char *data);
     static char *read_packet(char *buffer, size_t size);
     void process_gdb_packet();
     void process_monitor_packet(char *data);
@@ -135,10 +149,13 @@ private:
     bool check_break_points();
 
     bool mem_req_;
-    Iss::DataAccessType mem_type_;
+    bool pending_data_request_;
+    bool mem_rsp_valid_;
+    enum CpuIss::DataOperationType mem_type_;
     uint32_t mem_addr_;
     uint32_t mem_data_;
     bool mem_error_;
+    bool pending_ins_request_;
 
     // number of memory access left to process
     size_t mem_count_;
