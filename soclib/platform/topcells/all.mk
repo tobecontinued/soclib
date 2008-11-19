@@ -24,6 +24,7 @@
 #
 # Maintainers: nipo
 
+SIMULATOR_BINARY?=simulation.x
 PLATFORM_DESC?=platform_desc
 SOCLIB_CC_ARGS?=-p $(PLATFORM_DESC)
 SOCLIB_CC=soclib-cc
@@ -57,7 +58,7 @@ ifeq ($(shell test -r disabled && echo disabled),disabled)
 NO_TEST=Test disabled by "disabled" file: $(shell cat disabled)
 endif
 
-all: test_soclib simulation.x $(SOFT)
+all: test_soclib $(SIMULATOR_BINARY) $(SOFT)
 
 ifeq ($(NO_SOFT),)
 
@@ -73,7 +74,7 @@ test_soclib:
 	echo "You must have soclib-cc in your $$PATH" ; exit 1 ) || exit 0
 	@test ! -z "$(SOCLIB)"
 
-simulation.x: $(PLATFORM_DESC)
+$(SIMULATOR_BINARY): $(PLATFORM_DESC)
 	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -o $@
 
 ifdef NO_TEST
@@ -87,15 +88,15 @@ test: $(TEST_OUTPUT) post_test
 
 post_test:
 
-$(TEST_OUTPUT): simulation.x $(SOFT)
-	set -o pipefail ; SOCLIB_TTY=TERM ./simulation.x $(SIMULATION_ARGS) < /dev/null 2>&1 | tee $@
+$(TEST_OUTPUT): $(SIMULATOR_BINARY) $(SOFT)
+	set -o pipefail ; SOCLIB_TTY=TERM ./$(SIMULATOR_BINARY) $(SIMULATION_ARGS) < /dev/null 2>&1 | tee $@
 
 .PHONY: $(TEST_OUTPUT)
 
 endif
 
 clean: soft_clean
-	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -x -o $@
+	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -x -o $(SIMULATOR_BINARY)
 	rm -rf repos
 
 soft_clean:
@@ -106,4 +107,4 @@ endif
 a.out:
 	$(MAKE) -C soft
 
-.PHONY: a.out simulation.x
+.PHONY: a.out $(SIMULATOR_BINARY)
