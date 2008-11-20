@@ -58,10 +58,12 @@
 #include "arithmetics.h"
 #include "../include/vci_cc_xcache_wrapper.h"
 
+#define DEBUG_CC_XCACHE_WRAPPER 0
+
 namespace soclib { 
 namespace caba {
 
-#if SOCLIB_MODULE_DEBUG
+#if DEBUG_CC_XCACHE_WRAPPER
 namespace {
 const char *dcache_fsm_state_str[] = {
         "DCACHE_IDLE",
@@ -83,6 +85,7 @@ const char *icache_fsm_state_str[] = {
         "ICACHE_MISS_UPDT",
         "ICACHE_UNC_WAIT",
         "ICACHE_ERROR",
+        "ICACHE_CC_INVAL",
     };
 const char *cmd_fsm_state_str[] = {
         "CMD_IDLE",
@@ -104,7 +107,7 @@ const char *tgt_fsm_state_str[] = {
         "TGT_IDLE",
         "TGT_UPDT_WORD",
         "TGT_UPDT_DATA",
-        "TGT_DONE",
+        "TGT_REQ",
         "TGT_RSP",
     };
 }
@@ -206,7 +209,6 @@ tmpl(/**/)::VciCcXcacheWrapper(
       r_tgt_srcid("r_tgt_srcid"),
       r_tgt_pktid("r_tgt_pktid"),
       r_tgt_trdid("r_tgt_trdid"),
-      r_tgt_cpt("r_tgt_cpt"),
       r_tgt_icache_req("r_tgt_icache_req"),
       r_tgt_dcache_req("r_tgt_dcache_req"),
 
@@ -255,7 +257,8 @@ tmpl(void)::print_stats()
 ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
-    std::cout << "CPU " << m_srcid << std::endl;
+    std::cout << "------------------------------------" << std:: dec << std::endl;
+    std::cout << "CPU " << m_srcid << " / Time = " << m_cpt_total_cycles << std::endl;
     std::cout << "- CPI                = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
     std::cout << "- READ RATE          = " << (float)m_cpt_read/run_cycles << std::endl ;
     std::cout << "- WRITE RATE         = " << (float)m_cpt_write/run_cycles << std::endl;
@@ -355,12 +358,14 @@ tmpl(void)::transition()
         return;
     }
 
-#if SOCLIB_MODULE_DEBUG
-std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
-          << " dcache fsm: " << dcache_fsm_state_str[r_dcache_fsm] << std::endl
-          << " icache fsm: " << icache_fsm_state_str[r_icache_fsm] << std::endl
-          << " cmd fsm: " << cmd_fsm_state_str[r_vci_cmd_fsm] << std::endl
-          << " rsp fsm: " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
+#if DEBUG_CC_XCACHE_WRAPPER
+std::cout << "--------------------------------------------" << std::endl;
+std::cout << "CC_XCACHE_WRAPPER / Time = " << m_cpt_total_cycles << std::endl;
+std::cout << " tgt fsm    = " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
+          << " dcache fsm = " << dcache_fsm_state_str[r_dcache_fsm] << std::endl
+          << " icache fsm = " << icache_fsm_state_str[r_icache_fsm] << std::endl
+          << " cmd fsm    = " << cmd_fsm_state_str[r_vci_cmd_fsm] << std::endl
+          << " rsp fsm    = " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
 #endif
 
     m_cpt_total_cycles++;
@@ -368,7 +373,6 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
     /////////////////////////////////////////////////////////////////////
     // The TGT_FSM controls the following ressources:
     // - r_vci_tgt_fsm
-    // - r_tgt_cpt
     // - r_tgt_buf[nwords]
     // - r_tgt_val[nwords]
     // - r_tgt_update
@@ -377,19 +381,21 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
     // - r_tgt_srcid
     // - r_tgt_trdid
     // - r_tgt_pktid
-    // All VCI commands must have the CMD_WRITE value in the CMD field.
+    // All VCI commands must be CMD_WRITE.
     // If the VCI address offset is null, the command is an invalidate 
     // request. It is an update request otherwise.
-    // The VCI_TGT FSM sets the r_tgt_icache_req & r_tgt_dcache_req
-    // flip-flops to signal the external request to the ICACHE & DCACHE
-    // FSM respectively.
-    // 1/ for an invalidate request the VCI packet length is 1 word.
+    // The VCI_TGT FSM stores the external request arguments in the
+    // IDLE, UPDT_WORD & UPDT_DATA states. It sets the r_tgt_icache_req 
+    // & r_tgt_dcache_req flip-flops to signal the external request to 
+    // the ICACHE & DCACHE FSMs in the REQ state. It waits the completion
+    // of the update or invalidate request in the RSP state.
+    // -  for an invalidate request the VCI packet length is 1 word.
     // The WDATA field contains the line index (i.e. the Z & Y fields).
-    // 2/ for an update request the VCI packet length is (n+2) words.
+    // -  for an update request the VCI packet length is (n+2) words.
     // The WDATA field of the first VCI word contains the line number.
     // The WDATA field of the second VCI word contains the word index.
     // The WDATA field of the n following words contains the values.
-    // 3/ for both invalidate & update requests, the VCI response
+    // -  for both invalidate & update requests, the VCI response
     // is one single word.
     // In case of errors in the VCI command packet, the simulation
     // is stopped with an error message.
@@ -415,15 +421,15 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
             r_tgt_trdid = p_vci_tgt.trdid.read();
             r_tgt_pktid = p_vci_tgt.pktid.read();
             r_tgt_addr = (addr_t)p_vci_tgt.wdata.read() * m_dcache_words * 4;
-            r_tgt_update = false; 
+
             if (cell == 0) {                        // invalidate 
                 if ( ! p_vci_tgt.eop.read() ) {
                     std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
                     std::cout << "the INVALIDATE command length must be one word" << std::endl;
                     exit(0);
                 }
-                r_tgt_cpt = 1;
-                r_vci_tgt_fsm = TGT_DONE;
+                r_tgt_update = false; 
+                r_vci_tgt_fsm = TGT_REQ;
                 m_cpt_cc_inval++ ;
             } else {                                // update
                 if ( p_vci_tgt.eop.read() ) {
@@ -431,7 +437,6 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
                     std::cout << "the UPDATE command length must be N+2 words" << std::endl;
                     exit(0);
                 }
-                r_tgt_cpt = 2;
                 r_vci_tgt_fsm = TGT_UPDT_WORD;
                 m_cpt_cc_update++ ;
             }
@@ -445,7 +450,7 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
                 std::cout << "the UPDATE command length must be N+2 words" << std::endl;
                 exit(0);
             }
-            for ( size_t word = 0 ; word < m_dcache_words ; word++ ) r_tgt_val[word] = false;
+            for ( size_t i=0 ; i<m_dcache_words ; i++ ) r_tgt_val[i] = false;
             r_tgt_word = p_vci_tgt.wdata.read();
             r_vci_tgt_fsm = TGT_UPDT_DATA;
         }
@@ -453,24 +458,22 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
 
     case TGT_UPDT_DATA:
         if (p_vci_tgt.cmdval.read()) {
-            if ( (r_tgt_word + r_tgt_cpt - 2) >= m_dcache_words ) {
+            size_t word = r_tgt_word.read();
+            if ( word >= m_dcache_words ) {
                 std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
                 std::cout << "the reveived UPDATE command length is wrong" << std::endl;
                 exit(0);
             }
-            size_t word = r_tgt_word + r_tgt_cpt - 2;
             r_tgt_buf[word] = p_vci_tgt.wdata.read();
             r_tgt_val[word] = true;
-            r_tgt_cpt = r_tgt_cpt.read() + 1;
-            if (p_vci_tgt.eop.read()) {
-                r_tgt_update = true;
-                r_vci_tgt_fsm = TGT_DONE;
+            r_tgt_word = word + 1;
+            if (p_vci_tgt.eop.read())  r_vci_tgt_fsm = TGT_REQ;
             }
         }
         break;
 
-    case TGT_DONE:
-        if (p_vci_tgt.rspack.read()) {
+    case TGT_REQ:
+        if ( !r_tgt_icache_req && !r_tgt_dcache_req ) {
             r_vci_tgt_fsm = TGT_RSP; 
             r_tgt_icache_req = true;
             r_tgt_dcache_req = true;
@@ -478,7 +481,7 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
         break;
 
     case TGT_RSP:
-        if ( !r_tgt_icache_req && !r_tgt_dcache_req ) {
+        if ( p_vci_tgt.rspack && !r_tgt_icache_req && !r_tgt_dcache_req ) {
             r_vci_tgt_fsm = TGT_IDLE; 
         }
         break;
@@ -489,7 +492,7 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
     // The ICACHE FSM controls the following ressources:
     // - r_icache_fsm
     // - r_icache_fsm_save
-    // - r_icache instruction cache access)
+    // - r_icache instruction cache access
     // - r_icache_addr_save
     // - r_icache_miss_req set
     // - r_icache_unc_req set
@@ -508,26 +511,27 @@ std::cout << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
     // 2/ Processor requests are taken into account only in the IDLE state.
     //    In case of MISS, or in case of uncached instruction, the FSM 
     //    writes the missing address line in the  r_icache_addr_save register 
-    //    and sets the r_icache_miss_req (or the r_icache_unc_req) flip-flop.
-    //    The request flip-flop is reset by the VCI_RSP FSM
+    //    and sets the r_icache_miss_req or the r_icache_unc_req flip-flops.
+    //    These request flip-flops are reset by the VCI_RSP FSM
     //    when the VCI transaction is completed and the r_icache_buf_unc_valid
     //    is set in case of uncached access.
     //    In case of bus error, the VCI_RSP FSM sets the r_vci_rsp_ins_error 
     //    flip-flop. It is reset by the ICACHE FSM.
     ///////////////////////////////////////////////////////////////////////
 
-    typename iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
+    typename iss_t::InstructionRequest  ireq = ISS_IREQ_INITIALIZER;
     typename iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
 
     m_iss.getInstructionRequest( ireq );
 
-#if SOCLIB_MODULE_DEBUG
+#if DEBUG_CC_XCACHE_WRAPPER
 std::cout << " Instruction Request: " << ireq << std::endl;
 #endif
 
     switch(r_icache_fsm) {
-
+    /////////////////
     case ICACHE_IDLE:
+    {
         if ( r_tgt_icache_req ) {   // external request
             if ( ireq.valid ) m_cost_ins_miss_frz++;
             r_icache_fsm = ICACHE_CC_INVAL;
@@ -565,8 +569,10 @@ std::cout << " Instruction Request: " << ireq << std::endl;
             irsp.instruction    = icache_ins;
         }
         break;
-
+    }
+    //////////////////////
     case ICACHE_MISS_WAIT:
+    {
         m_cost_ins_miss_frz++;
         if ( r_tgt_icache_req ) {   // external request
             r_icache_fsm = ICACHE_CC_INVAL;
@@ -581,8 +587,10 @@ std::cout << " Instruction Request: " << ireq << std::endl;
             }
         }
         break;
-
+    }
+    /////////////////////
     case ICACHE_UNC_WAIT:
+    {
         m_cost_ins_miss_frz++;
         if ( r_tgt_icache_req ) {   // external request
             r_icache_fsm = ICACHE_CC_INVAL;
@@ -598,14 +606,17 @@ std::cout << " Instruction Request: " << ireq << std::endl;
             }
         }
         break;
-
+    }
+    //////////////////
     case ICACHE_ERROR:
+    {
         r_icache_fsm = ICACHE_IDLE;
         r_vci_rsp_ins_error = false;
         irsp.error          = true;
         irsp.valid          = true;
         break;
-
+    }
+    //////////////////////
     case ICACHE_MISS_UPDT: 
     {
         addr_t    ad  = r_icache_addr_save;
@@ -624,7 +635,7 @@ std::cout << " Instruction Request: " << ireq << std::endl;
         r_icache_fsm        = ICACHE_IDLE;
         break;
     }
-
+    /////////////////////
     case ICACHE_CC_INVAL:  
     {                       
         addr_t    ad  = r_tgt_addr;
@@ -640,7 +651,7 @@ std::cout << " Instruction Request: " << ireq << std::endl;
 
     m_iss.setInstruction( irsp );
 
-#if SOCLIB_MODULE_DEBUG
+#if DEBUG_CC_XCACHE_WRAPPER
 std::cout << " Instruction Response: " << irsp << std::endl;
 #endif
 
@@ -701,18 +712,20 @@ std::cout << " Instruction Response: " << irsp << std::endl;
     //   the asynchronous error using the setWriteBerr() method.
     ///////////////////////////////////////////////////////////////////////////////////
 
-    typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
+    typename iss_t::DataRequest  dreq = ISS_DREQ_INITIALIZER;
     typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
 
     m_iss.getDataRequest( dreq );
 
-#if SOCLIB_MODULE_DEBUG
+#if DEBUG_CC_XCACHE_WRAPPER
 std::cout << " Data Request: " << dreq << std::endl;
 #endif
 
     switch ( r_dcache_fsm ) {
 
-    case DCACHE_WRITE_REQ: 
+    /////////////////////
+    case DCACHE_WRITE_REQ:
+    { 
 	    if ( r_tgt_dcache_req ) {   // external request
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
@@ -741,8 +754,10 @@ std::cout << " Data Request: " << dreq << std::endl;
 
         // The next state and the processor request parameters are computed 
         // as in the DCACHE_IDLE state (see below ...)
-
+    }
+    /////////////////
     case DCACHE_IDLE:
+    {
 	    if ( r_tgt_dcache_req ) {   // external request
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
@@ -828,7 +843,7 @@ std::cout << " Data Request: " << dreq << std::endl;
             r_dcache_rdata_save     = dcache_rdata;
             r_dcache_cached_save    = dcache_cached;
 
-        } else {    // end if dcache_req
+        } else {    // end if dreq.valid
             r_dcache_fsm = DCACHE_IDLE;
         }
         // processor request are not accepted in the WRITE_REQUEST state
@@ -839,7 +854,8 @@ std::cout << " Data Request: " << dreq << std::endl;
             drsp.rdata = 0;
         }
         break;
-
+    }
+    ///////////////////////
     case DCACHE_WRITE_UPDT:
     {
         m_cpt_dcache_data_write++;
@@ -849,8 +865,9 @@ std::cout << " Data Request: " << dreq << std::endl;
         r_dcache_fsm = DCACHE_WRITE_REQ;
         break;
     }
-
+    //////////////////////
     case DCACHE_MISS_WAIT:
+    {
         if ( dreq.valid ) m_cost_data_miss_frz++;
 	    if ( r_tgt_dcache_req ) {   // external request
             r_dcache_fsm = DCACHE_CC_CHECK;
@@ -862,7 +879,8 @@ std::cout << " Data Request: " << dreq << std::endl;
             else                           r_dcache_fsm = DCACHE_MISS_UPDT;
         }
         break;
-
+    }
+    //////////////////////
     case DCACHE_MISS_UPDT:
     {
         addr_t  ad  = r_dcache_addr_save;
@@ -881,8 +899,9 @@ std::cout << " Data Request: " << dreq << std::endl;
         r_dcache_fsm = DCACHE_IDLE;
         break;
     }
-
+    ////////////////////
     case DCACHE_UNC_WAIT:
+    {
         if ( dreq.valid ) m_cost_unc_read_frz++;
 	    if ( r_tgt_dcache_req ) {   // external request
             r_dcache_fsm = DCACHE_CC_CHECK;
@@ -898,14 +917,17 @@ std::cout << " Data Request: " << dreq << std::endl;
             }
         }
         break;
-
+    }
+    //////////////////
     case DCACHE_ERROR:
+    {
         r_dcache_fsm = DCACHE_IDLE;
         r_vci_rsp_data_error = false;
         drsp.error = true;
         drsp.valid = true;
         break;
-        
+    }
+    /////////////////    
     case DCACHE_INVAL:
     {
         m_cpt_dcache_dir_read += m_dcache_ways;
@@ -913,9 +935,9 @@ std::cout << " Data Request: " << dreq << std::endl;
         r_dcache_fsm = DCACHE_IDLE;
         break;
     }
-
+    /////////////////////
     case DCACHE_CC_CHECK:   // read directory in case of invalidate or update request
-    {                       
+    {
         m_cpt_dcache_dir_read += m_dcache_ways;
         m_cpt_dcache_data_read += m_dcache_ways;
         addr_t  ad           = r_tgt_addr;
@@ -938,7 +960,7 @@ std::cout << " Data Request: " << dreq << std::endl;
         }
         break;
     }
-
+    ///////////////////
     case DCACHE_CC_UPDT:    // update directory and data cache        
     {
         m_cpt_dcache_dir_write++;
@@ -951,6 +973,7 @@ std::cout << " Data Request: " << dreq << std::endl;
         r_dcache_fsm = r_dcache_fsm_save;
         break;
     }
+    /////////////////////
     case DCACHE_CC_INVAL:   // invalidate a cache line
     {
         addr_t  ad      = r_tgt_addr;
@@ -959,17 +982,17 @@ std::cout << " Data Request: " << dreq << std::endl;
         r_dcache_fsm = r_dcache_fsm_save;
         break;
     }
-
+    ///////////////////
     case DCACHE_CC_NOP:     // no external hit
-        r_tgt_dcache_req = false;
+    {
         r_dcache_fsm = r_dcache_fsm_save;
         break;
-        
+    }    
     } // end switch r_dcache_fsm
 
     m_iss.setData( drsp );
 
-#if SOCLIB_MODULE_DEBUG
+#if DEBUG_CC_XCACHE_WRAPPER
 std::cout << " Data Response: " << drsp << std::endl;
 #endif
 
@@ -981,8 +1004,7 @@ std::cout << " Data Response: " << drsp << std::endl;
     m_iss.executeNCycles(1,it);
     }
 
-    if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) ) 
-        m_cpt_frz_cycles++;
+    if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) ) m_cpt_frz_cycles++;
     
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1197,6 +1219,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         break;
         
     } // end switch r_vci_rsp_fsm
+
 } // end transition()
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -1209,7 +1232,7 @@ tmpl(void)::genMoore()
 
     // VCI initiator command
 
-    switch (r_vci_cmd_fsm) {
+    switch (r_vci_cmd_fsm.read() ) {
 
     case CMD_IDLE:
         p_vci_ini.cmdval  = false;
@@ -1356,18 +1379,10 @@ tmpl(void)::genMoore()
 
     // VCI_TGT
 
-    switch ((tgt_fsm_state_e)r_vci_tgt_fsm.read()) {
+    switch ( r_vci_tgt_fsm.read() ) {
 
     case TGT_IDLE:
-        p_vci_tgt.cmdack  = true;
-        p_vci_tgt.rspval  = false;
-        break;
-
     case TGT_UPDT_WORD:
-        p_vci_tgt.cmdack  = true;
-        p_vci_tgt.rspval  = false;
-        break;
-
     case TGT_UPDT_DATA:
         p_vci_tgt.cmdack  = true;
         p_vci_tgt.rspval  = false;
@@ -1375,13 +1390,13 @@ tmpl(void)::genMoore()
 
     case TGT_DONE:
         p_vci_tgt.cmdack  = false;
-        p_vci_tgt.rspval  = true;
+        p_vci_tgt.rspval  = !r_tgt_icache_req && !r_tgt_dcache_req;
         p_vci_tgt.rsrcid  = r_tgt_srcid.read();
         p_vci_tgt.rpktid  = r_tgt_pktid.read();
         p_vci_tgt.rtrdid  = r_tgt_trdid.read();
         p_vci_tgt.rdata   = 0;
         p_vci_tgt.rerror  = 0;
-        p_vci_tgt.reop = true;
+        p_vci_tgt.reop    = true;
         break;
 
     case TGT_RSP:

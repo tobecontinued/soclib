@@ -104,7 +104,7 @@ class VciCcXcacheWrapper
         TGT_IDLE,
         TGT_UPDT_WORD,
         TGT_UPDT_DATA,
-        TGT_DONE,
+        TGT_REQ,
         TGT_RSP,
     };
 
@@ -181,7 +181,6 @@ private:
     sc_signal<size_t>       r_tgt_srcid;
     sc_signal<size_t>       r_tgt_pktid;
     sc_signal<size_t>       r_tgt_trdid;
-    sc_signal<size_t>       r_tgt_cpt;
     sc_signal<bool>         r_tgt_icache_req;
     sc_signal<bool>         r_tgt_dcache_req;
 
