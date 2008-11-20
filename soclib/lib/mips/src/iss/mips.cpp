@@ -286,11 +286,37 @@ void MipsIss::step()
         r_status.iep = r_status.iec;
         r_status.kuc = 0;
         r_status.iec = 0;
-        // 4 distinct cases according to exception type and delayed slot
-        if ( m_exception == X_DBE)
-            r_epc = (r_branch_delay) ? r_ppc - 4 : r_ppc;
-        else 
-            r_epc = (r_branch_delay) ? r_pc - 4 : r_pc; 
+
+        /////////////////////////////////////////////////////////////////////
+        // EPC Affectation :                                               //
+        //                                                                 //
+        // i)  System call, Break-Point or Non-masked interrupts           //
+        //        EPC <- PC + 4  : ( the return adress )                   //
+        //                                                                 //
+        // ii) Others exceptions                                           //
+        //        The general rule                                         //
+        //             EPC <- PC : ( the faulty instruction )              //
+        //                                                                 //
+        //        Special case : the current instruction is a delayed slot //
+        //             EPC <- PC - 4 : ( the branch instruction )          //
+        /////////////////////////////////////////////////////////////////////
+
+        switch(m_exception)
+        {
+          case X_SYS:
+          case X_BP:
+              r_epc = r_npc;
+              break;
+          case X_INT:
+              r_epc = (r_branch) ? r_pc : r_npc;
+              break;
+          case X_DBE:
+              r_epc = (r_branch_delay) ? r_ppc - 4 : r_ppc;
+              break;
+          default:
+              r_epc = (r_branch_delay) ? r_pc - 4 : r_pc; 
+        }
+
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout
             << m_name <<" exception: "<<m_exception<<std::endl
