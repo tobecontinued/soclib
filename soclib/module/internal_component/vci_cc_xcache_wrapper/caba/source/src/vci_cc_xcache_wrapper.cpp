@@ -468,7 +468,6 @@ std::cout << " tgt fsm    = " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
             r_tgt_val[word] = true;
             r_tgt_word = word + 1;
             if (p_vci_tgt.eop.read())  r_vci_tgt_fsm = TGT_REQ;
-            }
         }
         break;
 
@@ -626,12 +625,9 @@ std::cout << " Instruction Request: " << ireq << std::endl;
         m_cpt_icache_data_write++;
         if ( ireq.valid ) m_cost_ins_miss_frz++;
 
-        ////////// CLEANUP REQUESTS HAVE BEEN INVALIDATED !  ////////////
-        // r_icache_cleanup_req = r_icache.update(ad, buf, &victim_index);
-        // r_icache_cleanup_line = victim_index;
-        ////////////////////////////////////////////////////////////////
+        r_icache_cleanup_req = r_icache.update(ad, buf, &victim_index);
+        r_icache_cleanup_line = victim_index;
 
-        r_icache.update(ad, buf, &victim_index);
         r_icache_fsm        = ICACHE_IDLE;
         break;
     }
@@ -890,12 +886,9 @@ std::cout << " Data Request: " << dreq << std::endl;
         m_cpt_dcache_data_write++;
         m_cpt_dcache_dir_write++;
 
-        ////////// CLEANUP REQUESTS HAVE BEEN INVALIDATED !  ////////////
-        // r_dcache_cleanup_req = r_dcache.update(ad, buf, &victim_index);
-        // r_dcache_cleanup_line = victim_index;
-        ////////////////////////////////////////////////////////////////
+        r_dcache_cleanup_req = r_dcache.update(ad, buf, &victim_index);
+        r_dcache_cleanup_line = victim_index;
 
-        r_dcache.update(ad, buf, &victim_index);
         r_dcache_fsm = DCACHE_IDLE;
         break;
     }
@@ -1388,7 +1381,7 @@ tmpl(void)::genMoore()
         p_vci_tgt.rspval  = false;
         break;
 
-    case TGT_DONE:
+    case TGT_RSP:
         p_vci_tgt.cmdack  = false;
         p_vci_tgt.rspval  = !r_tgt_icache_req && !r_tgt_dcache_req;
         p_vci_tgt.rsrcid  = r_tgt_srcid.read();
@@ -1399,7 +1392,7 @@ tmpl(void)::genMoore()
         p_vci_tgt.reop    = true;
         break;
 
-    case TGT_RSP:
+    case TGT_REQ:
         p_vci_tgt.cmdack  = false;
         p_vci_tgt.rspval  = false;
         break;
