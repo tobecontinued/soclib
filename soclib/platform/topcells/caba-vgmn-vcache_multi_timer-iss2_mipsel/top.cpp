@@ -34,7 +34,7 @@
 #include "mips32.h"
 #include "vci_vcache_wrapper.h"
 #include "vci_timer.h"
-#include "vci_ram.h"
+#include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_locks.h"
 #include "vci_vgmn.h"
@@ -68,7 +68,7 @@ int _main(int argc, char *argv[])
  
 	maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(2), false));
 	maptab.add(Segment("timer", TIMER_BASE, TIMER_SIZE, IntTab(3), false));
-	maptab.add(Segment("locks", PTD_ADDR  , TAB_SIZE  , IntTab(4), false));
+	maptab.add(Segment("ptba", PTD_ADDR  , TAB_SIZE  , IntTab(4), false));
 	maptab.add(Segment("locks", LOCKS_BASE, LOCKS_SIZE, IntTab(5), false));
 	// Signals
 
@@ -127,11 +127,11 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache3("cache3", 3,maptab,IntTab(3),4,4,4,16,4,4,4,16,4,64,16,4,64,16);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
-	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
-	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
+	soclib::caba::VciSimpleRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
+	soclib::caba::VciSimpleRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", "vcitty1", "vcitty2", "vcitty3", NULL);
 	soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 4);
-	soclib::caba::VciRam<vci_param> vcimultipagt("vcimultipagt", IntTab(4), maptab, loader);
+	soclib::caba::VciSimpleRam<vci_param> vcimultipagt("vcimultipagt", IntTab(4), maptab, loader);
 	soclib::caba::VciLocks<vci_param> vcilocks("vcilocks", IntTab(5), maptab); 
 
 	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 4, 6, 2, 8);
