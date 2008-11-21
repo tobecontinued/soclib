@@ -1437,16 +1437,44 @@ namespace soclib { namespace caba {
       case CLEANUP_DIR_LOCK:
       {
         if ( r_alloc_dir_fsm.read() == ALLOC_DIR_CLEANUP ) {
-          r_cleanup_fsm = CLEANUP_DIR_WRITE;
+
+	  // Read the directory
+	  size_t way = 0;
+	  DirectoryEntry entry = m_cache_directory.read(r_cleanup_nline.read() << (m_words +2) , way);
+
+	  r_cleanup_dirty	= entry.dirty;
+	  r_cleanup_tag		= entry.tag;
+	  r_cleanup_lock	= entry.lock;
+	  r_cleanup_way		= way;
+	  r_cleanup_copies	= entry.copies & ~(0x1 << r_cleanup_srcid.read());
+
+          // In case of hit, the copy must be cleaned in the copies bit-vector
+	  if( entry.valid )  { 
+            r_cleanup_fsm = CLEANUP_DIR_WRITE;
+	  } else {
+            r_cleanup_fsm = CLEANUP_RSP;
+          }
         }
         break;
       }
       ///////////////////////
       case CLEANUP_DIR_WRITE:
       {
-        if ( r_alloc_dir_fsm.read() == ALLOC_DIR_CLEANUP ) {
-          r_cleanup_fsm = CLEANUP_RSP;
-        }
+	size_t way      = r_cleanup_way.read();
+	size_t set      = m_y[r_cleanup_nline.read() << (m_words +2)];
+
+	  // update the cache directory (for the copies)
+	DirectoryEntry entry;
+	entry.valid	= true;
+	entry.dirty	= r_cleanup_dirty.read();
+	entry.tag	= r_cleanup_tag.read();
+	entry.lock	= r_cleanup_lock.read();
+	entry.copies    = r_cleanup_copies.read();
+	m_cache_directory.write(set, way, entry);  
+
+	  // response to the cache      
+        r_cleanup_fsm = CLEANUP_RSP;
+        
         break;
       }
       /////////////////
@@ -1457,6 +1485,7 @@ namespace soclib { namespace caba {
           r_cleanup_to_tgt_rsp_srcid = r_cleanup_srcid.read();
           r_cleanup_to_tgt_rsp_trdid = r_cleanup_trdid.read();
           r_cleanup_to_tgt_rsp_pktid = r_cleanup_pktid.read();
+          r_cleanup_fsm = CLEANUP_IDLE;
         }
         break;
       }

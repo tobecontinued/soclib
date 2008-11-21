@@ -417,6 +417,12 @@ template<typename vci_param>
     sc_signal<size_t>      r_cleanup_pktid;			// transaction pktid
     sc_signal<data_t>      r_cleanup_nline;			// cache line index
 
+    sc_signal<copy_t>      r_cleanup_copies;			// bit-vector of copies 
+    sc_signal<tag_t>       r_cleanup_tag;			// cache line tag (in directory)
+    sc_signal<bool>        r_cleanup_lock;			// lock bit (in directory)
+    sc_signal<bool>        r_cleanup_dirty;			// dirty bit (in directory)
+    sc_signal<size_t>      r_cleanup_way;			// associative way (in cache)
+
 // Buffer between CLEANUP fsm and TGT_RSP fsm (acknowledge a cleanup command from L1)
     sc_signal<bool>        r_cleanup_to_tgt_rsp_req;		// valid request
     sc_signal<size_t>      r_cleanup_to_tgt_rsp_srcid;		// transaction srcid
