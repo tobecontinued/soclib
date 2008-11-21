@@ -15,5 +15,6 @@ Module('common:mips',
 	   constants = {
 	'n_irq':6
 	},
+	   deprecated = "Please migrate to Mips32",
 #	   debug = True,
 )

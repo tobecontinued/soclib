@@ -60,6 +60,7 @@ class Module:
 		'extensions' : [],
 		'constants' : {},
 		"debug" : False,
+		"deprecated":'',
 		}
 	tb_delta = -2
 
@@ -138,7 +139,7 @@ class Module:
 
 	def getInfo(self):
 		r = '<%s\n'%self.__class__.__name__
-		for l in 'abs_header_files', 'abs_force_header_files', 'abs_implementation_files', 'abs_object_files', 'global_header_files':
+		for l in 'abs_header_files', 'abs_implementation_files', 'abs_object_files', 'global_header_files':
 			for s in self.__attrs[l]:
 				r += os.path.isfile(s) and " + " or " - "
 				r += s+'\n'

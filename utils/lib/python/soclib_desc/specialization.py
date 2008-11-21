@@ -7,6 +7,10 @@ class Specialization:
 	def __init__(self, mod, **args):
 		if not isinstance(mod, module.Module):
 			mod = module.Module.getRegistered(mod)
+		deprecated = mod['deprecated']
+		if deprecated:
+			print 'Warning: %s is deprecated: "%s"'%(
+				mod.getModuleName(), deprecated)
 		self.__cdef =  mod
 		self.__args = args
 	def putArgs(self, d):
