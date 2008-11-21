@@ -143,7 +143,7 @@ class CacheDirectory {
     /////////////////
     // Destructor
     /////////////////
-    CacheDirectory::~CacheDirectory()
+    ~CacheDirectory()
     {
         for(size_t i=0 ; i<m_sets ; i++){
 	    delete [] m_dir_tab[i];
