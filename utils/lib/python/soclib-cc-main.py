@@ -138,8 +138,12 @@ def main():
 	if opts.jobs:
 		config.toolchain.max_processes = opts.jobs
 	if opts.progress_bar:
-		config.progress_bar = True
-		config.quiet = True
+		# Dont put progress bar in emacs, it is ugly !
+		if os.getenv('INSIDE_EMACS') == 't':
+			print 'Progress-bar disabled, you look like in emacs'
+		else:
+			config.progress_bar = True
+			config.quiet = True
 
 	config.output = "system.x"
 	if opts.one_module:
