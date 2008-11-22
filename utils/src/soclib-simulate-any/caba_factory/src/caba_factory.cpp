@@ -31,7 +31,6 @@
 #include "ppc405.h"
 #include "microblaze.h"
 #include "nios2_fast.h"
-#include "gdbserver.h"
 #include "caba_base_module.h"
 #include "factory.h"
 #include "inst_arg.h"
@@ -71,10 +70,14 @@ ModuleHolder &inst_caba_cpu(
     ::soclib::common::inst::InstArg &env )
 {
 	using soclib::caba::IssWrapper;
-	using soclib::common::GdbServer;
+//	using soclib::common::GdbServer;
 	ModuleHolder *mh;
 
 	if ( with_gdb && args.has("with_gdb") && args.get<int>("with_gdb")  ) {
+#if 1
+		std::cout << "Warning, gdb not supported with iss_wrapper" << std::endl;
+	}
+#else
 		if ( args.has("start_frozen") )
 			GdbServer<iss_t>::start_frozen(args.get<int>("start_frozen"));
 		IssWrapper<GdbServer<iss_t> > *cpu =
@@ -89,6 +92,7 @@ ModuleHolder &inst_caba_cpu(
 		mh->portRegisterN("irq", cpu->p_irq, iss_t::n_irq);
 		return *mh;
 	} else {
+#endif
 		IssWrapper<iss_t> *cpu =
 			new IssWrapper<iss_t>(
 				name.c_str(),
@@ -100,7 +104,9 @@ ModuleHolder &inst_caba_cpu(
 		mh->portRegister("resetn", cpu->p_resetn);
 		mh->portRegisterN("irq", cpu->p_irq, iss_t::n_irq);
 		return *mh;
+#if 0
 	}
+#endif
 }
 
 

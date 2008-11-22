@@ -46,6 +46,7 @@
 #include "microblaze.h"
 #include "mips32.h"
 #include "ississ2.h"
+#include "gdbserver.h"
 #include "vci_factory.h"
 
 namespace soclib {
@@ -362,13 +363,12 @@ ModuleHolder& simple_crossbar(
 	return *mh;
 }
 
-template<typename vci_param>
-ModuleHolder& xcache_mipsel(
+template<typename vci_param, typename iss_t>
+ModuleHolder& xcache_cpu(
     const std::string &name,
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
 {
-	typedef soclib::common::IssIss2< ::soclib::common::MipsElIss> iss_t;
 	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
 	mod_t *module =
 		new mod_t(
@@ -388,6 +388,20 @@ ModuleHolder& xcache_mipsel(
 	mh->portRegister("vci", module->p_vci);
 	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
 	return *mh;
+}
+
+template<typename vci_param>
+ModuleHolder& xcache_mipsel(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	typedef soclib::common::IssIss2< ::soclib::common::MipsElIss> iss_t;
+	if ( args.has("with_gdb") && args.get<int>("with_gdb")  )
+		return xcache_cpu<vci_param, soclib::common::GdbServer<iss_t> >
+			(name, args, env);
+	else
+		return xcache_cpu<vci_param, iss_t>(name, args, env);
 }
 
 template<typename vci_param>
@@ -397,25 +411,11 @@ ModuleHolder& xcache_mipseb(
     ::soclib::common::inst::InstArg &env )
 {
 	typedef soclib::common::IssIss2< ::soclib::common::MipsEbIss> iss_t;
-	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
-	mod_t *module =
-		new mod_t(
-        name.c_str(),
-		args.get<int>("ident"),
-        env.get<MappingTable>("mapping_table"),
-        args.get<soclib::common::IntTab>("_vci_id"),
-        args.get<int>("icache_ways"),
-        args.get<int>("icache_sets"),
-        args.get<int>("icache_words"),
-        args.get<int>("dcache_ways"),
-        args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words") );
-	ModuleHolder *mh = new ModuleHolder(module);
-	mh->portRegister("clk", module->p_clk);
-	mh->portRegister("resetn", module->p_resetn);
-	mh->portRegister("vci", module->p_vci);
-	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
-	return *mh;
+	if ( args.has("with_gdb") && args.get<int>("with_gdb")  )
+		return xcache_cpu<vci_param, soclib::common::GdbServer<iss_t> >
+			(name, args, env);
+	else
+		return xcache_cpu<vci_param, iss_t>(name, args, env);
 }
 
 template<typename vci_param>
@@ -425,25 +425,11 @@ ModuleHolder& xcache_mips32el(
     ::soclib::common::inst::InstArg &env )
 {
 	typedef ::soclib::common::Mips32ElIss iss_t;
-	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
-	mod_t *module =
-		new mod_t(
-        name.c_str(),
-		args.get<int>("ident"),
-        env.get<MappingTable>("mapping_table"),
-        args.get<soclib::common::IntTab>("_vci_id"),
-        args.get<int>("icache_ways"),
-        args.get<int>("icache_sets"),
-        args.get<int>("icache_words"),
-        args.get<int>("dcache_ways"),
-        args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words") );
-	ModuleHolder *mh = new ModuleHolder(module);
-	mh->portRegister("clk", module->p_clk);
-	mh->portRegister("resetn", module->p_resetn);
-	mh->portRegister("vci", module->p_vci);
-	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
-	return *mh;
+	if ( args.has("with_gdb") && args.get<int>("with_gdb")  )
+		return xcache_cpu<vci_param, soclib::common::GdbServer<iss_t> >
+			(name, args, env);
+	else
+		return xcache_cpu<vci_param, iss_t>(name, args, env);
 }
 
 template<typename vci_param>
@@ -453,25 +439,11 @@ ModuleHolder& xcache_mips32eb(
     ::soclib::common::inst::InstArg &env )
 {
 	typedef ::soclib::common::Mips32EbIss iss_t;
-	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
-	mod_t *module =
-		new mod_t(
-        name.c_str(),
-		args.get<int>("ident"),
-        env.get<MappingTable>("mapping_table"),
-        args.get<soclib::common::IntTab>("_vci_id"),
-        args.get<int>("icache_ways"),
-        args.get<int>("icache_sets"),
-        args.get<int>("icache_words"),
-        args.get<int>("dcache_ways"),
-        args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words") );
-	ModuleHolder *mh = new ModuleHolder(module);
-	mh->portRegister("clk", module->p_clk);
-	mh->portRegister("resetn", module->p_resetn);
-	mh->portRegister("vci", module->p_vci);
-	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
-	return *mh;
+	if ( args.has("with_gdb") && args.get<int>("with_gdb")  )
+		return xcache_cpu<vci_param, soclib::common::GdbServer<iss_t> >
+			(name, args, env);
+	else
+		return xcache_cpu<vci_param, iss_t>(name, args, env);
 }
 
 template<typename vci_param>
@@ -481,25 +453,11 @@ ModuleHolder& xcache_ppc405(
     ::soclib::common::inst::InstArg &env )
 {
 	typedef soclib::common::IssIss2< ::soclib::common::Ppc405Iss> iss_t;
-	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
-	mod_t *module =
-		new mod_t(
-        name.c_str(),
-		args.get<int>("ident"),
-        env.get<MappingTable>("mapping_table"),
-        args.get<soclib::common::IntTab>("_vci_id"),
-        args.get<int>("icache_ways"),
-        args.get<int>("icache_sets"),
-        args.get<int>("icache_words"),
-        args.get<int>("dcache_ways"),
-        args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words") );
-	ModuleHolder *mh = new ModuleHolder(module);
-	mh->portRegister("clk", module->p_clk);
-	mh->portRegister("resetn", module->p_resetn);
-	mh->portRegister("vci", module->p_vci);
-	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
-	return *mh;
+	if ( args.has("with_gdb") && args.get<int>("with_gdb")  )
+		return xcache_cpu<vci_param, soclib::common::GdbServer<iss_t> >
+			(name, args, env);
+	else
+		return xcache_cpu<vci_param, iss_t>(name, args, env);
 }
 
 template<typename vci_param>
@@ -509,25 +467,11 @@ ModuleHolder& xcache_microblaze(
     ::soclib::common::inst::InstArg &env )
 {
 	typedef soclib::common::IssIss2< ::soclib::common::MicroBlazeIss> iss_t;
-	typedef VciXcacheWrapper<vci_param, iss_t> mod_t;
-	mod_t *module =
-		new mod_t(
-        name.c_str(),
-		args.get<int>("ident"),
-        env.get<MappingTable>("mapping_table"),
-        args.get<soclib::common::IntTab>("_vci_id"),
-        args.get<int>("icache_ways"),
-        args.get<int>("icache_sets"),
-        args.get<int>("icache_words"),
-        args.get<int>("dcache_ways"),
-        args.get<int>("dcache_sets"),
-        args.get<int>("dcache_words") );
-	ModuleHolder *mh = new ModuleHolder(module);
-	mh->portRegister("clk", module->p_clk);
-	mh->portRegister("resetn", module->p_resetn);
-	mh->portRegister("vci", module->p_vci);
-	mh->portRegisterN("irq", module->p_irq, iss_t::n_irq);
-	return *mh;
+	if ( args.has("with_gdb") && args.get<int>("with_gdb")  )
+		return xcache_cpu<vci_param, soclib::common::GdbServer<iss_t> >
+			(name, args, env);
+	else
+		return xcache_cpu<vci_param, iss_t>(name, args, env);
 }
 
 #undef tmpl
