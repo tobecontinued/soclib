@@ -1543,17 +1543,16 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 break;
             case PTE_NEW:               // 4M page (not marked)
                 r_dcache_ptba_ok    = false;
-                r_dcache_tlb_paddr  = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
                 r_dcache_pte_update = r_vci_rsp_dtlb_miss | PTE_ET_MASK;  
                 r_dcache_tlb_et_req = true;
                 r_dcache_fsm        = DCACHE_TLB1_WRITE;
                 break;  
-            case PTE_OLD:             // 4M page (already marked)
+            case PTE_OLD:               // 4M page (already marked)
                 r_dcache_ptba_ok    = false;
                 r_dcache_pte_update = r_vci_rsp_dtlb_miss;
                 r_dcache_fsm        = DCACHE_TLB1_UPDT;
                 break;
-            default:                 // unmapped
+            default:                    // unmapped
                 r_dcache_ptba_ok    = false;
                 r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED;       
                 r_dcache_bad_vaddr  = dreq.addr;
@@ -1997,7 +1996,6 @@ std::cout << " Data Response: " << drsp << std::endl;
             m_cpt_unc_transaction++; 
         }
         break;
-
 
     case CMD_DATA_WRITE:
         if ( p_vci.cmdack.read() ) 
