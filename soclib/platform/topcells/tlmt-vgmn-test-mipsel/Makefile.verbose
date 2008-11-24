@@ -7,7 +7,7 @@ include $(SOCLIB)/soclib/platform/topcells/all.mk
 all: simulation.x
 
 simulation.x: $(PLATFORM_DESC)
-	$(SOCLIB_CC) --getflags=-lpthread  -v -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -o $@
+	$(SOCLIB_CC) -v -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -o $@
 
 clean:
 	soclib-cc -v -P -p platform_desc  -x -o clean

@@ -38,6 +38,8 @@ std::vector<std::string> stringArray(
 int sc_main(int argc, char **argv)
 {
   struct timeb initial, final;
+  ftime(&initial);
+
   typedef soclib::tlmt::VciParams<uint32_t,uint32_t,4> vci_param;
   size_t read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status;
 
@@ -84,8 +86,7 @@ int sc_main(int argc, char **argv)
 
   std::cout << "SIMULATION PARAMETERS: simulation time = " << simulation_time << " icache size = " << icache_size << " dcache size = " << dcache_size << " network latence = " << network_latence << std::endl << std::endl;
 
-  ftime(&initial);
-
+  
   //Configurator instanciateOnStack  
   soclib::common::ElfLoader loader(soft); 
 
