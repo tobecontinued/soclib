@@ -148,16 +148,25 @@ def main():
 	config.output = "system.x"
 	if opts.one_module:
 		from soclib_cc.builder.todo import ToDo
+		from soclib_cc.builder.cxx import CxxLink
 		from soclib_desc.component import Uses
-		mod = Module.getRegistered(opts.one_module)
+		from soclib_desc.specialization import Specialization
 		todo = ToDo()
 		class foo:
 			def fullyQualifiedModuleName(self, d):
 				return d
 			def putArgs(self, d):
 				pass
-		for o in mod.getUse().builder(foo()).results():
-			todo.add(o)
+		out = []
+		f = foo()
+		for module in opts.one_module.split(','):
+			mod = Specialization(module)
+			for b in mod.getAllBuilders():
+				for o in b.results():
+					todo.add(o)
+					out.append(o)
+			if opts.output:
+				todo.add(CxxLink(opts.output, out).results()[0])
 		todo.process()
 		return 0
 	if opts.list_files:
