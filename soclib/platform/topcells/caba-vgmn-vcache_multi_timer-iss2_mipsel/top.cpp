@@ -224,6 +224,8 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[4](signal_vci_vcimultipagt);
 	vgmn.p_to_target[5](signal_vci_vcilocks);
 
+	int ncycles = std::atoi(argv[1]);
+
 	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
 	sc_start(sc_core::sc_time(1, SC_NS));
@@ -232,7 +234,15 @@ int _main(int argc, char *argv[])
 #ifdef SOCVIEW
 	debug();
 #else
-	sc_start();
+	//sc_start();
+	for (int i = 0; i < ncycles ; i+=1000) {
+		sc_start(sc_core::sc_time(1000, SC_NS));
+		cache0.print_stats();
+		cache1.print_stats();
+		cache2.print_stats();
+		cache3.print_stats();
+	}
+
 #endif
 	return EXIT_SUCCESS;
 }

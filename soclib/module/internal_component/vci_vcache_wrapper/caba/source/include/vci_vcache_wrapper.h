@@ -284,17 +284,19 @@ private:
     uint32_t m_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
     uint32_t m_cpt_total_cycles;	        // total number of cycles 
 
-    uint32_t m_cpt_read;                    // total number of read instructions
-    uint32_t m_cpt_write;                   // total number of write instructions
+    // Cache activity counters
+    uint32_t m_cpt_read;                    // total number of read data
+    uint32_t m_cpt_write;                   // total number of write data
     uint32_t m_cpt_data_miss;               // number of read miss
     uint32_t m_cpt_ins_miss;                // number of instruction miss
     uint32_t m_cpt_unc_read;                // number of read uncached
     uint32_t m_cpt_write_cached;            // number of cached write
+    uint32_t m_cpt_ins_read;                // number of instruction read    
 
-    uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer         
-    uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss
-    uint32_t m_cost_unc_read_frz;           // number of frozen cycles related to uncached read
-    uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss
+    uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer of cache         
+    uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss of cache
+    uint32_t m_cost_unc_read_frz;           // number of frozen cycles related to uncached read of cache
+    uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss of cache
 
     uint32_t m_cpt_imiss_transaction;       // number of VCI instruction miss transactions
     uint32_t m_cpt_dmiss_transaction;       // number of VCI data miss transactions
@@ -307,11 +309,28 @@ private:
     uint32_t m_cost_write_transaction;      // cumulated duration for VCI WRITE transactions
     uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
 
+    // TLB activity counters
+    uint32_t m_cpt_ins_tlb_read;            // number of instruction tlb read
     uint32_t m_cpt_ins_tlb_miss;            // number of instruction tlb miss
+    uint32_t m_cpt_ins_tlb_write_et;        // number of instruction tlb write ET
+
+    uint32_t m_cpt_data_tlb_read;           // number of data tlb read
     uint32_t m_cpt_data_tlb_miss;           // number of data tlb miss
+    uint32_t m_cpt_data_tlb_write_et;       // number of data tlb write ET
+    uint32_t m_cpt_data_tlb_write_dirty;    // number of data tlb write dirty
     
+    uint32_t m_cost_ins_tlb_miss_frz;       // number of frozen cycles related to instruction tlb miss
+    uint32_t m_cost_data_tlb_miss_frz;      // number of frozen cycles related to data tlb miss
+
     uint32_t m_cpt_itlbmiss_transaction;    // number of itlb miss transactions
+    uint32_t m_cpt_itlb_write_transaction;  // number of itlb write ET transactions
     uint32_t m_cpt_dtlbmiss_transaction;    // number of dtlb miss transactions
+    uint32_t m_cpt_dtlb_write_transaction;  // number of dtlb write ET and dirty transactions
+
+    uint32_t m_cost_itlbmiss_transaction;   // cumulated duration for VCI instruction TLB miss transactions
+    uint32_t m_cost_itlb_write_transaction; // cumulated duration for VCI instruction TLB write ET transactions
+    uint32_t m_cost_dtlbmiss_transaction;   // cumulated duration for VCI data TLB miss transactions
+    uint32_t m_cost_dtlb_write_transaction; // cumulated duration for VCI data TLB write transactions
 
 protected:
     SC_HAS_PROCESS(VciVCacheWrapper);
