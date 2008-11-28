@@ -86,19 +86,43 @@ uint32_t cpu_cycles()
 #endif
 }
 
+ex_handler_t *user_ex_handler = 0;
+
+void set_ex_handler(ex_handler_t *handler)
+{
+	user_ex_handler = handler;
+}
+
 void interrupt_ex_handler(
 	unsigned int type, void *execptr,
 	void *dataptr, void *regtable,
 	void *stackptr)
 {
-	printf("Exception at 0x%x: 0x%x\n", execptr, type);
-	exit(1);
+    if (user_ex_handler)
+        user_ex_handler(type, execptr, dataptr, regtable, stackptr);
+    else {
+        printf("\nException at 0x%x: 0x%x\n", execptr, type);
+        exit(1);
+    }
 }
 
-void interrupt_sys_handler(unsigned int irq)
+sys_handler_t *user_sys_handler = 0;
+
+void set_sys_handler(sys_handler_t *handler)
 {
-	printf("Exception: %s\n", __FUNCTION__);
-	exit(1);
+    user_sys_handler = handler;
+}
+
+void interrupt_sys_handler(
+        unsigned int service, void *execptr,
+        void *regtable, void *stackptr)
+{
+    if (user_sys_handler)
+        user_sys_handler(service, execptr, regtable, stackptr);
+    else {
+        printf("Syscall at 0x%x: 0x%x\n", execptr, service);
+        exit(1);
+    }
 }
 
 irq_handler_t *user_irq_handler = 0;

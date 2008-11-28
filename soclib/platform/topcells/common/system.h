@@ -54,6 +54,12 @@ uint32_t cpu_cycles();
 typedef void irq_handler_t(int);
 void set_irq_handler(irq_handler_t *handler);
 
+typedef void sys_handler_t(unsigned int, void*, void*, void*);
+void set_sys_handler(sys_handler_t *handler);
+
+typedef void ex_handler_t(unsigned int, void*, void*, void*, void*);
+void set_ex_handler(ex_handler_t *handler);
+
 #if defined(__mips__)
 # include "system_mips.h"
 #elif defined(PPC) /* __mips__ */
