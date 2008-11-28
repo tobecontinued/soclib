@@ -139,7 +139,7 @@ def main():
 		config.toolchain.max_processes = opts.jobs
 	if opts.progress_bar:
 		# Dont put progress bar in emacs, it is ugly !
-		if os.getenv('INSIDE_EMACS') == 't':
+		if os.getenv('EMACS') == 't':
 			print 'Progress-bar disabled, you look like in emacs'
 		else:
 			config.progress_bar = True
