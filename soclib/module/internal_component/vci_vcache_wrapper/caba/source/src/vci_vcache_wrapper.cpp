@@ -1897,6 +1897,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     ////////////////////////
     case DCACHE_WRITE_DIRTY:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+
         if ( r_dcache_page_k_save ) 
         {
             dcache_k_tlb.setdirty(r_dcache_tlb_way_save, r_dcache_tlb_set_save);
