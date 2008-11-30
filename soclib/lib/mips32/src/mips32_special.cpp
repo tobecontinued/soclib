@@ -196,7 +196,7 @@ void Mips32Iss::special_div()
     r_hi = (int32_t)r_gp[m_ins.i.rs] % (int32_t)r_gp[m_ins.i.rt];
     r_lo = (int32_t)r_gp[m_ins.i.rs] / (int32_t)r_gp[m_ins.i.rt];
     if (r_gp[m_ins.i.rt])
-        setInsDelay( __builtin_clz(r_gp[m_ins.i.rt])+1 );
+        setInsDelay( ::soclib::common::clz(r_gp[m_ins.i.rt])+1 );
 }
 
 void Mips32Iss::special_divu()
@@ -209,7 +209,7 @@ void Mips32Iss::special_divu()
     r_hi = r_gp[m_ins.i.rs] % r_gp[m_ins.i.rt];
     r_lo = r_gp[m_ins.i.rs] / r_gp[m_ins.i.rt];
     if (r_gp[m_ins.i.rt])
-        setInsDelay( __builtin_clz(r_gp[m_ins.i.rt])+1 );
+        setInsDelay( ::soclib::common::clz(r_gp[m_ins.i.rt])+1 );
 }
 
 void Mips32Iss::special_add()

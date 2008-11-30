@@ -82,7 +82,7 @@ static inline T insert_bits( T word, T to_insert, int le_bit, int size )
 template<typename T>
 static inline T clz( T n )
 {
-#if __GNUC__
+#if __GNUC__ && ( __GNUC__ > 3 || ( __GNUC__ == 3 && __GNUC_MINOR__ >= 4 ) )
     if ( sizeof(T) == sizeof(unsigned int) )
         return __builtin_clz(n);
     else if ( sizeof(T) == sizeof(unsigned long) )
@@ -109,7 +109,7 @@ static inline T fls( T n )
 template<typename T>
 static inline T ctz( T n )
 {
-#if __GNUC__
+#if __GNUC__ && ( __GNUC__ > 3 || ( __GNUC__ == 3 && __GNUC_MINOR__ >= 4 ) )
     if ( sizeof(T) == sizeof(unsigned int) )
         return __builtin_ctz(n);
     else if ( sizeof(T) == sizeof(unsigned long) )
