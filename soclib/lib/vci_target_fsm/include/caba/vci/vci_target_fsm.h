@@ -134,11 +134,6 @@ public:
         VciTarget<vci_param> &_vci,
         const std::list<soclib::common::Segment> &seglist );
 
-    VciTargetFsm(
-        VciTarget<vci_param> &_vci,
-        const std::list<soclib::common::Segment> &seglist,
-        size_t fifo_depth ) __attribute__((deprecated));
-
     /**
      * \brief Callback setting
      *

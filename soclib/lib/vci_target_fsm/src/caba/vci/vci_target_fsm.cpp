@@ -47,16 +47,6 @@ tmpl(/**/)::VciTargetFsm(
 {
 }
 
-tmpl(/**/)::VciTargetFsm(
-    soclib::caba::VciTarget<vci_param> &vci,
-    const std::list<soclib::common::Segment> &seglist,
-    size_t fifo_depth )
-    : p_vci(vci),
-      m_atomic(support_llsc ? (1<<vci_param::S) : 0),
-      m_segments(seglist.begin(), seglist.end())
-{
-}
-
 tmpl(void)::_on_read_write(
     soclib::caba::BaseModule *owner_module,
     wrapper_read_t read_func,
