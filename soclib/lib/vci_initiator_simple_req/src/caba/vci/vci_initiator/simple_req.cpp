@@ -27,6 +27,7 @@
  */
 
 #include <stdint.h>
+#include <cassert>
 #include "vci_initiator_fsm.h"
 #include "register.h"
 #include "base_module.h"
@@ -46,6 +47,10 @@ tmpl(/**/)::VciInitiatorSimpleReq(
       m_cmd_ptr(0),
       m_rsp_ptr(0)
 {
+    if ( vci_param::K )
+        assert((len < (1<<vci_param::K)) &&
+               "You must use initiator requests in chuncks "
+               "when more than 1<<PLEN bytes are transfered");
 }
 
 tmpl(/**/)::~VciInitiatorSimpleReq()
