@@ -1,0 +1,37 @@
+
+# -*- python -*-
+
+Module('caba:vci_block_device',
+	   classname = 'soclib::caba::VciBlockDevice',
+	   tmpl_parameters = [
+	parameter.Module('vci_param',  default = 'vci_param'),
+	],
+	   header_files = ['../source/include/vci_block_device.h',
+					   '../../include/block_device.h'
+					   ],
+	   implementation_files = ['../source/src/vci_block_device.cpp',],
+	   ports = [
+	Port('vci_target', 'p_vci_target'),
+	Port('vci_initiator', 'p_vci_initiator'),
+	Port('bit_out', 'p_irq'),
+	Port('bit_in', 'p_resetn', auto = 'resetn'),
+	Port('clock_in', 'p_clk', auto = 'clock'),
+	],
+	   uses = [
+	Uses('base_module'),
+	Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
+	Uses('vci_initiator_simple_read_req'),
+	Uses('vci_initiator_simple_write_req'),
+	Uses('vci_initiator_fsm'),
+	],
+	instance_parameters = [
+        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+		parameter.IntTab('srcid'),
+		parameter.IntTab('tgtid'),
+	],
+	   extensions = [
+	'dsx:addressable',
+	'dsx:max_segments=1',
+	'dsx:get_ident=srcid:p_vci_target,tgtid:p_vci_initiator',
+   ],
+)
