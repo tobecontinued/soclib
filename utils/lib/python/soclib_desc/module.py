@@ -4,6 +4,14 @@ import sys
 import traceback
 import warnings
 
+class DoubleRegistrationWarning(Warning):
+	def __str__(self):
+		return 'Module %s registered twice, previous registration in "%s"'%(self.args[0], self.args[1])
+
+class SpuriousDeclarationWarning(Warning):
+	def __str__(self):
+		return 'Spurious "%s" in %s declaration'%(self.args[0], self.args[1])
+
 __all__ = ['Module']
 
 class NoSuchComponent(Exception):
@@ -12,13 +20,15 @@ class NoSuchComponent(Exception):
 class Module:
 	# class part
 	__reg = {}
+	__module2file = {}
 	__not_done_registering = ()
 	
-	def __register(cls, name, obj):
+	def __register(cls, name, obj, filename):
 #		print 'Registering', name, obj
-		if name in cls.__reg:
-			print "Warning ! module %s registered twice..."%name
+		if name in cls.__reg and cls.__module2file[name] != filename:
+			warnings.warn(DoubleRegistrationWarning(name, cls.__module2file[name]), stacklevel = 3)
 		cls.__reg[name] = obj
+		cls.__module2file[name] = filename
 		Module.__not_done_registering += obj,
 	__register = classmethod(__register)
 
@@ -72,14 +82,14 @@ class Module:
 			if hasattr(self, name):
 				value = getattr(self, name)
 			self.__attrs[name] = value
+		filename, lineno = traceback.extract_stack()[self.tb_delta][:2]
 		for name, value in attrs.iteritems():
 			if not name in self.module_attrs:
-				sys.stderr.write("Spurious %s in %s declration\n"%(name, typename))
+				warnings.warn(SpuriousDeclarationWarning(name, typename), stacklevel = 2)
 			self.__attrs[name] = value
 		self.__attrs['uses'] = set(self.__attrs['uses'])
-		filename = traceback.extract_stack()[self.tb_delta][0]
 		self.mk_abs_paths(os.path.dirname(filename))
-		self.__register(self.__typename, self)
+		self.__register(self.__typename, self, filename)
 
 	def getModuleName(self):
 		return self.__typename

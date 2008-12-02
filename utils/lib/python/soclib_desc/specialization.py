@@ -1,16 +1,27 @@
 
 import parameter
 import module
+import warnings
 from component import Uses
+
+class ModuleDeprecationWarning(DeprecationWarning):
+	def __str__(self):
+		return 'Module %s deprecated: "%s"'%(self.args[0], self.args[1])
 
 class Specialization:
 	def __init__(self, mod, **args):
 		if not isinstance(mod, module.Module):
 			mod = module.Module.getRegistered(mod)
 		deprecated = mod['deprecated']
+		use = None
+		if '__use' in args:
+			use = args['__use']
+			del args['__use']
 		if deprecated:
-			print 'Warning: %s is deprecated: "%s"'%(
-				mod.getModuleName(), deprecated)
+			if use:
+				warnings.warn_explicit(ModuleDeprecationWarning(mod.getModuleName(), deprecated), ModuleDeprecationWarning, use[0], use[1])
+			else:
+				warnings.warn(ModuleDeprecationWarning(mod.getModuleName(), deprecated), stacklevel = 2)
 		self.__cdef =  mod
 		self.__args = args
 	def putArgs(self, d):

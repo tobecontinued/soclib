@@ -98,16 +98,18 @@ class Uses:
 		self.name = name
 		self.args = args
 		# This is for error feedback purposes
-		self.where = '%s:%d'%(traceback.extract_stack()[-2][0:2])
+		self.where = traceback.extract_stack()[-2][0:2]
 	def clone(self, **args):
 		a = args
 		a.update(self.args)
-		return self.__class__(self.name, **a)
+		r = self.__class__(self.name, **a)
+		r.where = self.where
+		return r
 	def __str__(self):
 		return '<Use %s>'%(self.name)
 	def specialization(self):
 		from specialization import Specialization
-		return Specialization(self.name, **self.args)
+		return Specialization(self.name, __use = self.where, **self.args)
 	def builder(self, parent):
 		self.name = parent.fullyQualifiedModuleName(self.name)
 		from soclib_desc import specialization
@@ -132,7 +134,7 @@ class Uses:
 			else:
 				v = resolve(str(v))
 			args[k] = v
-		spec = specialization.Specialization(self.name, **args)
+		spec = specialization.Specialization(self.name, __use = self.where, **args)
 		from soclib_cc import component_builder
 		return component_builder.ComponentBuilder(spec, self.where)
 	def __repr__(self):

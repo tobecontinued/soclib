@@ -13,7 +13,7 @@ except:
 class UndefinedParam(Exception):
 	def __init__(self, where, comp, param):
 		Exception.__init__(self)
-		self.where = where
+		self.where = ':'.join(where)
 		self.comp = comp
 		self.param = param
 	def __str__(self):
@@ -23,7 +23,7 @@ class UndefinedParam(Exception):
 class ComponentInstanciationError(Exception):
 	def __init__(self, where, comp, err):
 		Exception.__init__(self)
-		self.where = where
+		self.where = ':'.join(where)
 		self.comp = comp
 		self.err = err
 	def __str__(self):
