@@ -1,0 +1,18 @@
+
+# -*- python -*-
+
+Module('caba:bvci_assert',
+	classname = 'soclib::caba::BasicVciAssert',
+	tmpl_parameters = [
+		parameter.Module('vci_param',  default = 'vci_param'),
+	],
+	header_files = ['../source/include/bvci_assert.h',],
+	implementation_files = ['../source/src/bvci_assert.cpp',],
+	ports = [
+		Port('bit_in', 'p_resetn', auto = 'resetn'),
+		Port('clock_in', 'p_clk', auto = 'clock'),
+	],
+	uses = [
+		Uses('base_module'),
+	],
+)

@@ -1,0 +1,58 @@
+
+# -*- python -*-
+
+Module('caba:bvci_filter',
+	classname = 'soclib::caba::BasicVciFilter',
+	tmpl_parameters = [
+		parameter.Module('vci_param',  default = 'vci_param'),
+	],
+	header_files = ['../source/include/bvci_filter.h',],
+	implementation_files = ['../source/src/bvci_filter.cpp',],
+	ports = [
+      Port('vci_param::val_t', 'In.cmdval'),
+      Port('vci_param::addr_t', 'In.address'),
+      Port('vci_param::be_t', 'In.be'),
+      Port('vci_param::cfixed_t', 'In.cfixed'),
+      Port('vci_param::clen_t', 'In.clen'),
+      Port('vci_param::cmd_t', 'In.cmd'),
+      Port('vci_param::contig_t', 'In.contig'),
+      Port('vci_param::data_t', 'In.wdata'),
+      Port('vci_param::eop_t', 'In.eop'),
+      Port('vci_param::const_t', 'In.cons'),
+      Port('vci_param::plen_t', 'In.plen'),
+      Port('vci_param::wrap_t', 'In.wrap'),
+      Port('vci_param::ack_t', 'In.rspack'),
+
+      Port('vci_param::ack_t', 'In.cmdack'),
+      Port('vci_param::val_t', 'In.rspval'),
+   	Port('vci_param::data_t', 'In.rdata'),
+      Port('vci_param::eop_t', 'In.reop'),
+   	Port('vci_param::rerror_t', 'In.rerror'),
+
+      Port('vci_param::ack_t', 'Out.cmdack'),
+      Port('vci_param::val_t', 'Out.rspval'),
+   	Port('vci_param::data_t', 'Out.rdata'),
+      Port('vci_param::eop_t', 'Out.reop'),
+   	Port('vci_param::rerror_t', 'Out.rerror'),
+
+      Port('vci_param::val_t', 'Out.cmdval'),
+      Port('vci_param::addr_t', 'Out.address'),
+      Port('vci_param::be_t', 'Out.be'),
+      Port('vci_param::cfixed_t', 'Out.cfixed'),
+      Port('vci_param::clen_t', 'Out.clen'),
+      Port('vci_param::cmd_t', 'Out.cmd'),
+      Port('vci_param::contig_t', 'Out.contig'),
+      Port('vci_param::data_t', 'Out.wdata'),
+      Port('vci_param::eop_t', 'Out.eop'),
+      Port('vci_param::const_t', 'Out.cons'),
+      Port('vci_param::plen_t', 'Out.plen'),
+      Port('vci_param::wrap_t', 'Out.wrap'),
+      Port('vci_param::ack_t', 'Out.rspack'),
+
+		Port('bit_in', 'p_resetn', auto = 'resetn'),
+		Port('clock_in', 'p_clk', auto = 'clock'),
+	],
+	uses = [
+		Uses('base_module'),
+	],
+)
