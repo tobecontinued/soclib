@@ -66,6 +66,7 @@ private:
 	uint32_t m_retval;
 	uint32_t m_errno;
 	bool m_irq_enabled;
+    uint32_t m_chunck_offset;
 	bool r_irq;
 
 	int m_current_op;
@@ -73,6 +74,7 @@ private:
 	uint8_t *m_data;
 
 	inline void ended();
+	void next_req();
 
 protected:
     SC_HAS_PROCESS(VciFdAccess);

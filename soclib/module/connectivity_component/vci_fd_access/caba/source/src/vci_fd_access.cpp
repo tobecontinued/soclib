@@ -33,6 +33,8 @@
 #include "fd_access.h"
 #undef SYSTEMC_SOURCE
 
+#define CHUNCK_SIZE (1<<(vci_param::K-1))
+
 namespace soclib { namespace caba {
 
 namespace {
@@ -147,6 +149,11 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 
 tmpl(void)::read_done( req_t *req )
 {
+    if ( ! req->failed() && m_chunck_offset < m_size ) {
+        next_req();
+        return;
+    }
+
 	if ( req->failed() ) {
 		m_retval = -1;
 		m_errno = EINVAL;
@@ -158,6 +165,11 @@ tmpl(void)::read_done( req_t *req )
 
 tmpl(void)::write_finish( req_t *req )
 {
+    if ( ! req->failed() && m_chunck_offset < m_size ) {
+        next_req();
+        return;
+    }
+
 	if ( req->failed() ) {
 		m_retval = -1;
 		m_errno = EINVAL;
@@ -172,6 +184,11 @@ tmpl(void)::write_finish( req_t *req )
 
 tmpl(void)::open_finish( req_t *req )
 {
+    if ( ! req->failed() && m_chunck_offset < m_size+1 ) {
+        next_req();
+        return;
+    }
+
 	if ( req->failed() ) {
 		m_retval = -1;
 		m_errno = EINVAL;
@@ -183,6 +200,80 @@ tmpl(void)::open_finish( req_t *req )
     delete m_data;
 	delete req;
 	ended();
+}
+
+tmpl(void)::next_req()
+{
+    switch ((enum SoclibFdOp)m_current_op) {
+    case FD_ACCESS_NOOP: 
+        ended();
+        break;
+    case FD_ACCESS_OPEN:
+    {
+        if ( m_chunck_offset == 0 ) {
+            m_data = new uint8_t[m_size+1];
+        }
+        size_t chunck_size = m_size-m_chunck_offset;
+        if ( chunck_size > CHUNCK_SIZE )
+            chunck_size = CHUNCK_SIZE;
+        VciInitSimpleReadReq<vci_param> *req =
+            new VciInitSimpleReadReq<vci_param>(
+                m_data+m_chunck_offset, m_buffer+m_chunck_offset, chunck_size );
+        m_chunck_offset += CHUNCK_SIZE;
+        req->setDone( this, ON_T(open_finish) );
+        m_vci_init_fsm.doReq( req );
+        break;
+    }
+    case FD_ACCESS_CLOSE:
+        m_retval = ::close(m_fd);
+        m_errno = errno;
+        ended();
+        break;
+    case FD_ACCESS_READ:
+    {
+        if ( m_chunck_offset == 0 ) {
+            m_data = new uint8_t[m_size];
+            m_retval = ::read(m_fd, m_data, m_size);
+            m_errno = errno;
+            if ( m_retval <= 0 ) {
+                delete [] m_data;
+                ended();
+                break;
+            }
+        }
+        size_t chunck_size = m_size-m_chunck_offset;
+        if ( chunck_size > CHUNCK_SIZE )
+            chunck_size = CHUNCK_SIZE;
+        VciInitSimpleReadReq<vci_param> *req =
+            new VciInitSimpleReadReq<vci_param>(
+                m_data+m_chunck_offset, m_buffer+m_chunck_offset, chunck_size );
+        m_chunck_offset += CHUNCK_SIZE;
+        req->setDone( this, ON_T(read_done) );
+        m_vci_init_fsm.doReq( req );
+        break;
+    }
+    case FD_ACCESS_WRITE:
+    {
+        if ( m_chunck_offset == 0 ) {
+            m_data = new uint8_t[m_size];
+        }
+        size_t chunck_size = m_size-m_chunck_offset;
+        if ( chunck_size > CHUNCK_SIZE )
+            chunck_size = CHUNCK_SIZE;
+        VciInitSimpleReadReq<vci_param> *req =
+            new VciInitSimpleReadReq<vci_param>(
+                m_data+m_chunck_offset, m_buffer+m_chunck_offset, chunck_size );
+        m_chunck_offset += CHUNCK_SIZE;
+        req->setDone( this, ON_T(write_finish) );
+        m_vci_init_fsm.doReq( req );
+        break;
+    }
+    case FD_ACCESS_LSEEK:
+        m_retval = ::lseek(m_fd, m_size, m_whence);
+        m_errno = errno;
+        ended();
+        break;
+    }
 }
 
 tmpl(void)::transition()
@@ -199,55 +290,7 @@ tmpl(void)::transition()
 		 m_op != FD_ACCESS_NOOP ) {
 		m_current_op = m_op;
         m_op = FD_ACCESS_NOOP;
-		switch ((enum SoclibFdOp)m_current_op) {
-        case FD_ACCESS_NOOP:
-            assert(0&&"This is most unprobabilistic...");
-		case FD_ACCESS_OPEN:
-		{
-			m_data = new uint8_t[m_size+1];
-			VciInitSimpleReadReq<vci_param> *req =
-				new VciInitSimpleReadReq<vci_param>(
-					m_data, m_buffer, m_size+1 );
-			req->setDone( this, ON_T(open_finish) );
-			m_vci_init_fsm.doReq( req );
-			break;
-		}
-		case FD_ACCESS_CLOSE:
-			m_retval = ::close(m_fd);
-			m_errno = errno;
-			ended();
-			break;
-		case FD_ACCESS_READ:
-			m_data = new uint8_t[m_size];
-			m_retval = ::read(m_fd, m_data, m_size);
-			m_errno = errno;
-			if ( m_retval > 0 ) {
-				VciInitSimpleWriteReq<vci_param> *req =
-					new VciInitSimpleWriteReq<vci_param>(
-						m_buffer, m_data, m_size );
-				req->setDone( this, ON_T(read_done) );
-				m_vci_init_fsm.doReq( req );
-			} else {
-				delete [] m_data;
-				ended();
-			}
-			break;
-		case FD_ACCESS_WRITE:
-		{
-			m_data = new uint8_t[m_size];
-			VciInitSimpleReadReq<vci_param> *req =
-				new VciInitSimpleReadReq<vci_param>(
-					m_data, m_buffer, m_size );
-			req->setDone( this, ON_T(write_finish) );
-			m_vci_init_fsm.doReq( req );
-			break;
-		}
-		case FD_ACCESS_LSEEK:
-			m_retval = ::lseek(m_fd, m_size, m_whence);
-			m_errno = errno;
-			ended();
-			break;
-		}
+        next_req();
 	}
 
 	m_vci_target_fsm.transition();
