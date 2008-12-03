@@ -25,6 +25,7 @@
  */
 
 #include <stdint.h>
+#include <iostream>
 #include "register.h"
 #include "../include/vci_block_device.h"
 #include <fcntl.h>
@@ -32,18 +33,18 @@
 #include "block_device.h"
 #undef SYSTEMC_SOURCE
 
-#define BLOCK_SIZE 512
 #define CHUNCK_SIZE (1<<(vci_param::K-1))
 
 namespace soclib { namespace caba {
 
 #define tmpl(t) template<typename vci_param> t VciBlockDevice<vci_param>
 
-tmpl(void)::ended()
+tmpl(void)::ended(int status)
 {
 	if ( m_irq_enabled )
 		r_irq = true;
 	m_current_op = m_op = BLOCK_DEVICE_NOOP;
+    m_status = status;
 }
 
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
@@ -55,15 +56,21 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		m_buffer = data;
 		return true;
     case BLOCK_DEVICE_COUNT:
-        if ( (uint64_t)data >= m_device_size )
-            return false;
         m_count = data;
         return true;
     case BLOCK_DEVICE_LBA:
 		m_lba = data;
 		return true;
     case BLOCK_DEVICE_OP:
-		m_op = data;
+        if ( m_status == BLOCK_DEVICE_BUSY ) {
+            std::cerr << name() << " warning: receiving a new command while busy, ignored" << std::endl;
+        } else {
+            if ( m_lba + m_count > m_device_size ) {
+                m_status = BLOCK_DEVICE_ERROR;
+                std::cerr << name() << " warning: trying to access beyond end of device" << std::endl;
+            } else
+                m_op = data;
+        }
 		return true;
     case BLOCK_DEVICE_IRQ_ENABLE:
 		m_irq_enabled = data;
@@ -78,17 +85,25 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
     int cell = (int)addr / vci_param::B;
 
 	switch ((enum SoclibBlockDeviceRegisters)cell) {
-    case BLOCK_DEVICE_OP:
-		data = m_current_op;
-		return true;
     case BLOCK_DEVICE_IRQ_ENABLE:
 		data = r_irq;
 		return true;
     case BLOCK_DEVICE_SIZE:
         data = (typename vci_param::fast_data_t)m_device_size;
         return true;
+    case BLOCK_DEVICE_BLOCK_SIZE:
+        data = m_block_size;
+        return true;
     case BLOCK_DEVICE_STATUS:
         data = m_status;
+        switch ((enum SoclibBlockDeviceStatus)m_status) {
+        case BLOCK_DEVICE_SUCCESS:
+        case BLOCK_DEVICE_ERROR:
+            m_status = BLOCK_DEVICE_IDLE;
+            break;
+        default:
+            break;
+        }
         return true;
     default:
         return false;
@@ -102,37 +117,36 @@ tmpl(void)::read_done( req_t *req )
         return;
     }
 
-	if ( req->failed() ) {
-		m_status = -1;
-	}
+	ended( req->failed() ? BLOCK_DEVICE_ERROR : BLOCK_DEVICE_SUCCESS );
     delete m_data;
 	delete req;
-	ended();
 }
 
 tmpl(void)::write_finish( req_t *req )
 {
-	if ( req->failed() ) {
-		m_status = -1;
-	} else {
-		m_status = ::write( m_fd, (char *)m_data, m_count ) / BLOCK_SIZE;
-	}
+	ended(
+        ( ! req->failed() && ::write( m_fd, (char *)m_data, m_count ) > 0 )
+        ? BLOCK_DEVICE_SUCCESS : BLOCK_DEVICE_ERROR );
     delete m_data;
 	delete req;
-	ended();
 }
+
 tmpl(void)::next_req()
 {
     switch ((enum SoclibBlockDeviceOp)m_current_op) {
     case BLOCK_DEVICE_NOOP:
-        assert(0&&"This is most unprobabilistic...");
+		m_status = BLOCK_DEVICE_ERROR;
     case BLOCK_DEVICE_READ:
     {
-        m_transfer_size = m_count * BLOCK_SIZE;
+        m_transfer_size = m_count * m_block_size;
         if ( m_chunck_offset == 0 ) {
             m_data = new uint8_t[m_transfer_size];
-            lseek(m_fd, m_lba*BLOCK_SIZE, SEEK_SET);
-            m_status = ::read(m_fd, m_data, m_transfer_size) / BLOCK_SIZE;
+            lseek(m_fd, m_lba*m_block_size, SEEK_SET);
+            int retval = ::read(m_fd, m_data, m_transfer_size);
+            if ( retval < 0 ) {
+                ended(BLOCK_DEVICE_ERROR);
+                break;
+            }
         }
         size_t chunck_size = m_transfer_size-m_chunck_offset;
         if ( chunck_size > CHUNCK_SIZE )
@@ -143,14 +157,15 @@ tmpl(void)::next_req()
         m_chunck_offset += CHUNCK_SIZE;
         req->setDone( this, ON_T(read_done) );
         m_vci_init_fsm.doReq( req );
+		m_status = BLOCK_DEVICE_BUSY;
         break;
     }
     case BLOCK_DEVICE_WRITE:
     {
-        m_transfer_size = m_count * BLOCK_SIZE;
+        m_transfer_size = m_count * m_block_size;
         if ( m_chunck_offset == 0 ) {
             m_data = new uint8_t[m_transfer_size];
-            lseek(m_fd, m_lba*BLOCK_SIZE, SEEK_SET);
+            lseek(m_fd, m_lba*m_block_size, SEEK_SET);
         }
         size_t chunck_size = m_transfer_size-m_chunck_offset;
         if ( chunck_size > CHUNCK_SIZE )
@@ -161,6 +176,7 @@ tmpl(void)::next_req()
         m_chunck_offset += CHUNCK_SIZE;
         req->setDone( this, ON_T(write_finish) );
         m_vci_init_fsm.doReq( req );
+		m_status = BLOCK_DEVICE_BUSY;
         break;
     }
     }
@@ -173,7 +189,7 @@ tmpl(void)::transition()
 		m_vci_init_fsm.reset();
 		r_irq = false;
 		m_irq_enabled = false;
-        m_status = 0;
+		m_status = BLOCK_DEVICE_IDLE;
 		return;
 	}
 
@@ -202,10 +218,12 @@ tmpl(/**/)::VciBlockDevice(
     const MappingTable &mt,
     const IntTab &srcid,
     const IntTab &tgtid,
-    const std::string &filename )
+    const std::string &filename,
+    const uint32_t block_size )
 	: caba::BaseModule(name),
 	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid)),
 	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(srcid)),
+      m_block_size(block_size),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci_target("vci_target"),
@@ -219,7 +237,7 @@ tmpl(/**/)::VciBlockDevice(
         throw soclib::exception::RunTimeError(
             std::string("Unable to open file ")+filename);
     }
-    m_device_size = lseek(m_fd, 0, SEEK_END) / BLOCK_SIZE;
+    m_device_size = lseek(m_fd, 0, SEEK_END) / m_block_size;
     if ( m_device_size > ((uint64_t)1<<(vci_param::B*8)) ) {
         std::cerr
             << "Warning: block device " << filename

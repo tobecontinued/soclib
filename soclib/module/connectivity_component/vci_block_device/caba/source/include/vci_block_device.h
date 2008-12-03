@@ -58,6 +58,8 @@ private:
     void transition();
     void genMoore();
 
+	const uint32_t m_block_size;
+
 	uint32_t m_fd;
 	int m_op;
 	uint32_t m_buffer;
@@ -74,7 +76,7 @@ private:
 
 	uint8_t *m_data;
 
-	inline void ended();
+	inline void ended(int status);
 
 protected:
     SC_HAS_PROCESS(VciBlockDevice);
@@ -91,7 +93,8 @@ public:
 		const soclib::common::MappingTable &mt,
 		const soclib::common::IntTab &srcid,
 		const soclib::common::IntTab &tgtid,
-        const std::string &filename );
+        const std::string &filename,
+        const uint32_t block_size = 512 );
 };
 
 }}

@@ -32,8 +32,9 @@
 
 #include "stdint.h"
 
-int block_read( const size_t lba, void *buffer, const size_t len );
-int block_write( const size_t lba, const void *buffer, const size_t len );
-uint32_t block_size();
+int blkdev_read( const size_t lba, void *buffer, const size_t len );
+int blkdev_write( const size_t lba, const void *buffer, const size_t len );
+uint32_t blkdev_size();
+uint32_t blkdev_block_size();
 
 #endif

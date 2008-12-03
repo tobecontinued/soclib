@@ -31,7 +31,7 @@
 
 #include "blkdev.h"
 
-int block_read( const size_t lba, void *buffer, const size_t len )
+int blkdev_read( const size_t lba, void *buffer, const size_t len )
 {
 	uint32_t i;
 	for (i=0; i<len+16; i+=4){
@@ -49,23 +49,34 @@ int block_read( const size_t lba, void *buffer, const size_t len )
 	soclib_io_set(base(BD), BLOCK_DEVICE_BUFFER, (uint32_t)buffer);
 	soclib_io_set(base(BD), BLOCK_DEVICE_COUNT, len);
 	soclib_io_set(base(BD), BLOCK_DEVICE_OP, BLOCK_DEVICE_READ);
-	while (soclib_io_get(base(BD), BLOCK_DEVICE_OP))
-		;
-	return soclib_io_get(base(BD), BLOCK_DEVICE_STATUS);
+
+	int state;
+	do {
+		state = soclib_io_get(base(BD), BLOCK_DEVICE_STATUS);
+	} while (state == BLOCK_DEVICE_BUSY);
+	return state;
 }
 
-int block_write( const size_t lba, const void *buffer, const size_t len )
+int blkdev_write( const size_t lba, const void *buffer, const size_t len )
 {
 	soclib_io_set(base(BD), BLOCK_DEVICE_LBA, lba);
 	soclib_io_set(base(BD), BLOCK_DEVICE_BUFFER, (uint32_t)buffer);
 	soclib_io_set(base(BD), BLOCK_DEVICE_COUNT, len);
 	soclib_io_set(base(BD), BLOCK_DEVICE_OP, BLOCK_DEVICE_WRITE);
-	while (soclib_io_get(base(BD), BLOCK_DEVICE_OP))
-		;
-	return soclib_io_get(base(BD), BLOCK_DEVICE_STATUS);
+
+	int state;
+	do {
+		state = soclib_io_get(base(BD), BLOCK_DEVICE_STATUS);
+	} while (state == BLOCK_DEVICE_BUSY);
+	return state;
 }
 
-uint32_t block_size()
+uint32_t blkdev_size()
 {
 	return soclib_io_get(base(BD), BLOCK_DEVICE_SIZE);
+}
+
+uint32_t blkdev_block_size()
+{
+	return soclib_io_get(base(BD), BLOCK_DEVICE_BLOCK_SIZE);
 }

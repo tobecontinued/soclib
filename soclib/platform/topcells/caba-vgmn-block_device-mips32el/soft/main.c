@@ -58,20 +58,23 @@ void et_hexdump( uint8_t *data, size_t len )
 int main(void)
 {
 	uint32_t i;
-	uint32_t data[128*BLOCKS];
+	const size_t block_size = blkdev_block_size();
+	const uint32_t n_sectors = blkdev_size();
+	const size_t crc_block_mul = block_size / 512;
+	uint8_t data[BLOCKS*block_size];
 	uint32_t crc = 0;
 
 	printf("Hello, world\n");
 
-	const uint32_t size = block_size();
-	for ( i=0; i<size; i+=BLOCKS ) {
-		block_read(i, data, BLOCKS);
+	for ( i=0; i<n_sectors; i+=BLOCKS ) {
+		uint32_t x = expected_crc[(i+BLOCKS-1)*crc_block_mul];
+		blkdev_read(i, data, BLOCKS);
 //		et_hexdump(data, 512*BLOCKS);
-	    crc = do_crc32(crc, data, 512*BLOCKS);
-		printf("CRC of %d first blocks is 0x%x, expected: 0x%x\n", i, crc, expected_crc[i+BLOCKS-1]);
-		assert(crc == expected_crc[i+BLOCKS-1]);
+	    crc = do_crc32(crc, data, block_size*BLOCKS);
+		printf("CRC of %d first blocks is 0x%x, expected: 0x%x\n", i, crc, x);
+		assert(crc == x);
 	}
-	printf("CRC of %d first blocks is 0x%x\n", size, crc);
+	printf("CRC of %d first blocks is 0x%x\n", n_sectors, crc);
 
 	for ( i=0; i<100000; ++i )
 		asm volatile("nop");
