@@ -85,9 +85,6 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
     int cell = (int)addr / vci_param::B;
 
 	switch ((enum SoclibBlockDeviceRegisters)cell) {
-    case BLOCK_DEVICE_IRQ_ENABLE:
-		data = r_irq;
-		return true;
     case BLOCK_DEVICE_SIZE:
         data = (typename vci_param::fast_data_t)m_device_size;
         return true;
@@ -100,6 +97,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         case BLOCK_DEVICE_SUCCESS:
         case BLOCK_DEVICE_ERROR:
             m_status = BLOCK_DEVICE_IDLE;
+            r_irq = false;
             break;
         default:
             break;
