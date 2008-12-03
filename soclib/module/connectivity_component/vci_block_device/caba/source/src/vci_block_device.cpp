@@ -29,9 +29,7 @@
 #include "register.h"
 #include "../include/vci_block_device.h"
 #include <fcntl.h>
-#define SYSTEMC_SOURCE
 #include "block_device.h"
-#undef SYSTEMC_SOURCE
 
 #define CHUNCK_SIZE (1<<(vci_param::K-1))
 
@@ -65,11 +63,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
         if ( m_status == BLOCK_DEVICE_BUSY ) {
             std::cerr << name() << " warning: receiving a new command while busy, ignored" << std::endl;
         } else {
-            if ( m_lba + m_count > m_device_size ) {
-                m_status = BLOCK_DEVICE_ERROR;
-                std::cerr << name() << " warning: trying to access beyond end of device" << std::endl;
-            } else
-                m_op = data;
+            m_op = data;
         }
 		return true;
     case BLOCK_DEVICE_IRQ_ENABLE:
@@ -93,14 +87,9 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         return true;
     case BLOCK_DEVICE_STATUS:
         data = m_status;
-        switch ((enum SoclibBlockDeviceStatus)m_status) {
-        case BLOCK_DEVICE_SUCCESS:
-        case BLOCK_DEVICE_ERROR:
+        if (m_status != BLOCK_DEVICE_BUSY) {
             m_status = BLOCK_DEVICE_IDLE;
             r_irq = false;
-            break;
-        default:
-            break;
         }
         return true;
     default:
@@ -115,34 +104,42 @@ tmpl(void)::read_done( req_t *req )
         return;
     }
 
-	ended( req->failed() ? BLOCK_DEVICE_ERROR : BLOCK_DEVICE_SUCCESS );
+	ended( req->failed() ? BLOCK_DEVICE_READ_ERROR : BLOCK_DEVICE_READ_SUCCESS );
     delete m_data;
 	delete req;
 }
 
 tmpl(void)::write_finish( req_t *req )
 {
+    if ( ! req->failed() && m_chunck_offset < m_transfer_size ) {
+        next_req();
+        return;
+    }
+
 	ended(
         ( ! req->failed() && ::write( m_fd, (char *)m_data, m_count ) > 0 )
-        ? BLOCK_DEVICE_SUCCESS : BLOCK_DEVICE_ERROR );
+        ? BLOCK_DEVICE_WRITE_SUCCESS : BLOCK_DEVICE_WRITE_ERROR );
     delete m_data;
 	delete req;
 }
 
 tmpl(void)::next_req()
 {
-    switch ((enum SoclibBlockDeviceOp)m_current_op) {
-    case BLOCK_DEVICE_NOOP:
-		m_status = BLOCK_DEVICE_ERROR;
+    switch (m_current_op) {
     case BLOCK_DEVICE_READ:
     {
         m_transfer_size = m_count * m_block_size;
         if ( m_chunck_offset == 0 ) {
+            if ( m_lba + m_count > m_device_size ) {
+                std::cerr << name() << " warning: trying to read beyond end of device" << std::endl;
+                ended(BLOCK_DEVICE_READ_ERROR);
+                break;
+            }
             m_data = new uint8_t[m_transfer_size];
             lseek(m_fd, m_lba*m_block_size, SEEK_SET);
             int retval = ::read(m_fd, m_data, m_transfer_size);
             if ( retval < 0 ) {
-                ended(BLOCK_DEVICE_ERROR);
+                ended(BLOCK_DEVICE_READ_ERROR);
                 break;
             }
         }
@@ -162,6 +159,11 @@ tmpl(void)::next_req()
     {
         m_transfer_size = m_count * m_block_size;
         if ( m_chunck_offset == 0 ) {
+            if ( m_lba + m_count > m_device_size ) {
+                std::cerr << name() << " warning: trying to write beyond end of device" << std::endl;
+                ended(BLOCK_DEVICE_WRITE_ERROR);
+                break;
+            }
             m_data = new uint8_t[m_transfer_size];
             lseek(m_fd, m_lba*m_block_size, SEEK_SET);
         }
@@ -177,6 +179,9 @@ tmpl(void)::next_req()
 		m_status = BLOCK_DEVICE_BUSY;
         break;
     }
+    default:
+        ended(BLOCK_DEVICE_ERROR);
+        break;
     }
 }
 
