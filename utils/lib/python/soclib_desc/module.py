@@ -12,6 +12,10 @@ class SpuriousDeclarationWarning(Warning):
 	def __str__(self):
 		return 'Spurious "%s" in %s declaration'%(self.args[0], self.args[1])
 
+class InvalidComponentWarning(Warning):
+	def __str__(self):
+		return 'Invalid component %s, it will be unavailable. Error: "%s"'%(self.args[0], self.args[1])
+
 __all__ = ['Module']
 
 class NoSuchComponent(Exception):
@@ -50,7 +54,10 @@ class Module:
 		r = Module.__not_done_registering
 		Module.__not_done_registering = ()
 		for module in r:
-			module.resolveRefsFor()
+			try:
+				module.resolveRefsFor()
+			except Exception, e:
+				warnings.warn_explicit(InvalidComponentWarning(module.getModuleName(), repr(e)), InvalidComponentWarning, module.filename, module.lineno)
 	resolveRefs = classmethod(resolveRefs)
 
 	# instance part
@@ -90,6 +97,8 @@ class Module:
 		self.__attrs['uses'] = set(self.__attrs['uses'])
 		self.mk_abs_paths(os.path.dirname(filename))
 		self.__register(self.__typename, self, filename)
+		self.filename = filename
+		self.lineno = lineno
 
 	def getModuleName(self):
 		return self.__typename
