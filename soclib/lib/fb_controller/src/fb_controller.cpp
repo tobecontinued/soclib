@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <cstdlib>
+#include <cstring>
 
 #include "soclib_endian.h"
 #include "exception.h"
@@ -53,7 +54,7 @@ FbController::FbController(
 
     std::string tmpname = std::string("/tmp/") + basename + ".rawXXXXXX";
 
-	strncpy( name, tmpname.c_str(), sizeof(name));
+    std::strncpy( name, tmpname.c_str(), sizeof(name));
 	m_map_fd = mkstemp(name);
 	if ( m_map_fd < 0 ) {
 		perror("open");
@@ -70,10 +71,10 @@ FbController::FbController(
         throw soclib::exception::RunTimeError("Cant mmap file");
 	}
 	
-	memset(m_surface, 128, m_width*m_height*2);
+    std::memset(m_surface, 128, m_width*m_height*2);
 
     char *soclib_fb = std::getenv("SOCLIB_FB");
-    m_headless_mode = ( soclib_fb && !strcmp(soclib_fb, "HEADLESS") );
+    m_headless_mode = ( soclib_fb && !std::strcmp(soclib_fb, "HEADLESS") );
     
 	if (m_headless_mode == false) {
         std::vector<std::string> argv;
