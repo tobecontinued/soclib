@@ -2228,8 +2228,9 @@ namespace soclib { namespace caba {
 
 	/////////////////////
       case ALLOC_DIR_WRITE:
-	if ( ( (r_write_fsm.read() != WRITE_DIR_LOCK) &&
-               (r_write_fsm.read() != WRITE_TRT_LOCK)     )
+	if ( ( (r_write_fsm.read() != WRITE_DIR_LOCK)     &&
+               (r_write_fsm.read() != WRITE_TRT_LOCK)     &&
+               (r_write_fsm.read() != WRITE_DIR_HIT_READ)      )
 	     ||
              ( (r_write_fsm.read()     == WRITE_TRT_LOCK) &&
                (r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE)   )   )
