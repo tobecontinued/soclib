@@ -41,7 +41,7 @@
 namespace soclib {
 namespace caba {
 
-    using namespace sc_core;
+using namespace sc_core;
 
 ////////////////////////////////////////////
 template<typename vci_param, typename iss_t>
@@ -147,6 +147,10 @@ private:
     sc_signal<bool>         r_dcache_miss_req;
     sc_signal<bool>         r_dcache_unc_req;
     sc_signal<bool>         r_dcache_write_req;
+    sc_signal<bool>         r_dcache_inval_rsp;
+    sc_signal<bool>         r_dcache_update_rsp;
+    data_t                  *r_dcache_buf;
+    bool                    *r_dcache_val;
 
     sc_signal<int>          r_icache_fsm;
     sc_signal<int>          r_icache_fsm_save;
@@ -155,6 +159,7 @@ private:
     sc_signal<bool>         r_icache_unc_req;
     sc_signal<bool>         r_icache_cleanup_req;
     sc_signal<data_t>       r_icache_cleanup_line;
+    sc_signal<bool>         r_icache_inval_rsp;
 
     sc_signal<int>          r_vci_cmd_fsm;
     sc_signal<size_t>       r_vci_cmd_min;       
@@ -234,17 +239,19 @@ protected:
 public:
 
     VciCcXcacheWrapper(
-        sc_module_name insname,
-        int proc_id,
-        const soclib::common::MappingTable &mt,
-        const soclib::common::IntTab &initiator_index,
-        const soclib::common::IntTab &target_index,
-        size_t icache_ways,
-        size_t icache_sets,
-        size_t icache_words,
-        size_t dcache_ways,
-        size_t dcache_sets,
-        size_t dcache_words );
+                       sc_module_name insname,
+                       int proc_id,
+                       const soclib::common::MappingTable &mtp,
+                       const soclib::common::MappingTable &mtc,
+                       const soclib::common::IntTab &initiator_index,
+                       const soclib::common::IntTab &target_index,
+                       size_t icache_ways,
+                       size_t icache_sets,
+                       size_t icache_words,
+                       size_t dcache_ways,
+                       size_t dcache_sets,
+                       size_t dcache_words,
+                       addr_t cleanup_offset );
 
     ~VciCcXcacheWrapper();
 

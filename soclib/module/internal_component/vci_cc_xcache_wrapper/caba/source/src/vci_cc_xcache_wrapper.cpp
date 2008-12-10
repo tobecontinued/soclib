@@ -66,50 +66,50 @@ namespace caba {
 #if DEBUG_CC_XCACHE_WRAPPER
 namespace {
 const char *dcache_fsm_state_str[] = {
-        "DCACHE_IDLE",
-        "DCACHE_WRITE_UPDT",
-        "DCACHE_WRITE_REQ",
-        "DCACHE_MISS_WAIT",
-        "DCACHE_MISS_UPDT",
-        "DCACHE_UNC_WAIT",
-        "DCACHE_INVAL",
-        "DCACHE_ERROR",
-        "DCACHE_CC_CHECK",
-        "DCACHE_CC_INVAL",
-        "DCACHE_CC_UPDT",
-        "DCACHE_CC_NOP",
-    };
+    "DCACHE_IDLE",
+    "DCACHE_WRITE_UPDT",
+    "DCACHE_WRITE_REQ",
+    "DCACHE_MISS_WAIT",
+    "DCACHE_MISS_UPDT",
+    "DCACHE_UNC_WAIT",
+    "DCACHE_INVAL",
+    "DCACHE_ERROR",
+    "DCACHE_CC_CHECK",
+    "DCACHE_CC_INVAL",
+    "DCACHE_CC_UPDT",
+    "DCACHE_CC_NOP",
+};
 const char *icache_fsm_state_str[] = {
-        "ICACHE_IDLE",
-        "ICACHE_MISS_WAIT",
-        "ICACHE_MISS_UPDT",
-        "ICACHE_UNC_WAIT",
-        "ICACHE_ERROR",
-        "ICACHE_CC_INVAL",
-    };
+    "ICACHE_IDLE",
+    "ICACHE_MISS_WAIT",
+    "ICACHE_MISS_UPDT",
+    "ICACHE_UNC_WAIT",
+    "ICACHE_ERROR",
+    "ICACHE_CC_INVAL",
+};
 const char *cmd_fsm_state_str[] = {
-        "CMD_IDLE",
-        "CMD_INS_MISS",
-        "CMD_INS_UNC",
-        "CMD_DATA_MISS",
-        "CMD_DATA_UNC",
-        "CMD_DATA_WRITE",
-    };
+    "CMD_IDLE",
+    "CMD_INS_MISS",
+    "CMD_INS_UNC",
+    "CMD_DATA_MISS",
+    "CMD_DATA_UNC",
+    "CMD_DATA_WRITE",
+};
 const char *rsp_fsm_state_str[] = {
-        "RSP_IDLE",
-        "RSP_INS_MISS",
-        "RSP_INS_UNC",
-        "RSP_DATA_MISS",
-        "RSP_DATA_UNC",
-        "RSP_DATA_WRITE",
-    };
+    "RSP_IDLE",
+    "RSP_INS_MISS",
+    "RSP_INS_UNC",
+    "RSP_DATA_MISS",
+    "RSP_DATA_UNC",
+    "RSP_DATA_WRITE",
+};
 const char *tgt_fsm_state_str[] = {
-        "TGT_IDLE",
-        "TGT_UPDT_WORD",
-        "TGT_UPDT_DATA",
-        "TGT_REQ",
-        "TGT_RSP",
-    };
+    "TGT_IDLE",
+    "TGT_UPDT_WORD",
+    "TGT_UPDT_DATA",
+    "TGT_REQ",
+    "TGT_RSP",
+};
 }
 #endif
 
@@ -135,92 +135,96 @@ using soclib::common::uint32_log2;
 
 /////////////////////////////////
 tmpl(/**/)::VciCcXcacheWrapper(
-/////////////////////////////////
-    sc_module_name name,
-    int proc_id,
-    const soclib::common::MappingTable &mt,
-    const soclib::common::IntTab &initiator_index,
-    const soclib::common::IntTab &target_index,
-    size_t icache_ways,
-    size_t icache_sets,
-    size_t icache_words,
-    size_t dcache_ways,
-    size_t dcache_sets,
-    size_t dcache_words )
-    : 
-      soclib::caba::BaseModule(name),
+                               /////////////////////////////////
+                               sc_module_name name,
+                               int proc_id,
+                               const soclib::common::MappingTable &mtp,
+                               const soclib::common::MappingTable &mtc,
+                               const soclib::common::IntTab &initiator_index,
+                               const soclib::common::IntTab &target_index,
+                               size_t icache_ways,
+                               size_t icache_sets,
+                               size_t icache_words,
+                               size_t dcache_ways,
+                               size_t dcache_sets,
+                               size_t dcache_words,
+                               addr_t cleanup_offset )
+           : 
+           soclib::caba::BaseModule(name),
 
-      p_clk("clk"),
-      p_resetn("resetn"),
-      p_vci_ini("vci_ini"),
-      p_vci_tgt("vci_tgt"),
+           p_clk("clk"),
+           p_resetn("resetn"),
+           p_vci_ini("vci_ini"),
+           p_vci_tgt("vci_tgt"),
 
-      m_cacheability_table(mt.getCacheabilityTable()),
-      m_segment(mt.getSegment(target_index)),
-      m_iss(this->name(), proc_id),
-      m_srcid(mt.indexForId(initiator_index)),
-      m_cleanup_address(0),
+           m_cacheability_table(mtp.getCacheabilityTable()),
+           m_segment(mtc.getSegment(target_index)),
+           m_iss(this->name(), proc_id),
+           m_srcid(mtp.indexForId(initiator_index)),
+           m_cleanup_address(cleanup_offset),
 
-      m_dcache_ways(dcache_ways),
-      m_dcache_words(dcache_words),
-      m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
-      m_icache_ways(icache_ways),
-      m_icache_words(icache_words),
-      m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
+           m_dcache_ways(dcache_ways),
+           m_dcache_words(dcache_words),
+           m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
+           m_icache_ways(icache_ways),
+           m_icache_words(icache_words),
+           m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
 
-      r_dcache_fsm("r_dcache_fsm"),
-      r_dcache_fsm_save("r_dcache_fsm_save"),
-      r_dcache_addr_save("r_dcache_addr_save"),
-      r_dcache_wdata_save("r_dcache_wdata_save"),
-      r_dcache_rdata_save("r_dcache_rdata_save"),
-      r_dcache_type_save("r_dcache_type_save"),
-      r_dcache_be_save("r_dcache_be_save"),
-      r_dcache_cached_save("r_dcache_cached_save"),
-      r_dcache_cleanup_req("r_dcache_cleanup_req"),
-      r_dcache_cleanup_line("r_dcache_cleanup_line"),
-      r_dcache_miss_req("r_dcache_miss_req"),
-      r_dcache_unc_req("r_dcache_unc_req"),
-      r_dcache_write_req("r_dcache_write_req"),
+           r_dcache_fsm("r_dcache_fsm"),
+           r_dcache_fsm_save("r_dcache_fsm_save"),
+           r_dcache_addr_save("r_dcache_addr_save"),
+           r_dcache_wdata_save("r_dcache_wdata_save"),
+           r_dcache_rdata_save("r_dcache_rdata_save"),
+           r_dcache_type_save("r_dcache_type_save"),
+           r_dcache_be_save("r_dcache_be_save"),
+           r_dcache_cached_save("r_dcache_cached_save"),
+           r_dcache_cleanup_req("r_dcache_cleanup_req"),
+           r_dcache_cleanup_line("r_dcache_cleanup_line"),
+           r_dcache_miss_req("r_dcache_miss_req"),
+           r_dcache_unc_req("r_dcache_unc_req"),
+           r_dcache_write_req("r_dcache_write_req"),
 
-      r_icache_fsm("r_icache_fsm"),
-      r_icache_fsm_save("r_icache_fsm_save"),
-      r_icache_addr_save("r_icache_addr_save"),
-      r_icache_miss_req("r_icache_miss_req"),
-      r_icache_cleanup_req("r_icache_cleanup_req"),
-      r_icache_cleanup_line("r_icache_cleanup_line"),
+           r_icache_fsm("r_icache_fsm"),
+           r_icache_fsm_save("r_icache_fsm_save"),
+           r_icache_addr_save("r_icache_addr_save"),
+           r_icache_miss_req("r_icache_miss_req"),
+           r_icache_cleanup_req("r_icache_cleanup_req"),
+           r_icache_cleanup_line("r_icache_cleanup_line"),
 
-      r_vci_cmd_fsm("r_vci_cmd_fsm"),
-      r_vci_cmd_min("r_vci_cmd_min"),
-      r_vci_cmd_max("r_vci_cmd_max"),
-      r_vci_cmd_cpt("r_vci_cmd_cpt"),
+           r_vci_cmd_fsm("r_vci_cmd_fsm"),
+           r_vci_cmd_min("r_vci_cmd_min"),
+           r_vci_cmd_max("r_vci_cmd_max"),
+           r_vci_cmd_cpt("r_vci_cmd_cpt"),
 
-      r_vci_rsp_fsm("r_vci_rsp_fsm"),
-      r_vci_rsp_ins_error("r_vci_rsp_ins_error"),
-      r_vci_rsp_data_error("r_vci_rsp_data_error"),
-      r_vci_rsp_cpt("r_vci_rsp_cpt"),
+           r_vci_rsp_fsm("r_vci_rsp_fsm"),
+           r_vci_rsp_ins_error("r_vci_rsp_ins_error"),
+           r_vci_rsp_data_error("r_vci_rsp_data_error"),
+           r_vci_rsp_cpt("r_vci_rsp_cpt"),
 
-      r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
-      r_icache_buf_unc_valid("r_icache_buf_unc_valid"),
+           r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
+           r_icache_buf_unc_valid("r_icache_buf_unc_valid"),
 
-      r_vci_tgt_fsm("r_vci_tgt_fsm"),
-      r_tgt_addr("r_tgt_addr"),
-      r_tgt_word("r_tgt_word"),
-      r_tgt_update("r_tgt_update"),
-      r_tgt_srcid("r_tgt_srcid"),
-      r_tgt_pktid("r_tgt_pktid"),
-      r_tgt_trdid("r_tgt_trdid"),
-      r_tgt_icache_req("r_tgt_icache_req"),
-      r_tgt_dcache_req("r_tgt_dcache_req"),
+           r_vci_tgt_fsm("r_vci_tgt_fsm"),
+           r_tgt_addr("r_tgt_addr"),
+           r_tgt_word("r_tgt_word"),
+           r_tgt_update("r_tgt_update"),
+           r_tgt_srcid("r_tgt_srcid"),
+           r_tgt_pktid("r_tgt_pktid"),
+           r_tgt_trdid("r_tgt_trdid"),
+           r_tgt_icache_req("r_tgt_icache_req"),
+           r_tgt_dcache_req("r_tgt_dcache_req"),
 
-      r_wbuf("r_wbuf", dcache_words ),
-      r_icache("icache", icache_ways, icache_sets, icache_words),
-      r_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
+           r_wbuf("r_wbuf", dcache_words ),
+           r_icache("icache", icache_ways, icache_sets, icache_words),
+           r_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 
 {
     r_icache_miss_buf = new data_t[icache_words];
     r_dcache_miss_buf = new data_t[dcache_words];
-    r_tgt_buf         = new data_t[icache_words];
+    r_tgt_buf         = new data_t[dcache_words];
     r_tgt_val         = new bool[dcache_words];
+    r_dcache_buf      = new data_t[dcache_words];
+    r_dcache_val      = new bool[dcache_words];
 
     SC_METHOD(transition);
     dont_initialize();
@@ -237,24 +241,26 @@ tmpl(/**/)::VciCcXcacheWrapper(
 
 ///////////////////////////////////
 tmpl(/**/)::~VciCcXcacheWrapper()
-///////////////////////////////////
+           ///////////////////////////////////
 {
     delete [] r_icache_miss_buf;
     delete [] r_dcache_miss_buf;
     delete [] r_tgt_val;
     delete [] r_tgt_buf;
+    delete [] r_dcache_val;
+    delete [] r_dcache_buf;
 }
 
 ////////////////////////
 tmpl(void)::print_cpi()
-////////////////////////
+           ////////////////////////
 {
     std::cout << "CPU " << m_srcid << " : CPI = " 
-        << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl ;
+              << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl ;
 }
 ////////////////////////
 tmpl(void)::print_stats()
-////////////////////////
+           ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
     std::cout << "------------------------------------" << std:: dec << std::endl;
@@ -279,7 +285,7 @@ tmpl(void)::print_stats()
 
 //////////////////////////
 tmpl(void)::transition()
-//////////////////////////
+           //////////////////////////
 {
     if ( ! p_resetn.read() ) {
 
@@ -310,6 +316,11 @@ tmpl(void)::transition()
         r_tgt_icache_req     = false;
         r_tgt_dcache_req     = false;
 
+        //
+        r_icache_inval_rsp   = false;
+        r_dcache_inval_rsp   = false;
+        r_dcache_update_rsp  = false;
+
         // error signals from the VCI RSP FSM to the ICACHE or DCACHE FSMs
         r_dcache_buf_unc_valid = false;
         r_icache_buf_unc_valid = false;
@@ -329,7 +340,7 @@ tmpl(void)::transition()
         m_cpt_cc_update = 0;
         m_cpt_cc_inval = 0;
 
-	    m_cpt_frz_cycles = 0;
+        m_cpt_frz_cycles = 0;
         m_cpt_total_cycles = 0;
 
         m_cpt_read = 0;
@@ -359,13 +370,13 @@ tmpl(void)::transition()
     }
 
 #if DEBUG_CC_XCACHE_WRAPPER
-std::cout << "--------------------------------------------" << std::endl;
-std::cout << "CC_XCACHE_WRAPPER / Time = " << m_cpt_total_cycles << std::endl;
-std::cout << " tgt fsm    = " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
-          << " dcache fsm = " << dcache_fsm_state_str[r_dcache_fsm] << std::endl
-          << " icache fsm = " << icache_fsm_state_str[r_icache_fsm] << std::endl
-          << " cmd fsm    = " << cmd_fsm_state_str[r_vci_cmd_fsm] << std::endl
-          << " rsp fsm    = " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
+    std::cout << "--------------------------------------------" << std::endl;
+    std::cout << std::dec << "CC_XCACHE_WRAPPER " << m_srcid << " / Time = " << m_cpt_total_cycles << std::endl;
+    std::cout             << " tgt fsm    = " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
+                          << " dcache fsm = " << dcache_fsm_state_str[r_dcache_fsm] << std::endl
+                          << " icache fsm = " << icache_fsm_state_str[r_icache_fsm] << std::endl
+                          << " cmd fsm    = " << cmd_fsm_state_str[r_vci_cmd_fsm] << std::endl
+                          << " rsp fsm    = " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
 #endif
 
     m_cpt_total_cycles++;
@@ -465,14 +476,14 @@ std::cout << " tgt fsm    = " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
                 exit(0);
             }
             r_tgt_buf[word] = p_vci_tgt.wdata.read();
-            r_tgt_val[word] = true;
+            if(p_vci_tgt.be.read())    r_tgt_val[word] = true;
             r_tgt_word = word + 1;
             if (p_vci_tgt.eop.read())  r_vci_tgt_fsm = TGT_REQ;
         }
         break;
 
     case TGT_REQ:
-        if ( !r_tgt_icache_req && !r_tgt_dcache_req ) {
+        if ( !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) {
             r_vci_tgt_fsm = TGT_RSP; 
             r_tgt_icache_req = true;
             r_tgt_dcache_req = true;
@@ -480,7 +491,7 @@ std::cout << " tgt fsm    = " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
         break;
 
     case TGT_RSP:
-        if ( p_vci_tgt.rspack && !r_tgt_icache_req && !r_tgt_dcache_req ) {
+        if ( p_vci_tgt.rspack.read() && !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) {
             r_vci_tgt_fsm = TGT_IDLE; 
         }
         break;
@@ -524,131 +535,159 @@ std::cout << " tgt fsm    = " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
     m_iss.getInstructionRequest( ireq );
 
 #if DEBUG_CC_XCACHE_WRAPPER
-std::cout << " Instruction Request: " << ireq << std::endl;
+    std::cout << " Instruction Request: " << ireq << std::endl;
 #endif
 
     switch(r_icache_fsm) {
-    /////////////////
+        /////////////////
     case ICACHE_IDLE:
-    {
-        if ( r_tgt_icache_req ) {   // external request
-            if ( ireq.valid ) m_cost_ins_miss_frz++;
-            r_icache_fsm = ICACHE_CC_INVAL;
-            r_icache_fsm_save = r_icache_fsm;
-            break;
-        } 
-        if ( ireq.valid ) {
-            data_t  icache_ins = 0;
-            bool    icache_hit = false;
-            bool    icache_cached = m_cacheability_table[ireq.addr];
-            // icache_hit & icache_ins evaluation
-            if ( icache_cached ) {
-                icache_hit = r_icache.read(ireq.addr, &icache_ins);
-            } else {
-                icache_hit = ( !r_icache_unc_req && (ireq.addr == r_icache_addr_save) );
-                icache_ins = r_icache_miss_buf[0];
-            }
-            if ( ! icache_hit ) {
-                m_cpt_ins_miss++;
-                m_cost_ins_miss_frz++;
-                r_icache_addr_save = ireq.addr;
+        {
+            if ( r_tgt_icache_req ) {   // external request
+                if ( ireq.valid ) m_cost_ins_miss_frz++;
+                r_icache_fsm = ICACHE_CC_INVAL;
+                r_icache_fsm_save = r_icache_fsm;
+                break;
+            } 
+            if ( ireq.valid ) {
+                data_t  icache_ins = 0;
+                bool    icache_hit = false;
+                bool    icache_cached = m_cacheability_table[ireq.addr];
+                // icache_hit & icache_ins evaluation
                 if ( icache_cached ) {
-                    r_icache_fsm = ICACHE_MISS_WAIT;
-                    r_icache_miss_req = true;
+                    icache_hit = r_icache.read(ireq.addr, &icache_ins);
                 } else {
-                    r_icache_fsm = ICACHE_UNC_WAIT;
-                    r_icache_unc_req = true;
+                    icache_hit = ( r_icache_buf_unc_valid && (ireq.addr == r_icache_addr_save) );
+                    icache_ins = r_icache_miss_buf[0];
                 }
-            } else {
-                r_icache_buf_unc_valid = false;
+                if ( ! icache_hit ) {
+                    m_cpt_ins_miss++;
+                    m_cost_ins_miss_frz++;
+                    r_icache_addr_save = ireq.addr;
+                    if ( icache_cached ) {
+                        r_icache_fsm = ICACHE_MISS_WAIT;
+                        r_icache_miss_req = true;
+                    } else {
+                        r_icache_fsm = ICACHE_UNC_WAIT;
+                        r_icache_unc_req = true;
+                    }
+                } else {
+                    r_icache_buf_unc_valid = false;
+                }
+                m_cpt_icache_dir_read += m_icache_ways;
+                m_cpt_icache_data_read += m_icache_ways;
+                irsp.valid          = icache_hit;
+                irsp.instruction    = icache_ins;
             }
-            m_cpt_icache_dir_read += m_icache_ways;
-            m_cpt_icache_data_read += m_icache_ways;
-            irsp.valid          = icache_hit;
-            irsp.instruction    = icache_ins;
+            break;
         }
-        break;
-    }
-    //////////////////////
+        //////////////////////
     case ICACHE_MISS_WAIT:
-    {
-        m_cost_ins_miss_frz++;
-        if ( r_tgt_icache_req ) {   // external request
-            r_icache_fsm = ICACHE_CC_INVAL;
-            r_icache_fsm_save = r_icache_fsm;
-            break;
-        } 
-        if ( !r_icache_miss_req ) {
-            if ( r_vci_rsp_ins_error ) {
-                r_icache_fsm = ICACHE_ERROR;
-            } else {
-                r_icache_fsm = ICACHE_MISS_UPDT;
+        {
+            m_cost_ins_miss_frz++;
+            if ( r_tgt_icache_req ) {   // external request
+                r_icache_fsm = ICACHE_CC_INVAL;
+                r_icache_fsm_save = r_icache_fsm;
+                break;
+            } 
+            if ( !r_icache_miss_req && !r_icache_inval_rsp ) { // Miss read response and no invalidation
+                if ( r_vci_rsp_ins_error ) {
+                    r_icache_fsm = ICACHE_ERROR;
+                } else {
+                    r_icache_fsm = ICACHE_MISS_UPDT;
+                }
             }
+            if ( !r_icache_miss_req && r_icache_inval_rsp ) { // Miss read response and invalidation
+                if ( r_vci_rsp_ins_error ) {
+                    r_icache_inval_rsp = false;
+                    r_icache_fsm = ICACHE_ERROR;
+                } else {
+                    r_icache_inval_rsp = false;
+                    r_icache_fsm = ICACHE_IDLE;
+                }
+            }
+            break;
         }
-        break;
-    }
-    /////////////////////
+        /////////////////////
     case ICACHE_UNC_WAIT:
-    {
-        m_cost_ins_miss_frz++;
-        if ( r_tgt_icache_req ) {   // external request
-            r_icache_fsm = ICACHE_CC_INVAL;
-            r_icache_fsm_save = r_icache_fsm;
-            break;
-        } 
-        if ( !r_icache_unc_req ) {
-            if ( r_vci_rsp_ins_error ) {
-                r_icache_fsm = ICACHE_ERROR;
-            } else {
-                r_icache_fsm = ICACHE_IDLE;
-                r_icache_buf_unc_valid = true;
+        {
+            m_cost_ins_miss_frz++;
+            if ( r_tgt_icache_req ) {   // external request
+                r_icache_fsm = ICACHE_CC_INVAL;
+                r_icache_fsm_save = r_icache_fsm;
+                break;
+            } 
+            if ( !r_icache_unc_req ) {
+                if ( r_vci_rsp_ins_error ) {
+                    r_icache_fsm = ICACHE_ERROR;
+                } else {
+                    r_icache_fsm = ICACHE_IDLE;
+                    r_icache_buf_unc_valid = true;
+                }
             }
+            break;
         }
-        break;
-    }
-    //////////////////
+        //////////////////
     case ICACHE_ERROR:
-    {
-        r_icache_fsm = ICACHE_IDLE;
-        r_vci_rsp_ins_error = false;
-        irsp.error          = true;
-        irsp.valid          = true;
-        break;
-    }
-    //////////////////////
+        {
+            r_icache_fsm = ICACHE_IDLE;
+            r_vci_rsp_ins_error = false;
+            irsp.error          = true;
+            irsp.valid          = true;
+            break;
+        }
+        //////////////////////
     case ICACHE_MISS_UPDT: 
-    {
-        addr_t    ad  = r_icache_addr_save;
-        data_t*   buf = r_icache_miss_buf;
-        data_t    victim_index = 0;
-        m_cpt_icache_dir_write++;
-        m_cpt_icache_data_write++;
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
+        {
+            if ( r_tgt_icache_req ) {   // external request
+                r_icache_fsm = ICACHE_CC_INVAL;
+                r_icache_fsm_save = r_icache_fsm;
+                break;
+            } 
+            if(!r_icache_cleanup_req.read() && !r_icache_inval_rsp){
+                addr_t    ad  = r_icache_addr_save;
+                data_t*   buf = r_icache_miss_buf;
+                data_t    victim_index = 0;
+                m_cpt_icache_dir_write++;
+                m_cpt_icache_data_write++;
+                if ( ireq.valid ) m_cost_ins_miss_frz++;
 
-        r_icache_cleanup_req = r_icache.update(ad, buf, &victim_index);
-        r_icache_cleanup_line = victim_index;
+                r_icache_cleanup_req = r_icache.update(ad, buf, &victim_index);
+                r_icache_cleanup_line = victim_index;
 
-        r_icache_fsm        = ICACHE_IDLE;
-        break;
-    }
-    /////////////////////
+                r_icache_fsm        = ICACHE_IDLE;
+                break;
+            }
+            if(r_icache_inval_rsp){
+                if ( ireq.valid ) m_cost_ins_miss_frz++;
+                r_icache_inval_rsp  = false;
+                r_icache_fsm        = ICACHE_IDLE;
+                break;
+            }
+            if ( ireq.valid ) m_cost_ins_miss_frz++;
+        }
+        /////////////////////
     case ICACHE_CC_INVAL:  
-    {                       
-        addr_t    ad  = r_tgt_addr;
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
-        m_cpt_icache_dir_read += m_icache_ways;
-        r_icache.inval(ad);
-        r_tgt_icache_req = false;
-        r_icache_fsm = r_icache_fsm_save;
-        break;
-    }
+        {                       
+            addr_t    ad  = r_tgt_addr;
+            if ( ireq.valid ) m_cost_ins_miss_frz++;
+            m_cpt_icache_dir_read += m_icache_ways;
+            if( (( r_icache_fsm_save == ICACHE_MISS_WAIT ) || ( r_icache_fsm_save == ICACHE_MISS_UPDT )) && 
+                ((r_icache_addr_save.read() & ~((m_icache_words<<2)-1)) == (ad & ~((m_icache_words<<2)-1))) ) {
+                r_icache_inval_rsp = true;
+            } else {
+                r_icache.inval(ad);
+            }
+            r_tgt_icache_req = false;
+            r_icache_fsm = r_icache_fsm_save;
+            break;
+        }
 
     } // end switch r_icache_fsm
 
     m_iss.setInstruction( irsp );
 
 #if DEBUG_CC_XCACHE_WRAPPER
-std::cout << " Instruction Response: " << irsp << std::endl;
+    std::cout << " Instruction Response: " << irsp << std::endl;
 #endif
 
     //////////////////////////////////////////////////////////////////////://///////////
@@ -714,80 +753,82 @@ std::cout << " Instruction Response: " << irsp << std::endl;
     m_iss.getDataRequest( dreq );
 
 #if DEBUG_CC_XCACHE_WRAPPER
-std::cout << " Data Request: " << dreq << std::endl;
+    std::cout << " Data Request: " << dreq << std::endl;
 #endif
+
+    //if( (m_cpt_total_cycles % 10000) ==0 ) std::cout << std::dec << "Proc " << m_srcid << " Data Request: " << dreq << std::endl;
 
     switch ( r_dcache_fsm ) {
 
-    /////////////////////
+        /////////////////////
     case DCACHE_WRITE_REQ:
-    { 
-	    if ( r_tgt_dcache_req ) {   // external request
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        }
-
-        // try to post the write request in the write buffer
-        if ( !r_dcache_write_req ) {    // no previous write transaction     
-            if ( r_wbuf.wok(r_dcache_addr_save) ) {   // write request in the same cache line 
-                r_wbuf.write(r_dcache_addr_save, r_dcache_be_save, r_dcache_wdata_save);
-                // close the write packet if uncached
-                if ( !r_dcache_cached_save ) r_dcache_write_req = true ;
-            } else {    
-                // close the write packet if write request not in the same cache line
-                r_dcache_write_req = true;  
-                m_cost_write_frz++;
-                break;  // posting request not possible : stay in DCACHE_WRITEREQ state
-            }
-        } else {    //  previous write transaction not completed
-            m_cost_write_frz++;
-            break;  // posting request not possible : stay in DCACHE_WRITEREQ state  
-        }
-
-        // close the write packet if the next processor request is not a write 
-        if ( !dreq.valid || (dreq.type != iss_t::DATA_WRITE) ) r_dcache_write_req = true ;
-
-        // The next state and the processor request parameters are computed 
-        // as in the DCACHE_IDLE state (see below ...)
-    }
-    /////////////////
-    case DCACHE_IDLE:
-    {
-	    if ( r_tgt_dcache_req ) {   // external request
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        } 
-
-        if ( dreq.valid ) {              
-            bool        dcache_hit     = false;
-            data_t      dcache_rdata   = 0;
-            bool        dcache_cached;
-            m_cpt_dcache_data_read += m_dcache_ways;
-            m_cpt_dcache_dir_read += m_dcache_ways;
-
-            // dcache_cached evaluation
-            switch (dreq.type) {
-            case iss_t::DATA_LL:
-            case iss_t::DATA_SC:
-            case iss_t::XTN_READ:
-            case iss_t::XTN_WRITE:
-                dcache_cached = false;
+        { 
+            if ( r_tgt_dcache_req ) {   // external request
+                r_dcache_fsm = DCACHE_CC_CHECK;
+                r_dcache_fsm_save = r_dcache_fsm;
                 break;
-            default:
-                dcache_cached = m_cacheability_table[dreq.addr];
             }
 
-            // dcache_hit & dcache_rdata evaluation
-            if ( dcache_cached ) {
-                dcache_hit = r_dcache.read(dreq.addr, &dcache_rdata);
-            } else {
-                dcache_hit = ( !r_dcache_unc_req && (dreq.addr == r_dcache_addr_save) );
-                dcache_rdata = r_dcache_miss_buf[0];
+            // try to post the write request in the write buffer
+            if ( !r_dcache_write_req ) {    // no previous write transaction     
+                if ( r_wbuf.wok(r_dcache_addr_save) ) {   // write request in the same cache line 
+                    r_wbuf.write(r_dcache_addr_save, r_dcache_be_save, r_dcache_wdata_save);
+                    // close the write packet if uncached
+                    if ( !r_dcache_cached_save ) r_dcache_write_req = true ;
+                } else {    
+                    // close the write packet if write request not in the same cache line
+                    r_dcache_write_req = true;  
+                    m_cost_write_frz++;
+                    break;  // posting request not possible : stay in DCACHE_WRITEREQ state
+                }
+            } else {    //  previous write transaction not completed
+                m_cost_write_frz++;
+                break;  // posting request not possible : stay in DCACHE_WRITEREQ state  
             }
 
-            switch( dreq.type ) {
+            // close the write packet if the next processor request is not a write 
+            if ( !dreq.valid || (dreq.type != iss_t::DATA_WRITE) ) r_dcache_write_req = true ;
+
+            // The next state and the processor request parameters are computed 
+            // as in the DCACHE_IDLE state (see below ...)
+        }
+        /////////////////
+    case DCACHE_IDLE:
+        {
+            if ( r_tgt_dcache_req ) {   // external request
+                r_dcache_fsm = DCACHE_CC_CHECK;
+                r_dcache_fsm_save = r_dcache_fsm;
+                break;
+            } 
+
+            if ( dreq.valid ) {              
+                bool        dcache_hit     = false;
+                data_t      dcache_rdata   = 0;
+                bool        dcache_cached;
+                m_cpt_dcache_data_read += m_dcache_ways;
+                m_cpt_dcache_dir_read += m_dcache_ways;
+
+                // dcache_cached evaluation
+                switch (dreq.type) {
+                case iss_t::DATA_LL:
+                case iss_t::DATA_SC:
+                case iss_t::XTN_READ:
+                case iss_t::XTN_WRITE:
+                    dcache_cached = false;
+                    break;
+                default:
+                    dcache_cached = m_cacheability_table[dreq.addr];
+                }
+
+                // dcache_hit & dcache_rdata evaluation
+                if ( dcache_cached ) {
+                    dcache_hit = r_dcache.read(dreq.addr, &dcache_rdata);
+                } else {
+                    dcache_hit = ( !r_dcache_unc_req && (dreq.addr == r_dcache_addr_save) );
+                    dcache_rdata = r_dcache_miss_buf[0];
+                }
+
+                switch( dreq.type ) {
                 case iss_t::DATA_READ:
                 case iss_t::DATA_LL:
                 case iss_t::DATA_SC:
@@ -830,171 +871,240 @@ std::cout << " Data Request: " << dreq << std::endl;
                     drsp.valid = true;
                     drsp.rdata = 0;
                     break;
-            } // end switch dreq.type
+                } // end switch dreq.type
 
-            r_dcache_addr_save      = dreq.addr;
-            r_dcache_type_save      = dreq.type;
-            r_dcache_wdata_save     = dreq.wdata;
-            r_dcache_be_save        = dreq.be;
-            r_dcache_rdata_save     = dcache_rdata;
-            r_dcache_cached_save    = dcache_cached;
+                r_dcache_addr_save      = dreq.addr;
+                r_dcache_type_save      = dreq.type;
+                r_dcache_wdata_save     = dreq.wdata;
+                r_dcache_be_save        = dreq.be;
+                r_dcache_rdata_save     = dcache_rdata;
+                r_dcache_cached_save    = dcache_cached;
 
-        } else {    // end if dreq.valid
-            r_dcache_fsm = DCACHE_IDLE;
-        }
-        // processor request are not accepted in the WRITE_REQUEST state
-        // when the write buffer is not writeable
-        if ( (r_dcache_fsm == DCACHE_WRITE_REQ) &&
-             (r_dcache_write_req || !r_wbuf.wok(r_dcache_addr_save)) ) {
-            drsp.valid = false;
-            drsp.rdata = 0;
-        }
-        break;
-    }
-    ///////////////////////
-    case DCACHE_WRITE_UPDT:
-    {
-        m_cpt_dcache_data_write++;
-        data_t mask = be_to_mask(r_dcache_be_save);
-        data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
-        r_dcache.write(r_dcache_addr_save, wdata);
-        r_dcache_fsm = DCACHE_WRITE_REQ;
-        break;
-    }
-    //////////////////////
-    case DCACHE_MISS_WAIT:
-    {
-        if ( dreq.valid ) m_cost_data_miss_frz++;
-	    if ( r_tgt_dcache_req ) {   // external request
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        } 
-        if ( !r_dcache_miss_req ) {
-            if ( r_vci_rsp_data_error )    r_dcache_fsm = DCACHE_ERROR;
-            else                           r_dcache_fsm = DCACHE_MISS_UPDT;
-        }
-        break;
-    }
-    //////////////////////
-    case DCACHE_MISS_UPDT:
-    {
-        addr_t  ad  = r_dcache_addr_save;
-        data_t* buf = r_dcache_miss_buf;
-        data_t  victim_index = 0;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
-        m_cpt_dcache_data_write++;
-        m_cpt_dcache_dir_write++;
-
-        r_dcache_cleanup_req = r_dcache.update(ad, buf, &victim_index);
-        r_dcache_cleanup_line = victim_index;
-
-        r_dcache_fsm = DCACHE_IDLE;
-        break;
-    }
-    ////////////////////
-    case DCACHE_UNC_WAIT:
-    {
-        if ( dreq.valid ) m_cost_unc_read_frz++;
-	    if ( r_tgt_dcache_req ) {   // external request
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        } 
-        if ( !r_dcache_unc_req ) {
-            if ( r_vci_rsp_data_error ) {
-                r_dcache_fsm = DCACHE_ERROR;
-            } else {
+            } else {    // end if dreq.valid
                 r_dcache_fsm = DCACHE_IDLE;
-                r_dcache_buf_unc_valid = true;
             }
+            // processor request are not accepted in the WRITE_REQUEST state
+            // when the write buffer is not writeable
+            if ( (r_dcache_fsm == DCACHE_WRITE_REQ) &&
+                 (r_dcache_write_req || !r_wbuf.wok(r_dcache_addr_save)) ) {
+                drsp.valid = false;
+                drsp.rdata = 0;
+            }
+            break;
         }
-        break;
-    }
-    //////////////////
-    case DCACHE_ERROR:
-    {
-        r_dcache_fsm = DCACHE_IDLE;
-        r_vci_rsp_data_error = false;
-        drsp.error = true;
-        drsp.valid = true;
-        break;
-    }
-    /////////////////    
-    case DCACHE_INVAL:
-    {
-        m_cpt_dcache_dir_read += m_dcache_ways;
-        r_dcache.inval(r_dcache_addr_save);
-        r_dcache_fsm = DCACHE_IDLE;
-        break;
-    }
-    /////////////////////
-    case DCACHE_CC_CHECK:   // read directory in case of invalidate or update request
-    {
-        m_cpt_dcache_dir_read += m_dcache_ways;
-        m_cpt_dcache_data_read += m_dcache_ways;
-        addr_t  ad           = r_tgt_addr;
-        data_t  dcache_rdata = 0;
-        bool    dcache_hit   = r_dcache.read(ad, &dcache_rdata);
-        if ( dcache_hit && r_tgt_update ) {
-            r_dcache_fsm = DCACHE_CC_UPDT;
-            // complete the line buffer in case of update
-            for ( size_t word = 0 ; word < m_dcache_words ; word++ ) {
-                if ( !r_tgt_val[word] ) {
-                    addr_t  ad = r_tgt_addr + (addr_t)word;
-                    r_dcache.read(ad, &dcache_rdata);
-                    r_tgt_buf[word] = dcache_rdata;
+        ///////////////////////
+    case DCACHE_WRITE_UPDT:
+        {
+            m_cpt_dcache_data_write++;
+            data_t mask = be_to_mask(r_dcache_be_save);
+            data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
+            r_dcache.write(r_dcache_addr_save, wdata);
+            r_dcache_fsm = DCACHE_WRITE_REQ;
+            break;
+        }
+        //////////////////////
+    case DCACHE_MISS_WAIT:
+        {
+            if ( dreq.valid ) m_cost_data_miss_frz++;
+            if ( r_tgt_dcache_req.read() ) {   // external request
+                r_dcache_fsm = DCACHE_CC_CHECK;
+                r_dcache_fsm_save = r_dcache_fsm;
+                break;
+            }
+            if ( !r_dcache_miss_req && !r_dcache_inval_rsp ) { // Miss read response and no invalidation
+                if ( r_vci_rsp_data_error ) {
+                    r_dcache_fsm = DCACHE_ERROR;
+                } else {
+                    r_dcache_fsm = DCACHE_MISS_UPDT;
+                }
+                break;
+            }
+            if ( !r_dcache_miss_req && r_dcache_inval_rsp ) { // Miss read response and invalidation
+                if ( r_vci_rsp_data_error ) {
+                    r_dcache_inval_rsp  = false;
+                    r_dcache_update_rsp = false;
+                    r_dcache_fsm = DCACHE_ERROR;
+                } else {
+                    r_dcache_inval_rsp  = false;
+                    r_dcache_update_rsp = false;
+                    r_dcache_fsm = DCACHE_IDLE;
+                }
+                break;
+            }
+            break;
+        }
+        //////////////////////
+    case DCACHE_MISS_UPDT:
+        {
+            if ( r_tgt_dcache_req.read() ) {   // external request
+                r_dcache_fsm = DCACHE_CC_CHECK;
+                r_dcache_fsm_save = r_dcache_fsm;
+                break;
+            }
+            if( !r_dcache_cleanup_req.read() && !r_dcache_inval_rsp ){
+                addr_t  ad  = r_dcache_addr_save;
+                data_t* buf = new data_t[m_dcache_words];
+                if(r_dcache_update_rsp){
+                    for(size_t i=0; i<m_dcache_words; i++) {
+                        if (r_dcache_val[i])  buf[i] = r_dcache_buf[i];
+                        else                  buf[i] = r_dcache_miss_buf[i];
+                    }
+                    r_dcache_update_rsp=false;
+                } else {
+                    for(size_t i=0; i<m_dcache_words; i++) {
+                        buf[i] = r_dcache_miss_buf[i];
+                    }
+                }
+                data_t  victim_index = 0;
+                if ( dreq.valid ) m_cost_data_miss_frz++;
+                m_cpt_dcache_data_write++;
+                m_cpt_dcache_dir_write++;
+
+                r_dcache_cleanup_req = r_dcache.update(ad, buf, &victim_index);
+                r_dcache_cleanup_line = victim_index;
+            
+                r_dcache_fsm = DCACHE_IDLE;
+                delete [] buf;
+                break;
+            }
+            if( r_dcache_inval_rsp ){
+                r_dcache_inval_rsp  = false;
+                r_dcache_update_rsp = false;
+                r_dcache_fsm = DCACHE_IDLE;
+                break;
+            }
+            break;
+        }
+        ////////////////////
+    case DCACHE_UNC_WAIT:
+        {
+            if ( dreq.valid ) m_cost_unc_read_frz++;
+            if ( r_tgt_dcache_req ) {   // external request
+                r_dcache_fsm = DCACHE_CC_CHECK;
+                r_dcache_fsm_save = r_dcache_fsm;
+                break;
+            } 
+            if ( !r_dcache_unc_req ) {
+                if ( r_vci_rsp_data_error ) {
+                    r_dcache_fsm = DCACHE_ERROR;
+                } else {
+                    r_dcache_fsm = DCACHE_IDLE;
+                    r_dcache_buf_unc_valid = true;
                 }
             }
-        } else if ( dcache_hit && !r_tgt_update ) {
-            r_dcache_fsm = DCACHE_CC_INVAL;
-        } else {
-            r_dcache_fsm = DCACHE_CC_NOP;
+            break;
         }
-        break;
-    }
-    ///////////////////
+        //////////////////
+    case DCACHE_ERROR:
+        {
+            r_dcache_fsm = DCACHE_IDLE;
+            r_vci_rsp_data_error = false;
+            drsp.error = true;
+            drsp.valid = true;
+            break;
+        }
+        /////////////////    
+    case DCACHE_INVAL:
+        {
+            m_cpt_dcache_dir_read += m_dcache_ways;
+            r_dcache.inval(r_dcache_addr_save);
+            r_dcache_fsm = DCACHE_IDLE;
+            break;
+        }
+        /////////////////////
+    case DCACHE_CC_CHECK:   // read directory in case of invalidate or update request
+        {
+            m_cpt_dcache_dir_read += m_dcache_ways;
+            m_cpt_dcache_data_read += m_dcache_ways;
+            addr_t  ad           = r_tgt_addr;
+            data_t  dcache_rdata = 0;
+
+            if(( ( r_dcache_fsm_save == DCACHE_MISS_WAIT ) || ( r_dcache_fsm_save == DCACHE_MISS_UPDT ) ) && 
+               ( (r_dcache_addr_save.read() & ~((m_dcache_words<<2)-1)) == (ad & ~((m_dcache_words<<2)-1)))) {
+                if(r_tgt_update){
+                    if(!r_dcache_update_rsp){
+                        for(size_t i=0; i<m_dcache_words; i++){
+                            r_dcache_buf[i]=r_tgt_buf[i];
+                            r_dcache_val[i]=r_tgt_val[i];
+                        }
+                    } else {
+                        for(size_t i=0; i<m_dcache_words; i++){
+                            if(r_tgt_val[i])  r_dcache_buf[i]=r_tgt_buf[i];
+                            r_dcache_val[i] = r_tgt_val[i] || r_dcache_val[i];
+                        }
+                    }
+                    r_dcache_update_rsp = true;
+                    r_tgt_dcache_req = false;
+                    r_dcache_fsm = r_dcache_fsm_save;
+                } else {
+                    r_dcache_inval_rsp = true;
+                    r_tgt_dcache_req = false;
+                    r_dcache_fsm = r_dcache_fsm_save;
+                }
+            } else {
+                bool    dcache_hit   = r_dcache.read(ad, &dcache_rdata);
+                if ( dcache_hit && r_tgt_update ) {
+                    r_dcache_fsm = DCACHE_CC_UPDT;
+                    // complete the line buffer in case of update
+                    for ( size_t word = 0 ; word < m_dcache_words ; word++ ) {
+                        if ( !r_tgt_val[word] ) {
+                            addr_t  ad = r_tgt_addr + (addr_t)word;
+                            r_dcache.read(ad, &dcache_rdata);
+                            r_tgt_buf[word] = dcache_rdata;
+                        }
+                    }
+                } else if ( dcache_hit && !r_tgt_update ) {
+                    r_dcache_fsm = DCACHE_CC_INVAL;
+                } else {
+                    r_dcache_fsm = DCACHE_CC_NOP;
+                }
+            }
+            break;
+        }
+        ///////////////////
     case DCACHE_CC_UPDT:    // update directory and data cache        
-    {
-        m_cpt_dcache_dir_write++;
-        m_cpt_dcache_data_write++;
-        addr_t  ad      = r_tgt_addr;
-        data_t* buf     = r_tgt_buf;
-        data_t  victim  = 0;
-        r_dcache.update( ad, buf, &victim);
-        r_tgt_dcache_req = false;
-        r_dcache_fsm = r_dcache_fsm_save;
-        break;
-    }
-    /////////////////////
+        {
+            m_cpt_dcache_dir_write++;
+            m_cpt_dcache_data_write++;
+            addr_t  ad      = r_tgt_addr;
+            data_t* buf     = r_tgt_buf;
+            for(size_t i=0; i<m_dcache_words; i++){
+                if(r_tgt_val[i]) r_dcache.write( ad + i*4, buf[i]);
+            }
+            r_tgt_dcache_req = false;
+            r_dcache_fsm = r_dcache_fsm_save;
+            break;
+        }
+        /////////////////////
     case DCACHE_CC_INVAL:   // invalidate a cache line
-    {
-        addr_t  ad      = r_tgt_addr;
-        r_dcache.inval( ad );
-        r_tgt_dcache_req = false;
-        r_dcache_fsm = r_dcache_fsm_save;
-        break;
-    }
-    ///////////////////
+        {
+            addr_t  ad      = r_tgt_addr;
+            r_dcache.inval(ad);
+            r_tgt_dcache_req = false;
+            r_dcache_fsm = r_dcache_fsm_save;
+            break;
+        }
+        ///////////////////
     case DCACHE_CC_NOP:     // no external hit
-    {
-        r_dcache_fsm = r_dcache_fsm_save;
-        break;
-    }    
+        {
+            r_tgt_dcache_req = false;
+            r_dcache_fsm = r_dcache_fsm_save;
+            break;
+        }    
     } // end switch r_dcache_fsm
 
     m_iss.setData( drsp );
 
 #if DEBUG_CC_XCACHE_WRAPPER
-std::cout << " Data Response: " << drsp << std::endl;
+    std::cout << " Data Response: " << drsp << std::endl;
 #endif
 
     /////////// execute one iss cycle /////////////////////////////////////////////
     {
-    uint32_t it = 0;
-    for (size_t i=0; i<(size_t)iss_t::n_irq; i++) 
-        if(p_irq[i].read()) it |= (1<<i);
-    m_iss.executeNCycles(1,it);
+        uint32_t it = 0;
+        for (size_t i=0; i<(size_t)iss_t::n_irq; i++) 
+            if(p_irq[i].read()) it |= (1<<i);
+        m_iss.executeNCycles(1,it);
     }
 
     if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) ) m_cpt_frz_cycles++;
@@ -1115,6 +1225,10 @@ std::cout << " Data Response: " << drsp << std::endl;
     switch (r_vci_rsp_fsm) {
 
     case RSP_IDLE:
+        if(p_vci_ini.rspval.read())
+            {
+                std::cout << "CC_XCache " << m_srcid << " Unexpected response" << std::endl;
+            }
         assert( ! p_vci_ini.rspval.read() && "Unexpected response" );
         if (r_vci_cmd_fsm != CMD_IDLE) break;
 
@@ -1133,13 +1247,13 @@ std::cout << " Data Response: " << drsp << std::endl;
         if ( ! p_vci_ini.rspval.read() )
             break;
         assert( (r_vci_rsp_cpt < m_icache_words) &&
-               "The VCI response packet for instruction miss is too long" );
+                "The VCI response packet for instruction miss is too long" );
         r_vci_rsp_cpt = r_vci_rsp_cpt + 1;
         r_icache_miss_buf[r_vci_rsp_cpt] = (data_t)p_vci_ini.rdata.read();
 
         if ( p_vci_ini.reop.read() ) {
             assert( (r_vci_rsp_cpt == m_icache_words - 1) &&
-                   "The VCI response packet for instruction miss is too short");
+                    "The VCI response packet for instruction miss is too short");
             r_icache_miss_req = false;
             r_vci_rsp_fsm = RSP_IDLE;
         }
@@ -1203,7 +1317,7 @@ std::cout << " Data Response: " << drsp << std::endl;
         if ( ! p_vci_ini.rspval.read() )
             break;
         assert( p_vci_ini.reop.read() &&
-               "illegal VCI response packet for icache cleanup");
+                "illegal VCI response packet for icache cleanup");
         assert( (p_vci_ini.rerror.read() == vci_param::ERR_NORMAL) &&
                 "error in response packet for icache cleanup");
         if ( r_vci_rsp_fsm == RSP_INS_CLEANUP ) r_icache_cleanup_req = false;
@@ -1217,7 +1331,7 @@ std::cout << " Data Response: " << drsp << std::endl;
 
 //////////////////////////////////////////////////////////////////////////////////
 tmpl(void)::genMoore()
-//////////////////////////////////////////////////////////////////////////////////
+           //////////////////////////////////////////////////////////////////////////////////
 {
     // VCI initiator response
 
@@ -1351,7 +1465,8 @@ tmpl(void)::genMoore()
     case CMD_INS_CLEANUP:
     case CMD_DATA_CLEANUP:
         p_vci_ini.cmdval = true;
-        p_vci_ini.address = m_cleanup_address;
+        if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.address = m_cleanup_address | ((r_icache_cleanup_line.read() *(m_icache_words<<2)) & 0xC0000000 );
+        else                                    p_vci_ini.address = m_cleanup_address | ((r_dcache_cleanup_line.read() *(m_dcache_words<<2)) & 0xC0000000 );
         if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.wdata = r_icache_cleanup_line.read();
         else                                    p_vci_ini.wdata = r_dcache_cleanup_line.read();
         p_vci_ini.be     = 0;
@@ -1383,7 +1498,7 @@ tmpl(void)::genMoore()
 
     case TGT_RSP:
         p_vci_tgt.cmdack  = false;
-        p_vci_tgt.rspval  = !r_tgt_icache_req && !r_tgt_dcache_req;
+        p_vci_tgt.rspval  = !r_tgt_icache_req.read() && !r_tgt_dcache_req.read();
         p_vci_tgt.rsrcid  = r_tgt_srcid.read();
         p_vci_tgt.rpktid  = r_tgt_pktid.read();
         p_vci_tgt.rtrdid  = r_tgt_trdid.read();
