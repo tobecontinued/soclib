@@ -91,7 +91,7 @@ int _main(int argc, char *argv[])
 	soclib::common::ElfLoader loader("soft/bin.soft");
 
 	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc("proc", 0, maptab,IntTab(0),IntTab(4),4,64,16,4,64,16);
+	proc("proc", 0, maptab,maptab,IntTab(0),IntTab(4),4,64,16,4,64,16,CLEANUP_OFFSET);
 
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(0), maptab, loader);
@@ -100,7 +100,7 @@ int _main(int argc, char *argv[])
 	xram("xram",maptab,IntTab(2),loader,16,MC_M_SIZE,2);
 
 	soclib::caba::VciMemCache<vci_param> 
-	memc("memc",maptab,IntTab(2),IntTab(1),IntTab(3),16,256,16,IntTab(2));
+	memc("memc",maptab,maptab,maptab,IntTab(2),IntTab(1),IntTab(3),16,256,16,IntTab(2));
 	
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(1),maptab,"tty",NULL);
