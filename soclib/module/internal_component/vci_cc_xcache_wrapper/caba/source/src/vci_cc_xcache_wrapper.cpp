@@ -223,8 +223,6 @@ tmpl(/**/)::VciCcXcacheWrapper(
     r_dcache_miss_buf = new data_t[dcache_words];
     r_tgt_buf         = new data_t[dcache_words];
     r_tgt_val         = new bool[dcache_words];
-    r_dcache_buf      = new data_t[dcache_words];
-    r_dcache_val      = new bool[dcache_words];
 
     SC_METHOD(transition);
     dont_initialize();
@@ -247,8 +245,6 @@ tmpl(/**/)::~VciCcXcacheWrapper()
     delete [] r_dcache_miss_buf;
     delete [] r_tgt_val;
     delete [] r_tgt_buf;
-    delete [] r_dcache_val;
-    delete [] r_dcache_buf;
 }
 
 ////////////////////////
@@ -316,10 +312,9 @@ tmpl(void)::transition()
         r_tgt_icache_req     = false;
         r_tgt_dcache_req     = false;
 
-        //
+        // internal messages in DCACHE et ICACHE FSMs
         r_icache_inval_rsp   = false;
         r_dcache_inval_rsp   = false;
-        r_dcache_update_rsp  = false;
 
         // error signals from the VCI RSP FSM to the ICACHE or DCACHE FSMs
         r_dcache_buf_unc_valid = false;
@@ -922,11 +917,9 @@ tmpl(void)::transition()
             if ( !r_dcache_miss_req && r_dcache_inval_rsp ) { // Miss read response and invalidation
                 if ( r_vci_rsp_data_error ) {
                     r_dcache_inval_rsp  = false;
-                    r_dcache_update_rsp = false;
                     r_dcache_fsm = DCACHE_ERROR;
                 } else {
                     r_dcache_inval_rsp  = false;
-                    r_dcache_update_rsp = false;
                     r_dcache_fsm = DCACHE_IDLE;
                 }
                 break;
@@ -944,16 +937,8 @@ tmpl(void)::transition()
             if( !r_dcache_cleanup_req.read() && !r_dcache_inval_rsp ){
                 addr_t  ad  = r_dcache_addr_save;
                 data_t* buf = new data_t[m_dcache_words];
-                if(r_dcache_update_rsp){
-                    for(size_t i=0; i<m_dcache_words; i++) {
-                        if (r_dcache_val[i])  buf[i] = r_dcache_buf[i];
-                        else                  buf[i] = r_dcache_miss_buf[i];
-                    }
-                    r_dcache_update_rsp=false;
-                } else {
-                    for(size_t i=0; i<m_dcache_words; i++) {
-                        buf[i] = r_dcache_miss_buf[i];
-                    }
+                for(size_t i=0; i<m_dcache_words; i++) {
+                    buf[i] = r_dcache_miss_buf[i];
                 }
                 data_t  victim_index = 0;
                 if ( dreq.valid ) m_cost_data_miss_frz++;
@@ -969,7 +954,6 @@ tmpl(void)::transition()
             }
             if( r_dcache_inval_rsp ){
                 r_dcache_inval_rsp  = false;
-                r_dcache_update_rsp = false;
                 r_dcache_fsm = DCACHE_IDLE;
                 break;
             }
@@ -1021,26 +1005,9 @@ tmpl(void)::transition()
 
             if(( ( r_dcache_fsm_save == DCACHE_MISS_WAIT ) || ( r_dcache_fsm_save == DCACHE_MISS_UPDT ) ) && 
                ( (r_dcache_addr_save.read() & ~((m_dcache_words<<2)-1)) == (ad & ~((m_dcache_words<<2)-1)))) {
-                if(r_tgt_update){
-                    if(!r_dcache_update_rsp){
-                        for(size_t i=0; i<m_dcache_words; i++){
-                            r_dcache_buf[i]=r_tgt_buf[i];
-                            r_dcache_val[i]=r_tgt_val[i];
-                        }
-                    } else {
-                        for(size_t i=0; i<m_dcache_words; i++){
-                            if(r_tgt_val[i])  r_dcache_buf[i]=r_tgt_buf[i];
-                            r_dcache_val[i] = r_tgt_val[i] || r_dcache_val[i];
-                        }
-                    }
-                    r_dcache_update_rsp = true;
-                    r_tgt_dcache_req = false;
-                    r_dcache_fsm = r_dcache_fsm_save;
-                } else {
-                    r_dcache_inval_rsp = true;
-                    r_tgt_dcache_req = false;
-                    r_dcache_fsm = r_dcache_fsm_save;
-                }
+                r_dcache_inval_rsp = true;
+                r_tgt_dcache_req = false;
+                r_dcache_fsm = r_dcache_fsm_save;
             } else {
                 bool    dcache_hit   = r_dcache.read(ad, &dcache_rdata);
                 if ( dcache_hit && r_tgt_update ) {

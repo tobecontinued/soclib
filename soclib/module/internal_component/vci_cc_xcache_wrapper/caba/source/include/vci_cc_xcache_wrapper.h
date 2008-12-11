@@ -148,9 +148,6 @@ private:
     sc_signal<bool>         r_dcache_unc_req;
     sc_signal<bool>         r_dcache_write_req;
     sc_signal<bool>         r_dcache_inval_rsp;
-    sc_signal<bool>         r_dcache_update_rsp;
-    data_t                  *r_dcache_buf;
-    bool                    *r_dcache_val;
 
     sc_signal<int>          r_icache_fsm;
     sc_signal<int>          r_icache_fsm_save;
