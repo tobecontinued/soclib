@@ -46,7 +46,7 @@ class VciRamDisk
     std::string m_filename;
 
 	typedef unsigned int ram_t;
-    ram_t *m_contents;
+    void *m_contents;
 
 protected:
 	SC_HAS_PROCESS(VciRamDisk);

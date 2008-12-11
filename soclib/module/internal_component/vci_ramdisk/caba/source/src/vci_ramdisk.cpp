@@ -29,6 +29,11 @@
 #include "vci_ramdisk.h"
 #include "soclib_endian.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+
 namespace soclib {
 namespace caba {
 
@@ -59,45 +64,39 @@ tmpl(/**/)::VciRamDisk(
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
-	
-	size_t word_size = vci_param::B; // B is VCI's cell size
-    m_contents = new ram_t[(m_vci_fsm.getSize(0)+word_size-1)/word_size];
 }
 
 tmpl(/**/)::~VciRamDisk()
 {
-    delete [] m_contents;
 }
 
 tmpl(void)::reload()
 {
-    FILE* diskimg;
-    if ((diskimg = fopen(m_filename.c_str(), "r")) == NULL)
+    int diskimg;
+    if ((diskimg = open(m_filename.c_str(), O_RDWR)) < 0)
         throw soclib::exception::RunTimeError(
             std::string("Cant open binary image ")+m_filename);
     
-    size_t disksize;
-    fseek(diskimg, 0, SEEK_END);
-    disksize = ftell(diskimg);
-    fseek(diskimg, 0, SEEK_SET);
+    struct stat statbuf;
+    /* find size of image file */
+    if (fstat (diskimg, &statbuf) < 0)
+        throw soclib::exception::RunTimeError(
+            std::string("fstat error on ")+m_filename);
 
-    if (m_vci_fsm.getSize(0) < disksize)
+    if (m_vci_fsm.getSize(0) < statbuf.st_size)
         throw soclib::exception::RunTimeError(
             std::string("Segment too small for binary image ")+m_filename);
 
-    size_t res;
-    res = fread(&m_contents[0], 1, disksize, diskimg);
-
-    if (res != disksize)
+    /* mmap the image file */
+    if ((m_contents = mmap (0, statbuf.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, diskimg, 0)) < 0)
         throw soclib::exception::RunTimeError(
-            std::string("Error while reading binary image ")+m_filename);
+            std::string("mmap failed for binary image ")+m_filename);
 
-    fclose(diskimg);
+    close(diskimg);
 }
 
 tmpl(void)::reset()
 {
-    memset(&m_contents[0], 0, m_vci_fsm.getSize(0));
     m_cpt_read = 0;
     m_cpt_write = 0;
     m_cpt_idle = 0;
@@ -105,8 +104,12 @@ tmpl(void)::reset()
 
 tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
 {
+#ifdef SOCLIB_MODULE_DEBUG
+    printf("write on ramdisk\n");
+#endif
+
     int index = addr / vci_param::B;
-    ram_t *tab = m_contents;
+    ram_t *tab = (ram_t*)m_contents;
 	unsigned int cur = tab[index];
     uint32_t mask = 0;
 
@@ -127,7 +130,9 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
 
 tmpl(bool)::on_read(size_t seg, vci_addr_t addr, vci_data_t &data )
 {
-	data = m_contents[addr / vci_param::B];
+    int index = addr / vci_param::B;
+    ram_t *tab = (ram_t*)m_contents;
+	data = tab[index];
     m_cpt_read++;
 	return true;
 }
