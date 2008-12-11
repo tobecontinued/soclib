@@ -13,7 +13,6 @@
 #include "vci_multi_tty.h"
 #include "vci_vgmn.h"
 #include "vci_mem_cache.h"
-#include "vci_xram.h"
 #include "vci_local_crossbar.h"
 #include "vci_dspinplus_network.h"
 #include "vci_cc_xcache_wrapper.h"
@@ -77,7 +76,10 @@ int _main(int argc, char *argv[])
 	std::cout << maptabc << std::endl;
 
 	soclib::common::MappingTable maptabx(32, IntTab(8,4), IntTab(4,4), 0x00300000);
-	maptabx.add(Segment("xram" , XRAM_BASE , XRAM_SIZE , IntTab(0,0), false));
+	maptabx.add(Segment("xram0" , MC0_M_BASE , MC0_M_SIZE , IntTab(0,0), false));
+	maptabx.add(Segment("xram1" , MC1_M_BASE , MC1_M_SIZE , IntTab(0,0), false));
+	maptabx.add(Segment("xram2" , MC2_M_BASE , MC2_M_SIZE , IntTab(0,0), false));
+	maptabx.add(Segment("xram3" , MC3_M_BASE , MC3_M_SIZE , IntTab(0,0), false));
 	std::cout << maptabx << std::endl;
 
 
@@ -378,20 +380,20 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(2,1), maptabp, loader);
 
-	soclib::caba::VciXRam<vci_param> 
-	xram("xram",maptabx,IntTab(0,0),loader,16,MC0_M_SIZE,2);
+	soclib::caba::VciSimpleRam<vci_param> 
+	xram("xram",IntTab(0,0),maptabx, loader);
 
 	soclib::caba::VciMemCache<vci_param> 
-	memc0("memc0",maptabp,maptabc,maptabx,IntTab(0,0),IntTab(0,0),IntTab(0,0),16,256,16,IntTab(0,0));
+	memc0("memc0",maptabp,maptabc,maptabx,IntTab(0,0),IntTab(0,0),IntTab(0,0),16,256,16);
 
 	soclib::caba::VciMemCache<vci_param> 
-	memc1("memc1",maptabp,maptabc,maptabx,IntTab(1,0),IntTab(1,0),IntTab(1,0),16,256,16,IntTab(0,0));
+	memc1("memc1",maptabp,maptabc,maptabx,IntTab(1,0),IntTab(1,0),IntTab(1,0),16,256,16);
 
 	soclib::caba::VciMemCache<vci_param> 
-	memc2("memc2",maptabp,maptabc,maptabx,IntTab(2,0),IntTab(2,0),IntTab(2,0),16,256,16,IntTab(0,0));
+	memc2("memc2",maptabp,maptabc,maptabx,IntTab(2,0),IntTab(2,0),IntTab(2,0),16,256,16);
 
 	soclib::caba::VciMemCache<vci_param> 
-	memc3("memc3",maptabp,maptabc,maptabx,IntTab(3,0),IntTab(3,0),IntTab(3,0),16,256,16,IntTab(0,0));
+	memc3("memc3",maptabp,maptabc,maptabx,IntTab(3,0),IntTab(3,0),IntTab(3,0),16,256,16);
 	
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(3,1),maptabp,"tty0","tty1","tty2","tty3","tty4","tty5","tty6","tty7","tty8","tty9","tty10","tty11","tty12","tty13","tty14","tty15",NULL);
@@ -657,7 +659,7 @@ int _main(int argc, char *argv[])
 
 	xram.p_clk(signal_clk);
         xram.p_resetn(signal_resetn);
-	xram.p_vci_tgt(signal_vci_tgt_xram);	
+	xram.p_vci(signal_vci_tgt_xram);	
 
 	///////////////////////////////////////////////////////
 	// Réseau vers la XRAM

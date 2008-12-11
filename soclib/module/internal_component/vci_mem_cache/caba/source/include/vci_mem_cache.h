@@ -172,7 +172,6 @@ namespace soclib {  namespace caba {
     	XRAM_CMD_READ_NLINE,
     	XRAM_CMD_WRITE_NLINE,
     	XRAM_CMD_LLSC_NLINE,
-    	XRAM_CMD_XRAM_NLINE,
     	XRAM_CMD_XRAM_DATA,
       };
 
@@ -260,8 +259,7 @@ namespace soclib {  namespace caba {
 		  const soclib::common::IntTab &vci_tgt_index,    // VCI port to PROC (target)
 		  size_t nways,                                   // Number of ways per set 
 		  size_t nsets,                                   // Number of sets
-		  size_t nwords,                                  // Number of words per line 
-		  const soclib::common::IntTab &xram_target_id);  // Target index of the XRAM 
+		  size_t nwords);                                 // Number of words per line
 
       ~VciMemCache();
 
@@ -280,7 +278,6 @@ namespace soclib {  namespace caba {
       const size_t			  m_words;		// Number of words in a line
       const size_t  		  	  m_srcid_ixr;		// Srcid for requests to XRAM 
       const size_t  		  	  m_srcid_ini;		// Srcid for requests to processors
-      soclib::common::Segment 	  	  m_xram_segment;	// Segment of the associated XRAM 
       soclib::common::Segment	  	  m_mem_segment;	// memory cached into the cache
       soclib::common::Segment	  	  m_reg_segment;	// memory cache mapped registers
       addr_t	        		  *m_coherence_table; 	// address(srcid)

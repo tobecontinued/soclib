@@ -127,7 +127,6 @@ namespace soclib { namespace caba {
       "XRAM_CMD_READ_NLINE",
       "XRAM_CMD_WRITE_NLINE",
       "XRAM_CMD_LLSC_NLINE",
-      "XRAM_CMD_XRAM_NLINE",
       "XRAM_CMD_XRAM_DATA",
     };
     const char *llsc_fsm_str[] = {
@@ -188,8 +187,7 @@ namespace soclib { namespace caba {
 			    const soclib::common::IntTab &vci_tgt_index,
 			    size_t nways,
 			    size_t nsets,
-			    size_t nwords,
-			    const soclib::common::IntTab &xram_target_id)
+			    size_t nwords)
 
 	       : soclib::caba::BaseModule(name),
 
@@ -204,7 +202,6 @@ namespace soclib { namespace caba {
 	       m_words( nwords ),
 	       m_srcid_ixr( mtx.indexForId(vci_ixr_index) ),
 	       m_srcid_ini( mtc.indexForId(vci_ini_index) ),
-	       m_xram_segment(mtx.getSegment(xram_target_id)),
 	       m_mem_segment("bidon",0,0,soclib::common::IntTab(),false),
 	       m_reg_segment("bidon",0,0,soclib::common::IntTab(),false),
 	       m_coherence_table( mtc.getCoherenceTable() ),
@@ -463,6 +460,8 @@ namespace soclib { namespace caba {
 	r_xram_rsp_to_init_cmd_req	= false;
 	r_xram_rsp_to_xram_cmd_req	= false;
 	r_xram_rsp_trt_index		= 0;
+
+	r_xram_cmd_cpt = 0;
 
 	// Activity counters
 	m_cpt_cycles		= 0;
@@ -1185,19 +1184,19 @@ namespace soclib { namespace caba {
       case XRAM_CMD_READ_IDLE:
 	if      ( r_write_to_xram_cmd_req )     r_xram_cmd_fsm = XRAM_CMD_WRITE_NLINE;
 	else if ( r_llsc_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_LLSC_NLINE;
-	else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_NLINE;
+	else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;
 	else if ( r_read_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_READ_NLINE;
         break;
 	//////////////////////// 
       case XRAM_CMD_WRITE_IDLE:
 	if      ( r_llsc_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_LLSC_NLINE;
-	else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_NLINE;
+	else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;
 	else if ( r_read_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_READ_NLINE;
 	else if ( r_write_to_xram_cmd_req )     r_xram_cmd_fsm = XRAM_CMD_WRITE_NLINE;
         break;
 	//////////////////////// 
       case XRAM_CMD_LLSC_IDLE:
-	if      ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_NLINE;
+	if      ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;
 	else if ( r_read_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_READ_NLINE;
 	else if ( r_write_to_xram_cmd_req )     r_xram_cmd_fsm = XRAM_CMD_WRITE_NLINE;
 	else if ( r_llsc_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_LLSC_NLINE;
@@ -1207,7 +1206,7 @@ namespace soclib { namespace caba {
 	if      ( r_read_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_READ_NLINE;
 	else if ( r_write_to_xram_cmd_req )     r_xram_cmd_fsm = XRAM_CMD_WRITE_NLINE;
 	else if ( r_llsc_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_LLSC_NLINE;
-	else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_NLINE;
+	else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;
         break;
 	/////////////////////////
       case XRAM_CMD_READ_NLINE:
@@ -1230,17 +1229,11 @@ namespace soclib { namespace caba {
           r_llsc_to_xram_cmd_req = false;
         }
 	break;
-	/////////////////////////
-      case XRAM_CMD_XRAM_NLINE:
-        if ( p_vci_ixr.cmdack ) {
-          r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;		
-          r_xram_cmd_cpt = 0;
-        }
-	break;
 	////////////////////////
       case XRAM_CMD_XRAM_DATA:
         if ( p_vci_ixr.cmdack ) {
           if ( r_xram_cmd_cpt.read() == (m_words - 1) ) {
+            r_xram_cmd_cpt = 0;
             r_xram_cmd_fsm = XRAM_CMD_XRAM_IDLE;
             r_xram_rsp_to_xram_cmd_req = false;
           } else {
@@ -2483,7 +2476,7 @@ namespace soclib { namespace caba {
       // Command signals on the p_vci_ixr port
       ////////////////////////////////////////////////////////////
 
-      p_vci_ixr.cmd     = vci_param::CMD_WRITE;
+      
       p_vci_ixr.be      = 0xF;
       p_vci_ixr.pktid   = 0;
       p_vci_ixr.srcid   = m_srcid_ixr;
@@ -2494,42 +2487,38 @@ namespace soclib { namespace caba {
       p_vci_ixr.cfixed  = false;
 
       if ( r_xram_cmd_fsm.read() == XRAM_CMD_READ_NLINE ) {
+	p_vci_ixr.cmd     = vci_param::CMD_READ;
         p_vci_ixr.cmdval  = true;
-	p_vci_ixr.address = m_xram_segment.baseAddress();
-	p_vci_ixr.plen    = 4;
-	p_vci_ixr.wdata   = r_read_to_xram_cmd_nline.read();
+	p_vci_ixr.address = (r_read_to_xram_cmd_nline.read()*m_words*4);
+	p_vci_ixr.plen    = m_words*4;
+	p_vci_ixr.wdata   = 0x00000000;
 	p_vci_ixr.trdid   = r_read_to_xram_cmd_trdid.read();
 	p_vci_ixr.eop     = true;
       } 
       else if ( r_xram_cmd_fsm.read() == XRAM_CMD_LLSC_NLINE ) {
+	p_vci_ixr.cmd     = vci_param::CMD_READ;
         p_vci_ixr.cmdval  = true;
-	p_vci_ixr.address = m_xram_segment.baseAddress();
-	p_vci_ixr.plen    = 4;
-	p_vci_ixr.wdata   = r_llsc_to_xram_cmd_nline.read();
+	p_vci_ixr.address = (r_llsc_to_xram_cmd_nline.read()*m_words*4);
+	p_vci_ixr.plen    = m_words*4;
+	p_vci_ixr.wdata   = 0x00000000;
 	p_vci_ixr.trdid   = r_llsc_to_xram_cmd_trdid.read();
 	p_vci_ixr.eop     = true;
       } 
       else if ( r_xram_cmd_fsm.read() == XRAM_CMD_WRITE_NLINE ) {
+	p_vci_ixr.cmd     = vci_param::CMD_READ;
         p_vci_ixr.cmdval  = true;
-	p_vci_ixr.address = m_xram_segment.baseAddress();
-	p_vci_ixr.plen    = 4;
-	p_vci_ixr.wdata   = r_write_to_xram_cmd_nline.read();
+	p_vci_ixr.address = (r_write_to_xram_cmd_nline.read()*m_words*4);
+	p_vci_ixr.plen    = m_words*4;
+	p_vci_ixr.wdata   = 0x00000000;
 	p_vci_ixr.trdid   = r_write_to_xram_cmd_trdid.read();
 	p_vci_ixr.eop     = true;
       } 
-      else if ( r_xram_cmd_fsm.read() == XRAM_CMD_XRAM_NLINE ) {
-        p_vci_ixr.cmdval  = true;
-	p_vci_ixr.address = m_xram_segment.baseAddress() + 4;
-	p_vci_ixr.plen    = 4*(m_words + 1);
-	p_vci_ixr.wdata   = r_xram_rsp_to_xram_cmd_nline.read();
-	p_vci_ixr.trdid   = r_xram_rsp_to_xram_cmd_trdid.read();
-	p_vci_ixr.eop     = false;
-      } 
       else if ( r_xram_cmd_fsm.read() == XRAM_CMD_XRAM_DATA ) {
+	p_vci_ixr.cmd     = vci_param::CMD_WRITE;
         p_vci_ixr.cmdval  = true;
-	p_vci_ixr.address = m_xram_segment.baseAddress() + 4;
-	p_vci_ixr.plen    = 4*(m_words + 1);
-	p_vci_ixr.wdata   = r_xram_rsp_to_xram_cmd_data[r_xram_cmd_cpt.read()].read();
+	p_vci_ixr.address = ((r_xram_rsp_to_xram_cmd_nline.read()*m_words+r_xram_cmd_cpt.read())*4);
+	p_vci_ixr.plen    = m_words*4;
+	p_vci_ixr.wdata   = 0x00000000;
 	p_vci_ixr.trdid   = r_xram_rsp_to_xram_cmd_trdid.read();
 	p_vci_ixr.eop     = (r_xram_cmd_cpt == (m_words-1));
       } else {

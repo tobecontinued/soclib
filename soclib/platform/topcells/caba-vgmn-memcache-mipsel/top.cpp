@@ -13,7 +13,6 @@
 #include "vci_multi_tty.h"
 #include "vci_vgmn.h"
 #include "vci_mem_cache.h"
-#include "vci_xram.h"
 #include "vci_cc_xcache_wrapper.h"
 
 
@@ -36,17 +35,24 @@ int _main(int argc, char *argv[])
 
 	// Mapping table
 
-	soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00300000);
+	soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0x00300000);
 
-	maptab.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), true));
-	maptab.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), true));
-	maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(1), false));
-	maptab.add(Segment("proc" , PROC_BASE , PROC_SIZE , IntTab(4), false, true, IntTab(0)));
-	maptab.add(Segment("xram" , XRAM_BASE , XRAM_SIZE , IntTab(2), false, true, IntTab(3)));
-	maptab.add(Segment("mc_r" , MC_R_BASE , MC_R_SIZE , IntTab(3), false, true, IntTab(2)));
-	maptab.add(Segment("mc_m" , MC_M_BASE , MC_M_SIZE , IntTab(3), true ));
+	maptabp.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), true));
+	maptabp.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), true));
+	maptabp.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(1), false));
+	maptabp.add(Segment("mc_r" , MC_R_BASE , MC_R_SIZE , IntTab(2), false, true, IntTab(0)));
+	maptabp.add(Segment("mc_m" , MC_M_BASE , MC_M_SIZE , IntTab(2), true ));
 
-	std::cout << maptab << std::endl;
+	std::cout << maptabp << std::endl;
+
+	soclib::common::MappingTable maptabc(32, IntTab(8), IntTab(8), 0x00300000);
+	maptabc.add(Segment("proc" , PROC_BASE , PROC_SIZE , IntTab(0), false, true, IntTab(0)));
+	std::cout << maptabc << std::endl;
+
+	soclib::common::MappingTable maptabx(32, IntTab(8), IntTab(8), 0x00300000);
+	maptabx.add(Segment("xram" , MC_M_BASE , MC_M_SIZE , IntTab(0), false));
+
+	std::cout << maptabx << std::endl;
 
 	// Signals
 
@@ -91,22 +97,28 @@ int _main(int argc, char *argv[])
 	soclib::common::ElfLoader loader("soft/bin.soft");
 
 	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc("proc", 0, maptab,maptab,IntTab(0),IntTab(4),4,64,16,4,64,16,CLEANUP_OFFSET);
+	proc("proc", 0, maptabp,maptabc,IntTab(0),IntTab(0),4,64,16,4,64,16,CLEANUP_OFFSET);
 
 	soclib::caba::VciSimpleRam<vci_param> 
-	rom("rom", IntTab(0), maptab, loader);
+	rom("rom", IntTab(0), maptabp, loader);
 
-	soclib::caba::VciXRam<vci_param> 
-	xram("xram",maptab,IntTab(2),loader,16,MC_M_SIZE,2);
+	soclib::caba::VciSimpleRam<vci_param> 
+	xram("xram",IntTab(0),maptabx, loader);
 
 	soclib::caba::VciMemCache<vci_param> 
-	memc("memc",maptab,maptab,maptab,IntTab(2),IntTab(1),IntTab(3),16,256,16,IntTab(2));
+	memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(0),IntTab(2),16,256,16);
 	
 	soclib::caba::VciMultiTty<vci_param> 
-	tty("tty",IntTab(1),maptab,"tty",NULL);
+	tty("tty",IntTab(1),maptabp,"tty",NULL);
 
 	soclib::caba::VciVgmn<vci_param> 
-	vgmn("vgmn",maptab, 3, 5, 1, 8);
+	vgmnp("vgmnp",maptabp, 1, 3, 1, 8);
+
+	soclib::caba::VciVgmn<vci_param> 
+	vgmnc("vgmnc",maptabc, 1, 1, 1, 8);
+
+	soclib::caba::VciVgmn<vci_param> 
+	vgmnx("vgmnx",maptabx, 1, 1, 1, 8);
 
 	// Net-List
  
@@ -138,20 +150,31 @@ int _main(int argc, char *argv[])
 
 	xram.p_clk(signal_clk);
         xram.p_resetn(signal_resetn);
-	xram.p_vci_tgt(signal_vci_tgt_xram);	
+	xram.p_vci(signal_vci_tgt_xram);	
 
-	vgmn.p_clk(signal_clk);
-	vgmn.p_resetn(signal_resetn);
+	vgmnp.p_clk(signal_clk);
+	vgmnp.p_resetn(signal_resetn);
 
-	vgmn.p_to_initiator[0](signal_vci_ini_proc);
-	vgmn.p_to_initiator[1](signal_vci_ini_memc);
-	vgmn.p_to_initiator[2](signal_vci_ixr_memc);
+	vgmnc.p_clk(signal_clk);
+	vgmnc.p_resetn(signal_resetn);
 
-	vgmn.p_to_target[0](signal_vci_tgt_rom);
-	vgmn.p_to_target[1](signal_vci_tgt_tty);
-	vgmn.p_to_target[2](signal_vci_tgt_xram);
-	vgmn.p_to_target[3](signal_vci_tgt_memc);
-	vgmn.p_to_target[4](signal_vci_tgt_proc);
+	vgmnx.p_clk(signal_clk);
+	vgmnx.p_resetn(signal_resetn);
+
+	vgmnp.p_to_initiator[0](signal_vci_ini_proc);
+
+	vgmnc.p_to_initiator[0](signal_vci_ini_memc);
+
+	vgmnx.p_to_initiator[0](signal_vci_ixr_memc);
+
+
+	vgmnp.p_to_target[0](signal_vci_tgt_rom);
+	vgmnp.p_to_target[1](signal_vci_tgt_tty);
+	vgmnp.p_to_target[2](signal_vci_tgt_memc);
+
+	vgmnc.p_to_target[0](signal_vci_tgt_proc);
+
+	vgmnx.p_to_target[0](signal_vci_tgt_xram);
 
 	int ncycles;
 
