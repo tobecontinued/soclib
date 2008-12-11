@@ -122,7 +122,7 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
     if ( be & 8 )
         mask |= 0xff000000;
     
-    tab[index] = (cur & ~mask) | (data & mask);
+    tab[index] = (cur & ~mask) | (machine_to_le(data) & mask);
     m_cpt_write++;
 
     return true;
@@ -132,7 +132,7 @@ tmpl(bool)::on_read(size_t seg, vci_addr_t addr, vci_data_t &data )
 {
     int index = addr / vci_param::B;
     ram_t *tab = (ram_t*)m_contents;
-	data = tab[index];
+	data = le_to_machine(tab[index]);
     m_cpt_read++;
 	return true;
 }
