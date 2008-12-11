@@ -35,10 +35,49 @@
 
 namespace soclib { namespace caba {
 
+#ifdef SOCLIB_MODULE_DEBUG
+    namespace {
+        const char* SoclibBlockDeviceRegisters_str[] = {
+            "BLOCK_DEVICE_BUFFER",
+            "BLOCK_DEVICE_LBA",
+            "BLOCK_DEVICE_COUNT",
+            "BLOCK_DEVICE_OP",
+            "BLOCK_DEVICE_STATUS",
+            "BLOCK_DEVICE_IRQ_ENABLE",
+            "BLOCK_DEVICE_SIZE",
+            "BLOCK_DEVICE_BLOCK_SIZE"
+        };
+        const char* SoclibBlockDeviceOp_str[] = {
+            "BLOCK_DEVICE_NOOP",
+            "BLOCK_DEVICE_READ",
+            "BLOCK_DEVICE_WRITE",
+        };
+        const char* SoclibBlockDeviceStatus_str[] = {
+            "BLOCK_DEVICE_IDLE",
+            "BLOCK_DEVICE_BUSY",
+            "BLOCK_DEVICE_READ_SUCCESS",
+            "BLOCK_DEVICE_WRITE_SUCCESS",
+            "BLOCK_DEVICE_READ_ERROR",
+            "BLOCK_DEVICE_WRITE_ERROR",
+            "BLOCK_DEVICE_ERROR",
+        };
+    }
+#endif
+
 #define tmpl(t) template<typename vci_param> t VciBlockDevice<vci_param>
 
 tmpl(void)::ended(int status)
 {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout 
+        << name()
+        << " finished current operation ("
+        << SoclibBlockDeviceOp_str[m_current_op]
+        << ") with the status "
+        << SoclibBlockDeviceStatus_str[status]
+        << std::endl;
+#endif
+
 	if ( m_irq_enabled )
 		r_irq = true;
 	m_current_op = m_op = BLOCK_DEVICE_NOOP;
@@ -48,6 +87,16 @@ tmpl(void)::ended(int status)
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
     int cell = (int)addr / vci_param::B;
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout 
+        << name()
+        << " write config register "
+        << SoclibBlockDeviceRegisters_str[cell]
+        << " with data 0x"
+        << std::hex << data.read()
+        << std::endl;
+#endif
 
 	switch ((enum SoclibBlockDeviceRegisters)cell) {
     case BLOCK_DEVICE_BUFFER:
@@ -78,6 +127,14 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 {
     int cell = (int)addr / vci_param::B;
 
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout 
+        << name()
+        << " read config register "
+        << SoclibBlockDeviceRegisters_str[cell]
+        << std::endl;
+#endif
+
 	switch ((enum SoclibBlockDeviceRegisters)cell) {
     case BLOCK_DEVICE_SIZE:
         data = (typename vci_param::fast_data_t)m_device_size;
@@ -100,6 +157,12 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 tmpl(void)::read_done( req_t *req )
 {
     if ( ! req->failed() && m_chunck_offset < m_transfer_size ) {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout 
+        << name()
+        << " completed transferring a chunck. Do now the next one..."
+        << std::endl;
+#endif
         next_req();
         return;
     }
@@ -112,12 +175,18 @@ tmpl(void)::read_done( req_t *req )
 tmpl(void)::write_finish( req_t *req )
 {
     if ( ! req->failed() && m_chunck_offset < m_transfer_size ) {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout 
+        << name()
+        << " completed transferring a chunck. Do now the next one..."
+        << std::endl;
+#endif
         next_req();
         return;
     }
 
 	ended(
-        ( ! req->failed() && ::write( m_fd, (char *)m_data, m_count ) > 0 )
+        ( ! req->failed() && ::write( m_fd, (char *)m_data, m_transfer_size ) > 0 )
         ? BLOCK_DEVICE_WRITE_SUCCESS : BLOCK_DEVICE_WRITE_ERROR );
     delete m_data;
 	delete req;
@@ -198,6 +267,13 @@ tmpl(void)::transition()
 
 	if ( m_current_op == BLOCK_DEVICE_NOOP &&
 		 m_op != BLOCK_DEVICE_NOOP ) {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout 
+        << name()
+        << " launch an operation "
+        << SoclibBlockDeviceOp_str[m_op]
+        << std::endl;
+#endif
 		m_current_op = m_op;
         m_op = BLOCK_DEVICE_NOOP;
         m_chunck_offset = 0;
@@ -248,6 +324,18 @@ tmpl(/**/)::VciBlockDevice(
             << (8*vci_param::B) << "." << std::endl;
         m_device_size = ((uint64_t)1<<(vci_param::B*8));
     }
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout 
+        << name
+        << " = Opened " 
+        << filename
+        << " which has "
+        << m_device_size
+        << " blocks of "
+        << m_block_size
+        << " bytes"
+        << std::endl;
+#endif
 
 	SC_METHOD(transition);
 	dont_initialize();
