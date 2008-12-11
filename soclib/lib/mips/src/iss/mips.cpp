@@ -138,8 +138,8 @@ void MipsIss::setDataResponse(bool error, uint32_t data)
     // in order to implement the delayed load behaviour.
     if ( isReadAccess(r_mem_type) ) {
         uint32_t reg_use = curInstructionUsesRegs();
-        if ( reg_use & USE_S && r_mem_dest == m_ins.r.rs ||
-             reg_use & USE_T && r_mem_dest == m_ins.r.rt )
+        if ( (reg_use & USE_S && r_mem_dest == m_ins.r.rs) ||
+             (reg_use & USE_T && r_mem_dest == m_ins.r.rt) )
             m_hazard = true;
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout

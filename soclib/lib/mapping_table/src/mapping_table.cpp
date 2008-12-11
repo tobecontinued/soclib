@@ -81,7 +81,7 @@ void MappingTable::add( const Segment &seg )
             o << seg << " bumps in " << s;
             throw soclib::exception::Collision(o.str());
         }
-        if ( m_cacheability_mask & s.baseAddress() == m_cacheability_mask & seg.baseAddress() &&
+        if ( (m_cacheability_mask & s.baseAddress()) == (m_cacheability_mask & seg.baseAddress()) &&
              s.cacheable() != seg.cacheable() ) {
             std::ostringstream oss;
             oss << "Segment " << s

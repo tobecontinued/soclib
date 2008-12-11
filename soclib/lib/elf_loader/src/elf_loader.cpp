@@ -64,8 +64,8 @@ static void elf_do_load(bfd *exec, asection *sect, PTR descptr)
     uintptr_t lma = sect->lma & mask;
     uintptr_t desc_addr = desc->address & mask;
 
-	if ( lma >= (desc_addr+desc->length) && !carry(desc_addr, desc->length, mask) ||
-		 desc_addr >= (lma+sect->size) && !carry(lma, sect->size, mask) ) {
+	if (((lma >= (desc_addr+desc->length)) && !carry(desc_addr, desc->length, mask)) ||
+		 ((desc_addr >= (lma+sect->size)) && !carry(lma, sect->size, mask))) {
 #ifdef ELF_LOADER_DEBUG
         std::cout << "No overlap between"
               << " section " << sect->name

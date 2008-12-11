@@ -283,6 +283,7 @@ tmpl(void)::transition()
 		m_vci_init_fsm.reset();
 		r_irq = false;
 		m_irq_enabled = false;
+		m_current_op = FD_ACCESS_NOOP;
 		return;
 	}
 
