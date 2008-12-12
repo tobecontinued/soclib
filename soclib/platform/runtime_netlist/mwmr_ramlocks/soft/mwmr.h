@@ -50,3 +50,14 @@ uint32_t mwmr_status( void *coproc, unsigned int no );
 
 void mwmr_write( mwmr_t *mwmr, const void *buffer, size_t size );
 void mwmr_read( mwmr_t *mwmr, void *buffer, size_t size );
+size_t mwmr_try_read( mwmr_t *fifo, void *_ptr, size_t lensw );
+size_t mwmr_try_write( mwmr_t *fifo, const void *_ptr, size_t lensw );
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4

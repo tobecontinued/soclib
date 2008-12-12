@@ -53,10 +53,13 @@ static inline void mwmr_lock( volatile uint32_t *lock )
 	while (*lock != 0)
 		;
 }
-
 static inline void mwmr_unlock( volatile uint32_t *lock )
 {
 	*lock = 0;
+}
+static inline uint32_t mwmr_try_lock( volatile uint32_t *lock )
+{
+	return (*lock);
 }
 
 static inline void busy_wait( ncycles )
@@ -71,6 +74,28 @@ static inline size_t min(size_t a, size_t b)
 	if (a<b)
 		return a;
 	return b;
+}
+
+typedef struct {
+	uint32_t usage, wptr, rptr, modified;
+} local_mwmr_status_t;
+
+static inline void rehash_status( mwmr_t *fifo, local_mwmr_status_t *status )
+{
+	volatile soclib_mwmr_status_s *fstatus = &fifo->status;
+	status->usage = fstatus->usage;
+	status->wptr  = fstatus->wptr;
+	status->rptr  = fstatus->rptr;
+	status->modified = 0;
+}
+static inline void writeback_status( mwmr_t *fifo, local_mwmr_status_t *status )
+{
+	volatile soclib_mwmr_status_s *fstatus = &fifo->status;
+	if ( !status->modified )
+		return;
+	fstatus->usage = status->usage;
+	fstatus->wptr  = status->wptr;
+	fstatus->rptr  = status->rptr;
 }
 
 
@@ -102,67 +127,146 @@ uint32_t mwmr_status( void *coproc, unsigned int no )
 void mwmr_read( mwmr_t *fifo, void *_ptr, size_t lensw )
 {
 	uint8_t *ptr = _ptr;
-    volatile soclib_mwmr_status_s *status = &fifo->status;
-
+    local_mwmr_status_t status;
 	mwmr_lock( fifo->lock );
+	rehash_status( fifo, &status );
     while ( lensw ) {
         size_t len;
-        while (status->usage < fifo->width) {
+        while (status.usage < fifo->width) {
             mwmr_unlock( fifo->lock );
 			busy_wait(1000);
             mwmr_lock( fifo->lock );
         }
-        while ( lensw && status->usage >= fifo->width ) {
+        while ( lensw && status.usage >= fifo->width ) {
 			void *sptr;
 
-            if ( status->rptr < status->wptr )
-                len = status->usage;
+            if ( status.rptr < status.wptr )
+                len = status.usage;
             else
-                len = (fifo->gdepth - status->rptr);
+                len = (fifo->gdepth - status.rptr);
             len = min(len, lensw);
-			sptr = &((uint8_t*)fifo->buffer)[status->rptr];
+			sptr = &((uint8_t*)fifo->buffer)[status.rptr];
             memcpy( ptr, sptr, len );
-            status->rptr += len;
-            if ( status->rptr == fifo->gdepth )
-                status->rptr = 0;
+            status.rptr += len;
+            if ( status.rptr == fifo->gdepth )
+                status.rptr = 0;
             ptr += len;
-            status->usage -= len;
+            status.usage -= len;
             lensw -= len;
         }
     }
+	writeback_status( fifo, &status );
 	mwmr_unlock( fifo->lock );
 }
 
 void mwmr_write( mwmr_t *fifo, const void *_ptr, size_t lensw )
 {
 	const uint8_t *ptr = _ptr;
-    volatile soclib_mwmr_status_s *status = &fifo->status;
-
+    local_mwmr_status_t status;
 	mwmr_lock( fifo->lock );
     while ( lensw ) {
         size_t len;
-        while (status->usage >= fifo->gdepth) {
+        while (status.usage >= fifo->gdepth) {
             mwmr_unlock( fifo->lock );
 			busy_wait(1000);
             mwmr_lock( fifo->lock );
         }
-        while ( lensw && status->usage < fifo->gdepth ) {
+        while ( lensw && status.usage < fifo->gdepth ) {
 			void *dptr;
 
-            if ( status->rptr <= status->wptr )
-                len = (fifo->gdepth - status->wptr);
+            if ( status.rptr <= status.wptr )
+                len = (fifo->gdepth - status.wptr);
             else
-                len = fifo->gdepth - status->usage;
+                len = fifo->gdepth - status.usage;
             len = min(len, lensw);
-			dptr = &((uint8_t*)fifo->buffer)[status->wptr];
+			dptr = &((uint8_t*)fifo->buffer)[status.wptr];
             memcpy( dptr, ptr, len );
-            status->wptr += len;
-            if ( status->wptr == fifo->gdepth )
-                status->wptr = 0;
+            status.wptr += len;
+            if ( status.wptr == fifo->gdepth )
+                status.wptr = 0;
             ptr += len;
-            status->usage += len;
+            status.usage += len;
             lensw -= len;
         }
     }
+	writeback_status( fifo, &status );
 	mwmr_unlock( fifo->lock );
 }
+
+size_t mwmr_try_read( mwmr_t *fifo, void *_ptr, size_t lensw )
+{
+	uint8_t *ptr = _ptr;
+	size_t done = 0;
+    local_mwmr_status_t status;
+	if ( mwmr_try_lock( fifo->lock ) )
+		return done;
+	rehash_status( fifo, &status );
+	while ( lensw && status.usage >= fifo->width ) {
+        size_t len;
+		void *sptr;
+
+		if ( status.rptr < status.wptr )
+			len = status.usage;
+		else
+			len = (fifo->gdepth - status.rptr);
+		len = min(len, lensw);
+		sptr = &((uint8_t*)fifo->buffer)[status.rptr];
+		memcpy( ptr, sptr, len );
+		status.rptr += len;
+		if ( status.rptr == fifo->gdepth )
+			status.rptr = 0;
+		ptr += len;
+		status.usage -= len;
+		lensw -= len;
+		done += len;
+		status.modified = 1;
+	}
+	writeback_status( fifo, &status );
+	mwmr_unlock( fifo->lock );
+	return done;
+}
+
+
+size_t mwmr_try_write( mwmr_t *fifo, const void *_ptr, size_t lensw )
+{
+	const uint8_t *ptr = _ptr;
+	size_t done = 0;
+    local_mwmr_status_t status;
+	if ( mwmr_try_lock( fifo->lock ) )
+		return done;
+	rehash_status( fifo, &status );
+	while ( lensw && status.usage < fifo->gdepth ) {
+        size_t len;
+		void *dptr;
+
+		if ( status.rptr <= status.wptr )
+			len = (fifo->gdepth - status.wptr);
+		else
+			len = fifo->gdepth - status.usage;
+		len = min(len, lensw);
+		dptr = &((uint8_t*)fifo->buffer)[status.wptr];
+		memcpy( dptr, ptr, len );
+		status.wptr += len;
+		if ( status.wptr == fifo->gdepth )
+			status.wptr = 0;
+		ptr += len;
+		status.usage += len;
+		lensw -= len;
+		done += len;
+		status.modified = 1;
+    }
+	writeback_status( fifo, &status );
+	mwmr_unlock( fifo->lock );
+	return done;
+}
+
+
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
