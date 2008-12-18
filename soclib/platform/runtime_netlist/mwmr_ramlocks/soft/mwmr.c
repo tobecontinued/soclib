@@ -133,9 +133,11 @@ void mwmr_read( mwmr_t *fifo, void *_ptr, size_t lensw )
     while ( lensw ) {
         size_t len;
         while (status.usage < fifo->width) {
+	        writeback_status( fifo, &status );
             mwmr_unlock( fifo->lock );
 			busy_wait(1000);
             mwmr_lock( fifo->lock );
+            rehash_status( fifo, &status );
         }
         while ( lensw && status.usage >= fifo->width ) {
 			void *sptr;
@@ -153,6 +155,7 @@ void mwmr_read( mwmr_t *fifo, void *_ptr, size_t lensw )
             ptr += len;
             status.usage -= len;
             lensw -= len;
+            status.modified = 1;
         }
     }
 	writeback_status( fifo, &status );
@@ -164,12 +167,15 @@ void mwmr_write( mwmr_t *fifo, const void *_ptr, size_t lensw )
 	const uint8_t *ptr = _ptr;
     local_mwmr_status_t status;
 	mwmr_lock( fifo->lock );
+	rehash_status( fifo, &status );
     while ( lensw ) {
         size_t len;
         while (status.usage >= fifo->gdepth) {
+	        writeback_status( fifo, &status );
             mwmr_unlock( fifo->lock );
 			busy_wait(1000);
             mwmr_lock( fifo->lock );
+            rehash_status( fifo, &status );
         }
         while ( lensw && status.usage < fifo->gdepth ) {
 			void *dptr;
@@ -187,6 +193,7 @@ void mwmr_write( mwmr_t *fifo, const void *_ptr, size_t lensw )
             ptr += len;
             status.usage += len;
             lensw -= len;
+            status.modified = 1;
         }
     }
 	writeback_status( fifo, &status );
@@ -232,7 +239,7 @@ size_t mwmr_try_write( mwmr_t *fifo, const void *_ptr, size_t lensw )
 	const uint8_t *ptr = _ptr;
 	size_t done = 0;
     local_mwmr_status_t status;
-	if ( mwmr_try_lock( fifo->lock ) )
+	if (mwmr_try_lock( fifo->lock ) )
 		return done;
 	rehash_status( fifo, &status );
 	while ( lensw && status.usage < fifo->gdepth ) {
