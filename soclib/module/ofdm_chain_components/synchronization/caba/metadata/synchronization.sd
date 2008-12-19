@@ -1,0 +1,30 @@
+
+# -*- python -*-
+
+Module('caba:Synchronization',
+	classname = 'soclib::caba::Synchronization',
+	tmpl_parameters = [
+		parameter.Module('vci_param',  default = 'vci_param'),
+		#parameter.Int('Nirq'),
+	],
+	header_files = ['../source/include/synchronization.h',],
+	implementation_files = ['../source/src/synchronization.cpp',],
+	ports = [
+		Port('fifo_output', 'p_to_ctrl'),
+                Port('fifo_input', 'p_from_ctrl'),
+		Port('bit_in', 'p_resetn', auto = 'resetn'),
+         	Port('clock_in', 'p_clk', auto = 'clock'),
+	],
+	uses = [
+		Uses('base_module'),
+	],
+	##instance_parameters = [
+		##parameter.IntTab('ident'),
+        ##	parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+	#],
+	###extensions = [
+	###	'dsx:addressable=ident',
+	###	'dsx:get_ident=ident:p_vci',
+	###	'dsx:max_segments=1',
+   	###],
+)
