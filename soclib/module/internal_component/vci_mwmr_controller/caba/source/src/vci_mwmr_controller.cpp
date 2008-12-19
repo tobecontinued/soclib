@@ -265,6 +265,9 @@ DEBUG_END;
             assert(m_config_fifo->lock_address==0 && "You must not configure lock address with a LL-SC protocol, looks like a protocol mismatch");
 		m_config_fifo->running = !!data;
 		return true;
+    case MWMR_FIFO_STATUS:
+         assert(!"MWMR_FIFO_STATUS is a Read-only address");
+		return false;
 	}
 	return false;
 }
@@ -312,6 +315,10 @@ DEBUG_END;
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
 		data = m_config_fifo->running;
+		return true;
+    case MWMR_FIFO_STATUS:
+		check_fifo();
+		data = m_config_fifo->fifo->filled_status();
 		return true;
 	}
 	return false;

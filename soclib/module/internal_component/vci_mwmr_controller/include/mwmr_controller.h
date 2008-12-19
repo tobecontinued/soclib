@@ -41,6 +41,7 @@ enum SoclibMwmrRegisters {
     MWMR_CONFIG_BUFFER_ADDR,
     MWMR_CONFIG_LOCK_ADDR,
     MWMR_CONFIG_RUNNING,
+    MWMR_FIFO_STATUS           //Read-only
 };
 
 enum SoclibMwmrWay {
