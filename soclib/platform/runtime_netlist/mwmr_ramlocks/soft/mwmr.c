@@ -267,6 +267,16 @@ size_t mwmr_try_write( mwmr_t *fifo, const void *_ptr, size_t lensw )
 	return done;
 }
 
+void mwmr_initialize_pointer (mwmr_t *p_mwmr_t, unsigned int width, unsigned int depth, uint32_t *const buffer, uint32_t *lock) {
+    p_mwmr_t->width         = width;
+    p_mwmr_t->gdepth        = width*depth;
+    p_mwmr_t->buffer        = buffer;
+    p_mwmr_t->lock          = lock;
+    p_mwmr_t->status.rptr  = 0;
+    p_mwmr_t->status.wptr  = 0;
+    p_mwmr_t->status.usage = 0;
+    p_mwmr_t->status.lock  = 0;
+}
 
 
 // Local Variables:

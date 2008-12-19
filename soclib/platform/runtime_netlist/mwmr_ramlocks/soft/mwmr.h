@@ -30,9 +30,9 @@
 #include "stdint.h"
 
 typedef struct mwmr_s {
-    const unsigned int width;
-	const unsigned int gdepth;
-    uint32_t *const buffer;
+    unsigned int width;
+	unsigned int gdepth;
+    uint32_t *buffer;
 	uint32_t *lock;
 	volatile soclib_mwmr_status_s status;
 } mwmr_t;
@@ -43,6 +43,8 @@ typedef struct mwmr_s {
 void
 mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
 			  unsigned int no, const mwmr_t *mwmr );
+
+void mwmr_initialize_pointer (mwmr_t *p_mwmr_t, unsigned int width, unsigned int depth, uint32_t *const buffer, uint32_t *lock);
 
 void mwmr_config( void *coproc, unsigned int no, const uint32_t val );
 
