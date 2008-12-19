@@ -61,6 +61,7 @@ struct fifo_state_s {
 	bool running;
 	enum SoclibMwmrWay way;
 	uint32_t timer;
+	uint32_t waiting;
     GenericFifo<uint32_t> *fifo;
     uint32_t in_words;
     uint32_t out_words;
@@ -180,13 +181,26 @@ DEBUG_END;
             continue;
         }
 
-		if ( ! (( st->way == MWMR_TO_COPROC )
-                ? (st->fifo->empty())
-                : (st->fifo->full())) ) {
+		if ( st->way == MWMR_TO_COPROC ) {
+            //If the FIFO is partially empty, the timer is decrementing
+            if ((st->fifo->filled_status() < m_fifo_to_coproc_depth) && (st->waiting != 0))  st->waiting--;
+            //If the FIFO is empty or, partially empty and the timer is 0, try to get new data
+            if (!(st->fifo->empty() || ((st->fifo->filled_status() < m_fifo_to_coproc_depth) && (st->waiting == 0))) ) {
 DEBUG_BEGIN;
-            std::cout << "!D";
+                std::cout << "!D";
 DEBUG_END;
-            continue;
+                continue;
+            }
+        }else{
+            //If the FIFO is partially full, the timer is decrementing
+            if ((st->fifo->filled_status() > 0)&& (st->waiting != 0)) st->waiting--;
+            //If the FIFO is full or, partially full ant the timer is 0, try to send the data
+            if (!(st->fifo->full() || ((st->fifo->filled_status() != 0) && (st->waiting == 0))) ) {
+DEBUG_BEGIN;
+                std::cout << "!D";
+DEBUG_END;
+                continue;
+            }
         }
 
         m_current = st;
@@ -315,6 +329,7 @@ tmpl(void)::reset()
 		m_all_state[i].running = false;
 		m_all_state[i].timer = 0;
 		m_all_state[i].fifo->init();
+		m_all_state[i].waiting = 64;
 	}
 }
 
@@ -428,29 +443,45 @@ DEBUG_BEGIN;
                   << "/" << (m_current->way == MWMR_FROM_COPROC ? m_fifo_from_coproc_depth : m_fifo_to_coproc_depth)
                   << ": ";
 DEBUG_END;
+        int r_current_usage_words = (int)floor(r_current_usage/4);          //The number of Words currentlly available in the RAM FIFO
 		if ( m_current->way == MWMR_FROM_COPROC ) {
-            if ( r_current_usage + m_fifo_from_coproc_depth <= m_current->depth &&
-                 m_current->fifo->full() ) {
-				r_cmd_count = m_fifo_from_coproc_depth/vci_param::B;
-                r_rsp_count = m_fifo_from_coproc_depth/vci_param::B;
+            //If RAM FIFO have room, try to send the data
+            if ( r_current_usage_words + m_current->fifo->filled_status() <= m_current->depth &&
+                 ((m_current->fifo->full()) || ((m_current->fifo->filled_status() > 0) && (m_current->waiting == 0)))) {
+                //The number of data to send is the actual size of the MWMR FIFO
+				r_cmd_count = m_current->fifo->filled_status()*4/vci_param::B;
+                r_rsp_count = m_current->fifo->filled_status()*4/vci_param::B;
 				r_init_fsm = INIT_DATA_WRITE;
                 r_status_modified = true;
+                //Restart the timer
+                m_current->waiting = 64;
                 m_n_xfers++;
 DEBUG_BEGIN;
-                std::cout << "going to read from coproc " << m_fifo_from_coproc_depth/vci_param::B << " words" << std::endl;
+                std::cout << "going to read from coproc " << m_current->fifo->filled_status()*4/vci_param::B << " words" << std::endl;
 DEBUG_END;
                 break;
 			}
 		} else {
-			if ( r_current_usage >= m_fifo_to_coproc_depth &&
-                 m_current->fifo->empty() ) {
-				r_cmd_count = m_fifo_to_coproc_depth/vci_param::B;
-                r_rsp_count = m_fifo_to_coproc_depth/vci_param::B;
+            //If the MWMR FIFO is empty and the RAM FIFO has enough data, OR, the MWMR FIFO is partially empty the RAM FIFO has data and the timer
+            //is 0, then get data from the RAM fifo
+			if ( ((r_current_usage_words >= (int)m_fifo_to_coproc_depth) && m_current->fifo->empty() ) ||
+                 ((r_current_usage_words >= 1) && ((int)m_current->fifo->filled_status() < (int)m_fifo_to_coproc_depth) && (m_current->waiting == 0)) ) {
+                //The number of data to get is the MIN between the RAM FIFO data and MAMR FIFO available data
+                int words_to_get;
+                if ( r_current_usage_words < (int)(m_fifo_to_coproc_depth-m_current->fifo->filled_status())) {
+                    words_to_get = r_current_usage_words;
+                } else {
+                    words_to_get = m_fifo_to_coproc_depth-m_current->fifo->filled_status();
+                }
+				r_cmd_count = words_to_get*4/vci_param::B;
+                r_rsp_count = words_to_get*4/vci_param::B;
 				r_init_fsm = INIT_DATA_READ;
                 r_status_modified = true;
+                //Restart the timer
+                m_current->waiting = 64;
                 m_n_xfers++;
 DEBUG_BEGIN;
-                std::cout << "going to put " << m_fifo_to_coproc_depth/vci_param::B << " words to coproc" << std::endl;
+                std::cout << "going to put " << words_to_get*4/vci_param::B << " words to coproc" << std::endl;
 DEBUG_END;
                 break;
 			}
