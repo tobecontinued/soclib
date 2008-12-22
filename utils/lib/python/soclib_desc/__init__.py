@@ -6,3 +6,4 @@ def get_descs():
 	import components
 	components.getDescs(config.desc_paths)
 	
+import _warning_formatter
