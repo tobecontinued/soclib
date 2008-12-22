@@ -30,9 +30,9 @@
 #include "stdint.h"
 
 typedef struct mwmr_s {
-    unsigned int width;
-	unsigned int gdepth;
-    uint32_t *buffer;
+    const unsigned int width;
+	const unsigned int gdepth;
+    uint32_t *const buffer;
 	uint32_t *lock;
 	volatile soclib_mwmr_status_s status;
 } mwmr_t;
@@ -44,22 +44,9 @@ void
 mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
 			  unsigned int no, const mwmr_t *mwmr );
 
-void mwmr_initialize_pointer (mwmr_t *p_mwmr_t, unsigned int width, unsigned int depth, uint32_t *const buffer, uint32_t *lock);
-
 void mwmr_config( void *coproc, unsigned int no, const uint32_t val );
 
 uint32_t mwmr_status( void *coproc, unsigned int no );
 
 void mwmr_write( mwmr_t *mwmr, const void *buffer, size_t size );
 void mwmr_read( mwmr_t *mwmr, void *buffer, size_t size );
-size_t mwmr_try_read( mwmr_t *fifo, void *_ptr, size_t lensw );
-size_t mwmr_try_write( mwmr_t *fifo, const void *_ptr, size_t lensw );
-
-// Local Variables:
-// tab-width: 4
-// c-basic-offset: 4
-// c-file-offsets:((innamespace . 0)(inline-open . 0))
-// indent-tabs-mode: nil
-// End:
-
-// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
