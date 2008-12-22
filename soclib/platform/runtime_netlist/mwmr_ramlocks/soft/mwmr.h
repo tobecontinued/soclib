@@ -41,25 +41,17 @@ typedef struct mwmr_s {
 	{ width, width*depth, data, (lock), SOCLIB_MWMR_STATUS_INITIALIZER }
 
 void
-//Initialize the MWMR controller
-mwmr_hw_init( void *coproc, enum SoclibMwmrWay way, unsigned int no, const mwmr_t *mwmr );
+mwmr_hw_init( void *coproc, enum SoclibMwmrWay way,
+			  unsigned int no, const mwmr_t *mwmr );
 
-//Initialize a mwmr_t structure
 void mwmr_initialize_pointer (mwmr_t *p_mwmr_t, unsigned int width, unsigned int depth, uint32_t *const buffer, uint32_t *lock);
 
-//Wait until the RAM FIFO and the MWMR FIFO is empty
-void mwmr_wait_fifo_empty( void *coproc, enum SoclibMwmrWay way, unsigned int no, mwmr_t *fifo );
-
-//Write on the configuration registers
 void mwmr_config( void *coproc, unsigned int no, const uint32_t val );
 
-//Read from status registers
 uint32_t mwmr_status( void *coproc, unsigned int no );
 
-//Blocking Write and Read functions. Size is defined in bytes.
 void mwmr_write( mwmr_t *mwmr, const void *buffer, size_t size );
 void mwmr_read( mwmr_t *mwmr, void *buffer, size_t size );
-//Non-Blocking Write and Read functions. Size is defined in bytes. Retun value is the number of written bytes
 size_t mwmr_try_read( mwmr_t *fifo, void *_ptr, size_t lensw );
 size_t mwmr_try_write( mwmr_t *fifo, const void *_ptr, size_t lensw );
 

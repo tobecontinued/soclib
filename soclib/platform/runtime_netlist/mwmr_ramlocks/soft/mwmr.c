@@ -278,28 +278,6 @@ void mwmr_initialize_pointer (mwmr_t *p_mwmr_t, unsigned int width, unsigned int
     p_mwmr_t->status.lock  = 0;
 }
 
-void mwmr_wait_fifo_empty( void *coproc, enum SoclibMwmrWay way, unsigned int no, mwmr_t *fifo )
-{
-    //Wait until the RAM fifo is empty
-    local_mwmr_status_t status;
-	mwmr_lock( fifo->lock );
-	rehash_status( fifo, &status );
-    while (status.usage > 0) {
-        mwmr_unlock( fifo->lock );
-        busy_wait(1000);
-        mwmr_lock( fifo->lock );
-        rehash_status( fifo, &status );
-    }
-    mwmr_unlock( fifo->lock );
-    //Wait untill all the data is consumed by the coprocessor
-    int value;
-    do {
-    soclib_io_set( coproc, MWMR_CONFIG_FIFO_WAY, way );
-	soclib_io_set( coproc, MWMR_CONFIG_FIFO_NO, no );
-	value = soclib_io_get( coproc, MWMR_FIFO_STATUS );
-    } while (value > 0);
-}
-
 
 // Local Variables:
 // tab-width: 4
