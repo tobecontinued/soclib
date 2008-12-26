@@ -54,5 +54,15 @@ class Textfile(Action):
 		fd.close()
 		return buf != self.options['contents']
 
+	def commands_to_run(self):
+		output = str(self.dests[0])
+		r = '> "%s"'%(output),
+		for line in self.options['contents'].split('\n'):
+			r += 'echo "%(line)s" >> "%(output)s"'%dict(
+				output = output,
+				line = line.replace('"', '\\"')
+				),
+		return r
+
 class CxxSource(Textfile):
 	pass

@@ -39,3 +39,6 @@ class CreateDir(Action):
 		self.dests[0].touch()
 		Action.process(self)
 
+	def commands_to_run(self):
+		return 'mkdir "%s"'%(str(self.dests[0]).replace('"', '\\"')),
+

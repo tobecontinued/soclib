@@ -66,6 +66,9 @@ def main():
 	parser.add_option('-c', '--compile', dest = 'compile',
 					  action='store_true',
 					  help="Do a simple compilation, not a linkage")
+	parser.add_option('-M', '--makefile', dest = 'gen_makefile',
+					  type = 'string', nargs = 1,
+					  help="Generate Makefile")
 	parser.add_option('-l', dest = 'list_descs',
 					  action='store_const', const = "long",
 					  help="List known descriptions == --list-descs=long")
@@ -233,7 +236,11 @@ todo = Platform(
 )
 """%{'script':opts.platform}
 			return 1
-		if opts.clean:
+		if opts.gen_makefile:
+			fd = open(opts.gen_makefile, 'w')
+			fd.write(todo.genMakefile())
+			fd.close()
+		elif opts.clean:
 			todo.clean()
 		else:
 			todo.process()

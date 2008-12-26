@@ -162,6 +162,26 @@ class Action:
 	def __cmp__(self, other):
 		return cmp(self.priority, other.priority)
 
+	def genMakefileCleanCommands(self):
+		return '\t$(CMDPFX)-rm -f %s\n'%(' '.join(map(lambda x:'"%s"'%x, self.dests)))
+
+	def genMakefileTarget(self):
+		def ex(s):
+			return str(s).replace(' ', '\\ ').replace(':', '$(ECOLON)')
+		def ex2(s):
+			return str(s).replace(' ', '\\ ').replace(':', '$$(COLON)')
+		r = (' '.join(map(ex, self.dests)))+\
+			   ' : '+\
+			   (' '.join(map(ex2, self.sources)))+\
+			   '\n'
+		r += '\t@echo "%s $@"\n'%self.__class__.__name__
+		for i in self.commands_to_run():
+			r += '\t$(CMDPFX)%s\n'%i
+		return r+'\n'
+
+	def commands_to_run(self):
+		return ('# Undefined command in '+self.__class__.__name__),
+
 class Noop(Action):
 	def __init__(self):
 		Action.__init__(self, [], [])

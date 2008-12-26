@@ -77,6 +77,9 @@ class Platform:
 	def clean(self):
 		self.todo.clean()
 
+	def genMakefile(self):
+		return self.todo.genMakefile()
+
 def Source(mode, source_file, uses = [], defines = {}, **params):
 	name = mode+':'+hex(hash(source_file))
 	from soclib_desc.module import Module

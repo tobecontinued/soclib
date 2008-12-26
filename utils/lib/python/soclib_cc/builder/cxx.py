@@ -83,6 +83,12 @@ class CCompile(action.Action):
 	def results(self):
 		return self.dests
 
+	def commands_to_run(self):
+		args = self.command_line() + [
+				'-c', '-o', self.dests[0]]
+		args += self.sources
+		return ' '.join(map(lambda x:'"%s"'%str(x), args)),
+
 class CxxCompile(CCompile):
 	tool = 'CXX'
 
@@ -105,6 +111,13 @@ class CLink(CCompile):
 		action.Action.process(self)
 	def mustBeProcessed(self):
 		return True
+
+	def commands_to_run(self):
+		args = config.getTool(self.tool) + [
+				'-o', self.dests[0]]
+		args += config.getLibs()
+		args += self.sources
+		return ' '.join(map(lambda x:'"%s"'%str(x), args)),
 
 class CxxLink(CLink):
 	tool = 'CXX_LINKER'
