@@ -64,7 +64,7 @@ tmpl(void)::ended()
 	if ( m_irq_enabled )
 		r_irq = true;
 	m_len = 0;
-    m_must_finish = 0;
+    m_must_finish = false;
 	m_handling = false;
 }
 
@@ -157,6 +157,9 @@ tmpl(void)::transition()
 
 		next_req();
 	}
+    
+    if( !m_handling )
+        m_must_finish = false;
 
 	m_vci_target_fsm.transition();
 	m_vci_init_fsm.transition();
