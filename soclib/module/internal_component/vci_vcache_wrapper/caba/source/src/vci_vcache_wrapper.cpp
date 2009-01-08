@@ -630,7 +630,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             if ( !icache_hit_t_m && !icache_hit_t_k && !icache_hit_p )      // TLB miss
             {
                 // walk page table  level 1
-                r_icache_paddr_save = (addr36_t)(r_mmu_ptpr | ((ireq.addr>>PAGE_M_NBITS)<<2));
+                r_icache_paddr_save = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((ireq.addr>>PAGE_M_NBITS)<<2);
                 r_icache_tlb_read_req = true;
                 r_icache_fsm = ICACHE_TLB1_READ;
                 m_cpt_ins_tlb_miss++;
@@ -1349,7 +1349,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             if ( !dcache_hit_p && !dcache_hit_t_m && !dcache_hit_t_k )  // TLB miss
             {
                 // walk page table level 1
-                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                 r_dcache_tlb_read_req = true;
                 r_dcache_fsm = DCACHE_TLB1_READ;
                 m_cpt_data_tlb_miss++;
@@ -1416,7 +1416,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                             if (dcache_hit_t_m) 
                             {
                                 r_dcache_pte_update = dcache_m_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
-                                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                                 r_dcache_tlb_dirty_req = true;
                                 r_dcache_fsm = DCACHE_WRITE_DIRTY;
                                 m_cpt_data_tlb_write_dirty++;
@@ -1434,7 +1434,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                                 else    // get PTBA to calculate the physical address of PTE
                                 {
                                     r_dcache_pte_update = dcache_k_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
-                                    r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                                    r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                                     r_dcache_tlb_read_req = true;
                                     r_dcache_tlb_ptba_read = true;
                                     r_dcache_fsm = DCACHE_TLB1_READ;
@@ -1521,7 +1521,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 if (!r_dcache_page_k_save) 
                 {
                     r_dcache_pte_update = dcache_m_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                    r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                    r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                     r_dcache_tlb_dirty_req = true;
                     r_dcache_fsm = DCACHE_WRITE_DIRTY;
                     m_cpt_data_tlb_write_dirty++;
@@ -1539,7 +1539,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     else
                     {
                         r_dcache_pte_update = dcache_k_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                        r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                        r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                         r_dcache_tlb_read_req = true;
                         r_dcache_tlb_ptba_read = true;
                         r_dcache_fsm = DCACHE_TLB1_READ;
@@ -1879,7 +1879,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             }
             else
             {
-                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr | ((dreq.addr>>PAGE_M_NBITS)<<2));
+                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                 r_dcache_pte_update = dcache_m_tlb.getpte(r_dcache_tlb_way_save,r_dcache_tlb_set_save) | PTE_D_MASK;
             }
             r_dcache_tlb_dirty_req  = true;
