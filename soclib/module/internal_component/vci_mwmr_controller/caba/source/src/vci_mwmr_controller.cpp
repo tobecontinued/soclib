@@ -23,6 +23,8 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
+ * Maintainers: nipo
+ *
  * Based on previous works by Etienne Faure & Alain Greiner, 2005
  *
  * E. Faure: Communications matérielles-logicielles dans les systèmes
@@ -425,7 +427,7 @@ DEBUG_BEGIN;
                   << ", rptr: " << r_current_rptr.read()
                   << ", wptr: " << r_current_wptr.read()
                   << ", fifo: " << m_current->fifo->filled_status()
-                  << "/" << (m_current->way == MWMR_FROM_COPROC ? m_fifo_from_coproc_depth : m_fifo_to_coproc_depth)
+                  << "/" << m_current->fifo->size()
                   << ": ";
 DEBUG_END;
 		if ( m_current->way == MWMR_FROM_COPROC ) {
@@ -785,8 +787,8 @@ tmpl(/**/)::VciMwmrController(
 		   : caba::BaseModule(name),
 		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid)),
            m_ident(mt.indexForId(srcid)),
-           m_fifo_to_coproc_depth(fifo_to_coproc_depth),
-           m_fifo_from_coproc_depth(fifo_from_coproc_depth),
+           m_fifo_to_coproc_depth(fifo_to_coproc_depth*sizeof(uint32_t)),
+           m_fifo_from_coproc_depth(fifo_from_coproc_depth*sizeof(uint32_t)),
            m_plaps(plaps),
            m_n_to_coproc(n_to_coproc),
            m_n_from_coproc(n_from_coproc),
@@ -835,17 +837,21 @@ tmpl(/**/)::VciMwmrController(
 
     memset(m_all_state, 0, sizeof(*m_all_state)*m_n_all);
 
+    // If this fail, please implement word width adaptation in access
+    // to VCI data.
+    static_assert(vci_param::B == sizeof(uint32_t));
+
     for ( size_t i = 0; i<m_n_from_coproc; ++i ) {
         std::ostringstream o;
         o << "fifo_from_coproc[" << i << "]";
         m_from_coproc_state[i].way = MWMR_FROM_COPROC;
-        m_from_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_from_coproc_depth);
+        m_from_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_from_coproc_depth/sizeof(uint32_t));
     }
     for ( size_t i = 0; i<m_n_to_coproc; ++i ) {
         std::ostringstream o;
         o << "fifo_to_coproc[" << i << "]";
         m_to_coproc_state[i].way = MWMR_TO_COPROC;
-        m_to_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_to_coproc_depth);
+        m_to_coproc_state[i].fifo = new GenericFifo<uint32_t>(o.str(), m_fifo_to_coproc_depth/sizeof(uint32_t));
     }
 }
 
@@ -860,7 +866,7 @@ tmpl(/**/)::~VciMwmrController()
                   << ": in_words: " << st->in_words
                   << ", out_words: " << st->out_words
                   << ", fifo: " << st->fifo->filled_status()
-                  << "/" << (st->way == MWMR_FROM_COPROC ? m_fifo_from_coproc_depth : m_fifo_to_coproc_depth)
+                  << "/" << st->fifo->size()
                   << std::endl;
             
     }
@@ -871,7 +877,7 @@ tmpl(/**/)::~VciMwmrController()
                   << ": in_words: " << st->in_words
                   << ", out_words: " << st->out_words
                   << ", fifo: " << st->fifo->filled_status()
-                  << "/" << (st->way == MWMR_FROM_COPROC ? m_fifo_from_coproc_depth : m_fifo_to_coproc_depth)
+                  << "/" << st->fifo->size()
                   << std::endl;
             
     }
