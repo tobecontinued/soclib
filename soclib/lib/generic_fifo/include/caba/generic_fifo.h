@@ -46,6 +46,11 @@ class GenericFifo
     int m_depth;
 public:
 
+    size_t size() const
+    {
+        return m_depth;
+    }
+
     void init()
     {
         r_ptr = 0;

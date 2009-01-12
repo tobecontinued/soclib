@@ -23,6 +23,8 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
+ * Maintainers: nipo
+ *
  * Based on previous works by Etienne Faure & Alain Greiner, 2005
  *
  * E. Faure: Communications matérielles-logicielles dans les systèmes
