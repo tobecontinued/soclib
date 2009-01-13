@@ -1,0 +1,33 @@
+
+# -*- python -*-
+
+Module('caba:bridge_initiator',
+	classname = 'soclib::caba::BridgeInitiator',
+	   tmpl_parameters = [],
+	header_files = ['../source/include/bridge_initiator.h',],
+	implementation_files = ['../source/src/bridge_initiator.cpp',],
+	ports = [
+	
+                Port('bit_in', 'p_resetn', auto = 'resetn'),
+		Port('clock_in', 'p_clk', auto = 'clock'),
+	        Port('ring_in', 'p_ring_in'),
+	        Port('ring_out', 'p_ring_out'),
+                Port('fifo_output', 'p_rsp_fifo'),
+	        Port('fifo_input',  'p_cmd_fifo'),
+	],
+	instance_parameters = [
+        parameter.Bool('alloc_init'),
+        parameter.Int('rsp_fifo_depth'),
+	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+        parameter.IntTab('ringid'),
+        
+		],
+
+
+	uses = [
+		Uses('base_module'),
+                Uses('common:mapping_table'),
+	        Uses('generic_fifo'),
+
+		],
+)

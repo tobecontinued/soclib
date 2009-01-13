@@ -1,4 +1,4 @@
-/*
+/* -*- c++ -*-
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
  * This file is part of SoCLib, GNU LGPLv2.1.
@@ -19,383 +19,473 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Author   : Franck WAJSBÜRT, Yang GAO 
- * Date     : 28/09/2007
+ * Authors  : Franck WAJSBÜRT, Abdelmalek SI MERABET 
+ * Date     : september 2008
+ *
  * Copyright: UPMC - LIP6
  */
-
-#include <iostream>
-#include <stdarg.h>
-#include <systemc.h>
 #include "../include/vci_ring_target_wrapper.h"
-#include "register.h"
+#include <iostream>
+#include <time.h>
 
 namespace soclib { namespace caba {
 
-#define Ring soclib::caba::Ring
 #define tmpl(x) template<typename vci_param> x VciRingTargetWrapper<vci_param>
 
-////////////////////////////////
+///////////////////////////////////////////////
 //	constructor
-////////////////////////////////
-
-tmpl(/**/)::VciRingTargetWrapper(
-    sc_module_name insname,
-    int nseg,
-    int base_adr,
-    ...)
-  : soclib::caba::BaseModule(insname),
-    s_nseg(nseg)
+///////////////////////////////////////////////
+tmpl(/**/)::VciRingTargetWrapper(sc_module_name	insname,
+                            bool            alloc_target,
+                            const int       &wrapper_fifo_depth,
+                            const soclib::common::MappingTable &mt,
+                            const soclib::common::IntTab &ringid,
+                            const int &tgtid)
+    : soclib::caba::BaseModule(insname),
+	r_ring_cmd_fsm("r_ring_cmd_fsm"),
+	r_ring_rsp_fsm("r_ring_rsp_fsm"),
+	r_vci_cmd_fsm("r_vci_cmd_fsm"),
+	r_vci_rsp_fsm("r_vci_rsp_fsm"),
+        r_srcid("r_srcid"),
+        r_cmd("r_cmd"),
+        r_trdid("r_trdid"),
+        r_pktid("r_pktid"),
+        r_plen("r_plen"),
+        r_contig("r_contig"),
+        r_const("r_const"),
+        r_addr("r_addr"),
+        m_alloc_target(alloc_target),
+        m_cmd_fifo("m_cmd_fifo", wrapper_fifo_depth),
+        m_rsp_fifo("m_rsp_fifo", wrapper_fifo_depth),
+        m_tgtid(tgtid),
+        m_rt(mt.getRoutingTable(ringid)),
+        m_lt(mt.getLocalityTable(ringid))
 {
 
 SC_METHOD (transition);
 dont_initialize();
 sensitive << p_clk.pos();
 
-SC_METHOD(Decoder);
-dont_initialize();
-sensitive << p_ri.ring_neg_cmd
-          << p_ri.ring_neg_srcid
-          << p_ri.ring_neg_msblsb
-          << p_vci.cmdack
-          << p_ri.ring_data_cmd
-          << p_ri.ring_data_adresse
-          << p_ri.ring_data_srcid
-          << r_cible_reserve
-	  << p_ri.ring_data_num
-	  << r_counter_req;
-
-SC_METHOD(Req_Counter);
-dont_initialize();
-sensitive << p_clk.pos();
-
-SC_METHOD(Res_Counter);
-dont_initialize();
-sensitive << p_clk.pos();
-
-SC_METHOD(Mux);
-dont_initialize();
-sensitive << p_ri.ring_data_cmd
-	  << r_fsm_state 
-	  << r_cible_ack_ok
-	  << r_cible_ext
-	  << p_vci.rspval
-	  << p_vci.reop;
-
 SC_METHOD (genMoore);
 dont_initialize();
-sensitive << r_fsm_state;
+sensitive << p_clk.neg();
 
-SC_METHOD (genMealy);
+SC_METHOD(genMealy_cmd_out);
 dont_initialize();
-sensitive << p_clk.neg()
-          << p_ri.ring_data_cmd
-          << p_ri.ring_data_adresse
-          << p_ri.ring_data_be
-          << p_ri.ring_data
-          << p_ri.ring_data_eop
-          << p_ri.ring_data_srcid
-          << p_ri.ring_data_pktid
-          << p_vci.rspval
-          << r_cible_ext;
+sensitive << p_clk.neg();
+sensitive << p_ring_in.cmd_rok;
+sensitive << p_ring_in.cmd_data;
 
-SC_METHOD(ANI_Output);
+SC_METHOD(genMealy_cmd_in);
 dont_initialize();
-sensitive << r_ring_data_cmd_p
-          << p_ri.ring_neg_cmd
-          << r_ring_neg_mux
-          << p_ri.ring_neg_srcid
-          << p_ri.ring_neg_msblsb
-          << r_ring_data_mux
-          << p_vci.reop
-          << p_vci.rsrcid
-          << p_vci.rpktid
-          << p_vci.rdata
-          << p_vci.rerror
-          << p_ri.ring_data_eop
-          << p_ri.ring_data_be
-          << p_ri.ring_data_srcid
-          << p_ri.ring_data_pktid
-          << p_ri.ring_data_adresse
-          << p_ri.ring_data
-          << p_ri.ring_data_num
-          << p_ri.ring_data_error
-          << r_counter_res;
+sensitive << p_clk.neg();
+sensitive << p_ring_in.cmd_rok;
+sensitive << p_ring_in.cmd_wok;
+sensitive << p_ring_in.cmd_data;
 
-CIBLE_ID = (int *)malloc(s_nseg*(sizeof(int)));
+SC_METHOD(genMealy_rsp_out);
+dont_initialize();
+sensitive << p_clk.neg();
+sensitive << p_ring_in.rsp_rok;
+sensitive << p_ring_in.rsp_data;
 
-va_list listeBaseAdr;		
-int tmpBaseAdr;			
+SC_METHOD(genMealy_rsp_in);
+dont_initialize();
+sensitive << p_clk.neg();
+sensitive << p_ring_in.rsp_wok;
+sensitive << p_ring_in.rsp_data;
 
-va_start (listeBaseAdr, base_adr);
+SC_METHOD(genMealy_rsp_grant);
+dont_initialize();
+sensitive << p_clk.neg();
+sensitive << p_ring_in.rsp_grant;
+sensitive << p_ring_in.rsp_wok;
 
-tmpBaseAdr = base_adr ;
 
-for (int i=0; i<s_nseg; i++)
-{
-    CIBLE_ID[i] = tmpBaseAdr;
-    tmpBaseAdr = va_arg (listeBaseAdr,int);
-} // fin de creation de tous les address bases des segments 
-
-va_end (listeBaseAdr);
+SC_METHOD(genMealy_cmd_grant);
+dont_initialize();
+sensitive << p_clk.neg();
+sensitive << p_ring_in.cmd_grant;
 
 } //  end constructor
-
-/////////////////////////////////////////////
-// 	Counter       
-/////////////////////////////////////////////
-tmpl(void)::Req_Counter()	// accepter the request from ring
-{
-	sc_uint<4> tmp_counter = r_counter_req;
-	if (r_fsm_state == TAR_IDLE)
-		r_counter_req = 0;
-
-	else if (r_cible_ext && ( (r_fsm_state == TAR_RESERVE_FIRST) || (p_vci.rspval.read() == true) ) )  {
-		tmp_counter++;
-		r_counter_req = tmp_counter;
-	} 	
-}
-
-tmpl(void)::Res_Counter()	// send the response to ring
-{
-	sc_uint<4> tmp_counter = r_counter_res;
-
-	if (r_fsm_state == TAR_IDLE)
-		r_counter_res = 0;
-
-	else if (r_ring_data_mux == LOCAL) {
-		tmp_counter++;
-		r_counter_res = tmp_counter;	
-	}
-
-}
-
-/////////////////////////////////////////////
-// 	Decoder       
-/////////////////////////////////////////////
-tmpl(void)::Decoder()
-{
-	r_cible_ack_ok = false;
-	if(((p_ri.ring_neg_cmd.read()>= NEG_REQ_READ)&&(p_ri.ring_neg_cmd.read()<= NEG_REQ_STORE_COND))
-  	&&(r_cible_reserve == false)
-  	&&(p_vci.cmdack.read() == true)){
-        
-        	for(int i=0;i<s_nseg;i++)
-        	{
-            		if ((int)p_ri.ring_neg_msblsb.read() == CIBLE_ID[i])
-            		{
-				r_cible_ack_ok = true;
-				r_reserve_srcid = p_ri.ring_neg_srcid.read();
-				break;
-	    		}
-		}  
-	}
-
-	bool id_match = false;
-	for(int i=0;i<s_nseg;i++)
-	{
-		if ((int)((p_ri.ring_data_adresse.read()&0xFF000000)>>24) == CIBLE_ID[i])
-		{
-			id_match = true;
-			break;
-		}
-	}  
-
-	if(((p_ri.ring_data_cmd.read()>= DATA_REQ_READ)&&(p_ri.ring_data_cmd.read()<= DATA_REQ_STORE_COND))
-	&&(id_match == true)
-	&&(p_vci.cmdack.read() == true)
-	&&(p_ri.ring_data_srcid.read() == r_reserve_srcid)
-	&&(p_ri.ring_data_num.read() == r_counter_req)){
-		r_cible_ext = true; 
-	}else{
-		r_cible_ext = false;  	
-	}
-
-} 
-
-/////////////////////////////////////////////
-// 	neg and data anneau mux       
-/////////////////////////////////////////////
-tmpl(void)::Mux()
-{
-	r_ring_data_cmd_p = p_ri.ring_data_cmd.read();	
-	r_ring_data_mux = RING;
-	r_trans_end = false;
-
-	switch(r_fsm_state) {
-	    case TAR_IDLE :
-		if(r_cible_ack_ok == true){
-			r_ring_neg_mux = LOCAL;
-		}else{
-			r_ring_neg_mux = RING;
-		}
-	    	break;
-
-	    case TAR_RESERVE_FIRST :
-		r_ring_neg_mux = RING;
-		if(r_cible_ext == true){
-	    		r_ring_data_cmd_p = DATA_EMPTY;
-	    	}
-	    	break;	
-	
-	    case TAR_RESERVE :
-		r_ring_neg_mux = RING;
-		if((r_cible_ext == true)
-		&&(p_vci.rspval.read() == true)){
-	    		r_ring_data_cmd_p = DATA_RES;
-	    		r_ring_data_mux = LOCAL;
-	    	}	
-	    	if((p_vci.rspval.read() == true)
-		  &&(p_vci.reop.read() == true)
-		  &&(p_ri.ring_data_cmd.read() == DATA_EMPTY)){
-	    		r_ring_data_mux = LOCAL;
-	    		r_ring_data_cmd_p = DATA_RES;
-			r_trans_end = true;
-	    	}		
-	    	break;
-	} // end switch 
-
-}
 
 ////////////////////////////////
 //	transition 
 ////////////////////////////////
 tmpl(void)::transition()       
 {
-	if(p_resetn == false) { 
-		r_fsm_state = TAR_IDLE;
-		return;
-	} // end reset
 
-	switch(r_fsm_state) {
-		case TAR_IDLE :
-			if(r_cible_ack_ok == true) {
-				r_fsm_state = TAR_RESERVE_FIRST;
-			}else{
-				r_fsm_state = TAR_IDLE;
-			}
-			break;
-
-		case TAR_RESERVE_FIRST :	//the first word of request
-			if(r_cible_ext == true) {
-				r_fsm_state = TAR_RESERVE;
-			}else{
-				r_fsm_state = TAR_RESERVE_FIRST;
-			}
-			break;	
+	bool                       cmd_fifo_get = false;
+	bool                       cmd_fifo_put = false;
+	sc_uint<37>                cmd_fifo_data;
 	
-		case TAR_RESERVE :
-			if(r_trans_end == true){
-				r_fsm_state = TAR_IDLE; 
-			}else {
-				r_fsm_state = TAR_RESERVE;
-			}
-			break;
-		} // end switch TAR_FSM
-}  // end Transition()
+	bool                       rsp_fifo_get = false;
+	bool                       rsp_fifo_put = false;
+	sc_uint<33>                rsp_fifo_data;
+	
+	if ( p_resetn == false ) 
+	{ 
+		if(m_alloc_target)
+			r_ring_rsp_fsm = DEFAULT;
+		else
+			r_ring_rsp_fsm = RSP_IDLE;
+	
+		r_vci_cmd_fsm = CMD_FIRST_HEADER;
+		r_vci_rsp_fsm = RSP_HEADER;
+		r_ring_cmd_fsm = CMD_IDLE;
+		m_cmd_fifo.init();
+		m_rsp_fifo.init();       
+		return;
+	} 
+    
+//////////// VCI CMD FSM /////////////////////////
+	switch ( r_vci_cmd_fsm ) 
+	{
 
-/////////////////////////////////////////////
-// 	GenMoore()     
-/////////////////////////////////////////////
+		case CMD_FIRST_HEADER:
+			if ( m_cmd_fifo.rok() == true ) 
+			{    
+				cmd_fifo_get = true; 
+				r_addr = (sc_uint<vci_param::N>) m_cmd_fifo.read();            
+				r_vci_cmd_fsm = CMD_SECOND_HEADER;           
+			}  // end if rok
+		break;
+
+		case CMD_SECOND_HEADER:        
+			if ( m_cmd_fifo.rok() ) 
+			{
+				if(((int) (m_cmd_fifo.read() >> 36 ) & 0x1) == 1)  // read command
+				{
+					if (p_vci.cmdack.read())
+					{
+						cmd_fifo_get = true;
+						r_vci_cmd_fsm = CMD_FIRST_HEADER;
+					} 
+				}
+				else  // write command
+				{
+ 					cmd_fifo_get =  true;
+ 					r_srcid  = (sc_uint<vci_param::S>)  ((m_cmd_fifo.read() >> 24) & 0xFF); 
+ 					r_cmd    = (sc_uint<2>)  ((m_cmd_fifo.read() >> 22) & 0x3); 
+ 					r_contig = (sc_uint<1>)  ((m_cmd_fifo.read() >> 21) & 0x1); 
+ 					r_const =  (sc_uint<1>)  ((m_cmd_fifo.read() >> 20) & 0x1); 
+ 					r_plen  =  (sc_uint<vci_param::K>) ((m_cmd_fifo.read() >> 12) & 0xFF); 
+ 					r_pktid  = (sc_uint<vci_param::P>) ((m_cmd_fifo.read() >> 8) & 0xF); 
+ 					r_trdid  = (sc_uint<vci_param::T>) ((m_cmd_fifo.read() >> 4) & 0xF); 
+ 					r_vci_cmd_fsm = WDATA;
+				}                                          
+			} 
+		break;
+
+		case WDATA:
+			if ( p_vci.cmdack.read() && m_cmd_fifo.rok() ) 
+			{
+				cmd_fifo_get = true; 
+				sc_uint<1> contig = r_contig;
+				if(contig == 0x1)    
+					r_addr = r_addr.read() + vci_param::B ;                        
+				if(((int) (m_cmd_fifo.read() >> 36 ) & 0x1) == 1)
+					r_vci_cmd_fsm = CMD_FIRST_HEADER;   
+				else 
+					r_vci_cmd_fsm = WDATA;                                   
+			} // end if cmdack
+		break;
+        
+	} // end switch r_vci_cmd_fsm
+
+/////////// VCI RSP FSM /////////////////////////
+	switch ( r_vci_rsp_fsm ) 
+	{
+		case RSP_HEADER: 
+			if((p_vci.rspval.read() == true) && (m_rsp_fifo.wok()))
+			{
+				rsp_fifo_data = (((sc_uint<33>) p_vci.rsrcid.read() & 0xFF) << 20) |
+                                                (((sc_uint<33>) p_vci.rerror.read() & 0x1) << 8) | 
+                                                (((sc_uint<33>) p_vci.rpktid.read() & 0xF) << 4) | 
+                                                 ((sc_uint<33>) p_vci.rtrdid.read() & 0xF); 
+				rsp_fifo_put = true; 
+				r_vci_rsp_fsm = DATA;
+			}
+		break;
+
+		case DATA:              
+			if((p_vci.rspval.read() == true) && (m_rsp_fifo.wok())) 
+			{ 
+				rsp_fifo_put = true;
+				rsp_fifo_data = (sc_uint<33>) p_vci.rdata.read();           
+				if (p_vci.reop.read() == true) 
+				{ 
+					sc_uint<1> eop = 1;
+					rsp_fifo_data = rsp_fifo_data |
+					(sc_uint<33>) (eop << 32) ;
+					r_vci_rsp_fsm = RSP_HEADER;
+				}           		    
+			}  
+		break;
+
+	} // end switch r_vci_rsp_fsm
+   
+//////////// RING RSP FSM (distributed) /////////////////////////
+        
+	switch( r_ring_rsp_fsm ) 
+	{
+		case RSP_IDLE:        
+			if ( p_ring_in.rsp_grant.read() && m_rsp_fifo.rok() ) 
+				r_ring_rsp_fsm = DEFAULT;           
+		break;
+
+		case DEFAULT:               
+			if ( m_rsp_fifo.rok() && p_ring_in.rsp_wok.read() ) 
+			{
+				rsp_fifo_get = true;
+				r_ring_rsp_fsm = KEEP;
+			}   
+			else if ( !p_ring_in.rsp_grant.read() )
+				r_ring_rsp_fsm = RSP_IDLE;  
+		break;
+
+		case KEEP:                
+			if(m_rsp_fifo.rok() && p_ring_in.rsp_wok.read()) 
+			{
+				rsp_fifo_get = true;              
+				if ((int) ((m_rsp_fifo.read() >> 32 ) & 0x1) == 1)  
+				{             
+					if ( p_ring_in.rsp_grant.read() )
+						r_ring_rsp_fsm = DEFAULT;  
+					else   
+						r_ring_rsp_fsm = RSP_IDLE;                
+				} 
+			}           
+		break;
+
+	} // end switch ring cmd fsm
+
+/////////// RING CMD FSM ////////////////////////
+	switch( r_ring_cmd_fsm ) 
+	{
+		case CMD_IDLE:  
+		{ // for variable scope
+			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
+			bool isLocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid); 
+
+			if ( p_ring_in.cmd_rok.read()) 
+			{
+     
+				if ( isLocal && m_cmd_fifo.wok()) 
+				{
+					r_ring_cmd_fsm = LOCAL; 
+					cmd_fifo_put  = true;
+					cmd_fifo_data = p_ring_in.cmd_data.read();
+                            
+				}                     
+				else 
+				{
+					if(!isLocal && p_ring_in.cmd_wok.read()) 
+						r_ring_cmd_fsm = RING;                  
+				} 
+			} 
+		}
+		break;
+
+		case LOCAL:   
+
+			if ( p_ring_in.cmd_rok.read() && m_cmd_fifo.wok() )         
+			{
+				cmd_fifo_put  = true;
+				cmd_fifo_data = p_ring_in.cmd_data.read();
+				int reop = (int) ((p_ring_in.cmd_data.read() >> 36 ) & 0x1) ;
+				if ( reop == 1 ) 
+					r_ring_cmd_fsm = CMD_IDLE;
+			} 
+		break;
+
+		case RING:   
+   
+			if ( p_ring_in.cmd_rok.read() && p_ring_in.cmd_wok.read())        
+			{            
+				if ((int) ((p_ring_in.cmd_data.read() >> 36 ) & 0x1) == 1 ) 
+					r_ring_cmd_fsm = CMD_IDLE; 
+
+			}
+		break;
+
+	} // end switch cmd fsm 
+
+    ////////////////////////
+    //  fifos update      //
+   ////////////////////////
+
+// local cmd fifo update
+	if ( cmd_fifo_put && cmd_fifo_get ) m_cmd_fifo.put_and_get(cmd_fifo_data);
+	else if (  cmd_fifo_put && !cmd_fifo_get ) m_cmd_fifo.simple_put(cmd_fifo_data);
+	else if ( !cmd_fifo_put && cmd_fifo_get ) m_cmd_fifo.simple_get();
+// local rsp fifo update
+	if (  rsp_fifo_put &&  rsp_fifo_get ) m_rsp_fifo.put_and_get(rsp_fifo_data);
+	else if (  rsp_fifo_put && !rsp_fifo_get ) m_rsp_fifo.simple_put(rsp_fifo_data);
+	else if ( !rsp_fifo_put &&  rsp_fifo_get ) m_rsp_fifo.simple_get();
+ 
+}  // end Transition()
+   
+///////////////////////////////////////////////////////////////////
 tmpl(void)::genMoore()
+///////////////////////////////////////////////////////////////////
 {
-	switch(r_fsm_state) {
-		case TAR_IDLE :
-			r_cible_reserve = false;
-			break;
-		case TAR_RESERVE_FIRST :
-			r_cible_reserve = true;
-			break;
-		case TAR_RESERVE :
-			r_cible_reserve = true;
-			break;
+	if( r_vci_rsp_fsm == RSP_HEADER ) 
+		p_vci.rspack = false;
+	else
+		p_vci.rspack = m_rsp_fifo.wok();
+
+	switch ( r_vci_cmd_fsm ) 
+	{
+		case CMD_FIRST_HEADER:
+			p_vci.cmdval = false;
+		break;
+
+		case CMD_SECOND_HEADER:         
+			if(((int) (m_cmd_fifo.read() >> 36 ) & 0x1) == 1) // eop
+			{
+				p_vci.cmdval = m_cmd_fifo.rok(); 
+				p_vci.address = r_addr;
+				p_vci.cmd = (sc_uint<2>)  ((m_cmd_fifo.read() >> 22) & 0x3);
+				p_vci.wdata = 0;
+				p_vci.pktid = (sc_uint<vci_param::P>) ((m_cmd_fifo.read() >> 8) & 0xF);
+				p_vci.srcid = (sc_uint<vci_param::S>)  ((m_cmd_fifo.read() >> 24) & 0xFF);
+				p_vci.trdid = (sc_uint<vci_param::T>)  ((m_cmd_fifo.read() >> 4)  & 0xF);
+				p_vci.plen =  (sc_uint<vci_param::K>)  ((m_cmd_fifo.read() >> 12) & 0xFF);
+				p_vci.eop = true;         
+				sc_uint<1> cons = (sc_uint<1>)  ((m_cmd_fifo.read() >> 20) & 0x1) ; 
+				if (cons == 0x1)
+					p_vci.cons = true;
+				else
+					p_vci.cons = false;        
+				sc_uint<1> contig = (sc_uint<1>)  ((m_cmd_fifo.read() >> 21) & 0x1);
+				if(contig == 0x1) 
+					p_vci.contig = true;
+				else
+					p_vci.contig = false;          	    
+			} 
+			else 
+				p_vci.cmdval = false;         
+		break;
+    
+		case WDATA:
+		{   // for variable scope
+			p_vci.cmdval = m_cmd_fifo.rok();
+			p_vci.address = r_addr;
+			p_vci.be = (sc_uint<vci_param::B>)((m_cmd_fifo.read()  >> 32) & 0xF);
+			p_vci.cmd = r_cmd;
+			p_vci.wdata = (sc_uint<32>)(m_cmd_fifo.read()); 
+			p_vci.pktid = r_pktid;
+			p_vci.srcid = r_srcid;
+			p_vci.trdid = r_trdid;
+			p_vci.plen = r_plen;        
+			sc_uint<1> cons = r_const;         
+			if (cons == 0x1)
+				p_vci.cons = true;
+			else
+				p_vci.cons = false;        
+			sc_uint<1> contig = r_contig;
+			if(contig == 0x1)                     
+				p_vci.contig = true;           
+			else
+				p_vci.contig = false;
+			if(((m_cmd_fifo.read()  >> 36) & 0x1) == 0x1) 
+				p_vci.eop = true;
+			else    
+				p_vci.eop = false; 
+		}
+		break;
+            
+	} // end switch fsm
+} // end genMoore
+
+///////////////////////////////////////////////////////////////////
+tmpl(void)::genMealy_rsp_grant()
+///////////////////////////////////////////////////////////////////
+{
+	switch( r_ring_rsp_fsm ) 
+	{
+		case RSP_IDLE:
+			p_ring_out.rsp_grant = p_ring_in.rsp_grant.read() && !m_rsp_fifo.rok();
+		break;
+
+		case DEFAULT:
+			p_ring_out.rsp_grant = !( m_rsp_fifo.rok() && p_ring_in.rsp_wok.read() ); 
+		break;
+
+		case KEEP:  
+			int rsp_fifo_eop = (int) ((m_rsp_fifo.read() >> 32) & 0x1);
+			p_ring_out.rsp_grant = m_rsp_fifo.rok() && p_ring_in.rsp_wok.read() && (rsp_fifo_eop == 1);
+
+		break; 
+
+	} // end switch
+} // end genMealy_rsp_grant
+
+///////////////////////////////////////////////////////////////////
+tmpl(void)::genMealy_cmd_grant()
+///////////////////////////////////////////////////////////////////
+{
+	p_ring_out.cmd_grant = p_ring_in.cmd_grant.read();
+} // end genMealy_cmd_grant
+    
+///////////////////////////////////////////////////////////////////
+tmpl(void)::genMealy_cmd_in()
+///////////////////////////////////////////////////////////////////
+{     
+	switch( r_ring_cmd_fsm ) 
+	{
+		case CMD_IDLE:
+		{
+			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
+			bool isLocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid); 
+ 
+			p_ring_out.cmd_r = p_ring_in.cmd_rok.read() && ((isLocal && m_cmd_fifo.wok()) || (!isLocal && p_ring_in.cmd_wok.read())) ;
+		}
+		break;
+
+		case LOCAL:
+			p_ring_out.cmd_r = m_cmd_fifo.wok();
+		break;
+
+		case RING:
+			p_ring_out.cmd_r     = p_ring_in.cmd_wok.read();
+		break;    
 	} // end switch
 
-} // end GenMoore
-
-/////////////////////////////////////////////
-// 	GenMealy()       
-/////////////////////////////////////////////
-tmpl(void)::genMealy()
+} // end genMealy_cmd_in_r
+  
+///////////////////////////////////////////////////////////////////
+tmpl(void)::genMealy_cmd_out()
+///////////////////////////////////////////////////////////////////
 {
-	p_vci.cmdval = false;	
-	switch(r_fsm_state) {
-	    case TAR_IDLE :
-	    	break;
+	p_ring_out.cmd_w    = p_ring_in.cmd_rok.read();
+	p_ring_out.cmd_data = p_ring_in.cmd_data.read();
+} // end genMealy_cmd_out_w
 
-	    case TAR_RESERVE_FIRST :
-		if(r_cible_ext == true){
-	    		p_vci.cmdval = true;	
-	    		p_vci.address = p_ri.ring_data_adresse.read();	
-	    		p_vci.be = p_ri.ring_data_be.read();     	
-	    		p_vci.cmd = p_ri.ring_data_cmd.read();   	
-	    		p_vci.wdata = p_ri.ring_data.read();  	
-	    		p_vci.eop = p_ri.ring_data_eop.read();    	
-	    		p_vci.srcid = p_ri.ring_data_srcid.read();  
-			p_vci.pktid = p_ri.ring_data_pktid.read();
-	    	}
-	    	break;	
-	
-	    case TAR_RESERVE :
-		if((r_cible_ext == true)
-		&&(p_vci.rspval.read() == true)){
-	    		p_vci.cmdval = true;	
-	    		p_vci.address = p_ri.ring_data_adresse.read();	
-	    		p_vci.be = p_ri.ring_data_be.read();     	
-	    		p_vci.cmd = p_ri.ring_data_cmd.read();   	
-	    		p_vci.wdata = p_ri.ring_data.read();  	
-	    		p_vci.eop = p_ri.ring_data_eop.read();    	
-	    		p_vci.srcid = p_ri.ring_data_srcid.read(); 
- 			p_vci.pktid = p_ri.ring_data_pktid.read();
-	    	}	
-	    	break;
-	} // end switch 
-} // end GenMealy
-
-/////////////////////////////////////////////
-// 	ANI_Output()       
-/////////////////////////////////////////////
-tmpl(void)::ANI_Output()
+   
+///////////////////////////////////////////////////////////////////
+tmpl(void)::genMealy_rsp_in()
+//////////////////////////////////////////////////////////////////
 {
-	
-	/* ANNEAU NEG OUTPUT MUX */
-	if(r_ring_neg_mux == LOCAL){
-		p_ro.ring_neg_cmd  = NEG_ACK;
-		p_ro.ring_neg_srcid = p_ri.ring_neg_srcid.read();
-		p_ro.ring_neg_msblsb = p_ri.ring_neg_msblsb.read();
-	
-	}else {			//RING
-		p_ro.ring_neg_cmd  = p_ri.ring_neg_cmd.read(); 
-		p_ro.ring_neg_srcid = p_ri.ring_neg_srcid.read();
-		p_ro.ring_neg_msblsb = p_ri.ring_neg_msblsb.read();	
-	}		
-
-	/* ANNEAU DATA OUTPUT MUX */		
-	if(r_ring_data_mux == LOCAL){
-		p_ro.ring_data_cmd = r_ring_data_cmd_p;
-		p_ro.ring_data_eop = p_vci.reop.read();   
-		p_ro.ring_data_be = 0;    
-		p_ro.ring_data_srcid = p_vci.rsrcid.read();  
-		p_ro.ring_data_pktid = p_vci.rpktid.read(); 
-		p_ro.ring_data_adresse = 0x00000000;
-		p_ro.ring_data = p_vci.rdata.read();
-		p_ro.ring_data_num = r_counter_res;       
-		p_ro.ring_data_error = p_vci.rerror.read(); 
-		p_vci.rspack = true;
- 
-
-	}else {			//RING
-		p_ro.ring_data_cmd = r_ring_data_cmd_p;
-		p_ro.ring_data_eop = p_ri.ring_data_eop.read();   
-		p_ro.ring_data_be = p_ri.ring_data_be.read();    
-		p_ro.ring_data_srcid = p_ri.ring_data_srcid.read();  
-		p_ro.ring_data_pktid = p_ri.ring_data_pktid.read(); 
-		p_ro.ring_data_adresse = p_ri.ring_data_adresse.read();
-		p_ro.ring_data = p_ri.ring_data.read();        
-		p_ro.ring_data_num = p_ri.ring_data_num.read();        
-		p_ro.ring_data_error = p_ri.ring_data_error.read();  
-		p_vci.rspack = false;
-	}	
-} // end ANI_Output
-
+	p_ring_out.rsp_r = p_ring_in.rsp_wok.read();
+} // end genMealy_rsp_in
+  
+///////////////////////////////////////////////////////////////////
+tmpl(void)::genMealy_rsp_out()
+///////////////////////////////////////////////////////////////////
+{
+	if(r_ring_rsp_fsm==RSP_IDLE)
+	{
+		p_ring_out.rsp_w    = p_ring_in.rsp_rok.read();
+		p_ring_out.rsp_data = p_ring_in.rsp_data.read();
+	}
+	else
+	{
+		p_ring_out.rsp_w    =  m_rsp_fifo.rok();
+		p_ring_out.rsp_data =  m_rsp_fifo.read(); 
+	}
+} // end genMealy_rsp_out
 }} // end namespace
+
+

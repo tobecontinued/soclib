@@ -20,32 +20,31 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Authors  : Franck WAJSBÜRT, Abdelmalek SI MERABET 
- * Date     : september 2008
+ * Date     : December 2008
  *
  * Copyright: UPMC - LIP6
  */
 
-#ifndef VCI_RING_TARGET_WRAPPER_H_
-#define VCI_RING_TARGET_WRAPPER_H_
+#ifndef LOCAL_BRIDGE_TARGET_H_
+#define LOCAL_BRIDGE_TARGET_H_
 
 #include <systemc.h>
 #include "caba_base_module.h"
 #include "ring_ports.h"
-#include "vci_initiator.h"
 #include "generic_fifo.h"
 #include "mapping_table.h"
+#include "fifo_ports.h"
 
 namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-template<typename vci_param>
-class VciRingTargetWrapper 
+class LocalBridgeTarget 
 	: public soclib::caba::BaseModule
 {
 
     protected:
-		SC_HAS_PROCESS(VciRingTargetWrapper);
+		SC_HAS_PROCESS(LocalBridgeTarget);
 
     public:
 	// ports
@@ -53,32 +52,21 @@ class VciRingTargetWrapper
 	sc_in<bool>   		               	p_resetn;
 	soclib::caba::RingIn                    p_ring_in;
 	soclib::caba::RingOut                   p_ring_out;
-	soclib::caba::VciInitiator<vci_param>   p_vci;
+	soclib::caba::FifoInput<sc_uint<33> >   p_rsp_fifo;
+        soclib::caba::FifoOutput<sc_uint<37> >  p_cmd_fifo;
 
 	// constructor
-	VciRingTargetWrapper(sc_module_name	insname,
+	LocalBridgeTarget(sc_module_name	insname,
                             bool            alloc_target,
-                            const int       &wrapper_fifo_depth,
+                            const int       &cmd_fifo_depth,
                             const soclib::common::MappingTable &mt,
-                            const soclib::common::IntTab &ringid,
-                            const int &tgtid);
+                            const soclib::common::IntTab &ringid);
     
-    private:
-    	enum vci_cmd_fsm_state_e {
-        	CMD_FIRST_HEADER,     // first flit for a ring cmd packet (read or write)
-	        CMD_SECOND_HEADER,   //  second flit for a ring cmd packet
-        	WDATA,               //  data flit for a ring cmd write packet
-	    };
-
-	enum vci_rsp_fsm_state_e {
-        	RSP_HEADER,     // first flit for a ring rsp packet (read or write)
-	        DATA,          // next flit for a ring rsp packet
-	    };
-
+    private:    	
 	enum ring_cmd_fsm_state_e {
 		CMD_IDLE,	 // waiting for first flit of a command packet
-		LOCAL,  	// next flit of a local cmd packet
-		RING,  	       // next flit of a ring cmd packet
+		GATE,            // next flit of a gateway packet
+		RING,  	         // next flit of a ring packet
 	};
 
     	// cmd token allocation fsm
@@ -90,32 +78,18 @@ class VciRingTargetWrapper
 
 	// structural parameters
 	bool          m_alloc_target;
-	int           m_tgtid;
-
+		
 	// internal registers
 	sc_signal<int>	        r_ring_cmd_fsm;	    // ring command packet FSM 
 	sc_signal<int>		r_ring_rsp_fsm;	    // ring response packet FSM
-        sc_signal<int>		r_vci_cmd_fsm;	    // vci command packet FSM
-	sc_signal<int>		r_vci_rsp_fsm;	    // vci response packet FSM
-
-	sc_signal<sc_uint<vci_param::S> >      r_srcid;
-	sc_signal<sc_uint<2> >                 r_cmd;
-	sc_signal<sc_uint<vci_param::T> >      r_trdid;
-	sc_signal<sc_uint<vci_param::P> >      r_pktid;
-	sc_signal<sc_uint<vci_param::K> >      r_plen;
-	sc_signal<sc_uint<1> >                 r_contig;
-	sc_signal<sc_uint<1> >                 r_const;
-	sc_signal<sc_uint<vci_param::N> >      r_addr;
-            
+        
+	            
         // internal fifos 
-	GenericFifo<sc_uint<37> > m_cmd_fifo;     // fifo for the local command paquet
-	GenericFifo<sc_uint<33> > m_rsp_fifo;     // fifo for the local response paquet
-
-	// routing table 
-	soclib::common::AddressDecodingTable<uint32_t, int> m_rt;
-        // locality table
-        soclib::common::AddressDecodingTable<uint32_t, bool> m_lt;
-
+	GenericFifo<sc_uint<37> > m_cmd_fifo;     // fifo for the local command packet
+	
+        // locality table 
+	soclib::common::AddressDecodingTable<uint32_t, bool> m_lt;
+	      
 	// methods
 	void transition();
         void genMoore();
@@ -123,6 +97,7 @@ class VciRingTargetWrapper
 	void genMealy_rsp_in();
 	void genMealy_cmd_out();
 	void genMealy_cmd_in();
+        void genMoore_cmd_fifo_out();
 	void genMealy_cmd_grant();
     	void genMealy_rsp_grant();
 
@@ -130,6 +105,6 @@ class VciRingTargetWrapper
 
 }} // end namespace
 		
-#endif // VCI_RING_TARGET_WRAPPER_H_
+#endif // LOCAL_BRIDGE_TARGET_H_
 
 

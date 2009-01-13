@@ -1,0 +1,38 @@
+
+# -*- python -*-
+
+Module('caba:local_ring_gateway',
+	classname = 'soclib::caba::LocalRingGateway',
+	   tmpl_parameters = [],
+	header_files = ['../source/include/local_ring_gateway.h',],
+	implementation_files = ['../source/src/local_ring_gateway.cpp',],
+	ports = [
+	
+                Port('bit_in', 'p_resetn', auto = 'resetn'),
+		Port('clock_in', 'p_clk', auto = 'clock'),
+	        Port('ring_in', 'p_ring_in'),
+	        Port('ring_out', 'p_ring_out'),
+                Port('fifo_output', 'p_out_rsp_fifo'),
+	        Port('fifo_input',  'p_in_cmd_fifo'),
+                Port('fifo_input', 'p_in_rsp_fifo'),
+	        Port('fifo_output',  'p_out_cmd_fifo'),
+
+	],
+	instance_parameters = [
+        parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+        parameter.IntTab('ringid'),
+        parameter.Bool('alloc_init'),
+        parameter.Bool('alloc_target'),
+        parameter.Int('bridge_fifo_depth'),
+        	        
+		],
+
+
+	uses = [
+		Uses('base_module'),
+                Uses('common:mapping_table'),
+                Uses('local_bridge_target'),
+                Uses('local_bridge_initiator'),
+	        
+		],
+)
