@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, SoC
  *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
  *
- * Maintainers: nipo
+ * Maintainers: abdelmalek.si-merabet@lip6.fr nipo
  */
 /* NOTE : The size of the fifo in the target must be 2 at least */ 
 
