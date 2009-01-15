@@ -24,7 +24,7 @@ Module('caba:vci_local_ring_network',
 		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
 	        parameter.IntTab('ringid'),
                 parameter.Int('wrapper_fifo_depth'),
-                parameter.Int('bridge_fifo_depth'),
+                parameter.Int('half_gateway_fifo_depth'),
                 parameter.Int('nb_attached_initiator'),
                 parameter.Int('nb_attached_target'),
 
@@ -34,7 +34,7 @@ Module('caba:vci_local_ring_network',
 	    Uses('common:mapping_table'),
 	    Uses('vci_ring_initiator_wrapper'),
 	    Uses('vci_ring_target_wrapper'),
-            Uses('local_ring_gateway'),
+            Uses('ring_gateway'),
             
 	],
         

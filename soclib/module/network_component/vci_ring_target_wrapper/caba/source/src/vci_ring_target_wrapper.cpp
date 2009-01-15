@@ -266,12 +266,18 @@ tmpl(void)::transition()
 		case CMD_IDLE:  
 		{ // for variable scope
 			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
-			bool isLocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid); 
+			bool islocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid); 
 
 			if ( p_ring_in.cmd_rok.read()) 
 			{
-     
-				if ( isLocal && m_cmd_fifo.wok()) 
+/*--------------------------------------
+         std::cout << sc_time_stamp() << "-- " << name()
+              << " -- ring_cmd_fsm -- CMD_IDLE "
+              << " -- islocal : " << islocal
+              << " -- addr : " << rtgtid
+              << std::endl;
+//----------------------------------------------- */     
+				if ( islocal && m_cmd_fifo.wok()) 
 				{
 					r_ring_cmd_fsm = LOCAL; 
 					cmd_fifo_put  = true;
@@ -280,7 +286,7 @@ tmpl(void)::transition()
 				}                     
 				else 
 				{
-					if(!isLocal && p_ring_in.cmd_wok.read()) 
+					if(!islocal && p_ring_in.cmd_wok.read()) 
 						r_ring_cmd_fsm = RING;                  
 				} 
 			} 
@@ -438,9 +444,9 @@ tmpl(void)::genMealy_cmd_in()
 		case CMD_IDLE:
 		{
 			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
-			bool isLocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid); 
+			bool islocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid); 
  
-			p_ring_out.cmd_r = p_ring_in.cmd_rok.read() && ((isLocal && m_cmd_fifo.wok()) || (!isLocal && p_ring_in.cmd_wok.read())) ;
+			p_ring_out.cmd_r = p_ring_in.cmd_rok.read() && ((islocal && m_cmd_fifo.wok()) || (!islocal && p_ring_in.cmd_wok.read())) ;
 		}
 		break;
 

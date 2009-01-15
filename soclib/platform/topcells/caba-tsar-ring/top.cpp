@@ -14,7 +14,7 @@
 #include "vci_mem_cache.h"
 #include "vci_cc_xcache_wrapper.h"
 #include "vci_local_ring_network.h"
-#include "router_ring_gateway.h"
+#include "ring_gateway.h"
 #include "vci_simple_ring_network.h"
 
 #ifdef USE_GDB_SERVER
@@ -427,17 +427,17 @@ int _main(int argc, char *argv[])
 //--
         soclib::caba::RingSignals rsig[4];
 
-        soclib::caba::RouterRingGateway 
-	routergatePN0("routergatePN0",maptabp, IntTab(0), true , true, 18);
+        soclib::caba::RingGateway 
+	routergatePN0("routergatePN0",maptabp, IntTab(0), true , true, true, 18);
 
-	soclib::caba::RouterRingGateway 
-	routergatePN1("routergatePN1",maptabp, IntTab(1), false, false, 18);
+	soclib::caba::RingGateway 
+	routergatePN1("routergatePN1",maptabp, IntTab(1), false, false, true, 18);
 
-	soclib::caba::RouterRingGateway 
-	routergatePN2("routergatePN2",maptabp, IntTab(2), false, false, 18);
+	soclib::caba::RingGateway 
+	routergatePN2("routergatePN2",maptabp, IntTab(2), false, false, true, 18);
 
-	soclib::caba::RouterRingGateway 
-	routergatePN3("routergatePN3",maptabp, IntTab(3), false, false, 18);
+	soclib::caba::RingGateway 
+	routergatePN3("routergatePN3",maptabp, IntTab(3), false, false, true, 18);
 
         routergatePN0.p_clk(signal_clk);  
 	routergatePN0.p_resetn(signal_resetn);  
@@ -490,17 +490,17 @@ int _main(int argc, char *argv[])
 //--
         soclib::caba::RingSignals rsigc[4];
 
-        soclib::caba::RouterRingGateway 
-	routergateCN0("routergateCN0",maptabp, IntTab(0), true , true, 2);
+        soclib::caba::RingGateway 
+	routergateCN0("routergateCN0",maptabp, IntTab(0), true , true, true, 2);
 
-	soclib::caba::RouterRingGateway 
-	routergateCN1("routergateCN1",maptabp, IntTab(1), false, false, 2);
+	soclib::caba::RingGateway 
+	routergateCN1("routergateCN1",maptabp, IntTab(1), false, false, true, 2);
 
-	soclib::caba::RouterRingGateway 
-	routergateCN2("routergateCN2",maptabp, IntTab(2), false, false, 2);
+	soclib::caba::RingGateway 
+	routergateCN2("routergateCN2",maptabp, IntTab(2), false, false, true, 2);
 
-	soclib::caba::RouterRingGateway 
-	routergateCN3("routergateCN3",maptabp, IntTab(3), false, false, 2);
+	soclib::caba::RingGateway 
+	routergateCN3("routergateCN3",maptabp, IntTab(3), false, false, true, 2);
 
         routergateCN0.p_clk(signal_clk);  
 	routergateCN0.p_resetn(signal_resetn);  

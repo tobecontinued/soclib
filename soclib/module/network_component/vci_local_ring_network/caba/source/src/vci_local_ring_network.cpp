@@ -44,7 +44,7 @@ tmpl(/**/)::VciLocalRingNetwork( sc_module_name insname,
                          const soclib::common::MappingTable &mt,
                          const soclib::common::IntTab &ringid,
                          const int &wrapper_fifo_depth,
-                         const int &bridge_fifo_depth,
+                         const int &half_gateway_fifo_depth,
                          int nb_attached_initiator,
                          int nb_attached_target)                                             
                          : soclib::caba::BaseModule(insname), 
@@ -88,7 +88,7 @@ tmpl(/**/)::VciLocalRingNetwork( sc_module_name insname,
 
          
         // generation gateway
-        t_ring_gateway = new soclib::caba::LocalRingGateway("t_ring_gateway", mt, ringid, false, false, bridge_fifo_depth); 
+        t_ring_gateway = new soclib::caba::RingGateway("t_ring_gateway", mt, ringid, false, false, false, half_gateway_fifo_depth); 
 
         // NETLIST
  	int nbsig = 0;

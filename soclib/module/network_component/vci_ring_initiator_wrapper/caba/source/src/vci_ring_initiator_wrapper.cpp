@@ -62,8 +62,6 @@
 ///////////////////////////////////////////////////////////////////
 
 #include "../include/vci_ring_initiator_wrapper.h"
-#include <iostream>
-#include <time.h>
 
 namespace soclib { namespace caba {
 
@@ -358,11 +356,11 @@ tmpl(void)::transition()
 		case RSP_IDLE:  
 		{
 			int rsrcid = (int)  ((p_ring_in.rsp_data.read() >> 20 ) & 0xFF);
-			bool isLocal = m_lt[rsrcid] && (m_rt[rsrcid] == m_srcid);
+			bool islocal = m_lt[rsrcid] && (m_rt[rsrcid] == m_srcid);
 
 			if ( p_ring_in.rsp_rok.read() ) 
 			{           
-				if ( isLocal && m_rsp_fifo.wok()) // response packet to local initiator
+ 				if ( islocal && m_rsp_fifo.wok()) // response packet to local initiator
 				{   
 					r_ring_rsp_fsm = LOCAL;
 					rsp_fifo_put  = true;
@@ -370,7 +368,7 @@ tmpl(void)::transition()
 				}
 				else  
 				{  
-					if(!isLocal && p_ring_in.rsp_wok.read())        
+					if(!islocal && p_ring_in.rsp_wok.read())        
 						r_ring_rsp_fsm = RING;  
 				}
 			} 
@@ -505,9 +503,9 @@ tmpl(void)::genMealy_rsp_in()
 		case RSP_IDLE:	
 		{
 			int rsrcid = (int)  ((p_ring_in.rsp_data.read() >> 20 ) & 0xFF);
-			bool isLocal = m_lt[rsrcid] && (m_rt[rsrcid] == m_srcid); 
+			bool islocal = m_lt[rsrcid] && (m_rt[rsrcid] == m_srcid); 
 	
-			p_ring_out.rsp_r = p_ring_in.rsp_rok.read() && ((isLocal && m_rsp_fifo.wok()) || (!isLocal && p_ring_in.rsp_wok.read()));	
+			p_ring_out.rsp_r = p_ring_in.rsp_rok.read() && ((islocal && m_rsp_fifo.wok()) || (!islocal && p_ring_in.rsp_wok.read()));	
 		}
 		break;
 	

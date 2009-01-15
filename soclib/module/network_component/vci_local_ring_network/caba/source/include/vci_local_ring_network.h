@@ -30,7 +30,7 @@
 #include "caba_base_module.h"
 #include "vci_ring_target_wrapper.h"
 #include "vci_ring_initiator_wrapper.h"
-#include "local_ring_gateway.h"
+#include "ring_gateway.h"
 #include "mapping_table.h"
 #include "fifo_ports.h"
 
@@ -59,7 +59,7 @@ namespace soclib { namespace caba {
                 //ring
                 soclib::caba::VciRingInitiatorWrapper<vci_param>** t_initiator_wrapper;
                 soclib::caba::VciRingTargetWrapper<vci_param>   ** t_target_wrapper;
-                soclib::caba::LocalRingGateway                   * t_ring_gateway; 
+                soclib::caba::RingGateway                        * t_ring_gateway; 
                
             protected:
                 SC_HAS_PROCESS(VciLocalRingNetwork);
