@@ -25,8 +25,6 @@
  * Copyright: UPMC - LIP6
  */
 #include "../include/vci_ring_target_wrapper.h"
-#include <iostream>
-#include <time.h>
 
 namespace soclib { namespace caba {
 
@@ -270,13 +268,7 @@ tmpl(void)::transition()
 
 			if ( p_ring_in.cmd_rok.read()) 
 			{
-/*--------------------------------------
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " -- ring_cmd_fsm -- CMD_IDLE "
-              << " -- islocal : " << islocal
-              << " -- addr : " << rtgtid
-              << std::endl;
-//----------------------------------------------- */     
+    
 				if ( islocal && m_cmd_fifo.wok()) 
 				{
 					r_ring_cmd_fsm = LOCAL; 

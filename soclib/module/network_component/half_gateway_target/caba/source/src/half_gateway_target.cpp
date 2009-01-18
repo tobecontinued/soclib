@@ -20,8 +20,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Authors  : Franck WAJSBÜRT, Abdelmalek SI MERABET 
- * Date     : december 2008
- *
+ * Date     : january 2009
  * Copyright: UPMC - LIP6
  */
 #include "../include/half_gateway_target.h"
@@ -74,22 +73,22 @@ dont_initialize();
 sensitive << p_clk.neg();
 sensitive << p_ring_in.rsp_rok;
 sensitive << p_ring_in.rsp_data;
-sensitive << p_rsp_fifo.rok;
-sensitive << p_rsp_fifo.data;
+sensitive << p_gate_target.rsp_rok;
+sensitive << p_gate_target.rsp_data;
 
 SC_METHOD(genMealy_rsp_in);
 dont_initialize();
 sensitive << p_clk.neg();
 sensitive << p_ring_in.rsp_wok;
-sensitive << p_rsp_fifo.rok;
+sensitive << p_gate_target.rsp_rok;
 
 SC_METHOD(genMealy_rsp_grant);
 dont_initialize();
 sensitive << p_clk.neg();
 sensitive << p_ring_in.rsp_grant;
 sensitive << p_ring_in.rsp_wok;
-sensitive << p_rsp_fifo.rok;
-sensitive << p_rsp_fifo.data;
+sensitive << p_gate_target.rsp_rok;
+sensitive << p_gate_target.rsp_data;
 
 SC_METHOD(genMealy_cmd_grant);
 dont_initialize();
@@ -127,13 +126,13 @@ void HalfGatewayTarget::transition()
 	{
 		case RSP_IDLE:  
       
-			if ( p_ring_in.rsp_grant.read() && p_rsp_fifo.rok.read() ) 
+			if ( p_ring_in.rsp_grant.read() && p_gate_target.rsp_rok.read() ) 
 				r_ring_rsp_fsm = DEFAULT;           
 		break;
 
 		case DEFAULT:   
           
-			if (p_rsp_fifo.rok.read() && p_ring_in.rsp_wok.read() ) 
+			if (p_gate_target.rsp_rok.read() && p_ring_in.rsp_wok.read() ) 
 			{
 				r_ring_rsp_fsm = KEEP;
 			}   
@@ -143,9 +142,9 @@ void HalfGatewayTarget::transition()
 
 		case KEEP:     
           
-			if(p_rsp_fifo.rok.read() && p_ring_in.rsp_wok.read()) 
+			if(p_gate_target.rsp_rok.read() && p_ring_in.rsp_wok.read()) 
 			{
- 				if ((int) ((p_rsp_fifo.data.read() >> 32 ) & 0x1) == 1)  
+ 				if ((int) ((p_gate_target.rsp_data.read() >> 32 ) & 0x1) == 1)  
 				{             
 					if ( p_ring_in.rsp_grant.read() )
 						r_ring_rsp_fsm = DEFAULT;  
@@ -163,15 +162,14 @@ void HalfGatewayTarget::transition()
 		case CMD_IDLE: 
 		{
 			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
-			bool islocal = m_lt[rtgtid] ;       
-			bool loc = (islocal && m_local) || (!islocal && !m_local);
+			bool loc = (m_lt[rtgtid] && m_local) || (!m_lt[rtgtid] && !m_local);
 			if ( p_ring_in.cmd_rok.read() ) 
 			{				
 
 /*--------------------------------------
          std::cout << sc_time_stamp() << "-- " << name()
               << " -- ring_cmd_fsm -- CMD_IDLE "
-              << " -- islocal : " << islocal
+              << " -- m_lt[rtgtid] : " << m_lt[rtgtid]
               << " -- m-local : " << m_local
               << " -- loc : " << loc
               << " -- addr : " << rtgtid
@@ -217,7 +215,7 @@ void HalfGatewayTarget::transition()
     ////////////////////////
     //  fifos update      //
    ////////////////////////
-	bool cmd_fifo_get = p_cmd_fifo.wok.read();
+	bool cmd_fifo_get = p_gate_target.cmd_wok.read();
 // local cmd fifo update
 	if ( cmd_fifo_put && cmd_fifo_get ) m_cmd_fifo.put_and_get(cmd_fifo_data);
 	else if (  cmd_fifo_put && !cmd_fifo_get ) m_cmd_fifo.simple_put(cmd_fifo_data);
@@ -233,16 +231,16 @@ void HalfGatewayTarget::genMealy_rsp_grant()
 	switch( r_ring_rsp_fsm ) 
 	{
 		case RSP_IDLE:
-			p_ring_out.rsp_grant = p_ring_in.rsp_grant.read() && !p_rsp_fifo.rok.read();
+			p_ring_out.rsp_grant = p_ring_in.rsp_grant.read() && !p_gate_target.rsp_rok.read();
 		break;
 
 		case DEFAULT:
-			p_ring_out.rsp_grant = !( p_rsp_fifo.rok.read() && p_ring_in.rsp_wok.read() ); 
+			p_ring_out.rsp_grant = !( p_gate_target.rsp_rok.read() && p_ring_in.rsp_wok.read() ); 
 		break;
 
 		case KEEP:        
-			int rsp_fifo_eop = (int) ((p_rsp_fifo.data.read() >> 32) & 0x1);
-			p_ring_out.rsp_grant = p_rsp_fifo.rok.read() && p_ring_in.rsp_wok.read() && (rsp_fifo_eop==1);
+			int rsp_fifo_eop = (int) ((p_gate_target.rsp_data.read() >> 32) & 0x1);
+			p_ring_out.rsp_grant = p_gate_target.rsp_rok.read() && p_ring_in.rsp_wok.read() && (rsp_fifo_eop==1);
 		break; 
 
 	} // end switch
@@ -264,8 +262,7 @@ void HalfGatewayTarget::genMealy_cmd_in()
 		case CMD_IDLE:
 		{
 			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
-			bool islocal = m_lt[rtgtid]; 
-			bool loc = (islocal && m_local) || (!islocal && !m_local);
+			bool loc = (m_lt[rtgtid] && m_local) || (!m_lt[rtgtid] && !m_local);
 
 			p_ring_out.cmd_r  = p_ring_in.cmd_rok.read() && ((loc && m_cmd_fifo.wok()) || (!loc && p_ring_in.cmd_wok.read())) ;
 		}
@@ -301,9 +298,9 @@ void HalfGatewayTarget::genMealy_rsp_in()
 	p_ring_out.rsp_r = p_ring_in.rsp_wok.read();
     
 	if(r_ring_rsp_fsm==DEFAULT || r_ring_rsp_fsm==KEEP) 
-		p_rsp_fifo.r= p_rsp_fifo.rok.read() && p_ring_in.rsp_wok.read();
+		p_gate_target.rsp_r= p_gate_target.rsp_rok.read() && p_ring_in.rsp_wok.read();
 	else
-		p_rsp_fifo.r=false; 
+		p_gate_target.rsp_r=false; 
 } // end genMealy_rsp_in
   
 ///////////////////////////////////////////////////////////////////
@@ -318,8 +315,8 @@ void HalfGatewayTarget::genMealy_rsp_out()
 	}
 	else
 	{ 
-		p_ring_out.rsp_w    =  p_rsp_fifo.rok.read();
-		p_ring_out.rsp_data =  p_rsp_fifo.data.read();
+		p_ring_out.rsp_w    =  p_gate_target.rsp_rok.read();
+		p_ring_out.rsp_data =  p_gate_target.rsp_data.read();
        }
                                 
 } // end genMealy_rsp_out
@@ -327,8 +324,8 @@ void HalfGatewayTarget::genMealy_rsp_out()
 void HalfGatewayTarget::genMoore_cmd_fifo_out()
 ///////////////////////////////////////////////////////////////////
 {
-	p_cmd_fifo.w    = m_cmd_fifo.rok();
-	p_cmd_fifo.data = m_cmd_fifo.read();
+	p_gate_target.cmd_w    = m_cmd_fifo.rok();
+	p_gate_target.cmd_data = m_cmd_fifo.read();
 } 
 
 }} // end namespace

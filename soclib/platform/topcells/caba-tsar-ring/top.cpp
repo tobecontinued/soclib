@@ -372,46 +372,16 @@ int _main(int argc, char *argv[])
 	tty("tty",IntTab(3,1),maptabp,"tty0","tty1","tty2","tty3","tty4","tty5","tty6","tty7","tty8","tty9","tty10","tty11","tty12","tty13","tty14","tty15",NULL);
 
 //--
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_local_to_router_PN0;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_router_to_local_PN0;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_local_to_router_PN0;
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_router_to_local_PN0;
+        soclib::caba::GateSignals gate_PN0[2];
+        soclib::caba::GateSignals gate_PN1[2];
+	soclib::caba::GateSignals gate_PN2[2];
+	soclib::caba::GateSignals gate_PN3[2];
 
-	soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_local_to_router_PN1;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_router_to_local_PN1;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_local_to_router_PN1;
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_router_to_local_PN1;
-
-	soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_local_to_router_PN2;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_router_to_local_PN2;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_local_to_router_PN2;
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_router_to_local_PN2;
-
-	soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_local_to_router_PN3;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_router_to_local_PN3;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_local_to_router_PN3;
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_router_to_local_PN3;
-
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_local_to_router_CN0;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_router_to_local_CN0;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_local_to_router_CN0;
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_router_to_local_CN0;
-
-	soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_local_to_router_CN1;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_router_to_local_CN1;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_local_to_router_CN1;
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_router_to_local_CN1;
-
-	soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_local_to_router_CN2;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_router_to_local_CN2;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_local_to_router_CN2;
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_router_to_local_CN2;
-
-	soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_local_to_router_CN3;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_router_to_local_CN3;
-        soclib::caba::FifoSignals<sc_uint<33> > fifo_rsp_local_to_router_CN3;
-        soclib::caba::FifoSignals<sc_uint<37> > fifo_cmd_router_to_local_CN3;
-
+	soclib::caba::GateSignals gate_CN0[2];
+        soclib::caba::GateSignals gate_CN1[2];
+	soclib::caba::GateSignals gate_CN2[2];
+	soclib::caba::GateSignals gate_CN3[2];
+        
 //--
 	soclib::caba::VciLocalRingNetwork<vci_param> 
 	clusterPN0("clusterPN0",maptabp, IntTab(0), 2, 18, 4, 1 );
@@ -443,38 +413,30 @@ int _main(int argc, char *argv[])
 	routergatePN0.p_resetn(signal_resetn);  
 	routergatePN0.p_ring_in(rsig[0]);
 	routergatePN0.p_ring_out(rsig[1]);
-        routergatePN0.p_out_rsp_fifo(fifo_rsp_router_to_local_PN0);
-	routergatePN0.p_in_cmd_fifo(fifo_cmd_local_to_router_PN0);
-	routergatePN0.p_in_rsp_fifo(fifo_rsp_local_to_router_PN0);
-	routergatePN0.p_out_cmd_fifo(fifo_cmd_router_to_local_PN0);
-
+        routergatePN0.p_gate_initiator(gate_PN0[0]);
+	routergatePN0.p_gate_target(gate_PN0[1]);
 
 	routergatePN1.p_clk(signal_clk);  
 	routergatePN1.p_resetn(signal_resetn);  
 	routergatePN1.p_ring_in(rsig[1]);
 	routergatePN1.p_ring_out(rsig[2]);
-	routergatePN1.p_out_rsp_fifo(fifo_rsp_router_to_local_PN1);
-	routergatePN1.p_in_cmd_fifo(fifo_cmd_local_to_router_PN1);
-	routergatePN1.p_in_rsp_fifo(fifo_rsp_local_to_router_PN1);
-	routergatePN1.p_out_cmd_fifo(fifo_cmd_router_to_local_PN1);
+	routergatePN1.p_gate_initiator(gate_PN1[0]);
+	routergatePN1.p_gate_target(gate_PN1[1]);
 
 	routergatePN2.p_clk(signal_clk);  
 	routergatePN2.p_resetn(signal_resetn);  
 	routergatePN2.p_ring_in(rsig[2]);
 	routergatePN2.p_ring_out(rsig[3]);
-	routergatePN2.p_out_rsp_fifo(fifo_rsp_router_to_local_PN2);
-	routergatePN2.p_in_cmd_fifo(fifo_cmd_local_to_router_PN2);
-	routergatePN2.p_in_rsp_fifo(fifo_rsp_local_to_router_PN2);
-	routergatePN2.p_out_cmd_fifo(fifo_cmd_router_to_local_PN2);
+	routergatePN2.p_gate_initiator(gate_PN2[0]);
+	routergatePN2.p_gate_target(gate_PN2[1]);
 
 	routergatePN3.p_clk(signal_clk);  
 	routergatePN3.p_resetn(signal_resetn);  
 	routergatePN3.p_ring_in(rsig[3]);
 	routergatePN3.p_ring_out(rsig[0]);
-	routergatePN3.p_out_rsp_fifo(fifo_rsp_router_to_local_PN3);
-	routergatePN3.p_in_cmd_fifo(fifo_cmd_local_to_router_PN3);
-	routergatePN3.p_in_rsp_fifo(fifo_rsp_local_to_router_PN3);
-	routergatePN3.p_out_cmd_fifo(fifo_cmd_router_to_local_PN3);
+	routergatePN3.p_gate_initiator(gate_PN3[0]);
+	routergatePN3.p_gate_target(gate_PN3[1]);
+
 //--
 	soclib::caba::VciLocalRingNetwork<vci_param> 
 	clusterCN0("clusterCN0",maptabc, IntTab(0), 2, 2, 1, 4 );
@@ -506,37 +468,31 @@ int _main(int argc, char *argv[])
 	routergateCN0.p_resetn(signal_resetn);  
 	routergateCN0.p_ring_in(rsigc[0]);
 	routergateCN0.p_ring_out(rsigc[1]);
-        routergateCN0.p_out_rsp_fifo(fifo_rsp_router_to_local_CN0);
-	routergateCN0.p_in_cmd_fifo(fifo_cmd_local_to_router_CN0);
-	routergateCN0.p_in_rsp_fifo(fifo_rsp_local_to_router_CN0);
-	routergateCN0.p_out_cmd_fifo(fifo_cmd_router_to_local_CN0);
-
+	routergateCN0.p_gate_initiator(gate_CN0[0]);
+	routergateCN0.p_gate_target(gate_CN0[1]);
+        
 	routergateCN1.p_clk(signal_clk);  
 	routergateCN1.p_resetn(signal_resetn);  
 	routergateCN1.p_ring_in(rsigc[1]);
 	routergateCN1.p_ring_out(rsigc[2]);
-	routergateCN1.p_out_rsp_fifo(fifo_rsp_router_to_local_CN1);
-	routergateCN1.p_in_cmd_fifo(fifo_cmd_local_to_router_CN1);
-	routergateCN1.p_in_rsp_fifo(fifo_rsp_local_to_router_CN1);
-	routergateCN1.p_out_cmd_fifo(fifo_cmd_router_to_local_CN1);
-
+	routergateCN1.p_gate_initiator(gate_CN1[0]);
+	routergateCN1.p_gate_target(gate_CN1[1]);
+	
 	routergateCN2.p_clk(signal_clk);  
 	routergateCN2.p_resetn(signal_resetn);  
 	routergateCN2.p_ring_in(rsigc[2]);
 	routergateCN2.p_ring_out(rsigc[3]);
-	routergateCN2.p_out_rsp_fifo(fifo_rsp_router_to_local_CN2);
-	routergateCN2.p_in_cmd_fifo(fifo_cmd_local_to_router_CN2);
-	routergateCN2.p_in_rsp_fifo(fifo_rsp_local_to_router_CN2);
-	routergateCN2.p_out_cmd_fifo(fifo_cmd_router_to_local_CN2);
+	routergateCN2.p_gate_initiator(gate_CN2[0]);
+	routergateCN2.p_gate_target(gate_CN2[1]);
 
 	routergateCN3.p_clk(signal_clk);  
 	routergateCN3.p_resetn(signal_resetn);  
 	routergateCN3.p_ring_in(rsigc[3]);
 	routergateCN3.p_ring_out(rsigc[0]);
-	routergateCN3.p_out_rsp_fifo(fifo_rsp_router_to_local_CN3);
-	routergateCN3.p_in_cmd_fifo(fifo_cmd_local_to_router_CN3);
-	routergateCN3.p_in_rsp_fifo(fifo_rsp_local_to_router_CN3);
-	routergateCN3.p_out_cmd_fifo(fifo_cmd_router_to_local_CN3);
+	routergateCN3.p_gate_initiator(gate_CN3[0]);
+	routergateCN3.p_gate_target(gate_CN3[1]);
+	
+
 //--
 	soclib::caba::VciSimpleRingNetwork<vci_param> 
 	xring("xring",maptabx, IntTab(), 2, 4, 1);
@@ -801,10 +757,8 @@ int _main(int argc, char *argv[])
 
 	clusterPN0.p_to_target[0](signal_vci_tgt_memc0);
 
-        clusterPN0.p_out_rsp_fifo(fifo_rsp_local_to_router_PN0);
-	clusterPN0.p_in_cmd_fifo(fifo_cmd_router_to_local_PN0);
-	clusterPN0.p_in_rsp_fifo(fifo_rsp_router_to_local_PN0);
-        clusterPN0.p_out_cmd_fifo(fifo_cmd_local_to_router_PN0);
+        clusterPN0.p_gate_initiator(gate_PN0[1]);
+	clusterPN0.p_gate_target(gate_PN0[0]);
 
 	clusterPN1.p_clk(signal_clk);
 	clusterPN1.p_resetn(signal_resetn);
@@ -816,10 +770,8 @@ int _main(int argc, char *argv[])
 
 	clusterPN1.p_to_target[0](signal_vci_tgt_memc1);
 
-	clusterPN1.p_out_rsp_fifo(fifo_rsp_local_to_router_PN1);
-	clusterPN1.p_in_cmd_fifo(fifo_cmd_router_to_local_PN1);
-	clusterPN1.p_in_rsp_fifo(fifo_rsp_router_to_local_PN1);
-        clusterPN1.p_out_cmd_fifo(fifo_cmd_local_to_router_PN1);
+	clusterPN1.p_gate_initiator(gate_PN1[1]);
+	clusterPN1.p_gate_target(gate_PN1[0]);
 
 	clusterPN2.p_clk(signal_clk);
 	clusterPN2.p_resetn(signal_resetn);
@@ -832,10 +784,8 @@ int _main(int argc, char *argv[])
 	clusterPN2.p_to_target[0](signal_vci_tgt_memc2);
 	clusterPN2.p_to_target[1](signal_vci_tgt_rom);
 
-	clusterPN2.p_out_rsp_fifo(fifo_rsp_local_to_router_PN2);
-	clusterPN2.p_in_cmd_fifo(fifo_cmd_router_to_local_PN2);
-	clusterPN2.p_in_rsp_fifo(fifo_rsp_router_to_local_PN2);
-        clusterPN2.p_out_cmd_fifo(fifo_cmd_local_to_router_PN2);
+	clusterPN2.p_gate_initiator(gate_PN2[1]);
+	clusterPN2.p_gate_target(gate_PN2[0]);
 	
 	clusterPN3.p_clk(signal_clk);
 	clusterPN3.p_resetn(signal_resetn);
@@ -848,11 +798,8 @@ int _main(int argc, char *argv[])
 	clusterPN3.p_to_target[0](signal_vci_tgt_memc3);
 	clusterPN3.p_to_target[1](signal_vci_tgt_tty);
 
-	clusterPN3.p_out_rsp_fifo(fifo_rsp_local_to_router_PN3);
-	clusterPN3.p_in_cmd_fifo(fifo_cmd_router_to_local_PN3);
-	clusterPN3.p_in_rsp_fifo(fifo_rsp_router_to_local_PN3);
-        clusterPN3.p_out_cmd_fifo(fifo_cmd_local_to_router_PN3);
-	
+	clusterPN3.p_gate_initiator(gate_PN3[1]);
+	clusterPN3.p_gate_target(gate_PN3[0]);
 	
 	///////////////////////////////////////////////////////
 	// Réseau des commandes de cohérence
@@ -867,11 +814,9 @@ int _main(int argc, char *argv[])
 	clusterCN0.p_to_target[2](signal_vci_tgt_proc2);
 	clusterCN0.p_to_target[3](signal_vci_tgt_proc3);
 
-        clusterCN0.p_out_rsp_fifo(fifo_rsp_local_to_router_CN0);
-	clusterCN0.p_in_cmd_fifo(fifo_cmd_router_to_local_CN0);
-	clusterCN0.p_in_rsp_fifo(fifo_rsp_router_to_local_CN0);
-        clusterCN0.p_out_cmd_fifo(fifo_cmd_local_to_router_CN0);
-	
+	clusterCN0.p_gate_initiator(gate_CN0[1]);
+	clusterCN0.p_gate_target(gate_CN0[0]);
+
 	clusterCN1.p_clk(signal_clk);
 	clusterCN1.p_resetn(signal_resetn);
 
@@ -882,10 +827,8 @@ int _main(int argc, char *argv[])
 	clusterCN1.p_to_target[2](signal_vci_tgt_proc6);
 	clusterCN1.p_to_target[3](signal_vci_tgt_proc7);
 
-        clusterCN1.p_out_rsp_fifo(fifo_rsp_local_to_router_CN1);
-	clusterCN1.p_in_cmd_fifo(fifo_cmd_router_to_local_CN1);
-	clusterCN1.p_in_rsp_fifo(fifo_rsp_router_to_local_CN1);
-        clusterCN1.p_out_cmd_fifo(fifo_cmd_local_to_router_CN1);
+        clusterCN1.p_gate_initiator(gate_CN1[1]);
+	clusterCN1.p_gate_target(gate_CN1[0]);
 	
 	clusterCN2.p_clk(signal_clk);
 	clusterCN2.p_resetn(signal_resetn);
@@ -897,10 +840,8 @@ int _main(int argc, char *argv[])
 	clusterCN2.p_to_target[2](signal_vci_tgt_proc10);
 	clusterCN2.p_to_target[3](signal_vci_tgt_proc11);
 
-	clusterCN2.p_out_rsp_fifo(fifo_rsp_local_to_router_CN2);
-	clusterCN2.p_in_cmd_fifo(fifo_cmd_router_to_local_CN2);
-	clusterCN2.p_in_rsp_fifo(fifo_rsp_router_to_local_CN2);
-        clusterCN2.p_out_cmd_fifo(fifo_cmd_local_to_router_CN2);
+	clusterCN2.p_gate_initiator(gate_CN2[1]);
+	clusterCN2.p_gate_target(gate_CN2[0]);
 
 	clusterCN3.p_clk(signal_clk);
 	clusterCN3.p_resetn(signal_resetn);
@@ -912,10 +853,8 @@ int _main(int argc, char *argv[])
 	clusterCN3.p_to_target[2](signal_vci_tgt_proc14);
 	clusterCN3.p_to_target[3](signal_vci_tgt_proc15);
 
-	clusterCN3.p_out_rsp_fifo(fifo_rsp_local_to_router_CN3);
-	clusterCN3.p_in_cmd_fifo(fifo_cmd_router_to_local_CN3);
-	clusterCN3.p_in_rsp_fifo(fifo_rsp_router_to_local_CN3);
-        clusterCN3.p_out_cmd_fifo(fifo_cmd_local_to_router_CN3);
+	clusterCN3.p_gate_initiator(gate_CN3[1]);
+	clusterCN3.p_gate_target(gate_CN3[0]);
 
 	////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////

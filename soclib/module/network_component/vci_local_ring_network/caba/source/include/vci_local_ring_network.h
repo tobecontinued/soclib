@@ -32,7 +32,7 @@
 #include "vci_ring_initiator_wrapper.h"
 #include "ring_gateway.h"
 #include "mapping_table.h"
-#include "fifo_ports.h"
+#include "gate_ports.h"
 
 
 namespace soclib { namespace caba {
@@ -50,11 +50,9 @@ namespace soclib { namespace caba {
                 soclib::caba::VciInitiator<vci_param>* p_to_target;
                 soclib::caba::VciTarget<vci_param>   * p_to_initiator;
 
-                soclib::caba::FifoOutput<sc_uint<33> >  p_out_rsp_fifo;
-                soclib::caba::FifoInput<sc_uint<37> >   p_in_cmd_fifo;
-    
-                soclib::caba::FifoInput<sc_uint<33> >   p_in_rsp_fifo;
-                soclib::caba::FifoOutput<sc_uint<37> >  p_out_cmd_fifo;
+                // Gate interface
+		soclib::caba::GateInitiator             p_gate_initiator;
+		soclib::caba::GateTarget                p_gate_target;
 
                 //ring
                 soclib::caba::VciRingInitiatorWrapper<vci_param>** t_initiator_wrapper;
@@ -75,7 +73,7 @@ namespace soclib { namespace caba {
                          const soclib::common::MappingTable &mt,
                          const soclib::common::IntTab &ringid,   
                          const int &wrapper_fifo_depth,
-                         const int &bridge_fifo_depth,
+                         const int &half_gateway_fifo_depth,
                          int nb_attached_initiator,
                          int nb_attached_target);
                                                                    

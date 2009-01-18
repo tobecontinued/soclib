@@ -12,11 +12,8 @@ Module('caba:ring_gateway',
 		Port('clock_in', 'p_clk', auto = 'clock'),
 	        Port('ring_in', 'p_ring_in'),
 	        Port('ring_out', 'p_ring_out'),
-                Port('fifo_output', 'p_out_rsp_fifo'),
-	        Port('fifo_input',  'p_in_cmd_fifo'),
-                Port('fifo_input', 'p_in_rsp_fifo'),
-	        Port('fifo_output',  'p_out_cmd_fifo'),
-
+                Port('gate_initiator', 'p_gate_initiator'),
+	        Port('gate_target',    'p_gate_target'),               
 	],
 	instance_parameters = [
         parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),

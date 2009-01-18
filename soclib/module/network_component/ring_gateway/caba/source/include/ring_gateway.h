@@ -20,7 +20,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Authors  : Franck WAJSBÜRT, Abdelmalek SI MERABET 
- * Date     : December 2008
+ * Date     : january 2009
  * Copyright: UPMC - LIP6
  */
 
@@ -32,8 +32,8 @@
 #include "half_gateway_target.h"
 #include "half_gateway_initiator.h"
 #include "ring_ports.h"
+#include "gate_ports.h"
 #include "mapping_table.h"
-#include "fifo_ports.h"
 
 
 namespace soclib { namespace caba {
@@ -49,16 +49,13 @@ namespace soclib { namespace caba {
 		// ring interface
 		soclib::caba::RingIn                    p_ring_in;
 		soclib::caba::RingOut                   p_ring_out;
+
+		// Gate interface
+		soclib::caba::GateInitiator             p_gate_initiator;
+		soclib::caba::GateTarget                p_gate_target;
 		
-		// local half_gateway initiator interface
-		soclib::caba::FifoOutput<sc_uint<33> >  p_out_rsp_fifo;
-		soclib::caba::FifoInput<sc_uint<37> >   p_in_cmd_fifo;
-		
-		// local half_gateway target interface
-		soclib::caba::FifoInput<sc_uint<33> >   p_in_rsp_fifo;
-		soclib::caba::FifoOutput<sc_uint<37> >  p_out_cmd_fifo;
-		
-		// local half_gateways
+				
+		// half_gateways
 		soclib::caba::HalfGatewayInitiator *hg_initiator;
 		soclib::caba::HalfGatewayTarget    *hg_target;
 

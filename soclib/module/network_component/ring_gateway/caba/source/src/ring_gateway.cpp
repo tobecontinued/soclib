@@ -20,7 +20,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Authors  : Franck WAJSBÜRT, Abdelmalek SI MERABET 
- * Date     : December 2008
+ * Date     : january 2009
  * Copyright: UPMC - LIP6
  */
 
@@ -47,15 +47,13 @@ RingGateway::RingGateway( sc_module_name insname,
 	hg_initiator->p_resetn(p_resetn);
 	hg_initiator->p_ring_in(p_ring_in);
 	hg_initiator->p_ring_out(t_ring_signal);
-	hg_initiator->p_rsp_fifo(p_out_rsp_fifo);  
-	hg_initiator->p_cmd_fifo(p_in_cmd_fifo);
-	         
+	hg_initiator->p_gate_initiator(p_gate_initiator);  
+		         
 	hg_target->p_clk(p_clk);
 	hg_target->p_resetn(p_resetn);
 	hg_target->p_ring_in(t_ring_signal);
 	hg_target->p_ring_out(p_ring_out);                 
-	hg_target->p_rsp_fifo(p_in_rsp_fifo);
-	hg_target->p_cmd_fifo(p_out_cmd_fifo);              
+	hg_target->p_gate_target(p_gate_target);        
  }
 
 // destructor

@@ -80,7 +80,7 @@ tmpl(/**/)::VciLocalRingNetwork( sc_module_name insname,
 		std::ostringstream o;
 		o << name() << "_t_wrapper_" << x;
 		t_target_wrapper[x] = new soclib::caba::VciRingTargetWrapper<vci_param>(o.str().c_str(), 
-                                                                                    alloc_target,                                                                                                          wrapper_fifo_depth,   
+                                                                                    alloc_target,                                                                                                                        wrapper_fifo_depth,   
                                                                                     mt, 
                                                                                     ringid, 
                                                                                     x);
@@ -118,10 +118,8 @@ tmpl(/**/)::VciLocalRingNetwork( sc_module_name insname,
 	t_ring_gateway->p_resetn(p_resetn);       
 	t_ring_gateway->p_ring_in(t_ring_signal[nbsig]);
 	t_ring_gateway->p_ring_out(t_ring_signal[0]);    
-	t_ring_gateway->p_out_rsp_fifo(p_out_rsp_fifo);    
-	t_ring_gateway->p_in_rsp_fifo(p_in_rsp_fifo); 
-	t_ring_gateway->p_out_cmd_fifo(p_out_cmd_fifo);    
-	t_ring_gateway->p_in_cmd_fifo(p_in_cmd_fifo);
+	t_ring_gateway->p_gate_initiator(p_gate_initiator);    
+	t_ring_gateway->p_gate_target(p_gate_target);
  }
    
 //---------------- destructor
