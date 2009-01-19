@@ -29,14 +29,18 @@ DEST=$(shell soclib-cc --getpath)/utils/bin
 
 export DEST
 
-all:
+rules=all install clean
 
-install: all
+define mkrule
 
-%: foo
-	@for i in $(SUBDIRS) ; do \
-		$(MAKE) -C $$i $@ || exit 1 ; \
-	done
+$(1): $$(foreach d,$$(SUBDIRS),$$d/$(1))
+
+%/$(1): foo
+	$$(MAKE) -C $$* $(1)
+
+endef
+
+$(eval $(foreach rule,$(rules),$(call mkrules,$(rule))))
 
 .PHONY: foo
 
