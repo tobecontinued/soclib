@@ -36,6 +36,7 @@
 #include "mwmr_controller.h"
 #include "generic_fifo.h"
 #include "alloc_elems.h"
+#include <algorithm>
 
 #ifndef MWMR_CONTROLLER_DEBUG
 #define MWMR_CONTROLLER_DEBUG 0
@@ -57,12 +58,14 @@ using soclib::common::dealloc_elems;
 namespace Mwmr {
 struct fifo_state_s {
 	uint32_t status_address;
+	uint32_t width;
 	uint32_t depth;
 	uint32_t buffer_address;
 	uint32_t lock_address;
 	bool running;
 	enum SoclibMwmrWay way;
 	uint32_t timer;
+	uint32_t waiting;
     GenericFifo<uint32_t> *fifo;
     uint32_t in_words;
     uint32_t out_words;
@@ -182,13 +185,33 @@ DEBUG_END;
             continue;
         }
 
-		if ( ! (( st->way == MWMR_TO_COPROC )
-                ? (st->fifo->empty())
-                : (st->fifo->full())) ) {
+		if ( st->way == MWMR_TO_COPROC ) {
+            if ( !(st->fifo->empty()) ) {
 DEBUG_BEGIN;
-            std::cout << "!D";
+                std::cout << "!D";
 DEBUG_END;
-            continue;
+                st->waiting = 0;
+                continue;
+            }
+        } else {
+            // If the FIFO contains at least one atomic data THEN
+            // decrement the timer
+            // If the FIFO is full OR (contains at least one atomic
+            // data AND the timer is 0) THEN try to send the data
+            if ( st->fifo->filled_status()*sizeof(uint32_t) < st->width ) {
+DEBUG_BEGIN;
+                std::cout << "!D";
+DEBUG_END;
+                continue;
+            } else {
+                if ( st->waiting != 0 ) {
+                    st->waiting--;
+DEBUG_BEGIN;
+                    std::cout << "!W";
+DEBUG_END;
+                    continue;
+                }
+            }
         }
 
         m_current = st;
@@ -233,6 +256,12 @@ DEBUG_END;
 		check_fifo();
 		m_config_fifo->status_address = data;
 		return true;
+    case MWMR_CONFIG_WIDTH:
+		check_fifo();
+		m_config_fifo->width = data;
+        assert( ((size_t)data%vci_param::B == 0) &&
+               "You must configure word-aligned widths");
+		return true;
     case MWMR_CONFIG_DEPTH:
 		check_fifo();
 		m_config_fifo->depth = data;
@@ -242,17 +271,27 @@ DEBUG_END;
 		m_config_fifo->buffer_address = data;
 		return true;
     case MWMR_CONFIG_LOCK_ADDR:
-        if ( m_use_llsc )
-            assert(!"You must not configure lock address with a LL-SC protocol, looks like a protocol mismatch");
+        assert( !m_use_llsc
+                && "You must not configure lock address with a"
+                " LL-SC protocol, looks like a protocol mismatch");
 		check_fifo();
 		m_config_fifo->lock_address = data;
 		return true;
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
-        if ( m_use_llsc )
-            assert(m_config_fifo->lock_address==0 && "You must not configure lock address with a LL-SC protocol, looks like a protocol mismatch");
+        assert( (!m_use_llsc || m_config_fifo->lock_address==0)
+                && "You must not configure lock address with a"
+                " LL-SC protocol, looks like a protocol mismatch");
+        assert( m_config_fifo->width
+                && "You API for this module is not updated."
+                " Please update the API and recompile the software");
 		m_config_fifo->running = !!data;
 		return true;
+    case MWMR_FIFO_FILL_STATUS:
+        std::cerr << name()
+                  << "MWMR_FIFO_FILL_STATUS is a Read-only address"
+                  << std::endl;
+		return false;
 	}
 	return false;
 }
@@ -287,6 +326,10 @@ DEBUG_END;
 		check_fifo();
 		data = m_config_fifo->depth;
 		return true;
+    case MWMR_CONFIG_WIDTH:
+		check_fifo();
+		data = m_config_fifo->width;
+		return true;
     case MWMR_CONFIG_BUFFER_ADDR:
 		check_fifo();
 		data = m_config_fifo->buffer_address;
@@ -300,6 +343,10 @@ DEBUG_END;
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
 		data = m_config_fifo->running;
+		return true;
+    case MWMR_FIFO_FILL_STATUS:
+		check_fifo();
+		data = m_config_fifo->fifo->filled_status();
 		return true;
 	}
 	return false;
@@ -317,6 +364,7 @@ tmpl(void)::reset()
 		m_all_state[i].running = false;
 		m_all_state[i].timer = 0;
 		m_all_state[i].fifo->init();
+		m_all_state[i].waiting = 64;
 	}
 }
 
@@ -430,39 +478,71 @@ DEBUG_BEGIN;
                   << "/" << m_current->fifo->size()
                   << ": ";
 DEBUG_END;
+
 		if ( m_current->way == MWMR_FROM_COPROC ) {
-            if ( r_current_usage + m_fifo_from_coproc_depth <= m_current->depth &&
-                 m_current->fifo->full() ) {
-				r_cmd_count = m_fifo_from_coproc_depth/vci_param::B;
-                r_rsp_count = m_fifo_from_coproc_depth/vci_param::B;
-				r_init_fsm = INIT_DATA_WRITE;
-                r_status_modified = true;
-                m_n_xfers++;
+            // If RAM FIFO have at least a full FIFO data space AND the
+            // MWMR FIFO is FULL OR the RAM FIFO have at least one atomic
+            // data space AND the MWMR hace at least one atomic data AND
+            // timer is finished THEN send the data
+            //
+            // The number of data to send is the actual size of the MWMR
+            // FIFO
+            if ( m_current->depth - r_current_usage >= m_current->width ) {
+                size_t bytes_to_send = std::min<size_t>(
+                    m_current->depth - r_current_usage,
+                    m_current->fifo->filled_status() * sizeof(uint32_t) );
+                bytes_to_send -= bytes_to_send % m_current->width;
+
+                if ( bytes_to_send ) {
+                    r_cmd_count = bytes_to_send/vci_param::B;
+                    r_rsp_count = bytes_to_send/vci_param::B;
+                    r_init_fsm = INIT_DATA_WRITE;
+                    r_status_modified = true;
+
+                    m_n_xfers++;
 DEBUG_BEGIN;
-                std::cout << "going to read from coproc " << m_fifo_from_coproc_depth/vci_param::B << " words" << std::endl;
+                    std::cout << "going to read from coproc " << bytes_to_send/vci_param::B << " words" << std::endl;
 DEBUG_END;
-                break;
+                    break;
+                }
 			}
 		} else {
-			if ( r_current_usage >= m_fifo_to_coproc_depth &&
-                 m_current->fifo->empty() ) {
-				r_cmd_count = m_fifo_to_coproc_depth/vci_param::B;
-                r_rsp_count = m_fifo_to_coproc_depth/vci_param::B;
-				r_init_fsm = INIT_DATA_READ;
-                r_status_modified = true;
-                m_n_xfers++;
+            // If the MWMR FIFO is empty AND ((the RAM FIFO has a full
+            // FIFO data) OR (the RAM FIFO has some data and the timer
+            // is 0)) THEN get data from the RAM FIFO
+            //
+            // The number of data to get is the MIN between the RAM
+            // FIFO data and MAMR FIFO available data
+			if ( r_current_usage >= m_current->width ) {
+                size_t bytes_to_get = std::min<size_t>(
+                    r_current_usage,
+                    m_fifo_to_coproc_depth-m_current->fifo->filled_status() * sizeof(uint32_t) );
+                bytes_to_get -= bytes_to_get%m_current->width;
+                
+                if ( bytes_to_get ) {
+                    r_cmd_count = bytes_to_get/vci_param::B;
+                    r_rsp_count = bytes_to_get/vci_param::B;
+                    r_init_fsm = INIT_DATA_READ;
+                    r_status_modified = true;
+
+                    m_n_xfers++;
 DEBUG_BEGIN;
-                std::cout << "going to put " << m_fifo_to_coproc_depth/vci_param::B << " words to coproc" << std::endl;
+                    std::cout << "going to put " << bytes_to_get/vci_param::B << " words to coproc" << std::endl;
 DEBUG_END;
-                break;
-			}
-		}
+                    break;
+                }
+            }
+        }
 DEBUG_BEGIN;
         std::cout << "going to bail out: no room for transfer" << std::endl;
 DEBUG_END;
         if ( r_status_modified.read() ) {
+            m_current->waiting = 64;
             r_init_fsm = INIT_STATUS_WRITE_RPTR;
         } else {
+            if ( m_current->waiting )
+                m_current->waiting--;
+
             m_n_bailout++;
             r_init_fsm = m_use_llsc
                 ? INIT_STATUS_WRITE_LOCK_NOT_STATUS
