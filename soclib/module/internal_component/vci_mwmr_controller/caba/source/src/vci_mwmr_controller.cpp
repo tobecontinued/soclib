@@ -38,11 +38,11 @@
 #include "alloc_elems.h"
 #include <algorithm>
 
-#ifndef MWMR_CONTROLLER_DEBUG
-#define MWMR_CONTROLLER_DEBUG 0
+#ifndef SOCLIB_MODULE_DEBUG
+#define SOCLIB_MODULE_DEBUG 0
 #endif
 
-#if MWMR_CONTROLLER_DEBUG
+#if SOCLIB_MODULE_DEBUG
 #define DEBUG_BEGIN do { do{} while(0)
 #define DEBUG_END } while(0)
 #else
@@ -108,7 +108,7 @@ typedef enum {
     RSP_STATUS_WAIT,
 } RspFsmState;
 
-#if MWMR_CONTROLLER_DEBUG
+#if SOCLIB_MODULE_DEBUG
 static const char *init_states[] = {
 	"INIT_IDLE",
 	"INIT_LOCK_TAKE_RAMLOCK",
@@ -204,7 +204,7 @@ DEBUG_BEGIN;
 DEBUG_END;
                 continue;
             } else {
-                if ( st->waiting != 0 ) {
+                if ( !st->fifo->full() && st->waiting != 0 ) {
                     st->waiting--;
 DEBUG_BEGIN;
                     std::cout << "!W";
@@ -285,6 +285,8 @@ DEBUG_END;
         assert( m_config_fifo->width
                 && "You API for this module is not updated."
                 " Please update the API and recompile the software");
+        assert( (m_config_fifo->depth % m_config_fifo->width == 0)
+                && "Fifo depth must be a multiple of width");
 		m_config_fifo->running = !!data;
 		return true;
     case MWMR_FIFO_FILL_STATUS:
@@ -388,7 +390,7 @@ tmpl(void)::transition()
 		if ( m_all_state[i].timer )
 			m_all_state[i].timer--;
 
-#if MWMR_CONTROLLER_DEBUG
+#if SOCLIB_MODULE_DEBUG
     if ((InitFsmState)r_init_fsm.read() != INIT_IDLE || r_rsp_fsm.read() != RSP_IDLE) {
         std::cout << name() << " init: " << init_states[r_init_fsm.read()] << " rsp: " << rsp_states[r_rsp_fsm.read()] << std::endl;
     }
