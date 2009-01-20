@@ -261,6 +261,8 @@ DEBUG_END;
 		m_config_fifo->width = data;
         assert( ((size_t)data%vci_param::B == 0) &&
                "You must configure word-aligned widths");
+        assert( m_config_fifo->width <= m_config_fifo->fifo->size() * sizeof(uint32_t)
+                && "Hardware fifo is shorter than width, no transfer will be possible");
 		return true;
     case MWMR_CONFIG_DEPTH:
 		check_fifo();
