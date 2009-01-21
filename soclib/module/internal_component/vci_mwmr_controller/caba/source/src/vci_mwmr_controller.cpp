@@ -194,10 +194,6 @@ DEBUG_END;
                 continue;
             }
         } else {
-            // If the FIFO contains at least one atomic data THEN
-            // decrement the timer
-            // If the FIFO is full OR (contains at least one atomic
-            // data AND the timer is 0) THEN try to send the data
             if ( st->fifo->filled_status()*sizeof(uint32_t) < st->width ) {
 DEBUG_BEGIN;
                 std::cout << "!D";
@@ -488,13 +484,12 @@ DEBUG_END;
             // MWMR FIFO is FULL OR the RAM FIFO have at least one atomic
             // data space AND the MWMR hace at least one atomic data AND
             // timer is finished THEN send the data
-            //
-            // The number of data to send is the actual size of the MWMR
-            // FIFO
             if ( m_current->depth - r_current_usage >= m_current->width ) {
+                // Dont transfer more than possible
                 size_t bytes_to_send = std::min<size_t>(
                     m_current->depth - r_current_usage,
                     m_current->fifo->filled_status() * sizeof(uint32_t) );
+                //Normalize to an item size
                 bytes_to_send -= bytes_to_send % m_current->width;
 
                 if ( bytes_to_send ) {
@@ -514,13 +509,12 @@ DEBUG_END;
             // If the MWMR FIFO is empty AND ((the RAM FIFO has a full
             // FIFO data) OR (the RAM FIFO has some data and the timer
             // is 0)) THEN get data from the RAM FIFO
-            //
-            // The number of data to get is the MIN between the RAM
-            // FIFO data and MAMR FIFO available data
 			if ( r_current_usage >= m_current->width ) {
+                // Dont transfer more than possible
                 size_t bytes_to_get = std::min<size_t>(
                     r_current_usage,
                     m_fifo_to_coproc_depth-m_current->fifo->filled_status() * sizeof(uint32_t) );
+                //Normalize to an item size
                 bytes_to_get -= bytes_to_get%m_current->width;
                 
                 if ( bytes_to_get ) {
