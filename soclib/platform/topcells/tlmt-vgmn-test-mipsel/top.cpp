@@ -9,7 +9,7 @@
 #include "vci_vgmn.h"
 #include "iss.h"
 #include "mips.h"
-#include "vci_xcache_wrapper.h"
+#include "vci_xcache.h"
 #include "vci_mwmr_controller.h"
 #include "fifo_reader.h"
 #include "fifo_writer.h"
@@ -108,24 +108,20 @@ int sc_main(int argc, char **argv)
   /////////////////////////////////////////////////////////////////////////////
   soclib::tlmt::VciVgmn<vci_param> vgmn(vci_parm,5,mapping_table,network_latence);
 
-
-
-
   /////////////////////////////////////////////////////////////////////////////
   // VCI_XCACHE 
   /////////////////////////////////////////////////////////////////////////////
 
-  soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param> * mips[ncpu]; 
+  soclib::tlmt::VciXcache<soclib::common::MipsElIss,vci_param> * mips[ncpu]; 
 
 
   for (unsigned int i=0 ; i < ncpu ; i++) {
     std::ostringstream cpu_name;
-    cpu_name << "mips" << i;
-    mips[i] = new soclib::tlmt::VciXcacheWrapper<soclib::common::MipsElIss,vci_param>((cpu_name.str()).c_str(), soclib::common::IntTab(i), mapping_table, icache_size, 8, dcache_size, 8, simulation_time);
+    cpu_name << "xcache" << i;
+    mips[i] = new soclib::tlmt::VciXcache<soclib::common::MipsElIss,vci_param>((cpu_name.str()).c_str(), soclib::common::IntTab(i), mapping_table, icache_size, 8, dcache_size, 8, simulation_time);
     mips[i]->p_vci(vgmn.m_RspArbCmdRout[i]->p_vci);
 
   }
-  
 
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR TG
