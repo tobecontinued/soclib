@@ -56,6 +56,7 @@ tx32(33, uint64_t);
 #undef tx4
 #undef tx8
 #undef tx16
+#undef tx32
 }
 
 template<int W> struct fast_int_t {
