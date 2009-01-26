@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
- * Maintainers: nipo
+ * Maintainers: nipo joel.porquet@lip6.fr
  */
 #ifndef SOCLIB_CABA_SIGNAL_VCI_PARAM_H_
 #define SOCLIB_CABA_SIGNAL_VCI_PARAM_H_
@@ -32,18 +32,9 @@
 #include <sstream>
 #include <inttypes.h>
 #include "static_assert.h"
+#include "static_fast_int.h"
 
 namespace soclib { namespace caba {
-
-namespace {
-template<int W>
-struct fast_int_t {};
-
-template<> struct fast_int_t<8> { typedef uint8_t int_t; };
-template<> struct fast_int_t<16> { typedef uint16_t int_t; };
-template<> struct fast_int_t<32> { typedef uint32_t int_t; };
-template<> struct fast_int_t<64> { typedef uint64_t int_t; };
-}
 
 using namespace sc_core;
 
@@ -133,9 +124,9 @@ public:
 	typedef sc_dt::sc_uint<T> trdid_t;
 	typedef sc_dt::sc_uint<P> pktid_t;
 
-
-    typedef typename fast_int_t<addr_size>::int_t fast_addr_t;
-    typedef typename fast_int_t<cell_size*8>::int_t fast_data_t;
+    typedef typename ::soclib::common::fast_int_t<addr_size>::int_t fast_addr_t;
+    typedef typename ::soclib::common::fast_int_t<cell_size*8>::int_t fast_data_t;
+    typedef typename ::soclib::common::fast_int_t<trdid_size>::int_t fast_trdid_t;
 
     enum {
         CMD_NOP,

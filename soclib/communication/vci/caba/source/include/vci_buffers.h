@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
- * Maintainers: nipo
+ * Maintainers: nipo joel.porquet@lip6.fr
  */
 #ifndef SOCLIB_CABA_SIGNAL_VCI_BUFFERS_H_
 #define SOCLIB_CABA_SIGNAL_VCI_BUFFERS_H_
@@ -41,9 +41,13 @@ namespace soclib { namespace caba {
 
 using namespace sc_core;
 
+template <typename vci_param> class VciSnooper;
+
 template <typename vci_param>
 class VciRspBuffer
 {
+    friend class VciSnooper<vci_param>;
+
 	typename vci_param::val_t  rspval;
 	typename vci_param::data_t    rdata;
 	bool                          reop;
@@ -127,6 +131,8 @@ public:
 template <typename vci_param>
 class VciCmdBuffer
 {
+    friend class VciSnooper<vci_param>;
+
 	typename vci_param::val_t  cmdval;
 	typename vci_param::addr_t    address;
 	typename vci_param::be_t      be;
