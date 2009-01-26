@@ -36,15 +36,16 @@ namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-template<typename data_t>
+template<typename T>
 class GenericFifo
 {
-    data_t *m_data;
+    T *m_data;
     sc_signal<int>    r_ptr;
     sc_signal<int>    r_ptw;
     sc_signal<int>    r_fill_state;
     int m_depth;
 public:
+    typedef T data_t;
 
     size_t size() const
     {
@@ -73,7 +74,7 @@ public:
         return r_fill_state == m_depth;
     }
 
-    void simple_put(const data_t &din)
+    void simple_put(const T &din)
     {
         if (r_fill_state != m_depth) { 
             r_fill_state = r_fill_state + 1;
@@ -90,7 +91,7 @@ public:
         }
     }
 
-    void put_and_get(const data_t &din)
+    void put_and_get(const T &din)
     {
         if (r_fill_state == m_depth) {
             r_fill_state = r_fill_state - 1;
@@ -116,13 +117,13 @@ public:
         return (r_fill_state != m_depth);
     }
 
-    inline const data_t &read() const
+    inline const T &read() const
     {
         return m_data[r_ptr];
     }
 
     GenericFifo(const std::string &name, size_t depth)
-        : m_data(new data_t[depth]),
+        : m_data(new T[depth]),
           r_ptr((name+"_r_ptr").c_str()),
           r_ptw((name+"_r_ptw").c_str()),
           r_fill_state((name+"_r_fill_state").c_str()),
