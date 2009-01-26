@@ -31,18 +31,15 @@ export DEST
 
 rules=all install clean
 
-define mkrule
+install: $(foreach d,$(SUBDIRS),$d/install)
 
-$(1): $$(foreach d,$$(SUBDIRS),$$d/$(1))
+all: $$(foreach d,$$(SUBDIRS),$$d/all)
 
-%/$(1): foo
-	$$(MAKE) -C $$* $(1)
+define mksubdir
+
+$(1)/%:
+	$$(MAKE) -C $(1) $$*
 
 endef
 
-$(eval $(foreach rule,$(rules),$(call mkrules,$(rule))))
-
-.PHONY: foo
-
-foo:
-
+$(eval $(foreach subdir,$(SUBDIRS),$(call mksubdir,$(subdir))))
