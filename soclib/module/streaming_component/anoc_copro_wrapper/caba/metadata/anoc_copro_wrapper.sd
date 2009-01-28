@@ -1,0 +1,47 @@
+# -*- python -*-
+
+Module('caba:anoc_copro_wrapper',
+	classname = 'soclib::caba::anoc_copro_wrapper',
+	header_files = [
+	'../../../../../communication/anoc/common/source/include/tlm_tac2.h',
+	'../../../../../communication/anoc/common/source/include/anoc_common.h',
+	'../../../../../communication/anoc/common/source/include/types.h',
+	'../../common/source/include/ni_transaction.h',          
+	'../../common/source/include/ni_utils.h',                
+	'../../common/source/include/res_path.h',  
+	'../../common/source/include/core_base.h',               
+	'../../common/source/include/core_config.h',             
+	'../../common/source/include/core_ro_config.h',          
+	'../../common/source/include/core_sysc.h',               
+	'../../common/source/include/core_tlm.h',                
+	'../source/include/anoc_copro_wrapper.h',
+	],
+	implementation_files = [
+	'../../../../../communication/anoc/common/source/src/tlm_tac2.cpp',
+	'../../../../../communication/anoc/common/source/src/anoc_common.cpp',
+	'../../common/source/src/ni_transaction.cpp',          
+	'../../common/source/src/ni_utils.cpp',                
+	'../../common/source/src/res_path.cpp',  
+	'../../common/source/src/core_base.cpp',               
+	'../../common/source/src/core_config.cpp',             
+	'../../common/source/src/core_ro_config.cpp',          
+	'../../common/source/src/core_sysc.cpp',               
+	'../../common/source/src/core_tlm.cpp',                
+	'../source/src/anoc_copro_wrapper.cpp',
+	],
+	ports = [
+	Port('fifo_input', 'p_from_MWMR', parameter.Reference('nb_fifo_in_')),
+	Port('fifo_output', 'p_to_MWMR', parameter.Reference('nb_fifo_out_')),
+	Port('fifo_input', 'p_core_config'),
+	Port('word_out', 'p_config', parameter.Reference('n_config_'), word_t = 'uint32_t'),
+	Port('word_in', 'p_status', parameter.Reference('n_status_'), word_t = 'uint32_t'),
+	Port('bit_in', 'p_resetn', auto = 'resetn'),
+	Port('clock_in', 'p_clk', auto = 'clock'),
+	],
+	uses = [
+		Uses('base_module'),
+	],
+	instance_parameters = [
+        	parameter.Int('clk_period_'),
+	]
+)
