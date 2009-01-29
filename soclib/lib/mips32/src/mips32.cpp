@@ -83,7 +83,11 @@ void Mips32Iss::dump() const
         << " Ins: " << m_ins.ins << std::endl
         << std::dec
         << " Cause.xcode: " << r_cause.xcode << std::endl
-        << " Status.ksu " << r_status.ksu << std::endl
+        << " Status.ksu " << r_status.ksu
+        << " .exl: " << r_status.exl
+        << " .erl: " << r_status.erl
+        << " .whole: " << r_status.whole
+        << std::endl
         << " op:  " << m_ins.i.op << " (" << name_table[m_ins.i.op] << ")" << std::endl
         << " i rs: " << m_ins.i.rs
         << " rt: "<<m_ins.i.rt
@@ -105,8 +109,21 @@ void Mips32Iss::dump() const
     }
 }
 
-uint32_t Mips32Iss::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
+uint32_t Mips32Iss::executeNCycles(
+    uint32_t ncycle,
+    const struct InstructionResponse &irsp,
+    const struct DataResponse &drsp,
+    uint32_t irq_bit_field )
 {
+    if ( m_little_endian )
+        m_ins.ins = irsp.instruction;
+    else
+        m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
+    m_ibe = irsp.error;
+    m_ireq_ok = irsp.valid;
+
+    _setData( drsp );
+
     m_exception = NO_EXCEPTION;
 
     if ( m_sleeping ) {
@@ -315,19 +332,19 @@ Iss2::debug_register_t Mips32Iss::debugGetRegisterValue(unsigned int reg) const
         case 0:
             return 0;
         case 1 ... 31:
-            return soclib::endian::uint32_swap(r_gp[reg]);
+            return r_gp[reg];
         case 32:
-            return soclib::endian::uint32_swap(r_status.whole);
+            return r_status.whole;
         case 33:
-            return soclib::endian::uint32_swap(r_lo);
+            return r_lo;
         case 34:
-            return soclib::endian::uint32_swap(r_hi);
+            return r_hi;
         case 35:
-            return soclib::endian::uint32_swap(r_bar);
+            return r_bar;
         case 36:
-            return soclib::endian::uint32_swap(r_cause.whole);
+            return r_cause.whole;
         case 37:
-            return soclib::endian::uint32_swap(r_pc);
+            return r_pc;
         default:
             return 0;
         }
@@ -335,8 +352,6 @@ Iss2::debug_register_t Mips32Iss::debugGetRegisterValue(unsigned int reg) const
 
 void Mips32Iss::debugSetRegisterValue(unsigned int reg, debug_register_t value)
 {
-    value = soclib::endian::uint32_swap(value);
-
     switch (reg)
         {
         case 1 ... 31:

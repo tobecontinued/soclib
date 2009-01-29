@@ -101,7 +101,7 @@ void Mips32Iss::do_mem_access( addr_t address,
     r_mem_dest = dest_reg;
 }
 
-void Mips32Iss::setData(const struct DataResponse &rsp)
+void Mips32Iss::_setData(const struct DataResponse &rsp)
 {
     if ( ! m_dreq.valid ) {
         m_dreq_ok = true;

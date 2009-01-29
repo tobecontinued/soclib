@@ -49,40 +49,77 @@ tmpl(void)::reset()
 	m_iss.reset();
 }
 
-tmpl(uint32_t)::executeNCycles( uint32_t ncycle, uint32_t irq_bit_field )
+tmpl(uint32_t)::executeNCycles(
+    uint32_t ncycle, const struct Iss2::InstructionResponse &irsp,
+    const struct Iss2::DataResponse &drsp, uint32_t irq_bit_field )
 {
-	uint32_t busy = m_iss.isBusy(), cycles_done;
-	m_iss.setIrq(irq_bit_field);
-	if ( busy || ! m_i_access_ok || ! m_d_access_ok ) {
-		m_iss.nullStep(ncycle);
-		cycles_done = ncycle;
-	} else {
-		m_iss.step();
-		cycles_done = 1;
-	}
-	return cycles_done;
+    {
+        m_i_access_ok = ! m_did_ireq || irsp.valid;
+        
+        if ( m_did_ireq && irsp.valid )
+            m_iss.setInstruction( irsp.error, irsp.instruction );
+    }
+
+    {
+        data_t rdata = 0;
+
+        m_d_access_ok = ! m_did_dreq || drsp.valid;
+
+        if ( !m_did_dreq || !drsp.valid )
+            goto no_data;
+
+        switch (last_dtype) {
+        case iss_t::READ_WORD:
+        case iss_t::STORE_COND:
+        case iss_t::READ_LINKED:
+            rdata = drsp.rdata;
+            break;
+        case iss_t::READ_HALF:
+            rdata = (drsp.rdata >> ((last_daddr&0x2)*8)) & 0xffff;
+            rdata = rdata | (rdata<<16);
+            break;
+        case iss_t::READ_BYTE:
+            rdata = (drsp.rdata >> ((last_daddr&0x3)*8)) & 0xff;
+            rdata = rdata |
+                (rdata<<8) |
+                (rdata<<16) |
+                (rdata<<24);
+            break;
+        case iss_t::LINE_INVAL:
+        case iss_t::WRITE_WORD:
+        case iss_t::WRITE_HALF:
+        case iss_t::WRITE_BYTE:
+            break;
+        }
+
+        m_iss.setDataResponse(drsp.error, rdata);
+      no_data:
+        {}
+    }
+
+    {
+        uint32_t busy = m_iss.isBusy(), cycles_done;
+        m_iss.setIrq(irq_bit_field);
+        if ( busy || ! m_i_access_ok || ! m_d_access_ok ) {
+            m_iss.nullStep(ncycle);
+            cycles_done = ncycle;
+        } else {
+            m_iss.step();
+            cycles_done = 1;
+        }
+        return cycles_done;
+    }
 }
 
-tmpl(void)::getInstructionRequest( struct InstructionRequest &ireq ) const
+tmpl(void)::getRequests( struct InstructionRequest &ireq, struct DataRequest &dreq ) const
 {
+    // Instruction part
 	m_iss.getInstructionRequest( ireq.valid, ireq.addr );
     ireq.mode = MODE_HYPER;
-	((IssIss2*)this)->m_did_ireq = ireq.valid;
-}
+	((IssIss2*)this)->m_did_ireq = ireq.valid;	
 
-tmpl(void)::setInstruction( const struct InstructionResponse &irsp )
-{
-	m_i_access_ok = ! m_did_ireq || irsp.valid;
-
-	if ( !m_did_ireq || !irsp.valid )
-		return;
-
-	m_iss.setInstruction( irsp.error, irsp.instruction );
-}
-
-tmpl(void)::getDataRequest( struct DataRequest &dreq ) const
-{
-	typename iss_t::DataAccessType datype;
+    // Data part
+    typename iss_t::DataAccessType datype;
 	m_iss.getDataRequest( dreq.valid, datype, dreq.addr, dreq.wdata );
 	((IssIss2*)this)->last_daddr = dreq.addr;
 	((IssIss2*)this)->last_dtype = datype;
@@ -152,42 +189,6 @@ tmpl(void)::getDataRequest( struct DataRequest &dreq ) const
     dreq.mode = MODE_HYPER;
 }
 
-tmpl(void)::setData( const struct DataResponse &drsp )
-{
-	data_t rdata = 0;
-
-	m_d_access_ok = ! m_did_dreq || drsp.valid;
-
-	if ( !m_did_dreq || !drsp.valid )
-		return;
-
-	switch (last_dtype) {
-	case iss_t::READ_WORD:
-	case iss_t::STORE_COND:
-	case iss_t::READ_LINKED:
-		rdata = drsp.rdata;
-		break;
-	case iss_t::READ_HALF:
-		rdata = (drsp.rdata >> ((last_daddr&0x2)*8)) & 0xffff;
-		rdata = rdata | (rdata<<16);
-		break;
-	case iss_t::READ_BYTE:
-		rdata = (drsp.rdata >> ((last_daddr&0x3)*8)) & 0xff;
-                rdata = rdata |
-					(rdata<<8) |
-					(rdata<<16) |
-					(rdata<<24);
-                break;
-	case iss_t::LINE_INVAL:
-	case iss_t::WRITE_WORD:
-	case iss_t::WRITE_HALF:
-	case iss_t::WRITE_BYTE:
-		break;
-	}
-
-	m_iss.setDataResponse(drsp.error, rdata);
-}
-
 tmpl(void)::setWriteBerr()
 {
 	m_iss.setWriteBerr();
@@ -215,22 +216,18 @@ tmpl(Iss2::debug_register_t)::debugGetRegisterValue(unsigned int reg) const
 
 tmpl(void)::debugSetRegisterValue(unsigned int reg, debug_register_t value)
 {
-	m_iss.setDebugRegisterValue(reg, value);
+    if ( reg == s_pc_register_no )
+        m_iss.setDebugPC( value );
+    else
+        m_iss.setDebugRegisterValue(reg, value);
 }
 
 tmpl(size_t)::debugGetRegisterSize(unsigned int reg) const
 {
-	return m_iss.getDebugRegisterSize(reg);
-}
-
-tmpl(Iss2::addr_t)::debugGetPC() const
-{
-	return m_iss.getDebugPC();
-}
-
-tmpl(void)::debugSetPC(addr_t addr)
-{
-	return m_iss.setDebugPC(addr);
+    if ( reg == s_pc_register_no )
+        return m_iss.getDebugPC();
+    else
+        return m_iss.getDebugRegisterSize(reg);
 }
 
 tmpl(bool)::debugExceptionBypassed( uint32_t cause )

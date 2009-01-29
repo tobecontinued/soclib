@@ -66,6 +66,8 @@ public:
 
     std::list<Segment> getSegmentList( const IntTab &index ) const;
 
+    const std::list<Segment> &getAllSegmentList() const;
+
     soclib::common::Segment getSegment( const IntTab &index ) const;
 
     AddressDecodingTable<addr_t, bool> getCacheabilityTable() const;

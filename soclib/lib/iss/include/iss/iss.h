@@ -48,6 +48,10 @@ using namespace sc_core;
 class Iss
 {
 public:
+    static const unsigned int s_sp_register_no = 0;
+    static const unsigned int s_fp_register_no = 0;
+    static const unsigned int s_pc_register_no = (unsigned int)-1;
+
 	enum DataAccessType {
 		READ_WORD,
         READ_HALF,

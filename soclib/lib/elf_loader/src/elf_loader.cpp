@@ -30,95 +30,72 @@ extern "C" {
 
 #include <algorithm>
 #include <string.h>
+#include <sstream>
 
 #include "exception.h"
 #include "elf_loader.h"
 
 namespace soclib { namespace common {
 
-namespace elf_hacks {
-
-struct desc_t {
-	void *buffer;
-	uintptr_t address;
-	size_t length;
-};
-
-static inline uintptr_t carry( uintptr_t a, uintptr_t b, uintptr_t m )
-{
-    return ((a+b)&m) < a;
-}
-
-static void elf_do_load(bfd *exec, asection *sect, PTR descptr)
-{
-	desc_t *desc = (desc_t *)descptr;
-    bfd_byte *data;
-
-    uintptr_t mask = (uintptr_t)-1;
-    if ( (size_t)bfd_get_arch_size(exec) < sizeof(uintptr_t)*8 )
-        mask = ((uintptr_t)1<<bfd_get_arch_size(exec))-1;
-#ifdef ELF_LOADER_DEBUG
-    std::cout << "Elf file " << bfd_get_arch_size(exec) << " bits. address mask: " << std::hex << mask << std::endl;
-#endif
-
-    uintptr_t lma = sect->lma & mask;
-    uintptr_t desc_addr = desc->address & mask;
-
-	if (((lma >= (desc_addr+desc->length)) && !carry(desc_addr, desc->length, mask)) ||
-		 ((desc_addr >= (lma+sect->size)) && !carry(lma, sect->size, mask))) {
-#ifdef ELF_LOADER_DEBUG
-        std::cout << "No overlap between"
-              << " section " << sect->name
-              << " @" << std::hex << lma
-              << " " << std::dec << sect->size << " bytes"
-              << "and desc @" << std::hex << desc_addr
-              << " " << std::dec << desc->length << " bytes"
-              << std::endl;
-#endif
-		return;
-    }
-
-#ifdef ELF_LOADER_DEBUG
-    std::cout << "Loading"
-              << " section " << sect->name
-              << " @" << std::hex << lma
-              << " " << std::dec << sect->size << " bytes"
-              << "and desc @" << std::hex << desc_addr
-              << " " << std::dec << desc->length << " bytes"
-              << std::endl;
-#endif
-
-	if ( ! (sect->flags & SEC_LOAD) ) {
-#ifndef ELF_LOADER_DEBUG
-        std::cerr << "Warning: section " << sect->name << " not loadable, not loaded" << std::endl;
-#endif
-		return;
-    }
-    
-	uintptr_t src_delta = 0, dst_delta = 0;
-
-	if ( desc_addr < lma ) {
-		dst_delta = lma - desc_addr;
-	} else {
-		src_delta = desc_addr - lma;
-	}
-	size_t length = std::min<size_t>( desc->length - dst_delta,
-									  sect->size - src_delta );
-    if ( length < sect->size - src_delta )
-        std::cerr
-            << "Warning: Truncating section "<<sect->name
-            << " when loading at 0x"<< std::hex << desc_addr << std::endl;
-
-    if (!bfd_malloc_and_get_section(exec, sect, &data))
-        throw soclib::exception::RunTimeError(std::string("Unable to get section: ") + sect->name);
-
-	memcpy( (void*)((uintptr_t)(desc->buffer)+dst_delta), data+src_delta, length );
-    free(data);
-}
-
-} // elf_hacks
-
 int ElfLoader::s_refcount = 0;
+
+void ElfLoader::add_section_cb(void *bfd, void *_sect, void *thisptr)
+{
+    static_cast<ElfLoader*>(thisptr)->add_section(bfd, _sect);
+}
+
+void ElfLoader::add_section(void *_bfd, void *_sect)
+{
+    bfd *a_bfd = (bfd*)_bfd;
+    asection *sect = (asection*)_sect;
+
+    if ( !(sect->flags & SEC_ALLOC) )
+        return;
+
+    bfd_byte *blob = 0;
+    if ( sect->flags & SEC_LOAD ) {
+        int ret = bfd_malloc_and_get_section(a_bfd, sect, &blob);
+        assert(ret && blob && "BFD failed");
+    }
+
+    m_sections.push_back(ElfSection(
+                             sect->name,
+                             sect->vma & m_mask, sect->lma & m_mask,
+                             sect->flags,
+                             sect->size, blob ));
+}
+
+void ElfLoader::read_symbols()
+{
+    struct bfd *abfd = (struct bfd*)m_bfd_ptr;
+    long storage_needed;
+    asymbol **symbol_table;
+    long number_of_symbols;
+    long i;
+
+    storage_needed = bfd_get_symtab_upper_bound (abfd);
+
+    if (storage_needed <= 0)
+        return;
+
+    symbol_table = (asymbol**)malloc (storage_needed);
+    number_of_symbols =
+        bfd_canonicalize_symtab (abfd, symbol_table);
+
+    if (number_of_symbols < 0)
+        return;
+
+    for (i = 0; i < number_of_symbols; i++) {
+        asymbol *s = symbol_table[i];
+
+        if ( ! (s->flags & (BSF_FUNCTION|BSF_LOCAL|BSF_GLOBAL)) )
+            continue;
+
+        uintptr_t addr = ((s->section->lma & m_mask) + s->value);
+        m_symbol_table[addr] = std::string(s->name);
+    }
+    free(symbol_table);
+}
 
 ElfLoader::ElfLoader( const std::string &filename )
 	: m_filename(filename)
@@ -127,62 +104,91 @@ ElfLoader::ElfLoader( const std::string &filename )
 		bfd_init();
 	++s_refcount;
 
-	struct bfd *m_bfd = bfd_openr(m_filename.c_str(), NULL);
-	if ( !(bool)m_bfd )
+	struct bfd *a_bfd = bfd_openr(m_filename.c_str(), NULL);
+	if ( !(bool)a_bfd )
 		throw soclib::exception::RunTimeError(
             std::string("Cant open binary image ")+m_filename);
 	
-	if ( !bfd_check_format(m_bfd, bfd_object)
-		 && !(m_bfd->flags & EXEC_P))
+	if ( !bfd_check_format(a_bfd, bfd_object)
+		 && !(a_bfd->flags & EXEC_P))
 		throw soclib::exception::RunTimeError(
             std::string("Invalid ELF format in image ")+m_filename);
-	m_bfd_ptr = (void*)m_bfd;
+	m_bfd_ptr = (void*)a_bfd;
+
+    m_mask = (uintptr_t)-1;
+    if ( (size_t)bfd_get_arch_size(a_bfd) < sizeof(uintptr_t)*8 )
+        m_mask = ((uintptr_t)1<<bfd_get_arch_size(a_bfd))-1;
+
+    m_sections.reserve(a_bfd->section_count);
+
+	bfd_map_over_sections(a_bfd,
+                          (void(*)(bfd*, asection*, void*))
+                          &ElfLoader::add_section_cb,
+                          this);
+
+    read_symbols();
 }
 
 ElfLoader::ElfLoader( const ElfLoader &ref )
-	: m_filename(ref.m_filename)
+	: m_filename(ref.m_filename),
+      m_sections(ref.m_sections),
+      m_mask(ref.m_mask),
+      m_symbol_table(ref.m_symbol_table)
 {
 	if ( s_refcount == 0 )
 		bfd_init();
 	++s_refcount;
 
-	struct bfd *m_bfd = bfd_openr(m_filename.c_str(), NULL);
-	if ( !(bool)m_bfd )
+	struct bfd *a_bfd = bfd_openr(m_filename.c_str(), NULL);
+	if ( !(bool)a_bfd )
 		throw soclib::exception::RunTimeError(
             std::string("Cant open binary image ")+m_filename);
 	
-	if ( !bfd_check_format(m_bfd, bfd_object)
-		 && !(m_bfd->flags & EXEC_P))
+	if ( !bfd_check_format(a_bfd, bfd_object)
+		 && !(a_bfd->flags & EXEC_P))
 		throw soclib::exception::RunTimeError(
             std::string("Invalid ELF format in image ")+m_filename);
-	m_bfd_ptr = (void*)m_bfd;
+	m_bfd_ptr = (void*)a_bfd;
 }
 
 void ElfLoader::load( void *buffer, uintptr_t address, size_t length )
 {
-	struct bfd* m_bfd = (struct bfd*)m_bfd_ptr;
-	elf_hacks::desc_t desc;
-
-	desc.buffer = buffer;
-	desc.address = address;
-	desc.length = length;
-
-	bfd_map_over_sections(m_bfd, elf_hacks::elf_do_load, &desc);
+    std::cout
+        << std::showbase << std::hex
+        << "Loading at " << address
+        << " size " << std::dec << length
+        << ": ";
+    bool one = false;
+    for ( section_list_t::const_iterator i = m_sections.begin();
+          i != m_sections.end();
+          ++i ) {
+        if ( i->load_overlap_in_buffer( buffer, address, length ) ) {
+            one = true;
+            std::cout << i->name() << " ";
+        }
+    }
+    if ( !one )
+        std::cout << "nothing";
+    std::cout << std::endl;
 }
 
 void ElfLoader::print( std::ostream &o ) const
 {
-    struct bfd* m_bfd = (struct bfd*)m_bfd_ptr;
+    struct bfd* a_bfd = (struct bfd*)m_bfd_ptr;
 	o << "<ElfLoader " << m_filename << std::endl
       << " target: " << arch() << std::endl
-      << " endianness: " << m_bfd->xvec->byteorder << std::endl
-      << ">" << std::endl;
+      << " endianness: " << a_bfd->xvec->byteorder << std::endl;
+    for ( section_list_t::const_iterator i = m_sections.begin();
+          i != m_sections.end();
+          ++i )
+        o << " " << *i << std::endl;
+    o << ">" << std::endl;
 }
 
 std::string ElfLoader::arch() const
 {
-    struct bfd *m_bfd = (struct bfd*)m_bfd_ptr;
-    enum bfd_architecture arch = bfd_get_arch (m_bfd);
+    struct bfd *a_bfd = (struct bfd*)m_bfd_ptr;
+    enum bfd_architecture arch = bfd_get_arch (a_bfd);
     std::cout << "Arch " << (int)arch << std::endl;
     switch(arch) {
     case bfd_arch_mips:
@@ -196,12 +202,41 @@ std::string ElfLoader::arch() const
 
 ElfLoader::~ElfLoader()
 {
-    struct bfd* m_bfd = (struct bfd*)m_bfd_ptr;
-	if ( m_bfd )
-		bfd_close(m_bfd);
+    struct bfd* a_bfd = (struct bfd*)m_bfd_ptr;
+	if ( a_bfd )
+		bfd_close(a_bfd);
 
 // 	if ( --s_refcount == 0 )
 // 		bfd_fini();
+}
+
+std::vector<ElfSection> ElfLoader::sections() const
+{
+    return m_sections;
+}
+
+std::string ElfLoader::get_symbol( uintptr_t addr ) const
+{
+    addr &= m_mask;
+    std::map<uintptr_t, std::string>::const_iterator i =
+        m_symbol_table.lower_bound( addr );
+
+    if ( i != m_symbol_table.end()
+         && i != m_symbol_table.begin()
+         && i->first > addr )
+        --i;
+
+    std::ostringstream o;
+    if ( i == m_symbol_table.end() ) {
+        o << "<unknown " << std::showbase << std::hex << addr << ">";
+    } else {
+        ptrdiff_t d = addr - i->first;
+        o << "[" << i->second
+          << std::showbase << std::hex
+//          << " sym addr: " << i->first << ", addr: " << addr
+          << i->second << " + " << d << " (" << addr << ")]";
+    }
+    return o.str();
 }
 
 }}

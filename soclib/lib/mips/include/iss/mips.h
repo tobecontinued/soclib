@@ -69,6 +69,8 @@ class MipsIss
 {
 public:
     static const int n_irq = 6;
+    static const unsigned int s_sp_register_no = 29;
+    static const unsigned int s_pc_register_no = 37;
 
 private:
     enum Addresses {

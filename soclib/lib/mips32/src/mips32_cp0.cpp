@@ -122,6 +122,7 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
         break;
     case STATUS:
         r_status.whole = val;
+        update_mode();
         return;
     case EBASE:
         r_ebase = merge(r_ebase, val, EBASE_WRITE_MASK);

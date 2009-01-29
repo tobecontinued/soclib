@@ -42,7 +42,6 @@ class IssSimhelper
     : public CpuIss
 {
 public:
-
     IssSimhelper(uint32_t ident)
         : CpuIss(ident)
     {}

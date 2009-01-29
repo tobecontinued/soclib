@@ -311,19 +311,20 @@ public:
 
     void dump() const;
 
-    uint32_t executeNCycles( uint32_t ncycle, uint32_t irq_bit_field );
+    uint32_t executeNCycles(
+        uint32_t ncycle,
+        const struct InstructionResponse &irsp,
+        const struct DataResponse &drsp,
+        uint32_t irq_bit_field );
 
-	inline void getInstructionRequest( struct InstructionRequest &req ) const
+	inline void getRequests( struct InstructionRequest &ireq,
+                             struct DataRequest &dreq ) const
 	{
-        req.valid = !m_sleeping;
-		req.addr = r_pc;
-        req.mode = r_cpu_mode;
+        ireq.valid = !m_sleeping;
+		ireq.addr = r_pc;
+        ireq.mode = r_cpu_mode;
+        dreq = m_dreq;
 	}
-
-	virtual inline void getDataRequest( struct DataRequest &req ) const
-    {
-        req = m_dreq;
-    }
 
 	inline void setWriteBerr()
 	{
@@ -331,15 +332,6 @@ public:
 	}
 
     void reset();
-
-	virtual inline void setInstruction(const struct InstructionResponse &rsp)
-	{
-        m_ibe = rsp.error;
-        m_ins.ins = rsp.instruction;
-        m_ireq_ok = rsp.valid;
-	}
-
-    void setData(const struct DataResponse &rsp);
 
     // processor internal registers access API, used by
     // debugger. Mips32 order is 32 general-purpose; sr; lo; hi; bad; cause; pc;
@@ -358,16 +350,9 @@ public:
 
     virtual void debugSetRegisterValue(unsigned int reg, debug_register_t value);
 
-    inline addr_t debugGetPC() const
-    {
-        return r_pc;
-    }
-
-    inline void debugSetPC(addr_t pc)
-    {
-        r_pc = pc;
-        r_npc = pc+4;
-    }
+    static const unsigned int s_sp_register_no = 29;
+    static const unsigned int s_fp_register_no = 30;
+    static const unsigned int s_pc_register_no = 37;
 
     int debugCpuCauseToSignal( uint32_t cause ) const;
 
@@ -376,6 +361,8 @@ public:
 
 private:
     void run();
+
+    void _setData(const struct DataResponse &rsp);
 
     inline void setInsDelay( uint32_t delay )
     {
@@ -523,6 +510,8 @@ class Mips32ElIss
     : public Mips32Iss
 {
 public:
+    static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_LITTLE_ENDIAN;
+
     Mips32ElIss(const std::string &name, uint32_t ident)
         : Mips32Iss(name, ident, true)
     {}
@@ -534,27 +523,11 @@ class Mips32EbIss
     : public Mips32Iss
 {
 public:
+    static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_BIG_ENDIAN;
+
     Mips32EbIss(const std::string &name, uint32_t ident)
         : Mips32Iss(name, ident, false)
     {}
-
-	inline void setInstruction( const struct InstructionResponse &irsp )
-	{
-        struct InstructionResponse ir = irsp;
-        ir.instruction = soclib::endian::uint32_swap(irsp.instruction);
-        Mips32Iss::setInstruction(ir);
-	}
-
-    debug_register_t debugGetRegisterValue(unsigned int reg) const
-    {
-        return soclib::endian::uint32_swap(
-            Mips32Iss::debugGetRegisterValue(reg));
-    }
-
-    void debugSetRegisterValue(unsigned int reg, debug_register_t value)
-    {
-        Mips32Iss::debugSetRegisterValue(reg,soclib::endian::uint32_swap(value));
-    }
 
     void please_instanciate_Mips32ElIss_or_Mips32EbIss() {}
 };

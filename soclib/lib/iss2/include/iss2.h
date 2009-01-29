@@ -156,6 +156,14 @@ public:
             ir.print(o);
             return o;
         }
+
+        inline bool operator==( const struct InstructionRequest &oreq )
+        {
+            return
+                valid == oreq.valid &&
+                addr == oreq.addr &&
+                mode == oreq.mode;
+        }
     };
 #define ISS_IREQ_INITIALIZER {false, 0, ::soclib::common::Iss2::MODE_HYPER}
 
@@ -187,6 +195,17 @@ public:
         {
             ir.print(o);
             return o;
+        }
+
+        inline bool operator==( const struct DataRequest &oreq )
+        {
+            return
+                valid == oreq.valid &&
+                addr == oreq.addr &&
+                wdata == oreq.wdata &&
+                type == oreq.type &&
+                be == oreq.be &&
+                mode == oreq.mode;
         }
     };
 #define ISS_DREQ_INITIALIZER {false, 0, 0, ::soclib::common::Iss2::DATA_READ, 0, ::soclib::common::Iss2::MODE_HYPER}
@@ -285,25 +304,17 @@ public:
      * Iss must return the number of cycles it actually executed. This
      * is at least 1, at most ncycle.
      */
-    virtual uint32_t executeNCycles( uint32_t ncycle, uint32_t irq_bit_field ) = 0;
+    virtual uint32_t executeNCycles(
+        uint32_t ncycle,
+        const struct InstructionResponse &,
+        const struct DataResponse &,
+        uint32_t irq_bit_field ) = 0;
 
     /**
      * Iss must populate the request fields.
      */
-    virtual void getInstructionRequest( struct InstructionRequest & ) const = 0;
-    /**
-     * Iss is given back the response. It may not be valid.
-     */
-    virtual void setInstruction( const struct InstructionResponse & ) = 0;
-
-    /**
-     * Iss must populate the request fields.
-     */
-    virtual void getDataRequest( struct DataRequest & ) const = 0;
-    /**
-     * Iss is given back the response. It may not be valid.
-     */
-    virtual void setData( const struct DataResponse & ) = 0;
+    virtual void getRequests( struct InstructionRequest &,
+                              struct DataRequest & ) const = 0;
 
     /**
      * The cache received an imprecise write error condition, this
@@ -345,14 +356,10 @@ public:
      */
     virtual size_t debugGetRegisterSize(unsigned int reg) const = 0;
 
-    /**
-     * Get the current PC
-     */
-    virtual addr_t debugGetPC() const = 0;
-    /**
-     * Set the current PC
-     */
-    virtual void debugSetPC(addr_t) = 0;
+    enum debugCpuEndianness {
+        ISS_LITTLE_ENDIAN,
+        ISS_BIG_ENDIAN,
+    };
 
 protected:
     

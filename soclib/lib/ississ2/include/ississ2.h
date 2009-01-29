@@ -49,17 +49,19 @@ class IssIss2
 
 public:
     static const size_t n_irq = iss_t::n_irq;
+    static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_LITTLE_ENDIAN;
+    static const unsigned int s_sp_register_no = iss_t::s_sp_register_no;
+    static const unsigned int s_fp_register_no = iss_t::s_fp_register_no;
+    static const unsigned int s_pc_register_no = iss_t::s_pc_register_no;
 
     ~IssIss2();
     IssIss2( const std::string &name, uint32_t ident );
 
     // simulation
     void reset();
-    uint32_t executeNCycles( uint32_t ncycle, uint32_t irq_bit_field );
-    void getInstructionRequest( struct InstructionRequest & ) const;
-    void setInstruction( const struct InstructionResponse & );
-    void getDataRequest( struct DataRequest & ) const;
-    void setData( const struct DataResponse & );
+    uint32_t executeNCycles( uint32_t ncycle, const struct Iss2::InstructionResponse &irsp,
+                             const struct Iss2::DataResponse &drsp, uint32_t irq_bit_field );
+    void getRequests( struct InstructionRequest &, struct DataRequest & ) const;
     void setWriteBerr();
 
     // cache info
@@ -71,8 +73,6 @@ public:
     debug_register_t debugGetRegisterValue(unsigned int reg) const;
     void debugSetRegisterValue(unsigned int reg, debug_register_t value);
     size_t debugGetRegisterSize(unsigned int reg) const;
-    addr_t debugGetPC() const;
-    void debugSetPC(addr_t);
 
 protected:
     

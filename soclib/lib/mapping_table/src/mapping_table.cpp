@@ -92,6 +92,12 @@ void MappingTable::add( const Segment &seg )
     m_segment_list.push_back(seg);
 }
 
+const std::list<Segment> &
+MappingTable::getAllSegmentList() const
+{
+    return m_segment_list;
+}
+
 std::list<Segment>
 MappingTable::getSegmentList( const IntTab &index ) const
 {

@@ -24,7 +24,7 @@
  *         Alain Greiner <alain.greiner@lip6.fr>
  *         Nicolas Pouillon <nipo@ssji.net>
  *
- * Maintainers: alain
+ * Maintainers: alain eric.guthmuller@polytechnique.edu nipo
  */
 
 /////////////////////////////////////////////////////////////////////////////
@@ -347,7 +347,10 @@ tmpl(void)::transition()
     typename iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
     typename iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
 
-    m_iss.getInstructionRequest( ireq );
+    typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
+    typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
+
+    m_iss.getRequests( ireq, dreq );
 
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " Instruction Request: " << ireq << std::endl;
@@ -436,8 +439,6 @@ tmpl(void)::transition()
 
     } // end switch r_icache_fsm
 
-    m_iss.setInstruction( irsp );
-
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " Instruction Response: " << irsp << std::endl;
 #endif
@@ -487,11 +488,6 @@ tmpl(void)::transition()
     // - If a Write Bus Error is detected, the VCI_RSP FSM  signals
     //   the asynchronous error using the setWriteBerr() method.
     ////////////////////////////////////////////////////////////////////////
-
-    typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
-    typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
-
-    m_iss.getDataRequest( dreq );
 
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " Data Request: " << dreq << std::endl;
@@ -682,7 +678,6 @@ tmpl(void)::transition()
         break;
     }
 
-    m_iss.setData( drsp );
 
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " Data Response: " << drsp << std::endl;
@@ -694,7 +689,8 @@ tmpl(void)::transition()
         for (size_t i=0; i<(size_t)iss_t::n_irq; i++)
             if(p_irq[i].read())
                 it |= (1<<i);
-        m_iss.executeNCycles(1, it);
+
+        m_iss.executeNCycles(1, irsp, drsp, it);
     }
 
     if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) )

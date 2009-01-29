@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, SoC
  *         Alain Greiner <alain.greiner@lip6.fr>, 2008
  *
- * Maintainers: alain
+ * Maintainers: alain eric.guthmuller@polytechnique.edu nipo
  */
 
 /////////////////////////////////////////////////////////////////////////////
@@ -527,7 +527,10 @@ tmpl(void)::transition()
     typename iss_t::InstructionRequest  ireq = ISS_IREQ_INITIALIZER;
     typename iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
 
-    m_iss.getInstructionRequest( ireq );
+    typename iss_t::DataRequest  dreq = ISS_DREQ_INITIALIZER;
+    typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
+
+    m_iss.getRequests( ireq, dreq );
 
 #if DEBUG_CC_XCACHE_WRAPPER
     std::cout << " Instruction Request: " << ireq << std::endl;
@@ -679,8 +682,6 @@ tmpl(void)::transition()
 
     } // end switch r_icache_fsm
 
-    m_iss.setInstruction( irsp );
-
 #if DEBUG_CC_XCACHE_WRAPPER
     std::cout << " Instruction Response: " << irsp << std::endl;
 #endif
@@ -741,11 +742,6 @@ tmpl(void)::transition()
     // - If a Write Bus Error is detected, the VCI_RSP FSM  signals
     //   the asynchronous error using the setWriteBerr() method.
     ///////////////////////////////////////////////////////////////////////////////////
-
-    typename iss_t::DataRequest  dreq = ISS_DREQ_INITIALIZER;
-    typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
-
-    m_iss.getDataRequest( dreq );
 
 #if DEBUG_CC_XCACHE_WRAPPER
     std::cout << " Data Request: " << dreq << std::endl;
@@ -1060,8 +1056,6 @@ tmpl(void)::transition()
         }    
     } // end switch r_dcache_fsm
 
-    m_iss.setData( drsp );
-
 #if DEBUG_CC_XCACHE_WRAPPER
     std::cout << " Data Response: " << drsp << std::endl;
 #endif
@@ -1071,7 +1065,7 @@ tmpl(void)::transition()
         uint32_t it = 0;
         for (size_t i=0; i<(size_t)iss_t::n_irq; i++) 
             if(p_irq[i].read()) it |= (1<<i);
-        m_iss.executeNCycles(1,it);
+        m_iss.executeNCycles(1, irsp, drsp, it);
     }
 
     if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) ) m_cpt_frz_cycles++;

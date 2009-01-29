@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6
  *         Alexandre Becoulet <alexandre.becoulet@lip6.fr>
  *
- * Maintainers: becoulet
+ * Maintainers: becoulet nipo
  *
  * $Id$
  *
@@ -63,13 +63,20 @@ public:
 
     GdbServer(const std::string &name, uint32_t ident);
 
-    uint32_t executeNCycles( uint32_t ncycle, uint32_t irq_bit_field );
+    uint32_t executeNCycles(
+        uint32_t ncycle,
+        const struct CpuIss::InstructionResponse &irsp,
+        const struct CpuIss::DataResponse &drsp,
+        uint32_t irq_bit_field );
 
-    inline void getDataRequest(struct CpuIss::DataRequest &dreq) const
+    inline void getRequests(
+        struct CpuIss::InstructionRequest &ireq,
+        struct CpuIss::DataRequest &dreq) const
     {
         GdbServer<CpuIss> *_this = const_cast<GdbServer<CpuIss> *>(this);
         if (state_ == Frozen)
             {
+                ireq.valid = false;
                 dreq.valid = mem_req_;
                 dreq.addr = mem_addr_ & ~3;
                 dreq.wdata = mem_data_ << (8 * (mem_addr_ & 3));
@@ -82,9 +89,10 @@ public:
             }
         else
             {
-                CpuIss::getDataRequest(dreq);
+                CpuIss::getRequests(ireq, dreq);
             }
         _this->pending_data_request_ = dreq.valid;
+        _this->pending_ins_request_ = ireq.valid;
     }
 
     inline void setWriteBerr()
@@ -92,39 +100,6 @@ public:
         if (state_ != Frozen)
             CpuIss::setWriteBerr();
     }
-
-	inline void setData(const struct CpuIss::DataResponse &drsp)
-    {
-        
-        if (state_ == Frozen)
-            {
-                if ( pending_data_request_ && mem_type_ == CpuIss::DATA_READ )
-                {
-                    mem_rsp_valid_ = drsp.valid;
-                    mem_error_ = drsp.error;
-                    mem_data_ = drsp.rdata;
-                }
-            }
-        else
-            CpuIss::setData(drsp);
-        pending_data_request_ &= !drsp.valid;
-    }
-
-	inline void setInstruction(const struct CpuIss::InstructionResponse &irsp)
-    {
-        CpuIss::setInstruction(irsp);
-        pending_ins_request_ &= !irsp.valid;
-    }
-
-    inline void getInstructionRequest(struct CpuIss::InstructionRequest &ireq) const
-	{
-        GdbServer<CpuIss> *_this = const_cast<GdbServer<CpuIss> *>(this);
-        if (state_ == Frozen)
-            ireq.valid = false;
-        else
-            CpuIss::getInstructionRequest(ireq);
-        _this->pending_ins_request_ = ireq.valid;
-	}
 
     static inline void start_frozen(bool frozen = true)
     {
@@ -134,6 +109,8 @@ public:
     bool debugExceptionBypassed( uint32_t cause );
 
 private:
+
+    uint32_t debug_reg_swap(uint32_t);
 
     static void signal_handler(int sig);
 

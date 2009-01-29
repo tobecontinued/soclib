@@ -426,18 +426,14 @@ std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name()
     typename iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
     typename iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
 
-    m_iss.getInstructionRequest( ireq );
-
-#ifdef VCACHE_WRAPPER_DEBUG
-std::cout << name() << " Instruction Request: " << ireq << std::endl;
-#endif
-
     typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
 
-    m_iss.getDataRequest( dreq );
+    m_iss.getRequests( ireq, dreq );
 
 #ifdef VCACHE_WRAPPER_DEBUG
+std::cout << name() << " Instruction Request: " << ireq << std::endl;
+
 std::cout << name() << " Data Request: " << dreq << std::endl;
 #endif
 
@@ -1001,8 +997,6 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         break;
     }
     } // end switch r_icache_fsm
-
-    m_iss.setInstruction( irsp );
 
 #ifdef VCACHE_WRAPPER_DEBUG
 std::cout << name() << " Instruction Response: " << irsp << std::endl;
@@ -1937,7 +1931,6 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     }   
     } // end switch r_dcache_fsm
 
-    m_iss.setData( drsp );
 
 #ifdef VCACHE_WRAPPER_DEBUG
 std::cout << " Data Response: " << drsp << std::endl;
@@ -1947,7 +1940,7 @@ std::cout << " Data Response: " << drsp << std::endl;
     {
     uint32_t it = 0;
     for (size_t i=0; i<(size_t)iss_t::n_irq; i++) if(p_irq[i].read()) it |= (1<<i);
-    m_iss.executeNCycles(1,it);
+    m_iss.executeNCycles(1, irsp, drsp, it);
     }
 
     ////////////// number of frozen cycles //////////////////////////
