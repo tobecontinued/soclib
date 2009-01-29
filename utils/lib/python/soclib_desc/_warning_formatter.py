@@ -1,6 +1,7 @@
 
 import warnings
 import sys
+import os
 
 _green = '\x1b[32m'
 _red = '\x1b[31m'
@@ -12,6 +13,6 @@ def formatwarning(message, category, filename, lineno, line = None):
 		_green, filename, _normal, lineno,
 		_red, message, _normal)
 
-if sys.stderr.isatty():
+if sys.stderr.isatty() and not os.getenv('EMACS'):
 	warnings.formatwarning = formatwarning
 
