@@ -241,7 +241,7 @@ namespace soclib { namespace tlmt {
 				  const tlmt_core::tlmt_time &time,
 				  void *private_data)
   {
-    int index = (int)private_data;
+	  int index = (int)(long)private_data;
 
     //Update the time local
     if(m_read_fifo[index].time < time)
@@ -288,7 +288,7 @@ namespace soclib { namespace tlmt {
 				   const tlmt_core::tlmt_time &time,
 				   void *private_data)
   {
-    int index = (int)private_data;
+	  int index = (int)(long)private_data;
 
     //Update the time local
     if(m_write_fifo[index].time < time)
