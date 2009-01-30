@@ -20,5 +20,6 @@ Module('common:iss_memchecker',
 	],
 	   extensions = [
 	'dsx:cpu=wrapper:iss_memchecker_t',
+	'dsx:set_config=CONFIG_SOCLIB_MEMCHECK',
    ],
 )
