@@ -97,7 +97,7 @@ private:
 	void *m_bfd_ptr;
     section_list_t m_sections;
     uintptr_t m_mask;
-    std::map<uintptr_t, std::string> m_symbol_table;
+    std::map<uintptr_t, std::pair<size_t, std::string> > m_symbol_table;
 
     void read_symbols();
 

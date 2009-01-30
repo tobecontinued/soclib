@@ -26,6 +26,48 @@
 
 extern "C" {
 #include <bfd.h>
+
+// To: "Robert Norton" <rnorton at broadcom dot com>
+// Cc: binutils at sourceware dot org
+// Subject: Re: BFD and Elf Symbol Size
+// From: Ian Lance Taylor <iant at google dot com>
+// Date: 19 Oct 2007 08:29:27 -0700
+// In-Reply-To: <B0D822BFECD50F4991F2516EA50F273C030480A5 at NT-IRVA-0752 dot brcm dot ad dot broadcom dot com>
+// Message-ID: <m33aw72kdk.fsf@localhost.localdomain>
+// 
+// "Robert Norton" <rnorton@broadcom.com> writes:
+// 
+// > Is there any way to get the size of an elf symbol via the BFD?
+// 
+// In general I would have to recommend against using BFD as a general
+// purpose library.
+// 
+// That said, sure, you can do anything.  In this case,
+// 
+// #include "elf-bfd.h"
+// 
+// and then
+// 
+// ((elf_symbol_type *) symbol)->internal_elf_sym.st_size;
+// 
+// Ian
+
+// Unfortunately, elf-bfd.h is not a distributed header, therefore
+// i'll copy here the only needed parts of the struct.
+
+struct elf_internal_sym {
+    bfd_vma	st_value;		/* Value of the symbol */
+    bfd_vma	st_size;		/* Associated symbol size */
+    // Other fields I skipped
+};
+
+typedef struct
+{
+    asymbol symbol;
+    struct elf_internal_sym internal_elf_sym;
+    // Other fields I skipped
+} elf_symbol_type;
+
 }
 
 #include <algorithm>
@@ -89,11 +131,13 @@ void ElfLoader::read_symbols()
     for (i = 0; i < number_of_symbols; i++) {
         asymbol *s = symbol_table[i];
 
+        size_t symsize = ((elf_symbol_type *) s)->internal_elf_sym.st_size;
+
         if ( ! (s->flags & (BSF_FUNCTION|BSF_LOCAL|BSF_GLOBAL)) )
             continue;
 
         uintptr_t addr = ((s->section->lma & m_mask) + s->value);
-        m_symbol_table[addr] = std::string(s->name);
+        m_symbol_table[addr] = std::pair<size_t, std::string>(symsize, std::string(s->name));
     }
     free(symbol_table);
 }
@@ -219,7 +263,7 @@ std::vector<ElfSection> ElfLoader::sections() const
 std::string ElfLoader::get_symbol( uintptr_t addr ) const
 {
     addr &= m_mask;
-    std::map<uintptr_t, std::string>::const_iterator i =
+    std::map<uintptr_t, std::pair<size_t, std::string> >::const_iterator i =
         m_symbol_table.lower_bound( addr );
 
     if ( i != m_symbol_table.end()
@@ -228,15 +272,15 @@ std::string ElfLoader::get_symbol( uintptr_t addr ) const
         --i;
 
     std::ostringstream o;
-    if ( i == m_symbol_table.end() ) {
-        o << "<unknown " << std::showbase << std::hex << addr << ">";
+    o << "[@" << std::showbase << std::hex
+      << addr << ": ";
+    if ( i == m_symbol_table.end() || ( i->second.first != 0 && i->first+i->second.first <= addr ) ) {
+        o << "<unknown>";
     } else {
         ptrdiff_t d = addr - i->first;
-        o << "[" << i->second
-          << std::showbase << std::hex
-//          << " sym addr: " << i->first << ", addr: " << addr
-          << i->second << " + " << d << " (" << addr << ")]";
+        o << '(' << i->second.second << " + " << d << ')';
     }
+    o << "]";
     return o.str();
 }
 
