@@ -31,6 +31,7 @@ extern "C" {
 #include <algorithm>
 #include <string.h>
 #include <sstream>
+#include <cassert>
 
 #include "exception.h"
 #include "elf_loader.h"
