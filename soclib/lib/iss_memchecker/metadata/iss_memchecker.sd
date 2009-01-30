@@ -1,0 +1,24 @@
+
+# -*- python -*-
+
+Module('common:iss_memchecker',
+	classname = 'soclib::common::IssMemchecker',
+	header_files = ["../include/iss_memchecker.h",
+			"../include/interval_set.hh",
+			],
+	implementation_files = [
+		"../src/iss_memchecker.cpp",
+		],
+	   tmpl_parameters = [
+	parameter.Module('iss_memchecker_t'),
+	],
+	   uses = [
+	Uses('common:iss2'),
+	Uses('common:mapping_table'),
+	Uses('common:exception'),
+	Uses('common:elf_loader'),
+	],
+	   extensions = [
+	'dsx:cpu=wrapper:iss_memchecker_t',
+   ],
+)

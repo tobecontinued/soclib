@@ -12,7 +12,14 @@
 #include "ississ2.h"
 #include "ppc405.h"
 #endif
-#include "gdbserver.h"
+
+#if defined(CONFIG_SOCLIB_MEMCHECK)
+# include "iss_memchecker.h"
+# undef CONFIG_GDB_SERVER
+#else
+# include "gdbserver.h"
+#endif
+
 #include "vci_xcache_wrapper.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
@@ -38,22 +45,30 @@ int _main(int argc, char *argv[])
 
 #if defined(CONFIG_CPU_MIPS)
 # if defined(CONFIG_CPU_ENDIAN_BIG)
+# warning Using MIPS32Eb
 	typedef soclib::common::Mips32EbIss ProcessorIss;
 # elif defined(CONFIG_CPU_ENDIAN_LITTLE)
+# warning Using MIPS32El
 	typedef soclib::common::Mips32ElIss ProcessorIss;
 # else
 #  error No endian configuration defined
 # endif
 
 #elif defined(CONFIG_CPU_PPC)
+# warning Using PPC
 	typedef soclib::common::IssIss2<soclib::common::Ppc405Iss> ProcessorIss;
 #else
 #  error No supported processor configuration defined
 #endif
 
-#ifdef CONFIG_GDB_SERVER
+#if defined(CONFIG_GDB_SERVER)
+# warning Using GDB
 	typedef soclib::common::GdbServer<ProcessorIss> Processor;
+#elif defined(CONFIG_SOCLIB_MEMCHECK)
+# warning Using Memchecker
+	typedef soclib::common::IssMemchecker<ProcessorIss> Processor;
 #else
+# warning Using raw processor
 	typedef ProcessorIss Processor;
 #endif
 	
@@ -142,6 +157,12 @@ int _main(int argc, char *argv[])
 
 	// Components
 
+	soclib::common::ElfLoader loader(argv[1]);
+
+#if defined(CONFIG_SOCLIB_MEMCHECK)
+	Processor::init(maptab, loader, "tty,timer,locks,icu");
+#endif
+
 	soclib::caba::VciXcacheWrapper<vci_param, Processor> cache0("cache0", 0, maptab,IntTab(0),1, 8, 4, 1, 8, 4);
 	soclib::caba::VciXcacheWrapper<vci_param, Processor> cache1("cache1", 1, maptab,IntTab(1),1, 8, 4, 1, 8, 4);
 	soclib::caba::VciXcacheWrapper<vci_param, Processor> cache2("cache2", 2, maptab,IntTab(2),1, 8, 4, 1, 8, 4);
@@ -151,7 +172,6 @@ int _main(int argc, char *argv[])
 	Processor::start_frozen();
 #endif
 
-	soclib::common::ElfLoader loader(argv[1]);
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty", NULL);

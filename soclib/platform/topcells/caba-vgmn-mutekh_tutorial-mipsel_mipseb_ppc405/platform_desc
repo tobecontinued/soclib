@@ -4,6 +4,10 @@
 locs = {}
 execfile('mutekh/.config.py', {}, locs)
 
+use_memcheck = (
+  "CONFIG_SOCLIB_MEMCHECK" in locs and
+  locs["CONFIG_SOCLIB_MEMCHECK"] == 'defined')
+
 if locs['CONFIG_CPU_PPC'] == 'defined':
   cpu = "ississ2"
   add = {'iss2_t':'common:ppc405'}
@@ -18,6 +22,7 @@ else:
 
 todo = Platform('caba', 'top.cc',
                 uses=[
+		Uses('vci_xcache_wrapper', iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+cpu, **add),
 		Uses('vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:'+cpu, **add),
 		Uses('vci_xcache_wrapper', iss_t = 'common:'+cpu, **add),
 		Uses('vci_locks'),
