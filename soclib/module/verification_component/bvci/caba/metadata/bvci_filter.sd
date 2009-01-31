@@ -49,10 +49,10 @@ Module('caba:bvci_filter',
       Port('vci_param::wrap_t', 'Out.wrap'),
       Port('vci_param::ack_t', 'Out.rspack'),
 
-		Port('bit_in', 'p_resetn', auto = 'resetn'),
-		Port('clock_in', 'p_clk', auto = 'clock'),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
 	],
 )

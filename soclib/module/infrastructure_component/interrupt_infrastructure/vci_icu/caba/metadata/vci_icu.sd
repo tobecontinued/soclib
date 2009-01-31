@@ -11,11 +11,11 @@ Module('caba:vci_icu',
 					],
 	implementation_files = ['../source/src/vci_icu.cpp',],
 			  ports = [
-	Port('vci_target', 'p_vci'),
+	Port('caba:vci_target', 'p_vci'),
 	],
 	uses = [
-		Uses('base_module'),
-		Uses('vci_target_fsm', default_target = 'true', support_llsc = 'false'),
+		Uses('caba:base_module'),
+		Uses('caba:vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 		],
 	   extensions = [
 	'dsx:addressable',

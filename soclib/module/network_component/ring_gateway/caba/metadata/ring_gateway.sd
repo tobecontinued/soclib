@@ -8,12 +8,12 @@ Module('caba:ring_gateway',
 	implementation_files = ['../source/src/ring_gateway.cpp',],
 	ports = [
 	
-                Port('bit_in', 'p_resetn', auto = 'resetn'),
-		Port('clock_in', 'p_clk', auto = 'clock'),
-	        Port('ring_in', 'p_ring_in'),
-	        Port('ring_out', 'p_ring_out'),
-                Port('gate_initiator', 'p_gate_initiator'),
-	        Port('gate_target',    'p_gate_target'),               
+                Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	        Port('caba:ring_in', 'p_ring_in'),
+	        Port('caba:ring_out', 'p_ring_out'),
+                Port('caba:gate_initiator', 'p_gate_initiator'),
+	        Port('caba:gate_target',    'p_gate_target'),               
 	],
 	instance_parameters = [
         parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
@@ -27,10 +27,10 @@ Module('caba:ring_gateway',
 
 
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
                 Uses('common:mapping_table'),
-                Uses('half_gateway_target'),
-                Uses('half_gateway_initiator'),
+                Uses('caba:half_gateway_target'),
+                Uses('caba:half_gateway_initiator'),
 	        
 		],
 )

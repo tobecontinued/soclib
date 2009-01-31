@@ -94,6 +94,9 @@ class Specialization:
 	def getUse(self):
 		return self.__cdef.getUse(**self.__args)
 
+	def getUses(self):
+		return self.__cdef.getUses(self.__args)
+
 	def getParamBuilders(self):
 		r = set()
 		for i in self.__cdef['tmpl_parameters']:

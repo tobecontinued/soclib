@@ -12,11 +12,11 @@ Module('caba:vci_ring_initiator_wrapper',
 	implementation_files = ['../source/src/vci_ring_initiator_wrapper.cpp',],
 	ports = [
 	
-                Port('bit_in', 'p_resetn', auto = 'resetn'),
-		Port('clock_in', 'p_clk', auto = 'clock'),
-	        Port('vci_target', 'p_vci'),
-        	Port('ring_in', 'p_ring_in'),
-	        Port('ring_out', 'p_ring_out'),
+                Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	        Port('caba:vci_target', 'p_vci'),
+        	Port('caba:ring_in', 'p_ring_in'),
+	        Port('caba:ring_out', 'p_ring_out'),
 	],
 	instance_parameters = [
         parameter.Bool('alloc_init'),
@@ -28,9 +28,9 @@ Module('caba:vci_ring_initiator_wrapper',
 
 
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
                 Uses('common:mapping_table'),
-	        Uses('generic_fifo'),
+	        Uses('caba:generic_fifo'),
 
 		],
 )

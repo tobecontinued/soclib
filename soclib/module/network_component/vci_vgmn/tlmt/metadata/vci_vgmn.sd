@@ -37,9 +37,9 @@ Module('tlmt:vci_vgmn',
 		'../source/src/vci_vgmn.cpp',
 		],
 	uses = [
-		Uses('base_module'),
+		Uses('tlmt:base_module'),
 		Uses('common:mapping_table'),
-		Uses('vci_cmd_arb_rsp_rout'),
-		Uses('vci_rsp_arb_cmd_rout'),
+		Uses('tlmt:vci_cmd_arb_rsp_rout'),
+		Uses('tlmt:vci_rsp_arb_cmd_rout'),
 		],
 )

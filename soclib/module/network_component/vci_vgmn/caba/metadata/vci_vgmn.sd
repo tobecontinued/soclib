@@ -9,10 +9,10 @@ Module('caba:vci_vgmn',
 	header_files = ['../source/include/vci_vgmn.h',],
 	implementation_files = ['../source/src/vci_vgmn.cpp',],
 	ports = [
-	    Port('vci_initiator', 'p_to_target', parameter.Reference('n_target')),
-	    Port('vci_target', 'p_to_initiator', parameter.Reference('n_initiator')),
-		Port('bit_in', 'p_resetn', auto = 'resetn'),
-		Port('clock_in', 'p_clk', auto = 'clock'),
+	    Port('caba:vci_initiator', 'p_to_target', parameter.Reference('n_target')),
+	    Port('caba:vci_target', 'p_to_initiator', parameter.Reference('n_initiator')),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	instance_parameters = [
         parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
@@ -22,7 +22,7 @@ Module('caba:vci_vgmn',
         parameter.Int('fifo_depth'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
 		Uses('common:mapping_table'),
 		],
 	   extensions = [

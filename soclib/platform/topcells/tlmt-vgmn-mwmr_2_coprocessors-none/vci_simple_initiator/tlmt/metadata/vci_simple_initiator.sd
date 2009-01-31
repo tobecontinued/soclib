@@ -34,10 +34,10 @@ Module('tlmt:vci_simple_initiator',
 	header_files = ['../source/include/vci_simple_initiator.h',],
 	implementation_files = ['../source/src/vci_simple_initiator.cpp',],
 			  ports = [
-	Port('vci_initiator', 'p_vci'),
+	Port('tlmt:vci_initiator', 'p_vci'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('tlmt:base_module'),
 		Uses('common:mapping_table'),
 		],
 )

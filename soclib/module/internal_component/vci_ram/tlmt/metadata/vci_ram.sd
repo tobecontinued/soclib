@@ -34,10 +34,10 @@ Module('tlmt:vci_ram',
 	header_files = ['../source/include/vci_ram.h',],
 	implementation_files = ['../source/src/vci_ram.cpp',],
 			  ports = [
-	Port('vci_target', 'p_vci'),
+	Port('tlmt:vci_target', 'p_vci'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('tlmt:base_module'),
 		Uses('common:elf_loader'),
 		Uses('common:linked_access_buffer', id_t = 'uint32_t'),
 		Uses('common:mapping_table'),

@@ -10,13 +10,13 @@ Module('caba:Synchronization',
 	header_files = ['../source/include/synchronization.h',],
 	implementation_files = ['../source/src/synchronization.cpp',],
 	ports = [
-		Port('fifo_output', 'p_to_ctrl'),
-                Port('fifo_input', 'p_from_ctrl'),
-		Port('bit_in', 'p_resetn', auto = 'resetn'),
-         	Port('clock_in', 'p_clk', auto = 'clock'),
+		Port('caba:fifo_output', 'p_to_ctrl'),
+                Port('caba:fifo_input', 'p_from_ctrl'),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+         	Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
 	],
 	##instance_parameters = [
 		##parameter.IntTab('ident'),

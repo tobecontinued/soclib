@@ -8,12 +8,12 @@ Module('caba:fifo_reader',
 		"../source/src/fifo_reader.cpp",
 		],
 		   ports = [
-	Port('fifo_output', 'p_fifo'),
-	Port('bit_in', 'p_resetn', auto = 'resetn'),
-	Port('clock_in', 'p_clk', auto = 'clock'),
+	Port('caba:fifo_output', 'p_fifo'),
+	Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+	Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
 		Uses('common:process_wrapper'),
 		],
 	instance_parameters = [

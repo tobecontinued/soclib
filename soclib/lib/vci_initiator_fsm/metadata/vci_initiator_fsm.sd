@@ -10,8 +10,8 @@ Module('caba:vci_initiator_fsm',
 	implementation_files = ['../src/caba/vci/vci_initiator_fsm.cpp',],
 	uses = [
 		Uses('common:mapping_table'),
-		Uses('base_module'),
-		Uses('vci_initiator'),
+		Uses('caba:base_module'),
+		Uses('caba:vci_initiator'),
 		],
 #	   debug = True,
 )

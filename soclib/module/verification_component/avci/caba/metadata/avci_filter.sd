@@ -61,10 +61,10 @@ Module('caba:avci_filter',
       Port('vci_param::trdid_t', 'Out.trdid'),
       Port('vci_param::pktid_t', 'Out.pktid'),
 
-		Port('bit_in', 'p_resetn', auto = 'resetn'),
-		Port('clock_in', 'p_clk', auto = 'clock'),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
 	],
 )

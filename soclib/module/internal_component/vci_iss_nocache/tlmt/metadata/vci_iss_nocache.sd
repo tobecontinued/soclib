@@ -31,8 +31,8 @@ Module('tlmt:vci_iss_nocache',
 	header_files = ['../source/include/vci_iss_nocache.h'],
 	implementation_files = ['../source/src/vci_iss_nocache.cpp',],
 			  ports = [
-	Port('vci_initiator', 'p_vci'),
-	Port('tlmt_in', 'p_in', data_t = 'bool'),
+	Port('tlmt:vci_initiator', 'p_vci'),
+	Port('tlmt:tlmt_in', 'p_in', data_t = 'bool'),
 	],
 	   tmpl_parameters = [
 	parameter.Module('iss_t'),

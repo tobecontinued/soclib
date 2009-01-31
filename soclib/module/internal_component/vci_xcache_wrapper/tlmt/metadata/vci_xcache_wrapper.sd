@@ -34,8 +34,8 @@ Module('tlmt:vci_xcache_wrapper',
 		'../source/include/generic_cache.h'],
 	implementation_files = ['../source/src/vci_xcache_wrapper.cpp',],
 			  ports = [
-	Port('vci_initiator', 'p_vci'),
-	Port('tlmt_in', 'p_in', data_t = 'bool'),
+	Port('tlmt:vci_initiator', 'p_vci'),
+	Port('tlmt:tlmt_in', 'p_in', data_t = 'bool'),
 	],
 	   tmpl_parameters = [
 	parameter.Module('iss_t'),

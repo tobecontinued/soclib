@@ -11,7 +11,7 @@ Module('common:iss_profiler',
 	parameter.Module('profiler_iss_t'),
 	],
 	   uses = [
-	Uses('iss'),
+	Uses('common:iss'),
 	],
 	   extensions = [
 	'dsx:cpu=wrapper:profiler_iss_t',

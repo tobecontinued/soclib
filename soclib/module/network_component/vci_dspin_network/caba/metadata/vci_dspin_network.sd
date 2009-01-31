@@ -11,8 +11,8 @@ Module('caba:vci_dspin_network',
 	implementation_files = ['../source/src/vci_dspin_network.cpp',],
 	ports = [
 		# FIXME: Ports vci
-	    Port('bit_in', 'p_resetn', auto = 'resetn'),
-	    Port('clock_in', 'p_clk', auto = 'clock'),
+	    Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+	    Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	instance_parameters = [
 		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
@@ -20,10 +20,10 @@ Module('caba:vci_dspin_network',
 	    parameter.Int('height_network'),
 	],
 	uses = [
-	    Uses('base_module'),
+	    Uses('caba:base_module'),
 	    Uses('common:mapping_table'),
-	    Uses('dspin_router'),
-	    Uses('vci_dspin_initiator_wrapper'),
-	    Uses('vci_dspin_target_wrapper'),
+	    Uses('caba:dspin_router'),
+	    Uses('caba:vci_dspin_initiator_wrapper'),
+	    Uses('caba:vci_dspin_target_wrapper'),
 	],
 )

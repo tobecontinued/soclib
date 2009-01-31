@@ -38,10 +38,10 @@ Module('tlmt:vci_rsp_arb_cmd_rout',
 		'../source/src/vci_rsp_arb_cmd_rout.cpp',
 		],
 			  ports = [
-	Port('vci_target', 'p_vci_to_initiator'),
+	Port('tlmt:vci_target', 'p_vci_to_initiator'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('tlmt:base_module'),
 		Uses('common:mapping_table'),
 		],
 )

@@ -9,10 +9,10 @@ Module('caba:vci_pi_initiator_wrapper',
 	header_files = ['../source/include/vci_pi_initiator_wrapper.h',],
 	implementation_files = ['../source/src/vci_pi_initiator_wrapper.cpp',],
 			  ports = [
-	Port('vci_target', 'p_vci'),
-	Port('pibus_initiator', 'p_pi'),
+	Port('caba:vci_target', 'p_vci'),
+	Port('caba:pibus_initiator', 'p_pi'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
 		],
 )

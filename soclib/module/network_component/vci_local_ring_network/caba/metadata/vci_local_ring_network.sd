@@ -9,13 +9,13 @@ Module('caba:vci_local_ring_network',
 	header_files = ['../source/include/vci_local_ring_network.h',],
 	implementation_files = ['../source/src/vci_local_ring_network.cpp',],
 	ports = [
-            Port('vci_initiator', 'p_to_target', parameter.Reference('nb_attached_target')),
-	    Port('vci_target', 'p_to_initiator', parameter.Reference('nb_attached_initiator')),
+            Port('caba:vci_initiator', 'p_to_target', parameter.Reference('nb_attached_target')),
+	    Port('caba:vci_target', 'p_to_initiator', parameter.Reference('nb_attached_initiator')),
 	    # FIXME: Ports vci
-	    Port('bit_in', 'p_resetn', auto = 'resetn'),
-	    Port('clock_in', 'p_clk', auto = 'clock'),
-            Port('gate_initiator', 'p_gate_initiator'),
-	    Port('gate_target',    'p_gate_target'), 
+	    Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+	    Port('caba:clock_in', 'p_clk', auto = 'clock'),
+            Port('caba:gate_initiator', 'p_gate_initiator'),
+	    Port('caba:gate_target',    'p_gate_target'), 
 
 	],
 	instance_parameters = [
@@ -28,11 +28,11 @@ Module('caba:vci_local_ring_network',
 
 	],
 	uses = [
-	    Uses('base_module'),
+	    Uses('caba:base_module'),
 	    Uses('common:mapping_table'),
-	    Uses('vci_ring_initiator_wrapper'),
-	    Uses('vci_ring_target_wrapper'),
-            Uses('ring_gateway'),
+	    Uses('caba:vci_ring_initiator_wrapper'),
+	    Uses('caba:vci_ring_target_wrapper'),
+            Uses('caba:ring_gateway'),
             
 	],
         

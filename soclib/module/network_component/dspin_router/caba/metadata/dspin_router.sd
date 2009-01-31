@@ -9,17 +9,17 @@ Module('caba:dspin_router',
 	header_files = ['../source/include/dspin_router.h',],
 	implementation_files = ['../source/src/dspin_router.cpp',],
 	ports = [
-		Port('bit_in', 'p_resetn', auto = 'resetn'),
-		Port('clock_in', 'p_clk', auto = 'clock'),
-	    Port('dspin_output', 'p_out', 5),
-	    Port('dspin_input', 'p_in', 5),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	    Port('caba:dspin_output', 'p_out', 5),
+	    Port('caba:dspin_input', 'p_in', 5),
 	],
 	instance_parameters = [
 	    parameter.Int('indent'),
 	],
 	uses = [
-	    Uses('base_module'),
-	    Uses('generic_fifo'),
+	    Uses('caba:base_module'),
+	    Uses('caba:generic_fifo'),
 	],
 	   extensions = [
 	'dsx:interconnect=root',
