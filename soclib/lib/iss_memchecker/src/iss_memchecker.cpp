@@ -519,10 +519,19 @@ void IssMemchecker<iss_t>::init( const soclib::common::MappingTable &mt,
 template<typename iss_t>
 IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
     : iss_t(name, ident),
-      m_current_context( s_memory_state->unknown_context ),
       m_enabled_checks(0),
       m_last_sp(0)
 {
+    if ( !s_memory_state ) {
+        std::cerr
+            << std::endl
+            << "You must call the static initialized with:" << std::endl
+            << "soclib::common::IssMemchecker<...>::init( mapping_table, elf_loader );" << std::endl
+            << "Prior to any IssMemchecker constructor." << std::endl
+            << std::endl;
+        abort();
+    }
+    m_current_context = s_memory_state->unknown_context;
 }
 
 template<typename iss_t>
