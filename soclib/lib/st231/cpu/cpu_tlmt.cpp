@@ -45,7 +45,6 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <endian.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <iomanip>
