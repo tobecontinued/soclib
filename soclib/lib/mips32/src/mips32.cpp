@@ -83,6 +83,7 @@ void Mips32Iss::dump() const
         << " Ins: " << m_ins.ins << std::endl
         << std::dec
         << " Cause.xcode: " << r_cause.xcode << std::endl
+        << " Mode: " << r_cpu_mode
         << " Status.ksu " << r_status.ksu
         << " .exl: " << r_status.exl
         << " .erl: " << r_status.erl
@@ -128,7 +129,7 @@ uint32_t Mips32Iss::executeNCycles(
 
     if ( m_sleeping ) {
         if ( ((r_status.im>>2) & irq_bit_field)
-             && r_status.ie ) {
+             && r_status.ie && !r_status.exl && !r_status.erl ) {
             m_exception = X_INT;
             m_sleeping = false;
 #ifdef SOCLIB_MODULE_DEBUG
@@ -212,7 +213,7 @@ uint32_t Mips32Iss::executeNCycles(
 
     if ( m_exception == NO_EXCEPTION
          && ((r_status.im>>2) & irq_bit_field)
-         && r_status.ie ) {
+         && r_status.ie && !r_status.exl && !r_status.erl ) {
         m_exception = X_INT;
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;

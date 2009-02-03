@@ -100,7 +100,7 @@ void Mips32Iss::run()
 {
     func_t func = opcod_table[m_ins.i.op];
 
-    if (isHighPC() && isInUserMode()) {
+    if (isHighPC() && !isPriviliged()) {
         m_exception = X_ADEL;
         m_dreq.addr = r_pc;
         

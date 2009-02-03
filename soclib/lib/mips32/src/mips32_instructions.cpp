@@ -179,7 +179,7 @@ void Mips32Iss::op_lui()
 
 void Mips32Iss::op_cop0()
 {
-    if (!cp0Enabled()) {
+    if (!isCopAccessible(0)) {
         m_exception = X_CPU;
         return;
     }
@@ -253,7 +253,7 @@ void Mips32Iss::op_cop2()
         MT = 4,
     };
     
-    if (isInUserMode()) {
+    if (!isCopAccessible(2)) {
         m_exception = X_CPU;
         return;
     }

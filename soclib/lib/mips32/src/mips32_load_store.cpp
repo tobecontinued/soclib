@@ -62,7 +62,7 @@ void Mips32Iss::do_mem_access( addr_t address,
                                data_t wdata,
                                enum DataOperationType operation )
 {
-    if (isInUserMode() && isPrivDataAddr(address)) {
+    if (!isPriviliged() && isPrivDataAddr(address)) {
         m_dreq.addr = address;
         m_exception = X_ADEL;
         return;
@@ -82,7 +82,7 @@ void Mips32Iss::do_mem_access( addr_t address,
     m_dreq.valid = true;
     m_dreq.wdata = wdata << (8 * byte_le);
     m_dreq.type = operation;
-    m_dreq.mode = r_cpu_mode;
+    m_dreq.mode = r_bus_mode;
 
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout

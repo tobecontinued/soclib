@@ -141,24 +141,46 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
     }
 }
 
-bool Mips32Iss::cp0Enabled() const
+bool Mips32Iss::isCopAccessible(int cp) const
 {
-    return r_status.ksu != MIPS32_USER_MODE || r_status.cu0;
+    if ( r_cpu_mode == MIPS32_KERNEL )
+        return true;
+
+    switch (cp) {
+    case 0:
+        return r_status.cu0;
+    case 1:
+        return r_status.cu1;
+    case 2:
+        return r_status.cu2;
+    case 3:
+        return r_status.cu3;
+    }
+    return false;
 }
 
 void Mips32Iss::update_mode()
 {
+    if ( r_status.exl || r_status.erl ) {
+		r_bus_mode = MODE_KERNEL;
+		r_cpu_mode = MIPS32_KERNEL;
+        return;
+    }
+        
 	switch (r_status.ksu) {
-	case MIPS32_KERNEL_MODE:
-		r_cpu_mode = MODE_KERNEL;
+	case MIPS32_KSU_KERNEL:
+		r_bus_mode = MODE_KERNEL;
+		r_cpu_mode = MIPS32_KERNEL;
 		break;
-	case MIPS32_SUPERVISOR_MODE:
-		r_cpu_mode = MODE_HYPER;
+	case MIPS32_KSU_SUPERVISOR:
+		r_bus_mode = MODE_HYPER;
+		r_cpu_mode = MIPS32_SUPERVISOR;
 		break;
-	case MIPS32_USER_MODE:
-		r_cpu_mode = MODE_USER;
+	case MIPS32_KSU_USER:
+		r_bus_mode = MODE_USER;
+		r_cpu_mode = MIPS32_USER;
 		break;
-	case MIPS32_RESERVED_MODE:
+    default:
 		assert(0&&"Invalid user mode set in status register");
 	}
 }

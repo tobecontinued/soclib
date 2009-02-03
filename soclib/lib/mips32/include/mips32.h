@@ -157,14 +157,22 @@ private:
         uint32_t ins;
     } ins_t;
 
-    enum UserMode {
-        MIPS32_KERNEL_MODE,
-        MIPS32_SUPERVISOR_MODE,
-        MIPS32_USER_MODE,
-        MIPS32_RESERVED_MODE,
+    enum KSUMode {
+        MIPS32_KSU_KERNEL,
+        MIPS32_KSU_SUPERVISOR,
+        MIPS32_KSU_USER,
+        MIPS32_KSU_RESERVED,
     };
 
-    enum Iss2::ExecMode r_cpu_mode;
+    enum Mips32Mode {
+        MIPS32_KERNEL,
+        MIPS32_SUPERVISOR,
+        MIPS32_USER,
+        MIPS32_DEBUG,
+    };
+
+    enum Iss2::ExecMode r_bus_mode;
+    enum Mips32Mode r_cpu_mode;
 
     typedef REG32_BITFIELD(
         uint32_t cu3:1,
@@ -322,7 +330,7 @@ public:
 	{
         ireq.valid = !m_sleeping;
 		ireq.addr = r_pc;
-        ireq.mode = r_cpu_mode;
+        ireq.mode = r_bus_mode;
         dreq = m_dreq;
 	}
 
@@ -373,9 +381,9 @@ private:
     addr_t exceptOffsetAddr( enum ExceptCause cause ) const;
     addr_t exceptBaseAddr() const;
 
-    inline bool isInUserMode() const
+    inline bool isPriviliged() const
     {
-        return r_status.ksu == MIPS32_USER_MODE;
+        return r_cpu_mode != MIPS32_USER;
     }
 
     inline bool isHighPC() const
@@ -496,7 +504,7 @@ private:
     static use_t const use_table[64];
     static use_t const use_special_table[64];
 
-    bool cp0Enabled() const;
+    bool isCopAccessible(int) const;
     uint32_t cp0Get( uint32_t reg, uint32_t sel ) const;
     void cp0Set( uint32_t reg, uint32_t sel, uint32_t value );
 

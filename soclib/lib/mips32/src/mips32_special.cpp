@@ -103,7 +103,7 @@ void Mips32Iss::special_srav()
 
 void Mips32Iss::special_jr()
 {
-    if (isPrivDataAddr(r_gp[m_ins.i.rs]) && isInUserMode()) {
+    if (isPrivDataAddr(r_gp[m_ins.i.rs]) && !isPriviliged()) {
         // TODO error code
         m_exception = X_ADEL;
         return;
@@ -113,7 +113,7 @@ void Mips32Iss::special_jr()
 
 void Mips32Iss::special_jalr()
 {
-    if (isPrivDataAddr(r_gp[m_ins.i.rs]) && isInUserMode()) {
+    if (isPrivDataAddr(r_gp[m_ins.i.rs]) && !isPriviliged()) {
         // TODO error code
         m_exception = X_ADEL;
         return;
