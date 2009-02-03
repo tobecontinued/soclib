@@ -168,6 +168,9 @@ def main():
 				for o in b.results():
 					todo.add(o)
 					out.append(o)
+			for o in mod.builder().results():
+				todo.add(o)
+				out.append(o)
 			if opts.output:
 				todo.add(CxxLink(opts.output, out).results()[0])
 		todo.process()
