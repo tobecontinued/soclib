@@ -4,12 +4,12 @@
 
 todo = Platform('caba', 'top.cpp',
 				uses = [
-	Uses('vci_vcache_wrapper', iss_t = 'common:iss2_simhelper', simhelper_iss_t = 'common:mips32el'),
-	Uses('vci_locks'),
-	Uses('vci_simple_ram'),
-	Uses('vci_multi_tty'),
-	Uses('vci_timer'),
-	Uses('vci_vgmn'),
+	Uses('caba:vci_vcache_wrapper', iss_t = 'common:iss2_simhelper', simhelper_iss_t = 'common:mips32el'),
+	Uses('caba:vci_locks'),
+	Uses('caba:vci_simple_ram'),
+	Uses('caba:vci_multi_tty'),
+	Uses('caba:vci_timer'),
+	Uses('caba:vci_vgmn'),
 	],
 	cell_size = 4,
 	plen_size = 8,

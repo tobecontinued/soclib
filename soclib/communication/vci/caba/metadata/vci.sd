@@ -2,7 +2,7 @@
 # -*- python -*-
 
 Signal('caba:vci',
-	   tmpl_parameters = [parameter.Module('vci_param', default = 'vci_param')],
+	   tmpl_parameters = [parameter.Module('vci_param', default = 'caba:vci_param')],
 	   classname = 'soclib::caba::VciSignals',
 	   header_files = ['../source/include/vci_signals.h'],
 	   accepts = {
@@ -12,14 +12,14 @@ Signal('caba:vci',
 	   )
 
 PortDecl('caba:vci_initiator',
-	 tmpl_parameters = [parameter.Module('vci_param', default = 'vci_param')],
+	 tmpl_parameters = [parameter.Module('vci_param', default = 'caba:vci_param')],
 	 classname = 'soclib::caba::VciInitiator',
 	 signal = 'caba:vci',
 	 header_files = ['../source/include/vci_initiator.h'],
 	 )
 
 PortDecl('caba:vci_target',
-	 tmpl_parameters = [parameter.Module('vci_param', default = 'vci_param')],
+	 tmpl_parameters = [parameter.Module('vci_param', default = 'caba:vci_param')],
 	 classname = 'soclib::caba::VciTarget',
 	 signal = 'caba:vci',
 	 header_files = ['../source/include/vci_target.h'],

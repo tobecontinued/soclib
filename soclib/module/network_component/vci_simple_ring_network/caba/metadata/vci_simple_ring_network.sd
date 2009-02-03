@@ -3,7 +3,7 @@
 Module('caba:vci_simple_ring_network',
 	classname = 'soclib::caba::VciSimpleRingNetwork',
 	tmpl_parameters = [
-	    parameter.Module('vci_param', default = 'vci_param'),
+	    parameter.Module('vci_param', default = 'caba:vci_param'),
             	    
 	],
 	header_files = ['../source/include/vci_simple_ring_network.h',],

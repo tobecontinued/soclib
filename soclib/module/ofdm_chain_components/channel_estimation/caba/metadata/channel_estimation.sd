@@ -4,7 +4,7 @@
 Module('caba:channel_estimation',
 	classname = 'soclib::caba::channel_estimation',
 	tmpl_parameters = [
-		parameter.Module('vci_param',  default = 'vci_param'),
+		parameter.Module('vci_param',  default = 'caba:vci_param'),
 		#parameter.Int('Nirq'),
 	],
 	header_files = ['../source/include/channel_estimation.h',],

@@ -4,7 +4,7 @@
 Module('caba:avci_filter',
 	classname = 'soclib::caba::AdvancedVciFilter',
 	tmpl_parameters = [
-		parameter.Module('vci_param',  default = 'vci_param'),
+		parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	header_files = ['../source/include/avci_filter.h',],
 	implementation_files = ['../source/src/avci_filter.cpp',],

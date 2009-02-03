@@ -3,7 +3,7 @@
 
 Module('caba:vci_mem_cache',
        classname = 'soclib::caba::VciMemCache',
-       tmpl_parameters = [parameter.Module('vci_param', default = 'vci_param'),],
+       tmpl_parameters = [parameter.Module('vci_param', default = 'caba:vci_param'),],
        header_files = ['../source/include/vci_mem_cache.h',
                        '../source/include/xram_transaction.h',
                        '../source/include/mem_cache_directory.h',

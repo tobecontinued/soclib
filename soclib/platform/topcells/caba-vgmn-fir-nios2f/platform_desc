@@ -4,11 +4,11 @@
 
 todo = Platform('caba', 'top.cpp',
 				uses = [
-	Uses('iss_wrapper', iss_t = 'common:nios2_fast'),
-	Uses('vci_ram'),
-	Uses('vci_multi_tty'),
-	Uses('vci_vgmn'),
-	Uses('vci_xcache'),
+	Uses('caba:iss_wrapper', iss_t = 'common:nios2_fast'),
+	Uses('caba:vci_ram'),
+	Uses('caba:vci_multi_tty'),
+	Uses('caba:vci_vgmn'),
+	Uses('caba:vci_xcache'),
 	],
 	cell_size = 4,
 	plen_size = 1,

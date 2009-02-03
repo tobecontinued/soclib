@@ -16,6 +16,10 @@ class InvalidComponentWarning(Warning):
 	def __str__(self):
 		return 'Invalid component %s, it will be unavailable. Error: "%s"'%(self.args[0], self.args[1])
 
+class PartialNameWarning(Warning):
+	def __str__(self):
+		return 'Short name %s is deprecated, please use a full name with caba:, tlmt: or common:'%(self.args[0])
+
 __all__ = ['Module']
 
 class NoSuchComponent(Exception):
@@ -105,6 +109,7 @@ class Module:
 
 	def fullyQualifiedModuleName(self, name):
 		if not ':' in name:
+			warnings.warn(PartialNameWarning(name), stacklevel = 2)
 			mode = self.__typename.split(':',1)[0]
 			return mode + ':' + name
 		return name

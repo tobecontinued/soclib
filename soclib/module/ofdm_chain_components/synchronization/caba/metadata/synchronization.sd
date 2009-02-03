@@ -4,7 +4,7 @@
 Module('caba:Synchronization',
 	classname = 'soclib::caba::Synchronization',
 	tmpl_parameters = [
-		parameter.Module('vci_param',  default = 'vci_param'),
+		parameter.Module('vci_param',  default = 'caba:vci_param'),
 		#parameter.Int('Nirq'),
 	],
 	header_files = ['../source/include/synchronization.h',],

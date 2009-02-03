@@ -3,7 +3,7 @@
 #Module('tlmt:tc4200',
 #	classname = 'soclib::tlmt::tc4200',
 #	tmpl_parameters = [
-#		parameter.Module('vci_param',  default = 'vci_param')
+#		parameter.Module('vci_param',  default = 'tlmt:vci_param')
 #	],
 #	header_files = ['../source/include/tc4200.h',],
 #	implementation_files = ['../source/src/tc4200.cpp',],

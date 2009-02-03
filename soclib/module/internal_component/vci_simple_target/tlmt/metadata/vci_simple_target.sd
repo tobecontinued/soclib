@@ -29,7 +29,7 @@
 Module('tlmt:vci_simple_target',
 	classname = 'soclib::tlmt::VciSimpleTarget',
 	   tmpl_parameters = [
-	parameter.Module('vci_param',  default = 'vci_param')
+	parameter.Module('vci_param',  default = 'tlmt:vci_param')
 	],
 	header_files = ['../source/include/vci_simple_target.h',],
 	implementation_files = ['../source/src/vci_simple_target.cpp',],

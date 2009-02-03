@@ -29,7 +29,7 @@
 Module('tlmt:vci_vgmn',
 	classname = 'soclib::tlmt::VciVgmn',
 	   tmpl_parameters = [
-	parameter.Module('vci_param',  default = 'vci_param')
+	parameter.Module('vci_param',  default = 'tlmt:vci_param')
 	],
 	header_files = [
 	'../source/include/vci_vgmn.h',],

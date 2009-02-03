@@ -28,7 +28,7 @@
 
 Module('tlmt:vci_mwmr_controller',
        classname = 'soclib::tlmt::VciMwmrController',
-       tmpl_parameters = [parameter.Module('vci_param',  default = 'vci_param')],
+       tmpl_parameters = [parameter.Module('vci_param',  default = 'tlmt:vci_param')],
        header_files = ['../source/include/vci_mwmr_controller.h',
                        '../../include/mwmr_controller.h',],
        implementation_files = ['../source/src/vci_mwmr_controller.cpp',],

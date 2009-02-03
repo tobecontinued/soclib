@@ -4,12 +4,12 @@
 
 todo = Platform('caba', 'top.cpp',
 				uses = [
-	Uses('iss_wrapper', iss_t = 'common:mipsel'),
-	Uses('vci_simple_ram'),
-	Uses('vci_multi_tty'),
-	Uses('vci_simhelper'),
-	Uses('vci_simple_ring_network'),
-	Uses('vci_xcache'),
+	Uses('caba:iss_wrapper', iss_t = 'common:mipsel'),
+	Uses('caba:vci_simple_ram'),
+	Uses('caba:vci_multi_tty'),
+	Uses('caba:vci_simhelper'),
+	Uses('caba:vci_simple_ring_network'),
+	Uses('caba:vci_xcache'),
 	],
 	cell_size = 4,
 	plen_size = 8,

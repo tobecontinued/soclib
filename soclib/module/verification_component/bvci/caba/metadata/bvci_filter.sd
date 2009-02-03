@@ -4,7 +4,7 @@
 Module('caba:bvci_filter',
 	classname = 'soclib::caba::BasicVciFilter',
 	tmpl_parameters = [
-		parameter.Module('vci_param',  default = 'vci_param'),
+		parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	header_files = ['../source/include/bvci_filter.h',],
 	implementation_files = ['../source/src/bvci_filter.cpp',],

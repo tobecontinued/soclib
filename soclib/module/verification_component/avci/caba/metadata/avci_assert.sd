@@ -4,7 +4,7 @@
 Module('caba:avci_assert',
 	classname = 'soclib::caba::AdvancedVciAssert',
 	tmpl_parameters = [
-		parameter.Module('vci_param',  default = 'vci_param'),
+		parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	header_files = ['../source/include/avci_assert.h',],
 	implementation_files = ['../source/src/avci_assert.cpp',],

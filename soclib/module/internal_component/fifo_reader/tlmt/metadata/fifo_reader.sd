@@ -2,7 +2,7 @@
 
 Module('tlmt:fifo_reader',
        classname = 'soclib::tlmt::FifoReader',
-       tmpl_parameters = [parameter.Module('vci_param',  default = 'vci_param')],
+       tmpl_parameters = [parameter.Module('vci_param',  default = 'tlmt:vci_param')],
        header_files = ["../source/include/fifo_reader.h"],
        implementation_files = ["../source/src/fifo_reader.cpp"],
        ports = [Port('tlmt:fifo_initiator', 'p_fifo')],

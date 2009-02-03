@@ -14,8 +14,8 @@ warnings.simplefilter('ignore', ModuleDeprecationWarning)
 
 todo = Platform('caba', 'top.cpp',
 				uses = [
-	Uses('caba_factory'),
-	Uses('vci_factory'),
+	Uses('caba:caba_factory'),
+	Uses('caba:vci_factory'),
 	Uses('common:topcell'),
 	Uses('common:exception'),
 	],

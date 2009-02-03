@@ -3,7 +3,7 @@
 
 Module('caba:vci_xram',
        classname = 'soclib::caba::VciXRam',
-       tmpl_parameters = [parameter.Module('vci_param', default = 'vci_param'),],
+       tmpl_parameters = [parameter.Module('vci_param', default = 'caba:vci_param'),],
        header_files = ['../source/include/vci_xram.h',],
        implementation_files = ['../source/src/vci_xram.cpp',],
        uses = [Uses('caba:base_module'),

@@ -28,7 +28,7 @@
 
 Module('tlmt:vci_multi_tty',
        classname = 'soclib::tlmt::VciMultiTty',
-       tmpl_parameters = [parameter.Module('vci_param',  default = 'vci_param')],
+       tmpl_parameters = [parameter.Module('vci_param',  default = 'tlmt:vci_param')],
        header_files = ['../source/include/vci_multi_tty.h',
                        '../../include/tty.h',
                        ],
