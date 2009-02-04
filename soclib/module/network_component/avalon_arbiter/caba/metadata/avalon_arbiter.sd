@@ -4,16 +4,16 @@
 Module('caba:avalon_arbiter',
 	classname = 'soclib::caba::AvalonArbiter',
 	tmpl_parameters = [
-	parameter.Module('avalon_param',  default = 'avalon_param'),
+	parameter.Module('avalon_param',  default = 'caba:avalon_param'),
 	],
 		header_files = ["../source/include/avalon_arbiter.h",],
 	implementation_files = ["../source/src/avalon_arbiter.cpp",],
 	ports = [
-		Port('clock_in', 'p_clk', auto = 'clock'),
-		Port('bit_in', 'p_resetn', auto = 'resetn'),
-	    Port('avalon_arbiter_master', 'p_arbiter_master'),
-	    Port('avalon_arbiter_slave', 'p_arbiter_slave'),
-	    Port('bit_out', 'sel_master'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+	    Port('caba:avalon_arbiter_master', 'p_arbiter_master'),
+	    Port('caba:avalon_arbiter_slave', 'p_arbiter_slave'),
+	    Port('caba:bit_out', 'sel_master'),
 	],
 	instance_parameters = [
 	    parameter.Int('routage'),
@@ -21,7 +21,7 @@ Module('caba:avalon_arbiter',
         parameter.Int('slave_index'),
 	],
 	uses = [
-		Uses('base_module'),
+		Uses('caba:base_module'),
         Uses('caba:avalonarbiter'),
 		],
 )

@@ -30,7 +30,7 @@ Module('caba:vci_fd_access',
 		parameter.IntTab('tgtid'),
 	],
 	   extensions = [
-	'dsx:addressable',
+	'dsx:addressable=tgtid',
 	'dsx:max_segments=1',
 	'dsx:get_ident=srcid:p_vci_target,tgtid:p_vci_initiator',
    ],
