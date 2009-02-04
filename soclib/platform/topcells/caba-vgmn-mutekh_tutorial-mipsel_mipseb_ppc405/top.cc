@@ -32,7 +32,11 @@
 #include "soclib_addresses.h"
 
 #define SEGTYPEMASK 0x00300000
-//#define CONFIG_GDB_START_FROZEN
+
+// You may set the SOCLIB_GDB environment variable to START_RUNNING or
+// START_FROZEN before starting the simulator instead of touching this
+// line.
+#define CONFIG_GDB_START_FROZEN
 
 int _main(int argc, char *argv[])
 {
@@ -163,14 +167,14 @@ int _main(int argc, char *argv[])
 	Processor::init(maptab, loader, "tty,timer,locks,icu");
 #endif
 
+#if defined(CONFIG_GDB_START_FROZEN)
+	Processor::start_frozen();
+#endif
+
 	soclib::caba::VciXcacheWrapper<vci_param, Processor> cache0("cache0", 0, maptab,IntTab(0),1, 8, 4, 1, 8, 4);
 	soclib::caba::VciXcacheWrapper<vci_param, Processor> cache1("cache1", 1, maptab,IntTab(1),1, 8, 4, 1, 8, 4);
 	soclib::caba::VciXcacheWrapper<vci_param, Processor> cache2("cache2", 2, maptab,IntTab(2),1, 8, 4, 1, 8, 4);
 	soclib::caba::VciXcacheWrapper<vci_param, Processor> cache3("cache3", 3, maptab,IntTab(3),1, 8, 4, 1, 8, 4);
-
-#if defined(CONFIG_GDB_START_FROZEN)
-	Processor::start_frozen();
-#endif
 
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
