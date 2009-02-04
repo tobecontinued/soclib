@@ -23,7 +23,7 @@ Module('caba:avalon_address_decoding_logic',
 Module('caba:avalon_mux',
        classname = 'soclib::caba::AvalonMux',
  		tmpl_parameters = [
-		parameter.Module('avalon_param',  default = 'avalon_param'),
+		parameter.Module('avalon_param',  default = 'caba:avalon_param'),
 		],
 	    header_files = ['../source/include/avalon_mux.h',],
      	implementation_files = ['../source/src/avalon_mux.cpp',],
