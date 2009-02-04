@@ -35,6 +35,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "string.h"
+
 #include "soclib_endian.h"
 #include "exception.h"
 #include "fb_controller.h"
