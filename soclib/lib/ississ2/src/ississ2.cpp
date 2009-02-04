@@ -211,7 +211,10 @@ tmpl(unsigned int)::debugGetRegisterCount() const
 
 tmpl(Iss2::debug_register_t)::debugGetRegisterValue(unsigned int reg) const
 {
-	return m_iss.getDebugRegisterValue(reg);
+    if ( reg == s_pc_register_no )
+        return m_iss.getDebugPC();
+    else
+        return m_iss.getDebugRegisterValue(reg);
 }
 
 tmpl(void)::debugSetRegisterValue(unsigned int reg, debug_register_t value)
@@ -224,10 +227,7 @@ tmpl(void)::debugSetRegisterValue(unsigned int reg, debug_register_t value)
 
 tmpl(size_t)::debugGetRegisterSize(unsigned int reg) const
 {
-    if ( reg == s_pc_register_no )
-        return m_iss.getDebugPC();
-    else
-        return m_iss.getDebugRegisterSize(reg);
+    return m_iss.getDebugRegisterSize(reg);
 }
 
 tmpl(bool)::debugExceptionBypassed( uint32_t cause )
