@@ -133,6 +133,8 @@ asm(
     **************************************************************/
     "interrupt_hw:					\n"
 
+    "	mfc0	$3,	$12				\n" /* read Status */
+    "	and	$1,	$1, $3				\n" /* mask status with interrupt mask */
     "	srl	$4,	$1,	10			\n"
     "	andi	$4,	$4,	0x3f			\n"
 
