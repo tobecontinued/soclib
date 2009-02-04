@@ -753,6 +753,9 @@ void GdbServer<CpuIss>::try_accept()
 template<typename CpuIss>
 bool GdbServer<CpuIss>::process_mem_access()
 {
+    if (!mem_req_)
+        return false;
+
     if (mem_error_)
         {
             write_packet("E0d");
@@ -762,9 +765,6 @@ bool GdbServer<CpuIss>::process_mem_access()
             mem_count_ = 0;
             return false;
         }
-
-    if (!mem_req_)
-        return false;
 
     switch (mem_type_)
         {
@@ -971,6 +971,16 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
                 }
         }
 
+    if (state_ == Frozen)
+        {
+            if ( pending_data_request_ && mem_type_ == CpuIss::DATA_READ )
+            {
+                mem_rsp_valid_ = drsp.valid;
+                mem_error_ = drsp.error;
+                mem_data_ = drsp.rdata;
+            }
+        }
+
     pending_ins_request_ &= !irsp.valid;
     pending_data_request_ &= !drsp.valid;
 
@@ -987,13 +997,6 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
 
     if (state_ == Frozen)
         {
-            if ( pending_data_request_ && mem_type_ == CpuIss::DATA_READ )
-            {
-                mem_rsp_valid_ = drsp.valid;
-                mem_error_ = drsp.error;
-                mem_data_ = drsp.rdata;
-            }
-
             if (id_ == current_id_)
                 {
                     // process memory access
