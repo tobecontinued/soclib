@@ -107,9 +107,13 @@ class Module:
 	def getModuleName(self):
 		return self.__typename
 
-	def fullyQualifiedModuleName(self, name):
+	def fullyQualifiedModuleName(self, name, owner=None):
 		if not ':' in name:
-			warnings.warn(PartialNameWarning(name), stacklevel = 2)
+			if owner and hasattr(owner, 'where'):
+				warnings.warn_explicit(PartialNameWarning(name),
+					UserWarning, owner.where[0], owner.where[1])
+			else:
+				warnings.warn(PartialNameWarning(name), stacklevel = 2)
 			mode = self.__typename.split(':',1)[0]
 			return mode + ':' + name
 		return name

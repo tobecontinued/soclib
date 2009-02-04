@@ -42,8 +42,9 @@ class Port:
 		self.__owner = None
 		self.__auto = auto
 		self.__args = args
+		self.where = traceback.extract_stack()[-2][0:2]
 	def setModule(self, module):
-		self.__type = module.fullyQualifiedModuleName(self.__type)
+		self.__type = module.fullyQualifiedModuleName(self.__type, self)
 		self.__module = module
 	def getUse(self, module):
 		from specialization import Specialization
