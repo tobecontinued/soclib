@@ -36,7 +36,7 @@
 // You may set the SOCLIB_GDB environment variable to START_RUNNING or
 // START_FROZEN before starting the simulator instead of touching this
 // line.
-#define CONFIG_GDB_START_FROZEN
+//#define CONFIG_GDB_START_FROZEN
 
 int _main(int argc, char *argv[])
 {
