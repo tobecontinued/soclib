@@ -513,7 +513,7 @@ namespace dpp {
     unsigned int dicho(const X a) const
     {
       unsigned int min_idx = 0;
-      unsigned int max_idx = _set.size() + 1;
+      unsigned int max_idx = _set.size();
 
       assert(!_set.empty());
 

@@ -101,6 +101,7 @@ public:
             CpuIss::setWriteBerr();
     }
 
+    __attribute__((deprecated)) // Use SOCLIB_GDB=START_FROZEN environment variable instead
     static inline void start_frozen(bool frozen = true)
     {
         init_state_ = frozen ? MemWait : Running;
@@ -111,8 +112,6 @@ public:
 private:
 
     uint32_t debug_reg_swap(uint32_t);
-
-    static void signal_handler(int sig);
 
     static void global_init();
     static int write_packet(const char *data);
@@ -164,6 +163,7 @@ private:
 
     // CtrlC pressed
     static bool ctrl_c_;
+    static bool debug_;
 
     enum State
         {

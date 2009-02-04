@@ -33,10 +33,8 @@
 
 #define SEGTYPEMASK 0x00300000
 
-// You may set the SOCLIB_GDB environment variable to START_RUNNING or
-// START_FROZEN before starting the simulator instead of touching this
-// line.
-//#define CONFIG_GDB_START_FROZEN
+// You may set the SOCLIB_GDB environment variable to
+// START_FROZEN before starting the simulator.
 
 int _main(int argc, char *argv[])
 {
@@ -165,10 +163,6 @@ int _main(int argc, char *argv[])
 
 #if defined(CONFIG_SOCLIB_MEMCHECK)
 	Processor::init(maptab, loader, "tty,timer,locks,icu");
-#endif
-
-#if defined(CONFIG_GDB_START_FROZEN)
-	Processor::start_frozen();
 #endif
 
 	soclib::caba::VciXcacheWrapper<vci_param, Processor> cache0("cache0", 0, maptab,IntTab(0),1, 8, 4, 1, 8, 4);

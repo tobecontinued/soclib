@@ -33,14 +33,11 @@
 #include <poll.h>
 
 #include <stdint.h>
-#include <signal.h>
 
 #include "gdbserver.h"
 #include "exception.h"
 
 #include "soclib_endian.h"
-
-//#define GDBSERVER_DEBUG
 
 #ifndef MSG_DONTWAIT
 #define MSG_DONTWAIT 0
@@ -58,6 +55,7 @@ template<typename CpuIss> std::vector<GdbServer<CpuIss> *> GdbServer<CpuIss>::li
 template<typename CpuIss> unsigned int GdbServer<CpuIss>::current_id_ = 0;
 template<typename CpuIss> unsigned int GdbServer<CpuIss>::step_id_ = 0;
 template<typename CpuIss> bool GdbServer<CpuIss>::ctrl_c_ = false;
+template<typename CpuIss> bool GdbServer<CpuIss>::debug_ = false;
 template<typename CpuIss> std::map<uint32_t, bool> GdbServer<CpuIss>::break_exec_;
 template<typename CpuIss> typename GdbServer<CpuIss>::address_set_t GdbServer<CpuIss>::break_read_access_;
 template<typename CpuIss> typename GdbServer<CpuIss>::address_set_t GdbServer<CpuIss>::break_write_access_;
@@ -70,18 +68,6 @@ inline uint32_t GdbServer<CpuIss>::debug_reg_swap(uint32_t val)
     if ( CpuIss::s_endianness == CpuIss::ISS_LITTLE_ENDIAN )
         return soclib::endian::uint32_swap(val);
     return val;
-}
-
-template<typename CpuIss>
-void GdbServer<CpuIss>::signal_handler(int sig)
-{
-    if (asocket_ >= 0 && list_[0]->state_ == Running)
-        {
-            std::cerr << "All processors are now Frozen. Hit CTRL-C again to exit." << std::endl;
-            ctrl_c_ = true;
-        }
-    else
-        exit(0);
 }
 
 template<typename CpuIss>
@@ -108,8 +94,6 @@ void GdbServer<CpuIss>::global_init()
 
     if (listen(socket_, 1) < 0)
         throw soclib::exception::RunTimeError("GdbServer: Unable to listen()");
-
-    signal(SIGINT, signal_handler);
 }
 
 template<typename CpuIss>
@@ -196,9 +180,8 @@ int GdbServer<CpuIss>::write_packet(const char *data_)
 
     do
         {
-#ifdef GDBSERVER_DEBUG
-            fprintf(stderr, "[GDB] sending packet data '%s'\n", data);
-#endif
+            if (debug_)
+                fprintf(stderr, "[GDB] sending packet data '%s'\n", data);
 
             send(asocket_, "$", 1, MSG_DONTWAIT | MSG_NOSIGNAL);
             send(asocket_, data, len, MSG_DONTWAIT | MSG_NOSIGNAL);
@@ -256,26 +239,26 @@ char * GdbServer<CpuIss>::read_packet(char *buffer, size_t size)
  end:
 
     // malformed packet
-    if (!data || !end || data >= end)
+    if (!end || data >= end)
         {
-#ifdef GDBSERVER_DEBUG
-            fprintf(stderr, "[GDB] malformed packet %i bytes\n", res);
-#endif
+            if (debug_)
+                fprintf(stderr, "[GDB] malformed packet %i bytes\n", res);
+
             return 0;
         }
 
-#ifdef GDBSERVER_DEBUG
-    fprintf(stderr, "[GDB] packet with checksum %02x: %s\n", chksum, data);
-#endif
+    if (debug_)
+        fprintf(stderr, "[GDB] packet with checksum %02x: %s\n", chksum, data);
 
     // verify checksum
     end[3] = 0;
     if (chksum != strtoul(end + 1, 0, 16))
         {
             send(asocket_, "-", 1, MSG_DONTWAIT | MSG_NOSIGNAL);
-#ifdef GDBSERVER_DEBUG
-            fprintf(stderr, "[GDB] bad packet checksum\n");
-#endif
+
+            if (debug_)
+                fprintf(stderr, "[GDB] bad packet checksum\n");
+
             return 0;
         }
 
@@ -301,13 +284,13 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
 
     if (i >= 2 && !strcmp(tokens[0], "stepcpu"))
         {
-            unsigned int id = atoi(tokens[1]);
+            unsigned int id = atoi(tokens[1]) - 1;
 
             if (id > 0 && id <= list_.size())
                 {
-#ifdef GDBSERVER_DEBUG
-                    fprintf(stderr, "[GDB] single step forced on cpu %u\n", id - 1);
-#endif
+                    if (debug_)
+                        fprintf(stderr, "[GDB] single step forced on cpu %u\n", id - 1);
+
                     step_id_ = id;
                     write_packet("OK");
                     return;
@@ -327,7 +310,7 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                 }
             else
                 {
-                    unsigned int id = atoi(tokens[2]);
+                    unsigned int id = atoi(tokens[2]) - 1;
 
                     if (id > 0 && id <= list_.size())
                         {
@@ -336,6 +319,13 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                             return;
                         }
                 }
+        }
+
+    if (i >= 2 && !strcmp(tokens[0], "debug"))
+        {
+            debug_ = atoi(tokens[1]) != 0;
+            write_packet("OK");
+            return;
         }
 
     write_packet("");
@@ -431,9 +421,10 @@ void GdbServer<CpuIss>::process_gdb_packet()
                                 }
 
                             data[i] = 0;
-#ifdef GDBSERVER_DEBUG
-                            fprintf(stderr, "[GDB] monitor packet: '%s'\n", data);
-#endif
+
+                            if (debug_)
+                                fprintf(stderr, "[GDB] monitor packet: '%s'\n", data);
+
                             process_monitor_packet(data);
                             return;
                         }
@@ -621,10 +612,10 @@ void GdbServer<CpuIss>::process_gdb_packet()
                                         }
                                 }
 
-#ifdef GDBSERVER_DEBUG
-                            for (unsigned int i = 0; i < list_.size(); i++)
-                                fprintf(stderr, "[GDB] vCont thread %u : %c\n", i, "RsSWF"[(int)list_[i]->state_]);
-#endif
+                            if (debug_)
+                                for (unsigned int i = 0; i < list_.size(); i++)
+                                    fprintf(stderr, "[GDB] vCont thread %u : %c\n", i, "RsSWF"[(int)list_[i]->state_]);
+
                             return;
                         }
                         }
@@ -645,9 +636,9 @@ void GdbServer<CpuIss>::process_gdb_packet()
                             break;
                         }
 
-#ifdef GDBSERVER_DEBUG
-                    fprintf(stderr, "[GDB] thread %i selected\n", current_id_);
-#endif
+                    if (debug_)
+                        fprintf(stderr, "[GDB] thread %i selected\n", current_id_);
+
                     write_packet("OK");
 
                     return;
@@ -964,10 +955,24 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
         {
             static unsigned int counter = 0;
 
-            if (!(counter++ % 256))
+            if (!(counter++ % 10000))
                 {
                     if (asocket_ < 0)
                         try_accept();
+                    else if (state_ == Running)
+                        {
+                            struct pollfd pf;
+                            char buffer[1];
+
+                            pf.fd = asocket_;
+                            pf.events = POLLIN | POLLPRI;
+
+                            // try to read CTRL-C code
+                            if (poll(&pf, 1, 0) == 1 &&
+                                read(asocket_, buffer, 1) == 1 &&
+                                buffer[0] == 3)
+                                ctrl_c_ = true;
+                        }
                 }
         }
 
