@@ -29,6 +29,7 @@
 #include "../include/vci_fd_access.h"
 #include <fcntl.h>
 #include <errno.h>
+#include <cstring>
 #define SYSTEMC_SOURCE
 #include "fd_access.h"
 #undef SYSTEMC_SOURCE
@@ -195,6 +196,11 @@ tmpl(void)::open_finish( req_t *req )
 	} else {
         int how = soclib_modes_to_os(m_how);
 		m_retval = ::open( (char *)m_data, how, m_whence );
+        std::cout << name() << " tried to open " << (char*)m_data << ", ";
+        if ( (int)m_retval < 0 )
+            std::cout << "failed, errno=" << std::dec << errno << std::endl;
+        else
+            std::cout << "ok, fd=" << std::dec << (int)m_retval << std::endl;
 		m_errno = errno;
 	}
     delete m_data;
@@ -212,6 +218,7 @@ tmpl(void)::next_req()
     {
         if ( m_chunck_offset == 0 ) {
             m_data = new uint8_t[m_size+1];
+            std::memset(m_data, 0, m_size+1);
         }
         size_t chunck_size = m_size-m_chunck_offset;
         if ( chunck_size > CHUNCK_SIZE )
@@ -233,6 +240,7 @@ tmpl(void)::next_req()
     {
         if ( m_chunck_offset == 0 ) {
             m_data = new uint8_t[m_size];
+            std::memset(m_data, 0, m_size);
             m_retval = ::read(m_fd, m_data, m_size);
             m_errno = errno;
             if ( m_retval <= 0 ) {
@@ -256,6 +264,7 @@ tmpl(void)::next_req()
     {
         if ( m_chunck_offset == 0 ) {
             m_data = new uint8_t[m_size];
+            std::memset(m_data, 0, m_size);
         }
         size_t chunck_size = m_size-m_chunck_offset;
         if ( chunck_size > CHUNCK_SIZE )
