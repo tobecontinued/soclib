@@ -17,6 +17,7 @@
    <http://www.gnu.org/licenses/>.
 
    (c) 2008 Alexandre Becoulet <alexandre.becoulet@free.fr>
+   * Maintainers: becoulet nipo
 
 */
 
@@ -27,6 +28,7 @@
 #include <vector>
 #include <stdexcept>
 #include <limits>
+#include <ios>
 
 namespace dpp {
 
@@ -302,6 +304,15 @@ namespace dpp {
     }
 
   };
+
+  /** Print values interval to stream */
+  template <typename X, class Bound>
+  std::ostream & operator<<(std::ostream &o, const interval<X, Bound> &i)
+  {
+    o << (i.low_inclusive() ? "[" : "(") << i.low_bound()
+      << ", " << i.high_bound() << (i.high_inclusive() ? "]" : ")");
+    return o;
+  }
 
 //////////////////////////////////////////////////////////////////////
 //	interval class
@@ -707,6 +718,15 @@ namespace dpp {
 
     set_container _set;
   };
+
+  /** Print interval set to stream */
+  template <typename X, class Bound, class Limits>
+  std::ostream & operator<<(std::ostream &o, const interval_set<X, Bound, Limits> &is)
+  {
+    for (typename interval_set<X, Bound, Limits>::const_iterator i = is.begin(); i != is.end(); i++)
+      o << *i;
+    return o;
+  }
 
 }
 
