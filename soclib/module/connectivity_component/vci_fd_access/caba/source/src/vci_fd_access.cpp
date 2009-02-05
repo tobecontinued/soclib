@@ -161,6 +161,8 @@ tmpl(void)::read_done( req_t *req )
 	}
     delete [] m_data;
 	delete req;
+    m_data = NULL;
+    req = NULL;
 	ended();
 }
 
@@ -180,6 +182,8 @@ tmpl(void)::write_finish( req_t *req )
 	}
     delete [] m_data;
 	delete req;
+    m_data = NULL;
+    req = NULL;
 	ended();
 }
 
@@ -195,6 +199,7 @@ tmpl(void)::open_finish( req_t *req )
 		m_errno = EINVAL;
 	} else {
         int how = soclib_modes_to_os(m_how);
+        m_data[m_size] = 0;
 		m_retval = ::open( (char *)m_data, how, m_whence );
         std::cout << name() << " tried to open " << (char*)m_data << ", ";
         if ( (int)m_retval < 0 )
@@ -205,6 +210,8 @@ tmpl(void)::open_finish( req_t *req )
 	}
     delete [] m_data;
 	delete req;
+    m_data = NULL;
+    req = NULL;
 	ended();
 }
 
@@ -245,6 +252,7 @@ tmpl(void)::next_req()
             m_errno = errno;
             if ( m_retval <= 0 ) {
                 delete [] m_data;
+                m_data = NULL;
                 ended();
                 break;
             }
@@ -269,9 +277,9 @@ tmpl(void)::next_req()
         size_t chunck_size = m_size-m_chunck_offset;
         if ( chunck_size > CHUNCK_SIZE )
             chunck_size = CHUNCK_SIZE;
-        VciInitSimpleReadReq<vci_param> *req =
-            new VciInitSimpleReadReq<vci_param>(
-                m_data+m_chunck_offset, m_buffer+m_chunck_offset, chunck_size );
+        VciInitSimpleWriteReq<vci_param> *req =
+            new VciInitSimpleWriteReq<vci_param>(
+                m_buffer+m_chunck_offset, m_data+m_chunck_offset, chunck_size );
         m_chunck_offset += CHUNCK_SIZE;
         req->setDone( this, ON_T(write_finish) );
         m_vci_init_fsm.doReq( req );
@@ -292,12 +300,15 @@ tmpl(void)::transition()
 		m_vci_init_fsm.reset();
 		r_irq = false;
 		m_irq_enabled = false;
+		m_op = FD_ACCESS_NOOP;
 		m_current_op = FD_ACCESS_NOOP;
+        m_chunck_offset = 0;
 		return;
 	}
 
 	if ( m_current_op == FD_ACCESS_NOOP &&
 		 m_op != FD_ACCESS_NOOP ) {
+        m_chunck_offset = 0;
 		m_current_op = m_op;
         m_op = FD_ACCESS_NOOP;
         next_req();
