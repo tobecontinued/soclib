@@ -119,6 +119,7 @@ class RegionInfo
 {
 public:
     enum State {
+        REGION_INVALID,
         REGION_STATE_GLOBAL,
         REGION_STATE_GLOBAL_READ_ONLY,
         REGION_STATE_ALLOCATED,
@@ -174,14 +175,19 @@ public:
 
     error_level_t do_write() const
     {
-        if ( m_state == REGION_STATE_FREE || m_state == REGION_STATE_GLOBAL_READ_ONLY )
+        if ( m_state == REGION_STATE_FREE
+             || m_state == REGION_STATE_GLOBAL_READ_ONLY
+             || m_state == REGION_INVALID
+            )
             return ERROR_INVALID_REGION;
         return ERROR_NONE;
     }
 
     error_level_t do_read() const
     {
-        if ( m_state == REGION_STATE_FREE )
+        if ( m_state == REGION_STATE_FREE
+             || m_state == REGION_INVALID
+            )
             return ERROR_INVALID_REGION;
         return ERROR_NONE;
     }
@@ -189,6 +195,7 @@ public:
     static const char *state_str(State state)
     {
         switch (state) {
+        case REGION_INVALID: return "invalid";
         case REGION_STATE_GLOBAL: return "global";
         case REGION_STATE_GLOBAL_READ_ONLY: return "global read only";
         case REGION_STATE_ALLOCATED: return "allocated";
@@ -339,7 +346,7 @@ public:
         : m_binary(loader),
           m_contexts(),
           m_regions(),
-          m_default_address(),
+          m_default_address(new RegionInfo(RegionInfo::REGION_INVALID, 0, 0, 0), true),
           unknown_context(new ContextState((uint32_t)-1, 0, 0 )) //(uint32_t)-1 ))
     {
         const std::list<Segment> &segments = mt.getAllSegmentList();
@@ -439,15 +446,16 @@ public:
 //             --i;
 
         if ( i == m_regions.end() ) {
-            std::cout
-                << "Address " << std::hex << address << " in no region." << std::endl
-                << "Regions: " << std::endl;
-            for ( region_map_t::iterator i = m_regions.begin();
-                  i != m_regions.end();
-                  ++i )
-                std::cout << " " << i->first << " size: " << i->second->size() << " words" << std::endl;
+//             std::cout
+//                 << "Address " << std::hex << address << " in no region." << std::endl
+//                 << "Regions: " << std::endl;
+//             for ( region_map_t::iterator i = m_regions.begin();
+//                   i != m_regions.end();
+//                   ++i )
+//                 std::cout << " " << i->first << " size: " << i->second->size() << " words" << std::endl;
             
-            abort();
+            //abort();
+            return &m_default_address;
         }
         uint32_t region_base = i->first;
         uint32_t word_no = (address-region_base)/4;

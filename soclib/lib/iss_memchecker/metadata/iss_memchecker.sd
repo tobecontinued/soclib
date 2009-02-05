@@ -20,6 +20,7 @@ Module('common:iss_memchecker',
 	   extensions = [
 	'dsx:cpu=wrapper:iss_memchecker_t',
 	'dsx:set_config=CONFIG_SOCLIB_MEMCHECK',
-#	'dsx:config_lines=%(class)s::init(%(env:binary)%, %(env:maptab)s)',
+	'dsx:static_config_lines=%(class)s::init(%(env:mapping_table)s,%(env:loader)s,"%(meta:all_peripherals)s")',
    ],
+#	   debug = True,
 )
