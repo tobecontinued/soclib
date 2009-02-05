@@ -97,6 +97,14 @@ class Specialization:
 	def getUses(self):
 		return self.__cdef.getUses(self.__args)
 
+	def getAllUses(self):
+		r = set(self.__cdef.getUses(self.__args))
+		for i in self.__cdef['tmpl_parameters']:
+			if isinstance(i, parameter.Module):
+				r.add(module.Module.getRegistered(i.argval(self.__args)).getUse())
+				r |= module.Module.getRegistered(i.argval(self.__args)).getUses(self.__args)
+		return r
+
 	def getParamBuilders(self):
 		r = set()
 		for i in self.__cdef['tmpl_parameters']:
