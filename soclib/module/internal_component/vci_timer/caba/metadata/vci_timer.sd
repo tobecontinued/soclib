@@ -29,5 +29,6 @@ Module('caba:vci_timer',
 	'dsx:addressable=ident',
 	'dsx:get_ident=ident:p_vci',
 	'dsx:max_segments=1',
+	'dsx:device=timer',
    ],
 )
