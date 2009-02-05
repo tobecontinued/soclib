@@ -328,6 +328,35 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
             return;
         }
 
+    if (i >= 3 && !strcmp(tokens[0], "watch"))
+        {
+            const char *flags = tokens[1];
+            uint32_t addr = strtoul(tokens[2], 0, 0);
+            size_t size = i >= 4 ? strtoul(tokens[3], 0, 0) : 0;
+
+            // default size is cpu register width
+            size = size ? size : CpuIss::debugGetRegisterSize(0) / 8;
+            address_set_t ival(addr, addr + size - 1);
+
+            if (strchr(flags, '-'))
+                {
+                    if (strchr(flags, 'r'))
+                        break_read_access_ &= ~ival;
+                    if (strchr(flags, 'w'))
+                        break_write_access_ &= ~ival;
+                }
+            else
+                {
+                    if (strchr(flags, 'r'))
+                        break_read_access_ |= ival;
+                    if (strchr(flags, 'w'))
+                        break_write_access_ |= ival;
+                }
+
+            write_packet("OK");
+            return;
+        }
+
     write_packet("");
 }
 
