@@ -159,7 +159,7 @@ tmpl(void)::read_done( req_t *req )
 		m_retval = -1;
 		m_errno = EINVAL;
 	}
-    delete m_data;
+    delete [] m_data;
 	delete req;
 	ended();
 }
@@ -178,7 +178,7 @@ tmpl(void)::write_finish( req_t *req )
 		m_retval = ::write( m_fd, (char *)m_data, m_size );
 		m_errno = errno;
 	}
-    delete m_data;
+    delete [] m_data;
 	delete req;
 	ended();
 }
@@ -203,7 +203,7 @@ tmpl(void)::open_finish( req_t *req )
             std::cout << "ok, fd=" << std::dec << (int)m_retval << std::endl;
 		m_errno = errno;
 	}
-    delete m_data;
+    delete [] m_data;
 	delete req;
 	ended();
 }
