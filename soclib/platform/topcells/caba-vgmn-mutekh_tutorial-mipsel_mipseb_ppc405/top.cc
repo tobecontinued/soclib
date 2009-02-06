@@ -15,8 +15,9 @@
 
 #if defined(CONFIG_SOCLIB_MEMCHECK)
 # include "iss_memchecker.h"
-# undef CONFIG_GDB_SERVER
-#else
+#endif
+
+#if defined(CONFIG_GDB_SERVER)
 # include "gdbserver.h"
 #endif
 
@@ -64,8 +65,13 @@ int _main(int argc, char *argv[])
 #endif
 
 #if defined(CONFIG_GDB_SERVER)
-# warning Using GDB
+# if defined(CONFIG_SOCLIB_MEMCHECK)
+#  warning Using GDB and memchecker
+	typedef soclib::common::GdbServer<soclib::common::IssMemchecker<ProcessorIss> > Processor;
+# else
+#  warning Using GDB
 	typedef soclib::common::GdbServer<ProcessorIss> Processor;
+# endif
 #elif defined(CONFIG_SOCLIB_MEMCHECK)
 # warning Using Memchecker
 	typedef soclib::common::IssMemchecker<ProcessorIss> Processor;

@@ -22,6 +22,7 @@ else:
 
 todo = Platform('caba', 'top.cc',
                 uses=[
+		Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+cpu, **add),
 		Uses('caba:vci_xcache_wrapper', iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+cpu, **add),
 		Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:'+cpu, **add),
 		Uses('caba:vci_xcache_wrapper', iss_t = 'common:'+cpu, **add),
