@@ -51,6 +51,8 @@ enum {
     ERROR_FP_OUTOFBOUNDS = 8,
     ERROR_DATA_ACCESS_BELOW_SP = 16,
     ERROR_CREATING_STACK_NOT_ALLOC = 32,
+    ERROR_BAD_REGION_REALLOCATION = 64,
+    ERROR_INVALID_MAGIC_DISABLE = 128,
 };
 
 class ContextState
@@ -92,9 +94,16 @@ public:
 
     bool overlaps( ContextState &other ) const
     {
-        if ( other.m_stack_upper <= m_stack_lower )
+        return overlaps(
+            other.m_stack_lower,
+            other.m_stack_upper );
+    }
+
+    bool overlaps( uint32_t base, uint32_t end ) const
+    {
+        if ( end <= m_stack_lower )
             return false;
-        if ( m_stack_upper <= other.m_stack_lower )
+        if ( m_stack_upper <= base )
             return false;
         return true;
     }
@@ -119,38 +128,87 @@ class RegionInfo
 {
 public:
     enum State {
-        REGION_INVALID,
-        REGION_STATE_GLOBAL,
-        REGION_STATE_GLOBAL_READ_ONLY,
-        REGION_STATE_ALLOCATED,
-        REGION_STATE_FREE,
-        REGION_STATE_PERIPHERAL,
+        REGION_INVALID = 1,
+        REGION_STATE_GLOBAL = 2,
+        REGION_STATE_GLOBAL_READ_ONLY = 4,
+        REGION_STATE_ALLOCATED = 8,
+        REGION_STATE_FREE = 16,
+        REGION_STATE_STACK = 32,
+        REGION_STATE_WAS_STACK = 64,
+        REGION_STATE_PERIPHERAL = 128,
+        REGION_STATE_RAW = 256,
     };
 
 private:
     enum State m_state;
-    uint32_t m_created_at;
-    uint32_t m_updated_at;
+    uint32_t m_at;
     uint32_t m_refcount;
     uint32_t m_base_addr;
     uint32_t m_end_addr;
+    RegionInfo *m_previous_state;
 
 public:
     RegionInfo *get_updated_region( enum State state, uint32_t at, uint32_t base_addr, uint32_t end_addr )
     {
-        RegionInfo *n = new RegionInfo( state, m_created_at, base_addr, end_addr );
-        n->m_updated_at = at;
+        RegionInfo *n = new RegionInfo( state, at, base_addr, end_addr, this );
         return n;
     }
 
-    RegionInfo( enum State state, uint32_t at, uint32_t base_addr, uint32_t end_addr )
+    RegionInfo( enum State state, uint32_t at, uint32_t base_addr, uint32_t end_addr, RegionInfo *previous_state = 0 )
         : m_state(state),
-          m_created_at(at),
-          m_updated_at(0),
+          m_at(at),
           m_refcount(0),
           m_base_addr(base_addr),
-          m_end_addr(end_addr)
+          m_end_addr(end_addr),
+          m_previous_state(previous_state)
     {
+        if ( m_previous_state )
+            m_previous_state->ref();
+    }
+
+    bool new_state_valid( enum State new_state )
+    {
+        int valid_new_states = 0;
+        switch(m_state) {
+        case REGION_INVALID:
+            valid_new_states = 0;
+            break;
+        case REGION_STATE_GLOBAL:
+            valid_new_states =
+                REGION_STATE_FREE |
+                REGION_STATE_STACK;
+            break;
+        case REGION_STATE_GLOBAL_READ_ONLY:
+            valid_new_states = 0;
+            break;
+        case REGION_STATE_ALLOCATED:
+            valid_new_states =
+                REGION_STATE_FREE |
+                REGION_STATE_STACK;
+            break;
+        case REGION_STATE_FREE:
+            valid_new_states =
+                REGION_STATE_FREE |
+                REGION_STATE_ALLOCATED;
+            break;
+        case REGION_STATE_PERIPHERAL:
+            valid_new_states = 0;
+            break;
+        case REGION_STATE_STACK:
+            valid_new_states =
+                REGION_STATE_WAS_STACK;
+            break;
+        case REGION_STATE_WAS_STACK:
+            valid_new_states =
+                REGION_STATE_FREE |
+                REGION_STATE_STACK;
+            break;
+        case REGION_STATE_RAW:
+            valid_new_states =
+                REGION_STATE_FREE;
+            break;
+        }
+        return valid_new_states & new_state;
     }
 
     bool contains( uint32_t addr ) const
@@ -175,18 +233,17 @@ public:
 
     error_level_t do_write() const
     {
-        if ( m_state == REGION_STATE_FREE
-             || m_state == REGION_STATE_GLOBAL_READ_ONLY
-             || m_state == REGION_INVALID
-            )
+        if ( m_state == REGION_STATE_GLOBAL_READ_ONLY )
             return ERROR_INVALID_REGION;
-        return ERROR_NONE;
+        return do_read();
     }
 
     error_level_t do_read() const
     {
-        if ( m_state == REGION_STATE_FREE
-             || m_state == REGION_INVALID
+        if ( m_state & 
+             ( REGION_STATE_FREE
+               | REGION_INVALID
+               | REGION_STATE_WAS_STACK )
             )
             return ERROR_INVALID_REGION;
         return ERROR_NONE;
@@ -201,6 +258,9 @@ public:
         case REGION_STATE_ALLOCATED: return "allocated";
         case REGION_STATE_FREE: return "free";
         case REGION_STATE_PERIPHERAL: return "peripheral";
+        case REGION_STATE_STACK: return "in stack";
+        case REGION_STATE_WAS_STACK: return "no more in stack";
+        case REGION_STATE_RAW: return "raw";
         default: return "unknown";
         }
     }
@@ -208,13 +268,13 @@ public:
     void print( std::ostream &o ) const
     {
         o << "<RegionInfo" << std::hex
-          << " created at "  << m_created_at
-          << " updated at "  << m_updated_at
+          << " at "  << m_at
           << " @"  << m_base_addr
           << "->"  << m_end_addr
-          << ", "  << state_str(m_state)
-          << ", ref=" << m_refcount
-          << ">";
+          << ", "  << state_str(m_state);
+        if ( m_previous_state )
+            o << " previous: " << *m_previous_state;
+        o << ">";
     }
 
     friend std::ostream &operator << (std::ostream &o, const RegionInfo &ri)
@@ -251,17 +311,22 @@ public:
         return (RegionInfo*)((uintptr_t)m_info & s_addr_mask);
     }
 
-    void region_set( RegionInfo *ptr )
+    int region_set( RegionInfo *ptr )
     {
+        int r = 0;
         assert(ptr);
         ptr->ref();
 
 //        std::cout << "Replacing " << *this << " with " << *ptr << std::endl;
-        if ( region() )
+        if ( region() ) {
+            if ( ! region()->new_state_valid(ptr->state()) )
+                r |= ERROR_BAD_REGION_REALLOCATION;
             region()->unref();
+        }
         m_info = (RegionInfo*)(
             (uintptr_t)ptr & s_addr_mask |
             (uintptr_t)m_info & ~s_addr_mask);
+        return r;
     }
 
     AddressInfo & operator=( const AddressInfo &ref )
@@ -360,7 +425,7 @@ public:
               ++i ) {
 
             RegionInfo *ri = new RegionInfo(
-                RegionInfo::REGION_STATE_FREE, 0,
+                RegionInfo::REGION_STATE_RAW, 0,
                 i->baseAddress(), i->baseAddress() + i->size() );
             std::vector<AddressInfo> *rm = new std::vector<AddressInfo>( i->size() / 4 );
 
@@ -464,17 +529,31 @@ public:
         return &r[word_no];
     }
 
-    void region_update_state( RegionInfo::State new_state, uint32_t at, uint32_t addr, uint32_t size )
+    int region_update_state( RegionInfo::State new_state, uint32_t at, uint32_t addr, uint32_t size )
     {
-//         std::cout
-//             << " Updating region state " << std::hex << std::showbase
-//             << addr << "->" << addr+size
-//             << " to " << RegionInfo::state_str(new_state) << std::endl;
+        int r = 0;
         RegionInfo *lri = info_for_address(addr)->region();
         RegionInfo *nri = lri->get_updated_region( new_state, at, addr, addr+size );
-        for ( uint32_t a = addr; a < addr+size; a+=4 ) {
-            info_for_address(a)->region_set(nri);
+
+        for ( context_map_t::const_iterator i = m_contexts.begin();
+              i != m_contexts.end();
+              ++i ) {
+            if ( i->second->overlaps( addr, addr+size ) ) {
+                std::cout
+                    << " region " << *nri
+                    << " overlaps " << *(i->second)
+                    << std::endl;
+                r |= ERROR_INVALID_REGION;
+            }
         }
+
+        for ( uint32_t a = addr; a < addr+size; a+=4 )
+            r |= info_for_address(a)->region_set(nri);
+        if ( r )
+            std::cout
+                << " Error updating region state " << *lri
+                << " to " << RegionInfo::state_str(new_state) << std::endl;
+        return r;
     }
 
     void region_new_state( RegionInfo::State new_state, uint32_t at, uint32_t addr, uint32_t size )
@@ -527,9 +606,16 @@ void IssMemchecker<iss_t>::init( const soclib::common::MappingTable &mt,
 template<typename iss_t>
 IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
     : iss_t(name, ident),
+      m_has_data_answer(false),
       m_enabled_checks(0),
-      m_last_sp(0)
+      m_r1(0),
+      m_r2(0),
+      m_last_sp(0),
+      m_magic_state(MAGIC_NONE)
 {
+    struct iss_t::DataRequest init = ISS_DREQ_INITIALIZER;
+    m_last_data_access = init;
+
     if ( !s_memory_state ) {
         std::cerr
             << std::endl
@@ -587,7 +673,8 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
             }
             break;
         default:
-            assert(value == 0 && "When in magic mode, only valid value is 0");
+            if ( value != 0 )
+                report_error(ERROR_INVALID_MAGIC_DISABLE);
             m_magic_state = MAGIC_NONE;
             break;
         }
@@ -647,10 +734,12 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         default:
             assert(!"Invalid region state");
         }
-        s_memory_state->region_update_state(
+        int error = 0;
+        error |= s_memory_state->region_update_state(
             state,
             get_cpu_pc(),
             m_r1, m_r2 );
+        report_error(error);
         break;
     }
 	case ISS_MEMCHECKER_ENABLE_CHECKS:
@@ -764,6 +853,10 @@ void IssMemchecker<iss_t>::report_error(uint32_t errors)
         std::cout << " access to invalid region: " << *(ai->region()) << std::endl;
     if ( errors & ERROR_CREATING_STACK_NOT_ALLOC )
         std::cout << " creating stack in non-allocated memory" << std::endl;
+    if ( errors & ERROR_BAD_REGION_REALLOCATION )
+        std::cout << " bad reallocation of region" << std::endl;
+    if ( errors & ERROR_INVALID_MAGIC_DISABLE )
+        std::cout << " bad disabling of magic" << std::endl;
     if ( errors & ERROR_SP_OUTOFBOUNDS ) {
         std::cout << " stack pointer out of bounds: ";
         uint32_t sp = get_cpu_sp();
@@ -804,6 +897,17 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     uint32_t ncycle, struct iss_t::InstructionResponse irsp,
     struct iss_t::DataResponse drsp, uint32_t irq_bit_field )
 {
+    struct iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
+    struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
+    iss_t::getRequests(ireq, dreq);
+
+    if ( dreq.valid ) {
+        if ( (dreq.addr & ~(uint32_t)0xff) == s_comm_address ) {
+            handle_comm( dreq );
+            dreq.valid = false;
+        }
+    }
+
     if ( m_has_data_answer ) {
         assert( !drsp.valid && "Cache speaking while i'm answering ISS" );
         drsp.valid = true;
@@ -812,9 +916,6 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
         m_has_data_answer = false;
     } else {
         if ( drsp.valid ) {
-            struct iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
-            struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
-            iss_t::getRequests(ireq, dreq);
             check_data_access( dreq );
         }
     }

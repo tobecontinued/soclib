@@ -84,11 +84,9 @@ public:
         struct iss_t::InstructionRequest &ireq,
         struct iss_t::DataRequest &dreq) const
     {
-        IssMemchecker<iss_t> *_this = const_cast<IssMemchecker<iss_t> *>(this);
         iss_t::getRequests(ireq, dreq);
         if ( dreq.valid ) {
             if ( (dreq.addr & ~(uint32_t)0xff) == s_comm_address ) {
-                _this->handle_comm( dreq );
                 dreq.valid = false;
             }
         }
