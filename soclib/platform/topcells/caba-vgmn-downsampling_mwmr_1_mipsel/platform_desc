@@ -1,0 +1,26 @@
+
+# -*- python -*-
+
+
+todo = Platform('caba', 'top.cpp',
+				uses = [
+	Uses('iss_wrapper', iss_t = 'common:mipsel'),
+	Uses('vci_locks'),
+	Uses('vci_ram'),
+	Uses('vci_multi_tty'),
+	Uses('vci_mwmr_controller'),
+	Uses('vci_vgmn'),
+	Uses('vci_xcache'),
+	Uses('Downsampling', fifo_depth = 64),
+	],
+	cell_size = 4,
+	plen_size = 8,
+	addr_size = 32,
+	rerror_size = 1,
+	clen_size = 1,
+	rflag_size = 1,
+	srcid_size = 8,
+	pktid_size = 1,
+	trdid_size = 1,
+	wrplen_size = 1
+)
