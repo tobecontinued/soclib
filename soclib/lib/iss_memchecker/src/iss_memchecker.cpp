@@ -53,11 +53,15 @@ enum {
     ERROR_CREATING_STACK_NOT_ALLOC = 32,
     ERROR_BAD_REGION_REALLOCATION = 64,
     ERROR_INVALID_MAGIC_DISABLE = 128,
+    ERROR_CONTEXT_ON_TWO_CPUS = 256,
 };
 
 class ContextState
 {
-    uint32_t m_id;
+    const uint32_t m_id;
+    uint32_t m_running_on;
+    static const uint32_t s_not_running = (uint32_t)-1;
+    uint32_t m_refcount;
 
 public:
     const uint32_t m_stack_lower;
@@ -65,6 +69,8 @@ public:
 
     ContextState( uint32_t id, uint32_t stack_low, uint32_t stack_up )
         : m_id(id),
+          m_running_on(s_not_running),
+          m_refcount(0),
           m_stack_lower(stack_low),
           m_stack_upper(stack_up)
     {
@@ -90,6 +96,20 @@ public:
     inline uint32_t id() const
     {
         return m_id;
+    }
+
+    inline uint32_t schedule( uint32_t cpu )
+    {
+        uint32_t r = 0;
+        if ( m_running_on != s_not_running )
+            r |= ERROR_CONTEXT_ON_TWO_CPUS;
+        m_running_on = cpu;
+        return r;
+    }
+
+    inline void unschedule()
+    {
+        m_running_on = s_not_running;
     }
 
     bool overlaps( ContextState &other ) const
@@ -121,6 +141,18 @@ public:
     {
         cs.print(o);
         return o;
+    }
+
+    void ref()
+    {
+        ++m_refcount;
+    }
+    void unref()
+    {
+        if ( --m_refcount == 0 ) {
+            std::cout << *this << " has not more refs, del" << std::endl;
+            delete this;
+        }
     }
 };
 
@@ -205,6 +237,7 @@ public:
             break;
         case REGION_STATE_RAW:
             valid_new_states =
+                REGION_STATE_PERIPHERAL |
                 REGION_STATE_FREE;
             break;
         }
@@ -252,29 +285,29 @@ public:
     static const char *state_str(State state)
     {
         switch (state) {
-        case REGION_INVALID: return "invalid";
-        case REGION_STATE_GLOBAL: return "global";
-        case REGION_STATE_GLOBAL_READ_ONLY: return "global read only";
-        case REGION_STATE_ALLOCATED: return "allocated";
-        case REGION_STATE_FREE: return "free";
-        case REGION_STATE_PERIPHERAL: return "peripheral";
-        case REGION_STATE_STACK: return "in stack";
-        case REGION_STATE_WAS_STACK: return "no more in stack";
-        case REGION_STATE_RAW: return "raw";
-        default: return "unknown";
+        case REGION_INVALID: return "inval";
+        case REGION_STATE_GLOBAL: return "globl";
+        case REGION_STATE_GLOBAL_READ_ONLY: return "gblRO";
+        case REGION_STATE_ALLOCATED: return "alloc";
+        case REGION_STATE_FREE: return "free ";
+        case REGION_STATE_PERIPHERAL: return "peri.";
+        case REGION_STATE_STACK: return "stack";
+        case REGION_STATE_WAS_STACK: return "!stak";
+        case REGION_STATE_RAW: return "raw  ";
+        default: return "uknwn";
         }
     }
 
     void print( std::ostream &o ) const
     {
-        o << "<RegionInfo" << std::hex
-          << " at "  << m_at
-          << " @"  << m_base_addr
-          << "->"  << m_end_addr
+        o << "[" << std::hex
+//          << "at "  << m_at
+          << "@"  << m_base_addr
+          << "-"  << m_end_addr
           << ", "  << state_str(m_state);
         if ( m_previous_state )
-            o << " previous: " << *m_previous_state;
-        o << ">";
+            o << " was: " << *m_previous_state;
+        o << "]";
     }
 
     friend std::ostream &operator << (std::ostream &o, const RegionInfo &ri)
@@ -414,6 +447,8 @@ public:
           m_default_address(new RegionInfo(RegionInfo::REGION_INVALID, 0, 0, 0), true),
           unknown_context(new ContextState((uint32_t)-1, 0, 0 )) //(uint32_t)-1 ))
     {
+        unknown_context->ref();
+
         const std::list<Segment> &segments = mt.getAllSegmentList();
         ElfLoader::section_list_t sections = loader.sections();
 
@@ -482,15 +517,22 @@ public:
 
     void context_create( uint32_t id, ContextState *context )
     {
+//        std::cout << "Creating " << *context << std::endl;
+
         context_map_t::const_iterator i = m_contexts.find(id);
         assert(i == m_contexts.end()
                && "Creating two contexts with the same id...");
         for ( context_map_t::const_iterator i = m_contexts.begin();
               i != m_contexts.end();
               ++i ) {
-            assert( !context->overlaps( *i->second ) );
+//            std::cout << "Checking " << *context << " and " << *i->second << std::endl;
+            if ( context->overlaps( *i->second ) ) {
+                std::cout << "Context " << *context << " overlaps " << *i->second << std::endl;
+                abort();
+            }
         }
         m_contexts[id] = context;
+        context->ref();
     }
 
     void context_delete( uint32_t id )
@@ -535,12 +577,14 @@ public:
         RegionInfo *lri = info_for_address(addr)->region();
         RegionInfo *nri = lri->get_updated_region( new_state, at, addr, addr+size );
 
+//        std::cout << "Updating " << *nri << std::endl;
+
         for ( context_map_t::const_iterator i = m_contexts.begin();
               i != m_contexts.end();
               ++i ) {
             if ( i->second->overlaps( addr, addr+size ) ) {
                 std::cout
-                    << " region " << *nri
+                    << "Region " << *nri
                     << " overlaps " << *(i->second)
                     << std::endl;
                 r |= ERROR_INVALID_REGION;
@@ -551,7 +595,7 @@ public:
             r |= info_for_address(a)->region_set(nri);
         if ( r )
             std::cout
-                << " Error updating region state " << *lri
+                << "Error updating region state " << *lri
                 << " to " << RegionInfo::state_str(new_state) << std::endl;
         return r;
     }
@@ -607,6 +651,7 @@ template<typename iss_t>
 IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
     : iss_t(name, ident),
       m_has_data_answer(false),
+      m_cpuid(ident),
       m_enabled_checks(0),
       m_r1(0),
       m_r2(0),
@@ -626,6 +671,9 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
         abort();
     }
     m_current_context = s_memory_state->unknown_context;
+    m_last_context = s_memory_state->unknown_context;
+    m_current_context->ref();
+    m_last_context->ref();
 }
 
 template<typename iss_t>
@@ -709,17 +757,19 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
             value, ref->m_stack_lower, ref->m_stack_upper );
         s_memory_state->context_delete(m_r1);
         s_memory_state->context_create( value, n );
-        if ( m_current_context->is( m_r1 ) )
-            m_current_context = n;
+        if ( m_current_context->is( m_r1 ) ) {
+            update_context(n);
+        }
         break;
     }
 	case ISS_MEMCHECKER_CONTEXT_ID_DELETE:
-        if ( m_current_context->is( value ) )
-            m_current_context = s_memory_state->unknown_context;
+        if ( m_current_context->is( value ) ) {
+            update_context(s_memory_state->unknown_context);
+        }
         s_memory_state->context_delete(value);
         break;
 	case ISS_MEMCHECKER_CONTEXT_CURRENT:
-        m_current_context = s_memory_state->context_get( value );
+        update_context(s_memory_state->context_get( value ));
         break;
 	case ISS_MEMCHECKER_MEMORY_REGION_UPDATE:
     {
@@ -752,6 +802,18 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         assert(!"Unknown register");
         break;
     }
+}
+
+template<typename iss_t>
+void IssMemchecker<iss_t>::update_context( ContextState *state )
+{
+    m_last_context->unref();
+    m_last_context = m_current_context;
+
+    m_current_context->unschedule();
+    m_current_context = state;
+    m_current_context->schedule(m_cpuid);
+    m_current_context->ref();
 }
 
 template<typename iss_t>
@@ -855,6 +917,8 @@ void IssMemchecker<iss_t>::report_error(uint32_t errors)
         std::cout << " creating stack in non-allocated memory" << std::endl;
     if ( errors & ERROR_BAD_REGION_REALLOCATION )
         std::cout << " bad reallocation of region" << std::endl;
+    if ( errors & ERROR_CONTEXT_ON_TWO_CPUS )
+        std::cout << " context running on two cpus" << std::endl;
     if ( errors & ERROR_INVALID_MAGIC_DISABLE )
         std::cout << " bad disabling of magic" << std::endl;
     if ( errors & ERROR_SP_OUTOFBOUNDS ) {
@@ -889,6 +953,7 @@ void IssMemchecker<iss_t>::report_error(uint32_t errors)
 
         
 
+        << std::endl
         << std::endl;
 }
 
@@ -901,11 +966,11 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     iss_t::getRequests(ireq, dreq);
 
-    if ( dreq.valid ) {
-        if ( (dreq.addr & ~(uint32_t)0xff) == s_comm_address ) {
+    if ( dreq.valid &&
+         ( (dreq.addr & ~(uint32_t)0xff) == s_comm_address ) ) {
+        if ( ! ireq.valid || irsp.valid )
             handle_comm( dreq );
-            dreq.valid = false;
-        }
+        dreq.valid = false;
     }
 
     if ( m_has_data_answer ) {
@@ -919,6 +984,10 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
             check_data_access( dreq );
         }
     }
+
+//     std::cout << iss_t::m_name << ", " << ireq << irsp
+//               << std::endl
+//               << "        " << dreq << drsp << ' ' << ncycle << std::endl;
 
     uint32_t nc = iss_t::executeNCycles( ncycle, irsp, drsp, irq_bit_field );
 

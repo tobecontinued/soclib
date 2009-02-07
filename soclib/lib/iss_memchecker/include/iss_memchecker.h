@@ -59,7 +59,9 @@ class IssMemchecker
     static __iss_memchecker::MemoryState *s_memory_state;
     static uint32_t s_comm_address;
     __iss_memchecker::ContextState *m_current_context;
+    __iss_memchecker::ContextState *m_last_context;
     bool m_has_data_answer;
+    const uint32_t m_cpuid;
     uint32_t m_data_answer_value;
     struct iss_t::DataRequest m_last_data_access;
     uint32_t m_enabled_checks;
@@ -97,6 +99,8 @@ public:
                       const std::string &exclusions = "" );
 
 private:
+
+    void update_context(__iss_memchecker::ContextState *nc);
 
     void register_set( uint32_t reg_no, uint32_t value );
     uint32_t register_get( uint32_t reg_no ) const;
