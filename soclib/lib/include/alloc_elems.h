@@ -47,11 +47,37 @@ elem_t *alloc_elems(const std::string &prefix, size_t n)
 }
 
 template<typename elem_t>
+elem_t **alloc_elems(const std::string &prefix, size_t m, size_t n)
+{
+    elem_t **elem = (elem_t**)malloc(sizeof(elem_t*)*m);
+    for ( size_t i=0; i<m; ++i ) {
+        elem[i] = (elem_t*)malloc(sizeof(elem_t)*n);
+        for ( size_t j=0; j<n; ++j ) {
+            std::ostringstream o;
+            o << prefix << "[" << i << "]" << "[" << j << "]";
+            new(&elem[i][j]) elem_t(o.str().c_str());
+        }
+    }
+    return elem;
+}
+
+template<typename elem_t>
 void dealloc_elems(elem_t *elems, size_t n)
 {
 	for ( size_t i = 0; i<n; ++i )
 		elems[i].~elem_t();
 	free(elems);
+}
+
+template<typename elem_t>
+void dealloc_elems(elem_t *elems, size_t m, size_t n)
+{
+    for ( size_t i = 0; i<m; ++i ) {
+        for ( size_t j = 0; j<n; ++j )
+            elems[i][j].~elem_t();
+        free(elems[i]);
+    }
+    free(elems);
 }
 
 }}
