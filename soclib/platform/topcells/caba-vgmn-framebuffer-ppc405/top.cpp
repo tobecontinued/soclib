@@ -31,8 +31,7 @@
 
 #include "mapping_table.h"
 #include "ppc405.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -49,7 +48,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,9,32,1,1,1,8,1,1,1> vci_param;
 
 	// Mapping table
 
@@ -73,8 +72,6 @@ int _main(int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
    
-	soclib::caba::ICacheSignals signal_ppc405_icache0("signal_ppc405_icache0");
-	soclib::caba::DCacheSignals signal_ppc405_dcache0("signal_ppc405_dcache0");
 	sc_signal<bool> signal_ppc4050_it0("signal_ppc4050_it0"); 
 	sc_signal<bool> signal_ppc4050_it1("signal_ppc4050_it1"); 
 
@@ -90,9 +87,7 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
-
-	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc4050("ppc4050", 0);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Ppc405Iss> cache0("cache0", 0, maptab,IntTab(0),1,8,4,1,8,4);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -105,27 +100,20 @@ int _main(int argc, char *argv[])
 
 	//	Net-List
  
-	ppc4050.p_clk(signal_clk);  
 	cache0.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
 	vcifb.p_clk(signal_clk);
 	vcitimer.p_clk(signal_clk);
   
-	ppc4050.p_resetn(signal_resetn);  
 	cache0.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
 	vcifb.p_resetn(signal_resetn);
 	vcitimer.p_resetn(signal_resetn);
   
-	ppc4050.p_irq[0](signal_ppc4050_it0); 
-	ppc4050.p_irq[1](signal_ppc4050_it1); 
-	ppc4050.p_icache(signal_ppc405_icache0);
-	ppc4050.p_dcache(signal_ppc405_dcache0);
-        
-	cache0.p_icache(signal_ppc405_icache0);
-	cache0.p_dcache(signal_ppc405_dcache0);
+	cache0.p_irq[0](signal_ppc4050_it0); 
+	cache0.p_irq[1](signal_ppc4050_it1); 
 	cache0.p_vci(signal_vci_m0);
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
@@ -154,29 +142,14 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[4](signal_vci_vcifb);
 
 
-	int ncycles;
 #ifndef SOCVIEW
-	if (argc == 2) {
-		ncycles = std::atoi(argv[1]);
-	} else {
-		std::cerr
-			<< std::endl
-			<< "The number of simulation cycles must "
-			   "be defined in the command line"
-			<< std::endl;
-		exit(1);
-	}
-
 	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
 
 	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 
-	for (int i = 0; i < ncycles ; i+=10000) {
-		sc_start(sc_core::sc_time(10000, SC_NS));
-		std::cout << "Time elapsed: "<<i<<" cycles." << std::endl;
-	}
+	sc_start();
 	return EXIT_SUCCESS;
 #else
 	ncycles = 1;

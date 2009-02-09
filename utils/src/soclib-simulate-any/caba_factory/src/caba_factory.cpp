@@ -28,7 +28,6 @@
 
 #include "iss_wrapper.h"
 #include "mips.h"
-#include "ppc405.h"
 #include "microblaze.h"
 #include "nios2_fast.h"
 #include "caba_base_module.h"
@@ -134,7 +133,6 @@ using soclib::caba::ModuleHolder;
 Factory mipsel_factory("mipsel", &inst_caba_cpu<soclib::common::MipsElIss, true>);
 Factory mipseb_factory("mipseb", &inst_caba_cpu<soclib::common::MipsEbIss, true>);
 Factory nios2_factory("nios2", &inst_caba_cpu<soclib::common::Nios2fIss, false>);
-Factory ppc405_factory("ppc405", &inst_caba_cpu<soclib::common::Ppc405Iss, true>);
 Factory microblaze_factory("microblaze", &inst_caba_cpu<soclib::common::MicroBlazeIss, false>);
 Factory fifo_reader_factory("fifo_reader", &inst_fifo_rw<FifoReader<uint32_t> >);
 Factory fifo_writer_factory("fifo_writer", &inst_fifo_rw<FifoWriter<uint32_t> >);

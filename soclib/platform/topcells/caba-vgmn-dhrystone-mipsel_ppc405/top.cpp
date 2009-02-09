@@ -30,10 +30,9 @@
 #include <cstdlib>
 
 #include "mapping_table.h"
-#include "mips.h"
+#include "mips32.h"
 #include "ppc405.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_simhelper.h"
@@ -54,7 +53,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,9,32,1,1,1,8,1,1,1> vci_param;
 
 	::setenv("SOCLIB_TTY", "TERM", 1);
 	soclib::common::ElfLoader loader("soft/bin.soft");
@@ -101,8 +100,6 @@ int _main(int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
    
-	soclib::caba::ICacheSignals signal_mips_icache0("signal_mips_icache0");
-	soclib::caba::DCacheSignals signal_mips_dcache0("signal_mips_dcache0");
 	sc_signal<bool> signal_cpu0_it0("signal_cpu0_it0"); 
 	sc_signal<bool> signal_cpu0_it1("signal_cpu0_it1"); 
 	sc_signal<bool> signal_cpu0_it2("signal_cpu0_it2"); 
@@ -121,10 +118,9 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),512,8,512,8);
 
-	soclib::caba::IssWrapper<soclib::common::MipsElIss> *mips0;
-	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> *ppc0;
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Mips32ElIss> *mips0;
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Ppc405Iss> *ppc0;
 
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
@@ -135,17 +131,15 @@ int _main(int argc, char *argv[])
 
 	//	Net-List
  
-	cache0.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
 
-	cache0.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
 
 	switch ( arch ) {
 	case MIPSEL:
-		mips0 = new soclib::caba::IssWrapper<soclib::common::MipsElIss>("mips0", 0);
+		mips0 = new soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Mips32ElIss>("mips0", 0, maptab,IntTab(0),1, 512,8,1, 512,8);
 		mips0->p_clk(signal_clk);  
 		mips0->p_resetn(signal_resetn);  
 		mips0->p_irq[0](signal_cpu0_it0); 
@@ -154,23 +148,17 @@ int _main(int argc, char *argv[])
 		mips0->p_irq[3](signal_cpu0_it3); 
 		mips0->p_irq[4](signal_cpu0_it4); 
 		mips0->p_irq[5](signal_cpu0_it5); 
-		mips0->p_icache(signal_mips_icache0);
-		mips0->p_dcache(signal_mips_dcache0);
+		mips0->p_vci(signal_vci_m0);
 		break;
 	case POWERPC:
-		ppc0 = new soclib::caba::IssWrapper<soclib::common::Ppc405Iss>("ppc0", 0);
+		ppc0 = new soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Ppc405Iss>("ppc0", 0, maptab,IntTab(0),1, 512,8,1, 512,8);
 		ppc0->p_clk(signal_clk);  
 		ppc0->p_resetn(signal_resetn);  
 		ppc0->p_irq[0](signal_cpu0_it0); 
 		ppc0->p_irq[1](signal_cpu0_it1); 
-		ppc0->p_icache(signal_mips_icache0);
-		ppc0->p_dcache(signal_mips_dcache0);
+		ppc0->p_vci(signal_vci_m0);
 		break;
 	}
-
-	cache0.p_icache(signal_mips_icache0);
-	cache0.p_dcache(signal_mips_dcache0);
-	cache0.p_vci(signal_vci_m0);
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
 	vcimultiram1.p_vci(signal_vci_vcimultiram1);

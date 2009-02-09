@@ -54,9 +54,6 @@ all: test
 
 test: $(RESULT)
 
-$(RESULT): $(patsubst %,%/$(RESULT),$(ARCH)) FORCE
-	cat $(filter %/$(RESULT),$^) > $@
-
 clean:
 	rm -rf $(ARCH) $(RESULT)
 
@@ -68,8 +65,19 @@ $(1)/%: $(1) FORCE
 $(1):
 	mkdir -p $(1)
 
-FORCE:
-
 endef
 
+FORCE:
+
+ifeq ($(ARCH),)
+
+$(RESULT):
+	@true
+
+else
+
+$(RESULT): $(patsubst %,%/$(RESULT),$(ARCH)) FORCE
+	cat $(filter %/$(RESULT),$^) > $@
+
 $(foreach bla,$(ARCH),$(eval $(call onetest,$(bla))))
+endif

@@ -4,16 +4,15 @@
 
 todo = Platform('caba', 'top.cpp',
 				uses = [
-	Uses('caba:iss_wrapper', iss_t = 'common:ppc405'),
 	Uses('caba:vci_framebuffer'),
 	Uses('caba:vci_ram'),
 	Uses('caba:vci_multi_tty'),
 	Uses('caba:vci_timer'),
 	Uses('caba:vci_vgmn'),
-	Uses('caba:vci_xcache'),
+	Uses('caba:vci_xcache_wrapper', iss_t = 'common:ppc405'),
 	],
 	cell_size = 4,
-	plen_size = 1,
+	plen_size = 9,
 	addr_size = 32,
 	rerror_size = 1,
 	clen_size = 1,

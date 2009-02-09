@@ -31,8 +31,7 @@
 
 #include "mapping_table.h"
 #include "ppc405.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -41,10 +40,9 @@
 //#define USE_GDB_SERVER
 
 #ifdef USE_GDB_SERVER
-# warning Beware GDB Server now uses ISS v2 API
 # include "gdbserver.h"
 #else
-# include "iss_simhelper.h"
+# include "iss2_simhelper.h"
 #endif
 
 #include "segmentation.h"
@@ -57,7 +55,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,9,32,1,1,1,8,1,1,1> vci_param;
 
 	// Mapping table
 
@@ -77,23 +75,15 @@ int _main(int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
    
-	soclib::caba::ICacheSignals signal_ppc405_icache0("signal_ppc405_icache0");
-	soclib::caba::DCacheSignals signal_ppc405_dcache0("signal_ppc405_dcache0");
 	sc_signal<bool> signal_ppc4050_it0("signal_ppc4050_it0"); 
 	sc_signal<bool> signal_ppc4050_it1("signal_ppc4050_it1"); 
   
-	soclib::caba::ICacheSignals 	signal_ppc405_icache1("signal_ppc405_icache1");
-	soclib::caba::DCacheSignals 	signal_ppc405_dcache1("signal_ppc405_dcache1");
 	sc_signal<bool> signal_ppc4051_it0("signal_ppc4051_it0"); 
 	sc_signal<bool> signal_ppc4051_it1("signal_ppc4051_it1"); 
   
-	soclib::caba::ICacheSignals 	signal_ppc405_icache2("signal_ppc405_icache2");
-	soclib::caba::DCacheSignals 	signal_ppc405_dcache2("signal_ppc405_dcache2");
 	sc_signal<bool> signal_ppc4052_it0("signal_ppc4052_it0"); 
 	sc_signal<bool> signal_ppc4052_it1("signal_ppc4052_it1"); 
   
-	soclib::caba::ICacheSignals signal_ppc405_icache3("signal_ppc405_icache3");
-	soclib::caba::DCacheSignals signal_ppc405_dcache3("signal_ppc405_dcache3");
 	sc_signal<bool> signal_ppc4053_it0("signal_ppc4053_it0"); 
 	sc_signal<bool> signal_ppc4053_it1("signal_ppc4053_it1"); 
 
@@ -114,25 +104,16 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
-	soclib::caba::VciXCache<vci_param> cache1("cache1", maptab,IntTab(1),8,4,8,4);
-	soclib::caba::VciXCache<vci_param> cache2("cache2", maptab,IntTab(2),8,4,8,4);
-	soclib::caba::VciXCache<vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
-
 #ifdef USE_GDB_SERVER
-	// uncomment this line if you want processors frozen at boot
-	// soclib::common::GdbServer<soclib::common::Ppc405Iss>::start_frozen();
-
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> > ppc4050("ppc4050", 0);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> > ppc4051("ppc4051", 1);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> > ppc4052("ppc4052", 2);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::Ppc405Iss> > ppc4053("ppc4053", 3);
+	typedef soclib::common::GdbServer<soclib::common::Ppc405Iss> iss_t;
 #else
-	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::Ppc405Iss> > ppc4050("ppc4050", 0);
-	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::Ppc405Iss> > ppc4051("ppc4051", 1);
-	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::Ppc405Iss> > ppc4052("ppc4052", 2);
-	soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::Ppc405Iss> > ppc4053("ppc4053", 3);
+	typedef soclib::common::Iss2Simhelper<soclib::common::Ppc405Iss> iss_t;
 #endif
+
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t> cache0("cache0", 0, maptab,IntTab(0),1,8,4,1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t> cache1("cache1", 1, maptab,IntTab(1),1,8,4,1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t> cache2("cache2", 2, maptab,IntTab(2),1,8,4,1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t> cache3("cache3", 3, maptab,IntTab(3),1,8,4,1,8,4);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -144,10 +125,6 @@ int _main(int argc, char *argv[])
 
 	//	Net-List
  
-	ppc4050.p_clk(signal_clk);  
-	ppc4051.p_clk(signal_clk);  
-	ppc4052.p_clk(signal_clk);  
-	ppc4053.p_clk(signal_clk);  
 	cache0.p_clk(signal_clk);
 	cache1.p_clk(signal_clk);
 	cache2.p_clk(signal_clk);
@@ -156,10 +133,6 @@ int _main(int argc, char *argv[])
 	vcimultiram1.p_clk(signal_clk);
 	vcitimer.p_clk(signal_clk);
   
-	ppc4050.p_resetn(signal_resetn);  
-	ppc4051.p_resetn(signal_resetn);  
-	ppc4052.p_resetn(signal_resetn);  
-	ppc4053.p_resetn(signal_resetn);  
 	cache0.p_resetn(signal_resetn);
 	cache1.p_resetn(signal_resetn);
 	cache2.p_resetn(signal_resetn);
@@ -168,40 +141,21 @@ int _main(int argc, char *argv[])
 	vcimultiram1.p_resetn(signal_resetn);
 	vcitimer.p_resetn(signal_resetn);
   
-	ppc4050.p_irq[0](signal_ppc4050_it0); 
-	ppc4050.p_irq[1](signal_ppc4050_it1); 
-	ppc4050.p_icache(signal_ppc405_icache0);
-	ppc4050.p_dcache(signal_ppc405_dcache0);
+	cache0.p_irq[0](signal_ppc4050_it0); 
+	cache0.p_irq[1](signal_ppc4050_it1); 
   
-	ppc4051.p_irq[0](signal_ppc4051_it0); 
-	ppc4051.p_irq[1](signal_ppc4051_it1); 
-	ppc4051.p_icache(signal_ppc405_icache1);
-	ppc4051.p_dcache(signal_ppc405_dcache1);
-  
-	ppc4052.p_irq[0](signal_ppc4052_it0); 
-	ppc4052.p_irq[1](signal_ppc4052_it1); 
-	ppc4052.p_icache(signal_ppc405_icache2);
-	ppc4052.p_dcache(signal_ppc405_dcache2);
-  
-	ppc4053.p_irq[0](signal_ppc4053_it0); 
-	ppc4053.p_irq[1](signal_ppc4053_it1); 
-	ppc4053.p_icache(signal_ppc405_icache3);
-	ppc4053.p_dcache(signal_ppc405_dcache3);
-        
-	cache0.p_icache(signal_ppc405_icache0);
-	cache0.p_dcache(signal_ppc405_dcache0);
+	cache1.p_irq[0](signal_ppc4051_it0); 
+	cache1.p_irq[1](signal_ppc4051_it1); 
+
+	cache2.p_irq[0](signal_ppc4052_it0); 
+	cache2.p_irq[1](signal_ppc4052_it1); 
+
+	cache3.p_irq[0](signal_ppc4053_it0); 
+	cache3.p_irq[1](signal_ppc4053_it1); 
+
 	cache0.p_vci(signal_vci_m0);
-
-	cache1.p_icache(signal_ppc405_icache1);
-	cache1.p_dcache(signal_ppc405_dcache1);
 	cache1.p_vci(signal_vci_m1);
-
-	cache2.p_icache(signal_ppc405_icache2);
-	cache2.p_dcache(signal_ppc405_dcache2);
 	cache2.p_vci(signal_vci_m2);
-
-	cache3.p_icache(signal_ppc405_icache3);
-	cache3.p_dcache(signal_ppc405_dcache3);
 	cache3.p_vci(signal_vci_m3);
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);

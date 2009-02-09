@@ -10,7 +10,7 @@ Module('common:ppc405',
 		"../src/iss/ppc405_jump_tables.cpp",
 		],
 	   uses = [
-	Uses('common:iss'),
+	Uses('common:iss2'),
 	Uses('common:base_module'),
 	],
 	  extensions = [

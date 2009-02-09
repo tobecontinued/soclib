@@ -44,13 +44,6 @@ static inline uint32_t align( uint32_t data, int shift, int width )
 	return ret & mask;
 }
 
-static inline std::string mkname(uint32_t no)
-{
-	char tmp[32];
-	snprintf(tmp, 32, "ppc405_iss%d", (int)no);
-	return std::string(tmp);
-}
-
 static inline std::string crTrad( uint32_t cr )
 {
     const char *orig = "<>=o";
@@ -65,21 +58,23 @@ static inline std::string crTrad( uint32_t cr )
 
 }
 
-Ppc405Iss::Ppc405Iss(uint32_t ident)
-	: Iss(mkname(ident), ident)
+Ppc405Iss::Ppc405Iss(const std::string &name, uint32_t ident)
+	: Iss2(name, ident)
 {
     reset();
 }
 
 void Ppc405Iss::reset()
 {
+    struct DataRequest init_dreq = ISS_DREQ_INITIALIZER;
+
+    m_dreq = init_dreq;
     m_exec_cycles = 0;
     m_ins_delay = 0;
     r_pc = RESET_ADDR;
     r_dbe = false;
     m_ibe = false;
     m_dbe = false;
-    r_mem_req = false;
     r_evpr = 0xdead0000;
     r_tb = 0;
     r_esr = 0;
@@ -101,7 +96,6 @@ void Ppc405Iss::dump() const
         << " .ce " << r_msr.ce
         << " .ee " << r_msr.ee
         << " .pr " << r_msr.pr
-        << " irq: " << m_irq
         << std::endl;
     for ( size_t i=0; i<32; ++i ) {
         std::cout << " " << std::dec << i << ": " << std::hex << std::showbase << r_gp[i];
@@ -114,8 +108,29 @@ void Ppc405Iss::dump() const
     std::cout << std::endl;
 }
 
-void Ppc405Iss::step()
+uint32_t Ppc405Iss::executeNCycles(
+    uint32_t ncycle,
+    const struct Iss2::InstructionResponse &irsp,
+    const struct Iss2::DataResponse &drsp,
+    uint32_t irq_bit_field )
 {
+    if ( drsp.valid )
+        setDataResponse(drsp);
+
+    if ( !irsp.valid || ( m_dreq.valid && ! drsp.valid ) ) {
+        if ( m_ins_delay ) {
+            if ( m_ins_delay > ncycle )
+                m_ins_delay -= ncycle;
+            else
+                m_ins_delay = 0;
+        }
+        r_tb += ncycle;
+        return ncycle;
+    }
+
+    m_ibe = irsp.error;
+    m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
+
     r_tb++;
 
     m_next_pc = r_pc+4;
@@ -123,8 +138,8 @@ void Ppc405Iss::step()
     m_exception = EXCEPT_NONE;
 
     // IRQs
-    r_dcr[DCR_EXTERNAL] = !!(m_irq&(1<<IRQ_EXTERNAL));
-    r_dcr[DCR_CRITICAL] = !!(m_irq&(1<<IRQ_CRITICAL_INPUT));
+    r_dcr[DCR_EXTERNAL] = !!(irq_bit_field&(1<<IRQ_EXTERNAL));
+    r_dcr[DCR_CRITICAL] = !!(irq_bit_field&(1<<IRQ_CRITICAL_INPUT));
 
     if (m_ibe) {
         m_exception = EXCEPT_INSTRUCTION_STORAGE;
@@ -144,7 +159,7 @@ void Ppc405Iss::step()
         m_exception = EXCEPT_DATA_STORAGE;
         r_dbe = false;
         r_esr = ESR_DST;
-        r_dear = r_mem_addr;
+        r_dear = m_dreq.addr;
         goto handle_except;
     }
 
@@ -183,7 +198,7 @@ void Ppc405Iss::step()
         case (EXCEPT_FI_TIMER):
             break;
         default:
-            if (exceptionBypassed( m_exception ))
+            if (debugExceptionBypassed( m_exception ))
                 goto stick;
         }
 
@@ -228,41 +243,53 @@ void Ppc405Iss::step()
   no_except:
     r_pc = m_next_pc;
   stick:
-    ;
+    return 1;
 }
 
-void Ppc405Iss::setDataResponse(bool error, uint32_t rdata)
+void Ppc405Iss::setDataResponse(const struct DataResponse &drsp)
 {
-    r_mem_req = false;
-    m_dbe = error;
+    if ( ! m_dreq.valid )
+        return;
 
-    uint32_t data = rdata;
+    m_dreq.valid = false;
+    m_dbe = drsp.error;
+    int nb = 0;
+
+    switch ( m_dreq.be ) {
+    case 1:
+    case 2:
+    case 4:
+    case 8:
+        nb = 1;
+        break;
+    case 3:
+    case 0xc:
+        nb = 2;
+        break;
+    case 0xf:
+        nb = 4;
+        break;
+    }
+
+    uint32_t data = drsp.rdata;
+
+    data >>= 8 * (m_dreq.addr % 4);
+
     // Swap if PPC does _not_ want reversed data (BE)
-    if ( ! r_mem_reversed )
+    if ( ! r_mem_reversed ) {
         data = soclib::endian::uint32_swap(data);
+        data >>= 8 * (4 - nb);
+    }
 
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << m_name << std::hex
-              << " mem access ret " << dataAccessTypeName(r_mem_type)
-              << " @: " << r_mem_addr
-              << " ->r" << r_mem_dest
-              << " rdata: " << data
-              << (r_mem_reversed ? " reversed" : "")
-              << " error: " << error
-              << std::endl;
-#endif
-
-    if ( error ) {
+    if ( drsp.error ) {
         return;
     }
 
-    switch (r_mem_type ) {
-    case WRITE_BYTE:
-    case WRITE_WORD:
-    case WRITE_HALF:
-    case LINE_INVAL:
+    switch ( m_dreq.type ) {
+    case DATA_WRITE:
+    case XTN_WRITE:
         break;
-    case STORE_COND:
+    case DATA_SC:
     {
         int cr = 0;
         if ( data == 0 ) cr |= CMP_EQ;
@@ -270,24 +297,38 @@ void Ppc405Iss::setDataResponse(bool error, uint32_t rdata)
         crSet( 0, cr );
         break;
     }
-    case READ_WORD:
-    case READ_LINKED:
-        r_gp[r_mem_dest] = data;
-        break;
-    case READ_BYTE:
-        r_gp[r_mem_dest] = r_mem_unsigned ?
-            (data & 0xff) :
-            sign_ext8(data);
-        break;
-    case READ_HALF:
-        r_gp[r_mem_dest] = r_mem_unsigned ?
-            (data & 0xffff) :
-            sign_ext16(data);
-        break;
+    case DATA_READ:
+    case XTN_READ:
+    case DATA_LL:
+        switch ( nb ) {
+        case 4:
+            r_gp[r_mem_dest] = data;
+            break;
+        case 2:
+            r_gp[r_mem_dest] = r_mem_unsigned ?
+                (data & 0xffff) :
+                sign_ext16(data);
+            break;
+        case 1:
+            r_gp[r_mem_dest] = r_mem_unsigned ?
+                (data & 0xff) :
+                sign_ext8(data);
+            break;
+        }
     }
+
+#if SOCLIB_MODULE_DEBUG
+    std::cout
+        << m_name << ": "
+        << __FUNCTION__ << ": " << m_dreq
+        << "->" << r_mem_dest << " Rev:" << r_mem_reversed << " U:" << r_mem_unsigned
+        << " " << drsp << " gp[" << r_mem_dest << "]: " << r_gp[r_mem_dest]
+        << std::endl;
+#endif
+
 }
 
-uint32_t Ppc405Iss::getDebugRegisterValue(unsigned int reg) const
+uint32_t Ppc405Iss::debugGetRegisterValue(unsigned int reg) const
 {
     switch (reg)
         {
@@ -316,7 +357,7 @@ uint32_t Ppc405Iss::getDebugRegisterValue(unsigned int reg) const
         }
 }
 
-size_t Ppc405Iss::getDebugRegisterSize(unsigned int reg) const
+size_t Ppc405Iss::debugGetRegisterSize(unsigned int reg) const
 {
     switch (reg)
         {
@@ -327,7 +368,7 @@ size_t Ppc405Iss::getDebugRegisterSize(unsigned int reg) const
         }
 }
 
-void Ppc405Iss::setDebugRegisterValue(unsigned int reg, uint32_t value)
+void Ppc405Iss::debugSetRegisterValue(unsigned int reg, uint32_t value)
 {
     switch (reg)
         {

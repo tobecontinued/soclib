@@ -31,8 +31,7 @@
 
 #include "mapping_table.h"
 #include "ppc405.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 #include "vci_simhelper.h"
 #include "vci_dma.h"
 #include "vci_ram.h"
@@ -76,8 +75,6 @@ int _main(int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
    
-	soclib::caba::ICacheSignals signal_ppc_icache0("signal_ppc_icache0");
-	soclib::caba::DCacheSignals signal_ppc_dcache0("signal_ppc_dcache0");
 	sc_signal<bool> signal_ppc0_it0("signal_ppc0_it0"); 
 	sc_signal<bool> signal_ppc0_it1("signal_ppc0_it1"); 
 
@@ -96,9 +93,7 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(1),8,4,8,4);
-
-	soclib::caba::IssWrapper<soclib::common::Ppc405Iss> ppc0("ppc0", 0);
+	soclib::caba::VciXcacheWrapper<vci_param,soclib::common::Ppc405Iss> cache0("cache0", 0, maptab,IntTab(1),1,8,4,1,8,4);
 
 	soclib::common::ElfLoader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(5), maptab, loader);
@@ -113,7 +108,6 @@ int _main(int argc, char *argv[])
 
 	//	Net-List
  
-	ppc0.p_clk(signal_clk);  
 	cache0.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
@@ -121,7 +115,6 @@ int _main(int argc, char *argv[])
 	simhelper.p_clk(signal_clk);
 	vcidma.p_clk(signal_clk);
   
-	ppc0.p_resetn(signal_resetn);  
 	cache0.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
@@ -129,13 +122,9 @@ int _main(int argc, char *argv[])
 	simhelper.p_resetn(signal_resetn);
 	vcidma.p_resetn(signal_resetn);
   
-	ppc0.p_irq[0](signal_ppc0_it0);
-	ppc0.p_irq[1](signal_ppc0_it1); 
-	ppc0.p_icache(signal_ppc_icache0);
-	ppc0.p_dcache(signal_ppc_dcache0);
+	cache0.p_irq[0](signal_ppc0_it0);
+	cache0.p_irq[1](signal_ppc0_it1); 
         
-	cache0.p_icache(signal_ppc_icache0);
-	cache0.p_dcache(signal_ppc_dcache0);
 	cache0.p_vci(signal_vci_m0);
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);

@@ -452,7 +452,7 @@ ModuleHolder& xcache_ppc405(
     ::soclib::common::inst::InstArg &args,
     ::soclib::common::inst::InstArg &env )
 {
-	typedef soclib::common::IssIss2< ::soclib::common::Ppc405Iss> iss_t;
+	typedef ::soclib::common::Ppc405Iss iss_t;
 	if ( args.has("with_gdb") && args.get<int>("with_gdb")  )
 		return xcache_cpu<vci_param, soclib::common::GdbServer<iss_t> >
 			(name, args, env);
