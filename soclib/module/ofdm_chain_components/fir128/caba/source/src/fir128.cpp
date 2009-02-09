@@ -32,13 +32,13 @@
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<typename vci_param> x Fir128<vci_param>
+#define tmpl(x) template<typename vci_param, int fifo_depth> x Fir128<vci_param, fifo_depth>
 
 tmpl(void)::transition()
 {
 	if ( p_resetn.read() == false ) {
 			m_state = FIFO_FIR_READ;
-			m_cycles_left = 64;
+			m_cycles_left = fifo_depth;
 			m_ptr = 0;
 			return;
 	}
@@ -50,8 +50,8 @@ tmpl(void)::transition()
 			break;
 		case FIFO_FIR_READ:
 			if ( p_from_ctrl.rok.read() ) {
-				word_t buffer = le_to_machine((word_t)p_from_ctrl.data);
-				((word_t*)&m_input_buffer[0])[m_ptr++] = buffer;
+				uint32_t buffer = le_to_machine((uint32_t)p_from_ctrl.data);
+				((uint32_t*)&m_input_buffer[0])[m_ptr++] = buffer;
 				--m_cycles_left;
 			}
 		default:
@@ -62,12 +62,12 @@ tmpl(void)::transition()
 		switch (m_state) {
 		case FIFO_FIR_WAIT:
 			m_state = FIFO_FIR_WRITE;
-			m_cycles_left = sizeof(m_output_buffer)/sizeof(word_t);
+			m_cycles_left = sizeof(m_output_buffer)/sizeof(uint32_t);
 			m_ptr = 0;
 			break;
 		case FIFO_FIR_WRITE:
 			m_state = FIFO_FIR_READ;
-			m_cycles_left = sizeof(m_input_buffer)/sizeof(word_t);
+			m_cycles_left = sizeof(m_input_buffer)/sizeof(uint32_t);
 			m_ptr = 0;
 			break;
 		case FIFO_FIR_READ:
@@ -85,7 +85,7 @@ tmpl(void)::transition()
 		switch (m_state) {
 		case FIFO_FIR_WRITE:
 			if ( p_to_ctrl.wok.read() ) {
-				m_recv_bufer = ((word_t*)&m_output_buffer[0])[m_ptr++];
+				m_recv_buffer = ((uint32_t*)&m_output_buffer[0])[m_ptr++];
 				--m_cycles_left;
 			}
 		default:
@@ -99,13 +99,13 @@ tmpl(void)::genMoore()
 	p_from_ctrl.r = (m_state == FIFO_FIR_READ);
 	p_to_ctrl.w = (m_state == FIFO_FIR_WRITE);
 	if (m_state == FIFO_FIR_WRITE)
-		p_to_ctrl.data = le_to_machine((word_t)m_recv_buffer);
+		p_to_ctrl.data = le_to_machine((uint32_t)m_recv_buffer);
 }
 
 tmpl(void)::do_fir128()
 {
-      double sum, delay[128];
-      double coef[128] = {0,     -8,      7,    -15,     12,    -19,     14,    -19,     10,
+      /*double*/int sum, delay[128];
+      /*double*/int coef[128] = {0,     -8,      7,    -15,     12,    -19,     14,    -19,     10,
       -12,     -2,      2,    -20,     20,    -40,     36,    -53,     40,
       -50,     26,    -27,    -10,     14,    -59,     63,   -106,     99,
      -131,    102,   -115,     59,    -50,    -30,     52,   -142,    160,
@@ -124,7 +124,7 @@ tmpl(void)::do_fir128()
       for(int i=0; i < 128; i++){
          delay [i] = 0;
       }
-      for (int j = 0; j < 64; j++) {
+      for (int j = 0; j < fifo_depth; j++) {
       	sum = 0;
 	delay[0] = m_input_buffer[j];
         for(int i=0; i < 128; i++){
@@ -133,7 +133,7 @@ tmpl(void)::do_fir128()
         for(int i = 127; i>0; i--) {
             delay[i] = delay[i-1];
         } 
-        sum = sum >> 15; 
+        ///sum = sum >> 15; 
         m_output_buffer[j] = sum;
      }
 }
@@ -142,8 +142,9 @@ tmpl()::Fir128(
 	sc_core::sc_module_name insname,
 	int ncycles)
 	   : soclib::caba::BaseModule(insname),
-	   m_work_latency(ncycles)
+	   m_work_latency(ncycles)	   
 {
+
 	SC_METHOD(transition);
 	dont_initialize();
 	sensitive << p_clk.pos();
@@ -152,5 +153,4 @@ tmpl()::Fir128(
 	dont_initialize();
 	sensitive << p_clk.neg();
 }
-
 }}

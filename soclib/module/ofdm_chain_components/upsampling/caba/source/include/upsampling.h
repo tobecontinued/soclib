@@ -32,10 +32,11 @@
 
 #include "caba_base_module.h"
 #include "fifo_ports.h"
+#define word_t uint32_t
 
 namespace soclib { namespace caba {
 
-template <typename vci_param>
+template <typename vci_param, int fifo_depth>
 class Upsampling
         : public soclib::caba::BaseModule
 {
@@ -59,8 +60,8 @@ class Upsampling
                 FIFO_UPSAMPLING_WRITE
         } m_state;
 
-        int32_t m_input_buffer[16];
-        int32_t m_output_buffer[64];// 16*Upsampling Factor = 16*4
+        int32_t m_input_buffer[fifo_depth];
+        int32_t m_output_buffer[fifo_depth*4];// Upsampling Factor = 4
         size_t m_ptr;
 
 	protected:

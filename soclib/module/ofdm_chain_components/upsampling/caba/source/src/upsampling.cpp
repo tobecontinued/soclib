@@ -32,13 +32,13 @@
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<typename vci_param> x Upsampling<vci_param>
+#define tmpl(x) template<typename vci_param, int fifo_depth> x Upsampling<vci_param, fifo_depth>
 
 tmpl(void)::transition()
 {
 	if ( p_resetn.read() == false ) {
 			m_state = FIFO_UPSAMPLING_READ;
-			m_cycles_left = 64;
+			m_cycles_left = fifo_depth;
 			m_ptr = 0;
 			return;
 	}
@@ -85,7 +85,7 @@ tmpl(void)::transition()
 		switch (m_state) {
 		case FIFO_UPSAMPLING_WRITE:
 			if ( p_to_ctrl.wok.read() ) {
-				m_recv_bufer = ((word_t*)&m_output_buffer[0])[m_ptr++];
+				m_recv_buffer = ((word_t*)&m_output_buffer[0])[m_ptr++];
 				--m_cycles_left;
 			}
 		default:
@@ -105,7 +105,7 @@ tmpl(void)::genMoore()
 tmpl(void)::do_upsampling()
 {
 	int j = 0;
-	for ( int i = 0; i<16; i++) {		
+	for ( int i = 0; i<fifo_depth; i++) {		
 		m_output_buffer[j] = m_input_buffer[i];
 		for (j = i*4+1; j<(i+1)*4; j++)
 			m_output_buffer[j] = 0;

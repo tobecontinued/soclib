@@ -5,7 +5,7 @@ Module('caba:Downsampling',
 	classname = 'soclib::caba::Downsampling',
 	tmpl_parameters = [
 		parameter.Module('vci_param',  default = 'caba:vci_param'),
-		#parameter.Int('Nirq'),
+		parameter.Int('fifo_depth'),
 	],
 	header_files = ['../source/include/downsampling.h',],
 	implementation_files = ['../source/src/downsampling.cpp',],
@@ -17,14 +17,5 @@ Module('caba:Downsampling',
 	],
 	uses = [
 		Uses('caba:base_module'),
-	],
-	##instance_parameters = [
-		##parameter.IntTab('ident'),
-        ##	parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
-	#],
-	###extensions = [
-	###	'dsx:addressable=ident',
-	###	'dsx:get_ident=ident:p_vci',
-	###	'dsx:max_segments=1',
-   	###],
+	],	
 )

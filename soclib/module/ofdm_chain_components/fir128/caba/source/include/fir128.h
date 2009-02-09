@@ -25,8 +25,8 @@
  *
  */
 	
-#ifndef SOCLIB_FIFO_FIR128_H_
-#define SOCLIB_FIFO_FIR128_H_
+#ifndef SOCLIB_FIR128_H_
+#define SOCLIB_FIR128_H_
 
 #include <systemc>
 
@@ -35,7 +35,7 @@
 
 namespace soclib { namespace caba {
 
-template <typename vci_param>
+template <typename vci_param, int fifo_depth>
 class Fir128
         : public soclib::caba::BaseModule
 {
@@ -43,32 +43,30 @@ class Fir128
     	   sc_core::sc_in<bool> p_clk;
 	   sc_core::sc_in<bool> p_resetn;
 	
-           soclib::caba::FifoOutput<word_t> p_to_ctrl;
-           soclib::caba::FifoInput<word_t> p_from_ctrl;
+           soclib::caba::FifoOutput<uint32_t> p_to_ctrl;
+           soclib::caba::FifoInput<uint32_t> p_from_ctrl;
 	
 	private:
            int m_work_latency;
            int m_cycles_left;
+	   
+           uint32_t m_recv_buffer;
 
-           word_t m_recv_buffer;
-
-        enum {
+           enum {
                 FIFO_FIR_READ,
                 FIFO_FIR_EXEC,
                 FIFO_FIR_WAIT,
                 FIFO_FIR_WRITE
-        } m_state;
-
-        int32_t m_input_buffer[64];
-        int32_t m_output_buffer[64];
-        size_t m_ptr;
+           } m_state;
+           int32_t m_input_buffer[fifo_depth];
+           int32_t m_output_buffer[fifo_depth];
+           size_t m_ptr;
 
 	protected:
 	    SC_HAS_PROCESS(Fir128);
 	
 	public:
-	    Fir128(sc_core::sc_module_name insname, int ncycles);
-	
+	    Fir128(sc_core::sc_module_name insname, int ncycles);	
 	private:
 	    void transition();
             void genMoore();
