@@ -96,7 +96,7 @@ void ElfLoader::add_section(void *_bfd, void *_sect)
         return;
 
     bfd_byte *blob = 0;
-    if ( sect->flags & SEC_LOAD ) {
+    if ( sect->flags & SEC_LOAD && sect->size ) {
         int ret = bfd_malloc_and_get_section(a_bfd, sect, &blob);
         if ( !ret || !blob )
             throw soclib::exception::RunTimeError(
