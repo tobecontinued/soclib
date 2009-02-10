@@ -145,6 +145,7 @@ class Module:
 
 	def getUse(self, **args):
 		from component import Uses
+		self._resolve_parameters(args)
 		return Uses(self.__typename, **args)
 
 	def addUse(self, u):
@@ -159,6 +160,7 @@ class Module:
 
 	def getUses(self, args):
 		from component import Uses
+		self._resolve_parameters(args)
 		r = set()
 #		r.add(Uses(self.__typename, **args))
 		for i in self.__attrs['uses']:
@@ -178,3 +180,10 @@ class Module:
 
 	def __repr__(self):
 		return 'soclib_desc.module.Module.getRegistered(%r)'%(self.__typename)
+
+	def _resolve_parameters(self, args):
+		import parameter
+		for k in args.iterkeys():
+			v = args[k]
+			if isinstance(v, parameter.Reference):
+				args[k] = v.getValue(args)
