@@ -948,16 +948,16 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors)
     if ( errors & ERROR_INVALID_MAGIC_DISABLE )
         std::cout << " bad disabling of magic" << std::endl;
     if ( errors & ERROR_SP_OUTOFBOUNDS ) {
-        std::cout << " stack pointer out of bounds: ";
         uint32_t sp = get_cpu_sp();
+        std::cout << " stack pointer out of bounds: " << sp << ", ";
         if ( sp < m_current_context->m_stack_lower )
             std::cout << (m_current_context->m_stack_lower - sp) << " bytes below" << std::endl;
         else if ( sp > m_current_context->m_stack_upper )
             std::cout << (sp - m_current_context->m_stack_upper) << " bytes above" << std::endl;
     }
     if ( errors & ERROR_FP_OUTOFBOUNDS ) {
-        std::cout << " stack pointer out of bounds: ";
         uint32_t fp = get_cpu_fp();
+        std::cout << " frame pointer out of bounds: " << fp << ", ";
         if ( fp < m_current_context->m_stack_lower )
             std::cout << (m_current_context->m_stack_lower - fp) << " bytes below" << std::endl;
         else if ( fp > m_current_context->m_stack_upper )
