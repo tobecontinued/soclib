@@ -87,7 +87,7 @@ void Mips32Iss::dump() const
         << " Status.ksu " << r_status.ksu
         << " .exl: " << r_status.exl
         << " .erl: " << r_status.erl
-        << " .whole: " << r_status.whole
+        << " .whole: " << std::hex << r_status.whole
         << std::endl
         << " op:  " << m_ins.i.op << " (" << name_table[m_ins.i.op] << ")" << std::endl
         << " i rs: " << m_ins.i.rs
@@ -116,6 +116,7 @@ uint32_t Mips32Iss::executeNCycles(
     const struct DataResponse &drsp,
     uint32_t irq_bit_field )
 {
+    bool may_take_irq = r_status.ie && !r_status.exl && !r_status.erl;
     if ( m_little_endian )
         m_ins.ins = irsp.instruction;
     else
@@ -129,7 +130,7 @@ uint32_t Mips32Iss::executeNCycles(
 
     if ( m_sleeping ) {
         if ( ((r_status.im>>2) & irq_bit_field)
-             && r_status.ie && !r_status.exl && !r_status.erl ) {
+             && may_take_irq ) {
             m_exception = X_INT;
             m_sleeping = false;
 #ifdef SOCLIB_MODULE_DEBUG
@@ -213,13 +214,23 @@ uint32_t Mips32Iss::executeNCycles(
 
     if ( m_exception == NO_EXCEPTION
          && ((r_status.im>>2) & irq_bit_field)
-         && r_status.ie && !r_status.exl && !r_status.erl ) {
+         && may_take_irq ) {
         m_exception = X_INT;
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;
     } else {
         if ( irq_bit_field )
-            std::cout << name() << " Ignoring irqs " << irq_bit_field << std::endl;
+            std::cout
+                << name()
+                << " Ignoring irqs " << std::hex << irq_bit_field
+                << " cause " << r_cause.whole
+                << " status " << r_status.whole
+                << " ie " << r_status.ie
+                << " exl " << r_status.exl
+                << " erl " << r_status.erl
+                << " mask " << (r_status.im>>2)
+                << " exception " << m_exception
+                << std::endl;
 #endif
     }
 
