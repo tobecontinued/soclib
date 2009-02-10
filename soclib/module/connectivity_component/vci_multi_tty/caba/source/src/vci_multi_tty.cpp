@@ -48,14 +48,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 	switch (reg) {
 	case TTY_WRITE:
-        if ( _data == '\a' ) {
-            char tmp[32];
-            size_t ret = snprintf(tmp, sizeof(tmp), "[%10ld] ", r_counter);
-
-            for ( size_t i=0; i<ret; ++i )
-                m_term[term_no]->putc( tmp[i] );
-        } else
-            m_term[term_no]->putc( _data );
+        m_term[term_no]->putc( _data );
         m_cpt_write++;
 		return true;
 	default:
