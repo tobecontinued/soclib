@@ -759,8 +759,11 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
               addr < m_r1+m_r2;
               addr+= 4 ) {
             AddressInfo *ai = s_memory_state->info_for_address(addr);
-            err |= ( ai->region()->state() != __iss_memchecker::RegionInfo::REGION_STATE_ALLOCATED
-                     && ai->region()->state() != __iss_memchecker::RegionInfo::REGION_STATE_STACK );
+            err |= ! ( ai->region()->state() & (
+                         __iss_memchecker::RegionInfo::REGION_STATE_ALLOCATED
+                         | __iss_memchecker::RegionInfo::REGION_STATE_GLOBAL
+                         | __iss_memchecker::RegionInfo::REGION_STATE_STACK
+                         ) );
             ai->set_initialized(false);
         }
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_REGION) && err)
