@@ -48,27 +48,27 @@ namespace soclib { namespace caba {
 	//
 	// VCI_Interfaces
 	//
-	p_to_initiator = new soclib::caba::VciTarget<vci_param>*[height_network];
-	p_to_target = new soclib::caba::VciInitiator<vci_param>*[height_network];
+        p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >   ("p_to_initiator", height_network, width_network);
+        p_to_target    = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target"   , height_network, width_network);
 
 	//
 	// DSPIN_Signals
 	//
-	s_req_NS = new soclib::caba::DspinSignals<37>*[height_network + 2];
-	s_req_EW = new soclib::caba::DspinSignals<37>*[height_network + 2];
-	s_req_SN = new soclib::caba::DspinSignals<37>*[height_network + 2];
-	s_req_WE = new soclib::caba::DspinSignals<37>*[height_network + 2];
-	
-	s_req_RW = new soclib::caba::DspinSignals<37>*[height_network];
-	s_req_WR = new soclib::caba::DspinSignals<37>*[height_network];
-
-	s_rsp_NS = new soclib::caba::DspinSignals<33>*[height_network + 2];
-	s_rsp_EW = new soclib::caba::DspinSignals<33>*[height_network + 2];
-	s_rsp_SN = new soclib::caba::DspinSignals<33>*[height_network + 2];
-	s_rsp_WE = new soclib::caba::DspinSignals<33>*[height_network + 2];
-
-	s_rsp_RW = new soclib::caba::DspinSignals<33>*[height_network];
-	s_rsp_WR = new soclib::caba::DspinSignals<33>*[height_network];
+	s_req_NS = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >( "s_req_NS", height_network + 2, width_network + 2); 
+	s_req_EW = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >( "s_req_EW", height_network + 2, width_network + 2);
+	s_req_SN = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >( "s_req_SN", height_network + 2, width_network + 2);
+	s_req_WE = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >( "s_req_WE", height_network + 2, width_network + 2);
+	                                                                          
+	s_req_RW = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >( "s_req_RW", height_network    , width_network    );
+	s_req_WR = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >( "s_req_WR", height_network    , width_network    );
+                                                                                          
+	s_rsp_NS = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >( "s_rsp_NS", height_network + 2, width_network + 2);
+	s_rsp_EW = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >( "s_rsp_EW", height_network + 2, width_network + 2);
+	s_rsp_SN = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >( "s_rsp_SN", height_network + 2, width_network + 2);
+	s_rsp_WE = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >( "s_rsp_WE", height_network + 2, width_network + 2);
+                                                                                          
+	s_rsp_RW = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >( "s_rsp_RW", height_network    , width_network    );
+	s_rsp_WR = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >( "s_rsp_WR", height_network    , width_network    );  
 
 	//
 	// Dspin_wrapper
@@ -84,41 +84,32 @@ namespace soclib { namespace caba {
 
 
 
-	for( size_t y = 0; y < height_network + 2 ; y++ ){
+        for( size_t y = 0; y < height_network; y++ ){
 
-	    if( y < height_network ){
-		p_to_initiator[y] = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >( "p_to_initiator", width_network);
-		p_to_target[y] = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target", width_network);
-		t_initiator_wrapper[y] = new soclib::caba::VciDspinPlusInitiatorWrapper<vci_param, dspin_fifo_size, dspin_yx_size>*[width_network];
-		t_target_wrapper[y]    = new soclib::caba::VciDspinPlusTargetWrapper<vci_param, dspin_fifo_size, dspin_yx_size>*[width_network];
+            t_initiator_wrapper[y] = new soclib::caba::VciDspinPlusInitiatorWrapper<vci_param, dspin_fifo_size, dspin_yx_size>*[width_network];
+            t_target_wrapper[y]    = new soclib::caba::VciDspinPlusTargetWrapper<vci_param, dspin_fifo_size, dspin_yx_size>*[width_network];
 
-		t_req_router[y] = new soclib::caba::DspinPlusRouter<37, dspin_fifo_size, dspin_yx_size>*[width_network];
-		t_rsp_router[y] = new soclib::caba::DspinPlusRouter<33, dspin_fifo_size, dspin_yx_size>*[width_network];
+            t_req_router[y] = new soclib::caba::DspinPlusRouter<37, dspin_fifo_size, dspin_yx_size>*[width_network];
+            t_rsp_router[y] = new soclib::caba::DspinPlusRouter<33, dspin_fifo_size, dspin_yx_size>*[width_network];
 
-		s_req_RW[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >("s_req_RW", width_network);
-		s_req_WR[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >("s_req_WR", width_network);
-		s_rsp_RW[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >("s_rsp_RW", width_network);
-		s_rsp_WR[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >("s_rsp_WR", width_network);
 
-		for( size_t x = 0; x < width_network ; x++ ){
-		    t_initiator_wrapper[y][x] = new soclib::caba::VciDspinPlusInitiatorWrapper<vci_param, dspin_fifo_size, dspin_yx_size>("t_initiator_wrapper", mt);
-		    t_target_wrapper[y][x] = new soclib::caba::VciDspinPlusTargetWrapper<vci_param, dspin_fifo_size, dspin_yx_size>("t_target_wrapper", mt);
+            for( size_t x = 0; x < width_network ; x++ ){
+                char str_initiator_wrapper[32];
+                sprintf(str_initiator_wrapper, "t_initiator_wrapper[%i][%i]", (int)y,(int)x);
+                t_initiator_wrapper[y][x] = new soclib::caba::VciDspinPlusInitiatorWrapper<vci_param, dspin_fifo_size, dspin_yx_size>(str_initiator_wrapper, mt);
+                char str_target_wrapper[32];
+                sprintf(str_target_wrapper, "t_target_wrapper[%i][%i]", (int)y,(int)x);
+                t_target_wrapper[y][x] = new soclib::caba::VciDspinPlusTargetWrapper<vci_param, dspin_fifo_size, dspin_yx_size>(str_target_wrapper, mt);
 
-		    t_req_router[y][x] = new soclib::caba::DspinPlusRouter<37, dspin_fifo_size, dspin_yx_size>("t_req_router", ((y<<4) & 0xF0) | (x & 0x0F) );
-		    t_rsp_router[y][x] = new soclib::caba::DspinPlusRouter<33, dspin_fifo_size, dspin_yx_size>("t_rsp_router", ((y<<4) & 0xF0) | (x & 0x0F) );
-		}
-	    }	    
+                char str_req_router[32];
+                sprintf(str_req_router, "t_req_router[%i][%i]", (int)y,(int)x);
+                t_req_router[y][x] = new soclib::caba::DspinPlusRouter<37, dspin_fifo_size, dspin_yx_size>(str_req_router, ((y<<4) & 0xF0) | (x & 0x0F) );
 
-	    s_req_NS[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >("s_req_NS", width_network + 2);
-	    s_req_SN[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >("s_req_SN", width_network + 2);	    
-	    s_req_EW[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >("s_req_EW", width_network + 2);
-	    s_req_WE[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<37> >("s_req_WE", width_network + 2);	    
-
-	    s_rsp_NS[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >("s_rsp_NS", width_network + 2);
-	    s_rsp_SN[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >("s_rsp_SN", width_network + 2);
-	    s_rsp_EW[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >("s_rsp_EW", width_network + 2);
-	    s_rsp_WE[y] = soclib::common::alloc_elems<soclib::caba::DspinSignals<33> >("s_rsp_WE", width_network + 2);
-	}
+                char str_rsp_router[32];
+                sprintf(str_rsp_router, "t_rsp_router[%i][%i]", (int)y,(int)x);
+                t_rsp_router[y][x] = new soclib::caba::DspinPlusRouter<33, dspin_fifo_size, dspin_yx_size>(str_rsp_router, ((y<<4) & 0xF0) | (x & 0x0F) );
+            }
+        }
 
 	//
 	// NETLIST
@@ -261,3 +252,11 @@ namespace soclib { namespace caba {
     }
 }}
 
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
