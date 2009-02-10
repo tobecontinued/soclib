@@ -117,6 +117,7 @@ public:
     void print( std::ostream &o ) const;
 
     std::string get_symbol( uintptr_t addr ) const;
+    uintptr_t get_symbol_addr( const std::string & ) const;
 
     inline const std::string & filename() const
     {

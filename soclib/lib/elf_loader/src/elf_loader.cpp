@@ -286,6 +286,18 @@ std::string ElfLoader::get_symbol( uintptr_t addr ) const
     return o.str();
 }
 
+uintptr_t ElfLoader::get_symbol_addr( const std::string &sym ) const
+{
+    std::map<uintptr_t, std::pair<size_t, std::string> >::const_iterator i;
+    for ( i = m_symbol_table.begin();
+          i != m_symbol_table.end();
+          ++i ) {
+        if ( i->second.second == sym )
+            return i->first;
+    }
+    return 0;
+}
+
 }}
 
 // Local Variables:
