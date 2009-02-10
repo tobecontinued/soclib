@@ -57,7 +57,7 @@ class IssMemchecker
     : public iss_t
 {
     static __iss_memchecker::MemoryState *s_memory_state;
-    static uint32_t s_comm_address;
+    uint32_t m_comm_address;
     __iss_memchecker::ContextState *m_current_context;
     __iss_memchecker::ContextState *m_last_context;
     bool m_has_data_answer;
@@ -88,7 +88,7 @@ public:
     {
         iss_t::getRequests(ireq, dreq);
         if ( dreq.valid ) {
-            if ( (dreq.addr & ~(uint32_t)0xff) == s_comm_address ) {
+            if ( (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) {
                 dreq.valid = false;
             }
         }

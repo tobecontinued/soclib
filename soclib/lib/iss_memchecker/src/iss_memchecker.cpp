@@ -131,7 +131,7 @@ public:
     void print( std::ostream &o ) const
     {
         o << "<Context "
-          << std::dec << m_id << std::hex << std::showbase
+          << std::hex << std::showbase << m_id
           << " " << m_stack_lower
           << "->" << m_stack_upper
           << ">";
@@ -150,7 +150,7 @@ public:
     void unref()
     {
         if ( --m_refcount == 0 ) {
-            std::cout << *this << " has not more refs, del" << std::endl;
+//            std::cout << *this << " has not more refs, del" << std::endl;
             delete this;
         }
     }
@@ -434,6 +434,7 @@ class MemoryState
     context_map_t m_contexts;
     region_map_t m_regions;
     AddressInfo m_default_address;
+    uintptr_t m_comm_address;
 
 public:
     ContextState * const unknown_context;
@@ -445,6 +446,7 @@ public:
           m_contexts(),
           m_regions(),
           m_default_address(new RegionInfo(RegionInfo::REGION_INVALID, 0, 0, 0), true),
+          m_comm_address(0x4200),
           unknown_context(new ContextState((uint32_t)-1, 0, 0 )) //(uint32_t)-1 ))
     {
         unknown_context->ref();
@@ -503,7 +505,16 @@ public:
                 info_for_address( i->baseAddress()+j )->do_write();
         }
 
+        uintptr_t comm_addr = loader.get_symbol_addr( "soclib_iss_memchecker_addr" );
+        if ( comm_addr ) {
+            std::cout << "Binary file defined IssMemchecker communication address to " << comm_addr << std::endl;
+            m_comm_address = comm_addr;
+        }
+    }
 
+    uintptr_t comm_address() const
+    {
+        return m_comm_address;
     }
 
     ContextState *context_get( uint32_t id ) const
@@ -540,6 +551,7 @@ public:
         context_map_t::iterator i = m_contexts.find(id);
         assert(i != m_contexts.end()
                && "Deleting non-existant context...");
+        i->second->unref();
         m_contexts.erase(i);
     }
 
@@ -642,8 +654,6 @@ void IssMemchecker<iss_t>::init( const soclib::common::MappingTable &mt,
                                  const soclib::common::ElfLoader &loader,
                                  const std::string &exclusions )
 {
-    s_comm_address = 0x4200;
-    std::cout << "iss_memchecker initialized with comm addr " << std::hex << s_comm_address << std::endl;
     s_memory_state = new MemoryState( mt, loader, exclusions );
 }
 
@@ -670,6 +680,9 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
             << std::endl;
         abort();
     }
+
+    m_comm_address = s_memory_state->comm_address();
+
     m_current_context = s_memory_state->unknown_context;
     m_last_context = s_memory_state->unknown_context;
     m_current_context->ref();
@@ -807,8 +820,16 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 template<typename iss_t>
 void IssMemchecker<iss_t>::update_context( ContextState *state )
 {
+//     std::cout << iss_t::m_name
+//               << " switching from " << *m_current_context
+//               << " to " << *state << std::endl;
+
+#if 1
     m_last_context->unref();
     m_last_context = m_current_context;
+#else
+    m_current_context->unref();
+#endif
 
     m_current_context->unschedule();
     m_current_context = state;
@@ -819,7 +840,7 @@ void IssMemchecker<iss_t>::update_context( ContextState *state )
 template<typename iss_t>
 void IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
 {
-    uint32_t reg_no = (dreq.addr-s_comm_address)/4;
+    uint32_t reg_no = (dreq.addr-m_comm_address)/4;
     assert( dreq.be == 0xf && "Only read/write word are allowed in memchecker area" );
 
     switch ( dreq.type ) {
@@ -906,6 +927,7 @@ void IssMemchecker<iss_t>::report_error(uint32_t errors)
     iss_t::debugExceptionBypassed( (uint32_t)-1 );
 
     std::cout << iss_t::m_name << " error:" << std::endl;
+    std::cout << " " << *m_current_context << std::endl;
 
     AddressInfo *ai = s_memory_state->info_for_address(m_last_data_access.addr);
 
@@ -940,7 +962,11 @@ void IssMemchecker<iss_t>::report_error(uint32_t errors)
     if ( errors & ERROR_DATA_ACCESS_BELOW_SP )
         std::cout << " data access below SP" << std::endl;
     if ( errors & (ERROR_FP_OUTOFBOUNDS | ERROR_SP_OUTOFBOUNDS | ERROR_DATA_ACCESS_BELOW_SP) ) {
-        std::cout << " stack range: " << m_current_context->m_stack_lower << "->" << m_current_context->m_stack_upper << std::endl;
+        std::cout
+            << " stack range: " << m_current_context->m_stack_lower
+            << "->" << m_current_context->m_stack_upper
+            << " (" << *(s_memory_state->info_for_address(m_current_context->m_stack_lower)->region()) << ')'
+            << std::endl;
     }
 
     std::cout
@@ -967,7 +993,7 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     iss_t::getRequests(ireq, dreq);
 
     if ( dreq.valid &&
-         ( (dreq.addr & ~(uint32_t)0xff) == s_comm_address ) ) {
+         ( (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) ) {
         if ( ! ireq.valid || irsp.valid )
             handle_comm( dreq );
         dreq.valid = false;
@@ -1014,7 +1040,6 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 }
 
 template<typename iss_t> __iss_memchecker::MemoryState* IssMemchecker<iss_t>::s_memory_state = NULL;
-template<typename iss_t> uint32_t IssMemchecker<iss_t>::s_comm_address;
 
 }}
 
