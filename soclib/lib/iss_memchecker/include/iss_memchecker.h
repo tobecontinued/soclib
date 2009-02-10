@@ -49,6 +49,7 @@ namespace soclib { namespace common {
 
 namespace __iss_memchecker {
 class ContextState;
+class RegionInfo;
 class MemoryState;
 }
 
@@ -60,6 +61,7 @@ class IssMemchecker
     uint32_t m_comm_address;
     __iss_memchecker::ContextState *m_current_context;
     __iss_memchecker::ContextState *m_last_context;
+    __iss_memchecker::RegionInfo *m_last_region_touched;
     bool m_has_data_answer;
     const uint32_t m_cpuid;
     uint32_t m_data_answer_value;

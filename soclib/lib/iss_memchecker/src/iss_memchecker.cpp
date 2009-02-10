@@ -98,9 +98,9 @@ public:
         return m_id;
     }
 
-    inline uint32_t schedule( uint32_t cpu )
+    inline error_level_t schedule( uint32_t cpu )
     {
-        uint32_t r = 0;
+        error_level_t r = 0;
         if ( m_running_on != s_not_running )
             r |= ERROR_CONTEXT_ON_TWO_CPUS;
         m_running_on = cpu;
@@ -196,6 +196,12 @@ public:
     {
         if ( m_previous_state )
             m_previous_state->ref();
+    }
+
+    ~RegionInfo()
+    {
+        if ( m_previous_state )
+            m_previous_state->unref();
     }
 
     bool new_state_valid( enum State new_state )
@@ -344,9 +350,9 @@ public:
         return (RegionInfo*)((uintptr_t)m_info & s_addr_mask);
     }
 
-    int region_set( RegionInfo *ptr )
+    error_level_t region_set( RegionInfo *ptr )
     {
-        int r = 0;
+        error_level_t r = 0;
         assert(ptr);
         ptr->ref();
 
@@ -583,9 +589,9 @@ public:
         return &r[word_no];
     }
 
-    int region_update_state( RegionInfo::State new_state, uint32_t at, uint32_t addr, uint32_t size )
+    error_level_t region_update_state( RegionInfo::State new_state, uint32_t at, uint32_t addr, uint32_t size )
     {
-        int r = 0;
+        error_level_t r = 0;
         RegionInfo *lri = info_for_address(addr)->region();
         RegionInfo *nri = lri->get_updated_region( new_state, at, addr, addr+size );
 
@@ -605,10 +611,6 @@ public:
 
         for ( uint32_t a = addr; a < addr+size; a+=4 )
             r |= info_for_address(a)->region_set(nri);
-        if ( r )
-            std::cout
-                << "Error updating region state " << *lri
-                << " to " << RegionInfo::state_str(new_state) << std::endl;
         return r;
     }
 
@@ -660,6 +662,7 @@ void IssMemchecker<iss_t>::init( const soclib::common::MappingTable &mt,
 template<typename iss_t>
 IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
     : iss_t(name, ident),
+      m_last_region_touched(0),
       m_has_data_answer(false),
       m_cpuid(ident),
       m_enabled_checks(0),
@@ -802,6 +805,7 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
             state,
             get_cpu_pc(),
             m_r1, m_r2 );
+        m_last_region_touched = s_memory_state->info_for_address(m_r1)->region();
         report_error(error);
         break;
     }
@@ -918,7 +922,7 @@ void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
 }
 
 template<typename iss_t>
-void IssMemchecker<iss_t>::report_error(uint32_t errors)
+void IssMemchecker<iss_t>::report_error(error_level_t errors)
 {
     if ( !errors )
         return;
@@ -948,7 +952,7 @@ void IssMemchecker<iss_t>::report_error(uint32_t errors)
         uint32_t sp = get_cpu_sp();
         if ( sp < m_current_context->m_stack_lower )
             std::cout << (m_current_context->m_stack_lower - sp) << " bytes below" << std::endl;
-        else
+        else if ( sp > m_current_context->m_stack_upper )
             std::cout << (sp - m_current_context->m_stack_upper) << " bytes above" << std::endl;
     }
     if ( errors & ERROR_FP_OUTOFBOUNDS ) {
@@ -956,7 +960,7 @@ void IssMemchecker<iss_t>::report_error(uint32_t errors)
         uint32_t fp = get_cpu_fp();
         if ( fp < m_current_context->m_stack_lower )
             std::cout << (m_current_context->m_stack_lower - fp) << " bytes below" << std::endl;
-        else
+        else if ( fp > m_current_context->m_stack_upper )
             std::cout << (fp - m_current_context->m_stack_upper) << " bytes above" << std::endl;
     }
     if ( errors & ERROR_DATA_ACCESS_BELOW_SP )
@@ -968,6 +972,10 @@ void IssMemchecker<iss_t>::report_error(uint32_t errors)
             << " (" << *(s_memory_state->info_for_address(m_current_context->m_stack_lower)->region()) << ')'
             << std::endl;
     }
+
+    if ( (errors & (ERROR_BAD_REGION_REALLOCATION | ERROR_INVALID_REGION)) && m_last_region_touched )
+        std::cout << " region: " << *m_last_region_touched << std::endl;
+
 
     std::cout
         << " at PC=" << s_memory_state->get_symbol(get_cpu_pc()) << std::endl
@@ -1027,7 +1035,7 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     }
     
     if ( m_magic_state == MAGIC_NONE ) {
-        uint32_t err = ERROR_NONE;
+        error_level_t err = ERROR_NONE;
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) &&
              ! m_current_context->stack_contains(get_cpu_sp()) )
             err |= ERROR_SP_OUTOFBOUNDS;
