@@ -1,0 +1,19 @@
+
+# -*- python -*-
+
+Module('common:coff_loader',
+	classname = 'soclib::common::CoffLoader',
+	header_files = ['../include/coff_loader.h',],
+	implementation_files = ['../src/coff_loader.cpp',],
+	   instance_parameters = [
+	parameter.String('binary', auto = 'env:binary'),
+	],
+	uses = [
+		Uses('common:exception'),
+	],
+	
+	   extensions = [
+	'dsx:configurator',
+	'dsx:noname'
+	]
+)

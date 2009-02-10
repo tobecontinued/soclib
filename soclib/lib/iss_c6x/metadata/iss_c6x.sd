@@ -1,0 +1,7 @@
+
+# -*- python -*-
+
+Module('common:iss_c6x',
+	   classname = 'soclib::common::IssC6x',
+	   header_files = ["../include/iss_c6x.h",],
+)
