@@ -357,7 +357,7 @@ namespace soclib { namespace caba {
 	       /////////////////////////////////
     {
       for(size_t i=0; i<m_ways ; i++){
-	for(size_t j=0; i<m_sets ; j++){
+	for(size_t j=0; j<m_sets ; j++){
 	  delete [] m_cache_data[i][j];
 	}
       }
