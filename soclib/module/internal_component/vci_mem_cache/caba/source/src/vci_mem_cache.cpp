@@ -24,7 +24,7 @@
  *
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: alain
+ * Maintainers: alain eric.guthmuller@polytechnique.edu
  */
 
 #include "../include/vci_mem_cache.h"
