@@ -1063,7 +1063,7 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
     else
         {
             // check execution break point
-            if (check_break_points())
+            if (state_ != Step && check_break_points())
                 return 1;
 
             size_t ncycles_done = CpuIss::executeNCycles(ncycle, irsp, drsp, irq_bit_field);
