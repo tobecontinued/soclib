@@ -9,10 +9,8 @@ use_memcheck = (
   locs["CONFIG_SOCLIB_MEMCHECK"] == 'defined')
 
 if locs['CONFIG_CPU_PPC'] == 'defined':
-  cpu = "ississ2"
-  add = {'iss2_t':'common:ppc405'}
+  cpu = "ppc405"
 elif locs['CONFIG_CPU_MIPS'] == 'defined':
-  add = {}
   if locs['CONFIG_CPU_ENDIAN_BIG'] == 'defined':
     cpu = 'mips32eb'
   else:
@@ -22,10 +20,10 @@ else:
 
 todo = Platform('caba', 'top.cc',
                 uses=[
-		Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+cpu, **add),
-		Uses('caba:vci_xcache_wrapper', iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+cpu, **add),
-		Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:'+cpu, **add),
-		Uses('caba:vci_xcache_wrapper', iss_t = 'common:'+cpu, **add),
+		Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+cpu),
+		Uses('caba:vci_xcache_wrapper', iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+cpu),
+		Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:'+cpu),
+		Uses('caba:vci_xcache_wrapper', iss_t = 'common:'+cpu),
 		Uses('caba:vci_locks'),
 		Uses('caba:vci_ram'),
 		Uses('caba:vci_heterogeneous_rom'),

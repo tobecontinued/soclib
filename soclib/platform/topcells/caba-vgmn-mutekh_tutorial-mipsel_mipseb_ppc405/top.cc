@@ -9,7 +9,6 @@
 #if defined(CONFIG_CPU_MIPS)
 #include "mips32.h"
 #else
-#include "ississ2.h"
 #include "ppc405.h"
 #endif
 
@@ -59,7 +58,7 @@ int _main(int argc, char *argv[])
 
 #elif defined(CONFIG_CPU_PPC)
 # warning Using PPC
-	typedef soclib::common::IssIss2<soclib::common::Ppc405Iss> ProcessorIss;
+	typedef soclib::common::Ppc405Iss ProcessorIss;
 #else
 #  error No supported processor configuration defined
 #endif
@@ -103,47 +102,47 @@ int _main(int argc, char *argv[])
 
 	// Signals
 
-	sc_clock signal_clk("signal_clk");
-	sc_signal<bool> signal_resetn("signal_resetn");
+	sc_core::sc_clock signal_clk("signal_clk");
+	sc_core::sc_signal<bool> signal_resetn("signal_resetn");
 
-	sc_signal<bool> signal_cpu0_it0("signal_cpu0_it0"); 
-	sc_signal<bool> signal_cpu0_it1("signal_cpu0_it1"); 
+	sc_core::sc_signal<bool> signal_cpu0_it0("signal_cpu0_it0"); 
+	sc_core::sc_signal<bool> signal_cpu0_it1("signal_cpu0_it1"); 
 
 #if defined(CONFIG_CPU_MIPS)
-	sc_signal<bool> signal_cpu0_it2("signal_cpu0_it2"); 
-	sc_signal<bool> signal_cpu0_it3("signal_cpu0_it3"); 
-	sc_signal<bool> signal_cpu0_it4("signal_cpu0_it4"); 
-	sc_signal<bool> signal_cpu0_it5("signal_cpu0_it5");
+	sc_core::sc_signal<bool> signal_cpu0_it2("signal_cpu0_it2"); 
+	sc_core::sc_signal<bool> signal_cpu0_it3("signal_cpu0_it3"); 
+	sc_core::sc_signal<bool> signal_cpu0_it4("signal_cpu0_it4"); 
+	sc_core::sc_signal<bool> signal_cpu0_it5("signal_cpu0_it5");
 #endif
   
-	sc_signal<bool> signal_cpu1_it0("signal_cpu1_it0"); 
-	sc_signal<bool> signal_cpu1_it1("signal_cpu1_it1"); 
+	sc_core::sc_signal<bool> signal_cpu1_it0("signal_cpu1_it0"); 
+	sc_core::sc_signal<bool> signal_cpu1_it1("signal_cpu1_it1"); 
 
 #if defined(CONFIG_CPU_MIPS)
-	sc_signal<bool> signal_cpu1_it2("signal_cpu1_it2"); 
-	sc_signal<bool> signal_cpu1_it3("signal_cpu1_it3"); 
-	sc_signal<bool> signal_cpu1_it4("signal_cpu1_it4"); 
-	sc_signal<bool> signal_cpu1_it5("signal_cpu1_it5");
+	sc_core::sc_signal<bool> signal_cpu1_it2("signal_cpu1_it2"); 
+	sc_core::sc_signal<bool> signal_cpu1_it3("signal_cpu1_it3"); 
+	sc_core::sc_signal<bool> signal_cpu1_it4("signal_cpu1_it4"); 
+	sc_core::sc_signal<bool> signal_cpu1_it5("signal_cpu1_it5");
 #endif
   
-	sc_signal<bool> signal_cpu2_it0("signal_cpu2_it0"); 
-	sc_signal<bool> signal_cpu2_it1("signal_cpu2_it1"); 
+	sc_core::sc_signal<bool> signal_cpu2_it0("signal_cpu2_it0"); 
+	sc_core::sc_signal<bool> signal_cpu2_it1("signal_cpu2_it1"); 
 
 #if defined(CONFIG_CPU_MIPS)
-	sc_signal<bool> signal_cpu2_it2("signal_cpu2_it2"); 
-	sc_signal<bool> signal_cpu2_it3("signal_cpu2_it3"); 
-	sc_signal<bool> signal_cpu2_it4("signal_cpu2_it4"); 
-	sc_signal<bool> signal_cpu2_it5("signal_cpu2_it5");
+	sc_core::sc_signal<bool> signal_cpu2_it2("signal_cpu2_it2"); 
+	sc_core::sc_signal<bool> signal_cpu2_it3("signal_cpu2_it3"); 
+	sc_core::sc_signal<bool> signal_cpu2_it4("signal_cpu2_it4"); 
+	sc_core::sc_signal<bool> signal_cpu2_it5("signal_cpu2_it5");
 #endif
   
-	sc_signal<bool> signal_cpu3_it0("signal_cpu3_it0"); 
-	sc_signal<bool> signal_cpu3_it1("signal_cpu3_it1"); 
+	sc_core::sc_signal<bool> signal_cpu3_it0("signal_cpu3_it0"); 
+	sc_core::sc_signal<bool> signal_cpu3_it1("signal_cpu3_it1"); 
 
 #if defined(CONFIG_CPU_MIPS)
-	sc_signal<bool> signal_cpu3_it2("signal_cpu3_it2"); 
-	sc_signal<bool> signal_cpu3_it3("signal_cpu3_it3"); 
-	sc_signal<bool> signal_cpu3_it4("signal_cpu3_it4"); 
-	sc_signal<bool> signal_cpu3_it5("signal_cpu3_it5");
+	sc_core::sc_signal<bool> signal_cpu3_it2("signal_cpu3_it2"); 
+	sc_core::sc_signal<bool> signal_cpu3_it3("signal_cpu3_it3"); 
+	sc_core::sc_signal<bool> signal_cpu3_it4("signal_cpu3_it4"); 
+	sc_core::sc_signal<bool> signal_cpu3_it5("signal_cpu3_it5");
 #endif
 
 	soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
@@ -158,10 +157,10 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> signal_vci_vcilocks("signal_vci_vcilocks");
 	soclib::caba::VciSignals<vci_param> signal_vci_vcimultiram1("signal_vci_vcimultiram1");
 
-	sc_signal<bool> signal_icu_irq0("signal_icu_irq0");
-	sc_signal<bool> signal_icu_irq1("signal_icu_irq1");
-	sc_signal<bool> signal_icu_irq2("signal_icu_irq2");
-	sc_signal<bool> signal_icu_irq3("signal_icu_irq3");
+	sc_core::sc_signal<bool> signal_icu_irq0("signal_icu_irq0");
+	sc_core::sc_signal<bool> signal_icu_irq1("signal_icu_irq1");
+	sc_core::sc_signal<bool> signal_icu_irq2("signal_icu_irq2");
+	sc_core::sc_signal<bool> signal_icu_irq3("signal_icu_irq3");
 
 	// Components
 
@@ -288,11 +287,11 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[4](signal_vci_vcilocks);
 	vgmn.p_to_target[5](signal_vci_icu);
 
-	sc_start(sc_core::sc_time(0, SC_NS));
+	sc_core::sc_start(sc_core::sc_time(0, sc_core::SC_NS));
 	signal_resetn = false;
-	sc_start(sc_core::sc_time(1, SC_NS));
+	sc_core::sc_start(sc_core::sc_time(1, sc_core::SC_NS));
 	signal_resetn = true;
-	sc_start();
+	sc_core::sc_start();
 
 	return EXIT_SUCCESS;
 }
