@@ -209,12 +209,14 @@ void Mips32Iss::op_cop0()
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << "erl";
 #endif
-            } else {
+            } else if ( r_status.exl ) {
                 m_next_pc = r_epc;
                 r_status.exl = 0;
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << " exl";
 #endif
+            } else {
+                std::cout << m_name << " calling ERET without exl nor erl, ignored" << std::endl;
             }
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << " next_pc: " << m_next_pc << std::endl;

@@ -275,6 +275,7 @@ uint32_t Mips32Iss::executeNCycles(
         r_cause.xcode = m_exception;
         r_cause.ip  = irq_bit_field<<2;
         r_status.exl = 1;
+        update_mode();
 
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout
