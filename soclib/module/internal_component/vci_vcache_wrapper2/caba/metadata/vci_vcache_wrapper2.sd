@@ -1,0 +1,57 @@
+
+# -*- python -*-
+
+Module('caba:vci_vcache_wrapper2',
+	classname = 'soclib::caba::VciVCacheWrapper2',
+	   tmpl_parameters = [
+	parameter.Module('vci_param', default = 'vci_param'),
+	parameter.Module('iss_t'),
+	],
+	header_files = [
+	'../source/include/vci_vcache_wrapper2.h',
+	],
+	implementation_files = [
+	'../source/src/vci_vcache_wrapper2.cpp',
+	],
+	uses = [
+	Uses('caba:base_module'),
+	Uses('caba:write_buffer'),
+	Uses('caba:generic_cache', addr_t = 'sc_dt::sc_uint<36> '),
+	Uses('caba:generic_tlb', addr_t = 'sc_dt::sc_uint<36> '),
+	Uses('common:iss2'),
+	Uses('common:mapping_table'),
+	],
+	ports = [
+	Port('caba:vci_initiator', 'p_vci'),
+	Port('caba:bit_in','p_irq', parameter.Constant('n_irq')),
+	Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+	Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	],
+	instance_parameters = [
+	parameter.Int('ident'),
+	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+	parameter.IntTab('index'),
+    	parameter.Int('itlb_m_ways'),
+    	parameter.Int('itlb_m_sets'),
+    	parameter.Int('itlb_k_ways'),
+    	parameter.Int('itlb_k_sets'),
+    	parameter.Int('dtlb_m_ways'),
+    	parameter.Int('dtlb_m_sets'),
+    	parameter.Int('dtlb_k_ways'),
+    	parameter.Int('dtlb_k_sets'),
+    	parameter.Int('page_m_nbits'),
+    	parameter.Int('page_k_nbits'),
+    	parameter.Int('icache_ways'),
+    	parameter.Int('icache_sets'),
+    	parameter.Int('icache_words'),
+    	parameter.Int('dcache_ways'),
+    	parameter.Int('dcache_sets'),
+    	parameter.Int('dcache_words'),
+	],
+	   extensions = [
+	'dsx:get_ident=ident:p_vci',
+	'dsx:cpu=wrapper:iss_t',
+	'dsx:mapping_type=processor',
+   ],
+)
+
