@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6
  *         Alain Greiner <alain.greiner@lip6.fr> July 2008
  *
- * Maintainers: alain
+ * Maintainers: alain yang
  */
 
 //////////////////////////////////////////////////////////////////////////////////
