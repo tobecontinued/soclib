@@ -72,11 +72,14 @@ class ComponentBuilder:
 				b.getHeaders(h)
 #		print 'ParamHeaders for', self, pb, h
 		return h
-	def getBuilder(self, filename):
+	def getBuilder(self, filename, *add_filenames):
 		bn = self.baseName()
-		bn += '_'+os.path.splitext(os.path.basename(filename))[0]
+		if add_filenames:
+			bn += '_all'
+		else:
+			bn += '_'+os.path.splitext(os.path.basename(filename))[0]
 		from config import config
-		source = self.cxxSource(filename)
+		source = self.cxxSource(filename, *add_filenames)
 		if source:
 			tx = CxxSource(
 				config.reposFile(bn+".cpp", self.force_mode),
@@ -113,23 +116,36 @@ class ComponentBuilder:
 			basename += "_" + params.replace(' ', '_')
 		return basename
 	def results(self):
-		builders = map(self.getBuilder, self.specialization.descAttr('abs_implementation_files'))
+		is_template = ('<' in self.specialization.getType())
+		impl = self.specialization.descAttr('abs_implementation_files')
+		if is_template and len(impl) > 1:
+			builders = [self.getBuilder(*impl)]
+		else:
+			builders = map(self.getBuilder, impl)
 		objects = bblockize(self.specialization.descAttr('abs_object_files'))
 		map(lambda x:x.setIsBlob(True), objects)
 		return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
-	def cxxSource(self, s):
+	def cxxSource(self, *sources):
+		if not '<' in self.specialization.getType():
+			if len(sources) > 1:
+				source = ''
+				for s in sources:
+					source += '#include "%s"\n'%s
+				return source
+			else:
+				return ''
+
+		inst = 'class '+self.specialization.getType()
+
 		source = ""
 		for h in map(os.path.basename, self.getParamHeaders()):
 			source += '#include "%s"\n'%h
 		from config import config
 		for h in config.toolchain.always_include:
 			source += '#include <%s>\n'%h
-		source += '#include "%s"\n'%s
-		inst = 'class '+self.specialization.getType()
-		if not '<' in inst:
-			return ''
-		else:
-			source += 'template '+inst+';\n'
+		for s in sources:
+			source += '#include "%s"\n'%s
+		source += 'template '+inst+';\n'
 		return source
 
 	def __hash__(self):
