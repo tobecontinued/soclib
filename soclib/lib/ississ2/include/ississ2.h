@@ -49,7 +49,7 @@ class IssIss2
 
 public:
     static const size_t n_irq = iss_t::n_irq;
-    static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_LITTLE_ENDIAN;
+    static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_BIG_ENDIAN;
     static const unsigned int s_sp_register_no = iss_t::s_sp_register_no;
     static const unsigned int s_fp_register_no = iss_t::s_fp_register_no;
     static const unsigned int s_pc_register_no = iss_t::s_pc_register_no;
