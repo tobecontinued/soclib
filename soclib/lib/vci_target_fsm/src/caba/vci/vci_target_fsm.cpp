@@ -137,10 +137,10 @@ tmpl(void)::handle_one()
     case vci_param::CMD_STORE_COND:
         assert(support_llsc && "Received a SC on a non-SC-supporting target");
         if ( ! m_atomic.isAtomic( address, m_current_cmd.srcid ) ) {
-            m_current_cmd.rdata = 1;
+            m_current_cmd.rdata = vci_param::STORE_COND_NOT_ATOMIC;
             break;
         }
-        m_current_cmd.rdata = 0;
+        m_current_cmd.rdata = vci_param::STORE_COND_ATOMIC;
 
         m_atomic.accessDone( address );
         if ( ! (m_owner->*m_on_write_f)(seg_no, offset, m_current_cmd.wdata, m_current_cmd.be)) {

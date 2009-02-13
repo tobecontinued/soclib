@@ -144,6 +144,11 @@ public:
         ERR_ABORT_DISCONNECT = 7 & _err_mask,
     } vci_error_e;
 
+    enum {
+        STORE_COND_ATOMIC = 0,
+        STORE_COND_NOT_ATOMIC = 1,
+    };
+
     static std::string string( const std::string &name = "" )
     {
         std::string vp = VciParamsString(B,K,N,E,Q,F,S,P,T,W);
