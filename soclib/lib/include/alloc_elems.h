@@ -70,7 +70,7 @@ void dealloc_elems(elem_t *elems, size_t n)
 }
 
 template<typename elem_t>
-void dealloc_elems(elem_t *elems, size_t m, size_t n)
+void dealloc_elems(elem_t **elems, size_t m, size_t n)
 {
     for ( size_t i = 0; i<m; ++i ) {
         for ( size_t j = 0; j<n; ++j )
