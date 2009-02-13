@@ -260,9 +260,9 @@ tmpl(void)::next_req()
         size_t chunck_size = m_size-m_chunck_offset;
         if ( chunck_size > CHUNCK_SIZE )
             chunck_size = CHUNCK_SIZE;
-        VciInitSimpleReadReq<vci_param> *req =
-            new VciInitSimpleReadReq<vci_param>(
-                m_data+m_chunck_offset, m_buffer+m_chunck_offset, chunck_size );
+        VciInitSimpleWriteReq<vci_param> *req =
+            new VciInitSimpleWriteReq<vci_param>(
+                m_buffer+m_chunck_offset, m_data+m_chunck_offset, chunck_size );
         m_chunck_offset += CHUNCK_SIZE;
         req->setDone( this, ON_T(read_done) );
         m_vci_init_fsm.doReq( req );
@@ -277,9 +277,9 @@ tmpl(void)::next_req()
         size_t chunck_size = m_size-m_chunck_offset;
         if ( chunck_size > CHUNCK_SIZE )
             chunck_size = CHUNCK_SIZE;
-        VciInitSimpleWriteReq<vci_param> *req =
-            new VciInitSimpleWriteReq<vci_param>(
-                m_buffer+m_chunck_offset, m_data+m_chunck_offset, chunck_size );
+        VciInitSimpleReadReq<vci_param> *req =
+            new VciInitSimpleReadReq<vci_param>(
+                m_data+m_chunck_offset, m_buffer+m_chunck_offset, chunck_size );
         m_chunck_offset += CHUNCK_SIZE;
         req->setDone( this, ON_T(write_finish) );
         m_vci_init_fsm.doReq( req );
