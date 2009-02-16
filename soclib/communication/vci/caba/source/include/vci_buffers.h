@@ -36,17 +36,20 @@
 #include "vci_param.h"
 #include "vci_initiator.h"
 #include "vci_target.h"
+#include "vci_monitor.h"
 
 namespace soclib { namespace caba {
 
 using namespace sc_core;
 
 template <typename vci_param> class VciSnooper;
+template <typename vci_param> class VciLoggerElem;
 
 template <typename vci_param>
 class VciRspBuffer
 {
     friend class VciSnooper<vci_param>;
+    friend class VciLoggerElem<vci_param>;
 
 	typename vci_param::val_t  rspval;
 	typename vci_param::data_t    rdata;
@@ -99,6 +102,17 @@ public:
 		rpktid = (typename vci_param::pktid_t)port.rpktid;
 	}
 
+	inline void readFrom( const VciMonitor<vci_param> &port )
+	{
+		rspval = port.rspval;
+		rdata = (typename vci_param::data_t)port.rdata;
+		reop = port.reop;
+		rerror = (typename vci_param::rerror_t)port.rerror;
+		rsrcid = (typename vci_param::srcid_t)port.rsrcid;
+		rtrdid = (typename vci_param::trdid_t)port.rtrdid;
+		rpktid = (typename vci_param::pktid_t)port.rpktid;
+	}
+
     inline int route( const routing_table_t &rt ) const
     {
         return rt[rsrcid];
@@ -132,6 +146,7 @@ template <typename vci_param>
 class VciCmdBuffer
 {
     friend class VciSnooper<vci_param>;
+    friend class VciLoggerElem<vci_param>;
 
 	typename vci_param::val_t  cmdval;
 	typename vci_param::addr_t    address;
@@ -169,6 +184,25 @@ public:
     {
         return address;
     }
+
+	inline void readFrom( const VciMonitor<vci_param> &port )
+	{
+		cmdval = port.cmdval;
+		address = (typename vci_param::addr_t)port.address;
+		be = (typename vci_param::be_t)port.be;
+		cmd = (typename vci_param::cmd_t)port.cmd;
+		contig = (typename vci_param::contig_t)port.contig;
+		wdata = (typename vci_param::data_t)port.wdata;
+		eop_ = (typename vci_param::eop_t)port.eop;
+		cons = (typename vci_param::const_t)port.cons;
+		plen = (typename vci_param::plen_t)port.plen;
+		wrap = (typename vci_param::wrap_t)port.wrap;
+		cfixed = (typename vci_param::cfixed_t)port.cfixed;
+		clen = (typename vci_param::clen_t)port.clen;
+		srcid = (typename vci_param::srcid_t)port.srcid;
+		trdid = (typename vci_param::trdid_t)port.trdid;
+		pktid = (typename vci_param::pktid_t)port.pktid;
+	}
 
 	inline void readFrom( const input_port_t &port )
 	{
