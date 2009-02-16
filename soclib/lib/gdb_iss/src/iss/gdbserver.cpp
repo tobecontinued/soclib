@@ -863,6 +863,7 @@ void GdbServer<CpuIss>::watch_mem_access()
                         change_all_states(MemWait); // all processors will end their memory access
                         state_ = Frozen; // except the current processor
                         current_id_ = id_;
+                        fprintf(stderr, "[GDB] WRITE watchpoint triggered at %08x\n", dreq.addr);
                         sprintf(buffer, "T05thread:%x;watch:%x;", id_ + 1, dreq.addr);
                         write_packet(buffer);
                     }
@@ -876,6 +877,7 @@ void GdbServer<CpuIss>::watch_mem_access()
                         change_all_states(MemWait); // all processors will end their memory access
                         state_ = Frozen; // except the current processor
                         current_id_ = id_;
+                        fprintf(stderr, "[GDB] READ watchpoint triggered at %08x\n", dreq.addr);
                         sprintf(buffer, "T05thread:%x;rwatch:%x;", id_ + 1, dreq.addr);
                         write_packet(buffer);
                     }
