@@ -58,7 +58,7 @@ typedef struct
 	uint32_t lock;
 } soclib_mwmr_status_s;
 
-#define SOCLIB_MWMR_STATUS_INITIALIZER {0,0,0,0}
+#define SOCLIB_MWMR_STATUS_INITIALIZER(w,d) {0,0,0,0}
 
 #endif /* MWMR_CONTROLLER_REGISTERS_H */
 
