@@ -132,10 +132,13 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
         break;
     case EPC:
         r_epc = val;
+        break;
     case CAUSE:
         r_cause.whole = merge(r_cause.whole, val, CAUSE_WRITE_MASK);
+        break;
     case ERROR_EPC:
         r_error_epc = val;
+        break;
     default:
         return;
     }
