@@ -163,16 +163,10 @@ public:
 
     inline bool flush(size_t way, size_t set, data_t* nline)
     {
-        size_t temp;
         if ( cache_val(way,set) ) 
         {
-        
             cache_val(way,set) = false;
             *nline = (data_t)cache_tag(way,set)* m_sets + set;
-            temp = (data_t)cache_tag(way,set)* m_sets + set;
-            std::cout << "cache_tag:" << cache_tag(way,set) << std::endl;
-            std::cout << "temp:" << temp << std::endl;
-            std::cout << "set:" << set << std::endl;
             return true;
         }
         return false;
@@ -260,7 +254,7 @@ public:
 
     inline tag_t get_tag(size_t way, size_t set)
     {
-        return r_tag[(way*m_sets)+set];
+        return cache_tag(way, set);
     }
 
     inline bool write( addr_t ad, data_t dt )
@@ -504,6 +498,21 @@ public:
             cache_data(selway, set, word) = buf[word] ;
         }
         return cleanup;
+    }
+
+    // cleanupcheck function is used for checking whether a line
+    // exist or not.
+    inline bool cleanupcheck( addr_t ad )
+    {
+        const tag_t       tag  = m_z[ad];
+        const size_t      set  = m_y[ad];
+
+        for ( size_t way = 0; way < m_ways; way++ ) {
+            if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
+                return true;
+            }
+        }
+        return false;
     }
 
 };

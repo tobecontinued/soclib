@@ -783,11 +783,11 @@ public:
             {
                 if (nline(way,set) == n_line) 
                 {
-                    return false;
+                    return true;
                 }
             } 
         } 
-        return true;
+        return false;
     } // end cccheck()
 }; // GenericCcTlb
 

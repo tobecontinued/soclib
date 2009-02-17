@@ -31,7 +31,7 @@
 namespace soclib { 
 namespace caba {
 
-#define CC_VCACHE_WRAPPER_DEBUG
+//#define CC_VCACHE_WRAPPER_DEBUG
 
 #ifdef CC_VCACHE_WRAPPER_DEBUG
 namespace {
@@ -910,8 +910,12 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             {
                 if ( icache_hit_t_m || icache_hit_t_k ) 
                 {
-                    // check access rights
+                    if (r_dcache_itlb_ccinval_check_req && (r_dcache_itlb_ccinval_check_line == icache_tlb_nline))
+                    {
+                        break;
+                    }
 
+                    // check access rights
                     if ( !icache_pte_info.u && (ireq.mode == iss_t::MODE_USER)) 
                     {
                         r_icache_error_type = r_icache_error_type | MMU_PRIVILEGE_VIOLATION;  
@@ -1575,9 +1579,9 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     ////////////////////////
     case ICACHE_CACHE_INVAL:
     {	
-        addr36_t    ipaddr;                     
-        bool        icache_hit_t_m;
-        bool        icache_hit_t_k;
+        addr36_t    ipaddr = 0;                     
+        bool        icache_hit_t_m = false;
+        bool        icache_hit_t_k = false;
 
         if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
         {
@@ -2342,6 +2346,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
                 if ( dcache_hit_t_m || dcache_hit_t_k ) 
                 {
+                    if (r_dcache_dtlb_ccinval_check_req && (r_dcache_dtlb_ccinval_check_line == dcache_tlb_nline))
+                    {
+                        break;
+                    }
+
                     if (!dcache_pte_info.u && (dreq.mode == iss_t::MODE_USER)) 
                     {
                         r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION;  
@@ -2465,6 +2474,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                             {   
                                 if (dcache_hit_p) 
                                 {
+                                    addr36_t addr = ((addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
                                     r_dcache_pte_update = dcache_k_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
                                     r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
                                     assert(r_dcache.write(((addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2)), 
@@ -2647,7 +2657,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             break;
         }
 
-        data_t tlb_data;
+        data_t tlb_data = 0;
         bool tlb_hit_cache = r_dcache.read(r_dcache_tlb_paddr, &tlb_data);
         if ( r_dcache_inval_rsp )
         {
@@ -2786,9 +2796,10 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         if ( !r_dcache_cleanup_req && !r_dcache_inval_rsp ) // TLB update in cache and no invalidate 
         {
             // update dcache
-            uint32_t rsp_dtlb_miss;
+            uint32_t rsp_dtlb_miss = 0;
             addr36_t  victim_index = 0;
-            size_t way, set;
+            size_t way = 0;
+            size_t set = 0;
             int dcache_fsm = 0;
 
             r_dcache_cleanup_req = r_dcache.update(r_dcache_tlb_paddr, r_dcache_in_itlb, r_dcache_in_dtlb, &way, &set, r_dcache_miss_buf, &victim_index);
@@ -2999,7 +3010,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             break;
         }
 
-        data_t tlb_data;
+        data_t tlb_data = 0;
         bool tlb_hit_cache = r_dcache.read(r_dcache_tlb_paddr, &tlb_data);
         if ( r_dcache_inval_rsp )
         {
@@ -3115,7 +3126,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             // update cache
             uint32_t rsp_dtlb_miss;
             addr36_t  victim_index = 0;
-            size_t way, set;
+            size_t way = 0;
+            size_t set = 0;
             int dcache_fsm = 0;
 
             r_dcache_cleanup_req = r_dcache.update(r_dcache_tlb_paddr, r_dcache_in_itlb, r_dcache_in_dtlb, &way, &set, r_dcache_miss_buf, &victim_index);
@@ -3452,8 +3464,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     {
         m_cpt_dcache_dir_read += m_dcache_ways;
         addr_t invadr = dreq.wdata;
-        addr36_t dpaddr;
-        bool dcache_hit_t_m, dcache_hit_t_k; 
+        addr36_t dpaddr = 0;
+        bool dcache_hit_t_m = false;
+        bool dcache_hit_t_k = false; 
 
         if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_D_DTLB_A ) 
         {
@@ -3482,8 +3495,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     /////////////////////////////
     case DCACHE_DCACHE_INVAL_DONE:
     {
-        size_t way, set;
-        bool cleanup = r_dcache.inval(r_dcache_paddr_save, &way, &set);
+        size_t way = 0;
+        size_t set = 0;
+        bool cleanup = r_dcache.inval(r_dcache_paddr_save.read(), &way, &set);
 
         // ins tlb invalidate verification
         if (r_dcache_in_itlb[way*m_dcache_sets+set])
@@ -3491,7 +3505,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             if (!r_dcache_itlb_ccinval_check_req)
             {       
                 r_dcache_itlb_ccinval_check_req = true;
-                r_dcache_itlb_ccinval_check_line = (r_dcache.get_tag(way, set) * m_dcache_sets) + set;
+                r_dcache_itlb_ccinval_check_line = r_dcache_paddr_save.read() >> (uint32_log2(m_dcache_words)+2);
                 r_dcache_in_itlb[way*m_dcache_sets+set] = false;
             }
             else
@@ -3508,7 +3522,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             if (!r_dcache_dtlb_ccinval_check_req)
             {       
                 r_dcache_dtlb_ccinval_check_req = true;
-                r_dcache_dtlb_ccinval_check_line = (r_dcache.get_tag(way, set) * m_dcache_sets) + set;
+                r_dcache_dtlb_ccinval_check_line = r_dcache_paddr_save.read() >> (uint32_log2(m_dcache_words)+2);
                 r_dcache_in_dtlb[way*m_dcache_sets+set] = false;
             }
             else
@@ -3599,7 +3613,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     {
         if ( dreq.valid ) m_cost_data_miss_frz++;
 
-        size_t way, set;
+        size_t way = 0;
+        size_t set = 0;
 
         // external cache invalidate request
         if ( r_tgt_dcache_req ) 
@@ -3641,14 +3656,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 if (!r_dcache_itlb_ccinval_check_req)
                 {       
                     r_dcache_itlb_ccinval_check_req = true;
-                    r_dcache_itlb_ccinval_check_line = (r_dcache.get_tag(way, set) * m_dcache_sets) + set;
+                    r_dcache_itlb_ccinval_check_line = victim_index;
                     r_dcache_in_itlb[way*m_dcache_sets+set] = false;
                 }
                 else
                 {
                     // goto wait state
                     r_dcache_itlb_ccinval_check_wait = true;
-                    r_dcache_itlb_ccinval_check_line = (r_dcache.get_tag(way, set) * m_dcache_sets) + set;
+                    r_dcache_itlb_ccinval_check_line = victim_index;
                     r_dcache_in_itlb[way*m_dcache_sets+set] = false;
                     r_dcache_fsm_save = DCACHE_IDLE;
                     r_dcache_fsm = DCACHE_TLB_CC_INVAL_WAIT;
@@ -3661,14 +3676,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 if (!r_dcache_dtlb_ccinval_check_req)
                 {       
                     r_dcache_dtlb_ccinval_check_req = true;
-                    r_dcache_dtlb_ccinval_check_line = (r_dcache.get_tag(way, set) * m_dcache_sets) + set;
+                    r_dcache_dtlb_ccinval_check_line = victim_index;
                     r_dcache_in_dtlb[way*m_dcache_sets+set] = false;
                 }
                 else
                 {
                     // goto wait state
                     r_dcache_dtlb_ccinval_check_wait = true;
-                    r_dcache_dtlb_ccinval_check_line = (r_dcache.get_tag(way, set) * m_dcache_sets) + set;
+                    r_dcache_dtlb_ccinval_check_line = victim_index;
                     r_dcache_in_dtlb[way*m_dcache_sets+set] = false;
                     r_dcache_fsm_save = DCACHE_IDLE;
                     r_dcache_fsm = DCACHE_TLB_CC_INVAL_WAIT;
@@ -3739,7 +3754,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     case DCACHE_WRITE_UPDT:
     {
         m_cpt_dcache_data_write++;
-        size_t way, set;
+        size_t way = 0;
+        size_t set = 0;
         data_t mask = be_to_mask(r_dcache_be_save);
         data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
         assert(r_dcache.write(r_dcache_paddr_save, wdata, &way, &set) && "Write on miss ignores data");
@@ -3870,9 +3886,10 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     {
         if ( !r_dcache_cleanup_req )
         {
-            uint32_t rsp_itlb_miss;
-            size_t way, set;
+            uint32_t rsp_itlb_miss = 0;
             addr36_t  victim_index = 0;
+            size_t way = 0;
+            size_t set = 0;
             
             bool cleanup = r_dcache.update(r_icache_paddr_save, r_dcache_in_itlb, r_dcache_in_dtlb, &way, &set, r_dcache_miss_buf, &victim_index);
 
@@ -3941,7 +3958,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         m_cpt_dcache_data_read += m_dcache_ways;
 
         data_t dcache_rdata = 0;
-        size_t way, set;
+        size_t way = 0;
+        size_t set = 0;
 
         if(( ( r_dcache_fsm_save == DCACHE_MISS_WAIT ) || ( r_dcache_fsm_save == DCACHE_MISS_UPDT ) || (r_dcache_fsm_save == DCACHE_BIS ) ) && 
            ( (r_dcache_paddr_save.read() & ~((m_dcache_words<<2)-1)) == (r_tgt_addr.read() & ~((m_dcache_words<<2)-1)))) 
@@ -4206,8 +4224,8 @@ std::cout << " Data Response: " << drsp << std::endl;
         bool end = false;        
 
         // r_tgt_addr is number of line
-        bool m_hit = dcache_m_tlb.cccheck(r_dcache_itlb_ccinval_check_line.read(), way, set, &way, &set, &end); 
-        bool k_hit = dcache_k_tlb.cccheck(r_dcache_itlb_ccinval_check_line.read(), way, set, &way, &set, &end); 
+        bool m_hit = dcache_m_tlb.cccheck(r_dcache_dtlb_ccinval_check_line.read(), way, set, &way, &set, &end); 
+        bool k_hit = dcache_k_tlb.cccheck(r_dcache_dtlb_ccinval_check_line.read(), way, set, &way, &set, &end); 
     
         if ( m_hit )
         {
@@ -4264,12 +4282,12 @@ std::cout << " Data Response: " << drsp << std::endl;
         if ( !r_ccinval_dtlb_k )
         {
             dcache_m_tlb.findpost( way, set, &way, &set);
-            m_hit = dcache_m_tlb.cccheck(r_dcache_itlb_ccinval_check_line.read(), way, set, &way, &set, &end); 
+            m_hit = dcache_m_tlb.cccheck(r_dcache_dtlb_ccinval_check_line.read(), way, set, &way, &set, &end); 
         }
         else
         {
             dcache_k_tlb.findpost( way, set, &way, &set);
-            k_hit = dcache_k_tlb.cccheck(r_dcache_itlb_ccinval_check_line.read(), way, set, &way, &set, &end); 
+            k_hit = dcache_k_tlb.cccheck(r_dcache_dtlb_ccinval_check_line.read(), way, set, &way, &set, &end); 
         }
     
         if ( m_hit )
