@@ -42,6 +42,8 @@ namespace soclib { namespace common {
 
 enum Cp0Reg {
     INDEX = COPROC_REGNUM(0,0),
+    USERLOCAL = COPROC_REGNUM(4,2), // r_tls_base
+    HWRENA = COPROC_REGNUM(7,0),
     BAR = COPROC_REGNUM(8,0),
     COUNT = COPROC_REGNUM(9,0),
     COMPARE = COPROC_REGNUM(11,0),
@@ -72,6 +74,10 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
     switch(COPROC_REGNUM(reg,sel)) {
     case INDEX:
         return m_ident;
+    case HWRENA:
+        return r_hwrena;
+    case USERLOCAL:
+        return r_tls_base;
     case BAR:
         return r_bar;
     case COUNT:
@@ -119,6 +125,12 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
         break;
     case COUNT:
         r_count = val;
+        break;
+    case USERLOCAL:
+        r_tls_base = val;
+        break;
+    case HWRENA:
+        r_hwrena = val;
         break;
     case STATUS:
         r_status.whole = val;

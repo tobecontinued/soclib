@@ -308,6 +308,8 @@ private:
     config2_t r_config2;
     config3_t r_config3;
     intctl_t r_intctl;
+    uint32_t r_hwrena;
+    uint32_t r_tls_base;
 
     const bool m_little_endian;
 

@@ -41,6 +41,7 @@ void Mips32Iss::op_special3()
         EXT = 0,
 		INS = 0x4,
 		BSHFL = 0x20,
+		RDHWR = 0x3b,
     };
 
 	enum {
@@ -49,6 +50,13 @@ void Mips32Iss::op_special3()
 		WSBH = 0x2,
 	};
 
+    enum {
+        RDHWR_CPUNUM = 0,
+        RDHWR_CC = 2,
+        RDHWR_CCRES = 3,
+        RDHWR_TLS = 29,
+    };
+
     switch ( m_ins.r.func ) {
     case EXT: {
 		size_t size = m_ins.r.rd + 1;
@@ -56,6 +64,29 @@ void Mips32Iss::op_special3()
         r_gp[m_ins.r.rt] = extract_bits(r_gp[m_ins.r.rs], lsb, size);
         break;
     }
+    case RDHWR:
+        if ( ! ( r_hwrena & (1<<m_ins.r.rd) ) ) {
+            m_exception = X_RI;
+            break;
+        }
+        switch (m_ins.r.rd) {
+        case RDHWR_CPUNUM:
+            r_gp[m_ins.r.rt] = m_ident;
+            break;
+        case RDHWR_CC:
+            r_gp[m_ins.r.rt] = r_count;
+            break;
+        case RDHWR_CCRES:
+            r_gp[m_ins.r.rt] = 1;
+            break;
+        case RDHWR_TLS:
+            r_gp[m_ins.r.rt] = r_tls_base;
+            break;
+        default:
+            m_exception = X_RI;
+            break;
+        }
+        break;
     case INS: {
 		size_t lsb = m_ins.r.sh;
 		size_t msb = m_ins.r.rd;
