@@ -65,7 +65,8 @@ void Mips32Iss::op_special3()
         break;
     }
     case RDHWR:
-        if ( ! ( r_hwrena & (1<<m_ins.r.rd) ) ) {
+        if ( r_cpu_mode == MIPS32_USER &&
+             ! ( r_hwrena & (1<<m_ins.r.rd) ) ) {
             m_exception = X_RI;
             break;
         }
