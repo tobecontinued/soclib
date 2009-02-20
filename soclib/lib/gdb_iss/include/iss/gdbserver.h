@@ -74,23 +74,28 @@ public:
         struct CpuIss::DataRequest &dreq) const
     {
         GdbServer<CpuIss> *_this = const_cast<GdbServer<CpuIss> *>(this);
-        if (state_ == Frozen)
-            {
-                ireq.valid = false;
-                dreq.valid = mem_req_;
-                dreq.addr = mem_addr_ & ~3;
-                dreq.wdata = mem_data_ << (8 * (mem_addr_ & 3));
-                dreq.type = mem_type_;
-                if ( mem_type_ == CpuIss::DATA_READ )
-                    dreq.be = 0xf;
-                else
-                    dreq.be = 1 << (mem_addr_ & 3);
-                dreq.mode = CpuIss::MODE_HYPER;
-            }
-        else
-            {
-                CpuIss::getRequests(ireq, dreq);
-            }
+        switch (state_) {
+        case Frozen:
+            dreq.valid = false;
+            ireq.valid = false;
+        case WaitGdbMem:
+            ireq.valid = false;
+            dreq.valid = mem_req_;
+            dreq.addr = mem_addr_ & ~3;
+            dreq.wdata = mem_data_ << (8 * (mem_addr_ & 3));
+            dreq.type = mem_type_;
+            if ( mem_type_ == CpuIss::DATA_READ )
+                dreq.be = 0xf;
+            else
+                dreq.be = 1 << (mem_addr_ & 3);
+            dreq.mode = CpuIss::MODE_HYPER;
+            break;
+        case WaitIssMem:
+        case Running:
+        case Step:
+            CpuIss::getRequests(ireq, dreq);
+            break;
+        }
         _this->pending_data_request_ = dreq.valid;
         _this->pending_ins_request_ = ireq.valid;
     }
@@ -104,7 +109,7 @@ public:
     __attribute__((deprecated)) // Use SOCLIB_GDB=START_FROZEN environment variable instead
     static inline void start_frozen(bool frozen = true)
     {
-        init_state_ = frozen ? MemWait : Running;
+        init_state_ = frozen ? WaitIssMem : Running;
     }
 
     bool debugExceptionBypassed( uint32_t cause );
@@ -119,18 +124,18 @@ private:
     void process_gdb_packet();
     void process_monitor_packet(char *data);
     static void try_accept();
-    bool process_mem_access();
+    bool process_mem_access(
+        const struct CpuIss::DataResponse &drsp
+        );
     void cleanup();
     void watch_mem_access();
     bool check_break_points();
 
     bool mem_req_;
     bool pending_data_request_;
-    bool mem_rsp_valid_;
     enum CpuIss::DataOperationType mem_type_;
     uint32_t mem_addr_;
     uint32_t mem_data_;
-    bool mem_error_;
     bool pending_ins_request_;
 
     // number of memory access left to process
@@ -165,12 +170,14 @@ private:
     static bool ctrl_c_;
     static bool debug_;
 
+    static int poll_timeout_;
+
     enum State
         {
             Running,
-            StepWait,
             Step,
-            MemWait,            // waiting for memory operation end before freeze
+            WaitIssMem,
+            WaitGdbMem,
             Frozen,
         };
 

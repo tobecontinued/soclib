@@ -50,6 +50,7 @@ namespace soclib { namespace common {
 
 template<typename CpuIss> int GdbServer<CpuIss>::socket_ = -1;
 template<typename CpuIss> int GdbServer<CpuIss>::asocket_ = -1;
+template<typename CpuIss> int GdbServer<CpuIss>::poll_timeout_ = 100;
 template<typename CpuIss> typename GdbServer<CpuIss>::State GdbServer<CpuIss>::init_state_ = Running;
 template<typename CpuIss> std::vector<GdbServer<CpuIss> *> GdbServer<CpuIss>::list_;
 template<typename CpuIss> unsigned int GdbServer<CpuIss>::current_id_ = 0;
@@ -297,6 +298,17 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                 }
         }
 
+    if (i >= 2 && !strcmp(tokens[0], "sleepms"))
+        {
+            int poll_timeout_ = atoi(tokens[1]);
+
+            if (debug_)
+                fprintf(stderr, "[GDB] poll timeout changed to %u\n", poll_timeout_);
+
+            write_packet("OK");
+            return;
+        }
+
     if (i >= 2 && !strcmp(tokens[0], "except"))
         {
             bool value = atoi(tokens[1]) != 0;
@@ -528,11 +540,11 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     size_t len = strtoul(end + 1, 0, 16);
 
                     mem_req_ = true;
-                    mem_error_ = 0;
                     mem_type_ = CpuIss::DATA_READ;
                     mem_addr_ = addr;
                     mem_len_ = mem_count_ = len;
                     mem_buff_ = mem_ptr_ = (uint8_t*)malloc(len);
+                    state_ = WaitGdbMem;
 
                     return;
                 }
@@ -545,7 +557,6 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     assert(*end == ':');
 
                     mem_req_ = true;
-                    mem_error_ = 0;
                     mem_type_ = CpuIss::DATA_WRITE;
                     mem_addr_ = addr;
                     mem_len_ = mem_count_ = len;
@@ -560,6 +571,7 @@ void GdbServer<CpuIss>::process_gdb_packet()
                         }
 
                     mem_data_ = *mem_ptr_++;
+                    state_ = WaitGdbMem;
 
                     return;
                 }
@@ -581,75 +593,12 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     else
                         {
                             if (step_id_)  // single step on other processor
-                                list_[current_id_ = step_id_ - 1]->state_ = StepWait;
+                                list_[current_id_ = step_id_ - 1]->state_ = Step;
                             else
                                 state_ = Step;
                         }
                     return;
                 }
-#if 0
-                case 'v': {     // verbose resume command
-                    if (strncmp(data + 1, "Cont", 4))
-                        break;
-
-                    switch (data[5])
-                        {
-                        case '?': // vCont?
-                            write_packet("vCont;c;C;s;S");
-                            return;
-
-                        case ';': {
-                            change_all_states(MemWait);
-
-                            for (char *d = data + 5; d[0]; )
-                                {
-                                    State action;
-
-                                    assert(*d == ';');
-                                    d++;
-
-                                    switch (*d)
-                                        {
-                                        case 'C': // continue with (ignored) signal
-                                            d += 2;
-                                        case 'c': // continue
-                                            action = Running;
-                                            d++;
-                                            break;
-                                        case 'S': // step with (ignored) signal
-                                            d += 2;
-                                        case 's': // step
-                                            action = Step;
-                                            d++;
-                                            break;
-                                        default:
-                                            assert(0);
-                                        }
-
-                                    if (*d == ':')
-                                        { // action for specific thread
-                                            d++;
-                                            unsigned int id = strtoul(d, &d, 16);
-                                            assert(id > 0);
-                                            list_[id - 1]->state_ = action;
-                                        }
-                                    else
-                                        { // default action for all threads
-                                            for (unsigned int i = 0; i < list_.size(); i++)
-                                                if (list_[i]->state_ == MemWait)
-                                                    list_[i]->state_ = action;
-                                        }
-                                }
-
-                            if (debug_)
-                                for (unsigned int i = 0; i < list_.size(); i++)
-                                    fprintf(stderr, "[GDB] vCont thread %u : %c\n", i, "RsSWF"[(int)list_[i]->state_]);
-
-                            return;
-                        }
-                        }
-                }
-#endif
 
                 case 'H': {     // set current thread
                     int id = strtol(data + 2, 0, 16);
@@ -757,26 +706,23 @@ void GdbServer<CpuIss>::try_accept()
             if (asocket_ >= 0)
                 {
                     // freeze all processors on new connections
-                    change_all_states(MemWait);
+                    change_all_states(WaitIssMem);
                 }
         }
 }
 
-//     void step();
-
-//     inline void nullStep( uint32_t i=1 )
-//     {
-//         if (state_ != Frozen)
-//             CpuIss::nullStep(i);        
-//     }
-
 template<typename CpuIss>
-bool GdbServer<CpuIss>::process_mem_access()
+bool GdbServer<CpuIss>::process_mem_access(
+    const struct CpuIss::DataResponse &drsp
+    )
 {
     if (!mem_req_)
         return false;
 
-    if (mem_error_)
+    if (!drsp.valid)
+        return true;
+
+    if (drsp.error)
         {
             write_packet("E0d");
 
@@ -791,7 +737,7 @@ bool GdbServer<CpuIss>::process_mem_access()
         case CpuIss::DATA_READ: {
             do
                 {
-                    *mem_ptr_++ = mem_data_ >> (8 * (mem_addr_ & 3));
+                    *mem_ptr_++ = drsp.rdata >> (8 * (mem_addr_ & 3));
                     mem_addr_++;
                     mem_count_--;
                 }
@@ -860,7 +806,7 @@ void GdbServer<CpuIss>::watch_mem_access()
                     if (break_write_access_[dreq.addr]) {
                         char buffer[32];
 
-                        change_all_states(MemWait); // all processors will end their memory access
+                        change_all_states(WaitIssMem); // all processors will end their memory access
                         state_ = Frozen; // except the current processor
                         current_id_ = id_;
                         fprintf(stderr, "[GDB] WRITE watchpoint triggered at %08x\n", dreq.addr);
@@ -874,7 +820,7 @@ void GdbServer<CpuIss>::watch_mem_access()
                     if (break_read_access_[dreq.addr]) {
                         char buffer[32];
 
-                        change_all_states(MemWait); // all processors will end their memory access
+                        change_all_states(WaitIssMem); // all processors will end their memory access
                         state_ = Frozen; // except the current processor
                         current_id_ = id_;
                         fprintf(stderr, "[GDB] READ watchpoint triggered at %08x\n", dreq.addr);
@@ -901,7 +847,7 @@ bool GdbServer<CpuIss>::check_break_points()
 
     if (break_exec_.find(pc) != break_exec_.end())
         {
-            change_all_states(MemWait);
+            change_all_states(WaitIssMem);
             current_id_ = id_;
 
             sprintf(buffer, "T05thread:%x;", id_ + 1);
@@ -912,7 +858,7 @@ bool GdbServer<CpuIss>::check_break_points()
 
     if (ctrl_c_)
         {
-            change_all_states(MemWait);
+            change_all_states(WaitIssMem);
             current_id_ = id_;
 
             sprintf(buffer, "T02thread:%x;", id_ + 1);
@@ -967,7 +913,7 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( uint32_t cause )
 #endif
 
     write_packet(buffer);
-    change_all_states(MemWait);
+    change_all_states(WaitIssMem);
     current_id_ = id_;
     state_ = Frozen;
 
@@ -1007,83 +953,87 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
                 }
         }
 
-    if (state_ == Frozen)
+    bool satisfied = (! pending_ins_request_ || irsp.valid)
+        && (! pending_data_request_ || drsp.valid);
+
+    switch (state_)
         {
-            if ( pending_data_request_ && mem_type_ == CpuIss::DATA_READ )
-            {
-                mem_rsp_valid_ = drsp.valid;
-                mem_error_ = drsp.error;
-                mem_data_ = drsp.rdata;
-            }
+        case WaitGdbMem:
+
+            if (satisfied && !process_mem_access(drsp))
+                state_ = Frozen;
+
+            return ncycle;
+
+        case WaitIssMem: {
+            size_t ncycles_done = CpuIss::executeNCycles(ncycle, irsp, drsp, irq_bit_field);
+
+            if (satisfied)
+                state_ = Frozen;
+
+            return ncycles_done;
         }
 
-    pending_ins_request_ &= !irsp.valid;
-    pending_data_request_ &= !drsp.valid;
+        case Frozen:
+            if (id_ != current_id_)
+                return 1;
 
-    bool satified = !pending_data_request_ && !pending_ins_request_;
+            assert(!mem_req_);
 
-    if (state_ == StepWait && satified)
-        {
-            state_ = Step;
-            return 1;
-        }
-
-    if (state_ == MemWait && satified)
-        state_ = Frozen;      // no more memory access pending when step() is called
-
-    if (state_ == Frozen)
-        {
-            if (id_ == current_id_)
+            // process incoming packets
+            if (asocket_ >= 0)
                 {
-                    // process memory access
-                    if (satified && process_mem_access())
-                        return 1;
+                    struct pollfd pf;
 
-                    // process incoming packets
-                    if (asocket_ >= 0)
+                    pf.fd = asocket_;
+                    pf.events = POLLIN | POLLPRI;
+
+                    switch (poll(&pf, 1, poll_timeout_))
                         {
-                            struct pollfd pf;
-
-                            pf.fd = asocket_;
-                            pf.events = POLLIN | POLLPRI;
-
-                            switch (poll(&pf, 1, 0))
-                                {
-                                case 0:         // nothing happened
-                                    break;
-                                case 1:         // need to read data
-                                    process_gdb_packet();
-                                    break;
-                                default:
-                                    cleanup();
-                                    break;
-                                }
+                        case 0:         // nothing happened
+                            break;
+                        case 1:         // need to read data
+                            process_gdb_packet();
+                            break;
+                        default:
+                            cleanup();
+                            break;
                         }
                 }
             return 1;
-        }
-    else
-        {
+
+        case Running: {
+
             // check execution break point
-            if (state_ != Step && check_break_points())
+            if (check_break_points())
                 return 1;
 
             size_t ncycles_done = CpuIss::executeNCycles(ncycle, irsp, drsp, irq_bit_field);
 
-            step_id_ = 0;
-
             // check memory access break point
             watch_mem_access();
 
-            if (state_ == Step) // single step execution ends here
-                {
-                    char buffer[32];
-                    sprintf(buffer, "T05thread:%x;", id_ + 1);
-                    write_packet(buffer);
-                    state_ = MemWait;
-                }
             return ncycles_done;
         }
+
+        case Step: {
+            char buffer[32];
+
+            CpuIss::executeNCycles(1, irsp, drsp, irq_bit_field);
+
+            watch_mem_access();
+
+            sprintf(buffer, "T05thread:%x;", id_ + 1);
+            write_packet(buffer);
+            state_ = WaitIssMem;
+            step_id_ = 0;
+
+            return 1;
+        }
+
+        }
+
+    std::abort();
 }
 
 template<typename CpuIss>
@@ -1092,9 +1042,13 @@ typename GdbServer<CpuIss>::State GdbServer<CpuIss>::init_state()
     const char *env_val = getenv("SOCLIB_GDB");
     if ( env_val ) {
         if ( !strcmp( env_val, "START_FROZEN" ) )
-            return MemWait;
+            return WaitIssMem;
         if ( !strcmp( env_val, "START_RUNNING" ) )
             return Running;
+    }
+    env_val = getenv("SOCLIB_GDB_SLEEPMS");
+    if ( env_val ) {
+        poll_timeout_ = atoi(env_val);
     }
     return init_state_;
 }
