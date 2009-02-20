@@ -40,7 +40,7 @@ class Specialization:
 	def getType(self):
 		tp = self.getTmplParams()
 		if tp:
-			tp = '<'+tp+'> '
+			tp = '<'+tp+' > '
 		return self.__cdef['classname']+tp
 
 #	def getConstant(self, name, p=''):
