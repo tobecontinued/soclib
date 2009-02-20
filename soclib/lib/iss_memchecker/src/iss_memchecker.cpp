@@ -564,11 +564,9 @@ public:
     AddressInfo *info_for_address(uint32_t address)
     {
         region_map_t::iterator i = m_regions.upper_bound(address);
-        --i;
-//         if ( i != m_regions.end()
-//              && i != m_regions.begin()
-//              && i->first > address )
-//             --i;
+        while ( i != m_regions.begin()
+             && i->first > address )
+            --i;
 
         if ( i == m_regions.end() ) {
 //             std::cout
@@ -585,8 +583,12 @@ public:
         uint32_t region_base = i->first;
         uint32_t word_no = (address-region_base)/4;
         std::vector<AddressInfo> &r = *(i->second);
-        assert( region_base <= address && word_no < r.size() );
-        return &r[word_no];
+        if ( region_base <= address && word_no < r.size() )
+            return &r[word_no];
+        std::cout << "Warning: address " << std::hex << address
+                  << " " << std::dec << (r.size()-word_no) << " words beyond "
+                  << r[r.size()-1] << std::endl;
+        return &m_default_address;
     }
 
     error_level_t region_update_state( RegionInfo::State new_state, uint32_t at, uint32_t addr, uint32_t size )
@@ -989,8 +991,9 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors)
 
         << "    SP=" << s_memory_state->get_symbol(get_cpu_sp()) << std::endl
 
-        << "    last Dreq: " << m_last_data_access << ' '
-        << s_memory_state->get_symbol(m_last_data_access.addr) << std::endl
+        << "    last Dreq: " << m_last_data_access << std::endl
+        << "          sym: " << s_memory_state->get_symbol(m_last_data_access.addr) << std::endl
+        << "           in: " << *(s_memory_state->info_for_address(m_last_data_access.addr)->region()) << std::endl
 
         
 
