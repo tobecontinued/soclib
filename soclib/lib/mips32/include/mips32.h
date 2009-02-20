@@ -270,7 +270,10 @@ private:
 
     typedef REG32_BITFIELD(
         uint32_t M:1,
-        uint32_t reserved0:20,
+        uint32_t reserved0:17,
+        uint32_t ulri:1,
+        uint32_t reserved12:1,
+        uint32_t dsp2p:1,
         uint32_t dspp:1,
         uint32_t reserved1:2,
         uint32_t lpa:1,

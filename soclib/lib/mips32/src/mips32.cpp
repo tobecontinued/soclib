@@ -42,8 +42,18 @@ Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_littl
     r_config.whole = 0;
     r_config.m = 1;
     r_config.be = m_little_endian ? 0 : 1;
+    r_config.ar = 1;
+    r_config.mt = 7; // Reserved, let's say it's soclib generic MMU :)
 
     r_config1.whole = 0;
+    r_config1.m = 1;
+    r_config1.c2 = 1; // Advertize for Cop2 presence, i.e. generic MMU access
+
+    r_config2.whole = 0;
+    r_config2.m = 1;
+
+    r_config3.whole = 0;
+    r_config3.ulri = 1; // Advertize for TLS register
 }
 
 void Mips32Iss::reset()
@@ -65,6 +75,8 @@ void Mips32Iss::reset()
     m_sleeping = false;
     r_count = 0;
     r_compare = 0;
+    r_tls_base = 0;
+    r_hwrena = 0;
 
     for(int i = 0; i<32; i++)
         r_gp[i] = 0;
