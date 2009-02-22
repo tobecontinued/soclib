@@ -53,7 +53,7 @@ Module('caba:vci_cc_vcache_wrapper2',
 	   extensions = [
 	'dsx:get_ident=initiator_index:p_vci_ini',
 	'dsx:cpu=wrapper:iss_t',
-	'dsx:mapping_type=processor',
+	'dsx:mapping_type=processor:proc_id',
    ],
 )
 

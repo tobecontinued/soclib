@@ -26,7 +26,7 @@ Module('caba:iss_wrapper',
 	],
 	   extensions = [
 	'dsx:cpu=wrapper:iss_t',
-	'dsx:mapping_type=processor',
+	'dsx:mapping_type=processor:ident',
 	'dsx:config_lines=%(ref)s.setCacheInfo(%(cache)s.getCacheInfo())',
 	'dsx:get_peer_name=cache:p_icache',
    ],

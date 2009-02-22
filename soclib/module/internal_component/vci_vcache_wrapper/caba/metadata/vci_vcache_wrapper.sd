@@ -51,7 +51,7 @@ Module('caba:vci_vcache_wrapper',
 	   extensions = [
 	'dsx:get_ident=ident:p_vci',
 	'dsx:cpu=wrapper:iss_t',
-	'dsx:mapping_type=processor',
+	'dsx:mapping_type=processor:ident',
    ],
 )
 
