@@ -70,7 +70,7 @@ int sc_main(int argc, char **argv)
 
   // Configurator instanciateOnStack
   st231::mapfile = "soft/bin.maps";
-  soclib::common::ElfLoader loader("soft/bin.soft");
+  soclib::common::Loader loader("soft/bin.soft");
   soclib::common::MappingTable mapping_table(32, soclib::common::IntTab(8), soclib::common::IntTab(8), 0x00200000);
 
 

@@ -4,17 +4,16 @@
 Module('common:elf_loader',
 	classname = 'soclib::common::ElfLoader',
 	header_files = ['../include/elf_loader.h',],
-	implementation_files = ['../src/elf_loader.cpp',
-							'../src/elf_section.cpp',
-							],
 	   instance_parameters = [
 	parameter.String('binary', auto = 'env:binary'),
 	],
 	uses = [
-		Uses('common:exception'),
+		Uses('common:loader'),
+		Uses('common:elf_file_loader'),
 		],
 	   extensions = [
 	'dsx:configurator',
 	'dsx:noname'
-	]
+	],
+	   deprecated = "Please use loader now.",
 )

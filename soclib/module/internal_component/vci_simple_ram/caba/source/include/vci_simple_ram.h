@@ -36,7 +36,7 @@
 #include "vci_target.h"
 #include "mapping_table.h"
 #include "int_tab.h"
-#include "elf_loader.h"
+#include "loader.h"
 #include "linked_access_buffer.h"
 #include "soclib_endian.h"
 
@@ -72,7 +72,7 @@ public:
 
 private:
 
-    soclib::common::ElfLoader               *m_loader;
+    soclib::common::Loader               *m_loader;
     std::list<soclib::common::Segment>      m_seglist;
     soclib::common::LinkedAccessBuffer<
         vci_addr_t, vci_srcid_t>            r_llsc_buf;
@@ -109,7 +109,7 @@ public:
     VciSimpleRam(sc_module_name insname,
             soclib::common::IntTab index,
             soclib::common::MappingTable &mt,
-            soclib::common::ElfLoader &loader);
+            soclib::common::Loader &loader);
 
     VciSimpleRam(sc_module_name insname,
             soclib::common::IntTab index,

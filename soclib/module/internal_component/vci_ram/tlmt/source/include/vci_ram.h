@@ -6,7 +6,7 @@
 #include "tlmt_base_module.h"
 #include "mapping_table.h"
 #include "soclib_endian.h"
-#include "elf_loader.h"
+#include "loader.h"
 #include "linked_access_buffer.h"
 
 namespace soclib { namespace tlmt {
@@ -20,7 +20,7 @@ class VciRam
   uint32_t m_id;
   soclib::common::IntTab m_index;
   soclib::common::MappingTable m_mt;
-  soclib::common::ElfLoader *m_loader;
+  soclib::common::Loader *m_loader;
   std::list<soclib::common::Segment> m_segments;
   typedef typename vci_param::data_t ram_t;
   ram_t **m_contents;
@@ -50,12 +50,12 @@ class VciRam
 	 uint32_t id,
 	 const soclib::common::IntTab &index,
 	 const soclib::common::MappingTable &mt,
-	 common::ElfLoader &loader);
+	 common::Loader &loader);
   
   VciRam(sc_core::sc_module_name name,
 	 const soclib::common::IntTab &index,
 	 const soclib::common::MappingTable &mt,
-	 common::ElfLoader &loader);
+	 common::Loader &loader);
 
   ~VciRam();
 

@@ -28,7 +28,7 @@
 
 #include "vci_ram.h"
 #include "soclib_endian.h"
-#include "elf_loader.h"
+#include "loader.h"
 #include <cstring>
 
 namespace soclib {
@@ -42,11 +42,11 @@ tmpl(/**/)::VciRam(
 	sc_module_name insname,
 	const IntTab &index,
 	const MappingTable &mt,
-    const common::ElfLoader &loader
+    const common::Loader &loader
     )
 	: caba::BaseModule(insname),
 	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
-      m_loader(new common::ElfLoader(loader)),
+      m_loader(new common::Loader(loader)),
       p_resetn("resetn"),
       p_clk("clk"),
       p_vci("vci")

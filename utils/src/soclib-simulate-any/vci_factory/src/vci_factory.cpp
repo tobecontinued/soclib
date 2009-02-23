@@ -103,7 +103,7 @@ ModuleHolder& ram(
 {
 	VciRam<vci_param> *module;
 	if ( args.has("loads") ) {
-		soclib::common::ElfLoader el(args.get<std::string>("loads"));
+		soclib::common::Loader el(args.get<std::string>("loads"));
 		module = new VciRam<vci_param>(
 			name.c_str(),
 			args.get<soclib::common::IntTab>("_vci_id"),

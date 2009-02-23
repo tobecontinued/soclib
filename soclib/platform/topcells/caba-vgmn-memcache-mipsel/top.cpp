@@ -94,7 +94,7 @@ int _main(int argc, char *argv[])
 	// TGT 3 : memc_tgt
 	// TGT 4 : proc_tgt
 
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 
 	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
 	proc("proc", 0, maptabp,maptabc,IntTab(0),IntTab(0),4,64,16,4,64,16,CLEANUP_OFFSET);

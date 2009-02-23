@@ -1,0 +1,9 @@
+
+# -*- python -*-
+
+Module('common:binary_file_section',
+	classname = 'soclib::common::BinaryFileSection',
+	header_files = ['../include/binary_file_section.h',],
+	implementation_files = ['../src/binary_file_section.cpp',
+							],
+)

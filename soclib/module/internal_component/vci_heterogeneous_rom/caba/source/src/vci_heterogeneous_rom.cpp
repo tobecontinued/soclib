@@ -29,7 +29,7 @@
 
 #include "../include/vci_heterogeneous_rom.h"
 #include "soclib_endian.h"
-#include "elf_loader.h"
+#include "loader.h"
 
 namespace soclib {
 namespace caba {
@@ -69,7 +69,7 @@ tmpl(/**/)::~VciHeterogeneousRom()
 {
 }
 
-tmpl(void)::add_srcid(soclib::common::ElfLoader &loader, const IntTab &srcid)
+tmpl(void)::add_srcid(soclib::common::Loader &loader, const IntTab &srcid)
 {
 	const size_t word_size = vci_param::B; // B is VCI's cell size
     typename m_groups_map_t::iterator j = m_groups.find(loader.filename());

@@ -119,7 +119,7 @@ int _main(int argc, char *argv[]) {
 	soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios22("nios2_2", 2);
 	soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios23("nios2_3", 3);
 
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty", IntTab(2), maptab, "vcitty0", "vcitty1", "vcitty2", "vcitty3", NULL);

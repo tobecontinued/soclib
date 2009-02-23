@@ -35,7 +35,7 @@
 #include "exception.h"
 
 #include "soclib_endian.h"
-#include "elf_loader.h"
+#include "loader.h"
 
 namespace soclib { namespace common {
 
@@ -433,7 +433,7 @@ public:
 
 class MemoryState
 {
-    ElfLoader m_binary;
+    Loader m_binary;
 
     typedef std::map<uint32_t, ContextState *> context_map_t;
     typedef std::map<uint32_t, std::vector<AddressInfo> *> region_map_t;
@@ -446,7 +446,7 @@ public:
     ContextState * const unknown_context;
 
     MemoryState( const soclib::common::MappingTable &mt,
-                 const soclib::common::ElfLoader &loader,
+                 const soclib::common::Loader &loader,
                  const std::string &exclusions )
         : m_binary(loader),
           m_contexts(),
@@ -458,7 +458,7 @@ public:
         unknown_context->ref();
 
         const std::list<Segment> &segments = mt.getAllSegmentList();
-        ElfLoader::section_list_t sections = loader.sections();
+        Loader::section_list_t sections = loader.sections();
 
         std::string exclusion_list = ",";
         exclusion_list += exclusions + ",";
@@ -478,7 +478,7 @@ public:
             m_regions[i->baseAddress()] = rm;
         }
 
-        for ( ElfLoader::section_list_t::const_iterator i = sections.begin();
+        for ( Loader::section_list_t::const_iterator i = sections.begin();
               i != sections.end();
               ++i ) {
 
@@ -511,10 +511,11 @@ public:
                 info_for_address( i->baseAddress()+j )->do_write();
         }
 
-        uintptr_t comm_addr = loader.get_symbol_addr( "soclib_iss_memchecker_addr" );
-        if ( comm_addr ) {
-            std::cout << "Binary file defined IssMemchecker communication address to " << comm_addr << std::endl;
-            m_comm_address = comm_addr;
+        const BinaryFileSymbol *sym = loader.get_symbol_by_name( "soclib_iss_memchecker_addr" );
+        if ( sym ) {
+            m_comm_address = sym->address();
+            std::cout << "Binary file defined IssMemchecker communication address to "
+                      << m_comm_address << std::endl;
         }
     }
 
@@ -585,9 +586,9 @@ public:
         std::vector<AddressInfo> &r = *(i->second);
         if ( region_base <= address && word_no < r.size() )
             return &r[word_no];
-        std::cout << "Warning: address " << std::hex << address
-                  << " " << std::dec << (r.size()-word_no) << " words beyond "
-                  << r[r.size()-1] << std::endl;
+//         std::cout << "Warning: address " << std::hex << address
+//                   << " " << std::dec << (r.size()-word_no) << " words beyond "
+//                   << r[r.size()-1] << std::endl;
         return &m_default_address;
     }
 
@@ -623,9 +624,9 @@ public:
             info_for_address(a)->region_set(nri);
     }
  
-    std::string get_symbol( uintptr_t addr ) const
+    BinaryFileSymbolOffset get_symbol( uintptr_t addr ) const
     {
-        return m_binary.get_symbol(addr);
+        return m_binary.get_symbol_by_addr(addr);
     }
 };
 
@@ -655,7 +656,7 @@ uint32_t IssMemchecker<iss_t>::get_cpu_pc() const
 
 template<typename iss_t>
 void IssMemchecker<iss_t>::init( const soclib::common::MappingTable &mt,
-                                 const soclib::common::ElfLoader &loader,
+                                 const soclib::common::Loader &loader,
                                  const std::string &exclusions )
 {
     s_memory_state = new MemoryState( mt, loader, exclusions );
@@ -680,7 +681,7 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
         std::cerr
             << std::endl
             << "You must call the static initialized with:" << std::endl
-            << "soclib::common::IssMemchecker<...>::init( mapping_table, elf_loader );" << std::endl
+            << "soclib::common::IssMemchecker<...>::init( mapping_table, loader );" << std::endl
             << "Prior to any IssMemchecker constructor." << std::endl
             << std::endl;
         abort();

@@ -113,7 +113,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips2("mips2", 2, maptab,IntTab(2), 4,1,8, 4,1,8);
 	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips3("mips3", 3, maptab,IntTab(3), 4,1,8, 4,1,8);
 
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty0", NULL);
 	soclib::caba::VciSimhelper<vci_param> vcisimhelper("vcisimhelper",	IntTab(2), maptab);

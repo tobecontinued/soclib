@@ -85,7 +85,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
 	  
 	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips0("mips0", 0);
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram2("vcimultiram2", IntTab(4), maptab, loader);

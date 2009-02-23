@@ -36,7 +36,7 @@
 #include "vci_target_fsm.h"
 #include "caba_base_module.h"
 #include "mapping_table.h"
-#include "elf_loader.h"
+#include "loader.h"
 
 namespace soclib {
 namespace caba {
@@ -53,12 +53,12 @@ class VciHeterogeneousRom
 
     struct group_s
     {
-      group_s(soclib::common::ElfLoader &loader)
+      group_s(soclib::common::Loader &loader)
 	: m_loader(loader), m_rom()
       {
       }
 
-      soclib::common::ElfLoader m_loader;
+      soclib::common::Loader m_loader;
       std::vector<rom_t *> m_rom;
     };
 
@@ -78,7 +78,7 @@ public:
     typedef typename vci_param::addr_t vci_addr_t;
     typedef typename vci_param::data_t vci_data_t;
 
-    void add_srcid(soclib::common::ElfLoader &loader, const IntTab &srcid);
+    void add_srcid(soclib::common::Loader &loader, const IntTab &srcid);
 
     sc_in<bool> p_resetn;
     sc_in<bool> p_clk;

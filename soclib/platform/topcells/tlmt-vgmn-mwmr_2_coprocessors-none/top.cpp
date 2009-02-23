@@ -70,7 +70,7 @@ int sc_main(int argc, char **argv)
   /////////////////////////////////////////////////////////////////////////////
   // RAM
   /////////////////////////////////////////////////////////////////////////////
-  soclib::common::ElfLoader loader("soft/bin.soft");
+  soclib::common::Loader loader("soft/bin.soft");
 
   soclib::tlmt::VciRam<vci_param> ram0("ram0", 0, IntTab(0), maptab, loader);
 

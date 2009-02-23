@@ -52,7 +52,7 @@ int _main(int argc, char *argv[])
 
    soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb("mb", 12);
 
-   soclib::common::ElfLoader loader("soft/a.out");
+   soclib::common::Loader loader("soft/a.out");
    soclib::caba::VciRam<vci_param> vcimultiram("vcimultiram", IntTab(0), maptab, loader);
    soclib::caba::VciMultiTty<vci_param> vcitty("vcitty", IntTab(1), maptab, "vcitty", NULL);
    

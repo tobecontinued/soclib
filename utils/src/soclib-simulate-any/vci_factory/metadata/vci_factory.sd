@@ -42,5 +42,7 @@ Module('caba:vci_factory',
 
 		Uses('common:inst_arg'),
 		Uses('caba:caba_factory'),
+
+		Uses('common:elf_file_loader'),
 		],
 )

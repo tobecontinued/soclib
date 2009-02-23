@@ -32,7 +32,7 @@
 #include "vci_target_fsm.h"
 #include "caba_base_module.h"
 #include "mapping_table.h"
-#include "elf_loader.h"
+#include "loader.h"
 
 namespace soclib {
 namespace caba {
@@ -44,7 +44,7 @@ class VciRam
 	: public soclib::caba::BaseModule
 {
     soclib::caba::VciTargetFsm<vci_param,true,true> m_vci_fsm;
-    soclib::common::ElfLoader *m_loader;
+    soclib::common::Loader *m_loader;
 
 	typedef unsigned int ram_t;
     ram_t **m_contents;
@@ -64,7 +64,7 @@ public:
         sc_module_name insname,
         const IntTab &index,
         const MappingTable &mt,
-        const soclib::common::ElfLoader &loader);
+        const soclib::common::Loader &loader);
     VciRam(
         sc_module_name insname,
         const IntTab &index,

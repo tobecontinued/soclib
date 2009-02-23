@@ -10,7 +10,7 @@ Module('common:topcell',
 		'../src/topcell_lexer.cpp',
 	],
 	uses = [
-		Uses('common:elf_loader'),
+		Uses('common:elf_file_loader'),
 		Uses('common:mapping_table'),
 		Uses('common:inst_arg'),
 		Uses('caba:caba_factory'),

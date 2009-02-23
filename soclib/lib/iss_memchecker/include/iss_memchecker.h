@@ -43,7 +43,7 @@
 #include "exception.h"
 #include "soclib_endian.h"
 #include "mapping_table.h"
-#include "elf_loader.h"
+#include "loader.h"
 
 namespace soclib { namespace common {
 
@@ -97,7 +97,7 @@ public:
     }
 
     static void init( const soclib::common::MappingTable &mt,
-                      const soclib::common::ElfLoader &loader,
+                      const soclib::common::Loader &loader,
                       const std::string &exclusions = "" );
 
 private:

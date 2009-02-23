@@ -67,9 +67,9 @@ tmpl(/**/)::VciSimpleRam(
 	sc_module_name insname,
 	soclib::common::IntTab index,
 	soclib::common::MappingTable &mt,
-    soclib::common::ElfLoader &loader)
+    soclib::common::Loader &loader)
 	: caba::BaseModule(insname),
-      m_loader(new common::ElfLoader(loader)),
+      m_loader(new common::Loader(loader)),
       m_seglist(mt.getSegmentList(index)),
 
       r_llsc_buf((size_t)(1<<vci_param::S)),

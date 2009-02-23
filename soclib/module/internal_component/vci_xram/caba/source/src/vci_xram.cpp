@@ -45,7 +45,7 @@
 
 #include "../include/vci_xram.h"
 #include "soclib_endian.h"
-#include "elf_loader.h"
+#include "loader.h"
 
 namespace soclib { namespace caba {
 
@@ -74,7 +74,7 @@ const char *xram_fsm_str[] = {
 	sc_module_name name,
 	const soclib::common::MappingTable &mt,
 	const soclib::common::IntTab &target_index,
-	const common::ElfLoader &loader,
+	const common::Loader &loader,
 	const size_t line_cache_words,
 	const size_t ram_byte_size,
 	const size_t read_latency
@@ -85,7 +85,7 @@ const char *xram_fsm_str[] = {
       p_resetn("p_resetn"),
       p_vci_tgt("p_vci_tgt"),
 
-      m_loader(new common::ElfLoader(loader)),
+      m_loader(new common::Loader(loader)),
       m_nwords(line_cache_words),
       m_segment(mt.getSegment(target_index)),
       m_xram_nlines(ram_byte_size / (line_cache_words*4) ),

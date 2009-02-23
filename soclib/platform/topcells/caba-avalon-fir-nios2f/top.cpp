@@ -134,7 +134,7 @@ int _main (int argc, char *argv[])
 
   soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios2("nios2", 0);
 
-  soclib::common::ElfLoader loader("soft/bin.soft");
+  soclib::common::Loader loader("soft/bin.soft");
 
   soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty", NULL);
 

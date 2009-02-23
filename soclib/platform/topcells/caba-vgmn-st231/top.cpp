@@ -137,7 +137,7 @@ int _main(int argc, char *argv[])
 
 	st231::mapfile = "soft/bin.maps";
 	soclib::caba::IssWrapper<soclib::common::ST231iss> st231("st231", 0);
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 
 	soclib::caba::VciRam<vci_param> 
 		vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);

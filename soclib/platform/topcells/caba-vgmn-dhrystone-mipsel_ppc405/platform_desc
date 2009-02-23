@@ -10,6 +10,7 @@ todo = Platform(
 	Uses('caba:vci_simhelper'),
 	Uses('caba:vci_multi_tty'),
 	Uses('caba:vci_vgmn'),
+	Uses('common:elf_file_loader'),
 	],
 	cell_size = 4,
 	plen_size = 9,

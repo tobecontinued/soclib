@@ -56,22 +56,22 @@ int _main(int argc, char *argv[])
 	typedef soclib::caba::VciParams<4,9,32,1,1,1,8,1,1,1> vci_param;
 
 	::setenv("SOCLIB_TTY", "TERM", 1);
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 
 	// Mapping table
 
-	std::string arch_string = loader.arch();
-	if ( arch_string == "unknown" )
-		arch_string = argv[1];
-
-	std::cout << arch_string << " binary archive..." << std::endl;
+	const char *arch_string = "Unknown";
 	arch_t arch;
-	if ( arch_string == "mipsel" )
+	if ( loader.get_symbol_by_name("mips_interrupt_entry") ) {
 		arch = MIPSEL;
-	else if ( arch_string == "powerpc" || arch_string == "unknown" )
+		arch_string = "mipsel";
+	} else if ( loader.get_symbol_by_name("ppc_boot") ) {
 		arch = POWERPC;
-	else
-		throw soclib::exception::RunTimeError("Incorrect architecture: "+arch_string);
+		arch_string = "powerpc";
+	} else
+		throw soclib::exception::RunTimeError("Incorrect architecture");
+
+	std::cout << "Binary file is " << arch_string << std::endl;
 
 	soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00300000);
 

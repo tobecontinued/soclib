@@ -15,7 +15,7 @@ Module('common:iss_memchecker',
 	Uses('common:iss2'),
 	Uses('common:mapping_table'),
 	Uses('common:exception'),
-	Uses('common:elf_loader'),
+	Uses('common:loader'),
 	],
 	   extensions = [
 	'dsx:cpu=wrapper:iss_memchecker_t',

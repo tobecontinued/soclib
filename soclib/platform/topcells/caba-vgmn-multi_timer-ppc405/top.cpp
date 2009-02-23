@@ -115,7 +115,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXcacheWrapper<vci_param, iss_t> cache2("cache2", 2, maptab,IntTab(2),1,8,4,1,8,4);
 	soclib::caba::VciXcacheWrapper<vci_param, iss_t> cache3("cache3", 3, maptab,IntTab(3),1,8,4,1,8,4);
 
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", "vcitty1", "vcitty2", "vcitty3", NULL);

@@ -141,7 +141,7 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::IssWrapper<soclib::common::ARM7TDMIIss> arm0("arm0", 0);
 
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> 
 		vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> 

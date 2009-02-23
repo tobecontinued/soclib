@@ -214,7 +214,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
 	proc7("proc7", 7, maptab,IntTab(7),IntTab(7),16,4,16,16,4,16);
 */
-	soclib::common::ElfLoader loader("soft/bin.soft");
+	soclib::common::Loader loader("soft/bin.soft");
 
 	soclib::caba::VciSimpleRam<vci_param> 
 	ram("vciram", IntTab(8), maptab, loader);

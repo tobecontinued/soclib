@@ -92,7 +92,7 @@ int _main(int argc, char *argv[])
    soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb2("mb2", 2);
    soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb3("mb3", 3);
 
-   soclib::common::ElfLoader loader("soft/bin.soft");
+   soclib::common::Loader loader("soft/bin.soft");
    soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
    soclib::caba::VciMultiTty<vci_param> vcitty("vcitty", IntTab(1), maptab, "vcitty0", "vcitty1", "vcitty2", "vcitty3", NULL);
    soclib::caba::VciPci<vci_param> vcipci0("vcipci0", IntTab(2), maptab, 23);

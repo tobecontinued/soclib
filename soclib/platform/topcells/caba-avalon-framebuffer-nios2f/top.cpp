@@ -138,7 +138,7 @@ int _main(int argc, char *argv[])
 #endif
 
 
-  soclib::common::ElfLoader loader("soft/bin.soft");
+  soclib::common::Loader loader("soft/bin.soft");
   soclib::caba::VciRam<vci_param> vciram0("vciram0", IntTab(0), maptab, loader);
   soclib::caba::VciRam<vci_param> vciram1("vciram1", IntTab(1), maptab, loader);
   soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", NULL);

@@ -164,7 +164,7 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::common::ElfLoader loader(argv[1]);
+	soclib::common::Loader loader(argv[1]);
 
 #if defined(CONFIG_SOCLIB_MEMCHECK)
 	Processor::init(maptab, loader, "tty,timer,locks,icu");

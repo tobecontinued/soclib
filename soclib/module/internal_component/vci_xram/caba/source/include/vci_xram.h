@@ -51,7 +51,7 @@
 #include "caba_base_module.h"
 #include "vci_target.h"
 #include "mapping_table.h"
-#include "elf_loader.h"
+#include "loader.h"
 
 #define DEBUG_VCI_XRAM 0
 
@@ -88,7 +88,7 @@ template<typename vci_param> class VciXRam
 	sc_module_name name,
 	const soclib::common::MappingTable &mt,
         const soclib::common::IntTab &target_index,
-	const soclib::common::ElfLoader &loader,
+	const soclib::common::Loader &loader,
 	const size_t mem_cache_words,
 	const size_t ram_byte_size,
 	const size_t read_latency
@@ -102,7 +102,7 @@ template<typename vci_param> class VciXRam
  private:
 
     // Component attributes
-    soclib::common::ElfLoader 	       	*m_loader;
+    soclib::common::Loader 	       	*m_loader;
     const size_t			m_nwords;
     const soclib::common::Segment      	m_segment;
     const size_t      			m_xram_nlines;

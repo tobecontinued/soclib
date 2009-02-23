@@ -287,11 +287,11 @@ namespace soclib { namespace tlmt {
 		     uint32_t id,
 		     const soclib::common::IntTab &index,
 		     const soclib::common::MappingTable &mt,
-		     common::ElfLoader &loader)
+		     common::Loader &loader)
     : soclib::tlmt::BaseModule(name),
       m_index(index),
       m_mt(mt),
-      m_loader(new common::ElfLoader(loader)),
+      m_loader(new common::Loader(loader)),
       m_atomic(8),// 8 equals to maximal number of initiator
       p_vci("vci", new tlmt_core::tlmt_callback<VciRam,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciRam<vci_param>::callback))
   {
@@ -335,11 +335,11 @@ namespace soclib { namespace tlmt {
 		     sc_core::sc_module_name name,
 		     const soclib::common::IntTab &index,
 		     const soclib::common::MappingTable &mt,
-		     common::ElfLoader &loader)
+		     common::Loader &loader)
     : soclib::tlmt::BaseModule(name),
       m_index(index),
       m_mt(mt),
-      m_loader(new common::ElfLoader(loader)),
+      m_loader(new common::Loader(loader)),
       m_atomic(8),// 8 equals to maximal number of initiator
       p_vci("vci", new tlmt_core::tlmt_callback<VciRam,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciRam<vci_param>::callback))
   {
