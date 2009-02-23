@@ -582,10 +582,15 @@ tmpl(void)::transition()
                 case iss_t::XTN_READ:
                 case iss_t::XTN_WRITE:
                     // only DCACHE INVALIDATE request are supported
-                    if ( dreq.addr/4 == iss_t::XTN_DCACHE_INVAL )
+                    switch ( dreq.addr/4 ) {
+                    case iss_t::XTN_DCACHE_INVAL:
                         r_dcache_fsm = DCACHE_INVAL;
-                    drsp.valid = true;
-                    drsp.rdata = 0;
+                    case iss_t::XTN_SYNC:
+                    default:
+                        drsp.valid = true;
+                        drsp.rdata = 0;
+                        break;
+                    }
                     break;
                 case iss_t::DATA_WRITE:
                     m_cpt_write++;

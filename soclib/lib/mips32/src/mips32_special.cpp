@@ -306,6 +306,11 @@ void Mips32Iss::special_tne()
         m_exception = X_TR;
 }
 
+void Mips32Iss::special_sync()
+{
+    do_mem_access(4*XTN_SYNC, 4, 0, 0, 0, 0, XTN_READ);
+}
+
 void Mips32Iss::special_ill()
 {
     m_exception = X_RI;
@@ -319,7 +324,7 @@ Mips32Iss::func_t const Mips32Iss::special_table[] = {
         op4( sllv,  ill, srlv, srav),
 
         op4(   jr, jalr, movz, movn),
-        op4( sysc, brek,  ill,  ill),
+        op4( sysc, brek,  ill, sync),
 
         op4( mfhi, mthi, mflo, mtlo),
         op4(  ill,  ill,  ill,  ill),

@@ -466,6 +466,7 @@ private:
     void special_jalr();
     void special_sysc();
     void special_brek();
+    void special_sync();
     void special_mfhi();
     void special_movn();
     void special_movz();
