@@ -87,7 +87,6 @@ std::vector<BinaryFileSection> Loader::sections() const
 
 BinaryFileSymbolOffset Loader::get_symbol_by_addr( uintptr_t addr ) const
 {
-    addr &= m_mask;
     std::map<uintptr_t, BinaryFileSymbol>::const_iterator i =
         m_symbol_table.lower_bound( addr );
 

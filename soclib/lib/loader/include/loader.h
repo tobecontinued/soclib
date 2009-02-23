@@ -48,7 +48,6 @@ private:
 	typedef std::map<std::string, binary_loader_t> loader_registry_t;
 
     section_list_t m_sections;
-    uintptr_t m_mask;
     std::map<uintptr_t, BinaryFileSymbol> m_symbol_table;
 
 	void load_file(const std::string &desc_str);
