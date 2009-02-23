@@ -181,6 +181,7 @@ public:
 private:
     input_fifo_t *m_input_queues;
     output_delay_line_t m_output_delay_line;
+    uint32_t m_rand_state;
     size_t m_n_inputs;
     size_t m_current_input;
     bool m_in_transaction;
@@ -196,6 +197,7 @@ public:
             m_input_queues[i].init(fifo_size);
         m_output_delay_line.init(min_delay);
         m_n_inputs = n_inputs;
+        m_rand_state = 0x55555555;
         m_current_input = 0;
         m_in_transaction = false;
         m_output_delay_line.reset(NULL);
@@ -221,6 +223,8 @@ public:
         }
         m_current_input = 0;
         m_in_transaction = false;
+        for (size_t i=0; i<42; ++i)
+            next_rand();
     }
 
     inline input_fifo_t *getFifo( size_t n )
@@ -228,6 +232,19 @@ public:
         return &m_input_queues[n];
     }
     
+    uint32_t next_rand()
+    {
+        m_rand_state = (
+            (
+                (!!(m_rand_state & (1<<31))) ^
+                (!!(m_rand_state & (1<<21))) ^
+                (!!(m_rand_state & (1<<1))) ^
+                (!!(m_rand_state & (1<<0)))
+                ) << 31)
+            | ( (m_rand_state >> 1) & 0x7fffffff );
+        return m_rand_state;
+    }
+
     void transition( const output_port_t &port )
     {
         if (port.iProposed() && ! port.peerAccepted())
@@ -238,8 +255,9 @@ public:
             if ( !m_input_queues[m_current_input].empty() )
                 pkt = m_input_queues[m_current_input].pop();
         } else {
-            for ( size_t _i = m_current_input+1;
-                  _i != m_current_input+m_n_inputs+1;
+            size_t offset = next_rand() % m_n_inputs;
+            for ( size_t _i = m_current_input+offset;
+                  _i != m_current_input+m_n_inputs+offset;
                   ++_i ) {
                 size_t i = _i%m_n_inputs;
                 if ( ! m_input_queues[i].empty() ) {
