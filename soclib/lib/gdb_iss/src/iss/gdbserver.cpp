@@ -324,7 +324,7 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                 {
                     unsigned int id = atoi(tokens[2]) - 1;
 
-                    if (id > 0 && id <= list_.size())
+                    if (id < list_.size())
                         {
                             list_[id]->catch_execeptions_ = value;
                             write_packet("OK");
