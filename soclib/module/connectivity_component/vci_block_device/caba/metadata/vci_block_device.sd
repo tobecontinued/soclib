@@ -26,9 +26,10 @@ Module('caba:vci_block_device',
 	],
 	instance_parameters = [
         parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
-		parameter.IntTab('srcid'),
-		parameter.IntTab('tgtid'),
-	],
+        parameter.IntTab('srcid'),
+        parameter.IntTab('tgtid'),
+        parameter.String('filename'),
+        ],
 	   extensions = [
 	'dsx:addressable=tgtid',
 	'dsx:max_segments=1',
