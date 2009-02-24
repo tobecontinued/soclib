@@ -47,9 +47,11 @@ namespace common {
 FbController::FbController(
     const std::string &basename,
     unsigned long width,
-    unsigned long height)
+    unsigned long height,
+    int subsampling )
 	: m_width(width),
-      m_height(height)
+      m_height(height),
+      m_subsampling(subsampling)
 {
 	char name[32];
 	m_surface = NULL;
@@ -88,7 +90,9 @@ FbController::FbController(
         o.str("");
         o << m_height;
         argv.push_back(o.str());
-        argv.push_back("32");
+        o.str("");
+        o << m_subsampling;
+        argv.push_back(o.str());
         argv.push_back(name);
 
         m_screen_process = new ProcessWrapper("soclib-fb", argv);

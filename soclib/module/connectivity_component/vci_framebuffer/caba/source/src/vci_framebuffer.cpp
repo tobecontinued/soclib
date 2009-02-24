@@ -102,10 +102,11 @@ tmpl(/**/)::VciFrameBuffer(
     const IntTab &index,
     const MappingTable &mt,
     unsigned long width,
-    unsigned long height)
+    unsigned long height,
+    int subsampling)
 	: caba::BaseModule(name),
 	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
-      m_fb_controller((const char *)name, width, height),
+           m_fb_controller((const char *)name, width, height, subsampling),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci")

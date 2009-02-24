@@ -79,7 +79,7 @@ void sig_catcher( int sig )
 	do_exit = 1;
 }
 
-void handle_display( uint8_t *fb, long width, long height, long asked_bpp )
+void handle_display( uint8_t *fb, long width, long height, long subsampling )
 {
 	int res;
 	SDL_Surface *surface;
@@ -97,7 +97,7 @@ void handle_display( uint8_t *fb, long width, long height, long asked_bpp )
 	height *= 2;
 #endif
 
-	surface = SDL_SetVideoMode(width, height, asked_bpp, SDL_SWSURFACE);
+	surface = SDL_SetVideoMode(width, height, 32, SDL_SWSURFACE);
 	if ( !surface ) {
 		printf("SDL surface init failed: %s\n", SDL_GetError());
 		exit(3);
@@ -124,8 +124,22 @@ void handle_display( uint8_t *fb, long width, long height, long asked_bpp )
 			for ( col=0; col<width; ++col ) {
 #ifndef DEBUG
 				float yy  = fb[line*width+col]/128.-1.;
-                float cb = fb[width*height     + (line/2)*(width/2) + col/2]/128.-1.;
-                float cr = fb[width*height*5/4 + (line/2)*(width/2) + col/2]/128.-1.;
+                float cb;
+                float cr;
+				switch (subsampling) {
+				case 420:
+					cb = fb[width*height     + (line/2)*(width/2) + col/2]/128.-1.;
+					cr = fb[width*height*5/4 + (line/2)*(width/2) + col/2]/128.-1.;
+					break;
+				case 422:
+					cb = fb[width*height     + (line/2)*width + col/2]/128.-1.; 
+					cr = fb[width*height*3/2 + (line/2)*width + col/2]/128.-1.; 
+					break;
+				default:
+					cb = .5;
+					cr = .5;
+					break;
+				}
 
 /*
   cb *= .436;
@@ -191,12 +205,12 @@ void handle_display( uint8_t *fb, long width, long height, long asked_bpp )
 
 void usage(char *progname)
 {
-	printf("%s width height bpp mmap_file\n", progname);
+	printf("%s width height subsampling mmap_file\n", progname);
 }
 
 int main( int argc, char **argv )
 {
-	long width, height, depth;
+	long width, height, subsampling;
 	int buffer_fd;
 	char *file;
 	void *mmap_res;
@@ -216,7 +230,7 @@ int main( int argc, char **argv )
 
 	width = strtol(argv[1], NULL, 0);
 	height = strtol(argv[2], NULL, 0);
-	depth = strtol(argv[3], NULL, 0);
+	subsampling = strtol(argv[3], NULL, 0);
 	file = argv[4];
 	
 	buffer_fd = open(file, O_RDONLY);
@@ -229,7 +243,9 @@ int main( int argc, char **argv )
 		perror("mmap");
 		exit(2);
 	}
+
+	printf("Frame buffer: %d %d %d %d\n", width, height, subsampling, file);
 	
-	handle_display( mmap_res, width, height, depth);
+	handle_display( mmap_res, width, height, subsampling);
 	return 0;
 }

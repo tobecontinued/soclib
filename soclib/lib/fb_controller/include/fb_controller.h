@@ -43,6 +43,7 @@ class FbController
 
 public:
 	const unsigned long m_width, m_height;
+    const int m_subsampling;
 
     inline uint32_t* surface() const
     {
@@ -52,7 +53,8 @@ public:
 	FbController(
 		const std::string &basename,
 		unsigned long width,
-		unsigned long height);
+		unsigned long height,
+        int subsampling = 420);
 
 	~FbController();
 

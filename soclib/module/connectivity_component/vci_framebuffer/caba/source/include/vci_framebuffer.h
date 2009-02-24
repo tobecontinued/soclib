@@ -68,7 +68,8 @@ public:
 		const IntTab &index,
 		const MappingTable &mt,
 		unsigned long width,
-		unsigned long height);
+		unsigned long height,
+        int subsampling = 420);
 
     ~VciFrameBuffer();
 };
