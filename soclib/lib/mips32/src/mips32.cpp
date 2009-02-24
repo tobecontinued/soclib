@@ -246,13 +246,13 @@ uint32_t Mips32Iss::executeNCycles(
 #endif
     }
 
-    if ( m_exception != NO_EXCEPTION && debugExceptionBypassed( m_exception ) )
-        m_exception = NO_EXCEPTION;
-    
     if (  m_exception == NO_EXCEPTION || r_status.exl || r_status.erl )
         goto no_except;
 
  handle_except:
+
+    if ( debugExceptionBypassed( m_exception ) )
+        goto no_except;
 
     {
         addr_t except_address = exceptBaseAddr();
