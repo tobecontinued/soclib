@@ -29,6 +29,11 @@ import re
 
 def get_descs_in(base):
 	sdfile = re.compile('^[^.][a-zA-Z0-9_-]+\\.sd$')
+	from soclib_cc.config import config
+	if config.sd_ignore_regexp:
+		ignore_regexp_compiled = re.compile(config.sd_ignore_regexp)
+	else:
+		ignore_regexp_compiled = None
 	import os
 	from os.path import join, getsize
 	d = []
@@ -36,6 +41,8 @@ def get_descs_in(base):
 		if ".svn" in dirs:
 			dirs.remove(".svn")
 		files = filter(sdfile.match, files)
+		if ignore_regexp_compiled:
+			files = filter(lambda x:not ignore_regexp_compiled.match(x), files)
 		for f in files:
 			d.append(os.path.join(root,f))
 	import component
