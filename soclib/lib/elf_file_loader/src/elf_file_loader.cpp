@@ -162,7 +162,12 @@ bool elf_load( const std::string &filename, Loader &loader )
 	state.loader = &loader;
 
 	struct bfd *a_bfd = bfd_openr(filename.c_str(), NULL);
-	if ( !(bool)a_bfd )
+
+    if ( a_bfd == NULL )
+        a_bfd = bfd_openr(filename.c_str(), "elf32-little");
+    if ( a_bfd == NULL )
+        a_bfd = bfd_openr(filename.c_str(), "elf32-big");
+	if ( a_bfd == NULL )
 		throw soclib::exception::RunTimeError(
             std::string("Cant open binary image ")+filename);
 	
