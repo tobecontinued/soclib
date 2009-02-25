@@ -64,8 +64,8 @@ class VciHeterogeneousRom
 
     rom_t ** m_assoc[vci_param::S];
 
-    typedef std::pair<std::string, struct group_s> m_groups_pair_t;
-    typedef std::map<std::string, struct group_s> m_groups_map_t;
+    typedef std::pair<soclib::common::Loader *, struct group_s> m_groups_pair_t;
+    typedef std::map<soclib::common::Loader *, struct group_s> m_groups_map_t;
 
     m_groups_map_t m_groups;
 

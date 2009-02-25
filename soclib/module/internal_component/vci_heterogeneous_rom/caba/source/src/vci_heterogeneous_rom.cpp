@@ -72,7 +72,7 @@ tmpl(/**/)::~VciHeterogeneousRom()
 tmpl(void)::add_srcid(soclib::common::Loader &loader, const IntTab &srcid)
 {
 	const size_t word_size = vci_param::B; // B is VCI's cell size
-    typename m_groups_map_t::iterator j = m_groups.find(loader.filename());
+    typename m_groups_map_t::iterator j = m_groups.find(&loader);
 
     if (j == m_groups.end())
         {
@@ -92,7 +92,7 @@ tmpl(void)::add_srcid(soclib::common::Loader &loader, const IntTab &srcid)
                         g.m_rom[i][addr] = le_to_machine(g.m_rom[i][addr]);
                 }
 
-            j = m_groups.insert(m_groups_pair_t(loader.filename(), g)).first;
+            j = m_groups.insert(m_groups_pair_t(&loader, g)).first;
         }
 
     m_assoc[m_mt.indexForId(srcid)] = &j->second.m_rom.front();
