@@ -5,6 +5,7 @@ Module('caba:dspin_router',
 	tmpl_parameters = [
 	    parameter.Int('dspin_data_size'),
 	    parameter.Int('dspin_fifo_size'),
+	    parameter.Int('dspin_yx_size', default = 4),
 	],
 	header_files = ['../source/include/dspin_router.h',],
 	implementation_files = ['../source/src/dspin_router.cpp',],
