@@ -41,6 +41,7 @@ enum SoclibMwmrRegisters {
     MWMR_CONFIG_BUFFER_ADDR,
     MWMR_CONFIG_RUNNING,
     MWMR_CONFIG_WIDTH, // bytes
+    MWMR_CONFIG_ENDIANNESS, // Write 0x11223344 here
     MWMR_FIFO_FILL_STATUS,
 };
 

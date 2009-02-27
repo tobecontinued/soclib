@@ -68,6 +68,7 @@ struct fifo_state_s {
     GenericFifo<uint32_t> *fifo;
     uint32_t in_words;
     uint32_t out_words;
+    bool must_swap;
 
     void print( std::ostream &o ) const
     {
@@ -177,6 +178,13 @@ tmpl(void)::rehashConfigFifo()
 		m_config_fifo = &base[m_config_no];
     else
 		m_config_fifo = NULL;
+}
+
+tmpl(uint32_t)::swap_data( uint32_t data ) const
+{
+    if ( m_current && m_current->must_swap )
+        return soclib::endian::uint32_swap(data);
+    return data;
 }
 
 tmpl(void)::elect()
@@ -294,6 +302,11 @@ DEBUG_END;
                   << "MWMR_FIFO_FILL_STATUS is a Read-only address"
                   << std::endl;
 		return false;
+    case MWMR_CONFIG_ENDIANNESS:
+		check_fifo();
+        assert( data == 0x11223344 || data == 0x44332211 );
+        m_config_fifo->must_swap = (data == 0x44332211);
+		return false;
 	}
 	return false;
 }
@@ -344,6 +357,10 @@ DEBUG_END;
 		check_fifo();
 		data = m_config_fifo->fifo->filled_status();
 		return true;
+    case MWMR_CONFIG_ENDIANNESS:
+		check_fifo();
+        data = m_config_fifo->must_swap ? 0x44332211 : 0x11223344;
+        return true;
 	}
 	return false;
 }
@@ -424,7 +441,7 @@ tmpl(void)::transition()
         if ( ! p_vci_initiator.iAccepted() )
             break;
 
-            uint32_t size_before = p_vci_initiator.rdata.read();
+            uint32_t size_before = swap_data(p_vci_initiator.rdata.read());
             uint32_t data_xfer_bytes = m_current->width * std::min<size_t>(
                 (m_current->way == MWMR_TO_COPROC
                  ? (m_current->fifo->size() - m_current->fifo->filled_status())
@@ -459,7 +476,7 @@ tmpl(void)::transition()
     case INIT_LL_TAIL_W:
         if ( ! p_vci_initiator.iAccepted() )
             break;
-        r_tail = p_vci_initiator.rdata.read();
+        r_tail = swap_data(p_vci_initiator.rdata.read());
         r_init_fsm = r_init_fsm.read() + 1;
         break;
 
@@ -542,7 +559,7 @@ tmpl(void)::transition()
     {
         if ( ! p_vci_initiator.iAccepted() )
             break;
-        uint32_t head = p_vci_initiator.rdata.read();
+        uint32_t head = swap_data(p_vci_initiator.rdata.read());
         if ( head != r_tail )
             r_init_fsm = INIT_LL_HEAD;
         else
@@ -562,7 +579,7 @@ tmpl(void)::transition()
     case INIT_LL_AFTER_SIZE_W:
         if ( ! p_vci_initiator.iAccepted() )
             break;
-        r_size_after = p_vci_initiator.rdata.read();
+        r_size_after = swap_data(p_vci_initiator.rdata.read());
         r_init_fsm = r_init_fsm.read() + 1;
         break;
 
@@ -683,7 +700,7 @@ tmpl(void)::genMoore()
             ( m_current->way == MWMR_FROM_COPROC
               ? status_offset(free_size)
               : status_offset(data_size) );
-		p_vci_initiator.wdata = r_size_before - r_data_xfer_bytes;
+		p_vci_initiator.wdata = swap_data(r_size_before - r_data_xfer_bytes);
 		p_vci_initiator.cmd = vci_param::CMD_STORE_COND;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
@@ -707,7 +724,7 @@ tmpl(void)::genMoore()
             ( m_current->way == MWMR_FROM_COPROC
               ? status_offset(free_tail)
               : status_offset(data_tail) );
-		p_vci_initiator.wdata = ( r_tail + r_data_xfer_bytes ) % m_current->depth;
+		p_vci_initiator.wdata = swap_data(( r_tail + r_data_xfer_bytes ) % m_current->depth);
 		p_vci_initiator.cmd = vci_param::CMD_STORE_COND;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
@@ -786,7 +803,7 @@ tmpl(void)::genMoore()
             ( m_current->way == MWMR_FROM_COPROC
               ? status_offset(data_head)
               : status_offset(free_head) );
-		p_vci_initiator.wdata = ( r_tail + r_data_xfer_bytes ) % m_current->depth;
+		p_vci_initiator.wdata = swap_data(( r_tail + r_data_xfer_bytes ) % m_current->depth);
 		p_vci_initiator.cmd = vci_param::CMD_STORE_COND;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;
@@ -810,7 +827,7 @@ tmpl(void)::genMoore()
             ( m_current->way == MWMR_FROM_COPROC
               ? status_offset(data_size)
               : status_offset(free_size) );
-		p_vci_initiator.wdata = r_size_after + r_data_xfer_bytes;
+		p_vci_initiator.wdata = swap_data(r_size_after + r_data_xfer_bytes);
 		p_vci_initiator.cmd = vci_param::CMD_STORE_COND;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = true;

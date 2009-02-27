@@ -96,6 +96,8 @@ private:
     uint32_t m_n_bailout;
     uint32_t m_n_xfers;
 
+    uint32_t swap_data( uint32_t data ) const;
+
 	enum SoclibMwmrWay m_config_way;
 	size_t m_config_no;
 	fifo_state_t *m_config_fifo;
