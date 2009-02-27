@@ -99,7 +99,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", NULL);
-	soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(3), maptab, FB_WIDTH, FB_HEIGHT); 
+	soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(3), maptab, FB_WIDTH, FB_HEIGHT, FB_MODE); 
 
 	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 1, 4, 2, 8);
 
