@@ -28,6 +28,7 @@
 #ifndef SOCLIB_COMMON_FB_CONTROLLER_H_
 #define SOCLIB_COMMON_FB_CONTROLLER_H_
 
+#include <assert.h>
 #include <inttypes.h>
 #include "process_wrapper.h"
 

@@ -28,6 +28,7 @@
 #include <sstream>
 #include <fstream>
 #include <ios>
+#include <cstdlib>
 
 #include "exception.h"
 #include "static_init_code.h"
