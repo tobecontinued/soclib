@@ -51,9 +51,11 @@ FbController::FbController(
     int subsampling )
 	: m_width(width),
       m_height(height),
-      m_subsampling(subsampling)
+      m_subsampling((enum SubsamplingType)subsampling),
+      m_surface_size(surface_size())
 {
 	char name[32];
+	m_sim_surface = std::malloc(m_surface_size);
 	m_surface = NULL;
 
     std::string tmpname = std::string("/tmp/") + basename + ".rawXXXXXX";
@@ -65,17 +67,18 @@ FbController::FbController(
         throw soclib::exception::RunTimeError("Cant create file");
 	}
 
-	lseek(m_map_fd, m_width*m_height*2-1, SEEK_SET);
+	lseek(m_map_fd, m_surface_size-1, SEEK_SET);
 	write(m_map_fd, "", 1);
 	lseek(m_map_fd, 0, SEEK_SET);
 	
-	m_surface = (uint32_t*)mmap(0, m_width*m_height*2, PROT_WRITE|PROT_READ, MAP_FILE|MAP_SHARED, m_map_fd, 0);
+	m_surface = (uint32_t*)mmap(0, m_surface_size, PROT_WRITE|PROT_READ, MAP_FILE|MAP_SHARED, m_map_fd, 0);
 	if ( m_surface == ((uint32_t *)-1) ) {
 		perror("mmap");
         throw soclib::exception::RunTimeError("Cant mmap file");
 	}
 	
-    std::memset(m_surface, 128, m_width*m_height*2);
+    std::memset(m_surface, 128, m_surface_size);
+    std::memset(m_sim_surface, 128, m_surface_size);
 
     char *soclib_fb = std::getenv("SOCLIB_FB");
     m_headless_mode = ( soclib_fb && !std::strcmp(soclib_fb, "HEADLESS") );
@@ -96,6 +99,10 @@ FbController::FbController(
         argv.push_back(name);
 
         m_screen_process = new ProcessWrapper("soclib-fb", argv);
+//         std::cout << "Wait..." ;
+//         std::cout.flush();
+//         sleep(2);
+//         std::cout << "Done" << std::endl;
 	}
 }
 
@@ -103,12 +110,33 @@ FbController::~FbController()
 {
 	if (m_headless_mode == false)
         delete m_screen_process;
+    std::free(m_sim_surface);
+}
+
+size_t FbController::surface_size() const
+{
+    switch ( m_subsampling ) {
+    case YUV420:
+        return (m_width*m_height) * 3 / 2;
+    case YUV422:
+        return (m_width*m_height) * 2;
+    case RGB:
+        return (m_width*m_height) * 3;
+    case RGB_PALETTE_256:
+        return (m_width*m_height) + 3*256;
+    case BW:
+        return (m_width*m_height)/8;
+    default:
+        return 0;
+    }
 }
 
 void FbController::update()
 {
-	if (m_headless_mode == false)
+	if (m_headless_mode == false) {
+        memcpy(m_surface, m_sim_surface, m_surface_size);
         m_screen_process->write("", 1);
+    }
 }
 
 }}

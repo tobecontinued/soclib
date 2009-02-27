@@ -40,14 +40,33 @@ class FbController
     soclib::common::ProcessWrapper *m_screen_process;
 
 	uint32_t *m_surface;
+	void *m_sim_surface;
+
+    size_t surface_size() const;
 
 public:
+    enum SubsamplingType {
+        YUV420 = 420,
+        YUV422 = 422,
+        RGB = 0,
+        RGB_PALETTE_256 = 256,
+        BW = 1,
+    };
+
 	const unsigned long m_width, m_height;
-    const int m_subsampling;
+    const enum SubsamplingType m_subsampling;
+    const size_t m_surface_size;
 
     inline uint32_t* surface() const
     {
-        return m_surface;
+        return (uint32_t*)m_sim_surface;
+    }
+
+    template<typename T>
+    inline T& w( size_t offset )
+    {
+        assert( offset * sizeof(T) < m_surface_size );
+        return ((T*)m_sim_surface)[offset];
     }
 
 	FbController(
