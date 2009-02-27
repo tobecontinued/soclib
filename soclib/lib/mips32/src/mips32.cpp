@@ -254,7 +254,7 @@ uint32_t Mips32Iss::executeNCycles(
 #endif
     }
 
-    if (  m_exception == NO_EXCEPTION || r_status.exl || r_status.erl )
+    if (  m_exception == NO_EXCEPTION )
         goto no_except;
 
  handle_except:
