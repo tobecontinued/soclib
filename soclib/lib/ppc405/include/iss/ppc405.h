@@ -428,7 +428,7 @@ private:
     inline void crSet( int no, uint32_t cr )
     {
         uint32_t mask = 0xf<<((7-no)*4);
-        r_cr = mask&(cr<<((7-no)*4)) | r_cr&~mask;
+        r_cr = (mask&(cr<<((7-no)*4))) | (r_cr&~mask);
     }
 
     inline void ovSet( bool ov )
