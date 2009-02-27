@@ -65,11 +65,9 @@ namespace soclib { namespace caba {
 	    SC_HAS_PROCESS(VciDspinPlusNetwork);
 
 	    private:
-	    	size_t Y;
-		size_t X;
+	    	size_t m_width_network;
+		size_t m_height_network;
 
-	    	// signal vci
-	    	// signal dspin
 		//
 		// signal between routers
 		//
@@ -78,17 +76,17 @@ namespace soclib { namespace caba {
 	    	soclib::caba::DspinSignals<37>** s_req_SN;
 	    	soclib::caba::DspinSignals<37>** s_req_WE;
 
+	    	soclib::caba::DspinSignals<33>** s_rsp_NS;
+	    	soclib::caba::DspinSignals<33>** s_rsp_EW;
+	    	soclib::caba::DspinSignals<33>** s_rsp_SN;
+	    	soclib::caba::DspinSignals<33>** s_rsp_WE;
+
 		//
 		// signal between router and wrapper
 		//
 	    	soclib::caba::DspinSignals<37>** s_req_RW;
 	    	soclib::caba::DspinSignals<37>** s_req_WR;
 		
-	    	soclib::caba::DspinSignals<33>** s_rsp_NS;
-	    	soclib::caba::DspinSignals<33>** s_rsp_EW;
-	    	soclib::caba::DspinSignals<33>** s_rsp_SN;
-	    	soclib::caba::DspinSignals<33>** s_rsp_WE;
-
 	    	soclib::caba::DspinSignals<33>** s_rsp_RW;
 	    	soclib::caba::DspinSignals<33>** s_rsp_WR;
 
@@ -114,3 +112,12 @@ namespace soclib { namespace caba {
 //end
 
 #endif //VCI_DSPINPLUS_NETWORK_H_
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
