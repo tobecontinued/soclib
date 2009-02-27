@@ -61,6 +61,7 @@ void Mips32Iss::reset()
     struct DataRequest null_dreq = ISS_DREQ_INITIALIZER;
     r_ebase = 0x80000000 | m_ident;
     r_pc = RESET_ADDRESS;
+    r_cpu_mode = MIPS32_KERNEL;
     r_npc = RESET_ADDRESS + 4;
     m_ibe = false;
     m_dbe = false;
@@ -78,11 +79,14 @@ void Mips32Iss::reset()
     r_tls_base = 0;
     r_hwrena = 0;
 
+    r_bus_mode = MODE_KERNEL;
+
     for(int i = 0; i<32; i++)
         r_gp[i] = 0;
 
     m_hazard=false;
     m_exception = NO_EXCEPTION;
+    update_mode();
 }
 
 void Mips32Iss::dump() const
@@ -128,6 +132,10 @@ uint32_t Mips32Iss::executeNCycles(
     const struct DataResponse &drsp,
     uint32_t irq_bit_field )
 {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " executeNCycles( " << ncycle << ", "<< irsp << ", " << drsp << ", " << irq_bit_field << ")" << std::endl;
+#endif
+
     bool may_take_irq = r_status.ie && !r_status.exl && !r_status.erl;
     if ( m_little_endian )
         m_ins.ins = irsp.instruction;
