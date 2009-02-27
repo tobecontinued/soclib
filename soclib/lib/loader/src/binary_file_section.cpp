@@ -194,6 +194,12 @@ bool BinaryFileSection::load_overlap_in_buffer(
         return false;
     if ( m_data )
         m_data->check();
+
+    if ( copy_size < m_data->size() )
+        std::cout
+            << "Warning, loading only " << (m_data->size() - copy_size)
+            << " bytes from " << *this
+            << std::endl;
     memcpy( dst, src, copy_size );
 	return true;
 }
