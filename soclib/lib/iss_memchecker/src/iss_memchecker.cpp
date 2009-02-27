@@ -486,6 +486,7 @@ public:
 //                       << " " << i->name()
 //                       << " @" << std::hex << i->lma()
 //                       << ", " << std::dec << i->size()/4 << " words long"
+//                       << " RO: " << i->flag_read_only()
 //                       << std::endl;
 
             RegionInfo::State state = RegionInfo::REGION_STATE_GLOBAL;
@@ -556,6 +557,11 @@ public:
     void context_delete( uint32_t id )
     {
         context_map_t::iterator i = m_contexts.find(id);
+
+//         if (i == m_contexts.end()) {
+//             std::cout << "Trying to delete context " << id << std::endl;
+//             return;
+//         }
         assert(i != m_contexts.end()
                && "Deleting non-existant context...");
         i->second->unref();
@@ -723,6 +729,8 @@ template<typename iss_t>
 void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 {
     assert( reg_no < ISS_MEMCHECKER_REGISTER_MAX && "Undefined regsiter" );
+
+//     std::cout << "memchecker register set " << std::dec << reg_no << " val: " << std::hex << value << std::endl;
 
     switch ((enum SoclibIssMemcheckerRegisters)reg_no) {
     case ISS_MEMCHECKER_MAGIC:
@@ -937,6 +945,9 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors)
     if ( !errors )
         return;
 
+    uint32_t pc = get_cpu_pc();
+    uint32_t sp = get_cpu_sp();
+
     // Signal to GDB
     iss_t::debugExceptionBypassed( (uint32_t)-1 );
 
@@ -958,7 +969,6 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors)
     if ( errors & ERROR_INVALID_MAGIC_DISABLE )
         std::cout << " bad disabling of magic" << std::endl;
     if ( errors & ERROR_SP_OUTOFBOUNDS ) {
-        uint32_t sp = get_cpu_sp();
         std::cout << " stack pointer out of bounds: " << sp << ", ";
         if ( sp < m_current_context->m_stack_lower )
             std::cout << (m_current_context->m_stack_lower - sp) << " bytes below" << std::endl;
@@ -988,9 +998,9 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors)
 
 
     std::cout
-        << " at PC=" << s_memory_state->get_symbol(get_cpu_pc()) << std::endl
+        << " at PC=" << s_memory_state->get_symbol(pc) << std::endl
 
-        << "    SP=" << s_memory_state->get_symbol(get_cpu_sp()) << std::endl
+        << "    SP=" << s_memory_state->get_symbol(sp) << std::endl
 
         << "    last Dreq: " << m_last_data_access << std::endl
         << "          sym: " << s_memory_state->get_symbol(m_last_data_access.addr) << std::endl
