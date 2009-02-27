@@ -10,6 +10,7 @@ todo = Platform('caba', 'top.cpp',
 	Uses('caba:vci_multi_tty'),
 	Uses('caba:vci_timer'),
 	Uses('caba:vci_dspinplus_network', dspin_fifo_size = 4, dspin_yx_size = 4),
+	Uses('caba:vci_local_crossbar'),
 	Uses('common:elf_file_loader'),
 	],
 	cell_size = 4,
@@ -18,8 +19,9 @@ todo = Platform('caba', 'top.cpp',
 	rerror_size = 1,
 	clen_size = 1,
 	rflag_size = 1,
-	srcid_size = 8,
+	srcid_size = 12,
 	pktid_size = 1,
 	trdid_size = 1,
 	wrplen_size = 1
 )
+
