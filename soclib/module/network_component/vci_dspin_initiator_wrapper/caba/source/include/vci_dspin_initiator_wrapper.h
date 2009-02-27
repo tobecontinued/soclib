@@ -38,23 +38,25 @@ namespace soclib { namespace caba {
 
     using namespace sc_core;
 
-    template<typename vci_param, int dspin_data_size, int dspin_fifo_size>
+    template<typename vci_param, int dspin_fifo_size, int dspin_yx_size>
 	class VciDspinInitiatorWrapper
 	: public soclib::caba::BaseModule
 	{
 
 	    // FSM of request
 	    enum fsm_state_req{
-		REQ_HEADER,
-		REQ_ADDRESS_READ,
-		REQ_ADDRESS_WRITE,
-		REQ_DATA_WRITE,
+		REQ_DSPIN_HEADER,
+		REQ_VCI_ADDRESS_HEADER,
+		REQ_VCI_CMD_READ_HEADER,
+		REQ_VCI_CMD_WRITE_HEADER,
+		REQ_VCI_DATA_PAYLOAD,
 	    };
 
 	    // FSM of response
 	    enum fsm_state_rsp{
-		RSP_HEADER,
-		RSP_DATA,
+		RSP_DSPIN_HEADER,
+		RSP_VCI_HEADER,		
+		RSP_VCI_DATA_PAYLOAD,
 	    };
 
 	    protected:
@@ -66,46 +68,52 @@ namespace soclib { namespace caba {
 	    sc_in<bool>                             	p_resetn;
 
 	    // fifo req ant rsp
-	    DspinOutput<dspin_data_size>		p_dspin_out;
-	    DspinInput<dspin_data_size>			p_dspin_in;
+	    DspinOutput<38>				p_dspin_out;
+	    DspinInput<34>				p_dspin_in;
 
 	    // ports vci
 	    soclib::caba::VciTarget<vci_param>      	p_vci;
 
 	    // constructor / destructor
-	    VciDspinInitiatorWrapper(sc_module_name    insname,
-		    const soclib::common::MappingTable &mt);
+	    VciDspinInitiatorWrapper(sc_module_name insname, const soclib::common::MappingTable &mt);
 
 	    private:
 	    // internal registers
-	    sc_signal<int>				r_fsm_state_req;
-	    sc_signal<int>				r_fsm_state_rsp;
-	    sc_signal<int>                  		r_srcid;
-	    sc_signal<int>                  		r_pktid;
-	    sc_signal<int>                  		r_trdid;
+	    sc_signal<int>        r_fsm_state_req;
+	    sc_signal<int>        r_fsm_state_rsp;
+	    sc_signal<int>        r_srcid;
+	    sc_signal<int>        r_pktid;
+	    sc_signal<int>        r_trdid;
+	    sc_signal<int>        r_error;
 
 	    // deux fifos req and rsp
-	    soclib::caba::GenericFifo<sc_uint<dspin_data_size> >  fifo_req;
-	    soclib::caba::GenericFifo<sc_uint<dspin_data_size> >  fifo_rsp;
+	    soclib::caba::GenericFifo<sc_uint<38> >  fifo_req;
+	    soclib::caba::GenericFifo<sc_uint<34> >  fifo_rsp;
 
 	    // methods systemc
 	    void transition();
 	    void genMoore();
 
 	    // routing table
-	    soclib::common::AddressDecodingTable<uint32_t, int> 	m_routing_table;
-	    int						srcid_mask;
-
-	    // methods
-	    bool parity(int val);
+	    soclib::common::AddressDecodingTable<uint32_t, int>  m_routing_table;
+	    int                                                  srcid_mask;
 
 	    // checker
-	    static_assert(vci_param::N == 32); // checking VCI address size
-	    static_assert(vci_param::B == 4);  // checking VCI data size
-	    static_assert(vci_param::E == 1);  // checking VCI error size
-	    static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
+	    static_assert(vci_param::N == 32 || vci_param::N == 36); // checking VCI address size
+	    static_assert(vci_param::B == 4);   // checking VCI data size
+	    static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1); // checking FIFO size
+	    static_assert(dspin_yx_size <= 6 && dspin_yx_size >= 1);  // checking DSPIN index size
 	};
 
 }} // end namespace
                
 #endif // VCI_DSPIN_INITIATOR_WRAPPER_H_
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4

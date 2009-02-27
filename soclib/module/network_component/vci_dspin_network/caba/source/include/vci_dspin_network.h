@@ -42,11 +42,11 @@ namespace soclib { namespace caba {
 
     using namespace sc_core;
 
-    template<typename vci_param, int dspin_data_size, int dspin_fifo_size>
-	class VciDspinNetwork
-	: public soclib::caba::BaseModule
-	{
-           enum{
+    template<typename vci_param, int dspin_fifo_size, int dspin_yx_size>
+        class VciDspinNetwork
+        : public soclib::caba::BaseModule
+        {
+            enum{
                 NORTH   = 0,
                 SOUTH   = 1,
                 EAST    = 2,
@@ -54,62 +54,70 @@ namespace soclib { namespace caba {
                 LOCAL   = 4
             };
 
-	    public:
-		sc_in<bool>		p_clk;
-		sc_in<bool>		p_resetn;
+            public:
+                sc_in<bool>		p_clk;
+                sc_in<bool>		p_resetn;
 
-		soclib::caba::VciInitiator<vci_param>** p_to_target;
-		soclib::caba::VciTarget<vci_param>** p_to_initiator;
+                soclib::caba::VciInitiator<vci_param>** p_to_target;
+                soclib::caba::VciTarget<vci_param>** p_to_initiator;
 
-	    protected:
-	    SC_HAS_PROCESS(VciDspinNetwork);
+            protected:
+                SC_HAS_PROCESS(VciDspinNetwork);
 
-	    private:
-	    	size_t Y;
-		size_t X;
+            private:
+                size_t m_width_network;
+                size_t m_height_network;
 
-	    	// signal vci
-	    	// signal dspin
-		//
-		// signal between routers
-		//
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_req_NS;
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_req_EW;
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_req_SN;
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_req_WE;
+                //
+                // signal between routers
+                //
+                soclib::caba::DspinSignals<38>** s_req_NS;
+                soclib::caba::DspinSignals<38>** s_req_EW;
+                soclib::caba::DspinSignals<38>** s_req_SN;
+                soclib::caba::DspinSignals<38>** s_req_WE;
 
-		//
-		// signal between router and wrapper
-		//
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_req_RW;
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_req_WR;
-		
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_rsp_NS;
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_rsp_EW;
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_rsp_SN;
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_rsp_WE;
+                soclib::caba::DspinSignals<34>** s_rsp_NS;
+                soclib::caba::DspinSignals<34>** s_rsp_EW;
+                soclib::caba::DspinSignals<34>** s_rsp_SN;
+                soclib::caba::DspinSignals<34>** s_rsp_WE;
 
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_rsp_RW;
-	    	soclib::caba::DspinSignals<dspin_data_size>** s_rsp_WR;
+                //
+                // signal between router and wrapper
+                //
+                soclib::caba::DspinSignals<38>** s_req_RW;
+                soclib::caba::DspinSignals<38>** s_req_WR;
 
-	    	//dspin
-		soclib::caba::VciDspinInitiatorWrapper<vci_param, dspin_data_size, dspin_fifo_size>*** t_initiator_wrapper;
-		soclib::caba::VciDspinTargetWrapper<vci_param, dspin_data_size, dspin_fifo_size>*** t_target_wrapper;
-		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>*** t_req_router;
-		soclib::caba::DspinRouter<dspin_data_size, dspin_fifo_size>*** t_rsp_router;
+                soclib::caba::DspinSignals<34>** s_rsp_RW;
+                soclib::caba::DspinSignals<34>** s_rsp_WR;
 
-		//checker
-		static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
+                //dspin
+                soclib::caba::VciDspinInitiatorWrapper<vci_param, dspin_fifo_size, dspin_yx_size>*** t_initiator_wrapper;
+                soclib::caba::VciDspinTargetWrapper<vci_param, dspin_fifo_size, dspin_yx_size>*** t_target_wrapper;
+                soclib::caba::DspinRouter<38, dspin_fifo_size, dspin_yx_size>*** t_req_router;
+                soclib::caba::DspinRouter<34, dspin_fifo_size, dspin_yx_size>*** t_rsp_router;
 
-	    public:
-		VciDspinNetwork( sc_module_name name,
-						 const soclib::common::MappingTable &mt,
-						 size_t width_network,   //X
-						 size_t height_network); //Y
+                //checker
+                static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
+                static_assert(dspin_yx_size == 4); // DSPIN only supports YX adresses in 4 bits
 
-		~VciDspinNetwork();
-	};
+            public:
+                VciDspinNetwork( sc_module_name name,
+                                 const soclib::common::MappingTable &mt,
+                                 size_t width_network,   //X
+                                 size_t height_network); //Y
+
+                ~VciDspinNetwork();
+        };
 }}
 //end
 
 #endif //VCI_DSPIN_NETWORK_H_
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4

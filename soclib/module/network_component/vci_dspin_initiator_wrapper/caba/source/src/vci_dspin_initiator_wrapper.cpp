@@ -29,7 +29,7 @@
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<typename vci_param, int dspin_data_size, int dspin_fifo_size> x VciDspinInitiatorWrapper<vci_param, dspin_data_size, dspin_fifo_size>
+#define tmpl(x) template<typename vci_param, int dspin_fifo_size, int dspin_yx_size> x VciDspinInitiatorWrapper<vci_param, dspin_fifo_size, dspin_yx_size>
 
     ////////////////////////////////
     //      constructor
@@ -53,39 +53,29 @@ namespace soclib { namespace caba {
 	SOCLIB_REG_RENAME(r_srcid);
 	SOCLIB_REG_RENAME(r_pktid);
 	SOCLIB_REG_RENAME(r_trdid);
+	SOCLIB_REG_RENAME(r_error);
 
 	m_routing_table = mt.getRoutingTable(soclib::common::IntTab(), 0);
 	srcid_mask = 0x7FFFFFFF >> ( 31 - vci_param::S );
     } //  end constructor
 
     ////////////////////////////////
-    //      functions
-    ///////////////////////////////
-    tmpl(bool)::parity(int val){
-	int tmp = 0;
-	for (int i = 0; i < 32; i++){
-	    tmp = tmp + (val >> i);
-	}
-	return (tmp & 1 == 1);
-    }
-
-    ////////////////////////////////
     //      transition
     ////////////////////////////////
     tmpl(void)::transition()
     {
-	sc_uint<36>	req_fifo_data;
+	sc_uint<38>	req_fifo_data;
 	bool		req_fifo_write;
 	bool		req_fifo_read;
-	sc_uint<36>	rsp_fifo_data;
+	sc_uint<34>	rsp_fifo_data;
 	bool		rsp_fifo_write;
 	bool		rsp_fifo_read;
 
 	if (p_resetn == false) {
 	    fifo_req.init();
 	    fifo_rsp.init();
-	    r_fsm_state_req = REQ_HEADER;
-	    r_fsm_state_rsp = RSP_HEADER;
+	    r_fsm_state_req = REQ_DSPIN_HEADER;
+	    r_fsm_state_rsp = RSP_DSPIN_HEADER;
 	    return;
 	} // end reset
 
@@ -97,74 +87,70 @@ namespace soclib { namespace caba {
 	req_fifo_read = p_dspin_out.read.read();
 
 	// r_fsm_state_req, req_fifo_write and req_fifo_data
+	req_fifo_write = false;
 	switch(r_fsm_state_req) {
-	    case REQ_HEADER :
-		if(p_vci.cmdval == true) {
+	    case REQ_DSPIN_HEADER :
+		if(p_vci.cmdval == true && fifo_req.wok() == true) {
 		    req_fifo_write = true;
-		    req_fifo_data = (sc_uint<36>) (m_routing_table[(int)(p_vci.address.read())])  |
-			(sc_uint<36>) (p_vci.address.read() & 0xF0000000)  |
-			(sc_uint<36>) ((p_vci.pktid.read() & 0x03)  << 18) |
-			(sc_uint<36>) ((p_vci.trdid.read() & 0x0F)  << 20) |
-			(sc_uint<36>) ((p_vci.cmd.read())           << 24) |
-			(sc_uint<36>) ((p_vci.srcid.read()& 0x3ff)  << 8)  |
-			(((sc_uint<36>) DSPIN_BOP)                  << 32) ;
-		    if(p_vci.contig.read() == true) 
-		    { req_fifo_data = req_fifo_data | (sc_uint<36>) DSPIN_CONTIG; } 
-		    if(p_vci.cons.read() == true) 
-		    { req_fifo_data = req_fifo_data | (sc_uint<36>) DSPIN_CONS; } 
-		    if(parity(req_fifo_data) == true) 
-		    { req_fifo_data = req_fifo_data | ((sc_uint<36>) DSPIN_PAR) << 32; } 
-		    if(fifo_req.wok() == true) {
-			if(p_vci.cmd.read() == vci_param::CMD_WRITE) {r_fsm_state_req = REQ_ADDRESS_WRITE;} 
-			else                                	     {r_fsm_state_req = REQ_ADDRESS_READ;} 
-		    }
-		} else {
-		    req_fifo_write = false;
+		    req_fifo_data = ((sc_uint<38>(DSPIN_BOP)) << 36) |
+                                    ((sc_uint<38>(m_routing_table[(int)(p_vci.address.read())]))
+				& (0x7FFFFFFF >> (31 - dspin_yx_size * 2)));
+		    r_fsm_state_req = REQ_VCI_ADDRESS_HEADER;
 		}
 		break;
-	    case REQ_ADDRESS_READ :
-		req_fifo_write = p_vci.cmdval;
+	    case REQ_VCI_ADDRESS_HEADER :
 		if((p_vci.cmdval == true) && (fifo_req.wok() == true)) {
-		    req_fifo_data = (sc_uint<36>) (p_vci.address.read() & 0x0FFFFFFF) |
-			(((sc_uint<36>) p_vci.be.read()) << 28)           ;
-		    if(parity(req_fifo_data) == true) 
-		    { req_fifo_data = req_fifo_data | ((sc_uint<36>) DSPIN_PAR) << 32; } 
+		    req_fifo_write = true;
+		    req_fifo_data = (sc_uint<38>) p_vci.address.read();
+		    if((p_vci.cmd.read() == vci_param::CMD_WRITE) || 
+			    (p_vci.cmd.read() == vci_param::CMD_STORE_COND)) {r_fsm_state_req = REQ_VCI_CMD_WRITE_HEADER;} 
+		    else                                	 {r_fsm_state_req = REQ_VCI_CMD_READ_HEADER;} 
+		}
+		break;
+	    case REQ_VCI_CMD_WRITE_HEADER :
+		if((p_vci.cmdval == true) && (fifo_req.wok() == true)) {
+		    req_fifo_write = true;
+		    req_fifo_data = ((sc_uint<38>(p_vci.srcid.read() & srcid_mask)) << 24) |
+				    ((sc_uint<38>(p_vci.cmd.read()))                << 18) |
+				    ((sc_uint<38>(p_vci.contig.read()))             << 17) |
+				    ((sc_uint<38>(p_vci.cons.read()))               << 16) |
+				    ((sc_uint<38>(p_vci.plen.read()  & 0xFF))       << 8)  |
+				    ((sc_uint<38>(p_vci.trdid.read() &  0xF))       << 4)  |
+				     (sc_uint<38>(p_vci.pktid.read() &  0xF));
+		    r_fsm_state_req = REQ_VCI_DATA_PAYLOAD;
+		}
+		break;
+	    case REQ_VCI_CMD_READ_HEADER :
+		if((p_vci.cmdval == true) && (fifo_req.wok() == true)) {
+		    req_fifo_write = true;
+		    req_fifo_data = ((sc_uint<38>(DSPIN_EOP))                       << 36) |
+				    ((sc_uint<38>(p_vci.srcid.read() & srcid_mask)) << 24) |
+				    ((sc_uint<38>(p_vci.cmd.read()))                << 18) |
+				    ((sc_uint<38>(p_vci.contig.read()))             << 17) |
+				    ((sc_uint<38>(p_vci.cons.read()))               << 16) |
+				    ((sc_uint<38>(p_vci.plen.read()  & 0xFF))       << 8)  |
+				    ((sc_uint<38>(p_vci.trdid.read() &  0xF))       << 4)  |
+				     (sc_uint<38>(p_vci.pktid.read() &  0xF));
+		    r_fsm_state_req = REQ_DSPIN_HEADER;
+		}
+		break;
+	    case REQ_VCI_DATA_PAYLOAD :
+		if((p_vci.cmdval == true) && (fifo_req.wok() == true)) {
+		    req_fifo_write = true;
+		    req_fifo_data = ((sc_uint<38>(p_vci.be.read())) << 32) |
+				     (sc_uint<38>(p_vci.wdata.read()));
 		    if(p_vci.eop == true) {
-			req_fifo_data = req_fifo_data | (((sc_uint<36>) DSPIN_EOP) << 32);
-			r_fsm_state_req = REQ_HEADER;
-		    }
-		}
-		break;
-	    case REQ_ADDRESS_WRITE :
-		req_fifo_write = p_vci.cmdval;
-		if((p_vci.cmdval == true) && (fifo_req.wok() == true)) {
-		    req_fifo_data = (sc_uint<36>) (p_vci.address.read() & 0x0FFFFFFF) |
-			(((sc_uint<36>) p_vci.be.read()) << 28)           ;
-		    if(parity(req_fifo_data) == true) 
-		    { req_fifo_data = req_fifo_data | ((sc_uint<36>) DSPIN_PAR) << 32; } 
-		    r_fsm_state_req = REQ_DATA_WRITE;
-		}
-		break;
-	    case REQ_DATA_WRITE :
-		req_fifo_write = p_vci.cmdval;
-		if((p_vci.cmdval == true) && (fifo_req.wok() == true)) {
-		    req_fifo_data = (sc_uint<36>) p_vci.wdata.read();
-		    if(parity(req_fifo_data) == true) 
-		    { req_fifo_data = req_fifo_data | ((sc_uint<36>) DSPIN_PAR) << 32; } 
-		    if(p_vci.eop == true) {
-			req_fifo_data = req_fifo_data | (((sc_uint<36>) DSPIN_EOP) << 32);
-			r_fsm_state_req = REQ_HEADER;
-		    }else{ 
-			r_fsm_state_req=REQ_ADDRESS_WRITE;
+			req_fifo_data = req_fifo_data | (((sc_uint<38>) DSPIN_EOP) << 36);
+			r_fsm_state_req = REQ_DSPIN_HEADER;
 		    }
 		}
 		break;
 	} // end switch r_fsm_state_req
-
+	
 	// fifo_req
-	if((req_fifo_write == true) && (req_fifo_read == false)) { fifo_req.simple_put(req_fifo_data); } 
-	if((req_fifo_write == true) && (req_fifo_read == true))  { fifo_req.put_and_get(req_fifo_data); } 
-	if((req_fifo_write == false) && (req_fifo_read == true)) { fifo_req.simple_get(); }
+	if((req_fifo_write == true)  && (req_fifo_read == false)) { fifo_req.simple_put(req_fifo_data); } 
+	if((req_fifo_write == true)  && (req_fifo_read == true))  { fifo_req.put_and_get(req_fifo_data); } 
+	if((req_fifo_write == false) && (req_fifo_read == true))  { fifo_req.simple_get(); }
 
 	// DSPIN response to VCI response
 	// The DSPIN packet is stored in the fifo_rsp
@@ -175,50 +161,62 @@ namespace soclib { namespace caba {
 	rsp_fifo_data  = p_dspin_in.data.read();
 
 	// r_fsm_state_rsp, BUF_RPKTID, rsp_fifo_read
+	rsp_fifo_read = false;
 	switch(r_fsm_state_rsp) {
-	    case RSP_HEADER :
-		rsp_fifo_read = true;
-		if(fifo_rsp.rok() == true) {
-		    r_srcid = (uint32_t)((fifo_rsp.read() >>8     ) & srcid_mask);
-		    r_pktid = (uint32_t)((fifo_rsp.read() >> 18) & 0x03);
-		    r_trdid = (uint32_t)((fifo_rsp.read() >> 20) & 0x0f);
-		    r_fsm_state_rsp = RSP_DATA;
+	    case RSP_DSPIN_HEADER :
+		if( fifo_rsp.rok() == true ){
+		    rsp_fifo_read = true;
+		    r_fsm_state_rsp = RSP_VCI_HEADER;
 		}
 		break;
-	    case RSP_DATA :
-		rsp_fifo_read = p_vci.rspack;
-		if((fifo_rsp.rok() == true) && (p_vci.rspack == true)) {
-		    if(((fifo_rsp.read() >> 32) & DSPIN_EOP) == DSPIN_EOP) { r_fsm_state_rsp = RSP_HEADER; }
+	    case RSP_VCI_HEADER :		
+		if(fifo_rsp.rok() == true) {		    
+		    rsp_fifo_read = true;
+		    r_srcid = (uint32_t) ((fifo_rsp.read() >> 20) & srcid_mask);
+		    r_error = (uint32_t) ((fifo_rsp.read() >> 8 ) & 0xF);
+		    r_trdid = (uint32_t) ((fifo_rsp.read() >> 4 ) & 0xF);
+		    r_pktid = (uint32_t)  (fifo_rsp.read()        & 0xF);
+		    r_fsm_state_rsp = RSP_VCI_DATA_PAYLOAD;
+		}
+		break;
+	    case RSP_VCI_DATA_PAYLOAD :
+		if((fifo_rsp.rok() == true) && (p_vci.rspack.read() == true)) {
+		    rsp_fifo_read = true;
+		    if(((fifo_rsp.read() >> 32) & DSPIN_EOP) == DSPIN_EOP) { r_fsm_state_rsp = RSP_DSPIN_HEADER;}
+		    else                                                   { r_fsm_state_rsp = RSP_VCI_DATA_PAYLOAD;}
 		}
 		break;
 	} // end switch r_fsm_state_rsp
 
 	// fifo_rsp
-	if((rsp_fifo_write == true) && (rsp_fifo_read == false)) { fifo_rsp.simple_put(rsp_fifo_data); } 
-	if((rsp_fifo_write == true) && (rsp_fifo_read == true))  { fifo_rsp.put_and_get(rsp_fifo_data); } 
-	if((rsp_fifo_write == false) && (rsp_fifo_read == true)) { fifo_rsp.simple_get(); }
+	if((rsp_fifo_write == true)  && (rsp_fifo_read == false)) { fifo_rsp.simple_put(rsp_fifo_data); } 
+	if((rsp_fifo_write == true)  && (rsp_fifo_read == true))  { fifo_rsp.put_and_get(rsp_fifo_data); } 
+	if((rsp_fifo_write == false) && (rsp_fifo_read == true))  { fifo_rsp.simple_get(); }
 
 
     }; // end transition
 
     ////////////////////////////////
-    //      genMealy
+    //      genMoore
     ////////////////////////////////
     tmpl(void)::genMoore()
     {
 	// VCI REQ interface
 
 	switch(r_fsm_state_req) {
-	    case REQ_HEADER :
+	    case REQ_DSPIN_HEADER :
 		p_vci.cmdack = false;
 		break;
-	    case REQ_ADDRESS_READ :
+	    case REQ_VCI_ADDRESS_HEADER :
+		p_vci.cmdack = false;
+		break;
+	    case REQ_VCI_CMD_READ_HEADER :
 		p_vci.cmdack = fifo_req.wok();
 		break;
-	    case REQ_ADDRESS_WRITE :
+	    case REQ_VCI_CMD_WRITE_HEADER :
 		p_vci.cmdack = false;
 		break;
-	    case REQ_DATA_WRITE :
+	    case REQ_VCI_DATA_PAYLOAD :
 		p_vci.cmdack = fifo_req.wok();
 		break;
 	} // end switch VCI_r_fsm_state_req
@@ -226,26 +224,25 @@ namespace soclib { namespace caba {
 	// VCI RSP interface
 
 	switch(r_fsm_state_rsp) {
-	    case RSP_HEADER :
+	    case RSP_DSPIN_HEADER :
+	    case RSP_VCI_HEADER :
 		p_vci.rspval = false;
-		p_vci.rdata = (sc_uint<vci_param::N>) 0;
+		p_vci.rdata =  (sc_uint<vci_param::N>) 0;
 		p_vci.rpktid = (sc_uint<vci_param::P>) 0;
 		p_vci.rtrdid = (sc_uint<vci_param::T>) 0;
 		p_vci.rsrcid = (sc_uint<vci_param::S>) 0;
 		p_vci.rerror = (sc_uint<vci_param::E>) 0;
 		p_vci.reop   = false;
 		break;
-	    case RSP_DATA :
+	    case RSP_VCI_DATA_PAYLOAD :
 		p_vci.rspval = fifo_rsp.rok();
 		p_vci.rdata = (sc_uint<vci_param::N>) (fifo_rsp.read() & 0xffffffff);
 		p_vci.rpktid = (sc_uint<vci_param::P>)r_pktid;
 		p_vci.rtrdid = (sc_uint<vci_param::T>)r_trdid;
 		p_vci.rsrcid = (sc_uint<vci_param::S>)r_srcid;
-		if(((fifo_rsp.read() >> 32) & DSPIN_ERR) == DSPIN_ERR){ p_vci.rerror = 1; }
-		else                                                  { p_vci.rerror = 0; }
-		if(((fifo_rsp.read() >> 32) & DSPIN_EOP) == DSPIN_EOP) {p_vci.reop = true;}
-		else                                                   {p_vci.reop = false;}
-		break;
+  	        p_vci.rerror = (sc_uint<vci_param::E>)r_error;
+		if(((fifo_rsp.read() >> 32) & DSPIN_EOP) == DSPIN_EOP) p_vci.reop = true;
+		else                                                   p_vci.reop = false;
 	} // end switch VCI_r_fsm_state_rsp
 
 	// DSPIN_OUT interface
@@ -261,3 +258,11 @@ namespace soclib { namespace caba {
 
 }} // end namespace
 
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
