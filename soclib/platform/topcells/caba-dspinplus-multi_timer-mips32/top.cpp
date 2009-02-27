@@ -21,8 +21,6 @@
  *
  * Copyright (c) UPMC, Lip6, SoC
  *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
- *
- * Maintainers: nipo
  */
 
 #include <iostream>
