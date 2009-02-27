@@ -34,9 +34,25 @@
 
 namespace soclib { namespace common {
 
-Loader::Loader( const std::string &filename )
+Loader::Loader(
+    const std::string &f,
+    const std::string &f2,
+    const std::string &f3,
+    const std::string &f4,
+    const std::string &f5,
+    const std::string &f6 )
 {
-	load_file(filename);
+	load_file(f);
+    if ( f2 != "" )
+        load_file(f2);
+    if ( f3 != "" )
+        load_file(f3);
+    if ( f4 != "" )
+        load_file(f4);
+    if ( f5 != "" )
+        load_file(f5);
+    if ( f6 != "" )
+        load_file(f6);
 }
 
 Loader::Loader( const Loader &ref )
