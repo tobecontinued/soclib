@@ -22,6 +22,15 @@
   * 02110-1301 USA
   * 
   * SOCLIB_LGPL_HEADER_END
+  *
+  * The DSPIN router architecture implemented in this file is the 
+  * Best Effort only architecture.
+  *
+  * Find detailed information in:
+  * Ivan MIRO PANADES, PhD thesis, 2008:
+  * "Conception et implémentation d'un micro-réseau sur puce avec 
+  * garantie de service"
+  *
   */
 
 #ifndef DSPIN_ROUTER_H_
@@ -36,7 +45,7 @@ namespace soclib { namespace caba {
 
     using namespace sc_core;
 
-    template<int dspin_data_size, int dspin_fifo_size>
+    template<int dspin_data_size, int dspin_fifo_size, int dspin_yx_size>
 	class DspinRouter
 	: public soclib::caba::BaseModule
 	{
@@ -86,8 +95,18 @@ namespace soclib { namespace caba {
 
 	    // checker
 	    static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
+	    static_assert(dspin_yx_size == 4); // DSPIN only supports YX adresses in 4 bits
 	};
 
 }} // end namespace
                
 #endif // VCI_DSPIN_INITIATOR_WRAPPER_H_
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4

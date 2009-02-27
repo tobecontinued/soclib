@@ -20,8 +20,17 @@
   * License along with SoCLib; if not, write to the Free Software
   * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
   * 02110-1301 USA
-  * 
+  *
   * SOCLIB_LGPL_HEADER_END
+  *
+  * The DSPIN router architecture implemented in this file is the 
+  * Best Effort only architecture.
+  *
+  * Find detailed information in:
+  * Ivan MIRO PANADES, PhD thesis, 2008:
+  * "Conception et implémentation d'un micro-réseau sur puce avec 
+  * garantie de service"
+  * 
   */
 
 #include "../include/dspin_router.h"
@@ -34,7 +43,7 @@
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<int dspin_data_size, int dspin_fifo_size> x DspinRouter<dspin_data_size, dspin_fifo_size>
+#define tmpl(x) template<int dspin_data_size, int dspin_fifo_size, int dspin_yx_size> x DspinRouter<dspin_data_size, dspin_fifo_size, dspin_yx_size>
 
     ////////////////////////////////
     //      constructor
@@ -58,16 +67,16 @@ namespace soclib { namespace caba {
 	for( int i = 0 ;i < 5; i++ ){
 		std::ostringstream o;
 		o << i;
-	    new(&fifo_in[i]) soclib::caba::GenericFifo<sc_uint<dspin_data_size> >(std::string("FIFO_IN_")+o.str(), dspin_fifo_size) ;
+	    new(&fifo_in[i])  soclib::caba::GenericFifo<sc_uint<dspin_data_size> >(std::string("FIFO_IN_")+o.str(), dspin_fifo_size) ;
 	    new(&fifo_out[i]) soclib::caba::GenericFifo<sc_uint<dspin_data_size> >(std::string("FIFO_OUT")+o.str(), dspin_fifo_size) ;
 	}
 
 	p_out = soclib::common::alloc_elems<DspinOutput<dspin_data_size> >("out", 5);
-	p_in = soclib::common::alloc_elems<DspinInput<dspin_data_size> >("in", 5);
+	p_in  = soclib::common::alloc_elems<DspinInput<dspin_data_size> >("in", 5);
 	r_alloc_out = soclib::common::alloc_elems<sc_signal<int> >("alloc_out", 5);
-	r_alloc_in = soclib::common::alloc_elems<sc_signal<int> >("alloc_in", 5);
+	r_alloc_in  = soclib::common::alloc_elems<sc_signal<int> >("alloc_in",  5);
 	r_index_out = soclib::common::alloc_elems<sc_signal<int> >("index_out", 5);
-	r_index_in = soclib::common::alloc_elems<sc_signal<int> >("index_in", 5);
+	r_index_in  = soclib::common::alloc_elems<sc_signal<int> >("index_in",  5);
 
 	XLOCAL =  indent & 0x0000000F;
 	YLOCAL = (indent & 0x000000F0) >> 4;
@@ -81,15 +90,15 @@ namespace soclib { namespace caba {
     ////////////////////////////////
     tmpl(void)::transition()
     {
-	int			i,j,k;
-	int			xreq,yreq;
-	bool			fifo_in_write[5];	// control signals
-	bool    		fifo_in_read[5];	// for the input fifos
-	sc_uint<dspin_data_size>	fifo_in_data[5];
-	bool			fifo_out_write[5];	// control signals
-	bool    		fifo_out_read[5];	// for the output fifos
-	sc_uint<dspin_data_size>	fifo_out_data[5];
-	bool			req[5][5];		// REQ[i][j] signals from
+	int                      i,j,k;
+	int                      xreq,yreq;
+	bool                     fifo_in_write[5];	// control signals
+	bool                     fifo_in_read[5];	// for the input fifos
+	sc_uint<dspin_data_size> fifo_in_data[5];
+	bool                     fifo_out_write[5];	// control signals
+	bool                     fifo_out_read[5];	// for the output fifos
+	sc_uint<dspin_data_size> fifo_out_data[5];
+	bool                     req[5][5];		// REQ[i][j] signals from
 
 	// input i to output j
 	if(p_resetn == false) {
@@ -120,7 +129,7 @@ namespace soclib { namespace caba {
 
 	    for(i = 0 ; i < 5 ; i++) { // loop on the input ports
 		if((fifo_in[i].rok() == true) && 
-			(((fifo_in[i].read() >> (dspin_data_size-4) ) & DSPIN_BOP) == DSPIN_BOP)) {
+			(((fifo_in[i].read() >> (dspin_data_size-2) ) & DSPIN_BOP) == DSPIN_BOP)) {
 		    xreq = (int)(fifo_in[i].read() & 0xF);
 		    yreq = (int)((fifo_in[i].read() >> 4) & 0xF);
 		    if(xreq < XLOCAL) {
@@ -204,8 +213,7 @@ namespace soclib { namespace caba {
 
 
 		} else { // possible desallocation
-		    //if((((fifo_in[r_index_out[j]].read() >> (dspin_data_size-4) ) & DSPIN_EOP) == DSPIN_EOP) && (fifo_out[j].wok() == true )) {
-		  if((((fifo_in[r_index_out[j]].read() >> (dspin_data_size-4) ) & DSPIN_EOP) == DSPIN_EOP) && (fifo_out[j].wok() == true ) && fifo_in[r_index_out[j]].rok()) {
+		  if((((fifo_in[r_index_out[j]].read() >> (dspin_data_size-2) ) & DSPIN_EOP) == DSPIN_EOP) && (fifo_out[j].wok() == true ) && fifo_in[r_index_out[j]].rok()) {
 			r_alloc_out[j] = false;
 			r_alloc_in[r_index_out[j]] = false;
 		    }
@@ -213,7 +221,6 @@ namespace soclib { namespace caba {
 	    } // end loop on the outputs
 
 	    //  FIFOS
-
 	    for(i = 0 ; i < 5 ; i++) {
 	      if((fifo_in_write[i] == true ) && (fifo_in_read[i] == true ))
 		{fifo_in[i].put_and_get(fifo_in_data[i]);}
@@ -234,12 +241,11 @@ namespace soclib { namespace caba {
     } // end transition
 
     ////////////////////////////////
-    //      genMealy
+    //      genMoore
     ////////////////////////////////
     tmpl(void)::genMoore()
     {
-      int	i;
-
+      int i;
       // input ports : READ signals
       for(i = 0 ; i < 5 ; i++) { 
 	p_in[i].read = fifo_in[i].wok();
@@ -255,3 +261,11 @@ namespace soclib { namespace caba {
 
 }} // end namespace
 
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4

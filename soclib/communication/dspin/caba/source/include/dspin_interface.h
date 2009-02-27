@@ -31,14 +31,7 @@ using namespace sc_dt;
 
 enum{
 	DSPIN_BOP 	= 0x1,
-	DSPIN_EOP 	= 0x2,
-	DSPIN_ERR	= 0x4,
-	DSPIN_PAR	= 0x8
-};
-
-enum{
-	DSPIN_CONS	= 0x04000000,
-	DSPIN_CONTIG	= 0x08000000
+	DSPIN_EOP 	= 0x2
 };
 
 enum{
@@ -49,18 +42,26 @@ enum{
 template<int dspin_data_size>
 class DspinSignals {
     public:
-	sc_signal<sc_uint<dspin_data_size> >  	data;    // data
-	sc_signal<bool>                 	write;   // write command 
-	sc_signal<bool>                 	read;    // read command
+        sc_signal<sc_uint<dspin_data_size> >  	data;    // data
+        sc_signal<bool>                 	write;   // write command 
+        sc_signal<bool>                 	read;    // read command
 
 #define __ren(x) x((insname+"_" #x).c_str())
-	DspinSignals(std::string insname = sc_gen_unique_name("dspin_signals"))
-	    : __ren(data),
-	    __ren(write),
-	    __ren(read)
-    {}
+        DspinSignals(std::string insname = sc_gen_unique_name("dspin_signals"))
+            : __ren(data),
+            __ren(write),
+            __ren(read)
+        {}
 #undef __ren
 
+        void trace( sc_core::sc_trace_file* tf, const std::string &name )
+        {
+#define __trace(x) sc_core::sc_trace(tf, x, name+"_"+#x)
+            __trace(data);
+            __trace(write);
+            __trace(read); 
+#undef __trace
+        }
 };
 
 
@@ -127,3 +128,11 @@ struct DspinInput {
 
 #endif
 
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
