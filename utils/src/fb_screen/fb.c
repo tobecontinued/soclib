@@ -31,6 +31,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <sys/uio.h>
