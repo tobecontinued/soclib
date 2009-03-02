@@ -279,6 +279,7 @@ private:
 
   /// data field
   t_uint32 m_data;              // data for remaining flits in a packet
+  sc_uint<36> m_data_36;        // data for VCI data compatibility
 
 public:
 
@@ -503,6 +504,15 @@ public:
   /// Sets the data field 
   inline void set_data(t_uint32 data) { 
     m_data = data;
+  }
+
+  /// Returns the data field 
+  inline sc_uint<36> get_data_36() const {
+    return m_data_36;
+  }
+  /// Sets the data field 
+  inline void set_data_36(sc_uint<36> data) { 
+    m_data_36 = data;
   }
 
   //------------------------------------------
