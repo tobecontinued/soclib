@@ -9,6 +9,7 @@ Module('caba:bvci_assert',
 	header_files = ['../source/include/bvci_assert.h',],
 	implementation_files = ['../source/src/bvci_assert.cpp',],
 	ports = [
+		Port('caba:vci_monitor', 'p_vci'),
 		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
 		Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],

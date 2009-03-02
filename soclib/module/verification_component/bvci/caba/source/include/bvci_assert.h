@@ -29,8 +29,7 @@
 #define SOCLIB_CABA_PVDC_BASIC_ASSERTH
 
 #include "caba/caba_base_module.h"
-#include "vci_initiator.h"
-#include "vci_target.h"
+#include "vci_monitor.h"
 
 #include <list>
 #include <set>
@@ -44,7 +43,7 @@ class BasicVciAssert : public soclib::caba::BaseModule {
    bool m_default_mode;
 
   public:
-   VciSignals<vci_param>& r_observed_signals;
+ 	VciMonitor<vci_param> p_vci;
    sc_in<bool> p_clk;
    sc_in<bool> p_resetn;
 
@@ -63,13 +62,13 @@ class BasicVciAssert : public soclib::caba::BaseModule {
 
    int m_reset;
    void setReset(int uResetSource = 8)
-      {  if (!r_observed_signals.rspack && !r_observed_signals.cmdval)
+      {  if (!p_vci.rspack && !p_vci.cmdval)
             m_reset = 0;
          else
             m_reset = uResetSource;
       }
    void testReset() // see p.31
-      {  if (!r_observed_signals.cmdval && !r_observed_signals.cmdack && !r_observed_signals.rspval && !r_observed_signals.rspack)
+      {  if (!p_vci.cmdval && !p_vci.cmdack && !p_vci.rspval && !p_vci.rspack)
             m_reset = 0;
          else {
             assume(m_reset > 1, "Violation in the protocol : the reset command had no effect", DIn);
@@ -86,8 +85,8 @@ class BasicVciAssert : public soclib::caba::BaseModule {
       int uLength;
       
      public:
-      Packet(const VciSignals<vci_param>& r_observed_signals)
-         :  cmd(r_observed_signals.cmd), address(r_observed_signals.address), contig(r_observed_signals.contig), plen(r_observed_signals.plen), uLength(0) {}
+      Packet(const VciMonitor<vci_param>& p_vci)
+         :  cmd(p_vci.cmd), address(p_vci.address), contig(p_vci.contig), plen(p_vci.plen), uLength(0) {}
       Packet(const Packet& source)
          :  cmd(source.cmd), address(source.address), contig(source.contig), plen(source.plen),
             uLength(source.uLength) {}
@@ -219,9 +218,9 @@ class BasicVciAssert : public soclib::caba::BaseModule {
    SC_HAS_PROCESS(BasicVciAssert);
 
   public:
-   BasicVciAssert(VciSignals<vci_param>& observedSignalsReference, sc_module_name insname)
+   BasicVciAssert(sc_module_name insname)
       :  soclib::caba::BaseModule(insname), m_log_file(NULL), m_default_mode(true),
-         r_observed_signals(observedSignalsReference),
+         p_vci("vci"),
          m_request_state(SIdle), m_response_state(SIdle), m_reset(0), m_packet_address(0),
          m_request_cells(0), m_response_cells(0), m_nb_request_packets(0), m_nb_response_packets(0),
          m_cmdval_previous(0), m_default_reset(8)
@@ -239,23 +238,23 @@ class BasicVciAssert : public soclib::caba::BaseModule {
       {  testHandshake();
          if (m_reset > 0) testReset();
 
-         m_cmdval_previous = r_observed_signals.cmdval;
-         m_address_previous = r_observed_signals.address;
-         m_be_previous = r_observed_signals.be;
-         m_cfixed_previous = r_observed_signals.cfixed;
-         m_clen_previous = r_observed_signals.clen;
-         m_cmd_previous = r_observed_signals.cmd;
-         m_contig_previous = r_observed_signals.contig;
-         m_wdata_previous = r_observed_signals.wdata;
-         m_eop_previous = r_observed_signals.eop;
-         m_cons_previous = r_observed_signals.cons;
-         m_plen_previous = r_observed_signals.plen;
-         m_wrap_previous = r_observed_signals.wrap;
+         m_cmdval_previous = p_vci.cmdval;
+         m_address_previous = p_vci.address;
+         m_be_previous = p_vci.be;
+         m_cfixed_previous = p_vci.cfixed;
+         m_clen_previous = p_vci.clen;
+         m_cmd_previous = p_vci.cmd;
+         m_contig_previous = p_vci.contig;
+         m_wdata_previous = p_vci.wdata;
+         m_eop_previous = p_vci.eop;
+         m_cons_previous = p_vci.cons;
+         m_plen_previous = p_vci.plen;
+         m_wrap_previous = p_vci.wrap;
 
-         m_rspval_previous = r_observed_signals.rspval;
-         m_rdata_previous = r_observed_signals.rdata;
-         m_reop_previous = r_observed_signals.reop;
-         m_rerror_previous = r_observed_signals.rerror;
+         m_rspval_previous = p_vci.rspval;
+         m_rdata_previous = p_vci.rdata;
+         m_reop_previous = p_vci.reop;
+         m_rerror_previous = p_vci.rerror;
       }
    bool isFinished() const { return m_pending_packets.count() == 0 && m_locked_addresses.count() == 0; }
    
@@ -300,9 +299,10 @@ int sc_main(int ac, char *av[]) {
   soclib::caba::VciSignals<MyVciParams> vciSignals("VciSignals");
 
   std::ofstream log_file("verif.log");
-  soclib::caba::BasicVciAssert<MyVciParams> vciAssert(vciSignals, "VciAssert_verif");
+  soclib::caba::BasicVciAssert<MyVciParams> vciAssert("VciAssert_verif");
   vciAssert.p_clk(clk);
   vciAssert.setLogOut(log_file);
+  vciAssert.p_vci(vciSignals);
   
   vciFst.p_clk(clk);
   vciFst.p_vci(vciSignals);

@@ -9,6 +9,7 @@ Module('caba:avci_assert',
 	header_files = ['../source/include/avci_assert.h',],
 	implementation_files = ['../source/src/avci_assert.cpp',],
 	ports = [
+ 		Port('caba:vci_monitor', 'p_vci'),
 		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
 		Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],

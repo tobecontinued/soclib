@@ -44,157 +44,8 @@ class BasicVciFilter : public soclib::caba::BaseModule {
    bool m_default_mode;
 
   public:
-   struct In {
-      sc_in<typename vci_param::val_t>     cmdval;
-      sc_in<typename vci_param::addr_t>    address;
-      sc_in<typename vci_param::be_t>      be;
-      sc_in<typename vci_param::cfixed_t>  cfixed;
-      sc_in<typename vci_param::clen_t>    clen;
-      sc_in<typename vci_param::cmd_t>     cmd;
-      sc_in<typename vci_param::contig_t>  contig;
-      sc_in<typename vci_param::data_t>    wdata;
-      sc_in<typename vci_param::eop_t>     eop;
-      sc_in<typename vci_param::const_t>   cons;
-      sc_in<typename vci_param::plen_t>    plen;
-      sc_in<typename vci_param::wrap_t>    wrap;
-      sc_in<typename vci_param::ack_t>     rspack;
-
-      sc_out<typename vci_param::ack_t>    cmdack;
-      sc_out<typename vci_param::val_t>    rspval;
-   	sc_out<typename vci_param::data_t>   rdata;
-      sc_out<typename vci_param::eop_t>    reop;
-   	sc_out<typename vci_param::rerror_t> rerror;
-
-#define __ren(x) x((name+"_in_" #x).c_str())
-      In(const std::string &name)
-         :  __ren(cmdval), __ren(address), __ren(be), __ren(cfixed), __ren(clen), __ren(cmd),
-            __ren(contig), __ren(wdata), __ren(eop), __ren(cons), __ren(plen), __ren(wrap),
-            __ren(rspack),
-#undef __ren
-#define __ren(x) x((name+"_out_" #x).c_str())
-           __ren(cmdack), __ren(rspval), __ren(rdata), __ren(reop), __ren(rerror) {}
-#undef __ren
-
-      void operator()(VciSignals<vci_param> &sig)
-         {  cmdval  (sig.cmdval);
-            address (sig.address);
-            be      (sig.be);
-            cfixed  (sig.cfixed);
-            clen    (sig.clen);
-            cmd     (sig.cmd);
-            contig  (sig.contig);
-            wdata   (sig.wdata);
-            eop     (sig.eop);
-            cons    (sig.cons);
-            plen    (sig.plen);
-            wrap    (sig.wrap);
-            rspack  (sig.rspack);
-            
-            cmdack  (sig.cmdack);
-            rspval  (sig.rspval);
-            rdata   (sig.rdata);
-            reop    (sig.reop);
-            rerror  (sig.rerror);
-         }
-
-	   void operator()(VciInitiator<vci_param> &ports) // To see : create a VciSignals between the ports
-         {  cmdval  (ports.cmdval);
-            address (ports.address);
-            be      (ports.be);
-            cfixed  (ports.cfixed);
-            clen    (ports.clen);
-            cmd     (ports.cmd);
-            contig  (ports.contig);
-            wdata   (ports.wdata);
-            eop     (ports.eop);
-            cons    (ports.cons);
-            plen    (ports.plen);
-            wrap    (ports.wrap);
-            rspack  (ports.rspack);
-            
-            cmdack  (ports.cmdack);
-            rspval  (ports.rspval);
-            rdata   (ports.rdata);
-            reop    (ports.reop);
-            rerror  (ports.rerror);
-         }
-   };
-
-   struct Out {
-      sc_in<typename vci_param::ack_t>     cmdack;
-      sc_in<typename vci_param::val_t>     rspval;
-   	sc_in<typename vci_param::data_t>    rdata;
-      sc_in<typename vci_param::eop_t>     reop;
-   	sc_in<typename vci_param::rerror_t>  rerror;
-      
-      sc_out<typename vci_param::val_t>    cmdval;
-      sc_out<typename vci_param::addr_t>   address;
-      sc_out<typename vci_param::be_t>     be;
-      sc_out<typename vci_param::cfixed_t> cfixed;
-      sc_out<typename vci_param::clen_t>   clen;
-      sc_out<typename vci_param::cmd_t>    cmd;
-      sc_out<typename vci_param::contig_t> contig;
-      sc_out<typename vci_param::data_t>   wdata;
-      sc_out<typename vci_param::eop_t>    eop;
-      sc_out<typename vci_param::const_t>  cons;
-      sc_out<typename vci_param::plen_t>   plen;
-      sc_out<typename vci_param::wrap_t>   wrap;
-      sc_out<typename vci_param::ack_t>    rspack;
-
-      Out(const std::string &name)
-#define __ren(x) x((name+"_in_" #x).c_str())
-         :  __ren(cmdack), __ren(rspval), __ren(rdata), __ren(reop), __ren(rerror),
-#undef __ren
-#define __ren(x) x((name+"_out_" #x).c_str())
-            __ren(cmdval), __ren(address), __ren(be), __ren(cfixed), __ren(clen), __ren(cmd),
-            __ren(contig), __ren(wdata), __ren(eop), __ren(cons), __ren(plen), __ren(wrap),
-            __ren(rspack) {}
-#undef __ren
-
-      void operator()(VciSignals<vci_param> &sig)
-         {  cmdack  (sig.cmdack);
-            rspval  (sig.rspval);
-            rdata   (sig.rdata);
-            reop    (sig.reop);
-            rerror  (sig.rerror);
-
-            cmdval  (sig.cmdval);
-            address (sig.address);
-            be      (sig.be);
-            cfixed  (sig.cfixed);
-            clen    (sig.clen);
-            cmd     (sig.cmd);
-            contig  (sig.contig);
-            wdata   (sig.wdata);
-            eop     (sig.eop);
-            cons    (sig.cons);
-            plen    (sig.plen);
-            wrap    (sig.wrap);
-            rspack  (sig.rspack);
-         }
-
-      void operator()(VciTarget<vci_param> &ports)
-         {  cmdack  (ports.cmdack);
-            rspval  (ports.rspval);
-            rdata   (ports.rdata);
-            reop    (ports.reop);
-            rerror  (ports.rerror);
-
-            cmdval  (ports.cmdval);
-            address (ports.address);
-            be      (ports.be);
-            cfixed  (ports.cfixed);
-            clen    (ports.clen);
-            cmd     (ports.cmd);
-            contig  (ports.contig);
-            wdata   (ports.wdata);
-            eop     (ports.eop);
-            cons    (ports.cons);
-            plen    (ports.plen);
-            wrap    (ports.wrap);
-            rspack  (ports.rspack);
-         }
-   };
+ 	typedef VciTarget<vci_param> In;
+ 	typedef VciInitiator<vci_param> Out;
 
    sc_in<bool> p_clk;
    sc_in<bool> p_resetn;
@@ -374,7 +225,7 @@ class BasicVciFilter : public soclib::caba::BaseModule {
   public:
    BasicVciFilter(sc_module_name insname)
       :  soclib::caba::BaseModule(insname), m_log_file(NULL), m_default_mode(true),
-         p_in((const char*) insname), p_out((const char*) insname),
+         p_in("input"), p_out("output"),
          m_request_state(SIdle), m_response_state(SIdle), m_reset(0), m_packet_address(0),
          m_request_cells(0), m_response_cells(0), m_nb_request_packets(0), m_nb_response_packets(0),
          m_cmdval_previous(0), m_default_reset(8)

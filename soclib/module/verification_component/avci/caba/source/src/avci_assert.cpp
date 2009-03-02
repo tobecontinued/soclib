@@ -48,45 +48,45 @@ tmpl(void)::reset()
 tmpl(void)::testHandshake() { // see p 41, 42, verified on the waveforms
    switch (m_request_state) {
       case SIdle:
-         if (r_observed_signals.cmdval) {
+         if (p_vci.cmdval) {
             acquireRequestCell();
-            if (r_observed_signals.cmdack)
+            if (p_vci.cmdack)
                m_request_state = SSync;
             else
                m_request_state = SValid;
          }
-         else if (r_observed_signals.cmdack)
+         else if (p_vci.cmdack)
             m_request_state = SDefault_Ack;
          break;
       case SValid:
-         assume(r_observed_signals.cmdval, "The protocol does not accept \"bubble\" in a VCI command request packet", DIn);
-         assume((r_observed_signals.address == m_address_previous) && (r_observed_signals.be == m_be_previous)
-            && (r_observed_signals.cfixed == m_cfixed_previous) && (r_observed_signals.clen == m_clen_previous)
-            && (r_observed_signals.cmd == m_cmd_previous) && (r_observed_signals.contig == m_contig_previous)
-            && (r_observed_signals.wdata == m_wdata_previous) && (r_observed_signals.eop == m_eop_previous)
-            && (r_observed_signals.cons == m_cons_previous) && (r_observed_signals.plen == m_plen_previous)
-            && (r_observed_signals.wrap == m_wrap_previous),
+         assume(p_vci.cmdval, "The protocol does not accept \"bubble\" in a VCI command request packet", DIn);
+         assume((p_vci.address == m_address_previous) && (p_vci.be == m_be_previous)
+            && (p_vci.cfixed == m_cfixed_previous) && (p_vci.clen == m_clen_previous)
+            && (p_vci.cmd == m_cmd_previous) && (p_vci.contig == m_contig_previous)
+            && (p_vci.wdata == m_wdata_previous) && (p_vci.eop == m_eop_previous)
+            && (p_vci.cons == m_cons_previous) && (p_vci.plen == m_plen_previous)
+            && (p_vci.wrap == m_wrap_previous),
                "The protocol does not accept \"change\" during request acknowledgement", DIn);
-         if (r_observed_signals.cmdack)
+         if (p_vci.cmdack)
             m_request_state = SSync;
          break;
       case SDefault_Ack:
-         assume(r_observed_signals.cmdack, "The protocol requires default request acknowledgement", DOut);
-         if (r_observed_signals.cmdval) {
+         assume(p_vci.cmdack, "The protocol requires default request acknowledgement", DOut);
+         if (p_vci.cmdval) {
             acquireRequestCell();
             m_request_state = SSync;
          };
          break;
       case SSync:
-         if (!r_observed_signals.cmdval) {
-            if (!r_observed_signals.cmdack)
+         if (!p_vci.cmdval) {
+            if (!p_vci.cmdack)
                m_request_state = SIdle;
             else
                m_request_state = SDefault_Ack;
          }
          else {
             acquireRequestCell();
-            if (!r_observed_signals.cmdack)
+            if (!p_vci.cmdack)
                m_request_state = SValid;
          };
          break;
@@ -94,41 +94,41 @@ tmpl(void)::testHandshake() { // see p 41, 42, verified on the waveforms
  
    switch (m_response_state) {
       case SIdle:
-         if (r_observed_signals.rspval) {
+         if (p_vci.rspval) {
             acquireResponseCell();
-            if (r_observed_signals.rspack)
+            if (p_vci.rspack)
                m_response_state = SSync;
             else
                m_response_state = SValid;
          }
-         else if (r_observed_signals.rspack)
+         else if (p_vci.rspack)
             m_response_state = SDefault_Ack;
          break;
       case SValid:
-         assume(r_observed_signals.rspval, "The protocol does not accept \"bubble\" in a VCI command response packet", DOut);
-         assume((r_observed_signals.rdata == m_rdata_previous) && (r_observed_signals.reop == m_reop_previous)
-            && (r_observed_signals.rerror == m_rerror_previous),
+         assume(p_vci.rspval, "The protocol does not accept \"bubble\" in a VCI command response packet", DOut);
+         assume((p_vci.rdata == m_rdata_previous) && (p_vci.reop == m_reop_previous)
+            && (p_vci.rerror == m_rerror_previous),
             "The protocol does not accept \"change\" during response acknowledgement", DOut);
-         if (r_observed_signals.rspack)
+         if (p_vci.rspack)
             m_response_state = SSync;
          break;
       case SDefault_Ack:
-         assume(r_observed_signals.rspack, "The protocol requires default response acknowledgement", DIn);
-         if (r_observed_signals.rspval) {
+         assume(p_vci.rspack, "The protocol requires default response acknowledgement", DIn);
+         if (p_vci.rspval) {
             acquireResponseCell();
             m_response_state = SSync;
          };
          break;
       case SSync:
-         if (!r_observed_signals.rspval) {
-            if (!r_observed_signals.rspack)
+         if (!p_vci.rspval) {
+            if (!p_vci.rspack)
                m_response_state = SIdle;
             else
                m_response_state = SDefault_Ack;
          }
          else {
             acquireResponseCell();
-            if (!r_observed_signals.rspack)
+            if (!p_vci.rspack)
                m_response_state = SValid;
          };
          break;
@@ -227,54 +227,54 @@ tmpl(void)::acquireRequestCell() {
    if (m_request_cells == 0) {
       if (m_packet_clen > 0) {
          ++m_packet_clen;
-         assume(r_observed_signals.clen == m_packet_clen && m_packet_cmd == r_observed_signals.cmd && m_packet_cfixed == r_observed_signals.cfixed,
+         assume(p_vci.clen == m_packet_clen && m_packet_cmd == p_vci.cmd && m_packet_cfixed == p_vci.cfixed,
                "The length, command and cfixed should be constant during the reception of chain of packets", DIn);
          --m_packet_clen;
          if (m_packet_cfixed)
-            assume(m_packet_contig == r_observed_signals.contig && m_packet_wrap == r_observed_signals.wrap
-                  && m_packet_cons == r_observed_signals.cons && m_packet_plen == r_observed_signals.plen,
+            assume(m_packet_contig == p_vci.contig && m_packet_wrap == p_vci.wrap
+                  && m_packet_cons == p_vci.cons && m_packet_plen == p_vci.plen,
                "The fields contig, wrap, const and plen should be constant when cfixed during the reception of chain of packets", DIn);
       }
       else {
-         m_packet_clen = r_observed_signals.clen;
+         m_packet_clen = p_vci.clen;
          ++m_packet_clen;
-         m_packet_cmd = r_observed_signals.cmd;
-         m_packet_cfixed = r_observed_signals.cfixed;
+         m_packet_cmd = p_vci.cmd;
+         m_packet_cfixed = p_vci.cfixed;
       };
       --m_packet_clen;
-      m_packet_address = r_observed_signals.address;
-      m_packet_plen = r_observed_signals.plen;
-      m_packet_contig = r_observed_signals.contig;
-      m_packet_wrap = r_observed_signals.wrap;
+      m_packet_address = p_vci.address;
+      m_packet_plen = p_vci.plen;
+      m_packet_contig = p_vci.contig;
+      m_packet_wrap = p_vci.wrap;
       assume(!m_packet_wrap || (m_packet_contig && ((m_packet_plen-1 & m_packet_plen) == 0)),
             "Packets should be contigous and have a length within the form 2^n", DIn);
-      m_packet_cons = r_observed_signals.cons;
-      m_pending_packets.add(r_observed_signals);
+      m_packet_cons = p_vci.cons;
+      m_pending_packets.add(p_vci);
       if (m_packet_cmd == 3) { // Locked read
          if (m_packet_contig)
-            m_locked_addresses.add(r_observed_signals.srcid, m_packet_address, m_packet_plen);
+            m_locked_addresses.add(p_vci.srcid, m_packet_address, m_packet_plen);
          else
-            m_locked_addresses.add(r_observed_signals.srcid, m_packet_address);
+            m_locked_addresses.add(p_vci.srcid, m_packet_address);
       };
    }
    else {
-      assume(m_packet_clen == r_observed_signals.clen && m_packet_cmd == r_observed_signals.cmd && m_packet_plen == r_observed_signals.plen,
+      assume(m_packet_clen == p_vci.clen && m_packet_cmd == p_vci.cmd && m_packet_plen == p_vci.plen,
             "The length, command and clen should be constant during packet reception", DIn);
       if (m_packet_cons) {
-         assume(m_packet_cfixed == r_observed_signals.cfixed && m_packet_address == r_observed_signals.address
-            && m_packet_contig == r_observed_signals.contig && m_packet_wrap == r_observed_signals.wrap && m_packet_cons == r_observed_signals.cons,
+         assume(m_packet_cfixed == p_vci.cfixed && m_packet_address == p_vci.address
+            && m_packet_contig == p_vci.contig && m_packet_wrap == p_vci.wrap && m_packet_cons == p_vci.cons,
             "The fields fixed, address, contig, wrap and cons should be constant when cons during the reception of a packet", DIn);
       }
       else if (m_packet_contig) {
          m_packet_address += vci_param::B; // cell_size()
          if (m_packet_wrap && (m_request_cells > m_packet_plen))
             m_packet_address -= m_packet_plen*vci_param::B;
-         assume(m_packet_address == r_observed_signals.address,
+         assume(m_packet_address == p_vci.address,
             "The protocol accepts only increasing addresses in a given packet", DIn);
       };
    };
    ++m_request_cells;
-   if (r_observed_signals.eop) {
+   if (p_vci.eop) {
       assume(!m_packet_plen || m_packet_plen == m_request_cells,
             "The request packet has not the expected length", DIn);
       m_request_cells = 0;
@@ -287,20 +287,20 @@ tmpl(void)::acquireResponseCell() {
    if (m_response_cells == 0) {
       assume(m_pending_packets.count() > 0,
             "The response packet does not correspond to any request", DOut);
-      {  Packet* pPacket = m_pending_packets.remove(r_observed_signals);
+      {  Packet* pPacket = m_pending_packets.remove(p_vci);
          assume(pPacket,
             "The response packet does not correspond to any request packet", DOut);
          if (pPacket->cmd == 2) { // Write
             if (pPacket->contig)
-               m_locked_addresses.remove(*this, r_observed_signals.rsrcid, pPacket->address, pPacket->plen);
+               m_locked_addresses.remove(*this, p_vci.rsrcid, pPacket->address, pPacket->plen);
             else
-               m_locked_addresses.remove(*this, r_observed_signals.rsrcid, pPacket->address);
+               m_locked_addresses.remove(*this, p_vci.rsrcid, pPacket->address);
          };
          if (pPacket) delete pPacket;
       };
    };
    ++m_response_cells;
-   if (r_observed_signals.reop) {
+   if (p_vci.reop) {
       m_response_cells = 0;
       ++m_nb_response_packets;
    };
