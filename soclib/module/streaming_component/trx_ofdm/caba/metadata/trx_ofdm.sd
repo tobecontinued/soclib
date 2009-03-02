@@ -33,5 +33,5 @@ Module('caba:trx_ofdm',
 	],
 	instance_parameters = [
         	parameter.Int('clk_period_'),
-	]
+	],
 )

@@ -3,12 +3,8 @@
 Module('caba:anoc_copro_wrapper',
 	classname = 'soclib::caba::anoc_copro_wrapper',
 	header_files = [
-	'../../../../../communication/anoc/common/source/include/tlm_tac2.h',
-	'../../../../../communication/anoc/common/source/include/anoc_common.h',
-	'../../../../../communication/anoc/common/source/include/types.h',
 	'../../common/source/include/ni_transaction.h',          
 	'../../common/source/include/ni_utils.h',                
-	'../../common/source/include/res_path.h',  
 	'../../common/source/include/core_base.h',               
 	'../../common/source/include/core_config.h',             
 	'../../common/source/include/core_ro_config.h',          
@@ -17,11 +13,8 @@ Module('caba:anoc_copro_wrapper',
 	'../source/include/anoc_copro_wrapper.h',
 	],
 	implementation_files = [
-	'../../../../../communication/anoc/common/source/src/tlm_tac2.cpp',
-	'../../../../../communication/anoc/common/source/src/anoc_common.cpp',
 	'../../common/source/src/ni_transaction.cpp',          
 	'../../common/source/src/ni_utils.cpp',                
-	'../../common/source/src/res_path.cpp',  
 	'../../common/source/src/core_base.cpp',               
 	'../../common/source/src/core_config.cpp',             
 	'../../common/source/src/core_ro_config.cpp',          
@@ -40,8 +33,9 @@ Module('caba:anoc_copro_wrapper',
 	],
 	uses = [
 		Uses('caba:base_module'),
+		Uses('common:anoc_common'),
 	],
 	instance_parameters = [
         	parameter.Int('clk_period_'),
-	]
+	],
 )
