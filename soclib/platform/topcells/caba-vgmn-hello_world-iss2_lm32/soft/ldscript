@@ -1,0 +1,48 @@
+    OUTPUT_FORMAT("elf32-lm32")
+    OUTPUT_ARCH(lm32)
+ENTRY(_start)
+    GROUP(-lgcc)
+    __DYNAMIC =0;
+
+
+    RAM_SIZE = 1M;
+    RAM_START  = 0x00000000;
+    RAM_END = RAM_START + RAM_SIZE;
+
+    __stack = RAM_END - 4;
+
+
+    SECTIONS
+{
+    . = RAM_START;
+    .text	:
+    {
+        . = ALIGN(4);
+        boot.o	(.text)
+        crt0.o	(.text)
+               *(.text)
+    }
+
+    . = ALIGN(4);
+    .rodata : { *(.rodata) }
+
+    . = ALIGN(4);
+    .data : { *(.data) }
+
+    . = ALIGN(4);
+    .got : { *(.got) }
+
+    .bss : { 
+        . = ALIGN(4);
+        __bss_start = .;
+        *(.bss) 
+            *(COMMON)
+            . = ALIGN(4);
+        __bss_end = .;
+    }
+    _heap = .;
+}
+
+/*
+ * vim: filetype=ld:
+ */
