@@ -1,0 +1,22 @@
+# -*- python -*-
+
+# Lattice Mico32 LM32
+
+Module('common:lm32',
+	classname = 'soclib::common::LM32Iss',
+	header_files = ["../include/lm32.h",],
+	uses = [
+		Uses('common:iss2'),
+		Uses('common:base_module'),
+		],
+	implementation_files = [
+		"../src/lm32.cpp",
+		"../src/lm32_isa.cpp",
+        "../src/lm32_load_store.cpp",
+        "../src/lm32_debug.cpp",
+		],
+    constants = {
+        'n_irq':32
+        },
+    debug = True ,
+)
