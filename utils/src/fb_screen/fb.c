@@ -89,37 +89,48 @@ void sig_catcher( int sig )
         BW = 1,
     };
 
+struct image_s
+{
+	SDL_Surface *surface;
+	size_t scale;
+};
 
-void set_rgb( SDL_Surface *surface, size_t line, size_t col,
+void set_rgb( struct image_s *image, size_t line, size_t col,
 			  uint8_t r, uint8_t g, uint8_t b )
 {
 	uint8_t y = ((uint32_t)r + (uint32_t)g + (uint32_t)b) / 3;
-	char *p = (char *)surface->pixels + line*surface->pitch + col*surface->format->BytesPerPixel;
-	switch(surface->format->BytesPerPixel) {
-	case 1:
-		*p = y;
-		break;
-
-	case 2:
-		*(unsigned short *)p = y<<8;
-		break;
-
-	case 3:
-	case 4:
-		p[1] = g;
-		if (__BYTE_ORDER == __BIG_ENDIAN) {
-			p[0] = r;
-			p[2] = b;
-		} else {
-			p[0] = b;
-			p[2] = r;
+	size_t bx, by;
+	for ( bx = 0; bx < image->scale; ++bx ) {
+		for ( by = 0; by < image->scale; ++by ) {
+			char *p = (char *)image->surface->pixels
+				+ (line * image->scale + by) * image->surface->pitch
+				+ (col * image->scale + bx) * image->surface->format->BytesPerPixel;
+			switch(image->surface->format->BytesPerPixel) {
+			case 1:
+				*p = y;
+				break;
+				
+			case 2:
+				*(unsigned short *)p = y<<8;
+				break;
+				
+			case 3:
+			case 4:
+				p[1] = g;
+				if (__BYTE_ORDER == __BIG_ENDIAN) {
+					p[0] = r;
+					p[2] = b;
+				} else {
+					p[0] = b;
+					p[2] = r;
+				}
+				break;
+			}
 		}
-		break;
 	}
-
 }
 
-void transform_yuv( SDL_Surface *surface, uint8_t *fb,
+void transform_yuv( struct image_s *image, uint8_t *fb,
 					size_t width, size_t height, int subsampling )
 {
 	size_t line, col;
@@ -148,12 +159,12 @@ void transform_yuv( SDL_Surface *surface, uint8_t *fb,
 			r = rb<0?0:(rb>255?255:rb);
 			v = vb<0?0:(vb>255?255:vb);
 			b = bb<0?0:(bb>255?255:bb);
-			set_rgb( surface, line, col, r, v, b );
+			set_rgb( image, line, col, r, v, b );
 		}
 	}
 }
 
-void transform_rgb( SDL_Surface *surface, uint8_t *fb,
+void transform_rgb( struct image_s *image, uint8_t *fb,
 					size_t width, size_t height )
 {
 	size_t line, col;
@@ -163,13 +174,13 @@ void transform_rgb( SDL_Surface *surface, uint8_t *fb,
 			r = fb[width*line*3 + col];
 			v = fb[width*line*3 + col + 1];
 			b = fb[width*line*3 + col + 2];
-			set_rgb( surface, line, col, r, v, b );
+			set_rgb( image, line, col, r, v, b );
 		}
 	}
 }
 
 void transform_rgb_palette_256(
-	SDL_Surface *surface, uint8_t *fb,
+	struct image_s *image, uint8_t *fb,
 	size_t width, size_t height )
 {
 	uint8_t *palette = fb + width*height;
@@ -181,13 +192,13 @@ void transform_rgb_palette_256(
 			r = palette[idx*3];
 			v = palette[idx*3+1];
 			b = palette[idx*3+2];
-			set_rgb( surface, line, col, r, v, b );
+			set_rgb( image, line, col, r, v, b );
 		}
 	}
 }
 
 void transform_bw(
-	SDL_Surface *surface, uint8_t *fb,
+	struct image_s *image, uint8_t *fb,
 	size_t width, size_t height )
 {
 	size_t line, col;
@@ -198,7 +209,7 @@ void transform_bw(
 			for ( i=0; i<8; ++i ) {
 				uint8_t v = (x&1) ? 0xff : 0;
 				x >>= 1;
-				set_rgb( surface, line, col+i, v,v,v );
+				set_rgb( image, line, col+i, v,v,v );
 			}
 		}
 	}
@@ -208,7 +219,18 @@ void transform_bw(
 void handle_display( uint8_t *fb, long width, long height, long subsampling )
 {
 	int res;
-	SDL_Surface *surface;
+	SDL_Surface *shown;
+	long show_width;
+	long show_height;
+	size_t scale = 1;
+	char *scale_param = getenv("SOCLIB_FB_SCALE");
+
+	if ( scale_param )
+		scale = atoi(scale_param);
+
+	
+	show_height = height*scale;
+	show_width = width*scale;
 
 	res = SDL_Init(SDL_INIT_VIDEO);
 	if ( res < 0 ) {
@@ -223,11 +245,17 @@ void handle_display( uint8_t *fb, long width, long height, long subsampling )
 	height *= 2;
 #endif
 
-	surface = SDL_SetVideoMode(width, height, 32, SDL_SWSURFACE);
-	if ( !surface ) {
+	shown = SDL_SetVideoMode(show_width, show_height, 32, SDL_SWSURFACE);
+	printf("SoCLib Framebuffer scaled at *%d\n", (int)scale);
+	if ( !shown ) {
 		printf("SDL surface init failed: %s\n", SDL_GetError());
 		exit(3);
 	}
+
+	struct image_s image = {
+		.surface = shown,
+		.scale = scale
+	};
 
 	while (!do_exit) {
 		SDL_Event event;
@@ -252,31 +280,30 @@ void handle_display( uint8_t *fb, long width, long height, long subsampling )
 			}
 		}
 
-//		fprintf(stderr, "Updating... ");
-		if (SDL_MUSTLOCK(surface)) {
-			if(SDL_LockSurface(surface) < 0)
+		if (SDL_MUSTLOCK(shown)) {
+			if(SDL_LockSurface(shown) < 0)
 				return;
 		}
 		switch (subsampling) {
 		case YUV420:
 		case YUV422:
-			transform_yuv( surface, fb, width, height, subsampling );
+			transform_yuv( &image, fb, width, height, subsampling );
 			break;
 		case RGB:
-			transform_rgb( surface, fb, width, height );
+			transform_rgb( &image, fb, width, height );
 			break;
 		case RGB_PALETTE_256:
-			transform_rgb_palette_256( surface, fb, width, height );
+			transform_rgb_palette_256( &image, fb, width, height );
 			break;
 		case BW:
-			transform_bw( surface, fb, width, height );
+			transform_bw( &image, fb, width, height );
 			break;
 		}
-		if(SDL_MUSTLOCK(surface)) {
-			SDL_UnlockSurface(surface);
+		if(SDL_MUSTLOCK(shown)) {
+			SDL_UnlockSurface(shown);
 		}
-//		fprintf(stderr, "done\n");
-		SDL_UpdateRect(surface,0,0,width,height);
+
+		SDL_UpdateRect(shown,0,0,show_width,show_height);
 	}
 }
 
