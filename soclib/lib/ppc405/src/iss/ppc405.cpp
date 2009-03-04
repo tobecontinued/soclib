@@ -46,7 +46,7 @@ static inline uint32_t align( uint32_t data, int shift, int width )
 
 static inline std::string crTrad( uint32_t cr )
 {
-    const char *orig = "<>=o";
+    const char *orig = "o=><";
     char dest[5] = "    ";
     
     for ( size_t i=0; i<4; ++i )
@@ -68,6 +68,7 @@ void Ppc405Iss::reset()
 {
     struct DataRequest init_dreq = ISS_DREQ_INITIALIZER;
 
+    m_exception = EXCEPT_NONE;
     m_dreq = init_dreq;
     m_exec_cycles = 0;
     m_ins_delay = 0;
@@ -105,6 +106,9 @@ void Ppc405Iss::dump() const
     for ( size_t i=0; i<8; ++i ) {
         std::cout << " " << std::dec << i << ": " << crTrad(crGet(i));
     }
+    std::cout
+        << " ctr: " << r_ctr
+        << std::endl;
     std::cout << std::endl;
 }
 
