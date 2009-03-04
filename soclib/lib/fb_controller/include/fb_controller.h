@@ -66,8 +66,9 @@ public:
     template<typename T>
     inline T& w( size_t offset )
     {
-        assert( offset * sizeof(T) < m_surface_size );
-        return ((T*)m_sim_surface)[offset];
+        if ( offset <= (m_surface_size + sizeof(T) - 1) / sizeof(T) )
+            return ((T*)m_sim_surface)[offset];
+        return ((T*)m_sim_surface)[0];
     }
 
 	FbController(
