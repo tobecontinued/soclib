@@ -1,11 +1,15 @@
 /***************************************************
-* LM32 startup code and exceptions handlers
-* This is based on the exception hnadler exemple
-* which can be found in the :
-*       "LatticeMico32 Processor Reference Manual"
-* And the u-boot start.S from Theobroma Systems  
-*        <www.theobroma-systems.com>
-***************************************************/
+ *
+ * LM32 startup code and exceptions handlers
+ * This is based on the exception hnadler exemple
+ * which can be found in the :
+ *       "LatticeMico32 Processor Reference Manual"
+ * And the u-boot start.S from Theobroma Systems  
+ *        <www.theobroma-systems.com>
+ *
+ * Maintainers: tarik.graba@telecom-paristech.fr
+ *
+ ***************************************************/
 
 /* ALL EXCEPTION HANDLERS ARE 8word (32bytes) long 
  * AND MUST ALIGNED

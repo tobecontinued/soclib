@@ -23,6 +23,7 @@
  * Copyright (c) TelecomParisTECH
  *         Tarik Graba <tarik.graba@telecom-paristech.fr>, 2009
  *
+ * Maintainers: tarik.graba@telecom-paristech.fr
  *
  * $Id$
  *

@@ -1,3 +1,11 @@
+/****************************************
+ * linkscript for lm32_hello_world
+ *
+ * Maintainers: tarik.graba@telecom-paristech.fr
+ * 
+ ****************************************/
+
+
     OUTPUT_FORMAT("elf32-lm32")
     OUTPUT_ARCH(lm32)
 ENTRY(_start)

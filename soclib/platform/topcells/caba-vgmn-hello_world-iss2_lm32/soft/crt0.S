@@ -1,3 +1,15 @@
+/****************************************
+ *
+ * CRT0 for lm32 hello_world
+ * This code initialize the stack pointer
+ * clears the bss and call the main function
+ * The return from the main produces a break
+ * which can be caught by a debugger
+ *
+ * Maintainers: tarik.graba@telecom-paristech.fr
+ *
+ ****************************************/
+
 .global _crt0
 _crt0:
     /* Setup stack and global pointer */
