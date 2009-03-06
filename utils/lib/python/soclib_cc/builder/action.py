@@ -130,7 +130,7 @@ class Action:
 			depname = self.__class__.__name__+'_%08u.deps'%hash(self.dests[0].filename)
 			try:
 				self.__depends = depends.load(depname)
-			except depends.MustRehash:
+			except:
 				self.__depends = self._depList()
 				depends.dump(depname, self.__depends)
 			self.has_deps = True
