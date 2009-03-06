@@ -63,6 +63,8 @@ void trap()
 # endif
 #elif defined(PPC)
 	asm volatile("trap");
+#elif defined(__lm32__)
+    asm volatile("break");
 #endif
 }
 
@@ -95,8 +97,8 @@ void *memcpy( void *_dst, void *_src, size_t size )
 			size -= 4;
 		}
 
-	unsigned char *cdst = (char*)dst;
-	unsigned char *csrc = (char*)src;
+	unsigned char *cdst = (unsigned char*)dst;
+	unsigned char *csrc = (unsigned char*)src;
 
 	while (size--) {
 		*cdst++ = *csrc++;

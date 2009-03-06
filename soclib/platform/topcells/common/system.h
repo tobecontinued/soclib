@@ -64,8 +64,10 @@ void set_ex_handler(ex_handler_t *handler);
 # include "system_mips.h"
 #elif defined(PPC) /* __mips__ */
 # include "system_ppc.h"
+#elif defined(__lm32__) /* __mips__ PPC */
+# include "system_lm32.h"
 #else /* __mips__ PPC */
-# error no mips no ppc
+# error no mips no ppc no lm32
 #endif
 
 void pause();
@@ -74,6 +76,9 @@ void pause();
 static inline int putchar(const int x)
 {
 #ifdef MMU
+#if defined(__lm32__)
+#error MMU support for lm32 not yet implemented...
+#endif
 
 	uint32_t tlb_mode = 0;
 	get_cp2(&tlb_mode,1);
@@ -116,6 +121,9 @@ static inline int putchar(const int x)
 static inline int getchar()
 {
 #ifdef MMU
+#if defined(__lm32__)
+#error MMU support for lm32 not yet implemented...
+#endif
 	uint32_t tlb_mode = 0;
 	get_cp2(&tlb_mode,1);
 

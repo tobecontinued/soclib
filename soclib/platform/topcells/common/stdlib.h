@@ -26,6 +26,8 @@
  * Maintainers: nipo
  */
 
+#include <stdint.h>
+
 void *malloc(size_t);
 void free(void*);
 void exit(int);

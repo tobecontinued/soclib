@@ -101,7 +101,7 @@ void interrupt_ex_handler(
     if (user_ex_handler)
         user_ex_handler(type, execptr, dataptr, regtable, stackptr);
     else {
-        printf("\nException at 0x%x: 0x%x\n", execptr, type);
+        printf("\nException at 0x%lx: 0x%x\n", (unsigned long)execptr, type);
         exit(1);
     }
 }
@@ -120,7 +120,7 @@ void interrupt_sys_handler(
     if (user_sys_handler)
         user_sys_handler(service, execptr, regtable, stackptr);
     else {
-        printf("Syscall at 0x%x: 0x%x\n", execptr, service);
+        printf("Syscall at 0x%x: 0x%x\n", (unsigned int)execptr, service);
         exit(1);
     }
 }
@@ -157,13 +157,32 @@ void enable_hw_irq(unsigned int n)
 		msr |= (1<<(31-14));
 	}
 	asm("mtmsr %0"::"r"(msr));
+#elif __lm32__
+	irq_enable();
 #else
 # error Please implement enable_hw_irq for your arch
 #endif
 }
 
+
 void interrupt_hw_handler(unsigned int irq)
 {
+#if __lm32__
+	int i;
+
+  	printf("Exception: %s irq %d\n", __FUNCTION__, irq);
+
+	for (i=0; i<32;++i) {
+		if (irq&1)
+			break;
+		irq>>=1;
+	}
+
+	if ( user_irq_handler )
+		user_irq_handler(i);
+	else
+		exit(1);
+#else
 	int i;
 
 //	printf("Exception: %s irq %d\n", __FUNCTION__, irq);
@@ -178,15 +197,19 @@ void interrupt_hw_handler(unsigned int irq)
 		user_irq_handler(i);
 	else
 		exit(1);
+#endif
 }
 
-static inline volatile uint32_t ll( uint32_t *addr )
+
+static inline uint32_t ll( uint32_t *addr )
 {
 	uint32_t ret;
 #if __mips__
 	__asm__ __volatile__("ll %0, 0(%1)":"=r"(ret):"p"(addr));
 #elif PPC
 	__asm__ __volatile__("lwarx %0, 0, %1":"=r"(ret):"p"(addr));
+#elif __lm32__
+#warning TODO : implement ll for lm32 !
 #else
 # error Please implement ll for your arch
 #endif
@@ -196,7 +219,7 @@ static inline volatile uint32_t ll( uint32_t *addr )
 /*
  * Store conditional, return 0 when succes
  */
-static inline volatile uint32_t sc( uint32_t *addr, uint32_t value )
+static inline uint32_t sc( uint32_t *addr, uint32_t value )
 {
 	uint32_t ret;
 #if __mips__
@@ -210,6 +233,8 @@ static inline volatile uint32_t sc( uint32_t *addr, uint32_t value )
 						 :"p"(addr), "r"(value)
 						 :"memory");
 	ret = ! (ret&0x20000000);
+#elif __lm32__
+#warning TODO : implement sc for lm32 !
 #else
 # error Please implement sc for your arch
 #endif
@@ -268,6 +293,8 @@ void lock_lock( uint32_t *lock )
 		: "=&r" (tmp)
 		: "p" (lock), "m" (*lock)
 		);
+#elif __lm32__
+#warning TODO : implement lock_lock for lm32 !
 #else
 # error Please implement lock_lock for your arch
 #endif
@@ -288,6 +315,8 @@ void pause()
 # endif
 #elif PPC
 	asm volatile("nap");
+#elif __lm32__
+#  warning No pause for this architecture
 #else
 # error Please implement pause for your arch
 #endif

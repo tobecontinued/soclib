@@ -380,6 +380,7 @@ void _instruction_tlb_miss()
     printf("Exception: %s\n", __FUNCTION__);
 }
 
+#elif __lm32__
 #else
 #error Unsupported arch
 #endif

@@ -32,4 +32,8 @@ arm966_CC_PREFIX = armv5b-softfloat-linux-
 arm966_CFLAGS = -nostdinc -gstabs+
 arm966_LDFLAGS = -nostdlib
 
+lm32_CC_PREFIX 	= 	lm32-elf-
+lm32_CFLAGS 	+=  -gstabs+ -mall-enabled
+lm32_LDFLAGS 	+=  -nostdlib 
+
 -include $(HOME)/.soclib/soft_compilers.conf

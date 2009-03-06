@@ -42,6 +42,8 @@ int time(int *ret)
 # endif
 #elif defined(PPC)
 	t = spr_get(284);
+#elif defined(__lm32__)
+    t = get_cc();
 #else
 #error No cycle counter
 #endif

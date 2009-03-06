@@ -34,6 +34,7 @@ do {																	\
 		printf("Assertion `%s' failed !!!\n", #x);		\
 	}																	\
 } while (0)
+
 /* #define assert(x) \ */
 /* do {																	\ */
 /* 	if ( !(x) ) {														\ */
