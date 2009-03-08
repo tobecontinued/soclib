@@ -35,5 +35,5 @@ Module('caba:vci_xcache',
 	   extensions = [
 	'dsx:get_ident=ident:p_vci',
    ],
-	   deprecated = "Please migrate to caba:vci_xcache_wrapper",
+	   deprecated = "Will be removed on 2009-05-01",
 )

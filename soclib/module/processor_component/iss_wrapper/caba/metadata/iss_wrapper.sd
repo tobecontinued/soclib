@@ -30,4 +30,5 @@ Module('caba:iss_wrapper',
 	'dsx:config_lines=%(ref)s.setCacheInfo(%(cache)s.getCacheInfo())',
 	'dsx:get_peer_name=cache:p_icache',
    ],
+	   deprecated = "Will be removed on 2009-05-01",
 )
