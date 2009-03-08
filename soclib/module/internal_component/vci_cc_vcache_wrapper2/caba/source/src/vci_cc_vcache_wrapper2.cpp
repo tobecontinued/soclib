@@ -1235,7 +1235,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // TLB update and invalidate different PTE
         if ( !r_icache_inval_tlb_rsp && !r_dcache_itlb_cleanup_req )  
         {
-            size_t victim_index = 0;
+            data_t victim_index = 0;
             r_dcache_itlb_cleanup_req = icache_m_tlb.update(r_icache_pte_update,ireq.addr,(r_icache_paddr_save.read() >> (uint32_log2(m_dcache_words)+2)),&victim_index);
             r_dcache_itlb_cleanup_line = victim_index;
             r_icache_fsm = ICACHE_IDLE;
@@ -1395,7 +1395,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // TLB update and invalidate different PTE
         if ( !r_icache_inval_tlb_rsp && !r_dcache_itlb_cleanup_req ) 
         {
-            size_t victim_index = 0;
+            data_t victim_index = 0;
             r_dcache_itlb_cleanup_req = icache_k_tlb.update(r_icache_pte_update,ireq.addr,(r_icache_paddr_save.read() >> (uint32_log2(m_dcache_words)+2)),&victim_index);
             r_dcache_itlb_cleanup_line = victim_index;
             r_icache_fsm = ICACHE_IDLE;
@@ -1421,7 +1421,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // 4M page size TLB flush leads to cleanup req to data cache 
         if ( !r_dcache_itlb_cleanup_req )    // last cleanup finish
         {
-            size_t victim_index = 0;
+            data_t victim_index = 0;
             for ( ; way < m_itlb_m_ways; way++)
             {
                 for ( ; set < m_itlb_m_sets; set++)
@@ -1458,7 +1458,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // 4K page size TLB flush leads to cleanup req to data cache 
         if ( !r_dcache_itlb_cleanup_req )    // last cleanup finish
         {
-            size_t victim_index = 0;
+            data_t victim_index = 0;
             for ( ; way < m_itlb_k_ways; way++)
             {
                 for ( ; set < m_itlb_k_sets; set++)
@@ -1509,7 +1509,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // cache flush and send cleanup to external
         if ( !r_icache_cleanup_req )
         {
-            size_t victim_index = 0;
+            data_t victim_index = 0;
             for ( ; way < m_icache_ways; way++ )
             {    
                 for ( ; set < m_icache_sets; set++ )
@@ -1557,7 +1557,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     ///////////////////////////
     case ICACHE_TLB_INVAL_DONE:
     {
-        size_t victim_index = 0;
+        data_t victim_index = 0;
 
         if ( !r_dcache_itlb_cleanup_req )
         {
@@ -2474,7 +2474,6 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                             {   
                                 if (dcache_hit_p) 
                                 {
-                                    addr36_t addr = ((addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2));
                                     r_dcache_pte_update = dcache_k_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
                                     r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
                                     assert(r_dcache.write(((addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2)), 
@@ -2974,7 +2973,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
         if ( !r_dcache_inval_tlb_rsp )
         {
-            size_t victim_index = 0;
+            data_t victim_index = 0;
             if (dcache_m_tlb.update(r_dcache_pte_update,dreq.addr,(r_dcache_tlb_paddr.read() >> (uint32_log2(m_dcache_words)+2)),&victim_index))
             {
                 r_dcache.setinbit((addr36_t)victim_index*m_dcache_words*2, r_dcache_in_dtlb, false);
@@ -3278,7 +3277,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
         if ( !r_dcache_inval_tlb_rsp )
         {
-            size_t victim_index = 0;
+            data_t victim_index = 0;
             if (dcache_k_tlb.update(r_dcache_pte_update,dreq.addr,(r_dcache_tlb_paddr.read() >> (uint32_log2(m_dcache_words)+2)),&victim_index))
             {
                 r_dcache.setinbit((addr36_t)victim_index*m_dcache_words*2, r_dcache_in_dtlb, false);
@@ -3297,7 +3296,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     case DCACHE_CTXT_SWITCH1:
     {
         // 4M page size TLB flush leads to cleanup corresponding data cache line 
-        size_t victim_index = 0;
+        data_t victim_index = 0;
         size_t way = 0;
         size_t set = 0;
 
@@ -3322,7 +3321,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     case DCACHE_CTXT_SWITCH2:
     {
         // 4K page size TLB flush leads to cleanup corresponding data cache line 
-        size_t victim_index = 0;
+        data_t victim_index = 0;
         size_t way = 0;
         size_t set = 0;
 
@@ -3378,7 +3377,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         // cache flush and send cleanup to external
         if ( !r_dcache_cleanup_req )
         {
-            size_t victim_index = 0;
+            data_t victim_index = 0;
             for ( ; way < m_dcache_ways; way++ )
             {    
                 for ( ; set < m_dcache_sets; set++ )
@@ -3438,7 +3437,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     case DCACHE_DTLB_INVAL_DONE:
     {
         bool cleanup = false;
-        size_t victim_index = 0;
+        data_t victim_index = 0;
 
 		if (r_dcache_page_k_save)   
         {
