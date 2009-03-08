@@ -965,14 +965,13 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
 
             return ncycle;
 
-        case WaitIssMem: {
-            size_t ncycles_done = CpuIss::executeNCycles(ncycle, irsp, drsp, irq_bit_field);
+        case WaitIssMem:
+            CpuIss::executeNCycles(0, irsp, drsp, irq_bit_field);
 
             if (satisfied)
                 state_ = Frozen;
 
-            return ncycles_done;
-        }
+            return 1;
 
         case Frozen:
             if (id_ != current_id_)

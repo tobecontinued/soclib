@@ -135,6 +135,9 @@ uint32_t Ppc405Iss::executeNCycles(
     m_ibe = irsp.error;
     m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
 
+    if ( ncycle == 0 )
+        return 0;
+
     r_tb++;
 
     m_next_pc = r_pc+4;

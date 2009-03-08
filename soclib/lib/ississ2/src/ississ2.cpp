@@ -97,6 +97,9 @@ tmpl(uint32_t)::executeNCycles(
         {}
     }
 
+    if ( !ncycle )
+        return 0;
+
     {
         uint32_t busy = m_iss.isBusy(), cycles_done;
         m_iss.setIrq(irq_bit_field);

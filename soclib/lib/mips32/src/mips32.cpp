@@ -146,6 +146,9 @@ uint32_t Mips32Iss::executeNCycles(
 
     _setData( drsp );
 
+    if ( ncycle == 0 )
+        return 0;
+
     m_exception = NO_EXCEPTION;
 
     if ( m_sleeping ) {
