@@ -24,19 +24,20 @@
 #
 # Maintainers: nipo
 
-SUBDIRS=$(patsubst %/platform_desc,%,$(shell echo */platform_desc))
+allsubdirs = $(patsubst %/platform_desc,%,$(shell echo */platform_desc))
 
-all:
-	$(MAKE) $(patsubst %,%/$@,$(SUBDIRS))
+# filter-out directories containing a 'diabled' file
+SUBDIRS=$(foreach dir,$(allsubdirs),$(if $(shell test -r $(dir)/disabled && echo 1),,$(dir)))
 
-clean:
-	$(MAKE) $(patsubst %,%/$@,$(SUBDIRS))
+all: $(foreach d,$(SUBDIRS),$d/all)
 
-soft_clean:
-	$(MAKE) $(patsubst %,%/$@,$(SUBDIRS))
+clean: $(foreach d,$(SUBDIRS),$d/clean)
 
-test:
-	$(MAKE) $(patsubst %,%/$@,$(SUBDIRS))
+soft_clean: $(foreach d,$(SUBDIRS),$d/soft_clean)
+
+test: $(foreach d,$(SUBDIRS),$d/test)
+
+simcompile: $(foreach d,$(SUBDIRS),$d/simcompile)
 
 define subdir
 

@@ -56,9 +56,21 @@ endif
 
 ifeq ($(shell test -r disabled && echo disabled),disabled)
 NO_TEST=Test disabled by "disabled" file: $(shell cat disabled)
+NO_SIMCOMPILE=1
 endif
 
 all: test_soclib $(SIMULATOR_BINARY) $(SOFT)
+
+ifeq ($(NO_COMPILE),)
+
+simcompile: $(SIMULATOR_BINARY)
+
+else
+
+simcompile:
+	@echo "simcompile disabled"
+
+endif
 
 ifeq ($(NO_SOFT),)
 
