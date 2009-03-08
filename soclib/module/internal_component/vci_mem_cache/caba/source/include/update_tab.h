@@ -1,3 +1,6 @@
+#ifndef UPDATE_TAB_H_
+#define UPDATE_TAB_H_
+
 #include <inttypes.h>
 #include <systemc>
 #include <cassert>
@@ -257,3 +260,5 @@ class UpdateTab{
   }
 
 };
+
+#endif

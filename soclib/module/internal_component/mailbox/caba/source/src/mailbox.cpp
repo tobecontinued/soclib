@@ -54,10 +54,6 @@ tmpl()::mailbox(sc_module_name		insname, 		// instance name
 	SC_METHOD(genMoore);
 	dont_initialize();
 	sensitive << p_clk.neg();
-	portRegister("clk", p_clk);
-	portRegister("resetn", p_resetn);
-	portRegister("vci", p_vci);
-	portRegisterN("irq", p_irq, Nirq);
 	NAME = (const char *) insname;	//instance name
 	BASE = m_segment.baseAddress();
 	SIZE = m_segment.size();

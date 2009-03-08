@@ -1,3 +1,5 @@
+#ifndef XRAM_TRANSACTION_H_
+#define XRAM_TRANSACTION_H_
  
 #include <inttypes.h>
 #include <systemc>
@@ -387,3 +389,4 @@ class TransactionTab{
   }
 }; // end class TransactionTab
 
+#endif
