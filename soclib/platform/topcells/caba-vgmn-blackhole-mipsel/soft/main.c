@@ -54,7 +54,7 @@ int main(void)
 	}
 	else{
 	  lock_lock(&lock);
-	  printf("Cpu %x says: I'm not stupid and let other for testing the blackhole\n", cpu);
+	  printf("Cpu %x says: I'm not stupid\n", cpu);
 	  lock_unlock(&lock);
 	}
 	
