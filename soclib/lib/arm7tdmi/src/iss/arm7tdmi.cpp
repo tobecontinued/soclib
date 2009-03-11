@@ -73,6 +73,12 @@ typedef unisim::component::cxx::processor::arm::CPU<
 ARM7TDMIIss::ARM7TDMIIss(uint32_t ident) :
 	inherited_CPU(this),
 	Iss(mkname(ident), ident) {
+	/* the default endianness of the processor is big endian, to 
+	 * change the endianness use SetEndianness with 
+	 * unisim::util::endian::E_LITTLE_ENDIAN or
+	 * unisim::util::endian::E_BIG_ENDIAN
+	 */
+	SetEndianness(unisim::util::endian::E_LITTLE_ENDIAN);
 }
 
 ARM7TDMIIss::~ARM7TDMIIss() {}
