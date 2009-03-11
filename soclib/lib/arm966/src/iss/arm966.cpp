@@ -75,6 +75,12 @@ ARM966Iss::ARM966Iss(uint32_t ident) :
 	Iss(mkname(ident), ident) {
 	arm966es_initram = false;
 	arm966es_vinithi = true;
+	/* the default endianness of the processor is big endian, to 
+	 * change the endianness use SetEndianness with 
+	 * unisim::util::endian::E_LITTLE_ENDIAN or
+	 * unisim::util::endian::E_BIG_ENDIAN
+	 */
+	SetEndianness(unisim::util::endian::E_LITTLE_ENDIAN);
 }
 
 ARM966Iss::~ARM966Iss() {}
