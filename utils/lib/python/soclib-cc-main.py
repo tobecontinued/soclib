@@ -28,9 +28,6 @@
 import os, os.path
 import sys
 import soclib_cc
-from soclib_cc.config import config, change_config
-from soclib_cc.builder.cxx import CxxCompile
-from soclib_desc.module import Module
 
 from optparse import OptionParser
 
@@ -41,6 +38,10 @@ def main():
 	todb = []
 	def buggy_callback(option, opt, value, parser):
 		todb.append(value)
+	one_args = {}
+	def one_arg_callback(option, opt, value, parser):
+		k, v = value.split('=', 1)
+		one_args[k] = v
 	parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
 	parser.add_option('-v', '--verbose', dest = 'verbose',
 					  action='store_true',
@@ -60,6 +61,9 @@ def main():
 	parser.add_option('-1', '--one-module', nargs = 1, type = "string",
 					  action='store', dest = 'one_module',
 					  help="Only try to compile one module")
+	parser.add_option('-a', '--arg', nargs = 1, type = "string",
+					  action='callback', callback = one_arg_callback,
+					  help="Specify arguments for one-module build")
 	parser.add_option('-q', '--quiet', dest = 'quiet',
 					  action='store_true',
 					  help="Print nothing but errors")
@@ -72,6 +76,9 @@ def main():
 	parser.add_option('-l', dest = 'list_descs',
 					  action='store_const', const = "long",
 					  help="List known descriptions == --list-descs=long")
+	parser.add_option('-I', dest = 'includes',
+					  action='append', nargs = 1,
+					  help="Append directory to .sd search path")
 	parser.add_option('--list-descs', dest = 'list_descs',
 					  action='store', nargs = 1, type = 'string',
 					  help="List known descriptions. arg may be 'long' or 'names'")
@@ -111,13 +118,33 @@ def main():
 					  action='store', type = 'int',
 					  default = 0,
 					  help="Allow n parallel jobs")
+	parser.add_option('--bug-report', dest = 'bug_report',
+					  action='store_true',
+					  help="Create a bug-reporting log")
+	parser.add_option('--auto-bug-report', dest = 'auto_bug_report',
+					  action='store', nargs = 1,
+					  help="Auto report bug. Methods allowed: *openbrowser, none",
+					  choices = ("openbrowser", "none"))
+	parser.set_defaults(auto_bug_report = "openbrowser")
 	opts, args = parser.parse_args()
-	if opts.type:
-		change_config(opts.type)
+
+	from soclib_cc import bugreport
+	bugreport.bootstrap(opts.bug_report, opts.auto_bug_report)
+
+	from soclib_cc.config import config, change_config
+	from soclib_cc.builder.cxx import CxxCompile
+	from soclib_desc.module import Module
+	
 	if opts.getpath:
 		print config.path
 		return 0
+	if opts.type:
+		change_config(opts.type)
+	
 	from soclib_desc import components
+	if opts.includes:
+		for i in opts.includes:
+			config.addDescPath(i)
 	components.getDescs(config.desc_paths)
 
 	for value in todef:
@@ -152,8 +179,8 @@ def main():
 	if opts.one_module:
 		from soclib_cc.builder.todo import ToDo
 		from soclib_cc.builder.cxx import CxxLink
-		from soclib_desc.component import Uses
 		from soclib_desc.specialization import Specialization
+		from soclib_cc.component_builder import ComponentBuilder
 		todo = ToDo()
 		class foo:
 			def fullyQualifiedModuleName(self, d):
@@ -163,14 +190,12 @@ def main():
 		out = []
 		f = foo()
 		for module in opts.one_module.split(','):
-			mod = Specialization(module)
-			for b in mod.getAllBuilders():
-				for o in b.results():
+			mod = Specialization(module, **one_args)
+			mod.printAllUses()
+			for b in mod.getSubTree():
+				for o in ComponentBuilder.fromSpecialization(b).results():
 					todo.add(o)
 					out.append(o)
-			for o in mod.builder().results():
-				todo.add(o)
-				out.append(o)
 			if opts.output:
 				todo.add(CxxLink(opts.output, out).results()[0])
 		todo.process()
@@ -219,6 +244,7 @@ def main():
 		glbls = {}
 		for n in pf.__all__:
 			glbls[n] = getattr(pf, n)
+		glbls['config'] = config
 		locs = {}
 		execfile(opts.platform, glbls, locs)
 		try:

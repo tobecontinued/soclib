@@ -116,40 +116,45 @@ clean:
 		if self.prepared:
 			return
 		self.todo = []
-		self.todo = self._getall(self.dests)
+		try:
+			self.todo = self._getall(self.dests)
+		except ActionFailed, e:
+			self.handle_failed_action(e)
 		self.prepared = True
 	def clean(self):
 		self.prepare()
 		for i in xrange(len(self.todo)-1,-1,-1):
 			todo = self.todo[i]
 			todo.clean()
+	def handle_failed_action(self, e):
+		print "soclib-cc: *** Action failed with return value `%s'. Stop."%e.rval
+		if self.has_blob:
+			print '***********************************************'
+			print '***********************************************'
+			print '**** WARNING, YOU USED BINARY-ONLY MODULES ****'
+			print '***********************************************'
+			print '***********************************************'
+			print 'If you compilation failed because of linkage, this is most'
+			print 'likely a mismatch between expected libraries from a binary'
+			print 'only module and your system libraries (libstdc++, SystemC, ...)'
+			print
+			print "\x1b[91mPlease don't report any error about binary modules"
+			print "to SoCLib-CC maintainers, they'll ignore your requests.\x1b[m"
+			print 
+		if config.verbose:
+			print "soclib-cc: Failed action: `%s'"%e.action
+		if self.actions:
+			print "soclib-cc: Waiting for unfinished jobs"
+			while True:
+				try:
+					self.wait()
+				except:
+					sys.exit(1)
 	def wait(self):
 		try:
 			ndone = Action.wait()
 		except ActionFailed, e:
-			print "soclib-cc: *** Action failed with return value `%s'. Stop."%e.rval
-			if self.has_blob:
-				print '***********************************************'
-				print '***********************************************'
-				print '**** WARNING, YOU USED BINARY-ONLY MODULES ****'
-				print '***********************************************'
-				print '***********************************************'
-				print 'If you compilation failed because of linkage, this is most'
-				print 'likely a mismatch between expected libraries from a binary'
-				print 'only module and your system libraries (libstdc++, SystemC, ...)'
-				print
-				print "\x1b[91mPlease don't report any error about binary modules"
-				print "to SoCLib-CC maintainers, they'll ignore your requests.\x1b[m"
-				print 
-			if config.verbose:
-				print "soclib-cc: Failed action: `%s'"%e.action
-			if self.actions:
-				print "soclib-cc: Waiting for unfinished jobs"
-				while True:
-					try:
-						self.wait()
-					except:
-						sys.exit(1)
+			self.handle_failed_action(e)
 		self.actions -= ndone
 		self.progressBar()
 	def process(self):

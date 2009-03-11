@@ -27,6 +27,7 @@
 import os, os.path
 import popen2
 import action
+import sys
 import fileops
 import mfparser
 from soclib_cc.config import config, Joined
@@ -62,11 +63,18 @@ class CCompile(action.Action):
 		args.append(filename)
 		args = self.argSort(args)
 		cmd = Joined(args)
-		stdout, stdin = popen2.popen2(cmd)
+		stdout, stdin, stderr = popen2.popen3(cmd)
 		stdin.close()
 		blob = stdout.read()
+		err = stderr.read()
 		from bblock import bblockize
-		return bblockize(mfparser.MfRule(blob).prerequisites)
+		try:
+			deps = mfparser.MfRule(blob)
+		except ValueError:
+			sys.stderr.write(err)
+			sys.stderr.write('\n\n')
+			raise action.ActionFailed("Unable to compute dependencies", cmd)
+		return bblockize(deps.prerequisites)
 	def processDeps(self):
 		return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
 	def process(self):

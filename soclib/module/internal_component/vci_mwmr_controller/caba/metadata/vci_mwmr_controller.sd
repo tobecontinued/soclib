@@ -42,6 +42,7 @@ Module('caba:vci_mwmr_controller',
 	'dsx:addressable=tgtid',
 	'dsx:get_ident=tgtid:p_vci_target,srcid:p_vci_initiator',
 	'dsx:max_segments=1',
+	'dsx:mapping_type=mwmr_controller',
 	'dsx:device=mwmr_controller',
    ],
 )

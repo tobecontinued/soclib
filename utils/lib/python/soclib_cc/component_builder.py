@@ -35,43 +35,41 @@ class TooSimple(Exception):
 
 class ComponentBuilder:
 	def __init__(self, spec, where, local = False):
-		self.force_debug = spec.descAttr('debug')
+		self.force_debug = spec.isDebug()
 		self.force_mode = self.force_debug and "debug" or None
 		self.specialization = spec
 #		print self.specialization
 		self.where = where
 		self.deps = []
-		self.local = self.specialization.descAttr('local')
+		self.local = self.specialization.isLocal()
 		from soclib_desc import component, module
 		self.deepdeps = set()#(self,))
 		try:
-#			print self
-			self.deps = self.specialization.getAllBuilders()
-#			self.deps.remove(self)
-			for b in self.deps:
-				self.deepdeps |= b.withDeps()
-#		except module.NoSuchComponent:
-#			raise ComponentInstanciationError(where, u.name, 'not found')
+			self.deps = self.specialization.getSubTree()
 		except RuntimeError, e:
 			raise ComponentInstanciationError(where, spec, e)
 		except ComponentInstanciationError, e:
 			raise ComponentInstanciationError(where, spec, str(e))
+
 		self.headers = set()
-		for d in self.withDeps():
-			d.getHeaders(self.headers)
-	def getHeaders(self, incls):
-		for i in self.specialization.descAttr('abs_header_files'):
-			incls.add(i)
-	def withDeps(self):
-		return self.deepdeps | set([self])
-	def getParamHeaders(self):
-		h = set()
-		pb = self.specialization.getParamBuilders()
-		for builder in pb:
-			for b in builder.withDeps():
-				b.getHeaders(h)
-#		print 'ParamHeaders for', self, pb, h
-		return h
+		for d in self.specialization.getSubTree():
+			headers = d.getHeaderFiles()
+			self.headers |= set(headers)
+
+		self.tmpl_headers = set()
+		for d in self.specialization.getTmplSubTree():
+			headers = d.getHeaderFiles()
+			self.tmpl_headers |= set(headers)
+
+## 		from pprint import pprint
+## 		if self.specialization.getModuleName() == 'caba:vci_locks':
+## 			print self
+## 			pprint(sorted(map(str, self.specialization.getSubTree())))
+## 			pprint(sorted(list(self.headers)))
+## 			for m in self.specialization.getSubTree():
+## 				print str(m)
+## 				pprint(m.__dict__)
+## 				pprint(m.getHeaderFiles())
 	def getBuilder(self, filename, *add_filenames):
 		bn = self.baseName()
 		if add_filenames:
@@ -101,28 +99,27 @@ class ComponentBuilder:
 		return CxxCompile(
 			dest = out,
 			src = src,
-			defines = self.specialization.descAttr('defines'),
+			defines = self.specialization.getDefines(),
 			inc_paths = incls,
 			force_debug = self.force_debug)
 	def baseName(self):
-		basename = self.specialization.descAttr('classname')
-		tp = self.specialization.getTmplParams()
-		if tp:
-			basename += "_" + tp.replace(' ', '_')
+		basename = self.specialization.getModuleName()
+		tp = self.specialization.getType()
+		basename += "_" + tp.replace(' ', '_')
 		params = ",".join(
 			map(lambda x:'%s=%s'%x,
-				self.specialization.descAttr('defines').iteritems()))
+				self.specialization.getDefines().iteritems()))
 		if params:
-			basename += "_" + params.replace(' ', '_')
-		return basename
+			basename += "_" + params
+		return basename.replace(' ', '_')
 	def results(self):
 		is_template = ('<' in self.specialization.getType())
-		impl = self.specialization.descAttr('abs_implementation_files')
+		impl = self.specialization.getImplementationFiles()
 		if is_template and len(impl) > 1:
 			builders = [self.getBuilder(*impl)]
 		else:
 			builders = map(self.getBuilder, impl)
-		objects = bblockize(self.specialization.descAttr('abs_object_files'))
+		objects = bblockize(self.specialization.getObjectFiles())
 		map(lambda x:x.setIsBlob(True), objects)
 		return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
 	def cxxSource(self, *sources):
@@ -138,7 +135,7 @@ class ComponentBuilder:
 		inst = 'class '+self.specialization.getType()
 
 		source = ""
-		for h in map(os.path.basename, self.getParamHeaders()):
+		for h in map(os.path.basename, self.tmpl_headers):
 			source += '#include "%s"\n'%h
 		from config import config
 		for h in config.toolchain.always_include:
@@ -147,6 +144,10 @@ class ComponentBuilder:
 			source += '#include "%s"\n'%s
 		source += 'template '+inst+';\n'
 		return source
+
+	@classmethod
+	def fromSpecialization(cls, spec):
+		return cls(spec, None, spec.isLocal())
 
 	def __hash__(self):
 		return hash(self.specialization)

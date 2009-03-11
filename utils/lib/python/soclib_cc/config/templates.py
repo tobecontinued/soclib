@@ -119,6 +119,9 @@ def doConfigure(self, soclib_path, desc_paths):
 	for dp in desc_paths:
 		self.addDescPath(dp)
 	self.desc_paths.append(".")
+
+	import soclib_utils.repos_file
+	self.svn_revision = None #soclib_utils.repos_file.revision(soclib_path)
 ## 	print self.desc_paths
 ## 	import sys
 ## 	sys.exit(0)

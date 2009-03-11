@@ -50,23 +50,27 @@ class Platform:
 	Platform definition, should be passed an arbitrary number of
 	Uses() and Source() statements that constitutes the platform.
 	"""
-	def fullyQualifiedModuleName(self, name):
-		if not ':' in name:
-			return 'caba:'+name
-		return name
-	def putArgs(self, d):
-		pass
 	def addObj(self, o):
 		if not o in self.objs:
 			self.objs.add(o)
 			self.todo.add(o)
 	def __init__(self, mode, source_file, uses = [], defines = {}, output = None, **params):
-		component = Source(mode, source_file, uses, defines, **params)
+		self.__mode = mode
+		self.__source = source_file
+		self.__uses = set(uses)
+		self.__defines = defines
+		self.__output = output
+		from soclib_desc.specialization import Specialization
+		component = Specialization(
+			Source(mode, source_file, uses, defines, **params),
+			**params)
 		self.todo = ToDo()
 		self.objs = set()
-		builder = component.builder(self)
-		all = builder.withDeps()
-		for b in all:
+#		component.printAllUses()
+
+		for c in component.getSubTree():
+#			print 'aaa', hex(hash(c)), `c`
+			b = ComponentBuilder.fromSpecialization(c)
 			for o in b.results():
 				self.addObj( o )
 		if output is None:
@@ -80,6 +84,17 @@ class Platform:
 	def genMakefile(self):
 		return self.todo.genMakefile()
 
+	def __repr__(self):
+		import pprint
+		return '%s(%r, %r,\n%s, %r, %r)'%(
+			self.__class__.__name__,
+			self.__mode,
+			self.__source,
+			pprint.pformat(list(self.__uses)),
+			self.__defines,
+			self.__output,
+			)
+
 def Source(mode, source_file, uses = [], defines = {}, **params):
 	name = mode+':'+hex(hash(source_file))
 	from soclib_desc.module import Module
@@ -91,5 +106,5 @@ def Source(mode, source_file, uses = [], defines = {}, **params):
 			   )
 	filename = traceback.extract_stack()[-3][0]
 	d = os.path.abspath(os.path.dirname(filename))
-	m.mk_abs_paths(d)
-	return Uses(name, **params)
+	m._mk_abs_paths(d)
+	return name

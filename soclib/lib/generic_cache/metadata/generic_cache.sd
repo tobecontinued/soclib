@@ -8,5 +8,6 @@ Module('caba:generic_cache',
 	parameter.Type('addr_t'),
 	],
 	uses = [Uses('common:mapping_table'),
-			Uses('common:address_masking_table', data_t = '%(addr_t)s'),],
+			Uses('common:address_masking_table',
+				 data_t = parameter.Reference('addr_t')),],
 )

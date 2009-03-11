@@ -39,20 +39,17 @@ class Port:
 		self.__type = type
 		self.__name = name
 		self.__count = count
-		self.__owner = None
 		self.__auto = auto
 		self.__args = args
 		self.where = traceback.extract_stack()[-2][0:2]
-	def setModule(self, module):
-		self.__type = module.fullyQualifiedModuleName(self.__type, self)
-		self.__module = module
-	def getUse(self, module):
+	def Use(self):
+		return Uses(self.__type, **self.__args)
+	def getInfo(self, **args):
 		from specialization import Specialization
-		ptype = Specialization(self.__type, **self.__args)
-		module.addUse(Uses(self.__type, **self.__args))
-	def getInfo(self):
-		from specialization import Specialization
-		ptype = Specialization(self.__type, **self.__args)
+		a = {}
+		a.update(args)
+		a.update(self.__args)
+		ptype = Specialization(self.__type, **a)
 		return self.__name, ptype, self.__count, self.__auto
 	def __str__(self):
 		from specialization import Specialization
@@ -62,27 +59,27 @@ class Port:
 class Signal(Module):
 	tb_delta = -3
 	def __init__(self, name, **kwargs):
-		accepts = kwargs['accepts']
+		self.__accepts = kwargs['accepts']
 		del kwargs['accepts']
 		Module.__init__(self, name, **kwargs)
-		self.setAttr('accepts', accepts)
 
-	def resolveRefsFor(self):
-		Module.resolveRefsFor(self)
-		naccepts = {}
-		for type, count in self['accepts'].iteritems():
-			rtype = self.getRegistered(type)
-			naccepts[rtype] = count
-		self.setAttr('accepts', naccepts)
+	def __getitem__(self, key):
+		if key == 'accepts':
+			naccepts = {}
+			for type, count in self.__accepts.iteritems():
+				rtype = Module.getRegistered(type)
+				naccepts[rtype] = count
+			return naccepts
+		else:
+			return Module.__getitem__(self, key)
 
 class PortDecl(Module):
-	tb_delta = -3
-	def __init__(self, name, **kwargs):
-		Module.__init__(self, name, **kwargs)
-	def resolveRefsFor(self):
-		Module.resolveRefsFor(self)
-		if self['signal'] is not None:
-			self.setAttr('signal', self.getRegistered(self['signal']))
+	def __getitem__(self, key):
+		if key == 'signal':
+			sig = Module.__getitem__(self, 'signal')
+			if sig:
+				return Module.getRegistered(sig)
+		return Module.__getitem__(self, key)
 
 class Uses:
 	"""
@@ -98,54 +95,38 @@ class Uses:
 	def __init__(self, name, **args):
 		self.name = name
 		self.args = args
+		for k in filter(lambda x:':' in x, self.args.keys()):
+			del self.args[k]
+
+		self.__hash = (
+			hash(self.name)^
+			hash(str([(k, self.args[k]) for k in sorted(self.args)])))
+
 		# This is for error feedback purposes
 		self.where = traceback.extract_stack()[-2][0:2]
-	def clone(self, **args):
-		a = args
-		a.update(self.args)
-		r = self.__class__(self.name, **a)
-		r.where = self.where
-		return r
-	def __str__(self):
-		return '<Use %s>'%(self.name)
-	def specialization(self):
+
+	def specialization(self, **args):	
 		from specialization import Specialization
-		return Specialization(self.name, __use = self.where, **self.args)
-	def builder(self, parent):
-		self.name = parent.fullyQualifiedModuleName(self.name)
-		from soclib_desc import specialization
-		args = {}
-		args.update(self.args)
-		parent.putArgs(args)
-		def resolve(newv):
-			if not '%' in str(newv):
-				return newv
-			v = None
-			while newv != v:
-				v = newv
-				newv = newv%args
-			v = v.replace('"', '\\"')
-			return v
-		for k in args.keys():
-			v = args[k]
-			if isinstance(v, list):
-				v = map(resolve, v)
-			elif isinstance(v, str):
-				v = resolve(v)
-			else:
-				v = resolve(str(v))
-			args[k] = v
-		spec = specialization.Specialization(self.name, __use = self.where, **args)
-		from soclib_cc import component_builder
-		return component_builder.ComponentBuilder(spec, self.where)
+		a = {}
+		a.update(args)
+		a.update(self.args)
+#		print 'use', `self`
+#		from pprint import pprint
+#		pprint(a)
+		return Specialization(self.name, __use = self.where, **a)
+		
+	def __str__(self):
+		return '<Use %s from %s>'%(self.name, self.where)
+
 	def __repr__(self):
-		return str(self)
+		args = ', '.join(['%s = %r'%(k, self.args[k]) for k in sorted(filter(lambda x:':' not in x, self.args.keys()))])
+		return 'Uses(%r, %s)'%(self.name, args)
+
 	def __cmp__(self, other):
 		return (
 			cmp(self.name, other.name) or
 			cmp(self.args, other.args)
 			)
+
 	def __hash__(self):
-		return (
-			hash(self.name)^
-			hash(`self.args`))
+		return self.__hash

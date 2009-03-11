@@ -34,6 +34,7 @@ class NotFound(Exception):
 
 class ActionFailed(Exception):
 	def __init__(self, rval, action):
+		Exception.__init__(self, "%s failed: %s"%(action, rval))
 		self.rval = rval
 		self.action = action
 
@@ -71,9 +72,10 @@ class Action:
 	def launch(self, cmd):
 		import popen2
 		self.__command = cmd
-		self.__handle = popen2.Popen3(cmd)
+		self.__handle = popen2.Popen3(cmd, True)
 		self.__handle.tochild.close()
-		self.__fromchild = self.__handle.fromchild
+		self.__child_out = self.__handle.fromchild
+		self.__child_err = self.__handle.childerr
 		self.__pid = self.__handle.pid
 		self.__class__.__handles[self.__handle.pid] = self
 	@classmethod
@@ -95,14 +97,22 @@ class Action:
 		except KeyError:
 			return False
 		del self.__handles[pid]
-		output = self.__fromchild.read()
-		self.__fromchild.close()
+		out = self.__child_out.read()
+		err = self.__child_err.read()
+		self.__child_out.close()
+		self.__child_err.close()
+		if out:
+			sys.stdout.write('\n')
+			sys.stdout.write(out)
+		if err:
+			sys.stderr.write('\n')
+			sys.stderr.write(err)
 		if rval:
-			sys.stdout.write(output)
 			raise ActionFailed(rval, self.__command)
 		self.__pid = 0
 		del self.__handle
-		del self.__fromchild
+		del self.__child_out
+		del self.__child_err
 		del self.__command
 		for d in self.dests:
 			d.touch()
@@ -181,6 +191,12 @@ class Action:
 
 	def commands_to_run(self):
 		return ('# Undefined command in '+self.__class__.__name__),
+
+	def __str__(self):
+		l = lambda a:' '.join(map(lambda x:os.path.basename(x.filename), a))
+		return "<%s:\n sources: %s\n dests: %s>"%(self.__class__.__name__,
+												  l(self.sources),
+												  l(self.dests))
 
 class Noop(Action):
 	def __init__(self):
