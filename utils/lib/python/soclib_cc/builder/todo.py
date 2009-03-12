@@ -150,7 +150,7 @@ clean:
 			print "soclib-cc: Waiting for unfinished jobs"
 			while True:
 				try:
-					self.wait()
+					Action.wait()
 				except:
 					sys.exit(1)
 	def wait(self):
