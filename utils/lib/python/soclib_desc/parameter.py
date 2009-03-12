@@ -55,9 +55,16 @@ class Parameter(Base):
 								 self.auto)
 
 	l = locals()
-	for op in 'mul', 'add', 'mod':
+	for op in (
+		'mul', 'add', 'mod', 'pow', 'div', 'sub',
+		):
 		name = '__%s__'%op
-		l[op] = lambda self, right: BinaryOp(getattr(operator, op), self, right)
+		l[name] = lambda self, right: BinaryOp(getattr(operator, op), self, right)
+	for op in (
+		'mul', 'add', 'mod', 'pow', 'div', 'sub'
+		):
+		rname = '__r%s__'%op
+		l[rname] = lambda self, right: BinaryOp(getattr(operator, op), right, self)
 
 class Bool(Parameter):
 	valid_types = (bool,)
