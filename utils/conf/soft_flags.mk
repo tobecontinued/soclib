@@ -24,11 +24,11 @@ microblaze_LDFLAGS=-nostdlib
 nios2_CC_PREFIX=nios2-unknown-elf-
 nios2_CFLAGS=-mhw-mul -mhw-div
 
-arm7tdmi_CC_PREFIX = /home/gracia/opt/crosstool/gcc-3.4.5-glibc-2.3.6/arm-unknown-linux-gnu/bin/arm-unknown-linux-gnu-
+arm7tdmi_CC_PREFIX = arm-unknown-linux-gnu-
 arm7tdmi_CFLAGS = -mcpu=arm7tdmi -mlittle-endian -nostdinc -gstabs+
 arm7tdmi_LDFLAGS = -A armv4t -EL -nostdlib
 
-arm966_CC_PREFIX = /home/gracia/opt/crosstool/gcc-3.4.5-glibc-2.3.6/arm-unknown-linux-gnu/bin/arm-unknown-linux-gnu-
+arm966_CC_PREFIX = arm-unknown-linux-gnu-
 arm966_CFLAGS = -mcpu=arm9tdmi -mlittle-endian -nostdinc -gstabs+
 arm966_LDFLAGS = -A armv5te -EL -nostdlib
 
