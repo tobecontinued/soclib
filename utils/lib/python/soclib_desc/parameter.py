@@ -15,6 +15,10 @@ class Base:
 	def get_inst_value(value, **args):
 		return value
 
+	@staticmethod
+	def get_internal_value(value, **args):
+		return value
+
 class Parameter(Base):
 	valid_types = ()
 	def __init__(self, name, default = None, auto = None):
@@ -117,6 +121,13 @@ class Int(Parameter):
 			raise ParameterError("Invalid value `%s' for parameter `%s': above %d"%(value, self.name, self.max))
 		if self.min is not None and value < self.min:
 			raise ParameterError("Invalid value `%s' for parameter `%s': below %d"%(value, self.name, self.min))
+
+	@staticmethod
+	def get_inst_value(v, **args):
+		if v < 4096:
+			return '%d'%v
+		else:
+			return '0x%08x'%v
 
 class String(Parameter):
 	valid_types = (str,)
@@ -224,8 +235,8 @@ class BinaryOp(Base):
 			self.__right)
 
 	def resolve(self, args):
-		self.__left = value(self.__left, args, 'inst')
-		self.__right = value(self.__right, args, 'inst')
+		self.__left = value(self.__left, args, 'internal')
+		self.__right = value(self.__right, args, 'internal')
 #		print repr(self.__op), repr(self.__left), repr(self.__right)
 		return self.__op(self.__left, self.__right)
 
