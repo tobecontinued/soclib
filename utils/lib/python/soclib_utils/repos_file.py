@@ -19,7 +19,7 @@ def revision(path):
 	found = _version_re.search(fd.read())
 	if not found:
 		return "no version"
-	return found.group(1)
+	return str(found.group(1)).strip()
 
 if __name__ == '__main__':
 	import sys

@@ -75,3 +75,7 @@ class Config:
 
 	def __getitem__(self, name):
 		return getattr(self, name)
+
+	def __str__(self):
+		import pprint
+		return pprint.pformat(self.__dict__)
