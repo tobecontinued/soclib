@@ -36,6 +36,7 @@
 #include "mwmr_controller.h"
 #include "generic_fifo.h"
 #include "alloc_elems.h"
+#include <cstring>
 #include <algorithm>
 
 #ifndef SOCLIB_MODULE_DEBUG
@@ -913,7 +914,7 @@ tmpl(/**/)::VciMwmrController(
 	dont_initialize();
 	sensitive << p_clk.neg();
 
-    memset(m_all_state, 0, sizeof(*m_all_state)*m_n_all);
+    std::memset(m_all_state, 0, sizeof(*m_all_state)*m_n_all);
 
     // If this fail, please implement word width adaptation in access
     // to VCI data.
