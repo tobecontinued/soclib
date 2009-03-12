@@ -194,6 +194,9 @@ class Specialization:
 	def getPorts(self):
 		return self.__cdef['ports']
 
+	def getSubSignals(self):
+		return self.__cdef['sub_signals']
+
 
 	def __init_args(self, args):
 		self.__args = {}

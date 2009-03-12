@@ -34,6 +34,7 @@ __id__ = "$Id$"
 __version__ = "$Revision$"
 
 __all__ = ['Module', 'PortDecl',
+		   'MetaSignal', 'MetaPortDecl', 'SubSignal',
 		   'parameter', 'types',
 		   'Signal','Port']
 
@@ -84,6 +85,12 @@ class PortDecl(Module):
 				return Module.getRegistered(sig)
 		return Module.__getitem__(self, key)
 
+class MetaPortDecl(PortDecl):
+	pass
+
+class MetaSignal(Signal):
+	pass
+
 class Uses:
 	"""
 	A statement declaring the platform uses a specific component (in a
@@ -133,3 +140,6 @@ class Uses:
 
 	def __hash__(self):
 		return self.__hash
+
+class SubSignal(Uses):
+	pass
