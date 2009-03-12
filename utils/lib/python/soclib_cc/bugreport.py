@@ -50,8 +50,12 @@ class AdvertizeForBugreporter:
 def end_handler(logname, exc, fd, report_action):
 	from soclib_desc.module import Module
 	from soclib_utils.repos_file import revision
+	from soclib_cc.config import config
 	import os
 	import os.path
+	print >> fd
+	print >> fd, "Config:"
+	print >> fd, str(config)
 	print >> fd, "Used modules:"
 	for m in Module.getUsedModules():
 		print >> fd, '  ', m
