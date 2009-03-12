@@ -87,10 +87,10 @@ void MappingTable::add( const Segment &seg )
             throw soclib::exception::Collision(o.str());
         }
         for ( addr_t address = s.baseAddress();
-              address < s.baseAddress()+s.size();
+              address < s.baseAddress()+s.size() && address >= s.baseAddress();
               address += m_rt_size ) {
             for ( addr_t segaddress = seg.baseAddress();
-                  segaddress < seg.baseAddress()+seg.size();
+                  segaddress < seg.baseAddress()+seg.size() && segaddress >= seg.baseAddress();
                   segaddress += m_rt_size ) {
                 if ( (m_cacheability_mask & address) == (m_cacheability_mask & segaddress) &&
                      s.cacheable() != seg.cacheable() ) {
@@ -147,7 +147,7 @@ MappingTable::getCacheabilityTable() const
           i != m_segment_list.end();
           i++ ) {
         for ( addr_t addr = i->baseAddress();
-              addr < i->baseAddress()+i->size();
+              addr < i->baseAddress()+i->size() && addr >= i->baseAddress();
               addr += m_rt_size ) {
             if ( done[addr] && adt[addr] != i->cacheable() ) {
                 std::ostringstream oss;
@@ -179,7 +179,7 @@ MappingTable::getLocalityTable( const IntTab &index ) const
           i != m_segment_list.end();
           i++ ) {
         for ( addr_t addr = i->baseAddress();
-              addr < i->baseAddress()+i->size();
+              addr < i->baseAddress()+i->size() && addr >= i->baseAddress();
               addr += m_rt_size ) {
             bool val = (i->index().idMatches(index) );
 
@@ -219,7 +219,7 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 		}
 
         for ( addr_t addr = i->baseAddress();
-              addr < i->baseAddress()+i->size();
+              addr < i->baseAddress()+i->size() && addr >= i->baseAddress();
               addr += m_rt_size ) {
             int val = i->index()[index.level()];
 
