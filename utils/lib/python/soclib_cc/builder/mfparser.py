@@ -26,6 +26,9 @@
 
 __all__ = ["MfRule"]
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 def bsfilter(spacer, l):
 	r = []
 	next_follows = False

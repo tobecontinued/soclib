@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:mailbox',
 	classname = 'soclib::caba::mailbox',
 	tmpl_parameters = [

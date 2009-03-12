@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:topcell',
 	classname = 'soclib::common::TopCell',
 	header_files = ['../include/topcell.h',],

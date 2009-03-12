@@ -29,6 +29,9 @@ import os, os.path
 import sys
 import soclib_cc
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 from optparse import OptionParser
 
 def main():

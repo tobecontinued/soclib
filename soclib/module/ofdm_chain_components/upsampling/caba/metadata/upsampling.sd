@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:Upsampling',
 	classname = 'soclib::caba::Upsampling',
 	tmpl_parameters = [

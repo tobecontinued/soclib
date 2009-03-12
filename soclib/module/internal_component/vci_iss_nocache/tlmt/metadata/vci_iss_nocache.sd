@@ -26,6 +26,9 @@
 #     François Pêcheux <francois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_iss_nocache',
 	classname = 'soclib::tlmt::VciIssNocache',
 	header_files = ['../source/include/vci_iss_nocache.h'],

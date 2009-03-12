@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:inst_arg',
 	classname = 'soclib::common::CommonFactory',
 	header_files = ['../include/inst_arg.h',],

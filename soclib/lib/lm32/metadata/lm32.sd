@@ -2,6 +2,9 @@
 
 # Lattice Mico32 LM32
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:lm32',
 	classname = 'soclib::common::LM32Iss',
 	header_files = ["../include/lm32.h",],

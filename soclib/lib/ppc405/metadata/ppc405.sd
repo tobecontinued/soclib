@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:ppc405',
 	classname = 'soclib::common::Ppc405Iss',
 	header_files = ["../include/iss/ppc405.h",],

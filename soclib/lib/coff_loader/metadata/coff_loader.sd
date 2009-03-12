@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:coff_loader',
 	classname = 'soclib::common::CoffLoader',
 	header_files = ['../include/coff_loader.h',],

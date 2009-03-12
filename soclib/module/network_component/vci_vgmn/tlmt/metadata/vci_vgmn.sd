@@ -26,6 +26,9 @@
 #     Francois Pecheux <francois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_vgmn',
 	classname = 'soclib::tlmt::VciVgmn',
 	   tmpl_parameters = [

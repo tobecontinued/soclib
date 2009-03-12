@@ -27,6 +27,9 @@
 import re
 import os, os.path
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 __all__ = ['Config']
 
 class Config:

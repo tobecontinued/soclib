@@ -1,5 +1,8 @@
 #     Aline Vieira de Mello <Aline.Vieira-de-Mello@lip6.fr>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:fifo_writer',
        classname = 'soclib::tlmt::FifoWriter',
        tmpl_parameters = [parameter.Module('vci_param',  default = 'tlmt:vci_param')],

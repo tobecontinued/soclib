@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:anoc_common',
 	classname = 'soclib::common::anoc_common',
 	header_files = [

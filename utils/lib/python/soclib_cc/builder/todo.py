@@ -30,6 +30,9 @@ from soclib_cc.config import config
 from bblock import bblockize
 from action import Noop, ActionFailed, Action
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 def cr(x):
 	return not isinstance(x, Noop)
 

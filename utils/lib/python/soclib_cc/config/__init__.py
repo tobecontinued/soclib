@@ -30,6 +30,9 @@ from pprint import pprint
 from utils import *
 import types
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 __all__ = ['config', 'Joined']
 
 import re

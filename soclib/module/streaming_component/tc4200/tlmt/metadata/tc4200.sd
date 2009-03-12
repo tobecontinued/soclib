@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 #Module('tlmt:tc4200',
 #	classname = 'soclib::tlmt::tc4200',
 #	tmpl_parameters = [

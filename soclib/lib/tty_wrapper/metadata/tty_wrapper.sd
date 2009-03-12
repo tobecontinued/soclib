@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:tty_wrapper',
 	classname = 'soclib::common::TtyWrapper',
 	header_files = ['../include/tty_wrapper.h',],

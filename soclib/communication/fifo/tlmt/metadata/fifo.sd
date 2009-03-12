@@ -26,6 +26,9 @@
 #     Francois Pecheux <francois.pecheux@lip6.fr>
 #     Alain Greiner <alain.greiner@lip6.fr>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 PortDecl('tlmt:fifo_initiator',
 		 classname = 'soclib::tlmt::FifoInitiator',
 		 header_files = ['../source/include/fifo_ports.h',

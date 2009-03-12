@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:iss_c6x_wrapper',
 	   classname = 'soclib::caba::IssC6xWrapper',
 	   header_files = ["../source/include/iss_c6x_wrapper.h",],

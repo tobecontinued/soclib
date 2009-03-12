@@ -26,6 +26,9 @@
 #     François Pêcheux <francois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 PortDecl('tlmt:vci_initiator',
 		 classname = 'soclib::tlmt::VciInitiatorPort',
 		 header_files = ['../source/include/vci_ports.h',

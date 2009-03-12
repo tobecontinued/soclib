@@ -3,6 +3,9 @@
 
 # Mips Big endian (MipsEbIss)
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:mipseb',
 	classname = 'soclib::common::MipsEbIss',
 	header_files = ["../include/iss/mips.h",],

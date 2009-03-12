@@ -24,6 +24,9 @@
 # 
 # Maintainers: nipo
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 config.systemc = Config(
 	vendor = 'OSCI',
 	libdir = '%(dir)s/lib-%(os)s',

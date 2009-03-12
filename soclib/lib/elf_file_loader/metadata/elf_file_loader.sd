@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:elf_file_loader',
 	implementation_files = ['../src/elf_file_loader.cpp',
 							],

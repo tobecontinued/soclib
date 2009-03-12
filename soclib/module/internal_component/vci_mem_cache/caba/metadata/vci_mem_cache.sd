@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_mem_cache',
        classname = 'soclib::caba::VciMemCache',
        tmpl_parameters = [parameter.Module('vci_param', default = 'caba:vci_param'),],

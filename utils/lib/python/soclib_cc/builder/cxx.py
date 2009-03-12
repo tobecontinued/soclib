@@ -32,6 +32,9 @@ import fileops
 import mfparser
 from soclib_cc.config import config, Joined
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class CCompile(action.Action):
 	priority = 100
 	tool = 'CC'

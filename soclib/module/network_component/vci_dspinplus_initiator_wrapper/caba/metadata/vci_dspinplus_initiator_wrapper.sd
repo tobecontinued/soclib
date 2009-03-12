@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_dspinplus_initiator_wrapper',
 	classname = 'soclib::caba::VciDspinPlusInitiatorWrapper',
 	tmpl_parameters = [

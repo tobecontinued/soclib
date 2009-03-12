@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:pibus_bcu',
 	classname = 'soclib::caba::PibusBcu',
 	header_files = ["../source/include/pibus_bcu.h",],

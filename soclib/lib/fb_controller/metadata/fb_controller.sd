@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:fb_controller',
 	classname = 'soclib::common::FbController',
 	header_files = ['../include/fb_controller.h',],

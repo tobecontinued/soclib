@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:arm966',
 	classname = 'soclib::common::ARM966Iss',
 	header_files = ["../include/iss/arm966.h",

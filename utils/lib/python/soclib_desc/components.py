@@ -27,6 +27,9 @@
 import os, os.path
 import re
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 def get_descs_in(base):
 	sdfile = re.compile('^[^.][a-zA-Z0-9_-]+\\.sd$')
 	from soclib_cc.config import config

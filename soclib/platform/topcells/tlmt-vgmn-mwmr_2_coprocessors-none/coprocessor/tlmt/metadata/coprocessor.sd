@@ -26,6 +26,9 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:coprocessor',
        classname = 'soclib::tlmt::Coprocessor',
        tmpl_parameters = [parameter.Module('vci_param',  default = 'tlmt:vci_param')	],

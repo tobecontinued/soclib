@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_cc_vcache_wrapper2',
 	classname = 'soclib::caba::VciCcVCacheWrapper2',
 	   tmpl_parameters = [

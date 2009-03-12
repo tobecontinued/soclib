@@ -27,6 +27,9 @@
 #     Nicolas Pouillon <nipo@ssji.net>
 #     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_xcache_wrapper',
 	classname = 'soclib::tlmt::VciXcacheWrapper',
 	header_files = ['../source/include/vci_xcache_wrapper.h',

@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:half_gateway_target',
 	classname = 'soclib::caba::HalfGatewayTarget',
 	   tmpl_parameters = [],

@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:mips',
 	classname = 'soclib::common::MipsIss',
 	header_files = ["../include/iss/mips.h",],

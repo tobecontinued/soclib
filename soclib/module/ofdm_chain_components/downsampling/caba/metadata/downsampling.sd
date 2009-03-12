@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:Downsampling',
 	classname = 'soclib::caba::Downsampling',
 	tmpl_parameters = [

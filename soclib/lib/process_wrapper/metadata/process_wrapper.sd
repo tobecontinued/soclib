@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:process_wrapper',
 	classname = 'soclib::common::ProcessWrapper',
 	header_files = ['../include/process_wrapper.h',],

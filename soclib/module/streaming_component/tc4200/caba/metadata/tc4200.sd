@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:tc4200',
 	classname = 'soclib::caba::Tc4200',
 	tmpl_parameters = [

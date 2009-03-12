@@ -28,6 +28,9 @@ import os, os.path
 import time
 from soclib_cc.config import config
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 _global_bblock_registry = {}
 
 class BBlock:

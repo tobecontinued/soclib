@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Signal('caba:pibus',
 	   classname = 'soclib::caba::Pibus',
 	   accepts = {'caba:pibus_initiator':16,

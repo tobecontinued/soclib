@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_initiator_simple_req',
 	classname = 'soclib::caba::VciInitiatorSimpleReq',
 	   tmpl_parameters = [

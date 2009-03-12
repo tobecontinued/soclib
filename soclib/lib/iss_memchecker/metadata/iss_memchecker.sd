@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:iss_memchecker',
 	classname = 'soclib::common::IssMemchecker',
 	header_files = ["../include/iss_memchecker.h",

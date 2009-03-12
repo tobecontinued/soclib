@@ -5,6 +5,9 @@ import traceback
 import warnings
 import soclib_utils.repos_file
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class DoubleRegistrationWarning(Warning):
 	def __str__(self):
 		return 'Module %s registered twice, previous registration in "%s"'%(self.args[0], self.args[1])

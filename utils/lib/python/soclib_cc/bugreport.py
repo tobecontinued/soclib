@@ -5,6 +5,9 @@ from datetime import datetime
 import atexit
 import traceback
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 __all__ = ['bootstrap']
 
 class Outter:

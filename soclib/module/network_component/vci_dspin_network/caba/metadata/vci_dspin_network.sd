@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_dspin_network',
 	classname = 'soclib::caba::VciDspinNetwork',
 	tmpl_parameters = [

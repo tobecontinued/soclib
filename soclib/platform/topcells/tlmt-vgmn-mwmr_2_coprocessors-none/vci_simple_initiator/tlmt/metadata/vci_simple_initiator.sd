@@ -26,6 +26,9 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_simple_initiator',
 	classname = 'soclib::tlmt::VciSimpleInitiator',
 	   tmpl_parameters = [

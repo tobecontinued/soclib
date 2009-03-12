@@ -26,6 +26,9 @@
 #     Francois Pecheux <francois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_rsp_arb_cmd_rout',
 	classname = 'soclib::tlmt::VciRspArbCmdRout',
 	header_files = [

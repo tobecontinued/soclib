@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:anoc_copro_wrapper',
 	classname = 'soclib::caba::anoc_copro_wrapper',
 	header_files = [

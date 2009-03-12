@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:ring_gateway',
 	classname = 'soclib::caba::RingGateway',
 	   tmpl_parameters = [],

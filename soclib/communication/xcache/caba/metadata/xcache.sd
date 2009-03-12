@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Signal('caba:xcache_icache',
 	   classname = 'soclib::caba::ICacheSignals',
 	   accepts = {'caba:xcache_cache_icache':1,

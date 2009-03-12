@@ -3,6 +3,9 @@ import parameter
 import module
 import warnings
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class ModuleDeprecationWarning(DeprecationWarning):
 	def __str__(self):
 		return 'Module %s deprecated: "%s"'%(self.args[0], self.args[1])

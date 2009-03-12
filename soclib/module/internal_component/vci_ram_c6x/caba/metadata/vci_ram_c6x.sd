@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_ram_c6x',
 	classname = 'soclib::caba::VciRamC6x',
 	   tmpl_parameters = [

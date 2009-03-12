@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:dspinplus_router',
 	classname = 'soclib::caba::DspinPlusRouter',
 	tmpl_parameters = [

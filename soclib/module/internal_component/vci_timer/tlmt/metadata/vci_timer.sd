@@ -1,4 +1,7 @@
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_timer',
        classname = 'soclib::tlmt::VciTimer',
        tmpl_parameters = [ parameter.Module('vci_param',  default = 'tlmt:vci_param') ],

@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:linked_access_buffer',
 	classname = 'soclib::common::LinkedAccessBuffer',
 	header_files = ['../include/linked_access_buffer.h',],

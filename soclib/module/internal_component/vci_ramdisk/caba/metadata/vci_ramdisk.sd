@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_ramdisk',
 	classname = 'soclib::caba::VciRamDisk',
 	   tmpl_parameters = [

@@ -23,3 +23,7 @@
 #         Nicolas Pouillon <nipo@ssji.net>, 2007
 # 
 # Maintainers: nipo
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+

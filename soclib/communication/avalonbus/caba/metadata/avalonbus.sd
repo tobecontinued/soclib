@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Signal('caba:avalonbus',
        tmpl_parameters = [parameter.Module('avalon_param', default = 'caba:avalon_param')],
        classname = 'soclib::caba::AvalonSignals',

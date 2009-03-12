@@ -25,6 +25,9 @@
 # Copyright (c) UPMC / Lip6, 2008
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_framebuffer',
 	classname = 'soclib::tlmt::VciFrameBuffer',
 	   tmpl_parameters = [

@@ -26,6 +26,9 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_ram',
 	classname = 'soclib::tlmt::VciRam',
 	   tmpl_parameters = [

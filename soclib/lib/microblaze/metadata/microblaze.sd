@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:microblaze',
 	classname = 'soclib::common::MicroBlazeIss',
 	header_files = ["../include/iss/microblaze.h",],

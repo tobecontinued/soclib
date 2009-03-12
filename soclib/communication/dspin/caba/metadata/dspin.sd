@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Signal('caba:dspin',
 	accepts = {'caba:dspin_output':1,
 		   'caba:dspin_input':1},

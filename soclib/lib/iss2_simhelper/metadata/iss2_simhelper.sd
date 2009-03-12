@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:iss2_simhelper',
 	classname = 'soclib::common::Iss2Simhelper',
 	header_files = ["../include/iss2_simhelper.h",],

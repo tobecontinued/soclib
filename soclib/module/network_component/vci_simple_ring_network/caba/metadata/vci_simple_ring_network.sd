@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_simple_ring_network',
 	classname = 'soclib::caba::VciSimpleRingNetwork',
 	tmpl_parameters = [

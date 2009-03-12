@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:avalon_address_decoding_logic',
        classname = 'soclib::caba::AvalonAddressDecodingLogic',
 		tmpl_parameters = [

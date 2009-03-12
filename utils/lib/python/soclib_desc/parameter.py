@@ -1,6 +1,9 @@
 
 import operator
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class ParameterError(Exception): pass
 
 class Base:

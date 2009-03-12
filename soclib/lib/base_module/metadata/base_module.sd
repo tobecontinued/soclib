@@ -26,6 +26,9 @@
 #     François Pêcheux <francois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:base_module',
 	classname = 'soclib::caba::BaseModule',
 	header_files = [ '../include/caba/caba_base_module.h' ],

@@ -3,6 +3,9 @@ import warnings
 import sys
 import os
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 _green = '\x1b[32m'
 _red = '\x1b[31m'
 _normal = '\x1b[m'

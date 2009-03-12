@@ -31,6 +31,9 @@
 import sys
 import re
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class Func:
 	_proto_re = re.compile('^(?P<retval>.+)\s+(?P<name>[a-zA-Z0-9_:]+)\s*\((?P<proto>[^)]*)\)$')
 	def __init__(self, name, retval, proto, disabled = False, code = ''):

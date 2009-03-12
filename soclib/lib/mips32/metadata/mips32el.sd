@@ -3,6 +3,9 @@
 
 # Mips32 Little endian (Mips32ElIss)
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:mips32el',
 	classname = 'soclib::common::Mips32ElIss',
 	header_files = ["../include/iss/mips32.h",],

@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:gdb_iss',
 	classname = 'soclib::common::GdbServer',
 	header_files = ["../include/iss/gdbserver.h",

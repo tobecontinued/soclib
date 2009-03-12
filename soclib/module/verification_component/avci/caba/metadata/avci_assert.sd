@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:avci_assert',
 	classname = 'soclib::caba::AdvancedVciAssert',
 	tmpl_parameters = [

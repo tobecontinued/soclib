@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_anoc_wrapper',
 	classname = 'soclib::caba::VciAnocWrapper',
 	tmpl_parameters = [

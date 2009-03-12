@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:address_masking_table',
 	classname = 'soclib::common::AddressMaskingTable',
 	header_files = ['../include/address_masking_table.h',],

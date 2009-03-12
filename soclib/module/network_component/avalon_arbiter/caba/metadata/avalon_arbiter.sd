@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:avalon_arbiter',
 	classname = 'soclib::caba::AvalonArbiter',
 	tmpl_parameters = [

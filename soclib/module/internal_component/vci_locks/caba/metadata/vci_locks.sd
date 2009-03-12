@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_locks',
 	classname = 'soclib::caba::VciLocks',
 	   tmpl_parameters = [

@@ -26,6 +26,9 @@
 #     François Pêcheux <francois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:tlmt',
 	   header_files = [
 		'../include/tlmt',

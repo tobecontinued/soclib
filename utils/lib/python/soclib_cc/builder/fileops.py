@@ -28,6 +28,9 @@ import os
 import bblock
 from action import Action
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class CreateDir(Action):
 	def __init__(self, directory):
 		Action.__init__(self, [directory], [])

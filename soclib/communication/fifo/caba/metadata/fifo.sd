@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Signal('caba:fifo',
 	   accepts = {'caba:fifo_output':1,
 				  'caba:fifo_input':1},

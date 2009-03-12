@@ -29,6 +29,9 @@ import depends
 import os, os.path, time
 import sys
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class NotFound(Exception):
 	pass
 

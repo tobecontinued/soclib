@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:arm7tdmi',
 	classname = 'soclib::common::ARM7TDMIIss',
 	header_files = ["../include/iss/arm7tdmi.h",

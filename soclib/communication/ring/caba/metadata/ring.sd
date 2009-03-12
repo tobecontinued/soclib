@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Signal('caba:ring',
 	   classname = 'soclib::caba::RingSignals',
 	   accepts = {'caba:ring_in':1,

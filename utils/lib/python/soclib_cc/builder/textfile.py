@@ -29,6 +29,9 @@ from fileops import CreateDir
 from action import Action
 from soclib_cc.config import config
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class Textfile(Action):
 	priority = 50
 	def __init__(self, output, contents):

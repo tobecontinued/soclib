@@ -5,6 +5,9 @@ from soclib_cc.builder.cxx import *
 from soclib_cc.builder.bblock import *
 from soclib_cc.builder.textfile import *
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 try:
 	set
 except:

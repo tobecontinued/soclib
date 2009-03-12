@@ -1,5 +1,8 @@
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:trx_ofdm',
 	classname = 'soclib::caba::trx_ofdm',
 	header_files = [

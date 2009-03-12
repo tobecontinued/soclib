@@ -29,6 +29,9 @@ import os, os.path, time
 import bblock
 import  pickle
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 __all__ = ['load', 'dump']
 
 class MustRehash(Exception):

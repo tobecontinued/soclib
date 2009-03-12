@@ -26,6 +26,9 @@
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_mwmr_controller',
        classname = 'soclib::tlmt::VciMwmrController',
        tmpl_parameters = [parameter.Module('vci_param',  default = 'tlmt:vci_param')],

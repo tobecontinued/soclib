@@ -30,6 +30,9 @@ import copy
 from module import *
 import parameter, types
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 __all__ = ['Module', 'PortDecl',
 		   'parameter', 'types',
 		   'Signal','Port']

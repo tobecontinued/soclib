@@ -3,6 +3,9 @@
 from dsx.util.objdumper import *
 import sys
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 class SymLooker:
 	def __init__(self, arch, obj):
 		self.__syms = {}

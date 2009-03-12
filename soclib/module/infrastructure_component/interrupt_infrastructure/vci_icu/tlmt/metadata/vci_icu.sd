@@ -1,3 +1,7 @@
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('tlmt:vci_icu',
        classname = 'soclib::tlmt::VciIcu',
        tmpl_parameters = [ parameter.Module('vci_param',  default = 'tlmt:vci_param')],

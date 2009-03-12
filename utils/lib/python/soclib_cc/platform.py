@@ -32,6 +32,9 @@ from soclib_cc.builder.todo import ToDo
 from soclib_cc.builder.cxx import CxxCompile, CxxLink
 from component_builder import ComponentBuilder
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 try:
 	set
 except:

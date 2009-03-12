@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:mapping_table',
 	classname = 'soclib::common::MappingTable',
 	header_files = ['../include/mapping_table.h',],

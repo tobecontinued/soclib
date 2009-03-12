@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Signal('caba:vci',
 	   tmpl_parameters = [parameter.Module('vci_param', default = 'caba:vci_param')],
 	   classname = 'soclib::caba::VciSignals',

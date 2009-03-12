@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:st231',
 	classname = 'soclib::common::ST231iss',
 	header_files = [

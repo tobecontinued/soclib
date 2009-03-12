@@ -2,6 +2,9 @@
 from component import PortDecl, Signal, Module
 import parameter
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Signal('caba:clock',
 		   classname = 'sc_core::sc_clock',
 		   header_files = [],

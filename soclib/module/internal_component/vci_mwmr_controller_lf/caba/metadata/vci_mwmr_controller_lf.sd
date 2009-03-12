@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:vci_mwmr_controller_lf',
 	classname = 'soclib::caba::VciMwmrControllerLf',
 	header_files = ['../source/include/vci_mwmr_controller_lf.h',

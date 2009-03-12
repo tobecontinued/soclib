@@ -1,6 +1,9 @@
 
 # -*- python -*-
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('caba:fifo_reader',
 	classname = 'soclib::caba::FifoReader',
 	header_files = ["../source/include/fifo_reader.h",],

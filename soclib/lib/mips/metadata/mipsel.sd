@@ -3,6 +3,9 @@
 
 # Mips Little endian (MipsElIss)
 
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
 Module('common:mipsel',
 	classname = 'soclib::common::MipsElIss',
 	header_files = ["../include/iss/mips.h",],
