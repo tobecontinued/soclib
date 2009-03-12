@@ -178,9 +178,9 @@ void Loader::addSection( const BinaryFileSection &section )
     for ( section_list_t::iterator s = m_sections.begin();
           s != m_sections.end();
           s++ ) {
-        if ( s->lma() >= section.lma()+section.size() )
+        if ( s->lma() >= section.lma()+section.size() || section.lma()+section.size() < section.lma() )
             continue;
-        if ( section.lma() >= s->lma()+s->size() )
+        if ( section.lma() >= s->lma()+s->size() || s->lma()+s->size() < s->lma() )
             continue;
         std::ostringstream o;
         o << section << " overlaps " << *s;
