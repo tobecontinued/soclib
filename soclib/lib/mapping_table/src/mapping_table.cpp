@@ -41,6 +41,9 @@ MappingTable::MappingTable(
           m_level_id_bits(level_id_bits),
           m_cacheability_mask(cacheability_mask)
 {
+    m_rt_size = 1<<(addr_width-m_level_addr_bits.sum());
+    addr_t cm_rt_size = 1 << AddressMaskingTable<addr_t>(m_cacheability_mask).getDrop();
+    m_rt_size = std::min<addr_t>(cm_rt_size, m_rt_size);
 }
 
 MappingTable::MappingTable( const MappingTable &ref )
@@ -48,7 +51,8 @@ MappingTable::MappingTable( const MappingTable &ref )
           m_addr_width(ref.m_addr_width),
           m_level_addr_bits(ref.m_level_addr_bits),
           m_level_id_bits(ref.m_level_id_bits),
-          m_cacheability_mask(ref.m_cacheability_mask)
+          m_cacheability_mask(ref.m_cacheability_mask),
+          m_rt_size(ref.m_rt_size)
 {
 }
 
@@ -59,6 +63,7 @@ const MappingTable &MappingTable::operator=( const MappingTable &ref )
     m_level_addr_bits = ref.m_level_addr_bits;
     m_level_id_bits = ref.m_level_id_bits;
     m_cacheability_mask = ref.m_cacheability_mask;
+    m_rt_size = ref.m_rt_size;
     return *this;
 }
 
@@ -81,12 +86,20 @@ void MappingTable::add( const Segment &seg )
             o << seg << " bumps in " << s;
             throw soclib::exception::Collision(o.str());
         }
-        if ( (m_cacheability_mask & s.baseAddress()) == (m_cacheability_mask & seg.baseAddress()) &&
-             s.cacheable() != seg.cacheable() ) {
-            std::ostringstream oss;
-            oss << "Segment " << s
-                << " has a different cacheability attribute with same MSBs than " << seg << std::endl;
-			throw soclib::exception::RunTimeError(oss.str());
+        for ( addr_t address = s.baseAddress();
+              address < s.baseAddress()+s.size();
+              address += m_rt_size ) {
+            for ( addr_t segaddress = seg.baseAddress();
+                  segaddress < seg.baseAddress()+seg.size();
+                  segaddress += m_rt_size ) {
+                if ( (m_cacheability_mask & address) == (m_cacheability_mask & segaddress) &&
+                     s.cacheable() != seg.cacheable() ) {
+                    std::ostringstream oss;
+                    oss << "Segment " << s
+                        << " has a different cacheability attribute with same MSBs than " << seg << std::endl;
+                    throw soclib::exception::RunTimeError(oss.str());
+                }
+            }
         }
     }
     m_segment_list.push_back(seg);
@@ -133,17 +146,20 @@ MappingTable::getCacheabilityTable() const
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
-        MappingTable::addr_t addr = i->baseAddress();
-        if ( done[addr] && adt[addr] != i->cacheable() ) {
-            std::ostringstream oss;
-            oss << "Incoherent Mapping Table:" << std::endl
-                << "Segment " << *i << " has different cacheability than other segment with same masked address" << std::endl
-                << "Mapping table:" << std::endl
-                << *this;
-			throw soclib::exception::RunTimeError(oss.str());
+        for ( addr_t addr = i->baseAddress();
+              addr < i->baseAddress()+i->size();
+              addr += m_rt_size ) {
+            if ( done[addr] && adt[addr] != i->cacheable() ) {
+                std::ostringstream oss;
+                oss << "Incoherent Mapping Table:" << std::endl
+                    << "Segment " << *i << " has different cacheability than other segment with same masked address" << std::endl
+                    << "Mapping table:" << std::endl
+                    << *this;
+                throw soclib::exception::RunTimeError(oss.str());
+            }
+            adt.set( addr, i->cacheable() );
+            done.set( addr, true );
         }
-		adt.set( addr, i->cacheable() );
-        done.set( addr, true );
     }
     return adt;
 }
@@ -162,19 +178,22 @@ MappingTable::getLocalityTable( const IntTab &index ) const
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
-		MappingTable::addr_t addr = i->baseAddress();
-		bool val = (i->index().idMatches(index) );
+        for ( addr_t addr = i->baseAddress();
+              addr < i->baseAddress()+i->size();
+              addr += m_rt_size ) {
+            bool val = (i->index().idMatches(index) );
 
-		if ( done[addr] && adt[addr] != val ) {
-            std::ostringstream oss;
-            oss << "Incoherent Mapping Table:" << std::endl
-                << "Segment " << *i << " targets different component than other segments with same MSBs" << std::endl
-                << "Mapping table:" << std::endl
-                << *this;
-			throw soclib::exception::RunTimeError(oss.str());
+            if ( done[addr] && adt[addr] != val ) {
+                std::ostringstream oss;
+                oss << "Incoherent Mapping Table:" << std::endl
+                    << "Segment " << *i << " targets different component than other segments with same MSBs" << std::endl
+                    << "Mapping table:" << std::endl
+                    << *this;
+                throw soclib::exception::RunTimeError(oss.str());
+            }
+            adt.set( addr, val );
+            done.set( addr, true );
         }
-		adt.set( addr, val );
-		done.set( addr, true );
 	}
     return adt;
 }
@@ -199,19 +218,22 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 			continue;
 		}
 
-		MappingTable::addr_t addr = i->baseAddress();
-		int val = i->index()[index.level()];
+        for ( addr_t addr = i->baseAddress();
+              addr < i->baseAddress()+i->size();
+              addr += m_rt_size ) {
+            int val = i->index()[index.level()];
 
-		if ( done[addr] && adt[addr] != val ) {
-            std::ostringstream oss;
-            oss << "Incoherent Mapping Table: for " << index << std::endl
-                << "Segment " << *i << " targets different target (or cluster) than other segments with same routing bits" << std::endl
-                << "Mapping table:" << std::endl
-                << *this;
-			throw soclib::exception::RunTimeError(oss.str());
+            if ( done[addr] && adt[addr] != val ) {
+                std::ostringstream oss;
+                oss << "Incoherent Mapping Table: for " << index << std::endl
+                    << "Segment " << *i << " targets different target (or cluster) than other segments with same routing bits" << std::endl
+                    << "Mapping table:" << std::endl
+                    << *this;
+                throw soclib::exception::RunTimeError(oss.str());
+            }
+            adt.set( addr, val );
+            done.set( addr, true );
         }
-		adt.set( addr, val );
-		done.set( addr, true );
 	}
     return adt;
 }

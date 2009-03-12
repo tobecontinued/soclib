@@ -52,6 +52,7 @@ private:
     IntTab m_level_addr_bits;
     IntTab m_level_id_bits;
     addr_t m_cacheability_mask;
+    addr_t m_rt_size;
 
 public:
     MappingTable( const MappingTable& );
