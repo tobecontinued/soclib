@@ -54,17 +54,30 @@ class Parameter(Base):
 								 self.default,
 								 self.auto)
 
-	l = locals()
-	for op in (
-		'mul', 'add', 'mod', 'pow', 'div', 'sub',
-		):
-		name = '__%s__'%op
-		l[name] = lambda self, right: BinaryOp(getattr(operator, op), self, right)
-	for op in (
-		'mul', 'add', 'mod', 'pow', 'div', 'sub'
-		):
-		rname = '__r%s__'%op
-		l[rname] = lambda self, right: BinaryOp(getattr(operator, op), right, self)
+	def __mul__(self, other):
+		return BinaryOp(operator.mul, self, other)
+	def __add__(self, other):
+		return BinaryOp(operator.add, self, other)
+	def __pow__(self, other):
+		return BinaryOp(operator.pow, self, other)
+	def __div__(self, other):
+		return BinaryOp(operator.div, self, other)
+	def __sub__(self, other):
+		return BinaryOp(operator.sub, self, other)
+	def __mod__(self, other):
+		return BinaryOp(operator.mod, self, other)
+	def __rmul__(self, other):
+		return BinaryOp(operator.mul, other, self)
+	def __radd__(self, other):
+		return BinaryOp(operator.add, other, self)
+	def __rpow__(self, other):
+		return BinaryOp(operator.pow, other, self)
+	def __rdiv__(self, other):
+		return BinaryOp(operator.div, other, self)
+	def __rsub__(self, other):
+		return BinaryOp(operator.sub, other, self)
+	def __rmod__(self, other):
+		return BinaryOp(operator.mod, other, self)
 
 class Bool(Parameter):
 	valid_types = (bool,)
@@ -104,13 +117,6 @@ class Int(Parameter):
 			raise ParameterError("Invalid value `%s' for parameter `%s': above %d"%(value, self.name, self.max))
 		if self.min is not None and value < self.min:
 			raise ParameterError("Invalid value `%s' for parameter `%s': below %d"%(value, self.name, self.min))
-
-	@staticmethod
-	def get_inst_value(v, **args):
-		if v < 4096:
-			return '%d'%v
-		else:
-			return '0x%08x'%v
 
 class String(Parameter):
 	valid_types = (str,)
@@ -220,7 +226,7 @@ class BinaryOp(Base):
 	def resolve(self, args):
 		self.__left = value(self.__left, args, 'inst')
 		self.__right = value(self.__right, args, 'inst')
-#		print self.__op, self.__left, self.__right
+#		print repr(self.__op), repr(self.__left), repr(self.__right)
 		return self.__op(self.__left, self.__right)
 
 class StringExt(BinaryOp):

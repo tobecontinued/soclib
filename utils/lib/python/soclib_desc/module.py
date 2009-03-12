@@ -26,11 +26,21 @@ class NoSuchComponent(Exception):
 	pass
 
 class Module:
+	"""
+	The module class acts as a registry for all its instances. Therefore,
+	all modules, signals, ports, ... registered in .sd files can be
+	looked up for.
+	"""
+	
 	# class part
 	__reg = {}
 	__module2file = {}
 
 	def getUsedModules(cls):
+		"""
+		Returns a list of modules used at least one since
+		initialization.
+		"""
 		return filter(lambda x:x.__use_count, cls.__reg.itervalues())
 	getUsedModules = classmethod(getUsedModules)
 	
@@ -43,6 +53,10 @@ class Module:
 	__register = classmethod(__register)
 
 	def getRegistered(cls, name):
+		"""
+		Returns a module from its fqmn, if not available, a
+		NoSuchComponent exception is raised.
+		"""
 		try:
 			return cls.__reg[name]
 		except KeyError:
@@ -50,6 +64,9 @@ class Module:
 	getRegistered = classmethod(getRegistered)
 
 	def allRegistered(cls):
+		"""
+		Returns a dict of all modules registered, indexed by fqmn
+		"""
 		return cls.__reg
 	allRegistered = classmethod(allRegistered)
 
@@ -75,6 +92,10 @@ class Module:
 	tb_delta = -2
 
 	def __init__(self, typename, **attrs):
+		"""
+		Creation of a module, with any overrides to defaults
+		parameters defined in module_attrs class member.
+		"""
 		self.__attrs = {}
 		self.__typename = typename
 		base_attrs = self.__class__.__dict__
@@ -98,12 +119,21 @@ class Module:
 		self.__use_count = 0
 
 	def instanciated(self):
+		"""
+		Method to advertize for module usage.
+		"""
 		self.__use_count += 1
 
 	def getModuleName(self):
+		"""
+		Gets the fqmn
+		"""
 		return self.__typename
 
 	def __getitem__(self, name):
+		"""
+		Gets the attribute 'name'
+		"""
 		import copy
 		return copy.copy(self.__attrs[name])
 
@@ -118,6 +148,9 @@ class Module:
 		self.__attrs['abs_header_files'] += self.__attrs['global_header_files']
 
 	def getInfo(self):
+		"""
+		Returns module information (implementation files and paths)
+		"""
 		r = '<%s\n'%self.__class__.__name__
 		for l in 'abs_header_files', 'abs_implementation_files', 'abs_object_files', 'global_header_files':
 			for s in self.__attrs[l]:
@@ -126,6 +159,9 @@ class Module:
 		return r+' >'
 
 	def files(self):
+		"""
+		Returns module's implementation files
+		"""
 		r = [self.__filename]
 		for l in ('abs_header_files', 'abs_implementation_files',
 				  'abs_object_files', 'global_header_files'):

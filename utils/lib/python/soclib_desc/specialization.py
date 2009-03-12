@@ -28,7 +28,18 @@ class ModuleSpecializationError(Exception):
 		return 'Error specializing %s%s, error: %s'%(self.__module, at, c)
 
 class Specialization:
+	'''
+	A specialization of a module, i.e. a module with
+	 * all its template parameters
+	 * all its defines
+	set so that it can be safely compiled.
+	'''
+	
 	def __init__(self, mod, **args):
+		"""
+		Pass-in the module (fqmn or module instance) and set of arguments.
+		If arguments are missing, this will be reported.
+		"""
 		if not isinstance(mod, module.Module):
 			mod = module.Module.getRegistered(mod)
 		self.__cdef =  mod
