@@ -102,11 +102,7 @@ static bool _plain_load( const std::string &filename, Loader &loader )
 
 static bool plain_load( const std::string &filename, Loader &loader )
 {
-    try {
-        return _plain_load(filename, loader);
-    } catch ( ... ) {
-        throw soclib::exception::RunTimeError("Unable to load file");
-    }
+    return _plain_load(filename, loader);
 }
 
 STATIC_INIT_CODE(

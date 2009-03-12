@@ -175,6 +175,17 @@ void Loader::load_file( const std::string &desc_str )
 
 void Loader::addSection( const BinaryFileSection &section )
 {
+    for ( section_list_t::iterator s = m_sections.begin();
+          s != m_sections.end();
+          s++ ) {
+        if ( s->lma() >= section.lma()+section.size() )
+            continue;
+        if ( section.lma() >= s->lma()+s->size() )
+            continue;
+        std::ostringstream o;
+        o << section << " overlaps " << *s;
+        throw exception::RunTimeError(o.str());
+    }
 	m_sections.push_back(section);
 }
 
