@@ -126,9 +126,9 @@ def main():
 					  help="Create a bug-reporting log")
 	parser.add_option('--auto-bug-report', dest = 'auto_bug_report',
 					  action='store', nargs = 1,
-					  help="Auto report bug. Methods allowed: *openbrowser, none",
+					  help="Auto report bug. Methods allowed: openbrowser, *none",
 					  choices = ("openbrowser", "none"))
-	parser.set_defaults(auto_bug_report = "openbrowser")
+	parser.set_defaults(auto_bug_report = "none")
 	opts, args = parser.parse_args()
 
 	from soclib_cc import bugreport
