@@ -1,0 +1,22 @@
+asm(
+".section \".firmware\",\"ax\" \n"
+"start_firmware:\n"
+".global start_firmware\n"
+"	bl init_stack\n"
+"	b start_main\n"
+"firmware_stopped:\n"
+"	b firmware_stopped\n"
+"init_stack:\n"
+"	lis %r1, __bss_end@h\n"
+"	ori  %r1, %r1, __bss_end@l\n"
+"	subi %r1, %r1, 4\n"
+"	blr\n"
+"start_main:\n"
+"	li %r0, 0\n"
+"	stwu %r0, -4(%r1)\n"
+"	stwu %r0, -4(%r1)\n"
+"	bla main\n"
+"	b start_firmware\n"
+".section \".bss\"\n"
+".fill 524288, 1, 0\n" // stack of 512 KB
+);

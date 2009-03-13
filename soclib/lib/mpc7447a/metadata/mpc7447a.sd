@@ -1,0 +1,24 @@
+
+# -*- python -*-
+
+Module('common:mpc7447a',
+	classname = 'soclib::common::MPC7447AIss',
+	header_files = ["../include/iss/mpc7447a.h"
+	],
+	uses = [
+		Uses('common:iss'),
+	],
+	implementation_files = [
+		"../src/iss/mpc7447a.cc",
+		"../src/iss/mpc7447a_cpu.cc",
+		"../src/iss/unisim/component/cxx/processor/powerpc/cpu.cc",
+		"../src/iss/unisim/component/cxx/processor/powerpc/config.cc",
+		"../src/iss/unisim/util/queue/queue.cc",
+		"../src/iss/unisim/kernel/service/service.cc",
+		"../src/iss/unisim/kernel/service/xml_helper.cc",
+		"../src/iss/unisim/kernel/logger/logger_server.cc"
+		],
+	   constants = {
+	'n_irq':6
+	},
+)
