@@ -86,11 +86,13 @@ void MappingTable::add( const Segment &seg )
             o << seg << " bumps in " << s;
             throw soclib::exception::Collision(o.str());
         }
-        for ( addr_t address = s.baseAddress();
-              address < s.baseAddress()+s.size() && address >= s.baseAddress();
+        for ( addr_t address = s.baseAddress() & ~(m_rt_size-1);
+              (address < s.baseAddress()+s.size()) &&
+                  (address >= (s.baseAddress() & ~(m_rt_size-1)));
               address += m_rt_size ) {
-            for ( addr_t segaddress = seg.baseAddress();
-                  segaddress < seg.baseAddress()+seg.size() && segaddress >= seg.baseAddress();
+            for ( addr_t segaddress = seg.baseAddress() & ~(m_rt_size-1);
+                  (segaddress < seg.baseAddress()+seg.size()) &&
+                      (segaddress >= (seg.baseAddress() & ~(m_rt_size-1)));
                   segaddress += m_rt_size ) {
                 if ( (m_cacheability_mask & address) == (m_cacheability_mask & segaddress) &&
                      s.cacheable() != seg.cacheable() ) {
@@ -146,8 +148,9 @@ MappingTable::getCacheabilityTable() const
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
-        for ( addr_t addr = i->baseAddress();
-              addr < i->baseAddress()+i->size() && addr >= i->baseAddress();
+        for ( addr_t addr = i->baseAddress() & ~(m_rt_size-1);
+              (addr < i->baseAddress()+i->size()) &&
+                  (addr >= (i->baseAddress() & ~(m_rt_size-1)));
               addr += m_rt_size ) {
             if ( done[addr] && adt[addr] != i->cacheable() ) {
                 std::ostringstream oss;
@@ -178,8 +181,9 @@ MappingTable::getLocalityTable( const IntTab &index ) const
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
-        for ( addr_t addr = i->baseAddress();
-              addr < i->baseAddress()+i->size() && addr >= i->baseAddress();
+        for ( addr_t addr = i->baseAddress() & ~(m_rt_size-1);
+              (addr < i->baseAddress()+i->size()) &&
+                  (addr >= (i->baseAddress() & ~(m_rt_size-1)));
               addr += m_rt_size ) {
             bool val = (i->index().idMatches(index) );
 
@@ -201,6 +205,9 @@ MappingTable::getLocalityTable( const IntTab &index ) const
 AddressDecodingTable<MappingTable::addr_t, int>
 MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << __FUNCTION__ << std::endl;
+#endif
 	size_t before = m_level_addr_bits.sum(index.level());
 	size_t at = m_level_addr_bits[index.level()];
     AddressDecodingTable<MappingTable::addr_t, int> adt(at, m_addr_width-at-before);
@@ -213,15 +220,36 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << *i
+                  << ", m_rt_size=" << m_rt_size
+                  << ", m_rt_mask=" << ~(m_rt_size-1)
+                  << std::endl;
+#endif
         if ( ! i->index().idMatches(index) ) {
-//			std::cout << i->index() << " does not match " << index << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+			std::cout << i->index() << " does not match " << index << std::endl;
+#endif
 			continue;
 		}
 
-        for ( addr_t addr = i->baseAddress();
-              addr < i->baseAddress()+i->size() && addr >= i->baseAddress();
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout
+            << ' ' << (i->baseAddress() & ~(m_rt_size-1))
+            << ' ' << (i->baseAddress() + i->size())
+            << ' ' << (((i->baseAddress() & ~(m_rt_size-1)) < i->baseAddress()+i->size()))
+            << ' ' << (((i->baseAddress() & ~(m_rt_size-1)) >= (i->baseAddress() & ~(m_rt_size-1))))
+            << std::endl;
+#endif
+
+        for ( addr_t addr = i->baseAddress() & ~(m_rt_size-1);
+              (addr < i->baseAddress()+i->size()) &&
+                  (addr >= (i->baseAddress() & ~(m_rt_size-1)));
               addr += m_rt_size ) {
             int val = i->index()[index.level()];
+#ifdef SOCLIB_MODULE_DEBUG
+			std::cout << addr << " -> " << val << std::endl;
+#endif
 
             if ( done[addr] && adt[addr] != val ) {
                 std::ostringstream oss;
@@ -234,6 +262,9 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
             adt.set( addr, val );
             done.set( addr, true );
         }
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << std::endl;
+#endif
 	}
     return adt;
 }
