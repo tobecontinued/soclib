@@ -72,7 +72,7 @@ public:
 
 private:
 
-    soclib::common::Loader               *m_loader;
+    soclib::common::Loader                  m_loader;
     std::list<soclib::common::Segment>      m_seglist;
     soclib::common::LinkedAccessBuffer<
         vci_addr_t, vci_srcid_t>            r_llsc_buf;
@@ -107,13 +107,9 @@ public:
     soclib::caba::VciTarget<vci_param>      p_vci;
 
     VciSimpleRam(sc_module_name insname,
-            soclib::common::IntTab index,
-            soclib::common::MappingTable &mt,
-            soclib::common::Loader &loader);
-
-    VciSimpleRam(sc_module_name insname,
-            soclib::common::IntTab index,
-            soclib::common::MappingTable &mt);
+                 const soclib::common::IntTab index,
+                 const soclib::common::MappingTable &mt,
+                 const soclib::common::Loader &loader);
 
     ~VciSimpleRam();
 

@@ -235,10 +235,10 @@ class BinaryOp(Base):
 			self.__right)
 
 	def resolve(self, args):
-		self.__left = value(self.__left, args, 'internal')
-		self.__right = value(self.__right, args, 'internal')
+		left = value(self.__left, args, 'internal')
+		right = value(self.__right, args, 'internal')
 #		print repr(self.__op), repr(self.__left), repr(self.__right)
-		return self.__op(self.__left, self.__right)
+		return self.__op(left, right)
 
 class StringExt(BinaryOp):
 	def __init__(self, st, *a):

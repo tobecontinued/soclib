@@ -69,7 +69,7 @@ tmpl(/**/)::VciSimpleRam(
 	soclib::common::MappingTable &mt,
     soclib::common::Loader &loader)
 	: caba::BaseModule(insname),
-      m_loader(new common::Loader(loader)),
+      m_loader(loader),
       m_seglist(mt.getSegmentList(index)),
 
       r_llsc_buf((size_t)(1<<vci_param::S)),
@@ -125,18 +125,14 @@ tmpl(/**/)::~VciSimpleRam()
 {
 	for (size_t i=0 ; i<m_nbseg ; ++i) delete [] m_ram[i];
 	delete [] m_ram;
-    delete m_loader;
 }
 
 /////////////////////
 tmpl(void)::reload()
 /////////////////////
 {
-    if ( m_loader == NULL )
-        return;
-
     for ( size_t i=0 ; i<m_nbseg ; ++i ) {
-		m_loader->load(&m_ram[i][0], m_seg[i]->baseAddress(), m_seg[i]->size());
+		m_loader.load(&m_ram[i][0], m_seg[i]->baseAddress(), m_seg[i]->size());
         for ( size_t addr = 0 ; addr < m_seg[i]->size()/vci_param::B ; ++addr )
             //m_ram[i][addr] = (vci_data_t)le_to_machine((unsigned int)m_ram[i][addr]);
             m_ram[i][addr] = le_to_machine(m_ram[i][addr]);
