@@ -36,6 +36,7 @@
 #include "mwmr_controller_lf.h"
 #include "generic_fifo.h"
 #include "alloc_elems.h"
+#include "soclib_endian.h"
 #include <algorithm>
 #include <stddef.h>
 
@@ -306,7 +307,7 @@ DEBUG_END;
 		check_fifo();
         assert( data == 0x11223344 || data == 0x44332211 );
         m_config_fifo->must_swap = (data == 0x44332211);
-		return false;
+		return true;
 	}
 	return false;
 }
