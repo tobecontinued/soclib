@@ -41,11 +41,8 @@
 #include "mpc7447a.h"
 #include "iss_wrapper.h"
 #include "vci_xcache.h"
-#include "vci_timer.h"
-#include "vci_dma.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
-#include "vci_framebuffer.h"
 #include "vci_vgmn.h"
 
 #include "segmentation.h"

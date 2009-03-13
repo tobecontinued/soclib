@@ -17,6 +17,10 @@ mips32el_LDFLAGS=-EL
 powerpc_CC_PREFIX=powerpc-unknown-elf-
 powerpc_CFLAGS=-mcpu=405 -mstrict-align -gstabs+
 
+mpc7447a_CC_PREFIX=powerpc-7450-linux-gnu-
+mpc7447a_CFLAGS=-nostdinc -gstabs+
+mpc7447a_LDFLAGS=-nostdlib
+
 microblaze_CC_PREFIX=mb-
 microblaze_CFLAGS=-mno-xl-soft-div -mno-xl-soft-mul -gstabs+
 microblaze_LDFLAGS=-nostdlib
