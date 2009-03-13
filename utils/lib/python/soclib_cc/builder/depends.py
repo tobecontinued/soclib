@@ -22,7 +22,7 @@
 # Copyright (c) UPMC, Lip6, SoC
 #         Nicolas Pouillon <nipo@ssji.net>, 2007
 # 
-# Maintainers: nipo
+# Maintainers: group:toolmakers
 
 from soclib_cc.config import config
 import os, os.path, time

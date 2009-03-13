@@ -23,7 +23,7 @@
 # Copyright (c) UPMC, Lip6, SoC
 #         Nicolas Pouillon <nipo@ssji.net>, 2007
 # 
-# Maintainers: nipo
+# Maintainers: group:toolmakers
 
 import os, os.path
 import sys
