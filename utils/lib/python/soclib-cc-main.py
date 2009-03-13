@@ -162,7 +162,7 @@ def main():
 		Module.getRegistered(cell).addDefine(name, val)
 
 	for value in todb:
-		Module.getRegistered(value).setAttr('debug', True)
+		Module.getRegistered(value).forceDebug()
 
 	config.mode = opts.mode
 	config.verbose = opts.verbose

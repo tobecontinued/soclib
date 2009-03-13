@@ -131,6 +131,9 @@ class Module:
 		"""
 		return self.__typename
 
+	def forceDebug(self):
+		self.__attrs['debug'] = True
+
 	def __getitem__(self, name):
 		"""
 		Gets the attribute 'name'
