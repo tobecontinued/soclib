@@ -321,10 +321,10 @@ void Ppc405Iss::do_add( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca )
     r_gp[m_ins.xo.rd] = tmp;
     if ( need_ca )
         caSet( carry( opl, opr, ca ) );
-    if ( m_ins.xo.rc )
-        crSetSigned( 0, tmp, 0 );
     if ( m_ins.xo.oe )
         ovSet( overflow( opl, opr, ca ) );
+    if ( m_ins.xo.rc )
+        crSetSigned( 0, tmp, 0 );
 }
 
 uint32_t Ppc405Iss::do_addi( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca )
@@ -346,7 +346,7 @@ void Ppc405Iss::branch_cond( uint32_t next_pc_if_taken )
     }
     bool cr_cond_met =
         !!(m_ins.b.bo & BO0) ||
-        (!!(r_cr&(1<<(31-m_ins.b.bi))) == !!(m_ins.b.bo & BO1));
+        (crBitGet(m_ins.b.bi) == !!(m_ins.b.bo & BO1));
 
 #if SOCLIB_MODULE_DEBUG
     std::cout << m_name << " bcond"
@@ -355,7 +355,7 @@ void Ppc405Iss::branch_cond( uint32_t next_pc_if_taken )
     if ( !(m_ins.b.bo & BO0) )
         std::cout
             << ", CR ? (bo1)" << !!(m_ins.b.bo & BO1)
-            << " == (cr" << m_ins.b.bi << ")" << !!(r_cr&(1<<(31-m_ins.b.bi)))
+            << " == (cr" << m_ins.b.bi << ")" << crBitGet(m_ins.b.bi)
             << " cr: " << std::hex << r_cr;
     std::cout
         << ", PRED: " << !!(m_ins.b.bo & BO4)
@@ -499,52 +499,50 @@ void Ppc405Iss::op_cmpli()
 void Ppc405Iss::op_cntlzw()
 {
     uint32_t rs = r_gp[m_ins.x.rs];
-    int i;
-    for ( i=32; i>=0; --i )
-        if ( rs & (1<<i) )
-            break;
-    crSetUnsigned( 0, i, 0 );
+    int i = rs ? soclib::common::clz<uint32_t>(rs) : 32;
     r_gp[m_ins.x.ra] = i;
+    if ( m_ins.x.rc )
+        crSetSigned( 0, i, 0 );
 }
 
 void Ppc405Iss::op_crand()
 {
-	crSet( m_ins.x.rs>>2, crGet( m_ins.x.ra>>2 ) & crGet( m_ins.x.rb>>2 ) );
+	crBitSet( m_ins.x.rs, crBitGet( m_ins.x.ra ) && crBitGet( m_ins.x.rb ) );
 }
 
 void Ppc405Iss::op_crandc()
 {
-	crSet( m_ins.x.rs>>2, crGet( m_ins.x.ra>>2 ) & ~crGet( m_ins.x.rb>>2 ) );
+	crBitSet( m_ins.x.rs, crBitGet( m_ins.x.ra ) && !crBitGet( m_ins.x.rb ) );
 }
 
 void Ppc405Iss::op_creqv()
 {
-	crSet( m_ins.x.rs>>2, ~(crGet( m_ins.x.ra>>2 ) ^ crGet( m_ins.x.rb>>2 )) );
+	crBitSet( m_ins.x.rs, crBitGet( m_ins.x.ra ) == crBitGet( m_ins.x.rb ) );
 }
 
 void Ppc405Iss::op_crnand()
 {
-	crSet( m_ins.x.rs>>2, ~(crGet( m_ins.x.ra>>2 ) & crGet( m_ins.x.rb>>2 )) );
+	crBitSet( m_ins.x.rs, !(crBitGet( m_ins.x.ra ) && crBitGet( m_ins.x.rb )) );
 }
 
 void Ppc405Iss::op_crnor()
 {
-	crSet( m_ins.x.rs>>2, ~(crGet( m_ins.x.ra>>2 ) | crGet( m_ins.x.rb>>2 )) );
+	crBitSet( m_ins.x.rs, !(crBitGet( m_ins.x.ra ) || crBitGet( m_ins.x.rb )) );
 }
 
 void Ppc405Iss::op_cror()
 {
-	crSet( m_ins.x.rs>>2, crGet( m_ins.x.ra>>2 ) | crGet( m_ins.x.rb>>2 ) );
+	crBitSet( m_ins.x.rs, crBitGet( m_ins.x.ra ) || crBitGet( m_ins.x.rb ) );
 }
 
 void Ppc405Iss::op_crorc()
 {
-	crSet( m_ins.x.rs>>2, crGet( m_ins.x.ra>>2 ) | ~crGet( m_ins.x.rb>>2 ) );
+	crBitSet( m_ins.x.rs, crBitGet( m_ins.x.ra ) || !crBitGet( m_ins.x.rb ) );
 }
 
 void Ppc405Iss::op_crxor()
 {
-	crSet( m_ins.x.rs>>2, crGet( m_ins.x.ra>>2 ) ^ crGet( m_ins.x.rb>>2 ) );
+	crBitSet( m_ins.x.rs, crBitGet( m_ins.x.ra ) != crBitGet( m_ins.x.rb ) );
 }
 
 void Ppc405Iss::op_dcba()
@@ -614,12 +612,20 @@ void Ppc405Iss::op_divw()
 {
     int32_t a = r_gp[m_ins.xo.ra];
     int32_t b = r_gp[m_ins.xo.rb];
-    int32_t tmp = a/b;
+    int32_t tmp;
+    bool ov;
+    if ( !b || (b==-1 && a == (int32_t)0x80000000) ) {
+        tmp = 0;
+        ov = true;
+    } else {
+        tmp = a/b;
+        ov = false;
+    }
     r_gp[m_ins.xo.rd] = tmp;
+    if ( m_ins.xo.oe )
+        ovSet( ov );
     if ( m_ins.xo.rc )
         crSetSigned( 0, tmp, 0 );
-    if ( m_ins.xo.oe )
-        ovSet( !b || (b==-1 && a == (int32_t)0x80000000) );
     setInsDelay( 31 );
 }
 
@@ -627,12 +633,20 @@ void Ppc405Iss::op_divwu()
 {
     uint32_t a = r_gp[m_ins.xo.ra];
     uint32_t b = r_gp[m_ins.xo.rb];
-    uint32_t tmp = a/b;
+    uint32_t tmp;
+    bool ov;
+    if ( !b ) {
+        tmp = 0;
+        ov = true;
+    } else {
+        tmp = a/b;
+        ov = false;
+    }
     r_gp[m_ins.xo.rd] = tmp;
-    if ( m_ins.xo.rc )
-        crSetUnsigned( 0, tmp, 0 );
     if ( m_ins.xo.oe )
-        ovSet( !b );
+        ovSet( ov );
+    if ( m_ins.xo.rc )
+        crSetSigned( 0, tmp, 0 );
     setInsDelay( 31 );
 }
 
@@ -643,7 +657,7 @@ void Ppc405Iss::op_eieio()
 
 void Ppc405Iss::op_eqv()
 {
-    uint32_t tmp = r_gp[m_ins.x.rs] ^ r_gp[m_ins.x.rb];
+    uint32_t tmp = ~(r_gp[m_ins.x.rs] ^ r_gp[m_ins.x.rb]);
     r_gp[m_ins.x.ra] = tmp;
     if ( m_ins.x.rc )
         crSetSigned( 0, tmp, 0 );
@@ -913,8 +927,8 @@ void Ppc405Iss::op_mcrf()
 
 void Ppc405Iss::op_mcrxr()
 {
-	crSet( m_ins.x.rs>>2, r_xer.whole&0xf );
-    r_xer.whole &= ~0xf;
+	crSet( m_ins.x.rs>>2, (r_xer.whole >> 28)&0xf );
+    r_xer.whole &= ~(0xf << 28);
 }
 
 void Ppc405Iss::op_mfcr()
@@ -967,10 +981,10 @@ void Ppc405Iss::op_mftb()
 void Ppc405Iss::op_mtcrf()
 {
     uint32_t mask = 0;
-    uint32_t maskbits = m_ins.xfx.opt >> 1;
+    uint32_t crm = m_ins.xfx.opt >> 1;
     for ( uint8_t mask_temp= 0x80; mask_temp; mask_temp >>= 1 ) {
         mask <<= 4;
-        if ( maskbits & mask_temp )
+        if ( crm & mask_temp )
             mask |= 0xf;
     }
 #if SOCLIB_MODULE_DEBUG
@@ -1022,7 +1036,7 @@ void Ppc405Iss::op_mulchwu()
     uint32_t tmp = a * b;
     r_gp[m_ins.xo.rd] = tmp;
     if ( m_ins.xo.rc )
-        crSetUnsigned( 0, tmp, 0 );
+        crSetSigned( 0, tmp, 0 );
     setInsDelay( 2 );
 }
 
@@ -1044,7 +1058,7 @@ void Ppc405Iss::op_mulhhwu()
     uint32_t tmp = a * b;
     r_gp[m_ins.xo.rd] = tmp;
     if ( m_ins.xo.rc )
-        crSetUnsigned( 0, tmp, 0 );
+        crSetSigned( 0, tmp, 0 );
     setInsDelay( 2 );
 }
 
@@ -1066,7 +1080,7 @@ void Ppc405Iss::op_mulhwu()
     uint64_t tmp = (a*b)>>32;
     r_gp[m_ins.xo.rd] = tmp;
     if ( m_ins.xo.rc )
-        crSetUnsigned( 0, tmp, 0 );
+        crSetSigned( 0, tmp, 0 );
     setInsDelay( 2 );
 }
 
@@ -1074,7 +1088,7 @@ void Ppc405Iss::op_mullhw()
 {
     int16_t a = r_gp[m_ins.xo.ra];
     int16_t b = r_gp[m_ins.xo.rb];
-    int32_t tmp = (int32_t)a * b;
+    int32_t tmp = (int32_t)a * (int32_t)b;
     r_gp[m_ins.xo.rd] = tmp;
     if ( m_ins.xo.rc )
         crSetSigned( 0, tmp, 0 );
@@ -1085,10 +1099,10 @@ void Ppc405Iss::op_mullhwu()
 {
     uint16_t a = r_gp[m_ins.xo.ra];
     uint16_t b = r_gp[m_ins.xo.rb];
-    uint32_t tmp = (uint32_t)a * b;
+    uint32_t tmp = (uint32_t)a * (uint32_t)b;
     r_gp[m_ins.xo.rd] = tmp;
     if ( m_ins.xo.rc )
-        crSetUnsigned( 0, tmp, 0 );
+        crSetSigned( 0, tmp, 0 );
     setInsDelay( 2 );
 }
 
@@ -1096,7 +1110,7 @@ void Ppc405Iss::op_mulli()
 {
     int32_t a = r_gp[m_ins.d.ra];
     int32_t b = sign_ext16(m_ins.d.imm);
-    r_gp[m_ins.d.rd] = a*b;
+    r_gp[m_ins.d.rd] = (uint32_t)(a*b);
     setInsDelay( 2 );
 }
 
@@ -1106,10 +1120,10 @@ void Ppc405Iss::op_mullw()
     int64_t b = (int32_t)r_gp[m_ins.xo.rb];
     int64_t tmp = a*b;
     r_gp[m_ins.xo.rd] = tmp;
-    if ( m_ins.xo.rc )
-        crSetSigned( 0, tmp, 0 );
     if ( m_ins.xo.oe )
         ovSet( !!((uint64_t)tmp>>32) );
+    if ( m_ins.xo.rc )
+        crSetSigned( 0, tmp, 0 );
     setInsDelay( 2 );
 }
 
@@ -1127,10 +1141,10 @@ void Ppc405Iss::op_neg()
     bool ov = (tmp == 0x80000000);
     tmp = -tmp;
     r_gp[m_ins.xo.rd] = tmp;
-    if ( m_ins.xo.rc )
-        crSetSigned( 0, tmp, 0 );
     if ( m_ins.xo.oe )
         ovSet( ov );
+    if ( m_ins.xo.rc )
+        crSetSigned( 0, tmp, 0 );
 }
 
 void Ppc405Iss::op_nmacchw()
@@ -1224,14 +1238,12 @@ void Ppc405Iss::op_ori()
 {
     uint32_t tmp = r_gp[m_ins.d.rd] | m_ins.d.imm;
     r_gp[m_ins.d.ra] = tmp;
-    crSetSigned( 0, tmp, 0 );
 }
 
 void Ppc405Iss::op_oris()
 {
 	uint32_t tmp = r_gp[m_ins.d.rd] | (m_ins.d.imm<<16);
     r_gp[m_ins.d.ra] = tmp;
-    crSetSigned( 0, tmp, 0 );
 }
 
 void Ppc405Iss::op_rfci()
@@ -1300,11 +1312,15 @@ void Ppc405Iss::op_sraw()
 {
 	uint32_t n = r_gp[m_ins.x.rb]&0x1f;
     int32_t a = r_gp[m_ins.x.rs];
-    int32_t tmp = a >> n;
-    if ( r_gp[m_ins.x.rb] & 0x20 )
-        tmp = 0;
+    int32_t tmp;
+    if ( r_gp[m_ins.x.rb] & 0x20 ) {
+        tmp = 0 - (a < 0);
+        caSet( a<0 );
+    } else {
+        tmp = a >> n;;
+        caSet( a<0 ? !!(a&((1<<n)-1)) : 0 );
+    }
     r_gp[m_ins.x.ra] = tmp;
-    caSet( a<0 ? !!(a&((1<<n)-1)) : 0 );
     if ( m_ins.x.rc )
         crSetSigned( 0, tmp, 0 );
 }
@@ -1478,14 +1494,14 @@ void Ppc405Iss::op_twi()
 void Ppc405Iss::op_wrtee()
 {
 	if ( privsCheck() ) {
-        r_msr.ee = !!(r_gp[m_ins.x.rs] & (1<<17));
+        r_msr.ee = !!(r_gp[m_ins.x.rs] & (1<<15));
     }
 }
 
 void Ppc405Iss::op_wrteei()
 {
     if ( privsCheck() ) {
-        r_msr.ee = !!(m_ins.ins & (1<<17));
+        r_msr.ee = !!(m_ins.ins & (1<<15));
     }
 }
 
@@ -1501,14 +1517,12 @@ void Ppc405Iss::op_xori()
 {
 	uint32_t tmp = r_gp[m_ins.d.rd] ^ m_ins.d.imm;
     r_gp[m_ins.d.ra] = tmp;
-    crSetSigned( 0, tmp, 0 );
 }
 
 void Ppc405Iss::op_xoris()
 {
 	uint32_t tmp = r_gp[m_ins.d.rd] ^ (m_ins.d.imm<<16);
-    r_gp[m_ins.d.ra] = tmp;
-    crSetSigned( 0, tmp, 0 );
+    r_gp[m_ins.d.ra] = tmp; 
 }
 
 // **End**

@@ -162,11 +162,11 @@ private:
     };
 
     enum TrapConditions {
-        TRAP_LT = 1,
-        TRAP_GT = 2,
+        TRAP_LT = 16,
+        TRAP_GT = 8,
         TRAP_EQ = 4,
-        TRAP_LTU = 8,
-        TRAP_GTU = 16,
+        TRAP_LTU = 2,
+        TRAP_GTU = 1,
     };
 
     static const uint32_t pvr = PPC_PVR(0x50c, 1, 0, 1, 0x3f);
@@ -429,6 +429,22 @@ private:
     {
         uint32_t mask = 0xf<<((7-no)*4);
         r_cr = (mask&(cr<<((7-no)*4))) | (r_cr&~mask);
+    }
+
+    inline void crBitSet( unsigned int no, bool val )
+    {
+        assert( no < 32 );
+        uint32_t m = 1 << (31-no);
+        if ( val )
+            r_cr |= m;
+        else
+            r_cr &= ~m;
+    }
+
+    inline bool crBitGet( unsigned int no )
+    {
+        uint32_t m = 1 << (31-no);
+        return r_cr & m;
     }
 
     inline void ovSet( bool ov )
