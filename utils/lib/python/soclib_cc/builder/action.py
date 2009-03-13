@@ -85,7 +85,6 @@ class Action:
 	def wait(cls):
 #		try:
 		pid, rval = os.wait()
-                print pid, rval
 		return int(cls.__done(pid, rval))
 #		except OSError:
 #			ks = cls.__handles.keys()
