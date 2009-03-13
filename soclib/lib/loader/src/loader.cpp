@@ -42,7 +42,8 @@ Loader::Loader(
     const std::string &f5,
     const std::string &f6 )
 {
-	load_file(f);
+    if ( f != "" )
+        load_file(f);
     if ( f2 != "" )
         load_file(f2);
     if ( f3 != "" )

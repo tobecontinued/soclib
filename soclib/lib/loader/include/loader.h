@@ -63,7 +63,7 @@ public:
 	void addSymbol( const BinaryFileSymbol &symbol );
 
 	Loader( const Loader &ref );
-	Loader( const std::string &f,
+	Loader( const std::string &f = "",
             const std::string &f2 = "",
             const std::string &f3 = "",
             const std::string &f4 = "",
