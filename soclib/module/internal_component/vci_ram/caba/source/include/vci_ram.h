@@ -44,7 +44,7 @@ class VciRam
 	: public soclib::caba::BaseModule
 {
     soclib::caba::VciTargetFsm<vci_param,true,true> m_vci_fsm;
-    soclib::common::Loader *m_loader;
+    soclib::common::Loader m_loader;
 
 	typedef unsigned int ram_t;
     ram_t **m_contents;
@@ -64,11 +64,7 @@ public:
         sc_module_name insname,
         const IntTab &index,
         const MappingTable &mt,
-        const soclib::common::Loader &loader);
-    VciRam(
-        sc_module_name insname,
-        const IntTab &index,
-        const MappingTable &mt);
+        const soclib::common::Loader &loader = soclib::common::Loader());
     ~VciRam();
 
 private:
