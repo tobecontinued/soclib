@@ -1,9 +1,35 @@
 
+# SOCLIB_GPL_HEADER_BEGIN
+# 
+# This file is part of SoCLib, GNU GPLv2.
+# 
+# SoCLib is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License.
+# 
+# SoCLib is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with SoCLib; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+# 
+# SOCLIB_GPL_HEADER_END
+# 
+# Copyright (c) UPMC, Lip6, SoC
+#         Nicolas Pouillon <nipo@ssji.net>, 2009
+# 
+# Maintainers: group:toolmakers
+
 import os, os.path
 import sys
 import traceback
 import warnings
 import soclib_utils.repos_file
+from abstraction_levels import checker
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -16,6 +42,10 @@ class SpuriousDeclarationWarning(Warning):
 	def __str__(self):
 		return 'Spurious "%s" in %s declaration'%(self.args[0], self.args[1])
 
+class BadNameWarning(Warning):
+	def __str__(self):
+		return 'Bad component name: `%s\', %s'%(self.args[0], self.args[1])
+
 class InvalidComponentWarning(Warning):
 	def __str__(self):
 		return 'Invalid component %s, it will be unavailable. Error: "%s"'%(self.args[0], self.args[1])
@@ -23,6 +53,9 @@ class InvalidComponentWarning(Warning):
 __all__ = ['Module']
 
 class NoSuchComponent(Exception):
+	pass
+
+class InvalidComponent(Exception):
 	pass
 
 class Module:
@@ -46,6 +79,7 @@ class Module:
 	
 	def __register(cls, name, obj, filename):
 #		print 'Registering', name, obj
+		name = name.lower()
 		if name in cls.__reg and cls.__module2file[name] != filename:
 			warnings.warn(DoubleRegistrationWarning(name, cls.__module2file[name]), stacklevel = 3)
 		cls.__reg[name] = obj
@@ -57,10 +91,11 @@ class Module:
 		Returns a module from its fqmn, if not available, a
 		NoSuchComponent exception is raised.
 		"""
+		name = name.lower()
 		try:
 			return cls.__reg[name]
 		except KeyError:
-			raise NoSuchComponent("`%s`"%(name))
+			raise NoSuchComponent("`%s` (case ignored)"%(name))
 	getRegistered = classmethod(getRegistered)
 
 	def allRegistered(cls):
@@ -99,15 +134,24 @@ class Module:
 		"""
 		self.__attrs = {}
 		self.__typename = typename
+
+# 		for c in self.__typename:
+# 			if c.isupper():
+# 				warnings.warn(BadNameWarning(
+# 					self.__typename, "Please use lowercase letters"),
+# 							  stacklevel = -self.tb_delta)
+
 		base_attrs = self.__class__.__dict__
 		for name, value in self.module_attrs.iteritems():
 			if hasattr(self, name):
 				value = getattr(self, name)
 			self.__attrs[name] = value
+		self.__attrs['abstraction_level'] = self.__typename.split(':', 1)[0]
 		filename, lineno = traceback.extract_stack()[self.tb_delta][:2]
 		for name, value in attrs.iteritems():
 			if not name in self.module_attrs:
-				warnings.warn(SpuriousDeclarationWarning(name, typename), stacklevel = 2)
+				warnings.warn(SpuriousDeclarationWarning(name, typename),
+							  stacklevel = -self.tb_delta)
 			self.__attrs[name] = value
 		self.__attrs['uses'] = set(self.__attrs['uses'])
 		for p in self['ports']:
@@ -118,6 +162,12 @@ class Module:
 		self.__filename = filename
 		self.lineno = lineno
 		self.__use_count = 0
+
+		if self.__attrs['classname']:
+			c = checker[self.__attrs["abstraction_level"]]
+			if not c.validClassName(self.__attrs['classname']):
+				raise InvalidComponent("Invalid class name '%s' level %s: '%s'"%(
+					self.__typename, c, self.__attrs['classname']))
 
 	def instanciated(self):
 		"""
