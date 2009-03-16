@@ -65,9 +65,9 @@ using namespace soclib;
 tmpl(/**/)::VciSimpleRam(
 //////////////////////////
 	sc_module_name insname,
-	soclib::common::IntTab index,
-	soclib::common::MappingTable &mt,
-    soclib::common::Loader &loader)
+	const soclib::common::IntTab index,
+	const soclib::common::MappingTable &mt,
+    const soclib::common::Loader &loader)
 	: caba::BaseModule(insname),
       m_loader(loader),
       m_seglist(mt.getSegmentList(index)),
