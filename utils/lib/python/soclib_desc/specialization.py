@@ -82,7 +82,10 @@ class Specialization:
 
 	def getModuleName(self):
 		return self.__cdef.getModuleName()
-		
+
+	def getRawType(self):
+		return self.__cdef['classname'] or ''
+
 	def getType(self):
 		if not self.__cdef['classname']:
 			return ''
