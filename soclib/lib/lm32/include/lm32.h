@@ -315,6 +315,11 @@ namespace soclib { namespace common {
             // Ordered opcode table
             static LM32_op_entry const OpcodesTable [64];
 
+            inline void setInsDelay( uint32_t delay )
+            {
+                assert( delay > 0 );
+                m_ins_delay = delay-1;
+            }
             uint32_t get_absolute_dest_reg(ins_t ins) const;
 
             // debug functions

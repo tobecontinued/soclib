@@ -91,6 +91,7 @@ namespace soclib { namespace common {
         uint32_t rd;
         addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
         rd  = m_inst.I.rX;
+        setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 1);
         INIT_REQ (addr, true , rd);
         BUILD_SUBREQ(m_dreq.req, addr, 1, 0, DATA_READ );
@@ -102,6 +103,7 @@ namespace soclib { namespace common {
         uint32_t rd;
         addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
         rd  = m_inst.I.rX;
+        setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 1);
         INIT_REQ (addr, false, rd);
         BUILD_SUBREQ(m_dreq.req, addr, 1, 0, DATA_READ );
@@ -113,6 +115,7 @@ namespace soclib { namespace common {
         uint32_t rd;
         addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
         rd  = m_inst.I.rX;
+        setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 2);
         INIT_REQ (addr, true , rd);
         BUILD_SUBREQ(m_dreq.req, addr, 2, 0, DATA_READ );
@@ -124,6 +127,7 @@ namespace soclib { namespace common {
         uint32_t rd;
         addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
         rd  = m_inst.I.rX;
+        setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 2);
         INIT_REQ (addr, false, rd);
         BUILD_SUBREQ(m_dreq.req, addr, 2, 0, DATA_READ );
@@ -135,6 +139,7 @@ namespace soclib { namespace common {
         uint32_t rd;
         addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
         rd  = m_inst.I.rX;
+        setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 4);
         INIT_REQ (addr, false, rd);
         BUILD_SUBREQ(m_dreq.req, addr, 4, 0, DATA_READ );

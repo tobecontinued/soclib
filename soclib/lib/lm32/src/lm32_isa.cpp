@@ -113,6 +113,7 @@ namespace soclib { namespace common {
 
     LM32_function(raise) {
         //Soft exception fonction
+        setInsDelay(4);
         if ((m_inst.ins & 0x7) == 0x7) {
             m_exception = true; 
             m_exception_cause = X_SYSTEM_CALL ; // scall instruction
@@ -189,6 +190,7 @@ namespace soclib { namespace common {
         {
             m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            setInsDelay(4);
         }
     }
 
@@ -198,6 +200,7 @@ namespace soclib { namespace common {
         {
             m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            setInsDelay(4);
         }
     }
 
@@ -207,6 +210,7 @@ namespace soclib { namespace common {
         {
             m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            setInsDelay(4);
         }
     }
 
@@ -216,6 +220,7 @@ namespace soclib { namespace common {
         {
             m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            setInsDelay(4);
         }
     }
 
@@ -225,6 +230,7 @@ namespace soclib { namespace common {
         {
             m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            setInsDelay(4);
         }
     }
 
@@ -234,6 +240,7 @@ namespace soclib { namespace common {
         {
             m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            setInsDelay(4);
         }
     }
 
@@ -298,8 +305,10 @@ namespace soclib { namespace common {
             m_exception = true;
             m_exception_cause = X_DIVISION_BY_ZERO; // division by 0
         }
-        else
+        else {
             r_gp[m_inst.R.rX] = (unsigned)r_gp[m_inst.R.rY] / (unsigned)r_gp[m_inst.R.rZ];
+            setInsDelay(34);
+        }
     }
 
     //!Instruction sr behavior method.
@@ -318,8 +327,10 @@ namespace soclib { namespace common {
             m_exception = true;
             m_exception_cause = X_DIVISION_BY_ZERO; // division by 0
         }
-        else
+        else {
             r_gp[m_inst.R.rX] = (signed)r_gp[m_inst.R.rY] / (signed)r_gp[m_inst.R.rZ];
+            setInsDelay(34);
+        }
     }
 
     //!Instruction and behavior method.
@@ -354,6 +365,7 @@ namespace soclib { namespace common {
 
     //!Instruction b behavior method.
     LM32_function( b ){ // branch
+        setInsDelay(4);
         m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_gp[m_inst.R.rY];
         if (m_inst.R.rY == 30)      // eret // return from exception
@@ -368,8 +380,10 @@ namespace soclib { namespace common {
             m_exception = true;
             m_exception_cause = X_DIVISION_BY_ZERO; // division by 0
         }
-        else
+        else {
             r_gp[m_inst.R.rX] = (unsigned)r_gp[m_inst.R.rY] % (unsigned)r_gp[m_inst.R.rZ]; 
+            setInsDelay(34);
+        }
     }
 
     //!Instruction sub behavior method.
@@ -383,12 +397,15 @@ namespace soclib { namespace common {
             m_exception = true;
             m_exception_cause = X_DIVISION_BY_ZERO; // division by 0
         }
-        else
+        else {
             r_gp[m_inst.R.rX] = (signed)r_gp[m_inst.R.rY] % (signed)r_gp[m_inst.R.rZ]; 
+            setInsDelay(34);
+        }
     }
 
     //!Instruction call behavior method.
     LM32_function( call ){// jump to sub routine
+        setInsDelay(4);
         r_gp[ra] = r_npc ;// is pc + 4!!// return address
         m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_pc+ r_gp[m_inst.R.rY];
@@ -396,6 +413,7 @@ namespace soclib { namespace common {
 
     //!Instruction calli behavior method.
     LM32_function( calli ){//jump to sub routine immediate
+        setInsDelay(4);
         r_gp[ra] = r_npc ; // is pc + 4!!// return address
         m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_pc + (sign_ext26(m_inst.J.imd)<<2);
@@ -403,6 +421,7 @@ namespace soclib { namespace common {
 
     //!Instruction bi behavior method.
     LM32_function( bi ){// branch immediate
+        setInsDelay(4);
         m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_pc + (sign_ext26(m_inst.J.imd)<<2);
     }

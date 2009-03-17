@@ -40,7 +40,6 @@
 #include "lm32.h"
 
 // TODO implement Break Points and Watch Points
-// TODO add instructions delay
 
 namespace soclib { namespace common {
 
