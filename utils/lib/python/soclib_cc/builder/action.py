@@ -28,6 +28,7 @@ from soclib_cc.config import config
 import depends
 import os, os.path, time
 import sys
+import select
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -79,11 +80,14 @@ class Action:
 		self.__handle.tochild.close()
 		self.__child_out = self.__handle.fromchild
 		self.__child_err = self.__handle.childerr
+		self.__out = ''
+		self.__err = ''
 		self.__pid = self.__handle.pid
 		self.__class__.__handles[self.__handle.pid] = self
 	@classmethod
 	def wait(cls):
 #		try:
+		cls.__poll_all_inputs()
 		pid, rval = os.wait()
 		return int(cls.__done(pid, rval))
 #		except OSError:
@@ -94,28 +98,45 @@ class Action:
 #					c += 1
 #			return c
 	@classmethod
+	def __poll_all_inputs(cls):
+		inputs = []
+		for job in cls.__handles.itervalues():
+			inputs.append(job.__child_out)
+			inputs.append(job.__child_err)
+		if not inputs:
+			return
+		available = select.select(inputs,[],[])[0]
+		for f in available:
+			for job in cls.__handles.itervalues():
+				if f == job.__child_out:
+					job.__out += job.__child_out.read()
+				if f == job.__child_err:
+					job.__err += job.__child_err.read()
+	@classmethod
 	def __done(cls, pid, rval):
 		try:
 			self = cls.__handles[pid]
 		except KeyError:
 			return False
 		del self.__handles[pid]
-		out = self.__child_out.read()
-		err = self.__child_err.read()
+		self.__out += self.__child_out.read()
+		self.__err += self.__child_err.read()
 		self.__child_out.close()
 		self.__child_err.close()
-		if out:
+		del self.__child_out
+		del self.__child_err
+		if self.__out:
 			sys.stdout.write('\n')
-			sys.stdout.write(out)
-		if err:
+			sys.stdout.write(self.__out)
+		if self.__err:
 			sys.stderr.write('\n')
-			sys.stderr.write(err)
+			sys.stderr.write(self.__err)
 		if rval:
 			raise ActionFailed(rval, self.__command)
 		self.__pid = 0
 		del self.__handle
-		del self.__child_out
-		del self.__child_err
+		del self.__out
+		del self.__err
 		del self.__command
 		for d in self.dests:
 			d.touch()
