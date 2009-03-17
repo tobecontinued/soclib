@@ -30,7 +30,6 @@ int _main(int argc, char *argv[])
 
 	// Define VCI parameters
 	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,4,4,1> vci_param;
-	//typedef soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > proc_iss;
 	typedef soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> proc_iss;
 	// Mapping table
 
@@ -42,7 +41,7 @@ int _main(int argc, char *argv[])
 	maptabp.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(1), false));
 	maptabp.add(Segment("mc_r" , MC_R_BASE , MC_R_SIZE , IntTab(2), false, true, IntTab(0)));
 	maptabp.add(Segment("mc_m" , MC_M_BASE , MC_M_SIZE , IntTab(2), true ));
-	maptabp.add(Segment("ptba" ,  PTD_ADDR , TAB_SIZE  , IntTab(3), false));
+	maptabp.add(Segment("ptba" ,  PTD_ADDR , TAB_SIZE  , IntTab(0), false));
 
 	std::cout << maptabp << std::endl;
 
@@ -57,7 +56,6 @@ int _main(int argc, char *argv[])
 	std::cout << maptabx << std::endl;
 
 	// Signals
-
 	sc_clock	signal_clk("clk");
 	sc_signal<bool> signal_resetn("resetn");
    
@@ -91,8 +89,6 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> signal_vci_ini_memc("vci_ini_memc");
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_memc("vci_tgt_memc");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_vcimultipagt("signal_vci_vcimultipagt");
-
 	sc_signal<bool> signal_tty_irq0("signal_tty_irq0"); 
 	sc_signal<bool> signal_tty_irq1("signal_tty_irq1"); 
 
@@ -112,7 +108,6 @@ int _main(int argc, char *argv[])
 	soclib::common::Loader loader("soft/bin.soft");
 
 	soclib::caba::VciCcVCacheWrapper2<vci_param, proc_iss > 
-	//proc("proc", 0, maptab,IntTab(0),IntTab(4),4,64,16,4,64,16);
 	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),4,4,4,16,4,4,4,16,4,64,16,4,64,16,CLEANUP_OFFSET);
 
 	soclib::caba::VciCcVCacheWrapper2<vci_param, proc_iss > 
@@ -130,11 +125,8 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(1),maptabp,"tty0","tty1",NULL);
 
-	soclib::caba::VciSimpleRam<vci_param> 
-	vcimultipagt("vcimultipagt", IntTab(3), maptabp, loader);
-
 	soclib::caba::VciVgmn<vci_param> 
-	vgmnp("vgmnp",maptabp, 2, 4, 1, 8);
+	vgmnp("vgmnp",maptabp, 2, 3, 1, 8);
 
 	soclib::caba::VciVgmn<vci_param> 
 	vgmnc("vgmnc",maptabc, 1, 2, 1, 8);
@@ -186,10 +178,6 @@ int _main(int argc, char *argv[])
         xram.p_resetn(signal_resetn);
 	xram.p_vci(signal_vci_tgt_xram);
 	
-	vcimultipagt.p_clk(signal_clk);
-	vcimultipagt.p_resetn(signal_resetn);
-	vcimultipagt.p_vci(signal_vci_vcimultipagt);
-
 	vgmnp.p_clk(signal_clk);
 	vgmnp.p_resetn(signal_resetn);
 
@@ -207,13 +195,10 @@ int _main(int argc, char *argv[])
 	vgmnp.p_to_target[0](signal_vci_tgt_rom);
 	vgmnp.p_to_target[1](signal_vci_tgt_tty);
 	vgmnp.p_to_target[2](signal_vci_tgt_memc);
-	vgmnp.p_to_target[3](signal_vci_vcimultipagt);
-
 
 	vgmnc.p_to_target[0](signal_vci_tgt_proc0);
 	vgmnc.p_to_target[1](signal_vci_tgt_proc1);
 	vgmnx.p_to_target[0](signal_vci_tgt_xram);
-
 
 	int ncycles;
 
