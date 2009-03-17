@@ -30,6 +30,8 @@
 #include "system.h"
 #include "../segmentation.h"
 
+/* time function code is in stdio.c */
+extern long     time();
 
 int fibo(int n) {
     if (n==0)
@@ -42,6 +44,7 @@ int fibo(int n) {
 int main(void) {
 
     printf("Hello from processor %d\n", procnum());
+    printf("Start Time %d\n",time ( (long *) 0));
 
     printf("Fibo(1) = %d\n", fibo(1));
     printf("Fibo(2) = %d\n", fibo(2));
@@ -53,6 +56,8 @@ int main(void) {
     printf("Fibo(8) = %d\n", fibo(8));
     printf("Fibo(9) = %d\n", fibo(9));
     printf("Fibo(10) = %d\n", fibo(10));
+
+    printf("End Time %d\n",time ( (long *) 0));
 //    while(1);
     return 0;
 }
