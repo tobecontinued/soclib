@@ -156,6 +156,20 @@ public:
             return vp;
         return name+'<'+vp+'>';
     }
+
+    static inline fast_data_t be2mask( fast_data_t be )
+    {
+        fast_data_t ret = 0;
+        const fast_data_t be_up = 1 << (B - 1);
+
+        for (size_t i = 0; i < (size_t)B; ++i) {
+            ret <<= 8;
+            if ( be_up & be )
+                ret |= 0xff;
+            be <<= 1;
+        }
+        return ret;
+    }
 };
 
 }}
