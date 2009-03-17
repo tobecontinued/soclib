@@ -18,12 +18,9 @@ Module('caba:vci_blackhole',
 	],
        uses = [
         Uses('caba:base_module'),
-        Uses('caba:vci_target_fsm', default_target = 'true', support_llsc = 'true'),
-        Uses('common:mapping_table'),
         ],
        instance_parameters = [
 	parameter.IntTab('ident'),
-	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
 	],
        extensions = [
 	'dsx:addressable=ident',

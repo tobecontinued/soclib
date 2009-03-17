@@ -26,38 +26,38 @@
  * Maintainers: dimitri.refauvelet@etu.upmc.fr
  */
 
-#include "vci_blackhole.h"
+#include "stuck_at_fault_signal.h"
 
-namespace soclib {
-  namespace caba {
+namespace soclib{
+  namespace caba{
 
     using namespace soclib;
 
-#define tmpl(x) template<typename vci_param> x VciBlackhole<vci_param>
-    
-    tmpl(/**/)::VciBlackhole(
-			     sc_module_name insname
-			     )
-	       : caba::BaseModule(insname),
-	       p_resetn("resetn"),
-	       p_clk("clk"),
-	       p_vci("vci")
+#define tmpl(x) template<typename signal_type> x StuckAtFaultSignal<signal_type>
+
+    tmpl(/**/)::StuckAtFaultSignal(sc_module_name insname,signal_type high, signal_type low)
+	       :caba::BaseModule(insname),
+	       p_in("in"),
+	       p_out("out")
     {
       SC_METHOD(genMoore);
       dont_initialize();
-      sensitive << p_clk.neg();
+      sensitive << p_in;
       
+      highFault = high;
+      lowFault = low;
     }
     
-    tmpl(/**/)::~VciBlackhole()
+    tmpl(/**/)::~StuckAtFaultSignal()
     {
     }
     
     tmpl(void)::genMoore()
     {
-      p_vci.setAck(true);
+      tmp=p_in.read();
+      tmp=tmp|highFault;
+      tmp=tmp&(~lowFault);
+      p_out=tmp;
     }
-    
-  }}
-
-
+  }
+}

@@ -1,0 +1,14 @@
+
+# -*- python -*-
+
+Module('caba:stuck_at_fault_signal',
+       classname = 'soclib::caba::StuckAtFaultSignal',
+       tmpl_parameters = [
+        parameter.Type('signal_type',  default = 'bool'),
+	],
+       header_files = ['../source/include/stuck_at_fault_signal.h',],
+       implementation_files = ['../source/src/stuck_at_fault_signal.cpp',],
+       uses = [
+        Uses('caba:base_module'),
+        ]
+)

@@ -20,44 +20,42 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Copyright (c) UPMC, Lip6, Asim
- *         Dimitri Refauvelet <dimitri.refauvelet@lip6.fr>, 2009
+ * Copyright (c) UPMC, Lip6
+ *          Dimitri Refauvelet <dimitri.refauvelet@lip6.fr>, 2009
  *
- * Maintainers: dimitri.refauvelet@etu.upmc.fr
+ *Maintainers: dimitri.refauvelet@etu.upmc.fr
  */
+#ifndef SOCLIB_CABA_STUCK_AT_FAULT_SIGNAL_H
+#define SOCLIB_CABA_STUCK_AT_FAULT_SIGNAL_H
 
-#include "vci_blackhole.h"
+#include <systemc>
+#include "caba_base_module.h"
 
 namespace soclib {
   namespace caba {
-
-    using namespace soclib;
-
-#define tmpl(x) template<typename vci_param> x VciBlackhole<vci_param>
     
-    tmpl(/**/)::VciBlackhole(
-			     sc_module_name insname
-			     )
-	       : caba::BaseModule(insname),
-	       p_resetn("resetn"),
-	       p_clk("clk"),
-	       p_vci("vci")
+    using namespace sc_core;
+    
+    template<typename signal_type>
+    class StuckAtFaultSignal
+      : public soclib::caba::BaseModule
     {
-      SC_METHOD(genMoore);
-      dont_initialize();
-      sensitive << p_clk.neg();
+    private:
+      signal_type tmp;
+      signal_type highFault, lowFault;
       
-    }
-    
-    tmpl(/**/)::~VciBlackhole()
-    {
-    }
-    
-    tmpl(void)::genMoore()
-    {
-      p_vci.setAck(true);
-    }
-    
-  }}
+      void genMoore();
+    protected:
+      SC_HAS_PROCESS(StuckAtFaultSignal);
+      
+    public:
+      sc_in<signal_type> p_in;
+      sc_out<signal_type> p_out;
+      
+      StuckAtFaultSignal(sc_module_name insname,signal_type high, signal_type low);
+      ~StuckAtFaultSignal();
+    };
+  }
+}
 
-
+#endif /* SOCLIB_CABA_STUCK_AT_FAULT_SIGNAL_H */

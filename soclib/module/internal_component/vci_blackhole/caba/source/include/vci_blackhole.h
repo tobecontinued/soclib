@@ -30,10 +30,8 @@
 #define SOCLIB_CABA_BLACKHOLE_H
 
 #include <systemc>
-#include "vci_target_fsm.h"
 #include "caba_base_module.h"
-#include "mapping_table.h"
-
+#include "vci_target.h"
 
 namespace soclib {
   namespace caba {
@@ -45,7 +43,7 @@ namespace soclib {
       : public soclib::caba::BaseModule
     {
       
-protected:
+    protected:
       SC_HAS_PROCESS(VciBlackhole);
       
     public:
@@ -58,7 +56,6 @@ protected:
       ~VciBlackhole();
 
     private:
-      void transition();
       void genMoore();
     };
     

@@ -1,4 +1,4 @@
-/* -*- c++ -*-
+/*
  *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
@@ -20,44 +20,29 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Copyright (c) UPMC, Lip6, Asim
+ * Copyright (c) UPMC, Lip6, SoC
  *         Dimitri Refauvelet <dimitri.refauvelet@lip6.fr>, 2009
  *
  * Maintainers: dimitri.refauvelet@etu.upmc.fr
  */
 
-#include "vci_blackhole.h"
+#define	TEXT_BASE	0x00400000
+#define	TEXT_SIZE	0x00050000
 
-namespace soclib {
-  namespace caba {
+#define	RESET_BASE	0xBFC00000
+#define	RESET_SIZE	0x00010000
 
-    using namespace soclib;
+#define	EXCEP_BASE	0x80000000
+#define	EXCEP_SIZE	0x00010000
 
-#define tmpl(x) template<typename vci_param> x VciBlackhole<vci_param>
-    
-    tmpl(/**/)::VciBlackhole(
-			     sc_module_name insname
-			     )
-	       : caba::BaseModule(insname),
-	       p_resetn("resetn"),
-	       p_clk("clk"),
-	       p_vci("vci")
-    {
-      SC_METHOD(genMoore);
-      dont_initialize();
-      sensitive << p_clk.neg();
-      
-    }
-    
-    tmpl(/**/)::~VciBlackhole()
-    {
-    }
-    
-    tmpl(void)::genMoore()
-    {
-      p_vci.setAck(true);
-    }
-    
-  }}
+#define	DATA_BASE	0x10000000
+#define	DATA_SIZE	0x00020000
 
+#define	TTY_BASE	0xC0200000
+#define	TTY_SIZE	0x00000010
 
+#define	SIMHELPER_BASE	0xd0200000
+#define	SIMHELPER_SIZE	0x00000010
+
+#define TIMER_BASE      0x30200000
+#define TIMER_SIZE      0x00000100
