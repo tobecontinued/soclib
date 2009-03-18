@@ -100,9 +100,15 @@ class Action:
 	@classmethod
 	def __poll_all_inputs(cls):
 		inputs = []
-		for job in cls.__handles.itervalues():
-			inputs.append(job.__child_out)
-			inputs.append(job.__child_err)
+		todel = []
+		for k, job in cls.__handles.iteritems():
+			try:
+				inputs.append(job.__child_out)
+				inputs.append(job.__child_err)
+			except:
+				todel.append(k)
+		for k in todel:
+			del cls.__handles[k]
 		if not inputs:
 			return
 		available = select.select(inputs,[],[])[0]
