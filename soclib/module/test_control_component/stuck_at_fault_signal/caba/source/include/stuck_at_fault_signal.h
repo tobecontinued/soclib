@@ -39,12 +39,14 @@ namespace soclib {
     template<typename signal_type>
     class StuckAtFaultSignal
       : public soclib::caba::BaseModule
-    {
+    {      
+    
     private:
       signal_type tmp;
       signal_type highFault, lowFault;
       
       void genMoore();
+    
     protected:
       SC_HAS_PROCESS(StuckAtFaultSignal);
       

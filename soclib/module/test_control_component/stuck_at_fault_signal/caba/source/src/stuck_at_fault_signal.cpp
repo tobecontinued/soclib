@@ -31,8 +31,6 @@
 namespace soclib{
   namespace caba{
 
-    using namespace soclib;
-
 #define tmpl(x) template<typename signal_type> x StuckAtFaultSignal<signal_type>
 
     tmpl(/**/)::StuckAtFaultSignal(sc_module_name insname,signal_type high, signal_type low)
