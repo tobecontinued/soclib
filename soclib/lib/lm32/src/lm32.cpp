@@ -138,7 +138,6 @@ namespace soclib { namespace common {
 
         // if instruction or data request is pending
         // or if we are in the time slot of a long instruction
-        // ......?
         if (m_ireq_pending || m_dreq_pending || m_ins_delay) {
             uint32_t t = ncycle;
             if (m_ins_delay) {
@@ -288,6 +287,9 @@ no_except:
             r_npc = m_next_pc;
         }
 
+        // hazard refers to simulation hazard, not functionnal hazard
+        // Thus, cycle counter should not be incremented
+        r_CC = r_CC + ncycle;
 house_keeping:
         // Keep g0 always null
         //     r_gp[0] = 0;
@@ -297,7 +299,6 @@ house_keeping:
         dump_regs("");
 #endif
 
-        r_CC = r_CC + ncycle;
         return ncycle;
 
     } // executeNcycles
