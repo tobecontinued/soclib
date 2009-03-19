@@ -35,7 +35,7 @@ int _main(int argc, char *argv[])
 
 	// Mapping table
 
-	soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0x00300000);
+	soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0x00C00000);
 
 	maptabp.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), true));
 	maptabp.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), true));
@@ -45,11 +45,11 @@ int _main(int argc, char *argv[])
 
 	std::cout << maptabp << std::endl;
 
-	soclib::common::MappingTable maptabc(32, IntTab(8), IntTab(8), 0x00300000);
+	soclib::common::MappingTable maptabc(32, IntTab(8), IntTab(8), 0x00C00000);
 	maptabc.add(Segment("proc" , PROC_BASE , PROC_SIZE , IntTab(0), false, true, IntTab(0)));
 	std::cout << maptabc << std::endl;
 
-	soclib::common::MappingTable maptabx(32, IntTab(8), IntTab(8), 0x00300000);
+	soclib::common::MappingTable maptabx(32, IntTab(8), IntTab(8), 0x00C00000);
 	maptabx.add(Segment("xram" , MC_M_BASE , MC_M_SIZE , IntTab(0), false));
 
 	std::cout << maptabx << std::endl;

@@ -22,7 +22,7 @@
 #define	RESET_BASE	0xBFC00000
 #define	RESET_SIZE	0x00010000
 
-#define	EXCEP_BASE	0x80000080
+#define	EXCEP_BASE	0x80000000
 #define	EXCEP_SIZE	0x00010000
 
 /////////////////////////////////////////////////////////////////
@@ -36,22 +36,22 @@
 //	System devices (seen by the software)
 ///////////////////////////////////////////////////////////
 
-#define	TTY_BASE	0xC0200000
+#define	TTY_BASE	0xC0400000
 #define	TTY_SIZE	0x00000100
 
-#define	TIMER_BASE	0xD0200000
+#define	TIMER_BASE	0xD0400000
 #define	TIMER_SIZE	0x00000100
 
-#define	LOCKS_BASE	0xE0200000
+#define	LOCKS_BASE	0xE0400000
 #define	LOCKS_SIZE	0x00000100
 
-#define PROC_BASE	0xF0200000
+#define PROC_BASE	0xF0400000
 #define PROC_SIZE	0x00000008
 
-#define XRAM_BASE	0xB0200000
+#define XRAM_BASE	0xB0400000
 #define XRAM_SIZE	0x00000008
 
-#define MC_R_BASE	0x20200000
+#define MC_R_BASE	0x20400000
 #define MC_R_SIZE	0x00000008
 
-#define CLEANUP_OFFSET  0x20200000
+#define CLEANUP_OFFSET  0x20400000

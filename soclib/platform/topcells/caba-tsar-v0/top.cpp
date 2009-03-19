@@ -37,7 +37,7 @@ int _main(int argc, char *argv[])
 
 	// Mapping table
 
-	soclib::common::MappingTable maptabp(32, IntTab(2,10), IntTab(2,3), 0x00300000);
+	soclib::common::MappingTable maptabp(32, IntTab(2,10), IntTab(2,3), 0x00C00000);
 
 	maptabp.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(2,1), true));
 	maptabp.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(2,1), true));
@@ -54,7 +54,7 @@ int _main(int argc, char *argv[])
 
 	std::cout << maptabp << std::endl;
 
-	soclib::common::MappingTable maptabc(32, IntTab(2,10), IntTab(2,3), 0x00300000);
+	soclib::common::MappingTable maptabc(32, IntTab(2,10), IntTab(2,3), 0x00C00000);
 
 	maptabc.add(Segment("proc0" , PROC0_BASE , PROC0_SIZE , IntTab(0,0), false, true, IntTab(0,0)));
 	maptabc.add(Segment("proc1" , PROC1_BASE , PROC1_SIZE , IntTab(0,1), false, true, IntTab(0,1)));
@@ -75,7 +75,7 @@ int _main(int argc, char *argv[])
 
 	std::cout << maptabc << std::endl;
 
-	soclib::common::MappingTable maptabx(32, IntTab(8,4), IntTab(4,4), 0x00300000);
+	soclib::common::MappingTable maptabx(32, IntTab(8,4), IntTab(4,4), 0x00C00000);
 	maptabx.add(Segment("xram0" , MC0_M_BASE , MC0_M_SIZE , IntTab(0,0), false));
 	maptabx.add(Segment("xram1" , MC1_M_BASE , MC1_M_SIZE , IntTab(0,0), false));
 	maptabx.add(Segment("xram2" , MC2_M_BASE , MC2_M_SIZE , IntTab(0,0), false));
@@ -662,7 +662,7 @@ int _main(int argc, char *argv[])
 	xram.p_vci(signal_vci_tgt_xram);	
 
 	///////////////////////////////////////////////////////
-	// Réseau vers la XRAM
+	// Rï¿½seau vers la XRAM
 	///////////////////////////////////////////////////////
 
 	vgmn.p_clk(signal_clk);
@@ -676,7 +676,7 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[0](signal_vci_tgt_xram);
 
 	///////////////////////////////////////////////////////
-	// Réseau des commandes primaires
+	// Rï¿½seau des commandes primaires
 	///////////////////////////////////////////////////////
 
 	clusterPN0.p_clk(signal_clk);
@@ -749,7 +749,7 @@ int _main(int argc, char *argv[])
 	vciDspinPNetwork.p_to_target[1][1](signal_vci_tgt_pdspin3);
 
 	///////////////////////////////////////////////////////
-	// Réseau des commandes de cohérence
+	// Rï¿½seau des commandes de cohï¿½rence
 	///////////////////////////////////////////////////////
 	clusterCN0.p_clk(signal_clk);
 	clusterCN0.p_resetn(signal_resetn);
