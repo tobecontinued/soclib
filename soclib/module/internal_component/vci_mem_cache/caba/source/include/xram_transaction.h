@@ -283,7 +283,7 @@ class TransactionTab{
   // - data : vector of data
   /////////////////////////////////////////////////////////////////////
   void write_data_mask(const size_t index, 
-		       const std::vector<bool> &be, 
+		       const std::vector<be_t> &be, 
 		       const std::vector<data_t> &data) 
   {
     assert( (index < size_tab) 

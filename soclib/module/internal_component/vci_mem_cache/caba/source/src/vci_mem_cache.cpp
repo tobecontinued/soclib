@@ -1081,7 +1081,7 @@ namespace soclib { namespace caba {
 	  if ( r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE ) {
 	    size_t hit_index = 0;
 	    size_t wok_index = 0;
-	    bool hit = m_transaction_tab.hit_read(m_nline[m_cmd_write_addr_fifo.read()],hit_index);
+	    bool hit = m_transaction_tab.hit_read(m_nline[r_write_address.read()],hit_index);
 	    bool wok = !m_transaction_tab.full(wok_index);
 	    if ( hit ) {		// register the modified data in TRT 
 	      r_write_trt_index = hit_index;
@@ -1132,7 +1132,7 @@ namespace soclib { namespace caba {
       case WRITE_TRT_DATA:	// update an entry in TRT (Write Buffer)
 	{  
 	  if ( r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE ) {
-	    std::vector<bool> be_vector;
+	    std::vector<be_t> be_vector;
 	    std::vector<data_t> data_vector;
 	    be_vector.clear();
 	    data_vector.clear();
