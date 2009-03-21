@@ -48,16 +48,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
     int index = addr / vci_param::B;
     uint32_t *tab = m_fb_controller.surface();
 	unsigned int cur = tab[index];
-    uint32_t mask = 0;
-
-    if ( be & 1 )
-        mask |= 0x000000ff;
-    if ( be & 2 )
-        mask |= 0x0000ff00;
-    if ( be & 4 )
-        mask |= 0x00ff0000;
-    if ( be & 8 )
-        mask |= 0xff000000;
+    uint32_t mask = vci_param::be2mask(be);
     
     tab[index] = (cur & ~mask) | (data & mask);
 
