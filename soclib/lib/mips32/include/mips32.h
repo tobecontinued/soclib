@@ -77,22 +77,22 @@ private:
     };
 
     enum ExceptCause {
-        X_INT,      // Interrupt
-        X_MOD,      // TLB Modification
-        X_TLBL,     // TLB Load error
-        X_TLBS,     // TLB Store error
-        X_ADEL,     // Address error (load or fetch)
-        X_ADES,     // Address error (store)
-        X_IBE,      // Ins bus error
-        X_DBE,      // Data bus error (load/store)
-        X_SYS,      // Syscall
-        X_BP,       // Break point
-        X_RI,       // Reserved
-        X_CPU,      // Coproc unusable
-        X_OV,       // Overflow
-        X_TR,       // Trap
-        X_reserved,     // Reserved
-        X_FPE,      // Floating point
+        X_INT,      // 0 Interrupt
+        X_MOD,      // 1 TLB Modification
+        X_TLBL,     // 2 TLB Load error
+        X_TLBS,     // 3 TLB Store error
+        X_ADEL,     // 4 Address error (load or fetch)
+        X_ADES,     // 5 Address error (store)
+        X_IBE,      // 6 Ins bus error
+        X_DBE,      // 7 Data bus error (load/store)
+        X_SYS,      // 8 Syscall
+        X_BP,       // 9 Break point
+        X_RI,       // a Reserved
+        X_CPU,      // b Coproc unusable
+        X_OV,       // c Overflow
+        X_TR,       // d Trap
+        X_reserved,     // e Reserved
+        X_FPE,      // f Floating point
         NO_EXCEPTION,
     };
 
