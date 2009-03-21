@@ -159,11 +159,7 @@ tmpl(bool)::write(size_t seg, vci_addr_t addr, vci_data_t wdata, vci_be_t be)
     if ( m_seg[seg]->contains(addr) ) {
         size_t index = (size_t)((addr - m_seg[seg]->baseAddress()) / vci_param::B);
 	    vci_data_t cur = m_ram[seg][index];
-        vci_data_t mask = 0;
-        if ( be & 1 ) mask |= 0x000000ff;
-        if ( be & 2 ) mask |= 0x0000ff00;
-        if ( be & 4 ) mask |= 0x00ff0000;
-        if ( be & 8 ) mask |= 0xff000000;
+        vci_data_t mask = vci_param::be2mask(be);
         m_ram[seg][index] = (cur & ~mask) | (wdata & mask);
         m_cpt_write++;
         return true;
