@@ -44,6 +44,31 @@ class Base:
 	def get_internal_value(value, **args):
 		return value
 
+	def __mul__(self, other):
+		return BinaryOp(operator.mul, self, other)
+	def __add__(self, other):
+		return BinaryOp(operator.add, self, other)
+	def __pow__(self, other):
+		return BinaryOp(operator.pow, self, other)
+	def __div__(self, other):
+		return BinaryOp(operator.div, self, other)
+	def __sub__(self, other):
+		return BinaryOp(operator.sub, self, other)
+	def __mod__(self, other):
+		return BinaryOp(operator.mod, self, other)
+	def __rmul__(self, other):
+		return BinaryOp(operator.mul, other, self)
+	def __radd__(self, other):
+		return BinaryOp(operator.add, other, self)
+	def __rpow__(self, other):
+		return BinaryOp(operator.pow, other, self)
+	def __rdiv__(self, other):
+		return BinaryOp(operator.div, other, self)
+	def __rsub__(self, other):
+		return BinaryOp(operator.sub, other, self)
+	def __rmod__(self, other):
+		return BinaryOp(operator.mod, other, self)
+
 class Parameter(Base):
 	valid_types = ()
 	def __init__(self, name, default = None, auto = None):
@@ -83,30 +108,6 @@ class Parameter(Base):
 								 self.default,
 								 self.auto)
 
-	def __mul__(self, other):
-		return BinaryOp(operator.mul, self, other)
-	def __add__(self, other):
-		return BinaryOp(operator.add, self, other)
-	def __pow__(self, other):
-		return BinaryOp(operator.pow, self, other)
-	def __div__(self, other):
-		return BinaryOp(operator.div, self, other)
-	def __sub__(self, other):
-		return BinaryOp(operator.sub, self, other)
-	def __mod__(self, other):
-		return BinaryOp(operator.mod, self, other)
-	def __rmul__(self, other):
-		return BinaryOp(operator.mul, other, self)
-	def __radd__(self, other):
-		return BinaryOp(operator.add, other, self)
-	def __rpow__(self, other):
-		return BinaryOp(operator.pow, other, self)
-	def __rdiv__(self, other):
-		return BinaryOp(operator.div, other, self)
-	def __rsub__(self, other):
-		return BinaryOp(operator.sub, other, self)
-	def __rmod__(self, other):
-		return BinaryOp(operator.mod, other, self)
 
 class Bool(Parameter):
 	valid_types = (bool,)
