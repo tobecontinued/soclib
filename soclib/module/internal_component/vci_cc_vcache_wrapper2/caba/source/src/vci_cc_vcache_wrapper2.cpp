@@ -650,13 +650,13 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             addr36_t cell    = address - m_segment.baseAddress();
             if ( ! m_segment.contains(address) ) 
             {
-                std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
                 std::cout << "out of segment VCI command received" << std::endl;
                 exit(0);
             }
             if ( p_vci_tgt.cmd.read() != vci_param::CMD_WRITE) 
             {
-                std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
                 std::cout << "the received VCI command is not a write" << std::endl;
                 exit(0);
             }
@@ -669,7 +669,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             {                         
                 if ( ! p_vci_tgt.eop.read() ) 
                 {
-                    std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                    std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
                     std::cout << "the INVALIDATE command length must be one word" << std::endl;
                     exit(0);
                 }
@@ -681,7 +681,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             {                                
                 if ( p_vci_tgt.eop.read() ) 
                 {
-                    std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                    std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
                     std::cout << "the UPDATE command length must be N+2 words" << std::endl;
                     exit(0);
                 }
@@ -697,7 +697,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             if ( p_vci_tgt.eop.read() ) 
             {
-                std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
                 std::cout << "the UPDATE command length must be N+2 words" << std::endl;
                 exit(0);
             }
@@ -713,7 +713,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             size_t word = r_tgt_word.read();
             if ( word >= m_dcache_words ) 
             {
-                std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
                 std::cout << "the reveived UPDATE command length is wrong" << std::endl;
                 exit(0);
             }
@@ -1412,8 +1412,6 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////////////
     case ICACHE_SW_FLUSH1:
     {
-        // reset this register and let dcache_fsm return idle for accept cleanup request
-        r_dcache_xtn_req = false;
         size_t way = r_icache_way;
         size_t set = r_icache_set;
         bool clean = false;
@@ -1439,7 +1437,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 if (clean) break;
             }
 
-            if ((way == (m_itlb_m_ways-1)) && (set == (m_itlb_m_sets-1)))
+            if ((way == m_itlb_m_ways) && (set == m_itlb_m_sets))
             {
                 r_icache_way = 0;
                 r_icache_set = 0;
@@ -1447,6 +1445,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 break;
             }
         }
+        break;
     }
     /////////////////////////////
     case ICACHE_SW_FLUSH2:
@@ -1476,12 +1475,14 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 if (clean) break;
             }
 
-            if ((way == (m_itlb_k_ways-1)) && (set == (m_itlb_k_sets-1)))
+            if ((way == m_itlb_k_ways) && (set == m_itlb_k_sets))
             {
                 r_icache_fsm = ICACHE_IDLE;
+                r_dcache_xtn_req = false;
                 break;
             }
         }
+        break;
     }
     /////////////////////
     case ICACHE_TLB_FLUSH:
@@ -1526,13 +1527,14 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 }
                 if (clean) break;
             }
-            if ((way == (m_icache_ways-1)) && (set == (m_icache_sets-1)))
+            if ((way == m_icache_ways) && (set == m_icache_sets))
             {
                 r_dcache_xtn_req = false;
                 r_icache_fsm = ICACHE_IDLE;
                 break;
             }
         }
+        break;
     }
     /////////////////////
     case ICACHE_TLB_INVAL:  
@@ -3124,7 +3126,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             // update cache
             uint32_t rsp_dtlb_miss;
-            addr36_t  victim_index = 0;
+            addr36_t victim_index = 0;
             size_t way = 0;
             size_t set = 0;
             int dcache_fsm = 0;
@@ -3300,6 +3302,12 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         size_t way = 0;
         size_t set = 0;
 
+        if ( r_dcache_itlb_cleanup_req )
+        {    
+        	r_dcache.setinbit(((addr36_t)r_dcache_itlb_cleanup_line.read()*m_dcache_words*2), r_dcache_in_itlb, false);
+        	r_dcache_itlb_cleanup_req = false;
+	    }
+
         for ( way = 0; way < m_dtlb_m_ways; way++)
         {
             for ( set = 0; set < m_dtlb_m_sets; set++)
@@ -3324,6 +3332,12 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         data_t victim_index = 0;
         size_t way = 0;
         size_t set = 0;
+
+        if ( r_dcache_itlb_cleanup_req )
+        {    
+        	r_dcache.setinbit(((addr36_t)r_dcache_itlb_cleanup_line.read()*m_dcache_words*2), r_dcache_in_itlb, false);
+        	r_dcache_itlb_cleanup_req = false;
+	    }
 
         for ( way = 0; way < m_dtlb_k_ways; way++)
         {
@@ -3395,7 +3409,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 if (clean) break;
             }
 
-            if ((way == (m_dcache_ways-1)) && (set == (m_dcache_sets-1)) && !r_dcache_xtn_req ) 
+            if ((way == m_dcache_ways) && (set == m_dcache_sets) && !r_dcache_xtn_req ) 
             {
                 // data TLB flush 
                 dcache_m_tlb.flush(true);      // global entries are not invalidated   
@@ -3412,6 +3426,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 break;
             }
         }
+        break;
     }
     //////////////////////
     case DCACHE_DTLB_INVAL: 
@@ -4941,11 +4956,11 @@ tmpl(void)::genMoore()
 #ifdef CC_VCACHE_WRAPPER_DEBUG 
    std::cout 
        << "Moore:" << std::hex
-       << "p_vci_ini.cmdval:" << p_vci_ini.cmdval
-       << "p_vci_ini.address:" << p_vci_ini.address
-       << "p_vci_ini.wdata:" << p_vci_ini.wdata
-       << "p_vci_ini.cmd:" << p_vci_ini.cmd
-       << "p_vci_ini.eop:" << p_vci_ini.eop
+       << " p_vci_ini.cmdval: " << p_vci_ini.cmdval
+       << " p_vci_ini.address: " << p_vci_ini.address
+       << " p_vci_ini.wdata: " << p_vci_ini.wdata
+       << " p_vci_ini.cmd: " << p_vci_ini.cmd
+       << " p_vci_ini.eop: " << p_vci_ini.eop
        << std::endl;
 #endif
 }
