@@ -38,7 +38,7 @@ __all__ = ['Module', 'PortDecl',
 		   'parameter', 'types',
 		   'Signal','Port']
 
-class Port:
+class SubConn:
 	def __init__(self, type, name, count = None, auto = None, **args):
 		self.__type = type
 		self.__name = name
@@ -58,7 +58,17 @@ class Port:
 	def __str__(self):
 		from specialization import Specialization
 		ptype = Specialization(self.__type, **self.__args)
-		return '<port: %s %s>'%(self.__name, str(ptype['header_files']))
+		return '<%s: %s %s>'%(self._type,
+                                      self.__name,
+                                      str(ptype['header_files']))
+
+class Port(SubConn):
+        _type = "port"
+        pass
+
+class SubSignal(SubConn):
+        _type = "subsignal"
+	pass
 
 class Signal(Module):
 	tb_delta = -3
@@ -140,6 +150,3 @@ class Uses:
 
 	def __hash__(self):
 		return self.__hash
-
-class SubSignal(Uses):
-	pass

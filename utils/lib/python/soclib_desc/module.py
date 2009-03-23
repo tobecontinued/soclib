@@ -116,7 +116,7 @@ class Module:
 		'uses' : [],
 		'defines' : {},
 		'ports' : [],
-		'sub_signals' : {},
+		'sub_signals' : [],
 		'signal' : None,
 		'instance_parameters' : [],
 		'local' : False,
