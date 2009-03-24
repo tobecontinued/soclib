@@ -141,6 +141,7 @@ config.build_env = Config(
 	common_include_paths = [],
 	include_paths = ["soclib/lib/include"],
 	sd_ignore_regexp = None,
+	cache_file = "%(repos)s/soclib_cc.cache",
 	addDescPath = addDescPath,
 	getTool = getTool,
 	getCflags = getCflags,

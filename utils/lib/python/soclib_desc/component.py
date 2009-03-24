@@ -58,30 +58,29 @@ class SubConn:
 	def __str__(self):
 		from specialization import Specialization
 		ptype = Specialization(self.__type, **self.__args)
-		return '<%s: %s %s>'%(self._type,
-                                      self.__name,
-                                      str(ptype['header_files']))
+		return '<%s: %s %s>'%(self.__class__.__name__,
+							  self.__name,
+							  str(ptype['header_files']))
 
 class Port(SubConn):
-        _type = "port"
-        pass
+	pass
 
 class SubSignal(SubConn):
-        _type = "subsignal"
 	pass
 
 class Signal(Module):
-	tb_delta = -3
+	tb_delta = Module.tb_delta-1
 	def __init__(self, name, **kwargs):
 		self.__accepts = kwargs['accepts']
 		del kwargs['accepts']
 		Module.__init__(self, name, **kwargs)
 
 	def __getitem__(self, key):
+		from soclib_desc import description_files
 		if key == 'accepts':
 			naccepts = {}
 			for type, count in self.__accepts.iteritems():
-				rtype = Module.getRegistered(type)
+				rtype = description_files.get_module(type)
 				naccepts[rtype] = count
 			return naccepts
 		else:
@@ -89,10 +88,11 @@ class Signal(Module):
 
 class PortDecl(Module):
 	def __getitem__(self, key):
+		from soclib_desc import description_files
 		if key == 'signal':
 			sig = Module.__getitem__(self, 'signal')
 			if sig:
-				return Module.getRegistered(sig)
+				return description_files.get_module(sig)
 		return Module.__getitem__(self, key)
 
 class MetaPortDecl(PortDecl):

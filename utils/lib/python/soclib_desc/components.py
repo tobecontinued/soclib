@@ -26,43 +26,15 @@
 
 import os, os.path
 import re
+import warnings
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-def get_descs_in(base):
-	sdfile = re.compile('^[^.][a-zA-Z0-9_-]+\\.sd$')
-	from soclib_cc.config import config
-	if config.sd_ignore_regexp:
-		ignore_regexp_compiled = re.compile(config.sd_ignore_regexp)
-	else:
-		ignore_regexp_compiled = None
-	import os
-	from os.path import join, getsize
-	d = []
-	for root, dirs, files in os.walk(os.path.abspath(base)):
-		if ".svn" in dirs:
-			dirs.remove(".svn")
-		files = filter(sdfile.match, files)
-		if ignore_regexp_compiled:
-			files = filter(lambda x:not ignore_regexp_compiled.match(x), files)
-		for f in files:
-			d.append(os.path.join(root,f))
-	import component
-	from soclib_desc.component import Uses
-	all_c = {}
-	for f in d:
-		name = os.path.join(base, f)
-		if os.path.isfile(name):
-			dirname = os.path.dirname(name)
-			glbl = {}
-			for n in component.__all__:
-				glbl[n] = getattr(component, n)
-			glbl['Uses'] = Uses
-			glbl['__name__'] = name
-			locs = {}
-			execfile(name, glbl, locs)
-
 def getDescs(desc_paths):
+	warnings.warn("Please use soclib_desc.description_files.add_path(...)",
+				  DeprecationWarning,
+				  2)
 	for base in desc_paths:
-		get_descs_in(base)
+		import description_files
+		description_files.add_path(base)

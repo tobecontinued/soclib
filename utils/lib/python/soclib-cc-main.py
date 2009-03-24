@@ -27,6 +27,8 @@
 
 import os, os.path
 import sys
+import soclib_desc
+import soclib_desc.description_files
 import soclib_cc
 
 __id__ = "$Id$"
@@ -128,7 +130,8 @@ def main():
 					  action='store', nargs = 1,
 					  help="Auto report bug. Methods allowed: openbrowser, *none",
 					  choices = ("openbrowser", "none"))
-	parser.set_defaults(auto_bug_report = "none")
+	parser.set_defaults(auto_bug_report = "none",
+						includes = [])
 	opts, args = parser.parse_args()
 
 	from soclib_cc import bugreport
@@ -144,11 +147,8 @@ def main():
 	if opts.type:
 		change_config(opts.type)
 	
-	from soclib_desc import components
-	if opts.includes:
-		for i in opts.includes:
-			config.addDescPath(i)
-	components.getDescs(config.desc_paths)
+	for path in opts.includes:
+		soclib_desc.description_files.add_path(path)
 
 	for value in todef:
 		ms = value.split(":")
@@ -159,10 +159,10 @@ def main():
 		except:
 			name = define
 			val = ''
-		Module.getRegistered(cell).addDefine(name, val)
+		soclib_desc.description_files.get_module(cell).addDefine(name, val)
 
 	for value in todb:
-		Module.getRegistered(value).forceDebug()
+		soclib_desc.description_files.get_module(value).forceDebug()
 
 	config.mode = opts.mode
 	config.verbose = opts.verbose
@@ -204,17 +204,17 @@ def main():
 		todo.process()
 		return 0
 	if opts.list_files:
-		m = Module.getRegistered(opts.list_files)
+		m = soclib_desc.description_files.get_module(opts.list_files)
 		for h in m['abs_header_files']+m['abs_implementation_files']:
 			print h
 		return 0
 	if opts.list_descs is not None:
 		if opts.list_descs == 'long':
-			for name, desc in Module.allRegistered().iteritems():
-				print name, desc.getInfo()
+			for desc in soclib_desc.description_files.get_all_modules():
+				print desc.getModuleName(), desc.getInfo()
 		elif opts.list_descs == 'names':
-			for name in Module.allRegistered().iterkeys():
-				print name
+			for module in soclib_desc.description_files.get_all_modules():
+				print desc.getModuleName()
 		else:
 			print "Please give arg 'long' or 'names'"
 			return 1
@@ -225,7 +225,7 @@ def main():
 		for sep in opts.complete_separator:
 			suffix = suffix.split(sep)[-1]
 		prefix_len = len(opts.complete_name)-len(suffix)
-		for name in Module.allRegistered().iterkeys():
+		for name in soclib_desc.description_files.get_all_modules().iterkeys():
 			if name.startswith(opts.complete_name):
 				client = name[prefix_len:]
 				completions.add(client)

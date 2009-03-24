@@ -34,7 +34,7 @@ __version__ = "$Revision$"
 __all__ = ['version']
 
 _id_re = re.compile(r'\$Id(.*)\$')
-_version_re = re.compile(r'\$Revision(.*)\$')
+_version_re = re.compile(r'\$Revision: (.*)\$')
 
 def revision(path):
 	try:

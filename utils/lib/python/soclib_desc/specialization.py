@@ -26,6 +26,7 @@
 
 import parameter
 import module
+import description_files
 import warnings
 
 __id__ = "$Id$"
@@ -49,7 +50,7 @@ class ModuleSpecializationError(Exception):
 			c = '\n'+pfx+' '+repr(self.__prev_error)
 		at = ""
 		if self.__context:
-			at = (' at %s'%self.__context)
+			at = (' at '+str(self.__context))
 		return 'Error specializing %s%s, error: %s'%(self.__module, at, c)
 
 class Specialization:
@@ -66,7 +67,7 @@ class Specialization:
 		If arguments are missing, this will be reported.
 		"""
 		if not isinstance(mod, module.Module):
-			mod = module.Module.getRegistered(mod)
+			mod = description_files.get_module(mod)
 		self.__cdef =  mod
 		self.__cdef.instanciated()
 		

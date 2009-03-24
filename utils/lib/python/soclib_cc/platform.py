@@ -110,4 +110,4 @@ def Source(mode, source_file, uses = [], defines = {}, **params):
 	filename = traceback.extract_stack()[-3][0]
 	d = os.path.abspath(os.path.dirname(filename))
 	m._mk_abs_paths(d)
-	return name
+	return m

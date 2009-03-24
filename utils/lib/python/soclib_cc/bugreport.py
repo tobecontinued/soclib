@@ -73,7 +73,7 @@ class AdvertizeForBugreporter:
 		print " (i.e run: 'soclib-cc %s --bug-report')"%' '.join(sys.argv[1:])
 
 def end_handler(logname, exc, fd, report_action):
-	from soclib_desc.module import Module
+	from soclib_desc.description_files import get_all_used_modules
 	from soclib_utils.repos_file import revision
 	from soclib_cc.config import config
 	import os
@@ -82,7 +82,7 @@ def end_handler(logname, exc, fd, report_action):
 	print >> fd, "Config:"
 	print >> fd, str(config)
 	print >> fd, "Used modules:"
-	for m in Module.getUsedModules():
+	for m in get_all_used_modules():
 		print >> fd, '  ', m
 		for f in m.files():
 			print >> fd, '    ', os.path.basename(f), revision(f)

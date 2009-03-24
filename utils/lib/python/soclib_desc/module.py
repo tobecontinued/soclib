@@ -34,10 +34,6 @@ from abstraction_levels import checker
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-class DoubleRegistrationWarning(Warning):
-	def __str__(self):
-		return 'Module %s registered twice, previous registration in "%s"'%(self.args[0], self.args[1])
-
 class SpuriousDeclarationWarning(Warning):
 	def __str__(self):
 		return 'Spurious "%s" in %s declaration'%(self.args[0], self.args[1])
@@ -52,57 +48,44 @@ class InvalidComponentWarning(Warning):
 
 __all__ = ['Module']
 
-class NoSuchComponent(Exception):
-	pass
-
 class InvalidComponent(Exception):
 	pass
 
 class Module:
-	"""
-	The module class acts as a registry for all its instances. Therefore,
-	all modules, signals, ports, ... registered in .sd files can be
-	looked up for.
-	"""
-	
-	# class part
-	__reg = {}
-	__module2file = {}
 
 	def getUsedModules(cls):
 		"""
 		Returns a list of modules used at least one since
 		initialization.
 		"""
-		return filter(lambda x:x.__use_count, cls.__reg.itervalues())
+		warnings.warn("Please use soclib_desc.description_files.get_all_used_modules()",
+					  DeprecationWarning,
+					  2)
+		return filter(lambda x:x.isUsed(),
+					  cls.allRegistered())
 	getUsedModules = classmethod(getUsedModules)
-	
-	def __register(cls, name, obj, filename):
-#		print 'Registering', name, obj
-		name = name.lower()
-		if name in cls.__reg and cls.__module2file[name] != filename:
-			warnings.warn(DoubleRegistrationWarning(name, cls.__module2file[name]), stacklevel = 3)
-		cls.__reg[name] = obj
-		cls.__module2file[name] = filename
-	__register = classmethod(__register)
 
 	def getRegistered(cls, name):
 		"""
 		Returns a module from its fqmn, if not available, a
 		NoSuchComponent exception is raised.
 		"""
-		name = name.lower()
-		try:
-			return cls.__reg[name]
-		except KeyError:
-			raise NoSuchComponent("`%s` (case ignored)"%(name))
+		warnings.warn("Please use soclib_desc.description_files.get_module(...)",
+					  DeprecationWarning,
+					  2)
+		from description_files import get_module
+		return get_module(name)
 	getRegistered = classmethod(getRegistered)
 
 	def allRegistered(cls):
 		"""
 		Returns a dict of all modules registered, indexed by fqmn
 		"""
-		return cls.__reg
+		warnings.warn("Please use soclib_desc.description_files.get_all_modules()",
+					  DeprecationWarning,
+					  2)
+		from description_files import get_all_modules
+		return get_all_modules()
 	allRegistered = classmethod(allRegistered)
 
 	# instance part
@@ -125,7 +108,7 @@ class Module:
 		"debug" : False,
 		"deprecated":'',
 		}
-	tb_delta = -2
+	tb_delta = -3
 
 	def __init__(self, typename, **attrs):
 		"""
@@ -158,7 +141,6 @@ class Module:
 			self.__attrs['uses'].add(p.Use())
 
 		self._mk_abs_paths(os.path.dirname(filename))
-		self.__register(self.__typename, self, filename)
 		self.__filename = filename
 		self.lineno = lineno
 		self.__use_count = 0
@@ -174,6 +156,9 @@ class Module:
 		Method to advertize for module usage.
 		"""
 		self.__use_count += 1
+
+	def isUsed(self):
+		return bool(self.__use_count)
 
 	def getModuleName(self):
 		"""
@@ -223,10 +208,13 @@ class Module:
 		return r
 
 	def __str__(self):
-		return '<Module %s>'%(self.__typename)
+		return '<Module %s in %s>'%(self.__typename, self.__filename)
 
 	def __repr__(self):
-		return 'soclib_desc.module.Module.getRegistered(%r)'%(self.__typename)
+		return 'soclib_desc.registry.getRegistered(%r)'%(self.__typename)
+
+	def pathIs(self, path):
+		return path == self.__filename
 
 	def __hash__(self):
 		return hash((self.__filename, self.lineno))
