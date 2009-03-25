@@ -1,36 +1,36 @@
 /* -*- c++ -*-
  *
  * SOCLIB_LGPL_HEADER_BEGIN
- * 
+ *
  * This file is part of SoCLib, GNU LGPLv2.1.
- * 
+ *
  * SoCLib is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
- * 
+ *
  * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
- * 
+ *
  * SOCLIB_LGPL_HEADER_END
- * 
+ *
  * TMS320C6X Instruction Set Simulator for the TMS320C6X processor core
  * developed for the SocLib Projet
- * 
+ *
  * Copyright (C) IRISA/INRIA, 2008
  *         Francois Charot <charot@irisa.fr>
  *
- * 
+ *
  * Maintainer: charot
  *
  * Functional description:
- * The following files: 
+ * The following files:
  * 				tms320c62.h
  *              tms320c62.cpp
  *              tms320c62_instructions.cpp
@@ -38,7 +38,7 @@
  *
  * define the Instruction Set Simulator for the TMS320C62 processor.
  *
- * 
+ *
  */
 
 #ifndef SOCLIB_TMS320C62_ISS_H_
@@ -49,7 +49,7 @@
 #include <iomanip>
 #include <list>
 
-#include "iss_c6x.h"
+#include "iss.h"
 #include "soclib_endian.h"
 #include "register.h"
 
@@ -75,11 +75,11 @@
 #define FMCR              20
 
 // allows choosing between the two register files
-#define sideA                0 
+#define sideA                0
 #define sideB                1
 
 // define different execution unit types
-#define LUNIT             0x06 
+#define LUNIT             0x06
 #define MUNIT             0x00
 #define DUNIT             0x10
 #define DUNIT_LDSTOFFSET  0x03
@@ -97,7 +97,7 @@
 #define NOP1_PARALLEL     0x00000001
 
 // define condition register codes
-#define CREG_B0           0x01 
+#define CREG_B0           0x01
 #define CREG_B1           0x02
 #define CREG_B2           0x03
 #define CREG_A1           0x04
@@ -112,7 +112,7 @@
 #define getUnit_16bit(inst)     (inst >> 2 & 0xffff)
 
 // macros for often done stuff
-#define SLSB16(DATA)           ((DATA << 16) >> 16) // take care of sign extension 
+#define SLSB16(DATA)           ((DATA << 16) >> 16) // take care of sign extension
 #define ULSB16(DATA)           (DATA & 0x0000ffff)
 #define MSB16(DATA)            (DATA >> 16)
 #define BK0                    (state.c_regfile[AMR] >> 16 & 0x1f)
@@ -538,7 +538,7 @@ public:
 	uint32_t value;
 };
 
-class Tms320C6xIss : public soclib::common::IssC6x {
+class Tms320C6xIss : public soclib::common::Iss {
 
 public:
 	static const int n_irq = 32;
@@ -637,21 +637,17 @@ public:
 	}
 
 	inline uint32_t isBusy() {
-		return m_ins_delay;
+		return m_ins_delay || !isInstPacketReady();
 	}
 
 	inline bool isInstPacketReady() {
 		return m_instruction_packet_ready;
 	}
 
-	inline void getInstructionRequest(bool &req, uint32_t &address) {
+	inline void getInstructionRequest(bool &req, uint32_t &address) const {
 #if TMS320C62_DEBUG
 		std::cout << "getInstructionRequest"<< std::endl;
 #endif
-		if (newPC || m_offset >= FETCH_PACKET_SIZE) {
-			m_offset = 0;
-			newPC = false;
-		}
 		req = true;
 		address = (r_pc & FETCH_MASK) + m_offset*4;
 #if TMS320C62_DEBUG
@@ -679,6 +675,10 @@ public:
 #if TMS320C62_DEBUG
 		std::cout << "setInstruction"<< std::endl;
 #endif
+		if (newPC || m_offset >= FETCH_PACKET_SIZE) {
+			m_offset = 0;
+			newPC = false;
+		}
 		m_ibe = error;
 		m_temp_instruction[m_offset].ins = val;
 		m_instruction_packet_ready = false;
@@ -688,9 +688,11 @@ public:
 #endif
 
 		assert(m_offset <= FETCH_PACKET_SIZE);
-		if (m_offset == FETCH_PACKET_SIZE - 1)
+		if (m_offset == FETCH_PACKET_SIZE - 1) {
 			m_instruction_packet_ready = true;
-		m_offset++;
+			m_offset = 0;
+		}
+		else m_offset++;
 	}
 
 	inline void setInstructionPacket() {
@@ -1038,9 +1040,9 @@ private:
 		   const char *unit, uint8_t s, char x, char src1or2);
       void iprint2c(const char *inst, int32_t src2, int32_t dst,
 		    const char *unit, uint8_t s, char x, char src1or2);
-      void iprint1(const char *inst, int32_t dst, const char *unit, 
+      void iprint1(const char *inst, int32_t dst, const char *unit,
 		   uint8_t s, char x, char src1or2);
-      void iprint1c(const char *inst, int32_t dst, const char *unit, 
+      void iprint1c(const char *inst, int32_t dst, const char *unit,
 		    char s, char x, char src1or2);
       void iprint0(const char *inst);
       void iprint01(const char *inst, uint32_t num);
@@ -1074,7 +1076,7 @@ private:
       void dumpRegisterFile() const;
       void dumpSavedRegisterFile() const;
 
-      bool isConditionalInstruction(InstructionState state); 
+      bool isConditionalInstruction(InstructionState state);
 
       static const char* name_l_function_e1[128];
       static const char* name_s_function_e1[64];

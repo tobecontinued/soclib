@@ -67,7 +67,7 @@ static inline std::string mkname(uint32_t no) {
 }
 
 Tms320C6xIss::Tms320C6xIss(uint32_t ident) :
-	IssC6x(mkname(ident), ident) {
+	Iss(mkname(ident), ident) {
 
 }
 
@@ -155,6 +155,7 @@ void Tms320C6xIss::setDataResponse(bool error, uint32_t data) {
 }
 
 void Tms320C6xIss::step() {
+    setInstructionPacket();
 	++r_count;
 #if TMS320C62_DEBUG
 	std::cout << " r_count: "<< r_count << std::endl;
