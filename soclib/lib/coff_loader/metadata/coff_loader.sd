@@ -7,16 +7,16 @@ __version__ = "$Revision$"
 Module('common:coff_loader',
 	classname = 'soclib::common::CoffLoader',
 	header_files = ['../include/coff_loader.h',],
-	implementation_files = ['../src/coff_loader.cpp',],
-	   instance_parameters = [
+	instance_parameters = [
 	parameter.String('binary', auto = 'env:binary'),
 	],
 	uses = [
-		Uses('common:exception'),
+		Uses('common:loader'),
+		Uses('common:coff_file_loader'),
 	],
-	
-	   extensions = [
-	'dsx:configurator',
-	'dsx:noname'
-	]
+	 extensions = [
+		'dsx:configurator',
+		'dsx:noname'
+	],
+	deprecated = "Please use loader now.",
 )
