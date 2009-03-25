@@ -347,6 +347,8 @@ tmpl(void)::genMoore()
 {
     switch ( m_mode ) {
     case MODE_IDLE:
+        p_vci.cmdack = ! m_send_rsp;
+        break;
     case MODE_SIZED_READ_FLUSH_CMD:
     case MODE_FLUSH_CMD:
         p_vci.cmdack = true;
