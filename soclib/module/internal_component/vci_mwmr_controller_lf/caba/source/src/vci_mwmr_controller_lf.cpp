@@ -456,7 +456,7 @@ tmpl(void)::transition()
                   << std::endl;
 #endif
             if ( data_xfer_bytes == 0 ) {
-                r_init_fsm = INIT_IDLE;
+                r_init_fsm = INIT_DONE;
                 break;
             }
             r_size_before = size_before;
@@ -597,6 +597,7 @@ tmpl(void)::transition()
 	case INIT_DONE:
         r_init_fsm = INIT_IDLE;
         m_current->timer = m_plaps;
+        m_current = NULL;
 		break;
     }
 
