@@ -3,14 +3,14 @@
 
 todo = Platform('caba', 'top.cpp',
 				uses = [
-	Uses('caba:iss_c6x_wrapper', iss_t = 'common:tms320c62'),
-	Uses('caba:vci_ram_c6x'),
+	Uses('caba:iss_wrapper', iss_t = 'common:tms320c62'),
+	Uses('caba:vci_ram'),
 	Uses('caba:vci_multi_tty'),
 	Uses('caba:vci_vgmn'),
 	Uses('caba:vci_xcache'),
 	Uses('caba:vci_locks'),
 	Uses('caba:vci_timer'),
-	Uses('common:elf_file_loader'),
+	Uses('common:coff_file_loader'),
 	],
 	cell_size = 4,
 	plen_size = 1,

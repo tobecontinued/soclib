@@ -1,32 +1,32 @@
 /* -*- c++ -*-
  *
  * SOCLIB_LGPL_HEADER_BEGIN
- * 
+ *
  * This file is part of SoCLib, GNU LGPLv2.1.
- * 
+ *
  * SoCLib is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
- * 
+ *
  * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
- * 
+ *
  * SOCLIB_LGPL_HEADER_END
- * 
+ *
  * Copyright (C) IRISA/INRIA, 2007-2008
  *         Francois Charot <charot@irisa.fr>
- * 
+ *
  * File : top.cpp
  * Date : 15/12/2008
  * Author :  Francois Charot
- * 
+ *
  * Copyright : IRISA
  *
  * This architecture contains:
@@ -45,10 +45,10 @@
 
 #include "mapping_table.h"
 #include "tms320c62.h"
-#include "iss_c6x_wrapper.h"
+#include "iss_wrapper.h"
 #include "vci_xcache.h"
 #include "vci_timer.h"
-#include "vci_ram_c6x.h"
+#include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_framebuffer.h"
 #include "vci_vgmn.h"
@@ -70,7 +70,7 @@ int _main(int argc, char *argv[])
 
   maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), true));
   maptab.add(Segment("data" , DATA_BASE , DATA_SIZE , IntTab(1), true));
-  
+
   maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(2), false));
   maptab.add(Segment("timer", TIMER_BASE, TIMER_SIZE, IntTab(3), false));
 
@@ -79,7 +79,7 @@ int _main(int argc, char *argv[])
   // Signals
   sc_clock		signal_clk("signal_clk");
   sc_signal<bool> signal_resetn("signal_resetn");
-   
+
   soclib::caba::ICacheSignals signal_tms320c62_icache("signal_tms320c62_icache");
   soclib::caba::DCacheSignals signal_tms320c62_dcache("signal_tms320c62_dcache");
 
@@ -91,46 +91,46 @@ int _main(int argc, char *argv[])
   soclib::caba::VciSignals<vci_param> signal_vci_vcifb("signal_vci_vcifb");
   soclib::caba::VciSignals<vci_param> signal_vci_vcimultiram1("signal_vci_vcimultiram1");
 
-  sc_signal<bool> signal_tty_irq0("signal_tty_irq0"); 
+  sc_signal<bool> signal_tty_irq0("signal_tty_irq0");
 
-  sc_signal<bool>        signal_tms320c62_irq[32]; 
-  
+  sc_signal<bool>        signal_tms320c62_irq[32];
+
   // Components
   soclib::caba::VciXCache<vci_param> cache ("cache", maptab, IntTab(0), 16,8,16,4);
 
-  soclib::caba::IssC6xWrapper<soclib::common::Tms320C6xIss> tms320c62("tms320c62", 0);
+  soclib::caba::IssWrapper<soclib::common::Tms320C6xIss> tms320c62("tms320c62", 0);
 
-  soclib::common::CoffLoader loader("soft/bin.soft");
-  soclib::caba::VciRamC6x<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
-  soclib::caba::VciRamC6x<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
+  soclib::common::Loader loader("soft/bin.soft");
+  soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
+  soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
   soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", NULL);
   soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 1);
-  soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(4), maptab, FB_WIDTH, FB_HEIGHT); 
+  soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(4), maptab, FB_WIDTH, FB_HEIGHT);
 
   soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 1, 5, 2, 8);
 
   //	Net-List
 
-  tms320c62.p_clk(signal_clk);  
+  tms320c62.p_clk(signal_clk);
   cache.p_clk(signal_clk);
   vcimultiram0.p_clk(signal_clk);
   vcimultiram1.p_clk(signal_clk);
   vcifb.p_clk(signal_clk);
   vcitimer.p_clk(signal_clk);
-  
-  tms320c62.p_resetn(signal_resetn);  
+
+  tms320c62.p_resetn(signal_resetn);
   cache.p_resetn(signal_resetn);
   vcimultiram0.p_resetn(signal_resetn);
   vcimultiram1.p_resetn(signal_resetn);
   vcifb.p_resetn(signal_resetn);
   vcitimer.p_resetn(signal_resetn);
-  
+
   for (int i = 0; i<32; i++)
     tms320c62.p_irq[i]      (signal_tms320c62_irq[i]);
 
   tms320c62.p_icache(signal_tms320c62_icache);
   tms320c62.p_dcache(signal_tms320c62_dcache);
-        
+
   cache.p_icache(signal_tms320c62_icache);
   cache.p_dcache(signal_tms320c62_dcache);
   cache.p_vci(signal_vci_m0);
@@ -138,16 +138,16 @@ int _main(int argc, char *argv[])
   vcimultiram0.p_vci(signal_vci_vcimultiram0);
 
   vcitimer.p_vci(signal_vci_vcitimer);
-  vcitimer.p_irq[0](signal_tms320c62_irq[0]); 
-  
+  vcitimer.p_irq[0](signal_tms320c62_irq[0]);
+
   vcifb.p_vci(signal_vci_vcifb);
-  
+
   vcimultiram1.p_vci(signal_vci_vcimultiram1);
 
   vcitty.p_clk(signal_clk);
   vcitty.p_resetn(signal_resetn);
   vcitty.p_vci(signal_vci_tty);
-  vcitty.p_irq[0](signal_tty_irq0); 
+  vcitty.p_irq[0](signal_tty_irq0);
 
   vgmn.p_clk(signal_clk);
   vgmn.p_resetn(signal_resetn);
@@ -187,8 +187,8 @@ int _main(int argc, char *argv[])
 
   for (int i = 0; i < ncycles ; i++) {
     sc_start(sc_core::sc_time(1, SC_NS));
-	  
-    if((i % 100000) == 0) 
+
+    if((i % 100000) == 0)
       std::cout
 	<< "Time elapsed: "<<i<<" cycles." << std::endl;
   }

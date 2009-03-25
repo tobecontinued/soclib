@@ -1,32 +1,32 @@
 /* -*- c++ -*-
  *
  * SOCLIB_LGPL_HEADER_BEGIN
- * 
+ *
  * This file is part of SoCLib, GNU LGPLv2.1.
- * 
+ *
  * SoCLib is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
- * 
+ *
  * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
- * 
+ *
  * SOCLIB_LGPL_HEADER_END
- * 
+ *
  * Copyright (C) IRISA/INRIA, 2007
  *         Francois Charot <charot@irisa.fr>
- * 
+ *
  * File : top.cc
  * Date : 15/01/2009
  * Author :  Francois Charot
- * 
+ *
  * Copyright : IRISA
  *
  * This architecture contains:
@@ -43,10 +43,10 @@
 
 #include "mapping_table.h"
 #include "tms320c62.h"
-#include "iss_c6x_wrapper.h"
+#include "iss_wrapper.h"
 #include "vci_xcache.h"
 #include "vci_timer.h"
-#include "vci_ram_c6x.h"
+#include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_locks.h"
 #include "vci_vgmn.h"
@@ -58,7 +58,7 @@
 
 #define SEGTYPEMASK 0x00300000
 
-int SIMULATION_END = 0; 
+int SIMULATION_END = 0;
 
 int _main (int argc, char *argv[])
 {
@@ -89,19 +89,19 @@ int _main (int argc, char *argv[])
 
   soclib::caba::ICacheSignals signal_tms320c62_icache("signal_tms320c62_icache");
   soclib::caba::DCacheSignals signal_tms320c62_dcache("signal_tms320c62_dcache");
-  sc_signal<bool> signal_tms320c62_it0("signal_tms320c62_it0"); 
-  sc_signal<bool> signal_tms320c62_it1("signal_tms320c62_it1"); 
-  sc_signal<bool> signal_tms320c62_it2("signal_tms320c62_it2"); 
-  sc_signal<bool> signal_tms320c62_it3("signal_tms320c62_it3"); 
-  sc_signal<bool> signal_tms320c62_it4("signal_tms320c62_it4"); 
+  sc_signal<bool> signal_tms320c62_it0("signal_tms320c62_it0");
+  sc_signal<bool> signal_tms320c62_it1("signal_tms320c62_it1");
+  sc_signal<bool> signal_tms320c62_it2("signal_tms320c62_it2");
+  sc_signal<bool> signal_tms320c62_it3("signal_tms320c62_it3");
+  sc_signal<bool> signal_tms320c62_it4("signal_tms320c62_it4");
   sc_signal<bool> signal_tms320c62_it5("signal_tms320c62_it5");
 
-  soclib::caba::VciSignals<vci_param>	signal_vci_m0("signal_vci_m0");  
+  soclib::caba::VciSignals<vci_param>	signal_vci_m0("signal_vci_m0");
   soclib::caba::VciSignals<vci_param>	signal_vci_t0("signal_vci_t0");
   soclib::caba::VciSignals<vci_param>	signal_vci_t1("signal_vci_t1");
 
-  sc_signal<bool> signal_tty_irq0("signal_tty_irq0"); 
-  sc_signal<bool>        signal_tms320c62_irq[32]; 
+  sc_signal<bool> signal_tty_irq0("signal_tty_irq0");
+  sc_signal<bool>        signal_tms320c62_irq[32];
 
   /////////////////////////////////////////////////////////
   //	INSTANCIATED  COMPONENTS
@@ -109,33 +109,33 @@ int _main (int argc, char *argv[])
 
   soclib::caba::VciXCache<vci_param> cache ("cache", maptab, IntTab(0), 16,8,16,4);
 
-  soclib::caba::IssC6xWrapper<soclib::common::Tms320C6xIss> tms320c62("tms320c62", 0);
+  soclib::caba::IssWrapper<soclib::common::Tms320C6xIss> tms320c62("tms320c62", 0);
 
-  soclib::common::CoffLoader loader("soft/bin.soft");
+  soclib::common::Loader loader("soft/bin.soft");
 
   soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty", NULL);
 
-  soclib::caba::VciRamC6x<vci_param> vciram0("vciram", IntTab(0), maptab, loader);
+  soclib::caba::VciRam<vci_param> vciram0("vciram", IntTab(0), maptab, loader);
 
   soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab,1,2,2,8);
 
   //   std::cout
   //     << "Mapping table is:" << std::endl
   //     << maptab << dec << std::endl;
-  
+
   //   loader.print(std::cout);
   //   loader.analyseCoffFileForDebug();
-	
+
   //////////////////////////////////////////////////////////
   //	Net-List
   //////////////////////////////////////////////////////////
 
-  tms320c62.p_clk         	(signal_clk);  
+  tms320c62.p_clk         	(signal_clk);
   cache.p_clk       	(signal_clk);
   vcitty.p_clk        	(signal_clk);
   vciram0.p_clk  	(signal_clk);
 
-  tms320c62.p_resetn        (signal_resetn);  
+  tms320c62.p_resetn        (signal_resetn);
   cache.p_resetn       	(signal_resetn);
   vcitty.p_resetn       (signal_resetn);
   vciram0.p_resetn (signal_resetn);
@@ -153,7 +153,7 @@ int _main (int argc, char *argv[])
   vciram0.p_vci      (signal_vci_t0);
   vcitty.p_vci      	(signal_vci_t1);
 
-  vcitty.p_irq[0]     	(signal_tty_irq0); 
+  vcitty.p_irq[0]     	(signal_tty_irq0);
 
   vgmn.p_clk         	 (signal_clk);
   vgmn.p_resetn       	 (signal_resetn);
@@ -168,12 +168,12 @@ int _main (int argc, char *argv[])
   //	Traces
   //////////////////////////////////////////////////////////
 
-#if TRACE_FILE 
+#if TRACE_FILE
   sc_trace_file *my_trace_file;
   my_trace_file = sc_create_vcd_trace_file ("system_trace");
 #endif
 
-#if WIF_FILE 
+#if WIF_FILE
   sc_trace_file *my_trace_file;
   my_trace_file = sc_create_wif_trace_file ("system_trace");
 #endif
@@ -287,10 +287,10 @@ int _main (int argc, char *argv[])
     sc_start(sc_core::sc_time(1, SC_NS));
 
 
-    //   std::cout 
+    //   std::cout
     //      << std::endl << "ncycles " << i<< std::endl;
 
-    if((i % 10000) == 0)  
+    if((i % 10000) == 0)
       std::cout
 	<< "Time elapsed: "<<i<<" cycles." << std::endl;
   }
