@@ -225,7 +225,8 @@ def main():
 		for sep in opts.complete_separator:
 			suffix = suffix.split(sep)[-1]
 		prefix_len = len(opts.complete_name)-len(suffix)
-		for name in soclib_desc.description_files.get_all_modules().iterkeys():
+		for mod in soclib_desc.description_files.get_all_modules():
+			name = mod.getModuleName()
 			if name.startswith(opts.complete_name):
 				client = name[prefix_len:]
 				completions.add(client)
