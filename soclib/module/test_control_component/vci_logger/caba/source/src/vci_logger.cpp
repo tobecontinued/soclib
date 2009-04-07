@@ -31,6 +31,7 @@
 #include "vci_buffers.h"
 #include <iostream>
 #include <iomanip>
+#include <cassert>
 #include <vector>
 
 namespace soclib {
