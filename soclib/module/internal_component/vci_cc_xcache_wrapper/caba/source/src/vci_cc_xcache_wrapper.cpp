@@ -107,8 +107,10 @@ const char *tgt_fsm_state_str[] = {
     "TGT_IDLE",
     "TGT_UPDT_WORD",
     "TGT_UPDT_DATA",
-    "TGT_REQ",
-    "TGT_RSP",
+    "TGT_REQ_BROADCAST",
+    "TGT_REQ_DCACHE",
+    "TGT_RSP_BROADCAST",
+    "TGT_RSP_DCACHE",
 };
 }
 #endif
@@ -410,84 +412,147 @@ tmpl(void)::transition()
     switch(r_vci_tgt_fsm) {
 
     case TGT_IDLE:
-        if ( p_vci_tgt.cmdval.read() ) {
+        if ( p_vci_tgt.cmdval.read() ) 
+        {
             addr_t address = p_vci_tgt.address.read();
-            addr_t cell    = address - m_segment.baseAddress();
-            if ( ! m_segment.contains(address) ) {
-                std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
-                std::cout << "out of segment VCI command received" << std::endl;
-                exit(0);
-            }
-            if ( p_vci_tgt.cmd.read() != vci_param::CMD_WRITE) {
+
+            if ( p_vci_tgt.cmd.read() != vci_param::CMD_WRITE) 
+            {
                 std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
                 std::cout << "the received VCI command is not a write" << std::endl;
                 exit(0);
             }
+
+            // multi-update or multi-invalidate for data type
+            if ( (address != 0x3) && (! m_segment.contains(address)) ) 
+            {
+                std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                std::cout << "out of segment VCI command received for a multi-updt or multi-inval request" << std::endl;
+                exit(0);
+            }
+
             r_tgt_srcid = p_vci_tgt.srcid.read();
             r_tgt_trdid = p_vci_tgt.trdid.read();
             r_tgt_pktid = p_vci_tgt.pktid.read();
+            r_tgt_plen  = p_vci_tgt.plen.read();    // todo: wait L2 modification
             r_tgt_addr = (addr_t)p_vci_tgt.wdata.read() * m_dcache_words * 4;
-
-            if (cell == 0) {                        // invalidate 
-                if ( ! p_vci_tgt.eop.read() ) {
+            
+            if ( address == 0x3 )   // broadcast invalidate for data or instruction type
+            {
+                if ( ! p_vci_tgt.eop.read() ) 
+                {
                     std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
-                    std::cout << "the INVALIDATE command length must be one word" << std::endl;
+                    std::cout << "the BROADCAST INVALIDATE command length must be one word" << std::endl;
                     exit(0);
                 }
                 r_tgt_update = false; 
-                r_vci_tgt_fsm = TGT_REQ;
+                r_vci_tgt_fsm = TGT_REQ_BROADCAST;
                 m_cpt_cc_inval++ ;
-            } else {                                // update
-                if ( p_vci_tgt.eop.read() ) {
-                    std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
-                    std::cout << "the UPDATE command length must be N+2 words" << std::endl;
-                    exit(0);
-                }
-                r_vci_tgt_fsm = TGT_UPDT_WORD;
-                m_cpt_cc_update++ ;
             }
+            else                    // multi-update or multi-invalidate for data type
+            { 
+                addr_t cell = address - m_segment.baseAddress();
+                if (cell == 0) 
+                {                               // invalidate 
+                    if ( ! p_vci_tgt.eop.read() ) 
+                    {
+                        std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                        std::cout << "the MULTI-INVALIDATE command length must be one word" << std::endl;
+                        exit(0);
+                    }
+                    r_tgt_update = false; 
+                    r_vci_tgt_fsm = TGT_REQ_DCACHE;
+                    m_cpt_cc_inval++ ;
+                } 
+                else 
+                {                                // update
+                    if ( p_vci_tgt.eop.read() ) 
+                    {
+                        std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
+                        std::cout << "the MULTI-UPDATE command length must be N+2 words" << std::endl;
+                        exit(0);
+                    }
+                    r_tgt_update = true; 
+                    r_vci_tgt_fsm = TGT_UPDT_WORD;
+                    m_cpt_cc_update++ ;
+                }
+            } // end if address
         } // end if cmdval
         break;
 
     case TGT_UPDT_WORD:
-        if (p_vci_tgt.cmdval.read()) {
-            if ( p_vci_tgt.eop.read() ) {
+        if (p_vci_tgt.cmdval.read()) 
+        {
+            if ( p_vci_tgt.eop.read() ) 
+            {
                 std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
-                std::cout << "the UPDATE command length must be N+2 words" << std::endl;
+                std::cout << "the MULTI-UPDATE command length must be N+2 words" << std::endl;
                 exit(0);
             }
             for ( size_t i=0 ; i<m_dcache_words ; i++ ) r_tgt_val[i] = false;
-            r_tgt_word = p_vci_tgt.wdata.read();
+            r_tgt_word = p_vci_tgt.wdata.read(); // the first modified word index
             r_vci_tgt_fsm = TGT_UPDT_DATA;
         }
         break;
 
     case TGT_UPDT_DATA:
-        if (p_vci_tgt.cmdval.read()) {
+        if (p_vci_tgt.cmdval.read()) 
+        {
             size_t word = r_tgt_word.read();
-            if ( word >= m_dcache_words ) {
+            if ( word >= m_dcache_words ) 
+            {
                 std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
-                std::cout << "the reveived UPDATE command length is wrong" << std::endl;
+                std::cout << "the reveived MULTI-UPDATE command length is wrong" << std::endl;
                 exit(0);
             }
             r_tgt_buf[word] = p_vci_tgt.wdata.read();
             if(p_vci_tgt.be.read())    r_tgt_val[word] = true;
             r_tgt_word = word + 1;
-            if (p_vci_tgt.eop.read())  r_vci_tgt_fsm = TGT_REQ;
+            if (p_vci_tgt.eop.read())  r_vci_tgt_fsm = TGT_REQ_DCACHE;
         }
         break;
 
-    case TGT_REQ:
-        if ( !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) {
-            r_vci_tgt_fsm = TGT_RSP; 
+    case TGT_REQ_BROADCAST:
+        if ( !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) 
+        {
+            r_vci_tgt_fsm = TGT_RSP_BROADCAST; 
             r_tgt_icache_req = true;
             r_tgt_dcache_req = true;
         }
         break;
 
-    case TGT_RSP:
-        if ( p_vci_tgt.rspack.read() && !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) {
-            r_vci_tgt_fsm = TGT_IDLE; 
+    case TGT_REQ_DCACHE:
+        if ( !r_tgt_dcache_req.read() ) 
+        {
+            r_vci_tgt_fsm = TGT_RSP_DCACHE; 
+            r_tgt_dcache_req = true;
+        }
+        break;
+
+    case TGT_RSP_BROADCAST:
+        if ( p_vci_tgt.rspack.read() && !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) 
+        {
+            // one response
+            if ( !r_tgt_icache_rsp || !r_tgt_dcache_rsp )
+            {
+                r_vci_tgt_fsm = TGT_IDLE; 
+                r_tgt_icache_rsp = false;
+                r_tgt_dcache_rsp = false;
+            }
+
+            // if data and instruction have the inval line, need two responses  
+            if ( r_tgt_icache_rsp && r_tgt_dcache_rsp )
+            {
+                r_tgt_icache_rsp = false; // only reset one for respond the second time 
+            }
+        }
+        break;
+
+    case TGT_RSP_DCACHE:
+        if ( p_vci_tgt.rspack.read() && !r_tgt_dcache_req.read() ) 
+        {
+            r_vci_tgt_fsm = TGT_IDLE;
+            r_tgt_dcache_rsp = false; 
         }
         break;
 
@@ -673,7 +738,7 @@ tmpl(void)::transition()
                 ((r_icache_addr_save.read() & ~((m_icache_words<<2)-1)) == (ad & ~((m_icache_words<<2)-1))) ) {
                 r_icache_inval_rsp = true;
             } else {
-                r_icache.inval(ad);
+                r_tgt_icache_rsp = r_icache.inval(ad);
             }
             r_tgt_icache_req = false;
             r_icache_fsm = r_icache_fsm_save;
@@ -1042,7 +1107,7 @@ tmpl(void)::transition()
     case DCACHE_CC_INVAL:   // invalidate a cache line
         {
             addr_t  ad      = r_tgt_addr;
-            r_dcache.inval(ad);
+            r_tgt_dcache_rsp = r_dcache.inval(ad);
             r_tgt_dcache_req = false;
             r_dcache_fsm = r_dcache_fsm_save;
             break;
@@ -1343,7 +1408,7 @@ tmpl(void)::genMoore()
             assert("this should not happen");
         }
         p_vci_ini.plen = 4;
-        p_vci_ini.trdid  = 0;
+        p_vci_ini.trdid  = 0;   // data cache uncached read
         p_vci_ini.pktid  = 0;
         p_vci_ini.srcid  = m_srcid;
         p_vci_ini.cons   = false;
@@ -1361,7 +1426,7 @@ tmpl(void)::genMoore()
         p_vci_ini.be      = r_wbuf.getBe(r_vci_cmd_cpt);
         p_vci_ini.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
         p_vci_ini.cmd     = vci_param::CMD_WRITE;
-        p_vci_ini.trdid   = 0;
+        p_vci_ini.trdid   = 0;  // data cache write
         p_vci_ini.pktid   = 0;
         p_vci_ini.srcid   = m_srcid;
         p_vci_ini.cons    = false;
@@ -1378,7 +1443,7 @@ tmpl(void)::genMoore()
         p_vci_ini.be     = 0xF;
         p_vci_ini.plen   = m_dcache_words << 2;
         p_vci_ini.cmd    = vci_param::CMD_READ;
-        p_vci_ini.trdid  = 0;
+        p_vci_ini.trdid  = 1;   // data cache cached read
         p_vci_ini.pktid  = 0;
         p_vci_ini.srcid  = m_srcid;
         p_vci_ini.cons   = false;
@@ -1395,7 +1460,7 @@ tmpl(void)::genMoore()
         p_vci_ini.be     = 0xF;
         p_vci_ini.plen   = m_icache_words << 2;
         p_vci_ini.cmd    = vci_param::CMD_READ;
-        p_vci_ini.trdid  = 0;
+        p_vci_ini.trdid  = 3;   // ins cache cached read
         p_vci_ini.pktid  = 0;
         p_vci_ini.srcid  = m_srcid;
         p_vci_ini.cons   = false;
@@ -1412,7 +1477,7 @@ tmpl(void)::genMoore()
         p_vci_ini.be     = 0xF;
         p_vci_ini.plen   = 4;
         p_vci_ini.cmd    = vci_param::CMD_READ;
-        p_vci_ini.trdid  = 0;
+        p_vci_ini.trdid  = 2;   // ins cache uncached read
         p_vci_ini.pktid  = 0;
         p_vci_ini.srcid  = m_srcid;
         p_vci_ini.cons   = false;
@@ -1426,14 +1491,13 @@ tmpl(void)::genMoore()
     case CMD_INS_CLEANUP:
     case CMD_DATA_CLEANUP:
         p_vci_ini.cmdval = true;
-        if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.address = m_cleanup_address | ((r_icache_cleanup_line.read() *(m_icache_words<<2)) & 0xC0000000 );
-        else                                    p_vci_ini.address = m_cleanup_address | ((r_dcache_cleanup_line.read() *(m_dcache_words<<2)) & 0xC0000000 );
-        if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.wdata = r_icache_cleanup_line.read();
-        else                                    p_vci_ini.wdata = r_dcache_cleanup_line.read();
+        if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.address = r_icache_cleanup_line.read() * (m_icache_words<<2);
+        else                                    p_vci_ini.address = r_dcache_cleanup_line.read() * (m_icache_words<<2);
+        p_vci_ini.wdata  = 0;
         p_vci_ini.be     = 0;
         p_vci_ini.plen   = 4;
         p_vci_ini.cmd    = vci_param::CMD_WRITE;
-        p_vci_ini.trdid  = 0;
+        p_vci_ini.trdid  = 1; // cleanup for distinguish from a write
         p_vci_ini.pktid  = 0;
         p_vci_ini.srcid  = m_srcid;
         p_vci_ini.cons   = false;
@@ -1457,9 +1521,9 @@ tmpl(void)::genMoore()
         p_vci_tgt.rspval  = false;
         break;
 
-    case TGT_RSP:
+    case TGT_RSP_BROADCAST:
         p_vci_tgt.cmdack  = false;
-        p_vci_tgt.rspval  = !r_tgt_icache_req.read() && !r_tgt_dcache_req.read();
+        p_vci_tgt.rspval  = !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() && ( r_tgt_icache_rsp | r_tgt_dcache_rsp );
         p_vci_tgt.rsrcid  = r_tgt_srcid.read();
         p_vci_tgt.rpktid  = r_tgt_pktid.read();
         p_vci_tgt.rtrdid  = r_tgt_trdid.read();
@@ -1468,7 +1532,19 @@ tmpl(void)::genMoore()
         p_vci_tgt.reop    = true;
         break;
 
-    case TGT_REQ:
+    case TGT_RSP_DCACHE:
+        p_vci_tgt.cmdack  = false;
+        p_vci_tgt.rspval  = !r_tgt_dcache_req.read();
+        p_vci_tgt.rsrcid  = r_tgt_srcid.read();
+        p_vci_tgt.rpktid  = r_tgt_pktid.read();
+        p_vci_tgt.rtrdid  = r_tgt_trdid.read();
+        p_vci_tgt.rdata   = 0;
+        p_vci_tgt.rerror  = 0;
+        p_vci_tgt.reop    = true;
+        break;
+
+    case TGT_REQ_BROADCAST:
+    case TGT_REQ_DCACHE:
         p_vci_tgt.cmdack  = false;
         p_vci_tgt.rspval  = false;
         break;

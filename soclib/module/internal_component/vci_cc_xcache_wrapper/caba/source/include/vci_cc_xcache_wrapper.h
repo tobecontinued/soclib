@@ -104,8 +104,10 @@ class VciCcXcacheWrapper
         TGT_IDLE,
         TGT_UPDT_WORD,
         TGT_UPDT_DATA,
-        TGT_REQ,
-        TGT_RSP,
+        TGT_REQ_BROADCAST,
+        TGT_REQ_DCACHE,
+        TGT_RSP_BROADCAST,
+        TGT_RSP_DCACHE,
     };
 
 public:
@@ -183,8 +185,11 @@ private:
     sc_signal<size_t>       r_tgt_srcid;
     sc_signal<size_t>       r_tgt_pktid;
     sc_signal<size_t>       r_tgt_trdid;
+    sc_signal<size_t>       r_tgt_plen;
     sc_signal<bool>         r_tgt_icache_req;
     sc_signal<bool>         r_tgt_dcache_req;
+    sc_signal<bool>         r_tgt_icache_rsp;
+    sc_signal<bool>         r_tgt_dcache_rsp;
 
     WriteBuffer<addr_t>     r_wbuf;
     GenericCache<addr_t>    r_icache;
