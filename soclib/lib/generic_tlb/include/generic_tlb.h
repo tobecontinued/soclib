@@ -66,7 +66,8 @@ namespace caba {
         PTE_U_MASK    = 0x00000004,
         PTE_G_MASK    = 0x00000002,
         PTE_D_MASK    = 0x00000001,
-        PTD_PTP_MASK  = 0x00FFFFFF,
+        //PTD_PTP_MASK  = 0x00FFFFFF,
+        PTD_PTP_MASK  = 0x3FFFFFC0,
         PTD_ID2_MASK  = 0x003FF000,
         PPN_M_MASK    = 0x000FFFC0,
         OFFSET_K_MASK = 0x00000FFF,
@@ -75,6 +76,7 @@ namespace caba {
 
     enum {  
         PTE_ET_SHIFT = 30,
+        PTD_SHIFT    = 6,
         PTE_C_SHIFT  = 5,
         PTE_W_SHIFT  = 4,
         PTE_X_SHIFT  = 3,
