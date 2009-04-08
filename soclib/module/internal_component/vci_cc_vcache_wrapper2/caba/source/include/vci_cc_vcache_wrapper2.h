@@ -159,8 +159,10 @@ class VciCcVCacheWrapper2
         TGT_IDLE,                   // 00
         TGT_UPDT_WORD,              // 01
         TGT_UPDT_DATA,              // 02
-        TGT_REQ,                    // 03
-        TGT_RSP,                    // 04
+        TGT_REQ_BROADCAST,          // 03
+        TGT_REQ_DCACHE,             // 04
+        TGT_RSP_BROADCAST,          // 05
+        TGT_RSP_DCACHE,             // 06
     };
 
     enum inval_itlb_fsm_state_e {
@@ -355,9 +357,12 @@ private:
     sc_signal<size_t>       r_tgt_srcid;
     sc_signal<size_t>       r_tgt_pktid;
     sc_signal<size_t>       r_tgt_trdid;
+    sc_signal<size_t>       r_tgt_plen;
     sc_signal<bool>         r_tgt_req;
     sc_signal<bool>         r_tgt_icache_req;
     sc_signal<bool>         r_tgt_dcache_req;
+    sc_signal<bool>         r_tgt_icache_rsp;
+    sc_signal<bool>         r_tgt_dcache_rsp;
 
     // INVAL CHECK FSM
     sc_signal<int>          r_inval_itlb_fsm;          
@@ -453,6 +458,15 @@ private:
     uint32_t m_cost_ins_tlb_miss_frz;       // number of frozen cycles related to instruction tlb miss
     uint32_t m_cost_data_tlb_miss_frz;      // number of frozen cycles related to data tlb miss
 
+    uint32_t m_cost_ins_waste_wait_frz;     // number of frozen cycles related to ins wait coherence operate 
+    uint32_t m_cost_ins_tlb_sw_frz;         // number of frozen cycles related to ins context switch
+    uint32_t m_cost_ins_cache_flush_frz;    // number of frozen cycles related to ins cache flush 
+
+    uint32_t m_cpt_ins_tlb_cleanup;         // number of ins tlb cleanup 
+    uint32_t m_cost_data_waste_wait_frz;    // number of frozen cycles related to data wait coherence operate
+    uint32_t m_cost_data_tlb_sw_frz;        // number of frozen cycles related to data context switch
+    uint32_t m_cost_data_cache_flush_frz;   // number of frozen cycles related to data cache flush
+
     uint32_t m_cpt_itlbmiss_transaction;    // number of itlb miss transactions
     uint32_t m_cpt_itlb_write_transaction;  // number of itlb write ET transactions
     uint32_t m_cpt_dtlbmiss_transaction;    // number of dtlb miss transactions
@@ -465,6 +479,13 @@ private:
 
     uint32_t m_cpt_cc_update;               // number of coherence update packets 
     uint32_t m_cpt_cc_inval;                // number of coherence inval packets
+    uint32_t m_cpt_cc_broadcast;            // number of coherence broadcast packets
+
+    uint32_t m_cost_ins_tlb_inval_frz;      // number of frozen cycles related to checking ins tlb invalidate
+    uint32_t m_cpt_ins_tlb_inval;           // number of ins tlb invalidate
+
+    uint32_t m_cost_data_tlb_inval_frz;     // number of frozen cycles related to checking data tlb invalidate    
+    uint32_t m_cpt_data_tlb_inval;          // number of data tlb invalidate
 
 protected:
     SC_HAS_PROCESS(VciCcVCacheWrapper2);

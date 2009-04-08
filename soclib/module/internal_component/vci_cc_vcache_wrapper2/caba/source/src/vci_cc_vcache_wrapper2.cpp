@@ -134,8 +134,10 @@ const char *tgt_fsm_state_str[] = {
         "TGT_IDLE",
         "TGT_UPDT_WORD",
         "TGT_UPDT_DATA",
-        "TGT_REQ",
-        "TGT_RSP",
+        "TGT_REQ_BROADCAST",
+        "TGT_REQ_DCACHE",
+        "TGT_RSP_BROADCAST",
+        "TGT_RSP_DCACHE",
     };	
 const char *inval_itlb_fsm_state_str[] = {
         "INVAL_ITLB_IDLE",        
@@ -533,7 +535,7 @@ tmpl(void)::transition()
         m_cpt_icache_dir_read   = 0;
         m_cpt_icache_dir_write  = 0;
 
-	    m_cpt_frz_cycles   = 0;
+	m_cpt_frz_cycles   = 0;
         m_cpt_total_cycles = 0;
 
         m_cpt_read         = 0;
@@ -642,104 +644,166 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////////////////////////////////////////////////////
     
     switch(r_vci_tgt_fsm) {
-
+    //////////////
     case TGT_IDLE:
+    {
         if ( p_vci_tgt.cmdval.read() ) 
         {
             addr36_t address = p_vci_tgt.address.read();
-            addr36_t cell    = address - m_segment.baseAddress();
-            if ( ! m_segment.contains(address) ) 
-            {
-                std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
-                std::cout << "out of segment VCI command received" << std::endl;
-                exit(0);
-            }
+
             if ( p_vci_tgt.cmd.read() != vci_param::CMD_WRITE) 
             {
                 std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
                 std::cout << "the received VCI command is not a write" << std::endl;
                 exit(0);
             }
+
+            // multi-update or multi-invalidate for data type
+            if ( ( address != 0x3 ) && ( ! m_segment.contains(address)) ) 
+            {
+                std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
+                std::cout << "out of segment VCI command received for a multi-updt or multi-inval request" << std::endl;
+                exit(0);
+            }
+
             r_tgt_srcid = p_vci_tgt.srcid.read();
             r_tgt_trdid = p_vci_tgt.trdid.read();
             r_tgt_pktid = p_vci_tgt.pktid.read();
+            r_tgt_plen  = p_vci_tgt.plen.read(); // todo: wait L2 modification
             r_tgt_addr = (addr36_t)p_vci_tgt.wdata.read() * m_dcache_words * 4; 
 
-            if (cell == 0)                      // invalidate   
-            {                         
+            if ( address == 0x3 ) // broadcast invalidate for data or instruction type
+            {
                 if ( ! p_vci_tgt.eop.read() ) 
                 {
                     std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
-                    std::cout << "the INVALIDATE command length must be one word" << std::endl;
+                    std::cout << "the BROADCAST INVALIDATE command length must be one word" << std::endl;
                     exit(0);
                 }
                 r_tgt_update = false; 
-                r_vci_tgt_fsm = TGT_REQ;
-                m_cpt_cc_inval++ ;
-            } 
-            else                                // update
-            {                                
-                if ( p_vci_tgt.eop.read() ) 
-                {
-                    std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
-                    std::cout << "the UPDATE command length must be N+2 words" << std::endl;
-                    exit(0);
-                }
-                r_tgt_update = true; 
-                r_vci_tgt_fsm = TGT_UPDT_WORD;
-                m_cpt_cc_update++ ;
+                r_vci_tgt_fsm = TGT_REQ_BROADCAST;
+                m_cpt_cc_broadcast++;
             }
+            else                // multi-update or multi-invalidate for data type
+            {
+                addr36_t cell = address - m_segment.baseAddress();   
+
+                if (cell == 0)                      // invalidate   
+                {                         
+                    if ( ! p_vci_tgt.eop.read() ) 
+                    {
+                        std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
+                        std::cout << "the MULTI-INVALIDATE command length must be one word" << std::endl;
+                        exit(0);
+                    }
+                    r_tgt_update = false; 
+                    r_vci_tgt_fsm = TGT_REQ_DCACHE;
+                    m_cpt_cc_inval++ ;
+                } 
+                else                                // update
+                {                                
+                    if ( p_vci_tgt.eop.read() ) 
+                    {
+                        std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
+                        std::cout << "the MULTI-UPDATE command length must be N+2 words" << std::endl;
+                        exit(0);
+                    }
+                    r_tgt_update = true; 
+                    r_vci_tgt_fsm = TGT_UPDT_WORD;
+                    m_cpt_cc_update++ ;
+                }     
+            } // end if address    
         } // end if cmdval
         break;
-
+    }
+    ////////////////////
     case TGT_UPDT_WORD:
+    {
         if (p_vci_tgt.cmdval.read()) 
         {
             if ( p_vci_tgt.eop.read() ) 
             {
                 std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
-                std::cout << "the UPDATE command length must be N+2 words" << std::endl;
+                std::cout << "the MULTI-UPDATE command length must be N+2 words" << std::endl;
                 exit(0);
             }
             for ( size_t i=0 ; i<m_dcache_words ; i++ ) r_tgt_val[i] = false;
-            r_tgt_word = p_vci_tgt.wdata.read();
+            r_tgt_word = p_vci_tgt.wdata.read(); // the first modified word index
             r_vci_tgt_fsm = TGT_UPDT_DATA;
         }
         break;
-
+    }
+    ////////////////////
     case TGT_UPDT_DATA:
+    {
         if (p_vci_tgt.cmdval.read()) 
         {
             size_t word = r_tgt_word.read();
-            if ( word >= m_dcache_words ) 
+            if (word >= m_dcache_words) 
             {
                 std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
-                std::cout << "the reveived UPDATE command length is wrong" << std::endl;
+                std::cout << "the reveived MULTI-UPDATE command length is wrong" << std::endl;
                 exit(0);
             }
             r_tgt_buf[word] = p_vci_tgt.wdata.read();
             if(p_vci_tgt.be.read())    r_tgt_val[word] = true;
             r_tgt_word = word + 1;
-            if (p_vci_tgt.eop.read())  r_vci_tgt_fsm = TGT_REQ;
+            if (p_vci_tgt.eop.read())  r_vci_tgt_fsm = TGT_REQ_DCACHE;
         }
         break;
-
-    case TGT_REQ:
+    }
+    ///////////////////////
+    case TGT_REQ_BROADCAST:
+    {
         if ( !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) 
         {
-            r_vci_tgt_fsm = TGT_RSP; 
+            r_vci_tgt_fsm = TGT_RSP_BROADCAST; 
             r_tgt_icache_req = true;
             r_tgt_dcache_req = true;
         }
         break;
-
-    case TGT_RSP:
-        if ( p_vci_tgt.rspack.read() && !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) 
+    }
+    ////////////////////
+    case TGT_REQ_DCACHE:
+    {
+        if ( !r_tgt_dcache_req.read() ) 
         {
-            r_vci_tgt_fsm = TGT_IDLE; 
+            r_vci_tgt_fsm = TGT_RSP_DCACHE; 
+            r_tgt_dcache_req = true;
         }
         break;
+    }
+    ///////////////////////
+    case TGT_RSP_BROADCAST:
+    {
+        if ( p_vci_tgt.rspack.read() && !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() ) 
+        {
+            // one response
+            if ( !r_tgt_icache_rsp || !r_tgt_dcache_rsp )
+            {
+                r_vci_tgt_fsm = TGT_IDLE; 
+                r_tgt_icache_rsp = false;
+                r_tgt_dcache_rsp = false;
+            }
 
+            // if data and instruction have the inval line, need two responses  
+            if ( r_tgt_icache_rsp && r_tgt_dcache_rsp )
+            {
+                r_tgt_icache_rsp = false; // only reset one for respond the second time 
+            }
+        }
+        break;
+    }
+    ////////////////////
+    case TGT_RSP_DCACHE:
+    {
+        if ( p_vci_tgt.rspack.read() && !r_tgt_dcache_req.read() ) 
+        {
+            r_vci_tgt_fsm = TGT_IDLE;
+            r_tgt_dcache_rsp = false; 
+        }
+        break;
+    }
     } // end switch TGT_FSM
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -810,6 +874,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 
         if (r_dcache_xtn_req)
         {
+            if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
+            
             if ((int)r_dcache_type_save == (int)iss_t::XTN_PTPR )  
             {
                 r_icache_way = 0;
@@ -845,7 +911,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // external cache invalidate request
         if ( r_tgt_icache_req )
         {
-            if ( ireq.valid ) m_cost_ins_miss_frz++;
+            if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
             break;
@@ -854,7 +920,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // external tlb invalidate request
         if ( r_ccinval_k_itlb_req || r_ccinval_m_itlb_req )
         {
-            if ( ireq.valid ) m_cost_ins_miss_frz++;
+            if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
             break;
@@ -912,6 +978,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 {
                     if (r_dcache_itlb_ccinval_check_req && (r_dcache_itlb_ccinval_check_line == icache_tlb_nline))
                     {
+                        m_cost_ins_waste_wait_frz++;
                         break;
                     }
 
@@ -988,6 +1055,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             {
                 r_icache_paddr_save = tlb_ipaddr;   // save actual physical address for BIS
                 r_icache_fsm = ICACHE_BIS;
+                m_cost_ins_miss_frz++;
             }
             else    // cached or uncached access with a correct speculative physical address 
             {        
@@ -1024,12 +1092,13 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     ////////////////
     case ICACHE_BIS: 
     {
+        m_cost_ins_miss_frz++;
         // external cache invalidate request
         if ( r_tgt_icache_req )
         {
-            if ( ireq.valid ) m_cost_ins_miss_frz++;
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1038,13 +1107,16 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
-        
+       
+        // using page is invalidated 
         if ( r_icache_inval_tlb_rsp )
         {
             r_icache_inval_tlb_rsp = false;
             r_icache_fsm = ICACHE_IDLE;
+            m_cost_ins_tlb_miss_frz++;
             break;
         }
 
@@ -1053,11 +1125,6 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 
         // acces is always cached in this state
         icache_hit = r_icache.read(r_icache_paddr_save, &icache_ins);
-        if ( r_icache_inval_rsp )   // only used for cc_ins_inval being broadcast
-        {
-            icache_hit = false;
-            r_icache_inval_rsp = false;
-        } 
 
         m_cpt_ins_read++;
         if ( !icache_hit )
@@ -1065,7 +1132,6 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             r_icache_miss_req = true;
             r_icache_fsm = ICACHE_MISS_WAIT;
             m_cpt_ins_miss++;
-            m_cost_ins_miss_frz++;
         } 
         else
         {
@@ -1080,14 +1146,14 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     //////////////////////
     case ICACHE_TLB1_READ:
     {
-        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
+        m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_icache_req )
         {
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1096,6 +1162,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1106,9 +1173,9 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 switch((r_dcache_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) { 
                 case PTD:               // 4K page TLB
             	    r_icache_ptba_ok    = true;	
-                    r_icache_ptba_save  = (addr36_t)(r_dcache_rsp_itlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS; 
+                    r_icache_ptba_save  = (addr36_t)((r_dcache_rsp_itlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS; 
                     r_icache_id1_save   = ireq.addr >> PAGE_M_NBITS;
-                    r_icache_paddr_save = (addr36_t)(r_dcache_rsp_itlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS |
+                    r_icache_paddr_save = (addr36_t)((r_dcache_rsp_itlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS |
                                             (addr36_t)(((ireq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2); 
                     r_icache_tlb_read_dcache_req = true;
                     r_icache_fsm        = ICACHE_TLB2_READ;
@@ -1161,14 +1228,14 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     ///////////////////////
     case ICACHE_TLB1_WRITE:  
     {
-        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
+        m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_icache_req )
         {
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
         // external tlb invalidate request
@@ -1176,6 +1243,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1213,14 +1281,14 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     //////////////////////
     case ICACHE_TLB1_UPDT:
     {
-        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
+        m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_icache_req )
         {
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1229,6 +1297,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1252,14 +1321,14 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////
     case ICACHE_TLB2_READ:
     {
-        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
+        m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_icache_req )
         {
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1268,6 +1337,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1281,7 +1351,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                     r_icache_tlb_et_dcache_req = true;
                     r_icache_fsm        = ICACHE_TLB2_WRITE;
                     m_cpt_ins_tlb_write_et++;
-                    break;  
+                    break; 
+                case PTD: 
                 case PTE_OLD:               // already marked
                     r_icache_fsm        = ICACHE_TLB2_UPDT;
                     r_icache_pte_update = r_dcache_rsp_itlb_miss;
@@ -1320,14 +1391,14 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////////
     case ICACHE_TLB2_WRITE:
     {  
-        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
+        m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_icache_req )
         {
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
         // external tlb invalidate request
@@ -1335,6 +1406,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1372,15 +1444,14 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////
     case ICACHE_TLB2_UPDT: 
     {
-
-        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
+        m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_icache_req )
         {
             r_icache_fsm = ICACHE_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1389,6 +1460,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1415,6 +1487,9 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         size_t way = r_icache_way;
         size_t set = r_icache_set;
         bool clean = false;
+
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
+        m_cost_ins_tlb_sw_frz++;
 
         // 4M page size TLB flush leads to cleanup req to data cache 
         if ( !r_dcache_itlb_cleanup_req )    // last cleanup finish
@@ -1454,6 +1529,9 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         size_t set = r_icache_set;
         bool clean = false;
 
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
+        m_cost_ins_tlb_sw_frz++;
+
         // 4K page size TLB flush leads to cleanup req to data cache 
         if ( !r_dcache_itlb_cleanup_req )    // last cleanup finish
         {
@@ -1477,8 +1555,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 
             if ((way == m_itlb_k_ways) && (set == m_itlb_k_sets))
             {
-                r_icache_fsm = ICACHE_IDLE;
                 r_dcache_xtn_req = false;
+                r_icache_fsm = ICACHE_IDLE;
                 break;
             }
         }
@@ -1487,6 +1565,15 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////
     case ICACHE_TLB_FLUSH:
     {   
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
+
+        // external tlb invalidate request
+        if ( r_ccinval_k_itlb_req || r_ccinval_m_itlb_req ) 
+        {
+            r_ccinval_k_itlb_req = false; 
+            r_ccinval_m_itlb_req = false;
+        }
+
         // data cache flush leads to ins tlb flush, flush all tlb entry 
         icache_m_tlb.flush(true);    // global entries are invalidated
         icache_k_tlb.flush(true);    // global entries are invalidated
@@ -1506,6 +1593,9 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         size_t way = r_icache_way;
         size_t set = r_icache_set;
         bool clean = false;
+
+        m_cost_ins_cache_flush_frz++;
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
 
         // cache flush and send cleanup to external
         if ( !r_icache_cleanup_req )
@@ -1539,6 +1629,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////
     case ICACHE_TLB_INVAL:  
     {
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
+
         if ( icache_m_tlb.translate(r_dcache_wdata_save) )
         {
             r_icache_page_k_save = false; 
@@ -1555,15 +1647,17 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             r_icache_fsm = ICACHE_IDLE;
         }
         break;
-	}
+    }
     ///////////////////////////
     case ICACHE_TLB_INVAL_DONE:
     {
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
+
         data_t victim_index = 0;
 
         if ( !r_dcache_itlb_cleanup_req )
         {
-	        if (r_icache_page_k_save)   
+	    if (r_icache_page_k_save)   
             {
                 r_dcache_itlb_cleanup_req = icache_k_tlb.inval(r_dcache_wdata_save,&victim_index);
             }
@@ -1584,6 +1678,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         addr36_t    ipaddr = 0;                     
         bool        icache_hit_t_m = false;
         bool        icache_hit_t_k = false;
+
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
 
         if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
         {
@@ -1611,6 +1707,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////////////
     case ICACHE_CACHE_INVAL_DONE:
     {
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
+
         if ( !r_icache_cleanup_req )
         {    
             // invalidate and cleanup if necessary
@@ -1626,23 +1724,32 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     {
         m_cost_ins_miss_frz++;
 
-        // external cache invalidate request
-        if ( r_tgt_icache_req )     
-        {
-            r_icache_fsm = ICACHE_CC_INVAL;
-            r_icache_fsm_save = r_icache_fsm;
-            break;
-        }
-
         // external tlb invalidate request
         if ( r_ccinval_k_itlb_req || r_ccinval_m_itlb_req )
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
         
-        if ( !r_icache_miss_req && !r_icache_inval_rsp ) // Miss read response and no cache invalidation
+        if ( !r_icache_miss_req && r_icache_inval_tlb_rsp ) // Miss read response and tlb invalidation
+        {
+            if ( r_vci_rsp_ins_error ) 
+            {
+                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_icache_bad_vaddr = ireq.addr;
+                r_icache_fsm = ICACHE_ERROR;
+            } 
+            else
+            {
+                r_icache_fsm = ICACHE_IDLE;
+            }
+            r_icache_inval_tlb_rsp = false;
+            m_cost_ins_tlb_miss_frz++;
+        }
+
+        if ( !r_icache_miss_req && !r_icache_inval_tlb_rsp ) // Miss read response and no tlb invalidation
         {
             if ( r_vci_rsp_ins_error ) 
             {
@@ -1654,38 +1761,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             {
                 r_icache_fsm = ICACHE_MISS_UPDT;  
             } 
-        }
-
-        // r_icache_inval_rsp only used for cc_ins_inval being broadcast
-        if ( !r_icache_miss_req && r_icache_inval_rsp ) // Miss read response and cache invalidation
-        {
-            if ( r_vci_rsp_ins_error ) 
-            {
-                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
-                r_icache_bad_vaddr = ireq.addr;
-                r_icache_inval_rsp = false;
-                r_icache_fsm = ICACHE_ERROR;
-            } 
-            else 
-            {
-                r_icache_inval_rsp = false;
-                r_icache_fsm = ICACHE_IDLE;  
-            } 
-        }
-
-        if ( !r_icache_miss_req && r_icache_inval_tlb_rsp ) // Miss read response and tlb invalidation
-        {
-            if ( r_vci_rsp_ins_error ) 
-            {
-                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
-                r_icache_bad_vaddr = ireq.addr;
-                r_icache_fsm = ICACHE_ERROR;
-            } 
-            else
-            {
-                r_icache_inval_tlb_rsp = false;
-                r_icache_fsm = ICACHE_IDLE;
-            }
+            m_cost_ins_tlb_miss_frz++;
         }
         break;
     }
@@ -1694,19 +1770,12 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     {
         m_cost_ins_miss_frz++;
 
-        // external cache invalidate request
-        if ( r_tgt_icache_req ) 
-        {
-            r_icache_fsm = ICACHE_CC_INVAL;
-            r_icache_fsm_save = r_icache_fsm;
-            break;
-        }
-
         // external tlb invalidate request
         if ( r_ccinval_k_itlb_req || r_ccinval_m_itlb_req )
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1735,30 +1804,23 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             } 
             else 
             {
-                r_icache_inval_tlb_rsp = false;
                 r_icache_fsm = ICACHE_IDLE;
             }
+            r_icache_inval_tlb_rsp = false;
         }
         break;
     }
     //////////////////////
     case ICACHE_MISS_UPDT:
     {
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
-
-        // external cache invalidate request
-        if ( r_tgt_icache_req )   
-        {
-            r_icache_fsm = ICACHE_CC_INVAL;
-            r_icache_fsm_save = r_icache_fsm;
-            break;
-        }
+        m_cost_ins_miss_frz++;
 
         // external tlb invalidate request
         if ( r_ccinval_k_itlb_req || r_ccinval_m_itlb_req )
         {
             r_icache_fsm = ICACHE_TLB_CC_INVAL;
             r_icache_fsm_save = r_icache_fsm;
+            m_cost_ins_waste_wait_frz++;
             break;
         }
 
@@ -1766,10 +1828,11 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             r_icache_inval_tlb_rsp = false;
             r_icache_fsm = ICACHE_IDLE;
+            m_cost_ins_tlb_miss_frz++;
             break;
         }
 
-        if ( !r_icache_cleanup_req && !r_icache_inval_rsp ) // Miss update and no invalidation
+        if ( !r_icache_cleanup_req ) // Miss update and no invalidation
         {
             data_t* buf = r_icache_miss_buf;
             addr36_t  victim_index = 0;
@@ -1780,13 +1843,6 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             r_icache_cleanup_line = victim_index;            
 
             r_icache_fsm = ICACHE_IDLE;
-            break;
-        }
-        if ( r_icache_inval_rsp )   // Miss update and invalidation, only used for cc_ins_inval being broadcast
-        {
-            r_icache_inval_rsp = false;
-            r_icache_fsm = ICACHE_IDLE;
-            break;
         }
         break;
     }
@@ -1804,19 +1860,10 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     /////////////////////
     case ICACHE_CC_INVAL:  
     {                       
-        if ( ireq.valid ) m_cost_ins_miss_frz++;
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
         m_cpt_icache_dir_read += m_icache_ways;
 
-        // invalidate cache
-        if( (( r_icache_fsm_save == ICACHE_MISS_WAIT ) || ( r_icache_fsm_save == ICACHE_MISS_UPDT ) || ( r_icache_fsm_save == ICACHE_BIS )) && 
-            ((r_icache_paddr_save.read() & ~((m_icache_words<<2)-1)) == (r_tgt_addr.read() & ~((m_icache_words<<2)-1))) ) 
-        {
-            r_icache_inval_rsp = true;
-        } 
-        else 
-        {
-            r_icache.inval(r_tgt_addr.read());
-        }
+        r_tgt_icache_rsp = r_icache.inval(r_tgt_addr.read());
         r_tgt_icache_req = false;
         r_icache_fsm = r_icache_fsm_save;
         break;
@@ -1826,13 +1873,13 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     {
         size_t icache_tlb_nline = 0;
 
-        if ( ireq.valid ) m_cost_ins_miss_frz++;        
+        if ( ireq.valid ) m_cost_ins_waste_wait_frz++;        
 
         // invalidate cache
         if( (( r_icache_fsm_save == ICACHE_TLB1_READ ) || ( r_icache_fsm_save == ICACHE_TLB2_READ )  ||
              ( r_icache_fsm_save == ICACHE_TLB1_WRITE )|| ( r_icache_fsm_save == ICACHE_TLB2_WRITE ) ||
              ( r_icache_fsm_save == ICACHE_TLB1_UPDT ) || ( r_icache_fsm_save == ICACHE_TLB2_UPDT )) && 
-            ((r_icache_paddr_save.read() & ~((m_icache_words<<2)-1)) == r_tgt_addr.read()) ) 
+            (((r_icache_paddr_save.read() & ~((m_icache_words<<2)-1)) >> (uint32_log2(m_icache_words) + 2) ) == r_dcache_itlb_ccinval_check_line) ) 
         {
             r_icache_inval_tlb_rsp = true;
         } 
@@ -1878,13 +1925,16 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_ccinval_itlb_way = 0; 
             r_ccinval_itlb_set = 0;
-            r_inval_itlb_fsm = INVAL_ITLB_CHECK_FIRST;    
+            r_inval_itlb_fsm = INVAL_ITLB_CHECK_FIRST;   
+            m_cost_ins_tlb_inval_frz++; 
         }   
         break;
     }
     ////////////////////////////
     case INVAL_ITLB_CHECK_FIRST:
     {
+        m_cost_ins_tlb_inval_frz++; 
+
         size_t way = r_ccinval_itlb_way; 
         size_t set = r_ccinval_itlb_set;
         bool end = false;        
@@ -1900,7 +1950,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             r_ccinval_itlb_set = set;
             r_itlb_cc_check_end = end;
             r_ccinval_itlb_k = false; 
-            r_inval_itlb_fsm = INVAL_ITLB_REQ_WAIT;    
+            r_inval_itlb_fsm = INVAL_ITLB_REQ_WAIT; 
+            m_cpt_ins_tlb_inval++;   
         }        
         else if ( k_hit )
         {
@@ -1910,6 +1961,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             r_itlb_cc_check_end = end;
             r_ccinval_itlb_k = true; 
             r_inval_itlb_fsm = INVAL_ITLB_REQ_WAIT;    
+            m_cpt_ins_tlb_inval++;   
         }
         else
         {
@@ -1921,12 +1973,13 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     /////////////////////////
     case INVAL_ITLB_REQ_WAIT:
     {
+        m_cost_ins_tlb_inval_frz++;
+ 
         if ( !r_ccinval_k_itlb_req && !r_ccinval_m_itlb_req ) 
         {
             if ( !r_itlb_cc_check_end )
             {
                 r_inval_itlb_fsm = INVAL_ITLB_CHECK; 
-                   
             }
             else
             {
@@ -1943,7 +1996,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         bool m_hit = false; 
         bool k_hit = false;
         bool end = false;
- 
+
+        m_cost_ins_tlb_inval_frz++; 
+
         // r_tgt_addr is number of line
         if ( !r_ccinval_itlb_k )
         {
@@ -1964,6 +2019,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             r_itlb_cc_check_end = end;
             r_ccinval_itlb_k = false; 
             r_inval_itlb_fsm = INVAL_ITLB_REQ_WAIT;    
+            m_cpt_ins_tlb_inval++;   
         }        
         else if ( k_hit )
         {
@@ -1973,6 +2029,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             r_itlb_cc_check_end = end;
             r_ccinval_itlb_k = true; 
             r_inval_itlb_fsm = INVAL_ITLB_REQ_WAIT;    
+            m_cpt_ins_tlb_inval++;   
         }
         else
         {
@@ -1990,6 +2047,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         r_ccinval_itlb_way = 0; 
         r_ccinval_itlb_set = 0; 
         r_inval_itlb_fsm = INVAL_ITLB_IDLE;    
+        m_cost_ins_tlb_inval_frz++; 
         break;
     }
     } // end switch r_inval_itlb_fsm
@@ -2045,6 +2103,16 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++; 
+            break;
+        }
+
+        // external tlb invalidate request
+        if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
+        {
+            r_dcache_fsm = DCACHE_TLB_CC_INVAL;
+            r_dcache_fsm_save = r_dcache_fsm;
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++; 
             break;
         }
 
@@ -2090,6 +2158,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++;
             break;
         }        
 
@@ -2098,6 +2167,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++;
             break;
         }
 
@@ -2105,6 +2175,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         if ( r_dcache_itlb_cleanup_req )
         {
             r_dcache_fsm = DCACHE_ITLB_CLEANUP;
+            m_cpt_ins_tlb_cleanup++;
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++;
             break;
         }    
         // ins tlb miss
@@ -2112,24 +2184,33 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     	{
             uint32_t rsp_itlb_miss;
     	    bool itlb_hit_dcache = r_dcache.read(r_icache_paddr_save, &rsp_itlb_miss);	
+            m_cpt_dcache_data_read += m_dcache_ways;
+            m_cpt_dcache_dir_read += m_dcache_ways;
 
     	    if ( itlb_hit_dcache )  // ins TLB request hits in data cache 
     	    {
                 r_dcache_rsp_itlb_miss = rsp_itlb_miss; 
     	    	r_icache_tlb_read_dcache_req = false;
-                r_dcache.setinbit(r_icache_paddr_save, r_dcache_in_itlb, true);
+                
+                // set TLB bit if it's a PTE
+                if (((rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) > PTD)
+                {
+                    r_dcache.setinbit(r_icache_paddr_save, r_dcache_in_itlb, true);
+                }
     	    }
     	    else                    // ins TLB request miss in data cache
     	    {
                 r_dcache_itlb_read_req = true;
                 r_dcache_fsm = DCACHE_ITLB_READ;
             }
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++; 
     	}
     	else if ( r_icache_tlb_et_dcache_req ) // ins tlb write ET
     	{
             assert(r_dcache.write(r_icache_paddr_save, r_icache_pte_update) && "Write on miss ignores data");
             r_dcache_itlb_et_req = true;
-	        r_dcache_fsm = DCACHE_ITLB_ET_WRITE;	    		
+	    r_dcache_fsm = DCACHE_ITLB_ET_WRITE;	    		
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++; 
     	}
         else if (dreq.valid) 
         {
@@ -2350,6 +2431,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 {
                     if (r_dcache_dtlb_ccinval_check_req && (r_dcache_dtlb_ccinval_check_line == dcache_tlb_nline))
                     {
+                        m_cost_data_tlb_miss_frz++;
                         break;
                     }
 
@@ -2419,6 +2501,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             {
                 r_dcache_hit_p_save = dcache_hit_p;
                 r_dcache_fsm = DCACHE_BIS;
+                m_cost_data_miss_frz++;
             }
             else  // cached or uncached access with a correct speculative physical address
             {
@@ -2492,6 +2575,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                                     r_dcache_fsm = DCACHE_DTLB1_READ_CACHE;
                                 }
                             }
+                            m_cost_data_tlb_miss_frz++;
                         }
                         else                                    // no cache update, not dirty bit update
                         {
@@ -2540,6 +2624,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }
 
@@ -2548,6 +2633,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }
         // Using tlb entry is invalidated 
@@ -2555,6 +2641,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_inval_tlb_rsp = false;
             r_dcache_fsm = DCACHE_IDLE;
+            m_cost_data_tlb_miss_frz++;
             break;
         }
 
@@ -2563,11 +2650,6 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
         // acces always cached in this state
         dcache_hit = r_dcache.read(r_dcache_paddr_save, &dcache_rdata);
-        if ( r_dcache_inval_rsp )
-        {
-            dcache_hit = false;
-            r_dcache_inval_rsp = false;
-        }    
 
         if ( dreq.type == iss_t::DATA_READ )  // cached read
         {
@@ -2627,6 +2709,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                         r_dcache_fsm = DCACHE_DTLB1_READ_CACHE;
                     }
                 }
+                m_cost_data_tlb_miss_frz++;
             }
             else                                    // no cache update, not dirty bit update
             {
@@ -2640,13 +2723,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     ////////////////////////////
     case DCACHE_DTLB1_READ_CACHE:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_dcache_req )   
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }        
 
@@ -2655,16 +2739,21 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
+            break;
+        }
+
+        // Using tlb entry is invalidated 
+        if ( r_dcache_inval_tlb_rsp )
+        {
+            r_dcache_inval_tlb_rsp = false;
+            r_dcache_fsm = DCACHE_IDLE;
+            m_cost_data_tlb_miss_frz++;
             break;
         }
 
         data_t tlb_data = 0;
         bool tlb_hit_cache = r_dcache.read(r_dcache_tlb_paddr, &tlb_data);
-        if ( r_dcache_inval_rsp )
-        {
-            tlb_hit_cache = false;
-            r_dcache_inval_rsp = false;
-        }
 
         // DTLB request hit in cache
         if ( tlb_hit_cache )
@@ -2672,15 +2761,15 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             switch((tlb_data & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
             case PTD:                   // 4K page
                 r_dcache_ptba_ok   = true;
-                r_dcache_ptba_save = (addr36_t)(tlb_data & PTD_PTP_MASK) << PAGE_K_NBITS;  
+                r_dcache_ptba_save = (addr36_t)((tlb_data & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS;  
                 r_dcache_id1_save  = dreq.addr >> PAGE_M_NBITS;
-                r_dcache_tlb_paddr = (addr36_t)((tlb_data & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+                r_dcache_tlb_paddr = (addr36_t)(((tlb_data & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                      (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
                 if ( r_dcache_tlb_ptba_read )
                 {
                     r_dcache_tlb_ptba_read = false;
                     r_dcache_tlb_dirty_req = true;
-                    assert(r_dcache.write(((addr36_t)((tlb_data & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+                    assert(r_dcache.write(((addr36_t)(((tlb_data & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                            (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2)), 
                                           r_dcache_pte_update) && "Write on miss ignores data");
                     r_dcache_fsm = DCACHE_WRITE_DIRTY;
@@ -2723,37 +2812,15 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     //////////////////////
     case DCACHE_TLB1_READ:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
-
-        // external cache invalidate request
-        if ( r_tgt_dcache_req )   
-        {
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        }        
+        m_cost_data_tlb_miss_frz++;
 
         // external tlb invalidate request
         if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req ) 
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
-        }
-   
-        if ( !r_dcache_tlb_read_req && !r_dcache_inval_tlb_rsp ) // TLB miss response and no invalidation      
-        {
-            if ( r_vci_rsp_data_error ) // VCI response error
-            {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
-                r_dcache_bad_vaddr = dreq.addr;
-                r_dcache_fsm = DCACHE_ERROR; 
-            }
-            else                        // VCI response ok
-            {
-                r_dcache_fsm = DCACHE_TLB1_READ_UPDT; 
-            }
         }
 
         if ( !r_dcache_tlb_read_req && r_dcache_inval_tlb_rsp )  // TLB miss response and invalidation
@@ -2766,35 +2833,50 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             }
             else
             {
-                r_dcache_inval_tlb_rsp = false;
                 r_dcache_fsm = DCACHE_IDLE; 
             }
-        }   
+            r_dcache_inval_tlb_rsp = false;
+        }  
+
+        if ( !r_dcache_tlb_read_req && !r_dcache_inval_tlb_rsp )  // TLB miss response and no invalidation
+        {
+            if ( r_vci_rsp_data_error ) // VCI response ko
+            {
+                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+                r_dcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR; 
+            }
+            else
+            {
+                r_dcache_fsm = DCACHE_TLB1_READ_UPDT; 
+            }
+        }  
         break;
     }
     //////////////////////////
     case DCACHE_TLB1_READ_UPDT:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
-
-        // external cache invalidate request
-        if ( r_tgt_dcache_req )   
-        {
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        }        
+        m_cost_data_tlb_miss_frz++;
 
         // external tlb invalidate request
         if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req ) 
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }
 
-        if ( !r_dcache_cleanup_req && !r_dcache_inval_rsp ) // TLB update in cache and no invalidate 
+        // Using tlb entry is invalidated 
+        if ( r_dcache_inval_tlb_rsp )
+        {
+            r_dcache_inval_tlb_rsp = false;
+            r_dcache_fsm = DCACHE_IDLE;
+            m_cost_data_tlb_miss_frz++;
+            break;
+        }
+
+        if ( !r_dcache_cleanup_req )
         {
             // update dcache
             uint32_t rsp_dtlb_miss = 0;
@@ -2805,20 +2887,21 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
             r_dcache_cleanup_req = r_dcache.update(r_dcache_tlb_paddr, r_dcache_in_itlb, r_dcache_in_dtlb, &way, &set, r_dcache_miss_buf, &victim_index);
             r_dcache_cleanup_line = victim_index;
+
             r_dcache.read(r_dcache_tlb_paddr, &rsp_dtlb_miss);	
 
             switch((rsp_dtlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
             case PTD:                   // 4K page
                 r_dcache_ptba_ok   = true;
-                r_dcache_ptba_save = (addr36_t)(rsp_dtlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS;  
+                r_dcache_ptba_save = (addr36_t)((rsp_dtlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS;  
                 r_dcache_id1_save  = dreq.addr >> PAGE_M_NBITS;
-                r_dcache_tlb_paddr = (addr36_t)((rsp_dtlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+                r_dcache_tlb_paddr = (addr36_t)(((rsp_dtlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                      (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
                 if ( r_dcache_tlb_ptba_read )
                 {
                     r_dcache_tlb_ptba_read = false;
                     r_dcache_tlb_dirty_req = true;
-                    assert(r_dcache.write(((addr36_t)((rsp_dtlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+                    assert(r_dcache.write(((addr36_t)(((rsp_dtlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                            (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2)), 
                                           r_dcache_pte_update) && "Write on miss ignores data");
                     dcache_fsm = DCACHE_WRITE_DIRTY;
@@ -2834,19 +2917,19 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 r_dcache_pte_update = rsp_dtlb_miss | PTE_ET_MASK; 
                 assert(r_dcache.write(r_dcache_tlb_paddr, (rsp_dtlb_miss | PTE_ET_MASK)) && "Write on miss ignores data"); 
                 r_dcache_tlb_et_req = true;
-                dcache_fsm        = DCACHE_TLB1_WRITE;
+                dcache_fsm          = DCACHE_TLB1_WRITE;
                 m_cpt_data_tlb_write_et++;
                 break;  
             case PTE_OLD:             // 4M page (already marked)
                 r_dcache_ptba_ok    = false;
                 r_dcache_pte_update = rsp_dtlb_miss;
-                dcache_fsm        = DCACHE_TLB1_UPDT;
+                dcache_fsm          = DCACHE_TLB1_UPDT;
                 break;
             default:                 // unmapped
                 r_dcache_ptba_ok    = false;
                 r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED;       
                 r_dcache_bad_vaddr  = dreq.addr;
-                dcache_fsm        = DCACHE_ERROR;
+                dcache_fsm          = DCACHE_ERROR;
                 break;
             } // end switch ET
 
@@ -2892,25 +2975,19 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 }    
             }
         }
-
-        if ( r_dcache_inval_rsp )
-        {
-            r_dcache_inval_rsp = false;
-            r_dcache_fsm = DCACHE_IDLE;
-        }
         break;
     }
     //////////////////////
     case DCACHE_TLB1_WRITE:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
+        m_cost_data_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_dcache_req )   
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }        
 
@@ -2919,21 +2996,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
-        }
-
-        if ( !r_dcache_tlb_et_req && !r_dcache_inval_tlb_rsp ) // TLB ET write response and no invalidation 
-        {
-            if ( r_vci_rsp_data_error ) // VCI response error 
-            {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
-                r_dcache_bad_vaddr = dreq.addr;
-                r_dcache_fsm = DCACHE_ERROR;  
-            } 
-            else                        // VCI response ok
-            {
-                r_dcache_fsm = DCACHE_TLB1_UPDT; 
-            }
         }
         if ( !r_dcache_tlb_et_req && r_dcache_inval_tlb_rsp ) // TLB ET write response and invalidation
         {
@@ -2945,23 +3009,55 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else                        // VCI response ok
             {
-                r_dcache_inval_tlb_rsp = false;
                 r_dcache_fsm = DCACHE_IDLE; 
             }
+            r_dcache_inval_tlb_rsp = false;
+	    break;
         }
+
+        if ( !r_dcache_tlb_et_req && !r_dcache_inval_rsp && !r_dcache_inval_tlb_rsp )      
+        { 
+            if ( r_vci_rsp_data_error ) // VCI response error 
+            {
+                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
+                r_dcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;  
+            } 
+            else                        // VCI response ok
+            {
+                r_dcache_fsm = DCACHE_TLB1_UPDT; 
+            }
+	    break;
+        } 
+
+        if ( !r_dcache_tlb_et_req && r_dcache_inval_rsp )      
+        { 
+            if ( r_vci_rsp_data_error ) // VCI response error 
+            {
+                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
+                r_dcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;  
+            } 
+            else                        // VCI response ok
+            {
+                r_dcache_fsm = DCACHE_IDLE; 
+            }
+            r_dcache_inval_rsp = false;
+	    break;
+        } 
         break;
     }
     //////////////////////
     case DCACHE_TLB1_UPDT: 
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
+        m_cost_data_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_dcache_req )   
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }        
 
@@ -2970,10 +3066,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }
 
-        if ( !r_dcache_inval_tlb_rsp )
+        if ( !r_dcache_inval_tlb_rsp && !r_dcache_inval_rsp )
         {
             data_t victim_index = 0;
             if (dcache_m_tlb.update(r_dcache_pte_update,dreq.addr,(r_dcache_tlb_paddr.read() >> (uint32_log2(m_dcache_words)+2)),&victim_index))
@@ -2985,7 +3082,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         }
         else  
         {
-            r_dcache_inval_tlb_rsp = false;
+            if ( r_dcache_inval_tlb_rsp ) r_dcache_inval_tlb_rsp = false;
+            if ( r_dcache_inval_rsp ) r_dcache_inval_rsp = false;
             r_dcache_fsm = DCACHE_IDLE;
         }
         break;
@@ -2993,13 +3091,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     /////////////////////////////
     case DCACHE_DTLB2_READ_CACHE:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_dcache_req )   
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }        
 
@@ -3008,16 +3107,21 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
+            break;
+        }
+
+        // Using tlb entry is invalidated 
+        if ( r_dcache_inval_tlb_rsp )
+        {
+            r_dcache_inval_tlb_rsp = false;
+            r_dcache_fsm = DCACHE_IDLE;
+            m_cost_data_tlb_miss_frz++;
             break;
         }
 
         data_t tlb_data = 0;
         bool tlb_hit_cache = r_dcache.read(r_dcache_tlb_paddr, &tlb_data);
-        if ( r_dcache_inval_rsp )
-        {
-            tlb_hit_cache = false;
-            r_dcache_inval_rsp = false;
-        }
 
         // DTLB request hit in cache
         if ( tlb_hit_cache )
@@ -3030,6 +3134,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 r_dcache_fsm        = DCACHE_TLB2_WRITE;
                 m_cpt_data_tlb_write_et++;
                 break;  
+            case PTD:
             case PTE_OLD:               // already marked
                 r_dcache_pte_update = tlb_data;   
                 r_dcache_fsm        = DCACHE_TLB2_UPDT;
@@ -3052,37 +3157,15 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     /////////////////////
     case DCACHE_TLB2_READ:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
-
-        // external cache invalidate request
-        if ( r_tgt_dcache_req )   
-        {
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        }        
+        m_cost_data_tlb_miss_frz++;
 
         // external tlb invalidate request
         if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
-        }
-
-        if ( !r_dcache_tlb_read_req && !r_dcache_inval_tlb_rsp )  
-        {
-            if ( r_vci_rsp_data_error ) // VCI response error
-            {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS; 
-                r_dcache_bad_vaddr = dreq.addr;
-                r_dcache_fsm = DCACHE_ERROR;
-            }
-            else                        // VCI response ok
-            {
-                r_dcache_fsm = DCACHE_TLB2_READ_UPDT;
-            }
         }
         if ( !r_dcache_tlb_read_req && r_dcache_inval_tlb_rsp )  // TLB miss response and invalidation
         {
@@ -3094,39 +3177,54 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             }
             else
             {
-                r_dcache_inval_tlb_rsp = false;
                 r_dcache_fsm = DCACHE_IDLE; 
             }
+            r_dcache_inval_tlb_rsp = false;
         }   
+
+        if ( !r_dcache_tlb_read_req && !r_dcache_inval_tlb_rsp )  // TLB miss response and no invalidation
+        {
+            if ( r_vci_rsp_data_error ) // VCI response ko
+            {
+                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+                r_dcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR; 
+            }
+            else
+            {
+                r_dcache_fsm = DCACHE_TLB2_READ_UPDT; 
+            }
+        }  
         break;
     }
     //////////////////////////
     case DCACHE_TLB2_READ_UPDT:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
-
-        // external cache invalidate request
-        if ( r_tgt_dcache_req )   
-        {
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        }        
+        m_cost_data_tlb_miss_frz++;
 
         // external tlb invalidate request
         if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }
 
-        if ( !r_dcache_cleanup_req && !r_dcache_inval_rsp ) // TLB update in cache and no invalidate
+        // Using tlb entry is invalidated 
+        if ( r_dcache_inval_tlb_rsp )
+        {
+            r_dcache_inval_tlb_rsp = false;
+            r_dcache_fsm = DCACHE_IDLE;
+            m_cost_data_tlb_miss_frz++;
+            break;
+        }
+
+        if ( !r_dcache_cleanup_req )
         {
             // update cache
             uint32_t rsp_dtlb_miss;
-            addr36_t victim_index = 0;
+            addr36_t  victim_index = 0;
             size_t way = 0;
             size_t set = 0;
             int dcache_fsm = 0;
@@ -3142,7 +3240,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 assert(r_dcache.write(r_dcache_tlb_paddr, (rsp_dtlb_miss | PTE_ET_MASK)) && "Write on miss ignores data"); 
                 dcache_fsm        = DCACHE_TLB2_WRITE;
                 m_cpt_data_tlb_write_et++;
-                break;  
+                break; 
+            case PTD: 
             case PTE_OLD:               // already marked
                 r_dcache_pte_update = rsp_dtlb_miss;   
                 dcache_fsm        = DCACHE_TLB2_UPDT;
@@ -3196,25 +3295,19 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 }    
             }            
         }
-
-        if ( r_dcache_inval_rsp )
-        {
-            r_dcache_inval_rsp = false;
-            r_dcache_fsm = DCACHE_IDLE;
-        }
         break;
     }
     ////////////////////////
     case DCACHE_TLB2_WRITE:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
+        m_cost_data_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_dcache_req )   
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }        
 
@@ -3223,21 +3316,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
-        }
-
-        if (!r_dcache_tlb_et_req && !r_dcache_inval_tlb_rsp ) // TLB ET write response and no invalidation 
-        {
-            if ( r_vci_rsp_data_error ) // VCI response error 
-            {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS; 
-                r_dcache_bad_vaddr = dreq.addr;
-                r_dcache_fsm = DCACHE_ERROR; 
-            } 
-            else                        // VCI response ok
-            {
-                r_dcache_fsm = DCACHE_TLB2_UPDT; 
-            }
         }
         if ( !r_dcache_tlb_et_req && r_dcache_inval_tlb_rsp ) // TLB ET write response and invalidation 
         {
@@ -3249,23 +3329,55 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else                        // VCI response ok
             {
-                r_dcache_inval_tlb_rsp = false;
                 r_dcache_fsm = DCACHE_IDLE; 
             }
+            r_dcache_inval_tlb_rsp = false;
+	    break;
         }
+
+        if ( !r_dcache_tlb_et_req && !r_dcache_inval_rsp && !r_dcache_inval_tlb_rsp )      
+        { 
+            if ( r_vci_rsp_data_error ) // VCI response error 
+            {
+                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
+                r_dcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;  
+            } 
+            else                        // VCI response ok
+            {
+                r_dcache_fsm = DCACHE_TLB2_UPDT; 
+            }
+	    break;
+        } 
+
+        if ( !r_dcache_tlb_et_req && r_dcache_inval_rsp )      
+        { 
+            if ( r_vci_rsp_data_error ) // VCI response error 
+            {
+                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
+                r_dcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;  
+            } 
+            else                        // VCI response ok
+            {
+                r_dcache_fsm = DCACHE_IDLE; 
+            }
+            r_dcache_inval_rsp = false;
+	    break;
+        } 
         break;
     }
     //////////////////////
     case DCACHE_TLB2_UPDT:  
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
-        if ( dreq.valid ) m_cost_data_miss_frz++;
+        m_cost_data_tlb_miss_frz++;
 
         // external cache invalidate request
         if ( r_tgt_dcache_req )   
         {
             r_dcache_fsm = DCACHE_CC_CHECK;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }        
 
@@ -3274,10 +3386,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }
 
-        if ( !r_dcache_inval_tlb_rsp )
+        if ( !r_dcache_inval_tlb_rsp && !r_dcache_inval_rsp )
         {
             data_t victim_index = 0;
             if (dcache_k_tlb.update(r_dcache_pte_update,dreq.addr,(r_dcache_tlb_paddr.read() >> (uint32_log2(m_dcache_words)+2)),&victim_index))
@@ -3289,7 +3402,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         }
         else  
         {
-            r_dcache_inval_tlb_rsp = false;
+            if ( r_dcache_inval_tlb_rsp ) r_dcache_inval_tlb_rsp = false;
+            if ( r_dcache_inval_rsp ) r_dcache_inval_rsp = false;
             r_dcache_fsm = DCACHE_IDLE;
         }
         break;
@@ -3297,7 +3411,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     ///////////////////////
     case DCACHE_CTXT_SWITCH1:
     {
-        // 4M page size TLB flush leads to cleanup corresponding data cache line 
+        // 4M page size TLB flush leads to cleanup corresponding data cache line
+        m_cost_data_tlb_sw_frz++;
+ 
         data_t victim_index = 0;
         size_t way = 0;
         size_t set = 0;
@@ -3329,6 +3445,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     case DCACHE_CTXT_SWITCH2:
     {
         // 4K page size TLB flush leads to cleanup corresponding data cache line 
+        m_cost_data_tlb_sw_frz++;
+
         data_t victim_index = 0;
         size_t way = 0;
         size_t set = 0;
@@ -3388,6 +3506,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         size_t set = r_dcache_set;
         bool clean = false;
         
+        m_cost_data_cache_flush_frz++;
+
         // cache flush and send cleanup to external
         if ( !r_dcache_cleanup_req )
         {
@@ -3426,7 +3546,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 break;
             }
         }
-        break;
+	break;
     }
     //////////////////////
     case DCACHE_DTLB_INVAL: 
@@ -3454,7 +3574,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         bool cleanup = false;
         data_t victim_index = 0;
 
-		if (r_dcache_page_k_save)   
+	if (r_dcache_page_k_save)   
         {
             cleanup = dcache_k_tlb.inval(r_dcache_wdata_save, &victim_index);
         }
@@ -3555,55 +3675,19 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             drsp.valid = true;
             break;
         }
+	break;
     }
     /////////////////////
     case DCACHE_MISS_WAIT:
     {
-        if ( dreq.valid ) m_cost_data_miss_frz++; 
-
-        // external cache invalidate request
-        if ( r_tgt_dcache_req ) 
-        {
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        }
+        m_cost_data_miss_frz++; 
         // external tlb invalidate request
         if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
-        }
-
-        if ( !r_dcache_miss_req && !r_dcache_inval_rsp ) // Miss read response and no invalidation 
-        {
-            if ( r_vci_rsp_data_error ) 
-            {
-                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
-                r_dcache_bad_vaddr = dreq.addr;
-                r_dcache_fsm = DCACHE_ERROR;
-            } 
-            else 
-            {
-                r_dcache_fsm = DCACHE_MISS_UPDT; 
-            }
-        } 
-
-        if ( !r_dcache_miss_req && r_dcache_inval_rsp )  // Miss read response and invalidation
-        {
-            if ( r_vci_rsp_data_error )
-            {
-                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
-                r_dcache_bad_vaddr = dreq.addr;
-                r_dcache_inval_rsp = false;
-                r_dcache_fsm = DCACHE_ERROR;
-            }
-            else
-            {
-                r_dcache_inval_rsp = false;
-                r_dcache_fsm = DCACHE_IDLE;
-            }
         }
 
         if ( !r_dcache_miss_req && r_dcache_inval_tlb_rsp ) // Miss read response and tlb invalidation
@@ -3616,8 +3700,22 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else
             {
-                r_dcache_inval_tlb_rsp = false;
                 r_dcache_fsm = DCACHE_IDLE;
+            }
+            r_dcache_inval_tlb_rsp = false;
+        }
+
+        if ( !r_dcache_miss_req && !r_dcache_inval_tlb_rsp ) // Miss read response and no tlb invalidation
+        {
+            if ( r_vci_rsp_data_error ) 
+            {
+                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_dcache_bad_vaddr = dreq.addr;
+                r_dcache_fsm = DCACHE_ERROR;
+            } 
+            else
+            {
+                r_dcache_fsm = DCACHE_MISS_UPDT;
             }
         }
         break;
@@ -3625,23 +3723,17 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     /////////////////////
     case DCACHE_MISS_UPDT:
     {
-        if ( dreq.valid ) m_cost_data_miss_frz++;
+        m_cost_data_miss_frz++;
 
         size_t way = 0;
         size_t set = 0;
 
-        // external cache invalidate request
-        if ( r_tgt_dcache_req ) 
-        {
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        }
         // external tlb invalidate request
         if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }
 
@@ -3649,10 +3741,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
             r_dcache_inval_tlb_rsp = false;
             r_dcache_fsm = DCACHE_IDLE;
+            m_cost_data_tlb_miss_frz++;
             break;
         }
 
-        if ( !r_dcache_cleanup_req && !r_dcache_inval_rsp ) // Miss update and no invalidation
+        if ( !r_dcache_cleanup_req ) // Miss update and no invalidation
         {
             data_t* buf = r_dcache_miss_buf;
             addr36_t  victim_index = 0;
@@ -3662,8 +3755,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
             r_dcache_cleanup_req = r_dcache.update(r_dcache_paddr_save.read(), r_dcache_in_itlb, r_dcache_in_dtlb, &way, &set, buf, &victim_index);
             r_dcache_cleanup_line = victim_index;
-
             r_dcache_fsm = DCACHE_IDLE;
+
             // ins tlb invalidate verification
             if (r_dcache_in_itlb[way*m_dcache_sets+set])
             {
@@ -3703,33 +3796,19 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     r_dcache_fsm = DCACHE_TLB_CC_INVAL_WAIT;
                 }    
             }
-            break;
         }
-
-        if ( r_dcache_inval_rsp )   // Miss update and invalidation, data cache has not broadcast, can be deleted
-        {
-            r_dcache_inval_rsp = false;
-            r_dcache_fsm = DCACHE_IDLE;
-            break;
-        }
+	break;
     }
     //////////////////////
     case DCACHE_UNC_WAIT:
     {
-        if ( dreq.valid ) m_cost_unc_read_frz++;
-
-        // external cache invalidate request
-        if ( r_tgt_dcache_req ) 
-        {
-            r_dcache_fsm = DCACHE_CC_CHECK;
-            r_dcache_fsm_save = r_dcache_fsm;
-            break;
-        }
+        m_cost_unc_read_frz++;
         // external tlb invalidate request
         if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
         {
             r_dcache_fsm = DCACHE_TLB_CC_INVAL;
             r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
             break;
         }
 
@@ -3758,16 +3837,17 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else 
             {
-                r_dcache_inval_tlb_rsp = false;
                 r_dcache_fsm = DCACHE_IDLE;
             }
+            r_dcache_inval_tlb_rsp = false;
         }
         break;
     }
     ///////////////////////
     case DCACHE_WRITE_UPDT:
     {
-        m_cpt_dcache_data_write++;
+        m_cost_write_frz++;
+
         size_t way = 0;
         size_t set = 0;
         data_t mask = be_to_mask(r_dcache_be_save);
@@ -3810,23 +3890,36 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
         if ( !r_dcache_dirty_save && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   
         {
-            if ( r_dcache_page_k_save )
-            { 
-                r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
-                r_dcache_pte_update = dcache_k_tlb.getpte(r_dcache_tlb_way_save,r_dcache_tlb_set_save) | PTE_D_MASK;
-                assert(r_dcache.write(((addr36_t)r_dcache_ptba_save | (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2)), 
-                                      (dcache_k_tlb.getpte(r_dcache_tlb_way_save,r_dcache_tlb_set_save) | PTE_D_MASK)) && "Write on miss ignores data");
+            if (!r_dcache_page_k_save) 
+            {
+                r_dcache_pte_update = dcache_m_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+                assert(r_dcache.write((addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
+                                     (dcache_m_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK)) && "Write on miss ignores data");
+                r_dcache_tlb_dirty_req = true;
+                r_dcache_fsm = DCACHE_WRITE_DIRTY;
+                m_cpt_data_tlb_write_dirty++;
             }
             else
-            {
-                r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                r_dcache_pte_update = dcache_m_tlb.getpte(r_dcache_tlb_way_save,r_dcache_tlb_set_save) | PTE_D_MASK;
-                assert(r_dcache.write(((addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2)), 
-                                      (dcache_m_tlb.getpte(r_dcache_tlb_way_save,r_dcache_tlb_set_save) | PTE_D_MASK)) && "Write on miss ignores data");
+            {   
+                if (r_dcache_hit_p_save) 
+                {
+                    r_dcache_pte_update = dcache_k_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+                    r_dcache_tlb_paddr = (addr36_t)r_dcache_ptba_save|(addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
+                    assert(r_dcache.write(((addr36_t)r_dcache_ptba_save|(addr36_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2)), 
+                                     (dcache_k_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK)) && "Write on miss ignores data");
+                    r_dcache_tlb_dirty_req = true;
+                    r_dcache_fsm = DCACHE_WRITE_DIRTY;
+                    m_cpt_data_tlb_write_dirty++;
+                }
+                else
+                {
+                    r_dcache_pte_update = dcache_k_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+                    r_dcache_tlb_paddr = (addr36_t)(r_mmu_ptpr << 4) | (addr36_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+                    r_dcache_tlb_ptba_read = true;
+                    r_dcache_fsm = DCACHE_DTLB1_READ_CACHE;
+                }
             }
-            r_dcache_tlb_dirty_req  = true;
-            r_dcache_fsm = DCACHE_WRITE_DIRTY;
-            m_cpt_data_tlb_write_dirty++;
         }
         else
         {
@@ -3839,7 +3932,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     ////////////////////////
     case DCACHE_WRITE_DIRTY:
     {
-        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_miss_frz++;
 
         if ( r_dcache_page_k_save ) 
         {
@@ -3880,12 +3973,24 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     ////////////////////// 
     case DCACHE_ITLB_READ:
     {
+        m_cost_data_waste_wait_frz++;
+
+        // external tlb invalidate request
+        if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
+        {
+            r_dcache_fsm = DCACHE_TLB_CC_INVAL;
+            r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
+            break;
+        }
+
     	if ( !r_dcache_itlb_read_req ) // vci response ok
         {  
             if ( r_vci_rsp_data_error )
             {
                 r_dcache_rsp_itlb_error = true;	
                 r_icache_tlb_read_dcache_req = false;
+                r_vci_rsp_data_error = false;
                 r_dcache_fsm = DCACHE_IDLE;
             }
             else 
@@ -3893,11 +3998,22 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 r_dcache_fsm = DCACHE_ITLB_UPDT;
             }
         }
-	    break;    	
+    	break;    	
     }
     //////////////////////
     case DCACHE_ITLB_UPDT:
     {
+        m_cost_data_waste_wait_frz++;
+
+        // external tlb invalidate request
+        if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
+        {
+            r_dcache_fsm = DCACHE_TLB_CC_INVAL;
+            r_dcache_fsm_save = r_dcache_fsm;
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++;
+            break;
+        }
+
         if ( !r_dcache_cleanup_req )
         {
             uint32_t rsp_itlb_miss = 0;
@@ -3957,17 +4073,61 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     //////////////////////
     case DCACHE_ITLB_ET_WRITE:
     {
-        if ( !r_dcache_itlb_et_req )      
+        m_cost_data_waste_wait_frz++;
+
+        // external cache invalidate request
+        if ( r_tgt_dcache_req ) 
+        {
+            r_dcache_fsm = DCACHE_CC_CHECK;
+            r_dcache_fsm_save = r_dcache_fsm;
+            m_cost_data_waste_wait_frz++;
+            break;
+        }
+
+        // external tlb invalidate request
+        if ( r_ccinval_k_dtlb_req || r_ccinval_m_dtlb_req )
+        {
+            r_dcache_fsm = DCACHE_TLB_CC_INVAL;
+            r_dcache_fsm_save = r_dcache_fsm;
+            if ( dreq.valid ) m_cost_data_waste_wait_frz++;
+            break;
+        }
+
+        if ( !r_dcache_itlb_et_req && !r_dcache_inval_rsp )      
         { 
             r_icache_tlb_et_dcache_req = false;	
-            r_dcache_rsp_itlb_error = r_vci_rsp_data_error;  
+            if ( r_vci_rsp_data_error )
+            { 
+                r_dcache_rsp_itlb_error = true;  
+                r_vci_rsp_data_error = false;
+            }
             r_dcache_fsm = DCACHE_IDLE;
         } 
-   	    break;
+
+        if ( !r_dcache_itlb_et_req && r_dcache_inval_rsp )     
+        { 
+            if ( r_vci_rsp_data_error )
+            {
+                r_dcache_rsp_itlb_error = true;	
+                r_icache_tlb_et_dcache_req = false;
+                r_vci_rsp_data_error = false;
+                r_dcache_inval_rsp = false;
+                r_dcache_fsm = DCACHE_IDLE;
+            }
+            else
+            {
+                r_dcache_inval_rsp = false;
+		r_icache_tlb_et_dcache_req = false;
+                r_dcache_fsm = DCACHE_IDLE;
+            }
+        }
+   	break;
     }  
     /////////////////////
     case DCACHE_CC_CHECK:   // read directory in case of invalidate or update request
     {
+        if ( dreq.valid ) m_cost_data_waste_wait_frz++;
+
         m_cpt_dcache_dir_read += m_dcache_ways;
         m_cpt_dcache_data_read += m_dcache_ways;
 
@@ -3975,86 +4135,72 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         size_t way = 0;
         size_t set = 0;
 
-        if(( ( r_dcache_fsm_save == DCACHE_MISS_WAIT ) || ( r_dcache_fsm_save == DCACHE_MISS_UPDT ) || (r_dcache_fsm_save == DCACHE_BIS ) ) && 
-           ( (r_dcache_paddr_save.read() & ~((m_dcache_words<<2)-1)) == (r_tgt_addr.read() & ~((m_dcache_words<<2)-1)))) 
-        {
-            r_dcache_inval_rsp = true;
-            r_tgt_dcache_req = false;
-            r_dcache_fsm = r_dcache_fsm_save;
-        } 
-        else if(( ( r_dcache_fsm_save == DCACHE_TLB1_READ_UPDT ) || ( r_dcache_fsm_save == DCACHE_TLB2_READ_UPDT ) ) && 
-           ( (r_dcache_tlb_paddr.read() & ~((m_dcache_words<<2)-1)) == (r_tgt_addr.read() & ~((m_dcache_words<<2)-1)))) 
-        {
-            r_dcache_inval_rsp = true;
-            r_tgt_dcache_req = false;
-            r_dcache_fsm = r_dcache_fsm_save;
-        } 
-        else 
-        {
-            bool dcache_hit = r_dcache.read(r_tgt_addr.read(), &dcache_rdata, &way, &set);
+        bool dcache_hit = r_dcache.read(r_tgt_addr.read(), &dcache_rdata, &way, &set);
 
-            if  ( dcache_hit )
+        if  ( dcache_hit )
+        {
+            if ( r_dcache_in_itlb[m_dcache_sets*way+set] )
             {
-                if ( r_dcache_in_itlb[m_dcache_sets*way+set] )
+                if ( !r_dcache_itlb_ccinval_check_req )
                 {
-                    if ( !r_dcache_itlb_ccinval_check_req )
-                    {
-                        r_dcache_itlb_ccinval_check_req = true;
-                        r_dcache_itlb_ccinval_check_line = r_tgt_addr.read() >> (uint32_log2(m_dcache_words)+2);
-                        r_dcache_in_itlb[m_dcache_sets*way+set] = false;
-                    }
-                    else
-                    {
-                        r_dcache_itlb_ccinval_check_wait = true;
-                        r_dcache_itlb_ccinval_check_line_save = r_tgt_addr.read() >> (uint32_log2(m_dcache_words)+2);
-                        r_dcache_in_itlb[m_dcache_sets*way+set] = false;
-                    }
+                    r_dcache_itlb_ccinval_check_req = true;
+                    r_dcache_itlb_ccinval_check_line = r_tgt_addr.read() >> (uint32_log2(m_dcache_words)+2);
+                    r_dcache_in_itlb[m_dcache_sets*way+set] = false;
                 }
-                
-                if ( r_dcache_in_dtlb[m_dcache_sets*way+set] )
+                else
                 {
-                    if ( !r_dcache_dtlb_ccinval_check_req )
-                    {
-                        r_dcache_dtlb_ccinval_check_req = true;
-                        r_dcache_dtlb_ccinval_check_line = r_tgt_addr.read() >> (uint32_log2(m_dcache_words)+2);
-                        r_dcache_in_dtlb[m_dcache_sets*way+set] = false;
-                    }
-                    else
-                    {
-                        r_dcache_dtlb_ccinval_check_wait = true;
-                        r_dcache_dtlb_ccinval_check_line_save = r_tgt_addr.read() >> (uint32_log2(m_dcache_words)+2);
-                        r_dcache_in_dtlb[m_dcache_sets*way+set] = false;
-                    }
-                }
-                
-                if ( r_tgt_update ) // update 
-                {
-                    r_dcache_fsm = DCACHE_CC_UPDT;
-                    // complete the line buffer in case of update
-                    for ( size_t word = 0 ; word < m_dcache_words ; word++ ) 
-                    {
-                        if ( !r_tgt_val[word] ) 
-                        {
-                            r_dcache.read(r_tgt_addr.read() + word, &dcache_rdata);
-                            r_tgt_buf[word] = dcache_rdata;
-                        }
-                    }
-                } 
-                else                // invalidate 
-                {
-                    r_dcache_fsm = DCACHE_CC_INVAL;
+                    r_dcache_itlb_ccinval_check_wait = true;
+                    r_dcache_itlb_ccinval_check_line_save = r_tgt_addr.read() >> (uint32_log2(m_dcache_words)+2);
+                    r_dcache_in_itlb[m_dcache_sets*way+set] = false;
                 }
             }
-            else                                    // nothing
+            
+            if ( r_dcache_in_dtlb[m_dcache_sets*way+set] )
             {
-                r_dcache_fsm = DCACHE_CC_NOP;
+                if ( !r_dcache_dtlb_ccinval_check_req )
+                {
+                    r_dcache_dtlb_ccinval_check_req = true;
+                    r_dcache_dtlb_ccinval_check_line = r_tgt_addr.read() >> (uint32_log2(m_dcache_words)+2);
+                    r_dcache_in_dtlb[m_dcache_sets*way+set] = false;
+                }
+                else
+                {
+                    r_dcache_dtlb_ccinval_check_wait = true;
+                    r_dcache_dtlb_ccinval_check_line_save = r_tgt_addr.read() >> (uint32_log2(m_dcache_words)+2);
+                    r_dcache_in_dtlb[m_dcache_sets*way+set] = false;
+                }
             }
+            
+            if( ((( r_dcache_fsm_save == DCACHE_TLB1_WRITE ) || ( r_dcache_fsm_save == DCACHE_TLB2_WRITE )) && 
+              ( (r_dcache_tlb_paddr.read() & ~((m_dcache_words<<2)-1)) == (r_tgt_addr.read() & ~((m_dcache_words<<2)-1)))) ||
+                (( r_dcache_fsm_save == DCACHE_ITLB_ET_WRITE ) && 
+              ( (r_icache_paddr_save.read() & ~((m_dcache_words<<2)-1)) == (r_tgt_addr.read() & ~((m_dcache_words<<2)-1)))) ||
+ 		((( r_dcache_fsm_save == DCACHE_TLB1_UPDT ) || ( r_dcache_fsm_save == DCACHE_TLB2_UPDT )) && 
+              ( (r_dcache_tlb_paddr.read() & ~((m_dcache_words<<2)-1)) == (r_tgt_addr.read() & ~((m_dcache_words<<2)-1))))														)
+            {
+                r_dcache_inval_rsp = true;
+            } 
+
+            if ( r_tgt_update ) // update 
+            {
+                r_dcache_fsm = DCACHE_CC_UPDT;
+            } 
+            else                // invalidate 
+            {
+                r_dcache_fsm = DCACHE_CC_INVAL;
+            }
+        }
+        else                    // nothing
+        {
+            r_dcache_fsm = DCACHE_CC_NOP;
         }
         break;
     }
     ///////////////////
     case DCACHE_CC_UPDT:    // update directory and data cache        
     {
+        if ( dreq.valid ) m_cost_data_waste_wait_frz++;
+
         m_cpt_dcache_dir_write++;
         m_cpt_dcache_data_write++;
         data_t* buf = r_tgt_buf;
@@ -4093,7 +4239,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     /////////////////////
     case DCACHE_CC_INVAL:   // invalidate a cache line
     {
-        r_dcache.inval(r_tgt_addr.read());
+        if ( dreq.valid ) m_cost_data_waste_wait_frz++;
+
+        r_tgt_dcache_rsp = r_dcache.inval(r_tgt_addr.read());
 
         if ( r_dcache_itlb_ccinval_check_wait && !r_dcache_itlb_ccinval_check_req )
         {
@@ -4125,6 +4273,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     ///////////////////
     case DCACHE_CC_NOP:     // no external hit
     {
+        if ( dreq.valid ) m_cost_data_waste_wait_frz++;
+
         r_tgt_dcache_req = false;
         r_dcache_fsm = r_dcache_fsm_save;
         break;
@@ -4132,6 +4282,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     //////////////////////////////
     case DCACHE_TLB_CC_INVAL_WAIT:   // invalidate a cache line
     {
+        if ( dreq.valid ) m_cost_data_waste_wait_frz++;
+
         if ( r_dcache_itlb_ccinval_check_wait && !r_dcache_itlb_ccinval_check_req )
         {
             r_dcache_itlb_ccinval_check_req = true;
@@ -4168,13 +4320,15 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     {
         size_t dcache_tlb_nline = 0;
 
-        if ( dreq.valid ) m_cost_data_miss_frz++;        
+        if ( dreq.valid ) m_cost_data_waste_wait_frz++;
 
-        if( (( r_dcache_fsm_save == DCACHE_TLB1_READ )      || ( r_dcache_fsm_save == DCACHE_TLB2_READ ) ||
-             ( r_dcache_fsm_save == DCACHE_TLB1_READ_UPDT ) || ( r_dcache_fsm_save == DCACHE_TLB1_READ_UPDT ) ||
-             ( r_dcache_fsm_save == DCACHE_TLB1_WRITE )     || ( r_dcache_fsm_save == DCACHE_TLB2_WRITE ) ||
-             ( r_dcache_fsm_save == DCACHE_TLB1_UPDT )      || ( r_dcache_fsm_save == DCACHE_TLB2_UPDT )) && 
-            ((r_dcache_tlb_paddr.read() & ~((m_dcache_words<<2)-1)) == r_tgt_addr.read()) ) 
+
+        if( (( r_dcache_fsm_save == DCACHE_TLB1_READ )        || ( r_dcache_fsm_save == DCACHE_TLB2_READ ) ||
+             ( r_dcache_fsm_save == DCACHE_TLB1_READ_UPDT )   || ( r_dcache_fsm_save == DCACHE_TLB1_READ_UPDT ) ||
+             ( r_dcache_fsm_save == DCACHE_TLB1_WRITE )       || ( r_dcache_fsm_save == DCACHE_TLB2_WRITE ) ||
+             ( r_dcache_fsm_save == DCACHE_TLB1_UPDT )        || ( r_dcache_fsm_save == DCACHE_TLB2_UPDT ) ||
+             ( r_dcache_fsm_save == DCACHE_DTLB1_READ_CACHE ) || ( r_dcache_fsm_save == DCACHE_DTLB2_READ_CACHE )) && 
+            (((r_dcache_tlb_paddr.read() & ~((m_dcache_words<<2)-1)) >> (uint32_log2(m_dcache_words) + 2)) == r_dcache_dtlb_ccinval_check_line) ) 
         {
             r_dcache_inval_tlb_rsp = true;
         } 
@@ -4206,6 +4360,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     /////////////////////////
     case DCACHE_ITLB_CLEANUP:
     {
+        if ( dreq.valid ) m_cost_data_waste_wait_frz++;
+
         r_dcache.setinbit(((addr36_t)r_dcache_itlb_cleanup_line.read()*m_dcache_words*2), r_dcache_in_itlb, false);
         r_dcache_itlb_cleanup_req = false;
         r_dcache_fsm = DCACHE_IDLE;
@@ -4226,15 +4382,20 @@ std::cout << " Data Response: " << drsp << std::endl;
     {
         if ( r_dcache_dtlb_ccinval_check_req )
         {
+            r_ccinval_dtlb_way = 0;
+            r_ccinval_dtlb_set = 0;
             r_inval_dtlb_fsm = INVAL_DTLB_CHECK_FIRST;    
+            m_cost_data_tlb_inval_frz++;
         }   
         break;
     }
     ////////////////////////////
     case INVAL_DTLB_CHECK_FIRST:
     {
-        size_t way = 0; 
-        size_t set = 0;
+        m_cost_data_tlb_inval_frz++;
+
+        size_t way = r_ccinval_dtlb_way; 
+        size_t set = r_ccinval_dtlb_set;
         bool end = false;        
 
         // r_tgt_addr is number of line
@@ -4248,7 +4409,8 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_ccinval_dtlb_set = set;
             r_dtlb_cc_check_end = end;
             r_ccinval_dtlb_k = false; 
-            r_inval_dtlb_fsm = INVAL_DTLB_REQ_WAIT;    
+            r_inval_dtlb_fsm = INVAL_DTLB_REQ_WAIT;
+            m_cpt_data_tlb_inval++;    
         }        
         else if ( k_hit )
         {
@@ -4258,6 +4420,7 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_dtlb_cc_check_end = end;
             r_ccinval_dtlb_k = true; 
             r_inval_dtlb_fsm = INVAL_DTLB_REQ_WAIT;    
+            m_cpt_data_tlb_inval++;    
         }
         else
         {
@@ -4269,12 +4432,13 @@ std::cout << " Data Response: " << drsp << std::endl;
     /////////////////////////
     case INVAL_DTLB_REQ_WAIT:
     {
+        m_cost_data_tlb_inval_frz++;
+
         if ( !r_ccinval_k_dtlb_req && !r_ccinval_m_dtlb_req ) 
         {
             if ( !r_dtlb_cc_check_end )
             {
                 r_inval_dtlb_fsm = INVAL_DTLB_CHECK; 
-                   
             }
             else
             {
@@ -4292,6 +4456,8 @@ std::cout << " Data Response: " << drsp << std::endl;
         bool k_hit = false;
         bool end = false;
  
+        m_cost_data_tlb_inval_frz++;
+
         // r_tgt_addr is number of line
         if ( !r_ccinval_dtlb_k )
         {
@@ -4312,6 +4478,7 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_dtlb_cc_check_end = end;
             r_ccinval_dtlb_k = false; 
             r_inval_dtlb_fsm = INVAL_DTLB_REQ_WAIT;    
+            m_cpt_data_tlb_inval++;    
         }        
         else if ( k_hit )
         {
@@ -4321,6 +4488,7 @@ std::cout << " Data Response: " << drsp << std::endl;
             r_dtlb_cc_check_end = end;
             r_ccinval_dtlb_k = true; 
             r_inval_dtlb_fsm = INVAL_DTLB_REQ_WAIT;    
+            m_cpt_data_tlb_inval++;    
         }
         else
         {
@@ -4337,7 +4505,8 @@ std::cout << " Data Response: " << drsp << std::endl;
         r_ccinval_dtlb_k = false; 
         r_ccinval_dtlb_way = 0; 
         r_ccinval_dtlb_set = 0; 
-        r_inval_dtlb_fsm = INVAL_DTLB_IDLE;    
+        r_inval_dtlb_fsm = INVAL_DTLB_IDLE;   
+        m_cpt_data_tlb_inval++;    
         break;
     }
     } // end switch r_inval_itlb_fsm
@@ -4765,7 +4934,6 @@ tmpl(void)::genMoore()
 
     // VCI initiator command
 
-    p_vci_ini.trdid  = 0;
     p_vci_ini.pktid  = 0;
     p_vci_ini.srcid  = m_srcid;
     p_vci_ini.cons   = false;
@@ -4781,8 +4949,9 @@ tmpl(void)::genMoore()
         p_vci_ini.address = 0;
         p_vci_ini.wdata   = 0;
         p_vci_ini.be      = 0;
+        p_vci_ini.trdid   = 0;
         p_vci_ini.plen    = 0;
-        p_vci_ini.cmd     = vci_param::CMD_WRITE;
+        p_vci_ini.cmd     = vci_param::CMD_NOP;
         p_vci_ini.eop     = false;
         break;
 
@@ -4791,6 +4960,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_icache_paddr_save.read() & m_dcache_yzmask;
         p_vci_ini.wdata   = 0;
         p_vci_ini.be      = 0xF;
+        p_vci_ini.trdid   = 1; // via data cache cached read
         p_vci_ini.plen    = m_dcache_words << 2;
         p_vci_ini.cmd     = vci_param::CMD_READ;
         p_vci_ini.eop     = true;
@@ -4801,6 +4971,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_icache_paddr_save.read() & ~0x3;
         p_vci_ini.wdata   = r_icache_pte_update.read();
         p_vci_ini.be      = 0x8;
+        p_vci_ini.trdid   = 0;
         p_vci_ini.plen    = 4;
         p_vci_ini.cmd     = vci_param::CMD_WRITE;
         p_vci_ini.eop     = true;
@@ -4811,6 +4982,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_icache_paddr_save.read() & m_icache_yzmask;
         p_vci_ini.wdata   = 0;
         p_vci_ini.be      = 0xF;
+        p_vci_ini.trdid   = 3; // ins cache cached read
         p_vci_ini.plen    = m_icache_words << 2;
         p_vci_ini.cmd     = vci_param::CMD_READ;
         p_vci_ini.eop     = true;
@@ -4821,6 +4993,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_icache_paddr_save.read() & ~0x3;
         p_vci_ini.wdata   = 0;
         p_vci_ini.be      = 0xF;
+        p_vci_ini.trdid   = 2; // ins cache uncached read
         p_vci_ini.plen    = 4;
         p_vci_ini.cmd     = vci_param::CMD_READ;
         p_vci_ini.eop     = true;
@@ -4831,6 +5004,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_dcache_tlb_paddr.read() & m_dcache_yzmask;
         p_vci_ini.wdata   = 0;
         p_vci_ini.be      = 0xF;
+        p_vci_ini.trdid   = 1; // via dcache cached read
         p_vci_ini.plen    = m_dcache_words << 2;
         p_vci_ini.cmd     = vci_param::CMD_READ;
         p_vci_ini.eop     = true;
@@ -4841,6 +5015,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_dcache_tlb_paddr.read() & ~0x3;
         p_vci_ini.wdata   = r_dcache_pte_update.read();
         p_vci_ini.be      = 0x8;
+        p_vci_ini.trdid   = 0;
         p_vci_ini.plen    = 4;
         p_vci_ini.cmd     = vci_param::CMD_WRITE;
         p_vci_ini.eop     = true;
@@ -4851,6 +5026,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_dcache_tlb_paddr.read() & ~0x3;
         p_vci_ini.wdata   = r_dcache_pte_update.read();
         p_vci_ini.be      = 0x1;
+        p_vci_ini.trdid   = 0;
         p_vci_ini.plen    = 4;
         p_vci_ini.cmd     = vci_param::CMD_WRITE;
         p_vci_ini.eop     = true;
@@ -4859,6 +5035,7 @@ tmpl(void)::genMoore()
     case CMD_DATA_UNC:
         p_vci_ini.cmdval  = true;
         p_vci_ini.address = r_dcache_paddr_save.read() & ~0x3;
+        p_vci_ini.trdid   = 0; // data cache uncached read
         p_vci_ini.plen    = 4;
         p_vci_ini.eop     = true;
         switch(r_dcache_type_save) {
@@ -4887,6 +5064,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_wbuf.getAddress(r_vci_cmd_cpt);
         p_vci_ini.wdata   = r_wbuf.getData(r_vci_cmd_cpt);
         p_vci_ini.be      = r_wbuf.getBe(r_vci_cmd_cpt);
+        p_vci_ini.trdid   = 0; // data cache write
         p_vci_ini.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
         p_vci_ini.cmd     = vci_param::CMD_WRITE;
         p_vci_ini.eop     = (r_vci_cmd_cpt == r_vci_cmd_max);
@@ -4897,6 +5075,7 @@ tmpl(void)::genMoore()
         p_vci_ini.address = r_dcache_paddr_save.read() & m_dcache_yzmask;
         p_vci_ini.wdata   = 0;
         p_vci_ini.be      = 0xF;
+        p_vci_ini.trdid   = 1; // data cache cached read
         p_vci_ini.plen    = m_dcache_words << 2;
         p_vci_ini.cmd     = vci_param::CMD_READ;
         p_vci_ini.eop     = true;
@@ -4905,22 +5084,15 @@ tmpl(void)::genMoore()
     case CMD_INS_CLEANUP:
     case CMD_DATA_CLEANUP:
         p_vci_ini.cmdval = true;
-        // todo : confirm why set p_vci_ini.address like this ? doesn't find L2 ??
-        //if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.address = m_cleanup_address | ((r_icache_cleanup_line.read() *(m_icache_words<<2)) & 0xC0000000 );
-        //else                                    p_vci_ini.address = m_cleanup_address | ((r_dcache_cleanup_line.read() *(m_dcache_words<<2)) & 0xC0000000 );
-        //if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.wdata = r_icache_cleanup_line.read();
-        //else                                    p_vci_ini.wdata = r_dcache_cleanup_line.read();
-
-        if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.address = m_cleanup_address;
-        else                                    p_vci_ini.address = m_cleanup_address;
-        if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.wdata = r_icache_cleanup_line.read();
-        else                                    p_vci_ini.wdata = r_dcache_cleanup_line.read();
-
+        if ( r_vci_cmd_fsm == CMD_INS_CLEANUP ) p_vci_ini.address = r_icache_cleanup_line.read() * (m_icache_words<<2);
+        else                                    p_vci_ini.address = r_dcache_cleanup_line.read() * (m_icache_words<<2);
+        p_vci_ini.wdata  = 0;
         p_vci_ini.be     = 0;
+        p_vci_ini.trdid  = 1; // cleanup for distinguish from a write
         p_vci_ini.plen   = 4;
         p_vci_ini.cmd    = vci_param::CMD_WRITE;
         p_vci_ini.contig = false;
-        p_vci_ini.eop = true;
+        p_vci_ini.eop    = true;
         break;
 
     } // end switch r_vci_cmd_fsm
@@ -4935,9 +5107,9 @@ tmpl(void)::genMoore()
         p_vci_tgt.rspval  = false;
         break;
 
-    case TGT_RSP:
+    case TGT_RSP_BROADCAST:
         p_vci_tgt.cmdack  = false;
-        p_vci_tgt.rspval  = !r_tgt_icache_req.read() && !r_tgt_dcache_req.read();
+        p_vci_tgt.rspval  = !r_tgt_icache_req.read() && !r_tgt_dcache_req.read() && ( r_tgt_icache_rsp | r_tgt_dcache_rsp );
         p_vci_tgt.rsrcid  = r_tgt_srcid.read();
         p_vci_tgt.rpktid  = r_tgt_pktid.read();
         p_vci_tgt.rtrdid  = r_tgt_trdid.read();
@@ -4946,7 +5118,19 @@ tmpl(void)::genMoore()
         p_vci_tgt.reop    = true;
         break;
 
-    case TGT_REQ:
+    case TGT_RSP_DCACHE:
+        p_vci_tgt.cmdack  = false;
+        p_vci_tgt.rspval  = !r_tgt_dcache_req.read();
+        p_vci_tgt.rsrcid  = r_tgt_srcid.read();
+        p_vci_tgt.rpktid  = r_tgt_pktid.read();
+        p_vci_tgt.rtrdid  = r_tgt_trdid.read();
+        p_vci_tgt.rdata   = 0;
+        p_vci_tgt.rerror  = 0;
+        p_vci_tgt.reop    = true;
+        break;
+
+    case TGT_REQ_BROADCAST:
+    case TGT_REQ_DCACHE:
         p_vci_tgt.cmdack  = false;
         p_vci_tgt.rspval  = false;
         break;
@@ -4975,5 +5159,10 @@ tmpl(void)::genMoore()
 // End:
 
 // vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+
+
+
+
+
 
 
