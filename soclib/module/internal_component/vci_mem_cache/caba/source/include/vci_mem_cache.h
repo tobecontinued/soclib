@@ -32,6 +32,7 @@
 
 #include <inttypes.h>
 #include <systemc>
+#include <list>
 #include <cassert>
 #include "arithmetics.h"
 #include "alloc_elems.h"
@@ -40,6 +41,7 @@
 #include "vci_initiator.h"
 #include "generic_fifo.h"
 #include "mapping_table.h"
+#include "int_tab.h"
 #include "mem_cache_directory.h"
 #include "xram_transaction.h"
 #include "update_tab.h"
@@ -278,7 +280,8 @@ namespace soclib {  namespace caba {
       const size_t			  m_words;		// Number of words in a line
       const size_t  		  	  m_srcid_ixr;		// Srcid for requests to XRAM 
       const size_t  		  	  m_srcid_ini;		// Srcid for requests to processors
-      soclib::common::Segment	  	  m_mem_segment;	// memory cached into the cache
+      //soclib::common::Segment	  	  m_mem_segment;	// memory cached into the cache
+      std::list<soclib::common::Segment>	  	  m_seglist;	// memory cached into the cache
       soclib::common::Segment	  	  m_reg_segment;	// memory cache mapped registers
       addr_t	        		  *m_coherence_table; 	// address(srcid)
       AtomicTab	   			  m_atomic_tab;		// atomic access table
@@ -329,7 +332,10 @@ namespace soclib {  namespace caba {
       GenericFifo<data_t>	   m_cmd_cleanup_nline_fifo;
 
       sc_signal<int>         r_tgt_cmd_fsm;
-
+	
+      sc_signal<size_t>	     r_index;
+      size_t nseg;
+      soclib::common::Segment  **m_seg;
       ///////////////////////////////////////////////////////
       // Registers controlled by the READ fsm
       ///////////////////////////////////////////////////////

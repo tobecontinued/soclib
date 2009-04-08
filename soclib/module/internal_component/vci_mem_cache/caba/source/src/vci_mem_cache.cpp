@@ -202,14 +202,15 @@ namespace soclib { namespace caba {
 	       m_words( nwords ),
 	       m_srcid_ixr( mtx.indexForId(vci_ixr_index) ),
 	       m_srcid_ini( mtc.indexForId(vci_ini_index) ),
-	       m_mem_segment("bidon",0,0,soclib::common::IntTab(),false),
+	       //m_mem_segment("bidon",0,0,soclib::common::IntTab(),false),
+	       m_seglist(mtp.getSegmentList(vci_tgt_index)),
 	       m_reg_segment("bidon",0,0,soclib::common::IntTab(),false),
 	       m_coherence_table( mtc.getCoherenceTable() ),
 	       m_atomic_tab( m_initiators ),
 	       m_transaction_tab( TRANSACTION_TAB_LINES, nwords ),
 	       m_update_tab( UPDATE_TAB_LINES ),
 	       m_cache_directory( nways, nsets, nwords, vci_param::N ),
-
+	       nseg(0),	
 #define L2 soclib::common::uint32_log2
 	       m_x( L2(m_words), 2),
 	       m_y( L2(m_sets), L2(m_words) + 2),
@@ -269,19 +270,37 @@ namespace soclib { namespace caba {
       assert(nwords <= 32);
       assert(nways <= 32);
 
-      std::cout << "MemCache coherence SRCID = " << std::hex << m_srcid_ini << std::endl ;
-      std::cout << "MemCache to xram SRCID = " << std::hex << m_srcid_ixr << std::endl ;
-
       // Get the segments associated to the MemCache 
-      size_t nseg = 0;
-      std::list<soclib::common::Segment> segList(mtp.getSegmentList(vci_tgt_index));
+      //std::list<soclib::common::Segment> segList(mtp.getSegmentList(vci_tgt_index));
       std::list<soclib::common::Segment>::iterator seg;
+/*
       for(seg = segList.begin(); seg != segList.end() ; seg++) {
 	if( seg->size() > 8 ) m_mem_segment = *seg; 
 	else                  m_reg_segment = *seg;
         nseg++;
       }
-      assert( (nseg == 2) && (m_reg_segment.size() == 8) );
+*/
+
+      for(seg = m_seglist.begin(); seg != m_seglist.end() ; seg++) {
+	if( seg->size() > 8 ) nseg++;
+      }
+      //assert( (nseg == 2) && (m_reg_segment.size() == 8) );
+
+      m_seg = new soclib::common::Segment*[nseg];
+      size_t i = 0;
+      for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) { 
+        if ( seg->size() > 8 ) 
+	{
+	  m_seg[i] = &(*seg);
+          i++;
+	}
+	else
+	{
+	  m_reg_segment = *seg;
+	}		
+      }
+
+      assert( (m_reg_segment.size() == 8) );
 
       // Memory cache allocation & initialisation
       m_cache_data = new data_t**[nways];
@@ -542,25 +561,39 @@ namespace soclib { namespace caba {
 	    assert( (p_vci_tgt.srcid.read() < m_initiators)
 		    && "error in VCI_MEM_CACHE : The received SRCID is larger than 31");
 
-	    if ( (p_vci_tgt.cmd.read()==vci_param::CMD_READ) &&
-		 m_mem_segment.contains(p_vci_tgt.address.read()) ) {
+            bool reached = false;
+            for ( size_t index = 0 ; index < nseg && !reached ; index++) 
+	    {
+               if ( m_seg[index]->contains(p_vci_tgt.address.read()) ) {
+                    reached = true;
+                    r_index = index;
+               }
+            }
+
+	    if ( !reached ) 
+	    { 
+	    	std::cout << "Out of segment access in VCI_MEM_CACHE" << std::endl;
+	      	std::cout << "Faulty address = " << p_vci_tgt.address.read() << std::endl;
+	      	std::cout << "Faulty initiator = " << p_vci_tgt.srcid.read() << std::endl;
+	     	exit(0);
+	    } 
+	    else if ( p_vci_tgt.cmd.read() == vci_param::CMD_READ ) 
+            {
 	      r_tgt_cmd_fsm = TGT_CMD_READ;
-	    } else if ( (p_vci_tgt.cmd.read()==vci_param::CMD_WRITE) && 
-			m_mem_segment.contains(p_vci_tgt.address.read()) ) {
+	    } 
+	    else if (( p_vci_tgt.cmd.read() == vci_param::CMD_WRITE ) && ( p_vci_tgt.trdid.read() == 0x0 ) )
+	    {  
 	      r_tgt_cmd_fsm = TGT_CMD_WRITE;
-	    } else if ( ((p_vci_tgt.cmd.read()==vci_param::CMD_LOCKED_READ) || 
-			 (p_vci_tgt.cmd.read()==vci_param::CMD_STORE_COND)) && 
-			m_mem_segment.contains(p_vci_tgt.address.read()) ) {
+	    } 
+            else if ((p_vci_tgt.cmd.read() == vci_param::CMD_LOCKED_READ) || 
+		     (p_vci_tgt.cmd.read() == vci_param::CMD_STORE_COND) ) 
+	    {
 	      r_tgt_cmd_fsm = TGT_CMD_ATOMIC;
-	    } else if ( (p_vci_tgt.cmd.read()==vci_param::CMD_WRITE) && 
-			m_reg_segment.contains(p_vci_tgt.address.read()) ) {
+	    } 
+	    else if (( p_vci_tgt.cmd.read() == vci_param::CMD_WRITE ) && ( p_vci_tgt.trdid.read() == 0x1 ))
+	    {  
 	      r_tgt_cmd_fsm = TGT_CMD_CLEANUP;
-	    } else {
-	      std::cout << "Out of segment access in VCI_MEM_CACHE" << std::endl;
-	      std::cout << "Faulty address = " << p_vci_tgt.address.read() << std::endl;
-	      std::cout << "Faulty initiator = " << p_vci_tgt.srcid.read() << std::endl;
-	      exit(0);
-	    }
+	    } 
 	  }
 	  break;
 	}
@@ -873,7 +906,7 @@ namespace soclib { namespace caba {
 	////////////////
       case WRITE_IDLE:	// copy first word of a write burst in local buffer	
 	{
-	  if ( m_cmd_write_addr_fifo.rok() ) {
+	  if ( m_cmd_write_addr_fifo.rok()) {
 	    m_cpt_write++;
 	    m_cpt_write_cells++;
 	    // consume a word in the FIFO & write it in the local buffer 
@@ -896,8 +929,14 @@ namespace soclib { namespace caba {
 	      r_write_byte=true;
 	    else  r_write_byte=false;
 
-	    if( m_cmd_write_eop_fifo.read() )  r_write_fsm = WRITE_DIR_LOCK;
-	    else                               r_write_fsm = WRITE_NEXT;
+	    if( m_cmd_write_eop_fifo.read() )
+	    {  
+		r_write_fsm = WRITE_DIR_LOCK;
+            }
+	    else
+            {
+                r_write_fsm = WRITE_NEXT;
+            }
 	  }
 	  break;
 	}
