@@ -2114,6 +2114,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             {
                 r_dcache_rsp_itlb_error = true;	
                 r_icache_tlb_read_dcache_req = false;
+                r_vci_rsp_data_error = false;
                 r_dcache_fsm = DCACHE_IDLE;
             }
             else 
@@ -2141,8 +2142,12 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     {
         if ( !r_dcache_itlb_et_req )      
         { 
-            r_icache_tlb_et_dcache_req = false;	
-            r_dcache_rsp_itlb_error = r_vci_rsp_data_error;  
+            r_icache_tlb_et_dcache_req = false;
+            if ( r_vci_rsp_data_error )	
+            {
+                r_dcache_rsp_itlb_error = true;  
+                r_vci_rsp_data_error = false;
+            }
             r_dcache_fsm = DCACHE_IDLE;
         } 
    	    break;
