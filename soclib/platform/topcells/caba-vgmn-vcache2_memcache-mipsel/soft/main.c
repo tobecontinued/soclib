@@ -422,8 +422,10 @@ int main()
         ptd_table = (uint32_t *)PTD_ADDR;
 
         ptd_table[0] = 0x00000000; 	// unused
-        ptd_table[1] = 0x40040203; 	// PTD for instruction 	 
-        ptd_table[2] = 0x40040202; 	// PTD for tty
+        //ptd_table[1] = 0x40040203; 	// PTD for instruction 	 
+        ptd_table[1] = 0x410080C0; 	// PTD for instruction 	 
+        //ptd_table[2] = 0x40040202; 	// PTD for tty
+        ptd_table[2] = 0x41008080; 	// PTD for tty
         ptd_table[4] = 0x80000114; 	// PTE for proc
         ptd_table[8] = 0x80000214; 	// PTE for proc
         ptd_table[64] = 0x80001034; 	// PTE for data ram

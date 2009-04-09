@@ -730,9 +730,9 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             switch((r_dcache_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) { 
             case PTD:               // 4K page TLB
         	    r_icache_ptba_ok    = true;	
-                r_icache_ptba_save  = (addr36_t)(r_dcache_rsp_itlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS; 
+                r_icache_ptba_save  = (addr36_t)((r_dcache_rsp_itlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS; 
                 r_icache_id1_save   = ireq.addr >> PAGE_M_NBITS;
-                r_icache_paddr_save = (addr36_t)(r_dcache_rsp_itlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS |
+                r_icache_paddr_save = (addr36_t)((r_dcache_rsp_itlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS |
                                         (addr36_t)(((ireq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2); 
                 r_icache_tlb_read_dcache_req = true;
                 r_icache_fsm        = ICACHE_TLB2_READ;
@@ -1598,15 +1598,15 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             switch((tlb_data & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
             case PTD:                   // 4K page
                 r_dcache_ptba_ok   = true;
-                r_dcache_ptba_save = (addr36_t)(tlb_data & PTD_PTP_MASK) << PAGE_K_NBITS;  
+                r_dcache_ptba_save = (addr36_t)((tlb_data & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS;  
                 r_dcache_id1_save  = dreq.addr >> PAGE_M_NBITS;
-                r_dcache_tlb_paddr = (addr36_t)((tlb_data & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+                r_dcache_tlb_paddr = (addr36_t)(((tlb_data & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                      (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
                 if ( r_dcache_tlb_ptba_read )
                 {
                     r_dcache_tlb_ptba_read = false;
                     r_dcache_tlb_dirty_req = true;
-                    assert(r_dcache.write(((addr36_t)((tlb_data & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+                    assert(r_dcache.write(((addr36_t)(((tlb_data & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                            (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2)), 
                                           r_dcache_pte_update) && "Write on miss ignores data");
                     r_dcache_fsm = DCACHE_WRITE_DIRTY;
@@ -1680,15 +1680,15 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         switch((rsp_dtlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
         case PTD:                   // 4K page
             r_dcache_ptba_ok   = true;
-            r_dcache_ptba_save = (addr36_t)(rsp_dtlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS;  
+            r_dcache_ptba_save = (addr36_t)((rsp_dtlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS;  
             r_dcache_id1_save  = dreq.addr >> PAGE_M_NBITS;
-            r_dcache_tlb_paddr = (addr36_t)((rsp_dtlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+            r_dcache_tlb_paddr = (addr36_t)(((rsp_dtlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                  (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
             if ( r_dcache_tlb_ptba_read )
             {
                 r_dcache_tlb_ptba_read = false;
                 r_dcache_tlb_dirty_req = true;
-                assert(r_dcache.write(((addr36_t)((rsp_dtlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+                assert(r_dcache.write(((addr36_t)(((rsp_dtlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                        (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2)), 
                                       r_dcache_pte_update) && "Write on miss ignores data");
                 r_dcache_fsm = DCACHE_WRITE_DIRTY;

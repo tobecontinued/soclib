@@ -61,16 +61,20 @@ int main(void)
         ptd_table = (uint32_t *)PTD_ADDR;
 
         ptd_table[0] = 0x00000000; 	// unused
-        ptd_table[1] = 0x40040203; 	// PTD for instruction 	 
-        ptd_table[2] = 0x40040202; 	// PTD for tty
-        ptd_table[3] = 0x40040201; 	// PTD for timer
+        //ptd_table[1] = 0x40040203; 	// PTD for instruction 	 
+        ptd_table[1] = 0x410080C0; 	// PTD for instruction 	 
+        //ptd_table[2] = 0x40040202; 	// PTD for tty
+        ptd_table[2] = 0x41008080; 	// PTD for tty
+        //ptd_table[3] = 0x40040201; 	// PTD for timer
+        ptd_table[3] = 0x41008040; 	// PTD for timer
         ptd_table[64] = 0x80001014; 	// PTE for data ram
         ptd_table[128] = 0x80002014; 	// PTE for loc0
         ptd_table[132] = 0x80002114; 	// PTE for loc1
         ptd_table[136] = 0x80002214; 	// PTE for loc2
         ptd_table[140] = 0x80002314; 	// PTE for loc3
         ptd_table[512] = 0x8000802E; 	// PTE for exception
-        ptd_table[712] = 0x40040202; 	// PTD for lock
+        //ptd_table[712] = 0x40040202; 	// PTD for lock
+        ptd_table[712] = 0x41008080; 	// PTD for lock
 
 	// timer pte
 	uint32_t * tpte_table;

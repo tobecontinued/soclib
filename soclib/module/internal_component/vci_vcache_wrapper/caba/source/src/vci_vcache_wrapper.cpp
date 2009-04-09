@@ -504,6 +504,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 
         if (r_dcache_xtn_req)
         {
+            if ( ireq.valid ) m_cost_ins_miss_frz++;
+
             if ((int)r_dcache_type_save == (int)iss_t::XTN_PTPR)  
             {
                 r_icache_fsm = ICACHE_TLB_FLUSH;   
@@ -646,6 +648,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             {
                 r_icache_paddr_save = tlb_ipaddr;   // save actual physical address for BIS
                 r_icache_fsm = ICACHE_BIS;
+                m_cost_ins_miss_frz++;
             }
             else    // cached or uncached access with a correct speculative physical address 
             {   
@@ -716,9 +719,9 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             switch((r_vci_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) { 
             case PTD:               // 4K page TLB
         	    r_icache_ptba_ok      = true;	
-                r_icache_ptba_save    = (addr36_t)(r_vci_rsp_itlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS; 
+                r_icache_ptba_save    = (addr36_t)((r_vci_rsp_itlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS; 
                 r_icache_id1_save     = ireq.addr >> PAGE_M_NBITS;
-                r_icache_paddr_save   = (addr36_t)(r_vci_rsp_itlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS |
+                r_icache_paddr_save   = (addr36_t)((r_vci_rsp_itlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS |
                                         (addr36_t)(((ireq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2); 
                 r_icache_tlb_read_req = true;
                 r_icache_fsm          = ICACHE_TLB2_READ;
@@ -1434,6 +1437,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                                     r_dcache_fsm = DCACHE_TLB1_READ;
                                 }
                             }
+                            m_cost_data_tlb_miss_frz++;
                         }
                         else                                    // no cache update, not dirty bit update
                         {
@@ -1559,9 +1563,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             switch((r_vci_rsp_dtlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) {
             case PTD:                   // 4K page
                 r_dcache_ptba_ok   = true;
-                r_dcache_ptba_save = (addr36_t)(r_vci_rsp_dtlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS;  
+                r_dcache_ptba_save = (addr36_t)((r_vci_rsp_dtlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS;  
                 r_dcache_id1_save  = dreq.addr >> PAGE_M_NBITS;
-                r_dcache_tlb_paddr = (addr36_t)((r_vci_rsp_dtlb_miss & PTD_PTP_MASK) << PAGE_K_NBITS) | 
+                r_dcache_tlb_paddr = (addr36_t)(((r_vci_rsp_dtlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS) | 
                                      (addr36_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
                 if ( r_dcache_tlb_ptba_read )
                 {
