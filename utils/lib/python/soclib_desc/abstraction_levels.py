@@ -73,5 +73,6 @@ checker = Checker(
 	common = CppChecker,
 	caba = CppChecker,
 	tlmt = CppChecker,
+	tlmdt = CppChecker,
 	rtl = RtlChecker,
 )
