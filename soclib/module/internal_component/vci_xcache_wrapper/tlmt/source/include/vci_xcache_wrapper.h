@@ -20,10 +20,10 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, nipo, alinev
+ * Maintainers: fpecheux, nipo, alinevieiramello@hotmail.com
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     FranÃ§ois PÃªcheux <francois.pecheux@lip6.fr>
  *     Nicolas Pouillon <nipo@ssji.net>
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */

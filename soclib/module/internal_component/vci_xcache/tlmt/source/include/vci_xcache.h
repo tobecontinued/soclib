@@ -105,16 +105,14 @@ namespace soclib { namespace tlmt {
       WRITE_PKTID,
     };
 
-  public:
-
-    soclib::tlmt::VciInitiator<vci_param> p_vci;
-    tlmt_core::tlmt_in<bool> *p_irq;
-
   private:
     
     FILE *      pFile;
     uint32_t    m_id;
     iss_t       m_iss;
+
+    //BUFFER OF READ AND WRITE DATA
+    buffer<iss_t,vci_param> m_buf;
 
     genericCache<vci_param> m_dcache ;
     genericCache<vci_param> m_icache ;
@@ -129,9 +127,6 @@ namespace soclib { namespace tlmt {
     size_t                                    m_counter;
     size_t                                    m_lookahead;
     size_t                                    m_simulation_time;
-
-    //BUFFER OF READ AND WRITE DATA
-    buffer<iss_t,vci_param> m_buf;
 
     //BUFFERS OF VCI PACKETS 
     typename vci_param::data_t m_write_buffer[MAXIMUM_PACKET_SIZE];
@@ -178,22 +173,25 @@ namespace soclib { namespace tlmt {
     SC_HAS_PROCESS(VciXcache);
 
   public:
-    VciXcache(sc_core::sc_module_name name,
-		     const soclib::common::IntTab &index,
-		     const soclib::common::MappingTable &mt,
-		     size_t icache_lines,
-		     size_t icache_words,
-		     size_t dcache_lines,
-		     size_t dcache_words );
+    soclib::tlmt::VciInitiator<vci_param> p_vci;
+    tlmt_core::tlmt_in<bool> *p_irq;
 
     VciXcache(sc_core::sc_module_name name,
-		     const soclib::common::IntTab &index,
-		     const soclib::common::MappingTable &mt,
-		     size_t icache_lines,
-		     size_t icache_words,
-		     size_t dcache_lines,
-		     size_t dcache_words,
-		     size_t simulation_time);
+	      const soclib::common::IntTab &index,
+	      const soclib::common::MappingTable &mt,
+	      size_t icache_lines,
+	      size_t icache_words,
+	      size_t dcache_lines,
+	      size_t dcache_words );
+
+    VciXcache(sc_core::sc_module_name name,
+	      const soclib::common::IntTab &index,
+	      const soclib::common::MappingTable &mt,
+	      size_t icache_lines,
+	      size_t icache_words,
+	      size_t dcache_lines,
+	      size_t dcache_words,
+	      size_t simulation_time);
 
     size_t getTotalCycles();
     size_t getActiveCycles();

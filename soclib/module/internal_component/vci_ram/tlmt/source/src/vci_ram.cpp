@@ -292,7 +292,7 @@ namespace soclib { namespace tlmt {
       m_index(index),
       m_mt(mt),
       m_loader(new common::Loader(loader)),
-      m_atomic(8),// 8 equals to maximal number of initiator
+      m_atomic(256),// 256 equals to maximal number of initiator
       p_vci("vci", new tlmt_core::tlmt_callback<VciRam,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciRam<vci_param>::callback))
   {
     m_id = id;
@@ -340,7 +340,7 @@ namespace soclib { namespace tlmt {
       m_index(index),
       m_mt(mt),
       m_loader(new common::Loader(loader)),
-      m_atomic(8),// 8 equals to maximal number of initiator
+      m_atomic(256),// 256 equals to maximal number of initiator
       p_vci("vci", new tlmt_core::tlmt_callback<VciRam,soclib::tlmt::vci_cmd_packet<vci_param> *>(this, &VciRam<vci_param>::callback))
   {
     m_id = m_mt.indexForId(index);
