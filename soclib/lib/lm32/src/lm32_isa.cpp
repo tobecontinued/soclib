@@ -50,6 +50,8 @@ namespace soclib { namespace common {
                 return ins.I.rX;
             case RR:
                 return ins.R.rX;
+            case USR:
+                return ins.R.rX;
             case CR:
                 return ins.C.rR;
         }
@@ -84,7 +86,7 @@ namespace soclib { namespace common {
         OPTABLE(sextb  , RR ), OPTABLE(add   , RR ),
         OPTABLE(or     , RR ), OPTABLE(sl    , RR ),
         OPTABLE(b      , RR ), OPTABLE(modu  , RR ),
-        OPTABLE(sub    , RR ), OPTABLE(reser , JI ),
+        OPTABLE(sub    , RR ), OPTABLE(user  , USR),
         OPTABLE(wcsr   , CR ), OPTABLE(mod   , RR ),
         OPTABLE(call   , RR ), OPTABLE(sexth , RR ),
         OPTABLE(bi     , JI ), OPTABLE(cmpe  , RR ),
@@ -129,6 +131,22 @@ namespace soclib { namespace common {
             exit (-1);
         }
     }
+
+    // User defined instructions
+    LM32_function(user) {
+        //TODO ...Add user instructions support
+        std::cout << "Destination reg "<< m_inst.U.rX 
+            << " "
+            << "Source regs " << m_inst.U.rY << "and " << m_inst.U.rZ
+            << " "
+            << "with user defined instruction " << m_inst.U.User_defined_inst
+            << std::endl;
+        std::cout << name() << "ERROR: LM32 user defined instruction!!" 
+            " "<< "not yet implemented !!" << std::endl;
+        exit (-1);
+    }
+
+    // reserved opcode
     LM32_function(reser ) {
         std::cout << name() << "ERROR: LM32 Iss gets reserved opcode !!" << std::endl;
         exit (-1);

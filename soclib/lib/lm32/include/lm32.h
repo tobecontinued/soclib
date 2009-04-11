@@ -212,11 +212,18 @@ namespace soclib { namespace common {
                             uint32_t rR:5,
                             uint32_t Not_used:11
                             ) C;// control registers
+                    PACKED_BITFIELD(
+                            uint32_t op:6,
+                            uint32_t rY:5,
+                            uint32_t rZ:5,
+                            uint32_t rX:5,
+                            uint32_t User_defined_inst:11
+                            ) U; // User defined instructions
                 } __attribute__((packed));
                 uint32_t ins;
             } ins_t;
 
-            enum InstFormat {JI, RI, RR, CR};
+            enum InstFormat {JI, RI, RR, CR, USR};
 
             // member variables (internal registers)
             data_t 	    r_pc;			// Program Counter
@@ -332,6 +339,7 @@ namespace soclib { namespace common {
             // macro to declare all functions
 #define OP_function(x) OP_LM32_##x()
             void OP_function( reser );
+            void OP_function( user );
             void OP_function( srui );
             void OP_function( nori );
             void OP_function( muli );
