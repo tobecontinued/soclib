@@ -83,6 +83,7 @@ public:
         const std::vector<std::string> &names );
 
     ~VciMultiTty();
+    void print_stats();
 };
 
 }}

@@ -190,7 +190,7 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 	time = time + (nwords * UNIT_TIME);
 	
 	m_cpt_cycle = time.value();
-	m_cpt_read++;
+	m_cpt_read+=nwords;
 	
 #if MULTI_TTY_DEBUG
 	std::cout << "[TTY] Send answer with time = " << time.value() << std::endl;
@@ -262,7 +262,7 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 	time = time + (nwords * UNIT_TIME);
 
 	m_cpt_cycle = time.value();
-	m_cpt_write++;
+	m_cpt_write+=nwords;
 	
 #if MULTI_TTY_DEBUG
 	std::cout << "[TTY] Send answer with time = " << time.value() << std::endl;
@@ -314,5 +314,12 @@ tmpl(size_t)::getNRead(){
 tmpl(size_t)::getNWrite(){
   return m_cpt_write;
 }
+
+tmpl(void)::print_stats(){
+  std::cout << name() << std::endl;
+  std::cout << "- READ               = " << m_cpt_read << std::endl;
+  std::cout << "- WRITE              = " << m_cpt_write << std::endl;
+}
+
 
 }}

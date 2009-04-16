@@ -70,13 +70,13 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 		data = m_term[term_no]->hasData();
 		return true;
 	case TTY_READ:
+        m_cpt_read++;
         if ( m_term[term_no]->hasData() ) {
             char tmp = m_term[term_no]->getc();
             data = tmp;
         }
         return true;
-        m_cpt_read++;
-	default:
+ 	default:
 		return false;
 	}
 }
@@ -85,6 +85,8 @@ tmpl(void)::transition()
 {
 	if (!p_resetn) {
 		m_vci_fsm.reset();
+        m_cpt_read = 0;
+        m_cpt_write = 0;
 		r_counter = 0;
 		return;
 	}
@@ -171,6 +173,13 @@ tmpl(/**/)::~VciMultiTty()
 
 	delete[] p_irq;
 }
+
+tmpl(void)::print_stats(){
+    std::cout << name() << std::endl;
+    std::cout << "- READ               = " << m_cpt_read << std::endl;
+    std::cout << "- WRITE              = " << m_cpt_write << std::endl;
+}
+
 
 }}
 

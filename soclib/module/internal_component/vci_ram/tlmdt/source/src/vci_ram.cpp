@@ -80,6 +80,10 @@ tmpl(/**/)::VciRam
   //initialize the control table LL/SC
   m_atomic.clearAll();
 
+  //counters
+  m_cpt_read = 0;
+  m_cpt_write = 0;
+
 }
 
 tmpl(/**/)::~VciRam(){}
@@ -133,7 +137,12 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 
 	  utoa(m_contents[segIndex][address / vci_param::nbytes], payload.get_data_ptr(),(i * vci_param::nbytes));
 
-	  //std::cout << "[RAM " << m_tgtid << "] READ address = " << std::hex << (payload.get_address()+(i*vci_param::nbytes)) << " data  = " <<  m_contents[segIndex][address / vci_param::nbytes] << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+	  printf("[%s] read %d address = 0x%09x data = 0x%09x\n", name(), m_cpt_read, address,  (m_contents[segIndex][address / vci_param::nbytes]));
+          //std::cout << "[" << name() <<"] read " << m_cpt_read << " address = " << std::hex << address << " data  = " <<  m_contents[segIndex][address / vci_param::nbytes] << std::dec << std::endl;
+#endif
+	
+	  m_cpt_read++;
 
 	}
 	
@@ -154,6 +163,7 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 #if VCI_RAM_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Write packet "<< pktid << " Time = "  << time.value() << std::endl;
 #endif
+        m_cpt_write+=nwords;
 	
 	typename vci_param::addr_t address;
 	for (size_t i=0; i<nwords; i++){
@@ -192,6 +202,7 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 #if VCI_RAM_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Locked Read packet "<< pktid << " Time = " << time.value() << std::endl;
 #endif
+        m_cpt_read+=nwords;
 
 	typename vci_param::addr_t address;
         for (size_t i=0; i<nwords; i++){
@@ -224,7 +235,7 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 #if VCI_RAM_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Store Conditionnel packet "<< pktid << " Time = "  << time.value() << std::endl;
 #endif
-
+	m_cpt_write+=nwords;
 	typename vci_param::addr_t address;
         for (size_t i=0; i<nwords; i++){
           //if(payload.contig)
@@ -282,4 +293,9 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
   return tlm::TLM_COMPLETED;
 }
 
+tmpl(void)::print_stats(){
+  std::cout << name() << std::endl;
+  std::cout << "- READ               = " << m_cpt_read << std::endl;
+  std::cout << "- WRITE              = " << m_cpt_write << std::endl;
+}
 }}

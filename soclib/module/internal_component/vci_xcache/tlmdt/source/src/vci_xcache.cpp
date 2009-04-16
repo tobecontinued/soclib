@@ -30,8 +30,6 @@
 
 #include "vci_xcache.h"
 
-//#define SOCLIB_MODULE_DEBUG
-
 #ifdef SOCLIB_MODULE_DEBUG
 namespace {
   const char *dcache_fsm_state_str[] = {
@@ -145,6 +143,7 @@ tmpl (/**/)::VciXcache
   m_icache_cpt_init          = icache_lines;
   m_icache_cpt_cache_read    = 0;
   m_icache_cpt_uncache_read  = 0;
+  m_icache_cpt_read          = 0;
   
   m_dcache_cpt_init          = dcache_lines;
   m_dcache_cpt_cache_read    = 0;
@@ -155,10 +154,10 @@ tmpl (/**/)::VciXcache
   m_cpt_fifo_read            = 0;
   m_cpt_fifo_write           = 0;
   
-  m_dcache_fsm       = DCACHE_IDLE;
-  m_icache_fsm       = ICACHE_IDLE;
-  //m_dcache_fsm       = DCACHE_INIT;
-  //m_icache_fsm       = ICACHE_INIT;
+  //m_dcache_fsm       = DCACHE_IDLE;
+  //m_icache_fsm       = ICACHE_IDLE;
+  m_dcache_fsm       = DCACHE_INIT;
+  m_icache_fsm       = ICACHE_INIT;
   m_vci_cmd_fsm      = CMD_IDLE;
   m_vci_rsp_fsm      = RSP_IDLE;
   
@@ -324,8 +323,8 @@ tmpl (void)::sendNullMessage()
   //set the local time to transaction time
   m_null_time = m_pdes_local_time->get();
    
-#if MY_INITIATOR_DEBUG
-  std::cout << "[INITIATOR " << m_srcid << "] send NULL MESSAGE time = " << m_null_time.value() << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+  std::cout << "[" << name() << "] send NULL MESSAGE time = " << m_null_time.value() << std::endl;
 #endif
 
   //send a null message
@@ -483,6 +482,7 @@ switch((icache_fsm_state_e)m_icache_fsm) {
        ins_ber = false;
        ins_rdata = m_icache.read(ins_addr & ~0x3);
      }
+     m_icache_cpt_read++;
    }
    else
      m_icache_frz = false;
@@ -818,11 +818,6 @@ switch ((dcache_fsm_state_e)m_dcache_fsm) {
    break;
    
  case CMD_DATA_UNC_READ:
-#if FSM_DEBUG
-   fprintf (pFile," CMD_DATA_UNC");
-   std::cout << " CMD_DATA_UNC";
-#endif
-
    utoa(WORD_ENABLED, m_byte_enable_ptr, 0);
    utoa(m_read_buffer[0], m_data_ptr, 0);
    m_nbytes = vci_param::nbytes;
@@ -856,11 +851,6 @@ switch ((dcache_fsm_state_e)m_dcache_fsm) {
    break;
    
  case CMD_DATA_UNC_READ_LINKED:
-#if FSM_DEBUG
-   fprintf (pFile," CMD_DATA_UNC");
-   std::cout << " CMD_DATA_UNC_READ_LINKED";
-#endif
-
    m_nbytes = vci_param::nbytes;
    utoa(WORD_ENABLED, m_byte_enable_ptr, 0);
    utoa(m_read_buffer[0], m_data_ptr, 0);
@@ -895,10 +885,6 @@ switch ((dcache_fsm_state_e)m_dcache_fsm) {
    
  case CMD_DATA_UNC_STORE_COND:
    {
-#if FSM_DEBUG
-     fprintf (pFile," CMD_DATA_UNC");
-     std::cout << " CMD_DATA_UNC_STORE_COND";
-#endif
      typename vci_param::addr_t address = m_buf.getAddress ();
      m_write_buffer[0] = m_buf.popData ();
      m_cpt_fifo_read++;
@@ -938,11 +924,6 @@ switch ((dcache_fsm_state_e)m_dcache_fsm) {
    }
    
  case CMD_DATA_MISS:
-#if FSM_DEBUG
-   fprintf (pFile," CMD_DATA_MISS");
-   std::cout << " CMD_DATA_MISS";
-#endif
-
    m_nbytes = m_dcache.get_nwords() * vci_param::nbytes;
    for(unsigned int i=0, j=0; i<m_dcache.get_nwords(); i++, j+=vci_param::nbytes){
      utoa(WORD_ENABLED, m_byte_enable_ptr, j);
@@ -980,10 +961,6 @@ switch ((dcache_fsm_state_e)m_dcache_fsm) {
    
  case CMD_DATA_WRITE:
    {
-#if FSM_DEBUG
-     fprintf (pFile," CMD_DATA_WRITE");
-     std::cout << " CMD_DATA_WRITE";
-#endif
 
      //the write vci transaction have only one word
 
@@ -1051,11 +1028,6 @@ switch ((dcache_fsm_state_e)m_dcache_fsm) {
 switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
   
  case RSP_IDLE:
-#if FSM_DEBUG
-   fprintf (pFile," RSP_IDLE\n");
-   std::cout << " RSP_IDLE" << std::endl;
-#endif
-   
    if (m_icache_req && m_pdes_local_time->get()>m_req_icache_time) {
      m_vci_rsp_fsm = RSP_INS_MISS;
    } else if (!m_buf.empty()){
@@ -1089,6 +1061,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
    
  case RSP_INS_MISS:
    wait (m_rsp_received);
+   //m_pdes_local_time->reset_sync();
    for(unsigned int i=0;i<(m_payload.get_data_length()/vci_param::nbytes); i++)
      m_read_buffer_ins[i] = atou(m_payload.get_data_ptr(), (i * vci_param::nbytes));
    
@@ -1114,6 +1087,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
         
  case RSP_DATA_MISS:
    wait (m_rsp_received);
+   //m_pdes_local_time->reset_sync();
    for(unsigned int i=0;i<(m_payload.get_data_length()/vci_param::nbytes); i++)
      m_read_buffer[i] = atou(m_payload.get_data_ptr(), (i * vci_param::nbytes));
    
@@ -1126,6 +1100,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
    
  case RSP_DATA_WRITE:
    wait (m_rsp_received);
+   //m_pdes_local_time->reset_sync();
    
    for(unsigned int i=0;i<(m_payload.get_data_length()/vci_param::nbytes); i++)
      m_write_buffer[i] = atou(m_payload.get_data_ptr(), (i * vci_param::nbytes));
@@ -1157,6 +1132,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
    break;
  case RSP_DATA_UNC:
    wait (m_rsp_received);
+   //m_pdes_local_time->reset_sync();
    
    if ( m_read_error == 0) {
      data_ber = m_read_error;
@@ -1180,6 +1156,8 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
    break;
  case RSP_DATA_WRITE_UNC:
    wait (m_rsp_received);
+   //m_pdes_local_time->reset_sync();
+
    data_rdata = atou(m_payload.get_data_ptr(), 0);;
    m_dcache_unc_valid = true;
 	
@@ -1278,6 +1256,19 @@ tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw
 
   return tlm::TLM_COMPLETED;
 } // end backward nb transport 
+
+tmpl(void)::print_stats()
+{
+
+  std::cout << name() << std::endl;
+  std::cout << "- NUMBER OF CYCLES   = " << getTotalCycles() << std::endl ;
+  std::cout << "- I CACHE READ       = " << getNIcache_Cache_Read() << std::endl ;
+  std::cout << "- I UNCACHE READ     = " << getNIcache_Uncache_Read() << std::endl ;
+  std::cout << "- D CACHE READ       = " << getNDcache_Cache_Read() << std::endl ;
+  std::cout << "- D UNCACHE READ     = " << getNDcache_Uncache_Read() << std::endl ;
+  std::cout << "- D CACHE WRITE      = " << getNDcache_Cache_Write() << std::endl ;
+  std::cout << "- D UNCACHE WRITE    = " << getNDcache_Uncache_Write() << std::endl ;
+}
 
 
 }}

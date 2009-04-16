@@ -30,10 +30,6 @@
 
 #include "vci_mwmr_controller.h"
 
-#ifndef MWMR_CONTROLLER_DEBUG
-#define MWMR_CONTROLLER_DEBUG 0
-#endif
-
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) template<typename vci_param> x VciMwmrController<vci_param>
@@ -59,8 +55,8 @@ tmpl(void)::send_activity()
   m_activity_phase = tlm::BEGIN_REQ;
   //set the local time to transaction time
   m_activity_time = m_pdes_local_time->get();
-   
-#if MWMR_CONTROLLER_DEBUG
+
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] Send Activity %d with time = %d\n", m_srcid, m_pdes_activity_status->get(), (int)m_activity_time.value());
   std::cout << "[MWMR Initiator " << m_srcid << "] Send Activity " << m_pdes_activity_status->get() << " with time = " << m_activity_time.value() << std::endl;
 #endif
@@ -80,7 +76,7 @@ tmpl (tlm::tlm_sync_enum)::vci_nb_transport_bw   // receive the response packet 
   sc_core::sc_time         &time)                // time
 {
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   soclib_payload_extension *extension_pointer;
   payload.get_extension(extension_pointer);
 
@@ -134,7 +130,7 @@ tmpl (tlm::tlm_sync_enum)::vci_nb_transport_fw   // receive the command packet f
   phase = tlm::BEGIN_RESP;
   time = time + UNIT_TIME;
   
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[MWMR Target " << m_destid << "] Address " << payload.get_address() << " does not match any segment " << std::endl;
   std::cout << "[MWMR Target " << m_destid << "] Send to source "<< extension_pointer->get_src_id() << " a error packet with time = "  << time.value() << std::endl;
 #endif
@@ -156,7 +152,7 @@ tmpl (tlm::tlm_sync_enum)::vci_read_nb_transport_fw // receive the READ command 
   soclib_payload_extension *extension_pointer;
   payload.get_extension(extension_pointer);
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   uint32_t srcid  = extension_pointer->get_src_id();
   uint32_t pktid  = extension_pointer->get_pkt_id();
 #endif
@@ -164,7 +160,7 @@ tmpl (tlm::tlm_sync_enum)::vci_read_nb_transport_fw // receive the READ command 
   uint32_t nwords = (uint32_t)(payload.get_data_length() / vci_param::nbytes);
   int reg;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Target %d] Receive from source %d a read packet %d with time = %d\n", m_destid, srcid, pktid, (int)time.value());
   std::cout << "[MWMR Target " << m_destid << "] Receive from source " << srcid << " a read packet " << pktid << " with time = " << time.value() << std::endl;
 #endif
@@ -177,19 +173,6 @@ tmpl (tlm::tlm_sync_enum)::vci_read_nb_transport_fw // receive the READ command 
     if ( reg < MWMR_IOREG_MAX ) { // coprocessor IO register access
       //add the reading time (reading time equals to number of words, in this case 1)
       m_pdes_local_time->add(UNIT_TIME);
-      /*
-      tlm::tlm_generic_payload *fifo_payload_ptr = new tlm::tlm_generic_payload();
-      tlm::tlm_phase           fifo_phase;
-      sc_core::sc_time         fifo_time;
-      unsigned char status_data[vci_param::nbytes];
-
-      fifo_payload_ptr->set_data_length(vci_param::nbytes);
-      fifo_payload_ptr->set_data_ptr(status_data);
-      fifo_phase = tlm::BEGIN_REQ;
-      fifo_time = m_pdes_local_time->get();
-	    
-      (*p_status[reg])->nb_transport_fw(*fifo_payload_ptr, fifo_phase, fifo_time);
-      */
       (*p_status[reg])->nb_transport_fw(payload, phase, time);
       wait(m_copro_event);
     }
@@ -234,7 +217,7 @@ tmpl (tlm::tlm_sync_enum)::vci_read_nb_transport_fw // receive the READ command 
   phase = tlm::BEGIN_RESP;
   time = time + (nwords * UNIT_TIME);
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Target %d ] Send answer packet %d with time = %d\n", m_destid , pktid, (int)time.value());
   std::cout << "[MWMR Target " << m_destid << " ] Send answer packet " << pktid << " with time = " << time.value() << std::endl;
 #endif
@@ -257,7 +240,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
   soclib_payload_extension *extension_pointer;
   payload.get_extension(extension_pointer);
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   uint32_t srcid  = extension_pointer->get_src_id();
   uint32_t pktid  = extension_pointer->get_pkt_id();
 #endif
@@ -265,7 +248,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
   uint32_t nwords = (uint32_t)(payload.get_data_length() / vci_param::nbytes);
   int reg;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Target %d ] Receive from source %d a write packet %d with time = %d\n",m_destid, srcid, pktid, (int)time.value());
   std::cout << "[MWMR Target " <<  m_destid << "] Receive from source " << srcid << " a write packet " << pktid << " with time = " << time.value() << std::endl;
 #endif
@@ -276,24 +259,6 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
   for (unsigned int i=0, j=0; i<nwords; i++, j+=vci_param::nbytes){
     reg = (int)(((payload.get_address() + j) - s.baseAddress()) / vci_param::nbytes);
     if ( reg < MWMR_IOREG_MAX ) { // coprocessor IO register access
-
-      /*
-      tlm::tlm_generic_payload *fifo_payload_ptr = new tlm::tlm_generic_payload();
-      tlm::tlm_phase           fifo_phase;
-      sc_core::sc_time         fifo_time;
-      unsigned char status_data[vci_param::nbytes];
-
-      for(int a = 0; a<vci_param::nbytes; a++)
-	status_data[a] = payload.get_data_ptr()[i + a];
-      
-      fifo_payload_ptr->set_data_length(vci_param::nbytes);
-      fifo_payload_ptr->set_data_ptr(status_data);
-      fifo_phase = tlm::BEGIN_REQ;
-      fifo_time = m_pdes_local_time->get();
-	    
-      (*p_config[reg])->nb_transport_fw(*fifo_payload_ptr, fifo_phase, fifo_time);
-      */
-
       (*p_config[reg])->nb_transport_fw(payload, phase, time);
       wait(m_copro_event);
     }
@@ -304,20 +269,20 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
 	break;
       case MWMR_CONFIG_FIFO_NO :
 	m_channel_index = atou(payload.get_data_ptr(), j);
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_FIFO_NO m_channel_index = %d\n", m_destid, m_channel_index);
 	std::cout << "[MWMR Target " << m_destid << "] MWMR_CONFIG_FIFO_NO m_channel_index = " << m_channel_index << std::endl;
 #endif
 	break;
       case MWMR_CONFIG_FIFO_WAY :
 	m_channel_read = !(atou(payload.get_data_ptr(), j));
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_FIFO_WAY m_channel_read = %d\n", m_destid, m_channel_read);
 	std::cout << "[MWMR Target " << m_destid << "] MWMR_CONFIG_FIFO_WAY m_channel_read = " << m_channel_read << std::endl;
 #endif
 	break;
       case MWMR_CONFIG_STATUS_ADDR :
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_STATUS_ADDR status_address = %x\n", m_destid, atou(payload.get_data_ptr(), j));
 	std::cout << "[MWMR Target " << m_destid << "] MWMR_CONFIG_STATUS_ADDR status_address = " << std::hex << atou(payload.get_data_ptr(), j) << std::dec << std::endl;
 #endif
@@ -327,7 +292,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
 	  m_write_channel[m_channel_index].status_address = atou(payload.get_data_ptr(), j);
 	break;
       case MWMR_CONFIG_DEPTH :
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_DEPTH depth = %x\n", m_destid, atou(payload.get_data_ptr(), j));
 	std::cout << "[MWMR Target " << m_destid << "] MWMR_CONFIG_DEPTH depth = " << std::hex << atou(payload.get_data_ptr(), j) << std::dec << std::endl;
 #endif
@@ -337,7 +302,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
 	  m_write_channel[m_channel_index].depth = atou(payload.get_data_ptr(), j);
 	break;
       case MWMR_CONFIG_BUFFER_ADDR :
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_BUFFER_ADDR base_address = %x\n", m_destid, atou(payload.get_data_ptr(), j));
 	std::cout << "[MWMR Target " << m_destid << "] MWMR_CONFIG_BUFFER_ADDR base_address = " << std::hex << atou(payload.get_data_ptr(), j) << std::dec << std::endl;
 #endif
@@ -347,7 +312,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
 	  m_write_channel[m_channel_index].base_address = atou(payload.get_data_ptr(), j);
 	break;
       case MWMR_CONFIG_RUNNING :
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_RUNNING channel = %d running = %d\n", m_destid, m_channel_index, atou(payload.get_data_ptr(), j));
 	std::cout << "[MWMR Target " << m_destid << "] MWMR_CONFIG_RUNNING channel = " << m_channel_index <<" running = " << atou(payload.get_data_ptr(), j) << std::endl;
 #endif
@@ -367,7 +332,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
   phase = tlm::BEGIN_RESP;
   time = time + (nwords * UNIT_TIME);
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Target %d ] Send answer packet %d with time = %d\n", m_destid , pktid, (int)time.value());
   std::cout << "[MWMR Target " <<  m_destid << "] Send answer packet " << pktid << " with time = " <<  time.value() << std::endl;
 #endif
@@ -391,7 +356,7 @@ tmpl(tlm::tlm_sync_enum)::read_fifo_nb_transport_fw  // receive data from initia
   if(m_read_fifo[index].time < time)
     m_read_fifo[index].time = time;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d ] Receive read request fifo = %d nword = %d with time = %d has data = %d\n", m_srcid, index, nwords, (int)m_read_fifo[index].time.value(), (m_read_fifo[index].n_elements >= nwords));
   std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive read request fifo = " << index << " nword = " << nwords << " with time = " << (int)m_read_fifo[index].time.value() << " has data = " << (m_read_fifo[index].n_elements >= nwords) << std::endl;
 #endif
@@ -412,7 +377,7 @@ tmpl(tlm::tlm_sync_enum)::read_fifo_nb_transport_fw  // receive data from initia
     }
     
     //send awnser
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] Send read response to coprocessor\n",m_srcid);
     std::cout << "[MWMR Initiator " <<  m_srcid << "] Send read response to coprocessor" << std::endl;
 #endif
@@ -442,7 +407,7 @@ tmpl(tlm::tlm_sync_enum)::write_fifo_nb_transport_fw // receive data from initia
   if(m_write_fifo[index].time < time)
     m_write_fifo[index].time = time;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] Receive write request fifo = %d nword = %d with time = %d has space = %d n_elements = %d full = %d\n", m_srcid, index, nwords, (int)m_write_fifo[index].time.value(), (((m_write_fifo_depth/vci_param::nbytes) - m_write_fifo[index].n_elements) >= nwords), m_write_fifo[index].n_elements,  m_write_fifo[index].full );
   std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive write request fifo = " <<  index << " nwords = " << nwords << " with time = " << (int)m_write_fifo[index].time.value() << " has space = " << (((m_write_fifo_depth/vci_param::nbytes) - m_write_fifo[index].n_elements) >= nwords) << " n_elements = " << m_write_fifo[index].n_elements << " full = " << m_write_fifo[index].full << std::endl;
 #endif
@@ -464,7 +429,7 @@ tmpl(tlm::tlm_sync_enum)::write_fifo_nb_transport_fw // receive data from initia
     }
     
     //send awnser
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] Send write response to coprocessor\n",m_srcid);
     std::cout << "[MWMR Initiator " <<  m_srcid << "] Send write response to coprocessor" << std::endl;
 #endif
@@ -532,14 +497,14 @@ tmpl(void)::reset()
 tmpl(void)::getLock(typename vci_param::addr_t status_address, uint32_t *status) 
 {
   do{
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] GET LOCK\n",m_srcid);
     std::cout << "[MWMR Initiator " <<  m_srcid << "] GET LOCK" << std::endl;
 #endif
 
     do{
       
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] Send locked read packet with time = %d\n",m_srcid,(int)m_pdes_local_time->get().value());
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Send locked read packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -550,7 +515,7 @@ tmpl(void)::getLock(typename vci_param::addr_t status_address, uint32_t *status)
 		1
 		);
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] Receive awnser read packet with time = %d lock = %d\n",m_srcid,(int)m_pdes_local_time->get().value(),status[3]);
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser read packet with time = " << (int)m_pdes_local_time->get().value() << " lock = " << status[3] << std::endl;
 #endif
@@ -563,7 +528,7 @@ tmpl(void)::getLock(typename vci_param::addr_t status_address, uint32_t *status)
 
     status[3]     = 1;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] Send store conditional packet with time = %d lock = %d\n",m_srcid, (int)m_pdes_local_time->get().value(),status[3]);
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Send store conditional packet with time = " << (int)m_pdes_local_time->get().value() << " lock = " << status[3] << std::endl;
 #endif
@@ -574,7 +539,7 @@ tmpl(void)::getLock(typename vci_param::addr_t status_address, uint32_t *status)
 	       1
 	       );
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] Receive awnser store conditional packet with time = %d lock = %d\n",m_srcid, (int)m_pdes_local_time->get().value(),status[3]);
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser store conditional packet with time = " << (int)m_pdes_local_time->get().value() << " lock = " << status[3] << std::endl;
 #endif
@@ -585,7 +550,7 @@ tmpl(void)::getLock(typename vci_param::addr_t status_address, uint32_t *status)
     
   }while(status[3]!=0);
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] END GET LOCK\n",m_srcid);
   std::cout << "[MWMR Initiator " <<  m_srcid << "] END GET LOCK" << std::endl;
 #endif
@@ -593,13 +558,13 @@ tmpl(void)::getLock(typename vci_param::addr_t status_address, uint32_t *status)
 
 tmpl(void)::releaseLock(typename vci_param::addr_t status_address, uint32_t *status) 
 {
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] RELEASE THE LOCK\n",m_srcid);
   std::cout << "[MWMR Initiator " <<  m_srcid << "] RELEASE THE LOCK" << std::endl;
 #endif
   status[3]     = 0; //release the lock
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] Send write packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
     std::cout << "[MWMR Initiator " <<  m_srcid << "] Send write packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -613,7 +578,7 @@ tmpl(void)::releaseLock(typename vci_param::addr_t status_address, uint32_t *sta
   
   m_pktid++;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] Receive awnser write packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
   std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser write packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -631,12 +596,12 @@ tmpl(void)::readStatus(typename vci_param::addr_t status_address, uint32_t *stat
   // STATUS[2] = content (capacity)
   // STATUS[3] = lock
   
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] READ STATUS\n",m_srcid);
   std::cout << "[MWMR Initiator " <<  m_srcid << "] READ STATUS" << std::endl;
 #endif
     
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] Send read packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
     std::cout << "[MWMR Initiator " <<  m_srcid << "] Send read packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -649,7 +614,7 @@ tmpl(void)::readStatus(typename vci_param::addr_t status_address, uint32_t *stat
   
   m_pktid++;
   
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] Receive awnser read packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
   std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser read packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -662,13 +627,13 @@ tmpl(void)::readStatus(typename vci_param::addr_t status_address, uint32_t *stat
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 tmpl(void)::updateStatus(typename vci_param::addr_t status_address, uint32_t *status) 
 {
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] UPDATE STATUS\n",m_srcid);
   std::cout << "[MWMR Initiator " <<  m_srcid << "] UPDATE STATUS" << std::endl;
 #endif
   status[3]     = 0; // release the lock 
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] Send read packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
   std::cout << "[MWMR Initiator " <<  m_srcid << "] Send read packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -681,7 +646,7 @@ tmpl(void)::updateStatus(typename vci_param::addr_t status_address, uint32_t *st
   
   m_pktid++;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] Receive awnser read packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
   std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser read packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -700,7 +665,7 @@ tmpl(void)::readFromChannel(uint32_t fifo_index, uint32_t *status)
   // STATUS[3] = lock
   
   
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] BUSY_POSITIONS = %d BASE ADDRESS = %.8x DEPTH = %.8x\n",m_srcid, status[2], m_read_channel[fifo_index].base_address, m_read_channel[fifo_index].depth);
   std::cout << "[MWMR Initiator " <<  m_srcid << "] BUSY_POSITIONS = " << status[2] << std::hex << " BASE ADDRESS = " << m_read_channel[fifo_index].base_address << " DEPTH = " << m_read_channel[fifo_index].depth << std::dec << std::endl;
 #endif
@@ -712,12 +677,12 @@ tmpl(void)::readFromChannel(uint32_t fifo_index, uint32_t *status)
     
     if((status[0]+m_read_fifo_depth)<=m_read_channel[fifo_index].depth){ // send only 1 message
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] READ FIFO %d SEND MESSAGE 1 OF 1\n",m_srcid,fifo_index);
       std::cout << "[MWMR Initiator " <<  m_srcid << "] READ FIFO " << fifo_index << " SEND MESSAGE 1 OF 1" << std::endl;
 #endif
 		  
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] Send read packet with time = %d address = %d\n",m_srcid, (int)m_pdes_local_time->get().value(),(m_read_channel[fifo_index].base_address + status[0]));
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Send read packet with time = " << (int)m_pdes_local_time->get().value() << " address = " << (m_read_channel[fifo_index].base_address + status[0]) << std::endl;
 #endif
@@ -730,7 +695,7 @@ tmpl(void)::readFromChannel(uint32_t fifo_index, uint32_t *status)
 
       m_pktid++;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] Receive awnser read packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser read packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -746,12 +711,12 @@ tmpl(void)::readFromChannel(uint32_t fifo_index, uint32_t *status)
       for(nwords_1 = 0, address = status[0]; address < m_read_channel[fifo_index].depth; nwords_1++, count++, address+=vci_param::nbytes );
       nwords_2 = (m_read_fifo_depth/vci_param::nbytes) - nwords_1;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] READ FIFO %d SEND MESSAGE 1 OF 2\n",m_srcid,fifo_index);
       std::cout << "[MWMR Initiator " <<  m_srcid << "] READ FIFO " << fifo_index << " SEND MESSAGE 1 OF 2" << std::endl;
 #endif
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] Send read packet with time = %d address = %d\n",m_srcid, (int)m_pdes_local_time->get().value(),(m_read_channel[fifo_index].base_address + status[0]));
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Send read packet with time = " << (int)m_pdes_local_time->get().value() << " address = " << (m_read_channel[fifo_index].base_address + status[0]) << std::endl;
 #endif
@@ -764,20 +729,20 @@ tmpl(void)::readFromChannel(uint32_t fifo_index, uint32_t *status)
       
       m_pktid++;
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] Receive awnser read packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser read packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
 
       m_pdes_local_time->add(2 * UNIT_TIME);
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] READ FIFO %d SEND MESSAGE 2 OF 2\n",m_srcid,fifo_index);
       std::cout << "[MWMR Initiator " <<  m_srcid << "] READ FIFO " << fifo_index << " SEND MESSAGE 2 OF 2" << std::endl;
 #endif
 
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] Send read packet with time = %d address = %d\n",m_srcid, (int)m_pdes_local_time->get().value(),m_read_channel[fifo_index].base_address);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] Send read packet with time = " << (int)m_pdes_local_time->get().value() << " address =" << m_read_channel[fifo_index].base_address << std::endl;
 #endif
@@ -790,7 +755,7 @@ tmpl(void)::readFromChannel(uint32_t fifo_index, uint32_t *status)
 
       m_pktid++;
       
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] Receive awnser read packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
       std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser read packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -832,7 +797,7 @@ tmpl(void)::readFromChannel(uint32_t fifo_index, uint32_t *status)
     m_read_fifo[fifo_index].time = m_pdes_local_time->get() + (m_waiting_time * UNIT_TIME);
   }
   else{
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] READ FIFO %d NOT OK\n",m_srcid,fifo_index);
     std::cout << "[MWMR Initiator " <<  m_srcid << "] READ FIFO " << fifo_index << " NOT OK" << std::endl;
 #endif
@@ -861,19 +826,19 @@ tmpl(void)::writeToChannel(uint32_t fifo_index, uint32_t *status)
   if((m_write_channel[fifo_index].depth - status[2]) >= m_write_fifo_depth){
     do{
       
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] BUSY_POSITIONS = %d FREE_POSITIONS = %d BASE ADDRESS = %.8x\n", m_srcid, status[2], (m_write_channel[fifo_index].depth - status[2]), m_write_channel[fifo_index].base_address);
       std::cout << "[MWMR Initiator " <<  m_srcid << "] BUSY_POSITIONS = " << status[2] << " FREE_POSITIONS = " << (m_write_channel[fifo_index].depth - status[2]) << " BASE ADDRESS = " << std::hex << m_write_channel[fifo_index].base_address << std::dec << std::endl;
 #endif
       
       if((status[1]+m_write_fifo_depth)<=m_write_channel[fifo_index].depth){ // send only 1 message
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] WRITE FIFO %d SEND MESSAGE 1 OF 1\n",m_srcid,fifo_index);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] WRITE FIFO " << fifo_index << " SEND MESSAGE 1 OF 1" << std::endl;
 #endif
 	  
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] Send write packet with time = %d address = %.8x nwords = %d\n",m_srcid, (int)m_pdes_local_time->get().value(),(m_write_channel[fifo_index].base_address + status[1]),(m_write_fifo_depth/vci_param::nbytes));
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] Send write packet with time = " << (int)m_pdes_local_time->get().value() << std::hex << " address = " << (m_write_channel[fifo_index].base_address + status[1]) << std::dec << " nwords = " << (m_write_fifo_depth/vci_param::nbytes) << std::endl;
 #endif
@@ -888,7 +853,7 @@ tmpl(void)::writeToChannel(uint32_t fifo_index, uint32_t *status)
 	
 	m_pdes_local_time->add(2 * UNIT_TIME);
 	  
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] Receive awnser write packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser write packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -904,12 +869,12 @@ tmpl(void)::writeToChannel(uint32_t fifo_index, uint32_t *status)
 	for(nwords_2=0; count <(m_write_fifo_depth/vci_param::nbytes); nwords_2++,count++)
 	  data_2[nwords_2] = m_write_fifo[fifo_index].data[count];
 	
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] WRITE FIFO %d SEND MESSAGE 1 OF 2\n",m_srcid,fifo_index);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] WRITE FIFO " << fifo_index << " SEND MESSAGE 1 OF 2" << std::endl;
 #endif
 	
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] Send write packet with time = %d address = %d nwords = %d\n",m_srcid, (int)m_pdes_local_time->get().value(),(m_write_channel[fifo_index].base_address + status[1]),nwords_1);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] Send write packet with time = " << (int)m_pdes_local_time->get().value() << std::hex << " address = " << (m_write_channel[fifo_index].base_address + status[1]) << std::dec << " nwords = " << nwords_1 << std::endl;
 #endif
@@ -922,19 +887,19 @@ tmpl(void)::writeToChannel(uint32_t fifo_index, uint32_t *status)
 	
 	m_pktid++;
 	  
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] Receive awnser write packet with time = %d\n",m_srcid, (int)m_pdes_local_time->get().value());
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser write packet with time = " << (int)m_pdes_local_time->get().value() << std::endl;
 #endif
 	
 	m_pdes_local_time->add(2 * UNIT_TIME);
 
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] WRITE FIFO %d SEND 2 MESSAGE OF 2\n",m_srcid,fifo_index);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] WRITE FIFO " << fifo_index << " SEND 2 MESSAGE OF 2" << std::endl;
 #endif
 	  
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] Send write packet with time = %d nwords = %d\n",m_srcid, (int)m_pdes_local_time->get().value(), nwords_2);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] Send write packet with time = " << (int)m_pdes_local_time->get().value() << " nwords = " << nwords_2 << std::endl;
 #endif
@@ -947,7 +912,7 @@ tmpl(void)::writeToChannel(uint32_t fifo_index, uint32_t *status)
 	
 	m_pktid++;
 	  
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] Receive awnser write packet with time = %d address = %d\n",m_srcid, (int)m_pdes_local_time->get().value(), m_write_channel[fifo_index].base_address);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] Receive awnser write packet with time = " << (int)m_pdes_local_time->get().value() << std::hex << " address = " << m_write_channel[fifo_index].base_address << std::dec <<std::endl;
 #endif
@@ -983,7 +948,7 @@ tmpl(void)::writeToChannel(uint32_t fifo_index, uint32_t *status)
     m_write_fifo[fifo_index].time = m_pdes_local_time->get() + (m_waiting_time * UNIT_TIME);
   }
   else{
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] WRITE FIFO %d NOT OK\n",m_srcid,fifo_index);
     std::cout << "[MWMR Initiator " <<  m_srcid << "] WRITE FIFO " << fifo_index << " NOT OK" << std::endl;
 #endif
@@ -1001,7 +966,7 @@ tmpl(void)::writeToChannel(uint32_t fifo_index, uint32_t *status)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 tmpl(void)::releasePendingReadFifo(uint32_t fifo_index)
 {
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] RELEASE PENDING FIFO\n",m_srcid);
   std::cout << "[MWMR Initiator " <<  m_srcid << "] RELEASE PENDING FIFO" << std::endl;
 #endif
@@ -1023,7 +988,7 @@ tmpl(void)::releasePendingReadFifo(uint32_t fifo_index)
     if(m_read_fifo[fifo_index].time < m_pdes_local_time->get())
       m_read_fifo[fifo_index].time = m_pdes_local_time->get();
     
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] Send answer to coprocessor time = %d\n",m_srcid,(int)m_read_fifo[fifo_index].time.value());
     std::cout << "[MWMR Initiator " <<  m_srcid << "] Send answer to coprocessor time = " << (int)m_read_fifo[fifo_index].time.value() << std::endl;
 #endif
@@ -1042,7 +1007,7 @@ tmpl(void)::releasePendingReadFifo(uint32_t fifo_index)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 tmpl(void)::releasePendingWriteFifo(uint32_t fifo_index)
 {
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   fprintf(pFile, "[MWMR Initiator %d] RELEASE PENDING FIFO\n",m_srcid);
   std::cout << "[MWMR Initiator " <<  m_srcid << "] RELEASE PENDING FIFO" << std::endl;
 #endif
@@ -1064,7 +1029,7 @@ tmpl(void)::releasePendingWriteFifo(uint32_t fifo_index)
     if(m_write_fifo[fifo_index].time < m_pdes_local_time->get())
       m_write_fifo[fifo_index].time = m_pdes_local_time->get();
     
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
     fprintf(pFile, "[MWMR Initiator %d] Send answer to coprocessor time = %d\n",m_srcid,(int)m_write_fifo[fifo_index].time.value());
     std::cout << "[MWMR Initiator " <<  m_srcid << "] Send answer to coprocessor time = " << (int)m_write_fifo[fifo_index].time.value() << std::endl;
 #endif
@@ -1094,11 +1059,11 @@ tmpl(void)::execLoop()
   // wait the running register to be set
   m_pdes_activity_status->set(false);
   send_activity();
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[MWMR Initiator " <<  m_srcid << "] BLOCKED time = " << m_pdes_local_time->get().value() << std::endl;
 #endif
   wait(m_active_event);
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[MWMR Initiator " <<  m_srcid << "] DESBLOCKED time = " << m_pdes_local_time->get().value() << std::endl;
 #endif
 
@@ -1120,11 +1085,11 @@ tmpl(void)::execLoop()
     //// select the first serviceable FIFO
     //// taking the request time into account 
     //// write FIFOs have the highest priority
-    fifo_serviceable = false ; 
+    fifo_serviceable = false; 
     fifo_time = MAX_TIME;
     
     for (uint32_t  i = 0; i < m_read_channels; i++) {
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] READ CHANNEL %d EMPTY = %d RUNNING = %d max fifo_time = %d fifo time = %d\n", m_srcid, i, m_read_fifo[i].empty,m_read_channel[i].running, (int)fifo_time.value(), (int)m_read_fifo[i].time.value());
       std::cout << "[MWMR Initiator " <<  m_srcid << "] READ CHANNEL " << i << " EMPTY = " << m_read_fifo[i].empty << " RUNNING = " << m_read_channel[i].running << " max fifo_time = " << fifo_time.value() << " fifo time = " << m_read_fifo[i].time.value() << " current time = " << m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -1139,7 +1104,7 @@ tmpl(void)::execLoop()
     } // end for read fifo
     
     for (uint32_t  i = 0; i < m_write_channels; i++) {
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] WRITE CHANNEL %d FULL = %d RUNNING = %d max fifo_time = %d fifo time = %d\n", m_srcid, i, m_write_fifo[i].empty, m_write_channel[i].running, (int)fifo_time.value(), (int)m_write_fifo[i].time.value());
       std::cout << "[MWMR Initiator " <<  m_srcid << "] WRITE CHANNEL " << i << " FULL = " << m_write_fifo[i].full << " RUNNING = " << m_write_channel[i].running << " max fifo_time = " << fifo_time.value() << " fifo time = " << m_write_fifo[i].time.value() << " current time = " << m_pdes_local_time->get().value() << std::endl;
 #endif
@@ -1154,7 +1119,7 @@ tmpl(void)::execLoop()
     } // end for write fifo
     
     if ( !fifo_serviceable ){
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       fprintf(pFile, "[MWMR Initiator %d] FIFO NO SERVICEABLE\n",m_srcid);
       std::cout << "[MWMR Initiator " <<  m_srcid << "] FIFO NO SERVICEABLE" << std::endl;
 #endif
@@ -1171,14 +1136,14 @@ tmpl(void)::execLoop()
       
       // get the status address
       if (fifo_read) {
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] READ FIFO SELECTED %d\n", m_srcid, fifo_index);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] READ FIFO SELECTED " << fifo_index << std::endl;
 #endif
 	status_address = m_read_channel[fifo_index].status_address;
       } 
       else {    /////////////////////////////////////////////////////
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	fprintf(pFile, "[MWMR Initiator %d] WRITE FIFO SELECTED %d\n", m_srcid, fifo_index);
 	std::cout << "[MWMR Initiator " <<  m_srcid << "] WRITE FIFO SELECTED " << fifo_index << std::endl;
 #endif
@@ -1249,7 +1214,7 @@ tmpl(/**/)::VciMwmrController
   //determine the simulation time
   m_simulation_time = simulation_time;
       
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   char fileName[50];
   sprintf (fileName, "mwmr%d.txt", m_srcid);
   pFile = fopen(fileName,"w");
@@ -1389,7 +1354,7 @@ tmpl(void)::send_write
   for(uint32_t i=0; i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++)
     data[i] = atou(m_payload_ptr->get_data_ptr(), (i * vci_param::nbytes));
  
-#if MWMR_CONTROLLER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[" << name() << "] Send write packet with time = " << m_pdes_local_time->get().value() << " address =" << address << std::endl;
 #endif
   

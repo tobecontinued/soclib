@@ -39,4 +39,5 @@ Module('tlmdt:vci_mwmr_controller',
        uses = [ Uses('common:tlmdt'),
                 Uses('common:mapping_table'),
                 ],
+       debug = False,
        )

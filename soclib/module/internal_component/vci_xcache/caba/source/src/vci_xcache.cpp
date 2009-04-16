@@ -1423,6 +1423,19 @@ tmpl(XCacheInfo)::getCacheInfo() const
     return info;
 }
 
+////////////////////////
+tmpl(void)::print_stats()
+////////////////////////
+{
+
+    std::cout << name() << std::endl;
+    std::cout << "- NUMBER OF CYCLES   = " << m_cpt_cycles << std::endl ;
+    std::cout << "- ICACHE READ        = " << m_cpt_icache_data_read << std::endl ;
+    std::cout << "- DCACHE READ        = " << m_cpt_dcache_data_read << std::endl ;
+    std::cout << "- DCACHE WRITE       = " << m_cpt_dcache_data_write << std::endl ;
+
+}
+
 }}
 
 // Local Variables:

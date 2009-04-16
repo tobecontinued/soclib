@@ -40,4 +40,5 @@ Module('tlmdt:vci_ram',
                 Uses('common:linked_access_buffer', id_t = 'uint32_t'),
                 Uses('common:mapping_table'),
 		],
+       debug = False,
        )

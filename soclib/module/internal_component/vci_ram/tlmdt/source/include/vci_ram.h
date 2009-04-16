@@ -54,6 +54,11 @@ class VciRam                                 // vci ram
   ram_t                                                                   **m_contents;
   soclib::common::LinkedAccessBuffer<typename vci_param::addr_t,uint32_t>   m_atomic;
 
+  //counters
+  uint32_t                                                                  m_cpt_read;
+  uint32_t                                                                  m_cpt_write;
+
+
   /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
   /////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +78,7 @@ class VciRam                                 // vci ram
 	 soclib::common::Loader             &loader);
   
   ~VciRam();
-
+  void print_stats();
 };
 }}
 

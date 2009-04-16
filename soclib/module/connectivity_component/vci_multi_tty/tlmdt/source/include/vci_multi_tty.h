@@ -99,6 +99,7 @@ class VciMultiTty
 
   size_t getIdleCycles();
 
+  void print_stats();
 };
 }}
 #endif /* __VCI_MULTI_TTY_H */

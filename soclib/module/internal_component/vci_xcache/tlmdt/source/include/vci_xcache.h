@@ -178,6 +178,7 @@ private:
   size_t                 m_icache_cpt_init;
   size_t                 m_icache_cpt_cache_read;
   size_t                 m_icache_cpt_uncache_read;
+  size_t                 m_icache_cpt_read;
   
   size_t                 m_dcache_cpt_init;
   size_t                 m_dcache_cpt_cache_read;
@@ -224,7 +225,7 @@ public:
   size_t getNTotal_Cache_Write();
   size_t getNTotal_Uncache_Write();
 
- 
+  void print_stats(); 
 
 private:
   /////////////////////////////////////////////////////////////////////////////////////

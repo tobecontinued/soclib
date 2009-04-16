@@ -212,6 +212,8 @@ public:
 
     ~VciXCache();
 
+    void print_stats();
+
 private:
     void transition();
     void genMoore();

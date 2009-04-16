@@ -66,7 +66,7 @@ public:
         const MappingTable &mt,
         const soclib::common::Loader &loader = soclib::common::Loader());
     ~VciRam();
-
+    void print_stats();
 private:
     bool on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be);
     bool on_read( size_t seg, vci_addr_t addr, vci_data_t &data );

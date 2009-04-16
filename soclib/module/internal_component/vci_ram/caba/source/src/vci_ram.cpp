@@ -101,8 +101,13 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
     ram_t *tab = m_contents[seg];
 	unsigned int cur = tab[index];
     uint32_t mask = vci_param::be2mask(be);
-    
+
     tab[index] = (cur & ~mask) | (data & mask);
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << "[" << name() << "] write " << m_cpt_write << " address = " << std::hex << addr << " data = " << data << std::dec << " tab[" << index << "] = " << std::hex << tab[index] << std::dec << std::endl;
+#endif
+
     m_cpt_write++;
 
     return true;
@@ -111,6 +116,11 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
 tmpl(bool)::on_read(size_t seg, vci_addr_t addr, vci_data_t &data )
 {
 	data = m_contents[seg][addr / vci_param::B];
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << "[" << name() << "] read " << m_cpt_read << " address = " << std::hex << addr << " data = " << data << std::dec << std::endl;
+#endif
+
     m_cpt_read++;
 	return true;
 }
@@ -131,6 +141,12 @@ tmpl(void)::transition()
 tmpl(void)::genMoore()
 {
 	m_vci_fsm.genMoore();
+}
+
+tmpl(void)::print_stats(){
+    std::cout << name() << std::endl;
+    std::cout << "- READ               = " << m_cpt_read << std::endl;
+    std::cout << "- WRITE              = " << m_cpt_write << std::endl;
 }
 
 }}
