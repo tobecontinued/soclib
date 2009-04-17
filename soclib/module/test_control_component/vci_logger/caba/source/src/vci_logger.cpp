@@ -105,6 +105,7 @@ tmpl(void)::print( std::ostream &o ) const
         if ( m_cmd_packets[0].plen )
             o << " plen = " << std::noshowbase << std::dec << m_cmd_packets[0].plen;
             o << " const = " << m_cmd_packets[0].cons;
+            o << " (r)srcid = " << m_cmd_packets[0].srcid;
     }
     if ( m_cmd_packets[0].cmd == vci_param::CMD_WRITE
          || m_cmd_packets[0].cmd == vci_param::CMD_STORE_COND ) {
@@ -169,7 +170,7 @@ tmpl(void)::reset()
 #define tmpl(x) template<typename vci_param> x VciLogger<vci_param>
 
 tmpl(/**/)::VciLogger(
-	sc_module_name insname,
+	sc_core::sc_module_name insname,
 	const soclib::common::MappingTable &mt )
 	: BaseModule(insname),
       m_pending_commands(new VciLoggerElem<vci_param>[vci_param::T]),

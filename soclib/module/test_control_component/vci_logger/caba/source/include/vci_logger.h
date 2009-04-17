@@ -36,8 +36,6 @@
 namespace soclib {
 namespace caba {
 
-using namespace sc_core;
-
 template<typename vci_param> class VciLoggerElem;
 
 template<typename vci_param>
@@ -50,12 +48,12 @@ protected:
 	SC_HAS_PROCESS(VciLogger);
 
 public:
-    sc_in<bool> p_resetn;
-    sc_in<bool> p_clk;
+    sc_core::sc_in<bool> p_resetn;
+    sc_core::sc_in<bool> p_clk;
     soclib::caba::VciMonitor<vci_param> p_vci;
 
     VciLogger(
-        sc_module_name insname,
+        sc_core::sc_module_name insname,
         const soclib::common::MappingTable &mt);
     ~VciLogger();
 
