@@ -66,8 +66,8 @@ namespace soclib { namespace tlmt {
 
 
     int count = 0;
-    while(true){
-      //while(count<10){
+    //while(true){
+    while(count<10){
       count++;
       
       //write
@@ -118,6 +118,7 @@ namespace soclib { namespace tlmt {
 #endif
       }
     }
+    c0.disable();
   }
 
   tmpl(/**/)::Coprocessor(sc_core::sc_module_name name,

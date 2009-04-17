@@ -128,7 +128,11 @@ int sc_main (int   argc, char  **argv)
 
   std::cout << "Execution Time = " << (int)((1000.0 * (final.time - initial.time))+ (final.millitm - initial.millitm)) << std::endl << std::endl;
 
-  for (int i=0 ; i<n_rams; i++) {
+  for (int i=0; i<n_initiators; i++) {
+    xcache[i]->print_stats();
+  }
+
+  for (int i=0; i<n_rams; i++) {
     ram[i]->print_stats();
   }
 

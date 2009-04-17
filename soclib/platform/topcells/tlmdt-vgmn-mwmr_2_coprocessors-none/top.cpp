@@ -38,8 +38,6 @@ int sc_main (int   argc, char  *argv[])
   maptab.add(Segment("ram0",        0xbfc00000, 0x00010000, IntTab(0), 1));
   maptab.add(Segment("mwmr0",       0x10000000, 0x00010000, IntTab(1), 1));
   maptab.add(Segment("mwmr1",       0x20000000, 0x00010000, IntTab(2), 1));
-  //  maptab.add(Segment("mwmr2",       0x30000000, 0x00010000, IntTab(3), 1));
-  // maptab.add(Segment("mwmr3",       0x40000000, 0x00010000, IntTab(4), 1));
 
   /////////////////////////////////////////////////////////////////////////////
   // LOADER
