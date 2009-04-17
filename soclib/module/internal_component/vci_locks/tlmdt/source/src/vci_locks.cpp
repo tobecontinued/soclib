@@ -38,13 +38,13 @@ tmpl(/**/)::VciLocks
 ( sc_core::sc_module_name name,
   const soclib::common::IntTab &index,
   const soclib::common::MappingTable &mt)
-	   : sc_module(name),                      // init module name
+	   : sc_module(name),
 	   m_index(index),
 	   m_mt(mt),
-	   p_vci_target("socket")
+	   p_vci_target("vcisocket")
 {
-  // register callback fuction
-  p_vci_target.register_nb_transport_fw(this, &VciLocks::my_nb_transport_fw);
+  // bind target
+  p_vci_target(*this);                     
   
   // segments
   segList=m_mt.getSegmentList(m_index);
@@ -72,7 +72,7 @@ tmpl(/**/)::~VciLocks(){}
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if VCI SOCKET
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 ( tlm::tlm_generic_payload &payload,
   tlm::tlm_phase           &phase,  
   sc_core::sc_time         &time)   
@@ -158,6 +158,29 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 
   p_vci_target->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
+}
+
+/// Not implemented for this example but required by interface
+tmpl(void)::b_transport
+( tlm::tlm_generic_payload &payload,                // payload
+  sc_core::sc_time         &_time)                  //time
+{
+  return;
+}
+
+/// Not implemented for this example but required by interface
+tmpl(bool)::get_direct_mem_ptr
+( tlm::tlm_generic_payload &payload,                // address + extensions
+  tlm::tlm_dmi             &dmi_data)               // DMI data
+{ 
+  return false;
+}
+    
+/// Not implemented for this example but required by interface
+tmpl(unsigned int):: transport_dbg                            
+( tlm::tlm_generic_payload &payload)                // debug payload
+{
+  return false;
 }
    
 }}

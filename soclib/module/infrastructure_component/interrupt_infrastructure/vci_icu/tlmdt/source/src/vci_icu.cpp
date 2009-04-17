@@ -52,11 +52,11 @@ tmpl(/**/)::VciIcu
 	   p_vci_target("vci_target_socket"),  // vci target socket name
 	   p_irq_initiator("irq_init_socket")  // irq initiator socket name
 {
-  //register callback function VCI TARGET SOCKET
-  p_vci_target.register_nb_transport_fw(this, &VciIcu::vci_nb_transport_fw);
+  // bind VCI TARGET SOCKET
+  p_vci_target(*this);                     
 
-  //register callback function IRQ INITIATOR SOCKET
-  //p_irq_initiator.register_nb_transport_bw(this, &VciIcu::irq_nb_transport_bw);
+  // bind IRQ INITIATOR SOCKET
+  p_irq_initiator(*this);                     
 
   //maximum number of interruption equal 32
   if (m_nirq >= 32)
@@ -84,9 +84,9 @@ tmpl(/**/)::VciIcu
 tmpl(/**/)::~VciIcu(){}
 
 /////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_fw_transport_if VCI SOCKET
+// Virtual Fuctions  tlm::tlm_fw_transport_if VCI TARGET SOCKET
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::vci_nb_transport_fw
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 ( tlm::tlm_generic_payload &payload,
   tlm::tlm_phase           &phase,  
   sc_core::sc_time         &time)   
@@ -216,6 +216,49 @@ tmpl(tlm::tlm_sync_enum)::vci_nb_transport_fw
 
   p_vci_target->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
+}
+
+// Not implemented for this example but required by interface
+tmpl(void)::b_transport
+( tlm::tlm_generic_payload &payload,                // payload
+  sc_core::sc_time         &_time)                  //time
+{
+  return;
+}
+
+// Not implemented for this example but required by interface
+tmpl(bool)::get_direct_mem_ptr
+( tlm::tlm_generic_payload &payload,                // address + extensions
+  tlm::tlm_dmi             &dmi_data)               // DMI data
+{ 
+  return false;
+}
+
+// Not implemented for this example but required by interface
+tmpl(unsigned int):: transport_dbg                            
+( tlm::tlm_generic_payload &payload)                // debug payload
+{
+  return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// Virtual Fuctions  tlm::tlm_bw_transport_if (IRQ INITIATOR SOCKET)
+/////////////////////////////////////////////////////////////////////////////////////
+// Not implemented for this example but required by interface
+tmpl(tlm::tlm_sync_enum)::nb_transport_bw           // receive response from target
+( tlm::tlm_generic_payload &payload,                // payload
+  tlm::tlm_phase           &phase,                  // phase
+  sc_core::sc_time         &time)                   // time
+{
+  return tlm::TLM_COMPLETED;
+}
+
+// Not implemented for this example but required by interface
+tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
+( sc_dt::uint64 start_range,                        // start range
+  sc_dt::uint64 end_range                           // end range
+) 
+{
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

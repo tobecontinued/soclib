@@ -44,6 +44,7 @@ namespace soclib { namespace tlmdt {
 template<typename vci_param, typename iss_t>
 class VciXcache
   : public sc_core::sc_module             // inherit from SC module base clase
+  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "backward interface"
 {
   enum dcache_fsm_state_e {
     DCACHE_INIT,
@@ -174,7 +175,8 @@ private:
   
   size_t                 m_cpt_lookhead;  
   size_t                 m_cpt_idle;
-  
+  size_t                 m_cpt_null_message;
+
   size_t                 m_icache_cpt_init;
   size_t                 m_icache_cpt_cache_read;
   size_t                 m_icache_cpt_uncache_read;
@@ -189,11 +191,57 @@ private:
   size_t                 m_cpt_fifo_read;
   size_t                 m_cpt_fifo_write;
   
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuctions
+  /////////////////////////////////////////////////////////////////////////////////////
+  void behavior(void);  // initiator thread
+
+  void xcacheAccess(bool &ins_asked,
+		    uint32_t &ins_addr,
+		    bool &mem_asked,
+		    enum iss_t::DataAccessType &mem_type,
+		    uint32_t &mem_addr,
+		    uint32_t &mem_wdata,
+		    uint32_t &mem_rdata,
+		    bool &mem_dber,
+		    uint32_t &ins_rdata,
+		    bool &ins_iber
+		    );
+
+  sc_core::sc_time getLocalTime();
+  void setLocalTime(sc_core::sc_time t);
+  void updateTime(sc_core::sc_time t);
+
+  void addTime(sc_core::sc_time t);
+  void sendActivity();
+  void sendNullMessage();
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw       // receive rsp from target
+  ( tlm::tlm_generic_payload   &payload,   // payload
+    tlm::tlm_phase             &phase,     // phase
+    sc_core::sc_time           &time);     // time
+
+  void invalidate_direct_mem_ptr           // invalidate_direct_mem_ptr
+  ( sc_dt::uint64 start_range,             // start range
+    sc_dt::uint64 end_range);              // end range
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ TARGET SOCKET)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum my_nb_transport_fw    // receive interruption from initiator
+  ( int                      id,           // interruption id
+    tlm::tlm_generic_payload &payload,     // payload
+    tlm::tlm_phase           &phase,       // phase
+    sc_core::sc_time         &time);       // time
+
 protected:
   SC_HAS_PROCESS(VciXcache);
 
 public:
-  tlm_utils::simple_initiator_socket<VciXcache,32,tlm::tlm_base_protocol_types> p_vci_initiator;   // VCI initiator port 
+  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci_initiator;   // VCI initiator port
   //std::vector<tlm_utils::simple_target_socket_tagged<VciXcache,32,tlm::tlm_base_protocol_types> *> p_irq_target;  // IRQ target port
   
 
@@ -226,50 +274,6 @@ public:
   size_t getNTotal_Uncache_Write();
 
   void print_stats(); 
-
-private:
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
-  /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum my_nb_transport_bw      // Receive rsp from target
-  ( tlm::tlm_generic_payload   &payload,     // payload
-    tlm::tlm_phase             &phase,       // phase
-    sc_core::sc_time           &time);       // time
-
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ TARGET SOCKET)
-  /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum my_nb_transport_fw    // receive interruption from initiator
-  ( int                      id,           // interruption id
-    tlm::tlm_generic_payload &payload,     // payload
-    tlm::tlm_phase           &phase,       // phase
-    sc_core::sc_time         &time);       // time
-
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Fuctions
-  /////////////////////////////////////////////////////////////////////////////////////
-  void behavior(void);                              // initiator thread
-
-  void xcacheAccess(bool &ins_asked,
-		    uint32_t &ins_addr,
-		    bool &mem_asked,
-		    enum iss_t::DataAccessType &mem_type,
-		    uint32_t &mem_addr,
-		    uint32_t &mem_wdata,
-		    uint32_t &mem_rdata,
-		    bool &mem_dber,
-		    uint32_t &ins_rdata,
-		    bool &ins_iber
-		    );
-
-  sc_core::sc_time getLocalTime();
-  void setLocalTime(sc_core::sc_time t);
-  void updateTime(sc_core::sc_time t);
-
-  void addTime(sc_core::sc_time t);
-  void sendActivity();
-  void sendNullMessage();
-
 };
 
 }}

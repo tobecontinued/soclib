@@ -40,7 +40,8 @@ namespace soclib { namespace tlmdt {
 
 template <typename vci_param>
 class VciMultiTty
-: public sc_core::sc_module
+  : public sc_core::sc_module
+  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "forward interface"
 {
  private:
   /////////////////////////////////////////////////////////////////////////////////////
@@ -59,22 +60,36 @@ class VciMultiTty
   size_t m_cpt_idle;
   
   /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_fw_transport_if  (VCI TARGET SOCKET)
-  /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum my_nb_transport_fw       // receive command from initiator
-    ( tlm::tlm_generic_payload &payload,      // payload
-      tlm::tlm_phase           &phase,        // phase
-      sc_core::sc_time         &time);        // time
-
-  /////////////////////////////////////////////////////////////////////////////////////
   // Local Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
   void init(const std::vector<std::string> &names);
 
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Virtual Fuctions  tlm::tlm_fw_transport_if  (VCI TARGET SOCKET)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_fw       // receive command from initiator
+    ( tlm::tlm_generic_payload &payload,      // payload
+      tlm::tlm_phase           &phase,        // phase
+      sc_core::sc_time         &time);        // time
+
+  // Not implemented for this example but required by interface
+  void b_transport                          // b_transport() - Blocking Transport
+  ( tlm::tlm_generic_payload &payload,      // payload
+    sc_core::sc_time         &time);        // time
+  
+  // Not implemented for this example but required by interface
+  bool get_direct_mem_ptr
+  ( tlm::tlm_generic_payload &payload,      // payload
+    tlm::tlm_dmi             &dmi_data);    // DMI data
+  
+  // Not implemented for this example but required by interface
+  unsigned int transport_dbg                            
+  ( tlm::tlm_generic_payload &payload);     // payload
+
  protected:
   SC_HAS_PROCESS(VciMultiTty);
  public:
-  tlm_utils::simple_target_socket<VciMultiTty,32,tlm::tlm_base_protocol_types> p_vci_target; // VCI TARGET socket
+  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target;   // VCI TARGET socket
 
   //std::vector<tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types> *> p_irq_initiator; // IRQ INITIATOR socket
 

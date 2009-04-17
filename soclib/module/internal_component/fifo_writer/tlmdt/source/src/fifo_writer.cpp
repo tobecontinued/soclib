@@ -40,8 +40,8 @@ tmpl(/**/)::FifoWriter(sc_core::sc_module_name name,
            m_wrapper( bin, argv ),
            p_fifo("fifo")
 {
-  //register callback function
-  p_fifo.register_nb_transport_bw(this, &FifoWriter::my_nb_transport_bw);
+  // bind initiator
+  p_fifo(*this);                     
 
   //PDES local time
   m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
@@ -56,27 +56,9 @@ tmpl(/**/)::FifoWriter(sc_core::sc_module_name name,
   SC_THREAD(execLoop);
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_bw_transport_if (FIFO INITIATOR SOCKET)
-/////////////////////////////////////////////////////////////////////////////////////
-
-/// receive a answer to a read request
-tmpl (tlm::tlm_sync_enum)::my_nb_transport_bw         // inbound nb_transport_bw
-( tlm::tlm_generic_payload &payload,                  // payload
-  tlm::tlm_phase           &phase,                    // phase
-  sc_core::sc_time         &time)                     // response timestamp 
-{
-  //update time
-  if(time > m_pdes_local_time->get())
-    m_pdes_local_time->set(time);
-
-  m_rsp_read.notify(sc_core::SC_ZERO_TIME);
-  return tlm::TLM_COMPLETED;
-}
-
 tmpl(void)::execLoop()
 {
-  tlm::tlm_generic_payload *payload_ptr   = new tlm::tlm_generic_payload();
+  tlm::tlm_generic_payload *payload_ptr = new tlm::tlm_generic_payload();
   tlm::tlm_phase            phase;
   sc_core::sc_time          time;
   unsigned int nwords = m_fifo_depth;
@@ -111,6 +93,30 @@ tmpl(void)::execLoop()
     }
     m_pdes_local_time->add(m_fifo_depth * UNIT_TIME);
   }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// Virtual Fuctions  tlm::tlm_bw_transport_if (FIFO INITIATOR SOCKET)
+/////////////////////////////////////////////////////////////////////////////////////
+tmpl (tlm::tlm_sync_enum)::nb_transport_bw          // receive a answer to a read request
+( tlm::tlm_generic_payload &payload,                // payload
+  tlm::tlm_phase           &phase,                  // phase
+  sc_core::sc_time         &time)                   // time
+{
+  //update time
+  if(time > m_pdes_local_time->get())
+    m_pdes_local_time->set(time);
+
+  m_rsp_read.notify(sc_core::SC_ZERO_TIME);
+  return tlm::TLM_COMPLETED;
+}
+
+// Not implemented for this example but required by interface
+tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
+( sc_dt::uint64 start_range,                        // start range
+  sc_dt::uint64 end_range                           // end range
+) 
+{
 }
 
 }}

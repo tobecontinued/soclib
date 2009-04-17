@@ -109,8 +109,9 @@ tmpl (/**/)::VciXcache
     m_icache(icache_lines, icache_words),
     p_vci_initiator("socket")             // vci initiator socket name
 {
-  //register callback function VCI INITIATOR SOCKET
-  p_vci_initiator.register_nb_transport_bw(this, &VciXcache::my_nb_transport_bw);
+  // bind initiator
+  p_vci_initiator(*this);                     
+
   /*
   //register callback function IRQ TARGET SOCKET
   //for(int i=0; i<iss_t::n_irq; i++){
@@ -139,6 +140,7 @@ tmpl (/**/)::VciXcache
   //activity counters
   m_cpt_lookhead             = 0;
   m_cpt_idle                 = 0;
+  m_cpt_null_message         = 0;
   
   m_icache_cpt_init          = icache_lines;
   m_icache_cpt_cache_read    = 0;
@@ -427,6 +429,7 @@ tmpl (void)::behavior()
 
       // if initiator needs synchronize then it sends a null message
       if (m_pdes_local_time->need_sync()) {
+	m_cpt_null_message++;
 	sendNullMessage();
       }
     }
@@ -1061,7 +1064,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
    
  case RSP_INS_MISS:
    wait (m_rsp_received);
-   //m_pdes_local_time->reset_sync();
+   m_pdes_local_time->reset_sync();
    for(unsigned int i=0;i<(m_payload.get_data_length()/vci_param::nbytes); i++)
      m_read_buffer_ins[i] = atou(m_payload.get_data_ptr(), (i * vci_param::nbytes));
    
@@ -1087,7 +1090,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
         
  case RSP_DATA_MISS:
    wait (m_rsp_received);
-   //m_pdes_local_time->reset_sync();
+   m_pdes_local_time->reset_sync();
    for(unsigned int i=0;i<(m_payload.get_data_length()/vci_param::nbytes); i++)
      m_read_buffer[i] = atou(m_payload.get_data_ptr(), (i * vci_param::nbytes));
    
@@ -1100,7 +1103,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
    
  case RSP_DATA_WRITE:
    wait (m_rsp_received);
-   //m_pdes_local_time->reset_sync();
+   m_pdes_local_time->reset_sync();
    
    for(unsigned int i=0;i<(m_payload.get_data_length()/vci_param::nbytes); i++)
      m_write_buffer[i] = atou(m_payload.get_data_ptr(), (i * vci_param::nbytes));
@@ -1132,7 +1135,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
    break;
  case RSP_DATA_UNC:
    wait (m_rsp_received);
-   //m_pdes_local_time->reset_sync();
+   m_pdes_local_time->reset_sync();
    
    if ( m_read_error == 0) {
      data_ber = m_read_error;
@@ -1156,7 +1159,7 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
    break;
  case RSP_DATA_WRITE_UNC:
    wait (m_rsp_received);
-   //m_pdes_local_time->reset_sync();
+   m_pdes_local_time->reset_sync();
 
    data_rdata = atou(m_payload.get_data_ptr(), 0);;
    m_dcache_unc_valid = true;
@@ -1205,10 +1208,24 @@ switch ((rsp_fsm_state_e)m_vci_rsp_fsm) {
  }
 }
 
+tmpl(void)::print_stats()
+{
+
+  std::cout << name() << std::endl;
+  std::cout << "- NUMBER OF CYCLES   = " << getTotalCycles() << std::endl;
+  std::cout << "- I CACHE READ       = " << getNIcache_Cache_Read() << std::endl;
+  std::cout << "- I UNCACHE READ     = " << getNIcache_Uncache_Read() << std::endl;
+  std::cout << "- D CACHE READ       = " << getNDcache_Cache_Read() << std::endl;
+  std::cout << "- D UNCACHE READ     = " << getNDcache_Uncache_Read() << std::endl;
+  std::cout << "- D CACHE WRITE      = " << getNDcache_Cache_Write() << std::endl;
+  std::cout << "- D UNCACHE WRITE    = " << getNDcache_Uncache_Write() << std::endl;
+  std::cout << "- NUMBER OF NULL MESSAGES = " << m_cpt_null_message << std::endl;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::my_nb_transport_bw     // inbound nb_transport_bw
+tmpl (tlm::tlm_sync_enum)::nb_transport_bw 
 ( tlm::tlm_generic_payload           &payload,       // payload
   tlm::tlm_phase                     &phase,         // phase
   sc_core::sc_time                   &time)          // time
@@ -1241,6 +1258,14 @@ tmpl (tlm::tlm_sync_enum)::my_nb_transport_bw     // inbound nb_transport_bw
   return tlm::TLM_COMPLETED;
 } // end backward nb transport 
 
+// Not implemented for this example but required by interface
+tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
+( sc_dt::uint64 start_range,                        // start range
+  sc_dt::uint64 end_range                           // end range
+) 
+{
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
@@ -1256,19 +1281,6 @@ tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw
 
   return tlm::TLM_COMPLETED;
 } // end backward nb transport 
-
-tmpl(void)::print_stats()
-{
-
-  std::cout << name() << std::endl;
-  std::cout << "- NUMBER OF CYCLES   = " << getTotalCycles() << std::endl ;
-  std::cout << "- I CACHE READ       = " << getNIcache_Cache_Read() << std::endl ;
-  std::cout << "- I UNCACHE READ     = " << getNIcache_Uncache_Read() << std::endl ;
-  std::cout << "- D CACHE READ       = " << getNDcache_Cache_Read() << std::endl ;
-  std::cout << "- D UNCACHE READ     = " << getNDcache_Uncache_Read() << std::endl ;
-  std::cout << "- D CACHE WRITE      = " << getNDcache_Cache_Write() << std::endl ;
-  std::cout << "- D UNCACHE WRITE    = " << getNDcache_Uncache_Write() << std::endl ;
-}
 
 
 }}

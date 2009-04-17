@@ -44,6 +44,7 @@ class VciRspArbCmdRout;
 
 class VciCmdArbRspRout                        // 
   : public sc_core::sc_module                 // inherit from SC module base clase
+  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "backward interface"
 {
 private:
   
@@ -67,18 +68,28 @@ private:
   sc_core::sc_time                                           m_time;              // time
 
   /////////////////////////////////////////////////////////////////////////////////////
+  // Fuctions
+  /////////////////////////////////////////////////////////////////////////////////////
+  void behavior (void);                                              // initiator thread
+  
+  /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
   /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum my_nb_transport_bw
+  tlm::tlm_sync_enum nb_transport_bw
   ( tlm::tlm_generic_payload &payload,    // transaction payload
     tlm::tlm_phase           &phase,      // transaction phase
     sc_core::sc_time         &time);      // transaction time
   
+  // Not implemented for this example but required by interface
+  void invalidate_direct_mem_ptr          // invalidate_direct_mem_ptr
+  ( sc_dt::uint64 start_range,            // start range
+    sc_dt::uint64 end_range);             // end range
+
 protected:
   SC_HAS_PROCESS(VciCmdArbRspRout);
   
 public:
-  tlm_utils::simple_initiator_socket<VciCmdArbRspRout,32,tlm::tlm_base_protocol_types> p_vci_initiator; // VCI initiator port
+  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci_initiator;  // VCI initiator port 
 
   VciCmdArbRspRout(                                                  // constructor
 		   sc_core::sc_module_name name                      // module name
@@ -87,12 +98,9 @@ public:
 		   , sc_core::sc_time delay                          // interconnect delay
 		   , bool external_access);                          // true if module has external access (crossbar parameter)
   
-  void behavior (void);                                              // initiator thread
-  
   void setRspArbCmdRout(std::vector<VciRspArbCmdRout *> &RspArbCmdRout);
 
   void put(tlm::tlm_generic_payload *payload, const sc_core::sc_time &time);
- 
 }; 
 }}
 #endif /* __VCI_CMD_ARB_RSP_ROUT_H__ */

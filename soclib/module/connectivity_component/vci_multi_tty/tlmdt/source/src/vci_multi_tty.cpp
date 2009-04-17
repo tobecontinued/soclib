@@ -48,8 +48,8 @@ tmpl(/**/)::VciMultiTty
     m_mt(mt),
     p_vci_target("socket")
 {
-  //register callback fuction
-  p_vci_target.register_nb_transport_fw(this, &VciMultiTty::my_nb_transport_fw);
+  // bind target
+  p_vci_target(*this);                     
   
   va_list va_tty;
   va_start (va_tty, first_name);
@@ -73,9 +73,8 @@ tmpl(/**/)::VciMultiTty
     m_mt(mt),
     p_vci_target("socket")
 {
-  
-  //register callback fuction
-  p_vci_target.register_nb_transport_fw(this, &VciMultiTty::my_nb_transport_fw);
+  // bind target
+  p_vci_target(*this);                     
   
   init(names);
 }
@@ -105,7 +104,7 @@ tmpl(void)::init(const std::vector<std::string> &names){
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw 
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw 
 ( tlm::tlm_generic_payload &payload, // payload
   tlm::tlm_phase           &phase,   // phase
   sc_core::sc_time         &time)    // time
@@ -290,6 +289,29 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
   
   p_vci_target->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
+}
+
+// Not implemented for this example but required by interface
+tmpl(void)::b_transport
+( tlm::tlm_generic_payload &payload,                // payload
+  sc_core::sc_time         &_time)                  //time
+{
+  return;
+}
+
+// Not implemented for this example but required by interface
+tmpl(bool)::get_direct_mem_ptr
+( tlm::tlm_generic_payload &payload,                // address + extensions
+  tlm::tlm_dmi             &dmi_data)               // DMI data
+{ 
+  return false;
+}
+    
+// Not implemented for this example but required by interface
+tmpl(unsigned int):: transport_dbg                            
+( tlm::tlm_generic_payload &payload)                // debug payload
+{
+  return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

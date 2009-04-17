@@ -51,9 +51,9 @@ tmpl(/**/)::VciRam
     m_atomic(256), // 256 equals to maximal number of initiator
     p_vci_target("socket")
 {
-  // register callback fuction
-  p_vci_target.register_nb_transport_fw(this, &VciRam::my_nb_transport_fw);
-  
+  // bind target
+  p_vci_target(*this);                     
+
   // identification
   m_tgtid = m_mt.indexForId(index);
   
@@ -88,10 +88,16 @@ tmpl(/**/)::VciRam
 
 tmpl(/**/)::~VciRam(){}
 
+tmpl(void)::print_stats(){
+  std::cout << name() << std::endl;
+  std::cout << "- READ               = " << m_cpt_read << std::endl;
+  std::cout << "- WRITE              = " << m_cpt_write << std::endl;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if VCI SOCKET
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 ( tlm::tlm_generic_payload &payload,
   tlm::tlm_phase           &phase,  
   sc_core::sc_time         &time)   
@@ -293,9 +299,27 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
   return tlm::TLM_COMPLETED;
 }
 
-tmpl(void)::print_stats(){
-  std::cout << name() << std::endl;
-  std::cout << "- READ               = " << m_cpt_read << std::endl;
-  std::cout << "- WRITE              = " << m_cpt_write << std::endl;
+// Not implemented for this example but required by interface
+tmpl(void)::b_transport
+( tlm::tlm_generic_payload &payload,                // payload
+  sc_core::sc_time         &_time)                  //time
+{
+  return;
 }
+
+// Not implemented for this example but required by interface
+tmpl(bool)::get_direct_mem_ptr
+( tlm::tlm_generic_payload &payload,                // address + extensions
+  tlm::tlm_dmi             &dmi_data)               // DMI data
+{ 
+  return false;
+}
+    
+// Not implemented for this example but required by interface
+tmpl(unsigned int):: transport_dbg                            
+( tlm::tlm_generic_payload &payload)                // debug payload
+{
+  return false;
+}
+
 }}

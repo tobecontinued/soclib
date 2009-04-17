@@ -34,6 +34,10 @@
 #define VCI_RSP_ARB_CMD_ROUT_DEBUG 0
 #endif
 
+#ifndef VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
+#define VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG 0
+#endif
+
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) x VciRspArbCmdRout
@@ -55,12 +59,12 @@ tmpl(/**/)::VciRspArbCmdRout
   , m_centralized_buffer(cb)
   , m_routing_table(mt.getRoutingTable(global_index))
   , m_locality_table(mt.getLocalityTable(global_index))
-  , p_vci_target("socket")
+  , p_vci_target("vcisocket")
 {
-  //register callback fuction
-  p_vci_target.register_nb_transport_fw(this, &VciRspArbCmdRout::my_nb_transport_fw);
+  // bind vci target socket
+  p_vci_target(*this);                     
 
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
   std::ostringstream file_name;
   file_name << name() << ".txt";
   myFile = fopen ((file_name.str()).c_str(),"w");
@@ -71,10 +75,32 @@ tmpl(/**/)::VciRspArbCmdRout
   m_null_extension_ptr = new soclib_payload_extension();
 }
 
+tmpl(/**/)::~VciRspArbCmdRout(){
+
+#if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
+  fclose(myFile);
+#endif
+
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+// Fuctions
+/////////////////////////////////////////////////////////////////////////////////////
+tmpl(void)::setCmdArbRspRout(std::vector<VciCmdArbRspRout *> &CmdArbRspRout) 
+{
+  m_CmdArbRspRout=CmdArbRspRout;
+}
+
+tmpl(void)::set_external_access(unsigned int index, bool external_access)
+{
+  m_centralized_buffer->set_external_access(index, external_access);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw   
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw   
 ( tlm::tlm_generic_payload    &payload,            // payload
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
@@ -82,10 +108,12 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
   //push a transaction in the centralized buffer
   m_centralized_buffer->push(m_index, payload, phase, time);
 
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
   fprintf(myFile,"[%s] PUT time = %d CAN POP %d\n", name(), (int)time.value(), m_centralized_buffer->can_pop());
-  //std::cout << "[" << name() << "] PUT time=" << std::dec << time.value();
-  //std::cout << " CAN POP " <<  m_centralized_buffer->can_pop() << std::endl;
+#endif
+#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+  std::cout << "[" << name() << "] PUT time=" << std::dec << time.value();
+  std::cout << " CAN POP " <<  m_centralized_buffer->can_pop() << std::endl;
 #endif
 
   //if all buffer positions are filled then a transaction can be sent 
@@ -116,9 +144,11 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 
       m_time = m_time + m_delay;
 
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
       fprintf(myFile,"[%s] POP NULL MESSAGE time = %d\n", name(), (int)m_time.value());
-      //std::cout << "[" << name() << "] POP NULL MESSAGE time=" << m_time.value() << std::endl;
+#endif
+#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+      std::cout << "[" << name() << "] POP NULL MESSAGE time=" << m_time.value() << std::endl;
 #endif
 
       for(unsigned int i = 0; i < m_CmdArbRspRout.size(); i++){
@@ -135,9 +165,11 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 	m_centralized_buffer->pop(from);
 	m_time = m_time + m_delay;
 
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
 	fprintf(myFile,"[%s] POP IS NOT LOCAL from %d dest %d pktid = %d time = %d\n", name(), m_extension_ptr->get_src_id(), dest, m_extension_ptr->get_pkt_id(), (int)m_time.value());
-	//std::cout << "[" << name() << "] POP IS NOT LOCAL from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
+#endif
+#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+	std::cout << "[" << name() << "] POP IS NOT LOCAL from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
 #endif
 
 	m_centralized_buffer->set_external_access(from, true);
@@ -160,18 +192,22 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
 	for(unsigned int i = 0; i < m_CmdArbRspRout.size(); i++){
 	  if(i==dest){
 	    
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
 	    fprintf(myFile,"[%s] POP from %d dest %d pktid = %d time = %d\n", name(), m_extension_ptr->get_src_id(), dest, m_extension_ptr->get_pkt_id(), (int)m_time.value());
-	    //std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
+#endif
+#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+	    std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
 #endif
 	    
 	    m_CmdArbRspRout[i]->put(m_payload_ptr,m_time);
 	  }
 	  else{
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
 	    fprintf(myFile,"[%s] POP from %d dest %d pktid = %d NULL MESSAGE time = %d\n", name(), m_extension_ptr->get_src_id(), i, m_extension_ptr->get_pkt_id(), (int)m_time.value());
+#endif
 
-	    //std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << i << " NULL MESSAGE time=" << m_time.value() <<  std::endl;
+#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+	    std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << i << " NULL MESSAGE time=" << m_time.value() <<  std::endl;
 #endif
 	    m_CmdArbRspRout[i]->put(m_null_payload_ptr, m_time);
 	  }
@@ -182,17 +218,26 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_fw
   return  tlm::TLM_COMPLETED;
 } //end nb_transport_fw
 
-/////////////////////////////////////////////////////////////////////////////////////
-// Fuctions
-/////////////////////////////////////////////////////////////////////////////////////
-tmpl(void)::setCmdArbRspRout(std::vector<VciCmdArbRspRout *> &CmdArbRspRout) 
+// Not implemented for this example but required by interface
+tmpl(void)::b_transport                             // b_transport() - Blocking Transpor
+( tlm::tlm_generic_payload &payload,                // payload
+  sc_core::sc_time         &_time)                  //time
 {
-  m_CmdArbRspRout=CmdArbRspRout;
+  return;
 }
 
-tmpl(void)::set_external_access(unsigned int index, bool external_access)
-{
-  m_centralized_buffer->set_external_access(index, external_access);
+// Not implemented for this example but required by interface
+tmpl(bool)::get_direct_mem_ptr
+( tlm::tlm_generic_payload &payload,                // address + extensions
+  tlm::tlm_dmi             &dmi_data)               // DMI data
+{ 
+  return false;
 }
-
+    
+// Not implemented for this example but required by interface
+tmpl(unsigned int):: transport_dbg                            
+( tlm::tlm_generic_payload &payload)                // debug payload
+{
+  return false;
+}
 }}

@@ -52,62 +52,6 @@ namespace soclib{ namespace tlmdt {
 
 #define tmpl(x) template<typename vci_param, typename iss_t> x VciXcacheWrapper<vci_param, iss_t>
    
-/////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
-/////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::my_nb_transport_bw     // inbound nb_transport_bw
-( tlm::tlm_generic_payload           &payload,       // payload
-  tlm::tlm_phase                     &phase,         // phase
-  sc_core::sc_time                   &time)          // time
-{
-
-  soclib_payload_extension *extension_ptr;
-  payload.get_extension(extension_ptr);
-
-  m_error = payload.is_response_error();
-    
-  update_time(time);
-    
-  m_rsp_received.notify (sc_core::SC_ZERO_TIME);
-  return tlm::TLM_COMPLETED;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ SOCKET)
-/////////////////////////////////////////////////////////////////////////////////////
-/*
-tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw         // inbound nb_transport_bw
-( int                                     id,         // interruption id
-  soclib_irq_types::tlm_payload_type      &payload,   // payload
-  soclib_irq_types::tlm_phase_type        &phase,     // phase
-  sc_core::sc_time                        &time)      // time
-{
-}
-
-tmpl (void)::irqReceived (
-	bool v, const tlmt_core::
-	tlmt_time & time, void *private_data)
-{
-    int no = (int)(long)private_data;
-	std::cout
-		<< name()
-		<< " at " << c0.time()
-		<< " Received irq " << no
-		<< " dated " << time
-		<< " val: " << v
-		<< std::endl;
-
-	m_pending_irqs[time] = std::pair<int, bool>(no, v);
-}
-*/
-
-tmpl (void)::update_time(sc_core::sc_time t)
-{
-  if(t > m_pdes_local_time->get()){
-    m_pdes_local_time->set(t);
-  }
-}
-
 tmpl (/**/)::VciXcacheWrapper
 (
  sc_core::sc_module_name name,
@@ -128,23 +72,22 @@ tmpl (/**/)::VciXcacheWrapper
     m_dcache(dcache_lines, dcache_words),
     m_icache(icache_lines, icache_words),
     m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci_initiator("socket")             // vci initiator socket name
+    p_vci_initiator("socket")   // vci initiator socket name
 {
-  //register callback function VCI INITIATOR SOCKET
-  p_vci_initiator.register_nb_transport_bw(this, &VciXcacheWrapper::my_nb_transport_bw);
+  // bind initiator
+  p_vci_initiator(*this);                     
 
   /*
-    p_irq = (tlmt_core::tlmt_in<bool>*)malloc(sizeof(tlmt_core::tlmt_in<bool>)*iss_t::n_irq);
-    for (int32_t i = 0 ; i < iss_t::n_irq ; i++) {
-    std::ostringstream o;
-    o << "irq[" << i << "]";
-    new(&p_irq[i])tlmt_core::tlmt_in<bool> (
-    o.str(),
-    new tlmt_core::tlmt_callback<VciXcacheWrapper, bool>(
-    this,&VciXcacheWrapper<iss_t, vci_param>::irqReceived, (void*)(long)i));
-    }
+  //register callback function IRQ TARGET SOCKET
+  //for(int i=0; i<iss_t::n_irq; i++){
+  for(int i=0; i<1; i++){
+    std::ostringstream irq_name;
+    irq_name << "irq" << i;
+    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciXcache,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    
+    p_irq_target[i]->register_nb_transport_fw(this, &VciXcache::my_nb_transport_fw, i);
+  }
   */
-  
   m_error       = false;
   
   m_iss.setDCacheInfo(dcache_words*4,1,dcache_lines);
@@ -170,6 +113,13 @@ tmpl (/**/)::VciXcacheWrapper
   m_activity_extension_ptr = new soclib_payload_extension();
 
   SC_THREAD(execLoop);
+}
+
+tmpl (void)::update_time(sc_core::sc_time t)
+{
+  if(t > m_pdes_local_time->get()){
+    m_pdes_local_time->set(t);
+  }
 }
 
 tmpl (void)::execLoop ()
@@ -539,8 +489,8 @@ tmpl (void)::send_null_message()
   //set the local time to transaction time
   m_null_time = m_pdes_local_time->get();
    
-#if MY_INITIATOR_DEBUG
-  std::cout << "[INITIATOR " << m_srcid << "] send NULL MESSAGE time = " << m_null_time.value() << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+  std::cout << name() << " send NULL MESSAGE time = " << m_null_time.value() << std::endl;
 #endif
 
   //send a null message
@@ -548,5 +498,69 @@ tmpl (void)::send_null_message()
   //deschedule the initiator thread
   wait(sc_core::SC_ZERO_TIME);
 }
+
+/////////////////////////////////////////////////////////////////////////////////////
+// Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
+/////////////////////////////////////////////////////////////////////////////////////
+tmpl (tlm::tlm_sync_enum)::nb_transport_bw    
+( tlm::tlm_generic_payload           &payload,       // payload
+  tlm::tlm_phase                     &phase,         // phase
+  sc_core::sc_time                   &time)          // time
+{
+
+  soclib_payload_extension *extension_ptr;
+  payload.get_extension(extension_ptr);
+
+  m_error = payload.is_response_error();
+    
+  update_time(time);
+    
+  m_rsp_received.notify (sc_core::SC_ZERO_TIME);
+  return tlm::TLM_COMPLETED;
+}
+
+// Not implemented for this example but required by interface
+tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
+( sc_dt::uint64 start_range,                        // start range
+  sc_dt::uint64 end_range                           // end range
+) 
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ SOCKET)
+/////////////////////////////////////////////////////////////////////////////////////
+tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw
+( int                      id,         // interruption id
+  tlm::tlm_generic_payload &payload,   // payload
+  tlm::tlm_phase           &phase,     // phase
+  sc_core::sc_time         &time)      // time
+{
+#if XCACHE_DEBUG
+  std::cout << "[" << name() << "] receive Interruption " << id << " time = " << time << std::endl;
+#endif
+
+  return tlm::TLM_COMPLETED;
+} // end backward nb transport 
+
+/*
+tmpl (void)::irqReceived (
+	bool v, const tlmt_core::
+	tlmt_time & time, void *private_data)
+{
+    int no = (int)(long)private_data;
+	std::cout
+		<< name()
+		<< " at " << c0.time()
+		<< " Received irq " << no
+		<< " dated " << time
+		<< " val: " << v
+		<< std::endl;
+
+	m_pending_irqs[time] = std::pair<int, bool>(no, v);
+}
+*/
+
+
 }}
 

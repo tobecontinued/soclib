@@ -39,7 +39,8 @@ namespace soclib { namespace tlmdt {
 class VciCmdArbRspRout;
 
 class VciRspArbCmdRout                                           // VciRspArbCmdRout
-:         public sc_core::sc_module           	                 // inherit from SC module base clase
+  : public sc_core::sc_module           	                 // inherit from SC module base clase
+  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "forward interface"
 {
 private:
  
@@ -62,14 +63,28 @@ private:
   /////////////////////////////////////////////////////////////////////////////////////
   // Fuction  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
   /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum my_nb_transport_fw                    
-  ( tlm::tlm_generic_payload &payload,               // payload
-    tlm::tlm_phase           &phase,                 // phase
-    sc_core::sc_time         &time);                 // time
+  tlm::tlm_sync_enum nb_transport_fw                    
+  ( tlm::tlm_generic_payload &payload,   // payload
+    tlm::tlm_phase           &phase,     // phase
+    sc_core::sc_time         &time);     // time
  
- public:  
+  // Not implemented for this example but required by interface
+  void b_transport                       // b_transport() - Blocking Transport
+  ( tlm::tlm_generic_payload &payload,   // payload
+    sc_core::sc_time         &time);     // time
   
-  tlm_utils::simple_target_socket<VciRspArbCmdRout,32,tlm::tlm_base_protocol_types>  p_vci_target; // VCI TARGET port
+  // Not implemented for this example but required by interface
+  bool get_direct_mem_ptr
+  ( tlm::tlm_generic_payload &payload,   // payload
+    tlm::tlm_dmi             &dmi_data); // DMI data
+  
+  // Not implemented for this example but required by interface
+  unsigned int transport_dbg                            
+  ( tlm::tlm_generic_payload &payload);  // payload
+
+public:  
+  
+  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target; // VCI TARGET port
   
   VciRspArbCmdRout(                                                // constructor
 		   sc_core::sc_module_name module_name             // SC module name
@@ -79,6 +94,8 @@ private:
 		   , sc_core::sc_time delay                        // interconnect delay
 		   , centralized_buffer *cb);                      // centralized buffer
   
+  ~VciRspArbCmdRout();
+
   void setCmdArbRspRout(std::vector<VciCmdArbRspRout *> &CmdArbRspRout);
 
   void set_external_access(unsigned int index, bool b);

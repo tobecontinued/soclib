@@ -52,10 +52,10 @@ tmpl(/***/)::VciCmdArbRspRout                       // constructor
   , m_locality_table(mt.getIdLocalityTable(index))
   , m_delay(delay)
   , m_external_access(external_access)
-  , p_vci_initiator("socket")
+  , p_vci_initiator("vcisocket")
 { 
-  //register callback function
-  p_vci_initiator.register_nb_transport_bw(this, &VciCmdArbRspRout::my_nb_transport_bw);
+  // bind INITIATOR VCI SOCKET
+  p_vci_initiator(*this);                     
 
   //PDES local time
   m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
@@ -134,7 +134,7 @@ tmpl(void)::put(tlm::tlm_generic_payload *payload, const sc_core::sc_time &time)
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::my_nb_transport_bw 
+tmpl(tlm::tlm_sync_enum)::nb_transport_bw 
 ( tlm::tlm_generic_payload   &payload,            // payload
   tlm::tlm_phase             &phase,              // phase
   sc_core::sc_time           &time)               // time
@@ -171,5 +171,13 @@ tmpl(tlm::tlm_sync_enum)::my_nb_transport_bw
   
   return tlm::TLM_COMPLETED;
 } // end backward nb transport 
+
+// Not implemented for this example but required by interface
+tmpl(void)::invalidate_direct_mem_ptr            // invalidate_direct_mem_ptr
+( sc_dt::uint64 start_range,                     // start range
+  sc_dt::uint64 end_range                        // end range
+) 
+{
+}
 
 }}

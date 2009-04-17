@@ -70,10 +70,10 @@ tmpl(void)::send_activity()
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_bw_transport_if (INITIATOR VCI SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::vci_nb_transport_bw   // receive the response packet from target socket
-( tlm::tlm_generic_payload &payload,             // payload
-  tlm::tlm_phase           &phase,               // phase
-  sc_core::sc_time         &time)                // time
+tmpl (tlm::tlm_sync_enum)::nb_transport_bw      // receive the response packet from target socket
+( tlm::tlm_generic_payload &payload,            // payload
+  tlm::tlm_phase           &phase,              // phase
+  sc_core::sc_time         &time)               // time
 {
 
 #ifdef SOCLIB_MODULE_DEBUG
@@ -90,10 +90,18 @@ tmpl (tlm::tlm_sync_enum)::vci_nb_transport_bw   // receive the response packet 
   return tlm::TLM_COMPLETED;
 }
 
+// Not implemented for this example but required by interface
+tmpl(void)::invalidate_direct_mem_ptr            // invalidate_direct_mem_ptr
+( sc_dt::uint64 start_range,                     // start range
+  sc_dt::uint64 end_range                        // end range
+) 
+{
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_bw_transport_if (TARGET VCI SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::vci_nb_transport_fw   // receive the command packet from initiator socket
+tmpl (tlm::tlm_sync_enum)::nb_transport_fw       // receive the command packet from initiator socket
 ( tlm::tlm_generic_payload &payload,             // payload
   tlm::tlm_phase           &phase,               // phase
   sc_core::sc_time         &time)                // time
@@ -137,6 +145,29 @@ tmpl (tlm::tlm_sync_enum)::vci_nb_transport_fw   // receive the command packet f
   
   p_vci_target->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
+}
+
+/// b_transport() - Blocking Transport
+tmpl(void)::b_transport
+( tlm::tlm_generic_payload &payload,                // payload
+  sc_core::sc_time         &_time)                  //time
+{
+  return;
+}
+
+/// Not implemented for this example but required by interface
+tmpl(bool)::get_direct_mem_ptr
+( tlm::tlm_generic_payload &payload,                // address + extensions
+  tlm::tlm_dmi             &dmi_data)               // DMI data
+{ 
+  return false;
+}
+    
+/// Not implemented for this example but required by interface
+tmpl(unsigned int):: transport_dbg                            
+( tlm::tlm_generic_payload &payload)                // debug payload
+{
+  return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -283,7 +314,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
 	break;
       case MWMR_CONFIG_STATUS_ADDR :
 #ifdef SOCLIB_MODULE_DEBUG
-	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_STATUS_ADDR status_address = %x\n", m_destid, atou(payload.get_data_ptr(), j));
+	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_STATUS_ADDR status_address = %x\n", m_destid, atou(payload.get_data_ptr v(), j));
 	std::cout << "[MWMR Target " << m_destid << "] MWMR_CONFIG_STATUS_ADDR status_address = " << std::hex << atou(payload.get_data_ptr(), j) << std::dec << std::endl;
 #endif
 	if(m_channel_read)
@@ -1193,11 +1224,12 @@ tmpl(/**/)::VciMwmrController
 	   p_vci_initiator("vci_initiator"),
 	   p_vci_target("vci_target")
 {
-  //register callback function INITIATOR VCI SOCKET
-  p_vci_initiator.register_nb_transport_bw(this, &VciMwmrController::vci_nb_transport_bw);
-  //register callback function TARGET VCI SOCKET
-  p_vci_target.register_nb_transport_fw(this, &VciMwmrController::vci_nb_transport_fw);
-  
+  // bind INITIATOR VCI SOCKET
+  p_vci_initiator(*this);                     
+
+  // bind TARGET VCI SOCKET
+  p_vci_target(*this);                     
+
   //PDES local time
   //m_pdes_local_time = new pdes_local_time(time_quantum);
   m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);

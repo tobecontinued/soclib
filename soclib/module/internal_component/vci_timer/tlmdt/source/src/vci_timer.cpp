@@ -44,8 +44,8 @@ tmpl(/**/)::VciTimer
 	   m_ntimer(ntimer),
 	   p_vci_target("vci_target_socket")  // vci target socket name
 {
- //register callback function VCI TARGET SOCKET
-  p_vci_target.register_nb_transport_fw(this, &VciTimer::vci_nb_transport_fw);
+  // bind target
+  p_vci_target(*this);                     
 
   //segments
   m_segments = m_mt.getSegmentList(m_index);
@@ -68,7 +68,7 @@ tmpl(/**/)::~VciTimer(){}
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_bw_transport_if VCI TARGET SOCKET
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::vci_nb_transport_fw // receive command from initiator
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 ( tlm::tlm_generic_payload &payload,          // payload
   tlm::tlm_phase           &phase,            // phase  
   sc_core::sc_time         &time)             // time  
@@ -273,5 +273,27 @@ tmpl(tlm::tlm_sync_enum)::vci_nb_transport_fw // receive command from initiator
   return tlm::TLM_COMPLETED;
 }
   
+/// Not implemented for this example but required by interface
+tmpl(void)::b_transport
+( tlm::tlm_generic_payload &payload,                // payload
+  sc_core::sc_time         &_time)                  //time
+{
+  return;
+}
+
+/// Not implemented for this example but required by interface
+tmpl(bool)::get_direct_mem_ptr
+( tlm::tlm_generic_payload &payload,                // address + extensions
+  tlm::tlm_dmi             &dmi_data)               // DMI data
+{ 
+  return false;
+}
+    
+/// Not implemented for this example but required by interface
+tmpl(unsigned int):: transport_dbg                            
+( tlm::tlm_generic_payload &payload)                // debug payload
+{
+  return false;
+}
   
 }}

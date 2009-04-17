@@ -66,10 +66,14 @@ namespace soclib { namespace tlmdt {
 template<typename vci_param>
 class VciMwmrController 
   : public sc_core::sc_module             // inherit from SC module base clase
+  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "backward interface"
+  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "forward interface"
 {
  private:
-  //typedef soclib::tlmt::VciParams<uint32_t,uint32_t,4> vci_param;
 
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Membre Variables
+  /////////////////////////////////////////////////////////////////////////////////////
   soclib::common::MappingTable       m_mt;
   std::list<soclib::common::Segment> m_initiator_segments;
   std::list<soclib::common::Segment> m_target_segments;
@@ -140,49 +144,35 @@ class VciMwmrController
   tlm::tlm_phase            m_fifo_write_phase;
   sc_core::sc_time          m_fifo_write_time;
 
- protected:
-  SC_HAS_PROCESS(VciMwmrController);
- public:
-
-  //  VCI initiator socket
-  tlm_utils::simple_initiator_socket<VciMwmrController,32,tlm::tlm_base_protocol_types> p_vci_initiator;
-  //  VCI target socket
-  tlm_utils::simple_target_socket<VciMwmrController,32,tlm::tlm_base_protocol_types> p_vci_target;
-
-  std::vector<tlm_utils::simple_initiator_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_config;
-  std::vector<tlm_utils::simple_initiator_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_status;
-
-  std::vector<tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_read_fifo;
-  std::vector<tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_write_fifo;
-
-  VciMwmrController(sc_core::sc_module_name name,
-		    const soclib::common::MappingTable &mt,
-		    const soclib::common::IntTab &initiator_index,
-		    const soclib::common::IntTab &target_index,
-		    uint32_t read_fifo_depth,  //in words
-		    uint32_t write_fifo_depth, //in words
-		    uint32_t n_read_channels,
-		    uint32_t n_write_channels,
-		    uint32_t n_config,
-		    uint32_t n_status,
-		    sc_core::sc_time simulation_time);
-
   /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_bw_transport_if  (INITIATOR VCI SOCKET)
+  // Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum vci_nb_transport_bw          // receive answer from target
-  ( tlm::tlm_generic_payload &payload,            // payload
-    tlm::tlm_phase           &phase,              // phase
-    sc_core::sc_time         &time);              // time
-  
+  void update_time(sc_core::sc_time t);
+  void send_activity();
+  void reset();
+  void execLoop();
+  void getLock(typename vci_param::addr_t status_address, uint32_t *status);
+  void releaseLock(typename vci_param::addr_t status_address, uint32_t *status);
+  void readStatus(typename vci_param::addr_t status_address, uint32_t *status);
+  void updateStatus(typename vci_param::addr_t status_address, uint32_t *status);
+  void readFromChannel(uint32_t fifo_index, uint32_t *status);
+  void writeToChannel(uint32_t fifo_index, uint32_t *status);
+  void releasePendingReadFifo(uint32_t fifo_index);
+  void releasePendingWriteFifo(uint32_t fifo_index);
+
+  void send_write(
+		  enum command command,
+		  typename vci_param::addr_t address,
+		  typename vci_param::data_t *data, 
+		  size_t size
+		  );
  
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_fw_transport_if  (TARGET VCI SOCKET)
-  /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum vci_nb_transport_fw          // receive command from initiator
-  ( tlm::tlm_generic_payload &payload,            // payload
-    tlm::tlm_phase           &phase,              // phase
-    sc_core::sc_time         &time);              // time
+  void send_read(
+		 enum command command,
+		 typename vci_param::addr_t address,
+		 typename vci_param::data_t *data, 
+		 size_t size
+		 );
 
   tlm::tlm_sync_enum vci_read_nb_transport_fw     // receive READ command from initiator
   ( size_t                    segIndex,           // segment index
@@ -197,6 +187,41 @@ class VciMwmrController
     tlm::tlm_generic_payload &payload,            // payload
     tlm::tlm_phase           &phase,              // phase
     sc_core::sc_time         &time);              // time
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Virtual Fuctions  tlm::tlm_bw_transport_if  (INITIATOR VCI SOCKET)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw              // receive answer from target
+  ( tlm::tlm_generic_payload &payload,            // payload
+    tlm::tlm_phase           &phase,              // phase
+    sc_core::sc_time         &time);              // time
+  
+  // Not implemented for this example but required by interface
+  void invalidate_direct_mem_ptr                  // invalidate_direct_mem_ptr
+  ( sc_dt::uint64 start_range,                    // start range
+    sc_dt::uint64 end_range);                     // end range
+ 
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Virtual Fuctions  tlm::tlm_fw_transport_if  (TARGET VCI SOCKET)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_fw              // receive command from initiator
+  ( tlm::tlm_generic_payload &payload,            // payload
+    tlm::tlm_phase           &phase,              // phase
+    sc_core::sc_time         &time);              // time
+
+  // Not implemented for this example but required by interface
+  void b_transport                                // b_transport() - Blocking Transport
+  ( tlm::tlm_generic_payload &payload,            // payload
+    sc_core::sc_time         &time);              // time
+  
+  // Not implemented for this example but required by interface
+  bool get_direct_mem_ptr
+  ( tlm::tlm_generic_payload &payload,            // payload
+    tlm::tlm_dmi             &dmi_data);          // DMI data
+  
+  // Not implemented for this example but required by interface
+  unsigned int transport_dbg                            
+  ( tlm::tlm_generic_payload &payload);           // payload
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_fw_transport_if (READ FIFO TARGET SOCKET)
@@ -226,33 +251,31 @@ class VciMwmrController
     tlm::tlm_generic_payload &payload,            // payload
     tlm::tlm_phase           &phase,              // phase
     sc_core::sc_time         &time);              // time
-  
-  void update_time(sc_core::sc_time t);
-  void send_activity();
-  void reset();
-  void execLoop();
-  void getLock(typename vci_param::addr_t status_address, uint32_t *status);
-  void releaseLock(typename vci_param::addr_t status_address, uint32_t *status);
-  void readStatus(typename vci_param::addr_t status_address, uint32_t *status);
-  void updateStatus(typename vci_param::addr_t status_address, uint32_t *status);
-  void readFromChannel(uint32_t fifo_index, uint32_t *status);
-  void writeToChannel(uint32_t fifo_index, uint32_t *status);
-  void releasePendingReadFifo(uint32_t fifo_index);
-  void releasePendingWriteFifo(uint32_t fifo_index);
 
-  void send_write(
-		  enum command command,
-		  typename vci_param::addr_t address,
-		  typename vci_param::data_t *data, 
-		  size_t size
-		  );
- 
-  void send_read(
-		 enum command command,
-		 typename vci_param::addr_t address,
-		 typename vci_param::data_t *data, 
-		 size_t size
-		 );
+ protected:
+  SC_HAS_PROCESS(VciMwmrController);
+ public:
+  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci_initiator;  // VCI initiator port 
+  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types>     p_vci_target;     // VCI target socket
+
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_config;
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_status;
+
+  std::vector<tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_read_fifo;
+  std::vector<tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_write_fifo;
+
+  VciMwmrController(sc_core::sc_module_name name,
+		    const soclib::common::MappingTable &mt,
+		    const soclib::common::IntTab &initiator_index,
+		    const soclib::common::IntTab &target_index,
+		    uint32_t read_fifo_depth,  //in words
+		    uint32_t write_fifo_depth, //in words
+		    uint32_t n_read_channels,
+		    uint32_t n_write_channels,
+		    uint32_t n_config,
+		    uint32_t n_status,
+		    sc_core::sc_time simulation_time);
+  
 };
 
 }}

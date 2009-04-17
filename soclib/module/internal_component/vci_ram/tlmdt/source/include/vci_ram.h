@@ -41,6 +41,7 @@ namespace soclib { namespace tlmdt {
 template<typename vci_param>
 class VciRam                                 // vci ram
   : public sc_core::sc_module                // inherit from SC module base class
+  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "forward interface"
 {
  private:
   /////////////////////////////////////////////////////////////////////////////////////
@@ -58,19 +59,32 @@ class VciRam                                 // vci ram
   uint32_t                                                                  m_cpt_read;
   uint32_t                                                                  m_cpt_write;
 
-
   /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
   /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum my_nb_transport_fw     // receive command from initiator
+  tlm::tlm_sync_enum nb_transport_fw        // receive command from initiator
   ( tlm::tlm_generic_payload &payload,      // payload
     tlm::tlm_phase           &phase,        // phase
     sc_core::sc_time         &time);        // time
 
+  // Not implemented for this example but required by interface
+  void b_transport                          // b_transport() - Blocking Transport
+  ( tlm::tlm_generic_payload &payload,      // payload
+    sc_core::sc_time         &time);        // time
+  
+  // Not implemented for this example but required by interface
+  bool get_direct_mem_ptr
+  ( tlm::tlm_generic_payload &payload,      // payload
+    tlm::tlm_dmi             &dmi_data);    // DMI data
+  
+  // Not implemented for this example but required by interface
+  unsigned int transport_dbg                            
+  ( tlm::tlm_generic_payload &payload);     // payload
+
  protected:
   SC_HAS_PROCESS(VciRam);
  public:
-  tlm_utils::simple_target_socket<VciRam,32,tlm::tlm_base_protocol_types> p_vci_target; // VCI TARGET socket
+  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target;   // VCI TARGET socket
 
   VciRam(sc_core::sc_module_name            name,
 	 const soclib::common::IntTab       &index,
@@ -78,6 +92,7 @@ class VciRam                                 // vci ram
 	 soclib::common::Loader             &loader);
   
   ~VciRam();
+
   void print_stats();
 };
 }}

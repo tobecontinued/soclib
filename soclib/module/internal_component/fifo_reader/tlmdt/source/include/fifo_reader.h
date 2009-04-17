@@ -37,8 +37,12 @@ namespace soclib { namespace tlmdt {
 template<typename vci_param>
 class FifoReader
   : public sc_core::sc_module
+  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "backward interface"
 {
 private:
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Member Variables
+  /////////////////////////////////////////////////////////////////////////////////////
   soclib::common::ProcessWrapper m_wrapper;
   typename vci_param::data_t     m_data;
   int                            m_woffset;
@@ -51,33 +55,36 @@ private:
 
   sc_core::sc_event              m_rsp_write;
 
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuctions
+  /////////////////////////////////////////////////////////////////////////////////////
+  void execLoop();
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Virtual Fuctions  tlm::tlm_bw_transport_if (FIFO TARGET SOCKET)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw        // Receive rsp from target
+  ( tlm::tlm_generic_payload &payload,      // payload
+    tlm::tlm_phase           &phase,        // phase
+    sc_core::sc_time         &time);        // time
+  
+  void invalidate_direct_mem_ptr            // invalidate_direct_mem_ptr
+  ( sc_dt::uint64 start_range,              // start range
+    sc_dt::uint64 end_range);               // end range
+
 protected:
     SC_HAS_PROCESS(FifoReader);
 
 public:
-  tlm_utils::simple_initiator_socket<FifoReader,32,tlm::tlm_base_protocol_types> p_fifo;
-
+  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_fifo;  // FIFO initiator port 
+  
   FifoReader( sc_core::sc_module_name name,
 	      const std::string &bin,
 	      const std::vector<std::string> &argv,
 	      uint32_t depth_fifo);
 
-private:
-
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_bw_transport_if (FIFO TARGET SOCKET)
-  /////////////////////////////////////////////////////////////////////////////////////
-  
-  /// Receive rsp from target
-  tlm::tlm_sync_enum my_nb_transport_bw     // for resp messages 
-  ( tlm::tlm_generic_payload &payload,      // payload
-    tlm::tlm_phase           &phase,        // phase
-    sc_core::sc_time         &time);        // time
-  
-  void execLoop();
 
 };
-
 }}
 
 #endif

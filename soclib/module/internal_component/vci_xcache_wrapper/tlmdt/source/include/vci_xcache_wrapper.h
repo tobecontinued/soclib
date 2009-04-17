@@ -28,7 +28,7 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
  
-#include <tlmdt>                               // TLM-DT headers
+#include <tlmdt>                // TLM-DT headers
 #include <inttypes.h>
 
 #include "soclib_endian.h"
@@ -42,6 +42,7 @@ namespace soclib { namespace tlmdt {
 template<typename vci_param, typename iss_t>
 class VciXcacheWrapper
   : public sc_core::sc_module             // inherit from SC module base clase
+  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "backward interface"
 {
 private:
   /////////////////////////////////////////////////////////////////////////////////////
@@ -82,48 +83,10 @@ private:
   soclib_payload_extension *m_activity_extension_ptr;
   tlm::tlm_phase            m_activity_phase;
   sc_core::sc_time          m_activity_time;
-  
-protected:
-  SC_HAS_PROCESS(VciXcacheWrapper);
-  
-public:
 
-  tlm_utils::simple_initiator_socket<VciXcacheWrapper, 32, tlm::tlm_base_protocol_types> p_vci_initiator;   // VCI initiator port 
-  //std::vector<tlm_utils::simple_target_socket_tagged<VciXcache,32,soclib_irq_types> *> p_irq;  // IRQ target port
-  
-  VciXcacheWrapper(
-		   sc_core::sc_module_name name,
-		   int cpuid,
-		   const soclib::common::IntTab &index,
-		   const soclib::common::MappingTable &mt,
-		   size_t icache_lines,
-		   size_t icache_words,
-		   size_t dcache_lines,
-		   size_t dcache_words,
-		   sc_core::sc_time time_quantum,          // time quantum
-		   sc_core::sc_time simulation_time);
-  
-private:
   /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
+  // Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum my_nb_transport_bw      // Receive rsp from target
-  ( tlm::tlm_generic_payload   &payload,     // payload
-    tlm::tlm_phase             &phase,       // phase
-    sc_core::sc_time           &time);       // time
-
-  
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ TARGET SOCKET)
-  /////////////////////////////////////////////////////////////////////////////////////
-  /*
-  tlm::tlm_sync_enum my_nb_transport_fw              // receive interruption from initiator
-  ( int                                id,           // interruption id
-    soclib_irq_types::tlm_payload_type &payload,     // payload
-    soclib_irq_types::tlm_phase_type   &phase,       // phase
-    sc_core::sc_time                   &time);       // time
-  */
-
   uint32_t xcacheAccess(
 			struct iss_t::InstructionRequest ireq,
 			struct iss_t::DataRequest dreq,
@@ -167,6 +130,47 @@ private:
   void update_time(sc_core::sc_time t);
   void send_activity();
   void send_null_message();
+  
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw         // receive rsp from target
+  ( tlm::tlm_generic_payload   &payload,     // payload
+    tlm::tlm_phase             &phase,       // phase
+    sc_core::sc_time           &time);       // time
+
+  void invalidate_direct_mem_ptr             // invalidate_direct_mem_ptr
+  ( sc_dt::uint64 start_range,               // start range
+    sc_dt::uint64 end_range);                // end range
+  
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ TARGET SOCKET)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum my_nb_transport_fw      // receive interruption from initiator
+  ( int                      id,             // interruption id
+    tlm::tlm_generic_payload &payload,       // payload
+    tlm::tlm_phase           &phase,         // phase
+    sc_core::sc_time         &time);         // time
+
+protected:
+  SC_HAS_PROCESS(VciXcacheWrapper);
+  
+public:
+  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci_initiator;   // VCI initiator port
+  //std::vector<tlm_utils::simple_target_socket_tagged<VciXcache,32,tlm::tlm_base_protocol_types> *> p_irq_target;  // IRQ target port
+  
+  VciXcacheWrapper(
+		   sc_core::sc_module_name name,
+		   int cpuid,
+		   const soclib::common::IntTab &index,
+		   const soclib::common::MappingTable &mt,
+		   size_t icache_lines,
+		   size_t icache_words,
+		   size_t dcache_lines,
+		   size_t dcache_words,
+		   sc_core::sc_time time_quantum,          // time quantum
+		   sc_core::sc_time simulation_time);
+  
 };
 
 }}
