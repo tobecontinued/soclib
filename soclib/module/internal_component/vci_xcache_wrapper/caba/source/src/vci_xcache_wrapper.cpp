@@ -24,7 +24,7 @@
  *         Alain Greiner <alain.greiner@lip6.fr>
  *         Nicolas Pouillon <nipo@ssji.net>
  *
- * Maintainers: alain, eric.guthmuller@polytechnique.edu, nipo, alinevieiramello@hotmail.com
+ * Maintainers: alain eric.guthmuller@polytechnique.edu nipo
  */
 
 /////////////////////////////////////////////////////////////////////////////
@@ -62,8 +62,6 @@
 
 namespace soclib {
 namespace caba {
-
-//#define SOCLIB_MODULE_DEBUG
 
 #ifdef SOCLIB_MODULE_DEBUG
 namespace {
@@ -135,90 +133,6 @@ tmpl(/**/)::VciXcacheWrapper(
     size_t icache_words,
     size_t dcache_ways,
     size_t dcache_sets,
-    size_t dcache_words,
-    size_t simulation_time )
-    :
-      soclib::caba::BaseModule(name),
-           
-      p_clk("clk"),
-      p_resetn("resetn"),
-      p_vci("vci"),
-
-      m_cacheability_table(mt.getCacheabilityTable()),
-      m_iss(this->name(), proc_id),
-      m_srcid(mt.indexForId(index)),
-      m_simulation_time(simulation_time),
-
-      m_dcache_ways(dcache_ways),
-      m_dcache_words(dcache_words),
-      m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
-      m_icache_ways(icache_ways),
-      m_icache_words(icache_words),
-      m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
-
-      r_dcache_fsm("r_dcache_fsm"),
-      r_dcache_addr_save("r_dcache_addr_save"),
-      r_dcache_wdata_save("r_dcache_wdata_save"),
-      r_dcache_rdata_save("r_dcache_rdata_save"),
-      r_dcache_type_save("r_dcache_type_save"),
-      r_dcache_be_save("r_dcache_be_save"),
-      r_dcache_cached_save("r_dcache_cached_save"),
-      r_dcache_miss_req("r_dcache_miss_req"),
-      r_dcache_unc_req("r_dcache_unc_req"),
-      r_dcache_write_req("r_dcache_write_req"),
-
-      r_icache_fsm("r_icache_fsm"),
-      r_icache_addr_save("r_icache_addr_save"),
-      r_icache_miss_req("r_icache_miss_req"),
-      r_icache_unc_req("r_icache_unc_req"),
-
-      r_vci_cmd_fsm("r_vci_cmd_fsm"),
-      r_vci_cmd_min("r_vci_cmd_min"),
-      r_vci_cmd_max("r_vci_cmd_max"),
-      r_vci_cmd_cpt("r_vci_cmd_cpt"),
-
-      r_vci_rsp_fsm("r_vci_rsp_fsm"),
-      r_vci_rsp_ins_error("r_vci_rsp_ins_error"),
-      r_vci_rsp_data_error("r_vci_rsp_data_error"),
-      r_vci_rsp_cpt("r_vci_rsp_cpt"),
-
-      r_icache_buf_unc_valid("r_icache_buf_unc_valid"),
-      r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
-
-      r_wbuf("wbuf", dcache_words ),
-      r_icache("icache", icache_ways, icache_sets, icache_words),
-      r_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
-{
-
-    r_icache_miss_buf = new data_t[icache_words];
-    r_dcache_miss_buf = new data_t[dcache_words];
-
-    assert((icache_words*vci_param::B) < (1<<vci_param::K) && "I need more PLEN bits");
-
-    SC_METHOD(transition);
-    dont_initialize();
-    sensitive << p_clk.pos();
-
-    SC_METHOD(genMoore);
-    dont_initialize();
-    sensitive << p_clk.neg();
-
-    m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
-    m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
-}
-
-/////////////////////////////////
-tmpl(/**/)::VciXcacheWrapper(
-/////////////////////////////////
-    sc_module_name name,
-    int proc_id,
-    const soclib::common::MappingTable &mt,
-    const soclib::common::IntTab &index,
-    size_t icache_ways,
-    size_t icache_sets,
-    size_t icache_words,
-    size_t dcache_ways,
-    size_t dcache_sets,
     size_t dcache_words )
     :
       soclib::caba::BaseModule(name),
@@ -230,7 +144,6 @@ tmpl(/**/)::VciXcacheWrapper(
       m_cacheability_table(mt.getCacheabilityTable()),
       m_iss(this->name(), proc_id),
       m_srcid(mt.indexForId(index)),
-      m_simulation_time(std::numeric_limits<size_t>::max()),
 
       m_dcache_ways(dcache_ways),
       m_dcache_words(dcache_words),
@@ -332,9 +245,6 @@ tmpl(void)::print_stats()
 tmpl(void)::transition()
 //////////////////////////
 {
-    if(m_cpt_total_cycles == m_simulation_time)
-        sc_stop();
-
     if ( ! p_resetn.read() ) {
         m_iss.reset();
 

@@ -24,7 +24,7 @@
  *         Alain Greiner <alain.greiner@lip6.fr>, 2008
  *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
- * Maintainers: alain, alinevieiramello@hotmail.com
+ * Maintainers: alain
  */
 
 #ifndef SOCLIB_CABA_VCI_XCACHE_WRAPPER_H
@@ -149,8 +149,6 @@ private:
     GenericCache<addr_t>    r_icache;
     GenericCache<addr_t>    r_dcache;
 
-    size_t                  m_simulation_time;
-
     // Activity counters
     uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
     uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
@@ -192,19 +190,6 @@ protected:
     SC_HAS_PROCESS(VciXcacheWrapper);
 
 public:
-
-    VciXcacheWrapper(
-        sc_module_name insname,
-        int proc_id,
-        const soclib::common::MappingTable &mt,
-        const soclib::common::IntTab &index,
-        size_t icache_ways,
-        size_t icache_sets,
-        size_t icache_words,
-        size_t dcache_ways,
-        size_t dcache_sets,
-        size_t dcache_words,
-        size_t simulation_time);
 
     VciXcacheWrapper(
         sc_module_name insname,
