@@ -57,7 +57,7 @@ void* fb_init(int32_t w, int32_t h)
 	{
 		char wstr[8];
 		char hstr[8];
-		char *args[] = {"soclib-fb", wstr, hstr, "32", tmpname, NULL};
+		char *args[] = {"soclib-fb", wstr, hstr, "420", tmpname, NULL};
 		int fds[2];
 
 		pipe(fds);
