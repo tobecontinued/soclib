@@ -36,14 +36,6 @@ config.systemc = Config(
 	cflags = ['-I%(dir)s/include'],
 	)
 
-import sys
-if sys.platform in ['cygwin']:
-	libs = ['-lbfd', '-liberty', '-lintl']
-elif sys.platform in ['darwin']:
-	libs = ['-lbfd', '-liberty', '-lintl']
-else:
-	libs = ['-lbfd']
-
 config.toolchain = Config(
 	tool_map = {
 		'CC':'gcc',
@@ -57,7 +49,7 @@ config.toolchain = Config(
 	
 	prefix = '',
 	cflags = ['-Wall', '-Wno-pmf-conversions', '-DSOCLIB'],
-	libs = libs,
+	libs = [],
 	always_include = ['sys/types.h', 'inttypes.h'],	
 	release_cflags = ['-O2', '-DSOCLIB_MODE_RELEASE'],
 	release_libs = [],
