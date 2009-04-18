@@ -8,6 +8,9 @@ import atexit
 class NoSuchComponent(Exception):
 	pass
 
+class FileParsingError(Exception):
+	pass
+
 class DoubleRegistrationWarning(Warning):
 	def __str__(self):
 		return 'Module %s registered twice: in "%s" and "%s"'%(self.args[0], self.args[1], self.args[2])

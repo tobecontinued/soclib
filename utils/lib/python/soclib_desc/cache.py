@@ -106,7 +106,12 @@ class CachedDescFile:
 		self.__modules = []
 		glbl = self.__mkParserGlobals()
 		locl = {}
-		execfile(self.__path, glbl, locl)
+		try:
+			execfile(self.__path, glbl, locl)
+		except Exception, e:
+			import description_files
+			raise description_files.FileParsingError(
+				'in %s: %r'%(self.__path, e))
 		self.__date_loaded = self.__file_time()
 
 class GlobalDescCache:
