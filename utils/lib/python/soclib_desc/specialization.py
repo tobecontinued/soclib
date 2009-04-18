@@ -89,10 +89,13 @@ class Specialization:
 			self.__init_tmpl_parameters()
 			self.__init_tmpl_dependencies()
 			self.__init_uses()
-#		except ModuleSpecializationError, e:
-#			raise ModuleSpecializationError(
-#				self.getModuleName(), use, e)
+		except ModuleSpecializationError, e:
+			raise ModuleSpecializationError(
+				self.getModuleName(), use, e)
+		except description_files.FileParsingError, e:
+			raise
 		except Exception, e:
+#			raise
 #			print "Error while instanciating component %s from %s: %r"%(
 #				self.getModuleName(), use, e)
 			raise ModuleSpecializationError(
