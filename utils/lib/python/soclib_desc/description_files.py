@@ -38,6 +38,7 @@ class DescCache:
 
 		newcache = cache.GlobalDescCache.load(self.__cache_file)
 		if newcache is None:
+			self.__fresh = True
 			return
 		self.__global_cache = newcache
 		self.__global_cache.checkFiles()
@@ -52,7 +53,7 @@ class DescCache:
 			return
 		try:
 			self.__global_cache.save(self.__cache_file)
-			print >> sys.stderr, "Saved cache"
+#			print >> sys.stderr, "Saved cache"
 		except:
 			pass
 		
@@ -62,7 +63,7 @@ class DescCache:
 		"""
 		try:
 			os.unlink(self.__cache_file)
-			print >> sys.stderr, "Deleted cache"
+#			print >> sys.stderr, "Deleted cache"
 		except OSError, e:
 			pass
 		
