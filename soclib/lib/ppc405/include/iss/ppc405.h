@@ -36,6 +36,8 @@
 #include "soclib_endian.h"
 #include "register.h"
 
+#include <cassert>
+
 namespace soclib { namespace common {
 
 #define PPC_PVR(own, pcf, cas, pcl, aid) \
