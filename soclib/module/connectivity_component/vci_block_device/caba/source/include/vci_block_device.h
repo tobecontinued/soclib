@@ -60,7 +60,7 @@ private:
 
 	const uint32_t m_block_size;
 
-	uint32_t m_fd;
+	int m_fd;
 	int m_op;
 	uint32_t m_buffer;
 	uint32_t m_count;
