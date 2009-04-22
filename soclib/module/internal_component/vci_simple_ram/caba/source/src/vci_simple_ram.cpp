@@ -253,7 +253,7 @@ tmpl(void)::transition()
             if ( p_vci.cmdval.read() ) {
                 vci_addr_t next_address = r_address.read() + (vci_addr_t)vci_param::B;
                 assert( (r_contig && (next_address == p_vci.address.read())) ||
-                        (!r_contig && (r_address == p_vci.address.read())) );
+                        (!r_contig && (r_address.read() == p_vci.address.read())) );
                 r_address   = p_vci.address.read();
                 r_be        = p_vci.be.read();
                 r_wdata     = p_vci.wdata.read();
