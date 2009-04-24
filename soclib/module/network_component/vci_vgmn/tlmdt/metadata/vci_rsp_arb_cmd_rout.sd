@@ -37,4 +37,5 @@ Module('tlmdt:vci_rsp_arb_cmd_rout',
        uses = [ Uses('common:tlmdt'),
 		Uses('common:mapping_table'),
 		],
+       debug = False,
        )

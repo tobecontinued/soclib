@@ -30,10 +30,6 @@
 #include "vci_rsp_arb_cmd_rout.h"                        // our header
 #include "vci_cmd_arb_rsp_rout.h"                        // our header
                     
-#ifndef VCI_RSP_ARB_CMD_ROUT_DEBUG
-#define VCI_RSP_ARB_CMD_ROUT_DEBUG 0
-#endif
-
 #ifndef VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
 #define VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG 0
 #endif
@@ -111,7 +107,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
   fprintf(myFile,"[%s] PUT time = %d CAN POP %d\n", name(), (int)time.value(), m_centralized_buffer->can_pop());
 #endif
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[" << name() << "] PUT time=" << std::dec << time.value();
   std::cout << " CAN POP " <<  m_centralized_buffer->can_pop() << std::endl;
 #endif
@@ -147,7 +143,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
       fprintf(myFile,"[%s] POP NULL MESSAGE time = %d\n", name(), (int)m_time.value());
 #endif
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       std::cout << "[" << name() << "] POP NULL MESSAGE time=" << m_time.value() << std::endl;
 #endif
 
@@ -168,7 +164,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
 	fprintf(myFile,"[%s] POP IS NOT LOCAL from %d dest %d pktid = %d time = %d\n", name(), m_extension_ptr->get_src_id(), dest, m_extension_ptr->get_pkt_id(), (int)m_time.value());
 #endif
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[" << name() << "] POP IS NOT LOCAL from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
 #endif
 
@@ -195,7 +191,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
 	    fprintf(myFile,"[%s] POP from %d dest %d pktid = %d time = %d\n", name(), m_extension_ptr->get_src_id(), dest, m_extension_ptr->get_pkt_id(), (int)m_time.value());
 #endif
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	    std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
 #endif
 	    
@@ -206,7 +202,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	    fprintf(myFile,"[%s] POP from %d dest %d pktid = %d NULL MESSAGE time = %d\n", name(), m_extension_ptr->get_src_id(), i, m_extension_ptr->get_pkt_id(), (int)m_time.value());
 #endif
 
-#if VCI_RSP_ARB_CMD_ROUT_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	    std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << i << " NULL MESSAGE time=" << m_time.value() <<  std::endl;
 #endif
 	    m_CmdArbRspRout[i]->put(m_null_payload_ptr, m_time);

@@ -356,21 +356,19 @@ tmpl (void)::behavior()
     m_iss.getDataRequest(data_asked, data_type, data_addr, data_wdata);
 
 #ifdef SOCLIB_MODULE_DEBUG
-    if(m_srcid != 0){
-      std::cout
-        << name()
-	//<< " time: " << std::dec << (m_pdes_local_time->get().value() + 1) << std::hex 
-        << " dcache fsm: " << dcache_fsm_state_str[m_dcache_fsm]
-        << " icache fsm: " << icache_fsm_state_str[m_icache_fsm]
-        << " cmd fsm: " << cmd_fsm_state_str[m_vci_cmd_fsm]
-        << " rsp fsm: " << rsp_fsm_state_str[m_vci_rsp_fsm] << std::endl;
-      std::cout
-	<< " i.valid: " << std::dec << ins_asked
-	<< " i.addr: " << std::hex << ins_addr << std::dec
-	<< " d.valid: " << data_asked
-	<< " d.addr: " << std::hex << data_addr << std::dec
-        << std::endl;
-    }
+    std::cout
+      << name()
+      << " time: " << std::dec << (m_pdes_local_time->get().value() + 1) << std::hex 
+      << " dcache fsm: " << dcache_fsm_state_str[m_dcache_fsm]
+      << " icache fsm: " << icache_fsm_state_str[m_icache_fsm]
+      << " cmd fsm: " << cmd_fsm_state_str[m_vci_cmd_fsm]
+      << " rsp fsm: " << rsp_fsm_state_str[m_vci_rsp_fsm] << std::endl;
+    std::cout
+      << " i.valid: " << std::dec << ins_asked
+      << " i.addr: " << std::hex << ins_addr << std::dec
+      << " d.valid: " << data_asked
+      << " d.addr: " << std::hex << data_addr << std::dec
+      << std::endl;
 #endif
 
         

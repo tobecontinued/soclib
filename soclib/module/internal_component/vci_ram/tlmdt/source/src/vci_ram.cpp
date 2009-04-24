@@ -29,10 +29,6 @@
 
 #include "vci_ram.h"
 
-#ifndef VCI_RAM_DEBUG
-#define VCI_RAM_DEBUG 0
-#endif
-
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) template<typename vci_param> x VciRam<vci_param>
@@ -117,7 +113,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   uint32_t nwords = (uint32_t)(payload.get_data_length() / vci_param::nbytes);
   uint32_t srcid  = extension_pointer->get_src_id();
 
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   uint32_t pktid  = extension_pointer->get_pkt_id();
 #endif
 
@@ -130,7 +126,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     switch(extension_pointer->get_command()){
     case VCI_READ_COMMAND:
       {
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Receive from source "<< srcid << " a read packet " << pktid << " Time = "  << time.value() << std::endl;
 #endif
 
@@ -156,7 +152,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	phase = tlm::BEGIN_RESP;
 	time = time + (nwords * UNIT_TIME);
 
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value() << std::endl;
 #endif
 	
@@ -166,7 +162,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       break;
     case VCI_WRITE_COMMAND:
       {
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Write packet "<< pktid << " Time = "  << time.value() << std::endl;
 #endif
         m_cpt_write+=nwords;
@@ -195,7 +191,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	phase = tlm::BEGIN_RESP;
 	time = time + (nwords * UNIT_TIME);
  	
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
 #endif
 	
@@ -205,7 +201,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       break;
     case VCI_LINKED_READ_COMMAND:
       {
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Locked Read packet "<< pktid << " Time = " << time.value() << std::endl;
 #endif
         m_cpt_read+=nwords;
@@ -228,7 +224,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
         phase = tlm::BEGIN_RESP;
         time = time + (nwords * UNIT_TIME);
 
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
 #endif
 
@@ -238,7 +234,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       break;
     case VCI_STORE_COND_COMMAND:
       {
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Store Conditionnel packet "<< pktid << " Time = "  << time.value() << std::endl;
 #endif
 	m_cpt_write+=nwords;
@@ -272,7 +268,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
         phase = tlm::BEGIN_RESP;
         time = time + (nwords * UNIT_TIME);
 
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
 #endif
 
@@ -291,7 +287,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   phase = tlm::BEGIN_RESP;
   time = time + nwords * UNIT_TIME;
   
-#if VCI_RAM_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[RAM " << m_tgtid << "] Address " << std::hex << payload.get_address() << std::dec << " does not match any segment " << std::endl;
   std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a error packet with time = "  << time.value() << std::endl;
 #endif

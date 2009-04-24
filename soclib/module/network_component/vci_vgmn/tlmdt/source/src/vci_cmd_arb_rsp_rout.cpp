@@ -29,10 +29,6 @@
 
 #include "vci_cmd_arb_rsp_rout.h"
 
-#ifndef VCI_CMD_ARB_RSP_ROUT_DEBUG
-#define VCI_CMD_ARB_RSP_ROUT_DEBUG 0
-#endif
-
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) x VciCmdArbRspRout
@@ -100,13 +96,13 @@ tmpl(void)::behavior(void)   // initiator thread
     m_phase = tlm::BEGIN_REQ;
     m_time = packet.time;
     if ( m_time < m_pdes_local_time->get() ){
-#if VCI_CMD_ARB_RSP_ROUT_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       std::cout << "[" << name() << "] UPDATE MESSAGE TIME time = " << m_time.value() << std::endl;
 #endif
       m_time = m_pdes_local_time->get();
     }
 
-#if VCI_CMD_ARB_RSP_ROUT_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[" << name() << "] send message to target time = " << m_time.value() << std::endl;
 #endif
 
@@ -163,7 +159,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_bw
   //updated the transaction time
   time = time + m_delay;
   
-#if VCI_CMD_ARB_RSP_ROUT_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[" << name() << "] send to " << src << " rsp time = " << time.value() << std::endl;
 #endif
 
