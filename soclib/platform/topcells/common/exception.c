@@ -381,6 +381,7 @@ void _instruction_tlb_miss()
 }
 
 #elif __lm32__
+#elif __sparc__
 #else
 #error Unsupported arch
 #endif

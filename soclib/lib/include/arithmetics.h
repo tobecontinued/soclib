@@ -44,6 +44,18 @@ static inline int32_t sign_ext8( int8_t val )
     return val;
 }
 
+static inline int32_t sign_ext13( int32_t val )
+{
+    uint32_t ext = (val&(1<<12)) ? 0xffffe000 : 0;
+    return (val&0x00001fff)|ext;
+}
+
+static inline int32_t sign_ext22( int32_t val )
+{
+    uint32_t ext = (val&(1<<21)) ? 0xffc00000 : 0;
+    return (val&0x003fffff)|ext;
+}
+
 static inline int32_t sign_ext26( int32_t val )
 {
     uint32_t ext = (val&(1<<25)) ? 0xfc000000 : 0;

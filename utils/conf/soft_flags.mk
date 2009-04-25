@@ -25,6 +25,10 @@ microblaze_CC_PREFIX=mb-
 microblaze_CFLAGS=-mno-xl-soft-div -mno-xl-soft-mul -gstabs+
 microblaze_LDFLAGS=-nostdlib
 
+sparc_CC_PREFIX=sparc-unknown-elf-
+sparc_CFLAGS= -mcpu=v8
+sparc_LDFLAGS= 
+
 nios2_CC_PREFIX=nios2-unknown-elf-
 nios2_CFLAGS=-mhw-mul -mhw-div
 

@@ -66,7 +66,9 @@ void set_ex_handler(ex_handler_t *handler);
 # include "system_ppc.h"
 #elif defined(__lm32__) /* __mips__ PPC */
 # include "system_lm32.h"
-#else /* __mips__ PPC */
+#elif defined(__sparc__) /* __mips__ PPC __lm32__ */
+# include "system_sparc.h"
+#else /* __mips__ PPC __lm32__ __sparc__ */
 # error no mips no ppc no lm32
 #endif
 
@@ -78,6 +80,8 @@ static inline int putchar(const int x)
 #ifdef MMU
 #if defined(__lm32__)
 #error MMU support for lm32 not yet implemented...
+#elif defined(__sparc__)
+#error MMU support for sparc not yet implemented...
 #endif
 
 	uint32_t tlb_mode = 0;

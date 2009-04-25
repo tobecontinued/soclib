@@ -27,6 +27,7 @@
 #include <cstring>
 #include <cassert>
 #include <iostream>
+#include <cstdlib>
 
 #include "static_init_code.h"
 #include "loader.h"
@@ -63,7 +64,7 @@ bool elf_load( const std::string &filename, Loader &loader )
         }
 
         size_t actual_size = sect->get_size();
-        uint8_t *blob = (uint8_t*)malloc( actual_size );
+        uint8_t *blob = (uint8_t*)std::malloc( actual_size );
         std::memcpy( blob, sect->get_content(), actual_size );
         uint32_t flags = BinaryFileSection::FLAG_LOAD;
 

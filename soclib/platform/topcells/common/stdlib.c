@@ -63,6 +63,8 @@ void trap()
 # endif
 #elif defined(PPC)
 	asm volatile("trap");
+#elif defined(__sparc__)
+       asm volatile("ta 0");
 #elif defined(__lm32__)
     asm volatile("break");
 #endif

@@ -44,6 +44,8 @@ int time(int *ret)
 	t = spr_get(284);
 #elif defined(__lm32__)
     t = get_cc();
+#elif defined(__sparc__)
+#warning No cycle counter for sparc yet
 #else
 #error No cycle counter
 #endif

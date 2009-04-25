@@ -159,6 +159,8 @@ void enable_hw_irq(unsigned int n)
 	asm("mtmsr %0"::"r"(msr));
 #elif __lm32__
 	irq_enable();
+#elif __sparc__
+       irq_enable();
 #else
 # error Please implement enable_hw_irq for your arch
 #endif
@@ -167,7 +169,11 @@ void enable_hw_irq(unsigned int n)
 
 void interrupt_hw_handler(unsigned int irq)
 {
-#if __lm32__
+#if __sparc__
+	printf("Exception: %s irq %d\n", __FUNCTION__, irq);
+	if ( user_irq_handler )
+		user_irq_handler(irq);
+#elif __lm32__
 	int i;
 
   	printf("Exception: %s irq %d\n", __FUNCTION__, irq);
@@ -210,6 +216,8 @@ static inline uint32_t ll( uint32_t *addr )
 	__asm__ __volatile__("lwarx %0, 0, %1":"=r"(ret):"p"(addr));
 #elif __lm32__
 #warning TODO : implement ll for lm32 !
+#elif __sparc__
+#warning TODO : implement ll for sparc !
 #else
 # error Please implement ll for your arch
 #endif
@@ -235,6 +243,8 @@ static inline uint32_t sc( uint32_t *addr, uint32_t value )
 	ret = ! (ret&0x20000000);
 #elif __lm32__
 #warning TODO : implement sc for lm32 !
+#elif __sparc__
+#warning TODO : implement sc for sparc !
 #else
 # error Please implement sc for your arch
 #endif
@@ -295,6 +305,8 @@ void lock_lock( uint32_t *lock )
 		);
 #elif __lm32__
 #warning TODO : implement lock_lock for lm32 !
+#elif __sparc__
+#warning TODO : implement lock_lock for sparc !
 #else
 # error Please implement lock_lock for your arch
 #endif
@@ -316,6 +328,8 @@ void pause()
 #elif PPC
 	asm volatile("nap");
 #elif __lm32__
+#  warning No pause for this architecture
+#elif __sparc__
 #  warning No pause for this architecture
 #else
 # error Please implement pause for your arch
