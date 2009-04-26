@@ -53,6 +53,5 @@ int main(void)
 	printf("Fibo(9) = %d\n", fibo(9));
 	printf("Fibo(10) = %d\n", fibo(10));
 
-	while(1);
 	return 0;
 }
