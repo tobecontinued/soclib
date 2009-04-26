@@ -218,6 +218,7 @@ static inline uint32_t ll( uint32_t *addr )
 #warning TODO : implement ll for lm32 !
 #elif __sparc__
 #warning TODO : implement ll for sparc !
+	ret = 0;
 #else
 # error Please implement ll for your arch
 #endif
@@ -245,6 +246,7 @@ static inline uint32_t sc( uint32_t *addr, uint32_t value )
 #warning TODO : implement sc for lm32 !
 #elif __sparc__
 #warning TODO : implement sc for sparc !
+	ret = 0;
 #else
 # error Please implement sc for your arch
 #endif
