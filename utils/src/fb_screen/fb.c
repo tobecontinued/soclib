@@ -33,11 +33,11 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <errno.h>
 #include <signal.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include <poll.h>
-#include <sys/types.h>
 #include <sys/mman.h>
 #include <stdint.h>
 #include <SDL.h>

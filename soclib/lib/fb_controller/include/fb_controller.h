@@ -30,6 +30,7 @@
 
 #include <assert.h>
 #include <inttypes.h>
+#include <cassert>
 #include "process_wrapper.h"
 
 namespace soclib { namespace common {

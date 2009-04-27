@@ -57,6 +57,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <cassert>
+#include <limits>
 #include "arithmetics.h"
 #include "../include/vci_xcache_wrapper.h"
 
