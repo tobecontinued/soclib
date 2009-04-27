@@ -56,13 +56,11 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 	case TIMER_MODE:
 		r_mode[timer] = (int)data & 0x3;
-        // Reset the timer if set running
-        if ( data & TIMER_RUNNING )
-			r_counter[timer] = r_period[timer].read();
 		break;
 
 	case TIMER_PERIOD:
 		r_period[timer] = data;
+		r_reset_counter[timer] = true;
 		break;
 	}
     m_cpt_write++;
@@ -113,25 +111,28 @@ tmpl(void)::transition()
 			r_counter[i] = 0;
 			r_mode[i] = 0;
 			r_irq[i] = false;
+			r_reset_counter[i] = false;
 		}
 		return;
 	}
 
 	m_vci_fsm.transition();
 
-	// Increment value[i]
-	// decrement r_counter[i] & Set irq[i]
-	for(size_t i = 0 ; i < m_ntimer ; i++) {
-		if ( ! (r_mode[i].read() & TIMER_RUNNING) )
-			continue;
+	for(size_t i = 0 ; i < m_ntimer ; i++)
+	{
+		if ( (r_mode[i].read() & TIMER_RUNNING) )
+		{
+            r_value[i] = r_value[i].read() + 1;
 
-		r_value[i] = r_value[i].read() + 1;
-
-		if ( r_counter[i].read() != 0 )
-			r_counter[i] = r_counter[i].read() - 1;
-		else {
-			r_counter[i] = r_period[i].read();
-			r_irq[i] = true;
+			if ( r_reset_counter[i] ) {
+                r_reset_counter[i] = false;
+                r_counter[i] = r_period[i].read();
+			} else if ( r_counter[i].read() != 0 ) {
+                r_counter[i] = r_counter[i].read() - 1;
+			} else {
+                r_counter[i] = r_period[i].read();
+                r_irq[i] = r_mode[i].read() & TIMER_IRQ_ENABLED;
+			}
 		}
 	}
 }
@@ -141,7 +142,7 @@ tmpl(void)::genMoore()
 	m_vci_fsm.genMoore();
 
 	for (size_t i = 0 ; i < m_ntimer ; i++)
-		p_irq[i] = r_irq[i].read() && (r_mode[i].read() & TIMER_IRQ_ENABLED);
+		p_irq[i] = r_irq[i].read();
 }
 
 tmpl(/**/)::VciTimer(
@@ -157,6 +158,7 @@ tmpl(/**/)::VciTimer(
       r_counter(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("counter", m_ntimer)),
       r_mode(soclib::common::alloc_elems<sc_signal<int> >("mode", m_ntimer)),
       r_irq(soclib::common::alloc_elems<sc_signal<bool> >("saved_irq", m_ntimer)),
+      r_reset_counter(soclib::common::alloc_elems<sc_signal<bool> >("reset_counter", m_ntimer)),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci"),
@@ -181,6 +183,7 @@ tmpl(/**/)::~VciTimer()
     soclib::common::dealloc_elems(r_mode, m_ntimer);
     soclib::common::dealloc_elems(r_irq, m_ntimer);
     soclib::common::dealloc_elems(p_irq, m_ntimer);
+    soclib::common::dealloc_elems(r_reset_counter, m_ntimer);
 }
 
 }}
