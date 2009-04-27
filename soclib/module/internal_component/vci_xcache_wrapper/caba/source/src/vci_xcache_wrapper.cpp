@@ -664,6 +664,12 @@ tmpl(void)::transition()
                 r_dcache_fsm = DCACHE_ERROR;
             } else {
                 r_dcache_fsm = DCACHE_IDLE;
+                // If request was a DATA_SC we need to invalidate the corresponding cache line, 
+                // so that subsequent access to this line are read from RAM
+                if (dreq.type == iss_t::DATA_SC) {
+                    r_dcache_fsm = DCACHE_INVAL;
+                    r_dcache_wdata_save = r_dcache_addr_save;
+                }
                 r_dcache_buf_unc_valid = true;
             }
         }

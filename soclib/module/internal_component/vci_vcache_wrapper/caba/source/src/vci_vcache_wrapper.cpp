@@ -1856,6 +1856,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             else 
             {
                 r_dcache_fsm = DCACHE_IDLE;
+                // Special case : if request was a DATA_SC, we need to invalidate 
+                // the corresponding cache line, so that subsequent access to this line
+                // are correctly directed to RAM
+                if(dreq.type == iss_t::DATA_SC) {
+                    // Simulate an invalidate request
+                    r_dcache_fsm = DCACHE_DCACHE_INVAL; 
+                    dreq.wdata = dreq.addr;
+                }
                 r_dcache_buf_unc_valid = true; 
             } 
         }
