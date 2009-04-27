@@ -722,12 +722,12 @@ void Ppc405Iss::op_isync()
 
 void Ppc405Iss::op_lbz()
 {
-    mem_load_imm( DATA_READ, 1, false, false, false );
+    mem_load_imm( DATA_READ, 1, false, false, true );
 }
 
 void Ppc405Iss::op_lbzu()
 {
-    mem_load_imm( DATA_READ, 1, true, false, false );
+    mem_load_imm( DATA_READ, 1, true, false, true );
 }
 
 void Ppc405Iss::op_lbzux()
@@ -818,22 +818,22 @@ void Ppc405Iss::op_lwbrx()
 
 void Ppc405Iss::op_lwz()
 {
-    mem_load_imm( DATA_READ, 4, false, false, false );
+    mem_load_imm( DATA_READ, 4, false, false, true );
 }
 
 void Ppc405Iss::op_lwzu()
 {
-    mem_load_imm( DATA_READ, 4, true, false, false );
+    mem_load_imm( DATA_READ, 4, true, false, true );
 }
 
 void Ppc405Iss::op_lwzux()
 {
-    mem_load_indexed( DATA_READ, 4, true, false, false );
+    mem_load_indexed( DATA_READ, 4, true, false, true );
 }
 
 void Ppc405Iss::op_lwzx()
 {
-    mem_load_indexed( DATA_READ, 4, false, false, false );
+    mem_load_indexed( DATA_READ, 4, false, false, true );
 }
 
 void Ppc405Iss::op_macchw()
