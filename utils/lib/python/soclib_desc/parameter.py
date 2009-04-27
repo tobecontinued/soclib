@@ -85,7 +85,7 @@ class Parameter(Base):
 		if value is None:
 			value = self.default
 		if value is None:
-			raise ValueError("Pleasy give a value for parameter `%s'"%self.name)
+			raise ValueError("Please give a value for parameter `%s'"%self.name)
 		self.assertValid(value)
 		return value
 		
