@@ -6,7 +6,8 @@ import warnings
 import atexit
 
 class NoSuchComponent(Exception):
-	pass
+	def __repr__(self):
+		return 'NoSuchComponent "%s"'%self.args[0]
 
 class FileParsingError(Exception):
 	pass
