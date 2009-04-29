@@ -42,7 +42,7 @@ class ConfigSpool:
 	_filter = re.compile("[a-z][a-z_]+")
 	_fmt = '%s:\n%s'
 
-	_desc_paths = ["soclib/communication", 'soclib/lib', 'soclib/module']
+	_desc_paths = ["soclib/communication", 'soclib/lib', 'soclib/module', 'soclib/iss']
 
 	def addDescPath(self, np):
 		if not np in self._desc_paths:
