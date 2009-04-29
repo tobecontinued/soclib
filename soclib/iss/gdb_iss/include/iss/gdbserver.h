@@ -78,6 +78,8 @@ public:
         case Frozen:
             dreq.valid = false;
             ireq.valid = false;
+            break;
+
         case WaitGdbMem:
             ireq.valid = false;
             dreq.valid = mem_req_;
@@ -90,7 +92,9 @@ public:
                 dreq.be = 1 << (mem_addr_ & 3);
             dreq.mode = CpuIss::MODE_HYPER;
             break;
+
         case WaitIssMem:
+        case RunningNoBp:
         case Running:
         case Step:
             CpuIss::getRequests(ireq, dreq);
@@ -174,10 +178,17 @@ private:
 
     enum State
         {
+            // Running
             Running,
+            // Runs without checking break points then goes to Running
+            RunningNoBp,
+            // Runs a single step then goes to WaitIssMem 
             Step,
+            // Wait processor memory access is complete then goes to Frozen
             WaitIssMem,
+            // Wait gdb memory access is complete then goes to Frozen
             WaitGdbMem,
+            // Frozen, waiting for gdb client command
             Frozen,
         };
 

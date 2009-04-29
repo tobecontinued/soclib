@@ -580,7 +580,7 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     if (data[1])
                         CpuIss::debugSetRegisterValue(CpuIss::s_pc_register_no, strtoul(data + 1, 0, 16));
 
-                    change_all_states(Running);
+                    change_all_states(RunningNoBp);
                     return;
                 }
 
@@ -1000,6 +1000,20 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
                         }
                 }
             return 1;
+
+        case RunningNoBp: {
+
+            uint32_t pc = CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
+            size_t ncycles_done = CpuIss::executeNCycles(ncycle, irsp, drsp, irq_bit_field);
+
+            if (pc != CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no))
+                state_ = Running;
+
+            // check memory access break point
+            watch_mem_access();
+
+            return ncycles_done;
+        }
 
         case Running: {
 
