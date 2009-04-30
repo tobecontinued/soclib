@@ -258,7 +258,11 @@ int _main(int argc, char *argv[])
 	vciicu.p_irq_in[1](signal_icu_irq1);
 	vciicu.p_irq_in[2](signal_icu_irq2);
 	vciicu.p_irq_in[3](signal_icu_irq3);
+#if defined(CONFIG_CPU_MIPS)
 	vciicu.p_irq(signal_cpu0_it0);
+#else
+	vciicu.p_irq(signal_cpu0_it1);
+#endif
 
 	vcitimer.p_vci(signal_vci_vcitimer);
 	vcitimer.p_irq[0](signal_icu_irq0);

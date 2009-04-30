@@ -16,7 +16,7 @@ dsx_segment_reset_end =   0xbfc00040;
 ')
 
 m4_ifelse(CONFIG_CPU_PPC, defined, `
-dsx_segment_reset_start = 0xffffffc0;
+dsx_segment_reset_start = 0xffffff80;
 dsx_segment_reset_end =   0x100000000;
 ')
 
