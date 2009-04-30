@@ -1310,7 +1310,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 spc_dpaddr     = ((addr36_t)r_dcache_ppn_save << PAGE_K_NBITS) | (addr36_t)((dreq.addr & OFFSET_K_MASK));
                 dcache_hit_x   = (((addr_t)r_dcache_vpn_save << PAGE_K_NBITS) == (dreq.addr & ~OFFSET_K_MASK)) && r_dtlb_translation_valid; 
                 dcache_hit_p   = (((dreq.addr >> PAGE_M_NBITS) == r_dcache_id1_save) && r_dcache_ptba_ok );
-                dcache_cached  = dcache_pte_info.c;    
+                dcache_cached  = dcache_pte_info.c && 
+                                 ((dreq.type != iss_t::DATA_LL)  && (dreq.type != iss_t::DATA_SC) &&
+                                  (dreq.type != iss_t::XTN_READ) && (dreq.type != iss_t::XTN_WRITE));    
             }
  
             // dcache_hit_c & dcache_rdata
@@ -2023,7 +2025,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else 
             {
-                r_dcache_fsm = DCACHE_IDLE; 
+                r_dcache_fsm = DCACHE_IDLE;
+                // Special case : if request was a DATA_SC, we need to invalidate 
+                // the corresponding cache line, so that subsequent access to this line
+                // are correctly directed to RAM
+                if(dreq.type == iss_t::DATA_SC) {
+                    // Simulate an invalidate request
+                    r_dcache.inval(r_dcache_paddr_save);
+                }
                 r_dcache_buf_unc_valid = true;
             } 
         }

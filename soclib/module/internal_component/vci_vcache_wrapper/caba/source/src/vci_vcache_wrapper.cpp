@@ -433,7 +433,6 @@ std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name()
 
 #ifdef VCACHE_WRAPPER_DEBUG
 std::cout << name() << " Instruction Request: " << ireq << std::endl;
-
 std::cout << name() << " Data Request: " << dreq << std::endl;
 #endif
 
@@ -1278,7 +1277,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 spc_dpaddr     = ((addr36_t)r_dcache_ppn_save << PAGE_K_NBITS) | (addr36_t)((dreq.addr & OFFSET_K_MASK));
                 dcache_hit_x   = (((addr_t)r_dcache_vpn_save << PAGE_K_NBITS) == (dreq.addr & ~OFFSET_K_MASK)) && r_dtlb_translation_valid; 
                 dcache_hit_p   = (((dreq.addr >> PAGE_M_NBITS) == r_dcache_id1_save) && r_dcache_ptba_ok );
-                dcache_cached  = dcache_pte_info.c;    
+                dcache_cached  = dcache_pte_info.c && 
+                                 ((dreq.type != iss_t::DATA_LL)  && (dreq.type != iss_t::DATA_SC) &&
+                                  (dreq.type != iss_t::XTN_READ) && (dreq.type != iss_t::XTN_WRITE));;    
             }
 
             // dcache_hit_c & dcache_rdata
@@ -1861,8 +1862,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 // are correctly directed to RAM
                 if(dreq.type == iss_t::DATA_SC) {
                     // Simulate an invalidate request
-                    r_dcache_fsm = DCACHE_DCACHE_INVAL; 
-                    dreq.wdata = dreq.addr;
+                    r_dcache.inval(r_dcache_paddr_save);
                 }
                 r_dcache_buf_unc_valid = true; 
             } 
