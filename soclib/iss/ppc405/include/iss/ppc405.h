@@ -61,16 +61,16 @@ private:
     };
 
     enum ExceptSyndrome {
-        ESR_MCI = 1<<0,
-        ESR_PIL = 1<<4,
-        ESR_PPR = 1<<5,
-        ESR_PTR = 1<<6,
-        ESR_PEU = 1<<7,
-        ESR_DST = 1<<8,
-        ESR_DIZ = 1<<9,
-        ESR_PFP = 1<<12,
-        ESR_PAP = 1<<13,
-        ESR_U0F = 1<<16,
+        ESR_MCI = 1<<31,
+        ESR_PIL = 1<<27,
+        ESR_PPR = 1<<26,
+        ESR_PTR = 1<<25,
+        ESR_PEU = 1<<24,
+        ESR_DST = 1<<23,
+        ESR_DIZ = 1<<22,
+        ESR_PFP = 1<<19,
+        ESR_PAP = 1<<18,
+        ESR_U0F = 1<<15,
     };
 
     enum ExceptCause {
@@ -309,6 +309,9 @@ public:
     {
         switch (cause)
             {
+            case EXCEPT_CRITICAL:
+            case EXCEPT_EXTERNAL:
+                return 2;       // GDB SIGINT
             case EXCEPT_PROGRAM:
                 return 4;       // GDB SIGILL
             case EXCEPT_DEBUG:

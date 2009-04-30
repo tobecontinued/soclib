@@ -107,7 +107,7 @@ void Ppc405Iss::dump() const
         std::cout << " " << std::dec << i << ": " << crTrad(crGet(i));
     }
     std::cout
-        << " ctr: " << r_ctr
+        << " ctr: " << std::hex << r_ctr
         << std::endl;
     std::cout << std::endl;
 }
@@ -118,6 +118,9 @@ uint32_t Ppc405Iss::executeNCycles(
     const struct Iss2::DataResponse &drsp,
     uint32_t irq_bit_field )
 {
+    bool saved_ee = r_msr.ee;
+    bool saved_ce = r_msr.ce;
+
     if ( drsp.valid )
         setDataResponse(drsp);
 
@@ -143,10 +146,6 @@ uint32_t Ppc405Iss::executeNCycles(
     m_next_pc = r_pc+4;
 
     m_exception = EXCEPT_NONE;
-
-    // IRQs
-    r_dcr[DCR_EXTERNAL] = !!(irq_bit_field&(1<<IRQ_EXTERNAL));
-    r_dcr[DCR_CRITICAL] = !!(irq_bit_field&(1<<IRQ_CRITICAL_INPUT));
 
     if (m_ibe) {
         m_exception = EXCEPT_INSTRUCTION_STORAGE;
@@ -176,53 +175,55 @@ uint32_t Ppc405Iss::executeNCycles(
 #endif
     run();
 
-    if (m_exception != EXCEPT_NONE)
-        goto handle_except;
-
-    if ( r_msr.ce && r_dcr[DCR_CRITICAL] ) {
-        m_exception = EXCEPT_CRITICAL;
-        goto handle_except;
+    // IRQs
+    if ( irq_bit_field&(1<<IRQ_EXTERNAL) ) {
+        r_dcr[DCR_EXTERNAL] = true;
+        if ( m_exception == EXCEPT_NONE && saved_ee )
+            m_exception = EXCEPT_EXTERNAL;
+    }
+    if ( irq_bit_field&(1<<IRQ_CRITICAL_INPUT) ) {
+        r_dcr[DCR_CRITICAL] = true;
+        if ( m_exception == EXCEPT_NONE && saved_ce )
+            m_exception = EXCEPT_CRITICAL;
     }
 
-    if ( r_msr.ee && r_dcr[DCR_EXTERNAL] ) {
-        m_exception = EXCEPT_EXTERNAL;
-        goto handle_except;
-    }
-
-    goto no_except;
+    if (m_exception == EXCEPT_NONE)
+        goto no_except;
 
   handle_except:
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << m_name << " except: " << m_exception << std::endl;
 #endif
 
-    switch ( m_exception )
-        {
-        case (EXCEPT_NONE):
-        case (EXCEPT_EXTERNAL):
-        case (EXCEPT_SYSCALL):
-        case (EXCEPT_PI_TIMER):
-        case (EXCEPT_FI_TIMER):
-            break;
-        default:
-            if (debugExceptionBypassed( m_exception ))
-                goto stick;
-        }
+    if ( m_exception != EXCEPT_EXTERNAL )
+        sc_core::sc_stop();
+
+    if (debugExceptionBypassed( m_exception ))
+        goto no_except;
 
     // 1/2 : Save status to SRR
     {
         int except_base = 0;
-        uint32_t ra = (m_exception == EXCEPT_SYSCALL ? 4:0) + r_pc;
+        uint32_t ra = r_pc;
         switch (m_exception) {
+        case EXCEPT_SYSCALL:
+        case EXCEPT_EXTERNAL:
+            ra = m_next_pc;
+            break;
         case EXCEPT_CRITICAL:
+            except_base = 2;
+            ra = m_next_pc;
+            break;
         case EXCEPT_WATCHDOG:
         case EXCEPT_DEBUG:
         case EXCEPT_MACHINE_CHECK:
-            except_base += 2;
+            except_base = 2;
+            break;
         default:
-            r_srr[except_base+0] = ra;
-            r_srr[except_base+1] = r_msr.whole;
+            break;
         }
+        r_srr[except_base+0] = ra;
+        r_srr[except_base+1] = r_msr.whole;
     }
 
     // 3: Update ESR (Done)
@@ -249,7 +250,6 @@ uint32_t Ppc405Iss::executeNCycles(
 
   no_except:
     r_pc = m_next_pc;
-  stick:
     return 1;
 }
 
