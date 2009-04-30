@@ -195,9 +195,6 @@ uint32_t Ppc405Iss::executeNCycles(
     std::cout << m_name << " except: " << m_exception << std::endl;
 #endif
 
-    if ( m_exception != EXCEPT_EXTERNAL )
-        sc_core::sc_stop();
-
     if (debugExceptionBypassed( m_exception ))
         goto no_except;
 
