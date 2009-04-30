@@ -68,7 +68,7 @@ int _main(int argc, char *argv[])
  
 	maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(2), false));
 	maptab.add(Segment("timer", TIMER_BASE, TIMER_SIZE, IntTab(3), false));
-	maptab.add(Segment("ptba", PTD_ADDR  , TAB_SIZE  , IntTab(4), false));
+	maptab.add(Segment("ptba",  PTD_ADDR  , TAB_SIZE  , IntTab(4), false));
 	maptab.add(Segment("locks", LOCKS_BASE, LOCKS_SIZE, IntTab(5), false));
 	// Signals
 
@@ -224,6 +224,12 @@ int _main(int argc, char *argv[])
 	vgmn.p_to_target[4](signal_vci_vcimultipagt);
 	vgmn.p_to_target[5](signal_vci_vcilocks);
 
+	if ( argv[1] == NULL )
+	{
+	    std::cerr << "Expect the number of cycles" << std::endl;
+            return 1;
+	}
+	
 	int ncycles = std::atoi(argv[1]);
 
 	sc_start(sc_core::sc_time(0, SC_NS));
@@ -237,10 +243,10 @@ int _main(int argc, char *argv[])
 	//sc_start();
 	for (int i = 0; i < ncycles ; i+=1000) {
 		sc_start(sc_core::sc_time(1000, SC_NS));
-		cache0.print_stats();
-		cache1.print_stats();
-		cache2.print_stats();
-		cache3.print_stats();
+		//cache0.print_stats();
+		//cache1.print_stats();
+		//cache2.print_stats();
+		//cache3.print_stats();
 	}
 
 #endif

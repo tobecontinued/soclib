@@ -1279,7 +1279,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 dcache_hit_p   = (((dreq.addr >> PAGE_M_NBITS) == r_dcache_id1_save) && r_dcache_ptba_ok );
                 dcache_cached  = dcache_pte_info.c && 
                                  ((dreq.type != iss_t::DATA_LL)  && (dreq.type != iss_t::DATA_SC) &&
-                                  (dreq.type != iss_t::XTN_READ) && (dreq.type != iss_t::XTN_WRITE));;    
+                                  (dreq.type != iss_t::XTN_READ) && (dreq.type != iss_t::XTN_WRITE));    
             }
 
             // dcache_hit_c & dcache_rdata
