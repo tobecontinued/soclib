@@ -28,6 +28,7 @@ import parameter
 import module
 import description_files
 import warnings
+from soclib_cc import exceptions
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -36,7 +37,10 @@ class ModuleDeprecationWarning(DeprecationWarning):
 	def __str__(self):
 		return 'Module %s deprecated: "%s"'%(self.args[0], self.args[1])
 
-class ModuleSpecializationError(Exception):
+class ModuleExplicitFailure(exceptions.ExpectedException):
+	pass
+
+class ModuleSpecializationError(exceptions.ExpectedException):
 	def __init__(self, module, context = None, prev_error = None):
 		self.__module = module
 		self.__context = context

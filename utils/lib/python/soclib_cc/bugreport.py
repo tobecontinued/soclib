@@ -58,8 +58,12 @@ class ExceptHandler:
 		self.had = False
 	def __call__(self, typ, value, traceback_):
 		traceback.print_exception(typ, value, traceback_)
+		from soclib_cc import exceptions
 		print 
-		print "SoCLib-cc failed unexpectedly."
+		if issubclass(typ, exceptions.ExpectedException):
+			print "SoCLib-cc failed expectedly."
+		else:
+			print "SoCLib-cc failed unexpectedly."
 		self.had = True
 
 class AdvertizeForBugreporter:
@@ -67,8 +71,12 @@ class AdvertizeForBugreporter:
 		self.__prev = prev
 	def __call__(self, typ, value, traceback_):
 		self.__prev(typ, value, traceback_)
+		from soclib_cc import exceptions
 		print
-		print "SoCLib-cc failed unexpectedly. To submit a bug report,"
+		if issubclass(typ, exceptions.ExpectedException):
+			print "SoCLib-cc failed expectedly. If you think this is not the case,"
+		else:
+			print "SoCLib-cc failed unexpectedly. To submit a bug report,"
 		print " please re-run soclib-cc with --bug-report"
 		print " (i.e run: 'soclib-cc %s --bug-report')"%' '.join(sys.argv[1:])
 

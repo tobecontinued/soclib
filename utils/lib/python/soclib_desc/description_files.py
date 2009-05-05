@@ -4,12 +4,13 @@ import sys
 import cache
 import warnings
 import atexit
+from soclib_cc import exceptions
 
-class NoSuchComponent(Exception):
+class NoSuchComponent(exceptions.ExpectedException):
 	def __repr__(self):
 		return 'NoSuchComponent "%s"'%self.args[0]
 
-class FileParsingError(Exception):
+class FileParsingError(exceptions.ExpectedException):
 	pass
 
 class DoubleRegistrationWarning(Warning):
