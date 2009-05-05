@@ -317,22 +317,25 @@ void Ppc405Iss::mem_store_indexed( DataOperationType type, uint32_t nb, bool upd
 
 void Ppc405Iss::do_add( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca )
 {
-    uint32_t tmp = opl + opr + ca;
+    bool cout, vout;
+    uint32_t tmp = add_cv(opl, opr, ca, cout, vout);
     r_gp[m_ins.xo.rd] = tmp;
+
     if ( need_ca )
-        caSet( carry( opl, opr, ca ) );
+        caSet( cout );
     if ( m_ins.xo.oe )
-        ovSet( overflow( opl, opr, ca ) );
+        ovSet( vout );
     if ( m_ins.xo.rc )
         crSetSigned( 0, tmp, 0 );
 }
 
 uint32_t Ppc405Iss::do_addi( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca )
 {
-    uint32_t tmp = opl + opr + ca;
+    bool cout, vout;
+    uint32_t tmp = add_cv(opl, opr, ca, cout, vout);
     r_gp[m_ins.d.rd] = tmp;
     if ( need_ca )
-        caSet( carry( opl, opr, ca ) );
+        caSet( cout );
     return tmp;
 }
 

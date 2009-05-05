@@ -62,14 +62,57 @@ static inline int32_t sign_ext26( int32_t val )
     return (val&0x03ffffff)|ext;
 }
 
+/** compute ADD carry only */
 static inline bool carry( uint32_t a, uint32_t b, uint32_t c )
 {
     return ((uint64_t)a+(uint64_t)b+(uint64_t)c)>>32;
 }
 
+/** compute ADD overflow only */
 static inline bool overflow( uint32_t a, uint32_t b, uint32_t c )
 {
     return ((b^(a+b+c))&~(a^b))>>31;
+}
+
+/** compute ADD result, carry and overflow */
+static inline uint32_t add_cv(uint32_t a, uint32_t b, bool cin, bool &cout, bool &vout)
+{
+#if defined(__x86_64__) || defined(__i386__)
+    uint32_t result;
+    uint8_t cout_, vout_;
+
+    if (__builtin_constant_p(cin) && !cin) {
+        asm("       addl %k3, %k4      \n"
+            "       setc %b1          \n"
+            "       seto %b2          \n"
+            : "=r" (result)
+            , "=qm" (cout_)
+            , "=qm" (vout_)
+            : "r" (a)
+            , "0" (b)
+            );
+    } else {
+        asm("       btl $0, %k5        \n"
+            "       adcl %k3, %k4      \n"
+            "       setc %b1          \n"
+            "       seto %b2          \n"
+            : "=r" (result)
+            , "=qm" (cout_)
+            , "=qm" (vout_)
+            : "r" (a)
+            , "0" (b)
+            , "r" (cin)
+            );
+    }
+
+    cout = cout_;
+    vout = vout_;
+    return result;
+#else
+    cout = ((uint64_t)a+(uint64_t)b+(uint64_t)cin)>>32;
+    vout = ((b^(a+b+cin))&~(a^b))>>31;
+    return a + b + cin;
+#endif
 }
 
 static inline uint32_t uint32_log2(uint32_t n)

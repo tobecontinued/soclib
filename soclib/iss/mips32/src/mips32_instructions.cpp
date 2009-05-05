@@ -133,8 +133,9 @@ void Mips32Iss::op_bgtzl()
 
 void Mips32Iss::op_addi()
 {
-    uint64_t tmp = (uint64_t)r_gp[m_ins.i.rs] + (uint64_t)sign_ext16(m_ins.i.imd);
-    if ( overflow( r_gp[m_ins.i.rs], sign_ext16(m_ins.i.imd), 0 ) )
+    bool cout, vout;
+    uint32_t tmp = add_cv(r_gp[m_ins.i.rs], sign_ext16(m_ins.i.imd), 0, cout, vout);
+    if ( vout )
         m_exception = X_OV;
     else
         r_gp[m_ins.i.rt] = tmp;

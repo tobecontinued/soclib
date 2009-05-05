@@ -214,8 +214,9 @@ void Mips32Iss::special_divu()
 
 void Mips32Iss::special_add()
 {
-    uint64_t tmp = (uint64_t)r_gp[m_ins.i.rs] + (uint64_t)r_gp[m_ins.i.rt];
-    if ( overflow( r_gp[m_ins.i.rs], r_gp[m_ins.i.rt], 0 ) )
+    bool cout, vout;
+    uint32_t tmp = add_cv(r_gp[m_ins.i.rs], r_gp[m_ins.i.rt], 0, cout, vout);
+    if ( vout )
         m_exception = X_OV;
     else
         r_gp[m_ins.r.rd] = tmp;
@@ -228,8 +229,9 @@ void Mips32Iss::special_addu()
 
 void Mips32Iss::special_sub()
 {
-    uint64_t tmp = (uint64_t)r_gp[m_ins.i.rs] - (uint64_t)r_gp[m_ins.i.rt];
-    if ( overflow( ~r_gp[m_ins.i.rt], r_gp[m_ins.i.rs], 1 ) )
+    bool cout, vout;
+    uint32_t tmp = add_cv(r_gp[m_ins.i.rs], ~r_gp[m_ins.i.rt], 1, cout, vout);
+    if ( vout )
         m_exception = X_OV;
     else
         r_gp[m_ins.r.rd] = tmp;
