@@ -50,7 +50,7 @@ void Mips32Iss::op_bcond()
         r_gp[31] = r_pc+8;
 
     if (taken) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     } else if ( likely ) {
         m_skip_next_instruction = true;
     }
@@ -70,35 +70,35 @@ void Mips32Iss::op_jal()
 void Mips32Iss::op_beq()
 {
     if ( r_gp[m_ins.i.rs] == r_gp[m_ins.i.rt] ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     }
 }
 
 void Mips32Iss::op_bne()
 {
     if ( r_gp[m_ins.i.rs] != r_gp[m_ins.i.rt] ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     }
 }
 
 void Mips32Iss::op_blez()
 {
     if ( (int32_t)r_gp[m_ins.i.rs] <= 0 ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     }
 }
 
 void Mips32Iss::op_bgtz()
 {
     if ( (int32_t)r_gp[m_ins.i.rs] > 0 ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     }
 }
 
 void Mips32Iss::op_beql()
 {
     if ( r_gp[m_ins.i.rs] == r_gp[m_ins.i.rt] ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     } else {
         m_skip_next_instruction = true;
     }
@@ -107,7 +107,7 @@ void Mips32Iss::op_beql()
 void Mips32Iss::op_bnel()
 {
     if ( r_gp[m_ins.i.rs] != r_gp[m_ins.i.rt] ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     } else {
         m_skip_next_instruction = true;
     }
@@ -116,7 +116,7 @@ void Mips32Iss::op_bnel()
 void Mips32Iss::op_blezl()
 {
     if ( (int32_t)r_gp[m_ins.i.rs] <= 0 ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     } else {
         m_skip_next_instruction = true;
     }
@@ -125,7 +125,7 @@ void Mips32Iss::op_blezl()
 void Mips32Iss::op_bgtzl()
 {
     if ( (int32_t)r_gp[m_ins.i.rs] > 0 ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
     } else {
         m_skip_next_instruction = true;
     }
@@ -134,7 +134,7 @@ void Mips32Iss::op_bgtzl()
 void Mips32Iss::op_addi()
 {
     bool cout, vout;
-    uint32_t tmp = add_cv(r_gp[m_ins.i.rs], sign_ext16(m_ins.i.imd), 0, cout, vout);
+    uint32_t tmp = add_cv(r_gp[m_ins.i.rs], sign_ext(m_ins.i.imd, 16), 0, cout, vout);
     if ( vout )
         m_exception = X_OV;
     else
@@ -143,19 +143,19 @@ void Mips32Iss::op_addi()
 
 void Mips32Iss::op_addiu()
 {
-    r_gp[m_ins.i.rt] = r_gp[m_ins.i.rs] + sign_ext16(m_ins.i.imd);
+    r_gp[m_ins.i.rt] = r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
 }
 
 void Mips32Iss::op_slti()
 {
     r_gp[m_ins.i.rt] = (bool)
-        ((int32_t)r_gp[m_ins.i.rs] < sign_ext16(m_ins.i.imd));
+        ((int32_t)r_gp[m_ins.i.rs] < sign_ext(m_ins.i.imd, 16));
 }
 
 void Mips32Iss::op_sltiu()
 {
     r_gp[m_ins.i.rt] = (bool)
-        ((uint32_t)r_gp[m_ins.i.rs] < (uint32_t)sign_ext16(m_ins.i.imd));
+        ((uint32_t)r_gp[m_ins.i.rs] < (uint32_t)sign_ext(m_ins.i.imd, 16));
 }
 
 void Mips32Iss::op_andi()
@@ -301,7 +301,7 @@ enum {
 
 void Mips32Iss::op_cache()
 {
-    uint32_t address =  (r_gp[m_ins.i.rs] + sign_ext16(m_ins.i.imd))&~3;
+    uint32_t address =  (r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16))&~3;
 
     switch (m_ins.i.rt) {
     case CACHE_OP(HIT_INVAL,DCACHE):

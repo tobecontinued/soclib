@@ -311,12 +311,12 @@ void Ppc405Iss::setDataResponse(const struct DataResponse &drsp)
         case 2:
             r_gp[r_mem_dest] = r_mem_unsigned ?
                 (data & 0xffff) :
-                sign_ext16(data);
+                sign_ext(data, 16);
             break;
         case 1:
             r_gp[r_mem_dest] = r_mem_unsigned ?
                 (data & 0xff) :
-                sign_ext8(data);
+                sign_ext(data, 8);
             break;
         }
     }

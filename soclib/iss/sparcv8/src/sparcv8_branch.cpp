@@ -48,7 +48,7 @@ tmpl(void)::op_unimp()
 #define GET_BR_OPERANDS(ins, cancel, addr)                   \
     do {                                                  \
         cancel = ins.branches.a;                          \
-        addr = (uint32_t)sign_ext22(ins.branches.disp)*4; \
+        addr = (uint32_t)sign_ext(ins.branches.disp, 22)*4; \
     } while(0)
 
   

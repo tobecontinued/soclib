@@ -463,36 +463,36 @@ namespace soclib { namespace common {
                 case 8 : 
                     data = data & 0xff;
                     if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext8(data);
+                        data = soclib::common::sign_ext(data, 8);
                     break;
                 case 4 :
                     data = (data>>8) & 0xff;
                     if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext8(data);
+                        data = soclib::common::sign_ext(data, 8);
                     break;
 
                 case 2 :
                     data = (data>>16) & 0xff;
                     if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext8(data);
+                        data = soclib::common::sign_ext(data, 8);
                     break;
 
                 case 1 :
                     data = (data>>24) & 0xff;
                     if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext8(data);
+                        data = soclib::common::sign_ext(data, 8);
                     break;
 
                 case 12 :
                     data = data & 0xffff;
                     if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext16(data);
+                        data = soclib::common::sign_ext(data, 16);
                     break;
 
                 case 3 :
                     data = (data>>16) & 0xffff;
                     if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext16(data);
+                        data = soclib::common::sign_ext(data, 16);
                     break;
             }
 

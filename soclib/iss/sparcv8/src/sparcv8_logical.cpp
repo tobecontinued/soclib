@@ -43,7 +43,7 @@ namespace soclib { namespace common {
     do {                                                                \
         op1 = GPR(ins.format3a.rs1);                                    \
         if (ins.format3a.i)                                             \
-            op2 = (uint32_t)sign_ext13(ins.format3b.imm);               \
+            op2 = (uint32_t)sign_ext(ins.format3b.imm, 13);             \
         else                                                            \
             op2 = GPR(ins.format3a.rs2);                                \
     } while(0)

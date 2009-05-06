@@ -33,33 +33,19 @@
 
 namespace soclib { namespace common {
 
-
-static inline int32_t sign_ext16( int16_t val )
+static inline int32_t sign_ext( uint32_t val, unsigned int len )
 {
-    return val;
-}
+    if (__builtin_constant_p(len)) {
+        switch (len) {
+        case 8:
+            return (int8_t)val;
+        case 16:
+            return (int16_t)val;
+        }
+    }
 
-static inline int32_t sign_ext8( int8_t val )
-{
-    return val;
-}
-
-static inline int32_t sign_ext13( int32_t val )
-{
-    uint32_t ext = (val&(1<<12)) ? 0xffffe000 : 0;
-    return (val&0x00001fff)|ext;
-}
-
-static inline int32_t sign_ext22( int32_t val )
-{
-    uint32_t ext = (val&(1<<21)) ? 0xffc00000 : 0;
-    return (val&0x003fffff)|ext;
-}
-
-static inline int32_t sign_ext26( int32_t val )
-{
-    uint32_t ext = (val&(1<<25)) ? 0xfc000000 : 0;
-    return (val&0x03ffffff)|ext;
+    uint32_t mask = 1 << (len - 1);
+    return (val & (mask - 1)) | (-(val & mask));
 }
 
 /** compute ADD carry only */

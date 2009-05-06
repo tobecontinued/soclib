@@ -97,10 +97,10 @@ void Mips32Iss::op_special3()
 	case BSHFL: {
 		switch ( m_ins.r.sh ) {
 		case SEB:
-			r_gp[m_ins.r.rd] = sign_ext8(r_gp[m_ins.r.rt]);
+			r_gp[m_ins.r.rd] = sign_ext(r_gp[m_ins.r.rt], 8);
 			break;
 		case SEH:
-			r_gp[m_ins.r.rd] = sign_ext16(r_gp[m_ins.r.rt]);
+			r_gp[m_ins.r.rd] = sign_ext(r_gp[m_ins.r.rt], 16);
 			break;
 		case WSBH: {
 			r_gp[m_ins.r.rd] = soclib::endian::uint32_swap16(r_gp[m_ins.r.rt]);

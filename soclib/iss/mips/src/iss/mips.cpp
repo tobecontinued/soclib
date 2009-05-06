@@ -195,12 +195,12 @@ void MipsIss::setDataResponse(bool error, uint32_t data)
     case READ_BYTE:
         r_gp[r_mem_dest] = r_mem_unsigned ?
             (data & 0xff) :
-            sign_ext8(data);
+            sign_ext(data, 8);
         break;
     case READ_HALF:
         r_gp[r_mem_dest] = r_mem_unsigned ?
             (data & 0xffff) :
-            sign_ext16(data);
+            sign_ext(data, 16);
         break;
     }
 }

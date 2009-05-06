@@ -189,7 +189,7 @@ namespace soclib { namespace common {
 
     //!Instruction addi behavior method.
     LM32_function( addi ){// add immediate
-        r_gp[m_inst.I.rX] = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        r_gp[m_inst.I.rX] = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
     }
 
     //!Instruction ori behavior method.
@@ -207,7 +207,7 @@ namespace soclib { namespace common {
         if (r_gp[m_inst.I.rY] == r_gp[m_inst.I.rX])
         {
             m_cancel_next_ins = true; // To override r_npc
-            m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
     }
@@ -217,7 +217,7 @@ namespace soclib { namespace common {
         if ((signed)r_gp[m_inst.I.rY] > (signed)r_gp[m_inst.I.rX])
         {
             m_cancel_next_ins = true; // To override r_npc
-            m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
     }
@@ -227,7 +227,7 @@ namespace soclib { namespace common {
         if ((signed)r_gp[m_inst.I.rY] >= (signed)r_gp[m_inst.I.rX])
         {
             m_cancel_next_ins = true; // To override r_npc
-            m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
     }
@@ -237,7 +237,7 @@ namespace soclib { namespace common {
         if ((unsigned)r_gp[m_inst.I.rY] >= (unsigned)r_gp[m_inst.I.rX])
         {
             m_cancel_next_ins = true; // To override r_npc
-            m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
     }
@@ -247,7 +247,7 @@ namespace soclib { namespace common {
         if ((unsigned)r_gp[m_inst.I.rY] > (unsigned)r_gp[m_inst.I.rX])
         {
             m_cancel_next_ins = true; // To override r_npc
-            m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
     }
@@ -257,7 +257,7 @@ namespace soclib { namespace common {
         if (r_gp[m_inst.I.rY] != r_gp[m_inst.I.rX])
         {
             m_cancel_next_ins = true; // To override r_npc
-            m_next_pc = r_pc+ (sign_ext16(m_inst.I.imd)<<2);
+            m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
     }
@@ -269,17 +269,17 @@ namespace soclib { namespace common {
 
     //!Instruction cmpei behavior method.
     LM32_function( cmpei ){// compare if equal immediate
-        r_gp[m_inst.I.rX] = ((unsigned) r_gp[m_inst.I.rY] == (unsigned) sign_ext16(m_inst.I.imd));
+        r_gp[m_inst.I.rX] = ((unsigned) r_gp[m_inst.I.rY] == (unsigned) sign_ext(m_inst.I.imd, 16));
     }
 
     //!Instruction cmpgi behavior method.
     LM32_function( cmpgi ){// compare if greater  immediate
-        r_gp[m_inst.I.rX] = (signed)r_gp[m_inst.I.rY] >  (signed)sign_ext16(m_inst.I.imd);
+        r_gp[m_inst.I.rX] = (signed)r_gp[m_inst.I.rY] >  (signed)sign_ext(m_inst.I.imd, 16);
     }
 
     //!Instruction cmpgei behavior method.
     LM32_function( cmpgei ){// compare if greater or equal immediate
-        r_gp[m_inst.I.rX] = (signed)r_gp[m_inst.I.rY] >= (signed)sign_ext16(m_inst.I.imd);
+        r_gp[m_inst.I.rX] = (signed)r_gp[m_inst.I.rY] >= (signed)sign_ext(m_inst.I.imd, 16);
     }
 
     //!Instruction cmpgeui behavior method.
@@ -299,7 +299,7 @@ namespace soclib { namespace common {
 
     //!Instruction cmpnei behavior method.
     LM32_function( cmpnei ){// compare if not equal immediate
-        r_gp[m_inst.I.rX] = ((unsigned)r_gp[m_inst.I.rY] != (unsigned)sign_ext16(m_inst.I.imd));
+        r_gp[m_inst.I.rX] = ((unsigned)r_gp[m_inst.I.rY] != (unsigned)sign_ext(m_inst.I.imd, 16));
     }
 
     //!Instruction sru behavior method.
@@ -434,14 +434,14 @@ namespace soclib { namespace common {
         setInsDelay(4);
         r_gp[ra] = r_npc ; // is pc + 4!!// return address
         m_cancel_next_ins = true; // To override r_npc
-        m_next_pc = r_pc + (sign_ext26(m_inst.J.imd)<<2);
+        m_next_pc = r_pc + (sign_ext(m_inst.J.imd,26)<<2);
     }
 
     //!Instruction bi behavior method.
     LM32_function( bi ){// branch immediate
         setInsDelay(4);
         m_cancel_next_ins = true; // To override r_npc
-        m_next_pc = r_pc + (sign_ext26(m_inst.J.imd)<<2);
+        m_next_pc = r_pc + (sign_ext(m_inst.J.imd,26)<<2);
     }
 
     //!Instruction sexth behavior method.

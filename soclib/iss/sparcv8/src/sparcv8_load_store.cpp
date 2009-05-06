@@ -57,7 +57,7 @@ namespace soclib { namespace common {
     do {                                                                \
         addr = GPR(ins.format3a.rs1);                                   \
         if (ins.format3a.i)                                             \
-            addr += (uint32_t)sign_ext13(ins.format3b.imm);             \
+            addr += (uint32_t)sign_ext(ins.format3b.imm, 13);           \
         else                                                            \
             addr += GPR(ins.format3a.rs2);                              \
         rd = RR(ins.format3a.rd);                                       \
@@ -67,7 +67,7 @@ namespace soclib { namespace common {
     do {                                                                \
         addr = GPR(ins.format3a.rs1);                                   \
         if (ins.format3a.i)                                             \
-            addr += (uint32_t)sign_ext13(ins.format3b.imm);             \
+            addr += (uint32_t)sign_ext(ins.format3b.imm, 13);           \
         else                                                            \
             addr += GPR(ins.format3a.rs2);                              \
         rd = ins.format3a.rd;                                           \
@@ -190,36 +190,36 @@ tmpl(void)::setData(const struct DataResponse &rsp)
         case 8 :
             data = data & 0xff;
             if (m_dreq.sign_extend)
-                data = soclib::common::sign_ext8(data);
+                data = soclib::common::sign_ext(data, 8);
             break;
         case 4 :
             data = (data>>8) & 0xff;
             if (m_dreq.sign_extend)
-                data = soclib::common::sign_ext8(data);
+                data = soclib::common::sign_ext(data, 8);
             break;
 
         case 2 :
             data = (data>>16) & 0xff;
             if (m_dreq.sign_extend)
-                data = soclib::common::sign_ext8(data);
+                data = soclib::common::sign_ext(data, 8);
             break;
 
         case 1 :
             data = (data>>24) & 0xff;
             if (m_dreq.sign_extend)
-                data = soclib::common::sign_ext8(data);
+                data = soclib::common::sign_ext(data, 8);
             break;
 
         case 12 :
             data = data & 0xffff;
             if (m_dreq.sign_extend)
-                data = soclib::common::sign_ext16(data);
+                data = soclib::common::sign_ext(data, 16);
             break;
 
         case 3 :
             data = (data>>16) & 0xffff;
             if (m_dreq.sign_extend)
-                data = soclib::common::sign_ext16(data);
+                data = soclib::common::sign_ext(data, 16);
             break;
         }
 

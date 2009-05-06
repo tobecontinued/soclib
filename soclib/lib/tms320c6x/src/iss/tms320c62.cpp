@@ -146,10 +146,10 @@ void Tms320C6xIss::setDataResponse(bool error, uint32_t data) {
 		data_from_mem = !data;
 		break;
 	case READ_BYTE:
-		data_from_mem = r_mem_unsigned ? (data & 0xff) : sign_ext8(data);
+		data_from_mem = r_mem_unsigned ? (data & 0xff) : sign_ext(data, 8);
 		break;
 	case READ_HALF:
-		data_from_mem = r_mem_unsigned ? (data & 0xffff) : sign_ext16(data);
+		data_from_mem = r_mem_unsigned ? (data & 0xffff) : sign_ext(data, 16);
 		break;
 	}
 }

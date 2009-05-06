@@ -51,6 +51,7 @@
 #include <stdint.h>
 #include "base_module.h"
 #include "nios2_fast.h"
+#include "arithmetics.h"
 
 namespace soclib {
 namespace common {
@@ -181,15 +182,10 @@ void  Nios2fIss::dumpRegisters() const
 }
 
 
-static inline int32_t sign_ext16(uint16_t i)
-{
-	return (int16_t)i;
-}
-
 void  Nios2fIss::op_addi()
 {
 	// ADD with immediat value (rB<-rA+IMM16) p.8-10
-	uint64_t tmp = (uint64_t)m_gprA + (uint64_t)sign_ext16(m_instruction.i.imm16);
+	uint64_t tmp = (uint64_t)m_gprA + (uint64_t)sign_ext(m_instruction.i.imm16, 16);
 	//      if ( (bool)(tmp & (uint64_t)((uint64_t)1<<32)) != (bool)(tmp & (1<<31)) )
 	//	exceptionSignal = X_OV;
 	//      else
@@ -213,7 +209,7 @@ void  Nios2fIss::op_beq()
 {
 	// Branch if EQual p.8-14
 	if ( m_gprA == m_gprB ) {
-		m_branchAddress = sign_ext16(m_instruction.i.imm16) + r_pc + 4;
+		m_branchAddress = sign_ext(m_instruction.i.imm16, 16) + r_pc + 4;
 		m_branchTaken = true;
 	}
 }
@@ -222,7 +218,7 @@ void  Nios2fIss::op_bge()
 {
 	// Branch if Greater or Equal signed p.8-15
 	if ( (int32_t)m_gprA >= (int32_t)m_gprB ) {
-		m_branchAddress = sign_ext16(m_instruction.i.imm16) + r_pc + 4;
+		m_branchAddress = sign_ext(m_instruction.i.imm16, 16) + r_pc + 4;
 		m_branchTaken = true;
 	}
 }
@@ -231,7 +227,7 @@ void  Nios2fIss::op_bgeu()
 {
 	// Branch if Greater or Equal Unsigned p.8-16
 	if ( m_gprA >= m_gprB ) {
-		m_branchAddress = sign_ext16(m_instruction.i.imm16) + r_pc + 4;
+		m_branchAddress = sign_ext(m_instruction.i.imm16, 16) + r_pc + 4;
 		m_branchTaken = true;
 	}
 }
@@ -240,7 +236,7 @@ void  Nios2fIss::op_blt()
 {
 	// Branch if Less Than signed p.8-21
 	if ( (int32_t)m_gprA < (int32_t)m_gprB ) {
-		m_branchAddress = sign_ext16(m_instruction.i.imm16) + r_pc + 4;
+		m_branchAddress = sign_ext(m_instruction.i.imm16, 16) + r_pc + 4;
 		m_branchTaken = true;
 	}
 }
@@ -249,7 +245,7 @@ void  Nios2fIss::op_bltu()
 {
 	// Branch if Less Than Unsigned p.8-22
 	if ( m_gprA < m_gprB ) {
-		m_branchAddress = sign_ext16(m_instruction.i.imm16) + r_pc + 4;
+		m_branchAddress = sign_ext(m_instruction.i.imm16, 16) + r_pc + 4;
 		m_branchTaken = true;
 	}
 } 
@@ -258,7 +254,7 @@ void  Nios2fIss::op_bne()
 {
 	// Branch if Not Equal p.8-23
 	if ( m_gprA != m_gprB ) {
-		m_branchAddress = sign_ext16(m_instruction.i.imm16) + r_pc + 4;
+		m_branchAddress = sign_ext(m_instruction.i.imm16, 16) + r_pc + 4;
 		m_branchTaken = true;
 	}
 }
@@ -266,7 +262,7 @@ void  Nios2fIss::op_bne()
 void  Nios2fIss::op_br()
 {
 	// Unconditional Branch p.8-24
-	m_branchAddress = sign_ext16(m_instruction.i.imm16) + r_pc + 4;
+	m_branchAddress = sign_ext(m_instruction.i.imm16, 16) + r_pc + 4;
 	m_branchTaken = true;
 }
 
@@ -284,13 +280,13 @@ void  Nios2fIss::op_call()
 void  Nios2fIss::op_cmpeqi()
 {
 	// Compare Equal Immediate p.8-30
-	r_gpr[m_instruction.i.b] = (bool) ( (int32_t)m_gprA == (int32_t)sign_ext16(m_instruction.i.imm16) );
+	r_gpr[m_instruction.i.b] = (bool) ( (int32_t)m_gprA == (int32_t)sign_ext(m_instruction.i.imm16, 16) );
 }
 
 void  Nios2fIss::op_cmpgei()
 {
 	// Compare greater than or equal signed immediate p.8-32
-	r_gpr[m_instruction.i.b] = (bool) ( (int32_t)m_gprA >= (int32_t)sign_ext16(m_instruction.i.imm16) );
+	r_gpr[m_instruction.i.b] = (bool) ( (int32_t)m_gprA >= (int32_t)sign_ext(m_instruction.i.imm16, 16) );
 }
 
 void  Nios2fIss::op_cmpgeui()
@@ -302,7 +298,7 @@ void  Nios2fIss::op_cmpgeui()
 void  Nios2fIss::op_cmplti()
 {
 	// Compare Less Than Signed Immediate p.8-44
-	r_gpr[m_instruction.i.b] = (bool) ( (int32_t)m_gprA < (int32_t)sign_ext16(m_instruction.i.imm16) );
+	r_gpr[m_instruction.i.b] = (bool) ( (int32_t)m_gprA < (int32_t)sign_ext(m_instruction.i.imm16, 16) );
 }
 
 void  Nios2fIss::op_cmpltui()
@@ -314,7 +310,7 @@ void  Nios2fIss::op_cmpltui()
 void  Nios2fIss::op_cmpnei()
 {
 	// Compare Not Equal Immediate p.8-48
-	r_gpr[m_instruction.i.b] = (bool) ( (int32_t)m_gprA != (int32_t)sign_ext16(m_instruction.i.imm16) );
+	r_gpr[m_instruction.i.b] = (bool) ( (int32_t)m_gprA != (int32_t)sign_ext(m_instruction.i.imm16, 16) );
 }
 
 void  Nios2fIss::op_flushd()
@@ -339,7 +335,7 @@ void  Nios2fIss::op_ldb()
 	// Load rB<-Mem8[rA+IMM16] p.8-60
 	r_mem_req = true;
 	r_mem_type = READ_BYTE;
-	r_mem_addr = m_gprA + sign_ext16(m_instruction.i.imm16);
+	r_mem_addr = m_gprA + sign_ext(m_instruction.i.imm16, 16);
 	r_mem_dest = m_instruction.i.b;
 	r_mem_unsigned = false;
 #if NIOS2_DEBUG
@@ -369,7 +365,7 @@ void  Nios2fIss::op_ldbu()
 	// Load rB<-0x000000:Mem8[rA+IMM16] p.8-61 
 	r_mem_req = true;
 	r_mem_type = READ_BYTE;
-	r_mem_addr = m_gprA + sign_ext16(m_instruction.i.imm16);
+	r_mem_addr = m_gprA + sign_ext(m_instruction.i.imm16, 16);
 	r_mem_dest = m_instruction.i.b;
 	r_mem_unsigned = true;
 #if NIOS2_DEBUG
@@ -396,7 +392,7 @@ void  Nios2fIss::op_ldh()
 	// Load rB<-Mem16[rA+IMM16] p.8-62
 	r_mem_req = true;
 	r_mem_type = READ_HALF;
-	r_mem_addr = m_gprA + sign_ext16(m_instruction.i.imm16);
+	r_mem_addr = m_gprA + sign_ext(m_instruction.i.imm16, 16);
 	r_mem_dest = m_instruction.i.b;
 	r_mem_unsigned = false;
 #if NIOS2_DEBUG
@@ -426,7 +422,7 @@ void  Nios2fIss::op_ldhu()
 	// Load rB<-0x0000:Mem16[rA+IMM16] p.8-63
 	r_mem_req = true;
 	r_mem_type = READ_HALF;
-	r_mem_addr = m_gprA + sign_ext16(m_instruction.i.imm16);
+	r_mem_addr = m_gprA + sign_ext(m_instruction.i.imm16, 16);
 	r_mem_dest = m_instruction.i.b;
 	r_mem_unsigned = true;
 #if NIOS2_DEBUG
@@ -455,7 +451,7 @@ void  Nios2fIss::op_ldw()
 	// Load(rB<_Mem32[rA+IMM16]) p.8.64
 	r_mem_req = true;
 	r_mem_type = READ_WORD;
-	r_mem_addr = m_gprA + sign_ext16(m_instruction.i.imm16);
+	r_mem_addr = m_gprA + sign_ext(m_instruction.i.imm16, 16);
 	r_mem_dest = m_instruction.i.b;
 	r_mem_unsigned = false;
 #if NIOS2_DEBUG
@@ -484,7 +480,7 @@ void  Nios2fIss::op_muli()
 	// Mulitply immediate p.8-71
 	uint64_t res, a, b;
 	a = (uint64_t)m_gprA;
-	b = (uint64_t)sign_ext16(m_instruction.i.imm16);
+	b = (uint64_t)sign_ext(m_instruction.i.imm16, 16);
 	res = a*b;
 	r_gpr[m_instruction.i.b] = res;
 
@@ -510,7 +506,7 @@ void  Nios2fIss::op_stb()
 	uint8_t tmp = m_gprB;
 	r_mem_req = true;
 	r_mem_type = WRITE_BYTE;
-	r_mem_addr = m_gprA + sign_ext16(m_instruction.i.imm16);
+	r_mem_addr = m_gprA + sign_ext(m_instruction.i.imm16, 16);
 	r_mem_wdata = tmp | (tmp << 16) | (tmp << 24);
 	r_mem_unsigned = false;
 #if NIOS2_DEBUG
@@ -534,7 +530,7 @@ void  Nios2fIss::op_sth()
 	uint16_t tmp = m_gprB;
 	r_mem_req = true;
 	r_mem_type = WRITE_HALF;
-	r_mem_addr = m_gprA + sign_ext16(m_instruction.i.imm16);
+	r_mem_addr = m_gprA + sign_ext(m_instruction.i.imm16, 16);
 	r_mem_wdata = tmp | (tmp << 16);
 	r_mem_unsigned = false;
 #if NIOS2_DEBUG
@@ -557,7 +553,7 @@ void  Nios2fIss::op_stw()
 	// Store Mem32[rA+IMM16]<-rB p.8-94
 	r_mem_req = true;
 	r_mem_type = WRITE_WORD;
-	r_mem_addr = m_gprA + sign_ext16(m_instruction.i.imm16);
+	r_mem_addr = m_gprA + sign_ext(m_instruction.i.imm16, 16);
 	r_mem_wdata = m_gprB;
 	r_mem_unsigned = false;
 #if NIOS2_DEBUG

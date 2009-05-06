@@ -210,10 +210,10 @@ void Nios2fIss::setDataResponse(bool error, uint32_t data) {
 		r_gpr[r_mem_dest] = data;
 		break;
 	case READ_BYTE:
-		r_gpr[r_mem_dest] = r_mem_unsigned ? (data & 0xff) : sign_ext8(data);
+		r_gpr[r_mem_dest] = r_mem_unsigned ? (data & 0xff) : sign_ext(data, 8);
 		break;
 	case READ_HALF:
-		r_gpr[r_mem_dest] = r_mem_unsigned ? (data & 0xffff) : sign_ext16(data);
+		r_gpr[r_mem_dest] = r_mem_unsigned ? (data & 0xffff) : sign_ext(data, 16);
 		break;
 	}
 }

@@ -89,7 +89,7 @@ namespace soclib { namespace common {
     LM32_function( lb ){
         addr_t addr;
         uint32_t rd;
-        addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         rd  = m_inst.I.rX;
         setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 1);
@@ -101,7 +101,7 @@ namespace soclib { namespace common {
     LM32_function( lbu ){
         addr_t addr;
         uint32_t rd;
-        addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         rd  = m_inst.I.rX;
         setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 1);
@@ -113,7 +113,7 @@ namespace soclib { namespace common {
     LM32_function( lh ){
         addr_t addr;
         uint32_t rd;
-        addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         rd  = m_inst.I.rX;
         setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 2);
@@ -125,7 +125,7 @@ namespace soclib { namespace common {
     LM32_function( lhu ){
         addr_t addr;
         uint32_t rd;
-        addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         rd  = m_inst.I.rX;
         setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 2);
@@ -137,7 +137,7 @@ namespace soclib { namespace common {
     LM32_function( lw ){
         addr_t addr;
         uint32_t rd;
-        addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         rd  = m_inst.I.rX;
         setInsDelay(3);
         CHECK_ALIGNED_ADDR (addr, 4);
@@ -149,7 +149,7 @@ namespace soclib { namespace common {
     LM32_function( sb ){
         addr_t addr;
         uint32_t wd;
-        addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         wd  = r_gp[m_inst.I.rX] & 0xFF;
         CHECK_ALIGNED_ADDR (addr, 1);
         INIT_REQ (addr, false, 0);
@@ -160,7 +160,7 @@ namespace soclib { namespace common {
     LM32_function( sh ){
         addr_t addr;
         uint32_t wd;
-        addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         wd  = r_gp[m_inst.I.rX] & 0xFFFF;
         CHECK_ALIGNED_ADDR (addr, 2);
         INIT_REQ (addr, false, 0);
@@ -171,7 +171,7 @@ namespace soclib { namespace common {
     LM32_function( sw ){
         addr_t addr;
         uint32_t wd;
-        addr = r_gp[m_inst.I.rY] + sign_ext16(m_inst.I.imd);
+        addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         wd  = r_gp[m_inst.I.rX];
         CHECK_ALIGNED_ADDR (addr, 4);
         INIT_REQ (addr, false, 0);

@@ -186,7 +186,7 @@ void Ppc405Iss::trap( uint32_t to, uint32_t a, uint32_t b )
 void Ppc405Iss::mem_load_imm( DataOperationType type, uint32_t nb, bool update, bool reversed, bool unsigned_ )
 {
     uint32_t base = (m_ins.d.ra || update) ? r_gp[m_ins.d.ra] : 0;
-    uint32_t address = base + sign_ext16(m_ins.d.imm);
+    uint32_t address = base + sign_ext(m_ins.d.imm, 16);
     if ( update )
         r_gp[m_ins.d.ra] = address;
     if ( type != XTN_READ && (address % nb) != 0 )
@@ -246,7 +246,7 @@ void Ppc405Iss::mem_load_indexed( DataOperationType type, uint32_t nb, bool upda
 void Ppc405Iss::mem_store_imm( DataOperationType type, uint32_t nb, bool update, uint32_t data )
 {
     uint32_t base = (m_ins.d.ra || update) ? r_gp[m_ins.d.ra] : 0;
-    uint32_t address = base + sign_ext16(m_ins.d.imm);
+    uint32_t address = base + sign_ext(m_ins.d.imm, 16);
     if ( update )
         r_gp[m_ins.d.ra] = address;
     if ( type != XTN_READ && (address % nb) != 0 )
@@ -395,17 +395,17 @@ void Ppc405Iss::op_adde()
 void Ppc405Iss::op_addi()
 {
     uint32_t base = m_ins.d.ra ? r_gp[m_ins.d.ra] : 0;
-    do_addi( base, sign_ext16(m_ins.d.imm), 0, false );
+    do_addi( base, sign_ext(m_ins.d.imm, 16), 0, false );
 }
 
 void Ppc405Iss::op_addic()
 {
-    do_addi( r_gp[m_ins.d.ra], sign_ext16(m_ins.d.imm), 0, true );
+    do_addi( r_gp[m_ins.d.ra], sign_ext(m_ins.d.imm, 16), 0, true );
 }
 
 void Ppc405Iss::op_addic_()
 {
-    uint32_t tmp = do_addi( r_gp[m_ins.d.ra], sign_ext16(m_ins.d.imm), 0, true );
+    uint32_t tmp = do_addi( r_gp[m_ins.d.ra], sign_ext(m_ins.d.imm, 16), 0, true );
     crSetSigned( 0, tmp, 0 );
 }
 
@@ -460,13 +460,13 @@ void Ppc405Iss::op_b()
 	uint32_t base = m_ins.i.aa ? 0 : r_pc;
     if ( m_ins.i.lk )
         r_lr = r_pc + 4;
-    m_next_pc = base + sign_ext26(m_ins.i.li<<2);
+    m_next_pc = base + sign_ext(m_ins.i.li<<2, 26);
 }
 
 void Ppc405Iss::op_bc()
 {
     int32_t base = m_ins.b.aa ? 0 : r_pc;
-    branch_cond( base + sign_ext16(m_ins.i.li<<2) );
+    branch_cond( base + sign_ext(m_ins.i.li<<2, 16) );
 }
 
 void Ppc405Iss::op_bcctr()
@@ -486,7 +486,7 @@ void Ppc405Iss::op_cmp()
 
 void Ppc405Iss::op_cmpi()
 {
-    crSetSigned( m_ins.d.rd>>2, r_gp[m_ins.d.ra], sign_ext16(m_ins.d.imm) );
+    crSetSigned( m_ins.d.rd>>2, r_gp[m_ins.d.ra], sign_ext(m_ins.d.imm, 16) );
 }
 
 void Ppc405Iss::op_cmpl()
@@ -668,7 +668,7 @@ void Ppc405Iss::op_eqv()
 
 void Ppc405Iss::op_extsb()
 {
-    uint32_t tmp = sign_ext8(r_gp[m_ins.x.rs]);
+    uint32_t tmp = sign_ext(r_gp[m_ins.x.rs], 8);
     r_gp[m_ins.x.ra] = tmp;
     if ( m_ins.x.rc )
         crSetSigned( 0, tmp, 0 );
@@ -676,7 +676,7 @@ void Ppc405Iss::op_extsb()
 
 void Ppc405Iss::op_extsh()
 {
-    uint32_t tmp = sign_ext16(r_gp[m_ins.x.rs]);
+    uint32_t tmp = sign_ext(r_gp[m_ins.x.rs], 16);
     r_gp[m_ins.x.ra] = tmp;
     if ( m_ins.x.rc )
         crSetSigned( 0, tmp, 0 );
@@ -1023,8 +1023,8 @@ void Ppc405Iss::op_mtspr()
 
 void Ppc405Iss::op_mulchw()
 {
-    int32_t a = sign_ext16(r_gp[m_ins.xo.ra]);
-    int32_t b = sign_ext16(r_gp[m_ins.xo.rb] >> 16);
+    int32_t a = sign_ext(r_gp[m_ins.xo.ra], 16);
+    int32_t b = sign_ext(r_gp[m_ins.xo.rb] >> 16, 16);
     int32_t tmp = a * b;
     r_gp[m_ins.xo.rd] = tmp;
     if ( m_ins.xo.rc )
@@ -1045,8 +1045,8 @@ void Ppc405Iss::op_mulchwu()
 
 void Ppc405Iss::op_mulhhw()
 {
-    int32_t a = sign_ext16(r_gp[m_ins.xo.ra] >> 16);
-    int32_t b = sign_ext16(r_gp[m_ins.xo.rb] >> 16);
+    int32_t a = sign_ext(r_gp[m_ins.xo.ra] >> 16, 16);
+    int32_t b = sign_ext(r_gp[m_ins.xo.rb] >> 16, 16);
     int32_t tmp = a * b;
     r_gp[m_ins.xo.rd] = tmp;
     if ( m_ins.xo.rc )
@@ -1112,7 +1112,7 @@ void Ppc405Iss::op_mullhwu()
 void Ppc405Iss::op_mulli()
 {
     int32_t a = r_gp[m_ins.d.ra];
-    int32_t b = sign_ext16(m_ins.d.imm);
+    int32_t b = sign_ext(m_ins.d.imm, 16);
     r_gp[m_ins.d.rd] = (uint32_t)(a*b);
     setInsDelay( 2 );
 }
@@ -1464,7 +1464,7 @@ void Ppc405Iss::op_subfe()
 
 void Ppc405Iss::op_subfic()
 {
-    do_addi( ~r_gp[m_ins.d.ra], sign_ext16(m_ins.d.imm), 1, true );
+    do_addi( ~r_gp[m_ins.d.ra], sign_ext(m_ins.d.imm, 16), 1, true );
 }
 
 void Ppc405Iss::op_subfme()
@@ -1491,7 +1491,7 @@ void Ppc405Iss::op_tw()
 
 void Ppc405Iss::op_twi()
 {
-	trap( m_ins.d.rd, r_gp[m_ins.d.ra], sign_ext16(m_ins.d.imm) );
+	trap( m_ins.d.rd, r_gp[m_ins.d.ra], sign_ext(m_ins.d.imm, 16) );
 }
 
 void Ppc405Iss::op_wrtee()
