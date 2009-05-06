@@ -48,6 +48,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	switch (reg) {
 	case TIMER_VALUE:
 		r_value[timer] = data;
+		m_reset_value_no = timer;
 		break;
 
 	case TIMER_RESETIRQ:
@@ -60,7 +61,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 	case TIMER_PERIOD:
 		r_period[timer] = data;
-		r_reset_counter[timer] = true;
+		m_reset_counter_no = timer;
 		break;
 	}
     m_cpt_write++;
@@ -111,10 +112,12 @@ tmpl(void)::transition()
 			r_counter[i] = 0;
 			r_mode[i] = 0;
 			r_irq[i] = false;
-			r_reset_counter[i] = false;
 		}
 		return;
 	}
+
+    m_reset_counter_no = (size_t)-1;
+    m_reset_value_no = (size_t)-1;
 
 	m_vci_fsm.transition();
 
@@ -122,10 +125,10 @@ tmpl(void)::transition()
 	{
 		if ( (r_mode[i].read() & TIMER_RUNNING) )
 		{
-            r_value[i] = r_value[i].read() + 1;
+            if ( m_reset_value_no != i )
+                r_value[i] = r_value[i].read() + 1;
 
-			if ( r_reset_counter[i] ) {
-                r_reset_counter[i] = false;
+			if ( m_reset_counter_no == i ) {
                 r_counter[i] = r_period[i].read();
 			} else if ( r_counter[i].read() != 0 ) {
                 r_counter[i] = r_counter[i].read() - 1;
@@ -158,7 +161,6 @@ tmpl(/**/)::VciTimer(
       r_counter(soclib::common::alloc_elems<sc_signal<typename vci_param::data_t> >("counter", m_ntimer)),
       r_mode(soclib::common::alloc_elems<sc_signal<int> >("mode", m_ntimer)),
       r_irq(soclib::common::alloc_elems<sc_signal<bool> >("saved_irq", m_ntimer)),
-      r_reset_counter(soclib::common::alloc_elems<sc_signal<bool> >("reset_counter", m_ntimer)),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci"),
@@ -183,7 +185,6 @@ tmpl(/**/)::~VciTimer()
     soclib::common::dealloc_elems(r_mode, m_ntimer);
     soclib::common::dealloc_elems(r_irq, m_ntimer);
     soclib::common::dealloc_elems(p_irq, m_ntimer);
-    soclib::common::dealloc_elems(r_reset_counter, m_ntimer);
 }
 
 }}

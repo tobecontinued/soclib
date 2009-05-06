@@ -59,7 +59,9 @@ private:
     sc_signal<typename vci_param::data_t> *r_counter;
     sc_signal<int> *r_mode;
     sc_signal<bool> *r_irq;
-    sc_signal<bool> *r_reset_counter;
+
+    size_t m_reset_counter_no;
+    size_t m_reset_value_no;
 
     // Activity counters
     uint32_t m_cpt_read;   // Count READ access
