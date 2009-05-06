@@ -39,7 +39,6 @@
 #include "vci_vgmn.h"
 #include "vci_simple_crossbar.h"
 #include "vci_local_crossbar.h"
-#include "vci_xcache.h"
 #include "vci_xcache_wrapper.h"
 #include "mips.h"
 #include "ppc405.h"
@@ -66,8 +65,6 @@ register_signal_for_port_with_t(typename vci_param,
 register_signal_for_port_with_t(typename vci_param,
 								soclib::caba::VciTarget<vci_param>,
 								soclib::caba::VciSignals<vci_param>);
-register_signal_for_port(soclib::caba::ICacheCachePort,soclib::caba::ICacheSignals);
-register_signal_for_port(soclib::caba::DCacheCachePort,soclib::caba::DCacheSignals);
 
 }}
 
@@ -181,30 +178,6 @@ ModuleHolder& vgmn(
 	mh->portRegister("resetn", module->p_resetn);
 	mh->portRegisterN("to_target", module->p_to_target, args.get<int>("n_targets"));
 	mh->portRegisterN("to_initiator", module->p_to_initiator, args.get<int>("n_initiators"));
-	return *mh;
-}
-
-template<typename vci_param>
-ModuleHolder& xcache(
-    const std::string &name,
-    ::soclib::common::inst::InstArg &args,
-    ::soclib::common::inst::InstArg &env )
-{
-	VciXCache<vci_param> *module =
-		new VciXCache<vci_param>(
-        name.c_str(),
-        env.get<MappingTable>("mapping_table"),
-        args.get<soclib::common::IntTab>("_vci_id"),
-        args.get<int>("icache_lines"),
-        args.get<int>("icache_words"),
-        args.get<int>("dcache_lines"),
-        args.get<int>("dcache_words") );
-	ModuleHolder *mh = new ModuleHolder(module);
-	mh->portRegister("clk", module->p_clk);
-	mh->portRegister("resetn", module->p_resetn);
-	mh->portRegister("vci", module->p_vci);
-	mh->portRegister("dcache", module->p_dcache);
-	mh->portRegister("icache", module->p_icache);
 	return *mh;
 }
 
@@ -488,7 +461,6 @@ register_factory(ram);
 register_factory(tty);
 register_factory(timer);
 register_factory(vgmn);
-register_factory(xcache);
 register_factory(dma);
 register_factory(icu);
 register_factory(locks);

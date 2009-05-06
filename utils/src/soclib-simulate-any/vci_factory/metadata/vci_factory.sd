@@ -27,7 +27,6 @@ Module('caba:vci_factory',
 		Uses('caba:vci_vgmn'),
 		Uses('caba:vci_local_crossbar'),
 		Uses('caba:vci_simple_crossbar'),
-		Uses('caba:vci_xcache'),
 
 		Uses('caba:vci_xcache_wrapper', iss_t = "common:ississ2", iss2_t = "common:mipsel"),
 		Uses('caba:vci_xcache_wrapper', iss_t = "common:ississ2", iss2_t = "common:mipseb"),

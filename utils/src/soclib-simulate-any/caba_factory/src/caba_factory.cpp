@@ -26,10 +26,6 @@
  * Maintainers: nipo
  */
 
-#include "iss_wrapper.h"
-#include "mips.h"
-#include "microblaze.h"
-#include "nios2_fast.h"
 #include "caba_base_module.h"
 #include "factory.h"
 #include "inst_arg.h"
@@ -50,8 +46,6 @@ register_signal_for_port_with_t(typename word_t,
 register_signal_for_port_with_t(typename word_t,
 								soclib::caba::FifoInput<word_t>,
 								soclib::caba::FifoSignals<word_t>);
-register_signal_for_port(soclib::caba::ICacheProcessorPort,soclib::caba::ICacheSignals);
-register_signal_for_port(soclib::caba::DCacheProcessorPort,soclib::caba::DCacheSignals);
 
 }}
 
@@ -61,53 +55,6 @@ using soclib::common::ModuleHolder;
 
 
 namespace {
-
-template<typename iss_t, bool with_gdb>
-ModuleHolder &inst_caba_cpu(
-    const std::string &name,
-    ::soclib::common::inst::InstArg &args,
-    ::soclib::common::inst::InstArg &env )
-{
-	using soclib::caba::IssWrapper;
-//	using soclib::common::GdbServer;
-	ModuleHolder *mh;
-
-	if ( with_gdb && args.has("with_gdb") && args.get<int>("with_gdb")  ) {
-#if 1
-		std::cout << "Warning, gdb not supported with iss_wrapper" << std::endl;
-	}
-#else
-		if ( args.has("start_frozen") )
-			GdbServer<iss_t>::start_frozen(args.get<int>("start_frozen"));
-		IssWrapper<GdbServer<iss_t> > *cpu =
-			new IssWrapper<GdbServer<iss_t> >(
-				name.c_str(),
-				args.get<int>("ident") );
-		mh = new ModuleHolder(cpu);
-		mh->portRegister("dcache", cpu->p_dcache);
-		mh->portRegister("icache", cpu->p_icache);
-		mh->portRegister("clk", cpu->p_clk);
-		mh->portRegister("resetn", cpu->p_resetn);
-		mh->portRegisterN("irq", cpu->p_irq, iss_t::n_irq);
-		return *mh;
-	} else {
-#endif
-		IssWrapper<iss_t> *cpu =
-			new IssWrapper<iss_t>(
-				name.c_str(),
-				args.get<int>("ident") );
-		mh = new ModuleHolder(cpu);
-		mh->portRegister("dcache", cpu->p_dcache);
-		mh->portRegister("icache", cpu->p_icache);
-		mh->portRegister("clk", cpu->p_clk);
-		mh->portRegister("resetn", cpu->p_resetn);
-		mh->portRegisterN("irq", cpu->p_irq, iss_t::n_irq);
-		return *mh;
-#if 0
-	}
-#endif
-}
-
 
 template<typename module_t>
 ModuleHolder &inst_fifo_rw(
@@ -130,10 +77,6 @@ ModuleHolder &inst_fifo_rw(
 using soclib::common::Factory;
 using soclib::caba::ModuleHolder;
 
-Factory mipsel_factory("mipsel", &inst_caba_cpu<soclib::common::MipsElIss, true>);
-Factory mipseb_factory("mipseb", &inst_caba_cpu<soclib::common::MipsEbIss, true>);
-Factory nios2_factory("nios2", &inst_caba_cpu<soclib::common::Nios2fIss, false>);
-Factory microblaze_factory("microblaze", &inst_caba_cpu<soclib::common::MicroBlazeIss, false>);
 Factory fifo_reader_factory("fifo_reader", &inst_fifo_rw<FifoReader<uint32_t> >);
 Factory fifo_writer_factory("fifo_writer", &inst_fifo_rw<FifoWriter<uint32_t> >);
 

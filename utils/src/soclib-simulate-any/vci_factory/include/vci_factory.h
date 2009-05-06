@@ -46,7 +46,6 @@ class VciFactory
 	static soclib::common::Factory timer_factory;
 	static soclib::common::Factory locks_factory;
 	static soclib::common::Factory vgmn_factory;
-	static soclib::common::Factory xcache_factory;
 	static soclib::common::Factory dma_factory;
 	static soclib::common::Factory icu_factory;
 	static soclib::common::Factory simhelper_factory;
