@@ -168,7 +168,7 @@ void MipsIss::op_bcond()
         r_gp[31] = r_pc+8;
 
     if (taken) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd,16)*4 + r_pc + 4;
     }
 }
 
@@ -223,35 +223,35 @@ void MipsIss::op_jal()
 void MipsIss::op_beq()
 {
     if ( m_rs == m_rt ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd,16)*4 + r_pc + 4;
     }
 }
 
 void MipsIss::op_bne()
 {
     if ( m_rs != m_rt ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd,16)*4 + r_pc + 4;
     }
 }
 
 void MipsIss::op_blez()
 {
     if ( (int32_t)m_rs <= 0 ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd,16)*4 + r_pc + 4;
     }
 }
 
 void MipsIss::op_bgtz()
 {
     if ( (int32_t)m_rs > 0 ) {
-        m_next_pc = sign_ext16(m_ins.i.imd)*4 + r_pc + 4;
+        m_next_pc = sign_ext(m_ins.i.imd,16)*4 + r_pc + 4;
     }
 }
 
 void MipsIss::op_addi()
 {
-    uint64_t tmp = (uint64_t)m_rs + (uint64_t)sign_ext16(m_ins.i.imd);
-    if ( overflow( m_rs, sign_ext16(m_ins.i.imd), 0 ) )
+    uint64_t tmp = (uint64_t)m_rs + (uint64_t)sign_ext(m_ins.i.imd,16);
+    if ( overflow( m_rs, sign_ext(m_ins.i.imd,16), 0 ) )
         m_exception = X_OV;
     else
         r_gp[m_ins.i.rt] = tmp;
@@ -259,19 +259,19 @@ void MipsIss::op_addi()
 
 void MipsIss::op_addiu()
 {
-    r_gp[m_ins.i.rt] = m_rs + sign_ext16(m_ins.i.imd);
+    r_gp[m_ins.i.rt] = m_rs + sign_ext(m_ins.i.imd,16);
 }
 
 void MipsIss::op_slti()
 {
     r_gp[m_ins.i.rt] = (bool)
-        ((int32_t)m_rs < sign_ext16(m_ins.i.imd));
+        ((int32_t)m_rs < sign_ext(m_ins.i.imd,16));
 }
 
 void MipsIss::op_sltiu()
 {
     r_gp[m_ins.i.rt] = (bool)
-        ((uint32_t)m_rs < (uint32_t)sign_ext16(m_ins.i.imd));
+        ((uint32_t)m_rs < (uint32_t)sign_ext(m_ins.i.imd,16));
 }
 
 void MipsIss::op_andi()
@@ -331,29 +331,29 @@ void MipsIss::op_ill()
 
 void MipsIss::op_lb()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_load( address, READ_BYTE, false);
 }
 
 void MipsIss::op_ll()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_load( address, READ_LINKED, false);
 }
 
 void MipsIss::op_lh()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_load( address, READ_HALF, false);
 }
 
 void MipsIss::op_lw()
 {
     if ( m_ins.i.rt ) {
-        uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+        uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
         do_load( address, READ_WORD, false);
     } else {
-        uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+        uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
         SOCLIB_WARNING(
             "If you intend to flush cache reading to $0,\n"
             "this is a hack, go get a processor aware of caches");
@@ -363,7 +363,7 @@ void MipsIss::op_lw()
 
 void MipsIss::op_lwl()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     uint32_t w = address&3;
     do_load( address&~3, READ_WORD, false,
              m_little_endian
@@ -374,7 +374,7 @@ void MipsIss::op_lwl()
 
 void MipsIss::op_lwr()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     uint32_t w = address&3;
     do_load( address&~3, READ_WORD, false,
              m_little_endian
@@ -385,26 +385,26 @@ void MipsIss::op_lwr()
 
 void MipsIss::op_lbu()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_load( address, READ_BYTE, true);
 }
 
 void MipsIss::op_lhu()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_load( address, READ_HALF, true);
 }
 
 void MipsIss::op_sb()
 {
     uint32_t tmp = m_rt&0xff;
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_store(address, WRITE_BYTE, tmp|(tmp << 8)|(tmp << 16)|(tmp << 24));
 }
 
 void MipsIss::op_sc()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_store(address, STORE_COND, m_rt);
     r_mem_dest = m_ins.i.rt;
 }
@@ -412,19 +412,19 @@ void MipsIss::op_sc()
 void MipsIss::op_sh()
 {
     uint32_t tmp = m_rt&0xffff;
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_store(address, WRITE_HALF, tmp|(tmp << 16));
 }
 
 void MipsIss::op_sw()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     do_store(address, WRITE_WORD, m_rt);
 }
 
 void MipsIss::op_swl()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     if ( (address & 3) == (m_little_endian ? 3 : 0) ) {
         do_store(address&~3, WRITE_WORD, m_rt);
         return;
@@ -436,7 +436,7 @@ void MipsIss::op_swl()
 
 void MipsIss::op_swr()
 {
-    uint32_t address =  m_rs + sign_ext16(m_ins.i.imd);
+    uint32_t address =  m_rs + sign_ext(m_ins.i.imd,16);
     if ( (address & 3) == (m_little_endian ? 0 : 3) ) {
         do_store(address&~3, WRITE_WORD, m_rt);
         return;
