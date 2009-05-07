@@ -52,8 +52,15 @@ class VciMultiTty
   soclib::common::IntTab                   m_index;
   soclib::common::MappingTable             m_mt;
   std::list<soclib::common::Segment>       segList;
-  int                                      m_n_irq;
+  bool                                    *m_irq;
+  pdes_local_time                         *m_pdes_local_time;
   
+  //FIELDS OF A IRQ TRANSACTION
+  tlm::tlm_generic_payload                *m_payload_ptr;
+  soclib_payload_extension                *m_extension_ptr;
+  tlm::tlm_phase                           m_phase;
+  sc_core::sc_time                         m_time;
+
   size_t m_cpt_read;
   size_t m_cpt_write;
   size_t m_cpt_cycle;
@@ -63,6 +70,8 @@ class VciMultiTty
   // Local Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
   void init(const std::vector<std::string> &names);
+
+  void behavior();
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_fw_transport_if  (VCI TARGET SOCKET)
@@ -91,7 +100,7 @@ class VciMultiTty
  public:
   tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target;   // VCI TARGET socket
 
-  //std::vector<tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types> *> p_irq_initiator; // IRQ INITIATOR socket
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types> *> p_irq_initiator; // IRQ INITIATOR socket
 
   VciMultiTty(sc_core::sc_module_name name,
 	      const soclib::common::IntTab &index,

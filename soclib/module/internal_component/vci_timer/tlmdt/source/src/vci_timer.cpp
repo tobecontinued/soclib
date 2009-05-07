@@ -53,18 +53,24 @@ tmpl(/**/)::VciTimer
   //timers
   m_timer = new timer_struct[m_ntimer];
   for(unsigned int i=0;i<m_ntimer;i++){
-    m_timer[i].period = sc_core::SC_ZERO_TIME;
-    m_timer[i].value  = sc_core::SC_ZERO_TIME;
-    m_timer[i].mode   = 0;
-    
+    m_timer[i].period     = sc_core::SC_ZERO_TIME;
+    m_timer[i].value      = sc_core::SC_ZERO_TIME;
+    m_timer[i].mode       = 0;
+    m_timer[i].irq        = sc_core::SC_ZERO_TIME;
+    m_timer[i].activation = sc_core::SC_ZERO_TIME;
+    m_timer[i].counter    = sc_core::SC_ZERO_TIME;
+   
     std::ostringstream irq_name;
     irq_name << "irq" << i;
     p_irq_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciTimer,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
   }
+
+  //create payload to irq message
+  m_irq_payload_ptr = new tlm::tlm_generic_payload();
 }
 
 tmpl(/**/)::~VciTimer(){}
-    
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_bw_transport_if VCI TARGET SOCKET
 /////////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +102,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
     case VCI_READ_COMMAND:
       {
 #if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive a read packet with time = "  << time.value() << std::endl;
+	//std::cout << "[" << name() << "] Receive a read packet with time = "  << time.value() << std::endl;
 #endif
     
 	int cell, reg, t;
@@ -119,41 +125,61 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	    payload.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
 	    
 	    phase = tlm::BEGIN_RESP;
-	    //time = time + (nwords * UNIT_TIME);
-	    time = time + (50 * UNIT_TIME);
+	    time = time + (nwords * UNIT_TIME);
 	    p_vci_target->nb_transport_bw(payload, phase, time);
 	    return tlm::TLM_COMPLETED;
 	  }
       
 	  switch (reg) {
 	  case TIMER_VALUE:
+	    if(m_timer[t].mode & TIMER_RUNNING){
+	      m_timer[t].value += time - m_timer[t].activation;
+	      m_timer[t].activation = time;
+	    }
+
 	    utoa(m_timer[t].value.value(), payload.get_data_ptr(),(i * vci_param::nbytes));
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Read Timer " << t << " Value "  << std::dec << m_timer[t].value.value() << " time = "<< (time.value() + 1) << std::endl;
+#endif
 	    break;
 	    
 	  case TIMER_PERIOD:
 	    utoa(m_timer[t].period.value(), payload.get_data_ptr(),(i * vci_param::nbytes));
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Read Timer " << t << " Period "  << std::dec << m_timer[t].period.value() << " time = "<< (time.value() + 1) << std::endl;
+#endif
 	    break;
 	    
 	  case TIMER_MODE:
 	    utoa(m_timer[t].mode, payload.get_data_ptr(),(i * vci_param::nbytes));
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Read Timer " << t << " Mode "  << std::dec << m_timer[t].mode << " time = "<< (time.value() + 1) << std::endl;
+#endif
 	    break;
 	    
 	  case TIMER_RESETIRQ:
-	    if(time >= m_timer[t].value)
+	    if(time >= m_timer[t].irq){
 	      utoa(1, payload.get_data_ptr(),(i * vci_param::nbytes));
-	    else
+#if SOCLIB_MODULE_DEBUG
+	      std::cout << "[" << name() << "] Read Timer " << t << " ResetIRQ 1 time = "<< (time.value() + 1) << std::endl;
+#endif
+	    }
+	    else{
 	      utoa(0, payload.get_data_ptr(),(i * vci_param::nbytes));
+#if SOCLIB_MODULE_DEBUG
+	      std::cout << "[" << name() << "] Read Timer " << t << " ResetIRQ 0 time = "<< time.value() << std::endl;
+#endif
+	    }
 	    break;
 	  }
 	}
 
 	payload.set_response_status(tlm::TLM_OK_RESPONSE);
 	phase = tlm::BEGIN_RESP;
-        //time = time + (nwords * UNIT_TIME);
-        time = time + (50 * UNIT_TIME);
+        time = time + (nwords * UNIT_TIME);
 
 #if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
+	//std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
 
         p_vci_target->nb_transport_bw(payload, phase, time);
@@ -163,9 +189,16 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
     case VCI_WRITE_COMMAND:
       {    
 #if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive a write packet with time = "  << time.value() << std::endl;
+	//std::cout << "[" << name() << "] Receive a write packet with time = "  << time.value() << std::endl;
 #endif
 	int cell, reg, t;
+
+	// set the values in irq tlm payload
+	uint32_t nwords= 1;
+	uint32_t nbytes= nwords * vci_param::nbytes;
+	uint32_t byte_enable = 0xFFFFFFFF;
+	unsigned char data_ptr[nbytes];
+	unsigned char byte_enable_ptr[nbytes];
 
 	for (size_t i=0; i<nwords; i++){
 	  //if(pkt->contig)
@@ -184,69 +217,138 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	    payload.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
 	    
 	    phase = tlm::BEGIN_RESP;
-	    //time = time + (nwords * UNIT_TIME);
-	    time = time + (50 * UNIT_TIME);
+	    time = time + (nwords * UNIT_TIME);
 	    p_vci_target->nb_transport_bw(payload, phase, time);
 	    return tlm::TLM_COMPLETED;
 	  }
       
 	  switch (reg) {
 	  case TIMER_VALUE:
-	    //the writing in this register occurs only when:
-	    //1) the reset is actived
-	    //2) it occurs a reading in "period register"
+	    m_timer[t].value = atou(payload.get_data_ptr(), (i*vci_param::nbytes)) * UNIT_TIME;
+
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Write Timer " << t << " Value" << std::dec << m_timer[t].value.value() << " time = "<< (time.value() + 1) << std::endl;
+#endif
 	    break;
 	
 	  case TIMER_RESETIRQ:
-	    {
-	      //generate a new interruption
-	      m_timer[t].value = m_timer[t].value + m_timer[t].period;
-	      
+	    //desactive the interruption
+	    utoa(byte_enable, byte_enable_ptr, 0);
+	    utoa(0, data_ptr, 0);
+	    
+	    // set the values in irq tlm payload
+	    m_irq_payload_ptr->set_byte_enable_ptr(byte_enable_ptr);
+	    m_irq_payload_ptr->set_byte_enable_length(nbytes);
+	    m_irq_payload_ptr->set_data_ptr(data_ptr);
+	    m_irq_payload_ptr->set_data_length(nbytes);
+	    
+	    // set the tlm phase
+	    m_irq_phase = tlm::BEGIN_REQ;
+	    // set the local time to transaction time
+	    m_irq_time = time;
+	    
 #if SOCLIB_MODULE_DEBUG
-	      std::cout << "[" << name() << "] Send Interruption " << t <<" with time = " << m_timer[t].value.value() << std::endl;
+	    //std::cout << "[" << name() << "] Desactive Interruption " << t <<" with time = " << time.value() << std::endl;
 #endif
-	      // set the values in irq tlm payload
-	      uint32_t nwords= 1;
-	      uint32_t nbytes= nwords * vci_param::nbytes;
-	      uint32_t byte_enable = 0xFFFFFFFF;
-	      unsigned char data_ptr[nbytes];
-	      unsigned char byte_enable_ptr[nbytes];
+	    
+	    // send the transaction
+	    (*p_irq_initiator[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
+	    wait(sc_core::SC_ZERO_TIME);	      
+	    
+	    //generate a new interruption
+	    m_timer[t].irq += m_timer[t].period + UNIT_TIME;
+	    
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Write Timer " << t << " ResetIRQ time = "<< (time.value() + 1) << std::endl;
+#endif
+
+	    //send a new interruption
+	    if((m_timer[t].mode & TIMER_RUNNING) && (m_timer[t].mode & TIMER_IRQ_ENABLED)){
 	      
 	      utoa(byte_enable, byte_enable_ptr, 0);
 	      utoa(1, data_ptr, 0);
 	      
 	      // set the values in irq tlm payload
-	      m_irq_payload.set_byte_enable_ptr(byte_enable_ptr);
-	      m_irq_payload.set_byte_enable_length(nbytes);
-	      m_irq_payload.set_data_ptr(data_ptr);
-	      m_irq_payload.set_data_length(nbytes);
+	      m_irq_payload_ptr->set_byte_enable_ptr(byte_enable_ptr);
+	      m_irq_payload_ptr->set_byte_enable_length(nbytes);
+	      m_irq_payload_ptr->set_data_ptr(data_ptr);
+	      m_irq_payload_ptr->set_data_length(nbytes);
 	      
 	      // set the tlm phase
 	      m_irq_phase = tlm::BEGIN_REQ;
 	      // set the local time to transaction time
-	      m_irq_time = m_timer[t].value;
+	      m_irq_time = m_timer[t].irq;
+	      
+#if SOCLIB_MODULE_DEBUG
+	      //std::cout << "[" << name() << "] Send Interruption " << t <<" with time = " << m_timer[t].irq.value() << std::endl;
+#endif
+	      
 	      // send the transaction
-	      (*p_irq_initiator[t])->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
+	      (*p_irq_initiator[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
+	      wait(sc_core::SC_ZERO_TIME);	      
 	    }
 	    break;
 	  case TIMER_MODE:
 	    m_timer[t].mode = (atou(payload.get_data_ptr(), (i*vci_param::nbytes)) & 0x3);
+	    
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Write Timer " << t << " Mode "  << std::dec << m_timer[t].mode << " time = "<< (time.value() + 1) << std::endl;
+#endif
+	      
+	    if(m_timer[t].mode & TIMER_RUNNING){
+	      m_timer[t].activation = time + (nwords * UNIT_TIME);
+	      
+	      if(m_timer[t].mode & TIMER_IRQ_ENABLED){
+		m_timer[t].irq = time  + (3 * UNIT_TIME) + m_timer[t].period - m_timer[t].counter;
+		utoa(1, data_ptr, 0);
+	      }
+	      else{
+		utoa(0, data_ptr, 0);
+	      }
+	    }
+	    else{
+	      m_timer[t].value+= time - m_timer[t].activation + UNIT_TIME;
+	      m_timer[t].counter = time - (m_timer[t].irq - m_timer[t].period - (3 * UNIT_TIME));
+	      utoa(0, data_ptr, 0);
+	    }
+	    
+	    utoa(byte_enable, byte_enable_ptr, 0);
+	    // set the values in irq tlm payload
+	    m_irq_payload_ptr->set_byte_enable_ptr(byte_enable_ptr);
+	    m_irq_payload_ptr->set_byte_enable_length(nbytes);
+	    m_irq_payload_ptr->set_data_ptr(data_ptr);
+	    m_irq_payload_ptr->set_data_length(nbytes);
+	    
+	    // set the tlm phase
+	    m_irq_phase = tlm::BEGIN_REQ;
+	    // set the local time to transaction time
+	    m_irq_time = m_timer[t].irq;
+	    
+#if SOCLIB_MODULE_DEBUG
+	    //std::cout << "[" << name() << "] Send Interruption " << t <<" with time = " << m_timer[t].irq.value() << std::endl;
+#endif
+	    
+	    // send the transaction
+	    (*p_irq_initiator[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
+	    wait(sc_core::SC_ZERO_TIME);	      
+	    
 	    break;
-	
 	  case TIMER_PERIOD:
 	    m_timer[t].period = atou(payload.get_data_ptr(), (i*vci_param::nbytes)) * UNIT_TIME;
-	    m_timer[t].value = time;
+
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Write Timer " << t << " Period "  << std::dec << m_timer[t].period.value() << " time = "<< (time.value() + 1) << std::endl;
+#endif
 	    break;
 	  }
 	}
 
 	payload.set_response_status(tlm::TLM_OK_RESPONSE);
  	phase = tlm::BEGIN_RESP;
-	//time = time + (nwords * UNIT_TIME);
-	time = time + (50 * UNIT_TIME);
+	time = time + (nwords * UNIT_TIME);
     
 #if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
+	//std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
 
 	p_vci_target->nb_transport_bw(payload, phase, time);
@@ -257,12 +359,12 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
       break;
     }//end switch
   }//end for
-
+  
   //send error message
   payload.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
   
   phase = tlm::BEGIN_RESP;
-  time = time + nwords * UNIT_TIME;
+  time = time + (nwords * UNIT_TIME);
   
 #if SOCLIB_MODULE_DEBUG
   std::cout << "[" << name() << "] Address " << std::hex << payload.get_address() << std::dec << " does not match any segment " << std::endl;

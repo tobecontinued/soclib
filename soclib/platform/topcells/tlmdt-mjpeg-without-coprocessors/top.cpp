@@ -12,6 +12,7 @@
 #include "vci_multi_tty.h"
 #include "vci_xcache.h"
 #include "iss_simhelper.h"
+#include "vci_blackhole.h"
 
 using namespace  soclib::tlmdt;
 using namespace  soclib::common;
@@ -90,13 +91,22 @@ int sc_main (int   argc, char  **argv)
   // VCI_XCACHE 
   /////////////////////////////////////////////////////////////////////////////
   VciXcache<vci_param, IssSimhelper<MipsElIss> > *xcache[n_initiators]; 
-  //VciXcache<vci_param, MipsElIss > *xcache[n_initiators];
+  soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> > *fake_initiator[n_initiators];
+
   for (int i=0 ; i < n_initiators ; i++) {
     std::ostringstream cpu_name;
     cpu_name << "xcache" << i;
     xcache[i] = new VciXcache<vci_param, IssSimhelper<MipsElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, icache_size, 8, dcache_size, 8, 1000 * UNIT_TIME, simulation_time * UNIT_TIME);
-    //xcache[i] = new VciXcache<vci_param, MipsElIss >((cpu_name.str()).c_str(), i, IntTab(i), maptab, icache_size, 8, dcache_size, 8, 1000 * UNIT_TIME, simulation_time * UNIT_TIME);
     xcache[i]->p_vci_initiator(vgmn_1.m_RspArbCmdRout[i]->p_vci_target);
+
+    std::ostringstream fake_name;
+    fake_name << "fake" << i;
+    fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), soclib::common::MipsElIss::n_irq);
+    
+    for(int irq=0; irq<soclib::common::MipsElIss::n_irq; irq++){
+      (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq_target[irq]);
+    }
+
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -117,7 +127,12 @@ int sc_main (int   argc, char  **argv)
   /////////////////////////////////////////////////////////////////////////////
   VciMultiTty<vci_param> vcitty("tty0", IntTab(2), maptab, "TTY0", NULL);
   vgmn_1.m_CmdArbRspRout[2]->p_vci_initiator(vcitty.p_vci_target);
-  //  (*vcitty.p_irq[0])(mips[0]->p_irq[0]);
+  
+  soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> > *fake_target_tagged;
+  
+  fake_target_tagged = new soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> >("fake_target_tagged", 1);
+  
+  (*vcitty.p_irq_initiator[0])(*fake_target_tagged->p_socket[0]);
 
   /////////////////////////////////////////////////////////////////////////////
   // SIMULATION

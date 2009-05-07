@@ -41,4 +41,5 @@ Module('tlmdt:vci_multi_tty',
                  Uses('common:tty_wrapper'),
                  Uses('common:mapping_table'),
                  ],
+       debug = False,
        )

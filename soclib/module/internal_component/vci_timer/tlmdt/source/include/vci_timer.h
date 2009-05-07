@@ -39,6 +39,9 @@ struct timer_struct{
   sc_core::sc_time period;
   sc_core::sc_time value;
   int              mode;
+  sc_core::sc_time activation;
+  sc_core::sc_time irq;
+  sc_core::sc_time counter;
 };
 
 namespace soclib { namespace tlmdt {
@@ -61,7 +64,7 @@ class VciTimer
   timer_struct                       *m_timer;
 
   //FIELDS OF AN IRQ TRANSACTION
-  tlm::tlm_generic_payload            m_irq_payload;
+  tlm::tlm_generic_payload           *m_irq_payload_ptr;
   tlm::tlm_phase                      m_irq_phase;
   sc_core::sc_time                    m_irq_time;
 

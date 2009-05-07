@@ -79,6 +79,7 @@ private:
     uint32_t m_cpt_read;   // Count READ access
     uint32_t m_cpt_write;  // Count WRITE access
     uint32_t m_cpt_idle;   // Count IDLE Cycles
+    uint32_t m_cpt_cycles; // Count Cycles
 };
 
 }}

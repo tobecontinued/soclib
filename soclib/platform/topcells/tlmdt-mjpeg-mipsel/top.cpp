@@ -15,6 +15,7 @@
 #include "vci_mwmr_controller.h"
 #include "fifo_reader.h"
 #include "fifo_writer.h"
+#include "vci_blackhole.h"
 
 using namespace  soclib::common;
 
@@ -93,14 +94,13 @@ int sc_main (int   argc, char  **argv)
   soclib::tlmdt::VciVgmn vgmn_1("vgmn", maptab, IntTab(), n_initiators+2, 5, network_latence * UNIT_TIME);
  
   /////////////////////////////////////////////////////////////////////////////
-  // VCI_XCACHE 
+  // VCI_XCACHE
   /////////////////////////////////////////////////////////////////////////////
   soclib::tlmdt::VciXcache<vci_param, soclib::common::IssSimhelper<soclib::common::MipsElIss> > *xcache[n_initiators]; 
   for (int i=0 ; i < n_initiators ; i++) {
     std::ostringstream cpu_name;
     cpu_name << "xcache" << i;
     xcache[i] = new soclib::tlmdt::VciXcache<vci_param, soclib::common::IssSimhelper<soclib::common::MipsElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, icache_size, 8, dcache_size, 8, 1000 * UNIT_TIME, simulation_time * UNIT_TIME);
-    xcache[i]->p_vci_initiator(vgmn_1.m_RspArbCmdRout[i]->p_vci_target);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -115,12 +115,7 @@ int sc_main (int   argc, char  **argv)
 
   soclib::tlmdt::VciMwmrController<vci_param> tg_ctrl("tg_ctrl", maptab, IntTab(n_initiators), IntTab(3), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
 
-  tg_ctrl.p_vci_initiator(vgmn_1.m_RspArbCmdRout[n_initiators]->p_vci_target);
-  vgmn_1.m_CmdArbRspRout[3]->p_vci_initiator(tg_ctrl.p_vci_target);
-
   soclib::tlmdt::FifoReader<vci_param> tg("tg", "bash", stringArray("bash", "-c", "while cat \"plan.jpg\" ; do true ; done", NULL),write_depth);
-
-  (*tg_ctrl.p_write_fifo[0])(tg.p_fifo);
 
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR RAMDAC
@@ -134,12 +129,7 @@ int sc_main (int   argc, char  **argv)
 
   soclib::tlmdt::VciMwmrController<vci_param> ramdac_ctrl("ramdac_ctrl", maptab, IntTab( n_initiators+1 ), IntTab(4), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
 
-  ramdac_ctrl.p_vci_initiator(vgmn_1.m_RspArbCmdRout[n_initiators+1]->p_vci_target);
-  vgmn_1.m_CmdArbRspRout[4]->p_vci_initiator(ramdac_ctrl.p_vci_target);
-
   soclib::tlmdt::FifoWriter<vci_param> ramdac("ramdac", "soclib-pipe2fb", stringArray("soclib-pipe2fb", "48", "48", NULL),read_depth);
-
-  (*ramdac_ctrl.p_read_fifo[0])(ramdac.p_fifo);
 
   /////////////////////////////////////////////////////////////////////////////
   // TARGET - RAM
@@ -150,17 +140,56 @@ int sc_main (int   argc, char  **argv)
     std::ostringstream name;
     name << "ram" << i;
     ram[i] = new soclib::tlmdt::VciRam<vci_param>((name.str()).c_str(), IntTab(i), maptab, loader);
-    vgmn_1.m_CmdArbRspRout[i]->p_vci_initiator(ram[i]->p_vci_target);
   }
   
-
   /////////////////////////////////////////////////////////////////////////////
   // TARGET - TTY
   /////////////////////////////////////////////////////////////////////////////
   soclib::tlmdt::VciMultiTty<vci_param> vcitty("tty0", IntTab(2), maptab, "TTY0", NULL);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // CONNECTIONS
+  /////////////////////////////////////////////////////////////////////////////
+  
+  for (int i=0 ; i < n_initiators ; i++) {
+    xcache[i]->p_vci_initiator(vgmn_1.m_RspArbCmdRout[i]->p_vci_target);
+  }
+  tg_ctrl.p_vci_initiator(vgmn_1.m_RspArbCmdRout[n_initiators]->p_vci_target);
+  (*tg_ctrl.p_write_fifo[0])(tg.p_fifo);
+  ramdac_ctrl.p_vci_initiator(vgmn_1.m_RspArbCmdRout[n_initiators+1]->p_vci_target);
+  (*ramdac_ctrl.p_read_fifo[0])(ramdac.p_fifo);
+
+  for (int i=0 ; i<n_rams; i++) {
+    vgmn_1.m_CmdArbRspRout[i]->p_vci_initiator(ram[i]->p_vci_target);
+  }
+
   vgmn_1.m_CmdArbRspRout[2]->p_vci_initiator(vcitty.p_vci_target);
-  //(*vcitty.p_irq_initiator[0])(NULL);
-  //(*vcitty.p_irq_initiator[0])(*xcache[0]->p_irq_target[0]);
+  vgmn_1.m_CmdArbRspRout[3]->p_vci_initiator(tg_ctrl.p_vci_target);
+  vgmn_1.m_CmdArbRspRout[4]->p_vci_initiator(ramdac_ctrl.p_vci_target);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // VciBlackhole Target Tagged
+  /////////////////////////////////////////////////////////////////////////////
+  soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> > *fake_target_tagged;
+
+  fake_target_tagged = new soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> >("fake_target_tagged", 1);
+
+  (*vcitty.p_irq_initiator[0])(*fake_target_tagged->p_socket[0]);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // VciBlackhole Initiator
+  /////////////////////////////////////////////////////////////////////////////
+  soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> > *fake_initiator[n_initiators];
+
+  for (int i=0 ; i < n_initiators ; i++) {
+    std::ostringstream fake_name;
+    fake_name << "fake" << i;
+    fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), soclib::common::MipsElIss::n_irq);
+    
+    for(int irq=0; irq<soclib::common::MipsElIss::n_irq; irq++){
+      (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq_target[irq]);
+    }
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // SIMULATION

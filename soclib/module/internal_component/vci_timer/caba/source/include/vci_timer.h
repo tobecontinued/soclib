@@ -66,6 +66,7 @@ private:
     // Activity counters
     uint32_t m_cpt_read;   // Count READ access
     uint32_t m_cpt_write;  // Count WRITE access
+    uint32_t m_cpt_cycles; // Count cycles
 
 protected:
     SC_HAS_PROCESS(VciTimer);

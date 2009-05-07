@@ -48,20 +48,32 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	switch (reg) {
 	case TIMER_VALUE:
 		r_value[timer] = data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write Timer " << timer << " Value "  << std::dec << (int)data << " time = " << m_cpt_cycles << std::endl;
+#endif
 		m_reset_value_no = timer;
 		break;
 
 	case TIMER_RESETIRQ:
 		r_irq[timer] = false;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write Timer " << timer << " ResetIRQ time = " << m_cpt_cycles << std::endl;
+#endif
 		break;
 
 	case TIMER_MODE:
 		r_mode[timer] = (int)data & 0x3;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write Timer " << timer << " Mode "  << std::dec << ((int)data & 0x3) << " time = " << m_cpt_cycles << std::endl;
+#endif
 		break;
 
 	case TIMER_PERIOD:
 		r_period[timer] = data;
 		m_reset_counter_no = timer;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write Timer " << timer << " Period "  << std::dec << (int)data << " time = " << m_cpt_cycles << std::endl;
+#endif
 		break;
 	}
     m_cpt_write++;
@@ -80,18 +92,30 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	switch (reg) {
 	case TIMER_VALUE:
 		data = r_value[timer].read();
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read Timer " << timer << " Value "  << std::dec << (int)data << " time = " << m_cpt_cycles << std::endl;
+#endif
 		break;
 
 	case TIMER_PERIOD:
 		data = r_period[timer].read();
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read Timer " << timer << " Period "  << std::dec << (int)data << " time = " << m_cpt_cycles << std::endl;
+#endif
 		break;
 
 	case TIMER_MODE:
 		data = r_mode[timer].read();
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read Timer " << timer << " Mode "  << std::dec << (int)data << " time = " << m_cpt_cycles << std::endl;
+#endif
 		break;
 
 	case TIMER_RESETIRQ:
 		data = r_irq[timer].read();
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read Timer " << timer << " ResetIRQ "  << std::dec << (int)data << " time = " << m_cpt_cycles << std::endl;
+#endif
 		break;
 	}
     m_cpt_read++;
@@ -101,10 +125,12 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 
 tmpl(void)::transition()
 {
+    m_cpt_cycles++;
 	if (!p_resetn) {
 		m_vci_fsm.reset();
         m_cpt_read = 0;
         m_cpt_write = 0;
+        m_cpt_cycles = 0;
 
 		for (size_t i = 0 ; i < m_ntimer ; i++) {
 			r_value[i] = 0;

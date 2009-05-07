@@ -29,10 +29,6 @@
 
 #include "vci_multi_tty.h"
 
-#ifndef MULTI_TTY_DEBUG
-#define MULTI_TTY_DEBUG 0
-#endif
-
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) template<typename vci_param> x VciMultiTty<vci_param>
@@ -85,21 +81,73 @@ tmpl(void)::init(const std::vector<std::string> &names){
 
   for(std::vector<std::string>::const_iterator i = names.begin(); i != names.end();++i){
     m_term.push_back(soclib::common::allocateTty(*i));
-    /*
+
     std::ostringstream irq_name;
     irq_name << "irq" << j;
     p_irq_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
-    */
+
     j++;
   }
+
+  m_irq = new bool[m_term.size()];
   
-  m_n_irq = j;
-  
+  //PDES local time
+  m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
+
+  //create payload and extension to irq message
+  m_payload_ptr = new tlm::tlm_generic_payload();
+  m_extension_ptr = new soclib_payload_extension();
+
   m_cpt_cycle = 0;
   m_cpt_idle  = 0;
   m_cpt_read  = 0;
   m_cpt_write = 0;
+
+  SC_THREAD(behavior);
+
 }
+
+tmpl(void)::behavior()
+{
+  size_t nbytes = vci_param::nbytes; //1 word
+  unsigned char data_ptr[nbytes];
+
+  while (1) {
+    for ( size_t i=0; i<m_term.size(); ++i ) {
+      bool val = m_term[i]->hasData();
+      if ( val != m_irq[i] ) {
+	m_irq[i] = val;
+
+	// set the val to data
+	utoa(val, data_ptr, 0);
+	// set the values in tlm payload
+	m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+	m_payload_ptr->set_data_ptr(data_ptr);
+	m_payload_ptr->set_data_length(nbytes);
+	// set the values in payload extension
+	m_extension_ptr->set_write();
+	// set the extension to tlm payload
+	m_payload_ptr->set_extension(m_extension_ptr);
+     
+	// set the tlm phase
+	m_phase = tlm::BEGIN_REQ;
+	// set the local time to transaction time
+	m_time = m_pdes_local_time->get();
+
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << "[" << name() << "] Sent Interrupt " << i << " : " << val << " time : " << m_time.value() << std::endl;
+#endif
+
+	// send the transaction
+	(*p_irq_initiator[i])->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+	
+      }
+    }
+    m_pdes_local_time->add(UNIT_TIME);
+    wait(sc_core::SC_ZERO_TIME);
+  }
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
@@ -114,6 +162,10 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   
   //this target does not treat the null message
   if(extension_pointer->is_null_message()){
+    //update local time
+    if(time > m_pdes_local_time->get())
+      m_pdes_local_time->set(time);
+
 #if MULTI_TTY_DEBUG
 	std::cout << "[TTY] Receive NULL MESSAGE time = "  << time.value() << std::endl;
 #endif

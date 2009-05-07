@@ -150,7 +150,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	
 	payload.set_response_status(tlm::TLM_OK_RESPONSE);
 	phase = tlm::BEGIN_RESP;
-	time = time + (nwords * UNIT_TIME);
+	time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
 
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value() << std::endl;
@@ -189,7 +189,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	
 	payload.set_response_status(tlm::TLM_OK_RESPONSE);
 	phase = tlm::BEGIN_RESP;
-	time = time + (nwords * UNIT_TIME);
+	time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
  	
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
@@ -222,7 +222,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
         payload.set_response_status(tlm::TLM_OK_RESPONSE);
         phase = tlm::BEGIN_RESP;
-        time = time + (nwords * UNIT_TIME);
+	time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
 
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
@@ -266,7 +266,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
         payload.set_response_status(tlm::TLM_OK_RESPONSE);
         phase = tlm::BEGIN_RESP;
-        time = time + (nwords * UNIT_TIME);
+        time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
 
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
@@ -285,7 +285,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   payload.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
   
   phase = tlm::BEGIN_RESP;
-  time = time + nwords * UNIT_TIME;
+  time = time + (nwords * UNIT_TIME);
   
 #ifdef SOCLIB_MODULE_DEBUG
   std::cout << "[RAM " << m_tgtid << "] Address " << std::hex << payload.get_address() << std::dec << " does not match any segment " << std::endl;

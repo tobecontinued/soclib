@@ -62,6 +62,7 @@ tmpl(/**/)::VciRam(
 	sensitive << p_clk.neg();
 	
 	m_contents = new ram_t*[m_vci_fsm.nbSegments()];
+    m_cpt_cycles = 0;
 	
 	size_t word_size = vci_param::B; // B is VCI's cell size
 	for ( size_t i=0; i<m_vci_fsm.nbSegments(); ++i ) {
@@ -105,7 +106,7 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
     tab[index] = (cur & ~mask) | (data & mask);
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << "[" << name() << "] write " << m_cpt_write << " address = " << std::hex << addr << " data = " << data << std::dec << " tab[" << index << "] = " << std::hex << tab[index] << std::dec << std::endl;
+    std::cout << "[" << name() << "] time " << m_cpt_cycles <<" write " << m_cpt_write << " address = " << std::hex << addr << " data = " << data << std::dec << " tab[" << index << "] = " << std::hex << tab[index] << std::dec << std::endl;
 #endif
 
     m_cpt_write++;
@@ -118,7 +119,7 @@ tmpl(bool)::on_read(size_t seg, vci_addr_t addr, vci_data_t &data )
 	data = m_contents[seg][addr / vci_param::B];
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << "[" << name() << "] read " << m_cpt_read << " address = " << std::hex << addr << " data = " << data << std::dec << std::endl;
+    std::cout << "[" << name() << "] time " << m_cpt_cycles <<" read " << m_cpt_read << " address = " << std::hex << addr << " data = " << data << std::dec << std::endl;
 #endif
 
     m_cpt_read++;
@@ -135,6 +136,7 @@ tmpl(void)::transition()
 		reload();
 		return;
 	}
+    m_cpt_cycles++;
 	m_vci_fsm.transition();
 }
 
