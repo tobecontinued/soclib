@@ -51,6 +51,7 @@ private:
   uint32_t                m_id;
   iss_t                   m_iss;
   uint32_t                m_irq;
+  std::map<sc_core::sc_time, std::pair<int, bool> > m_pending_irqs;
   sc_core::sc_time        m_simulation_time;
   pdes_local_time        *m_pdes_local_time;
   pdes_activity_status   *m_pdes_activity_status;
@@ -157,7 +158,7 @@ protected:
   
 public:
   tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci_initiator;   // VCI initiator port
-  //std::vector<tlm_utils::simple_target_socket_tagged<VciXcache,32,tlm::tlm_base_protocol_types> *> p_irq_target;  // IRQ target port
+  std::vector<tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types> *> p_irq_target;  // IRQ target port
   
   VciXcacheWrapper(
 		   sc_core::sc_module_name name,

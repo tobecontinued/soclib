@@ -77,17 +77,15 @@ tmpl (/**/)::VciXcacheWrapper
   // bind initiator
   p_vci_initiator(*this);                     
 
-  /*
   //register callback function IRQ TARGET SOCKET
-  //for(int i=0; i<iss_t::n_irq; i++){
-  for(int i=0; i<1; i++){
+  for(int i=0; i<iss_t::n_irq; i++){
     std::ostringstream irq_name;
     irq_name << "irq" << i;
-    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciXcache,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
     
-    p_irq_target[i]->register_nb_transport_fw(this, &VciXcache::my_nb_transport_fw, i);
+    p_irq_target[i]->register_nb_transport_fw(this, &VciXcacheWrapper::my_nb_transport_fw, i);
   }
-  */
+
   m_error       = false;
   
   m_iss.setDCacheInfo(dcache_words*4,1,dcache_lines);
@@ -155,18 +153,15 @@ tmpl (void)::execLoop ()
     std::cout << name() << " after cache access: " << irsp << ' ' << drsp << std::endl;
 #endif
     
-    /*
-    while ( ! m_pending_irqs.empty() &&
-	    m_pending_irqs.begin()->first <= c0.time() ) {
-      std::map<tlmt_core::tlmt_time, 
-	std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
+    while ( ! m_pending_irqs.empty() && m_pending_irqs.begin()->first <= m_pdes_local_time->get() ) {
+      std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
       if ( i->second.second )
 	m_irq |= 1<<i->second.first;
       else
 	m_irq &= ~(1<<i->second.first);
       m_pending_irqs.erase(i);
     }
-    */
+
     uint32_t nc = 0;
     // Now if we had a delay, give the information to the CPU,
     // with the cache state before fetching the answer.
@@ -536,30 +531,27 @@ tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw
   tlm::tlm_phase           &phase,     // phase
   sc_core::sc_time         &time)      // time
 {
-#if XCACHE_DEBUG
-  std::cout << "[" << name() << "] receive Interruption " << id << " time = " << time << std::endl;
+  bool v = (bool) atou(payload.get_data_ptr(), 0);
+ 
+#ifdef SOCLIB_MODULE_DEBUG
+  std::cout << name() << " receive Interrupt " << id << " value " << v << " time " << time.value() << std::endl;
 #endif
+
+  if(m_pending_irqs.find(time)!= m_pending_irqs.end()){
+    std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.find(time);
+    if(i->second.first == id)
+      m_pending_irqs.erase(i);
+    else
+      m_pending_irqs[time] = std::pair<int, bool>(id, v);
+  }
+  else{
+    m_pending_irqs[time] = std::pair<int, bool>(id, v);
+  }
+
+  m_pending_irqs[time] = std::pair<int, bool>(id, v);
 
   return tlm::TLM_COMPLETED;
 } // end backward nb transport 
-
-/*
-tmpl (void)::irqReceived (
-	bool v, const tlmt_core::
-	tlmt_time & time, void *private_data)
-{
-    int no = (int)(long)private_data;
-	std::cout
-		<< name()
-		<< " at " << c0.time()
-		<< " Received irq " << no
-		<< " dated " << time
-		<< " val: " << v
-		<< std::endl;
-
-	m_pending_irqs[time] = std::pair<int, bool>(no, v);
-}
-*/
 
 
 }}
