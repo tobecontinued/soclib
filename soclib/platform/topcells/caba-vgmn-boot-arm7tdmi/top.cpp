@@ -39,8 +39,7 @@
 
 #include "mapping_table.h"
 #include "arm7tdmi.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 //#include "vci_timer.h"
 //#include "vci_dma.h"
 #include "vci_ram.h"
@@ -110,8 +109,6 @@ int _main(int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
    
-	soclib::caba::ICacheSignals signal_arm_icache0("signal_arm_icache0");
-	soclib::caba::DCacheSignals signal_arm_dcache0("signal_arm_dcache0");
 	sc_signal<bool> signal_arm0_it0("signal_arm0_it0"); 
 	sc_signal<bool> signal_arm0_it1("signal_arm0_it1"); 
 
@@ -136,10 +133,8 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<vci_param> 
-		cache0("cache0", maptab,IntTab(0),1,1,1,1);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::ARM7TDMIIss> > arm0("arm0", 0,maptab,IntTab(0),1,1,1,1,1,1);
 
-	soclib::caba::IssWrapper<soclib::common::ARM7TDMIIss> arm0("arm0", 0);
 
 	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> 
@@ -161,7 +156,6 @@ int _main(int argc, char *argv[])
 	//	Net-List
  
 	arm0.p_clk(signal_clk);  
-	cache0.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
 //	vcifb.p_clk(signal_clk);
@@ -169,7 +163,6 @@ int _main(int argc, char *argv[])
 //	vcidma.p_clk(signal_clk);
   
 	arm0.p_resetn(signal_resetn);  
-	cache0.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
 //	vcifb.p_resetn(signal_resetn);
@@ -178,12 +171,8 @@ int _main(int argc, char *argv[])
   
 	arm0.p_irq[0](signal_arm0_it0); 
 	arm0.p_irq[1](signal_arm0_it1); 
-	arm0.p_icache(signal_arm_icache0);
-	arm0.p_dcache(signal_arm_dcache0);
         
-	cache0.p_icache(signal_arm_icache0);
-	cache0.p_dcache(signal_arm_dcache0);
-	cache0.p_vci(signal_vci_m0);
+	arm0.p_vci(signal_vci_m0);
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
 
@@ -221,8 +210,6 @@ int _main(int argc, char *argv[])
 	sc_trace(tf, signal_clk, "signal_clk");
 	sc_trace(tf, signal_resetn, "signal_resetn");
    
-//	vci_trace(tf, signal_arm_icache0, "signal_arm_icache0");
-//	vci_trace(tf, signal_arm_dcache0, "signal_arm_dcache0");
 	sc_trace(tf, signal_arm0_it0, "signal_arm0_it0"); 
 	sc_trace(tf, signal_arm0_it1, "signal_arm0_it1"); 
 

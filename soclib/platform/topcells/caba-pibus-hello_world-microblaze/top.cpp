@@ -3,8 +3,7 @@
 
 #include "mapping_table.h"
 #include "microblaze.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_pi_initiator_wrapper.h"
@@ -31,8 +30,6 @@ int _main(int argc, char *argv[])
    sc_clock    signal_clk("signal_clk");
    sc_signal<bool> signal_resetn("signal_resetn");
    
-   soclib::caba::ICacheSignals signal_mb_icache("signal_mb_icache");
-   soclib::caba::DCacheSignals signal_mb_dcache("signal_mb_dcache");
    sc_signal<bool> signal_mb_it("signal_mb_it"); 
 
    soclib::caba::Pibus pibus("pibus");
@@ -48,9 +45,7 @@ int _main(int argc, char *argv[])
 
    // Components
 
-   soclib::caba::VciXCache<vci_param> cache("cache", maptab,0,8,4,8,4);
-
-   soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb("mb", 12);
+   soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MicroBlazeIss> > mb("mb", 0,maptab,0,1,8,4,1,8,4);
 
    soclib::common::Loader loader("soft/a.out");
    soclib::caba::VciRam<vci_param> vcimultiram("vcimultiram", IntTab(0), maptab, loader);
@@ -64,7 +59,6 @@ int _main(int argc, char *argv[])
    // Net-List
  
    mb.p_clk(signal_clk);  
-   cache.p_clk(signal_clk);
    vcimultiram.p_clk(signal_clk);
    vcitty.p_clk(signal_clk);
    cache_wrapper.p_clk(signal_clk);
@@ -73,7 +67,6 @@ int _main(int argc, char *argv[])
    bcu.p_clk(signal_clk);
 
    mb.p_resetn(signal_resetn);  
-   cache.p_resetn(signal_resetn);
    vcimultiram.p_resetn(signal_resetn);
    vcitty.p_resetn(signal_resetn);
    cache_wrapper.p_resetn(signal_resetn);
@@ -82,12 +75,7 @@ int _main(int argc, char *argv[])
    bcu.p_resetn(signal_resetn);
   
    mb.p_irq[0](signal_mb_it); 
-   mb.p_icache(signal_mb_icache);
-   mb.p_dcache(signal_mb_dcache);
-  
-   cache.p_icache(signal_mb_icache);
-   cache.p_dcache(signal_mb_dcache);
-   cache.p_vci(signal_vci_m);
+   mb.p_vci(signal_vci_m);
 
    vcimultiram.p_vci(signal_vci_vcimultiram);
 

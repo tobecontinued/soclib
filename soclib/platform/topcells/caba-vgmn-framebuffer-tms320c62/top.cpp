@@ -45,8 +45,8 @@
 
 #include "mapping_table.h"
 #include "tms320c62.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
+#include "ississ2.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -80,9 +80,6 @@ int _main(int argc, char *argv[])
   sc_clock		signal_clk("signal_clk");
   sc_signal<bool> signal_resetn("signal_resetn");
 
-  soclib::caba::ICacheSignals signal_tms320c62_icache("signal_tms320c62_icache");
-  soclib::caba::DCacheSignals signal_tms320c62_dcache("signal_tms320c62_dcache");
-
   soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
 
   soclib::caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
@@ -96,9 +93,9 @@ int _main(int argc, char *argv[])
   sc_signal<bool>        signal_tms320c62_irq[32];
 
   // Components
-  soclib::caba::VciXCache<vci_param> cache ("cache", maptab, IntTab(0), 16,8,16,4);
-
-  soclib::caba::IssWrapper<soclib::common::Tms320C6xIss> tms320c62("tms320c62", 0);
+  typedef soclib::common::IssIss2<soclib::common::Tms320C6xIss> iss_t;
+  
+  soclib::caba::VciXcacheWrapper<vci_param, iss_t > tms320c62("tms320c62", 0,maptab,IntTab(0),1,16,8,1,16,8);
 
   soclib::common::Loader loader("soft/bin.soft");
   soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -112,14 +109,12 @@ int _main(int argc, char *argv[])
   //	Net-List
 
   tms320c62.p_clk(signal_clk);
-  cache.p_clk(signal_clk);
   vcimultiram0.p_clk(signal_clk);
   vcimultiram1.p_clk(signal_clk);
   vcifb.p_clk(signal_clk);
   vcitimer.p_clk(signal_clk);
 
   tms320c62.p_resetn(signal_resetn);
-  cache.p_resetn(signal_resetn);
   vcimultiram0.p_resetn(signal_resetn);
   vcimultiram1.p_resetn(signal_resetn);
   vcifb.p_resetn(signal_resetn);
@@ -128,12 +123,7 @@ int _main(int argc, char *argv[])
   for (int i = 0; i<32; i++)
     tms320c62.p_irq[i]      (signal_tms320c62_irq[i]);
 
-  tms320c62.p_icache(signal_tms320c62_icache);
-  tms320c62.p_dcache(signal_tms320c62_dcache);
-
-  cache.p_icache(signal_tms320c62_icache);
-  cache.p_dcache(signal_tms320c62_dcache);
-  cache.p_vci(signal_vci_m0);
+  tms320c62.p_vci(signal_vci_m0);
 
   vcimultiram0.p_vci(signal_vci_vcimultiram0);
 

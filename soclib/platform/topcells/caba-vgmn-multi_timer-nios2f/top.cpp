@@ -30,8 +30,8 @@
 
 #include "mapping_table.h"
 #include "nios2_fast.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
+#include "ississ2.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -68,23 +68,15 @@ int _main(int argc, char *argv[]) {
 	sc_clock signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
 
-	soclib::caba::ICacheSignals signal_nios2_icache0("signal_nios2_icache0");
-	soclib::caba::DCacheSignals signal_nios2_dcache0("signal_nios2_dcache0");
 	sc_signal<bool> signal_nios2_irq00("signal_nios2_irq0");
 	sc_signal<bool> signal_nios2_irq0[32];
 
-	soclib::caba::ICacheSignals signal_nios2_icache1("signal_nios2_icache1");
-	soclib::caba::DCacheSignals signal_nios2_dcache1("signal_nios2_dcache1");
 	sc_signal<bool> signal_nios2_irq10("signal_nios2_irq1");
 	sc_signal<bool> signal_nios2_irq1[32];
 
-	soclib::caba::ICacheSignals signal_nios2_icache2("signal_nios2_icache2");
-	soclib::caba::DCacheSignals signal_nios2_dcache2("signal_nios2_dcache2");
 	sc_signal<bool> signal_nios2_irq20("signal_nios2_irq2");
 	sc_signal<bool> signal_nios2_irq2[32];
 
-	soclib::caba::ICacheSignals signal_nios2_icache3("signal_nios2_icache3");
-	soclib::caba::DCacheSignals signal_nios2_dcache3("signal_nios2_dcache3");
 	sc_signal<bool> signal_nios2_irq30("signal_nios2_irq3");
 	sc_signal<bool> signal_nios2_irq3[32];
 
@@ -108,16 +100,13 @@ int _main(int argc, char *argv[]) {
 	sc_signal<bool> signal_tty_irq2("signal_tty_irq2");
 	sc_signal<bool> signal_tty_irq3("signal_tty_irq3");
 
-	// Components
-	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab, IntTab(0), 8, 4, 8, 4);
-	soclib::caba::VciXCache<vci_param> cache1("cache1", maptab, IntTab(1), 8, 4, 8, 4);
-	soclib::caba::VciXCache<vci_param> cache2("cache2", maptab, IntTab(2), 8, 4, 8, 4);
-	soclib::caba::VciXCache<vci_param> cache3("cache3", maptab, IntTab(3), 8, 4, 8, 4);
+	typedef soclib::common::IssIss2<soclib::common::Nios2fIss> iss_t;
 
-	soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios20("nios2_0", 0);
-	soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios21("nios2_1", 1);
-	soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios22("nios2_2", 2);
-	soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios23("nios2_3", 3);
+	// Components
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t > nios2_0("nios2_0", 0,maptab,IntTab(0),1,8,4,1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t > nios2_1("nios2_1", 1,maptab,IntTab(1),1,8,4,1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t > nios2_2("nios2_2", 2,maptab,IntTab(2),1,8,4,1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t > nios2_3("nios2_3", 3,maptab,IntTab(3),1,8,4,1,8,4);
 
 	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -135,10 +124,6 @@ int _main(int argc, char *argv[]) {
 	nios21.p_clk(signal_clk);
 	nios22.p_clk(signal_clk);
 	nios23.p_clk(signal_clk);
-	cache0.p_clk(signal_clk);
-	cache1.p_clk(signal_clk);
-	cache2.p_clk(signal_clk);
-	cache3.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
 	vcilocks.p_clk(signal_clk);
@@ -150,10 +135,6 @@ int _main(int argc, char *argv[]) {
 	nios21.p_resetn(signal_resetn);
 	nios22.p_resetn(signal_resetn);
 	nios23.p_resetn(signal_resetn);
-	cache0.p_resetn(signal_resetn);
-	cache1.p_resetn(signal_resetn);
-	cache2.p_resetn(signal_resetn);
-	cache3.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
 	vcilocks.p_resetn(signal_resetn);
@@ -161,53 +142,34 @@ int _main(int argc, char *argv[]) {
 	vgmn.p_resetn(signal_resetn);
 	vcitty.p_resetn(signal_resetn);
 
-	nios20.p_icache(signal_nios2_icache0);
-	nios20.p_dcache(signal_nios2_dcache0);
 	//	  for (int i = 0; i<2; i++)
 	//	  nios20.p_irq[i] (signal_nios2_irq0[i]);
 	for (int i = 1; i<32; i++)
 		nios20.p_irq[i](signal_nios2_irq0[i]);
 	nios20.p_irq[0](signal_nios2_irq00);
 
-	nios21.p_icache(signal_nios2_icache1);
-	nios21.p_dcache(signal_nios2_dcache1);
 	//	for (int i = 0; i<2; i++)
 	//	  nios21.p_irq[i] (signal_nios2_irq1[i]);
 	for (int i = 1; i<32; i++)
 		nios21.p_irq[i](signal_nios2_irq1[i]);
 	nios21.p_irq[0](signal_nios2_irq10);
 
-	nios22.p_icache(signal_nios2_icache2);
-	nios22.p_dcache(signal_nios2_dcache2);
 	// 	for (int i = 0; i<2; i++)
 	//	  nios22.p_irq[i] (signal_nios2_irq2[i]);
 	for (int i = 1; i<32; i++)
 		nios22.p_irq[i](signal_nios2_irq2[i]);
 	nios22.p_irq[0](signal_nios2_irq20);
 
-	nios23.p_icache(signal_nios2_icache3);
-	nios23.p_dcache(signal_nios2_dcache3);
 	//	for (int i = 0; i<2; i++)
 	//	  nios23.p_irq[i] (signal_nios2_irq3[i]);
 	for (int i = 1; i<32; i++)
 		nios23.p_irq[i](signal_nios2_irq3[i]);
 	nios23.p_irq[0](signal_nios2_irq30);
 
-	cache0.p_icache(signal_nios2_icache0);
-	cache0.p_dcache(signal_nios2_dcache0);
-	cache0.p_vci(signal_vci_m0);
-
-	cache1.p_icache(signal_nios2_icache1);
-	cache1.p_dcache(signal_nios2_dcache1);
-	cache1.p_vci(signal_vci_m1);
-
-	cache2.p_icache(signal_nios2_icache2);
-	cache2.p_dcache(signal_nios2_dcache2);
-	cache2.p_vci(signal_vci_m2);
-
-	cache3.p_icache(signal_nios2_icache3);
-	cache3.p_dcache(signal_nios2_dcache3);
-	cache3.p_vci(signal_vci_m3);
+	nios2_0.p_vci(signal_vci_m0);
+	nios2_1.p_vci(signal_vci_m1);
+	nios2_2.p_vci(signal_vci_m2);
+	nios2_3.p_vci(signal_vci_m3);
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
 

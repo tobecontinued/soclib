@@ -42,8 +42,7 @@
 
 #include "mapping_table.h"
 #include "nios2_fast.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_vgmn.h"
@@ -86,8 +85,6 @@ int _main (int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
 
-	soclib::caba::ICacheSignals signal_nios2_icache("signal_nios2_icache");
-	soclib::caba::DCacheSignals signal_nios2_dcache("signal_nios2_dcache");
 	sc_signal<bool> signal_nios2_it0("signal_nios2_it0"); 
 	sc_signal<bool> signal_nios2_it1("signal_nios2_it1"); 
 	sc_signal<bool> signal_nios2_it2("signal_nios2_it2"); 
@@ -106,9 +103,8 @@ int _main (int argc, char *argv[])
 	//	INSTANCIATED  COMPONENTS
 	/////////////////////////////////////////////////////////
 
-	soclib::caba::VciXCache<vci_param> cache ("cache", maptab, IntTab(0), 8,4,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::Nios2fIss> > nios2 (nios2"", 0,maptab, IntTab(0), 1,8,4,1,8,4);
 
-	soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios2("nios2", 0);
 
 	soclib::common::Loader loader("soft/bin.soft");
 
@@ -129,24 +125,18 @@ int _main (int argc, char *argv[])
 	//////////////////////////////////////////////////////////
 
 	nios2.p_clk         	(signal_clk);  
-	cache.p_clk       	(signal_clk);
 	vcitty.p_clk        	(signal_clk);
 	vcimultiram0.p_clk  	(signal_clk);
 
 	nios2.p_resetn        (signal_resetn);  
-	cache.p_resetn       	(signal_resetn);
 	vcitty.p_resetn       (signal_resetn);
 	vcimultiram0.p_resetn (signal_resetn);
 
-	nios2.p_icache   	(signal_nios2_icache);
-	nios2.p_dcache   	(signal_nios2_dcache);
 
 	for (int i = 0; i<32; i++)
 		nios2.p_irq[i]      (signal_nios2_irq[i]);
 
-	cache.p_icache        (signal_nios2_icache);
-	cache.p_dcache        (signal_nios2_dcache);
-	cache.p_vci           (signal_vci_m0);
+	nios2.p_vci           (signal_vci_m0);
 
 	vcimultiram0.p_vci      (signal_vci_t0);
 	vcitty.p_vci      	(signal_vci_t1);

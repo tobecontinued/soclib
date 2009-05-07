@@ -35,8 +35,7 @@
 
 #include "mapping_table.h"
 #include "nios2_fast.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -98,8 +97,6 @@ int _main(int argc, char *argv[])
   sc_clock		signal_clk("signal_clk");
   sc_signal<bool> signal_resetn("signal_resetn");
    
-  soclib::caba::ICacheSignals signal_nios2_icache0("signal_nios2_icache0");
-  soclib::caba::DCacheSignals signal_nios2_dcache0("signal_nios2_dcache0");
 
   soclib::caba::VciSignals<vci_param>  signal_vci_initiator_m0("signal_vci_initiator_m0");
 
@@ -122,21 +119,17 @@ int _main(int argc, char *argv[])
   soclib::caba::AvalonSignals<avalon_param>  avalon_switch_wrapper_t3("avalon_switch_wrapper_t3");
   soclib::caba::AvalonSignals<avalon_param>  avalon_switch_wrapper_t4("avalon_switch_wrapper_t4");
 
+
+#if defined(USE_GDB_SERVER)
+  typedef soclib::common::GdbServer<soclib::common::IssIss2<soclib::common::Nios2fIss> > iss_t;
+#elif defined(USE_PROFILER)
+  typedef soclib::common::IssIss2<soclib::common::IssProfiler<soclib::common::Nios2fIss> > iss_t;
+#else
+  typedef soclib::common::IssIss2<soclib::common::Nios2fIss> iss_t;
+#endif
+
   // Components
-  soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
-
-#ifdef USE_GDB_SERVER
-  // uncomment this line if you want processors frozen at boot
-  // soclib::common::GdbServer<soclib::common::Nios2fIss>::start_frozen();
-  soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios2("nios2", 0);
-#else
-#ifdef USE_PROFILER
-  soclib::caba::IssWrapper<soclib::common::IssProfiler<soclib::common::Nios2fIss> > nios2("nios2", 0);
-#else
-  soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios2("nios2", 0);
-#endif
-#endif
-
+  soclib::caba::VciXcacheWrapper<vci_param, iss_t > nios2("nios2cache0", maptab,IntTab(),10,,8,4,1,8,4);
 
   soclib::common::Loader loader("soft/bin.soft");
   soclib::caba::VciRam<vci_param> vciram0("vciram0", IntTab(0), maptab, loader);
@@ -157,7 +150,6 @@ int _main(int argc, char *argv[])
   //	Net-List
 
   nios2.p_clk(signal_clk);  
-  cache0.p_clk(signal_clk);
   vciram0.p_clk(signal_clk);
   vciram1.p_clk(signal_clk);
   vcitty.p_clk(signal_clk);
@@ -165,7 +157,6 @@ int _main(int argc, char *argv[])
   vcifb.p_clk(signal_clk);
   
   nios2.p_resetn(signal_resetn);  
-  cache0.p_resetn(signal_resetn);
   vciram0.p_resetn(signal_resetn);
   vciram1.p_resetn(signal_resetn);
   vcitty.p_resetn(signal_resetn);
@@ -176,12 +167,8 @@ int _main(int argc, char *argv[])
     nios2.p_irq[i]      (signal_nios2_irq[i]);
   nios2.p_irq[0](signal_nios2_irq0);
 
-  nios2.p_icache(signal_nios2_icache0);
-  nios2.p_dcache(signal_nios2_dcache0);
-        
-  cache0.p_icache(signal_nios2_icache0);
-  cache0.p_dcache(signal_nios2_dcache0);
-  cache0.p_vci(signal_vci_initiator_m0);
+
+  nios2.p_vci(signal_vci_initiator_m0);
   
   cache0_wrapper.p_clk(signal_clk);
   cache0_wrapper.p_resetn(signal_resetn);

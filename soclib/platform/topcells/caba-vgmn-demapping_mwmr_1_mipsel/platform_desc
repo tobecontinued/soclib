@@ -4,13 +4,12 @@
 
 todo = Platform('caba', 'top.cpp',
 				uses = [
-	Uses('caba:iss_wrapper', iss_t = 'common:mipsel'),
+	Uses('caba:vci_xcache_wrapper', iss_t = 'common:ississ2', iss2_t = 'common:mipsel'),
 	Uses('caba:vci_locks'),
 	Uses('caba:vci_ram'),
 	Uses('caba:vci_multi_tty'),
 	Uses('caba:vci_mwmr_controller'),
 	Uses('caba:vci_vgmn'),
-	Uses('caba:vci_xcache'),
 	Uses('common:elf_file_loader'),
 	Uses('caba:Demapping', fifo_depth = 64),
 	],

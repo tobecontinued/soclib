@@ -3,8 +3,8 @@
 
 #include "mapping_table.h"
 #include "microblaze.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
+#include "ississ2.h"
 #include "vci_pci.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -32,20 +32,9 @@ int _main(int argc, char *argv[])
    sc_clock    signal_clk("signal_clk");
    sc_signal<bool> signal_resetn("signal_resetn");
    
-   soclib::caba::ICacheSignals signal_mb_icache0("signal_mb_icache0");
-   soclib::caba::DCacheSignals signal_mb_dcache0("signal_mb_dcache0");
    sc_signal<bool> signal_mb0_it("signal_mb0_it"); 
-  
-   soclib::caba::ICacheSignals   signal_mb_icache1("signal_mb_icache1");
-   soclib::caba::DCacheSignals   signal_mb_dcache1("signal_mb_dcache1");
    sc_signal<bool> signal_mb1_it("signal_mb1_it"); 
-  
-   soclib::caba::ICacheSignals   signal_mb_icache2("signal_mb_icache2");
-   soclib::caba::DCacheSignals   signal_mb_dcache2("signal_mb_dcache2");
    sc_signal<bool> signal_mb2_it("signal_mb2_it"); 
-  
-   soclib::caba::ICacheSignals signal_mb_icache3("signal_mb_icache3");
-   soclib::caba::DCacheSignals signal_mb_dcache3("signal_mb_dcache3");
    sc_signal<bool> signal_mb3_it("signal_mb3_it"); 
    
    sc_signal<bool> signal_pci_it("signal_pci_it"); 
@@ -81,16 +70,12 @@ int _main(int argc, char *argv[])
    			sc_signal_rv<32>   AD32("AD32")       ;
 
    // Components
+   typedef soclib::common::IssIss2<soclib::common::MicroBlazeIss> iss_t;
 
-   soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
-   soclib::caba::VciXCache<vci_param> cache1("cache1", maptab,IntTab(1),8,4,8,4);
-   soclib::caba::VciXCache<vci_param> cache2("cache2", maptab,IntTab(2),8,4,8,4);
-   soclib::caba::VciXCache<vci_param> cache3("cache3", maptab,IntTab(3),8,4,8,4);
-
-   soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb0("mb0", 0);
-   soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb1("mb1", 1);
-   soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb2("mb2", 2);
-   soclib::caba::IssWrapper<soclib::common::MicroBlazeIss> mb3("mb3", 3);
+   soclib::caba::VciXcacheWrapper<vci_param, iss_t > mb0("mb0", 0,maptab,IntTab(0),1,8,4,1,8,4);
+   soclib::caba::VciXcacheWrapper<vci_param, iss_t > mb1("mb1", 1,maptab,IntTab(1),1,8,4,1,8,4);
+   soclib::caba::VciXcacheWrapper<vci_param, iss_t > mb2("mb2", 2,maptab,IntTab(2),1,8,4,1,8,4);
+   soclib::caba::VciXcacheWrapper<vci_param, iss_t > mb3("mb3", 3,maptab,IntTab(3),1,8,4,1,8,4);
 
    soclib::common::Loader loader("soft/bin.soft");
    soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -106,10 +91,6 @@ int _main(int argc, char *argv[])
    mb1.p_clk(signal_clk);  
    mb2.p_clk(signal_clk);  
    mb3.p_clk(signal_clk);  
-   cache0.p_clk(signal_clk);
-   cache1.p_clk(signal_clk);
-   cache2.p_clk(signal_clk);
-   cache3.p_clk(signal_clk);
    vcimultiram0.p_clk(signal_clk);
    vcipci0.p_clk(signal_clk);
    vcipci1.p_clk(signal_clk);
@@ -118,45 +99,19 @@ int _main(int argc, char *argv[])
    mb1.p_resetn(signal_resetn);  
    mb2.p_resetn(signal_resetn);  
    mb3.p_resetn(signal_resetn);  
-   cache0.p_resetn(signal_resetn);
-   cache1.p_resetn(signal_resetn);
-   cache2.p_resetn(signal_resetn);
-   cache3.p_resetn(signal_resetn);
    vcimultiram0.p_resetn(signal_resetn);
    vcipci0.p_resetn(signal_resetn);
    vcipci1.p_resetn(signal_resetn);
    
    mb0.p_irq[0](signal_mb0_it); 
-   mb0.p_icache(signal_mb_icache0);
-   mb0.p_dcache(signal_mb_dcache0);
-  
    mb1.p_irq[0](signal_mb1_it); 
-   mb1.p_icache(signal_mb_icache1);
-   mb1.p_dcache(signal_mb_dcache1);
-  
    mb2.p_irq[0](signal_mb2_it); 
-   mb2.p_icache(signal_mb_icache2);
-   mb2.p_dcache(signal_mb_dcache2);
-  
    mb3.p_irq[0](signal_mb3_it); 
-   mb3.p_icache(signal_mb_icache3);
-   mb3.p_dcache(signal_mb_dcache3);
-        
-   cache0.p_icache(signal_mb_icache0);
-   cache0.p_dcache(signal_mb_dcache0);
-   cache0.p_vci(signal_vci_m0);
 
-   cache1.p_icache(signal_mb_icache1);
-   cache1.p_dcache(signal_mb_dcache1);
-   cache1.p_vci(signal_vci_m1);
-
-   cache2.p_icache(signal_mb_icache2);
-   cache2.p_dcache(signal_mb_dcache2);
-   cache2.p_vci(signal_vci_m2);
-
-   cache3.p_icache(signal_mb_icache3);
-   cache3.p_dcache(signal_mb_dcache3);
-   cache3.p_vci(signal_vci_m3);
+   mb0.p_vci(signal_vci_m0);
+   mb1.p_vci(signal_vci_m1);
+   mb2.p_vci(signal_vci_m2);
+   mb3.p_vci(signal_vci_m3);
 
    vcimultiram0.p_vci(signal_vci_vcimultiram0);
 
@@ -230,8 +185,6 @@ int _main(int argc, char *argv[])
   sc_trace(tf, Cbe, "Cbe");
 	 
  //  sc_trace(tf, signal_vci_m0.address, "vci_m0_addr");
- //  sc_trace(tf, signal_mb_icache0.req, "icache0_req");
- //  sc_trace(tf, signal_mb_icache0.adr, "icache0_addr");
 #endif
 
    int ncycles = 1000000;

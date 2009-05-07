@@ -39,8 +39,8 @@
 
 #include "mapping_table.h"
 #include "st231.hh"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
+#include "ississ2.h"
 #include "vci_timer.h"
 #include "vci_dma.h"
 #include "vci_ram.h"
@@ -106,8 +106,6 @@ int _main(int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
    
-	soclib::caba::ICacheSignals signal_arm_icache0("signal_arm_icache0");
-	soclib::caba::DCacheSignals signal_arm_dcache0("signal_arm_dcache0");
 	sc_signal<bool> signal_arm0_it0("signal_arm0_it0"); 
 	sc_signal<bool> signal_arm0_it1("signal_arm0_it1"); 
 
@@ -132,11 +130,10 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXCache<vci_param> 
-		cache0("cache0", maptab,IntTab(0),1,1,1,1);
+	typedef soclib::common::IssIss2<soclib::common::ST231iss> iss_t;
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t > st231("st231", 0,maptab,IntTab(0),1,1,1,1,1,1);
 
 	st231::mapfile = "soft/bin.maps";
-	soclib::caba::IssWrapper<soclib::common::ST231iss> st231("st231", 0);
 	soclib::common::Loader loader("soft/bin.soft");
 
 	soclib::caba::VciRam<vci_param> 
@@ -158,7 +155,6 @@ int _main(int argc, char *argv[])
 	//	Net-List
  
 	st231.p_clk(signal_clk);  
-	cache0.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
 //	vcifb.p_clk(signal_clk);
@@ -166,7 +162,6 @@ int _main(int argc, char *argv[])
 //	vcidma.p_clk(signal_clk);
   
 	st231.p_resetn(signal_resetn);  
-	cache0.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
 //	vcifb.p_resetn(signal_resetn);
@@ -175,12 +170,7 @@ int _main(int argc, char *argv[])
   
 	st231.p_irq[0](signal_arm0_it0); 
 	st231.p_irq[1](signal_arm0_it1); 
-	st231.p_icache(signal_arm_icache0);
-	st231.p_dcache(signal_arm_dcache0);
-        
-	cache0.p_icache(signal_arm_icache0);
-	cache0.p_dcache(signal_arm_dcache0);
-	cache0.p_vci(signal_vci_m0);
+	st231.p_vci(signal_vci_m0);
 
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
 

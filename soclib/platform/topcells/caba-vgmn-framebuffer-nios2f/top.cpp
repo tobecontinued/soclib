@@ -37,8 +37,6 @@
 #include "nios2_fast.h"
 #include "ississ2.h"
 #include "vci_xcache_wrapper.h"
-// #include "iss_wrapper.h"
-// #include "vci_xcache.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -78,9 +76,6 @@ int _main(int argc, char *argv[])
   sc_clock		signal_clk("signal_clk");
   sc_signal<bool> signal_resetn("signal_resetn");
    
-//   soclib::caba::ICacheSignals signal_nios2_icache0("signal_nios2_icache0");
-//   soclib::caba::DCacheSignals signal_nios2_dcache0("signal_nios2_dcache0");
-
   soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
 
   soclib::caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
@@ -95,9 +90,6 @@ int _main(int argc, char *argv[])
   
   // Components
   soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::Nios2fIss> > nios2("nios2", 0, maptab,IntTab(0),  1,8,4, 1,8,4);
-//   soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
-
-//   soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios2("nios2", 0);
 
   soclib::common::Loader loader("soft/bin.soft");
   soclib::caba::VciRam<vci_param> vciram0("vciram0", IntTab(0), maptab, loader);
@@ -111,14 +103,12 @@ int _main(int argc, char *argv[])
   //	Net-List
 
   nios2.p_clk(signal_clk);  
-//   cache0.p_clk(signal_clk);
   vciram0.p_clk(signal_clk);
   vciram1.p_clk(signal_clk);
   vcifb.p_clk(signal_clk);
   vcitimer.p_clk(signal_clk);
   
   nios2.p_resetn(signal_resetn);  
-//   cache0.p_resetn(signal_resetn);
   vciram0.p_resetn(signal_resetn);
   vciram1.p_resetn(signal_resetn);
   vcifb.p_resetn(signal_resetn);
@@ -126,13 +116,6 @@ int _main(int argc, char *argv[])
   
   for (int i = 0; i<32; i++)
     nios2.p_irq[i]      (signal_nios2_irq[i]);
-
-//   nios2.p_icache(signal_nios2_icache0);
-//   nios2.p_dcache(signal_nios2_dcache0);
-        
-//   cache0.p_icache(signal_nios2_icache0);
-//   cache0.p_dcache(signal_nios2_dcache0);
-//   cache0.p_vci(signal_vci_m0);
 
   nios2.p_vci(signal_vci_m0);
 

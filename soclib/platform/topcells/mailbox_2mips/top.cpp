@@ -31,8 +31,8 @@
 
 #include "mapping_table.h"
 #include "mips.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
+#include "ississ2.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -80,8 +80,6 @@ int _main(int argc, char *argv[])
 	sc_clock		signal_clk("signal_clk");
 	sc_signal<bool> signal_resetn("signal_resetn");
    
-	soclib::caba::ICacheSignals signal_mips_icache0("signal_mips_icache0");
-	soclib::caba::DCacheSignals signal_mips_dcache0("signal_mips_dcache0");
 	sc_signal<bool> signal_mips0_it0("signal_mips0_it0"); 
 	sc_signal<bool> signal_mips0_it1("signal_mips0_it1"); 
 	sc_signal<bool> signal_mips0_it2("signal_mips0_it2"); 
@@ -89,8 +87,6 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> signal_mips0_it4("signal_mips0_it4"); 
 	sc_signal<bool> signal_mips0_it5("signal_mips0_it5");
   
-	soclib::caba::ICacheSignals 	signal_mips_icache1("signal_mips_icache1");
-	soclib::caba::DCacheSignals 	signal_mips_dcache1("signal_mips_dcache1");
 	sc_signal<bool> signal_mips1_it0("signal_mips1_it0"); 
 	sc_signal<bool> signal_mips1_it1("signal_mips1_it1"); 
 	sc_signal<bool> signal_mips1_it2("signal_mips1_it2"); 
@@ -113,19 +109,14 @@ int _main(int argc, char *argv[])
 	
 	// Components
 
-	soclib::caba::VciXCache<vci_param> cache0("cache0", maptab,IntTab(0),8,4,8,4);
-	soclib::caba::VciXCache<vci_param> cache1("cache1", maptab,IntTab(1),8,4,8,4);
-	
 #ifdef USE_GDB_SERVER
-	// uncomment this line if you want processors frozen at boot
-	// soclib::common::GdbServer<soclib::common::MipsElIss>::start_frozen();
-
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips0("mips0", 0);
-	soclib::caba::IssWrapper<soclib::common::GdbServer<soclib::common::MipsElIss> > mips1("mips1", 1);
+	typedef soclib::common::IssIss2<soclib::common::GdbServer<soclib::common::MipsElIss> > iss_t;
 #else
-	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips0("mips0", 0);
-	soclib::caba::IssWrapper<soclib::common::MipsElIss> mips1("mips1", 1);
+	typedef soclib::common::IssIss2<soclib::common::MipsElIss> iss_t;
 #endif
+
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t > mips0("mips0", 0,maptab,IntTab(0),1,8,4,1,8,4);
+	soclib::caba::VciXcacheWrapper<vci_param, iss_t > mips1("mips1", 1,maptab,IntTab(1),1,8,4,1,8,4);
 
 	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
@@ -141,16 +132,12 @@ int _main(int argc, char *argv[])
  
 	mips0.p_clk(signal_clk);  
 	mips1.p_clk(signal_clk);  
-	cache0.p_clk(signal_clk);
-	cache1.p_clk(signal_clk);
 	vcimultiram0.p_clk(signal_clk);
 	vcimultiram1.p_clk(signal_clk);
 	vcitimer.p_clk(signal_clk);
   
 	mips0.p_resetn(signal_resetn);  
 	mips1.p_resetn(signal_resetn);  
-	cache0.p_resetn(signal_resetn);
-	cache1.p_resetn(signal_resetn);
 	vcimultiram0.p_resetn(signal_resetn);
 	vcimultiram1.p_resetn(signal_resetn);
 	vcitimer.p_resetn(signal_resetn);
@@ -161,8 +148,6 @@ int _main(int argc, char *argv[])
 	mips0.p_irq[3](signal_mips0_it3); 
 	mips0.p_irq[4](signal_mips0_it4); 
 	mips0.p_irq[5](signal_mips0_it5); 
-	mips0.p_icache(signal_mips_icache0);
-	mips0.p_dcache(signal_mips_dcache0);
   
 	mips1.p_irq[0](signal_mips1_it0); 
 	mips1.p_irq[1](signal_mips1_it1); 
@@ -170,17 +155,7 @@ int _main(int argc, char *argv[])
 	mips1.p_irq[3](signal_mips1_it3); 
 	mips1.p_irq[4](signal_mips1_it4); 
 	mips1.p_irq[5](signal_mips1_it5); 
-	mips1.p_icache(signal_mips_icache1);
-	mips1.p_dcache(signal_mips_dcache1);
-        
-	cache0.p_icache(signal_mips_icache0);
-	cache0.p_dcache(signal_mips_dcache0);
-	cache0.p_vci(signal_vci_m0);
-
-	cache1.p_icache(signal_mips_icache1);
-	cache1.p_dcache(signal_mips_dcache1);
-	cache1.p_vci(signal_vci_m1);
-	
+    
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
 
 	vcitimer.p_vci(signal_vci_vcitimer);

@@ -42,8 +42,7 @@
 
 #include "mapping_table.h"
 #include "nios2_fast.h"
-#include "iss_wrapper.h"
-#include "vci_xcache.h"
+#include "vci_xcache_wrapper.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "avalon_switch_config.h"
@@ -97,8 +96,6 @@ int _main (int argc, char *argv[])
   sc_clock		signal_clk("signal_clk");
   sc_signal<bool> signal_resetn("signal_resetn");
 
-  soclib::caba::ICacheSignals signal_nios2_icache("signal_nios2_icache");
-  soclib::caba::DCacheSignals signal_nios2_dcache("signal_nios2_dcache");
   sc_signal<bool> signal_nios2_it0("signal_nios2_it0"); 
   sc_signal<bool> signal_nios2_it1("signal_nios2_it1"); 
   sc_signal<bool> signal_nios2_it2("signal_nios2_it2"); 
@@ -130,9 +127,7 @@ int _main (int argc, char *argv[])
   //	INSTANCIATED  COMPONENTS
   /////////////////////////////////////////////////////////
 
-  soclib::caba::VciXCache<vci_param> cache ("cache", maptab, IntTab(0), 8,4,8,4);
-
-  soclib::caba::IssWrapper<soclib::common::Nios2fIss> nios2("nios2", 0);
+  soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::Nios2fIss> > nios2("nios2", 0, maptab, IntTab(0), 1,8,4,1,8,4);
 
   soclib::common::Loader loader("soft/bin.soft");
 
@@ -151,25 +146,17 @@ int _main (int argc, char *argv[])
   //////////////////////////////////////////////////////////
 
   nios2.p_clk         	(signal_clk);  
-  cache.p_clk       		(signal_clk);
   vcitty.p_clk        	(signal_clk);
   vciram0.p_clk  	(signal_clk);
 
   nios2.p_resetn        (signal_resetn);  
-  cache.p_resetn       	(signal_resetn);
   vcitty.p_resetn       (signal_resetn);
   vciram0.p_resetn (signal_resetn);
-
-  nios2.p_icache   	(signal_nios2_icache);
-  nios2.p_dcache   	(signal_nios2_dcache);
 
   for (int i = 0; i<32; i++)
     nios2.p_irq[i]      (signal_nios2_irq[i]);
 
-  cache.p_icache        (signal_nios2_icache);
-  cache.p_dcache        (signal_nios2_dcache);
-  //	cache.p_vci           (signal_vci_m0);
-  cache.p_vci           (vci_initiator_bus);
+  nios2.p_vci           (vci_initiator_bus);
 
 
   //connexion InitiatorWrapper & targetWrapper
@@ -245,21 +232,6 @@ int _main (int argc, char *argv[])
 	
   sc_trace(my_trace_file, signal_clk, "CLK");
   sc_trace(my_trace_file, signal_resetn, "RESETN");
-
-  sc_trace(my_trace_file, signal_nios2_icache.req, "ICACHE.REQ");
-  //sc_trace(my_trace_file, signal_nios2_icache.type, "ICACHE.TYPE");
-  sc_trace(my_trace_file, signal_nios2_icache.adr, "ICACHE.ADR");
-  sc_trace(my_trace_file, signal_nios2_icache.frz, "ICACHE.FRZ");
-  sc_trace(my_trace_file, signal_nios2_icache.ins, "ICACHE.INS");
-  sc_trace(my_trace_file, signal_nios2_icache.berr, "ICACHE.BERR");
-
-  sc_trace(my_trace_file, signal_nios2_dcache.req, "DCACHE.REQ");
-  sc_trace(my_trace_file, signal_nios2_dcache.type, "DCACHE.TYPE");
-  sc_trace(my_trace_file, signal_nios2_dcache.adr, "DCACHE.ADR");
-  sc_trace(my_trace_file, signal_nios2_dcache.frz, "DCACHE.FRZ");
-  sc_trace(my_trace_file, signal_nios2_dcache.wdata, "DCACHE.WDATA");
-  sc_trace(my_trace_file, signal_nios2_dcache.rdata, "DCACHE.RDATA");
-  sc_trace(my_trace_file, signal_nios2_dcache.berr, "DCACHE.BERR");
 
   sc_trace(my_trace_file, vci_target_bus1.rspack, "TARGET.RSPACK");
   sc_trace(my_trace_file, vci_target_bus1.rspval, "TARGET.RSPVAL");
