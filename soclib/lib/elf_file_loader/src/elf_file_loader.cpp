@@ -83,25 +83,42 @@ bool elf_load( const std::string &filename, Loader &loader )
                 flags,
                 actual_size,
                 blob ));
+
+        FOREACH( symp, sect->get_symbol_table() )
+        {
+            elfpp::symbol &sym = *(symp->second);
+            size_t symsize = sym.get_size();
+            uint8_t info = sym.get_info();
+
+            if ( ( ELF_ST_BIND(info) != elfpp::STB_LOCAL &&
+                   ELF_ST_BIND(info) != elfpp::STB_GLOBAL ) ||
+                 ELF_ST_TYPE(info) >= elfpp::STT_NUM )
+                continue;
+
+            uintptr_t addr =
+                (sym.get_section() ? sym.get_section()->get_load_address() : 0)
+                + sym.get_value();
+            loader.addSymbol(BinaryFileSymbol( sym.get_name(), addr, symsize ));
+        }
     }
-    
+
     FOREACH( symp, binary->get_symbol_table() )
     {
         elfpp::symbol &sym = *(symp->second);
         size_t symsize = sym.get_size();
-
         uint8_t info = sym.get_info();
-        if ( ELF_ST_BIND(info) != elfpp::STB_LOCAL &&
-             ELF_ST_BIND(info) != elfpp::STB_GLOBAL )
-            continue;
-        if ( ELF_ST_TYPE(info) >= elfpp::STT_NUM )
+
+        if ( ( ELF_ST_BIND(info) != elfpp::STB_LOCAL &&
+               ELF_ST_BIND(info) != elfpp::STB_GLOBAL ) ||
+             ELF_ST_TYPE(info) >= elfpp::STT_NUM )
             continue;
 
         uintptr_t addr =
             (sym.get_section() ? sym.get_section()->get_load_address() : 0)
             + sym.get_value();
-        loader.addSymbol(
-            BinaryFileSymbol( sym.get_name(), addr, symsize ));
+
+        if ( addr )
+            loader.addSymbol(BinaryFileSymbol( sym.get_name(), addr, symsize ));
     }
 
     delete binary;
