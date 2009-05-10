@@ -7,6 +7,8 @@ __version__ = "$Revision$"
 Module('caba:vci_mwmr_controller',
 	classname = 'soclib::caba::VciMwmrController',
 	header_files = ['../source/include/vci_mwmr_controller.h',
+					],
+    interface_files = [
 					'../../include/mwmr_controller.h',
 					],
 	implementation_files = ['../source/src/vci_mwmr_controller.cpp',],

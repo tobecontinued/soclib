@@ -134,8 +134,12 @@ def main():
 					  action='store', nargs = 1,
 					  help="Auto report bug. Methods allowed: openbrowser, *none",
 					  choices = ("openbrowser", "none"))
+	parser.add_option('--embedded-cflags', dest = 'embedded_cflags',
+					  action='store_true',
+					  help="Print software include directories C flags")
 	parser.set_defaults(auto_bug_report = "none",
-						includes = [])
+						includes = [],
+						embedded_cflags = False)
 	opts, args = parser.parse_args()
 
 	from soclib_cc import bugreport
@@ -245,7 +249,7 @@ def main():
 	if opts.output:
 		config.output = opts.output
 	if opts.platform:
-		if not config.quiet:
+		if not config.quiet and not opts.embedded_cflags:
 			print "soclib-cc: Entering directory `%s'"%(
 				os.path.abspath(os.getcwd()))
 		import soclib_cc.platform as pf
@@ -279,6 +283,8 @@ todo = Platform(
 			fd.close()
 		elif opts.clean:
 			todo.clean()
+		elif opts.embedded_cflags:
+			print todo.embeddedCodeCflags()
 		else:
 			todo.process()
 	elif opts.compile:

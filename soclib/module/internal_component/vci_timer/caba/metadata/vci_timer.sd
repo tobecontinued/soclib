@@ -10,6 +10,8 @@ Module('caba:vci_timer',
 	parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	header_files = ['../source/include/vci_timer.h',
+					],
+    interface_files = [
 					'../../include/timer.h',
 					],
 	implementation_files = ['../source/src/vci_timer.cpp',],

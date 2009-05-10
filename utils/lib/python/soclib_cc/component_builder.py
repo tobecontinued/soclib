@@ -81,13 +81,11 @@ class ComponentBuilder:
 
 		self.headers = set()
 		for d in self.specialization.getSubTree():
-			headers = d.getHeaderFiles()
-			self.headers |= set(headers)
+			self.headers |= set(d.getHeaderFiles()) | set(d.getInterfaceFiles())
 
 		self.tmpl_headers = set()
 		for d in self.specialization.getTmplSubTree():
-			headers = d.getHeaderFiles()
-			self.tmpl_headers |= set(headers)
+			self.tmpl_headers |= set(d.getHeaderFiles()) | set(d.getInterfaceFiles())
 
 ## 		from pprint import pprint
 ## 		if self.specialization.getModuleName() == 'caba:vci_locks':

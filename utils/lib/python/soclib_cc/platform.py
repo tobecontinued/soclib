@@ -67,6 +67,7 @@ class Platform:
 		component = Specialization(
 			Source(mode, source_file, uses, defines, **params),
 			**params)
+		self.component = component
 		self.todo = ToDo()
 		self.objs = set()
 #		component.printAllUses()
@@ -86,6 +87,18 @@ class Platform:
 
 	def genMakefile(self):
 		return self.todo.genMakefile()
+
+	def embeddedCodeCflags(self):
+		paths = set([])
+		for mod in self.component.getSubTree():
+			# I'm not sure addressable is mandatory.
+			# Safe approach: include more :)
+#			isAddressable = filter(
+#				lambda ext: ext.startswith('dsx:addressable='),
+#				mod.getExtensions())
+#			if isAddressable:
+				paths |= set(map(os.path.dirname,mod.getInterfaceFiles()))
+		return ' '.join(map(lambda x: '-I'+x, paths))
 
 	def __repr__(self):
 		import pprint

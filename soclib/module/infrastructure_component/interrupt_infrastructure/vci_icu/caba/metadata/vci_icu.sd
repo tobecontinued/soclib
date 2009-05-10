@@ -10,6 +10,8 @@ Module('caba:vci_icu',
 	parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	header_files = ['../source/include/vci_icu.h',
+					],
+    interface_files = [
 					'../../include/icu.h',
 					],
 	implementation_files = ['../source/src/vci_icu.cpp',],

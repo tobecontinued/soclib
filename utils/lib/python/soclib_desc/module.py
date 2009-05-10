@@ -96,6 +96,7 @@ class Module:
 		'global_header_files' : [],
 		'implementation_files' : [],
 		'object_files' : [],
+		'interface_files' : [],
 		'uses' : [],
 		'defines' : {},
 		'ports' : [],
@@ -177,7 +178,7 @@ class Module:
 		return copy.copy(self.__attrs[name])
 
 	def _mk_abs_paths(self, basename):
-		relative_path_files = ['header_files', 'implementation_files', 'object_files']
+		relative_path_files = ['header_files', 'implementation_files', 'object_files', 'interface_files']
 		def mkabs(name):
 			return os.path.isabs(name) \
 				   and name \

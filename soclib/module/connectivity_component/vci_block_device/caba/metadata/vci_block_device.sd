@@ -10,6 +10,8 @@ Module('caba:vci_block_device',
 	parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	   header_files = ['../source/include/vci_block_device.h',
+					],
+    interface_files = [
 					   '../../include/block_device.h'
 					   ],
 	   implementation_files = ['../source/src/vci_block_device.cpp',],

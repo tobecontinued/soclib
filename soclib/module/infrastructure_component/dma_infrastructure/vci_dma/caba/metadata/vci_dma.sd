@@ -10,6 +10,8 @@ Module('caba:vci_dma',
 	parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	header_files = ['../source/include/vci_dma.h',
+					],
+    interface_files = [
 					'../../include/dma.h',
 					],
 	implementation_files = ['../source/src/vci_dma.cpp',],

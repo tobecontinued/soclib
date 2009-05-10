@@ -10,8 +10,10 @@ Module('caba:vci_simhelper',
 	parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	header_files = ['../source/include/vci_simhelper.h',
-					'../../include/simhelper.h',
 					],
+	interface_files = [
+					'../../include/simhelper.h',
+		],
 	implementation_files = ['../source/src/vci_simhelper.cpp',],
 			  ports = [
 	Port('caba:vci_target', 'p_vci'),

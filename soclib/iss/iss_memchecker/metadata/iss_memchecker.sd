@@ -8,6 +8,8 @@ Module('common:iss_memchecker',
 	classname = 'soclib::common::IssMemchecker',
 	header_files = ["../include/iss_memchecker.h",
 			],
+	interface_files = ["../include/iss_memchecker_registers.h",
+			],
 	implementation_files = [
 		"../src/iss_memchecker.cpp",
 		],

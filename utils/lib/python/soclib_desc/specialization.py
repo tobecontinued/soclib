@@ -200,6 +200,9 @@ class Specialization:
 	def getImplementationFiles(self):
 		return self.__cdef['abs_implementation_files']
 
+	def getInterfaceFiles(self):
+		return self.__cdef['abs_interface_files']
+
 	def getObjectFiles(self):
 		return self.__cdef['abs_object_files']
 
