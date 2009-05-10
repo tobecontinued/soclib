@@ -1,0 +1,2 @@
+MODULE=common:ississ2
+ARGS=iss2_t=common:mipsel

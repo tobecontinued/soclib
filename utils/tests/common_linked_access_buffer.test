@@ -1,0 +1,4 @@
+MODULE=common:linked_access_buffer
+ARGS=\
+	addr_t=uint32_t \
+	id_t=uint8_t

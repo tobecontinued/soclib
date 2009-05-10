@@ -1,0 +1,2 @@
+MODULE=common:iss_profiler
+ARGS=profiler_iss_t=common:mipsel

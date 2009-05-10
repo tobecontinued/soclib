@@ -1,0 +1,2 @@
+MODULE=common:iss_simhelper
+ARGS=simhelper_iss_t=common:mipsel
