@@ -32,6 +32,9 @@ SOCLIB?=$(shell soclib-cc --getpath)
 export SOCLIB
 TEST_OUTPUT=test.out
 
+PLATFORM_DESC:=$(shell pwd)/$(PLATFORM_DESC)
+export PLATFORM_DESC
+
 ifneq ($(SOCLIB_CC_MODE),)
 SOCLIB_CC_ADD_ARGS+= -m $(SOCLIB_CC_MODE)
 endif
@@ -74,10 +77,10 @@ endif
 
 ifeq ($(NO_SOFT),)
 
-.PHONY: soft/bin.soft
+.PHONY: $(SOFT)
 
-soft/bin.soft:
-	$(MAKE) -C soft bin.soft
+$(SOFT):
+	$(MAKE) -C $(dir $@) $(notdir $@)
 
 endif
 
@@ -111,9 +114,11 @@ clean: soft_clean
 	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -x -o $(SIMULATOR_BINARY)
 	rm -rf repos
 
-soft_clean:
+soft_clean: soft/clean
+
+soft/clean:
 ifeq ($(NO_SOFT),)
-	$(MAKE) -C soft clean
+	$(MAKE) -C $(dir $(SOFT)) clean
 endif
 
 a.out:
