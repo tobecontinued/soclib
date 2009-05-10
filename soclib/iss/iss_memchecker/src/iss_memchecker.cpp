@@ -75,12 +75,16 @@ public:
           m_stack_upper(stack_up)
     {
         assert(m_stack_lower <= m_stack_upper && "Stack upside down");
-//        std::cout << "Creating new context " << *this << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << "Creating new context " << *this << std::endl;
+#endif
     }
 
     ~ContextState()
     {
-//        std::cout << "Deleting context " << *this << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << "Deleting context " << *this << std::endl;
+#endif
     }
 
     inline bool stack_contains( uint32_t sp ) const
@@ -150,7 +154,9 @@ public:
     void unref()
     {
         if ( --m_refcount == 0 ) {
-//            std::cout << *this << " has not more refs, del" << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << *this << " has not more refs, del" << std::endl;
+#endif
             delete this;
         }
     }
@@ -356,7 +362,6 @@ public:
         assert(ptr);
         ptr->ref();
 
-//        std::cout << "Replacing " << *this << " with " << *ptr << std::endl;
         if ( region() ) {
             if ( ! region()->new_state_valid(ptr->state()) )
                 r |= ERROR_BAD_REGION_REALLOCATION;
@@ -482,12 +487,14 @@ public:
               i != sections.end();
               ++i ) {
 
-//             std::cout << "Creating a region info for"
-//                       << " " << i->name()
-//                       << " @" << std::hex << i->lma()
-//                       << ", " << std::dec << i->size()/4 << " words long"
-//                       << " RO: " << i->flag_read_only()
-//                       << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+//              std::cout << "Creating a region info for"
+//                        << " " << i->name()
+//                        << " @" << std::hex << i->lma()
+//                        << ", " << std::dec << i->size()/4 << " words long"
+//                        << " RO: " << i->flag_read_only()
+//                        << std::endl;
+#endif
 
             RegionInfo::State state = RegionInfo::REGION_STATE_GLOBAL;
             if ( i->flag_read_only() )
@@ -536,7 +543,9 @@ public:
 
     void context_create( uint32_t id, ContextState *context )
     {
-//        std::cout << "Creating " << *context << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << "Creating " << *context << std::endl;
+#endif
 
         context_map_t::const_iterator i = m_contexts.find(id);
         assert(i == m_contexts.end()
@@ -544,7 +553,9 @@ public:
         for ( context_map_t::const_iterator i = m_contexts.begin();
               i != m_contexts.end();
               ++i ) {
-//            std::cout << "Checking " << *context << " and " << *i->second << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << "Checking " << *context << " and " << *i->second << std::endl;
+#endif
             if ( context->overlaps( *i->second ) ) {
                 std::cout << "Context " << *context << " overlaps " << *i->second << std::endl;
                 abort();
@@ -558,10 +569,12 @@ public:
     {
         context_map_t::iterator i = m_contexts.find(id);
 
-//         if (i == m_contexts.end()) {
-//             std::cout << "Trying to delete context " << id << std::endl;
-//             return;
-//         }
+#ifdef SOCLIB_MODULE_DEBUG
+         if (i == m_contexts.end()) {
+             std::cout << "Trying to delete context " << id << std::endl;
+             return;
+         }
+#endif
         assert(i != m_contexts.end()
                && "Deleting non-existant context...");
         i->second->unref();
@@ -576,13 +589,15 @@ public:
             --i;
 
         if ( i == m_regions.end() ) {
-//             std::cout
-//                 << "Address " << std::hex << address << " in no region." << std::endl
-//                 << "Regions: " << std::endl;
-//             for ( region_map_t::iterator i = m_regions.begin();
-//                   i != m_regions.end();
-//                   ++i )
-//                 std::cout << " " << i->first << " size: " << i->second->size() << " words" << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+             std::cout
+                 << "Address " << std::hex << address << " in no region." << std::endl
+                 << "Regions: " << std::endl;
+             for ( region_map_t::iterator i = m_regions.begin();
+                   i != m_regions.end();
+                   ++i )
+                 std::cout << " " << i->first << " size: " << i->second->size() << " words" << std::endl;
+#endif
             
             //abort();
             return &m_default_address;
@@ -592,9 +607,12 @@ public:
         std::vector<AddressInfo> &r = *(i->second);
         if ( region_base <= address && word_no < r.size() )
             return &r[word_no];
-//         std::cout << "Warning: address " << std::hex << address
-//                   << " " << std::dec << (r.size()-word_no) << " words beyond "
-//                   << r[r.size()-1] << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+         std::cout << "Warning: address " << std::hex << address
+                   << " " << std::dec << (r.size()-word_no) << " words beyond "
+                   << r[r.size()-1] << std::endl;
+#endif
+
         return &m_default_address;
     }
 
@@ -604,7 +622,9 @@ public:
         RegionInfo *lri = info_for_address(addr)->region();
         RegionInfo *nri = lri->get_updated_region( new_state, at, addr, addr+size );
 
-//        std::cout << "Updating " << *nri << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << "Updating " << *nri << std::endl;
+#endif
 
         for ( context_map_t::const_iterator i = m_contexts.begin();
               i != m_contexts.end();
@@ -730,7 +750,12 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 {
     assert( reg_no < ISS_MEMCHECKER_REGISTER_MAX && "Undefined regsiter" );
 
-//     std::cout << "memchecker register set " << std::dec << reg_no << " val: " << std::hex << value << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout
+        << "memchecker register set " << std::dec << reg_no
+        << " val: " << std::hex << value
+        << std::endl;
+#endif
 
     switch ((enum SoclibIssMemcheckerRegisters)reg_no) {
     case ISS_MEMCHECKER_MAGIC:
@@ -744,6 +769,7 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
                 m_magic_state = MAGIC_BE;
                 break;
             default:
+                std::cout << "Received magic " << std::hex << value << std::endl;
                 assert(!"Wrong magic");
             }
             break;
@@ -842,9 +868,11 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 template<typename iss_t>
 void IssMemchecker<iss_t>::update_context( ContextState *state )
 {
-//     std::cout << iss_t::m_name
-//               << " switching from " << *m_current_context
-//               << " to " << *state << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+     std::cout << iss_t::m_name
+               << " switching from " << *m_current_context
+               << " to " << *state << std::endl;
+#endif
 
 #if 1
     m_last_context->unref();
