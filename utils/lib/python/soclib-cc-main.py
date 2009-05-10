@@ -46,6 +46,10 @@ def main():
 	one_args = {}
 	def one_arg_callback(option, opt, value, parser):
 		k, v = value.split('=', 1)
+		try:
+			v = int(v)
+		except:
+			pass
 		one_args[k] = v
 	parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
 	parser.add_option('-v', '--verbose', dest = 'verbose',
@@ -194,7 +198,7 @@ def main():
 		f = foo()
 		for module in opts.one_module.split(','):
 			mod = Specialization(module, **one_args)
-			mod.printAllUses()
+#			mod.printAllUses()
 			for b in mod.getSubTree():
 				for o in ComponentBuilder.fromSpecialization(b).results():
 					todo.add(o)
