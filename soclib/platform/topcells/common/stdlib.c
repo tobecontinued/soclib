@@ -31,7 +31,9 @@
 
 #include "../segmentation.h"
 
+#ifdef SIMHELPER_BASE
 #include "soclib/simhelper.h"
+#endif
 
 #include "stdlib.h"
 

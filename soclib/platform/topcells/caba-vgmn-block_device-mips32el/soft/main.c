@@ -26,7 +26,6 @@
  * Maintainers: nipo
  */
 
-#include "soclib/timer.h"
 #include "soclib/simhelper.h"
 #include "stdio.h"
 #include "system.h"

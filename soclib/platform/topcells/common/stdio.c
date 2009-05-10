@@ -29,8 +29,6 @@
 #include <stdarg.h>
 #include "system.h"
 
-#include "soclib/simhelper.h"
-
 int time(int *ret)
 {
 	int t;

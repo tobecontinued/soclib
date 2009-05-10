@@ -26,7 +26,6 @@
  * Maintainers: nipo
  */
 
-#include "soclib/timer.h"
 #include "system.h"
 
 #include "../segmentation.h"

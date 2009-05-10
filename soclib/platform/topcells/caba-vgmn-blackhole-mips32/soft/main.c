@@ -26,7 +26,6 @@
  * Maintainers: dimitri.refauvelet@etu.upmc.fr
  */
 
-#include "soclib/timer.h"
 #include "system.h"
 
 #include "../segmentation.h"
