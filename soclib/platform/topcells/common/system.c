@@ -101,7 +101,7 @@ void interrupt_ex_handler(
     if (user_ex_handler)
         user_ex_handler(type, execptr, dataptr, regtable, stackptr);
     else {
-        printf("\nException at 0x%lx: 0x%x\n", (unsigned long)execptr, type);
+        printf("\nException at 0x%x: 0x%x\n", (unsigned int)execptr, type);
         exit(1);
     }
 }
