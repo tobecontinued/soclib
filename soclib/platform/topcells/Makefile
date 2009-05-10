@@ -35,6 +35,8 @@ clean: $(foreach d,$(SUBDIRS),$d/clean)
 
 soft_clean: $(foreach d,$(SUBDIRS),$d/soft_clean)
 
+soft/clean: $(foreach d,$(SUBDIRS),$d/soft/clean)
+
 test: $(foreach d,$(SUBDIRS),$d/test)
 
 simcompile: $(foreach d,$(SUBDIRS),$d/simcompile)
