@@ -103,22 +103,6 @@ const char *rsp_fsm_state_str[] = {
 #endif
 
 #define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciXcacheWrapper<vci_param, iss_t>
- 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-tmpl(inline typename VciXcacheWrapper<vci_param, iss_t>::data_t)::be_to_mask( typename iss_t::be_t be )
-{
-    size_t i;
-    data_t ret = 0;
-    const typename iss_t::be_t be_up = (1<<(sizeof(data_t)-1));
-
-    for (i=0; i<sizeof(data_t); ++i) {
-        ret <<= 8;
-        if ( be_up & be )
-            ret |= 0xff;
-        be <<= 1;
-    }
-    return ret;
-}
 
 using soclib::common::uint32_log2;
 
@@ -627,7 +611,7 @@ tmpl(void)::transition()
     case DCACHE_WRITE_UPDT:
     {
         m_cpt_dcache_data_write++;
-        data_t mask = be_to_mask(r_dcache_be_save);
+        data_t mask = vci_param::be2mask(r_dcache_be_save);
         data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
         r_dcache.write(r_dcache_addr_save, wdata);
         r_dcache_fsm = DCACHE_WRITE_REQ;
