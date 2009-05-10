@@ -101,6 +101,12 @@ static inline uint32_t add_cv(uint32_t a, uint32_t b, bool cin, bool &cout, bool
 #endif
 }
 
+template<typename T>
+static inline T popcount(T n)
+{
+    return __builtin_popcount(n);
+}
+
 static inline uint32_t uint32_log2(uint32_t n)
 {
     return (uint32_t)(0.5f+log2(n));
@@ -121,7 +127,7 @@ static inline T insert_bits( T word, T to_insert, int le_bit, int size )
 }
 
 template<typename T>
-static inline T clz( T n )
+static inline int clz( T n )
 {
 #if __GNUC__ && ( __GNUC__ > 3 || ( __GNUC__ == 3 && __GNUC_MINOR__ >= 4 ) )
     if ( sizeof(T) == sizeof(unsigned int) )
@@ -140,7 +146,7 @@ static inline T clz( T n )
 }
 
 template<typename T>
-static inline T fls( T n )
+static inline int fls( T n )
 {
     if (n == 0)
         return 0;
@@ -148,7 +154,7 @@ static inline T fls( T n )
 }
 
 template<typename T>
-static inline T ctz( T n )
+static inline int ctz( T n )
 {
 #if __GNUC__ && ( __GNUC__ > 3 || ( __GNUC__ == 3 && __GNUC_MINOR__ >= 4 ) )
     if ( sizeof(T) == sizeof(unsigned int) )
@@ -167,13 +173,13 @@ static inline T ctz( T n )
 }
 
 template<typename T>
-static inline T clo( T n )
+static inline int clo( T n )
 {
     return clz(~n);
 }
 
 template<typename T>
-static inline T cto( T n )
+static inline int cto( T n )
 {
     return ctz(~n);
 }
