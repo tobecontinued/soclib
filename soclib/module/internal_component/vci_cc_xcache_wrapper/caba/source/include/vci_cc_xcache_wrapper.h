@@ -37,6 +37,7 @@
 #include "vci_initiator.h"
 #include "vci_target.h"
 #include "mapping_table.h"
+#include "static_assert.h"
 
 namespace soclib {
 namespace caba {
@@ -268,6 +269,8 @@ private:
 
     static inline data_t be_to_mask( typename iss_t::be_t );
 
+    static_assert((int)iss_t::SC_ATOMIC == (int)vci_param::STORE_COND_ATOMIC);
+    static_assert((int)iss_t::SC_NOT_ATOMIC == (int)vci_param::STORE_COND_NOT_ATOMIC);
 };
 
 }}

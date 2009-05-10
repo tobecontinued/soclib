@@ -35,6 +35,7 @@
 #include "vci_initiator.h"
 #include "mapping_table.h"
 #include "generic_tlb.h"
+#include "static_assert.h"
 
 namespace soclib {
 namespace caba {
@@ -367,6 +368,8 @@ private:
     void transition();
     void genMoore();
 
+    static_assert((int)iss_t::SC_ATOMIC == (int)vci_param::STORE_COND_ATOMIC);
+    static_assert((int)iss_t::SC_NOT_ATOMIC == (int)vci_param::STORE_COND_NOT_ATOMIC);
 };
 
 }}
