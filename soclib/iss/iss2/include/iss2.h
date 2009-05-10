@@ -117,6 +117,11 @@ public:
         XTN_READ,
     };
 
+    enum {
+        SC_ATOMIC = 0,
+        SC_NOT_ATOMIC = 1,
+    };
+
     /**
      * When operation is XTN_READ or XTN_WRITE, address field must be
      * one of these values, it determines the extended access type.
