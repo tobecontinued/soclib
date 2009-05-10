@@ -33,9 +33,9 @@ OBJS?=main.o exception.o system.o $(ADD_OBJS)
 COMMON=$(SOCLIB)/soclib/platform/topcells/common
 include $(SOCLIB)/utils/conf/soft_flags.mk
 
-VPATH=. $(COMMON)
+INTERFACE_CFLAGS:=$(shell soclib-cc -p $(PLATFORM_DESC) --embedded-cflags)
 
-HW_HEADERS=$(SOCLIB)/utils/include
+VPATH=. $(COMMON)
 
 CC_PREFIX=$($(ARCH)_CC_PREFIX)
 CC = $(CC_PREFIX)gcc
@@ -43,7 +43,7 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. -I$(HW_HEADERS) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb -I$(COMMON)
+CFLAGS=-Wall -O2 -I. $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb -I$(COMMON) $(INTERFACE_CFLAGS)
 
 MAY_CLEAN=$(shell test -r arch_stamp && (test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean))
 
