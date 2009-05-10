@@ -89,7 +89,9 @@ class Platform:
 		return self.todo.genMakefile()
 
 	def embeddedCodeCflags(self):
-		paths = set([])
+		paths = set([
+			os.path.join(config.path, 'soclib/lib/include')
+			])
 		for mod in self.component.getSubTree():
 			# I'm not sure addressable is mandatory.
 			# Safe approach: include more :)
@@ -97,7 +99,9 @@ class Platform:
 #				lambda ext: ext.startswith('dsx:addressable='),
 #				mod.getExtensions())
 #			if isAddressable:
-				paths |= set(map(os.path.dirname,mod.getInterfaceFiles()))
+				for d in map(os.path.dirname,mod.getInterfaceFiles()):
+					if os.path.basename(d) == 'soclib':
+						paths.add(os.path.dirname(d))
 		return ' '.join(map(lambda x: '-I'+x, paths))
 
 	def __repr__(self):

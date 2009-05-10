@@ -8,7 +8,7 @@ Module('tlmt:vci_icu',
        header_files = ['../source/include/vci_icu.h',
 					],
     interface_files = [
-                       '../../include/icu.h',],
+                       '../../include/soclib/icu.h',],
        implementation_files = ['../source/src/vci_icu.cpp',],
        ports = [ Port('tlmt:vci_target', 'p_vci') ],
        uses = [	Uses('tlmt:base_module'),

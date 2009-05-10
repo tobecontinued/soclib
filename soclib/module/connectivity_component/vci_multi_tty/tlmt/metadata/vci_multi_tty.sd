@@ -35,7 +35,7 @@ Module('tlmt:vci_multi_tty',
        header_files = ['../source/include/vci_multi_tty.h',
 					],
     interface_files = [
-                       '../../include/tty.h',
+                       '../../include/soclib/tty.h',
                        ],
        implementation_files = ['../source/src/vci_multi_tty.cpp',],
        ports = [Port('tlmt:vci_target', 'p_vci'),],

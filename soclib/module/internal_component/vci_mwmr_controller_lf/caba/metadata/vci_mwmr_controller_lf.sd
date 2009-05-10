@@ -9,7 +9,7 @@ Module('caba:vci_mwmr_controller_lf',
 	header_files = ['../source/include/vci_mwmr_controller_lf.h',
 					],
     interface_files = [
-					'../../include/mwmr_controller_lf.h',
+					'../../include/soclib/mwmr_controller_lf.h',
 					],
 	implementation_files = ['../source/src/vci_mwmr_controller_lf.cpp',],
 	   tmpl_parameters = [

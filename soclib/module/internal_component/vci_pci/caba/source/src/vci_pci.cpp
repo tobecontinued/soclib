@@ -25,7 +25,7 @@
  *
  */
 
-#include "../include/pci.h"
+#include "../../include/soclib/pci.h"
 #include "register.h"
 #include "../include/vci_pci.h"
 

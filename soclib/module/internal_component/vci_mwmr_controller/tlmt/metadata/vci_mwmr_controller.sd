@@ -35,7 +35,7 @@ Module('tlmt:vci_mwmr_controller',
        header_files = ['../source/include/vci_mwmr_controller.h',
 					],
     interface_files = [
-                       '../../include/mwmr_controller.h',],
+                       '../../include/soclib/mwmr_controller.h',],
        implementation_files = ['../source/src/vci_mwmr_controller.cpp',],
        ports = [Port('tlmt:vci_target', 'p_target_vci'),
                 Port('tlmt:vci_initiator', 'p_initiator_vci'),

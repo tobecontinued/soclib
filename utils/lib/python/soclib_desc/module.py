@@ -38,6 +38,10 @@ class SpuriousDeclarationWarning(Warning):
 	def __str__(self):
 		return 'Spurious "%s" in %s declaration'%(self.args[0], self.args[1])
 
+class BadInterfacePath(Warning):
+	def __str__(self):
+		return 'Interface file path "%s" %s'%(self.args[0], self.args[1])
+
 class BadNameWarning(Warning):
 	def __str__(self):
 		return 'Bad component name: `%s\', %s'%(self.args[0], self.args[1])
@@ -151,6 +155,14 @@ class Module:
 			if not c.validClassName(self.__attrs['classname']):
 				raise InvalidComponent("Invalid class name '%s' level %s: '%s'"%(
 					self.__typename, c, self.__attrs['classname']))
+
+		for f in self.__attrs['interface_files']:
+			b = os.path.basename(f)
+			d = os.path.dirname(f)
+			soclib = os.path.basename(d)
+			if soclib != 'soclib':
+				warnings.warn(BadInterfacePath(f, 'path should end with "soclib/%s"'%b))
+
 
 	def instanciated(self):
 		"""

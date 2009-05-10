@@ -12,7 +12,7 @@ Module('caba:vci_dma',
 	header_files = ['../source/include/vci_dma.h',
 					],
     interface_files = [
-					'../../include/dma.h',
+					'../../include/soclib/dma.h',
 					],
 	implementation_files = ['../source/src/vci_dma.cpp',],
 			  ports = [

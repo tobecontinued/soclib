@@ -12,7 +12,7 @@ Module('caba:vci_timer',
 	header_files = ['../source/include/vci_timer.h',
 					],
     interface_files = [
-					'../../include/timer.h',
+					'../../include/soclib/timer.h',
 					],
 	implementation_files = ['../source/src/vci_timer.cpp',],
 			  ports = [

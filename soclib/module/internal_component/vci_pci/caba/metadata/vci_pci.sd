@@ -12,7 +12,7 @@ Module('caba:vci_pci',
 	header_files = ['../source/include/vci_pci.h',
 					],
     interface_files = [
-					'../source/include/pci.h',
+					'../../include/soclib/pci.h',
 					],
 	implementation_files = ['../source/src/vci_pci.cpp',],
 			  ports = [

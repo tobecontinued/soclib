@@ -12,7 +12,7 @@ Module('caba:vci_fd_access',
 	   header_files = ['../source/include/vci_fd_access.h',
 					],
     interface_files = [
-					   '../../include/fd_access.h'
+					   '../../include/soclib/fd_access.h'
 					   ],
 	   implementation_files = ['../source/src/vci_fd_access.cpp',],
 	   ports = [
