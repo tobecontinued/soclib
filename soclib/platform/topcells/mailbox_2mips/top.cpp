@@ -30,9 +30,8 @@
 #include <cstdlib>
 
 #include "mapping_table.h"
-#include "mips.h"
+#include "mips32.h"
 #include "vci_xcache_wrapper.h"
-#include "ississ2.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -43,8 +42,7 @@
 //#define USE_GDB_SERVER
 
 #ifdef USE_GDB_SERVER
-# warning Beware GDB Server is now using ISS v2 API
-#include "iss/gdbserver.h"
+# include "gdbserver.h"
 #endif
 
 #include "segmentation.h"
@@ -59,7 +57,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> vci_param;
 
 	// Mapping table
 
@@ -110,9 +108,9 @@ int _main(int argc, char *argv[])
 	// Components
 
 #ifdef USE_GDB_SERVER
-	typedef soclib::common::IssIss2<soclib::common::GdbServer<soclib::common::MipsElIss> > iss_t;
+	typedef soclib::common::GdbServer<soclib::common::Mips32ElIss> iss_t;
 #else
-	typedef soclib::common::IssIss2<soclib::common::MipsElIss> iss_t;
+	typedef soclib::common::Mips32ElIss iss_t;
 #endif
 
 	soclib::caba::VciXcacheWrapper<vci_param, iss_t > mips0("mips0", 0,maptab,IntTab(0),1,8,4,1,8,4);
@@ -169,6 +167,9 @@ int _main(int argc, char *argv[])
         mailbox.p_irq[1](signal_mips1_it1);
   
 	vcimultiram1.p_vci(signal_vci_vcimultiram1);
+
+	mips0.p_vci(signal_vci_m0);
+	mips1.p_vci(signal_vci_m1);
 
 	vcitty.p_clk(signal_clk);
 	vcitty.p_resetn(signal_resetn);

@@ -26,11 +26,28 @@
  * Based on previous works by Sebastien Tregaro, 2005
  */
 
-#include "soclib/timer.h"
+#include "stdio.h"
 #include "system.h"
 
 #include "../segmentation.h"
 
+void irq_handler(int irq)
+{
+	int *p=(int*)0xB0200000;
+	int *q=(int*)0xD0200000;	//adresse de base MailBox
+
+	switch (irq) {
+	case 0:   /* It 0   */
+		printf("It n°0 proc %d\n",procnum());
+
+ 		*(p+3+(procnum()<<2))=0;
+		break;           
+	case 1:   /* It 1   */
+		printf("MailBox MIPS %d\n",procnum());
+ 		*(p+3+(procnum()<<2))=0;	// remise a zero de l'irq
+		break;
+	}
+}
 
 int main(void) 
 {		
@@ -39,20 +56,23 @@ int main(void)
 	int *p0=(int*)0xB0200000;	
 	int *q1=(int*)0xD0200000;
 	int *p1=(int*)0xB0200010;
+
+	set_irq_handler(irq_handler);
+	enable_hw_irq(0);
+	enable_hw_irq(1);
+	irq_enable();
 	
 	if(cpu==0) {
-		uputs(">>>>>>>>>> MIPS_0 <<<<<<<<<< ");        	
-	        putc('\n');
+		printf(">>>>>>>>>> MIPS_0 <<<<<<<<<< \n");
 		*(p0+2) = 15000; 		// Initalize timer and run
 	   	*(p0+1) = 3;
 
 		*(q0+1) = 0x1234;	//envoi donnée
 		*(q0) = 0xABCD;
 	} else if(cpu==1) {
-		uputs(">>>>>>>>>> MIPS_1 <<<<<<<<<< ");           
-                putc('\n');
-                *(p1+2) = 10000;                 // Initalize timer and run
-                *(p1+1) = 3;
+		printf(">>>>>>>>>> MIPS_1 <<<<<<<<<< \n");
+		*(p1+2) = 10000;                 // Initalize timer and run
+		*(p1+1) = 3;
 
 		*(q1+1) = 0x2099;	//envoi donnée
 		*(q1) = 0x2BCD;
