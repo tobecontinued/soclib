@@ -868,11 +868,17 @@ void IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
     switch ( dreq.type ) {
     case iss_t::DATA_READ:
         m_data_answer_value = register_get(reg_no);
+        if ( m_magic_state == MAGIC_BE )
+            m_data_answer_value = soclib::endian::uint32_swap(m_data_answer_value);
         break;
-    case iss_t::DATA_WRITE:
+    case iss_t::DATA_WRITE: {
+        uint32_t data = dreq.wdata;
         m_data_answer_value = 0;
-        register_set(reg_no, dreq.wdata);
+        if ( m_magic_state == MAGIC_BE )
+            data = soclib::endian::uint32_swap(data);
+        register_set(reg_no, data);
         break;
+    }
     case iss_t::XTN_WRITE:
     case iss_t::XTN_READ:
     case iss_t::DATA_LL:
