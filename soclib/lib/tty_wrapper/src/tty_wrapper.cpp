@@ -28,6 +28,7 @@
 #include "process_wrapper.h"
 #include "xterm_wrapper.h"
 #include "tty_wrapper.h"
+#include "pts_wrapper.h"
 
 #include <iostream>
 #include <fstream>
@@ -106,6 +107,42 @@ public:
     }
 };
 
+class TtyPtsWrapper
+    : public TtyWrapper
+{
+    soclib::common::PtsWrapper m_pts;
+public:
+    TtyPtsWrapper(const std::string &name)
+        : m_pts()
+    {
+        std::cout
+            << "PTS for " << name
+            << " successfully allocated, please use "
+            << m_pts.pty_path() << std::endl;
+    }
+
+    char getc()
+    {
+        char tmp;
+        m_pts.read(&tmp, 1);
+        return tmp;
+    }
+
+    void putc( char c )
+    {
+        m_pts.write(&c, 1);
+    }
+
+    bool hasData()
+    {
+        return m_pts.has_data();
+    }
+
+    ~TtyPtsWrapper()
+    {
+    }
+};
+
 class TermWrapper
     : public TtyWrapper
 {
@@ -173,8 +210,8 @@ public:
 
 TtyWrapper *allocateTty( const std::string &name )
 {
-	typedef enum { USE_XTERM, USE_XTTY, USE_TERM, USE_FILES, USE_OTHER } tty_flavor_t;
-	const char *const vals[] = { "XTERM", "XTTY", "TERM", "FILES" };
+	typedef enum { USE_XTERM, USE_XTTY, USE_TERM, USE_FILES, USE_PTS, USE_OTHER } tty_flavor_t;
+	const char *const vals[] = { "XTERM", "XTTY", "TERM", "FILES", "PTS" };
 
 	char *use_env = getenv("SOCLIB_TTY");
 	int tty_flavor = USE_OTHER;
@@ -198,6 +235,8 @@ TtyWrapper *allocateTty( const std::string &name )
         return new _tty_wrapper::TermWrapper(name);
     case USE_FILES:
         return new _tty_wrapper::FileWrapper(name);
+    case USE_PTS:
+        return new _tty_wrapper::TtyPtsWrapper(name);
     default:
         abort();
         return NULL;

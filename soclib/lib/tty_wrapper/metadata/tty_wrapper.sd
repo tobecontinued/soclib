@@ -11,5 +11,6 @@ Module('common:tty_wrapper',
 	uses = [
 		Uses('common:xterm_wrapper'),
 		Uses('common:process_wrapper'),
+		Uses('common:pts_wrapper'),
 		],
 )
