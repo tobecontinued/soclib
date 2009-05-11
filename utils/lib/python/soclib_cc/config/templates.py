@@ -49,7 +49,7 @@ config.toolchain = Config(
 	
 	prefix = '',
 	cflags = ['-Wall', '-Wno-pmf-conversions', '-DSOCLIB'],
-	libs = [],
+	libs = ['-lpthread'],
 	always_include = ['sys/types.h', 'inttypes.h'],	
 	release_cflags = ['-O2', '-DSOCLIB_MODE_RELEASE'],
 	release_libs = [],
