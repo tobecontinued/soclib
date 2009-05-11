@@ -72,6 +72,8 @@ XtermWrapper::XtermWrapper(const std::string &name)
 		// The last char we want to strip is not always present,
 		// so dont block if not here
 		r = ::read( m_fd, &buf, 1 );
+
+        m_poller = FdPoller( m_fd, true );
     } else {
         const int maxlen = 10;
 		char pname_arg[maxlen];
@@ -106,6 +108,7 @@ XtermWrapper::~XtermWrapper()
 
 ssize_t XtermWrapper::read( void *buffer, size_t len )
 {
+    m_poller.reset();
     return ::read( m_fd, buffer, len );
 }
 
@@ -116,25 +119,12 @@ ssize_t XtermWrapper::write( const void *buffer, size_t len )
 
 bool XtermWrapper::poll()
 {
-    fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(m_fd, &rfds);
-
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-
-    int retval = select(m_fd+1, &rfds, NULL, NULL, &tv);
-    
-    if (retval == -1) {
-        perror("select()");
-        return false;
-    }
-    return retval;
+    return m_poller.has_data();
 }
 
 void XtermWrapper::kill(int sig)
 {
+    m_poller = FdPoller();
     ::kill(m_pid, sig);
 }
 

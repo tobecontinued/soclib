@@ -29,7 +29,7 @@
 #define SOCLIB_XTERM_WRAPPER_H_
 
 #include <sys/types.h>
-
+#include "fd_poller.h"
 #include <vector>
 
 namespace soclib { namespace common {
@@ -38,6 +38,7 @@ class XtermWrapper
 {
     pid_t m_pid;
     int m_fd;
+    FdPoller m_poller;
 
 public:
     XtermWrapper(const std::string &name);

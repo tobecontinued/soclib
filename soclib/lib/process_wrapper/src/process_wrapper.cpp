@@ -73,6 +73,8 @@ ProcessWrapper::ProcessWrapper(
         ts.c_lflag &= ~ICANON;
         ts.c_lflag &= ~ECHO;
         tcsetattr(m_fd_to_process, TCSANOW, &ts);
+
+        m_poller = FdPoller( m_fd_from_process, true );
    } else {
         // child
         const char *c_cmd = cmd.c_str();
@@ -107,6 +109,8 @@ ProcessWrapper::~ProcessWrapper()
 ssize_t ProcessWrapper::read( void *buffer, size_t len, bool block )
 {
     size_t done = 0;
+
+    m_poller.reset();
     while ( done < len ) {
         ssize_t r = ::read( m_fd_from_process, (uint8_t*)buffer+done, len-done );
         if ( !block )
@@ -132,25 +136,12 @@ ssize_t ProcessWrapper::write( const void *buffer, size_t len, bool block )
 
 bool ProcessWrapper::poll()
 {
-    fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(m_fd_from_process, &rfds);
-
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-
-    int retval = select(m_fd_from_process+1, &rfds, NULL, NULL, &tv);
-    
-    if (retval == -1) {
-        perror("select()");
-        return false;
-    }
-    return retval;
+    return m_poller.has_data();
 }
 
 void ProcessWrapper::kill(int sig)
 {
+    m_poller = FdPoller();
     ::kill(m_pid, sig);
 }
 

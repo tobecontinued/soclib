@@ -10,5 +10,6 @@ Module('common:xterm_wrapper',
 	implementation_files = ['../src/xterm_wrapper.cpp',],
 	uses = [
 		Uses('common:exception'),
+		Uses('common:fd_poller'),
 		],
 )

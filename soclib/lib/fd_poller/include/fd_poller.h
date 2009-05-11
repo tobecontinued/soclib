@@ -20,44 +20,64 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Copyright (c) UPMC, Lip6, Asim
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ * Copyright (c) UPMC, Lip6, SoC
+ *         Nicolas Pouillon <nipo@ssji.net>, 2009
  *
  * Maintainers: nipo
  */
-#ifndef SOCLIB_PROCESS_WRAPPER_H_
-#define SOCLIB_PROCESS_WRAPPER_H_
+#ifndef SOCLIB_FD_POLLER_H_
+#define SOCLIB_FD_POLLER_H_
 
+#include <list>
+#include <pthread.h>
 #include <sys/types.h>
-#include "fd_poller.h"
-#include <string>
-#include <vector>
+#include <ios>
 
 namespace soclib { namespace common {
 
-class ProcessWrapper
+class FdPoller
 {
-    pid_t m_pid;
-    int m_fd_to_process;
-    int m_fd_from_process;
-    FdPoller m_poller;
+    typedef std::list<FdPoller*> poller_list_t;
+	static poller_list_t s_pollers;
+	static pthread_t s_thread;
+	static pthread_mutex_t s_lock;
+	static bool s_thread_running;
+	static int s_changed[2];
+
+	int m_fd;
+	bool m_poll_input;
+	volatile bool m_has_data;
+
+	static void init();
+	static void add( FdPoller * );
+	static void remove( FdPoller * );
+	static void* thread( void * );
 
 public:
-    ProcessWrapper(
-        const std::string &cmd,
-        const std::vector<std::string> &argv );
-    
-    ~ProcessWrapper();
+	FdPoller( int fd, bool poll_input = true );
+	FdPoller( const FdPoller &ref );
+	FdPoller();
+	const FdPoller &operator=( const FdPoller &ref );
+	~FdPoller();
 
-    ssize_t read( void *buffer, size_t len, bool block = false );
-    ssize_t write( const void *buffer, size_t len, bool block = false );
-    bool poll();
-    void kill(int sig);
+	bool has_data() const
+	{
+		return m_has_data;
+	}
+
+    void reset();
+
+    friend std::ostream &operator<<( std::ostream &o, const FdPoller &f )
+    {
+        f.print(o);
+        return o;
+    }
+    void print( std::ostream & ) const;
 };
 
 }}
 
-#endif /* SOCLIB_PROCESS_WRAPPER_H_ */
+#endif /* SOCLIB_FD_POLLER_H_ */
 
 // Local Variables:
 // tab-width: 4
