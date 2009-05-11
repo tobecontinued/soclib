@@ -189,20 +189,20 @@ void Nios2fIss::setDataResponse(bool error, uint32_t data) {
 		}
 	}
 
-    if ( isReadAccess(r_mem_type) ) {
+	if ( isReadAccess(r_mem_type) ) {
 #if NIOS2_DEBUG
-        std::cout
-            << m_name
-            << " read to " << r_mem_dest
-            << "(" << r_mem_type << ")"
-            << " from " << std::hex << r_mem_addr
-            << ": " << data
-            << " hazard: " << m_hazard
-            << std::endl;
+		std::cout
+		<< m_name
+		<< " read to " << r_mem_dest
+		<< "(" << r_mem_type << ")"
+		<< " from " << std::hex << r_mem_addr
+		<< ": " << data
+		<< " hazard: " << m_hazard
+		<< std::endl;
 #endif
-    }
-    
-    // We write the r_gpr[i]
+	}
+
+	// We write the r_gpr[i]
 	switch (r_mem_type) {
 	default:
 		break;
@@ -292,12 +292,12 @@ void Nios2fIss::step() {
 	r_ctl[ipending] = r_ctl[ienable] & m_irq;
 
 #if NIOS2_DEBUG
-	std::cout
-		<< " m_irq: "<<m_irq<< " ct0: "<<r_ctl[status] 
-	    << " ctl3: " <<r_ctl[ienable]
-		<< " ctl4: "<<r_ctl[ipending]
-		<< " m_exceptionSignal:   " << m_exceptionSignal
-		<< std::endl;
+	std::cout << " m_irq: "<<m_irq<< " ct0: "
+			<< r_ctl[status]
+	        << " ctl3: " 
+	        << r_ctl[ienable]<< " ctl4: "
+	        << r_ctl[ipending]<< " m_exceptionSignal:   " 
+	        << m_exceptionSignal << std::endl;
 #endif
 
 #if INSTRUCTIONMEMORYTRACE
@@ -324,7 +324,7 @@ void Nios2fIss::step() {
 		run();
 		m_exec_cycles++;
 #if NIOS2_DEBUG
-	std::cout << " m_exec_cycles: "<<m_exec_cycles << std::endl;
+		std::cout << " m_exec_cycles: "<<m_exec_cycles << std::endl;
 #endif
 	}
 
@@ -372,6 +372,36 @@ void Nios2fIss::step() {
 	house_keeping: r_gpr[0] = 0;
 }
 
+//int Nios2fIss::cpuCauseToSignal( uint32_t cause ) const
+//{
+//	switch (cause) {
+//	case X_INT:
+//		return 2; // Interrupt
+//	case X_MOD:
+//	case X_TLBL:
+//	case X_TLBS:
+//		return 5; // Trap (nothing better)
+//	case X_ADEL:
+//	case X_ADES:
+//	case X_IBE:
+//	case X_DBE:
+//		return 11; // SEGV
+//	case X_SYS:
+//	case X_BP:
+//	case X_TR:
+//	case X_reserved:
+//		return 5; // 5 Trap/breakpoint
+//	case X_RI:
+//	case X_CPU:
+//		return 4; // Illegal instruction
+//	case X_OV:
+//	case X_FPE:
+//		return 8; // Floating point exception
+//	};
+//	return 5;       // GDB SIGTRAP                                                                                                                                                                
+//}
+
+
 uint32_t Nios2fIss::getDebugRegisterValue(unsigned int reg) const {
 	switch (reg) {
 	case 0:
@@ -379,6 +409,38 @@ uint32_t Nios2fIss::getDebugRegisterValue(unsigned int reg) const {
 	case 1
 	... 31:
 	return soclib::endian::uint32_swap(r_gpr[reg]);
+	case 32:
+		return soclib::endian::uint32_swap(r_pc);	
+	case 33:
+		return soclib::endian::uint32_swap(r_ctl[0]);
+	case 34:
+		return soclib::endian::uint32_swap(r_ctl[1]);
+	case 35:
+		return soclib::endian::uint32_swap(r_ctl[2]);
+	case 36:
+		return soclib::endian::uint32_swap(r_ctl[3]);
+	case 37:
+		return soclib::endian::uint32_swap(r_ctl[4]);
+	case 38:
+		return soclib::endian::uint32_swap(r_ctl[5]);
+	case 39:
+		return soclib::endian::uint32_swap(r_ctl[6]);
+	case 40:
+		return soclib::endian::uint32_swap(r_ctl[7]);
+	case 41:
+		return soclib::endian::uint32_swap(r_ctl[8]);
+	case 42:
+		return soclib::endian::uint32_swap(r_ctl[9]);
+	case 43:
+		return soclib::endian::uint32_swap(r_ctl[10]);
+	case 44:
+		return soclib::endian::uint32_swap(r_ctl[11]);
+	case 45:
+		return soclib::endian::uint32_swap(r_ctl[12]);
+	case 46:
+		return soclib::endian::uint32_swap(r_ctl[13]);
+	case 47:
+		return soclib::endian::uint32_swap(r_ctl[14]);
 	default:
 		return 0;
 	}
@@ -400,3 +462,11 @@ void Nios2fIss::setDebugRegisterValue(unsigned int reg, uint32_t value) {
 }
 }
 
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4

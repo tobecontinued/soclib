@@ -14,7 +14,7 @@ Module('common:nios2_fast',
 		"../src/iss/nios2_fast_custom_instructions.cpp",
 		],
 	uses = [
-		Uses('common:base_module'),
 		Uses('common:iss'),
+		Uses('common:base_module'),
 		],
 )

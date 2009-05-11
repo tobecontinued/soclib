@@ -1,51 +1,51 @@
 /* -*- c++ -*-
  *
  * SOCLIB_LGPL_HEADER_BEGIN
- * 
+ *
  * This file is part of SoCLib, GNU LGPLv2.1.
- * 
+ *
  * SoCLib is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
- * 
+ *
  * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
- * 
+ *
  * SOCLIB_LGPL_HEADER_END
- * 
+ *
  * NIOSII Instruction Set Simulator for the Altera NIOSII processor core
  * developed for the SocLib Projet
- * 
+ *
  * Copyright (C) IRISA/INRIA, 2007-2008
  *         François Charot <charot@irisa.fr>
  *
  * Contributing authors:
  * 				Delphine Reeb
  * 				François Charot <charot@irisa.fr>
- * 
+ *
  * Maintainer: charot
  *
  * History:
  * - summer 2006: First version developed on a first SoCLib template by Reeb, Charot.
- * - september 2007: the model has been completely rewritten and adapted to the SocLib 
+ * - september 2007: the model has been completely rewritten and adapted to the SocLib
  * 						rules defined during the first months of the SocLib ANR project
  *
  * Functional description:
- * Four files: 
+ * Four files:
  * 		nios2_fast.h
  * 		nios2_ITypeInst.cpp
  * 		nios2_RTypeInst.cpp
  * 		nios2_customInst.cpp
  * define the Instruction Set Simulator for the NIOSII processor.
  *
- * 
+ *
  */
 
 #include "base_module.h"
@@ -57,25 +57,25 @@ namespace common {
 
 #define op(x) & Nios2fIss::RType_##x
 #define op4(x, y, z, t) op(x), op(y), op(z), op(t)
- Nios2fIss::func_t const  Nios2fIss::RTypeTable[] = { op4(illegal, eret, roli, rol),    
-		op4( flushp,     ret,     nor,  mulxuu),    
-		op4(  cmpge,    bret, illegal,     ror),    
-		op4( flushi,     jmp,     and, illegal),    
+ Nios2fIss::func_t const  Nios2fIss::RTypeTable[] = { op4(illegal, eret, roli, rol),
+		op4( flushp,     ret,     nor,  mulxuu),
+		op4(  cmpge,    bret, illegal,     ror),
+		op4( flushi,     jmp,     and, illegal),
 
-		op4(  cmplt, illegal,    slli,     sll),    
-		op4(illegal, illegal,      or,  mulxsu),    
-		op4(  cmpne, illegal,    srli,     srl),    
-		op4( nextpc,   callr,     xor,  mulxss),    
+		op4(  cmplt, illegal,    slli,     sll),
+		op4(illegal, illegal,      or,  mulxsu),
+		op4(  cmpne, illegal,    srli,     srl),
+		op4( nextpc,   callr,     xor,  mulxss),
 
-		op4(  cmpeq, illegal, illegal, illegal),    
-		op4(   divu,     div,   rdctl,     mul),    
-		op4( cmpgeu,   initi, illegal, illegal),    
-		op4(illegal,    trap,   wrctl, illegal),    
+		op4(  cmpeq, illegal, illegal, illegal),
+		op4(   divu,     div,   rdctl,     mul),
+		op4( cmpgeu,   initi, illegal, illegal),
+		op4(illegal,    trap,   wrctl, illegal),
 
-		op4( cmpltu,     add, illegal, illegal),    
-		op4(  break, illegal,    sync, illegal),    
-		op4(illegal,     sub,    srai,     sra),    
-		op4(illegal, illegal, illegal, illegal), 
+		op4( cmpltu,     add, illegal, illegal),
+		op4(  break, illegal,    sync, illegal),
+		op4(illegal,     sub,    srai,     sra),
+		op4(illegal, illegal, illegal, illegal),
 
 };
 
@@ -105,8 +105,8 @@ void  Nios2fIss::RType_add()
 {
 	// Add(rC<-rA+rB) p.8-9
 		uint64_t tmp = (uint64_t)m_gprA + (uint64_t)m_gprB;
-		// 05/06/07 : overflow detection is not working properly 
-		//      if ( (bool)(tmp&(uint64_t)((uint64_t)1<<32)) != (bool)(tmp&(1<<31)) )     
+		// 05/06/07 : overflow detection is not working properly
+		//      if ( (bool)(tmp&(uint64_t)((uint64_t)1<<32)) != (bool)(tmp&(1<<31)) )
 		//	exceptionSignal = X_OV;
 		//      else
 		r_gpr[m_instruction.r.c] = tmp;
@@ -114,7 +114,7 @@ void  Nios2fIss::RType_add()
 
 	void  Nios2fIss::RType_and()
 	{
-		//Bitwise logical and p.8-11 
+		//Bitwise logical and p.8-11
 		r_gpr[m_instruction.r.c] = m_gprA & m_gprB;
 	}
 
@@ -125,9 +125,11 @@ void  Nios2fIss::RType_add()
 		r_ctl[status] = (r_ctl[status]&0xFFFFFFFE); /* bit PIE forced to zero */
 		if (m_instruction.r.c == BA) {
 			r_gpr[BA] = r_pc + 4; /* GPR[ba]=r31 */
-			m_branchAddress = BREAK_HANDLER_ADDRESS; /* update PC : PC<-break handler address */
+// 			m_branchAddress = BREAK_HANDLER_ADDRESS; /* update PC : PC<-break handler address */
+			m_branchAddress = EXCEPTION_HANDLER_ADDRESS; /* update PC : PC<-break handler address */
 			m_branchTaken = true;
 		}
+		m_exceptionSignal = X_BP;
 
 		// 4 cycles per instruction
 		setInsDelay( 4 );
@@ -230,7 +232,7 @@ void  Nios2fIss::RType_add()
 
 	void  Nios2fIss::RType_flushi()
 	{
-		// 4 cycles per instruction 
+		// 4 cycles per instruction
 		setInsDelay( 4 );
 	}
 
@@ -242,7 +244,7 @@ void  Nios2fIss::RType_add()
 
 	void  Nios2fIss::RType_initi()
 	{
-		// 4 cycles per instruction 
+		// 4 cycles per instruction
 		setInsDelay( 4 );
 	}
 
@@ -267,7 +269,7 @@ void  Nios2fIss::RType_add()
 		r_gpr[m_instruction.r.c] = res;
 
 		// 1 cycles per instruction with embedded multiplier
-		// setInsDelay( 1 );
+		//setInsDelay( 1 );
 
 		// late result management
 		m_listOfLateResultInstruction.add(m_instruction.r.c);

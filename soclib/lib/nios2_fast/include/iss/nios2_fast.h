@@ -1,51 +1,51 @@
 /* -*- c++ -*-
  *
  * SOCLIB_LGPL_HEADER_BEGIN
- * 
+ *
  * This file is part of SoCLib, GNU LGPLv2.1.
- * 
+ *
  * SoCLib is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
- * 
+ *
  * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
- * 
+ *
  * SOCLIB_LGPL_HEADER_END
- * 
+ *
  * NIOSII Instruction Set Simulator for the Altera NIOSII processor core
  * developed for the SocLib Projet
- * 
+ *
  * Copyright (C) IRISA/INRIA, 2007-2008
  *         François Charot <charot@irisa.fr>
  *
  * Contributing authors:
  * 				Delphine Reeb
  * 				François Charot <charot@irisa.fr>
- * 
+ *
  * Maintainer: charot
  *
  * History:
  * - summer 2006: First version developed on a first SoCLib template by Reeb and Charot.
- * - september 2007: the model has been completely rewritten and adapted to the SocLib 
+ * - september 2007: the model has been completely rewritten and adapted to the SocLib
  * 						rules defined during the first months of the SocLib ANR project.
  *
  * Functional description:
- * Four files: 
+ * Four files:
  * 		nios2_fast.h
  * 		nios2_ITypeInst.cpp
  * 		nios2_RTypeInst.cpp
  * 		nios2_customInst.cpp
  * define the Instruction Set Simulator for the NIOSII processor.
  *
- * 
+ *
  */
 
 #ifndef _SOCLIB_NIOS2_ISS_H_
@@ -90,7 +90,7 @@ private:
 		BREAK_HANDLER_ADDRESS = 0x01000020
 	};
 
-	// general-purpose registers: some registers having names recognized by the assembler 
+	// general-purpose registers: some registers having names recognized by the assembler
 	// they can be used by the simulator
 	enum genPurposeRegName {
 		ET = 24,
@@ -110,7 +110,17 @@ private:
 		bstatus,
 		ienable,
 		ipending,
-		cpuid
+		cpuid,
+		ctl6,
+		exception,
+		pteaddr,
+		tlbacc,
+		tlbmisc,
+		ctl11,
+		badaddr,
+		config,
+		mpubase,
+		mpuacc
 	};
 
 	// NIOSII exception code are not given in the NIOSII documentation
@@ -138,7 +148,7 @@ private:
 
 	uint32_t r_gpr[32]; // General Registers
 	uint32_t r_cr[32]; 	// Coprocessor Registers
-	uint32_t r_ctl[6]; 	// Control registers
+	uint32_t r_ctl[16]; 	// Control registers
 	uint32_t r_pc; 		// rogram Counter
 	uint32_t r_npc; 	// Next Program Counter
 
@@ -205,7 +215,7 @@ private:
 		int32_t i;
 		float f;
 	} m_resultCustomInstruction, m_operandA, m_operandB;
-	bool m_readra, m_readrb, m_writerc;
+	int m_readra, m_readrb, m_writerc;
 
 public:
 	Nios2fIss(uint32_t ident);
@@ -222,19 +232,19 @@ public:
 			else
 				m_ins_delay = 0;
 		}
-		++r_count;
+		r_count += time_passed;
 
 #if NIOS2_DEBUG
-		std::cout << " r_count in null step : "<<r_count << "  m_hazard: " << m_hazard << std::endl;
-#endif   	  
-		if (m_startOflriList != NULL) {
-			m_listOfLateResultInstruction.update();
-#if NIOS2_DEBUG
-			m_listOfLateResultInstruction.print();
+std::cout << " r_count in null step : "<<r_count << "  m_hazard: " << m_hazard << std::endl;
 #endif
-		}
-		if (m_startOflriList == NULL)
-			m_hazard = false;
+if (m_startOflriList != NULL) {
+	m_listOfLateResultInstruction.update();
+#if NIOS2_DEBUG
+	m_listOfLateResultInstruction.print();
+#endif
+}
+if (m_startOflriList == NULL)
+	m_hazard = false;
 	}
 
 	inline uint32_t isBusy() {
@@ -246,9 +256,9 @@ public:
 		address = r_pc;
 	}
 
-	inline void getDataRequest(bool &valid, 
+	virtual inline void getDataRequest(bool &valid,
 			enum DataAccessType &type,
-			uint32_t &address, 
+			uint32_t &address,
 			uint32_t &wdata) const {
 		valid = r_mem_req;
 		address = r_mem_addr;
@@ -264,7 +274,7 @@ public:
 		m_irq = irq;
 	}
 
-	inline void setInstruction(bool error, uint32_t val) {
+	virtual inline void setInstruction(bool error, uint32_t val) {
 		m_ibe = error;
 		m_instruction.ins = val;
 	}
@@ -274,18 +284,18 @@ public:
 
 	// processor internal registers access API, used by debugger
 	inline unsigned int getDebugRegisterCount() const {
+		return 32+1+16;
+	}
+
+	virtual uint32_t getDebugRegisterValue(unsigned int reg) const;
+
+	virtual inline size_t getDebugRegisterSize(unsigned int reg) const {
 		return 32;
 	}
 
-	uint32_t getDebugRegisterValue(unsigned int reg) const;
+	virtual void setDebugRegisterValue(unsigned int reg, uint32_t value);
 
-	inline size_t getDebugRegisterSize(unsigned int reg) const {
-		return 32;
-	}
-
-	void setDebugRegisterValue(unsigned int reg, uint32_t value);
-
-	inline uint32_t getDebugPC() const {
+	virtual inline uint32_t getDebugPC() const {
 		return r_pc;
 	}
 
@@ -293,6 +303,8 @@ public:
 		r_pc = pc;
 		r_npc = pc+4;
 	}
+
+//	int cpuCauseToSignal( uint32_t cause ) const;
 
 private:
 	void run();
@@ -398,32 +410,8 @@ private:
 	void RType_xor();
 	void RType_illegal();
 
-	void custom_ill();
-	void custom_addsf3();
-	void custom_subsf3();
-	void custom_mulsf3();
-	void custom_divsf3();
-	void custom_minsf3();
-	void custom_maxsf3();
-	void custom_negsf2();
-	void custom_abssf2();
-	void custom_sqrtsf2();
-	void custom_cossf2();
-	void custom_sinsf2();
-	void custom_tansf2();
-	void custom_atansf2();
-	void custom_expsf2();
-	void custom_logsf2();
-	void custom_fcmplts();
-	void custom_fcmples();
-	void custom_fcmpgts();
-	void custom_fcmpges();
-	void custom_fcmpeqs();
-	void custom_fcmpnes();
-	void custom_floatsisf2();
-	void custom_floatunsisf2();
-	void custom_fixsfsi2();
-	void custom_fixunsfsi2();
+    // custom to be added here
+	void custom_illegal();
 
 	static const char *opNameTable[64];
 	static const char *opxNameTable[];
@@ -432,3 +420,12 @@ private:
 }}
 
 #endif // _SOCLIB_NIOS2_ISS_H_
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
