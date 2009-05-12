@@ -20,7 +20,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2007-2009
  *
  * Maintainers: nipo
  *
@@ -61,116 +61,6 @@ enum {
 
 }
 
-uint32_t Ppc405Iss::sprfGet( enum Sprf sprf )
-{
-    if ( r_msr.pr && sprf&SPR_PRIV_MASK ) {
-        m_exception = EXCEPT_PROGRAM;
-        r_esr = ESR_PPR;
-        return 0;
-    }
-    switch (sprf) {
-    case SPR_XER:
-        return r_xer.whole;
-    case SPR_LR:
-        return r_lr;
-    case SPR_CTR:
-        return r_ctr;
-    case SPR_SRR0:
-    case SPR_SRR1:
-        return r_srr[PPC_SPLIT_FIELD(sprf) - 0x01a /*SPR_SRR0*/];
-    case SPR_USPRG0:
-    case SPR_SPRG4_RO:
-    case SPR_SPRG5_RO:
-    case SPR_SPRG6_RO:
-    case SPR_SPRG7_RO:
-        return r_sprg[PPC_SPLIT_FIELD(sprf) - 0x100 /*SPR_USPRG0*/];
-    case SPR_SPRG0_RW:
-    case SPR_SPRG1_RW:
-    case SPR_SPRG2_RW:
-    case SPR_SPRG3_RW:
-    case SPR_SPRG4_RW:
-    case SPR_SPRG5_RW:
-    case SPR_SPRG6_RW:
-    case SPR_SPRG7_RW:
-        return r_sprg[PPC_SPLIT_FIELD(sprf) - 0x110 /*SPR_SPRG0_RW*/];
-    case SPR_TBL:
-        return r_tb;
-    case SPR_TBU:
-        return r_tb>>32;
-    case SPR_PVR:
-        return pvr;
-    case SPR_ESR:
-        return r_esr;
-    case SPR_DEAR:
-        return r_dear;
-    case SPR_EVPR:
-        return r_evpr;
-    case SPR_SRR2:
-    case SPR_SRR3:
-        return r_srr[PPC_SPLIT_FIELD(sprf) - 0x3de + 2 /*SPR_SRR2+2*/];
-    default:
-        m_exception = EXCEPT_PROGRAM;
-        r_esr = ESR_PEU;
-        return 0;
-    }
-}
-
-void Ppc405Iss::sprfSet( enum Sprf sprf, uint32_t val )
-{
-    if ( r_msr.pr && sprf&SPR_PRIV_MASK ) {
-        m_exception = EXCEPT_PROGRAM;
-        r_esr = ESR_PPR;
-        return;
-    }
-    switch (sprf) {
-    case SPR_XER:
-        r_xer.whole = val;
-        break;
-    case SPR_LR:
-        r_lr = val;
-        break;
-    case SPR_CTR:
-        r_ctr = val;
-        break;
-    case SPR_SRR0:
-    case SPR_SRR1:
-        r_srr[PPC_SPLIT_FIELD(sprf) - 0x1a /*SPR_SRR0*/] = val;
-        break;
-    case SPR_SPRG0_RW:
-    case SPR_SPRG1_RW:
-    case SPR_SPRG2_RW:
-    case SPR_SPRG3_RW:
-    case SPR_SPRG4_RW:
-    case SPR_SPRG5_RW:
-    case SPR_SPRG6_RW:
-    case SPR_SPRG7_RW:
-        r_sprg[PPC_SPLIT_FIELD(sprf) - 0x110 /*SPR_SPRG0_RW*/] = val;
-        break;
-    case SPR_TBL:
-        r_tb = (r_tb & 0xffffffff00000000LL) | val;
-        break;
-    case SPR_TBU:
-        r_tb = (r_tb & 0xffffffff) | ((uint64_t)val<<32);
-        break;
-    case SPR_ESR:
-        r_esr = val;
-        break;
-    case SPR_DEAR:
-        r_dear = val;
-        break;
-    case SPR_EVPR:
-        r_evpr = val & 0xffff0000;
-        break;
-    case SPR_SRR2:
-    case SPR_SRR3:
-        r_srr[PPC_SPLIT_FIELD(sprf) - 0x3de + 2 /*SPR_SRR2+2*/] = val;
-        break;
-    default:
-        m_exception = EXCEPT_PROGRAM;
-        r_esr = ESR_PEU;
-    }
-}
-
 void Ppc405Iss::trap( uint32_t to, uint32_t a, uint32_t b )
 {
     if ( (to & TRAP_LT && (int32_t)a < (int32_t)b) ||
@@ -181,138 +71,6 @@ void Ppc405Iss::trap( uint32_t to, uint32_t a, uint32_t b )
         m_exception = EXCEPT_DEBUG;
         r_esr = ESR_PTR;
     }
-}
-
-void Ppc405Iss::mem_load_imm( DataOperationType type, uint32_t nb, bool update, bool reversed, bool unsigned_ )
-{
-    uint32_t base = (m_ins.d.ra || update) ? r_gp[m_ins.d.ra] : 0;
-    uint32_t address = base + sign_ext(m_ins.d.imm, 16);
-    if ( update )
-        r_gp[m_ins.d.ra] = address;
-    if ( type != XTN_READ && (address % nb) != 0 )
-        {
-            m_exception = EXCEPT_ALIGNMENT;
-            return;
-        }
-    m_dreq.valid = true;
-    m_dreq.be = ((1<<nb)-1) << (address % 4);
-    m_dreq.type = type;
-    if ( type == XTN_READ )
-        m_dreq.addr = nb*4;
-    else
-        m_dreq.addr = address;
-    r_mem_dest = m_ins.d.rd;
-    r_mem_reversed = reversed;
-    r_mem_unsigned = unsigned_;
-#if SOCLIB_MODULE_DEBUG
-    std::cout
-        << m_name << ": "
-        << __FUNCTION__ << ": " << m_dreq
-        << "->" << r_mem_dest << " Rev:" << r_mem_reversed << " U:" << r_mem_unsigned
-        << std::endl;
-#endif
-}
-
-void Ppc405Iss::mem_load_indexed( DataOperationType type, uint32_t nb, bool update, bool reversed, bool unsigned_ )
-{
-    uint32_t base = (m_ins.x.ra || update) ? r_gp[m_ins.x.ra] : 0;
-    uint32_t address = base + r_gp[m_ins.x.rb];
-    if ( update )
-        r_gp[m_ins.d.ra] = address;
-    if ( type != XTN_READ && (address % nb) != 0 )
-        {
-            m_exception = EXCEPT_ALIGNMENT;
-            return;
-        }
-    m_dreq.valid = true;
-    m_dreq.be = ((1<<nb)-1) << (address % 4);
-    m_dreq.type = type;
-    if ( type == XTN_READ )
-        m_dreq.addr = nb*4;
-    else
-        m_dreq.addr = address;
-    r_mem_dest = m_ins.d.rd;
-    r_mem_reversed = reversed;
-    r_mem_unsigned = unsigned_;
-#if SOCLIB_MODULE_DEBUG
-    std::cout
-        << m_name << ": "
-        << __FUNCTION__ << ": " << m_dreq
-        << "->" << r_mem_dest << " Rev:" << r_mem_reversed << " U:" << r_mem_unsigned
-        << std::endl;
-#endif
-}
-
-void Ppc405Iss::mem_store_imm( DataOperationType type, uint32_t nb, bool update, uint32_t data )
-{
-    uint32_t base = (m_ins.d.ra || update) ? r_gp[m_ins.d.ra] : 0;
-    uint32_t address = base + sign_ext(m_ins.d.imm, 16);
-    if ( update )
-        r_gp[m_ins.d.ra] = address;
-    if ( type != XTN_READ && (address % nb) != 0 )
-        {
-            m_exception = EXCEPT_ALIGNMENT;
-            return;
-        }
-
-    data <<= 8 * (4 - nb);
-    data = soclib::endian::uint32_swap(data);
-    data <<= 8 * (address % 4);
-
-    m_dreq.valid = true;
-    m_dreq.be = ((1<<nb)-1) << (address % 4);
-    m_dreq.type = type;
-    if ( type == XTN_WRITE )
-        m_dreq.addr = nb*4;
-    else
-        m_dreq.addr = address;
-    m_dreq.wdata = data;
-    r_mem_dest = 0;
-    r_mem_reversed = false;
-    r_mem_unsigned = false;
-#if SOCLIB_MODULE_DEBUG
-    std::cout
-        << m_name << ": "
-        << __FUNCTION__ << ": " << m_dreq
-        << "->" << r_mem_dest << " Rev:" << r_mem_reversed << " U:" << r_mem_unsigned
-        << std::endl;
-#endif
-}
-
-void Ppc405Iss::mem_store_indexed( DataOperationType type, uint32_t nb, bool update, uint32_t data )
-{
-    uint32_t base = (m_ins.x.ra || update) ? r_gp[m_ins.x.ra] : 0;
-    uint32_t address = base + r_gp[m_ins.x.rb];
-    if ( update )
-        r_gp[m_ins.d.ra] = address;
-    if ( type != XTN_READ && (address % nb) != 0 )
-        {
-            m_exception = EXCEPT_ALIGNMENT;
-            return;
-        }
-
-    data <<= 8 * (4 - nb);
-    data = soclib::endian::uint32_swap(data);
-    data <<= 8 * (address % 4);
-
-    m_dreq.valid = true;
-    m_dreq.be = ((1<<nb)-1) << (address % 4);
-    m_dreq.type = type;
-    if ( type == XTN_WRITE )
-        m_dreq.addr = nb*4;
-    else
-        m_dreq.addr = address;
-    m_dreq.wdata = data;
-    r_mem_dest = 0;
-    r_mem_reversed = false;
-    r_mem_unsigned = false;
-#if SOCLIB_MODULE_DEBUG
-    std::cout
-        << m_name << ": "
-        << __FUNCTION__ << ": " << m_dreq
-        << "->" << r_mem_dest << " Rev:" << r_mem_reversed << " U:" << r_mem_unsigned
-        << std::endl;
-#endif
 }
 
 void Ppc405Iss::do_add( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca )
@@ -790,23 +548,49 @@ void Ppc405Iss::op_lhzx()
 
 void Ppc405Iss::op_lmw()
 {
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
-	// assert( 0 && "TODO" );
+    uint32_t base = m_ins.d.ra ? r_gp[m_ins.d.ra] : 0;
+    uint32_t address = base + sign_ext(m_ins.d.imm, 16);
+
+    m_microcode_state.lstmw.address = address;
+    m_microcode_state.lstmw.rd = m_ins.d.rd;
+    m_microcode_func = &Ppc405Iss::do_lmw;
+    do_lmw();
 }
 
 void Ppc405Iss::op_lswi()
 {
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
-	// assert( 0 && "TODO" );
+    uint32_t address = m_ins.d.ra ? r_gp[m_ins.x.ra] : 0;
+
+    m_microcode_state.lstswi.address = address;
+    m_microcode_state.lstswi.byte_count = m_ins.x.rb ? m_ins.x.rb : 32;
+    m_microcode_state.lstswi.byte_in_reg = 3;
+    m_microcode_state.lstswi.cur_reg = m_ins.x.rs;
+    m_microcode_state.lstswi.tmp = 0;
+
+    m_microcode_state.lstswi.dest = NULL;
+
+    m_microcode_func = &Ppc405Iss::do_lswi;
+    do_lswi();
 }
 
 void Ppc405Iss::op_lswx()
 {
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
-	// assert( 0 && "TODO" );
+    if ( r_xer.tbc == 0 )
+        return;
+
+    uint32_t address = m_ins.d.ra ? r_gp[m_ins.x.ra] : 0;
+    address += r_gp[m_ins.x.rb];
+
+    m_microcode_state.lstswi.address = address;
+    m_microcode_state.lstswi.byte_count = r_xer.tbc;
+    m_microcode_state.lstswi.byte_in_reg = 3;
+    m_microcode_state.lstswi.cur_reg = m_ins.x.rs;
+    m_microcode_state.lstswi.tmp = 0;
+
+    m_microcode_state.lstswi.dest = NULL;
+
+    m_microcode_func = &Ppc405Iss::do_lswi;
+    do_lswi();
 }
 
 void Ppc405Iss::op_lwarx()
@@ -1397,23 +1181,45 @@ void Ppc405Iss::op_sthx()
 
 void Ppc405Iss::op_stmw()
 {
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
-	// assert(0 && "TODO");
+    uint32_t base = m_ins.d.ra ? r_gp[m_ins.d.ra] : 0;
+    uint32_t address = base + sign_ext(m_ins.d.imm, 16);
+
+    m_microcode_state.lstmw.address = address;
+    m_microcode_state.lstmw.rd = m_ins.d.rd;
+    m_microcode_func = &Ppc405Iss::do_stmw;
+    do_stmw();
 }
 
 void Ppc405Iss::op_stswi()
 {
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
-	// assert(0 && "TODO");
+    uint32_t address = m_ins.d.ra ? r_gp[m_ins.x.ra] : 0;
+
+    m_microcode_state.lstswi.address = address;
+    m_microcode_state.lstswi.byte_count = m_ins.x.rb ? m_ins.x.rb : 32;
+    m_microcode_state.lstswi.byte_in_reg = 3;
+    m_microcode_state.lstswi.cur_reg = m_ins.x.rs;
+    m_microcode_state.lstswi.tmp = 0;
+
+    m_microcode_func = &Ppc405Iss::do_stswi;
+    do_stswi();
 }
 
 void Ppc405Iss::op_stswx()
 {
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
-	// assert(0 && "TODO");
+    if ( r_xer.tbc == 0 )
+        return;
+
+    uint32_t address = m_ins.d.ra ? r_gp[m_ins.x.ra] : 0;
+    address += r_gp[m_ins.x.rb];
+
+    m_microcode_state.lstswi.address = address;
+    m_microcode_state.lstswi.byte_count = r_xer.tbc;
+    m_microcode_state.lstswi.byte_in_reg = 3;
+    m_microcode_state.lstswi.cur_reg = m_ins.x.rs;
+    m_microcode_state.lstswi.tmp = 0;
+
+    m_microcode_func = &Ppc405Iss::do_stswi;
+    do_stswi();
 }
 
 void Ppc405Iss::op_stw()
@@ -1529,24 +1335,6 @@ void Ppc405Iss::op_xoris()
 }
 
 // **End**
-
-const uint32_t Ppc405Iss::except_addresses[] = {
-    /* EXCEPT_NONE                 */ 0x0,
-    /* EXCEPT_CRITICAL             */ 0x0100,
-    /* EXCEPT_WATCHDOG             */ 0x1020,
-    /* EXCEPT_DEBUG                */ 0x2000,
-    /* EXCEPT_MACHINE_CHECK        */ 0x0200,
-    /* EXCEPT_INSTRUCTION_STORAGE  */ 0x0400,
-    /* EXCEPT_PROGRAM              */ 0x0700,
-    /* EXCEPT_DATA_STORAGE         */ 0x0300,
-    /* EXCEPT_DATA_TLB_MISS        */ 0x1100,
-    /* EXCEPT_ALIGNMENT            */ 0x0600,
-    /* EXCEPT_EXTERNAL             */ 0x0500,
-    /* EXCEPT_SYSCALL              */ 0x0c00,
-    /* EXCEPT_PI_TIMER             */ 0x1000,
-    /* EXCEPT_FI_TIMER             */ 0x1010,
-    /* EXCEPT_INSTRUCTION_TLB_MISS */ 0x1200,
-};
 
 }}
 

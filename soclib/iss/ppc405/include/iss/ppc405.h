@@ -271,7 +271,7 @@ private:
     struct Iss2::DataRequest m_dreq;
     bool        r_mem_unsigned;
     bool        r_mem_reversed;
-	uint32_t	r_mem_dest;
+	uint32_t	*r_mem_dest;
 	bool		r_dbe;
 	bool		m_ibe;
 	bool		m_dbe;
@@ -336,7 +336,7 @@ public:
     inline void getRequests( struct InstructionRequest &ireq,
                              struct DataRequest &dreq ) const
     {
-        ireq.valid = true;
+        ireq.valid = (m_microcode_func == NULL);
 		ireq.addr = r_pc;
 
         dreq = m_dreq;
@@ -461,10 +461,17 @@ private:
     void sprfSet( enum Sprf, uint32_t );
     uint32_t sprfGet( enum Sprf );
 
-    inline void mem_load_imm( DataOperationType type, uint32_t nb, bool update, bool, bool );
-    inline void mem_load_indexed( DataOperationType type, uint32_t nb, bool update, bool, bool );
-    inline void mem_store_imm( DataOperationType type, uint32_t nb, bool update, uint32_t data );
-    inline void mem_store_indexed( DataOperationType type, uint32_t nb, bool update, uint32_t data );
+    void mem_load_imm( DataOperationType type, uint32_t nb, bool update, bool, bool );
+    void mem_load_indexed( DataOperationType type, uint32_t nb, bool update, bool, bool );
+    void mem_store_imm( DataOperationType type, uint32_t nb, bool update, uint32_t data );
+    void mem_store_indexed( DataOperationType type, uint32_t nb, bool update, uint32_t data );
+
+    void mem_load_word( uint32_t, uint32_t * );
+    void mem_store_word( uint32_t, uint32_t );
+
+    void mem_load_byte( uint32_t, uint32_t * );
+    void mem_store_byte( uint32_t, uint8_t );
+
     inline void do_add( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );
     inline uint32_t do_addi( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );
     inline void branch_cond( uint32_t next_pc_if_taken );
@@ -473,6 +480,29 @@ private:
 
 #include "ppc405_ops.inc"
 
+    void do_lmw();
+    void do_stmw();
+
+    void do_lswi();
+    void do_stswi();
+
+    union {
+        struct {
+            uint32_t address;
+            uint32_t rd;
+        } lstmw;
+        struct {
+            uint32_t address;
+            uint32_t byte_count;
+            uint32_t byte_in_reg;
+            uint32_t cur_reg;
+            uint32_t tmp;
+            uint32_t *dest;
+            uint32_t dest_byte;
+        } lstswi;
+    } m_microcode_state;
+
+    func_t m_microcode_func;
 };
 
 }}

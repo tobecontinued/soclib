@@ -10,6 +10,8 @@ Module('common:ppc405',
 	implementation_files = [
 		"../src/iss/ppc405.cpp",
 		"../src/iss/ppc405_instructions.cpp",
+		"../src/iss/ppc405_load_store.cpp",
+		"../src/iss/ppc405_special.cpp",
 		"../src/iss/ppc405_jump_tables.cpp",
 		],
 	   uses = [

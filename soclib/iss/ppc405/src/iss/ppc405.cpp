@@ -68,6 +68,7 @@ void Ppc405Iss::reset()
 {
     struct DataRequest init_dreq = ISS_DREQ_INITIALIZER;
 
+    m_microcode_func = NULL;
     m_exception = EXCEPT_NONE;
     m_dreq = init_dreq;
     m_exec_cycles = 0;
@@ -124,7 +125,8 @@ uint32_t Ppc405Iss::executeNCycles(
     if ( drsp.valid )
         setDataResponse(drsp);
 
-    if ( !irsp.valid || ( m_dreq.valid && ! drsp.valid ) ) {
+    if ( ( m_microcode_func == NULL && !irsp.valid )
+         || ( m_dreq.valid && ! drsp.valid ) ) {
         if ( m_ins_delay ) {
             if ( m_ins_delay > ncycle )
                 m_ins_delay -= ncycle;
@@ -135,8 +137,10 @@ uint32_t Ppc405Iss::executeNCycles(
         return ncycle;
     }
 
-    m_ibe = irsp.error;
-    m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
+    if ( irsp.valid ) {
+        m_ibe = irsp.error;
+        m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
+    }
 
     if ( ncycle == 0 )
         return 0;
@@ -173,7 +177,14 @@ uint32_t Ppc405Iss::executeNCycles(
 #ifdef SOCLIB_MODULE_DEBUG
     dump();
 #endif
-    run();
+    if ( m_microcode_func ) {
+        m_next_pc = r_pc;
+        (this->*m_microcode_func)();
+    } else
+        run();
+
+    if ( m_exception == EXCEPT_NONE && m_microcode_func )
+        goto no_except;
 
     // IRQs
     if ( irq_bit_field&(1<<IRQ_EXTERNAL) ) {
@@ -194,6 +205,8 @@ uint32_t Ppc405Iss::executeNCycles(
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << m_name << " except: " << m_exception << std::endl;
 #endif
+
+    m_microcode_func = NULL;
 
     if (debugExceptionBypassed( m_exception ))
         goto no_except;
@@ -304,20 +317,22 @@ void Ppc405Iss::setDataResponse(const struct DataResponse &drsp)
     case DATA_READ:
     case XTN_READ:
     case DATA_LL:
-        switch ( nb ) {
-        case 4:
-            r_gp[r_mem_dest] = data;
-            break;
-        case 2:
-            r_gp[r_mem_dest] = r_mem_unsigned ?
-                (data & 0xffff) :
-                sign_ext(data, 16);
-            break;
-        case 1:
-            r_gp[r_mem_dest] = r_mem_unsigned ?
-                (data & 0xff) :
-                sign_ext(data, 8);
-            break;
+        if ( r_mem_dest != NULL ) {
+            switch ( nb ) {
+            case 4:
+                *r_mem_dest = data;
+                break;
+            case 2:
+                *r_mem_dest = r_mem_unsigned ?
+                    (data & 0xffff) :
+                    sign_ext(data, 16);
+                break;
+            case 1:
+                *r_mem_dest = r_mem_unsigned ?
+                    (data & 0xff) :
+                    sign_ext(data, 8);
+                break;
+            }
         }
     }
 
@@ -326,8 +341,13 @@ void Ppc405Iss::setDataResponse(const struct DataResponse &drsp)
         << m_name << ": "
         << __FUNCTION__ << ": " << m_dreq
         << "->" << r_mem_dest << " Rev:" << r_mem_reversed << " U:" << r_mem_unsigned
-        << " " << drsp << " gp[" << r_mem_dest << "]: " << r_gp[r_mem_dest]
-        << std::endl;
+        << " " << drsp << " dest: " << r_mem_dest
+        << " (r_gp+" << r_mem_dest-&r_gp[0] << "): ";
+    if ( r_mem_dest )
+        std::cout << *r_mem_dest;
+    else
+        std::cout << "*NULL";
+    std::cout << std::endl;
 #endif
 
 }
