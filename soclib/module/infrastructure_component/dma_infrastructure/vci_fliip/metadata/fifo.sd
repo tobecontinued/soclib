@@ -1,0 +1,25 @@
+
+# -*- python -*-
+
+Module('caba:accfifo',
+	classname = 'soclib::caba::AcceleratorFifo',
+	tmpl_parameters = [
+		parameter.Int('BITWIDTH', default = '10'),
+		parameter.Int('SIZE',     default = '10'),
+	],
+	header_files = [ '../include/soclib_accelerator_fifo.h', ],
+	implementation_files = ['../src/soclib_accelerator_fifo.cpp', ],
+	ports = [
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+		Port('caba:fifo_output', 'DATA_IN',
+			data_t=parameter.StringExt('sc_uint<%s>', parameter.Reference('BITWIDTH'))),
+		Port('caba:fifo_input',  'DATA_OUT',
+			data_t=parameter.StringExt('sc_uint<%s>', parameter.Reference('BITWIDTH'))),
+	],
+	uses = [
+		Uses('caba:base_module'),
+		Uses('caba:generic_fifo'),
+	],
+)
+
