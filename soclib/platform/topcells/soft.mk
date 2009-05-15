@@ -33,7 +33,7 @@ OBJS?=main.o exception.o system.o $(ADD_OBJS)
 COMMON=$(SOCLIB)/soclib/platform/topcells/common
 include $(SOCLIB)/utils/conf/soft_flags.mk
 
-INTERFACE_CFLAGS:=$(shell soclib-cc -p $(PLATFORM_DESC) --embedded-cflags)
+INTERFACE_CFLAGS:=$(shell soclib-cc -p $(PLATFORM_DESC) $(SOCLIB_CC_ADD_ARGS) --embedded-cflags)
 
 VPATH=. $(COMMON)
 

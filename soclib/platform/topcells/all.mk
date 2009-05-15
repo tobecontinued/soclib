@@ -42,15 +42,29 @@ ifneq ($(SOCLIB_CC_TYPE),)
 SOCLIB_CC_ADD_ARGS+= -t $(SOCLIB_CC_TYPE)
 endif
 
+export SOCLIB_CC_ADD_ARGS
+
 export ARCH
 
 include $(SOCLIB)/utils/conf/soft_flags.mk
 
+ifeq ($(ARCH), )
+$(warning ARCH not defined, assuming host compiler)
+CC=gcc
+else
+ifeq ($($(ARCH)_CC_PREFIX), )
+$(warning No compiler define for $(ARCH), software wont be compiled)
+CC=bad-gcc
+else
 CC=$($(ARCH)_CC_PREFIX)gcc
+endif
+endif
+
 HAS_CC:=$(shell which $(CC) 2>&1 > /dev/null && echo ok)
 ifneq ($(HAS_CC),ok)
 NO_SOFT=1
 NO_TEST=No compiler for $(ARCH)
+$(warning $(CC) not found, software wont be compiled)
 endif
 
 ifeq ($(NO_SOFT),)

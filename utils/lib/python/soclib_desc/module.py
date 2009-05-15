@@ -198,6 +198,7 @@ class Module:
 		for attr in relative_path_files:
 			self.__attrs['abs_'+attr] = map(mkabs, self.__attrs[attr])
 		self.__attrs['abs_header_files'] += self.__attrs['global_header_files']
+		self.__attrs['abs_header_files'] += self.__attrs['abs_interface_files']
 
 	def getInfo(self):
 		"""
