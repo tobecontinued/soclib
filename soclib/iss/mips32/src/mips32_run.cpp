@@ -36,62 +36,43 @@
 
 namespace soclib { namespace common {
 
+#define OPS                                                            \
+    op4(special, bcond,    j,   jal),                                  \
+    op4(    beq,   bne, blez,  bgtz),                                  \
+                                                                       \
+    op4(   addi, addiu, slti, sltiu),                                  \
+    op4(   andi,   ori, xori,   lui),                                  \
+                                                                       \
+    op4(   cop0,   ill, cop2,   ill),                                  \
+    op4(   beql,  bnel,blezl, bgtzl),                                  \
+                                                                       \
+    op4(    ill,   ill,  ill,   ill),                                  \
+    op4(special2,  ill,  ill,special3),                                \
+                                                                       \
+    op4(     lb,    lh,  lwl,    lw),                                  \
+    op4(    lbu,   lhu,  lwr,   ill),                                  \
+                                                                       \
+    op4(     sb,    sh,  swl,    sw),                                  \
+    op4(    ill,   ill,  swr, cache),                                  \
+                                                                       \
+    op4(     ll,   ill,  ill,   ill),                                  \
+    op4(    ill,   ill,  ill,   ill),                                  \
+                                                                       \
+    op4(     sc,   ill,  ill,   ill),                                  \
+    op4(    ill,   ill,  ill,   ill),
+
 #define op(x) &Mips32Iss::op_##x
 #define op4(x, y, z, t) op(x), op(y), op(z), op(t)
 
 Mips32Iss::func_t const Mips32Iss::opcod_table[]= {
-    op4(special, bcond,    j,   jal),
-    op4(    beq,   bne, blez,  bgtz),
-
-    op4(   addi, addiu, slti, sltiu),
-    op4(   andi,   ori, xori,   lui),
-
-    op4(   cop0,   ill, cop2,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(    ill,   ill,  ill,   ill),
-    op4(special2,  ill,  ill,special3),
-
-    op4(     lb,    lh,  lwl,    lw),
-    op4(    lbu,   lhu,  lwr,   ill),
-
-    op4(     sb,    sh,  swl,    sw),
-    op4(    ill,   ill,  swr, cache),
-
-    op4(     ll,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(     sc,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
+    OPS
 };
 
 #undef op
 #define op(x) #x
 
 const char *Mips32Iss::name_table[] = {
-    op4(special, bcond,    j,   jal),
-    op4(    beq,   bne, blez,  bgtz),
-
-    op4(   addi, addiu, slti, sltiu),
-    op4(   andi,   ori, xori,   lui),
-
-    op4(   cop0,   ill, cop2,   ill),
-    op4(   beql,  bnel,blezl, bgtzl),
-
-    op4(    ill,   ill,  ill,   ill),
-    op4(special2,  ill,  ill,   ill),
-
-    op4(     lb,    lh,  lwl,    lw),
-    op4(    lbu,   lhu,  lwr,   ill),
-
-    op4(     sb,    sh,  swl,    sw),
-    op4(    ill,   ill,  swr, cache),
-
-    op4(     ll,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
-
-    op4(     sc,   ill,  ill,   ill),
-    op4(    ill,   ill,  ill,   ill),
+    OPS
 };
 #undef op
 #undef op4
