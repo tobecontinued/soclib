@@ -54,7 +54,7 @@ static const size_t VGMN_NUM_TARGETS = 3;
 static const size_t VGMN_MIN_LATENCY = 2;
 static const size_t VGMN_FIFO_DEPTH = 8;
 
-void vci_trace(sc_core::sc_trace_file *file, soclib::caba::VciSignals<soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> > &signal, const char *name) {
+void vci_trace(sc_core::sc_trace_file *file, soclib::caba::VciSignals<soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> > &signal, const char *name) {
 	sc_trace(file, signal.rspack, signal.rspack.name());
 	sc_trace(file, signal.rspval, signal.rspval.name());
 	sc_trace(file, signal.rdata, signal.rdata.name());
@@ -90,7 +90,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> vci_param;
 
 	// Mapping table
 

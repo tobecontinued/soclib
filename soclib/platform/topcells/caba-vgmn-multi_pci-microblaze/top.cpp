@@ -19,7 +19,7 @@ int _main(int argc, char *argv[])
    using soclib::common::Segment;
 
    // Define our VCI parameters
-   typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+   typedef soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> vci_param;
 
    // Mapping table
    soclib::common::MappingTable maptab(32, IntTab(12), IntTab(3), 0x00F00000);
