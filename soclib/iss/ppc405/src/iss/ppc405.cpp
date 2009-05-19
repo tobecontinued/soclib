@@ -30,6 +30,8 @@
 #include "ppc405.h"
 #include "soclib_endian.h"
 #include "arithmetics.h"
+#include <iostream>
+#include <iomanip>
 
 namespace soclib { namespace common {
 
@@ -100,7 +102,10 @@ void Ppc405Iss::dump() const
         << " .pr " << r_msr.pr
         << std::endl;
     for ( size_t i=0; i<32; ++i ) {
-        std::cout << " " << std::dec << i << ": " << std::hex << std::showbase << r_gp[i];
+        std::cout
+			<< " " << std::dec << std::setw(2) << i << ": "
+			<< std::hex << std::noshowbase << std::setw(8) << std::setfill('0')
+			<< r_gp[i];
         if ( i%8 == 7 )
             std::cout << std::endl;
     }
