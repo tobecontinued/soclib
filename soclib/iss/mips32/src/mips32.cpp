@@ -32,6 +32,8 @@
 #include "base_module.h"
 #include "soclib_endian.h"
 #include "arithmetics.h"
+#include <iostream>
+#include <iomanip>
 
 namespace soclib { namespace common {
 
@@ -120,7 +122,10 @@ void Mips32Iss::dump() const
         << " rt: "<<r_gp[m_ins.i.rt]
         << std::endl;
     for ( size_t i=0; i<32; ++i ) {
-        std::cout << " " << std::dec << i << ": " << std::hex << std::showbase << r_gp[i];
+        std::cout
+			<< " " << std::dec << std::setw(2) << i << ": "
+			<< std::hex << std::noshowbase << std::setw(8) << std::setfill('0')
+			<< r_gp[i];
         if ( i%8 == 7 )
             std::cout << std::endl;
     }
@@ -239,8 +244,10 @@ uint32_t Mips32Iss::executeNCycles(
          && ((r_status.im>>2) & irq_bit_field)
          && may_take_irq ) {
         m_exception = X_INT;
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
         std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;
+#endif
+#if defined(SOCLIB_MODULE_DEBUG)
     } else {
         if ( irq_bit_field )
             std::cout
