@@ -77,6 +77,8 @@ int main(void)
 	test_val(div, (2, 1), 2);
 	test_val(div, (2, (uint32_t)-1), 0);
 	test_val(div, (0x42, (uint32_t)-3), 0);
+	test_val(div, (531226, (uint32_t)300), 1770);
+	test_val(div, (131072, (uint32_t)600), 131072/600);
 
 	test_33_shift(srl, 0xaaaaaaaa);
 	test_33_shift(srl, 0x55555555);
@@ -87,6 +89,11 @@ int main(void)
 	test_33_shift(sll, 0x55555555);
 	test_33_shift(sll, 0x00000000);
 	test_33_shift(sll, 0xffffffff);
+
+	test_33_shift(mod, 0xaaaaaaaa);
+	test_33_shift(mod, 0x12345678);
+	test_33_shift(mod, 1000);
+	test_33_shift(mod, 0x7fffffff);
 
 	test_val(mklemask, (0), 0);
 	test_val(mklemask, (1), 0x1);
@@ -118,21 +125,22 @@ int main(void)
 	test_val(mkmask, (0, 0), 0);
 	test_val(mkmask, (15+8, 15), 0x007f8000);
 
-	test_val(extract, (0xffffffff, 3, 2), 0x3);
+	test_val(extract, (0xfffffff7, 3, 2), 0x2);
 	test_val(extract, (0xffffffff, 3, 0), 0);
 	test_val(extract, (0xffffffff, 31, 1), 1);
-	test_val(extract, (0xffffffff, 0, 32), 0xffffffff);
+	test_val(extract, (0x7fffffff, 31, 1), 0);
+	test_val(extract, (0xffeeffff, 0, 32), 0xffeeffff);
 
 	test_val(extract, (0xaaaaaaaa, 3, 2), 1);
 	test_val(extract, (0xaaaaaaaa, 3, 0), 0);
 	test_val(extract, (0xaaaaaaaa, 31, 1), 1);
 	test_val(extract, (0xaaaaaaaa, 0, 32), 0xaaaaaaaa);
 
-	test_val(extract, (0xff807fff, 15, 8), 0);
-	test_val(extract, (0x007f8000, 15, 8), 0xff);
+	test_val(extract, (0xff817fff, 15, 8), 0x02);
+	test_val(extract, (0x00778000, 15, 8), 0xef);
 
 	test_val(insert, (0xffffffff, 0, 0, 32), 0);
-	test_val(insert, (0xffffffff, 0, 15, 8), 0xff807fff);
+	test_val(insert, (0xffffffff, 6, 15, 8), 0xff837fff);
 	test_val(insert, (0, 0xffffffff, 15, 8), 0x007f8000);
 
 	test_val(extract_15_8, (0xff807fff), 0);

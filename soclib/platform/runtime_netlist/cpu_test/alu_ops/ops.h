@@ -23,6 +23,9 @@ uint32_t xor(uint32_t a, uint32_t b);
 #define pp_mul(a, b) ((a)*(b))
 uint32_t mul(uint32_t a, uint32_t b);
 
+#define pp_mod(a, b) ((a)%((b)+1))
+uint32_t mod(uint32_t a, uint32_t b);
+
 #define pp_div(a, b) ((a)/(b))
 uint32_t div(uint32_t a, uint32_t b);
 
@@ -41,10 +44,10 @@ uint32_t sign_ext8(int8_t a);
 #define pp_sign_ext16(a) ((uint32_t)(int32_t)(int16_t)(a))
 uint32_t sign_ext16(int16_t a);
 
-#define pp_rotl(a, s) ((a)<<(s)|(a)<<(32-(s)))
+#define pp_rotl(a, s) (((a)<<(s))|((a)<<(32-(s))))
 uint32_t rotl(uint32_t a, size_t s);
 
-#define pp_rotr(a, s) ((a)<<(s)|(a)>>(32-(s)))
+#define pp_rotr(a, s) (((a)<<(s))|((a)>>(32-(s))))
 uint32_t rotr(uint32_t a, size_t s);
 
 #define pp_extract(a, le, size) (((a)>>(le))&pp_mklemask(size))
@@ -75,36 +78,36 @@ uint32_t swap16_2(uint32_t a);
 		printf("Testing %s%s... ", #func, #args);						\
 		uint32_t a = func args;											\
 		uint32_t b = pp_##func args;									\
+		printf("%08x == %08x\n", a, b);									\
 		if ( a != b ) {													\
 			printf("failed ! %s%s [%08x] != pp_%s%s [%08x]\n",			\
 				   #func, #args, a, #func, #args, b);					\
 			abort();													\
-		} else {														\
-			printf("%08x == %08x\n", a, b);									\
 		}																\
 		a;																\
 	})
 
 #define test_val(func, args, val) do {									\
-		uint32_t a = test(func, args);									\
-		if ( a != val ) {												\
+		uint32_t c = test(func, args);									\
+		printf("%08x == %08x\n", c, val);								\
+		if ( c != val ) {												\
 			printf("test with val failed ! %s%s [%08x] != [%08x]\n",	\
-				   #func, #args, a, val);								\
+				   #func, #args, c, val);								\
 			abort();													\
 		}																\
 	} while(0)
 
 #define test_4_shift(op, a, n) \
-	test(op, (a, n+0));		 \
-	test(op, (a, n+1));		 \
-	test(op, (a, n+2));		 \
-	test(op, (a, n+3))
+	test(op, (a, ((n)+0)));		 \
+	test(op, (a, ((n)+1)));		 \
+	test(op, (a, ((n)+2)));		 \
+	test(op, (a, ((n)+3)))
 
 #define test_16_shift(op, a, n) \
-	test_4_shift(op, a, n+0);		 \
-	test_4_shift(op, a, n+4);		 \
-	test_4_shift(op, a, n+8);		 \
-	test_4_shift(op, a, n+12)
+	test_4_shift(op, a, ((n)+0));		 \
+	test_4_shift(op, a, ((n)+4));		 \
+	test_4_shift(op, a, ((n)+8));		 \
+	test_4_shift(op, a, ((n)+12))
 
 #define test_33_shift(op, a) \
 	test_16_shift(op, a, 0);		 \

@@ -26,4 +26,4 @@
 
 OBJS=main.o exception.o stdio.o system.o ops.o
 ARCH=mipsel mipseb powerpc microblaze mips32el mips32eb
-MAX_CYCLES=1000000
+MAX_CYCLES=2000000
