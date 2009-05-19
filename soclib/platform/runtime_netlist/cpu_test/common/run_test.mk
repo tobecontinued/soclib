@@ -53,14 +53,15 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -O2 -I. -I$(COMMON) -I$(TESTER_DIR) -I$(HW_HEADERS) $($(ARCH)_CFLAGS) $(ADD_CFLAGS)
+CFLAGS=-Wall -Os -I. -I$(COMMON) -I$(TESTER_DIR) -I$(HW_HEADERS) $($(ARCH)_CFLAGS) $(ADD_CFLAGS)
+LIBGCC:=$(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 
 all: test
 
 test: $(RESULT)
 
 $(SOFT_IMAGE): $(OBJS) $(COMMON)/ldscript
-	$(LD) -T $(COMMON)/ldscript $($(ARCH)_LDFLAGS) -o $@ $(OBJS)
+	$(LD) -T $(COMMON)/ldscript $($(ARCH)_LDFLAGS) -o $@ $(OBJS) $(LIBGCC)
 
 %.o: %.s
 	$(AS) $< -o $@
@@ -68,6 +69,17 @@ $(SOFT_IMAGE): $(OBJS) $(COMMON)/ldscript
 %.o : %.c
 	$(CC) -o $@ $(CFLAGS) -c $< \
 		|| (echo "Compilation failed in $$PWD, ARCH=$(ARCH)" ; exit 1)
+
+deps.mk: $(OBJS:.o=.deps)
+	cat $^ /dev/null > $@
+
+%.deps: %.c
+	$(CC) $(CFLAGS) -M -MT $*.o -MF $@ $<
+
+%.deps: %.s
+	touch $@
+
+include deps.mk
 
 clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS)
