@@ -44,13 +44,14 @@ LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
 CFLAGS=-Wall -O2 -I. $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb -I$(COMMON) $(INTERFACE_CFLAGS)
+LIBGCC:=$(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 
 MAY_CLEAN=$(shell test -r arch_stamp && (test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean))
 
 default: clean $(SOFT_IMAGE)
 
 $(SOFT_IMAGE): ldscript $(MAY_CLEAN) arch_stamp $(OBJS)
-	$(LD) -q $($(ARCH)_LDFLAGS) -o $@ $(filter %.o,$^) -T $(filter %ldscript,$^)
+	$(LD) -q $($(ARCH)_LDFLAGS) -o $@ $(filter %.o,$^) -T $(filter %ldscript,$^) $(LIBGCC)
 
 arch_stamp:
 	echo $(ARCH) > $@
@@ -63,3 +64,14 @@ arch_stamp:
 
 clean :
 	-rm -f $(SOFT_IMAGE) $(OBJS) arch_stamp
+
+deps.mk: $(OBJS:.o=.deps)
+	cat $^ /dev/null > $@
+
+%.deps: %.c
+	$(CC) $(CFLAGS) -M -MT $*.o -MF $@ $<
+
+%.deps: %.s
+	touch $@
+
+include deps.mk
