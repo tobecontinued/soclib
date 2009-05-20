@@ -119,9 +119,8 @@ class VciCcVCacheWrapper2
         DCACHE_CC_INVAL,            // 21
         DCACHE_CC_UPDT,             // 22
         DCACHE_CC_NOP,              // 23
-        DCACHE_TLB_CC_INVAL_WAIT,   // 24
-        DCACHE_TLB_CC_INVAL,        // 25
-        DCACHE_ITLB_CLEANUP,        // 26
+        DCACHE_TLB_CC_INVAL,        // 24
+        DCACHE_ITLB_CLEANUP,        // 25
     };
 
     enum cmd_fsm_state_e {      
@@ -169,17 +168,17 @@ class VciCcVCacheWrapper2
     enum inval_itlb_fsm_state_e {
         INVAL_ITLB_IDLE,            // 00
         INVAL_ITLB_CHECK_FIRST,     // 01
-        INVAL_ITLB_REQ_WAIT,        // 02
+        INVAL_ITLB_INVAL,           // 02
         INVAL_ITLB_CHECK,           // 03
-        INVAL_ITLB_RSP,             // 04
+        INVAL_ITLB_CLEAR,           // 04
     };
 
     enum inval_dtlb_fsm_state_e {
         INVAL_DTLB_IDLE,            // 00
         INVAL_DTLB_CHECK_FIRST,     // 01
-        INVAL_DTLB_REQ_WAIT,        // 02
+        INVAL_DTLB_INVAL,           // 02
         INVAL_DTLB_CHECK,           // 03
-        INVAL_DTLB_RSP,             // 04
+        INVAL_DTLB_CLEAR,           // 04
     };
 
     // TLB Mode
@@ -292,7 +291,6 @@ private:
     sc_signal<size_t>       r_dcache_set;
     sc_signal<bool>         r_dcache_cleanup_req;       // data cleanup request
     sc_signal<data_t>       r_dcache_cleanup_line;      // data cleanup NLINE
-    sc_signal<data_t>       r_dcache_cleanup_line_save;
     sc_signal<bool>         r_dcache_inval_rsp;         // data cache invalidate
 
     // ICACHE FSM REGISTERS
@@ -327,7 +325,6 @@ private:
     sc_signal<size_t>       r_icache_set;
     sc_signal<bool>         r_icache_cleanup_req;       // ins cleanup request
     sc_signal<data_t>       r_icache_cleanup_line;      // ins cleanup NLINE
-    sc_signal<data_t>       r_icache_cleanup_line_save;
     sc_signal<bool>         r_icache_inval_rsp;         // ins cache invalidate
 
     // VCI_CMD FSM REGISTERS
@@ -367,41 +364,30 @@ private:
 
     // INVAL CHECK FSM
     sc_signal<int>          r_inval_itlb_fsm;          
-    sc_signal<bool>         r_dcache_itlb_ccinval_check_req;
-    sc_signal<data_t>       r_dcache_itlb_ccinval_check_line;
-    sc_signal<data_t>       r_dcache_itlb_ccinval_check_line_save;
-    sc_signal<bool>         r_ccinval_k_itlb_req;
-    sc_signal<bool>         r_ccinval_m_itlb_req;
+    sc_signal<bool>         r_dcache_itlb_inval_req;
+    sc_signal<data_t>       r_dcache_itlb_inval_line;
     sc_signal<bool>         r_itlb_cc_check_end;
-    sc_signal<bool>         r_ccinval_itlb_k; 
+    sc_signal<bool>         r_ccinval_k_itlb_req; 
     sc_signal<size_t>       r_ccinval_itlb_way; 
     sc_signal<size_t>       r_ccinval_itlb_set; 
     sc_signal<bool>         r_icache_inval_tlb_rsp;
     sc_signal<data_t>       r_icache_tlb_nline;
 
     sc_signal<int>          r_inval_dtlb_fsm;          
-    sc_signal<bool>         r_dcache_dtlb_ccinval_check_req;
-    sc_signal<data_t>       r_dcache_dtlb_ccinval_check_line;
-    sc_signal<data_t>       r_dcache_dtlb_ccinval_check_line_save;
-    sc_signal<bool>         r_ccinval_k_dtlb_req;
-    sc_signal<bool>         r_ccinval_m_dtlb_req;
+    sc_signal<bool>         r_dcache_dtlb_inval_req;
+    sc_signal<data_t>       r_dcache_dtlb_inval_line;
     sc_signal<bool>         r_dtlb_cc_check_end;
-    sc_signal<bool>         r_ccinval_dtlb_k; 
+    sc_signal<bool>         r_ccinval_k_dtlb_req; 
     sc_signal<size_t>       r_ccinval_dtlb_way; 
     sc_signal<size_t>       r_ccinval_dtlb_set; 
     sc_signal<bool>         r_dcache_inval_tlb_rsp;
     sc_signal<data_t>       r_dcache_tlb_nline;
 
-    sc_signal<bool>         r_dcache_itlb_ccinval_check_wait;
-    sc_signal<bool>         r_dcache_dtlb_ccinval_check_wait;
-
     sc_signal<bool>         r_dcache_itlb_cleanup_req;
     sc_signal<data_t>       r_dcache_itlb_cleanup_line;
-    sc_signal<data_t>       r_dcache_itlb_cleanup_line_save;
 
     sc_signal<bool>         r_dcache_dtlb_cleanup_req;
     sc_signal<data_t>       r_dcache_dtlb_cleanup_line;
-    sc_signal<data_t>       r_dcache_dtlb_cleanup_line_save;
 
     WriteBuffer<addr36_t>     r_wbuf;
     GenericCache<addr36_t>    r_icache;
@@ -521,8 +507,6 @@ public:
     void print_stats();
 
 private:
-    static inline data_t be_to_mask( typename iss_t::be_t );
-
     void transition();
     void genMoore();
 
@@ -542,4 +526,6 @@ private:
 // End:
 
 // vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+
+
 

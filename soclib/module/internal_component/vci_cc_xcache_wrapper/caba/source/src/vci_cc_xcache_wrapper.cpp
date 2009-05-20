@@ -117,22 +117,6 @@ const char *tgt_fsm_state_str[] = {
 
 #define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciCcXcacheWrapper<vci_param, iss_t>
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-tmpl(inline typename VciCcXcacheWrapper<vci_param, iss_t>::data_t)::be_to_mask( typename iss_t::be_t be )
-{
-    size_t i;
-    data_t ret = 0;
-    const typename iss_t::be_t be_up = (1<<(sizeof(data_t)-1));
-
-    for (i=0; i<sizeof(data_t); ++i) {
-        ret <<= 8;
-        if ( be_up & be )
-            ret |= 0xff;
-        be <<= 1;
-    }
-    return ret;
-}
-
 using soclib::common::uint32_log2;
 
 /////////////////////////////////
@@ -952,7 +936,7 @@ tmpl(void)::transition()
     case DCACHE_WRITE_UPDT:
         {
             m_cpt_dcache_data_write++;
-            data_t mask = be_to_mask(r_dcache_be_save);
+            data_t mask = vci_param::be2mask(r_dcache_be_save);
             data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
             r_dcache.write(r_dcache_addr_save, wdata);
             r_dcache_fsm = DCACHE_WRITE_REQ;
@@ -1034,6 +1018,12 @@ tmpl(void)::transition()
                     r_dcache_fsm = DCACHE_ERROR;
                 } else {
                     r_dcache_fsm = DCACHE_IDLE;
+	                // If request was a DATA_SC we need to invalidate the corresponding cache line,
+	                // so that subsequent access to this line are read from RAM
+	                if (dreq.type == iss_t::DATA_SC) {
+	                    r_dcache_fsm = DCACHE_INVAL;
+	                    r_dcache_wdata_save = r_dcache_addr_save;
+	                }
                     r_dcache_buf_unc_valid = true;
                 }
             }

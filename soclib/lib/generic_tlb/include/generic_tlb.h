@@ -544,7 +544,7 @@ public:
         {
             for( size_t set = start_set; set < this->m_nsets; set++ ) 
             {
-                if (nline(way,set) == n_line) 
+                if (( nline(way,set) == n_line ) && ( this->et(way,set) != UNMAPPED )) 
                 {
                     *n_way = way;
                     *n_set = set;
@@ -562,23 +562,6 @@ public:
         } 
         return false;
     } // end cccheck()
-
-    //////////////////////////////////////////////////////////////
-    //  This method invalidates a TLB entry
-    //  identified by the virtual page number.
-    //////////////////////////////////////////////////////////////
-    inline void findpost(size_t way, size_t set, size_t* start_way, size_t* start_set)
-    {
-        if ( set == (this->m_nsets-1) )
-        {
-            *start_set = 0;
-            *start_way = way + 1;
-        }
-        else
-        {
-            *start_set = set + 1;
-        }
-    } // end postcheck()
 
     //////////////////////////////////////////////////////////////
     //  This method invalidates a TLB entry

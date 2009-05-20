@@ -112,21 +112,6 @@ const char *rsp_fsm_state_str[] = {
 
 #define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciVCacheWrapper<vci_param, iss_t>
 
-tmpl(inline typename VciVCacheWrapper<vci_param, iss_t>::data_t)::be_to_mask( typename iss_t::be_t be )
-{
-    size_t i;
-    data_t ret = 0;
-    const typename iss_t::be_t be_up = (1<<(sizeof(data_t)-1));
-
-    for (i=0; i<sizeof(data_t); ++i) {
-        ret <<= 8;
-        if ( be_up & be )
-            ret |= 0xff;
-        be <<= 1;
-    }
-    return ret;
-}
-
 using soclib::common::uint32_log2;
 
 /***********************************************/
@@ -1155,7 +1140,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
                 case iss_t::XTN_PTPR:       // context switch : checking the kernel mode
                                             // both instruction & data TLBs must be flushed
-                    if (dreq.mode == iss_t::MODE_KERNEL) 
+                    if ((dreq.mode == iss_t::MODE_HYPER) || (dreq.mode == iss_t::MODE_KERNEL)) 
                     {
                         r_mmu_ptpr = dreq.wdata;
                         r_icache_error_type = MMU_NONE;
@@ -1174,7 +1159,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     break;
 
                 case iss_t::XTN_TLB_MODE:     // modifying TLBs mode : checking the kernel mode
-                    if (dreq.mode == iss_t::MODE_KERNEL) 
+                    if ((dreq.mode == iss_t::MODE_HYPER) || (dreq.mode == iss_t::MODE_KERNEL)) 
                     {
                         r_mmu_mode = (int)dreq.wdata;
                         drsp.valid = true;
@@ -1189,7 +1174,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     break;
 
                 case iss_t::XTN_DTLB_INVAL:     //  checking the kernel mode
-                    if (dreq.mode == iss_t::MODE_KERNEL) 
+                    if ((dreq.mode == iss_t::MODE_HYPER) || (dreq.mode == iss_t::MODE_KERNEL)) 
                     {
                         r_dcache_fsm = DCACHE_DTLB_INVAL;  
                     } 
@@ -1203,7 +1188,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     break;
 
                 case iss_t::XTN_ITLB_INVAL:     //  checking the kernel mode
-                    if (dreq.mode == iss_t::MODE_KERNEL) 
+                    if ((dreq.mode == iss_t::MODE_HYPER) || (dreq.mode == iss_t::MODE_KERNEL)) 
                     {
                         r_dcache_xtn_req = true;
                         r_dcache_type_save = dreq.addr/4;
@@ -1296,7 +1281,6 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             if ((r_mmu_mode == TLBS_ACTIVE) || (r_mmu_mode == ITLB_D_DTLB_A)) 
             {
                 // Checking access rights
-
                 if ( dcache_hit_t_m || dcache_hit_t_k ) 
                 {
                     if (!dcache_pte_info.u && (dreq.mode == iss_t::MODE_USER)) 
@@ -1873,7 +1857,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     case DCACHE_WRITE_UPDT:
     {
         m_cpt_dcache_data_write++;
-        data_t mask = be_to_mask(r_dcache_be_save);
+        data_t mask = vci_param::be2mask(r_dcache_be_save);
         data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
         assert(r_dcache.write(r_dcache_paddr_save, wdata) && "Write on miss ignores data");
         if ( !r_dcache_dirty_save && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   

@@ -363,8 +363,6 @@ public:
     void print_stats();
 
 private:
-    static inline data_t be_to_mask( typename iss_t::be_t );
-
     void transition();
     void genMoore();
 

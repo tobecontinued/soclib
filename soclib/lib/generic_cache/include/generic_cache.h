@@ -429,6 +429,7 @@ public:
     //   and we select the way with index 0. 
     // This function returns true, il a cache line has been removed,
     // and the victim line index is returned in the victim parameter.
+#if 0    
     inline bool update( addr_t ad, 
                         bool* itlb_buf, bool* dtlb_buf,
                         size_t* n_way, size_t* n_set, 
@@ -498,6 +499,85 @@ public:
             cache_data(selway, set, word) = buf[word] ;
         }
         return cleanup;
+    }
+#endif
+    inline bool find( addr_t ad, 
+                      bool* itlb_buf, bool* dtlb_buf,
+                      size_t* n_way, size_t* n_set, 
+                      addr_t* victim )
+    {
+        size_t      set     = m_y[ad];
+        bool        found   = false;
+        bool        cleanup = false;
+        size_t      selway  = 0;
+
+        for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
+            if ( !cache_val(way, set) ) {
+                found   = true;
+                cleanup = false;
+                selway  = way;
+            }
+        }
+        if ( !found ) { // No invalid way
+            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
+                if ( !cache_lru(way, set) ) {
+                    found   = true;
+                    cleanup = true;
+                    selway  = way;
+                }
+            }
+        }
+        // verify in_itlb & in_tlb 
+        if ( !found ) { // No invalid way
+            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
+                if (!itlb_buf[m_sets*way+set] && !dtlb_buf[m_sets*way+set]) {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                }
+            }
+            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
+                if (!itlb_buf[m_sets*way+set] && dtlb_buf[m_sets*way+set]) {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                }
+            }
+            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
+                if (itlb_buf[m_sets*way+set] && !dtlb_buf[m_sets*way+set]) {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                }
+            }
+            if ( !found ) { // No old way => all ways become recent
+                for ( size_t way = 0; way < m_ways; way++ ) {
+                    cache_lru(way, set) = false;
+                }
+                cleanup = true;
+                selway  = 0;
+            }
+        }
+
+        *victim = (addr_t)((cache_tag(selway, set) * m_sets) + set);
+        cache_val(selway, set) = false;
+        *n_way = selway;
+        *n_set = set;
+        return cleanup;
+    }
+
+    inline void update( addr_t ad, 
+                        size_t n_way, size_t n_set, 
+                        data_t* buf )
+    {
+        tag_t       tag     = m_z[ad];
+
+        cache_tag(n_way, n_set) = tag;
+        cache_val(n_way, n_set) = true;
+        cache_lru(n_way, n_set) = true;
+        for ( size_t word = 0 ; word < m_words ; word++ ) {
+            cache_data(n_way, n_set, word) = buf[word] ;
+        }
     }
 
     // cleanupcheck function is used for checking whether a line

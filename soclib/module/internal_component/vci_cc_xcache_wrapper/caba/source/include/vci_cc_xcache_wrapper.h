@@ -264,10 +264,7 @@ public:
 private:
 
     void transition();
-
     void genMoore();
-
-    static inline data_t be_to_mask( typename iss_t::be_t );
 
     static_assert((int)iss_t::SC_ATOMIC == (int)vci_param::STORE_COND_ATOMIC);
     static_assert((int)iss_t::SC_NOT_ATOMIC == (int)vci_param::STORE_COND_NOT_ATOMIC);
