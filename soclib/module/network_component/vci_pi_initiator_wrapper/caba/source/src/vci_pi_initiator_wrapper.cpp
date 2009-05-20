@@ -28,6 +28,7 @@
 
 #include "../include/vci_pi_initiator_wrapper.h"
 #include "register.h"
+#include "arithmetics.h"
 
 namespace soclib { namespace caba {
 
@@ -85,6 +86,11 @@ switch (r_fsm_state) {
 		r_srcid		= (int)p_vci.srcid.read();
 		r_pktid		= (int)p_vci.pktid.read();
 		r_trdid		= (int)p_vci.trdid.read();
+		r_addr 		= (int)p_vci.address.read();
+		r_cells_to_go= (int)((p_vci.plen.read()
+			+ soclib::common::ctz(p_vci.be.read())
+				+ vci_param::B-1)/vci_param::B) - 1;
+		r_wdata = (int)p_vci.wdata.read();
 		if 	(p_vci.cmd.read() == vci_param::CMD_READ)  r_read = true;
 		else if (p_vci.cmd.read() == vci_param::CMD_WRITE) r_read = false;
 		else 	{
@@ -112,24 +118,29 @@ switch (r_fsm_state) {
         break;
 
 	case FSM_AD:
-	r_wdata = (int)p_vci.wdata.read();
-        if (p_vci.eop) r_fsm_state = FSM_DT;
+	r_addr = r_addr + vci_param::B;
+        if (r_cells_to_go == 0) r_fsm_state = FSM_DT;
 	else           r_fsm_state = FSM_AD_DT;
         break;
 
 	case FSM_AD_DT:
-	if (p_vci.cmdval == false) {
-      		printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
-      		printf("there is no \"buble\" in a VCI command packet\n");
-		exit(1);
-        	} 
 	if (p_vci.rspack == false) {
       		printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
       		printf("the VCI initiator always accept the response packet\n");
 		exit(1);
         	} 
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << "ad_dt cells_to_go=" << r_cells_to_go << " addr=" << std::hex << (r_addr - 4);
+	if (r_read) std::cout << " rdata=" << p_pi.d;
+	else std::cout << " wdata=" << r_wdata;
+	std::cout << std::endl;
+#endif
 	r_wdata = (int)p_vci.wdata.read();
-	if (p_vci.eop) {
+	if (p_pi.ack.read() != Pibus::ACK_WAT) {
+		r_cells_to_go = r_cells_to_go - 1;
+		r_addr = r_addr + vci_param::B;
+	}
+	if (r_cells_to_go == 1) {
 		if      (p_pi.ack.read() == Pibus::ACK_RDY) r_fsm_state = FSM_DT;
 		else if (p_pi.ack.read() == Pibus::ACK_WAT) r_fsm_state = FSM_AD_DT;
 		else if (p_pi.ack.read() == Pibus::ACK_ERR) r_fsm_state = FSM_DT;
@@ -151,6 +162,12 @@ switch (r_fsm_state) {
         break;
 
 	case FSM_DT:
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << "dt cells_to_go=" << r_cells_to_go << " addr=" << std::hex << (r_addr - 4);
+	if (r_read) std::cout << " rdata=" << p_pi.d;
+	else std::cout << " wdata=" << r_wdata;
+	std::cout << std::endl;
+#endif
 	if (p_vci.rspack == false) {
       		printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
       		printf("the VCI initiator always accept the response packet\n");
@@ -177,24 +194,27 @@ switch (r_fsm_state) {
        
 	case FSM_IDLE:
 	p_req     	= false;
-	p_vci.cmdack 	= false;
+	p_vci.cmdack 	= true;
 	p_vci.rspval 	= false;
+	p_vci.reop	= false;
         break;
 
 	case FSM_REQ:
 	p_req     	= true;
-	p_vci.cmdack 	= false;
+	p_vci.cmdack 	= true;
 	p_vci.rspval 	= false;
+	p_vci.reop	= false;
         break;
 
 	case FSM_AD:
 	p_req     	= false;
 	p_vci.cmdack 	= true;
 	p_vci.rspval 	= false;
-	p_pi.a 		= p_vci.address.read();
+	p_pi.a 		= (sc_dt::sc_uint<32>)r_addr;
 	p_pi.read	= r_read;
 	p_pi.opc	= (sc_dt::sc_uint<4>)r_opc;
-	p_pi.lock 	= !p_vci.eop;
+	p_pi.lock 	= (r_cells_to_go > 0);
+	p_vci.reop	= false;
         break;
 
 	case FSM_AD_DT:
@@ -203,30 +223,29 @@ switch (r_fsm_state) {
 	p_vci.rsrcid	= r_srcid.read();
 	p_vci.rpktid	= r_pktid.read();
 	p_vci.rtrdid	= r_trdid.read();
+	p_vci.cmdack	= true;
 	if (p_pi.ack.read() == Pibus::ACK_RDY) {
-		p_vci.cmdack 	= true;
 		p_vci.rspval 	= true;
 		p_vci.rerror	= 0;
 	} else if (p_pi.ack.read() == Pibus::ACK_ERR) {
-		p_vci.cmdack 	= true;
 		p_vci.rspval 	= true;
 		p_vci.rerror	= 1;
 	} else {
-		p_vci.cmdack	= false;
 		p_vci.rspval	= false;
 		p_vci.rerror	= 0;
 	}
 	if (r_read == false) 	p_pi.d  	= r_wdata.read();
 	else			p_vci.rdata 	= p_pi.d.read();
-	p_pi.a 		= p_vci.address.read();
+	p_pi.a 		= (sc_dt::sc_uint<32>)r_addr;
 	p_pi.read	= r_read;
 	p_pi.opc	= (sc_dt::sc_uint<4>)r_opc;
-	p_pi.lock 	= !p_vci.eop;
+	p_pi.lock 	= (r_cells_to_go > 0);
         break;
 
 	case FSM_DT:
 	p_req     	= false;
-	p_vci.cmdack 	= false;
+	p_pi.lock 	= false;
+	p_vci.cmdack 	= true;
 	p_vci.reop	= true;
 	p_vci.rsrcid	= r_srcid.read();
 	p_vci.rpktid	= r_pktid.read();

@@ -26,7 +26,7 @@
  * Maintainers: nipo
  */
 
-#include "soclib/timer.h"
+#include <stdlib.h>
 
 #include "../segmentation.h"
 
@@ -35,7 +35,7 @@
 int main(void)
 {
    uputs(TTY_BASE, "Hello world!\n");
-   while(1);
+   exit(0);
    return 0;
 }
 

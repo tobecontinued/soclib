@@ -91,6 +91,8 @@ private:
 	sc_signal<int>				r_trdid;
 	sc_signal<int>				r_opc;
 	sc_signal<bool>				r_read;
+	sc_signal<int>				r_addr;
+	sc_signal<int>				r_cells_to_go;
 
 	// methods
 	void transition();

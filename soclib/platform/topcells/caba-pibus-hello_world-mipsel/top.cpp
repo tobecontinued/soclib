@@ -30,10 +30,12 @@
 #include <cstdlib>
 
 #include "mapping_table.h"
+#include "ississ2.h"
 #include "mips.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
+#include "vci_simhelper.h"
 #include "vci_pi_initiator_wrapper.h"
 #include "vci_pi_target_wrapper.h"
 #include "pibus_bcu.h"
@@ -62,6 +64,7 @@ int _main(int argc, char *argv[])
   	maptab.add(Segment("loc0" , LOC0_BASE , LOC0_SIZE , IntTab(0), true));
 
 	maptab.add(Segment("tty"  , TTY_BASE , TTY_SIZE , IntTab(1), false));
+	maptab.add(Segment("simhelper", SIMHELPER_BASE, SIMHELPER_SIZE, IntTab(2), false));
 
 	// Signals
 	sc_clock		signal_clk("signal_clk");
@@ -79,10 +82,12 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> gnt("gnt");
 	sc_signal<bool> sel0("sel0");
 	sc_signal<bool> sel1("sel1");
+	sc_signal<bool> sel2("sel2");
   
 	soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
 
 	soclib::caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
+	soclib::caba::VciSignals<vci_param> signal_vci_simhelper("signal_vci_simhelper");
 	soclib::caba::VciSignals<vci_param> signal_vci_vcimultiram0("signal_vci_vcimultiram0");
 
 	// Components
@@ -93,28 +98,34 @@ int _main(int argc, char *argv[])
 	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty0", NULL);
+	soclib::caba::VciSimhelper<vci_param> simhelper("vcisimhelper", IntTab(2), maptab);
 	
-	soclib::caba::PibusBcu bcu("bcu", maptab, 1, 2, 100);
+	soclib::caba::PibusBcu bcu("bcu", maptab, 1, 3, 100);
 	soclib::caba::VciPiInitiatorWrapper<vci_param> cache_wrapper("cache_wrapper");
 	soclib::caba::VciPiTargetWrapper<vci_param> multiram_wrapper("multiram_wrapper");
 	soclib::caba::VciPiTargetWrapper<vci_param> tty_wrapper("tty_wrapper");
+	soclib::caba::VciPiTargetWrapper<vci_param> simhelper_wrapper("simhelper_wrapper");
 
 	//	Net-List
  
 	mips0.p_clk(signal_clk);  
 	vcimultiram0.p_clk(signal_clk);
 	vcitty.p_clk(signal_clk);
+	simhelper.p_clk(signal_clk);
 	cache_wrapper.p_clk(signal_clk);
 	multiram_wrapper.p_clk(signal_clk);
 	tty_wrapper.p_clk(signal_clk);
+	simhelper_wrapper.p_clk(signal_clk);
 	bcu.p_clk(signal_clk);
 
 	mips0.p_resetn(signal_resetn);  
 	vcimultiram0.p_resetn(signal_resetn);
 	vcitty.p_resetn(signal_resetn);
+	simhelper.p_resetn(signal_resetn);
 	cache_wrapper.p_resetn(signal_resetn);
 	multiram_wrapper.p_resetn(signal_resetn);
 	tty_wrapper.p_resetn(signal_resetn);
+	simhelper_wrapper.p_resetn(signal_resetn);
 	bcu.p_resetn(signal_resetn);
   
 	mips0.p_irq[0](signal_mips0_it0); 
@@ -130,6 +141,8 @@ int _main(int argc, char *argv[])
 	vcitty.p_vci(signal_vci_tty);
 	vcitty.p_irq[0](signal_mips0_it0); 
 
+	simhelper.p_vci(signal_vci_simhelper);
+
 	cache_wrapper.p_gnt(gnt);
 	cache_wrapper.p_req(req);
 	cache_wrapper.p_pi(pibus);
@@ -143,10 +156,15 @@ int _main(int argc, char *argv[])
 	tty_wrapper.p_pi(pibus);
 	tty_wrapper.p_vci(signal_vci_tty);
 
+	simhelper_wrapper.p_sel(sel2);
+	simhelper_wrapper.p_pi(pibus);
+	simhelper_wrapper.p_vci(signal_vci_simhelper);
+
 	bcu.p_req[0](req);
 	bcu.p_gnt[0](gnt);
 	bcu.p_sel[0](sel0);
 	bcu.p_sel[1](sel1);
+	bcu.p_sel[2](sel2);
 
 	bcu.p_a(pibus.a);
 	bcu.p_lock(pibus.lock);
@@ -159,7 +177,7 @@ int _main(int argc, char *argv[])
 	signal_resetn = true;
 
 #ifndef SOCVIEW
-	sc_start(sc_core::sc_time(10000, SC_NS));
+	sc_start();
 #else
 	debug();
 #endif
