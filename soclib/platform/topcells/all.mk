@@ -33,7 +33,9 @@ export SOCLIB
 TEST_OUTPUT=test.out
 
 PLATFORM_DESC:=$(shell pwd)/$(PLATFORM_DESC)
+PLATFORM_DIR:=$(shell pwd)
 export PLATFORM_DESC
+export PLATFORM_DIR
 
 ifneq ($(SOCLIB_CC_MODE),)
 SOCLIB_CC_ADD_ARGS+= -m $(SOCLIB_CC_MODE)
