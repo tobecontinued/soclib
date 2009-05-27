@@ -40,6 +40,10 @@ arm966_CC_PREFIX = arm-unknown-linux-gnu-
 arm966_CFLAGS = -mcpu=arm9tdmi -mlittle-endian -nostdinc -gstabs+
 arm966_LDFLAGS = -A armv5te -EL -nostdlib
 
+arm_CC_PREFIX = arm-unknown-elf-
+arm_CFLAGS = -mlittle-endian -march=armv6k -msoft-float -fsigned-char -mfloat-abi=softfp -mfpu=vfp
+arm_LDFLAGS = -EL
+
 lm32_CC_PREFIX 	= 	lm32-elf-
 lm32_CFLAGS 	+=  -gstabs+ -mall-enabled
 lm32_LDFLAGS 	+=  -nostdlib 
