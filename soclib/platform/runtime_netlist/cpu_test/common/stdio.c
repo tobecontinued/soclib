@@ -31,23 +31,14 @@
 
 #include "soclib/simhelper.h"
 
-int time(int *ret)
-{
-	int t;
-#if defined(__mips__)
-	t = get_cp0(9,0);
-#elif defined(__PPC__)
-	t = spr_get(284);
-#elif defined(__MICROBLAZE__)
-#warning Microblaze has no cycle counter
-    t = 0;
-#else
-#error No cycle counter
-#endif
-	if ( ret )
-		*ret = t;
-	return t;
-}
+/* int time(int *ret) */
+/* { */
+/* 	int t; */
+/* 	t = cpu_cycles(); */
+/* 	if ( ret ) */
+/* 		*ret = t; */
+/* 	return t; */
+/* } */
 
 char *strcpy( char *dst, const char *src )
 {

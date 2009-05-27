@@ -53,8 +53,8 @@ new caba ram "ram0"
   id (0)
   conn vci to vgmn0.to_target[0]
   param loads = $binary
-  segment "text"  0x00400000 0x00050000 cached
-  segment "data"  0x10000000 0x00010000 cached
+  segment "text"  0x00400000 0x000a0000 cached
+  segment "data"  0x10000000 0x00020000 cached
   segment "reset" 0xbfc00000 0x00010000 cached
   segment "excep" 0x80000080 0x00010000 cached
   segment "loc0"  0x20000000 0x00001000 cached

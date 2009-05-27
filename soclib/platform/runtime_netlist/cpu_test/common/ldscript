@@ -32,6 +32,8 @@ SECTIONS
     .mb_boot : {
 	    *(.mb_boot)
 	    *(.mb_boot.*)
+		*(.arm_boot)
+		*(.arm_boot.*)
 	}
 
 	special_base = 0x00500000;
@@ -122,3 +124,9 @@ SECTIONS
       *(.unc)
    }
 }
+
+ENTRY(mips_interrupt_entry)
+ENTRY(cpu_boot)
+ENTRY(ppc_boot)
+ENTRY(arm_boot)
+ENTRY(__boot)

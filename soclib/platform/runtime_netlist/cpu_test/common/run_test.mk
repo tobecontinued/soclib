@@ -37,6 +37,7 @@ mipseb_CPU=mipseb
 mips32el_CPU=mips32el
 mips32eb_CPU=mips32eb
 powerpc_CPU=ppc405
+arm_CPU=arm
 microblaze_CPU=microblaze
 
 VPATH=$(TESTDIR) $(COMMON)
@@ -61,7 +62,7 @@ all: test
 test: $(RESULT)
 
 $(SOFT_IMAGE): $(OBJS) $(COMMON)/ldscript
-	$(LD) -T $(COMMON)/ldscript $($(ARCH)_LDFLAGS) -o $@ $(OBJS) $(LIBGCC)
+	$(LD) -q -T $(COMMON)/ldscript $($(ARCH)_LDFLAGS) -o $@ $(OBJS) $(LIBGCC)
 
 %.o: %.s
 	$(AS) $< -o $@

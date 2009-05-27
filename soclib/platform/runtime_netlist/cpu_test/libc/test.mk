@@ -24,5 +24,6 @@
 #
 # Maintainers: nipo
 
-OBJS=main.o exception.o stdio.o system.o test_write.o test_assert.o
+OBJS=main.o exception.o stdio.o system.o tester.o
 ARCH=mipsel mipseb powerpc microblaze mips32el mips32eb arm
+MAX_CYCLES=10000000

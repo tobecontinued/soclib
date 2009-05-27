@@ -93,6 +93,18 @@ static inline int procnum()
     return fsl_get(0);
 }
 
+#elif defined(__arm__)
+
+static inline int procnum()
+{
+	int i;
+	asm (
+		"mrc p15,0,%0,c0,c0,5"
+		: "=r" (i)
+		);
+	return i;
+}
+
 #endif /* platform switch */
 
 static inline int putchar(const int x)

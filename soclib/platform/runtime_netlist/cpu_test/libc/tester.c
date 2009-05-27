@@ -21,25 +21,44 @@
  * SOCLIB_GPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2009
  *
  * Maintainers: nipo
  */
 
-#ifndef STDINT_REPLACEMENT_H
-#define STDINT_REPLACEMENT_H
+#include <stdint.h>
 
-typedef unsigned long long uint64_t;
-typedef unsigned int uint32_t;
-typedef unsigned short uint16_t;
-typedef unsigned char uint8_t;
+struct pair_s {
+	const char *str;
+	int i;
+};
 
-typedef signed long long int64_t;
-typedef signed int int32_t;
-typedef signed short int16_t;
-typedef signed char int8_t;
+struct pair_s pairs [] = {
+	{"deux", 2},
+	{"deux-mille", 2000},
+	{"deux-mille trois-cents", 2300},
+	{"mille", 1000},
+	{"mille neuf-cent quatre-vingt deux", 1982},
+	{"mille neuf-cent quatre-vingt dix", 1990},
+	{"mille neuf-cent quatre-vingt quatre", 1984},
+	{"un", 1},
+};
 
-typedef unsigned int size_t;
-typedef signed int ssize_t;
+int lookup(const char *a)
+{
+	size_t min = 0;
+	size_t max = sizeof(pairs)/sizeof(*pairs);
 
-#endif
+	while (min != max) {
+		size_t cur = min+((max-min)/2);
+		printf("cmp: %d %d %s %s\n", min, max, a, pairs[cur].str);
+		int d = strcmp(a, pairs[cur].str);
+		if ( ! d )
+			return pairs[cur].i;
+		if ( d < 0 )
+			max = cur;
+		else
+			min = cur;
+	}
+	return -1;
+}

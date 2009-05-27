@@ -30,136 +30,264 @@
 #include "stdio.h"
 
 #include "ops.h"
+#include "tester.h"
 
 int main(void)
 {
-	test_val(add, (0, 0), 0);
-	test_val(add, (3, 2), 5);
-	test_val(add, (0x80000000, 0x80000000), 0);
-	test_val(add, (0xffffffff, 1), 0);
-	test_val(add, (0xffffffff, 2), 1);
+	assert(sizeof(uint64_t) == 8);
+	assert(sizeof(int64_t) == 8);
+	assert(sizeof(uint32_t) == 4);
+	assert(sizeof(int32_t) == 4);
 
-	test_val(sub, (0, 0), 0);
-	test_val(sub, (2, 1), 1);
-	test_val(sub, (2, (uint32_t)-1), 3);
-	test_val(sub, (0x80000000, 0x80000000), 0);
-	test_val(sub, (0x80000000, 1), 0x7fffffff);
-	test_val(sub, (0xffffffff, 1), 0xfffffffe);
-	test_val(sub, (0xffffffff, 2), 0xfffffffd);
-	test_val(sub, (0xffffffff, 0xffffffff), 0);
 
-	test_val(and, (0, 0), 0);
-	test_val(and, (3, 2), 2);
-	test_val(and, (0x80000000, 0xaaaaaaaa), 0x80000000);
-	test_val(and, (0xffffffff, 1), 1);
-	test_val(and, (0xffffffff, 2), 2);
+#define test(f, a) test_32(f, a)
+#define test_val(f, a, v) test_val_32(f, a, v)
 
-	test_val(or, (0, 0), 0);
-	test_val(or, (3, 2), 3);
-	test_val(or, (0x80000000, 0xaaaaaaaa), 0xaaaaaaaa);
-	test_val(or, (0xffffffff, 1), 0xffffffff);
-	test_val(or, (0xffffffff, 2), 0xffffffff);
+	test_val(add, (0LL, 0LL), 0LL);
+	test_val(add, (3LL, 2LL), 5LL);
+	test_val(add, (0x80000000LL, 0x80000000LL), 0LL);
+	test_val(add, (0xffffffffLL, 1LL), 0LL);
+	test_val(add, (0xffffffffLL, 2LL), 1LL);
 
-	test_val(xor, (0, 0), 0);
-	test_val(xor, (3, 2), 1);
-	test_val(xor, (0x80000000, 0xaaaaaaaa), 0x2aaaaaaa);
-	test_val(xor, (0xffffffff, 1), 0xfffffffe);
-	test_val(xor, (0xffffffff, 2), 0xfffffffd);
+	test_val(sub, (0LL, 0LL), 0LL);
+	test_val(sub, (2LL, 1LL), 1LL);
+	test_val(sub, (2LL, (uint32_t)-1LL), 3LL);
+	test_val(sub, (0x80000000LL, 0x80000000LL), 0LL);
+	test_val(sub, (0x80000000LL, 1LL), 0x7fffffffLL);
+	test_val(sub, (0xffffffffLL, 1LL), 0xfffffffeLL);
+	test_val(sub, (0xffffffffLL, 2LL), 0xfffffffdLL);
+	test_val(sub, (0xffffffffLL, 0xffffffffLL), 0LL);
 
-	test_val(mul, (0, 0), 0);
-	test_val(mul, (0, 1), 0);
-	test_val(mul, (0, 0xffffffff), 0);
-	test_val(mul, (0xffffffff, 0xffffffff), 1);
-	test_val(mul, (42, 38), 1596);
+	test_val(and, (0LL, 0LL), 0LL);
+	test_val(and, (3LL, 2LL), 2LL);
+	test_val(and, (0x80000000LL, 0xaaaaaaaaLL), 0x80000000LL);
+	test_val(and, (0xffffffffLL, 1LL), 1LL);
+	test_val(and, (0xffffffffLL, 2LL), 2LL);
 
-	test_val(div, (0, 1), 0);
-	test_val(div, (0, 0xffffffff), 0);
-	test_val(div, (2, 1), 2);
-	test_val(div, (2, (uint32_t)-1), 0);
-	test_val(div, (0x42, (uint32_t)-3), 0);
-	test_val(div, (531226, (uint32_t)300), 1770);
-	test_val(div, (131072, (uint32_t)600), 131072/600);
+	test_val(or, (0LL, 0LL), 0LL);
+	test_val(or, (3LL, 2LL), 3LL);
+	test_val(or, (0x80000000LL, 0xaaaaaaaaLL), 0xaaaaaaaaLL);
+	test_val(or, (0xffffffffLL, 1LL), 0xffffffffLL);
+	test_val(or, (0xffffffffLL, 2LL), 0xffffffffLL);
 
-	test_33_shift(srl, 0xaaaaaaaa);
-	test_33_shift(srl, 0x55555555);
-	test_33_shift(srl, 0x00000000);
-	test_33_shift(srl, 0xffffffff);
+	test_val(xor, (0LL, 0LL), 0LL);
+	test_val(xor, (3LL, 2LL), 1LL);
+	test_val(xor, (0x80000000LL, 0xaaaaaaaaLL), 0x2aaaaaaaLL);
+	test_val(xor, (0xffffffffLL, 1LL), 0xfffffffeLL);
+	test_val(xor, (0xffffffffLL, 2LL), 0xfffffffdLL);
 
-	test_33_shift(sll, 0xaaaaaaaa);
-	test_33_shift(sll, 0x55555555);
-	test_33_shift(sll, 0x00000000);
-	test_33_shift(sll, 0xffffffff);
+	test_val(mul, (0LL, 0LL), 0LL);
+	test_val(mul, (0LL, 1LL), 0LL);
+	test_val(mul, (0LL, 0xffffffffLL), 0LL);
+	test_val(mul, (0xffffffffLL, 0xffffffffLL), 1LL);
+	test_val(mul, (42LL, 38LL), 1596LL);
 
-	test_33_shift(mod, 0xaaaaaaaa);
-	test_33_shift(mod, 0x12345678);
-	test_33_shift(mod, 1000);
-	test_33_shift(mod, 0x7fffffff);
+	test_val(div, (0LL, 1LL), 0LL);
+	test_val(div, (0LL, 0xffffffffLL), 0LL);
+	test_val(div, (2LL, 1LL), 2LL);
+	test_val(div, (2LL, -1LL), 0LL);
+	test_val(div, (0x42LL, -3LL), 0LL);
+	test_val(div, (531226LL, (uint32_t)300LL), 1770LL);
+	test_val(div, (131072LL, (uint32_t)600LL), 131072/600LL);
 
-	test_val(mklemask, (0), 0);
-	test_val(mklemask, (1), 0x1);
-	test_val(mklemask, (31), 0x7fffffff);
-	test_val(mklemask, (32), 0xffffffff);
+	test_33_shift(srl, 0xaaaaaaaaLL);
+	test_33_shift(srl, 0x55555555LL);
+	test_33_shift(srl, 0x00000000LL);
+	test_33_shift(srl, 0xffffffffLL);
 
-	test_val(sign_ext8, (0), 0);
-	test_val(sign_ext8, (0x80), 0xffffff80);
-	test_val(sign_ext8, (0x7f), 0x7f);
-	test_val(sign_ext8, (0xff), 0xffffffff);
+	test_33_shift(sll, 0xaaaaaaaaLL);
+	test_33_shift(sll, 0x55555555LL);
+	test_33_shift(sll, 0x00000000LL);
+	test_33_shift(sll, 0xffffffffLL);
 
-	test_val(sign_ext16, (0), 0);
-	test_val(sign_ext16, (0x8000), 0xffff8000);
-	test_val(sign_ext16, (0x7fff), 0x7fff);
-	test_val(sign_ext16, (0xffff), 0xffffffff);
+	test_33_shift(mod, 0xaaaaaaaaLL);
+	test_33_shift(mod, 0x12345678LL);
+	test_33_shift(mod, 1000LL);
+	test_33_shift(mod, 0x7fffffffLL);
 
-	test_33_shift(rotl, 0xaaaaaaaa);
-	test_33_shift(rotl, 0x55555555);
-	test_33_shift(rotl, 0x00000000);
-	test_33_shift(rotl, 0xffffffff);
+	test_val(mklemask, (0LL), 0LL);
+	test_val(mklemask, (1LL), 0x1LL);
+	test_val(mklemask, (31LL), 0x7fffffffLL);
+	test_val(mklemask, (32LL), 0xffffffffLL);
 
-	test_33_shift(rotr, 0xaaaaaaaa);
-	test_33_shift(rotr, 0x55555555);
-	test_33_shift(rotr, 0x00000000);
-	test_33_shift(rotr, 0xffffffff);
+	test_val(sign_ext8, (0LL), 0LL);
+	test_val(sign_ext8, (0x80LL), 0xffffff80LL);
+	test_val(sign_ext8, (0x7fLL), 0x7fLL);
+	test_val(sign_ext8, (0xffLL), 0xffffffffLL);
 
-	test_val(mkmask, (10, 0), 0x3ff);
-	test_val(mkmask, (32, 0), 0xffffffff);
-	test_val(mkmask, (0, 0), 0);
-	test_val(mkmask, (15+8, 15), 0x007f8000);
+	test_val(sign_ext16, (0LL), 0LL);
+	test_val(sign_ext16, (0x8000LL), 0xffff8000LL);
+	test_val(sign_ext16, (0x7fffLL), 0x7fffLL);
+	test_val(sign_ext16, (0xffffLL), 0xffffffffLL);
 
-	test_val(extract, (0xfffffff7, 3, 2), 0x2);
-	test_val(extract, (0xffffffff, 3, 0), 0);
-	test_val(extract, (0xffffffff, 31, 1), 1);
-	test_val(extract, (0x7fffffff, 31, 1), 0);
-	test_val(extract, (0xffeeffff, 0, 32), 0xffeeffff);
+	test_33_shift(rotl, 0xaaaaaaaaLL);
+	test_33_shift(rotl, 0x55555555LL);
+	test_33_shift(rotl, 0x00000000LL);
+	test_33_shift(rotl, 0xffffffffLL);
 
-	test_val(extract, (0xaaaaaaaa, 3, 2), 1);
-	test_val(extract, (0xaaaaaaaa, 3, 0), 0);
-	test_val(extract, (0xaaaaaaaa, 31, 1), 1);
-	test_val(extract, (0xaaaaaaaa, 0, 32), 0xaaaaaaaa);
+	test_33_shift(rotr, 0xaaaaaaaaLL);
+	test_33_shift(rotr, 0x55555555LL);
+	test_33_shift(rotr, 0x00000000LL);
+	test_33_shift(rotr, 0xffffffffLL);
 
-	test_val(extract, (0xff817fff, 15, 8), 0x02);
-	test_val(extract, (0x00778000, 15, 8), 0xef);
+	test_val(mkmask, (10LL, 0LL), 0x3ffLL);
+	test_val(mkmask, (32LL, 0LL), 0xffffffffLL);
+	test_val(mkmask, (0LL, 0LL), 0LL);
+	test_val(mkmask, (15+8LL, 15LL), 0x007f8000LL);
 
-	test_val(insert, (0xffffffff, 0, 0, 32), 0);
-	test_val(insert, (0xffffffff, 6, 15, 8), 0xff837fff);
-	test_val(insert, (0, 0xffffffff, 15, 8), 0x007f8000);
+	test_val(extract, (0xfffffff7LL, 3LL, 2LL), 0x2LL);
+	test_val(extract, (0xffffffffLL, 3LL, 0LL), 0LL);
+	test_val(extract, (0xffffffffLL, 31LL, 1LL), 1LL);
+	test_val(extract, (0x7fffffffLL, 31LL, 1LL), 0LL);
+	test_val(extract, (0xffeeffffLL, 0LL, 32LL), 0xffeeffffLL);
 
-	test_val(extract_15_8, (0xff807fff), 0);
-	test_val(extract_15_8, (0x007f8000), 0xff);
+	test_val(extract, (0xaaaaaaaaLL, 3LL, 2LL), 1LL);
+	test_val(extract, (0xaaaaaaaaLL, 3LL, 0LL), 0LL);
+	test_val(extract, (0xaaaaaaaaLL, 31LL, 1LL), 1LL);
+	test_val(extract, (0xaaaaaaaaLL, 0LL, 32LL), 0xaaaaaaaaLL);
 
-	test_val(insert_15_8, (0xffffffff, 0), 0xff807fff);
-	test_val(insert_15_8, (0, 0xffffffff), 0x007f8000);
+	test_val(extract, (0xff817fffLL, 15LL, 8LL), 0x02LL);
+	test_val(extract, (0x00778000LL, 15LL, 8LL), 0xefLL);
 
-	test_val(swap16, (0x11223344), 0x4433);
-	test_val(swap16, (0x112233), 0x3322);
-	test_val(swap16, (0x1122), 0x2211);
+	test_val(insert, (0xffffffffLL, 0LL, 0LL, 32LL), 0LL);
+	test_val(insert, (0xffffffffLL, 6LL, 15LL, 8LL), 0xff837fffLL);
+	test_val(insert, (0LL, 0xffffffffLL, 15LL, 8LL), 0x007f8000LL);
 
-	test_val(swap32, (0x11223344), 0x44332211);
-	test_val(swap32, (0x112233), 0x33221100);
-	test_val(swap32, (0x1122), 0x22110000);
+	test_val(extract_15_8, (0xff807fffLL), 0LL);
+	test_val(extract_15_8, (0x007f8000LL), 0xffLL);
 
-	test_val(swap16_2, (0x11223344), 0x22114433);
-	test_val(swap16_2, (0x112233), 0x11003322);
-	test_val(swap16_2, (0x1122), 0x00002211);
+	test_val(insert_15_8, (0xffffffffLL, 0LL), 0xff807fffLL);
+	test_val(insert_15_8, (0LL, 0xffffffffLL), 0x007f8000LL);
+
+	test_val(swap, (0x11223344LL), 0x44332211LL);
+	test_val(swap, (0x112233LL), 0x33221100LL);
+	test_val(swap, (0x1122LL), 0x22110000LL);
+
+#undef test
+#undef test_val
+#define test(f, a) test_64(f, a)
+#define test_val(f, a, v) test_val_64(f, a, v)
+
+	test_val(add, (0LL, 0LL), 0LL);
+	test_val(add, (3LL, 2LL), 5LL);
+	test_val(add, (0x80000000LL, 0x80000000LL), 0x100000000LL);
+	test_val(add, (0xffffffffLL, 1LL), 0x100000000LL);
+	test_val(add, (0xffffffffLL, 2LL), 0x100000001LL);
+
+	test_val(sub, (0LL, 0LL), 0LL);
+	test_val(sub, (2LL, 1LL), 1LL);
+	test_val(sub, (2LL, (uint64_t)-1LL), 3LL);
+	test_val(sub, (0x80000000LL, 0x80000000LL), 0LL);
+	test_val(sub, (0x80000000LL, 1LL), 0x7fffffffLL);
+	test_val(sub, (0xffffffffLL, 1LL), 0xfffffffeLL);
+	test_val(sub, (0xffffffffLL, 2LL), 0xfffffffdLL);
+	test_val(sub, (0xfffffffeLL, 0xffffffffLL), (uint64_t)-1);
+
+	test_val(and, (0LL, 0LL), 0LL);
+	test_val(and, (3LL, 2LL), 2LL);
+	test_val(and, (0x80000000LL, 0xaaaaaaaaLL), 0x80000000LL);
+	test_val(and, (0xffffffffLL, 1LL), 1LL);
+	test_val(and, (0xffffffffLL, 2LL), 2LL);
+
+	test_val(or, (0LL, 0LL), 0LL);
+	test_val(or, (3LL, 2LL), 3LL);
+	test_val(or, (0x80000000LL, 0xaaaaaaaaLL), 0xaaaaaaaaLL);
+	test_val(or, (0xffffffffLL, 1LL), 0xffffffffLL);
+	test_val(or, (0xffffffffLL, 2LL), 0xffffffffLL);
+
+	test_val(xor, (0LL, 0LL), 0LL);
+	test_val(xor, (3LL, 2LL), 1LL);
+	test_val(xor, (0x80000000LL, 0xaaaaaaaaLL), 0x2aaaaaaaLL);
+	test_val(xor, (0xffffffffLL, 1LL), 0xfffffffeLL);
+	test_val(xor, (0xffffffffLL, 2LL), 0xfffffffdLL);
+
+	test_val(mul, (0LL, 0LL), 0LL);
+	test_val(mul, (0LL, 1LL), 0LL);
+	test_val(mul, (0LL, 0xffffffffLL), 0LL);
+	test_val(mul, (0xffffffffLL, 0xffffffffLL), 0xfffffffe00000001LL);
+	test_val(mul, (42LL, 38LL), 1596LL);
+
+	test_val(div, (0LL, 1LL), 0LL);
+	test_val(div, (0LL, 0xffffffffLL), 0LL);
+	test_val(div, (2LL, 1LL), 2LL);
+	test_val(div, (2LL, -1LL), 0LL);
+	test_val(div, (0x42LL, -3LL), 0LL);
+	test_val(div, (531226LL, (uint32_t)300LL), 1770LL);
+	test_val(div, (131072LL, (uint32_t)600LL), 131072/600LL);
+
+	test_33_shift(srl, 0xaaaaaaaaLL);
+	test_33_shift(srl, 0x55555555LL);
+	test_33_shift(srl, 0x00000000LL);
+	test_33_shift(srl, 0xffffffffLL);
+
+	test_33_shift(sll, 0xaaaaaaaaLL);
+	test_33_shift(sll, 0x55555555LL);
+	test_33_shift(sll, 0x00000000LL);
+	test_33_shift(sll, 0xffffffffLL);
+
+	test_33_shift(mod, 0xaaaaaaaaLL);
+	test_33_shift(mod, 0x12345678LL);
+	test_33_shift(mod, 1000LL);
+	test_33_shift(mod, 0x7fffffffLL);
+
+	test_val(mklemask, (0LL), 0LL);
+	test_val(mklemask, (1LL), 0x1LL);
+	test_val(mklemask, (31LL), 0x7fffffffLL);
+	test_val(mklemask, (48LL), 0xffffffffffffLL);
+	test_val(mklemask, (32LL), 0xffffffffLL);
+
+	test_val(sign_ext8, (0LL), 0LL);
+	test_val(sign_ext8, (0x80LL), 0xffffffffffffff80LL);
+	test_val(sign_ext8, (0x7fLL), 0x7fLL);
+	test_val(sign_ext8, (0xffLL), 0xffffffffffffffffLL);
+
+	test_val(sign_ext16, (0LL), 0LL);
+	test_val(sign_ext16, (0x8000LL), 0xffffffffffff8000LL);
+	test_val(sign_ext16, (0x7fffLL), 0x7fffLL);
+	test_val(sign_ext16, (0xffffLL), 0xffffffffffffffffLL);
+
+	test_33_shift(rotl, 0xaaaaaaaaLL);
+	test_33_shift(rotl, 0x55555555LL);
+	test_33_shift(rotl, 0x00000000LL);
+	test_33_shift(rotl, 0xffffffffLL);
+
+	test_33_shift(rotr, 0xaaaaaaaaLL);
+	test_33_shift(rotr, 0x55555555LL);
+	test_33_shift(rotr, 0x00000000LL);
+	test_33_shift(rotr, 0xffffffffLL);
+
+	test_val(mkmask, (10LL, 0LL), 0x3ffLL);
+	test_val(mkmask, (32LL, 0LL), 0xffffffffLL);
+	test_val(mkmask, (0LL, 0LL), 0LL);
+	test_val(mkmask, (15+8LL, 15LL), 0x007f8000LL);
+
+	test_val(extract, (0xfffffff7LL, 3LL, 2LL), 0x2LL);
+	test_val(extract, (0xffffffffLL, 3LL, 0LL), 0LL);
+	test_val(extract, (0xffffffffLL, 31LL, 1LL), 1LL);
+	test_val(extract, (0x7fffffffLL, 31LL, 1LL), 0LL);
+	test_val(extract, (0xffeeffffLL, 0LL, 32LL), 0xffeeffffLL);
+
+	test_val(extract, (0xaaaaaaaaLL, 3LL, 2LL), 1LL);
+	test_val(extract, (0xaaaaaaaaLL, 3LL, 0LL), 0LL);
+	test_val(extract, (0xaaaaaaaaLL, 31LL, 1LL), 1LL);
+	test_val(extract, (0xaaaaaaaaLL, 0LL, 32LL), 0xaaaaaaaaLL);
+
+	test_val(extract, (0xff817fffLL, 15LL, 8LL), 0x02LL);
+	test_val(extract, (0x00778000LL, 15LL, 8LL), 0xefLL);
+
+	test_val(insert, (0xffffffffLL, 0LL, 0LL, 32LL), 0LL);
+	test_val(insert, (0xffffffffLL, 6LL, 15LL, 8LL), 0xff837fffLL);
+	test_val(insert, (0LL, 0xffffffffLL, 15LL, 8LL), 0x007f8000LL);
+
+	test_val(extract_15_8, (0xff807fffLL), 0LL);
+	test_val(extract_15_8, (0x007f8000LL), 0xffLL);
+
+	test_val(insert_15_8, (0xffffffffLL, 0LL), 0xff807fffLL);
+	test_val(insert_15_8, (0LL, 0xffffffffLL), 0x007f8000LL);
+
+	test_val(swap, (0x1122334455667788LL), 0x8877665544332211LL);
+	test_val(swap, (0x11223344556677LL), 0x7766554433221100LL);
+	test_val(swap, (0x778844551122LL), 0x2211554488770000LL);
 
 	exit(0);
 }

@@ -412,6 +412,20 @@ asm(
 	".end	_boot			\n\t"
     );
 
+#elif defined(__arm__)
+
+asm(
+    ".section        .arm_boot,\"ax\"			\n"
+
+    ".globl arm_boot				\n\t"
+    "arm_boot:					\n\t"
+
+    "ldr  r13, =_stack				\n\t"
+
+	"ldr  r12, =main             \n\t"
+	"bx   r12 \n\t"
+	);
+
 #else
 #error Unsupported arch
 #endif

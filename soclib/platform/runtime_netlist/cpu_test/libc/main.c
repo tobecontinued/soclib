@@ -21,25 +21,26 @@
  * SOCLIB_GPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2009
  *
  * Maintainers: nipo
  */
 
-#ifndef STDINT_REPLACEMENT_H
-#define STDINT_REPLACEMENT_H
+#include "system.h"
+#include "stdio.h"
 
-typedef unsigned long long uint64_t;
-typedef unsigned int uint32_t;
-typedef unsigned short uint16_t;
-typedef unsigned char uint8_t;
+int lookup(const char *);
 
-typedef signed long long int64_t;
-typedef signed int int32_t;
-typedef signed short int16_t;
-typedef signed char int8_t;
+int main(void)
+{
+	assert( lookup("deux") == 2 );
+	assert( lookup("deux-mille") == 2000 );
+	assert( lookup("deux-mille trois-cents") == 2300 );
+	assert( lookup("mille") == 1000 );
+	assert( lookup("mille neuf-cent quatre-vingt deux") == 1982 );
+	assert( lookup("mille neuf-cent quatre-vingt dix") == 1990 );
+	assert( lookup("mille neuf-cent quatre-vingt quatre") == 1984 );
+	assert( lookup("un") == 1 );
 
-typedef unsigned int size_t;
-typedef signed int ssize_t;
-
-#endif
+	exit(0);
+}

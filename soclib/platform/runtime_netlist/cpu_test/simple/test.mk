@@ -25,5 +25,5 @@
 # Maintainers: nipo
 
 OBJS=main.o exception.o stdio.o system.o
-ARCH=mipsel mipseb powerpc microblaze mips32el mips32eb
+ARCH=mipsel mipseb powerpc microblaze mips32el mips32eb arm
 
