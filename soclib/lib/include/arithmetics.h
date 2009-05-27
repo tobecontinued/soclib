@@ -29,7 +29,6 @@
 #define SOCLIB_COMMON_ARITHMETICS_H
 
 #include <stdint.h>
-#include <math.h>
 
 namespace soclib { namespace common {
 
@@ -107,9 +106,11 @@ static inline T popcount(T n)
     return __builtin_popcount(n);
 }
 
-static inline uint32_t uint32_log2(uint32_t n)
+static inline int uint32_log2(uint32_t n)
 {
-    return (uint32_t)(0.5f+log2(n));
+    if ( n == 0 )
+        return -1;
+    return 31 - __builtin_clz(n);
 }
 
 template<typename T>
