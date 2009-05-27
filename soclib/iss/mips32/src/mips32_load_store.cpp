@@ -72,8 +72,14 @@ void Mips32Iss::do_mem_access( addr_t address,
     assert( (byte_count + byte_le) <= 4 );
 
     if ( ! m_little_endian ) {
+        switch (operation) {
+        case Iss2::XTN_READ:
+        case Iss2::XTN_WRITE:
+            break;
+        default:
 //        byte_le = (4-byte_count)^byte_le;
-        wdata = soclib::endian::uint32_swap(wdata) >> (8 * (4-byte_count));
+            wdata = soclib::endian::uint32_swap(wdata) >> (8 * (4-byte_count));
+        }
     }
 
     m_dreq.addr = address & (~3);
