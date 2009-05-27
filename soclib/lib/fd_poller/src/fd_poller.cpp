@@ -88,12 +88,17 @@ const FdPoller &FdPoller::operator =( const FdPoller &ref )
 void FdPoller::reset()
 {
 	m_has_data = false;
+    write( s_changed[1], "", 1 );
 }
 
 void FdPoller::add( FdPoller *p )
 {
 	pthread_mutex_lock(&s_lock);
 	bool start_thread = s_pollers.empty();
+
+#if defined(SOCLIB_MODULE_DEBUG)
+    std::cout << "Adding " << *p << std::endl;
+#endif
 	s_pollers.push_back(p);
 
     write( s_changed[1], "", 1 );
@@ -107,6 +112,9 @@ void FdPoller::add( FdPoller *p )
 void FdPoller::remove( FdPoller *p )
 {
 	pthread_mutex_lock(&s_lock);
+#if defined(SOCLIB_MODULE_DEBUG)
+    std::cout << "Removing " << *p << std::endl;
+#endif
 	s_pollers.remove(p);
 	bool stop_thread = s_pollers.empty();
 	if ( stop_thread )
@@ -143,6 +151,9 @@ void* FdPoller::thread( void *unused )
 
 	while (s_thread_running) {
         if ( changed ) {
+#if defined(SOCLIB_MODULE_DEBUG)
+            std::cout << "Changed" << std::endl;
+#endif
             changed = false;
             pthread_mutex_lock(&s_lock);
             if (pfd) {
@@ -162,7 +173,7 @@ void* FdPoller::thread( void *unused )
                 FdPoller *p = *i;
                 struct pollfd *s = &pfd[n_entries];
 
-                if ( p->m_fd >= 0 ) {
+                if ( p->m_fd >= 0 && !p->m_has_data ) {
                     s->fd = p->m_fd;
                     s->events = POLLERR | POLLHUP | (
                         p->m_poll_input ? POLLIN : POLLOUT );
@@ -202,7 +213,14 @@ void* FdPoller::thread( void *unused )
 			if ( si == s_pollers.end() )
 				continue;
 
+			if ( (*si)->m_has_data )
+                continue;
+
 			(*si)->m_has_data = true;
+#if defined(SOCLIB_MODULE_DEBUG)
+            std::cout << **si << " has data" << std::endl;
+#endif
+            changed = true;
 		}
 		pthread_mutex_unlock(&s_lock);
 	}
