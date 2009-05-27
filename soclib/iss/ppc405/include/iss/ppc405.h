@@ -366,6 +366,7 @@ public:
     size_t debugGetRegisterSize(unsigned int reg) const;
     void debugSetRegisterValue(unsigned int reg, uint32_t value);
     static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_BIG_ENDIAN;
+    void dump() const;
 
 protected:
     void exceptionProcess( uint32_t cause );
@@ -465,6 +466,7 @@ private:
     void mem_load_indexed( DataOperationType type, uint32_t nb, bool update, bool, bool );
     void mem_store_imm( DataOperationType type, uint32_t nb, bool update, uint32_t data );
     void mem_store_indexed( DataOperationType type, uint32_t nb, bool update, uint32_t data );
+    void mem_xtn( DataOperationType type, uint32_t op, uint32_t data );
 
     void mem_load_word( uint32_t, uint32_t * );
     void mem_store_word( uint32_t, uint32_t );
@@ -475,8 +477,6 @@ private:
     inline void do_add( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );
     inline uint32_t do_addi( uint32_t opl, uint32_t opr, uint32_t ca, bool need_ca );
     inline void branch_cond( uint32_t next_pc_if_taken );
-
-    void dump() const;
 
 #include "ppc405_ops.inc"
 

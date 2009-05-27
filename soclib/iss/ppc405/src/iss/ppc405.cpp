@@ -85,6 +85,8 @@ void Ppc405Iss::reset()
     r_msr.whole = 0;
     for ( size_t i=0; i<DCR_MAX; ++i )
         r_dcr[i] = 0;
+    for ( size_t i=0; i<32; ++i )
+        r_gp[i] = 0;
     r_dcr[DCR_PROCNUM] = m_ident;
     r_dcr[DCR_EXEC_CYCLES] = 0;
 }

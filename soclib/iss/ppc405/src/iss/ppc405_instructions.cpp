@@ -322,7 +322,10 @@ void Ppc405Iss::op_dcbf()
 
 void Ppc405Iss::op_dcbi()
 {
-    mem_load_indexed( XTN_WRITE, XTN_DCACHE_INVAL, false, false, false );
+    uint32_t base = m_ins.x.ra ? r_gp[m_ins.x.ra] : 0;
+    uint32_t address = base + r_gp[m_ins.x.rb];
+
+    mem_xtn( XTN_WRITE, XTN_DCACHE_INVAL, address );
 }
 
 void Ppc405Iss::op_dcbst()

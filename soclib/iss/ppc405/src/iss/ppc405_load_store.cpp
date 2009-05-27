@@ -96,6 +96,18 @@ void Ppc405Iss::mem_load_indexed( DataOperationType type, uint32_t nb, bool upda
 #endif
 }
 
+void Ppc405Iss::mem_xtn( DataOperationType type, uint32_t op, uint32_t data )
+{
+    m_dreq.valid = true;
+    m_dreq.be = 0xf;
+    m_dreq.type = type;
+    m_dreq.addr = op*4;
+    m_dreq.wdata = data;
+    r_mem_dest = NULL;
+    r_mem_reversed = false;
+    r_mem_unsigned = false;
+}
+
 void Ppc405Iss::mem_store_imm( DataOperationType type, uint32_t nb, bool update, uint32_t data )
 {
     uint32_t base = (m_ins.d.ra || update) ? r_gp[m_ins.d.ra] : 0;
