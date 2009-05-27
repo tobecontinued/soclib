@@ -58,6 +58,7 @@ class VciFactory
 	static soclib::common::Factory xcache_mips32eb_factory;
 	static soclib::common::Factory xcache_ppc405_factory;
 	static soclib::common::Factory xcache_microblaze_factory;
+	static soclib::common::Factory xcache_arm_factory;
 };
 
 }}

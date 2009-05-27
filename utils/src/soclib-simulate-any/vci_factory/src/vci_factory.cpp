@@ -42,6 +42,7 @@
 #include "vci_xcache_wrapper.h"
 #include "mips.h"
 #include "ppc405.h"
+#include "arm.h"
 #include "microblaze.h"
 #include "mips32.h"
 #include "ississ2.h"
@@ -447,6 +448,20 @@ ModuleHolder& xcache_microblaze(
 		return xcache_cpu<vci_param, iss_t>(name, args, env);
 }
 
+template<typename vci_param>
+ModuleHolder& xcache_arm(
+    const std::string &name,
+    ::soclib::common::inst::InstArg &args,
+    ::soclib::common::inst::InstArg &env )
+{
+	typedef soclib::common::ArmIss iss_t;
+	if ( args.has("with_gdb") && args.get<int>("with_gdb")  )
+		return xcache_cpu<vci_param, soclib::common::GdbServer<iss_t> >
+			(name, args, env);
+	else
+		return xcache_cpu<vci_param, iss_t>(name, args, env);
+}
+
 #undef tmpl
 
 }
@@ -475,6 +490,7 @@ register_factory(xcache_mips32el);
 register_factory(xcache_mips32eb);
 register_factory(xcache_ppc405);
 register_factory(xcache_microblaze);
+register_factory(xcache_arm);
 
 
 }}
