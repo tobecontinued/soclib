@@ -221,7 +221,6 @@ private:
     enum exception_e m_exception;
 
     addr_t m_current_pc;
-    bool m_r15_changed;
     uint32_t m_cycle_count;
     uint32_t m_run_count;
 	bool m_instruction_asked;

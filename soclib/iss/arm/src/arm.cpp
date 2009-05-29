@@ -125,8 +125,9 @@ uint32_t ArmIss::executeNCycles(
 	)
 {
 	m_irq_in = irq_state;
+	bool r15_changed = false;
 
-	bool accept_external_interrupts = !r_cpsr.irq_disabled;
+	bool accept_external_interrupts = !r_cpsr.irq_disabled && !m_microcode_func;
 	bool instruction_asked = m_microcode_func == NULL;
 	
 	bool data_req_nok = m_dreq.valid;
@@ -139,14 +140,14 @@ uint32_t ArmIss::executeNCycles(
 
 	if ( data_req_nok && drsp.valid ) {
 		m_data_error |= drsp.error;
-		m_r15_changed = handle_data_response(drsp);
+		r15_changed = handle_data_response(drsp);
 		data_req_nok = false;
 	}
 
 	// if r15 changed, the fetch error we will
 	// eventually get from ifetch is broken.
 	// else, the fetched instruction is not valid
-	m_ins_error &= !m_r15_changed;
+	m_ins_error &= !r15_changed;
 	
 	if ( ncycle == 0 )
 		return 0;
@@ -164,7 +165,7 @@ uint32_t ArmIss::executeNCycles(
 	if ( m_microcode_func ) {
 		(this->*m_microcode_func)();
 	} else {
-		if ( m_r15_changed ) {
+		if ( r_gp[15] != m_current_pc ) {
 			m_opcode.decod.cond = 0xf; // Never
 		} else {
 			r_gp[15] += 4;
@@ -173,7 +174,6 @@ uint32_t ArmIss::executeNCycles(
 #ifdef SOCLIB_MODULE_DEBUG
 		dump();
 #endif
-		m_r15_changed = false;
 		run();
 	}
 
@@ -234,7 +234,7 @@ uint32_t ArmIss::executeNCycles(
 	m_exception = EXCEPT_NONE;
 
   normal_end:
-	m_current_pc = r_gp[15];
+	m_current_pc = m_microcode_func ? 0 : r_gp[15];
 	m_cycle_count += 1;
 	return 1;
 }
@@ -265,7 +265,6 @@ void ArmIss::reset()
 	m_cache_info.separated = 1;
 	DataRequest dreq = ISS_DREQ_INITIALIZER;
 	m_dreq = dreq;
-	m_r15_changed = false;
 	r_bus_mode = Iss2::MODE_KERNEL;
 }
 
