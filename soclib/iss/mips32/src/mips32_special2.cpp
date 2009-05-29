@@ -90,22 +90,28 @@ void Mips32Iss::op_special2()
             setInsDelay( 6 );
         break;
     }
-    case CLO: {
+    case CLO:
         if ( m_ins.r.rt != m_ins.r.rd ) {
             // Unpredictable result, as in spec
             m_exception = X_TR;
-        } else {
+            break;
+        }
+        if ( r_gp[m_ins.r.rs] )
             r_gp[m_ins.r.rt] = soclib::common::clo(r_gp[m_ins.r.rs]);
-        }
-    }
-    case CLZ: {
+        else
+            r_gp[m_ins.r.rt] = 32;
+        break;
+    case CLZ:
         if ( m_ins.r.rt != m_ins.r.rd ) {
             // Unpredictable result, as in spec
             m_exception = X_TR;
-        } else {
-            r_gp[m_ins.r.rt] = soclib::common::clz(r_gp[m_ins.r.rs]);
+            break;
         }
-    }
+        if ( r_gp[m_ins.r.rs] )
+            r_gp[m_ins.r.rt] = soclib::common::clz(r_gp[m_ins.r.rs]);
+        else
+            r_gp[m_ins.r.rt] = 32;
+        break;
     default:
         op_ill();
     }
