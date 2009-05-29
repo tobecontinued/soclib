@@ -337,9 +337,10 @@ void Ppc405Iss::op_dcbst()
 
 void Ppc405Iss::op_dcbt()
 {
-	// No cache support
-    m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
+    uint32_t base = m_ins.x.ra ? r_gp[m_ins.x.ra] : 0;
+    uint32_t address = base + r_gp[m_ins.x.rb];
+
+    mem_xtn( XTN_WRITE, XTN_DCACHE_PREFETCH, address );
 }
 
 void Ppc405Iss::op_dcbtst()

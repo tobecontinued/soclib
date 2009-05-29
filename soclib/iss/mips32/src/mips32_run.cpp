@@ -55,7 +55,7 @@ namespace soclib { namespace common {
     op4(     sb,    sh,  swl,    sw),                                  \
     op4(    ill,   ill,  swr, cache),                                  \
                                                                        \
-    op4(     ll,   ill,  ill,   ill),                                  \
+    op4(     ll,   ill,  ill,  pref),                                  \
     op4(    ill,   ill,  ill,   ill),                                  \
                                                                        \
     op4(     sc,   ill,  ill,   ill),                                  \

@@ -358,6 +358,16 @@ void Mips32Iss::op_sc()
     do_mem_access(address, 4, 8, m_ins.i.rt, 0, r_gp[m_ins.i.rt], DATA_SC);
 }
 
+// Prefetch
+
+void Mips32Iss::op_pref()
+{
+    uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
+    // ignored hint field
+    // uint32_t hint = m_ins.i.rt;
+    do_mem_access(4*XTN_DCACHE_PREFETCH, 4, false, 0, 0, address, XTN_WRITE);
+}
+
 }}
 
 // Local Variables:

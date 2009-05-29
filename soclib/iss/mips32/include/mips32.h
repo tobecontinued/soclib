@@ -455,6 +455,7 @@ private:
     void op_swr();
     void op_sc();
     void op_cache();
+    void op_pref();
 
     void special_sll();
     void special_srl();
