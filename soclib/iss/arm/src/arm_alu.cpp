@@ -180,6 +180,8 @@ uint32_t ArmIss::arm_shifter_shift()
     abort();
 }
 
+template uint32_t ArmIss::arm_shifter_shift<false>();
+
 #define ARM_DATA_LOGICAL_INS_S(n, op, write_result)                     \
                                                                         \
     ARM_OPS_PROTO(ArmIss::op_##n##s)                                    \
