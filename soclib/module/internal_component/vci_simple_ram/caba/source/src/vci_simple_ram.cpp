@@ -199,7 +199,8 @@ tmpl(void)::transition()
 
         vci_addr_t   address = p_vci.address.read();
         bool         reached = false;
-        for ( size_t index = 0 ; index<m_nbseg  && !reached ; ++index) {
+        size_t index; // a supprimer
+        for ( index = 0 ; index<m_nbseg  && !reached ; ++index) {
            if ( m_seg[index]->contains(address) ) {
                 reached = true;
                 r_index = index;
@@ -243,12 +244,15 @@ tmpl(void)::transition()
         }
 
     case FSM_WRITE_BURST:
-        if ( r_valid && p_vci.rspack.read() ) {
+
+        if ( r_valid ) {
+
             assert( write (r_index, r_address , r_wdata, r_be ) &&
                      "out of bounds access in a write burst" );
         }
         if ( r_valid && r_eop_cmd ) {       // last write in the burst
             if ( p_vci.rspack ) r_fsm_state = FSM_IDLE;
+            else                r_fsm_state = FSM_WRITE_BURST_RSP;
         } else {                            // not the last write
             if ( p_vci.cmdval.read() ) {
                 vci_addr_t next_address = r_address.read() + (vci_addr_t)vci_param::B;
@@ -263,6 +267,11 @@ tmpl(void)::transition()
                 r_valid     = false;
             } 
         }
+        break;
+
+    case FSM_WRITE_BURST_RSP:
+        if( p_vci.rspack )
+            r_fsm_state = FSM_IDLE;
         break;
 
     case FSM_READ_WORD:
@@ -350,6 +359,17 @@ tmpl(void)::genMoore()
             p_vci.rerror  = 0;
             p_vci.reop    = false;
         }
+        break;
+
+    case FSM_WRITE_BURST_RSP:
+        p_vci.cmdack  = false;
+        p_vci.rspval  = true;
+        p_vci.rdata   = 0;
+        p_vci.rsrcid  = r_srcid.read();
+        p_vci.rtrdid  = r_trdid.read();
+        p_vci.rpktid  = r_pktid.read();
+        p_vci.rerror  = vci_param::ERR_NORMAL;
+        p_vci.reop    = true;
         break;
 
     case FSM_READ_BURST:

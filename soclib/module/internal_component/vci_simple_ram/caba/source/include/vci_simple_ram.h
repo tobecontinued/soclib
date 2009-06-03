@@ -63,6 +63,7 @@ public:
     enum fsm_state_e {
         FSM_IDLE,
         FSM_WRITE_BURST,
+        FSM_WRITE_BURST_RSP,
         FSM_READ_WORD,
         FSM_READ_BURST,
         FSM_SC,
