@@ -159,23 +159,27 @@ void HalfGatewayTarget::transition()
 /////////// RING CMD FSM ////////////////////////
 	switch( r_ring_cmd_fsm ) 
 	{
+
 		case CMD_IDLE: 
 		{
 			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
 			bool loc = (m_lt[rtgtid] && m_local) || (!m_lt[rtgtid] && !m_local);
+                        bool brdcst = (rtgtid & 0x3 ) == 0x3;
+
 			if ( p_ring_in.cmd_rok.read() ) 
 			{				
 
-/*--------------------------------------
+//--------------------------------------
          std::cout << sc_time_stamp() << "-- " << name()
               << " -- ring_cmd_fsm -- CMD_IDLE "
               << " -- m_lt[rtgtid] : " << m_lt[rtgtid]
               << " -- m-local : " << m_local
               << " -- loc : " << loc
               << " -- addr : " << rtgtid
+              << " -- brdcst : " << brdcst
               << std::endl;
-//----------------------------------------------- */ 
-				if (loc && m_cmd_fifo.wok()) 
+//----------------------------------------------- */
+                                if (((brdcst && p_ring_in.cmd_wok.read()) || loc ) && m_cmd_fifo.wok())
 				{
 					r_ring_cmd_fsm = LOCAL;
 					cmd_fifo_put  = true;
@@ -183,7 +187,7 @@ void HalfGatewayTarget::transition()
 				}                     
 				else 
 				{
-					if(!loc && p_ring_in.cmd_wok.read())
+					if(!(brdcst || loc) && p_ring_in.cmd_wok.read())
 						r_ring_cmd_fsm = RING;                  
 				}
 			} 
@@ -256,15 +260,21 @@ void HalfGatewayTarget::genMealy_cmd_grant()
 ///////////////////////////////////////////////////////////////////
 void HalfGatewayTarget::genMealy_cmd_in()
 ///////////////////////////////////////////////////////////////////
-{     
+{    
+        bool brdcst  = false;
+ 
 	switch( r_ring_cmd_fsm ) 
 	{
 		case CMD_IDLE:
 		{
 			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
 			bool loc = (m_lt[rtgtid] && m_local) || (!m_lt[rtgtid] && !m_local);
+                        brdcst = (rtgtid & 0x3) == 0x3;
 
-			p_ring_out.cmd_r  = p_ring_in.cmd_rok.read() && ((loc && m_cmd_fifo.wok()) || (!loc && p_ring_in.cmd_wok.read())) ;
+			p_ring_out.cmd_r  = p_ring_in.cmd_rok.read() && (
+                                  (brdcst && m_cmd_fifo.wok() && p_ring_in.cmd_wok.read()) ||
+                                  (loc && m_cmd_fifo.wok()) || 
+                                  (!(brdcst || loc) && p_ring_in.cmd_wok.read())) ;
 		}
 		break;
 
@@ -273,7 +283,7 @@ void HalfGatewayTarget::genMealy_cmd_in()
 		break;
 
 		case LOCAL:
-			p_ring_out.cmd_r     = m_cmd_fifo.wok();
+                        p_ring_out.cmd_r     =  m_cmd_fifo.wok() && ((brdcst && p_ring_in.cmd_wok.read()) || !brdcst);                                               
 		break;
 
 	} // end switch
