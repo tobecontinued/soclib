@@ -10,10 +10,9 @@
 #include "iss2_simhelper.h"
 #include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
-#include "vci_vgmn.h"
-#include "vci_mem_cache.h"
-#include "vci_cc_vcache_wrapper2.h"
-
+#include "vci_simple_ring_network.h"
+#include "vci_mem_cache2.h"
+#include "vci_cc_vcache_wrapper2_ring.h"
 
 #ifdef USE_GDB_SERVER
 #include "iss/gdbserver.h"
@@ -35,23 +34,34 @@ int _main(int argc, char *argv[])
 
 	soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0x00300000);
 
-	maptabp.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), true));
-	maptabp.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), true));
-	maptabp.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), true));
+	maptabp.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(2), true));
+	maptabp.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(2), true));
+	maptabp.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(2), true));
 	maptabp.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(1), false));
 	maptabp.add(Segment("mc_r" , MC_R_BASE , MC_R_SIZE , IntTab(2), false, true, IntTab(0)));
 	maptabp.add(Segment("mc_m" , MC_M_BASE , MC_M_SIZE , IntTab(2), true ));
-	maptabp.add(Segment("ptba" ,  PTD_ADDR , TAB_SIZE  , IntTab(0), false));
-
+	maptabp.add(Segment("ptba" , PTD_ADDR , TAB_SIZE   , IntTab(2), true));
+ 
 	std::cout << maptabp << std::endl;
 
         soclib::common::MappingTable maptabc(32, IntTab(8), IntTab(8), 0x00300000);
-	maptabc.add(Segment("proc0" , PROC0_BASE , PROC0_SIZE , IntTab(0), false, true, IntTab(0)));
-	maptabc.add(Segment("proc1" , PROC1_BASE , PROC1_SIZE , IntTab(1), false, true, IntTab(1)));
+	maptabc.add(Segment("c_proc0" , C_PROC0_BASE , C_PROC0_SIZE , IntTab(0), false, true, IntTab(0)));
+	maptabc.add(Segment("c_proc1" , C_PROC1_BASE , C_PROC1_SIZE , IntTab(1), false, true, IntTab(1)));
+	maptabc.add(Segment("mc_r"    , MC_R_BASE , MC_R_SIZE , IntTab(2), false, false));
+	maptabc.add(Segment("mc_m"  , MC_M_BASE , MC_M_SIZE  , IntTab(2), false, false));
+	maptabc.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(2), false, false));
+	maptabc.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(2), false, false));
+	maptabc.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(2), false, false));
+	maptabc.add(Segment("ptba" , PTD_ADDR  , TAB_SIZE  , IntTab(2), false, false));
+
 	std::cout << maptabc << std::endl;
 	
 	soclib::common::MappingTable maptabx(32, IntTab(8), IntTab(8), 0x00300000);
 	maptabx.add(Segment("xram" , MC_M_BASE , MC_M_SIZE , IntTab(0), false));
+	maptabx.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), false));
+	maptabx.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), false));
+	maptabx.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), false));
+	maptabx.add(Segment("ptba" , PTD_ADDR  , TAB_SIZE  , IntTab(0), false));
 	
 	std::cout << maptabx << std::endl;
 
@@ -73,10 +83,14 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> signal_proc1_it4("proc1_it4"); 
 	sc_signal<bool> signal_proc1_it5("proc1_it5");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc0("vci_ini_proc0");
+	soclib::caba::VciSignals<vci_param> signal_vci_ini_rw_proc0("vci_ini_rw_proc0");
+	soclib::caba::VciSignals<vci_param> signal_vci_ini_c_proc0("vci_ini_c_proc0");
+
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc0("vci_tgt_proc0");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc1("vci_ini_proc1");
+	soclib::caba::VciSignals<vci_param> signal_vci_ini_rw_proc1("vci_ini_rw_proc1");
+	soclib::caba::VciSignals<vci_param> signal_vci_ini_c_proc1("vci_ini_c_proc1");
+
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc1("vci_tgt_proc1");
 
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_tty("vci_tgt_tty");
@@ -88,30 +102,23 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> signal_vci_ixr_memc("vci_ixr_memc");
 	soclib::caba::VciSignals<vci_param> signal_vci_ini_memc("vci_ini_memc");
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_memc("vci_tgt_memc");
+	soclib::caba::VciSignals<vci_param> signal_vci_tgt_cleanup_memc("vci_tgt_cleanup_memc");
 
 	sc_signal<bool> signal_tty_irq0("signal_tty_irq0"); 
 	sc_signal<bool> signal_tty_irq1("signal_tty_irq1"); 
 
-	// Components
-	// VCI ports indexation : 3 intiateurs et 5 cibles
-
-        // INIT0 : proc_ini
-        // INIT1 : memc_ini
-        // INIT2 : memc_ixr
-
-	// TGT 0 : rom_tgt
-	// TGT 1 : tty_tgt
-        // TGT 2 : xram_tgt
-	// TGT 3 : memc_tgt
-	// TGT 4 : proc_tgt
-
 	soclib::common::Loader loader("soft/bin.soft");
 
-	soclib::caba::VciCcVCacheWrapper2<vci_param, proc_iss > 
-	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),4,4,4,16,4,4,4,16,4,64,16,4,64,16,CLEANUP_OFFSET);
+        //parameters :                       init_rw   init_c   tgt        
+        //itlb(m_ways, m_sets, k_ways, k_sets)
+        //dtlb(m_ways, m_sets, k_ways, k_sets)
+        //icache(ways, sets, words)
+        //dcache(ways, sets, words)
+	soclib::caba::VciCcVCacheWrapper2Ring<vci_param, proc_iss > 
+	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),IntTab(0),4,4,4,16,4,4,4,16,4,64,16,4,64,16);
 
-	soclib::caba::VciCcVCacheWrapper2<vci_param, proc_iss > 
-	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),4,4,4,16,4,4,4,16,4,64,16,4,64,16,CLEANUP_OFFSET);
+	soclib::caba::VciCcVCacheWrapper2Ring<vci_param, proc_iss > 
+ 	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),IntTab(1),4,4,4,16,4,4,4,16,4,64,16,4,64,16);
 
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(0), maptabp, loader);
@@ -119,20 +126,22 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSimpleRam<vci_param> 
 	xram("xram", IntTab(0), maptabx, loader);
 
-	soclib::caba::VciMemCache<vci_param> 
-	memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(0),IntTab(2),16,256,16);
-	
+        //                                  x_init    c_init    p_tgt     c_tgt
+	soclib::caba::VciMemCache2<vci_param> 
+	//memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(2),IntTab(2), IntTab(2),16,256,16);
+	memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(2),IntTab(2), IntTab(2),8,8,16); // 4,16,16
+
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(1),maptabp,"tty0","tty1",NULL);
 
-	soclib::caba::VciVgmn<vci_param> 
-	vgmnp("vgmnp",maptabp, 2, 3, 1, 8);
+	soclib::caba::VciSimpleRingNetwork<vci_param> 
+	ringp("ringp",maptabp, IntTab(), 2, 2, 3);
 
-	soclib::caba::VciVgmn<vci_param> 
-	vgmnc("vgmnc",maptabc, 1, 2, 1, 8);
+	soclib::caba::VciSimpleRingNetwork<vci_param> 
+	ringc("ringc",maptabc, IntTab(), 2, 3, 3);
 
-	soclib::caba::VciVgmn<vci_param> 
-	vgmnx("vgmnx",maptabx, 1, 1, 1, 8);
+	soclib::caba::VciSimpleRingNetwork<vci_param> 
+	ringx("ringx",maptabx, IntTab(), 2, 1, 1);
 
 	// Net-List
  
@@ -144,7 +153,8 @@ int _main(int argc, char *argv[])
 	proc0.p_irq[3](signal_proc0_it3); 
 	proc0.p_irq[4](signal_proc0_it4); 
 	proc0.p_irq[5](signal_proc0_it5); 
-	proc0.p_vci_ini(signal_vci_ini_proc0);
+	proc0.p_vci_ini_rw(signal_vci_ini_rw_proc0);
+	proc0.p_vci_ini_c(signal_vci_ini_c_proc0);
 	proc0.p_vci_tgt(signal_vci_tgt_proc0);
 
 	proc1.p_clk(signal_clk);  
@@ -155,7 +165,8 @@ int _main(int argc, char *argv[])
 	proc1.p_irq[3](signal_proc1_it3); 
 	proc1.p_irq[4](signal_proc1_it4); 
 	proc1.p_irq[5](signal_proc1_it5); 
-	proc1.p_vci_ini(signal_vci_ini_proc1);
+	proc1.p_vci_ini_rw(signal_vci_ini_rw_proc1);
+	proc1.p_vci_ini_c(signal_vci_ini_c_proc1);
 	proc1.p_vci_tgt(signal_vci_tgt_proc1);
 
 	rom.p_clk(signal_clk);
@@ -170,7 +181,8 @@ int _main(int argc, char *argv[])
 
 	memc.p_clk(signal_clk);
 	memc.p_resetn(signal_resetn);
-	memc.p_vci_tgt(signal_vci_tgt_memc);	
+	memc.p_vci_tgt(signal_vci_tgt_memc);
+	memc.p_vci_tgt_cleanup(signal_vci_tgt_cleanup_memc);
 	memc.p_vci_ini(signal_vci_ini_memc);
 	memc.p_vci_ixr(signal_vci_ixr_memc);
 
@@ -178,27 +190,33 @@ int _main(int argc, char *argv[])
         xram.p_resetn(signal_resetn);
 	xram.p_vci(signal_vci_tgt_xram);
 	
-	vgmnp.p_clk(signal_clk);
-	vgmnp.p_resetn(signal_resetn);
+	ringp.p_clk(signal_clk);
+	ringp.p_resetn(signal_resetn);
 
-	vgmnc.p_clk(signal_clk);
-	vgmnc.p_resetn(signal_resetn);
+	ringc.p_clk(signal_clk);
+	ringc.p_resetn(signal_resetn);
 
-	vgmnx.p_clk(signal_clk);
-	vgmnx.p_resetn(signal_resetn);
+	ringx.p_clk(signal_clk);
+	ringx.p_resetn(signal_resetn);
 
-	vgmnp.p_to_initiator[0](signal_vci_ini_proc0);
-	vgmnp.p_to_initiator[1](signal_vci_ini_proc1);
-	vgmnc.p_to_initiator[0](signal_vci_ini_memc);
-	vgmnx.p_to_initiator[0](signal_vci_ixr_memc);
+	ringp.p_to_initiator[0](signal_vci_ini_rw_proc0);
+	ringp.p_to_initiator[1](signal_vci_ini_rw_proc1);
 
-	vgmnp.p_to_target[0](signal_vci_tgt_rom);
-	vgmnp.p_to_target[1](signal_vci_tgt_tty);
-	vgmnp.p_to_target[2](signal_vci_tgt_memc);
+	ringc.p_to_initiator[2](signal_vci_ini_memc);
+	ringc.p_to_initiator[0](signal_vci_ini_c_proc0);
+	ringc.p_to_initiator[1](signal_vci_ini_c_proc1);
 
-	vgmnc.p_to_target[0](signal_vci_tgt_proc0);
-	vgmnc.p_to_target[1](signal_vci_tgt_proc1);
-	vgmnx.p_to_target[0](signal_vci_tgt_xram);
+	ringx.p_to_initiator[0](signal_vci_ixr_memc);
+
+	ringp.p_to_target[0](signal_vci_tgt_rom);
+	ringp.p_to_target[1](signal_vci_tgt_tty);
+	ringp.p_to_target[2](signal_vci_tgt_memc);
+
+	ringc.p_to_target[0](signal_vci_tgt_proc0);
+	ringc.p_to_target[1](signal_vci_tgt_proc1);
+	ringc.p_to_target[2](signal_vci_tgt_cleanup_memc);
+
+	ringx.p_to_target[0](signal_vci_tgt_xram);
 
 	int ncycles;
 
@@ -225,6 +243,12 @@ int _main(int argc, char *argv[])
 		//proc.print_stats();
 		//memc.print_stats();
 	}
+
+        std::cout << "Hit ENTER to end simulation" << std::endl;
+        char buf[1];
+
+	std::cin.getline(buf,1);
+
 	return EXIT_SUCCESS;
 #else
 	ncycles = 1;

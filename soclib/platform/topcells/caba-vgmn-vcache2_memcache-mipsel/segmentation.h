@@ -38,13 +38,13 @@
 /////////////////////////////////////////////////////////////////
 //	page table (initialised)
 /////////////////////////////////////////////////////////////////
-#define PTD_ADDR	0x40200000
-#define PTE_ADDR	0x40202000
-#define IPTE_ADDR	0x40203000
+#define PTD_ADDR	0x40400000
+#define PTE_ADDR	0x40402000
+#define IPTE_ADDR	0x40403000
 #define	TAB_SIZE	0x00010000
 
 #define V_TTY_BASE 	0x00800000
-#define	V_TIMER_BASE	0x00C00000	// timer virtua address
+#define	V_TIMER_BASE	0x00C00000	// timer virtual address
 //////////////////////////////////////////////////////////
 //	System devices
 ///////////////////////////////////////////////////////////
@@ -58,14 +58,14 @@
 #define	LOCKS_BASE	0xE0200000
 #define	LOCKS_SIZE	0x00000100
 
-//#define PROC_BASE	0xF0200000
-//#define PROC_SIZE	0x00000008
+#define C_PROC0_BASE	0x01200000
+#define C_PROC0_SIZE	0x00000008
 
-#define PROC0_BASE	0x01200000
-#define PROC0_SIZE	0x00000008
+#define C_PROC1_BASE	0x02200000
+#define C_PROC1_SIZE	0x00000008
 
-#define PROC1_BASE	0x02200000
-#define PROC1_SIZE	0x00000008
+#define C_MC_M_BASE	0x00200000
+#define C_MC_M_SIZE	0x00000008
 
 #define XRAM_BASE	0xB0200000
 #define XRAM_SIZE	0x00000008
