@@ -31,7 +31,7 @@
 namespace soclib { 
 namespace caba {
 
-#define CC_VCACHE_WRAPPER_DEBUG
+//#define CC_VCACHE_WRAPPER_DEBUG
 
 #ifdef CC_VCACHE_WRAPPER_DEBUG
 namespace {
@@ -866,11 +866,6 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 
         if (r_dcache_xtn_req)
         {
-//-----------------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_IDLE "
-          << std::endl;
-//------------------*/
 
             if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
             
@@ -1141,11 +1136,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     case ICACHE_TLB1_READ:
     {
 
-//-----------------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB1_READ "
-          << std::endl;
-//------------------*/
         m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
@@ -1174,11 +1164,6 @@ std::cout << sc_time_stamp() << " -- " << name()
 
                 switch((r_dcache_rsp_itlb_miss & PTE_ET_MASK ) >> PTE_ET_SHIFT) { 
                 case PTD:               // 4K page TLB
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_dcache_rsp_itlb_miss : PTD "
-          << std::endl;
-//------------------*/
 
             	    r_icache_ptba_ok    = true;	
                     r_icache_ptba_save  = (addr36_t)((r_dcache_rsp_itlb_miss & PTD_PTP_MASK)>>PTD_SHIFT) << PAGE_K_NBITS; 
@@ -1189,11 +1174,6 @@ std::cout << sc_time_stamp() << " -- " << name()
                     r_icache_fsm        = ICACHE_TLB2_READ;
                     break;
                 case PTE_NEW:           // 4M page TLB (not marked)  
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_dcache_rsp_itlb_miss : PTE_NEW "
-          << std::endl;
-//------------------*/
  
             	    r_icache_ptba_ok    = false;	
                     r_icache_pte_update = r_dcache_rsp_itlb_miss | PTE_ET_MASK;
@@ -1202,23 +1182,12 @@ std::cout << sc_time_stamp() << " -- " << name()
                     m_cpt_ins_tlb_write_et++;
                     break; 
                 case PTE_OLD:           // 4M page TLB (already marked)
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_dcache_rsp_itlb_miss : PTE_OLD "
-          << std::endl;
-//------------------*/
 
             	    r_icache_ptba_ok    = false;	
                     r_icache_pte_update = r_dcache_rsp_itlb_miss;
                     r_icache_fsm        = ICACHE_TLB1_UPDT;
                     break;
                 default:                // unmapped
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_dcache_rsp_itlb_miss : DEFAULT "
-          << " -- ireq.addr : " << std::hex << ireq.addr
-          << std::endl;
-//------------------*/
 
             	    r_icache_ptba_ok    = false;	
                     r_icache_error_type = r_icache_error_type | MMU_PT1_UNMAPPED;  
@@ -1255,11 +1224,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     ///////////////////////
     case ICACHE_TLB1_WRITE:  
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB1_WRITE "
-          << std::endl;
-//------------------*/
         m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
@@ -1314,11 +1278,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     //////////////////////
     case ICACHE_TLB1_UPDT:
     {
-//-----------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB1_UPDT "
-          << std::endl;
-//----------------*/
         m_cost_ins_tlb_miss_frz++;
 
         // external cache invalidate request
@@ -1360,11 +1319,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////
     case ICACHE_TLB2_READ:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB2_READ "
-          << std::endl;
-//------------------*/
 
         m_cost_ins_tlb_miss_frz++;
 
@@ -1386,7 +1340,7 @@ std::cout << sc_time_stamp() << " -- " << name()
             m_cost_ins_waste_wait_frz++;
             break;
         }
-std::cout << std::hex << " TLB res: " << r_dcache_rsp_itlb_miss << std::endl;
+
         if ( !r_icache_tlb_read_dcache_req && !r_icache_inval_tlb_rsp ) // TLB miss read response and no invalidation
         {
             if ( !r_dcache_rsp_itlb_error ) // VCI response ok        
@@ -1407,7 +1361,6 @@ std::cout << std::hex << " TLB res: " << r_dcache_rsp_itlb_miss << std::endl;
                     r_icache_error_type = r_icache_error_type | MMU_PT2_UNMAPPED;  
                     r_icache_bad_vaddr  = ireq.addr;
                     r_icache_fsm = ICACHE_ERROR;
-std::cout << "error 0" << std::endl;
                     break;
                 }
             }
@@ -1416,7 +1369,6 @@ std::cout << "error 0" << std::endl;
                 r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_ACCESS;
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
-std::cout << "error 1" << std::endl;
             }
         }
         if ( !r_icache_tlb_read_dcache_req && r_icache_inval_tlb_rsp ) // TLB miss read response and invalidation
@@ -1427,7 +1379,6 @@ std::cout << "error 1" << std::endl;
                 r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
-std::cout << "error 2" << std::endl;
             } 
             else 
             {
@@ -1440,11 +1391,6 @@ std::cout << "error 2" << std::endl;
     /////////////////////////
     case ICACHE_TLB2_WRITE:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB2_WRITE "
-          << std::endl;
-//------------------*/
   
         m_cost_ins_tlb_miss_frz++;
 
@@ -1500,11 +1446,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////
     case ICACHE_TLB2_UPDT: 
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB2_UPDT "
-          << std::endl;
-//------------------*/
 
         m_cost_ins_tlb_miss_frz++;
 
@@ -1547,11 +1488,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////////////
     case ICACHE_SW_FLUSH1:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_SW_FLUSH1 "
-          << std::endl;
-//------------------*/
 
         size_t way = r_icache_way;
         size_t set = r_icache_set;
@@ -1594,11 +1530,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////////////
     case ICACHE_SW_FLUSH2:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHESW_FLUSH2 "
-          << std::endl;
-//------------------*/
 
         size_t way = r_icache_way;
         size_t set = r_icache_set;
@@ -1640,11 +1571,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////
     case ICACHE_TLB_FLUSH:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB_FLUSH "
-          << std::endl;
-//------------------*/
    
         if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
 
@@ -1658,11 +1584,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     ////////////////////////
     case ICACHE_CACHE_FLUSH:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_CACHE_FLUSH "
-          << std::endl;
-//------------------*/
 
         // external cache invalidate request
         if ( r_tgt_icache_req )
@@ -1709,11 +1630,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////
     case ICACHE_TLB_INVAL:  
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB_INVAL "
-          << std::endl;
-//------------------*/
 
         if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
 
@@ -1737,11 +1653,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     ///////////////////////////
     case ICACHE_TLB_INVAL_DONE:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB_INVAL_DONE "
-          << std::endl;
-//------------------*/
 
         if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
 
@@ -1767,11 +1678,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     ////////////////////////
     case ICACHE_CACHE_INVAL:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_CACHE_INVAL "
-          << std::endl;
-//------------------*/
 	
         addr36_t    ipaddr = 0;                     
         bool        icache_hit_t_m = false;
@@ -1805,11 +1711,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////////////
     case ICACHE_CACHE_INVAL_DONE:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_CACHE_INVAL_DONE "
-          << std::endl;
-//------------------*/
 
         if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
 
@@ -1826,11 +1727,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     ///////////////////////
     case ICACHE_MISS_WAIT:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_MISS_WAIT "
-          << std::endl;
-//------------------*/
 
         m_cost_ins_miss_frz++;
 
@@ -1884,11 +1780,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     ////////////////////
     case ICACHE_UNC_WAIT:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_UNC_WAIT "
-          << std::endl;
-//------------------*/
 
         m_cost_ins_miss_frz++;
 
@@ -1944,11 +1835,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     //////////////////////
     case ICACHE_MISS_UPDT:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_MISS_UPDT "
-          << std::endl;
-//------------------*/
 
         m_cost_ins_miss_frz++;
 
@@ -2004,11 +1890,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     ///////////////////
     case ICACHE_ERROR:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_ERROR "
-          << std::endl;
-//------------------*/
 
         r_vci_rsp_ins_error = false;
         r_dcache_rsp_itlb_error = false;
@@ -2021,11 +1902,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////
     case ICACHE_CC_INVAL:  
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_CC_INVAL "
-          << std::endl;
-//------------------*/
                        
         if ( ireq.valid ) m_cost_ins_waste_wait_frz++;
         m_cpt_icache_dir_read += m_icache_ways;
@@ -2048,11 +1924,6 @@ std::cout << sc_time_stamp() << " -- " << name()
     /////////////////////////
     case ICACHE_TLB_CC_INVAL:
     {
-//-------------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- r_icache_fsm : ICACHE_TLB_CC_INVAL "
-          << std::endl;
-//------------------*/
 
         if ( ireq.valid ) m_cost_ins_waste_wait_frz++;        
 

@@ -143,13 +143,6 @@ tmpl(void)::transition()
 		case CMD_FIRST_HEADER:
 			if ( m_cmd_fifo.rok() == true ) 
 			{  
-//--------------------------------------
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " -- vci_cmd_fsm -- CMD_FIRST_HEADER "
-              << " -- ROK : " << m_cmd_fifo.rok()
-              << " -- addr : " << (sc_uint<vci_param::N>) m_cmd_fifo.read()
-              << std::endl;
-//----------------------------------------------- */
  
 				cmd_fifo_get = true; 
 				r_addr = (sc_uint<vci_param::N>) m_cmd_fifo.read();            
@@ -160,16 +153,6 @@ tmpl(void)::transition()
 		case CMD_SECOND_HEADER:        
 			if ( m_cmd_fifo.rok() ) 
 			{
-//--------------------------------------
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " -- vci_cmd_fsm -- CMD_SECOND_HEADER "
-              << " -- ROK : " << m_cmd_fifo.rok()
-              << " -- eop : " << (int) ((m_cmd_fifo.read() >> 36 ) & 0x1)
-              << " -- cmd : " << std::hex << ((m_cmd_fifo.read() >> 22 ) & 0x3)
-              << " -- srcid : " << std::hex << ((m_cmd_fifo.read() >> 24) & 0xFF)
-              << " -- cmdack : " << p_vci.cmdack.read()
-              << std::endl;
-//----------------------------------------------- */
 
 				if(((int) (m_cmd_fifo.read() >> 36 ) & 0x1) == 1)  // read command
 				{
@@ -197,14 +180,6 @@ tmpl(void)::transition()
 		case WDATA:
 			if ( p_vci.cmdack.read() && m_cmd_fifo.rok() ) 
 			{
-//--------------------------------------
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " -- vci_cmd_fsm -- WDATA "
-              << " -- ROK : " << m_cmd_fifo.rok()
-              << " -- fifo_data : " << std::hex << m_cmd_fifo.read()
-              << " -- cmdack : " << p_vci.cmdack.read()
-              << std::endl;
-//----------------------------------------------- */
 
 				cmd_fifo_get = true; 
 				sc_uint<1> contig = r_contig;
@@ -225,16 +200,6 @@ tmpl(void)::transition()
 		case RSP_HEADER:
 			if((p_vci.rspval.read() == true) && (m_rsp_fifo.wok()))
 			{
-//--------------------------------------
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " ## vci_rsp_fsm -- RSP_HEADER "
-              << " ## p_vci.rspval.read : " << p_vci.rspval.read()
-              << " ## rsp_wok : " << m_rsp_fifo.wok()
-              << " ## rsrcid : " << std::hex << p_vci.rsrcid.read()
-              << " ## rtrdid : " << std::hex << p_vci.rtrdid.read()
-              << " ## reop   : " << p_vci.reop.read()
-              << std::endl;
-//-----------------------------------------------
 				rsp_fifo_data = (((sc_uint<33>) p_vci.rsrcid.read() & 0xFF) << 20) |
                                                 (((sc_uint<33>) p_vci.rerror.read() & 0x1) << 8) | 
                                                 (((sc_uint<33>) p_vci.rpktid.read() & 0xF) << 4) | 
@@ -247,16 +212,6 @@ tmpl(void)::transition()
 		case DATA:              
 			if((p_vci.rspval.read() == true) && (m_rsp_fifo.wok())) 
 			{
-//--------------------------------------
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " ## vci_rsp_fsm -- DATA "
-              << " ## ROK : " << m_rsp_fifo.rok()
-              << " ## rsrcid : " << std::hex << p_vci.rsrcid.read()
-              << " ## rerror : " << std::hex << p_vci.rerror.read()
-              << " ## reop   : " << p_vci.reop.read()
-              << " ## rdata  : " << std::hex << p_vci.rdata.read()
-              << std::endl;
-//----------------------------------------------- */
  
 				rsp_fifo_put = true;
 				rsp_fifo_data = (sc_uint<33>) p_vci.rdata.read();           
@@ -319,21 +274,6 @@ tmpl(void)::transition()
 
 			if ( p_ring_in.cmd_rok.read()) 
 			{
-//--------------------------------------
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " -- ring_cmd_fsm -- CMD_IDLE "
-              << " -- ROK : " << p_ring_in.cmd_rok.read()
-              << " -- islocal : " << islocal
-              << " -- brdcst : " << brdcst
-              << " -- rtgtid : " << rtgtid
-              << std::endl;
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " -- ring_cmd_fsm -- CMD_IDLE "
-              << " -- in_wok : " << p_ring_in.cmd_wok.read()
-              << " -- fifo_wok : " << m_cmd_fifo.wok()
-              << std::endl;
-
-//----------------------------------------------- */
     
 				if (((brdcst && p_ring_in.cmd_wok.read()) || islocal ) && m_cmd_fifo.wok())
 				{
@@ -355,13 +295,6 @@ tmpl(void)::transition()
 
 			if ( p_ring_in.cmd_rok.read() && m_cmd_fifo.wok() )         
 			{
-//--------------------------------------
-         std::cout << sc_time_stamp() << "-- " << name()
-              << " -- ring_cmd_fsm -- LOCAL "
-              << " -- ROK : " << p_ring_in.cmd_rok.read()
-              << " -- rtgtid : " << std::hex << p_ring_in.cmd_data.read()
-              << std::endl;
-//----------------------------------------------- */
 
 				cmd_fifo_put  = true;
 				cmd_fifo_data = p_ring_in.cmd_data.read();

@@ -286,8 +286,6 @@ namespace soclib { namespace caba {
       assert(nwords <= 32);
       assert(nways <= 32);
 
-      //std::cout << "MemCache coherence SRCID = " << std::hex << m_srcid_ini << std::endl ;
-      //std::cout << "MemCache to xram SRCID = " << std::hex << m_srcid_ixr << std::endl ;
 
       // Get the segments associated to the MemCache 
       //std::list<soclib::common::Segment> segList(mtp.getSegmentList(vci_tgt_index));
@@ -311,12 +309,6 @@ namespace soclib { namespace caba {
         if ( seg->size() > 8 ) 
         {
           m_seg[i] = &(*seg);
-          /*--------------------------------------
-            std::cout << sc_time_stamp() 
-            << " ++ i : " << i
-            << " ++ m_seg[i] : " << std::hex << m_seg[i]
-            << std::endl;
-          //----------------------------------------------- */
           i++;
 
         }
@@ -595,16 +587,6 @@ namespace soclib { namespace caba {
               }
             }
 
-            /*--------------------------------------
-              std::cout << sc_time_stamp() << "-- " << name()
-              << " ** r_tgt_cmd_fsm -- TGT_CMD_IDLE "
-              << " ** vci_cmdval : " << p_vci_tgt.cmdval.read()
-              << " ** srcid : " << std::hex << p_vci_tgt.srcid.read()
-              << " ** cmd : " << p_vci_tgt.cmd.read()
-              << " ** address : " << p_vci_tgt.address.read()
-              << " ** reached : " << reached
-              << std::endl;
-            //----------------------------------------------- */
 
             if ( !reached ) 
             { 
@@ -658,22 +640,11 @@ namespace soclib { namespace caba {
         ///////////////////
       case TGT_CMD_WRITE:
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " ** r_tgt_cmd_fsm -- TGT_CMD_WRITE "
-            << " ** vci_cmdval : " << p_vci_tgt.cmdval.read()
-            << " ** srcid : " << std::hex << p_vci_tgt.srcid.read()
-            << " ** cmd : " << p_vci_tgt.cmd.read()
-            << " ** address : " << p_vci_tgt.address.read()
-            << " ** write_addr_fifo.wok : " << m_cmd_write_addr_fifo.wok()
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( p_vci_tgt.cmdval && m_cmd_write_addr_fifo.wok() ) {
             cmd_write_fifo_put = true;
             if(  p_vci_tgt.eop )  r_tgt_cmd_fsm = TGT_CMD_IDLE;
 
-            std::cout << std::hex << "L2 eop:" << p_vci_tgt.eop << std::endl;	
           }
           break;
         }
@@ -727,13 +698,6 @@ namespace soclib { namespace caba {
       ///////////////////
       case INIT_RSP_IDLE:
         {
-          //*--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " $$  r_init_rsp_fsm -- INIT_RSP_IDLE "
-            << " p_vci_ini.rspval : " << p_vci_ini.rspval
-            << " p_vci_ini.rtrdid : " << p_vci_ini.rtrdid.read()
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( p_vci_ini.rspval ) {
 
@@ -753,14 +717,6 @@ namespace soclib { namespace caba {
           if ( r_alloc_upt_fsm.read() == ALLOC_UPT_INIT_RSP ) { 
             size_t count = 0;
             bool valid  = m_update_tab.decrement(r_init_rsp_upt_index.read(), count);
-            //*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-              << " $$ r_init_rsp_fsm -- INIT_RSP_UPT_LOCK "
-              << " $$ r_alloc_upt_fsm == ALLOC_UPT_INIT_RSP "
-              << " $$ r_init_rsp_upt_index : " << r_init_rsp_upt_index.read() 
-              << " $$ count : " << std::dec << count 
-              << std::endl;
-            //----------------------------------------------- */
 
             assert ( valid 
                 && "VCI_MEM_CACHE Invalid UPT entry in VCI response paquet received by memory cache" );
@@ -773,11 +729,6 @@ namespace soclib { namespace caba {
         ////////////////////////
       case INIT_RSP_UPT_CLEAR:	// clear the UPT entry
         {
-          //*--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " $$  r_init_rsp_fsm -- INIT_RSP_UPT_CLEAR "
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( r_alloc_upt_fsm.read() == ALLOC_UPT_INIT_RSP ) {
             r_init_rsp_srcid = m_update_tab.srcid(r_init_rsp_upt_index.read());
@@ -788,28 +739,14 @@ namespace soclib { namespace caba {
             if ( update ) r_init_rsp_fsm = INIT_RSP_END;
             else          r_init_rsp_fsm = INIT_RSP_IDLE;
             m_update_tab.clear(r_init_rsp_upt_index.read());
-            //*-------------------------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-              << " $$  r_init_rsp_upt_index : " << r_init_rsp_upt_index.read() << std::endl;  
 
-            for(size_t i=0; i< m_update_tab.size(); i++)
-              m_update_tab.read(i).print();
-
-            //---------------------------------------------------------*/
+            
           }
           break;
         }
         //////////////////
       case INIT_RSP_END:
         {
-          //*--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " __r_init_rsp_fsm -- INIT_RSP_END "
-            << " __r_init_rsp_srcid : " << r_init_rsp_srcid.read()
-            << " __r_init_rsp_trdid : " << r_init_rsp_trdid.read()
-            << " __r_init_rsp_to_tgt_rsp_req : " << r_init_rsp_to_tgt_rsp_req
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( !r_init_rsp_to_tgt_rsp_req ) {
             r_init_rsp_to_tgt_rsp_req = true;
@@ -1003,18 +940,7 @@ namespace soclib { namespace caba {
 
 
           if ( m_cmd_write_addr_fifo.rok()) {
-            //--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-              << " :: r_write_fsm -- WRITE_IDLE "
-              << " :: m_cmd_write_addr_fifo.rok : " <<  m_cmd_write_addr_fifo.rok()
-              << " :: srcid : " << m_cmd_write_srcid_fifo.read()
-              << " :: address : " << m_cmd_write_addr_fifo.read()
-              << std::endl;
 
-            for(size_t i=0; i< m_update_tab.size(); i++)
-              m_update_tab.read(i).print();
-
-            //----------------------------------------------- */
 
             m_cpt_write++;
             m_cpt_write_cells++;
@@ -1048,18 +974,6 @@ namespace soclib { namespace caba {
         {
           if ( m_cmd_write_addr_fifo.rok() ) {
             m_cpt_write_cells++;
-            //--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-              << " :: r_write_fsm -- WRITE_NEXT "
-              << " :: m_cmd_write_addr_fifo.rok : " <<  m_cmd_write_addr_fifo.rok()
-              << " :: eop : " << m_cmd_write_eop_fifo.read()
-              << std::endl;
-            /*--------------------------------------------------------
-              for(size_t i=0; i< m_update_tab.size(); i++)
-              m_update_tab.read(i).print();
-            //--------------------------------------------------------*/
-
-            //----------------------------------------------- */
 
             // check that the next word is in the same cache line
             assert( (m_nline[r_write_address.read()] == m_nline[m_cmd_write_addr_fifo.read()])  
@@ -1079,16 +993,7 @@ namespace soclib { namespace caba {
         ////////////////////
       case WRITE_DIR_LOCK:	// access directory to check hit/miss
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_DIR_LOCK "
-            << std::endl;
-          /*--------------------------------------------------------
-            for(size_t i=0; i< m_update_tab.size(); i++)
-            m_update_tab.read(i).print();
-          //--------------------------------------------------------*/
 
-          //----------------------------------------------- */
 
           if ( r_alloc_dir_fsm.read() == ALLOC_DIR_WRITE ) {
             size_t  way = 0;
@@ -1113,11 +1018,6 @@ namespace soclib { namespace caba {
         ///////////////////
       case WRITE_DIR_HIT_READ:	// read the cache and complete the buffer (data, when be!=0xF)
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_DIR_HIT_READ "
-            << std::endl;
-          //----------------------------------------------- */
 
           // update local buffer
           size_t set	= m_y[r_write_address.read()];
@@ -1141,11 +1041,6 @@ namespace soclib { namespace caba {
         ///////////////////
       case WRITE_DIR_HIT:	// update the cache (data & dirty bit)
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_DIR_HIT "
-            << std::endl;
-          //----------------------------------------------- */
 
           // update directory with Dirty bit
           DirectoryEntry entry;
@@ -1180,10 +1075,7 @@ namespace soclib { namespace caba {
           r_write_nb_copies = n;
           r_write_copies    = copies;
 
-          /*--------------------------------------------------------
-            for(size_t i=0; i< m_update_tab.size(); i++)
-            m_update_tab.read(i).print();
-          //--------------------------------------------------------*/
+          
 
           if ( n == 0 )   r_write_fsm = WRITE_RSP;
           else  	  r_write_fsm = WRITE_UPT_LOCK;
@@ -1201,16 +1093,6 @@ namespace soclib { namespace caba {
             size_t        pktid=r_write_pktid.read();
             size_t	  nline=r_write_address.read();
             size_t        nb_copies=r_write_nb_copies.read();
-            /*---------------------------------------------------------------------------------
-              std::cout << sc_time_stamp() << "-- " << name() << " UPDATE TAB : " << std::endl;
-              << " :: r_write_fsm -- WRITE_UPT_LOCK "
-              << std::endl;
-
-              for(size_t i=0; i< m_update_tab.size(); i++)
-              m_update_tab.read(i).print();
-
-              std::cout << sc_time_stamp() << "-- " << name() << " END UPDATE TAB : " << std::endl;
-            //------------------------------------------------------------------------------------*/
 
             wok =m_update_tab.set(true,	// it's an update transaction
                 srcid,
@@ -1219,16 +1101,6 @@ namespace soclib { namespace caba {
                 nline,
                 nb_copies,
                 index);
-            //--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-              << " :: r_write_fsm -- WRITE_UPT_LOCK "
-              << " :: srcid : " << srcid
-              << " :: nline : " << nline
-              << " :: nb_copies : " << nb_copies
-              << " :: index : " << index
-              << " :: wok : " << wok
-              << std::endl;
-            //----------------------------------------------- */
 
             r_write_upt_index = index;
             //  releases the lock protecting Update Table if no entry...
@@ -1240,11 +1112,6 @@ namespace soclib { namespace caba {
         ////////////////////
       case WRITE_WAIT_UPT:	// release the lock protecting UPT
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_WAIT_UPT "
-            << std::endl;
-          //----------------------------------------------- */
 
           r_write_fsm = WRITE_UPT_LOCK;
           break;
@@ -1252,18 +1119,6 @@ namespace soclib { namespace caba {
         //////////////////
       case WRITE_UPDATE:	// send a multi-update request to INIT_CMD fsm
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_UPDATE "
-            << " :: r_write_to_init_cmd_req : " << r_write_to_init_cmd_req
-            << std::endl;
-
-          //*--------------------------------------------------------
-          for(size_t i=0; i< m_update_tab.size(); i++)
-            m_update_tab.read(i).print();
-          //--------------------------------------------------------*/
-
-          //----------------------------------------------- */
 
           if ( !r_write_to_init_cmd_req ) {
             r_write_to_init_cmd_req    = true;
@@ -1292,12 +1147,6 @@ namespace soclib { namespace caba {
         ///////////////
       case WRITE_RSP:		// send a request to TGT_RSP FSM to acknowledge the write
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_RSP "
-            << " :: r_write_to_tgt_rsp_req : " << r_write_to_tgt_rsp_req
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( !r_write_to_tgt_rsp_req ) {
             r_write_to_tgt_rsp_req	= true;
@@ -1311,11 +1160,6 @@ namespace soclib { namespace caba {
         ////////////////////
       case WRITE_TRT_LOCK:	// Miss : check Transaction Table
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_TRT_LOCK "
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE ) {
             size_t hit_index = 0;
@@ -1325,14 +1169,11 @@ namespace soclib { namespace caba {
             if ( hit ) {		// register the modified data in TRT 
               r_write_trt_index = hit_index;
               r_write_fsm       = WRITE_TRT_DATA;
-              std::cout << "VCI_MEM_CACHE  L2: WRITE_TRT_LOCK to WRITE_TRT_DATA " << std::endl;
             } else if ( wok ) {	// set a new entry in TRT
               r_write_trt_index = wok_index;
               r_write_fsm       = WRITE_TRT_SET;
-              std::cout << "VCI_MEM_CACHE  L2: WRITE_TRT_LOCK to WRITE_TRT_SET " << std::endl;
             } else {		// wait an empty entry in TRT
               r_write_fsm       = WRITE_WAIT_TRT;
-              std::cout << "VCI_MEM_CACHE  L2: WRITE_TRT_LOCK to WRITE_WAIT_TRT " << std::endl;
             }
           }
           break;
@@ -1340,11 +1181,6 @@ namespace soclib { namespace caba {
         ////////////////////
       case WRITE_WAIT_TRT:	// release the lock protecting TRT
         { 
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_WAIT_TRT "
-            << std::endl;
-          //----------------------------------------------- */
 
           r_write_fsm = WRITE_DIR_LOCK;
           break;
@@ -1352,11 +1188,6 @@ namespace soclib { namespace caba {
         ///////////////////
       case WRITE_TRT_SET:	// register a new transaction in TRT (Write Buffer)
         {  
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_TRT_SET "
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE ) 
           {
@@ -1380,13 +1211,7 @@ namespace soclib { namespace caba {
                 0,			        	// word index
                 be_vector,
                 data_vector);
-            //------------------------------------------
-
-            for (size_t i = 0 ; i < m_transaction_tab.size() ; i++){
-              m_transaction_tab.print(i);   
-            }
-
-            //-----------------------------------------*/
+            
             r_write_fsm = WRITE_XRAM_REQ;
           }
           break;
@@ -1394,11 +1219,6 @@ namespace soclib { namespace caba {
         ///////////////////
       case WRITE_TRT_DATA:	// update an entry in TRT (Write Buffer)
         { 
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_TRT_DATA "
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE ) {
             std::vector<be_t> be_vector;
@@ -1419,11 +1239,6 @@ namespace soclib { namespace caba {
         ////////////////////
       case WRITE_XRAM_REQ:	// send a request to XRAM_CMD FSM
         {  
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_write_fsm -- WRITE_XRAM_REQ "
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( !r_write_to_xram_cmd_req ) {
             r_write_to_xram_cmd_req     = true;
@@ -1576,13 +1391,6 @@ namespace soclib { namespace caba {
             if ( eop ) {
               r_ixr_rsp_to_xram_rsp_rok[r_ixr_rsp_trt_index.read()]=true;
               r_ixr_rsp_fsm = IXR_RSP_IDLE;
-              //----------------------------------
-              std::cout << "IXR_RSP_TRT_READ" << name() 
-                << std::endl;
-              for (size_t i = 0 ; i < m_transaction_tab.size(); i++){
-                m_transaction_tab.print(i);
-              }
-              //--------------------------------*/
             }
           }
           break;
@@ -1623,10 +1431,6 @@ namespace soclib { namespace caba {
 	      r_xram_rsp_trt_index=index;
 	      r_ixr_rsp_to_xram_rsp_rok[index]=false;
 	      r_xram_rsp_fsm           = XRAM_RSP_DIR_LOCK;
-//---------------------------------------------------
-	    std::cout << " XRAM FSM in IDLE STATE next state is XRAM_RSP_DIR_LOCK "  << std::endl;
-
-//------------------------------------------------*/
 	      break;
 	    }
 	  }
@@ -1637,10 +1441,6 @@ namespace soclib { namespace caba {
 	{
 	  if( r_alloc_dir_fsm.read() == ALLOC_DIR_XRAM_RSP ) {
 	    r_xram_rsp_fsm           = XRAM_RSP_TRT_COPY;
-//---------------------------------------------------
-	    std::cout << " XRAM FSM in XRAM_RSP_DIR_LOCK next state is XRAM_RSP_TRT_COPY "  << std::endl;
-
-//------------------------------------------------*/
 	  }
 	  break;
 	}
@@ -1666,18 +1466,6 @@ namespace soclib { namespace caba {
 	    r_xram_rsp_victim_nline  = victim.tag*m_sets + set;
 	    r_xram_rsp_victim_inval  = victim.valid && (victim.copies != 0);
 	    r_xram_rsp_victim_dirty  = victim.dirty;
-//---------------------------------------------------
-	    std::cout << " XRAM FSM in XRAM_RSP_DIR_LOCK next state is XRAM_RSP_DIR_UPT "  << std::endl;
-	    std::cout << " informations of the victim : "  
-	              << " copies : " << victim.copies
-		      << " way : "    << way
-		      << " set : "    << set
-		      << " nline : "  << victim.tag*m_sets + set
-		      << " inval : "  << (victim.valid && (victim.copies !=0))
-		      << " dirty : "  << victim.dirty
-		      << std::endl;
-
-//------------------------------------------------*/
 
 	    r_xram_rsp_fsm = XRAM_RSP_DIR_UPDT;
 	  }
@@ -1697,17 +1485,7 @@ namespace soclib { namespace caba {
 	  for(size_t i=0; i<m_words;i++){
 	    dirty = dirty || (r_xram_rsp_trt_buf.wdata_be[i] != 0);
 	  }
-//-----------------------------------------------------------
-	  std::cout << " XRAM FSM in XRAM_RSP_DIR_UPDT some informations about the new entry : "
-                    << " dirty : " << dirty
-		    << " nline : " << r_xram_rsp_trt_buf.nline
-		    << " data being written : " << std ::endl;
-	  for(size_t i=0; i<m_words ; i++){
-	     std::cout << std::hex << r_xram_rsp_trt_buf.wdata[i] << " ";
-	  }
-	  std::cout << " end data " << std::endl;
 
-//---------------------------------------------------------*/
 	  // update directory
 	  DirectoryEntry entry;
 	  entry.valid	= true;
@@ -1744,12 +1522,6 @@ namespace soclib { namespace caba {
 				  0,
 				  std::vector<be_t>(m_words,0),
 				  std::vector<data_t>(m_words,0) );
-//-----------------------------------------------------------
-	  std::cout << " XRAM FSM in XRAM_RSP_TRT_DIRTY "
-		    << " nline : " << r_xram_rsp_victim_nline.read()
-	  	    << std::endl;
-
-//---------------------------------------------------------*/
 	    if      ( r_xram_rsp_trt_buf.proc_read  )       r_xram_rsp_fsm = XRAM_RSP_DIR_RSP;
 	    else if ( r_xram_rsp_victim_inval.read())       r_xram_rsp_fsm = XRAM_RSP_UPT_LOCK;
 	    else                                            r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY;
@@ -1772,11 +1544,7 @@ namespace soclib { namespace caba {
 	      }
 	    } 
 	    r_xram_rsp_to_tgt_rsp_req   = true;
-//-----------------------------------------------------------
-	  std::cout << " XRAM FSM in XRAM_RSP_DIR_RSP "
-	  	    << std::endl;
 
-//---------------------------------------------------------*/
 	    if      ( r_xram_rsp_victim_inval ) r_xram_rsp_fsm = XRAM_RSP_UPT_LOCK;
 	    else if ( r_xram_rsp_victim_dirty ) r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY; 
 	    else                                r_xram_rsp_fsm = XRAM_RSP_IDLE;
@@ -1802,23 +1570,6 @@ namespace soclib { namespace caba {
 						r_xram_rsp_victim_nline.read(),
 						n,
 						index);
-/*	    bool	 wok = m_update_tab.set(false,	// it's an inval transaction
-						0,
-						0,
-						0,
-						n,
-						r_xram_rsp_victim_copies.read(),
-						index);*/
-//-----------------------------------------------------------
-	  std::cout << " XRAM FSM in XRAM_RSP_UPT_LOCK "
-	            << " printing the update table after setting the new entry "
-	  	    << std::endl;
-
-//---------------------------------------------------------*/
-//---------------------------------------------------
-for(size_t i=0; i< m_update_tab.size(); i++)
-                 m_update_tab.read(i).print();
-//--------------------------------------------------*/
 
 	    if ( wok ) {
 	      r_xram_rsp_upt_index = index;
@@ -1832,12 +1583,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
 	///////////////////
       case XRAM_RSP_WAIT:	// releases UPT lock for one cycle
 	{
-//-----------------------------------------------------------
-	  std::cout << " XRAM FSM in XRAM_RSP_WAIT "
-	            << " printing the update table after setting the new entry "
-	  	    << std::endl;
-
-//---------------------------------------------------------*/
 	  r_xram_rsp_fsm = XRAM_RSP_UPT_LOCK;
           break;
 	}
@@ -1848,19 +1593,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
 	    r_xram_rsp_to_init_cmd_req     = true; 
 	    r_xram_rsp_to_init_cmd_nline   = r_xram_rsp_victim_nline.read();
 	    r_xram_rsp_to_init_cmd_trdid   = r_xram_rsp_upt_index;
-/*            if ( r_xram_rsp_victim_copies ) {
-	      r_xram_rsp_to_init_cmd_copies  = 1;
-            } else {
-	      r_xram_rsp_to_init_cmd_copies  = 0;
-            }
-*/
             r_xram_rsp_to_init_cmd_copies = r_xram_rsp_victim_copies ;
-//-----------------------------------------------------------
-	  std::cout << " XRAM FSM in XRAM_RSP_INVAL "
-	            << " the victim is being invalidate "
-	  	    << std::endl;
-
-//---------------------------------------------------------*/
 	    if ( r_xram_rsp_victim_dirty ) r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY;
 	    else		                 r_xram_rsp_fsm = XRAM_RSP_IDLE;
 	  }
@@ -1878,12 +1611,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
 	    }
 	    m_cpt_write_dirty++;
 	    r_xram_rsp_fsm = XRAM_RSP_IDLE;
-//-----------------------------------------------------------
-	  std::cout << " XRAM FSM in WRITE_DIRTY "
-	            << " the victim line is going to be written in he XRAM_CMD "
-	  	    << std::endl;
-
-//---------------------------------------------------------*/
 	  }
 	  break;
 	}
@@ -1916,16 +1643,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
                 reached = true;
               }
             }
-            /*--------------------------------------
-              std::cout << sc_time_stamp() << "-- " << name()
-              << " ** r_cleanup_fsm -- CLEANUP_IDLE "
-              << " ** vci_cmdval : " << p_vci_tgt_cleanup.cmdval.read()
-              << " ** srcid : " << std::hex << p_vci_tgt_cleanup.srcid.read()
-              << " ** cmd : " << p_vci_tgt_cleanup.cmd.read()
-              << " ** address : " << p_vci_tgt_cleanup.address.read()
-              << " ** reached : " << reached
-              << std::endl;
-            //----------------------------------------------- */
             if ( (p_vci_tgt_cleanup.cmd.read() == vci_param::CMD_WRITE) &&
                 (p_vci_tgt_cleanup.trdid.read() == 0x1) &&
                 (p_vci_tgt_cleanup.address.read() != BROADCAST_ADDR) &&
@@ -1994,11 +1711,9 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         /////////////////
       case CLEANUP_UPT_LOCK:
         {
-          if( r_alloc_upt_fsm.read() == ALLOC_UPT_CLEANUP ) // BUG CORRIGE 02/06/09
+          if( r_alloc_upt_fsm.read() == ALLOC_UPT_CLEANUP ) // BUG FIXED 02/06/09
           {
             size_t index;
-            //assert(m_update_tab.read_nline(r_cleanup_nline.read(),index)&& 
-            //      "MEMCACHE ERROR : cleanup with no corresponding entry") ;
             if(!m_update_tab.read_nline(r_cleanup_nline.read(),index)){
               std::cout << "MEMCACHE ERROR : cleanup with no corresponding entry at address : " << std::hex << (r_cleanup_nline.read()<<6) << std::dec << std::endl;
               assert(false);
@@ -2356,12 +2071,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
       //////////////////////// 
       case INIT_CMD_UPDT_IDLE:	// Invalidate requests have highest priority
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_init_cmd_fsm -- INIT_CMD_UPDT_IDLE "
-            << " :: r_write_to_init_cmd_req : " << r_write_to_init_cmd_req
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( r_xram_rsp_to_init_cmd_req ) {
             r_init_cmd_fsm = INIT_CMD_INVAL_SEL;
@@ -2375,12 +2084,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         /////////////////////////
       case INIT_CMD_INVAL_IDLE:	// Update requests have highest priority
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_init_cmd_fsm -- INIT_CMD_INVAL_IDLE "
-            << " :: r_write_to_init_cmd_req : " << r_write_to_init_cmd_req
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( r_write_to_init_cmd_req ) {
             r_init_cmd_fsm = INIT_CMD_UPDT_SEL;
@@ -2394,46 +2097,22 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ////////////////////////
       case INIT_CMD_INVAL_SEL:	// selects all L1 caches
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_init_cmd_fsm -- INIT_CMD_INVAL_SEL "
-            << "list of copies" << r_xram_rsp_to_init_cmd_copies.read()
-            << std::endl;
 
-          for(size_t i=0; i< m_update_tab.size(); i++)
-            m_update_tab.read(i).print();
-
-          //----------------------------------------------- */
 
           if (r_xram_rsp_to_init_cmd_copies.read() == 0) {	// no more copies
             r_xram_rsp_to_init_cmd_req = false;
             r_init_cmd_fsm = INIT_CMD_INVAL_IDLE;
           } else {						// broadcast => select all targets
-            //	    copy_t copies = r_xram_rsp_to_init_cmd_copies.read();
-            //	    copy_t mask   = 0x1;
-            //	    for ( size_t i=0 ; i<8*sizeof(copy_t) ; i++ ) {
-            //	      if ( copies & mask ) {
-            //		r_init_cmd_target = i;
-            //		break;
-            //	      }
-            //	      mask = mask << 1;
-            //	    } // end for 
             m_cpt_inval_mult++;
             r_xram_rsp_to_init_cmd_req = false;
             r_init_cmd_fsm = INIT_CMD_INVAL_NLINE;
             r_xram_rsp_to_init_cmd_copies = 0;
-            //	    r_xram_rsp_to_init_cmd_copies = copies & ~mask;
           }
           break;
         }
         ////////////////////////
       case INIT_CMD_INVAL_NLINE:	// send the cache line index
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_init_cmd_fsm -- INIT_CMD_INVAL_NLINE "
-            << std::endl;
-          //----------------------------------------------- */
 
           //if ( p_vci_ini.cmdack ) r_init_cmd_fsm = INIT_CMD_INVAL_SEL;
           if ( p_vci_ini.cmdack ) r_init_cmd_fsm = INIT_CMD_INVAL_IDLE;
@@ -2442,12 +2121,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ///////////////////////
       case INIT_CMD_UPDT_SEL:	// selects the next L1 cache
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_init_cmd_fsm -- INIT_CMD_UPDT_SEL "
-            << " :: r_write_to_init_cmd_copies : " << r_write_to_init_cmd_copies.read() 
-            << std::endl;
-          //----------------------------------------------- */
 
           if (r_write_to_init_cmd_copies.read() == 0) {	// no more copies
             r_write_to_init_cmd_req = false;
@@ -2472,12 +2145,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         /////////////////////////
       case INIT_CMD_UPDT_NLINE:	// send the cache line index
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_init_cmd_fsm -- INIT_CMD_UPDT_NLINE "
-            << " p_vci_ini.cmdack " << std::hex << p_vci_ini.cmdack
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( p_vci_ini.cmdack )  r_init_cmd_fsm = INIT_CMD_UPDT_INDEX;
           break;
@@ -2485,11 +2152,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         /////////////////////////
       case INIT_CMD_UPDT_INDEX:	// send the first word index
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_init_cmd_fsm -- INIT_CMD_UPDT_INDEX "
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( p_vci_ini.cmdack )  r_init_cmd_fsm = INIT_CMD_UPDT_DATA;
           break;
@@ -2497,11 +2159,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ////////////////////////
       case INIT_CMD_UPDT_DATA:	// send the data
         {
-          //--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-            << " :: r_init_cmd_fsm -- INIT_CMD_UPDT_DATA "
-            << std::endl;
-          //----------------------------------------------- */
 
           if ( p_vci_ini.cmdack ) {
             if ( r_init_cmd_cpt.read() == (r_write_to_init_cmd_count.read()-1) ) {
@@ -2652,15 +2309,9 @@ for(size_t i=0; i< m_update_tab.size(); i++)
       ///////////////////////
       case TGT_RSP_READ_IDLE:		// write requests have the highest priority
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_READ_IDLE "
-            << std::endl;
-          //----------------------------------------------- */
 
           if      ( r_write_to_tgt_rsp_req    ) r_tgt_rsp_fsm = TGT_RSP_WRITE;
           else if ( r_llsc_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_LLSC;
-          //	  else if ( r_cleanup_to_tgt_rsp_req  ) r_tgt_rsp_fsm = TGT_RSP_CLEANUP;
           else if ( r_xram_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_XRAM_TEST;
           else if ( r_init_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_INIT;
           else if ( r_read_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_READ_TEST;
@@ -2669,14 +2320,8 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ////////////////////////
       case TGT_RSP_WRITE_IDLE:		// llsc requests have the highest priority
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_WRITE_IDLE "
-            << std::endl;
-          //----------------------------------------------- */
 
           if      ( r_llsc_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_LLSC;
-          //	  else if ( r_cleanup_to_tgt_rsp_req  ) r_tgt_rsp_fsm = TGT_RSP_CLEANUP;
           else if ( r_xram_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_XRAM_TEST;
           else if ( r_init_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_INIT;
           else if ( r_read_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_READ_TEST;
@@ -2686,13 +2331,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ///////////////////////
       case TGT_RSP_LLSC_IDLE:		// cleanup requests have the highest priority
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_LLSC_IDLE "
-            << std::endl;
-          //----------------------------------------------- */
 
-          //	  if      ( r_cleanup_to_tgt_rsp_req  ) r_tgt_rsp_fsm = TGT_RSP_CLEANUP;
           if ( r_xram_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_XRAM_TEST;
           else if ( r_init_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_INIT;
           else if ( r_read_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_READ_TEST;
@@ -2700,47 +2339,22 @@ for(size_t i=0; i< m_update_tab.size(); i++)
           else if ( r_llsc_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_LLSC;
           break;
         }
-        //////////////////////////
-        //      case TGT_RSP_CLEANUP_IDLE:	// xram requests have the highest priority
-        //	{
-        //	  if      ( r_xram_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_XRAM_TEST;
-        //	  else if ( r_init_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_INIT;
-        //	  else if ( r_read_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_READ_TEST;
-        //	  else if ( r_write_to_tgt_rsp_req    ) r_tgt_rsp_fsm = TGT_RSP_WRITE;
-        //	  else if ( r_llsc_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_LLSC;
-        //	  else if ( r_cleanup_to_tgt_rsp_req  ) r_tgt_rsp_fsm = TGT_RSP_CLEANUP;
-        //	  break;
-        //	}
-        ///////////////////////
       case TGT_RSP_XRAM_IDLE:		// init requests have the highest priority
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_XRAM_IDLE "
-            << std::endl;
-          //----------------------------------------------- */
 
           if      ( r_init_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_INIT;
           else if ( r_read_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_READ_TEST;
           else if ( r_write_to_tgt_rsp_req    ) r_tgt_rsp_fsm = TGT_RSP_WRITE;
           else if ( r_llsc_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_LLSC;
-          //	  else if ( r_cleanup_to_tgt_rsp_req  ) r_tgt_rsp_fsm = TGT_RSP_CLEANUP;
           else if ( r_xram_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_XRAM_TEST;
           break;
         }
         ///////////////////////
       case TGT_RSP_INIT_IDLE:		// read requests have the highest priority
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_INIT_IDLE "
-            << std::endl;
-          //----------------------------------------------- */
-
           if      ( r_read_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_READ_TEST;
           else if ( r_write_to_tgt_rsp_req    ) r_tgt_rsp_fsm = TGT_RSP_WRITE;
           else if ( r_llsc_to_tgt_rsp_req     ) r_tgt_rsp_fsm = TGT_RSP_LLSC;
-          //	  else if ( r_cleanup_to_tgt_rsp_req  ) r_tgt_rsp_fsm = TGT_RSP_CLEANUP;
           else if ( r_xram_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_XRAM_TEST;
           else if ( r_init_rsp_to_tgt_rsp_req ) r_tgt_rsp_fsm = TGT_RSP_INIT;
           break;
@@ -2748,11 +2362,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ///////////////////////
       case TGT_RSP_READ_TEST:		// test if word or cache line
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_READ_TEST "
-            << std::endl;
-          //----------------------------------------------- */
+          
 
           bool 		line = true;
           size_t	index;
@@ -2772,11 +2382,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ///////////////////////
       case TGT_RSP_READ_WORD:		// send one word response
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_READ_WORD "
-            << std::endl;
-          //----------------------------------------------- */
+          
 
           if ( p_vci_tgt.rspack ) {
             r_tgt_rsp_fsm = TGT_RSP_READ_IDLE;
@@ -2787,11 +2393,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ///////////////////////
       case TGT_RSP_READ_LINE:		// send one complete cache line
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_READ_LINE "
-            << std::endl;
-          //----------------------------------------------- */
+          
 
           if ( p_vci_tgt.rspack ) {
             if ( r_tgt_rsp_cpt.read() == (m_words-1) ) {
@@ -2806,11 +2408,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ///////////////////
       case TGT_RSP_WRITE:		// send the write acknowledge
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_WRITE "
-            << std::endl;
-          //----------------------------------------------- */
+          
 
           if ( p_vci_tgt.rspack ) {
             r_tgt_rsp_fsm = TGT_RSP_WRITE_IDLE;
@@ -2821,11 +2419,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         //////////////////
       case TGT_RSP_LLSC:		// send one atomic word response
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_LLSC "
-            << std::endl;
-          //----------------------------------------------- */
+          
 
 
           if ( p_vci_tgt.rspack ) {
@@ -2834,23 +2428,10 @@ for(size_t i=0; i< m_update_tab.size(); i++)
           }
           break;
         }
-        /////////////////////
-        //      case TGT_RSP_CLEANUP:		// send the cleanup acknowledge
-        //	{
-        //	  if ( p_vci_tgt.rspack ) {
-        //	    r_tgt_rsp_fsm = TGT_RSP_CLEANUP_IDLE;
-        //	    r_cleanup_to_tgt_rsp_req = false;
-        //	  }
-        //	  break;
-        //	}
-        ///////////////////////
+        
       case TGT_RSP_XRAM_TEST:		// test if word or cache line
         {
-          /*--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_XRAM_TEST "
-            << std::endl;
-          //----------------------------------------------- */
+          
 
           bool 	line = true;
           size_t	index;
@@ -2870,11 +2451,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ///////////////////////
       case TGT_RSP_XRAM_WORD:		// send one word response
         {
-          /*/--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_XRAM_WORD "
-            << std::endl;
-          //----------------------------------------------- */
+          
 
           if ( p_vci_tgt.rspack ) {
             r_tgt_rsp_fsm = TGT_RSP_XRAM_IDLE;
@@ -2885,11 +2462,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         ///////////////////////
       case TGT_RSP_XRAM_LINE:		// send one complete cache line
         {
-          /*/--------------------------------------
-            std::cout << sc_time_stamp() << "-- " << name()
-            << " $$ tgt_rsp_fsm -- TGT_RSP_XRAM_LINE "
-            << std::endl;
-          //----------------------------------------------- */
+          
 
           if ( p_vci_tgt.rspack ) {
             if ( r_tgt_rsp_cpt.read() == (m_words-1) ) {
@@ -2903,12 +2476,7 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         }
         ///////////////////
       case TGT_RSP_INIT:		// send the pending write acknowledge
-        /*/--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-          << " $$ tgt_rsp_fsm -- TGT_RSP_INIT "
-          << " $$ pvci_tgt.rspack : " << p_vci_tgt.rspack
-          << std::endl;
-        //----------------------------------------------- */
+        
 
         {
           if ( p_vci_tgt.rspack ) {
@@ -3522,7 +3090,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
       case INIT_CMD_INVAL_NLINE:
         p_vci_ini.cmdval  = true;
         p_vci_ini.address = BROADCAST_ADDR;
-        //	p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()];
         p_vci_ini.wdata   = r_xram_rsp_to_init_cmd_nline.read();
         p_vci_ini.be      = 0xF;
         p_vci_ini.plen    = 4;
@@ -3530,14 +3097,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
         p_vci_ini.eop     = true;
         break;
       case INIT_CMD_UPDT_NLINE:
-        /*--------------------------------------
-          std::cout << sc_time_stamp() << "-- " << name()
-          << " Moore INIT_CMD_UPDT_NLINE" 
-          << " ++ r_init_cmd_target : " << std::hex << r_init_cmd_target.read()
-          << " ++ m_coherence_table : " << m_coherence_table[r_init_cmd_target.read()]
-          << std::endl;
-        //----------------------------------------------- */
-
         p_vci_ini.cmdval  = true;
         p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()] + 4;
         p_vci_ini.wdata   = r_write_to_init_cmd_nline.read();
@@ -3576,13 +3135,6 @@ for(size_t i=0; i< m_update_tab.size(); i++)
 
     if ( r_init_rsp_fsm.read() == INIT_RSP_IDLE ) p_vci_ini.rspack  = true;
     else                                          p_vci_ini.rspack  = false;
-    //--------------------------------------
-    std::cout << sc_time_stamp() << "-- " << name()
-      << " xx Moore r_init_rsp_fsm : " << r_init_rsp_fsm.read()
-      << " xx p_vci_ini.rspack: " << p_vci_ini.rspack.read()
-      << std::endl;
-    //----------------------------------------------- */
-
 
     //////////////////////////////////////////////////////
     // Response signals on the p_vci_tgt_cleanup port

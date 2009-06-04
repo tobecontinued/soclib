@@ -124,8 +124,9 @@ int _main(int argc, char *argv[])
 
         //                                  x_init    c_init    p_tgt     c_tgt
 	soclib::caba::VciMemCache2<vci_param> 
-	memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(2),IntTab(2), IntTab(2),16,256,16);
-	
+	//memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(2),IntTab(2), IntTab(2),16,256,16);
+	memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(2),IntTab(2), IntTab(2),4,16,16);
+
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(1),maptabp,"tty0","tty1",NULL);
 
