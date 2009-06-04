@@ -2,8 +2,4 @@ ARCH=mipsel
 SIMULATION_ARGS=100000
 SOCLIB?=$(shell soclib-cc --getpath)
 export SOCLIB
-<<<<<<< .mine
-include  $(SOCLIB)/soclib/platform/topcells/all.mk
-=======
 include $(SOCLIB)/soclib/platform/topcells/all.mk
->>>>>>> .r1140

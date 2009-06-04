@@ -1,0 +1,77 @@
+# -*- python -*-
+
+Module('caba:virtual_dspin_network',
+	classname = 'soclib::caba::VirtualDspinNetwork',
+	tmpl_parameters = [
+		parameter.Int('io_mask_size'		, default = 2),
+		parameter.Int('io_number_size'		, default = 2),
+		parameter.Int('x_adressing_size'	, default = 5),
+		parameter.Int('y_adressing_size'	, default = 5),
+
+		parameter.Int('cmd_data_size'		, default = 37),
+		parameter.Int('cmd_io_mask_offset'	, default = 1),
+		parameter.Int('cmd_io_number_offset'	, default = 3),
+		parameter.Int('cmd_x_adressing_offset'	, default = 1),
+		parameter.Int('cmd_y_adressing_offset'	, default = 6),
+		parameter.Int('cmd_eop_offset'		, default = 0),
+		parameter.Int('cmd_broadcast_offset'	, default = 35),
+
+		parameter.Int('rsp_data_size'		, default = 33),
+		parameter.Int('rsp_io_mask_offset'	, default = 1),
+		parameter.Int('rsp_io_number_offset'	, default = 3),
+		parameter.Int('rsp_x_adressing_offset'	, default = 1),
+		parameter.Int('rsp_y_adressing_offset'	, default = 6),
+		parameter.Int('rsp_eop_offset'		, default = 0),
+
+		parameter.Int('in_fifo_size'		, default = 18),
+		parameter.Int('out_fifo_size'		, default = 18),
+	],
+	header_files = ['../source/include/virtual_dspin_network.h',],
+	implementation_files = ['../source/src/virtual_dspin_network.cpp',],
+	ports = [
+		Port('caba:virtual_dspin_network_port', 'ports'),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	],
+	uses = [
+		Uses('caba:base_module'),
+
+		Uses('caba:virtual_dspin_router', 
+			data_size = 		parameter.Reference('cmd_data_size'), 
+
+			io_mask_offset =	parameter.Reference('cmd_io_mask_offset'), 
+#			io_mask_size =		parameter.Reference('io_mask_size'), 
+			io_number_offset =	parameter.Reference('cmd_io_number_offset'), 
+#			io_number_size =	parameter.Reference('io_number_size'), 
+
+			x_adressing_offset =	parameter.Reference('cmd_x_adressing_offset'), 
+#			x_adressing_size =  	parameter.Reference('x_adressing_size'), 
+			y_adressing_offset =	parameter.Reference('cmd_y_adressing_offset'), 
+#			y_adressing_size =	parameter.Reference('y_adressing_size'), 
+
+			eop_offset =		parameter.Reference('cmd_eop_offset'),
+			broadcast_offset =	parameter.Reference('cmd_broadcast_offset'),
+#			in_fifo_size =		parameter.Reference('in_fifo_size'),
+#			out_fifo_size =		parameter.Reference('out_fifo_size'),
+		),
+
+		Uses('caba:virtual_dspin_router', 
+			data_size =		parameter.Reference('rsp_data_size'), 
+
+			io_mask_offset =	parameter.Reference('rsp_io_mask_offset'), 
+#			io_mask_size =		parameter.Reference('io_mask_size'), 
+			io_number_offset =	parameter.Reference('rsp_io_number_offset'), 
+#			io_number_size =	parameter.Reference('io_number_size'), 
+
+			x_adressing_offset =	parameter.Reference('rsp_x_adressing_offset'), 
+#			x_adressing_size =	parameter.Reference('x_adressing_size'), 
+			y_adressing_offset =	parameter.Reference('rsp_y_adressing_offset'), 
+#			y_adressing_size =	parameter.Reference('y_adressing_size'), 
+
+			eop_offset =		parameter.Reference('rsp_eop_offset'),    
+			broadcast_offset =	0,
+#			in_fifo_size =		parameter.Reference('in_fifo_size'),
+#			out_fifo_size =		parameter.Reference('out_fifo_size'),
+		),
+	]
+)

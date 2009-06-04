@@ -1,0 +1,57 @@
+
+# -*- python -*-
+
+
+todo = Platform('caba', 'top.cpp',
+				uses = [
+        Uses('caba:vci_cc_xcache_wrapper', iss_t = 'common:ississ2', iss2_t = 'common:iss_simhelper', simhelper_iss_t = 'common:mipsel'),
+	Uses('caba:vci_simple_ram'),
+	Uses('caba:vci_multi_tty'),
+	Uses('caba:vci_mem_cache'),
+	Uses('caba:vci_simple_ring_network'),
+	Uses('caba:vci_local_ring_network'),
+
+	Uses('caba:virtual_dspin_network', 
+		x_adressing_size = 1, 
+		y_adressing_size = 1,
+
+		cmd_x_adressing_offset = 5, 
+		cmd_y_adressing_offset = 6,
+
+		rsp_x_adressing_offset = 8, 
+		rsp_y_adressing_offset = 9,
+
+		io_mask_size		 = 2,
+		io_number_size		 = 2,
+
+		cmd_data_size		 = 37,
+		cmd_io_mask_offset	 = 1,
+		cmd_io_number_offset	 = 3,
+		cmd_eop_offset		 = 0,
+		cmd_broadcast_offset	 = 35,
+
+		rsp_data_size		 = 33,
+		rsp_io_mask_offset	 = 1,
+		rsp_io_number_offset	 = 3,
+		rsp_eop_offset		 = 0,
+		rsp_broadcast_offset	 = 31,
+
+		in_fifo_size		 = 18,
+		out_fifo_size		 = 18,
+	),
+
+
+	Uses('caba:ring_gateway'),
+		Uses('common:elf_file_loader'),
+	],
+	cell_size = 4,
+	plen_size = 8,
+	addr_size = 32,
+	rerror_size = 1,
+	clen_size = 1,
+	rflag_size = 1,
+	srcid_size = 8,
+	pktid_size = 4,
+	trdid_size = 4,
+	wrplen_size = 1
+)

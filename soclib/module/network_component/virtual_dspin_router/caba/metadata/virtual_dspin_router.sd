@@ -1,0 +1,35 @@
+# -*- python -*-
+
+Module('caba:virtual_dspin_router',
+	classname = 'soclib::caba::VirtualDspinRouter',
+
+	tmpl_parameters = [
+		parameter.Int('data_size'),
+		parameter.Int('io_mask_offset'),
+		parameter.Int('io_mask_size'),
+		parameter.Int('io_number_offset'),
+		parameter.Int('io_number_size'),
+		parameter.Int('x_adressing_offset'),
+		parameter.Int('x_adressing_size'),
+		parameter.Int('y_adressing_offset'),
+		parameter.Int('y_adressing_size'),
+		parameter.Int('eop_offset', default = 0),
+		parameter.Int('broadcast_offset'),
+		parameter.Int('in_fifo_size'),
+		parameter.Int('out_fifo_size'),
+	],
+
+	header_files = ['../source/include/virtual_dspin_router.h',],
+	implementation_files = ['../source/src/virtual_dspin_router.cpp',],
+	ports = [
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+		Port('caba:dspin_output', 'p_out', dspin_data_size = parameter.Reference("data_size")), 
+		Port('caba:dspin_input', 'p_in', dspin_data_size = parameter.Reference("data_size")),
+	],
+	uses = [
+		Uses('caba:base_module'),
+#		Uses('caba:dspin_input', dspin_data_size = parameter.Reference("data_size")),
+		Uses('caba:generic_fifo',),
+	],
+)

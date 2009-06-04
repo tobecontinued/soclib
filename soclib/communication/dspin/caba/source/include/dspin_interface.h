@@ -43,8 +43,8 @@ template<int dspin_data_size>
 class DspinSignals {
     public:
         sc_signal<sc_uint<dspin_data_size> >  	data;    // data
-        sc_signal<bool>                 	write;   // write command 
-        sc_signal<bool>                 	read;    // read command
+        sc_signal<bool>                 		write;   // write command 
+        sc_signal<bool>                 		read;    // read command
 
 #define __ren(x) x((insname+"_" #x).c_str())
         DspinSignals(std::string insname = sc_gen_unique_name("dspin_signals"))

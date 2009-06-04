@@ -1,3 +1,4 @@
+
 #include <systemc>
 #include <sys/time.h>
 #include <iostream>
@@ -10,11 +11,11 @@
 #include "iss_simhelper.h"
 #include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
-#include "vci_vgmn.h"
 #include "vci_mem_cache.h"
-#include "vci_local_crossbar.h"
-#include "vci_dspinplus_network.h"
 #include "vci_cc_xcache_wrapper.h"
+#include "vci_local_ring_network.h"
+#include "vci_simple_ring_network.h"
+#include "virtual_dspin_network.h"
 
 #ifdef USE_GDB_SERVER
 #include "iss/gdbserver.h"
@@ -269,32 +270,6 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> signal_vci_ini_memc3("vci_ini_memc3");
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_memc3("vci_tgt_memc3");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_pdspin0("vci_ini_pdspin0");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_pdspin0("vci_tgt_pdspin0");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_pdspin1("vci_ini_pdspin1");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_pdspin1("vci_tgt_pdspin1");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_pdspin2("vci_ini_pdspin2");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_pdspin2("vci_tgt_pdspin2");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_pdspin3("vci_ini_pdspin3");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_pdspin3("vci_tgt_pdspin3");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_cdspin0("vci_ini_cdspin0");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_cdspin0("vci_tgt_cdspin0");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_cdspin1("vci_ini_cdspin1");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_cdspin1("vci_tgt_cdspin1");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_cdspin2("vci_ini_cdspin2");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_cdspin2("vci_tgt_cdspin2");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_cdspin3("vci_ini_cdspin3");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_cdspin3("vci_tgt_cdspin3");
-
-
-
 	sc_signal<bool> signal_tty_irq0("signal_tty_irq0"); 
 	sc_signal<bool> signal_tty_irq1("signal_tty_irq1"); 
 	sc_signal<bool> signal_tty_irq2("signal_tty_irq2"); 
@@ -396,44 +371,82 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(3,1),maptabp,"tty0","tty1","tty2","tty3","tty4","tty5","tty6","tty7","tty8","tty9","tty10","tty11","tty12","tty13","tty14","tty15",NULL);
 
-	soclib::caba::VciLocalCrossbar<vci_param> 
-	clusterPN0("clusterPN0",maptabp, IntTab(0), IntTab(0), 4, 1 );
+	soclib::caba::GateSignals gate_PN[4][2];
+	soclib::caba::GateSignals gate_CN[4][2];
+        
+	soclib::caba::VciLocalRingNetwork<vci_param> 
+	clusterPN0("clusterPN0",maptabp, IntTab(0), 2, 18, 4, 1 );
 
-	soclib::caba::VciLocalCrossbar<vci_param> 
-	clusterPN1("clusterPN1",maptabp, IntTab(1), IntTab(1), 4, 1 );
+	soclib::caba::VciLocalRingNetwork<vci_param> 
+	clusterPN1("clusterPN1",maptabp, IntTab(1), 2, 18, 4, 1 );
 
-	soclib::caba::VciLocalCrossbar<vci_param> 
-	clusterPN2("clusterPN2",maptabp, IntTab(2), IntTab(2), 4, 2 );
+	soclib::caba::VciLocalRingNetwork<vci_param> 
+	clusterPN2("clusterPN2",maptabp, IntTab(2), 2, 18, 4, 2 );
 
-	soclib::caba::VciLocalCrossbar<vci_param> 
-	clusterPN3("clusterPN3",maptabp, IntTab(3), IntTab(3), 4, 2 );
+	soclib::caba::VciLocalRingNetwork<vci_param> 
+	clusterPN3("clusterPN3",maptabp, IntTab(3), 2, 18, 4, 2 );
 
-	soclib::caba::VciLocalCrossbar<vci_param> 
-	clusterCN0("clusterCN0",maptabc, IntTab(0), IntTab(0), 1, 4 );
+	soclib::caba::VciLocalRingNetwork<vci_param> 
+	clusterCN0("clusterCN0",maptabc, IntTab(0), 2, 2, 1, 4 );
 
-	soclib::caba::VciLocalCrossbar<vci_param> 
-	clusterCN1("clusterCN1",maptabc, IntTab(1), IntTab(1), 1, 4 );
+	soclib::caba::VciLocalRingNetwork<vci_param> 
+	clusterCN1("clusterCN1",maptabc, IntTab(1), 2, 2, 1, 4 );
 
-	soclib::caba::VciLocalCrossbar<vci_param> 
-	clusterCN2("clusterCN2",maptabc, IntTab(2), IntTab(2), 1, 4 );
+	soclib::caba::VciLocalRingNetwork<vci_param> 
+	clusterCN2("clusterCN2",maptabc, IntTab(2), 2, 2, 1, 4 );
 
-	soclib::caba::VciLocalCrossbar<vci_param> 
-	clusterCN3("clusterCN3",maptabc, IntTab(3), IntTab(3), 1, 4 );
+	soclib::caba::VciLocalRingNetwork<vci_param> 
+	clusterCN3("clusterCN3",maptabc, IntTab(3), 2, 2, 1, 4 );
+//--
 
-	soclib::caba::VciDspinPlusNetwork<vci_param, 4, 1> vciDspinCNetwork("vciDspinCNetwork", maptabc, 2, 2);
+	soclib::caba::VirtualDspinNetwork<2, 2, 1, 1, 37, 1, 3, 5, 6, 0, 35, 33, 1, 3, 8, 9, 0, 18, 18> network("network", 2, 2, true, true, false, false, NULL);
 
-	soclib::caba::VciDspinPlusNetwork<vci_param, 4, 1> vciDspinPNetwork("vciDspinPNetwork", maptabp, 2, 2);
+	network.p_clk(signal_clk);
+	network.p_resetn(signal_resetn);
 
-	soclib::caba::VciVgmn<vci_param> 
-	vgmn("vgmn",maptabx, 4, 1, 1, 4);
+	for(int i=0; i<2; i++){
+		for(int j=0; j<2; j++){
+			// GatePN[][1]
+			network.ports[0][i][j].out_cmd_data(	gate_PN[j+2*i][1].cmd_data);
+			network.ports[0][i][j].out_cmd_read(	gate_PN[j+2*i][1].cmd_r_wok);
+			network.ports[0][i][j].out_cmd_write(	gate_PN[j+2*i][1].cmd_w_rok);
+			network.ports[0][i][j].in_rsp_data(	gate_PN[j+2*i][1].rsp_data);
+			network.ports[0][i][j].in_rsp_read(	gate_PN[j+2*i][1].rsp_r_wok);
+			network.ports[0][i][j].in_rsp_write(	gate_PN[j+2*i][1].rsp_w_rok);
+			// GateCN[][1]
+			network.ports[1][i][j].out_cmd_data(	gate_CN[j+2*i][1].cmd_data);
+			network.ports[1][i][j].out_cmd_read(	gate_CN[j+2*i][1].cmd_r_wok);
+			network.ports[1][i][j].out_cmd_write(	gate_CN[j+2*i][1].cmd_w_rok);
+			network.ports[1][i][j].in_rsp_data(	gate_CN[j+2*i][1].rsp_data);
+			network.ports[1][i][j].in_rsp_read(	gate_CN[j+2*i][1].rsp_r_wok);
+			network.ports[1][i][j].in_rsp_write(	gate_CN[j+2*i][1].rsp_w_rok);
+			// GatePN[][0]
+			network.ports[0][i][j].in_cmd_data(	gate_PN[j+2*i][0].cmd_data);
+			network.ports[0][i][j].in_cmd_read(	gate_PN[j+2*i][0].cmd_r_wok);
+			network.ports[0][i][j].in_cmd_write(	gate_PN[j+2*i][0].cmd_w_rok);
+			network.ports[0][i][j].out_rsp_data(	gate_PN[j+2*i][0].rsp_data);
+			network.ports[0][i][j].out_rsp_read(	gate_PN[j+2*i][0].rsp_r_wok);
+			network.ports[0][i][j].out_rsp_write(	gate_PN[j+2*i][0].rsp_w_rok);
+			// GateCN[][0]
+			network.ports[1][i][j].in_cmd_data(	gate_CN[j+2*i][0].cmd_data);
+			network.ports[1][i][j].in_cmd_read(	gate_CN[j+2*i][0].cmd_r_wok);
+			network.ports[1][i][j].in_cmd_write(	gate_CN[j+2*i][0].cmd_w_rok);
+			network.ports[1][i][j].out_rsp_data(	gate_CN[j+2*i][0].rsp_data);
+			network.ports[1][i][j].out_rsp_read(	gate_CN[j+2*i][0].rsp_r_wok);
+			network.ports[1][i][j].out_rsp_write(	gate_CN[j+2*i][0].rsp_w_rok);
+		}
+	}
+
+	soclib::caba::VciSimpleRingNetwork<vci_param> 
+	xring("xring",maptabx, IntTab(), 2, 4, 1);
 
 	// Net-List
  
-	proc0.p_clk(signal_clk);  
-	proc0.p_resetn(signal_resetn);  
-	proc0.p_irq[0](signal_proc0_it0); 
-	proc0.p_irq[1](signal_proc0_it1); 
-	proc0.p_irq[2](signal_proc0_it2); 
+	proc0.p_clk(signal_clk);
+	proc0.p_resetn(signal_resetn);
+	proc0.p_irq[0](signal_proc0_it0);
+	proc0.p_irq[1](signal_proc0_it1);
+	proc0.p_irq[2](signal_proc0_it2);
 	proc0.p_irq[3](signal_proc0_it3); 
 	proc0.p_irq[4](signal_proc0_it4); 
 	proc0.p_irq[5](signal_proc0_it5); 
@@ -660,21 +673,21 @@ int _main(int argc, char *argv[])
 	xram.p_vci(signal_vci_tgt_xram);	
 
 	///////////////////////////////////////////////////////
-	// Rï¿½seau vers la XRAM
+	// Réseau vers la XRAM
 	///////////////////////////////////////////////////////
 
-	vgmn.p_clk(signal_clk);
-	vgmn.p_resetn(signal_resetn);
+	xring.p_clk(signal_clk);
+	xring.p_resetn(signal_resetn);
 
-	vgmn.p_to_initiator[0](signal_vci_ixr_memc0);
-	vgmn.p_to_initiator[1](signal_vci_ixr_memc1);
-	vgmn.p_to_initiator[2](signal_vci_ixr_memc2);
-	vgmn.p_to_initiator[3](signal_vci_ixr_memc3);
+	xring.p_to_initiator[0](signal_vci_ixr_memc0);
+	xring.p_to_initiator[1](signal_vci_ixr_memc1);
+	xring.p_to_initiator[2](signal_vci_ixr_memc2);
+	xring.p_to_initiator[3](signal_vci_ixr_memc3);
 
-	vgmn.p_to_target[0](signal_vci_tgt_xram);
+	xring.p_to_target[0](signal_vci_tgt_xram);
 
 	///////////////////////////////////////////////////////
-	// Rï¿½seau des commandes primaires
+	// Réseau des commandes primaires
 	///////////////////////////////////////////////////////
 
 	clusterPN0.p_clk(signal_clk);
@@ -687,8 +700,8 @@ int _main(int argc, char *argv[])
 
 	clusterPN0.p_to_target[0](signal_vci_tgt_memc0);
 
-	clusterPN0.p_initiator_to_up(signal_vci_ini_pdspin0);
-	clusterPN0.p_target_to_up(signal_vci_tgt_pdspin0);
+        clusterPN0.p_gate_initiator(gate_PN[0][1]);
+	clusterPN0.p_gate_target(gate_PN[0][0]);
 
 	clusterPN1.p_clk(signal_clk);
 	clusterPN1.p_resetn(signal_resetn);
@@ -700,8 +713,8 @@ int _main(int argc, char *argv[])
 
 	clusterPN1.p_to_target[0](signal_vci_tgt_memc1);
 
-	clusterPN1.p_initiator_to_up(signal_vci_ini_pdspin1);
-	clusterPN1.p_target_to_up(signal_vci_tgt_pdspin1);
+	clusterPN1.p_gate_initiator(gate_PN[1][1]);
+	clusterPN1.p_gate_target(gate_PN[1][0]);
 
 	clusterPN2.p_clk(signal_clk);
 	clusterPN2.p_resetn(signal_resetn);
@@ -711,13 +724,12 @@ int _main(int argc, char *argv[])
 	clusterPN2.p_to_initiator[2](signal_vci_ini_proc10);
 	clusterPN2.p_to_initiator[3](signal_vci_ini_proc11);
 	
-
 	clusterPN2.p_to_target[0](signal_vci_tgt_memc2);
 	clusterPN2.p_to_target[1](signal_vci_tgt_rom);
 
-	clusterPN2.p_initiator_to_up(signal_vci_ini_pdspin2);
-	clusterPN2.p_target_to_up(signal_vci_tgt_pdspin2);
-
+	clusterPN2.p_gate_initiator(gate_PN[2][1]);
+	clusterPN2.p_gate_target(gate_PN[2][0]);
+	
 	clusterPN3.p_clk(signal_clk);
 	clusterPN3.p_resetn(signal_resetn);
 
@@ -729,25 +741,11 @@ int _main(int argc, char *argv[])
 	clusterPN3.p_to_target[0](signal_vci_tgt_memc3);
 	clusterPN3.p_to_target[1](signal_vci_tgt_tty);
 
-	clusterPN3.p_initiator_to_up(signal_vci_ini_pdspin3);
-	clusterPN3.p_target_to_up(signal_vci_tgt_pdspin3);
-
-
-	vciDspinPNetwork.p_clk(signal_clk);
-	vciDspinPNetwork.p_resetn(signal_resetn);
-
-	vciDspinPNetwork.p_to_initiator[0][0](signal_vci_ini_pdspin0);
-	vciDspinPNetwork.p_to_initiator[0][1](signal_vci_ini_pdspin1);
-	vciDspinPNetwork.p_to_initiator[1][0](signal_vci_ini_pdspin2);
-	vciDspinPNetwork.p_to_initiator[1][1](signal_vci_ini_pdspin3);
-
-	vciDspinPNetwork.p_to_target[0][0](signal_vci_tgt_pdspin0);
-	vciDspinPNetwork.p_to_target[0][1](signal_vci_tgt_pdspin1);
-	vciDspinPNetwork.p_to_target[1][0](signal_vci_tgt_pdspin2);
-	vciDspinPNetwork.p_to_target[1][1](signal_vci_tgt_pdspin3);
-
+	clusterPN3.p_gate_initiator(gate_PN[3][1]);
+	clusterPN3.p_gate_target(gate_PN[3][0]);
+	
 	///////////////////////////////////////////////////////
-	// Rï¿½seau des commandes de cohï¿½rence
+	// Réseau des commandes de cohérence
 	///////////////////////////////////////////////////////
 	clusterCN0.p_clk(signal_clk);
 	clusterCN0.p_resetn(signal_resetn);
@@ -759,8 +757,8 @@ int _main(int argc, char *argv[])
 	clusterCN0.p_to_target[2](signal_vci_tgt_proc2);
 	clusterCN0.p_to_target[3](signal_vci_tgt_proc3);
 
-	clusterCN0.p_initiator_to_up(signal_vci_ini_cdspin0);
-	clusterCN0.p_target_to_up(signal_vci_tgt_cdspin0);
+	clusterCN0.p_gate_initiator(gate_CN[0][1]);
+	clusterCN0.p_gate_target(gate_CN[0][0]);
 
 	clusterCN1.p_clk(signal_clk);
 	clusterCN1.p_resetn(signal_resetn);
@@ -772,10 +770,9 @@ int _main(int argc, char *argv[])
 	clusterCN1.p_to_target[2](signal_vci_tgt_proc6);
 	clusterCN1.p_to_target[3](signal_vci_tgt_proc7);
 
-
-	clusterCN1.p_initiator_to_up(signal_vci_ini_cdspin1);
-	clusterCN1.p_target_to_up(signal_vci_tgt_cdspin1);
-
+        clusterCN1.p_gate_initiator(gate_CN[1][1]);
+	clusterCN1.p_gate_target(gate_CN[1][0]);
+	
 	clusterCN2.p_clk(signal_clk);
 	clusterCN2.p_resetn(signal_resetn);
 
@@ -786,8 +783,8 @@ int _main(int argc, char *argv[])
 	clusterCN2.p_to_target[2](signal_vci_tgt_proc10);
 	clusterCN2.p_to_target[3](signal_vci_tgt_proc11);
 
-	clusterCN2.p_initiator_to_up(signal_vci_ini_cdspin2);
-	clusterCN2.p_target_to_up(signal_vci_tgt_cdspin2);
+	clusterCN2.p_gate_initiator(gate_CN[2][1]);
+	clusterCN2.p_gate_target(gate_CN[2][0]);
 
 	clusterCN3.p_clk(signal_clk);
 	clusterCN3.p_resetn(signal_resetn);
@@ -799,22 +796,8 @@ int _main(int argc, char *argv[])
 	clusterCN3.p_to_target[2](signal_vci_tgt_proc14);
 	clusterCN3.p_to_target[3](signal_vci_tgt_proc15);
 
-	clusterCN3.p_initiator_to_up(signal_vci_ini_cdspin3);
-	clusterCN3.p_target_to_up(signal_vci_tgt_cdspin3);
-
-	vciDspinCNetwork.p_clk(signal_clk);
-	vciDspinCNetwork.p_resetn(signal_resetn);
-
-	vciDspinCNetwork.p_to_initiator[0][0](signal_vci_ini_cdspin0);
-	vciDspinCNetwork.p_to_initiator[0][1](signal_vci_ini_cdspin1);
-	vciDspinCNetwork.p_to_initiator[1][0](signal_vci_ini_cdspin2);
-	vciDspinCNetwork.p_to_initiator[1][1](signal_vci_ini_cdspin3);
-
-	vciDspinCNetwork.p_to_target[0][0](signal_vci_tgt_cdspin0);
-	vciDspinCNetwork.p_to_target[0][1](signal_vci_tgt_cdspin1);
-	vciDspinCNetwork.p_to_target[1][0](signal_vci_tgt_cdspin2);
-	vciDspinCNetwork.p_to_target[1][1](signal_vci_tgt_cdspin3);
-
+	clusterCN3.p_gate_initiator(gate_CN[3][1]);
+	clusterCN3.p_gate_target(gate_CN[3][0]);
 
 	////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////
@@ -841,27 +824,13 @@ int _main(int argc, char *argv[])
 
 	for (int i = 0; i < ncycles ; i+=100000) {
 		sc_start(sc_core::sc_time(100000, SC_NS));
-		memc0.print_stats();
-		proc0.print_stats();
-		proc1.print_stats();
-		proc2.print_stats();
-		proc3.print_stats();
-		memc1.print_stats();
-		proc4.print_stats();
-		proc5.print_stats();
-		proc6.print_stats();
-		proc7.print_stats();
-		memc2.print_stats();
-		proc8.print_stats();
-		proc9.print_stats();
-		proc10.print_stats();
-		proc11.print_stats();
-		memc3.print_stats();
-		proc12.print_stats();
-		proc13.print_stats();
-		proc14.print_stats();
-		proc15.print_stats();
+		
 	}
+
+        std::cout << "Hit ENTER to end simulation" << std::endl;
+        char buf[1];
+
+	std::cin.getline(buf,1);
 	return EXIT_SUCCESS;
 #else
 	ncycles = 1;

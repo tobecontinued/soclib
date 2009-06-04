@@ -62,6 +62,45 @@ elem_t **alloc_elems(const std::string &prefix, size_t m, size_t n)
 }
 
 template<typename elem_t>
+elem_t ***alloc_elems(const std::string &prefix, size_t m, size_t n, size_t p)
+{
+    elem_t ***elem = (elem_t***)malloc(sizeof(elem_t**)*m);
+    for ( size_t i=0; i<m; ++i ) {
+        elem[i] = (elem_t**)malloc(sizeof(elem_t*)*n);
+        for ( size_t j=0; j<n; ++j ) {
+			elem[i][j] = (elem_t*)malloc(sizeof(elem_t)*p);
+        	for ( size_t k=0; k<p; ++k ) {
+            	std::ostringstream o;
+            	o << prefix << "[" << i << "]" << "[" << j << "]" << "[" << k << "]";
+            	new(&elem[i][j][k]) elem_t(o.str().c_str());
+			}
+        }
+    }
+    return elem;
+}
+
+template<typename elem_t>
+elem_t ****alloc_elems(const std::string &prefix, size_t m, size_t n, size_t p, size_t q)
+{
+    elem_t ****elem = (elem_t****)malloc(sizeof(elem_t***)*m);
+    for ( size_t i=0; i<m; ++i ) {
+        elem[i] = (elem_t***)malloc(sizeof(elem_t**)*n);
+        for ( size_t j=0; j<n; ++j ) {
+			elem[i][j] = (elem_t**)malloc(sizeof(elem_t*)*p);
+			for ( size_t k=0; k<p; ++k ) {
+				elem[i][j][k] = (elem_t*)malloc(sizeof(elem_t)*q);
+	        	for ( size_t l=0; l<q; ++l ) {
+	           	 	std::ostringstream o;
+   	        	 	o << prefix << "[" << i << "]" << "[" << j << "]" << "[" << k << "]" << "[" << l << "]";
+   	        	 	new(&elem[i][j][k][l]) elem_t(o.str().c_str());
+				}
+			}
+        }
+    }
+    return elem;
+}
+
+template<typename elem_t>
 void dealloc_elems(elem_t *elems, size_t n)
 {
 	for ( size_t i = 0; i<n; ++i )
@@ -76,6 +115,37 @@ void dealloc_elems(elem_t **elems, size_t m, size_t n)
         for ( size_t j = 0; j<n; ++j )
             elems[i][j].~elem_t();
         free(elems[i]);
+    }
+    free(elems);
+}
+
+template<typename elem_t>
+void dealloc_elems(elem_t ***elems, size_t m, size_t n, size_t p)
+{
+    for ( size_t i = 0; i<m; ++i ) {
+        for ( size_t j = 0; j<n; ++j ) {
+	        for ( size_t k = 0; k<p; ++k )
+	            elems[i][j][k].~elem_t();
+			free(elems[i][j]);
+        }
+		free(elems[i]);
+    }
+    free(elems);
+}
+
+template<typename elem_t>
+void dealloc_elems(elem_t ***elems, size_t m, size_t n, size_t p, size_t q)
+{
+    for ( size_t i = 0; i<m; ++i ) {
+        for ( size_t j = 0; j<n; ++j ) {
+	        for ( size_t k = 0; k<p; ++k ) {
+				for ( size_t l = 0; l<q; ++l )
+		            elems[i][j][k][l].~elem_t();
+				free(elems[i][j][k]);
+			}
+			free(elems[i][j]);
+        }
+		free(elems[i]);
     }
     free(elems);
 }
