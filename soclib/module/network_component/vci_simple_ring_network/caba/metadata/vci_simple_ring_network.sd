@@ -24,14 +24,12 @@ Module('caba:vci_simple_ring_network',
                 parameter.Int('wrapper_fifo_depth'),
                 parameter.Int('nb_attached_initiator'),
                 parameter.Int('nb_attached_target'),
-
 	],
 	uses = [
 	    Uses('caba:base_module'),
 	    Uses('common:mapping_table'),
 	    Uses('caba:vci_ring_initiator_wrapper'),
-	    Uses('caba:vci_ring_target_wrapper'),
-            
+	    Uses('caba:vci_ring_target_wrapper'),            
 	],
 	   extensions = [
 	'dsx:interconnect=root',

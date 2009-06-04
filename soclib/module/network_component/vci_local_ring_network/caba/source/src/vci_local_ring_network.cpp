@@ -88,7 +88,9 @@ tmpl(/**/)::VciLocalRingNetwork( sc_module_name insname,
 
          
         // generation gateway
-        t_ring_gateway = new soclib::caba::RingGateway("t_ring_gateway", mt, ringid, false, false, false, half_gateway_fifo_depth); 
+	std::ostringstream o;
+	o << name() << "_t_ring_gateway_";
+        t_ring_gateway = new soclib::caba::RingGateway(o.str().c_str(), mt, ringid, false, false, false, half_gateway_fifo_depth); 
 
         // NETLIST
  	int nbsig = 0;

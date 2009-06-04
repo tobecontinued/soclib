@@ -39,9 +39,12 @@ RingGateway::RingGateway( sc_module_name insname,
                          const int &half_gateway_fifo_depth)
                         : soclib::caba::BaseModule(insname) 
   {  
-      
-	hg_initiator= new soclib::caba::HalfGatewayInitiator("hg_initiator", alloc_init, half_gateway_fifo_depth, mt, ringid, local);
-	hg_target=    new soclib::caba::HalfGatewayTarget("hg_target", alloc_target, half_gateway_fifo_depth, mt, ringid, local);
+	std::ostringstream o;
+	o << name() << "_hg_initiator";
+	hg_initiator= new soclib::caba::HalfGatewayInitiator(o.str().c_str(), alloc_init, half_gateway_fifo_depth, mt, ringid, local);
+	std::ostringstream p;
+	p << name() << "_hg_target";
+	hg_target=    new soclib::caba::HalfGatewayTarget(p.str().c_str(), alloc_target, half_gateway_fifo_depth, mt, ringid, local);
 	
 	hg_initiator->p_clk(p_clk);
 	hg_initiator->p_resetn(p_resetn);

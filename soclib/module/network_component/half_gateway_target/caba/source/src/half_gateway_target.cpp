@@ -157,19 +157,21 @@ void HalfGatewayTarget::transition()
  } // end switch ring cmd fsm
 
 /////////// RING CMD FSM ////////////////////////
+        bool brdcst = false;
+
 	switch( r_ring_cmd_fsm ) 
 	{
-
 		case CMD_IDLE: 
 		{
+
 			uint32_t rtgtid = (uint32_t) p_ring_in.cmd_data.read();
 			bool loc = (m_lt[rtgtid] && m_local) || (!m_lt[rtgtid] && !m_local);
-                        bool brdcst = (rtgtid & 0x3 ) == 0x3;
+                        brdcst = (rtgtid & 0x3 ) == 0x3;
 
 			if ( p_ring_in.cmd_rok.read() ) 
 			{				
 
-//--------------------------------------
+/*/--------------------------------------
          std::cout << sc_time_stamp() << "-- " << name()
               << " -- ring_cmd_fsm -- CMD_IDLE "
               << " -- m_lt[rtgtid] : " << m_lt[rtgtid]
