@@ -34,7 +34,7 @@ int _main(int argc, char *argv[])
 	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,4,4,1> vci_param;
 	typedef soclib::common::IssIss2<soclib::common::IssSimhelper<soclib::common::MipsElIss> > proc_iss;
 
-	// Mapping table
+	// Mapping table primary network
 
 	soclib::common::MappingTable maptabp(32, IntTab(2,10), IntTab(2,3), 0x00C00000);
 
@@ -52,6 +52,8 @@ int _main(int argc, char *argv[])
 	maptabp.add(Segment("mc_m3" , MC3_M_BASE , MC3_M_SIZE , IntTab(3,0), true ));
 
 	std::cout << maptabp << std::endl;
+
+	// Mapping table coherence network
 
 	soclib::common::MappingTable maptabc(32, IntTab(2,10), IntTab(2,3), 0x00C00000);
 
@@ -74,13 +76,14 @@ int _main(int argc, char *argv[])
 
 	std::cout << maptabc << std::endl;
 
+	// Mapping table external network
+
 	soclib::common::MappingTable maptabx(32, IntTab(8,4), IntTab(4,4), 0x00C00000);
 	maptabx.add(Segment("xram0" , MC0_M_BASE , MC0_M_SIZE , IntTab(0,0), false));
 	maptabx.add(Segment("xram1" , MC1_M_BASE , MC1_M_SIZE , IntTab(0,0), false));
 	maptabx.add(Segment("xram2" , MC2_M_BASE , MC2_M_SIZE , IntTab(0,0), false));
 	maptabx.add(Segment("xram3" , MC3_M_BASE , MC3_M_SIZE , IntTab(0,0), false));
 	std::cout << maptabx << std::endl;
-
 
 	// Signals
 
@@ -287,7 +290,13 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> signal_tty_irq14("signal_tty_irq14"); 
 	sc_signal<bool> signal_tty_irq15("signal_tty_irq15"); 
 
+	soclib::caba::GateSignals gate_PN[4][2];
+	soclib::caba::GateSignals gate_CN[4][2];
+
+	///////////////////////////////////////////////////////////////
 	// Components
+	///////////////////////////////////////////////////////////////
+
 	// VCI ports indexation : 3 initiateurs et 5 cibles
 
         // INIT0 : proc0_ini
@@ -301,6 +310,8 @@ int _main(int argc, char *argv[])
 	// TGT 4 : proc0_tgt
 
 	soclib::common::Loader loader("soft/bin.soft");
+
+	// Instanciation of 16 MIPS processors (4 processors per cluster)
 
 	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
 	proc0("proc0", 0, maptabp,maptabc,IntTab(0,0),IntTab(0,0),4,64,16,4,64,16,CLEANUP_OFFSET);
@@ -350,11 +361,17 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
 	proc15("proc15", 15, maptabp,maptabc,IntTab(3,3),IntTab(3,3),4,64,16,4,64,16,CLEANUP_OFFSET);
 
+	// ROM which contains boot code
+
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(2,1), maptabp, loader);
 
+	// External RAM
+
 	soclib::caba::VciSimpleRam<vci_param> 
 	xram("xram",IntTab(0,0),maptabx, loader);
+
+	// Distribuated memory caches (1 memory cache per cluster)
 
 	soclib::caba::VciMemCache<vci_param> 
 	memc0("memc0",maptabp,maptabc,maptabx,IntTab(0,0),IntTab(0,0),IntTab(0,0),16,256,16);
@@ -367,12 +384,13 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::VciMemCache<vci_param> 
 	memc3("memc3",maptabp,maptabc,maptabx,IntTab(3,0),IntTab(3,0),IntTab(3,0),16,256,16);
+
+	// Multi TTY Controller : 1 display per processor
 	
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(3,1),maptabp,"tty0","tty1","tty2","tty3","tty4","tty5","tty6","tty7","tty8","tty9","tty10","tty11","tty12","tty13","tty14","tty15",NULL);
 
-	soclib::caba::GateSignals gate_PN[4][2];
-	soclib::caba::GateSignals gate_CN[4][2];
+	// Local ring interconnects : 1 direct ring and 1 coherence ring per cluster
         
 	soclib::caba::VciLocalRingNetwork<vci_param> 
 	clusterPN0("clusterPN0",maptabp, IntTab(0), 2, 18, 4, 1 );
@@ -397,9 +415,19 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::VciLocalRingNetwork<vci_param> 
 	clusterCN3("clusterCN3",maptabc, IntTab(3), 2, 2, 1, 4 );
-//--
+
+	// External network
+
+	soclib::caba::VciSimpleRingNetwork<vci_param> 
+	xring("xring",maptabx, IntTab(), 2, 4, 1);
+
+	// Global interconnect : virtual dspin
 
 	soclib::caba::VirtualDspinNetwork<2, 2, 1, 1, 37, 1, 3, 5, 6, 0, 35, 33, 1, 3, 8, 9, 0, 18, 18> network("network", 2, 2, true, true, false, false, NULL);
+
+	///////////////////////////////////////////////////////////////
+	// Net-list description
+	///////////////////////////////////////////////////////////////
 
 	network.p_clk(signal_clk);
 	network.p_resetn(signal_resetn);
@@ -436,11 +464,6 @@ int _main(int argc, char *argv[])
 			network.ports[1][i][j].out_rsp_write(	gate_CN[j+2*i][0].rsp_w_rok);
 		}
 	}
-
-	soclib::caba::VciSimpleRingNetwork<vci_param> 
-	xring("xring",maptabx, IntTab(), 2, 4, 1);
-
-	// Net-List
  
 	proc0.p_clk(signal_clk);
 	proc0.p_resetn(signal_resetn);
