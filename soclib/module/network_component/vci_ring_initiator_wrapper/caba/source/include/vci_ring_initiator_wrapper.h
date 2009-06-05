@@ -60,7 +60,7 @@ public:
                             const int       &wrapper_fifo_depth,
                             const soclib::common::MappingTable &mt,
                             const soclib::common::IntTab &ringid,
-                            const int &srcid);
+                            const uint32_t &srcid);
     // charge reseau
     void print_charge();
     uint32_t get_tot_cmd_flits();
@@ -94,14 +94,9 @@ private:
 
     // structural parameters
     bool                m_alloc_init;
-    int                 m_srcid;
+    uint32_t            m_srcid;
 
-    // statistics : charge reseau
-    uint32_t            cpt_tot_cycles; 
-    uint32_t            cpt_read_cycles; 
-    uint32_t            cpt_write_cycles; 
-    uint32_t            cpt_read_transac; 
-    uint32_t            cpt_write_transac; 
+     
  
     // internal registers
     sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)

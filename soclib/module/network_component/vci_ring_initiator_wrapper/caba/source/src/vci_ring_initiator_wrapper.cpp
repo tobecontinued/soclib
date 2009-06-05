@@ -44,6 +44,14 @@
 //  next flits  | eop | be |              data                                    |
 //   (37)         (1)   (4)               (32)  
 ///////////////////////////////////////////////////////////////////////////////////
+//   Ring : Broadcast Packet Format : 2 flits                                    //
+//---------------------------------------------------------------------------------
+//  1st flit    | eop | srcid  | cmd | contig |const | plen | pktid | trdid |res|11|
+//    (37)        (1)    (12)    (2)    (1)     (1)    (8)    (4)      (4)   (2) (2)
+//---------------------------------------------------------------------------------
+//  next flits  | eop |\\\\|              nline                                    |
+//   (37)         (1)   (4)               (32)  
+////////////////////////////////////////////////////////////////////////////////////
 //   Ring : Read Response Packet Format : 1 + N flits             //
 //-----------------------------------------------------------------
 //  1st flit    | eop |  rsrcid  | res | rerror | rpktid | rtrdid |
@@ -61,6 +69,7 @@
 //      (33)     (1)                     (32)     
 ///////////////////////////////////////////////////////////////////
 
+
 #include "../include/vci_ring_initiator_wrapper.h"
 
 namespace soclib { namespace caba {
@@ -76,19 +85,18 @@ tmpl(/**/)::VciRingInitiatorWrapper(sc_module_name	insname,
                             const int       &wrapper_fifo_depth,
                             const soclib::common::MappingTable &mt,
                             const soclib::common::IntTab &ringid,
-                            const int &srcid)
+                            const uint32_t &srcid)
     : soclib::caba::BaseModule(insname),
-	r_ring_cmd_fsm("r_ring_cmd_fsm"),
-	r_ring_rsp_fsm("r_ring_rsp_fsm"),
+        m_alloc_init(alloc_init),
+        m_srcid(srcid),
+        r_ring_cmd_fsm("r_ring_cmd_fsm"),
+        r_ring_rsp_fsm("r_ring_rsp_fsm"),
 	r_vci_cmd_fsm("r_vci_cmd_fsm"),
 	r_vci_rsp_fsm("r_vci_rsp_fsm"),
-    m_alloc_init(alloc_init),
-    m_cmd_fifo("m_cmd_fifo", wrapper_fifo_depth),
-    m_rsp_fifo("m_rsp_fifo", wrapper_fifo_depth),
-    m_srcid(srcid),
-    m_rt(mt.getIdMaskingTable(ringid.level())),
-    m_lt(mt.getIdLocalityTable(ringid))
-
+        m_cmd_fifo("m_cmd_fifo", wrapper_fifo_depth),
+        m_rsp_fifo("m_rsp_fifo", wrapper_fifo_depth),
+        m_rt(mt.getIdMaskingTable(ringid.level())),
+        m_lt(mt.getIdLocalityTable(ringid)) 
  {
 
 SC_METHOD (transition);
@@ -142,33 +150,7 @@ sensitive << p_ring_in.rsp_grant;
 
 } //  end constructor
 
-///////////////////////////////
-tmpl(void)::print_charge()   //
-//////////////////////////////
-{
-   std::cout << name() 
-             << " -- TOTAL : " << get_tot_cycles()
-             << " * READ - TRANSAC : " << cpt_read_transac
-             << " - FLITS : " << cpt_read_cycles
-             << " * WRITE  TRANSAC : " << cpt_write_transac
-             << " - FLITS : " << cpt_write_cycles
-             << " -- TOT FLITS : " << get_tot_cmd_flits()                             
-             << std::endl;
-}      
 
-//////////////////////////////////////
-tmpl(uint32_t)::get_tot_cmd_flits() //  
-/////////////////////////////////////
-{
-  return cpt_read_cycles + cpt_write_cycles;
-}
-
-/////////////////////////////////////
-tmpl(uint32_t)::get_tot_cycles()   //
-////////////////////////////////////
-{
-  return cpt_tot_cycles;
-}
 
 /////////////////////////////////
 //	transition             //
@@ -188,26 +170,18 @@ tmpl(void)::transition()
 	m_cmd_fifo.init();
 	m_rsp_fifo.init();
 
-//--------- stats ------------------
-	cpt_tot_cycles = 0;
-	cpt_read_cycles = 0;
-		cpt_write_cycles = 0;
-		cpt_read_transac = 0;
-		cpt_write_transac = 0;
-//------------------------------------*/              
 	   return;
 
         } // end if reset
 
 	bool                       cmd_fifo_get = false;
-		bool                       cmd_fifo_put = false;
-		sc_uint<37>                cmd_fifo_data;
-	
-		bool                       rsp_fifo_get = false;
-		bool                       rsp_fifo_put = false;
-		sc_uint<33>                rsp_fifo_data;
-//----------charge reseau -------------
-	cpt_tot_cycles++;
+	bool                       cmd_fifo_put = false;
+	sc_uint<37>                cmd_fifo_data;
+
+	bool                       rsp_fifo_get = false;
+	bool                       rsp_fifo_put = false;
+	sc_uint<33>                rsp_fifo_data;
+
 
 //////////// VCI CMD FSM /////////////////////////
 	switch ( r_vci_cmd_fsm ) 
@@ -216,28 +190,43 @@ tmpl(void)::transition()
 			if ( p_vci.cmdval.read() ) 
 			{  
 
-				cmd_fifo_data = (sc_uint<37>) p_vci.address.read();                            
-				if (m_cmd_fifo.wok())
-				{ 
-					cmd_fifo_put  = true;
-					r_vci_cmd_fsm = CMD_SECOND_HEADER;
-//----------charge reseau --------------------------------------
-					if ((p_vci.cmd.read() == vci_param::CMD_READ) || (p_vci.cmd.read() == vci_param::CMD_LOCKED_READ))
-					{
-						cpt_read_transac++;
-						cpt_read_cycles++;
-					}  
-					else
-					{
-						cpt_write_transac++;           
-										cpt_write_cycles++; 
-									}
-//---------------------------------------------------------------                     
-				} // m_cmd_fifo.wok
+                                cmd_fifo_data = (sc_uint<37>) p_vci.address.read(); 
+
+                                if(m_cmd_fifo.wok())
+                                {       
+                                        cmd_fifo_put  = true;
+
+                                        // test sur broadcast
+                                        if ((p_vci.address.read() & 0x3) == 0x3)     
+                                        {
+
+                                                cmd_fifo_data = cmd_fifo_data | (sc_uint<37>) ((p_vci.srcid.read() & 0xFF) << 24) | 
+                                                                                (sc_uint<37>) ((p_vci.cmd.read()   & 0x3)  << 22) |
+                                                                                (sc_uint<37>) ((p_vci.plen.read()  & 0xFF) << 12) | 
+                                                                                (sc_uint<37>) ((p_vci.pktid.read() & 0xF)  << 8)  | 
+                                                                                (sc_uint<37>) ((p_vci.trdid.read() & 0xF)  << 4);
+                                                                                                                                       
+				                if (p_vci.contig == true)
+                					cmd_fifo_data = cmd_fifo_data | (sc_uint<37>) (0x1 << 21); 
+		                		if (p_vci.cons == true)
+				                	cmd_fifo_data = cmd_fifo_data | (sc_uint<37>) (0x1 << 20);
+
+                                                r_vci_cmd_fsm = WDATA;
+   
+                                        }
+                                        else
+                                        {
+					        r_vci_cmd_fsm = CMD_SECOND_HEADER;
+     
+                                        }                                   
+                                } // end fifo wok
+
+
 			} // end if cmdval             
 		break;
    
 		case CMD_SECOND_HEADER:
+
 
 			if ( p_vci.cmdval.read() && m_cmd_fifo.wok() ) 
 			{
@@ -257,29 +246,22 @@ tmpl(void)::transition()
 					sc_uint<1> eop = 1;
 					cmd_fifo_data =  cmd_fifo_data | (sc_uint<37>) (eop << 36); 
 					r_vci_cmd_fsm = CMD_FIRST_HEADER;
-//----------charge reseau -------------
-					cpt_read_cycles++;
-//------------------------------------- 
 				} 
 				else     // write command
 				{
-//----------charge reseau -------------
-					cpt_write_cycles++;
-//------------------------------------- 
 					r_vci_cmd_fsm = WDATA;          
 				}                                      
 			} // endif cmdval
 		break;    
 
 		case WDATA:  
+
   
 			if ( p_vci.cmdval.read() && m_cmd_fifo.wok() ) 
 			{
 
+
 				cmd_fifo_put  = true;
-//----------charge reseau -------------
-				cpt_write_cycles++;
-//------------------------------------
 				cmd_fifo_data =  (sc_uint<37>) (p_vci.wdata.read()) | (sc_uint<37>) (p_vci.be.read() << 32);
 				if ( p_vci.eop.read() == true ) 
 				{
@@ -301,6 +283,7 @@ tmpl(void)::transition()
 			if ( m_rsp_fifo.rok() ) 
 			{
 
+
 				rsp_fifo_get = true;
 				r_srcid_save = (sc_uint<vci_param::S>) ((m_rsp_fifo.read() >> 20 ) & 0xFF);
 				r_trdid_save = (sc_uint<vci_param::T>) (m_rsp_fifo.read() & 0xF); 
@@ -313,6 +296,7 @@ tmpl(void)::transition()
 		case RSP_DATA:
 			if ( p_vci.rspack.read() && m_rsp_fifo.rok() ) 
 			{
+
 
 				rsp_fifo_get = true;            
 				if(((m_rsp_fifo.read()  >> 32) & 0x1) == 0x1)  
@@ -328,6 +312,7 @@ tmpl(void)::transition()
 		case CMD_IDLE:         
 			if ( p_ring_in.cmd_grant.read() && m_cmd_fifo.rok() )  
                                 {
+
                      
 				r_ring_cmd_fsm = DEFAULT; 
         }
@@ -336,6 +321,7 @@ tmpl(void)::transition()
 		case DEFAULT:          
 			if ( m_cmd_fifo.rok() && p_ring_in.cmd_wok.read() ) 
 			{
+
 
 				cmd_fifo_get = true;  
 				r_ring_cmd_fsm = KEEP;             
@@ -347,6 +333,7 @@ tmpl(void)::transition()
 		case KEEP:                              
 			if(m_cmd_fifo.rok() && p_ring_in.cmd_wok.read() ) 
 			{
+
 				cmd_fifo_get = true;  
 				if (((int) (m_cmd_fifo.read() >> 36 ) & 0x1) == 1) 
 				{  
@@ -372,6 +359,7 @@ tmpl(void)::transition()
 
 			if ( p_ring_in.rsp_rok.read() ) 
 			{  
+
          
  				if ( islocal && m_rsp_fifo.wok()) // response packet to local initiator
 				{   
@@ -391,6 +379,7 @@ tmpl(void)::transition()
 		case LOCAL:
 			if ( p_ring_in.rsp_rok.read() && m_rsp_fifo.wok() )         
 			{
+
 
 				rsp_fifo_put  = true;
 				rsp_fifo_data = p_ring_in.rsp_data.read();

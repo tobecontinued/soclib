@@ -64,7 +64,7 @@ tmpl(/**/)::VciSimpleRingNetwork( sc_module_name insname,
 		bool alloc_init = (x==0);             
 		std::ostringstream o;
 		o << name() << "_i_wrapper_" << x;
-		t_initiator_wrapper[x] = new soclib::caba::VciRingInitiatorWrapper<vci_param>(o.str().c_str(), alloc_init, wrapper_fifo_depth, mt,ringid, x);
+		t_initiator_wrapper[x] = new soclib::caba::VciRingInitiatorWrapper<vci_param>(o.str().c_str(), alloc_init, wrapper_fifo_depth, mt,ringid, (uint32_t) x);
 	}
     
         // generation wrappers targets

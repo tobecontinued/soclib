@@ -5,8 +5,8 @@
 
 #include "../segmentation.h"
 
-#define NPROCS 2
-#define SIZE 50
+#define NPROCS 4
+#define SIZE 100
 #define SORT_TYPE 1
 
 volatile int lock=0;

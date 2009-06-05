@@ -40,7 +40,9 @@ tmpl(/**/)::VciRingTargetWrapper(sc_module_name	insname,
                             const soclib::common::IntTab &ringid,
                             const int &tgtid)
     : soclib::caba::BaseModule(insname),
-	r_ring_cmd_fsm("r_ring_cmd_fsm"),
+        m_alloc_target(alloc_target),
+        m_tgtid(tgtid),
+        r_ring_cmd_fsm("r_ring_cmd_fsm"),
 	r_ring_rsp_fsm("r_ring_rsp_fsm"),
 	r_vci_cmd_fsm("r_vci_cmd_fsm"),
 	r_vci_rsp_fsm("r_vci_rsp_fsm"),
@@ -52,12 +54,11 @@ tmpl(/**/)::VciRingTargetWrapper(sc_module_name	insname,
         r_contig("r_contig"),
         r_const("r_const"),
         r_addr("r_addr"),
-        m_alloc_target(alloc_target),
         m_cmd_fifo("m_cmd_fifo", wrapper_fifo_depth),
         m_rsp_fifo("m_rsp_fifo", wrapper_fifo_depth),
-        m_tgtid(tgtid),
         m_rt(mt.getRoutingTable(ringid)),
         m_lt(mt.getLocalityTable(ringid))
+
 {
 
 SC_METHOD (transition);
@@ -141,12 +142,31 @@ tmpl(void)::transition()
 	{
 
 		case CMD_FIRST_HEADER:
-			if ( m_cmd_fifo.rok() == true ) 
-			{  
- 
-				cmd_fifo_get = true; 
-				r_addr = (sc_uint<vci_param::N>) m_cmd_fifo.read();            
-				r_vci_cmd_fsm = CMD_SECOND_HEADER;           
+                        if (m_cmd_fifo.rok() == true)
+                        {
+                                cmd_fifo_get = true; 
+				
+                                if (m_cmd_fifo.read() & 0x3 == 0x3) // broadcast
+                                {
+
+                                        r_addr   = (sc_uint<vci_param::N>) 0x3;     
+                                        r_srcid  = (sc_uint<vci_param::S>)  ((m_cmd_fifo.read() >> 24) & 0xFF); 
+ 					r_cmd    = (sc_uint<2>)  ((m_cmd_fifo.read() >> 22) & 0x3); 
+ 					r_contig = (sc_uint<1>)  ((m_cmd_fifo.read() >> 21) & 0x1); 
+ 					r_const  = (sc_uint<1>)  ((m_cmd_fifo.read() >> 20) & 0x1); 
+ 					r_plen   = (sc_uint<vci_param::K>) ((m_cmd_fifo.read() >> 12) & 0xFF); 
+ 					r_pktid  = (sc_uint<vci_param::P>) ((m_cmd_fifo.read() >> 8) & 0xF); 
+ 					r_trdid  = (sc_uint<vci_param::T>) ((m_cmd_fifo.read() >> 4) & 0xF); 
+
+                                        r_vci_cmd_fsm = WDATA; 
+                                }
+                                else
+                                {
+                                        r_addr = (sc_uint<vci_param::N>) m_cmd_fifo.read();
+                                        r_vci_cmd_fsm = CMD_SECOND_HEADER; 
+                                }
+
+         
 			}  // end if rok
 		break;
 
@@ -200,6 +220,7 @@ tmpl(void)::transition()
 		case RSP_HEADER:
 			if((p_vci.rspval.read() == true) && (m_rsp_fifo.wok()))
 			{
+
 				rsp_fifo_data = (((sc_uint<33>) p_vci.rsrcid.read() & 0xFF) << 20) |
                                                 (((sc_uint<33>) p_vci.rerror.read() & 0x1) << 8) | 
                                                 (((sc_uint<33>) p_vci.rpktid.read() & 0xF) << 4) | 
@@ -212,6 +233,7 @@ tmpl(void)::transition()
 		case DATA:              
 			if((p_vci.rspval.read() == true) && (m_rsp_fifo.wok())) 
 			{
+
  
 				rsp_fifo_put = true;
 				rsp_fifo_data = (sc_uint<33>) p_vci.rdata.read();           
@@ -274,6 +296,7 @@ tmpl(void)::transition()
 
 			if ( p_ring_in.cmd_rok.read()) 
 			{
+
     
 				if (((brdcst && p_ring_in.cmd_wok.read()) || islocal ) && m_cmd_fifo.wok())
 				{
@@ -295,6 +318,7 @@ tmpl(void)::transition()
 
 			if ( p_ring_in.cmd_rok.read() && m_cmd_fifo.wok() )         
 			{
+
 
 				cmd_fifo_put  = true;
 				cmd_fifo_data = p_ring_in.cmd_data.read();
@@ -342,8 +366,9 @@ tmpl(void)::genMoore()
 
 	switch ( r_vci_cmd_fsm ) 
 	{
-		case CMD_FIRST_HEADER:
-			p_vci.cmdval = false;
+		case CMD_FIRST_HEADER:                        			  
+		        p_vci.cmdval = false;
+
 		break;
 
 		case CMD_SECOND_HEADER:         

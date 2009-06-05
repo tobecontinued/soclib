@@ -103,8 +103,8 @@ public:
 		    cmd_w    	 ((name+"cmd_w").c_str()),
 		    rsp_grant    ((name+"rsp_grant").c_str()),
 		    rsp_data     ((name+"rsp_data").c_str()),
-		    rsp_r  	 ((name+"rsp_r").c_str()),
-		    rsp_w    	 ((name+"rsp_w").c_str()) 
+		    rsp_w  	 ((name+"rsp_w").c_str()),
+		    rsp_r    	 ((name+"rsp_r").c_str()) 
 	{ }
     
 	void operator () (RingSignals &sig)
@@ -115,8 +115,8 @@ public:
 		cmd_w            	(sig.cmd_w);	
 		rsp_grant   		(sig.rsp_grant);		
 		rsp_data    		(sig.rsp_data);			
-		rsp_r           	(sig.rsp_r);		
-		rsp_w            	(sig.rsp_w);	
+		rsp_w           	(sig.rsp_w);		
+		rsp_r            	(sig.rsp_r);	
 	}
 
         void operator () (RingOut &port)
@@ -127,8 +127,8 @@ public:
 		cmd_w            	(port.cmd_w);	
 		rsp_grant   		(port.rsp_grant);		
 		rsp_data    		(port.rsp_data);		
-		rsp_r           	(port.rsp_r);		
-		rsp_w            	(port.rsp_w);	
+		rsp_w           	(port.rsp_w);		
+		rsp_r            	(port.rsp_r);	
 	}
 
 
