@@ -52,10 +52,11 @@ PibusBcu::PibusBcu (	sc_module_name 				name,
       p_req(soclib::common::alloc_elems<sc_in<bool> >("req", m_nb_master)),
       p_gnt(soclib::common::alloc_elems<sc_out<bool> >("gnt", m_nb_master)),
       p_sel(soclib::common::alloc_elems<sc_out<bool> >("sel", m_nb_target)),
-      p_a("a"),
-      p_lock("lock"),
-      p_ack("ack"),
-      p_tout("tout"),
+      //p_a("a"),
+      //p_lock("lock"),
+      //p_ack("ack"),
+      //p_tout("tout"),
+      p_pi("pi"),
       r_fsm_state("fsm_state"),
       r_current_master("current_master"),
       r_tout_counter("tout_counter"),
@@ -71,7 +72,7 @@ PibusBcu::PibusBcu (	sc_module_name 				name,
 
 	SC_METHOD(genMealy_sel);
 	sensitive << p_clk.neg();
-	sensitive << p_a;
+	sensitive << p_pi.a;
 
 	SC_METHOD(genMealy_gnt);
 	sensitive << p_clk.neg();
@@ -127,16 +128,16 @@ void PibusBcu::transition()
         break;
 
 	case FSM_AD:
-        if(p_lock)   r_fsm_state = FSM_DTAD;  
+        if(p_pi.lock)   r_fsm_state = FSM_DTAD;  
         else	     r_fsm_state = FSM_DT; 
         break;
 
 	case FSM_DTAD:
         if(r_tout_counter == 0) {
             r_fsm_state = FSM_IDLE;
-        } else if(p_ack.read() == Pibus::ACK_RDY) {
-            if(p_lock == false) { r_fsm_state = FSM_DT; } 
-        } else if((p_ack.read() == Pibus::ACK_ERR) || (p_ack.read() == Pibus::ACK_RTR)) {
+        } else if(p_pi.ack.read() == Pibus::ACK_RDY) {
+            if(p_pi.lock == false) { r_fsm_state = FSM_DT; } 
+        } else if((p_pi.ack.read() == Pibus::ACK_ERR) || (p_pi.ack.read() == Pibus::ACK_RTR)) {
             r_fsm_state = FSM_IDLE;
         } else { 
             r_tout_counter = r_tout_counter - 1;
@@ -146,7 +147,7 @@ void PibusBcu::transition()
 	case FSM_DT:
         if(r_tout_counter == 0) {
             r_fsm_state = FSM_IDLE;
-        } else if(p_ack.read() != Pibus::ACK_WAT) { // new allocation
+        } else if(p_pi.ack.read() != Pibus::ACK_WAT) { // new allocation
             r_tout_counter = m_time_out;
             bool found = false;
             for(size_t i = 0 ; i < m_nb_master ; i++) {
@@ -176,7 +177,7 @@ void PibusBcu::genMealy_gnt()
 {
     bool	found = false;
     if((r_fsm_state == FSM_IDLE) || 
-       ((r_fsm_state == FSM_DT) && (p_ack.read() != Pibus::ACK_WAT))) {
+       ((r_fsm_state == FSM_DT) && (p_pi.ack.read() != Pibus::ACK_WAT))) {
         for(size_t i = 0 ; i < m_nb_master ; i++) {
             int j = (i + 1 + r_current_master) % m_nb_master;
             if((p_req[j] == true) && (found == false)) {
@@ -199,7 +200,7 @@ void PibusBcu::genMealy_gnt()
 void PibusBcu::genMealy_sel()
 {
     if((r_fsm_state == FSM_AD) || (r_fsm_state == FSM_DTAD)) {
-        size_t index = m_target_table[p_a.read()];
+        size_t index = m_target_table[p_pi.a.read()];
         for(size_t i = 0; i < m_nb_target ; i++) {
             if(i == index)  	p_sel[i] = true;
             else			p_sel[i] = false;
@@ -216,7 +217,7 @@ void PibusBcu::genMealy_sel()
 //////////////////////////////////////////////////////:
 void PibusBcu::genMoore()
 {
-	p_tout = (r_tout_counter == 0);
+	p_pi.tout = (r_tout_counter == 0);
 }  // end genMoore 
 
 }} // end namespace

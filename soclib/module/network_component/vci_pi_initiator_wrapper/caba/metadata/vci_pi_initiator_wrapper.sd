@@ -12,10 +12,17 @@ Module('caba:vci_pi_initiator_wrapper',
 	header_files = ['../source/include/vci_pi_initiator_wrapper.h',],
 	implementation_files = ['../source/src/vci_pi_initiator_wrapper.cpp',],
 			  ports = [
+	Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+	Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	Port('caba:bit_out', 'p_req'),
+	Port('caba:bit_in', 'p_gnt'),
 	Port('caba:vci_target', 'p_vci'),
 	Port('caba:pibus_initiator', 'p_pi'),
 	],
 	uses = [
 		Uses('caba:base_module'),
 		],
+	extensions = [
+		'dsx:obtain_ident_method=param:ident'
+	],
 )

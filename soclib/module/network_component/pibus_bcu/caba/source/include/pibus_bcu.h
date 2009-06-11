@@ -62,6 +62,7 @@
 #include <systemc>
 #include "mapping_table.h"
 #include "pibus_signals.h"
+#include "pibus_bcu_ports.h"
 #include "caba_base_module.h"
 
 namespace soclib { namespace caba {
@@ -90,10 +91,13 @@ public:
 	sc_in<bool>				*p_req;
 	sc_out<bool>				*p_gnt;
 	sc_out<bool>				*p_sel;
-	sc_in<sc_dt::sc_uint<32> >			p_a;
-	sc_in<bool>				p_lock;
-	sc_in<sc_dt::sc_uint<2> >			p_ack;
-	sc_out<bool>				p_tout;
+
+	//sc_in<sc_dt::sc_uint<32> >			p_a;
+	//sc_in<bool>				p_lock;
+	//sc_in<sc_dt::sc_uint<2> >			p_ack;
+	//sc_out<bool>				p_tout;
+	PibusBcuPort				p_pi;
+	
 
 	//	CONSTRUCTOR
 	PibusBcu (	sc_module_name 				name,
