@@ -38,6 +38,8 @@ tmpl(/**/)::VciVgmn(
 	int nb_target,
 	const soclib::common::MappingTable &mt,
 	tlmt_core::tlmt_time delay )
+		   : p_to_target(nb_target),
+		   p_to_initiator(nb_init)
 {
 	// Phase 1, allocate nb_target CmdArbRspRout blocks
 	for (int i=0;i<nb_target;i++)
@@ -58,12 +60,14 @@ tmpl(/**/)::VciVgmn(
 	// Phase 3, each cmdArbRspRout sees all the RspArbCmdRout
 	for (int i=0;i<nb_target;i++)
 	{
+		p_to_target.set(i, &m_CmdArbRspRout[i]->p_vci),
 		m_CmdArbRspRout[i]->setRspArbCmdRout(m_RspArbCmdRout);
 	}
 
 	// Phase 4, each rspArbCmdRout sees all the CmdArbRspRout
 	for (int i=0;i<nb_init;i++)
 	{
+		p_to_initiator.set(i, &m_RspArbCmdRout[i]->p_vci);
 		m_RspArbCmdRout[i]->setCmdArbRspRout(m_CmdArbRspRout);
 	}
 }

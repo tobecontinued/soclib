@@ -29,16 +29,28 @@
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
+Signal('tlmt:sig',
+	   accepts = {
+	'tlmt:tlmt_in':1,
+	'tlmt:tlmt_out':1,
+	}
+	   )
+
 PortDecl('tlmt:tlmt_in',
 		 classname = 'tlmt_core::tlmt_in',
 		 tmpl_parameters = [
 	parameter.Type('data_t'),
 	],
+		 signal = 'tlmt:sig'
 		 )
 
 PortDecl('tlmt:tlmt_out',
 		 classname = 'tlmt_core::tlmt_out',
 		 tmpl_parameters = [
 	parameter.Type('data_t'),
+	],
+		 signal = 'tlmt:sig',
+		 extensions = [
+	'dsx:lhs_port',
 	],
 		 )

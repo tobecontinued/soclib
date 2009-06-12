@@ -36,6 +36,7 @@
 #include "mapping_table.h"
 #include "vci_cmd_arb_rsp_rout.h"
 #include "vci_rsp_arb_cmd_rout.h"
+#include "pointer_proxy.h"
 
 namespace soclib { namespace tlmt {
 
@@ -46,10 +47,15 @@ public:
     std::vector<typename soclib::tlmt::VciCmdArbRspRout<vci_param> *> m_CmdArbRspRout;
     std::vector<typename soclib::tlmt::VciRspArbCmdRout<vci_param> *> m_RspArbCmdRout;
 
+	soclib::common::PointerProxy<soclib::tlmt::VciInitiator<vci_param> > p_to_target;
+	soclib::common::PointerProxy<soclib::tlmt::VciTarget<vci_param> > p_to_initiator;
+
     VciVgmn(int nb_init,
 			int nb_target,
 			const soclib::common::MappingTable &mt,
 			tlmt_core::tlmt_time delay);
+
+
 };
 
 

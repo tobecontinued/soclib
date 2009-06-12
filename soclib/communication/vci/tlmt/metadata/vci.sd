@@ -29,12 +29,23 @@
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
+Signal('tlmt:vci',
+	   accepts = {
+	'tlmt:vci_initiator': 1,
+	'tlmt:vci_target': 1,
+	},
+	   )
+
 PortDecl('tlmt:vci_initiator',
 		 classname = 'soclib::tlmt::VciInitiatorPort',
 		 header_files = ['../source/include/vci_ports.h',
 						 '../source/include/vci_packets.h',
 						 '../source/include/vci_param.h',
 						 ],
+		 signal = 'tlmt:vci',
+		 extensions = [
+	'dsx:lhs_port',
+	],
 		 )
 
 PortDecl('tlmt:vci_target',
@@ -43,6 +54,7 @@ PortDecl('tlmt:vci_target',
 						 '../source/include/vci_packets.h',
 						 '../source/include/vci_param.h',
 						 ],
+		 signal = 'tlmt:vci',
 		 )
 
 Module('tlmt:vci_param',

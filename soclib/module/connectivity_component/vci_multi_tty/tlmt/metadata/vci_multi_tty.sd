@@ -43,4 +43,15 @@ Module('tlmt:vci_multi_tty',
                Uses('common:tty_wrapper'),
                Uses('common:mapping_table'),
                ],
+	instance_parameters = [
+		parameter.IntTab('ident'),
+        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+        parameter.StringArray('names'),
+	],
+	   extensions = [
+	'dsx:addressable=ident',
+	'dsx:get_ident=ident:p_vci',
+	'dsx:max_segments=1',
+	'dsx:device=tty',
+   ],
        )

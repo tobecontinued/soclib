@@ -1,3 +1,4 @@
+/* -*- c++ -*- */
 #ifndef SOCLIB_VCI_MULTI_TTY_H
 #define SOCLIB_VCI_MULTI_TTY_H
 
@@ -5,6 +6,7 @@
 #include "vci_ports.h"
 #include "mapping_table.h"
 #include "tty_wrapper.h"
+#include "pointer_proxy.h"
 
 namespace soclib { namespace tlmt {
 
@@ -30,7 +32,9 @@ protected:
   SC_HAS_PROCESS(VciMultiTty);
 public:
   soclib::tlmt::VciTarget<vci_param> p_vci;
-  std::vector<tlmt_core::tlmt_out<bool> *> p_irq;
+  std::vector<tlmt_core::tlmt_out<bool> *> p_irq_vector;
+  soclib::common::PointerProxy<tlmt_core::tlmt_out<bool> > p_irq;
+	
 
   VciMultiTty(sc_core::sc_module_name name,
 	      const soclib::common::IntTab &index,

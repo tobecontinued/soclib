@@ -29,13 +29,27 @@
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
+Signal('tlmt:fifo_sig',
+	   accepts = {
+	'tlmt:fifo_initiator':1,
+	'tlmt:fifo_target':1,
+	}
+	   )
+
 PortDecl('tlmt:fifo_initiator',
 		 classname = 'soclib::tlmt::FifoInitiator',
 		 header_files = ['../source/include/fifo_ports.h',
-				 '../source/include/fifo_packets.h'],)
+				 '../source/include/fifo_packets.h'],
+		 signal = 'tlmt:fifo_sig',
+		 extensions = [
+	'dsx:lhs_port',
+	],
+		 )
 
 PortDecl('tlmt:fifo_target',
 		 classname = 'soclib::tlmt::FifoTarget',
 		 header_files = ['../source/include/fifo_ports.h',
-				 '../source/include/fifo_packets.h'],)
+				 '../source/include/fifo_packets.h'],
+		 signal = 'tlmt:fifo_sig',
+		 )
 

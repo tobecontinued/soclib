@@ -1,3 +1,4 @@
+/* -*- c++ -*- */
 #ifndef SOCLIB_TLMT_VCI_RAM_H
 #define SOCLIB_TLMT_VCI_RAM_H
 

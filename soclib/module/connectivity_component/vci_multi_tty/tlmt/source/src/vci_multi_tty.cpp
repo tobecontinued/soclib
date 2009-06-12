@@ -199,12 +199,14 @@ namespace soclib { namespace tlmt {
     segList=m_mt.getSegmentList(m_index);
     int j=0;
 
+	p_irq.resize(names.size());
+
     for(std::vector<std::string>::const_iterator i = names.begin();i != names.end();++i){
       m_term.push_back(soclib::common::allocateTty(*i));
 
       std::ostringstream tmpName;
       tmpName << "irq" << j;
-      p_irq.push_back(new tlmt_core::tlmt_out<bool>(tmpName.str().c_str(),NULL));
+	  p_irq.set(j, new tlmt_core::tlmt_out<bool>(tmpName.str().c_str(),NULL));
       j++;
     }
     m_cpt_cycle = 0;
