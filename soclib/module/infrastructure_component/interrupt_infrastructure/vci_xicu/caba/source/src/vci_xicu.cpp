@@ -20,10 +20,8 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Copyright (c) UPMC, Lip6, Asim
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
- *
- * Based on previous works by Franck Wajsburt, 2005
+ * Copyright (c) UPMC, Lip6
+ *         Nicolas Pouillon <nipo@ssji.net>, 2009
  */
 
 #include <strings.h>
