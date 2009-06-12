@@ -36,6 +36,9 @@ __version__ = "$Revision$"
 def cr(x):
 	return not isinstance(x, Noop)
 
+class Again(Exception):
+	pass
+
 class ToDo:
 	def __init__(self, *dests):
 		self.has_blob = False
@@ -172,12 +175,18 @@ clean:
 				left.reverse()
 				while left:
 					todo = left.pop()
-					while not todo.canBeProcessed():
+					while not todo.canBeProcessed() and self.actions:
 						self.wait()
+					if not todo.canBeProcessed():
+						self.clean()
+						raise Again()
 					if todo.mustBeProcessed():
 						todo.process()
-					elif config.verbose:
-						print 'No need to redo', todo
+					else:
+						#todo.todoRehash(True)
+						if config.verbose:
+							print 'No need to redo', todo, len(left)
+						continue
 					self.progressBar()
 					if todo.isBackground():
 						self.actions += 1
@@ -187,6 +196,8 @@ clean:
 				while self.actions:
 					self.wait()
 			except OSError:
+				continue
+			except Again:
 				continue
 			break
 		self.progressBar()

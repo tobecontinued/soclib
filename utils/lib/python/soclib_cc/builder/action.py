@@ -86,17 +86,20 @@ class Action:
 		self.__class__.__handles[self.__handle.pid] = self
 	@classmethod
 	def wait(cls):
-#		try:
-		cls.__poll_all_inputs()
-		pid, rval = os.wait()
-		return int(cls.__done(pid, rval))
-#		except OSError:
-#			ks = cls.__handles.keys()
-#			c = 0
-#			for pid in ks:
-#				if cls.__done(pid):
-#					c += 1
-#			return c
+		try:
+			cls.__poll_all_inputs()
+			pid, rval = os.wait()
+			return int(cls.__done(pid, rval))
+		except OSError, e:
+			import errno
+			if e.errno != errno.ECHILD:
+				raise
+			ks = cls.__handles.keys()
+			c = 0
+			for pid in ks:
+				if cls.__done(pid):
+					c += 1
+			return c
 	@classmethod
 	def __poll_all_inputs(cls):
 		inputs = []
