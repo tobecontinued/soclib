@@ -138,6 +138,10 @@ class _on_exit_save_cache:
 		self.__value = False
 	def __call__(self):
 		global soclib_desc_registry
+		try:
+			soclib_desc_registry
+		except:
+			return
 		if self.__value:
 			soclib_desc_registry.save()
 		else:
@@ -150,7 +154,10 @@ class _clear_cache_on_exception:
 	def __call__(self, typ, value, traceback_):
 		global soclib_desc_registry
 		self.__onex.failed()
-		soclib_desc_registry.delete()
+		try:
+			soclib_desc_registry.delete()
+		except NameError:
+			pass
 		self.__prev(typ, value, traceback_)
 
 def init():
