@@ -28,6 +28,12 @@
 
 SECTIONS
 {
+   . = 0;
+   .arm_boot : {
+		*(.arm_boot)
+		*(.arm_boot.*)
+   }
+
 	special_base = 0x00500000;
 	. = special_base;
     .ppc_special : {

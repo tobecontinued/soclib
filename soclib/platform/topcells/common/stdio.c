@@ -42,10 +42,8 @@ int time(int *ret)
 	t = spr_get(284);
 #elif defined(__lm32__)
     t = get_cc();
-#elif defined(__sparc__)
-#warning No cycle counter for sparc yet
 #else
-#error No cycle counter
+	t = cpu_cycles();
 #endif
 	if ( ret )
 		*ret = t;
@@ -239,8 +237,14 @@ int strcmp( const char *ref0, const char *ref1 )
 	const uint32_t *iref1 = (uint32_t *)ref1;
 
 	if ( ! ((uint32_t)iref0 & 3) && ! ((uint32_t)iref1 & 3) )
-		if (*iref0 == *iref1)
-			while (*++iref0 == *++iref1);
+		if (*iref0 == *iref1) {
+			do {
+				const uint32_t mask = 0x80808080;
+				uint32_t l = *iref0;
+				if (((((l & ~mask) + ~mask) | l) & mask) ^ mask)
+					break;
+			} while (*++iref0 == *++iref1);
+		}
 	return strcmp_b(((char*)iref0)-1, ((char*)iref1)-1);
 }
 #endif

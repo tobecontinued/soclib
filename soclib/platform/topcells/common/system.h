@@ -68,8 +68,10 @@ void set_ex_handler(ex_handler_t *handler);
 # include "system_lm32.h"
 #elif defined(__sparc__) /* __mips__ PPC __lm32__ */
 # include "system_sparc.h"
+#elif defined(__arm__)
+# include "system_arm.h"
 #else /* __mips__ PPC __lm32__ __sparc__ */
-# error no mips no ppc no lm32
+# error no mips no ppc no lm32 no arm
 #endif
 
 void pause();

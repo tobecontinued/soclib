@@ -66,6 +66,12 @@ uint32_t run_cycles()
 # endif
 #elif defined(PPC)
 	return dcr_get(3);
+#elif defined(__arm__)
+	uint32_t ret;
+	asm (
+		"mrc p15,0,%0,c15,c12,2"
+		: "=r"(ret));
+	return ret;
 #else
 	return 0;
 #endif
@@ -81,6 +87,14 @@ uint32_t cpu_cycles()
 # endif
 #elif defined(PPC)
 	return dcr_get(284);
+#elif defined(__lm32__)
+    t = get_cc();
+#elif defined(__arm__)
+	uint32_t ret;
+	asm (
+		"mrc p15,0,%0,c15,c12,1"
+		: "=r"(ret));
+	return ret;
 #else
 	return 0;
 #endif
@@ -159,10 +173,12 @@ void enable_hw_irq(unsigned int n)
 	asm("mtmsr %0"::"r"(msr));
 #elif __lm32__
 	irq_enable();
+#elif __arm__
+	// Nothing, there is 1 IRQ line only
 #elif __sparc__
        irq_enable();
 #else
-# error Please implement enable_hw_irq for your arch
+# warning Please implement IRQ enabling for this arch
 #endif
 }
 
@@ -214,13 +230,9 @@ static inline uint32_t ll( uint32_t *addr )
 	__asm__ __volatile__("ll %0, 0(%1)":"=r"(ret):"p"(addr));
 #elif PPC
 	__asm__ __volatile__("lwarx %0, 0, %1":"=r"(ret):"p"(addr));
-#elif __lm32__
-#warning TODO : implement ll for lm32 !
-#elif __sparc__
-#warning TODO : implement ll for sparc !
-	ret = 0;
 #else
-# error Please implement ll for your arch
+#warning TODO : implement ll for this CPU !
+	ret = *(volatile uint32_t*)addr;
 #endif
 	return ret;
 }
@@ -242,19 +254,17 @@ static inline uint32_t sc( uint32_t *addr, uint32_t value )
 						 :"p"(addr), "r"(value)
 						 :"memory");
 	ret = ! (ret&0x20000000);
-#elif __lm32__
-#warning TODO : implement sc for lm32 !
-#elif __sparc__
-#warning TODO : implement sc for sparc !
-	ret = 0;
 #else
-# error Please implement sc for your arch
+#warning TODO : implement sc for this CPU !
+	*(volatile uint32_t*)addr = value;
+	ret = 0;
 #endif
 	return ret;
 }
 
 uint32_t atomic_add( uint32_t *addr, uint32_t delta )
 {
+#if 1
 	uint32_t val, failed;
 	do {
 		val = ll(addr);
@@ -262,6 +272,16 @@ uint32_t atomic_add( uint32_t *addr, uint32_t delta )
 		failed = sc(addr, val);
 	} while (failed);
 	return val;
+#else
+	volatile uint32_t *a = addr;
+	uint32_t oldval;
+
+	do {
+		oldval = *a;
+	} while ( ! __sync_bool_compare_and_swap(a, oldval, oldval+delta) );
+
+	return oldval;
+#endif
 }
 
 void lock_lock( uint32_t *lock )
@@ -305,12 +325,8 @@ void lock_lock( uint32_t *lock )
 		: "=&r" (tmp)
 		: "p" (lock), "m" (*lock)
 		);
-#elif __lm32__
-#warning TODO : implement lock_lock for lm32 !
-#elif __sparc__
-#warning TODO : implement lock_lock for sparc !
 #else
-# error Please implement lock_lock for your arch
+#warning TODO : implement lock_lock for this arch !
 #endif
 }
 
@@ -329,11 +345,7 @@ void pause()
 # endif
 #elif PPC
 	asm volatile("nap");
-#elif __lm32__
-#  warning No pause for this architecture
-#elif __sparc__
-#  warning No pause for this architecture
 #else
-# error Please implement pause for your arch
+#  warning No pause for this architecture
 #endif
 }

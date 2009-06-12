@@ -69,6 +69,10 @@ void trap()
        asm volatile("ta 0");
 #elif defined(__lm32__)
     asm volatile("break");
+#elif defined(__arm__)
+	asm volatile("swi 1");
+#else
+# warning No trap
 #endif
 }
 
