@@ -77,10 +77,7 @@ int main(void)
 	printf("cpi (*1000) %d\n", 1000*cycles_per_dhry/ins_per_dhry);
 	printf("dhry/MHz (*1000) = %d\n", 569151/cycles_per_dhry);
 
-	soclib_io_set(
-		base(SIMHELPER),
-		SIMHELPER_SC_STOP,
-		0);
+	exit(0);
 	while(1)
 		;
 }

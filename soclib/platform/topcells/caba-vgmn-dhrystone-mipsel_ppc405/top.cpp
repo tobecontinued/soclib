@@ -21,7 +21,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2006-2009
  *
  * Maintainers: nipo
  */
@@ -29,20 +29,37 @@
 #include <iostream>
 #include <cstdlib>
 
+#define USE_CROSSBAR
+
+#if defined(USE_CROSSBAR)
+# include "vci_simple_crossbar.h"
+#else
+# include "vci_vgmn.h"
+#endif
+
+#if 0
+# include "gdbserver.h"
+# define gdb(x) soclib::common::GdbServer<x >
+#else
+# define gdb(x) x
+#endif
+
 #include "mapping_table.h"
 #include "mips32.h"
 #include "ppc405.h"
+#include "arm.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_simhelper.h"
-#include "vci_vgmn.h"
 
 #include "segmentation.h"
 
 typedef enum {
 	MIPSEL,
+	MIPSEB,
 	POWERPC,
+	ARM,
 } arch_t;
 
 int _main(int argc, char *argv[])
@@ -63,11 +80,19 @@ int _main(int argc, char *argv[])
 	const char *arch_string = "Unknown";
 	arch_t arch;
 	if ( loader.get_symbol_by_name("mips_interrupt_entry") ) {
-		arch = MIPSEL;
-		arch_string = "mipsel";
+		if ( loader.get_symbol_by_name("mips_is_little") ) {
+			arch = MIPSEL;
+			arch_string = "mipsel";
+		} else {
+			arch = MIPSEB;
+			arch_string = "mipseb";
+		}
 	} else if ( loader.get_symbol_by_name("ppc_boot") ) {
 		arch = POWERPC;
 		arch_string = "powerpc";
+	} else if ( loader.get_symbol_by_name("arm_irq") ) {
+		arch = ARM;
+		arch_string = "arm";
 	} else
 		throw soclib::exception::RunTimeError("Incorrect architecture");
 
@@ -77,12 +102,16 @@ int _main(int argc, char *argv[])
 
 	switch ( arch ) {
 	case MIPSEL:
+	case MIPSEB:
 		maptab.add(Segment("reset", RESET_BASE, RESET_SIZE, IntTab(0), true));
 		maptab.add(Segment("excep", EXCEP_BASE, EXCEP_SIZE, IntTab(0), true));
 		break;
 	case POWERPC:
 		maptab.add(Segment("ppc_boot", PPC_BOOT_BASE, PPC_BOOT_SIZE, IntTab(0), false));
 		maptab.add(Segment("ppc_special" , PPC_SPECIAL_BASE , PPC_SPECIAL_SIZE , IntTab(0), true));
+		break;
+	case ARM:
+		maptab.add(Segment("arm_boot", ARM_BOOT_BASE, ARM_BOOT_SIZE, IntTab(0), true));
 		break;
 	}
 	maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), true));
@@ -119,15 +148,21 @@ int _main(int argc, char *argv[])
 	// Components
 
 
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Mips32ElIss> *mips0;
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Ppc405Iss> *ppc0;
+	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Mips32ElIss)> *mipsel0;
+	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Mips32EbIss)> *mipseb0;
+	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Ppc405Iss)> *ppc0;
+	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::ArmIss)> *arm0;
 
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", NULL);
 	soclib::caba::VciSimhelper<vci_param> vcisimhelper("vcisimhelper",	IntTab(3), maptab);
 
-	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 1, 4, 2, 8);
+#if defined(USE_CROSSBAR)
+	soclib::caba::VciSimpleCrossbar<vci_param> interconnect("interconnect", maptab, 1, 4);
+#else
+	soclib::caba::VciVgmn<vci_param> interconnect("interconnect",maptab, 1, 4, 1, 8);
+#endif
 
 	//	Net-List
  
@@ -138,25 +173,44 @@ int _main(int argc, char *argv[])
 	vcimultiram1.p_resetn(signal_resetn);
 
 	switch ( arch ) {
+	case MIPSEB:
+		mipseb0 = new soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Mips32EbIss)>("mipseb0", 0, maptab,IntTab(0),4, 512,16,4, 128,16);
+		mipseb0->p_clk(signal_clk);  
+		mipseb0->p_resetn(signal_resetn);  
+		mipseb0->p_irq[0](signal_cpu0_it0); 
+		mipseb0->p_irq[1](signal_cpu0_it1); 
+		mipseb0->p_irq[2](signal_cpu0_it2); 
+		mipseb0->p_irq[3](signal_cpu0_it3); 
+		mipseb0->p_irq[4](signal_cpu0_it4); 
+		mipseb0->p_irq[5](signal_cpu0_it5); 
+		mipseb0->p_vci(signal_vci_m0);
+		break;
 	case MIPSEL:
-		mips0 = new soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Mips32ElIss>("mips0", 0, maptab,IntTab(0),1, 512,8,1, 512,8);
-		mips0->p_clk(signal_clk);  
-		mips0->p_resetn(signal_resetn);  
-		mips0->p_irq[0](signal_cpu0_it0); 
-		mips0->p_irq[1](signal_cpu0_it1); 
-		mips0->p_irq[2](signal_cpu0_it2); 
-		mips0->p_irq[3](signal_cpu0_it3); 
-		mips0->p_irq[4](signal_cpu0_it4); 
-		mips0->p_irq[5](signal_cpu0_it5); 
-		mips0->p_vci(signal_vci_m0);
+		mipsel0 = new soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Mips32ElIss)>("mipsel0", 0, maptab,IntTab(0),4, 512,16,4, 128,16);
+		mipsel0->p_clk(signal_clk);  
+		mipsel0->p_resetn(signal_resetn);  
+		mipsel0->p_irq[0](signal_cpu0_it0); 
+		mipsel0->p_irq[1](signal_cpu0_it1); 
+		mipsel0->p_irq[2](signal_cpu0_it2); 
+		mipsel0->p_irq[3](signal_cpu0_it3); 
+		mipsel0->p_irq[4](signal_cpu0_it4); 
+		mipsel0->p_irq[5](signal_cpu0_it5); 
+		mipsel0->p_vci(signal_vci_m0);
 		break;
 	case POWERPC:
-		ppc0 = new soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Ppc405Iss>("ppc0", 0, maptab,IntTab(0),1, 512,8,1, 512,8);
+		ppc0 = new soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Ppc405Iss)>("ppc0", 0, maptab,IntTab(0),4, 512,16,4, 128,16);
 		ppc0->p_clk(signal_clk);  
 		ppc0->p_resetn(signal_resetn);  
 		ppc0->p_irq[0](signal_cpu0_it0); 
 		ppc0->p_irq[1](signal_cpu0_it1); 
 		ppc0->p_vci(signal_vci_m0);
+		break;
+	case ARM:
+		arm0 = new soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::ArmIss)>("arm0", 0, maptab,IntTab(0),4, 512,16,4, 128,16);
+		arm0->p_clk(signal_clk);  
+		arm0->p_resetn(signal_resetn);  
+		arm0->p_irq[0](signal_cpu0_it0); 
+		arm0->p_vci(signal_vci_m0);
 		break;
 	}
 
@@ -172,21 +226,20 @@ int _main(int argc, char *argv[])
 	vcisimhelper.p_resetn(signal_resetn);
 	vcisimhelper.p_vci(signal_vci_simhelper);
 
-	vgmn.p_clk(signal_clk);
-	vgmn.p_resetn(signal_resetn);
+	interconnect.p_clk(signal_clk);
+	interconnect.p_resetn(signal_resetn);
 
-	vgmn.p_to_initiator[0](signal_vci_m0);
+	interconnect.p_to_initiator[0](signal_vci_m0);
+	interconnect.p_to_target[0](signal_vci_vcimultiram0);
+	interconnect.p_to_target[1](signal_vci_vcimultiram1);
+	interconnect.p_to_target[2](signal_vci_tty);
+	interconnect.p_to_target[3](signal_vci_simhelper);
 
-	vgmn.p_to_target[0](signal_vci_vcimultiram0);
-	vgmn.p_to_target[1](signal_vci_vcimultiram1);
-	vgmn.p_to_target[2](signal_vci_tty);
-	vgmn.p_to_target[3](signal_vci_simhelper);
 
-
-	sc_start(sc_time(0, SC_FS));
+	sc_start(sc_time(0, SC_NS));
 	signal_resetn = false;
 
-	sc_start(sc_time(1, SC_FS));
+	sc_start(sc_time(1, SC_NS));
 	signal_resetn = true;
 
 	sc_start();
