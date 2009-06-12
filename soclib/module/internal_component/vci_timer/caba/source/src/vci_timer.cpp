@@ -69,6 +69,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		break;
 
 	case TIMER_PERIOD:
+		r_counter[timer] = data;
 		r_period[timer] = data;
 		m_reset_counter_no = timer;
 #if SOCLIB_MODULE_DEBUG
@@ -154,9 +155,10 @@ tmpl(void)::transition()
             if ( m_reset_value_no != i )
                 r_value[i] = r_value[i].read() + 1;
 
-			if ( m_reset_counter_no == i ) {
-                r_counter[i] = r_period[i].read();
-			} else if ( r_counter[i].read() != 0 ) {
+			if ( m_reset_counter_no == i )
+                continue;
+
+			if ( r_counter[i].read() != 0 ) {
                 r_counter[i] = r_counter[i].read() - 1;
 			} else {
                 r_counter[i] = r_period[i].read();
