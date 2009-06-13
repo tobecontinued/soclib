@@ -155,7 +155,8 @@ clean:
 				try:
 					Action.wait()
 				except:
-					sys.exit(1)
+					pass
+				sys.exit(1)
 	def wait(self):
 		try:
 			ndone = Action.wait()
