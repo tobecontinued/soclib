@@ -158,11 +158,13 @@ class Action:
 			self.done = True
 		self.must_be_processed = self.mustBeProcessed()
 	def todoInfo(self):
-		r = self.__pid and 'W' or (
-			self.done and '=' or (
-			self.must_be_processed and " " or "+"))
-		return r
-
+		if self.__pid:
+			return 'W'
+		if self.done:
+			return '='
+		if self.must_be_processed:
+			return ' '
+		return '-'
 
 	def processDeps(self):
 		return []
