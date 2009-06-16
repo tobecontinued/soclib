@@ -97,7 +97,7 @@ class Action:
 			ks = cls.__handles.keys()
 			c = 0
 			for pid in ks:
-				if cls.__done(pid):
+				if cls.__done(pid, 0):
 					c += 1
 			return c
 	@classmethod
