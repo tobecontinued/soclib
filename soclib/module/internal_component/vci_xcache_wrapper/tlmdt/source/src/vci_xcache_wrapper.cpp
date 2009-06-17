@@ -531,26 +531,38 @@ tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw
   tlm::tlm_phase           &phase,     // phase
   sc_core::sc_time         &time)      // time
 {
+  std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i;
   bool v = (bool) atou(payload.get_data_ptr(), 0);
+  bool find = false;
  
 #ifdef SOCLIB_MODULE_DEBUG
   std::cout << name() << " receive Interrupt " << id << " value " << v << " time " << time.value() << std::endl;
 #endif
 
-  if(m_pending_irqs.find(time)!= m_pending_irqs.end()){
-    std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.find(time);
-    if(i->second.first == id)
-      m_pending_irqs.erase(i);
-    else
-      m_pending_irqs[time] = std::pair<int, bool>(id, v);
+  //if false interruption then it must be tested if there is a true interruption with the same id.
+  //In afirmative case, the true interruption must be deleted
+  if(!v){
+    for( i = m_pending_irqs.begin(); i != m_pending_irqs.end(); ++i){
+      if(i->second.first == id){
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << name() << " delete interrupt " << i->second.first << " value " << i->second.second << " time " << i->first.value() << std::endl;
+#endif
+	find = true;
+	m_pending_irqs.erase(i);
+      }
+    }
   }
-  else{
+
+  //if true interruption or (false interruption and no true interruption with the same id) the it adds
+  if(!find){
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " insert interrupt " << id << " value " << v << " time " << time.value() << std::endl;
+#endif
     m_pending_irqs[time] = std::pair<int, bool>(id, v);
   }
 
-  m_pending_irqs[time] = std::pair<int, bool>(id, v);
-
   return tlm::TLM_COMPLETED;
+
 } // end backward nb transport 
 
 
