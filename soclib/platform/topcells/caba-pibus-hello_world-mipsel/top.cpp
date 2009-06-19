@@ -166,10 +166,7 @@ int _main(int argc, char *argv[])
 	bcu.p_sel[1](sel1);
 	bcu.p_sel[2](sel2);
 
-	bcu.p_a(pibus.a);
-	bcu.p_lock(pibus.lock);
-	bcu.p_ack(pibus.ack);
-	bcu.p_tout(pibus.tout);
+	bcu.p_pi(pibus);
 
 	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
