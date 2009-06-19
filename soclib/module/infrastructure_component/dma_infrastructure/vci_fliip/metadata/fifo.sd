@@ -23,3 +23,25 @@ Module('caba:accfifo',
 	],
 )
 
+Module('caba:fifo_adaptor',
+	classname = 'soclib::caba::FifoAdaptor',
+	tmpl_parameters = [
+		parameter.Type('INPUT_TYPE',  default = 'uint32_t'),
+		parameter.Type('OUTPUT_TYPE', default = 'uint32_t'),
+	],
+	header_files = [ '../include/fifo_adaptor.h', ],
+	implementation_files = ['../src/fifo_adaptor.cpp', ],
+	ports = [
+		Port('caba:bit_in',   'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+		Port('caba:fifo_input', 'p_input',
+			data_t=parameter.Reference('INPUT_TYPE')),
+		Port('caba:fifo_output', 'p_output',
+			data_t=parameter.Reference('OUTPUT_TYPE'))
+	],
+	uses = [
+		Uses('caba:base_module'),
+	],
+)
+
+
