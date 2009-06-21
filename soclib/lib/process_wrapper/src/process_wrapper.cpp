@@ -26,6 +26,7 @@
 #include "exception.h"
 #include "process_wrapper.h"
 
+#include <stdint.h>
 #include <cassert>
 #include <stdlib.h>
 #include <unistd.h>

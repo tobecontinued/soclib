@@ -32,6 +32,7 @@
 
 #include "arm.h"
 #include "arithmetics.h"
+#include <cassert>
 
 namespace soclib { namespace common {
 

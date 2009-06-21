@@ -35,6 +35,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cstring>
+#include <cassert>
 
 namespace soclib { namespace common {
 

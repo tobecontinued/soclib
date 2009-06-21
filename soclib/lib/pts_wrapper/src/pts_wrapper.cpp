@@ -26,6 +26,7 @@
  * Maintainers: nipo
  */
 
+#include <cstdio>
 #include <fcntl.h>
 #include <errno.h>
 #include <stdlib.h>

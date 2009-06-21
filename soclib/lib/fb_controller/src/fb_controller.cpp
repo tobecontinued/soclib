@@ -24,6 +24,7 @@
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  */
 
+#include <cstdio>
 #include <string>
 #include <sstream>
 
