@@ -51,7 +51,7 @@ int puts(const char *str)
 
 void puti(const int i)
 {
-	if ( i>10 )
+	if ( i>=10 )
 		puti(i/10);
 	putchar(i%10+'0');
 }
