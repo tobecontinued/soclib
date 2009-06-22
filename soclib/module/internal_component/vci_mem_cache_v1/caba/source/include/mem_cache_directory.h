@@ -10,77 +10,90 @@ namespace soclib { namespace caba {
 
   using namespace sc_core;
 
-////////////////////////////////////////////////////////////////////////
-//                    A LRU entry 
-////////////////////////////////////////////////////////////////////////
-class LruEntry {
+  ////////////////////////////////////////////////////////////////////////
+  //                    A LRU entry 
+  ////////////////////////////////////////////////////////////////////////
+  class LruEntry {
 
-public:
+    public:
 
-    bool recent;            
+      bool recent;            
 
-    void init()
-    {
-	recent=false;
-    }
+      void init()
+      {
+        recent=false;
+      }
 
-}; // end class LruEntry
+  }; // end class LruEntry
 
-////////////////////////////////////////////////////////////////////////
-//                    A directory entry                               
-////////////////////////////////////////////////////////////////////////
-class DirectoryEntry {
+  ////////////////////////////////////////////////////////////////////////
+  //                    A directory entry                               
+  ////////////////////////////////////////////////////////////////////////
+  class DirectoryEntry {
 
     typedef uint32_t tag_t;
     typedef uint32_t size_t;
     typedef uint32_t copy_t;
 
-public:
+    public:
 
     bool	 	valid;                  // entry valid
+    bool    is_cnt;                 // directory entry is a counter
     bool	 	dirty;                  // entry dirty
     bool	 	lock;                   // entry locked
     tag_t	 	tag;                    // tag of the entry
-    copy_t 		copies;              	// vector of copies 
+    copy_t 	d_copies;              	// vector of copies for data
+    copy_t  i_copies;               // vector of copies for instructions
+    size_t  count;                  // number of copies
 
     DirectoryEntry()
     {
-	valid   = false;
-	dirty   = false;
-	lock    = false;
-	tag     = 0;
-	copies	= 0;
+      valid    = false;
+      is_cnt   = false;
+      dirty    = false;
+      lock     = false;
+      tag      = 0;
+      d_copies = 0;
+      i_copies = 0;
+      count    = 0;
     }
-    
+
     DirectoryEntry(const DirectoryEntry &source)
     {
-	valid	= source.valid;
-	dirty	= source.dirty;
-	tag	= source.tag;
-	lock	= source.lock;
-	copies	= source.copies;
-    }
-    
+      valid	   = source.valid;
+      is_cnt   = source.is_cnt;
+      dirty	   = source.dirty;
+      tag	     = source.tag;
+      lock	   = source.lock;
+      d_copies = source.d_copies;
+      i_copies = source.i_copies;
+      count    = source.count;
+    }          
+
     /////////////////////////////////////////////////////////////////////
     // The init() function initializes the entry 
     /////////////////////////////////////////////////////////////////////
     void init()
     {
-	valid = false;
-	dirty = false;
-	lock  = false;
+      valid = false;
+      is_cnt= false;
+      dirty = false;
+      lock  = false;
     }
-    
+
     /////////////////////////////////////////////////////////////////////
     // The copy() function copies an existing source entry to a target 
     /////////////////////////////////////////////////////////////////////
     void copy(const DirectoryEntry &source)
     {
-	valid	= source.valid;
-	dirty	= source.dirty;
-	tag	= source.tag;
-	lock	= source.lock;
-	copies	= source.copies;
+      valid	    = source.valid;
+      is_cnt    = source.is_cnt;
+      dirty	    = source.dirty;
+      tag	      = source.tag;
+      lock	    = source.lock;
+      d_copies	= source.d_copies;
+      i_copies	= source.i_copies;
+      count     = source.count;
     }
 
     ////////////////////////////////////////////////////////////////////
@@ -88,56 +101,56 @@ public:
     ////////////////////////////////////////////////////////////////////
     void print()
     {
-	std::cout << "Valid = " << valid << " ; Dirty = " << dirty << " ; Lock = " 
-  	   << lock << " ; Tag = " << std::hex << tag << " ; copies = " << copies << std::endl;
+      std::cout << "Valid = " << valid << " ; IS COUNT = " << is_cnt << " ; Dirty = " << dirty << " ; Lock = " 
+        << lock << " ; Tag = " << std::hex << tag << " ; d_copies = " << d_copies << " ; i_copies = " << i_copies << " ; count = " << count << std::endl;
     }
 
-}; // end class DirectoryEntry
+  }; // end class DirectoryEntry
 
-////////////////////////////////////////////////////////////////////////
-//                       The directory  
-////////////////////////////////////////////////////////////////////////
-class CacheDirectory {
+  ////////////////////////////////////////////////////////////////////////
+  //                       The directory  
+  ////////////////////////////////////////////////////////////////////////
+  class CacheDirectory {
 
     typedef uint32_t addr_t;
     typedef uint32_t data_t;
     typedef uint32_t tag_t;
     typedef uint32_t size_t;
 
- private:
+    private:
 
-// Directory constants
+    // Directory constants
     size_t					m_ways;
     size_t					m_sets;
     size_t					m_words;
     size_t					m_width;
 
-// the directory & lru tables
+    // the directory & lru tables
     DirectoryEntry 				**m_dir_tab;
     LruEntry	 				**m_lru_tab;
 
- public:
+    public:
 
     ////////////////////////
     // Constructor
     ////////////////////////
     CacheDirectory( size_t ways, size_t sets, size_t words, size_t address_width)	 
     {
-	m_ways 	= ways; 
-	m_sets 	= sets;
-	m_words = words;
-        m_width = address_width;
+      m_ways 	= ways; 
+      m_sets 	= sets;
+      m_words = words;
+      m_width = address_width;
 
-        m_dir_tab = new DirectoryEntry*[sets];
-        for ( size_t i=0; i<sets; i++ ) {
-            m_dir_tab[i] = new DirectoryEntry[ways];
-            for ( size_t j=0 ; j<ways ; j++) m_dir_tab[i][j].init();
-        }
-        m_lru_tab = new LruEntry*[sets];
-        for ( size_t i=0; i<sets; i++ ) {
-	    m_lru_tab[i] = new LruEntry[ways];
-            for ( size_t j=0 ; j<ways ; j++) m_lru_tab[i][j].init();
-        }
+      m_dir_tab = new DirectoryEntry*[sets];
+      for ( size_t i=0; i<sets; i++ ) {
+        m_dir_tab[i] = new DirectoryEntry[ways];
+        for ( size_t j=0 ; j<ways ; j++) m_dir_tab[i][j].init();
+      }
+      m_lru_tab = new LruEntry*[sets];
+      for ( size_t i=0; i<sets; i++ ) {
+        m_lru_tab[i] = new LruEntry[ways];
+        for ( size_t j=0 ; j<ways ; j++) m_lru_tab[i][j].init();
+      }
     } // end constructor
 
     /////////////////
@@ -145,12 +158,12 @@ class CacheDirectory {
     /////////////////
     ~CacheDirectory()
     {
-        for(size_t i=0 ; i<m_sets ; i++){
-	    delete [] m_dir_tab[i];
-    	    delete [] m_lru_tab[i];
-        }
-        delete [] m_dir_tab;
-        delete [] m_lru_tab;
+      for(size_t i=0 ; i<m_sets ; i++){
+        delete [] m_dir_tab[i];
+        delete [] m_lru_tab[i];
+      }
+      delete [] m_dir_tab;
+      delete [] m_lru_tab;
     } // end destructor
 
     /////////////////////////////////////////////////////////////////////
@@ -164,10 +177,10 @@ class CacheDirectory {
     DirectoryEntry read(const addr_t &address,size_t &way)
     {
 
-      #define L2 soclib::common::uint32_log2
+#define L2 soclib::common::uint32_log2
       const size_t set = (size_t)(address >> (L2(m_words) + 2)) & (m_sets - 1);
       const tag_t  tag = (tag_t)(address >> (L2(m_sets) + L2(m_words) + 2));
-      #undef L2
+#undef L2
 
       bool hit       = false;
       for ( size_t i=0 ; i<m_ways ; i++ ) {
@@ -198,9 +211,9 @@ class CacheDirectory {
     void write(const size_t &set, const size_t &way, const DirectoryEntry &entry)
     {
       assert( (set<m_sets) 
-		&& "Cache Directory write : The set index is invalid");
+          && "Cache Directory write : The set index is invalid");
       assert( (way<m_ways) 
-		&& "Cache Directory write : The way index is invalid");
+          && "Cache Directory write : The way index is invalid");
 
       // update Directory
       m_dir_tab[set][way].copy(entry);
@@ -225,10 +238,10 @@ class CacheDirectory {
     /////////////////////////////////////////////////////////////////////
     void print(const size_t &set, const size_t &way)
     {
-	std::cout << std::dec << " set : " << set << " ; way : " << way << " ; " ;
-	m_dir_tab[set][way].print();
+      std::cout << std::dec << " set : " << set << " ; way : " << way << " ; " ;
+      m_dir_tab[set][way].print();
     } // end print()
-    
+
     /////////////////////////////////////////////////////////////////////
     // The select() function selects a directory entry to evince.
     // Arguments :
@@ -237,35 +250,35 @@ class CacheDirectory {
     /////////////////////////////////////////////////////////////////////
     DirectoryEntry select(const size_t &set, size_t &way)
     {
-	assert( (set < m_sets) 
-		&& "Cache Directory : (select) The set index is invalid");
+      assert( (set < m_sets) 
+          && "Cache Directory : (select) The set index is invalid");
 
-	for(size_t i=0; i<m_ways; i++){
-		if(!(m_lru_tab[set][i].recent) && !(m_dir_tab[set][i].lock)){
-			way=i;
-			return DirectoryEntry(m_dir_tab[set][way]);
-		}
-	}
-	for(size_t i=0; i<m_ways; i++){
-		if( !(m_lru_tab[set][i].recent) && (m_dir_tab[set][i].lock)){
-			way=i;
-			return DirectoryEntry(m_dir_tab[set][way]);
-		}
-	}
-	for(size_t i=0; i<m_ways; i++){
-		if( (m_lru_tab[set][i].recent) && !(m_dir_tab[set][i].lock)){
-			way=i;
-			return DirectoryEntry(m_dir_tab[set][way]);
-		}
-	}
-	for(size_t i=0; i<m_ways; i++){
-		if( (m_lru_tab[set][i].recent) && (m_dir_tab[set][i].lock)){
-			way=i;
-			return DirectoryEntry(m_dir_tab[set][way]);
-		}
-	}
-	way = 0;
-	return DirectoryEntry(m_dir_tab[set][0]);
+      for(size_t i=0; i<m_ways; i++){
+        if(!(m_lru_tab[set][i].recent) && !(m_dir_tab[set][i].lock)){
+          way=i;
+          return DirectoryEntry(m_dir_tab[set][way]);
+        }
+      }
+      for(size_t i=0; i<m_ways; i++){
+        if( !(m_lru_tab[set][i].recent) && (m_dir_tab[set][i].lock)){
+          way=i;
+          return DirectoryEntry(m_dir_tab[set][way]);
+        }
+      }
+      for(size_t i=0; i<m_ways; i++){
+        if( (m_lru_tab[set][i].recent) && !(m_dir_tab[set][i].lock)){
+          way=i;
+          return DirectoryEntry(m_dir_tab[set][way]);
+        }
+      }
+      for(size_t i=0; i<m_ways; i++){
+        if( (m_lru_tab[set][i].recent) && (m_dir_tab[set][i].lock)){
+          way=i;
+          return DirectoryEntry(m_dir_tab[set][way]);
+        }
+      }
+      way = 0;
+      return DirectoryEntry(m_dir_tab[set][0]);
     } // end select()
 
     /////////////////////////////////////////////////////////////////////
@@ -273,16 +286,16 @@ class CacheDirectory {
     /////////////////////////////////////////////////////////////////////
     void init()
     {
-        for ( size_t set=0 ; set<m_sets ; set++ ) {
-            for ( size_t way=0 ; way<m_ways ; way++ ) {
-                m_dir_tab[set][way].init();
-                m_lru_tab[set][way].init();
-            }
+      for ( size_t set=0 ; set<m_sets ; set++ ) {
+        for ( size_t way=0 ; way<m_ways ; way++ ) {
+          m_dir_tab[set][way].init();
+          m_lru_tab[set][way].init();
         }
+      }
     } // end init()
- 
-}; // end class CacheDirectory
- 
+
+  }; // end class CacheDirectory
+
 }} // end namespaces
 
 #endif

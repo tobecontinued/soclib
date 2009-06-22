@@ -77,9 +77,10 @@ class VciCcVCacheWrapper2Ring
         ICACHE_UNC_WAIT,            // 10
         ICACHE_MISS_UPDT,           // 11
         ICACHE_ERROR,               // 12
-        ICACHE_CC_INVAL,            // 13
-        ICACHE_TLB_CC_INVAL,        // 14
-        ICACHE_TLB_FLUSH,           // 15
+        ICACHE_CC_CLEANUP,          // 13
+        ICACHE_CC_INVAL,            // 14
+        ICACHE_TLB_CC_INVAL,        // 15
+        ICACHE_TLB_FLUSH,           // 16
     };
 
     enum dcache_fsm_state_e {  
@@ -119,8 +120,9 @@ class VciCcVCacheWrapper2Ring
         DCACHE_CC_INVAL,            // 21
         DCACHE_CC_UPDT,             // 22
         DCACHE_CC_NOP,              // 23
-        DCACHE_TLB_CC_INVAL,        // 24
-        DCACHE_ITLB_CLEANUP,        // 25
+        DCACHE_CC_CLEANUP,          // 24
+        DCACHE_TLB_CC_INVAL,        // 25
+        DCACHE_ITLB_CLEANUP,        // 26
     };
 
     enum cmd_fsm_state_e {      
@@ -170,9 +172,11 @@ class VciCcVCacheWrapper2Ring
         TGT_UPDT_WORD,              // 01
         TGT_UPDT_DATA,              // 02
         TGT_REQ_BROADCAST,          // 03
-        TGT_REQ_DCACHE,             // 04
-        TGT_RSP_BROADCAST,          // 05
-        TGT_RSP_DCACHE,             // 06
+        TGT_REQ_ICACHE,             // 04
+        TGT_REQ_DCACHE,             // 05
+        TGT_RSP_BROADCAST,          // 06
+        TGT_RSP_ICACHE,             // 07
+        TGT_RSP_DCACHE,             // 08
     };
 
     enum inval_itlb_fsm_state_e {
@@ -302,7 +306,8 @@ private:
     sc_signal<size_t>       r_dcache_set;
     sc_signal<bool>         r_dcache_cleanup_req;       // data cleanup request
     sc_signal<data_t>       r_dcache_cleanup_line;      // data cleanup NLINE
-    sc_signal<bool>         r_dcache_inval_rsp;         // data cache invalidate
+    sc_signal<bool>         r_dcache_inval_rsp;         // data cache invalidate when rsp received
+    sc_signal<bool>         r_dcache_cleanup_rsp;       // data cache cleanup when rsp received
 
     // ICACHE FSM REGISTERS
     sc_signal<int>          r_icache_fsm;               // state register
@@ -336,7 +341,9 @@ private:
     sc_signal<size_t>       r_icache_set;
     sc_signal<bool>         r_icache_cleanup_req;       // ins cleanup request
     sc_signal<data_t>       r_icache_cleanup_line;      // ins cleanup NLINE
-    sc_signal<bool>         r_icache_inval_rsp;         // ins cache invalidate
+    sc_signal<addr36_t>     r_icache_cc_cleanup_addr;   // physical address
+    sc_signal<bool>         r_icache_inval_rsp;         // ins cache invalidate when rsp received
+    sc_signal<bool>         r_icache_cleanup_rsp;       // ins cache cleanup when rsp received
 
     // VCI_CMD FSM REGISTERS
     sc_signal<int>          r_vci_cmd_fsm;
@@ -367,6 +374,7 @@ private:
     sc_signal<addr36_t>     r_tgt_addr;
     sc_signal<size_t>       r_tgt_word;
     sc_signal<bool>         r_tgt_update;
+    sc_signal<bool>         r_tgt_brdcast;
     sc_signal<size_t>       r_tgt_srcid;
     sc_signal<size_t>       r_tgt_pktid;
     sc_signal<size_t>       r_tgt_trdid;

@@ -14,7 +14,9 @@ class UpdateTabEntry {
 
   public:
   bool 	valid;                // It is a valid pending transaction
-  bool	update;               // It is an update transaction 
+  bool	update;               // It is an update transaction
+  bool  brdcast;              // It is a broadcast invalidate
+  bool  rsp;                  // It needs a response to the initiator
   size_t 	srcid;        // The srcid of the initiator which wrote the data
   size_t 	trdid;        // The trdid of the initiator which wrote the data
   size_t 	pktid;        // The pktid of the initiator which wrote the data
@@ -22,17 +24,21 @@ class UpdateTabEntry {
   size_t 	count;        // The number of acknowledge responses to receive
 
   UpdateTabEntry(){
-    valid	= false;
-    update	= false;
-    srcid	= 0;
-    trdid	= 0;
-    pktid	= 0;
-    nline	= 0;
-    count	= 0;
+    valid	 = false;
+    update = false;
+    brdcast= false;
+    rsp    = false;
+    srcid	 = 0;
+    trdid	 = 0;
+    pktid	 = 0;
+    nline	 = 0;
+    count	 = 0;
   }
 
   UpdateTabEntry(bool   i_valid, 
-      bool   i_update, 
+      bool   i_update,
+      bool   i_brdcast,
+      bool   i_rsp,
       size_t i_srcid, 
       size_t i_trdid, 
       size_t i_pktid, 
@@ -40,7 +46,9 @@ class UpdateTabEntry {
       size_t i_count) 
   {
     valid		= i_valid;
-    update		= i_update;
+    update	= i_update;
+    brdcast = i_brdcast;
+    rsp     = i_rsp;
     srcid		= i_srcid;
     trdid		= i_trdid;
     pktid		= i_pktid;
@@ -51,12 +59,14 @@ class UpdateTabEntry {
   UpdateTabEntry(const UpdateTabEntry &source)
   {
     valid		= source.valid;
-    update 		= source.update;
+    update  = source.update;
+    brdcast = source.brdcast;
+    rsp     = source.rsp;
     srcid		= source.srcid;
     trdid		= source.trdid;
     pktid		= source.pktid;
     nline		= source.nline;
-    count  		= source.count;
+    count  	= source.count;
   }
 
   ////////////////////////////////////////////////////
@@ -64,13 +74,15 @@ class UpdateTabEntry {
   ///////////////////////////////////////////////////
   void init()
   {
-    valid=false;
-    update=false;
-    srcid=0;
-    trdid=0;
-    pktid=0;
-    nline=0;
-    count=0;
+    valid  = false;
+    update = false;
+    brdcast= false;
+    rsp    = false;
+    srcid  = 0;
+    trdid  = 0;
+    pktid  = 0;
+    nline  = 0;
+    count  = 0;
   }
 
   ////////////////////////////////////////////////////////////////////
@@ -80,26 +92,30 @@ class UpdateTabEntry {
   ////////////////////////////////////////////////////////////////////
   void copy(const UpdateTabEntry &source)
   {
-    valid=source.valid;
-    update=source.update;
-    srcid=source.srcid;
-    trdid=source.trdid;
-    pktid=source.pktid;
-    nline=source.nline;
-    count=source.count;
+    valid  = source.valid;
+    update = source.update;
+    brdcast= source.brdcast;
+    rsp    = source.rsp;
+    srcid  = source.srcid;
+    trdid  = source.trdid;
+    pktid  = source.pktid;
+    nline  = source.nline;
+    count  = source.count;
   }
 
   ////////////////////////////////////////////////////////////////////
   // The print() function prints the entry  
   ////////////////////////////////////////////////////////////////////
   void print(){
-    std::cout << "valid = " << valid << std::endl;
+    std::cout << std::dec << "valid  = " << valid  << std::endl;
     std::cout << "update = " << update << std::endl;
-    std::cout << "srcid = " << srcid << std::endl; 
-    std::cout << "trdid = " << trdid << std::endl; 
-    std::cout << "pktid = " << pktid << std::endl; 
-    std::cout << "nline = " << nline << std::endl;
-    std::cout << "count = " << count << std::endl;
+    std::cout << "brdcast= " << brdcast<< std::endl;
+    std::cout << "rsp    = " << rsp    << std::endl;
+    std::cout << "srcid  = " << srcid  << std::endl; 
+    std::cout << "trdid  = " << trdid  << std::endl; 
+    std::cout << "pktid  = " << pktid  << std::endl; 
+    std::cout << std::hex << "nline  = " << nline  << std::endl;
+    std::cout << std::dec << "count  = " << count  << std::endl;
   }
 };
 
@@ -133,6 +149,18 @@ class UpdateTab{
   ////////////////////////////////////////////////////////////////////
   const size_t size(){
     return size_tab;
+  }
+
+
+  ////////////////////////////////////////////////////////////////////
+  // The size() function returns the size of the tab  
+  ////////////////////////////////////////////////////////////////////
+  void print(){
+    for(size_t i=0; i<size_tab; i++) {
+      std::cout << "UPDATE TAB ENTRY " << std::dec << i << "--------" << std::endl;
+      tab[i].print();
+    }
+    return;
   }
 
 
@@ -170,6 +198,8 @@ class UpdateTab{
   // This function returns true if the write successed (an entry was empty).
   ///////////////////////////////////////////////////////////////////////////
   bool set(const bool	update,
+      const bool   brdcast,
+      const bool   rsp,
       const size_t srcid,
       const size_t trdid,
       const size_t pktid,
@@ -181,6 +211,8 @@ class UpdateTab{
       if( !tab[i].valid ) {
         tab[i].valid		= true;
         tab[i].update		= update;
+        tab[i].brdcast  = brdcast;
+        tab[i].rsp      = rsp;
         tab[i].srcid		= (size_t) srcid;
         tab[i].trdid		= (size_t) trdid;
         tab[i].pktid		= (size_t) pktid;
@@ -211,6 +243,28 @@ class UpdateTab{
     } else {
       return false;
     }
+  }
+
+  /////////////////////////////////////////////////////////////////////
+  // The need_rsp() function returns the need of a response
+  // Arguments :
+  // - index : the index of the entry
+  /////////////////////////////////////////////////////////////////////
+  bool need_rsp(const size_t index)
+  {
+    assert(index<size_tab && "Bad Update Tab Entry");
+    return tab[index].rsp;	
+  }
+
+  /////////////////////////////////////////////////////////////////////
+  // The is_update() function returns the transaction type
+  // Arguments :
+  // - index : the index of the entry
+  /////////////////////////////////////////////////////////////////////
+  bool is_brdcast(const size_t index)
+  {
+    assert(index<size_tab && "Bad Update Tab Entry");
+    return tab[index].brdcast;	
   }
 
   /////////////////////////////////////////////////////////////////////
@@ -269,37 +323,55 @@ class UpdateTab{
   }
 
   /////////////////////////////////////////////////////////////////////
-  // The read_nline() function returns the index of the entry in UPT
+  // The search_brdcast() function returns the index of the entry in UPT
   // Arguments :
   // - nline : the line number of the entry in the directory
   /////////////////////////////////////////////////////////////////////
-  bool read_nline(const size_t nline,size_t &index) // BUG CORRIGE 02/06/09
+  bool search_brdcast(const size_t nline,size_t &index)
   {
     size_t i ;
 
     for (i = 0 ; i < size_tab ; i++){
-      if(tab[i].nline == nline){
-        if(!tab[i].update){
+      if((tab[i].nline == nline) && tab[i].valid){
+        if(!tab[i].update && tab[i].brdcast){
           index = i ;
           return true;
         }
       }
     }
     return false;
-    }
+  }
 
-    /////////////////////////////////////////////////////////////////////
-    // The clear() function erases an entry of the tab
-    // Arguments :
-    // - index : the index of the entry
-    /////////////////////////////////////////////////////////////////////       
-    void clear(const size_t index)
-    {
-      assert(index<size_tab && "Bad Update Tab Entry");
-      tab[index].valid=false;
-      return;	
-    }
+  /////////////////////////////////////////////////////////////////////
+  // The read_nline() function returns the index of the entry in UPT
+  // Arguments :
+  // - nline : the line number of the entry in the directory
+  /////////////////////////////////////////////////////////////////////
+  bool read_nline(const size_t nline,size_t &index) 
+  {
+    size_t i ;
 
-  };
+    for (i = 0 ; i < size_tab ; i++){
+      if((tab[i].nline == nline) && tab[i].valid){
+        index = i ;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /////////////////////////////////////////////////////////////////////
+  // The clear() function erases an entry of the tab
+  // Arguments :
+  // - index : the index of the entry
+  /////////////////////////////////////////////////////////////////////       
+  void clear(const size_t index)
+  {
+    assert(index<size_tab && "Bad Update Tab Entry");
+    tab[index].valid=false;
+    return;	
+  }
+
+};
 
 #endif
