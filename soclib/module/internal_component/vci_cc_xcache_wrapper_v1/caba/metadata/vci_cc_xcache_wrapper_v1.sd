@@ -1,0 +1,54 @@
+
+# -*- python -*-
+
+__id__ = "$Id: vci_cc_xcache_wrapper_v1.sd 917 2009-03-12 10:10:06Z nipo $"
+__version__ = "$Revision: 917 $"
+
+Module('caba:vci_cc_xcache_wrapper_v1',
+	classname = 'soclib::caba::VciCcXCacheWrapperV1',
+	tmpl_parameters = [
+		parameter.Module('vci_param', default = 'caba:vci_param'),
+		parameter.Module('iss_t'),
+		],
+	header_files = [
+		'../source/include/vci_cc_xcache_wrapper_v1.h',
+		],
+	implementation_files = [
+		'../source/src/vci_cc_xcache_wrapper_v1.cpp',
+		],
+	uses = [
+		Uses('caba:base_module'),
+		Uses('common:mapping_table'),
+		Uses('common:iss2'),
+		Uses('caba:write_buffer'),
+		Uses('caba:generic_cache', addr_t = 'uint32_t'),
+		],
+	ports = [
+		Port('caba:vci_initiator', 'p_vci_ini_rw'),
+    Port('caba:vci_initiator', 'p_vci_ini_c'),
+		Port('caba:vci_target', 'p_vci_tgt'),
+		Port('caba:bit_in', 'p_irq', parameter.Constant('n_irq')),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+		],
+	instance_parameters = [
+		parameter.Int('proc_id'),
+		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+		parameter.IntTab('initiator_rw_index'),
+		parameter.IntTab('initiator_c_index'),
+		parameter.IntTab('target_index'),
+		parameter.Int('icache_ways'),
+		parameter.Int('icache_sets'),
+		parameter.Int('icache_words'),
+		parameter.Int('dcache_ways'),
+		parameter.Int('dcache_sets'),
+		parameter.Int('dcache_words'),
+		],
+	   extensions = [
+		'dsx:get_ident=initiator_index:p_vci_ini_rw',
+		'dsx:cpu=wrapper:iss_t',
+		'dsx:mapping_type=processor:proc_id',
+		],
+)
+
+
