@@ -4,6 +4,7 @@
 #include "mapping_table.h"
 #include "microblaze.h"
 #include "vci_xcache_wrapper.h"
+#include "ississ2.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_pi_initiator_wrapper.h"
@@ -45,7 +46,8 @@ int _main(int argc, char *argv[])
 
    // Components
 
-   soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MicroBlazeIss> > mb("mb", 0,maptab,0,1,8,4,1,8,4);
+   typedef soclib::common::IssIss2<soclib::common::MicroBlazeIss> iss_t;
+   soclib::caba::VciXcacheWrapper<vci_param, iss_t > mb("mb", 0,maptab,0,1,8,4,1,8,4);
 
    soclib::common::Loader loader("soft/a.out");
    soclib::caba::VciRam<vci_param> vcimultiram("vcimultiram", IntTab(0), maptab, loader);
