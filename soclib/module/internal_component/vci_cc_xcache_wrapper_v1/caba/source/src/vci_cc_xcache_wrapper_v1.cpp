@@ -1417,7 +1417,7 @@ namespace caba {
                 if      ( r_icache_cleanup_req )    r_vci_rsp_fsm = RSP_INS_CLEANUP;
                 else if ( r_dcache_cleanup_req )    r_vci_rsp_fsm = RSP_DATA_CLEANUP;
                 else if ( r_icache_miss_req )       r_vci_rsp_fsm = RSP_INS_MISS;
-                else if ( r_icache_unc_req )        r_vci_rsp_fsm = RSP_DATA_WRITE;
+                else if ( r_icache_unc_req )        r_vci_rsp_fsm = RSP_INS_UNC;
                 else if ( r_dcache_write_req )      r_vci_rsp_fsm = RSP_DATA_WRITE;
                 else if ( r_dcache_miss_req )       r_vci_rsp_fsm = RSP_DATA_MISS;
                 else if ( r_dcache_unc_req )        r_vci_rsp_fsm = RSP_DATA_UNC;
