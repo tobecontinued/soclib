@@ -1871,8 +1871,8 @@ namespace soclib { namespace caba {
             assert( (p_vci_tgt_cleanup.srcid.read() < m_initiators) &&
                 "VCI_MEM_CACHE error in VCI_MEM_CACHE in the CLEANUP network : The received SRCID is larger than 31");
             bool reached = false;
-            for ( size_t index = 0 ; index < nseg && !reached ; index++ ){
-              if ( m_seg[index]->contains(p_vci_tgt_cleanup.address.read()) ){
+            for ( size_t index = 0 ; index < ncseg && !reached ; index++ ){
+              if ( m_cseg[index]->contains(p_vci_tgt_cleanup.address.read()) ){
                 reached = true;
               }
             }
