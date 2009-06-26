@@ -308,6 +308,7 @@ namespace soclib {  namespace caba {
       const size_t  		  	  m_srcid_ini;		// Srcid for requests to processors
       //soclib::common::Segment	  	  m_mem_segment;	// memory cached into the cache
       std::list<soclib::common::Segment>  m_seglist;	        // memory cached into the cache
+      std::list<soclib::common::Segment>  m_cseglist;	        // coherence segment for the cache
       soclib::common::Segment	  	  m_reg_segment;	// memory cache mapped registers
       addr_t	        		 *m_coherence_table; 	// address(srcid)
       AtomicTab	   			  m_atomic_tab;		// atomic access table
@@ -366,7 +367,9 @@ namespace soclib {  namespace caba {
 
       sc_signal<size_t>	     r_index;
       size_t nseg;
+      size_t ncseg;
       soclib::common::Segment  **m_seg;
+      soclib::common::Segment  **m_cseg;
       ///////////////////////////////////////////////////////
       // Registers controlled by the READ fsm
       ///////////////////////////////////////////////////////

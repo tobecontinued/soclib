@@ -228,6 +228,7 @@ namespace soclib { namespace caba {
     m_srcid_ini( mtc.indexForId(vci_ini_index) ),
     //m_mem_segment("bidon",0,0,soclib::common::IntTab(),false),
     m_seglist(mtp.getSegmentList(vci_tgt_index)),
+    m_cseglist(mtc.getSegmentList(vci_tgt_index_cleanup)),
     m_reg_segment("bidon",0,0,soclib::common::IntTab(),false),
     m_coherence_table( mtc.getCoherenceTable() ),
     m_atomic_tab( m_initiators ),
@@ -309,6 +310,9 @@ namespace soclib { namespace caba {
       for(seg = m_seglist.begin(); seg != m_seglist.end() ; seg++) {
         if( seg->size() > 8 ) nseg++;
       }
+      for(seg = m_cseglist.begin(); seg != m_cseglist.end() ; seg++) {
+        ncseg++;
+      }
       //assert( (nseg == 2) && (m_reg_segment.size() == 8) );
 
       m_seg = new soclib::common::Segment*[nseg];
@@ -325,6 +329,12 @@ namespace soclib { namespace caba {
           m_reg_segment = *seg; // a supprimer
 
         }		
+      }
+      m_cseg = new soclib::common::Segment*[ncseg];
+      i = 0;
+      for ( seg = m_cseglist.begin() ; seg != m_cseglist.end() ; seg++ ) { 
+          m_cseg[i] = &(*seg);
+          i++;
       }
 
       assert( (m_reg_segment.size() == 8) );
