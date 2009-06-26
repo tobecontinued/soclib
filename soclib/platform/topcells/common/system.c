@@ -46,6 +46,7 @@ int puts(const char *str)
 {
 	while (*str)
 		putchar(*str++);
+	putchar('\n');
 	return 0;
 }
 
