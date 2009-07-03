@@ -42,7 +42,8 @@ enum command {
   VCI_STORE_COND_COMMAND = 3,
   PDES_NULL_MESSAGE = 4,
   PDES_ACTIVE = 5,
-  PDES_INACTIVE = 6
+  PDES_INACTIVE = 6,
+  PDES_TOKEN_MESSAGE = 7
 };
 
 class soclib_payload_extension                        // extension class 
@@ -92,6 +93,8 @@ public:
   void         set_active() {m_soclib_command = PDES_ACTIVE;}
   bool         is_inactive() const {return (m_soclib_command == PDES_INACTIVE);}
   void         set_inactive() {m_soclib_command = PDES_INACTIVE;}
+  bool         is_token_message() const {return (m_soclib_command == PDES_TOKEN_MESSAGE);}
+  void         set_token_message() {m_soclib_command = PDES_TOKEN_MESSAGE;}
   enum command get_command() const {return m_soclib_command;}
   void         set_command(const enum command c) {m_soclib_command = c;}
 
