@@ -34,6 +34,7 @@
 #include <list>
 #include <sstream>
 #include <tlmdt>	   // TLM-DT headers
+#include <pthread.h>	   // PTHREAD headers
 
 #define MAX_TIME sc_core::sc_time((double)(std::numeric_limits<uint32_t>::max()),sc_core::SC_NS)
 
@@ -55,7 +56,8 @@ class centralized_buffer
   int m_selected_init;
   int m_count_push;
   int m_count_pop;
-  //cps::SpinLock m_lock;
+
+  pthread_spinlock_t m_lock;
 
 public:
   centralized_buffer(size_t max);
@@ -96,17 +98,13 @@ public:
 
   void set_external_access(unsigned int index, bool b);
 
-  /*
-  inline void lock()
-  {
-    m_lock.acquire();
+  inline void lock(){
+    pthread_spin_lock(&m_lock);
   }
 
-  inline void unlock()
-  {
-    m_lock.release();
+  inline void unlock(){
+    pthread_spin_unlock(&m_lock);
   }
-  */
 };
 
 }}

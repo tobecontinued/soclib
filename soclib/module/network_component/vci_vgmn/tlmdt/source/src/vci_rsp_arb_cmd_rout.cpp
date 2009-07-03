@@ -90,7 +90,9 @@ tmpl(void)::setCmdArbRspRout(std::vector<VciCmdArbRspRout *> &CmdArbRspRout)
 
 tmpl(void)::set_external_access(unsigned int index, bool external_access)
 {
+  m_centralized_buffer->lock();
   m_centralized_buffer->set_external_access(index, external_access);
+  m_centralized_buffer->unlock();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -101,6 +103,8 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
+  m_centralized_buffer->lock();
+
   //push a transaction in the centralized buffer
   m_centralized_buffer->push(m_index, payload, phase, time);
 
@@ -211,6 +215,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       }
     }
   }
+  m_centralized_buffer->unlock();
   return  tlm::TLM_COMPLETED;
 } //end nb_transport_fw
 
