@@ -12,14 +12,14 @@ todo = Platform('caba', 'top.cpp',
 	Uses('caba:vci_local_ring_network'),
 
 	Uses('caba:virtual_dspin_network', 
-		x_adressing_size = 1, 
-		y_adressing_size = 1,
+		x_addressing_size = 1, 
+		y_addressing_size = 1,
 
-		cmd_x_adressing_offset = 5, 
-		cmd_y_adressing_offset = 6,
+		cmd_x_addressing_offset = 5, 
+		cmd_y_addressing_offset = 6,
 
-		rsp_x_adressing_offset = 8, 
-		rsp_y_adressing_offset = 9,
+		rsp_x_addressing_offset = 8, 
+		rsp_y_addressing_offset = 9,
 
 		io_mask_size		 = 2,
 		io_number_size		 = 2,

@@ -90,166 +90,10 @@ int _main(int argc, char *argv[])
 	sc_clock	signal_clk("clk");
 	sc_signal<bool> signal_resetn("resetn");
    
-	sc_signal<bool> signal_proc0_it0("proc0_it0"); 
-	sc_signal<bool> signal_proc0_it1("proc0_it1"); 
-	sc_signal<bool> signal_proc0_it2("proc0_it2"); 
-	sc_signal<bool> signal_proc0_it3("proc0_it3"); 
-	sc_signal<bool> signal_proc0_it4("proc0_it4"); 
-	sc_signal<bool> signal_proc0_it5("proc0_it5");
+	sc_signal<bool> ** signal_proc_it = soclib::common::alloc_elems<sc_signal<bool> >("signal_proc_it", 16, 6);
 
-	sc_signal<bool> signal_proc1_it0("proc1_it0"); 
-	sc_signal<bool> signal_proc1_it1("proc1_it1"); 
-	sc_signal<bool> signal_proc1_it2("proc1_it2"); 
-	sc_signal<bool> signal_proc1_it3("proc1_it3"); 
-	sc_signal<bool> signal_proc1_it4("proc1_it4"); 
-	sc_signal<bool> signal_proc1_it5("proc1_it5");
-
-	sc_signal<bool> signal_proc2_it0("proc2_it0"); 
-	sc_signal<bool> signal_proc2_it1("proc2_it1"); 
-	sc_signal<bool> signal_proc2_it2("proc2_it2"); 
-	sc_signal<bool> signal_proc2_it3("proc2_it3"); 
-	sc_signal<bool> signal_proc2_it4("proc2_it4"); 
-	sc_signal<bool> signal_proc2_it5("proc2_it5");
-
-	sc_signal<bool> signal_proc3_it0("proc3_it0"); 
-	sc_signal<bool> signal_proc3_it1("proc3_it1"); 
-	sc_signal<bool> signal_proc3_it2("proc3_it2"); 
-	sc_signal<bool> signal_proc3_it3("proc3_it3"); 
-	sc_signal<bool> signal_proc3_it4("proc3_it4"); 
-	sc_signal<bool> signal_proc3_it5("proc3_it5");
-
-	sc_signal<bool> signal_proc4_it0("proc4_it0"); 
-	sc_signal<bool> signal_proc4_it1("proc4_it1"); 
-	sc_signal<bool> signal_proc4_it2("proc4_it2"); 
-	sc_signal<bool> signal_proc4_it3("proc4_it3"); 
-	sc_signal<bool> signal_proc4_it4("proc4_it4"); 
-	sc_signal<bool> signal_proc4_it5("proc4_it5");
-
-	sc_signal<bool> signal_proc5_it0("proc5_it0"); 
-	sc_signal<bool> signal_proc5_it1("proc5_it1"); 
-	sc_signal<bool> signal_proc5_it2("proc5_it2"); 
-	sc_signal<bool> signal_proc5_it3("proc5_it3"); 
-	sc_signal<bool> signal_proc5_it4("proc5_it4"); 
-	sc_signal<bool> signal_proc5_it5("proc5_it5");
-
-	sc_signal<bool> signal_proc6_it0("proc6_it0"); 
-	sc_signal<bool> signal_proc6_it1("proc6_it1"); 
-	sc_signal<bool> signal_proc6_it2("proc6_it2"); 
-	sc_signal<bool> signal_proc6_it3("proc6_it3"); 
-	sc_signal<bool> signal_proc6_it4("proc6_it4"); 
-	sc_signal<bool> signal_proc6_it5("proc6_it5");
-
-	sc_signal<bool> signal_proc7_it0("proc7_it0"); 
-	sc_signal<bool> signal_proc7_it1("proc7_it1"); 
-	sc_signal<bool> signal_proc7_it2("proc7_it2"); 
-	sc_signal<bool> signal_proc7_it3("proc7_it3"); 
-	sc_signal<bool> signal_proc7_it4("proc7_it4"); 
-	sc_signal<bool> signal_proc7_it5("proc7_it5");
-
-	sc_signal<bool> signal_proc8_it0("proc8_it0"); 
-	sc_signal<bool> signal_proc8_it1("proc8_it1"); 
-	sc_signal<bool> signal_proc8_it2("proc8_it2"); 
-	sc_signal<bool> signal_proc8_it3("proc8_it3"); 
-	sc_signal<bool> signal_proc8_it4("proc8_it4"); 
-	sc_signal<bool> signal_proc8_it5("proc8_it5");
-
-	sc_signal<bool> signal_proc9_it0("proc9_it0"); 
-	sc_signal<bool> signal_proc9_it1("proc9_it1"); 
-	sc_signal<bool> signal_proc9_it2("proc9_it2"); 
-	sc_signal<bool> signal_proc9_it3("proc9_it3"); 
-	sc_signal<bool> signal_proc9_it4("proc9_it4"); 
-	sc_signal<bool> signal_proc9_it5("proc9_it5");
-
-	sc_signal<bool> signal_proc10_it0("proc10_it0"); 
-	sc_signal<bool> signal_proc10_it1("proc10_it1"); 
-	sc_signal<bool> signal_proc10_it2("proc10_it2"); 
-	sc_signal<bool> signal_proc10_it3("proc10_it3"); 
-	sc_signal<bool> signal_proc10_it4("proc10_it4"); 
-	sc_signal<bool> signal_proc10_it5("proc10_it5");
-
-	sc_signal<bool> signal_proc11_it0("proc11_it0"); 
-	sc_signal<bool> signal_proc11_it1("proc11_it1"); 
-	sc_signal<bool> signal_proc11_it2("proc11_it2"); 
-	sc_signal<bool> signal_proc11_it3("proc11_it3"); 
-	sc_signal<bool> signal_proc11_it4("proc11_it4"); 
-	sc_signal<bool> signal_proc11_it5("proc11_it5");
-
-	sc_signal<bool> signal_proc12_it0("proc12_it0"); 
-	sc_signal<bool> signal_proc12_it1("proc12_it1"); 
-	sc_signal<bool> signal_proc12_it2("proc12_it2"); 
-	sc_signal<bool> signal_proc12_it3("proc12_it3"); 
-	sc_signal<bool> signal_proc12_it4("proc12_it4"); 
-	sc_signal<bool> signal_proc12_it5("proc12_it5");
-
-	sc_signal<bool> signal_proc13_it0("proc13_it0"); 
-	sc_signal<bool> signal_proc13_it1("proc13_it1"); 
-	sc_signal<bool> signal_proc13_it2("proc13_it2"); 
-	sc_signal<bool> signal_proc13_it3("proc13_it3"); 
-	sc_signal<bool> signal_proc13_it4("proc13_it4"); 
-	sc_signal<bool> signal_proc13_it5("proc13_it5");
-
-	sc_signal<bool> signal_proc14_it0("proc14_it0"); 
-	sc_signal<bool> signal_proc14_it1("proc14_it1"); 
-	sc_signal<bool> signal_proc14_it2("proc14_it2"); 
-	sc_signal<bool> signal_proc14_it3("proc14_it3"); 
-	sc_signal<bool> signal_proc14_it4("proc14_it4"); 
-	sc_signal<bool> signal_proc14_it5("proc14_it5");
-
-	sc_signal<bool> signal_proc15_it0("proc15_it0"); 
-	sc_signal<bool> signal_proc15_it1("proc15_it1"); 
-	sc_signal<bool> signal_proc15_it2("proc15_it2"); 
-	sc_signal<bool> signal_proc15_it3("proc15_it3"); 
-	sc_signal<bool> signal_proc15_it4("proc15_it4"); 
-	sc_signal<bool> signal_proc15_it5("proc15_it5");
-
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc0("vci_ini_proc0");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc0("vci_tgt_proc0");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc1("vci_ini_proc1");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc1("vci_tgt_proc1");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc2("vci_ini_proc2");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc2("vci_tgt_proc2");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc3("vci_ini_proc3");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc3("vci_tgt_proc3");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc4("vci_ini_proc4");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc4("vci_tgt_proc4");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc5("vci_ini_proc5");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc5("vci_tgt_proc5");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc6("vci_ini_proc6");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc6("vci_tgt_proc6");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc7("vci_ini_proc7");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc7("vci_tgt_proc7");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc8("vci_ini_proc8");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc8("vci_tgt_proc8");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc9("vci_ini_proc9");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc9("vci_tgt_proc9");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc10("vci_ini_proc10");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc10("vci_tgt_proc10");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc11("vci_ini_proc11");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc11("vci_tgt_proc11");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc12("vci_ini_proc12");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc12("vci_tgt_proc12");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc13("vci_ini_proc13");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc13("vci_tgt_proc13");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc14("vci_ini_proc14");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc14("vci_tgt_proc14");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_proc15("vci_ini_proc15");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc15("vci_tgt_proc15");
+	soclib::caba::VciSignals<vci_param> * signal_vci_ini_proc = soclib::common::alloc_elems<soclib::caba::VciSignals<vci_param> >("signal_vci_ini_proc", 16);
+	soclib::caba::VciSignals<vci_param> * signal_vci_tgt_proc = soclib::common::alloc_elems<soclib::caba::VciSignals<vci_param> >("signal_vci_tgt_proc", 16);
 
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_tty("vci_tgt_tty");
 
@@ -257,41 +101,16 @@ int _main(int argc, char *argv[])
 
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_xram("vci_tgt_xram");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ixr_memc0("vci_ixr_memc0");
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_memc0("vci_ini_memc0");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_memc0("vci_tgt_memc0");
+	soclib::caba::VciSignals<vci_param> * signal_vci_ixr_memc = soclib::common::alloc_elems<soclib::caba::VciSignals<vci_param> >("signal_vci_ixr_memc", 4);
+	soclib::caba::VciSignals<vci_param> * signal_vci_ini_memc = soclib::common::alloc_elems<soclib::caba::VciSignals<vci_param> >("signal_vci_ini_memc", 4);
+	soclib::caba::VciSignals<vci_param> * signal_vci_tgt_memc = soclib::common::alloc_elems<soclib::caba::VciSignals<vci_param> >("signal_vci_tgt_memc", 4);
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ixr_memc1("vci_ixr_memc1");
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_memc1("vci_ini_memc1");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_memc1("vci_tgt_memc1");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ixr_memc2("vci_ixr_memc2");
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_memc2("vci_ini_memc2");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_memc2("vci_tgt_memc2");
-
-	soclib::caba::VciSignals<vci_param> signal_vci_ixr_memc3("vci_ixr_memc3");
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_memc3("vci_ini_memc3");
-	soclib::caba::VciSignals<vci_param> signal_vci_tgt_memc3("vci_tgt_memc3");
-
-	sc_signal<bool> signal_tty_irq0("signal_tty_irq0"); 
-	sc_signal<bool> signal_tty_irq1("signal_tty_irq1"); 
-	sc_signal<bool> signal_tty_irq2("signal_tty_irq2"); 
-	sc_signal<bool> signal_tty_irq3("signal_tty_irq3"); 
-	sc_signal<bool> signal_tty_irq4("signal_tty_irq4"); 
-	sc_signal<bool> signal_tty_irq5("signal_tty_irq5"); 
-	sc_signal<bool> signal_tty_irq6("signal_tty_irq6"); 
-	sc_signal<bool> signal_tty_irq7("signal_tty_irq7"); 
-	sc_signal<bool> signal_tty_irq8("signal_tty_irq8"); 
-	sc_signal<bool> signal_tty_irq9("signal_tty_irq9"); 
-	sc_signal<bool> signal_tty_irq10("signal_tty_irq10"); 
-	sc_signal<bool> signal_tty_irq11("signal_tty_irq11"); 
-	sc_signal<bool> signal_tty_irq12("signal_tty_irq12"); 
-	sc_signal<bool> signal_tty_irq13("signal_tty_irq13"); 
-	sc_signal<bool> signal_tty_irq14("signal_tty_irq14"); 
-	sc_signal<bool> signal_tty_irq15("signal_tty_irq15"); 
+	sc_signal<bool> * signal_tty_irq = soclib::common::alloc_elems<sc_signal<bool> >("signal_tty_irq", 16);
 
 	soclib::caba::GateSignals gate_PN[4][2];
 	soclib::caba::GateSignals gate_CN[4][2];
+
+
 
 	///////////////////////////////////////////////////////////////
 	// Components
@@ -311,518 +130,154 @@ int _main(int argc, char *argv[])
 
 	soclib::common::Loader loader("soft/bin.soft");
 
-	// Instanciation of 16 MIPS processors (4 processors per cluster)
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc0("proc0", 0, maptabp,maptabc,IntTab(0,0),IntTab(0,0),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc1("proc1", 1, maptabp,maptabc,IntTab(0,1),IntTab(0,1),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc2("proc2", 2, maptabp,maptabc,IntTab(0,2),IntTab(0,2),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc3("proc3", 3, maptabp,maptabc,IntTab(0,3),IntTab(0,3),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc4("proc4", 4, maptabp,maptabc,IntTab(1,0),IntTab(1,0),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc5("proc5", 5, maptabp,maptabc,IntTab(1,1),IntTab(1,1),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc6("proc6", 6, maptabp,maptabc,IntTab(1,2),IntTab(1,2),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc7("proc7", 7, maptabp,maptabc,IntTab(1,3),IntTab(1,3),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc8("proc8", 8, maptabp,maptabc,IntTab(2,0),IntTab(2,0),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc9("proc9", 9, maptabp,maptabc,IntTab(2,1),IntTab(2,1),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc10("proc10", 10, maptabp,maptabc,IntTab(2,2),IntTab(2,2),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc11("proc11", 11, maptabp,maptabc,IntTab(2,3),IntTab(2,3),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc12("proc12", 12, maptabp,maptabc,IntTab(3,0),IntTab(3,0),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc13("proc13", 13, maptabp,maptabc,IntTab(3,1),IntTab(3,1),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc14("proc14", 14, maptabp,maptabc,IntTab(3,2),IntTab(3,2),4,64,16,4,64,16,CLEANUP_OFFSET);
-
-	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > 
-	proc15("proc15", 15, maptabp,maptabc,IntTab(3,3),IntTab(3,3),4,64,16,4,64,16,CLEANUP_OFFSET);
+	// 16 MIPS processors (4 processors per cluster)
+	soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss> * proc = (soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss > *) malloc(sizeof(soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss> )*16);
+	for(int i=0; i<4; i++)
+		for(int j=0; j<4; j++)
+			new(&proc[4*i+j]) soclib::caba::VciCcXcacheWrapper<vci_param, proc_iss> ("proc" + (4*i+j), 4*i+j, maptabp, maptabc,IntTab(i,j),IntTab(i,j),4,64,16,4,64,16,CLEANUP_OFFSET);
 
 	// ROM which contains boot code
-
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(2,1), maptabp, loader);
 
 	// External RAM
-
 	soclib::caba::VciSimpleRam<vci_param> 
 	xram("xram",IntTab(0,0),maptabx, loader);
 
 	// Distribuated memory caches (1 memory cache per cluster)
+	soclib::caba::VciMemCache<vci_param> * memc = (soclib::caba::VciMemCache<vci_param> *) malloc(sizeof(soclib::caba::VciMemCache<vci_param>)*4);
+	for(int i=0; i<4; i++)
+		new(&memc[i]) soclib::caba::VciMemCache<vci_param>("memc" + (i),maptabp,maptabc,maptabx,IntTab(i,0),IntTab(i,0),IntTab(i,0),16,256,16);
 
-	soclib::caba::VciMemCache<vci_param> 
-	memc0("memc0",maptabp,maptabc,maptabx,IntTab(0,0),IntTab(0,0),IntTab(0,0),16,256,16);
-
-	soclib::caba::VciMemCache<vci_param> 
-	memc1("memc1",maptabp,maptabc,maptabx,IntTab(1,0),IntTab(1,0),IntTab(1,0),16,256,16);
-
-	soclib::caba::VciMemCache<vci_param> 
-	memc2("memc2",maptabp,maptabc,maptabx,IntTab(2,0),IntTab(2,0),IntTab(2,0),16,256,16);
-
-	soclib::caba::VciMemCache<vci_param> 
-	memc3("memc3",maptabp,maptabc,maptabx,IntTab(3,0),IntTab(3,0),IntTab(3,0),16,256,16);
-
-	// Multi TTY Controller : 1 display per processor
-	
+	// Multi TTY Controller : 1 display per processor	
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(3,1),maptabp,"tty0","tty1","tty2","tty3","tty4","tty5","tty6","tty7","tty8","tty9","tty10","tty11","tty12","tty13","tty14","tty15",NULL);
 
-	// Local ring interconnects : 1 direct ring and 1 coherence ring per cluster
-        
-	soclib::caba::VciLocalRingNetwork<vci_param> 
-	clusterPN0("clusterPN0",maptabp, IntTab(0), 2, 18, 4, 1 );
+	// Local ring interconnects : 1 direct ring per cluster
+	soclib::caba::VciLocalRingNetwork<vci_param> * clusterPN = (soclib::caba::VciLocalRingNetwork<vci_param> *) malloc(sizeof(soclib::caba::VciLocalRingNetwork<vci_param> )*4);
+	for(int i=0; i<4; i++)
+		new(&clusterPN[i]) soclib::caba::VciLocalRingNetwork<vci_param>("clusterPN" + i,maptabp, IntTab(i), 2, 18, 4, i/2+1 );
 
-	soclib::caba::VciLocalRingNetwork<vci_param> 
-	clusterPN1("clusterPN1",maptabp, IntTab(1), 2, 18, 4, 1 );
-
-	soclib::caba::VciLocalRingNetwork<vci_param> 
-	clusterPN2("clusterPN2",maptabp, IntTab(2), 2, 18, 4, 2 );
-
-	soclib::caba::VciLocalRingNetwork<vci_param> 
-	clusterPN3("clusterPN3",maptabp, IntTab(3), 2, 18, 4, 2 );
-
-	soclib::caba::VciLocalRingNetwork<vci_param> 
-	clusterCN0("clusterCN0",maptabc, IntTab(0), 2, 2, 1, 4 );
-
-	soclib::caba::VciLocalRingNetwork<vci_param> 
-	clusterCN1("clusterCN1",maptabc, IntTab(1), 2, 2, 1, 4 );
-
-	soclib::caba::VciLocalRingNetwork<vci_param> 
-	clusterCN2("clusterCN2",maptabc, IntTab(2), 2, 2, 1, 4 );
-
-	soclib::caba::VciLocalRingNetwork<vci_param> 
-	clusterCN3("clusterCN3",maptabc, IntTab(3), 2, 2, 1, 4 );
+	// Local ring interconnects : 1 coherence ring per cluster
+	soclib::caba::VciLocalRingNetwork<vci_param> * clusterCN = (soclib::caba::VciLocalRingNetwork<vci_param> *) malloc(sizeof(soclib::caba::VciLocalRingNetwork<vci_param> )*4);
+	for(int i=0; i<4; i++)
+		new(&clusterCN[i]) soclib::caba::VciLocalRingNetwork<vci_param>("clusterCN" + i,maptabc, IntTab(i), 2, 2, 1, 4 );
 
 	// External network
-
 	soclib::caba::VciSimpleRingNetwork<vci_param> 
 	xring("xring",maptabx, IntTab(), 2, 4, 1);
 
 	// Global interconnect : virtual dspin
-
-	soclib::caba::VirtualDspinNetwork<2, 2, 1, 1, 37, 1, 3, 5, 6, 0, 35, 33, 1, 3, 8, 9, 0, 18, 18> network("network", 2, 2, true, true, false, false, NULL);
+	soclib::caba::VirtualDspinNetwork<2, 2, 1, 1, 37, 1, 3, 5, 6, 0, 35, 33, 1, 3, 8, 9, 0, 18, 18> network("network", 2, 2, NULL);
 
 	///////////////////////////////////////////////////////////////
 	// Net-list description
 	///////////////////////////////////////////////////////////////
 
+	// Virtual Dspin Network
 	network.p_clk(signal_clk);
 	network.p_resetn(signal_resetn);
-
 	for(int i=0; i<2; i++){
 		for(int j=0; j<2; j++){
 			// GatePN[][1]
-			network.ports[0][i][j].out_cmd_data(	gate_PN[j+2*i][1].cmd_data);
-			network.ports[0][i][j].out_cmd_read(	gate_PN[j+2*i][1].cmd_r_wok);
-			network.ports[0][i][j].out_cmd_write(	gate_PN[j+2*i][1].cmd_w_rok);
-			network.ports[0][i][j].in_rsp_data(	gate_PN[j+2*i][1].rsp_data);
-			network.ports[0][i][j].in_rsp_read(	gate_PN[j+2*i][1].rsp_r_wok);
-			network.ports[0][i][j].in_rsp_write(	gate_PN[j+2*i][1].rsp_w_rok);
+			network.p_out_cmd[0][i][j].data(	gate_PN[j+2*i][1].cmd_data);
+			network.p_out_cmd[0][i][j].read(	gate_PN[j+2*i][1].cmd_r_wok);
+			network.p_out_cmd[0][i][j].write(	gate_PN[j+2*i][1].cmd_w_rok);
+			network.p_in_rsp[0][i][j].data(		gate_PN[j+2*i][1].rsp_data);
+			network.p_in_rsp[0][i][j].read(		gate_PN[j+2*i][1].rsp_r_wok);
+			network.p_in_rsp[0][i][j].write(	gate_PN[j+2*i][1].rsp_w_rok);
 			// GateCN[][1]
-			network.ports[1][i][j].out_cmd_data(	gate_CN[j+2*i][1].cmd_data);
-			network.ports[1][i][j].out_cmd_read(	gate_CN[j+2*i][1].cmd_r_wok);
-			network.ports[1][i][j].out_cmd_write(	gate_CN[j+2*i][1].cmd_w_rok);
-			network.ports[1][i][j].in_rsp_data(	gate_CN[j+2*i][1].rsp_data);
-			network.ports[1][i][j].in_rsp_read(	gate_CN[j+2*i][1].rsp_r_wok);
-			network.ports[1][i][j].in_rsp_write(	gate_CN[j+2*i][1].rsp_w_rok);
+			network.p_out_cmd[1][i][j].data(	gate_CN[j+2*i][1].cmd_data);
+			network.p_out_cmd[1][i][j].read(	gate_CN[j+2*i][1].cmd_r_wok);
+			network.p_out_cmd[1][i][j].write(	gate_CN[j+2*i][1].cmd_w_rok);
+			network.p_in_rsp[1][i][j].data(		gate_CN[j+2*i][1].rsp_data);
+			network.p_in_rsp[1][i][j].read(		gate_CN[j+2*i][1].rsp_r_wok);
+			network.p_in_rsp[1][i][j].write(	gate_CN[j+2*i][1].rsp_w_rok);
 			// GatePN[][0]
-			network.ports[0][i][j].in_cmd_data(	gate_PN[j+2*i][0].cmd_data);
-			network.ports[0][i][j].in_cmd_read(	gate_PN[j+2*i][0].cmd_r_wok);
-			network.ports[0][i][j].in_cmd_write(	gate_PN[j+2*i][0].cmd_w_rok);
-			network.ports[0][i][j].out_rsp_data(	gate_PN[j+2*i][0].rsp_data);
-			network.ports[0][i][j].out_rsp_read(	gate_PN[j+2*i][0].rsp_r_wok);
-			network.ports[0][i][j].out_rsp_write(	gate_PN[j+2*i][0].rsp_w_rok);
+			network.p_in_cmd[0][i][j].data(		gate_PN[j+2*i][0].cmd_data);
+			network.p_in_cmd[0][i][j].read(		gate_PN[j+2*i][0].cmd_r_wok);
+			network.p_in_cmd[0][i][j].write(	gate_PN[j+2*i][0].cmd_w_rok);
+			network.p_out_rsp[0][i][j].data(	gate_PN[j+2*i][0].rsp_data);
+			network.p_out_rsp[0][i][j].read(	gate_PN[j+2*i][0].rsp_r_wok);
+			network.p_out_rsp[0][i][j].write(	gate_PN[j+2*i][0].rsp_w_rok);
 			// GateCN[][0]
-			network.ports[1][i][j].in_cmd_data(	gate_CN[j+2*i][0].cmd_data);
-			network.ports[1][i][j].in_cmd_read(	gate_CN[j+2*i][0].cmd_r_wok);
-			network.ports[1][i][j].in_cmd_write(	gate_CN[j+2*i][0].cmd_w_rok);
-			network.ports[1][i][j].out_rsp_data(	gate_CN[j+2*i][0].rsp_data);
-			network.ports[1][i][j].out_rsp_read(	gate_CN[j+2*i][0].rsp_r_wok);
-			network.ports[1][i][j].out_rsp_write(	gate_CN[j+2*i][0].rsp_w_rok);
+			network.p_in_cmd[1][i][j].data(		gate_CN[j+2*i][0].cmd_data);
+			network.p_in_cmd[1][i][j].read(		gate_CN[j+2*i][0].cmd_r_wok);
+			network.p_in_cmd[1][i][j].write(	gate_CN[j+2*i][0].cmd_w_rok);
+			network.p_out_rsp[1][i][j].data(	gate_CN[j+2*i][0].rsp_data);
+			network.p_out_rsp[1][i][j].read(	gate_CN[j+2*i][0].rsp_r_wok);
+			network.p_out_rsp[1][i][j].write(	gate_CN[j+2*i][0].rsp_w_rok);
 		}
 	}
  
-	proc0.p_clk(signal_clk);
-	proc0.p_resetn(signal_resetn);
-	proc0.p_irq[0](signal_proc0_it0);
-	proc0.p_irq[1](signal_proc0_it1);
-	proc0.p_irq[2](signal_proc0_it2);
-	proc0.p_irq[3](signal_proc0_it3); 
-	proc0.p_irq[4](signal_proc0_it4); 
-	proc0.p_irq[5](signal_proc0_it5); 
-	proc0.p_vci_ini(signal_vci_ini_proc0);
-	proc0.p_vci_tgt(signal_vci_tgt_proc0);
+	// Processors
+	for(int i=0; i<16; i++){
+		proc[i].p_clk(signal_clk);  
+		proc[i].p_resetn(signal_resetn);  
+		proc[i].p_vci_ini(signal_vci_ini_proc[i]);
+		proc[i].p_vci_tgt(signal_vci_tgt_proc[i]);
+		for(int j=0; j<6; j++)
+			proc[i].p_irq[j](signal_proc_it[i][j]); 
+	}
 
-	proc1.p_clk(signal_clk);  
-	proc1.p_resetn(signal_resetn);  
-	proc1.p_irq[0](signal_proc1_it0); 
-	proc1.p_irq[1](signal_proc1_it1); 
-	proc1.p_irq[2](signal_proc1_it2); 
-	proc1.p_irq[3](signal_proc1_it3); 
-	proc1.p_irq[4](signal_proc1_it4); 
-	proc1.p_irq[5](signal_proc1_it5); 
-	proc1.p_vci_ini(signal_vci_ini_proc1);
-	proc1.p_vci_tgt(signal_vci_tgt_proc1);
-
-	proc2.p_clk(signal_clk);  
-	proc2.p_resetn(signal_resetn);  
-	proc2.p_irq[0](signal_proc2_it0); 
-	proc2.p_irq[1](signal_proc2_it1); 
-	proc2.p_irq[2](signal_proc2_it2); 
-	proc2.p_irq[3](signal_proc2_it3); 
-	proc2.p_irq[4](signal_proc2_it4); 
-	proc2.p_irq[5](signal_proc2_it5); 
-	proc2.p_vci_ini(signal_vci_ini_proc2);
-	proc2.p_vci_tgt(signal_vci_tgt_proc2);
-
-	proc3.p_clk(signal_clk);  
-	proc3.p_resetn(signal_resetn);  
-	proc3.p_irq[0](signal_proc3_it0); 
-	proc3.p_irq[1](signal_proc3_it1); 
-	proc3.p_irq[2](signal_proc3_it2); 
-	proc3.p_irq[3](signal_proc3_it3); 
-	proc3.p_irq[4](signal_proc3_it4); 
-	proc3.p_irq[5](signal_proc3_it5); 
-	proc3.p_vci_ini(signal_vci_ini_proc3);
-	proc3.p_vci_tgt(signal_vci_tgt_proc3);
-
-	proc4.p_clk(signal_clk);  
-	proc4.p_resetn(signal_resetn);  
-	proc4.p_irq[0](signal_proc4_it0); 
-	proc4.p_irq[1](signal_proc4_it1); 
-	proc4.p_irq[2](signal_proc4_it2); 
-	proc4.p_irq[3](signal_proc4_it3); 
-	proc4.p_irq[4](signal_proc4_it4); 
-	proc4.p_irq[5](signal_proc4_it5); 
-	proc4.p_vci_ini(signal_vci_ini_proc4);
-	proc4.p_vci_tgt(signal_vci_tgt_proc4);
-
-	proc5.p_clk(signal_clk);  
-	proc5.p_resetn(signal_resetn);  
-	proc5.p_irq[0](signal_proc5_it0); 
-	proc5.p_irq[1](signal_proc5_it1); 
-	proc5.p_irq[2](signal_proc5_it2); 
-	proc5.p_irq[3](signal_proc5_it3); 
-	proc5.p_irq[4](signal_proc5_it4); 
-	proc5.p_irq[5](signal_proc5_it5); 
-	proc5.p_vci_ini(signal_vci_ini_proc5);
-	proc5.p_vci_tgt(signal_vci_tgt_proc5);
-
-	proc6.p_clk(signal_clk);  
-	proc6.p_resetn(signal_resetn);  
-	proc6.p_irq[0](signal_proc6_it0); 
-	proc6.p_irq[1](signal_proc6_it1); 
-	proc6.p_irq[2](signal_proc6_it2); 
-	proc6.p_irq[3](signal_proc6_it3); 
-	proc6.p_irq[4](signal_proc6_it4); 
-	proc6.p_irq[5](signal_proc6_it5); 
-	proc6.p_vci_ini(signal_vci_ini_proc6);
-	proc6.p_vci_tgt(signal_vci_tgt_proc6);
-
-	proc7.p_clk(signal_clk);  
-	proc7.p_resetn(signal_resetn);  
-	proc7.p_irq[0](signal_proc7_it0); 
-	proc7.p_irq[1](signal_proc7_it1); 
-	proc7.p_irq[2](signal_proc7_it2); 
-	proc7.p_irq[3](signal_proc7_it3); 
-	proc7.p_irq[4](signal_proc7_it4); 
-	proc7.p_irq[5](signal_proc7_it5); 
-	proc7.p_vci_ini(signal_vci_ini_proc7);
-	proc7.p_vci_tgt(signal_vci_tgt_proc7);
-
-	proc8.p_clk(signal_clk);  
-	proc8.p_resetn(signal_resetn);  
-	proc8.p_irq[0](signal_proc8_it0); 
-	proc8.p_irq[1](signal_proc8_it1); 
-	proc8.p_irq[2](signal_proc8_it2); 
-	proc8.p_irq[3](signal_proc8_it3); 
-	proc8.p_irq[4](signal_proc8_it4); 
-	proc8.p_irq[5](signal_proc8_it5); 
-	proc8.p_vci_ini(signal_vci_ini_proc8);
-	proc8.p_vci_tgt(signal_vci_tgt_proc8);
-
-	proc9.p_clk(signal_clk);  
-	proc9.p_resetn(signal_resetn);  
-	proc9.p_irq[0](signal_proc9_it0); 
-	proc9.p_irq[1](signal_proc9_it1); 
-	proc9.p_irq[2](signal_proc9_it2); 
-	proc9.p_irq[3](signal_proc9_it3); 
-	proc9.p_irq[4](signal_proc9_it4); 
-	proc9.p_irq[5](signal_proc9_it5); 
-	proc9.p_vci_ini(signal_vci_ini_proc9);
-	proc9.p_vci_tgt(signal_vci_tgt_proc9);
-
-	proc10.p_clk(signal_clk);  
-	proc10.p_resetn(signal_resetn);  
-	proc10.p_irq[0](signal_proc10_it0); 
-	proc10.p_irq[1](signal_proc10_it1); 
-	proc10.p_irq[2](signal_proc10_it2); 
-	proc10.p_irq[3](signal_proc10_it3); 
-	proc10.p_irq[4](signal_proc10_it4); 
-	proc10.p_irq[5](signal_proc10_it5); 
-	proc10.p_vci_ini(signal_vci_ini_proc10);
-	proc10.p_vci_tgt(signal_vci_tgt_proc10);
-
-	proc11.p_clk(signal_clk);  
-	proc11.p_resetn(signal_resetn);  
-	proc11.p_irq[0](signal_proc11_it0); 
-	proc11.p_irq[1](signal_proc11_it1); 
-	proc11.p_irq[2](signal_proc11_it2); 
-	proc11.p_irq[3](signal_proc11_it3); 
-	proc11.p_irq[4](signal_proc11_it4); 
-	proc11.p_irq[5](signal_proc11_it5); 
-	proc11.p_vci_ini(signal_vci_ini_proc11);
-	proc11.p_vci_tgt(signal_vci_tgt_proc11);
-
-	proc12.p_clk(signal_clk);  
-	proc12.p_resetn(signal_resetn);  
-	proc12.p_irq[0](signal_proc12_it0); 
-	proc12.p_irq[1](signal_proc12_it1); 
-	proc12.p_irq[2](signal_proc12_it2); 
-	proc12.p_irq[3](signal_proc12_it3); 
-	proc12.p_irq[4](signal_proc12_it4); 
-	proc12.p_irq[5](signal_proc12_it5); 
-	proc12.p_vci_ini(signal_vci_ini_proc12);
-	proc12.p_vci_tgt(signal_vci_tgt_proc12);
-
-	proc13.p_clk(signal_clk);  
-	proc13.p_resetn(signal_resetn);  
-	proc13.p_irq[0](signal_proc13_it0); 
-	proc13.p_irq[1](signal_proc13_it1); 
-	proc13.p_irq[2](signal_proc13_it2); 
-	proc13.p_irq[3](signal_proc13_it3); 
-	proc13.p_irq[4](signal_proc13_it4); 
-	proc13.p_irq[5](signal_proc13_it5); 
-	proc13.p_vci_ini(signal_vci_ini_proc13);
-	proc13.p_vci_tgt(signal_vci_tgt_proc13);
-
-	proc14.p_clk(signal_clk);  
-	proc14.p_resetn(signal_resetn);  
-	proc14.p_irq[0](signal_proc14_it0); 
-	proc14.p_irq[1](signal_proc14_it1); 
-	proc14.p_irq[2](signal_proc14_it2); 
-	proc14.p_irq[3](signal_proc14_it3); 
-	proc14.p_irq[4](signal_proc14_it4); 
-	proc14.p_irq[5](signal_proc14_it5); 
-	proc14.p_vci_ini(signal_vci_ini_proc14);
-	proc14.p_vci_tgt(signal_vci_tgt_proc14);
-
-	proc15.p_clk(signal_clk);  
-	proc15.p_resetn(signal_resetn);  
-	proc15.p_irq[0](signal_proc15_it0); 
-	proc15.p_irq[1](signal_proc15_it1); 
-	proc15.p_irq[2](signal_proc15_it2); 
-	proc15.p_irq[3](signal_proc15_it3); 
-	proc15.p_irq[4](signal_proc15_it4); 
-	proc15.p_irq[5](signal_proc15_it5); 
-	proc15.p_vci_ini(signal_vci_ini_proc15);
-	proc15.p_vci_tgt(signal_vci_tgt_proc15);
-
-
-
+	// ROM
 	rom.p_clk(signal_clk);
 	rom.p_resetn(signal_resetn);
 	rom.p_vci(signal_vci_tgt_rom);
 
+	// TTY
 	tty.p_clk(signal_clk);
 	tty.p_resetn(signal_resetn);
 	tty.p_vci(signal_vci_tgt_tty);
-	tty.p_irq[0](signal_tty_irq0);
-	tty.p_irq[1](signal_tty_irq1);
-	tty.p_irq[2](signal_tty_irq2);
-	tty.p_irq[3](signal_tty_irq3);
-	tty.p_irq[4](signal_tty_irq4);
-	tty.p_irq[5](signal_tty_irq5);
-	tty.p_irq[6](signal_tty_irq6);
-	tty.p_irq[7](signal_tty_irq7); 
-	tty.p_irq[8](signal_tty_irq8);
-	tty.p_irq[9](signal_tty_irq9);
-	tty.p_irq[10](signal_tty_irq10);
-	tty.p_irq[11](signal_tty_irq11); 
-	tty.p_irq[12](signal_tty_irq12);
-	tty.p_irq[13](signal_tty_irq13);
-	tty.p_irq[14](signal_tty_irq14);
-	tty.p_irq[15](signal_tty_irq15);  
+	for(int i=0; i<16; i++)
+		tty.p_irq[i](signal_tty_irq[i]);
 
-	memc0.p_clk(signal_clk);
-	memc0.p_resetn(signal_resetn);
-	memc0.p_vci_tgt(signal_vci_tgt_memc0);	
-	memc0.p_vci_ini(signal_vci_ini_memc0);
-	memc0.p_vci_ixr(signal_vci_ixr_memc0);
+	// Memory caches
+	for(int i=0; i<4; i++){
+		memc[i].p_clk(signal_clk);
+		memc[i].p_resetn(signal_resetn);
+		memc[i].p_vci_tgt(signal_vci_tgt_memc[i]);	
+		memc[i].p_vci_ini(signal_vci_ini_memc[i]);
+		memc[i].p_vci_ixr(signal_vci_ixr_memc[i]);
+	}
 
-	memc1.p_clk(signal_clk);
-	memc1.p_resetn(signal_resetn);
-	memc1.p_vci_tgt(signal_vci_tgt_memc1);	
-	memc1.p_vci_ini(signal_vci_ini_memc1);
-	memc1.p_vci_ixr(signal_vci_ixr_memc1);
-
-	memc2.p_clk(signal_clk);
-	memc2.p_resetn(signal_resetn);
-	memc2.p_vci_tgt(signal_vci_tgt_memc2);	
-	memc2.p_vci_ini(signal_vci_ini_memc2);
-	memc2.p_vci_ixr(signal_vci_ixr_memc2);
-
-	memc3.p_clk(signal_clk);
-	memc3.p_resetn(signal_resetn);
-	memc3.p_vci_tgt(signal_vci_tgt_memc3);	
-	memc3.p_vci_ini(signal_vci_ini_memc3);
-	memc3.p_vci_ixr(signal_vci_ixr_memc3);
-
+	// XRAM
 	xram.p_clk(signal_clk);
         xram.p_resetn(signal_resetn);
 	xram.p_vci(signal_vci_tgt_xram);	
 
-	///////////////////////////////////////////////////////
-	// Réseau vers la XRAM
-	///////////////////////////////////////////////////////
-
+	// XRING
 	xring.p_clk(signal_clk);
 	xring.p_resetn(signal_resetn);
-
-	xring.p_to_initiator[0](signal_vci_ixr_memc0);
-	xring.p_to_initiator[1](signal_vci_ixr_memc1);
-	xring.p_to_initiator[2](signal_vci_ixr_memc2);
-	xring.p_to_initiator[3](signal_vci_ixr_memc3);
-
+	for(int i=0; i<4; i++)
+		xring.p_to_initiator[i](signal_vci_ixr_memc[i]);
 	xring.p_to_target[0](signal_vci_tgt_xram);
 
-	///////////////////////////////////////////////////////
-	// Réseau des commandes primaires
-	///////////////////////////////////////////////////////
+	// direct ring
+	for(int i=0; i<4; i++){
+		clusterPN[i].p_clk(signal_clk);
+		clusterPN[i].p_resetn(signal_resetn);
+		clusterPN[i].p_to_target[0](signal_vci_tgt_memc[i]);
+	        clusterPN[i].p_gate_initiator(gate_PN[i][1]);
+		clusterPN[i].p_gate_target(gate_PN[i][0]);
+		for(int j=0; j<4; j++)
+			clusterPN[i].p_to_initiator[j](signal_vci_ini_proc[i*4+j]);
+	}
 
-	clusterPN0.p_clk(signal_clk);
-	clusterPN0.p_resetn(signal_resetn);
+	clusterPN[2].p_to_target[1](signal_vci_tgt_rom);
+	clusterPN[3].p_to_target[1](signal_vci_tgt_tty);
 
-	clusterPN0.p_to_initiator[0](signal_vci_ini_proc0);
-	clusterPN0.p_to_initiator[1](signal_vci_ini_proc1);
-	clusterPN0.p_to_initiator[2](signal_vci_ini_proc2);
-	clusterPN0.p_to_initiator[3](signal_vci_ini_proc3);
+	// coherence ring
+	for(int i=0; i<4; i++){
+		clusterCN[i].p_clk(signal_clk);
+		clusterCN[i].p_resetn(signal_resetn);
+		clusterCN[i].p_to_initiator[0](signal_vci_ini_memc[i]);
+		clusterCN[i].p_gate_initiator(gate_CN[i][1]);
+		clusterCN[i].p_gate_target(gate_CN[i][0]);
+		for(int j=0; j<4; j++)
+			clusterCN[i].p_to_target[j](signal_vci_tgt_proc[i*4+j]);
+	}
 
-	clusterPN0.p_to_target[0](signal_vci_tgt_memc0);
-
-        clusterPN0.p_gate_initiator(gate_PN[0][1]);
-	clusterPN0.p_gate_target(gate_PN[0][0]);
-
-	clusterPN1.p_clk(signal_clk);
-	clusterPN1.p_resetn(signal_resetn);
-
-	clusterPN1.p_to_initiator[0](signal_vci_ini_proc4);
-	clusterPN1.p_to_initiator[1](signal_vci_ini_proc5);
-	clusterPN1.p_to_initiator[2](signal_vci_ini_proc6);
-	clusterPN1.p_to_initiator[3](signal_vci_ini_proc7);
-
-	clusterPN1.p_to_target[0](signal_vci_tgt_memc1);
-
-	clusterPN1.p_gate_initiator(gate_PN[1][1]);
-	clusterPN1.p_gate_target(gate_PN[1][0]);
-
-	clusterPN2.p_clk(signal_clk);
-	clusterPN2.p_resetn(signal_resetn);
-
-	clusterPN2.p_to_initiator[0](signal_vci_ini_proc8);
-	clusterPN2.p_to_initiator[1](signal_vci_ini_proc9);
-	clusterPN2.p_to_initiator[2](signal_vci_ini_proc10);
-	clusterPN2.p_to_initiator[3](signal_vci_ini_proc11);
-	
-	clusterPN2.p_to_target[0](signal_vci_tgt_memc2);
-	clusterPN2.p_to_target[1](signal_vci_tgt_rom);
-
-	clusterPN2.p_gate_initiator(gate_PN[2][1]);
-	clusterPN2.p_gate_target(gate_PN[2][0]);
-	
-	clusterPN3.p_clk(signal_clk);
-	clusterPN3.p_resetn(signal_resetn);
-
-	clusterPN3.p_to_initiator[0](signal_vci_ini_proc12);
-	clusterPN3.p_to_initiator[1](signal_vci_ini_proc13);
-	clusterPN3.p_to_initiator[2](signal_vci_ini_proc14);
-	clusterPN3.p_to_initiator[3](signal_vci_ini_proc15);
-
-	clusterPN3.p_to_target[0](signal_vci_tgt_memc3);
-	clusterPN3.p_to_target[1](signal_vci_tgt_tty);
-
-	clusterPN3.p_gate_initiator(gate_PN[3][1]);
-	clusterPN3.p_gate_target(gate_PN[3][0]);
-	
-	///////////////////////////////////////////////////////
-	// Réseau des commandes de cohérence
-	///////////////////////////////////////////////////////
-	clusterCN0.p_clk(signal_clk);
-	clusterCN0.p_resetn(signal_resetn);
-
-	clusterCN0.p_to_initiator[0](signal_vci_ini_memc0);
-
-	clusterCN0.p_to_target[0](signal_vci_tgt_proc0);
-	clusterCN0.p_to_target[1](signal_vci_tgt_proc1);
-	clusterCN0.p_to_target[2](signal_vci_tgt_proc2);
-	clusterCN0.p_to_target[3](signal_vci_tgt_proc3);
-
-	clusterCN0.p_gate_initiator(gate_CN[0][1]);
-	clusterCN0.p_gate_target(gate_CN[0][0]);
-
-	clusterCN1.p_clk(signal_clk);
-	clusterCN1.p_resetn(signal_resetn);
-
-	clusterCN1.p_to_initiator[0](signal_vci_ini_memc1);
-
-	clusterCN1.p_to_target[0](signal_vci_tgt_proc4);
-	clusterCN1.p_to_target[1](signal_vci_tgt_proc5);
-	clusterCN1.p_to_target[2](signal_vci_tgt_proc6);
-	clusterCN1.p_to_target[3](signal_vci_tgt_proc7);
-
-        clusterCN1.p_gate_initiator(gate_CN[1][1]);
-	clusterCN1.p_gate_target(gate_CN[1][0]);
-	
-	clusterCN2.p_clk(signal_clk);
-	clusterCN2.p_resetn(signal_resetn);
-
-	clusterCN2.p_to_initiator[0](signal_vci_ini_memc2);
-
-	clusterCN2.p_to_target[0](signal_vci_tgt_proc8);
-	clusterCN2.p_to_target[1](signal_vci_tgt_proc9);
-	clusterCN2.p_to_target[2](signal_vci_tgt_proc10);
-	clusterCN2.p_to_target[3](signal_vci_tgt_proc11);
-
-	clusterCN2.p_gate_initiator(gate_CN[2][1]);
-	clusterCN2.p_gate_target(gate_CN[2][0]);
-
-	clusterCN3.p_clk(signal_clk);
-	clusterCN3.p_resetn(signal_resetn);
-
-	clusterCN3.p_to_initiator[0](signal_vci_ini_memc3);
-
-	clusterCN3.p_to_target[0](signal_vci_tgt_proc12);
-	clusterCN3.p_to_target[1](signal_vci_tgt_proc13);
-	clusterCN3.p_to_target[2](signal_vci_tgt_proc14);
-	clusterCN3.p_to_target[3](signal_vci_tgt_proc15);
-
-	clusterCN3.p_gate_initiator(gate_CN[3][1]);
-	clusterCN3.p_gate_target(gate_CN[3][0]);
-
-	////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////
 
 	int ncycles;
