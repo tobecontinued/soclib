@@ -33,6 +33,8 @@
  * $Id$
  *
  * History:
+ * - 2009-07-08
+ *   Tarik Graba : the iss is now sensitive to high level irqs
  * - 2009-02-15
  *   Tarik Graba : Forked mips32 and sparcv8 to begin lm32
  */
