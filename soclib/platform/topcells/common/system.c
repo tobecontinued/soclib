@@ -89,7 +89,7 @@ uint32_t cpu_cycles()
 #elif defined(PPC)
 	return dcr_get(284);
 #elif defined(__lm32__)
-    t = get_cc();
+    return get_cc();
 #elif defined(__arm__)
 	uint32_t ret;
 	asm (
