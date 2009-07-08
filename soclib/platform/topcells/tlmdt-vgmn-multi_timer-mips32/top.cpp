@@ -29,12 +29,10 @@
 #include <iostream>
 #include <cstdlib>
 #include <sys/timeb.h>
+#include <limits>
 
 #include "loader.h"           	
 #include "mapping_table.h"
-//#include "mips.h"
-//#include "iss_simhelper.h"
-//#include "vci_xcache.h"
 #include "mips32.h"
 #include "iss2_simhelper.h"
 #include "vci_xcache_wrapper.h"
@@ -118,18 +116,6 @@ int _main(int argc, char *argv[])
 	/////////////////////////////////////////////////////////////////////////////
 	soclib::tlmdt::VciVgmn vgmn("vgmn", maptab, IntTab(), n_initiators, 5, network_latence * UNIT_TIME);
 
-	/*
-	/////////////////////////////////////////////////////////////////////////////
-	// VCI_XCACHE 
-	/////////////////////////////////////////////////////////////////////////////
-	soclib::tlmdt::VciXcache<vci_param, soclib::common::IssSimhelper<soclib::common::MipsElIss> > *xcache[n_initiators]; 
-
-	for (int i=0 ; i < n_initiators ; i++) {
-	  std::ostringstream cpu_name;
-	  cpu_name << "cache" << i;
-	  xcache[i] = new soclib::tlmdt::VciXcache<vci_param, soclib::common::IssSimhelper<soclib::common::MipsElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, 8, 4, 8, 4, 500 * UNIT_TIME, simulation_time * UNIT_TIME);
-	}
-	*/
 	/////////////////////////////////////////////////////////////////////////////
 	// VCI_XCACHE_WRAPPER 
 	/////////////////////////////////////////////////////////////////////////////
@@ -188,10 +174,8 @@ int _main(int argc, char *argv[])
 	for (int i=0 ; i < n_initiators ; i++) {
 	  std::ostringstream fake_name;
 	  fake_name << "fake" << i;
-	  //	  fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), soclib::common::MipsElIss::n_irq-1);
 	  fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), soclib::common::Mips32ElIss::n_irq-1);
 
-	  //for(int irq=0; irq<soclib::common::MipsElIss::n_irq-1; irq++){
 	  for(int irq=0; irq<soclib::common::Mips32ElIss::n_irq-1; irq++){
 	    (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq_target[irq+1]);
 	  }

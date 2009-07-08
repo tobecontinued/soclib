@@ -28,6 +28,11 @@
  */
 
 #include <systemc>
+#include <cmath>
+#include <climits>
+#include <limits>
+#include <cstdlib>
+
 #include "centralized_buffer.h"
 
 #ifndef CENTRALIZED_BUFFER_DEBUG
