@@ -6,52 +6,63 @@
  ****************************************/
 
 
-    OUTPUT_FORMAT("elf32-lm32")
-    OUTPUT_ARCH(lm32)
+OUTPUT_FORMAT("elf32-lm32")
+OUTPUT_ARCH(lm32)
 ENTRY(_start)
-    GROUP(-lgcc)
-    __DYNAMIC =0;
+GROUP(-lgcc)
+
+MEMORY {
+    rom (rx) : ORIGIN = 0, LENGTH = 1M
+    ram (!rx): ORIGIN = 0x10000000 , LENGTH = 16M
+    }
+
+__stack = ORIGIN(ram) +  LENGTH(ram)  - 8;
 
 
-    RAM_SIZE = 1M;
-    RAM_START  = 0x00000000;
-    RAM_END = RAM_START + RAM_SIZE;
+SECTIONS
+{ 
+/* The program will be loaded in rom
+ * data and bss should be moved to ram */
+    
+    . = ORIGIN(rom) ;
 
-    __stack = RAM_END - 4;
-
-
-    SECTIONS
-{
-    . = RAM_START;
+    .boot   :
+    {
+        boot.o (.boot)
+    } > rom
+        . = ALIGN(4);
     .text	:
     {
-        . = ALIGN(4);
-        boot.o	(.text)
         crt0.o	(.text)
                *(.text)
-    }
+    } > rom
 
     . = ALIGN(4);
     .rodata : 
     { 
-        *(.rodata)
         *(.rodata*)
-    }
+    } > rom
+
+    __end_of_text__ = . ;
 
     . = ALIGN(4);
-    .data : { *(.data) }
+    .data : { 
+            __data_start__ = . ;
+            *(.data*) 
+            __data_end__ = . ;
+            } > ram AT> rom
 
     . = ALIGN(4);
-    .got : { *(.got) }
 
     .bss : { 
-        . = ALIGN(4);
-        __bss_start = .;
+        __bss_start__ = .;
         *(.bss) 
-            *(COMMON)
-            . = ALIGN(4);
-        __bss_end = .;
-    }
+        *(COMMON)
+        __bss_end__ = .;
+    } > ram AT> rom
+
+    . = ALIGN(4);
+
     _heap = .;
 }
 

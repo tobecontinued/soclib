@@ -67,11 +67,20 @@ int _main(int argc, char *argv[])
 
     // Signals
 
+#ifdef SOCVIEW
     sc_clock	signal_clk("signal_clk");
+#else
+    // modelsim fails to simulate designs where clock
+    // signals have no explicit paeriod
+    sc_time     clk_period(10,SC_NS);
+    sc_clock	signal_clk("signal_clk",clk_period);
+#endif
     sc_signal<bool> signal_resetn("signal_resetn");
 
-    // 32 irq signals 
-    sc_signal<bool> signal_lm32_it [32];
+    // unconnected irq signal 
+    sc_signal<bool> uncon_lm32_it ;
+    // test irq
+    sc_signal<bool> test_lm32_it ;
 
     soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
     soclib::caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
@@ -103,9 +112,12 @@ int _main(int argc, char *argv[])
     //	Net-List
     lm32.p_clk(signal_clk);
     lm32.p_resetn(signal_resetn);
-    // LM32 irq are active low
-    for (int i=0; i<32; i++)
-        lm32.p_irq[i] (signal_lm32_it[i]);
+    // LM32 irq are normally active low
+    // but the iss checks for active high irqs to be easier with SocLib
+    lm32.p_irq[0] (signal_tty_irq0);
+    lm32.p_irq[1] (test_lm32_it);
+    for (int i=2; i<32; i++)
+        lm32.p_irq[i] (uncon_lm32_it);
 
     lm32.p_vci(signal_vci_m0);
 
@@ -121,10 +133,6 @@ int _main(int argc, char *argv[])
     vcitty.p_resetn(signal_resetn);
     vcitty.p_vci(signal_vci_tty);
     vcitty.p_irq[0](signal_tty_irq0);
-    // LM32 irq are active low
-    signal_lm32_it[0] = ~signal_tty_irq0;
-    for (int i=1; i<32; i++)
-        signal_lm32_it[i] = true; 
 
     vgmn.p_clk(signal_clk);
     vgmn.p_resetn(signal_resetn);
@@ -140,9 +148,20 @@ int _main(int argc, char *argv[])
 
     std::cout << maptab;
 
+    uncon_lm32_it = false;
+    test_lm32_it = false;
+
 #ifdef SOCVIEW
     debug();
 #else
+    // some code to test irqs
+    for (int i = 0; i< 9000; i++)
+    sc_start(clk_period);
+    test_lm32_it = true;
+    for (int i = 0; i< 10; i++)
+    sc_start(clk_period);
+    test_lm32_it = false;
+
     sc_start();
 #endif
     return EXIT_SUCCESS;

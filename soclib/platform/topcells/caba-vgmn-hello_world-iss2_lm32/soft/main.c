@@ -30,6 +30,8 @@
 #include "system.h"
 #include "../segmentation.h"
 
+#define IRQ(x) 0x1<<x
+
 /* time function code is in stdio.c */
 extern int time();
 
@@ -44,7 +46,12 @@ int fibo(int n) {
 int main(void) {
 
     printf("Hello from processor %d\n", procnum());
-    printf("Start Time %d\n",time ( (int *) 0));
+    printf("Start Time %d\n",cpu_cycles());
+
+    // enable irqs
+    irq_enable();
+    // unmask irq 1
+    set_irq_mask(IRQ(1));
 
     printf("Fibo(1) = %d\n", fibo(1));
     printf("Fibo(2) = %d\n", fibo(2));
@@ -57,7 +64,16 @@ int main(void) {
     printf("Fibo(9) = %d\n", fibo(9));
     printf("Fibo(10) = %d\n", fibo(10));
 
-    printf("End Time %d\n",time ( (int *) 0));
+    printf("End Time %d\n",cpu_cycles());
 //    while(1);
     return 0;
 }
+
+void interrupt_handler()
+{
+    printf( "\n############################\n");
+    printf(   " irq recieved @ time : %d\n",cpu_cycles());
+    printf(   "############################\n");
+}
+
+#undef IRQ

@@ -1,14 +1,15 @@
-/****************************************
+/************************************************************
  *
  * CRT0 for lm32 hello_world
  * This code initialize the stack pointer
- * clears the bss and call the main function
+ * call ram_init to set data and bss and 
+ * then call the main function
  * The return from the main produces a break
- * which can be caught by a debugger
+ * which could be caught by a debugger
  *
  * Maintainers: tarik.graba@telecom-paristech.fr
  *
- ****************************************/
+ ************************************************************/
 
 .global _crt0
 _crt0:
@@ -16,27 +17,18 @@ _crt0:
     mvhi    sp, hi(__stack)
     ori     sp, sp, lo(__stack)
 
-    /* Clean BSS */
-
-    mvhi    r1, hi(__bss_start)
-    ori     r1, r1, lo(__bss_start)
-    mvhi    r2, hi(__bss_end)
-    ori     r2, r2, lo(__bss_end)
-
-clearbss:
-    be      r1, r2, gotomain 
-    sw      (r1+0), r0
-    addi    r1, r1, 4
-    bi      clearbss
+    /* Set .data .bss */
+_ram_init:
+    calli     ram_init 
 
     /* Jump to main program */
 gotomain:
-    mv      r1,r0
-    mv      r2,r0
     calli   main
 
     /* If we return from main ...*/   
 .global _exit
 _exit:
+    /* If we use simhellper in soclib this will
+     * stop the simulation */
     break
 
