@@ -1,0 +1,40 @@
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('caba:vci_simple_ring_network',
+	classname = 'soclib::caba::VciSimpleRingNetwork',
+	tmpl_parameters = [
+	    parameter.Module('vci_param', default = 'caba:vci_param'),
+            	    
+	],
+	header_files = ['../source/include/vci_simple_ring_network.h',],
+	implementation_files = ['../source/src/vci_simple_ring_network.cpp',],
+	ports = [
+            Port('caba:vci_initiator', 'p_to_target', parameter.Reference('nb_attached_target')),
+	    Port('caba:vci_target', 'p_to_initiator', parameter.Reference('nb_attached_initiator')),
+	    # FIXME: Ports vci
+	    Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+	    Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	],
+	instance_parameters = [
+		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+	        parameter.IntTab('ringid'),
+                parameter.Int('wrapper_fifo_depth'),
+                parameter.Int('nb_attached_initiator'),
+                parameter.Int('nb_attached_target'),
+	],
+	uses = [
+	    Uses('caba:base_module'),
+	    Uses('common:mapping_table'),
+	    Uses('caba:vci_ring_initiator_wrapper'),
+	    Uses('caba:vci_ring_target_wrapper'),            
+	],
+	   extensions = [
+	'dsx:interconnect=root',
+	'dsx:mapping_type=interconnect',
+	'dsx:obtain_ident_method=port',
+	],
+        
+)
