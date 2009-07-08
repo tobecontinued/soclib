@@ -58,6 +58,9 @@ bool ArmIss::coproc_put(
     case REG_ID(7, 0, 6, 1):
 		do_mem_access( XTN_DCACHE_INVAL*4, XTN_WRITE, 4, val, NULL, POST_OP_NONE );
         return true;
+    case REG_ID(7, 0, 10, 4):
+    do_mem_access(4*XTN_SYNC, XTN_READ, 4, 0, NULL, POST_OP_NONE);
+        return true;
     case REG_ID(13, 0, 0, 2):
         m_tls_regs[0] = val;
     return true;
