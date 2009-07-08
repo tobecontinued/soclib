@@ -201,7 +201,31 @@ namespace soclib { namespace common {
         std::cout << m_name << std::endl;
         dump_pc("Before instruction execution :");
         dump_regs("");
+        std::cout << "IRQ Bitfield : " << irq_bit_field << std::endl;
+        std::cout << "IE : " << r_IE.whole << std::endl;
 #endif
+
+        // Let's now handle external interrupts.
+        // we do this before running instructions to avoid exec hazards with loads/stores
+        // bits of r_IM set to '1' means the corresponding interrupt is allowed
+        if (r_IE.IE && (r_IM & irq_bit_field)){ 
+            m_exception = true;      
+            m_exception_cause = X_INTERRUPT ;
+            r_IP = r_IM & irq_bit_field;
+            goto handle_except; 
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << name() << " Taking irqs " << std::hex << irq_bit_field << std::endl 
+            << "Interrupt enable bit : " << r_IE.IE << std::endl
+            << "Interrupt mask : " << r_IM
+            << std::endl;
+        } else {
+            if ( irq_bit_field )
+                std::cout << name() << " Ignoring irqs " << std::hex << irq_bit_field << std::endl
+            << "Interrupt enable bit : " << r_IE.IE << std::endl
+            << "Interrupt mask : " << r_IM
+            << std::endl;
+#endif
+        }
 
         // If there is no hazard, the execute the current instruction.
         // If there is one, then don't do anything !
@@ -214,20 +238,6 @@ namespace soclib { namespace common {
         else {
             run();
         } 
-        // Current instruction has been executed, let's now handle external interrupts.
-        // Active low level sensitive interrupts
-        // bits of r_IM set to '1' means the corresponding interrupt is allowed
-        if (r_IE.IE && (r_IM & ~irq_bit_field)){ 
-            m_exception = true;      
-            m_exception_cause = X_INTERRUPT ;
-            goto handle_except; 
-#ifdef SOCLIB_MODULE_DEBUG
-            std::cout << name() << " Taking irqs " << ~irq_bit_field << std::endl;
-        } else {
-            if ( ~irq_bit_field )
-                std::cout << name() << " Ignoring irqs " << ~irq_bit_field << std::endl;
-#endif
-        }
 
         // Let's now handle traps... or let GDB handle them for us :)
         if (m_exception && debugExceptionBypassed(m_exception_cause))

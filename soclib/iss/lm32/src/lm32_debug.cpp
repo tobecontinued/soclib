@@ -90,7 +90,7 @@ namespace soclib { namespace common {
             DUMP_REG(28,"(sp) r",r_gp[28]);
             DUMP_REG(29,"(ra) r",r_gp[29]);
             std::cout << std::endl;
-            DUMP_REG(30,"(bp) r",r_gp[30]);
+            DUMP_REG(30,"(ea) r",r_gp[30]);
             DUMP_REG(31,"(ba) r",r_gp[31]);
             std::cout << std::endl;
 
