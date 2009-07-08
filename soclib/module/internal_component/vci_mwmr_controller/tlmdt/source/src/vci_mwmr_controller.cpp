@@ -352,7 +352,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
 	else
 	  m_write_channel[m_channel_index].running = atou(payload.get_data_ptr(), j);
 	
-	m_active_event.notify();
+	m_active_event.notify(sc_core::SC_ZERO_TIME);
 	break;
       } // end switch cell
     }
@@ -404,7 +404,7 @@ tmpl(tlm::tlm_sync_enum)::read_fifo_nb_transport_fw  // receive data from initia
     
     if(m_read_fifo[index].n_elements == 0){
       m_read_fifo[index].empty = true;
-      m_fifo_event.notify();
+      m_fifo_event.notify(sc_core::SC_ZERO_TIME);
     }
     
     //send awnser
@@ -456,7 +456,7 @@ tmpl(tlm::tlm_sync_enum)::write_fifo_nb_transport_fw // receive data from initia
     
     if(m_write_fifo[index].n_elements == (m_write_fifo_depth/vci_param::nbytes)){
       m_write_fifo[index].full = true;
-      m_fifo_event.notify();
+      m_fifo_event.notify(sc_core::SC_ZERO_TIME);
     }
     
     //send awnser
