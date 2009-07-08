@@ -168,7 +168,7 @@ int _main(int argc, char *argv[])
 	xring("xring",maptabx, IntTab(), 2, 4, 1);
 
 	// Global interconnect : virtual dspin
-	soclib::caba::VirtualDspinNetwork<2, 2, 1, 1, 37, 1, 3, 5, 6, 0, 35, 33, 1, 3, 8, 9, 0, 18, 18> network("network", 2, 2, NULL);
+	soclib::caba::VirtualDspinNetwork<2, 2, 1, 1, 37, 1, 3, 5, 6, 0, 35, 33, 1, 3, 8, 9, 0, 18, 18, 19, 24, 29, 34> network("network", 2, 2, NULL);
 
 	///////////////////////////////////////////////////////////////
 	// Net-list description

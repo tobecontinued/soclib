@@ -38,6 +38,10 @@ todo = Platform('caba', 'top.cpp',
 
 		in_fifo_size		 = 18,
 		out_fifo_size		 = 18,
+		x_min_offset		 = 19, 
+		x_max_offset		 = 24,
+		y_min_offset		 = 29,
+		y_max_offset		 = 34,
 	),
 
 
