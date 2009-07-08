@@ -21,7 +21,7 @@ Module('common:arm',
     "../src/arm_load_store.cpp",
 	],
 	   constants = {
-	'n_irq':1
+	'n_irq':2
 	},
 	  extensions = [
 	'dsx:cpu=arm'

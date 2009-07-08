@@ -125,10 +125,12 @@ uint32_t ArmIss::executeNCycles(
 	uint32_t irq_state
 	)
 {
-	m_irq_in = irq_state;
+	m_irq_in = irq_state & 0x1;
+	m_fiq_in = irq_state & 0x2;
 	bool r15_changed = false;
 
 	bool accept_external_interrupts = !r_cpsr.irq_disabled && !m_microcode_func;
+	bool accept_fast_external_interrupts = !r_cpsr.fiq_disabled && !m_microcode_func;
 	bool instruction_asked = m_microcode_func == NULL;
 	
 	bool data_req_nok = m_dreq.valid;
@@ -178,7 +180,19 @@ uint32_t ArmIss::executeNCycles(
 		run();
 	}
 
-	if ( irq_state ) {
+	if ( m_fiq_in ) {
+		if ( accept_fast_external_interrupts &&
+			 !r_cpsr.fiq_disabled &&
+			 !m_microcode_func &&
+			 !m_dreq.valid
+			)
+			m_exception = EXCEPT_FIQ;
+#ifdef SOCLIB_MODULE_DEBUG
+		else
+			std::cout << name() << " ignoring FIQs" << std::endl;
+#endif
+	}
+  else if ( m_irq_in ) {
 		if ( accept_external_interrupts &&
 			 !r_cpsr.irq_disabled &&
 			 !m_microcode_func &&
@@ -229,7 +243,7 @@ uint32_t ArmIss::executeNCycles(
 		cpsr_update(new_psr);
 
 		r_gp[14] = r_gp[15] + info.return_offset;
-		r_gp[15] = info.vector_address - 4;
+		r_gp[15] = info.vector_address;
 	}
 
 	m_exception = EXCEPT_NONE;

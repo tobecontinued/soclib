@@ -103,7 +103,7 @@ public:
     static const unsigned int s_pc_register_no = 15;
     static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_LITTLE_ENDIAN;
 
-    static const unsigned int n_irq = 1;
+    static const unsigned int n_irq = 2;
 
     int debugCpuCauseToSignal( uint32_t cause ) const;
 
@@ -293,6 +293,7 @@ private:
         data_t &val );
 
     bool m_irq_in;
+    bool m_fiq_in;
 
     static const char *decode_instr( uint32_t ins );
 
