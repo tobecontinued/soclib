@@ -418,6 +418,10 @@ void ArmIss::do_microcoded_swp_sc()
 		wdata  = r_gp[m_opcode.swp.rm];
 
 		r_gp[m_microcode_opcode.swp.rd] = m_microcode_status.swp.tmp_data;
+        if ( wdata == m_microcode_status.swp.tmp_data ) {
+            m_microcode_func = NULL;
+            return;
+        }
 	}
 	do_mem_access(m_microcode_status.swp.address, DATA_SC,
 				  4, wdata, &m_microcode_status.swp.tmp_data,
