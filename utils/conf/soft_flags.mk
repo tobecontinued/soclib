@@ -45,7 +45,7 @@ arm_CFLAGS = -mlittle-endian -march=armv6k -msoft-float -fsigned-char -mfloat-ab
 arm_LDFLAGS = -EL
 
 lm32_CC_PREFIX 	= 	lm32-elf-
-lm32_CFLAGS 	+=  -gstabs+ -mall-enabled
+lm32_CFLAGS 	+=  -gstabs+ -mmultiply-enabled -mdivide-enabled -msign-extend-enabled -mbarrel-shift-enabled
 lm32_LDFLAGS 	+=  -nostdlib 
 
 -include $(HOME)/.soclib/soft_compilers.conf
