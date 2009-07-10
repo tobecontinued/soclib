@@ -82,6 +82,10 @@ PibusBcu::PibusBcu (	sc_module_name 				name,
 	if (!m_target_table.isAllBelow( m_nb_target )) 
 		throw soclib::exception::ValueError(
            "At least one target index is larger than the number of targets");
+
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << this->name() << ": " << m_target_table << std::endl;
+#endif
 }
 
 PibusBcu::~PibusBcu()
@@ -201,6 +205,10 @@ void PibusBcu::genMealy_sel()
 {
     if((r_fsm_state == FSM_AD) || (r_fsm_state == FSM_DTAD)) {
         size_t index = m_target_table[p_pi.a.read()];
+#ifdef SOCLIB_MODULE_DEBUG
+		std::cout << name() << ": index=" << std::dec << index
+				<< " addr=" << std::hex << p_pi.a.read() << std::endl;
+#endif
         for(size_t i = 0; i < m_nb_target ; i++) {
             if(i == index)  	p_sel[i] = true;
             else			p_sel[i] = false;

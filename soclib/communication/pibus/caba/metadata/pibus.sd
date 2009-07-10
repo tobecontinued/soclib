@@ -8,6 +8,7 @@ Signal('caba:pibus',
 	   classname = 'soclib::caba::Pibus',
 	   accepts = {'caba:pibus_initiator':16,
 	   			  'caba:pibus_target':16,
+	   			  'caba:pibus_monitor':1,
 				  'caba:pibus_bcu_port':1},
 	   header_files = ['../source/include/pibus_signals.h'],
 	   )
@@ -30,3 +31,8 @@ PortDecl('caba:pibus_bcu_port',
 	 header_files = ['../source/include/pibus_bcu_ports.h'],
 	 )
 
+PortDecl('caba:pibus_monitor',
+	classname = 'soclib::caba::PibusMonitor',
+	signal = 'caba:pibus',
+	header_files = ['../source/include/pibus_monitor.h'],
+)

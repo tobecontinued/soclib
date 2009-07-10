@@ -194,14 +194,14 @@ switch (r_fsm_state) {
        
 	case FSM_IDLE:
 	p_req     	= false;
-	p_vci.cmdack 	= true;
+	p_vci.cmdack 	= false;
 	p_vci.rspval 	= false;
 	p_vci.reop	= false;
         break;
 
 	case FSM_REQ:
 	p_req     	= true;
-	p_vci.cmdack 	= true;
+	p_vci.cmdack 	= false;
 	p_vci.rspval 	= false;
 	p_vci.reop	= false;
         break;
@@ -223,15 +223,17 @@ switch (r_fsm_state) {
 	p_vci.rsrcid	= r_srcid.read();
 	p_vci.rpktid	= r_pktid.read();
 	p_vci.rtrdid	= r_trdid.read();
-	p_vci.cmdack	= true;
 	if (p_pi.ack.read() == Pibus::ACK_RDY) {
-		p_vci.rspval 	= true;
+		p_vci.rspval	= r_read;
+		p_vci.cmdack	= true;
 		p_vci.rerror	= 0;
 	} else if (p_pi.ack.read() == Pibus::ACK_ERR) {
-		p_vci.rspval 	= true;
+		p_vci.rspval	= r_read;
+		p_vci.cmdack	= true;
 		p_vci.rerror	= 1;
 	} else {
 		p_vci.rspval	= false;
+		p_vci.cmdack	= false;
 		p_vci.rerror	= 0;
 	}
 	if (r_read == false) 	p_pi.d  	= r_wdata.read();
@@ -245,18 +247,20 @@ switch (r_fsm_state) {
 	case FSM_DT:
 	p_req     	= false;
 	p_pi.lock 	= false;
-	p_vci.cmdack 	= true;
 	p_vci.reop	= true;
 	p_vci.rsrcid	= r_srcid.read();
 	p_vci.rpktid	= r_pktid.read();
 	p_vci.rtrdid	= r_trdid.read();
 	if (p_pi.ack.read() == Pibus::ACK_RDY) {
+		p_vci.cmdack 	= true;
 		p_vci.rspval 	= true;
 		p_vci.rerror	= 0;
 	} else if (p_pi.ack.read() == Pibus::ACK_ERR) {
+		p_vci.cmdack 	= true;
 		p_vci.rspval 	= true;
 		p_vci.rerror	= 1;
 	} else {
+		p_vci.cmdack 	= false;
 		p_vci.rspval	= false;
 		p_vci.rerror	= 0;
 	}

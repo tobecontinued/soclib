@@ -111,6 +111,9 @@ switch (r_fsm_state) {
 	break;
 
 	case FSM_CMD_READ:
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << name() << ": CMD_READ" << std::endl;
+#endif
 	p_vci.cmdval = true;
 	p_vci.rspack = false;
 	p_vci.address	= r_adr.read();
@@ -125,6 +128,9 @@ switch (r_fsm_state) {
 	break;
 	
 	case FSM_RSP_READ:
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << name() << ": RSP_READ" << std::endl;
+#endif
 	p_vci.cmdval = false;
 	p_vci.rspack = true;
 	if (p_vci.rspval) {
@@ -138,6 +144,9 @@ switch (r_fsm_state) {
 	break;
 	
 	case FSM_CMD_WRITE:
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << name() << ": CMD_WRITE" << std::endl;
+#endif
 	p_vci.cmdval = true;
 	p_vci.rspack = false;
 	p_vci.address	= r_adr.read();
@@ -158,6 +167,9 @@ switch (r_fsm_state) {
 	break;
 
 	case FSM_RSP_WRITE:
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << name() << ": RSP_WRITE" << std::endl;
+#endif
 	p_vci.cmdval = false;
 	p_vci.rspack = true;
 	if (p_vci.rspval) {
