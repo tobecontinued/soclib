@@ -33,6 +33,7 @@
 #include "iss2_simhelper.h"
 #include "mips32.h"
 #include "vci_vcache_wrapper.h"
+//#include "vci_vcache_wrapper2.h"
 #include "vci_timer.h"
 #include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
@@ -49,7 +50,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define our VCI parameters
-	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> vci_param;
+	typedef soclib::caba::VciParams<4,8,32,1,1,1,14,4,4,1> vci_param;
 
 	// Mapping table
 
@@ -68,7 +69,7 @@ int _main(int argc, char *argv[])
  
 	maptab.add(Segment("tty"  , TTY_BASE  , TTY_SIZE  , IntTab(2), false));
 	maptab.add(Segment("timer", TIMER_BASE, TIMER_SIZE, IntTab(3), false));
-	maptab.add(Segment("ptba",  PTD_ADDR  , TAB_SIZE  , IntTab(4), false));
+	maptab.add(Segment("ptba",  PTD_ADDR  , TAB_SIZE  , IntTab(4), true));
 	maptab.add(Segment("locks", LOCKS_BASE, LOCKS_SIZE, IntTab(5), false));
 	// Signals
 
@@ -121,10 +122,18 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> signal_tty_irq3("signal_tty_irq3"); 
 
 	// Components
-	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache0("cache0", 0,maptab,IntTab(0),4,4,4,16,4,4,4,16,4,64,16,4,64,16);
-	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache1("cache1", 1,maptab,IntTab(1),4,4,4,16,4,4,4,16,4,64,16,4,64,16);
-	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache2("cache2", 2,maptab,IntTab(2),4,4,4,16,4,4,4,16,4,64,16,4,64,16);
-	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache3("cache3", 3,maptab,IntTab(3),4,4,4,16,4,4,4,16,4,64,16,4,64,16);
+
+	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache0("cache0", 0,maptab,IntTab(0),4,16,4,16,4,64,16,4,64,16,36,16);
+	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache1("cache1", 1,maptab,IntTab(1),4,16,4,16,4,64,16,4,64,16,36,16);
+	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache2("cache2", 2,maptab,IntTab(2),4,16,4,16,4,64,16,4,64,16,36,16);
+	soclib::caba::VciVCacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache3("cache3", 3,maptab,IntTab(3),4,16,4,16,4,64,16,4,64,16,36,16);
+
+/*
+	soclib::caba::VciVCacheWrapper2<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache0("cache0", 0,maptab,IntTab(0),4,16,4,16,4,64,16,4,64,16,36,16);
+	soclib::caba::VciVCacheWrapper2<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache1("cache1", 1,maptab,IntTab(1),4,16,4,16,4,64,16,4,64,16,36,16);
+	soclib::caba::VciVCacheWrapper2<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache2("cache2", 2,maptab,IntTab(2),4,16,4,16,4,64,16,4,64,16,36,16);
+	soclib::caba::VciVCacheWrapper2<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > cache3("cache3", 3,maptab,IntTab(3),4,16,4,16,4,64,16,4,64,16,36,16);
+*/
 
 	soclib::common::Loader loader("soft/bin.soft");
 	soclib::caba::VciSimpleRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);

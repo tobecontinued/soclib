@@ -49,13 +49,18 @@ class VciCcVCacheWrapper2
 ////////////////////////////////////////////
     : public soclib::caba::BaseModule
 {
-    typedef uint32_t addr_t;
+    typedef uint32_t vaddr_t;
     typedef uint32_t data_t;
     typedef uint32_t tag_t;
-    typedef uint32_t be_t;
     typedef uint32_t type_t;
     typedef typename iss_t::DataOperationType data_op_t;
-    typedef sc_dt::sc_uint<36> addr36_t;
+
+    typedef typename vci_param::addr_t  paddr_t;
+    typedef typename vci_param::be_t    vci_be_t;
+	typedef typename vci_param::srcid_t vci_srcid_t;
+	typedef typename vci_param::trdid_t vci_trdid_t;
+	typedef typename vci_param::pktid_t vci_pktid_t;
+	typedef typename vci_param::plen_t  vci_plen_t;
 
     enum icache_fsm_state_e {  
         ICACHE_IDLE,                // 00
@@ -66,93 +71,98 @@ class VciCcVCacheWrapper2
         ICACHE_TLB2_READ,           // 05
         ICACHE_TLB2_WRITE,          // 06
         ICACHE_TLB2_UPDT,           // 07
-        ICACHE_SW_FLUSH1,           // 08
-        ICACHE_SW_FLUSH2,           // 09
-        ICACHE_CACHE_FLUSH,         // 0a
-        ICACHE_TLB_INVAL,           // 0b
-        ICACHE_TLB_INVAL_DONE,      // 0c
-        ICACHE_CACHE_INVAL,         // 0d
-        ICACHE_CACHE_INVAL_DONE,    // 0e
-        ICACHE_MISS_WAIT,           // 0f
-        ICACHE_UNC_WAIT,            // 10
-        ICACHE_MISS_UPDT,           // 11
-        ICACHE_ERROR,               // 12
-        ICACHE_CC_INVAL,            // 13
-        ICACHE_TLB_CC_INVAL,        // 14
-        ICACHE_TLB_FLUSH,           // 15
+        ICACHE_SW_FLUSH,            // 08
+        ICACHE_CACHE_FLUSH,         // 09
+        ICACHE_TLB_INVAL,           // 0a
+        ICACHE_CACHE_INVAL,         // 0b
+        ICACHE_MISS_WAIT,           // 0c
+        ICACHE_UNC_WAIT,            // 0d
+        ICACHE_MISS_UPDT,           // 0e
+        ICACHE_ERROR,               // 0f
+        ICACHE_CC_INVAL,            // 10
+        ICACHE_TLB_CC_INVAL,        // 11
+        ICACHE_TLB_FLUSH,           // 12
     };
 
     enum dcache_fsm_state_e {  
         DCACHE_IDLE,                // 00
         DCACHE_BIS,                 // 01
         DCACHE_DTLB1_READ_CACHE,    // 02
-        DCACHE_TLB1_READ,           // 03
-        DCACHE_TLB1_READ_UPDT,      // 04
-        DCACHE_TLB1_WRITE,          // 05
-        DCACHE_TLB1_UPDT,           // 06
-        DCACHE_DTLB2_READ_CACHE,    // 07
-        DCACHE_TLB2_READ,           // 08
-        DCACHE_TLB2_READ_UPDT,      // 09
-        DCACHE_TLB2_WRITE,          // 0a
-        DCACHE_TLB2_UPDT,           // 0b
-        DCACHE_CTXT_SWITCH1,        // 0c
-        DCACHE_CTXT_SWITCH2,        // 0d
-        DCACHE_ICACHE_FLUSH,        // 0e
-        DCACHE_DCACHE_FLUSH,        // 0f
-        DCACHE_ITLB_INVAL,          // 10
-        DCACHE_DTLB_INVAL,          // 11
-        DCACHE_DTLB_INVAL_DONE,     // 12
+        DCACHE_TLB1_LL_WAIT,        // 03
+        DCACHE_TLB1_SC_WAIT,        // 04
+        DCACHE_TLB1_READ,           // 05
+        DCACHE_TLB1_READ_UPDT,      // 06
+        DCACHE_TLB1_UPDT,           // 07
+        DCACHE_DTLB2_READ_CACHE,    // 08
+        DCACHE_TLB2_LL_WAIT,        // 09
+        DCACHE_TLB2_SC_WAIT,        // 0a
+        DCACHE_TLB2_READ,           // 0b
+        DCACHE_TLB2_READ_UPDT,      // 0c
+        DCACHE_TLB2_UPDT,           // 0d
+        DCACHE_CTXT_SWITCH,         // 0e
+        DCACHE_ICACHE_FLUSH,        // 0f
+        DCACHE_DCACHE_FLUSH,        // 10
+        DCACHE_ITLB_INVAL,          // 11
+        DCACHE_DTLB_INVAL,          // 12
         DCACHE_ICACHE_INVAL,        // 13
         DCACHE_DCACHE_INVAL,        // 14
-        DCACHE_DCACHE_INVAL_DONE,   // 15
-        DCACHE_WRITE_UPDT,          // 16
-        DCACHE_WRITE_DIRTY,         // 17
-        DCACHE_WRITE_REQ,           // 18
-        DCACHE_MISS_WAIT,           // 19
-        DCACHE_MISS_UPDT,           // 1a
-        DCACHE_UNC_WAIT,            // 1b
-        DCACHE_ERROR,               // 1c
-        DCACHE_ITLB_READ,           // 1d
-        DCACHE_ITLB_UPDT,           // 1e
-        DCACHE_ITLB_ET_WRITE,       // 1f
-        DCACHE_CC_CHECK,            // 20
-        DCACHE_CC_INVAL,            // 21
-        DCACHE_CC_UPDT,             // 22
-        DCACHE_CC_NOP,              // 23
-        DCACHE_TLB_CC_INVAL,        // 24
-        DCACHE_ITLB_CLEANUP,        // 25
+        DCACHE_LL_DIRTY_WAIT,       // 15
+        DCACHE_SC_DIRTY_WAIT,       // 16
+        DCACHE_WRITE_UPDT,          // 17
+        DCACHE_WRITE_DIRTY,         // 18
+        DCACHE_WRITE_REQ,           // 19
+        DCACHE_MISS_WAIT,           // 1a
+        DCACHE_MISS_UPDT,           // 1b
+        DCACHE_UNC_WAIT,            // 1c
+        DCACHE_ERROR,               // 1d
+        DCACHE_ITLB_READ,           // 1e
+        DCACHE_ITLB_UPDT,           // 1f
+        DCACHE_ITLB_LL_WAIT,        // 20
+        DCACHE_ITLB_SC_WAIT,        // 21
+        DCACHE_CC_CHECK,            // 22
+        DCACHE_CC_INVAL,            // 23
+        DCACHE_CC_UPDT,             // 24
+        DCACHE_CC_NOP,              // 25
+        DCACHE_TLB_CC_INVAL,        // 26
+        DCACHE_ITLB_CLEANUP,        // 27
     };
 
     enum cmd_fsm_state_e {      
         CMD_IDLE,                   // 00
         CMD_ITLB_READ,              // 01
-        CMD_ITLB_WRITE,             // 02
-        CMD_INS_MISS,               // 03
-        CMD_INS_UNC,                // 04
-        CMD_DTLB_READ,              // 05
-        CMD_DTLB_WRITE,             // 06
-        CMD_DTLB_DIRTY,             // 07
-        CMD_DATA_UNC,               // 08
-        CMD_DATA_MISS,              // 09
-        CMD_DATA_WRITE,             // 0a
-        CMD_INS_CLEANUP,            // 0b
-        CMD_DATA_CLEANUP,           // 0c
+        CMD_ITLB_ACC_LL,            // 02
+        CMD_ITLB_ACC_SC,            // 03
+        CMD_INS_MISS,               // 04
+        CMD_INS_UNC,                // 05
+        CMD_DTLB_READ,              // 06
+        CMD_DTLB_ACC_LL,            // 07
+        CMD_DTLB_ACC_SC,            // 08
+        CMD_DTLB_DIRTY_LL,          // 09
+        CMD_DTLB_DIRTY_SC,          // 0a
+        CMD_DATA_UNC,               // 0b
+        CMD_DATA_MISS,              // 0c
+        CMD_DATA_WRITE,             // 0d
+        CMD_INS_CLEANUP,            // 0e
+        CMD_DATA_CLEANUP,           // 0f
     };
 
     enum rsp_fsm_state_e {       
         RSP_IDLE,                   // 00
         RSP_ITLB_READ,              // 01
-        RSP_ITLB_WRITE,             // 02
-        RSP_INS_MISS,               // 03
-        RSP_INS_UNC,                // 04
-        RSP_DTLB_READ,              // 05
-        RSP_DTLB_WRITE,             // 06
-        RSP_DTLB_DIRTY,             // 07
-        RSP_DATA_MISS,              // 08
-        RSP_DATA_UNC,               // 09
-        RSP_DATA_WRITE,             // 0a
-        RSP_INS_CLEANUP,            // 0b
-        RSP_DATA_CLEANUP,           // 0c
+        RSP_ITLB_ACC_LL,            // 02
+        RSP_ITLB_ACC_SC,            // 03
+        RSP_INS_MISS,               // 04
+        RSP_INS_UNC,                // 05
+        RSP_DTLB_READ,              // 06
+        RSP_DTLB_ACC_LL,            // 07
+        RSP_DTLB_ACC_SC,            // 08
+        RSP_DTLB_DIRTY_LL,          // 09
+        RSP_DTLB_DIRTY_SC,          // 0a
+        RSP_DATA_MISS,              // 0b
+        RSP_DATA_UNC,               // 0c
+        RSP_DATA_WRITE,             // 0d
+        RSP_INS_CLEANUP,            // 0e
+        RSP_DATA_CLEANUP,           // 0f
     };
 
     enum tgt_fsm_state_e {  
@@ -167,18 +177,16 @@ class VciCcVCacheWrapper2
 
     enum inval_itlb_fsm_state_e {
         INVAL_ITLB_IDLE,            // 00
-        INVAL_ITLB_CHECK_FIRST,     // 01
+        INVAL_ITLB_CHECK,           // 01
         INVAL_ITLB_INVAL,           // 02
-        INVAL_ITLB_CHECK,           // 03
-        INVAL_ITLB_CLEAR,           // 04
+        INVAL_ITLB_CLEAR,           // 03
     };
 
     enum inval_dtlb_fsm_state_e {
         INVAL_DTLB_IDLE,            // 00
-        INVAL_DTLB_CHECK_FIRST,     // 01
+        INVAL_DTLB_CHECK,           // 01
         INVAL_DTLB_INVAL,           // 02
-        INVAL_DTLB_CHECK,           // 03
-        INVAL_DTLB_CLEAR,           // 04
+        INVAL_DTLB_CLEAR,           // 03
     };
 
     // TLB Mode
@@ -215,18 +223,13 @@ private:
     soclib::common::AddressDecodingTable<uint32_t, bool>    m_cacheability_table;
     const soclib::common::Segment                           m_segment;
     iss_t                                                   m_iss;   
-    const uint32_t                                          m_srcid;
-    addr_t                                                  m_cleanup_address;
+    const vci_srcid_t                                       m_srcid;
 
-    const size_t  m_itlb_m_ways;
-    const size_t  m_itlb_m_sets;
-    const size_t  m_itlb_k_ways;
-    const size_t  m_itlb_k_sets;
+    const size_t  m_itlb_ways;
+    const size_t  m_itlb_sets;
 
-    const size_t  m_dtlb_m_ways;
-    const size_t  m_dtlb_m_sets;
-    const size_t  m_dtlb_k_ways;
-    const size_t  m_dtlb_k_sets;
+    const size_t  m_dtlb_ways;
+    const size_t  m_dtlb_sets;
 
     const size_t  m_icache_ways;
     const size_t  m_icache_sets;
@@ -238,47 +241,54 @@ private:
     const size_t  m_dcache_yzmask;
     const size_t  m_dcache_words;
 
-    // instruction and data vcache tlb instances 
-    soclib::caba::GenericCcTlb<addr36_t>    icache_m_tlb;
-    soclib::caba::GenericCcTlb<addr36_t>    icache_k_tlb;
-    soclib::caba::GenericCcTlb<addr36_t>    dcache_m_tlb;
-    soclib::caba::GenericCcTlb<addr36_t>    dcache_k_tlb;
+    const size_t  m_paddr_nbits;  
+    const size_t  m_write_buf_size;  
 
-    sc_signal<addr_t>       r_mmu_ptpr;             // page table pointer register
+    // instruction and data vcache tlb instances 
+    soclib::caba::GenericCcTlb<paddr_t>    icache_tlb;
+    soclib::caba::GenericCcTlb<paddr_t>    dcache_tlb;
+
+    sc_signal<vaddr_t>      r_mmu_ptpr;             // page table pointer register
     sc_signal<int>          r_mmu_mode;             // tlb mode register
 
     // DCACHE FSM REGISTERS
     sc_signal<int>          r_dcache_fsm;               // state register
-    sc_signal<addr36_t>     r_dcache_paddr_save;        // physical address
+    sc_signal<paddr_t>      r_dcache_paddr_save;        // physical address
     sc_signal<data_t>       r_dcache_wdata_save;        // write data
     sc_signal<data_t>       r_dcache_rdata_save;        // read data
     sc_signal<type_t>       r_dcache_type_save;         // access type
-    sc_signal<be_t>         r_dcache_be_save;           // byte enable
+    sc_signal<vci_be_t>     r_dcache_be_save;           // byte enable
     sc_signal<bool>         r_dcache_cached_save;       // used by the write buffer
-    sc_signal<addr36_t>     r_dcache_tlb_paddr;         // physical address of tlb miss
+    sc_signal<paddr_t>      r_dcache_tlb_paddr;         // physical address of tlb miss
     sc_signal<bool>         r_dcache_dirty_save;        // used for TLB dirty bit update
     sc_signal<size_t>       r_dcache_tlb_set_save;      // used for TLB dirty bit update
     sc_signal<size_t>       r_dcache_tlb_way_save;      // used for TLB dirty bit update
-    sc_signal<addr_t>       r_dcache_id1_save;          // used by the PT1 bypass
-    sc_signal<addr36_t>     r_dcache_ptba_save;         // used by the PT1 bypass
+    sc_signal<vaddr_t>      r_dcache_id1_save;          // used by the PT1 bypass
+    sc_signal<paddr_t>      r_dcache_ptba_save;         // used by the PT1 bypass
     sc_signal<bool>         r_dcache_ptba_ok;           // used by the PT1 bypass
     sc_signal<data_t>       r_dcache_pte_update;        // used for page table update
+    sc_signal<data_t>       r_dcache_ppn_update;        // used for physical page number update 
     sc_signal<tag_t>        r_dcache_ppn_save;          // used for speculative cache access
     sc_signal<tag_t>        r_dcache_vpn_save;          // used for speculative cache access
-    sc_signal<bool>         r_dcache_page_k_save;       // used for write dirty bit
     sc_signal<bool>         r_dtlb_translation_valid;   // used for speculative address
     sc_signal<bool>         r_dcache_buf_unc_valid;     // used for uncached read
     sc_signal<bool>         r_dcache_hit_p_save;        // used to save hit_p in case BIS
 
     sc_signal<data_t>       r_dcache_error_type;        // software visible register
-    sc_signal<addr_t>       r_dcache_bad_vaddr;         // software visible register 
+    sc_signal<vaddr_t>      r_dcache_bad_vaddr;         // software visible register 
 
     sc_signal<bool>         r_dcache_miss_req;          // used for cached read miss
     sc_signal<bool>         r_dcache_unc_req;           // used for uncached read miss
     sc_signal<bool>         r_dcache_write_req;         // used for write 
-    sc_signal<bool>         r_dcache_tlb_read_req;      // used for tlb ptba or pte read 
-    sc_signal<bool>         r_dcache_tlb_et_req;        // used for tlb entry type update
-    sc_signal<bool>         r_dcache_tlb_dirty_req;     // used for tlb dirty bit update 
+    sc_signal<bool>         r_dcache_tlb_read_req;      // used for tlb ptba or pte read
+
+    sc_signal<bool>         r_dcache_llsc_reserved;     // used for check address reserved
+    sc_signal<paddr_t>      r_dcache_llsc_addr_save;    // used for save llsc address
+ 
+    sc_signal<bool>         r_dcache_tlb_ll_acc_req;    // used for tlb access bit update
+    sc_signal<bool>         r_dcache_tlb_sc_acc_req;    // used for tlb access bit update
+    sc_signal<bool>         r_dcache_tlb_ll_dirty_req;  // used for tlb dirty bit update 
+    sc_signal<bool>         r_dcache_tlb_sc_dirty_req;  // used for tlb dirty bit update 
     sc_signal<bool>         r_dcache_tlb_ptba_read;     // used for tlb ptba read when write dirty bit 
     sc_signal<bool>         r_dcache_xtn_req;           // used for xtn write for ICACHE
 
@@ -290,41 +300,43 @@ private:
     sc_signal<size_t>       r_dcache_way;
     sc_signal<size_t>       r_dcache_set;
     sc_signal<bool>         r_dcache_cleanup_req;       // data cleanup request
-    sc_signal<data_t>       r_dcache_cleanup_line;      // data cleanup NLINE
+    sc_signal<paddr_t>      r_dcache_cleanup_line;      // data cleanup NLINE
     sc_signal<bool>         r_dcache_inval_rsp;         // data cache invalidate
 
     // ICACHE FSM REGISTERS
     sc_signal<int>          r_icache_fsm;               // state register
-    sc_signal<addr36_t>     r_icache_paddr_save;        // physical address
-    sc_signal<addr_t>       r_icache_id1_save;          // used by the PT1 bypass
-    sc_signal<addr36_t>     r_icache_ptba_save;         // used by the PT1 bypass
+    sc_signal<paddr_t>      r_icache_paddr_save;        // physical address
+    sc_signal<vaddr_t>      r_icache_id1_save;          // used by the PT1 bypass
+    sc_signal<paddr_t>      r_icache_ptba_save;         // used by the PT1 bypass
     sc_signal<bool>         r_icache_ptba_ok;           // used by the PT1 bypass
     sc_signal<data_t>       r_icache_pte_update;        // used for page table update
     sc_signal<tag_t>        r_icache_ppn_save;          // used for speculative cache access
     sc_signal<tag_t>        r_icache_vpn_save;          // used for speculative cache access
-    sc_signal<bool>         r_icache_page_k_save;       // used for write dirty bit
     sc_signal<bool>         r_itlb_translation_valid;   // used for speculative physical address
     sc_signal<bool>         r_icache_buf_unc_valid;     // used for uncached read
 
     sc_signal<data_t>       r_icache_error_type;        // software visible registers
-    sc_signal<addr_t>       r_icache_bad_vaddr;         // software visible registers
+    sc_signal<vaddr_t>      r_icache_bad_vaddr;         // software visible registers
 
     sc_signal<bool>         r_icache_miss_req;          // used for cached read miss
     sc_signal<bool>         r_icache_unc_req;           // used for uncached read miss
     sc_signal<bool>         r_dcache_itlb_read_req;     // used for tlb ptba or pte read 
-    sc_signal<bool>         r_dcache_itlb_et_req;       // used for tlb entry type update
 
-    sc_signal<bool>	        r_icache_tlb_read_dcache_req;   // used for instruction tlb miss, request in data cache
-    sc_signal<bool>	        r_icache_tlb_et_dcache_req;     // used for itlb update entry type bits via dcache
+    sc_signal<bool>         r_dcache_itlb_ll_acc_req;   // used for tlb access bit update
+    sc_signal<bool>         r_dcache_itlb_sc_acc_req;   // used for tlb access bit update
+
+    sc_signal<bool>	        r_itlb_read_dcache_req;     // used for instruction tlb miss, request in data cache
+    sc_signal<bool>	        r_itlb_acc_dcache_req;          // used for itlb update access bit via dcache
     sc_signal<bool>	        r_dcache_rsp_itlb_error;        // used for data cache rsp error when itlb miss
     sc_signal<data_t>	    r_dcache_rsp_itlb_miss;	        // used for dcache rsp data when itlb miss
+    sc_signal<data_t>	    r_dcache_rsp_itlb_ppn;	        // used for dcache rsp ppn when itlb miss
 
     // coherence registers
     sc_signal<int>          r_icache_fsm_save;          // state save register
     sc_signal<size_t>       r_icache_way;
     sc_signal<size_t>       r_icache_set;
     sc_signal<bool>         r_icache_cleanup_req;       // ins cleanup request
-    sc_signal<data_t>       r_icache_cleanup_line;      // ins cleanup NLINE
+    sc_signal<paddr_t>      r_icache_cleanup_line;      // ins cleanup NLINE
     sc_signal<bool>         r_icache_inval_rsp;         // ins cache invalidate
 
     // VCI_CMD FSM REGISTERS
@@ -336,8 +348,6 @@ private:
     // VCI_RSP FSM REGISTERS
     sc_signal<int>          r_vci_rsp_fsm;
     sc_signal<size_t>       r_vci_rsp_cpt;
-    sc_signal<data_t>       r_vci_rsp_itlb_miss;
-    sc_signal<data_t>       r_vci_rsp_dtlb_miss;
     sc_signal<bool>         r_vci_rsp_ins_error;
     sc_signal<bool>         r_vci_rsp_data_error;
 
@@ -349,13 +359,13 @@ private:
     bool                    *r_tgt_val;
 
     sc_signal<int>          r_vci_tgt_fsm;
-    sc_signal<addr36_t>     r_tgt_addr;
+    sc_signal<paddr_t>      r_tgt_addr;
     sc_signal<size_t>       r_tgt_word;
     sc_signal<bool>         r_tgt_update;
-    sc_signal<size_t>       r_tgt_srcid;
-    sc_signal<size_t>       r_tgt_pktid;
-    sc_signal<size_t>       r_tgt_trdid;
-    sc_signal<size_t>       r_tgt_plen;
+    sc_signal<vci_srcid_t>  r_tgt_srcid;
+    sc_signal<vci_pktid_t>  r_tgt_pktid;
+    sc_signal<vci_trdid_t>  r_tgt_trdid;
+    sc_signal<vci_plen_t>   r_tgt_plen;
     sc_signal<bool>         r_tgt_req;
     sc_signal<bool>         r_tgt_icache_req;
     sc_signal<bool>         r_tgt_dcache_req;
@@ -365,33 +375,34 @@ private:
     // INVAL CHECK FSM
     sc_signal<int>          r_inval_itlb_fsm;          
     sc_signal<bool>         r_dcache_itlb_inval_req;
-    sc_signal<data_t>       r_dcache_itlb_inval_line;
+    sc_signal<paddr_t>      r_dcache_itlb_inval_line;
     sc_signal<bool>         r_itlb_cc_check_end;
-    sc_signal<bool>         r_ccinval_k_itlb_req; 
     sc_signal<size_t>       r_ccinval_itlb_way; 
     sc_signal<size_t>       r_ccinval_itlb_set; 
     sc_signal<bool>         r_icache_inval_tlb_rsp;
-    sc_signal<data_t>       r_icache_tlb_nline;
+    sc_signal<paddr_t>      r_icache_tlb_nline;
 
     sc_signal<int>          r_inval_dtlb_fsm;          
     sc_signal<bool>         r_dcache_dtlb_inval_req;
-    sc_signal<data_t>       r_dcache_dtlb_inval_line;
+    sc_signal<paddr_t>      r_dcache_dtlb_inval_line;
     sc_signal<bool>         r_dtlb_cc_check_end;
-    sc_signal<bool>         r_ccinval_k_dtlb_req; 
     sc_signal<size_t>       r_ccinval_dtlb_way; 
     sc_signal<size_t>       r_ccinval_dtlb_set; 
     sc_signal<bool>         r_dcache_inval_tlb_rsp;
-    sc_signal<data_t>       r_dcache_tlb_nline;
+    sc_signal<paddr_t>      r_dcache_tlb_nline;
 
     sc_signal<bool>         r_dcache_itlb_cleanup_req;
-    sc_signal<data_t>       r_dcache_itlb_cleanup_line;
+    sc_signal<paddr_t>      r_dcache_itlb_cleanup_line;
 
     sc_signal<bool>         r_dcache_dtlb_cleanup_req;
-    sc_signal<data_t>       r_dcache_dtlb_cleanup_line;
+    sc_signal<paddr_t>      r_dcache_dtlb_cleanup_line;
 
-    WriteBuffer<addr36_t>     r_wbuf;
-    GenericCache<addr36_t>    r_icache;
-    GenericCache<addr36_t>    r_dcache;
+    sc_signal<bool>         r_itlb_inval_req;
+    sc_signal<bool>         r_dcache_cc_check;
+
+    WriteBuffer<paddr_t>     r_wbuf;
+    GenericCache<paddr_t>    r_icache;
+    GenericCache<paddr_t>    r_dcache;
 
     // Activity counters
     uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
@@ -485,21 +496,18 @@ public:
         const soclib::common::MappingTable &mtc,
         const soclib::common::IntTab &initiator_index,
         const soclib::common::IntTab &target_index,
-        size_t itlb_m_ways,
-        size_t itlb_m_sets,
-        size_t itlb_k_ways,
-        size_t itlb_k_sets,
-        size_t dtlb_m_ways,
-        size_t dtlb_m_sets,
-        size_t dtlb_k_ways,
-        size_t dtlb_k_sets,
+        size_t itlb_ways,
+        size_t itlb_sets,
+        size_t dtlb_ways,
+        size_t dtlb_sets,
         size_t icache_ways,
         size_t icache_sets,
         size_t icache_words,
         size_t dcache_ways,
         size_t dcache_sets,
-        size_t dcache_words, 
-        addr_t cleanup_offset );
+        size_t dcache_words,
+        size_t paddr_nbits,
+        size_t write_buf_size );
 
     ~VciCcVCacheWrapper2();
 

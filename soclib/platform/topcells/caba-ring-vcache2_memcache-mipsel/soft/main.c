@@ -41,34 +41,25 @@ int main()
         uint32_t * ptd_table;
         ptd_table = (uint32_t *)PTD_ADDR;
 
-        ptd_table[0] = 0x00000000; 	// unused
-        //ptd_table[1] = 0x40040203; 	// PTD for instruction 	 
-        ptd_table[1] = 0x410100C0; 	// PTD for instruction 	 
-        //ptd_table[2] = 0x40040202; 	// PTD for tty
-        ptd_table[2] = 0x41010080; 	// PTD for tty
-        ptd_table[4] = 0x80000114; 	// PTE for proc
-        ptd_table[8] = 0x80000214; 	// PTE for proc
-        ptd_table[64] = 0x80001034; 	// PTE for data ram
-        ptd_table[512] = 0x8000802E; 	// PTE for exception
-        //ptd_table[128] = 0x80002014; 	// PTE for mc_r
-        ptd_table[704] = 0x8000B014; 	// PTE for xram
-        ptd_table[832] = 0x8000D014; 	// PTE for timer
-        ptd_table[896] = 0x8000E014; 	// PTE for lock
-        //ptd_table[960] = 0x8000F014; 	// PTE for proc
+        ptd_table[2] = 0xC0040403; 	// PTD for instruction 	 
+        ptd_table[4] = 0xC0040402; 	// PTD for tty
+
+        ptd_table[128] = 0x8D000080; 	// PTE for data ram
+        ptd_table[1024] = 0x8D800400; 	// PTE for exception
 	
 	// tty pte
         uint32_t * pte_table;
         pte_table = (uint32_t *)PTE_ADDR;
-        pte_table[0] = 0x83008014;	//tty no global
+        pte_table[0] = 0x85000000;	//tty no global
+        pte_table[1] = 0x000C0200;	//tty no global
 
 	// instruction pte
         uint32_t * ipte_table;
         ipte_table = (uint32_t *)IPTE_ADDR;
-	ipte_table[0] = 0x8001002C;
+	ipte_table[0] = 0x8B000000;
+	ipte_table[1] = 0x00000400;
 
 	puts("Page table are defined! \n");
-
-        //static inline void set_cp2(uint32_t val, uint32_t reg), file : common/system_mips.h
 
 	// context switch and tlb mode change
 	set_cp2(0x04040000, 0x0);	// context switch
@@ -82,7 +73,7 @@ int main()
 	puts("dcache flush done!\n");
 
 	// cache inval
-	set_cp2(0x004000a4, 0x6);
+	//set_cp2(0x004000a4, 0x6);
 	set_cp2(0x004000c4, 0x6);
 	puts("icache invalidation test good :-)\n");
 	set_cp2(0x00800000, 0x7);
@@ -96,7 +87,6 @@ int main()
 	puts("dtlb invalidation test good :-) \n");
 
 /* -------------------------------------------------- */
-
   register int p; 
 
   p=procnum();

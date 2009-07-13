@@ -161,7 +161,7 @@ public:
         std::memset(r_lru, 0, sizeof(*r_lru)*m_ways*m_sets);
     }
 
-    inline bool flush(size_t way, size_t set, data_t* nline)
+    inline bool flush(size_t way, size_t set, addr_t* nline)
     {
         if ( cache_val(way,set) ) 
         {
@@ -507,9 +507,9 @@ public:
                       addr_t* victim )
     {
         size_t      set     = m_y[ad];
+        size_t      selway  = 0;
         bool        found   = false;
         bool        cleanup = false;
-        size_t      selway  = 0;
 
         for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
             if ( !cache_val(way, set) ) {
@@ -570,7 +570,7 @@ public:
                         size_t n_way, size_t n_set, 
                         data_t* buf )
     {
-        tag_t       tag     = m_z[ad];
+        tag_t tag = m_z[ad];
 
         cache_tag(n_way, n_set) = tag;
         cache_val(n_way, n_set) = true;

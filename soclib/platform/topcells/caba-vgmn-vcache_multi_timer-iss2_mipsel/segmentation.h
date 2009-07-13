@@ -69,10 +69,10 @@
 /////////////////////////////////////////////////////////////////
 //	page table (initialised)
 /////////////////////////////////////////////////////////////////
-#define PTD_ADDR	0x40200000
-#define PTE_ADDR	0x40202000	// tty
-#define IPTE_ADDR	0x40203000  	// instruction
-#define TPTE_ADDR	0x40201000	// timer
+#define PTD_ADDR	0x40400000
+#define PTE_ADDR	0x40402000	// tty
+//#define IPTE_ADDR	0x40403000  	// instruction
+#define TPTE_ADDR	0x40403000	// timer
 #define	TAB_SIZE	0x00010000
 
 #define	V_TTY_BASE	0x00800000	// tty virtual address 

@@ -56,6 +56,7 @@ void irq_handler(int irq)
 
 int main(void)
 {
+/*
 	// define the page table entry
         uint32_t * ptd_table;
         ptd_table = (uint32_t *)PTD_ADDR;
@@ -91,13 +92,58 @@ int main(void)
         uint32_t * ipte_table;
         ipte_table = (uint32_t *)IPTE_ADDR;
 	ipte_table[0] = 0x8001002C;
+*/
+
+	// define the page table entry
+        uint32_t * ptd_table;
+        ptd_table = (uint32_t *)PTD_ADDR;
+
+	ptd_table[2] = 0x8B000002;	// PTE for instruction
+	ptd_table[4] = 0xC0040402;	// PTD for tty
+
+        ptd_table[6] = 0xC0040403; 	// PTD for timer
+        ptd_table[128] = 0x8D000080; 	// PTE for data ram
+        ptd_table[1024] = 0x8B800400; 	// PTE for exception
+        ptd_table[1425] = 0x85000591; 	// PTE for lock
+
+	// timer pte
+	uint32_t * tpte_table;
+        tpte_table = (uint32_t *)TPTE_ADDR;
+	tpte_table[0] = 0x85000000;	//timer no global
+        tpte_table[1] = 0x000B0200;	//timer no global
+	
+	// tty pte
+        uint32_t * pte_table;
+        pte_table = (uint32_t *)PTE_ADDR;
+        pte_table[0] = 0x85000000;	//tty no global
+        pte_table[1] = 0x000C0200;	//tty no global
 	
 	puts("Page table are defined! \n");
 
 	// context switch and tlb mode change
-	set_cp2(0x04020000, 0x0);	// context switch
+	set_cp2(0x04040000, 0x0);	// context switch
 	set_cp2(3, 0x1);		// TLB enable
 	puts("Context switch(TLB flush) and TLB enable!\n");
+
+	set_cp2(0, 0x2);
+	puts("icache flush done!\n");
+
+	set_cp2(0, 0x3);
+	puts("dcache flush done!\n");
+
+	// cache inval
+	//set_cp2(0x004000a4, 0x6);
+	set_cp2(0x004000c4, 0x6);
+	puts("icache invalidation test good :-)\n");
+	set_cp2(0x00800000, 0x7);
+	puts("dcache invalidation test good :-) \n");
+
+	// tlb inval
+	puts("TLB invalidation test begin: \n");
+	set_cp2(0x00400000, 0x4);
+	puts("itlb invalidation test good :-) \n");
+	set_cp2(0x00800000, 0x5);
+	puts("dtlb invalidation test good :-) \n");
 
 	const int cpu = procnum();
 
