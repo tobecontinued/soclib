@@ -199,12 +199,13 @@ class VciCcVCacheWrapper2Ring
         INVAL_DTLB_CLEAR,           // 03
     };
 
-    // TLB Mode
-    enum {
-        TLBS_DEACTIVE,  // instruction TLB deactive and data TLB deactive
-        ITLB_A_DTLB_D,  // instruction TLB   active and data TLB deactive
-        ITLB_D_DTLB_A,  // instruction TLB deactive and data TLB   active
-        TLBS_ACTIVE,    // instruction TLB   active and data TLB   active
+    // TLB Mode ITLB / DTLB / ICACHE / DCACHE
+    enum {          
+        ALL_DEACTIVE = 0x0000,   // TLBs disactive caches disactive
+        INS_TLB_MASK    = 0x8,
+        DATA_TLB_MASK   = 0x4,
+        INS_CACHE_MASK  = 0x2,
+        DATA_CACHE_MASK = 0x1,
     };
 
     // Error Type

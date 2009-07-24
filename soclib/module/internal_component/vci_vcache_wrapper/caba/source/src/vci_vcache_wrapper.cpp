@@ -329,8 +329,9 @@ tmpl(void)::transition()
         icache_tlb.reset();    
         dcache_tlb.reset();   
 
-        r_mmu_mode = TLBS_DEACTIVE;
-
+        // TLBs and Caches disactive
+        r_mmu_mode = ALL_DEACTIVE;
+    
         r_icache_miss_req         = false;
         r_icache_unc_req          = false;
         r_icache_tlb_read_req     = false;
@@ -554,7 +555,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // - If MMU activated : cacheability is defined by the cachable bit in the TLB
         // - If MMU not activated : cacheability is defined by the segment table.
 
-        if ( r_mmu_mode == TLBS_DEACTIVE || r_mmu_mode == ITLB_D_DTLB_A )   // MMU not activated 
+        if ( !(r_mmu_mode.read() & INS_TLB_MASK) )   // MMU not activated 
         {
             icache_hit_t  = true;         
             icache_hit_x  = true;         
@@ -563,7 +564,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             spc_ipaddr    = ireq.addr;
             icache_cached = m_cacheability_table[ireq.addr];
         } 
-        else                                                                // MMU activated
+        else                                                   // MMU activated
         { 
             m_cpt_ins_tlb_read++;
             icache_hit_t  = icache_tlb.translate(ireq.addr, &tlb_ipaddr, &icache_pte_info, 
@@ -572,6 +573,11 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             icache_hit_p  = (((ireq.addr >> PAGE_M_NBITS) == r_icache_id1_save) && r_icache_ptba_ok); 
             spc_ipaddr    = ((paddr_t)r_icache_ppn_save << PAGE_K_NBITS) | (paddr_t)(ireq.addr & PAGE_K_MASK);
             icache_cached = icache_pte_info.c; 
+        }
+
+        if ( !(r_mmu_mode.read() & INS_CACHE_MASK) )   // cache not actived
+        {
+            icache_cached = false;
         }
 
         if ( ireq.valid ) 
@@ -590,7 +596,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 icache_ins = r_icache_miss_buf[0];
             }
 
-            if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
+            if ( r_mmu_mode.read() & INS_TLB_MASK ) 
             {
                 if ( icache_hit_t ) 
                 {
@@ -992,7 +998,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         paddr_t ipaddr;                     
         bool    icache_hit_t;
 
-        if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
+        if ( r_mmu_mode.read() & INS_TLB_MASK ) 
         {
             icache_hit_t = icache_tlb.translate(r_dcache_wdata_save, &ipaddr); 
         } 
@@ -1342,7 +1348,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             // - If MMU activated : cacheability is defined by the cachable bit in the TLB
             // - If MMU not activated : cacheability is defined by the segment table.
 
-            if ( r_mmu_mode == TLBS_DEACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) // MMU not activated
+            if ( !(r_mmu_mode.read() & DATA_TLB_MASK) ) // MMU not activated
             {
                 dcache_hit_t  = true;       
                 dcache_hit_x  = true;   
@@ -1366,6 +1372,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                                   (dreq.type != iss_t::XTN_READ) && (dreq.type != iss_t::XTN_WRITE));    
             }
 
+            if ( !(r_mmu_mode.read() & DATA_CACHE_MASK) )   // cache not actived
+            {
+                dcache_cached = false;
+            }
+
             // dcache_hit_c & dcache_rdata
             if ( dcache_cached )    // using speculative physical address for cached access
             {
@@ -1377,7 +1388,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
-            if ((r_mmu_mode == TLBS_ACTIVE) || (r_mmu_mode == ITLB_D_DTLB_A)) 
+            if ( r_mmu_mode.read() & DATA_TLB_MASK )   
             {
                 // Checking access rights
                 if ( dcache_hit_t ) 
@@ -1487,7 +1498,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                             r_dcache_fsm = DCACHE_WRITE_UPDT;
 
                         } 
-                        else if ( !dcache_pte_info.d && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   // dirty bit update required
+                        else if ( !dcache_pte_info.d && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
                         {
                             if (dcache_tlb.getpagesize(dcache_tlb_way, dcache_tlb_set)) 
                             {
@@ -1595,7 +1606,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 r_dcache_fsm = DCACHE_WRITE_UPDT;
 
             } 
-            else if ( !r_dcache_dirty_save && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   // dirty bit update required
+            else if ( !r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
             {
                 if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
                 {
@@ -2009,7 +2020,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         paddr_t dpaddr;
         bool dcache_hit_t; 
 
-        if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_D_DTLB_A ) 
+        if ( r_mmu_mode.read() & DATA_TLB_MASK ) 
         {
             dcache_hit_t = dcache_tlb.translate(invadr, &dpaddr); 
         } 
@@ -2094,7 +2105,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         bool write_hit = r_dcache.write(r_dcache_paddr_save, wdata);
         assert(write_hit && "Write on miss ignores data");
 
-        if ( !r_dcache_dirty_save && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   
+        if ( !r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   
         {
             if ( dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save) )
             { 

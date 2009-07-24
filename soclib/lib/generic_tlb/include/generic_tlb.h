@@ -214,7 +214,7 @@ public:
         assert(nsets <= 64);
         assert(nways <= 64);
 
-        if((m_paddr_nbits < 32) || (m_paddr_nbits > 42) )
+        if((m_paddr_nbits < 32) || (m_paddr_nbits > 42))
         {
             printf("Error in the genericTlb component\n");
             printf("The physical address parameter must be in the range [32,42]\n");
@@ -671,39 +671,6 @@ public:
     //  This method invalidates a TLB entry
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
-#if 0 // todo
-    inline bool cccheck( paddr_t n_line, 
-                         size_t start_way, size_t start_set, 
-                         size_t* n_way, size_t* n_set,
-                         bool* end )
-    {
-        for( size_t way = start_way; way < this->m_nways; way++ ) 
-        {
-            for( size_t set = start_set; set < this->m_nsets; set++ ) 
-            {
-                if (( nline(way,set) == n_line ) && ( this->et(way,set) != UNMAPPED )) 
-                {
-                    *n_way = way;
-                    *n_set = set;
-                    if ( way == (this->m_nways-1) && set == (this->m_nsets-1) )
-                    {
-                        *end = true;
-                    }
-                    else
-                    {
-                        *end = false;
-                    }
-                    return true;
-                }
-            } 
-        } 
-        return false;
-    } // end cccheck()
-#endif
-    //////////////////////////////////////////////////////////////
-    //  This method invalidates a TLB entry
-    //  identified by the virtual page number.
-    //////////////////////////////////////////////////////////////
     inline bool inval(vaddr_t vaddress, paddr_t* victim)
     {
         paddr_t vic_nline = 0;
@@ -726,7 +693,8 @@ public:
                 vic_nline = nline(way,k_set);
                 this->valid(way,k_set) = false;
                 break;
-            } 
+            }
+            if ( way == (this->m_nways-1)) return false; 
         } 
 
         *victim = vic_nline;

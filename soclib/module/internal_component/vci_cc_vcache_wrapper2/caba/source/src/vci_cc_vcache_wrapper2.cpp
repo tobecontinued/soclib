@@ -403,7 +403,7 @@ tmpl(void)::transition()
         std::memset(r_dcache_in_itlb, 0, sizeof(*r_dcache_in_itlb)*m_icache_ways*m_icache_sets);
         std::memset(r_dcache_in_dtlb, 0, sizeof(*r_dcache_in_dtlb)*m_dcache_ways*m_dcache_sets);
 
-        r_mmu_mode = TLBS_DEACTIVE;
+        r_mmu_mode = ALL_DEACTIVE;
 
         r_icache_miss_req         = false;
         r_icache_unc_req          = false;
@@ -904,7 +904,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         // - If MMU activated : cacheability is defined by the cachable bit in the TLB
         // - If MMU not activated : cacheability is defined by the segment table.
 
-        if ( r_mmu_mode == TLBS_DEACTIVE || r_mmu_mode == ITLB_D_DTLB_A )   // MMU not activated 
+        if ( !(r_mmu_mode.read() & INS_TLB_MASK) )   // MMU not activated 
         {
             icache_hit_t  = true;         
             icache_hit_x  = true;         
@@ -924,6 +924,11 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             icache_cached = icache_pte_info.c; 
         }
 
+        if ( !(r_mmu_mode.read() & INS_CACHE_MASK) )   // cache not actived
+        {
+            icache_cached = false;
+        }
+
         if ( ireq.valid ) 
         {
             m_cpt_icache_dir_read += m_icache_ways;
@@ -940,7 +945,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                 icache_ins = r_icache_miss_buf[0];
             }
 
-            if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
+            if ( r_mmu_mode.read() & INS_TLB_MASK ) 
             {
                 if ( icache_hit_t ) 
                 {
@@ -1603,7 +1608,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 
         if ( !r_icache_cleanup_req )
         {    
-            if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) 
+            if ( r_mmu_mode.read() & INS_TLB_MASK ) 
             {
                 icache_hit_t = icache_tlb.translate(r_dcache_wdata_save, &ipaddr); 
             } 
@@ -2264,7 +2269,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             // - If MMU activated : cacheability is defined by the cachable bit in the TLB
             // - If MMU not activated : cacheability is defined by the segment table.
 
-            if ( r_mmu_mode == TLBS_DEACTIVE || r_mmu_mode == ITLB_A_DTLB_D ) // MMU not activated
+            if ( !(r_mmu_mode.read() & DATA_TLB_MASK) ) // MMU not activated
             {
                 dcache_hit_t  = true;       
                 dcache_hit_x  = true;   
@@ -2288,6 +2293,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                                  (dreq.type != iss_t::XTN_READ) && (dreq.type != iss_t::XTN_WRITE));    
             }
 
+            if ( !(r_mmu_mode.read() & DATA_CACHE_MASK) )   // cache not actived
+            {
+                dcache_cached = false;
+            }
+
             // dcache_hit_c & dcache_rdata
             if ( dcache_cached )    // using speculative physical address for cached access
             {
@@ -2299,7 +2309,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
-            if ((r_mmu_mode == TLBS_ACTIVE) || (r_mmu_mode == ITLB_D_DTLB_A)) 
+            if ( r_mmu_mode.read() & DATA_TLB_MASK ) 
             {
                 // Checking access rights
                 if ( dcache_hit_t ) 
@@ -2468,7 +2478,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                         {
                             r_dcache_fsm = DCACHE_WRITE_UPDT;
                         } 
-                        else if ( !dcache_pte_info.d && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   // dirty bit update required
+                        else if ( !dcache_pte_info.d && (r_mmu_mode.read() & DATA_TLB_MASK) )   // dirty bit update required
                         {
                             if ( dcache_tlb.getpagesize(dcache_tlb_way, dcache_tlb_set) )	// 2M page size, one level page table 
                             {
@@ -2598,7 +2608,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             	r_dcache_rdata_save = dcache_rdata;
                 r_dcache_fsm = DCACHE_WRITE_UPDT;
             } 
-            else if (!r_dcache_dirty_save && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   // dirty bit update required
+            else if (!r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
             {
                 if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
                 {
@@ -3719,7 +3729,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
 	if ( !r_dcache_cleanup_req )
 	{
-            if ( r_mmu_mode == TLBS_ACTIVE || r_mmu_mode == ITLB_D_DTLB_A ) 
+            if ( r_mmu_mode.read() & DATA_TLB_MASK ) 
             {
                 dcache_hit_t = dcache_tlb.translate(invadr, &dpaddr); 
             } 
@@ -3954,7 +3964,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             break;
 	}
 
-        if ( !r_dcache_dirty_save && ((r_mmu_mode == TLBS_ACTIVE)||(r_mmu_mode == ITLB_D_DTLB_A)))   
+        if ( !r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK) )   
         {
             if ( dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save) )	// 2M page size, one level page table 
             {
