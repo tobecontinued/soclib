@@ -1,0 +1,13 @@
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('caba:hht_param',
+	   classname = 'soclib::caba::HhtParam',
+	   tmpl_parameters = [
+			parameter.Int('ctrl_size'),
+			parameter.Int('data_size'),
+		],
+		header_files = ['../source/include/hht_param.h',],
+)

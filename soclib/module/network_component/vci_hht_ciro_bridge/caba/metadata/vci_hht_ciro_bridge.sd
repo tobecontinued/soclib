@@ -1,0 +1,42 @@
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('caba:vci_hht_ciro_bridge',
+	classname = 'soclib::caba::VciHhtCiroBridge',
+	tmpl_parameters = [
+		parameter.Module('vci_param',  default = 'caba:vci_param'),
+		parameter.Module('hht_param',  default = 'caba:hht_param'),
+	],
+	header_files = ['../source/include/vci_hht_ciro_bridge.h',],
+	implementation_files = ['../source/src/vci_hht_ciro_bridge.cpp',],
+	ports = [	    
+		Port('caba:fifo_input', 'p_ctrlPCI'),
+		Port('caba:fifo_input', 'p_ctrlNPCI'),
+		Port('caba:fifo_input', 'p_dataPCI'),
+		Port('caba:fifo_input', 'p_dataNPCI'),
+		Port('caba:fifo_output', 'p_ctrlRO'),
+		Port('caba:fifo_output', 'p_dataRO'),
+		Port('caba:vci_initiator', 'p_vci_io'),
+		Port('caba:vci_target', 'p_vci_config'),
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),	
+	],
+	uses = [
+	    Uses('caba:base_module'),
+	    Uses('caba:vci_target'),
+	    Uses('caba:vci_initiator'),
+	    Uses('caba:fifo_input'),
+	    Uses('caba:fifo_output'),
+		Uses('caba:lazy_fifo'),
+		Uses('caba:vci_cmd_flit'),
+		Uses('caba:vci_rsp_flit'),
+		Uses('caba:hht_cmd_flit'),
+		Uses('caba:hht_rsp_flit'),
+	],
+	instance_parameters = [
+		parameter.IntTab('ident'),
+#        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+	],
+)
