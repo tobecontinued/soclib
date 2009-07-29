@@ -111,6 +111,8 @@ tmpl(void)::behavior()
 {
   size_t nbytes = vci_param::nbytes; //1 word
   unsigned char data_ptr[nbytes];
+  unsigned char byte_enable_ptr[nbytes];
+  unsigned int bytes_enabled = 0xffffffff;
 
   while (1) {
     for ( size_t i=0; i<m_term.size(); ++i ) {
@@ -118,10 +120,15 @@ tmpl(void)::behavior()
       if ( val != m_irq[i] ) {
 	m_irq[i] = val;
 
+	// set the all bytes to enabled
+	utoa(bytes_enabled, byte_enable_ptr, 0);
 	// set the val to data
 	utoa(val, data_ptr, 0);
+
 	// set the values in tlm payload
 	m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+	m_payload_ptr->set_byte_enable_ptr(byte_enable_ptr);
+	m_payload_ptr->set_byte_enable_length(nbytes);
 	m_payload_ptr->set_data_ptr(data_ptr);
 	m_payload_ptr->set_data_length(nbytes);
 	// set the values in payload extension
