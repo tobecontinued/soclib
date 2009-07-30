@@ -30,8 +30,7 @@
 #include <stdio.h>
 #include <systemc>
 #include "caba_base_module.h"
-#include "fifo_ports.h"
-#include "hht_flits.h"
+#include "hht_initiator.h"
 #include "lazy_fifo.h"
 namespace soclib {
 namespace caba {
@@ -58,12 +57,7 @@ private:
 public:
     sc_in<bool> p_clk;
     sc_in<bool> p_resetn;
-    soclib::caba::FifoOutput<typename hht_param::ctrl_t> p_ctrlPCI;
-    soclib::caba::FifoOutput<typename hht_param::ctrl_t> p_ctrlNPCI;
-    soclib::caba::FifoOutput<typename hht_param::data_t> p_dataPCI;
-    soclib::caba::FifoOutput<typename hht_param::data_t> p_dataNPCI;
-	soclib::caba::FifoInput<typename hht_param::ctrl_t> p_ctrlRO;
-    soclib::caba::FifoInput<typename hht_param::data_t> p_dataRO;
+	soclib::caba::HhtInitiator<hht_param> 	p_hht;
 private:
 
     // NON-CABA

@@ -53,19 +53,14 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> 		s_vci_cori_config("s_vci_cori_config");
 	soclib::caba::VciSignals<vci_param> 		s_vci_ciro_config("s_vci_ciro_config");
 	// Signals connecting cori to ciro
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlPC("s_ctrlPC");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlNPC("s_ctrlNPC");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataPC("s_dataPC");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataNPC("s_dataNPC");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlR("s_ctrlR");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataR("s_dataR");
+	soclib::caba::HhtSignals<hht_param> 		s_hht("s_hht");
 	
 	// Components
 	printf("Initializing components\n");
-	soclib::caba::VciInitiatorFromText<vci_param> 		vci_io_init("vci_io_init");
+	soclib::caba::VciInitiatorFromText<vci_param> 			vci_io_init("vci_io_init");
 	soclib::caba::VciTestelgTarget<vci_param> 				vci_io_targ("vci_io_targ");
-	soclib::caba::VciCoriConfigInitiator<vci_param> 	vci_cori_config("vci_cori_config");
-	soclib::caba::VciCiroConfigInitiator<vci_param> 	vci_ciro_config("vci_ciro_config");
+	soclib::caba::VciCoriConfigInitiator<vci_param> 		vci_cori_config("vci_cori_config");
+	soclib::caba::VciCiroConfigInitiator<vci_param> 		vci_ciro_config("vci_ciro_config");
 	soclib::caba::VciHhtCoriBridge<vci_param, hht_param> 	cori_bridge("cori_bridge");
 	soclib::caba::VciHhtCiroBridge<vci_param, hht_param> 	ciro_bridge("ciro_bridge");
 	
@@ -96,18 +91,8 @@ int _main(int argc, char *argv[])
 	ciro_bridge.p_vci_io(s_vci_io_targ);
 	ciro_bridge.p_vci_config(s_vci_ciro_config);
 	
-	cori_bridge.p_ctrlPCO(s_ctrlPC);
-	cori_bridge.p_ctrlNPCO(s_ctrlNPC);
-	cori_bridge.p_dataPCO(s_dataPC);
-	cori_bridge.p_dataNPCO(s_dataNPC);
-	cori_bridge.p_ctrlRI(s_ctrlR);
-	cori_bridge.p_dataRI(s_dataR);
-	ciro_bridge.p_ctrlPCI(s_ctrlPC);
-	ciro_bridge.p_ctrlNPCI(s_ctrlNPC);
-	ciro_bridge.p_dataPCI(s_dataPC);
-	ciro_bridge.p_dataNPCI(s_dataNPC);
-	ciro_bridge.p_ctrlRO(s_ctrlR);
-	ciro_bridge.p_dataRO(s_dataR);
+	cori_bridge.p_hht(s_hht);
+	ciro_bridge.p_hht(s_hht);
 	
 	// Simulation
 	int ncycles;

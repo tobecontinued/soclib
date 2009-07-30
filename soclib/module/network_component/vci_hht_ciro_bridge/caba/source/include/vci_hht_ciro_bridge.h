@@ -32,10 +32,9 @@
 #include "caba_base_module.h"
 #include "vci_target.h"
 #include "vci_initiator.h"
-#include "fifo_ports.h"
+#include "hht_target.h"
 #include "lazy_fifo.h"
 #include "vci_flits.h"
-#include "hht_flits.h"
 namespace soclib {
 namespace caba {
 
@@ -68,13 +67,8 @@ public:
     sc_in<bool> p_clk;
     sc_in<bool> p_resetn;
     soclib::caba::VciInitiator<vci_param>   p_vci_io;
-	soclib::caba::VciTarget<vci_param>   p_vci_config;
-	soclib::caba::FifoInput<typename hht_param::ctrl_t> p_ctrlPCI;
-	soclib::caba::FifoInput<typename hht_param::ctrl_t> p_ctrlNPCI;
-    soclib::caba::FifoInput<typename hht_param::data_t> p_dataPCI;
-    soclib::caba::FifoInput<typename hht_param::data_t> p_dataNPCI;
-    soclib::caba::FifoOutput<typename hht_param::ctrl_t> p_ctrlRO;
-    soclib::caba::FifoOutput<typename hht_param::data_t> p_dataRO;
+	soclib::caba::VciTarget<vci_param>   	p_vci_config;
+	soclib::caba::HhtTarget<hht_param> 		p_hht;
     
 public:
 	// STRUCTURAL PARAMETERS

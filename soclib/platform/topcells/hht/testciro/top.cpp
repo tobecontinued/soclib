@@ -24,12 +24,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> 		s_vci_io_targ("s_vci_io_targ");
 	soclib::caba::VciSignals<vci_param> 		s_vci_ciro_config("s_vci_ciro_config");
 	// Signals connecting ciro to initiator
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlPCI("s_ctrlPCI");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlNPCI("s_ctrlNPCI");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataPCI("s_dataPCI");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataNPCI("s_dataNPCI");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlRO("s_ctrlRO");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataRO("s_dataRO");
+	soclib::caba::HhtSignals<hht_param> 		s_hht("s_hht");
 	
 	// Components
 	printf("Initializing components\n");
@@ -57,18 +52,8 @@ int _main(int argc, char *argv[])
 	ciro_bridge.p_vci_io(s_vci_io_targ);
 	ciro_bridge.p_vci_config(s_vci_ciro_config);
 	
-	ciro_bridge.p_ctrlPCI(s_ctrlPCI);
-	ciro_bridge.p_ctrlNPCI(s_ctrlNPCI);
-	ciro_bridge.p_dataPCI(s_dataPCI);
-	ciro_bridge.p_dataNPCI(s_dataNPCI);
-	ciro_bridge.p_ctrlRO(s_ctrlRO);
-	ciro_bridge.p_dataRO(s_dataRO);
-	hht_init.p_ctrlPCI(s_ctrlPCI);
-	hht_init.p_ctrlNPCI(s_ctrlNPCI);
-	hht_init.p_dataPCI(s_dataPCI);
-	hht_init.p_dataNPCI(s_dataNPCI);
-	hht_init.p_ctrlRO(s_ctrlRO);
-	hht_init.p_dataRO(s_dataRO);
+	ciro_bridge.p_hht(s_hht);
+	hht_init.p_hht(s_hht);
 	
 	// Simulation
 	int ncycles;

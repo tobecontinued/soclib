@@ -23,19 +23,14 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> 		s_vci_io_init("s_vci_io_init");
 	soclib::caba::VciSignals<vci_param> 		s_vci_cori_config("s_vci_cori_config");
 	// Signals connecting cori to target
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlPCO("s_ctrlPCO");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlNPCO("s_ctrlNPCO");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataPCO("s_dataPCO");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataNPCO("s_dataNPCO");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlRI("s_ctrlRI");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataRI("s_dataRI");
+	soclib::caba::HhtSignals<hht_param> 		s_hht("s_hht");
 	
 	// Components
 	printf("Initializing components\n");
 	soclib::caba::VciInitiatorFromText<vci_param> 		vci_io_init("vci_io_init");
 	soclib::caba::VciCoriConfigInitiator<vci_param> 	vci_cori_config("vci_cori_config");
-	soclib::caba::VciHhtCoriBridge<vci_param, hht_param> 	cori_bridge("cori_bridge");
-	soclib::caba::HhtTestelgTarget<hht_param> 					hht_targ("hht_targ");
+	soclib::caba::VciHhtCoriBridge<vci_param, hht_param> cori_bridge("cori_bridge");
+	soclib::caba::HhtTestelgTarget<hht_param> 			hht_targ("hht_targ");
 	
 	//	Net-List
 	printf("Initializing net-list\n");
@@ -56,18 +51,8 @@ int _main(int argc, char *argv[])
 	cori_bridge.p_vci_io(s_vci_io_init);
 	cori_bridge.p_vci_config(s_vci_cori_config);
 	
-	cori_bridge.p_ctrlPCO(s_ctrlPCO);
-	cori_bridge.p_ctrlNPCO(s_ctrlNPCO);
-	cori_bridge.p_dataPCO(s_dataPCO);
-	cori_bridge.p_dataNPCO(s_dataNPCO);
-	cori_bridge.p_ctrlRI(s_ctrlRI);
-	cori_bridge.p_dataRI(s_dataRI);
-	hht_targ.p_ctrlPCO(s_ctrlPCO);
-	hht_targ.p_ctrlNPCO(s_ctrlNPCO);
-	hht_targ.p_dataPCO(s_dataPCO);
-	hht_targ.p_dataNPCO(s_dataNPCO);
-	hht_targ.p_ctrlRI(s_ctrlRI);
-	hht_targ.p_dataRI(s_dataRI);
+	cori_bridge.p_hht(s_hht);
+	hht_targ.p_hht(s_hht);
 	
 	// Simulation
 	int ncycles;

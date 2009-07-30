@@ -41,13 +41,7 @@ tmpl(/**/)::VciHhtCiroBridge(
 	  
       p_vci_io("vci_io"),
 	  p_vci_config("vci_config"),
-	  
-	  p_ctrlPCI("p_ctrlPCI"),
-	  p_ctrlNPCI("p_ctrlNPCI"),
-	  p_dataPCI("p_dataPCI"),
-	  p_dataNPCI("p_dataNPCI"),
-	  p_ctrlRO("p_ctrlRO"),
-	  p_dataRO("p_dataRO"),
+	  p_hht("p_hht"),
 	  
 	  f_vciCI("f_vciCI",2),	  
 	  f_vciRO("f_vciRO",2),
@@ -517,16 +511,16 @@ tmpl(void)::transition()
 	f_vciRO.put=p_vci_io.rspval;
 	f_vciCI.get=p_vci_io.cmdack;
 	
-	f_ctrlRO.get=p_ctrlRO.wok;
-	f_dataRO.get=p_dataRO.wok;
-	f_ctrlPCI.write.set_ctrl(p_ctrlPCI.data);
-	f_ctrlNPCI.write.set_ctrl(p_ctrlNPCI.data);
-	f_ctrlPCI.put=p_ctrlPCI.rok;
-	f_ctrlNPCI.put=p_ctrlNPCI.rok;
-	f_dataPCI.write=p_dataPCI.data;
-	f_dataNPCI.write=p_dataNPCI.data;
-	f_dataPCI.put=p_dataPCI.rok;
-	f_dataNPCI.put=p_dataNPCI.rok;
+	f_ctrlRO.get=p_hht.ctrlR.wok;
+	f_dataRO.get=p_hht.dataR.wok;
+	f_ctrlPCI.write.set_ctrl(p_hht.ctrlPC.data);
+	f_ctrlNPCI.write.set_ctrl(p_hht.ctrlNPC.data);
+	f_ctrlPCI.put=p_hht.ctrlPC.rok;
+	f_ctrlNPCI.put=p_hht.ctrlNPC.rok;
+	f_dataPCI.write=p_hht.dataPC.data;
+	f_dataNPCI.write=p_hht.dataNPC.data;
+	f_dataPCI.put=p_hht.dataPC.rok;
+	f_dataNPCI.put=p_hht.dataNPC.rok;
 
 	// Processing of put and get for each fifo
 	f_vciCI.fsm();
@@ -570,16 +564,16 @@ tmpl(void)::genMoore()
 	p_vci_io.pktid=f_vciCI.read().pktid;  
 	
 	// Links the HHT target port
-	p_ctrlRO.w=f_ctrlRO.rok();
-	p_dataRO.w=f_dataRO.rok();
+	p_hht.ctrlR.w=f_ctrlRO.rok();
+	p_hht.dataR.w=f_dataRO.rok();
 	HhtRspFlit<hht_param>	f_ctrlRO_read=f_ctrlRO.read();
-	p_ctrlRO.data=f_ctrlRO_read.get_ctrl();
-	p_dataRO.data=f_dataRO.read();
+	p_hht.ctrlR.data=f_ctrlRO_read.get_ctrl();
+	p_hht.dataR.data=f_dataRO.read();
 	
-	p_ctrlPCI.r=f_ctrlPCI.wok();
-	p_ctrlNPCI.r=f_ctrlNPCI.wok();
-	p_dataPCI.r=f_dataPCI.wok();
-	p_dataNPCI.r=f_dataNPCI.wok();
+	p_hht.ctrlPC.r=f_ctrlPCI.wok();
+	p_hht.ctrlNPC.r=f_ctrlNPCI.wok();
+	p_hht.dataPC.r=f_dataPCI.wok();
+	p_hht.dataNPC.r=f_dataNPCI.wok();
 	
 }
 

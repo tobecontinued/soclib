@@ -37,12 +37,7 @@ tmpl(/**/)::HhtTestelgTarget(
       p_clk("clk"),
       p_resetn("resetn"),
 	  
-	  p_ctrlPCO("p_ctrlPCO"),
-	  p_ctrlNPCO("p_ctrlNPCO"),
-	  p_dataPCO("p_dataPCO"),
-	  p_dataNPCO("p_dataNPCO"),
-	  p_ctrlRI("p_ctrlRI"),
-	  p_dataRI("p_dataRI"),
+	  p_hht("p_hht"),
 	  
 	  f_ctrlPCO("f_ctrlPCO",2),
 	  f_ctrlNPCO("f_ctrlNPCO",2),
@@ -134,16 +129,16 @@ tmpl(void)::transition()
 	f_ctrlPCO.get=f_ctrlPCO.rok();
 	f_dataPCO.get=f_dataPCO.rok();
 	
-	f_ctrlNPCO.put=p_ctrlNPCO.rok;
-	f_ctrlNPCO.write.set_ctrl(p_ctrlNPCO.data);
-	f_dataNPCO.put=p_dataNPCO.rok;
-	f_dataNPCO.write=p_dataNPCO.data;
-	f_ctrlPCO.put=p_ctrlPCO.rok;
-	f_ctrlPCO.write.set_ctrl(p_ctrlPCO.data);
-	f_dataPCO.put=p_dataPCO.rok;
-	f_dataPCO.write=p_dataPCO.data;
-	f_ctrlRI.get=p_ctrlRI.wok;
-	f_dataRI.get=p_dataRI.wok;
+	f_ctrlNPCO.put=p_hht.ctrlNPC.rok;
+	f_ctrlNPCO.write.set_ctrl(p_hht.ctrlNPC.data);
+	f_dataNPCO.put=p_hht.dataNPC.rok;
+	f_dataNPCO.write=p_hht.dataNPC.data;
+	f_ctrlPCO.put=p_hht.ctrlPC.rok;
+	f_ctrlPCO.write.set_ctrl(p_hht.ctrlPC.data);
+	f_dataPCO.put=p_hht.dataPC.rok;
+	f_dataPCO.write=p_hht.dataPC.data;
+	f_ctrlRI.get=p_hht.ctrlR.wok;
+	f_dataRI.get=p_hht.dataR.wok;
 	
 	
 	f_ctrlPCO.fsm();
@@ -156,16 +151,16 @@ tmpl(void)::transition()
 
 tmpl(void)::genMoore()
 {
-	p_ctrlPCO.r=f_ctrlPCO.wok();
-	p_ctrlNPCO.r=f_ctrlNPCO.wok();
-	p_dataPCO.r=f_dataPCO.wok();
-	p_dataNPCO.r=f_dataNPCO.wok();
+	p_hht.ctrlPC.r=f_ctrlPCO.wok();
+	p_hht.ctrlNPC.r=f_ctrlNPCO.wok();
+	p_hht.dataPC.r=f_dataPCO.wok();
+	p_hht.dataNPC.r=f_dataNPCO.wok();
 	
-	p_ctrlRI.w=f_ctrlRI.rok();
-	p_dataRI.w=f_dataRI.rok();
+	p_hht.ctrlR.w=f_ctrlRI.rok();
+	p_hht.dataR.w=f_dataRI.rok();
 	HhtRspFlit<hht_param>	f_ctrlRI_read=f_ctrlRI.read();
-	p_ctrlRI.data=f_ctrlRI_read.get_ctrl();
-	p_dataRI.data=f_dataRI.read();
+	p_hht.ctrlR.data=f_ctrlRI_read.get_ctrl();
+	p_hht.dataR.data=f_dataRI.read();
 	
 	switch (r_target_fsm.read()) {
 		case TARGET_IDLE:

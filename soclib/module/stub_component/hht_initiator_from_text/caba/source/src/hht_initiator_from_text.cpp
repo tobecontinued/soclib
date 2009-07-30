@@ -39,13 +39,7 @@ tmpl(/**/)::HhtInitiatorFromText(
 
       p_clk("clk"),
       p_resetn("resetn"),
-	  
-	  p_ctrlPCI("p_ctrlPCI"),
-	  p_ctrlNPCI("p_ctrlNPCI"),
-	  p_dataPCI("p_dataPCI"),
-	  p_dataNPCI("p_dataNPCI"),
-	  p_ctrlRO("p_ctrlRO"),
-	  p_dataRO("p_dataRO"),
+	  p_hht("p_hht"),
 	  
 	  f_ctrlPCI("f_ctrlPCI",20),
 	  f_ctrlNPCI("f_ctrlNPCI",20),
@@ -238,15 +232,15 @@ tmpl(void)::transition()
 		break;
 	} // end switch r_rsp_fsm
 	
-	f_ctrlPCI.get=p_ctrlPCI.wok;
-	f_ctrlNPCI.get=p_ctrlNPCI.wok;
-	f_dataPCI.get=p_dataPCI.wok;
-	f_dataNPCI.get=p_dataNPCI.wok;
+	f_ctrlPCI.get=p_hht.ctrlPC.wok;
+	f_ctrlNPCI.get=p_hht.ctrlNPC.wok;
+	f_dataPCI.get=p_hht.dataPC.wok;
+	f_dataNPCI.get=p_hht.dataNPC.wok;
 	
-	f_ctrlRO.write.set_ctrl(p_ctrlRO.data);
-	f_ctrlRO.put=p_ctrlRO.rok;
-	f_dataRO.write=p_dataRO.data;
-	f_dataRO.put=p_dataRO.rok;
+	f_ctrlRO.write.set_ctrl(p_hht.ctrlR.data);
+	f_ctrlRO.put=p_hht.ctrlR.rok;
+	f_dataRO.write=p_hht.dataR.data;
+	f_dataRO.put=p_hht.dataR.rok;
 
 	f_ctrlPCI.fsm();
 	f_ctrlNPCI.fsm();
@@ -258,19 +252,19 @@ tmpl(void)::transition()
 
 tmpl(void)::genMoore()
 {
-    p_ctrlPCI.w=f_ctrlPCI.rok();
-	p_ctrlNPCI.w=f_ctrlNPCI.rok();
-	p_dataPCI.w=f_dataPCI.rok();
-	p_dataNPCI.w=f_dataNPCI.rok();
+    p_hht.ctrlPC.w=f_ctrlPCI.rok();
+	p_hht.ctrlNPC.w=f_ctrlNPCI.rok();
+	p_hht.dataPC.w=f_dataPCI.rok();
+	p_hht.dataNPC.w=f_dataNPCI.rok();
 	HhtCmdFlit<hht_param>	f_ctrlPCI_read=f_ctrlPCI.read();
 	HhtCmdFlit<hht_param>	f_ctrlNPCI_read=f_ctrlNPCI.read();
-	p_ctrlPCI.data=f_ctrlPCI_read.get_ctrl();
-	p_ctrlNPCI.data=f_ctrlNPCI_read.get_ctrl();
-	p_dataPCI.data=f_dataPCI.read();
-	p_dataNPCI.data=f_dataNPCI.read();
+	p_hht.ctrlPC.data=f_ctrlPCI_read.get_ctrl();
+	p_hht.ctrlNPC.data=f_ctrlNPCI_read.get_ctrl();
+	p_hht.dataPC.data=f_dataPCI.read();
+	p_hht.dataNPC.data=f_dataNPCI.read();
 	
-	p_ctrlRO.r=f_ctrlRO.wok();
-	p_dataRO.r=f_dataRO.wok();
+	p_hht.ctrlR.r=f_ctrlRO.wok();
+	p_hht.dataR.r=f_dataRO.wok();
 }
 
 }}

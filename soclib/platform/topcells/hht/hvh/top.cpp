@@ -27,19 +27,9 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> s_vci_cori_config("s_vci_cori_config");
 	soclib::caba::VciSignals<vci_param> s_vci_ciro_config("s_vci_ciro_config");
 	// Signals connecting ciro to initiator
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlPCI("s_ctrlPCI");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlNPCI("s_ctrlNPCI");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataPCI("s_dataPCI");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataNPCI("s_dataNPCI");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlRO("s_ctrlRO");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataRO("s_dataRO");
+	soclib::caba::HhtSignals<hht_param> 		s_ciro2init("s_ciro2init");
 	// Signals connecting cori to target
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlPCO("s_ctrlPCO");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlNPCO("s_ctrlNPCO");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataPCO("s_dataPCO");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataNPCO("s_dataNPCO");
-	soclib::caba::FifoSignals<hht_param::ctrl_t> s_ctrlRI("s_ctrlRI");
-	soclib::caba::FifoSignals<hht_param::data_t> s_dataRI("s_dataRI");
+	soclib::caba::HhtSignals<hht_param> 		s_cori2targ("s_cori2targ");
 	
 	
 	// Components
@@ -49,7 +39,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciCiroConfigInitiator<vci_param> 	vci_ciro_config("vci_ciro_config");
 	soclib::caba::VciHhtCoriBridge<vci_param, hht_param> 	cori_bridge("cori_bridge");
 	soclib::caba::VciHhtCiroBridge<vci_param, hht_param> 	ciro_bridge("ciro_bridge");
-	soclib::caba::HhtTestelgTarget<hht_param> 					hht_targ("hht_targ");
+	soclib::caba::HhtTestelgTarget<hht_param> 				hht_targ("hht_targ");
 	
 	//	Net-List
 	printf("Initializing net-list\n");
@@ -76,31 +66,11 @@ int _main(int argc, char *argv[])
 	ciro_bridge.p_vci_io(s_vci_io);
 	ciro_bridge.p_vci_config(s_vci_ciro_config);
 	
-	cori_bridge.p_ctrlPCO(s_ctrlPCO);
-	cori_bridge.p_ctrlNPCO(s_ctrlNPCO);
-	cori_bridge.p_dataPCO(s_dataPCO);
-	cori_bridge.p_dataNPCO(s_dataNPCO);
-	cori_bridge.p_ctrlRI(s_ctrlRI);
-	cori_bridge.p_dataRI(s_dataRI);
-	hht_targ.p_ctrlPCO(s_ctrlPCO);
-	hht_targ.p_ctrlNPCO(s_ctrlNPCO);
-	hht_targ.p_dataPCO(s_dataPCO);
-	hht_targ.p_dataNPCO(s_dataNPCO);
-	hht_targ.p_ctrlRI(s_ctrlRI);
-	hht_targ.p_dataRI(s_dataRI);
+	cori_bridge.p_hht(s_cori2targ);
+	hht_targ.p_hht(s_cori2targ);
 	
-	ciro_bridge.p_ctrlPCI(s_ctrlPCI);
-	ciro_bridge.p_ctrlNPCI(s_ctrlNPCI);
-	ciro_bridge.p_dataPCI(s_dataPCI);
-	ciro_bridge.p_dataNPCI(s_dataNPCI);
-	ciro_bridge.p_ctrlRO(s_ctrlRO);
-	ciro_bridge.p_dataRO(s_dataRO);
-	hht_init.p_ctrlPCI(s_ctrlPCI);
-	hht_init.p_ctrlNPCI(s_ctrlNPCI);
-	hht_init.p_dataPCI(s_dataPCI);
-	hht_init.p_dataNPCI(s_dataNPCI);
-	hht_init.p_ctrlRO(s_ctrlRO);
-	hht_init.p_dataRO(s_dataRO);
+	ciro_bridge.p_hht(s_ciro2init);
+	hht_init.p_hht(s_ciro2init);
 	
 	// Simulation
 	int ncycles;
