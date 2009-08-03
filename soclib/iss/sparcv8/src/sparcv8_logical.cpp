@@ -362,7 +362,7 @@ tmpl(void)::op_mulscc()
     res = op1 + op2;
     GPR(m_ins.format3a.rd) = res;    
     SET_CCA(op1, op2, res);
-    r_y = (op1_saved << 31) & ((r_y >> 1) & 0x7fffffff);
+    r_y = (op1_saved << 31) | ((r_y >> 1) & 0x7fffffff);
     setInsDelay(4);
 }
 
