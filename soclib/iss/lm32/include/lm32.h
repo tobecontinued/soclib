@@ -273,8 +273,8 @@ namespace soclib { namespace common {
             //    m_iss.executeNCycles(1, iresp, dresp, it);
 
             void getRequests( 
-                    struct InstructionRequest &req ,
-                    struct DataRequest &req
+                    struct InstructionRequest &ireq ,
+                    struct DataRequest &dreq
                     ) const;
 
 
