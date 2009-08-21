@@ -69,7 +69,18 @@ static inline uint32_t srl( uint32_t reg, uint32_t sh )
 static inline uint32_t sra( uint32_t reg, uint32_t sh )
 {
     if ( (int32_t)reg < 0 )
-        return (reg >> sh) | (~((1<<(32-sh))-1));
+    {
+        /* nb: if sh==0, (1<<(32-sh)) is truncated to 0 (32bits casting)
+         * which eventually causes the result to be 0xFFFFFFFF */
+        /* beside of this conditional-based solution,
+         * another solution would be to cast in 64bits:
+         * return (reg >> sh) | (~(((unsigned long long int)1<<(32-sh))-1));
+         */
+        if (sh)
+            return (reg >> sh) | (~((1<<(32-sh))-1));
+        else
+            return reg;
+    }
     else
         return reg >> sh;
 }
