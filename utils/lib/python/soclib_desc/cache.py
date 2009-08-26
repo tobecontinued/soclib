@@ -63,6 +63,10 @@ class CachedDescFile:
 	def pathIs(self, path):
 		return path == self.__path
 
+	def cleanup(self):
+		for m in self.__modules:
+			m.cleanup()
+
 	def rehashIfNecessary(self):
 		"""
 		This may rehash the cached file, if necessary (modification).
@@ -190,6 +194,10 @@ class GlobalDescCache:
 		fd = open(path, 'w')
 		pickle.dump(self, fd, pickle.HIGHEST_PROTOCOL)
 
+	def cleanup(self):
+		for p, d in self.__registry.iteritems():
+			d.cleanup()
+
 	def load(cls, path):
 		"""
 		Loads the cache from path. If unable to load a valid cache,
@@ -202,6 +210,7 @@ class GlobalDescCache:
 			return None
 		
 		if isinstance(r, cls):
+			r.cleanup()
 			return r
 		return None
 	load = classmethod(load)

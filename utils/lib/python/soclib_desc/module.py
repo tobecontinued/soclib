@@ -111,6 +111,7 @@ class Module:
 		'extensions' : [],
 		'constants' : {},
 		"debug" : False,
+		"debug_saved" : False,
 		"deprecated":'',
 		}
 	tb_delta = -3
@@ -163,6 +164,7 @@ class Module:
 			if soclib != 'soclib':
 				warnings.warn(BadInterfacePath(f, 'path should end with "soclib/%s"'%b))
 
+		self.__attrs['debug_saved'] = self.__attrs['debug']
 
 	def instanciated(self):
 		"""
@@ -181,6 +183,12 @@ class Module:
 
 	def forceDebug(self):
 		self.__attrs['debug'] = True
+
+	def cleanup(self):
+		try:
+			self.__attrs['debug'] = self.__attrs['debug_saved']
+		except:
+			pass
 
 	def __getitem__(self, name):
 		"""
