@@ -86,7 +86,7 @@ public:
     ///////////////////////////////////////////////////
     {
         addr_t address = addr & ~m_mask;
-        return ( r_empty || (r_address == address) ) ;
+        return ( r_empty || ((addr_t)r_address == address) ) ;
         //return ( r_empty || (r_address == (addr & ~m_mask)) ) ;
     }
     ///////////////////////////////////////////////////
@@ -100,7 +100,7 @@ public:
         if ( r_empty ) {
             r_address = line ;
         } else {
-            assert( r_address == line );
+            assert( (addr_t)r_address == line );
         }
         r_empty = false ;
 
