@@ -31,9 +31,7 @@
 namespace soclib { 
 namespace caba {
 
-//#define VCACHE_WRAPPER_DEBUG
-
-#ifdef VCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 namespace {
 const char *icache_fsm_state_str[] = {
         "ICACHE_IDLE",
@@ -253,7 +251,7 @@ tmpl(/**/)::~VciVCacheWrapper2()
 tmpl(void)::print_cpi()
 ////////////////////////
 {
-    std::cout << "CPU " << m_srcid << " : CPI = " 
+    std::cout << name() << " CPI = " 
         << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl ;
 }
 
@@ -262,31 +260,32 @@ tmpl(void)::print_stats()
 ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
-    std::cout << "CPU " << m_srcid << std::endl;
-    std::cout << "- CPI                    = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
-    std::cout << "- READ RATE              = " << (float)m_cpt_read/run_cycles << std::endl ;
-    std::cout << "- WRITE RATE             = " << (float)m_cpt_write/run_cycles << std::endl;
-    std::cout << "- UNCACHED READ RATE     = " << (float)m_cpt_unc_read/m_cpt_read << std::endl ;
-    std::cout << "- CACHED WRITE RATE      = " << (float)m_cpt_write_cached/m_cpt_write << std::endl ;
-    std::cout << "- IMISS_RATE             = " << (float)m_cpt_ins_miss/m_cpt_ins_read << std::endl;     
-    std::cout << "- DMISS RATE             = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl ;
-    std::cout << "- INS MISS COST          = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl;
-    std::cout << "- IMISS TRANSACTION      = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl;
-    std::cout << "- DMISS COST             = " << (float)m_cost_data_miss_frz/m_cpt_data_miss << std::endl;
-    std::cout << "- DMISS TRANSACTION      = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl;
-    std::cout << "- UNC COST               = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl;
-    std::cout << "- UNC TRANSACTION        = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl;
-    std::cout << "- WRITE COST             = " << (float)m_cost_write_frz/m_cpt_write << std::endl;
-    std::cout << "- WRITE TRANSACTION      = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl;
-    std::cout << "- WRITE LENGTH           = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl;
-    std::cout << "- INS TLB MISS RATE      = " << (float)m_cpt_ins_tlb_miss/m_cpt_ins_tlb_read << std::endl;
-    std::cout << "- DATA TLB MISS RATE     = " << (float)m_cpt_data_tlb_miss/m_cpt_data_tlb_read << std::endl;
-    std::cout << "- ITLB MISS TRANSACTION  = " << (float)m_cost_itlbmiss_transaction/m_cpt_itlbmiss_transaction << std::endl;
-    std::cout << "- ITLB WRITE TRANSACTION = " << (float)m_cost_itlb_write_transaction/m_cpt_itlb_write_transaction << std::endl;
-    std::cout << "- ITLB MISS COST         = " << (float)m_cost_ins_tlb_miss_frz/(m_cpt_ins_tlb_miss+m_cpt_ins_tlb_write_et) << std::endl;
-    std::cout << "- DTLB MISS TRANSACTION  = " << (float)m_cost_dtlbmiss_transaction/m_cpt_dtlbmiss_transaction << std::endl;
-    std::cout << "- DTLB WRITE TRANSACTION = " << (float)m_cost_dtlb_write_transaction/m_cpt_dtlb_write_transaction << std::endl;
-    std::cout << "- DTLB MISS COST         = " << (float)m_cost_data_tlb_miss_frz/(m_cpt_data_tlb_miss+m_cpt_data_tlb_write_et+m_cpt_data_tlb_write_dirty) << std::endl;
+    std::cout
+        << name() << std::endl
+        << "- CPI                    = " << (float)m_cpt_total_cycles/run_cycles << std::endl 
+        << "- READ RATE              = " << (float)m_cpt_read/run_cycles << std::endl 
+        << "- WRITE RATE             = " << (float)m_cpt_write/run_cycles << std::endl
+        << "- UNCACHED READ RATE     = " << (float)m_cpt_unc_read/m_cpt_read << std::endl 
+        << "- CACHED WRITE RATE      = " << (float)m_cpt_write_cached/m_cpt_write << std::endl 
+        << "- IMISS_RATE             = " << (float)m_cpt_ins_miss/m_cpt_ins_read << std::endl
+        << "- DMISS RATE             = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl 
+        << "- INS MISS COST          = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl
+        << "- IMISS TRANSACTION      = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl
+        << "- DMISS COST             = " << (float)m_cost_data_miss_frz/m_cpt_data_miss << std::endl
+        << "- DMISS TRANSACTION      = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl
+        << "- UNC COST               = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl
+        << "- UNC TRANSACTION        = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl
+        << "- WRITE COST             = " << (float)m_cost_write_frz/m_cpt_write << std::endl
+        << "- WRITE TRANSACTION      = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl
+        << "- WRITE LENGTH           = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl
+        << "- INS TLB MISS RATE      = " << (float)m_cpt_ins_tlb_miss/m_cpt_ins_tlb_read << std::endl
+        << "- DATA TLB MISS RATE     = " << (float)m_cpt_data_tlb_miss/m_cpt_data_tlb_read << std::endl
+        << "- ITLB MISS TRANSACTION  = " << (float)m_cost_itlbmiss_transaction/m_cpt_itlbmiss_transaction << std::endl
+        << "- ITLB WRITE TRANSACTION = " << (float)m_cost_itlb_write_transaction/m_cpt_itlb_write_transaction << std::endl
+        << "- ITLB MISS COST         = " << (float)m_cost_ins_tlb_miss_frz/(m_cpt_ins_tlb_miss+m_cpt_ins_tlb_write_et) << std::endl
+        << "- DTLB MISS TRANSACTION  = " << (float)m_cost_dtlbmiss_transaction/m_cpt_dtlbmiss_transaction << std::endl
+        << "- DTLB WRITE TRANSACTION = " << (float)m_cost_dtlb_write_transaction/m_cpt_dtlb_write_transaction << std::endl
+        << "- DTLB MISS COST         = " << (float)m_cost_data_tlb_miss_frz/(m_cpt_data_tlb_miss+m_cpt_data_tlb_write_et+m_cpt_data_tlb_write_dirty) << std::endl;
 }
 
 /*************************************************/
@@ -420,12 +419,12 @@ tmpl(void)::transition()
         return;
     }
 
-#ifdef VCACHE_WRAPPER_DEBUG
-std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name() 
-        << " dcache fsm: " << dcache_fsm_state_str[r_dcache_fsm]
-        << " icache fsm: " << icache_fsm_state_str[r_icache_fsm]
-        << " cmd fsm: " << cmd_fsm_state_str[r_vci_cmd_fsm]
-        << " rsp fsm: " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " cycle = " << m_cpt_total_cycles
+              << " dcache fsm: " << dcache_fsm_state_str[r_dcache_fsm]
+              << " icache fsm: " << icache_fsm_state_str[r_icache_fsm]
+              << " cmd fsm: " << cmd_fsm_state_str[r_vci_cmd_fsm]
+              << " rsp fsm: " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
 #endif
 
     m_cpt_total_cycles++;
@@ -438,9 +437,9 @@ std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name()
 
     m_iss.getRequests( ireq, dreq );
 
-#ifdef VCACHE_WRAPPER_DEBUG
-std::cout << name() << " Instruction Request: " << ireq << std::endl;
-std::cout << name() << " Data Request: " << dreq << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " Instruction Request: " << ireq << std::endl;
+    std::cout << name() << " Data Request: " << dreq << std::endl;
 #endif
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -579,7 +578,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             }
             else                    // using actual physical address for uncached access
             {
-                icache_hit_c = ( r_icache_buf_unc_valid && (tlb_ipaddr == r_icache_paddr_save) );
+                icache_hit_c = ( r_icache_buf_unc_valid && (tlb_ipaddr == (paddr_t)r_icache_paddr_save) );
                 icache_ins = r_icache_miss_buf[0];
             }
 
@@ -1015,8 +1014,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     }
     } // end switch r_icache_fsm
 
-#ifdef VCACHE_WRAPPER_DEBUG
-std::cout << name() << " Instruction Response: " << irsp << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " Instruction Response: " << irsp << std::endl;
 #endif
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -1359,7 +1358,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else                    // using actual physical address for uncached access
             {
-                dcache_hit_c = ((tlb_dpaddr == r_dcache_paddr_save) && r_dcache_buf_unc_valid ); 
+                dcache_hit_c = ((tlb_dpaddr == (paddr_t)r_dcache_paddr_save) && r_dcache_buf_unc_valid ); 
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
@@ -2462,8 +2461,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     }  
     } // end switch r_dcache_fsm
 
-#ifdef VCACHE_WRAPPER_DEBUG
-std::cout << " Data Response: " << drsp << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " Data Response: " << drsp << std::endl;
 #endif
 
     /////////// execute one iss cycle /////////////////////////////////
@@ -3128,15 +3127,15 @@ tmpl(void)::genMoore()
 
     } // end switch r_vci_cmd_fsm
 
-#ifdef VCACHE_WRAPPER_DEBUG 
-   std::cout 
-       << "Moore:" << std::hex
-       << "p_vci.cmdval:" << p_vci.cmdval
-       << "p_vci.address:" << p_vci.address
-       << "p_vci.wdata:" << p_vci.wdata
-       << "p_vci.cmd:" << p_vci.cmd
-       << "p_vci.eop:" << p_vci.eop
-       << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG 
+    std::cout << name()
+              << "Moore:" << std::hex
+              << "p_vci.cmdval:" << p_vci.cmdval
+              << "p_vci.address:" << p_vci.address
+              << "p_vci.wdata:" << p_vci.wdata
+              << "p_vci.cmd:" << p_vci.cmd
+              << "p_vci.eop:" << p_vci.eop
+              << std::endl;
 #endif
 }
 
