@@ -30,8 +30,7 @@ tmpl(/**/)::VciPiTargetWrapper(sc_module_name insname)
 		   p_vci("vci"),
 		   r_fsm_state("fsm_state"),
 		   r_adr("adr"),
-		   r_opc("opc"),
-		   r_lock("lock")
+		   r_opc("opc")
 {
 SC_METHOD (transition);
 dont_initialize();
@@ -44,6 +43,8 @@ sensitive << p_vci.rdata;
 sensitive << p_vci.rspval;
 sensitive << p_vci.rerror;
 sensitive << p_pi.d;
+sensitive << p_pi.opc;
+sensitive << p_sel;
 }
 
 /*****************************************************************************
@@ -59,12 +60,15 @@ if (p_resetn == false) {
 
 switch (r_fsm_state) {
 	case FSM_IDLE:
-		if (p_sel.read()) {
+		if (p_sel.read() && p_pi.opc.read() != Pibus::OPC_NOP) {
 		r_adr 	= p_pi.a.read();
-		r_lock 	= p_pi.lock.read();
 		r_opc	= p_pi.opc.read();
 		if (p_pi.read == true)  r_fsm_state = FSM_CMD_READ;
 		else			r_fsm_state = FSM_CMD_WRITE;
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << name() << ": start " << (p_pi.read ? "read" : "write")
+		<< " addr=0x" << std::hex << p_pi.a.read() << std::endl;
+#endif
 	}
 	break;
 
@@ -75,7 +79,6 @@ switch (r_fsm_state) {
 	case FSM_RSP_READ:
 	if (p_vci.rspval) {
 		r_adr 	= p_pi.a.read();
-		r_lock 	= p_pi.lock.read();
 		r_opc	= p_pi.opc.read();
 		if (p_vci.reop) r_fsm_state = FSM_IDLE;
 		else		r_fsm_state = FSM_CMD_READ;
@@ -89,7 +92,6 @@ switch (r_fsm_state) {
 	case FSM_RSP_WRITE:
 	if (p_vci.rspval) {
 		r_adr 	= p_pi.a.read();
-		r_lock 	= p_pi.lock.read();
 		r_opc	= p_pi.opc.read();
 		if (p_vci.reop) r_fsm_state = FSM_IDLE;
 		else		r_fsm_state = FSM_CMD_WRITE;
@@ -108,11 +110,15 @@ switch (r_fsm_state) {
 	case FSM_IDLE:
 	p_vci.cmdval = false;
 	p_vci.rspack = false;
+	p_vci.eop = false;
+	if (p_sel.read() && p_pi.opc.read() != Pibus::OPC_NOP) {
+		p_pi.ack = Pibus::ACK_WAT;
+	}
 	break;
 
 	case FSM_CMD_READ:
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << ": CMD_READ" << std::endl;
+	std::cout << name() << ": CMD_READ addr=0x" << std::hex << r_adr.read() << std::endl;
 #endif
 	p_vci.cmdval = true;
 	p_vci.rspack = false;
@@ -121,7 +127,7 @@ switch (r_fsm_state) {
 	p_vci.plen	= 0;
 	p_vci.be	= 0xF;
 	p_vci.cmd	= vci_param::CMD_READ;
-	if (r_lock == true)	p_vci.eop = false;
+	if (p_pi.lock.read() == true)	p_vci.eop = false;
 	else			p_vci.eop = true;
 	p_pi.ack = Pibus::ACK_WAT;
 	p_pi.d   = 0;
@@ -129,14 +135,17 @@ switch (r_fsm_state) {
 	
 	case FSM_RSP_READ:
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << ": RSP_READ" << std::endl;
+	std::cout << name() << ": RSP_READ addr=0x" << std::hex << r_adr.read() << std::endl;
 #endif
 	p_vci.cmdval = false;
 	p_vci.rspack = true;
 	if (p_vci.rspval) {
 		p_pi.d = p_vci.rdata.read();
-		if (p_vci.rerror.read() != 0)	p_pi.ack = Pibus::ACK_ERR;
-		else				p_pi.ack = Pibus::ACK_RDY;
+		if (p_vci.rerror.read() != 0)	{
+			p_pi.ack = Pibus::ACK_ERR;
+			std::cout << name() << ": read addr=0x" << std::hex << p_vci.address.read()
+				<< " rerror=" << (unsigned int)p_vci.rerror.read() << std::endl;
+		} else				p_pi.ack = Pibus::ACK_RDY;
 	} else {
 		p_pi.ack = Pibus::ACK_WAT;
 		p_pi.d   = 0;
@@ -145,7 +154,7 @@ switch (r_fsm_state) {
 	
 	case FSM_CMD_WRITE:
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << ": CMD_WRITE" << std::endl;
+	std::cout << name() << ": CMD_WRITE addr=0x" << std::hex << r_adr.read() << std::endl;
 #endif
 	p_vci.cmdval = true;
 	p_vci.rspack = false;
@@ -161,20 +170,23 @@ switch (r_fsm_state) {
 	else if (r_opc.read() == Pibus::OPC_BY3)	p_vci.be = 0x8;
 	else						p_vci.be = 0x0;
 	p_vci.cmd	= vci_param::CMD_WRITE;
-	if (r_lock == true)	p_vci.eop = false;
+	if (p_pi.lock.read() == true)	p_vci.eop = false;
 	else			p_vci.eop = true;
 	p_pi.ack = Pibus::ACK_WAT;
 	break;
 
 	case FSM_RSP_WRITE:
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << ": RSP_WRITE" << std::endl;
+	std::cout << name() << ": RSP_WRITE addr=0x" << std::hex << r_adr.read() << std::endl;
 #endif
 	p_vci.cmdval = false;
 	p_vci.rspack = true;
 	if (p_vci.rspval) {
-		if (p_vci.rerror.read() != 0)	p_pi.ack = Pibus::ACK_ERR;
-		else				p_pi.ack = Pibus::ACK_RDY;
+		if (p_vci.rerror.read() != 0) {
+			p_pi.ack = Pibus::ACK_ERR;
+			std::cout << name() << ": write rerror=" << (unsigned int)p_vci.rerror.read() << std::endl;
+		} else
+			p_pi.ack = Pibus::ACK_RDY;
 	} else {
 		p_pi.ack = Pibus::ACK_WAT;
 		p_pi.d   = 0;

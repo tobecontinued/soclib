@@ -83,7 +83,6 @@ private:
 	sc_signal<int>				r_fsm_state;
 	sc_signal<int>				r_adr;
 	sc_signal<int>				r_opc;
-	sc_signal<bool>				r_lock;
 
 	// methods
 	void transition();

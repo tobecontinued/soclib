@@ -110,6 +110,17 @@ switch (r_fsm_state) {
       			printf("corresponding to WDU, HW0, HW1, BY0, BY1, BY2, BY3 formats\n");
 			exit(1);
         		} 
+#ifdef SOCLIB_MODULE_DEBUG
+	{
+	uint32_t cells = (int)((p_vci.plen.read()
+			+ soclib::common::ctz(p_vci.be.read())
+				+ vci_param::B-1)/vci_param::B) - 1;
+	std::cout << name() << ": start cells_to_go=" << cells << " addr=" << std::hex << (p_vci.address.read());
+	if (p_vci.cmd.read() == vci_param::CMD_READ) std::cout << " read";
+	else std::cout << " wdata=" << r_wdata;
+	std::cout << std::endl;
+	}
+#endif
 	} // end if cmdval
 	break;
 
@@ -130,9 +141,10 @@ switch (r_fsm_state) {
 		exit(1);
         	} 
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "ad_dt cells_to_go=" << r_cells_to_go << " addr=" << std::hex << (r_addr - 4);
+	std::cout << name() <<": ad_dt cells_to_go=" << r_cells_to_go << " addr=" << std::hex << (r_addr - 4);
 	if (r_read) std::cout << " rdata=" << p_pi.d;
 	else std::cout << " wdata=" << r_wdata;
+	std::cout << " ack=" << p_pi.ack.read();
 	std::cout << std::endl;
 #endif
 	r_wdata = (int)p_vci.wdata.read();
@@ -163,9 +175,10 @@ switch (r_fsm_state) {
 
 	case FSM_DT:
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "dt cells_to_go=" << r_cells_to_go << " addr=" << std::hex << (r_addr - 4);
+	std::cout << name() << ": dt cells_to_go=" << r_cells_to_go << " addr=" << std::hex << (r_addr - 4);
 	if (r_read) std::cout << " rdata=" << p_pi.d;
 	else std::cout << " wdata=" << r_wdata;
+	std::cout << " ack=" << p_pi.ack.read();
 	std::cout << std::endl;
 #endif
 	if (p_vci.rspack == false) {
@@ -247,6 +260,7 @@ switch (r_fsm_state) {
 	case FSM_DT:
 	p_req     	= false;
 	p_pi.lock 	= false;
+	p_pi.opc    = Pibus::OPC_NOP;
 	p_vci.reop	= true;
 	p_vci.rsrcid	= r_srcid.read();
 	p_vci.rpktid	= r_pktid.read();
