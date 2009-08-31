@@ -113,7 +113,9 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
     }
 }
 
-#define EBASE_WRITE_MASK 0x3ffff000
+// Dont limit to kseg0
+// #define EBASE_WRITE_MASK 0x3ffff000
+#define EBASE_WRITE_MASK 0xfffff000
 #define INTCTL_WRITE_MASK 0xfc0
 #define CAUSE_WRITE_MASK 0x8c00300
 
