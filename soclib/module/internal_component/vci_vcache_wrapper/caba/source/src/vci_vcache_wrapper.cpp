@@ -33,7 +33,7 @@ namespace caba {
 
 //#define VCACHE_WRAPPER_DEBUG
 
-#ifdef VCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 namespace {
 const char *icache_fsm_state_str[] = {
         "ICACHE_IDLE",
@@ -272,7 +272,7 @@ tmpl(/**/)::~VciVCacheWrapper()
 tmpl(void)::print_cpi()
 ////////////////////////
 {
-    std::cout << "CPU " << m_srcid << " : CPI = " 
+    std::cout << name() << " CPI = " 
         << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl ;
 }
 
@@ -281,7 +281,7 @@ tmpl(void)::print_stats()
 ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
-    std::cout << "CPU " << m_srcid << std::endl;
+    std::cout << "CPU " << name() << std::endl;
     std::cout << "- CPI                    = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
     std::cout << "- READ RATE              = " << (float)m_cpt_read/run_cycles << std::endl ;
     std::cout << "- WRITE RATE             = " << (float)m_cpt_write/run_cycles << std::endl;
@@ -437,8 +437,8 @@ tmpl(void)::transition()
         return;
     }
 
-#ifdef VCACHE_WRAPPER_DEBUG
-std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name() 
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << name() << "cycle = " << m_cpt_total_cycles << " processor " << name() 
         << " dcache fsm: " << dcache_fsm_state_str[r_dcache_fsm]
         << " icache fsm: " << icache_fsm_state_str[r_icache_fsm]
         << " cmd fsm: " << cmd_fsm_state_str[r_vci_cmd_fsm]
@@ -455,7 +455,7 @@ std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name()
 
     m_iss.getRequests( ireq, dreq );
 
-#ifdef VCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 std::cout << name() << " Instruction Request: " << ireq << std::endl;
 std::cout << name() << " Data Request: " << dreq << std::endl;
 #endif
@@ -592,7 +592,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             }
             else                    // using actual physical address for uncached access
             {
-                icache_hit_c = ( r_icache_buf_unc_valid && (tlb_ipaddr == r_icache_paddr_save) );
+                icache_hit_c = ( r_icache_buf_unc_valid && (tlb_ipaddr == (paddr_t)r_icache_paddr_save) );
                 icache_ins = r_icache_miss_buf[0];
             }
 
@@ -1077,7 +1077,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     }
     } // end switch r_icache_fsm
 
-#ifdef VCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 std::cout << name() << " Instruction Response: " << irsp << std::endl;
 #endif
 
@@ -1384,7 +1384,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else                    // using actual physical address for uncached access
             {
-                dcache_hit_c = ((tlb_dpaddr == r_dcache_paddr_save) && r_dcache_buf_unc_valid ); 
+                dcache_hit_c = ((tlb_dpaddr == (paddr_t)r_dcache_paddr_save) && r_dcache_buf_unc_valid ); 
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
@@ -2179,8 +2179,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     } // end switch r_dcache_fsm
 
 
-#ifdef VCACHE_WRAPPER_DEBUG
-std::cout << " Data Response: " << drsp << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << name() << " Data Response: " << drsp << std::endl;
 #endif
 
     /////////// execute one iss cycle /////////////////////////////////
@@ -2873,8 +2873,8 @@ tmpl(void)::genMoore()
 
     } // end switch r_vci_cmd_fsm
 
-#ifdef VCACHE_WRAPPER_DEBUG 
-   std::cout 
+#ifdef SOCLIB_MODULE_DEBUG 
+   std::cout << name()
        << "Moore:" << std::hex
        << "p_vci.cmdval:" << p_vci.cmdval
        << "p_vci.address:" << p_vci.address
