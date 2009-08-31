@@ -188,6 +188,14 @@ def init():
 	for path in config.desc_paths:
 		soclib_desc_registry.addPath(path)
 
+def cleanup():
+	init()
+	global soclib_desc_registry
+	try:
+		soclib_desc_registry.delete()
+	except:
+		pass
+
 def add_path(path):
 	init()
 	global soclib_desc_registry

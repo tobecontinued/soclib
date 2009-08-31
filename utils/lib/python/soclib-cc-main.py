@@ -104,6 +104,9 @@ def main():
 	parser.add_option('-x', '--clean', dest = 'clean',
 					  action='store_true',
 					  help="Clean all outputs, only compatible with -p")
+	parser.add_option('-X', '--clean-cache', dest = 'clean_cache',
+					  action='store_true',
+					  help="Clean .desc file cache")
 	parser.add_option('-o', '--output', dest = 'output',
 					  action='store', type = 'string',
 					  help="Select output file")
@@ -154,7 +157,11 @@ def main():
 		return 0
 	if opts.type:
 		change_config(opts.type)
-	
+
+	if opts.clean_cache:
+		soclib_desc.description_files.cleanup()
+		return 0
+
 	for path in opts.includes:
 		soclib_desc.description_files.add_path(path)
 
@@ -283,6 +290,7 @@ todo = Platform(
 			fd.close()
 		elif opts.clean:
 			todo.clean()
+			soclib_desc.description_files.cleanup()
 		elif opts.embedded_cflags:
 			print todo.embeddedCodeCflags()
 		else:
