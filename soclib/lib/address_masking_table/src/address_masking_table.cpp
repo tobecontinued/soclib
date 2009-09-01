@@ -54,6 +54,8 @@ tmpl(/**/)::AddressMaskingTable( data_t mask )
 	size_t use_bits = 0, drop_bits = 0;
 	data_t m = mask;
 	
+    assert(mask);
+
 	while ( !(m & 1) ) {
 		++drop_bits;
 		m >>= 1;
