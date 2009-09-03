@@ -41,29 +41,57 @@ static inline bool NaN(double value)    // Not A Number : not implemented
     return false;
 }
 
-template <class T>
-T Mips32Iss::readFPU(uint8_t fpr)
+template <>
+int32_t Mips32Iss::readFPU<int32_t>(uint8_t fpr)
 {
-    return (*((T *)&(r_f[fpr])));
+    return r_f[fpr];
 }
 
-template <class T>
-void Mips32Iss::storeFPU(uint8_t fpr, T value)
+template <>
+float Mips32Iss::readFPU<float>(uint8_t fpr)
 {
-    static_assert( sizeof(T) >= 4 );
+    union { int32_t i; float t; } v;
+    v.i = r_f[fpr];
+    return v.t;
+}
 
-    if (sizeof(T) == 4) {
-        r_f[fpr] = *((uint32_t*)&value);
-    } else if ( sizeof(T) == 8 ) {
-        if (m_little_endian) {
-            r_f[fpr+1] = ((*((uint64_t*)(&value))) >> 32);
-            r_f[fpr] = (*((uint64_t*)(&value)));
-        } else {
-            r_f[fpr] = ((*((uint64_t*)(&value))) >> 32);
-            r_f[fpr+1] = (*((uint64_t*)(&value)));
-        }
+template <>
+double Mips32Iss::readFPU<double>(uint8_t fpr)
+{
+    union { uint64_t i; double t; } v;
+    if (m_little_endian) {
+        v.i = ((uint64_t)r_f[fpr+1] << 32) | r_f[fpr];
     } else {
-        assert( ! "Unhandled size");
+        v.i = ((uint64_t)r_f[fpr] << 32) | r_f[fpr+1];
+    }
+    return v.t;
+}
+
+template <>
+void Mips32Iss::storeFPU<int32_t>(uint8_t fpr, int32_t value)
+{
+    r_f[fpr] = value;
+}
+
+template <>
+void Mips32Iss::storeFPU<float>(uint8_t fpr, float value)
+{
+    union { int32_t i; float t; } v;
+    v.t = value;
+    r_f[fpr] = v.i;
+}
+
+template <>
+void Mips32Iss::storeFPU<double>(uint8_t fpr, double value)
+{
+    union { uint64_t i; double t; } v;
+    v.t = value;
+    if (m_little_endian) {
+        r_f[fpr+1] = v.i >> 32;
+        r_f[fpr]   = v.i;
+    } else {
+        r_f[fpr]   = v.i >> 32;
+        r_f[fpr+1] = v.i;
     }
 }
 
@@ -362,7 +390,7 @@ void Mips32Iss::cop1_div()
 template <class T>
 void Mips32Iss::cop1_sqrt()
 {
-    T r = std::sqrt(readFPU<T>(m_ins.fpu_r.fs));
+    T r = (T)std::sqrt(readFPU<T>(m_ins.fpu_r.fs));
     storeFPU<T>(m_ins.fpu_r.fd, r);
 }
 
@@ -390,28 +418,28 @@ void Mips32Iss::cop1_neg()
 template <class T>
 void Mips32Iss::cop1_round()
 {
-    int32_t r = (readFPU<T>(m_ins.fpu_r.fs) + .5f);
+    int32_t r = (int32_t)(readFPU<T>(m_ins.fpu_r.fs) + (T).5f);
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
 }
 
 template <class T>
 void Mips32Iss::cop1_trunc()
 {
-    int32_t r = readFPU<T>(m_ins.fpu_r.fs);
+    int32_t r = (int32_t)readFPU<T>(m_ins.fpu_r.fs);
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
 }
 
 template <class T>
 void Mips32Iss::cop1_ceil()
 {
-    int32_t r = std::ceil(readFPU<T>(m_ins.fpu_r.fs));
+    int32_t r = (int32_t)std::ceil(readFPU<T>(m_ins.fpu_r.fs));
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
 }
 
 template <class T>
 void Mips32Iss::cop1_floor()
 {
-    int32_t r = std::floor(readFPU<T>(m_ins.fpu_r.fs));
+    int32_t r = (int32_t)std::floor(readFPU<T>(m_ins.fpu_r.fs));
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
 }
 
@@ -432,7 +460,7 @@ void Mips32Iss::cop1_cvt_d()
 template <class T>
 void Mips32Iss::cop1_cvt_w()
 {
-    int32_t r = readFPU<T>(m_ins.fpu_r.fs);
+    int32_t r = (int32_t)readFPU<T>(m_ins.fpu_r.fs);
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
 }
 
