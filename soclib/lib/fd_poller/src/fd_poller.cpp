@@ -157,7 +157,7 @@ void* FdPoller::thread( void *unused )
             changed = false;
             pthread_mutex_lock(&s_lock);
             if (pfd) {
-                delete pfd;
+                delete [] pfd;
                 pfd = NULL;
             }
             pfd = new struct pollfd[s_pollers.size()+1];
