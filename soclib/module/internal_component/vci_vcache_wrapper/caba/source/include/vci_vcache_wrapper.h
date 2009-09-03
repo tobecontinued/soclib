@@ -152,16 +152,33 @@ class VciVCacheWrapper
 
     // Error Type
     enum mmu_error_type_e {
-        MMU_NONE                 = 0x0,   // None
-        MMU_PT1_UNMAPPED         = 0x1,   // Page fault on Page Table 1           (non fatal)
-        MMU_PT2_UNMAPPED         = 0x2,   // Page fault on Page Table 2           (non fatal)
-        MMU_PRIVILEGE_VIOLATION  = 0x4,   // Protected access in user mode        (user error)
-        MMU_WRITE_VIOLATION      = 0x8,   // write access to a non writable page  (user error)
-        MMU_EXEC_VIOLATION       = 0x10,  // exec access to a non exec page       (user error)
-        MMU_UNDEFINED_XTN        = 0x20,  // undefined external access address    (user error)
-        MMU_PT1_ILLEGAL_ACCESS   = 0x40,  // Bus Error accessing Table 1          (kernel error)
-        MMU_PT2_ILLEGAL_ACCESS   = 0x80,  // Bus Error accessing Table 2          (kernel error)
-        MMU_CACHE_ILLEGAL_ACCESS = 0x100, // Bus Error in cache access            (kernel error)
+        MMU_NONE                       = 0x0000, // None
+        MMU_PT1_UNMAPPED_WRITE_ACCESS  = 0x0001, // Write access of Page fault on Page Table 1          (non fatal error)
+        MMU_PT2_UNMAPPED_WRITE_ACCESS  = 0x0002, // Write access of Page fault on Page Table 2          (non fatal error)
+        MMU_WRITE_PRIVILEGE_VIOLATION  = 0x0004, // Write access of Protected access in user mode       (user error)
+        MMU_WRITE_VIOLATION            = 0x0008, // Write access of write access to a non writable page (user error)
+        MMU_EXEC_VIOLATION             = 0x0010, // Exec access to a non exec page 	                    (user error)
+        MMU_UNDEFINED_XTN_WRITE        = 0x0020, // Write access of undefined external access address   (user error)
+        MMU_PT1_ILLEGAL_WRITE_ACCESS   = 0x0040, // Write access of Bus Error accessing Table 1         (kernel error)
+        MMU_PT2_ILLEGAL_WRITE_ACCESS   = 0x0080, // Write access of Bus Error accessing Table 2         (kernel error)
+        MMU_CACHE_ILLEGAL_WRITE_ACCESS = 0x0100, // Write access of Bus Error in cache access           (kernel error)
+        MMU_PT1_UNMAPPED_READ_ACCESS   = 0x0200, // Read access of Page fault on Page Table 1  	        (non fatal error)
+        MMU_PT2_UNMAPPED_READ_ACCESS   = 0x0400, // Read access of Page fault on Page Table 2  	        (non fatal error)
+        MMU_READ_PRIVILEGE_VIOLATION   = 0x0800, // Read access of Protected access in user mode 	    (user error)
+        MMU_UNDEFINED_XTN_READ         = 0x1000, // Read access of Undefined external access address 	(user error)
+        MMU_PT1_ILLEGAL_READ_ACCESS    = 0x2000, // Read access of Bus Error in Table1 access        	(kernel error)
+        MMU_PT2_ILLEGAL_READ_ACCESS    = 0x4000, // Read access of Bus Error in Table2 access 	        (kernel error)
+        MMU_CACHE_ILLEGAL_READ_ACCESS  = 0x8000, // Read access of Bus Error in cache access 	        (kernel error)
+/*
+        MMU_PT1_UNMAPPED_READ_ACCESS   = 0x1001, // Read access of Page fault on Page Table 1  	        (non fatal error)
+        MMU_PT2_UNMAPPED_READ_ACCESS   = 0x1002, // Read access of Page fault on Page Table 2  	        (non fatal error)
+        MMU_READ_PRIVILEGE_VIOLATION   = 0x1004, // Read access of Protected access in user mode 	    (user error)
+        MMU_EXEC_VIOLATION             = 0x1010, // Exec access to a non exec page 	                    (user error)
+        MMU_UNDEFINED_XTN_READ         = 0x1020, // Read access of Undefined external access address 	(user error)
+        MMU_PT1_ILLEGAL_READ_ACCESS    = 0x1040, // Read access of Bus Error in Table1 access        	(kernel error)
+        MMU_PT2_ILLEGAL_READ_ACCESS    = 0x1080, // Read access of Bus Error in Table2 access 	        (kernel error)
+        MMU_CACHE_ILLEGAL_READ_ACCESS  = 0x1100, // Read access of Bus Error in cache access 	        (kernel error)
+*/
     };
 
 public:

@@ -31,9 +31,7 @@
 namespace soclib { 
 namespace caba {
 
-//#define CC_VCACHE_WRAPPER_DEBUG
-
-#ifdef CC_VCACHE_WRAPPER_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 namespace {
 const char *icache_fsm_state_str[] = {
         "ICACHE_IDLE",
@@ -352,7 +350,7 @@ tmpl(/**/)::~VciCcVCacheWrapper2Ring()
 tmpl(void)::print_cpi()
 ////////////////////////
 {
-    std::cout << "CPU " << m_srcid_rw << " : CPI = " 
+    std::cout << name() << " CPI = " 
         << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl ;
 }
 
@@ -361,31 +359,31 @@ tmpl(void)::print_stats()
 ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
-    std::cout << "CPU " << m_srcid_rw << std::endl;
-    std::cout << "- CPI                    = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
-    std::cout << "- READ RATE              = " << (float)m_cpt_read/run_cycles << std::endl ;
-    std::cout << "- WRITE RATE             = " << (float)m_cpt_write/run_cycles << std::endl;
-    std::cout << "- UNCACHED READ RATE     = " << (float)m_cpt_unc_read/m_cpt_read << std::endl ;
-    std::cout << "- CACHED WRITE RATE      = " << (float)m_cpt_write_cached/m_cpt_write << std::endl ;
-    std::cout << "- IMISS_RATE             = " << (float)m_cpt_ins_miss/m_cpt_ins_read << std::endl;     
-    std::cout << "- DMISS RATE             = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl ;
-    std::cout << "- INS MISS COST          = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl;
-    std::cout << "- IMISS TRANSACTION      = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl;
-    std::cout << "- DMISS COST             = " << (float)m_cost_data_miss_frz/m_cpt_data_miss << std::endl;
-    std::cout << "- DMISS TRANSACTION      = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl;
-    std::cout << "- UNC COST               = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl;
-    std::cout << "- UNC TRANSACTION        = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl;
-    std::cout << "- WRITE COST             = " << (float)m_cost_write_frz/m_cpt_write << std::endl;
-    std::cout << "- WRITE TRANSACTION      = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl;
-    std::cout << "- WRITE LENGTH           = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl;
-    std::cout << "- INS TLB MISS RATE      = " << (float)m_cpt_ins_tlb_miss/m_cpt_ins_tlb_read << std::endl;
-    std::cout << "- DATA TLB MISS RATE     = " << (float)m_cpt_data_tlb_miss/m_cpt_data_tlb_read << std::endl;
-    std::cout << "- ITLB MISS TRANSACTION  = " << (float)m_cost_itlbmiss_transaction/m_cpt_itlbmiss_transaction << std::endl;
-    std::cout << "- ITLB WRITE TRANSACTION = " << (float)m_cost_itlb_write_transaction/m_cpt_itlb_write_transaction << std::endl;
-    std::cout << "- ITLB MISS COST         = " << (float)m_cost_ins_tlb_miss_frz/(m_cpt_ins_tlb_miss+m_cpt_ins_tlb_write_et) << std::endl;
-    std::cout << "- DTLB MISS TRANSACTION  = " << (float)m_cost_dtlbmiss_transaction/m_cpt_dtlbmiss_transaction << std::endl;
-    std::cout << "- DTLB WRITE TRANSACTION = " << (float)m_cost_dtlb_write_transaction/m_cpt_dtlb_write_transaction << std::endl;
-    std::cout << "- DTLB MISS COST         = " << (float)m_cost_data_tlb_miss_frz/(m_cpt_data_tlb_miss+m_cpt_data_tlb_write_et+m_cpt_data_tlb_write_dirty) << std::endl;
+    std::cout << name() << std::endl
+              << "- CPI                    = " << (float)m_cpt_total_cycles/run_cycles << std::endl 
+              << "- READ RATE              = " << (float)m_cpt_read/run_cycles << std::endl 
+              << "- WRITE RATE             = " << (float)m_cpt_write/run_cycles << std::endl
+              << "- UNCACHED READ RATE     = " << (float)m_cpt_unc_read/m_cpt_read << std::endl 
+              << "- CACHED WRITE RATE      = " << (float)m_cpt_write_cached/m_cpt_write << std::endl 
+              << "- IMISS_RATE             = " << (float)m_cpt_ins_miss/m_cpt_ins_read << std::endl    
+              << "- DMISS RATE             = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl 
+              << "- INS MISS COST          = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl
+              << "- IMISS TRANSACTION      = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl
+              << "- DMISS COST             = " << (float)m_cost_data_miss_frz/m_cpt_data_miss << std::endl
+              << "- DMISS TRANSACTION      = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl
+              << "- UNC COST               = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl
+              << "- UNC TRANSACTION        = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl
+              << "- WRITE COST             = " << (float)m_cost_write_frz/m_cpt_write << std::endl
+              << "- WRITE TRANSACTION      = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl
+              << "- WRITE LENGTH           = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl
+              << "- INS TLB MISS RATE      = " << (float)m_cpt_ins_tlb_miss/m_cpt_ins_tlb_read << std::endl
+              << "- DATA TLB MISS RATE     = " << (float)m_cpt_data_tlb_miss/m_cpt_data_tlb_read << std::endl
+              << "- ITLB MISS TRANSACTION  = " << (float)m_cost_itlbmiss_transaction/m_cpt_itlbmiss_transaction << std::endl
+              << "- ITLB WRITE TRANSACTION = " << (float)m_cost_itlb_write_transaction/m_cpt_itlb_write_transaction << std::endl
+              << "- ITLB MISS COST         = " << (float)m_cost_ins_tlb_miss_frz/(m_cpt_ins_tlb_miss+m_cpt_ins_tlb_write_et) << std::endl
+              << "- DTLB MISS TRANSACTION  = " << (float)m_cost_dtlbmiss_transaction/m_cpt_dtlbmiss_transaction << std::endl
+              << "- DTLB WRITE TRANSACTION = " << (float)m_cost_dtlb_write_transaction/m_cpt_dtlb_write_transaction << std::endl
+              << "- DTLB MISS COST         = " << (float)m_cost_data_tlb_miss_frz/(m_cpt_data_tlb_miss+m_cpt_data_tlb_write_et+m_cpt_data_tlb_write_dirty) << std::endl;
 }
 
 /*************************************************/
@@ -567,17 +565,17 @@ tmpl(void)::transition()
     }
 
 
-#ifdef CC_VCACHE_WRAPPER_DEBUG
-std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name() 
-        << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm]
-        << " dcache fsm: " << dcache_fsm_state_str[r_dcache_fsm]
-        << " icache fsm: " << icache_fsm_state_str[r_icache_fsm]
-        << " cmd fsm: " << cmd_fsm_state_str[r_vci_cmd_fsm]
-        << " rsp fsm: " << rsp_fsm_state_str[r_vci_rsp_fsm] 
-        << " cmd cleanup fsm: " << cmd_cleanup_fsm_state_str[r_vci_cmd_cleanup_fsm]
-        << " rsp cleanup fsm: " << rsp_cleanup_fsm_state_str[r_vci_rsp_cleanup_fsm] 
-        << " inval itlb fsm: " << inval_itlb_fsm_state_str[r_inval_itlb_fsm] 
-        << " inval dtlb fsm: " << inval_dtlb_fsm_state_str[r_inval_dtlb_fsm] << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << name() << "cycle = " << m_cpt_total_cycles  
+       	  << " tgt fsm: " << tgt_fsm_state_str[r_vci_tgt_fsm]
+       	  << " dcache fsm: " << dcache_fsm_state_str[r_dcache_fsm]
+       	  << " icache fsm: " << icache_fsm_state_str[r_icache_fsm]
+       	  << " cmd fsm: " << cmd_fsm_state_str[r_vci_cmd_fsm]
+       	  << " rsp fsm: " << rsp_fsm_state_str[r_vci_rsp_fsm] 
+       	  << " cmd cleanup fsm: " << cmd_cleanup_fsm_state_str[r_vci_cmd_cleanup_fsm]
+       	  << " rsp cleanup fsm: " << rsp_cleanup_fsm_state_str[r_vci_rsp_cleanup_fsm] 
+       	  << " inval itlb fsm: " << inval_itlb_fsm_state_str[r_inval_itlb_fsm] 
+       	  << " inval dtlb fsm: " << inval_dtlb_fsm_state_str[r_inval_dtlb_fsm] << std::endl;
 #endif
     m_cpt_total_cycles++;
 
@@ -589,9 +587,9 @@ std::cout << "cycle = " << m_cpt_total_cycles << " processor " << name()
 
     m_iss.getRequests( ireq, dreq );
 
-#ifdef CC_VCACHE_WRAPPER_DEBUG
-std::cout << name() << " Instruction Request: " << ireq << std::endl;
-std::cout << name() << " Data Request: " << dreq << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " Instruction Request: " << ireq << std::endl;
+    std::cout << name() << " Data Request: " << dreq << std::endl;
 #endif
 
     /////////////////////////////////////////////////////////////////////
@@ -957,7 +955,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             }
             else                    // using actual physical address for uncached access
             {
-                icache_hit_c = ( r_icache_buf_unc_valid && (tlb_ipaddr == r_icache_paddr_save) );
+                icache_hit_c = ( r_icache_buf_unc_valid && (tlb_ipaddr == (paddr_t)r_icache_paddr_save) );
                 icache_ins = r_icache_miss_buf[0];
             }
 
@@ -968,7 +966,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                     // check access rights
                     if ( !icache_pte_info.u && (ireq.mode == iss_t::MODE_USER)) 
                     {
-                        r_icache_error_type = r_icache_error_type | MMU_PRIVILEGE_VIOLATION;  
+                        r_icache_error_type = r_icache_error_type | MMU_READ_PRIVILEGE_VIOLATION;  
                         r_icache_bad_vaddr = ireq.addr;
                         irsp.valid = true;
                         irsp.error = true;
@@ -1016,7 +1014,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             {
                 // walk page table level 2
                 r_icache_paddr_save = (paddr_t)r_icache_ptba_save | 
-                                      (paddr_t)(((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
+                                      (paddr_t)(((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                 r_itlb_read_dcache_req = true;
                 r_icache_fsm = ICACHE_TLB2_READ;
                 m_cpt_ins_tlb_miss++;
@@ -1147,7 +1145,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 		if ( !(r_dcache_rsp_itlb_miss >> PTE_V_SHIFT) ) // unmapped
 		{
             	    r_icache_ptba_ok    = false;	
-                    r_icache_error_type = r_icache_error_type | MMU_PT1_UNMAPPED;  
+                    r_icache_error_type = r_icache_error_type | MMU_PT1_UNMAPPED_READ_ACCESS;  
                     r_icache_bad_vaddr  = ireq.addr;
                     r_icache_fsm        = ICACHE_ERROR;
 		}
@@ -1157,7 +1155,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
                     r_icache_ptba_save     = (paddr_t)(r_dcache_rsp_itlb_miss & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS; 
                     r_icache_id1_save      = ireq.addr >> PAGE_M_NBITS;
                     r_icache_paddr_save    = (paddr_t)(r_dcache_rsp_itlb_miss & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS |
-                                             (paddr_t)(((ireq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2); 
+                                             (paddr_t)(((ireq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 3); 
                     r_itlb_read_dcache_req = true;
                     r_icache_fsm           = ICACHE_TLB2_READ;
 		}	
@@ -1200,7 +1198,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             else                        // vci response error
             {  
                 r_icache_fsm = ICACHE_ERROR;
-                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_READ_ACCESS;    
                 r_icache_bad_vaddr = ireq.addr;
             }
         }
@@ -1210,7 +1208,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             if ( r_dcache_rsp_itlb_error ) 
             {
                 r_icache_inval_tlb_rsp = false;
-                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_READ_ACCESS;    
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
             } 
@@ -1249,7 +1247,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         { 
             if ( r_dcache_rsp_itlb_error ) 
             {
-                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
+                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_READ_ACCESS;  
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
             } 
@@ -1264,7 +1262,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             if ( r_dcache_rsp_itlb_error ) 
             {
                 r_icache_inval_tlb_rsp = false;
-                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_ACCESS;  
+                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_READ_ACCESS;  
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
             } 
@@ -1347,7 +1345,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             {
 		if ( !(r_dcache_rsp_itlb_miss >> PTE_V_SHIFT) ) // unmapped
 		{
-                    r_icache_error_type = r_icache_error_type | MMU_PT2_UNMAPPED;  
+                    r_icache_error_type = r_icache_error_type | MMU_PT2_UNMAPPED_READ_ACCESS;  
                     r_icache_bad_vaddr  = ireq.addr;
                     r_icache_fsm = ICACHE_ERROR;
 		}
@@ -1387,7 +1385,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             }
             else                            // VCI response error        
             {
-                r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_ACCESS;
+                r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_READ_ACCESS;
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
             }
@@ -1398,7 +1396,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             if ( r_dcache_rsp_itlb_error ) 
             {
                 r_icache_inval_tlb_rsp = false;
-                r_icache_error_type = r_icache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+                r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_READ_ACCESS;    
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
             } 
@@ -1437,7 +1435,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
         {
             if ( r_dcache_rsp_itlb_error )             
             {
-                r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_ACCESS;  
+                r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_READ_ACCESS;  
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
             } 
@@ -1451,7 +1449,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
             if ( r_dcache_rsp_itlb_error ) 
             {
                 r_icache_inval_tlb_rsp = false;
-                r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_ACCESS;  
+                r_icache_error_type = r_icache_error_type | MMU_PT2_ILLEGAL_READ_ACCESS;  
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
             } 
@@ -1672,7 +1670,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 	{
 	    if ( r_vci_rsp_ins_error ) 
             {
-                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_READ_ACCESS; 
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
 
@@ -1727,7 +1725,7 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
 	{
 	    if ( r_vci_rsp_ins_error ) 
             {
-                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_ACCESS;    
+                r_icache_error_type = r_icache_error_type | MMU_CACHE_ILLEGAL_READ_ACCESS;    
                 r_icache_bad_vaddr = ireq.addr;
                 r_icache_fsm = ICACHE_ERROR;
 
@@ -1868,8 +1866,8 @@ std::cout << name() << " Data Request: " << dreq << std::endl;
     }
     } // end switch r_icache_fsm
 
-#ifdef CC_VCACHE_WRAPPER_DEBUG
-std::cout << name() << " Instruction Response: " << irsp << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " Instruction Response: " << irsp << std::endl;
 #endif
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -2153,7 +2151,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     drsp.error = false;
                     break;
                 default:
-                    r_dcache_error_type = r_dcache_error_type | MMU_UNDEFINED_XTN; 
+                    r_dcache_error_type = r_dcache_error_type | MMU_UNDEFINED_XTN_READ; 
                     r_dcache_bad_vaddr  = dreq.addr;
                     drsp.valid = true;
                     drsp.error = true;
@@ -2188,7 +2186,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     } 
                     else 
                     { 
-                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION; 
+                        r_dcache_error_type = r_dcache_error_type | MMU_WRITE_PRIVILEGE_VIOLATION; 
                         r_dcache_bad_vaddr  = dreq.addr;
                         drsp.valid = true;
                         drsp.error = true;
@@ -2204,7 +2202,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     } 
                     else 
                     {
-                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION; 
+                        r_dcache_error_type = r_dcache_error_type | MMU_WRITE_PRIVILEGE_VIOLATION; 
                         r_dcache_bad_vaddr  = dreq.addr;
                         drsp.valid = true;
                         drsp.error = true;
@@ -2219,7 +2217,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     } 
                     else 
                     {
-                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION; 
+                        r_dcache_error_type = r_dcache_error_type | MMU_WRITE_PRIVILEGE_VIOLATION; 
                         r_dcache_bad_vaddr  = dreq.addr;
                         drsp.valid = true;
                         drsp.error = true;
@@ -2236,7 +2234,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     } 
                     else 
                     {
-                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION; 
+                        r_dcache_error_type = r_dcache_error_type | MMU_WRITE_PRIVILEGE_VIOLATION; 
                         r_dcache_bad_vaddr  = dreq.addr;
                         drsp.valid = true;
                         drsp.error = true;
@@ -2269,7 +2267,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     break;
 
                 default:
-                    r_dcache_error_type = r_dcache_error_type | MMU_UNDEFINED_XTN; 
+                    r_dcache_error_type = r_dcache_error_type | MMU_UNDEFINED_XTN_WRITE; 
                     r_dcache_bad_vaddr  = dreq.addr;
                     drsp.valid = true;
                     drsp.error = true;
@@ -2321,7 +2319,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             } 
             else                    // using actual physical address for uncached access
             {
-                dcache_hit_c = ((tlb_dpaddr == r_dcache_paddr_save) && r_dcache_buf_unc_valid ); 
+                dcache_hit_c = ((tlb_dpaddr == (paddr_t)r_dcache_paddr_save) && r_dcache_buf_unc_valid ); 
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
@@ -2332,7 +2330,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 {
                     if (!dcache_pte_info.u && (dreq.mode == iss_t::MODE_USER)) 
                     {
-                        r_dcache_error_type = r_dcache_error_type | MMU_PRIVILEGE_VIOLATION;  
+                        if ((dreq.type == iss_t::DATA_READ)||(dreq.type == iss_t::DATA_LL))
+                        {
+                            r_dcache_error_type = r_dcache_error_type | MMU_READ_PRIVILEGE_VIOLATION;
+                        }
+                        else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                        {
+                            r_dcache_error_type = r_dcache_error_type | MMU_WRITE_PRIVILEGE_VIOLATION;
+                        }  
                         r_dcache_bad_vaddr = dreq.addr;
                         drsp.valid = true;
                         drsp.error = true;
@@ -2340,9 +2345,9 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                         r_dcache_fsm = DCACHE_IDLE;
                         break;
                     }
-                    if (!dcache_pte_info.w && (dreq.type == iss_t::DATA_WRITE)) 
+                    if (!dcache_pte_info.w && ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))) 
                     {
-                        r_dcache_error_type = r_dcache_error_type | MMU_WRITE_VIOLATION;  
+                        r_dcache_error_type = r_dcache_error_type | MMU_WRITE_PRIVILEGE_VIOLATION;  
                         r_dcache_bad_vaddr = dreq.addr;
                         drsp.valid = true;
                         drsp.error = true;
@@ -2379,7 +2384,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             {
                 // walk page table level 2
                 r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save | 
-                                     (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2); 
+                                     (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3); 
                 r_dcache_fsm = DCACHE_DTLB2_READ_CACHE;
                 m_cpt_data_tlb_miss++;
                 m_cost_data_tlb_miss_frz++;
@@ -2512,8 +2517,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                                 if (dcache_hit_p) 
                                 {
                                     r_dcache_pte_update = dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
-                                    r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
-                                    write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2)), 
+                                    r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
+                                    write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
                                                        (dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK));
                                     assert(write_hit && "Write on miss ignores data");
                                     r_dcache_tlb_ll_dirty_req = true;
@@ -2642,8 +2647,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                     if (r_dcache_hit_p_save) 
                     {
                         r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                        r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
-                        write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2)), 
+                        r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
+                        write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
                                                     (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
                         assert(write_hit && "Write on miss ignores data");
                         r_dcache_tlb_ll_dirty_req = true;
@@ -2687,11 +2692,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
             {
 		if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
 		{
-                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;     
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_WRITE_ACCESS;     
 		}
 		else
 		{
-                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS;     
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_WRITE_ACCESS;     
 		}
                 r_dcache_bad_vaddr = dreq.addr;
                 r_dcache_fsm = DCACHE_ERROR; 
@@ -2705,11 +2710,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	        {
 		    if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save))
 		    { 
-			r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED;       
+			r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED_WRITE_ACCESS;       
 		    }
 		    else
 		    {
-			r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED;       
+			r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED_WRITE_ACCESS;       
 	  	    }
                     r_dcache_bad_vaddr = dreq.addr;
                     r_dcache_fsm = DCACHE_ERROR;
@@ -2756,11 +2761,11 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	    {
 	        if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save))
 	        {
-	            r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+	            r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_WRITE_ACCESS;    
 	        }
 	        else
 	        {
-	            r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS;    
+	            r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_WRITE_ACCESS;    
 	        }
 	        r_dcache_bad_vaddr = dreq.addr;
 	        r_dcache_fsm = DCACHE_ERROR;
@@ -2826,7 +2831,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	    if ( !(tlb_data >> PTE_V_SHIFT) )	// unmapped
 	    {
                 r_dcache_ptba_ok    = false;
-                r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED;       
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED_WRITE_ACCESS;
+                }  
                 r_dcache_bad_vaddr  = dreq.addr;
                 r_dcache_fsm        = DCACHE_ERROR;
 	    }
@@ -2836,12 +2848,12 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 r_dcache_ptba_save = (paddr_t)(tlb_data & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS;  
                 r_dcache_id1_save  = dreq.addr >> PAGE_M_NBITS;
                 r_dcache_tlb_paddr = (paddr_t)(tlb_data & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS | 
-                                     (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
+                                     (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 3);
                 if ( r_dcache_tlb_ptba_read )
                 {
                     r_dcache_tlb_ptba_read = false;
                     write_hit = r_dcache.write(((paddr_t)(tlb_data & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS | 
-                                                (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2)), r_dcache_pte_update);
+                                                (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 3)), r_dcache_pte_update);
                     assert(write_hit && "Write on miss ignores data");
                     r_dcache_tlb_ll_dirty_req = true;
                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
@@ -2915,7 +2927,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	{
             if ( r_vci_rsp_data_error ) // VCI response ko
             {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;     
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_WRITE_ACCESS;
+                } 
                 r_dcache_bad_vaddr = dreq.addr;
                 r_dcache_fsm = DCACHE_ERROR;
 
@@ -2926,7 +2945,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	    {
 		if ( !(r_dcache_miss_buf[0] >> PTE_V_SHIFT) )	// unmapped
 	        {
-                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED;       
+               	    if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+               	    {
+               	        r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED_READ_ACCESS;
+               	    }
+               	    else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+               	    {
+               	        r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED_WRITE_ACCESS;
+               	    } 
                     r_dcache_bad_vaddr  = dreq.addr;
                     r_dcache_fsm        = DCACHE_ERROR;
 
@@ -2970,7 +2996,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	{
 	    if ( r_vci_rsp_data_error ) // VCI response ko
 	    {
-	        r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_WRITE_ACCESS;
+                } 
 	        r_dcache_bad_vaddr = dreq.addr;
 	        r_dcache_fsm = DCACHE_ERROR; 
 
@@ -3021,7 +3054,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	{	
             if ( r_vci_rsp_data_error ) // VCI response ko
             {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_ACCESS;    
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_ILLEGAL_WRITE_ACCESS;
+                } 
                 r_dcache_bad_vaddr = dreq.addr;
                 r_dcache_fsm = DCACHE_ERROR; 
 
@@ -3116,7 +3156,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	    if ( !(rsp_dtlb_miss >> PTE_V_SHIFT) )	// unmapped
 	    {
                 r_dcache_ptba_ok    = false;
-                r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED;       
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT1_UNMAPPED_WRITE_ACCESS;
+                } 
                 r_dcache_bad_vaddr  = dreq.addr;
                 r_dcache_fsm        = DCACHE_ERROR;
 	    }
@@ -3126,12 +3173,12 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 r_dcache_ptba_save = (paddr_t)(rsp_dtlb_miss & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS;  
                 r_dcache_id1_save  = dreq.addr >> PAGE_M_NBITS;
                 r_dcache_tlb_paddr = (paddr_t)(rsp_dtlb_miss & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS | 
-                                     (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2);
+                                     (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 3);
                 if ( r_dcache_tlb_ptba_read )
                 {
                     r_dcache_tlb_ptba_read = false;
                     write_hit = r_dcache.write(((paddr_t)(rsp_dtlb_miss & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS | 
-                                                (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 2)),r_dcache_pte_update);
+                                                (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 3)),r_dcache_pte_update);
                     assert(write_hit && "Write on miss ignores data");
                     r_dcache_tlb_ll_dirty_req = true;
                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
@@ -3254,7 +3301,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
         {
 	    if ( !(tlb_data >> PTE_V_SHIFT) )	// unmapped
 	    {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED; 
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED_WRITE_ACCESS;
+                } 
                 r_dcache_bad_vaddr  = dreq.addr;
                 r_dcache_fsm        = DCACHE_ERROR;
 	    }
@@ -3330,7 +3384,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	{
             if ( r_vci_rsp_data_error ) // VCI response ko
             {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS;     
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_WRITE_ACCESS;
+                } 
                 r_dcache_bad_vaddr = dreq.addr;
                 r_dcache_fsm = DCACHE_ERROR; 
 
@@ -3341,7 +3402,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	    {
 	        if ( !(r_dcache_miss_buf[0] >> PTE_V_SHIFT) )	// unmapped
 	        {
-                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED;       
+               	    if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+               	    {
+               	        r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED_READ_ACCESS;
+               	    }
+               	    else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+               	    {
+               	        r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED_WRITE_ACCESS;
+               	    } 
                     r_dcache_bad_vaddr = dreq.addr;
                     r_dcache_fsm = DCACHE_ERROR;
 
@@ -3385,7 +3453,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	{
 	    if ( r_vci_rsp_data_error ) // VCI response ko
 	    {
-	        r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS;    
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_WRITE_ACCESS;
+                } 
 	        r_dcache_bad_vaddr = dreq.addr;
 	        r_dcache_fsm = DCACHE_ERROR; 
 
@@ -3436,7 +3511,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	{
             if ( r_vci_rsp_data_error ) // VCI response ko
             {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_ACCESS;    
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_ILLEGAL_WRITE_ACCESS;
+                } 
                 r_dcache_bad_vaddr = dreq.addr;
                 r_dcache_fsm = DCACHE_ERROR; 
 
@@ -3534,7 +3616,14 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 
 	    if ( !(rsp_dtlb_miss >> PTE_V_SHIFT) )	// unmapped
 	    {
-                r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED; 
+                if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED_READ_ACCESS;
+                }
+                else /*if ((dreq.type == iss_t::DATA_WRITE)||(dreq.type == iss_t::DATA_SC))*/
+                {
+                    r_dcache_error_type = r_dcache_error_type | MMU_PT2_UNMAPPED_WRITE_ACCESS;
+                }  
                 r_dcache_bad_vaddr  = dreq.addr;
                 r_dcache_fsm        = DCACHE_ERROR;
 	    }
@@ -3799,7 +3888,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	{
             if ( r_vci_rsp_data_error ) 
             {
-                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_READ_ACCESS; 
                 r_dcache_bad_vaddr = dreq.addr;
                 r_dcache_fsm = DCACHE_ERROR;
 
@@ -3910,7 +3999,7 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
 	{
             if ( r_vci_rsp_data_error ) 
             {
-                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_ACCESS; 
+                r_dcache_error_type = r_dcache_error_type | MMU_CACHE_ILLEGAL_READ_ACCESS; 
                 r_dcache_bad_vaddr = dreq.addr;
                 r_dcache_fsm = DCACHE_ERROR;
 
@@ -3998,8 +4087,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
                 if (r_dcache_hit_p_save) 
                 {
                     r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                    r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2);
-                    write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 2)), 
+                    r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
+                    write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
                                      (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
                     assert(write_hit && "Write on miss ignores data");
                     r_dcache_tlb_ll_dirty_req = true;
@@ -4426,8 +4515,8 @@ std::cout << name() << " Instruction Response: " << irsp << std::endl;
     }
     } // end switch r_dcache_fsm
 
-#ifdef CC_VCACHE_WRAPPER_DEBUG
-std::cout << " Data Response: " << drsp << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " Data Response: " << drsp << std::endl;
 #endif
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -5382,24 +5471,24 @@ tmpl(void)::genMoore()
 
     } // end switch TGT_FSM
 
-#ifdef CC_VCACHE_WRAPPER_DEBUG 
-   std::cout 
-       << "Moore:" << std::hex
-       << " p_vci_ini_rw.cmdval: " << p_vci_ini_rw.cmdval
-       << " p_vci_ini_rw.address: " << p_vci_ini_rw.address
-       << " p_vci_ini_rw.wdata: " << p_vci_ini_rw.wdata
-       << " p_vci_ini_rw.cmd: " << p_vci_ini_rw.cmd
-       << " p_vci_ini_rw.eop: " << p_vci_ini_rw.eop
-       << std::endl;
+#ifdef SOCLIB_MODULE_DEBUG 
+   std::cout << name() 
+      	     << "Moore:" << std::hex
+      	     << " p_vci_ini_rw.cmdval: " << p_vci_ini_rw.cmdval
+      	     << " p_vci_ini_rw.address: " << p_vci_ini_rw.address
+      	     << " p_vci_ini_rw.wdata: " << p_vci_ini_rw.wdata
+      	     << " p_vci_ini_rw.cmd: " << p_vci_ini_rw.cmd
+      	     << " p_vci_ini_rw.eop: " << p_vci_ini_rw.eop
+      	     << std::endl;
 
-   std::cout 
-       << "Moore:" << std::hex
-       << " p_vci_ini_c.cmdval: " << p_vci_ini_c.cmdval
-       << " p_vci_ini_c.address: " << p_vci_ini_c.address
-       << " p_vci_ini_c.wdata: " << p_vci_ini_c.wdata
-       << " p_vci_ini_c.cmd: " << p_vci_ini_c.cmd
-       << " p_vci_ini_c.eop: " << p_vci_ini_c.eop
-       << std::endl;
+   std::cout << name() 
+             << "Moore:" << std::hex
+             << " p_vci_ini_c.cmdval: " << p_vci_ini_c.cmdval
+             << " p_vci_ini_c.address: " << p_vci_ini_c.address
+             << " p_vci_ini_c.wdata: " << p_vci_ini_c.wdata
+             << " p_vci_ini_c.cmd: " << p_vci_ini_c.cmd
+             << " p_vci_ini_c.eop: " << p_vci_ini_c.eop
+             << std::endl;
 #endif
 
 }
