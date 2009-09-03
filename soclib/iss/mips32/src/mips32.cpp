@@ -75,7 +75,7 @@ void Mips32Iss::reset()
     r_cause.whole = 0;
     m_exec_cycles = 0;
     r_gp[0] = 0;
-    m_sleeping = false;
+    m_microcode_func = NULL;
     r_count = 0;
     r_compare = 0;
     r_tls_base = 0;
@@ -137,17 +137,23 @@ uint32_t Mips32Iss::executeNCycles(
     const struct DataResponse &drsp,
     uint32_t irq_bit_field )
 {
+
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " executeNCycles( " << ncycle << ", "<< irsp << ", " << drsp << ", " << irq_bit_field << ")" << std::endl;
 #endif
+    m_irqs = irq_bit_field;
 
-    bool may_take_irq = r_status.ie && !r_status.exl && !r_status.erl;
+    bool may_take_irq =
+        (m_microcode_func == NULL)
+        && r_status.ie
+        && !r_status.exl
+        && !r_status.erl;
     if ( m_little_endian )
         m_ins.ins = irsp.instruction;
     else
         m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
     m_ibe = irsp.error;
-    m_ireq_ok = irsp.valid;
+    m_ireq_ok = (m_microcode_func != NULL) || irsp.valid;
 
     _setData( drsp );
 
@@ -156,19 +162,6 @@ uint32_t Mips32Iss::executeNCycles(
 
     m_exception = NO_EXCEPTION;
 
-    if ( m_sleeping ) {
-        if ( ((r_status.im>>2) & irq_bit_field)
-             && may_take_irq ) {
-            m_exception = X_INT;
-            m_sleeping = false;
-#ifdef SOCLIB_MODULE_DEBUG
-            std::cout << name() << " IRQ while sleeping" << std::endl;
-#endif
-        } else {
-            r_count += ncycle;
-            return ncycle;
-        }
-    }
     if ( ! m_ireq_ok || ! m_dreq_ok || m_ins_delay ) {
         uint32_t t = ncycle;
         if ( m_ins_delay ) {
@@ -237,16 +230,24 @@ uint32_t Mips32Iss::executeNCycles(
         goto house_keeping;
     } else {
         m_exec_cycles++;
-        run();
+        if ( m_microcode_func ) {
+            (this->*m_microcode_func)();
+            if ( m_exception == NO_EXCEPTION )
+                goto house_keeping;
+        } else {
+            run();
+        }
     }
 
     if ( m_exception == NO_EXCEPTION
          && ((r_status.im>>2) & irq_bit_field)
+         && (m_microcode_func == NULL)
          && may_take_irq ) {
         m_exception = X_INT;
 #if defined(SOCLIB_MODULE_DEBUG)
         std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;
 #endif
+
 #if defined(SOCLIB_MODULE_DEBUG)
     } else {
         if ( irq_bit_field )
@@ -269,6 +270,8 @@ uint32_t Mips32Iss::executeNCycles(
 
  handle_except:
 
+    m_microcode_func = NULL;
+
     if ( debugExceptionBypassed( m_exception ) )
         goto no_except;
 
@@ -279,26 +282,20 @@ uint32_t Mips32Iss::executeNCycles(
         if ( r_status.exl ) {
             except_address += 0x180;
         } else {
-            if ( m_sleeping && m_exception == X_INT ) {
-                r_cause.bd = 0;
-                r_epc = r_pc;
-                m_sleeping = false;
+            r_cause.bd = branch_taken;
+            addr_t epc;
+            if ( m_exception == X_DBE ) {
+                // A synchronous DBE is signalled for the
+                // instruction following...
+                // If it is asynchronous, we're lost :'(
+                epc = r_pc-4;
             } else {
-                r_cause.bd = branch_taken;
-                addr_t epc;
-                if ( m_exception == X_DBE ) {
-                    // A synchronous DBE is signalled for the
-                    // instruction following...
-                    // If it is asynchronous, we're lost :'(
-                    epc = r_pc-4;
-                } else {
-                    if ( branch_taken )
-                        epc = r_pc;
-                    else
-                        epc = r_npc;
-                }
-                r_epc = epc;
+                if ( branch_taken )
+                    epc = r_pc;
+                else
+                    epc = r_npc;
             }
+            r_epc = epc;
             except_address += exceptOffsetAddr(m_exception);
         }
         r_cause.ce = 0;
@@ -310,6 +307,7 @@ uint32_t Mips32Iss::executeNCycles(
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout
             << m_name <<" exception: "<<m_exception<<std::endl
+        	<< " m_ins: " << m_ins.j.op
             << " epc: " << r_epc
             << " error_epc: " << r_error_epc
             << " bar: " << m_dreq.addr
@@ -479,6 +477,16 @@ Mips32Iss::addr_t Mips32Iss::exceptBaseAddr() const
         return 0xbfc00200;
     else
         return r_ebase & 0xfffff000;
+}
+
+void Mips32Iss::do_microcoded_sleep()
+{
+    if ( m_irqs ) {
+        m_microcode_func = NULL;
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << name() << " IRQ while sleeping" << std::endl;
+#endif
+    }
 }
 
 }}

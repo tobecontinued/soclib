@@ -226,7 +226,7 @@ void Mips32Iss::op_cop0()
             update_mode();
             break;
         case WAIT:
-            m_sleeping = true;
+            m_microcode_func = &Mips32Iss::do_microcoded_sleep;
             break;
         default: // Not handled, so raise an exception
             op_ill();

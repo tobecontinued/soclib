@@ -295,7 +295,7 @@ private:
     uint32_t r_count;
     uint32_t r_compare;
 
-    bool m_sleeping;
+    uint32_t m_irqs;
     
     // member variables used for communication between
     // member functions (they are not registers)
@@ -333,7 +333,7 @@ public:
 	inline void getRequests( struct InstructionRequest &ireq,
                              struct DataRequest &dreq ) const
 	{
-        ireq.valid = !m_sleeping;
+        ireq.valid = (m_microcode_func == NULL);
 		ireq.addr = r_pc;
         ireq.mode = r_bus_mode;
         dreq = m_dreq;
@@ -402,6 +402,8 @@ private:
     }
 
     typedef void (Mips32Iss::*func_t)();
+
+    func_t m_microcode_func;
 
     static func_t const opcod_table[64];
     static func_t const special_table[64];
@@ -496,6 +498,8 @@ private:
     void special_tgeu();
     void special_teq();
     void special_tne();
+
+    void do_microcoded_sleep();
 
     typedef enum {
         USE_NONE = 0,
