@@ -263,12 +263,12 @@ void Mips32Iss::op_cop2()
 
     switch (m_ins.coproc.action) {
     case MT:
-        //do_mem_access(m_ins.coproc.rd*4, 4, 0, 0, 0, r_gp[m_ins.i.rt], XTN_WRITE);
-        do_mem_access(r_gp[m_ins.coproc.rd]*4, 4, 0, 0, 0, r_gp[m_ins.i.rt], XTN_WRITE);
+        //do_mem_access(m_ins.coproc.rd*4, 4, false, NULL, 0, r_gp[m_ins.i.rt], XTN_WRITE);
+        do_mem_access(r_gp[m_ins.coproc.rd]*4, 4, false, NULL, 0, r_gp[m_ins.i.rt], XTN_WRITE);
         break;
     case MF:
-        //do_mem_access(m_ins.coproc.rd*4, 4, 0, m_ins.i.rt, 0, 0, XTN_READ);
-        do_mem_access(r_gp[m_ins.coproc.rd]*4, 4, 0, m_ins.i.rt, 0, 0, XTN_READ);
+        //do_mem_access(m_ins.coproc.rd*4, 4, false, &r_gp[m_ins.i.rt], 0, 0, XTN_READ);
+        do_mem_access(r_gp[m_ins.coproc.rd]*4, 4, false, &r_gp[m_ins.i.rt], 0, 0, XTN_READ);
         break;
     default: // Not handled, so raise an exception
         op_ill();
@@ -305,7 +305,7 @@ void Mips32Iss::op_cache()
 
     switch (m_ins.i.rt) {
     case CACHE_OP(HIT_INVAL,DCACHE):
-        do_mem_access(4*XTN_DCACHE_INVAL, 4, false, 0, 0, address, XTN_WRITE);
+        do_mem_access(4*XTN_DCACHE_INVAL, 4, false, NULL, 0, address, XTN_WRITE);
         break;
     default:
         std::cout << name() << " Unsupported cache operation "

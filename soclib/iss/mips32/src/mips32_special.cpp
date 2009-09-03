@@ -321,7 +321,7 @@ void Mips32Iss::special_tne()
 
 void Mips32Iss::special_sync()
 {
-    do_mem_access(4*XTN_SYNC, 4, 0, 0, 0, 0, XTN_READ);
+    do_mem_access(4*XTN_SYNC, 4, 0, NULL, 0, 0, XTN_READ);
 }
 
 void Mips32Iss::special_ill()

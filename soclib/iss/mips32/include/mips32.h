@@ -109,7 +109,7 @@ private:
     int r_mem_byte_le;
     int r_mem_byte_count;
     int r_mem_offset_byte_in_reg;
-    uint32_t r_mem_dest;
+    uint32_t	*r_mem_dest;
 
 	data_t	m_rdata;
 	bool		m_ibe;
@@ -412,7 +412,7 @@ private:
     void do_mem_access( addr_t address,
                         int byte_count,
                         int sign_extend,
-                        int dest_reg,
+                        uint32_t *dest,
                         int dest_byte_in_reg,
                         data_t wdata,
                         enum DataOperationType operation );

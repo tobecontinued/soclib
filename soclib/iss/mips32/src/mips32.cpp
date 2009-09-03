@@ -68,7 +68,7 @@ void Mips32Iss::reset()
     m_ibe = false;
     m_dbe = false;
     m_dreq = null_dreq;
-    r_mem_dest = 0;
+    r_mem_dest = NULL;
     m_skip_next_instruction = false;
     m_ins_delay = 0;
     r_status.whole = 0x400004;

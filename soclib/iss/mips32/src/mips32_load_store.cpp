@@ -57,7 +57,7 @@ data_t be_to_mask( data_t be )
 void Mips32Iss::do_mem_access( addr_t address,
                                int byte_count,
                                int sign_extend,
-                               int dest_reg,
+                               uint32_t *dest,
                                int dest_byte_in_reg,
                                data_t wdata,
                                enum DataOperationType operation )
@@ -90,13 +90,16 @@ void Mips32Iss::do_mem_access( addr_t address,
     m_dreq.type = operation;
     m_dreq.mode = r_bus_mode;
 
+    if ( dest == &r_gp[0] )
+        dest = NULL;
+
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << name()
         << " do_mem_access: " << m_dreq
         << " off: " << byte_le
         << " sign_ext: " << sign_extend
-        << " dest: " << dest_reg
+        << " dest: gp+" << dest - &r_gp[0]
         << std::endl;
 #endif
 
@@ -104,7 +107,7 @@ void Mips32Iss::do_mem_access( addr_t address,
     r_mem_byte_count = byte_count;
     r_mem_offset_byte_in_reg = dest_byte_in_reg;
     r_mem_do_sign_extend = sign_extend;
-    r_mem_dest = dest_reg;
+    r_mem_dest = dest;
 }
 
 void Mips32Iss::_setData(const struct DataResponse &rsp)
@@ -123,7 +126,7 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
         << " setData: " << rsp
         << " off: " << r_mem_offset_byte_in_reg
         << " sign_ext: " << r_mem_do_sign_extend
-        << " dest: " << r_mem_dest
+        << " dest: r_gp+" << r_mem_dest - &r_gp[0]
         << std::endl;
 #endif
 
@@ -140,8 +143,8 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
     case DATA_SC:
     case XTN_READ: {
         uint32_t reg_use = curInstructionUsesRegs();
-        if ( (reg_use & USE_S && r_mem_dest == m_ins.r.rs) ||
-             (reg_use & USE_T && r_mem_dest == m_ins.r.rt) )
+        if ( (reg_use & USE_S && r_mem_dest == &r_gp[m_ins.r.rs]) ||
+             (reg_use & USE_T && r_mem_dest == &r_gp[m_ins.r.rt]) )
             m_hazard = true;
         break;
     }
@@ -152,7 +155,7 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
     }
 
     // With destination register == 0, this is a store or a load to r0.
-    if ( r_mem_dest == 0 )
+    if ( r_mem_dest == NULL )
         return;
 
     data_t data = rsp.rdata;
@@ -204,7 +207,7 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
     data <<= 8*r_mem_offset_byte_in_reg;
     mask <<= 8*r_mem_offset_byte_in_reg;
 
-    data_t new_data = (data&mask) | (r_gp[r_mem_dest]&~mask);
+    data_t new_data = (data&mask) | (*r_mem_dest&~mask);
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << name()
@@ -212,13 +215,13 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
         << " off: " << r_mem_offset_byte_in_reg
         << " count: " << r_mem_byte_count
         << " le: " << r_mem_byte_le
-        << " old: " << r_gp[r_mem_dest]
+        << " old: " << *r_mem_dest
         << " from_mem: " << rsp.rdata
         << " mask: " << mask
         << " new_data: " << new_data
         << std::endl;
 #endif
-    r_gp[r_mem_dest] = new_data;
+    *r_mem_dest = new_data;
 }
 
 /* except: L stands for Load, S stands for store */
@@ -234,34 +237,34 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
 void Mips32Iss::op_lb()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
-    do_mem_access(address, 1, 1, m_ins.i.rt, 0, 0, DATA_READ);
+    do_mem_access(address, 1, 1, &r_gp[m_ins.i.rt], 0, 0, DATA_READ);
 }
 
 void Mips32Iss::op_lbu()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
-    do_mem_access(address, 1, -1, m_ins.i.rt, 0, 0, DATA_READ);
+    do_mem_access(address, 1, -1, &r_gp[m_ins.i.rt], 0, 0, DATA_READ);
 }
 
 void Mips32Iss::op_lh()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
     check_align(address, 2, L);
-    do_mem_access(address, 2, 2, m_ins.i.rt, 0, 0, DATA_READ);
+    do_mem_access(address, 2, 2, &r_gp[m_ins.i.rt], 0, 0, DATA_READ);
 }
 
 void Mips32Iss::op_lhu()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
     check_align(address, 2, L);
-    do_mem_access(address, 2, -2, m_ins.i.rt, 0, 0, DATA_READ);
+    do_mem_access(address, 2, -2, &r_gp[m_ins.i.rt], 0, 0, DATA_READ);
 }
 
 void Mips32Iss::op_lw()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
     check_align(address, 4, L);
-    do_mem_access(address, 4, 0, m_ins.i.rt, 0, 0, DATA_READ);
+    do_mem_access(address, 4, 0, &r_gp[m_ins.i.rt], 0, 0, DATA_READ);
 }
 
 // Stores
@@ -270,7 +273,7 @@ void Mips32Iss::op_sb()
 {
     uint32_t tmp = r_gp[m_ins.i.rt]&0xff;
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
-    do_mem_access(address, 1, 0, 0, 0, tmp, DATA_WRITE);
+    do_mem_access(address, 1, 0, NULL, 0, tmp, DATA_WRITE);
 }
 
 void Mips32Iss::op_sh()
@@ -278,14 +281,14 @@ void Mips32Iss::op_sh()
     uint32_t tmp = r_gp[m_ins.i.rt]&0xffff;
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
     check_align(address, 2, S);
-    do_mem_access(address, 2, 0, 0, 0, tmp, DATA_WRITE);
+    do_mem_access(address, 2, 0, NULL, 0, tmp, DATA_WRITE);
 }
 
 void Mips32Iss::op_sw()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
     check_align(address, 4, S);
-    do_mem_access(address, 4, 0, 0, 0, r_gp[m_ins.i.rt], DATA_WRITE);
+    do_mem_access(address, 4, 0, NULL, 0, r_gp[m_ins.i.rt], DATA_WRITE);
 }
 
 // Unaligned accesses
@@ -302,7 +305,7 @@ void Mips32Iss::op_lwl()
         (4 - w);
     if ( m_little_endian )
         address &= ~3;
-    do_mem_access(address, byte_count, 0, m_ins.i.rt, dest_byte, 0, DATA_READ);
+    do_mem_access(address, byte_count, 0, &r_gp[m_ins.i.rt], dest_byte, 0, DATA_READ);
 }
 
 void Mips32Iss::op_swl()
@@ -316,7 +319,7 @@ void Mips32Iss::op_swl()
         address &= ~3;
     data_t data = r_gp[m_ins.i.rt];
     data >>= 8*(4 - byte_count);
-    do_mem_access(address, byte_count, 0, 0, 0, data, DATA_WRITE);
+    do_mem_access(address, byte_count, 0, NULL, 0, data, DATA_WRITE);
 }
 
 void Mips32Iss::op_lwr()
@@ -328,7 +331,7 @@ void Mips32Iss::op_lwr()
         (1 + w);
     if ( ! m_little_endian )
         address &= ~3;
-    do_mem_access(address, byte_count, 0, m_ins.i.rt, 0, 0, DATA_READ);
+    do_mem_access(address, byte_count, 0, &r_gp[m_ins.i.rt], 0, 0, DATA_READ);
 }
 
 void Mips32Iss::op_swr()
@@ -340,7 +343,7 @@ void Mips32Iss::op_swr()
         (1 + w);
     if ( ! m_little_endian )
         address &= ~3;
-    do_mem_access(address, byte_count, 0, 0, 0, r_gp[m_ins.i.rt], DATA_WRITE);
+    do_mem_access(address, byte_count, 0, NULL, 0, r_gp[m_ins.i.rt], DATA_WRITE);
 }
 
 // Atomic accesses
@@ -349,14 +352,14 @@ void Mips32Iss::op_ll()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
     check_align(address, 4, L);
-    do_mem_access(address, 4, 0, m_ins.i.rt, 0, 0, DATA_LL);
+    do_mem_access(address, 4, 0, &r_gp[m_ins.i.rt], 0, 0, DATA_LL);
 }
 
 void Mips32Iss::op_sc()
 {
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
     check_align(address, 4, S);
-    do_mem_access(address, 4, 8, m_ins.i.rt, 0, r_gp[m_ins.i.rt], DATA_SC);
+    do_mem_access(address, 4, 8, &r_gp[m_ins.i.rt], 0, r_gp[m_ins.i.rt], DATA_SC);
 }
 
 // Prefetch
@@ -366,7 +369,7 @@ void Mips32Iss::op_pref()
     uint32_t address =  r_gp[m_ins.i.rs] + sign_ext(m_ins.i.imd, 16);
     // ignored hint field
     // uint32_t hint = m_ins.i.rt;
-    do_mem_access(4*XTN_DCACHE_PREFETCH, 4, false, 0, 0, address, XTN_WRITE);
+    do_mem_access(4*XTN_DCACHE_PREFETCH, 4, false, NULL, 0, address, XTN_WRITE);
 }
 
 }}
