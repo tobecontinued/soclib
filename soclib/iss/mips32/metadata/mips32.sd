@@ -21,6 +21,7 @@ Module('common:mips32',
 	"../src/mips32_special.cpp",
 	"../src/mips32_special2.cpp",
 	"../src/mips32_special3.cpp",
+	"../src/mips32_fpu.cpp",
 	],
 	   constants = {
 	'n_irq':6

@@ -43,7 +43,7 @@ namespace soclib { namespace common {
     op4(   addi, addiu, slti, sltiu),                                  \
     op4(   andi,   ori, xori,   lui),                                  \
                                                                        \
-    op4(   cop0,   ill, cop2,   ill),                                  \
+    op4(   cop0,  cop1, cop2,   ill),                                  \
     op4(   beql,  bnel,blezl, bgtzl),                                  \
                                                                        \
     op4(    ill,   ill,  ill,   ill),                                  \
@@ -55,11 +55,11 @@ namespace soclib { namespace common {
     op4(     sb,    sh,  swl,    sw),                                  \
     op4(    ill,   ill,  swr, cache),                                  \
                                                                        \
-    op4(     ll,   ill,  ill,  pref),                                  \
-    op4(    ill,   ill,  ill,   ill),                                  \
+    op4(     ll,  lwc1,  ill,  pref),                                  \
+    op4(    ill,  ldc1,  ill,   ill),                                  \
                                                                        \
-    op4(     sc,   ill,  ill,   ill),                                  \
-    op4(    ill,   ill,  ill,   ill),
+    op4(     sc,  swc1,  ill,   ill),                                  \
+    op4(    ill,  sdc1,  ill,   ill),
 
 #define op(x) &Mips32Iss::op_##x
 #define op4(x, y, z, t) op(x), op(y), op(z), op(t)

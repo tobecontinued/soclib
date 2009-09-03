@@ -104,6 +104,9 @@ private:
     data_t    r_hi;           // Multiply result (MSB bits)
     data_t    r_lo;           // Multiply result (LSB bits)
 
+	// FPU registers
+	data_t	r_f[32];
+
     struct DataRequest m_dreq;
     int r_mem_do_sign_extend;
     int r_mem_byte_le;
@@ -142,6 +145,120 @@ private:
                     uint32_t sh:5,
                     uint32_t func:6
                     ) r;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t base:5,
+					uint32_t ft:5,
+					uint32_t offset:16
+					) fpu_i;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t fmt:5,
+					uint32_t ft:5,
+					uint32_t fs:5,
+					uint32_t fd:5,
+					uint32_t func:6
+					) fpu_r;
+
+				PACKED_BITFIELD(	// Format for conditional
+					uint32_t op:6,
+					uint32_t fmt:5,
+					uint32_t ft:5,
+					uint32_t fs:5,
+					uint32_t cc:3,
+					uint32_t zero1:1,
+					uint32_t a:1,
+					uint32_t fc:2,
+					uint32_t cond:4,
+					) fpu_c;
+
+				PACKED_BITFIELD(	// Format for conditional branch
+					uint32_t op:6,
+					uint32_t bc:5,
+					uint32_t cc:3,
+					uint32_t nd_tf:2,
+					uint32_t offset:16,
+					) fpu_bc;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t sub:5,
+					uint32_t rt:5,
+					uint32_t fs:5,
+					uint32_t zero:11
+					) fpu_rim;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t bcc1:5,
+					uint32_t cc:3,
+					uint32_t nd:1,
+					uint32_t tf:1,
+					uint32_t offset:16
+					) fpu_cci;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t fmt:5,
+					uint32_t ft:5,
+					uint32_t fs:5,
+					uint32_t cc:3,
+					uint32_t zero:2,
+					uint32_t func:6
+					) fpu_ffc;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t fmt:5,
+					uint32_t cc:3,
+					uint32_t zero:1,
+					uint32_t tf:1,
+					uint32_t fs:5,
+					uint32_t fd:5,
+					uint32_t movcf:6
+					) fpu_fprc;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t fr:5,
+					uint32_t ft:5,
+					uint32_t fs:5,
+					uint32_t fd:5,
+					uint32_t op4:3,
+					uint32_t fmt3:3
+					) fpu_frfa;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t base:5,
+					uint32_t index:5,
+					uint32_t zero:5,
+					uint32_t fd:5,
+					uint32_t func:6
+					) fpu_rin;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t base:5,
+					uint32_t index:5,
+					uint32_t hint:5,
+					uint32_t zero:5,
+					uint32_t prefx:6
+					) fpu_rih;
+
+				PACKED_BITFIELD(
+					uint32_t op:6,
+					uint32_t rs:5,
+					uint32_t cc:3,
+					uint32_t zero1:1,
+					uint32_t tf:1,
+					uint32_t rd:5,
+					uint32_t zero5:5,
+					uint32_t movci:6
+					) fpu_ccri;
+
                 PACKED_BITFIELD(
                     uint32_t op:6,
                     uint32_t action:5,
@@ -297,6 +414,85 @@ private:
 
     uint32_t m_irqs;
     
+    typedef REG32_BITFIELD(
+        uint32_t zero4:4,
+        uint32_t impl:4,
+        uint32_t zero1:1,
+        uint32_t f64:1,
+        uint32_t l:1,
+        uint32_t w:1,
+        uint32_t _3d:1,
+        uint32_t ps:1,
+        uint32_t d:1,
+        uint32_t s:1,
+        uint32_t processorID:8,
+        uint32_t revision:8
+        ) fir_t;
+
+    typedef REG32_BITFIELD(
+        uint32_t fcc7:7,
+        uint32_t fs:1,
+        uint32_t fcc1:1,
+        uint32_t impl:2,
+        uint32_t zero3:3,
+        uint32_t cause_e:1,
+        uint32_t cause_v:1,
+        uint32_t cause_z:1,
+        uint32_t cause_o:1,
+        uint32_t cause_u:1,
+        uint32_t cause_i:1,
+        uint32_t enables_v:1,
+        uint32_t enables_z:1,
+        uint32_t enables_o:1,
+        uint32_t enables_u:1,
+        uint32_t enables_i:1,
+        uint32_t flags_v:1,
+        uint32_t flags_z:1,
+        uint32_t flags_o:1,
+        uint32_t flags_u:1,
+        uint32_t flags_i:1,
+        uint32_t rm:2
+        ) fcsr_t;
+
+    typedef REG32_BITFIELD(
+        uint32_t zero24:24,
+        uint32_t fcc:8
+        ) fccr_t;
+
+    typedef REG32_BITFIELD(
+        uint32_t zero14:14,
+        uint32_t cause_e:1,
+        uint32_t cause_v:1,
+        uint32_t cause_z:1,
+        uint32_t cause_o:1,
+        uint32_t cause_u:1,
+        uint32_t cause_i:1,
+        uint32_t zero5:5,
+        uint32_t flags_v:1,
+        uint32_t flags_z:1,
+        uint32_t flags_o:1,
+        uint32_t flags_u:1,
+        uint32_t flags_i:1,
+        uint32_t zero2:2
+		) fexr_t;
+
+    typedef REG32_BITFIELD(
+        uint32_t zero20:20,
+        uint32_t enables_v:1,
+        uint32_t enables_z:1,
+        uint32_t enables_o:1,
+        uint32_t enables_u:1,
+        uint32_t enables_i:1,
+        uint32_t zero4:4,
+        uint32_t fs:1,
+        uint32_t rm:2
+		) fenr_t;
+
+	// Special purpose registers
+
+	fir_t	r_fir;
+	fcsr_t	r_fcsr;
+    
     // member variables used for communication between
     // member functions (they are not registers)
 
@@ -401,11 +597,22 @@ private:
         return addr & (addr_t)0x80000000;
     }
 
+	// Accessing FPU registers
+	template <typename T> T readFPU(uint8_t fpr);
+	template <typename T> void storeFPU(uint8_t fpr, T value);
+
+	inline void CheckFPException();
+	inline bool FPConditionCode(uint8_t cc);
+
     typedef void (Mips32Iss::*func_t)();
 
     func_t m_microcode_func;
 
     static func_t const opcod_table[64];
+    static func_t const cop1_cod_table[32];
+    static func_t const cop1_s_cod_table[64];
+    static func_t const cop1_d_cod_table[64];
+    static func_t const cop1_w_cod_table[64];
     static func_t const special_table[64];
 
 
@@ -458,6 +665,41 @@ private:
     void op_sc();
     void op_cache();
     void op_pref();
+
+	void op_cop1();
+    void cop1_mf();
+    void cop1_cf();
+    void cop1_mt();
+    void cop1_ct();
+    void cop1_bc();
+    template <class T> void cop1_do();
+    template <class T> void cop1_add();
+    template <class T> void cop1_sub();
+    template <class T> void cop1_mult();
+    template <class T> void cop1_div();
+    template <class T> void cop1_sqrt();
+    template <class T> void cop1_abs();
+    template <class T> void cop1_mov();
+    template <class T> void cop1_neg();
+    template <class T> void cop1_round();
+    template <class T> void cop1_trunc();
+    template <class T> void cop1_ceil();
+    template <class T> void cop1_floor();
+    template <class T> void cop1_cvt_s();
+    template <class T> void cop1_cvt_d();
+    template <class T> void cop1_cvt_w();
+    template <class T> void cop1_c();
+    template <class T> void cop1_ill();
+    void cop1_ill();
+
+    uint32_t m_part_data;
+    uint32_t m_part_addr;
+	void op_sdc1();
+	void op_sdc1_part2();
+	void op_swc1();
+	void op_ldc1();
+	void op_ldc1_part2();
+	void op_lwc1();
 
     void special_sll();
     void special_srl();

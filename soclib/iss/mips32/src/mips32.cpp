@@ -83,6 +83,23 @@ void Mips32Iss::reset()
 
     r_bus_mode = MODE_KERNEL;
 
+	r_status.fr = 0;
+
+    r_fir.whole = 0;
+	r_fir.w = 1;
+	r_fir.d = 1;
+	r_fir.s = 1;
+	r_fir.processorID = m_ident;
+
+	r_fcsr.whole = 0;
+
+	// Default values
+	r_fcsr.enables_v = 1;
+	r_fcsr.enables_z = 1;
+	r_fcsr.enables_o = 1;
+	r_fcsr.enables_u = 1;
+	r_fcsr.enables_i = 1;
+
     for(int i = 0; i<32; i++)
         r_gp[i] = 0;
 
