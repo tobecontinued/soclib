@@ -1131,7 +1131,7 @@ tmpl(void)::transition()
     	else if ( r_itlb_acc_dcache_req )  // instruction tlb ET write
     	{
             bool write_hit = r_dcache.write(r_icache_paddr_save, r_icache_pte_update);
-            assert(write_hit && "Write on miss ignores data");
+            //assert(write_hit && "Write on miss ignores data");
             r_dcache_itlb_ll_acc_req = true;
 	        r_dcache_fsm = DCACHE_ITLB_LL_WAIT;	    		
     	}
@@ -1480,7 +1480,7 @@ tmpl(void)::transition()
                                 r_dcache_tlb_paddr = (paddr_t)(r_mmu_ptpr << 4) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                                 write_hit = r_dcache.write((paddr_t)(r_mmu_ptpr << 4) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
                                                       (dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK));
-                                assert(write_hit && "Write on miss ignores data");
+                                //assert(write_hit && "Write on miss ignores data");
                                 r_dcache_tlb_ll_dirty_req = true;
                                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                                 m_cpt_data_tlb_write_dirty++;
@@ -1493,7 +1493,7 @@ tmpl(void)::transition()
                                     r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                                     write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
                                                        (dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK));
-                                    assert(write_hit && "Write on miss ignores data");
+                                    //assert(write_hit && "Write on miss ignores data");
                                     r_dcache_tlb_ll_dirty_req = true;
                                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                                     m_cpt_data_tlb_write_dirty++;
@@ -1591,7 +1591,7 @@ tmpl(void)::transition()
                     r_dcache_tlb_paddr = (paddr_t)(r_mmu_ptpr << 4) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                     write_hit = r_dcache.write((paddr_t)(r_mmu_ptpr << 4) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
                                          (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
-                    assert(write_hit && "Write on miss ignores data");
+                    //assert(write_hit && "Write on miss ignores data");
                     r_dcache_tlb_ll_dirty_req = true;
                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                     m_cpt_data_tlb_write_dirty++;
@@ -1604,7 +1604,7 @@ tmpl(void)::transition()
                         r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                         write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
                                          (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
-                        assert(write_hit && "Write on miss ignores data");
+                        //assert(write_hit && "Write on miss ignores data");
                         r_dcache_tlb_ll_dirty_req = true;
                         r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                         m_cpt_data_tlb_write_dirty++;
@@ -1734,7 +1734,7 @@ tmpl(void)::transition()
                     r_dcache_tlb_ptba_read = false;
                     write_hit = r_dcache.write(((paddr_t)(tlb_data & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS | 
                                            (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 3)), r_dcache_pte_update);
-                    assert(write_hit && "Write on miss ignores data");
+                    //assert(write_hit && "Write on miss ignores data");
                     r_dcache_tlb_ll_dirty_req = true;
                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                     m_cpt_data_tlb_write_dirty++;
@@ -1925,7 +1925,7 @@ tmpl(void)::transition()
                 r_dcache_tlb_ptba_read = false;
                 write_hit = r_dcache.write(((paddr_t)(rsp_dtlb_miss & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1)) << PAGE_K_NBITS | 
                                        (paddr_t)(((dreq.addr & PTD_ID2_MASK) >> PAGE_K_NBITS) << 3)), r_dcache_pte_update);
-                assert(write_hit && "Write on miss ignores data");
+                //assert(write_hit && "Write on miss ignores data");
                 r_dcache_tlb_ll_dirty_req = true;
                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                 m_cpt_data_tlb_write_dirty++;
