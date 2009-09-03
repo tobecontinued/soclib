@@ -382,6 +382,7 @@ public:
     }
     
     AddressInfo( RegionInfo *ri, bool initialized = false )
+        : m_info(0)
     {
         region_set(ri);
         set_initialized(initialized);
@@ -948,7 +949,7 @@ void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
     if ( m_current_context->stack_contains(dreq.addr) ) {
         if ( ( m_enabled_checks & ISS_MEMCHECKER_CHECK_SP )
 //             && m_current_context != s_memory_state->unknown_context
-             && dreq.addr < get_cpu_sp() ) {
+             && dreq.addr < (get_cpu_sp() - 64) ) {
             err |= ERROR_DATA_ACCESS_BELOW_SP;
         }
     } else {
@@ -985,8 +986,14 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors)
     // Signal to GDB
     iss_t::debugExceptionBypassed( (uint32_t)-1 );
 
-    std::cout << iss_t::m_name << " error:" << std::endl;
-    std::cout << " " << *m_current_context << std::endl;
+
+
+        
+    std::cout
+        << std::endl
+        << std::endl
+        << iss_t::m_name << " error:" << std::endl
+        << " " << *m_current_context << std::endl;
 
     AddressInfo *ai = s_memory_state->info_for_address(m_last_data_access.addr);
 
@@ -1038,12 +1045,9 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors)
 
         << "    last Dreq: " << m_last_data_access << std::endl
         << "          sym: " << s_memory_state->get_symbol(m_last_data_access.addr) << std::endl
-        << "           in: " << *(s_memory_state->info_for_address(m_last_data_access.addr)->region()) << std::endl
+        << "           in: " << *(s_memory_state->info_for_address(m_last_data_access.addr)->region()) << std::endl;
 
-        
-
-        << std::endl
-        << std::endl;
+    iss_t::dump();
 }
 
 template<typename iss_t>
