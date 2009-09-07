@@ -137,7 +137,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         return true;
     case XICU_MSK_PTI:
         CHECK_BOUNDS(irq);
-        r_msk_pti[idx] = data;
+        data = r_msk_pti[idx];
         return true;
     case XICU_PTI_ACTIVE:
         CHECK_BOUNDS(irq);
@@ -145,7 +145,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         return true;
     case XICU_MSK_HWI:
         CHECK_BOUNDS(irq);
-        r_msk_hwi[idx] = data;
+        data = r_msk_hwi[idx];
         return true;
     case XICU_HWI_ACTIVE:
         CHECK_BOUNDS(irq);
@@ -153,7 +153,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         return true;
     case XICU_MSK_WTI:
         CHECK_BOUNDS(irq);
-        r_msk_wti[idx] = data;
+        data = r_msk_wti[idx];
         return true;
     case XICU_WTI_ACTIVE:
         CHECK_BOUNDS(irq);
