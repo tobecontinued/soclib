@@ -114,16 +114,16 @@ int _main(int argc, char *argv[])
 	soclib::common::Loader loader("soft/bin.soft");
 /*
 	soclib::caba::VciCcVCacheWrapper<vci_param, proc_iss > 
-	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),4,16,4,16,4,64,16,4,64,16,36,16);
+	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),4,16,4,16,4,64,16,4,64,16,16);
 	
 	soclib::caba::VciCcVCacheWrapper<vci_param, proc_iss > 
-	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),4,16,4,16,4,64,16,4,64,16,36,16);
+	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),4,16,4,16,4,64,16,4,64,16,16);
 */
 	soclib::caba::VciCcVCacheWrapper2<vci_param, proc_iss > 
-	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),4,16,4,16,4,64,16,4,64,16,36,16);
+	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),4,16,4,16,4,64,16,4,64,16,16);
 
 	soclib::caba::VciCcVCacheWrapper2<vci_param, proc_iss > 
-	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),4,16,4,16,4,64,16,4,64,16,36,16);
+	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),4,16,4,16,4,64,16,4,64,16,16);
 
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(0), maptabp, loader);

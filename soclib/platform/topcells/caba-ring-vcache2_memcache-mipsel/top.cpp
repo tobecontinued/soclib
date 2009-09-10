@@ -139,16 +139,16 @@ int _main(int argc, char *argv[])
 
         //                                  init_rw   init_c   tgt
 	soclib::caba::VciCcVCacheWrapper2Ring<vci_param, proc_iss > 
-	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),IntTab(0),4,16,4,16,4,64,16,4,64,16,36,16);
+	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),IntTab(0),4,16,4,16,4,64,16,4,64,16,16);
 	
 	soclib::caba::VciCcVCacheWrapper2Ring<vci_param, proc_iss > 
-	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),IntTab(1),4,16,4,16,4,64,16,4,64,16,36,16);
+	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),IntTab(1),4,16,4,16,4,64,16,4,64,16,16);
 
 	soclib::caba::VciCcVCacheWrapper2Ring<vci_param, proc_iss > 
-	proc2("proc2", 2, maptabp, maptabc, IntTab(2),IntTab(2),IntTab(2),4,16,4,16,4,64,16,4,64,16,36,16);
+	proc2("proc2", 2, maptabp, maptabc, IntTab(2),IntTab(2),IntTab(2),4,16,4,16,4,64,16,4,64,16,16);
 	
 	soclib::caba::VciCcVCacheWrapper2Ring<vci_param, proc_iss > 
-	proc3("proc3", 3, maptabp, maptabc, IntTab(3),IntTab(3),IntTab(3),4,16,4,16,4,64,16,4,64,16,36,16);
+	proc3("proc3", 3, maptabp, maptabc, IntTab(3),IntTab(3),IntTab(3),4,16,4,16,4,64,16,4,64,16,16);
 
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(0), maptabp, loader);

@@ -15,7 +15,7 @@
  * - bool       type             (0: PTE     ; 1: PTD   )
  * - bool       locally accessed 
  * - bool       remotely accessed 
- * - bool       cachable    (cached)
+ * - bool       cacheable   (cached)
  * - bool       writable    (writable access bit)
  * - bool       executable  (executable access bit)
  * - bool       user        (access in user mode allowed)
@@ -49,7 +49,7 @@ namespace caba {
         bool t;    // type              
         bool l;    // locally accessed     
         bool r;    // remotely accessed 
-        bool c;    // cachable    
+        bool c;    // cacheable    
         bool w;    // writable    
         bool x;    // executable  
         bool u;    // user        
@@ -92,6 +92,7 @@ namespace caba {
     enum {  
         PAGE_M_NBITS = 21,
         PAGE_K_NBITS = 12,
+        INDEX1_NBITS = 11,
     };
 
 using soclib::common::uint32_log2;
@@ -117,7 +118,7 @@ public:
     bool    *m_type;
     bool    *m_locacc;
     bool    *m_remacc;
-    bool    *m_cachable;
+    bool    *m_cacheable;
     bool    *m_writable;
     bool    *m_executable;
     bool    *m_user;
@@ -165,9 +166,9 @@ public:
         return m_remacc[(way*m_nsets)+set]; 
     }
 
-    inline bool &cachable(size_t way, size_t set)
+    inline bool &cacheable(size_t way, size_t set)
     { 
-        return m_cachable[(way*m_nsets)+set]; 
+        return m_cacheable[(way*m_nsets)+set]; 
     }
 
     inline bool &writable(size_t way, size_t set)
@@ -229,7 +230,7 @@ public:
         m_type       = new bool[nways * nsets];
         m_locacc     = new bool[nways * nsets];
         m_remacc     = new bool[nways * nsets];
-        m_cachable   = new bool[nways * nsets];
+        m_cacheable   = new bool[nways * nsets];
         m_writable   = new bool[nways * nsets];
         m_executable = new bool[nways * nsets];
         m_user       = new bool[nways * nsets];
@@ -248,7 +249,7 @@ public:
         delete [] m_type;
         delete [] m_locacc;
         delete [] m_remacc;
-        delete [] m_cachable;
+        delete [] m_cacheable;
         delete [] m_writable;
         delete [] m_executable;
         delete [] m_user;
@@ -286,7 +287,7 @@ public:
             {
                 pte_info->l = locacc(way,m_set);
                 pte_info->r = remacc(way,m_set);
-                pte_info->c = cachable(way,m_set);
+                pte_info->c = cacheable(way,m_set);
                 pte_info->w = writable(way,m_set);
                 pte_info->x = executable(way,m_set);
                 pte_info->u = user(way,m_set);
@@ -304,7 +305,7 @@ public:
             {  
                 pte_info->l = locacc(way,k_set);
                 pte_info->r = remacc(way,k_set);
-                pte_info->c = cachable(way,k_set);
+                pte_info->c = cacheable(way,k_set);
                 pte_info->w = writable(way,k_set);
                 pte_info->x = executable(way,k_set);
                 pte_info->u = user(way,k_set);
@@ -347,7 +348,38 @@ public:
         }
         return false;
     } // end translate()
+/*
+    /////////////////////////////////////////////////////////
+    //  This method returns "false" in case of MISS
+    //  In case of HIT, the physical page number is returned. 
+    /////////////////////////////////////////////////////////
+    inline bool translate(vaddr_t vaddress, paddr_t *paddress, bool *cached) 
+    {
+        size_t m_set = (vaddress >> PAGE_M_NBITS) & m_sets_mask; 
+        size_t k_set = (vaddress >> PAGE_K_NBITS) & m_sets_mask; 
+        for( size_t way = 0; way < m_nways; way++ ) 
+        {
+            // TLB hit test for 2M page size
+            if( valid(way,m_set) && pagesize(way,m_set) &&
+               (vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + m_sets_shift))) ) 
+            {
+                *paddress = (paddr_t)((paddr_t)ppn(way,m_set) << PAGE_M_NBITS) | (paddr_t)(vaddress & PAGE_M_MASK);
+                *cached = cacheable(way,m_set);
+                return true;
+            }
 
+            // TLB hit test for 4K page size
+            if( valid(way,k_set) && !pagesize(way,k_set) &&
+               (vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + m_sets_shift))) ) 
+            {  
+                *paddress = (paddr_t)((paddr_t)ppn(way,k_set) << PAGE_K_NBITS) | (paddr_t)(vaddress & PAGE_K_MASK);
+                *cached = cacheable(way,k_set);
+                return true;   
+            } 
+        }
+        return false;
+    } // end translate()
+*/
     /////////////////////////////////////////////////////////////
     //  This method resets all VALID bits in one cycle,
     //  when the the argument is true.
@@ -397,7 +429,7 @@ public:
                pte = pte | PTE_L_MASK;
            if ( remacc(way,set) )
                pte = pte | PTE_R_MASK;
-           if ( cachable(way,set) )
+           if ( cacheable(way,set) )
                pte = pte | PTE_C_MASK;
            if ( writable(way,set) )
                pte = pte | PTE_W_MASK;
@@ -418,7 +450,7 @@ public:
                pte = pte | PTE_L_MASK;
            if ( remacc(way,set) )
                pte = pte | PTE_R_MASK;
-           if ( cachable(way,set) )
+           if ( cacheable(way,set) )
                pte = pte | PTE_C_MASK;
            if ( writable(way,set) )
                pte = pte | PTE_W_MASK;
@@ -500,7 +532,7 @@ public:
         lru(way,set)        = true;
         locacc(way,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         remacc(way,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
-        cachable(way,set)   = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        cacheable(way,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
         writable(way,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         executable(way,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         user(way,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
@@ -524,7 +556,7 @@ public:
         lru(way,set)        = true;
         locacc(way,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         remacc(way,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
-        cachable(way,set)   = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        cacheable(way,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
         writable(way,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         executable(way,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         user(way,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
@@ -632,7 +664,7 @@ public:
             {
                 pte_info->l = this->locacc(way,m_set);
                 pte_info->r = this->remacc(way,m_set);
-                pte_info->c = this->cachable(way,m_set);
+                pte_info->c = this->cacheable(way,m_set);
                 pte_info->w = this->writable(way,m_set);
                 pte_info->x = this->executable(way,m_set);
                 pte_info->u = this->user(way,m_set);
@@ -651,7 +683,7 @@ public:
             {  
                 pte_info->l = this->locacc(way,k_set);
                 pte_info->r = this->remacc(way,k_set);
-                pte_info->c = this->cachable(way,k_set);
+                pte_info->c = this->cacheable(way,k_set);
                 pte_info->w = this->writable(way,k_set);
                 pte_info->x = this->executable(way,k_set);
                 pte_info->u = this->user(way,k_set);
@@ -853,7 +885,7 @@ public:
 
         this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
-        this->cachable(selway,set)   = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        this->cacheable(selway,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
         this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
@@ -947,7 +979,7 @@ public:
 
         this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
-        this->cachable(selway,set)   = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        this->cacheable(selway,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
         this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;

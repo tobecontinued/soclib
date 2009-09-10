@@ -45,7 +45,6 @@ Module('caba:vci_vcache_wrapper',
     	parameter.Int('dcache_ways'),
     	parameter.Int('dcache_sets'),
     	parameter.Int('dcache_words'),
-    	parameter.Int('paddr_nbits'),
     	parameter.Int('write_buf_size'),
 	],
 	   extensions = [

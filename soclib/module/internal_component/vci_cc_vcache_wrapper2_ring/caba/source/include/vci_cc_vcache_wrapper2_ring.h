@@ -106,25 +106,26 @@ class VciCcVCacheWrapper2Ring
         DCACHE_DTLB_INVAL,          // 12
         DCACHE_ICACHE_INVAL,        // 13
         DCACHE_DCACHE_INVAL,        // 14
-        DCACHE_LL_DIRTY_WAIT,       // 15
-        DCACHE_SC_DIRTY_WAIT,       // 16
-        DCACHE_WRITE_UPDT,          // 17
-        DCACHE_WRITE_DIRTY,         // 18
-        DCACHE_WRITE_REQ,           // 19
-        DCACHE_MISS_WAIT,           // 1a
-        DCACHE_MISS_UPDT,           // 1b
-        DCACHE_UNC_WAIT,            // 1c
-        DCACHE_ERROR,               // 1d
-        DCACHE_ITLB_READ,           // 1e
-        DCACHE_ITLB_UPDT,           // 1f
-        DCACHE_ITLB_LL_WAIT,        // 20
-        DCACHE_ITLB_SC_WAIT,        // 21
-        DCACHE_CC_CHECK,            // 22
-        DCACHE_CC_INVAL,            // 23
-        DCACHE_CC_UPDT,             // 24
-        DCACHE_CC_NOP,              // 25
-        DCACHE_TLB_CC_INVAL,        // 26
-        DCACHE_ITLB_CLEANUP,        // 27
+        DCACHE_DCACHE_SYNC,         // 15
+        DCACHE_LL_DIRTY_WAIT,       // 16
+        DCACHE_SC_DIRTY_WAIT,       // 17
+        DCACHE_WRITE_UPDT,          // 18
+        DCACHE_WRITE_DIRTY,         // 19
+        DCACHE_WRITE_REQ,           // 1a
+        DCACHE_MISS_WAIT,           // 1b
+        DCACHE_MISS_UPDT,           // 1c
+        DCACHE_UNC_WAIT,            // 1d
+        DCACHE_ERROR,               // 1e
+        DCACHE_ITLB_READ,           // 1f
+        DCACHE_ITLB_UPDT,           // 20
+        DCACHE_ITLB_LL_WAIT,        // 21
+        DCACHE_ITLB_SC_WAIT,        // 22
+        DCACHE_CC_CHECK,            // 23
+        DCACHE_CC_INVAL,            // 24
+        DCACHE_CC_UPDT,             // 25
+        DCACHE_CC_NOP,              // 26
+        DCACHE_TLB_CC_INVAL,        // 27
+        DCACHE_ITLB_CLEANUP,        // 28
     };
 
     enum cmd_fsm_state_e {      
@@ -210,23 +211,23 @@ class VciCcVCacheWrapper2Ring
 
     // Error Type
     enum mmu_error_type_e {
-        MMU_NONE                       = 0x0000, // None
-        MMU_PT1_UNMAPPED_WRITE_ACCESS  = 0x0001, // Write access of Page fault on Page Table 1          (non fatal error)
-        MMU_PT2_UNMAPPED_WRITE_ACCESS  = 0x0002, // Write access of Page fault on Page Table 2          (non fatal error)
-        MMU_WRITE_PRIVILEGE_VIOLATION  = 0x0004, // Write access of Protected access in user mode       (user error)
-        MMU_WRITE_VIOLATION            = 0x0008, // Write access of write access to a non writable page (user error)
-        MMU_EXEC_VIOLATION             = 0x0010, // Exec access to a non exec page 	                    (user error)
-        MMU_UNDEFINED_XTN_WRITE        = 0x0020, // Write access of undefined external access address   (user error)
-        MMU_PT1_ILLEGAL_WRITE_ACCESS   = 0x0040, // Write access of Bus Error accessing Table 1         (kernel error)
-        MMU_PT2_ILLEGAL_WRITE_ACCESS   = 0x0080, // Write access of Bus Error accessing Table 2         (kernel error)
-        MMU_CACHE_ILLEGAL_WRITE_ACCESS = 0x0100, // Write access of Bus Error in cache access           (kernel error)
-        MMU_PT1_UNMAPPED_READ_ACCESS   = 0x0200, // Read access of Page fault on Page Table 1  	        (non fatal error)
-        MMU_PT2_UNMAPPED_READ_ACCESS   = 0x0400, // Read access of Page fault on Page Table 2  	        (non fatal error)
-        MMU_READ_PRIVILEGE_VIOLATION   = 0x0800, // Read access of Protected access in user mode 	    (user error)
-        MMU_UNDEFINED_XTN_READ         = 0x1000, // Read access of Undefined external access address 	(user error)
-        MMU_PT1_ILLEGAL_READ_ACCESS    = 0x2000, // Read access of Bus Error in Table1 access        	(kernel error)
-        MMU_PT2_ILLEGAL_READ_ACCESS    = 0x4000, // Read access of Bus Error in Table2 access 	        (kernel error)
-        MMU_CACHE_ILLEGAL_READ_ACCESS  = 0x8000, // Read access of Bus Error in cache access 	        (kernel error)
+        MMU_NONE                      = 0x0000, // None
+        MMU_WRITE_PT1_UNMAPPED 	      = 0x0001, // Write access of Page fault on Page Table 1          (non fatal error)
+        MMU_WRITE_PT2_UNMAPPED 	      = 0x0002, // Write access of Page fault on Page Table 2          (non fatal error)
+        MMU_WRITE_PRIVILEGE_VIOLATION = 0x0004, // Write access of Protected access in user mode       (user error)
+        MMU_WRITE_ACCES_VIOLATION 	  = 0x0008, // Write access of write access to a non writable page (user error)
+        MMU_WRITE_UNDEFINED_XTN 	  = 0x0020, // Write access of undefined external access address   (user error)
+        MMU_WRITE_PT1_ILLEGAL_ACCESS  = 0x0040, // Write access of Bus Error accessing Table 1         (kernel error)
+        MMU_WRITE_PT2_ILLEGAL_ACCESS  = 0x0080, // Write access of Bus Error accessing Table 2         (kernel error)
+        MMU_WRITE_DATA_ILLEGAL_ACCESS = 0x0100, // Write access of Bus Error in cache access           (kernel error)
+        MMU_READ_PT1_UNMAPPED 	      = 0x1001, // Read access of Page fault on Page Table 1  	       (non fatal error)
+        MMU_READ_PT2_UNMAPPED 	      = 0x1002, // Read access of Page fault on Page Table 2  	       (non fatal error)
+        MMU_READ_PRIVILEGE_VIOLATION  = 0x1004, // Read access of Protected access in user mode 	   (user error)
+        MMU_READ_EXEC_VIOLATION 	  = 0x1010, // Exec access to a non exec page                      (user error)
+        MMU_READ_UNDEFINED_XTN 	      = 0x1020, // Read access of Undefined external access address    (user error)
+        MMU_READ_PT1_ILLEGAL_ACCESS   = 0x1040, // Read access of Bus Error in Table1 access           (kernel error)
+        MMU_READ_PT2_ILLEGAL_ACCESS   = 0x1080, // Read access of Bus Error in Table2 access 	       (kernel error)
+        MMU_READ_DATA_ILLEGAL_ACCESS  = 0x1100, // Read access of Bus Error in cache access 	       (kernel error)
     };
 
 public:
@@ -242,8 +243,8 @@ private:
     soclib::common::AddressDecodingTable<uint32_t, bool>    m_cacheability_table;
     const soclib::common::Segment                           m_segment;
     iss_t                                                   m_iss;   
-    const vci_srcid_t                                          m_srcid_rw;
-    const vci_srcid_t                                          m_srcid_c;
+    const vci_srcid_t                                       m_srcid_rw;
+    const vci_srcid_t                                       m_srcid_c;
 
     const size_t  m_itlb_ways;
     const size_t  m_itlb_sets;
@@ -261,8 +262,8 @@ private:
     const size_t  m_dcache_yzmask;
     const size_t  m_dcache_words;
 
-    const size_t  m_paddr_nbits;  
     const size_t  m_write_buf_size;  
+    const size_t  m_paddr_nbits;  
 
     // instruction and data vcache tlb instances 
     soclib::caba::GenericCcTlb<paddr_t>    icache_tlb;
@@ -529,7 +530,6 @@ public:
         size_t dcache_ways,
         size_t dcache_sets,
         size_t dcache_words,
-        size_t paddr_nbits,
         size_t write_buf_size );
 
     ~VciCcVCacheWrapper2Ring();

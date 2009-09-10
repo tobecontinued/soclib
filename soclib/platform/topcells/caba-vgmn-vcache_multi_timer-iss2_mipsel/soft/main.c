@@ -121,7 +121,8 @@ int main(void)
 	puts("Page table are defined! \n");
 
 	// context switch and tlb mode change
-	set_cp2(0x04040000, 0x0);	// context switch
+	//set_cp2(0x04040000, 0x0);	// context switch
+	set_cp2(0x00020200, 0x0);	// context switch 
 	set_cp2(0xf, 0x1);		// TLB enable
 	puts("Context switch(TLB flush) and TLB enable!\n");
 
