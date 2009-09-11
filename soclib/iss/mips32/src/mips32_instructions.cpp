@@ -263,12 +263,10 @@ void Mips32Iss::op_cop2()
 
     switch (m_ins.coproc.action) {
     case MT:
-        //do_mem_access(m_ins.coproc.rd*4, 4, false, NULL, 0, r_gp[m_ins.i.rt], XTN_WRITE);
-        do_mem_access(r_gp[m_ins.coproc.rd]*4, 4, false, NULL, 0, r_gp[m_ins.i.rt], XTN_WRITE);
+        do_mem_access(m_ins.coproc.rd*4, 4, false, NULL, 0, r_gp[m_ins.i.rt], XTN_WRITE);
         break;
     case MF:
-        //do_mem_access(m_ins.coproc.rd*4, 4, false, &r_gp[m_ins.i.rt], 0, 0, XTN_READ);
-        do_mem_access(r_gp[m_ins.coproc.rd]*4, 4, false, &r_gp[m_ins.i.rt], 0, 0, XTN_READ);
+        do_mem_access(m_ins.coproc.rd*4, 4, false, &r_gp[m_ins.i.rt], 0, 0, XTN_READ);
         break;
     default: // Not handled, so raise an exception
         op_ill();

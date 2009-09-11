@@ -86,10 +86,9 @@ static inline int putchar(const int x)
 #error MMU support for sparc not yet implemented...
 #endif
 
-	uint32_t tlb_mode = 0;
-	get_cp2(&tlb_mode,1);
+	uint32_t tlb_mode = get_cp2(1, 0);
 
-	if (tlb_mode > 1)
+	if (tlb_mode & 4)
 	{
 
 	soclib_io_write8(
@@ -130,10 +129,9 @@ static inline int getchar()
 #if defined(__lm32__)
 #error MMU support for lm32 not yet implemented...
 #endif
-	uint32_t tlb_mode = 0;
-	get_cp2(&tlb_mode,1);
+	uint32_t tlb_mode = get_cp2(1, 0);
 
-	if (tlb_mode > 1)
+	if (tlb_mode & 4)
 	{
 	return soclib_io_read8(
 		base(V_TTY),

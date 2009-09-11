@@ -33,6 +33,12 @@ __asm__("mfc0 %0, $"#x", "#sel:"=r"(__cp0_x));	\
 __cp0_x;})
 #define set_cp0(x, sel, val)							\
 	do{__asm__ __volatile__("mtc0 %0, $"#x", "#sel::"r"(val));}while(0)
+#define get_cp2(x, sel)									\
+({unsigned int __cp2_x;								\
+__asm__("mfc2 %0, $"#x", "#sel:"=r"(__cp2_x));	\
+__cp2_x;})
+#define set_cp2(x, sel, val)							\
+	do{__asm__ __volatile__("mtc2 %0, $"#x", "#sel::"r"(val));}while(0)
 #else
 #define get_cp0(x)									\
 ({unsigned int __cp0_x;								\
@@ -40,6 +46,12 @@ __asm__("mfc0 %0, $"#x:"=r"(__cp0_x));	\
 __cp0_x;})
 #define set_cp0(x, val)							\
 	do{__asm__ __volatile__("mtc0 %0, $"#x::"r"(val));}while(0)
+#define get_cp2(x)									\
+({unsigned int __cp2_x;								\
+__asm__("mfc2 %0, $"#x:"=r"(__cp2_x));	\
+__cp2_x;})
+#define set_cp2(x, val)							\
+	do{__asm__ __volatile__("mtc2 %0, $"#x::"r"(val));}while(0)
 #endif
 
 static inline void
@@ -91,19 +103,3 @@ static inline int procnum()
     return (get_cp0(15)&0x3ff);
 #endif
 }
-
-#if __mips >= 32
-
-static inline void set_cp2(uint32_t val, uint32_t reg)
-{
-asm volatile(
-"mtc2 %0, %1"::"r"(val),"r"(reg));
-}
-
-static inline void get_cp2(uint32_t *val, uint32_t reg)
-{
-asm volatile(
-"mfc2 %0, %1":"=r"(*val):"r"(reg));
-}
-
-#endif

@@ -62,28 +62,28 @@ int main()
 	puts("Page table are defined! \n");
 
 	// context switch and tlb mode change
-	set_cp2(0x00020200, 0x0);	// context switch
-	set_cp2(0xf, 0x1);		// TLB enable
+	set_cp2(0, 0, 0x00020200);	// context switch
+	set_cp2(1, 0, 0xf);		// TLB enable
 	puts("Context switch(TLB flush) and TLB enable!\n");
 
-	set_cp2(0, 0x2);
+	set_cp2(2, 0, 0);
 	puts("icache flush done!\n");
 
-	set_cp2(0, 0x3);
+	set_cp2(3, 0, 0);
 	puts("dcache flush done!\n");
 
 	// cache inval
-	//set_cp2(0x004000a4, 0x6);
-	set_cp2(0x004000c4, 0x6);
+	//set_cp2(6, 0, 0x004000a4);
+	set_cp2(6, 0, 0x004000c4);
 	puts("icache invalidation test good :-)\n");
-	set_cp2(0x00800000, 0x7);
+	set_cp2(7, 0, 0x00800000);
 	puts("dcache invalidation test good :-) \n");
 
 	// tlb inval
 	puts("TLB invalidation test begin: \n");
-	set_cp2(0x00400000, 0x4);
+	set_cp2(4, 0, 0x00400000);
 	puts("itlb invalidation test good :-) \n");
-	set_cp2(0x00800000, 0x5);
+	set_cp2(5, 0, 0x00800000);
 	puts("dtlb invalidation test good :-) \n");
 
 /* -------------------------------------------------- */
