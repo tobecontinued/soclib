@@ -194,6 +194,10 @@ class Action:
 		return self.sources+self.processDeps()
 	def canBeProcessed(self):
 		return check_exist(self.sources)
+	def dumpAbsentPrerequisites(self):
+		for s in self.sources:
+			if not s.exists():
+				print s
 	def runningCommand(self, what, outs, cmd):
 		if not config.quiet:
 			print self.__class__.__name__, what, ', '.join(map(str,outs))

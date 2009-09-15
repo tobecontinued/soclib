@@ -102,7 +102,7 @@ clean:
 			targets = targets,
 			date = str(datetime.now()),
 			)
-		
+
 	def add(self, *dests):
 		self.dests += bblockize(dests)
 		for d in self.dests:
@@ -179,8 +179,10 @@ clean:
 					while not todo.canBeProcessed() and self.actions:
 						self.wait()
 					if not todo.canBeProcessed():
-						self.clean()
-						raise Again()
+						todo.dumpAbsentPrerequisites()
+						raise ActionFailed(1, "Prerequisites not found")
+#						self.clean()
+#						raise Again()
 					if todo.mustBeProcessed():
 						todo.process()
 					else:
