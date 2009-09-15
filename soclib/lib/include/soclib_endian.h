@@ -34,6 +34,10 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+namespace sc_dt {
+template<int W> class sc_uint;
+}
+
 #ifdef __linux__
 
 #  include <endian.h>
@@ -151,9 +155,19 @@ template<>struct swapper_funcs<4> {
     static uint32_t machine_to_be(uint32_t x) { return uint32_machine_to_be(x); }
 };
 
-template<typename io_t, size_t S = sizeof(io_t)> struct swapper
+template<typename io_t> struct swapper
 {
-    typedef swapper_funcs<S> funcs;
+    typedef swapper_funcs<sizeof(io_t)> funcs;
+    static io_t le_to_machine(io_t x) { return funcs::le_to_machine(x); }
+    static io_t machine_to_le(io_t x) { return funcs::machine_to_le(x); }
+    static io_t be_to_machine(io_t x) { return funcs::be_to_machine(x); }
+    static io_t machine_to_be(io_t x) { return funcs::machine_to_be(x); }
+};
+
+template<int W> struct swapper<sc_dt::sc_uint<W> >
+{
+    typedef swapper_funcs<(W+7)/8> funcs;
+    typedef sc_dt::sc_uint<W> io_t;
     static io_t le_to_machine(io_t x) { return funcs::le_to_machine(x); }
     static io_t machine_to_le(io_t x) { return funcs::machine_to_le(x); }
     static io_t be_to_machine(io_t x) { return funcs::be_to_machine(x); }
@@ -162,10 +176,10 @@ template<typename io_t, size_t S = sizeof(io_t)> struct swapper
 
 }}
 
-#define le_to_machine(x) ::soclib::endian::swapper<typeof(x), sizeof(x)>::le_to_machine(x)
-#define machine_to_le(x) ::soclib::endian::swapper<typeof(x), sizeof(x)>::machine_to_le(x)
-#define be_to_machine(x) ::soclib::endian::swapper<typeof(x), sizeof(x)>::be_to_machine(x)
-#define machine_to_be(x) ::soclib::endian::swapper<typeof(x), sizeof(x)>::machine_to_be(x)
+#define le_to_machine(x) ::soclib::endian::swapper<typeof(x)>::le_to_machine(x)
+#define machine_to_le(x) ::soclib::endian::swapper<typeof(x)>::machine_to_le(x)
+#define be_to_machine(x) ::soclib::endian::swapper<typeof(x)>::be_to_machine(x)
+#define machine_to_be(x) ::soclib::endian::swapper<typeof(x)>::machine_to_be(x)
 
 #define __ENDIAN_REVERSE_ARGS(b00, b01, b02, b03, b04, b05, b06, b07, b08, b09, b10, b11, b12, b13, b14, b15, b16, b17, b18, b19, b20, b21, b22, b23, b24, b25, b26, b27, b28, b29, b30, b31, ...)    \
 			       b31; b30; b29; b28; b27; b26; b25; b24; b23; b22; b21; b20; b19; b18; b17; b16; b15; b14; b13; b12; b11; b10; b09; b08; b07; b06; b05; b04; b03; b02; b01; b00;

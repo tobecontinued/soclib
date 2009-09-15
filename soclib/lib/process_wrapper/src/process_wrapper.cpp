@@ -58,6 +58,8 @@ ProcessWrapper::ProcessWrapper(
     }
 
     if ( m_pid ) {
+        sleep(1);
+
         // parent
         close(host_to_child[0]);
         close(child_to_host[1]);
