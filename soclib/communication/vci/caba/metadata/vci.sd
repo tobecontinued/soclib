@@ -12,6 +12,7 @@ Signal('caba:vci',
 	'caba:vci_initiator': 1,
 	'caba:vci_target': 1,
 	'caba:vci_monitor': True,
+	'caba:vci_monitor_out': True,
 	},
 	   )
 
@@ -34,6 +35,14 @@ PortDecl('caba:vci_monitor',
 	 classname = 'soclib::caba::VciMonitor',
 	 signal = 'caba:vci',
 	 header_files = ['../source/include/vci_monitor.h'],
+		 extensions = ['dsx:port_peer=ignore'],
+	 )
+
+PortDecl('caba:vci_monitor_out',
+	 tmpl_parameters = [parameter.Module('vci_param', default = 'caba:vci_param')],
+	 classname = 'soclib::caba::VciMonitorOut',
+	 signal = 'caba:vci',
+	 header_files = ['../source/include/vci_monitor_out.h'],
 		 extensions = ['dsx:port_peer=ignore'],
 	 )
 
