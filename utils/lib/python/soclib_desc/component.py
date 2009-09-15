@@ -48,12 +48,14 @@ class SubConn:
 		self.where = traceback.extract_stack()[-2][0:2]
 	def Use(self):
 		return Uses(self.__type, **self.__args)
-	def getInfo(self, **args):
+	def getSpec(self, **args):
 		from specialization import Specialization
 		a = {}
 		a.update(args)
 		a.update(self.__args)
-		ptype = Specialization(self.__type, **a)
+		return Specialization(self.__type, **a)
+	def getInfo(self, **args):
+		ptype = self.getSpec(**args)
 		return self.__name, ptype, self.__count, self.__auto
 	def __str__(self):
 		from specialization import Specialization
@@ -61,6 +63,11 @@ class SubConn:
 		return '<%s: %s %s>'%(self.__class__.__name__,
 							  self.__name,
 							  str(ptype['header_files']))
+	def __repr__(self):
+		args = ', '.join(['%s = %r'%(k, self.__args[k]) for k in sorted(filter(lambda x:':' not in x, self.__args.keys()))])
+		return 'Port("%s", "%s", %s)'%(self.__type,
+									   self.__name,
+									   args)
 
 class Port(SubConn):
 	pass

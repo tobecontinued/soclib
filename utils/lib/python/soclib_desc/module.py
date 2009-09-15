@@ -240,3 +240,23 @@ class Module:
 
 	def __hash__(self):
 		return hash((self.__filename, self.lineno))
+
+	def dump_sd(self):
+		kv = []
+		for k, v in self.__attrs.iteritems():
+			if k not in self.module_attrs:
+				continue
+			if v == self.module_attrs[k]:
+				continue
+			if k == 'uses':
+				v = list(v)
+			if isinstance(v, list):
+				kv.append("%s = [%s]"%(k, ',\n\t\t'.join(map(repr, v))))
+			else:
+				kv.append("%s = %s"%(k, repr(v)))
+		return '''%(type)s("%(type_name)s",
+	%(kv)s
+)
+'''%dict(type_name = self.__typename,
+		 type = self.__class__.__name__,
+		 kv = ',\n\t'.join(kv))
