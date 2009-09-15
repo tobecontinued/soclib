@@ -122,12 +122,23 @@ class ComponentBuilder:
 				t+'_'+bn+"."+config.toolchain.obj_ext)
 		else:
 			out = config.reposFile(bn+"."+config.toolchain.obj_ext, self.force_mode)
+
+		add = {}
+		if config.systemc.vendor == 'sccom' and \
+			   (self.specialization.getPorts() or self.local):
+			add['comp_mode'] = 'sccom'
+			out = os.path.abspath(os.path.join(
+				"work/_sc/",
+				os.path.splitext(os.path.basename(str(src)))[0]
+				+'.'+config.toolchain.obj_ext
+				))
 		return CxxCompile(
 			dest = out,
 			src = src,
 			defines = self.specialization.getDefines(),
 			inc_paths = incls,
-			force_debug = self.force_debug)
+			force_debug = self.force_debug,
+			**add)
 	def baseName(self):
 		basename = self.specialization.getModuleName()
 		tp = self.specialization.getType()
@@ -168,7 +179,9 @@ class ComponentBuilder:
 			source += '#include <%s>\n'%h
 		for s in sources:
 			source += '#include "%s"\n'%s
+		source += "#ifndef ENABLE_SCPARSE\n"
 		source += 'template '+inst+';\n'
+		source += "#endif\n"
 		return source
 
 	@classmethod

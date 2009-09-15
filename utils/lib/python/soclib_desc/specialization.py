@@ -51,7 +51,7 @@ class ModuleSpecializationError(exceptions.ExpectedException):
 		if isinstance(self.__prev_error, ModuleSpecializationError):
 			c = '\n'+pfx+self.__prev_error.format(pfx+' ')
 		else:
-			c = '\n'+pfx+' '+repr(self.__prev_error)
+			c = '\n'+pfx+' '+str(self.__prev_error)
 		at = ""
 		if self.__context:
 			at = (' at '+str(self.__context))

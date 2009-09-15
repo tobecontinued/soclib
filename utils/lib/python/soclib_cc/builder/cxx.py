@@ -38,9 +38,10 @@ __version__ = "$Revision$"
 class CCompile(action.Action):
 	priority = 100
 	tool = 'CC'
-	def __init__(self, dest, src, defines = {}, inc_paths = [], force_debug = False):
+	def __init__(self, dest, src, defines = {}, inc_paths = [], force_debug = False, comp_mode = 'normal'):
 		action.Action.__init__(self, [dest], [src], defines = defines, inc_paths = inc_paths)
 		self.mode = force_debug and "debug" or None
+		self.comp_mode = comp_mode
 		if force_debug:
 			defines["SOCLIB_MODULE_DEBUG"] = '1'
 	def argSort(self, args):
@@ -54,8 +55,8 @@ class CCompile(action.Action):
 		if disp_normal or config.verbose:
 			self.runningCommand(what, self.dests, cmd)
 		self.launch(cmd)
-	def command_line(self):
-		args = config.getTool(self.tool)
+	def command_line(self, mode = ''):
+		args = config.getTool(self.tool, mode)
 		args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
 		args += map(lambda x:'-I%s'%x, self.options['inc_paths'])
 		args += config.getCflags(self.mode)
@@ -82,8 +83,11 @@ class CCompile(action.Action):
 		return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
 	def process(self):
 		fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
-		args = self.command_line() + [
-				'-c', '-o', self.dests[0]]
+		if self.comp_mode == 'sccom':
+			args = self.command_line('SCCOM')
+		else:
+			args = self.command_line()
+			args += ['-c', '-o', self.dests[0]]
 		args += self.sources
 		r = self.call('compile', args)
 		if r:
@@ -111,10 +115,15 @@ class CLink(CCompile):
 	def processDeps(self):
 		return []
 	def process(self):
-		args = config.getTool(self.tool) + [
-				'-o', self.dests[0]]
-		args += config.getLibs()
-		args += self.sources
+		args = config.getTool(self.tool)
+		if config.systemc.vendor != 'sccom':
+			args += ['-o', self.dests[0]]
+			args += config.getLibs()
+			args += self.sources
+		else:
+			args += ['-lpthread']
+			args += config.getLibs()
+			args += filter(lambda x:x.generator.comp_mode != 'sccom', self.sources)
 		r = self.call('link', args)
 		if r:
 			print

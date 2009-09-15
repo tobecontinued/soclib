@@ -66,7 +66,10 @@ def addDescPath(self, path):
 	np = os.path.abspath(os.path.join(self.path, path))
 	if not np in self.desc_paths:
 		self.desc_paths.append(np)
-def getTool(self, name):
+def getTool(self, name, mode = ''):
+	tn = mode+'_'+name
+	if mode and tn in self.toolchain.tool_map:
+		name = tn
 	if name in self.toolchain.tool_map:
 		name = self.toolchain.tool_map[name]
 		if isinstance(name, str):
