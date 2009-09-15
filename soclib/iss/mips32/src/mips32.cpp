@@ -29,6 +29,7 @@
  */
 
 #include "mips32.h"
+#include "mips32.hpp"
 #include "base_module.h"
 #include "soclib_endian.h"
 #include "arithmetics.h"
@@ -63,13 +64,14 @@ void Mips32Iss::reset()
     struct DataRequest null_dreq = ISS_DREQ_INITIALIZER;
     r_ebase = 0x80000000 | m_ident;
     r_pc = RESET_ADDRESS;
+    r_npc = RESET_ADDRESS+4;
+    m_ifetch_addr = RESET_ADDRESS;
+    m_next_pc = m_jump_pc = (uint32_t)-1;
     r_cpu_mode = MIPS32_KERNEL;
-    r_npc = RESET_ADDRESS + 4;
     m_ibe = false;
     m_dbe = false;
     m_dreq = null_dreq;
     r_mem_dest = NULL;
-    m_skip_next_instruction = false;
     m_ins_delay = 0;
     r_status.whole = 0x400004;
     r_cause.whole = 0;
@@ -148,210 +150,199 @@ void Mips32Iss::dump() const
     }
 }
 
+#define RUN_FOR(x)                                                     \
+    do { uint32_t __tmp = (x);                                         \
+        ncycle -= __tmp;                                               \
+        r_count += __tmp;                                              \
+        time_spent += __tmp;                                           \
+        m_ins_delay -= std::min(m_ins_delay, __tmp);                   \
+    } while(0)
+
+
 uint32_t Mips32Iss::executeNCycles(
     uint32_t ncycle,
     const struct InstructionResponse &irsp,
     const struct DataResponse &drsp,
     uint32_t irq_bit_field )
 {
-
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " executeNCycles( " << ncycle << ", "<< irsp << ", " << drsp << ", " << irq_bit_field << ")" << std::endl;
+    std::cout
+        << name()
+        << " executeNCycles( "
+        << ncycle << ", "
+        << irsp << ", "
+        << drsp << ", "
+        << irq_bit_field << ")"
+        << std::endl;
 #endif
+
     m_irqs = irq_bit_field;
-
-    bool may_take_irq =
-        (m_microcode_func == NULL)
-        && r_status.ie
-        && !r_status.exl
-        && !r_status.erl;
-    if ( m_little_endian )
-        m_ins.ins = irsp.instruction;
-    else
-        m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
-    m_ibe = irsp.error;
-    m_ireq_ok = (m_microcode_func != NULL) || irsp.valid;
-
-    _setData( drsp );
-
-    if ( ncycle == 0 )
-        return 0;
-
+    r_cause.ripl = irq_bit_field;
     m_exception = NO_EXCEPTION;
+    m_jump_pc = r_npc;
+    m_next_pc = r_pc;
+    m_hazard = false;
+    m_resume_pc = r_pc;
 
-    if ( ! m_ireq_ok || ! m_dreq_ok || m_ins_delay ) {
-        uint32_t t = ncycle;
-        if ( m_ins_delay ) {
-            if ( m_ins_delay < ncycle )
-                t = m_ins_delay;
-            m_ins_delay -= t;
-        }
-        m_hazard = false;
-        r_count += t;
-#ifdef SOCLIB_MODULE_DEBUG
-        std::cout << name() << " Frozen " << m_ireq_ok << m_dreq_ok<< " " << m_ins_delay << std::endl;
-#endif
-        return t;
-    }
+    uint32_t time_spent = 0;
 
-    if ( m_hazard && ncycle > 1 ) {
-        ncycle = 2;
-        m_hazard = false;
-    } else {
-        ncycle = 1;
-    }
-    r_count += ncycle;
+    if ( m_ins_delay )
+        RUN_FOR(std::min(m_ins_delay, ncycle));
 
     // The current instruction is executed in case of interrupt, but
     // the next instruction will be delayed.
+
     // The current instruction is not executed in case of exception,
-    // and there is three types of bus error events,
-    // 1 - instruction bus errors are synchronous events, signaled in
-    // the m_ibe variable
-    // 2 - read data bus errors are synchronous events, signaled in
-    // the m_dbe variable
-    // 3 - write data bus errors are asynchonous events signaled in
-    // the m_dbe flip-flop
-    // Instuction bus errors are related to the current instruction:
-    // lowest priority.
-    // Read Data bus errors are related to the previous instruction:
-    // intermediatz priority
-    // Write Data bus error are related to an older instruction:
-    // highest priority
+    // and there is three types of bus error events, in order of
+    // increasing priority:
+    // 1 - instruction bus errors
+    // 2 - read data bus errors
+    // 3 - write data bus errors
 
-    m_next_pc = r_npc+4;
+    bool may_take_irq = check_irq_state();
+    bool ireq_ok = handle_ifetch(irsp);
+    bool dreq_ok = handle_dfetch(drsp);
 
-    if (m_ibe) {
-        m_exception = X_IBE;
-        goto handle_except;
-    }
+    if ( m_hazard && ncycle )
+        RUN_FOR(1);
 
-    if ( m_dbe ) {
-        m_exception = X_DBE;
-        r_bar = m_dreq.addr;
-        m_dbe = false;
-        goto handle_except;
-    }
+    if ( m_exception != NO_EXCEPTION )
+        goto got_exception;
 
+    if ( ncycle == 0 )
+        goto early_end;
+
+    if ( dreq_ok && ireq_ok ) {
 #ifdef SOCLIB_MODULE_DEBUG
-    dump();
+        dump();
 #endif
-    // run() can modify the following registers: r_gp[i], r_mem_req,
-    // r_mem_type, m_dreq.addr; r_mem_wdata, r_mem_dest, r_hi, r_lo,
-    // m_exception, m_next_pc
-    if ( m_hazard ) {
-#ifdef SOCLIB_MODULE_DEBUG
-        std::cout << name() << " hazard, seeing next cycle" << std::endl;
-#endif
-        m_hazard = false;
-        goto house_keeping;
-    } else {
-        m_exec_cycles++;
         if ( m_microcode_func ) {
             (this->*m_microcode_func)();
-            if ( m_exception == NO_EXCEPTION )
-                goto house_keeping;
         } else {
+            m_next_pc = r_npc;
+            m_jump_pc = r_npc+4;
+            m_resume_pc = r_npc;
             run();
         }
+        if ( m_dreq.valid ) {
+            m_pc_for_dreq = r_pc;
+            m_pc_for_dreq_is_ds = m_next_pc != r_pc+4;
+        }
+        m_exec_cycles++;
     }
 
-    if ( m_exception == NO_EXCEPTION
-         && ((r_status.im>>2) & irq_bit_field)
-         && (m_microcode_func == NULL)
-         && may_take_irq ) {
-        m_exception = X_INT;
-#if defined(SOCLIB_MODULE_DEBUG)
-        std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;
-#endif
+    if ( m_exception != NO_EXCEPTION )
+        goto got_exception;
 
-#if defined(SOCLIB_MODULE_DEBUG)
-    } else {
-        if ( irq_bit_field )
-            std::cout
-                << name()
-                << " Ignoring irqs " << std::hex << irq_bit_field
-                << " cause " << r_cause.whole
-                << " status " << r_status.whole
-                << " ie " << r_status.ie
-                << " exl " << r_status.exl
-                << " erl " << r_status.erl
-                << " mask " << (r_status.im>>2)
-                << " exception " << m_exception
-                << std::endl;
+    if ( (r_status.im & r_cause.ip) && may_take_irq && check_irq_state() )
+        goto handle_irq;
+
+    r_npc = m_jump_pc;
+    r_pc = m_next_pc;
+    m_ifetch_addr = m_next_pc;
+    r_gp[0] = 0;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout
+        << std::hex << std::showbase
+        << m_name
+        << " m_next_pc: " << m_next_pc
+        << " m_jump_pc: " << m_jump_pc
+        << " m_ifetch_addr: " << m_ifetch_addr
+        << std::endl;
 #endif
+    goto early_end;
+
+  handle_irq:
+    m_exception = X_INT;
+  got_exception:
+    handle_exception();
+    return time_spent;
+  early_end:
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout
+        << std::hex << std::showbase
+        << m_name
+        << " early_end:"
+        << " ireq_ok=" << ireq_ok
+        << " dreq_ok=" << dreq_ok
+        << " m_ins_delay=" << m_ins_delay
+        << " ncycle=" << ncycle
+        << " time_spent=" << time_spent
+        << std::endl;
+#endif
+    return time_spent;
+}
+
+bool Mips32Iss::handle_ifetch(
+    const struct InstructionResponse &irsp
+    )
+{
+    if ( m_microcode_func ) {
+        return true;
     }
 
-    if (  m_exception == NO_EXCEPTION )
-        goto no_except;
+    if ( m_ifetch_addr != r_pc || !irsp.valid ) {
+        return false;
+    }
 
- handle_except:
+    if ( irsp.error ) {
+        m_exception = X_IBE;
+        m_resume_pc = m_ifetch_addr;
+        return true;
+    }
 
+    m_ins.ins = irsp.instruction;
+    if ( ! m_little_endian )
+        m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
+
+    return true;
+}
+
+void Mips32Iss::handle_exception()
+{
     m_microcode_func = NULL;
 
     if ( debugExceptionBypassed( m_exception ) )
-        goto no_except;
+        return;
 
-    {
-        addr_t except_address = exceptBaseAddr();
-        bool branch_taken = m_next_pc != r_npc+4;
+    addr_t except_address = exceptBaseAddr();
+    bool branch_taken = m_next_pc+4 != m_jump_pc;
+    if ( m_exception == X_DBE ) {
+        branch_taken = m_pc_for_dreq_is_ds;
+        m_resume_pc = m_pc_for_dreq;
+    }
 
-        if ( r_status.exl ) {
-            except_address += 0x180;
-        } else {
-            r_cause.bd = branch_taken;
-            addr_t epc;
-            if ( m_exception == X_DBE ) {
-                // A synchronous DBE is signalled for the
-                // instruction following...
-                // If it is asynchronous, we're lost :'(
-                epc = r_pc-4;
-            } else {
-                if ( branch_taken )
-                    epc = r_pc;
-                else
-                    epc = r_npc;
-            }
-            r_epc = epc;
-            except_address += exceptOffsetAddr(m_exception);
-        }
-        r_cause.ce = 0;
-        r_cause.xcode = m_exception;
-        r_cause.ip  = irq_bit_field<<2;
-        r_status.exl = 1;
-        update_mode();
+    if ( r_status.exl ) {
+        except_address += 0x180;
+    } else {
+        r_cause.bd = branch_taken;
+        r_epc = m_resume_pc - 4*branch_taken;
+        except_address += exceptOffsetAddr(m_exception);
+    }
+    r_cause.ce = 0;
+    r_cause.xcode = m_exception;
+    r_status.exl = 1;
+    update_mode();
 
 #ifdef SOCLIB_MODULE_DEBUG
-        std::cout
-            << m_name <<" exception: "<<m_exception<<std::endl
-        	<< " m_ins: " << m_ins.j.op
-            << " epc: " << r_epc
-            << " error_epc: " << r_error_epc
-            << " bar: " << m_dreq.addr
-            << " cause.xcode: " << r_cause.xcode
-            << " .bd: " << r_cause.bd
-            << " .ip: " << r_cause.ip
-            << " status.exl: " << r_status.exl
-            << " .erl: " << r_status.erl
-            << " exception address: " << except_address
-            << std::endl;
+    std::cout
+        << m_name <<" exception: "<<m_exception<<std::endl
+        << " m_ins: " << m_ins.j.op
+        << " epc: " << r_epc
+        << " error_epc: " << r_error_epc
+        << " bar: " << m_dreq.addr
+        << " cause.xcode: " << r_cause.xcode
+        << " .bd: " << r_cause.bd
+        << " .ip: " << r_cause.ip
+        << " status.exl: " << r_status.exl
+        << " .erl: " << r_status.erl
+        << " exception address: " << except_address
+        << std::endl;
 #endif
 
-        m_next_pc = except_address;
-        m_skip_next_instruction = true;
-    }
- no_except:
-    if (m_skip_next_instruction) {
-        r_pc = m_next_pc;
-        r_npc = m_next_pc+4;
-        m_skip_next_instruction = false;
-    } else {
-        r_pc = r_npc;
-        r_npc = m_next_pc;
-    }
- house_keeping:
-    r_gp[0] = 0;
-    return ncycle;
+    r_pc = except_address;
+    r_npc = except_address+4;
+    m_ifetch_addr = except_address;
 }
 
 int Mips32Iss::debugCpuCauseToSignal( uint32_t cause ) const

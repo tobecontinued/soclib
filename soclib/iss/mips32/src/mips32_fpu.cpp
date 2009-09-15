@@ -27,6 +27,7 @@
  */
 
 #include "mips32.h"
+#include "mips32.hpp"
 #include "base_module.h"
 #include "static_assert.h"
 #include "arithmetics.h"
@@ -105,8 +106,9 @@ inline void Mips32Iss::CheckFPException()
         ( r_fcsr.cause_o & r_fcsr.enables_o) |
         ( r_fcsr.cause_u & r_fcsr.enables_u) |
         ( r_fcsr.cause_i & r_fcsr.enables_i)
-        )
+        ) {
         m_exception = X_FPE;
+    }
 }
 
 inline bool Mips32Iss::FPConditionCode(uint8_t cc)
@@ -293,11 +295,7 @@ void Mips32Iss::cop1_bc()
     bool likely = !! (m_ins.fpu_bc.nd_tf & 2);
     bool eq_false = ! (m_ins.fpu_bc.nd_tf & 1);
 
-    if ( ! FPConditionCode(m_ins.fpu_bc.cc) == eq_false ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    } else if ( likely ) {
-        m_skip_next_instruction = true;
-    }
+    jump_imm16(FPConditionCode(m_ins.fpu_bc.cc) != eq_false, likely);
 }
 
 #define cop1_table                                                     \
@@ -497,8 +495,8 @@ void Mips32Iss::op_sdc1_part2()
 
 #define check_align(address, align)                                    \
     if ( (address)%(align) ) {                                         \
-        m_dreq.addr = address;                                         \
         m_exception = X_ADEL;                                          \
+        r_bar = address;                                               \
         return;                                                        \
     }
 

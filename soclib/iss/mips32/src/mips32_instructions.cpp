@@ -29,6 +29,7 @@
  */
 
 #include "mips32.h"
+#include "mips32.hpp"
 #include "base_module.h"
 #include "arithmetics.h"
 
@@ -49,95 +50,67 @@ void Mips32Iss::op_bcond()
     if (m_ins.i.rt & 0x10)
         r_gp[31] = r_pc+8;
 
-    if (taken) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    } else if ( likely ) {
-        m_skip_next_instruction = true;
-    }
+    jump_imm16(taken, likely);
 }
 
 void Mips32Iss::op_j()
 {
-    m_next_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
+    m_jump_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
 }
 
 void Mips32Iss::op_jal()
 {
     r_gp[31] = r_pc+8;
-    m_next_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
+    m_jump_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
 }
 
 void Mips32Iss::op_beq()
 {
-    if ( r_gp[m_ins.i.rs] == r_gp[m_ins.i.rt] ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    }
+    jump_imm16(r_gp[m_ins.i.rs] == r_gp[m_ins.i.rt], false);
 }
 
 void Mips32Iss::op_bne()
 {
-    if ( r_gp[m_ins.i.rs] != r_gp[m_ins.i.rt] ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    }
+    jump_imm16(r_gp[m_ins.i.rs] != r_gp[m_ins.i.rt], false);
 }
 
 void Mips32Iss::op_blez()
 {
-    if ( (int32_t)r_gp[m_ins.i.rs] <= 0 ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    }
+    jump_imm16((int32_t)r_gp[m_ins.i.rs] <= 0, false);
 }
 
 void Mips32Iss::op_bgtz()
 {
-    if ( (int32_t)r_gp[m_ins.i.rs] > 0 ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    }
+    jump_imm16((int32_t)r_gp[m_ins.i.rs] > 0, false);
 }
 
 void Mips32Iss::op_beql()
 {
-    if ( r_gp[m_ins.i.rs] == r_gp[m_ins.i.rt] ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    } else {
-        m_skip_next_instruction = true;
-    }
+    jump_imm16(r_gp[m_ins.i.rs] == r_gp[m_ins.i.rt], true);
 }
 
 void Mips32Iss::op_bnel()
 {
-    if ( r_gp[m_ins.i.rs] != r_gp[m_ins.i.rt] ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    } else {
-        m_skip_next_instruction = true;
-    }
+    jump_imm16(r_gp[m_ins.i.rs] != r_gp[m_ins.i.rt], true);
 }
 
 void Mips32Iss::op_blezl()
 {
-    if ( (int32_t)r_gp[m_ins.i.rs] <= 0 ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    } else {
-        m_skip_next_instruction = true;
-    }
+    jump_imm16((int32_t)r_gp[m_ins.i.rs] <= 0, true);
 }
 
 void Mips32Iss::op_bgtzl()
 {
-    if ( (int32_t)r_gp[m_ins.i.rs] > 0 ) {
-        m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_pc + 4;
-    } else {
-        m_skip_next_instruction = true;
-    }
+    jump_imm16((int32_t)r_gp[m_ins.i.rs] > 0, true);
 }
 
 void Mips32Iss::op_addi()
 {
     bool cout, vout;
     uint32_t tmp = add_cv(r_gp[m_ins.i.rs], sign_ext(m_ins.i.imd, 16), 0, cout, vout);
-    if ( vout )
+    if ( vout ) {
         m_exception = X_OV;
-    else
+    } else
         r_gp[m_ins.i.rt] = tmp;
 }
 
@@ -206,12 +179,14 @@ void Mips32Iss::op_cop0()
 #endif
             if ( r_status.erl ) {
                 m_next_pc = r_error_epc;
+                m_jump_pc = r_error_epc+4;
                 r_status.erl = 0;
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << "erl";
 #endif
             } else if ( r_status.exl ) {
                 m_next_pc = r_epc;
+                m_jump_pc = r_epc+4;
                 r_status.exl = 0;
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << " exl";
@@ -220,9 +195,8 @@ void Mips32Iss::op_cop0()
                 std::cout << m_name << " calling ERET without exl nor erl, ignored" << std::endl;
             }
 #ifdef SOCLIB_MODULE_DEBUG
-            std::cout << " next_pc: " << m_next_pc << std::endl;
+            std::cout << " jump_pc: " << m_jump_pc << std::endl;
 #endif
-            m_skip_next_instruction = true;
             update_mode();
             break;
         case WAIT:

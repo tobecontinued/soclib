@@ -119,7 +119,7 @@ void Mips32Iss::special_jr()
         m_exception = X_ADEL;
         return;
     }
-    m_next_pc = r_gp[m_ins.i.rs];
+    m_jump_pc = r_gp[m_ins.i.rs];
 }
 
 void Mips32Iss::special_jalr()
@@ -130,7 +130,7 @@ void Mips32Iss::special_jalr()
         return;
     }
     r_gp[m_ins.r.rd] = r_pc+8;
-    m_next_pc = r_gp[m_ins.i.rs];
+    m_jump_pc = r_gp[m_ins.i.rs];
 }
 
 void Mips32Iss::special_sysc()
@@ -321,7 +321,7 @@ void Mips32Iss::special_tne()
 
 void Mips32Iss::special_sync()
 {
-    do_mem_access(4*XTN_SYNC, 4, 0, NULL, 0, 0, XTN_READ);
+    do_mem_access(4*XTN_SYNC, 4, 0, NULL, 0, 0, XTN_WRITE);
 }
 
 void Mips32Iss::special_ill()

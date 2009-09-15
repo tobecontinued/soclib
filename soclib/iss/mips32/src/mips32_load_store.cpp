@@ -63,7 +63,7 @@ void Mips32Iss::do_mem_access( addr_t address,
                                enum DataOperationType operation )
 {
     if (!isPriviliged() && isPrivDataAddr(address)) {
-        m_dreq.addr = address;
+        r_bar = address;
         m_exception = X_ADEL;
         return;
     }
@@ -110,15 +110,14 @@ void Mips32Iss::do_mem_access( addr_t address,
     r_mem_dest = dest;
 }
 
-void Mips32Iss::_setData(const struct DataResponse &rsp)
+bool Mips32Iss::handle_dfetch(const struct DataResponse &rsp)
 {
     if ( ! m_dreq.valid ) {
-        m_dreq_ok = true;
-        return;
+        return true;
     }
-    m_dreq_ok = rsp.valid;
+
     if ( !rsp.valid )
-        return;
+        return false;
 
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout
@@ -131,9 +130,12 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
 #endif
 
     m_dreq.valid = false;
-    m_dbe = rsp.error;
-    if ( rsp.error )
-        return;
+    if ( rsp.error ) {
+        m_exception = X_DBE;
+        m_resume_pc = r_pc;
+        r_bar = m_dreq.addr;
+        return true;
+    }
 
     // We write the  r_gp[i], and we detect a possible data dependency,
     // in order to implement the delayed load behaviour.
@@ -156,7 +158,7 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
 
     // With destination register == 0, this is a store or a load to r0.
     if ( r_mem_dest == NULL )
-        return;
+        return true;
 
     data_t data = rsp.rdata;
     int byte_count = r_mem_byte_count;
@@ -222,12 +224,14 @@ void Mips32Iss::_setData(const struct DataResponse &rsp)
         << std::endl;
 #endif
     *r_mem_dest = new_data;
+
+    return true;
 }
 
 /* except: L stands for Load, S stands for store */
 #define check_align(address, align, except) \
     if ( (address)%(align) ) {              \
-        m_dreq.addr = address;              \
+        r_bar = address;                    \
         m_exception = X_ADE##except;        \
         return;                             \
     }

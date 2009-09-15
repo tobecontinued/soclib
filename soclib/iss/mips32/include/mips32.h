@@ -99,7 +99,7 @@ private:
     // member variables (internal registers)
 
 	data_t 	r_pc;			// Program Counter
-	data_t 	r_npc;			// Next Program Counter
+	data_t 	r_npc;
     data_t    r_gp[32];       // General Registers
     data_t    r_hi;           // Multiply result (MSB bits)
     data_t    r_lo;           // Multiply result (LSB bits)
@@ -117,8 +117,6 @@ private:
 	data_t	m_rdata;
 	bool		m_ibe;
 	bool		m_dbe;
-
-    bool m_skip_next_instruction;
 
     // Instruction latency simulation
     uint32_t m_ins_delay;
@@ -317,21 +315,28 @@ private:
         uint32_t ie:1,
         ) status_t;
 
-    typedef REG32_BITFIELD(
-        uint32_t bd:1,
-        uint32_t ti:1,
-        uint32_t ce:2,
-        uint32_t dc:1,
-        uint32_t pci:1,
-        uint32_t zero:2,
-        uint32_t iv:1,
-        uint32_t wp:1,
-        uint32_t zero2:6,
-        uint32_t ip:8,
-        uint32_t zero3:1,
-        uint32_t xcode:5,
-        uint32_t zero4:2,
-        ) cause_t;
+    typedef union {
+        REG32_BITFIELD(
+            uint32_t bd:1,
+            uint32_t ti:1,
+            uint32_t ce:2,
+            uint32_t dc:1,
+            uint32_t pci:1,
+            uint32_t zero:2,
+            uint32_t iv:1,
+            uint32_t wp:1,
+            uint32_t zero2:6,
+            uint32_t ip:8,
+            uint32_t zero3:1,
+            uint32_t xcode:5,
+            uint32_t zero4:2,
+            );
+        PACKED_BITFIELD(
+            uint32_t null_:16,
+            uint32_t ripl:6,
+            uint32_t null_2:10,
+            );
+    } cause_t;
 
     typedef REG32_BITFIELD(
         uint32_t ipti:3,
@@ -498,7 +503,18 @@ private:
 
     ins_t       m_ins;
     enum ExceptCause    m_exception;
+
     addr_t    m_next_pc;
+    addr_t    m_jump_pc;
+
+    addr_t m_pc_for_dreq;
+    bool m_pc_for_dreq_is_ds;
+
+    addr_t    m_resume_pc;
+    addr_t    m_error_addr;
+
+    addr_t    m_ifetch_addr;
+
     uint32_t    m_exec_cycles;
     bool m_hazard;
 
@@ -511,9 +527,6 @@ private:
     uint32_t r_tls_base;
 
     const bool m_little_endian;
-
-    bool m_ireq_ok;
-    bool m_dreq_ok;
 
 public:
     Mips32Iss(const std::string &name, uint32_t ident, bool default_little_endian);
@@ -530,7 +543,7 @@ public:
                              struct DataRequest &dreq ) const
 	{
         ireq.valid = (m_microcode_func == NULL);
-		ireq.addr = r_pc;
+		ireq.addr = m_ifetch_addr;
         ireq.mode = r_bus_mode;
         dreq = m_dreq;
 	}
@@ -570,8 +583,6 @@ public:
 
 private:
     void run();
-
-    void _setData(const struct DataResponse &rsp);
 
     inline void setInsDelay( uint32_t delay )
     {
@@ -765,6 +776,12 @@ private:
 
     // Make sure users dont try to instanciate Mips32Iss class
     virtual void please_instanciate_Mips32ElIss_or_Mips32EbIss() = 0;
+
+    inline void jump_imm16(bool taken, bool likely);
+    inline bool check_irq_state() const;
+    bool handle_ifetch(const struct InstructionResponse &irsp);
+    bool handle_dfetch(const struct DataResponse &drsp);
+    void handle_exception();
 };
 
 class Mips32ElIss

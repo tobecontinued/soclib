@@ -83,7 +83,6 @@ void Mips32Iss::run()
 
     if (isHighPC() && !isPriviliged()) {
         m_exception = X_ADEL;
-        m_dreq.addr = r_pc;
         
         return;
     }
