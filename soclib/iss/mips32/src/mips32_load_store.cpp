@@ -232,6 +232,7 @@ bool Mips32Iss::handle_dfetch(const struct DataResponse &rsp)
 #define check_align(address, align, except) \
     if ( (address)%(align) ) {              \
         r_bar = address;                    \
+        m_resume_pc = r_pc;                 \
         m_exception = X_ADE##except;        \
         return;                             \
     }
