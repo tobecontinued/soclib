@@ -49,3 +49,4 @@ lm32_CFLAGS 	+=  -gstabs+ -mmultiply-enabled -mdivide-enabled -msign-extend-enab
 lm32_LDFLAGS 	+=  -nostdlib 
 
 -include $(HOME)/.soclib/soft_compilers.conf
+-include $(PLATFORM_DIR)/soft_flags.conf
