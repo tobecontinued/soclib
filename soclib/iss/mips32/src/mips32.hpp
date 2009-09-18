@@ -6,18 +6,32 @@
 
 namespace soclib { namespace common {
 
+void Mips32Iss::jump(addr_t dest, bool now)
+{
+	if ( dest & 3 ) {
+		m_exception = X_ADEL;
+		m_resume_pc = r_pc;
+		m_error_addr = dest;
+		return;
+	}
+	if ( now ) {
+		m_next_pc = dest;
+		m_jump_pc = m_next_pc+4;
+	} else {
+		m_jump_pc = dest;
+	}
+}
+
 void Mips32Iss::jump_imm16(bool taken, bool likely)
 {
 	if ( !likely ) {
 		if ( taken )
-			m_jump_pc = sign_ext(m_ins.i.imd, 16)*4 + r_npc;
+			jump(sign_ext(m_ins.i.imd, 16)*4 + r_npc, false);
 	} else {
 		if ( taken ) {
-			m_next_pc = sign_ext(m_ins.i.imd, 16)*4 + r_npc;
-			m_jump_pc = m_next_pc+4;
+			jump(sign_ext(m_ins.i.imd, 16)*4 + r_npc, true);
 		} else {
-			m_next_pc = r_npc+4;
-			m_jump_pc = m_next_pc+4;
+			jump(r_npc+4, true);
 		}
 	}
 }

@@ -29,6 +29,7 @@
  */
 
 #include "mips32.h"
+#include "mips32.hpp"
 #include "arithmetics.h"
 
 #include <strings.h>
@@ -119,7 +120,7 @@ void Mips32Iss::special_jr()
         m_exception = X_ADEL;
         return;
     }
-    m_jump_pc = r_gp[m_ins.i.rs];
+    jump(r_gp[m_ins.i.rs], false);
 }
 
 void Mips32Iss::special_jalr()
@@ -130,7 +131,7 @@ void Mips32Iss::special_jalr()
         return;
     }
     r_gp[m_ins.r.rd] = r_pc+8;
-    m_jump_pc = r_gp[m_ins.i.rs];
+    jump(r_gp[m_ins.i.rs], false);
 }
 
 void Mips32Iss::special_sysc()

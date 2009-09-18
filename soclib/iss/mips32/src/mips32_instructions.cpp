@@ -55,13 +55,13 @@ void Mips32Iss::op_bcond()
 
 void Mips32Iss::op_j()
 {
-    m_jump_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
+    jump( (r_pc&0xf0000000) | (m_ins.j.imd * 4), false);
 }
 
 void Mips32Iss::op_jal()
 {
     r_gp[31] = r_pc+8;
-    m_jump_pc = (r_pc&0xf0000000) | (m_ins.j.imd * 4);
+    jump( (r_pc&0xf0000000) | (m_ins.j.imd * 4), false);
 }
 
 void Mips32Iss::op_beq()
@@ -178,15 +178,13 @@ void Mips32Iss::op_cop0()
             std::cout << name() << " ERET ";
 #endif
             if ( r_status.erl ) {
-                m_next_pc = r_error_epc;
-                m_jump_pc = r_error_epc+4;
+                jump(r_error_epc, true);
                 r_status.erl = 0;
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << "erl";
 #endif
             } else if ( r_status.exl ) {
-                m_next_pc = r_epc;
-                m_jump_pc = r_epc+4;
+                jump(r_epc, true);
                 r_status.exl = 0;
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << " exl";

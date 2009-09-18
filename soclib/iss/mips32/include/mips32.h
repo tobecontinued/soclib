@@ -778,6 +778,7 @@ private:
     virtual void please_instanciate_Mips32ElIss_or_Mips32EbIss() = 0;
 
     inline void jump_imm16(bool taken, bool likely);
+    inline void jump(addr_t dest, bool now);
     inline bool check_irq_state() const;
     bool handle_ifetch(const struct InstructionResponse &irsp);
     bool handle_dfetch(const struct DataResponse &drsp);
