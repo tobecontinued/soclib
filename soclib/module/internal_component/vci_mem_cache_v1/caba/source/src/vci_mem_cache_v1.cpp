@@ -2691,10 +2691,9 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             (r_init_rsp_fsm.read() != INIT_RSP_UPT_CLEAR) ) 
         {
           if      ((r_write_fsm.read() == WRITE_UPT_LOCK) ||
-                   (r_write_fsm.read() == WRITE_INVAL_LOCK))  r_alloc_upt_fsm = ALLOC_UPT_WRITE;
-          else if ((r_xram_rsp_fsm.read() == XRAM_RSP_UPT_LOCK) ||
-              (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK)) r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
-          else if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
+                   (r_write_fsm.read() == WRITE_INVAL_LOCK))     r_alloc_upt_fsm = ALLOC_UPT_WRITE;
+          else if (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK) r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
+          else if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)     r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
         }
         break;
 
@@ -2703,17 +2702,15 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         if ( (r_write_fsm.read() != WRITE_UPT_LOCK) &&
              (r_write_fsm.read() != WRITE_INVAL_LOCK)) 
         {
-          if      ((r_xram_rsp_fsm.read() == XRAM_RSP_UPT_LOCK) ||
-              (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK)) r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
-          else if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
-          else if (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK) r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
+          if      (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK) r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
+          else if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)     r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
+          else if (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
         }
         break;
 
         ////////////////////////
       case ALLOC_UPT_XRAM_RSP:
-        if ( (r_xram_rsp_fsm.read() != XRAM_RSP_UPT_LOCK) &&
-            (r_xram_rsp_fsm.read() != XRAM_RSP_INVAL_LOCK) ) 
+        if ( r_xram_rsp_fsm.read() != XRAM_RSP_INVAL_LOCK ) 
         { 
           if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
           else if      (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK) r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
@@ -2730,8 +2727,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           if 	    (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
           else if ((r_write_fsm.read() == WRITE_UPT_LOCK) 	 ||
                    (r_write_fsm.read() == WRITE_INVAL_LOCK))   r_alloc_upt_fsm = ALLOC_UPT_WRITE;
-          else if ((r_xram_rsp_fsm.read() == XRAM_RSP_UPT_LOCK) ||
-              (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK))   r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
+          else if (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
         }
         break;
 
