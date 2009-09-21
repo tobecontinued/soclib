@@ -1,8 +1,8 @@
 /* -*- c++ -*-
- * File 	: vci_mem_cache_v1.cpp
- * Date 	: 30/10/2008
+ * File 	    : vci_mem_cache_v1.cpp
+ * Date 	    : 21/09/2009
  * Copyright 	: UPMC / LIP6
- * Authors 	: Alain Greiner / Eric Guthmuller
+ * Authors 	  : Alain Greiner / Eric Guthmuller
  *
  * SOCLIB_LGPL_HEADER_BEGIN
  *
@@ -34,16 +34,18 @@
  * - Modify the ALLOC_UPT_FSM for allocating the UPT/INVAL Table to the 
  * CLEANUP FSM MEM_CACHE when a the line is going to be INVALIDATE
  *
- * Modifications to do : 
  *
  */
 #include "../include/vci_mem_cache_v1.h"
 
-#define DEBUG_VCI_MEM_CACHE 0
+//#define DEBUG_VCI_MEM_CACHE 0
+//#define DEBUG_VCI_MEM_CACHE_STATES
+#define DEBUG_PERIOD 10000
+#define DEBUG_START 0
 
 namespace soclib { namespace caba {
 
-#ifdef DEBUG_VCI_MEM_CACHE 
+#ifdef DEBUG_VCI_MEM_CACHE_STATES
   const char *tgt_cmd_fsm_str[] = {
     "TGT_CMD_IDLE",
     "TGT_CMD_READ",
@@ -131,8 +133,6 @@ namespace soclib { namespace caba {
     "XRAM_RSP_DIR_RSP",
     "XRAM_RSP_INVAL_LOCK",
     "XRAM_RSP_INVAL_WAIT",
-    "XRAM_RSP_UPT_LOCK",
-    "XRAM_RSP_WAIT",
     "XRAM_RSP_INVAL",
     "XRAM_RSP_WRITE_DIRTY",
   };
@@ -226,10 +226,8 @@ namespace soclib { namespace caba {
     m_words( nwords ),
     m_srcid_ixr( mtx.indexForId(vci_ixr_index) ),
     m_srcid_ini( mtc.indexForId(vci_ini_index) ),
-    //m_mem_segment("bidon",0,0,soclib::common::IntTab(),false),
     m_seglist(mtp.getSegmentList(vci_tgt_index)),
     m_cseglist(mtc.getSegmentList(vci_tgt_index_cleanup)),
-    m_reg_segment("bidon",0,0,soclib::common::IntTab(),false),
     m_coherence_table( mtc.getCoherenceTable() ),
     m_atomic_tab( m_initiators ),
     m_transaction_tab( TRANSACTION_TAB_LINES, nwords ),
@@ -265,11 +263,6 @@ namespace soclib { namespace caba {
     m_cmd_llsc_pktid_fifo("m_cmd_llsc_pktid_fifo",4),
     m_cmd_llsc_wdata_fifo("m_cmd_llsc_wdata_fifo",4),
 
-    //	       m_cmd_cleanup_srcid_fifo("m_cmd_cleanup_srcid_fifo",4),
-    //	       m_cmd_cleanup_trdid_fifo("m_cmd_cleanup_trdid_fifo",4),
-    //	       m_cmd_cleanup_pktid_fifo("m_cmd_cleanup_pktid_fifo",4),
-    //	       m_cmd_cleanup_nline_fifo("m_cmd_cleanup_nline_fifo",4),
-
     r_tgt_cmd_fsm("r_tgt_cmd_fsm"),
     r_read_fsm("r_read_fsm"),
     r_write_fsm("r_write_fsm"),
@@ -297,38 +290,20 @@ namespace soclib { namespace caba {
 
 
       // Get the segments associated to the MemCache 
-      //std::list<soclib::common::Segment> segList(mtp.getSegmentList(vci_tgt_index));
       std::list<soclib::common::Segment>::iterator seg;
-      /*
-         for(seg = segList.begin(); seg != segList.end() ; seg++) {
-         if( seg->size() > 8 ) m_mem_segment = *seg; 
-         else                  m_reg_segment = *seg;
-         nseg++;
-         }
-         */
 
       for(seg = m_seglist.begin(); seg != m_seglist.end() ; seg++) {
-        if( seg->size() > 8 ) nseg++;
+        nseg++;
       }
       for(seg = m_cseglist.begin(); seg != m_cseglist.end() ; seg++) {
         ncseg++;
       }
-      //assert( (nseg == 2) && (m_reg_segment.size() == 8) );
 
       m_seg = new soclib::common::Segment*[nseg];
       size_t i = 0;
       for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) { 
-        if ( seg->size() > 8 ) 
-        {
-          m_seg[i] = &(*seg);
-          i++;
-
-        }
-        else
-        {
-          m_reg_segment = *seg; // a supprimer
-
-        }		
+        m_seg[i] = &(*seg);
+        i++;
       }
       m_cseg = new soclib::common::Segment*[ncseg];
       i = 0;
@@ -336,8 +311,6 @@ namespace soclib { namespace caba {
           m_cseg[i] = &(*seg);
           i++;
       }
-
-      assert( (m_reg_segment.size() == 8) );
 
       // Memory cache allocation & initialisation
       m_cache_data = new data_t**[nways];
@@ -517,7 +490,7 @@ namespace soclib { namespace caba {
 
       r_xram_cmd_cpt = 0;
 
-      r_copies_limit = 2;
+      r_copies_limit = 3;
 
       // Activity counters
       m_cpt_cycles		= 0;
@@ -548,7 +521,10 @@ namespace soclib { namespace caba {
     bool    cmd_llsc_fifo_put = false;
     bool    cmd_llsc_fifo_get = false;
 
-#if DEBUG_VCI_MEM_CACHE 
+
+#ifdef DEBUG_VCI_MEM_CACHE_STATES 
+if((m_cpt_cycles % DEBUG_PERIOD == 0)
+   && (m_cpt_cycles >= DEBUG_START)){
     std::cout << "---------------------------------------------" << std::dec << std::endl;
     std::cout << "MEM_CACHE " << m_srcid_ini << " ; Time = " << m_cpt_cycles << std::endl
       << " - TGT_CMD FSM   = " << tgt_cmd_fsm_str[r_tgt_cmd_fsm] << std::endl
@@ -565,6 +541,7 @@ namespace soclib { namespace caba {
       << " - ALLOC_DIR FSM = " << alloc_dir_fsm_str[r_alloc_dir_fsm] << std::endl
       << " - ALLOC_TRT FSM = " << alloc_trt_fsm_str[r_alloc_trt_fsm] << std::endl
       << " - ALLOC_UPT FSM = " << alloc_upt_fsm_str[r_alloc_upt_fsm] << std::endl;
+}
 #endif
 
 
@@ -606,8 +583,8 @@ namespace soclib { namespace caba {
             if ( !reached ) 
             { 
               std::cout << "VCI_MEM_CACHE Out of segment access in VCI_MEM_CACHE" << std::endl;
-              std::cout << "Faulty address = " << p_vci_tgt.address.read() << std::endl;
-              std::cout << "Faulty initiator = " << p_vci_tgt.srcid.read() << std::endl;
+              std::cout << "Faulty address = " << std::hex << p_vci_tgt.address.read() << std::endl;
+              std::cout << "Faulty initiator = " << std::dec << p_vci_tgt.srcid.read() << std::endl;
               exit(0);
             } 
             else if ( p_vci_tgt.cmd.read() == vci_param::CMD_READ ) 
@@ -623,10 +600,6 @@ namespace soclib { namespace caba {
             {
               r_tgt_cmd_fsm = TGT_CMD_ATOMIC;
             } 
-            //	    else if (( p_vci_tgt.cmd.read() == vci_param::CMD_WRITE ) && ( p_vci_tgt.trdid.read() == 0x1 ))
-            //	    {  
-            //	      r_tgt_cmd_fsm = TGT_CMD_CLEANUP;
-            //	    } 
           }
           break;
         }
@@ -721,7 +694,9 @@ namespace soclib { namespace caba {
           if ( r_alloc_upt_fsm.read() == ALLOC_UPT_INIT_RSP ) { 
             size_t count = 0;
             bool valid  = m_update_tab.decrement(r_init_rsp_upt_index.read(), count);
-
+            
+            if(!valid)
+              m_update_tab.read(r_init_rsp_upt_index.read()).print();
             assert ( valid 
                 && "VCI_MEM_CACHE Invalid UPT entry in VCI response paquet received by memory cache" );
 
@@ -837,11 +812,13 @@ namespace soclib { namespace caba {
             entry.lock	  = r_read_lock.read();
             if(cached_read){  // Cached read, we update the copies vector
               if(inst_read && !is_cnt){ // Data read, vector mode
+                assert(!(r_read_i_copies.read() & (0x1 << m_cmd_read_srcid_fifo.read())) && "MemCache Error : processor read on an already owned cache line");
                 entry.d_copies  = r_read_d_copies.read();
                 entry.i_copies  = r_read_i_copies.read() | (0x1 << m_cmd_read_srcid_fifo.read()); 
                 entry.count     = r_read_count.read() + 1;
               }
               if(!inst_read && !is_cnt){ // Instruction read, vector mode
+                assert(!(r_read_d_copies.read() & (0x1 << m_cmd_read_srcid_fifo.read())) && "MemCache Error : processor read on an already owned cache line");
                 entry.d_copies  = r_read_d_copies.read() | (0x1 << m_cmd_read_srcid_fifo.read()); 
                 entry.i_copies  = r_read_i_copies.read();
                 entry.count     = r_read_count.read() + 1;
@@ -888,9 +865,10 @@ namespace soclib { namespace caba {
         {
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_READ ) {
             size_t index = 0;
-            bool   hit = m_transaction_tab.hit_read(m_nline[m_cmd_read_addr_fifo.read()], index);
+            bool   hit_read = m_transaction_tab.hit_read(m_nline[m_cmd_read_addr_fifo.read()], index);
+            bool   hit_write = m_transaction_tab.hit_write(m_nline[m_cmd_read_addr_fifo.read()]);
             bool   wok = !m_transaction_tab.full(index);
-            if( hit || !wok ) {  // missing line already requested or no space
+            if( hit_read || hit_write || !wok ) {  // missing line already requested or no space
               r_read_fsm = READ_IDLE;
             } else {			   // missing line is requested to the XRAM
               r_read_trt_index = index;
@@ -1030,7 +1008,8 @@ namespace soclib { namespace caba {
               r_write_i_copies   = entry.i_copies;
               r_write_count      = entry.count;
               r_write_way  	     = way;
-              if(entry.is_cnt){
+              if((entry.is_cnt && entry.count) ||
+                  entry.i_copies){
                 r_write_fsm      = WRITE_DIR_HIT_READ;
               } else {
                 if(r_write_byte.read())
@@ -1063,7 +1042,8 @@ namespace soclib { namespace caba {
             }
           } // end for
 
-          if(r_write_is_cnt.read()){
+          if((r_write_is_cnt.read() && r_write_count.read()) ||
+              r_write_i_copies.read()){
             r_write_fsm            = WRITE_TRT_WRITE_LOCK;
           } else {
             r_write_fsm            = WRITE_DIR_HIT;
@@ -1214,12 +1194,13 @@ namespace soclib { namespace caba {
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE ) {
             size_t hit_index = 0;
             size_t wok_index = 0;
-            bool hit = m_transaction_tab.hit_read(m_nline[r_write_address.read()],hit_index);
+            bool hit_read = m_transaction_tab.hit_read(m_nline[r_write_address.read()],hit_index);
+            bool hit_write = m_transaction_tab.hit_write(m_nline[r_write_address.read()]);
             bool wok = !m_transaction_tab.full(wok_index);
-            if ( hit ) {		// register the modified data in TRT 
+            if ( hit_read ) {		// register the modified data in TRT 
               r_write_trt_index = hit_index;
               r_write_fsm       = WRITE_TRT_DATA;
-            } else if ( wok ) {	// set a new entry in TRT
+            } else if ( wok && !hit_write ) {	// set a new entry in TRT
               r_write_trt_index = wok_index;
               r_write_fsm       = WRITE_TRT_SET;
             } else {		// wait an empty entry in TRT
@@ -1651,6 +1632,8 @@ namespace soclib { namespace caba {
 
             for (size_t i=0 ; i<m_words ; i++) r_xram_rsp_victim_data[i] = m_cache_data[way][set][i];
 
+            bool inval = victim.count && victim.valid ;
+
             r_xram_rsp_victim_d_copies = victim.d_copies;
             r_xram_rsp_victim_i_copies = victim.i_copies;
             r_xram_rsp_victim_count    = victim.count;
@@ -1658,9 +1641,7 @@ namespace soclib { namespace caba {
             r_xram_rsp_victim_set      = set;
             r_xram_rsp_victim_nline    = victim.tag*m_sets + set;
             r_xram_rsp_victim_is_cnt   = victim.is_cnt;
-            r_xram_rsp_victim_inval    = victim.valid && 
-              ((victim.d_copies != 0) || 
-               (victim.i_copies != 0)   );
+            r_xram_rsp_victim_inval    = inval ;
             r_xram_rsp_victim_dirty    = victim.dirty;
 
             r_xram_rsp_fsm = XRAM_RSP_INVAL_LOCK;
@@ -1672,10 +1653,21 @@ namespace soclib { namespace caba {
         {
           if ( r_alloc_upt_fsm == ALLOC_UPT_XRAM_RSP ) {
             size_t index;
-            if(m_update_tab.search_brdcast(r_xram_rsp_trt_buf.nline, index)){
+            if(m_update_tab.search_inval(r_xram_rsp_trt_buf.nline, index)){
               r_xram_rsp_fsm = XRAM_RSP_INVAL_WAIT;
+#ifdef DEBUG_VCI_MEM_CACHE
+              std::cout << "XRAM_RSP_INVAL_LOCK : invalidation at the same line , time = " << std::dec << m_cpt_cycles << std::endl;
+              m_update_tab.print(); 
+#endif
             }
-            else {
+            else if(m_update_tab.is_full() && r_xram_rsp_victim_inval.read()){
+              r_xram_rsp_fsm = XRAM_RSP_INVAL_WAIT;
+#ifdef DEBUG_VCI_MEM_CACHE
+              std::cout << "XRAM_RSP_INVAL_LOCK : invalidate but no entry free , time = " << std::dec << m_cpt_cycles << std::endl;
+              m_update_tab.print(); 
+#endif
+            }
+            else{
               r_xram_rsp_fsm = XRAM_RSP_DIR_UPDT;
             }
           }
@@ -1728,12 +1720,36 @@ namespace soclib { namespace caba {
             entry.count    = 0;
           }
           m_cache_directory.write(set, way, entry);
+
+          if(r_xram_rsp_victim_inval.read()){
+            bool    brdcast = r_xram_rsp_victim_is_cnt.read();
+            size_t index;
+            size_t count_copies = r_xram_rsp_victim_count.read();
+
+            bool	 wok = m_update_tab.set(false,	// it's an inval transaction
+                brdcast,                          // set brdcast bit
+                false,  // it does not need a response
+                0,
+                0,
+                0,
+                r_xram_rsp_victim_nline.read(),
+                count_copies,
+                index);
+#ifdef DEBUG_VCI_MEM_CACHE
+            std::cout << "XRAM_RSP : record invalidation, time = " << std::dec << m_cpt_cycles << std::endl;
+            m_update_tab.print();
+#endif
+            r_xram_rsp_upt_index = index;
+            if(!wok) {
+              assert(false && "MEM_CACHE ERROR : XRAM_RSP_DIR_UPT, an update_tab entry was free but write unsuccessful");
+            }
+          }
           // If the victim is not dirty, we erase the entry in the TRT
           if      (!r_xram_rsp_victim_dirty.read()) m_transaction_tab.erase(r_xram_rsp_trt_index.read());
           // Next state
           if      ( r_xram_rsp_victim_dirty.read())       r_xram_rsp_fsm = XRAM_RSP_TRT_DIRTY;
           else if ( r_xram_rsp_trt_buf.proc_read  )       r_xram_rsp_fsm = XRAM_RSP_DIR_RSP;
-          else if ( r_xram_rsp_victim_inval.read())       r_xram_rsp_fsm = XRAM_RSP_UPT_LOCK;
+          else if ( r_xram_rsp_victim_inval.read())       r_xram_rsp_fsm = XRAM_RSP_INVAL;
           else                                            r_xram_rsp_fsm = XRAM_RSP_IDLE;
           break;
         }
@@ -1753,7 +1769,7 @@ namespace soclib { namespace caba {
                 std::vector<be_t>(m_words,0),
                 std::vector<data_t>(m_words,0) );
             if      ( r_xram_rsp_trt_buf.proc_read  )       r_xram_rsp_fsm = XRAM_RSP_DIR_RSP;
-            else if ( r_xram_rsp_victim_inval.read())       r_xram_rsp_fsm = XRAM_RSP_UPT_LOCK;
+            else if ( r_xram_rsp_victim_inval.read())       r_xram_rsp_fsm = XRAM_RSP_INVAL;
             else                                            r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY;
           }
           break;
@@ -1775,46 +1791,10 @@ namespace soclib { namespace caba {
             } 
             r_xram_rsp_to_tgt_rsp_req   = true;
 
-            if      ( r_xram_rsp_victim_inval ) r_xram_rsp_fsm = XRAM_RSP_UPT_LOCK;
+            if      ( r_xram_rsp_victim_inval ) r_xram_rsp_fsm = XRAM_RSP_INVAL;
             else if ( r_xram_rsp_victim_dirty ) r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY; 
             else                                r_xram_rsp_fsm = XRAM_RSP_IDLE;
           }
-          break;
-        }
-        ///////////////////////
-      case XRAM_RSP_UPT_LOCK:	// Try to register the inval transaction in UPT
-        {
-          if ( r_alloc_upt_fsm == ALLOC_UPT_XRAM_RSP ) {
-            bool    brdcast = r_xram_rsp_victim_is_cnt.read();
-            size_t index;
-            size_t count_copies = r_xram_rsp_victim_count.read();
-
-            bool	 wok = m_update_tab.set(false,	// it's an inval transaction
-                brdcast,                          // set brdcast bit
-                false,  // it does not need a response
-                0,
-                0,
-                0,
-                r_xram_rsp_victim_nline.read(),
-                count_copies,
-                index);
-            if(wok) {
-//              std::cout << "XRAM_RSP : record invalidation, time = " << std::dec << m_cpt_cycles << std::endl;
-//              m_update_tab.print(); 
-            }
-            if ( wok ) {
-              r_xram_rsp_upt_index = index;
-              r_xram_rsp_fsm       = XRAM_RSP_INVAL;
-            } else {
-              r_xram_rsp_fsm       = XRAM_RSP_WAIT;
-            }
-          }
-          break;
-        }
-        ///////////////////
-      case XRAM_RSP_WAIT:	// releases UPT lock for one cycle
-        {
-          r_xram_rsp_fsm = XRAM_RSP_UPT_LOCK;
           break;
         }
         ////////////////////
@@ -1899,9 +1879,8 @@ namespace soclib { namespace caba {
 
             // Read the directory
             size_t way = 0;
-#define L2 soclib::common::uint32_log2
-            DirectoryEntry entry = m_cache_directory.read(r_cleanup_nline.read() << (L2(m_words) +2) , way);
-#undef L2
+            addr_t cleanup_address = r_cleanup_nline.read() * m_words * 4;
+            DirectoryEntry entry = m_cache_directory.read( cleanup_address , way);
 
             r_cleanup_is_cnt    = entry.is_cnt;
             r_cleanup_dirty	    = entry.dirty;
@@ -1915,7 +1894,13 @@ namespace soclib { namespace caba {
             // In case of hit, the copy must be cleaned in the copies bit-vector
             if( entry.valid )  { 
               r_cleanup_fsm = CLEANUP_DIR_WRITE;
+#ifdef DEBUG_VCI_MEM_CACHE
+              std::cout << "MEM_CACHE cleanup hit, addr = " << std::hex << (r_cleanup_nline.read()*4*m_words) << std::endl;
+#endif
             } else {
+#ifdef DEBUG_VCI_MEM_CACHE
+              std::cout << "MEM_CACHE cleanup miss, addr = " << std::hex << (r_cleanup_nline.read()*4*m_words) << std::endl;
+#endif
               r_cleanup_fsm = CLEANUP_UPT_LOCK;
             }
           }
@@ -1941,7 +1926,7 @@ namespace soclib { namespace caba {
             entry.count  = r_cleanup_count.read() -1;
             entry.i_copies = 0;
             entry.d_copies = 0;
-            // response to the cache      
+            // response to the cache 
             r_cleanup_fsm = CLEANUP_RSP;
           }
           else{                         // Directory is a vector
@@ -1969,9 +1954,6 @@ namespace soclib { namespace caba {
           }
           m_cache_directory.write(set, way, entry);  
 
-          // response to the cache      
-          r_cleanup_fsm = CLEANUP_RSP;
-
           break;
         }
         /////////////////
@@ -1980,10 +1962,15 @@ namespace soclib { namespace caba {
           if( r_alloc_upt_fsm.read() == ALLOC_UPT_CLEANUP )
           {
             size_t index;
-            bool hit_brdcast;
-            hit_brdcast = m_update_tab.search_brdcast(r_cleanup_nline.read(),index);
-            if(!hit_brdcast) {
-              std::cout << "MEM_CACHE WARNING: cleanup with no corresponding entry at address : " << std::hex << (r_cleanup_nline.read()*2*m_words) << std::dec << std::endl;
+            bool hit_inval;
+            hit_inval = m_update_tab.search_inval(r_cleanup_nline.read(),index);
+            if(!hit_inval) {
+#ifdef DEBUG_VCI_MEM_CACHE
+              std::cout << "MEM_CACHE WARNING: cleanup with no corresponding entry at address : " << std::hex << (r_cleanup_nline.read()*4*m_words) << std::dec << std::endl;
+              std::cout << "CLEANUP : miss, time = " << std::dec << m_cpt_cycles << std::endl;
+              m_update_tab.print(); 
+#endif
+              //assert(false);
               r_cleanup_fsm = CLEANUP_RSP;
             } else {
               r_cleanup_write_srcid = m_update_tab.srcid(index);
@@ -2011,8 +1998,10 @@ namespace soclib { namespace caba {
           } else {
             r_cleanup_fsm = CLEANUP_RSP ;
           }
-//          std::cout << "CLEANUP : decrement entry, time = " << std::dec << m_cpt_cycles << std::endl;
-//          m_update_tab.print(); 
+#ifdef DEBUG_VCI_MEM_CACHE
+          std::cout << "CLEANUP : decrement entry, time = " << std::dec << m_cpt_cycles << std::endl;
+          m_update_tab.print(); 
+#endif
           break;
         }
         /////////////////
@@ -2225,10 +2214,11 @@ namespace soclib { namespace caba {
         {
           if( r_alloc_trt_fsm.read() == ALLOC_TRT_LLSC ) {
             size_t   index = 0;
-            bool hit = m_transaction_tab.hit_read(m_nline[m_cmd_llsc_addr_fifo.read()],index);
+            bool hit_read = m_transaction_tab.hit_read(m_nline[m_cmd_llsc_addr_fifo.read()],index);
+            bool hit_write = m_transaction_tab.hit_write(m_nline[m_cmd_llsc_addr_fifo.read()]);
             bool wok = !m_transaction_tab.full(index);
 
-            if ( hit || !wok ) {  // missing line already requested or no space in TRT
+            if ( hit_read || hit_write || !wok ) {  // missing line already requested or no space in TRT
               r_llsc_fsm = LLSC_IDLE;
             } else {
               r_llsc_trt_index = index;
@@ -2241,17 +2231,32 @@ namespace soclib { namespace caba {
       case LLSC_TRT_SET:	// register the XRAM transaction in Transaction Table
         {
           if( r_alloc_trt_fsm.read() == ALLOC_TRT_LLSC ) {
-            m_transaction_tab.set(r_llsc_trt_index.read(),
-                true,
-                m_nline[m_cmd_llsc_addr_fifo.read()],
-                m_cmd_llsc_srcid_fifo.read(),
-                m_cmd_llsc_trdid_fifo.read(),
-                m_cmd_llsc_pktid_fifo.read(),
-                false,
-                false,
-                0,
-                std::vector<be_t>(m_words,0),
-                std::vector<data_t>(m_words,0));
+            bool proc_read = !m_cmd_llsc_sc_fifo.read();
+            if(proc_read){
+              m_transaction_tab.set(r_llsc_trt_index.read(),
+                  true,
+                  m_nline[m_cmd_llsc_addr_fifo.read()],
+                  m_cmd_llsc_srcid_fifo.read(),
+                  m_cmd_llsc_trdid_fifo.read(),
+                  m_cmd_llsc_pktid_fifo.read(),
+                  true,
+                  true,
+                  m_x[m_cmd_llsc_addr_fifo.read()],
+                  std::vector<be_t>(m_words,0),
+                  std::vector<data_t>(m_words,0));
+            } else {
+              m_transaction_tab.set(r_llsc_trt_index.read(),
+                  true,
+                  m_nline[m_cmd_llsc_addr_fifo.read()],
+                  m_cmd_llsc_srcid_fifo.read(),
+                  m_cmd_llsc_trdid_fifo.read(),
+                  m_cmd_llsc_pktid_fifo.read(),
+                  false,
+                  false,
+                  0,
+                  std::vector<be_t>(m_words,0),
+                  std::vector<data_t>(m_words,0));
+            }
             r_llsc_fsm = LLSC_XRAM_REQ;
           }
           break;
@@ -2338,6 +2343,7 @@ namespace soclib { namespace caba {
             r_init_cmd_fsm = INIT_CMD_INVAL_NLINE;
             break;
           }
+//          std::cout << std::hex << "MEM_CACHE : INIT_CMD_INVAL_SEL, copies vector : " << r_xram_rsp_to_init_cmd_d_copies << " " << r_xram_rsp_to_init_cmd_i_copies.read() << std::dec << std::endl;
           if ((r_xram_rsp_to_init_cmd_d_copies.read() == 0) &&
               (r_xram_rsp_to_init_cmd_i_copies.read() == 0)) {	// no more copies
             r_xram_rsp_to_init_cmd_req = false;
@@ -2373,12 +2379,13 @@ namespace soclib { namespace caba {
         ////////////////////////
       case INIT_CMD_INVAL_NLINE:	// send the cache line index
         {
+//          std::cout << "MEM_CACHE, INIT_CMD_INVAL_NLINE, cmdack = " << p_vci_ini.cmdack << " ; brdcast = " << r_xram_rsp_to_init_cmd_brdcast.read() << std::endl;
           if ( p_vci_ini.cmdack ) {
             if ( r_xram_rsp_to_init_cmd_brdcast.read() ) {
-              r_init_cmd_fsm = INIT_CMD_INVAL_SEL;
+              r_init_cmd_fsm = INIT_CMD_INVAL_IDLE;
               r_xram_rsp_to_init_cmd_req = false;
             }
-            else r_init_cmd_fsm = INIT_CMD_INVAL_IDLE;
+            else r_init_cmd_fsm = INIT_CMD_INVAL_SEL;
           }
           break;
         }
@@ -3258,6 +3265,7 @@ namespace soclib { namespace caba {
             p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()];
           }
         }
+//        std::cout << "MEM_CACHE, INIT_CMD_INVAL_NLINE, r_init_cmd_target = " << std::dec << r_init_cmd_target.read() << " ; instruction = " << r_init_cmd_inst.read() << " ; address = " << std::hex << p_vci_ini.address << std::dec << std::endl ;
         p_vci_ini.wdata   = r_xram_rsp_to_init_cmd_nline.read();
         p_vci_ini.be      = 0xF;
         p_vci_ini.plen    = 4;
@@ -3361,3 +3369,13 @@ namespace soclib { namespace caba {
   } // end genMoore()
 
 }} // end name space
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+

@@ -58,7 +58,8 @@
 #include "arithmetics.h"
 #include "../include/vci_cc_xcache_wrapper_v1.h"
 
-#define DEBUG_CC_XCACHE_WRAPPER 0
+//#define DEBUG_CC_XCACHE_WRAPPER 1
+#define DEBUG_PERIOD 10000
 
 namespace soclib { 
 namespace caba {
@@ -359,17 +360,20 @@ namespace caba {
             return;
         }
 
+        m_cpt_total_cycles++;
+
 #if DEBUG_CC_XCACHE_WRAPPER
+if(m_cpt_total_cycles % DEBUG_PERIOD == 0) {
         std::cout << "--------------------------------------------" << std::endl;
         std::cout << std::dec << "CC_XCACHE_WRAPPER " << m_srcid_rw << " / Time = " << m_cpt_total_cycles << std::endl;
         std::cout             << " tgt fsm    = " << tgt_fsm_state_str[r_vci_tgt_fsm] << std::endl
             << " dcache fsm = " << dcache_fsm_state_str[r_dcache_fsm] << std::endl
             << " icache fsm = " << icache_fsm_state_str[r_icache_fsm] << std::endl
             << " cmd fsm    = " << cmd_fsm_state_str[r_vci_cmd_fsm] << std::endl
-            << " rsp fsm    = " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
+            << " rsp fsm    = " << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;            
+}
 #endif
 
-        m_cpt_total_cycles++;
 
         /////////////////////////////////////////////////////////////////////
         // The TGT_FSM controls the following ressources:
@@ -427,7 +431,7 @@ namespace caba {
                     r_tgt_srcid = p_vci_tgt.srcid.read();
                     r_tgt_trdid = p_vci_tgt.trdid.read();
                     r_tgt_pktid = p_vci_tgt.pktid.read();
-                    r_tgt_plen  = p_vci_tgt.plen.read();    // todo: wait L2 modification
+                    r_tgt_plen  = p_vci_tgt.plen.read();
                     r_tgt_addr = (addr_t)p_vci_tgt.wdata.read() * m_dcache_words * 4;
 
                     if ( address == 0x3 )   // broadcast invalidate for data or instruction type
@@ -443,12 +447,13 @@ namespace caba {
                         r_vci_tgt_fsm = TGT_REQ_BROADCAST;
                         m_cpt_cc_inval++ ;
                     }
-                    else                    // multi-update or multi-invalidate for data type
+                    else                   
                     { 
                         addr_t cell = address - m_segment.baseAddress();
                         r_tgt_brdcast = false;
+                        // multi-update or multi-invalidate for data type
                         if (cell == 0) 
-                        {                               // invalidate 
+                        {                               // invalidate data 
                             if ( ! p_vci_tgt.eop.read() ) 
                             {
                                 std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
@@ -471,7 +476,8 @@ namespace caba {
                             r_vci_tgt_fsm = TGT_UPDT_WORD;
                             m_cpt_cc_update++ ;
                         } 
-                        else if (cell == 8)                  // invalidate instruction
+                        // invalidate instruction
+                        else if (cell == 8)
                         {                         
                             if ( ! p_vci_tgt.eop.read() ) 
                             {
@@ -581,7 +587,7 @@ namespace caba {
                 ////////////////////
             case TGT_RSP_ICACHE:
                 {
-                    if ( p_vci_tgt.rspack.read() && !r_tgt_icache_req.read() ) 
+                    if ( (p_vci_tgt.rspack.read() || !r_tgt_icache_rsp.read()) && !r_tgt_icache_req.read() ) 
                     {
                         r_vci_tgt_fsm = TGT_IDLE;
                         r_tgt_icache_rsp = false; 
@@ -591,7 +597,7 @@ namespace caba {
 
             case TGT_RSP_DCACHE:
                 {
-                    if ( p_vci_tgt.rspack.read() && !r_tgt_dcache_req.read() ) 
+                    if ( (p_vci_tgt.rspack.read() || !r_tgt_dcache_rsp.read()) && !r_tgt_dcache_req.read() ) 
                     {
                         r_vci_tgt_fsm = TGT_IDLE;
                         r_tgt_dcache_rsp = false; 
@@ -640,6 +646,7 @@ namespace caba {
         m_iss.getRequests( ireq, dreq );
 
 #if DEBUG_CC_XCACHE_WRAPPER
+if(m_cpt_total_cycles % DEBUG_PERIOD == 0)
         std::cout << " Instruction Request: " << ireq << std::endl;
 #endif
 
@@ -707,11 +714,7 @@ namespace caba {
                             r_icache_fsm = ICACHE_ERROR;
                         } else {
                             r_icache_inval_rsp = false;
-                            if(r_icache_cleanup_rsp.read()){
-                                r_icache_fsm = ICACHE_CC_CLEANUP;
-                            } else {
-                                r_icache_fsm = ICACHE_IDLE;
-                            }
+                            r_icache_fsm = ICACHE_CC_CLEANUP;
                         }
                     }
                     break;
@@ -769,11 +772,7 @@ namespace caba {
                     if(r_icache_inval_rsp){
                         if ( ireq.valid ) m_cost_ins_miss_frz++;
                         r_icache_inval_rsp  = false;
-                        if(r_icache_cleanup_rsp.read()){
-                            r_icache_fsm = ICACHE_CC_CLEANUP;
-                        } else {
-                            r_icache_fsm = ICACHE_IDLE;
-                        }
+                        r_icache_fsm = ICACHE_CC_CLEANUP;
                         break;
                     }
                     if ( ireq.valid ) m_cost_ins_miss_frz++;
@@ -790,7 +789,6 @@ namespace caba {
                     }
                     // cleanup
                     if(!r_icache_cleanup_req){
-                        r_icache_cleanup_rsp = false;
                         r_icache_cleanup_req = true;
                         r_icache_cleanup_line = r_icache_addr_save.read() >> (uint32_log2(m_icache_words) + 2);   
                         r_icache_fsm = ICACHE_IDLE;
@@ -807,9 +805,6 @@ namespace caba {
                             ((r_icache_addr_save.read() & ~((m_icache_words<<2)-1)) == (ad & ~((m_icache_words<<2)-1))) ) {
                         r_icache_inval_rsp = true;
                         r_tgt_icache_rsp = false;
-                        if(r_tgt_brdcast){ // Also send a cleanup
-                            r_icache_cleanup_rsp = true;
-                        }
                     } else {
                         r_tgt_icache_rsp = r_icache.inval(ad);
                     }
@@ -821,6 +816,7 @@ namespace caba {
         } // end switch r_icache_fsm
 
 #if DEBUG_CC_XCACHE_WRAPPER
+if(m_cpt_total_cycles % DEBUG_PERIOD == 0)
         std::cout << " Instruction Response: " << irsp << std::endl;
 #endif
 
@@ -882,6 +878,7 @@ namespace caba {
         ///////////////////////////////////////////////////////////////////////////////////
 
 #if DEBUG_CC_XCACHE_WRAPPER
+if(m_cpt_total_cycles % DEBUG_PERIOD == 0)
         std::cout << " Data Request: " << dreq << std::endl;
 #endif
 
@@ -893,7 +890,6 @@ namespace caba {
             case DCACHE_WRITE_REQ:
                 { 
                     if ( !m_srcid_rw ) {
-//                        std::cout << "PROC0 WRITE BUFFER ADDRESS = " << std::hex << (r_wbuf.getAddress(0)&~0x3) << std::dec << " and counter is " << r_vci_cmd_cpt.read() << " ; saved address is : " << std::hex << r_dcache_addr_save.read() << std::dec << std::endl ;
                     }
                     if ( r_tgt_dcache_req ) {   // external request
                         r_dcache_fsm = DCACHE_CC_CHECK;
@@ -901,34 +897,29 @@ namespace caba {
                         break;
                     }
                     if(!m_srcid_rw){
-//                        std::cout << "PROC0 r_dcache_write_req = " << r_dcache_write_req.read() << std::endl;
                     }
                     // try to post the write request in the write buffer
                     if ( !r_dcache_write_req ) {    // no previous write transaction     
                         if ( r_wbuf.wok(r_dcache_addr_save) ) {   // write request in the same cache line
                             if(!m_srcid_rw) {
-//                                std::cout << "PROC0 wok" << std::endl;
                             }
                             r_wbuf.write(r_dcache_addr_save, r_dcache_be_save, r_dcache_wdata_save);
                             // close the write packet if uncached
                             if ( !r_dcache_cached_save ){
                                 r_dcache_write_req = true ;
                                 if(!m_srcid_rw) {
-//                                    std::cout << "PROC0 close the packet => uncached request" << std::endl;
                                 }
                             }
                         } else {    
                             // close the write packet if write request not in the same cache line
                             r_dcache_write_req = true;  
                             if(!m_srcid_rw) {
-//                                std::cout << "PROC0 close the packet => request not in the same line" << std::endl;
                             }
                             m_cost_write_frz++;
                             break;  // posting request not possible : stay in DCACHE_WRITEREQ state
                         }
                     } else {    //  previous write transaction not completed
                         if(!m_srcid_rw) {
-//                            std::cout << "PROC0 write buffer not writable" << std::endl;
                         }
                         m_cost_write_frz++;
                         break;  // posting request not possible : stay in DCACHE_WRITEREQ state  
@@ -938,7 +929,6 @@ namespace caba {
                     if ( !dreq.valid || (dreq.type != iss_t::DATA_WRITE) ) {
                         r_dcache_write_req = true ;
                         if(!m_srcid_rw) {
-//                            std::cout << "PROC0 close the packet => next request not a write" << std::endl;
                         }
                     }
 
@@ -1081,11 +1071,7 @@ namespace caba {
                             r_dcache_fsm = DCACHE_ERROR;
                         } else {
                             r_dcache_inval_rsp  = false;
-                            if(r_dcache_cleanup_rsp.read()){
-                                r_dcache_fsm = DCACHE_CC_CLEANUP;
-                            } else {
-                                r_dcache_fsm = DCACHE_IDLE;
-                            }
+                            r_dcache_fsm = DCACHE_CC_CLEANUP;
                         }
                         break;
                     }
@@ -1119,11 +1105,7 @@ namespace caba {
                     }
                     if( r_dcache_inval_rsp ){
                         r_dcache_inval_rsp  = false;
-                        if(r_dcache_cleanup_rsp.read()){
-                            r_dcache_fsm = DCACHE_CC_CLEANUP;
-                        } else {
-                            r_dcache_fsm = DCACHE_IDLE;
-                        }
+                        r_dcache_fsm = DCACHE_CC_CLEANUP;
                         break;
                     }
                     break;
@@ -1172,7 +1154,6 @@ namespace caba {
                     }
                     if( !r_dcache_cleanup_req.read() ){
                         m_cpt_dcache_dir_read += m_dcache_ways;
-                        addr_t  ad  = r_dcache_addr_save;
                         r_dcache_cleanup_req = r_dcache.inval(r_dcache_addr_save);
                         r_dcache_cleanup_line = r_dcache_addr_save.read() >> (uint32_log2(m_dcache_words)+2);
 
@@ -1192,11 +1173,10 @@ namespace caba {
                             ( (r_dcache_addr_save.read() & ~((m_dcache_words<<2)-1)) == (ad & ~((m_dcache_words<<2)-1)))) {
                         r_dcache_inval_rsp = true;
                         r_tgt_dcache_req = false;
-                        if(r_tgt_update){    // Also send a cleanup
-                            r_dcache_cleanup_rsp = true;
-                        }
-                        if(!r_tgt_update && r_tgt_brdcast){ // Also send a cleanup
-                            r_dcache_cleanup_rsp = true;
+                        if(r_tgt_update){    // Also answer
+                            r_tgt_dcache_rsp     = true;
+                        } else {            // Don't answer
+                            r_tgt_dcache_rsp     = false;
                         }
                         r_dcache_fsm = r_dcache_fsm_save;
                     } else {
@@ -1230,6 +1210,7 @@ namespace caba {
                         if(r_tgt_val[i]) r_dcache.write( ad + i*4, buf[i]);
                     }
                     r_tgt_dcache_req = false;
+                    r_tgt_dcache_rsp = true;
                     r_dcache_fsm = r_dcache_fsm_save;
                     break;
                 }
@@ -1246,6 +1227,11 @@ namespace caba {
             case DCACHE_CC_NOP:     // no external hit
                 {
                     r_tgt_dcache_req = false;
+                    if(r_tgt_update){
+                        r_tgt_dcache_rsp = true;
+                    } else {
+                        r_tgt_dcache_rsp = false;
+                    }
                     r_dcache_fsm = r_dcache_fsm_save;
                     break;
                 }    
@@ -1261,7 +1247,6 @@ namespace caba {
                     }        
                     // cleanup
                     if(!r_dcache_cleanup_req){
-                        r_dcache_cleanup_rsp = false;
                         r_dcache_cleanup_req = true;
                         r_dcache_cleanup_line = r_dcache_addr_save.read() >> (uint32_log2(m_dcache_words) + 2);
                         r_dcache_fsm = DCACHE_IDLE;
@@ -1272,6 +1257,7 @@ namespace caba {
         } // end switch r_dcache_fsm
 
 #if DEBUG_CC_XCACHE_WRAPPER
+if(m_cpt_total_cycles % DEBUG_PERIOD == 0)
         std::cout << " Data Response: " << drsp << std::endl;
 #endif
 
@@ -1296,12 +1282,12 @@ namespace caba {
         //
         // This FSM handles requests from both the DCACHE FSM & the ICACHE FSM.
         // There is 7 request types, with the following priorities : 
-        // 1 - Instruction Miss     : r_icache_miss_req
-        // 2 - Data Write           : r_dcache_write_req
-        // 3 - Data Read Miss       : r_dcache_miss_req 
-        // 4 - Data Read Uncached   : r_dcache_unc_req 
-        // 5 - Instruction Cleanup  : r_icache_cleanup_req 
-        // 6 - Data Cleanup         : r_dcache_cleanup_req 
+        // 1 - Instruction Cleanup  : r_icache_cleanup_req 
+        // 2 - Data Cleanup         : r_dcache_cleanup_req 
+        // 3 - Instruction Miss     : r_icache_miss_req
+        // 4 - Data Write           : r_dcache_write_req
+        // 5 - Data Read Miss       : r_dcache_miss_req 
+        // 6 - Data Read Uncached   : r_dcache_unc_req 
         // There is at most one (CMD/RSP) VCI transaction, as both CMD_FSM 
         // and RSP_FSM exit simultaneously the IDLE state.
         //
@@ -1612,7 +1598,6 @@ namespace caba {
             case CMD_DATA_WRITE:
                 p_vci_ini_rw.cmdval  = true;
                 p_vci_ini_rw.address = r_wbuf.getAddress(r_vci_cmd_cpt)&~0x3;
-//                std::cout << "PROC" << m_srcid_rw << " DATA WRITE @ " << std::hex << (r_wbuf.getAddress(r_vci_cmd_cpt)&~0x3) << std::endl ;
                 p_vci_ini_rw.wdata   = r_wbuf.getData(r_vci_cmd_cpt);
                 p_vci_ini_rw.be      = r_wbuf.getBe(r_vci_cmd_cpt);
                 p_vci_ini_rw.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
@@ -1845,7 +1830,7 @@ namespace caba {
 
             case TGT_RSP_ICACHE:
                 p_vci_tgt.cmdack  = false;
-                p_vci_tgt.rspval  = !r_tgt_icache_req.read();
+                p_vci_tgt.rspval  = !r_tgt_icache_req.read() && r_tgt_icache_rsp.read();
                 p_vci_tgt.rsrcid  = r_tgt_srcid.read();
                 p_vci_tgt.rpktid  = r_tgt_pktid.read();
                 p_vci_tgt.rtrdid  = r_tgt_trdid.read();
@@ -1856,7 +1841,7 @@ namespace caba {
 
             case TGT_RSP_DCACHE:
                 p_vci_tgt.cmdack  = false;
-                p_vci_tgt.rspval  = !r_tgt_dcache_req.read();
+                p_vci_tgt.rspval  = !r_tgt_dcache_req.read() && r_tgt_dcache_rsp.read();
                 p_vci_tgt.rsrcid  = r_tgt_srcid.read();
                 p_vci_tgt.rpktid  = r_tgt_pktid.read();
                 p_vci_tgt.rtrdid  = r_tgt_trdid.read();

@@ -156,7 +156,6 @@ private:
     sc_signal<bool>         r_dcache_unc_req;
     sc_signal<bool>         r_dcache_write_req;
     sc_signal<bool>         r_dcache_inval_rsp;
-    sc_signal<bool>         r_dcache_cleanup_rsp;       // data cache cleanup when rsp received
 
     sc_signal<int>          r_icache_fsm;
     sc_signal<int>          r_icache_fsm_save;
@@ -166,7 +165,6 @@ private:
     sc_signal<bool>         r_icache_cleanup_req;
     sc_signal<data_t>       r_icache_cleanup_line;
     sc_signal<bool>         r_icache_inval_rsp;
-    sc_signal<bool>         r_icache_cleanup_rsp;       // ins cache cleanup when rsp received
 
     sc_signal<int>          r_vci_cmd_fsm;
     sc_signal<size_t>       r_vci_cmd_min;       

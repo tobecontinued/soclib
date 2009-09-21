@@ -246,6 +246,19 @@ class UpdateTab{
   }
 
   /////////////////////////////////////////////////////////////////////
+  // The is_full() function returns the state of the table
+  /////////////////////////////////////////////////////////////////////
+  bool is_full()
+  {
+    for (size_t i=0; i< size_tab;i++) {
+      if(!tab[i].valid){
+        return false;
+      }
+    }
+    return true;	
+  }
+
+  /////////////////////////////////////////////////////////////////////
   // The need_rsp() function returns the need of a response
   // Arguments :
   // - index : the index of the entry
@@ -323,17 +336,17 @@ class UpdateTab{
   }
 
   /////////////////////////////////////////////////////////////////////
-  // The search_brdcast() function returns the index of the entry in UPT
+  // The search_inval() function returns the index of the entry in UPT
   // Arguments :
   // - nline : the line number of the entry in the directory
   /////////////////////////////////////////////////////////////////////
-  bool search_brdcast(const size_t nline,size_t &index)
+  bool search_inval(const size_t nline,size_t &index)
   {
     size_t i ;
 
     for (i = 0 ; i < size_tab ; i++){
       if((tab[i].nline == nline) && tab[i].valid){
-        if(!tab[i].update && tab[i].brdcast){
+        if(!tab[i].update){
           index = i ;
           return true;
         }

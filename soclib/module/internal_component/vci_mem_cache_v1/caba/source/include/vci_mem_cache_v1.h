@@ -178,8 +178,6 @@ namespace soclib {  namespace caba {
         XRAM_RSP_DIR_RSP,
         XRAM_RSP_INVAL_LOCK,
         XRAM_RSP_INVAL_WAIT,
-        XRAM_RSP_UPT_LOCK,
-        XRAM_RSP_WAIT,
         XRAM_RSP_INVAL,
         XRAM_RSP_WRITE_DIRTY,
       };
@@ -300,23 +298,21 @@ namespace soclib {  namespace caba {
       private:
 
       // Component attributes
-      const size_t   			  m_initiators;		// Number of initiators
-      const size_t			  m_ways;		// Number of ways in a set
-      const size_t			  m_sets;		// Number of cache sets
-      const size_t			  m_words;		// Number of words in a line
-      const size_t  		  	  m_srcid_ixr;		// Srcid for requests to XRAM 
-      const size_t  		  	  m_srcid_ini;		// Srcid for requests to processors
-      //soclib::common::Segment	  	  m_mem_segment;	// memory cached into the cache
-      std::list<soclib::common::Segment>  m_seglist;	        // memory cached into the cache
-      std::list<soclib::common::Segment>  m_cseglist;	        // coherence segment for the cache
-      soclib::common::Segment	  	  m_reg_segment;	// memory cache mapped registers
-      addr_t	        		 *m_coherence_table; 	// address(srcid)
-      AtomicTab	   			  m_atomic_tab;		// atomic access table
-      TransactionTab      		  m_transaction_tab;	// xram transaction table
-      UpdateTab				  m_update_tab;		// pending update & invalidate 
-      CacheDirectory			  m_cache_directory;	// data cache directory
+      const size_t            m_initiators;           // Number of initiators
+      const size_t            m_ways;                 // Number of ways in a set
+      const size_t            m_sets;                 // Number of cache sets
+      const size_t            m_words;                // Number of words in a line
+      const size_t            m_srcid_ixr;            // Srcid for requests to XRAM 
+      const size_t            m_srcid_ini;            // Srcid for requests to processors
+      std::list<soclib::common::Segment>  m_seglist;  // memory cached into the cache
+      std::list<soclib::common::Segment>  m_cseglist; // coherence segment for the cache
+      addr_t                  *m_coherence_table; 	  // address(srcid)
+      AtomicTab               m_atomic_tab;           // atomic access table
+      TransactionTab          m_transaction_tab;	    // xram transaction table
+      UpdateTab               m_update_tab;		        // pending update & invalidate 
+      CacheDirectory          m_cache_directory;	    // data cache directory
 
-      data_t	        	       ***m_cache_data;		// data array[set][way][word]
+      data_t	        	       ***m_cache_data;		    // data array[set][way][word]
 
       // adress masks
       const soclib::common::AddressMaskingTable<addr_t>   m_x;
@@ -356,12 +352,6 @@ namespace soclib {  namespace caba {
       GenericFifo<size_t>    m_cmd_llsc_trdid_fifo;
       GenericFifo<size_t>    m_cmd_llsc_pktid_fifo;
       GenericFifo<data_t>	   m_cmd_llsc_wdata_fifo;
-
-      // Fifo between TGT_CMD fsm and CLEANUP fsm
-      //     GenericFifo<size_t>    m_cmd_cleanup_srcid_fifo;
-      //     GenericFifo<size_t>    m_cmd_cleanup_trdid_fifo;
-      //     GenericFifo<size_t>    m_cmd_cleanup_pktid_fifo;
-      //     GenericFifo<data_t>	   m_cmd_cleanup_nline_fifo;
 
       sc_signal<int>         r_tgt_cmd_fsm;
 
@@ -624,3 +614,13 @@ namespace soclib {  namespace caba {
 }}
 
 #endif
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+

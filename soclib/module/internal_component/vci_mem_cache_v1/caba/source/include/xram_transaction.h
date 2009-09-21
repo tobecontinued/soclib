@@ -238,7 +238,7 @@ class TransactionTab{
   }
 
   /////////////////////////////////////////////////////////////////////
-  // The hit_read() function checks if an XRAM read transaction exists 
+  // The hit_read() function checks if a read XRAM transaction exists 
   // for a given cache line.
   // Arguments :
   // - index : (return argument) the index of the hit entry, if there is 
@@ -248,30 +248,32 @@ class TransactionTab{
   bool hit_read(const data_t nline,size_t &index)
   {
     for(size_t i=0; i<size_tab; i++){
-      if(tab[i].valid && (nline==tab[i].nline) && tab[i].xram_read) {
-	index=i;
-	return true;	
+      if(tab[i].valid && (nline==tab[i].nline) && (tab[i].xram_read)) {
+        index=i;
+        return true;	
       }
     }
     return false;
   }
 
-  ///////////////////////////////////////////////////////////////////////
-  // The hit_write() function looks if an XRAM write transaction exists 
-  // for a given line.
+  /////////////////////////////////////////////////////////////////////
+  // The hit_write() function checks if a write XRAM transaction exists 
+  // for a given cache line.
   // Arguments :
+  // - index : (return argument) the index of the hit entry, if there is 
   // - nline : the index (zy) of the requested line
   // The function returns true if a write request has already been sent
-  ///////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////
   bool hit_write(const data_t nline)
   {
     for(size_t i=0; i<size_tab; i++){
       if(tab[i].valid && (nline==tab[i].nline) && !(tab[i].xram_read)) {
-	return true;	
+        return true;	
       }
     }
     return false;
   }
+
 
   /////////////////////////////////////////////////////////////////////
   // The write_data_mask() function writes a vector of data (a line).
