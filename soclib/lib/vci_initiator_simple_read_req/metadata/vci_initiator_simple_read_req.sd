@@ -9,7 +9,6 @@ Module('caba:vci_initiator_simple_read_req',
 	   tmpl_parameters = [
 	parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
-	header_files = ['../include/caba/vci/vci_initiator_fsm.h',],
 	implementation_files = ['../src/caba/vci/vci_initiator/simple_read_req.cpp',],
 	uses = [
 		Uses('caba:vci_initiator_simple_req'),

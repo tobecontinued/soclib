@@ -8,7 +8,7 @@ __version__ = "$Revision$"
 
 Module('common:mips32el',
 	classname = 'soclib::common::Mips32ElIss',
-	header_files = ["../include/iss/mips32.h",],
+	header_files = ["../include/mips32.h",],
 	uses = [
 		Uses('common:mips32'),
 		],
