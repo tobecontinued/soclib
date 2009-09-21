@@ -254,6 +254,13 @@ namespace soclib { namespace caba {
           && "Cache Directory : (select) The set index is invalid");
 
       for(size_t i=0; i<m_ways; i++){
+        if(!m_dir_tab[set][way].valid){
+          way=i;
+          return DirectoryEntry(m_dir_tab[set][way]);
+        }
+      }
+
+      for(size_t i=0; i<m_ways; i++){
         if(!(m_lru_tab[set][i].recent) && !(m_dir_tab[set][i].lock)){
           way=i;
           return DirectoryEntry(m_dir_tab[set][way]);
