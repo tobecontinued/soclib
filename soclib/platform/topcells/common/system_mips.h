@@ -71,7 +71,11 @@ irq_disable(void)
 		    ".set noreorder		\n"
 		    "mtc0	$1,	$12	\n"
 #endif
-		    "MTC0_WAIT			\n"
+		    "nop                        \n"
+		    "nop                        \n"
+		    "nop                        \n"
+		    "nop                        \n"
+		    //"MTC0_WAIT			\n"
 		    ".set pop			\n"
 		    );
 }

@@ -183,6 +183,25 @@ void enable_hw_irq(unsigned int n)
 #endif
 }
 
+void disable_hw_irq(unsigned int n)
+{
+#if __mips__
+# if __mips >= 32
+	uint32_t status = get_cp0(12, 0);
+# else
+	uint32_t status = get_cp0(12);
+# endif
+	status &= ~(1<<(10+n));
+# if __mips >= 32
+	set_cp0(12, 0, status);
+# else
+	set_cp0(12, status);
+# endif
+#else
+# warning Please implement IRQ disabling for this arch
+#endif
+}
+
 
 void interrupt_hw_handler(unsigned int irq)
 {
