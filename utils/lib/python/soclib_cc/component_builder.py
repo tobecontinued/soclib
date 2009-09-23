@@ -128,7 +128,7 @@ class ComponentBuilder:
 			   (self.specialization.getPorts() or self.local):
 			add['comp_mode'] = 'sccom'
 			out = os.path.abspath(os.path.join(
-				"work/_sc/",
+				config.systemc.sc_workpath,
 				os.path.splitext(os.path.basename(str(src)))[0]
 				+'.'+config.toolchain.obj_ext
 				))
