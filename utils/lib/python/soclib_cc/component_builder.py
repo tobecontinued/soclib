@@ -125,7 +125,9 @@ class ComponentBuilder:
 
 		add = {}
 		if config.systemc.vendor == 'sccom' and \
-			   (self.specialization.getPorts() or self.local):
+			   (self.specialization.getPorts()
+				or self.local
+				or "sccom:force" self.specialization.getExtensions()):
 			add['comp_mode'] = 'sccom'
 			out = os.path.abspath(os.path.join(
 				config.systemc.sc_workpath,
