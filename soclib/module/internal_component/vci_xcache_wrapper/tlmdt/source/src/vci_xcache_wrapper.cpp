@@ -307,30 +307,7 @@ tmpl (uint32_t)::ram_write
   std::cout << name() << " ram_write( " << command << ", " << std::hex << address << ", " << wdata << ", " << rdata << ", " << rerror << ")" << std::endl;
 #endif
 
-  typename vci_param::data_t byte_enable;
-  switch(be){
-  case 0x1:
-    byte_enable = 0x000000FF;
-    break;
-  case 0x2:
-    byte_enable = 0x0000FF00;
-    break;
-  case 0x3:
-    byte_enable = 0x0000FFFF;
-    break;
-  case 0x4:
-    byte_enable = 0x00FF0000;
-    break;
-  case 0x8:
-    byte_enable = 0xFF000000;
-    break;
-  case 0xC:
-    byte_enable = 0xFFFF0000;
-    break;
-  default:
-    byte_enable = 0xFFFFFFFF;
-    break;
-  }
+  typename vci_param::data_t byte_enable = be2mask<typename vci_param::data_t>(be);
 
   m_nbytes = vci_param::nbytes;
   utoa(byte_enable, m_byte_enable_ptr, 0);
@@ -384,7 +361,7 @@ tmpl (uint32_t)::ram_read
   
   m_nbytes = size * vci_param::nbytes;
   for(uint32_t i=0; i<m_nbytes; i++){
-    m_byte_enable_ptr[i] = 0xF;
+    m_byte_enable_ptr[i] = 0xFF;
   }
 
   // set the values in tlm payload

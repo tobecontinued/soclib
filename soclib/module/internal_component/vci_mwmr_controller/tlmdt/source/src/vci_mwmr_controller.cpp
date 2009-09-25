@@ -314,7 +314,7 @@ tmpl (tlm::tlm_sync_enum)::vci_write_nb_transport_fw // receive the WRITE comman
 	break;
       case MWMR_CONFIG_STATUS_ADDR :
 #ifdef SOCLIB_MODULE_DEBUG
-	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_STATUS_ADDR status_address = %x\n", m_destid, atou(payload.get_data_ptr v(), j));
+	fprintf(pFile, "[MWMR Target %d] MWMR_CONFIG_STATUS_ADDR status_address = %x\n", m_destid, atou(payload.get_data_ptr (), j));
 	std::cout << "[MWMR Target " << m_destid << "] MWMR_CONFIG_STATUS_ADDR status_address = " << std::hex << atou(payload.get_data_ptr(), j) << std::dec << std::endl;
 #endif
 	if(m_channel_read)

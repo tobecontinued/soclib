@@ -325,7 +325,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	    m_irq_time = m_timer[t].irq;
 	    
 #if SOCLIB_MODULE_DEBUG
-	    //std::cout << "[" << name() << "] Send Interruption " << t <<" with time = " << m_timer[t].irq.value() << std::endl;
+	    std::cout << "[" << name() << "] Send Interruption " << t <<" with time = " << m_timer[t].irq.value() << std::endl;
 #endif
 	    
 	    // send the transaction
@@ -348,7 +348,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	time = time + (nwords * UNIT_TIME);
     
 #if SOCLIB_MODULE_DEBUG
-	//std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
+	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
 
 	p_vci_target->nb_transport_bw(payload, phase, time);
