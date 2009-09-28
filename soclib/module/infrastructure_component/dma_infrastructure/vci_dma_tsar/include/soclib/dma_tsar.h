@@ -28,8 +28,6 @@
 #ifndef DMA_REGS_TSAR_H
 #define DMA_REGS_TSAR_H
 
-#include "soclib_io.h"
-
 enum SoclibDmaRegisters {
     DMA_SRC,
     DMA_DST,

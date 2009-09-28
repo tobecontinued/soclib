@@ -36,8 +36,8 @@
 #ifndef API_MWMR_H
 #define API_MWMR_H
 
-#include "soclib/mwmr_controller.h"
 #include "stdint.h"
+#include "soclib/mwmr_controller.h"
 
 typedef struct mwmr_s {
     unsigned int width;

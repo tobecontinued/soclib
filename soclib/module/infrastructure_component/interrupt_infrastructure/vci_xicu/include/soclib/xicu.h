@@ -27,8 +27,6 @@
 #ifndef XICU_REGS_H
 #define XICU_REGS_H
 
-#include "soclib_io.h"
-
 enum SoclibXicuFunc {
     XICU_WTI_REG = 0,
     XICU_PTI_PER = 1,

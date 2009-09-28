@@ -27,8 +27,6 @@
 #ifndef FD_ACCESS_REGS_H
 #define FD_ACCESS_REGS_H
 
-#include "soclib_io.h"
-
 enum SoclibFdAccessRegisters {
     FD_ACCESS_FD,
     FD_ACCESS_BUFFER,

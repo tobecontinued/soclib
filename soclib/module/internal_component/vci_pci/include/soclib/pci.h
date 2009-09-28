@@ -26,8 +26,6 @@
 #ifndef PCI_REGS_H
 #define PCI_REGS_H
 
-#include "soclib_io.h"
-
 enum SoclibPciRegisters {
     PCI_VALUE    = 0,
     PCI_MODE     = 1,

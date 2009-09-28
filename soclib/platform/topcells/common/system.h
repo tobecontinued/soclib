@@ -29,6 +29,7 @@
 #ifndef USER_H_
 #define USER_H_
 
+#include "soclib_io.h"
 #include "soclib/tty.h"
 #include "../segmentation.h"
 

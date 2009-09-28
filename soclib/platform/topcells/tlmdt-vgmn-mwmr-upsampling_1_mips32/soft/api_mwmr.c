@@ -34,6 +34,7 @@
  */
 
 #include "api_mwmr.h"
+#include "soclib_io.h"
 #include "soclib/mwmr_controller.h"
 
 static void *memcpy( void *_dst, const void *_src, unsigned long size )

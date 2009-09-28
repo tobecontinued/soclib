@@ -27,8 +27,6 @@
 #ifndef DMA_REGS_H
 #define DMA_REGS_H
 
-#include "soclib_io.h"
-
 enum SoclibDmaRegisters {
     DMA_SRC,
     DMA_DST,

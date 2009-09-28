@@ -27,7 +27,6 @@
 #ifndef TTY_REGS_H
 #define TTY_REGS_H
 
-#include "soclib_io.h"
 
 enum SoclibTtyRegisters {
     TTY_WRITE = 0,

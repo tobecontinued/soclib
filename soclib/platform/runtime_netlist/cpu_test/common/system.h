@@ -29,6 +29,7 @@
 #ifndef SYSTEM_H_
 #define SYSTEM_H_
 
+#include "soclib_io.h"
 #include "soclib/tty.h"
 #include "segmentation.h"
 

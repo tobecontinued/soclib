@@ -27,8 +27,6 @@
 #ifndef SIMHELPER_REGS_H
 #define SIMHELPER_REGS_H
 
-#include "soclib_io.h"
-
 enum SoclibSimhelperRegisters {
     SIMHELPER_SC_STOP,
     SIMHELPER_END_WITH_RETVAL,

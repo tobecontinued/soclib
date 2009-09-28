@@ -27,6 +27,7 @@
  */
 
 #include "mwmr.h"
+#include "soclib_io.h"
 #include "soclib/mwmr_controller.h"
 
 static void *memcpy( void *_dst, void *_src, unsigned long size )

@@ -27,8 +27,6 @@
 #ifndef BLOCK_DEVICE_REGS_H
 #define BLOCK_DEVICE_REGS_H
 
-#include "soclib_io.h"
-
 enum SoclibBlockDeviceRegisters {
     BLOCK_DEVICE_BUFFER,
     BLOCK_DEVICE_LBA,

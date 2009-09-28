@@ -29,8 +29,6 @@
 #ifndef MWMR_CONTROLLERLF_REGISTERS_H
 #define MWMR_CONTROLLERLF_REGISTERS_H
 
-#include "soclib_io.h"
-
 enum SoclibMwmrRegisters {
     MWMR_IOREG_MAX = 16,
     MWMR_RESET = MWMR_IOREG_MAX,

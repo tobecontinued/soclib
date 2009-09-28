@@ -29,8 +29,6 @@
 #ifndef ICU_REGS_H
 #define ICU_REGS_H
 
-#include "soclib_io.h"
-
 enum SoclibPicRegisters {
     ICU_INT = 0,
     ICU_MASK = 1,

@@ -1,5 +1,5 @@
 ARCH=mipsel
-SIMULATION_ARGS=100000
+SIMULATION_ARGS=10000
 SOCLIB?=$(shell soclib-cc --getpath)
 export SOCLIB
 include $(SOCLIB)/soclib/platform/topcells/all.mk

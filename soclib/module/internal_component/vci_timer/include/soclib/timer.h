@@ -27,8 +27,6 @@
 #ifndef TIMER_REGS_H
 #define TIMER_REGS_H
 
-#include "soclib_io.h"
-
 enum SoclibTimerRegisters {
     TIMER_VALUE    = 0,
     TIMER_MODE     = 1,
