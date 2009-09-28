@@ -685,28 +685,40 @@ tmpl(void)::transition()
     ////////////////
     case ICACHE_BIS: 
     {
-        data_t  icache_ins = 0;
-        bool    icache_hit = false;
+        data_t      icache_ins = 0;        	// read instruction
+        bool        icache_hit_c;    		// Cache hit
+        bool        icache_hit_t;    		// TLB hit
 
-        // acces is always cached in this state
-        icache_hit = r_icache.read(r_icache_paddr_save, &icache_ins);
- 
-        m_cpt_ins_read++;
-        if ( !icache_hit )
-        {
-            r_icache_miss_req = true;
-            r_icache_fsm = ICACHE_MISS_WAIT;
-            m_cpt_ins_miss++;
-            m_cost_ins_miss_frz++;
-        } 
-        else
-        {
-            r_icache_fsm = ICACHE_IDLE; 
-        }
+        // acces always cached and MMU activated in this state
+        m_cpt_ins_tlb_read++;
+        m_cpt_icache_dir_read += m_icache_ways;
+        m_cpt_icache_data_read += m_icache_ways;
 
-        irsp.valid = icache_hit;
-        irsp.error = false;
-        irsp.instruction = icache_ins;
+        // processor address translation
+        icache_hit_t  = icache_tlb.translate(ireq.addr, &tlb_ipaddr, &icache_pte_info,
+                                                 &icache_tlb_way, &icache_tlb_set);
+        // test if processor request modified
+        if( (tlb_ipaddr == r_icache_paddr_save) 
+		&& ireq.valid && icache_hit_t ) {  		// unmodified & valid
+            m_cpt_ins_read++;
+            icache_hit_c = r_icache.read(r_icache_paddr_save, &icache_ins);
+            irsp.valid = icache_hit;
+            irsp.error = false;
+            irsp.instruction = icache_ins;
+            if ( !icache_hit ) {
+                r_icache_miss_req = true;
+                r_icache_fsm = ICACHE_MISS_WAIT;
+                m_cpt_ins_miss++;
+                m_cost_ins_miss_frz++;
+            } else {
+                r_icache_fsm = ICACHE_IDLE;
+            }
+        } else {                                                   // modified or invalid
+            irsp.valid = false;
+            irsp.error = false;
+            irsp.instruction = 0;
+            r_icache_fsm = ICACHE_IDLE;
+        }      
         break;
     }
     //////////////////////
