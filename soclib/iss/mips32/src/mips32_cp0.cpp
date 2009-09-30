@@ -160,15 +160,16 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
 
 bool Mips32Iss::isCopAccessible(int cp) const
 {
-    if ( r_cpu_mode == MIPS32_KERNEL )
-        return true;
-
     switch (cp) {
     case 0:
+        if ( r_cpu_mode == MIPS32_KERNEL )
+            return true;
         return r_status.cu0;
     case 1:
         return r_status.cu1;
     case 2:
+        if ( r_cpu_mode == MIPS32_KERNEL )
+            return true;
         return r_status.cu2;
     case 3:
         return r_status.cu3;
