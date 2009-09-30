@@ -308,14 +308,7 @@ void Mips32Iss::handle_exception()
         return;
 
     addr_t except_address = exceptBaseAddr();
-    bool branch_taken;
-
-    if ( m_resume_pc == r_npc )
-        branch_taken = m_next_pc+4 != m_jump_pc;
-    else if ( m_resume_pc == r_pc )
-        branch_taken = r_pc+4 != r_npc;
-    else
-        assert(0 && "Not implemented");
+    bool branch_taken = m_next_pc+4 != m_jump_pc;
 
     if ( m_exception == X_DBE ) {
         branch_taken = m_pc_for_dreq_is_ds;
