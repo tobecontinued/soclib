@@ -108,6 +108,7 @@ inline void Mips32Iss::CheckFPException()
         ( r_fcsr.cause_i & r_fcsr.enables_i)
         ) {
         m_exception = X_FPE;
+        m_resume_pc = r_pc;
     }
 }
 
@@ -164,6 +165,7 @@ void Mips32Iss::op_cop1()
 {
     if (!isCopAccessible(1)) {
         m_exception = X_CPU;
+        m_resume_pc = r_pc;
         return;
     }
     func_t func = cop1_cod_table[m_ins.fpu_r.fmt & 31];
