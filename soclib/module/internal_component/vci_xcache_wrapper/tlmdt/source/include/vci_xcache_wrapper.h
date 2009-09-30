@@ -32,7 +32,6 @@
 #include <inttypes.h>
 
 #include "soclib_endian.h"
-#include "buffer.h"
 #include "generic_cache.h"
 #include "mapping_table.h"
 #include "mips32.h"
@@ -41,10 +40,14 @@ namespace soclib { namespace tlmdt {
 
 template<typename vci_param, typename iss_t>
 class VciXcacheWrapper
-  : public sc_core::sc_module             // inherit from SC module base clase
+  : public sc_core::sc_module                                             // inherit from SC module base clase
   , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "backward interface"
 {
 private:
+  typedef typename vci_param::addr_t addr_t;
+  typedef typename vci_param::data_t data_t;
+  typedef typename vci_param::data_t tag_t;
+  typedef typename vci_param::data_t be_t;
   /////////////////////////////////////////////////////////////////////////////////////
   // Member Variables
   /////////////////////////////////////////////////////////////////////////////////////
@@ -52,13 +55,20 @@ private:
   iss_t                   m_iss;
   uint32_t                m_irq;
   std::map<sc_core::sc_time, std::pair<int, bool> > m_pending_irqs;
-  sc_core::sc_time        m_simulation_time;
   pdes_local_time        *m_pdes_local_time;
   pdes_activity_status   *m_pdes_activity_status;
   
-  soclib::tlmt::genericCache<vci_param> m_dcache ;
-  soclib::tlmt::genericCache<vci_param> m_icache ;
-  soclib::common::AddressDecodingTable<typename vci_param::addr_t, bool> m_cacheability_table;
+  const size_t            m_icache_ways;
+  const size_t            m_icache_words;
+  const addr_t            m_icache_yzmask;
+
+  const size_t            m_dcache_ways;
+  const size_t            m_dcache_words;
+  const addr_t            m_dcache_yzmask;
+ 
+  GenericCache<addr_t>    m_icache;
+  GenericCache<addr_t>    m_dcache;
+  soclib::common::AddressDecodingTable<addr_t, bool> m_cacheability_table;
   
   //VCI COMMUNICATION
   unsigned int            m_nbytes;
@@ -100,33 +110,32 @@ private:
 			    struct iss_t::DataRequest dreq,
 			    struct iss_t::InstructionResponse &irsp,
 			    struct iss_t::DataResponse &drsp
-			    ) const;
+			    );
   
   void execLoop();
   
   uint32_t ram_write(
 		     enum command command,
-		     typename vci_param::addr_t address,
-		     typename vci_param::data_t wdata, 
+		     addr_t address,
+		     data_t wdata, 
 		     int be, 
-		     typename vci_param::data_t &rdata, 
+		     data_t &rdata, 
 		     bool &rerror
 		     );
 
   uint32_t ram_read(
 		    enum command command, 
-		    typename vci_param::addr_t address,
-		    typename vci_param::data_t *rdata, 
+		    addr_t address,
+		    data_t *rdata, 
 		    bool &rerror,
 		    size_t size = 1
 		    );
 
   uint32_t fill_cache(
-		      soclib::tlmt::genericCache<vci_param> &cache,
-		      typename vci_param::addr_t address,
+		      GenericCache<addr_t> &cache,
+		      addr_t address,
 		      bool &error
 		      );
-
 
   void update_time(sc_core::sc_time t);
   void send_activity();
@@ -165,12 +174,13 @@ public:
 		   int cpuid,
 		   const soclib::common::IntTab &index,
 		   const soclib::common::MappingTable &mt,
-		   size_t icache_lines,
+		   size_t icache_ways,
+		   size_t icache_sets,
 		   size_t icache_words,
-		   size_t dcache_lines,
+		   size_t dcache_ways,
+		   size_t dcache_sets,
 		   size_t dcache_words,
-		   sc_core::sc_time time_quantum,          // time quantum
-		   sc_core::sc_time simulation_time);
+		   sc_core::sc_time time_quantum);
   
 };
 

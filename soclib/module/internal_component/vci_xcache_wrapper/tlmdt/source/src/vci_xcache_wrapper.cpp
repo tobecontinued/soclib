@@ -28,10 +28,8 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
-//#define SOCLIB_MODULE_DEBUG
-
 #include "alloc_elems.h"
-#include "../include/vci_xcache_wrapper.h"
+#include "vci_xcache_wrapper.h"
 
 template<typename T>
 T be2mask(T be)
@@ -52,25 +50,33 @@ namespace soclib{ namespace tlmdt {
 
 #define tmpl(x) template<typename vci_param, typename iss_t> x VciXcacheWrapper<vci_param, iss_t>
    
+using soclib::common::uint32_log2;
+
 tmpl (/**/)::VciXcacheWrapper
 (
  sc_core::sc_module_name name,
  int cpuid,
  const soclib::common::IntTab &index,
  const soclib::common::MappingTable &mt,
- size_t icache_lines,
+ size_t icache_ways,
+ size_t icache_sets,
  size_t icache_words,
- size_t dcache_lines,
+ size_t dcache_ways,
+ size_t dcache_sets,
  size_t dcache_words,
- sc_core::sc_time time_quantum,
- sc_core::sc_time simulation_time)
+ sc_core::sc_time time_quantum)
   : sc_module(name),
     m_id(mt.indexForId(index)),
     m_iss(this->name(), cpuid),
     m_irq(0),
-    m_simulation_time(simulation_time),
-    m_dcache(dcache_lines, dcache_words),
-    m_icache(icache_lines, icache_words),
+    m_icache_ways(icache_ways),
+    m_icache_words(icache_words),
+    m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
+    m_dcache_ways(dcache_ways),
+    m_dcache_words(dcache_words),
+    m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
+    m_icache("icache", icache_ways, icache_sets, icache_words),
+    m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
     m_cacheability_table(mt.getCacheabilityTable()),
     p_vci_initiator("socket")   // vci initiator socket name
 {
@@ -88,8 +94,8 @@ tmpl (/**/)::VciXcacheWrapper
 
   m_error       = false;
   
-  m_iss.setDCacheInfo(dcache_words*4,1,dcache_lines);
-  m_iss.setICacheInfo(icache_words*4,1,icache_lines);
+  m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
+  m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
   m_iss.reset();
   
   //PDES local time
@@ -122,8 +128,7 @@ tmpl (void)::update_time(sc_core::sc_time t)
 
 tmpl (void)::execLoop ()
 {
-  while(m_pdes_local_time->get() < m_simulation_time){
-    //while(1) {
+  while(1) {
     struct iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
     struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     
@@ -176,9 +181,7 @@ tmpl (void)::execLoop ()
     }
 
   }
-  //sc_core::sc_stop();
-  m_pdes_activity_status->set(false);
-  send_activity();
+  sc_core::sc_stop();
 }
 
 tmpl (uint32_t)::xcacheAccess
@@ -189,7 +192,10 @@ tmpl (uint32_t)::xcacheAccess
  struct iss_t::DataResponse &drsp )
 {
   if ( ireq.valid ) {
-    if ( m_icache.miss( ireq.addr ) ) {
+    data_t  icache_ins = 0;
+    bool    icache_hit = m_icache.read( ireq.addr, &icache_ins);
+
+    if ( !icache_hit ) {
       bool err = false;
       uint32_t del = fill_cache( m_icache, ireq.addr, err );
       if ( err ) {
@@ -202,17 +208,21 @@ tmpl (uint32_t)::xcacheAccess
       }
     } else {
       irsp.valid = true;
-      irsp.instruction = m_icache.read(ireq.addr);
+      irsp.instruction = icache_ins;
     }
   } else {
     irsp.valid = false;
   }
   
   if ( dreq.valid ) {
+    data_t  dcache_rdata   = 0;
+    bool    dcache_hit     = false;
+
     switch ( dreq.type ) {
     case iss_t::DATA_READ:
       if ( m_cacheability_table[dreq.addr] ) {
-	if ( m_dcache.miss( dreq.addr ) ) {
+	dcache_hit = m_dcache.read(dreq.addr, &dcache_rdata);
+	if ( !dcache_hit ) {
 	  bool err = false;
 	  uint32_t del = fill_cache( m_dcache, dreq.addr, err );
 	  if ( err ) {
@@ -225,24 +235,26 @@ tmpl (uint32_t)::xcacheAccess
 	  }
 	} else {
 	  drsp.valid = true;
-	  drsp.rdata = m_dcache.read(dreq.addr);
+	  drsp.rdata = dcache_rdata;
 	  drsp.error = false;
 	}
       } else {
 	drsp.valid = true;
-	return ram_read(VCI_READ_COMMAND, dreq.addr,	&drsp.rdata, drsp.error );
+	return ram_read(VCI_READ_COMMAND, dreq.addr, &drsp.rdata, drsp.error );
       }
       break;
     case iss_t::DATA_WRITE: {
       drsp.valid = true;
       uint32_t del = ram_write( VCI_WRITE_COMMAND, dreq.addr, dreq.wdata, dreq.be, drsp.rdata, drsp.error );
-      if ( ! m_dcache.miss(dreq.addr) ) {
-	typename vci_param::data_t old = m_dcache.read(dreq.addr);
-	typename vci_param::data_t mask = be2mask<typename vci_param::data_t>(dreq.be);
-	m_dcache.write(dreq.addr, (dreq.wdata & mask) | (old & ~mask) );
+
+      dcache_hit = m_dcache.read(dreq.addr, &dcache_rdata);
+      if ( dcache_hit ) {
+	data_t mask = be2mask<data_t>(dreq.be);
+	data_t wdata = (dreq.wdata & mask) | (dcache_rdata & ~mask);
+	m_dcache.write(dreq.addr, wdata );
 
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << " wdata update: " << dreq << " new data:" << std::hex << m_dcache.read(dreq.addr) << std::endl;
+	std::cout << name() << " wdata update: " << dreq << " new data:" << std::hex << wdata << std::endl;
 #endif
       }
       return del;
@@ -258,8 +270,10 @@ tmpl (uint32_t)::xcacheAccess
     case iss_t::XTN_WRITE:
       switch (dreq.addr/4) {
       case iss_t::XTN_DCACHE_INVAL:
-	if ( !m_dcache.miss( dreq.wdata ) )
+	dcache_hit = m_dcache.read(dreq.wdata, &dcache_rdata);
+	if ( dcache_hit ){
 	  m_dcache.inval( dreq.wdata );
+	}
       }
       drsp.valid = true;
       drsp.error = false;
@@ -276,38 +290,91 @@ tmpl (void)::xcacheAccessInternal
  struct iss_t::DataRequest dreq,
  struct iss_t::InstructionResponse &irsp,
  struct iss_t::DataResponse &drsp
- ) const
+ )
 {
-  if ( ireq.valid && ! m_icache.miss(ireq.addr) ) {
-    irsp.valid = true;
-    irsp.instruction = m_icache.read(ireq.addr);
-  }
+  data_t  icache_ins   = 0;
+  bool    icache_hit   = m_icache.read(ireq.addr, &icache_ins);
+  data_t  dcache_rdata = 0;
+  bool    dcache_hit   = m_dcache.read(dreq.addr, &dcache_rdata);
   
+  if ( ireq.valid && icache_hit ) {
+    irsp.valid = true;
+    irsp.instruction = icache_ins;
+  }
+
   if ( dreq.valid
        && dreq.type == iss_t::DATA_READ
        && m_cacheability_table[dreq.addr]
-       && ! m_dcache.miss( dreq.addr ) ) {
+       && dcache_hit ) {
     drsp.valid = true;
-    drsp.rdata = m_dcache.read(dreq.addr);
+    drsp.rdata = dcache_rdata;
     drsp.error = false;
   }
 }
 
+tmpl (uint32_t)::fill_cache
+(
+ GenericCache<addr_t> &cache,
+ addr_t address,
+ bool &error
+ )
+{
+#ifdef SOCLIB_MODULE_DEBUG
+  std::cout << name() << " fill_cache( " << std::hex << address << ", " << error << ")" << std::endl;
+#endif
+  size_t words;
+  size_t yzmask;
+  if(&cache == &m_icache){
+    words  = m_icache_words;
+    yzmask = m_icache_yzmask;
+  }
+  else{
+    words  = m_dcache_words;
+    yzmask = m_dcache_yzmask;
+  }
+
+  data_t data[words];
+
+  uint32_t del = ram_read( VCI_READ_COMMAND, address & yzmask,
+			   &data[0], error, words);
+
+  if ( ! error ) {
+   data_t  victim_index = 0;
+
+   if(&cache == &m_icache){
+     m_icache.update( address, &data[0], &victim_index);
+   }
+   else{
+     m_dcache.update( address, &data[0], &victim_index);
+   }
+
+  }
+#ifdef SOCLIB_MODULE_DEBUG
+  std::cout << name() << " fill_cache, error: " << error << ", data: ";
+  for ( size_t i=0; i<words; ++i )
+    std::cout << std::hex << data[i] << ' ';
+  std::cout << std::endl;
+#endif
+  return del;
+}
+
+
+
 tmpl (uint32_t)::ram_write
 (
  enum command command, 
- typename vci_param::addr_t address,
- typename vci_param::data_t wdata, 
+ addr_t address,
+ data_t wdata, 
  int be, 
- typename vci_param::data_t &rdata, 
+ data_t &rdata, 
  bool &rerror
  )
 {
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " ram_write( " << command << ", " << std::hex << address << ", " << wdata << ", " << rdata << ", " << rerror << ")" << std::endl;
+  std::cout << name() << " ram_write( " << std::hex << address << ", " << wdata << ")" << std::endl;
 #endif
 
-  typename vci_param::data_t byte_enable = be2mask<typename vci_param::data_t>(be);
+  data_t byte_enable = be2mask<data_t>(be);
 
   m_nbytes = vci_param::nbytes;
   utoa(byte_enable, m_byte_enable_ptr, 0);
@@ -349,14 +416,14 @@ tmpl (uint32_t)::ram_write
 tmpl (uint32_t)::ram_read
 (
  enum command command, 
- typename vci_param::addr_t address,
- typename vci_param::data_t *rdata, 
+ addr_t address,
+ data_t *rdata, 
  bool &rerror,
  size_t size
  )
 {
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " ram_read( " << command << ", " << std::hex << address << ", " << rdata << ", " << rerror << ")" << std::endl;
+  std::cout << name() << " ram_read( " << std::hex << address << ")" << std::endl;
 #endif
   
   m_nbytes = size * vci_param::nbytes;
@@ -394,37 +461,13 @@ tmpl (uint32_t)::ram_read
   rerror = m_error;
 
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " time: " << m_pdes_local_time->get().value() << " ram_read, error: " << rerror << " address: " << std::hex << m_payload_ptr->get_address() << " data: " << rdata << std::endl;
+  std::cout << name() << " time: " << m_pdes_local_time->get().value() << " ram_read, error: " << rerror << std::endl;
+  for(uint32_t i=0; i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++)
+    std::cout << " address: " << std::hex << (m_payload_ptr->get_address() + (i * vci_param::nbytes)) << " data: " << rdata[i] << std::endl;
 #endif
   return (m_pdes_local_time->get() - before).value();
 }
 
-tmpl (uint32_t)::fill_cache
-(
- soclib::tlmt::genericCache<vci_param> &cache,
- typename vci_param::addr_t address,
- bool &error
- )
-{
-#ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " fill_cache( " << &cache << ", " << std::hex << address << ", " << error << ")" << std::endl;
-#endif
-  typename vci_param::data_t data[cache.get_nwords()];
-  
-  uint32_t del = ram_read( VCI_READ_COMMAND, address & cache.get_yzmask(),
-			   &data[0], error, cache.get_nwords());
-  
-  if ( ! error ) {
-    cache.update( address, &data[0] );
-  }
-#ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " fill_cache, error: " << error << ", data: ";
-  for ( size_t i=0; i<cache.get_nwords(); ++i )
-    std::cout << std::hex << data[i] << ' ';
-  std::cout << std::endl;
-#endif
-  return del;
-}
 
 tmpl (void)::send_activity()
 {
