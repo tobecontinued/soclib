@@ -248,6 +248,7 @@ void Mips32Iss::op_cop2()
 void Mips32Iss::op_ill()
 {
     m_exception = X_RI;
+    m_resume_pc = r_pc;
 }
 
 #define CACHE_OP(what, cache) (((what)<<2)+(cache))
