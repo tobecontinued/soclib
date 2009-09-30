@@ -278,14 +278,8 @@ namespace soclib { namespace caba {
           return DirectoryEntry(m_dir_tab[set][way]);
         }
       }
-      for(size_t i=0; i<m_ways; i++){
-        if( (m_lru_tab[set][i].recent) && (m_dir_tab[set][i].lock)){
-          way=i;
-          return DirectoryEntry(m_dir_tab[set][way]);
-        }
-      }
       way = 0;
-      return DirectoryEntry(m_dir_tab[set][0]);
+      return DirectoryEntry(m_dir_tab[set][way]);
     } // end select()
 
     /////////////////////////////////////////////////////////////////////

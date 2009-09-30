@@ -1053,26 +1053,18 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         ///////////////////
       case WRITE_DIR_HIT:	// update the cache (data & dirty bit)
         {
-          copy_t sub_mask=0x1;
-          size_t sub_count=0;
-          for(size_t i=0; i<32;i++){
-            if(r_write_i_copies.read()&sub_mask)
-              sub_count++;
-            sub_mask = sub_mask << 1;
-          }
-
           // update directory with Dirty bit
           DirectoryEntry entry;
-          entry.valid	   = true;
-          entry.dirty	   = true;
-          entry.tag	     = r_write_tag.read();
-          entry.is_cnt   = r_write_is_cnt.read();
-          entry.lock	   = r_write_lock.read();
-          entry.d_copies = r_write_d_copies.read();
-          entry.i_copies = 0;
-          entry.count    = r_write_count.read()-sub_count;
-          size_t set	   = m_y[r_write_address.read()];
-          size_t way	   = r_write_way.read();
+          entry.valid	    = true;
+          entry.dirty	    = true;
+          entry.tag         = r_write_tag.read();
+          entry.is_cnt      = r_write_is_cnt.read();
+          entry.lock	    = r_write_lock.read();
+          entry.d_copies    = r_write_d_copies.read();
+          entry.i_copies    = 0;   // if we are in this state, i_copies is already null
+          entry.count       = r_write_count.read();
+          size_t set	    = m_y[r_write_address.read()];
+          size_t way	    = r_write_way.read();
           m_cache_directory.write(set, way, entry);
 
           // write data in cache
@@ -1127,10 +1119,6 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 nline,
                 nb_copies,
                 index);
-            if(wok){
-//              std::cout << "WRITE : record update, time = " << std::dec << m_cpt_cycles << std::endl;
-//              m_update_tab.print(); 
-            }
             r_write_upt_index = index;
             //  releases the lock protecting Update Table if no entry...
             if ( wok ) r_write_fsm = WRITE_UPDATE;
@@ -1314,10 +1302,6 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 nline,
                 nb_copies,
                 index);
-            if(wok){
-//              std::cout << "WRITE : record invalidate, time = " << std::dec << m_cpt_cycles << std::endl;
-//              m_update_tab.print(); 
-            }
             r_write_upt_index = index;
             //  releases the lock protecting Update Table if no entry...
             if ( wok ) r_write_fsm = WRITE_DIR_INVAL;
