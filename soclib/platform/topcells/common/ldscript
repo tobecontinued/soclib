@@ -92,6 +92,7 @@ SECTIONS
    . = 0x10000000;
    .rodata : {
       *(.rodata)
+      *(.rodata.*)
       . = ALIGN(4);
    }
    .data  : {
