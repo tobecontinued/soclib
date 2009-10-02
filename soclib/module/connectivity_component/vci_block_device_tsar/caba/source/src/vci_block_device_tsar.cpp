@@ -240,6 +240,8 @@ tmpl(void)::next_req()
         size_t chunck_size = m_transfer_size-m_chunck_offset;
         if ( (( m_buffer + m_chunck_offset ) & ( m_burst_size-1 )) )
             chunck_size = 4;
+        if ( chunck_size < m_burst_size )
+            chunck_size = 4;
         if ( chunck_size > m_burst_size )
             chunck_size = m_burst_size;
         VciInitSimpleReadReq<vci_param> *req =
