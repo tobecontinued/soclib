@@ -685,9 +685,13 @@ tmpl(void)::transition()
     ////////////////
     case ICACHE_BIS: 
     {
-        data_t      icache_ins = 0;        	// read instruction
-        bool        icache_hit_c;    		// Cache hit
-        bool        icache_hit_t;    		// TLB hit
+        data_t      icache_ins;        		// read instruction
+        bool        hit_c;    			// Cache hit
+        bool        hit_t;    			// TLB hit
+	paddr_t	    tlb_paddr;			// physical address
+        pte_info_t  tlb_info;			// unused but mandatory
+	size_t      tlb_way;			// unused but mandatory
+	size_t      tlb_set;			// unused but mandatory
 
         // acces always cached and MMU activated in this state
         m_cpt_ins_tlb_read++;
@@ -695,25 +699,30 @@ tmpl(void)::transition()
         m_cpt_icache_data_read += m_icache_ways;
 
         // processor address translation
-        icache_hit_t  = icache_tlb.translate(ireq.addr, &tlb_ipaddr, &icache_pte_info,
-                                                 &icache_tlb_way, &icache_tlb_set);
+        hit_t  = icache_tlb.translate(ireq.addr, &tlb_paddr, &tlb_info, &tlb_way, &tlb_set);
+
         // test if processor request modified
-        if( (tlb_ipaddr == r_icache_paddr_save) 
-		&& ireq.valid && icache_hit_t ) {  		// unmodified & valid
+        if( (tlb_paddr == r_icache_paddr_save.read()) && ireq.valid && hit_t ) 	// unmodified & valid
+	{
             m_cpt_ins_read++;
-            icache_hit_c = r_icache.read(r_icache_paddr_save, &icache_ins);
-            irsp.valid = icache_hit;
+            hit_c = r_icache.read(r_icache_paddr_save, &icache_ins);
+            irsp.valid = hit_c;
             irsp.error = false;
             irsp.instruction = icache_ins;
-            if ( !icache_hit ) {
+            if ( !hit_c ) 		// MISS
+	    {
                 r_icache_miss_req = true;
                 r_icache_fsm = ICACHE_MISS_WAIT;
                 m_cpt_ins_miss++;
                 m_cost_ins_miss_frz++;
-            } else {
+            } 
+	    else 
+	    {
                 r_icache_fsm = ICACHE_IDLE;
             }
-        } else {                                                   // modified or invalid
+        } 
+	else                                                    // modified or invalid
+	{
             irsp.valid = false;
             irsp.error = false;
             irsp.instruction = 0;
@@ -1573,60 +1582,62 @@ tmpl(void)::transition()
     /////////////////
     case DCACHE_BIS:
     {
-        bool    dcache_hit   = false;
-        bool    write_hit   = false;
-        data_t  dcache_rdata = 0;
+        data_t  	rdata;		// read data
+        bool    	hit_c;		// Cache hit
+        bool    	hit_t;		// TLB hit
+	paddr_t 	tlb_paddr;	// physical address
+	pte_info_t	tlb_info;	// unused but mandatory
+	size_t    	tlb_way;  	// unused but mandatory
+	size_t    	tlb_set;  	// unused but mandatory
+	bool		write_hit;
 
-        // acces always cached in this state
-        dcache_hit = r_dcache.read(r_dcache_paddr_save, &dcache_rdata);
+        // acces always cached and MMU activated in this state
+	m_cpt_data_tlb_read++;
+	m_cpt_dcache_dir_read += m_dcache_ways;
+	m_cpt_dcache_data_read += m_dcache_ways;
 
-        if ( dreq.type == iss_t::DATA_READ )  // cached read
-        {
-            m_cpt_read++;
-            if ( !dcache_hit ) 
+	// processor address translation
+	hit_t = dcache_tlb.translate(dreq.addr, &tlb_paddr, &tlb_info, &tlb_way, &tlb_set);
+
+	// test if processor request modified
+	if( (tlb_paddr == r_dcache_paddr_save) && dreq.valid && hit_t)   // unmodified & valid
+	{
+            hit_c = r_dcache.read(r_dcache_paddr_save, rdata);
+
+       	    if ( dreq.type == iss_t::DATA_READ )  	// cached read
             {
-                r_dcache_miss_req = true;
-                r_dcache_fsm = DCACHE_MISS_WAIT;
-                m_cpt_data_miss++;
-                m_cost_data_miss_frz++;
-            }
-            else
-            {
-                r_dcache_fsm = DCACHE_IDLE;
-            }
-            drsp.valid = dcache_hit;
-            drsp.error = false;
-            drsp.rdata = dcache_rdata;
-        }
-        else    // cached write
-        {
-            m_cpt_write++;
-            m_cpt_write_cached++;
-            if ( dcache_hit )    // cache update required
-            {
-            	r_dcache_rdata_save = dcache_rdata;
-                r_dcache_fsm = DCACHE_WRITE_UPDT;
-            } 
-            else if (!r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
-            {
-                if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
+                m_cpt_read++;
+                if ( !hit_c ) 			// hit
                 {
-                    r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                    r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                    write_hit = r_dcache.write((paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
-                                         (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
-                    //assert(write_hit && "Write on miss ignores data");
-                    r_dcache_tlb_ll_dirty_req = true;
-                    r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                    m_cpt_data_tlb_write_dirty++;
+                    r_dcache_miss_req = true;
+                    r_dcache_fsm = DCACHE_MISS_WAIT;
+                    m_cpt_data_miss++;
+                    m_cost_data_miss_frz++;
                 }
-                else
-                {   
-                    if (r_dcache_hit_p_save) 
+                else				// miss
+                {
+                    r_dcache_fsm = DCACHE_IDLE;
+                }
+                drsp.valid = hit_c;
+                drsp.error = false;
+                drsp.rdata = rdata;
+            }
+            else    					// cached write
+            {
+                m_cpt_write++;
+                m_cpt_write_cached++;
+                if ( hit_c )    			// cache update required
+                {
+            	    r_dcache_rdata_save = rdata;
+                    r_dcache_fsm = DCACHE_WRITE_UPDT;
+                } 
+                else if (!r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
+                {
+                    if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
                     {
                         r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                        r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
-                        write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
+                        r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+                        write_hit = r_dcache.write((paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
                                          (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
                         //assert(write_hit && "Write on miss ignores data");
                         r_dcache_tlb_ll_dirty_req = true;
@@ -1634,21 +1645,42 @@ tmpl(void)::transition()
                         m_cpt_data_tlb_write_dirty++;
                     }
                     else
-                    {
-                        r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                        r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                        r_dcache_tlb_ptba_read = true;
-                        r_dcache_fsm = DCACHE_DTLB1_READ_CACHE;
+                    {   
+                        if (r_dcache_hit_p_save) 
+                        {
+                            r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+                            r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
+                            write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
+                                         (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
+                            //assert(write_hit && "Write on miss ignores data");
+                            r_dcache_tlb_ll_dirty_req = true;
+                            r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
+                            m_cpt_data_tlb_write_dirty++;
+                        }
+                        else
+                        {
+                            r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+                            r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+                            r_dcache_tlb_ptba_read = true;
+                            r_dcache_fsm = DCACHE_DTLB1_READ_CACHE;
+                        }
                     }
                 }
+                else                                    // no cache update, not dirty bit update
+                {
+                    r_dcache_fsm = DCACHE_WRITE_REQ;
+                    drsp.valid = true;
+                    drsp.rdata = 0;
+                }
             }
-            else                                    // no cache update, not dirty bit update
-            {
-                r_dcache_fsm = DCACHE_WRITE_REQ;
-                drsp.valid = true;
-                drsp.rdata = 0;
-            }
-        }
+	}
+	else						// processor request modified or invalid 
+	{
+	    drsp.valid = false;
+	    drsp.error = false;
+	    drsp.data  = 0;
+	    r_dcache_fsm = DCACHE_IDLE;
+	}
         break;
     }
     //////////////////////////
