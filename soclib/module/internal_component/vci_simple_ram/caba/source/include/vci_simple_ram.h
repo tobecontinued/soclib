@@ -76,7 +76,7 @@ private:
 
     soclib::common::Loader                  m_loader;
     std::list<soclib::common::Segment>      m_seglist;
-    uint32_t				    m_latency;
+    const uint32_t				    m_latency;
 
     soclib::common::LinkedAccessBuffer<
         vci_addr_t, vci_srcid_t>            r_llsc_buf;
@@ -115,7 +115,7 @@ public:
                  const soclib::common::IntTab index,
                  const soclib::common::MappingTable &mt,
                  const soclib::common::Loader &loader,
-		 const uint32_t latency = 0);
+                 const uint32_t latency = 0);
 
     ~VciSimpleRam();
 

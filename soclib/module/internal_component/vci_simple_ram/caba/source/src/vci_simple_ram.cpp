@@ -519,9 +519,6 @@ tmpl(void)::genMoore()
     } // end switch fsm_state
 } // end genMoore()
 
-// instanciation template
-template class VciSimpleRam<soclib::caba::VciParams<4, 8, 32, 1, 1, 1, 12, 1, 1, 1> >;
-
 }} 
 
 // Local Variables:
