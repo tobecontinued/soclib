@@ -1,4 +1,4 @@
-/* -*- c++ -*-
+ /*
  *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
@@ -52,6 +52,7 @@
 //  in dedicated registers, but no response is sent in this state.
 /////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 #include "vci_simple_ram.h"
 
 namespace soclib {
@@ -67,10 +68,12 @@ tmpl(/**/)::VciSimpleRam(
 	sc_module_name insname,
 	const soclib::common::IntTab index,
 	const soclib::common::MappingTable &mt,
-    const soclib::common::Loader &loader)
+        const soclib::common::Loader &loader,
+	const uint32_t latency)
 	: caba::BaseModule(insname),
       m_loader(loader),
       m_seglist(mt.getSegmentList(index)),
+      m_latency(latency),
 
       r_llsc_buf((size_t)(1<<vci_param::S)),
 
@@ -87,6 +90,7 @@ tmpl(/**/)::VciSimpleRam(
       r_eop_cmd("r_eop_cmd"),
       r_valid("r_valid"),
       r_eop_rsp("r_eop_rsp"),
+      r_latency_count("r_latency_count"),
 
       m_nbseg(0),
 
@@ -102,20 +106,20 @@ tmpl(/**/)::VciSimpleRam(
 	dont_initialize();
 	sensitive << p_clk.neg();
 	
-    std::list<soclib::common::Segment>::iterator seg;
-    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) { 
-        m_nbseg++;
-    }
+        std::list<soclib::common::Segment>::iterator seg;
+        for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) { 
+            m_nbseg++;
+        }
         
 	m_ram = new ram_t*[m_nbseg];
-    m_seg = new soclib::common::Segment*[m_nbseg];
+        m_seg = new soclib::common::Segment*[m_nbseg];
 	
-    size_t i = 0;
+        size_t i = 0;
 	size_t word_size = vci_param::B; // B is VCI's cell size
-    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) { 
-		m_ram[i] = new ram_t[(seg->size()+word_size-1)/word_size];
-        m_seg[i] = &(*seg);
-        i++;
+        for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) { 
+            m_ram[i] = new ram_t[(seg->size()+word_size-1)/word_size];
+            m_seg[i] = &(*seg);
+            i++;
 	}
 }
 
@@ -148,7 +152,13 @@ tmpl(void)::reset()
 	}
     m_cpt_read = 0;
     m_cpt_write = 0;
-    r_fsm_state = FSM_IDLE;
+    if (m_latency) {
+ 	r_fsm_state = FSM_IDLE;
+        r_latency_count = m_latency - 1;
+    } else {
+	r_fsm_state = FSM_CMD_GET;
+        r_latency_count = 0;
+    }
     r_llsc_buf.clearAll();
 }
 
@@ -192,9 +202,27 @@ tmpl(void)::transition()
 		return;
 	}
 
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "************** vci_simple_ram : " << name() << std::endl;
+std::cout << "r_fsm_state     = " << r_fsm_state << std::endl;
+std::cout << "r_latency_count = " << r_latency_count << std::endl;
+#endif
+
     switch ( r_fsm_state ) {
-    case FSM_IDLE:
+    case FSM_IDLE: 	// unreachable state if m_latency == 0 
         {
+        if ( p_vci.cmdval.read() ) {
+            if (r_latency_count.read() == 0) {
+                r_fsm_state = FSM_CMD_GET;
+                r_latency_count = m_latency - 1;
+            } else {
+                r_latency_count = r_latency_count.read() - 1;
+            }
+	}				   
+	break;
+	}
+    case FSM_CMD_GET:
+	{
         if ( !p_vci.cmdval.read() ) break;
 
         vci_addr_t   address = p_vci.address.read();
@@ -242,17 +270,20 @@ tmpl(void)::transition()
         }
         break;
         }
-
     case FSM_WRITE_BURST:
-
+        {
         if ( r_valid ) {
 
             assert( write (r_index, r_address , r_wdata, r_be ) &&
                      "out of bounds access in a write burst" );
         }
         if ( r_valid && r_eop_cmd ) {       // last write in the burst
-            if ( p_vci.rspack ) r_fsm_state = FSM_IDLE;
-            else                r_fsm_state = FSM_WRITE_BURST_RSP;
+            if ( p_vci.rspack.read() ) {
+                if( m_latency )	r_fsm_state = FSM_IDLE;
+                else           	r_fsm_state = FSM_CMD_GET;
+            } else {
+                                r_fsm_state = FSM_WRITE_BURST_RSP;
+            }
         } else {                            // not the last write
             if ( p_vci.cmdval.read() ) {
                 vci_addr_t next_address = r_address.read() + (vci_addr_t)vci_param::B;
@@ -268,18 +299,22 @@ tmpl(void)::transition()
             } 
         }
         break;
-
+        }
     case FSM_WRITE_BURST_RSP:
-        if( p_vci.rspack )
-            r_fsm_state = FSM_IDLE;
+        {
+        if( p_vci.rspack.read() )
+            if( m_latency )	r_fsm_state = FSM_IDLE;
+            else           	r_fsm_state = FSM_CMD_GET;
         break;
-
+        }
     case FSM_READ_WORD:
+        {
         if ( p_vci.rspack.read() ) {    // VCI response accepted
-            r_fsm_state = FSM_IDLE; 
+            if( m_latency )	r_fsm_state = FSM_IDLE;
+            else           	r_fsm_state = FSM_CMD_GET;
         }
         break;
-
+        }
     case FSM_READ_BURST: 
         {
         // VCI response
@@ -294,19 +329,25 @@ tmpl(void)::transition()
         bool cmd_completed = r_eop_cmd || (p_vci.cmdval.read() && p_vci.eop.read()); 
         r_eop_cmd = cmd_completed ; 
 
-        if ( cmd_completed && rsp_completed ) r_fsm_state = FSM_IDLE;
+        if ( cmd_completed && rsp_completed ) {
+            if( m_latency )	r_fsm_state = FSM_IDLE;
+            else           	r_fsm_state = FSM_CMD_GET;
         }
         break;
-
+        }
     case FSM_ERROR:
-        if ( p_vci.rspack.read() && r_eop_cmd.read() )  r_fsm_state = FSM_IDLE;
+        if ( p_vci.rspack.read() && r_eop_cmd.read() )  {
+            if( m_latency )	r_fsm_state = FSM_IDLE;
+            else           	r_fsm_state = FSM_CMD_GET;
+        }
         r_eop_cmd = r_eop_cmd.read() || ( p_vci.cmdval.read() && p_vci.eop.read() ) ; 
         break;
 
     case FSM_LL:
         if ( p_vci.rspack.read() ) {   
             r_llsc_buf.doLoadLinked(r_address, r_srcid);
-            r_fsm_state = FSM_IDLE;
+            if( m_latency )	r_fsm_state = FSM_IDLE;
+            else           	r_fsm_state = FSM_CMD_GET;
         }
         break;
 
@@ -316,7 +357,8 @@ tmpl(void)::transition()
                 r_llsc_buf.accessDone(r_address);
                 write (r_index, r_address , r_wdata, r_be);
             }
-            r_fsm_state = FSM_IDLE;
+            if( m_latency )	r_fsm_state = FSM_IDLE;
+            else           	r_fsm_state = FSM_CMD_GET;
         }
         break;
     } // end switch fsm_state
@@ -329,6 +371,17 @@ tmpl(void)::genMoore()
 {
     switch ( r_fsm_state ) {
     case FSM_IDLE:
+        p_vci.cmdack  = false;
+        p_vci.rspval  = false;
+        p_vci.rdata   = 0;
+        p_vci.rsrcid  = 0;
+        p_vci.rtrdid  = 0;
+        p_vci.rpktid  = 0;
+        p_vci.rerror  = 0;
+        p_vci.reop    = false;
+        break;
+    
+    case FSM_CMD_GET:
         p_vci.cmdack  = true;
         p_vci.rspval  = false;
         p_vci.rdata   = 0;
@@ -465,6 +518,9 @@ tmpl(void)::genMoore()
         break;
     } // end switch fsm_state
 } // end genMoore()
+
+// instanciation template
+template class VciSimpleRam<soclib::caba::VciParams<4, 8, 32, 1, 1, 1, 12, 1, 1, 1> >;
 
 }} 
 

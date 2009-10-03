@@ -62,6 +62,7 @@ public:
 
     enum fsm_state_e {
         FSM_IDLE,
+        FSM_CMD_GET,
         FSM_WRITE_BURST,
         FSM_WRITE_BURST_RSP,
         FSM_READ_WORD,
@@ -75,6 +76,8 @@ private:
 
     soclib::common::Loader                  m_loader;
     std::list<soclib::common::Segment>      m_seglist;
+    uint32_t				    m_latency;
+
     soclib::common::LinkedAccessBuffer<
         vci_addr_t, vci_srcid_t>            r_llsc_buf;
 
@@ -91,6 +94,7 @@ private:
     sc_signal<bool>                         r_eop_cmd;
     sc_signal<bool>                         r_valid;
     sc_signal<bool>                         r_eop_rsp;
+    sc_signal<uint32_t>                     r_latency_count;
 
     size_t                                  m_nbseg;
     ram_t                                   **m_ram;
@@ -110,7 +114,8 @@ public:
     VciSimpleRam(sc_module_name insname,
                  const soclib::common::IntTab index,
                  const soclib::common::MappingTable &mt,
-                 const soclib::common::Loader &loader);
+                 const soclib::common::Loader &loader,
+		 const uint32_t latency = 0);
 
     ~VciSimpleRam();
 
