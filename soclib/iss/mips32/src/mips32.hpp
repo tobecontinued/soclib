@@ -10,7 +10,6 @@ void Mips32Iss::jump(addr_t dest, bool now)
 {
 	if ( dest & 3 ) {
 		m_exception = X_ADEL;
-		m_resume_pc = r_pc;
 		m_error_addr = dest;
 		return;
 	}

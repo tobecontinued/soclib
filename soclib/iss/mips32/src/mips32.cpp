@@ -223,7 +223,7 @@ uint32_t Mips32Iss::executeNCycles(
         } else {
             m_next_pc = r_npc;
             m_jump_pc = r_npc+4;
-            m_resume_pc = r_npc;
+            m_resume_pc = r_pc;
             run();
         }
         if ( m_dreq.valid ) {
@@ -255,6 +255,7 @@ uint32_t Mips32Iss::executeNCycles(
     goto early_end;
 
   handle_irq:
+    m_resume_pc = m_next_pc;
     m_exception = X_INT;
   got_exception:
     handle_exception();
