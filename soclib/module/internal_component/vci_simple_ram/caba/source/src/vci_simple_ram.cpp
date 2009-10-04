@@ -78,7 +78,7 @@ tmpl(/**/)::VciSimpleRam(
       r_llsc_buf((size_t)(1<<vci_param::S)),
 
       r_fsm_state("r_fsm_state"),
-      r_read_count("r_read_count"),
+      r_flit_count("r_flit_count"),
       r_index("r_index"),
       r_address("r_address"),
       r_wdata("r_wdata"),
@@ -227,8 +227,7 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
 
         vci_addr_t   address = p_vci.address.read();
         bool         reached = false;
-        size_t index; // a supprimer
-        for ( index = 0 ; index<m_nbseg  && !reached ; ++index) {
+        for ( size_t index = 0 ; index<m_nbseg  && !reached ; ++index) {
            if ( m_seg[index]->contains(address) ) {
                 reached = true;
                 r_index = index;
@@ -237,7 +236,7 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
 
         r_address    = address;
         r_be         = p_vci.be.read();
-        r_read_count = p_vci.plen.read()/vci_param::B;
+        r_flit_count = p_vci.plen.read()/vci_param::B;
         r_wdata      = p_vci.wdata.read();
         r_srcid      = p_vci.srcid.read();
         r_trdid      = p_vci.trdid.read();
@@ -255,7 +254,7 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
             } else if ( p_vci.cmd.read() == vci_param::CMD_READ ) {
                 if ( p_vci.plen.read() == 0 ) { // plen undocumented => using eop
                     r_fsm_state = FSM_READ_WORD;
-                } else {                        // plen documented => using r_read_count
+                } else {                        // plen documented => using r_flit_count
                     r_fsm_state = FSM_READ_BURST;
                 }
             } else if ( p_vci.cmd.read() == vci_param::CMD_STORE_COND ) {
@@ -318,11 +317,11 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
     case FSM_READ_BURST: 
         {
         // VCI response
-        if ( p_vci.rspack.read() && (r_read_count > 0) ) {
-            r_read_count = r_read_count - 1;
+        if ( p_vci.rspack.read() && (r_flit_count > 0) ) {
+            r_flit_count = r_flit_count - 1;
             if ( r_contig ) r_address  = r_address.read() + vci_param::B;
             }
-        bool rsp_completed = r_eop_rsp || (p_vci.rspack.read() &&  (r_read_count == 1)) ;
+        bool rsp_completed = r_eop_rsp || (p_vci.rspack.read() &&  (r_flit_count == 1)) ;
         r_eop_rsp = rsp_completed;
 
         // VCI command
@@ -336,11 +335,13 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
         break;
         }
     case FSM_ERROR:
-        if ( p_vci.rspack.read() && r_eop_cmd.read() )  {
-            if( m_latency )	r_fsm_state = FSM_IDLE;
-            else           	r_fsm_state = FSM_CMD_GET;
+        if ( p_vci.rspack.read() ) {
+            if (r_flit_count == 1) {	// end of response packet
+                if( m_latency )	r_fsm_state = FSM_IDLE;
+                else           	r_fsm_state = FSM_CMD_GET;
+            }
+            r_flit_count = r_flit_count.read() - 1;
         }
-        r_eop_cmd = r_eop_cmd.read() || ( p_vci.cmdval.read() && p_vci.eop.read() ) ; 
         break;
 
     case FSM_LL:
@@ -428,7 +429,7 @@ tmpl(void)::genMoore()
     case FSM_READ_BURST:
         {
         p_vci.cmdack = !r_eop_cmd;
-        if ( r_read_count > 0 ) {
+        if ( r_flit_count > 0 ) {
             vci_data_t   rdata;
             assert( read(r_index, r_address, rdata) &&
                     "out of bounds read access" ); 
@@ -438,7 +439,7 @@ tmpl(void)::genMoore()
             p_vci.rtrdid = r_trdid.read();
             p_vci.rpktid = r_pktid.read();
             p_vci.rerror = vci_param::ERR_NORMAL;
-            p_vci.reop   = (r_read_count == 1);
+            p_vci.reop   = (r_flit_count.read() == 1);
         } else {
             p_vci.rspval = false;
             p_vci.rdata   = 0;
@@ -496,28 +497,20 @@ tmpl(void)::genMoore()
         break;
 
     case FSM_ERROR:
-        if ( r_eop_cmd.read() ) {
-            p_vci.cmdack  = false;
-            p_vci.rspval  = true;
-            p_vci.rdata   = 0;
-            p_vci.rsrcid  = r_srcid.read();
-            p_vci.rtrdid  = r_trdid.read();
-            p_vci.rpktid  = r_pktid.read();
-            p_vci.rerror  = vci_param::ERR_GENERAL_DATA_ERROR;
-            p_vci.reop    = true;
-        } else {
-            p_vci.cmdack  = true;
-            p_vci.rspval  = false;
-            p_vci.rdata   = 0;
-            p_vci.rsrcid  = 0;
-            p_vci.rtrdid  = 0;
-            p_vci.rpktid  = 0;
-            p_vci.rerror  = 0;
-            p_vci.reop    = false;
-        }
+        p_vci.cmdack  = false;
+        p_vci.rspval  = true;
+        p_vci.rdata   = 0;
+        p_vci.rsrcid  = r_srcid.read();
+        p_vci.rtrdid  = r_trdid.read();
+        p_vci.rpktid  = r_pktid.read();
+        p_vci.rerror  = vci_param::ERR_GENERAL_DATA_ERROR;
+        p_vci.reop    = (r_flit_count.read() == 1);
         break;
     } // end switch fsm_state
 } // end genMoore()
+
+// instanciation template
+template class VciSimpleRam<soclib::caba::VciParams<4, 8, 32, 1, 1, 1, 12, 1, 1, 1> >;
 
 }} 
 

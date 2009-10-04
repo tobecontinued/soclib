@@ -82,7 +82,7 @@ private:
         vci_addr_t, vci_srcid_t>            r_llsc_buf;
 
     sc_signal<int>                          r_fsm_state;
-    sc_signal<size_t>                       r_read_count;
+    sc_signal<size_t>                       r_flit_count;
     sc_signal<size_t>                       r_index;
     sc_signal<vci_addr_t>                   r_address;
     sc_signal<vci_data_t>                   r_wdata;
