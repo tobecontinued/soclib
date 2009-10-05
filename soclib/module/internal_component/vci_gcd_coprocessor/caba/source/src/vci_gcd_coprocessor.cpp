@@ -187,8 +187,6 @@ void VciGcdCoprocessor<vci_param>::genMoore()
 	}
 } // end genMoore()
 
-template class VciGcdCoprocessor<soclib::caba::VciParams<4, 8, 32, 1, 1, 1, 12, 1, 1, 1> >;
-
 }}
 
 // Local Variables:

@@ -4,12 +4,13 @@
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-Module('caba:vci_gcd_coprocesor',
+Module('caba:vci_gcd_coprocessor',
 	classname = 'soclib::caba::VciGcdCoprocessor',
 	   tmpl_parameters = [
 	parameter.Module('vci_param',  default = 'caba:vci_param'),
 	],
 	header_files = ['../source/include/vci_gcd_coprocessor.h',],
+	interface_files = ['../../include/soclib/gcd.h',],
 	implementation_files = ['../source/src/vci_gcd_coprocessor.cpp',],
 			  ports = [
 	Port('caba:vci_target', 'p_vci'),
