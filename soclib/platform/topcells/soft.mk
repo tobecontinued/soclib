@@ -27,6 +27,10 @@
 SOCLIB?=$(shell soclib-cc --getpath)
 export SOCLIB
 
+ifeq ($(PLATFORM_DESC)$(PLATFORM_DIR),)
+$(error You must launch the software compilation from the platform directory, or your platform_desc file wont be found.)
+endif
+
 SOFT_IMAGE=bin.soft
 OBJS?=main.o exception.o system.o $(ADD_OBJS)
 
