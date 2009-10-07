@@ -226,12 +226,11 @@ namespace soclib { namespace caba {
     m_srcid_ini( mtc.indexForId(vci_ini_index) ),
     m_seglist(mtp.getSegmentList(vci_tgt_index)),
     m_cseglist(mtc.getSegmentList(vci_tgt_index_cleanup)),
-    m_coherence_table( mtc.getCoherenceTable() ),
+    m_coherence_table( mtc.getCoherenceTable<vci_addr_t>() ),
     m_atomic_tab( m_initiators ),
     m_transaction_tab( TRANSACTION_TAB_LINES, nwords ),
     m_update_tab( UPDATE_TAB_LINES ),
     m_cache_directory( nways, nsets, nwords, vci_param::N ),
-    nseg(0),	
 #define L2 soclib::common::uint32_log2
     m_x( L2(m_words), 2),
     m_y( L2(m_sets), L2(m_words) + 2),
@@ -262,6 +261,7 @@ namespace soclib { namespace caba {
     m_cmd_llsc_wdata_fifo("m_cmd_llsc_wdata_fifo",4),
 
     r_tgt_cmd_fsm("r_tgt_cmd_fsm"),
+    nseg(0),	
     r_read_fsm("r_read_fsm"),
     r_write_fsm("r_write_fsm"),
     r_init_rsp_fsm("r_init_rsp_fsm"),

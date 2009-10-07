@@ -152,7 +152,7 @@ namespace caba {
             p_vci_ini_c("vci_ini_c"),
             p_vci_tgt("vci_tgt"),
 
-            m_cacheability_table(mtp.getCacheabilityTable()),
+            m_cacheability_table(mtp.getCacheabilityTable<vci_addr_t>()),
             m_segment(mtc.getSegment(target_index)),
             m_iss(this->name(), proc_id),
             m_srcid_rw(mtp.indexForId(initiator_index_rw)),
@@ -196,8 +196,8 @@ namespace caba {
             r_vci_rsp_data_error("r_vci_rsp_data_error"),
             r_vci_rsp_cpt("r_vci_rsp_cpt"),
 
-            r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
             r_icache_buf_unc_valid("r_icache_buf_unc_valid"),
+            r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
 
             r_vci_tgt_fsm("r_vci_tgt_fsm"),
             r_tgt_addr("r_tgt_addr"),
