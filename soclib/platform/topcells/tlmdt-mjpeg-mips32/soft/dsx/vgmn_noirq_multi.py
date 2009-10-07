@@ -49,7 +49,7 @@ def VgmnNoirqMulti(nproc, nram, icache_nline = 16, icache_nword = 8, dcache_nlin
 	ram.addSegment('boot', 0xbfc00000, 0x800,True)
 	ram.addSegment('excep', 0x80000080, 0x800,True)
 
-	tty = pf.create('caba:vci_multi_tty', 'tty', names = ['tty0'])
+	tty = pf.create('caba:vci_multi_tty', 'tty', names = ['tty0', ''])
 	tty.addSegment('tty', 0x90200000, 0x20, False)
 	tty.vci // vgmn.to_target.new()
 

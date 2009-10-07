@@ -57,15 +57,8 @@ int sc_main (int   argc, char  **argv)
   }
 
   uint32_t simulation_time = std::numeric_limits<uint32_t>::max();
-  char * simulation_time_env; //env variable that says the simulation time
-  simulation_time_env = getenv("SIMULATION_TIME");
-  if (simulation_time_env==NULL) {
-    printf("WARNING : You can specify the simulation time in variable SIMULATION_TIME. For example, export SIMULATION_TIME=100000\n");
-  }else {
-    simulation_time = atoi( simulation_time_env );
-  }
 
-  std::cout << "SIMULATION PARAMETERS: number of initiators = " << n_initiators << " simulation time = " << simulation_time << " icache size = " << icache_size << " dcache size = " << dcache_size << " network latence = " << network_latence << std::endl << std::endl;
+  std::cout << "SIMULATION PARAMETERS: number of initiators = " << n_initiators << " icache size = " << icache_size << " dcache size = " << dcache_size << " network latence = " << network_latence << std::endl << std::endl;
 
   /////////////////////////////////////////////////////////////////////////////
   // MAPPING TABLE
@@ -100,7 +93,7 @@ int sc_main (int   argc, char  **argv)
   for (int i=0 ; i < n_initiators ; i++) {
     std::ostringstream cpu_name;
     cpu_name << "xcache" << i;
-    xcache[i] = new soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, icache_size, 8, dcache_size, 8, 1000 * UNIT_TIME, simulation_time * UNIT_TIME);
+    xcache[i] = new soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, 1, icache_size, 4, 1, dcache_size, 4, 1000 * UNIT_TIME);
   }
 
   /////////////////////////////////////////////////////////////////////////////

@@ -1,3 +1,4 @@
+ARCH=mips32el
 SIMULATOR_BINARY?=simulation.x
 PLATFORM_DESC?=platform_desc
 SOCLIB_CC_ARGS?=-p $(PLATFORM_DESC)
@@ -37,7 +38,7 @@ $(SIMULATOR_BINARY): $(PLATFORM_DESC)
 soft/bin$(N_INITS)proc.soft:
 	$(MAKE) -C soft
 
-clean: soft_clean
+clean: 
 	$(SOCLIB_CC) -P $(SOCLIB_CC_ARGS) $(SOCLIB_CC_ADD_ARGS) -x -o $(SIMULATOR_BINARY)
 	@rm -rf repos
 	@rm -rf *~

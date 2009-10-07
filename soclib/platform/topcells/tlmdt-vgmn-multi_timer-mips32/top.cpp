@@ -71,7 +71,6 @@ int _main(int argc, char *argv[])
 	/////////////////////////////////////////////////////////////////////////////
 	// VARIABLES
 	/////////////////////////////////////////////////////////////////////////////
-	size_t simulation_time = std::numeric_limits<uint32_t>::max();
 	size_t network_latence = 3;
 	int n_initiators = 1;
 	char * n_initiators_env; //env variable that says the number of initiators to be used
@@ -124,7 +123,7 @@ int _main(int argc, char *argv[])
 	for (int i=0 ; i < n_initiators ; i++) {
 	  std::ostringstream cpu_name;
 	  cpu_name << "cache" << i;
-	  xcache[i] = new soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, 8, 4, 8, 4, 500 * UNIT_TIME, simulation_time * UNIT_TIME);
+	  xcache[i] = new soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, 1, 8, 4, 1, 8, 4, 500 * UNIT_TIME);
 
 	}
 

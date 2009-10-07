@@ -16,4 +16,5 @@ clean:
 	@rm -rf srl_trace.txt
 	@rm -rf ramdac*
 	@rm -rf tg*
+	@rm -rf wt*
 	@rm -rf *~
