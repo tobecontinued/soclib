@@ -33,7 +33,7 @@
 
 #include <tlmdt>                                      // TLM-DT headers
 #include "mapping_table.h"
-#include "soclib_endian.h"
+//#include "soclib_endian.h"
 #include "mwmr_controller.h"
 
 template<typename vci_param>

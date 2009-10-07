@@ -75,6 +75,7 @@ tmpl (/**/)::VciXcacheWrapper
     m_dcache_ways(dcache_ways),
     m_dcache_words(dcache_words),
     m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
+    m_wbuf("wbuf", dcache_words),
     m_icache("icache", icache_ways, icache_sets, icache_words),
     m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
     m_cacheability_table(mt.getCacheabilityTable()),
@@ -97,6 +98,11 @@ tmpl (/**/)::VciXcacheWrapper
   m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
   m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
   m_iss.reset();
+
+  // write buffer & caches
+  m_wbuf.reset();
+  m_icache.reset();
+  m_dcache.reset();
   
   //PDES local time
   m_pdes_local_time = new pdes_local_time(time_quantum);
@@ -160,6 +166,9 @@ tmpl (void)::execLoop ()
     
     while ( ! m_pending_irqs.empty() && m_pending_irqs.begin()->first <= m_pdes_local_time->get() ) {
       std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << name() << " Time = " << m_pdes_local_time->get() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << " time = " <<  i->first << std::endl;
+#endif
       if ( i->second.second )
 	m_irq |= 1<<i->second.first;
       else
@@ -170,9 +179,13 @@ tmpl (void)::execLoop ()
     uint32_t nc = 0;
     // Now if we had a delay, give the information to the CPU,
     // with the cache state before fetching the answer.
-    if ( del )
-      nc += m_iss.executeNCycles(del, meanwhile_irsp, meanwhile_drsp, m_irq);
+    //if ( del )
+    //nc += m_iss.executeNCycles(del, meanwhile_irsp, meanwhile_drsp, m_irq);
     nc += m_iss.executeNCycles(1, irsp, drsp, m_irq);
+    //printf("nc = %d\n", nc);
+
+    if(nc==0)
+      nc = 1;
     m_pdes_local_time->add(nc * UNIT_TIME);
     
     // if initiator needs synchronize then it sends a null message
@@ -245,13 +258,25 @@ tmpl (uint32_t)::xcacheAccess
       break;
     case iss_t::DATA_WRITE: {
       drsp.valid = true;
-      uint32_t del = ram_write( VCI_WRITE_COMMAND, dreq.addr, dreq.wdata, dreq.be, drsp.rdata, drsp.error );
+      uint32_t del = 0;
+      // no previous write transaction
+      if ( m_wbuf.wok(dreq.addr) ) {
+	// write request in the same cache line
+	m_wbuf.write(dreq.addr, dreq.be, dreq.wdata);
+ 
+	if ( !m_cacheability_table[dreq.addr] ) {
+	  del = ram_cacheable_write( VCI_WRITE_COMMAND, drsp.rdata, drsp.error );
+	}
+      }
+      else {
+	del = ram_uncacheable_write( VCI_WRITE_COMMAND, dreq.addr, dreq.wdata, dreq.be, drsp.rdata, drsp.error );
+      }
 
       dcache_hit = m_dcache.read(dreq.addr, &dcache_rdata);
       if ( dcache_hit ) {
 	data_t mask = be2mask<data_t>(dreq.be);
 	data_t wdata = (dreq.wdata & mask) | (dcache_rdata & ~mask);
-	m_dcache.write(dreq.addr, wdata );
+	m_dcache.write(dreq.addr, wdata);
 
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout << name() << " wdata update: " << dreq << " new data:" << std::hex << wdata << std::endl;
@@ -265,7 +290,7 @@ tmpl (uint32_t)::xcacheAccess
       return ram_read( VCI_LINKED_READ_COMMAND, dreq.addr, &drsp.rdata, drsp.error );
     case iss_t::DATA_SC:
       drsp.valid = true;
-      return ram_write(VCI_STORE_COND_COMMAND, dreq.addr, dreq.wdata, 0xf, drsp.rdata, drsp.error );
+      return ram_uncacheable_write(VCI_STORE_COND_COMMAND, dreq.addr, dreq.wdata, 0xf, drsp.rdata, drsp.error );
     case iss_t::XTN_READ:
     case iss_t::XTN_WRITE:
       switch (dreq.addr/4) {
@@ -358,9 +383,7 @@ tmpl (uint32_t)::fill_cache
   return del;
 }
 
-
-
-tmpl (uint32_t)::ram_write
+tmpl (uint32_t)::ram_uncacheable_write
 (
  enum command command, 
  addr_t address,
@@ -371,7 +394,7 @@ tmpl (uint32_t)::ram_write
  )
 {
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " ram_write( " << std::hex << address << ", " << wdata << ")" << std::endl;
+  std::cout << name() << " ram_write( " << std::hex << address << ", " << wdata << ", " << be << ")" << std::endl;
 #endif
 
   data_t byte_enable = be2mask<data_t>(be);
@@ -413,6 +436,67 @@ tmpl (uint32_t)::ram_write
   return (m_pdes_local_time->get() - before).value();
 }
 
+tmpl (uint32_t)::ram_cacheable_write
+(
+ enum command command, 
+ data_t &rdata, 
+ bool &rerror
+ )
+{
+  addr_t address = m_wbuf.getAddress(m_wbuf.getMin());
+  data_t be;
+  size_t nwords = m_wbuf.getMax()- m_wbuf.getMin() + 1;
+  
+  for(size_t i=m_wbuf.getMin(), j=0; i<m_wbuf.getMin()+nwords; i++, j+=vci_param::nbytes){
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " ram_write( " << std::hex << m_wbuf.getAddress(i) << ", " << m_wbuf.getData(i) << ", " <<  m_wbuf.getBe(i) << ")" << std::endl;
+#endif
+
+    be = be2mask<data_t>(m_wbuf.getBe(i));
+    utoa(be, m_byte_enable_ptr, j);
+    utoa(m_wbuf.getData(i), m_data_ptr, j);
+  }
+
+  m_nbytes = nwords * vci_param::nbytes;
+
+  // set the values in tlm payload
+  m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+  m_payload_ptr->set_address(address & ~3);
+  m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
+  m_payload_ptr->set_byte_enable_length(m_nbytes);
+  m_payload_ptr->set_data_ptr(m_data_ptr);
+  m_payload_ptr->set_data_length(m_nbytes);
+  // set the values in payload extension
+  m_extension_ptr->set_command(command);
+  m_extension_ptr->set_src_id(m_id);
+  m_extension_ptr->set_trd_id(0);
+  m_extension_ptr->set_pkt_id(0);
+  // set the extension to tlm payload
+  m_payload_ptr->set_extension(m_extension_ptr);
+  //set the tlm phase
+  m_phase = tlm::BEGIN_REQ;
+  //set the local time to transaction time
+  m_time = m_pdes_local_time->get();
+  sc_core::sc_time before = m_time;
+
+  //std::cout << name() << " send time: " << m_pdes_local_time->get().value() << std::endl;
+  //send a write message
+  p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+  wait(m_rsp_received);
+  //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
+
+  //update response
+  rdata = atou(m_payload_ptr->get_data_ptr(), 0);
+  rerror = m_error;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " time: " << std::dec << m_pdes_local_time->get().value() << " ram_write, error: " << rerror << " address: " << std::hex << m_payload_ptr->get_address() << " data: " << rdata << std::endl;
+#endif
+
+  m_wbuf.reset();
+
+  return (m_pdes_local_time->get() - before).value();
+}
+
 tmpl (uint32_t)::ram_read
 (
  enum command command, 
@@ -422,6 +506,14 @@ tmpl (uint32_t)::ram_read
  size_t size
  )
 {
+  
+  if(m_wbuf.rok()){
+    data_t wdata;
+    bool werror;
+    uint32_t del = ram_cacheable_write( VCI_WRITE_COMMAND, wdata, werror );
+  }
+  
+
 #ifdef SOCLIB_MODULE_DEBUG
   std::cout << name() << " ram_read( " << std::hex << address << ")" << std::endl;
 #endif
@@ -451,9 +543,11 @@ tmpl (uint32_t)::ram_read
   m_time = m_pdes_local_time->get();
   sc_core::sc_time before = m_time;
 
+  //std::cout << name() << " send time: " << m_pdes_local_time->get().value() << std::endl;
   //send a write message
   p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
   wait(m_rsp_received);
+  //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
 
   //update response
   for(uint32_t i=0; i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++)

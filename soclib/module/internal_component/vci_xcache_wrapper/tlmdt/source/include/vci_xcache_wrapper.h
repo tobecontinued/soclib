@@ -32,6 +32,7 @@
 #include <inttypes.h>
 
 #include "soclib_endian.h"
+#include "write_buffer.h"
 #include "generic_cache.h"
 #include "mapping_table.h"
 #include "mips32.h"
@@ -66,6 +67,7 @@ private:
   const size_t            m_dcache_words;
   const addr_t            m_dcache_yzmask;
  
+  WriteBuffer<addr_t>     m_wbuf;
   GenericCache<addr_t>    m_icache;
   GenericCache<addr_t>    m_dcache;
   soclib::common::AddressDecodingTable<addr_t, bool> m_cacheability_table;
@@ -114,14 +116,20 @@ private:
   
   void execLoop();
   
-  uint32_t ram_write(
-		     enum command command,
-		     addr_t address,
-		     data_t wdata, 
-		     int be, 
-		     data_t &rdata, 
-		     bool &rerror
-		     );
+  uint32_t ram_uncacheable_write(
+				 enum command command,
+				 addr_t address,
+				 data_t wdata, 
+				 int be, 
+				 data_t &rdata, 
+				 bool &rerror
+				 );
+
+  uint32_t ram_cacheable_write(
+			       enum command command, 
+			       data_t &rdata, 
+			       bool &rerror
+			       );
 
   uint32_t ram_read(
 		    enum command command, 

@@ -36,6 +36,21 @@
 //ICU_MASK_CLEAR = 3 write-only
 //ICU_IT_VECTOR = 4 read-only
 
+template<typename T>
+T be2mask(T be)
+{
+	const T m = (1<<sizeof(T));
+	T r = 0;
+
+	for ( size_t i=0; i<sizeof(T); ++i ) {
+		r <<= 8;
+		be <<= 1;
+		if ( be & m )
+			r |= 0xff;
+	}
+	return r;
+}
+
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) template<typename vci_param> x VciIcu<vci_param>
@@ -64,11 +79,11 @@ tmpl(/**/)::VciIcu
       
   m_segments = m_mt.getSegmentList(m_index);
   
-  r_mask = 0x00000000;
-  r_current = 0x00000000;
+  r_mask = be2mask<data_t>(0x0);
+  r_current = be2mask<data_t>(0x0);
   
   irq = new irq_struct[m_nirq];
-  for(unsigned int i=0;i<m_nirq;i++){
+  for(size_t i=0; i<m_nirq; i++){
     irq[i].val  = false;
     irq[i].time = sc_core::SC_ZERO_TIME;
     
@@ -77,10 +92,10 @@ tmpl(/**/)::VciIcu
     p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciIcu,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
     
     p_irq_target[i]->register_nb_transport_fw(this, &VciIcu::irq_nb_transport_fw, i);
-
+    
   }
 }
-
+    
 tmpl(/**/)::~VciIcu(){}
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +118,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   std::list<soclib::common::Segment>::iterator seg;	
   size_t segIndex;
 
-  uint32_t nwords = (uint32_t)(payload.get_data_length() / vci_param::nbytes);
+  data_t nwords = (data_t)(payload.get_data_length() / vci_param::nbytes);
 
   for (segIndex=0,seg = m_segments.begin(); seg != m_segments.end(); ++segIndex, ++seg ) {
     soclib::common::Segment &s = *seg;
@@ -114,10 +129,10 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     case VCI_READ_COMMAND:
       {
 #if SOCLIB_MODULE_DEBUG
-	std::cout << "[ICU] Receive a read packet with time = "  << time.value() << std::endl;
+	std::cout << "[" << name() << "] Receive a read packet with time = "  << time.value() << std::endl;
 #endif
 	int reg;
-	for (size_t i=0;i<nwords;i++){
+	for (data_t i=0;i<nwords;i++){
 	  //if (payload.contig) 
 	  reg = (int)((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress())/ vci_param::nbytes; //XXX contig = TRUE always
 	  //else
@@ -151,7 +166,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
         time = time + (nwords * UNIT_TIME);
 
 #if SOCLIB_MODULE_DEBUG
-	std::cout << "[ICU] Send Answer Time = " << time.value() << std::endl;
+	std::cout << "[" << name() <<"] Send Answer Time = " << time.value() << std::endl;
 #endif
         p_vci_target->nb_transport_bw(payload, phase, time);
         return tlm::TLM_COMPLETED;
@@ -160,24 +175,31 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     case VCI_WRITE_COMMAND:
       {
 #if SOCLIB_MODULE_DEBUG
-	std::cout << "[ICU] Receive a write packet with time = "  << time.value() << std::endl;
+	std::cout << "[" << name() <<"] Receive a write packet with time = "  << time.value() << std::endl;
 #endif
 	int reg;
-	for (size_t i=0;i<nwords;i++){
+	for (data_t i=0; i<nwords; i++){
 	  //if (payload.contig) 
 	  reg = (int)((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress())/ vci_param::nbytes; //XXX contig = TRUE always
 	  //else
 	  //reg = (int)(payload.get_address()- s.baseAddress())/ vci_param::nbytes; //always the same address
 
-	  uint32_t data = atou(payload.get_byte_enable_ptr(), (i * vci_param::nbytes));
+	  data_t data = atou(payload.get_data_ptr(), (i * vci_param::nbytes));
    
 	  switch (reg) {
 	  case ICU_MASK_SET:
 	    r_mask = r_mask | data;
+#if SOCLIB_MODULE_DEBUG
+	    printf("[%s] ICU_MASK_SET data = %08x  mask = %08x time = %d\n", name(), data, r_mask, (int)time.value());
+#endif
 	    payload.set_response_status(tlm::TLM_OK_RESPONSE);
 	    break;
 	  case ICU_MASK_CLEAR:
 	    r_mask = r_mask & ~(data);
+#if SOCLIB_MODULE_DEBUG
+	    printf("[%s] ICU_MASK_CLEAR data = %08x mask = %08x time = %d\n", name(), data, r_mask, (int)time.value());
+#endif
+	    disable_interruption(data, time);
 	    payload.set_response_status(tlm::TLM_OK_RESPONSE);
 	    break;
 	  default:
@@ -264,98 +286,89 @@ tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ TARGET SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::irq_nb_transport_fw
+tmpl(tlm::tlm_sync_enum)::irq_nb_transport_fw
 ( int                      id,         // interruption id
   tlm::tlm_generic_payload &payload,   // payload
   tlm::tlm_phase           &phase,     // phase
   sc_core::sc_time         &time)      // time
 {
-  irq[id].val  = (bool) atou(payload.get_byte_enable_ptr(), 0);
+  irq[id].val  = (bool) atou(payload.get_data_ptr(), 0);
   irq[id].time = time;
-  if(irq[id].val){
-    behavior();
+
+#if SOCLIB_MODULE_DEBUG
+  std::cout << "[" << name() << "] Receive Interruption " << id << " val = " << irq[id].val << " with time = " << irq[id].time.value() << std::endl;
+#endif
+
+  data_t mask = 0;
+  //verify if the interruption is r_mask=true
+  mask = (1 << id);
+  if((r_mask & mask) == mask){
+    send_interruption(id);
   }
   return tlm::TLM_COMPLETED;
 }
 
-tmpl(void)::behavior()
+tmpl(void)::send_interruption(int idx)
 {
-  int idx = getInterruption();
-  switch (idx) {
-  case -1:        // no interruption available
-    break;
-  default:        // idx contains the index of higher interruption
-    {      
 #if SOCLIB_MODULE_DEBUG
-      std::cout << "[" << name() << "] Send Interruption " << idx << " with time = " << irq[idx].time.value() << std::endl;
+  std::cout << "[" << name() << "] Send Interruption " << idx << " with time = " << irq[idx].time.value() << std::endl;
 #endif
-      r_current = idx;
+  r_current = idx;
       
-      // set the values in irq tlm payload
-      uint32_t nwords= 1;
-      uint32_t nbytes= nwords * vci_param::nbytes;
-      uint32_t byte_enable = 0xFFFFFFFF;
-      unsigned char data_ptr[nbytes];
-      unsigned char byte_enable_ptr[nbytes];
-      
-      utoa(byte_enable, byte_enable_ptr, 0);
-      utoa(irq[idx].val, data_ptr, 0);
-      
-      // set the values in irq tlm payload
-      m_irq_payload.set_byte_enable_ptr(byte_enable_ptr);
-      m_irq_payload.set_byte_enable_length(nbytes);
-      m_irq_payload.set_data_ptr(data_ptr);
-      m_irq_payload.set_data_length(nbytes);
-      
-      // set the tlm phase
-      m_irq_phase = tlm::BEGIN_REQ;
-      // set the local time to transaction time
-      m_irq_time = irq[idx].time;
-      // send the transaction
-      p_irq_initiator->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
-    }
-    break;
-  }
+  // set the values in irq tlm payload
+  data_t nwords= 1;
+  data_t nbytes= nwords * vci_param::nbytes;
+  data_t byte_enable = be2mask<data_t>(0xF);
+  unsigned char data_ptr[nbytes];
+  unsigned char byte_enable_ptr[nbytes];
+  
+  utoa(byte_enable, byte_enable_ptr, 0);
+  utoa(irq[idx].val, data_ptr, 0);
+  
+  // set the values in irq tlm payload
+  m_irq_payload.set_byte_enable_ptr(byte_enable_ptr);
+  m_irq_payload.set_byte_enable_length(nbytes);
+  m_irq_payload.set_data_ptr(data_ptr);
+  m_irq_payload.set_data_length(nbytes);
+  
+  // set the tlm phase
+  m_irq_phase = tlm::BEGIN_REQ;
+  // set the local time to transaction time
+  m_irq_time = irq[idx].time;
+  // send the transaction
+  p_irq_initiator->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
 }
 
-tmpl(int)::getInterruption(){
-  sc_core::sc_time min_time = MAX_TIME;
-  int min_index = -1;
-  unsigned int mask;
-
-  // starting with interruption with higher priority
-  for (unsigned int j=0;j<m_nirq;j++) {
-    // If the interruption is active
-    if (irq[j].val){
-      //verify if the interruption is r_mask=true
-      mask = 0;
-      mask = (1 << j);
-      if((r_mask & mask) == mask){
-	//verify if the interruption has the minor timer
-	if(irq[j].time.value() < min_time.value()) {
-	  min_time=irq[j].time;
-	  min_index=j;
-	}
+tmpl(void)::disable_interruption(data_t mask, sc_core::sc_time t){
+  data_t m;
+  
+  for(size_t i=0;i<m_nirq;i++){
+    m = 0;
+    //verify if the interruption is mask=true
+    m = (1 << i);
+    if((mask & m) == m){
+      if(irq[i].val == 1 && irq[i].time > t){
+#if SOCLIB_MODULE_DEBUG
+	std::cout << "[" << name() << "] Disable Interruption " << i << std::endl;
+#endif
+	irq[i].val = 0;
+	send_interruption(i);
       }
     }
-    else{
-      //All masked interruption must have a time, if there is one desactive interruption then it waits
-      return -1;
-    }
   }
-  return min_index;
 }
 
-tmpl(unsigned int)::getActiveInterruptions(const sc_core::sc_time time){
-  unsigned int r_interrupt = 0x00000000;
+tmpl(typename vci_param::data_t)::getActiveInterruptions(sc_core::sc_time time){
+  data_t r_interrupt = be2mask<data_t>(0x0);
   
   // starting with interruption with higher priority
-  for (unsigned int j=0;j<m_nirq;j++) {
+  for (size_t j=0;j<m_nirq;j++) {
     // If the interruption is active and time is greater or equals to m_fifos_time[j]
     if (irq[j].val && time.value() >= irq[j].time.value()){
       r_interrupt = r_interrupt | (1 << j);
     }
   }
+
   return r_interrupt;
 }
 

@@ -50,6 +50,8 @@ class VciIcu
 {
 private:
   
+  typedef typename vci_param::data_t data_t;
+
   /////////////////////////////////////////////////////////////////////////////////////
   // Member Variables
   /////////////////////////////////////////////////////////////////////////////////////
@@ -60,8 +62,8 @@ private:
   std::list<soclib::common::Segment>  m_segments;
 
   size_t                              m_nirq;
-  unsigned int                        r_mask;
-  unsigned int                        r_current;
+  data_t                              r_mask;
+  data_t                              r_current;
 
   //FIELDS OF AN IRQ TRANSACTION
   tlm::tlm_generic_payload            m_irq_payload;
@@ -71,9 +73,9 @@ private:
   /////////////////////////////////////////////////////////////////////////////////////
   // Local Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
-  void behavior(void);                      // initiator thread
-  int getInterruption();
-  unsigned int getActiveInterruptions(const sc_core::sc_time time);
+  void send_interruption(int idx);
+  void disable_interruption(data_t mask, sc_core::sc_time t);
+  data_t getActiveInterruptions(sc_core::sc_time time);
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_fw_transport_if  (VCI TARGET SOCKET)

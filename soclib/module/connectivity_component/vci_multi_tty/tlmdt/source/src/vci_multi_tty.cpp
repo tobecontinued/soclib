@@ -90,6 +90,9 @@ tmpl(void)::init(const std::vector<std::string> &names){
   }
 
   m_irq = new bool[m_term.size()];
+  for(size_t i=0; i<m_term.size(); i++){
+    m_irq[i] = 0;
+  }
   
   //PDES local time
   m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
