@@ -39,6 +39,7 @@
 #include "mapping_table.h"
 #include "static_assert.h"
 
+
 namespace soclib {
 namespace caba {
 
@@ -50,11 +51,11 @@ class VciCcXCacheWrapperV1
 ///////////////////////////////////////////
     : public soclib::caba::BaseModule
 {
-    typedef uint32_t    addr_t;
+    typedef sc_dt::sc_uint<40> addr_40;
     typedef uint32_t    data_t;
     typedef uint32_t    tag_t;
     typedef uint32_t    be_t;
-
+    typedef typename vci_param::fast_addr_t vci_addr_t;
     enum dcache_fsm_state_e {
         DCACHE_IDLE,
         DCACHE_WRITE_UPDT,
@@ -128,30 +129,30 @@ public:
 private:
 
     // STRUCTURAL PARAMETERS
-    const soclib::common::AddressDecodingTable<uint32_t, bool>  m_cacheability_table;
-    const soclib::common::Segment                               m_segment;
-    iss_t                                                       m_iss;
-    const uint32_t                                              m_srcid_rw;   
-    const uint32_t                                              m_srcid_c;   
+    const soclib::common::AddressDecodingTable<vci_addr_t, bool>    m_cacheability_table;
+    const soclib::common::Segment                                   m_segment;
+    iss_t               m_iss;
+    const uint32_t      m_srcid_rw;   
+    const uint32_t      m_srcid_c;   
     
-    const size_t                                                m_dcache_ways;
-    const size_t                                                m_dcache_words;
-    const size_t                                                m_dcache_yzmask;
-    const size_t                                                m_icache_ways;
-    const size_t                                                m_icache_words;
-    const size_t                                                m_icache_yzmask;
+    const size_t        m_dcache_ways;
+    const size_t        m_dcache_words;
+    const size_t        m_dcache_yzmask;
+    const size_t        m_icache_ways;
+    const size_t        m_icache_words;
+    const size_t        m_icache_yzmask;
 
     // REGISTERS
     sc_signal<int>          r_dcache_fsm;
     sc_signal<int>          r_dcache_fsm_save;
-    sc_signal<addr_t>       r_dcache_addr_save;
+    sc_signal<addr_40>      r_dcache_addr_save;
     sc_signal<data_t>       r_dcache_wdata_save;
     sc_signal<data_t>       r_dcache_rdata_save;
     sc_signal<int>          r_dcache_type_save;
     sc_signal<be_t>         r_dcache_be_save;
     sc_signal<bool>         r_dcache_cached_save;
     sc_signal<bool>         r_dcache_cleanup_req;
-    sc_signal<data_t>       r_dcache_cleanup_line;
+    sc_signal<addr_40>      r_dcache_cleanup_line;
     sc_signal<bool>         r_dcache_miss_req;
     sc_signal<bool>         r_dcache_unc_req;
     sc_signal<bool>         r_dcache_write_req;
@@ -159,11 +160,11 @@ private:
 
     sc_signal<int>          r_icache_fsm;
     sc_signal<int>          r_icache_fsm_save;
-    sc_signal<addr_t>       r_icache_addr_save;
+    sc_signal<addr_40>      r_icache_addr_save;
     sc_signal<bool>         r_icache_miss_req;
     sc_signal<bool>         r_icache_unc_req;
     sc_signal<bool>         r_icache_cleanup_req;
-    sc_signal<data_t>       r_icache_cleanup_line;
+    sc_signal<addr_40>      r_icache_cleanup_line;
     sc_signal<bool>         r_icache_inval_rsp;
 
     sc_signal<int>          r_vci_cmd_fsm;
@@ -185,7 +186,7 @@ private:
     bool                    *r_tgt_val;
 
     sc_signal<int>          r_vci_tgt_fsm;
-    sc_signal<size_t>       r_tgt_addr;
+    sc_signal<addr_40>       r_tgt_addr;
     sc_signal<size_t>       r_tgt_word;
     sc_signal<bool>         r_tgt_update;
     sc_signal<bool>         r_tgt_brdcast;
@@ -198,9 +199,9 @@ private:
     sc_signal<bool>         r_tgt_icache_rsp;
     sc_signal<bool>         r_tgt_dcache_rsp;
 
-    WriteBuffer<addr_t>     r_wbuf;
-    GenericCache<addr_t>    r_icache;
-    GenericCache<addr_t>    r_dcache;
+    WriteBuffer<addr_40>        r_wbuf;
+    GenericCache<vci_addr_t>    r_icache;
+    GenericCache<vci_addr_t>    r_dcache;
 
     // Activity counters
     uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ

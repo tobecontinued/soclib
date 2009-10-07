@@ -37,12 +37,12 @@ namespace soclib { namespace caba {
 
     public:
 
-    bool	 	valid;                  // entry valid
+    bool    valid;                  // entry valid
     bool    is_cnt;                 // directory entry is a counter
-    bool	 	dirty;                  // entry dirty
-    bool	 	lock;                   // entry locked
-    tag_t	 	tag;                    // tag of the entry
-    copy_t 	d_copies;              	// vector of copies for data
+    bool    dirty;                  // entry dirty
+    bool    lock;                   // entry locked
+    tag_t   tag;                    // tag of the entry
+    copy_t  d_copies;               // vector of copies for data
     copy_t  i_copies;               // vector of copies for instructions
     size_t  count;                  // number of copies
 
@@ -60,11 +60,11 @@ namespace soclib { namespace caba {
 
     DirectoryEntry(const DirectoryEntry &source)
     {
-      valid	   = source.valid;
+      valid    = source.valid;
       is_cnt   = source.is_cnt;
-      dirty	   = source.dirty;
-      tag	     = source.tag;
-      lock	   = source.lock;
+      dirty    = source.dirty;
+      tag      = source.tag;
+      lock     = source.lock;
       d_copies = source.d_copies;
       i_copies = source.i_copies;
       count    = source.count;
@@ -86,11 +86,11 @@ namespace soclib { namespace caba {
     /////////////////////////////////////////////////////////////////////
     void copy(const DirectoryEntry &source)
     {
-      valid	    = source.valid;
+      valid	= source.valid;
       is_cnt    = source.is_cnt;
-      dirty	    = source.dirty;
-      tag	      = source.tag;
-      lock	    = source.lock;
+      dirty	= source.dirty;
+      tag	= source.tag;
+      lock	= source.lock;
       d_copies	= source.d_copies;
       i_copies	= source.i_copies;
       count     = source.count;
@@ -112,7 +112,7 @@ namespace soclib { namespace caba {
   ////////////////////////////////////////////////////////////////////////
   class CacheDirectory {
 
-    typedef uint32_t addr_t;
+    typedef sc_dt::sc_uint<40> addr_t;
     typedef uint32_t data_t;
     typedef uint32_t tag_t;
     typedef uint32_t size_t;
@@ -136,8 +136,8 @@ namespace soclib { namespace caba {
     ////////////////////////
     CacheDirectory( size_t ways, size_t sets, size_t words, size_t address_width)	 
     {
-      m_ways 	= ways; 
-      m_sets 	= sets;
+      m_ways  = ways; 
+      m_sets  = sets;
       m_words = words;
       m_width = address_width;
 
@@ -259,7 +259,6 @@ namespace soclib { namespace caba {
           return DirectoryEntry(m_dir_tab[set][way]);
         }
       }
-
       for(size_t i=0; i<m_ways; i++){
         if(!(m_lru_tab[set][i].recent) && !(m_dir_tab[set][i].lock)){
           way=i;
@@ -279,7 +278,7 @@ namespace soclib { namespace caba {
         }
       }
       way = 0;
-      return DirectoryEntry(m_dir_tab[set][way]);
+      return DirectoryEntry(m_dir_tab[set][0]);
     } // end select()
 
     /////////////////////////////////////////////////////////////////////
@@ -300,3 +299,13 @@ namespace soclib { namespace caba {
 }} // end namespaces
 
 #endif
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+

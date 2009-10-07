@@ -11,6 +11,7 @@
 ////////////////////////////////////////////////////////////////////////
 class UpdateTabEntry {
   typedef uint32_t size_t;
+  typedef sc_dt::sc_uint<40> addr_t;
 
   public:
   bool 	valid;                // It is a valid pending transaction
@@ -20,19 +21,19 @@ class UpdateTabEntry {
   size_t 	srcid;        // The srcid of the initiator which wrote the data
   size_t 	trdid;        // The trdid of the initiator which wrote the data
   size_t 	pktid;        // The pktid of the initiator which wrote the data
-  size_t	nline;	      // The identifier of the cache line
+  addr_t	nline;	      // The identifier of the cache line
   size_t 	count;        // The number of acknowledge responses to receive
 
   UpdateTabEntry(){
-    valid	 = false;
-    update = false;
-    brdcast= false;
-    rsp    = false;
-    srcid	 = 0;
-    trdid	 = 0;
-    pktid	 = 0;
-    nline	 = 0;
-    count	 = 0;
+    valid	= false;
+    update  = false;
+    brdcast = false;
+    rsp     = false;
+    srcid	= 0;
+    trdid	= 0;
+    pktid	= 0;
+    nline	= 0;
+    count	= 0;
   }
 
   UpdateTabEntry(bool   i_valid, 
@@ -42,13 +43,13 @@ class UpdateTabEntry {
       size_t i_srcid, 
       size_t i_trdid, 
       size_t i_pktid, 
-      size_t i_nline,
+      addr_t i_nline,
       size_t i_count) 
   {
     valid		= i_valid;
-    update	= i_update;
-    brdcast = i_brdcast;
-    rsp     = i_rsp;
+    update	    = i_update;
+    brdcast     = i_brdcast;
+    rsp         = i_rsp;
     srcid		= i_srcid;
     trdid		= i_trdid;
     pktid		= i_pktid;
@@ -58,15 +59,15 @@ class UpdateTabEntry {
 
   UpdateTabEntry(const UpdateTabEntry &source)
   {
-    valid		= source.valid;
+    valid   = source.valid;
     update  = source.update;
     brdcast = source.brdcast;
     rsp     = source.rsp;
-    srcid		= source.srcid;
-    trdid		= source.trdid;
-    pktid		= source.pktid;
-    nline		= source.nline;
-    count  	= source.count;
+    srcid   = source.srcid;
+    trdid   = source.trdid;
+    pktid   = source.pktid;
+    nline   = source.nline;
+    count   = source.count;
   }
 
   ////////////////////////////////////////////////////
@@ -125,6 +126,7 @@ class UpdateTabEntry {
 class UpdateTab{
 
   typedef uint32_t size_t;
+  typedef sc_dt::sc_uint<40> addr_t;
 
   private:
   size_t size_tab;
@@ -203,7 +205,7 @@ class UpdateTab{
       const size_t srcid,
       const size_t trdid,
       const size_t pktid,
-      const size_t nline,
+      const addr_t nline,
       const size_t count,
       size_t &index)
   {
@@ -211,14 +213,14 @@ class UpdateTab{
       if( !tab[i].valid ) {
         tab[i].valid		= true;
         tab[i].update		= update;
-        tab[i].brdcast  = brdcast;
-        tab[i].rsp      = rsp;
+        tab[i].brdcast      = brdcast;
+        tab[i].rsp          = rsp;
         tab[i].srcid		= (size_t) srcid;
         tab[i].trdid		= (size_t) trdid;
         tab[i].pktid		= (size_t) pktid;
-        tab[i].nline		= (size_t) nline;
+        tab[i].nline		= (addr_t) nline;
         tab[i].count		= (size_t) count;
-        index			= i;
+        index			    = i;
         return true;
       }
     }
@@ -246,16 +248,16 @@ class UpdateTab{
   }
 
   /////////////////////////////////////////////////////////////////////
-  // The is_full() function returns the state of the table
+  // The is_full() function returns true if the table is full
   /////////////////////////////////////////////////////////////////////
   bool is_full()
   {
-    for (size_t i=0; i< size_tab;i++) {
+    for(size_t i = 0 ; i < size_tab ; i++){
       if(!tab[i].valid){
         return false;
       }
     }
-    return true;	
+    return true;
   }
 
   /////////////////////////////////////////////////////////////////////
@@ -329,7 +331,7 @@ class UpdateTab{
   // Arguments :
   // - index : the index of the entry
   /////////////////////////////////////////////////////////////////////
-  size_t nline(const size_t index)
+  addr_t nline(const size_t index)
   {
     assert(index<size_tab && "Bad Update Tab Entry");
     return tab[index].nline;
@@ -340,7 +342,7 @@ class UpdateTab{
   // Arguments :
   // - nline : the line number of the entry in the directory
   /////////////////////////////////////////////////////////////////////
-  bool search_inval(const size_t nline,size_t &index)
+  bool search_inval(const addr_t nline,size_t &index)
   {
     size_t i ;
 
@@ -360,7 +362,7 @@ class UpdateTab{
   // Arguments :
   // - nline : the line number of the entry in the directory
   /////////////////////////////////////////////////////////////////////
-  bool read_nline(const size_t nline,size_t &index) 
+  bool read_nline(const addr_t nline,size_t &index) 
   {
     size_t i ;
 
@@ -388,3 +390,13 @@ class UpdateTab{
 };
 
 #endif
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+

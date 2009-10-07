@@ -15,20 +15,21 @@
 class TransactionTabEntry {
   typedef uint32_t size_t;
   typedef uint32_t data_t;
+  typedef sc_dt::sc_uint<40> addr_t;
   typedef uint32_t be_t;
 
  public:
-  bool 	valid;     		// entry valid 
-  bool 	xram_read; 		// read request to XRAM
-  data_t  	nline;    		// index (zy) of the requested line
-  size_t 	srcid;     		// processor requesting the transaction
-  size_t 	trdid;     		// processor requesting the transaction
-  size_t 	pktid;     		// processor requesting the transaction
-  bool 	proc_read;	 	// read request from processor
-  bool 	single_word;   		// single word in case of processor read 
-  size_t 	word_index;    		// word index in case of single word read
-  std::vector<data_t> wdata;        	// write buffer (one cache line)
-  std::vector<be_t> wdata_be;    	// be for each data in the write buffer
+  bool 		      valid;     	    // entry valid 
+  bool 		      xram_read; 	    // read request to XRAM
+  addr_t   	      nline;    	    // index (zy) of the requested line
+  size_t 	      srcid;     	    // processor requesting the transaction
+  size_t 	      trdid;     	    // processor requesting the transaction
+  size_t 	      pktid;     	    // processor requesting the transaction
+  bool 		      proc_read;	    // read request from processor
+  bool 		      single_word;   	// single word in case of processor read 
+  size_t 	      word_index;    	// word index in case of single word read
+  std::vector<data_t> wdata;        // write buffer (one cache line)
+  std::vector<be_t>   wdata_be;    	// be for each data in the write buffer
 
   /////////////////////////////////////////////////////////////////////
   // The init() function initializes the entry 
@@ -60,14 +61,14 @@ class TransactionTabEntry {
   ////////////////////////////////////////////////////////////////////
   void copy(const TransactionTabEntry &source)
   {
-    valid		= source.valid;
+    valid	    = source.valid;
     xram_read 	= source.xram_read;
-    nline		= source.nline;
-    srcid		= source.srcid;
-    trdid		= source.trdid;
-    pktid		= source.pktid;
+    nline	    = source.nline;
+    srcid	    = source.srcid;
+    trdid	    = source.trdid;
+    pktid	    = source.pktid;
     proc_read 	= source.proc_read;
-    single_word 	= source.single_word;
+    single_word = source.single_word;
     word_index	= source.word_index;
     wdata_be.assign(source.wdata_be.begin(),source.wdata_be.end());
     wdata.assign(source.wdata.begin(),source.wdata.end());	
@@ -79,7 +80,7 @@ class TransactionTabEntry {
   void print(){
     std::cout << "valid       = " << valid        << std::endl;
     std::cout << "xram_read   = " << xram_read    << std::endl;
-    std::cout << "nline       = " << nline        << std::endl;
+    std::cout << "nline       = " << std::hex << nline << std::endl;
     std::cout << "srcid       = " << srcid        << std::endl;
     std::cout << "trdid       = " << trdid        << std::endl;
     std::cout << "pktid       = " << pktid        << std::endl;
@@ -107,14 +108,14 @@ class TransactionTabEntry {
     }
 
   TransactionTabEntry(const TransactionTabEntry &source){
-    valid		= source.valid;
+    valid	    = source.valid;
     xram_read	= source.xram_read;
-    nline		= source.nline;
-    srcid		= source.srcid;
-    trdid		= source.trdid;
-    pktid		= source.pktid;
+    nline	    = source.nline;
+    srcid	    = source.srcid;
+    trdid	    = source.trdid;
+    pktid	    = source.pktid;
     proc_read	= source.proc_read;
-    single_word 	= source.single_word;
+    single_word = source.single_word;
     word_index	= source.word_index;
     wdata_be.assign(source.wdata_be.begin(),source.wdata_be.end());
     wdata.assign(source.wdata.begin(),source.wdata.end());	
@@ -128,6 +129,7 @@ class TransactionTabEntry {
 class TransactionTab{
   typedef uint32_t size_t;
   typedef uint32_t data_t;
+  typedef sc_dt::sc_uint<40> addr_t;
   typedef uint32_t be_t;
 
  private:
@@ -230,50 +232,48 @@ class TransactionTab{
   {
     for(size_t i=0; i<size_tab; i++){
       if(!tab[i].valid){
-	index=i;
-	return false;	
+	    index=i;
+	    return false;	
       }
     }
     return true;
   }
 
   /////////////////////////////////////////////////////////////////////
-  // The hit_read() function checks if a read XRAM transaction exists 
+  // The hit_read() function checks if an XRAM read transaction exists 
   // for a given cache line.
   // Arguments :
   // - index : (return argument) the index of the hit entry, if there is 
   // - nline : the index (zy) of the requested line
   // The function returns true if a read request has already been sent
   //////////////////////////////////////////////////////////////////////
-  bool hit_read(const data_t nline,size_t &index)
+  bool hit_read(const addr_t nline,size_t &index)
   {
     for(size_t i=0; i<size_tab; i++){
-      if(tab[i].valid && (nline==tab[i].nline) && (tab[i].xram_read)) {
-        index=i;
-        return true;	
+      if((tab[i].valid && (nline==tab[i].nline)) && (tab[i].xram_read)) {
+	    index=i;
+	    return true;	
       }
     }
     return false;
   }
 
-  /////////////////////////////////////////////////////////////////////
-  // The hit_write() function checks if a write XRAM transaction exists 
-  // for a given cache line.
+  ///////////////////////////////////////////////////////////////////////
+  // The hit_write() function looks if an XRAM write transaction exists 
+  // for a given line.
   // Arguments :
-  // - index : (return argument) the index of the hit entry, if there is 
   // - nline : the index (zy) of the requested line
   // The function returns true if a write request has already been sent
-  //////////////////////////////////////////////////////////////////////
-  bool hit_write(const data_t nline)
+  ///////////////////////////////////////////////////////////////////////
+  bool hit_write(const addr_t nline)
   {
     for(size_t i=0; i<size_tab; i++){
       if(tab[i].valid && (nline==tab[i].nline) && !(tab[i].xram_read)) {
-        return true;	
+	    return true;	
       }
     }
     return false;
   }
-
 
   /////////////////////////////////////////////////////////////////////
   // The write_data_mask() function writes a vector of data (a line).
@@ -320,7 +320,7 @@ class TransactionTab{
   /////////////////////////////////////////////////////////////////////
   void set(const size_t index,
 	   const bool xram_read,
-	   const data_t nline,
+	   const addr_t nline,
 	   const size_t srcid,
 	   const size_t trdid,
 	   const size_t pktid,
@@ -337,18 +337,18 @@ class TransactionTab{
     assert(data.size()==tab[index].wdata.size() 
 	   && "Bad data argument in set() TransactionTab");
 
-    tab[index].valid	= true;
-    tab[index].xram_read	= xram_read;
-    tab[index].nline	= nline;
-    tab[index].srcid	= srcid;
-    tab[index].trdid	= trdid;
-    tab[index].pktid	= pktid;
-    tab[index].proc_read	= proc_read;
-    tab[index].single_word	= single_word;
-    tab[index].word_index	= word_index;
+    tab[index].valid	        = true;
+    tab[index].xram_read        = xram_read;
+    tab[index].nline	        = nline;
+    tab[index].srcid	        = srcid;
+    tab[index].trdid	        = trdid;
+    tab[index].pktid	        = pktid;
+    tab[index].proc_read	    = proc_read;
+    tab[index].single_word	    = single_word;
+    tab[index].word_index	    = word_index;
     for(size_t i=0; i<tab[index].wdata.size(); i++) {
-      tab[index].wdata_be[i] = data_be[i];
-      tab[index].wdata[i]    = data[i];
+      tab[index].wdata_be[i]    = data_be[i];
+      tab[index].wdata[i]       = data[i];
     }
   }
 
@@ -392,3 +392,13 @@ class TransactionTab{
 }; // end class TransactionTab
 
 #endif
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+

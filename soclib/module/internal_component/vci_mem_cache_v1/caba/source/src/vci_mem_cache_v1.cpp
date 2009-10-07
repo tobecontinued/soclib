@@ -1,8 +1,8 @@
 /* -*- c++ -*-
- * File 	    : vci_mem_cache_v1.cpp
- * Date 	    : 21/09/2009
+ * File 	: vci_mem_cache_v1.cpp
+ * Date 	: 30/10/2008
  * Copyright 	: UPMC / LIP6
- * Authors 	  : Alain Greiner / Eric Guthmuller
+ * Authors 	: Alain Greiner / Eric Guthmuller
  *
  * SOCLIB_LGPL_HEADER_BEGIN
  *
@@ -38,14 +38,12 @@
  */
 #include "../include/vci_mem_cache_v1.h"
 
-//#define DEBUG_VCI_MEM_CACHE 0
-//#define DEBUG_VCI_MEM_CACHE_STATES
-#define DEBUG_PERIOD 10000
-#define DEBUG_START 0
+//#define IDEBUG
+//#define DEBUG_VCI_MEM_CACHE 1
 
 namespace soclib { namespace caba {
 
-#ifdef DEBUG_VCI_MEM_CACHE_STATES
+#ifdef DEBUG_VCI_MEM_CACHE 
   const char *tgt_cmd_fsm_str[] = {
     "TGT_CMD_IDLE",
     "TGT_CMD_READ",
@@ -136,15 +134,15 @@ namespace soclib { namespace caba {
     "XRAM_RSP_INVAL",
     "XRAM_RSP_WRITE_DIRTY",
   };
-  const char *xram_cmd_fsm_str[] = {
-    "XRAM_CMD_READ_IDLE",
-    "XRAM_CMD_WRITE_IDLE",
-    "XRAM_CMD_LLSC_IDLE",
-    "XRAM_CMD_XRAM_IDLE",
-    "XRAM_CMD_READ_NLINE",
-    "XRAM_CMD_WRITE_NLINE",
-    "XRAM_CMD_LLSC_NLINE",
-    "XRAM_CMD_XRAM_DATA",
+  const char *ixr_cmd_fsm_str[] = {
+    "IXR_CMD_READ_IDLE",
+    "IXR_CMD_WRITE_IDLE",
+    "IXR_CMD_LLSC_IDLE",
+    "IXR_CMD_XRAM_IDLE",
+    "IXR_CMD_READ_NLINE",
+    "IXR_CMD_WRITE_NLINE",
+    "IXR_CMD_LLSC_NLINE",
+    "IXR_CMD_XRAM_DATA",
   };
   const char *llsc_fsm_str[] = {
     "LLSC_IDLE",
@@ -271,7 +269,7 @@ namespace soclib { namespace caba {
     r_llsc_fsm("r_llsc_fsm"),
     r_ixr_rsp_fsm("r_ixr_rsp_fsm"),
     r_xram_rsp_fsm("r_xram_rsp_fsm"),
-    r_xram_cmd_fsm("r_xram_cmd_fsm"),
+    r_ixr_cmd_fsm("r_ixr_cmd_fsm"),
     r_tgt_rsp_fsm("r_tgt_rsp_fsm"),
     r_init_cmd_fsm("r_init_cmd_fsm"),
     r_alloc_dir_fsm("r_alloc_dir_fsm"),
@@ -327,25 +325,25 @@ namespace soclib { namespace caba {
       }
 
       // Allocation for IXR_RSP FSM
-      r_ixr_rsp_to_xram_rsp_rok	    	= new sc_signal<bool>[TRANSACTION_TAB_LINES];
+      r_ixr_rsp_to_xram_rsp_rok	    = new sc_signal<bool>[TRANSACTION_TAB_LINES];
 
       // Allocation for XRAM_RSP FSM
-      r_xram_rsp_victim_data        	= new sc_signal<data_t>[nwords];
-      r_xram_rsp_to_tgt_rsp_data    	= new sc_signal<data_t>[nwords];
-      r_xram_rsp_to_tgt_rsp_val     	= new sc_signal<bool>[nwords];
-      r_xram_rsp_to_xram_cmd_data   	= new sc_signal<data_t>[nwords];
+      r_xram_rsp_victim_data        = new sc_signal<data_t>[nwords];
+      r_xram_rsp_to_tgt_rsp_data    = new sc_signal<data_t>[nwords];
+      r_xram_rsp_to_tgt_rsp_val     = new sc_signal<bool>[nwords];
+      r_xram_rsp_to_ixr_cmd_data    = new sc_signal<data_t>[nwords];
 
       // Allocation for READ FSM
-      r_read_data 			= new sc_signal<data_t>[nwords];
+      r_read_data 			        = new sc_signal<data_t>[nwords];
       r_read_to_tgt_rsp_data 		= new sc_signal<data_t>[nwords];
       r_read_to_tgt_rsp_val 		= new sc_signal<bool>[nwords];
 
       // Allocation for WRITE FSM
-      r_write_data 			= new sc_signal<data_t>[nwords];
-      r_write_be 			= new sc_signal<be_t>[nwords];
+      r_write_data 			        = new sc_signal<data_t>[nwords];
+      r_write_be 			        = new sc_signal<be_t>[nwords];
       r_write_to_init_cmd_data 		= new sc_signal<data_t>[nwords];
       r_write_to_init_cmd_we		= new sc_signal<bool>[nwords];
-      r_write_to_xram_cmd_data	= new sc_signal<data_t>[nwords];
+      r_write_to_ixr_cmd_data	    = new sc_signal<data_t>[nwords];
 
       // Simulation
 
@@ -367,20 +365,20 @@ namespace soclib { namespace caba {
   {
     std::cout << "----------------------------------" << std::dec << std::endl;
     std::cout << "MEM_CACHE " << m_srcid_ini << " / Time = " << m_cpt_cycles << std::endl
-      << "- READ RATE           = " << (double)m_cpt_read/m_cpt_cycles << std::endl
-      << "- READ MISS RATE      = " << (double)m_cpt_read_miss/m_cpt_read << std::endl
-      << "- WRITE RATE          = " << (double)m_cpt_write/m_cpt_cycles << std::endl
-      << "- WRITE MISS RATE     = " << (double)m_cpt_write_miss/m_cpt_write << std::endl
-      << "- WRITE BURST LENGTH  = " << (double)m_cpt_write_cells/m_cpt_write << std::endl
-      << "- UPDATE RATE         = " << (double)m_cpt_update/m_cpt_cycles << std::endl
-      << "- UPDATE ARITY        = " << (double)m_cpt_update_mult/m_cpt_update << std::endl
-      << "- INVAL MULTICAST RATE          = " << (double)(m_cpt_inval-m_cpt_inval_brdcast)/m_cpt_cycles << std::endl
-      << "- INVAL MULTICAST ARITY         = " << (double)m_cpt_inval_mult/(m_cpt_inval-m_cpt_inval_brdcast) << std::endl
-      << "- INVAL BROADCAST RATE          = " << (double)m_cpt_inval_brdcast/m_cpt_cycles << std::endl
-      << "- SAVE DIRTY RATE     = " << (double)m_cpt_write_dirty/m_cpt_cycles << std::endl
-      << "- CLEANUP RATE        = " << (double)m_cpt_cleanup/m_cpt_cycles << std::endl
-      << "- LL RATE             = " << (double)m_cpt_ll/m_cpt_cycles << std::endl
-      << "- SC RATE             = " << (double)m_cpt_sc/m_cpt_cycles << std::endl;
+      << "- READ RATE            = " << (double)m_cpt_read/m_cpt_cycles << std::endl
+      << "- READ MISS RATE       = " << (double)m_cpt_read_miss/m_cpt_read << std::endl
+      << "- WRITE RATE           = " << (double)m_cpt_write/m_cpt_cycles << std::endl
+      << "- WRITE MISS RATE      = " << (double)m_cpt_write_miss/m_cpt_write << std::endl
+      << "- WRITE BURST LENGTH   = " << (double)m_cpt_write_cells/m_cpt_write << std::endl
+      << "- UPDATE RATE          = " << (double)m_cpt_update/m_cpt_cycles << std::endl
+      << "- UPDATE ARITY         = " << (double)m_cpt_update_mult/m_cpt_update << std::endl
+      << "- INVAL MULTICAST RATE = " << (double)(m_cpt_inval-m_cpt_inval_brdcast)/m_cpt_cycles << std::endl
+      << "- INVAL MULTICAST ARITY= " << (double)m_cpt_inval_mult/(m_cpt_inval-m_cpt_inval_brdcast) << std::endl
+      << "- INVAL BROADCAST RATE = " << (double)m_cpt_inval_brdcast/m_cpt_cycles << std::endl
+      << "- SAVE DIRTY RATE      = " << (double)m_cpt_write_dirty/m_cpt_cycles << std::endl
+      << "- CLEANUP RATE         = " << (double)m_cpt_cleanup/m_cpt_cycles << std::endl
+      << "- LL RATE              = " << (double)m_cpt_ll/m_cpt_cycles << std::endl
+      << "- SC RATE              = " << (double)m_cpt_sc/m_cpt_cycles << std::endl;
   }
 
   /////////////////////////////////
@@ -403,7 +401,7 @@ namespace soclib { namespace caba {
     delete [] r_xram_rsp_victim_data;
     delete [] r_xram_rsp_to_tgt_rsp_data;
     delete [] r_xram_rsp_to_tgt_rsp_val;
-    delete [] r_xram_rsp_to_xram_cmd_data;
+    delete [] r_xram_rsp_to_ixr_cmd_data;
 
     delete [] r_read_data;
     delete [] r_read_to_tgt_rsp_data;
@@ -431,12 +429,12 @@ namespace soclib { namespace caba {
       r_write_fsm 	= WRITE_IDLE;
       r_llsc_fsm 	= LLSC_IDLE;
       r_cleanup_fsm 	= CLEANUP_IDLE;
-      r_alloc_dir_fsm = ALLOC_DIR_READ;
-      r_alloc_trt_fsm = ALLOC_TRT_READ;
-      r_alloc_upt_fsm = ALLOC_UPT_WRITE;
+      r_alloc_dir_fsm   = ALLOC_DIR_READ;
+      r_alloc_trt_fsm   = ALLOC_TRT_READ;
+      r_alloc_upt_fsm   = ALLOC_UPT_WRITE;
       r_ixr_rsp_fsm 	= IXR_RSP_IDLE;
       r_xram_rsp_fsm 	= XRAM_RSP_IDLE;
-      r_xram_cmd_fsm 	= XRAM_CMD_READ_IDLE;
+      r_ixr_cmd_fsm 	= IXR_CMD_READ_IDLE;
 
       //  Initializing Tables
       m_cache_directory.init();
@@ -465,49 +463,49 @@ namespace soclib { namespace caba {
       m_cmd_llsc_wdata_fifo.init();
       m_cmd_llsc_sc_fifo.init();
 
-      r_read_to_tgt_rsp_req		= false;
-      r_read_to_xram_cmd_req		= false;
+      r_read_to_tgt_rsp_req	    = false;
+      r_read_to_ixr_cmd_req	    = false;
 
-      r_write_to_tgt_rsp_req		= false;
-      r_write_to_xram_cmd_req		= false;
-      r_write_to_init_cmd_req		= false;
+      r_write_to_tgt_rsp_req	= false;
+      r_write_to_ixr_cmd_req	= false;
+      r_write_to_init_cmd_req	= false;
 
       r_cleanup_to_tgt_rsp_req	= false;
 
       r_init_rsp_to_tgt_rsp_req	= false;
 
-      r_llsc_to_tgt_rsp_req		= false;
-      r_llsc_to_xram_cmd_req		= false;
+      r_llsc_to_tgt_rsp_req	    = false;
+      r_llsc_to_ixr_cmd_req	    = false;
 
       for(size_t i=0; i<TRANSACTION_TAB_LINES ; i++){
-        r_ixr_rsp_to_xram_rsp_rok[i]= false;
+        r_ixr_rsp_to_xram_rsp_rok[i] = false;
       }
 
-      r_xram_rsp_to_tgt_rsp_req	= false;
-      r_xram_rsp_to_init_cmd_req	= false;
-      r_xram_rsp_to_xram_cmd_req	= false;
-      r_xram_rsp_trt_index		= 0;
+      r_xram_rsp_to_tgt_rsp_req	    = false;
+      r_xram_rsp_to_init_cmd_req    = false;
+      r_xram_rsp_to_ixr_cmd_req	    = false;
+      r_xram_rsp_trt_index	        = 0;
 
-      r_xram_cmd_cpt = 0;
+      r_ixr_cmd_cpt         = 0;
 
-      r_copies_limit = 3;
+      r_copies_limit        = 3;
 
       // Activity counters
-      m_cpt_cycles		= 0;
-      m_cpt_read		= 0;
-      m_cpt_read_miss		= 0;
-      m_cpt_write		= 0;
-      m_cpt_write_miss	= 0;
-      m_cpt_write_cells	= 0;
-      m_cpt_write_dirty	= 0;
-      m_cpt_update		= 0;
-      m_cpt_update_mult 	= 0;
+      m_cpt_cycles		    = 0;
+      m_cpt_read		    = 0;
+      m_cpt_read_miss	    = 0;
+      m_cpt_write		    = 0;
+      m_cpt_write_miss	    = 0;
+      m_cpt_write_cells	    = 0;
+      m_cpt_write_dirty	    = 0;
+      m_cpt_update		    = 0;
+      m_cpt_update_mult     = 0;
       m_cpt_inval_brdcast 	= 0;
-      m_cpt_inval 		= 0;
-      m_cpt_inval_mult 	= 0;
-      m_cpt_cleanup		= 0;
-      m_cpt_ll     		= 0;
-      m_cpt_sc     		= 0;
+      m_cpt_inval 		    = 0;
+      m_cpt_inval_mult 		= 0;
+      m_cpt_cleanup		    = 0;
+      m_cpt_ll     		    = 0;
+      m_cpt_sc     		    = 0;
 
       return;
     }
@@ -521,10 +519,7 @@ namespace soclib { namespace caba {
     bool    cmd_llsc_fifo_put = false;
     bool    cmd_llsc_fifo_get = false;
 
-
-#ifdef DEBUG_VCI_MEM_CACHE_STATES 
-if((m_cpt_cycles % DEBUG_PERIOD == 0)
-   && (m_cpt_cycles >= DEBUG_START)){
+#if DEBUG_VCI_MEM_CACHE 
     std::cout << "---------------------------------------------" << std::dec << std::endl;
     std::cout << "MEM_CACHE " << m_srcid_ini << " ; Time = " << m_cpt_cycles << std::endl
       << " - TGT_CMD FSM   = " << tgt_cmd_fsm_str[r_tgt_cmd_fsm] << std::endl
@@ -535,13 +530,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       << " - WRITE FSM     = " << write_fsm_str[r_write_fsm] << std::endl
       << " - LLSC FSM      = " << llsc_fsm_str[r_llsc_fsm] << std::endl
       << " - CLEANUP FSM   = " << cleanup_fsm_str[r_cleanup_fsm] << std::endl
-      << " - XRAM_CMD FSM  = " << xram_cmd_fsm_str[r_xram_cmd_fsm] << std::endl
+      << " - IXR_CMD FSM  = " << ixr_cmd_fsm_str[r_ixr_cmd_fsm] << std::endl
       << " - IXR_RSP FSM   = " << ixr_rsp_fsm_str[r_ixr_rsp_fsm] << std::endl
       << " - XRAM_RSP FSM  = " << xram_rsp_fsm_str[r_xram_rsp_fsm] << std::endl
       << " - ALLOC_DIR FSM = " << alloc_dir_fsm_str[r_alloc_dir_fsm] << std::endl
       << " - ALLOC_TRT FSM = " << alloc_trt_fsm_str[r_alloc_trt_fsm] << std::endl
       << " - ALLOC_UPT FSM = " << alloc_upt_fsm_str[r_alloc_upt_fsm] << std::endl;
-}
 #endif
 
 
@@ -573,6 +567,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             bool reached = false;
             for ( size_t index = 0 ; index < nseg && !reached ; index++) 
             {
+//              if ( m_seg[index]->contains((addr_t)(p_vci_tgt.address.read())) ) {
               if ( m_seg[index]->contains(p_vci_tgt.address.read()) ) {
                 reached = true;
                 r_index = index;
@@ -583,7 +578,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             if ( !reached ) 
             { 
               std::cout << "VCI_MEM_CACHE Out of segment access in VCI_MEM_CACHE" << std::endl;
-              std::cout << "Faulty address = " << std::hex << p_vci_tgt.address.read() << std::endl;
+              std::cout << "Faulty address = " << std::hex << (addr_t)(p_vci_tgt.address.read()) << std::endl;
               std::cout << "Faulty initiator = " << std::dec << p_vci_tgt.srcid.read() << std::endl;
               exit(0);
             } 
@@ -694,9 +689,10 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           if ( r_alloc_upt_fsm.read() == ALLOC_UPT_INIT_RSP ) { 
             size_t count = 0;
             bool valid  = m_update_tab.decrement(r_init_rsp_upt_index.read(), count);
-            
-            if(!valid)
-              m_update_tab.read(r_init_rsp_upt_index.read()).print();
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " INIT_RSP_UPT_LOCK update table : " << std::endl;
+	m_update_tab.print();
+#endif
             assert ( valid 
                 && "VCI_MEM_CACHE Invalid UPT entry in VCI response paquet received by memory cache" );
 
@@ -717,6 +713,10 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             if ( need_rsp ) r_init_rsp_fsm = INIT_RSP_END;
             else            r_init_rsp_fsm = INIT_RSP_IDLE;
             m_update_tab.clear(r_init_rsp_upt_index.read());
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " INIT_RSP_UPT_CLEAR update table : " << std::endl;
+	m_update_tab.print();
+#endif
           }
           break;
         }
@@ -766,9 +766,14 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_READ ) {
             size_t way = 0;
             DirectoryEntry entry = m_cache_directory.read(m_cmd_read_addr_fifo.read(), way);
+#ifdef IDEBUG
+	   std::cout << "In READ_DIR_LOCK printing the entry of address is : " << std::hex << m_cmd_read_addr_fifo.read() << std::endl;
+	   entry.print();
+	   std::cout << "done" << std::endl;
+#endif
 
             r_read_is_cnt   = entry.is_cnt;
-            r_read_dirty	  = entry.dirty;
+            r_read_dirty    = entry.dirty;
             r_read_tag	    = entry.tag;
             r_read_lock	    = entry.lock;
             r_read_way	    = way;
@@ -797,7 +802,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             bool is_cnt = ((r_read_count.read() >= r_copies_limit.read()) && cached_read) || r_read_is_cnt.read();
 
             // read data in the cache
-            size_t set = m_y[m_cmd_read_addr_fifo.read()];
+            size_t set = m_y[(vci_addr_t)(m_cmd_read_addr_fifo.read())];
             size_t way = r_read_way.read();
             for ( size_t i=0 ; i<m_words ; i++ ) {
               r_read_data[i] = m_cache_data[way][set][i];
@@ -808,16 +813,16 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             entry.valid	  = true;
             entry.is_cnt  = is_cnt; // when we reach the limit of copies
             entry.dirty	  = r_read_dirty.read();
-            entry.tag	    = r_read_tag.read();
+            entry.tag	  = r_read_tag.read();
             entry.lock	  = r_read_lock.read();
             if(cached_read){  // Cached read, we update the copies vector
-              if(inst_read && !is_cnt){ // Data read, vector mode
+              if(inst_read && !is_cnt){ // Instruction read, vector mode
                 assert(!(r_read_i_copies.read() & (0x1 << m_cmd_read_srcid_fifo.read())) && "MemCache Error : processor read on an already owned cache line");
                 entry.d_copies  = r_read_d_copies.read();
                 entry.i_copies  = r_read_i_copies.read() | (0x1 << m_cmd_read_srcid_fifo.read()); 
                 entry.count     = r_read_count.read() + 1;
               }
-              if(!inst_read && !is_cnt){ // Instruction read, vector mode
+              if(!inst_read && !is_cnt){ // Data read, vector mode
                 assert(!(r_read_d_copies.read() & (0x1 << m_cmd_read_srcid_fifo.read())) && "MemCache Error : processor read on an already owned cache line");
                 entry.d_copies  = r_read_d_copies.read() | (0x1 << m_cmd_read_srcid_fifo.read()); 
                 entry.i_copies  = r_read_i_copies.read();
@@ -833,6 +838,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
               entry.i_copies = r_read_i_copies.read();
               entry.count    = r_read_count.read();
             }
+#ifdef IDEBUG
+	   std::cout << "In READ_DIR_HIT printing the entry of address is : " << std::endl;
+	   entry.print();
+	   std::cout << "done" << std::endl;
+#endif
 
             m_cache_directory.write(set, way, entry);
             r_read_fsm    = READ_RSP;
@@ -846,13 +856,13 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             for ( size_t i=0 ; i<m_words ; i++ ) {
               r_read_to_tgt_rsp_data[i] = r_read_data[i];
               if ( r_read_word ) {	// single word
-                r_read_to_tgt_rsp_val[i] = (i == m_x[m_cmd_read_addr_fifo.read()]);
+                r_read_to_tgt_rsp_val[i] = (i == m_x[(vci_addr_t)(m_cmd_read_addr_fifo.read())]);
               } else {			// cache line
                 r_read_to_tgt_rsp_val[i] = true;
               }
             }
             cmd_read_fifo_get 		= true;
-            r_read_to_tgt_rsp_req		= true;
+            r_read_to_tgt_rsp_req	= true;
             r_read_to_tgt_rsp_srcid	= m_cmd_read_srcid_fifo.read();
             r_read_to_tgt_rsp_trdid	= m_cmd_read_trdid_fifo.read();
             r_read_to_tgt_rsp_pktid	= m_cmd_read_pktid_fifo.read();
@@ -864,11 +874,14 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case READ_TRT_LOCK:	// read miss : check the Transaction Table
         {
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_READ ) {
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " READ_TRT_LOCK " << std::endl;
+#endif
             size_t index = 0;
-            bool   hit_read = m_transaction_tab.hit_read(m_nline[m_cmd_read_addr_fifo.read()], index);
-            bool   hit_write = m_transaction_tab.hit_write(m_nline[m_cmd_read_addr_fifo.read()]);
+            bool   hit_read = m_transaction_tab.hit_read(m_nline[(vci_addr_t)(m_cmd_read_addr_fifo.read())], index);
+            bool   hit_write = m_transaction_tab.hit_write(m_nline[(vci_addr_t)(m_cmd_read_addr_fifo.read())]);
             bool   wok = !m_transaction_tab.full(index);
-            if( hit_read || hit_write || !wok ) {  // missing line already requested or no space
+            if( hit_read || !wok || hit_write ) {  // missing line already requested or no space
               r_read_fsm = READ_IDLE;
             } else {			   // missing line is requested to the XRAM
               r_read_trt_index = index;
@@ -883,15 +896,21 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_READ ) {
             m_transaction_tab.set(r_read_trt_index.read(),
                 true,
-                m_nline[m_cmd_read_addr_fifo.read()],
+                m_nline[(vci_addr_t)(m_cmd_read_addr_fifo.read())],
                 m_cmd_read_srcid_fifo.read(),
                 m_cmd_read_trdid_fifo.read(),
                 m_cmd_read_pktid_fifo.read(),
                 true,
                 m_cmd_read_word_fifo.read(),
-                m_x[m_cmd_read_addr_fifo.read()],
+                m_x[(vci_addr_t)(m_cmd_read_addr_fifo.read())],
                 std::vector<be_t>(m_words,0),
                 std::vector<data_t>(m_words,0));
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " READ_TRT_SET transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
+
             r_read_fsm 	 = READ_XRAM_REQ;
           }
           break;
@@ -899,11 +918,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         /////////////////////
       case READ_XRAM_REQ:
         {
-          if( !r_read_to_xram_cmd_req ) {
-            cmd_read_fifo_get		      = true;
-            r_read_to_xram_cmd_req  	= true;
-            r_read_to_xram_cmd_nline 	= m_nline[m_cmd_read_addr_fifo.read()];
-            r_read_to_xram_cmd_trdid 	= r_read_trt_index.read();
+          if( !r_read_to_ixr_cmd_req ) {
+            cmd_read_fifo_get		= true;
+            r_read_to_ixr_cmd_req  	= true;
+            r_read_to_ixr_cmd_nline 	= m_nline[(vci_addr_t)(m_cmd_read_addr_fifo.read())];
+            r_read_to_ixr_cmd_trdid 	= r_read_trt_index.read();
             r_read_fsm 			          = READ_IDLE;
           }
           break;
@@ -948,23 +967,23 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             m_cpt_write_cells++;
             // consume a word in the FIFO & write it in the local buffer 
             cmd_write_fifo_get	= true;
-            size_t index 		    = m_x[m_cmd_write_addr_fifo.read()];
-            r_write_address	    = m_cmd_write_addr_fifo.read();
+            size_t index 	    = m_x[(vci_addr_t)(m_cmd_write_addr_fifo.read())];
+            r_write_address	    = (addr_t)(m_cmd_write_addr_fifo.read());
             r_write_word_index	= index;
             r_write_word_count	= 1;
             r_write_data[index]	= m_cmd_write_data_fifo.read();
-            r_write_srcid		    = m_cmd_write_srcid_fifo.read();
-            r_write_trdid		    = m_cmd_write_trdid_fifo.read();
-            r_write_pktid		    = m_cmd_write_pktid_fifo.read();
+            r_write_srcid	    = m_cmd_write_srcid_fifo.read();
+            r_write_trdid	    = m_cmd_write_trdid_fifo.read();
+            r_write_pktid	    = m_cmd_write_pktid_fifo.read();
 
             // the be field must be set for all words 
             for ( size_t i=0 ; i<m_words ; i++ ) {
-              if ( i == index ) 	r_write_be[i] = m_cmd_write_be_fifo.read();
-              else		r_write_be[i] = 0x0;
+              if ( i == index ) r_write_be[i] = m_cmd_write_be_fifo.read();
+              else		        r_write_be[i] = 0x0;
             }
             if( !((m_cmd_write_be_fifo.read() == 0x0)||(m_cmd_write_be_fifo.read() == 0xF)) )
-              r_write_byte=true;
-            else  r_write_byte=false;
+                    r_write_byte=true;
+            else    r_write_byte=false;
 
             if( m_cmd_write_eop_fifo.read() )  r_write_fsm = WRITE_DIR_LOCK;
             else                               r_write_fsm = WRITE_NEXT;
@@ -978,14 +997,14 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             m_cpt_write_cells++;
 
             // check that the next word is in the same cache line
-            assert( (m_nline[r_write_address.read()] == m_nline[m_cmd_write_addr_fifo.read()])  
+            assert( (m_nline[(vci_addr_t)(r_write_address.read())] == m_nline[(vci_addr_t)(m_cmd_write_addr_fifo.read())])  
                 && "VCI_MEM_CACHE write error in vci_mem_cache : write burst over a line" );
             // consume a word in the FIFO & write it in the local buffer 
             cmd_write_fifo_get=true;
-            size_t index 		= r_write_word_index.read() + r_write_word_count.read();
-            r_write_be[index]   	= m_cmd_write_be_fifo.read();
-            r_write_data[index] 	= m_cmd_write_data_fifo.read();
-            r_write_word_count 	  = r_write_word_count.read() + 1;
+            size_t index 	        = r_write_word_index.read() + r_write_word_count.read();
+            r_write_be[index]       = m_cmd_write_be_fifo.read();
+            r_write_data[index]     = m_cmd_write_data_fifo.read();
+            r_write_word_count 	    = r_write_word_count.read() + 1;
             if( !((m_cmd_write_be_fifo.read() == 0x0)||(m_cmd_write_be_fifo.read() == 0xF)) )
               r_write_byte=true;
             if ( m_cmd_write_eop_fifo.read() )  r_write_fsm = WRITE_DIR_LOCK;
@@ -1001,13 +1020,13 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
 
             // copy directory entry in local buffers in case of hit
             if ( entry.valid )  {	
-              r_write_is_cnt     = entry.is_cnt;
-              r_write_lock	     = entry.lock;
-              r_write_tag        = entry.tag;
-              r_write_d_copies   = entry.d_copies;
-              r_write_i_copies   = entry.i_copies;
-              r_write_count      = entry.count;
-              r_write_way  	     = way;
+              r_write_is_cnt    = entry.is_cnt;
+              r_write_lock	    = entry.lock;
+              r_write_tag       = entry.tag;
+              r_write_d_copies  = entry.d_copies;
+              r_write_i_copies  = entry.i_copies;
+              r_write_count     = entry.count;
+              r_write_way  	    = way;
               if((entry.is_cnt && entry.count) ||
                   entry.i_copies){
                 r_write_fsm      = WRITE_DIR_HIT_READ;
@@ -1017,7 +1036,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 else  r_write_fsm  = WRITE_DIR_HIT;
               }
             } else {
-              r_write_fsm		     = WRITE_TRT_LOCK;
+              r_write_fsm = WRITE_TRT_LOCK;
               m_cpt_write_miss++;
             }
           }
@@ -1027,7 +1046,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case WRITE_DIR_HIT_READ:	// read the cache and complete the buffer (data, when be!=0xF)
         {
           // update local buffer
-          size_t set	= m_y[r_write_address.read()];
+          size_t set	= m_y[(vci_addr_t)(r_write_address.read())];
           size_t way	= r_write_way.read();
           for(size_t i=0 ; i<m_words ; i++) {
             data_t mask      = 0;
@@ -1057,13 +1076,13 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           DirectoryEntry entry;
           entry.valid	    = true;
           entry.dirty	    = true;
-          entry.tag         = r_write_tag.read();
+          entry.tag	        = r_write_tag.read();
           entry.is_cnt      = r_write_is_cnt.read();
           entry.lock	    = r_write_lock.read();
           entry.d_copies    = r_write_d_copies.read();
-          entry.i_copies    = 0;   // if we are in this state, i_copies is already null
+          entry.i_copies    = 0;
           entry.count       = r_write_count.read();
-          size_t set	    = m_y[r_write_address.read()];
+          size_t set	    = m_y[(vci_addr_t)(r_write_address.read())];
           size_t way	    = r_write_way.read();
           m_cache_directory.write(set, way, entry);
 
@@ -1076,25 +1095,25 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
 
           // compute the actual number of copies & the modified bit vector
           bool owner = false;
-          copy_t  mask    = 0x1;
-          copy_t  d_copies  = r_write_d_copies.read();
+          copy_t mask     = 0x1;
+          copy_t d_copies = r_write_d_copies.read();
           for ( size_t i=0 ; i<32 ; i++) {
             if ( i == r_write_srcid.read() ) {
               if(d_copies & mask)
-                owner = true;
-              d_copies = d_copies &  ~mask;
+                owner    = true;
+                d_copies = d_copies & ~mask;
             }
             mask = (mask << 1);
           }
-          r_write_d_copies    = d_copies;
-          size_t count_signal = r_write_count.read();
+          r_write_d_copies      = d_copies;
+          size_t count_signal   = r_write_count.read();
           if(owner){
-            count_signal      = count_signal - 1;
+            count_signal        = count_signal - 1;
           }
-          r_write_count = count_signal;
+          r_write_count         = count_signal;
 
-          if ( count_signal == 0 )   r_write_fsm = WRITE_RSP;
-          else                       r_write_fsm = WRITE_UPT_LOCK;
+          if ( count_signal == 0 ) r_write_fsm = WRITE_RSP;
+          else                     r_write_fsm = WRITE_UPT_LOCK;
           break;
         }
         /////////////////////
@@ -1107,7 +1126,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             size_t        srcid      = r_write_srcid.read();
             size_t        trdid      = r_write_trdid.read();
             size_t        pktid      = r_write_pktid.read();
-            size_t	      nline      = m_nline[r_write_address.read()];
+            addr_t	  nline      = m_nline[(vci_addr_t)(r_write_address.read())];
             size_t        nb_copies  = r_write_count.read();
 
             wok =m_update_tab.set(true,	// it's an update transaction
@@ -1119,6 +1138,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 nline,
                 nb_copies,
                 index);
+#ifdef IDEBUG
+            if(wok){
+	std::cout << sc_time_stamp() << " " << name() << " WRITE_UPT_LOCK update table : " << std::endl;
+	m_update_tab.print();
+            }
+#endif
             r_write_upt_index = index;
             //  releases the lock protecting Update Table if no entry...
             if ( wok ) r_write_fsm = WRITE_UPDATE;
@@ -1129,7 +1154,6 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         ////////////////////
       case WRITE_WAIT_UPT:	// release the lock protecting UPT
         {
-
           r_write_fsm = WRITE_UPT_LOCK;
           break;
         }
@@ -1141,7 +1165,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             r_write_to_init_cmd_req      = true;
             r_write_to_init_cmd_brdcast  = false;
             r_write_to_init_cmd_trdid    = r_write_upt_index.read();
-            r_write_to_init_cmd_nline    = m_nline[r_write_address.read()];
+            r_write_to_init_cmd_nline    = m_nline[(vci_addr_t)(r_write_address.read())];
             r_write_to_init_cmd_index    = r_write_word_index.read();
             r_write_to_init_cmd_count    = r_write_word_count.read();
             r_write_to_init_cmd_d_copies = r_write_d_copies.read();
@@ -1168,11 +1192,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case WRITE_RSP:		// send a request to TGT_RSP FSM to acknowledge the write
         {
           if ( !r_write_to_tgt_rsp_req.read() ) {
-            r_write_to_tgt_rsp_req	= true;
+            r_write_to_tgt_rsp_req	    = true;
             r_write_to_tgt_rsp_srcid	= r_write_srcid.read();
             r_write_to_tgt_rsp_trdid	= r_write_trdid.read();
             r_write_to_tgt_rsp_pktid	= r_write_pktid.read();
-            r_write_fsm 		= WRITE_IDLE;
+            r_write_fsm 		        = WRITE_IDLE;
           }
           break;
         }
@@ -1180,12 +1204,15 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case WRITE_TRT_LOCK:	// Miss : check Transaction Table
         {
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE ) {
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " READ_TRT_LOCK " << std::endl;
+#endif
             size_t hit_index = 0;
             size_t wok_index = 0;
-            bool hit_read = m_transaction_tab.hit_read(m_nline[r_write_address.read()],hit_index);
-            bool hit_write = m_transaction_tab.hit_write(m_nline[r_write_address.read()]);
+            bool hit_read  = m_transaction_tab.hit_read(m_nline[(vci_addr_t)(r_write_address.read())],hit_index);
+            bool hit_write = m_transaction_tab.hit_write(m_nline[(vci_addr_t)(r_write_address.read())]);
             bool wok = !m_transaction_tab.full(wok_index);
-            if ( hit_read ) {		// register the modified data in TRT 
+            if ( hit_read ) {	// register the modified data in TRT 
               r_write_trt_index = hit_index;
               r_write_fsm       = WRITE_TRT_DATA;
             } else if ( wok && !hit_write ) {	// set a new entry in TRT
@@ -1219,7 +1246,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             }
             m_transaction_tab.set(r_write_trt_index.read(),
                 true,				// read request to XRAM
-                m_nline[r_write_address.read()],
+                m_nline[(vci_addr_t)(r_write_address.read())],
                 r_write_srcid.read(),
                 r_write_trdid.read(),
                 r_write_pktid.read(),
@@ -1228,6 +1255,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 0,			        	// word index
                 be_vector,
                 data_vector);
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " WRITE_TRT_SET transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
 
             r_write_fsm = WRITE_XRAM_REQ;
           }
@@ -1249,19 +1281,25 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 be_vector,
                 data_vector);
             r_write_fsm = WRITE_RSP;
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " WRITE_TRT_DATA transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
+
           }
           break;
         }
         ////////////////////
-      case WRITE_XRAM_REQ:	// send a request to XRAM_CMD FSM
+      case WRITE_XRAM_REQ:	// send a request to IXR_CMD FSM
         {  
 
-          if ( !r_write_to_xram_cmd_req ) {
-            r_write_to_xram_cmd_req     = true;
-            r_write_to_xram_cmd_write   = false;
-            r_write_to_xram_cmd_nline   = m_nline[r_write_address.read()];
-            r_write_to_xram_cmd_trdid   = r_write_trt_index.read();
-            r_write_fsm                 = WRITE_RSP;
+          if ( !r_write_to_ixr_cmd_req ) {
+            r_write_to_ixr_cmd_req   = true;
+            r_write_to_ixr_cmd_write = false;
+            r_write_to_ixr_cmd_nline = m_nline[(vci_addr_t)(r_write_address.read())];
+            r_write_to_ixr_cmd_trdid = r_write_trt_index.read();
+            r_write_fsm              = WRITE_RSP;
           }
           break;
         }
@@ -1285,23 +1323,29 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case WRITE_INVAL_LOCK:
         {
           if ( r_alloc_upt_fsm.read() == ALLOC_UPT_WRITE ) {
-            bool          wok        = false;
-            size_t        index      = 0;
-            size_t        srcid      = r_write_srcid.read();
-            size_t        trdid      = r_write_trdid.read();
-            size_t        pktid      = r_write_pktid.read();
-            size_t	      nline      = m_nline[r_write_address.read()];
-            size_t        nb_copies  = r_write_count.read();
+            bool        wok       = false;
+            size_t      index     = 0;
+            size_t      srcid     = r_write_srcid.read();
+            size_t      trdid     = r_write_trdid.read();
+            size_t      pktid     = r_write_pktid.read();
+            addr_t	    nline     = m_nline[(vci_addr_t)(r_write_address.read())];
+            size_t      nb_copies = r_write_count.read();
 
             wok =m_update_tab.set(false,	// it's an inval transaction
-                true,                     // it's a broadcast
-                true,                     // it needs a response
+                true,                       // it's a broadcast
+                true,                       // it needs a response
                 srcid,
                 trdid,
                 pktid,
                 nline,
                 nb_copies,
                 index);
+#ifdef IDEBUG
+            if(wok){
+	std::cout << sc_time_stamp() << " " << name() << " WRITE_INVAL_LOCK update table : " << std::endl;
+	m_update_tab.print();
+            }
+#endif
             r_write_upt_index = index;
             //  releases the lock protecting Update Table if no entry...
             if ( wok ) r_write_fsm = WRITE_DIR_INVAL;
@@ -1327,7 +1371,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             }
             m_transaction_tab.set(r_write_trt_index.read(),
                 false,				// write request to XRAM
-                m_nline[r_write_address.read()],
+                m_nline[(vci_addr_t)(r_write_address.read())],
                 0,
                 0,
                 0,
@@ -1336,17 +1380,23 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 0,			        	// word index
                 be_vector,
                 data_vector);
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " WRITE_DIR_INVAL transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
+
             // invalidate directory entry
             DirectoryEntry entry;
             entry.valid	   = false;
             entry.dirty	   = false;
-            entry.tag	     = 0;
+            entry.tag	   = 0;
             entry.is_cnt   = false;
             entry.lock	   = false;
             entry.d_copies = 0;
             entry.i_copies = 0;
             entry.count    = 0;
-            size_t set	   = m_y[r_write_address.read()];
+            size_t set	   = m_y[(vci_addr_t)(r_write_address.read())];
             size_t way	   = r_write_way.read();
             m_cache_directory.write(set, way, entry);
 
@@ -1364,7 +1414,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             r_write_to_init_cmd_req      = true;
             r_write_to_init_cmd_brdcast  = true;
             r_write_to_init_cmd_trdid    = r_write_upt_index.read();
-            r_write_to_init_cmd_nline    = m_nline[r_write_address.read()];
+            r_write_to_init_cmd_nline    = m_nline[(vci_addr_t)(r_write_address.read())];
             r_write_to_init_cmd_index    = 0;
             r_write_to_init_cmd_count    = 0;
             r_write_to_init_cmd_d_copies = 0;
@@ -1383,13 +1433,13 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         ////////////////////
       case WRITE_XRAM_SEND:
         {
-          if ( !r_write_to_xram_cmd_req ) {
-            r_write_to_xram_cmd_req     = true;
-            r_write_to_xram_cmd_write   = true;
-            r_write_to_xram_cmd_nline   = m_nline[r_write_address.read()];
-            r_write_to_xram_cmd_trdid   = r_write_trt_index.read();
+          if ( !r_write_to_ixr_cmd_req ) {
+            r_write_to_ixr_cmd_req     = true;
+            r_write_to_ixr_cmd_write   = true;
+            r_write_to_ixr_cmd_nline   = m_nline[(vci_addr_t)(r_write_address.read())];
+            r_write_to_ixr_cmd_trdid   = r_write_trt_index.read();
             for(size_t i=0; i<m_words; i++){
-              r_write_to_xram_cmd_data[i] = r_write_data[i];
+              r_write_to_ixr_cmd_data[i] = r_write_data[i];
             }
             r_write_fsm                 = WRITE_IDLE;
           }
@@ -1398,9 +1448,9 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
     } // end switch r_write_fsm
 
     ///////////////////////////////////////////////////////////////////////
-    //		XRAM_CMD FSM
+    //		IXR_CMD FSM
     ///////////////////////////////////////////////////////////////////////
-    // The XRAM_CMD fsm controls the command packets to the XRAM :
+    // The IXR_CMD fsm controls the command packets to the XRAM :
     // - It sends a single cell VCI read to the XRAM in case of MISS request
     // posted by the READ, WRITE or LLSC FSMs : the TRDID field contains 
     // the Transaction Tab index.
@@ -1413,80 +1463,80 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
     // with a round-robin priority.
     ////////////////////////////////////////////////////////////////////////
 
-    switch ( r_xram_cmd_fsm.read() ) {
+    switch ( r_ixr_cmd_fsm.read() ) {
       //////////////////////// 
-      case XRAM_CMD_READ_IDLE:
-        if      ( r_write_to_xram_cmd_req )     r_xram_cmd_fsm = XRAM_CMD_WRITE_NLINE;
-        else if ( r_llsc_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_LLSC_NLINE;
-        else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;
-        else if ( r_read_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_READ_NLINE;
+      case IXR_CMD_READ_IDLE:
+        if      ( r_write_to_ixr_cmd_req )     r_ixr_cmd_fsm = IXR_CMD_WRITE_NLINE;
+        else if ( r_llsc_to_ixr_cmd_req  )     r_ixr_cmd_fsm = IXR_CMD_LLSC_NLINE;
+        else if ( r_xram_rsp_to_ixr_cmd_req  ) r_ixr_cmd_fsm = IXR_CMD_XRAM_DATA;
+        else if ( r_read_to_ixr_cmd_req  )     r_ixr_cmd_fsm = IXR_CMD_READ_NLINE;
         break;
         //////////////////////// 
-      case XRAM_CMD_WRITE_IDLE:
-        if      ( r_llsc_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_LLSC_NLINE;
-        else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;
-        else if ( r_read_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_READ_NLINE;
-        else if ( r_write_to_xram_cmd_req )     r_xram_cmd_fsm = XRAM_CMD_WRITE_NLINE;
+      case IXR_CMD_WRITE_IDLE:
+        if      ( r_llsc_to_ixr_cmd_req  )     r_ixr_cmd_fsm = IXR_CMD_LLSC_NLINE;
+        else if ( r_xram_rsp_to_ixr_cmd_req  ) r_ixr_cmd_fsm = IXR_CMD_XRAM_DATA;
+        else if ( r_read_to_ixr_cmd_req  )     r_ixr_cmd_fsm = IXR_CMD_READ_NLINE;
+        else if ( r_write_to_ixr_cmd_req )     r_ixr_cmd_fsm = IXR_CMD_WRITE_NLINE;
         break;
         //////////////////////// 
-      case XRAM_CMD_LLSC_IDLE:
-        if      ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;
-        else if ( r_read_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_READ_NLINE;
-        else if ( r_write_to_xram_cmd_req )     r_xram_cmd_fsm = XRAM_CMD_WRITE_NLINE;
-        else if ( r_llsc_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_LLSC_NLINE;
+      case IXR_CMD_LLSC_IDLE:
+        if      ( r_xram_rsp_to_ixr_cmd_req  ) r_ixr_cmd_fsm = IXR_CMD_XRAM_DATA;
+        else if ( r_read_to_ixr_cmd_req  )     r_ixr_cmd_fsm = IXR_CMD_READ_NLINE;
+        else if ( r_write_to_ixr_cmd_req )     r_ixr_cmd_fsm = IXR_CMD_WRITE_NLINE;
+        else if ( r_llsc_to_ixr_cmd_req  )     r_ixr_cmd_fsm = IXR_CMD_LLSC_NLINE;
         break;
         //////////////////////// 
-      case XRAM_CMD_XRAM_IDLE:
-        if      ( r_read_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_READ_NLINE;
-        else if ( r_write_to_xram_cmd_req )     r_xram_cmd_fsm = XRAM_CMD_WRITE_NLINE;
-        else if ( r_llsc_to_xram_cmd_req  )     r_xram_cmd_fsm = XRAM_CMD_LLSC_NLINE;
-        else if ( r_xram_rsp_to_xram_cmd_req  ) r_xram_cmd_fsm = XRAM_CMD_XRAM_DATA;
+      case IXR_CMD_XRAM_IDLE:
+        if      ( r_read_to_ixr_cmd_req  )     r_ixr_cmd_fsm = IXR_CMD_READ_NLINE;
+        else if ( r_write_to_ixr_cmd_req )     r_ixr_cmd_fsm = IXR_CMD_WRITE_NLINE;
+        else if ( r_llsc_to_ixr_cmd_req  )     r_ixr_cmd_fsm = IXR_CMD_LLSC_NLINE;
+        else if ( r_xram_rsp_to_ixr_cmd_req  ) r_ixr_cmd_fsm = IXR_CMD_XRAM_DATA;
         break;
         /////////////////////////
-      case XRAM_CMD_READ_NLINE:
+      case IXR_CMD_READ_NLINE:
         if ( p_vci_ixr.cmdack ) {
-          r_xram_cmd_fsm = XRAM_CMD_READ_IDLE;		
-          r_read_to_xram_cmd_req = false;
+          r_ixr_cmd_fsm = IXR_CMD_READ_IDLE;		
+          r_read_to_ixr_cmd_req = false;
         }
         break;
         //////////////////////////
-      case XRAM_CMD_WRITE_NLINE:
+      case IXR_CMD_WRITE_NLINE:
         if ( p_vci_ixr.cmdack ) {
-          if( r_write_to_xram_cmd_write.read()){
-            if ( r_xram_cmd_cpt.read() == (m_words - 1) ) {
-              r_xram_cmd_cpt = 0;
-              r_xram_cmd_fsm = XRAM_CMD_WRITE_IDLE;
-              r_write_to_xram_cmd_req = false;
+          if( r_write_to_ixr_cmd_write.read()){
+            if ( r_ixr_cmd_cpt.read() == (m_words - 1) ) {
+              r_ixr_cmd_cpt = 0;
+              r_ixr_cmd_fsm = IXR_CMD_WRITE_IDLE;
+              r_write_to_ixr_cmd_req = false;
             } else {
-              r_xram_cmd_cpt = r_xram_cmd_cpt + 1;
+              r_ixr_cmd_cpt = r_ixr_cmd_cpt + 1;
             }
           } else {
-            r_xram_cmd_fsm = XRAM_CMD_WRITE_IDLE;		
-            r_write_to_xram_cmd_req = false;
+            r_ixr_cmd_fsm = IXR_CMD_WRITE_IDLE;		
+            r_write_to_ixr_cmd_req = false;
           }
         }
         break;
         /////////////////////////
-      case XRAM_CMD_LLSC_NLINE:
+      case IXR_CMD_LLSC_NLINE:
         if ( p_vci_ixr.cmdack ) {
-          r_xram_cmd_fsm = XRAM_CMD_LLSC_IDLE;		
-          r_llsc_to_xram_cmd_req = false;
+          r_ixr_cmd_fsm = IXR_CMD_LLSC_IDLE;		
+          r_llsc_to_ixr_cmd_req = false;
         }
         break;
         ////////////////////////
-      case XRAM_CMD_XRAM_DATA:
+      case IXR_CMD_XRAM_DATA:
         if ( p_vci_ixr.cmdack ) {
-          if ( r_xram_cmd_cpt.read() == (m_words - 1) ) {
-            r_xram_cmd_cpt = 0;
-            r_xram_cmd_fsm = XRAM_CMD_XRAM_IDLE;
-            r_xram_rsp_to_xram_cmd_req = false;
+          if ( r_ixr_cmd_cpt.read() == (m_words - 1) ) {
+            r_ixr_cmd_cpt = 0;
+            r_ixr_cmd_fsm = IXR_CMD_XRAM_IDLE;
+            r_xram_rsp_to_ixr_cmd_req = false;
           } else {
-            r_xram_cmd_cpt = r_xram_cmd_cpt + 1;
+            r_ixr_cmd_cpt = r_ixr_cmd_cpt + 1;
           }
         }
         break;
 
-    } // end switch r_xram_cmd_fsm
+    } // end switch r_ixr_cmd_fsm
 
     ////////////////////////////////////////////////////////////////////////////
     //                IXR_RSP FSM
@@ -1530,6 +1580,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           if ( r_alloc_trt_fsm.read() == ALLOC_TRT_IXR_RSP ) {
             m_transaction_tab.erase(r_ixr_rsp_trt_index.read());
             r_ixr_rsp_fsm = IXR_RSP_IDLE;
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " IXR_RSP_TRT_ERASE transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
+
           }
           break;
         }
@@ -1545,6 +1601,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             m_transaction_tab.write_rsp(index, r_ixr_rsp_cpt.read(), data);
             r_ixr_rsp_cpt = r_ixr_rsp_cpt.read() + 1;
             if ( eop ) {
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " IXR_RSP_TRT_READ transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
+
               r_ixr_rsp_to_xram_rsp_rok[r_ixr_rsp_trt_index.read()]=true;
               r_ixr_rsp_fsm = IXR_RSP_IDLE;
             }
@@ -1569,7 +1631,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
     // FSM to return the cache line to the registered processor.
     // If there is no empty slot, a victim line is evicted, and
     // invalidate requests are sent to the L1 caches containing copies.
-    // If this line is dirty, the XRAM_RSP FSM send a request to the XRAM_CMD 
+    // If this line is dirty, the XRAM_RSP FSM send a request to the IXR_CMD 
     // FSM to save the victim line to the XRAM, and register the write transaction
     // in the TRT (using the entry previously used by the read transaction).
     ///////////////////////////////////////////////////////////////////////////////
@@ -1588,6 +1650,9 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
               r_ixr_rsp_to_xram_rsp_rok[index]=false;
               r_xram_rsp_fsm           = XRAM_RSP_DIR_LOCK;
               break;
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_IDLE state" << std::endl;
+#endif
             }
           }
           break;  
@@ -1597,6 +1662,9 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_XRAM_RSP ) {
             r_xram_rsp_fsm           = XRAM_RSP_TRT_COPY;
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_DIR_LOCK state" << std::endl;
+#endif
           }
           break;
         }
@@ -1611,12 +1679,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
 
             // selects & extracts a victim line from cache
             size_t way = 0;
-            size_t set = m_y[trt_entry.nline * m_words * 4];
+            size_t set = m_y[(vci_addr_t)(trt_entry.nline * m_words * 4)];
             DirectoryEntry victim(m_cache_directory.select(set, way));
 
             for (size_t i=0 ; i<m_words ; i++) r_xram_rsp_victim_data[i] = m_cache_data[way][set][i];
 
-            bool inval = victim.count && victim.valid ;
+            bool inval = (victim.count && victim.valid) ;
 
             r_xram_rsp_victim_d_copies = victim.d_copies;
             r_xram_rsp_victim_i_copies = victim.i_copies;
@@ -1629,6 +1697,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             r_xram_rsp_victim_dirty    = victim.dirty;
 
             r_xram_rsp_fsm = XRAM_RSP_INVAL_LOCK;
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_TRT_COPY state" << std::endl;
+	std::cout << "Victim way : " << std::hex << way << " set " << std::hex << set << std::endl;
+	victim.print();
+#endif
           }
           break;
         }
@@ -1636,23 +1709,28 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case XRAM_RSP_INVAL_LOCK:
         {
           if ( r_alloc_upt_fsm == ALLOC_UPT_XRAM_RSP ) {
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_INVAL_LOCK state" << std::endl;
+#endif
             size_t index;
             if(m_update_tab.search_inval(r_xram_rsp_trt_buf.nline, index)){
               r_xram_rsp_fsm = XRAM_RSP_INVAL_WAIT;
-#ifdef DEBUG_VCI_MEM_CACHE
-              std::cout << "XRAM_RSP_INVAL_LOCK : invalidation at the same line , time = " << std::dec << m_cpt_cycles << std::endl;
-              m_update_tab.print(); 
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_INVAL_LOCK state to XRAM_RSP_INVAL_WAIT state" << std::endl;
 #endif
+
             }
-            else if(m_update_tab.is_full() && r_xram_rsp_victim_inval.read()){
-              r_xram_rsp_fsm = XRAM_RSP_INVAL_WAIT;
-#ifdef DEBUG_VCI_MEM_CACHE
-              std::cout << "XRAM_RSP_INVAL_LOCK : invalidate but no entry free , time = " << std::dec << m_cpt_cycles << std::endl;
-              m_update_tab.print(); 
+	    else if(m_update_tab.is_full() && r_xram_rsp_victim_inval.read()){
+	      r_xram_rsp_fsm = XRAM_RSP_INVAL_WAIT;
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_INVAL_LOCK state to XRAM_RSP_INVAL_WAIT state" << std::endl;
 #endif
-            }
-            else{
+	    }
+            else {
               r_xram_rsp_fsm = XRAM_RSP_DIR_UPDT;
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_INVAL_LOCK state to XRAM_RSP_DIR_UPDT state" << std::endl;
+#endif
             }
           }
           break;
@@ -1662,6 +1740,9 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         {
           r_xram_rsp_fsm = XRAM_RSP_DIR_LOCK;
           break;
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_INVAL_WAIT state" << std::endl;
+#endif
         }
         ///////////////////////
       case XRAM_RSP_DIR_UPDT:		// updates the cache (both data & directory)
@@ -1684,7 +1765,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           // update directory
           DirectoryEntry entry;
           entry.valid	  = true;
-          entry.is_cnt  = false;
+          entry.is_cnt    = false;
           entry.lock	  = false;
           entry.dirty	  = dirty;
           entry.tag	    = r_xram_rsp_trt_buf.nline / m_sets;
@@ -1704,6 +1785,17 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             entry.count    = 0;
           }
           m_cache_directory.write(set, way, entry);
+#ifdef IDEBUG
+	   std::cout << "printing the entry : " << std::endl;
+	   entry.print();
+	   std::cout << "done" << std::endl;
+#endif
+
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " XRAM_RSP_DIR_UPDT transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
 
           if(r_xram_rsp_victim_inval.read()){
             bool    brdcast = r_xram_rsp_victim_is_cnt.read();
@@ -1719,17 +1811,21 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 r_xram_rsp_victim_nline.read(),
                 count_copies,
                 index);
-#ifdef DEBUG_VCI_MEM_CACHE
-            std::cout << "XRAM_RSP : record invalidation, time = " << std::dec << m_cpt_cycles << std::endl;
+
+#ifdef IDEBUG
+            std::cout << "xram_rsp : record invalidation, time = " << std::dec << m_cpt_cycles << std::endl;
             m_update_tab.print();
 #endif
             r_xram_rsp_upt_index = index;
             if(!wok) {
-              assert(false && "MEM_CACHE ERROR : XRAM_RSP_DIR_UPT, an update_tab entry was free but write unsuccessful");
+              assert(false && "mem_cache error : xram_rsp_dir_upt, an update_tab entry was free but write unsuccessful");
             }
           }
           // If the victim is not dirty, we erase the entry in the TRT
-          if      (!r_xram_rsp_victim_dirty.read()) m_transaction_tab.erase(r_xram_rsp_trt_index.read());
+          if      (!r_xram_rsp_victim_dirty.read()){
+	  m_transaction_tab.erase(r_xram_rsp_trt_index.read());
+
+	  }
           // Next state
           if      ( r_xram_rsp_victim_dirty.read())       r_xram_rsp_fsm = XRAM_RSP_TRT_DIRTY;
           else if ( r_xram_rsp_trt_buf.proc_read  )       r_xram_rsp_fsm = XRAM_RSP_DIR_RSP;
@@ -1752,6 +1848,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 0,
                 std::vector<be_t>(m_words,0),
                 std::vector<data_t>(m_words,0) );
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " XRAM_RSP_TRT_DIRTY transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
+
             if      ( r_xram_rsp_trt_buf.proc_read  )       r_xram_rsp_fsm = XRAM_RSP_DIR_RSP;
             else if ( r_xram_rsp_victim_inval.read())       r_xram_rsp_fsm = XRAM_RSP_INVAL;
             else                                            r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY;
@@ -1778,6 +1880,10 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             if      ( r_xram_rsp_victim_inval ) r_xram_rsp_fsm = XRAM_RSP_INVAL;
             else if ( r_xram_rsp_victim_dirty ) r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY; 
             else                                r_xram_rsp_fsm = XRAM_RSP_IDLE;
+
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_DIR_RSP state" << std::endl;
+#endif
           }
           break;
         }
@@ -1791,23 +1897,29 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             r_xram_rsp_to_init_cmd_trdid    = r_xram_rsp_upt_index;
             r_xram_rsp_to_init_cmd_d_copies = r_xram_rsp_victim_d_copies ;
             r_xram_rsp_to_init_cmd_i_copies = r_xram_rsp_victim_i_copies ;
-            if ( r_xram_rsp_victim_dirty ) r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY;
-            else		                       r_xram_rsp_fsm = XRAM_RSP_IDLE;
+            if ( r_xram_rsp_victim_dirty )  r_xram_rsp_fsm = XRAM_RSP_WRITE_DIRTY;
+            else		                    r_xram_rsp_fsm = XRAM_RSP_IDLE;
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_INVAL state" << std::endl;
+#endif
           }
           break;
         }
         //////////////////////////
-      case XRAM_RSP_WRITE_DIRTY:	// send a write request to XRAM_CMD FSM
+      case XRAM_RSP_WRITE_DIRTY:	// send a write request to IXR_CMD FSM
         {
-          if ( !r_xram_rsp_to_xram_cmd_req ) {
-            r_xram_rsp_to_xram_cmd_req = true;
-            r_xram_rsp_to_xram_cmd_nline = r_xram_rsp_victim_nline.read();
-            r_xram_rsp_to_xram_cmd_trdid = r_xram_rsp_trt_index.read();
+          if ( !r_xram_rsp_to_ixr_cmd_req ) {
+            r_xram_rsp_to_ixr_cmd_req = true;
+            r_xram_rsp_to_ixr_cmd_nline = r_xram_rsp_victim_nline.read();
+            r_xram_rsp_to_ixr_cmd_trdid = r_xram_rsp_trt_index.read();
             for(size_t i=0; i<m_words ; i++) {
-              r_xram_rsp_to_xram_cmd_data[i] = r_xram_rsp_victim_data[i];
+              r_xram_rsp_to_ixr_cmd_data[i] = r_xram_rsp_victim_data[i];
             }
             m_cpt_write_dirty++;
             r_xram_rsp_fsm = XRAM_RSP_IDLE;
+#ifdef IDEBUG
+	std::cout << "XRAM_RSP FSM in XRAM_RSP_WRITE_DIRTY state" << std::endl;
+#endif
           }
           break;
         }
@@ -1819,12 +1931,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
     // The CLEANUP FSM handles the cleanup request from L1 caches.
     // It accesses the cache directory to update the list of copies.
     //
-    // !!!!!!!! The actual cleanup of the cache directory has to be done...
-    //
     ////////////////////////////////////////////////////////////////////////////////////
-    /*******************/
-    /* NEW CLEANUP FSM */
-    /*******************/
     switch ( r_cleanup_fsm.read() ) {
 
       ///////////////////
@@ -1836,17 +1943,17 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                 "VCI_MEM_CACHE error in VCI_MEM_CACHE in the CLEANUP network : The received SRCID is larger than 31");
             bool reached = false;
             for ( size_t index = 0 ; index < ncseg && !reached ; index++ ){
-              if ( m_cseg[index]->contains(p_vci_tgt_cleanup.address.read()) ){
+              if ( m_cseg[index]->contains((addr_t)(p_vci_tgt_cleanup.address.read())) ){
                 reached = true;
               }
             }
             if ( (p_vci_tgt_cleanup.cmd.read() == vci_param::CMD_WRITE) &&
-                (p_vci_tgt_cleanup.address.read() != BROADCAST_ADDR) &&
+                (((addr_t)(p_vci_tgt_cleanup.address.read())) != BROADCAST_ADDR) &&
                 reached) {
 
               m_cpt_cleanup++;
 
-              r_cleanup_nline      = m_nline[p_vci_tgt_cleanup.address.read()] ;
+              r_cleanup_nline      = (addr_t)(m_nline[(vci_addr_t)(p_vci_tgt_cleanup.address.read())]) ;
               r_cleanup_srcid      = p_vci_tgt_cleanup.srcid.read();
               r_cleanup_trdid      = p_vci_tgt_cleanup.trdid.read();
               r_cleanup_pktid      = p_vci_tgt_cleanup.pktid.read();
@@ -1863,14 +1970,18 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
 
             // Read the directory
             size_t way = 0;
-            addr_t cleanup_address = r_cleanup_nline.read() * m_words * 4;
-            DirectoryEntry entry = m_cache_directory.read( cleanup_address , way);
-
+	   addr_t cleanup_address = r_cleanup_nline.read() * m_words * 4;
+           DirectoryEntry entry = m_cache_directory.read(cleanup_address , way);
+#ifdef IDEBUG
+	   std::cout << "In CLEANUP_DIR_LOCK printing the entry of address is : " << std::hex << cleanup_address << std::endl;
+	   entry.print();
+	   std::cout << "done" << std::endl;
+#endif
             r_cleanup_is_cnt    = entry.is_cnt;
             r_cleanup_dirty	    = entry.dirty;
-            r_cleanup_tag	      = entry.tag;
+            r_cleanup_tag	    = entry.tag;
             r_cleanup_lock	    = entry.lock;
-            r_cleanup_way	      = way;
+            r_cleanup_way	    = way;
             r_cleanup_d_copies  = entry.d_copies;
             r_cleanup_i_copies  = entry.i_copies;
             r_cleanup_count     = entry.count;
@@ -1878,13 +1989,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             // In case of hit, the copy must be cleaned in the copies bit-vector
             if( entry.valid )  { 
               r_cleanup_fsm = CLEANUP_DIR_WRITE;
-#ifdef DEBUG_VCI_MEM_CACHE
-              std::cout << "MEM_CACHE cleanup hit, addr = " << std::hex << (r_cleanup_nline.read()*4*m_words) << std::endl;
-#endif
             } else {
-#ifdef DEBUG_VCI_MEM_CACHE
-              std::cout << "MEM_CACHE cleanup miss, addr = " << std::hex << (r_cleanup_nline.read()*4*m_words) << std::endl;
-#endif
               r_cleanup_fsm = CLEANUP_UPT_LOCK;
             }
           }
@@ -1895,17 +2000,17 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         {
           size_t way      = r_cleanup_way.read();
 #define L2 soclib::common::uint32_log2
-          size_t set      = m_y[r_cleanup_nline.read() << (L2(m_words) +2)];
+          size_t set      = m_y[(vci_addr_t)(r_cleanup_nline.read() << (L2(m_words) +2))];
 #undef L2
           bool cleanup_inst  = r_cleanup_trdid.read() & 0x1; 
 
           // update the cache directory (for the copies)
           DirectoryEntry entry;
-          entry.valid	  = true;
+          entry.valid	= true;
           entry.is_cnt  = r_cleanup_is_cnt.read();
-          entry.dirty	  = r_cleanup_dirty.read();
-          entry.tag	    = r_cleanup_tag.read();
-          entry.lock	  = r_cleanup_lock.read();
+          entry.dirty	= r_cleanup_dirty.read();
+          entry.tag	= r_cleanup_tag.read();
+          entry.lock	= r_cleanup_lock.read();
           if(r_cleanup_is_cnt.read()) { // Directory is a counter
             entry.count  = r_cleanup_count.read() -1;
             entry.i_copies = 0;
@@ -1938,6 +2043,9 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           }
           m_cache_directory.write(set, way, entry);  
 
+          // response to the cache      
+//          r_cleanup_fsm = CLEANUP_RSP;
+
           break;
         }
         /////////////////
@@ -1951,10 +2059,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             if(!hit_inval) {
 #ifdef DEBUG_VCI_MEM_CACHE
               std::cout << "MEM_CACHE WARNING: cleanup with no corresponding entry at address : " << std::hex << (r_cleanup_nline.read()*4*m_words) << std::dec << std::endl;
-              std::cout << "CLEANUP : miss, time = " << std::dec << m_cpt_cycles << std::endl;
-              m_update_tab.print(); 
 #endif
-              //assert(false);
               r_cleanup_fsm = CLEANUP_RSP;
             } else {
               r_cleanup_write_srcid = m_update_tab.srcid(index);
@@ -1974,6 +2079,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           m_update_tab.decrement(r_cleanup_index.read(), count); // &count
           if(count == 0){
             m_update_tab.clear(r_cleanup_index.read());
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " CLEANUP_UPT_WRITE update table : " << std::endl;
+	m_update_tab.print();
+#endif
+
             if(r_cleanup_need_rsp.read()){
               r_cleanup_fsm = CLEANUP_WRITE_RSP ;
             } else {
@@ -1982,10 +2092,6 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           } else {
             r_cleanup_fsm = CLEANUP_RSP ;
           }
-#ifdef DEBUG_VCI_MEM_CACHE
-          std::cout << "CLEANUP : decrement entry, time = " << std::dec << m_cpt_cycles << std::endl;
-          m_update_tab.print(); 
-#endif
           break;
         }
         /////////////////
@@ -2076,19 +2182,19 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case LL_DIR_HIT:		// read hit : update the memory cache
         {
           size_t way	= r_llsc_way.read();
-          size_t set	= m_y[m_cmd_llsc_addr_fifo.read()];
-          size_t word	= m_x[m_cmd_llsc_addr_fifo.read()];
+          size_t set	= m_y[(vci_addr_t)(m_cmd_llsc_addr_fifo.read())];
+          size_t word	= m_x[(vci_addr_t)(m_cmd_llsc_addr_fifo.read())];
 
           // update directory (lock bit & copies)
           DirectoryEntry entry;
           entry.valid	    = true;
-          entry.is_cnt    = r_llsc_is_cnt.read();
+          entry.is_cnt      = r_llsc_is_cnt.read();
           entry.dirty	    = r_llsc_dirty.read();
           entry.lock	    = true;
-          entry.tag	      = r_llsc_tag.read();
-          entry.d_copies  = r_llsc_d_copies.read();
-          entry.i_copies  = r_llsc_i_copies.read();
-          entry.count     = r_llsc_count.read();
+          entry.tag	        = r_llsc_tag.read();
+          entry.d_copies    = r_llsc_d_copies.read();
+          entry.i_copies    = r_llsc_i_copies.read();
+          entry.count       = r_llsc_count.read();
           m_cache_directory.write(set, way, entry);
 
           // read data in cache
@@ -2109,7 +2215,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             r_llsc_to_tgt_rsp_srcid	= m_cmd_llsc_srcid_fifo.read();
             r_llsc_to_tgt_rsp_trdid	= m_cmd_llsc_trdid_fifo.read();
             r_llsc_to_tgt_rsp_pktid	= m_cmd_llsc_pktid_fifo.read();
-            r_llsc_to_tgt_rsp_req		= true;
+            r_llsc_to_tgt_rsp_req	= true;
             r_llsc_fsm = LLSC_IDLE;
           }
           break;
@@ -2123,9 +2229,9 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             bool ok = m_atomic_tab.isatomic(m_cmd_llsc_srcid_fifo.read(),m_cmd_llsc_addr_fifo.read());
             if( ok ) {
               r_llsc_is_cnt   = entry.is_cnt;
-              r_llsc_dirty 	  = entry.dirty;
-              r_llsc_tag		  = entry.tag;
-              r_llsc_way		  = way;
+              r_llsc_dirty    = entry.dirty;
+              r_llsc_tag      = entry.tag;
+              r_llsc_way      = way;
               r_llsc_d_copies = entry.d_copies;
               r_llsc_i_copies = entry.i_copies;
               r_llsc_count    = entry.count;
@@ -2141,19 +2247,19 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case SC_DIR_HIT:
         {
           size_t way	= r_llsc_way.read();
-          size_t set	= m_y[m_cmd_llsc_addr_fifo.read()]; 
-          size_t word	= m_x[m_cmd_llsc_addr_fifo.read()]; 
+          size_t set	= m_y[(vci_addr_t)(m_cmd_llsc_addr_fifo.read())]; 
+          size_t word	= m_x[(vci_addr_t)(m_cmd_llsc_addr_fifo.read())]; 
 
           // update directory (lock & dirty bits
           DirectoryEntry entry;
           entry.valid	    = true;
-          entry.is_cnt    = r_llsc_is_cnt.read();
+          entry.is_cnt      = r_llsc_is_cnt.read();
           entry.dirty	    = true;
           entry.lock	    = true;
-          entry.tag	      = r_llsc_tag.read();
-          entry.d_copies  = r_llsc_d_copies.read();
-          entry.i_copies  = r_llsc_i_copies.read();
-          entry.count     = r_llsc_count.read();
+          entry.tag	        = r_llsc_tag.read();
+          entry.d_copies    = r_llsc_d_copies.read();
+          entry.i_copies    = r_llsc_i_copies.read();
+          entry.count       = r_llsc_count.read();
           m_cache_directory.write(set, way, entry);
 
           // write data in cache
@@ -2170,12 +2276,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         {
           if( !r_llsc_to_tgt_rsp_req ) {
             cmd_llsc_fifo_get		= true;
-            r_llsc_to_tgt_rsp_req		= true;
+            r_llsc_to_tgt_rsp_req	= true;
             r_llsc_to_tgt_rsp_data	= 1;
             r_llsc_to_tgt_rsp_srcid	= m_cmd_llsc_srcid_fifo.read();
             r_llsc_to_tgt_rsp_trdid	= m_cmd_llsc_trdid_fifo.read();
             r_llsc_to_tgt_rsp_pktid	= m_cmd_llsc_pktid_fifo.read();
-            r_llsc_fsm 			= LLSC_IDLE;
+            r_llsc_fsm 			    = LLSC_IDLE;
           }
           break;
         }
@@ -2183,13 +2289,13 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case SC_RSP_TRUE:
         {
           if( !r_llsc_to_tgt_rsp_req ) {
-            cmd_llsc_fifo_get		    = true;
-            r_llsc_to_tgt_rsp_req		= true;
+            cmd_llsc_fifo_get	    = true;
+            r_llsc_to_tgt_rsp_req	= true;
             r_llsc_to_tgt_rsp_data	= 0;
             r_llsc_to_tgt_rsp_srcid	= m_cmd_llsc_srcid_fifo.read();
             r_llsc_to_tgt_rsp_trdid	= m_cmd_llsc_trdid_fifo.read();
             r_llsc_to_tgt_rsp_pktid	= m_cmd_llsc_pktid_fifo.read();
-            r_llsc_fsm 			        = LLSC_IDLE;
+            r_llsc_fsm 			    = LLSC_IDLE;
           }
           break;
         }
@@ -2198,11 +2304,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         {
           if( r_alloc_trt_fsm.read() == ALLOC_TRT_LLSC ) {
             size_t   index = 0;
-            bool hit_read = m_transaction_tab.hit_read(m_nline[m_cmd_llsc_addr_fifo.read()],index);
-            bool hit_write = m_transaction_tab.hit_write(m_nline[m_cmd_llsc_addr_fifo.read()]);
+            bool hit_read = m_transaction_tab.hit_read(m_nline[(vci_addr_t)m_cmd_llsc_addr_fifo.read()],index);
+            bool hit_write = m_transaction_tab.hit_write(m_nline[(vci_addr_t)m_cmd_llsc_addr_fifo.read()]);
             bool wok = !m_transaction_tab.full(index);
 
-            if ( hit_read || hit_write || !wok ) {  // missing line already requested or no space in TRT
+            if ( hit_read || !wok || hit_write ) {  // missing line already requested or no space in TRT
               r_llsc_fsm = LLSC_IDLE;
             } else {
               r_llsc_trt_index = index;
@@ -2219,19 +2325,19 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             if(proc_read){
               m_transaction_tab.set(r_llsc_trt_index.read(),
                   true,
-                  m_nline[m_cmd_llsc_addr_fifo.read()],
+                  m_nline[(vci_addr_t)m_cmd_llsc_addr_fifo.read()],
                   m_cmd_llsc_srcid_fifo.read(),
                   m_cmd_llsc_trdid_fifo.read(),
                   m_cmd_llsc_pktid_fifo.read(),
                   true,
                   true,
-                  m_x[m_cmd_llsc_addr_fifo.read()],
+                  m_x[(vci_addr_t)(m_cmd_llsc_addr_fifo.read())],
                   std::vector<be_t>(m_words,0),
                   std::vector<data_t>(m_words,0));
-            } else {
+            }else{
               m_transaction_tab.set(r_llsc_trt_index.read(),
                   true,
-                  m_nline[m_cmd_llsc_addr_fifo.read()],
+                  m_nline[(vci_addr_t)m_cmd_llsc_addr_fifo.read()],
                   m_cmd_llsc_srcid_fifo.read(),
                   m_cmd_llsc_trdid_fifo.read(),
                   m_cmd_llsc_pktid_fifo.read(),
@@ -2241,22 +2347,28 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                   std::vector<be_t>(m_words,0),
                   std::vector<data_t>(m_words,0));
             }
+#ifdef IDEBUG
+	std::cout << sc_time_stamp() << " " << name() << " LLSC_TRT_SET transaction table : " << std::endl;
+	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)
+	  m_transaction_tab.print(i);
+#endif
+
             r_llsc_fsm = LLSC_XRAM_REQ;
           }
           break;
         }
         ///////////////////
-      case LLSC_XRAM_REQ:	// request the XRAM_CMD FSM to fetch the missing line
+      case LLSC_XRAM_REQ:	// request the IXR_CMD FSM to fetch the missing line
         {
-          if ( !r_llsc_to_xram_cmd_req ) {
-            r_llsc_to_xram_cmd_req        = true;
-            r_llsc_to_xram_cmd_trdid      = r_llsc_trt_index.read();
-            r_llsc_to_xram_cmd_nline      = m_nline[m_cmd_llsc_addr_fifo.read()];
+          if ( !r_llsc_to_ixr_cmd_req ) {
+            r_llsc_to_ixr_cmd_req        = true;
+            r_llsc_to_ixr_cmd_trdid      = r_llsc_trt_index.read();
+            r_llsc_to_ixr_cmd_nline      = m_nline[(vci_addr_t)m_cmd_llsc_addr_fifo.read()];
             if( m_cmd_llsc_sc_fifo.read() ) {
-              r_llsc_fsm                    = SC_RSP_FALSE;
+              r_llsc_fsm                 = SC_RSP_FALSE;
             } else {
-              cmd_llsc_fifo_get             = true;
-              r_llsc_fsm                    = LLSC_IDLE;
+              cmd_llsc_fifo_get          = true;
+              r_llsc_fsm                 = LLSC_IDLE;
             }
           }
           break;
@@ -2327,7 +2439,6 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             r_init_cmd_fsm = INIT_CMD_INVAL_NLINE;
             break;
           }
-//          std::cout << std::hex << "MEM_CACHE : INIT_CMD_INVAL_SEL, copies vector : " << r_xram_rsp_to_init_cmd_d_copies << " " << r_xram_rsp_to_init_cmd_i_copies.read() << std::dec << std::endl;
           if ((r_xram_rsp_to_init_cmd_d_copies.read() == 0) &&
               (r_xram_rsp_to_init_cmd_i_copies.read() == 0)) {	// no more copies
             r_xram_rsp_to_init_cmd_req = false;
@@ -2363,7 +2474,6 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         ////////////////////////
       case INIT_CMD_INVAL_NLINE:	// send the cache line index
         {
-//          std::cout << "MEM_CACHE, INIT_CMD_INVAL_NLINE, cmdack = " << p_vci_ini.cmdack << " ; brdcast = " << r_xram_rsp_to_init_cmd_brdcast.read() << std::endl;
           if ( p_vci_ini.cmdack ) {
             if ( r_xram_rsp_to_init_cmd_brdcast.read() ) {
               r_init_cmd_fsm = INIT_CMD_INVAL_IDLE;
@@ -2384,7 +2494,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             copy_t copies;
             bool inst = false;
             if(r_write_to_init_cmd_i_copies.read()){
-              inst = true;
+              inst   = true;
               copies = r_write_to_init_cmd_i_copies.read();
             } else {
               copies = r_write_to_init_cmd_d_copies.read();
@@ -2645,8 +2755,6 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         }
         ///////////////////
       case TGT_RSP_INIT:		// send the pending write acknowledge
-
-
         {
           if ( p_vci_tgt.rspack ) {
             r_tgt_rsp_fsm = TGT_RSP_INIT_IDLE;
@@ -2672,12 +2780,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       ////////////////////////
       case ALLOC_UPT_INIT_RSP:
         if ( (r_init_rsp_fsm.read() != INIT_RSP_UPT_LOCK) && 
-            (r_init_rsp_fsm.read() != INIT_RSP_UPT_CLEAR) ) 
+             (r_init_rsp_fsm.read() != INIT_RSP_UPT_CLEAR) ) 
         {
           if      ((r_write_fsm.read() == WRITE_UPT_LOCK) ||
-                   (r_write_fsm.read() == WRITE_INVAL_LOCK))     r_alloc_upt_fsm = ALLOC_UPT_WRITE;
-          else if (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK) r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
-          else if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)     r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
+                   (r_write_fsm.read() == WRITE_INVAL_LOCK))        r_alloc_upt_fsm = ALLOC_UPT_WRITE;
+          else if (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK)    r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
+          else if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)        r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
         }
         break;
 
@@ -2686,20 +2794,20 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         if ( (r_write_fsm.read() != WRITE_UPT_LOCK) &&
              (r_write_fsm.read() != WRITE_INVAL_LOCK)) 
         {
-          if      (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK) r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
-          else if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)     r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
-          else if (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
+          if      (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK)    r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
+          else if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)        r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
+          else if (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK)      r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
         }
         break;
 
         ////////////////////////
       case ALLOC_UPT_XRAM_RSP:
-        if ( r_xram_rsp_fsm.read() != XRAM_RSP_INVAL_LOCK ) 
+        if (r_xram_rsp_fsm.read() != XRAM_RSP_INVAL_LOCK) 
         { 
-          if (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
-          else if      (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK) r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
+          if       (r_cleanup_fsm.read() == CLEANUP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_CLEANUP;
+          else if  (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK) r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
           else if ((r_write_fsm.read() == WRITE_UPT_LOCK)   ||
-                   (r_write_fsm.read() == WRITE_INVAL_LOCK))     r_alloc_upt_fsm = ALLOC_UPT_WRITE;
+                   (r_write_fsm.read() == WRITE_INVAL_LOCK))    r_alloc_upt_fsm = ALLOC_UPT_WRITE;
         }
         break;
 
@@ -2708,10 +2816,10 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         if(r_cleanup_fsm.read() != CLEANUP_UPT_LOCK 
             || r_cleanup_fsm.read() != CLEANUP_UPT_WRITE)
         {
-          if 	    (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
-          else if ((r_write_fsm.read() == WRITE_UPT_LOCK) 	 ||
-                   (r_write_fsm.read() == WRITE_INVAL_LOCK))   r_alloc_upt_fsm = ALLOC_UPT_WRITE;
-          else if (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK)   r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
+          if 	   (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK)     r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
+          else if ((r_write_fsm.read() == WRITE_UPT_LOCK) ||
+                   (r_write_fsm.read() == WRITE_INVAL_LOCK))        r_alloc_upt_fsm = ALLOC_UPT_WRITE;
+          else if (r_xram_rsp_fsm.read() == XRAM_RSP_INVAL_LOCK)    r_alloc_upt_fsm = ALLOC_UPT_XRAM_RSP;
         }
         break;
 
@@ -2736,11 +2844,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             ( (r_read_fsm.read()      == READ_TRT_LOCK)  &&
               (r_alloc_trt_fsm.read() == ALLOC_TRT_READ)    )  ) 
         {
-          if      (r_write_fsm.read() == WRITE_DIR_LOCK)       r_alloc_dir_fsm = ALLOC_DIR_WRITE;
-          else if ((r_llsc_fsm.read() == LL_DIR_LOCK) || 
-              (r_llsc_fsm.read() == SC_DIR_LOCK))         r_alloc_dir_fsm = ALLOC_DIR_LLSC;
-          else if (r_cleanup_fsm.read() == CLEANUP_DIR_LOCK)   r_alloc_dir_fsm = ALLOC_DIR_CLEANUP;
-          else if (r_xram_rsp_fsm.read() == XRAM_RSP_DIR_LOCK) r_alloc_dir_fsm = ALLOC_DIR_XRAM_RSP;
+          if        (r_write_fsm.read() == WRITE_DIR_LOCK)          r_alloc_dir_fsm = ALLOC_DIR_WRITE;
+          else if   ((r_llsc_fsm.read() == LL_DIR_LOCK) || 
+                    (r_llsc_fsm.read() == SC_DIR_LOCK))             r_alloc_dir_fsm = ALLOC_DIR_LLSC;
+          else if   (r_cleanup_fsm.read() == CLEANUP_DIR_LOCK)      r_alloc_dir_fsm = ALLOC_DIR_CLEANUP;
+          else if   (r_xram_rsp_fsm.read() == XRAM_RSP_DIR_LOCK)    r_alloc_dir_fsm = ALLOC_DIR_XRAM_RSP;
         }
         break;
 
@@ -2755,11 +2863,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             ( (r_write_fsm.read()     == WRITE_TRT_LOCK) &&
               (r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE)   )   )
         {
-          if      ((r_llsc_fsm.read() == LL_DIR_LOCK) || 
-              (r_llsc_fsm.read() == SC_DIR_LOCK))         r_alloc_dir_fsm = ALLOC_DIR_LLSC;
-          else if (r_cleanup_fsm.read() == CLEANUP_DIR_LOCK)   r_alloc_dir_fsm = ALLOC_DIR_CLEANUP;
-          else if (r_xram_rsp_fsm.read() == XRAM_RSP_DIR_LOCK) r_alloc_dir_fsm = ALLOC_DIR_XRAM_RSP;
-          else if (r_read_fsm.read() == READ_DIR_LOCK) 	     r_alloc_dir_fsm = ALLOC_DIR_READ;
+          if        ((r_llsc_fsm.read() == LL_DIR_LOCK) || 
+                    (r_llsc_fsm.read() == SC_DIR_LOCK))             r_alloc_dir_fsm = ALLOC_DIR_LLSC;
+          else if   (r_cleanup_fsm.read() == CLEANUP_DIR_LOCK)      r_alloc_dir_fsm = ALLOC_DIR_CLEANUP;
+          else if   (r_xram_rsp_fsm.read() == XRAM_RSP_DIR_LOCK)    r_alloc_dir_fsm = ALLOC_DIR_XRAM_RSP;
+          else if   (r_read_fsm.read() == READ_DIR_LOCK) 	        r_alloc_dir_fsm = ALLOC_DIR_READ;
         }
         break;
 
@@ -2774,10 +2882,10 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             ( (r_llsc_fsm.read()      == LLSC_TRT_LOCK ) &&
               (r_alloc_trt_fsm.read() == ALLOC_TRT_LLSC)    ) )
         {
-          if      (r_cleanup_fsm.read() == CLEANUP_DIR_LOCK)   r_alloc_dir_fsm = ALLOC_DIR_CLEANUP;
-          else if (r_xram_rsp_fsm.read() == XRAM_RSP_DIR_LOCK) r_alloc_dir_fsm = ALLOC_DIR_XRAM_RSP;
-          else if (r_read_fsm.read() == READ_DIR_LOCK) 	     r_alloc_dir_fsm = ALLOC_DIR_READ;
-          else if (r_write_fsm.read() == WRITE_DIR_LOCK)       r_alloc_dir_fsm = ALLOC_DIR_WRITE;
+          if      (r_cleanup_fsm.read() == CLEANUP_DIR_LOCK)    r_alloc_dir_fsm = ALLOC_DIR_CLEANUP;
+          else if (r_xram_rsp_fsm.read() == XRAM_RSP_DIR_LOCK)  r_alloc_dir_fsm = ALLOC_DIR_XRAM_RSP;
+          else if (r_read_fsm.read() == READ_DIR_LOCK) 	        r_alloc_dir_fsm = ALLOC_DIR_READ;
+          else if (r_write_fsm.read() == WRITE_DIR_LOCK)        r_alloc_dir_fsm = ALLOC_DIR_WRITE;
         }
         break;
 
@@ -2786,11 +2894,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         if ( (r_cleanup_fsm.read() != CLEANUP_DIR_LOCK) &&
             (r_cleanup_fsm.read() != CLEANUP_DIR_WRITE) )
         {
-          if      (r_xram_rsp_fsm.read() == XRAM_RSP_DIR_LOCK) r_alloc_dir_fsm = ALLOC_DIR_XRAM_RSP;
-          else if (r_read_fsm.read() == READ_DIR_LOCK) 	     r_alloc_dir_fsm = ALLOC_DIR_READ;
-          else if (r_write_fsm.read() == WRITE_DIR_LOCK)       r_alloc_dir_fsm = ALLOC_DIR_WRITE;
-          else if ((r_llsc_fsm.read() == LL_DIR_LOCK) || 
-              (r_llsc_fsm.read() == SC_DIR_LOCK))         r_alloc_dir_fsm = ALLOC_DIR_LLSC;
+          if        (r_xram_rsp_fsm.read() == XRAM_RSP_DIR_LOCK)    r_alloc_dir_fsm = ALLOC_DIR_XRAM_RSP;
+          else if   (r_read_fsm.read() == READ_DIR_LOCK)            r_alloc_dir_fsm = ALLOC_DIR_READ;
+          else if   (r_write_fsm.read() == WRITE_DIR_LOCK)          r_alloc_dir_fsm = ALLOC_DIR_WRITE;
+          else if   ((r_llsc_fsm.read() == LL_DIR_LOCK) || 
+                    (r_llsc_fsm.read() == SC_DIR_LOCK))             r_alloc_dir_fsm = ALLOC_DIR_LLSC;
         }
         break;
         ////////////////////////
@@ -2799,11 +2907,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
             (r_xram_rsp_fsm.read() != XRAM_RSP_TRT_COPY)   && 
             (r_xram_rsp_fsm.read() != XRAM_RSP_INVAL_LOCK))
         {
-          if      (r_read_fsm.read() == READ_DIR_LOCK) 	     r_alloc_dir_fsm = ALLOC_DIR_READ;
-          else if (r_write_fsm.read() == WRITE_DIR_LOCK)     r_alloc_dir_fsm = ALLOC_DIR_WRITE;
-          else if ((r_llsc_fsm.read() == LL_DIR_LOCK) || 
-              (r_llsc_fsm.read() == SC_DIR_LOCK))       r_alloc_dir_fsm = ALLOC_DIR_LLSC;
-          else if (r_cleanup_fsm.read() == CLEANUP_DIR_LOCK) r_alloc_dir_fsm = ALLOC_DIR_CLEANUP;
+          if      (r_read_fsm.read() == READ_DIR_LOCK) 	        r_alloc_dir_fsm = ALLOC_DIR_READ;
+          else if (r_write_fsm.read() == WRITE_DIR_LOCK)        r_alloc_dir_fsm = ALLOC_DIR_WRITE;
+          else if ( (r_llsc_fsm.read() == LL_DIR_LOCK) || 
+                    (r_llsc_fsm.read() == SC_DIR_LOCK))         r_alloc_dir_fsm = ALLOC_DIR_LLSC;
+          else if (r_cleanup_fsm.read() == CLEANUP_DIR_LOCK)    r_alloc_dir_fsm = ALLOC_DIR_CLEANUP;
         }
         break;
 
@@ -2828,8 +2936,8 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
                    (r_write_fsm.read() == WRITE_TRT_WRITE_LOCK))    r_alloc_trt_fsm = ALLOC_TRT_WRITE;
           else if (r_llsc_fsm.read() == LLSC_TRT_LOCK)              r_alloc_trt_fsm = ALLOC_TRT_LLSC;
           else if (r_xram_rsp_fsm.read() == XRAM_RSP_TRT_COPY)      r_alloc_trt_fsm = ALLOC_TRT_XRAM_RSP;
-          else if ((r_ixr_rsp_fsm.read() == IXR_RSP_TRT_ERASE) ||
-              (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ))       r_alloc_trt_fsm = ALLOC_TRT_IXR_RSP;
+          else if ( (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_ERASE) ||
+                    (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ) )    r_alloc_trt_fsm = ALLOC_TRT_IXR_RSP;
         }
         break;
         /////////////////////
@@ -2838,11 +2946,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
              (r_write_fsm.read() != WRITE_TRT_WRITE_LOCK) &&
              (r_write_fsm.read() != WRITE_INVAL_LOCK)) 
         {
-          if      (r_llsc_fsm.read() == LLSC_TRT_LOCK) 	          r_alloc_trt_fsm = ALLOC_TRT_LLSC;
+          if      (r_llsc_fsm.read() == LLSC_TRT_LOCK) 	            r_alloc_trt_fsm = ALLOC_TRT_LLSC;
           else if (r_xram_rsp_fsm.read() == XRAM_RSP_TRT_COPY)      r_alloc_trt_fsm = ALLOC_TRT_XRAM_RSP;
-          else if ((r_ixr_rsp_fsm.read() == IXR_RSP_TRT_ERASE) ||
-              (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ))       r_alloc_trt_fsm = ALLOC_TRT_IXR_RSP;
-          else if (r_read_fsm.read() == READ_TRT_LOCK) 	          r_alloc_trt_fsm = ALLOC_TRT_READ;
+          else if ( (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_ERASE) ||
+                    (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ))     r_alloc_trt_fsm = ALLOC_TRT_IXR_RSP;
+          else if (r_read_fsm.read() == READ_TRT_LOCK) 	            r_alloc_trt_fsm = ALLOC_TRT_READ;
         }
         break;
         ////////////////////
@@ -2850,11 +2958,11 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         if ( r_llsc_fsm.read() != LLSC_TRT_LOCK )
         { 
           if      (r_xram_rsp_fsm.read() == XRAM_RSP_TRT_COPY)      r_alloc_trt_fsm = ALLOC_TRT_XRAM_RSP;
-          else if ((r_ixr_rsp_fsm.read() == IXR_RSP_TRT_ERASE) ||
-              (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ))       r_alloc_trt_fsm = ALLOC_TRT_IXR_RSP;
-          else if (r_read_fsm.read() == READ_TRT_LOCK) 	          r_alloc_trt_fsm = ALLOC_TRT_READ;
+          else if ( (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_ERASE) ||
+                    (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ))     r_alloc_trt_fsm = ALLOC_TRT_IXR_RSP;
+          else if (r_read_fsm.read() == READ_TRT_LOCK) 	            r_alloc_trt_fsm = ALLOC_TRT_READ;
           else if ((r_write_fsm.read() == WRITE_TRT_LOCK)     ||
-                   (r_write_fsm.read() == WRITE_TRT_WRITE_LOCK))  r_alloc_trt_fsm = ALLOC_TRT_WRITE;
+                   (r_write_fsm.read() == WRITE_TRT_WRITE_LOCK))    r_alloc_trt_fsm = ALLOC_TRT_WRITE;
         }
         break;
         ////////////////////////
@@ -2862,22 +2970,22 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         if ( (r_xram_rsp_fsm.read() != XRAM_RSP_TRT_COPY)  &&
             (r_xram_rsp_fsm.read() != XRAM_RSP_DIR_UPDT)   &&
             (r_xram_rsp_fsm.read() != XRAM_RSP_INVAL_LOCK)) {
-          if      ((r_ixr_rsp_fsm.read() == IXR_RSP_TRT_ERASE) ||
-              (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ))       r_alloc_trt_fsm = ALLOC_TRT_IXR_RSP;
-          else if (r_read_fsm.read() == READ_TRT_LOCK) 	          r_alloc_trt_fsm = ALLOC_TRT_READ;
+          if      ( (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_ERASE) ||
+                    (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ))     r_alloc_trt_fsm = ALLOC_TRT_IXR_RSP;
+          else if (r_read_fsm.read() == READ_TRT_LOCK) 	            r_alloc_trt_fsm = ALLOC_TRT_READ;
           else if ((r_write_fsm.read() == WRITE_TRT_LOCK)    ||
-                   (r_write_fsm.read() == WRITE_TRT_WRITE_LOCK))  r_alloc_trt_fsm = ALLOC_TRT_WRITE;
-          else if (r_llsc_fsm.read() == LLSC_TRT_LOCK) 	          r_alloc_trt_fsm = ALLOC_TRT_LLSC;
+                   (r_write_fsm.read() == WRITE_TRT_WRITE_LOCK))    r_alloc_trt_fsm = ALLOC_TRT_WRITE;
+          else if (r_llsc_fsm.read() == LLSC_TRT_LOCK) 	            r_alloc_trt_fsm = ALLOC_TRT_LLSC;
         }
         break;
         ////////////////////////
       case ALLOC_TRT_IXR_RSP:
         if ( (r_ixr_rsp_fsm.read() != IXR_RSP_TRT_ERASE) &&
             (r_ixr_rsp_fsm.read() != IXR_RSP_TRT_READ) ) {
-          if      (r_read_fsm.read() == READ_TRT_LOCK) 	          r_alloc_trt_fsm = ALLOC_TRT_READ;
+          if      (r_read_fsm.read() == READ_TRT_LOCK) 	            r_alloc_trt_fsm = ALLOC_TRT_READ;
           else if ((r_write_fsm.read() == WRITE_TRT_LOCK)   ||
-                   (r_write_fsm.read() == WRITE_TRT_WRITE_LOCK))  r_alloc_trt_fsm = ALLOC_TRT_WRITE;
-          else if (r_llsc_fsm.read() == LLSC_TRT_LOCK) 	          r_alloc_trt_fsm = ALLOC_TRT_LLSC;
+                   (r_write_fsm.read() == WRITE_TRT_WRITE_LOCK))    r_alloc_trt_fsm = ALLOC_TRT_WRITE;
+          else if (r_llsc_fsm.read() == LLSC_TRT_LOCK) 	            r_alloc_trt_fsm = ALLOC_TRT_LLSC;
           else if (r_xram_rsp_fsm.read() == XRAM_RSP_TRT_COPY)      r_alloc_trt_fsm = ALLOC_TRT_XRAM_RSP;
         }
         break;
@@ -2890,13 +2998,13 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
 
     if ( cmd_read_fifo_put ) {
       if ( cmd_read_fifo_get ) {
-        m_cmd_read_addr_fifo.put_and_get(p_vci_tgt.address.read());
+        m_cmd_read_addr_fifo.put_and_get((addr_t)(p_vci_tgt.address.read()));
         m_cmd_read_word_fifo.put_and_get((p_vci_tgt.plen.read() == 4));
         m_cmd_read_srcid_fifo.put_and_get(p_vci_tgt.srcid.read());
         m_cmd_read_trdid_fifo.put_and_get(p_vci_tgt.trdid.read());
         m_cmd_read_pktid_fifo.put_and_get(p_vci_tgt.pktid.read());
       } else {
-        m_cmd_read_addr_fifo.simple_put(p_vci_tgt.address.read());
+        m_cmd_read_addr_fifo.simple_put((addr_t)(p_vci_tgt.address.read()));
         m_cmd_read_word_fifo.simple_put((p_vci_tgt.plen.read() == 4));
         m_cmd_read_srcid_fifo.simple_put(p_vci_tgt.srcid.read());
         m_cmd_read_trdid_fifo.simple_put(p_vci_tgt.trdid.read());
@@ -2917,7 +3025,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
 
     if ( cmd_write_fifo_put ) {
       if ( cmd_write_fifo_get ) {
-        m_cmd_write_addr_fifo.put_and_get(p_vci_tgt.address.read());
+        m_cmd_write_addr_fifo.put_and_get((addr_t)(p_vci_tgt.address.read()));
         m_cmd_write_eop_fifo.put_and_get(p_vci_tgt.eop.read());
         m_cmd_write_srcid_fifo.put_and_get(p_vci_tgt.srcid.read());
         m_cmd_write_trdid_fifo.put_and_get(p_vci_tgt.trdid.read());
@@ -2925,7 +3033,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         m_cmd_write_data_fifo.put_and_get(p_vci_tgt.wdata.read());
         m_cmd_write_be_fifo.put_and_get(p_vci_tgt.be.read());
       } else {
-        m_cmd_write_addr_fifo.simple_put(p_vci_tgt.address.read());
+        m_cmd_write_addr_fifo.simple_put((addr_t)(p_vci_tgt.address.read()));
         m_cmd_write_eop_fifo.simple_put(p_vci_tgt.eop.read());
         m_cmd_write_srcid_fifo.simple_put(p_vci_tgt.srcid.read());
         m_cmd_write_trdid_fifo.simple_put(p_vci_tgt.trdid.read());
@@ -2950,14 +3058,14 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
 
     if ( cmd_llsc_fifo_put ) {
       if ( cmd_llsc_fifo_get ) {
-        m_cmd_llsc_addr_fifo.put_and_get(p_vci_tgt.address.read());
+        m_cmd_llsc_addr_fifo.put_and_get((addr_t)(p_vci_tgt.address.read()));
         m_cmd_llsc_sc_fifo.put_and_get(p_vci_tgt.cmd.read() == vci_param::CMD_STORE_COND); 
         m_cmd_llsc_srcid_fifo.put_and_get(p_vci_tgt.srcid.read());
         m_cmd_llsc_trdid_fifo.put_and_get(p_vci_tgt.trdid.read());
         m_cmd_llsc_pktid_fifo.put_and_get(p_vci_tgt.pktid.read());
         m_cmd_llsc_wdata_fifo.put_and_get(p_vci_tgt.wdata.read());
       } else {
-        m_cmd_llsc_addr_fifo.simple_put(p_vci_tgt.address.read());
+        m_cmd_llsc_addr_fifo.simple_put((addr_t)(p_vci_tgt.address.read()));
         m_cmd_llsc_sc_fifo.simple_put(p_vci_tgt.cmd.read() == vci_param::CMD_STORE_COND); 
         m_cmd_llsc_srcid_fifo.simple_put(p_vci_tgt.srcid.read());
         m_cmd_llsc_trdid_fifo.simple_put(p_vci_tgt.trdid.read());
@@ -2975,32 +3083,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    //		TGT_CMD to CLEANUP FIFO
-    //	    No need with the CLEANUP Network
-    ////////////////////////////////////////////////////////////////////////////////////
-
-    //     if ( cmd_cleanup_fifo_put ) {
-    //       if ( cmd_cleanup_fifo_get ) {
-    //         m_cmd_cleanup_srcid_fifo.put_and_get(p_vci_tgt.srcid.read());
-    //         m_cmd_cleanup_trdid_fifo.put_and_get(p_vci_tgt.trdid.read());
-    //         m_cmd_cleanup_pktid_fifo.put_and_get(p_vci_tgt.pktid.read());
-    //         m_cmd_cleanup_nline_fifo.put_and_get(p_vci_tgt.wdata.read());
-    //       } else {
-    //         m_cmd_cleanup_srcid_fifo.simple_put(p_vci_tgt.srcid.read());
-    //         m_cmd_cleanup_trdid_fifo.simple_put(p_vci_tgt.trdid.read());
-    //         m_cmd_cleanup_pktid_fifo.simple_put(p_vci_tgt.pktid.read());
-    //         m_cmd_cleanup_nline_fifo.simple_put(p_vci_tgt.wdata.read());
-    //       }
-    //     } else {
-    //       if ( cmd_cleanup_fifo_get ) {
-    //         m_cmd_cleanup_srcid_fifo.simple_get();
-    //         m_cmd_cleanup_trdid_fifo.simple_get();
-    //         m_cmd_cleanup_pktid_fifo.simple_get();
-    //         m_cmd_cleanup_nline_fifo.simple_get();
-    //       }
-    //     }
-
+  //////////////////////////////////////////////////////////////
     m_cpt_cycles++;
 
   } // end transition()
@@ -3023,58 +3106,58 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
     p_vci_ixr.clen    = 0;
     p_vci_ixr.cfixed  = false;
 
-    if ( r_xram_cmd_fsm.read() == XRAM_CMD_READ_NLINE ) {
+    if ( r_ixr_cmd_fsm.read() == IXR_CMD_READ_NLINE ) {
       p_vci_ixr.cmd     = vci_param::CMD_READ;
       p_vci_ixr.cmdval  = true;
-      p_vci_ixr.address = (r_read_to_xram_cmd_nline.read()*m_words*4);
+      p_vci_ixr.address = (addr_t)(r_read_to_ixr_cmd_nline.read()*m_words*4);
       p_vci_ixr.plen    = m_words*4;
       p_vci_ixr.wdata   = 0x00000000;
-      p_vci_ixr.trdid   = r_read_to_xram_cmd_trdid.read();
+      p_vci_ixr.trdid   = r_read_to_ixr_cmd_trdid.read();
       p_vci_ixr.eop     = true;
     } 
-    else if ( r_xram_cmd_fsm.read() == XRAM_CMD_LLSC_NLINE ) {
+    else if ( r_ixr_cmd_fsm.read() == IXR_CMD_LLSC_NLINE ) {
       p_vci_ixr.cmd     = vci_param::CMD_READ;
       p_vci_ixr.cmdval  = true;
-      p_vci_ixr.address = (r_llsc_to_xram_cmd_nline.read()*m_words*4);
+      p_vci_ixr.address = (addr_t)(r_llsc_to_ixr_cmd_nline.read()*m_words*4);
       p_vci_ixr.plen    = m_words*4;
       p_vci_ixr.wdata   = 0x00000000;
-      p_vci_ixr.trdid   = r_llsc_to_xram_cmd_trdid.read();
+      p_vci_ixr.trdid   = r_llsc_to_ixr_cmd_trdid.read();
       p_vci_ixr.eop     = true;
     } 
-    else if ( r_xram_cmd_fsm.read() == XRAM_CMD_WRITE_NLINE ) {
-      if(r_write_to_xram_cmd_write.read()){
+    else if ( r_ixr_cmd_fsm.read() == IXR_CMD_WRITE_NLINE ) {
+      if(r_write_to_ixr_cmd_write.read()){
         p_vci_ixr.cmd     = vci_param::CMD_WRITE;
         p_vci_ixr.cmdval  = true;
-        p_vci_ixr.address = ((r_write_to_xram_cmd_nline.read()*m_words+r_xram_cmd_cpt.read())*4);
+        p_vci_ixr.address = (addr_t)((r_write_to_ixr_cmd_nline.read()*m_words+r_ixr_cmd_cpt.read())*4);
         p_vci_ixr.plen    = m_words*4;
-        p_vci_ixr.wdata   = r_write_to_xram_cmd_data[r_xram_cmd_cpt.read()].read();
-        p_vci_ixr.trdid   = r_write_to_xram_cmd_trdid.read();
-        p_vci_ixr.eop     = (r_xram_cmd_cpt == (m_words-1));
+        p_vci_ixr.wdata   = r_write_to_ixr_cmd_data[r_ixr_cmd_cpt.read()].read();
+        p_vci_ixr.trdid   = r_write_to_ixr_cmd_trdid.read();
+        p_vci_ixr.eop     = (r_ixr_cmd_cpt == (m_words-1));
       } else {
         p_vci_ixr.cmd     = vci_param::CMD_READ;
         p_vci_ixr.cmdval  = true;
-        p_vci_ixr.address = (r_write_to_xram_cmd_nline.read()*m_words*4);
+        p_vci_ixr.address = (addr_t)(r_write_to_ixr_cmd_nline.read()*m_words*4);
         p_vci_ixr.plen    = m_words*4;
         p_vci_ixr.wdata   = 0x00000000;
-        p_vci_ixr.trdid   = r_write_to_xram_cmd_trdid.read();
+        p_vci_ixr.trdid   = r_write_to_ixr_cmd_trdid.read();
         p_vci_ixr.eop     = true;
       }
     } 
-    else if ( r_xram_cmd_fsm.read() == XRAM_CMD_XRAM_DATA ) {
+    else if ( r_ixr_cmd_fsm.read() == IXR_CMD_XRAM_DATA ) {
       p_vci_ixr.cmd     = vci_param::CMD_WRITE;
       p_vci_ixr.cmdval  = true;
-      p_vci_ixr.address = ((r_xram_rsp_to_xram_cmd_nline.read()*m_words+r_xram_cmd_cpt.read())*4);
+      p_vci_ixr.address = (addr_t)((r_xram_rsp_to_ixr_cmd_nline.read()*m_words+r_ixr_cmd_cpt.read())*4);
       p_vci_ixr.plen    = m_words*4;
-      p_vci_ixr.wdata   = r_xram_rsp_to_xram_cmd_data[r_xram_cmd_cpt.read()].read();
-      p_vci_ixr.trdid   = r_xram_rsp_to_xram_cmd_trdid.read();
-      p_vci_ixr.eop     = (r_xram_cmd_cpt == (m_words-1));
+      p_vci_ixr.wdata   = r_xram_rsp_to_ixr_cmd_data[r_ixr_cmd_cpt.read()].read();
+      p_vci_ixr.trdid   = r_xram_rsp_to_ixr_cmd_trdid.read();
+      p_vci_ixr.eop     = (r_ixr_cmd_cpt == (m_words-1));
     } else {
       p_vci_ixr.cmdval  = false;
       p_vci_ixr.address = 0;
       p_vci_ixr.plen    = 0;
       p_vci_ixr.wdata   = 0;
       p_vci_ixr.trdid   = 0;
-      p_vci_ixr.eop	  = false;
+      p_vci_ixr.eop	= false;
     }
 
     ////////////////////////////////////////////////////
@@ -3083,8 +3166,8 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
 
     if ( ((r_alloc_trt_fsm.read() == ALLOC_TRT_IXR_RSP) &&
           (r_ixr_rsp_fsm.read() == IXR_RSP_TRT_READ)) || 
-        (r_ixr_rsp_fsm.read() == IXR_RSP_ACK) )           p_vci_ixr.rspack = true;
-    else                                                    p_vci_ixr.rspack = false;
+        (r_ixr_rsp_fsm.read() == IXR_RSP_ACK) ) p_vci_ixr.rspack = true;
+    else                                        p_vci_ixr.rspack = false;
 
     ////////////////////////////////////////////////////
     // Command signals on the p_vci_tgt port
@@ -3226,7 +3309,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case INIT_CMD_INVAL_IDLE:
       case INIT_CMD_UPDT_SEL:
       case INIT_CMD_INVAL_SEL:
-        p_vci_ini.cmdval = false;
+        p_vci_ini.cmdval  = false;
         p_vci_ini.address = 0;
         p_vci_ini.wdata   = 0;
         p_vci_ini.be      = 0;
@@ -3240,14 +3323,13 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
           p_vci_ini.address = BROADCAST_ADDR;
         else {
           if(r_init_cmd_inst.read()) {
-            p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()]+8;
+            p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()]+8);
           } else {
-            p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()];
+            p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()]);
           }
         }
-//        std::cout << "MEM_CACHE, INIT_CMD_INVAL_NLINE, r_init_cmd_target = " << std::dec << r_init_cmd_target.read() << " ; instruction = " << r_init_cmd_inst.read() << " ; address = " << std::hex << p_vci_ini.address << std::dec << std::endl ;
-        p_vci_ini.wdata   = r_xram_rsp_to_init_cmd_nline.read();
-        p_vci_ini.be      = 0xF;
+        p_vci_ini.wdata   = (uint32_t)r_xram_rsp_to_init_cmd_nline.read();
+        p_vci_ini.be      = ((r_xram_rsp_to_init_cmd_nline.read() >> 32) & 0x3);
         p_vci_ini.plen    = 4;
         p_vci_ini.trdid   = r_xram_rsp_to_init_cmd_trdid.read();
         p_vci_ini.eop     = true;
@@ -3255,8 +3337,8 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case INIT_CMD_BRDCAST:
         p_vci_ini.cmdval  = true;
         p_vci_ini.address = BROADCAST_ADDR;
-        p_vci_ini.wdata   = r_write_to_init_cmd_nline.read();
-        p_vci_ini.be      = 0xF;
+        p_vci_ini.wdata   = (addr_t)r_write_to_init_cmd_nline.read();
+        p_vci_ini.be      = ((r_write_to_init_cmd_nline.read() >> 32) & 0x3);
         p_vci_ini.plen    = 4 ;
         p_vci_ini.eop     = true;
         p_vci_ini.trdid   = r_write_to_init_cmd_trdid.read();
@@ -3264,12 +3346,12 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
       case INIT_CMD_UPDT_NLINE:
         p_vci_ini.cmdval  = true;
         if(r_init_cmd_inst.read()){
-          p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()] + 8;
+          p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()] + 8);
         } else {
-          p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()] + 4;
+          p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()] + 4);
         }
-        p_vci_ini.wdata   = r_write_to_init_cmd_nline.read();
-        p_vci_ini.be      = 0xF;
+        p_vci_ini.wdata   = (uint32_t)r_write_to_init_cmd_nline.read();
+        p_vci_ini.be      = ((r_write_to_init_cmd_nline.read() >> 32 ) & 0x3);
         if(r_init_cmd_inst.read()){
           p_vci_ini.plen    = 4 ;
           p_vci_ini.eop     = true;
@@ -3281,7 +3363,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         break;
       case INIT_CMD_UPDT_INDEX:
         p_vci_ini.cmdval  = true;
-        p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()] + 4;
+        p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()] + 4);
         p_vci_ini.wdata   = r_write_to_init_cmd_index.read();
         p_vci_ini.be      = 0xF;
         p_vci_ini.plen    = 4 * (r_write_to_init_cmd_count.read() + 2);
@@ -3290,7 +3372,7 @@ if((m_cpt_cycles % DEBUG_PERIOD == 0)
         break;
       case INIT_CMD_UPDT_DATA:
         p_vci_ini.cmdval  = true;
-        p_vci_ini.address = m_coherence_table[r_init_cmd_target.read()] + 4;
+        p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()] + 4);
         p_vci_ini.wdata   = r_write_to_init_cmd_data[r_init_cmd_cpt.read() +
           r_write_to_init_cmd_index.read()].read();
         if(r_write_to_init_cmd_we[r_init_cmd_cpt.read() +

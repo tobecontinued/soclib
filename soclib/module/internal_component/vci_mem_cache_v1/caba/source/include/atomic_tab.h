@@ -16,7 +16,7 @@
 
 class AtomicTab{
     typedef uint32_t size_t;
-    typedef uint32_t addr_t;
+    typedef sc_dt::sc_uint<40> addr_t;
 
 private:
     size_t size_tab;                            // The size of the tab
@@ -29,14 +29,14 @@ public:
 	: addr_tab(0),
 	  valid_tab(0)
 	{
-	size_tab=0;
+    	size_tab=0;
     }
 
     AtomicTab(size_t size_tab_i)
 	: addr_tab(size_tab_i),
 	  valid_tab(size_tab_i)
 	{
-	size_tab=size_tab_i;
+	    size_tab=size_tab_i;
     }
 
 
@@ -44,7 +44,7 @@ public:
     /* The size() function returns the size of the tab */
     /////////////////////////////////////////////////////////////////////
     const size_t size(){
-	return size_tab;
+	    return size_tab;
     }
 
 
@@ -53,8 +53,8 @@ public:
     /////////////////////////////////////////////////////////////////////
     void init(){
     	for ( size_t i=0; i<size_tab; i++) {
-		addr_tab[i]=0;
-		valid_tab[i]=false;
+		    addr_tab[i]=0;
+		    valid_tab[i]=false;
     	}
     }
 
@@ -67,10 +67,10 @@ public:
      */
     /////////////////////////////////////////////////////////////////////
     void set(const size_t id, const addr_t addr){
-	assert( (id<size_tab) && "Atomic Tab Error : bad entry");
-	addr_tab[id]=addr;
-	valid_tab[id]=true;
-	return;
+	    assert( (id<size_tab) && "Atomic Tab Error : bad entry");
+	    addr_tab[id]=addr;
+	    valid_tab[id]=true;
+	    return;
     }
 
 
@@ -84,10 +84,10 @@ public:
      */
     /////////////////////////////////////////////////////////////////////
     bool isatomic(const size_t id, const addr_t addr){
-	assert( (id<size_tab) && "Atomic Tab Error : bad entry");
-	bool test=valid_tab[id];
-	test=test && (addr == addr_tab[id]);
-	return test;
+	    assert( (id<size_tab) && "Atomic Tab Error : bad entry");
+	    bool test=valid_tab[id];
+	    test=test && (addr == addr_tab[id]);
+	    return test;
     }
 
 
@@ -98,15 +98,24 @@ public:
      */
     /////////////////////////////////////////////////////////////////////
     void reset(const addr_t addr){
-	for(size_t i=0 ; i<size_tab ; i++){
-		if(addr == addr_tab[i]){
-			valid_tab[i]=false;
-		}
-	}
-	return;
+	    for(size_t i=0 ; i<size_tab ; i++){
+		    if(addr == addr_tab[i]){
+			    valid_tab[i]=false;
+		    }
+	    }
+	    return;
     }
 
 };
  
 #endif
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
 
