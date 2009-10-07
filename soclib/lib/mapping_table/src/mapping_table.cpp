@@ -35,20 +35,23 @@ MappingTable::MappingTable(
     size_t addr_width,
     const IntTab &level_addr_bits,
     const IntTab &level_id_bits,
-    const addr_t cacheability_mask )
-        : m_segment_list(), m_addr_width(addr_width),
+    const addr64_t cacheability_mask )
+        : m_segment_list(),
+          m_addr_width(addr_width),
+          m_addr_mask((addr_width == 64) ? ((addr64_t)-1) : (((addr64_t)1<<addr_width)-1)),
           m_level_addr_bits(level_addr_bits),
           m_level_id_bits(level_id_bits),
           m_cacheability_mask(cacheability_mask)
 {
     m_rt_size = 1<<(addr_width-m_level_addr_bits.sum());
-    addr_t cm_rt_size = 1 << AddressMaskingTable<addr_t>(m_cacheability_mask).getDrop();
-    m_rt_size = std::min<addr_t>(cm_rt_size, m_rt_size);
+    addr64_t cm_rt_size = 1 << AddressMaskingTable<addr64_t>(m_cacheability_mask).getDrop();
+    m_rt_size = std::min<addr64_t>(cm_rt_size, m_rt_size);
 }
 
 MappingTable::MappingTable( const MappingTable &ref )
         : m_segment_list(ref.m_segment_list),
           m_addr_width(ref.m_addr_width),
+          m_addr_mask(ref.m_addr_mask),
           m_level_addr_bits(ref.m_level_addr_bits),
           m_level_id_bits(ref.m_level_id_bits),
           m_cacheability_mask(ref.m_cacheability_mask),
@@ -60,6 +63,7 @@ const MappingTable &MappingTable::operator=( const MappingTable &ref )
 {
     m_segment_list = ref.m_segment_list;
     m_addr_width = ref.m_addr_width;
+    m_addr_mask = ref.m_addr_mask;
     m_level_addr_bits = ref.m_level_addr_bits;
     m_level_id_bits = ref.m_level_id_bits;
     m_cacheability_mask = ref.m_cacheability_mask;
@@ -67,8 +71,9 @@ const MappingTable &MappingTable::operator=( const MappingTable &ref )
     return *this;
 }
 
-void MappingTable::add( const Segment &seg )
+void MappingTable::add( const Segment &_seg )
 {
+    Segment seg = _seg.masked(m_addr_mask);
     std::list<Segment>::iterator i;
 
     if ( seg.index().level() != m_level_addr_bits.level() ) {
@@ -86,11 +91,11 @@ void MappingTable::add( const Segment &seg )
             o << seg << " bumps in " << s;
             throw soclib::exception::Collision(o.str());
         }
-        for ( addr_t address = s.baseAddress() & ~(m_rt_size-1);
+        for ( addr64_t address = s.baseAddress() & ~(m_rt_size-1);
               (address < s.baseAddress()+s.size()) &&
                   (address >= (s.baseAddress() & ~(m_rt_size-1)));
               address += m_rt_size ) {
-            for ( addr_t segaddress = seg.baseAddress() & ~(m_rt_size-1);
+            for ( addr64_t segaddress = seg.baseAddress() & ~(m_rt_size-1);
                   (segaddress < seg.baseAddress()+seg.size()) &&
                       (segaddress >= (seg.baseAddress() & ~(m_rt_size-1)));
                   segaddress += m_rt_size ) {
@@ -136,19 +141,20 @@ MappingTable::getSegment( const IntTab &index ) const
     return list.front();
 }
 
-AddressDecodingTable<MappingTable::addr_t, bool>
+template<typename desired_addr_t>
+AddressDecodingTable<desired_addr_t, bool>
 MappingTable::getCacheabilityTable() const
 {
-    AddressDecodingTable<MappingTable::addr_t, bool> adt(m_cacheability_mask);
+    AddressDecodingTable<desired_addr_t, bool> adt(m_cacheability_mask);
 	adt.reset(false);
-    AddressDecodingTable<MappingTable::addr_t, bool> done(m_cacheability_mask);
+    AddressDecodingTable<desired_addr_t, bool> done(m_cacheability_mask);
 	done.reset(false);
 
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
-        for ( addr_t addr = i->baseAddress() & ~(m_rt_size-1);
+        for ( desired_addr_t addr = i->baseAddress() & ~(m_rt_size-1);
               (addr < i->baseAddress()+i->size()) &&
                   (addr >= (i->baseAddress() & ~(m_rt_size-1)));
               addr += m_rt_size ) {
@@ -167,21 +173,22 @@ MappingTable::getCacheabilityTable() const
     return adt;
 }
 
-AddressDecodingTable<MappingTable::addr_t, bool>
+template<typename desired_addr_t>
+AddressDecodingTable<desired_addr_t, bool>
 MappingTable::getLocalityTable( const IntTab &index ) const
 {
 	size_t nbits = m_level_addr_bits.sum(index.level());
-    AddressDecodingTable<MappingTable::addr_t, bool> adt(nbits, m_addr_width-nbits);
+    AddressDecodingTable<desired_addr_t, bool> adt(nbits, m_addr_width-nbits);
 	adt.reset(true);
 
-    AddressDecodingTable<MappingTable::addr_t, bool> done(nbits, m_addr_width-nbits);
+    AddressDecodingTable<desired_addr_t, bool> done(nbits, m_addr_width-nbits);
 	done.reset(false);
 
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
-        for ( addr_t addr = i->baseAddress() & ~(m_rt_size-1);
+        for ( desired_addr_t addr = i->baseAddress() & ~(m_rt_size-1);
               (addr < i->baseAddress()+i->size()) &&
                   (addr >= (i->baseAddress() & ~(m_rt_size-1)));
               addr += m_rt_size ) {
@@ -202,7 +209,8 @@ MappingTable::getLocalityTable( const IntTab &index ) const
     return adt;
 }
 
-AddressDecodingTable<MappingTable::addr_t, int>
+template<typename desired_addr_t>
+AddressDecodingTable<desired_addr_t, int>
 MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 {
 #ifdef SOCLIB_MODULE_DEBUG
@@ -210,10 +218,10 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 #endif
 	size_t before = m_level_addr_bits.sum(index.level());
 	size_t at = m_level_addr_bits[index.level()];
-    AddressDecodingTable<MappingTable::addr_t, int> adt(at, m_addr_width-at-before);
+    AddressDecodingTable<desired_addr_t, int> adt(at, m_addr_width-at-before);
 	adt.reset(default_index);
 
-    AddressDecodingTable<MappingTable::addr_t, bool> done(at, m_addr_width-at-before);
+    AddressDecodingTable<desired_addr_t, bool> done(at, m_addr_width-at-before);
 	done.reset(false);
 
     std::list<Segment>::const_iterator i;
@@ -242,7 +250,7 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
             << std::endl;
 #endif
 
-        for ( addr_t addr = i->baseAddress() & ~(m_rt_size-1);
+        for ( desired_addr_t addr = i->baseAddress() & ~(m_rt_size-1);
               (addr < i->baseAddress()+i->size()) &&
                   (addr >= (i->baseAddress() & ~(m_rt_size-1)));
               addr += m_rt_size ) {
@@ -269,9 +277,10 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
     return adt;
 }
 
-MappingTable::addr_t *MappingTable::getCoherenceTable() const
+template<typename desired_addr_t>
+desired_addr_t *MappingTable::getCoherenceTable() const
 {
-    addr_t *ret = new addr_t[1<<m_level_id_bits.sum()];
+    desired_addr_t *ret = new desired_addr_t[1<<m_level_id_bits.sum()];
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
@@ -284,6 +293,7 @@ MappingTable::addr_t *MappingTable::getCoherenceTable() const
     }
     return ret;
 }
+
 
 void MappingTable::print( std::ostream &o ) const
 {
@@ -342,6 +352,39 @@ MappingTable::getIdLocalityTable( const IntTab &index ) const
 	}
     return adt;
 }
+
+template
+AddressDecodingTable<uint64_t, bool>
+MappingTable::getCacheabilityTable<uint64_t>() const;
+
+template
+AddressDecodingTable<uint64_t, bool>
+MappingTable::getLocalityTable<uint64_t>( const IntTab &index ) const;
+
+template
+AddressDecodingTable<uint64_t, int>
+MappingTable::getRoutingTable<uint64_t>( const IntTab &index, int default_index ) const;
+    
+template
+uint64_t *
+MappingTable::getCoherenceTable<uint64_t>() const;
+
+template
+AddressDecodingTable<uint32_t, bool>
+MappingTable::getCacheabilityTable<uint32_t>() const;
+
+template
+AddressDecodingTable<uint32_t, bool>
+MappingTable::getLocalityTable<uint32_t>( const IntTab &index ) const;
+
+template
+AddressDecodingTable<uint32_t, int>
+MappingTable::getRoutingTable<uint32_t>( const IntTab &index, int default_index ) const;
+    
+template
+uint32_t *
+MappingTable::getCoherenceTable<uint32_t>() const;
+
 
 }}
 

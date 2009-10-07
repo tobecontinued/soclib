@@ -44,15 +44,17 @@ namespace soclib { namespace common {
 class MappingTable
 {
 public:
-    typedef uint32_t addr_t;
+    typedef uint64_t addr64_t;
+    typedef uint32_t addr32_t;
 
 private:
     std::list<soclib::common::Segment> m_segment_list;
     size_t m_addr_width;
+    addr64_t m_addr_mask;
     IntTab m_level_addr_bits;
     IntTab m_level_id_bits;
-    addr_t m_cacheability_mask;
-    addr_t m_rt_size;
+    addr64_t m_cacheability_mask;
+    addr64_t m_rt_size;
 
 public:
     MappingTable( const MappingTable& );
@@ -61,7 +63,7 @@ public:
     MappingTable( size_t addr_width,
                   const IntTab &level_addr_bits,
                   const IntTab &level_id_bits,
-                  const addr_t cacheability_mask );
+                  const addr64_t cacheability_mask );
     
     void add( const soclib::common::Segment &seg );
 
@@ -71,17 +73,48 @@ public:
 
     soclib::common::Segment getSegment( const IntTab &index ) const;
 
-    AddressDecodingTable<addr_t, bool> getCacheabilityTable() const;
+//    __attribute__((deprecated))
+    AddressDecodingTable<addr32_t, bool> getCacheabilityTable() const
+    {
+        return getCacheabilityTable<addr32_t>();
+    }
 
-    AddressDecodingTable<addr_t, bool> getLocalityTable( const IntTab &index ) const;
+//    __attribute__((deprecated))
+    AddressDecodingTable<addr32_t, bool> getLocalityTable( const IntTab &index ) const
+    {
+        return getLocalityTable<addr32_t>( index );
+    }
 
-    AddressDecodingTable<addr_t, int> getRoutingTable( const IntTab &index, int default_index = 0 ) const;
+//    __attribute__((deprecated))
+    AddressDecodingTable<addr32_t, int> getRoutingTable( const IntTab &index, int default_index = 0 ) const
+    {
+        return getRoutingTable<addr32_t>( index, default_index );
+    }
 
     AddressDecodingTable<uint32_t, bool> getIdLocalityTable( const IntTab &index ) const;
 
     AddressMaskingTable<uint32_t> getIdMaskingTable( const int level ) const;
+
+//    __attribute__((deprecated))
+    addr32_t *getCoherenceTable() const
+    {
+        return getCoherenceTable<addr32_t>();
+    }
+
+
+    template<typename desired_addr_t>
+    AddressDecodingTable<desired_addr_t, bool> getCacheabilityTable() const;
+
+    template<typename desired_addr_t>
+    AddressDecodingTable<desired_addr_t, bool> getLocalityTable( const IntTab &index ) const;
+
+    template<typename desired_addr_t>
+    AddressDecodingTable<desired_addr_t, int> getRoutingTable( const IntTab &index, int default_index = 0 ) const;
     
-    addr_t *getCoherenceTable() const;
+    template<typename desired_addr_t>
+    desired_addr_t *getCoherenceTable() const;
+
+
 
     void print( std::ostream &o ) const;
 

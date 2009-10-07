@@ -32,13 +32,14 @@
 
 #include "exception.h"
 #include "int_tab.h"
+#include "stdint.h"
 #include <string>
 
 namespace soclib { namespace common {
 
 class Segment
 {
-    typedef unsigned long addr_t;
+    typedef uint64_t addr_t;
     
     std::string m_name;
     addr_t m_base_address;
@@ -130,6 +131,13 @@ public:
         return ( addr >= m_base_address &&
                  ( addr < m_base_address+m_size
                    || m_base_address+m_size < m_base_address) );
+    }
+
+    inline Segment masked( addr_t addr ) const
+    {
+        Segment s = *this;
+        s.m_base_address &= addr;
+        return s;
     }
 };
 
