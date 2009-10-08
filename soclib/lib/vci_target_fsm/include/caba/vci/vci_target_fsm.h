@@ -71,7 +71,7 @@ private:
     VciTarget<vci_param> &p_vci;
 
     soclib::common::LinkedAccessBuffer<
-        typename vci_param::fast_addr_t,
+        typename vci_param::addr_t,
         unsigned int> m_atomic;
 
     std::vector<soclib::common::Segment> m_segments;

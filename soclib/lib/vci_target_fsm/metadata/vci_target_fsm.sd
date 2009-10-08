@@ -15,7 +15,7 @@ Module('caba:vci_target_fsm',
 	],
 	uses = [
 		Uses('common:mapping_table'),
-		Uses('common:linked_access_buffer', addr_t = parameter.StringExt('uint%s_t', parameter.Reference('addr_size')), id_t = 'unsigned int'),
+		Uses('common:linked_access_buffer', addr_t = parameter.StringExt('sc_dt::sc_uint<%s>', parameter.Reference('addr_size')), id_t = 'unsigned int'),
 		Uses('caba:base_module'),
 		],
 #	   debug = True,
