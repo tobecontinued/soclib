@@ -346,7 +346,7 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
 
     case FSM_LL:
         if ( p_vci.rspack.read() ) {   
-            r_llsc_buf.doLoadLinked(r_address, r_srcid);
+            r_llsc_buf.doLoadLinked(r_address.read(), r_srcid.read());
             if( m_latency )	r_fsm_state = FSM_IDLE;
             else           	r_fsm_state = FSM_CMD_GET;
         }
@@ -354,8 +354,8 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
 
     case FSM_SC:
         if ( p_vci.rspack.read() ) {    
-            if ( r_llsc_buf.isAtomic(r_address, r_srcid) ) {
-                r_llsc_buf.accessDone(r_address);
+            if ( r_llsc_buf.isAtomic(r_address.read(), r_srcid.read()) ) {
+                r_llsc_buf.accessDone(r_address.read());
                 write (r_index, r_address , r_wdata, r_be);
             }
             if( m_latency )	r_fsm_state = FSM_IDLE;
@@ -487,7 +487,7 @@ tmpl(void)::genMoore()
     case FSM_SC:
         p_vci.cmdack = false;
         p_vci.rspval = true;
-        if ( r_llsc_buf.isAtomic(r_address, r_srcid) ) p_vci.rdata = 0;
+        if ( r_llsc_buf.isAtomic(r_address.read(), r_srcid.read()) ) p_vci.rdata = 0;
         else                                           p_vci.rdata = 1;
         p_vci.rsrcid = r_srcid.read();
         p_vci.rtrdid = r_trdid.read();
