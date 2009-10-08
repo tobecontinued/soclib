@@ -179,7 +179,6 @@ class VciVCacheWrapper2
         MMU_READ_DATA_ILLEGAL_ACCESS  = 0x1100, // Read access of Bus Error in cache access 	       (kernel error)
     };
 
-
 public:
     sc_in<bool>                             p_clk;
     sc_in<bool>                             p_resetn;
@@ -216,7 +215,9 @@ private:
     soclib::caba::GenericTlb<paddr_t>    dcache_tlb;
 
     sc_signal<vaddr_t>      r_mmu_ptpr;             // page table pointer register
-    sc_signal<int>          r_mmu_mode;             // tlb mode register
+    sc_signal<int>          r_mmu_mode;             // mmu mode register
+    sc_signal<int>          r_mmu_params;           // mmu parameters register
+    sc_signal<int>          r_mmu_release;          // mmu release register
 
     // DCACHE FSM REGISTERS
     sc_signal<int>          r_dcache_fsm;               // state register

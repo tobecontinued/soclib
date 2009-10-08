@@ -307,9 +307,15 @@ tmpl(void)::transition()
         r_dcache.reset();
 
         icache_tlb.reset();    
-        dcache_tlb.reset();    
-
+        dcache_tlb.reset();   
+ 
         r_mmu_mode = ALL_DEACTIVE;
+        r_mmu_params = (uint32_log2(m_dtlb_ways) << 29)   | (uint32_log2(m_dtlb_sets) << 25)   |
+                       (uint32_log2(m_dcache_ways) << 22) | (uint32_log2(m_dcache_sets) << 18) |
+                       (uint32_log2(m_itlb_ways) << 15)   | (uint32_log2(m_itlb_sets) << 11)   |
+                       (uint32_log2(m_icache_ways) << 8)  | (uint32_log2(m_icache_sets) << 4)  |
+                       (uint32_log2(m_icache_words * 4));
+        r_mmu_release = (uint32_t)(1 << 16) | 0x1;
 
         r_icache_miss_req        = false;
         r_icache_unc_req         = false;
@@ -1210,6 +1216,16 @@ tmpl(void)::transition()
                     break;
                 case iss_t::XTN_TLB_MODE:
                     drsp.rdata = (uint32_t)r_mmu_mode;
+                    drsp.valid = true;
+                    drsp.error = false;
+                    break;
+                case iss_t::XTN_MMU_PARAMS:
+                    drsp.rdata = (uint32_t)r_mmu_params;
+                    drsp.valid = true;
+                    drsp.error = false;
+                    break;
+                case iss_t::XTN_MMU_RELEASE:
+                    drsp.rdata = (uint32_t)r_mmu_release;
                     drsp.valid = true;
                     drsp.error = false;
                     break;

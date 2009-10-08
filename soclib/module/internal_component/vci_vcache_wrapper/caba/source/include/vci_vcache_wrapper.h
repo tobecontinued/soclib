@@ -212,6 +212,8 @@ private:
 
     sc_signal<vaddr_t>      r_mmu_ptpr;             // page table pointer register
     sc_signal<int>          r_mmu_mode;             // tlb mode register
+    sc_signal<int>          r_mmu_params;           // mmu parameters register
+    sc_signal<int>          r_mmu_release;          // mmu release register
 
     // DCACHE FSM REGISTERS
     sc_signal<int>          r_dcache_fsm;               // state register

@@ -402,6 +402,12 @@ tmpl(void)::transition()
         std::memset(r_dcache_in_dtlb, 0, sizeof(*r_dcache_in_dtlb)*m_dcache_ways*m_dcache_sets);
 
         r_mmu_mode = ALL_DEACTIVE;
+        r_mmu_params = (uint32_log2(m_dtlb_ways) << 29)   | (uint32_log2(m_dtlb_sets) << 25)   |
+                       (uint32_log2(m_dcache_ways) << 22) | (uint32_log2(m_dcache_sets) << 18) |
+                       (uint32_log2(m_itlb_ways) << 15)   | (uint32_log2(m_itlb_sets) << 11)   |
+                       (uint32_log2(m_icache_ways) << 8)  | (uint32_log2(m_icache_sets) << 4)  |
+                       (uint32_log2(m_icache_words * 4));
+        r_mmu_release = (uint32_t)(1 << 16) | 0x1;
 
         r_icache_miss_req         = false;
         r_icache_unc_req          = false;
@@ -1075,27 +1081,41 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             break;
         }
  
-        data_t  icache_ins = 0;
-        bool    icache_hit = false;
+        data_t	icache_ins = 0;
+        bool	icache_hit_c = false;
+        bool    icache_hit_t = false;
+        paddr_t	tlb_ipaddr = 0;
 
-        // acces is always cached in this state
-        icache_hit = r_icache.read(r_icache_paddr_save, &icache_ins);
+	icache_hit_t = icache_tlb.translate(ireq.addr, &tlb_ipaddr);
 
-        m_cpt_ins_read++;
-        if ( !icache_hit )
-        {
-            r_icache_miss_req = true;
-            r_icache_fsm = ICACHE_MISS_WAIT;
-            m_cpt_ins_miss++;
-        } 
-        else
-        {
-            r_icache_fsm = ICACHE_IDLE; 
-        }
+	if ( (tlb_ipaddr == r_icache_paddr_save.read()) && ireq.valid && icache_hit_t )		// unmodified & valid
+	{
+            m_cpt_ins_read++;
 
-        irsp.valid = icache_hit;
-        irsp.error = false;
-        irsp.instruction = icache_ins;
+            // acces is always cached in this state
+            icache_hit_c = r_icache.read(r_icache_paddr_save, &icache_ins);
+
+            if ( !icache_hit_c )
+            {
+                r_icache_miss_req = true;
+                r_icache_fsm = ICACHE_MISS_WAIT;
+                m_cpt_ins_miss++;
+            } 
+            else
+            {
+                r_icache_fsm = ICACHE_IDLE; 
+            }
+            irsp.valid = icache_hit_c;
+            irsp.error = false;
+            irsp.instruction = icache_ins;
+	}
+	else	// modified or invalid
+	{
+            irsp.valid = false;
+            irsp.error = false;
+            irsp.instruction = 0;
+            r_icache_fsm = ICACHE_IDLE;
+	}
         break;
     }
     //////////////////////
@@ -1519,6 +1539,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             if ((way == m_itlb_ways) && (set == m_itlb_sets))
             {
                 r_dcache_xtn_req = false;
+        	r_itlb_translation_valid = false;
+        	r_icache_ptba_ok = false;
                 r_icache_fsm = ICACHE_IDLE;
                 break;
             }
@@ -1592,6 +1614,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             r_dcache_itlb_cleanup_req = icache_tlb.inval(r_dcache_wdata_save, &victim_index);
             r_dcache_itlb_cleanup_line = victim_index;
             r_dcache_xtn_req = false;
+            r_itlb_translation_valid = false;
+            r_icache_ptba_ok = false;
             r_icache_fsm = ICACHE_IDLE;
         }
         break;
@@ -2091,7 +2115,6 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             size_t      dcache_tlb_set   = 0;        // selected set (Y field in address)
             data_t      dcache_rdata     = 0;        // read data
             paddr_t     dcache_tlb_nline = 0;       // TLB NLINE 
-	    bool 	write_hit	 = false;
 
             m_cpt_dcache_data_read += m_dcache_ways;
             m_cpt_dcache_dir_read += m_dcache_ways;
@@ -2131,6 +2154,16 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                     break;
                 case iss_t::XTN_TLB_MODE:
                     drsp.rdata = (uint32_t)r_mmu_mode;
+                    drsp.valid = true;
+                    drsp.error = false;
+                    break;
+                case iss_t::XTN_MMU_PARAMS:
+                    drsp.rdata = (uint32_t)r_mmu_params;
+                    drsp.valid = true;
+                    drsp.error = false;
+                    break;
+                case iss_t::XTN_MMU_RELEASE:
+                    drsp.rdata = (uint32_t)r_mmu_release;
                     drsp.valid = true;
                     drsp.error = false;
                     break;
@@ -2501,9 +2534,6 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             {
                                 r_dcache_pte_update = dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
                                 r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                                write_hit = r_dcache.write((paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
-                                                           (dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK));
-                                assert(write_hit && "Write on miss ignores data");
                                 r_dcache_tlb_ll_dirty_req = true;
                                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                                 m_cpt_data_tlb_write_dirty++;
@@ -2514,9 +2544,6 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                                 {
                                     r_dcache_pte_update = dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
                                     r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
-                                    write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
-                                                       (dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK));
-                                    assert(write_hit && "Write on miss ignores data");
                                     r_dcache_tlb_ll_dirty_req = true;
                                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                                     m_cpt_data_tlb_write_dirty++;
@@ -2591,83 +2618,90 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             break;
         }
 
-        bool    dcache_hit   = false;
-        bool    write_hit    = false;
         data_t  dcache_rdata = 0;
+        bool    dcache_hit_c = false;
+        bool    dcache_hit_t = false;
+        paddr_t tlb_dpaddr   = 0;
 
-        // acces always cached in this state
-        dcache_hit = r_dcache.read(r_dcache_paddr_save, &dcache_rdata);
+	dcache_hit_t = dcache_tlb.translate(dreq.addr, &tlb_dpaddr);
 
-        if ( dreq.type == iss_t::DATA_READ )  // cached read
-        {
-            m_cpt_read++;
-            if ( !dcache_hit ) 
-            {
-                r_dcache_miss_req = true;
-                r_dcache_fsm = DCACHE_MISS_WAIT;
-                m_cpt_data_miss++;
-                m_cost_data_miss_frz++;
-            }
-            else
-            {
-                r_dcache_fsm = DCACHE_IDLE;
-            }
-            drsp.valid = dcache_hit;
+	if ( (tlb_dpaddr == r_dcache_paddr_save.read()) && dreq.valid && dcache_hit_t ) 
+	{
+	    // acces always cached in this state
+	    dcache_hit_c = r_dcache.read(r_dcache_paddr_save, &dcache_rdata);
+	    
+	    if ( dreq.type == iss_t::DATA_READ )  // cached read
+	    {
+	        m_cpt_read++;
+	        if ( !dcache_hit_c ) 
+	        {
+	            r_dcache_miss_req = true;
+	            r_dcache_fsm = DCACHE_MISS_WAIT;
+	            m_cpt_data_miss++;
+	            m_cost_data_miss_frz++;
+	        }
+	        else
+	        {
+	            r_dcache_fsm = DCACHE_IDLE;
+	        }
+	        drsp.valid = dcache_hit_c;
+	        drsp.error = false;
+	        drsp.rdata = dcache_rdata;
+	    }
+	    else    // cached write
+	    {
+	        m_cpt_write++;
+	        m_cpt_write_cached++;
+	        if ( dcache_hit_c )    // cache update required
+	        {
+	            r_dcache_rdata_save = dcache_rdata;
+	            r_dcache_fsm = DCACHE_WRITE_UPDT;
+	        } 
+	        else if (!r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
+	        {
+	            if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
+	            {
+	                r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+	                r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+	                r_dcache_tlb_ll_dirty_req = true;
+	                r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
+	                m_cpt_data_tlb_write_dirty++;
+	            }
+	            else
+	            {   
+	                if (r_dcache_hit_p_save) 
+	                {
+	                    r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+	                    r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
+	                    r_dcache_tlb_ll_dirty_req = true;
+	                    r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
+	                    m_cpt_data_tlb_write_dirty++;
+	                }
+	                else
+	                {
+	                    r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+	                    r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+	                    r_dcache_tlb_ptba_read = true;
+	                    r_dcache_fsm = DCACHE_DTLB1_READ_CACHE;
+	                }
+	            }
+	            m_cost_data_tlb_miss_frz++;
+	        }
+	        else                                    // no cache update, not dirty bit update
+	        {
+	            r_dcache_fsm = DCACHE_WRITE_REQ;
+	            drsp.valid = true;
+	            drsp.rdata = 0;
+	        }
+	    }
+	}
+	else
+	{
+            drsp.valid = false;
             drsp.error = false;
-            drsp.rdata = dcache_rdata;
-        }
-        else    // cached write
-        {
-            m_cpt_write++;
-            m_cpt_write_cached++;
-            if ( dcache_hit )    // cache update required
-            {
-            	r_dcache_rdata_save = dcache_rdata;
-                r_dcache_fsm = DCACHE_WRITE_UPDT;
-            } 
-            else if (!r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
-            {
-                if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
-                {
-                    r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                    r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                    write_hit = r_dcache.write((paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
-                                               (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
-                    assert(write_hit && "Write on miss ignores data");
-                    r_dcache_tlb_ll_dirty_req = true;
-                    r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                    m_cpt_data_tlb_write_dirty++;
-                }
-                else
-                {   
-                    if (r_dcache_hit_p_save) 
-                    {
-                        r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                        r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
-                        write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
-                                                    (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
-                        assert(write_hit && "Write on miss ignores data");
-                        r_dcache_tlb_ll_dirty_req = true;
-                        r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                        m_cpt_data_tlb_write_dirty++;
-                    }
-                    else
-                    {
-                        r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                        r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                        r_dcache_tlb_ptba_read = true;
-                        r_dcache_fsm = DCACHE_DTLB1_READ_CACHE;
-                    }
-                }
-                m_cost_data_tlb_miss_frz++;
-            }
-            else                                    // no cache update, not dirty bit update
-            {
-                r_dcache_fsm = DCACHE_WRITE_REQ;
-                drsp.valid = true;
-                drsp.rdata = 0;
-            }
-        }
+            drsp.rdata = 0;
+            r_dcache_fsm = DCACHE_IDLE;
+	}
         break;
     }
     //////////////////////////
@@ -3735,6 +3769,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         if ((way == m_dtlb_ways) && (set == m_dtlb_sets) && (!r_dcache_xtn_req))
         {
             r_dcache_fsm = DCACHE_IDLE;
+            r_dtlb_translation_valid = false;
+            r_dcache_ptba_ok = false;
             drsp.valid = true;
         }
         break;
@@ -3814,6 +3850,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         {  
             r_dcache.setinbit((paddr_t)(victim_index << (m_dcache_words+2)), r_dcache_in_dtlb, false); 
         }
+        r_dtlb_translation_valid = false;
+        r_dcache_ptba_ok = false;
         r_dcache_fsm = DCACHE_IDLE;
         drsp.valid = true;
         break;
@@ -4082,9 +4120,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             {
                 r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
                 r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                write_hit = r_dcache.write((paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
-                                     (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
-                assert(write_hit && "Write on miss ignores data");
+                //write_hit = r_dcache.write((paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2), 
+                //                     (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
+                //assert(write_hit && "Write on miss ignores data");
                 r_dcache_tlb_ll_dirty_req = true;
                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                 m_cpt_data_tlb_write_dirty++;
@@ -4095,9 +4133,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                 {
                     r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
                     r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
-                    write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
-                                     (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
-                    assert(write_hit && "Write on miss ignores data");
+                    //write_hit = r_dcache.write(((paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3)), 
+                    //                 (dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK));
+                    //assert(write_hit && "Write on miss ignores data");
                     r_dcache_tlb_ll_dirty_req = true;
                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                     m_cpt_data_tlb_write_dirty++;
@@ -4147,6 +4185,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
 	    break;	    
 	}
 
+        r_dcache.write(r_dcache_tlb_paddr, r_dcache_pte_update);
         dcache_tlb.setdirty(r_dcache_tlb_way_save, r_dcache_tlb_set_save);
         r_dcache_fsm = DCACHE_WRITE_REQ;
         drsp.valid = true;

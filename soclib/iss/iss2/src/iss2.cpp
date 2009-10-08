@@ -71,6 +71,8 @@ static const char *xtn_str(Iss2::ExternalAccessType type)
         rstr(XTN_DATA_ERROR_TYPE);
         rstr(XTN_INS_BAD_VADDR);
         rstr(XTN_DATA_BAD_VADDR);
+        rstr(XTN_MMU_PARAMS);
+        rstr(XTN_MMU_RELEASE);
     default: return "invalid";
     }
 }

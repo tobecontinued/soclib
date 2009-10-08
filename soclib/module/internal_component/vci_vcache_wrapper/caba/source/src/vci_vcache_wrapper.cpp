@@ -332,7 +332,13 @@ tmpl(void)::transition()
 
         // TLBs and Caches disactive
         r_mmu_mode = ALL_DEACTIVE;
-    
+        r_mmu_params = (uint32_log2(m_dtlb_ways) << 29)   | (uint32_log2(m_dtlb_sets) << 25)   |
+                       (uint32_log2(m_dcache_ways) << 22) | (uint32_log2(m_dcache_sets) << 18) |
+                       (uint32_log2(m_itlb_ways) << 15)   | (uint32_log2(m_itlb_sets) << 11)   |
+                       (uint32_log2(m_icache_ways) << 8)  | (uint32_log2(m_icache_sets) << 4)  |
+                       (uint32_log2(m_icache_words * 4));
+        r_mmu_release = (uint32_t)(1 << 16) | 0x1;
+ 
         r_icache_miss_req         = false;
         r_icache_unc_req          = false;
         r_icache_tlb_read_req     = false;
@@ -708,28 +714,47 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ////////////////
     case ICACHE_BIS: 
     {
-        data_t  icache_ins = 0;
-        bool    icache_hit = false;
-
-        // acces is always cached in this state
-        icache_hit = r_icache.read(r_icache_paddr_save, &icache_ins);
+        data_t      icache_ins = 0;        	    // read instruction
+        bool        icache_hit_c = false;    	// Cache hit
+        bool        icache_hit_t = false;    	// TLB hit
+        paddr_t     tlb_ipaddr     = 0;         // physical address obtained from TLB      
  
-        m_cpt_ins_read++;      
-        if ( !icache_hit )
-        {
-            r_icache_miss_req = true;
-            r_icache_fsm = ICACHE_MISS_WAIT;
-            m_cpt_ins_miss++;
-            m_cost_ins_miss_frz++;
-        } 
-        else
-        {
-            r_icache_fsm = ICACHE_IDLE; 
-        }
+        // acces always cached and MMU activated in this state
+        m_cpt_ins_tlb_read++;
+        m_cpt_icache_dir_read += m_icache_ways;
+        m_cpt_icache_data_read += m_icache_ways;
 
-        irsp.valid = icache_hit;
-        irsp.error = false;
-        irsp.instruction = icache_ins;
+        // processor address translation
+        icache_hit_t = icache_tlb.translate(ireq.addr, &tlb_ipaddr);
+
+        // test if processor request modified
+        if ( (tlb_ipaddr == r_icache_paddr_save.read()) && ireq.valid && icache_hit_t ) // unmodified & valid
+        {
+            m_cpt_ins_read++;
+            icache_hit_c = r_icache.read(r_icache_paddr_save, &icache_ins);
+
+            if ( !icache_hit_c ) 
+            {
+                r_icache_miss_req = true;
+                r_icache_fsm = ICACHE_MISS_WAIT;
+                m_cpt_ins_miss++;
+                m_cost_ins_miss_frz++;
+            } 
+            else 
+            {
+                r_icache_fsm = ICACHE_IDLE;
+            }
+            irsp.valid = icache_hit_c;
+            irsp.error = false;
+            irsp.instruction = icache_ins;
+        } 
+        else                                                                        // modified or invalid
+        {                                                   
+            irsp.valid = false;
+            irsp.error = false;
+            irsp.instruction = 0;
+            r_icache_fsm = ICACHE_IDLE;
+        }      
         break;
     }
     //////////////////////
@@ -981,6 +1006,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     {
         icache_tlb.flush(false);    // global entries are not invalidated
         r_dcache_xtn_req = false;
+        r_itlb_translation_valid = false;
+        r_icache_ptba_ok = false;
         r_icache_fsm = ICACHE_IDLE;
         break;
     }
@@ -997,6 +1024,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     {
         icache_tlb.inval(r_dcache_wdata_save);
         r_dcache_xtn_req = false;
+        r_itlb_translation_valid = false;
+        r_icache_ptba_ok = false;
         r_icache_fsm = ICACHE_IDLE;
         break;
 	}
@@ -1229,6 +1258,16 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                     break;
                 case iss_t::XTN_TLB_MODE:
                     drsp.rdata = (uint32_t)r_mmu_mode;
+                    drsp.valid = true;
+                    drsp.error = false;
+                    break;
+                case iss_t::XTN_MMU_PARAMS:
+                    drsp.rdata = (uint32_t)r_mmu_params;
+                    drsp.valid = true;
+                    drsp.error = false;
+                    break;
+                case iss_t::XTN_MMU_RELEASE:
+                    drsp.rdata = (uint32_t)r_mmu_release;
                     drsp.valid = true;
                     drsp.error = false;
                     break;
@@ -1614,77 +1653,92 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     /////////////////
     case DCACHE_BIS:
     {
-        bool    dcache_hit   = false;
-        data_t  dcache_rdata = 0;
+        data_t      dcache_rdata = 0;       // read data
+        bool        dcache_hit_c = false;   // cache hit
+        bool        dcache_hit_t = false;   // TLB hit        
+        paddr_t     tlb_dpaddr   = 0;       // physical address obtained from TLB    
 
-        // acces always cached in this state
-        dcache_hit = r_dcache.read(r_dcache_paddr_save, &dcache_rdata);
+        // processor address translation
+        dcache_hit_t = dcache_tlb.translate(dreq.addr, &tlb_dpaddr);
 
-        if ( dreq.type == iss_t::DATA_READ )  // cached read
+        if ( (tlb_dpaddr == r_dcache_paddr_save.read()) && dreq.valid && dcache_hit_t )     // unmodified & valid
         {
-            m_cpt_read++;
-            if ( !dcache_hit ) 
-            {
-                r_dcache_miss_req = true;
-                r_dcache_fsm = DCACHE_MISS_WAIT;
-                m_cpt_data_miss++;
-                m_cost_data_miss_frz++;
-            }
-            else
-            {
-                r_dcache_fsm = DCACHE_IDLE;
-            }
-            drsp.valid = dcache_hit;
-            drsp.error = false;
-            drsp.rdata = dcache_rdata;
-        }
-        else    // cached write
-        {
-            m_cpt_write++;
-            m_cpt_write_cached++;
-            if ( dcache_hit )    // cache update required
-            {
-            	r_dcache_rdata_save = dcache_rdata;
-                r_dcache_fsm = DCACHE_WRITE_UPDT;
+            // acces always cached in this state
+            dcache_hit_c = r_dcache.read(r_dcache_paddr_save, &dcache_rdata);
 
-            } 
-            else if ( !r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
+            if ( dreq.type == iss_t::DATA_READ )  // cached read
             {
-                if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
+                m_cpt_read++;
+                if ( !dcache_hit_c ) 
                 {
-                    r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                    r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                    r_dcache_tlb_ll_dirty_req = true;
-                    r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                    m_cpt_data_tlb_write_dirty++;
+                    r_dcache_miss_req = true;
+                    r_dcache_fsm = DCACHE_MISS_WAIT;
+                    m_cpt_data_miss++;
+                    m_cost_data_miss_frz++;
                 }
                 else
-                {   
-                    if (r_dcache_hit_p_save) 
+                {
+                    r_dcache_fsm = DCACHE_IDLE;
+                }
+                drsp.valid = dcache_hit_c;
+                drsp.error = false;
+                drsp.rdata = dcache_rdata;
+            }
+            else    // cached write
+            {
+                m_cpt_write++;
+                m_cpt_write_cached++;
+                if ( dcache_hit_c )    // cache update required
+                {
+                	r_dcache_rdata_save = dcache_rdata;
+                    r_dcache_fsm = DCACHE_WRITE_UPDT;
+            
+                } 
+                else if ( !r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
+                {
+                    if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
                     {
                         r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                        r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
+                        r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                         r_dcache_tlb_ll_dirty_req = true;
                         r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
                         m_cpt_data_tlb_write_dirty++;
                     }
                     else
-                    {
-                        r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
-                        r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
-                        r_dcache_tlb_read_req = true;
-                        r_dcache_tlb_first_req = true;
-                        r_dcache_tlb_ptba_read = true;
-                        r_dcache_fsm = DCACHE_TLB1_READ;
+                    {   
+                        if (r_dcache_hit_p_save) 
+                        {
+                            r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+                            r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
+                            r_dcache_tlb_ll_dirty_req = true;
+                            r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
+                            m_cpt_data_tlb_write_dirty++;
+                        }
+                        else
+                        {
+                            r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
+                            r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+                            r_dcache_tlb_read_req = true;
+                            r_dcache_tlb_first_req = true;
+                            r_dcache_tlb_ptba_read = true;
+                            r_dcache_fsm = DCACHE_TLB1_READ;
+                        }
                     }
                 }
+                else                                    // no cache update, not dirty bit update
+                {
+                    r_dcache_fsm = DCACHE_WRITE_REQ;
+                    drsp.valid = true;
+                    drsp.rdata = 0;
+                }
             }
-            else                                    // no cache update, not dirty bit update
-            {
-                r_dcache_fsm = DCACHE_WRITE_REQ;
-                drsp.valid = true;
-                drsp.rdata = 0;
-            }
+        }
+        else
+        {
+            drsp.valid = false;
+            drsp.error = false;
+            drsp.rdata = 0;
+            r_dcache_fsm = DCACHE_IDLE;
         }
         break;
     }
@@ -2092,6 +2146,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         if ( !r_dcache_xtn_req ) 
         {
             r_dcache_fsm = DCACHE_IDLE;
+            r_dtlb_translation_valid = false;
+            r_dcache_ptba_ok = false;
             drsp.valid = true; 
         }
         break;
@@ -2121,6 +2177,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     case DCACHE_DTLB_INVAL: 
     {
         dcache_tlb.inval(r_dcache_wdata_save);
+        r_dtlb_translation_valid = false;
+        r_dcache_ptba_ok = false;
         r_dcache_fsm = DCACHE_IDLE;
         drsp.valid = true;
         break;

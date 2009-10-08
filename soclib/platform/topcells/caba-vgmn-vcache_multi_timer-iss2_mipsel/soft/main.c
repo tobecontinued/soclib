@@ -117,7 +117,7 @@ int main(void)
         pte_table = (uint32_t *)PTE_ADDR;
         pte_table[0] = 0x85000000;	//tty no global
         pte_table[1] = 0x000C0200;	//tty no global
-	
+
 	puts("Page table are defined! \n");
 
 	// context switch and tlb mode change
@@ -139,12 +139,21 @@ int main(void)
 	set_cp2(7, 0, 0x00800000);
 	puts("dcache invalidation test good :-) \n");
 
+	set_cp2(10, 0, 0);
+	puts("synchronization done!\n");
+
 	// tlb inval
 	puts("TLB invalidation test begin: \n");
 	set_cp2(4, 0, 0x00400000);
 	puts("itlb invalidation test good :-) \n");
 	set_cp2(5, 0, 0x00800000);
 	puts("dtlb invalidation test good :-) \n");
+
+	uint32_t mmu_paras = get_cp2(15, 0);
+	uint32_t mmu_release = get_cp2(16, 0);
+
+	printf(" mmu paras are : %x\n", mmu_paras);
+	printf(" mmu release is : %x\n", mmu_release);
 
 	const int cpu = procnum();
 

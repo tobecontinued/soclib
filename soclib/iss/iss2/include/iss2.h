@@ -142,6 +142,8 @@ public:
         XTN_DATA_ERROR_TYPE,
         XTN_INS_BAD_VADDR,
         XTN_DATA_BAD_VADDR,
+        XTN_MMU_PARAMS,
+        XTN_MMU_RELEASE,
     };
 
     /**
