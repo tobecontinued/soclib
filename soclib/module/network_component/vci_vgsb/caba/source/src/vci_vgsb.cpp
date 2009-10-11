@@ -42,17 +42,18 @@ VciVgsb<vci_param>::VciVgsb (	sc_module_name 		name,
                         	size_t 			nb_master,
                         	size_t 			nb_slave)
     : sc_core::sc_module(name),
+      r_fsm("r_fsm"),
+      r_initiator_index("r_initiator_index"),
+      r_target_index("r_target_index"),
+      r_vci_counter(soclib::common::alloc_elems<sc_signal<uint32_t> >("r_vci_counter", nb_master, nb_slave)),
+      r_cycle("r_cycle"),
       m_routing_table(maptab.getRoutingTable( IntTab() ) ),
       m_nb_initiator(nb_master),
       m_nb_target(nb_slave),
       p_clk("clk"),
       p_resetn("resetn"),
-      p_to_initiator(soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("p_to_initiator", nb_master)),
       p_to_target(soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target", nb_slave)),
-      r_fsm("r_fsm"),
-      r_initiator_index("r_initiator_index"),
-      r_target_index("r_target_index"),
-      r_vci_counter(soclib::common::alloc_elems<sc_signal<uint32_t> >("r_vci_counter", nb_master, nb_slave))
+      p_to_initiator(soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("p_to_initiator", nb_master))
 {
 	SC_METHOD(transition);
 	dont_initialize();
@@ -102,6 +103,7 @@ void VciVgsb<vci_param>::transition()
         r_fsm = FSM_IDLE;
         r_initiator_index = 0;
         r_target_index = 0;
+	r_cycle = 0;
         for(size_t i=0 ; i<(m_nb_initiator) ; i++) {
             for(size_t j=0 ; j<(m_nb_target) ; j++) { 
 		r_vci_counter[i][j] = 0; 
@@ -110,11 +112,14 @@ void VciVgsb<vci_param>::transition()
         return;
     } 
 
-#ifdef TP2_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "*********************************** cycle = " << r_cycle.read() << std::endl;
 std::cout << "vgsb fsm = " << r_fsm.read() << std::endl;
 std::cout << "vgsb ini = " << r_initiator_index.read() << std::endl;
 std::cout << "vgsb tgt = " << r_target_index.read() << std::endl;
 #endif
+
+    r_cycle = r_cycle + 1;
 
     switch( r_fsm.read() ) {
 	case FSM_IDLE:
