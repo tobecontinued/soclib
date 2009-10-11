@@ -49,6 +49,7 @@
 //
 // The r_vci_counter[i][j] registers count the total number of transaction 
 // requests for initiator i and target j. 
+// The r_cycle counter register counts the number of cycles from RESET.
 //
 // Implementation note :
 // This component uses the Segment Table to build the routing table ROM, 
@@ -98,6 +99,7 @@ class VciVgsb
 	sc_signal<size_t>						r_initiator_index;
 	sc_signal<size_t>						r_target_index;
 	sc_signal<uint32_t>						**r_vci_counter;	
+	sc_signal<uint32_t>						r_cycle;
 	
 	// constants
 	const soclib::common::AddressDecodingTable<uint32_t, int> 	m_routing_table;
