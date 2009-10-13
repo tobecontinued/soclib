@@ -109,8 +109,9 @@ XtermWrapper::~XtermWrapper()
 
 ssize_t XtermWrapper::read( void *buffer, size_t len )
 {
+    ssize_t r = ::read( m_fd, buffer, len );
     m_poller.reset();
-    return ::read( m_fd, buffer, len );
+    return r;
 }
 
 ssize_t XtermWrapper::write( const void *buffer, size_t len )
