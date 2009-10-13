@@ -34,8 +34,10 @@
 #include "alloc_elems.h"
 
 #ifdef SOCLIB_MODULE_DEBUG
-#define DEBUG_BEGIN do { do{} while(0)
-#define DEBUG_END } while(0)
+#define DEBUG_BEGIN do { if (name == "ringc") { do{} while(0)
+#define DEBUG_END } } while(0)
+// #define DEBUG_BEGIN do { do{} while(0)
+// #define DEBUG_END } while(0)
 #else
 #define DEBUG_BEGIN do { if (0) { do{} while(0)
 #define DEBUG_END } } while(0)
@@ -151,12 +153,12 @@ public:
         return tmp;
     }
 
-    inline void push( const typename data_t::ptr data )
+    inline void push( const std::string &name, const typename data_t::ptr data )
     {
         assert(!full());
         ++m_usage;
 DEBUG_BEGIN;
-        std::cout << "VGMN pushing data " << *data << " usage: " << m_usage << std::endl;
+        std::cout << name << " pushing data " << *data << " usage: " << m_usage << std::endl;
 DEBUG_END;
         m_data[m_wptr] = data;
         m_wptr = (m_wptr+1)%m_size;
@@ -242,7 +244,7 @@ public:
         return m_rand_state;
     }
 
-    void transition( const output_port_t &port )
+    void transition( const std::string &name, const output_port_t &port )
     {
         if (port.iProposed() && ! port.peerAccepted())
             return;
@@ -267,7 +269,7 @@ public:
 
 DEBUG_BEGIN;
         if ( pkt.valid() )
-            std::cout << "VGMN popped packet " << *pkt << std::endl;
+            std::cout << name << " popped packet " << *pkt << std::endl;
 DEBUG_END;
 
         m_output_delay_line.shift(pkt);
@@ -275,13 +277,13 @@ DEBUG_END;
             m_in_transaction = !pkt->eop();
     }
 
-    void genMoore( output_port_t &port )
+    void genMoore( const std::string &name, output_port_t &port )
     {
         typename vci_pkt_t::ptr pkt = m_output_delay_line.head();
 
         if ( pkt.valid() ) {
 DEBUG_BEGIN;
-            std::cout << "VGMN packet on VCI " << *pkt << std::endl;
+            std::cout << name << " packet on VCI " << *pkt << std::endl;
 DEBUG_END;
             pkt->writeTo(port);
         } else
@@ -296,12 +298,13 @@ class InputRouter
     typedef typename output_queue_t::vci_pkt_t vci_pkt_t;
     typedef typename output_queue_t::vci_pkt_t::input_port_t input_port_t;
     typedef typename output_queue_t::vci_pkt_t::routing_table_t routing_table_t;
-    
+
     routing_table_t m_routing_table;
     dest_fifo_t **m_output_fifos;
     size_t m_n_outputs;
     dest_fifo_t *m_dest;
     typename vci_pkt_t::ptr m_waiting_packet;
+    uint32_t m_broadcast_waiting;
 
 public:
     InputRouter()
@@ -323,23 +326,41 @@ public:
         m_output_fifos = new dest_fifo_t*[m_n_outputs];
         for ( size_t i=0; i<m_n_outputs; ++i )
             m_output_fifos[i] = dest_fifos[i];
+        m_broadcast_waiting = 0;
     }
 
     void reset()
     {
         m_waiting_packet.invalidate();
+        m_broadcast_waiting = 0;
         m_dest = NULL;
     }
 
-    void transition( const input_port_t &port )
+    void transition( const std::string &name, const input_port_t &port )
     {
         if ( m_waiting_packet.valid() ) {
-            assert(m_dest != NULL);
-            if ( ! m_dest->full() ) {
-                m_dest->push( m_waiting_packet );
-                if ( m_waiting_packet->eop() )
-                    m_dest = NULL;
-                m_waiting_packet.invalidate();
+            if ( m_broadcast_waiting ) {
+                for ( size_t i=0; i<m_n_outputs; ++i ) {
+                    if ( ! ((m_broadcast_waiting>>i) & 1) )
+                        continue;
+
+                    dest_fifo_t *dest = m_output_fifos[i];
+                    if ( ! dest->full() ) {
+                        dest->push( name, m_waiting_packet );
+                        m_broadcast_waiting &= ~(1<<i);
+                    }
+                }
+                if ( m_broadcast_waiting == 0 ) {
+                    m_waiting_packet.invalidate();
+                }
+            } else {
+                assert(m_dest != NULL);
+                if ( ! m_dest->full() ) {
+                    m_dest->push( name, m_waiting_packet );
+                    if ( m_waiting_packet->eop() )
+                        m_dest = NULL;
+                    m_waiting_packet.invalidate();
+                }
             }
         }
 
@@ -348,13 +369,21 @@ public:
             m_waiting_packet = typename vci_pkt_t::ptr(new vci_pkt_t(), true);
             m_waiting_packet->readFrom( port );
 DEBUG_BEGIN;
-            std::cout << "VGMN accepting " << *m_waiting_packet << std::endl;
+            std::cout << name << " accepting " << *m_waiting_packet << std::endl;
 DEBUG_END;
             if ( m_dest == NULL ) {
+                if ( m_waiting_packet->is_broadcast() ) {
+                    m_broadcast_waiting = (1<<m_n_outputs)-1;
+                    assert( m_waiting_packet->eop() );
+                } else {
+                    m_dest = m_output_fifos[m_waiting_packet->route( m_routing_table )];
+                }
 DEBUG_BEGIN;
-                std::cout << " routed to port " << m_waiting_packet->route( m_routing_table ) << std::endl;
+                if ( m_broadcast_waiting )
+                    std::cout << name << " broadcasted" << std::endl;
+                else
+                    std::cout << name << " routed to port " << m_waiting_packet->route( m_routing_table ) << std::endl;
 DEBUG_END;
-                m_dest = m_output_fifos[m_waiting_packet->route( m_routing_table )];
             }
         } else {
             // No packet locally waiting nor on port, no need to
@@ -363,11 +392,13 @@ DEBUG_END;
         }
     }
 
-    void genMoore( input_port_t &port )
+    void genMoore( const std::string &name, input_port_t &port )
     {
         bool can_take = !m_waiting_packet.valid();
 
         // If we know where we go, we may pipeline
+        // If we are in a broadcast, m_dest is NULL and no pipelining
+        // occurs.
         if (m_dest != NULL)
             can_take |= !m_dest->full();
 
@@ -405,7 +436,7 @@ public:
         for ( size_t i=0; i<m_in_size; ++i ) {
             for ( size_t j=0; j<m_out_size; ++j )
                 fifos[j] = m_queue[j].getFifo(i);
-            m_router[i].init( m_out_size, &fifos[0], rt );
+            m_router[i].init(m_out_size, &fifos[0], rt);
         }
     }
 
@@ -423,20 +454,20 @@ public:
             m_queue[i].reset();
     }
 
-    void transition( const input_port_t *input_port, const output_port_t *output_port )
+    void transition( const std::string &name, const input_port_t *input_port, const output_port_t *output_port )
     {
         for ( size_t i=0; i<m_in_size; ++i )
-            m_router[i].transition( input_port[i] );
+            m_router[i].transition( name, input_port[i] );
         for ( size_t i=0; i<m_out_size; ++i )
-            m_queue[i].transition( output_port[i] );
+            m_queue[i].transition( name, output_port[i] );
     }
 
-    void genMoore( input_port_t *input_port, output_port_t *output_port )
+    void genMoore( const std::string &name, input_port_t *input_port, output_port_t *output_port )
     {
         for ( size_t i=0; i<m_in_size; ++i )
-            m_router[i].genMoore( input_port[i] );
+            m_router[i].genMoore( name, input_port[i] );
         for ( size_t i=0; i<m_out_size; ++i )
-            m_queue[i].genMoore( output_port[i] );
+            m_queue[i].genMoore( name, output_port[i] );
     }
 };
 
@@ -453,14 +484,14 @@ tmpl(void)::transition()
         return;
     }
 
-    m_cmd_mn->transition( p_to_initiator, p_to_target );
-    m_rsp_mn->transition( p_to_target, p_to_initiator );
+    m_cmd_mn->transition( name(), p_to_initiator, p_to_target );
+    m_rsp_mn->transition( name(), p_to_target, p_to_initiator );
 }
 
 tmpl(void)::genMoore()
 {
-    m_cmd_mn->genMoore( p_to_initiator, p_to_target );
-    m_rsp_mn->genMoore( p_to_target, p_to_initiator );
+    m_cmd_mn->genMoore( name(), p_to_initiator, p_to_target );
+    m_rsp_mn->genMoore( name(), p_to_target, p_to_initiator );
 }
 
 tmpl(/**/)::VciVgmn(
@@ -474,6 +505,9 @@ tmpl(/**/)::VciVgmn(
            m_nb_initiat(nb_attached_initiat),
            m_nb_target(nb_attached_target)
 {
+    assert(m_nb_target <= 31);
+    assert(m_nb_initiat <= 31);
+
     p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("to_initiator", nb_attached_initiat);
     p_to_target = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("to_target", nb_attached_target);
     m_cmd_mn = new _vgmn::MicroNetwork<cmd_router_t,cmd_queue_t>(

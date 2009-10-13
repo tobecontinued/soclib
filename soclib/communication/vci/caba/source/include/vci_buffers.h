@@ -89,6 +89,11 @@ public:
         return rsrcid;
     }
 
+    inline bool is_broadcast() const
+    {
+        return false;
+    }
+
 	inline void writeTo( output_port_t &port ) const
 	{
 		port.rspval = rspval;
@@ -178,6 +183,7 @@ class VciCmdBuffer
 	typename vci_param::pktid_t   pktid;
     template <class, class> friend class ::dpp::ref;
 
+    static const typename vci_param::fast_addr_t s_broadcast_addr = 0x3;
 public:
     VciCmdBuffer()
         : _count(0),
@@ -205,6 +211,11 @@ public:
     inline uint32_t dest() const
     {
         return address;
+    }
+
+    inline bool is_broadcast() const
+    {
+        return address == s_broadcast_addr;
     }
 
 	inline void readFrom( const VciMonitor<vci_param> &port )
