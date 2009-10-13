@@ -429,7 +429,7 @@ namespace caba {
                     r_tgt_srcid = p_vci_tgt.srcid.read();
                     r_tgt_trdid = p_vci_tgt.trdid.read();
                     r_tgt_pktid = p_vci_tgt.pktid.read();
-                    r_tgt_plen  = p_vci_tgt.plen.read();    // todo: wait L2 modification
+                    r_tgt_plen  = p_vci_tgt.plen.read();
                     
                     if ( address == 0x3 )   // broadcast invalidate for data or instruction type
                     {
@@ -1836,6 +1836,7 @@ namespace caba {
                 break;
 
             case TGT_REQ_BROADCAST:
+            case TGT_REQ_ICACHE:
             case TGT_REQ_DCACHE:
                 p_vci_tgt.cmdack  = false;
                 p_vci_tgt.rspval  = false;
