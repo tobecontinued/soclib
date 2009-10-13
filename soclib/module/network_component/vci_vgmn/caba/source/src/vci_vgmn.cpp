@@ -345,7 +345,7 @@ public:
 
         if ( port.iAccepted() ) {
             assert( ! m_waiting_packet.valid() );
-            m_waiting_packet = typename vci_pkt_t::ptr(new vci_pkt_t());
+            m_waiting_packet = typename vci_pkt_t::ptr(new vci_pkt_t(), true);
             m_waiting_packet->readFrom( port );
 DEBUG_BEGIN;
             std::cout << "VGMN accepting " << *m_waiting_packet << std::endl;
