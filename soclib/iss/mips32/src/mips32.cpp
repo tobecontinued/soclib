@@ -225,7 +225,6 @@ uint32_t Mips32Iss::executeNCycles(
             m_jump_pc = r_npc+4;
             m_resume_pc = r_pc;
             run();
-            RUN_FOR(1);
         }
         if ( m_dreq.valid ) {
             m_pc_for_dreq = r_pc;
