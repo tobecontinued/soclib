@@ -20,7 +20,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, Asim
- *         Nicolas Pouillon <nipo@ssji.net>, 2007
+ *         Nicolas Pouillon <nipo@ssji.net>, 2007-2009
  *
  * Based on previous works by Laurent Mortiez & Alain Greiner, 2005
  *
@@ -29,6 +29,7 @@
 
 #include <systemc>
 #include <cassert>
+#include <dpp/ref>
 #include "../include/vci_vgmn.h"
 #include "alloc_elems.h"
 
@@ -49,7 +50,7 @@ namespace _vgmn {
 template<typename data_t>
 class DelayLine
 {
-    data_t *m_line;
+    typename data_t::ptr *m_line;
     size_t m_size;
     size_t m_ptr;
 public:
@@ -63,7 +64,7 @@ public:
 
     void init( size_t n_alloc )
     {
-        m_line = new data_t[n_alloc];
+        m_line = new typename data_t::ptr[n_alloc];
         m_size = n_alloc;
         m_ptr = 0;
     }
@@ -73,23 +74,23 @@ public:
         delete [] m_line;
     }
 
-    inline data_t shift( const data_t &input )
+    inline typename data_t::ptr shift( const typename data_t::ptr &input )
     {
-        data_t tmp = m_line[m_ptr];
+        typename data_t::ptr tmp = m_line[m_ptr];
         m_line[m_ptr] = input;
         m_ptr = (m_ptr+1)%m_size;
         return tmp;
     }
 
-    inline const data_t &head()
+    inline const typename data_t::ptr &head()
     {
         return m_line[m_ptr];
     }
 
-    void reset( const data_t &ref )
+    void reset()
     {
         for ( size_t i=0; i<m_size; ++i )
-            m_line[i] = ref;
+            m_line[i].invalidate();
         m_ptr = 0;
     }
 };
@@ -98,7 +99,7 @@ template<typename data_t>
 class AdHocFifo
 {
     size_t m_size;
-    data_t *m_data;
+    typename data_t::ptr *m_data;
     size_t m_rptr;
     size_t m_wptr;
     size_t m_usage;
@@ -115,7 +116,7 @@ public:
     void init( size_t fifo_size )
     {
         m_size = fifo_size;
-        m_data = new data_t[m_size];
+        m_data = new typename data_t::ptr[m_size];
         m_rptr = 0;
         m_wptr = 0;
         m_usage = 0;
@@ -128,31 +129,34 @@ public:
 
     void reset()
     {
+        for ( size_t i=0; i<m_size; ++i )
+            m_data[i].invalidate();
         m_rptr = 0;
         m_wptr = 0;
         m_usage = 0;
     }
 
-    inline data_t &head() const
+    inline typename data_t::ptr head() const
     {
         return m_data[m_rptr];
     }
 
-    inline data_t &pop()
+    inline typename data_t::ptr pop()
     {
-        data_t &tmp = head();
+        typename data_t::ptr tmp = head();
+        m_data[m_rptr].invalidate();
         assert(!empty());
         --m_usage;
         m_rptr = (m_rptr+1)%m_size;
         return tmp;
     }
 
-    inline void push( const data_t &data )
+    inline void push( const typename data_t::ptr data )
     {
         assert(!full());
         ++m_usage;
 DEBUG_BEGIN;
-        std::cout << "VGMN pushing data " << data << " usage: " << m_usage << std::endl;
+        std::cout << "VGMN pushing data " << *data << " usage: " << m_usage << std::endl;
 DEBUG_END;
         m_data[m_wptr] = data;
         m_wptr = (m_wptr+1)%m_size;
@@ -174,8 +178,8 @@ class OutputPortQueue
 {
 public:
     typedef _vci_pkt_t vci_pkt_t;
-    typedef AdHocFifo<vci_pkt_t*> input_fifo_t;
-    typedef DelayLine<vci_pkt_t*> output_delay_line_t;
+    typedef AdHocFifo<vci_pkt_t> input_fifo_t;
+    typedef DelayLine<vci_pkt_t> output_delay_line_t;
     typedef typename vci_pkt_t::output_port_t output_port_t;
 
 private:
@@ -200,7 +204,7 @@ public:
         m_rand_state = 0x55555555;
         m_current_input = 0;
         m_in_transaction = false;
-        m_output_delay_line.reset(NULL);
+        m_output_delay_line.reset();
     }
 
     ~OutputPortQueue()
@@ -211,16 +215,9 @@ public:
 
     void reset()
     {
-        for ( size_t i=0; i<m_n_inputs; ++i ) {
-            while ( ! m_input_queues[i].empty() )
-                m_input_queues[i].pop();
-        }
-        for ( size_t i=0; i<m_output_delay_line.size(); ++i ) {
-            vci_pkt_t *pkt = m_output_delay_line.head();
-            m_output_delay_line.shift(NULL);
-            if ( pkt )
-                delete pkt;
-        }
+        for ( size_t i=0; i<m_n_inputs; ++i )
+            m_input_queues[i].reset();
+        m_output_delay_line.reset();
         m_current_input = 0;
         m_in_transaction = false;
         for (size_t i=0; i<42; ++i)
@@ -250,7 +247,7 @@ public:
         if (port.iProposed() && ! port.peerAccepted())
             return;
 
-        vci_pkt_t *pkt = NULL;
+        typename vci_pkt_t::ptr pkt(NULL);
         if ( m_in_transaction ) {
             if ( !m_input_queues[m_current_input].empty() )
                 pkt = m_input_queues[m_current_input].pop();
@@ -269,22 +266,20 @@ public:
         }
 
 DEBUG_BEGIN;
-        if (pkt)
+        if ( pkt.valid() )
             std::cout << "VGMN popped packet " << *pkt << std::endl;
 DEBUG_END;
 
-        vci_pkt_t *tmp = m_output_delay_line.shift(pkt);
-        if ( tmp != NULL )
-            delete tmp;
-        if ( pkt )
+        m_output_delay_line.shift(pkt);
+        if ( pkt.valid() )
             m_in_transaction = !pkt->eop();
     }
 
     void genMoore( output_port_t &port )
     {
-        vci_pkt_t *pkt = m_output_delay_line.head();
+        typename vci_pkt_t::ptr pkt = m_output_delay_line.head();
 
-        if (pkt != NULL) {
+        if ( pkt.valid() ) {
 DEBUG_BEGIN;
             std::cout << "VGMN packet on VCI " << *pkt << std::endl;
 DEBUG_END;
@@ -306,7 +301,7 @@ class InputRouter
     dest_fifo_t **m_output_fifos;
     size_t m_n_outputs;
     dest_fifo_t *m_dest;
-    vci_pkt_t *m_waiting_packet;
+    typename vci_pkt_t::ptr m_waiting_packet;
 
 public:
     InputRouter()
@@ -325,7 +320,6 @@ public:
         m_routing_table = rt;
         m_n_outputs = n_outputs;
         m_dest = NULL;
-        m_waiting_packet = NULL;
         m_output_fifos = new dest_fifo_t*[m_n_outputs];
         for ( size_t i=0; i<m_n_outputs; ++i )
             m_output_fifos[i] = dest_fifos[i];
@@ -333,27 +327,25 @@ public:
 
     void reset()
     {
-        if ( m_waiting_packet )
-            delete m_waiting_packet;
-        m_waiting_packet = NULL;
+        m_waiting_packet.invalidate();
         m_dest = NULL;
     }
 
     void transition( const input_port_t &port )
     {
-        if ( m_waiting_packet != NULL ) {
+        if ( m_waiting_packet.valid() ) {
             assert(m_dest != NULL);
             if ( ! m_dest->full() ) {
                 m_dest->push( m_waiting_packet );
                 if ( m_waiting_packet->eop() )
                     m_dest = NULL;
-                m_waiting_packet = NULL;
+                m_waiting_packet.invalidate();
             }
         }
 
         if ( port.iAccepted() ) {
-            assert( m_waiting_packet == NULL );
-            m_waiting_packet = new vci_pkt_t();
+            assert( ! m_waiting_packet.valid() );
+            m_waiting_packet = typename vci_pkt_t::ptr(new vci_pkt_t());
             m_waiting_packet->readFrom( port );
 DEBUG_BEGIN;
             std::cout << "VGMN accepting " << *m_waiting_packet << std::endl;
@@ -373,7 +365,7 @@ DEBUG_END;
 
     void genMoore( input_port_t &port )
     {
-        bool can_take = (m_waiting_packet == NULL);
+        bool can_take = !m_waiting_packet.valid();
 
         // If we know where we go, we may pipeline
         if (m_dest != NULL)
