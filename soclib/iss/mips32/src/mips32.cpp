@@ -212,7 +212,7 @@ uint32_t Mips32Iss::executeNCycles(
     if ( ncycle == 0 )
         goto early_end;
 
-    r_count += 1;
+    RUN_FOR(1);
 
     if ( dreq_ok && ireq_ok ) {
 #ifdef SOCLIB_MODULE_DEBUG
