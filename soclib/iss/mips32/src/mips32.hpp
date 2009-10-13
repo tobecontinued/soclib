@@ -23,15 +23,15 @@ void Mips32Iss::jump(addr_t dest, bool now)
 
 void Mips32Iss::jump_imm16(bool taken, bool likely)
 {
-	if ( !likely ) {
-		if ( taken )
-			jump(sign_ext(m_ins.i.imd, 16)*4 + r_npc, false);
-	} else {
+	if ( likely ) {
 		if ( taken ) {
-			jump(sign_ext(m_ins.i.imd, 16)*4 + r_npc, true);
+			jump(sign_ext(m_ins.i.imd, 16)*4 + r_npc, false);
 		} else {
 			jump(r_npc+4, true);
 		}
+	} else {
+		if ( taken )
+			jump(sign_ext(m_ins.i.imd, 16)*4 + r_npc, false);
 	}
 }
 
