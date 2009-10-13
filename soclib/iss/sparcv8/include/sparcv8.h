@@ -80,6 +80,7 @@
 #ifndef _SOCLIB_SPARCV8_ISS_H_
 #define _SOCLIB_SPARCV8_ISS_H_
 
+#include <cassert>
 #include "iss2.h"
 #include "soclib_endian.h"
 #include "register.h"

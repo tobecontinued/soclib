@@ -44,6 +44,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <cassert>
 
 #include "iss2.h"
 #include "register.h"
