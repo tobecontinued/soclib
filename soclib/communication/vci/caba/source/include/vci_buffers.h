@@ -31,6 +31,7 @@
 #include <inttypes.h>
 #include <iostream>
 #include <systemc>
+#include <dpp/ref>
 #include "address_masking_table.h"
 #include "address_decoding_table.h"
 #include "vci_param.h"
@@ -58,7 +59,15 @@ class VciRspBuffer
 	typename vci_param::srcid_t   rsrcid;
 	typename vci_param::trdid_t   rtrdid;
 	typename vci_param::pktid_t   rpktid;
+    template <class, class> friend class ::dpp::ref;
+
 public:
+    VciRspBuffer()
+        : _count(0),
+          _delete_on_0(false)
+    {}
+
+    DPP_REFTYPE(VciRspBuffer<vci_param>)
     typedef soclib::common::AddressMaskingTable<uint32_t> routing_table_t;
     typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;
 
@@ -140,6 +149,10 @@ public:
           << " rtrdid: " << rtrdid << std::endl
           << " rpktid: " << rpktid << std::endl;
     }
+
+protected:
+    int _count;
+    bool _delete_on_0;
 };
 
 template <typename vci_param>
@@ -163,7 +176,16 @@ class VciCmdBuffer
 	typename vci_param::srcid_t   srcid;
 	typename vci_param::trdid_t   trdid;
 	typename vci_param::pktid_t   pktid;
+    template <class, class> friend class ::dpp::ref;
+
 public:
+    VciCmdBuffer()
+        : _count(0),
+          _delete_on_0(false)
+    {}
+
+    DPP_REFTYPE(VciCmdBuffer<vci_param>)
+
     typedef soclib::common::AddressDecodingTable<uint32_t, int> routing_table_t;
     typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;
 
@@ -277,6 +299,10 @@ public:
           << " trdid  : " << trdid << std::endl
           << " pktid  : " << pktid << std::endl;
     }
+
+protected:
+    int _count;
+    bool _delete_on_0;
 };
 
 }}

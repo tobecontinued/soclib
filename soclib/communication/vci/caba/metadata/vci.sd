@@ -52,6 +52,7 @@ Module('caba:vci_buffers',
 		Uses('common:address_decoding_table', input_t = 'uint32_t', output_t = 'bool'),
 		Uses('common:address_decoding_table', input_t = 'uint32_t', output_t = 'int'),
 		Uses('common:address_masking_table', data_t = 'uint32_t'),
+		Uses('common:dpp'),
 	],
 	 )
 
