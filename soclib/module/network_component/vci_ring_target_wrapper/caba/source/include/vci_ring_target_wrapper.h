@@ -62,7 +62,10 @@ class VciRingTargetWrapper
                             const soclib::common::MappingTable &mt,
                             const soclib::common::IntTab &ringid,
                             const int &tgtid);
-    
+
+        // print ring_cmd_state transactions that never occur  
+        void print_state();
+   
     private:
     	enum vci_cmd_fsm_state_e {
         	CMD_FIRST_HEADER,     // first flit for a ring cmd packet (read or write)
@@ -77,6 +80,8 @@ class VciRingTargetWrapper
 
 	enum ring_cmd_fsm_state_e {
 		CMD_IDLE,	 // waiting for first flit of a command packet
+                BROADCAST_0,
+                BROADCAST_1,
 		LOCAL,  	// next flit of a local cmd packet
 		RING,  	       // next flit of a ring cmd packet
 	};
@@ -91,7 +96,8 @@ class VciRingTargetWrapper
 	// structural parameters
 	bool          m_alloc_target;
 	int           m_tgtid;
-
+        int           nb_trans[13];
+    
 	// internal registers
 	sc_signal<int>	        r_ring_cmd_fsm;	    // ring command packet FSM 
 	sc_signal<int>		r_ring_rsp_fsm;	    // ring response packet FSM
@@ -106,7 +112,9 @@ class VciRingTargetWrapper
 	sc_signal<sc_uint<1> >                 r_contig;
 	sc_signal<sc_uint<1> >                 r_const;
 	sc_signal<sc_uint<vci_param::N> >      r_addr;
-            
+
+      	//sc_signal<bool>                        r_brdcst;
+    
         // internal fifos 
 	GenericFifo<sc_uint<37> > m_cmd_fifo;     // fifo for the local command paquet
 	GenericFifo<sc_uint<33> > m_rsp_fifo;     // fifo for the local response paquet

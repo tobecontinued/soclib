@@ -96,7 +96,6 @@ private:
     bool                m_alloc_init;
     uint32_t            m_srcid;
 
-     
  
     // internal registers
     sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
@@ -108,7 +107,7 @@ private:
     sc_signal<sc_uint<vci_param::T> >      r_trdid_save;
     sc_signal<sc_uint<vci_param::P> >      r_pktid_save;
     sc_signal<sc_uint<vci_param::E> >      r_error_save;
-       
+   
     // internal fifos 
     GenericFifo<sc_uint<37> > m_cmd_fifo;     // fifo for the local command packet
     GenericFifo<sc_uint<33> > m_rsp_fifo;     // fifo for the local response packet

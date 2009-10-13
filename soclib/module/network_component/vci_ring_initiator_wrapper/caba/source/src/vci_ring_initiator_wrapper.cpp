@@ -74,6 +74,8 @@
 
 namespace soclib { namespace caba {
 
+//#define I_DEBUG 
+
 #define tmpl(x) template<typename vci_param> x VciRingInitiatorWrapper<vci_param>
 
 ///////////////////////////////////////////////
@@ -189,7 +191,15 @@ tmpl(void)::transition()
 		case CMD_FIRST_HEADER:       
 			if ( p_vci.cmdval.read() ) 
 			{  
-
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << name()
+          << " -- r_vci_cmd_fsm -- CMD_FIRST_HEADER "
+          << " -- vci_cmdval : " << p_vci.cmdval.read()
+          << " -- vci_address : " << std::hex << p_vci.address.read()
+          << " -- vci_srcid : " << p_vci.srcid.read()
+          << " -- fifo_wok : " << m_cmd_fifo.wok()
+          << std::endl;
+#endif
                                 cmd_fifo_data = (sc_uint<37>) p_vci.address.read(); 
 
                                 if(m_cmd_fifo.wok())
@@ -199,25 +209,17 @@ tmpl(void)::transition()
                                         // test sur broadcast
                                         if ((p_vci.address.read() & 0x3) == 0x3)     
                                         {
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << name() << " broadcast " << std::endl;
+#endif
+                                              cmd_fifo_data = cmd_fifo_data | (sc_uint<37>) ((p_vci.srcid.read() & 0xFF) << 24) | 
+                                                                              (sc_uint<37>) ((p_vci.trdid.read() & 0xF)  << 4);
 
-                                                cmd_fifo_data = cmd_fifo_data | (sc_uint<37>) ((p_vci.srcid.read() & 0xFF) << 24) | 
-                                                                                (sc_uint<37>) ((p_vci.cmd.read()   & 0x3)  << 22) |
-                                                                                (sc_uint<37>) ((p_vci.plen.read()  & 0xFF) << 12) | 
-                                                                                (sc_uint<37>) ((p_vci.pktid.read() & 0xF)  << 8)  | 
-                                                                                (sc_uint<37>) ((p_vci.trdid.read() & 0xF)  << 4);
-                                                                                                                                       
-				                if (p_vci.contig == true)
-                					cmd_fifo_data = cmd_fifo_data | (sc_uint<37>) (0x1 << 21); 
-		                		if (p_vci.cons == true)
-				                	cmd_fifo_data = cmd_fifo_data | (sc_uint<37>) (0x1 << 20);
-
-                                                r_vci_cmd_fsm = WDATA;
-   
+                                              r_vci_cmd_fsm = WDATA;
                                         }
                                         else
                                         {
 					        r_vci_cmd_fsm = CMD_SECOND_HEADER;
-     
                                         }                                   
                                 } // end fifo wok
 
@@ -230,7 +232,16 @@ tmpl(void)::transition()
 
 			if ( p_vci.cmdval.read() && m_cmd_fifo.wok() ) 
 			{
-
+#ifdef I_DEBUG
+         std::cout << sc_time_stamp() << " -- " << name()
+              << " -- r_vci_cmd_fsm -- SECOND_HEADER "
+              << " -- vci_cmdval : " << p_vci.cmdval.read()
+              << " -- fifo_wok : " << m_cmd_fifo.wok()
+              << " -- vci_cmd : " << std::hex << p_vci.cmd.read()
+              << " -- vci_plen : " << p_vci.plen.read()   
+              << " -- vci_trdid : " << p_vci.trdid.read()             
+              << std::endl;
+#endif
 				cmd_fifo_put  = true;
 				cmd_fifo_data =  (sc_uint<37>) ((p_vci.srcid.read() & 0xFF) << 24)| 
                                                  (sc_uint<37>) ((p_vci.cmd.read()   & 0x3)  << 22) |
@@ -259,6 +270,16 @@ tmpl(void)::transition()
   
 			if ( p_vci.cmdval.read() && m_cmd_fifo.wok() ) 
 			{
+#ifdef I_DEBUG
+         std::cout << sc_time_stamp() << " -- " << name()
+              << " -- r_vci_cmd_fsm -- WDATA "
+              << " -- vci_cmdval : " << p_vci.cmdval.read()
+              << " -- fifo_wok : " << m_cmd_fifo.wok()
+              << " -- vci_wdata : " << std::hex << p_vci.wdata.read()
+              << " -- vci_be : " << p_vci.be.read() 
+              << " -- vci_eop : " << p_vci.eop.read()             
+              << std::endl;
+#endif
 
 
 				cmd_fifo_put  = true;
@@ -283,7 +304,12 @@ tmpl(void)::transition()
 			if ( m_rsp_fifo.rok() ) 
 			{
 
-
+#ifdef I_DEBUG
+         std::cout << sc_time_stamp() << " -- " << name()
+              << " -- r_vci_rsp_fsm -- RSP_HEADER "
+              << " -- fifo_rsp_rok : " << m_rsp_fifo.rok()
+              << std::endl;
+#endif
 				rsp_fifo_get = true;
 				r_srcid_save = (sc_uint<vci_param::S>) ((m_rsp_fifo.read() >> 20 ) & 0xFF);
 				r_trdid_save = (sc_uint<vci_param::T>) (m_rsp_fifo.read() & 0xF); 
@@ -296,8 +322,14 @@ tmpl(void)::transition()
 		case RSP_DATA:
 			if ( p_vci.rspack.read() && m_rsp_fifo.rok() ) 
 			{
-
-
+#ifdef I_DEBUG
+         std::cout << sc_time_stamp() << " -- " << name()
+              << " -- r_vci_rsp_fsm -- RSP_DATA "
+              << " -- rsrcid : " << std::hex << r_srcid_save.read()
+              << " -- rdata : " <<  m_rsp_fifo.read()
+              << " -- rerror : " << r_error_save.read()
+              << std::endl;
+#endif
 				rsp_fifo_get = true;            
 				if(((m_rsp_fifo.read()  >> 32) & 0x1) == 0x1)  
 					r_vci_rsp_fsm = RSP_HEADER;                   
@@ -310,30 +342,51 @@ tmpl(void)::transition()
 	switch( r_ring_cmd_fsm ) 
 	{
 		case CMD_IDLE:         
-			if ( p_ring_in.cmd_grant.read() && m_cmd_fifo.rok() )  
-                                {
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_cmd_fsm : CMD_IDLE " 
+          << " -- in grant : " << p_ring_in.cmd_grant.read()
+          << " -- fifo_ROK : " << m_cmd_fifo.rok() 
+          << " -- fifo_data : " << std::hex << m_cmd_fifo.read()
+          << std::endl;
+#endif
 
-                     
-				r_ring_cmd_fsm = DEFAULT; 
-        }
+			if ( p_ring_in.cmd_grant.read() && m_cmd_fifo.rok() )  
+                        {
+
+                		r_ring_cmd_fsm = KEEP; 
+                        }
 		break;
 
 		case DEFAULT:          
-			if ( m_cmd_fifo.rok() && p_ring_in.cmd_wok.read() ) 
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << name() 
+           << " -- r_ring_cmd_fsm : DEFAULT "
+           << " -- fifo_ROK : " << m_cmd_fifo.rok() 
+           << " -- in wok : " << p_ring_in.cmd_wok.read()
+           << " -- fifo_data : " << std::hex << m_cmd_fifo.read()
+           << std::endl;
+#endif
+
+			if ( m_cmd_fifo.rok()) 
 			{
-
-
-				cmd_fifo_get = true;  
+				cmd_fifo_get = p_ring_in.cmd_wok.read();  
 				r_ring_cmd_fsm = KEEP;             
 			}   
 			else if ( !p_ring_in.cmd_grant.read() )
 				r_ring_cmd_fsm = CMD_IDLE; 
 		break;
 
-		case KEEP:                              
+		case KEEP:  
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_cmd_fsm : KEEP "
+          << " -- fifo_rok : " << m_cmd_fifo.rok()
+          << " -- ring_in_wok : " << p_ring_in.cmd_wok.read()
+          << " -- fifo_out_data : " << std::hex << m_cmd_fifo.read()
+          << std::endl;
+#endif
+                            
 			if(m_cmd_fifo.rok() && p_ring_in.cmd_wok.read() ) 
 			{
-
 				cmd_fifo_get = true;  
 				if (((int) (m_cmd_fifo.read() >> 36 ) & 0x1) == 1) 
 				{  
@@ -356,11 +409,18 @@ tmpl(void)::transition()
 			int rsrcid = (int)  ((p_ring_in.rsp_data.read() >> 20 ) & 0xFF);
 			bool islocal = m_lt[rsrcid] && (m_rt[rsrcid] == m_srcid);
 
-
 			if ( p_ring_in.rsp_rok.read() ) 
-			{  
+			{ 
+#ifdef I_DEBUG 
+         std::cout << sc_time_stamp() << " -- " << name()
+              << " -- ring_rsp_fsm -- RSP_IDLE "
+              << " -- islocal : " << islocal
+              << " -- rsrcid : " << std::hex << rsrcid
+              << " -- ring_in.rsp_rok : " << p_ring_in.rsp_rok.read()
+              << " -- m_rsp_fifo.wok : " <<  m_rsp_fifo.wok()         
+              << std::endl;
+#endif
 
-         
  				if ( islocal && m_rsp_fifo.wok()) // response packet to local initiator
 				{   
 					r_ring_rsp_fsm = LOCAL;
@@ -377,16 +437,24 @@ tmpl(void)::transition()
 		break;
 
 		case LOCAL:
+
 			if ( p_ring_in.rsp_rok.read() && m_rsp_fifo.wok() )         
 			{
-
-
+#ifdef I_DEBUG
+         std::cout << sc_time_stamp() << " -- " << name()
+              << " -- ring_rsp_fsm -- LOCAL "
+              << " -- ring_in.rsp_rok : " << p_ring_in.rsp_rok.read()
+              << " -- m_rsp_fifo.wok : " <<  m_rsp_fifo.wok()   
+              << " -- ring_in.rsp_data : " << std::hex << p_ring_in.rsp_data.read()
+              << std::endl;
+#endif
 				rsp_fifo_put  = true;
 				rsp_fifo_data = p_ring_in.rsp_data.read();
 				int reop = (int) ((p_ring_in.rsp_data.read() >> 32 ) & 0x1) ;
-
-				if ( reop == 1 ) 
+				if ( reop == 1 )
+                                {
 					r_ring_rsp_fsm = RSP_IDLE;             
+                                }
 			} 
 		break;
 
@@ -478,7 +546,7 @@ tmpl(void)::genMealy_cmd_grant()
 		break;
 	
 		case DEFAULT:        
-			p_ring_out.cmd_grant = !( m_cmd_fifo.rok() && p_ring_in.cmd_wok.read() ); 
+			p_ring_out.cmd_grant = !m_cmd_fifo.rok();  
 		break;
 	
 		case KEEP:  
@@ -534,7 +602,11 @@ tmpl(void)::genMealy_rsp_out()
 tmpl(void)::genMealy_cmd_in()
 ///////////////////////////////////////////////////////////////////
 {
-	p_ring_out.cmd_r = p_ring_in.cmd_wok.read();
+
+	if(r_ring_cmd_fsm==CMD_IDLE) 
+             	p_ring_out.cmd_r = p_ring_in.cmd_wok.read();
+	else 
+            	p_ring_out.cmd_r = 1;
 } // end genMealy_cmd_in
     
 ///////////////////////////////////////////////////////////////////
