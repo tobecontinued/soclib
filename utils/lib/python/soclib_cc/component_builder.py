@@ -144,6 +144,7 @@ class ComponentBuilder:
 	def baseName(self):
 		basename = self.specialization.getModuleName()
 		tp = self.specialization.getType()
+		basename += "_%08x"%self.specialization.def_uid()
 		basename += "_" + tp.replace(' ', '_')
 		params = ",".join(
 			map(lambda x:'%s=%s'%x,

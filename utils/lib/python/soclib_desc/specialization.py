@@ -176,6 +176,9 @@ class Specialization:
 				r |= i.getParamBuilders()
 		return r
 
+	def def_uid(self):
+		return hash(self.__cdef)
+
 	def __hash__(self):
 		return self.__uid
 
