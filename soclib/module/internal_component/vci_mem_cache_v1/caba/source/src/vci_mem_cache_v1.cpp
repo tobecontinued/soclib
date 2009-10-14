@@ -2813,8 +2813,7 @@ namespace soclib { namespace caba {
 
         //////////////////////////
       case ALLOC_UPT_CLEANUP:
-        if(r_cleanup_fsm.read() != CLEANUP_UPT_LOCK 
-            || r_cleanup_fsm.read() != CLEANUP_UPT_WRITE)
+        if(r_cleanup_fsm.read() != CLEANUP_UPT_LOCK)
         {
           if 	   (r_init_rsp_fsm.read() == INIT_RSP_UPT_LOCK)     r_alloc_upt_fsm = ALLOC_UPT_INIT_RSP;
           else if ((r_write_fsm.read() == WRITE_UPT_LOCK) ||
