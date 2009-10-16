@@ -505,6 +505,8 @@ tmpl(/**/)::VciVgmn(
            m_nb_initiat(nb_attached_initiat),
            m_nb_target(nb_attached_target)
 {
+    assert(min_latency >= 1 && "How good is a network, if you are unable to forward packets ?");
+    assert(fifo_depth  >= 1 && "How good is a network, if you are unable to forward packets ?");
     assert(m_nb_target <= 31);
     assert(m_nb_initiat <= 31);
 
