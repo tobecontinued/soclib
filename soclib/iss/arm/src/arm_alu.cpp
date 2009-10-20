@@ -120,7 +120,7 @@ uint32_t ArmIss::arm_shifter_shift()
 
         } else {
             if (update_carry)
-                r_cpsr.carry = value << shift - 1;
+                r_cpsr.carry = value << (shift - 1);
             return value << shift;
         }
 
@@ -135,7 +135,7 @@ uint32_t ArmIss::arm_shifter_shift()
 
         } else {
             if (update_carry)
-                r_cpsr.carry = value >> shift - 1;
+                r_cpsr.carry = value >> (shift - 1);
             return value >> shift;
         }
 
@@ -150,7 +150,7 @@ uint32_t ArmIss::arm_shifter_shift()
 
         } else {
             if (update_carry)
-                r_cpsr.carry = value >> shift - 1;
+                r_cpsr.carry = value >> (shift - 1);
             return (int32_t)value >> shift;
         }
 
@@ -165,7 +165,7 @@ uint32_t ArmIss::arm_shifter_shift()
 
             } else {
                 if (update_carry)
-                    r_cpsr.carry = value >> shift - 1;
+                    r_cpsr.carry = value >> (shift - 1);
                 return (value >> shift) | (value << (32 - shift));
             }
 

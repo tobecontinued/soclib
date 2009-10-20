@@ -130,19 +130,19 @@ public:
         if ( m_max < word ) m_max = word;
     }
     ///////////////////////////////////
-    size_t inline getMin()
+    inline size_t getMin()
     ///////////////////////////////////
     {
         return  m_min;
     }
     ///////////////////////////////////
-    size_t inline getMax()
+    inline size_t getMax()
     ///////////////////////////////////
     {
         return  m_max;
     }
     //////////////////////////////////////
-    addr_t inline getAddress(size_t word)
+    inline addr_t getAddress(size_t word)
     //////////////////////////////////////
     {
         addr_t address = m_address;

@@ -26,6 +26,8 @@
  * Maintainers: nipo
  */
 
+#include <stdint.h>
+
 #include "caba_base_module.h"
 #include "factory.h"
 #include "inst_arg.h"
