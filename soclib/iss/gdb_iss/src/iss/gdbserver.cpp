@@ -102,7 +102,7 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
     : CpuIss(name, ident),
       mem_req_(false),
       mem_count_(0),
-      catch_execeptions_(true),
+      catch_execeptions_(false),
       state_(init_state())
     {
         if (list_.empty())
