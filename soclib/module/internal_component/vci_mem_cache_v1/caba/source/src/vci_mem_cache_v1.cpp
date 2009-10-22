@@ -1054,7 +1054,7 @@ namespace soclib { namespace caba {
             if  (r_write_be[i].read() & 0x2) mask = mask | 0x0000FF00;
             if  (r_write_be[i].read() & 0x4) mask = mask | 0x00FF0000;
             if  (r_write_be[i].read() & 0x8) mask = mask | 0xFF000000;
-            if(r_write_be[i].read()||r_write_is_cnt.read()) { // complete only if mask is not null (for energy consumption)
+            if(r_write_be[i].read()||r_write_is_cnt.read()||r_write_i_copies.read()) { // complete only if mask is not null (for energy consumption)
               r_write_data[i]  = (r_write_data[i].read() & mask) | 
                 (m_cache_data[way][set][i] & ~mask);
               r_write_be[i]=0xF;
