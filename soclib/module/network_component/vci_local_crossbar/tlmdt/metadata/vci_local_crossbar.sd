@@ -31,7 +31,7 @@ __id__ = "$Id: vci_local_crossbar.sd 917 2009-03-12 10:10:06Z nipo $"
 __version__ = "$Revision: 917 $"
 
 Module('tlmdt:vci_local_crossbar',
-       classname = 'soclib::tlmdt::vci_local_crossbar',
+       classname = 'soclib::tlmdt::VciLocalCrossbar',
        header_files = [	'../source/include/vci_local_crossbar.h',],
        implementation_files = [	'../source/src/vci_local_crossbar.cpp', ],
        uses = [ Uses('common:tlmdt'),

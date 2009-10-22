@@ -40,20 +40,29 @@
 
 namespace soclib { namespace tlmdt {
 
-class vci_local_crossbar
+class VciLocalCrossbar
 {
 public:
-  std::vector<VciCmdArbRspRout *> m_CmdArbRspRout;          //vci_cmd_arb_rsp_rout modules
-  std::vector<VciRspArbCmdRout *> m_RspArbCmdRout;          //vci_rsp_arb_cmd_rout modules
-  centralized_buffer              m_centralized_buffer;     //centralized buffer
+  std::vector<VciCmdArbRspRout *> m_CmdArbRspRout;                     //vci_cmd_arb_rsp_rout modules
+  std::vector<VciRspArbCmdRout *> m_RspArbCmdRout;                     //vci_rsp_arb_cmd_rout modules
+  centralized_buffer              m_centralized_buffer;                //centralized buffer
 
-  vci_local_crossbar(                                                     //constructor
-		     sc_core::sc_module_name            name,             //module name
-		     const soclib::common::MappingTable &mt,              //mapping table
-		     const soclib::common::IntTab       &index,           //index of mapping table
-		     int nb_init,                                         //number of initiators connect to interconnect
-		     int nb_target,                                       //number of targets connect to interconnect
-		     sc_core::sc_time delay);                             //interconnect delay
+  VciLocalCrossbar(                                                     //constructor
+		   sc_core::sc_module_name            name,             //module name
+		   const soclib::common::MappingTable &mt,              //mapping table
+		   const soclib::common::IntTab       &index,           //index of mapping table
+		   int nb_init,                                         //number of initiators connect to interconnect
+		   int nb_target,                                       //number of targets connect to interconnect
+		   sc_core::sc_time delay);                             //interconnect delay
+
+
+  VciLocalCrossbar(                                                     //constructor
+		   sc_core::sc_module_name            name,             //module name
+		   const soclib::common::MappingTable &mt,              //mapping table
+		   const soclib::common::IntTab       &index,           //index of mapping table
+		   size_t nb_init,                                      //number of initiators connect to interconnect
+		   size_t nb_target);                                   //number of targets connect to interconnect
+
 
 };
 

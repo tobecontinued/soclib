@@ -37,11 +37,45 @@ namespace soclib { namespace tlmdt {
 VciVgmn::VciVgmn
 ( sc_core::sc_module_name name,                      // module name
   const soclib::common::MappingTable &mt,            // mapping table
+  size_t nb_init,                                    // number of initiators
+  size_t nb_target,                                  // number of targets
+  size_t min_latency,                                // minimal latency
+  size_t fifo_depth )                                // parameter do not use 
+  : m_centralized_buffer(nb_init)                   // centralized buffer
+{
+  // Phase 1, allocate nb_target CmdArbRspRout blocks
+  for (size_t i=0;i<nb_target;i++){
+    std::ostringstream tmpName;
+    tmpName << name << "_CmdArbRspRout" << i;
+    m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt, soclib::common::IntTab(), min_latency * UNIT_TIME, false));
+  }
+  
+  // Phase 2, allocate nb_init RspArbCmdRout blocks
+  for (size_t i=0;i<nb_init;i++){
+    std::ostringstream tmpName;
+    tmpName << name << "_RspArbCmdRout" << i;
+    m_RspArbCmdRout.push_back(new VciRspArbCmdRout(tmpName.str().c_str() ,mt, soclib::common::IntTab(), i, min_latency * UNIT_TIME, &m_centralized_buffer));
+  }
+  
+  // Phase 3, each cmdArbRspRout sees all the RspArbCmdRout
+  for (size_t i=0;i<nb_target;i++){
+    m_CmdArbRspRout[i]->setRspArbCmdRout(m_RspArbCmdRout);
+  }
+  
+  // Phase 4, each rspArbCmdRout sees all the CmdArbRspRout
+  for (size_t i=0;i<nb_init;i++){
+    m_RspArbCmdRout[i]->setCmdArbRspRout(m_CmdArbRspRout);
+  }
+}
+
+VciVgmn::VciVgmn
+( sc_core::sc_module_name name,                      // module name
+  const soclib::common::MappingTable &mt,            // mapping table
   const soclib::common::IntTab &global_index,        // global index
   int nb_init,                                       // number of initiators
   int nb_target,                                     // number of targets
   sc_core::sc_time delay )                           // interconnect delay
-  : m_centralized_buffer(nb_init)                   // centralized buffer
+  : m_centralized_buffer(nb_init)                    // centralized buffer
 {
   // Phase 1, allocate nb_target CmdArbRspRout blocks
   for (int i=0;i<nb_target;i++)

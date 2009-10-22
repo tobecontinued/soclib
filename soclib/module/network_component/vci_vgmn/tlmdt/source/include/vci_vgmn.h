@@ -56,6 +56,16 @@ public:
 	   int nb_target,                                //number of targets connect to VGMN
 	   sc_core::sc_time delay);                      //VGMN delay
 
+
+  VciVgmn(                                               //constructor
+	   sc_core::sc_module_name            name,      //module name
+	   const soclib::common::MappingTable &mt,       //mapping table
+	   size_t nb_init,                               //number of initiators connect to VGMN
+	   size_t nb_target,                             //number of targets connect to VGMN
+	   size_t min_latency,                           //VGMN minimal latency
+	   size_t fifo_depth );                          //parameter do not use
+
+
 };
 
 }}
