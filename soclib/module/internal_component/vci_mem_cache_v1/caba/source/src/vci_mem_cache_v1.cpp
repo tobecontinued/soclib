@@ -1057,7 +1057,6 @@ namespace soclib { namespace caba {
             if(r_write_be[i].read()||r_write_is_cnt.read()||r_write_i_copies.read()) { // complete only if mask is not null (for energy consumption)
               r_write_data[i]  = (r_write_data[i].read() & mask) | 
                 (m_cache_data[way][set][i] & ~mask);
-              r_write_be[i]=0xF;
             }
           } // end for
 
@@ -1172,8 +1171,6 @@ namespace soclib { namespace caba {
             r_write_to_init_cmd_i_copies = r_write_i_copies.read();
 
             for(size_t i=0; i<m_words ; i++){
-              assert( ((r_write_be[i].read() == 0xF)||(r_write_be[i].read() == 0x0)) &&
-                  "VCI_MEM_CACHE write error in vci_mem_cache : invalid BE");
               if(r_write_be[i].read())  r_write_to_init_cmd_we[i]=true;
               else                      r_write_to_init_cmd_we[i]=false;
             }
@@ -1360,15 +1357,6 @@ namespace soclib { namespace caba {
           if ( (r_alloc_trt_fsm.read() == ALLOC_TRT_WRITE ) ||
               (r_alloc_upt_fsm.read() == ALLOC_UPT_WRITE ) )
           {
-            std::vector<be_t> be_vector;
-            std::vector<data_t> data_vector;
-            be_vector.clear();
-            data_vector.clear();
-            for ( size_t i=0; i<m_words; i++ ) 
-            {
-              be_vector.push_back(r_write_be[i]);
-              data_vector.push_back(r_write_data[i]);
-            }
             m_transaction_tab.set(r_write_trt_index.read(),
                 false,				// write request to XRAM
                 m_nline[(vci_addr_t)(r_write_address.read())],
@@ -1378,8 +1366,8 @@ namespace soclib { namespace caba {
                 false,				// not a processor read
                 false,				// not a single word 
                 0,			        	// word index
-                be_vector,
-                data_vector);
+                std::vector<be_t>(m_words,0),
+                std::vector<data_t>(m_words,0));
 #ifdef IDEBUG
 	std::cout << sc_time_stamp() << " " << name() << " WRITE_DIR_INVAL transaction table : " << std::endl;
 	for(size_t i = 0 ; i < m_transaction_tab.size() ; i++)

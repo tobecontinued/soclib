@@ -1058,7 +1058,6 @@ namespace soclib { namespace caba {
             if(r_write_be[i].read()||r_write_is_cnt.read()||r_write_i_copies.read()) { // complete only if mask is not null (for energy consumption)
               r_write_data[i]  = (r_write_data[i].read() & mask) | 
                 (m_cache_data[way][set][i] & ~mask);
-              r_write_be[i]=0xF;
             }
           } // end for
 
@@ -1172,8 +1171,6 @@ namespace soclib { namespace caba {
             r_write_to_init_cmd_d_copies = r_write_d_copies.read();
 
             for(size_t i=0; i<m_words ; i++){
-              assert( ((r_write_be[i].read() == 0xF)||(r_write_be[i].read() == 0x0)) &&
-                  "VCI_MEM_CACHE write error in vci_mem_cache : invalid BE");
               if(r_write_be[i].read())  r_write_to_init_cmd_we[i]=true;
               else                      r_write_to_init_cmd_we[i]=false;
             }
