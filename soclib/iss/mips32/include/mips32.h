@@ -72,10 +72,6 @@ private:
         MDAT_SWR,
     };
 
-    enum Addresses {
-        RESET_ADDRESS   = 0xbfc00000
-    };
-
     enum ExceptCause {
         X_INT,      // 0 Interrupt
         X_MOD,      // 1 TLB Modification
@@ -528,6 +524,8 @@ private:
 
     const bool m_little_endian;
 
+    static uint32_t m_reset_address;
+
 public:
     Mips32Iss(const std::string &name, uint32_t ident, bool default_little_endian);
 
@@ -580,6 +578,11 @@ public:
 
     void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
     void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
+
+    static inline void setResetAddress( uint32_t addr = 0xbfc00000 )
+    {
+        m_reset_address = addr;
+    }
 
 private:
     void run();

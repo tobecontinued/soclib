@@ -63,9 +63,9 @@ void Mips32Iss::reset()
 {
     struct DataRequest null_dreq = ISS_DREQ_INITIALIZER;
     r_ebase = 0x80000000 | m_ident;
-    r_pc = RESET_ADDRESS;
-    r_npc = RESET_ADDRESS+4;
-    m_ifetch_addr = RESET_ADDRESS;
+    r_pc = m_reset_address;
+    r_npc = m_reset_address + 4;
+    m_ifetch_addr = m_reset_address;
     m_next_pc = m_jump_pc = (uint32_t)-1;
     r_cpu_mode = MIPS32_KERNEL;
     m_ibe = false;
@@ -503,6 +503,8 @@ void Mips32Iss::do_microcoded_sleep()
 #endif
     }
 }
+
+uint32_t Mips32Iss::m_reset_address = 0xbfc00000;
 
 }}
 
