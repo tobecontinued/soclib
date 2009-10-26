@@ -322,13 +322,13 @@ std::cout << sc_time_stamp() << " -- " << name() << " broadcast " << std::endl;
 		if ( p_ring_in.rsp_grant.read() && m_rsp_fifo.rok() ) 
                 {
 
-#ifdef T_DEBUG
-std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : RSP_IDLE "
-          << " -- rsp_fifo rok : "     <<  m_rsp_fifo.rok()
-          << " -- ring_rsp_grant : "   <<  p_ring_in.rsp_grant.read()
-          << " -- fifo data : " << std::hex << m_rsp_fifo.read()
-          << std::endl;
-#endif
+//#ifdef T_DEBUG
+//std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : RSP_IDLE "
+//         << " -- rsp_fifo rok : "     <<  m_rsp_fifo.rok()
+//         << " -- ring_rsp_grant : "   <<  p_ring_in.rsp_grant.read()
+//         << " -- fifo data : " << std::hex << m_rsp_fifo.read()
+//         << std::endl;
+//#endif
 
 			r_ring_rsp_fsm = KEEP;           
                 }
@@ -339,15 +339,15 @@ std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : RSP_ID
 
 			if ( m_rsp_fifo.rok())   // && p_ring_in.rsp_wok.read() ) 
 			{
-#ifdef T_DEBUG
-std::cout << sc_time_stamp() << " -- " << name() 
-          << " -- r_ring_rsp_fsm : DEFAULT "   
-          << " -- rsp_fifo rok : "     <<  m_rsp_fifo.rok()
-          << " -- ring_rsp_grant : "   <<  p_ring_in.rsp_grant.read()
-          << " -- ring_in wok : " << p_ring_in.rsp_wok.read() 
-          << " -- fifo_rsp_data : " << std::hex << m_rsp_fifo.read()
-          << std::endl;
-#endif
+//#ifdef T_DEBUG
+//std::cout << sc_time_stamp() << " -- " << name() 
+//         << " -- r_ring_rsp_fsm : DEFAULT "   
+//         << " -- rsp_fifo rok : "     <<  m_rsp_fifo.rok()
+//         << " -- ring_rsp_grant : "   <<  p_ring_in.rsp_grant.read()
+//         << " -- ring_in wok : " << p_ring_in.rsp_wok.read() 
+//         << " -- fifo_rsp_data : " << std::hex << m_rsp_fifo.read()
+//         << std::endl;
+//#endif
 				rsp_fifo_get = p_ring_in.rsp_wok.read();
 				r_ring_rsp_fsm = KEEP;
 			}   
@@ -358,13 +358,13 @@ std::cout << sc_time_stamp() << " -- " << name()
 		case KEEP:                
 			if(m_rsp_fifo.rok() && p_ring_in.rsp_wok.read()) 
 			{
-#ifdef T_DEBUG
-std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : KEEP "
-          << " -- fifo_rok : " << m_rsp_fifo.rok()
-          << " -- ring_in_wok : " << p_ring_in.rsp_wok.read()
-          << " -- fifo_out_data : " << std::hex << m_rsp_fifo.read()
-          << std::endl;
-#endif
+//#ifdef T_DEBUG
+//std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : KEEP "
+//         << " -- fifo_rok : " << m_rsp_fifo.rok()
+//         << " -- ring_in_wok : " << p_ring_in.rsp_wok.read()
+//         << " -- fifo_out_data : " << std::hex << m_rsp_fifo.read()
+//         << std::endl;
+//#endif
 				rsp_fifo_get = true;              
 				if ((int) ((m_rsp_fifo.read() >> 32 ) & 0x1) == 1)  
 				{             
@@ -391,18 +391,18 @@ std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : KEEP "
                         bool eop     = ( (int) ((p_ring_in.cmd_data.read() >> 36 ) & 0x1) == 1); 
                         uint32_t nb_next_states = 0;
 
- #ifdef T_DEBUG
-         std::cout << sc_time_stamp() << " -- " << name()
-              << " -- ring_cmd_fsm -- CMD_IDLE "
-              << " -- in rok : " << p_ring_in.cmd_rok.read()
-              << " -- isloc : " << islocal
-              << " -- addr : " << std::hex << rtgtid
-              << " -- brdcst : " << brdcst
-              << " -- in wok : " << p_ring_in.cmd_wok.read()
-              << " -- fifo wok : " << m_cmd_fifo.wok()
-              << " -- eop : " << eop
-              << std::endl;
-#endif   
+//#ifdef T_DEBUG
+//        std::cout << sc_time_stamp() << " -- " << name()
+//             << " -- ring_cmd_fsm -- CMD_IDLE "
+//             << " -- in rok : " << p_ring_in.cmd_rok.read()
+//             << " -- isloc : " << islocal
+//             << " -- addr : " << std::hex << rtgtid
+//             << " -- brdcst : " << brdcst
+//             << " -- in wok : " << p_ring_in.cmd_wok.read()
+//             << " -- fifo wok : " << m_cmd_fifo.wok()
+//             << " -- eop : " << eop
+//             << std::endl;
+//#endif   
 
                       if(p_ring_in.cmd_rok.read() && !eop && brdcst && !m_cmd_fifo.wok()) {
                               r_ring_cmd_fsm = BROADCAST_0; 
@@ -448,15 +448,15 @@ std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : KEEP "
 
                 case BROADCAST_0:
 
-#ifdef T_DEBUG
-         std::cout << sc_time_stamp() << " -- " << name()
-              << " -- ring_cmd_fsm -- BROADCAST_0 "
-              << " -- ringin cmd rok : " << p_ring_in.cmd_rok.read()
-              << " -- ringin cmd wok : " << p_ring_in.cmd_wok.read() 
-              << " -- ringin data : " << std::hex << p_ring_in.cmd_data.read()
-              << " -- fifo cmd wok : " << m_cmd_fifo.wok()
-              << std::endl;
-#endif
+//#ifdef T_DEBUG
+//        std::cout << sc_time_stamp() << " -- " << name()
+//             << " -- ring_cmd_fsm -- BROADCAST_0 "
+//             << " -- ringin cmd rok : " << p_ring_in.cmd_rok.read()
+//             << " -- ringin cmd wok : " << p_ring_in.cmd_wok.read() 
+//             << " -- ringin data : " << std::hex << p_ring_in.cmd_data.read()
+//             << " -- fifo cmd wok : " << m_cmd_fifo.wok()
+//             << std::endl;
+//#endif
                 	if ( m_cmd_fifo.wok() )
                         { 
 				cmd_fifo_data = p_ring_in.cmd_data.read();
@@ -472,15 +472,15 @@ std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : KEEP "
 
                 case BROADCAST_1:
                 {
-#ifdef T_DEBUG
-         std::cout << sc_time_stamp() << " -- " << name()
-              << " -- ring_cmd_fsm -- BROADCAST_1 "
-              << " -- ringin cmd rok : " << p_ring_in.cmd_rok.read()
-              << " -- ringin cmd wok : " << p_ring_in.cmd_wok.read() 
-              << " -- ringin data : " << std::hex << p_ring_in.cmd_data.read()
-              << " -- fifo cmd wok : " << m_cmd_fifo.wok()
-              << std::endl;
-#endif
+//#ifdef T_DEBUG
+//        std::cout << sc_time_stamp() << " -- " << name()
+//             << " -- ring_cmd_fsm -- BROADCAST_1 "
+//             << " -- ringin cmd rok : " << p_ring_in.cmd_rok.read()
+//             << " -- ringin cmd wok : " << p_ring_in.cmd_wok.read() 
+//             << " -- ringin data : " << std::hex << p_ring_in.cmd_data.read()
+//             << " -- fifo cmd wok : " << m_cmd_fifo.wok()
+//             << std::endl;
+//#endif
 
                         bool eop = ( (int) ((p_ring_in.cmd_data.read() >> 36 ) & 0x1) == 1);
 
@@ -503,15 +503,15 @@ std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : KEEP "
 
 		case LOCAL:  
                 {
-#ifdef T_DEBUG
-         std::cout << sc_time_stamp() << " -- " << name()
-              << " -- ring_cmd_fsm -- LOCAL "
-              << " -- ringin cmd rok : " << p_ring_in.cmd_rok.read()
-              << " -- ringin cmd wok : " << p_ring_in.cmd_wok.read() 
-              << " -- ringin data : " << std::hex << p_ring_in.cmd_data.read()
-              << " -- fifo cmd wok : " << m_cmd_fifo.wok()
-              << std::endl;
-#endif
+//#ifdef T_DEBUG
+//        std::cout << sc_time_stamp() << " -- " << name()
+//             << " -- ring_cmd_fsm -- LOCAL "
+//             << " -- ringin cmd rok : " << p_ring_in.cmd_rok.read()
+//             << " -- ringin cmd wok : " << p_ring_in.cmd_wok.read() 
+//             << " -- ringin data : " << std::hex << p_ring_in.cmd_data.read()
+//             << " -- fifo cmd wok : " << m_cmd_fifo.wok()
+//             << std::endl;
+//#endif
 
                         bool eop = ( (int) ((p_ring_in.cmd_data.read() >> 36 ) & 0x1) == 1);
 
@@ -539,14 +539,14 @@ std::cout << sc_time_stamp() << " -- " << name() << " -- r_ring_rsp_fsm : KEEP "
 
 		case RING:  
                 { 
- #ifdef T_DEBUG
-         std::cout << sc_time_stamp() << " -- " << name()
-              << " -- ring_cmd_fsm -- RING "
-              << " -- ringin cmd rok : " << p_ring_in.cmd_rok.read()
-              << " -- ringin data : " << std::hex << p_ring_in.cmd_data.read()
-              << " -- ring cmd wok : " << p_ring_in.cmd_wok.read()
-              << std::endl;
-#endif  
+//#ifdef T_DEBUG
+//        std::cout << sc_time_stamp() << " -- " << name()
+//             << " -- ring_cmd_fsm -- RING "
+//             << " -- ringin cmd rok : " << p_ring_in.cmd_rok.read()
+//             << " -- ringin data : " << std::hex << p_ring_in.cmd_data.read()
+//             << " -- ring cmd wok : " << p_ring_in.cmd_wok.read()
+//             << std::endl;
+//#endif  
 			bool eop = ( (int) ((p_ring_in.cmd_data.read() >> 36 ) & 0x1) == 1);
 			if ( p_ring_in.cmd_rok.read() && eop ) {        
         			r_ring_cmd_fsm = CMD_IDLE;
@@ -599,6 +599,7 @@ tmpl(void)::genMoore()
 				p_vci.address = r_addr;
 				p_vci.cmd = (sc_uint<2>)  ((m_cmd_fifo.read() >> 22) & 0x3);
 				p_vci.wdata = 0;
+                                p_vci.be    = 0xF;
 				p_vci.pktid = (sc_uint<vci_param::P>) ((m_cmd_fifo.read() >> 8) & 0xF);
 				p_vci.srcid = (sc_uint<vci_param::S>)  ((m_cmd_fifo.read() >> 24) & 0xFF);
 				p_vci.trdid = (sc_uint<vci_param::T>)  ((m_cmd_fifo.read() >> 4)  & 0xF);
