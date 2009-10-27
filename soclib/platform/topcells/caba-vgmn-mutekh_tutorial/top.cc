@@ -33,9 +33,11 @@
 
 #if defined(CONFIG_CPU_MIPS)
 #include "mips32.h"
+# define DEFAULT_KERNEL "mutekh/kernel-soclib-mips.out"
 # if defined(CONFIG_CPU_ENDIAN_BIG)
 # warning Using MIPS32Eb
 	typedef soclib::common::Mips32EbIss ProcessorIss;
+
 # elif defined(CONFIG_CPU_ENDIAN_LITTLE)
 # warning Using MIPS32El
 	typedef soclib::common::Mips32ElIss ProcessorIss;
@@ -47,11 +49,15 @@
 #include "ppc405.h"
 # warning Using PPC
 	typedef soclib::common::Ppc405Iss ProcessorIss;
+# define DEFAULT_KERNEL "mutekh/kernel-soclib-ppc.out"
 
 #elif defined(CONFIG_CPU_ARM)
 #include "arm.h"
 # warning Using ARM
 	typedef soclib::common::ArmIss ProcessorIss;
+
+# define DEFAULT_KERNEL "mutekh/kernel-soclib-arm.out"
+
 #else
 #  error No supported processor configuration defined
 #endif
@@ -77,10 +83,15 @@ int _main(int argc, char *argv[])
 	// Avoid repeating these everywhere
 	using soclib::common::IntTab;
 	using soclib::common::Segment;
-	size_t cpu_count = 4;
+#ifdef CONFIG_SMP
+	size_t cpu_count = CONFIG_CPU_MAXCOUNT;
+#else
+	size_t cpu_count = 1;
+#endif
+	const char *binary = DEFAULT_KERNEL;
 
-	if (argc < 2)
-	  return 1;
+	if (argc >= 2)
+	  binary = argv[1];
 	
 	// Define our VCI parameters
 	typedef soclib::caba::VciParams<4,9,32,1,1,1,8,1,1,1> vci_param;
@@ -119,7 +130,7 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::common::Loader loader(argv[1]);
+	soclib::common::Loader loader(binary);
 
 #if defined(CONFIG_SOCLIB_MEMCHECK)
 	Processor::init(maptab, loader, "tty,timer,icu");
