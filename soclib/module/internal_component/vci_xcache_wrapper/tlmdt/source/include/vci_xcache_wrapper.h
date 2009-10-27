@@ -190,6 +190,30 @@ public:
 		   size_t dcache_words,
 		   sc_core::sc_time time_quantum);
   
+  VciXcacheWrapper(
+		   sc_core::sc_module_name name,
+		   int cpuid,
+		   const soclib::common::MappingTable &mt,
+		   const soclib::common::IntTab &index,
+		   size_t icache_ways,
+		   size_t icache_sets,
+		   size_t icache_words,
+		   size_t dcache_ways,
+		   size_t dcache_sets,
+		   size_t dcache_words);
+
+  VciXcacheWrapper(
+		   sc_core::sc_module_name name,
+		   int cpuid,
+		   const soclib::common::MappingTable &mt,
+		   const soclib::common::IntTab &index,
+		   size_t icache_ways,
+		   size_t icache_sets,
+		   size_t icache_words,
+		   size_t dcache_ways,
+		   size_t dcache_sets,
+		   size_t dcache_words,
+		   size_t time_quantum);
 };
 
 }}

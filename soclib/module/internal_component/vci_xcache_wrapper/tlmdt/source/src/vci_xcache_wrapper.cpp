@@ -125,6 +125,151 @@ tmpl (/**/)::VciXcacheWrapper
   SC_THREAD(execLoop);
 }
 
+tmpl (/**/)::VciXcacheWrapper
+(
+ sc_core::sc_module_name name,
+ int cpuid,
+ const soclib::common::MappingTable &mt,
+ const soclib::common::IntTab &index,
+ size_t icache_ways,
+ size_t icache_sets,
+ size_t icache_words,
+ size_t dcache_ways,
+ size_t dcache_sets,
+ size_t dcache_words)
+  : sc_module(name),
+    m_id(mt.indexForId(index)),
+    m_iss(this->name(), cpuid),
+    m_irq(0),
+    m_icache_ways(icache_ways),
+    m_icache_words(icache_words),
+    m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
+    m_dcache_ways(dcache_ways),
+    m_dcache_words(dcache_words),
+    m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
+    m_wbuf("wbuf", dcache_words),
+    m_icache("icache", icache_ways, icache_sets, icache_words),
+    m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
+    m_cacheability_table(mt.getCacheabilityTable()),
+    p_vci_initiator("socket")   // vci initiator socket name
+{
+  // bind initiator
+  p_vci_initiator(*this);                     
+
+  //register callback function IRQ TARGET SOCKET
+  for(int i=0; i<iss_t::n_irq; i++){
+    std::ostringstream irq_name;
+    irq_name << "irq" << i;
+    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    
+    p_irq_target[i]->register_nb_transport_fw(this, &VciXcacheWrapper::my_nb_transport_fw, i);
+  }
+
+  m_error       = false;
+  
+  m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
+  m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
+  m_iss.reset();
+
+  // write buffer & caches
+  m_wbuf.reset();
+  m_icache.reset();
+  m_dcache.reset();
+  
+  //PDES local time
+  m_pdes_local_time = new pdes_local_time(100 * UNIT_TIME);
+
+  //PDES activity status
+  m_pdes_activity_status = new pdes_activity_status();
+
+  //create payload and extension to a normal message
+  m_payload_ptr = new tlm::tlm_generic_payload();
+  m_extension_ptr = new soclib_payload_extension();
+
+  //create payload and extension to a null message
+  m_null_payload_ptr = new tlm::tlm_generic_payload();
+  m_null_extension_ptr = new soclib_payload_extension();
+
+  //create payload and extension to an activity message
+  m_activity_payload_ptr = new tlm::tlm_generic_payload();
+  m_activity_extension_ptr = new soclib_payload_extension();
+
+  SC_THREAD(execLoop);
+}
+
+tmpl (/**/)::VciXcacheWrapper
+(
+ sc_core::sc_module_name name,
+ int cpuid,
+ const soclib::common::MappingTable &mt,
+ const soclib::common::IntTab &index,
+ size_t icache_ways,
+ size_t icache_sets,
+ size_t icache_words,
+ size_t dcache_ways,
+ size_t dcache_sets,
+ size_t dcache_words,
+ size_t time_quantum)
+  : sc_module(name),
+    m_id(mt.indexForId(index)),
+    m_iss(this->name(), cpuid),
+    m_irq(0),
+    m_icache_ways(icache_ways),
+    m_icache_words(icache_words),
+    m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
+    m_dcache_ways(dcache_ways),
+    m_dcache_words(dcache_words),
+    m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
+    m_wbuf("wbuf", dcache_words),
+    m_icache("icache", icache_ways, icache_sets, icache_words),
+    m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
+    m_cacheability_table(mt.getCacheabilityTable()),
+    p_vci_initiator("socket")   // vci initiator socket name
+{
+  // bind initiator
+  p_vci_initiator(*this);                     
+
+  //register callback function IRQ TARGET SOCKET
+  for(int i=0; i<iss_t::n_irq; i++){
+    std::ostringstream irq_name;
+    irq_name << "irq" << i;
+    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    
+    p_irq_target[i]->register_nb_transport_fw(this, &VciXcacheWrapper::my_nb_transport_fw, i);
+  }
+
+  m_error       = false;
+  
+  m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
+  m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
+  m_iss.reset();
+
+  // write buffer & caches
+  m_wbuf.reset();
+  m_icache.reset();
+  m_dcache.reset();
+  
+  //PDES local time
+  m_pdes_local_time = new pdes_local_time(time_quantum * UNIT_TIME);
+
+  //PDES activity status
+  m_pdes_activity_status = new pdes_activity_status();
+
+  //create payload and extension to a normal message
+  m_payload_ptr = new tlm::tlm_generic_payload();
+  m_extension_ptr = new soclib_payload_extension();
+
+  //create payload and extension to a null message
+  m_null_payload_ptr = new tlm::tlm_generic_payload();
+  m_null_extension_ptr = new soclib_payload_extension();
+
+  //create payload and extension to an activity message
+  m_activity_payload_ptr = new tlm::tlm_generic_payload();
+  m_activity_extension_ptr = new soclib_payload_extension();
+
+  SC_THREAD(execLoop);
+}
+
 tmpl (void)::update_time(sc_core::sc_time t)
 {
   if(t > m_pdes_local_time->get()){
@@ -158,7 +303,8 @@ tmpl (void)::execLoop ()
     xcacheAccessInternal(ireq, dreq, meanwhile_irsp, meanwhile_drsp);
     
     // This call is _with_ side effects and gives delay information.
-    uint32_t del = xcacheAccess(ireq, dreq, irsp, drsp);
+    xcacheAccess(ireq, dreq, irsp, drsp);
+    //uint32_t del = xcacheAccess(ireq, dreq, irsp, drsp);
     
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " after cache access: " << irsp << ' ' << drsp << std::endl;
@@ -184,8 +330,6 @@ tmpl (void)::execLoop ()
     nc += m_iss.executeNCycles(1, irsp, drsp, m_irq);
     //printf("nc = %d\n", nc);
 
-    if(nc==0)
-      nc = 1;
     m_pdes_local_time->add(nc * UNIT_TIME);
     
     // if initiator needs synchronize then it sends a null message
@@ -426,6 +570,7 @@ tmpl (uint32_t)::ram_uncacheable_write
   //send a write message
   p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
   wait(m_rsp_received);
+  m_pdes_local_time->reset_sync();
 
   //update response
   rdata = atou(m_payload_ptr->get_data_ptr(), 0);
@@ -483,6 +628,7 @@ tmpl (uint32_t)::ram_cacheable_write
   //send a write message
   p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
   wait(m_rsp_received);
+  m_pdes_local_time->reset_sync();
   //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
 
   //update response
@@ -510,7 +656,8 @@ tmpl (uint32_t)::ram_read
   if(m_wbuf.rok()){
     data_t wdata;
     bool werror;
-    uint32_t del = ram_cacheable_write( VCI_WRITE_COMMAND, wdata, werror );
+    //uint32_t del = ram_cacheable_write( VCI_WRITE_COMMAND, wdata, werror );
+    ram_cacheable_write( VCI_WRITE_COMMAND, wdata, werror );
   }
   
 
@@ -547,6 +694,7 @@ tmpl (uint32_t)::ram_read
   //send a write message
   p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
   wait(m_rsp_received);
+  m_pdes_local_time->reset_sync();
   //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
 
   //update response
@@ -606,6 +754,8 @@ tmpl (void)::send_null_message()
   p_vci_initiator->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
   //deschedule the initiator thread
   wait(sc_core::SC_ZERO_TIME);
+  //wait(m_rsp_received);
+  m_pdes_local_time->reset_sync();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -616,6 +766,9 @@ tmpl (tlm::tlm_sync_enum)::nb_transport_bw
   tlm::tlm_phase                     &phase,         // phase
   sc_core::sc_time                   &time)          // time
 {
+#ifdef SOCLIB_MODULE_DEBUG
+  std::cout << name() << " Receive response time = " << time.value() << std::endl;
+#endif
 
   soclib_payload_extension *extension_ptr;
   payload.get_extension(extension_ptr);
