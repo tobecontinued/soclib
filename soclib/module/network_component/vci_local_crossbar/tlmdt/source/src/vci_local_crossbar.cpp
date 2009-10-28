@@ -38,6 +38,48 @@ VciLocalCrossbar::VciLocalCrossbar
 (
  sc_core::sc_module_name name,                      // module name
  const soclib::common::MappingTable &mt,            // mapping table
+ const soclib::common::IntTab &init_index,          // initiator index mapping table
+ const soclib::common::IntTab &target_index,        // target index mapping table
+ size_t nb_init,                                    // number of initiators
+ size_t nb_target)                                  // number of targets
+  : m_centralized_buffer(++nb_init)                 // centralized buffer
+{
+  nb_target++;
+
+  // Phase 1, allocate nb_target CmdArbRspRout blocks
+  for (size_t i=0;i<nb_target;i++){
+    std::ostringstream tmpName;
+    tmpName << name << "_CmdArbRspRout" << i;
+    
+    if(i==(nb_target - 1)) // only the last CMD block has external access
+      m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt, init_index, UNIT_TIME, true));
+    else
+      m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt, init_index, UNIT_TIME, false));
+  }
+  
+  // Phase 2, allocate nb_init RspArbCmdRout blocks
+  for (size_t i=0;i<nb_init;i++){
+    std::ostringstream tmpName;
+    tmpName << name << "_RspArbCmdRout" << i;
+    m_RspArbCmdRout.push_back(new VciRspArbCmdRout(tmpName.str().c_str() ,mt, init_index, i, UNIT_TIME, &m_centralized_buffer));
+  }
+  
+  // Phase 3, each cmdArbRspRout sees all the RspArbCmdRout
+  for (size_t i=0;i<nb_target;i++){
+    m_CmdArbRspRout[i]->setRspArbCmdRout(m_RspArbCmdRout);
+  }
+  
+  // Phase 4, each rspArbCmdRout sees all the CmdArbRspRout
+  for (size_t i=0;i<nb_init;i++){
+    m_RspArbCmdRout[i]->setCmdArbRspRout(m_CmdArbRspRout);
+  }
+}
+
+
+VciLocalCrossbar::VciLocalCrossbar
+(
+ sc_core::sc_module_name name,                      // module name
+ const soclib::common::MappingTable &mt,            // mapping table
  const soclib::common::IntTab &index,               // index mapping table
  size_t nb_init,                                    // number of initiators
  size_t nb_target)                                  // number of targets
@@ -64,12 +106,12 @@ VciLocalCrossbar::VciLocalCrossbar
   }
   
   // Phase 3, each cmdArbRspRout sees all the RspArbCmdRout
-  for (int i=0;i<nb_target;i++){
+  for (size_t i=0;i<nb_target;i++){
     m_CmdArbRspRout[i]->setRspArbCmdRout(m_RspArbCmdRout);
   }
   
   // Phase 4, each rspArbCmdRout sees all the CmdArbRspRout
-  for (int i=0;i<nb_init;i++){
+  for (size_t i=0;i<nb_init;i++){
     m_RspArbCmdRout[i]->setCmdArbRspRout(m_CmdArbRspRout);
   }
 }

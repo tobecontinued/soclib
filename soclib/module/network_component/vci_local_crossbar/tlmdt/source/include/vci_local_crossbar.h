@@ -64,6 +64,14 @@ public:
 		   size_t nb_target);                                   //number of targets connect to interconnect
 
 
+  VciLocalCrossbar(                                                     //constructor
+		   sc_core::sc_module_name            name,             //module name
+		   const soclib::common::MappingTable &mt,              //mapping table
+		   const soclib::common::IntTab       &init_index,      //initiator index of mapping table
+		   const soclib::common::IntTab       &target_index,    //target index of mapping table (do not used)
+		   size_t nb_init,                                      //number of initiators connect to interconnect
+		   size_t nb_target);                                   //number of targets connect to interconnect
+
 };
 
 }}
