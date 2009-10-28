@@ -252,6 +252,8 @@ class Module:
 				v = list(v)
 			if isinstance(v, list):
 				kv.append("%s = [%s]"%(k, ',\n\t\t'.join(map(repr, v))))
+			elif isinstance(v, Module):
+				pass
 			else:
 				kv.append("%s = %s"%(k, repr(v)))
 		return '''%(type)s("%(type_name)s",

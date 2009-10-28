@@ -7,7 +7,7 @@ import atexit
 from soclib_cc import exceptions
 
 class NoSuchComponent(exceptions.ExpectedException):
-	def __repr__(self):
+	def __str__(self):
 		return 'NoSuchComponent "%s"'%self.args[0]
 
 class FileParsingError(exceptions.ExpectedException):
