@@ -32,6 +32,7 @@
 
 #include <vector>
 #include <sstream>
+#include <tlmdt>                          // TLM-DT headers
 
 #include "mapping_table.h"                //mapping table
 #include "vci_cmd_arb_rsp_rout.h"         //Our header
@@ -41,12 +42,67 @@
 namespace soclib { namespace tlmdt {
 
 class VciVgmn
+  : public sc_core::sc_module            // inherit from SC module base clase
 {
-public:
-
+private:
   std::vector<VciCmdArbRspRout *> m_CmdArbRspRout;       //vci_cmd_arb_rsp_rout modules
   std::vector<VciRspArbCmdRout *> m_RspArbCmdRout;       //vci_rsp_arb_cmd_rout modules
   centralized_buffer              m_centralized_buffer;  //centralized buffer
+
+  std::vector<tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_vci_targets; // VCI target ports
+  
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_vci_initiators; // VCI initiator ports
+
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_fw_transport_if (VCI TARGET PORTS UP)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_fw_up   // receive command from initiator
+  ( int                       id,         // register id
+    tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_fw_transport_if (VCI TARGET PORTS DOWN)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_fw_down // receive command from initiator
+  ( int                       id,         // register id
+    tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+ 
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_bw_transport_if (VCI INITIATOR PORTS UP)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw_up   // receive command from initiator
+  ( int                       id,         // register id
+    tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_bw_transport_if (VCI INITIATOR PORTS DOWN)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw_down // receive command from initiator
+  ( int                       id,         // register id
+    tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  void init(
+	    sc_core::sc_module_name name,                      // module name
+	    const soclib::common::MappingTable &mt,            // mapping table
+	    const soclib::common::IntTab &index,               // index
+	    size_t nb_init,                                    // number of initiators
+	    size_t nb_target,                                  // number of targets
+	    sc_core::sc_time delay );                           // interconnect delay
+
+public:
+
+  std::vector<tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_vci_target; // VCI target ports
+  
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_vci_initiator; // VCI initiator ports
 
   VciVgmn(                                               //constructor
 	   sc_core::sc_module_name            name,      //module name

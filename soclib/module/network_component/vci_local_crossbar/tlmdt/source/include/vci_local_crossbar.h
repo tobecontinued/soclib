@@ -32,6 +32,7 @@
 
 #include <vector>
 #include <sstream>
+#include <tlmdt>                         // TLM-DT headers
 
 #include "mapping_table.h"               //mapping table
 #include "vci_cmd_arb_rsp_rout.h"        //Our header
@@ -41,11 +42,107 @@
 namespace soclib { namespace tlmdt {
 
 class VciLocalCrossbar
+  : public sc_core::sc_module            // inherit from SC module base clase
 {
-public:
+private:
   std::vector<VciCmdArbRspRout *> m_CmdArbRspRout;                     //vci_cmd_arb_rsp_rout modules
   std::vector<VciRspArbCmdRout *> m_RspArbCmdRout;                     //vci_rsp_arb_cmd_rout modules
   centralized_buffer              m_centralized_buffer;                //centralized buffer
+
+  tlm_utils::simple_initiator_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_vci_initiator_to_down; // VCI initiator port connected to local crossbar
+
+  tlm_utils::simple_target_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_vci_target_to_down; // VCI target port connected to local crossbar
+
+  std::vector<tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_vci_targets; // VCI target ports
+  
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_vci_initiators; // VCI initiator ports
+
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_fw_transport_if (VCI TARGET UP)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_fw_up   // receive command from initiator
+  ( tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_fw_transport_if (VCI TARGET DOWN)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_fw_down // receive command from initiator
+  ( tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+ 
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_bw_transport_if (VCI INITIATOR UP)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw_up   // receive command from initiator
+  ( tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_bw_transport_if (VCI INITIATOR DOWN)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw_down // receive command from initiator
+  ( tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_fw_transport_if (VCI TARGET PORTS UP)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_fw_up   // receive command from initiator
+  ( int                       id,         // register id
+    tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_fw_transport_if (VCI TARGET PORTS DOWN)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_fw_down // receive command from initiator
+  ( int                       id,         // register id
+    tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+ 
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_bw_transport_if (VCI INITIATOR PORTS UP)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw_up   // receive command from initiator
+  ( int                       id,         // register id
+    tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Fuction  tlm::tlm_bw_transport_if (VCI INITIATOR PORTS DOWN)
+  /////////////////////////////////////////////////////////////////////////////////////
+  tlm::tlm_sync_enum nb_transport_bw_down // receive command from initiator
+  ( int                       id,         // register id
+    tlm::tlm_generic_payload &payload,    // payload
+    tlm::tlm_phase           &phase,      // phase
+    sc_core::sc_time         &time);      // time
+
+  void init(
+	    sc_core::sc_module_name name, 
+	    const soclib::common::MappingTable &mt,
+	    const soclib::common::IntTab &index,
+	    size_t nb_init,
+	    size_t nb_target,
+	    sc_core::sc_time delay );
+
+public:
+
+  tlm_utils::simple_initiator_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_vci_initiator_to_up; // VCI initiator port connected to micro-network
+
+  tlm_utils::simple_target_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_vci_target_to_up; // VCI target port connected to micro-network
+
+  std::vector<tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_vci_target; // VCI target ports
+  
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_vci_initiator; // VCI initiator ports
 
   VciLocalCrossbar(                                                     //constructor
 		   sc_core::sc_module_name            name,             //module name
