@@ -2018,8 +2018,7 @@ namespace soclib { namespace caba {
                 entry.count  = r_cleanup_count.read() -1;
                 r_cleanup_fsm = CLEANUP_RSP;
               } else { // miss
-                entry.count  = r_cleanup_count.read();
-                r_cleanup_fsm = CLEANUP_UPT_LOCK;
+                assert(false && "MemCache ERROR : Cleanup instruction hit but the line is not shared");
               }
               entry.i_copies  = r_cleanup_i_copies.read() & ~(0x1 << r_cleanup_srcid.read());
               entry.d_copies  = r_cleanup_d_copies.read();
@@ -2028,8 +2027,7 @@ namespace soclib { namespace caba {
                 entry.count  = r_cleanup_count.read() -1;
                 r_cleanup_fsm = CLEANUP_RSP; 
               } else { // miss
-                entry.count  = r_cleanup_count.read();
-                r_cleanup_fsm = CLEANUP_UPT_LOCK;
+                assert(false && "MemCache ERROR : Cleanup data hit but the line is not shared");
               }
               entry.i_copies  = r_cleanup_i_copies.read();
               entry.d_copies  = r_cleanup_d_copies.read() & ~(0x1 << r_cleanup_srcid.read());
