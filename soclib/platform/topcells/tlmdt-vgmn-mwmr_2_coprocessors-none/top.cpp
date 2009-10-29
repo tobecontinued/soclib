@@ -47,19 +47,19 @@ int sc_main (int   argc, char  *argv[])
   /////////////////////////////////////////////////////////////////////////////
   // VGMN
   /////////////////////////////////////////////////////////////////////////////
-  VciVgmn vgmn_1("vgmn", maptab, IntTab(), 3, 3, network_latence * UNIT_TIME);
+  VciVgmn vgmn_1("vgmn", maptab, 3, 3, network_latence, 8);
 
   /////////////////////////////////////////////////////////////////////////////
   // INITIATOR
   /////////////////////////////////////////////////////////////////////////////
   my_initiator *initiator = new my_initiator("init", IntTab(0), maptab, 1000 * UNIT_TIME, simulation_time * UNIT_TIME);
-  initiator->p_vci_initiator(vgmn_1.m_RspArbCmdRout[0]->p_vci_target);
+  initiator->p_vci_initiator(*vgmn_1.p_vci_target[0]);
 
   /////////////////////////////////////////////////////////////////////////////
   // RAM 0
   /////////////////////////////////////////////////////////////////////////////
   VciRam<vci_param> *ram0 = new VciRam<vci_param>("ram0", IntTab(0), maptab, loader);
-  vgmn_1.m_CmdArbRspRout[0]->p_vci_initiator(ram0->p_vci_target);
+  (*vgmn_1.p_vci_initiator[0])(ram0->p_vci_target);
 
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR 0
@@ -73,8 +73,8 @@ int sc_main (int   argc, char  *argv[])
 
   VciMwmrController<vci_param> *mwmr0 = new VciMwmrController<vci_param>("mwmr0", maptab, IntTab(1), IntTab(1), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
 
-  mwmr0->p_vci_initiator(vgmn_1.m_RspArbCmdRout[1]->p_vci_target);
-  vgmn_1.m_CmdArbRspRout[1]->p_vci_initiator(mwmr0->p_vci_target);
+  mwmr0->p_vci_initiator(*vgmn_1.p_vci_target[1]);
+  (*vgmn_1.p_vci_initiator[1])(mwmr0->p_vci_target);
 
   Coprocessor *copro0 = new Coprocessor("copro0", 0, read_depth/4, write_depth/4, n_read_channel, n_write_channel, n_config, n_status);
 
@@ -102,8 +102,8 @@ int sc_main (int   argc, char  *argv[])
 
   VciMwmrController<vci_param> *mwmr1 = new VciMwmrController<vci_param>("mwmr1", maptab, IntTab(2), IntTab(2), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
 
-  mwmr1->p_vci_initiator(vgmn_1.m_RspArbCmdRout[2]->p_vci_target);
-  vgmn_1.m_CmdArbRspRout[2]->p_vci_initiator(mwmr1->p_vci_target);
+  mwmr1->p_vci_initiator(*vgmn_1.p_vci_target[2]);
+  (*vgmn_1.p_vci_initiator[2])(mwmr1->p_vci_target);
 
   Coprocessor *copro1 = new Coprocessor("copro1", 1, read_depth/4, write_depth/4, n_read_channel, n_write_channel, n_config, n_status);
 

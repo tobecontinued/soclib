@@ -1,3 +1,4 @@
+N_INITS?=1
 all: compile clean
 
 compile:

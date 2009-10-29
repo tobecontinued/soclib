@@ -10,8 +10,8 @@
 #include "vci_vgmn.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
-#include "vci_xcache.h"
-#include "iss_simhelper.h"
+#include "vci_xcache_wrapper.h"
+#include "iss2_simhelper.h"
 #include "vci_blackhole.h"
 
 using namespace  soclib::tlmdt;
@@ -35,6 +35,8 @@ std::vector<std::string> stringArray(
 int sc_main (int   argc, char  **argv)
 {
   typedef VciParams<uint32_t,uint32_t> vci_param;
+  typedef Mips32ElIss iss_t;
+  typedef Iss2Simhelper<Mips32ElIss> simhelper;
 
   struct timeb initial, final;
 
@@ -85,25 +87,25 @@ int sc_main (int   argc, char  **argv)
   /////////////////////////////////////////////////////////////////////////////
   // VCI_VGMN
   /////////////////////////////////////////////////////////////////////////////
-  VciVgmn vgmn_1("vgmn", maptab, IntTab(), n_initiators, 3, network_latence * UNIT_TIME);
+  VciVgmn vgmn_1("vgmn", maptab, n_initiators, 3, network_latence, 8);
  
   /////////////////////////////////////////////////////////////////////////////
   // VCI_XCACHE 
   /////////////////////////////////////////////////////////////////////////////
-  VciXcache<vci_param, IssSimhelper<MipsElIss> > *xcache[n_initiators]; 
+  VciXcacheWrapper<vci_param, simhelper > *xcache[n_initiators]; 
   soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> > *fake_initiator[n_initiators];
 
   for (int i=0 ; i < n_initiators ; i++) {
     std::ostringstream cpu_name;
     cpu_name << "xcache" << i;
-    xcache[i] = new VciXcache<vci_param, IssSimhelper<MipsElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, icache_size, 8, dcache_size, 8, 1000 * UNIT_TIME, simulation_time * UNIT_TIME);
-    xcache[i]->p_vci_initiator(vgmn_1.m_RspArbCmdRout[i]->p_vci_target);
+    xcache[i] = new VciXcacheWrapper<vci_param, simhelper >((cpu_name.str()).c_str(), i, IntTab(i), maptab, 1, icache_size, 8, 1, dcache_size, 8, 1000 * UNIT_TIME);
+    xcache[i]->p_vci_initiator(*vgmn_1.p_vci_target[i]);
 
     std::ostringstream fake_name;
     fake_name << "fake" << i;
-    fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), soclib::common::MipsElIss::n_irq);
+    fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), iss_t::n_irq);
     
-    for(int irq=0; irq<soclib::common::MipsElIss::n_irq; irq++){
+    for(int irq=0; irq<iss_t::n_irq; irq++){
       (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq_target[irq]);
     }
 
@@ -118,7 +120,8 @@ int sc_main (int   argc, char  **argv)
     std::ostringstream name;
     name << "ram" << i;
     ram[i] = new VciRam<vci_param>((name.str()).c_str(), IntTab(i), maptab, loader);
-    vgmn_1.m_CmdArbRspRout[i]->p_vci_initiator(ram[i]->p_vci_target);
+    //vgmn_1.m_CmdArbRspRout[i]->p_vci_initiator(ram[i]->p_vci_target);
+    (*vgmn_1.p_vci_initiator[i])(ram[i]->p_vci_target);
   }
   
 
@@ -126,8 +129,9 @@ int sc_main (int   argc, char  **argv)
   // TARGET - TTY
   /////////////////////////////////////////////////////////////////////////////
   VciMultiTty<vci_param> vcitty("tty0", IntTab(2), maptab, "TTY0", NULL);
-  vgmn_1.m_CmdArbRspRout[2]->p_vci_initiator(vcitty.p_vci_target);
-  
+  //vgmn_1.m_CmdArbRspRout[2]->p_vci_initiator(vcitty.p_vci_target);
+  (*vgmn_1.p_vci_initiator[2])(vcitty.p_vci_target);
+ 
   soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> > *fake_target_tagged;
   
   fake_target_tagged = new soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> >("fake_target_tagged", 1);
@@ -142,16 +146,6 @@ int sc_main (int   argc, char  **argv)
   ftime(&final);
 
   std::cout << "Execution Time = " << (int)((1000.0 * (final.time - initial.time))+ (final.millitm - initial.millitm)) << std::endl << std::endl;
-
-  for (int i=0; i<n_initiators; i++) {
-    xcache[i]->print_stats();
-  }
-
-  for (int i=0; i<n_rams; i++) {
-    ram[i]->print_stats();
-  }
-
-  vcitty.print_stats();
 
   return 0;
 }

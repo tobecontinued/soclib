@@ -113,7 +113,7 @@ int _main(int argc, char *argv[])
 	/////////////////////////////////////////////////////////////////////////////
 	// VCI_VGMN
 	/////////////////////////////////////////////////////////////////////////////
-	soclib::tlmdt::VciVgmn vgmn("vgmn", maptab, IntTab(), n_initiators, 5, network_latence * UNIT_TIME);
+	soclib::tlmdt::VciVgmn vgmn("vgmn", maptab, n_initiators, 5, network_latence, 8);
 
 	/////////////////////////////////////////////////////////////////////////////
 	// VCI_XCACHE_WRAPPER 
@@ -152,14 +152,14 @@ int _main(int argc, char *argv[])
 	// CONNECTIONS
 	/////////////////////////////////////////////////////////////////////////////
 	for (int i=0 ; i < n_initiators ; i++) {
-	  xcache[i]->p_vci_initiator(vgmn.m_RspArbCmdRout[i]->p_vci_target);
+	  xcache[i]->p_vci_initiator(*vgmn.p_vci_target[i]);
 	}
 
-        vgmn.m_CmdArbRspRout[0]->p_vci_initiator(vciram0.p_vci_target);
-        vgmn.m_CmdArbRspRout[1]->p_vci_initiator(vciram1.p_vci_target);
-	vgmn.m_CmdArbRspRout[2]->p_vci_initiator(vcitty.p_vci_target);
-	vgmn.m_CmdArbRspRout[3]->p_vci_initiator(vcitimer.p_vci_target);
-	vgmn.m_CmdArbRspRout[4]->p_vci_initiator(vcilocks.p_vci_target);
+        (*vgmn.p_vci_initiator[0])(vciram0.p_vci_target);
+        (*vgmn.p_vci_initiator[1])(vciram1.p_vci_target);
+	(*vgmn.p_vci_initiator[2])(vcitty.p_vci_target);
+	(*vgmn.p_vci_initiator[3])(vcitimer.p_vci_target);
+	(*vgmn.p_vci_initiator[4])(vcilocks.p_vci_target);
 
 	for(int i=0; i<n_initiators; i++){
 	  (*vcitimer.p_irq_initiator[i])(*xcache[i]->p_irq_target[0]);

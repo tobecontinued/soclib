@@ -84,7 +84,7 @@ int sc_main (int   argc, char  **argv)
   /////////////////////////////////////////////////////////////////////////////
   // VCI_VGMN
   /////////////////////////////////////////////////////////////////////////////
-  soclib::tlmdt::VciVgmn vgmn_1("vgmn", maptab, IntTab(), n_initiators+2, 5, network_latence * UNIT_TIME);
+  soclib::tlmdt::VciVgmn vgmn_1("vgmn", maptab, n_initiators+2, 5, network_latence, 8);
  
   /////////////////////////////////////////////////////////////////////////////
   // VCI_XCACHE_WRAPPER
@@ -143,22 +143,21 @@ int sc_main (int   argc, char  **argv)
   /////////////////////////////////////////////////////////////////////////////
   // CONNECTIONS
   /////////////////////////////////////////////////////////////////////////////
-  
   for (int i=0 ; i < n_initiators ; i++) {
-    xcache[i]->p_vci_initiator(vgmn_1.m_RspArbCmdRout[i]->p_vci_target);
+    xcache[i]->p_vci_initiator(*vgmn_1.p_vci_target[i]);
   }
-  tg_ctrl.p_vci_initiator(vgmn_1.m_RspArbCmdRout[n_initiators]->p_vci_target);
+  tg_ctrl.p_vci_initiator(*vgmn_1.p_vci_target[n_initiators]);
   (*tg_ctrl.p_write_fifo[0])(tg.p_fifo);
-  ramdac_ctrl.p_vci_initiator(vgmn_1.m_RspArbCmdRout[n_initiators+1]->p_vci_target);
+  ramdac_ctrl.p_vci_initiator(*vgmn_1.p_vci_target[n_initiators+1]);
   (*ramdac_ctrl.p_read_fifo[0])(ramdac.p_fifo);
 
   for (int i=0 ; i<n_rams; i++) {
-    vgmn_1.m_CmdArbRspRout[i]->p_vci_initiator(ram[i]->p_vci_target);
+    (*vgmn_1.p_vci_initiator[i])(ram[i]->p_vci_target);
   }
 
-  vgmn_1.m_CmdArbRspRout[2]->p_vci_initiator(vcitty.p_vci_target);
-  vgmn_1.m_CmdArbRspRout[3]->p_vci_initiator(tg_ctrl.p_vci_target);
-  vgmn_1.m_CmdArbRspRout[4]->p_vci_initiator(ramdac_ctrl.p_vci_target);
+  (*vgmn_1.p_vci_initiator[2])(vcitty.p_vci_target);
+  (*vgmn_1.p_vci_initiator[3])(tg_ctrl.p_vci_target);
+  (*vgmn_1.p_vci_initiator[4])(ramdac_ctrl.p_vci_target);
 
   /////////////////////////////////////////////////////////////////////////////
   // VciBlackhole Target Tagged
