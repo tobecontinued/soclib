@@ -94,8 +94,6 @@ void VciVgmn::init
 
   // bind VCI TARGET SOCKETS
   for(size_t i=0;i<nb_init;i++){
-    printf("target %d\n",i);
-
     std::ostringstream target_name;
     target_name <<  name << "target" << i;
     p_vci_target.push_back(new tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(target_name.str().c_str()));
@@ -107,8 +105,6 @@ void VciVgmn::init
     p_vci_initiators[i]->register_nb_transport_bw(this, &VciVgmn::nb_transport_bw_up, i);
 
     (*p_vci_initiators[i])(m_RspArbCmdRout[i]->p_vci_target);
-    printf("initiators %d\n",i);
-
   }
 
   // bind VCI INITIATOR SOCKETS
