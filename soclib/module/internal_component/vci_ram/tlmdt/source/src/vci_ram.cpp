@@ -45,10 +45,10 @@ tmpl(/**/)::VciRam
     m_mt(mt),
     m_loader(new soclib::common::Loader(loader)),
     m_atomic(256), // 256 equals to maximal number of initiator
-    p_vci_target("socket")
+    p_vci("socket")
 {
   // bind target
-  p_vci_target(*this);                     
+  p_vci(*this);                     
 
   // identification
   m_tgtid = m_mt.indexForId(index);
@@ -156,7 +156,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value() << std::endl;
 #endif
 	
-	p_vci_target->nb_transport_bw(payload, phase, time);
+	p_vci->nb_transport_bw(payload, phase, time);
 	return tlm::TLM_COMPLETED;
       }
       break;
@@ -195,7 +195,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
 #endif
 	
-	p_vci_target->nb_transport_bw(payload, phase, time);
+	p_vci->nb_transport_bw(payload, phase, time);
 	return tlm::TLM_COMPLETED;
       }
       break;
@@ -228,7 +228,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
 #endif
 
-        p_vci_target->nb_transport_bw(payload, phase, time);
+        p_vci->nb_transport_bw(payload, phase, time);
         return tlm::TLM_COMPLETED;
       }
       break;
@@ -272,7 +272,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
 #endif
 
-        p_vci_target->nb_transport_bw(payload, phase, time);
+        p_vci->nb_transport_bw(payload, phase, time);
         return tlm::TLM_COMPLETED;
       }
       break;
@@ -291,7 +291,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   std::cout << "[RAM " << m_tgtid << "] Address " << std::hex << payload.get_address() << std::dec << " does not match any segment " << std::endl;
   std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a error packet with time = "  << time.value() << std::endl;
 #endif
-  p_vci_target->nb_transport_bw(payload, phase, time);
+  p_vci->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
 }
 

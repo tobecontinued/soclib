@@ -261,8 +261,8 @@ class VciMwmrController
   std::vector<tlm_utils::simple_initiator_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_config;
   std::vector<tlm_utils::simple_initiator_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_status;
 
-  std::vector<tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_read_fifo;
-  std::vector<tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_write_fifo;
+  std::vector<tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_from_coproc;
+  std::vector<tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types> *> p_to_coproc;
 
   VciMwmrController(sc_core::sc_module_name name,
 		    const soclib::common::MappingTable &mt,

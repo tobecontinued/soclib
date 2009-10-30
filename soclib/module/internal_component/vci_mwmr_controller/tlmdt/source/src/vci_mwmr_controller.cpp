@@ -412,7 +412,7 @@ tmpl(tlm::tlm_sync_enum)::read_fifo_nb_transport_fw  // receive data from initia
     fprintf(pFile, "[MWMR Initiator %d] Send read response to coprocessor\n",m_srcid);
     std::cout << "[MWMR Initiator " <<  m_srcid << "] Send read response to coprocessor" << std::endl;
 #endif
-    (*p_read_fifo[index])->nb_transport_bw(payload, phase, m_read_fifo[index].time);
+    (*p_from_coproc[index])->nb_transport_bw(payload, phase, m_read_fifo[index].time);
   } 
   else{
     m_read_request[index].pending = true;
@@ -464,7 +464,7 @@ tmpl(tlm::tlm_sync_enum)::write_fifo_nb_transport_fw // receive data from initia
     fprintf(pFile, "[MWMR Initiator %d] Send write response to coprocessor\n",m_srcid);
     std::cout << "[MWMR Initiator " <<  m_srcid << "] Send write response to coprocessor" << std::endl;
 #endif
-    (*p_write_fifo[index])->nb_transport_bw(payload, phase, m_write_fifo[index].time);
+    (*p_to_coproc[index])->nb_transport_bw(payload, phase, m_write_fifo[index].time);
   }
   else{// no have space
     m_write_request[index].pending = true;
@@ -514,10 +514,10 @@ tmpl(void)::reset()
 
   //send the anwser to all read fifo
   for ( uint32_t i = 0; i < m_read_channels; i++)
-    (*p_read_fifo[i])->nb_transport_bw(*m_fifo_read_payload_ptr,m_fifo_read_phase,m_fifo_read_time);
+    (*p_from_coproc[i])->nb_transport_bw(*m_fifo_read_payload_ptr,m_fifo_read_phase,m_fifo_read_time);
   //send the anwser to all write fifo
   for ( uint32_t i = 0; i < m_write_channels; i++)
-    (*p_write_fifo[i])->nb_transport_bw(*m_fifo_write_payload_ptr,m_fifo_write_phase,m_fifo_write_time);
+    (*p_to_coproc[i])->nb_transport_bw(*m_fifo_write_payload_ptr,m_fifo_write_phase,m_fifo_write_time);
 
   m_reset_request = false;
 }
@@ -1029,7 +1029,7 @@ tmpl(void)::releasePendingReadFifo(uint32_t fifo_index)
     m_fifo_read_time = m_read_fifo[fifo_index].time;
     
     //send awnser to coprocessor
-   (*p_read_fifo[fifo_index])->nb_transport_bw(*m_fifo_read_payload_ptr, m_fifo_read_phase, m_fifo_read_time);
+   (*p_from_coproc[fifo_index])->nb_transport_bw(*m_fifo_read_payload_ptr, m_fifo_read_phase, m_fifo_read_time);
   } 
 }
 
@@ -1070,7 +1070,7 @@ tmpl(void)::releasePendingWriteFifo(uint32_t fifo_index)
     m_fifo_write_time = m_write_fifo[fifo_index].time;
     
     //send awnser to coprocessor
-    (*p_write_fifo[fifo_index])->nb_transport_bw(*m_fifo_write_payload_ptr, m_fifo_write_phase, m_fifo_write_time);
+    (*p_to_coproc[fifo_index])->nb_transport_bw(*m_fifo_write_payload_ptr, m_fifo_write_phase, m_fifo_write_time);
 
   } 
 }
@@ -1276,8 +1276,8 @@ tmpl(/**/)::VciMwmrController
     
     std::ostringstream read_fifo_name;
     read_fifo_name << "read_fifo" << i;
-    p_read_fifo.push_back(new tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types>(read_fifo_name.str().c_str()));
-    p_read_fifo[i]->register_nb_transport_fw(this, &VciMwmrController::read_fifo_nb_transport_fw, i);
+    p_from_coproc.push_back(new tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types>(read_fifo_name.str().c_str()));
+    p_from_coproc[i]->register_nb_transport_fw(this, &VciMwmrController::read_fifo_nb_transport_fw, i);
     
   }
   
@@ -1299,8 +1299,8 @@ tmpl(/**/)::VciMwmrController
     
     std::ostringstream write_fifo_name;
     write_fifo_name << "write_fifo" << i;
-    p_write_fifo.push_back(new tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types>(write_fifo_name.str().c_str()));
-    p_write_fifo[i]->register_nb_transport_fw(this, &VciMwmrController::write_fifo_nb_transport_fw, i);
+    p_to_coproc.push_back(new tlm_utils::simple_target_socket_tagged<VciMwmrController,32,tlm::tlm_base_protocol_types>(write_fifo_name.str().c_str()));
+    p_to_coproc[i]->register_nb_transport_fw(this, &VciMwmrController::write_fifo_nb_transport_fw, i);
   }
   
   //CONFIG PORTS

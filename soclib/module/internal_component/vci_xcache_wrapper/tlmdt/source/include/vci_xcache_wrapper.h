@@ -185,8 +185,8 @@ protected:
   SC_HAS_PROCESS(VciXcacheWrapper);
   
 public:
-  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci_initiator;   // VCI initiator port
-  std::vector<tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types> *> p_irq_target;  // IRQ target port
+  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci;   // VCI initiator port
+  std::vector<tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types> *> p_irq;  // IRQ target port
   
   VciXcacheWrapper(
 		   sc_core::sc_module_name name,

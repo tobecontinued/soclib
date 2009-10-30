@@ -42,10 +42,10 @@ tmpl(/**/)::VciTimer
 	   m_index(index),
 	   m_mt(mt),
 	   m_ntimer(ntimer),
-	   p_vci_target("vci_target_socket")  // vci target socket name
+	   p_vci("vci_target_socket")  // vci target socket name
 {
   // bind target
-  p_vci_target(*this);                     
+  p_vci(*this);                     
 
   //segments
   m_segments = m_mt.getSegmentList(m_index);
@@ -62,7 +62,7 @@ tmpl(/**/)::VciTimer
    
     std::ostringstream irq_name;
     irq_name << "irq" << i;
-    p_irq_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciTimer,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged<VciTimer,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
   }
 
   //create payload to irq message
@@ -126,7 +126,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	    
 	    phase = tlm::BEGIN_RESP;
 	    time = time + (nwords * UNIT_TIME);
-	    p_vci_target->nb_transport_bw(payload, phase, time);
+	    p_vci->nb_transport_bw(payload, phase, time);
 	    return tlm::TLM_COMPLETED;
 	  }
       
@@ -182,7 +182,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	//std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
 
-        p_vci_target->nb_transport_bw(payload, phase, time);
+        p_vci->nb_transport_bw(payload, phase, time);
         return tlm::TLM_COMPLETED;
       }
       break;
@@ -218,7 +218,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	    
 	    phase = tlm::BEGIN_RESP;
 	    time = time + (nwords * UNIT_TIME);
-	    p_vci_target->nb_transport_bw(payload, phase, time);
+	    p_vci->nb_transport_bw(payload, phase, time);
 	    return tlm::TLM_COMPLETED;
 	  }
       
@@ -252,7 +252,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 #endif
 	    
 	    // send the transaction
-	    (*p_irq_initiator[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
+	    (*p_irq[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
 	    wait(sc_core::SC_ZERO_TIME);	      
 	    
 	    //generate a new interruption
@@ -284,7 +284,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 #endif
 	      
 	      // send the transaction
-	      (*p_irq_initiator[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
+	      (*p_irq[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
 	      wait(sc_core::SC_ZERO_TIME);	      
 	    }
 	    break;
@@ -329,7 +329,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 #endif
 	    
 	    // send the transaction
-	    (*p_irq_initiator[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
+	    (*p_irq[t])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
 	    wait(sc_core::SC_ZERO_TIME);	      
 	    
 	    break;
@@ -351,7 +351,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
 
-	p_vci_target->nb_transport_bw(payload, phase, time);
+	p_vci->nb_transport_bw(payload, phase, time);
 	return tlm::TLM_COMPLETED;
       }
       break;
@@ -371,7 +371,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
   std::cout << "[" << name() << "] Send a error packet with time = "  << time.value() << std::endl;
 #endif
   
-  p_vci_target->nb_transport_bw(payload, phase, time);
+  p_vci->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
 }
   

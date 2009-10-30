@@ -41,10 +41,10 @@ tmpl(/**/)::VciLocks
 	   : sc_module(name),
 	   m_index(index),
 	   m_mt(mt),
-	   p_vci_target("vcisocket")
+	   p_vci("vcisocket")
 {
   // bind target
-  p_vci_target(*this);                     
+  p_vci(*this);                     
   
   // segments
   segList=m_mt.getSegmentList(m_index);
@@ -114,7 +114,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	phase = tlm::BEGIN_RESP;
 	time = time + (nwords * UNIT_TIME);
 	
-	p_vci_target->nb_transport_bw(payload, phase, time);
+	p_vci->nb_transport_bw(payload, phase, time);
 	return tlm::TLM_COMPLETED;
       }
       break;
@@ -136,7 +136,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	phase = tlm::BEGIN_RESP;
 	time = time + (nwords * UNIT_TIME);
  	
-	p_vci_target->nb_transport_bw(payload, phase, time);
+	p_vci->nb_transport_bw(payload, phase, time);
 	return tlm::TLM_COMPLETED;
       }
       break;
@@ -156,7 +156,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   std::cout << "[" << name() << "] Send a error packet with time = "  << time.value() << std::endl;
 #endif
 
-  p_vci_target->nb_transport_bw(payload, phase, time);
+  p_vci->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
 }
 

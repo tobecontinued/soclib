@@ -96,31 +96,31 @@ void VciVgmn::init
   for(size_t i=0;i<nb_init;i++){
     std::ostringstream target_name;
     target_name <<  name << "target" << i;
-    p_vci_target.push_back(new tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(target_name.str().c_str()));
-    p_vci_target[i]->register_nb_transport_fw(this, &VciVgmn::nb_transport_fw_down, i);
+    p_to_target.push_back(new tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(target_name.str().c_str()));
+    p_to_target[i]->register_nb_transport_fw(this, &VciVgmn::nb_transport_fw_down, i);
 
     std::ostringstream inits_name;
     inits_name <<  name << "inits" << i;
-    p_vci_initiators.push_back(new tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(inits_name.str().c_str()));
-    p_vci_initiators[i]->register_nb_transport_bw(this, &VciVgmn::nb_transport_bw_up, i);
+    p_to_initiators.push_back(new tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(inits_name.str().c_str()));
+    p_to_initiators[i]->register_nb_transport_bw(this, &VciVgmn::nb_transport_bw_up, i);
 
-    (*p_vci_initiators[i])(m_RspArbCmdRout[i]->p_vci_target);
+    (*p_to_initiators[i])(m_RspArbCmdRout[i]->p_vci_target);
   }
 
   // bind VCI INITIATOR SOCKETS
   for(size_t i=0;i<nb_target;i++){
     std::ostringstream init_name;
     init_name <<  name << "init" << i;
-    p_vci_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(init_name.str().c_str()));
-    p_vci_initiator[i]->register_nb_transport_bw(this, &VciVgmn::nb_transport_bw_down, i);
+    p_to_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(init_name.str().c_str()));
+    p_to_initiator[i]->register_nb_transport_bw(this, &VciVgmn::nb_transport_bw_down, i);
 
     std::ostringstream targets_name;
     targets_name <<  name << "targets" << i;
-    p_vci_targets.push_back(new tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(targets_name.str().c_str()));
-    p_vci_targets[i]->register_nb_transport_fw(this, &VciVgmn::nb_transport_fw_up, i);
+    p_to_targets.push_back(new tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types>(targets_name.str().c_str()));
+    p_to_targets[i]->register_nb_transport_fw(this, &VciVgmn::nb_transport_fw_up, i);
 
 
-    (*p_vci_targets[i])(m_CmdArbRspRout[i]->p_vci_initiator);
+    (*p_to_targets[i])(m_CmdArbRspRout[i]->p_vci_initiator);
     
   }
 }
@@ -134,7 +134,7 @@ tlm::tlm_sync_enum VciVgmn::nb_transport_fw_up
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
-  (*p_vci_initiator[id])->nb_transport_fw(payload, phase, time);
+  (*p_to_initiator[id])->nb_transport_fw(payload, phase, time);
   return  tlm::TLM_COMPLETED;
 }
 
@@ -147,7 +147,7 @@ tlm::tlm_sync_enum VciVgmn::nb_transport_fw_down
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
-  (*p_vci_initiators[id])->nb_transport_fw(payload, phase, time);
+  (*p_to_initiators[id])->nb_transport_fw(payload, phase, time);
   return  tlm::TLM_COMPLETED;
 }
 
@@ -160,7 +160,7 @@ tlm::tlm_sync_enum VciVgmn::nb_transport_bw_up
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
-  (*p_vci_target[id])->nb_transport_bw(payload, phase, time);
+  (*p_to_target[id])->nb_transport_bw(payload, phase, time);
   return  tlm::TLM_COMPLETED;
 }
 
@@ -173,7 +173,7 @@ tlm::tlm_sync_enum VciVgmn::nb_transport_bw_down
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
-  (*p_vci_targets[id])->nb_transport_bw(payload, phase, time);
+  (*p_to_targets[id])->nb_transport_bw(payload, phase, time);
   return  tlm::TLM_COMPLETED;
 }
 

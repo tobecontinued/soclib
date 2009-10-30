@@ -79,7 +79,7 @@ protected:
   SC_HAS_PROCESS(VciLocks);
   
 public:
-  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target;   // VCI TARGET socket
+  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci;   // VCI TARGET socket
   
   VciLocks(sc_core::sc_module_name name,
 	   const soclib::common::IntTab &index,

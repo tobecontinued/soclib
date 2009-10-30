@@ -144,20 +144,20 @@ int sc_main (int   argc, char  **argv)
   // CONNECTIONS
   /////////////////////////////////////////////////////////////////////////////
   for (int i=0 ; i < n_initiators ; i++) {
-    xcache[i]->p_vci_initiator(*vgmn_1.p_vci_target[i]);
+    xcache[i]->p_vci(*vgmn_1.p_to_target[i]);
   }
-  tg_ctrl.p_vci_initiator(*vgmn_1.p_vci_target[n_initiators]);
-  (*tg_ctrl.p_write_fifo[0])(tg.p_fifo);
-  ramdac_ctrl.p_vci_initiator(*vgmn_1.p_vci_target[n_initiators+1]);
-  (*ramdac_ctrl.p_read_fifo[0])(ramdac.p_fifo);
+  tg_ctrl.p_vci_initiator(*vgmn_1.p_to_target[n_initiators]);
+  (*tg_ctrl.p_to_coproc[0])(tg.p_fifo);
+  ramdac_ctrl.p_vci_initiator(*vgmn_1.p_to_target[n_initiators+1]);
+  (*ramdac_ctrl.p_from_coproc[0])(ramdac.p_fifo);
 
   for (int i=0 ; i<n_rams; i++) {
-    (*vgmn_1.p_vci_initiator[i])(ram[i]->p_vci_target);
+    (*vgmn_1.p_to_initiator[i])(ram[i]->p_vci);
   }
 
-  (*vgmn_1.p_vci_initiator[2])(vcitty.p_vci_target);
-  (*vgmn_1.p_vci_initiator[3])(tg_ctrl.p_vci_target);
-  (*vgmn_1.p_vci_initiator[4])(ramdac_ctrl.p_vci_target);
+  (*vgmn_1.p_to_initiator[2])(vcitty.p_vci);
+  (*vgmn_1.p_to_initiator[3])(tg_ctrl.p_vci_target);
+  (*vgmn_1.p_to_initiator[4])(ramdac_ctrl.p_vci_target);
 
   /////////////////////////////////////////////////////////////////////////////
   // VciBlackhole Target Tagged
@@ -166,7 +166,7 @@ int sc_main (int   argc, char  **argv)
 
   fake_target_tagged = new soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> >("fake_target_tagged", 1);
 
-  (*vcitty.p_irq_initiator[0])(*fake_target_tagged->p_socket[0]);
+  (*vcitty.p_irq[0])(*fake_target_tagged->p_socket[0]);
 
   /////////////////////////////////////////////////////////////////////////////
   // VciBlackhole Initiator
@@ -179,7 +179,7 @@ int sc_main (int   argc, char  **argv)
     fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), soclib::common::Mips32ElIss::n_irq);
     
     for(int irq=0; irq<soclib::common::Mips32ElIss::n_irq; irq++){
-      (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq_target[irq]);
+      (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq[irq]);
     }
   }
 

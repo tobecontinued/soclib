@@ -79,7 +79,7 @@ tmpl (/**/)::VciXcacheWrapper
     m_icache("icache", icache_ways, icache_sets, icache_words),
     m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
     m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci_initiator("socket")   // vci initiator socket name
+    p_vci("socket")   // vci initiator socket name
 {
   init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, (size_t)time_quantum.value(), std::numeric_limits<size_t>::max());
 
@@ -111,7 +111,7 @@ tmpl (/**/)::VciXcacheWrapper
     m_icache("icache", icache_ways, icache_sets, icache_words),
     m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
     m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci_initiator("socket")   // vci initiator socket name
+    p_vci("socket")   // vci initiator socket name
 {
   init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, 100, std::numeric_limits<size_t>::max());
 }
@@ -143,7 +143,7 @@ tmpl (/**/)::VciXcacheWrapper
     m_icache("icache", icache_ways, icache_sets, icache_words),
     m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
     m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci_initiator("socket")   // vci initiator socket name
+    p_vci("socket")   // vci initiator socket name
 {
   init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, time_quantum, std::numeric_limits<size_t>::max());
 }
@@ -176,7 +176,7 @@ tmpl (/**/)::VciXcacheWrapper
     m_icache("icache", icache_ways, icache_sets, icache_words),
     m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
     m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci_initiator("socket")   // vci initiator socket name
+    p_vci("socket")   // vci initiator socket name
 {
   init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, time_quantum, simulation_time);
 }
@@ -193,15 +193,15 @@ tmpl (void)::init
  size_t simulation_time)
 {
   // bind initiator
-  p_vci_initiator(*this);                     
+  p_vci(*this);                     
 
   //register callback function IRQ TARGET SOCKET
   for(int i=0; i<iss_t::n_irq; i++){
     std::ostringstream irq_name;
     irq_name << "irq" << i;
-    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    p_irq.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
     
-    p_irq_target[i]->register_nb_transport_fw(this, &VciXcacheWrapper::my_nb_transport_fw, i);
+    p_irq[i]->register_nb_transport_fw(this, &VciXcacheWrapper::my_nb_transport_fw, i);
   }
 
   m_error       = false;
@@ -538,7 +538,7 @@ tmpl (uint32_t)::ram_uncacheable_write
   sc_core::sc_time before = m_time;
 
   //send a write message
-  p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+  p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
   wait(m_rsp_received);
   m_pdes_local_time->reset_sync();
 
@@ -596,7 +596,7 @@ tmpl (uint32_t)::ram_cacheable_write
 
   //std::cout << name() << " send time: " << m_pdes_local_time->get().value() << std::endl;
   //send a write message
-  p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+  p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
   wait(m_rsp_received);
   m_pdes_local_time->reset_sync();
   //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
@@ -662,7 +662,7 @@ tmpl (uint32_t)::ram_read
 
   //std::cout << name() << " send time: " << m_pdes_local_time->get().value() << std::endl;
   //send a write message
-  p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+  p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
   wait(m_rsp_received);
   m_pdes_local_time->reset_sync();
   //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
@@ -699,7 +699,7 @@ tmpl (void)::send_activity()
   std::cout << std::endl << name() << " SEND ACTIVITY " << m_activity_extension_ptr->is_active() << std::endl;
 
   //send a message with command equals to PDES_ACTIVE or PDES_INACTIVE
-  p_vci_initiator->nb_transport_fw(*m_activity_payload_ptr, m_activity_phase, m_activity_time);
+  p_vci->nb_transport_fw(*m_activity_payload_ptr, m_activity_phase, m_activity_time);
   //deschedule the initiator thread
   wait(sc_core::SC_ZERO_TIME);
 }
@@ -721,7 +721,7 @@ tmpl (void)::send_null_message()
 #endif
 
   //send a null message
-  p_vci_initiator->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
+  p_vci->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
   //deschedule the initiator thread
   wait(sc_core::SC_ZERO_TIME);
   //wait(m_rsp_received);

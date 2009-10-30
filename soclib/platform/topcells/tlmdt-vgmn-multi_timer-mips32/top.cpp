@@ -152,17 +152,17 @@ int _main(int argc, char *argv[])
 	// CONNECTIONS
 	/////////////////////////////////////////////////////////////////////////////
 	for (int i=0 ; i < n_initiators ; i++) {
-	  xcache[i]->p_vci_initiator(*vgmn.p_vci_target[i]);
+	  xcache[i]->p_vci(*vgmn.p_to_target[i]);
 	}
 
-        (*vgmn.p_vci_initiator[0])(vciram0.p_vci_target);
-        (*vgmn.p_vci_initiator[1])(vciram1.p_vci_target);
-	(*vgmn.p_vci_initiator[2])(vcitty.p_vci_target);
-	(*vgmn.p_vci_initiator[3])(vcitimer.p_vci_target);
-	(*vgmn.p_vci_initiator[4])(vcilocks.p_vci_target);
+        (*vgmn.p_to_initiator[0])(vciram0.p_vci);
+        (*vgmn.p_to_initiator[1])(vciram1.p_vci);
+	(*vgmn.p_to_initiator[2])(vcitty.p_vci);
+	(*vgmn.p_to_initiator[3])(vcitimer.p_vci);
+	(*vgmn.p_to_initiator[4])(vcilocks.p_vci);
 
 	for(int i=0; i<n_initiators; i++){
-	  (*vcitimer.p_irq_initiator[i])(*xcache[i]->p_irq_target[0]);
+	  (*vcitimer.p_irq[i])(*xcache[i]->p_irq[0]);
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
@@ -176,7 +176,7 @@ int _main(int argc, char *argv[])
 	  fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), soclib::common::Mips32ElIss::n_irq-1);
 
 	  for(int irq=0; irq<soclib::common::Mips32ElIss::n_irq-1; irq++){
-	    (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq_target[irq+1]);
+	    (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq[irq+1]);
 	  }
 	}
 
@@ -189,7 +189,7 @@ int _main(int argc, char *argv[])
 
 
 	for(int i=0; i<n_initiators; i++){
-	  (*vcitty.p_irq_initiator[i])(*fake_target_tagged->p_socket[i]);
+	  (*vcitty.p_irq[i])(*fake_target_tagged->p_socket[i]);
 	}
  
 	/////////////////////////////////////////////////////////////////////////////

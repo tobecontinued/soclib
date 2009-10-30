@@ -98,9 +98,9 @@ class VciMultiTty
  protected:
   SC_HAS_PROCESS(VciMultiTty);
  public:
-  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target;   // VCI TARGET socket
+  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci;   // VCI TARGET socket
 
-  std::vector<tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types> *> p_irq_initiator; // IRQ INITIATOR socket
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types> *> p_irq; // IRQ INITIATOR socket
 
   VciMultiTty(sc_core::sc_module_name name,
 	      const soclib::common::IntTab &index,

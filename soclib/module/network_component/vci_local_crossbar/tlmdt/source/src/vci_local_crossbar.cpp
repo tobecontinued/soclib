@@ -116,8 +116,8 @@ void VciLocalCrossbar::init
   for(size_t i=0;i<nb_init-1;i++){
     std::ostringstream target_name;
     target_name << "target" << i;
-    p_vci_target.push_back(new tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types>(target_name.str().c_str()));
-    p_vci_target[i]->register_nb_transport_fw(this, &VciLocalCrossbar::nb_transport_fw_down, i);
+    p_to_target.push_back(new tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types>(target_name.str().c_str()));
+    p_to_target[i]->register_nb_transport_fw(this, &VciLocalCrossbar::nb_transport_fw_down, i);
 
     std::ostringstream inits_name;
     inits_name << "inits" << i;
@@ -131,8 +131,8 @@ void VciLocalCrossbar::init
   for(size_t i=0;i<nb_target-1;i++){
     std::ostringstream init_name;
     init_name << "init" << i;
-    p_vci_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types>(init_name.str().c_str()));
-    p_vci_initiator[i]->register_nb_transport_bw(this, &VciLocalCrossbar::nb_transport_bw_down, i);
+    p_to_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types>(init_name.str().c_str()));
+    p_to_initiator[i]->register_nb_transport_bw(this, &VciLocalCrossbar::nb_transport_bw_down, i);
 
     std::ostringstream targets_name;
     targets_name << "targets" << i;
@@ -144,10 +144,10 @@ void VciLocalCrossbar::init
     
   }
 
-  p_vci_target_to_up.register_nb_transport_fw(this, &VciLocalCrossbar::nb_transport_fw_down);
+  p_target_to_up.register_nb_transport_fw(this, &VciLocalCrossbar::nb_transport_fw_down);
   p_vci_target_to_down.register_nb_transport_fw(this, &VciLocalCrossbar::nb_transport_fw_up);
 
-  p_vci_initiator_to_up.register_nb_transport_bw(this, &VciLocalCrossbar::nb_transport_bw_down);
+  p_initiator_to_up.register_nb_transport_bw(this, &VciLocalCrossbar::nb_transport_bw_down);
   p_vci_initiator_to_down.register_nb_transport_bw(this, &VciLocalCrossbar::nb_transport_bw_up);
 
   p_vci_initiator_to_down(m_RspArbCmdRout[nb_init-1]->p_vci_target);
@@ -175,7 +175,7 @@ tlm::tlm_sync_enum VciLocalCrossbar::nb_transport_fw_up
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
-  p_vci_initiator_to_up->nb_transport_fw(payload, phase, time);
+  p_initiator_to_up->nb_transport_fw(payload, phase, time);
   return  tlm::TLM_COMPLETED;
 } //end nb_transport_fw
 
@@ -199,7 +199,7 @@ tlm::tlm_sync_enum VciLocalCrossbar::nb_transport_bw_up
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
-  p_vci_target_to_up->nb_transport_bw(payload, phase, time);
+  p_target_to_up->nb_transport_bw(payload, phase, time);
   return  tlm::TLM_COMPLETED;
 } //end nb_transport_fw
 
@@ -214,7 +214,7 @@ tlm::tlm_sync_enum VciLocalCrossbar::nb_transport_fw_up
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
-  (*p_vci_initiator[id])->nb_transport_fw(payload, phase, time);
+  (*p_to_initiator[id])->nb_transport_fw(payload, phase, time);
   return  tlm::TLM_COMPLETED;
 }
 
@@ -240,7 +240,7 @@ tlm::tlm_sync_enum VciLocalCrossbar::nb_transport_bw_up
   tlm::tlm_phase              &phase,              // phase
   sc_core::sc_time            &time)               // time
 {
-  (*p_vci_target[id])->nb_transport_bw(payload, phase, time);
+  (*p_to_target[id])->nb_transport_bw(payload, phase, time);
   return  tlm::TLM_COMPLETED;
 }
 

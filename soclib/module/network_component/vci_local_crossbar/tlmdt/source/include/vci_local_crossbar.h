@@ -136,13 +136,13 @@ private:
 
 public:
 
-  tlm_utils::simple_initiator_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_vci_initiator_to_up; // VCI initiator port connected to micro-network
+  tlm_utils::simple_initiator_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_initiator_to_up; // VCI initiator port connected to micro-network
 
-  tlm_utils::simple_target_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_vci_target_to_up; // VCI target port connected to micro-network
+  tlm_utils::simple_target_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_target_to_up; // VCI target port connected to micro-network
 
-  std::vector<tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_vci_target; // VCI target ports
+  std::vector<tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_to_target; // VCI target ports
   
-  std::vector<tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_vci_initiator; // VCI initiator ports
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_to_initiator; // VCI initiator ports
 
   VciLocalCrossbar(                                                     //constructor
 		   sc_core::sc_module_name            name,             //module name

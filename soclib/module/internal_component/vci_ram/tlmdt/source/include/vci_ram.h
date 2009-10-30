@@ -84,7 +84,7 @@ class VciRam                                 // vci ram
  protected:
   SC_HAS_PROCESS(VciRam);
  public:
-  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target;   // VCI TARGET socket
+  tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci;   // VCI TARGET socket
 
   VciRam(sc_core::sc_module_name            name,
 	 const soclib::common::IntTab       &index,

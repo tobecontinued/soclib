@@ -75,7 +75,7 @@ int sc_main (int argc, char *argv[])
   soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > *xcache;
   xcache= new soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >("misp0", 0, IntTab(0), maptab, 1, 8, 4, 1, 8, 4, 500*UNIT_TIME);
 
-  xcache->p_vci_initiator(*vgmn_1.p_vci_target[0]);
+  xcache->p_vci(*vgmn_1.p_to_target[0]);
 
   //std::cout<<"je suis ici2"<<std::endl;
    /////////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ int sc_main (int argc, char *argv[])
   soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> > *fake_initiator;
   fake_initiator = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >("fake0", soclib::common::Mips32ElIss::n_irq/*-1*/);
   for(int irq=0; irq<soclib::common::Mips32ElIss::n_irq/*-1*/; irq++){
-    (*fake_initiator->p_socket[irq])(*xcache->p_irq_target[irq/*+1*/]);
+    (*fake_initiator->p_socket[irq])(*xcache->p_irq[irq/*+1*/]);
   }
   
   //std::cout<<"je suis ici4"<<std::endl;
@@ -94,20 +94,20 @@ int sc_main (int argc, char *argv[])
   /////////////////////////////////////////////////////////////////////////////
   //std::cout<<"Je suis ici1"<<std::endl;
   soclib::tlmdt::VciRam<vci_param> ram0("ram0", IntTab(0), maptab, loader);
-  (*vgmn_1.p_vci_initiator[0])(ram0.p_vci_target);
+  (*vgmn_1.p_to_initiator[0])(ram0.p_vci);
   
   soclib::tlmdt::VciRam<vci_param> ram1("ram1", IntTab(1), maptab, loader);
-  (*vgmn_1.p_vci_initiator[1])(ram1.p_vci_target);
+  (*vgmn_1.p_to_initiator[1])(ram1.p_vci);
 
   soclib::tlmdt::VciRam<vci_param> ram2("ram2", IntTab(4), maptab, loader);
-  (*vgmn_1.p_vci_initiator[4])(ram2.p_vci_target);
+  (*vgmn_1.p_to_initiator[4])(ram2.p_vci);
 
   ////////////////////////////////////////////////////////////////////////
   //TTY
   ///////////////////////////////////////////////////////////////////////
  
   soclib::tlmdt::VciMultiTty<vci_param> vcitty("vcitty", IntTab(2), maptab, "vcitty0", NULL);
-  (*vgmn_1.p_vci_initiator[2])(vcitty.p_vci_target);
+  (*vgmn_1.p_to_initiator[2])(vcitty.p_vci);
 
  ///(*vcitty.p_irq_initiator[0])(*xcache->p_irq_target[0]);
   //std::cout<<"je suis ici3"<<std::endl;
@@ -119,14 +119,14 @@ int sc_main (int argc, char *argv[])
 
   fake_target_tagged = new soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> >("fake_target_tagged", 1);
   //for(int i=0; i<n_initiators; i++){
-	(*vcitty.p_irq_initiator[0])(*fake_target_tagged->p_socket[0]);
+	(*vcitty.p_irq[0])(*fake_target_tagged->p_socket[0]);
   //} **/
   /****std::cout<<"je suis ici5"<<std::endl;***/
  //////////////////////////////////////////////////////////////////////////
  //LOCKs
  /////////////////////////////////////////////////////////////////////////
  soclib::tlmdt::VciLocks<vci_param> vcilocks("vcilocks", IntTab(5), maptab);
- (*vgmn_1.p_vci_initiator[5])(vcilocks.p_vci_target);
+ (*vgmn_1.p_to_initiator[5])(vcilocks.p_vci);
   //std::cout<<"je suis ici6"<<std::endl;
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR
@@ -140,18 +140,18 @@ int sc_main (int argc, char *argv[])
 
  soclib::tlmdt::VciMwmrController<vci_param> mwmr0("mwmr0", maptab, IntTab(1), IntTab(3), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
   
-  mwmr0.p_vci_initiator(*vgmn_1.p_vci_target[1]);
+  mwmr0.p_vci_initiator(*vgmn_1.p_to_target[1]);
   //std::cout<<"je suis ici7"<<std::endl;
-  (*vgmn_1.p_vci_initiator[3])(mwmr0.p_vci_target);
+  (*vgmn_1.p_to_initiator[3])(mwmr0.p_vci_target);
   //std::cout<<"je suis ici8"<<std::endl;
 
   Mapping mapping("mapping", 0, read_depth/4, write_depth/4, n_read_channel, n_write_channel, n_config, n_status);
 
   for(uint32_t i=0; i<n_read_channel; i++)
-    (*mwmr0.p_read_fifo[i])(*mapping.p_read_fifo[i]);
+    (*mwmr0.p_from_coproc[i])(*mapping.p_read_fifo[i]);
 
   for(uint32_t i=0; i<n_write_channel; i++)
-    (*mwmr0.p_write_fifo[i])(*mapping.p_write_fifo[i]);
+    (*mwmr0.p_to_coproc[i])(*mapping.p_write_fifo[i]);
 
   for(uint32_t i=0; i<n_config; i++)
     (*mwmr0.p_config[i])(*mapping.p_config[i]);

@@ -84,14 +84,14 @@ int sc_main (int   argc, char  *argv[])
     std::ostringstream name;
     name << "xcache" << i;
     xcache[i] = new VciXcacheWrapper<vci_param, simhelper >((name.str()).c_str(), i, IntTab(i), maptab, 1, icache_size, 8, 1, dcache_size, 8,  1000 * UNIT_TIME);
-    xcache[i]->p_vci_initiator(*vgmn_1.p_vci_target[i]);
+    xcache[i]->p_vci(*vgmn_1.p_to_target[i]);
 
     std::ostringstream fake_name;
     fake_name << "fake" << i;
     fake_initiator[i] = new VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), iss_t::n_irq);
     
     for(int irq=0; irq<iss_t::n_irq; irq++){
-      (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq_target[irq]);
+      (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq[irq]);
     }
     
   }
@@ -105,7 +105,7 @@ int sc_main (int   argc, char  *argv[])
     std::ostringstream name;
     name << "ram" << i;
     ram[i] = new VciRam<vci_param>((name.str()).c_str(), IntTab(i), maptab, loader);
-    (*vgmn_1.p_vci_initiator[i])(ram[i]->p_vci_target);
+    (*vgmn_1.p_to_initiator[i])(ram[i]->p_vci);
   }
   
 
@@ -113,13 +113,13 @@ int sc_main (int   argc, char  *argv[])
   // TARGET - TTY
   /////////////////////////////////////////////////////////////////////////////
   VciMultiTty<vci_param> vcitty("tty0", IntTab(n_rams), maptab, "TTY0", NULL);
-  (*vgmn_1.p_vci_initiator[n_rams])(vcitty.p_vci_target);
+  (*vgmn_1.p_to_initiator[n_rams])(vcitty.p_vci);
 
   VciBlackhole<tlm_utils::simple_target_socket_tagged<VciBlackholeBase, 32, tlm::tlm_base_protocol_types> > *fake_target_tagged;
   
   fake_target_tagged = new VciBlackhole<tlm_utils::simple_target_socket_tagged<VciBlackholeBase, 32, tlm::tlm_base_protocol_types> >("fake_target_tagged", 1);
   
-  (*vcitty.p_irq_initiator[0])(*fake_target_tagged->p_socket[0]);
+  (*vcitty.p_irq[0])(*fake_target_tagged->p_socket[0]);
 
   /////////////////////////////////////////////////////////////////////////////
   // SIMULATION

@@ -42,10 +42,10 @@ tmpl(/**/)::VciMultiTty
   : sc_core::sc_module(name),
     m_index(index),
     m_mt(mt),
-    p_vci_target("socket")
+    p_vci("socket")
 {
   // bind target
-  p_vci_target(*this);                     
+  p_vci(*this);                     
   
   va_list va_tty;
   va_start (va_tty, first_name);
@@ -67,10 +67,10 @@ tmpl(/**/)::VciMultiTty
   : sc_core::sc_module(name),
     m_index(index),
     m_mt(mt),
-    p_vci_target("socket")
+    p_vci("socket")
 {
   // bind target
-  p_vci_target(*this);                     
+  p_vci(*this);                     
   
   init(names);
 }
@@ -84,7 +84,7 @@ tmpl(void)::init(const std::vector<std::string> &names){
 
     std::ostringstream irq_name;
     irq_name << "irq" << j;
-    p_irq_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
 
     j++;
   }
@@ -149,7 +149,7 @@ tmpl(void)::behavior()
 #endif
 
 	// send the transaction
-	(*p_irq_initiator[i])->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+	(*p_irq[i])->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
 	
       }
     }
@@ -177,7 +177,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       m_pdes_local_time->set(time);
 
 #if MULTI_TTY_DEBUG
-	std::cout << "[TTY] Receive NULL MESSAGE time = "  << time.value() << std::endl;
+    std::cout << "[" << name() << "] Receive NULL MESSAGE time = "  << time.value() << std::endl;
 #endif
     return tlm::TLM_COMPLETED;
   }
@@ -196,7 +196,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     case VCI_READ_COMMAND:
       {
 #if MULTI_TTY_DEBUG
-	std::cout << "[TTY] Receive a read packet with time = "  << time.value() << std::endl;
+	std::cout << "[" << name() << "] Receive a read packet with time = "  << time.value() << std::endl;
 #endif
 	
 	m_cpt_idle  = m_cpt_idle + (time.value() - m_cpt_cycle);
@@ -212,7 +212,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	  term_no = cell / TTY_SPAN;
 	  
 #if MULTI_TTY_DEBUG
-	  std::cout << "[TTY] term_no=" << term_no << " reg=" << reg << std::endl;
+	  std::cout << "[" << name() << "] term_no=" << term_no << " reg=" << reg << std::endl;
 #endif
 	  
 	  if (term_no>=(int)m_term.size()){
@@ -236,6 +236,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	      if (m_term[term_no]->hasData()) {
 		char tmp = m_term[term_no]->getc();
 		utoa(tmp, payload.get_data_ptr(),(i * vci_param::nbytes));
+		//std::cout << "[" << name() << "] i = " << i << " data = " << tmp << std::endl;
 	      }	
 	      payload.set_response_status(tlm::TLM_OK_RESPONSE);
  	      break;
@@ -254,10 +255,10 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	m_cpt_read+=nwords;
 	
 #if MULTI_TTY_DEBUG
-	std::cout << "[TTY] Send answer with time = " << time.value() << std::endl;
+	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
 	
-        p_vci_target->nb_transport_bw(payload, phase, time);
+        p_vci->nb_transport_bw(payload, phase, time);
  	return tlm::TLM_COMPLETED;
 	break;
       }
@@ -266,7 +267,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	char data;
 	
 #if MULTI_TTY_DEBUG
-	std::cout << "[TTY] Receive a write packet with time = "  << time.value() << std::endl;
+	std::cout << "[" << name() << "] Receive a write packet with time = "  << time.value() << std::endl;
 #endif
 	
 	for(unsigned int i=0; i<nwords; i++){
@@ -282,7 +283,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
           data = atou(payload.get_data_ptr(), (i * vci_param::nbytes));
 	  
 #if MULTI_TTY_DEBUG
-	  std::cout << "[TTY] term_no=" << term_no << " reg=" << reg << " data=" << data << std::endl;
+	  std::cout << "[" << name() << "] term_no=" << term_no << " reg=" << reg << " data=" << data << std::endl;
 #endif
 	  
 	  if (term_no>=(int)m_term.size()){
@@ -304,8 +305,10 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 		for ( size_t i=0; i<ret; ++i )
 		  m_term[term_no]->putc( tmp[i] );
 	      } 
-	      else
+	      else{
 		m_term[term_no]->putc( data );
+		//std::cout << "[" << name() << "] write data=" << data << std::endl;
+	      }
 		
               payload.set_response_status(tlm::TLM_OK_RESPONSE);
  	      break;
@@ -329,7 +332,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	std::cout << "[TTY] Send answer with time = " << time.value() << std::endl;
 #endif
 	
-	p_vci_target->nb_transport_bw(payload, phase, time);
+	p_vci->nb_transport_bw(payload, phase, time);
  	return tlm::TLM_COMPLETED;
 	break;
       }
@@ -349,7 +352,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   std::cout << "[TTY] Send to source "<< extension_pointer->get_src_id() << " a error packet with time = "  << time.value() << std::endl;
 #endif
   
-  p_vci_target->nb_transport_bw(payload, phase, time);
+  p_vci->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
 }
 

@@ -64,14 +64,14 @@ tmpl(/**/)::VciIcu
 	   m_index(index),
 	   m_mt(mt),
 	   m_nirq(nirq),
-	   p_vci_target("vci_target_socket"),  // vci target socket name
-	   p_irq_initiator("irq_init_socket")  // irq initiator socket name
+	   p_vci("vci_target_socket"),  // vci target socket name
+	   p_irq_in("irq_init_socket")  // irq initiator socket name
 {
   // bind VCI TARGET SOCKET
-  p_vci_target(*this);                     
+  p_vci(*this);                     
 
   // bind IRQ INITIATOR SOCKET
-  p_irq_initiator(*this);                     
+  p_irq_in(*this);                     
 
   //maximum number of interruption equal 32
   if (m_nirq >= 32)
@@ -89,9 +89,9 @@ tmpl(/**/)::VciIcu
     
     std::ostringstream irq_name;
     irq_name << "irqIn" << i;
-    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciIcu,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    p_irq.push_back(new tlm_utils::simple_target_socket_tagged<VciIcu,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
     
-    p_irq_target[i]->register_nb_transport_fw(this, &VciIcu::irq_nb_transport_fw, i);
+    p_irq[i]->register_nb_transport_fw(this, &VciIcu::irq_nb_transport_fw, i);
     
   }
 }
@@ -168,7 +168,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 #if SOCLIB_MODULE_DEBUG
 	std::cout << "[" << name() <<"] Send Answer Time = " << time.value() << std::endl;
 #endif
-        p_vci_target->nb_transport_bw(payload, phase, time);
+        p_vci->nb_transport_bw(payload, phase, time);
         return tlm::TLM_COMPLETED;
       }
       break;
@@ -215,7 +215,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 #if SOCLIB_MODULE_DEBUG
 	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
-	p_vci_target->nb_transport_bw(payload, phase, time);
+	p_vci->nb_transport_bw(payload, phase, time);
 	return tlm::TLM_COMPLETED;
 
        }
@@ -236,7 +236,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   std::cout << "[" << name() << "] Send a error packet with time = "  << time.value() << std::endl;
 #endif
 
-  p_vci_target->nb_transport_bw(payload, phase, time);
+  p_vci->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
 }
 
@@ -336,7 +336,7 @@ tmpl(void)::send_interruption(int idx)
   // set the local time to transaction time
   m_irq_time = irq[idx].time;
   // send the transaction
-  p_irq_initiator->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
+  p_irq_in->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
 }
 
 tmpl(void)::disable_interruption(data_t mask, sc_core::sc_time t){
