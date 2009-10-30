@@ -90,16 +90,16 @@ void VciLocalCrossbar::init
     tmpName << name << "_CmdArbRspRout" << i;
     
     if(i==(nb_target - 1)) // only the last CMD block has external access
-      m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt, index, delay, true));
+      m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt.getIdMaskingTable(index.level()), mt.getIdLocalityTable(index), delay, true));
     else
-      m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt, index, delay, false));
+      m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt.getIdMaskingTable(index.level()), mt.getIdLocalityTable(index), delay, false));
   }
   
   // Phase 2, allocate nb_init RspArbCmdRout blocks
   for (size_t i=0;i<nb_init;i++){
     std::ostringstream tmpName;
     tmpName << name << "_RspArbCmdRout" << i;
-    m_RspArbCmdRout.push_back(new VciRspArbCmdRout(tmpName.str().c_str() ,mt, index, i, delay, &m_centralized_buffer));
+    m_RspArbCmdRout.push_back(new VciRspArbCmdRout(tmpName.str().c_str(), mt.getRoutingTable(index), mt.getLocalityTable(index), i, delay, &m_centralized_buffer));
   }
   
   // Phase 3, each cmdArbRspRout sees all the RspArbCmdRout

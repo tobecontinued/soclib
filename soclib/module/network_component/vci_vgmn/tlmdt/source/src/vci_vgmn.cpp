@@ -72,14 +72,14 @@ void VciVgmn::init
   for (size_t i=0;i<nb_target;i++){
     std::ostringstream tmpName;
     tmpName << name << "_CmdArbRspRout" << i;
-    m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt, index, delay, false));
+    m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt.getIdMaskingTable(0), delay));
   }
   
   // Phase 2, allocate nb_init RspArbCmdRout blocks
   for (size_t i=0;i<nb_init;i++){
     std::ostringstream tmpName;
     tmpName << name << "_RspArbCmdRout" << i;
-    m_RspArbCmdRout.push_back(new VciRspArbCmdRout(tmpName.str().c_str() ,mt, index, i, delay, &m_centralized_buffer));
+    m_RspArbCmdRout.push_back(new VciRspArbCmdRout(tmpName.str().c_str(), mt.getRoutingTable(index,0), mt.getLocalityTable(index), i, delay, &m_centralized_buffer));
   }
   
   // Phase 3, each cmdArbRspRout sees all the RspArbCmdRout

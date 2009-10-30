@@ -48,18 +48,22 @@ class VciCmdArbRspRout                        //
 {
 private:
   
+  typedef soclib::common::AddressMaskingTable<uint32_t>        routing_table_t;  // routing table
+  typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t; // locality table
+
   /////////////////////////////////////////////////////////////////////////////////////
   // Member Variables
   /////////////////////////////////////////////////////////////////////////////////////
   std::vector <VciRspArbCmdRout *>                           m_RspArbCmdRout;     // vector of rsp_arb_cmd_rout
-  const soclib::common::AddressMaskingTable<uint32_t>        m_routing_table;     // routing table
-  const soclib::common::AddressDecodingTable<uint32_t, bool> m_locality_table;    // locality table
+  const routing_table_t                                      m_routing_table;     // routing table
+  const locality_table_t                                     m_locality_table;    // locality table
   std::list<packet_struct>                                   packet_fifo;         // fifo
   sc_core::sc_event                                          m_fifo_event;        // fifo event
  
   sc_core::sc_time                                           m_delay;             // interconnect delay
   pdes_local_time                                           *m_pdes_local_time;   // local time
   bool                                                       m_external_access;   // true if module has external access (crossbar parameter)
+  bool                                                       m_is_local_crossbar; // true if module is vci_local_crossbar
 
   // FIELDS OF A NORMAL TRANSACTION
   tlm::tlm_generic_payload                                   m_payload;           // payload
@@ -93,11 +97,16 @@ public:
 
   VciCmdArbRspRout(                                                  // constructor
 		   sc_core::sc_module_name name                      // module name
-		   , const soclib::common::MappingTable &mt          // mapping table
-		   , const soclib::common::IntTab &index             // initiator index
+		   , const routing_table_t &rt                       // routing table
+		   , const locality_table_t &lt                      // locality table
 		   , sc_core::sc_time delay                          // interconnect delay
 		   , bool external_access);                          // true if module has external access (crossbar parameter)
   
+  VciCmdArbRspRout(                                                  // constructor
+		   sc_core::sc_module_name name                      // module name
+		   , const routing_table_t &rt                       // routing table
+		   , sc_core::sc_time delay);                        // interconnect delay
+
   void setRspArbCmdRout(std::vector<VciRspArbCmdRout *> &RspArbCmdRout);
 
   void put(tlm::tlm_generic_payload *payload, const sc_core::sc_time &time);

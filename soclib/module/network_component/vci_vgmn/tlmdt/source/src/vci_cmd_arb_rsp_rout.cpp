@@ -38,16 +38,42 @@ namespace soclib { namespace tlmdt {
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl(/***/)::VciCmdArbRspRout                       // constructor
 ( sc_core::sc_module_name name                      // module name
-  , const soclib::common::MappingTable &mt          // mapping table
-  , const soclib::common::IntTab &index             // initiator index
+  , const routing_table_t &rt                       // routing table
+  , const locality_table_t &lt                      // locality table
   , sc_core::sc_time delay                          // interconnect delay
   , bool external_access
   )
   : sc_module(name)                        
-  , m_routing_table(mt.getIdMaskingTable(index.level()))
-  , m_locality_table(mt.getIdLocalityTable(index))
+  , m_routing_table(rt)
+  , m_locality_table(lt)
   , m_delay(delay)
   , m_external_access(external_access)
+  , m_is_local_crossbar(true)
+  , p_vci_initiator("vcisocket")
+{ 
+  // bind INITIATOR VCI SOCKET
+  p_vci_initiator(*this);                     
+
+  //PDES local time
+  m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
+
+  //payload extension
+  m_extension_pointer = new soclib_payload_extension();
+
+  // register thread process
+  SC_THREAD(behavior);                  
+}
+
+tmpl(/***/)::VciCmdArbRspRout                       // constructor
+( sc_core::sc_module_name name                      // module name
+  , const routing_table_t &rt                       // routing table
+  , sc_core::sc_time delay                          // interconnect delay
+  )
+  : sc_module(name)                        
+  , m_routing_table(rt)
+  , m_delay(delay)
+  , m_external_access(false)
+  , m_is_local_crossbar(false)
   , p_vci_initiator("vcisocket")
 { 
   // bind INITIATOR VCI SOCKET
@@ -140,17 +166,24 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_bw
 
   unsigned int src = resp_extension_ptr->get_src_id();
 
-  //if source IS NOT local (only possible in vci_local_crossbar module)
-  if (!m_locality_table[src]){
-    src = m_RspArbCmdRout.size() - 1;
+  // if vci_local_crossbar module
+  if (m_is_local_crossbar){
+    // if source IS NOT local
+    if (!m_locality_table[src]){
+      src = m_RspArbCmdRout.size() - 1;
+    }
+    // if source IS local
+    else{
+      src = m_routing_table[src];
+      //if message arrive from an external initiator (initiator is not local to cluster)
+      if(m_external_access){
+	m_RspArbCmdRout[src]->set_external_access(src, false);
+      }
+    }
   }
-  // if source IS local
+  // if vci_vgmn
   else{
     src = m_routing_table[src];
-    //if message arrive from an external initiator (initiator is not local to cluster)
-    if(m_external_access){
-      m_RspArbCmdRout[src]->set_external_access(src, false);
-    }
   }
   
   //updated the local time

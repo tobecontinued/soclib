@@ -44,14 +44,17 @@ class VciRspArbCmdRout                                           // VciRspArbCmd
 {
 private:
  
+  typedef soclib::common::AddressDecodingTable<uint32_t, int>  routing_table_t;      // routing table
+  typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;     // locality table
+
   /////////////////////////////////////////////////////////////////////////////////////
   // Member Variables
   /////////////////////////////////////////////////////////////////////////////////////
   uint32_t                                                   m_index;              // local index
   sc_core::sc_time                                           m_delay;              // interconnect delay
   centralized_buffer                                        *m_centralized_buffer; // centralized buffer
-  const soclib::common::AddressDecodingTable<uint32_t, int>  m_routing_table;      // routing table
-  const soclib::common::AddressDecodingTable<uint32_t, bool> m_locality_table;     // locality table
+  const routing_table_t                                      m_routing_table;      // routing table
+  const locality_table_t                                     m_locality_table;     // locality table
   std::vector<VciCmdArbRspRout *>                            m_CmdArbRspRout;      // cmd_arb_rsp_rout blocks
 
   //FIELDS OF A NULL MESSAGE
@@ -88,8 +91,8 @@ public:
   
   VciRspArbCmdRout(                                                // constructor
 		   sc_core::sc_module_name module_name             // SC module name
-		   , const soclib::common::MappingTable &mt        // mapping table
-		   , const soclib::common::IntTab &global_index    // global initiator index
+		   , const routing_table_t &rt                     // routing table
+		   , const locality_table_t &lt                    // locality table
 		   , uint32_t local_index                          // local initiator index
 		   , sc_core::sc_time delay                        // interconnect delay
 		   , centralized_buffer *cb);                      // centralized buffer

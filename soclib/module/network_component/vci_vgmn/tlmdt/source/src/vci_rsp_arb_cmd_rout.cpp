@@ -43,8 +43,8 @@ namespace soclib { namespace tlmdt {
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl(/**/)::VciRspArbCmdRout
 ( sc_core::sc_module_name module_name               // module name
-  , const soclib::common::MappingTable &mt          // mapping table
-  , const soclib::common::IntTab &global_index      // global index
+  , const routing_table_t &rt                       // routing table
+  , const locality_table_t &lt                      // locality table
   , uint32_t local_index                            // local index
   , sc_core::sc_time delay                          // interconnect delay
   , centralized_buffer *cb                          // centralized buffer
@@ -53,8 +53,8 @@ tmpl(/**/)::VciRspArbCmdRout
   , m_index(local_index)
   , m_delay(delay)
   , m_centralized_buffer(cb)
-  , m_routing_table(mt.getRoutingTable(global_index))
-  , m_locality_table(mt.getLocalityTable(global_index))
+  , m_routing_table(rt)
+  , m_locality_table(lt)
   , p_vci_target("vcisocket")
 {
   // bind vci target socket
