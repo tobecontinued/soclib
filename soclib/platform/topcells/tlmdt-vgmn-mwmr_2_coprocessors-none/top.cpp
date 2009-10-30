@@ -53,13 +53,13 @@ int sc_main (int   argc, char  *argv[])
   // INITIATOR
   /////////////////////////////////////////////////////////////////////////////
   my_initiator *initiator = new my_initiator("init", IntTab(0), maptab, 1000 * UNIT_TIME, simulation_time * UNIT_TIME);
-  initiator->p_vci_initiator(*vgmn_1.p_to_target[0]);
+  initiator->p_vci_initiator(*vgmn_1.p_to_initiator[0]);
 
   /////////////////////////////////////////////////////////////////////////////
   // RAM 0
   /////////////////////////////////////////////////////////////////////////////
   VciRam<vci_param> *ram0 = new VciRam<vci_param>("ram0", IntTab(0), maptab, loader);
-  (*vgmn_1.p_to_initiator[0])(ram0->p_vci);
+  (*vgmn_1.p_to_target[0])(ram0->p_vci);
 
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR 0
@@ -73,8 +73,8 @@ int sc_main (int   argc, char  *argv[])
 
   VciMwmrController<vci_param> *mwmr0 = new VciMwmrController<vci_param>("mwmr0", maptab, IntTab(1), IntTab(1), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
 
-  mwmr0->p_vci_initiator(*vgmn_1.p_to_target[1]);
-  (*vgmn_1.p_to_initiator[1])(mwmr0->p_vci_target);
+  mwmr0->p_vci_initiator(*vgmn_1.p_to_initiator[1]);
+  (*vgmn_1.p_to_target[1])(mwmr0->p_vci_target);
 
   Coprocessor *copro0 = new Coprocessor("copro0", 0, read_depth/4, write_depth/4, n_read_channel, n_write_channel, n_config, n_status);
 
@@ -102,8 +102,8 @@ int sc_main (int   argc, char  *argv[])
 
   VciMwmrController<vci_param> *mwmr1 = new VciMwmrController<vci_param>("mwmr1", maptab, IntTab(2), IntTab(2), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
 
-  mwmr1->p_vci_initiator(*vgmn_1.p_to_target[2]);
-  (*vgmn_1.p_to_initiator[2])(mwmr1->p_vci_target);
+  mwmr1->p_vci_initiator(*vgmn_1.p_to_initiator[2]);
+  (*vgmn_1.p_to_target[2])(mwmr1->p_vci_target);
 
   Coprocessor *copro1 = new Coprocessor("copro1", 1, read_depth/4, write_depth/4, n_read_channel, n_write_channel, n_config, n_status);
 
@@ -112,7 +112,6 @@ int sc_main (int   argc, char  *argv[])
 
   for(uint32_t i=0; i<n_write_channel; i++)
     (*mwmr1->p_to_coproc[i])(*copro1->p_write_fifo[i]);
-
 
   for(uint32_t i=0; i<n_config; i++)
     (*mwmr1->p_config[i])(*copro1->p_config[i]);

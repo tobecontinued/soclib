@@ -49,9 +49,9 @@ private:
   std::vector<VciRspArbCmdRout *> m_RspArbCmdRout;       //vci_rsp_arb_cmd_rout modules
   centralized_buffer              m_centralized_buffer;  //centralized buffer
 
-  std::vector<tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_to_targets; // VCI target ports
+  std::vector<tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_vci_targets; // VCI target ports
   
-  std::vector<tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_to_initiators; // VCI initiator ports
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_vci_initiators; // VCI initiator ports
 
 
   /////////////////////////////////////////////////////////////////////////////////////
@@ -100,9 +100,9 @@ private:
 
 public:
 
-  std::vector<tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_to_target; // VCI target ports
+  std::vector<tlm_utils::simple_target_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_to_initiator; // VCI target ports
   
-  std::vector<tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_to_initiator; // VCI initiator ports
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciVgmn,32,tlm::tlm_base_protocol_types> *> p_to_target; // VCI initiator ports
 
   VciVgmn(                                               //constructor
 	   sc_core::sc_module_name            name,      //module name

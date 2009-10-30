@@ -152,14 +152,14 @@ int _main(int argc, char *argv[])
 	// CONNECTIONS
 	/////////////////////////////////////////////////////////////////////////////
 	for (int i=0 ; i < n_initiators ; i++) {
-	  xcache[i]->p_vci(*vgmn.p_to_target[i]);
+	  xcache[i]->p_vci(*vgmn.p_to_initiator[i]);
 	}
 
-        (*vgmn.p_to_initiator[0])(vciram0.p_vci);
-        (*vgmn.p_to_initiator[1])(vciram1.p_vci);
-	(*vgmn.p_to_initiator[2])(vcitty.p_vci);
-	(*vgmn.p_to_initiator[3])(vcitimer.p_vci);
-	(*vgmn.p_to_initiator[4])(vcilocks.p_vci);
+        (*vgmn.p_to_target[0])(vciram0.p_vci);
+        (*vgmn.p_to_target[1])(vciram1.p_vci);
+	(*vgmn.p_to_target[2])(vcitty.p_vci);
+	(*vgmn.p_to_target[3])(vcitimer.p_vci);
+	(*vgmn.p_to_target[4])(vcilocks.p_vci);
 
 	for(int i=0; i<n_initiators; i++){
 	  (*vcitimer.p_irq[i])(*xcache[i]->p_irq[0]);

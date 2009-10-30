@@ -140,9 +140,9 @@ public:
 
   tlm_utils::simple_target_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_target_to_up; // VCI target port connected to micro-network
 
-  std::vector<tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_to_target; // VCI target ports
+  std::vector<tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_to_initiator; // VCI target ports
   
-  std::vector<tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_to_initiator; // VCI initiator ports
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> *> p_to_target; // VCI initiator ports
 
   VciLocalCrossbar(                                                     //constructor
 		   sc_core::sc_module_name            name,             //module name

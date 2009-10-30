@@ -99,7 +99,7 @@ int sc_main (int   argc, char  **argv)
     std::ostringstream cpu_name;
     cpu_name << "xcache" << i;
     xcache[i] = new VciXcacheWrapper<vci_param, simhelper >((cpu_name.str()).c_str(), i, IntTab(i), maptab, 1, icache_size, 8, 1, dcache_size, 8, 1000 * UNIT_TIME);
-    xcache[i]->p_vci(*vgmn_1.p_to_target[i]);
+    xcache[i]->p_vci(*vgmn_1.p_to_initiator[i]);
 
     std::ostringstream fake_name;
     fake_name << "fake" << i;
@@ -120,7 +120,7 @@ int sc_main (int   argc, char  **argv)
     std::ostringstream name;
     name << "ram" << i;
     ram[i] = new VciRam<vci_param>((name.str()).c_str(), IntTab(i), maptab, loader);
-    (*vgmn_1.p_to_initiator[i])(ram[i]->p_vci);
+    (*vgmn_1.p_to_target[i])(ram[i]->p_vci);
   }
   
 
@@ -128,7 +128,7 @@ int sc_main (int   argc, char  **argv)
   // TARGET - TTY
   /////////////////////////////////////////////////////////////////////////////
   VciMultiTty<vci_param> vcitty("tty0", IntTab(2), maptab, "TTY0", NULL);
-  (*vgmn_1.p_to_initiator[2])(vcitty.p_vci);
+  (*vgmn_1.p_to_target[2])(vcitty.p_vci);
  
   soclib::tlmdt::VciBlackhole<tlm_utils::simple_target_socket_tagged<soclib::tlmdt::VciBlackholeBase, 32, tlm::tlm_base_protocol_types> > *fake_target_tagged;
   

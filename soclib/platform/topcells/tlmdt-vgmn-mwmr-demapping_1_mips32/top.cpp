@@ -75,7 +75,7 @@ int sc_main (int argc, char *argv[])
   soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > *xcache;
   xcache= new soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >("misp0", 0, IntTab(0), maptab, 1, 8, 4, 1, 8, 4, 500*UNIT_TIME);
 
-  xcache->p_vci(*vgmn_1.p_to_target[0]);
+  xcache->p_vci(*vgmn_1.p_to_initiator[0]);
 
   //std::cout<<"je suis ici2"<<std::endl;
    /////////////////////////////////////////////////////////////////////////////
@@ -94,20 +94,20 @@ int sc_main (int argc, char *argv[])
   /////////////////////////////////////////////////////////////////////////////
   //std::cout<<"Je suis ici1"<<std::endl;
   soclib::tlmdt::VciRam<vci_param> ram0("ram0", IntTab(0), maptab, loader);
-  (*vgmn_1.p_to_initiator[0])(ram0.p_vci);
+  (*vgmn_1.p_to_target[0])(ram0.p_vci);
   
   soclib::tlmdt::VciRam<vci_param> ram1("ram1", IntTab(1), maptab, loader);
-  (*vgmn_1.p_to_initiator[1])(ram1.p_vci);
+  (*vgmn_1.p_to_target[1])(ram1.p_vci);
 
   soclib::tlmdt::VciRam<vci_param> ram2("ram2", IntTab(4), maptab, loader);
-  (*vgmn_1.p_to_initiator[4])(ram2.p_vci);
+  (*vgmn_1.p_to_target[4])(ram2.p_vci);
 
   ////////////////////////////////////////////////////////////////////////
   //TTY
   ///////////////////////////////////////////////////////////////////////
  
   soclib::tlmdt::VciMultiTty<vci_param> vcitty("vcitty", IntTab(2), maptab, "vcitty0", NULL);
-  (*vgmn_1.p_to_initiator[2])(vcitty.p_vci);
+  (*vgmn_1.p_to_target[2])(vcitty.p_vci);
 
  ///(*vcitty.p_irq_initiator[0])(*xcache->p_irq_target[0]);
   //std::cout<<"je suis ici3"<<std::endl;
@@ -126,7 +126,7 @@ int sc_main (int argc, char *argv[])
  //LOCKs
  /////////////////////////////////////////////////////////////////////////
  soclib::tlmdt::VciLocks<vci_param> vcilocks("vcilocks", IntTab(5), maptab);
- (*vgmn_1.p_to_initiator[5])(vcilocks.p_vci);
+ (*vgmn_1.p_to_target[5])(vcilocks.p_vci);
   //std::cout<<"je suis ici6"<<std::endl;
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR
@@ -140,9 +140,9 @@ int sc_main (int argc, char *argv[])
 
  soclib::tlmdt::VciMwmrController<vci_param> mwmr0("mwmr0", maptab, IntTab(1), IntTab(3), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
   
-  mwmr0.p_vci_initiator(*vgmn_1.p_to_target[1]);
+  mwmr0.p_vci_initiator(*vgmn_1.p_to_initiator[1]);
   //std::cout<<"je suis ici7"<<std::endl;
-  (*vgmn_1.p_to_initiator[3])(mwmr0.p_vci_target);
+  (*vgmn_1.p_to_target[3])(mwmr0.p_vci_target);
   //std::cout<<"je suis ici8"<<std::endl;
 
   Demapping demapping("demapping", 0, read_depth/4, write_depth/4, n_read_channel, n_write_channel, n_config, n_status);

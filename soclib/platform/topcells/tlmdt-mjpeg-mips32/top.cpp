@@ -144,20 +144,20 @@ int sc_main (int   argc, char  **argv)
   // CONNECTIONS
   /////////////////////////////////////////////////////////////////////////////
   for (int i=0 ; i < n_initiators ; i++) {
-    xcache[i]->p_vci(*vgmn_1.p_to_target[i]);
+    xcache[i]->p_vci(*vgmn_1.p_to_initiator[i]);
   }
-  tg_ctrl.p_vci_initiator(*vgmn_1.p_to_target[n_initiators]);
+  tg_ctrl.p_vci_initiator(*vgmn_1.p_to_initiator[n_initiators]);
   (*tg_ctrl.p_to_coproc[0])(tg.p_fifo);
-  ramdac_ctrl.p_vci_initiator(*vgmn_1.p_to_target[n_initiators+1]);
+  ramdac_ctrl.p_vci_initiator(*vgmn_1.p_to_initiator[n_initiators+1]);
   (*ramdac_ctrl.p_from_coproc[0])(ramdac.p_fifo);
 
   for (int i=0 ; i<n_rams; i++) {
-    (*vgmn_1.p_to_initiator[i])(ram[i]->p_vci);
+    (*vgmn_1.p_to_target[i])(ram[i]->p_vci);
   }
 
-  (*vgmn_1.p_to_initiator[2])(vcitty.p_vci);
-  (*vgmn_1.p_to_initiator[3])(tg_ctrl.p_vci_target);
-  (*vgmn_1.p_to_initiator[4])(ramdac_ctrl.p_vci_target);
+  (*vgmn_1.p_to_target[2])(vcitty.p_vci);
+  (*vgmn_1.p_to_target[3])(tg_ctrl.p_vci_target);
+  (*vgmn_1.p_to_target[4])(ramdac_ctrl.p_vci_target);
 
   /////////////////////////////////////////////////////////////////////////////
   // VciBlackhole Target Tagged
