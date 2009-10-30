@@ -81,48 +81,8 @@ tmpl (/**/)::VciXcacheWrapper
     m_cacheability_table(mt.getCacheabilityTable()),
     p_vci_initiator("socket")   // vci initiator socket name
 {
-  // bind initiator
-  p_vci_initiator(*this);                     
+  init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, (size_t)time_quantum.value(), std::numeric_limits<size_t>::max());
 
-  //register callback function IRQ TARGET SOCKET
-  for(int i=0; i<iss_t::n_irq; i++){
-    std::ostringstream irq_name;
-    irq_name << "irq" << i;
-    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
-    
-    p_irq_target[i]->register_nb_transport_fw(this, &VciXcacheWrapper::my_nb_transport_fw, i);
-  }
-
-  m_error       = false;
-  
-  m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
-  m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
-  m_iss.reset();
-
-  // write buffer & caches
-  m_wbuf.reset();
-  m_icache.reset();
-  m_dcache.reset();
-  
-  //PDES local time
-  m_pdes_local_time = new pdes_local_time(time_quantum);
-
-  //PDES activity status
-  m_pdes_activity_status = new pdes_activity_status();
-
-  //create payload and extension to a normal message
-  m_payload_ptr = new tlm::tlm_generic_payload();
-  m_extension_ptr = new soclib_payload_extension();
-
-  //create payload and extension to a null message
-  m_null_payload_ptr = new tlm::tlm_generic_payload();
-  m_null_extension_ptr = new soclib_payload_extension();
-
-  //create payload and extension to an activity message
-  m_activity_payload_ptr = new tlm::tlm_generic_payload();
-  m_activity_extension_ptr = new soclib_payload_extension();
-
-  SC_THREAD(execLoop);
 }
 
 tmpl (/**/)::VciXcacheWrapper
@@ -153,48 +113,7 @@ tmpl (/**/)::VciXcacheWrapper
     m_cacheability_table(mt.getCacheabilityTable()),
     p_vci_initiator("socket")   // vci initiator socket name
 {
-  // bind initiator
-  p_vci_initiator(*this);                     
-
-  //register callback function IRQ TARGET SOCKET
-  for(int i=0; i<iss_t::n_irq; i++){
-    std::ostringstream irq_name;
-    irq_name << "irq" << i;
-    p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
-    
-    p_irq_target[i]->register_nb_transport_fw(this, &VciXcacheWrapper::my_nb_transport_fw, i);
-  }
-
-  m_error       = false;
-  
-  m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
-  m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
-  m_iss.reset();
-
-  // write buffer & caches
-  m_wbuf.reset();
-  m_icache.reset();
-  m_dcache.reset();
-  
-  //PDES local time
-  m_pdes_local_time = new pdes_local_time(100 * UNIT_TIME);
-
-  //PDES activity status
-  m_pdes_activity_status = new pdes_activity_status();
-
-  //create payload and extension to a normal message
-  m_payload_ptr = new tlm::tlm_generic_payload();
-  m_extension_ptr = new soclib_payload_extension();
-
-  //create payload and extension to a null message
-  m_null_payload_ptr = new tlm::tlm_generic_payload();
-  m_null_extension_ptr = new soclib_payload_extension();
-
-  //create payload and extension to an activity message
-  m_activity_payload_ptr = new tlm::tlm_generic_payload();
-  m_activity_extension_ptr = new soclib_payload_extension();
-
-  SC_THREAD(execLoop);
+  init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, 100, std::numeric_limits<size_t>::max());
 }
 
 tmpl (/**/)::VciXcacheWrapper
@@ -226,6 +145,53 @@ tmpl (/**/)::VciXcacheWrapper
     m_cacheability_table(mt.getCacheabilityTable()),
     p_vci_initiator("socket")   // vci initiator socket name
 {
+  init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, time_quantum, std::numeric_limits<size_t>::max());
+}
+
+tmpl (/**/)::VciXcacheWrapper
+(
+ sc_core::sc_module_name name,
+ int cpuid,
+ const soclib::common::MappingTable &mt,
+ const soclib::common::IntTab &index,
+ size_t icache_ways,
+ size_t icache_sets,
+ size_t icache_words,
+ size_t dcache_ways,
+ size_t dcache_sets,
+ size_t dcache_words,
+ size_t time_quantum,
+ size_t simulation_time)
+  : sc_module(name),
+    m_id(mt.indexForId(index)),
+    m_iss(this->name(), cpuid),
+    m_irq(0),
+    m_icache_ways(icache_ways),
+    m_icache_words(icache_words),
+    m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
+    m_dcache_ways(dcache_ways),
+    m_dcache_words(dcache_words),
+    m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
+    m_wbuf("wbuf", dcache_words),
+    m_icache("icache", icache_ways, icache_sets, icache_words),
+    m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
+    m_cacheability_table(mt.getCacheabilityTable()),
+    p_vci_initiator("socket")   // vci initiator socket name
+{
+  init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, time_quantum, simulation_time);
+}
+
+tmpl (void)::init
+(
+ size_t icache_ways,
+ size_t icache_sets,
+ size_t icache_words,
+ size_t dcache_ways,
+ size_t dcache_sets,
+ size_t dcache_words,
+ size_t time_quantum,
+ size_t simulation_time)
+{
   // bind initiator
   p_vci_initiator(*this);                     
 
@@ -249,6 +215,9 @@ tmpl (/**/)::VciXcacheWrapper
   m_icache.reset();
   m_dcache.reset();
   
+  //number of cycles of simulation
+  m_simulation_time = simulation_time * UNIT_TIME;
+
   //PDES local time
   m_pdes_local_time = new pdes_local_time(time_quantum * UNIT_TIME);
 
@@ -279,7 +248,8 @@ tmpl (void)::update_time(sc_core::sc_time t)
 
 tmpl (void)::execLoop ()
 {
-  while(1) {
+  //while(1) {
+  while(m_pdes_local_time->get() < m_simulation_time){
     struct iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
     struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     

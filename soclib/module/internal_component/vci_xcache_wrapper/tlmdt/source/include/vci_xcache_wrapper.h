@@ -58,6 +58,7 @@ private:
   std::map<sc_core::sc_time, std::pair<int, bool> > m_pending_irqs;
   pdes_local_time        *m_pdes_local_time;
   pdes_activity_status   *m_pdes_activity_status;
+  sc_core::sc_time        m_simulation_time;
   
   const size_t            m_icache_ways;
   const size_t            m_icache_words;
@@ -100,6 +101,16 @@ private:
   /////////////////////////////////////////////////////////////////////////////////////
   // Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
+  void init(
+	    size_t icache_ways,
+	    size_t icache_sets,
+	    size_t icache_words,
+	    size_t dcache_ways,
+	    size_t dcache_sets,
+	    size_t dcache_words,
+	    size_t time_quantum,
+	    size_t simulation_time);
+
   uint32_t xcacheAccess(
 			struct iss_t::InstructionRequest ireq,
 			struct iss_t::DataRequest dreq,
@@ -214,6 +225,21 @@ public:
 		   size_t dcache_sets,
 		   size_t dcache_words,
 		   size_t time_quantum);
+
+  VciXcacheWrapper(
+		   sc_core::sc_module_name name,
+		   int cpuid,
+		   const soclib::common::MappingTable &mt,
+		   const soclib::common::IntTab &index,
+		   size_t icache_ways,
+		   size_t icache_sets,
+		   size_t icache_words,
+		   size_t dcache_ways,
+		   size_t dcache_sets,
+		   size_t dcache_words,
+		   size_t time_quantum,
+		   size_t simulation_time);
+
 };
 
 }}
