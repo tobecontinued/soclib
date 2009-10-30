@@ -126,9 +126,9 @@ protected:
   SC_HAS_PROCESS(VciIcu);
 public:
   tlm::tlm_target_socket<32, tlm::tlm_base_protocol_types> p_vci;   // VCI TARGET socket
-  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_irq_in; // IRQ INITIATOR socket
+  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_irq; // IRQ INITIATOR socket
 
-  std::vector<tlm_utils::simple_target_socket_tagged<VciIcu,32,tlm::tlm_base_protocol_types> *> p_irq; // IRQ TARGET socket
+  std::vector<tlm_utils::simple_target_socket_tagged<VciIcu,32,tlm::tlm_base_protocol_types> *> p_irq_in; // IRQ TARGET socket
 
   VciIcu(
 	 sc_core::sc_module_name name,
