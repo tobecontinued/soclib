@@ -27,6 +27,8 @@
 
 #include <cstring>
 
+#include <cassert>
+
 #include <stdint.h>
 #include <signal.h>
 
