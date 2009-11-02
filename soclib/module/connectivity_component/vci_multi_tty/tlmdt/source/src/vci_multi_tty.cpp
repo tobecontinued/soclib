@@ -144,9 +144,9 @@ tmpl(void)::behavior()
 	// set the local time to transaction time
 	m_time = m_pdes_local_time->get();
 
-	//#ifdef SOCLIB_MODULE_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[" << name() << "] Send Interrupt " << i << " : " << val << " time : " << m_time.value() << " hex : " << std::hex << m_time.value() << std::dec << std::endl;
-	//#endif
+#endif
 
 	// send the transaction
 	(*p_irq[i])->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
