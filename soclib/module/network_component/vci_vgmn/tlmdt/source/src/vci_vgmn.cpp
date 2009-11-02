@@ -44,7 +44,7 @@ VciVgmn::VciVgmn
   : sc_module(name)
   , m_centralized_buffer(nb_init)                    // centralized buffer
 {
-  init(name,mt,soclib::common::IntTab(),nb_init,nb_target,min_latency * UNIT_TIME);
+  init(name,mt,soclib::common::IntTab(),nb_init,nb_target,min_latency/2 * UNIT_TIME);
 }
 
 VciVgmn::VciVgmn
