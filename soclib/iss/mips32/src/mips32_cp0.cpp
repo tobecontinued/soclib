@@ -113,9 +113,9 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
     }
 }
 
-// Dont limit to kseg0
-// #define EBASE_WRITE_MASK 0x3ffff000
-#define EBASE_WRITE_MASK 0xfffff000
+// Dont limit to kseg0 if MMU is available
+#define EBASE_WRITE_MASK_NOMMU 0x3ffff000
+#define EBASE_WRITE_MASK_MMU 0xfffff000
 #define INTCTL_WRITE_MASK 0xfc0
 #define CAUSE_WRITE_MASK 0x8c00300
 
@@ -139,7 +139,8 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
         update_mode();
         return;
     case EBASE:
-        r_ebase = merge(r_ebase, val, EBASE_WRITE_MASK);
+        r_ebase = merge(r_ebase, val,
+                        m_cache_info.has_mmu ? EBASE_WRITE_MASK_MMU : EBASE_WRITE_MASK_NOMMU);
         break;
     case INTCTL:
         r_intctl.whole = merge(r_intctl.whole, val, 0xfc0);

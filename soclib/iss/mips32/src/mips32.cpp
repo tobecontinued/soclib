@@ -57,6 +57,8 @@ Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_littl
 
     r_config3.whole = 0;
     r_config3.ulri = 1; // Advertize for TLS register
+
+    m_cache_info.has_mmu = false;
 }
 
 void Mips32Iss::reset()
@@ -450,18 +452,15 @@ static size_t line_size_to_l( size_t line_size )
 }
 }
 
-void Mips32Iss::setICacheInfo( size_t line_size, size_t assoc, size_t n_lines )
+void Mips32Iss::setCacheInfo( const struct CacheInfo &info )
 {
-    r_config1.ia = assoc-1;
-    r_config1.is = lines_to_s(n_lines);
-    r_config1.il = line_size_to_l(line_size);
-}
-
-void Mips32Iss::setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines )
-{
-    r_config1.da = assoc-1;
-    r_config1.ds = lines_to_s(n_lines);
-    r_config1.dl = line_size_to_l(line_size);
+    r_config1.ia = info.icache_assoc-1;
+    r_config1.is = lines_to_s(info.icache_n_lines);
+    r_config1.il = line_size_to_l(info.icache_line_size);
+    r_config1.da = info.dcache_assoc-1;
+    r_config1.ds = lines_to_s(info.dcache_n_lines);
+    r_config1.dl = line_size_to_l(info.dcache_line_size);
+    m_cache_info = info;
 }
 
 Mips32Iss::addr_t Mips32Iss::exceptOffsetAddr( enum ExceptCause cause ) const

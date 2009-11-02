@@ -332,11 +332,37 @@ public:
     /**
      * Inform the Iss about the instruction cache caracteristics
      */
+    __attribute__((deprecated))
     virtual void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {}
     /**
      * Inform the Iss about the data cache caracteristics
      */
+    __attribute__((deprecated))
     virtual void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {}
+
+    struct CacheInfo
+    {
+        bool has_mmu;
+        size_t icache_line_size;
+        size_t icache_assoc;
+        size_t icache_n_lines;
+        size_t dcache_line_size;
+        size_t dcache_assoc;
+        size_t dcache_n_lines;
+    };
+
+    /**
+     * Inform the Iss about the cache
+     */
+    virtual void setCacheInfo( const struct CacheInfo &info )
+    {
+        setICacheInfo( info.icache_line_size,
+                       info.icache_assoc,
+                       info.icache_n_lines );
+        setDCacheInfo( info.dcache_line_size,
+                       info.dcache_assoc,
+                       info.dcache_n_lines );
+    }
 
     /*
      * Debugger API

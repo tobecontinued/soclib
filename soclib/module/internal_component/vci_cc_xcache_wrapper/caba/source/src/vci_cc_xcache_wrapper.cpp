@@ -218,9 +218,15 @@ tmpl(/**/)::VciCcXcacheWrapper(
     dont_initialize();
     sensitive << p_clk.neg();
 
-    m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
-    m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
-
+    typename iss_t::CacheInfo cache_info;
+    cache_info.has_mmu = false;
+    cache_info.icache_line_size = icache_words*sizeof(data_t);
+    cache_info.icache_assoc = icache_ways;
+    cache_info.icache_n_lines = icache_sets;
+    cache_info.dcache_line_size = dcache_words*sizeof(data_t);
+    cache_info.dcache_assoc = dcache_ways;
+    cache_info.dcache_n_lines = dcache_sets;
+    m_iss.setCacheInfo(cache_info);
 } // end constructor
 
 ///////////////////////////////////

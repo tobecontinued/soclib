@@ -117,6 +117,7 @@ private:
     // Instruction latency simulation
     uint32_t m_ins_delay;
 
+    struct CacheInfo m_cache_info;
 
     typedef union {
         struct {
@@ -576,8 +577,7 @@ public:
 
     int debugCpuCauseToSignal( uint32_t cause ) const;
 
-    void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
-    void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
+    void setCacheInfo( const struct CacheInfo &info );
 
     static inline void setResetAddress( uint32_t addr = 0xbfc00000 )
     {
@@ -603,11 +603,15 @@ private:
 
     inline bool isHighPC() const
     {
+        if ( m_cache_info.has_mmu )
+            return false;
         return (addr_t)r_pc & (addr_t)0x80000000;
     }
 
     inline bool isPrivDataAddr( addr_t addr ) const
     {
+        if ( m_cache_info.has_mmu )
+            return false;
         return addr & (addr_t)0x80000000;
     }
 
