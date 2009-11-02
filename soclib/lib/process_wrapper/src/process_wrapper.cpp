@@ -93,7 +93,7 @@ ProcessWrapper::ProcessWrapper(
         for ( int i=3; i<1024; ++i )
             close(i);
         execvp(c_cmd, c_argv);
-        perror("execv");
+        perror(c_cmd);
         /** \todo Replace this with some advertisement mechanism, and
          * report error back in parent process in a clean way
          */
