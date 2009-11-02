@@ -94,6 +94,7 @@ tmpl(/***/)::VciCmdArbRspRout                       // constructor
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl(void)::behavior(void)   // initiator thread
 {
+  /*
   // send null messages in the simulation begin
   m_extension_pointer->set_null_message();
   m_payload.set_extension(m_extension_pointer);
@@ -102,7 +103,7 @@ tmpl(void)::behavior(void)   // initiator thread
   m_time = m_pdes_local_time->get() + m_delay;
 
   p_vci_initiator->nb_transport_fw(m_payload, m_phase, m_time);
-
+  */
   packet_struct packet;
   while (true){
     if (!packet_fifo.empty()) {
@@ -140,6 +141,11 @@ tmpl(void)::behavior(void)   // initiator thread
 tmpl(void)::setRspArbCmdRout(std::vector<VciRspArbCmdRout *> &RspArbCmdRout)
 {
   m_RspArbCmdRout=RspArbCmdRout;
+}
+
+tmpl(VciRspArbCmdRout*)::getRspArbCmdRout(unsigned int index)
+{
+  return m_RspArbCmdRout[index];
 }
 
 tmpl(void)::put(tlm::tlm_generic_payload *payload, const sc_core::sc_time &time)

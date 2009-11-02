@@ -109,6 +109,8 @@ public:
 
   void setRspArbCmdRout(std::vector<VciRspArbCmdRout *> &RspArbCmdRout);
 
+  VciRspArbCmdRout* getRspArbCmdRout(unsigned int index);            
+
   void put(tlm::tlm_generic_payload *payload, const sc_core::sc_time &time);
 }; 
 }}

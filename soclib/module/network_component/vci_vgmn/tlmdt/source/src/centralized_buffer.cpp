@@ -207,11 +207,11 @@ void centralized_buffer::pop( size_t &from,
   if (m_centralized_buffer[min_i].fifo.empty())
     m_free_slots++;
   
-#if CENTRALIZED_BUFFER_DEBUG
+  //#if CENTRALIZED_BUFFER_DEBUG
   soclib_payload_extension *ext;
   payload->get_extension(ext);
   std::cout << "srcid =  " << ext->get_src_id() << " command = " << ext->get_command() << std::endl;
-#endif
+  //#endif
 }
 
 void centralized_buffer::pop( size_t from)

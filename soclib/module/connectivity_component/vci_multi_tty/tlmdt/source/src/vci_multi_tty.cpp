@@ -144,9 +144,9 @@ tmpl(void)::behavior()
 	// set the local time to transaction time
 	m_time = m_pdes_local_time->get();
 
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Sent Interrupt " << i << " : " << val << " time : " << m_time.value() << std::endl;
-#endif
+	//#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << "[" << name() << "] Send Interrupt " << i << " : " << val << " time : " << m_time.value() << " hex : " << std::hex << m_time.value() << std::dec << std::endl;
+	//#endif
 
 	// send the transaction
 	(*p_irq[i])->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
@@ -170,13 +170,15 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   soclib_payload_extension *extension_pointer;
   payload.get_extension(extension_pointer);
   
+  m_pdes_local_time->set(time);
+
   //this target does not treat the null message
   if(extension_pointer->is_null_message()){
     //update local time
     if(time > m_pdes_local_time->get())
       m_pdes_local_time->set(time);
 
-#if MULTI_TTY_DEBUG
+#if SOCLIB_MODULE_DEBUG
     std::cout << "[" << name() << "] Receive NULL MESSAGE time = "  << time.value() << std::endl;
 #endif
     return tlm::TLM_COMPLETED;
@@ -195,7 +197,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     switch(extension_pointer->get_command()){
     case VCI_READ_COMMAND:
       {
-#if MULTI_TTY_DEBUG
+#if SOCLIB_MODULE_DEBUG
 	std::cout << "[" << name() << "] Receive a read packet with time = "  << time.value() << std::endl;
 #endif
 	
@@ -205,19 +207,19 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	  
 	  //if (payload.contig)
 	  cell = (int)(((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes); // XXX contig = true always
-	    //else
-	    //cell = (int)((payload.address - s.baseAddress()) / vci_param::nbytes); // always write in the same address
+	  //else
+	  //cell = (int)((payload.address - s.baseAddress()) / vci_param::nbytes); // always write in the same address
 	  
 	  reg = cell % TTY_SPAN;
 	  term_no = cell / TTY_SPAN;
 	  
-#if MULTI_TTY_DEBUG
+#if SOCLIB_MODULE_DEBUG
 	  std::cout << "[" << name() << "] term_no=" << term_no << " reg=" << reg << std::endl;
 #endif
 	  
 	  if (term_no>=(int)m_term.size()){
 	    
-#if MULTI_TTY_DEBUG
+#if SOCLIB_MODULE_DEBUG
 	    std::cout << "term_no (" << term_no <<") greater than the maximum (" << m_term.size() << ")" << std::endl;
 #endif
 			    
@@ -254,7 +256,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	m_cpt_cycle = time.value();
 	m_cpt_read+=nwords;
 	
-#if MULTI_TTY_DEBUG
+#if SOCLIB_MODULE_DEBUG
 	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
 	
@@ -266,7 +268,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       {
 	char data;
 	
-#if MULTI_TTY_DEBUG
+#if SOCLIB_MODULE_DEBUG
 	std::cout << "[" << name() << "] Receive a write packet with time = "  << time.value() << std::endl;
 #endif
 	
@@ -282,12 +284,12 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
           data = atou(payload.get_data_ptr(), (i * vci_param::nbytes));
 	  
-#if MULTI_TTY_DEBUG
-	  std::cout << "[" << name() << "] term_no=" << term_no << " reg=" << reg << " data=" << data << std::endl;
+#if SOCLIB_MODULE_DEBUG
+	  //std::cout << "[" << name() << "] term_no=" << term_no << " reg=" << reg << " data=" << data << std::endl;
 #endif
 	  
 	  if (term_no>=(int)m_term.size()){
-#if MULTI_TTY_DEBUG
+#if SOCLIB_MODULE_DEBUG
 	    std::cout << "term_no (" << term_no <<") greater than the maximum (" << m_term.size() << ")" << std::endl;
 #endif
 	    
@@ -328,8 +330,8 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	m_cpt_cycle = time.value();
 	m_cpt_write+=nwords;
 	
-#if MULTI_TTY_DEBUG
-	std::cout << "[TTY] Send answer with time = " << time.value() << std::endl;
+#if SOCLIB_MODULE_DEBUG
+	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
 	
 	p_vci->nb_transport_bw(payload, phase, time);
@@ -347,7 +349,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   phase  = tlm::BEGIN_RESP;
   time = time + UNIT_TIME;
   
-#if MULTI_TTY_DEBUG
+#if SOCLIB_MODULE_DEBUG
   std::cout << "[TTY] Address " << payload.get_address() << " does not match any segment " << std::endl;
   std::cout << "[TTY] Send to source "<< extension_pointer->get_src_id() << " a error packet with time = "  << time.value() << std::endl;
 #endif

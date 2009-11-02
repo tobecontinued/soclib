@@ -128,9 +128,6 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     switch(extension_pointer->get_command()){
     case VCI_READ_COMMAND:
       {
-#if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive a read packet with time = "  << time.value() << std::endl;
-#endif
 	int reg;
 	for (data_t i=0;i<nwords;i++){
 	  //if (payload.contig) 
@@ -141,18 +138,27 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     
 	  switch (reg) {
 	  case ICU_INT:
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Receive a read ICU_INT with time = "  << time.value() << std::endl;
+#endif
 	    utoa(getActiveInterruptions(time), payload.get_data_ptr(),(i * vci_param::nbytes));
 	    payload.set_response_status(tlm::TLM_OK_RESPONSE);
 	    break;
 	    
 	  case ICU_MASK:
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Receive a read ICU_MASK with time = "  << time.value() << std::endl;
+#endif
 	    utoa(r_mask, payload.get_data_ptr(),(i * vci_param::nbytes));
 	    payload.set_response_status(tlm::TLM_OK_RESPONSE);
 	    break;
 	  
 	  case ICU_IT_VECTOR:
+#if SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] Receive a read ICU_IT_VECTOR with time = "  << time.value() << std::endl;
+#endif
 	    // give the highest priority interrupt
-	    utoa(r_current, payload.get_data_ptr(),(i * vci_param::nbytes));
+	    utoa(getCurrentInterruption(), payload.get_data_ptr(),(i * vci_param::nbytes));
 	    payload.set_response_status(tlm::TLM_OK_RESPONSE);
 	    break;
 	  default:
@@ -313,7 +319,6 @@ tmpl(void)::send_interruption(int idx)
 #if SOCLIB_MODULE_DEBUG
   std::cout << "[" << name() << "] Send Interruption " << idx << " with time = " << irq[idx].time.value() << std::endl;
 #endif
-  r_current = idx;
       
   // set the values in irq tlm payload
   data_t nwords= 1;
@@ -372,6 +377,19 @@ tmpl(typename vci_param::data_t)::getActiveInterruptions(sc_core::sc_time time){
   return r_interrupt;
 }
 
+tmpl(typename vci_param::data_t)::getCurrentInterruption(){
+  int min_time = std::numeric_limits<int>::max();
+
+  // starting with interruption with higher priority
+  for (size_t j=0;j<m_nirq;j++) {
+    // If the interruption is active and time is greater or equals to m_fifos_time[j]
+    if (irq[j].val && irq[j].time.value() < min_time){
+      r_current = j;
+    }
+  }
+
+  return r_current;
+}
 }}
 
 

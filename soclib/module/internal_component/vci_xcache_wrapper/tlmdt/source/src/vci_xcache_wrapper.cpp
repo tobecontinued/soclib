@@ -723,8 +723,8 @@ tmpl (void)::send_null_message()
   //send a null message
   p_vci->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
   //deschedule the initiator thread
-  wait(sc_core::SC_ZERO_TIME);
-  //wait(m_rsp_received);
+  //wait(sc_core::SC_ZERO_TIME);
+  wait(m_rsp_received);
   m_pdes_local_time->reset_sync();
 }
 
@@ -773,16 +773,16 @@ tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw
   bool find = false;
  
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " receive Interrupt " << id << " value " << v << " time " << time.value() << std::endl;
+  std::cout << "[" << name() << "] receive Interrupt " << id << " value " << v << " time " << time.value() << std::endl;
 #endif
 
   //if false interruption then it must be tested if there is a true interruption with the same id.
   //In afirmative case, the true interruption must be deleted
   if(!v){
     for( i = m_pending_irqs.begin(); i != m_pending_irqs.end(); ++i){
-      if(i->second.first == id){
+      if(i->second.first == id && i->first == time){
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << " delete interrupt " << i->second.first << " value " << i->second.second << " time " << i->first.value() << std::endl;
+	std::cout << "[" << name() << "] delete interrupt " << i->second.first << " value " << i->second.second << " time " << i->first.value() << std::endl;
 #endif
 	find = true;
 	m_pending_irqs.erase(i);
@@ -793,7 +793,7 @@ tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw
   //if true interruption or (false interruption and no true interruption with the same id) the it adds
   if(!find){
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " insert interrupt " << id << " value " << v << " time " << time.value() << std::endl;
+    std::cout << "[" << name() << "] insert interrupt " << id << " value " << v << " time " << time.value() << std::endl;
 #endif
     m_pending_irqs[time] = std::pair<int, bool>(id, v);
   }

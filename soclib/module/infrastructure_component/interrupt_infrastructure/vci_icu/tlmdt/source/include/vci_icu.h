@@ -76,6 +76,7 @@ private:
   void send_interruption(int idx);
   void disable_interruption(data_t mask, sc_core::sc_time t);
   data_t getActiveInterruptions(sc_core::sc_time time);
+  data_t getCurrentInterruption();
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_fw_transport_if  (VCI TARGET SOCKET)

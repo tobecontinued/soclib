@@ -56,16 +56,19 @@ private:
   const routing_table_t                                      m_routing_table;      // routing table
   const locality_table_t                                     m_locality_table;     // locality table
   std::vector<VciCmdArbRspRout *>                            m_CmdArbRspRout;      // cmd_arb_rsp_rout blocks
+  bool                                                       m_is_local_crossbar;
 
   //FIELDS OF A NULL MESSAGE
-  tlm::tlm_generic_payload                                  *m_null_payload_ptr;
-  soclib_payload_extension                                  *m_null_extension_ptr;
+  //tlm::tlm_generic_payload                                  *m_null_payload_ptr;
+  //soclib_payload_extension                                  *m_null_extension_ptr;
 
   FILE * myFile;
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Fuction  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
   /////////////////////////////////////////////////////////////////////////////////////
+  void create_token();
+ 
   tlm::tlm_sync_enum nb_transport_fw                    
   ( tlm::tlm_generic_payload &payload,   // payload
     tlm::tlm_phase           &phase,     // phase
@@ -97,6 +100,13 @@ public:
 		   , sc_core::sc_time delay                        // interconnect delay
 		   , centralized_buffer *cb);                      // centralized buffer
   
+  VciRspArbCmdRout(                                                // constructor
+		   sc_core::sc_module_name module_name             // SC module name
+		   , const routing_table_t &rt                     // routing table
+		   , uint32_t local_index                          // local initiator index
+		   , sc_core::sc_time delay                        // interconnect delay
+		   , centralized_buffer *cb);                      // centralized buffer
+
   ~VciRspArbCmdRout();
 
   void setCmdArbRspRout(std::vector<VciCmdArbRspRout *> &CmdArbRspRout);
