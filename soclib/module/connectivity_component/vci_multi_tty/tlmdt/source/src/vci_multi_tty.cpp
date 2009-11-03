@@ -153,7 +153,6 @@ tmpl(void)::behavior()
 	
       }
     }
-    m_pdes_local_time->add(UNIT_TIME);
     wait(sc_core::SC_ZERO_TIME);
   }
 }

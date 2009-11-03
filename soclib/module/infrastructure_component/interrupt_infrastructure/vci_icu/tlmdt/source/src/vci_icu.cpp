@@ -298,6 +298,9 @@ tmpl(tlm::tlm_sync_enum)::irq_nb_transport_fw
   tlm::tlm_phase           &phase,     // phase
   sc_core::sc_time         &time)      // time
 {
+  if(existTime(time))
+    time = time + UNIT_TIME;
+
   irq[id].val  = (bool) atou(payload.get_data_ptr(), 0);
   irq[id].time = time;
 
@@ -363,6 +366,18 @@ tmpl(void)::disable_interruption(data_t mask, sc_core::sc_time t){
   }
 }
 
+tmpl(bool)::existTime(sc_core::sc_time t){
+
+  // starting with interruption with higher priority
+  for (size_t j=0;j<m_nirq;j++) {
+    // If the interruption is active and time is greater or equals to m_fifos_time[j]
+    if (irq[j].time.value() == t.value()){
+      return true;
+    }
+  }
+  return false;
+}
+
 tmpl(typename vci_param::data_t)::getActiveInterruptions(sc_core::sc_time time){
   data_t r_interrupt = be2mask<data_t>(0x0);
   
@@ -378,7 +393,7 @@ tmpl(typename vci_param::data_t)::getActiveInterruptions(sc_core::sc_time time){
 }
 
 tmpl(typename vci_param::data_t)::getCurrentInterruption(){
-  int min_time = std::numeric_limits<int>::max();
+  unsigned int min_time = std::numeric_limits<unsigned int>::max();
 
   // starting with interruption with higher priority
   for (size_t j=0;j<m_nirq;j++) {
