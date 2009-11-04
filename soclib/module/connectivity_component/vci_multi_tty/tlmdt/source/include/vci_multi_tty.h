@@ -72,6 +72,7 @@ class VciMultiTty
   void init(const std::vector<std::string> &names);
 
   void behavior();
+  void send_interruption(size_t idx, bool val);
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_fw_transport_if  (VCI TARGET SOCKET)

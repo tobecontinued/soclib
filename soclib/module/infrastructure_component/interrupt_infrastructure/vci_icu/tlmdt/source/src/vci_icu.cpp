@@ -155,7 +155,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	  
 	  case ICU_IT_VECTOR:
 #if SOCLIB_MODULE_DEBUG
-	    std::cout << "[" << name() << "] Receive a read ICU_IT_VECTOR with time = "  << time.value() << std::endl;
+	    std::cout << "[" << name() << "] Receive a read ICU_IT_VECTOR = " << getCurrentInterruption() << " with time = "  << time.value() << std::endl;
 #endif
 	    // give the highest priority interrupt
 	    utoa(getCurrentInterruption(), payload.get_data_ptr(),(i * vci_param::nbytes));
@@ -172,7 +172,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
         time = time + (nwords * UNIT_TIME);
 
 #if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() <<"] Send Answer Time = " << time.value() << std::endl;
+	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
 #endif
         p_vci->nb_transport_bw(payload, phase, time);
         return tlm::TLM_COMPLETED;
@@ -302,7 +302,8 @@ tmpl(tlm::tlm_sync_enum)::irq_nb_transport_fw
     time = time + UNIT_TIME;
 
   irq[id].val  = (bool) atou(payload.get_data_ptr(), 0);
-  irq[id].time = time;
+  if(irq[id].val)
+    irq[id].time = time;
 
 #if SOCLIB_MODULE_DEBUG
   std::cout << "[" << name() << "] Receive Interruption " << id << " val = " << irq[id].val << " with time = " << irq[id].time.value() << std::endl;
