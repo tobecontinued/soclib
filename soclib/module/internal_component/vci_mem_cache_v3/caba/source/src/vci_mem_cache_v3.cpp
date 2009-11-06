@@ -3979,8 +3979,8 @@ namespace soclib { namespace caba {
           if        (r_read_fsm.read() == READ_HEAP_LOCK) 	        r_alloc_heap_fsm = ALLOC_HEAP_READ;
           else if   ((r_write_fsm.read() == WRITE_HEAP_LOCK) ||        
                      (r_write_fsm.read() == WRITE_HEAP_ERASE))      r_alloc_heap_fsm = ALLOC_HEAP_WRITE;
-          else if   ( (r_llsc_fsm.read() == LL_DIR_LOCK) || 
-                    (r_llsc_fsm.read() == SC_DIR_LOCK))             r_alloc_heap_fsm = ALLOC_HEAP_LLSC;
+          else if   ( (r_llsc_fsm.read() == SC_HEAP_LOCK) || 
+                    (r_llsc_fsm.read() == SC_HEAP_ERASE))           r_alloc_heap_fsm = ALLOC_HEAP_LLSC;
           else if   (r_cleanup_fsm.read() == CLEANUP_HEAP_LOCK)     r_alloc_heap_fsm = ALLOC_HEAP_CLEANUP;
         }
         break;
