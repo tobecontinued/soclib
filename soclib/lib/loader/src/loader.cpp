@@ -62,7 +62,7 @@ Loader::Loader( const Loader &ref )
 {
 }
 
-void Loader::load( void *buffer, uintptr_t address, size_t length )
+void Loader::load( void *buffer, uintptr_t address, size_t length ) const
 {
     std::cout
         << std::showbase << std::hex

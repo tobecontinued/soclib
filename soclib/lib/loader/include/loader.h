@@ -70,7 +70,7 @@ public:
             const std::string &f5 = "",
             const std::string &f6 = ""
         );
-	void load( void *buffer, uintptr_t address, size_t length );
+	void load( void *buffer, uintptr_t address, size_t length ) const;
 	~Loader();
 
     void print( std::ostream &o ) const;
