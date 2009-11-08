@@ -39,7 +39,20 @@ using namespace soclib;
 
 #define tmpl(t) template<typename vci_param> t VciXicu<vci_param>
 
+#ifdef SOCLIB_MODULE_DEBUG
+#define CHECK_BOUNDS(x)                                                \
+    do {                                                               \
+        if ( idx >= (m_##x##_count) ) {                                \
+            std::cout << name() << " error: " #x " index " << idx      \
+                      << " out of bounds ("                            \
+                      << m_##x##_count << ")"                          \
+                      << std::endl;                                    \
+            return false;                                              \
+        }                                                              \
+    } while(0)
+#else
 #define CHECK_BOUNDS(x) do { if ( idx >= (m_##x##_count) ) return false; } while(0)
+#endif
 
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
