@@ -1,5 +1,5 @@
-#ifndef ATOMIC_TAB_H_
-#define ATOMIC_TAB_H_
+#ifndef ATOMIC_TAB_V3_H_
+#define ATOMIC_TAB_V3_H_
 
 #include <inttypes.h>
 #include <systemc>

@@ -1,5 +1,5 @@
-#ifndef UPDATE_TAB_H_
-#define UPDATE_TAB_H_
+#ifndef UPDATE_TAB_V1_H_
+#define UPDATE_TAB_V1_H_
 
 #include <inttypes.h>
 #include <systemc>

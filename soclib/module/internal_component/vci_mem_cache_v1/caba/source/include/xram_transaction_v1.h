@@ -1,5 +1,5 @@
-#ifndef XRAM_TRANSACTION_H_
-#define XRAM_TRANSACTION_H_
+#ifndef XRAM_TRANSACTION_V1_H_
+#define XRAM_TRANSACTION_V1_H_
  
 #include <inttypes.h>
 #include <systemc>
@@ -26,8 +26,8 @@ class TransactionTabEntry {
   size_t 	      trdid;     	    // processor requesting the transaction
   size_t 	      pktid;     	    // processor requesting the transaction
   bool 		      proc_read;	    // read request from processor
-  size_t 		  read_length;      // length of the read (for the response)
-  size_t 	      word_index;    	// index of the first read word (for the response)
+  bool 		      single_word;   	// single word in case of processor read 
+  size_t 	      word_index;    	// word index in case of single word read
   std::vector<data_t> wdata;        // write buffer (one cache line)
   std::vector<be_t>   wdata_be;    	// be for each data in the write buffer
 
@@ -68,7 +68,7 @@ class TransactionTabEntry {
     trdid	    = source.trdid;
     pktid	    = source.pktid;
     proc_read 	= source.proc_read;
-    read_length = source.read_length;
+    single_word = source.single_word;
     word_index	= source.word_index;
     wdata_be.assign(source.wdata_be.begin(),source.wdata_be.end());
     wdata.assign(source.wdata.begin(),source.wdata.end());	
@@ -85,7 +85,7 @@ class TransactionTabEntry {
     std::cout << "trdid       = " << trdid        << std::endl;
     std::cout << "pktid       = " << pktid        << std::endl;
     std::cout << "proc_read   = " << proc_read    << std::endl;
-    std::cout << "read_length = " << read_length  << std::endl;
+    std::cout << "single_word = " << single_word  << std::endl;
     std::cout << "word_index  = " << word_index   << std::endl; 
     for(size_t i=0; i<wdata_be.size() ; i++){
       std::cout << "wdata_be [" << i <<"] = " << wdata_be[i] << std::endl;
@@ -115,7 +115,7 @@ class TransactionTabEntry {
     trdid	    = source.trdid;
     pktid	    = source.pktid;
     proc_read	= source.proc_read;
-    read_length = source.read_length;
+    single_word = source.single_word;
     word_index	= source.word_index;
     wdata_be.assign(source.wdata_be.begin(),source.wdata_be.end());
     wdata.assign(source.wdata.begin(),source.wdata.end());	
@@ -313,7 +313,7 @@ class TransactionTab{
   // - trdid : trdid of the initiator that caused the transaction
   // - pktid : pktid of the initiator that caused the transaction
   // - proc_read : does the initiator want a copy
-  // - read_length : length of read (in case of processor read)
+  // - single_word : single word read (in case of processor read)
   // - word_index : index in the line (in case of single word read)
   // - data : the data to write (in case of write)
   // - data_be : the mask of the data to write (in case of write)
@@ -325,7 +325,7 @@ class TransactionTab{
 	   const size_t trdid,
 	   const size_t pktid,
 	   const bool proc_read,
-	   const size_t read_length,
+	   const bool single_word,
 	   const size_t word_index,
 	   const std::vector<be_t> &data_be,
 	   const std::vector<data_t> &data) 
@@ -344,7 +344,7 @@ class TransactionTab{
     tab[index].trdid	        = trdid;
     tab[index].pktid	        = pktid;
     tab[index].proc_read	    = proc_read;
-    tab[index].read_length	    = read_length;
+    tab[index].single_word	    = single_word;
     tab[index].word_index	    = word_index;
     for(size_t i=0; i<tab[index].wdata.size(); i++) {
       tab[index].wdata_be[i]    = data_be[i];

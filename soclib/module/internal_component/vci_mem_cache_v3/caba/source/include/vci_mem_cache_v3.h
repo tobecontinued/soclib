@@ -53,10 +53,10 @@
 #include "generic_fifo.h"
 #include "mapping_table.h"
 #include "int_tab.h"
-#include "mem_cache_directory.h"
-#include "xram_transaction.h"
-#include "update_tab.h"
-#include "atomic_tab.h"
+#include "mem_cache_directory_v3.h"
+#include "xram_transaction_v3.h"
+#include "update_tab_v3.h"
+#include "atomic_tab_v3.h"
 
 #define TRANSACTION_TAB_LINES 4     // Number of lines in the transaction tab
 #define UPDATE_TAB_LINES 4          // Number of lines in the update tab

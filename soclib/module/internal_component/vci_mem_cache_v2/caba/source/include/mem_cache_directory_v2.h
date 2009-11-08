@@ -1,5 +1,5 @@
-#ifndef SOCLIB_CABA_MEM_CACHE_DIRECTORY_H
-#define SOCLIB_CABA_MEM_CACHE_DIRECTORY_H 
+#ifndef SOCLIB_CABA_MEM_CACHE_DIRECTORY_V2_H
+#define SOCLIB_CABA_MEM_CACHE_DIRECTORY_V2_H 
 
 #include <inttypes.h>
 #include <systemc>

@@ -1,5 +1,5 @@
-#ifndef XRAM_TRANSACTION_H_
-#define XRAM_TRANSACTION_H_
+#ifndef XRAM_TRANSACTION_V2_H_
+#define XRAM_TRANSACTION_V2_H_
  
 #include <inttypes.h>
 #include <systemc>
