@@ -879,8 +879,12 @@ tmpl(void)::transition()
             r_vci_rsp_fsm = RSP_IDLE;
             r_dcache_write_req = false;
         }
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " write BERR" << std::endl;
+#endif
             m_iss.setWriteBerr();
+        }
         break;
 
     case RSP_DATA_UNC:
