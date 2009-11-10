@@ -10,7 +10,7 @@ use_memcheck = (
 
 if locs['CONFIG_CPU_PPC'] == 'defined':
   cpu = "ppc405"
-if locs['CONFIG_CPU_ARM'] == 'defined':
+elif locs['CONFIG_CPU_ARM'] == 'defined':
   cpu = "arm"
 elif locs['CONFIG_CPU_MIPS'] == 'defined':
   if locs['CONFIG_CPU_ENDIAN_BIG'] == 'defined':

@@ -8,7 +8,7 @@ export SOCLIB
 
 all:
 
-CONFIG=config_soclib
+CONFIG=config_soclib_mipsel
 APP=$(MUTEKH_DIR)/examples/hello
 
 $(SIMULATOR_BINARY): $(KERNEL)

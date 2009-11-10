@@ -2,18 +2,15 @@
 #include <iostream>
 #include <cstdlib>
 
+// If you want a GDB server, uncomment the #define below.
+//
+// Then you may set the environment variable SOCLIB_GDB=START_FROZEN
+// before starting the simulator.
+
 #define CONFIG_GDB_SERVER
 
 #include "mutekh/.config.h"
 #include "mapping_table.h"
-
-#if defined(CONFIG_SOCLIB_MEMCHECK)
-# include "iss_memchecker.h"
-#endif
-
-#if defined(CONFIG_GDB_SERVER)
-# include "gdbserver.h"
-#endif
 
 #include "vci_xcache_wrapper.h"
 #include "vci_timer.h"
@@ -24,59 +21,9 @@
 #include "vci_icu.h"
 #include "vci_vgmn.h"
 
-#include "soclib_addresses.h"
-
-#define SEGTYPEMASK 0x00300000
-
-// You may set the SOCLIB_GDB environment variable to
-// START_FROZEN before starting the simulator.
-
-#if defined(CONFIG_CPU_MIPS)
-#include "mips32.h"
-# define DEFAULT_KERNEL "mutekh/kernel-soclib-mips.out"
-# if defined(CONFIG_CPU_ENDIAN_BIG)
-# warning Using MIPS32Eb
-	typedef soclib::common::Mips32EbIss ProcessorIss;
-
-# elif defined(CONFIG_CPU_ENDIAN_LITTLE)
-# warning Using MIPS32El
-	typedef soclib::common::Mips32ElIss ProcessorIss;
-# else
-#  error No endian configuration defined
-# endif
-
-#elif defined(CONFIG_CPU_PPC)
-#include "ppc405.h"
-# warning Using PPC
-	typedef soclib::common::Ppc405Iss ProcessorIss;
-# define DEFAULT_KERNEL "mutekh/kernel-soclib-ppc.out"
-
-#elif defined(CONFIG_CPU_ARM)
-#include "arm.h"
-# warning Using ARM
-	typedef soclib::common::ArmIss ProcessorIss;
-
-# define DEFAULT_KERNEL "mutekh/kernel-soclib-arm.out"
-
-#else
-#  error No supported processor configuration defined
-#endif
-
-#if defined(CONFIG_GDB_SERVER)
-# if defined(CONFIG_SOCLIB_MEMCHECK)
-#  warning Using GDB and memchecker
-	typedef soclib::common::GdbServer<soclib::common::IssMemchecker<ProcessorIss> > Processor;
-# else
-#  warning Using GDB
-	typedef soclib::common::GdbServer<ProcessorIss> Processor;
-# endif
-#elif defined(CONFIG_SOCLIB_MEMCHECK)
-# warning Using Memchecker
-	typedef soclib::common::IssMemchecker<ProcessorIss> Processor;
-#else
-# warning Using raw processor
-	typedef ProcessorIss Processor;
-#endif
+// Ugly compilation dependant code extracted in another file, it is too
+// scary for newcomers. Let's concentrate on the netlist here.
+#include "config.h"
 	
 int _main(int argc, char *argv[])
 {
@@ -100,16 +47,19 @@ int _main(int argc, char *argv[])
 
 	soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00c00000);
 
-	maptab.add(Segment("reset", DSX_SEGMENT_RESET_ADDR, DSX_SEGMENT_RESET_SIZE, IntTab(0), true));
-	maptab.add(Segment("excep", DSX_SEGMENT_EXCEP_ADDR, DSX_SEGMENT_EXCEP_SIZE, IntTab(0), true));
-	maptab.add(Segment("text" , DSX_SEGMENT_TEXT_ADDR, DSX_SEGMENT_TEXT_SIZE , IntTab(0), true));
-  
-	maptab.add(Segment("data" , DSX_SEGMENT_DATA_CACHED_ADDR, DSX_SEGMENT_DATA_CACHED_SIZE, IntTab(1), true));
-	maptab.add(Segment("udata" , DSX_SEGMENT_DATA_UNCACHED_ADDR, DSX_SEGMENT_DATA_UNCACHED_SIZE, IntTab(1), false));
+	maptab.add(Segment("reset",
+					   CONFIG_CPU_RESET_ADDR,
+					   CONFIG_CPU_RESET_SIZE,
+					   IntTab(0), true));
 
-	maptab.add(Segment("tty"  , DSX_SEGMENT_TTY_ADDR, DSX_SEGMENT_TTY_SIZE, IntTab(2), false));
-	maptab.add(Segment("timer", DSX_SEGMENT_TIMER_ADDR, DSX_SEGMENT_TIMER_SIZE, IntTab(3), false));
-	maptab.add(Segment("icu", DSX_SEGMENT_ICU_ADDR, DSX_SEGMENT_ICU_SIZE, IntTab(4), false));
+	maptab.add(Segment("text" , 0x60100000, 0x00100000, IntTab(0), true));
+
+	maptab.add(Segment("data" , 0x61100000, 0x00100000, IntTab(1), true));
+	maptab.add(Segment("udata", 0x62600000, 0x00100000, IntTab(1), false));
+
+	maptab.add(Segment("tty"  , 0x90600000, 0x00000010, IntTab(2), false));
+	maptab.add(Segment("timer", 0x01620000, 0x00000100, IntTab(3), false));
+	maptab.add(Segment("icu",   0x20600000, 0x00000020, IntTab(4), false));
 
 	// Signals
 

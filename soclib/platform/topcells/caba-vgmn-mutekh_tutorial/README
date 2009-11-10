@@ -1,10 +1,10 @@
 
-This platform adapts itself to mutekh configuration. Add a symbolic
-link to the mutekh directory and ensure mutekh sources are configured
-before running make.
+This platform adapts itself to mutekh configuration. Export
+environment variable MUTEKH_DIR=/path/to/mutekh and run make.
 
-ln -s ~/mystuff/mutekh
-make
+$ export MUTEKH_DIR=~/projects/mutekh
+$ make
 
-See MutekH quick start guide for Soclib for more informations.
+See MutekH quick start guide for Soclib for more informations:
 
+https://www.mutek.fr/trac/mutekh/wiki/QuickStartSoclib
