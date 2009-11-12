@@ -47,7 +47,7 @@ template <typename vci_param> class VciSnooper;
 template <typename vci_param> class VciLoggerElem;
 
 template <typename vci_param>
-class VciRspBuffer
+class VciRspBuffer : public dpp::refobj<VciRspBuffer<vci_param> >
 {
     friend class VciSnooper<vci_param>;
     friend class VciLoggerElem<vci_param>;
@@ -63,8 +63,6 @@ class VciRspBuffer
 
 public:
     VciRspBuffer()
-        : _count(0),
-          _delete_on_0(false)
     {}
 
     DPP_REFTYPE(VciRspBuffer<vci_param>)
@@ -154,14 +152,10 @@ public:
           << " rtrdid: " << rtrdid << std::endl
           << " rpktid: " << rpktid << std::endl;
     }
-
-protected:
-    int _count;
-    bool _delete_on_0;
 };
 
 template <typename vci_param>
-class VciCmdBuffer
+class VciCmdBuffer : public dpp::refobj<VciCmdBuffer<vci_param> >
 {
     friend class VciSnooper<vci_param>;
     friend class VciLoggerElem<vci_param>;
@@ -186,11 +180,9 @@ class VciCmdBuffer
     static const typename vci_param::fast_addr_t s_broadcast_addr = 0x3;
 public:
     VciCmdBuffer()
-        : _count(0),
-          _delete_on_0(false)
     {}
 
-    DPP_REFTYPE(VciCmdBuffer<vci_param>)
+    DPP_REFTYPE(VciCmdBuffer)
 
     typedef soclib::common::AddressDecodingTable<uint32_t, int> routing_table_t;
     typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;
@@ -311,9 +303,6 @@ public:
           << " pktid  : " << pktid << std::endl;
     }
 
-protected:
-    int _count;
-    bool _delete_on_0;
 };
 
 }}
