@@ -46,7 +46,7 @@ SOFT_IMAGE=bin.soft
 
 include $(SOCLIB)/utils/conf/soft_flags.mk
 
-HW_HEADERS=$(SOCLIB)/utils/include
+INTERFACE_CFLAGS:=$(shell cd $(SOCLIB)/utils/src/soclib-simulate-any && soclib-cc -p platform_desc $(SOCLIB_CC_ADD_ARGS) --embedded-cflags)
 
 CC_PREFIX=$($(ARCH)_CC_PREFIX)
 CC = $(CC_PREFIX)gcc
@@ -54,7 +54,7 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall -Os -I. -I$(COMMON) -I$(TESTER_DIR) -I$(HW_HEADERS) $($(ARCH)_CFLAGS) $(ADD_CFLAGS)
+CFLAGS=-Wall -Os -I. -I$(COMMON) -I$(TESTER_DIR) $($(ARCH)_CFLAGS) $(ADD_CFLAGS) $(INTERFACE_CFLAGS)
 LIBGCC:=$(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 
 all: test
