@@ -142,6 +142,22 @@ class CLink(CCompile):
 class CxxLink(CLink):
 	tool = 'CXX_LINKER'
 
+class CMkobj(CLink):
+	priority = 200
+	tool = 'LD'
+	def process(self):
+		args = config.getTool(self.tool)
+		args += ['-r', '-o', self.dests[0]]
+		args += self.sources
+		r = self.call('mkobj', args)
+		if r:
+			print
+			print r
+		action.Action.process(self)
+
+class CxxMkobj(CMkobj):
+	pass
+
 if __name__ == '__main__':
 	import sys
 	cc = CxxCompile(sys.argv[1], sys.argv[2])

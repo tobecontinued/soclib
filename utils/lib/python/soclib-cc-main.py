@@ -196,7 +196,7 @@ def main():
 	config.output = "system.x"
 	if opts.one_module:
 		from soclib_cc.builder.todo import ToDo
-		from soclib_cc.builder.cxx import CxxLink
+		from soclib_cc.builder.cxx import CxxMkobj
 		from soclib_desc.specialization import Specialization
 		from soclib_cc.component_builder import ComponentBuilder
 		todo = ToDo()
@@ -215,7 +215,7 @@ def main():
 					todo.add(o)
 					out.append(o)
 			if opts.output:
-				todo.add(CxxLink(opts.output, out).results()[0])
+				todo.add(CxxMkobj(opts.output, out).results()[0])
 		todo.process()
 		return 0
 	if opts.list_files:
