@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # SOCLIB_GPL_HEADER_BEGIN
 # 
@@ -38,6 +38,10 @@ svn up
 export PATH=${SOCLIB_DIR}/utils/bin:$PATH
 export SOCLIB_TTY=TERM
 export SOCLIB_FB=HEADLESS
+
+cd ${SOCLIB_DIR}/utils/test
+make -k clean
+make -k
 
 cd ${SOCLIB_DIR}/soclib/platform/topcells
 make -k soft_clean
