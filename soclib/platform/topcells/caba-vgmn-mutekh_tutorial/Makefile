@@ -4,14 +4,18 @@ SOFT=$(KERNEL)
 NO_SOFT=1
 SOCLIB?=$(shell soclib-cc --getpath)
 SIMULATOR_BINARY=system.x
+ARCH=none
 export SOCLIB
 
-all:
+help:
+	@echo available targets are:
+	@echo "  all: build mutek kernel and simulator"
+	@echo "  $(SIMULATOR_BINARY): build simulator only"
+
+all: $(SIMULATOR_BINARY)
 
 CONFIG=config_soclib_mipsel
 APP=$(MUTEKH_DIR)/examples/hello
-
-$(SIMULATOR_BINARY): $(KERNEL)
 
 $(KERNEL): mutekh
 	$(MAKE) \
