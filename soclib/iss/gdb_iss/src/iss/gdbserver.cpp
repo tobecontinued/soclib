@@ -86,12 +86,21 @@ void GdbServer<CpuIss>::global_init()
 
     struct sockaddr_in    addr;
 
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_port = htons(port_);
-    addr.sin_family = AF_INET;
+    for (int i = 0; ; i++)
+        {
+            if (i == 10)
+                throw soclib::exception::RunTimeError("GdbServer: Unable to bind()");
 
-    if (bind(socket_, (struct sockaddr*)&addr, sizeof (struct sockaddr_in)) < 0)
-        throw soclib::exception::RunTimeError("GdbServer: Unable to bind()");
+            memset(&addr, 0, sizeof(addr));
+            addr.sin_port = htons(port_ + i);
+            addr.sin_family = AF_INET;
+
+            if (bind(socket_, (struct sockaddr*)&addr, sizeof (struct sockaddr_in)) >= 0)
+                {
+                    fprintf(stderr, "[GDB] listening on port %i\n", port_ + i);
+                    break;
+                }
+        }
 
     if (listen(socket_, 1) < 0)
         throw soclib::exception::RunTimeError("GdbServer: Unable to listen()");
