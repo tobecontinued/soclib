@@ -1,10 +1,11 @@
 KERNEL=mutekh/kernel-soclib-mips.out
 SIMULATION_ARGS=$(KERNEL)
-SOFT=$(KERNEL)
 NO_SOFT=1
 SOCLIB?=$(shell soclib-cc --getpath)
 SIMULATOR_BINARY=system.x
-ARCH=none
+# never mind about the ARCH below, we dont use the software-building
+# feature of this makefile anyway
+ARCH=mips32el
 export SOCLIB
 
 help:
@@ -12,7 +13,7 @@ help:
 	@echo "  all: build mutek kernel and simulator"
 	@echo "  $(SIMULATOR_BINARY): build simulator only"
 
-all: $(SIMULATOR_BINARY)
+all: $(SIMULATOR_BINARY) $(KERNEL)
 
 CONFIG=config_soclib_mipsel
 APP=$(MUTEKH_DIR)/examples/hello
