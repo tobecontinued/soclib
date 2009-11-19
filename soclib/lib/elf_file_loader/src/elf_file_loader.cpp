@@ -28,6 +28,9 @@
 #include <cassert>
 #include <iostream>
 #include <cstdlib>
+#include <string>
+
+#include <fnmatch.h>
 
 #include "static_init_code.h"
 #include "loader.h"
@@ -41,15 +44,28 @@
 
 namespace soclib { namespace common { namespace {
 
-bool elf_load( const std::string &filename, Loader &loader )
+bool elf_load( const std::string &name, Loader &loader )
 {
     elfpp::object *binary;
+    std::vector<std::string> section_patterns;
+
+    size_t fname_len = name.find_first_of(';', 0);
+    std::string filename(name.substr(0, fname_len));
+
     try {
         binary = new elfpp::object(filename);
 
         binary->parse_symbol_table();
     } catch (std::runtime_error &e) {
         throw soclib::exception::RunTimeError(e.what());
+    }
+
+    // get section patterns list separated by ";"
+    size_t first = fname_len + 1, last = fname_len;
+    while (last != std::string::npos) {
+        last = name.find_first_of(';', first);
+        section_patterns.push_back(name.substr(first, last - first));
+        first = last + 1;
     }
 
     FOREACH( sect, binary->get_section_table() )
@@ -61,6 +77,21 @@ bool elf_load( const std::string &filename, Loader &loader )
 
         if ( (sect->get_type() == elfpp::SHT_NOBITS) || ! sect->get_size() ) {
             continue;
+        }
+
+        // filter sections by name
+        if ( !section_patterns.empty() ) {
+            bool match = false;
+
+            FOREACH( pattern, section_patterns ) {
+                if ( !fnmatch( pattern->c_str(), sect->get_name().c_str(), 0 ) ) {
+                    match = true;
+                    break;
+                }
+            }
+            if ( !match )
+                continue;
+            std::cerr << "using " << filename << ":" << sect->get_name() << std::endl;
         }
 
         size_t actual_size = sect->get_size();
