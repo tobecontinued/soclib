@@ -284,6 +284,7 @@ private:
     sc_signal<bool>	        r_dcache_rsp_itlb_error;        // used for data cache rsp error when itlb miss
     sc_signal<data_t>	    r_dcache_rsp_itlb_miss;	        // used for dcache rsp data when itlb miss
     sc_signal<data_t>	    r_dcache_rsp_itlb_ppn;	        // used for dcache rsp data when itlb miss
+    sc_signal<vaddr_t>      r_icache_vaddr_req;			// virtual address requested by the CPU
     // VCI_CMD FSM REGISTERS
     sc_signal<int>          r_vci_cmd_fsm;
     sc_signal<size_t>       r_vci_cmd_min;       
