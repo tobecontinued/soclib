@@ -112,7 +112,7 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
     : CpuIss(name, ident),
       mem_req_(false),
       mem_count_(0),
-      catch_execeptions_(false),
+      catch_execeptions_(true), // Do not change without prior discussion
       call_trace_(false)
     {
         init_state();
