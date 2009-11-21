@@ -50,8 +50,6 @@ private:
     section_list_t m_sections;
     std::map<uintptr_t, BinaryFileSymbol> m_symbol_table;
 
-	void load_file(const std::string &desc_str);
-
 	static loader_registry_t &registry();
 public:
 	static void register_loader( const std::string &name,
@@ -61,6 +59,8 @@ public:
 
 	void addSection( const BinaryFileSection &section );
 	void addSymbol( const BinaryFileSymbol &symbol );
+
+	void load_file(const std::string &desc_str);
 
 	Loader( const Loader &ref );
 	Loader( const std::string &f = "",

@@ -34,7 +34,7 @@ using namespace soclib;
 using common::IntTab;
 using common::Segment;
 
-static common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00c00000);
+static common::MappingTable maptab(32, IntTab(8), IntTab(8), 0xfff00000);
 
 // Define our VCI parameters
 typedef caba::VciParams<4,9,32,1,1,1,8,1,1,1> vci_param;
@@ -51,7 +51,7 @@ struct CpuEntry;
 
 struct CpuEntry {
   caba::BaseModule *cpu;
-  common::Loader *loader;
+  common::Loader *text_ldr;
   sc_core::sc_signal<bool> *irq_sig;
   size_t irq_sig_count;
   CPU_CONNECT(*connect);
@@ -82,7 +82,7 @@ CPU_CONNECT(cpu_connect)
 #if defined(CONFIG_GDB_SERVER)
 # if defined(CONFIG_SOCLIB_MEMCHECK)
 #  warning Using GDB and memchecker
-#  define ISS_NEST(T) common::GdbServer<soclib::common::IssMemchecker<T> >
+#  define ISS_NEST(T) common::GdbServer<common::IssMemchecker<T> >
 # else
 #  warning Using GDB
 #  define ISS_NEST(T) common::GdbServer<T>
@@ -101,15 +101,17 @@ void newCpu(CpuEntry *e, const std::string &type, int id)
   std::ostringstream o;
   o << type << "_" << id;
 
+  ISS_NEST(Iss)::set_loader(e->text_ldr);
   e->cpu = new caba::VciXcacheWrapper<vci_param, ISS_NEST(Iss)>(o.str().c_str(), id, maptab, IntTab(id),1, 8, 4, 1, 8, 4);
   e->connect = cpu_connect<ISS_NEST(Iss)>;
 }
 
-struct CpuEntry * newCpuEntry(const std::string &type, int id)
+struct CpuEntry * newCpuEntry(const std::string &type, int id, common::Loader *ldr)
 {
   CpuEntry *e = new CpuEntry;
 
   e->cpu = 0;
+  e->text_ldr = ldr;
 
   switch (type[0])
     {
@@ -146,6 +148,7 @@ int _main(int argc, char **argv)
 {
 	// Avoid repeating these everywhere
 	std::vector<CpuEntry*> cpus;
+	common::Loader data_ldr;
 
 	if (argc < 2)
 	  {
@@ -170,30 +173,46 @@ int _main(int argc, char **argv)
 	    const char *count_p = strsep(&arg, ":");
 	    int count = count_p ? atoi(count_p) : 1;
 
-	    common::Loader *loader = new common::Loader(kernel_p);
+	    common::Loader *text_ldr = new common::Loader(std::string(kernel_p) + ";.text");
+	    data_ldr.load_file(std::string(kernel_p) + ";.rodata;.boot;.excep");
+
+	    if (i == 0)
+	      data_ldr.load_file(std::string(kernel_p) + ";.data;.cpudata;.contextdata");
 
 	    for (int j = 0; j < count; j++)
 	      {
 		int id = cpus.size();
-		CpuEntry *e = newCpuEntry(type_p, id);
-		e->loader = loader;
+		CpuEntry *e = newCpuEntry(type_p, id, text_ldr);
 		cpus.push_back(e);
 	      }
 	  }
 
 	// Mapping table
 
-	maptab.add(Segment("resetarm",  0x00000000, 0x0400, IntTab(0), true));
-	maptab.add(Segment("resetmips", 0xbfc00000, 0x2000, IntTab(0), true));
-	maptab.add(Segment("resetppc",  0xffffff80, 0x0080, IntTab(0), true));
+	maptab.add(Segment("resetarm",  0x00000000, 0x0400, IntTab(1), true));
+	maptab.add(Segment("resetmips", 0xbfc00000, 0x2000, IntTab(1), true));
+	maptab.add(Segment("resetppc",  0xffffff80, 0x0080, IntTab(1), true));
 
-        maptab.add(Segment("text" , 0x60100000, 0x00100000, IntTab(0), true));
-        maptab.add(Segment("data" , 0x61100000, 0x00100000, IntTab(1), true));
-        maptab.add(Segment("udata", 0x62600000, 0x00100000, IntTab(1), false));
+        maptab.add(Segment("text" ,     0x60100000, 0x00100000, IntTab(0), true));
+        maptab.add(Segment("rodata" ,   0x61100000, 0x01000000, IntTab(1), true));
+        maptab.add(Segment("data",      0x71600000, 0x00100000, IntTab(2), false));
 
-	maptab.add(Segment("tty"  , 0x90600000, 0x00000010, IntTab(2), false));
-	maptab.add(Segment("timer", 0x01620000, 0x00000100, IntTab(3), false));
-	maptab.add(Segment("icu",   0x20600000, 0x00000020, IntTab(4), false));
+	maptab.add(Segment("tty"  ,     0x90600000, 0x00000010, IntTab(3), false));
+	maptab.add(Segment("timer",     0x01620000, 0x00000100, IntTab(4), false));
+	maptab.add(Segment("icu",       0x20600000, 0x00000020, IntTab(5), false));
+
+	caba::VciHeterogeneousRom<vci_param> vcihetrom("vcihetrom",    IntTab(0), maptab);
+	for ( size_t i = 0; i < cpus.size(); ++i )
+	  vcihetrom.add_srcid(*cpus[i]->text_ldr, IntTab(i));
+
+	caba::VciRam<vci_param> vcirom                ("vcirom",       IntTab(1), maptab, data_ldr);
+	caba::VciRam<vci_param> vcimultiram           ("vcimultiram", IntTab(2), maptab);
+
+	caba::VciMultiTty<vci_param> vcitty           ("vcitty",       IntTab(3), maptab, "vcitty", NULL);
+	caba::VciTimer<vci_param> vcitimer            ("vcittimer",    IntTab(4), maptab, 1);
+	caba::VciIcu<vci_param> vciicu                ("vciicu",       IntTab(5), maptab, 2);
+
+	caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size(), 6, 2, 8);
 
 	// Signals
 
@@ -204,26 +223,18 @@ int _main(int argc, char **argv)
 
 	caba::VciSignals<vci_param> signal_vci_icu("signal_vci_icu");
 	caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
-	caba::VciSignals<vci_param> signal_vci_vcimultiram0("signal_vci_vcimultiram0");
+	caba::VciSignals<vci_param> signal_vci_vcihetrom("signal_vci_vcihetrom");
+	caba::VciSignals<vci_param> signal_vci_vcirom("signal_vci_vcirom");
+	caba::VciSignals<vci_param> signal_vci_vcimultiram("signal_vci_vcimultiram");
 	caba::VciSignals<vci_param> signal_vci_vcitimer("signal_vci_vcitimer");
-	caba::VciSignals<vci_param> signal_vci_vcimultiram1("signal_vci_vcimultiram1");
 
 	sc_core::sc_signal<bool> signal_icu_irq[2];
 
 	// Components
 
 #if defined(CONFIG_SOCLIB_MEMCHECK)
-	Processor::init(maptab, loader, "tty,timer,icu");
+	//	Processor::init(maptab, loader, "tty,timer,icu");
 #endif
-
-	caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, *cpus[0]->loader);
-	caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, *cpus[0]->loader);
-
-	caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty", NULL);
-	caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 1);
-	caba::VciIcu<vci_param> vciicu("vciicu", IntTab(4), maptab, 2);
-
-	caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size(), 5, 2, 8);
 
 	//	Net-List
 	for ( size_t i = 0; i < cpus.size(); ++i ) {
@@ -231,17 +242,21 @@ int _main(int argc, char **argv)
 	  vgmn.p_to_initiator[i](signal_vci_m[i]);
 	}
 
-	vcimultiram0.p_clk(signal_clk);
-	vcimultiram1.p_clk(signal_clk);
+	vcimultiram.p_clk(signal_clk);
+	vcihetrom.p_clk(signal_clk);
+	vcirom.p_clk(signal_clk);
 	vcitimer.p_clk(signal_clk);
 	vciicu.p_clk(signal_clk);
-  
-	vcimultiram0.p_resetn(signal_resetn);
-	vcimultiram1.p_resetn(signal_resetn);
+
+	vcimultiram.p_resetn(signal_resetn);
+	vcihetrom.p_resetn(signal_resetn);
+	vcirom.p_resetn(signal_resetn);
 	vcitimer.p_resetn(signal_resetn);
 	vciicu.p_resetn(signal_resetn);
 
-	vcimultiram0.p_vci(signal_vci_vcimultiram0);
+	vcihetrom.p_vci(signal_vci_vcihetrom);
+	vcirom.p_vci(signal_vci_vcirom);
+	vcimultiram.p_vci(signal_vci_vcimultiram);
 
 	vciicu.p_vci(signal_vci_icu);
 	vciicu.p_irq_in[0](signal_icu_irq[0]);
@@ -251,8 +266,6 @@ int _main(int argc, char **argv)
 	vcitimer.p_vci(signal_vci_vcitimer);
 	vcitimer.p_irq[0](signal_icu_irq[0]);
 
-	vcimultiram1.p_vci(signal_vci_vcimultiram1);
-
 	vcitty.p_clk(signal_clk);
 	vcitty.p_resetn(signal_resetn);
 	vcitty.p_vci(signal_vci_tty);
@@ -261,11 +274,12 @@ int _main(int argc, char **argv)
 	vgmn.p_clk(signal_clk);
 	vgmn.p_resetn(signal_resetn);
 
-	vgmn.p_to_target[0](signal_vci_vcimultiram0);
-	vgmn.p_to_target[1](signal_vci_vcimultiram1);
-	vgmn.p_to_target[2](signal_vci_tty);
-	vgmn.p_to_target[3](signal_vci_vcitimer);
-	vgmn.p_to_target[4](signal_vci_icu);
+	vgmn.p_to_target[0](signal_vci_vcihetrom);
+	vgmn.p_to_target[1](signal_vci_vcirom);
+	vgmn.p_to_target[2](signal_vci_vcimultiram);
+	vgmn.p_to_target[3](signal_vci_tty);
+	vgmn.p_to_target[4](signal_vci_vcitimer);
+	vgmn.p_to_target[5](signal_vci_icu);
 
 	sc_core::sc_start(sc_core::sc_time(0, sc_core::SC_NS));
 	signal_resetn = false;
