@@ -31,7 +31,7 @@
 #include <fcntl.h>
 #include "block_device.h"
 
-#define CHUNCK_SIZE (1<<(vci_param::K-1))
+#define BURST_SIZE (1<<(vci_param::K-1))
 
 namespace soclib { namespace caba {
 
@@ -66,24 +66,24 @@ namespace soclib { namespace caba {
 
 #define tmpl(t) template<typename vci_param> t VciBlockDevice<vci_param>
 
+/////////////////////////////
 tmpl(void)::ended(int status)
 {
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout 
         << name()
         << " finished current operation ("
-        << SoclibBlockDeviceOp_str[m_current_op]
+        << SoclibBlockDeviceOp_str[r_current_op]
         << ") with the status "
         << SoclibBlockDeviceStatus_str[status]
         << std::endl;
 #endif
 
-	if ( m_irq_enabled )
-		r_irq = true;
-	m_current_op = m_op = BLOCK_DEVICE_NOOP;
-    m_status = status;
+    if ( r_irq_enabled ) r_irq = true;
+    r_current_op = r_request_op = BLOCK_DEVICE_NOOP;
+    r_status = status;
 }
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
     int cell = (int)addr / vci_param::B;
@@ -94,35 +94,35 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
         << " write config register "
         << SoclibBlockDeviceRegisters_str[cell]
         << " with data 0x"
-        << std::hex << data.read()
+        << std::hex << data
         << std::endl;
 #endif
 
-	switch ((enum SoclibBlockDeviceRegisters)cell) {
+    switch ((enum SoclibBlockDeviceRegisters)cell) {
     case BLOCK_DEVICE_BUFFER:
-		m_buffer = data;
-		return true;
+	r_buffer = data;
+	return true;
     case BLOCK_DEVICE_COUNT:
-        m_count = data;
+        r_count = data;
         return true;
     case BLOCK_DEVICE_LBA:
-		m_lba = data;
-		return true;
+	r_lba = data;
+	return true;
     case BLOCK_DEVICE_OP:
-        if ( m_status == BLOCK_DEVICE_BUSY ) {
+        if ( r_status == BLOCK_DEVICE_BUSY ) {
             std::cerr << name() << " warning: receiving a new command while busy, ignored" << std::endl;
         } else {
-            m_op = data;
+            r_request_op = data;
         }
-		return true;
+	return true;
     case BLOCK_DEVICE_IRQ_ENABLE:
-		m_irq_enabled = data;
-		return true;
+	r_irq_enabled = data;
+	return true;
     default:
         return false;
-	}
+    }
 }
-
+///////////////////////////////////////////////////////////////////////////////////////////////
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
     int cell = (int)addr / vci_param::B;
@@ -135,7 +135,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         << std::endl;
 #endif
 
-	switch ((enum SoclibBlockDeviceRegisters)cell) {
+    switch ((enum SoclibBlockDeviceRegisters)cell) {
     case BLOCK_DEVICE_SIZE:
         data = (typename vci_param::fast_data_t)m_device_size;
         return true;
@@ -143,42 +143,46 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         data = m_block_size;
         return true;
     case BLOCK_DEVICE_STATUS:
-        data = m_status;
-        if (m_status != BLOCK_DEVICE_BUSY) {
-            m_status = BLOCK_DEVICE_IDLE;
+        data = r_status;
+        if (r_status != BLOCK_DEVICE_BUSY) {
+            r_status = BLOCK_DEVICE_IDLE;
             r_irq = false;
         }
         return true;
     default:
         return false;
-	}
+    }
 }
-
+//////////////////////////////////
 tmpl(void)::read_done( req_t *req )
 {
-    if ( ! req->failed() && m_chunck_offset < m_transfer_size ) {
+    uint32_t transfer_size = r_count * m_block_size;
+    if ( ! req->failed() && r_burst_offset <  transfer_size ) {
+
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout 
         << name()
-        << " completed transferring a chunck. Do now the next one..."
+        << " completed transferring a burst. Do now the next one..."
         << std::endl;
 #endif
         next_req();
         return;
     }
 
-	ended( req->failed() ? BLOCK_DEVICE_READ_ERROR : BLOCK_DEVICE_READ_SUCCESS );
+    ended( req->failed() ? BLOCK_DEVICE_READ_ERROR : BLOCK_DEVICE_READ_SUCCESS );
     delete m_data;
-	delete req;
+    delete req;
 }
-
+//////////////////////////////////////
 tmpl(void)::write_finish( req_t *req )
 {
-    if ( ! req->failed() && m_chunck_offset < m_transfer_size ) {
+    uint32_t transfer_size = r_count * m_block_size;
+    if ( ! req->failed() && r_burst_offset < transfer_size ) {
+
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout 
         << name()
-        << " completed transferring a chunck. Do now the next one..."
+        << " completed transferring a burst. Do now the next one..."
         << std::endl;
 #endif
         next_req();
@@ -186,66 +190,68 @@ tmpl(void)::write_finish( req_t *req )
     }
 
 	ended(
-        ( ! req->failed() && ::write( m_fd, (char *)m_data, m_transfer_size ) > 0 )
+        ( ! req->failed() && ::write( m_fd, (char *)m_data, transfer_size ) > 0 )
         ? BLOCK_DEVICE_WRITE_SUCCESS : BLOCK_DEVICE_WRITE_ERROR );
     delete m_data;
-	delete req;
+    delete req;
 }
-
+//////////////////////
 tmpl(void)::next_req()
 {
-    switch (m_current_op) {
+    switch (r_current_op) {
     case BLOCK_DEVICE_READ:
     {
-        m_transfer_size = m_count * m_block_size;
-        if ( m_chunck_offset == 0 ) {
-            if ( m_lba + m_count > m_device_size ) {
+	// copy data from the file to a local buffer when it is a new operation
+        uint32_t transfer_size 	= r_count * m_block_size;
+        if ( r_burst_offset == 0 ) {
+            if ( r_lba + r_count > m_device_size ) {
                 std::cerr << name() << " warning: trying to read beyond end of device" << std::endl;
                 ended(BLOCK_DEVICE_READ_ERROR);
                 break;
             }
-            m_data = new uint8_t[m_transfer_size];
-            lseek(m_fd, m_lba*m_block_size, SEEK_SET);
-            int retval = ::read(m_fd, m_data, m_transfer_size);
+            m_data = new uint8_t[transfer_size];
+            lseek(m_fd, r_lba*m_block_size, SEEK_SET);
+            int retval = ::read(m_fd, m_data, transfer_size);
             if ( retval < 0 ) {
                 ended(BLOCK_DEVICE_READ_ERROR);
                 break;
             }
         }
-        size_t chunck_size = m_transfer_size-m_chunck_offset;
-        if ( chunck_size > CHUNCK_SIZE )
-            chunck_size = CHUNCK_SIZE;
+	// makes the VCI transaction from local buffer to user buffer
+        size_t burst_size 	= transfer_size - r_burst_offset;
+        if ( burst_size > BURST_SIZE ) burst_size = BURST_SIZE;
         VciInitSimpleWriteReq<vci_param> *req =
             new VciInitSimpleWriteReq<vci_param>(
-                m_buffer+m_chunck_offset, m_data+m_chunck_offset, chunck_size );
-        m_chunck_offset += CHUNCK_SIZE;
+                r_buffer + r_burst_offset, m_data + r_burst_offset, burst_size );
+        r_burst_offset += BURST_SIZE;
         req->setDone( this, ON_T(read_done) );
         m_vci_init_fsm.doReq( req );
-		m_status = BLOCK_DEVICE_BUSY;
+	r_status = BLOCK_DEVICE_BUSY;
         break;
     }
     case BLOCK_DEVICE_WRITE:
     {
-        m_transfer_size = m_count * m_block_size;
-        if ( m_chunck_offset == 0 ) {
-            if ( m_lba + m_count > m_device_size ) {
+	// create a local buffer to store data when it is a new operation
+        uint32_t transfer_size = r_count * m_block_size;
+        if ( r_burst_offset == 0 ) {
+            if ( r_lba + r_count > m_device_size ) {
                 std::cerr << name() << " warning: trying to write beyond end of device" << std::endl;
                 ended(BLOCK_DEVICE_WRITE_ERROR);
                 break;
             }
-            m_data = new uint8_t[m_transfer_size];
-            lseek(m_fd, m_lba*m_block_size, SEEK_SET);
+            m_data = new uint8_t[transfer_size];
+            lseek(m_fd, r_lba*m_block_size, SEEK_SET);
         }
-        size_t chunck_size = m_transfer_size-m_chunck_offset;
-        if ( chunck_size > CHUNCK_SIZE )
-            chunck_size = CHUNCK_SIZE;
+	// makes the VCI transaction from user buffer to local buffer
+        size_t burst_size = transfer_size - r_burst_offset;
+        if ( burst_size > BURST_SIZE ) burst_size = BURST_SIZE;
         VciInitSimpleReadReq<vci_param> *req =
             new VciInitSimpleReadReq<vci_param>(
-                m_data+m_chunck_offset, m_buffer+m_chunck_offset, chunck_size );
-        m_chunck_offset += CHUNCK_SIZE;
+                m_data + r_burst_offset, r_buffer + r_burst_offset, burst_size );
+        r_burst_offset += BURST_SIZE;
         req->setDone( this, ON_T(write_finish) );
         m_vci_init_fsm.doReq( req );
-		m_status = BLOCK_DEVICE_BUSY;
+	r_status = BLOCK_DEVICE_BUSY;
         break;
     }
     default:
@@ -253,63 +259,76 @@ tmpl(void)::next_req()
         break;
     }
 }
-
+////////////////////////
 tmpl(void)::transition()
 {
 	if (!p_resetn) {
 		m_vci_target_fsm.reset();
 		m_vci_init_fsm.reset();
 		r_irq = false;
-		m_irq_enabled = false;
-		m_status = BLOCK_DEVICE_IDLE;
+		r_irq_enabled = false;
+		r_request_op = BLOCK_DEVICE_NOOP;
+		r_status = BLOCK_DEVICE_IDLE;
+		r_access_latency = m_latency;
 		return;
 	}
 
-	if ( m_current_op == BLOCK_DEVICE_NOOP &&
-		 m_op != BLOCK_DEVICE_NOOP ) {
+	// block device access time modeling
+	if ( r_request_op != BLOCK_DEVICE_NOOP ) {
+		if ( r_access_latency == 0 ) {
+
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout 
         << name()
         << " launch an operation "
-        << SoclibBlockDeviceOp_str[m_op]
+        << SoclibBlockDeviceOp_str[r_request_op]
         << std::endl;
 #endif
-		m_current_op = m_op;
-        m_op = BLOCK_DEVICE_NOOP;
-        m_chunck_offset = 0;
-        next_req();
+			r_current_op = r_request_op;
+			r_access_latency = m_latency;
+        		r_request_op = BLOCK_DEVICE_NOOP;
+        		r_burst_offset = 0;
+        		next_req();
+		} else {
+			r_access_latency--;	
+		}
+	} else {
+		r_access_latency = m_latency;
 	}
 
+	// initiator & target FSMs
 	m_vci_target_fsm.transition();
 	m_vci_init_fsm.transition();
 }
-
+/////////////////////
 tmpl(void)::genMoore()
 {
 	m_vci_target_fsm.genMoore();
 	m_vci_init_fsm.genMoore();
-
-	p_irq = r_irq && m_irq_enabled;
+	p_irq = r_irq && r_irq_enabled;
 }
 
+/////// Constructor ///////
 tmpl(/**/)::VciBlockDevice(
     sc_module_name name,
     const MappingTable &mt,
     const IntTab &srcid,
     const IntTab &tgtid,
     const std::string &filename,
-    const uint32_t block_size )
+    const uint32_t block_size, 
+    const uint32_t latency)
 	: caba::BaseModule(name),
 	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid)),
 	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(srcid)),
       m_block_size(block_size),
+      m_latency(latency),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci_target("vci_target"),
       p_vci_initiator("vci_initiator"),
       p_irq("irq")
 {
-	m_vci_target_fsm.on_read_write(on_read, on_write);
+    m_vci_target_fsm.on_read_write(on_read, on_write);
 
     m_fd = ::open(filename.c_str(), O_RDWR);
     if ( m_fd < 0 ) {
