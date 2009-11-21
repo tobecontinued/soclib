@@ -18,6 +18,7 @@ Module('common:gdb_iss',
 	   uses = [
 	Uses('common:iss2'),
 	Uses('common:exception'),
+	Uses('common:loader'),
 	],
 	   extensions = [
 	'dsx:cpu=wrapper:gdb_iss_t',

@@ -47,6 +47,7 @@
 #include "exception.h"
 #include "soclib_endian.h"
 #include "register.h"
+#include "loader.h"
 
 namespace soclib { namespace common {
 
@@ -56,9 +57,14 @@ class GdbServer
 {
 public:
 
-    inline void set_tcp_port(uint16_t port)
+    static inline void set_tcp_port(uint16_t port)
     {
         port_ = port;
+    }
+
+    static inline void set_loader(Loader *loader)
+    {
+        loader_ = loader;
     }
 
     GdbServer(const std::string &name, uint32_t ident);
@@ -151,6 +157,8 @@ private:
     static unsigned int current_id_;
     static unsigned int step_id_; // can be used to force single step on a specific processor
     bool catch_execeptions_;
+    bool call_trace_;
+    ptrdiff_t cur_func_;
 
 #ifdef GDB_PC_TRACE
     uint32_t pc_trace_table[GDB_PC_TRACE];
@@ -176,6 +184,8 @@ private:
 
     static int poll_timeout_;
 
+    static Loader* loader_;
+
     enum State
         {
             // Running
@@ -193,7 +203,7 @@ private:
         };
 
     static State init_state_;
-    static State init_state();
+    void init_state();
     State state_;
 
     static inline void change_all_states(State s)

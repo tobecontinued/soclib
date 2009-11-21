@@ -60,6 +60,7 @@ template<typename CpuIss> bool GdbServer<CpuIss>::debug_ = false;
 template<typename CpuIss> std::map<uint32_t, bool> GdbServer<CpuIss>::break_exec_;
 template<typename CpuIss> typename GdbServer<CpuIss>::address_set_t GdbServer<CpuIss>::break_read_access_;
 template<typename CpuIss> typename GdbServer<CpuIss>::address_set_t GdbServer<CpuIss>::break_write_access_;
+template<typename CpuIss> Loader* GdbServer<CpuIss>::loader_ = 0;
 
 template<typename CpuIss> uint16_t GdbServer<CpuIss>::port_ = 2346;
 
@@ -112,8 +113,9 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
       mem_req_(false),
       mem_count_(0),
       catch_execeptions_(false),
-      state_(init_state())
+      call_trace_(false)
     {
+        init_state();
         if (list_.empty())
             global_init();
 
@@ -338,6 +340,37 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                             list_[id]->catch_execeptions_ = value;
                             write_packet("OK");
                             return;
+                        }
+                }
+        }
+
+    if (i >= 2 && !strcmp(tokens[0], "calltrace"))
+        {
+            if (! loader_)
+                {
+                    std::cerr << "[GDB] no loader defined !!!" << std::cerr;
+                }
+            else
+                {
+                    bool value = atoi(tokens[1]) != 0;
+
+                    if (i == 2)
+                        {
+                            for (unsigned int i = 0; i < list_.size(); i++)
+                                list_[i]->call_trace_ = value;
+                            write_packet("OK");
+                            return;
+                        }
+                    else
+                        {
+                            unsigned int id = atoi(tokens[2]) - 1;
+                            
+                            if (id < list_.size())
+                                {
+                                    list_[id]->call_trace_ = value;
+                                    write_packet("OK");
+                                    return;
+                                }
                         }
                 }
         }
@@ -854,6 +887,18 @@ bool GdbServer<CpuIss>::check_break_points()
     pc_trace_table[pc_trace_index] = pc;
 #endif
 
+    if (call_trace_)
+        {
+            BinaryFileSymbolOffset sym = loader_->get_symbol_by_addr(pc);
+            uintptr_t symaddr = sym.symbol().address();
+
+            if (symaddr != cur_func_)
+                {
+                    cur_func_ = symaddr;
+                    std::cerr << "[GDB] CPU " << id_ << " jumped to " << sym << std::endl;
+                }
+        }
+
     if (break_exec_.find(pc) != break_exec_.end())
         {
             change_all_states(WaitIssMem);
@@ -1059,20 +1104,23 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
 }
 
 template<typename CpuIss>
-typename GdbServer<CpuIss>::State GdbServer<CpuIss>::init_state()
+void GdbServer<CpuIss>::init_state()
 {
     const char *env_val = getenv("SOCLIB_GDB");
     if ( env_val ) {
-        if ( !strcmp( env_val, "START_FROZEN" ) )
-            return WaitIssMem;
-        if ( !strcmp( env_val, "START_RUNNING" ) )
-            return Running;
+        if (strchr( env_val, 'F' ))
+            state_ = WaitIssMem;
+        else 
+            state_ = init_state_;
+
+        if (strchr( env_val, 'C' ) && loader_)
+            call_trace_ = true;
     }
+
     env_val = getenv("SOCLIB_GDB_SLEEPMS");
     if ( env_val ) {
         poll_timeout_ = atoi(env_val);
     }
-    return init_state_;
 }
 
 }}

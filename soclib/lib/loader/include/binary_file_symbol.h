@@ -64,6 +64,11 @@ public:
     const BinaryFileSymbol& operator=( const BinaryFileSymbol &ref );
 
     bool contains( uintptr_t addr ) const;
+
+    bool operator==(const BinaryFileSymbol &s) const
+    {
+        return m_address == s.m_address;
+    }
 };
 
 class BinaryFileSymbolOffset
@@ -82,6 +87,16 @@ public:
     {
         so.print(o);
         return o;
+    }
+
+    const BinaryFileSymbol & symbol() const
+    {
+        return m_sym;
+    }
+
+    ptrdiff_t address() const
+    {
+        return m_addr;
     }
 };
 
