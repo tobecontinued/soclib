@@ -34,8 +34,6 @@ Module('caba:vci_block_device',
         parameter.IntTab('srcid'),
         parameter.IntTab('tgtid'),
         parameter.String('filename'),
-        parameter.Int('block_size'),
-        parameter.Int('latency'),
         ],
 	   extensions = [
 	'dsx:addressable=tgtid',

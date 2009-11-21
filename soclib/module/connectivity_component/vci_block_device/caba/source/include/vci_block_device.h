@@ -58,35 +58,35 @@ private:
     void transition();
     void genMoore();
 
-    const uint32_t 	    m_block_size;		// number of bytes per block
-    const uint32_t 	    m_latency;		    // access time (for each device access)
-    int 		        m_fd;			    // file descriptor
-    uint64_t 		    m_device_size;		// file length (number of blocks)
+	const uint32_t m_block_size;
 
-    int 		        r_request_op;		// Requested operation
-    int 		        r_current_op;		// Current operation
-    uint32_t 		    r_buffer;		    // memory buffer address
-    uint32_t 		    r_count;		    // number of blocks to transfer
-    uint32_t 		    r_lba;			    // block base address
-    uint32_t 		    r_access_latency;	// latency counter
-    int 		        r_status;		    // operation status
-    uint32_t 		    r_burst_offset;		// number of bytes not yet transfered
-    bool 		        r_irq_enabled;		// irq are enabled when true
-    bool 		        r_irq;			    // irq current value
+	int m_fd;
+	int m_op;
+	uint32_t m_buffer;
+	uint32_t m_count;
+	uint64_t m_device_size;
+	uint32_t m_lba;
+    int m_status;
+    uint32_t m_chunck_offset;
+    uint32_t m_transfer_size;
+	bool m_irq_enabled;
+	bool r_irq;
 
-    uint8_t*		    m_data;
+	int m_current_op;
 
-    inline void ended(int status);
+	uint8_t *m_data;
+
+	inline void ended(int status);
 
 protected:
     SC_HAS_PROCESS(VciBlockDevice);
 
 public:
-    sc_in<bool> 				            p_clk;
-    sc_in<bool> 				            p_resetn;
-    soclib::caba::VciTarget<vci_param> 		p_vci_target;
-    soclib::caba::VciInitiator<vci_param> 	p_vci_initiator;
-    sc_out<bool> 				            p_irq;
+    sc_in<bool> p_clk;
+    sc_in<bool> p_resetn;
+    soclib::caba::VciTarget<vci_param> p_vci_target;
+    soclib::caba::VciInitiator<vci_param> p_vci_initiator;
+    sc_out<bool> p_irq;
 
 	VciBlockDevice(
 		sc_module_name name,
@@ -94,8 +94,7 @@ public:
 		const soclib::common::IntTab &srcid,
 		const soclib::common::IntTab &tgtid,
         const std::string &filename,
-        const uint32_t block_size = 512,
-		const uint32_t latency = 0);
+        const uint32_t block_size = 512 );
 };
 
 }}
