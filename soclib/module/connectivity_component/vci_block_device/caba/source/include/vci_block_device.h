@@ -59,6 +59,7 @@ private:
     void genMoore();
 
 	const uint32_t m_block_size;
+	const uint32_t m_latency;
 
 	int m_fd;
 	int m_op;
@@ -69,8 +70,11 @@ private:
     int m_status;
     uint32_t m_chunck_offset;
     uint32_t m_transfer_size;
+    uint32_t m_access_latency;
 	bool m_irq_enabled;
 	bool r_irq;
+
+    uint32_t m_lfsr;
 
 	int m_current_op;
 
@@ -94,7 +98,8 @@ public:
 		const soclib::common::IntTab &srcid,
 		const soclib::common::IntTab &tgtid,
         const std::string &filename,
-        const uint32_t block_size = 512 );
+        const uint32_t block_size = 512,
+        const uint32_t latency = 0);
 };
 
 }}

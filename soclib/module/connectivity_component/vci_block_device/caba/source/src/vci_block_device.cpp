@@ -109,10 +109,13 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		m_lba = data;
 		return true;
     case BLOCK_DEVICE_OP:
-        if ( m_status == BLOCK_DEVICE_BUSY ) {
+        if ( m_status == BLOCK_DEVICE_BUSY ||
+             m_op != BLOCK_DEVICE_NOOP ) {
             std::cerr << name() << " warning: receiving a new command while busy, ignored" << std::endl;
         } else {
             m_op = data;
+            m_access_latency = m_lfsr % (m_latency+1);
+            m_lfsr = (m_lfsr >> 1) ^ ((-(m_lfsr & 1)) & 0xd0000001);
         }
 		return true;
     case BLOCK_DEVICE_IRQ_ENABLE:
@@ -261,23 +264,30 @@ tmpl(void)::transition()
 		m_vci_init_fsm.reset();
 		r_irq = false;
 		m_irq_enabled = false;
+		m_op = BLOCK_DEVICE_NOOP;
+		m_access_latency = 0;
 		m_status = BLOCK_DEVICE_IDLE;
+        m_lfsr = -1;
 		return;
 	}
 
 	if ( m_current_op == BLOCK_DEVICE_NOOP &&
 		 m_op != BLOCK_DEVICE_NOOP ) {
+		if ( m_access_latency ) {
+			m_access_latency--;
+        } else {
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout 
-        << name()
-        << " launch an operation "
-        << SoclibBlockDeviceOp_str[m_op]
-        << std::endl;
+            std::cout 
+                << name()
+                << " launch an operation "
+                << SoclibBlockDeviceOp_str[m_op]
+                << std::endl;
 #endif
-		m_current_op = m_op;
-        m_op = BLOCK_DEVICE_NOOP;
-        m_chunck_offset = 0;
-        next_req();
+            m_current_op = m_op;
+            m_op = BLOCK_DEVICE_NOOP;
+            m_chunck_offset = 0;
+            next_req();
+        }
 	}
 
 	m_vci_target_fsm.transition();
@@ -298,11 +308,13 @@ tmpl(/**/)::VciBlockDevice(
     const IntTab &srcid,
     const IntTab &tgtid,
     const std::string &filename,
-    const uint32_t block_size )
+    const uint32_t block_size, 
+    const uint32_t latency)
 	: caba::BaseModule(name),
 	  m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid)),
 	  m_vci_init_fsm(p_vci_initiator, mt.indexForId(srcid)),
       m_block_size(block_size),
+      m_latency(latency),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci_target("vci_target"),
