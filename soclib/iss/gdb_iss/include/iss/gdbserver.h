@@ -158,7 +158,7 @@ private:
     static unsigned int step_id_; // can be used to force single step on a specific processor
     bool catch_execeptions_;
     bool call_trace_;
-    ptrdiff_t cur_func_;
+    uintptr_t cur_func_;
 
 #ifdef GDB_PC_TRACE
     uint32_t pc_trace_table[GDB_PC_TRACE];
@@ -213,6 +213,7 @@ private:
     }
 
     unsigned int id_;
+    unsigned int cpu_id_;
     static std::vector<GdbServer *> list_;
 };
 

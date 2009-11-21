@@ -113,7 +113,8 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
       mem_req_(false),
       mem_count_(0),
       catch_execeptions_(true), // Do not change without prior discussion
-      call_trace_(false)
+      call_trace_(false),
+      cpu_id_(ident)
     {
         init_state();
         if (list_.empty())
@@ -851,7 +852,8 @@ void GdbServer<CpuIss>::watch_mem_access()
                         change_all_states(WaitIssMem); // all processors will end their memory access
                         state_ = Frozen; // except the current processor
                         current_id_ = id_;
-                        fprintf(stderr, "[GDB] WRITE watchpoint triggered at %08x\n", dreq.addr);
+                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+                                  << ") WRITE watchpoint triggered at " << std::hex << dreq.addr << std::endl;
                         sprintf(buffer, "T05thread:%x;watch:%x;", id_ + 1, dreq.addr);
                         write_packet(buffer);
                     }
@@ -865,7 +867,8 @@ void GdbServer<CpuIss>::watch_mem_access()
                         change_all_states(WaitIssMem); // all processors will end their memory access
                         state_ = Frozen; // except the current processor
                         current_id_ = id_;
-                        fprintf(stderr, "[GDB] READ watchpoint triggered at %08x\n", dreq.addr);
+                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+                                  << ") READ watchpoint triggered at " << std::hex << dreq.addr << std::endl;
                         sprintf(buffer, "T05thread:%x;rwatch:%x;", id_ + 1, dreq.addr);
                         write_packet(buffer);
                     }
@@ -895,7 +898,8 @@ bool GdbServer<CpuIss>::check_break_points()
             if (symaddr != cur_func_)
                 {
                     cur_func_ = symaddr;
-                    std::cerr << "[GDB] CPU " << id_ << " jumped to " << sym << std::endl;
+                    std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+                              << ") jumped to " << sym << std::endl;
                 }
         }
 
@@ -954,7 +958,9 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( uint32_t cause )
         return false;
 
     char buffer[32];
-    fprintf(stderr, "Exception caught on processor %s with cause = %08x\n", CpuIss::name().c_str(), cause);
+    std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+              << ") EXCEPTION " << std::hex << cause << std::endl;
+
     sprintf(buffer, "T%02xthread:%x;", CpuIss::debugCpuCauseToSignal(cause), id_ + 1);
 
 #ifdef GDB_PC_TRACE
