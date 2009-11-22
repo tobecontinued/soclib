@@ -1121,6 +1121,8 @@ void GdbServer<CpuIss>::init_state()
 
         if (strchr( env_val, 'C' ) && loader_)
             call_trace_ = true;
+    } else {
+        state_ = init_state_;
     }
 
     env_val = getenv("SOCLIB_GDB_SLEEPMS");
