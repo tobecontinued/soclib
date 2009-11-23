@@ -68,6 +68,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
         CHECK_BOUNDS(wti);
         r_wti_reg[idx] = data;
         r_wti_pending |= 1<<idx;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write WTI_REG[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_PTI_PER:
         CHECK_BOUNDS(pti);
@@ -78,46 +81,79 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
         } else if (r_pti_val[idx] == 0) {
             r_pti_val[idx] = data;
         }
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write PTI_PER[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_PTI_VAL:
         CHECK_BOUNDS(pti);
         r_pti_val[idx] = data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write PTI_VAL[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_PTI:
         CHECK_BOUNDS(irq);
         r_msk_pti[idx] = data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write MASK_PTI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_PTI_ENABLE:
         CHECK_BOUNDS(irq);
         r_msk_pti[idx] |= data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write PTI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_PTI_DISABLE:
         CHECK_BOUNDS(irq);
         r_msk_pti[idx] &= ~data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write PTI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_HWI:
         CHECK_BOUNDS(irq);
         r_msk_hwi[idx] = data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write MSK_HWI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_HWI_ENABLE:
         CHECK_BOUNDS(irq);
         r_msk_hwi[idx] |= data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write HWI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_HWI_DISABLE:
         CHECK_BOUNDS(irq);
         r_msk_hwi[idx] &= ~data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write HWI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_WTI:
         CHECK_BOUNDS(irq);
         r_msk_wti[idx] = data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write MSK_WTI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_WTI_ENABLE:
         CHECK_BOUNDS(irq);
         r_msk_wti[idx] |= data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write WTI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_WTI_DISABLE:
         CHECK_BOUNDS(irq);
         r_msk_wti[idx] &= ~data;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Write WTI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+#endif
         return true;
 	}
 	return false;
@@ -134,43 +170,73 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         CHECK_BOUNDS(wti);
         data = r_wti_reg[idx];
         r_wti_pending &= ~(1<<idx);
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_WTI_REG[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_PTI_PER:
         CHECK_BOUNDS(pti);
         data = r_pti_per[idx];
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_PTI_PER[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_PTI_VAL:
         CHECK_BOUNDS(pti);
         data = r_pti_val[idx];
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_PTI_VAL[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_PTI_ACK:
         CHECK_BOUNDS(pti);
         r_pti_pending &= ~(1<<idx);
         data = 0;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_PTI_ACK[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_PTI:
         CHECK_BOUNDS(irq);
         data = r_msk_pti[idx];
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_MSK_PTI[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_PTI_ACTIVE:
         CHECK_BOUNDS(irq);
         data = r_msk_pti[idx] & r_pti_pending;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_PTI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_HWI:
         CHECK_BOUNDS(irq);
         data = r_msk_hwi[idx];
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_MSK_HWI[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_HWI_ACTIVE:
         CHECK_BOUNDS(irq);
         data = r_msk_hwi[idx] & r_hwi_pending;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_HWI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_MSK_WTI:
         CHECK_BOUNDS(irq);
         data = r_msk_wti[idx];
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_MSK_WTI[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_WTI_ACTIVE:
         CHECK_BOUNDS(irq);
         data = r_msk_wti[idx] & r_wti_pending;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_WTI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
     case XICU_PRIO:
         CHECK_BOUNDS(irq);
@@ -181,6 +247,9 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
             ((soclib::common::ctz<uint32_t>(r_msk_pti[idx] & r_pti_pending) & 0x1f) <<  8) |
             ((soclib::common::ctz<uint32_t>(r_msk_hwi[idx] & r_hwi_pending) & 0x1f) << 16) |
             ((soclib::common::ctz<uint32_t>(r_msk_wti[idx] & r_wti_pending) & 0x1f) << 24);
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_PRIO[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+#endif
         return true;
 	}
 	return false;
