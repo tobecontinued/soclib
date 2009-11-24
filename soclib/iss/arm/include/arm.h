@@ -112,6 +112,10 @@ public:
 
 private:
 
+    enum {
+        ARM_RESET_ADDR = 0
+    };
+
     REG32_BITFIELD(
         uint32_t zero:3,
         uint32_t ctype:4,

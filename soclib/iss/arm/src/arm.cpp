@@ -269,7 +269,7 @@ void ArmIss::reset()
 	r_cpsr.fiq_disabled = true;
 	r_cpsr.irq_disabled = true;
 	r_cpsr.mode = mode_to_psr[MOD_SUPER32];
-	m_current_pc = r_gp[15] = 0x0;
+	m_current_pc = r_gp[15] = ARM_RESET_ADDR;
 	m_ins_error = false;
 	m_data_error = false;
 	m_microcode_func = NULL;

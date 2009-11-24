@@ -44,9 +44,25 @@ void ArmIss::run()
 {
 	if ( ! cond_eval() )
 		return;
+
+    data_t r15 = r_gp[15];
+
 	int8_t id = decod_main(m_opcode.ins);
 	func_t func = funcs[id];
 	(this->*func)();
+
+	if (r_gp[15] & 0x01) {
+        std::cerr << name() << " Thumb not supported yet" << std::endl;
+        r_gp[15] = r15;
+        m_exception = EXCEPT_UNDEF;
+        return;
+	}
+	if (r_gp[15] == ARM_RESET_ADDR) {
+        std::cerr << name() << " Jump to reset vector" << std::endl;
+        r_gp[15] = r15;
+        m_exception = EXCEPT_UNDEF;
+        return;
+	}
 }
 
 uint16_t const ArmIss::cond_table[16] = {
@@ -58,3 +74,11 @@ uint16_t const ArmIss::cond_table[16] = {
 
 }}
 
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4

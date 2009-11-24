@@ -43,22 +43,12 @@ using namespace soclib::common;
 void ArmIss::op_bx()
 {
     addr_t dest = r_gp[m_opcode.brx.rn];
-	if (dest & 0x01) {
-        std::cout << name() << " Thumb not supported yet" << std::endl;
-        m_exception = EXCEPT_UNDEF;
-        return;
-    }
 	r_gp[15] = dest & 0xfffffffe;
 }
 
 void ArmIss::op_blx()
 {
     addr_t dest = r_gp[m_opcode.brx.rn];
-	if (dest & 0x01) {
-        std::cout << name() << " Thumb not supported yet" << std::endl;
-        m_exception = EXCEPT_UNDEF;
-        return;
-    }
     r_gp[14] = r_gp[15];
 	r_gp[15] = dest & 0xfffffffe;
 }
