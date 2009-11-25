@@ -1132,7 +1132,7 @@ void GdbServer<CpuIss>::init_state()
             if (strchr( env_val, 'C' ))
                 call_trace_ = true;
             if (strchr( env_val, 'Z' ))
-                call_trace_zero_ = true;
+                call_trace_ = call_trace_zero_ = true;
         }
     } else {
         state_ = init_state_;
