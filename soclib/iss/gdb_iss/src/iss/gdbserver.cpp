@@ -114,6 +114,8 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
       mem_count_(0),
       catch_execeptions_(true), // Do not change without prior discussion
       call_trace_(false),
+      call_trace_zero_(false),
+      cur_addr_(0),
       cpu_id_(ident)
     {
         init_state();
@@ -898,9 +900,16 @@ bool GdbServer<CpuIss>::check_break_points()
             if (symaddr != cur_func_)
                 {
                     cur_func_ = symaddr;
-                    std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                              << ") jumped to " << sym << std::endl;
+
+                    if ( (!call_trace_zero_ || pc == symaddr) &&
+
+                         (sym.symbol().size() >= 4 || pc != cur_addr_ + 4) ) // avoid display pc+4 when out of symbol
+
+                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+                                  << ") jumped from " << std::hex << cur_addr_ << " to " << sym << std::endl;
                 }
+
+            cur_addr_ = pc;
         }
 
     if (break_exec_.find(pc) != break_exec_.end())
@@ -1119,8 +1128,12 @@ void GdbServer<CpuIss>::init_state()
         else 
             state_ = init_state_;
 
-        if (strchr( env_val, 'C' ) && loader_)
-            call_trace_ = true;
+        if (loader_) {
+            if (strchr( env_val, 'C' ))
+                call_trace_ = true;
+            if (strchr( env_val, 'Z' ))
+                call_trace_zero_ = true;
+        }
     } else {
         state_ = init_state_;
     }

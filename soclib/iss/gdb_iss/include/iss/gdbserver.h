@@ -157,8 +157,10 @@ private:
     static unsigned int current_id_;
     static unsigned int step_id_; // can be used to force single step on a specific processor
     bool catch_execeptions_;
-    bool call_trace_;
+    bool call_trace_:1,
+         call_trace_zero_:1;    // only display call to function begin
     uintptr_t cur_func_;
+    uintptr_t cur_addr_;
 
 #ifdef GDB_PC_TRACE
     uint32_t pc_trace_table[GDB_PC_TRACE];
