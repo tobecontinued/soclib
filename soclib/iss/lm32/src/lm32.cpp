@@ -241,9 +241,46 @@ namespace soclib { namespace common {
             run();
         } 
 
-        // Let's now handle traps... or let GDB handle them for us :)
-        if (m_exception && debugExceptionBypassed(m_exception_cause))
-            m_exception = false;
+        {
+            ExceptionClass ex_class = EXCL_FAULT;
+            ExceptionCause ex_cause = EXCA_OTHER;
+
+            switch (m_exception_cause) {
+
+            case  X_RESET             :
+            case  X_INTERRUPT         :
+                ex_class = EXCL_IRQ;
+                break;
+
+            case  X_BREAK_POINT       :
+                ex_class = EXCL_TRAP;
+                break;
+
+            case  X_DATA_BUS_ERROR    :
+            case  X_INST_BUS_ERROR    :
+                ex_cause = EXCA_BADADDR;
+                break;
+
+            case  X_DIVISION_BY_ZERO  :
+                ex_cause = EXCA_DIVBYZERO;
+                break;
+
+            case  X_WATCH_POINT       :
+                ex_cause = EXCA_FPU;
+                break;
+
+            case  X_SYSTEM_CALL       :
+                ex_class = EXCL_SYSCALL;
+                break;
+
+            default:  // unkown exception!!
+                ;
+            }
+
+            // Let's now handle traps... or let GDB handle them for us :)
+            if (m_exception && debugExceptionBypassed( ex_class, ex_cause ))
+                m_exception = false;
+        }
 
         if (!m_exception)
             goto no_except;

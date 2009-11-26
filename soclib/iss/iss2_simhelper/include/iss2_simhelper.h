@@ -49,7 +49,7 @@ public:
 
     virtual ~Iss2Simhelper();
 
-    bool debugExceptionBypassed( uint32_t );
+    bool debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca );
 };
 
 }}

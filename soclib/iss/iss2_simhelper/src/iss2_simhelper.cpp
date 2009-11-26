@@ -33,12 +33,17 @@
 namespace soclib { namespace common {
 
 template<typename iss_t>
-bool Iss2Simhelper<iss_t>::debugExceptionBypassed( uint32_t cause )
+bool Iss2Simhelper<iss_t>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca )
 {
-    int signal = iss_t::debugCpuCauseToSignal(cause);
-    if ( signal == 5 )
+    switch ( cl ) {
+    default:
+        return iss_t::debugExceptionBypassed( cl, ca );
+
+    case Iss2::EXCL_TRAP:
+    case Iss2::EXCL_FAULT:
         sc_core::sc_stop();
-    return iss_t::debugExceptionBypassed(cause);
+        return true;
+    }
 }
 
 template<typename iss_t>

@@ -215,8 +215,43 @@ uint32_t Ppc405Iss::executeNCycles(
 
     m_microcode_func = NULL;
 
-    if (debugExceptionBypassed( m_exception ))
-        goto no_except;
+    {
+        ExceptionClass ex_class = EXCL_FAULT;
+        ExceptionCause ex_cause = EXCA_OTHER;
+
+        switch (m_exception)
+            {
+            case EXCEPT_PI_TIMER:
+            case EXCEPT_FI_TIMER:
+            case EXCEPT_CRITICAL:
+            case EXCEPT_EXTERNAL:
+                ex_class = EXCL_IRQ;
+                break;
+            case EXCEPT_SYSCALL:
+                ex_class = EXCL_SYSCALL;
+                break;
+            case EXCEPT_DEBUG:
+                ex_class = EXCL_TRAP;
+                break;
+            
+            case EXCEPT_PROGRAM:
+                ex_cause = EXCA_ILL;
+                break;
+            case EXCEPT_ALIGNMENT:
+                ex_cause = EXCA_ALIGN;
+                break;
+            case EXCEPT_INSTRUCTION_TLB_MISS:
+            case EXCEPT_DATA_TLB_MISS:
+                ex_cause = EXCA_PAGEFAULT;
+                break;
+ 
+            default:
+                ;
+           }
+
+        if (debugExceptionBypassed( ex_class, ex_cause ))
+            goto no_except;
+    }
 
     // 1/2 : Save status to SRR
     {

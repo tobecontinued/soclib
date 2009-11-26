@@ -575,8 +575,6 @@ public:
     static const unsigned int s_fp_register_no = 30;
     static const unsigned int s_pc_register_no = 37;
 
-    int debugCpuCauseToSignal( uint32_t cause ) const;
-
     void setCacheInfo( const struct CacheInfo &info );
 
     static inline void setResetAddress( uint32_t addr = 0xbfc00000 )

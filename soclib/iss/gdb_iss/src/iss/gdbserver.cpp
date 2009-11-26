@@ -887,11 +887,6 @@ bool GdbServer<CpuIss>::check_break_points()
     char buffer[32];
     uint32_t pc = CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
 
-#ifdef GDB_PC_TRACE
-    pc_trace_index = (pc_trace_index + 1) % GDB_PC_TRACE;
-    pc_trace_table[pc_trace_index] = pc;
-#endif
-
     if (call_trace_)
         {
             BinaryFileSymbolOffset sym = loader_->get_symbol_by_addr(pc);
@@ -961,25 +956,65 @@ void GdbServer<CpuIss>::cleanup()
 }
 
 template<typename CpuIss>
-bool GdbServer<CpuIss>::debugExceptionBypassed( uint32_t cause )
+bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca )
 {
+    uint32_t pc = CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
+    static const char *str[] = { EXCEPTIONCAUSE_STRINGS };
+    int signal;
+
+    switch ( cl )
+        {
+        case Iss2::EXCL_FAULT:
+            std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+                      << ") FAULT: " << str[ca] << " at PC=" << std::hex << pc << std::endl;
+
+            switch ( ca )
+                {
+                case Iss2::EXCA_BADADDR:
+                    signal = 11;
+                    break;
+                case Iss2::EXCA_ALIGN:
+                    signal = 7;
+                    break;
+                case Iss2::EXCA_ILL:
+                    signal = 4;
+                    break;
+                case Iss2::EXCA_FPU:
+                    signal = 8;
+                    break;
+
+                case Iss2::EXCA_PAGEFAULT:
+                    signal = 11;
+                    break;
+
+                default:
+                    signal = 5;
+                };
+            break;
+
+        case Iss2::EXCL_TRAP:            
+            std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+                      << ") TRAP at PC=" << std::hex << pc << std::endl;
+
+            signal = 5;
+            break;
+
+        case Iss2::EXCL_SYSCALL:
+            return false;
+
+        case Iss2::EXCL_IRQ:
+            signal = 2;
+            return false;
+        }
+
+    // FIXME add configurable check mask
+
     if (asocket_ < 0 || !catch_execeptions_)
         return false;
 
     char buffer[32];
-    std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-              << ") EXCEPTION " << std::hex << cause << std::endl;
 
-    sprintf(buffer, "T%02xthread:%x;", CpuIss::debugCpuCauseToSignal(cause), id_ + 1);
-
-#ifdef GDB_PC_TRACE
-    fprintf(stderr, "PC values before exception: ");
-
-    for (unsigned int i = 0; i < GDB_PC_TRACE; i++)
-        fprintf(stderr, "%08x, ", pc_trace_table[(pc_trace_index - i) % GDB_PC_TRACE]);
-
-    fprintf(stderr, "\n");
-#endif
+    sprintf(buffer, "T%02xthread:%x;", signal, id_ + 1);
 
     write_packet(buffer);
     change_all_states(WaitIssMem);
@@ -1128,11 +1163,14 @@ void GdbServer<CpuIss>::init_state()
         else 
             state_ = init_state_;
 
-        if (loader_) {
-            if (strchr( env_val, 'C' ))
-                call_trace_ = true;
-            if (strchr( env_val, 'Z' ))
-                call_trace_ = call_trace_zero_ = true;
+        if (strchr( env_val, 'C' ))
+            call_trace_ = true;
+        if (strchr( env_val, 'Z' ))
+            call_trace_ = call_trace_zero_ = true;
+
+        if (call_trace_ && !loader_) {
+            std::cerr << "[GDB] No loader defined for GdbServer !!! call trace disabled." << std::endl;
+            call_trace_ = call_trace_zero_ = false;                
         }
 
         if (strchr( env_val, 'X' ))

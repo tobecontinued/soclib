@@ -76,8 +76,7 @@ public:
 
 protected:
     
-    virtual bool debugExceptionBypassed( uint32_t cause );
-    int debugCpuCauseToSignal( uint32_t cause ) const;
+    virtual bool debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca );
 };
 
 }}

@@ -223,8 +223,27 @@ uint32_t ArmIss::executeNCycles(
 		m_exception_dptr = m_dreq.addr;
 	}
 
-    if ( debugExceptionBypassed( m_exception ) )
-        goto normal_end;
+    {
+        ExceptionClass ex_class;
+
+        switch (m_exception) {
+        case EXCEPT_SWI:
+            ex_class = EXCL_SYSCALL;
+            break;
+
+        case EXCEPT_FIQ:
+        case EXCEPT_IRQ:
+            ex_class = EXCL_IRQ;
+            break;
+
+        default:
+            ex_class = EXCL_FAULT;
+            break;
+        }
+
+        if ( debugExceptionBypassed( ex_class ) )
+            goto normal_end;
+    }
 
 #if defined(SOCLIB_MODULE_DEBUG)
 	std::cout << name() << " exception " << (int)m_exception << std::endl;
@@ -348,21 +367,13 @@ ArmIss::ArmIss( const std::string &name, uint32_t cpuid )
 	reset();
 }
 
-int ArmIss::debugCpuCauseToSignal( uint32_t cause ) const
-{
-	switch (cause) {
-	case EXCEPT_UNDEF:
-	case EXCEPT_SWI:
-		return 5; // Trap
-	case EXCEPT_FIQ:
-	case EXCEPT_IRQ:
-		return 2; // Interrupt
-	case EXCEPT_PABT:
-	case EXCEPT_DABT:
-		return 11; // SEGV
-	}
-	return 5;
-}
-
 }}
 
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4

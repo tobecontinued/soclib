@@ -117,6 +117,30 @@ public:
         XTN_READ,
     };
 
+    /** Exception classes, keep it simple with 4 entries ! */
+    enum ExceptionClass {
+        EXCL_FAULT,
+        EXCL_IRQ,
+        EXCL_SYSCALL,
+        EXCL_TRAP,
+    };
+
+    /** Exception cause details, expand as needed and update EXCEPTIONCAUSE_STRINGS too */
+    enum ExceptionCause {
+        EXCA_OTHER,
+        EXCA_BADADDR,
+        EXCA_ALIGN,             // non aligned access not handled
+        EXCA_PAGEFAULT,
+        EXCA_ILL,               // illegal instruction
+        EXCA_FPU,
+        EXCA_REGWINDOW,
+        EXCA_DIVBYZERO
+    };
+
+#define EXCEPTIONCAUSE_STRINGS "unknown cause", "bad address", "bad alignment", \
+        "page fault", "illegal instruction", "fpu exception", "register window", \
+        "division by zero"
+
     enum {
         SC_ATOMIC = 0,
         SC_NOT_ATOMIC = 1,
@@ -402,20 +426,11 @@ protected:
      * true, Iss must not jump to exception handler and continue with
      * execution. This permits implementation of software breakpoints.
      */
-    virtual bool debugExceptionBypassed( uint32_t cause )
+    virtual bool debugExceptionBypassed( ExceptionClass cl, ExceptionCause ca  = EXCA_OTHER )
     {
         return false;
     }
 
-    /**
-     * Iss Must implement this method to translate cause number as
-     * defined by the Iss architecture to unix signal. This abstracts
-     * the signal types from architectures.
-     */
-    virtual int debugCpuCauseToSignal( uint32_t cause ) const
-    {
-        return 5;       // GDB SIGTRAP
-    }
 };
 
 }}

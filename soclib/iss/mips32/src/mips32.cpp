@@ -152,20 +152,20 @@ void Mips32Iss::dump() const
     }
 }
 
-#define RUN_FOR(x)                                                     \
-    do { uint32_t __tmp = (x);                                         \
-        ncycle -= __tmp;                                               \
-        r_count += __tmp;                                              \
-        time_spent += __tmp;                                           \
-        m_ins_delay -= std::min(m_ins_delay, __tmp);                   \
+#define RUN_FOR(x)                                      \
+    do { uint32_t __tmp = (x);                          \
+        ncycle -= __tmp;                                \
+        r_count += __tmp;                               \
+        time_spent += __tmp;                            \
+        m_ins_delay -= std::min(m_ins_delay, __tmp);    \
     } while(0)
 
 
 uint32_t Mips32Iss::executeNCycles(
-    uint32_t ncycle,
-    const struct InstructionResponse &irsp,
-    const struct DataResponse &drsp,
-    uint32_t irq_bit_field )
+                                   uint32_t ncycle,
+                                   const struct InstructionResponse &irsp,
+                                   const struct DataResponse &drsp,
+                                   uint32_t irq_bit_field )
 {
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout
@@ -256,13 +256,13 @@ uint32_t Mips32Iss::executeNCycles(
 #endif
     goto early_end;
 
-  handle_irq:
+ handle_irq:
     m_resume_pc = m_next_pc;
     m_exception = X_INT;
-  got_exception:
+ got_exception:
     handle_exception();
     return time_spent;
-  early_end:
+ early_end:
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << std::hex << std::showbase
@@ -279,8 +279,8 @@ uint32_t Mips32Iss::executeNCycles(
 }
 
 bool Mips32Iss::handle_ifetch(
-    const struct InstructionResponse &irsp
-    )
+                              const struct InstructionResponse &irsp
+                              )
 {
     if ( m_microcode_func ) {
         return true;
@@ -306,8 +306,48 @@ bool Mips32Iss::handle_ifetch(
 void Mips32Iss::handle_exception()
 {
     m_microcode_func = NULL;
+    ExceptionClass ex_class = EXCL_FAULT;
+    ExceptionCause ex_cause = EXCA_OTHER;
 
-    if ( debugExceptionBypassed( m_exception ) )
+    switch (m_exception) {
+    case X_INT:
+        ex_class = EXCL_IRQ;
+        break;
+    case X_SYS:
+        ex_class = EXCL_SYSCALL;
+        break;
+    case X_BP:
+    case X_TR:
+        ex_class = EXCL_TRAP;
+        break;
+
+    case X_MOD:
+    case X_reserved:
+        abort();
+
+    case X_TLBL:
+    case X_TLBS:
+        ex_cause = EXCA_PAGEFAULT;
+        break;
+    case X_ADEL:
+    case X_ADES:
+        ex_cause = EXCA_ALIGN;
+        break;
+    case X_IBE:
+    case X_DBE:
+        ex_cause = EXCA_BADADDR;
+        break;
+    case X_RI:
+    case X_CPU:
+        ex_cause = EXCA_ILL;
+        break;
+    case X_OV:
+    case X_FPE:
+        ex_cause = EXCA_FPU;
+        break;
+    }
+
+    if ( debugExceptionBypassed( ex_class, ex_cause ) )
         return;
 
     addr_t except_address = exceptBaseAddr();
@@ -352,35 +392,6 @@ void Mips32Iss::handle_exception()
     r_pc = except_address;
     r_npc = except_address+4;
     m_ifetch_addr = except_address;
-}
-
-int Mips32Iss::debugCpuCauseToSignal( uint32_t cause ) const
-{
-    switch (cause) {
-    case X_INT:
-        return 2; // Interrupt
-    case X_MOD:
-    case X_TLBL:
-    case X_TLBS:
-        return 5; // Trap (nothing better)
-    case X_ADEL:
-    case X_ADES:
-    case X_IBE:
-    case X_DBE:
-        return 11; // SEGV
-    case X_SYS:
-    case X_BP:
-    case X_TR:
-    case X_reserved:
-        return 5; // Trap/breakpoint
-    case X_RI:
-    case X_CPU:
-        return 4; // Illegal instruction
-    case X_OV:
-    case X_FPE:
-        return 8; // Floating point exception
-    };
-    return 5;       // GDB SIGTRAP                                                                                                                                                                
 }
 
 Iss2::debug_register_t Mips32Iss::debugGetRegisterValue(unsigned int reg) const

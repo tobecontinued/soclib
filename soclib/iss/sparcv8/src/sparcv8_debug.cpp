@@ -110,53 +110,6 @@ tmpl(void)::dump_regs(const std::string &msg) const
 
 
 
-tmpl(int)::debugCpuCauseToSignal( uint32_t cause ) const
-{
-    switch (cause) {
-
-    case TP_INSTRUCTION_ACCESS_ERROR:
-    case TP_INSTRUCTION_ACCESS_EXCEPTION:
-    case TP_DATA_ACCESS_ERROR:
-    case TP_DATA_ACCESS_EXCEPTION:
-        return 11;      // SIGSEGV
-
-    case TP_ILLEGAL_INSTRUCTION:
-    case TP_PRIVILEGED_INSTRUCTION:
-    case TP_UNIMPLEMENTED_INSTRUCTION:
-        return 4;       // SIGILL
-
-    case TP_FP_DISABLED:
-    case TP_CP_DISABLED:
-    case TP_TAG_OVERFLOW:
-        return 7;       // SIGEMT
-
-    case TP_MEM_ADDRESS_NOT_ALIGNED:
-        return 10;      // SIGBUS
-
-    case TP_INTERRUPT_LEVEL(0) ... TP_INTERRUPT_LEVEL(0xf):
-    case TP_RESET :
-        return 2;       // SIGINT
-
-    case TP_TRAP_INSTRUCTION(0) ... TP_TRAP_INSTRUCTION(0x7f):
-        return 5;       // SIGTRAP
-
-    case TP_DIVISION_BY_ZERO:
-    case TP_FP_EXCEPTION:
-        return 8;       // SIGFPE
-
-    case TP_INSTRUCTION_ACCESS_MMU_MISS:
-    case TP_DATA_ACCESS_MMU_MISS:
-        return 11;      // SIGSEGV (found nothing better...)
-
-    case TP_WINDOW_OVERFLOW:
-    case TP_WINDOW_UNDERFLOW:
-        return 2;       // SIGINT (found nothing better...)
-
-    default:
-        return 5;       // GDB SIGTRAP
-    }
-}
-
 tmpl(Iss2::debug_register_t)::debugGetRegisterValue(unsigned int reg) const
 {
     // TODO : implement this !

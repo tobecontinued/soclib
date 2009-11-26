@@ -307,8 +307,6 @@ namespace soclib { namespace common {
             addr_t debugGetPC() const;
             void debugSetPC(addr_t pc);
 
-            int debugCpuCauseToSignal( uint32_t cause ) const;
-
             static const unsigned int s_sp_register_no = 28;
             static const unsigned int s_fp_register_no = 27;
             static const unsigned int s_pc_register_no = 32;

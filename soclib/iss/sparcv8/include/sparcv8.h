@@ -323,7 +323,6 @@ public:
     debug_register_t debugGetRegisterValue(unsigned int reg) const;
     void debugSetRegisterValue(unsigned int reg, debug_register_t value);
     size_t debugGetRegisterSize(unsigned int reg) const;
-    int debugCpuCauseToSignal( uint32_t cause ) const;
 
     static const unsigned int s_sp_register_no = 14; // o6
     static const unsigned int s_fp_register_no = 30; // i6

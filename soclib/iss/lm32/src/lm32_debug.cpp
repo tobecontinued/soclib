@@ -189,35 +189,6 @@ namespace soclib { namespace common {
         r_npc = pc+4;
     }
 
-    int LM32Iss::debugCpuCauseToSignal( uint32_t cause ) const
-    {
-        switch (cause) {
-
-            case  X_RESET             :
-                return 2;       // SIGINT
-            case  X_BREAK_POINT       :
-                return 5;       // GDB SIGTRAP
-            case  X_INST_BUS_ERROR    :
-                return 11;      // SIGSEGV (found nothing better...)
-            case  X_WATCH_POINT       :
-                return 5;       // GDB SIGTRAP
-            case  X_DATA_BUS_ERROR    :
-                return 11;      // SIGSEGV (found nothing better...)
-            case  X_DIVISION_BY_ZERO  :
-                return 8;       // SIGFPE
-            case  X_INTERRUPT         :
-                return 2;       // SIGINT
-            case  X_SYSTEM_CALL       :
-                return 2;       // SIGINT
-            default:  // unkown exception!!
-                {
-                    std::cout << "WARNING: Unkown Exception!!!"<< std::endl;
-                    return 5;
-                }
-
-        }
-    }
-
 }}
 
 // Local Variables:

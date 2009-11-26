@@ -244,11 +244,64 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 #endif
     }
 
+    {
+        ExceptionClass ex_class = EXCL_FAULT;
+        ExceptionCause ex_cause = EXCA_OTHER;
 
-    // Let's now handle traps... or let GDB handle them for us :)
-    if (m_exception && debugExceptionBypassed(m_exception_cause))
-      m_exception = false;
-    
+        switch (m_exception_cause) {
+
+        case TP_INSTRUCTION_ACCESS_ERROR:
+        case TP_INSTRUCTION_ACCESS_EXCEPTION:
+        case TP_DATA_ACCESS_ERROR:
+        case TP_DATA_ACCESS_EXCEPTION:
+            ex_cause = EXCA_BADADDR;
+            break;
+
+        case TP_ILLEGAL_INSTRUCTION:
+        case TP_PRIVILEGED_INSTRUCTION:
+        case TP_UNIMPLEMENTED_INSTRUCTION:
+            ex_cause = EXCA_ILL;
+            break;
+
+        case TP_DIVISION_BY_ZERO:
+        case TP_FP_EXCEPTION:
+        case TP_FP_DISABLED:
+        case TP_CP_DISABLED:
+        case TP_TAG_OVERFLOW:
+            ex_cause = EXCA_FPU;
+            break;
+
+        case TP_MEM_ADDRESS_NOT_ALIGNED:
+            ex_cause = EXCA_ALIGN;
+            break;
+
+        case TP_INTERRUPT_LEVEL(0) ... TP_INTERRUPT_LEVEL(0xf):
+        case TP_RESET :
+            ex_class = EXCL_IRQ;
+            break;
+
+        case TP_TRAP_INSTRUCTION(0) ... TP_TRAP_INSTRUCTION(0x7f):
+            ex_class = EXCL_TRAP;
+            break;
+
+        case TP_INSTRUCTION_ACCESS_MMU_MISS:
+        case TP_DATA_ACCESS_MMU_MISS:
+            ex_cause = EXCA_PAGEFAULT;
+            break;
+
+        case TP_WINDOW_OVERFLOW:
+        case TP_WINDOW_UNDERFLOW:
+            ex_cause = EXCA_REGWINDOW;
+            break;
+
+        default:
+            ;
+        }
+        // Let's now handle traps... or let GDB handle them for us :)
+        if (m_exception && debugExceptionBypassed( ex_class, ex_cause ))
+            m_exception = false;
+    }
+
     if (!m_exception)
       goto no_except;
 

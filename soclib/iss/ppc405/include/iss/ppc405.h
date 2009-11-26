@@ -305,24 +305,6 @@ private:
 
 public:
 
-    int debugCpuCauseToSignal( uint32_t cause ) const
-    {
-        switch (cause)
-            {
-            case EXCEPT_CRITICAL:
-            case EXCEPT_EXTERNAL:
-                return 2;       // GDB SIGINT
-            case EXCEPT_PROGRAM:
-                return 4;       // GDB SIGILL
-            case EXCEPT_DEBUG:
-                return 5;       // GDB SIGTRAP
-            case EXCEPT_ALIGNMENT:
-                return 10;      // GDB SIGBUS
-            default:
-                return 11;      // GDB SIGSEGV
-            }
-    }
-
 	Ppc405Iss(const std::string &name, uint32_t ident);
 
 	void reset();

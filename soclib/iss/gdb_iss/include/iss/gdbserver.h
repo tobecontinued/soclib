@@ -122,7 +122,7 @@ public:
         init_state_ = frozen ? WaitIssMem : Running;
     }
 
-    bool debugExceptionBypassed( uint32_t cause );
+    bool debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca );
 
 private:
 
@@ -161,11 +161,6 @@ private:
          call_trace_zero_:1;    // only display call to function begin
     uintptr_t cur_func_;
     uintptr_t cur_addr_;
-
-#ifdef GDB_PC_TRACE
-    uint32_t pc_trace_table[GDB_PC_TRACE];
-    unsigned int pc_trace_index;
-#endif
 
     typedef dpp::interval_set<uint32_t, dpp::interval_bound_inclusive<uint32_t> > address_set_t;
 

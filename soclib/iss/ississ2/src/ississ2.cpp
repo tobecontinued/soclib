@@ -233,14 +233,9 @@ tmpl(size_t)::debugGetRegisterSize(unsigned int reg) const
     return m_iss.getDebugRegisterSize(reg);
 }
 
-tmpl(bool)::debugExceptionBypassed( uint32_t cause )
+tmpl(bool)::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca )
 {
-	return m_iss.exceptionBypassed(cause);
-}
-
-tmpl(int)::debugCpuCauseToSignal( uint32_t cause ) const
-{
-	return m_iss.cpuCauseToSignal(cause);
+	return true;
 }
 
 }}

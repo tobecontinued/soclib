@@ -105,8 +105,6 @@ public:
 
     static const unsigned int n_irq = 2;
 
-    int debugCpuCauseToSignal( uint32_t cause ) const;
-
     void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
     void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
 
