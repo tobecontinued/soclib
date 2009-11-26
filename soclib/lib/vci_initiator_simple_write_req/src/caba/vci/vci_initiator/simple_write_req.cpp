@@ -42,10 +42,12 @@ tmpl(/**/)::VciInitSimpleWriteReq(
     uint32_t base_addr, uint8_t *local_buffer, size_t len )
     : VciInitiatorSimpleReq<vci_param>( local_buffer, base_addr, len )
 {
-//     std::cout << "Initiating write req " << std::hex
-//               << "vci: " << base_addr
-//               << " <- buf: " << (uint32_t)local_buffer
-//               << " / " << len << std::endl;
+#if SOCLIB_MODULE_DEBUG
+    std::cout << "Initiating write req " << std::hex
+        << "vci: " << base_addr
+        << " <- buf: " << (uint32_t)local_buffer
+        << " / " << len << std::endl;
+#endif
     VciInitiatorReq<vci_param>::m_expected_packets = 1;
 }
 
@@ -97,11 +99,15 @@ tmpl(bool)::putCmd( VciInitiator<vci_param> &p_vci, uint32_t id ) const
 	p_vci.trdid = thread;
 	p_vci.pktid = packet;
 
-//     std::cout << std::hex
-//               << "Putting write command: "
-//               << "@ " << ((base_addr+cmd_ptr)&~3)
-//               << ": " << data << '/' << be
-//               << std::endl;
+#if SOCLIB_MODULE_DEBUG
+    std::cout << std::hex
+        << "Putting write command: "
+        << "@ " << vci_addr
+        << ": " << data << '/' << be
+        << " (plen=" << len
+        << ", eop=" << ending
+        << ")" << std::endl;
+#endif
 
     return ending;
 }
