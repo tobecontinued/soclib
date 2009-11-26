@@ -101,6 +101,13 @@ namespace soclib { namespace caba {
 	    // checker
 	    static_assert(vci_param::N == 32 || vci_param::N == 36); // checking VCI address size
 	    static_assert(vci_param::B == 4);   // checking VCI data size
+
+        static_assert(vci_param::K <= 8); // checking plen size
+        static_assert(vci_param::S <= 14); // checking srcid size
+        static_assert(vci_param::P <= 4); // checking pktid size
+        static_assert(vci_param::T <= 4); // checking trdid size
+        static_assert(vci_param::E <= 4); // checking rerror size
+
 	    static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1); // checking FIFO size
 	    static_assert(dspin_yx_size <= 6 && dspin_yx_size >= 1);  // checking DSPIN index size
 	};
