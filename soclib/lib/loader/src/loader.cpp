@@ -112,7 +112,9 @@ BinaryFileSymbolOffset Loader::get_symbol_by_addr( uintptr_t addr ) const
          && i->first > addr )
         --i;
 
-    if ( i->second.contains(addr) || i->second.size() == 0 )
+    if ( i != m_symbol_table.end()
+         && (i->second.contains(addr)
+             || i->second.size() == 0) )
         return BinaryFileSymbolOffset(i->second, addr);
     return BinaryFileSymbolOffset(BinaryFileSymbol("Unknown", addr, 1), addr);
 }
