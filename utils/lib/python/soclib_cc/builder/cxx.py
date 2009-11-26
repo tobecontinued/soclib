@@ -146,9 +146,15 @@ class CMkobj(CLink):
 	priority = 200
 	tool = 'LD'
 	def process(self):
-		args = config.getTool(self.tool)
-		args += ['-r', '-o', self.dests[0]]
-		args += self.sources
+		if config.systemc.vendor != 'sccom':
+			args = config.getTool(self.tool)
+			args += ['-r', '-o', self.dests[0]]
+			args += self.sources
+		else:
+			args = config.getTool("CXX_LINKER")
+			args += ['-lpthread']
+			args += config.getLibs()
+			args += filter(lambda x:x.generator.comp_mode != 'sccom', self.sources)
 		r = self.call('mkobj', args)
 		if r:
 			print
