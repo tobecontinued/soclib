@@ -986,7 +986,7 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors)
     uint32_t sp = get_cpu_sp();
 
     // Signal to GDB
-    iss_t::debugExceptionBypassed( (uint32_t)-1 );
+    iss_t::debugExceptionBypassed( EXCL_TRAP );
 
 
 
