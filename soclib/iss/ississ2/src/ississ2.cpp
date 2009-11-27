@@ -235,7 +235,7 @@ tmpl(size_t)::debugGetRegisterSize(unsigned int reg) const
 
 tmpl(bool)::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca )
 {
-	return true;
+	return false;
 }
 
 }}
