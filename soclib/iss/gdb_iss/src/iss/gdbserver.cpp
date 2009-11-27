@@ -112,10 +112,11 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
     : CpuIss(name, ident),
       mem_req_(false),
       mem_count_(0),
-      catch_execeptions_(true), // Do not change without prior discussion
+      catch_exceptions_(true), // Do not change without prior discussion
       call_trace_(false),
       call_trace_zero_(false),
       wait_on_except_(false),
+      wait_on_wpoint_(true),
       cur_addr_(0),
       cpu_id_(ident)
     {
@@ -331,7 +332,7 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
             if (i == 2)
                 {
                     for (unsigned int i = 0; i < list_.size(); i++)
-                        list_[i]->catch_execeptions_ = value;
+                        list_[i]->catch_exceptions_ = value;
                     write_packet("OK");
                     return;
                 }
@@ -341,7 +342,7 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
 
                     if (id < list_.size())
                         {
-                            list_[id]->catch_execeptions_ = value;
+                            list_[id]->catch_exceptions_ = value;
                             write_packet("OK");
                             return;
                         }
@@ -852,11 +853,15 @@ void GdbServer<CpuIss>::watch_mem_access()
                     if (break_write_access_[dreq.addr]) {
                         char buffer[32];
 
+                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+                                  << ") WRITE watchpoint triggered at " << std::hex << dreq.addr << std::endl;
+
+                        if (!wait_on_wpoint_)
+                            break;
+
                         change_all_states(WaitIssMem); // all processors will end their memory access
                         state_ = Frozen; // except the current processor
                         current_id_ = id_;
-                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                                  << ") WRITE watchpoint triggered at " << std::hex << dreq.addr << std::endl;
                         sprintf(buffer, "T05thread:%x;watch:%x;", id_ + 1, dreq.addr);
                         write_packet(buffer);
                     }
@@ -867,11 +872,15 @@ void GdbServer<CpuIss>::watch_mem_access()
                     if (break_read_access_[dreq.addr]) {
                         char buffer[32];
 
+                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
+                                  << ") READ watchpoint triggered at " << std::hex << dreq.addr << std::endl;
+
+                        if (!wait_on_wpoint_)
+                            break;
+
                         change_all_states(WaitIssMem); // all processors will end their memory access
                         state_ = Frozen; // except the current processor
                         current_id_ = id_;
-                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                                  << ") READ watchpoint triggered at " << std::hex << dreq.addr << std::endl;
                         sprintf(buffer, "T05thread:%x;rwatch:%x;", id_ + 1, dreq.addr);
                         write_packet(buffer);
                     }
@@ -1010,7 +1019,7 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
 
     // FIXME add configurable check mask
 
-    if ((asocket_ < 0 && !wait_on_except_) || !catch_execeptions_)
+    if ((asocket_ < 0 && !wait_on_except_) || !catch_exceptions_)
         return false;
 
     char buffer[32];
@@ -1162,7 +1171,7 @@ void GdbServer<CpuIss>::init_state()
 
         if (!list_.size())
             for (int i = 0; env_val[i]; i++)
-                if (!strchr("FCZSX", env_val[i]))
+                if (!strchr("FCZSXW", env_val[i]))
                     std::cerr << "[GDB] Warning: SOCLIB_GDB variable doesn't support the `" << env_val[i] << "' flag." << std::endl;
 
         if (strchr( env_val, 'F' ))
@@ -1183,15 +1192,40 @@ void GdbServer<CpuIss>::init_state()
         if (strchr( env_val, 'S' ))
             wait_on_except_ = true;
 
+        if (strchr( env_val, 'W' ))
+            wait_on_wpoint_ = false;
+
         if (strchr( env_val, 'X' ))
-            catch_execeptions_ = false;
+            catch_exceptions_ = false;
     } else {
         state_ = init_state_;
     }
 
-    env_val = getenv("SOCLIB_GDB_SLEEPMS");
-    if ( env_val ) {
+    // Options below this point are handled once for all cpus
+
+    if (list_.size())
+        return;
+
+    if (( env_val = getenv("SOCLIB_GDB_SLEEPMS") )) {
         poll_timeout_ = atoi(env_val);
+    }
+
+    if (( env_val = getenv("SOCLIB_GDB_WATCH") )) {
+        do {
+            uint32_t addr = strtoul( env_val, (char**)&env_val, 16 );
+
+            while ( *env_val && *env_val != ':' ) {
+                if ( *env_val == 'w' ) {
+                    break_write_access_ |= address_set_t(addr, addr + 3);
+                    std::cerr << "[GDB] Write watchpoint added at 0x" << std::hex << addr << std::endl;
+                } else if ( *env_val == 'r' ) {
+                    break_read_access_ |= address_set_t(addr, addr + 3);
+                    std::cerr << "[GDB] Read watchpoint added at 0x" << std::hex << addr << std::endl;
+                }
+                env_val++;
+            }
+
+        } while ( *env_val++ == ':' );
     }
 }
 
