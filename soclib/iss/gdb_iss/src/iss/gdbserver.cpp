@@ -115,6 +115,7 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
       catch_execeptions_(true), // Do not change without prior discussion
       call_trace_(false),
       call_trace_zero_(false),
+      wait_on_except_(false),
       cur_addr_(0),
       cpu_id_(ident)
     {
@@ -1009,7 +1010,7 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
 
     // FIXME add configurable check mask
 
-    if (asocket_ < 0 || !catch_execeptions_)
+    if ((asocket_ < 0 && !wait_on_except_) || !catch_execeptions_)
         return false;
 
     char buffer[32];
@@ -1172,6 +1173,9 @@ void GdbServer<CpuIss>::init_state()
             std::cerr << "[GDB] No loader defined for GdbServer !!! call trace disabled." << std::endl;
             call_trace_ = call_trace_zero_ = false;                
         }
+
+        if (strchr( env_val, 'S' ))
+            wait_on_except_ = true;
 
         if (strchr( env_val, 'X' ))
             catch_execeptions_ = false;

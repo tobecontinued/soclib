@@ -158,7 +158,8 @@ private:
     static unsigned int step_id_; // can be used to force single step on a specific processor
     bool catch_execeptions_;
     bool call_trace_:1,
-         call_trace_zero_:1;    // only display call to function begin
+         call_trace_zero_:1,    // only display call to function begin
+         wait_on_except_:1;
     uintptr_t cur_func_;
     uintptr_t cur_addr_;
 
