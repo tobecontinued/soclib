@@ -345,6 +345,9 @@ void Mips32Iss::handle_exception()
     case X_FPE:
         ex_cause = EXCA_FPU;
         break;
+
+    default:
+        assert(!"This must not happen");
     }
 
     if ( debugExceptionBypassed( ex_class, ex_cause ) )
