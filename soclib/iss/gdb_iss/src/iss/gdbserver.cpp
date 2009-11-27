@@ -1211,17 +1211,24 @@ void GdbServer<CpuIss>::init_state()
     }
 
     if (( env_val = getenv("SOCLIB_GDB_WATCH") )) {
+        size_t size;
+
         do {
-            uint32_t addr = strtoul( env_val, (char**)&env_val, 16 );
+            uint32_t addr = strtoul( env_val, (char**)&env_val, 0 );
+            size = 4;
 
             while ( *env_val && *env_val != ':' ) {
                 if ( *env_val == 'w' ) {
-                    break_write_access_ |= address_set_t(addr, addr + 3);
-                    std::cerr << "[GDB] Write watchpoint added at 0x" << std::hex << addr << std::endl;
+                    break_write_access_ |= address_set_t(addr, addr + size - 1);
+                    std::cerr << "[GDB] Write watchpoint added [0x" << std::hex << addr << ", 0x" << addr + size - 1<< "]" << std::endl;
                 } else if ( *env_val == 'r' ) {
-                    break_read_access_ |= address_set_t(addr, addr + 3);
-                    std::cerr << "[GDB] Read watchpoint added at 0x" << std::hex << addr << std::endl;
+                    break_read_access_ |= address_set_t(addr, addr + size - 1);
+                    std::cerr << "[GDB] Read watchpoint added [0x" << std::hex << addr << ", 0x" << addr + size - 1<< "]" << std::endl;
+                } else if ( *env_val == ',' ) {
+                    size = strtoul( env_val + 1, (char**)&env_val, 0 );
+                    continue;
                 }
+
                 env_val++;
             }
 
