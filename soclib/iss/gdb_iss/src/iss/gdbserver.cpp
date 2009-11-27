@@ -1159,6 +1159,12 @@ void GdbServer<CpuIss>::init_state()
 {
     const char *env_val = getenv("SOCLIB_GDB");
     if ( env_val ) {
+
+        if (!list_.size())
+            for (int i = 0; env_val[i]; i++)
+                if (!strchr("FCZSX", env_val[i]))
+                    std::cerr << "[GDB] Warning: SOCLIB_GDB variable doesn't support the `" << env_val[i] << "' flag." << std::endl;
+
         if (strchr( env_val, 'F' ))
             state_ = WaitIssMem;
         else 
