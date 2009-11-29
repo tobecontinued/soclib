@@ -15,15 +15,28 @@ help:
 
 all: $(SIMULATOR_BINARY) $(KERNEL)
 
-CONFIG=config_soclib_mipsel
-APP=$(MUTEKH_DIR)/examples/hello
+# make hack to have a space in a variable...
+empty:=
+space:=$(empty) $(empty)
+
+# expand list of configuration files as a :-separated list
+CONFIG=config_soclib_mipsel config_soclib_arm
+APP=$(MUTEKH_DIR)/examples/hello_het
+COLON_CONFIG=$(subst $(space),:,$(foreach conf,$(CONFIG),$(APP)/$(conf)))
+
+target=kernel
+
+ifneq ($(words $(CONFIG)), 1)
+target=kernel-het
+endif
 
 $(KERNEL): mutekh
 	$(MAKE) \
 	   -f $(MUTEKH_DIR)/Makefile \
-	   CONF=$(APP)/$(CONFIG) \
+	   CONF=$(COLON_CONFIG) \
 	   BUILD_DIR=$(shell pwd)/mutekh \
-	   SRC_DIR=$(MUTEKH_DIR) -j 3
+	   SRC_DIR=$(MUTEKH_DIR) -j 3 \
+	   $(target)
 
 mutekh:
 	mkdir -p $@
