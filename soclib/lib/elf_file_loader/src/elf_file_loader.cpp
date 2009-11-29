@@ -91,8 +91,6 @@ bool elf_load( const std::string &name, Loader &loader )
             std::cerr << "using " << filename << ":" << sect->get_name() << std::endl;
         }
 
-        std::cout << sect->get_name() << std::endl;
-
         FOREACH( symp, sect->get_symbol_table() )
         {
             elfpp::symbol &sym = *(symp->second);
