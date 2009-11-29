@@ -76,10 +76,6 @@ bool elf_load( const std::string &name, Loader &loader )
         if ( !(eflags & elfpp::SHF_ALLOC) )
             continue;
 
-        if ( (sect->get_type() == elfpp::SHT_NOBITS) || ! sect->get_size() ) {
-            continue;
-        }
-
         // filter sections by name
         if ( !section_patterns.empty() ) {
             bool match = false;
@@ -93,6 +89,30 @@ bool elf_load( const std::string &name, Loader &loader )
             if ( !match )
                 continue;
             std::cerr << "using " << filename << ":" << sect->get_name() << std::endl;
+        }
+
+        FOREACH( symp, sect->get_symbol_table() )
+        {
+            elfpp::symbol &sym = *(symp->second);
+            size_t symsize = sym.get_size();
+            uint8_t info = sym.get_info();
+
+            if ( ( ELF_ST_BIND(info) != elfpp::STB_LOCAL &&
+                   ELF_ST_BIND(info) != elfpp::STB_GLOBAL ) ||
+                 ELF_ST_TYPE(info) >= elfpp::STT_NUM )
+                continue;
+
+            if ( !isalnum(sym.get_name()[0]) && sym.get_name()[0] != '_' )
+                continue;
+
+            uintptr_t addr =
+                (sym.get_section() ? sym.get_section()->get_load_address() : 0)
+                + sym.get_value();
+            loader.addSymbol(BinaryFileSymbol( sym.get_name(), addr, symsize ));
+        }
+
+        if ( (sect->get_type() == elfpp::SHT_NOBITS) || ! sect->get_size() ) {
+            continue;
         }
 
         size_t actual_size = sect->get_size();
@@ -115,26 +135,6 @@ bool elf_load( const std::string &name, Loader &loader )
                 flags,
                 actual_size,
                 blob ));
-
-        FOREACH( symp, sect->get_symbol_table() )
-        {
-            elfpp::symbol &sym = *(symp->second);
-            size_t symsize = sym.get_size();
-            uint8_t info = sym.get_info();
-
-            if ( ( ELF_ST_BIND(info) != elfpp::STB_LOCAL &&
-                   ELF_ST_BIND(info) != elfpp::STB_GLOBAL ) ||
-                 ELF_ST_TYPE(info) >= elfpp::STT_NUM )
-                continue;
-
-            if ( !isalnum(sym.get_name()[0]) && sym.get_name()[0] != '_' )
-                continue;
-
-            uintptr_t addr =
-                (sym.get_section() ? sym.get_section()->get_load_address() : 0)
-                + sym.get_value();
-            loader.addSymbol(BinaryFileSymbol( sym.get_name(), addr, symsize ));
-        }
     }
 
     delete binary;
