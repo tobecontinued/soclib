@@ -24,7 +24,6 @@
 #include "vci_xcache_wrapper.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
-#include "vci_logger.h"
 #include "vci_heterogeneous_rom.h"
 #include "vci_multi_tty.h"
 #include "vci_locks.h"
@@ -35,7 +34,7 @@ using namespace soclib;
 using common::IntTab;
 using common::Segment;
 
-static common::MappingTable maptab(32, IntTab(8), IntTab(8), 0xff000000);
+static common::MappingTable maptab(32, IntTab(8), IntTab(8), 0xfff00000);
 
 // Define our VCI parameters
 typedef caba::VciParams<4,9,32,1,1,1,8,1,1,1> vci_param;
@@ -103,7 +102,7 @@ void newCpu(CpuEntry *e, const std::string &type, int id)
   o << type << "_" << id;
 
   ISS_NEST(Iss)::set_loader(e->text_ldr);
-  e->cpu = new caba::VciXcacheWrapper<vci_param, ISS_NEST(Iss)>(o.str().c_str(), id, maptab, IntTab(id),4, 32, 8, 4, 32, 8);
+  e->cpu = new caba::VciXcacheWrapper<vci_param, ISS_NEST(Iss)>(o.str().c_str(), id, maptab, IntTab(id),1, 8, 4, 1, 8, 4);
   e->connect = cpu_connect<ISS_NEST(Iss)>;
 }
 
@@ -159,20 +158,6 @@ int _main(int argc, char **argv)
 	argc--;
 	argv++;
 
-	// Mapping table
-
-	maptab.add(Segment("resetarm",  0x00000000, 0x0400, IntTab(1), true));
-	maptab.add(Segment("resetmips", 0xbfc00000, 0x2000, IntTab(1), true));
-	maptab.add(Segment("resetppc",  0xffffff80, 0x0080, IntTab(1), true));
-
-    maptab.add(Segment("text" ,     0x60100000, 0x00100000, IntTab(0), true));
-    maptab.add(Segment("rodata" ,   0x61100000, 0x01000000, IntTab(1), true));
-    maptab.add(Segment("data",      0x71600000, 0x00100000, IntTab(2), false));
-
-	maptab.add(Segment("tty"  ,     0x90600000, 0x00000010, IntTab(3), false));
-	maptab.add(Segment("timer",     0x01620000, 0x00000100, IntTab(4), false));
-	maptab.add(Segment("icu",       0x20600000, 0x00000020, IntTab(5), false));
-
 	for (int i = 0; i < argc; i++)
 	  {
 	    char *arg = argv[i];
@@ -201,6 +186,20 @@ int _main(int argc, char **argv)
 		cpus.push_back(e);
 	      }
 	  }
+
+	// Mapping table
+
+	maptab.add(Segment("resetarm",  0x00000000, 0x0400, IntTab(1), true));
+	maptab.add(Segment("resetmips", 0xbfc00000, 0x2000, IntTab(1), true));
+	maptab.add(Segment("resetppc",  0xffffff80, 0x0080, IntTab(1), true));
+
+        maptab.add(Segment("text" ,     0x60100000, 0x00100000, IntTab(0), true));
+        maptab.add(Segment("rodata" ,   0x61100000, 0x01000000, IntTab(1), true));
+        maptab.add(Segment("data",      0x71600000, 0x00100000, IntTab(2), false));
+
+	maptab.add(Segment("tty"  ,     0x90600000, 0x00000010, IntTab(3), false));
+	maptab.add(Segment("timer",     0x01620000, 0x00000100, IntTab(4), false));
+	maptab.add(Segment("icu",       0x20600000, 0x00000020, IntTab(5), false));
 
 	caba::VciHeterogeneousRom<vci_param> vcihetrom("vcihetrom",    IntTab(0), maptab);
 	for ( size_t i = 0; i < cpus.size(); ++i )
