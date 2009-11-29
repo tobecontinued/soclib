@@ -77,7 +77,7 @@ namespace soclib { namespace common {
 #define GET_OPERANDS_ASI(ins, addr, asi, rd)                            \
     do {                                                                \
         addr = GPR(ins.format3a.rs1);                                   \
-        if(ins.format3a.i == 0) {                                       \
+        if(ins.format3a.i == 1) {                                       \
             m_exception = true;                                         \
             m_exception_cause = TP_ILLEGAL_INSTRUCTION;                 \
             return;                                                     \
