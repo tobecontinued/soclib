@@ -30,7 +30,7 @@
 
 namespace soclib { namespace common {
 
-#define tmpl(x) template<typename input_t, typename output_t> x AddressDecodingTable<input_t, output_t>
+#define tmpl(...) template<typename input_t, typename output_t> __VA_ARGS__ AddressDecodingTable<input_t, output_t>
 
 tmpl(void)::init( int use_bits, int drop_bits )
 {
@@ -40,17 +40,17 @@ tmpl(void)::init( int use_bits, int drop_bits )
 	m_low_mask = (1<<use_bits)-1;
 }
 
-tmpl(/**/)::AddressDecodingTable()
+tmpl()::AddressDecodingTable()
 {
 	init(0,0);
 }
 
-tmpl(/**/)::AddressDecodingTable( int use_bits, int drop_bits )
+tmpl()::AddressDecodingTable( int use_bits, int drop_bits )
 {
 	init(use_bits, drop_bits);
 }
 
-tmpl(/**/)::AddressDecodingTable( input_t mask )
+tmpl()::AddressDecodingTable( input_t mask )
 {
 	int use_bits = 0, drop_bits = 0;
 	input_t m = mask;
@@ -79,16 +79,15 @@ tmpl(void)::set( input_t where, output_t value )
 	m_table[id(where)] = value;
 }
 
-tmpl(/**/)::AddressDecodingTable( const AddressDecodingTable &ref )
+tmpl()::AddressDecodingTable( const AddressDecodingTable &ref )
 {
 	init(ref.m_use_bits, ref.m_drop_bits);
 	for ( int i=0; i<(1<<m_use_bits); ++i )
 		m_table[i] = ref.m_table[i];
 }
 
-template <typename input_t, typename output_t>
-const AddressDecodingTable<input_t, output_t> &AddressDecodingTable<input_t, output_t>::
-operator=( const AddressDecodingTable &ref )
+tmpl(const AddressDecodingTable<input_t, output_t> &)
+::operator=( const AddressDecodingTable &ref )
 {
 	if ( this == &ref )
 		return *this;
@@ -101,7 +100,7 @@ operator=( const AddressDecodingTable &ref )
     return *this;
 }
 
-tmpl(/**/)::~AddressDecodingTable()
+tmpl()::~AddressDecodingTable()
 {
 	delete [] m_table;
 }
