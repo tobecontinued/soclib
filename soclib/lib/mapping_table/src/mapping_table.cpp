@@ -41,7 +41,8 @@ MappingTable::MappingTable(
           m_addr_mask((addr_width == 64) ? ((addr64_t)-1) : (((addr64_t)1<<addr_width)-1)),
           m_level_addr_bits(level_addr_bits),
           m_level_id_bits(level_id_bits),
-          m_cacheability_mask(cacheability_mask)
+          m_cacheability_mask(cacheability_mask),
+          m_used(false)
 {
     m_rt_size = 1<<(addr_width-m_level_addr_bits.sum());
     addr64_t cm_rt_size = 1 << AddressMaskingTable<addr64_t>(m_cacheability_mask).getDrop();
@@ -55,7 +56,8 @@ MappingTable::MappingTable( const MappingTable &ref )
           m_level_addr_bits(ref.m_level_addr_bits),
           m_level_id_bits(ref.m_level_id_bits),
           m_cacheability_mask(ref.m_cacheability_mask),
-          m_rt_size(ref.m_rt_size)
+          m_rt_size(ref.m_rt_size),
+          m_used(ref.m_used)
 {
 }
 
@@ -68,6 +70,7 @@ const MappingTable &MappingTable::operator=( const MappingTable &ref )
     m_level_id_bits = ref.m_level_id_bits;
     m_cacheability_mask = ref.m_cacheability_mask;
     m_rt_size = ref.m_rt_size;
+    m_used = ref.m_used;
     return *this;
 }
 
@@ -75,6 +78,8 @@ void MappingTable::add( const Segment &_seg )
 {
     Segment seg = _seg.masked(m_addr_mask);
     std::list<Segment>::iterator i;
+
+    assert(m_used == false && "You must not add segments inside a mapping table once it is used.");
 
     if ( seg.index().level() != m_level_addr_bits.level() ) {
         std::ostringstream o;
@@ -115,6 +120,7 @@ void MappingTable::add( const Segment &_seg )
 const std::list<Segment> &
 MappingTable::getAllSegmentList() const
 {
+    const_cast<MappingTable*>(this)->m_used = true;
     return m_segment_list;
 }
 
@@ -124,6 +130,8 @@ MappingTable::getSegmentList( const IntTab &index ) const
     std::list<Segment> ret;
     std::list<Segment>::const_iterator i;
     
+    const_cast<MappingTable*>(this)->m_used = true;
+
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
@@ -137,6 +145,9 @@ Segment
 MappingTable::getSegment( const IntTab &index ) const
 {
     std::list<Segment> list = getSegmentList(index);
+
+    const_cast<MappingTable*>(this)->m_used = true;
+
     assert(list.size() == 1);
     return list.front();
 }
@@ -149,6 +160,8 @@ MappingTable::getCacheabilityTable() const
 	adt.reset(false);
     AddressDecodingTable<desired_addr_t, bool> done(m_cacheability_mask);
 	done.reset(false);
+
+    const_cast<MappingTable*>(this)->m_used = true;
 
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
@@ -183,6 +196,8 @@ MappingTable::getLocalityTable( const IntTab &index ) const
 
     AddressDecodingTable<desired_addr_t, bool> done(nbits, m_addr_width-nbits);
 	done.reset(false);
+
+    const_cast<MappingTable*>(this)->m_used = true;
 
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
@@ -223,6 +238,8 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 
     AddressDecodingTable<desired_addr_t, bool> done(at, m_addr_width-at-before);
 	done.reset(false);
+
+    const_cast<MappingTable*>(this)->m_used = true;
 
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
@@ -282,6 +299,8 @@ desired_addr_t *MappingTable::getCoherenceTable() const
 {
     desired_addr_t *ret = new desired_addr_t[1<<m_level_id_bits.sum()];
     std::list<Segment>::const_iterator i;
+    const_cast<MappingTable*>(this)->m_used = true;
+
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
           i++ ) {
@@ -315,6 +334,8 @@ MappingTable::getIdMaskingTable( const int level ) const
 {
     int use = m_level_id_bits[level];
     int drop = 0;
+    const_cast<MappingTable*>(this)->m_used = true;
+
     for ( size_t i=level+1; i<m_level_id_bits.level(); ++i )
         drop += m_level_id_bits[i];
     return AddressMaskingTable<uint32_t>( use, drop );
@@ -327,6 +348,7 @@ MappingTable::getIdLocalityTable( const IntTab &index ) const
     size_t 	id_width = m_level_id_bits.sum();
     IntTab	complete_index(index, 0);
     uint32_t 	match = (uint32_t)indexForId(complete_index);
+    const_cast<MappingTable*>(this)->m_used = true;
 
     AddressDecodingTable<uint32_t, bool> adt(nbits, id_width-nbits);
     adt.reset(false);

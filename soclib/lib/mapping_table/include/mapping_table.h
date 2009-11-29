@@ -55,6 +55,7 @@ private:
     IntTab m_level_id_bits;
     addr64_t m_cacheability_mask;
     addr64_t m_rt_size;
+    bool m_used;
 
 public:
     MappingTable( const MappingTable& );
