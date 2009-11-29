@@ -91,6 +91,8 @@ bool elf_load( const std::string &name, Loader &loader )
             std::cerr << "using " << filename << ":" << sect->get_name() << std::endl;
         }
 
+        std::cout << sect->get_name() << std::endl;
+
         FOREACH( symp, sect->get_symbol_table() )
         {
             elfpp::symbol &sym = *(symp->second);
@@ -106,7 +108,9 @@ bool elf_load( const std::string &name, Loader &loader )
                 continue;
 
             uintptr_t addr =
-                (sym.get_section() ? sym.get_section()->get_load_address() : 0)
+                (sym.get_section() && sym.get_section()->get_segment()
+                 ? sym.get_section()->get_load_address()
+                 : 0)
                 + sym.get_value();
             loader.addSymbol(BinaryFileSymbol( sym.get_name(), addr, symsize ));
         }
