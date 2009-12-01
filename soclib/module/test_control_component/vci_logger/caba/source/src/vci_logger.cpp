@@ -105,7 +105,8 @@ tmpl(void)::print( std::ostream &o ) const
         if ( m_cmd_packets[0].plen )
             o << " plen = " << std::noshowbase << std::dec << m_cmd_packets[0].plen;
             o << " const = " << m_cmd_packets[0].cons;
-            o << " (r)srcid = " << m_cmd_packets[0].srcid;
+            o << " (r)srcid = " << m_cmd_packets[0].srcid,
+            o << " be = " << m_cmd_packets[0].be;
     }
     if ( m_cmd_packets[0].cmd == vci_param::CMD_WRITE
          || m_cmd_packets[0].cmd == vci_param::CMD_STORE_COND ) {
@@ -113,7 +114,7 @@ tmpl(void)::print( std::ostream &o ) const
               i != m_cmd_packets.end();
               ++i ) {
             if ( (i->address - m_cmd_packets[0].address) % 32 == 0 )
-                o << std::endl << std::hex << std::setfill('0') << std::setw(8) << i->address << " ";
+                o << std::endl << std::hex << std::setfill('0') << std::setw(8) << i->address << ": ";
             typename vci_param::fast_data_t data = i->wdata;
             uint8_t be = i->be;
             for ( uint8_t j = 0; j<vci_param::B; ++j ) {
@@ -144,7 +145,7 @@ tmpl(void)::print( std::ostream &o ) const
               i != m_rsp_packets.end();
               ++i ) {
             if ( (address - m_cmd_packets[0].address) % 32 == 0 )
-                o << std::endl << std::hex << std::setfill('0') << std::setw(8) << address << " ";
+                o << std::endl << std::hex << std::setfill('0') << std::setw(8) << address << ": ";
             typename vci_param::fast_data_t data = i->rdata;
             for ( uint8_t j = 0; j<vci_param::B; ++j ) {
                 o << std::hex << std::noshowbase << std::setfill('0') << std::setw(2)
