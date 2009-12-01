@@ -970,7 +970,7 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
 {
     uint32_t pc = CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
     static const char *str[] = { EXCEPTIONCAUSE_STRINGS };
-    int signal;
+    int signal = 5; // SIGTRAP by default
 
     switch ( cl )
         {

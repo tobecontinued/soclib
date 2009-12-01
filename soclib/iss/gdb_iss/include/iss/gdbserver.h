@@ -64,7 +64,14 @@ public:
 
     static inline void set_loader(Loader *loader)
     {
-        loader_ = loader;
+        if ( loader_ == NULL )
+            loader_ = loader;
+    }
+
+    static inline void set_loader(const Loader &loader)
+    {
+        if ( loader_ == NULL )
+            loader_ = new Loader(loader);
     }
 
     GdbServer(const std::string &name, uint32_t ident);
