@@ -51,7 +51,7 @@ class Mips32Iss
     : public Iss2
 {
 public:
-    static const int n_irq = 6;
+    static const size_t n_irq = 6;
 
 private:
     enum MipsDataAccessType {

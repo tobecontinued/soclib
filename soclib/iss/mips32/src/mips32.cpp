@@ -115,7 +115,7 @@ void Mips32Iss::reset()
 void Mips32Iss::dump() const
 {
     std::cout
-        << std::hex << std::showbase
+        << std::hex << std::noshowbase
         << m_name
         << " PC: " << r_pc
         << " NPC: " << r_npc

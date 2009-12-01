@@ -49,7 +49,7 @@ class Ppc405Iss
 	: public soclib::common::Iss2
 {
 public:
-	static const int n_irq = 2;
+	static const size_t n_irq = 2;
     enum {
         IRQ_CRITICAL_INPUT = 0,
         IRQ_EXTERNAL = 1
