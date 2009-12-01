@@ -494,8 +494,8 @@ public:
 //              std::cout << "Creating a region info for"
 //                        << " " << i->name()
 //                        << " @" << std::hex << i->lma()
-//                        << ", " << std::dec << i->size()/4 << " words long"
-//                        << " RO: " << i->flag_read_only()
+//                        << ", " << std::dec << i->size() << " bytes long"
+//                        << " flags: " << (i->flag_read_only() ? "RO" : "")
 //                        << std::endl;
 #endif
 
@@ -688,7 +688,8 @@ void IssMemchecker<iss_t>::init( const soclib::common::MappingTable &mt,
                                  const soclib::common::Loader &loader,
                                  const std::string &exclusions )
 {
-    s_memory_state = new MemoryState( mt, loader, exclusions );
+    if ( s_memory_state == NULL )
+        s_memory_state = new MemoryState( mt, loader, exclusions );
 }
 
 template<typename iss_t>
@@ -928,26 +929,21 @@ void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
 
     m_last_data_access = dreq;
 
-    if ( m_enabled_checks & ISS_MEMCHECKER_CHECK_INIT ) {
-//         std::cout
-//             << iss_t::m_name
-//             << " " << dreq
-//             << " " << *ai
-//             << std::endl;
-        switch ( dreq.type ) {
-        case iss_t::DATA_READ:
-        case iss_t::DATA_LL:
+    switch ( dreq.type ) {
+    case iss_t::DATA_READ:
+    case iss_t::DATA_LL:
+        if ( m_enabled_checks & ISS_MEMCHECKER_CHECK_INIT )
             err |= ai->do_read();
-            break;
-        case iss_t::DATA_SC:
-        case iss_t::DATA_WRITE:
-            err |= ai->do_write();
-            break;
-        case iss_t::XTN_WRITE:
-        case iss_t::XTN_READ:
-            return;
-        }
+        break;
+    case iss_t::DATA_SC:
+    case iss_t::DATA_WRITE:
+        err |= ai->do_write();
+        break;
+    case iss_t::XTN_WRITE:
+    case iss_t::XTN_READ:
+        return;
     }
+
     if ( m_current_context->stack_contains(dreq.addr) ) {
         if ( ( m_enabled_checks & ISS_MEMCHECKER_CHECK_SP )
 //             && m_current_context != s_memory_state->unknown_context
