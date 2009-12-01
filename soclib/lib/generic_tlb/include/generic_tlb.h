@@ -12,7 +12,6 @@
  * The replacement algorithm is pseudo-LRU.
  * Each TLB entry has the following format:
  * - bool       valid            (0: unmapped; 1: mapped)
- * - bool       type             (0: PTE     ; 1: PTD   )
  * - bool       locally accessed 
  * - bool       remotely accessed 
  * - bool       cacheable   (cached)
@@ -115,7 +114,6 @@ public:
     bool    *m_lru;
     bool    *m_pagesize;  
     bool    *m_valid;
-    bool    *m_type;
     bool    *m_locacc;
     bool    *m_remacc;
     bool    *m_cacheable;
@@ -149,11 +147,6 @@ public:
     inline bool &valid(size_t way, size_t set)
     { 
         return m_valid[(way*m_nsets)+set]; 
-    }
-
-    inline bool &type(size_t way, size_t set)
-    { 
-        return m_type[(way*m_nsets)+set]; 
     }
 
     inline bool &locacc(size_t way, size_t set)
@@ -227,7 +220,6 @@ public:
         m_lru        = new bool[nways * nsets];
         m_pagesize   = new bool[nways * nsets];
         m_valid      = new bool[nways * nsets];
-        m_type       = new bool[nways * nsets];
         m_locacc     = new bool[nways * nsets];
         m_remacc     = new bool[nways * nsets];
         m_cacheable   = new bool[nways * nsets];
@@ -246,7 +238,6 @@ public:
         delete [] m_lru;
         delete [] m_pagesize;
         delete [] m_valid;
-        delete [] m_type;
         delete [] m_locacc;
         delete [] m_remacc;
         delete [] m_cacheable;
@@ -423,7 +414,7 @@ public:
         data_t pte = 0; 
         if ( pagesize(way,set) )    // 2M page size
         {
-           pte = (data_t)ppn(way,set) | (PTE_V_MASK & (valid(way,set) << PTE_V_SHIFT)) | (PTE_T_MASK & (type(way,set) << PTE_T_SHIFT)); 
+           pte = (data_t)ppn(way,set) | (PTE_V_MASK & (valid(way,set) << PTE_V_SHIFT));
     
            if ( locacc(way,set) )
                pte = pte | PTE_L_MASK;
@@ -444,7 +435,7 @@ public:
         }
         else    // 4K page size
         {
-           pte = (data_t)((PTE_V_MASK & (valid(way,set) << PTE_V_SHIFT)) | (PTE_T_MASK & (type(way,set) << PTE_T_SHIFT))); 
+           pte = (data_t)(PTE_V_MASK & (valid(way,set) << PTE_V_SHIFT));
     
            if ( locacc(way,set) )
                pte = pte | PTE_L_MASK;
