@@ -353,17 +353,6 @@ public:
      */
     virtual void setWriteBerr() = 0;
 
-    /**
-     * Inform the Iss about the instruction cache caracteristics
-     */
-    __attribute__((deprecated))
-    virtual void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {}
-    /**
-     * Inform the Iss about the data cache caracteristics
-     */
-    __attribute__((deprecated))
-    virtual void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines ) {}
-
     struct CacheInfo
     {
         bool has_mmu;
@@ -380,12 +369,6 @@ public:
      */
     virtual void setCacheInfo( const struct CacheInfo &info )
     {
-        setICacheInfo( info.icache_line_size,
-                       info.icache_assoc,
-                       info.icache_n_lines );
-        setDCacheInfo( info.dcache_line_size,
-                       info.dcache_assoc,
-                       info.dcache_n_lines );
     }
 
     /*
