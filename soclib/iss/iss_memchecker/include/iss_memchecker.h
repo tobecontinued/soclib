@@ -57,7 +57,6 @@ template<typename iss_t>
 class IssMemchecker
     : public iss_t
 {
-    static __iss_memchecker::MemoryState *s_memory_state;
     uint32_t m_comm_address;
     __iss_memchecker::ContextState *m_current_context;
     __iss_memchecker::ContextState *m_last_context;

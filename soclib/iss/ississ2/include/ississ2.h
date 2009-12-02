@@ -65,8 +65,7 @@ public:
     void setWriteBerr();
 
     // cache info
-    void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
-    void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
+    void setCacheInfo( const struct CacheInfo &info );
 
     // debug
     unsigned int debugGetRegisterCount() const;

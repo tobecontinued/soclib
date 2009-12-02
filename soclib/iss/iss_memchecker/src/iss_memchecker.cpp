@@ -45,6 +45,10 @@ namespace __iss_memchecker {
 
 typedef uint32_t error_level_t;
 
+namespace {
+MemoryState * s_memory_state = NULL;
+}
+
 enum {
     ERROR_NONE = 0,
     ERROR_UNINITIALIZED_WORD = 1,
@@ -1103,8 +1107,6 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     }
     return nc;
 }
-
-template<typename iss_t> __iss_memchecker::MemoryState* IssMemchecker<iss_t>::s_memory_state = NULL;
 
 }}
 

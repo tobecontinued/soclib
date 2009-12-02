@@ -105,8 +105,7 @@ public:
 
     static const size_t n_irq = 2;
 
-    void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
-    void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
+    void setCacheInfo( const struct CacheInfo &info );
 
 private:
 

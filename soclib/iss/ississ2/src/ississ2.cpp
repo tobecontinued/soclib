@@ -197,14 +197,16 @@ tmpl(void)::setWriteBerr()
 	m_iss.setWriteBerr();
 }
 
-tmpl(void)::setICacheInfo( size_t line_size, size_t assoc, size_t n_lines )
+tmpl(void)::setCacheInfo( const struct CacheInfo &info )
 {
-	m_iss.setICacheInfo( line_size, assoc, n_lines );
-}
-
-tmpl(void)::setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines )
-{
-	m_iss.setDCacheInfo( line_size, assoc, n_lines );
+	m_iss.setICacheInfo(
+        info.icache_line_size,
+        info.icache_assoc,
+        info.icache_n_lines );
+	m_iss.setDCacheInfo(
+        info.dcache_line_size,
+        info.dcache_assoc,
+        info.dcache_n_lines );
 }
 
 tmpl(unsigned int)::debugGetRegisterCount() const

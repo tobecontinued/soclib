@@ -329,9 +329,6 @@ public:
     static const unsigned int s_pc_register_no = 68;
     static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_BIG_ENDIAN;
 
-    void setICacheInfo( size_t line_size, size_t assoc, size_t n_lines );
-    void setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines );
-
 private:
     void run();
 

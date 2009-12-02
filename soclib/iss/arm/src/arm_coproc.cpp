@@ -130,22 +130,19 @@ bool ArmIss::coproc_get(
     return false;
 }
 
-void ArmIss::setICacheInfo( size_t line_size, size_t assoc, size_t n_lines )
+void ArmIss::setCacheInfo( const struct CacheInfo &info )
 {
-	data_t cache_size = line_size*assoc*n_lines;
+	data_t icache_size = info.icache_line_size*info.icache_assoc*info.icache_n_lines;
 	m_cache_info.icache_len = std::min(
-		uint32_log2(line_size/8), 0);
-	m_cache_info.icache_size = uint32_log2(cache_size/512);
-	m_cache_info.icache_assoc = uint32_log2(assoc);
-}
+		uint32_log2(info.icache_line_size/8), 0);
+	m_cache_info.icache_size = uint32_log2(icache_size/512);
+	m_cache_info.icache_assoc = uint32_log2(info.icache_assoc);
 
-void ArmIss::setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines )
-{
-	data_t cache_size = line_size*assoc*n_lines;
+	data_t dcache_size = info.dcache_line_size*info.dcache_assoc*info.dcache_n_lines;
 	m_cache_info.dcache_len = std::min(
-		uint32_log2(line_size/8), 0);
-	m_cache_info.dcache_size = uint32_log2(cache_size/512);
-	m_cache_info.dcache_assoc = uint32_log2(assoc);
+		uint32_log2(info.dcache_line_size/8), 0);
+	m_cache_info.dcache_size = uint32_log2(dcache_size/512);
+	m_cache_info.dcache_assoc = uint32_log2(info.dcache_assoc);
 }
 
 }}

@@ -122,14 +122,6 @@ tmpl(void)::debugSetRegisterValue(unsigned int reg, debug_register_t value)
     // TODO : implement this !
 }
 
-tmpl(void)::setICacheInfo( size_t line_size, size_t assoc, size_t n_lines )
-{
-}
-
-tmpl(void)::setDCacheInfo( size_t line_size, size_t assoc, size_t n_lines )
-{
-}
-
 tmpl(unsigned int)::debugGetRegisterCount() const
 {
     // TODO : check this !
