@@ -374,8 +374,8 @@ public:
             region()->unref();
         }
         m_info = (RegionInfo*)(
-            (uintptr_t)ptr & s_addr_mask |
-            (uintptr_t)m_info & ~s_addr_mask);
+            ((uintptr_t)ptr & s_addr_mask) |
+            ((uintptr_t)m_info & ~s_addr_mask));
         return r;
     }
 
