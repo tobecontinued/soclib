@@ -70,6 +70,7 @@ public:
         FSM_SC,
         FSM_LL,
         FSM_ERROR,
+        FSM_WRITE_ERROR,
     };
 
 private:

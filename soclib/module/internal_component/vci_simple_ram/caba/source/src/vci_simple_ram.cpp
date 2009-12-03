@@ -53,6 +53,7 @@
 /////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
+#include <cstring>
 #include "vci_simple_ram.h"
 
 namespace soclib {
@@ -148,7 +149,7 @@ tmpl(void)::reset()
 ////////////////////
 {
 	for ( size_t i=0 ; i<m_nbseg ; ++i ) {
-		memset(&m_ram[i][0], 0, m_seg[i]->size());
+		std::memset(&m_ram[i][0], 0, m_seg[i]->size());
 	}
     m_cpt_read = 0;
     m_cpt_write = 0;
@@ -247,7 +248,13 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
         r_eop_rsp    = false;
 
         if ( !reached ) {
-            r_fsm_state = FSM_ERROR;
+            if ( (p_vci.cmd.read() == vci_param::CMD_WRITE) ||
+                 (p_vci.cmd.read() == vci_param::CMD_STORE_COND ) ){
+                // The response to a WRITE or a SC must have a size of 1 cell
+                r_fsm_state = FSM_WRITE_ERROR;
+            } else {
+                r_fsm_state = FSM_ERROR;
+            }
         } else {
             if ( p_vci.cmd.read() == vci_param::CMD_WRITE ) {   // using eop
                 r_fsm_state = FSM_WRITE_BURST;
@@ -341,6 +348,11 @@ std::cout << "r_latency_count = " << r_latency_count << std::endl;
                 else           	r_fsm_state = FSM_CMD_GET;
             }
             r_flit_count = r_flit_count.read() - 1;
+        }
+        break;
+    case FSM_WRITE_ERROR:
+        if ( p_vci.rspack.read() ) {
+            r_fsm_state = FSM_IDLE;
         }
         break;
 
@@ -505,6 +517,16 @@ tmpl(void)::genMoore()
         p_vci.rpktid  = r_pktid.read();
         p_vci.rerror  = vci_param::ERR_GENERAL_DATA_ERROR;
         p_vci.reop    = (r_flit_count.read() == 1);
+        break;
+    case FSM_WRITE_ERROR:
+        p_vci.cmdack  = false;
+        p_vci.rspval  = true;
+        p_vci.rdata   = 0;
+        p_vci.rsrcid  = r_srcid.read();
+        p_vci.rtrdid  = r_trdid.read();
+        p_vci.rpktid  = r_pktid.read();
+        p_vci.rerror  = vci_param::ERR_GENERAL_DATA_ERROR;
+        p_vci.reop    = true;
         break;
     } // end switch fsm_state
 } // end genMoore()
