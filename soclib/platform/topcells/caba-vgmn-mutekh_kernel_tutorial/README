@@ -1,0 +1,34 @@
+
+Build simulator only
+====================
+
+$ make system.x
+
+
+Build simulator and mutekh
+==========================
+
+Export environment variable MUTEKH_DIR=/path/to/mutekh and run make.
+
+ $ export MUTEKH_DIR=~/mutekh
+ $ make all APP=~/mutekh/examples/hello CONFIG=config_soclib_mipsel
+
+See MutekH quick start guide for Soclib for more informations:
+
+https://www.mutek.fr/trac/mutekh/wiki/QuickStartSoclib
+
+
+Run the simulator
+=================
+
+You may dynamically request creation of processors on command line:
+
+ Single mips processor
+ $ ./system.x ~/mutekh/kernel-soclib-mips.out:mips32
+
+ Four arm processors
+ $ ./system.x ~/mutekh/kernel-soclib-arm.out:arm:4
+
+ 2 arm and 2 mips processors
+ $ ./system.x ~/mutekh/kernel-soclib-arm.out:arm:2 ~/mutekh/kernel-soclib-mips.out:mips32:2
+
