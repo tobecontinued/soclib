@@ -157,9 +157,14 @@ tmpl(void)::next_req()
     }
 
     m_offset_buffer = burst;
+    ssize_t read_burst = burst+((m_src+m_offset)&0x3);
+    if(read_burst & 0x3) {
+        read_burst = (burst & ~0x3)+0x4;
+    }
+
 	VciInitSimpleReadReq<vci_param> *req =
 		new VciInitSimpleReadReq<vci_param>(
-			&m_data[0], m_src+m_offset, burst );
+			&m_data[0], ((m_src+m_offset) & ~0x3), read_burst );
 	req->setDone( this, ON_T(read_done) );
 	m_vci_init_fsm.doReq( req );
 }
