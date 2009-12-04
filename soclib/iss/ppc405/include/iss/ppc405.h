@@ -51,8 +51,8 @@ class Ppc405Iss
 public:
 	static const size_t n_irq = 2;
     enum {
-        IRQ_CRITICAL_INPUT = 0,
-        IRQ_EXTERNAL = 1
+        IRQ_EXTERNAL = 0,
+        IRQ_CRITICAL_INPUT = 1,
     };
 
 private:
