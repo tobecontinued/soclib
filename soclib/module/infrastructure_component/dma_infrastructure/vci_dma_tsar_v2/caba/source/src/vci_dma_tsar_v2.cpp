@@ -95,12 +95,12 @@ tmpl(void)::read_done( req_t *req )
 
         m_partial = false;
         if( (( m_dst+m_offset ) & ~( m_data.size()-1 )) !=
-            (( m_dst+m_offset+m_offset_buffer-4 ) & ~( m_data.size()-1 )) ){
+            (( m_dst+m_offset+m_offset_buffer-1 ) & ~( m_data.size()-1 )) ){
             burst = (((m_dst+m_offset) & ~( m_data.size()-1))+m_data.size()) - (m_dst+m_offset);
             m_partial = true;
         }
 		VciInitSimpleWriteReq<vci_param> *new_req =
-			new VciInitSimpleWriteReq<vci_param>( m_dst+m_offset, &m_data[0], burst );
+			new VciInitSimpleWriteReq<vci_param>( m_dst+m_offset, &m_data[(m_src+m_offset)&0x3], burst );
 		new_req->setDone( this, ON_T(write_finish) );
 		m_vci_init_fsm.doReq( new_req );
 	} else {
@@ -115,14 +115,14 @@ tmpl(void)::write_finish( req_t *req )
     uint32_t offset = 0;
     if( m_partial ){
         burst = m_dst + m_offset + m_offset_buffer - ((m_dst+m_offset+m_offset_buffer) & ~( m_data.size()-1));
-        offset = m_offset_buffer - burst;
+        offset = m_offset_buffer - burst ;
     } else {
 	    m_offset += m_offset_buffer;
     }
 	if ( !req->failed() && !m_must_finish ){
         if(m_partial){
             VciInitSimpleWriteReq<vci_param> *new_req =
-                new VciInitSimpleWriteReq<vci_param>( m_dst+m_offset+offset, &m_data[offset], burst );
+                new VciInitSimpleWriteReq<vci_param>( m_dst+m_offset+offset, &m_data[offset]+ ((m_src+m_offset)&0x3), burst );
             new_req->setDone( this, ON_T(write_finish) );
             m_partial = false;
             m_vci_init_fsm.doReq( new_req );
