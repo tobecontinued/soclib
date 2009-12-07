@@ -17,7 +17,7 @@ SECTIONS
    .text : {
       *(.text)
    }
-   . = 0x10000000;
+   . = ALIGN(4);
    .rodata : {
       *(.rodata)
       *(.rodata.*)
