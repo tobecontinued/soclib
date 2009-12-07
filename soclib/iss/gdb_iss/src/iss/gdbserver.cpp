@@ -854,7 +854,7 @@ void GdbServer<CpuIss>::watch_mem_access()
                         char buffer[32];
 
                         std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                                  << ") WRITE watchpoint triggered at " << std::hex << dreq.addr << std::endl;
+                                  << ") WRITE watchpoint triggered at " << std::hex << dreq.addr << " with value " << dreq.wdata << std::endl;
 
                         if (!wait_on_wpoint_)
                             break;
