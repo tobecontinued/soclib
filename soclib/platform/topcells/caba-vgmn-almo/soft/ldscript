@@ -17,7 +17,7 @@ SECTIONS
    .text : {
       *(.text)
    }
-
+   . = 0x10000000;
    .rodata : {
       *(.rodata)
       *(.rodata.*)
@@ -31,10 +31,18 @@ SECTIONS
       *(.lit4)
       *(.sdata)
    }
+   _gp = .;
+   . = ALIGN(4);
+   _edata = .;
+   .sbss  : {
+      *(.sbss)
+      *(.scommon)
+   }
    .bss   : {
       *(.bss)
       *(COMMON)
    }
+   . = ALIGN(4);
    _end = .;
    _heap = .;
    _stack = 0x10100000-16;
