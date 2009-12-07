@@ -40,6 +40,12 @@ struct LinkedAccessEntry
 {
 	addr_t address;
 	bool atomic;
+    uint32_t m_lfsr;
+
+    LinkedAccessEntry()
+    {
+        m_lfsr = -1;
+    }
 
 	inline void invalidate()
 	{
@@ -56,9 +62,16 @@ struct LinkedAccessEntry
         address = addr;
         atomic = true;
     }
-    inline bool is_atomic( addr_t addr ) const
+    inline bool is_atomic( addr_t addr )
     {
-        return addr == addr && atomic;
+        /* to avoid livelock, force the atomic access to fail (pseudo-)randomly */
+        bool fail = (m_lfsr % (32) == 0);
+        m_lfsr = (m_lfsr >> 1) ^ ((-(m_lfsr & 1)) & 0xd0000001);
+
+        if (fail)
+            return false;
+        else
+            return addr == addr && atomic;
     }
 };
 
