@@ -68,7 +68,6 @@ class VciCcXCacheWrapperV1
         DCACHE_CC_CHECK,
         DCACHE_CC_INVAL,
         DCACHE_CC_UPDT,
-        DCACHE_CC_NOP,
         DCACHE_CC_CLEANUP,
     };
 
@@ -78,8 +77,10 @@ class VciCcXCacheWrapperV1
         ICACHE_MISS_UPDT,
         ICACHE_UNC_WAIT,
         ICACHE_ERROR,
-        ICACHE_CC_CLEANUP, 
+        ICACHE_CC_CHECK,
         ICACHE_CC_INVAL,
+        ICACHE_CC_UPDT,
+        ICACHE_CC_CLEANUP 
     };
 
     enum cmd_fsm_state_e {
@@ -189,6 +190,7 @@ private:
     sc_signal<addr_40>       r_tgt_addr;
     sc_signal<size_t>       r_tgt_word;
     sc_signal<bool>         r_tgt_update;
+    sc_signal<bool>         r_data_update; // 0 : update ins; 1 : update data
     sc_signal<bool>         r_tgt_brdcast;
     sc_signal<size_t>       r_tgt_srcid;
     sc_signal<size_t>       r_tgt_pktid;

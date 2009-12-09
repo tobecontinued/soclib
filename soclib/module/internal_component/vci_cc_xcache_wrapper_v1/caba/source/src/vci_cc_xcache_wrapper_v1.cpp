@@ -23,7 +23,10 @@
  * Copyright (c) UPMC, Lip6, SoC
  *         Alain Greiner <alain.greiner@lip6.fr>, 2008
  *
- * Maintainers: alain eric.guthmuller@polytechnique.edu nipo
+ * Maintainers: alain 
+ *              eric.guthmuller@polytechnique.edu 
+ *              nipo
+ *              malek <abdelmalek.si-merabet@lip6.fr> 
  */
 
 /////////////////////////////////////////////////////////////////////////////
@@ -52,6 +55,8 @@
 //   the requests are merged in the same word. In case of uncached write
 //   requests, each request is transmited as a single VCI transaction.
 //   Both the data & instruction caches can be flushed in one single cycle.
+// 08/12/2009
+//   adding update instruction (code X"C")  
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <cassert>
@@ -86,8 +91,10 @@ namespace caba {
             "ICACHE_MISS_UPDT",
             "ICACHE_UNC_WAIT",
             "ICACHE_ERROR",
-            "ICACHE_CC_CLEANUP",
+            "ICACHE_CC_CHECK",
             "ICACHE_CC_INVAL",
+            "ICACHE_CC_UPDT",
+            "ICACHE_CC_CLEANUP", 
         };
         const char *cmd_fsm_state_str[] = {
             "CMD_IDLE",
@@ -203,6 +210,7 @@ namespace caba {
             r_tgt_addr("r_tgt_addr"),
             r_tgt_word("r_tgt_word"),
             r_tgt_update("r_tgt_update"),
+            r_data_update("r_data_update"),
             r_tgt_srcid("r_tgt_srcid"),
             r_tgt_pktid("r_tgt_pktid"),
             r_tgt_trdid("r_tgt_trdid"),
@@ -227,7 +235,6 @@ namespace caba {
                 dont_initialize();
                 sensitive << p_clk.neg();
 
-
                 typename iss_t::CacheInfo cache_info;
                 cache_info.has_mmu = false;
                 cache_info.icache_line_size = icache_words*sizeof(data_t);
@@ -237,6 +244,7 @@ namespace caba {
                 cache_info.dcache_assoc = dcache_ways;
                 cache_info.dcache_n_lines = dcache_sets;
                 m_iss.setCacheInfo(cache_info);
+
             } // end constructor
 
     ///////////////////////////////////
@@ -384,6 +392,7 @@ namespace caba {
         // - r_tgt_buf[nwords]
         // - r_tgt_val[nwords]
         // - r_tgt_update
+        // - r_data_update
         // - r_tgt_word
         // - r_tgt_addr
         // - r_tgt_srcid
@@ -475,8 +484,9 @@ namespace caba {
                                 std::cout << "the MULTI-UPDATE command length must be N+2 words" << std::endl;
                                 exit(0);
                             }
-                            r_tgt_update = true; 
-                            r_vci_tgt_fsm = TGT_UPDT_WORD;
+                            r_data_update  = true;
+                            r_tgt_update   = true; 
+                            r_vci_tgt_fsm  = TGT_UPDT_WORD;
                             m_cpt_cc_update++ ;
                         } 
                         else if (cell == 8)                  // invalidate instruction
@@ -490,6 +500,19 @@ namespace caba {
                             r_tgt_update = false; 
                             r_vci_tgt_fsm = TGT_REQ_ICACHE;
                             m_cpt_cc_inval++ ;
+                        } 
+                        else if (cell == 12)                  // update ins
+                        {                                
+                            if ( p_vci_tgt.eop.read() ) 
+                            {
+                                std::cout << "error in component VCI_CC_VCACHE_WRAPPER " << name() << std::endl;
+                                std::cout << "the MULTI-UPDATE command length must be N+2 words" << std::endl;
+                                exit(0);
+                            }
+                            r_data_update = false;
+                            r_tgt_update  = true; 
+                            r_vci_tgt_fsm = TGT_UPDT_WORD;
+                            m_cpt_cc_update++ ;
                         } 
 
                     } // end if address
@@ -518,13 +541,16 @@ namespace caba {
                     if ( word >= m_dcache_words ) 
                     {
                         std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
-                        std::cout << "the reveived MULTI-UPDATE command length is wrong" << std::endl;
+                        std::cout << "the received MULTI-UPDATE command length is wrong" << std::endl;
                         exit(0);
                     }
                     r_tgt_buf[word] = p_vci_tgt.wdata.read();
                     if(p_vci_tgt.be.read())    r_tgt_val[word] = true;
                     r_tgt_word = word + 1;
-                    if (p_vci_tgt.eop.read())  r_vci_tgt_fsm = TGT_REQ_DCACHE;
+                    if (p_vci_tgt.eop.read()) {
+                        if (r_data_update.read())  r_vci_tgt_fsm = TGT_REQ_DCACHE;
+                        else r_vci_tgt_fsm = TGT_REQ_ICACHE;
+                    }
                 }
                 break;
 
@@ -657,7 +683,7 @@ namespace caba {
                 {
                     if ( r_tgt_icache_req ) {   // external request
                         if ( ireq.valid ) m_cost_ins_miss_frz++;
-                        r_icache_fsm = ICACHE_CC_INVAL;
+                        r_icache_fsm = ICACHE_CC_CHECK;
                         r_icache_fsm_save = r_icache_fsm;
                         break;
                     } 
@@ -698,7 +724,7 @@ namespace caba {
                 {
                     m_cost_ins_miss_frz++;
                     if ( r_tgt_icache_req ) {   // external request
-                        r_icache_fsm = ICACHE_CC_INVAL;
+                        r_icache_fsm = ICACHE_CC_CHECK;
                         r_icache_fsm_save = r_icache_fsm;
                         break;
                     } 
@@ -725,7 +751,7 @@ namespace caba {
                 {
                     m_cost_ins_miss_frz++;
                     if ( r_tgt_icache_req ) {   // external request
-                        r_icache_fsm = ICACHE_CC_INVAL;
+                        r_icache_fsm = ICACHE_CC_CHECK;
                         r_icache_fsm_save = r_icache_fsm;
                         break;
                     } 
@@ -752,7 +778,7 @@ namespace caba {
             case ICACHE_MISS_UPDT: 
                 {
                     if ( r_tgt_icache_req ) {   // external request
-                        r_icache_fsm = ICACHE_CC_INVAL;
+                        r_icache_fsm = ICACHE_CC_CHECK;
                         r_icache_fsm_save = r_icache_fsm;
                         break;
                     } 
@@ -785,7 +811,7 @@ namespace caba {
                     // external cache invalidate request
                     if ( r_tgt_icache_req )     
                     {
-                        r_icache_fsm = ICACHE_CC_INVAL;
+                        r_icache_fsm = ICACHE_CC_CHECK;
                         r_icache_fsm_save = r_icache_fsm;
                         break;
                     }
@@ -797,23 +823,71 @@ namespace caba {
                     }
                     break;
                 }
-                /////////////////////
-            case ICACHE_CC_INVAL:  
-                {                       
-                    addr_40    ad  = r_tgt_addr;
-                    if ( ireq.valid ) m_cost_ins_miss_frz++;
-                    m_cpt_icache_dir_read += m_icache_ways;
-                    if( (( r_icache_fsm_save == ICACHE_MISS_WAIT ) || ( r_icache_fsm_save == ICACHE_MISS_UPDT )) && 
-                            ((r_icache_addr_save.read() & ~((m_icache_words<<2)-1)) == (ad & ~((m_icache_words<<2)-1))) ) {
+            case ICACHE_CC_CHECK:   // read directory in case of invalidate or update request
+                {
+
+                  //m_cpt_icache_dir_read += m_icache_ways;
+                  //m_cpt_icache_data_read += m_icache_ways;
+                    addr_40  ad           = r_tgt_addr;
+                    data_t  icache_rdata = 0;
+
+                    if(( ( r_icache_fsm_save == ICACHE_MISS_WAIT ) || ( r_icache_fsm_save == ICACHE_MISS_UPDT ) ) && 
+                            ( (r_icache_addr_save.read() & ~((m_icache_words<<2)-1)) == (ad & ~((m_icache_words<<2)-1)))) {
                         r_icache_inval_rsp = true;
-                        r_tgt_icache_rsp = false;
+                        r_tgt_icache_req = false;
+                        if(r_tgt_update){    // Also send a cleanup and answer
+                            r_tgt_icache_rsp     = true;
+                        } else {            // Also send a cleanup but don't answer
+                            r_tgt_icache_rsp     = false;
+                        }
+                        r_icache_fsm = r_icache_fsm_save;
                     } else {
-                        r_tgt_icache_rsp = r_icache.inval(ad);
+                        bool    icache_hit   = r_icache.read(ad, &icache_rdata);
+                        if ( icache_hit && r_tgt_update ) {
+                            r_icache_fsm = ICACHE_CC_UPDT;
+                            // complete the line buffer in case of update
+                            for ( size_t word = 0 ; word < m_icache_words ; word++ ) {
+                                if ( !r_tgt_val[word] ) {
+                                    addr_40  ad = addr_40 (r_tgt_addr.read() + word); //(addr_40)word;
+                                    r_icache.read(ad, &icache_rdata);
+                                    r_tgt_buf[word] = icache_rdata;
+                                }
+                            }
+                        } else if ( icache_hit && !r_tgt_update ) {
+                            r_icache_fsm = ICACHE_CC_INVAL;
+                        } else { // nop -- must not occur !!!
+                            r_tgt_icache_req = false;
+                            r_tgt_icache_rsp = false;
+                            r_icache_fsm = r_icache_fsm_save;
+                        }
                     }
+                    break;
+                }
+                ///////////////////
+            case ICACHE_CC_UPDT:    // update directory and data cache        
+                {
+                    m_cpt_icache_dir_write++;
+                    m_cpt_icache_data_write++;
+                    addr_40  ad     = r_tgt_addr;
+                    data_t* buf     = r_tgt_buf;
+                    for(size_t i=0; i<m_icache_words; i++){
+                        if(r_tgt_val[i]) r_icache.write( ad + i*4, buf[i]);
+                    }
+                    r_tgt_icache_req = false;
+                    r_tgt_icache_rsp = true;
+                    r_icache_fsm = r_icache_fsm_save;
+                    break;
+                }
+
+                /////////////////////
+            case ICACHE_CC_INVAL:   // invalidate a cache line
+                {
+                    addr_40  ad      = r_tgt_addr;
+                    r_tgt_icache_rsp = r_icache.inval(ad);
                     r_tgt_icache_req = false;
                     r_icache_fsm = r_icache_fsm_save;
                     break;
-                }    
+                }
 
         } // end switch r_icache_fsm
 
@@ -1186,8 +1260,9 @@ namespace caba {
                             }
                         } else if ( dcache_hit && !r_tgt_update ) {
                             r_dcache_fsm = DCACHE_CC_INVAL;
-                        } else {
-                            r_dcache_fsm = DCACHE_CC_NOP;
+                        } else { // nop
+                            r_tgt_dcache_req = false;
+                            r_dcache_fsm = r_dcache_fsm_save;
                         }
                     }
                     break;
@@ -1216,19 +1291,7 @@ namespace caba {
                     r_dcache_fsm = r_dcache_fsm_save;
                     break;
                 }
-                ///////////////////
-            case DCACHE_CC_NOP:     // no external hit
-                {
-                    r_tgt_dcache_req = false;
-                    if(r_tgt_update){
-                        r_tgt_dcache_rsp = true;
-                    } else {
-                        r_tgt_dcache_rsp = false;
-                    }
-                    r_dcache_fsm = r_dcache_fsm_save;
-                    break;
-                }    
-                ///////////////////
+             ///////////////////
             case DCACHE_CC_CLEANUP:   
                 {
                     // external cache invalidate request
