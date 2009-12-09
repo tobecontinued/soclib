@@ -855,9 +855,13 @@ namespace caba {
                             }
                         } else if ( icache_hit && !r_tgt_update ) {
                             r_icache_fsm = ICACHE_CC_INVAL;
-                        } else { // nop -- must not occur !!!
+                        } else { // instruction not found (can happen)
                             r_tgt_icache_req = false;
-                            r_tgt_icache_rsp = false;
+                            if(r_tgt_update){
+                                r_tgt_icache_rsp = true;
+                            } else {
+                                r_tgt_icache_rsp = false;
+                            }
                             r_icache_fsm = r_icache_fsm_save;
                         }
                     }
@@ -1260,9 +1264,13 @@ namespace caba {
                             }
                         } else if ( dcache_hit && !r_tgt_update ) {
                             r_dcache_fsm = DCACHE_CC_INVAL;
-                        } else { // nop must not occur !!!
+                        } else { // data not found (can happen) 
+                            if(r_tgt_update){
+                                r_tgt_dcache_rsp = true;
+                            } else {
+                                r_tgt_dcache_rsp = false;
+                            }
                             r_tgt_dcache_req = false;
-                            r_tgt_dcache_rsp = false;
                             r_dcache_fsm = r_dcache_fsm_save;
                         }
                     }
