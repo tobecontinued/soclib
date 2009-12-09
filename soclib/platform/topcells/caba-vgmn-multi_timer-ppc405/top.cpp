@@ -161,10 +161,10 @@ int _main(int argc, char *argv[])
 	vcimultiram0.p_vci(signal_vci_vcimultiram0);
 
 	vcitimer.p_vci(signal_vci_vcitimer);
-	vcitimer.p_irq[0](signal_ppc4050_it1); 
-	vcitimer.p_irq[1](signal_ppc4051_it1); 
-	vcitimer.p_irq[2](signal_ppc4052_it1); 
-	vcitimer.p_irq[3](signal_ppc4053_it1); 
+	vcitimer.p_irq[0](signal_ppc4050_it0); 
+	vcitimer.p_irq[1](signal_ppc4051_it0); 
+	vcitimer.p_irq[2](signal_ppc4052_it0); 
+	vcitimer.p_irq[3](signal_ppc4053_it0); 
   
 	vcimultiram1.p_vci(signal_vci_vcimultiram1);
 
