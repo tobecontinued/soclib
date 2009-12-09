@@ -196,7 +196,7 @@ tmpl (void)::init
   p_vci(*this);                     
 
   //register callback function IRQ TARGET SOCKET
-  for(int i=0; i<iss_t::n_irq; i++){
+  for(unsigned int i=0; i<iss_t::n_irq; i++){
     std::ostringstream irq_name;
     irq_name << "irq" << i;
     p_irq.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
@@ -206,8 +206,8 @@ tmpl (void)::init
 
   m_error       = false;
   
-  m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
-  m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
+  //m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
+  //m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
   m_iss.reset();
 
   // write buffer & caches
@@ -298,7 +298,6 @@ tmpl (void)::execLoop ()
     //if ( del )
     //nc += m_iss.executeNCycles(del, meanwhile_irsp, meanwhile_drsp, m_irq);
     nc += m_iss.executeNCycles(1, irsp, drsp, m_irq);
-    //printf("nc = %d\n", nc);
 
     m_pdes_local_time->add(nc * UNIT_TIME);
     
@@ -538,8 +537,10 @@ tmpl (uint32_t)::ram_uncacheable_write
   sc_core::sc_time before = m_time;
 
   //send a write message
+  //std::cout << name() << " send time: " << m_pdes_local_time->get().value() << std::endl;
   p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
   wait(m_rsp_received);
+  //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
   m_pdes_local_time->reset_sync();
 
   //update response
@@ -720,11 +721,13 @@ tmpl (void)::send_null_message()
   std::cout << name() << " send NULL MESSAGE time = " << m_null_time.value() << std::endl;
 #endif
 
+  //std::cout << name() << " send NULL MESSAGE time = " << m_null_time.value() << std::endl;
   //send a null message
   p_vci->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
   //deschedule the initiator thread
   //wait(sc_core::SC_ZERO_TIME);
   wait(m_rsp_received);
+  //std::cout << name() << " receive time = " << m_pdes_local_time->get().value() << std::endl;
   m_pdes_local_time->reset_sync();
 }
 
