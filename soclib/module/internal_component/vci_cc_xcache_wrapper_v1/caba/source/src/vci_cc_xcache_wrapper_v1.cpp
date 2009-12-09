@@ -826,8 +826,8 @@ namespace caba {
             case ICACHE_CC_CHECK:   // read directory in case of invalidate or update request
                 {
 
-                  //m_cpt_icache_dir_read += m_icache_ways;
-                  //m_cpt_icache_data_read += m_icache_ways;
+                    m_cpt_icache_dir_read += m_icache_ways;
+                    m_cpt_icache_data_read += m_icache_ways;
                     addr_40  ad           = r_tgt_addr;
                     data_t  icache_rdata = 0;
 
@@ -1260,8 +1260,9 @@ namespace caba {
                             }
                         } else if ( dcache_hit && !r_tgt_update ) {
                             r_dcache_fsm = DCACHE_CC_INVAL;
-                        } else { // nop
+                        } else { // nop must not occur !!!
                             r_tgt_dcache_req = false;
+                            r_tgt_dcache_rsp = false;
                             r_dcache_fsm = r_dcache_fsm_save;
                         }
                     }
