@@ -34,10 +34,8 @@
 #include "alloc_elems.h"
 
 #ifdef SOCLIB_MODULE_DEBUG
-#define DEBUG_BEGIN do { if (name == "ringc") { do{} while(0)
-#define DEBUG_END } } while(0)
-// #define DEBUG_BEGIN do { do{} while(0)
-// #define DEBUG_END } while(0)
+#define DEBUG_BEGIN do { do{} while(0)
+#define DEBUG_END } while(0)
 #else
 #define DEBUG_BEGIN do { if (0) { do{} while(0)
 #define DEBUG_END } } while(0)
