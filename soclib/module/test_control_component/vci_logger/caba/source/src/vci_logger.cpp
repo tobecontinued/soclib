@@ -174,7 +174,7 @@ tmpl(/**/)::VciLogger(
 	sc_core::sc_module_name insname,
 	const soclib::common::MappingTable &mt )
 	: BaseModule(insname),
-      m_pending_commands(new VciLoggerElem<vci_param>[vci_param::T]),
+      m_pending_commands(new VciLoggerElem<vci_param>[1<<vci_param::T]),
       p_resetn("resetn"),
       p_clk("clk"),
       p_vci("vci")
