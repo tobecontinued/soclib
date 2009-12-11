@@ -1550,7 +1550,7 @@ tmpl(void)::transition()
                         {
                             r_dcache_fsm = DCACHE_WRITE_UPDT;
                         } 
-                        else if ( !dcache_pte_info.d && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
+                        else if ((r_mmu_mode.read() & DATA_TLB_MASK) && !dcache_pte_info.d)   // dirty bit update required
                         {
                             if (dcache_tlb.getpagesize(dcache_tlb_way, dcache_tlb_set)) 
                             {
