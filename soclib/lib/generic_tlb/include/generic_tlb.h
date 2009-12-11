@@ -382,6 +382,8 @@ public:
         {
             for(size_t set = 0; set < m_nsets; set++) 
             {
+		if (!valid (way,set))
+			continue;
                 if(global(way,set)) 
                 {
                     if(all) valid(way,set) = false;  // forced reset, the locked page invalid too
