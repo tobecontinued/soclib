@@ -53,9 +53,6 @@ namespace soclib { namespace caba {
       std::cout << std::endl << std::endl << "*************** AvalonSwitchFabric constructeur " << std::endl;
 #endif
 
-      // registres
-      SOCLIB_REG_RENAME(r_fsm_state);	
-
       //=============   ports  ==============================================
       p_avalon_master  = new AvalonSwitch_Master[config.n_master];
       p_avalon_slave   = new AvalonSwitch_Slave[config.n_slave];	
