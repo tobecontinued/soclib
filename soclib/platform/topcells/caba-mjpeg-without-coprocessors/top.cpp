@@ -16,19 +16,17 @@
 // 
 #include "base_module.h"
 #include "loader.h"
-#include "iss.h"
-#include "iss_simhelper.h"
-#include "iss_wrapper.h"
+#include "iss2_simhelper.h"
+#include "mips32.h"
 #include "mapping_table.h"
-#include "mips.h"
+#include "mips32.h"
 #include "tty.h"
 #include "vci_multi_tty.h"
 #include "vci_param.h"
 #include "vci_ram.h"
 #include "vci_signals.h"
 #include "vci_vgmn.h"
-#include "vci_xcache.h"
-#include "xcache_signals.h"
+#include "vci_xcache_wrapper.h"
 #include <sys/timeb.h>
 // Component getIncludes
 // Configurator getIncludes
@@ -166,17 +164,13 @@ int _main(int argc, char **argv)
   ////////////////////////////////////////////////
   // XCACHE + MIPS
   ////////////////////////////////////////////////
-  soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> > *mips[n_initiators];
-  soclib::caba::VciXCache<vci_param>  *xcache[n_initiators];
+  soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > *xcache[n_initiators];
   
   for (unsigned int i=0 ; i < n_initiators ; i++) {
-    std::ostringstream mips_name;
-    mips_name << "mips" << i;
-    mips[i] = new soclib::caba::IssWrapper<soclib::common::IssSimhelper<soclib::common::MipsElIss> >((mips_name.str()).c_str(), i);
-    
+
     std::ostringstream xcache_name;
     xcache_name << "xcache" << i;
-    xcache[i] = new soclib::caba::VciXCache<vci_param>((xcache_name.str()).c_str(), mapping_table, soclib::common::IntTab(i), icache_size, 8, dcache_size, 8, simulation_time);
+    xcache[i] = new soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >((xcache_name.str()).c_str(), i, mapping_table, soclib::common::IntTab(i), 1, icache_size, 8, 1, dcache_size, 8);
   }
   
   ////////////////////////////////////////////////
@@ -198,20 +192,10 @@ int _main(int argc, char **argv)
   sc_core::sc_clock clock("clock");
   sc_core::sc_signal<bool> resetn("resetn");
   
-  soclib::caba::DCacheSignals *mips_p_dcache_to_xcache_p_dcache[n_initiators];
-  soclib::caba::ICacheSignals *mips_p_icache_to_xcache_p_icache[n_initiators];
   soclib::caba::VciSignals<vci_param> *vgmn0_p_to_initiator_to_xcache_p_vci[n_initiators];
   sc_core::sc_signal<bool> *irq[n_initiators][6];
 
   for (unsigned int i=0 ; i < n_initiators ; i++) {
-    
-    std::ostringstream mips_dcache;
-    mips_dcache << "mips" << i << "_p_dcache_to_xcache" << i << "_p_dcache";
-    mips_p_dcache_to_xcache_p_dcache[i] = new soclib::caba::DCacheSignals((mips_dcache.str()).c_str());
-    
-    std::ostringstream mips_icache;
-    mips_icache << "mips" << i << "_p_icache_to_xcache" << i << "_p_icache";
-    mips_p_icache_to_xcache_p_icache[i] = new soclib::caba::ICacheSignals((mips_icache.str()).c_str());
     
     std::ostringstream vgmn;
     vgmn << "vgmn0_p_to_initiator_" << i << "_to_xcache" << i << "_p_vci";
@@ -241,24 +225,12 @@ int _main(int argc, char **argv)
   vgmn0.p_to_target[2](tty0_p_vci_to_vgmn0_p_to_target_2_);
   
   for (unsigned int i=0 ; i < n_initiators ; i++) {
-    // Component configure
-    mips[i]->setCacheInfo(xcache[i]->getCacheInfo());
-    
-    // Component connect
-    mips[i]->p_clk(clock);
-    mips[i]->p_resetn(resetn);
-    mips[i]->p_dcache(*mips_p_dcache_to_xcache_p_dcache[i]);
-    mips[i]->p_icache(*mips_p_icache_to_xcache_p_icache[i]);
-    
-    for (unsigned int j=0 ; j < 6; j++) {
-      mips[i]->p_irq[j](*irq[i][j]);
-    }
-      
     xcache[i]->p_clk(clock);
     xcache[i]->p_resetn(resetn);
-    xcache[i]->p_dcache(*mips_p_dcache_to_xcache_p_dcache[i]);
-    xcache[i]->p_icache(*mips_p_icache_to_xcache_p_icache[i]);
     xcache[i]->p_vci(*vgmn0_p_to_initiator_to_xcache_p_vci[i]);
+    for (unsigned int j=0 ; j < 6; j++) {
+      xcache[i]->p_irq[j](*irq[i][j]);
+    }
   }
 
   ram0.p_clk(clock);
