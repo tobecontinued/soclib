@@ -59,19 +59,16 @@ struct LinkedAccessEntry
 	}
     inline void set( addr_t addr )
     {
+        /* to avoid livelock, force the atomic access to fail (pseudo-)randomly */
+        bool fail = (m_lfsr % (64) == 0);
+        m_lfsr = (m_lfsr >> 1) ^ ((-(m_lfsr & 1)) & 0xd0000001);
+
         address = addr;
-        atomic = true;
+        atomic = !fail;
     }
     inline bool is_atomic( addr_t addr )
     {
-        /* to avoid livelock, force the atomic access to fail (pseudo-)randomly */
-        bool fail = (m_lfsr % (32) == 0);
-        m_lfsr = (m_lfsr >> 1) ^ ((-(m_lfsr & 1)) & 0xd0000001);
-
-        if (fail)
-            return false;
-        else
-            return addr == addr && atomic;
+        return address == addr && atomic;
     }
 };
 
