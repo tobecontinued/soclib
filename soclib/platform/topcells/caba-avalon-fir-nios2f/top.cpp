@@ -42,6 +42,7 @@
 
 #include "mapping_table.h"
 #include "nios2_fast.h"
+#include "ississ2.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
