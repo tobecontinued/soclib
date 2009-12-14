@@ -3750,6 +3750,7 @@ namespace soclib { namespace caba {
         if ( ( (r_write_fsm.read() != WRITE_DIR_LOCK)     &&
               (r_write_fsm.read() != WRITE_TRT_LOCK)     &&
               (r_write_fsm.read() != WRITE_DIR_HIT_READ) &&
+              (r_write_fsm.read() != WRITE_DIR_HIT) &&
               (r_write_fsm.read() != WRITE_TRT_WRITE_LOCK) &&
               (r_write_fsm.read() != WRITE_INVAL_LOCK) &&
               (r_write_fsm.read() != WRITE_UPT_LOCK) &&
