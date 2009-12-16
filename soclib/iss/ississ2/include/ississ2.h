@@ -73,9 +73,11 @@ public:
     void debugSetRegisterValue(unsigned int reg, debug_register_t value);
     size_t debugGetRegisterSize(unsigned int reg) const;
 
+    void dump(void) const;
+
 protected:
     
-    virtual bool debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca );
+    virtual bool debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca = EXCA_OTHER  );
 };
 
 }}
