@@ -735,7 +735,7 @@ tmpl(void)::transition()
             }
             irsp.valid = icache_hit_c;
 	    if (irsp.valid)
-	            assert((r_icache_vaddr_req == ireq.addr) &&
+	            assert((r_icache_vaddr_req.read() == ireq.addr) &&
 		        "vaddress should not be modified while ICACHE_BIS");
             irsp.error = false;
             irsp.instruction = icache_ins;
@@ -756,7 +756,7 @@ tmpl(void)::transition()
 
         if ( !r_itlb_read_dcache_req ) // TLB miss read response
         {
-	    if (r_icache_vaddr_req != ireq.addr || !ireq.valid) {
+	    if (r_icache_vaddr_req.read() != ireq.addr || !ireq.valid) {
 		/* request modified, drop response and restart */
 		r_icache_ptba_ok = false;
 		r_icache_fsm = ICACHE_IDLE;
@@ -837,7 +837,7 @@ tmpl(void)::transition()
             if ( r_dcache_rsp_itlb_error ) 
             {
                 r_icache_error_type = MMU_READ_PT1_ILLEGAL_ACCESS;  
-                r_icache_bad_vaddr = r_icache_vaddr_req;
+                r_icache_bad_vaddr = r_icache_vaddr_req.read();
                 r_icache_fsm = ICACHE_ERROR;
             } 
             else  
@@ -852,7 +852,7 @@ tmpl(void)::transition()
     {
         if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
 
-        icache_tlb.update(r_icache_pte_update,r_icache_vaddr_req);
+        icache_tlb.update(r_icache_pte_update,r_icache_vaddr_req.read());
         r_icache_fsm = ICACHE_IDLE;
         break;
     }
@@ -863,7 +863,7 @@ tmpl(void)::transition()
 
         if ( !r_itlb_read_dcache_req )
         { 
-	    if (r_icache_vaddr_req != ireq.addr || !ireq.valid) {
+	    if (r_icache_vaddr_req.read() != ireq.addr || !ireq.valid) {
 		/* request modified, drop response and restart */
 		r_icache_ptba_ok = false;
 		r_icache_fsm = ICACHE_IDLE;
@@ -874,7 +874,7 @@ tmpl(void)::transition()
 	            if ( !(r_dcache_rsp_itlb_miss >> PTE_V_SHIFT) ) // unmapped
 	            {
                     r_icache_error_type = MMU_READ_PT2_UNMAPPED;  
-                    r_icache_bad_vaddr  = ireq.addr;
+                    r_icache_bad_vaddr  = r_icache_vaddr_req.read();
                     r_icache_fsm = ICACHE_ERROR;
 	            }
 	            else
@@ -930,7 +930,7 @@ tmpl(void)::transition()
             if ( r_dcache_rsp_itlb_error )             
             {
                 r_icache_error_type = MMU_READ_PT2_ILLEGAL_ACCESS;  
-                r_icache_bad_vaddr = r_icache_vaddr_req;
+                r_icache_bad_vaddr = r_icache_vaddr_req.read();
                 r_icache_fsm = ICACHE_ERROR;
             } 
             else  
@@ -945,7 +945,7 @@ tmpl(void)::transition()
     {
         if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
 
-        icache_tlb.update(r_icache_pte_update,r_dcache_rsp_itlb_ppn,r_icache_vaddr_req); 
+        icache_tlb.update(r_icache_pte_update,r_dcache_rsp_itlb_ppn,r_icache_vaddr_req.read()); 
         r_icache_fsm = ICACHE_IDLE;  
         break;
     }
@@ -1017,7 +1017,7 @@ tmpl(void)::transition()
             if ( r_vci_rsp_ins_error ) 
             {
                 r_icache_error_type = MMU_READ_DATA_ILLEGAL_ACCESS; 
-                r_icache_bad_vaddr = r_icache_vaddr_req;
+                r_icache_bad_vaddr = r_icache_vaddr_req.read();
                 r_icache_fsm = ICACHE_ERROR;
             } 
             else 
@@ -1036,7 +1036,7 @@ tmpl(void)::transition()
             if ( r_vci_rsp_ins_error ) 
             {
                 r_icache_error_type = MMU_READ_DATA_ILLEGAL_ACCESS;    
-                r_icache_bad_vaddr = r_icache_vaddr_req;
+                r_icache_bad_vaddr = r_icache_vaddr_req.read();
                 r_icache_fsm = ICACHE_ERROR;
             } 
             else 
