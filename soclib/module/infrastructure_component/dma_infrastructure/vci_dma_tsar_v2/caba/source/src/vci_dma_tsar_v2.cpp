@@ -100,7 +100,7 @@ tmpl(void)::read_done( req_t *req )
             m_partial = true;
         }
 		VciInitSimpleWriteReq<vci_param> *new_req =
-			new VciInitSimpleWriteReq<vci_param>( m_dst+m_offset, &m_data[(m_src+m_offset)&0x3], burst );
+			new VciInitSimpleWriteReq<vci_param>( m_dst+m_offset, &m_data[0], burst );
 		new_req->setDone( this, ON_T(write_finish) );
 		m_vci_init_fsm.doReq( new_req );
 	} else {
@@ -122,7 +122,7 @@ tmpl(void)::write_finish( req_t *req )
 	if ( !req->failed() && !m_must_finish ){
         if(m_partial){
             VciInitSimpleWriteReq<vci_param> *new_req =
-                new VciInitSimpleWriteReq<vci_param>( m_dst+m_offset+offset, &m_data[offset]+ ((m_src+m_offset)&0x3), burst );
+                new VciInitSimpleWriteReq<vci_param>( m_dst+m_offset+offset, &m_data[offset], burst );
             new_req->setDone( this, ON_T(write_finish) );
             m_partial = false;
             m_vci_init_fsm.doReq( new_req );
@@ -147,24 +147,20 @@ tmpl(void)::next_req()
 
 	ssize_t burst = m_data.size();
     m_partial = false;
-	if ( remaining < burst ){
-		burst = remaining;
-        m_partial = true;
-    }
     if ( ( m_src+m_offset ) & ( m_data.size()-1 ) ){
         burst = m_data.size() - ( (m_src+m_offset) & (m_data.size()-1) );
         m_partial = true;
     }
+	if ( remaining < burst ){
+		burst = remaining;
+        m_partial = true;
+    }
 
     m_offset_buffer = burst;
-    ssize_t read_burst = burst+((m_src+m_offset)&0x3);
-    if(read_burst & 0x3) {
-        read_burst = (burst & ~0x3)+0x4;
-    }
 
 	VciInitSimpleReadReq<vci_param> *req =
 		new VciInitSimpleReadReq<vci_param>(
-			&m_data[0], ((m_src+m_offset) & ~0x3), read_burst );
+			&m_data[0], (m_src+m_offset), burst );
 	req->setDone( this, ON_T(read_done) );
 	m_vci_init_fsm.doReq( req );
 }
