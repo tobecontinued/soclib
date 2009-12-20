@@ -41,6 +41,10 @@ bool Iss2Simhelper<iss_t>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2
 
     case Iss2::EXCL_TRAP:
     case Iss2::EXCL_FAULT:
+        // Sparc window overflow / underflow traps should never cause a simulation stop,
+        // as this is a perfectly normal condition...
+        if (ca==Iss2::EXCA_REGWINDOW)
+            return false;
         sc_core::sc_stop();
         return true;
     }
