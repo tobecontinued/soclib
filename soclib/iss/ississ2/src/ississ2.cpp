@@ -237,7 +237,6 @@ tmpl(size_t)::debugGetRegisterSize(unsigned int reg) const
 
 tmpl(void)::dump() const
 {
-    m_iss.dump();
 }
 
 tmpl(bool)::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca )
