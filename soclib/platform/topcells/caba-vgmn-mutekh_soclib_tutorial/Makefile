@@ -10,12 +10,13 @@ SIMULATOR_BINARY=system.x
 ARCH=mips32el
 export SOCLIB
 
-all: $(KERNEL) $(SIMULATOR_BINARY)
+all: $(KERNEL) $(SIMULATOR_BINARY) block0.iso
 
 help:
 	@echo "You may either build:"
 	@echo "  $(SIMULATOR_BINARY): only the simulator"
 	@echo "  $(KERNEL): only the mutekh kernel"
+	@echo "  block0.iso: only the iso file from iso_contents"
 
 $(SIMULATOR_BINARY): cpu_type.h
 
@@ -43,3 +44,6 @@ mutekh:
 .PHONY: $(KERNEL) cpu_type.h
 
 include $(SOCLIB)/soclib/platform/topcells/all.mk
+
+block0.iso: iso_contents
+	mkisofs -f -R -V volname -o $@ $<

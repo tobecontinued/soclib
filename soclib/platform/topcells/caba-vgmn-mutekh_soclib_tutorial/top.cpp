@@ -1,8 +1,10 @@
 
 #include "cpu_type.h"
 
-//#define USE_GDB_SERVER
+#define USE_GDB_SERVER
 //#define USE_MEMCHECKER
+
+//#define USE_LOG_CONSOLE
 
 #include <systemc>
 #include <sys/time.h>
@@ -17,10 +19,11 @@
 #include "vci_rom.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
+#include "vci_log_console.h"
 #include "vci_vgmn.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_xicu.h"
-#include "vci_dma.h"
+#include "vci_block_device.h"
 
 
 
@@ -94,7 +97,7 @@ int _main(int argc, char *argv[])
 	maptabp.add(Segment("tty",  0xd0200000, 0x00000040, IntTab(1), false));
 	maptabp.add(Segment("mem",  0x7F400000, 0x00100000, IntTab(2), false ));
 	maptabp.add(Segment("xicu", 0xd2200000, 0x00001000, IntTab(3), false));
-	maptabp.add(Segment("dma",  0xd1200000, 0x00000020, IntTab(4), false));
+	maptabp.add(Segment("bdev0",0xd1200000, 0x00000020, IntTab(4), false));
 
 #if defined(USE_GDB_SERVER) && defined(USE_MEMCHECKER)
     soclib::common::GdbServer<
@@ -103,7 +106,7 @@ int _main(int argc, char *argv[])
 #endif
 #if defined(USE_MEMCHECKER)
     soclib::common::IssMemchecker<
-        iss_t>::init(maptabp, loader, "tty,xicu,dma");
+        iss_t>::init(maptabp, loader, "tty,xicu,bdev0");
 #elif defined(USE_GDB_SERVER)
     soclib::common::GdbServer<iss_t>::set_loader(loader);
 #endif
@@ -120,8 +123,8 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
 	soclib::caba::VciSignals<vci_param> signal_vci_xicu("signal_vci_xicu");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_dmai("signal_vci_dmai");
-	soclib::caba::VciSignals<vci_param> signal_vci_dmat("signal_vci_dmat");
+	soclib::caba::VciSignals<vci_param> signal_vci_bdi[1];
+	soclib::caba::VciSignals<vci_param> signal_vci_bdt[1];
 
 	soclib::caba::VciSignals<vci_param> signal_vci_ram("vci_tgt_ram");
 	soclib::caba::VciSignals<vci_param> signal_vci_rom("vci_tgt_rom");
@@ -138,10 +141,14 @@ int _main(int argc, char *argv[])
     }
 
 	soclib::caba::VciRom<vci_param> rom("rom", IntTab(0), maptabp, loader);
+#ifdef USE_LOG_CONSOLE
+	soclib::caba::VciLogConsole<vci_param> vcitty("vcitty",	IntTab(1), maptabp);
+#else
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptabp, "vcitty0", NULL);
+#endif
 	soclib::caba::VciRam<vci_param> ram("ram", IntTab(2), maptabp, loader);
-	soclib::caba::VciXicu<vci_param> vciicu("vciicu", maptabp,IntTab(3), ncpu, xicu_n_irq, ncpu, ncpu);
-	soclib::caba::VciDma<vci_param> vcidma("vcidma", maptabp, IntTab(ncpu), IntTab(4), (1<<(vci_param::K-1)));
+	soclib::caba::VciXicu<vci_param> vciicu("vciicu", maptabp,IntTab(3), 1, xicu_n_irq, ncpu, ncpu);
+	soclib::caba::VciBlockDevice<vci_param> vcibd0("vcibd0", maptabp, IntTab(ncpu), IntTab(4), "block0.iso", 2048);
 	
 	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, ncpu+1, 5, 2, 8);
 
@@ -171,29 +178,31 @@ int _main(int argc, char *argv[])
     for ( size_t i = 0; i<ncpu; ++i )
         vciicu.p_irq[i](signal_proc_it[i][0]);
 
-	vcidma.p_clk(signal_clk);
-	vcidma.p_resetn(signal_resetn);
-	vcidma.p_irq(signal_xicu_irq[1]); 
-	vcidma.p_vci_target(signal_vci_dmat);
-	vcidma.p_vci_initiator(signal_vci_dmai);
+	vcibd0.p_clk(signal_clk);
+	vcibd0.p_resetn(signal_resetn);
+	vcibd0.p_irq(signal_xicu_irq[1]); 
+	vcibd0.p_vci_target(signal_vci_bdt[0]);
+	vcibd0.p_vci_initiator(signal_vci_bdi[0]);
 
 	vcitty.p_clk(signal_clk);
 	vcitty.p_resetn(signal_resetn);
 	vcitty.p_vci(signal_vci_tty);
+#ifndef USE_LOG_CONSOLE
 	vcitty.p_irq[0](signal_xicu_irq[0]); 
+#endif
 
 	vgmn.p_clk(signal_clk);
 	vgmn.p_resetn(signal_resetn);
 
     for ( size_t i = 0; i<ncpu; ++i )
         vgmn.p_to_initiator[i](signal_vci_proc[i]);
-	vgmn.p_to_initiator[ncpu](signal_vci_dmai);
+	vgmn.p_to_initiator[ncpu](signal_vci_bdi[0]);
 
 	vgmn.p_to_target[0](signal_vci_rom);
 	vgmn.p_to_target[1](signal_vci_tty);
 	vgmn.p_to_target[2](signal_vci_ram);
 	vgmn.p_to_target[3](signal_vci_xicu);
-	vgmn.p_to_target[4](signal_vci_dmat);
+	vgmn.p_to_target[4](signal_vci_bdt[0]);
 
 	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
