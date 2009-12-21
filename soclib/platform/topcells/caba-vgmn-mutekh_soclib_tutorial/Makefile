@@ -21,7 +21,7 @@ help:
 $(SIMULATOR_BINARY): cpu_type.h
 
 cpu_type.h:
-	echo "#define CPU_$(CPU)" > $@
+	grep -q $(CPU) $@ || ( echo "#define CPU_$(CPU)" > $@ )
 
 $(KERNEL): mutekh
 	$(MAKE) \

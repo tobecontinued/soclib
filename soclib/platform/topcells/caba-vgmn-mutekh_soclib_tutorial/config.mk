@@ -17,7 +17,7 @@ APP=$(MUTEKH_DIR)/examples/hello
 CONFIG=config
 
 # Then you may choose to build for mips, arm or ppc.
-CPU=ppc
+CPU=arm
 
 # We'll assume your configuration file is conditional like explained
 # in https://www.mutekh.org/trac/mutekh/wiki/BuildSystem#Advancedsyntax
