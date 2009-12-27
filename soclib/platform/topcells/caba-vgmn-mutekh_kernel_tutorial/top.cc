@@ -10,7 +10,7 @@
 // see https://www.soclib.fr/trac/dev/wiki/Tools/GdbServer
 
 #define CONFIG_GDB_SERVER
-#define CONFIG_SOCLIB_MEMCHECK
+//#define CONFIG_SOCLIB_MEMCHECK
 
 # include "iss_memchecker.h"
 # include "gdbserver.h"
@@ -147,23 +147,20 @@ struct CpuEntry * newCpuEntry(const std::string &type, int id, common::Loader *l
       } else if (type == "mips32eb") {
 	newCpuEntry_<common::Mips32EbIss>(e);
       }
-      break;
+      return e;
 
     case 'a':
       if (type == "arm")
 	newCpuEntry_<common::ArmIss>(e);
-      break;
+      return e;
 
     case 'p':
       if (type == "ppc405")
 	newCpuEntry_<common::Ppc405Iss>(e);
-      break;
+      return e;
     }
 
-  if (!e->cpu)
-    throw std::runtime_error(type + ": wrong processor type");
-
-  return e;
+  throw std::runtime_error(type + ": wrong processor type");
 }
 
 //**********************************************************************
@@ -187,7 +184,7 @@ int _main(int argc, char **argv)
   maptab.add(Segment("data",      0x71600000, 0x00100000, IntTab(2), false));
 
   maptab.add(Segment("tty"  ,     0x90600000, 0x00000010, IntTab(3), false));
-  maptab.add(Segment("xicu",      0x20600000, 0x00001000, IntTab(5), false));
+  maptab.add(Segment("xicu",      0x20600000, 0x00001000, IntTab(4), false));
 
   if ( (argc < 2) || ((argc % 2) == 0) )
     {
@@ -244,9 +241,9 @@ int _main(int argc, char **argv)
   caba::VciRam<vci_param> vcimultiram           ("vcimultiram", IntTab(2), maptab);
 
   caba::VciMultiTty<vci_param> vcitty           ("vcitty",       IntTab(3), maptab, "vcitty", NULL);
-  caba::VciXicu<vci_param> vcixicu                ("vcixicu",       maptab, IntTab(5), cpus.size(), xicu_n_irq, cpus.size(), cpus.size());
+  caba::VciXicu<vci_param> vcixicu                ("vcixicu",       maptab, IntTab(4), cpus.size(), xicu_n_irq, cpus.size(), cpus.size());
 
-  caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size(), 6, 2, 8);
+  caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size(), 5, 2, 8);
 
   // Signals
 
@@ -301,7 +298,7 @@ int _main(int argc, char **argv)
   vgmn.p_to_target[1](signal_vci_vcirom);
   vgmn.p_to_target[2](signal_vci_vcimultiram);
   vgmn.p_to_target[3](signal_vci_tty);
-  vgmn.p_to_target[5](signal_vci_xicu);
+  vgmn.p_to_target[4](signal_vci_xicu);
 
   sc_core::sc_start(sc_core::sc_time(0, sc_core::SC_NS));
   signal_resetn = false;
