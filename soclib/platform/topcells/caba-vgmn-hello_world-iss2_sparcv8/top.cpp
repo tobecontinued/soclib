@@ -106,7 +106,7 @@ int _main(int argc, char *argv[])
         vcitty.p_clk(signal_clk);
         vcitty.p_resetn(signal_resetn);
         vcitty.p_vci(signal_vci_tty);
-        vcitty.p_irq[0](signal_sparc0_it0);
+        vcitty.p_irq[0](signal_tty_irq0);
 
 	vcisimhelper.p_clk(signal_clk);
 	vcisimhelper.p_resetn(signal_resetn);
@@ -128,6 +128,10 @@ int _main(int argc, char *argv[])
 #ifdef SOCVIEW
         debug();
 #else
+        sc_start(10, SC_US);
+        signal_sparc0_it0 = 1;
+        sc_start(100, SC_NS);
+        signal_sparc0_it0 = 0;
         sc_start();
 #endif
         return EXIT_SUCCESS;
