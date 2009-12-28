@@ -293,12 +293,13 @@ recursive_trap:
         mov     %tbr, %o0               ! Prepare Interrupt number
         srl     %o0, 4, %o0
         and     %o0, 0xff, %o0
+        add     %o0, -8, %o0        
 
         or      %l0, 0xf20, %l4
         mov     %l4, %psr               ! Turn on traps, disable interrupts
 
         call    interrupt_hw_handler
-        add     %sp, 24 * 4, %o0        ! Pass address of registers
+        nop
 
 /* Reload all of the registers that aren't on the stack */
 
