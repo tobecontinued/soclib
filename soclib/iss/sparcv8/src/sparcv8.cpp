@@ -231,10 +231,12 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
     if (r_psr.et && ((irq_bit_field == 0xf) || (irq_bit_field > r_psr.pil))) {
       m_exception = true;
       m_exception_cause = TP_INTERRUPT_LEVEL(irq_bit_field);
-      goto handle_except;
 #ifdef SOCLIB_MODULE_DEBUG
       std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;
+#endif
+      goto handle_except;
     } else {
+#ifdef SOCLIB_MODULE_DEBUG
       if (irq_bit_field)
         std::cout << name() << " Ignoring irqs " << irq_bit_field << std::endl;
 #endif
