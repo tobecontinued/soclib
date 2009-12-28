@@ -54,7 +54,7 @@ irq_set_pil(unsigned char level)
 		"sll %1, 8, %1 \n\t"
 		"or %0, %1, %0 \n\t"
 		"wr %0, 0, %%psr \n\t"
-		: "=r" (tmp)
+		: "=r&" (tmp)
 		: "r" (level), "r" (~0xf00)
 		);
 }

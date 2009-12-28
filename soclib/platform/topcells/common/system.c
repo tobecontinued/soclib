@@ -197,6 +197,8 @@ void disable_hw_irq(unsigned int n)
 # else
 	set_cp0(12, status);
 # endif
+#elif __sparc__
+       irq_disable();
 #else
 # warning Please implement IRQ disabling for this arch
 #endif
