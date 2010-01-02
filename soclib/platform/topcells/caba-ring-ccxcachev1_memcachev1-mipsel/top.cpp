@@ -10,16 +10,17 @@
 #include "iss2_simhelper.h"
 #include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
+//#include "vci_vgsb.h"
+//#include "vci_vgmn.h"
 #include "vci_simple_ring_network.h"
 #include "vci_mem_cache_v1.h"
-#include "vci_cc_xcache_wrapper_v1.h"
+#include "vci_cc_xcache_wrapper_multi.h"
 #include "vci_logger.h"
 
 #ifdef USE_GDB_SERVER
 #include "iss/gdbserver.h"
 #endif
 
-//#define  VCI_LOGGER
 #include "segmentation.h"
 
 int _main(int argc, char *argv[])
@@ -30,7 +31,7 @@ int _main(int argc, char *argv[])
 	using soclib::common::Segment;
 
 	// Define VCI parameters
-	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,4,4,1> vci_param;
+	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,6,6,1> vci_param;
 	typedef soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> proc_iss;
 	// Mapping table
 
@@ -101,24 +102,20 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> signal_proc3_it4("proc3_it4"); 
 	sc_signal<bool> signal_proc3_it5("proc3_it5");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_rw_proc0("vci_ini_rw_proc0");
+	soclib::caba::VciSignals<vci_param> signal_vci_ini_d_proc0("vci_ini_d_proc0");
 	soclib::caba::VciSignals<vci_param> signal_vci_ini_c_proc0("vci_ini_c_proc0");
-
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc0("vci_tgt_proc0");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_rw_proc1("vci_ini_rw_proc1");
+	soclib::caba::VciSignals<vci_param> signal_vci_ini_d_proc1("vci_ini_d_proc1");
 	soclib::caba::VciSignals<vci_param> signal_vci_ini_c_proc1("vci_ini_c_proc1");
-
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc1("vci_tgt_proc1");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_rw_proc2("vci_ini_rw_proc2");
+	soclib::caba::VciSignals<vci_param> signal_vci_ini_d_proc2("vci_ini_d_proc2");
 	soclib::caba::VciSignals<vci_param> signal_vci_ini_c_proc2("vci_ini_c_proc2");
-
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc2("vci_tgt_proc2");
 
-	soclib::caba::VciSignals<vci_param> signal_vci_ini_rw_proc3("vci_ini_rw_proc3");
+	soclib::caba::VciSignals<vci_param> signal_vci_ini_d_proc3("vci_ini_d_proc3");
 	soclib::caba::VciSignals<vci_param> signal_vci_ini_c_proc3("vci_ini_c_proc3");
-
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_proc3("vci_tgt_proc3");
 
 	soclib::caba::VciSignals<vci_param> signal_vci_tgt_tty("vci_tgt_tty");
@@ -137,20 +134,22 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> signal_tty_irq2("signal_tty_irq2"); 
 	sc_signal<bool> signal_tty_irq3("signal_tty_irq3"); 
 
+        sc_signal<bool> signal_stuck0("signal_stuck0");
+
 	soclib::common::Loader loader("soft/bin.soft");
 
-        //                                  init_rw   init_c   tgt
-	soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),IntTab(0),4,64,16,4,64,16);
+        // Components
+	soclib::caba::VciCcXCacheWrapperMulti<vci_param, proc_iss > 
+	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),IntTab(0),4,64,16,4,64,16,4,8);
 
-	soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),IntTab(1),4,64,16,4,64,16);
+	soclib::caba::VciCcXCacheWrapperMulti<vci_param, proc_iss > 
+	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),IntTab(1),4,64,16,4,64,16,4,8);
 
-	soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-	proc2("proc2", 2, maptabp, maptabc, IntTab(2),IntTab(2),IntTab(2),4,64,16,4,64,16);
+	soclib::caba::VciCcXCacheWrapperMulti<vci_param, proc_iss > 
+	proc2("proc2", 2, maptabp, maptabc, IntTab(2),IntTab(2),IntTab(2),4,64,16,4,64,16,4,8);
 
-	soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-	proc3("proc3", 3, maptabp, maptabc, IntTab(3),IntTab(3),IntTab(3),4,64,16,4,64,16);
+	soclib::caba::VciCcXCacheWrapperMulti<vci_param, proc_iss > 
+	proc3("proc3", 3, maptabp, maptabc, IntTab(3),IntTab(3),IntTab(3),4,64,16,4,64,16,4,8);
 
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(0), maptabp, loader);
@@ -158,26 +157,38 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSimpleRam<vci_param> 
 	xram("xram", IntTab(0), maptabx, loader);
 
-        //                                  x_init    c_init    p_tgt     c_tgt
 	soclib::caba::VciMemCacheV1<vci_param> 
-	//memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(4),IntTab(2), IntTab(4),16,256,16);
 	memc("memc",maptabp,maptabc,maptabx,IntTab(0),IntTab(4),IntTab(2), IntTab(4),4,16,16);
 	
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(1),maptabp,"tty0","tty1","tty2","tty3",NULL);
 
-#ifdef VCI_LOGGER
-  soclib::caba::VciLogger<vci_param> vci_logger0("vci_logger0",maptabp);
-#endif
+//      soclib::caba::VciLogger<vci_param> vci_logger_proc0("vci_logger_proc0",maptabp);
+//      soclib::caba::VciLogger<vci_param> vci_logger_proc1("vci_logger_proc1",maptabp);
+//      soclib::caba::VciLogger<vci_param> vci_logger_proc2("vci_logger_proc2",maptabp);
+//      soclib::caba::VciLogger<vci_param> vci_logger_proc3("vci_logger_proc3",maptabp);
+//      soclib::caba::VciLogger<vci_param> vci_logger_memc("vci_logger_memc",maptabp);
 
 	soclib::caba::VciSimpleRingNetwork<vci_param> 
-	ringp("ringp",maptabp, IntTab(), 2, 4, 3);
+	ringd("ringd",maptabp, IntTab(), 2, 4, 3);
+//  	soclib::caba::VciVgsb<vci_param> 
+//	ringd("ringd",maptabp, 4, 3);
+//  	soclib::caba::VciVgmn<vci_param> 
+//	ringd("ringd",maptabp, 4, 3, 2, 2);
 
 	soclib::caba::VciSimpleRingNetwork<vci_param> 
 	ringc("ringc",maptabc, IntTab(), 2, 5, 5);
+//	soclib::caba::VciVgsb<vci_param> 
+//	ringc("ringc",maptabc, 5, 5);
+//  	soclib::caba::VciVgmn<vci_param> 
+//	ringc("ringd",maptabc, 5, 5, 2, 2);
 
 	soclib::caba::VciSimpleRingNetwork<vci_param> 
 	ringx("ringx",maptabx, IntTab(), 2, 1, 1);
+//	soclib::caba::VciVgsb<vci_param> 
+//	ringx("ringx",maptabx, 1, 1);
+//  	soclib::caba::VciVgmn<vci_param> 
+//	ringx("ringd",maptabx, 1, 1, 2, 2);
 
 	// Net-List
  
@@ -189,9 +200,9 @@ int _main(int argc, char *argv[])
 	proc0.p_irq[3](signal_proc0_it3); 
 	proc0.p_irq[4](signal_proc0_it4); 
 	proc0.p_irq[5](signal_proc0_it5); 
-	proc0.p_vci_ini_rw(signal_vci_ini_rw_proc0);
+	proc0.p_vci_ini_d(signal_vci_ini_d_proc0);
 	proc0.p_vci_ini_c(signal_vci_ini_c_proc0);
-	proc0.p_vci_tgt(signal_vci_tgt_proc0);
+	proc0.p_vci_tgt_c(signal_vci_tgt_proc0);
 
 	proc1.p_clk(signal_clk);  
 	proc1.p_resetn(signal_resetn);  
@@ -201,9 +212,9 @@ int _main(int argc, char *argv[])
 	proc1.p_irq[3](signal_proc1_it3); 
 	proc1.p_irq[4](signal_proc1_it4); 
 	proc1.p_irq[5](signal_proc1_it5); 
-	proc1.p_vci_ini_rw(signal_vci_ini_rw_proc1);
+	proc1.p_vci_ini_d(signal_vci_ini_d_proc1);
 	proc1.p_vci_ini_c(signal_vci_ini_c_proc1);
-	proc1.p_vci_tgt(signal_vci_tgt_proc1);
+	proc1.p_vci_tgt_c(signal_vci_tgt_proc1);
 
 	proc2.p_clk(signal_clk);  
 	proc2.p_resetn(signal_resetn);  
@@ -213,9 +224,9 @@ int _main(int argc, char *argv[])
 	proc2.p_irq[3](signal_proc2_it3); 
 	proc2.p_irq[4](signal_proc2_it4); 
 	proc2.p_irq[5](signal_proc2_it5); 
-	proc2.p_vci_ini_rw(signal_vci_ini_rw_proc2);
+	proc2.p_vci_ini_d(signal_vci_ini_d_proc2);
 	proc2.p_vci_ini_c(signal_vci_ini_c_proc2);
-	proc2.p_vci_tgt(signal_vci_tgt_proc2);
+	proc2.p_vci_tgt_c(signal_vci_tgt_proc2);
 
 	proc3.p_clk(signal_clk);  
 	proc3.p_resetn(signal_resetn);  
@@ -225,19 +236,33 @@ int _main(int argc, char *argv[])
 	proc3.p_irq[3](signal_proc3_it3); 
 	proc3.p_irq[4](signal_proc3_it4); 
 	proc3.p_irq[5](signal_proc3_it5); 
-	proc3.p_vci_ini_rw(signal_vci_ini_rw_proc3);
+	proc3.p_vci_ini_d(signal_vci_ini_d_proc3);
 	proc3.p_vci_ini_c(signal_vci_ini_c_proc3);
-	proc3.p_vci_tgt(signal_vci_tgt_proc3);
+	proc3.p_vci_tgt_c(signal_vci_tgt_proc3);
 
 	rom.p_clk(signal_clk);
 	rom.p_resetn(signal_resetn);
 	rom.p_vci(signal_vci_tgt_rom);
 
-#ifdef VCI_LOGGER
-  vci_logger0.p_clk(signal_clk);
-  vci_logger0.p_resetn(signal_resetn);
-  vci_logger0.p_vci(signal_vci_ini_rw_proc0);
-#endif
+//  vci_logger_proc0.p_clk(signal_clk);
+//  vci_logger_proc0.p_resetn(signal_resetn);
+//  vci_logger_proc0.p_vci(signal_vci_ini_d_proc0);
+
+//  vci_logger_proc1.p_clk(signal_clk);
+//  vci_logger_proc1.p_resetn(signal_resetn);
+//  vci_logger_proc1.p_vci(signal_vci_ini_d_proc2);
+
+//  vci_logger_proc2.p_clk(signal_clk);
+//  vci_logger_proc2.p_resetn(signal_resetn);
+//  vci_logger_proc2.p_vci(signal_vci_ini_d_proc2);
+
+//  vci_logger_proc3.p_clk(signal_clk);
+//  vci_logger_proc3.p_resetn(signal_resetn);
+//  vci_logger_proc3.p_vci(signal_vci_ini_d_proc3);
+
+//  vci_logger_memc.p_clk(signal_clk);
+//  vci_logger_memc.p_resetn(signal_resetn);
+//  vci_logger_memc.p_vci(signal_vci_tgt_memc);
 
 	tty.p_clk(signal_clk);
 	tty.p_resetn(signal_resetn);
@@ -255,41 +280,35 @@ int _main(int argc, char *argv[])
 	memc.p_vci_ixr(signal_vci_ixr_memc);
 
 	xram.p_clk(signal_clk);
-  xram.p_resetn(signal_resetn);
+        xram.p_resetn(signal_resetn);
 	xram.p_vci(signal_vci_tgt_xram);
 	
-	ringp.p_clk(signal_clk);
-	ringp.p_resetn(signal_resetn);
+	ringd.p_clk(signal_clk);
+	ringd.p_resetn(signal_resetn);
+	ringd.p_to_initiator[0](signal_vci_ini_d_proc0);
+	ringd.p_to_initiator[1](signal_vci_ini_d_proc1);
+	ringd.p_to_initiator[2](signal_vci_ini_d_proc2);
+	ringd.p_to_initiator[3](signal_vci_ini_d_proc3);
+	ringd.p_to_target[0](signal_vci_tgt_rom);
+	ringd.p_to_target[1](signal_vci_tgt_tty);
+	ringd.p_to_target[2](signal_vci_tgt_memc);
 
 	ringc.p_clk(signal_clk);
 	ringc.p_resetn(signal_resetn);
-
-	ringx.p_clk(signal_clk);
-	ringx.p_resetn(signal_resetn);
-
-	ringp.p_to_initiator[0](signal_vci_ini_rw_proc0);
-	ringp.p_to_initiator[1](signal_vci_ini_rw_proc1);
-	ringp.p_to_initiator[2](signal_vci_ini_rw_proc2);
-	ringp.p_to_initiator[3](signal_vci_ini_rw_proc3);
-
-	ringc.p_to_initiator[4](signal_vci_ini_memc);
 	ringc.p_to_initiator[0](signal_vci_ini_c_proc0);
 	ringc.p_to_initiator[1](signal_vci_ini_c_proc1);
 	ringc.p_to_initiator[2](signal_vci_ini_c_proc2);
 	ringc.p_to_initiator[3](signal_vci_ini_c_proc3);
-
-	ringx.p_to_initiator[0](signal_vci_ixr_memc);
-
-	ringp.p_to_target[0](signal_vci_tgt_rom);
-	ringp.p_to_target[1](signal_vci_tgt_tty);
-	ringp.p_to_target[2](signal_vci_tgt_memc);
-
+	ringc.p_to_initiator[4](signal_vci_ini_memc);
 	ringc.p_to_target[0](signal_vci_tgt_proc0);
 	ringc.p_to_target[1](signal_vci_tgt_proc1);
 	ringc.p_to_target[2](signal_vci_tgt_proc2);
 	ringc.p_to_target[3](signal_vci_tgt_proc3);
 	ringc.p_to_target[4](signal_vci_tgt_cleanup_memc);
 
+	ringx.p_clk(signal_clk);
+	ringx.p_resetn(signal_resetn);
+	ringx.p_to_initiator[0](signal_vci_ixr_memc);
 	ringx.p_to_target[0](signal_vci_tgt_xram);
 
 	int ncycles;
@@ -308,19 +327,26 @@ int _main(int argc, char *argv[])
 
 	sc_start(sc_core::sc_time(0, SC_NS));
 	signal_resetn = false;
+        signal_stuck0 = false;
 
 	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
 
-	for (int i = 0; i < ncycles ; i+=10000) {
-		sc_start(sc_core::sc_time(10000, SC_NS));
-//		proc0.print_stats();
-//		memc.print_stats();
+	for (int i = 0; i < ncycles ; i++) 
+        {
+		sc_start(sc_core::sc_time(1, SC_NS));
+                if ( i%10000 == 0 ) 
+                {
+			proc0.print_stats();
+			proc1.print_stats();
+			proc2.print_stats();
+			proc3.print_stats();
+			memc.print_stats();
+		}
 	}
 
         std::cout << "Hit ENTER to end simulation" << std::endl;
         char buf[1];
-
 	std::cin.getline(buf,1);
 
 	return EXIT_SUCCESS;

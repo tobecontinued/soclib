@@ -7,14 +7,25 @@
 
 #define NPROCS 4
 #define SIZE 1000 
-#define SORT_TYPE 0 //3
-
-//extern int _malek; //_gp;
+#define SORT_TYPE 0 // shellSort
 
 volatile int nprocs=NPROCS;
 
+/*
+unsigned int gQSortNum0[200] = {
+  251,  24, 113, 170, 215,  60,  83,  30, 115,  48, 169, 210,  49,  92, 101,  58,  21, 184, 225,   6,
+  199, 244, 227, 146,  99,  96,  25, 222,  65, 140, 213,  22, 219, 136, 175, 182,  73,  36, 141, 190, 
+   83, 112, 137, 114, 175, 188, 187, 102,  53, 168, 193, 154, 167, 172,   3, 242,  67,  64, 144, 137,
+  142, 175, 188,  69, 102,  53, 168, 193, 102,  89, 172, 253, 242,  67, 192,   7,  62, 159,  20, 181,
+  182, 187, 216, 207,  22, 105, 132, 109, 162, 205,  16, 151,  18, 113, 228,  37,   6,  85,   8, 161,
+   58, 135,  76,  35, 174,  35, 224,  39, 158, 127, 180, 149,  86, 155, 200, 239, 118, 119,  28,  77,
+  254,  19, 176, 183,  78, 145, 132,   5,  90, 117, 152, 127, 218, 153,  20,  67, 178,   3, 128, 185,
+  254,  95, 172, 139, 246, 123, 104,  15,  42, 169,  68, 211,  98, 243,  80,  41, 174,  79,  36,  27,
+  186, 149,  86, 155, 200, 239, 118, 119,  28,  77, 254,  19, 176, 183,  78, 145, 132,   5,  90, 117,
+  152, 127, 218, 153,  20,  67, 178,   3, 128, 185, 254,  95, 172, 139, 246, 123, 104,  15,  42, 169 };
+*/
+
 unsigned int SortArr0[NPROCS*(SIZE+200)];
-//unsigned int SortArr0[4*4*SIZE];
 
 void SORT(unsigned int *base, unsigned int n, int type);
 void insertion_sort(unsigned int *base, unsigned int n); // type 2
@@ -30,8 +41,6 @@ int main()
   int beg_cycle, end_cycle;
 
   beg_cycle = cpu_cycles();
-
-//  printf("_malek = %p\n", &_malek);   
 
   p=procnum();
 
@@ -66,7 +75,9 @@ int main()
 
   	puts("ucbqsort: success\n");
         end_cycle = cpu_cycles();
-        printf( "nombre cycles cpu : %i\n", end_cycle-beg_cycle);
+//      printf( "nombre cycles cpu : %i\n", end_cycle-beg_cycle);
+        printf( "begin time        : %i\n", beg_cycle);
+        printf( "end time          : %i\n", end_cycle);
   }
 
   
@@ -251,4 +262,3 @@ void SORT(unsigned int *base, unsigned int n, int type)
     break;
   }
 }
-
