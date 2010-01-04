@@ -1,0 +1,38 @@
+
+reset.o:     file format elf32-littlemips
+
+
+Disassembly of section .reginfo:
+
+00000000 <.reginfo>:
+   0:	3c000000 	lui	zero,0x0
+	...
+
+Disassembly of section .pdr:
+
+00000000 <.pdr>:
+	...
+
+Disassembly of section .reset:
+
+00000000 <reset>:
+   0:	3c1d0000 	lui	sp,0x0
+   4:	27bd0000 	addiu	sp,sp,0
+   8:	27bd4000 	addiu	sp,sp,16384
+   c:	3c1a0000 	lui	k0,0x0
+  10:	275a0000 	addiu	k0,k0,0
+  14:	3c1b0000 	lui	k1,0x0
+  18:	277b0000 	addiu	k1,k1,0
+  1c:	af5b0000 	sw	k1,0(k0)
+  20:	3c1b0000 	lui	k1,0x0
+  24:	277b0000 	addiu	k1,k1,0
+  28:	af5b0004 	sw	k1,4(k0)
+  2c:	3c1b0000 	lui	k1,0x0
+  30:	277b0000 	addiu	k1,k1,0
+  34:	af5b0008 	sw	k1,8(k0)
+  38:	341aff13 	li	k0,0xff13
+  3c:	409a6000 	mtc0	k0,c0_status
+  40:	3c1a0000 	lui	k0,0x0
+  44:	275a0000 	addiu	k0,k0,0
+  48:	409a7000 	mtc0	k0,c0_epc
+  4c:	42000018 	eret

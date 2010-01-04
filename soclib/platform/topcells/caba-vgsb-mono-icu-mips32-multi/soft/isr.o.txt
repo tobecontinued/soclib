@@ -1,0 +1,261 @@
+
+isr.o:     file format elf32-littlemips
+
+
+Disassembly of section .reginfo:
+
+00000000 <.reginfo>:
+   0:	bc0000f0 	cache	0x0,240(zero)
+	...
+
+Disassembly of section .isr:
+
+00000000 <_isr_dma>:
+   0:	3c1a0000 	lui	k0,0x0
+   4:	275a0000 	addiu	k0,k0,0
+   8:	af400000 	sw	zero,0(k0)
+   c:	3c1a0000 	lui	k0,0x0
+  10:	275a0000 	addiu	k0,k0,0
+  14:	03e00008 	jr	ra
+  18:	af400000 	sw	zero,0(k0)
+
+0000001c <_isr_timer0>:
+  1c:	27bdfffc 	addiu	sp,sp,-4
+  20:	afbf0000 	sw	ra,0(sp)
+  24:	3c040000 	lui	a0,0x0
+  28:	24840000 	addiu	a0,a0,0
+  2c:	ac80000c 	sw	zero,12(a0)
+  30:	40047800 	mfc0	a0,c0_prid
+  34:	308400ff 	andi	a0,a0,0xff
+  38:	3c050000 	lui	a1,0x0
+  3c:	24a50064 	addiu	a1,a1,100
+  40:	0c000000 	jal	0 <_isr_dma>
+  44:	24060028 	li	a2,40
+  48:	00000000 	nop
+  4c:	0c000000 	jal	0 <_isr_dma>
+  50:	40044800 	mfc0	a0,c0_count
+  54:	00000000 	nop
+  58:	8fbf0000 	lw	ra,0(sp)
+  5c:	03e00008 	jr	ra
+  60:	27bd0004 	addiu	sp,sp,4
+
+00000064 <message_timer0>:
+  64:	2121210a 	addi	at,t1,8458
+  68:	746e6920 	jalx	1b9a480 <_isr_tty3_get+0x1b9a218>
+  6c:	75727265 	jalx	5c9c994 <_isr_tty3_get+0x5c9c72c>
+  70:	74207470 	jalx	81d1c0 <_isr_tty3_get+0x81cf58>
+  74:	72656d69 	0x72656d69
+  78:	65722030 	0x65722030
+  7c:	76696563 	jalx	9a5958c <_isr_tty3_get+0x9a59324>
+  80:	61206465 	0x61206465
+  84:	79632074 	0x79632074
+  88:	20656c63 	addi	a1,v1,27747
+	...
+
+0000008d <_isr_timer1>:
+  8d:	fffc      	daddiu	a3,sp,112
+  8f:	27bd      	beqz	a3,b <_isr_dma+0xb>
+  91:	0000      	addiu	s0,sp,0
+  93:	afbf      	lhu	a1,62(a3)
+  95:	0000      	addiu	s0,sp,0
+  97:	3c04      	ld	s0,32(a0)
+  99:	0000      	addiu	s0,sp,0
+  9b:	2484      	beqz	a0,ffffffa5 <_isr_tty3_get+0xfffffd3d>
+  9d:	001c      	addiu	s0,sp,112
+  9f:	ac80      	lhu	a0,0(a0)
+  a1:	7800      	sd	s0,0(s0)
+  a3:	4004      	addiu	s0,s0,4
+  a5:	00ff      	addiu	s0,sp,1020
+  a7:	30e4      	sll	s0,a3,1
+  a9:	0000      	addiu	s0,sp,0
+  ab:	3c05      	ld	s0,40(a0)
+  ad:	00d5      	addiu	s0,sp,852
+  af:	24a5      	beqz	a0,fffffffb <_isr_tty3_get+0xfffffd93>
+  b1:	0000      	addiu	s0,sp,0
+  b3:	0c00      	la	a0,b0 <_isr_timer1+0x23>
+  b5:	0028      	addiu	s0,sp,160
+  b7:	2406      	beqz	a0,c5 <_isr_timer1+0x38>
+  b9:	0000      	addiu	s0,sp,0
+  bb:	0000      	addiu	s0,sp,0
+  bd:	0000      	addiu	s0,sp,0
+  bf:	0c00      	la	a0,bc <_isr_timer1+0x2f>
+  c1:	4800      	addiu	s0,0
+  c3:	4004      	addiu	s0,s0,4
+  c5:	0000      	addiu	s0,sp,0
+  c7:	0000      	addiu	s0,sp,0
+  c9:	0000      	addiu	s0,sp,0
+  cb:	8fbf      	lh	a1,62(a3)
+  cd:	0008      	addiu	s0,sp,32
+  cf:	03e0      	addiu	v1,sp,896
+  d1:	0004      	addiu	s0,sp,16
+  d3:	27bd      	beqz	a3,4f <_isr_timer0+0x33>
+
+000000d5 <message_timer1>:
+  d5:	210a      	beqz	s1,eb <message_timer1+0x16>
+  d7:	2121      	beqz	s1,11b <_isr_timer2+0x1d>
+  d9:	6920      	li	s1,32
+  db:	746e      	cmpi	a0,110
+  dd:	7265      	cmpi	v0,101
+  df:	7572      	cmpi	a1,114
+  e1:	7470      	cmpi	a0,112
+  e3:	7420      	cmpi	a0,32
+  e5:	6d69      	li	a1,105
+  e7:	7265      	cmpi	v0,101
+  e9:	2031      	beqz	s0,14d <message_timer2+0x3>
+  eb:	6572      	move	s3,v0
+  ed:	6563      	move	v1,v1
+  ef:	7669      	cmpi	a2,105
+  f1:	6465      	restore	40,ra,s0
+  f3:	6120      	btnez	135 <_isr_timer2+0x37>
+  f5:	2074      	beqz	s0,1df <message_timer3+0x24>
+  f7:	7963      	sd	v1,24(s1)
+  f9:	6c63      	li	a0,99
+  fb:	2065      	beqz	s0,1c7 <message_timer3+0xc>
+	...
+
+000000fe <_isr_timer2>:
+  fe:	27bdfffc 	addiu	sp,sp,-4
+ 102:	afbf0000 	sw	ra,0(sp)
+ 106:	3c040000 	lui	a0,0x0
+ 10a:	24840000 	addiu	a0,a0,0
+ 10e:	ac80002c 	sw	zero,44(a0)
+ 112:	40047800 	mfc0	a0,c0_prid
+ 116:	30e400ff 	andi	a0,a3,0xff
+ 11a:	3c050000 	lui	a1,0x0
+ 11e:	24a5014a 	addiu	a1,a1,330
+ 122:	0c000000 	jal	0 <_isr_dma>
+ 126:	24060028 	li	a2,40
+ 12a:	00000000 	nop
+ 12e:	0c000000 	jal	0 <_isr_dma>
+ 132:	40044800 	mfc0	a0,c0_count
+ 136:	00000000 	nop
+ 13a:	27bd0004 	addiu	sp,sp,4
+ 13e:	8fbf0000 	lw	ra,0(sp)
+ 142:	03e00008 	jr	ra
+ 146:	27bd0004 	addiu	sp,sp,4
+
+0000014a <message_timer2>:
+ 14a:	2121210a 	addi	at,t1,8458
+ 14e:	746e6920 	jalx	1b9a480 <_isr_tty3_get+0x1b9a218>
+ 152:	75727265 	jalx	5c9c994 <_isr_tty3_get+0x5c9c72c>
+ 156:	74207470 	jalx	81d1c0 <_isr_tty3_get+0x81cf58>
+ 15a:	72656d69 	0x72656d69
+ 15e:	65722032 	0x65722032
+ 162:	76696563 	jalx	9a5958c <_isr_tty3_get+0x9a59324>
+ 166:	61206465 	0x61206465
+ 16a:	79632074 	0x79632074
+ 16e:	20656c63 	addi	a1,v1,27747
+	...
+
+00000173 <_isr_timer3>:
+ 173:	fffc      	daddiu	a3,sp,112
+ 175:	27bd      	beqz	a3,f1 <message_timer1+0x1c>
+ 177:	0000      	addiu	s0,sp,0
+ 179:	afbf      	lhu	a1,62(a3)
+ 17b:	0000      	addiu	s0,sp,0
+ 17d:	3c04      	ld	s0,32(a0)
+ 17f:	0000      	addiu	s0,sp,0
+ 181:	2484      	beqz	a0,8b <message_timer0+0x27>
+ 183:	003c      	addiu	s0,sp,240
+ 185:	ac80      	lhu	a0,0(a0)
+ 187:	7800      	sd	s0,0(s0)
+ 189:	4004      	addiu	s0,s0,4
+ 18b:	00ff      	addiu	s0,sp,1020
+ 18d:	30e4      	sll	s0,a3,1
+ 18f:	0000      	addiu	s0,sp,0
+ 191:	3c05      	ld	s0,40(a0)
+ 193:	01bb      	addiu	s1,sp,748
+ 195:	24a5      	beqz	a0,e1 <message_timer1+0xc>
+ 197:	0000      	addiu	s0,sp,0
+ 199:	0c00      	la	a0,198 <_isr_timer3+0x25>
+ 19b:	0028      	addiu	s0,sp,160
+ 19d:	2406      	beqz	a0,1ab <_isr_timer3+0x38>
+ 19f:	0000      	addiu	s0,sp,0
+ 1a1:	0000      	addiu	s0,sp,0
+ 1a3:	0000      	addiu	s0,sp,0
+ 1a5:	0c00      	la	a0,1a4 <_isr_timer3+0x31>
+ 1a7:	4800      	addiu	s0,0
+ 1a9:	4004      	addiu	s0,s0,4
+ 1ab:	0000      	addiu	s0,sp,0
+ 1ad:	0000      	addiu	s0,sp,0
+ 1af:	0000      	addiu	s0,sp,0
+ 1b1:	8fbf      	lh	a1,62(a3)
+ 1b3:	0008      	addiu	s0,sp,32
+ 1b5:	03e0      	addiu	v1,sp,896
+ 1b7:	0004      	addiu	s0,sp,16
+ 1b9:	27bd      	beqz	a3,135 <_isr_timer2+0x37>
+
+000001bb <message_timer3>:
+ 1bb:	210a      	beqz	s1,1d1 <message_timer3+0x16>
+ 1bd:	2121      	beqz	s1,201 <_isr_tty0_get+0x1d>
+ 1bf:	6920      	li	s1,32
+ 1c1:	746e      	cmpi	a0,110
+ 1c3:	7265      	cmpi	v0,101
+ 1c5:	7572      	cmpi	a1,114
+ 1c7:	7470      	cmpi	a0,112
+ 1c9:	7420      	cmpi	a0,32
+ 1cb:	6d69      	li	a1,105
+ 1cd:	7265      	cmpi	v0,101
+ 1cf:	2033      	beqz	s0,237 <_isr_tty1_get+0x27>
+ 1d1:	6572      	move	s3,v0
+ 1d3:	6563      	move	v1,v1
+ 1d5:	7669      	cmpi	a2,105
+ 1d7:	6465      	restore	40,ra,s0
+ 1d9:	6120      	btnez	21b <_isr_tty1_get+0xb>
+ 1db:	2074      	beqz	s0,2c5 <_isr_tty3_get+0x5d>
+ 1dd:	7963      	sd	v1,24(s1)
+ 1df:	6c63      	li	a0,99
+ 1e1:	2065      	beqz	s0,2ad <_isr_tty3_get+0x45>
+	...
+
+000001e4 <_isr_tty0_get>:
+ 1e4:	3c1a0000 	lui	k0,0x0
+ 1e8:	275a0000 	addiu	k0,k0,0
+ 1ec:	835b0008 	lb	k1,8(k0)
+ 1f0:	3c1a0000 	lui	k0,0x0
+ 1f4:	275a0000 	addiu	k0,k0,0
+ 1f8:	a35b0000 	sb	k1,0(k0)
+ 1fc:	3c1a0000 	lui	k0,0x0
+ 200:	275a0000 	addiu	k0,k0,0
+ 204:	241b0001 	li	k1,1
+ 208:	03e00008 	jr	ra
+ 20c:	af5b0000 	sw	k1,0(k0)
+
+00000210 <_isr_tty1_get>:
+ 210:	3c1a0000 	lui	k0,0x0
+ 214:	275a0000 	addiu	k0,k0,0
+ 218:	835b0018 	lb	k1,24(k0)
+ 21c:	3c1a0000 	lui	k0,0x0
+ 220:	275a0000 	addiu	k0,k0,0
+ 224:	a35b0001 	sb	k1,1(k0)
+ 228:	3c1a0000 	lui	k0,0x0
+ 22c:	275a0000 	addiu	k0,k0,0
+ 230:	241b0001 	li	k1,1
+ 234:	03e00008 	jr	ra
+ 238:	af5b0004 	sw	k1,4(k0)
+
+0000023c <_isr_tty2_get>:
+ 23c:	3c1a0000 	lui	k0,0x0
+ 240:	275a0000 	addiu	k0,k0,0
+ 244:	835b0028 	lb	k1,40(k0)
+ 248:	3c1a0000 	lui	k0,0x0
+ 24c:	275a0000 	addiu	k0,k0,0
+ 250:	a35b0002 	sb	k1,2(k0)
+ 254:	3c1a0000 	lui	k0,0x0
+ 258:	275a0000 	addiu	k0,k0,0
+ 25c:	241b0001 	li	k1,1
+ 260:	03e00008 	jr	ra
+ 264:	af5b0008 	sw	k1,8(k0)
+
+00000268 <_isr_tty3_get>:
+ 268:	3c1a0000 	lui	k0,0x0
+ 26c:	275a0000 	addiu	k0,k0,0
+ 270:	835b0038 	lb	k1,56(k0)
+ 274:	3c1a0000 	lui	k0,0x0
+ 278:	275a0000 	addiu	k0,k0,0
+ 27c:	a35b0003 	sb	k1,3(k0)
+ 280:	3c1a0000 	lui	k0,0x0
+ 284:	275a0000 	addiu	k0,k0,0
+ 288:	241b0001 	li	k1,1
+ 28c:	03e00008 	jr	ra
+ 290:	af5b000c 	sw	k1,12(k0)
