@@ -93,28 +93,32 @@ namespace caba {
 #if SOCLIB_MODULE_DEBUG
     namespace {
         const char *dcache_fsm_state_str[] = {
-            "DCACHE_IDLE      ",
-            "DCACHE_WRITE_UPDT",
-            "DCACHE_WRITE_REQ ",
-            "DCACHE_MISS_WAIT ",
-            "DCACHE_MISS_UPDT ",
-            "DCACHE_UNC_WAIT  ",
-            "DCACHE_INVAL     ",
-            "DCACHE_SYNC      ",
-            "DCACHE_ERROR     ",
-            "DCACHE_CC_CHECK  ",
-            "DCACHE_CC_INVAL  ",
-            "DCACHE_CC_UPDT   ",
+            "DCACHE_IDLE       ",
+            "DCACHE_WRITE_UPDT ",
+            "DCACHE_WRITE_REQ  ",
+            "DCACHE_MISS_WAIT  ",
+            "DCACHE_MISS_UPDT  ",
+            "DCACHE_CLEANUP_REQ",
+            "DCACHE_MISS_DELAY ", 
+            "DCACHE_UNC_WAIT   ",
+            "DCACHE_INVAL      ",
+            "DCACHE_SYNC       ",
+            "DCACHE_ERROR      ",
+            "DCACHE_CC_CHECK   ",
+            "DCACHE_CC_INVAL   ",
+            "DCACHE_CC_UPDT    ",
         };
         const char *icache_fsm_state_str[] = {
-            "ICACHE_IDLE     ",
-            "ICACHE_MISS_WAIT",
-            "ICACHE_MISS_UPDT",
-            "ICACHE_UNC_WAIT ",
-            "ICACHE_ERROR    ",
-            "ICACHE_CC_CHECK ",
-            "ICACHE_CC_INVAL ",
-            "ICACHE_CC_UPDT  ",
+            "ICACHE_IDLE       ",
+            "ICACHE_MISS_WAIT  ",
+            "ICACHE_MISS_UPDT  ",
+            "ICACHE_CLEANUP_REQ",
+            "ICACHE_MISS_DELAY ", 
+            "ICACHE_UNC_WAIT   ",
+            "ICACHE_ERROR      ",
+            "ICACHE_CC_CHECK   ",
+            "ICACHE_CC_INVAL   ",
+            "ICACHE_CC_UPDT    ",
         };
         const char *cmd_fsm_state_str[] = {
             "CMD_IDLE      ",
@@ -155,9 +159,9 @@ namespace caba {
 
     using soclib::common::uint32_log2;
 
-    /////////////////////////////////
+    /////////////////////////////////////
     tmpl(/**/)::VciCcXCacheWrapperMulti(
-    /////////////////////////////////
+    /////////////////////////////////////
             sc_module_name name,
             int proc_id,
             const soclib::common::MappingTable &mtp,
@@ -664,7 +668,7 @@ r_wbuf.print();
             }
         } // end switch TGT_FSM
 
-        /////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////
         // The ICACHE FSM controls the following ressources:
         // - r_icache_fsm
         // - r_icache_fsm_save
@@ -692,11 +696,16 @@ r_wbuf.print();
         //    writes the missing address line in the  r_icache_addr_save register 
         //    and sets the r_icache_miss_req or the r_icache_unc_req flip-flops.
         //    These request flip-flops are reset by the CMD FSM.
-        //    The r_rsp_ins_miss_ok flip-flop or the r_rsp_ins_unc_ok flip-flop 
-        //    are set by the RSP FSM when the VCI transaction is completed.
-        //    In case of bus error, the RSP FSM sets the r_rsp_ins_error 
-        //    flip-flop. They must be reset by the ICACHE FSM.
-        ///////////////////////////////////////////////////////////////////////
+        //    The r_rsp_ins_ok flip-flop is set by the RSP FSM when the 
+        //    transaction is completed. In case of bus error, the RSP FSM sets 
+        //    the r_rsp_ins_error flip-flop. They must be reset by the ICACHE FSM.
+        //   - CACHED READ MISS => to the MISS_WAIT state, waiting the r_rsp_ins_ok signal.
+        //     It can be delayed in the MISS_DELAY state in case of matching pending
+        //     cleanup request.  Then it goes to the MISS_UPDT state, then to the CLEANUP_REQ
+        //     state (if necessary), and finally to the IDLE state.
+        //   - UNCACHED READ  => to the UNC_WAIT state (waiting the r_rsp_ins_ok signal), 
+        //     and back to the IDLE state. 
+        ////////////////////////////////////////////////////////////////////////////////////
 
         typename iss_t::InstructionRequest  ireq = ISS_IREQ_INITIALIZER;
         typename iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
@@ -724,7 +733,7 @@ r_wbuf.print();
                     // icache_hit & icache_ins evaluation
                     if ( icache_cached ) 
                     {
-                        icache_hit = r_icache.read((addr_t) ireq.addr, &icache_ins);
+                        icache_hit = r_icache.read((addr_t)ireq.addr, &icache_ins);
                     } 
                     else 
                     {
@@ -735,14 +744,24 @@ r_wbuf.print();
                     {
                         m_cpt_ins_miss++;
                         m_cost_ins_miss_frz++;
-                        r_icache_addr_save = (addr_t) ireq.addr;
-                        if ( icache_cached ) 
+                        r_icache_addr_save = (addr_t)ireq.addr;
+                        if ( icache_cached ) 	// cached line
                         {
-                            r_icache_fsm 	= ICACHE_MISS_WAIT;
-                            r_icache_miss_req 	= true;
-                            r_rsp_ins_ok	= false;
+                            // if the missing line corresponds to a pending cleanup
+                            // the miss request to the CMD FSM must be delayed
+                            if ( r_icache_cleanup_req && 
+                               ((addr_t)r_icache_cleanup_line == (addr_t)(ireq.addr/(m_icache_words*4))) ) 
+                            {
+                                r_icache_fsm  	= ICACHE_MISS_DELAY;
+                            }
+                            else
+                            {
+                                r_icache_fsm 		= ICACHE_MISS_WAIT;
+                                r_icache_miss_req 	= true;
+                                r_rsp_ins_ok		= false;
+                            }
                         } 
-                        else 
+                        else 			// uncached line
                         {
                             r_icache_fsm 	= ICACHE_UNC_WAIT;
                             r_icache_unc_req 	= true;
@@ -813,17 +832,45 @@ r_wbuf.print();
                 irsp.valid          = true;
                 break;
             } 
-            case ICACHE_MISS_UPDT:  // update the cache
+            case ICACHE_MISS_UPDT:  // update the cache & try to post a cleanup request
             {
                 m_cost_ins_miss_frz++;
                 m_cpt_icache_dir_write++;
                 m_cpt_icache_data_write++;
-                addr_t 	ad   		= (addr_t) r_icache_addr_save;
-                data_t*   buf   	= r_icache_miss_buf;
-                addr_t 	victim_index 	= 0;
-                r_icache_cleanup_req  	= r_icache.update(ad, buf, &victim_index);
-                r_icache_cleanup_line 	= (addr_t) victim_index;
-                r_icache_fsm        	= ICACHE_IDLE;
+                addr_t 		ad   		= (addr_t) r_icache_addr_save;
+                data_t*   	buf   		= r_icache_miss_buf;
+                addr_t 		victim_index;
+                if ( r_icache.update(ad, buf, &victim_index) )
+                {
+                    r_icache_cleanup_line 	= (addr_t) victim_index;
+                    if ( !r_icache_cleanup_req )	// no pending cleanup
+                    {
+                       r_icache_cleanup_req 	= true;
+                       r_icache_fsm		= ICACHE_IDLE;
+                    }
+                    else
+                    {
+                        r_icache_fsm   		= ICACHE_CLEANUP_REQ;
+		    }
+                }
+                else
+                {
+                    r_icache_fsm		= ICACHE_IDLE;
+                }
+                break;
+            }
+            case ICACHE_CLEANUP_REQ: // waiting completion of the previous cleanup request 
+            {
+                if ( !r_icache_cleanup_req ) 
+                {
+                    r_icache_cleanup_req 	= true;
+                    r_icache_fsm		= ICACHE_IDLE;
+                }
+                break;
+            }
+            case ICACHE_MISS_DELAY:  // waiting completion of the previous cleanup request
+            {
+                if ( !r_icache_cleanup_req ) r_icache_fsm = ICACHE_MISS_WAIT;
                 break;
             }
             case ICACHE_CC_CHECK:   // read directory in case of external request
@@ -920,14 +967,18 @@ r_wbuf.print();
         //   - In all other states, the processor request is not satisfied.
         //
         //   The cache access takes into account the cacheability_table.
-        //   In case of processor request, there is five conditions to exit the IDLE state:
-        //   - CACHED READ MISS => to the MISS_WAIT state (waiting the r_miss_ok signal), 
-        //     then to the MISS_UPDT state, and finally to the IDLE state.
-        //   - UNCACHED READ  => to the UNC_WAIT state (waiting the r_miss_ok signal), 
-        //     and to the IDLE state.
-        //   - CACHE INVALIDATE HIT => to the INVAL state for one cycle, then to IDLE state.
-        //   - WRITE MISS => directly to the WRITE_REQ state to access the write buffer.
+        //   In case of processor request, there is six conditions to exit the IDLE state:
+        //   - CACHED READ MISS => to the MISS_WAIT state, waiting the r_rsp_data_ok signal.
+        //     It can be delayed in the MISS_DELAY state in case of matching pending
+        //     cleanup request.  Then it goes to the MISS_UPDT state, then to the CLEANUP_REQ
+        //     state (if necessary), and finally to the IDLE state.
+        //   - UNCACHED READ  => to the UNC_WAIT state, waiting the r_rsp_data_ok signal, 
+        //     and back to the IDLE state. LL & SC are handled as uncached read.
+        //   - WRITE MISS => directly to the WRITE_REQ state to post a request in the
+        //     write buffer.
         //   - WRITE HIT => to the WRITE_UPDT state, then to the WRITE_REQ state.
+        //   - LINE INVALIDATE => to the INVAL state for one cycle, then to IDLE state.
+        //   - SYNC REQUEST => to the SYNC state until the write buffer is empty.
         //
         // Error handling :  Read Bus Errors are synchronous events, but
         // Write Bus Errors are asynchronous events (processor is not frozen).
@@ -1013,19 +1064,29 @@ r_wbuf.print();
                             drsp.rdata = dcache_rdata;
                             r_rsp_data_ok = false;
                         } 
-                        else 
+                        else 		
                         {
-                            if ( dcache_cached ) 
+                            if ( dcache_cached )   // miss
                             {
                                 m_cpt_data_miss++;
                                 m_cost_data_miss_frz++;
-                                r_dcache_miss_req = true;
-                                r_rsp_data_ok = false;
-                                r_dcache_fsm = DCACHE_MISS_WAIT;
+                                // if the missing line corresponds to a pending cleanup
+                                // the miss request to the CMD FSM must be delayed
+                                if ( r_dcache_cleanup_req &&
+                                   ((addr_t)r_dcache_cleanup_line == (addr_t)(dreq.addr/(m_dcache_words*4))) )
+                                {
+                                    r_dcache_fsm	= DCACHE_MISS_DELAY;
+                                }
+                                else
+                                {
+                                    r_dcache_miss_req = true;
+                                    r_rsp_data_ok = false;
+                                    r_dcache_fsm = DCACHE_MISS_WAIT;
+                                }
                                 drsp.valid = false;
                                 drsp.rdata = 0;
                             } 
-                            else 
+                            else 		// uncached
                             {
                                 m_cpt_unc_read++;
                                 m_cost_unc_read_frz++;
@@ -1132,17 +1193,44 @@ r_wbuf.print();
             }
             break;
         }
-        case DCACHE_MISS_UPDT:
+        case DCACHE_MISS_UPDT:  // update the cache, and try to post a cleanup resuest
         {
             m_cost_data_miss_frz++;
             m_cpt_dcache_dir_write++;
             m_cpt_dcache_data_write++;
             addr_t 	ad   		= (addr_t) r_dcache_addr_save;
             data_t*   	buf   		= r_dcache_miss_buf;
-            addr_t 	victim_index 	= 0;
-            r_dcache_cleanup_req  	= r_dcache.update(ad, buf, &victim_index);
-            r_dcache_cleanup_line 	= (addr_t) victim_index;
-            r_dcache_fsm        	= ICACHE_IDLE;
+            addr_t 	victim_index;
+            if ( r_dcache.update(ad, buf, &victim_index) )  // there is a victim
+            {
+                r_dcache_cleanup_line 	= (addr_t) victim_index;
+                if ( !r_dcache_cleanup_req )  // no pending cleanup
+                { 
+                    r_dcache_cleanup_req	= true;
+                    r_dcache_fsm        	= DCACHE_IDLE;
+                }
+                else
+                {
+                   r_dcache_fsm			= DCACHE_CLEANUP_REQ;
+                }
+            } 
+            {
+               r_dcache_fsm			= DCACHE_CLEANUP_REQ;
+            }
+            break;
+        }
+        case DCACHE_CLEANUP_REQ: // waiting completion of the previous cleanup request
+        {
+            if ( !r_dcache_cleanup_req )
+            {
+                r_dcache_cleanup_req 	= true;
+                r_dcache_fsm         	= DCACHE_IDLE;
+            }
+            break;
+        }
+        case DCACHE_MISS_DELAY:  // waiting completion of the previous cleanup request
+        {
+            if ( !r_dcache_cleanup_req ) r_icache_fsm = ICACHE_MISS_WAIT;
             break;
         }
         case DCACHE_UNC_WAIT:
