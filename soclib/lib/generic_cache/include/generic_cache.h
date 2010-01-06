@@ -46,7 +46,12 @@
 // - addr_t : address format to access the cache 
 // The address can be larger than 32 bits, but the TAG field 
 // cannot be larger than 32 bits.
-// 
+/////////////////////////////////////////////////////////////////////////////////
+// History :
+// 05/01/2010
+// Two new methods select_before_update(), and update_after_select() have
+// been introduced to support update in two cycles, when the cache directory
+// is implemented as a simple port RAM.
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_GENERIC_CACHE_H
@@ -82,21 +87,25 @@ class GenericCache
     const soclib::common::AddressMaskingTable<addr_t>  m_y ;
     const soclib::common::AddressMaskingTable<addr_t>  m_z ;
 
+    //////////////////////////////////////////////////////////////
     inline data_t &cache_data(size_t way, size_t set, size_t word)
     {
         return r_data[(way*m_sets*m_words)+(set*m_words)+word];
     }
 
+    //////////////////////////////////////////////
     inline tag_t &cache_tag(size_t way, size_t set)
     {
         return r_tag[(way*m_sets)+set];
     }
 
+    //////////////////////////////////////////////
     inline bool &cache_val(size_t way, size_t set)
     {
         return r_val[(way*m_sets)+set];
     }
 
+    //////////////////////////////////////////////
     inline bool &cache_lru(size_t way, size_t set)
     {
         return r_lru[(way*m_sets)+set];
@@ -104,6 +113,7 @@ class GenericCache
 
 public:
 
+    //////////////////////////////////////////////
     GenericCache(   const std::string   &name,
                     size_t              nways, 
                     size_t              nsets, 
@@ -145,6 +155,7 @@ public:
         r_lru  = new bool[nways*nsets];
     }
 
+    ////////////////
     ~GenericCache()
     {
         delete [] r_data;
@@ -153,6 +164,7 @@ public:
         delete [] r_lru;
     }
 
+    ////////////////////
     inline void reset( )
     {
         std::memset(r_data, 0, sizeof(*r_data)*m_ways*m_sets*m_words);
@@ -161,6 +173,7 @@ public:
         std::memset(r_lru, 0, sizeof(*r_lru)*m_ways*m_sets);
     }
 
+    ////////////////////////////////////////////////////////
     inline bool flush(size_t way, size_t set, addr_t* nline)
     {
         if ( cache_val(way,set) ) 
@@ -172,20 +185,24 @@ public:
         return false;
     }
 
+    /////////////////////////////////////////
     inline bool read( addr_t ad, data_t* dt)
     {
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "Reading data at " << ad << ", "
                   << " s/t=" << set << '/' << tag
                   << ", ";
 #endif
+
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 *dt = cache_data(way, set, word);
                 cache_lru(way, set) = true;
+
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
                           << " w/s/t=" << way << '/' << set << '/' << tag
@@ -194,28 +211,33 @@ public:
                 return true;
             }
         }
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "miss" << std::endl;
 #endif
         return false;
     }
 
+    /////////////////////////////////////////////////////////////////////
     inline bool read( addr_t ad, data_t* dt, size_t* n_way, size_t* n_set)
     {
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "Reading data at " << ad << ", "
                   << " s/t=" << set << '/' << tag
                   << ", ";
 #endif
+
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 *dt = cache_data(way, set, word);
                 cache_lru(way, set) = true;
                 *n_way = way;
                 *n_set = set;
+
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
                           << " w/s/t=" << way << '/' << set << '/' << tag
@@ -230,6 +252,7 @@ public:
         return false;
     }
 
+    //////////////////////////////////////////////////////
     inline bool setinbit( addr_t ad, bool* buf, bool val )
     {
         const tag_t       tag  = m_z[ad];
@@ -238,6 +261,7 @@ public:
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 buf[m_sets*way+set] = val;
+
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
                           << " w/s=" << way << '/' << set 
@@ -252,25 +276,30 @@ public:
         return false;
     }
 
+    ////////////////////////////////////////////
     inline tag_t get_tag(size_t way, size_t set)
     {
         return cache_tag(way, set);
     }
 
+    /////////////////////////////////////////
     inline bool write( addr_t ad, data_t dt )
     {
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "Writing data at " << ad << ", "
                   << " s/t=" << set << '/' << tag
                   << ", ";
 #endif
+
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 cache_data(way, set, word) = dt;
                 cache_lru(way, set) = true;
+
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
                           << " w/s/t=" << way << '/' << set << '/' << tag
@@ -279,28 +308,33 @@ public:
                 return true;
             }
         }
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "miss" << std::endl;
 #endif
         return false;
     }
 
+    /////////////////////////////////////////////////////////////////////
     inline bool write( addr_t ad, data_t dt, size_t* nway, size_t* nset )
     {
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "Writing data at " << ad << ", "
                   << " s/t=" << set << '/' << tag
                   << ", ";
 #endif
+
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 cache_data(way, set, word) = dt;
                 cache_lru(way, set) = true;
                 *nway = way;
                 *nset = set;
+
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
                           << " w/s/t=" << way << '/' << set << '/' << tag
@@ -309,27 +343,32 @@ public:
                 return true;
             }
         }
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "miss" << std::endl;
 #endif
         return false;
     }
 
+    //////////////////////////////
     inline bool inval( addr_t ad )
     {
         bool        hit = false;
         const tag_t       tag = m_z[ad];
         const size_t      set = m_y[ad];
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "Invalidating data at " << ad << ", "
                   << " s/t=" << set << '/' << tag
                   << ", ";
 #endif
+
         for ( size_t way = 0 ; way < m_ways && !hit ; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 hit     = true;
                 cache_val(way, set) = false;
                 cache_lru(way, set) = false;
+
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
                           << " w/s/t=" << way << '/' << set << '/' << tag
@@ -337,22 +376,26 @@ public:
 #endif
             }
         }
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << std::endl;
 #endif
         return hit;
     }
 
+    ////////////////////////////////////////////////////////////
     inline bool inval( addr_t ad, size_t* n_way, size_t* n_set )
     {
         bool    hit = false;
         const tag_t       tag = m_z[ad];
         const size_t      set = m_y[ad];
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << "Invalidating data at " << ad << ", "
                   << " s/t=" << set << '/' << tag
                   << ", ";
 #endif
+
         for ( size_t way = 0 ; way < m_ways && !hit ; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 hit     = true;
@@ -360,6 +403,7 @@ public:
                 cache_lru(way, set) = false;
                 *n_way = way;
                 *n_set = set;
+
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
                           << " w/s/t=" << way << '/' << set << '/' << tag
@@ -367,19 +411,24 @@ public:
 #endif
             }
         }
+
 #ifdef GENERIC_CACHE_DEBUG
         std::cout << std::endl;
 #endif
         return hit;
     }
 
-  	/// This function implements a pseudo LRU policy:
+    ///////////////////////////////////////////////////////////////////
+    // This function implements a pseudo LRU policy for a one cycle
+    // line replacement. It can be used if the directory is implemented
+    // as a dual port RAM.
     // 1 - First we search an invalid way
-    // 2 - If all ways are valid, we search  the first "non recent" way
-    // 3 - If all ways are recent, they are all transformed to "non recent"
-    //   and we select the way with index 0. 
-    // This function returns true, il a cache line has been removed,
-    // and the victim line index is returned in the victim parameter.
+    // 2 - Il all ways are valid, we search the first old way
+    // 3 - If all ways are recent, they are all transformed to old.
+    //     and we select the way with index 0.
+    // The victim line index is returned in the victim parameter.
+    // This function returns true, if the victim line is valid.
+    ///////////////////////////////////////////////////////////////////
     inline bool update( addr_t ad, data_t* buf, addr_t* victim )
     {
         tag_t       tag     = m_z[ad];
@@ -404,15 +453,14 @@ public:
                 }
             }
         }
-        if ( !found ) { // No old way => all ways become recent
+        if ( !found ) { // No old way => all ways become old
             for ( size_t way = 0; way < m_ways; way++ ) {
                 cache_lru(way, set) = false;
             }
             cleanup = true;
             selway  = 0;
         }
-
-        *victim = (addr_t)((cache_tag(selway, set) * m_sets) + set);
+        *victim = (addr_t)((cache_tag(selway,set) * m_sets) + set);
         cache_tag(selway, set) = tag;
         cache_val(selway, set) = true;
         cache_lru(selway, set) = true;
@@ -422,20 +470,23 @@ public:
         return cleanup;
     }
 
-  	/// This function implements a pseudo LRU policy:
+    /////////////////////////////////////////////////////////////////////
+    // The two functions select_before_update() & update_after_select()
+    // can be used to perform a line replacement in two cycles
+    // (when the directory is implemented as a single port RAM)
+    //
+    // The select_before_update function implements a pseudo LRU
+    // policy and and returns the victim line index and the selected 
+    // way in the return arguments. The selected cache line is not
+    // modified, neither invalidated.
     // 1 - First we search an invalid way
-    // 2 - If all ways are valid, we search  the first "non recent" way
-    // 3 - If all ways are recent, they are all transformed to "non recent"
-    //   and we select the way with index 0. 
-    // This function returns true, il a cache line has been removed,
-    // and the victim line index is returned in the victim parameter.
-#if 0    
-    inline bool update( addr_t ad, 
-                        bool* itlb_buf, bool* dtlb_buf,
-                        size_t* n_way, size_t* n_set, 
-                        data_t* buf, addr_t* victim )
+    // 2 - If all ways are valid, we search  the first old way
+    // 3 - If all ways are recent, they are all transformed to old
+    //     and we select the way with index 0. 
+    // This function returns true, il the victim line is valid,
+    /////////////////////////////////////////////////////////////////////
+    inline bool select_before_update( addr_t ad, size_t* way, addr_t* victim )
     {
-        tag_t       tag     = m_z[ad];
         size_t      set     = m_y[ad];
         bool        found   = false;
         bool        cleanup = false;
@@ -457,50 +508,41 @@ public:
                 }
             }
         }
-        // verify in_itlb & in_tlb 
-        if ( !found ) { // No invalid way
-            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if (!itlb_buf[m_sets*way+set] && !dtlb_buf[m_sets*way+set]) {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                }
+        if ( !found ) { // No old way => all ways become old
+            for ( size_t way = 0; way < m_ways; way++ ) {
+                cache_lru(way, set) = false;
             }
-            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if (!itlb_buf[m_sets*way+set] && dtlb_buf[m_sets*way+set]) {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                }
-            }
-            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if (itlb_buf[m_sets*way+set] && !dtlb_buf[m_sets*way+set]) {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                }
-            }
-            if ( !found ) { // No old way => all ways become recent
-                for ( size_t way = 0; way < m_ways; way++ ) {
-                    cache_lru(way, set) = false;
-                }
-                cleanup = true;
-                selway  = 0;
-            }
+            cleanup = true;
+            selway  = 0;
         }
 
         *victim = (addr_t)((cache_tag(selway, set) * m_sets) + set);
-        cache_tag(selway, set) = tag;
-        cache_val(selway, set) = true;
-        cache_lru(selway, set) = true;
-        *n_way = selway;
-        *n_set = set;
-        for ( size_t word = 0 ; word < m_words ; word++ ) {
-            cache_data(selway, set, word) = buf[word] ;
-        }
         return cleanup;
     }
-#endif
+
+    /////////////////////////////////////////////////////////////////////
+    // The two functions select_before_update() & update_after_select()
+    // can be used to perform a line replacement in two cycles
+    // (when the directory is implemented as a single port RAM)
+    //
+    // The update_after select() function performs the actual
+    // update of the cache line.
+    /////////////////////////////////////////////////////////////////////
+    inline void update_after_select( data_t* buf, size_t way, addr_t ad)
+    {
+        tag_t       tag     = m_z[ad];
+        size_t      set     = m_y[ad];
+        assert ( !cache_val(way, set) && 
+           "the target cache line must be empty when using the update_after_select method");
+        cache_tag(way, set) = tag;
+        cache_val(way, set) = true;
+        cache_lru(way, set) = true;
+        for ( size_t word = 0 ; word < m_words ; word++ ) {
+            cache_data(way, set, word) = buf[word] ;
+        }
+    }
+
+    ///////////////////////////
     inline bool find( addr_t ad, 
                       bool* itlb_buf, bool* dtlb_buf,
                       size_t* n_way, size_t* n_set, 
@@ -566,9 +608,8 @@ public:
         return cleanup;
     }
 
-    inline void update( addr_t ad, 
-                        size_t n_way, size_t n_set, 
-                        data_t* buf )
+    /////////////////////////////////////////////////////////////////////////
+    inline void update( addr_t ad, size_t n_way, size_t n_set, data_t* buf )
     {
         tag_t tag = m_z[ad];
 
@@ -580,8 +621,9 @@ public:
         }
     }
 
-    // cleanupcheck function is used for checking whether a line
-    // exist or not.
+    ///////////////////////////////////////////////////////////////////
+    // cleanupcheck function is used for checking whether a line exists
+    ///////////////////////////////////////////////////////////////////
     inline bool cleanupcheck( addr_t ad )
     {
         const tag_t       tag  = m_z[ad];
