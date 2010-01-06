@@ -148,9 +148,9 @@ namespace caba {
             "TGT_RSP_DCACHE   ",
         };
         const char *cleanup_fsm_state_str[] = {
-            "CLEANUP_IDLE",
-            "CLEANUP_DCACHE_REQ",
-            "CLEANUP_ICACHE_REQ",
+            "CLEANUP_CMD",
+            "CLEANUP_DCACHE_RSP",
+            "CLEANUP_ICACHE_RSP",
         };
     }
 #endif
@@ -331,7 +331,7 @@ namespace caba {
             r_cmd_fsm 		= CMD_IDLE;
             r_rsp_fsm 		= RSP_IDLE;
             r_tgt_fsm 		= TGT_IDLE;
-            r_cleanup_fsm 	= CLEANUP_IDLE;
+            r_cleanup_fsm 	= CLEANUP_CMD;
 
             // write buffer & caches
             r_wbuf.reset();
@@ -409,6 +409,8 @@ std::cout << "--------------------------------------------" << std::endl
           << "  " << rsp_fsm_state_str[r_rsp_fsm]
           << "  " << cleanup_fsm_state_str[r_cleanup_fsm]
           << "  " << tgt_fsm_state_str[r_tgt_fsm] << std::endl;
+std::cout << "ins_cleanup_req = " << r_icache_cleanup_req
+          << " / data_cleanup_req = " << r_dcache_cleanup_req << std::endl;
 r_wbuf.print();
 #endif
 
@@ -840,7 +842,7 @@ r_wbuf.print();
                 addr_t 		ad   		= (addr_t) r_icache_addr_save;
                 data_t*   	buf   		= r_icache_miss_buf;
                 addr_t 		victim_index;
-                if ( r_icache.update(ad, buf, &victim_index) )
+                if ( r_icache.update(ad, buf, &victim_index) )   // there is a victim
                 {
                     r_icache_cleanup_line 	= (addr_t) victim_index;
                     if ( !r_icache_cleanup_req )	// no pending cleanup
@@ -853,7 +855,7 @@ r_wbuf.print();
                         r_icache_fsm   		= ICACHE_CLEANUP_REQ;
 		    }
                 }
-                else
+                else						// there is no victim
                 {
                     r_icache_fsm		= ICACHE_IDLE;
                 }
@@ -1214,8 +1216,9 @@ r_wbuf.print();
                    r_dcache_fsm			= DCACHE_CLEANUP_REQ;
                 }
             } 
+            else					// There is no victim 
             {
-               r_dcache_fsm			= DCACHE_CLEANUP_REQ;
+               r_dcache_fsm			= DCACHE_IDLE;
             }
             break;
         }
@@ -1359,7 +1362,7 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
         if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) ) m_cpt_frz_cycles++;
 
         ////////////////////////////////////////////////////////////////////////////
-        // This CLEANUP FSM controls the transmission of the cleanup requests
+        // This CLEANUP FSM controls the transmission of the cleanup transactions
         // on the coherence network. It controls the following ressources:
         // - r_cleanup_fsm
         // - r_dcache_cleanup_req reset
@@ -1368,47 +1371,54 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
         // This FSM handles cleanup requests from both the DCACHE FSM & ICACHE FSM
         // 1 - Instruction Cleanup  : r_icache_cleanup_req 
         // 2 - Data Cleanup         : r_dcache_cleanup_req 
-        // It sends cleanup requests on the coherence network to the memory cache
-        // without  waiting the response to send a new command. 
-        ////////////////////////////////////////////////////////////////////////////
-
-        switch (r_cleanup_fsm) {
-
-            case CLEANUP_IDLE:
-                if (r_icache_cleanup_req)
-                {
-                    r_icache_cleanup_req = false;
-                    r_cleanup_fsm = CLEANUP_ICACHE_REQ;
-                }
-                else if (r_dcache_cleanup_req)
-                {
-                    r_dcache_cleanup_req = false;
-                    r_cleanup_fsm = CLEANUP_DCACHE_REQ;
-                }
-                break;
-
-            case CLEANUP_DCACHE_REQ:
-            case CLEANUP_ICACHE_REQ:
-                if ( p_vci_ini_c.cmdack.read() )  r_cleanup_fsm = CMD_IDLE;
-                break;
-        } // end switch r_cleanup_fsm    
-        
-        ////////////////////////////////////////////////////////////////////////////
-        // Cleanup responses are always accepted.
+        // In case of simultaneous requests, the data request have highest priority.
+        // There is only one cleanup transaction at a given time (sequencial behavior)
+        // because the same FSM controls both command & response. 
+        // The the r_icache_cleanup_req & r_dcache_cleanup_req are reset only
+        // when the response packet is received.
+        // Error handling :
         // As the coherence trafic is controled by hardware, errors are not reported
         // to software : In case of errors, the simulation stops.
         ////////////////////////////////////////////////////////////////////////////
 
-        if(p_vci_ini_c.rspval)
-        {
-            if( !p_vci_ini_c.reop || (p_vci_ini_c.rerror.read() != vci_param::ERR_NORMAL) )
-            {
-                std::cout << "error in component VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
-                std::cout << "error signaled in a cleanup response" << std::endl;
-                exit(0);
-            }
-        }
+        switch (r_cleanup_fsm) {
 
+            case CLEANUP_CMD:
+            {    
+                if      (r_dcache_cleanup_req) 	r_cleanup_fsm = CLEANUP_DCACHE_RSP;
+                else if (r_icache_cleanup_req) 	r_cleanup_fsm = CLEANUP_ICACHE_RSP;
+                break;
+            }
+            case CLEANUP_DCACHE_RSP:
+            {
+                if ( p_vci_ini_c.rspval )
+                {
+                    assert( p_vci_ini_c.reop && (p_vci_ini_c.rtrdid.read() == 0) &&
+                      "illegal response packet received for a cleanup transaction");
+                    assert( (p_vci_ini_c.rerror.read() == vci_param::ERR_NORMAL) && 
+                      "error signaled in a cleanup response" );
+                    
+                    r_cleanup_fsm = CLEANUP_CMD;
+                    r_dcache_cleanup_req = false;
+                }
+                break;
+            }
+            case CLEANUP_ICACHE_RSP:
+            {
+                if ( p_vci_ini_c.rspval )
+                {
+                    assert( p_vci_ini_c.reop && (p_vci_ini_c.rtrdid.read() == 1) &&
+                      "illegal response packet received for a cleanup transaction");
+                    assert( (p_vci_ini_c.rerror.read() == vci_param::ERR_NORMAL) && 
+                      "error signaled in a cleanup response" );
+                    
+                    r_cleanup_fsm = CLEANUP_CMD;
+                    r_icache_cleanup_req = false;
+                }
+                break;
+            }
+        } // end switch r_cleanup_fsm    
+        
         ////////////////////////////////////////////////////////////////////////////
         // The CMD FSM controls the transmission of read & write requests
         // on the direct network. It controls the following ressources:
@@ -1625,22 +1635,49 @@ std::cout << std::endl << "INDEX_IN = " <<  p_vci_ini_d.rpktid.read() << std::en
 
     //////////////////////////////////////////////////////////////////////////////////
     tmpl(void)::genMoore()
-        //////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////
     {
         // Coherence network (initiator port)
 
-        p_vci_ini_c.rspack = true;
-
         switch ( r_cleanup_fsm.read() ) {
 
-            case CLEANUP_IDLE:
+            case CLEANUP_CMD:
+                p_vci_ini_c.rspack  = false;
+                p_vci_ini_c.cmdval  = r_icache_cleanup_req || r_dcache_cleanup_req;
+                if ( r_dcache_cleanup_req )
+                {
+                    p_vci_ini_c.address =  r_dcache_cleanup_line.read() * m_dcache_words * 4;
+                    p_vci_ini_c.trdid   = 0;
+                }
+                else
+                {
+                    p_vci_ini_c.address =  r_icache_cleanup_line.read() * m_icache_words * 4;
+                    p_vci_ini_c.trdid   = 1;
+                }
+                p_vci_ini_c.wdata  = 0;
+                p_vci_ini_c.be     = 0xF;
+                p_vci_ini_c.plen   = 4;
+                p_vci_ini_c.cmd    = vci_param::CMD_WRITE;
+                p_vci_ini_c.trdid  = 0;
+                p_vci_ini_c.pktid  = 0;
+                p_vci_ini_c.srcid  = m_srcid_c;
+                p_vci_ini_c.cons   = false;
+                p_vci_ini_c.wrap   = false;
+                p_vci_ini_c.contig = false;
+                p_vci_ini_c.clen   = 0;
+                p_vci_ini_c.cfixed = false;
+                p_vci_ini_c.eop = true;
+                break;
+
+           case CLEANUP_DCACHE_RSP:
+                p_vci_ini_c.rspack  = true;
                 p_vci_ini_c.cmdval  = false;
                 p_vci_ini_c.address = 0;
                 p_vci_ini_c.wdata  = 0;
                 p_vci_ini_c.be     = 0;
                 p_vci_ini_c.plen   = 0;
-                p_vci_ini_c.cmd    = vci_param::CMD_NOP;
-                p_vci_ini_c.trdid  = 0;
+                p_vci_ini_c.cmd    = vci_param::CMD_WRITE;
+                p_vci_ini_c.trdid  = 0; 
                 p_vci_ini_c.pktid  = 0;
                 p_vci_ini_c.srcid  = 0;
                 p_vci_ini_c.cons   = false;
@@ -1651,40 +1688,23 @@ std::cout << std::endl << "INDEX_IN = " <<  p_vci_ini_d.rpktid.read() << std::en
                 p_vci_ini_c.eop = false;
                 break;
 
-           case CLEANUP_DCACHE_REQ:
-                p_vci_ini_c.cmdval  = true;
-                p_vci_ini_c.address = r_dcache_cleanup_line.read() * (m_dcache_words<<2);
+           case CLEANUP_ICACHE_RSP:
+                p_vci_ini_c.rspack  = true;
+                p_vci_ini_c.cmdval  = false;
+                p_vci_ini_c.address = 0;
                 p_vci_ini_c.wdata  = 0;
                 p_vci_ini_c.be     = 0;
-                p_vci_ini_c.plen   = 4;
+                p_vci_ini_c.plen   = 0;
                 p_vci_ini_c.cmd    = vci_param::CMD_WRITE;
-                p_vci_ini_c.trdid  = 0; // cleanup data
+                p_vci_ini_c.trdid  = 0; 
                 p_vci_ini_c.pktid  = 0;
-                p_vci_ini_c.srcid  = m_srcid_c;
+                p_vci_ini_c.srcid  = 0;
                 p_vci_ini_c.cons   = false;
                 p_vci_ini_c.wrap   = false;
                 p_vci_ini_c.contig = false;
                 p_vci_ini_c.clen   = 0;
                 p_vci_ini_c.cfixed = false;
-                p_vci_ini_c.eop = true;
-                break;
-
-           case CLEANUP_ICACHE_REQ:
-                p_vci_ini_c.cmdval  = true;
-                p_vci_ini_c.address = r_icache_cleanup_line.read() * (m_icache_words<<2);
-                p_vci_ini_c.wdata  = 0;
-                p_vci_ini_c.be     = 0;
-                p_vci_ini_c.plen   = 4;
-                p_vci_ini_c.cmd    = vci_param::CMD_WRITE;
-                p_vci_ini_c.trdid  = 1; // cleanup instruction
-                p_vci_ini_c.pktid  = 0;
-                p_vci_ini_c.srcid  = m_srcid_c;
-                p_vci_ini_c.cons   = false;
-                p_vci_ini_c.wrap   = false;
-                p_vci_ini_c.contig = false;
-                p_vci_ini_c.clen   = 0;
-                p_vci_ini_c.cfixed = false;
-                p_vci_ini_c.eop = true;
+                p_vci_ini_c.eop = false;
                 break;
            } // end switch r_cleanup_fsm
 

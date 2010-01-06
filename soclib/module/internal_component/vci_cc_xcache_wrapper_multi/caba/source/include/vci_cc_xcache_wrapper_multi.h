@@ -116,9 +116,9 @@ class VciCcXCacheWrapperMulti
     };
 
     enum cleanup_fsm_state_e {
-        CLEANUP_IDLE,
-        CLEANUP_DCACHE_REQ,
-        CLEANUP_ICACHE_REQ,
+        CLEANUP_CMD,
+        CLEANUP_DCACHE_RSP,
+        CLEANUP_ICACHE_RSP,
     };
 
     enum transaction_type_e {
