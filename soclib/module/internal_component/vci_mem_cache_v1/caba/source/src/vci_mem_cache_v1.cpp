@@ -1055,14 +1055,6 @@ namespace soclib { namespace caba {
           } else {
             r_write_fsm            = WRITE_DIR_HIT;
           }
-
-//      OLD VERSION WITHOUT INST UPDATE
-//         if((r_write_is_cnt.read() && r_write_count.read()) ||
-//             r_write_i_copies.read()){
-//           r_write_fsm            = WRITE_TRT_WRITE_LOCK;
-//         } else {
-//           r_write_fsm            = WRITE_DIR_HIT;
-//         }
            break;
         }
         ///////////////////
@@ -1077,8 +1069,6 @@ namespace soclib { namespace caba {
           entry.lock	    = r_write_lock.read();
           entry.d_copies    = r_write_d_copies.read();
           entry.i_copies    = r_write_i_copies.read();
-//      OLD VERSION WITHOUT INST UPDATE
-//          entry.i_copies    = 0;
           entry.count       = r_write_count.read();
           size_t set	    = m_y[(vci_addr_t)(r_write_address.read())];
           size_t way	    = r_write_way.read();
@@ -1091,29 +1081,6 @@ namespace soclib { namespace caba {
             }
           } // end for
 
-// OLD VERSION WITHOUT INSTRUCTION UPDATE
-// compute the actual number of copies & the modified bit vector
-//         bool owner = false;
-//         copy_t mask     = 0x1;
-//         copy_t d_copies = r_write_d_copies.read();
-//         for ( size_t i=0 ; i<32 ; i++) {
-//           if ( i == r_write_srcid.read() ) {
-//             if(d_copies & mask)
-//               owner    = true;
-//               d_copies = d_copies & ~mask;
-//           }
-//           mask = (mask << 1);
-//         }
-//         r_write_d_copies      = d_copies;
-//         size_t count_signal   = r_write_count.read();
-//         if(owner){
-//           count_signal        = count_signal - 1;
-//         }
-//         r_write_count         = count_signal;
-//         if ( count_signal == 0 ) r_write_fsm = WRITE_RSP;
-//         else                     r_write_fsm = WRITE_UPT_LOCK;
-//         break;
-    
           if ( r_write_d_copies.read() && (1 << r_write_srcid.read()) ){
             r_write_count = r_write_count.read()-1;
             if( r_write_count.read()-1 == 0)
@@ -2054,7 +2021,7 @@ namespace soclib { namespace caba {
         {
           if( r_alloc_upt_fsm.read() == ALLOC_UPT_CLEANUP )
           {
-            size_t index;
+            size_t index=0;
             bool hit_inval;
             hit_inval = m_update_tab.search_inval(r_cleanup_nline.read(),index);
             if(!hit_inval) {
@@ -2485,42 +2452,6 @@ namespace soclib { namespace caba {
           break;
         }
         ///////////////////////
-// OLD VERSION WITHOUT INST UPDATE
-//     case INIT_CMD_UPDT_SEL:	// selects the next L1 cache
-//       {
-//         if ((r_write_to_init_cmd_i_copies.read() == 0) &&
-//             (r_write_to_init_cmd_d_copies.read() == 0)) {	// no more copies
-//           r_write_to_init_cmd_req = false;
-//           r_init_cmd_fsm    = INIT_CMD_UPDT_IDLE;
-//         } else {						// select the first target
-//           copy_t copies;
-//           bool inst = false;
-//           if(r_write_to_init_cmd_i_copies.read()){
-//             inst   = true;
-//             copies = r_write_to_init_cmd_i_copies.read();
-//           } else {
-//             copies = r_write_to_init_cmd_d_copies.read();
-//           } 
-//           copy_t mask   = 0x1;
-//           for ( size_t i=0 ; i<8*sizeof(copy_t) ; i++ ) {
-//             if ( copies & mask ) {
-//               r_init_cmd_target = i;
-//               break;
-//             }
-//             mask = mask << 1;
-//           } // end for 
-//           r_init_cmd_fsm    = INIT_CMD_UPDT_NLINE;
-//           r_init_cmd_inst = inst;
-//           if(inst){
-//             r_write_to_init_cmd_i_copies = copies & ~mask;
-//           } else {
-//             r_write_to_init_cmd_d_copies = copies & ~mask;
-//           }
-//           r_init_cmd_cpt    = 0;
-//           m_cpt_update_mult++;
-//         }
-//         break;
-//       }
      case INIT_CMD_UPDT_SEL:	// selects the next L1 cache
        {
          if ((r_write_to_init_cmd_i_copies.read() == 0) &&
@@ -2566,18 +2497,6 @@ namespace soclib { namespace caba {
           break;
         }
         /////////////////////////
-// OLD VERSION WITHOUT INST UPDATE
-//     case INIT_CMD_UPDT_NLINE:	// send the cache line index
-//       {
-//         if ( p_vci_ini.cmdack ){
-//           if(r_init_cmd_inst.read()){
-//             r_init_cmd_fsm = INIT_CMD_UPDT_SEL;
-//           } else {
-//             r_init_cmd_fsm = INIT_CMD_UPDT_INDEX;
-//           }
-//         }
-//         break;
-//       }
      case INIT_CMD_UPDT_NLINE:	// send the cache line index
        {
          if ( p_vci_ini.cmdack ){
@@ -3388,24 +3307,6 @@ namespace soclib { namespace caba {
         p_vci_ini.trdid   = r_write_to_init_cmd_trdid.read();
         break;
       case INIT_CMD_UPDT_NLINE:
-//  OLD VERSION WITHOUT INST UPDATE
-//        p_vci_ini.cmdval  = true;
-//       if(r_init_cmd_inst.read()){
-//         p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()] + 8);
-//       } else {
-//         p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()] + 4);
-//       }
-//       p_vci_ini.wdata   = (uint32_t)r_write_to_init_cmd_nline.read();
-//       p_vci_ini.be      = ((r_write_to_init_cmd_nline.read() >> 32 ) & 0x3);
-//       if(r_init_cmd_inst.read()){
-//         p_vci_ini.plen    = 4 ;
-//         p_vci_ini.eop     = true;
-//       } else {
-//         p_vci_ini.plen    = 4 * (r_write_to_init_cmd_count.read() + 2);
-//         p_vci_ini.eop     = false;
-//       }
-//       p_vci_ini.trdid   = r_write_to_init_cmd_trdid.read();
-//       break;
         p_vci_ini.cmdval  = true;
         if(r_init_cmd_inst.read()){
           p_vci_ini.address = (addr_t)(m_coherence_table[r_init_cmd_target.read()] + 12);
