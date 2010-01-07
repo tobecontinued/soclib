@@ -24,18 +24,7 @@
  *
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: alain eric.guthmuller@polytechnique.edu
- */
-/*
- *
- * Modifications done by Christophe Choichillon on the 7/04/2009:
- * - Adding new states in the CLEANUP FSM : CLEANUP_UPT_LOCK and CLEANUP_UPT_WRITE
- * - Adding a new VCI target port for the CLEANUP network
- * - Adding new state in the ALLOC_UPT_FSM : ALLOC_UPT_CLEANUP
- * 
- * Modifications to do :
- * - Adding new variables used by the CLEANUP FSM
- *
+ * Maintainers: alain eric.guthmuller@polytechnique.edu choichillon.christophe@gmail.com
  */
 
 #ifndef SOCLIB_CABA_MEM_CACHE_V1_H
