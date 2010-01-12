@@ -1,4 +1,4 @@
-/* -*- c++ -*-
+ /* -*- c++ -*-
  *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
@@ -147,15 +147,19 @@ void FixedFftRadix_4_2 (FixC *ptVectIn, FixC *ptVectOut,FFT_RADIX_4_CTRL *ptCtrl
 
 	FftSize = ptCtrl->FftSize;
 
-    FixedConst = sqrt(0.5);
+	FixedConst = sqrt(0.5);
 
 	// First, we check if the size of the FFT is a power of 2
-
-	if ( (int) (pow ((double)2, ceil (log ((double)FftSize) / log ((double)2)) )) != FftSize )
-	{
-       printf ( "FUNCTION fft : size of the fft is not a power of 2\n" );
-       exit(-1); 
+	int value = 1;
+	while (value < FftSize) {
+		value = value << 1;
 	}
+	if (value != FftSize )
+	{
+		printf ( "FUNCTION fft : size of the fft is not a power of 2\n" );
+		exit(-1); 
+	}
+
 
 	// Then, we compute the total number of stages (radix-4 + radix-2)
 
