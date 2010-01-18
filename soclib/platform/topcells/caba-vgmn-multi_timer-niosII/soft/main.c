@@ -28,29 +28,54 @@
 
 #include "soclib/timer.h"
 #include "system.h"
+#include "stdio.h"
 
 #include "../segmentation.h"
 
 static const int period[4] = {10000, 11000, 12000, 13000};
 
+static int max_interrupts = 80;
+
+void irq_handler(int irq)
+{
+  uint32_t ti;
+
+  int left = atomic_add(&max_interrupts, -1);
+	
+  ti = soclib_io_get(
+		     base(TIMER),
+		     procnum()*TIMER_SPAN+TIMER_VALUE);
+  printf("IRQ %d received at cycle %d on cpu %d %d interrupts to go\n\n", irq, ti, procnum(), left);
+  soclib_io_set(
+		base(TIMER),
+		procnum()*TIMER_SPAN+TIMER_RESETIRQ,
+		0);
+
+  if ( !left )
+    exit(0);
+
+}
+
 int main(void)
 {
   const int cpu = procnum();
 
-	uputs("Hello from NIOS II processor ");
-	putc(procnum()+ '0');
-	putc('\n');
+  printf("hello From Nios II processor %d\n", procnum());
 	
-	soclib_io_set(
+  set_irq_handler(irq_handler);
+  enable_hw_irq(0);
+  irq_enable();
+
+  soclib_io_set(
 		base(TIMER),
 		procnum()*TIMER_SPAN+TIMER_PERIOD,
 		period[cpu]);
-	soclib_io_set(
+  soclib_io_set(
 		base(TIMER),
 		procnum()*TIMER_SPAN+TIMER_MODE,
 		TIMER_RUNNING|TIMER_IRQ_ENABLED);
-	
-//	*(int *)0 = 42;
-	while (1);
-	return 0;
+
+  while (1);
+  pause();
+  return 0;
 }

@@ -30,29 +30,28 @@
  */
 
 __asm__(
-		".section .entry, \"xa\"             \n"
-		".globl reset                        \n"
 
-		"reset :                             \n"
-		/* set PIE bit of status register    */
-		"addi      r23, r0, 1                \n"
-		"wrctl    status, r23                \n"
+	".section .entry, \"xa\"             \n"
+	".globl _start                        \n"
 
-		/* enable interruption               */
-		"addi    r23, r0, -1                 \n"
-		"wrctl    ienable, r23               \n"
+	"_start :                             \n"
+	/* reset PIE bit of status register    */
+	"wrctl    status, zero                \n"
 
-		/* get cpu ID and adjust stack */
-		"rdctl	r16,	 cpuid	             \n" /* read processor identifier */
-		"andi      r16, r16, 0x3ff           \n"
-		"slli      r16, r16, 10              \n"
-		"movia     sp,__alt_stack_pointer    \n"
+	/* disable interruption               */
+	"wrctl    ienable, zero               \n"
 
-		"sub       sp, sp, r16               \n"
+	/* get cpu ID and adjust stack */
+	"rdctl	r16,	 cpuid	             \n" /* read processor identifier */
+	"andi      r16, r16, 0x3ff           \n"
+	"slli      r16, r16, 10              \n"
+	"movia     sp,__alt_stack_pointer    \n"
 
-		/* setup global data pointer */
-		"movia     gp,      _gp              \n"
+	"sub       sp, sp, r16               \n"
 
-		"movia     r18,     main             \n"
-		"jmp       r18                       \n"
+	/* setup global data pointer */
+	"movia     gp,      _gp              \n"
+
+	"movia     r18,     main             \n"
+	"jmp       r18                       \n"
 );
