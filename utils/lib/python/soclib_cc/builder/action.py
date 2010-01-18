@@ -130,10 +130,6 @@ class Action:
 		del self.__handles[pid]
 		self.__out += self.__child_out.read()
 		self.__err += self.__child_err.read()
-		self.__child_out.close()
-		self.__child_err.close()
-		del self.__child_out
-		del self.__child_err
 		if self.__out:
 			sys.stdout.write('\n')
 			sys.stdout.write(self.__out)
