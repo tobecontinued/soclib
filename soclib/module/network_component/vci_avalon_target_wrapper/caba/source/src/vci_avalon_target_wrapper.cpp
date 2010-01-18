@@ -22,7 +22,7 @@
  *
  * Copyright (C) IRISA/INRIA, 2007-2008
  *         Francois Charot <charot@irisa.fr>
- * 	   Charles Wagner <wagner@irisa.fr>
+ * 	       Charles Wagner <wagner@irisa.fr>
  * 
  * Maintainer: wagner
  * 
@@ -31,6 +31,10 @@
  * 
  * 
  */
+
+
+
+
 
 #include "vci_avalon_target_wrapper.h"
 #include "register.h"
@@ -75,7 +79,7 @@ namespace soclib { namespace caba {
       SOCLIB_REG_RENAME(r_burst_count);
       SOCLIB_REG_RENAME(r_read);
       SOCLIB_REG_RENAME(r_address);
-      SOCLIB_REG_RENAME(r_byteenable);
+      //SOCLIB_REG_RENAME(r_byteenable);
 
     } //  end constructor
 
@@ -104,20 +108,36 @@ namespace soclib { namespace caba {
  
  	r_address = p_avalon.address.read();
    	r_burstcount   = p_avalon.burstcount.read();
-	r_burst_count  = p_avalon.burstcount.read();
+	
+	//r_burst_count  = p_avalon.burstcount.read();
+			  
+			  
+			  
 	r_read  = p_avalon.read.read();
    	r_write = p_avalon.write.read();	
-  
+
+	//Charles  r_byteenable = p_avalon.byteenable.read();
+	 
 	if  ((p_vci.cmdack)  && (p_avalon.chipselect))
 	  {    
-	    if ((p_avalon.read) == true) {r_fsm_state  = FSM_ACQ_LEC;}
-	    else if ((p_avalon.write) == true) {r_fsm_state  = FSM_ACQ_LEC;}
-	  } 
+		  if ((p_avalon.read) == true) {r_burst_count  = p_avalon.burstcount.read();  r_fsm_state  = FSM_ACQ_LEC;}
+		  // Charles : advanced write
+		  
+	    else if ((p_avalon.write) == true)
+		{	if (p_avalon.burstcount.read() == 1) 
+				{r_burst_count  = p_avalon.burstcount.read(); r_fsm_state  = FSM_ACQ_LEC;} 
+				else {r_burst_count  = p_avalon.burstcount.read(); r_fsm_state  = FSM_ADV_WRITE;}
+		}
+	  }
  
 	if  ((!p_vci.cmdack)  && (p_avalon.chipselect)) 
 	  {    
-	    if ((p_avalon.read) == true) {r_fsm_state  = FSM_WAIT_LEC;}
-	    else if ((p_avalon.write) == true) {r_fsm_state  = FSM_WAIT_LEC;}
+	    if ((p_avalon.read) == true) {r_burst_count  = p_avalon.burstcount.read(); r_fsm_state  = FSM_WAIT_LEC;}
+		else if ((p_avalon.write) == true)
+		{	if (p_avalon.burstcount.read() == 1) 
+		{r_burst_count  = p_avalon.burstcount.read(); r_fsm_state  = FSM_WAIT_LEC;} 
+		else {r_fsm_state  = FSM_ADV_WRITE;}
+		}
 	  } 
 	
 	break;  //=========fin FSM_IDLE
@@ -126,7 +146,8 @@ namespace soclib { namespace caba {
  
       case FSM_WAIT_LEC: //==============
   	
- 	r_byteenable = p_avalon.byteenable.read(); 
+ 	//Charles	  r_byteenable = p_avalon.byteenable.read(); 
+			  
  	r_address = p_avalon.address.read()+ vci_param::B ;
 	r_fsm_state = FSM_BURST_RDATA;
 
@@ -139,7 +160,8 @@ namespace soclib { namespace caba {
 	//rspval, reop positionné un cycle après 
 	r_address = p_avalon.address.read()+ vci_param::B ;
 	r_fsm_state  = FSM_BURST_RDATA;
-	r_byteenable = p_avalon.byteenable.read(); 
+	
+			  //Charles   r_byteenable = p_avalon.byteenable.read(); 
  
 	break;  //=========fin FSM_ACQ_LEC
 	
@@ -182,6 +204,32 @@ namespace soclib { namespace caba {
 	r_fsm_state = FSM_IDLE;	
 
 	break;	 //=========fin FSM_LAST_BURST_RDATA   
+			  
+			  
+
+		  case FSM_ADV_WRITE: //===============
+			  
+			r_burstcount = r_burstcount - 1;
+			r_address = r_address + vci_param::B;
+			
+			  //Charles  	  r_byteenable = p_avalon.byteenable.read(); 
+			  
+			  if (r_burstcount== 1) {				  
+				  r_fsm_state = FSM_LAST_ADV_WRITE;
+			  }
+			  				
+			  break;  //=========fin FSM_ADV_WRITE
+			  
+			  
+			  
+		  case FSM_LAST_ADV_WRITE: //===============
+			  
+
+			  r_address = r_address + vci_param::B;			 				  
+			 if (p_vci.rspval == true)  r_fsm_state = FSM_IDLE;
+			
+			  
+			  break;  //=========fin FSM_LAST_ADV_WRITE
 	
 	
 #if DEBUG_TARGET_WRAPPER
@@ -243,7 +291,7 @@ namespace soclib { namespace caba {
 
 	// bus VCI : avalon waitrequest
 	p_vci.cmdval = true;
-	p_vci.eop= true;	
+
 	if (r_write){p_vci.cmd = vci_param::CMD_WRITE;}
 	if (r_read) {p_vci.cmd = vci_param::CMD_READ;}	
 	p_vci.wdata = p_avalon.writedata.read();	
@@ -283,7 +331,7 @@ namespace soclib { namespace caba {
 
 	// bus VCI : avalon waitrequest
 	p_vci.cmdval = true;
-	p_vci.eop  = true;	
+	
 	if (r_write){p_vci.cmd = vci_param::CMD_WRITE;}
 	if (r_read) {p_vci.cmd = vci_param::CMD_READ;}	
 	p_vci.address = p_avalon.address.read();
@@ -316,8 +364,11 @@ namespace soclib { namespace caba {
 	if (r_read) {p_vci.cmd = vci_param::CMD_READ;}	
 	p_vci.wdata = p_avalon.writedata;	
 	p_vci.address = r_address.read();
-	p_vci.be = r_byteenable.read();
-	if ((r_burstcount == 2) || (r_burstcount == 1)) {p_vci.eop = true;}
+	
+	//Charles  		  p_vci.be = r_byteenable.read();
+	p_vci.be = p_avalon.byteenable.read();
+			  
+			  if ((r_burstcount == 2) || (r_burstcount == 1)) {p_vci.eop = true;}
 	else {	p_vci.eop = false;}
 	p_vci.contig = true; // addresses contigues
 	p_vci.cons = false;
@@ -343,12 +394,18 @@ namespace soclib { namespace caba {
 #endif
 
 	// bus VCI 
-	p_vci.cmdval = false;
+	  p_vci.cmdval = false;
+	
+			  
 	if (r_write){p_vci.cmd = vci_param::CMD_WRITE;}
 	if (r_read) {p_vci.cmd = vci_param::CMD_READ;}	
 	p_vci.wdata = p_avalon.writedata;	
 	p_vci.address = r_address.read();
-	p_vci.be = r_byteenable.read();
+	
+	//Charles  	  p_vci.be = r_byteenable.read();
+	p_vci.be = p_avalon.byteenable.read();
+			  
+			  
 	p_vci.eop = false;
 	p_vci.contig = true; // addresses contigues
 	p_vci.cons = false;
@@ -379,7 +436,11 @@ namespace soclib { namespace caba {
 	if (r_read) {p_vci.cmd = vci_param::CMD_READ;}	
 	p_vci.wdata = p_avalon.writedata;	
 	p_vci.address = r_address.read();
-	p_vci.be = r_byteenable.read();
+	
+	//Charles  	  p_vci.be = r_byteenable.read();
+	p_vci.be = p_avalon.byteenable.read();
+			  
+			  
 	p_vci.eop = true;
 	p_vci.contig = true; // addresses contigues
 	p_vci.cons = false;
@@ -394,6 +455,72 @@ namespace soclib { namespace caba {
 	p_avalon.readdatavalid = false;
 	
   	break;	 //=========fin FSM_LAST_BURST_RDATA
+			  
+
+			  
+			  
+    case FSM_ADV_WRITE: //===============
+			  
+#if DEBUG_TARGET_WRAPPER
+			  std::cout << "==============================================>   genMealy   FSM_LAST_BURST_RDATA " << std::endl;
+#endif
+			  
+			  // bus VCI 
+			  p_vci.cmdval = true;
+			  p_vci.cmd = vci_param::CMD_WRITE;
+			  p_vci.wdata = p_avalon.writedata;	
+			  p_vci.address = r_address.read();
+			  
+			 // Charles  p_vci.be = r_byteenable.read();
+			 p_vci.be = p_avalon.byteenable.read();
+			  
+			  if (r_burstcount == 1 ) p_vci.eop = true; 
+			 else p_vci.eop = false;
+			  p_vci.contig = true; // addresses contigues
+			  p_vci.cons = false;
+			  p_vci.wrap = false;
+			  p_vci.plen = r_burst_count.read()*vci_param::B;
+			  p_vci.clen = 0; // pas de chainage de paquets
+			  p_vci.rspack = false;
+			  
+			  // bus AVALON  ==========================================
+			  p_avalon.readdata =  p_vci.rdata.read() ; 
+			  p_avalon.waitrequest = false;
+			  p_avalon.readdatavalid = false;
+			  
+			  break;	 //=========fin FSM_ADV_WRITE		  
+			  
+			  
+		  case FSM_LAST_ADV_WRITE: //===============
+			  
+#if DEBUG_TARGET_WRAPPER
+			  std::cout << "==============================================>   genMealy   FSM_LAST_BURST_RDATA " << std::endl;
+#endif
+			  
+			  // bus VCI 
+			  p_vci.cmdval = false;
+			  p_vci.cmd = vci_param::CMD_WRITE;
+			  p_vci.wdata = p_avalon.writedata;	
+			  p_vci.address = r_address.read();
+			 
+			  //Charles   p_vci.be = r_byteenable.read();
+			  p_vci.be = p_avalon.byteenable.read();
+			  
+			  p_vci.eop = true;
+			  p_vci.contig = true; // addresses contigues
+			  p_vci.cons = false;
+			  p_vci.wrap = false;
+			  p_vci.plen = r_burst_count.read()*vci_param::B;
+			  p_vci.clen = 0; // pas de chainage de paquets
+			  if (p_vci.rspval == true) p_vci.rspack = true; else p_vci.rspack = false;
+			  
+			  // bus AVALON  ==========================================
+			  p_avalon.readdata =  p_vci.rdata.read() ; 
+			  p_avalon.waitrequest = false;
+			  p_avalon.readdatavalid = false;
+			  
+			  break;	 //=========fin FSM_LAST_ADV_WRITE		  
+			  
    		
       } // end switch
 

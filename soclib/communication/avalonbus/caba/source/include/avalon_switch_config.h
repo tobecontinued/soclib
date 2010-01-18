@@ -1,1 +1,0 @@
-avalon_switch_config.h_framebuffer_nios2

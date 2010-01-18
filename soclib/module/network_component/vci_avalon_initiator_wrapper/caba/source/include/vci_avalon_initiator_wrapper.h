@@ -68,14 +68,20 @@ namespace soclib { namespace caba {
     {
 
       enum fsm_state_e {
-	FSM_IDLE,
-	FSM_R_ACQ1,
-	FSM_R_WAIT1,
-	FSM_R_WAIT2,
-	FSM_R_ACQ2,
-	FSM_RDATA,
-	FSM_WAIT_RDATA,
-	FSM_LAST_RDATA
+	FSM_IDLE, // 0
+	FSM_R_ACQ1, //1
+	FSM_R_WAIT1, //2
+	FSM_R_WAIT2, //3
+	FSM_R_ACQ2, //4
+	FSM_RDATA, //5
+	FSM_WAIT_RDATA, //6
+	FSM_LAST_RDATA, //7
+		  // Charles
+		  FSM_R_WAIT_ADV, //8
+		  FSM_R_ACQ_ADV, //9
+		  FSM_RDATA_ADV, //10
+		  FSM_WAIT_RDATA_ADV,  // 11
+		  FSM_LAST_RDATA_ADV // 12
 	 	 
       };
 
@@ -97,13 +103,16 @@ namespace soclib { namespace caba {
 	
       VciAvalonInitiatorWrapper(sc_module_name	insname);
 
-    private:
+  // Charles  private:
 
       sc_signal<int>				r_srcid;
       sc_signal<int>				r_pktid;
       sc_signal<int>				r_trdid;
+		
       sc_signal<bool>				r_read;
       sc_signal<bool>				r_write;
+	  sc_signal<int>				r_address;
+	  sc_signal<int>				r_byteenable;
 
       sc_signal<int>				r_fsm_state;
       sc_signal<int>				r_read_burstcount;  // nombre de requetes

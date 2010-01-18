@@ -59,7 +59,8 @@ namespace soclib { namespace caba {
       requete	= new sc_signal<bool>[n_master];
 
 
-      p_arbiter_master  = new AvalonArbiter_Master[n_master];
+       p_arbiter_master  = new AvalonArbiter_Master[n_master];
+		// p_arbiter_master  = new AvalonArbiter_Master[n_master+1];
       p_arbiter_slave   = new AvalonArbiter_Slave[1];
 
 
@@ -74,6 +75,7 @@ namespace soclib { namespace caba {
 
 
       for (int i=0; i< n_master; i++)
+	//	for (int i=0; i< n_master+1; i++)
 	{
 	  sensitive << p_arbiter_master[i].address;
 	  sensitive << p_arbiter_master[i].read;
@@ -240,17 +242,35 @@ namespace soclib { namespace caba {
 
 #endif
 
-      if ( req_courante == -1 ){ select_master = 0;} else {select_master = req_courante ;}
-      if ( req_courante == -1 ){ sel_master = -1;} else {sel_master = route[req_courante] ;}
-
-
-      p_arbiter_slave[0].chipselect = p_arbiter_master[select_master].chipselect;
-      p_arbiter_slave[0].address    = p_arbiter_master[select_master].address;
-      p_arbiter_slave[0].read       = p_arbiter_master[select_master].read;
-      p_arbiter_slave[0].write      = p_arbiter_master[select_master].write;
-      p_arbiter_slave[0].writedata  = p_arbiter_master[select_master].writedata;
-      p_arbiter_slave[0].byteenable = p_arbiter_master[select_master].byteenable;
-      p_arbiter_slave[0].burstcount = p_arbiter_master[select_master].burstcount;
+		//Charles : pas de requete : selection entree initialisation
+      //if ( req_courante == -1 ){ select_master = 0;} else {select_master = req_courante ;}
+      //if ( req_courante == -1 ){ sel_master = -1;} else {sel_master = route[req_courante] ;}
+		
+		if ( req_courante == -1 ){ select_master = Nmaster;} else {select_master = req_courante ;}
+		if ( req_courante == -1 ){ sel_master = -1;} else {sel_master = route[req_courante] ;}
+		
+		
+// 
+		if ( req_courante == -1 )
+		{
+			p_arbiter_slave[0].chipselect = 0;	
+			p_arbiter_slave[0].address    = 0;		
+			p_arbiter_slave[0].read       = 0;
+			p_arbiter_slave[0].write      = 0;
+			p_arbiter_slave[0].writedata  = 0;
+			p_arbiter_slave[0].byteenable = 0;
+			p_arbiter_slave[0].burstcount = 0;
+		}
+		else
+		{
+			p_arbiter_slave[0].chipselect = p_arbiter_master[select_master].chipselect;	
+			p_arbiter_slave[0].address    = p_arbiter_master[select_master].address;		
+			p_arbiter_slave[0].read       = p_arbiter_master[select_master].read;
+			p_arbiter_slave[0].write      = p_arbiter_master[select_master].write;
+			p_arbiter_slave[0].writedata  = p_arbiter_master[select_master].writedata;
+			p_arbiter_slave[0].byteenable = p_arbiter_master[select_master].byteenable;
+			p_arbiter_slave[0].burstcount = p_arbiter_master[select_master].burstcount;
+		}
 
 
 #if DEBUG_ARBITER

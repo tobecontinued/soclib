@@ -89,7 +89,10 @@ namespace soclib { namespace caba {
 	FSM_LAST_BURST_WDATA,
 	FSM_WAIT_FIN_ECR,
 	FSM_VAL_ACK1,
-	FSM_VAL_ACK2
+	FSM_VAL_ACK2,
+// Charles
+	FSM_ADV_WRITE,
+	FSM_LAST_ADV_WRITE
       };
  
 
@@ -108,7 +111,7 @@ namespace soclib { namespace caba {
 
       VciAvalonTargetWrapper(sc_module_name	insname);
 
-    private:
+  // Charles  private:
 
       sc_signal<int>				r_fsm_state;
       sc_signal<int>				r_burstcount;  // compteurs de requetes courantes

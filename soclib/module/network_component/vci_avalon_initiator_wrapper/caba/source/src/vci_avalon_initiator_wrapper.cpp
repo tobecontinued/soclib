@@ -5,7 +5,7 @@
  * This file is part of SoCLib, GNU LGPLv2.1.
  * 
  * SoCLib is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as published
+ * under the terms of the GNU Lesser General Public License as publishedﬁƒ
  * by the Free Software Foundation; version 2.1 of the License.
  * 
  * SoCLib is distributed in the hope that it will be useful, but
@@ -23,15 +23,19 @@
  *
  * Copyright (C) IRISA/INRIA, 2007-2008
  *         Francois Charot <charot@irisa.fr>
- * 	   Charles Wagner <wagner@irisa.fr>
+ * 	   
+ * Wagner <wagner@irisa.fr>
  * 
  * Maintainer: wagner
  * 
  * File : vci_avalon_initiator_wrapper.cpp
  * Date : 20/11/2008
+ *   
+ * Date : 20/10/2009 
+ *  ajout VCI advanced read 
  *
- *
- * protocole VCI : pas de mode split (envoi requete sans attendre la reponse) 
+ * protocole VCI :  
+ *			advanced read (plen > 4 et eop true)   et advanced write, avec attente de la reponse avant nouvelle requete
  *  		requete : validée par cmdack si rspval
  *          paquet : fin si reop
  * 			adresse : mise a jour dans le paquet, pointe sur le byte de poids faible
@@ -89,9 +93,14 @@ namespace soclib { namespace caba {
       // registres
       SOCLIB_REG_RENAME(r_fsm_state);
       SOCLIB_REG_RENAME(r_read_burstcount);
-      //SOCLIB_REG_RENAME(r_read_burst_count);
-      SOCLIB_REG_RENAME(r_write_burstcount);
-      //SOCLIB_REG_RENAME(r_write_burst_count);
+		
+	// Charles
+      SOCLIB_REG_RENAME(r_read_burst_count);
+      
+		SOCLIB_REG_RENAME(r_write_burstcount);
+		
+		// Charles
+      SOCLIB_REG_RENAME(r_write_burst_count);
 
       SOCLIB_REG_RENAME(r_srcid);
       SOCLIB_REG_RENAME(r_pktid);
@@ -99,6 +108,11 @@ namespace soclib { namespace caba {
 
       SOCLIB_REG_RENAME(r_read);
       SOCLIB_REG_RENAME(r_write);
+		// Charles
+		SOCLIB_REG_RENAME(r_byteenable);
+		SOCLIB_REG_RENAME(r_address);
+		
+		
     } //  end constructor
 
 
@@ -123,6 +137,8 @@ namespace soclib { namespace caba {
 	r_fsm_state = FSM_IDLE;
 	r_read = false;
 	r_write = false;
+	r_address = 0;
+	r_byteenable = 0;
 	r_read_burstcount = 0;
 	r_write_burstcount = 0;
 
@@ -133,6 +149,8 @@ namespace soclib { namespace caba {
       switch (r_fsm_state) {
 
       case FSM_IDLE: //=================
+			  
+			  			  
 
 #if DEBUG_INIT_WRAPPER
 	std::cout << "################################################################################################  transition  FSM_IDLE" << std::endl;
@@ -143,7 +161,8 @@ namespace soclib { namespace caba {
 	std::cout << "################################################################################################      FSM = " <<  std::hex << r_fsm_state<< std::endl;
 #endif
 
-
+			  r_read = false;
+			  r_write = false;
 
 	if (p_vci.plen.read()%vci_param::B != 0) // B : cellsize
 	  {
@@ -160,8 +179,9 @@ namespace soclib { namespace caba {
 	//LECTURE
 	if ((p_vci.cmdval) && (p_vci.cmd.read() == vci_param::CMD_READ))
 	  {
-	    r_cmd = p_vci.cmd.read();
-	    if ((p_vci.eop) && (!p_avalon.waitrequest))
+	    r_cmd = p_vci.cmd.read();	
+		  
+		  if ((p_vci.eop) && (p_vci.plen.read()  <= vci_param::B  ) && (!p_avalon.waitrequest))			  
 	      {// un transfert
 
 #if DEBUG_INIT_WRAPPER
@@ -170,7 +190,9 @@ namespace soclib { namespace caba {
 	       	r_fsm_state  = FSM_R_ACQ1;
 	      }
 
-	    if ((!p_vci.eop) && (!p_avalon.waitrequest))
+	 
+		  
+		   if ((!p_vci.eop) && (p_vci.plen.read() > vci_param::B) && (!p_avalon.waitrequest))		  
 	      {// paquet
 
 #if DEBUG_INIT_WRAPPER
@@ -179,7 +201,19 @@ namespace soclib { namespace caba {
 	       	r_fsm_state  = FSM_R_ACQ2;
 	      }
 
-	    if ((p_vci.eop) &&  (p_avalon.waitrequest))
+		if ((p_vci.eop) && (p_vci.plen.read() > 1) && (!p_avalon.waitrequest)) 
+		  {//ADVCI advanced read
+			  
+#if DEBUG_INIT_WRAPPER
+			  std::cout << "entree transition  FSM_IDLE vers R_ACQ_ADV" << std::endl;
+#endif
+			  r_address  = p_vci.address.read();
+			  r_fsm_state  = FSM_R_ACQ_ADV;
+	      }
+		  
+		  
+				  if ((p_vci.eop) && (p_vci.plen.read() <= vci_param::B ) &&  (p_avalon.waitrequest))
+		  
 	      {
 #if DEBUG_INIT_WRAPPER
 		std::cout << "entree transition  FSM_IDLE vers R_WAIT1" << std::endl;
@@ -187,16 +221,26 @@ namespace soclib { namespace caba {
 	       	r_fsm_state  = FSM_R_WAIT1;
 	      }
 
-
-	    if ((!p_vci.eop) &&  (p_avalon.waitrequest))
-	      {
+	  
+		  if ((!p_vci.eop) && (p_vci.plen.read() > vci_param::B) &&  (p_avalon.waitrequest))		  
+		  
+	      { // paquet
 #if DEBUG_INIT_WRAPPER
 		std::cout << "entree transition  FSM_IDLE vers R_WAIT2" << std::endl;
 #endif
-
 	       	r_fsm_state = FSM_R_WAIT2;
 	      }
-
+		  
+		  if ((p_vci.eop) && (p_vci.plen.read() > 1) &&  (p_avalon.waitrequest))		  
+			  
+	      { // ADVCI advanced read
+#if DEBUG_INIT_WRAPPER
+			  std::cout << "entree transition  FSM_IDLE vers R_WAIT_ADV" << std::endl;
+#endif
+			  r_address  = p_vci.address.read();
+			  r_fsm_state = FSM_R_WAIT_ADV;
+	      }
+		  
 	  } // fin LECTURE
 	r_cmd = p_vci.cmd.read();
 
@@ -296,7 +340,8 @@ namespace soclib { namespace caba {
 	  }
 	//ECRITURE
 	if ((!(p_avalon.waitrequest)) && (r_cmd == vci_param::CMD_WRITE))
-	  { r_fsm_state = FSM_R_ACQ1;}
+	 // Charles  { r_fsm_state = FSM_R_ACQ1;}
+		{ r_fsm_state = FSM_IDLE;}
 
 
 	break; //=========fin FSM_R_WAIT1
@@ -321,52 +366,107 @@ namespace soclib { namespace caba {
 	//LECTURE
 
 	if (r_cmd == vci_param::CMD_READ)
-	  {
+	{
 	    if (p_vci.plen.read()%vci_param::B != 0) {r_read_burstcount = (p_vci.plen.read()/vci_param::B) +1;}
 	    else {r_read_burstcount = p_vci.plen.read()/vci_param::B;}
 
 	    if (!(p_avalon.waitrequest))
-	      {
-		if (p_avalon.readdatavalid)  {r_fsm_state = FSM_RDATA;
-		  //r_read_burst_count = r_read_burst_count + 1;
+		{
+			if (p_avalon.readdatavalid) 
+			{
+			r_fsm_state = FSM_RDATA;
+			r_read_burst_count = r_read_burst_count + 1;			   
+			}
+			else {r_fsm_state = FSM_WAIT_RDATA;}
 		}
-		else {r_fsm_state = FSM_WAIT_RDATA;}
-	      }
 
 	    if (p_vci.cmdval == false)
-	      {
+		{
 		printf("ERROR  : cmdval 5 : The vci_avalon_initiator_wrapper assumes that\n");
 		printf("there s no \"buble\" in a VCI command packet\n");
 		exit(1);
-	      }
-	  }
+		}
+	}
 
 
 	if (p_vci.cmdval == false)
-	  {
+	{
 	    printf("ERROR  : cmdval 5 : The vci_avalon_initiator_wrapper assumes that\n");
 	    printf("there s no \"buble\" in a VCI command packet\n");
 	    exit(1);
-	  }
+	}
 
 	break; //=========fin FSM_R_WAIT2
 
+			  
+			  
+		  case FSM_R_WAIT_ADV : //=================
+			  // attente traitement  cellule
+			  
+#if DEBUG_INIT_WRAPPER
+			  std::cout << "################################################################################################  transition  FSM_R_WAIT_ADV" << std::endl;
+			  std::cout << "################################################################################################      p_vci.eop = " <<  p_vci.eop << std::endl;
+			  std::cout << "################################################################################################      p_vci.cmdval = " <<  p_vci.cmdval << std::endl;
+			  std::cout << "################################################################################################      p_vci.cmd = " <<  p_vci.cmd << std::endl;
+			  std::cout << "################################################################################################      p_vci.address = " <<   std::hex <<p_vci.address << std::endl;
+			  std::cout << "################################################################################################      FSM = " <<  std::hex << r_fsm_state<< std::endl;
+			  std::cout << "===================================================================================>   entree transition  FSM_WAIT_ADV" << std::endl;
+#endif
+			  
+			  //LECTURE
+			  
+			  if (r_cmd == vci_param::CMD_READ)
+			  {
+				  if (p_vci.plen.read()%vci_param::B != 0) {r_read_burstcount = (p_vci.plen.read()/vci_param::B) +1;}
+				  else {r_read_burstcount = p_vci.plen.read()/vci_param::B;}
+				  if (!(p_avalon.waitrequest))
+				  {
+						  if (p_avalon.readdatavalid)  
+						  // Charles
+						  //if (p_vci.plen.read()%vci_param::B == 0 ) { r_fsm_state = FSM_LAST_RDATA_ADV;}
+						  {
+							  if (p_vci.plen.read() == 4 ) { r_fsm_state = FSM_LAST_RDATA_ADV;}
+							  else {r_fsm_state = FSM_RDATA_ADV;} 
+	
+							  //Charles	   
+							  r_read_burst_count = r_read_burst_count + 1;
+						  }
+				  else {r_fsm_state = FSM_WAIT_RDATA_ADV;}	
+				  }
+			  }
+	
+			  r_address  = p_vci.address.read();
+			  r_byteenable = p_vci.be.read();
+			  if (r_cmd == vci_param::CMD_READ) r_read = true; r_write = false;
+			  if (r_cmd == vci_param::CMD_WRITE) r_read = false; r_write = true;
+			  if (r_cmd == vci_param::CMD_NOP) r_read = false; r_write = false;
+				  
+	    
+			  break; //=========fin FSM_R_WAIT_ADV
+			  
+			  
+			  
+			  
+			  
 
+			  
 
       case FSM_R_ACQ2 : //=================
 	// traitement cellule
 
 	//LECTURE
 	if ((r_cmd == vci_param::CMD_READ))
-	  {
+	{
 	    if (p_vci.plen.read()%vci_param::B != 0) {r_read_burstcount = (p_vci.plen.read()/vci_param::B) +1;}
 	    else {r_read_burstcount = p_vci.plen.read()/vci_param::B;}
 
 	    if (p_avalon.readdatavalid == false) {r_fsm_state = FSM_WAIT_RDATA;}
-	    else   {r_fsm_state = FSM_RDATA;
-	      //r_read_burst_count = r_read_burst_count + 1;
-	    }
-	  }
+	    else   
+		{
+			r_fsm_state = FSM_RDATA;
+			r_read_burst_count = r_read_burst_count + 1;
+		}
+	}
 
 
 	if (p_vci.cmdval == false)
@@ -378,6 +478,35 @@ namespace soclib { namespace caba {
 
 	break; //=========fin FSM_R_ACQ2
 
+				  
+						  
+		case FSM_R_ACQ_ADV : //=================
+				  // traitement cellule
+				  
+				  //LECTURE
+				  if ((r_cmd == vci_param::CMD_READ))
+				  {
+					  if (p_vci.plen.read()%vci_param::B != 0) {r_read_burstcount = (p_vci.plen.read()/vci_param::B) +1;}
+					  else {r_read_burstcount = p_vci.plen.read()/vci_param::B;}
+					  
+					  if (p_avalon.readdatavalid == false) {r_fsm_state = FSM_WAIT_RDATA_ADV;}
+					  else  
+					  {
+						  if (p_vci.plen.read() == vci_param::B ) { r_fsm_state = FSM_LAST_RDATA_ADV;}						  
+						  else {r_fsm_state = FSM_RDATA_ADV; }
+						  r_read_burst_count = r_read_burst_count + 1;						  
+					  }
+				  }
+					  
+			  r_address  = p_vci.address.read();
+			  r_byteenable = p_vci.be.read();
+			  if (r_cmd == vci_param::CMD_READ) r_read = true; r_write = false;
+			  if (r_cmd == vci_param::CMD_WRITE) r_read = false; r_write = true;
+			  if (r_cmd == vci_param::CMD_NOP) r_read = false; r_write = false;
+			  
+			  
+				  
+				  break; //=========fin FSM_R_ACQ_ADV			  
 
 
       case FSM_RDATA : //=================
@@ -397,40 +526,38 @@ namespace soclib { namespace caba {
 
 	//LECTURE
 	if (r_cmd == vci_param::CMD_READ)
-	  {
+	{
 	    if (!p_avalon.readdatavalid ){r_fsm_state = FSM_WAIT_RDATA;}
 	    else
-	      {
-		//r_read_burst_count = r_read_burst_count + 1;
 		{
-		  if (p_vci.eop)	r_fsm_state = FSM_LAST_RDATA;
+		r_read_burst_count = r_read_burst_count + 1;
+		if (r_read_burst_count== r_read_burstcount)	r_fsm_state = FSM_LAST_RDATA;
 
 #if DEBUG_INIT_WRAPPER
 		  //std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
 		  std::cout << "################################################################################################      on va aller a FSM_LAST_RDATA;" << std::endl;
 #endif
 		}
-	      }
-	  }
+	}
 
 	//ECRITURE
 	if (r_cmd == vci_param::CMD_WRITE)
-	  {
+	{
 	    if (p_avalon.waitrequest ) {r_fsm_state = FSM_WAIT_RDATA;}
 	    else
-	      {
+		{
 		//r_write_burst_count = r_write_burst_count + 1;
 		if (p_vci.eop)
-		  {
+		{
 		    r_fsm_state = FSM_LAST_RDATA;
 
 #if DEBUG_INIT_WRAPPER
 		    //std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
 		    std::cout << "################################################################################################      on va aller a FSM_LAST_RDATA;" << std::endl;
 #endif
-		  }
-	      }
-	  }
+		}
+		}
+	}
 
 
  	if (p_vci.rspack == false)
@@ -449,12 +576,122 @@ namespace soclib { namespace caba {
 	break; //=========fin FSM_RDATA
 
 
+				 
+				  
+			  case FSM_RDATA_ADV : //=================
+				  
+#if DEBUG_INIT_WRAPPER
+				  std::cout << "################################################################################################  transition  FSM_RDATA_ADV" << std::endl;
+				  std::cout << "################################################################################################      p_vci.eop = " <<  p_vci.eop << std::endl;
+				  std::cout << "################################################################################################      p_vci.cmdval = " <<  p_vci.cmdval << std::endl;
+				  std::cout << "################################################################################################      p_vci.cmd = " <<  p_vci.cmd << std::endl;
+				  //std::cout << "################################################################################################      p_vci.address = " <<  std::hex << p_vci.address << std::endl;
+				  //std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
+				  std::cout << "################################################################################################      p_vci.eop = " <<  std::hex << p_vci.eop << std::endl;
+				  std::cout << "################################################################################################      p_vci.cmdack= " <<  std::hex << p_vci.cmdack<< std::endl;
+				  std::cout << "################################################################################################      FSM = " <<  std::hex << r_fsm_state<< std::endl;
+#endif
+				  
+				  
+				  //LECTURE
+				  if (r_cmd == vci_param::CMD_READ)
+				  {
+					  if (!p_avalon.readdatavalid ){r_fsm_state = FSM_WAIT_RDATA_ADV;}
+					  else
+					  {	  r_read_burst_count = r_read_burst_count + 1;
+						  if (r_read_burst_count== r_read_burstcount - 1)	r_fsm_state = FSM_LAST_RDATA_ADV;
+							  
+#if DEBUG_INIT_WRAPPER
+							  //std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
+							  std::cout << "################################################################################################      on va aller a FSM_LAST_RDATA_ADV;" << std::endl;
+#endif
+					  }
+				  }
+				  
+				 				  
+				  
+				  if (p_vci.rspack == false)
+				  {
+					  printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
+					  printf("the VCI initiator always accept the response packet\n");
+					  exit(1);
+				  }
+				  
+			 
+			  
+				  break; //=========fin FSM_RDATA_ADV
+				  
+				  
+				  
+				  
+			  case FSM_WAIT_RDATA : //=================
+				  // traitement cellule
+				  
+#if DEBUG_INIT_WRAPPER
+				  std::cout << "################################################################################################  transition  FSM_WAIT_RDATA" << std::endl;
+				  std::cout << "################################################################################################      p_vci.eop = " <<  p_vci.eop << std::endl;
+				  std::cout << "################################################################################################      p_vci.cmdval = " <<  p_vci.cmdval << std::endl;
+				  std::cout << "################################################################################################      p_vci.cmd = " <<  p_vci.cmd << std::endl;
+				  std::cout << "################################################################################################      p_vci.address = " <<  std::hex << p_vci.address << std::endl;
+				  std::cout << "################################################################################################      FSM = " <<  std::hex << r_fsm_state<< std::endl;
+#endif
+				  
+				  
+				  //LECTURE
+				  if (r_cmd == vci_param::CMD_READ)
+				  {
+					  if (p_avalon.readdatavalid == true)
+					  {
+						  if (p_vci.eop){r_fsm_state = FSM_LAST_RDATA;}
+						  else  {r_fsm_state = FSM_RDATA; }
+					  }
+					  if (p_vci.rspack == false) {
+						  printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
+						  printf("the VCI initiator always accept the response packet\n");
+						  exit(1);
+					  }
+				  }
+				  
+				  
+				  
+				  //ECRITURE
+				  if (r_cmd == vci_param::CMD_WRITE)
+				  {
+					  if (p_avalon.waitrequest == false)
+					  {
+						  //r_write_burst_count = r_write_burst_count + 1;
+						  if (p_vci.eop)
+						  {r_fsm_state = FSM_LAST_RDATA;}
+						  else    {r_fsm_state = FSM_RDATA; }
+					  }
+				  }
+				  
+				  
+				  if (p_vci.rspack == false)
+				  {
+					  printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
+					  printf("the VCI initiator always accept the response packet\n");
+					  exit(1);
+				  }
+				  
+				  if (p_vci.cmdval == false)
+				  {
+					  printf("ERROR : cmdval 2 : The vci_avalon_initiator_wrapper assumes that\n");
+					  printf("there s no \"buble\" in a VCI command packet\n");
+					  exit(1);
+				  }
 
-      case FSM_WAIT_RDATA : //=================
+	break; //=========fin FSM_WAIT_RDATA
+
+				  
+				  
+				  
+
+      case FSM_WAIT_RDATA_ADV : //=================
 	// traitement cellule
 
 #if DEBUG_INIT_WRAPPER
-	std::cout << "################################################################################################  transition  FSM_WAIT_RDATA" << std::endl;
+	std::cout << "################################################################################################  transition  FSM_WAIT_RDATA_ADV" << std::endl;
 	std::cout << "################################################################################################      p_vci.eop = " <<  p_vci.eop << std::endl;
 	std::cout << "################################################################################################      p_vci.cmdval = " <<  p_vci.cmdval << std::endl;
 	std::cout << "################################################################################################      p_vci.cmd = " <<  p_vci.cmd << std::endl;
@@ -467,49 +704,31 @@ namespace soclib { namespace caba {
 	if (r_cmd == vci_param::CMD_READ)
 	  {
 	    if (p_avalon.readdatavalid == true)
-	      {
-		//r_read_burst_count = r_read_burst_count + 1;
-		if (p_vci.eop){r_fsm_state = FSM_LAST_RDATA;}
-		else  {r_fsm_state = FSM_RDATA; }
+		{
+			   
+	    // Charles
+			r_read_burst_count = r_read_burst_count + 1;
+			   
+			   
+		// Charles  if (p_vci.eop){r_fsm_state = FSM_LAST_RDATA;}
+			  if (r_read_burst_count== r_read_burstcount - 1){r_fsm_state = FSM_LAST_RDATA_ADV;}			   
+			   else  {r_fsm_state = FSM_RDATA_ADV; }
 	      }
-	    if (p_vci.rspack == false) {
+		  
+	    if (p_vci.rspack == false) 
+		{
 	      printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
 	      printf("the VCI initiator always accept the response packet\n");
 	      exit(1);
 	    }
+		  
 	  }
 
+	break; //=========fin FSM_WAIT_RDATA_ADV
 
-
-	//ECRITURE
-	if (r_cmd == vci_param::CMD_WRITE)
-	  {
-	    if (p_avalon.waitrequest == false)
-	      {
-		//r_write_burst_count = r_write_burst_count + 1;
-		if (p_vci.eop)
-		  {r_fsm_state = FSM_LAST_RDATA;}
-		else    {r_fsm_state = FSM_RDATA; }
-	      }
-	  }
-
-
-	if (p_vci.rspack == false)
-	  {
-	    printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
-	    printf("the VCI initiator always accept the response packet\n");
-	    exit(1);
-	  }
-
-	if (p_vci.cmdval == false)
-	  {
-	    printf("ERROR : cmdval 2 : The vci_avalon_initiator_wrapper assumes that\n");
-	    printf("there s no \"buble\" in a VCI command packet\n");
-	    exit(1);
-	  }
-
-	break; //=========fin FSM_WAIT_RDATA
-
+				  
+				  
+				  
 
 
       case FSM_LAST_RDATA : //=================
@@ -524,7 +743,10 @@ namespace soclib { namespace caba {
 	std::cout << "################################################################################################      FSM = " <<  std::hex << r_fsm_state<< std::endl;
 #endif
 
-	//r_read_burst_count = 0;
+	// Charles
+	r_read_burst_count = 0;
+	
+			   
 	//r_write_burst_count = 0;
  	if (p_vci.rspack == false)
 	  {
@@ -533,12 +755,43 @@ namespace soclib { namespace caba {
 	    exit(1);
 	  }
 
-	r_fsm_state = FSM_IDLE;
+				
+			  // Charlesif (p_avalon.waitrequest == true ) r_fsm_state = FSM_IDLE;  // advanced write  attente rspval target qui reset waitrequestÒ
+			  r_fsm_state = FSM_IDLE;
+			  
+			  
+			  
+	break; //=========fin FSM_LAST_RDATAÒ
+				  
+		  
+				  
+	case FSM_LAST_RDATA_ADV : //=================
+				  // derniere cellule du paquet
+				  
+#if DEBUG_INIT_WRAPPER
+				  std::cout << "################################################################################################  transition  FSM_LAST_RDATA_ADV" << std::endl;
+				  std::cout << "################################################################################################      p_vci.eop = " <<  p_vci.eop << std::endl;
+				  std::cout << "################################################################################################      p_vci.cmdval = " <<  p_vci.cmdval << std::endl;
+				  std::cout << "################################################################################################      p_vci.cmd = " <<  p_vci.cmd << std::endl;
+				  std::cout << "################################################################################################      p_vci.address = " <<   std::hex <<p_vci.address << std::endl;
+				  std::cout << "################################################################################################      FSM = " <<  std::hex << r_fsm_state<< std::endl;
+#endif
 
-	break; //=========fin FSM_LAST_RDATA
+		r_read_burst_count = 0;
+	
+		if (p_vci.rspack == false)
+		{
+			printf("ERROR : The vci_pi_initiator_wrapper assumes that\n");
+			printf("the VCI initiator always accept the response packet\n");
+			exit(1);
+		}
+				  
+		r_fsm_state = FSM_IDLE;
+			
+	break; //=========fin FSM_LAST_RDATA_ADV			  
 
-      }// end switch fsm
-    }; // end transition
+			  }// end switch fsm
+	  }; // end transition
 
 
     ////////////////////////////////
@@ -561,12 +814,14 @@ namespace soclib { namespace caba {
 
       p_vci.rerror = vci_param::ERR_NORMAL;
 
-      p_avalon.address = p_vci.address.read();
+    p_avalon.address = p_vci.address.read();
+
 
 
       if (p_vci.cmdval)
 	{
-
+		
+		
 	  switch (p_vci.cmd.read())
 	    {
 
@@ -597,8 +852,21 @@ namespace soclib { namespace caba {
 
 
 	    case vci_param::CMD_LOCKED_READ :
-	      printf("ERROR : VCI initiator CMD_LOCKED_READ non supporte\n");
-	      exit(1);
+	      //printf("ERROR : VCI initiator CMD_LOCKED_READ non supporte\n");
+			// Charles
+				std::cout << "                               ##################################################                      p_vci.cmd = " <<  p_vci.cmd << std::endl;
+				 std::cout << "                              #################################################                       p_vci.address = " <<  p_vci.address << std::endl;
+				 std::cout << "                              ##################################################                      p_vci.eop = " <<  p_vci.eop << std::endl;
+				 std::cout << "                              ##################################################                      p_vci.cmdval = " <<  p_vci.cmdval << std::endl;
+				 std::cout << "                              ##################################################                      p_vci.reop = " <<  p_vci.reop << std::endl;
+				 std::cout << "                              ##################################################                      p_vci.cmdack = " <<  p_vci.cmdack<< std::endl;
+				 std::cout << "                              ##################################################                      p_vci.rspval = " <<  p_vci.rspval<< std::endl;
+				
+				
+				
+				
+				
+	      //exit(1);
 
 	      break;
 
@@ -622,15 +890,22 @@ namespace soclib { namespace caba {
 	{
 
 	case FSM_IDLE: //=================
-
+//::cout << "################################################################################################    IDLE " << std::endl;
 #if DEBUG_INIT_WRAPPER
 	  std::cout << "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++genMealy vci_avalon_initiator FSM_IDLE" << std::endl;
 #endif
 
-	  p_vci.cmdack = false; p_vci.rspval = false;
-	  // ===================reponse
-	  p_vci.rdata = p_avalon.readdata.read();
-	  p_vci.reop = false;
+	p_vci.cmdack = false; 		
+
+	
+			
+	// Charles_1  p_vci.rspval = false;
+			if ((p_vci.cmdval) && (!p_vci.eop) && (!p_avalon.waitrequest) ) p_vci.rspval = true;  // on ira en R_DATA
+			else p_vci.rspval = false;
+	
+			
+	p_vci.rdata = p_avalon.readdata.read();
+	p_vci.reop = false;
 
 	  //***************************************************positionnement du bus AVALON
 
@@ -688,24 +963,28 @@ namespace soclib { namespace caba {
 
 	      // ===================reponse
 	      p_vci.rdata = p_avalon.readdata.read();
-	      if (!(p_avalon.waitrequest)) {
-		if (p_avalon.readdatavalid) {p_vci.rspval = true ;} // on ira en FSM_IDLE
-		else {p_vci.rspval = false;}
-	      }
+	      if (!(p_avalon.waitrequest)) 
+		  {
+			  if (p_avalon.readdatavalid) 
+			  {  p_vci.rspval = true ; p_vci.reop = true; } // on ira en FSM_IDLE
+			  else {p_vci.rspval = false;}
+		  }
 	    }
 
 	  //ECRITURE
 	  if (r_cmd == vci_param::CMD_WRITE)
 	    {
-	      if (!p_avalon.waitrequest){p_vci.cmdack = true;}
+	      if (!p_avalon.waitrequest)
+		  {p_vci.cmdack = true;	  }
 	      else {p_vci.cmdack = false; }
 
 	      // ===================reponse
-	      if (!(p_avalon.waitrequest))  {p_vci.rspval = true ;} // on ira en FSM_IDLE
-	      else {p_vci.rspval = false;}
+	      if (!(p_avalon.waitrequest))  
+		  {p_vci.rspval = true ;  p_vci.reop = true; } // on ira en FSM_IDLE
+	      else {p_vci.rspval = false;  p_vci.reop = false;}
 	    }
 
-	  p_vci.reop = true;
+	 
 
 	  //***************************************************positionnement du bus AVALON
 	  p_avalon.burstcount = 1;
@@ -727,7 +1006,13 @@ namespace soclib { namespace caba {
 	  //LECTURE
 	  if (r_cmd == vci_param::CMD_READ)
 	    {
-	      if ((!p_avalon.waitrequest) && (p_avalon.readdatavalid)){p_vci.cmdack = true;}
+			//=================requete
+			// gestion VCI cmdack
+					
+					
+			// paquet transfert
+			
+	      if((!p_avalon.waitrequest) && (p_avalon.readdatavalid)){p_vci.cmdack = true;}
 	      else {p_vci.cmdack = false;}
 
 	      // ===================reponse
@@ -758,10 +1043,11 @@ namespace soclib { namespace caba {
 	      //else {p_vci.cmdack = false; p_vci.rspval = false;}
 	    }
 
-
 	  p_vci.reop = false;
 
 
+			
+			
 	  //***************************************************positionnement du bus AVALON
 
 	  if (p_vci.plen.read()%vci_param::B != 0) {p_avalon.burstcount = (p_vci.plen.read()/vci_param::B) +1;}
@@ -772,6 +1058,69 @@ namespace soclib { namespace caba {
 	  break; //=========fin FSM_R_WAIT2
 
 
+			
+		case FSM_R_WAIT_ADV: //=================
+			
+#if DEBUG_INIT_WRAPPER
+			std::cout << "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++�genMealy vci_avalon_initiator R_WAIT_ADV" << std::endl;
+#endif
+			
+			//****************************************************positionnement du bus VCI
+			// ===================requete
+			
+			//LECTURE
+			if (r_cmd == vci_param::CMD_READ)
+			{
+				//=================requete
+				// gestion VCI cmdack
+				
+				
+				// paquet transfert
+				
+				if((!p_avalon.waitrequest) && (p_avalon.readdatavalid)){p_vci.cmdack = true;}
+				else {p_vci.cmdack = false;}
+				
+				// ===================reponse
+				// gestion VCI rspval
+				if (!(p_avalon.waitrequest))
+				{
+					if (p_avalon.readdatavalid) 
+					{							
+						// Charles 15/01/2010   if (p_vci.plen.read() == 4 ) {p_vci.rspval = false; p_vci.reop = true;} // on ira dans FSM_LAST_RDATA_ADV
+						if (p_vci.plen.read() == 4 ) {p_vci.rspval = true; p_vci.reop = true;} // on ira dans FSM_LAST_RDATA_ADV
+						
+						else  {p_vci.rspval = true; p_vci.reop = false; }  // on ira dans FSM__RDATA_ADV
+
+						#if DEBUG_INIT_WRAPPER
+						std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  WAIT2    READBURSCOUNT + 1" << std::endl;
+						//std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
+						std::cout << "################################################################################################      p_avalon.readdatavalid = " <<  p_avalon.readdatavalid << std::endl;
+						#endif
+					}
+					else {p_vci.rspval = false; p_vci.reop = false;}
+
+					p_vci.rdata = p_avalon.readdata.read();
+				}
+			}
+		
+			
+			//***************************************************positionnement du bus AVALON
+			
+			if (p_vci.plen.read()%vci_param::B != 0) {p_avalon.burstcount = (p_vci.plen.read()/vci_param::B) +1;}
+			else {p_avalon.burstcount = p_vci.plen.read()/vci_param::B;}
+					
+			
+			p_avalon.byteenable = r_byteenable.read();
+			p_avalon.address  = r_address.read();
+			//p_avalon.read = r_read;
+			//p_avalon.write = r_write;
+		
+			
+			
+			
+			
+			break; //=========fin FSM_R_WAIT_ADV
+			
 
 	case FSM_R_ACQ2: //=================
 
@@ -825,6 +1174,55 @@ namespace soclib { namespace caba {
 	  break; //=========fin FSM_R_ACQ2
 
 
+			
+		
+			
+		case FSM_R_ACQ_ADV: //=================
+			
+#if DEBUG_INIT_WRAPPER
+			std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++genMealy vci_avalon_initiator R_ACQ_ADV" << std::endl;
+#endif
+			//****************************************************positionnement du bus VCI
+			//====================requete
+			 p_vci.cmdack = true;
+			
+			// ===================reponse
+			
+			
+			//LECTURE
+			if (r_cmd == vci_param::CMD_READ)
+			{
+				if (p_avalon.readdatavalid )
+				{
+					p_vci.rspval = true;
+									
+#if DEBUG_INIT_WRAPPER
+					std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  ACQ_ADV  READBURSCOUNT + 1" << std::endl;
+					//std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
+					std::cout << "################################################################################################      p_avalon.readdatavalid = " <<  p_avalon.readdatavalid << std::endl;
+#endif
+				}
+				else   {p_vci.rspval = false; }
+				
+				p_vci.rdata = p_avalon.readdata.read();
+			}
+				
+			p_vci.reop = false;
+			
+			//***************************************************positionnement du bus AVALON
+			
+			
+			if (p_vci.plen.read()%vci_param::B != 0) {p_avalon.burstcount = (p_vci.plen.read()/vci_param::B) +1;}
+			else {p_avalon.burstcount = p_vci.plen.read()/vci_param::B;}
+			
+			
+			p_avalon.byteenable = r_byteenable.read();
+			p_avalon.address  = r_address.read();
+			//p_avalon.read = r_read;
+			//p_avalon.write = r_write;
+			break; //=========fin FSM_R_ACQ_ADV
+			
+			
 
 	case FSM_LAST_RDATA: //=================
 
@@ -834,20 +1232,56 @@ namespace soclib { namespace caba {
 
 	  //****************************************************positionnement du bus VCI
 	  // ===================requete
+			p_vci.cmdack = false;
 
 	  // ===================reponse
-	  p_vci.rdata = p_avalon.readdata.read();
+			p_vci.rdata = p_avalon.readdata.read();
 
-	  p_vci.rspval= false;
-	  p_vci.reop = false;
-
+			//  CHarles  if (p_avalon.waitrequest == true) {p_vci.rspval= true;} // on ira en IDLE
+			//else {p_vci.rspval= false ;}
+	        // p_vci.rspval= true;
+			// Charles_1 p_vci.rspval= false;			
+			//p_vci.reop = true;
+			// Charles_1 p_vci.reop = false;
 
 	  //***************************************************positionnement du bus AVALON
-	  if (r_cmd == vci_param::CMD_READ)		p_avalon.burstcount = r_read_burstcount.read();
-	  if (r_cmd == vci_param::CMD_WRITE)		p_avalon.burstcount = r_write_burstcount.read();
+			if (r_cmd == vci_param::CMD_READ)		   { p_avalon.burstcount = r_read_burstcount.read(); p_vci.rspval= true; p_vci.reop = true;}
+			if (r_cmd == vci_param::CMD_WRITE)		   {p_avalon.burstcount = r_write_burstcount.read(); p_vci.rspval= false; p_vci.reop = false; }
 
 	  break; //=========fin FSM_LAST_RDATA
 
+			
+	
+		case FSM_LAST_RDATA_ADV: //=================
+			
+#if DEBUG_INIT_WRAPPER
+			std::cout << "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++genMealy vci_avalon_initiator LAST_RDATA_ADV" << std::endl;
+#endif
+			
+			//****************************************************positionnement du bus VCI
+			// ===================requete
+			p_vci.cmdack = false;
+			// ===================reponse
+			p_vci.rdata = p_avalon.readdata.read();
+			
+			p_vci.rspval= false;
+			p_vci.reop = false;
+			
+			
+			//***************************************************positionnement du bus AVALON
+			if (r_cmd == vci_param::CMD_READ)		p_avalon.burstcount = r_read_burstcount.read();
+			if (r_cmd == vci_param::CMD_WRITE)		p_avalon.burstcount = r_write_burstcount.read();
+			
+			
+			
+			p_avalon.byteenable = r_byteenable.read();
+			p_avalon.address  = r_address.read();
+			p_avalon.read = r_read;
+			p_avalon.write = r_write;
+			
+			
+			break; //=========fin FSM_LAST_RDATA_ADV
+			
 
 
 	case FSM_RDATA: //=================
@@ -873,7 +1307,10 @@ namespace soclib { namespace caba {
 	      else
 		{
 		  p_vci.rspval = true; p_vci.cmdack = true;
-		  if (p_vci.eop) 	{p_vci.reop = true; }// on ira en FSM_LAST_RDATA
+			
+			if (p_vci.eop)			
+		  		  
+		  {p_vci.reop = true; }// on ira en FSM_LAST_RDATA
 		  else 	{p_vci.reop = false;  }                                           // on ira en FSM_RDATA
 
 #if DEBUG_INIT_WRAPPER
@@ -886,32 +1323,47 @@ namespace soclib { namespace caba {
 
 	      p_vci.rdata = p_avalon.readdata.read();
 	      p_avalon.burstcount = r_read_burstcount.read();
+			
 	    }// fin LECTURE
 
 
-	  //ECRITURE
-	  if (r_cmd == vci_param::CMD_WRITE)
-	    {
-	      // ===================reponse
-	      if (p_avalon.waitrequest )
-		{
-		  p_vci.rspval = false;
-		  p_vci.cmdack = false;
-		  p_vci.reop = false;
-		} 	// on ira en FSM_WAITRDATA
-	      else
-		{
-		  if (p_vci.eop)
-		    {
-		      p_vci.reop = false; p_vci.rspval = false; p_vci.cmdack = false;
-		    }// on ira en FSM_LAST_RDATA
-		  else
-		    {p_vci.reop = false; p_vci.rspval = true; p_vci.cmdack = true; }                                           // on ira en FSM_RDATA
-		}
 
-	      p_avalon.burstcount = r_write_burstcount.read();
-	    }
-	  //fin ECRITURE
+		//ECRITURE
+			
+				if (r_cmd == vci_param::CMD_WRITE)
+				{
+					// Charles_1	
+					//p_vci.rspval = true; 					
+			
+					//std::cout << "################################################################################################    ECRITURE " <<  std::endl;
+					// ===================reponse
+
+				if (p_avalon.waitrequest == true)
+					{
+						// Charles_1 
+						p_vci.rspval = false;
+						//std::cout << "################################################################################################    FALSE rspval = " << p_vci.rspval << std::endl;
+						p_vci.cmdack = false;
+						p_vci.reop = false;
+					} 	// on ira en FSM_WAITRDATA
+				else
+					{  // Charles_1 
+					p_vci.rspval = true; 
+					//std::cout << "################################################################################################  TRUE rspval = " << p_vci.rspval << std::endl;
+						if (p_vci.eop)
+							// Charles { p_vci.reop = true; p_vci.rspval = false; p_vci.cmdack = true;}   // on ira en FSM_LAST_RDATA
+							// Charles_1 
+						{ p_vci.reop = true; p_vci.cmdack = true;}   // on ira en FSM_LAST_RDATA
+					//{ p_vci.reop = false ; p_vci.cmdack = true;}   // on ira en FSM_LAST_RDATA
+						else
+							// Charles
+							// {p_vci.reop = false; p_vci.rspval = false; p_vci.cmdack = true;}  // on ira en FSM_RDATA
+						{ p_vci.reop = false;  p_vci.cmdack = true;}  // on ira en FSM_RDATA
+					}
+
+					p_avalon.burstcount = r_write_burstcount.read();
+				}
+			//fin ECRITURE
 
 	  //***************************************************positionnement du bus AVALON
 
@@ -919,6 +1371,63 @@ namespace soclib { namespace caba {
 	  break; //=========fin FSM_RDATA
 
 
+			
+			
+			
+		case FSM_RDATA_ADV: //=================
+			
+#if DEBUG_INIT_WRAPPER
+			std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++genMealy vci_avalon_initiator FSM_RDATA_ADV" << std::endl;
+#endif
+			
+			//****************************************************positionnement du bus VCI
+			// ===================requete
+			//LECTURE
+			
+				p_vci.cmdack = false;	
+			
+			if (r_cmd == vci_param::CMD_READ)
+			{
+				// ===================reponse
+				if (!p_avalon.readdatavalid.read() )
+				{
+					p_vci.rspval = false;			
+					p_vci.reop = false;
+				} 	// on ira en FSM_WAITRDATA_ADV
+				
+				
+				else
+				{
+					p_vci.rspval = true;
+			
+					if (r_read_burst_count== r_read_burstcount - 1)	{p_vci.reop = true; } // on ira en FSM_LAST_RDATA_ADV
+					else 	{p_vci.reop = false;  }                                       // on ira en FSM_RDATA_ADV
+					
+#if DEBUG_INIT_WRAPPER
+					std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ RDATA_ADV     READBURSCOUNT + 1" << std::endl;
+					std::cout << "################################################################################################      p_avalon.readdatavalid = " <<  p_avalon.readdatavalid << std::endl;
+#endif
+				}
+			
+				p_vci.rdata = p_avalon.readdata.read();
+				p_avalon.burstcount = r_read_burstcount.read();
+			}// fin LECTURE
+			
+			
+	
+			//***************************************************positionnement du bus AVALON
+			p_avalon.byteenable = r_byteenable.read();
+			p_avalon.address  = r_address.read();
+			p_avalon.read = r_read;
+			p_avalon.write = r_write;
+			
+			
+			break; //=========fin FSM_RDATA_ADV
+			
+			
+			
+			
+			
 
 	case FSM_WAIT_RDATA: //=================
 
@@ -944,8 +1453,8 @@ namespace soclib { namespace caba {
 		    { p_vci.reop = false;   p_vci.rspval = true; p_vci.cmdack = true; } // on ira en FSM_RDATA
 
 #if DEBUG_INIT_WRAPPER
-		  //std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  WAIT_RDATA  READBURSCOUNT + 1" << std::endl;			std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
-		  std::cout << "################################################################################################      p_avalon.readdatavalid = " <<  p_avalon.readdatavalid << std::endl;
+		std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  WAIT_RDATA  READBURSCOUNT + 1" << std::endl;			std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
+		 std::cout << "################################################################################################      p_avalon.readdatavalid = " <<  p_avalon.readdatavalid << std::endl;
 #endif
 
 		}
@@ -968,13 +1477,15 @@ namespace soclib { namespace caba {
 	  //ECRITURE
 	  if (r_cmd == vci_param::CMD_WRITE)
 	    {
+			// Charles_1
+			 // p_vci.rspval = false;
+			
 	      if (p_avalon.waitrequest == false)
 		{
-		  if (p_vci.eop)
-		    {
-		      p_vci.reop = false;	p_vci.rspval = false; p_vci.cmdack = false; }// on ira en FSM_LAST_RDATA
-		  else
-		    { p_vci.reop = false;   p_vci.rspval = true; p_vci.cmdack = true; } // on ira en FSM_RDATA
+			// Charles_1 
+			p_vci.rspval = true;
+		  if (p_vci.eop)  { p_vci.reop = true;	p_vci.cmdack = true; }      // on ira en FSM_LAST_RDATA
+		  else	          { p_vci.reop = false; p_vci.cmdack = true; }       // on ira en FSM_RDATA
 
 #if DEBUG_INIT_WRAPPER
 		  //std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  WAIT_RDATA  READBURSCOUNT + 1" << std::endl;			std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
@@ -988,6 +1499,7 @@ namespace soclib { namespace caba {
 		  std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  WAIT_RDATA  waitrequest  = 0" << std::endl;
 #endif
 
+		  // Charles_1 
 		  p_vci.rspval = false; 	p_vci.cmdack = false;
 		  p_vci.reop = false;
 		  p_avalon.burstcount = r_write_burstcount.read();
@@ -999,6 +1511,66 @@ namespace soclib { namespace caba {
 	  break; //=========fin FSM_WAIT_RDATA
 
 
+			
+		
+			
+			
+		case FSM_WAIT_RDATA_ADV: //=================
+			
+#if DEBUG_INIT_WRAPPER
+			std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++genMealy vci_avalon_initiator FSM_WAIT_RDATA_ADV" << std::endl;
+#endif
+						
+			
+			//****************************************************positionnement du bus VCI
+			// ===================requete
+			p_vci.cmdack = false;
+			// ===================reponse
+			
+			//LECTURE
+			if (r_cmd == vci_param::CMD_READ)
+			{
+				
+				if (p_avalon.readdatavalid == true)
+				{
+					// Charrles if (p_vci.eop) { p_vci.reop = false; p_vci.rspval = false; } // on ira en FSM_LAST_RDATA_ADV
+					
+					// Charles  14/01/2010  if (p_vci.eop) { p_vci.reop = true; p_vci.rspval = false; } // on ira en FSM_LAST_RDATA_ADV
+					if (p_vci.eop) {p_vci.reop = true; p_vci.rspval = true; } // on ira en FSM_LAST_RDATA_ADV				
+					else { p_vci.reop = false;   p_vci.rspval = true;  } // on ira en FSM_RDATA_ADV
+					
+#if DEBUG_INIT_WRAPPER
+					//std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  WAIT_RDATA_ADV  READBURSCOUNT + 1" << std::endl;			std::cout << "################################################################################################      r_read_burst_count = " <<  std::hex << r_read_burst_count << std::endl;
+					std::cout << "################################################################################################      p_avalon.readdatavalid = " <<  p_avalon.readdatavalid << std::endl;
+#endif
+					
+				}
+				else
+				{
+					
+#if DEBUG_INIT_WRAPPER
+					std::cout << "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++  WAIT_RDATA_ADV  readdatavalid = 0" << std::endl;
+#endif
+					
+					p_vci.rspval = false; 
+					p_vci.reop = false;
+				}
+				
+				p_vci.rdata = p_avalon.readdata.read();
+				p_avalon.burstcount = r_read_burstcount.read();
+			}//fin LECTURE
+			
+			
+			//***************************************************positionnement du bus AVALON
+			
+			p_avalon.byteenable = r_byteenable.read();
+			p_avalon.address  = r_address.read();
+			p_avalon.read = r_read;
+			p_avalon.write = r_write;
+			
+			
+			break; //=========fin FSM_WAIT_RDATA_ADV
+			
 	} // end switch
     }; // end genMealy
 
