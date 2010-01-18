@@ -43,7 +43,8 @@ enum command {
   PDES_NULL_MESSAGE = 4,
   PDES_ACTIVE = 5,
   PDES_INACTIVE = 6,
-  PDES_TOKEN_MESSAGE = 7
+  PDES_TOKEN_MESSAGE = 7,
+  PDES_ROUNDTRIP_LATENCY = 8
 };
 
 class soclib_payload_extension                        // extension class 
@@ -95,6 +96,8 @@ public:
   void         set_inactive() {m_soclib_command = PDES_INACTIVE;}
   bool         is_token_message() const {return (m_soclib_command == PDES_TOKEN_MESSAGE);}
   void         set_token_message() {m_soclib_command = PDES_TOKEN_MESSAGE;}
+  bool         is_roundtrip() const {return (m_soclib_command == PDES_ROUNDTRIP_LATENCY);}
+  void         set_roundtrip() {m_soclib_command = PDES_ROUNDTRIP_LATENCY;}
   enum command get_command() const {return m_soclib_command;}
   void         set_command(const enum command c) {m_soclib_command = c;}
 
