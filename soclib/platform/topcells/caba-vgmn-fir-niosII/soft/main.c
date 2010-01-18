@@ -1,38 +1,38 @@
 /* -*- c++ -*-
  *
  * SOCLIB_LGPL_HEADER_BEGIN
- * 
+ *
  * This file is part of SoCLib, GNU LGPLv2.1.
- * 
+ *
  * SoCLib is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation; version 2.1 of the License.
- * 
+ *
  * SoCLib is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
- * 
+ *
  * SOCLIB_LGPL_HEADER_END
- * 
+ *
  * Copyright (C) IRISA/INRIA, 2007
  *         Francois Charot <charot@irisa.fr>
  *
  */
 
-#include "soclib/timer.h"
+#include "timer.h"
 #include "system.h"
 #include "stdio.h"
 
 #include "../segmentation.h"
 
 
-static const volatile void* timer_address = TIMER_BASE; 
+static const volatile void* timer_address = TIMER_BASE;
 
 
 int c[100];
@@ -79,8 +79,8 @@ void fir_n(const int x[], const int h[], int y[]) {
   {
   int i, j, sum0, sum1;
   int x0,x1,h0,h1;
- 
-  for (j = 0; j < 100; j+=2) 
+
+  for (j = 0; j < 100; j+=2)
   {
   sum0 = 0;
   sum1 = 0;
@@ -113,10 +113,10 @@ int main(void) {
 
   printf("start FIR application excecution");
   printf("\n");
- 
-  soclib_io_set(timer_address, TIMER_VALUE, 0); 
+
+  soclib_io_set(timer_address, TIMER_VALUE, 0);
   soclib_io_set(timer_address, TIMER_MODE, TIMER_RUNNING);
-  
+
   fir_n(a, b, c);
 
   time = soclib_io_get(timer_address, TIMER_VALUE);
