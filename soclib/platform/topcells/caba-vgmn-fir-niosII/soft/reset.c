@@ -31,9 +31,9 @@
 
 __asm__(
 		".section .entry, \"xa\"             \n"
-		".globl reset                        \n"
+		".globl _start                        \n"
 
-		"reset :                             \n"
+		"_start :                             \n"
 		/* set PIE bit of status register    */
 		"addi      r23, r0, 1                \n"
 		"wrctl    status, r23                \n"
