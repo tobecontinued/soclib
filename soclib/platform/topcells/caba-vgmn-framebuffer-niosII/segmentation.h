@@ -83,4 +83,8 @@
 #define FB_HEIGHT 200
 
 #define	FB_BASE	0xB4200000
-#define	FB_SIZE	FB_WIDTH*FB_HEIGHT*2
+#define	FB_SIZE	FB_WIDTH*FB_HEIGHT*4
+
+#define FB_MODE 256
+
+

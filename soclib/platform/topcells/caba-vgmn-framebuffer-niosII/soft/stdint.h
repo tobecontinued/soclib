@@ -23,43 +23,23 @@
  * Copyright (c) UPMC, Lip6, SoC
  *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
  *
- *  adapted to the NIOS requirements by charot@irisa.fr
+ * Maintainers: nipo
  */
 
-#ifndef USER_H_
-#define USER_H_
+#ifndef STDINT_REPLACEMENT_H
+#define STDINT_REPLACEMENT_H
 
-#include "soclib/tty.h"
-#include "../segmentation.h"
+typedef unsigned int uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char uint8_t;
 
-#define base(x) (void*)(x##_BASE)
+typedef int int32_t;
+typedef short int16_t;
+typedef char int8_t;
 
-void uputs(const char *);
+typedef int off_t;
 
-//#ifdef __nios__
-
-#define get_ctl(x)                        \
-({unsigned int __ctl_x;                   \
-__asm__("rdctl %0, ctl"#x:"=r"(__ctl_x)); \
-__ctl_x;})
-
-static inline int procnum() {
-	return (get_ctl(5));
-}
-
-//#endif
-
-static inline void putc(const char x) {
-	soclib_io_write8(
-	base(TTY),
-	procnum()*TTY_SPAN+TTY_WRITE,
-	x);
-}
-
-static inline char getc() {
-	return soclib_io_read8(
-	base(TTY),
-	procnum()*TTY_SPAN+TTY_READ);
-}
+typedef unsigned int size_t;
+typedef int ssize_t;
 
 #endif

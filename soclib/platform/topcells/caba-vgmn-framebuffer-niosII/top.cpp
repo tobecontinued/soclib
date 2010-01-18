@@ -27,6 +27,16 @@
  * Date : 05/05/2007
  * Author :  Francois Charot
  * 
+ * This architecture is ISS2 API compliant.
+ * It contains:
+ *  - 1 VCI Generic Micro Network (1 initiators /5 targets)
+ *  - 1 NIOS2 processor with External VciXcacheWrapper Data/Instruction cache (old Xcache)
+ *  - 2 VCI target VCI RAM
+ *  - 1 VCI target TTY display
+ *  - 1 VCI Timer
+ *  - 1 VCI framebuffer
+ *
+ *
  *********************************************************************
  */
 
@@ -34,8 +44,8 @@
 #include <cstdlib>
 
 #include "mapping_table.h"
-#include "nios2_fast.h"
-#include "ississ2.h"
+#include "iss2_simhelper.h"
+#include "niosII.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_timer.h"
 #include "vci_ram.h"
@@ -53,8 +63,8 @@ int _main(int argc, char *argv[])
   using soclib::common::Segment;
 
   // Define our VCI parameters
-//   typedef soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> vci_param;
-  typedef soclib::caba::VciParams<4,6,32,1,1,1,8,1,1,1> vci_param;
+  //   typedef soclib::caba::VciParams<4,1,32,1,1,1,8,1,1,1> vci_param;
+  typedef soclib::caba::VciParams<4,8,32,1,1,1,8,1,1,1> vci_param;
 
   // Mapping table
   soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00300000);
@@ -89,14 +99,14 @@ int _main(int argc, char *argv[])
   sc_signal<bool>        signal_nios2_irq[32]; 
   
   // Components
-  soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::Nios2fIss> > nios2("nios2", 0, maptab,IntTab(0),  1,8,4, 1,8,4);
-
+  soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Nios2fIss> > nios2("nios2", 0, maptab,IntTab(0),  1,8,4, 1,8,4);
+#   warning Using a NIOS II
   soclib::common::Loader loader("soft/bin.soft");
   soclib::caba::VciRam<vci_param> vciram0("vciram0", IntTab(0), maptab, loader);
   soclib::caba::VciRam<vci_param> vciram1("vciram1", IntTab(1), maptab, loader);
   soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(2), maptab, "vcitty0", NULL);
   soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 1);
-  soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(4), maptab, FB_WIDTH, FB_HEIGHT); 
+  soclib::caba::VciFrameBuffer<vci_param> vcifb("vcifb", IntTab(4), maptab, FB_WIDTH, FB_HEIGHT, FB_MODE); 
 
   soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 1, 5, 2, 8);
 
@@ -144,65 +154,17 @@ int _main(int argc, char *argv[])
   vgmn.p_to_target[3](signal_vci_vcitimer);
   vgmn.p_to_target[4](signal_vci_vcifb);
 
-  int ncycles;
-  clock_t starttime, endtime;
-
-
-  // Starting execution timing
-  starttime = clock ();
-
-#ifndef SOCVIEW
-  if (argc == 2) {
-    ncycles = std::atoi(argv[1]);
-  } else {
-    std::cerr
-      << std::endl
-      << "The number of simulation cycles must "
-      "be defined in the command line"
-      << std::endl;
-    exit(1);
-  }
-
-  sc_start(sc_core::sc_time(0, SC_NS));
-  signal_resetn = false;
-
-  sc_start(sc_core::sc_time(1, SC_NS));
-  signal_resetn = true;
-
-  for (int i = 0; i < ncycles ; i++) {
-    sc_start(sc_core::sc_time(1, SC_NS));
-	  
-    if((i % 10000) == 0) 
-      std::cout
-	<< "Time elapsed: "<<i<<" cycles." << std::endl;
-  }
-
-
-  endtime = clock ();
-
-  double simtime = (1.0 * (endtime - starttime) / CLOCKS_PER_SEC);
-  //  double simcycles = sc_time_stamp().to_seconds();
-  std::cout << "**" << std::endl;
-  //  std::cout << "** simulation time (in seconds) " << simtime  << std::endl;
-  std::cout << "** simulation time (in seconds) " << simtime  << std::endl;
-  std::cout << "** simulated cycles : " << ncycles-1 << "  (" << ((ncycles-1) / simtime) << " c/s)" << std::endl;
-  std::cout << "**" << std::endl;
-  std::cout << "Hit ENTER to end simulation" << std::endl;
-
-  char buf[1];
-
-  std::cin.getline(buf,2);
-  return EXIT_SUCCESS;
-#else
-  ncycles = 1;
   sc_start(sc_core::sc_time(0, SC_NS));
   signal_resetn = false;
   sc_start(sc_core::sc_time(1, SC_NS));
   signal_resetn = true;
 
+#ifdef SOCVIEW
   debug();
-  return EXIT_SUCCESS;
+#else
+  sc_start();
 #endif
+  return EXIT_SUCCESS;
 }
 
 int sc_main (int argc, char *argv[])
@@ -217,3 +179,4 @@ int sc_main (int argc, char *argv[])
   }
   return 1;
 }
+
