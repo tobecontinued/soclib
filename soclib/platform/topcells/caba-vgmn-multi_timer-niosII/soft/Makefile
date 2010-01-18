@@ -32,7 +32,7 @@ OBJS= reset.o exceptionProcessing.o softwareException.o system.o stdio.o stdlib.
 
 include $(SOCLIB)/utils/conf/soft_flags.mk
 
-HW_HEADERS=$(SOCLIB)/utils/include
+HW_HEADERS=$(SOCLIB)/utils/src/headers/headers
 
 CC_PREFIX=$($(ARCH)_CC_PREFIX)
 CC = $(CC_PREFIX)gcc
