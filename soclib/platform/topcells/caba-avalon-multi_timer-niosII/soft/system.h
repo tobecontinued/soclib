@@ -29,7 +29,8 @@
 #ifndef USER_H_
 #define USER_H_
 
-#include "tty.h"
+#include "soclib_io.h"
+#include "soclib/timer.h"
 #include "../segmentation.h"
 
 #define base(x) (void*)(x##_BASE)

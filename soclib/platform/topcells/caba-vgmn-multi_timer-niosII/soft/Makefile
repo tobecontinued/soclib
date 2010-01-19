@@ -32,7 +32,7 @@ OBJS= reset.o exceptionProcessing.o softwareException.o system.o stdio.o stdlib.
 
 include $(SOCLIB)/utils/conf/soft_flags.mk
 
-HW_HEADERS=$(SOCLIB)/utils/src/headers/headers
+INTERFACE_CFLAGS:=$(shell cd $(PLATFORM_DIR) && soclib-cc -p $(PLATFORM_DESC) $(SOCLIB_CC_ADD_ARGS) --embedded-cflags)
 
 CC_PREFIX=$($(ARCH)_CC_PREFIX)
 CC = $(CC_PREFIX)gcc
@@ -40,7 +40,7 @@ AS = $(CC_PREFIX)as
 LD = $(CC_PREFIX)ld
 OBJDUMP = $(CC_PREFIX)objdump
 
-CFLAGS=-Wall  -I. -I$(HW_HEADERS) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb -DNIOS
+CFLAGS=-Wall  -I. $(INTERFACE_CFLAGS) $(ADD_CFLAGS) $(DEBUG_CFLAGS) $($(ARCH)_CFLAGS) -ggdb -DNIOS
 
 MAY_CLEAN=$(shell test -r arch_stamp && (test "$(ARCH)" = "$$(cat /dev/null arch_stamp)" || echo clean))
 

@@ -26,7 +26,7 @@
  *
  */
 
-#include "timer.h"
+#include "soclib/timer.h"
 #include "system.h"
 #include "stdio.h"
 

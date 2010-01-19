@@ -26,7 +26,9 @@
  *
  */
 
-#include "timer.h"
+#include "soclib_io.h"
+#include "soclib/timer.h"
+#include "soclib/tty.h"
 #include "system.h"
 
 #include "../segmentation.h"

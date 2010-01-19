@@ -27,7 +27,6 @@
  */
 
 #include "system.h"
-#include "timer.h"
 
 void uputs(const char *str) {
 	while (*str)
