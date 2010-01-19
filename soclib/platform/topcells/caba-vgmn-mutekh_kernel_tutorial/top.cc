@@ -120,11 +120,12 @@ NEW_CPU(new_cpu)
 //**********************************************************************
 
 template <class Iss>
-void newCpuEntry_(CpuEntry *e)
+CpuEntry * newCpuEntry_(CpuEntry *e)
 {
   e->new_cpu = new_cpu<Iss>;
   e->connect = cpu_connect<Iss>;
   e->init_tools = initialize_tools<Iss>;
+  return e;
 }
 
 struct CpuEntry * newCpuEntry(const std::string &type, int id, common::Loader *ldr)
@@ -142,22 +143,19 @@ struct CpuEntry * newCpuEntry(const std::string &type, int id, common::Loader *l
   switch (type[0])
     {
     case 'm':
-      if (type == "mips32el") {
-	newCpuEntry_<common::Mips32ElIss>(e);
-      } else if (type == "mips32eb") {
-	newCpuEntry_<common::Mips32EbIss>(e);
-      }
-      return e;
+      if (type == "mips32el")
+	return newCpuEntry_<common::Mips32ElIss>(e);
+
+      else if (type == "mips32eb")
+	return newCpuEntry_<common::Mips32EbIss>(e);
 
     case 'a':
       if (type == "arm")
-	newCpuEntry_<common::ArmIss>(e);
-      return e;
+	return newCpuEntry_<common::ArmIss>(e);
 
     case 'p':
       if (type == "ppc405")
-	newCpuEntry_<common::Ppc405Iss>(e);
-      return e;
+	return newCpuEntry_<common::Ppc405Iss>(e);
     }
 
   throw std::runtime_error(type + ": wrong processor type");
