@@ -37,5 +37,5 @@ Module('tlmdt:vci_framebuffer',
                 Uses('common:mapping_table'),
                 Uses('common:fb_controller'),
                 ],
-       debug = True,
+       #debug = True,
        )
