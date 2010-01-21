@@ -63,16 +63,16 @@ int sc_main (int   argc, char  **argv)
   /////////////////////////////////////////////////////////////////////////////
   // MAPPING TABLE
   /////////////////////////////////////////////////////////////////////////////
-  soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00200000);
+  soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00c00000);
   maptab.add(soclib::common::Segment("boot",        0xbfc00000,       2048, soclib::common::IntTab(1), 1));
   maptab.add(soclib::common::Segment("cram0",       0x10000000, 0x00100000, soclib::common::IntTab(0), 1));
   maptab.add(soclib::common::Segment("cram1",       0x20000000, 0x00100000, soclib::common::IntTab(1), 1));
   maptab.add(soclib::common::Segment("excep",       0x80000080,       2048, soclib::common::IntTab(1), 1));
-  maptab.add(soclib::common::Segment("ramdac_ctrl", 0x71200000,        256, soclib::common::IntTab(4), 0));
-  maptab.add(soclib::common::Segment("tg_ctrl",     0x70200000,        256, soclib::common::IntTab(3), 0));
-  maptab.add(soclib::common::Segment("tty0",        0x90200000,         32, soclib::common::IntTab(2), 0));
-  maptab.add(soclib::common::Segment("uram0",       0x10200000, 0x00100000, soclib::common::IntTab(0), 0));
-  maptab.add(soclib::common::Segment("uram1",       0x20200000, 0x00100000, soclib::common::IntTab(1), 0));
+  maptab.add(soclib::common::Segment("ramdac_ctrl", 0x71400000,        256, soclib::common::IntTab(4), 0));
+  maptab.add(soclib::common::Segment("tg_ctrl",     0x70400000,        256, soclib::common::IntTab(3), 0));
+  maptab.add(soclib::common::Segment("tty0",        0x90400000,         32, soclib::common::IntTab(2), 0));
+  maptab.add(soclib::common::Segment("uram0",       0x10400000, 0x00100000, soclib::common::IntTab(0), 0));
+  maptab.add(soclib::common::Segment("uram1",       0x20400000, 0x00100000, soclib::common::IntTab(1), 0));
 
   /////////////////////////////////////////////////////////////////////////////
   // LOADER
@@ -95,7 +95,7 @@ int sc_main (int   argc, char  **argv)
     cpu_name << "xcache" << i;
     xcache[i] = new soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, 1, icache_size, 4, 1, dcache_size, 4, 1000 * UNIT_TIME);
   }
-
+  
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR TG
   /////////////////////////////////////////////////////////////////////////////
@@ -113,7 +113,7 @@ int sc_main (int   argc, char  **argv)
   /////////////////////////////////////////////////////////////////////////////
   // MWMR AND COPROCESSOR RAMDAC
   /////////////////////////////////////////////////////////////////////////////
-  read_depth      = 96;
+  read_depth      = 320;
   write_depth     = 0;
   n_read_channel  = 1;
   n_write_channel = 0;
@@ -122,7 +122,7 @@ int sc_main (int   argc, char  **argv)
 
   soclib::tlmdt::VciMwmrController<vci_param> ramdac_ctrl("ramdac_ctrl", maptab, IntTab( n_initiators+1 ), IntTab(4), read_depth, write_depth, n_read_channel, n_write_channel, n_config, n_status, simulation_time * UNIT_TIME);
 
-  soclib::tlmdt::FifoWriter<vci_param> ramdac("ramdac", "soclib-pipe2fb", stringArray("soclib-pipe2fb", "48", "48", NULL),read_depth);
+  soclib::tlmdt::FifoWriter<vci_param> ramdac("ramdac", "soclib-pipe2fb", stringArray("soclib-pipe2fb", "64", "64", NULL),read_depth);
 
   /////////////////////////////////////////////////////////////////////////////
   // TARGET - RAM

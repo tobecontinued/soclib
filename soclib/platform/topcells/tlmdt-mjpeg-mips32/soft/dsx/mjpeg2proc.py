@@ -1,104 +1,210 @@
 #!/usr/bin/env python
 
-from dsx import *
+import dsx
 import sys
-
-from soclib import *
-
-from app import tcg
-
-from vgmn_noirq_multi import VgmnNoirqMulti
+from dsx import *
 
 dcache_lines = int(sys.argv[1])
 icache_lines = int(sys.argv[2])
 
-NP = 2
 
-hard = VgmnNoirqMulti(nproc = NP, nram = 2,icache_nline = icache_lines, icache_nword = 8,dcache_nline = dcache_lines, dcache_nword = 8 )
 
-m = Mapper(hard, tcg)
 
-r = 0
-for mwmr in 'tg_demux','demux_vld','vld_iqzz','iqzz_idct','idct_libu','libu_ramdac','huffman','quanti':
-	r = 1-r
-	m.map(tcg[mwmr],
-		  buffer = 'cram%d'%r,
-		  status = 'cram%d'%r,
-		  desc = 'cram%d'%r)
+nbproc = 2
 
-m.map(tcg['demux'],
-      desc = 'cram0',
-      run = 'mips0',
-      stack = 'cram0',
-      tty = 'tty',
-      tty_no = 0)
+# Declaration of all MWMR fifos
+tg_demux    = Mwmr('tg_demux', 32, 2)
+demux_vld   = Mwmr('demux_vld',32,2)
+vld_iqzz    = Mwmr('vld_iqzz',128,2)
+iqzz_idct   = Mwmr('iqzz_idct',256,2)
+idct_libu   = Mwmr('idct_libu',64,2)
+libu_ramdac = Mwmr('libu_ramdac',8*160,2)
+huffman     = Mwmr('huffman',32,2)
+quanti      = Mwmr('quanti',64,2)
 
-m.map(tcg['vld'],
-      desc = 'cram1',
-      run = 'mips0',
-      stack = 'cram1',
-      tty = 'tty',
-      tty_no = 0)
+tcg = Tcg(
+    Task( 'tg', "tg",
+          {'output':tg_demux },
+          defines = {'FILE_NAME':'"flux.raw"'}),
+    Task( 'demux', "demux",
+          { 'input':tg_demux,
+            'output':demux_vld,
+            'huffman':huffman,
+            'quanti':quanti },
+          defines = {'WIDTH':"160",
+                     'HEIGHT':"120"}),
+    Task( 'vld', "vld",
+          { 'input':demux_vld,
+            'output':vld_iqzz,
+            'huffman':huffman},
+          defines = {'WIDTH':"160",
+                     'HEIGHT':"120"}),
+    Task( 'iqzz',"iqzz",
+          { 'input':vld_iqzz,
+            'output':iqzz_idct,
+            'quanti':quanti},
+          defines = {'WIDTH':"160",
+                     'HEIGHT':"120"}),
+    Task( 'idct',"idct",
+          { 'input':iqzz_idct,
+            'output':idct_libu},
+          defines = {'WIDTH':"160",
+                     'HEIGHT':"120"}),
+    Task( 'libu',"libu",
+          { 'input':idct_libu,
+            'output':libu_ramdac},
+          defines = {'WIDTH':"160",
+                     'HEIGHT':"120"}),
+    Task( 'ramdac', "ramdac",
+          { 'input': libu_ramdac },
+          defines = {'WIDTH':"160",
+                     'HEIGHT':"120"}),
+    )
 
-m.map(tcg['iqzz'],
-      desc = 'cram0',
-      run = 'mips0',
-      stack = 'cram0',
-      tty = 'tty',
-      tty_no = 0)
 
-m.map(tcg['idct'],
-      desc = 'cram1',
-      run = 'mips1',
-      stack = 'cram1',
-      tty = 'tty',
-      tty_no = 0)
+#########################################################
+# Section B : Hardware architecture
+#
+# The file containing the architecture definition
+# must be included, and the path to the directory
+# containing this file must be defined
+#########################################################
 
-m.map(tcg['libu'],
-      desc = 'cram0',
-      run = 'mips1',
-      stack = 'cram0',
-      tty = 'tty',
-      tty_no = 0)
+from vgmn_noirq_multi import VgmnNoirqMulti
 
-## m.map(tcg['tg'],
-##       desc = 'cram0',
-##       run = 'mips0',
-##       stack = 'cram0',
-##       tty = 'tty',
-##       tty_no = 0)
+archi = VgmnNoirqMulti( proc_count = nbproc, ram_count = 2, icache_lines = icache_lines, dcache_lines = dcache_lines )
 
-m.map(tcg['tg'],
-      vci = 'vgmn0',
-      address = 0x70200000)
 
-## m.map('ramdac',
-##       desc = 'cram0',
-##       run = 'mips1',
-##       stack = 'cram0',
-##       tty = 'tty',
-##       tty_no = 0)
+#########################################################
+# Section C : Mapping
+#
+#########################################################
 
-m.map(tcg['ramdac'],
-      vci = 'vgmn0',
-      address = 0x71200000)
+mapper = dsx.Mapper(archi, tcg)
 
-r = 0
-for i in range(NP):
-	r = 1-r
-	m.map(m.hard['mips%d'%i],
-	      private = 'cram%d'%r,
-	      shared = 'uram%d'%r)
+# mapping the MWMR channel
 
-m.map(tcg,
-      private = 'cram0',
-      shared = 'uram0',
-      code = 'cram1',
-      tty = 'tty',
-      tty_no = 0)
+mapper.map( "tg_demux",
+  buffer  = "cram1",
+  status  = "cram1",
+  desc    = "cram1")
 
-posix = Posix()
-tcg.generate(posix)
+mapper.map( "demux_vld",
+  buffer  = "cram1",
+  status  = "cram1",
+  desc    = "cram1")
 
-m.generate(MutekS(with_stream = True))
-# m.generate(MutekH())
+mapper.map( "vld_iqzz",
+  buffer  = "cram1",
+  status  = "cram1",
+  desc    = "cram1")
+
+mapper.map( "iqzz_idct",
+  buffer  = "cram1",
+  status  = "cram1",
+  desc    = "cram1")
+
+mapper.map( "idct_libu",
+  buffer  = "cram1",
+  status  = "cram1",
+  desc    = "cram1")
+
+mapper.map( "libu_ramdac",
+  buffer  = "cram1",
+  status  = "cram1",
+  desc    = "cram1")
+
+mapper.map( "huffman",
+  buffer  = "cram1",
+  status  = "cram1",
+  desc    = "cram1")
+
+mapper.map( "quanti",
+  buffer  = "cram1",
+  status  = "cram1",
+  desc    = "cram1")
+# mapping the "prod0" and "cons0" tasks 
+
+mapper.map("demux",
+   run = "cpu1",
+   stack   = "cram0",
+   desc    = "cram0",
+   status  = "uram0")
+
+mapper.map("vld",
+   run = "cpu0",
+   stack   = "cram0",
+   desc    = "cram0",
+   status  = "uram0")
+
+mapper.map("iqzz",
+   run = "cpu1",
+   stack   = "cram0",
+   desc    = "cram0",
+   status  = "uram0")
+
+#mapper.map("idct",
+#   run = "cpu0",
+#   stack   = "cram0",
+#   desc    = "cram0",
+#   status  = "uram0")
+
+mapper.map("libu",
+   run = "cpu1",
+   stack   = "cram0",
+   desc    = "cram0",
+   status  = "uram0")
+
+
+mapper.map('tg',
+	  coprocessor = 'tg0',
+	  controller = 'tg0_ctrl'
+	  )
+mapper.map('ramdac',
+	  coprocessor = 'ramdac0',
+	  controller = 'ramdac0_ctrl'
+	  )
+mapper.map('idct',
+	  coprocessor = 'idct0',
+	  controller = 'idct0_ctrl'
+	  )
+# mapping the software objects associated to a processor
+for i in range (nbproc):
+    mapper.map( 'cpu%d' %i,
+                private    = "cram0",
+                shared   = "cram0")
+
+# mapping the software objects used by the embedded OS
+
+mapper.map(tcg,
+  private  = "cram1",
+  shared  = "uram1",
+  code    = "cram1",
+  tty     = "tty0",
+  tty_no  = 0)
+
+
+
+######################################################
+# Section D : Code generation 
+######################################################
+
+# Embedded software linked with the Mutek/S OS
+
+mapper.generate( dsx.MutekS(verbosity="NONE") )
+#mapper.generate( dsx.MutekH() ) 
+
+# The software application for a POSX workstation can still be generated
+
+tcg.generate( dsx.Posix() )
+
+
+
+
+
+
+
+
+p = Posix()
+tcg.generate(p)
+

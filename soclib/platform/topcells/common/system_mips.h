@@ -102,8 +102,9 @@ irq_enable(void)
 static inline int procnum()
 {
 #if __mips >= 32
-    return (get_cp0(15,1)&0x3ff);
+  return (get_cp0(15,1)&0x3ff);
 #else
+
     return (get_cp0(15)&0x3ff);
 #endif
 }
