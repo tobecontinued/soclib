@@ -470,54 +470,46 @@ public:
         return cleanup;
     }
 
-    /////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////
     // The two functions select_before_update() & update_after_select()
     // can be used to perform a line replacement in two cycles
     // (when the directory is implemented as a single port RAM)
     //
     // The select_before_update function implements a pseudo LRU
     // policy and and returns the victim line index and the selected 
-    // way in the return arguments. The selected cache line is not
-    // modified, neither invalidated.
-    // 1 - First we search an invalid way
-    // 2 - If all ways are valid, we search  the first old way
-    // 3 - If all ways are recent, they are all transformed to old
-    //     and we select the way with index 0. 
+    // way in the return arguments. The selected cache line is invalidated.
     // This function returns true, il the victim line is valid,
-    /////////////////////////////////////////////////////////////////////
-    inline bool select_before_update( addr_t ad, size_t* way, addr_t* victim )
+    ////////////////////////////////////////////////////////////////////////////////
+    inline bool select_before_update( addr_t ad, size_t* selway, addr_t* victim )
     {
         size_t      set     = m_y[ad];
-        bool        found   = false;
-        bool        cleanup = false;
-        size_t      selway  = 0;
-
-        for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-            if ( !cache_val(way, set) ) {
-                found   = true;
-                cleanup = false;
-                selway  = way;
+        // search an empty slot (using valid bit)
+        for ( size_t way = 0 ; way < m_ways ; way++ ) 
+        {
+            if ( !cache_val(way, set) ) 
+            {
+                *selway = way;
+                *victim = (addr_t)((cache_tag(way, set) * m_sets) + set);
+                return  false;
             }
         }
-        if ( !found ) { // No invalid way
-            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if ( !cache_lru(way, set) ) {
-                    found   = true;
-                    cleanup = true;
-                    selway  = way;
-                }
+        // search an old line (using lru bit)
+        for ( size_t way = 0 ; way < m_ways ; way++ ) 
+        {
+            if ( !cache_lru(way, set) ) 
+            {
+                cache_val(way, set) = false;
+                *selway = way;
+                *victim = (addr_t)((cache_tag(way, set) * m_sets) + set);
+                return  true;
             }
         }
-        if ( !found ) { // No old way => all ways become old
-            for ( size_t way = 0; way < m_ways; way++ ) {
-                cache_lru(way, set) = false;
-            }
-            cleanup = true;
-            selway  = 0;
-        }
-
-        *victim = (addr_t)((cache_tag(selway, set) * m_sets) + set);
-        return cleanup;
+        // No old line => all lines become old and we select slot 0
+        for ( size_t way = 0; way < m_ways; way++ )  cache_lru(way, set) = false;
+        cache_val(0, set) = false;
+        *selway = 0;
+        *victim = (addr_t)((cache_tag(0, set) * m_sets) + set);
+        return true;
     }
 
     /////////////////////////////////////////////////////////////////////
@@ -532,14 +524,10 @@ public:
     {
         tag_t       tag     = m_z[ad];
         size_t      set     = m_y[ad];
-        assert ( !cache_val(way, set) && 
-           "the target cache line must be empty when using the update_after_select method");
         cache_tag(way, set) = tag;
         cache_val(way, set) = true;
         cache_lru(way, set) = true;
-        for ( size_t word = 0 ; word < m_words ; word++ ) {
-            cache_data(way, set, word) = buf[word] ;
-        }
+        for ( size_t word = 0 ; word < m_words ; word++ ) cache_data(way, set, word) = buf[word] ;
     }
 
     ///////////////////////////
