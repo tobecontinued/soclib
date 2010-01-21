@@ -59,10 +59,10 @@ class VciCcXCacheWrapperMulti
         DCACHE_IDLE,
         DCACHE_WRITE_UPDT,
         DCACHE_WRITE_REQ,
+        DCACHE_MISS_SELECT,
+        DCACHE_MISS_CLEANUP,
         DCACHE_MISS_WAIT,
         DCACHE_MISS_UPDT,
-        DCACHE_CLEANUP_REQ,
-        DCACHE_MISS_DELAY,
         DCACHE_UNC_WAIT,
         DCACHE_INVAL,
         DCACHE_SYNC,
@@ -74,10 +74,10 @@ class VciCcXCacheWrapperMulti
 
     enum icache_fsm_state_e {
         ICACHE_IDLE,
+        ICACHE_MISS_SELECT,
+        ICACHE_MISS_CLEANUP,
         ICACHE_MISS_WAIT,
         ICACHE_MISS_UPDT,
-        ICACHE_CLEANUP_REQ,
-        ICACHE_MISS_DELAY,
         ICACHE_UNC_WAIT,
         ICACHE_ERROR,
         ICACHE_CC_CHECK,
@@ -162,7 +162,8 @@ private:
     sc_signal<data_t>       r_dcache_rdata_save;
     sc_signal<int>          r_dcache_type_save;
     sc_signal<be_t>         r_dcache_be_save;
-    sc_signal<bool>         r_dcache_cached_save;
+    sc_signal<addr_t>       r_dcache_cleanup_save;	// victim line index for cleanup
+    sc_signal<size_t>       r_dcache_way_save;		// selected slot for the replacement
     sc_signal<bool>         r_dcache_cleanup_req;	// send a cleanup request to CLEANUP FSM
     sc_signal<addr_t>       r_dcache_cleanup_line;	// define the victim line index
     sc_signal<bool>         r_dcache_miss_req;          // send a miss request to CMD FSM
@@ -172,6 +173,8 @@ private:
     sc_signal<int>          r_icache_fsm;		// controls the instruction cache interface
     sc_signal<int>          r_icache_fsm_save;
     sc_signal<addr_t>       r_icache_addr_save;
+    sc_signal<addr_t>       r_icache_cleanup_save;	// victim line index for cleanup
+    sc_signal<size_t>       r_icache_way_save;		// selected slot for the replacement
     sc_signal<bool>         r_icache_miss_req;          // send a miss request to to CMD FSM
     sc_signal<bool>         r_icache_unc_req;		// send an uncached request to CMD FSM
     sc_signal<bool>         r_icache_cleanup_req;	// send a cleanup request to CLEANUP FSM

@@ -70,7 +70,7 @@
 //   Two new flip-flops have been introduced to signal completion of the
 //   read transactions from the RSP FSM to the DCACHE & ICACHE FSMs: 
 //   r_rsp_data_ok, r_rsp_ins_ok
-//   As simultaneous VCI transactions are supported, the PKTID & RPKTID fields
+//   As simultaneous VCI transactions are supported, the TRDID & RTRDID fields
 //   are used to transport the transaction index.
 //   The transaction index has an odd value for a write transaction, depending
 //   on the line index in the write buffer: PKTID = 2*wbuf_index + 1
@@ -93,32 +93,32 @@ namespace caba {
 #if SOCLIB_MODULE_DEBUG
     namespace {
         const char *dcache_fsm_state_str[] = {
-            "DCACHE_IDLE       ",
-            "DCACHE_WRITE_UPDT ",
-            "DCACHE_WRITE_REQ  ",
-            "DCACHE_MISS_WAIT  ",
-            "DCACHE_MISS_UPDT  ",
-            "DCACHE_CLEANUP_REQ",
-            "DCACHE_MISS_DELAY ", 
-            "DCACHE_UNC_WAIT   ",
-            "DCACHE_INVAL      ",
-            "DCACHE_SYNC       ",
-            "DCACHE_ERROR      ",
-            "DCACHE_CC_CHECK   ",
-            "DCACHE_CC_INVAL   ",
-            "DCACHE_CC_UPDT    ",
+            "DCACHE_IDLE        ",
+            "DCACHE_WRITE_UPDT  ",
+            "DCACHE_WRITE_REQ   ",
+            "DCACHE_MISS_SELECT ",
+            "DCACHE_MISS_CLEANUP",
+            "DCACHE_MISS_WAIT   ",
+            "DCACHE_MISS_UPDT   ",
+            "DCACHE_UNC_WAIT    ",
+            "DCACHE_INVAL       ",
+            "DCACHE_SYNC        ",
+            "DCACHE_ERROR       ",
+            "DCACHE_CC_CHECK    ",
+            "DCACHE_CC_INVAL    ",
+            "DCACHE_CC_UPDT     ",
         };
         const char *icache_fsm_state_str[] = {
-            "ICACHE_IDLE       ",
-            "ICACHE_MISS_WAIT  ",
-            "ICACHE_MISS_UPDT  ",
-            "ICACHE_CLEANUP_REQ",
-            "ICACHE_MISS_DELAY ", 
-            "ICACHE_UNC_WAIT   ",
-            "ICACHE_ERROR      ",
-            "ICACHE_CC_CHECK   ",
-            "ICACHE_CC_INVAL   ",
-            "ICACHE_CC_UPDT    ",
+            "ICACHE_IDLE        ",
+            "ICACHE_MISS_SELECT ",
+            "ICACHE_MISS_CLEANUP",
+            "ICACHE_MISS_WAIT   ",
+            "ICACHE_MISS_UPDT   ",
+            "ICACHE_UNC_WAIT    ",
+            "ICACHE_ERROR       ",
+            "ICACHE_CC_CHECK    ",
+            "ICACHE_CC_INVAL    ",
+            "ICACHE_CC_UPDT     ",
         };
         const char *cmd_fsm_state_str[] = {
             "CMD_IDLE      ",
@@ -206,7 +206,8 @@ namespace caba {
             r_dcache_rdata_save("r_dcache_rdata_save"),
             r_dcache_type_save("r_dcache_type_save"),
             r_dcache_be_save("r_dcache_be_save"),
-            r_dcache_cached_save("r_dcache_cached_save"),
+            r_dcache_cleanup_save("r_dcache_cleanup_save"),
+            r_dcache_way_save("r_dcache_way_save"),
             r_dcache_cleanup_req("r_dcache_cleanup_req"),
             r_dcache_cleanup_line("r_dcache_cleanup_line"),
             r_dcache_miss_req("r_dcache_miss_req"),
@@ -216,6 +217,8 @@ namespace caba {
             r_icache_fsm("r_icache_fsm"),
             r_icache_fsm_save("r_icache_fsm_save"),
             r_icache_addr_save("r_icache_addr_save"),
+            r_icache_cleanup_save("r_icache_cleanup_save"),
+            r_icache_way_save("r_icache_way_save"),
             r_icache_miss_req("r_icache_miss_req"),
             r_icache_cleanup_req("r_icache_cleanup_req"),
             r_icache_cleanup_line("r_icache_cleanup_line"),
@@ -401,6 +404,7 @@ namespace caba {
         }
 
 #if SOCLIB_MODULE_DEBUG
+{
 std::cout << "--------------------------------------------" << std::endl
           << std::dec << "CACHE " << m_srcid_d << " / Time = " << m_cpt_total_cycles << std::endl
           << "  " << dcache_fsm_state_str[r_dcache_fsm] 
@@ -409,9 +413,8 @@ std::cout << "--------------------------------------------" << std::endl
           << "  " << rsp_fsm_state_str[r_rsp_fsm]
           << "  " << cleanup_fsm_state_str[r_cleanup_fsm]
           << "  " << tgt_fsm_state_str[r_tgt_fsm] << std::endl;
-std::cout << "ins_cleanup_req = " << r_icache_cleanup_req
-          << " / data_cleanup_req = " << r_dcache_cleanup_req << std::endl;
 r_wbuf.print();
+}
 #endif
 
         m_cpt_total_cycles++;
@@ -720,6 +723,7 @@ r_wbuf.print();
         switch(r_icache_fsm) {
  
             case ICACHE_IDLE:
+            {
                 if ( r_tgt_icache_req )    // external request
                 {
                     if ( ireq.valid ) m_cost_ins_miss_frz++;
@@ -754,11 +758,11 @@ r_wbuf.print();
                             if ( r_icache_cleanup_req && 
                                ((addr_t)r_icache_cleanup_line == (addr_t)(ireq.addr/(m_icache_words*4))) ) 
                             {
-                                r_icache_fsm  	= ICACHE_MISS_DELAY;
+                                break;
                             }
                             else
                             {
-                                r_icache_fsm 		= ICACHE_MISS_WAIT;
+                                r_icache_fsm 		= ICACHE_MISS_SELECT;
                                 r_icache_miss_req 	= true;
                                 r_rsp_ins_ok		= false;
                             }
@@ -780,38 +784,75 @@ r_wbuf.print();
                     irsp.instruction    = icache_ins;
                 } // end if ireq.valid
                 break;
-            
-            case ICACHE_MISS_WAIT:
+            }
+            case ICACHE_MISS_SELECT:
+            {
                 m_cost_ins_miss_frz++;
-                if ( r_tgt_icache_req )    // external request
+                size_t	way;
+                addr_t	index;
+                addr_t  ad = r_icache_addr_save;
+                if ( r_icache.select_before_update( ad, &way, &index) )
+                {
+                    r_icache_fsm          = ICACHE_MISS_CLEANUP; 
+                    r_icache_cleanup_save = index;
+                    r_icache_way_save     = way;
+                }
+                else
+                {
+                    r_icache_way_save     = way;
+                    r_icache_fsm          = ICACHE_MISS_WAIT;
+                }
+                break;
+            }
+            case ICACHE_MISS_CLEANUP: // try to post a cleanup request to the CLEANUP FSM
+            {
+                m_cost_ins_miss_frz++;
+                if ( r_tgt_icache_req )    // coherence request 
                 {
                     r_icache_fsm = ICACHE_CC_CHECK;
                     r_icache_fsm_save = r_icache_fsm;
                     break;
                 } 
-                if ( r_rsp_ins_ok && !r_icache_inval_pending )  // Miss response and no pending inval
+                if ( !r_icache_cleanup_req )	// no pending cleanup
                 {
-                    if ( r_rsp_ins_error )   	r_icache_fsm = ICACHE_ERROR;
-                    else 			r_icache_fsm = ICACHE_MISS_UPDT;
+                    r_icache_cleanup_req 	= true;
+                    r_icache_cleanup_line       = r_icache_cleanup_save;
+                    r_icache_fsm		= ICACHE_MISS_WAIT;
                 }
-                if ( r_rsp_ins_ok &&  r_icache_inval_pending )  // Miss response and pending inval
+                break;                
+            }
+            case ICACHE_MISS_WAIT:  // waiting the response from the RSP FSM
+            {
+                m_cost_ins_miss_frz++;
+                if ( r_tgt_icache_req )    // coherence request
                 {
-                    if ( r_rsp_ins_error ) 
-                    {
-                        r_icache_inval_pending = false;
-                        r_icache_fsm = ICACHE_ERROR;
-                    } 
-                    else if ( !r_icache_cleanup_req )
-                    {
-                        r_icache_inval_pending = false;
-                        r_icache_cleanup_req = true;
-                        r_icache_cleanup_line = r_icache_addr_save >> (uint32_log2(m_icache_words) + 2);   
-                        r_icache_fsm = ICACHE_IDLE;
-                    }
+                    r_icache_fsm = ICACHE_CC_CHECK;
+                    r_icache_fsm_save = r_icache_fsm;
+                    break;
+                } 
+                if ( r_rsp_ins_ok )  // there is a response
+                {
+                    if      ( r_rsp_ins_error )		r_icache_fsm = ICACHE_ERROR;
+                    else if ( !r_icache_inval_pending )	r_icache_fsm = ICACHE_MISS_UPDT;
+                    else				r_icache_fsm = ICACHE_IDLE;
+                    r_icache_inval_pending = false;
                 }
                 break;
- 
+            }
+            case ICACHE_MISS_UPDT:  // update the cache 
+            {
+                m_cost_ins_miss_frz++;
+                m_cpt_icache_dir_write++;
+                m_cpt_icache_data_write++;
+                addr_t 		ad   	= (addr_t) r_icache_addr_save;
+                data_t*   	buf   	= (data_t*) r_icache_miss_buf;
+                size_t		way	= (size_t) r_icache_way_save;
+                r_icache.update_after_select( buf, way, ad );
+                r_icache_fsm = ICACHE_IDLE;
+                break;
+            }
             case ICACHE_UNC_WAIT:
+            {
                 m_cost_ins_miss_frz++;
                 if ( r_tgt_icache_req )    // external request
                 {
@@ -825,7 +866,7 @@ r_wbuf.print();
                     else 			r_icache_fsm = ICACHE_IDLE;
                 }
                 break;
- 
+            }
             case ICACHE_ERROR:
             {
                 r_icache_fsm = ICACHE_IDLE;
@@ -834,48 +875,8 @@ r_wbuf.print();
                 irsp.valid          = true;
                 break;
             } 
-            case ICACHE_MISS_UPDT:  // update the cache & try to post a cleanup request
-            {
-                m_cost_ins_miss_frz++;
-                m_cpt_icache_dir_write++;
-                m_cpt_icache_data_write++;
-                addr_t 		ad   		= (addr_t) r_icache_addr_save;
-                data_t*   	buf   		= r_icache_miss_buf;
-                addr_t 		victim_index;
-                if ( r_icache.update(ad, buf, &victim_index) )   // there is a victim
-                {
-                    r_icache_cleanup_line 	= (addr_t) victim_index;
-                    if ( !r_icache_cleanup_req )	// no pending cleanup
-                    {
-                       r_icache_cleanup_req 	= true;
-                       r_icache_fsm		= ICACHE_IDLE;
-                    }
-                    else
-                    {
-                        r_icache_fsm   		= ICACHE_CLEANUP_REQ;
-		    }
-                }
-                else						// there is no victim
-                {
-                    r_icache_fsm		= ICACHE_IDLE;
-                }
-                break;
-            }
-            case ICACHE_CLEANUP_REQ: // waiting completion of the previous cleanup request 
-            {
-                if ( !r_icache_cleanup_req ) 
-                {
-                    r_icache_cleanup_req 	= true;
-                    r_icache_fsm		= ICACHE_IDLE;
-                }
-                break;
-            }
-            case ICACHE_MISS_DELAY:  // waiting completion of the previous cleanup request
-            {
-                if ( !r_icache_cleanup_req ) r_icache_fsm = ICACHE_MISS_WAIT;
-                break;
-            }
             case ICACHE_CC_CHECK:   // read directory in case of external request
+            {
                 m_cpt_icache_dir_read += m_icache_ways;
                 m_cpt_icache_data_read += m_icache_ways;
                 if ( ( r_icache_fsm_save == ICACHE_MISS_WAIT ) && // external request matches a miss
@@ -883,12 +884,11 @@ r_wbuf.print();
                 {
                     r_icache_inval_pending 	= true;
                     r_tgt_icache_req       	= false;
-                    r_tgt_icache_rsp       	= true;
+                    r_tgt_icache_rsp       	= r_tgt_update;  // always a response n case of update 
                     r_icache_fsm 		= r_icache_fsm_save;
                 } 
                 else  // the external request is not matching a pending miss
                 {
-                    r_icache_inval_pending 	= false;
                     data_t  data;
                     bool    icache_hit   	= r_icache.read(r_tgt_addr, &data);
                     if ( icache_hit && r_tgt_update )  // hit update
@@ -901,14 +901,15 @@ r_wbuf.print();
                     } 
                     else	// miss 
                     { 
-                        r_tgt_icache_req = false;
-                        r_tgt_icache_rsp = true;
-                        r_icache_fsm = r_icache_fsm_save;
+                        r_tgt_icache_req 	= false;
+                        r_tgt_icache_rsp 	= r_tgt_update; // alaways a response in case of update
+                        r_icache_fsm 		= r_icache_fsm_save;
                     }
                 }
                 break;
-            
+            }
             case ICACHE_CC_UPDT:    // update the cache line        
+            {
                 m_cpt_icache_dir_write++;
                 m_cpt_icache_data_write++;
                 for(size_t i=0; i<m_icache_words; i++)
@@ -919,13 +920,15 @@ r_wbuf.print();
                 r_tgt_icache_req = false;
                 r_icache_fsm = r_icache_fsm_save;
                 break;
- 
+            }
             case ICACHE_CC_INVAL:   // invalidate a cache line
+            {
                 r_icache.inval(r_tgt_addr);
                 r_tgt_icache_rsp = true;
                 r_tgt_icache_req = false;
                 r_icache_fsm = r_icache_fsm_save;
                 break;
+            }
         } // end switch r_icache_fsm
 
         //////////////////////////////////////////////////////////////////////://///////////
@@ -938,7 +941,6 @@ r_wbuf.print();
         // - r_dcache_rdata_save
         // - r_dcache_type_save
         // - r_dcache_be_save
-        // - r_dcache_cached_save
         // - r_dcache_miss_req set
         // - r_dcache_unc_req set
         // - r_rsp_data_ok reset
@@ -995,7 +997,7 @@ r_wbuf.print();
 
         case DCACHE_WRITE_REQ:
 	{
-            if ( r_tgt_dcache_req )    // external request
+            if ( r_tgt_dcache_req )    // coherence request
             {
                 r_dcache_fsm = DCACHE_CC_CHECK;
                 r_dcache_fsm_save = r_dcache_fsm;
@@ -1016,7 +1018,7 @@ r_wbuf.print();
         }     
         case DCACHE_IDLE:
         {
-            if ( r_tgt_dcache_req )   // external request
+            if ( r_tgt_dcache_req )   // coherence request
             {
                 r_dcache_fsm = DCACHE_CC_CHECK;
                 r_dcache_fsm_save = r_dcache_fsm;
@@ -1077,7 +1079,7 @@ r_wbuf.print();
                                 if ( r_dcache_cleanup_req &&
                                    ((addr_t)r_dcache_cleanup_line == (addr_t)(dreq.addr/(m_dcache_words*4))) )
                                 {
-                                    r_dcache_fsm	= DCACHE_MISS_DELAY;
+                                    break;
                                 }
                                 else
                                 {
@@ -1144,8 +1146,6 @@ r_wbuf.print();
                 r_dcache_wdata_save     = dreq.wdata;
                 r_dcache_be_save        = dreq.be;
                 r_dcache_rdata_save     = dcache_rdata;
-                r_dcache_cached_save    = dcache_cached;
-
             } 
             else  // no dreq.valid
             {
@@ -1164,76 +1164,70 @@ r_wbuf.print();
             r_dcache_fsm = DCACHE_WRITE_REQ;
             break;
         }
-        case DCACHE_MISS_WAIT:
+        case DCACHE_MISS_SELECT: // select a victim
         {
             m_cost_data_miss_frz++;
-            if ( r_tgt_dcache_req.read() )    // external request
+            size_t	way;
+            addr_t	index;
+            addr_t  ad = r_dcache_addr_save;
+            if ( r_dcache.select_before_update( ad, &way, &index) )
+            {
+                r_dcache_fsm          = DCACHE_MISS_CLEANUP; 
+                r_dcache_cleanup_save = index;
+                r_dcache_way_save     = way;
+            }
+            else
+            {
+                r_dcache_way_save     = way;
+                r_dcache_fsm          = DCACHE_MISS_WAIT;
+            }
+            break;
+        }
+        case DCACHE_MISS_CLEANUP: // try to post a cleanup request to the CLEANUP FSM
+        {
+            m_cost_data_miss_frz++;
+            if ( r_tgt_dcache_req )    // coherence request 
             {
                 r_dcache_fsm = DCACHE_CC_CHECK;
                 r_dcache_fsm_save = r_dcache_fsm;
                 break;
-            }
-            if ( r_rsp_data_ok && !r_dcache_inval_pending )  // miss response and no pending inval
+            } 
+            if ( !r_dcache_cleanup_req )	// no pending cleanup
             {
-                if ( r_rsp_data_error ) r_dcache_fsm = DCACHE_ERROR;
-                else 			r_dcache_fsm = DCACHE_MISS_UPDT;
+                r_dcache_cleanup_req 	= true;
+                r_dcache_cleanup_line   = r_dcache_cleanup_save;
+                r_dcache_fsm		= DCACHE_MISS_WAIT;
             }
-            else if ( r_rsp_data_ok && r_dcache_inval_pending )  // miss response and pending inval
+            break;                
+        }
+        case DCACHE_MISS_WAIT:  // waiting the response from the RSP FSM
+        {
+            m_cost_data_miss_frz++;
+            if ( r_tgt_dcache_req )    // coherence request
             {
-                if ( r_rsp_data_error ) 
-                {
-                    r_dcache_inval_pending 	= false;
-                    r_dcache_fsm 		= DCACHE_ERROR;
-                } 
-                else if ( !r_dcache_cleanup_req )
-                {
-                    r_dcache_inval_pending 	= false;
-                    r_dcache_cleanup_req 	= true;
-                    r_dcache_cleanup_line 	= r_dcache_addr_save >> (uint32_log2(m_dcache_words) + 2);   
-                    r_dcache_fsm 		= DCACHE_IDLE;
-                }
+                r_dcache_fsm = DCACHE_CC_CHECK;
+                r_dcache_fsm_save = r_dcache_fsm;
+                break;
+            } 
+            if ( r_rsp_data_ok )  // there is a response
+            {
+                if      ( r_rsp_data_error )		r_dcache_fsm = DCACHE_ERROR;
+                else if ( !r_dcache_inval_pending )	r_dcache_fsm = DCACHE_MISS_UPDT;
+                else					r_dcache_fsm = DCACHE_IDLE;
+                r_dcache_inval_pending = false;
             }
             break;
         }
-        case DCACHE_MISS_UPDT:  // update the cache, and try to post a cleanup resuest
+        case DCACHE_MISS_UPDT:  // update the cache 
         {
             m_cost_data_miss_frz++;
             m_cpt_dcache_dir_write++;
             m_cpt_dcache_data_write++;
-            addr_t 	ad   		= (addr_t) r_dcache_addr_save;
-            data_t*   	buf   		= r_dcache_miss_buf;
-            addr_t 	victim_index;
-            if ( r_dcache.update(ad, buf, &victim_index) )  // there is a victim
-            {
-                r_dcache_cleanup_line 	= (addr_t) victim_index;
-                if ( !r_dcache_cleanup_req )  // no pending cleanup
-                { 
-                    r_dcache_cleanup_req	= true;
-                    r_dcache_fsm        	= DCACHE_IDLE;
-                }
-                else
-                {
-                   r_dcache_fsm			= DCACHE_CLEANUP_REQ;
-                }
-            } 
-            else					// There is no victim 
-            {
-               r_dcache_fsm			= DCACHE_IDLE;
-            }
-            break;
-        }
-        case DCACHE_CLEANUP_REQ: // waiting completion of the previous cleanup request
-        {
-            if ( !r_dcache_cleanup_req )
-            {
-                r_dcache_cleanup_req 	= true;
-                r_dcache_fsm         	= DCACHE_IDLE;
-            }
-            break;
-        }
-        case DCACHE_MISS_DELAY:  // waiting completion of the previous cleanup request
-        {
-            if ( !r_dcache_cleanup_req ) r_icache_fsm = ICACHE_MISS_WAIT;
+            addr_t 	ad   	= (addr_t) r_dcache_addr_save;
+            data_t*   	buf   	= (data_t*) r_dcache_miss_buf;
+            size_t	way	= (size_t) r_dcache_way_save;
+            r_dcache.update_after_select( buf, way, ad );
+            r_dcache_fsm = DCACHE_IDLE;
             break;
         }
         case DCACHE_UNC_WAIT:
@@ -1287,6 +1281,7 @@ r_wbuf.print();
         case DCACHE_SYNC:
         {
             if ( r_wbuf.empty() ) r_dcache_fsm = DCACHE_IDLE; 
+            break;
         }
         case DCACHE_CC_CHECK:   // read directory in case of external request
             m_cpt_dcache_dir_read += m_dcache_ways;
@@ -1296,12 +1291,11 @@ r_wbuf.print();
                 {
                     r_dcache_inval_pending 	= true;
                     r_tgt_dcache_req       	= false;
-                    r_tgt_dcache_rsp       	= true;
+                    r_tgt_dcache_rsp       	= r_tgt_update; // always a response to an update
                     r_dcache_fsm 		= r_dcache_fsm_save;
                 } 
                 else  // the external request is not matching a pending miss
                 {
-                    r_dcache_inval_pending 	= false;
                     data_t  data;
                     bool    dcache_hit   	= r_dcache.read(r_tgt_addr, &data);
                     if ( dcache_hit && r_tgt_update )  // hit update
@@ -1315,7 +1309,7 @@ r_wbuf.print();
                     else	// miss 
                     { 
                         r_tgt_dcache_req = false;
-                        r_tgt_dcache_rsp = true;
+                        r_tgt_dcache_rsp = r_tgt_update;  // always a respons in case of update
                         r_dcache_fsm = r_dcache_fsm_save;
                     }
                 }
@@ -1385,8 +1379,11 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
 
             case CLEANUP_CMD:
             {    
-                if      (r_dcache_cleanup_req) 	r_cleanup_fsm = CLEANUP_DCACHE_RSP;
-                else if (r_icache_cleanup_req) 	r_cleanup_fsm = CLEANUP_ICACHE_RSP;
+                if ( p_vci_ini_c.cmdack )
+                {
+                    if      (r_dcache_cleanup_req) 	r_cleanup_fsm = CLEANUP_DCACHE_RSP;
+                    else if (r_icache_cleanup_req) 	r_cleanup_fsm = CLEANUP_ICACHE_RSP;
+                }
                 break;
             }
             case CLEANUP_DCACHE_RSP:
@@ -1494,11 +1491,6 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                     r_cmd_cpt = r_cmd_cpt + 1;
                     if (r_cmd_cpt == r_cmd_max) 
                     {
-
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << std::endl << "INDEX_OUT = " << (r_wbuf.getIndex() << 1) + 1 << std::endl << std::endl;
-#endif
-
                         r_cmd_fsm = CMD_IDLE ;
                         r_wbuf.sent() ;
                     }
@@ -1561,10 +1553,6 @@ std::cout << std::endl << "INDEX_OUT = " << (r_wbuf.getIndex() << 1) + 1 << std:
             {
                 assert(p_vci_ini_d.reop.read() &&
                    "illegal VCI response packet for a write transaction");
-
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << std::endl << "INDEX_IN = " <<  p_vci_ini_d.rpktid.read() << std::endl << std::endl;
-#endif
                 r_rsp_fsm = RSP_IDLE;
                 r_wbuf.completed( p_vci_ini_d.rpktid.read() >> 1 );
                 if ( p_vci_ini_d.rerror.read() != vci_param::ERR_NORMAL ) m_iss.setWriteBerr();
@@ -1658,7 +1646,6 @@ std::cout << std::endl << "INDEX_IN = " <<  p_vci_ini_d.rpktid.read() << std::en
                 p_vci_ini_c.be     = 0xF;
                 p_vci_ini_c.plen   = 4;
                 p_vci_ini_c.cmd    = vci_param::CMD_WRITE;
-                p_vci_ini_c.trdid  = 0;
                 p_vci_ini_c.pktid  = 0;
                 p_vci_ini_c.srcid  = m_srcid_c;
                 p_vci_ini_c.cons   = false;
@@ -1826,7 +1813,7 @@ std::cout << std::endl << "INDEX_IN = " <<  p_vci_ini_d.rpktid.read() << std::en
                 p_vci_ini_d.be     = 0xF;
                 p_vci_ini_d.plen   = 4;
                 p_vci_ini_d.cmd    = vci_param::CMD_READ;
-                p_vci_ini_d.trdid  = 0;
+                p_vci_ini_c.trdid  = 0;
                 p_vci_ini_d.pktid  = TYPE_INS_UNC;
                 p_vci_ini_d.srcid  = m_srcid_d;
                 p_vci_ini_d.cons   = false;
