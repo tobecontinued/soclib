@@ -49,8 +49,12 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
     uint32_t *tab = m_fb_controller.surface();
 	unsigned int cur = tab[index];
     uint32_t mask = vci_param::be2mask(be);
-    
+
     tab[index] = (cur & ~mask) | (data & mask);
+
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << "[" << name() << "] WRITE tab["<< index <<"] = " << ( (cur & ~mask) | (data & mask)) << std::endl;
+#endif
 
 	m_defered_timeout = 30;
     return true;
