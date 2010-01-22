@@ -81,7 +81,7 @@
 //   The LL/SC requests are still uncached.
 ///////////////////////////////////////////////////////////////////////////////
 
-//#define SOCLIB_MODULE_DEBUG 1
+#define SOCLIB_MODULE_DEBUG 1
 
 #include <cassert>
 #include "arithmetics.h"
@@ -404,6 +404,7 @@ namespace caba {
         }
 
 #if SOCLIB_MODULE_DEBUG
+if ( m_srcid_d == 0 )
 {
 std::cout << "--------------------------------------------" << std::endl
           << std::dec << "CACHE " << m_srcid_d << " / Time = " << m_cpt_total_cycles << std::endl
@@ -834,8 +835,20 @@ r_wbuf.print();
                 {
                     if      ( r_rsp_ins_error )		r_icache_fsm = ICACHE_ERROR;
                     else if ( !r_icache_inval_pending )	r_icache_fsm = ICACHE_MISS_UPDT;
-                    else				r_icache_fsm = ICACHE_IDLE;
-                    r_icache_inval_pending = false;
+                    else
+                    {
+                        if ( r_icache_cleanup_req ) 
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            r_icache_cleanup_req = true;
+                            r_icache_cleanup_line = r_icache_addr_save;
+                            r_icache_fsm = ICACHE_IDLE;
+                            r_icache_inval_pending = false;
+                        }
+                    }
                 }
                 break;
             }
@@ -1213,8 +1226,20 @@ r_wbuf.print();
             {
                 if      ( r_rsp_data_error )		r_dcache_fsm = DCACHE_ERROR;
                 else if ( !r_dcache_inval_pending )	r_dcache_fsm = DCACHE_MISS_UPDT;
-                else					r_dcache_fsm = DCACHE_IDLE;
-                r_dcache_inval_pending = false;
+                else
+                {
+                    if ( r_dcache_cleanup_req ) 
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        r_dcache_cleanup_req = true;
+                        r_dcache_cleanup_line = r_dcache_addr_save;
+                        r_dcache_fsm = DCACHE_IDLE;
+                        r_dcache_inval_pending = false;
+                    }
+                }
             }
             break;
         }
@@ -1342,6 +1367,7 @@ r_wbuf.print();
             r_wbuf.write(false, 0, 0, 0);
 
 #if SOCLIB_MODULE_DEBUG
+if ( m_srcid_d == 0 )
 std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp << std::endl;
 #endif
 
