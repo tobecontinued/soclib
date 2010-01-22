@@ -11,8 +11,8 @@
 #include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
 //#include "vci_vgsb.h"
-//#include "vci_vgmn.h"
-#include "vci_simple_ring_network.h"
+#include "vci_vgmn.h"
+//#include "vci_simple_ring_network.h"
 #include "vci_mem_cache_v1.h"
 #include "vci_cc_xcache_wrapper_multi.h"
 #include "vci_logger.h"
@@ -140,16 +140,16 @@ int _main(int argc, char *argv[])
 
         // Components
 	soclib::caba::VciCcXCacheWrapperMulti<vci_param, proc_iss > 
-	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),IntTab(0),4,64,16,4,64,16,4,8);
+	proc0("proc0", 0, maptabp, maptabc, IntTab(0),IntTab(0),IntTab(0),1,8,16,1,8,16,4,8);
 
 	soclib::caba::VciCcXCacheWrapperMulti<vci_param, proc_iss > 
-	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),IntTab(1),4,64,16,4,64,16,4,8);
+	proc1("proc1", 1, maptabp, maptabc, IntTab(1),IntTab(1),IntTab(1),1,8,16,1,8,16,4,8);
 
 	soclib::caba::VciCcXCacheWrapperMulti<vci_param, proc_iss > 
-	proc2("proc2", 2, maptabp, maptabc, IntTab(2),IntTab(2),IntTab(2),4,64,16,4,64,16,4,8);
+	proc2("proc2", 2, maptabp, maptabc, IntTab(2),IntTab(2),IntTab(2),1,8,16,1,8,16,4,8);
 
 	soclib::caba::VciCcXCacheWrapperMulti<vci_param, proc_iss > 
-	proc3("proc3", 3, maptabp, maptabc, IntTab(3),IntTab(3),IntTab(3),4,64,16,4,64,16,4,8);
+	proc3("proc3", 3, maptabp, maptabc, IntTab(3),IntTab(3),IntTab(3),1,8,16,1,8,16,4,8);
 
 	soclib::caba::VciSimpleRam<vci_param> 
 	rom("rom", IntTab(0), maptabp, loader);
@@ -169,26 +169,26 @@ int _main(int argc, char *argv[])
 //      soclib::caba::VciLogger<vci_param> vci_logger_proc3("vci_logger_proc3",maptabp);
 //      soclib::caba::VciLogger<vci_param> vci_logger_memc("vci_logger_memc",maptabp);
 
-	soclib::caba::VciSimpleRingNetwork<vci_param> 
-	ringd("ringd",maptabp, IntTab(), 2, 4, 3);
+//	soclib::caba::VciSimpleRingNetwork<vci_param> 
+//	ringd("ringd",maptabp, IntTab(), 2, 4, 3);
 //  	soclib::caba::VciVgsb<vci_param> 
 //	ringd("ringd",maptabp, 4, 3);
-//  	soclib::caba::VciVgmn<vci_param> 
-//	ringd("ringd",maptabp, 4, 3, 2, 2);
+  	soclib::caba::VciVgmn<vci_param> 
+	ringd("ringd",maptabp, 4, 3, 2, 2);
 
-	soclib::caba::VciSimpleRingNetwork<vci_param> 
-	ringc("ringc",maptabc, IntTab(), 2, 5, 5);
+//	soclib::caba::VciSimpleRingNetwork<vci_param> 
+//	ringc("ringc",maptabc, IntTab(), 2, 5, 5);
 //	soclib::caba::VciVgsb<vci_param> 
 //	ringc("ringc",maptabc, 5, 5);
-//  	soclib::caba::VciVgmn<vci_param> 
-//	ringc("ringd",maptabc, 5, 5, 2, 2);
+  	soclib::caba::VciVgmn<vci_param> 
+	ringc("ringc",maptabc, 5, 5, 2, 2);
 
-	soclib::caba::VciSimpleRingNetwork<vci_param> 
-	ringx("ringx",maptabx, IntTab(), 2, 1, 1);
+//	soclib::caba::VciSimpleRingNetwork<vci_param> 
+//	ringx("ringx",maptabx, IntTab(), 2, 1, 1);
 //	soclib::caba::VciVgsb<vci_param> 
 //	ringx("ringx",maptabx, 1, 1);
-//  	soclib::caba::VciVgmn<vci_param> 
-//	ringx("ringd",maptabx, 1, 1, 2, 2);
+  	soclib::caba::VciVgmn<vci_param> 
+	ringx("ringx",maptabx, 1, 1, 2, 2);
 
 	// Net-List
  
