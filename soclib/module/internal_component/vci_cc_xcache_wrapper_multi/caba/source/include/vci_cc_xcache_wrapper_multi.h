@@ -122,10 +122,10 @@ class VciCcXCacheWrapperMulti
     };
 
     enum transaction_type_e {
-        TYPE_DATA_MISS = 0,
-        TYPE_DATA_UNC = 2,
-        TYPE_INS_MISS = 4,
-        TYPE_INS_UNC = 6,
+        TYPE_DATA_UNC = 0,
+        TYPE_DATA_MISS = 1,
+        TYPE_INS_UNC = 2,
+        TYPE_INS_MISS = 3,
     };
 
 public:
@@ -146,7 +146,8 @@ private:
     iss_t               						m_iss;
     const uint32_t      						m_srcid_d;   
     const uint32_t      						m_srcid_c;   
-    
+   
+    const size_t                                m_wbuf_nlines; 
     const size_t        						m_dcache_ways;
     const size_t        						m_dcache_words;
     const size_t        						m_dcache_yzmask;

@@ -191,13 +191,14 @@ namespace caba {
             m_iss(this->name(), proc_id),
             m_srcid_d(mtp.indexForId(initiator_index_p)),
             m_srcid_c(mtc.indexForId(initiator_index_c)),
-
+            
             m_dcache_ways(dcache_ways),
             m_dcache_words(dcache_words),
             m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
             m_icache_ways(icache_ways),
             m_icache_words(icache_words),
             m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
+            m_wbuf_nlines(wbuf_nlines),
 
             r_dcache_fsm("r_dcache_fsm"),
             r_dcache_fsm_save("r_dcache_fsm_save"),
@@ -256,6 +257,10 @@ namespace caba {
             r_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 
             {
+
+                assert( (m_wbuf_nlines== 1 || m_wbuf_nlines == 2 || m_wbuf_nlines == 4 || m_wbuf_nlines == 8 || m_wbuf_nlines == 16) &&
+                      "number of lines must be power of 2, no larger than 16");
+
                 r_icache_miss_buf = new data_t[icache_words];
                 r_dcache_miss_buf = new data_t[dcache_words];
                 r_tgt_buf         = new data_t[dcache_words];
@@ -817,8 +822,8 @@ r_wbuf.print();
                 if ( !r_icache_cleanup_req )	// no pending cleanup
                 {
                     r_icache_cleanup_req 	= true;
-                    r_icache_cleanup_line       = r_icache_cleanup_save;
-                    r_icache_fsm		= ICACHE_MISS_WAIT;
+                    r_icache_cleanup_line   = r_icache_cleanup_save.read();
+                    r_icache_fsm	    	= ICACHE_MISS_WAIT;
                 }
                 break;                
             }
@@ -844,7 +849,7 @@ r_wbuf.print();
                         else
                         {
                             r_icache_cleanup_req = true;
-                            r_icache_cleanup_line = r_icache_addr_save;
+                            r_icache_cleanup_line = r_icache_addr_save.read() >> (uint32_log2(m_icache_words) + 2);
                             r_icache_fsm = ICACHE_IDLE;
                             r_icache_inval_pending = false;
                         }
@@ -1098,7 +1103,7 @@ r_wbuf.print();
                                 {
                                     r_dcache_miss_req = true;
                                     r_rsp_data_ok = false;
-                                    r_dcache_fsm = DCACHE_MISS_WAIT;
+                                    r_dcache_fsm = DCACHE_MISS_SELECT;
                                 }
                                 drsp.valid = false;
                                 drsp.rdata = 0;
@@ -1235,7 +1240,7 @@ r_wbuf.print();
                     else
                     {
                         r_dcache_cleanup_req = true;
-                        r_dcache_cleanup_line = r_dcache_addr_save;
+                        r_dcache_cleanup_line = r_dcache_addr_save >> (uint32_log2(m_icache_words) + 2);
                         r_dcache_fsm = DCACHE_IDLE;
                         r_dcache_inval_pending = false;
                     }
@@ -1566,11 +1571,11 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
             if( p_vci_ini_d.rspval.read() )
             {
                 r_rsp_cpt = 0;
-                if ( p_vci_ini_d.rpktid.read()%2 == 1 )			r_rsp_fsm = RSP_DATA_WRITE;
-                else if ( p_vci_ini_d.rpktid.read() == TYPE_DATA_MISS ) r_rsp_fsm = RSP_DATA_MISS;
-                else if ( p_vci_ini_d.rpktid.read() == TYPE_DATA_UNC ) 	r_rsp_fsm = RSP_DATA_UNC;
-                else if ( p_vci_ini_d.rpktid.read() == TYPE_INS_MISS ) 	r_rsp_fsm = RSP_INS_MISS;
-                else if ( p_vci_ini_d.rpktid.read() == TYPE_INS_UNC ) 	r_rsp_fsm = RSP_INS_UNC;
+                if ( p_vci_ini_d.rtrdid.read()/m_wbuf_nlines != 0 )		r_rsp_fsm = RSP_DATA_WRITE;
+                else if ( p_vci_ini_d.rtrdid.read() == TYPE_DATA_MISS ) r_rsp_fsm = RSP_DATA_MISS;
+                else if ( p_vci_ini_d.rtrdid.read() == TYPE_DATA_UNC ) 	r_rsp_fsm = RSP_DATA_UNC;
+                else if ( p_vci_ini_d.rtrdid.read() == TYPE_INS_MISS ) 	r_rsp_fsm = RSP_INS_MISS;
+                else if ( p_vci_ini_d.rtrdid.read() == TYPE_INS_UNC ) 	r_rsp_fsm = RSP_INS_UNC;
             }
             break;
 
@@ -1580,7 +1585,7 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                 assert(p_vci_ini_d.reop.read() &&
                    "illegal VCI response packet for a write transaction");
                 r_rsp_fsm = RSP_IDLE;
-                r_wbuf.completed( p_vci_ini_d.rpktid.read() >> 1 );
+                r_wbuf.completed( p_vci_ini_d.rtrdid.read() - m_wbuf_nlines );
                 if ( p_vci_ini_d.rerror.read() != vci_param::ERR_NORMAL ) m_iss.setWriteBerr();
             }
             break;
@@ -1665,7 +1670,7 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                 }
                 else
                 {
-                    p_vci_ini_c.address =  r_icache_cleanup_line.read() * m_icache_words * 4;
+                    p_vci_ini_c.address =  r_icache_cleanup_line.read() * (m_icache_words << 2); //* 4;
                     p_vci_ini_c.trdid   = 1;
                 }
                 p_vci_ini_c.wdata  = 0;
@@ -1754,8 +1759,8 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                 p_vci_ini_d.be      = r_wbuf.getBe(r_cmd_cpt);
                 p_vci_ini_d.plen    = (r_cmd_max - r_cmd_min + 1)<<2;
                 p_vci_ini_d.cmd     = vci_param::CMD_WRITE;
-                p_vci_ini_d.pktid   = (r_wbuf.getIndex() << 1) + 1;
-                p_vci_ini_d.trdid   = 0;
+                p_vci_ini_d.pktid   = 0;
+                p_vci_ini_d.trdid   = r_wbuf.getIndex() + m_wbuf_nlines;
                 p_vci_ini_d.srcid   = m_srcid_d;
                 p_vci_ini_d.cons    = false;
                 p_vci_ini_d.wrap    = false;
@@ -1788,8 +1793,8 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                         assert("this should not happen");
                 }
                 p_vci_ini_d.plen = 4;
-                p_vci_ini_d.trdid  = 0;
-                p_vci_ini_d.pktid  = TYPE_DATA_UNC;
+                p_vci_ini_d.trdid  = TYPE_DATA_UNC;
+                p_vci_ini_d.pktid  = 0;
                 p_vci_ini_d.srcid  = m_srcid_d;
                 p_vci_ini_d.cons   = false;
                 p_vci_ini_d.wrap   = false;
@@ -1805,8 +1810,8 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                 p_vci_ini_d.be     = 0xF;
                 p_vci_ini_d.plen   = m_dcache_words << 2;
                 p_vci_ini_d.cmd    = vci_param::CMD_READ;
-                p_vci_ini_d.trdid  = 0;
-                p_vci_ini_d.pktid  = TYPE_DATA_MISS;
+                p_vci_ini_d.trdid  = TYPE_DATA_MISS;
+                p_vci_ini_d.pktid  = 0;
                 p_vci_ini_d.srcid  = m_srcid_d;
                 p_vci_ini_d.cons   = false;
                 p_vci_ini_d.wrap   = false;
@@ -1822,8 +1827,8 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                 p_vci_ini_d.be     = 0xF;
                 p_vci_ini_d.plen   = m_icache_words << 2;
                 p_vci_ini_d.cmd    = vci_param::CMD_READ;
-                p_vci_ini_d.trdid  = 0;
-                p_vci_ini_d.pktid  = TYPE_INS_MISS;
+                p_vci_ini_d.trdid  = TYPE_INS_MISS;
+                p_vci_ini_d.pktid  = 0;
                 p_vci_ini_d.srcid  = m_srcid_d;
                 p_vci_ini_d.cons   = false;
                 p_vci_ini_d.wrap   = false;
@@ -1839,8 +1844,8 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                 p_vci_ini_d.be     = 0xF;
                 p_vci_ini_d.plen   = 4;
                 p_vci_ini_d.cmd    = vci_param::CMD_READ;
-                p_vci_ini_c.trdid  = 0;
-                p_vci_ini_d.pktid  = TYPE_INS_UNC;
+                p_vci_ini_d.trdid  = TYPE_INS_UNC;
+                p_vci_ini_d.pktid  = 0;
                 p_vci_ini_d.srcid  = m_srcid_d;
                 p_vci_ini_d.cons   = false;
                 p_vci_ini_d.wrap   = false;
