@@ -576,7 +576,7 @@ namespace soclib { namespace caba {
             {
               r_tgt_cmd_fsm = TGT_CMD_READ;
             } 
-            else if (( p_vci_tgt.cmd.read() == vci_param::CMD_WRITE ) && ( p_vci_tgt.trdid.read() == 0x0 ))
+            else if (( p_vci_tgt.cmd.read() == vci_param::CMD_WRITE )) //&& ( p_vci_tgt.trdid.read() == 0x0 ))
             {  
               r_tgt_cmd_fsm = TGT_CMD_WRITE;
             } 
@@ -1922,6 +1922,11 @@ namespace soclib { namespace caba {
                 reached) {
 
               m_cpt_cleanup++;
+//--------------
+std::cout << sc_time_stamp() << " -- " << name()
+          << " cleanup nline : " << std::hex << (addr_t)(m_nline[(vci_addr_t)(p_vci_tgt_cleanup.address.read())])
+          << std::endl; 
+//---------------*/
 
               r_cleanup_nline      = (addr_t)(m_nline[(vci_addr_t)(p_vci_tgt_cleanup.address.read())]) ;
               r_cleanup_srcid      = p_vci_tgt_cleanup.srcid.read();
@@ -1990,6 +1995,11 @@ namespace soclib { namespace caba {
           }
           else{                         // Directory is a vector
             if(cleanup_inst){           // Cleanup from a ICACHE
+/*/--------------
+std::cout << sc_time_stamp() << " -- " << name()
+          << " -- i_copies : " << r_cleanup_i_copies.read()
+          << " -- srcid : " << r_cleanup_srcid.read() << std::endl; 
+//---------------*/
               if(r_cleanup_i_copies.read() & (0x1 << r_cleanup_srcid.read())){ // hit
                 entry.count  = r_cleanup_count.read() -1;
                 r_cleanup_fsm = CLEANUP_RSP;
