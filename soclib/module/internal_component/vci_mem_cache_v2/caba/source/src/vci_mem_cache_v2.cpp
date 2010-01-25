@@ -591,7 +591,7 @@ namespace soclib { namespace caba {
             {
               r_tgt_cmd_fsm = TGT_CMD_READ;
             } 
-            else if (( p_vci_tgt.cmd.read() == vci_param::CMD_WRITE ) && ( p_vci_tgt.trdid.read() == 0x0 ))
+            else if (( p_vci_tgt.cmd.read() == vci_param::CMD_WRITE ))
             {  
               r_tgt_cmd_fsm = TGT_CMD_WRITE;
             } 
