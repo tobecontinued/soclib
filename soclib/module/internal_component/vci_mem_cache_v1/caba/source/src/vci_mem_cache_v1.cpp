@@ -1017,8 +1017,7 @@ namespace soclib { namespace caba {
               r_write_i_copies  = entry.i_copies;
               r_write_count     = entry.count;
               r_write_way  	    = way;
-              if((entry.is_cnt && entry.count) ||
-                  entry.i_copies){
+              if(entry.is_cnt && entry.count){
                 r_write_fsm      = WRITE_DIR_HIT_READ;
               } else {
                 if(r_write_byte.read())
@@ -1044,7 +1043,7 @@ namespace soclib { namespace caba {
             if  (r_write_be[i].read() & 0x2) mask = mask | 0x0000FF00;
             if  (r_write_be[i].read() & 0x4) mask = mask | 0x00FF0000;
             if  (r_write_be[i].read() & 0x8) mask = mask | 0xFF000000;
-            if(r_write_be[i].read()||r_write_is_cnt.read()||r_write_i_copies.read()) { // complete only if mask is not null (for energy consumption)
+            if(r_write_be[i].read()||r_write_is_cnt.read()) { // complete only if mask is not null (for energy consumption)
               r_write_data[i]  = (r_write_data[i].read() & mask) | 
                 (m_cache_data[way][set][i] & ~mask);
             }
@@ -1074,6 +1073,17 @@ namespace soclib { namespace caba {
           size_t way	    = r_write_way.read();
           m_cache_directory.write(set, way, entry);
 
+          size_t nb_copies=0;
+          for(size_t i=0; i<32 ; i++) {
+            if( r_write_d_copies.read() & (1<<i) )
+                nb_copies++;
+          }
+          for(size_t i=0; i<32 ; i++) {
+            if( r_write_i_copies.read() & (1<<i) )
+                nb_copies++;
+          }
+          assert((nb_copies == r_write_count.read()) && "MemCache Error, inconsistency in the directory");
+
           // write data in cache
           for(size_t i=0 ; i<m_words ; i++) {
             if  ( r_write_be[i].read() ) {
@@ -1081,7 +1091,8 @@ namespace soclib { namespace caba {
             }
           } // end for
 
-          if ( r_write_d_copies.read() && (1 << r_write_srcid.read()) ){
+          r_write_d_copies = r_write_d_copies.read() & ~(1 << r_write_srcid.read());
+          if ( r_write_d_copies.read() & (1 << r_write_srcid.read()) ){
             r_write_count = r_write_count.read()-1;
             if( r_write_count.read()-1 == 0)
               r_write_fsm = WRITE_RSP;
@@ -1922,11 +1933,6 @@ namespace soclib { namespace caba {
                 reached) {
 
               m_cpt_cleanup++;
-//--------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " cleanup nline : " << std::hex << (addr_t)(m_nline[(vci_addr_t)(p_vci_tgt_cleanup.address.read())])
-          << std::endl; 
-//---------------*/
 
               r_cleanup_nline      = (addr_t)(m_nline[(vci_addr_t)(p_vci_tgt_cleanup.address.read())]) ;
               r_cleanup_srcid      = p_vci_tgt_cleanup.srcid.read();
@@ -1995,11 +2001,6 @@ std::cout << sc_time_stamp() << " -- " << name()
           }
           else{                         // Directory is a vector
             if(cleanup_inst){           // Cleanup from a ICACHE
-/*/--------------
-std::cout << sc_time_stamp() << " -- " << name()
-          << " -- i_copies : " << r_cleanup_i_copies.read()
-          << " -- srcid : " << r_cleanup_srcid.read() << std::endl; 
-//---------------*/
               if(r_cleanup_i_copies.read() & (0x1 << r_cleanup_srcid.read())){ // hit
                 entry.count  = r_cleanup_count.read() -1;
                 r_cleanup_fsm = CLEANUP_RSP;
@@ -2020,9 +2021,6 @@ std::cout << sc_time_stamp() << " -- " << name()
             }
           }
           m_cache_directory.write(set, way, entry);  
-
-          // response to the cache      
-//          r_cleanup_fsm = CLEANUP_RSP;
 
           break;
         }
