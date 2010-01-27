@@ -75,6 +75,7 @@ class VciVCacheWrapper2
         ICACHE_UNC_WAIT,            // 0e
         ICACHE_MISS_UPDT,           // 0f
         ICACHE_ERROR,               // 10
+	ICACHE_CACHE_INVAL_PA,	    // 11
     };
 
     enum dcache_fsm_state_e {  
@@ -113,6 +114,8 @@ class VciVCacheWrapper2
         DCACHE_ITLB_UPDT,           // 20
         DCACHE_ITLB_LL_WAIT,        // 21
         DCACHE_ITLB_SC_WAIT,        // 22
+        DCACHE_ICACHE_INVAL_PA,     // 23
+        DCACHE_DCACHE_INVAL_PA,     // 24
     };
 
     enum cmd_fsm_state_e {      
@@ -218,6 +221,8 @@ private:
     sc_signal<int>          r_mmu_mode;             // mmu mode register
     sc_signal<int>          r_mmu_params;           // mmu parameters register
     sc_signal<int>          r_mmu_release;          // mmu release register
+    sc_signal<int>          r_mmu_word_lo;          // mmu misc data low
+    sc_signal<int>          r_mmu_word_hi;          // mmu mmu misc data hight
 
     // DCACHE FSM REGISTERS
     sc_signal<int>          r_dcache_fsm;               // state register

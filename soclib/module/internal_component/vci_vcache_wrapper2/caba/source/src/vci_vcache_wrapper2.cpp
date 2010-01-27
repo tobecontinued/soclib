@@ -43,6 +43,7 @@ const char *icache_fsm_state_str[] = {
         "ICACHE_TLB2_WRITE",  
         "ICACHE_TLB2_UPDT",  
         "ICACHE_SW_FLUSH", 
+        "ICACHE_TLB_FLUSH", 
         "ICACHE_CACHE_FLUSH", 
         "ICACHE_TLB_INVAL",  
         "ICACHE_CACHE_INVAL",
@@ -50,7 +51,7 @@ const char *icache_fsm_state_str[] = {
         "ICACHE_UNC_WAIT",  
         "ICACHE_MISS_UPDT",  
         "ICACHE_ERROR", 	
-        "ICACHE_TLB_FLUSH", 
+	"ICACHE_CACHE_INVAL_PA",
     };
 const char *dcache_fsm_state_str[] = {
         "DCACHE_IDLE",       
@@ -88,6 +89,8 @@ const char *dcache_fsm_state_str[] = {
         "DCACHE_ITLB_UPDT",
         "DCACHE_ITLB_LL_WAIT",        
         "DCACHE_ITLB_SC_WAIT",
+	"DCACHE_ICACHE_INVAL_PA",
+	"DCACHE_DCACHE_INVAL_PA",
     };
 const char *cmd_fsm_state_str[] = {
         "CMD_IDLE",           
@@ -322,7 +325,7 @@ tmpl(void)::transition()
                        (uint32_log2(m_itlb_ways) << 15)   | (uint32_log2(m_itlb_sets) << 11)   |
                        (uint32_log2(m_icache_ways) << 8)  | (uint32_log2(m_icache_sets) << 4)  |
                        (uint32_log2(m_icache_words * 4));
-        r_mmu_release = (uint32_t)(1 << 16) | 0x1;
+        r_mmu_release = (uint32_t)(2 << 16) | 0x0;
 
         r_icache_miss_req        = false;
         r_icache_unc_req         = false;
@@ -539,6 +542,11 @@ tmpl(void)::transition()
             if ((int)r_dcache_type_save == (int)iss_t::XTN_ICACHE_INVAL) 
             {
                 r_icache_fsm = ICACHE_CACHE_INVAL;   
+                break;
+            }
+            if ((int)r_dcache_type_save == (int)iss_t::XTN_MMU_ICACHE_PA_INV) 
+            {
+                r_icache_fsm = ICACHE_CACHE_INVAL_PA;   
                 break;
             }
             if ((int)r_dcache_type_save == (int)iss_t::XTN_DCACHE_FLUSH )  
@@ -1008,6 +1016,16 @@ tmpl(void)::transition()
         r_icache_fsm = ICACHE_IDLE;
         break;
     }
+    ////////////////////////
+    case ICACHE_CACHE_INVAL_PA:
+    {	
+        paddr_t ipaddr = r_mmu_word_hi.read() << 32 | r_mmu_word_lo.read();
+
+        r_icache.inval(ipaddr);  
+        r_dcache_xtn_req = false; 
+        r_icache_fsm = ICACHE_IDLE;
+        break;
+    }
     ///////////////////////
     case ICACHE_MISS_WAIT:
     {
@@ -1257,6 +1275,16 @@ tmpl(void)::transition()
                     drsp.valid = true;
                     drsp.error = false;
                     break;
+                case iss_t::XTN_MMU_WORD_LO:
+                    drsp.rdata = (uint32_t)r_mmu_word_lo;
+                    drsp.valid = true;
+                    drsp.error = false;
+                    break;
+                case iss_t::XTN_MMU_WORD_HI:
+                    drsp.rdata = (uint32_t)r_mmu_word_hi;
+                    drsp.valid = true;
+                    drsp.error = false;
+                    break;
                 default:
                     r_dcache_error_type = MMU_READ_UNDEFINED_XTN; 
                     r_dcache_bad_vaddr  = dreq.addr;
@@ -1353,6 +1381,10 @@ tmpl(void)::transition()
                     r_dcache_fsm = DCACHE_DCACHE_INVAL;
                     break;
 
+                case iss_t::XTN_MMU_DCACHE_PA_INV:   // cache inval can be executed in user mode.
+                    r_dcache_fsm = DCACHE_DCACHE_INVAL_PA;
+                    break;
+
                 case iss_t::XTN_DCACHE_FLUSH:   // cache flush can be executed in user mode.
                     r_dcache_type_save = dreq.addr/4; 
                     r_dcache_xtn_req = true;
@@ -1363,6 +1395,12 @@ tmpl(void)::transition()
                     r_dcache_type_save = dreq.addr/4; 
                     r_dcache_xtn_req = true;
                     r_dcache_fsm = DCACHE_ICACHE_INVAL; 
+                    break;
+
+                case iss_t::XTN_MMU_ICACHE_PA_INV:   // cache inval can be executed in user mode.
+                    r_dcache_type_save = dreq.addr/4; 
+                    r_dcache_xtn_req = true;
+                    r_dcache_fsm = DCACHE_ICACHE_INVAL_PA; 
                     break;
 
                 case iss_t::XTN_ICACHE_FLUSH:   // cache flush can be executed in user mode.
@@ -1381,6 +1419,42 @@ tmpl(void)::transition()
                         drsp.valid = true;
                         r_dcache_fsm = DCACHE_IDLE;
                     }
+                    break;
+                case iss_t::XTN_MMU_WORD_LO: // modifying MMU misc registers
+                    if ((dreq.mode == iss_t::MODE_HYPER) || (dreq.mode == iss_t::MODE_KERNEL)) 
+                    {
+                        r_mmu_word_lo = (int)dreq.wdata;
+                        drsp.valid = true;
+                    } 
+                    else 
+                    {
+                        r_dcache_error_type = MMU_WRITE_PRIVILEGE_VIOLATION; 
+                        r_dcache_bad_vaddr  = dreq.addr;
+                        drsp.valid = true;
+                        drsp.error = true;
+                    }
+                    r_dcache_fsm = DCACHE_IDLE;
+                    break;
+                case iss_t::XTN_MMU_WORD_HI: // modifying MMU misc registers
+                    if ((dreq.mode == iss_t::MODE_HYPER) || (dreq.mode == iss_t::MODE_KERNEL)) 
+                    {
+                        r_mmu_word_hi = (int)dreq.wdata;
+                        drsp.valid = true;
+                    } 
+                    else 
+                    {
+                        r_dcache_error_type = MMU_WRITE_PRIVILEGE_VIOLATION; 
+                        r_dcache_bad_vaddr  = dreq.addr;
+                        drsp.valid = true;
+                        drsp.error = true;
+                    }
+                    r_dcache_fsm = DCACHE_IDLE;
+                    break;
+
+                case iss_t::XTN_ICACHE_PREFETCH:
+                case iss_t::XTN_DCACHE_PREFETCH:
+                    drsp.valid = true;
+                    r_dcache_fsm = DCACHE_IDLE;
                     break;
 
                 default:
@@ -2351,6 +2425,7 @@ tmpl(void)::transition()
     ////////////////////////
     case DCACHE_ICACHE_FLUSH:
     case DCACHE_ICACHE_INVAL:
+    case DCACHE_ICACHE_INVAL_PA:
     case DCACHE_ITLB_INVAL:
     {
         if ( !r_dcache_xtn_req ) 
@@ -2405,6 +2480,17 @@ tmpl(void)::transition()
         {
             r_dcache.inval(dpaddr);
         }
+        r_dcache_fsm = DCACHE_IDLE;
+        drsp.valid = true;
+        break;
+    }
+    ////////////////////////
+    case DCACHE_DCACHE_INVAL_PA:
+    {
+        m_cpt_dcache_dir_read += m_dcache_ways;
+        paddr_t dpaddr = r_mmu_word_hi.read() << 32 | r_mmu_word_lo.read();
+
+        r_dcache.inval(dpaddr);
         r_dcache_fsm = DCACHE_IDLE;
         drsp.valid = true;
         break;
