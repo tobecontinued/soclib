@@ -897,7 +897,7 @@ r_wbuf.print();
             {
                 m_cpt_icache_dir_read += m_icache_ways;
                 m_cpt_icache_data_read += m_icache_ways;
-                if ( ( r_icache_fsm_save == ICACHE_MISS_WAIT ) && // external request matches a miss
+                if ( ( (r_icache_fsm_save == ICACHE_MISS_WAIT) || (r_icache_fsm_save == ICACHE_MISS_CLEANUP) ) && // external request matches a miss
                 ((r_icache_addr_save & ~((m_icache_words<<2)-1))==(r_tgt_addr & ~((m_icache_words<<2)-1))))
                 {
                     r_icache_inval_pending 	= true;
@@ -1316,7 +1316,7 @@ r_wbuf.print();
         case DCACHE_CC_CHECK:   // read directory in case of external request
             m_cpt_dcache_dir_read += m_dcache_ways;
             m_cpt_dcache_data_read += m_dcache_ways;
-            if ( ( r_dcache_fsm_save == DCACHE_MISS_WAIT ) && // external request matches a miss
+            if ( ( (r_dcache_fsm_save == DCACHE_MISS_WAIT) || (r_dcache_fsm_save == DCACHE_MISS_CLEANUP) ) && // external request matches a miss
             ((r_dcache_addr_save & ~((m_dcache_words<<2)-1))==(r_tgt_addr & ~((m_dcache_words<<2)-1))))
                 {
                     r_dcache_inval_pending 	= true;
