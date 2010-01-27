@@ -2241,6 +2241,11 @@ namespace soclib {
                     drsp.valid = true;
                     drsp.error = false;
                     break;
+		  case iss_t::XTN_ICACHE_PREFETCH:
+		  case iss_t::XTN_DCACHE_PREFETCH:
+		    drsp.valid = true;
+                    drsp.error = false;
+		    break;
                   default:
                     r_dcache_error_type = MMU_READ_UNDEFINED_XTN; 
                     r_dcache_bad_vaddr  = dreq.addr;
@@ -2368,6 +2373,11 @@ namespace soclib {
                       r_dcache_fsm = DCACHE_IDLE;
                     }
                     break;
+		  case iss_t::XTN_ICACHE_PREFETCH:
+		  case iss_t::XTN_DCACHE_PREFETCH:
+		    drsp.valid = true;
+                    drsp.error = false;
+		    break;
 
                   default:
                     r_dcache_error_type = MMU_WRITE_UNDEFINED_XTN; 
