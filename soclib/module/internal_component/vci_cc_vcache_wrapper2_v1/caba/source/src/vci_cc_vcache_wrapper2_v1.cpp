@@ -1603,7 +1603,7 @@ namespace soclib {
                 if (clean) break;
               }
 
-              if ((way == m_itlb_ways) && (set == m_itlb_sets))
+              if (way == m_itlb_ways)
               {
                 r_dcache_xtn_req = false;
                 r_itlb_translation_valid = false;
@@ -3878,7 +3878,7 @@ namespace soclib {
               }
             }
 
-            if ((way == m_dtlb_ways) && (set == m_dtlb_sets) && (!r_dcache_xtn_req))
+            if (!r_dcache_xtn_req)
             {
               r_dcache_fsm = DCACHE_IDLE;
               r_dtlb_translation_valid = false;
