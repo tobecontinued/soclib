@@ -371,7 +371,6 @@ void Mips32Iss::handle_exception()
         r_epc = m_resume_pc - 4*branch_taken;
         except_address += exceptOffsetAddr(m_exception);
     }
-    r_cause.ce = 0;
     r_cause.xcode = m_exception;
     r_status.exl = 1;
     update_mode();

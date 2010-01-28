@@ -163,6 +163,7 @@ Mips32Iss::func_t const Mips32Iss::cop1_cod_table[]= {
 void Mips32Iss::op_cop1()
 {
     if (!isCopAccessible(1)) {
+        r_cause.ce = 1;
         m_exception = X_CPU;
         return;
     }
@@ -503,6 +504,11 @@ void Mips32Iss::op_sdc1_part2()
 void Mips32Iss::op_sdc1()
 {
     uint32_t addr =  r_gp[m_ins.fpu_i.base] + sign_ext(m_ins.fpu_i.offset, 16);
+    if (!isCopAccessible(1)) {
+        r_cause.ce = 1;
+        m_exception = X_CPU;
+        return;
+    }
     check_align(addr, 8);
     do_mem_access(addr, 4, 0, 0, 0, r_f[m_ins.fpu_i.ft], DATA_WRITE);
 
@@ -514,6 +520,11 @@ void Mips32Iss::op_sdc1()
 void Mips32Iss::op_swc1()
 {
     uint32_t address =  r_gp[m_ins.fpu_i.base] + sign_ext(m_ins.fpu_i.offset, 16);
+    if (!isCopAccessible(1)) {
+        r_cause.ce = 1;
+        m_exception = X_CPU;
+        return;
+    }
     check_align(address, 4);
     do_mem_access(address, 4, 0, 0, 0, r_f[m_ins.fpu_i.ft], DATA_WRITE);
 }
@@ -527,6 +538,11 @@ void Mips32Iss::op_ldc1_part2()
 void Mips32Iss::op_ldc1()
 {
     uint32_t addr =  sign_ext(m_ins.fpu_i.offset, 16) + r_gp[m_ins.fpu_i.base];
+    if (!isCopAccessible(1)) {
+        r_cause.ce = 1;
+        m_exception = X_CPU;
+        return;
+    }
     check_align(addr, 8);
     do_mem_access(addr, 4, 0, &r_f[m_ins.fpu_i.ft], 0, 0, DATA_READ);
 
@@ -538,6 +554,11 @@ void Mips32Iss::op_ldc1()
 void Mips32Iss::op_lwc1()
 {
     uint32_t addr = sign_ext(m_ins.fpu_i.offset, 16) + r_gp[m_ins.fpu_i.base];
+    if (!isCopAccessible(1)) {
+        r_cause.ce = 1;
+        m_exception = X_CPU;
+        return;
+    }
     check_align(addr, 4);
     do_mem_access(addr, 4, 0, &r_f[m_ins.fpu_i.ft], 0, 0, DATA_READ);
 }

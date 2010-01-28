@@ -154,6 +154,7 @@ void Mips32Iss::op_lui()
 void Mips32Iss::op_cop0()
 {
     if (!isCopAccessible(0)) {
+        r_cause.ce = 0;
         m_exception = X_CPU;
         return;
     }
@@ -227,8 +228,9 @@ void Mips32Iss::op_cop2()
         MF = 0,
         MT = 4,
     };
-    
+   
     if (!isCopAccessible(2)) {
+        r_cause.ce = 2;
         m_exception = X_CPU;
         return;
     }
