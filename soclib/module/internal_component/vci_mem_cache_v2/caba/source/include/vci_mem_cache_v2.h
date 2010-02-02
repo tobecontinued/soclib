@@ -147,6 +147,7 @@ namespace soclib {  namespace caba {
         WRITE_DIR_LOCK,
         WRITE_DIR_HIT_READ,
         WRITE_DIR_HIT,
+        WRITE_DIR_HIT_RSP,
         WRITE_UPT_LOCK,
         WRITE_WAIT_UPT,
         WRITE_UPDATE,

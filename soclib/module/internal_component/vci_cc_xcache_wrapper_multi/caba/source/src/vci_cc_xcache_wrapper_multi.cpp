@@ -81,7 +81,7 @@
 //   The LL/SC requests are still uncached.
 ///////////////////////////////////////////////////////////////////////////////
 
-#define SOCLIB_MODULE_DEBUG 1
+//#define SOCLIB_MODULE_DEBUG 1
 
 #include <cassert>
 #include "arithmetics.h"

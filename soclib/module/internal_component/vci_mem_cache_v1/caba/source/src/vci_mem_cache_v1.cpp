@@ -91,6 +91,7 @@ namespace soclib { namespace caba {
     "WRITE_DIR_LOCK",
     "WRITE_DIR_HIT_READ",
     "WRITE_DIR_HIT",
+    "WRITE_DIR_HIT_RSP",
     "WRITE_UPT_LOCK",
     "WRITE_WAIT_UPT",
     "WRITE_UPDATE",
@@ -1022,7 +1023,12 @@ namespace soclib { namespace caba {
               } else {
                 if(r_write_byte.read())
                   r_write_fsm      = WRITE_DIR_HIT_READ;
-                else  r_write_fsm  = WRITE_DIR_HIT;
+                else {
+                    bool owner     = (bool) (entry.d_copies & (0x1 << r_write_srcid.read()));
+                    bool no_update = (owner && (entry.count == 1)) || (entry.count==0);
+                    if( no_update ) r_write_fsm  = WRITE_DIR_HIT_RSP; 
+                    else            r_write_fsm  = WRITE_DIR_HIT;
+                }
               }
             } else {
               r_write_fsm = WRITE_TRT_LOCK;
@@ -1052,7 +1058,10 @@ namespace soclib { namespace caba {
           if(r_write_is_cnt.read() && r_write_count.read()){
             r_write_fsm            = WRITE_TRT_WRITE_LOCK;
           } else {
-            r_write_fsm            = WRITE_DIR_HIT;
+              bool owner     = (bool) (r_write_d_copies.read() & (0x1 << r_write_srcid.read()));
+              bool no_update = (owner && (r_write_count.read() == 1)) || (r_write_count.read()==0);
+              if( no_update )   r_write_fsm    = WRITE_DIR_HIT_RSP;
+              else              r_write_fsm    = WRITE_DIR_HIT;
           }
            break;
         }
@@ -1091,20 +1100,62 @@ namespace soclib { namespace caba {
             }
           } // end for
 
-          r_write_d_copies = r_write_d_copies.read() & ~(1 << r_write_srcid.read());
-          if ( r_write_d_copies.read() & (1 << r_write_srcid.read()) ){
-            r_write_count = r_write_count.read()-1;
-            if( r_write_count.read()-1 == 0)
-              r_write_fsm = WRITE_RSP;
-            else
-              r_write_fsm = WRITE_UPT_LOCK;
-          } 
-            else
-          {
-            if( r_write_count.read() == 0 )
-              r_write_fsm = WRITE_RSP;
-            else
-              r_write_fsm = WRITE_UPT_LOCK;
+          // compute the actual number of copies & the modified bit vector
+          bool owner = (bool) (r_write_d_copies.read() & (0x1 << r_write_srcid.read()));
+          copy_t d_copies = r_write_d_copies.read() & ~(0x1 << r_write_srcid.read());
+          r_write_d_copies      = d_copies;
+          size_t count_signal   = r_write_count.read();
+          if(owner){
+            count_signal        = count_signal - 1;
+          }
+          r_write_count         = count_signal;
+
+          r_write_fsm = WRITE_UPT_LOCK;
+          break;
+        }
+        ///////////////////
+      case WRITE_DIR_HIT_RSP:	// update the cache (data & dirty bit) (no update)
+        {
+          // update directory with Dirty bit
+          DirectoryEntry entry;
+          entry.valid	    = true;
+          entry.dirty	    = true;
+          entry.tag	        = r_write_tag.read();
+          entry.is_cnt      = r_write_is_cnt.read();
+          entry.lock	    = r_write_lock.read();
+          entry.d_copies    = r_write_d_copies.read();
+          entry.i_copies    = r_write_i_copies.read();
+          entry.count       = r_write_count.read();
+          size_t set	    = m_y[(vci_addr_t)(r_write_address.read())];
+          size_t way	    = r_write_way.read();
+          m_cache_directory.write(set, way, entry);
+
+          size_t nb_copies=0;
+          for(size_t i=0; i<32 ; i++) {
+            if( r_write_d_copies.read() & (1<<i) )
+                nb_copies++;
+          }
+          for(size_t i=0; i<32 ; i++) {
+            if( r_write_i_copies.read() & (1<<i) )
+                nb_copies++;
+          }
+          assert((nb_copies == r_write_count.read()) && "MemCache Error, inconsistency in the directory");
+
+          // write data in cache
+          for(size_t i=0 ; i<m_words ; i++) {
+            if  ( r_write_be[i].read() ) {
+              m_cache_data[way][set][i]  = r_write_data[i].read();
+            }
+          } // end for
+
+          if ( !r_write_to_tgt_rsp_req.read() ) {
+            r_write_to_tgt_rsp_req	    = true;
+            r_write_to_tgt_rsp_srcid	= r_write_srcid.read();
+            r_write_to_tgt_rsp_trdid	= r_write_trdid.read();
+            r_write_to_tgt_rsp_pktid	= r_write_pktid.read();
+            r_write_fsm 		        = WRITE_IDLE;
+          } else {
+            r_write_fsm = WRITE_RSP;
           }
           break;
         }
