@@ -38,8 +38,8 @@ __version__ = "$Revision$"
 class CCompile(action.Action):
 	priority = 100
 	tool = 'CC'
-	def __init__(self, dest, src, defines = {}, inc_paths = [], force_debug = False, comp_mode = 'normal'):
-		action.Action.__init__(self, [dest], [src], defines = defines, inc_paths = inc_paths)
+	def __init__(self, dest, src, defines = {}, inc_paths = [], includes = [], force_debug = False, comp_mode = 'normal'):
+		action.Action.__init__(self, [dest], [src], defines = defines, inc_paths = inc_paths, includes = includes)
 		self.mode = force_debug and "debug" or None
 		self.comp_mode = comp_mode
 		if force_debug:
@@ -59,6 +59,9 @@ class CCompile(action.Action):
 		args = config.getTool(self.tool, mode)
 		args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
 		args += map(lambda x:'-I%s'%x, self.options['inc_paths'])
+		for i in self.options["includes"]:
+			args.append('-include')
+			args.append(i)
 		args += config.getCflags(self.mode)
 		return args
 	def _processDeps(self, filename):

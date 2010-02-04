@@ -112,6 +112,19 @@ class ComponentBuilder:
 		else:
 			src = filename
 		incls = set(map(os.path.dirname, self.headers))
+
+		# Take list of headers where basenames collides
+		bincludes = {}
+		includes = set()
+		for h in list(self.headers):
+			name = os.path.basename(h)
+			if name in bincludes:
+				includes.add(bincludes[name])
+				includes.add(h)
+			else:
+				bincludes[name] = h
+		includes = list(includes)
+		
 		if self.local:
 			try:
 				t = config.type
@@ -139,6 +152,7 @@ class ComponentBuilder:
 			src = src,
 			defines = self.specialization.getDefines(),
 			inc_paths = incls,
+			includes  = includes,
 			force_debug = self.force_debug,
 			**add)
 	def baseName(self):

@@ -54,9 +54,9 @@ class Platform:
 	Uses() and Source() statements that constitutes the platform.
 	"""
 	def addObj(self, o):
-		if not o in self.objs:
-			self.objs.add(o)
-			self.todo.add(o)
+		#if not o in self.objs:
+		self.objs.add(o)
+		self.todo.add(o)
 	def __init__(self, mode, source_file, uses = [], defines = {}, output = None, **params):
 		self.__mode = mode
 		self.__source = source_file
