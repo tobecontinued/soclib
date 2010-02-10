@@ -32,6 +32,7 @@
 //#define IDEBUG // Update tab debug
 //#define DDEBUG // Directory debug
 //#define DEBUG_VCI_MEM_CACHE 1
+#define RANDOMIZE_SC
 
 namespace soclib { namespace caba {
 
@@ -479,6 +480,7 @@ namespace soclib { namespace caba {
 
       r_init_rsp_to_tgt_rsp_req	= false;
 
+      r_llsc_lfsr                       = -1;
       r_llsc_to_tgt_rsp_req	    = false;
       r_llsc_to_ixr_cmd_req	    = false;
       r_llsc_to_init_cmd_req	= false;
@@ -2262,14 +2264,25 @@ namespace soclib { namespace caba {
               r_llsc_d_copies = entry.d_copies;
               r_llsc_i_copies = entry.i_copies;
               r_llsc_count    = entry.count;
-              if ( entry.valid ){
-                if((entry.is_cnt && entry.count) || entry.i_copies) {
-                  r_llsc_fsm = SC_TRT_LOCK;
-                } else {
-                  r_llsc_fsm = SC_DIR_HIT;
-                }
+              /* to avoid livelock, force the atomic access to fail (pseudo-)randomly */
+              bool fail = (r_llsc_lfsr % (64) == 0);
+              r_llsc_lfsr = (r_llsc_lfsr >> 1) ^ ((-(r_llsc_lfsr & 1)) & 0xd0000001);
+#ifdef RANDOMIZE_SC
+              if(fail){
+#else
+              if(0){
+#endif
+                r_llsc_fsm = SC_RSP_FALSE;
+              } else {
+                  if ( entry.valid ){
+                      if((entry.is_cnt && entry.count) || entry.i_copies) {
+                          r_llsc_fsm = SC_TRT_LOCK;
+                      } else {
+                          r_llsc_fsm = SC_DIR_HIT;
+                      }
+                  }
+                  else r_llsc_fsm = LLSC_TRT_LOCK;
               }
-              else r_llsc_fsm = LLSC_TRT_LOCK;
             } else {
               r_llsc_fsm = SC_RSP_FALSE;
             }

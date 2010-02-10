@@ -506,6 +506,7 @@ namespace soclib {  namespace caba {
 
       sc_signal<int>       r_llsc_fsm;          // FSM state
       sc_signal<data_t>	   r_llsc_data;		    // read data word
+      sc_signal<uint32_t>  r_llsc_lfsr;         // lfsr for random introducing
       sc_signal<copy_t>    r_llsc_i_copies;	    // bit_vector of copies
       sc_signal<copy_t>    r_llsc_d_copies;	    // bit_vector of copies
       sc_signal<copy_t>    r_llsc_count;	    // number of copies
