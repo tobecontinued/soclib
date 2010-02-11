@@ -155,6 +155,28 @@ void Mips32Iss::special_movn()
         r_gp[m_ins.r.rd] = r_gp[m_ins.i.rs];
 }
 
+inline bool Mips32Iss::FPConditionCode(uint8_t cc)
+{
+    bool r;
+    if (cc==0)
+        r = r_fcsr.fcc1;
+    else
+        r = 1 & (r_fcsr.fcc7 >> (cc-1));
+//     std::cout << m_name << " fp cc " << (int)cc << ": " << r << std::endl;
+    return r;
+}
+
+void Mips32Iss::special_movtf()
+{
+    if (!isCopAccessible(1)) {
+        m_exception = X_CPU;
+        return;
+    }
+
+    if ( FPConditionCode(m_ins.fpu_ccri.cc) == !!m_ins.fpu_ccri.tf )
+        r_gp[m_ins.fpu_ccri.rd] = r_gp[m_ins.fpu_ccri.rs];
+}
+
 void Mips32Iss::special_movz()
 {
     if ( r_gp[m_ins.i.rt] == 0 )
@@ -334,7 +356,7 @@ void Mips32Iss::special_ill()
 #define op4(x, y, z, t) op(x), op(y), op(z), op(t)
 
 Mips32Iss::func_t const Mips32Iss::special_table[] = {
-        op4(  sll,  ill,  srl,  sra),
+        op4(  sll,movtf,  srl,  sra),
         op4( sllv,  ill, srlv, srav),
 
         op4(   jr, jalr, movz, movn),

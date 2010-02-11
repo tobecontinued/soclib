@@ -173,7 +173,8 @@ private:
 					uint32_t op:6,
 					uint32_t bc:5,
 					uint32_t cc:3,
-					uint32_t nd_tf:2,
+					uint32_t nd:1,
+					uint32_t tf:1,
 					uint32_t offset:16,
 					) fpu_bc;
 
@@ -690,18 +691,28 @@ private:
     void cop1_bc();
     template <class T> void cop1_do();
     template <class T> void cop1_add();
+    template <class T> void cop1_movn();
+    template <class T> void cop1_movz();
+    template <class T> void cop1_movft();
     template <class T> void cop1_sub();
     template <class T> void cop1_mult();
     template <class T> void cop1_div();
     template <class T> void cop1_sqrt();
+    template <class T> void cop1_rsqrt();
+    template <class T> void cop1_recip();
     template <class T> void cop1_abs();
     template <class T> void cop1_mov();
     template <class T> void cop1_neg();
-    template <class T> void cop1_round();
-    template <class T> void cop1_trunc();
-    template <class T> void cop1_ceil();
-    template <class T> void cop1_floor();
+    template <class T> void cop1_roundl();
+    template <class T> void cop1_truncl();
+    template <class T> void cop1_ceill();
+    template <class T> void cop1_floorl();
+    template <class T> void cop1_roundw();
+    template <class T> void cop1_truncw();
+    template <class T> void cop1_ceilw();
+    template <class T> void cop1_floorw();
     template <class T> void cop1_cvt_s();
+    template <class T> void cop1_cvt_l();
     template <class T> void cop1_cvt_d();
     template <class T> void cop1_cvt_w();
     template <class T> void cop1_c();
@@ -730,6 +741,7 @@ private:
     void special_sync();
     void special_mfhi();
     void special_movn();
+    void special_movtf();
     void special_movz();
     void special_mthi();
     void special_mflo();

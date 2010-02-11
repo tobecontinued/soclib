@@ -37,11 +37,6 @@
 
 namespace soclib { namespace common {
 
-static inline bool NaN(double value)    // Not A Number : not implemented
-{
-    return false;
-}
-
 template <>
 int32_t Mips32Iss::readFPU<int32_t>(uint8_t fpr)
 {
@@ -96,6 +91,18 @@ void Mips32Iss::storeFPU<double>(uint8_t fpr, double value)
     }
 }
 
+template <>
+void Mips32Iss::storeFPU<int64_t>(uint8_t fpr, int64_t value)
+{
+    if (m_little_endian) {
+        r_f[fpr+1] = value >> 32;
+        r_f[fpr]   = value;
+    } else {
+        r_f[fpr]   = value >> 32;
+        r_f[fpr+1] = value;
+    }
+}
+
 
 inline void Mips32Iss::CheckFPException()
 {
@@ -113,10 +120,13 @@ inline void Mips32Iss::CheckFPException()
 
 inline bool Mips32Iss::FPConditionCode(uint8_t cc)
 {
+    bool r;
     if (cc==0)
-        return r_fcsr.fcc1;
+        r = r_fcsr.fcc1;
     else
-        return r_fcsr.fcc7 >> (cc-1);
+        r = 1 & (r_fcsr.fcc7 >> (cc-1));
+//     std::cout << m_name << " fp cc " << (int)cc << ": " << r << std::endl;
+    return r;
 }
 
 template <>
@@ -167,7 +177,7 @@ void Mips32Iss::op_cop1()
         m_exception = X_CPU;
         return;
     }
-    func_t func = cop1_cod_table[m_ins.fpu_r.fmt & 31];
+    func_t func = cop1_cod_table[m_ins.fpu_r.fmt];
     (this->*func)();
 }
 
@@ -293,23 +303,23 @@ void Mips32Iss::cop1_ct()
 
 void Mips32Iss::cop1_bc()
 {
-    bool likely = !! (m_ins.fpu_bc.nd_tf & 2);
-    bool eq_false = ! (m_ins.fpu_bc.nd_tf & 1);
+    bool likely = m_ins.fpu_bc.nd;
+    bool eq_true = m_ins.fpu_bc.tf;
 
-    jump_imm16(FPConditionCode(m_ins.fpu_bc.cc) != eq_false, likely);
+    jump_imm16( FPConditionCode(m_ins.fpu_bc.cc) == eq_true, likely );
 }
 
 #define cop1_table                                                     \
     cop14(add,      sub,    mult,   div ),                             \
     cop14(sqrt,     abs,    mov,    neg ),                             \
-    cop14(ill,      ill,    ill,    ill ),                             \
-    cop14(round,  trunc,   ceil,  floor ),                             \
-    cop14(ill,      ill,    ill,    ill ),                             \
-    cop14(ill,      ill,    ill,    ill ),                             \
+    cop14(roundl,truncl,  ceill,  floorl),                             \
+    cop14(roundw,truncw,  ceilw,  floorw),                             \
+    cop14(ill,    movft,   movz,    movn),                             \
+    cop14(ill,    recip,  rsqrt,    ill ),                             \
     cop14(ill,      ill,    ill,    ill ),                             \
     cop14(ill,      ill,    ill,    ill ),                             \
     cop14(cvt_s,    cvt_d,  ill,    ill ),                             \
-    cop14(cvt_w,    ill,    ill,    ill ),                             \
+    cop14(cvt_w,    cvt_l,  ill,    ill ),                             \
     cop14(ill,      ill,    ill,    ill ),                             \
     cop14(ill,      ill,    ill,    ill ),                             \
     cop14(c,        c,      c,      c   ),                             \
@@ -387,9 +397,23 @@ void Mips32Iss::cop1_div()
 }
 
 template <class T>
+void Mips32Iss::cop1_rsqrt()
+{
+    T r = (T)1 / std::sqrt(readFPU<T>(m_ins.fpu_r.fs));
+    storeFPU<T>(m_ins.fpu_r.fd, r);
+}
+
+template <class T>
 void Mips32Iss::cop1_sqrt()
 {
     T r = (T)std::sqrt(readFPU<T>(m_ins.fpu_r.fs));
+    storeFPU<T>(m_ins.fpu_r.fd, r);
+}
+
+template <class T>
+void Mips32Iss::cop1_recip()
+{
+    T r = (T)1 / readFPU<T>(m_ins.fpu_r.fs);
     storeFPU<T>(m_ins.fpu_r.fd, r);
 }
 
@@ -398,6 +422,27 @@ void Mips32Iss::cop1_abs()
 {
     T r = std::abs(readFPU<T>(m_ins.fpu_r.fs));
     storeFPU<T>(m_ins.fpu_r.fd, r);
+}
+
+template <class T>
+void Mips32Iss::cop1_movft()
+{
+    if ( FPConditionCode(m_ins.fpu_fprc.cc) == !!m_ins.fpu_fprc.tf )
+        storeFPU<T>(m_ins.fpu_fprc.fd, readFPU<T>(m_ins.fpu_fprc.fs));
+}
+
+template <class T>
+void Mips32Iss::cop1_movn()
+{
+    if ( r_gp[m_ins.fpu_r.ft] != 0 )
+        storeFPU<T>(m_ins.fpu_r.fd, readFPU<T>(m_ins.fpu_r.fs));
+}
+
+template <class T>
+void Mips32Iss::cop1_movz()
+{
+    if ( r_gp[m_ins.fpu_r.ft] == 0 )
+        storeFPU<T>(m_ins.fpu_r.fd, readFPU<T>(m_ins.fpu_r.fs));
 }
 
 template <class T>
@@ -415,31 +460,59 @@ void Mips32Iss::cop1_neg()
 }
 
 template <class T>
-void Mips32Iss::cop1_round()
+void Mips32Iss::cop1_roundw()
 {
     int32_t r = (int32_t)(readFPU<T>(m_ins.fpu_r.fs) + (T).5f);
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
 }
 
 template <class T>
-void Mips32Iss::cop1_trunc()
+void Mips32Iss::cop1_truncw()
 {
     int32_t r = (int32_t)readFPU<T>(m_ins.fpu_r.fs);
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
 }
 
 template <class T>
-void Mips32Iss::cop1_ceil()
+void Mips32Iss::cop1_ceilw()
 {
     int32_t r = (int32_t)std::ceil(readFPU<T>(m_ins.fpu_r.fs));
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
 }
 
 template <class T>
-void Mips32Iss::cop1_floor()
+void Mips32Iss::cop1_floorw()
 {
     int32_t r = (int32_t)std::floor(readFPU<T>(m_ins.fpu_r.fs));
     storeFPU<int32_t>(m_ins.fpu_r.fd, r);
+}
+
+template <class T>
+void Mips32Iss::cop1_roundl()
+{
+    int64_t r = (int64_t)(readFPU<T>(m_ins.fpu_r.fs) + (T).5f);
+    storeFPU<int64_t>(m_ins.fpu_r.fd, r);
+}
+
+template <class T>
+void Mips32Iss::cop1_truncl()
+{
+    int64_t r = (int64_t)readFPU<T>(m_ins.fpu_r.fs);
+    storeFPU<int64_t>(m_ins.fpu_r.fd, r);
+}
+
+template <class T>
+void Mips32Iss::cop1_ceill()
+{
+    int64_t r = (int64_t)std::ceil(readFPU<T>(m_ins.fpu_r.fs));
+    storeFPU<int64_t>(m_ins.fpu_r.fd, r);
+}
+
+template <class T>
+void Mips32Iss::cop1_floorl()
+{
+    int64_t r = (int64_t)std::floor(readFPU<T>(m_ins.fpu_r.fs));
+    storeFPU<int64_t>(m_ins.fpu_r.fd, r);
 }
 
 template <class T>
@@ -464,26 +537,75 @@ void Mips32Iss::cop1_cvt_w()
 }
 
 template <class T>
+void Mips32Iss::cop1_cvt_l()
+{
+    int64_t r = (int64_t)readFPU<T>(m_ins.fpu_r.fs);
+    storeFPU<int64_t>(m_ins.fpu_r.fd, r);
+}
+
+/*
+template <>
+void Mips32Iss::cop1_c<int32_t>()
+{
+    int32_t cond0, cond1;
+    int32_t v_fs = readFPU<int32_t>(m_ins.fpu_c.fs);
+    int32_t v_ft = readFPU<int32_t>(m_ins.fpu_c.ft);
+    int16_t v_fs0 = v_fs;
+    int16_t v_fs1 = v_fs>>16;
+    int16_t v_ft0 = v_ft;
+    int16_t v_ft1 = v_ft>>16;
+
+    assert((m_ins.fpu_c.cc % 2) == 0);
+
+    cond0 = ((v_fs0 < v_ft0) << 1)
+        | ((v_fs0 == v_ft0));
+
+    cond1 = ((v_fs1 < v_ft1) << 1)
+        | ((v_fs1 == v_ft1));
+
+    bool res0 = ((m_ins.fpu_c.cond & 7) >> cond0) & 1;
+    bool res1 = ((m_ins.fpu_c.cond & 7) >> cond1) & 1;
+
+    if (m_ins.fpu_c.cc==0) {
+        r_fcsr.fcc1 = res0;
+        r_fcsr.fcc7 = (r_fcsr.fcc7 & ~1) | res1;
+    } else {
+        int32_t mask0 = 1<<(m_ins.fpu_c.cc-1);
+        int32_t mask1 = 1<<(m_ins.fpu_c.cc);
+        r_fcsr.fcc7 = (r_fcsr.fcc7 & mask0) | (res0 * mask0);
+        r_fcsr.fcc7 = (r_fcsr.fcc7 & mask1) | (res1 * mask1);
+    }
+}
+*/
+
+template <class T>
 void Mips32Iss::cop1_c()
 {
-    uint32_t cond = 0;
     T v_fs = readFPU<T>(m_ins.fpu_c.fs);
     T v_ft = readFPU<T>(m_ins.fpu_c.ft);
 
-    if (NaN(v_fs)|NaN(v_ft)) {
-        cond = 1;
-    } else {
-        cond = ((v_fs < v_ft) << 2)
-            | ((v_fs == v_ft) << 1);
-    }
+    bool res;
 
-    bool res = !!(m_ins.fpu_c.cond & cond);
+    if ( std::isnan(v_fs) || std::isnan(v_ft) )
+        res = m_ins.fpu_c.cond & 1;
+    else if (v_fs == v_ft)
+        res = m_ins.fpu_c.cond & 2;
+    else if (v_fs < v_ft)
+        res = m_ins.fpu_c.cond & 4;
+    else
+        res = false;
+
+//     std::cout << m_name << " cond " << m_ins.fpu_c.cond << " fs " <<
+//         v_fs << " ft " << v_ft << " c " << cond << " res " << res
+//               << " dest " << m_ins.fpu_c.cc << std::endl;
 
     if (m_ins.fpu_c.cc==0) {
         r_fcsr.fcc1 = res;
     } else {
         uint32_t mask = 1<<(m_ins.fpu_c.cc-1);
-        r_fcsr.fcc7 = (r_fcsr.fcc7 & mask) | (res << (m_ins.fpu_c.cc-1));
+        r_fcsr.fcc7 &= ~mask;
+        if ( res )
+            r_fcsr.fcc7 |= mask;
     }
 }
 
