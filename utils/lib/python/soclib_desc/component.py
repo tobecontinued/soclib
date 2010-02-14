@@ -54,6 +54,8 @@ class SubConn:
 		a.update(args)
 		a.update(self.__args)
 		return Specialization(self.__type, **a)
+	def getMetaInfo(self):
+		return self.__type, self.__name, self.__count
 	def getInfo(self, **args):
 		ptype = self.getSpec(**args)
 		return self.__name, ptype, self.__count, self.__auto

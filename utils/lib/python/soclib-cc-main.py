@@ -94,6 +94,9 @@ def main():
 	parser.add_option('--list-files', dest = 'list_files',
 					  action='store', nargs = 1, type = 'string',
 					  help="List files belonging to a given module")
+	parser.add_option('--sd-convert', dest = 'sd_convert',
+					  action='store_true',
+					  help="Convert sd files to xml")
 	parser.add_option('--complete-name', dest = 'complete_name',
 					  action='store', nargs = 1, type = 'string',
 					  help="Complete module name starting with ...")
@@ -160,6 +163,11 @@ def main():
 
 	if opts.clean_cache:
 		soclib_desc.description_files.cleanup()
+		return 0
+
+	if opts.sd_convert:
+		from soclib_xml import run
+		run.convert_all()
 		return 0
 
 	for path in opts.includes:

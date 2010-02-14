@@ -219,6 +219,9 @@ class Module:
 				r += s+'\n'
 		return r+' >'
 
+	def fileName(self):
+		return self.__filename
+
 	def files(self):
 		"""
 		Returns module's implementation files
