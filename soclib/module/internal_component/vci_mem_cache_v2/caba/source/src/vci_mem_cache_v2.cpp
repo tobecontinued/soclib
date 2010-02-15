@@ -267,6 +267,7 @@ namespace soclib { namespace caba {
     r_tgt_cmd_fsm("r_tgt_cmd_fsm"),
     
     nseg(0),	
+    ncseg(0),	
 
     r_read_fsm("r_read_fsm"),
     r_write_fsm("r_write_fsm"),
@@ -2082,7 +2083,7 @@ namespace soclib { namespace caba {
         {
           if( r_alloc_upt_fsm.read() == ALLOC_UPT_CLEANUP )
           {
-            size_t index;
+            size_t index = 0;
             bool hit_inval;
             hit_inval = m_update_tab.search_inval(r_cleanup_nline.read(),index);
             if(!hit_inval) {
