@@ -30,23 +30,38 @@ extern "C" {
 #include <rtems/clockdrv.h>
 #include <rtems/score/cpu.h>
 
-/* Constants */
+  /* Constants */
 
-#define SOCLIB_ICU_BASE		0xb0c00200
+#define SOCLIB_XICU_BASE	0xb0c00200
 
-#define SOCLIB_CLOCK_BASE	0xa0c00100
-#define SOCLIB_TIMER_BASE	( SOCLIB_CLOCK_BASE + 16 )
 #define CLOCK_VECTOR		0
 
 #define TTY_SOCLIB_BASE		0x90c00000
-#define TTY_VECTOR		2
+#define TTY_VECTOR		1
 
-/* functions */
+#define SOCLIB_SHM_BASE		0x80c00000
+#define SOCLIB_SHM_SIZE		0x00400000
+
+/* Inter processor interupt base, one vector is used for each cpu */
+#define IPI_VECTOR		2
+
+  /* functions */
+
+static inline uint32_t
+mips_cpu_id(void)
+{
+  uint32_t id;
+
+  asm volatile ("mfc0   %0, $15, 1 \n"
+		: "=r" (id)
+		);
+
+  return id & 0x3ff;
+}
 
 void bsp_cleanup( void );
 
-rtems_isr_entry set_vector(
-  rtems_isr_entry, rtems_vector_number, int );
+rtems_isr_entry set_vector(rtems_isr_entry, rtems_vector_number, int );
 
 extern inline unsigned ld_le32(volatile uint32_t *addr)
 {

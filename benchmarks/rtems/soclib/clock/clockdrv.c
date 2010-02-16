@@ -15,14 +15,13 @@
 
 #include <rtems.h>
 #include <bsp.h>
-#include <soclib_timer.h>
-
+#include <soclib_xicu.h>
 
 
 #define CLOCK_DRIVER_USE_FAST_IDLE
 
 #define Clock_driver_support_at_tick() \
-  SOCLIB_TIMER_WRITE( SOCLIB_CLOCK_BASE, SOCLIB_TIMER_REG_IRQ, 0 );
+  SOCLIB_XICU_READ( SOCLIB_XICU_BASE, XICU_PTI_ACK, CLOCK_VECTOR );
 
 /*
  *  500000 clicks per tick ISR is HIGHLY arbitrary
@@ -34,17 +33,15 @@
   do {									\
     uint32_t   _clicks = CLICKS;					\
     _old = set_vector( _new, CLOCK_VECTOR, 1 );				\
-    SOCLIB_TIMER_WRITE( SOCLIB_CLOCK_BASE, SOCLIB_TIMER_REG_VALUE, 0 );	\
-    SOCLIB_TIMER_WRITE( SOCLIB_CLOCK_BASE, SOCLIB_TIMER_REG_PERIOD, _clicks ); \
-    SOCLIB_TIMER_WRITE( SOCLIB_CLOCK_BASE, SOCLIB_TIMER_REG_MODE,	\
-			SOCLIB_TIMER_REG_MODE_IRQEN | SOCLIB_TIMER_REG_MODE_EN ); \
-									\
+    SOCLIB_XICU_WRITE( SOCLIB_XICU_BASE, XICU_PTI_VAL, CLOCK_VECTOR, _clicks );	\
+    SOCLIB_XICU_WRITE( SOCLIB_XICU_BASE, XICU_PTI_PER, CLOCK_VECTOR, _clicks );    \
+    SOCLIB_XICU_WRITE( SOCLIB_XICU_BASE, XICU_MSK_PTI_ENABLE, /* cpu0 */ 0, 1 << CLOCK_VECTOR ); \
   } while(0)
 
 #define Clock_driver_support_initialize_hardware()
 
 #define Clock_driver_support_shutdown_hardware() \
-  SOCLIB_TIMER_WRITE( SOCLIB_CLOCK_BASE, SOCLIB_TIMER_REG_MODE, 0 );
+  SOCLIB_XICU_WRITE( SOCLIB_XICU_BASE, XICU_MSK_PTI_DISABLE, 0, 1 << CLOCK_VECTOR );
 
 #include "../../../shared/clockdrv_shell.c"
 

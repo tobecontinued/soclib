@@ -22,9 +22,10 @@ original author: Alexandre Becoulet <alexandre.becoulet@free.fr>
 5) Cd to a separate build directory, configure and build RTEMS:
 
    ../rtems-4.9.2/configure --target=mips-rtems4.9 --prefix=/tmp/rtems \
-   --enable-rtemsbsp=soclib --enable-posix --disable-itron --disable-networking
-
+   --enable-rtemsbsp=soclib --enable-posix --disable-itron --disable-networking \
    make
+
+   The --enable-multiprocessing option may be passed to the configure script.
 
 6) Some sample applications binaires are compiled along with RTEMS and can be found in 
    mips-rtems4.9/c/soclib/testsuites/samples/. These samples can be executed using

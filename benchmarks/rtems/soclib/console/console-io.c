@@ -17,6 +17,7 @@
 #include <rtems/libio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <soclib_xicu.h>
 
 /* external prototypes for monitor interface routines */
 
@@ -47,7 +48,10 @@ rtems_isr TTY_isr( rtems_vector_number vector )
 
 void console_initialize_hardware(void)
 {
+#if 0
+  SOCLIB_XICU_WRITE( SOCLIB_XICU_BASE, XICU_MSK_HWI_ENABLE, /* cpu0 */ 0, 1 << TTY_VECTOR );
   set_vector( &TTY_isr, TTY_VECTOR, 1 );
+#endif
 }
 
 /*

@@ -17,19 +17,18 @@
 
 #include <assert.h>
 #include <bsp.h>
-#include <soclib_timer.h>
+#include <soclib_xicu.h>
 
 bool benchmark_timer_find_average_overhead;
 
 void benchmark_timer_initialize(void)
 {
-  SOCLIB_TIMER_WRITE( SOCLIB_TIMER_BASE, SOCLIB_TIMER_REG_MODE, SOCLIB_TIMER_REG_MODE_EN );
-  SOCLIB_TIMER_WRITE( SOCLIB_TIMER_BASE, SOCLIB_TIMER_REG_VALUE, 0 );
+  SOCLIB_XICU_WRITE( SOCLIB_XICU_BASE, XICU_PTI_PER, 1, -1 );
 }
 
 int benchmark_timer_read(void)
 {
-  uint32_t          total = SOCLIB_TIMER_READ( SOCLIB_TIMER_BASE, SOCLIB_TIMER_REG_VALUE );
+  uint32_t          total = (uint32_t)-1 - SOCLIB_XICU_READ( SOCLIB_XICU_BASE, XICU_PTI_VAL, 1 );
 
   return total;          /* in one microsecond units */
 }

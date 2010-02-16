@@ -10,7 +10,7 @@ include $(top_srcdir)/../../bsp.am
 
 dist_project_lib_DATA = bsp_specs
 
-include_HEADERS = include/bsp.h include/tm27.h include/soclib_timer.h
+include_HEADERS = include/bsp.h include/tm27.h include/soclib_xicu.h
 
 nodist_include_HEADERS = include/bspopts.h
 DISTCLEANFILES = include/bspopts.h
@@ -34,9 +34,13 @@ console_SOURCES = ../../shared/console-polled.c console/console-io.c
 timer_SOURCES = timer/timer.c
 isr_SOURCES = isr/vectorisrs.c
 
+if HAS_MP
+  shmsupp_SOURCES = shmsupp/addrconv.c shmsupp/getcfg.c shmsupp/lock.c shmsupp/mpisr.c
+endif
+
 noinst_LIBRARIES = libbsp.a
 libbsp_a_SOURCES = $(startup_SOURCES) $(clock_SOURCES) $(console_SOURCES) \
-    $(timer_SOURCES) $(isr_SOURCES)
+    $(timer_SOURCES) $(isr_SOURCES) $(shmsupp_SOURCES)
 
 libbsp_a_LIBADD = ../../../libcpu/@RTEMS_CPU@/shared/cache.rel \
     ../../../libcpu/@RTEMS_CPU@/shared/interrupts.rel
