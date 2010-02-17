@@ -167,6 +167,7 @@ private:
     bool call_trace_:1,
          call_trace_zero_:1,    // only display call to function begin
          wait_on_except_:1,
+         exit_on_trap_:1,
          wait_on_wpoint_:1;
     uintptr_t cur_func_;
     uintptr_t cur_addr_;

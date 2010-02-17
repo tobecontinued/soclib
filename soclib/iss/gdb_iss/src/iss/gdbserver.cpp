@@ -116,6 +116,7 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
       call_trace_(false),
       call_trace_zero_(false),
       wait_on_except_(false),
+      exit_on_trap_(false),
       wait_on_wpoint_(true),
       cur_addr_(0),
       cpu_id_(ident)
@@ -1005,6 +1006,8 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
         case Iss2::EXCL_TRAP:            
             std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
                       << ") TRAP at PC=" << std::hex << pc << std::endl;
+            if ( exit_on_trap_ )
+                kill(getpid(), SIGINT);
 
             signal = 5;
             break;
@@ -1171,7 +1174,7 @@ void GdbServer<CpuIss>::init_state()
 
         if (!list_.size())
             for (int i = 0; env_val[i]; i++)
-                if (!strchr("FCZSXW", env_val[i]))
+                if (!strchr("FCTZSXW", env_val[i]))
                     std::cerr << "[GDB] Warning: SOCLIB_GDB variable doesn't support the `" << env_val[i] << "' flag." << std::endl;
 
         if (strchr( env_val, 'F' ))
@@ -1191,6 +1194,9 @@ void GdbServer<CpuIss>::init_state()
 
         if (strchr( env_val, 'S' ))
             wait_on_except_ = true;
+
+        if (strchr( env_val, 'T' ))
+            exit_on_trap_ = true;
 
         if (strchr( env_val, 'W' ))
             wait_on_wpoint_ = false;
