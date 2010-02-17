@@ -62,13 +62,29 @@ class CsvDumper:
         meta_ports = []
         for p in m['ports']:
             ptype, name, count = p.getMetaInfo()
-            if isinstance(count, parameter.Base):
+            if isinstance(count, (parameter.Base, parameter.Constant)):
                 print "%s: Cant serialize count reference in port '%s'"%(module, name)
                 self.warned = True
                 continue
+            if count is not None:
+                try:
+                    print count, type(count)
+                    count = count.resolve()
+                except:
+                    print "%s: Cant serialize count reference in port '%s'"%(module, name)
+                    self.warned = True
+                    continue
             # TODO: split base SC types from meta ones
-            if False:
-                sc_ports.append((name,'dir', 'left', 'right'))
+            try:
+                abs, _name = ptype.split(":", 1)
+                mode, way = _name.split("_", 1)
+            except:
+                mode = "meta"
+            if mode in ['bit', 'clock']:
+                if count:
+                    sc_ports.append((name, way, str(-1), '0'))
+                else:
+                    sc_ports.append((name, way, '', ''))
             else:
                 meta_ports.append((name, ptype, 'master'))
 
@@ -80,9 +96,14 @@ class CsvDumper:
             self.end()
 
             self.begin('INTERFACES')
-            self.line('interface_name', 'type', 'logical_name', 'port_name')
+            self.line('interface_name', 'master', 'slave', 'system', 'logical_name', 'port_name')
             for x in meta_ports:
-                self.line(x[1], x[2], x[0], x[0])
+                self.line(x[1],
+                          ['', '-'][x[2] == 'master'],
+                          ['', '-'][x[2] == 'slave'],
+                          ['', '-'][x[2] not in ['master', 'slave']],
+                          x[0],
+                          x[0])
             self.end()
 
         if sc_ports:
@@ -99,9 +120,9 @@ class CsvDumper:
         self.end()
 
         self.begin('FILE_SET')
-        self.line('fileset_name', 'file', 'type')
+        self.line('fileset_name', 'file_path', 'file_type', 'is_include')
         for s in m['implementation_files']:
-            self.line('sc_source', s, '')
+            self.line('sc_source', s, 'systemCSource-2.1', 'false')
         for s in m['header_files']:
-            self.line('sc_source', s, 'systemc include')
+            self.line('sc_source', s, 'systemCSource-2.1', 'true')
         self.end()
