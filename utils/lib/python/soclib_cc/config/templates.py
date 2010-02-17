@@ -94,13 +94,13 @@ def reposFile(self, name, mode=None):
 	if mode is None:
 		mode = self.mode
 	import os, sys
-	stupid_platform = sys.platform in ['cygwin']
-	if stupid_platform:
-		if len(name)>128:
+	from soclib_cc.config import config
+	if config.max_name_length:
+		if len(name) > config.max_name_length:
 			name, ext = os.path.splitext(name)
 			name = 'long_name_'+hex(hash(name))+ext
 	r = os.path.join(self.repos, mode, name)
-	if stupid_platform:
+	if config.max_name_length:
 		r = r.replace(':','_')
 	return r
 
@@ -131,6 +131,7 @@ config.build_env = Config(
 	quiet = False,
 	debug = False,
 	progress_bar = False,
+	max_name_length = 0,
 	mode = 'release',
 	repos = 'repos',
 	common_include_paths = [],
