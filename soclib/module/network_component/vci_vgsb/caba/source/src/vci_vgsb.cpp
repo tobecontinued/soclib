@@ -95,19 +95,6 @@ VciVgsb<vci_param>::~VciVgsb()
     soclib::common::dealloc_elems(r_vci_counter, m_nb_initiator, m_nb_target);
 } // end destructor
 
-
-////////////////////////
-template<typename vci_param>
-void VciVgsb<vci_param>::print_stats()       // Added FCB
-////////////////////////
-{
-    std::cout << name() << std::endl;
-    
-    std::cout << "- Total number of transitions of 32 bits data on VGSB bus \t = "
-              << (float)m_cpt_transactions << std::endl ;
-}
-
-
 ///////////////////////////
 template<typename vci_param>
 void VciVgsb<vci_param>::transition()
@@ -116,16 +103,12 @@ void VciVgsb<vci_param>::transition()
         r_fsm = FSM_IDLE;
         r_initiator_index = 0;
         r_target_index = 0;
-        r_cycle = 0;
+	r_cycle = 0;
         for(size_t i=0 ; i<(m_nb_initiator) ; i++) {
             for(size_t j=0 ; j<(m_nb_target) ; j++) { 
-                r_vci_counter[i][j] = 0; 
+		r_vci_counter[i][j] = 0; 
             }
         }
-        
-        // Reset activity counters FCB
-        m_cpt_transactions = 0;
-
         return;
     } 
 
@@ -156,8 +139,7 @@ std::cout << "vgsb tgt = " << r_target_index.read() << std::endl;
 	case FSM_CMD:
         if ( p_to_initiator[r_initiator_index.read()].eop.read() && 
              p_to_initiator[r_initiator_index.read()].cmdval.read() && 
-             p_to_target[r_target_index.read()].cmdack.read() ) r_fsm = FSM_RSP;
-        m_cpt_transactions++;
+             p_to_target[r_target_index.read()].cmdack.read() ) r_fsm = FSM_RSP;  
         break;
 
 	case FSM_RSP:

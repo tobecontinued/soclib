@@ -327,7 +327,6 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 
         // Reset processor
         m_exception_cause = TP_RESET;
-
       }
       else {
         // Disable traps
@@ -418,13 +417,6 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 
 tmpl()::~Sparcv8Iss()
 {
-}
-
-tmpl(void)::print_stats()
-{
-    std::cout << "Sparcv8 ISS number " <<(float)m_ident <<std::endl;
-    std::cout << "Number of instructions executed on SParcV8 \t\t\t = "
-              << (float)m_cpt_instr <<std::endl;
 }
 
 }}

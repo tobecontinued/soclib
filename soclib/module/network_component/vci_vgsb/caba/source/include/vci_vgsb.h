@@ -106,9 +106,6 @@ class VciVgsb
 	const size_t 							m_nb_initiator;	
 	const size_t 							m_nb_target;
 
-        // Activity counters FCB
-        uint32_t m_cpt_transactions;
-
 protected:
 
 	SC_HAS_PROCESS(VciVgsb);
@@ -130,7 +127,6 @@ public:
 
 
 	// member functions
-        void print_stats();	// Added FCB
 	void transition(); 
 	void genMealy_rspval();
 	void genMealy_rspack();

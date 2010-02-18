@@ -215,24 +215,6 @@ tmpl(void)::print_stats()
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
     std::cout << name() << std::endl;
-
-    std::cout << "- Total number of read  instructions issue by processor \t = "
-              << (float)m_cpt_read  << std::endl ;
-    std::cout << "- Total number of write instructions issue by processor \t = "
-              << (float)m_cpt_write << std::endl;
-    std::cout << "- Total number of reads in the dcache \t\t\t\t = "
-              << (float)m_cpt_dcache_data_read  << std::endl;
-    std::cout << "- Total number of writes in the dcache \t\t\t\t = "
-              << (float)m_cpt_dcache_data_write << std::endl;
-    
-    std::cout << "- Total number of read miss in the dcache \t\t\t = "
-              << (float)m_cpt_data_miss  << std::endl;
-    std::cout << "- Total number of instruction miss (in the icache) \t\t = "
-              << (float)m_cpt_ins_miss  << std::endl;
-    
-    //m_iss.print_stats();
-    
-    /*
     std::cout << "- CPI                = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
     std::cout << "- READ RATE          = " << (float)m_cpt_read/run_cycles << std::endl ;
     std::cout << "- WRITE RATE         = " << (float)m_cpt_write/run_cycles << std::endl;
@@ -249,7 +231,6 @@ tmpl(void)::print_stats()
     std::cout << "- WRITE COST         = " << (float)m_cost_write_frz/m_cpt_write << std::endl;
     std::cout << "- WRITE TRANSACTION  = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl;
     std::cout << "- WRITE LENGTH       = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl;
-    */
 }
 
 //////////////////////////

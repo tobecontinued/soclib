@@ -66,8 +66,7 @@ void trap()
 #elif defined(PPC)
 	asm volatile("trap");
 #elif defined(__sparc__)
-	//asm volatile("ta 0");
-	asm volatile("mov 1, %g1; ta 0;");
+       asm volatile("ta 0");
 #elif defined(__lm32__)
     asm volatile("break");
 #elif defined(__arm__)

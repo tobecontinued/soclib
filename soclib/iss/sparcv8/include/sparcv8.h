@@ -293,8 +293,8 @@ private:
     } mem_access_t;
 
     mem_access_t        m_dreq;         // The data transaction
-    uint32_t m_cpt_instr;
-    
+
+
 public:
     // Constructor
     Sparcv8Iss(const std::string &name, uint32_t ident);
@@ -329,8 +329,6 @@ public:
     static const unsigned int s_pc_register_no = 68;
     static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_BIG_ENDIAN;
 
-    void print_stats();
-    
 private:
     void run();
 

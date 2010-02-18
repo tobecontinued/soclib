@@ -25,9 +25,7 @@ microblaze_CC_PREFIX=mb-
 microblaze_CFLAGS=-mno-xl-soft-div -mno-xl-soft-mul -gstabs+
 microblaze_LDFLAGS=-nostdlib
 
-#sparc_CC_PREFIX=sparc-unknown-elf-
-#sparc_CC_PREFIX=sparc-linux-
-sparc_CC_PREFIX=sparc-elf-
+sparc_CC_PREFIX=sparc-unknown-elf-
 sparc_CFLAGS= -mcpu=v8
 sparc_LDFLAGS= 
 

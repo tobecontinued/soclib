@@ -1,0 +1,1 @@
+/home/t0043357/sources/soclib/platforms/platform_newmutekh_eval_caba/decoder_h264_clone/decoder_soclib/soft_config/conf_1proc_cif.h
