@@ -302,7 +302,7 @@ tmpl(void)::transition()
 
             if ( m_current_cmd.eop ) {
                 m_mode = MODE_IDLE;
-                assert( m_cells_to_go == 1 );
+                //assert( m_cells_to_go == 1 );
                 m_send_rsp = true;
             }
         }

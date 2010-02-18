@@ -88,7 +88,7 @@ static inline int putchar(const int x)
 #endif
 
 	uint32_t tlb_mode = get_cp2(1, 0);
-
+	
 	if (tlb_mode & 4)
 	{
 

@@ -98,7 +98,7 @@ strcpy (char *s1, const char *s2)
 
 int printf(const char *fmt, ...)
 {
-	register char *tmp;
+  register char *tmp;
 	int val, i, count = 0;
 	char buf[SIZE_OF_BUF];
     va_list ap;

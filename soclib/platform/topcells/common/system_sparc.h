@@ -32,9 +32,9 @@
 static inline void
 irq_enable(void)
 {
-	uint32_t tmp;
+  uint32_t tmp;
 
-	asm volatile (
+  asm volatile (
 		"rd %%psr, %0 \n\t"
 		"or %0, %1, %0 \n\t"
 		"wr %0, 0, %%psr \n\t"
@@ -46,9 +46,9 @@ irq_enable(void)
 static inline void
 irq_set_pil(unsigned char level)
 {
-	uint32_t tmp;
+  uint32_t tmp;
 
-	asm volatile (
+  asm volatile (
 		"rd %%psr, %0 \n\t"
 		"and %0, %2, %0 \n\t"
 		"sll %1, 8, %1 \n\t"
@@ -62,9 +62,9 @@ irq_set_pil(unsigned char level)
 static inline void
 irq_disable(void)
 {
-	uint32_t tmp;
+  uint32_t tmp;
 
-	asm volatile (
+  asm volatile (
 		"rd %%psr, %0 \n\t"
 		"and %0, %1, %0 \n\t"
 		"wr %0, 0, %%psr \n\t"
@@ -75,15 +75,15 @@ irq_disable(void)
 
 static inline int procnum()
 {
-	uint32_t tmp;
+  uint32_t tmp;
 
-	// IDENT is stored in ASR16
-	asm volatile (
+  // IDENT is stored in ASR16
+  asm volatile (
 		"rd %%asr16, %0"
 		: "=r"(tmp)
 		);
 			
-    return tmp;
+  return tmp;
 }
 
 #endif

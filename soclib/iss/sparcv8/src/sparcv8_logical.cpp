@@ -566,6 +566,14 @@ tmpl(void)::op_rdasr()
         GPR(m_ins.format3a.rd) = m_ident; 
         break;
 
+    // Added FCB : specific to leon
+    // Processor configuration register : index (31;28)
+    case 17 : 
+        // RDASR
+        ENSURE_PRIVILEDGED_MODE();
+        GPR(m_ins.format3a.rd) = (m_ident << 28); 
+        break;
+
     default :
         m_exception = true;
         m_exception_cause = TP_ILLEGAL_INSTRUCTION;

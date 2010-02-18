@@ -201,6 +201,7 @@ func_table(fpop2_table) = {
 
 tmpl(void)::run()
 {
+    ++ m_cpt_instr;
     switch(m_ins.call.op) {
     case 0 : {
         // This is a format2 instruction : sethi, branch, branch_fp, branch_cp, unimp or garbage...

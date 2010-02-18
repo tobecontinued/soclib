@@ -147,8 +147,8 @@ tmpl(void)::genMoore()
 
 tmpl(void)::print_stats(){
     std::cout << name() << std::endl;
-    std::cout << "- READ               = " << m_cpt_read << std::endl;
-    std::cout << "- WRITE              = " << m_cpt_write << std::endl;
+    std::cout << "- READ               = " << (float)m_cpt_read << std::endl;
+    std::cout << "- WRITE              = " << (float)m_cpt_write << std::endl;
 }
 
 }}
