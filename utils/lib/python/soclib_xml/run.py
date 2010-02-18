@@ -32,21 +32,28 @@ _yellow = '\x1b[33m'
 _red = '\x1b[31m'
 _normal = '\x1b[m'
 
-def csv2xml(csv, xml):
-    subprocess.Popen(['cp', csv, xml])
+def csv2xml(csv2ipxact, template, csv, xml, log):
+    subprocess.Popen([csv2ipxact,
+                      '-c', csv,
+                      template,
+                      '-o', xml,
+                      '-log', log])
 
-def do_convert(m):
+def do_convert(csv2ipxact, template, m):
     base = m.fileName().rsplit('.', 1)[0]
     csv = base+'.csv'
     xml = base+'.xml'
+    log = base+'.txt'
     fd = open(csv, 'w')
     d = CsvDumper(fd)
     d.convert(m)
     fd.close()
-    csv2xml(csv, xml)
+    csv2xml(csv2ipxact, template, csv, xml, log)
     return d.warned
 
 def convert_all(levels = "caba,tlmdt,common"):
+    csv2ipxact = os.getenv("csv2ipxact")
+    template = os.getenv("template")
     levels = levels.split(',')
     warned = ok = failed = 0
     
@@ -54,7 +61,7 @@ def convert_all(levels = "caba,tlmdt,common"):
         if m['abstraction_level'] in levels:
             print m.getModuleName()+'...',
             try:
-                w = do_convert(m)
+                w = do_convert(csv2ipxact, template, m)
                 if w:
                     warned += 1
                     print _yellow+" warned"+_normal
