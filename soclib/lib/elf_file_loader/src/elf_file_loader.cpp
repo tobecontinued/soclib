@@ -107,7 +107,7 @@ bool elf_load( const std::string &name, Loader &loader )
 
             uintptr_t addr =
                 (sym.get_section() && sym.get_section()->get_segment()
-                 ? sym.get_section()->get_load_address()
+                 ? sym.get_section()->get_vaddr()
                  : 0)
                 + sym.get_value();
             loader.addSymbol(BinaryFileSymbol( sym.get_name(), addr, symsize ));
