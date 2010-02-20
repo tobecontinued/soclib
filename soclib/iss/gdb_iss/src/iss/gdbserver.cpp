@@ -633,18 +633,22 @@ void GdbServer<CpuIss>::process_gdb_packet()
                 }
 
                 case 's': {      // continue single step [optional resume addr in hex]
-                    if (data[1])
-                        {       // continue at specified address
-                            CpuIss::debugSetRegisterValue(CpuIss::s_pc_register_no, strtoul(data + 1, 0, 16));
-                            state_ = Step;
-                        }
+                    uint32_t pc;
+                    GdbServer *gs;
+
+                    if (step_id_)       // single step on other processor
+                        gs = list_[current_id_ = step_id_ - 1];
                     else
-                        {
-                            if (step_id_)  // single step on other processor
-                                list_[current_id_ = step_id_ - 1]->state_ = Step;
-                            else
-                                state_ = Step;
-                        }
+                        gs = this;
+ 
+                    if (data[1])        // continue at specified address
+                        pc = strtoul(data + 1, 0, 16);
+                    else
+                        pc = gs->CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
+
+                    gs->state_ = Step;
+                    gs->step_pc_ = pc;
+                    gs->CpuIss::debugSetRegisterValue(CpuIss::s_pc_register_no, pc);
                     return;
                 }
 
@@ -1148,23 +1152,59 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
 
         case Step: {
             char buffer[32];
+            uint32_t cycles = CpuIss::executeNCycles(1, irsp, drsp, irq_bit_field);
 
-            CpuIss::executeNCycles(1, irsp, drsp, irq_bit_field);
+            if (CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no) != step_pc_) {
+                sprintf(buffer, "T05thread:%x;", id_ + 1);
+                write_packet(buffer);
+                state_ = WaitIssMem;
+                step_id_ = 0;
+            }
 
-            watch_mem_access();
-
-            sprintf(buffer, "T05thread:%x;", id_ + 1);
-            write_packet(buffer);
-            state_ = WaitIssMem;
-            step_id_ = 0;
-
-            return 1;
+            return cycles;
         }
 
         }
 
     std::abort();
 }
+
+
+template<typename CpuIss>
+void GdbServer<CpuIss>::getRequests(struct CpuIss::InstructionRequest &ireq,
+                                    struct CpuIss::DataRequest &dreq) const
+{
+    GdbServer<CpuIss> *_this = const_cast<GdbServer<CpuIss> *>(this);
+    switch (state_) {
+    case Frozen:
+        dreq.valid = false;
+        ireq.valid = false;
+        break;
+
+    case WaitGdbMem:
+        ireq.valid = false;
+        dreq.valid = mem_req_;
+        dreq.addr = mem_addr_ & ~3;
+        dreq.wdata = mem_data_ << (8 * (mem_addr_ & 3));
+        dreq.type = mem_type_;
+        if ( mem_type_ == CpuIss::DATA_READ )
+            dreq.be = 0xf;
+        else
+            dreq.be = 1 << (mem_addr_ & 3);
+        dreq.mode = CpuIss::MODE_HYPER;
+        break;
+
+    case WaitIssMem:
+    case RunningNoBp:
+    case Running:
+    case Step:
+        CpuIss::getRequests(ireq, dreq);
+        break;
+    }
+    _this->pending_data_request_ = dreq.valid;
+    _this->pending_ins_request_ = ireq.valid;
+}
+
 
 template<typename CpuIss>
 void GdbServer<CpuIss>::init_state()

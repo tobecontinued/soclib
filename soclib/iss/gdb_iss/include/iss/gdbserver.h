@@ -82,40 +82,9 @@ public:
         const struct CpuIss::DataResponse &drsp,
         uint32_t irq_bit_field );
 
-    inline void getRequests(
+    void getRequests(
         struct CpuIss::InstructionRequest &ireq,
-        struct CpuIss::DataRequest &dreq) const
-    {
-        GdbServer<CpuIss> *_this = const_cast<GdbServer<CpuIss> *>(this);
-        switch (state_) {
-        case Frozen:
-            dreq.valid = false;
-            ireq.valid = false;
-            break;
-
-        case WaitGdbMem:
-            ireq.valid = false;
-            dreq.valid = mem_req_;
-            dreq.addr = mem_addr_ & ~3;
-            dreq.wdata = mem_data_ << (8 * (mem_addr_ & 3));
-            dreq.type = mem_type_;
-            if ( mem_type_ == CpuIss::DATA_READ )
-                dreq.be = 0xf;
-            else
-                dreq.be = 1 << (mem_addr_ & 3);
-            dreq.mode = CpuIss::MODE_HYPER;
-            break;
-
-        case WaitIssMem:
-        case RunningNoBp:
-        case Running:
-        case Step:
-            CpuIss::getRequests(ireq, dreq);
-            break;
-        }
-        _this->pending_data_request_ = dreq.valid;
-        _this->pending_ins_request_ = ireq.valid;
-    }
+        struct CpuIss::DataRequest &dreq) const;
 
     inline void setWriteBerr()
     {
@@ -161,6 +130,7 @@ private:
     size_t mem_len_;
     uint8_t *mem_buff_;
     uint8_t *mem_ptr_;
+    uint32_t step_pc_;            // value of pc on Step start
     static unsigned int current_id_;
     static unsigned int step_id_; // can be used to force single step on a specific processor
     bool catch_exceptions_;
