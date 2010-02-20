@@ -28,3 +28,35 @@ Module('common:mips32',
 	},
 #   debug = True,
 )
+
+# Mips32 Little endian (Mips32ElIss)
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('common:mips32el',
+	classname = 'soclib::common::Mips32ElIss',
+	header_files = ["../include/mips32.h",],
+	uses = [
+		Uses('common:mips32'),
+		],
+	  extensions = [
+	'dsx:cpu=mips32el'
+	],
+)
+
+# Mips32 Big endian (Mips32EbIss)
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('common:mips32eb',
+	classname = 'soclib::common::Mips32EbIss',
+	header_files = ["../include/mips32.h",],
+	uses = [
+		Uses('common:mips32'),
+		],
+	  extensions = [
+	'dsx:cpu=mips32eb'
+	],
+)

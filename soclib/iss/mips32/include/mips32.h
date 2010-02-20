@@ -53,7 +53,7 @@ class Mips32Iss
 public:
     static const size_t n_irq = 6;
 
-private:
+protected:
     enum MipsDataAccessType {
         MDAT_LB,
         MDAT_LBU,
@@ -583,7 +583,7 @@ public:
         m_reset_address = addr;
     }
 
-private:
+protected:
     void run();
 
     inline void setInsDelay( uint32_t delay )
@@ -802,31 +802,22 @@ private:
     void handle_exception();
 };
 
-class Mips32ElIss
-    : public Mips32Iss
+template <Iss2::debugCpuEndianness e, class Iss>
+class Mips32EndianIss
+    : public Iss
 {
 public:
-    static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_LITTLE_ENDIAN;
+    static const Iss2::debugCpuEndianness s_endianness = e;
 
-    Mips32ElIss(const std::string &name, uint32_t ident)
-        : Mips32Iss(name, ident, true)
+    Mips32EndianIss(const std::string &name, uint32_t ident)
+        : Iss(name, ident, e == Iss2::ISS_LITTLE_ENDIAN)
     {}
 
     void please_instanciate_Mips32ElIss_or_Mips32EbIss() {}
 };
 
-class Mips32EbIss
-    : public Mips32Iss
-{
-public:
-    static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_BIG_ENDIAN;
-
-    Mips32EbIss(const std::string &name, uint32_t ident)
-        : Mips32Iss(name, ident, false)
-    {}
-
-    void please_instanciate_Mips32ElIss_or_Mips32EbIss() {}
-};
+typedef Mips32EndianIss<Iss2::ISS_LITTLE_ENDIAN, Mips32Iss> Mips32ElIss;
+typedef Mips32EndianIss<Iss2::ISS_BIG_ENDIAN, Mips32Iss> Mips32EbIss;
 
 }}
 
