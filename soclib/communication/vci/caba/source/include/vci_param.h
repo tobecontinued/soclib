@@ -70,16 +70,16 @@ class VciParams
 	/* Obey standart */
 
 	// This is a check for a pow of 2
-    static_assert(!((cell_size)&(cell_size-1)));
-	static_assert(plen_size <= 9);
+    soclib_static_assert(!((cell_size)&(cell_size-1)));
+	soclib_static_assert(plen_size <= 9);
     // We need more than 32 bits for addr, so we dont check
-    //static_assert(addr_size <= 32);
-	static_assert(rerror_size <= 3);
-	static_assert(clen_size <= 8);
+    //soclib_static_assert(addr_size <= 32);
+	soclib_static_assert(rerror_size <= 3);
+	soclib_static_assert(clen_size <= 8);
     // We need more than 5 bits for srcid, so we dont check
-    //static_assert(srcid_size <= 5);
-	static_assert(pktid_size <= 8);
-	static_assert(wrplen_size <= 5);
+    //soclib_static_assert(srcid_size <= 5);
+	soclib_static_assert(pktid_size <= 8);
+	soclib_static_assert(wrplen_size <= 5);
 
 public:
     /* Standart's constants, may be used by some modules */

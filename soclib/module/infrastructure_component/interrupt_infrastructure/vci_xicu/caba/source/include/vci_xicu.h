@@ -83,7 +83,7 @@ public:
         size_t wti_count,
         size_t irq_count);
 
-    static_assert(vci_param::B == 4);
+    soclib_static_assert(vci_param::B == 4);
 };
 
 }}

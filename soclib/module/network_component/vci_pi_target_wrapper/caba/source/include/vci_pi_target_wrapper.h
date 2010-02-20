@@ -88,8 +88,8 @@ private:
 	void transition();
 	void genMealy();
 
-	static_assert(vci_param::N == 32); // checking VCI address size
-	static_assert(vci_param::B == 4); // checking VCI data size
+	soclib_static_assert(vci_param::N == 32); // checking VCI address size
+	soclib_static_assert(vci_param::B == 4); // checking VCI data size
 };
 
 }}

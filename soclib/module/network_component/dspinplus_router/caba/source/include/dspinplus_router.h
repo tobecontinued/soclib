@@ -87,8 +87,8 @@ namespace soclib{ namespace caba {
 	    void genMoore();
 
 	    // checker
-	    static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
-	    static_assert(dspin_yx_size <= 6 && dspin_yx_size >= 1);
+	    soclib_static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
+	    soclib_static_assert(dspin_yx_size <= 6 && dspin_yx_size >= 1);
 	};
 
 }} // end namespace

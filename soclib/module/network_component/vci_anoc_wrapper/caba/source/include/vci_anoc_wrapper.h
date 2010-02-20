@@ -173,10 +173,10 @@ namespace soclib { namespace caba {
         int     srcid_mask;
 
         // checker
-        static_assert(vci_param::N == 32 || vci_param::N == 36); // checking VCI address size
-        static_assert(vci_param::B == 4);   // checking VCI data size
-        static_assert(anoc_fifo_size <= 256 && anoc_fifo_size >= 1); // checking FIFO size
-        static_assert(anoc_yx_size <= 6 && anoc_yx_size >= 1);  // checking DSPIN index size
+        soclib_static_assert(vci_param::N == 32 || vci_param::N == 36); // checking VCI address size
+        soclib_static_assert(vci_param::B == 4);   // checking VCI data size
+        soclib_static_assert(anoc_fifo_size <= 256 && anoc_fifo_size >= 1); // checking FIFO size
+        soclib_static_assert(anoc_yx_size <= 6 && anoc_yx_size >= 1);  // checking DSPIN index size
 
         // event
         sc_event write_accept_event[ANOC_NB_CHANNEL];

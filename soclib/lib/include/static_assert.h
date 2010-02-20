@@ -64,7 +64,7 @@ template<int n> class compile_time_assertion_test {
  * \param condition Condition to check for, must be compile-time
  * evaluable.
  */
-#define static_assert(condition) \
+#define soclib_static_assert(condition)                          \
     typedef ::soclib::common::compile_time_assertion_test< \
     sizeof(::soclib::common::compile_time_assertion_failed< (bool)( condition ) >)> \
     _assert_concat(static_assert_typedef_, __LINE__)

@@ -312,7 +312,7 @@ private:
     data_t *r_mem_dest_addr;
     enum post_memaccess_op_e r_mem_post_op;
 
-    static_assert(sizeof(ins_t) == 4);
+    soclib_static_assert(sizeof(ins_t) == 4);
 };
 
 }}

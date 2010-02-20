@@ -918,7 +918,7 @@ tmpl(/**/)::VciMwmrController(
 
     // If this fail, please implement word width adaptation in access
     // to VCI data.
-    static_assert(vci_param::B == sizeof(uint32_t));
+    soclib_static_assert(vci_param::B == sizeof(uint32_t));
 
     for ( size_t i = 0; i<m_n_from_coproc; ++i ) {
         std::ostringstream o;

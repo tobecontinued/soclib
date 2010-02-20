@@ -97,8 +97,8 @@ namespace soclib { namespace caba {
 		soclib::caba::DspinPlusRouter<33, dspin_fifo_size, dspin_yx_size>*** t_rsp_router;
 
 		//checker
-		static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
-		static_assert(dspin_yx_size <= 6 && dspin_yx_size >= 1);
+		soclib_static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
+		soclib_static_assert(dspin_yx_size <= 6 && dspin_yx_size >= 1);
 
 	    public:
 		VciDspinPlusNetwork( sc_module_name name,

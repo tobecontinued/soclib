@@ -264,7 +264,7 @@ private:
         uint32_t reserved4:4,
         ) msr_t;
 
-    static_assert(sizeof(msr_t) == 4);
+    soclib_static_assert(sizeof(msr_t) == 4);
 
 	uint32_t 	r_pc;
 

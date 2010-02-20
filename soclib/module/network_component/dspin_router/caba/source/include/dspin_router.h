@@ -94,8 +94,8 @@ namespace soclib { namespace caba {
 	    void genMoore();
 
 	    // checker
-	    static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
-	    static_assert(dspin_yx_size == 4); // DSPIN only supports YX adresses in 4 bits
+	    soclib_static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
+	    soclib_static_assert(dspin_yx_size == 4); // DSPIN only supports YX adresses in 4 bits
 	};
 
 }} // end namespace
