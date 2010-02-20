@@ -354,18 +354,22 @@ tmpl(void)::transition()
         if ( ireq.valid ) {
             data_t  icache_ins = 0;
             bool    icache_hit = false;
-            bool    icache_cached = m_cacheability_table[ireq.addr];
+            addr_t  ireq_paddr = ireq.addr;
+            m_iss.virtualToPhys(ireq_paddr);
+
+            bool    icache_cached = m_cacheability_table[ireq_paddr];
+
             // icache_hit & icache_ins evaluation
             if ( icache_cached ) {
-                icache_hit = r_icache.read(ireq.addr, &icache_ins);
+                icache_hit = r_icache.read(ireq_paddr, &icache_ins);
             } else {
-                icache_hit = ( r_icache_buf_unc_valid && (ireq.addr == r_icache_addr_save) );
+                icache_hit = ( r_icache_buf_unc_valid && (ireq_paddr == r_icache_addr_save) );
                 icache_ins = r_icache_miss_buf[0];
             }
             if ( ! icache_hit ) {
                 m_cpt_ins_miss++;
                 m_cost_ins_miss_frz++;
-                r_icache_addr_save = ireq.addr;
+                r_icache_addr_save = ireq_paddr;
                 if ( icache_cached ) {
                     r_icache_fsm = ICACHE_MISS_WAIT;
                     r_icache_miss_req = true;
@@ -524,6 +528,9 @@ tmpl(void)::transition()
             bool        dcache_hit     = false;
             data_t      dcache_rdata   = 0;
             bool        dcache_cached;
+            addr_t      dreq_paddr = dreq.addr;
+            m_iss.virtualToPhys(dreq_paddr);
+
             m_cpt_dcache_data_read += m_dcache_ways;
             m_cpt_dcache_dir_read += m_dcache_ways;
 
@@ -536,14 +543,14 @@ tmpl(void)::transition()
                 dcache_cached = false;
                 break;
             default:
-                dcache_cached = m_cacheability_table[dreq.addr];
+                dcache_cached = m_cacheability_table[dreq_paddr];
             }
 
             // dcache_hit & dcache_rdata evaluation
             if ( dcache_cached ) {
-                dcache_hit = r_dcache.read(dreq.addr, &dcache_rdata);
+                dcache_hit = r_dcache.read(dreq_paddr, &dcache_rdata);
             } else {
-                dcache_hit = ( (dreq.addr == r_dcache_addr_save) && r_dcache_buf_unc_valid );
+                dcache_hit = ( (dreq_paddr == r_dcache_addr_save) && r_dcache_buf_unc_valid );
                 dcache_rdata = r_dcache_miss_buf[0];
             }
 
@@ -574,7 +581,7 @@ tmpl(void)::transition()
                 case iss_t::XTN_READ:
                 case iss_t::XTN_WRITE:
                     // only DCACHE INVALIDATE request are supported
-                    switch ( dreq.addr/4 ) {
+                    switch ( dreq_paddr/4 ) {
                     case iss_t::XTN_DCACHE_INVAL:
                         r_dcache_fsm = DCACHE_INVAL;
                     case iss_t::XTN_SYNC:
@@ -597,7 +604,7 @@ tmpl(void)::transition()
                     break;
             } // end switch dreq.type
 
-            r_dcache_addr_save      = dreq.addr;
+            r_dcache_addr_save      = dreq_paddr;
             r_dcache_type_save      = dreq.type;
             r_dcache_wdata_save     = dreq.wdata;
             r_dcache_be_save        = dreq.be;

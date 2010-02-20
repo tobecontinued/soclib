@@ -348,6 +348,15 @@ public:
         uint32_t irq_bit_field ) = 0;
 
     /**
+     * This function is used to translate a virtual address to
+     * physical address Return false if address not mapped.
+     */
+    virtual bool virtualToPhys(addr_t &addr) const
+    {
+        return true;
+    }
+
+    /**
      * Iss must populate the request fields.
      */
     virtual void getRequests( struct InstructionRequest &,
