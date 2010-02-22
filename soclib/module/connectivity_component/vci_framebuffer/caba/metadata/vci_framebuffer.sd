@@ -34,6 +34,5 @@ Module('caba:vci_framebuffer',
 	'dsx:max_segments=1',
 	'dsx:get_ident=ident:p_vci',
 	'dsx:device=framebuffer',
-           ],
-       debug = True,
+   ],
 )
