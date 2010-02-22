@@ -262,14 +262,20 @@ void ArmIss::op_msr()
 
 	psr_t newval;
 
-    data_t psr_mask = (m_opcode.ms.whole_psr && (r_cpsr.mode != MOD_PSR_USER32))
-        ? 0
-        : 0x0fffffff; 
+    data_t psr_mask =
+        (m_opcode.ms.f * 0xff000000) |
+        (m_opcode.ms.s * 0x00ff0000) |
+        (m_opcode.ms.x * 0x0000ff00) |
+        (m_opcode.ms.c * 0x000000ff);
+
+    if (r_cpsr.mode == MOD_PSR_USER32)
+        psr_mask &= 0xf0000000;
+
     data_t tmp = m_opcode.ms.i
-		? arm_shifter_shift<false>()
+		? (m_opcode.rot.immval << m_opcode.rot.rotate)
 		: r_gp[m_opcode.ms.rm];
    
-    newval.whole = (psr_mask & oldval.whole) | (~psr_mask & tmp);
+    newval.whole = (~psr_mask & oldval.whole) | (psr_mask & tmp);
 
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout
