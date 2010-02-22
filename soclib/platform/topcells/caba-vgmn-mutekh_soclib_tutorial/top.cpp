@@ -2,6 +2,7 @@
 #include "cpu_type.h"
 
 #define USE_GDB_SERVER
+//#define USE_SIMHELPER
 //#define USE_MEMCHECKER
 
 //#define USE_LOG_CONSOLE
@@ -58,6 +59,9 @@
 #elif defined(USE_GDB_SERVER)
 #   include "gdbserver.h"
     typedef soclib::common::GdbServer<iss_t> complete_iss_t;
+#elif defined(USE_SIMHELPER)
+#   include "iss2_simhelper.h"
+    typedef soclib::common::Iss2Simhelper<iss_t> complete_iss_t;
 #else
     typedef iss_t complete_iss_t;
 #endif
@@ -85,19 +89,20 @@ int _main(int argc, char *argv[])
 	soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0xf0000000);
 	
 #if defined(CPU_ppc)
-	maptabp.add(Segment("rom",  0xbfc00000, 0x00080000, IntTab(0), true));
-	maptabp.add(Segment("boot", 0xffffff80, 0x00000080, IntTab(0), true));
+	maptabp.add(Segment("boot",  0xffffff80, 0x00000080, IntTab(0), true));
 #elif defined(CPU_arm)
-	maptabp.add(Segment("rom",  0xbfc00000, 0x00080000, IntTab(0), true));
-	maptabp.add(Segment("boot", 0x00000000, 0x00000400, IntTab(0), true));
+	maptabp.add(Segment("boot",  0x00000000, 0x00000100, IntTab(0), true));
 #elif defined(CPU_mips)
-	maptabp.add(Segment("rom",  0xbfc00000, 0x00080000, IntTab(0), true));
+	maptabp.add(Segment("boot",  0xbfc00000, 0x00001000, IntTab(0), true));
 #endif
 
-	maptabp.add(Segment("tty",  0xd0200000, 0x00000040, IntTab(1), false));
-	maptabp.add(Segment("mem",  0x7F400000, 0x00100000, IntTab(2), false ));
-	maptabp.add(Segment("xicu", 0xd2200000, 0x00001000, IntTab(3), false));
-	maptabp.add(Segment("bdev0",0xd1200000, 0x00000020, IntTab(4), false));
+	maptabp.add(Segment("text",  0x60000000, 0x00100000, IntTab(0), true));
+	maptabp.add(Segment("rodata",0x80000000, 0x01000000, IntTab(0), true));
+
+	maptabp.add(Segment("tty",   0xd0200000, 0x00000040, IntTab(1), false));
+	maptabp.add(Segment("mem",   0x7f000000, 0x01000000, IntTab(2), false));
+	maptabp.add(Segment("xicu",  0xd2200000, 0x00001000, IntTab(3), false));
+	maptabp.add(Segment("bdev0", 0xd1200000, 0x00000020, IntTab(4), false));
 
 #if defined(USE_GDB_SERVER) && defined(USE_MEMCHECKER)
     soclib::common::GdbServer<
