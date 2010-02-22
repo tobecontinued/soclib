@@ -15,11 +15,11 @@ APP_DIR=$(shell pwd)/decoder_h264_clone/decoder_soclib
 # Then you may choose to build for mips, arm or ppc.
 CPU=mips
 
-NB_PROC=1
-FORMAT=qcif
+NB_PROC=6
+FORMAT=cif
 CACHE_LINE_SIZE=16
 FRAMEBUFFER=YES
-DBF=YES
+DBF=NO
 
 GDB_SERVER=NO
 MEM_CHECKER=NO

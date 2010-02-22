@@ -55,7 +55,7 @@ doc: mutekh
 
 
 block0.iso: disk
-	mkisofs -f -R -V volname -o $@ $<
+	mkisofs -f -R -m .svn -V volname -o $@ $<
 
 
 .PHONY: $(KERNEL)
