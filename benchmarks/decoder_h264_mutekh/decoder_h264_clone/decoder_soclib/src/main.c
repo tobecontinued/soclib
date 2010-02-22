@@ -94,6 +94,9 @@ void * main_process(void *arg)
   
   printk("-- Main -- Main thread is finished\n");
 
+  //cpu_mem_write_32(0xd4200000, 1);
+  cpu_mem_write_32(SEG_SIMHELPER_ADDR, 1);
+  
   return 0;
 }
 

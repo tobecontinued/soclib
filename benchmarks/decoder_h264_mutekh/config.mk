@@ -14,8 +14,16 @@ APP_DIR=$(shell pwd)/decoder_h264_clone/decoder_soclib
 
 # Then you may choose to build for mips, arm or ppc.
 CPU=mips
+
 NB_PROC=1
-FORMAT=cif
+FORMAT=qcif
+CACHE_LINE_SIZE=16
+FRAMEBUFFER=YES
+DBF=YES
+
+GDB_SERVER=NO
+MEM_CHECKER=NO
+TIMER=NO
 
 # Inside the $APP directory above must exist a MutekH build
 # configuration file. This variable is the name of this very file.

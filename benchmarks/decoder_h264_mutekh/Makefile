@@ -20,9 +20,18 @@ help:
 $(SIMULATOR_BINARY): cpu_type.h
 
 cpu_type.h:
-	echo "#define CPU_$(CPU)" > $@
+	echo "#ifndef __CPUCONFIG_H__" > $@
+	echo "#define __CPUCONFIG_H__" >> $@
+	echo "#define CPU_$(CPU)" >> $@
 	echo "#define VIDEO_TYPE_$(FORMAT)" >> $@
+	if [ $(GDB_SERVER) = "YES" ]; then echo "#define USE_GDBSERVER" >> $@; fi
+	if [ $(MEM_CHECKER) = "YES" ] ; then echo "#define USE_MEMCHECKER" >> $@ ; fi
+	if [ $(TIMER) = "YES" ] ; then echo "#define CONFIG_TIMER" >> $@ ; fi
+	if [ $(FRAMEBUFFER) = "YES" ] ; then echo "#define CONFIG_FRAMEBUFFER" >> $@ ; fi
+	if [ $(DBF) = "YES" ] ; then echo "#define CONFIG_DB_FILTER" >> $@ ; fi
 	echo "const size_t ncpu = $(NB_PROC);" >> $@
+	echo "const size_t cache_line_size = $(CACHE_LINE_SIZE);" >> $@
+	echo "#endif" >> $@
 
 mutekh:
 	mkdir -p $@

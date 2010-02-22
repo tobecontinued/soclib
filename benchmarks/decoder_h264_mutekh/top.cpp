@@ -29,10 +29,6 @@
 /****************************************************************************
   Macros and configuration of the platform
  ****************************************************************************/
-#define USE_GDB_SERVER
-//#define USE_MEMCHECKER
-#define CONFIG_FRAMEBUFFER
-//#define CONFIG_TIMER
 
 /****************************************************************************
   Include section
@@ -56,6 +52,7 @@
 #include "vci_vgmn.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_xicu.h"
+#include "vci_simhelper.h"
 
 #ifdef CONFIG_FRAMEBUFFER
 #	include "vci_framebuffer.h"
@@ -148,6 +145,7 @@ int _main(int argc, char *argv[])
 #ifdef CONFIG_TIMER
   maptabp.add(Segment("timer",   SEG_TIMER_ADDR,SEG_TIMER_SIZE,IntTab(++nb_target), false));
 #endif
+  maptabp.add(Segment("simhelper",SEG_SIMHELPER_ADDR,SEG_SIMHELPER_SIZE,IntTab(++nb_target), false));
 
 
 #if defined(USE_GDB_SERVER) && defined(USE_MEMCHECKER)
@@ -183,6 +181,8 @@ int _main(int argc, char *argv[])
   
   sc_signal<bool> signal_xicu_irq[xicu_n_irq];
 
+  soclib::caba::VciSignals<vci_param> signal_vci_simhelper("signal_vci_simhelper");
+
   
   /*************************************
      Components
@@ -193,7 +193,7 @@ int _main(int argc, char *argv[])
     std::ostringstream o;
     o << "proc" << i;
     procs[i] = new soclib::caba::VciXcacheWrapper<vci_param, complete_iss_t >
-      (o.str().c_str(), i, maptabp, IntTab(i),4,64,16, 4,64,16);
+      (o.str().c_str(), i, maptabp, IntTab(i),4,64,cache_line_size, 4,64,cache_line_size);
   }
 
   soclib::caba::VciRom<vci_param> rom("rom", IntTab(nb_target), maptabp, loader);
@@ -216,13 +216,10 @@ int _main(int argc, char *argv[])
 #ifdef CONFIG_TIMER
   soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(++nb_target), maptabp, 1);
 #endif
+  soclib::caba::VciSimhelper<vci_param> vcisimhelper("vcisimhelper", IntTab(++nb_target), maptabp);
 
+  soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, ncpu, ++nb_target, 2, 8);
 
-#ifdef CONFIG_FRAMEBUFFER
-  soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, ncpu, ++nb_target, 2, 8);
-#else
-  soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, ncpu, ++nb_target, 2, 8);
-#endif
 
 
   /*************************************
@@ -282,7 +279,10 @@ int _main(int argc, char *argv[])
   vcitimer.p_vci(signal_vci_vcitimer);
 #endif
 
-
+  vcisimhelper.p_clk(signal_clk);
+  vcisimhelper.p_resetn(signal_resetn);
+  vcisimhelper.p_vci(signal_vci_simhelper);
+  
   
   vgmn.p_clk(signal_clk);
   vgmn.p_resetn(signal_resetn);
@@ -301,14 +301,31 @@ int _main(int argc, char *argv[])
 #ifdef CONFIG_TIMER
   vgmn.p_to_target[++nb_target](signal_vci_vcitimer);
 #endif
+  vgmn.p_to_target[++nb_target](signal_vci_simhelper);
 
   sc_start(sc_core::sc_time(0, SC_NS));
   signal_resetn = false;
 
   sc_start(sc_core::sc_time(1, SC_NS));
   signal_resetn = true;
-	
+
+
   sc_start();
+
+  printf("End of simulation\n");
+
+  /**********************************/
+  /* Printing simulation statistics */
+  /**********************************/
+  for (int i=0 ;i<ncpu ;i++) {
+    std::cout <<"***********************" <<endl;
+    procs[i]->print_stats();
+  }
+  std::cout <<"***********************" <<endl;
+  vgmn.print_stats();
+
+  std::cout <<"***********************" <<endl;
+  ram.print_stats();
 
   return EXIT_SUCCESS;
 }

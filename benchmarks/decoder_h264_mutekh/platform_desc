@@ -31,6 +31,7 @@ todo = Platform('caba', 'top.cpp',
         # FCB
         Uses('common:plain_file_loader'),
         Uses('caba:vci_framebuffer'),
+        Uses('caba:vci_simhelper'),
 	] + cpus,
 	cell_size = 4,
 	plen_size = 8,

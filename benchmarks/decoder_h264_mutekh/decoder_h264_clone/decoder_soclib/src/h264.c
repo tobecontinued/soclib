@@ -188,8 +188,10 @@ void *slice_process(void *mp)/* reentrant */
          Deblocking filter process
       *************************************/
       //sem_wait_nosignal(&filter_sem);
-      
+
+#if defined(CONFIG_DB_FILTER)
       filter_slice(&sh_slice,&sps,&pps,this,(mode_pred_info *)mp);
+#endif
       
       //sem_post(&filter_sem);
 
