@@ -247,9 +247,6 @@ void ArmIss::op_mrs()
 
 void ArmIss::op_msr()
 {
-    if ( m_opcode.ms.whole_psr && m_opcode.ms.i )
-        return op_ill();
-
     if ( m_opcode.ms.p && r_cpsr.mode == MOD_PSR_USER32 )
         return op_ill();
 
