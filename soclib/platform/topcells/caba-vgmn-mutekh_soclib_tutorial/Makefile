@@ -27,6 +27,7 @@ $(KERNEL): mutekh
 	$(MAKE) \
 	   -f $(MUTEKH_DIR)/Makefile \
 	   CONF=$(APP)/$(CONFIG) \
+	   CONF_DIR=$(shell pwd)/mutekh/$(CPU) \
 	   BUILD_DIR=$(shell pwd)/mutekh \
 	   SRC_DIR=$(MUTEKH_DIR) -j 3 \
 	   BUILD=$(BUILD)
@@ -41,9 +42,15 @@ doc: mutekh
 mutekh:
 	mkdir -p $@
 
-.PHONY: $(KERNEL) cpu_type.h
+.PHONY: $(KERNEL) cpu_type.h FORCE
+
+FORCE:
 
 include $(SOCLIB)/soclib/platform/topcells/all.mk
 
-block0.iso: iso_contents
+block0.iso: iso_contents FORCE
 	mkisofs -f -R -V volname -o $@ $<
+
+iso_contents: FORCE
+#	$(MAKE) -C embedded
+#	cp embedded/mutekh/kernel-soclib-$(CPU).out $@/kernel

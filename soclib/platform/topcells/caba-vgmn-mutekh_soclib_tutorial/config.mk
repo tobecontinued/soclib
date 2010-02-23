@@ -16,7 +16,7 @@ APP=$(MUTEKH_DIR)/examples/hello
 # configuration file. This variable is the name of this very file.
 CONFIG=config
 
-# Then you may choose to build for mips, arm or ppc.
+# Then you may choose to build for mips32el, arm or ppc.
 CPU=arm
 
 # We'll assume your configuration file is conditional like explained
@@ -25,7 +25,7 @@ CPU=arm
 # Standard configuration files provided in examples expect a ARCH-CPU
 # couple, plus a platform name (to compile hardware layout definition
 # in the kernel)
-BUILD=soclib-$(CPU):pf_soclib_tutorial
+BUILD=soclib-$(CPU):pf-tutorial
 
 # Now we can define the expected kernel file
 KERNEL=mutekh/kernel-soclib-$(CPU).out

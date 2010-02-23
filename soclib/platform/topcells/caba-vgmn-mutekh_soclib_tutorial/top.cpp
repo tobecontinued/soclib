@@ -28,7 +28,7 @@
 
 
 
-#if defined(CPU_mips)
+#if defined(CPU_mips32el) || defined(CPU_mips)
 #   include "mips32.h"
 #   warning Using a Mips32
     typedef soclib::common::Mips32ElIss iss_t;
@@ -92,7 +92,7 @@ int _main(int argc, char *argv[])
 	maptabp.add(Segment("boot",  0xffffff80, 0x00000080, IntTab(0), true));
 #elif defined(CPU_arm)
 	maptabp.add(Segment("boot",  0x00000000, 0x00000100, IntTab(0), true));
-#elif defined(CPU_mips)
+#elif defined(CPU_mips) || defined(CPU_mips32el)
 	maptabp.add(Segment("boot",  0xbfc00000, 0x00001000, IntTab(0), true));
 #endif
 
