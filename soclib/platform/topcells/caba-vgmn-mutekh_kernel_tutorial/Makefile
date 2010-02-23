@@ -8,25 +8,13 @@ SIMULATOR_BINARY=system.x
 ARCH=mips32el
 export SOCLIB
 
-help:
-	@echo available targets are:
-	@echo "  all: build mutek kernel and simulator"
-	@echo "  $(SIMULATOR_BINARY): build simulator only"
+all: $(SIMULATOR_BINARY) block0.iso
 
-all: $(SIMULATOR_BINARY) $(KERNEL)
+block0.iso:
+	touch $@
 
 CONFIG=config_soclib_mipsel
 APP=$(MUTEKH_DIR)/examples/hello
-
-$(KERNEL): mutekh
-	$(MAKE) \
-	   -f $(MUTEKH_DIR)/Makefile \
-	   CONF=$(APP)/$(CONFIG) \
-	   BUILD_DIR=$(shell pwd)/mutekh \
-	   SRC_DIR=$(MUTEKH_DIR) -j 3
-
-mutekh:
-	mkdir -p $@
 
 .PHONY: $(KERNEL)
 

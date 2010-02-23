@@ -26,6 +26,7 @@ use =  [
 	Uses('caba:vci_heterogeneous_rom'),
 	Uses('caba:vci_multi_tty'),
 	Uses('caba:vci_xicu'),
+	Uses('caba:vci_block_device'),
 	Uses('caba:vci_vgmn'),
         Uses('common:elf_file_loader'),
         ]

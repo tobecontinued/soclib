@@ -28,6 +28,7 @@
 #include "vci_locks.h"
 #include "vci_xicu.h"
 #include "vci_vgmn.h"
+#include "vci_block_device.h"
 
 using namespace soclib;
 using common::IntTab;
@@ -173,16 +174,17 @@ int _main(int argc, char **argv)
 
   // Mapping table
 
-  maptab.add(Segment("resetarm",  0x00000000, 0x0400, IntTab(1), true));
-  maptab.add(Segment("resetmips", 0xbfc00000, 0x2000, IntTab(1), true));
+  maptab.add(Segment("resetarm",  0x00000000, 0x0080, IntTab(1), true));
+  maptab.add(Segment("resetmips", 0xbfc00000, 0x1000, IntTab(1), true));
   maptab.add(Segment("resetppc",  0xffffff80, 0x0080, IntTab(1), true));
 
-  maptab.add(Segment("text" ,     0x60100000, 0x00100000, IntTab(0), true));
-  maptab.add(Segment("rodata" ,   0x61100000, 0x01000000, IntTab(1), true));
-  maptab.add(Segment("data",      0x71600000, 0x00100000, IntTab(2), false));
+  maptab.add(Segment("text" ,     0x60000000, 0x00100000, IntTab(0), true));
+  maptab.add(Segment("rodata" ,   0x80000000, 0x01000000, IntTab(1), true));
+  maptab.add(Segment("data",      0x7f000000, 0x01000000, IntTab(2), false));
 
-  maptab.add(Segment("tty"  ,     0x90600000, 0x00000010, IntTab(3), false));
-  maptab.add(Segment("xicu",      0x20600000, 0x00001000, IntTab(4), false));
+  maptab.add(Segment("tty"  ,     0xd0200000, 0x00000010, IntTab(3), false));
+  maptab.add(Segment("xicu",      0xd2200000, 0x00001000, IntTab(4), false));
+  maptab.add(Segment("bdev0",     0xd1200000, 0x00000020, IntTab(5), false));
 
   if ( (argc < 2) || ((argc % 2) == 0) )
     {
@@ -229,26 +231,27 @@ int _main(int argc, char **argv)
       }
     }
 
-  const size_t xicu_n_irq = 1;
+  const size_t xicu_n_irq = 2;
 
   caba::VciHeterogeneousRom<vci_param> vcihetrom("vcihetrom",    IntTab(0), maptab);
   for ( size_t i = 0; i < cpus.size(); ++i )
     vcihetrom.add_srcid(*cpus[i]->text_ldr, IntTab(i));
 
-  caba::VciRam<vci_param> vcirom                ("vcirom",       IntTab(1), maptab, data_ldr);
+  caba::VciRam<vci_param> vcirom                ("vcirom", IntTab(1), maptab, data_ldr);
   caba::VciRam<vci_param> vcimultiram           ("vcimultiram", IntTab(2), maptab);
 
-  caba::VciMultiTty<vci_param> vcitty           ("vcitty",       IntTab(3), maptab, "vcitty", NULL);
-  caba::VciXicu<vci_param> vcixicu                ("vcixicu",       maptab, IntTab(4), cpus.size(), xicu_n_irq, cpus.size(), cpus.size());
+  caba::VciMultiTty<vci_param> vcitty           ("vcitty", IntTab(3), maptab, "vcitty", NULL);
+  caba::VciXicu<vci_param> vcixicu              ("vcixicu", maptab, IntTab(4), cpus.size(), xicu_n_irq, cpus.size(), cpus.size());
+  caba::VciBlockDevice<vci_param> vcibd0        ("vcibd", maptab, IntTab(cpus.size()), IntTab(5), "block0.iso", 2048);
 
-  caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size(), 5, 2, 8);
+  caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size() + 1, 6, 2, 8);
 
   // Signals
 
   sc_core::sc_clock signal_clk("signal_clk");
   sc_core::sc_signal<bool> signal_resetn("signal_resetn");
 
-  caba::VciSignals<vci_param> signal_vci_m[cpus.size()];
+  caba::VciSignals<vci_param> signal_vci_m[cpus.size() + 1];
 
   caba::VciSignals<vci_param> signal_vci_xicu("signal_vci_xicu");
   caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
@@ -258,12 +261,18 @@ int _main(int argc, char **argv)
 
   sc_core::sc_signal<bool> signal_xicu_irq[xicu_n_irq];
 
-  //	Net-List
-  for ( size_t i = 0; i < cpus.size(); ++i ) {
+  caba::VciSignals<vci_param> signal_vci_bdi;
+  caba::VciSignals<vci_param> signal_vci_bdt;
+
+  size_t i;
+  // cpus
+  for ( i = 0; i < cpus.size(); ++i ) {
     cpus[i]->connect(cpus[i], signal_clk, signal_resetn, signal_vci_m[i]);
     vgmn.p_to_initiator[i](signal_vci_m[i]);
     vcixicu.p_irq[i](cpus[i]->irq_sig[0]);
   }
+  // blk dev
+  vgmn.p_to_initiator[i](signal_vci_bdi);
 
   vcimultiram.p_clk(signal_clk);
   vcihetrom.p_clk(signal_clk);
@@ -289,6 +298,12 @@ int _main(int argc, char **argv)
   vcitty.p_vci(signal_vci_tty);
   vcitty.p_irq[0](signal_xicu_irq[0]);
 
+  vcibd0.p_clk(signal_clk);
+  vcibd0.p_resetn(signal_resetn);
+  vcibd0.p_irq(signal_xicu_irq[1]);
+  vcibd0.p_vci_target(signal_vci_bdt);
+  vcibd0.p_vci_initiator(signal_vci_bdi);
+
   vgmn.p_clk(signal_clk);
   vgmn.p_resetn(signal_resetn);
 
@@ -297,6 +312,7 @@ int _main(int argc, char **argv)
   vgmn.p_to_target[2](signal_vci_vcimultiram);
   vgmn.p_to_target[3](signal_vci_tty);
   vgmn.p_to_target[4](signal_vci_xicu);
+  vgmn.p_to_target[5](signal_vci_bdt);
 
   sc_core::sc_start(sc_core::sc_time(0, sc_core::SC_NS));
   signal_resetn = false;
