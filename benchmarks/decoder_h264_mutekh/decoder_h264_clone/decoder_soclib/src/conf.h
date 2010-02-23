@@ -1,1 +1,1 @@
-/home/t0043357/sources/soclib/tools/tmp/soclib/benchmarks/decoder_h264_mutekh/decoder_h264_clone/decoder_soclib/soft_config/conf_6proc_cif.h
+/home/t0043357/sources/soclib/tools/tmp/soclib/benchmarks/decoder_h264_mutekh/decoder_h264_clone/decoder_soclib/soft_config/conf_3proc_qcif.h

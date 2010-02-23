@@ -46,7 +46,9 @@
 #include "../common/src/yuv_write.h"
 #include "../common/src/residual.h"
 #include "../common_soclib/src/vfs_file.h"
+#include "filter.h"
 
+#include "cpu_type.h"
 
 /****************************************************************************
   Non static functions

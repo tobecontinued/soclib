@@ -167,9 +167,9 @@ int _main(int argc, char *argv[])
   sc_clock	  signal_clk("clk");
   sc_signal<bool> signal_resetn("resetn");
 
-  sc_signal<bool> signal_proc_it[ncpu][iss_t::n_irq]; 
+  sc_signal<bool> signal_proc_it[NCPU][iss_t::n_irq]; 
    
-  soclib::caba::VciSignals<vci_param> signal_vci_proc[ncpu];
+  soclib::caba::VciSignals<vci_param> signal_vci_proc[NCPU];
 
   soclib::caba::VciSignals<vci_param> signal_vci_tty("signal_vci_tty");
   soclib::caba::VciSignals<vci_param> signal_vci_xicu("signal_vci_xicu");
@@ -188,18 +188,18 @@ int _main(int argc, char *argv[])
      Components
   *************************************/
   nb_target = 0;
-  soclib::caba::VciXcacheWrapper<vci_param, complete_iss_t > *procs[ncpu];
-  for ( size_t i = 0; i<ncpu; ++i ) {
+  soclib::caba::VciXcacheWrapper<vci_param, complete_iss_t > *procs[NCPU];
+  for ( size_t i = 0; i<NCPU; ++i ) {
     std::ostringstream o;
     o << "proc" << i;
     procs[i] = new soclib::caba::VciXcacheWrapper<vci_param, complete_iss_t >
-      (o.str().c_str(), i, maptabp, IntTab(i),4,64,cache_line_size, 4,64,cache_line_size);
+      (o.str().c_str(), i, maptabp, IntTab(i),4,64,CACHE_LINE_SIZE, 4,64,CACHE_LINE_SIZE);
   }
 
   soclib::caba::VciRom<vci_param> rom("rom", IntTab(nb_target), maptabp, loader);
   soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(++nb_target), maptabp, "vcitty0", NULL);
   soclib::caba::VciRam<vci_param> ram("ram", IntTab(++nb_target), maptabp, loader);
-  soclib::caba::VciXicu<vci_param> vciicu("vciicu", maptabp,IntTab(++nb_target), ncpu, xicu_n_irq, ncpu, ncpu);
+  soclib::caba::VciXicu<vci_param> vciicu("vciicu", maptabp,IntTab(++nb_target), NCPU, xicu_n_irq, NCPU, NCPU);
   soclib::caba::VciRam<vci_param> vciramdisk("vciramdisk", IntTab(++nb_target), maptabp, loader);
 
 #ifdef CONFIG_FRAMEBUFFER
@@ -218,7 +218,7 @@ int _main(int argc, char *argv[])
 #endif
   soclib::caba::VciSimhelper<vci_param> vcisimhelper("vcisimhelper", IntTab(++nb_target), maptabp);
 
-  soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, ncpu, ++nb_target, 2, 8);
+  soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, NCPU, ++nb_target, 2, 8);
 
 
 
@@ -227,7 +227,7 @@ int _main(int argc, char *argv[])
   *************************************/
   nb_target = 0;
 
-  for ( size_t i = 0; i<ncpu; ++i ) {
+  for ( size_t i = 0; i<NCPU; ++i ) {
     for ( size_t irq = 0; irq < iss_t::n_irq; ++irq )
       procs[i]->p_irq[irq](signal_proc_it[i][irq]); 
     procs[i]->p_clk(signal_clk);  
@@ -250,7 +250,7 @@ int _main(int argc, char *argv[])
   for ( size_t i = 0; i<xicu_n_irq; ++i )
     vciicu.p_hwi[i](signal_xicu_irq[i]);
   // Output IRQs to processor
-  for ( size_t i = 0; i<ncpu; ++i )
+  for ( size_t i = 0; i<NCPU; ++i )
     vciicu.p_irq[i](signal_proc_it[i][0]);
 
   vcitty.p_clk(signal_clk);
@@ -287,7 +287,7 @@ int _main(int argc, char *argv[])
   vgmn.p_clk(signal_clk);
   vgmn.p_resetn(signal_resetn);
 
-  for ( size_t i = 0; i<ncpu; ++i )
+  for ( size_t i = 0; i<NCPU; ++i )
     vgmn.p_to_initiator[i](signal_vci_proc[i]);
 
   vgmn.p_to_target[nb_target](signal_vci_rom);
@@ -317,7 +317,7 @@ int _main(int argc, char *argv[])
   /**********************************/
   /* Printing simulation statistics */
   /**********************************/
-  for (int i=0 ;i<ncpu ;i++) {
+  for (int i=0 ;i<NCPU ;i++) {
     std::cout <<"***********************" <<endl;
     procs[i]->print_stats();
   }

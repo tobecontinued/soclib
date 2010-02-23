@@ -72,8 +72,8 @@ int32_t app_start(int32_t argc, char *argv[])
 ****************************************************************************/
 void * main_process(void *arg)
 {
-  int err = 0;
-  void * ret = NULL;
+  //int err = 0;
+  //void * ret = NULL;
   
   /* Open files, configure the system and reads the headers
      of the .264 sequence */

@@ -10,7 +10,7 @@ SIMULATOR_BINARY=platform_h264.x
 ARCH=mips32el
 export SOCLIB
 
-all: $(KERNEL) $(SIMULATOR_BINARY) block0.iso
+all: $(SIMULATOR_BINARY) $(KERNEL) block0.iso
 
 help:
 	@echo "You may either build:"
@@ -29,8 +29,8 @@ cpu_type.h:
 	if [ $(TIMER) = "YES" ] ; then echo "#define CONFIG_TIMER" >> $@ ; fi
 	if [ $(FRAMEBUFFER) = "YES" ] ; then echo "#define CONFIG_FRAMEBUFFER" >> $@ ; fi
 	if [ $(DBF) = "YES" ] ; then echo "#define CONFIG_DB_FILTER" >> $@ ; fi
-	echo "const size_t ncpu = $(NB_PROC);" >> $@
-	echo "const size_t cache_line_size = $(CACHE_LINE_SIZE);" >> $@
+	echo "#define NCPU $(NB_PROC)" >> $@
+	echo "#define CACHE_LINE_SIZE $(CACHE_LINE_SIZE)" >> $@
 	echo "#endif" >> $@
 
 mutekh:
