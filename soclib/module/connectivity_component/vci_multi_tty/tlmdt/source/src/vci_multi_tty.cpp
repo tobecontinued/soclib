@@ -121,20 +121,15 @@ tmpl(void)::init(const std::vector<std::string> &names){
   m_cpt_read  = 0;
   m_cpt_write = 0;
 
-  SC_THREAD(behavior);
-
 }
 
-tmpl(void)::behavior()
+tmpl(void)::verify_interruptions()
 {
-  while (1) {
-    for ( size_t i=0; i<m_term.size(); ++i ) {
-      bool val = m_term[i]->hasData();
-      if ( val != m_irq[i] ) {
-	send_interruption(i,val);
-      }
+  for ( size_t i=0; i<m_term.size(); ++i ) {
+    bool val = m_term[i]->hasData();
+    if ( val != m_irq[i] ) {
+      send_interruption(i,val);
     }
-    wait(sc_core::SC_ZERO_TIME);
   }
 }
 
@@ -194,6 +189,8 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     //update local time
     if(time > m_pdes_local_time->get())
       m_pdes_local_time->set(time);
+
+    verify_interruptions();
 
 #if SOCLIB_MODULE_DEBUG
     std::cout << "[" << name() << "] Receive NULL MESSAGE time = "  << time.value() << std::endl;
