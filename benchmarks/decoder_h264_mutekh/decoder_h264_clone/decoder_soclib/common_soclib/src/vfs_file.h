@@ -23,6 +23,7 @@
 
 #include <drivers/fs/fat/fat.h>
 #include <drivers/fs/ramfs/ramfs.h>
+#include <drivers/fs/iso9660/iso9660.h>
 #include <vfs/vfs.h>
 #include "soclib_addresses.h"
 

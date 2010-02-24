@@ -40,6 +40,8 @@
 #include <stdlib.h>
 #include <semaphore.h>
 
+#include <mutek/printk.h>
+
 #include "slice.h"
 #include "timer.h"
 

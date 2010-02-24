@@ -67,7 +67,7 @@
 /****************************************************************************
   Global variables and structures
  ****************************************************************************/
-#if defined(CPU_mips)
+#if defined(CPU_mips32el)
 #   include "mips32.h"
 #   warning Using a Mips32
 typedef soclib::common::Mips32ElIss iss_t;
@@ -127,14 +127,20 @@ int _main(int argc, char *argv[])
   /*************************************
      Mapping Table
   *************************************/
-  //soclib::common::Loader loader(kernel,"yuv_test.bin@0x68200000:D");
   soclib::common::Loader loader(kernel,"block0.iso@0x68200000:D");
   soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0xf0000000);
   
-  maptabp.add(Segment("rom",     SEG_ROM_ADDR,  SEG_ROM_SIZE,  IntTab(nb_target), true));
-#if !defined(CPU_mips)
-  maptabp.add(Segment("boot",    SEG_BOOT_ADDR, SEG_BOOT_SIZE, IntTab(nb_target), true));
+#if defined(CPU_ppc)
+  maptabp.add(Segment("boot",  SEG_BOOT_ADDR, SEG_BOOT_SIZE, IntTab(0), true));
+#elif defined(CPU_arm)
+  maptabp.add(Segment("boot",  SEG_BOOT_ADDR, SEG_BOOT_SIZE, IntTab(0), true));
+#elif defined(CPU_mips32el)
+  maptabp.add(Segment("boot",  SEG_BOOT_ADDR, SEG_BOOT_SIZE, IntTab(0), true));
 #endif
+  
+  maptabp.add(Segment("text",  SEG_ROM_ADDR, SEG_ROM_SIZE, IntTab(0), true));
+  //maptabp.add(Segment("rodata",SEG_RODATA_ADDR, SEG_RODATA_SIZE, IntTab(0), true));
+
   maptabp.add(Segment("tty",     SEG_TTY_ADDR,  SEG_TTY_SIZE,  IntTab(++nb_target), false));
   maptabp.add(Segment("mem",     SEG_TEXT_ADDR, SEG_TEXT_SIZE, IntTab(++nb_target), false));
   maptabp.add(Segment("xicu",    SEG_ICU_ADDR,  SEG_ICU_SIZE,  IntTab(++nb_target), false));
@@ -317,15 +323,15 @@ int _main(int argc, char *argv[])
   /**********************************/
   /* Printing simulation statistics */
   /**********************************/
-  for (int i=0 ;i<NCPU ;i++) {
-    std::cout <<"***********************" <<endl;
-    procs[i]->print_stats();
-  }
-  std::cout <<"***********************" <<endl;
-  vgmn.print_stats();
+  // for (int i=0 ;i<NCPU ;i++) {
+//     std::cout <<"***********************" <<endl;
+//     procs[i]->print_stats();
+//   }
+//   std::cout <<"***********************" <<endl;
+//   vgmn.print_stats();
 
-  std::cout <<"***********************" <<endl;
-  ram.print_stats();
+//   std::cout <<"***********************" <<endl;
+//   ram.print_stats();
 
   return EXIT_SUCCESS;
 }

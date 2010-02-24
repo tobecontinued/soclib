@@ -13,7 +13,7 @@
 APP_DIR=$(shell pwd)/decoder_h264_clone/decoder_soclib
 
 # Then you may choose to build for mips, arm or ppc.
-CPU=mips
+CPU=mips32el
 FORMAT=qcif
 NB_PROC=3
 CACHE_LINE_SIZE=16
@@ -35,7 +35,7 @@ CONFIG=config
 # Standard configuration files provided in examples expect a ARCH-CPU
 # couple, plus a platform name (to compile hardware layout definition
 # in the kernel)
-BUILD=soclib-$(CPU):pf_soclib_eval
+BUILD=soclib-$(CPU):pf_decoder_h264
 
 # Now we can define the expected kernel file
 KERNEL=mutekh/kernel-soclib-$(CPU).out

@@ -27,12 +27,9 @@
 *****************************************************************************/
 
 // CPU Specific segments
-#define SEG_ROM_ADDR 0xbfc00000
-#define SEG_ROM_SIZE 0x00080000
-
-#ifdef CPU_mips
+#ifdef CPU_mips32el
   #define SEG_BOOT_ADDR	0xbfc00000
-  #define SEG_BOOT_SIZE	0x00000080
+  #define SEG_BOOT_SIZE	0x00001000
 #endif
 
 #ifdef CPU_arm
@@ -44,6 +41,12 @@
   #define SEG_BOOT_ADDR	0xffffff80
   #define SEG_BOOT_SIZE	0x00000080
 #endif
+
+#define SEG_ROM_ADDR    0x50000000
+#define SEG_ROM_SIZE    0x00100000
+
+#define SEG_RODATA_ADDR 0x80000000
+#define SEG_RODATA_SIZE 0x01000000
 
 // Uncached segments
 #define SEG_TTY_ADDR	0xd0200000

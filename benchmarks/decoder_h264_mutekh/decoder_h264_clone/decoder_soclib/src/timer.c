@@ -148,8 +148,8 @@ uint32_t get_timer_value()
 	return (uint32_t) timer_soclib_getvalue(&timer_dev, 0);
 #else
  */
-  xicu_timer_getvalue(timerms_dev,0);
-  //return -1;
+  //xicu_timer_getvalue(timerms_dev,0);
+  return -1;
   //#endif
 }
 

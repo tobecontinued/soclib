@@ -88,10 +88,10 @@ void decode_slice_data(slice_header * sh,
   int32_t ChromaDCLevel[2][4];
   int32_t ChromaACLevel[2][4][16];
 
+#if (defined(MB_DISPLAY) && !defined(CONFIG_ARCH_EMU))
   uint32_t offset = 0;
   uint32_t block_line = 0;
   uint32_t luma_block_size = 16;
-#if (defined(MB_DISPLAY) && !defined(CONFIG_ARCH_EMU))
   uint32_t chroma_block_size = 8;
 #endif
 

@@ -38,8 +38,3 @@
 
 %include ../../soclib_conf_files/build_options.conf
 %include ../../soclib_conf_files/platforms.conf
-
-
-%section default		# default build section name
-
-  %error Missing build configuration section names, please specify BUILD=xxx
