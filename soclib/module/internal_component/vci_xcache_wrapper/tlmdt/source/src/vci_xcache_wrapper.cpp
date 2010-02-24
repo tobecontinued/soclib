@@ -65,23 +65,27 @@ tmpl (/**/)::VciXcacheWrapper
  size_t dcache_sets,
  size_t dcache_words,
  sc_core::sc_time time_quantum)
-  : sc_module(name),
-    m_id(mt.indexForId(index)),
-    m_iss(this->name(), cpuid),
-    m_irq(0),
-    m_icache_ways(icache_ways),
-    m_icache_words(icache_words),
-    m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
-    m_dcache_ways(dcache_ways),
-    m_dcache_words(dcache_words),
-    m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
-    m_wbuf("wbuf", dcache_words),
-    m_icache("icache", icache_ways, icache_sets, icache_words),
-    m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
-    m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci("socket")   // vci initiator socket name
+  : sc_module(name)
+	   , m_id(mt.indexForId(index))
+	   , m_iss(this->name(), cpuid)
+	   , m_irq(0)
+	   , m_pending_irqs()
+	   , m_simulation_time(std::numeric_limits<size_t>::max() * UNIT_TIME)
+	   , m_icache_ways(icache_ways)
+	   , m_icache_sets(icache_sets)
+	   , m_icache_words(icache_words)
+	   , m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2))
+	   , m_dcache_ways(dcache_ways)
+	   , m_dcache_sets(dcache_sets)
+	   , m_dcache_words(dcache_words)
+	   , m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2))
+	   , m_wbuf("wbuf", dcache_words)
+	   , m_icache("icache", icache_ways, icache_sets, icache_words)
+	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
+	   , m_cacheability_table(mt.getCacheabilityTable())
+	   , p_vci("socket")   // vci initiator socket name
 {
-  init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, (size_t)time_quantum.value(), std::numeric_limits<size_t>::max());
+  init( (size_t)time_quantum.value());
 
 }
 
@@ -97,23 +101,27 @@ tmpl (/**/)::VciXcacheWrapper
  size_t dcache_ways,
  size_t dcache_sets,
  size_t dcache_words)
-  : sc_module(name),
-    m_id(mt.indexForId(index)),
-    m_iss(this->name(), cpuid),
-    m_irq(0),
-    m_icache_ways(icache_ways),
-    m_icache_words(icache_words),
-    m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
-    m_dcache_ways(dcache_ways),
-    m_dcache_words(dcache_words),
-    m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
-    m_wbuf("wbuf", dcache_words),
-    m_icache("icache", icache_ways, icache_sets, icache_words),
-    m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
-    m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci("socket")   // vci initiator socket name
+  : sc_module(name)
+	   , m_id(mt.indexForId(index))
+	   , m_iss(this->name(), cpuid)
+	   , m_irq(0)
+	   , m_pending_irqs()
+	   , m_simulation_time(std::numeric_limits<size_t>::max() * UNIT_TIME)
+	   , m_icache_ways(icache_ways)
+	   , m_icache_sets(icache_sets)
+	   , m_icache_words(icache_words)
+	   , m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2))
+	   , m_dcache_ways(dcache_ways)
+ 	   , m_dcache_sets(dcache_sets)
+	   , m_dcache_words(dcache_words)
+	   , m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2))
+	   , m_wbuf("wbuf", dcache_words)
+	   , m_icache("icache", icache_ways, icache_sets, icache_words)
+	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
+	   , m_cacheability_table(mt.getCacheabilityTable())
+	   , p_vci("socket")   // vci initiator socket name
 {
-  init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, 100, std::numeric_limits<size_t>::max());
+  init( 100 );
 }
 
 tmpl (/**/)::VciXcacheWrapper
@@ -129,23 +137,27 @@ tmpl (/**/)::VciXcacheWrapper
  size_t dcache_sets,
  size_t dcache_words,
  size_t time_quantum)
-  : sc_module(name),
-    m_id(mt.indexForId(index)),
-    m_iss(this->name(), cpuid),
-    m_irq(0),
-    m_icache_ways(icache_ways),
-    m_icache_words(icache_words),
-    m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
-    m_dcache_ways(dcache_ways),
-    m_dcache_words(dcache_words),
-    m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
-    m_wbuf("wbuf", dcache_words),
-    m_icache("icache", icache_ways, icache_sets, icache_words),
-    m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
-    m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci("socket")   // vci initiator socket name
+  : sc_module(name)
+	   , m_id(mt.indexForId(index))
+	   , m_iss(this->name(), cpuid)
+	   , m_irq(0)
+	   , m_pending_irqs()
+	   , m_simulation_time(std::numeric_limits<size_t>::max() * UNIT_TIME)
+	   , m_icache_ways(icache_ways)
+	   , m_icache_sets(icache_sets)
+	   , m_icache_words(icache_words)
+	   , m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2))
+	   , m_dcache_ways(dcache_ways)
+	   , m_dcache_sets(dcache_sets)
+	   , m_dcache_words(dcache_words)
+	   , m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2))
+	   , m_wbuf("wbuf", dcache_words)
+	   , m_icache("icache", icache_ways, icache_sets, icache_words)
+	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
+	   , m_cacheability_table(mt.getCacheabilityTable())
+	   , p_vci("socket")   // vci initiator socket name
 {
-  init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, time_quantum, std::numeric_limits<size_t>::max());
+  init( time_quantum );
 }
 
 tmpl (/**/)::VciXcacheWrapper
@@ -162,36 +174,34 @@ tmpl (/**/)::VciXcacheWrapper
  size_t dcache_words,
  size_t time_quantum,
  size_t simulation_time)
-  : sc_module(name),
-    m_id(mt.indexForId(index)),
-    m_iss(this->name(), cpuid),
-    m_irq(0),
-    m_icache_ways(icache_ways),
-    m_icache_words(icache_words),
-    m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2)),
-    m_dcache_ways(dcache_ways),
-    m_dcache_words(dcache_words),
-    m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2)),
-    m_wbuf("wbuf", dcache_words),
-    m_icache("icache", icache_ways, icache_sets, icache_words),
-    m_dcache("dcache", dcache_ways, dcache_sets, dcache_words),
-    m_cacheability_table(mt.getCacheabilityTable()),
-    p_vci("socket")   // vci initiator socket name
+	    : sc_module(name)
+	   , m_id(mt.indexForId(index))
+	   , m_iss(this->name(), cpuid)
+	   , m_irq(0)
+	   , m_pending_irqs()
+	   , m_simulation_time(simulation_time * UNIT_TIME)
+	   , m_icache_ways(icache_ways)
+	   , m_icache_sets(icache_sets)
+	   , m_icache_words(icache_words)
+	   , m_icache_yzmask((~0)<<(uint32_log2(icache_words) + 2))
+	   , m_dcache_ways(dcache_ways)
+	   , m_dcache_sets(dcache_sets)
+	   , m_dcache_words(dcache_words)
+	   , m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2))
+	   , m_wbuf("wbuf", dcache_words)
+	   , m_icache("icache", icache_ways, icache_sets, icache_words)
+	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
+	   , m_cacheability_table(mt.getCacheabilityTable())
+	   , p_vci("socket")   // vci initiator socket name
 {
-  init( icache_ways, icache_sets, icache_words, dcache_ways, dcache_sets, dcache_words, time_quantum, simulation_time);
+  init( time_quantum );
 }
 
-tmpl (void)::init
-(
- size_t icache_ways,
- size_t icache_sets,
- size_t icache_words,
- size_t dcache_ways,
- size_t dcache_sets,
- size_t dcache_words,
- size_t time_quantum,
- size_t simulation_time)
+tmpl (void)::init( size_t time_quantum)
 {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " INIT" << std::endl;
+#endif
   // bind initiator
   p_vci(*this);                     
 
@@ -206,17 +216,14 @@ tmpl (void)::init
 
   m_error       = false;
   
-  //m_iss.setICacheInfo( icache_words*sizeof(data_t), icache_ways, icache_sets );
-  //m_iss.setDCacheInfo( dcache_words*sizeof(data_t), dcache_ways, dcache_sets );
-
   typename iss_t::CacheInfo cache_info;
   cache_info.has_mmu = false;
-  cache_info.icache_line_size = icache_words*sizeof(data_t);
-  cache_info.icache_assoc = icache_ways;
-  cache_info.icache_n_lines = icache_sets;
-  cache_info.dcache_line_size = dcache_words*sizeof(data_t);
-  cache_info.dcache_assoc = dcache_ways;
-  cache_info.dcache_n_lines = dcache_sets;
+  cache_info.icache_line_size = m_icache_words*sizeof(data_t);
+  cache_info.icache_assoc = m_icache_ways;
+  cache_info.icache_n_lines = m_icache_sets;
+  cache_info.dcache_line_size = m_dcache_words*sizeof(data_t);
+  cache_info.dcache_assoc = m_dcache_ways;
+  cache_info.dcache_n_lines = m_dcache_sets;
   m_iss.setCacheInfo(cache_info);
 
   m_iss.reset();
@@ -226,9 +233,6 @@ tmpl (void)::init
   m_icache.reset();
   m_dcache.reset();
   
-  //number of cycles of simulation
-  m_simulation_time = simulation_time * UNIT_TIME;
-
   //PDES local time
   m_pdes_local_time = new pdes_local_time(time_quantum * UNIT_TIME);
 
@@ -247,7 +251,59 @@ tmpl (void)::init
   m_activity_payload_ptr = new tlm::tlm_generic_payload();
   m_activity_extension_ptr = new soclib_payload_extension();
 
+  m_nbytes = 0;
+  for(int i = 0; i < MAXIMUM_PACKET_SIZE * vci_param::nbytes; i++){
+    m_byte_enable_ptr[i] = '0';
+    m_data_ptr[i] = '0';
+  }
+  m_error = false;
+
+  // activity counters
+  m_cpt_frz_cycles = 0;
+  m_cpt_total_cycles = 0;
+  
+  m_cpt_read = 0;
+  m_cpt_write = 0;
+  m_cpt_data_miss = 0;
+  m_cpt_ins_miss = 0;
+  m_cpt_unc_read = 0;
+  m_cpt_write_cached = 0;
+  
   SC_THREAD(execLoop);
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " END INIT" << std::endl;
+#endif
+}
+
+////////////////////////
+tmpl(void)::print_cpi()
+////////////////////////
+{
+    std::cout << name() << " CPU " << m_id << " : CPI = "
+              << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl;
+}
+////////////////////////
+tmpl(void)::print_stats()
+////////////////////////
+{
+    float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
+    std::cout << name() << std::endl;
+    std::cout << "- CPI                = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
+    std::cout << "- READ RATE          = " << (float)m_cpt_read/run_cycles << std::endl ;
+    std::cout << "- WRITE RATE         = " << (float)m_cpt_write/run_cycles << std::endl;
+    std::cout << "- UNCACHED READ RATE = " << (float)m_cpt_unc_read/m_cpt_read << std::endl ;
+    std::cout << "- CACHED WRITE RATE  = " << (float)m_cpt_write_cached/m_cpt_write << std::endl ;
+    std::cout << "- IMISS_RATE         = " << (float)m_cpt_ins_miss/run_cycles << std::endl;
+    std::cout << "- DMISS RATE         = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl ;
+//     std::cout << "- INS MISS COST      = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl;
+//     std::cout << "- IMISS TRANSACTION  = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl;
+//     std::cout << "- DMISS COST         = " << (float)m_cost_data_miss_frz/m_cpt_data_miss << std::endl;
+//     std::cout << "- DMISS TRANSACTION  = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl;
+//     std::cout << "- UNC COST           = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl;
+//     std::cout << "- UNC TRANSACTION    = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl;
+//     std::cout << "- WRITE COST         = " << (float)m_cost_write_frz/m_cpt_write << std::endl;
+//     std::cout << "- WRITE TRANSACTION  = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl;
+//     std::cout << "- WRITE LENGTH       = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl;
 }
 
 tmpl (void)::update_time(sc_core::sc_time t)
@@ -259,8 +315,16 @@ tmpl (void)::update_time(sc_core::sc_time t)
 
 tmpl (void)::execLoop ()
 {
-  //while(1) {
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " EXEC LOOP" << std::endl;
+#endif
   while(m_pdes_local_time->get() < m_simulation_time){
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " EXEC LOOP WHILE" << std::endl;
+#endif
+    m_cpt_total_cycles++;
+
     struct iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
     struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     
@@ -281,7 +345,7 @@ tmpl (void)::execLoop ()
     // one which does not accesses external resources.
     // Preventively fetch responses from the cache without side
     // effects before actually trying to know if we can answer without delay.
-    xcacheAccessInternal(ireq, dreq, meanwhile_irsp, meanwhile_drsp);
+    //xcacheAccessInternal(ireq, dreq, meanwhile_irsp, meanwhile_drsp);
     
     // This call is _with_ side effects and gives delay information.
     xcacheAccess(ireq, dreq, irsp, drsp);
@@ -294,7 +358,7 @@ tmpl (void)::execLoop ()
     while ( ! m_pending_irqs.empty() && m_pending_irqs.begin()->first <= m_pdes_local_time->get() ) {
       std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << " Time = " << m_pdes_local_time->get() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << " time = " <<  i->first << std::endl;
+      std::cout << "[" << name() << "] Time = " << m_pdes_local_time->get() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << " time = " <<  i->first << std::endl;
 #endif
       if ( i->second.second )
 	m_irq |= 1<<i->second.first;
@@ -309,6 +373,9 @@ tmpl (void)::execLoop ()
     //if ( del )
     //nc += m_iss.executeNCycles(del, meanwhile_irsp, meanwhile_drsp, m_irq);
     nc += m_iss.executeNCycles(1, irsp, drsp, m_irq);
+
+    if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) )
+        m_cpt_frz_cycles++;
 
     m_pdes_local_time->add(nc * UNIT_TIME);
     
@@ -333,6 +400,7 @@ tmpl (uint32_t)::xcacheAccess
     bool    icache_hit = m_icache.read( ireq.addr, &icache_ins);
 
     if ( !icache_hit ) {
+      m_cpt_ins_miss++;
       bool err = false;
       uint32_t del = fill_cache( m_icache, ireq.addr, err );
       if ( err ) {
@@ -357,9 +425,11 @@ tmpl (uint32_t)::xcacheAccess
 
     switch ( dreq.type ) {
     case iss_t::DATA_READ:
+      m_cpt_read++;
       if ( m_cacheability_table[dreq.addr] ) {
 	dcache_hit = m_dcache.read(dreq.addr, &dcache_rdata);
 	if ( !dcache_hit ) {
+	  m_cpt_data_miss++;
 	  bool err = false;
 	  uint32_t del = fill_cache( m_dcache, dreq.addr, err );
 	  if ( err ) {
@@ -376,11 +446,13 @@ tmpl (uint32_t)::xcacheAccess
 	  drsp.error = false;
 	}
       } else {
+	m_cpt_unc_read++;
 	drsp.valid = true;
 	return ram_read(VCI_READ_COMMAND, dreq.addr, &drsp.rdata, drsp.error );
       }
       break;
     case iss_t::DATA_WRITE: {
+      m_cpt_write++;
       drsp.valid = true;
       uint32_t del = 0;
       // no previous write transaction
@@ -390,6 +462,9 @@ tmpl (uint32_t)::xcacheAccess
  
 	if ( !m_cacheability_table[dreq.addr] ) {
 	  del = ram_cacheable_write( VCI_WRITE_COMMAND, drsp.rdata, drsp.error );
+	}
+	else{
+	  m_cpt_write_cached++;
 	}
       }
       else {
@@ -410,9 +485,13 @@ tmpl (uint32_t)::xcacheAccess
       break;
     }
     case iss_t::DATA_LL:
+      m_cpt_read++;
+      m_cpt_unc_read++;
       drsp.valid = true;
       return ram_read( VCI_LINKED_READ_COMMAND, dreq.addr, &drsp.rdata, drsp.error );
     case iss_t::DATA_SC:
+      m_cpt_read++;
+      m_cpt_unc_read++;
       drsp.valid = true;
       return ram_uncacheable_write(VCI_STORE_COND_COMMAND, dreq.addr, dreq.wdata, 0xf, drsp.rdata, drsp.error );
     case iss_t::XTN_READ:
@@ -732,11 +811,9 @@ tmpl (void)::send_null_message()
   std::cout << name() << " send NULL MESSAGE time = " << m_null_time.value() << std::endl;
 #endif
 
-  //std::cout << name() << " send NULL MESSAGE time = " << m_null_time.value() << std::endl;
   //send a null message
   p_vci->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
   //deschedule the initiator thread
-  //wait(sc_core::SC_ZERO_TIME);
   wait(m_rsp_received);
   //std::cout << name() << " receive time = " << m_pdes_local_time->get().value() << std::endl;
   m_pdes_local_time->reset_sync();

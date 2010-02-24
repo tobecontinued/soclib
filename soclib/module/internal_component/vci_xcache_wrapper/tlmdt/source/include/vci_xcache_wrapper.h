@@ -61,10 +61,12 @@ private:
   sc_core::sc_time        m_simulation_time;
   
   const size_t            m_icache_ways;
+  const size_t            m_icache_sets;
   const size_t            m_icache_words;
   const addr_t            m_icache_yzmask;
 
   const size_t            m_dcache_ways;
+  const size_t            m_dcache_sets;
   const size_t            m_dcache_words;
   const addr_t            m_dcache_yzmask;
  
@@ -98,18 +100,20 @@ private:
   tlm::tlm_phase            m_activity_phase;
   sc_core::sc_time          m_activity_time;
 
+  // Activity counters
+  uint32_t m_cpt_frz_cycles;	          // number of cycles where the cpu is frozen
+  uint32_t m_cpt_total_cycles;	          // total number of cycles
+  uint32_t m_cpt_read;                    // total number of read instructions
+  uint32_t m_cpt_write;                   // total number of write instructions
+  uint32_t m_cpt_data_miss;               // number of read miss
+  uint32_t m_cpt_ins_miss;                // number of instruction miss
+  uint32_t m_cpt_unc_read;                // number of read uncached
+  uint32_t m_cpt_write_cached;            // number of cached write
+
   /////////////////////////////////////////////////////////////////////////////////////
   // Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
-  void init(
-	    size_t icache_ways,
-	    size_t icache_sets,
-	    size_t icache_words,
-	    size_t dcache_ways,
-	    size_t dcache_sets,
-	    size_t dcache_words,
-	    size_t time_quantum,
-	    size_t simulation_time);
+  void init( size_t time_quantum );
 
   uint32_t xcacheAccess(
 			struct iss_t::InstructionRequest ireq,
@@ -240,6 +244,8 @@ public:
 		   size_t time_quantum,
 		   size_t simulation_time);
 
+  void print_cpi();
+  void print_stats();
 };
 
 }}
