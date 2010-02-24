@@ -26,6 +26,8 @@
   the copyright notice.
 *****************************************************************************/
 
+#define CACHABILITY_MASK 0xf0000000
+
 // CPU Specific segments
 #ifdef CPU_mips32el
   #define SEG_BOOT_ADDR	0xbfc00000

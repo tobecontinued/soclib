@@ -128,7 +128,7 @@ int _main(int argc, char *argv[])
      Mapping Table
   *************************************/
   soclib::common::Loader loader(kernel,"block0.iso@0x68200000:D");
-  soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0xf0000000);
+  soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), CACHABILITY_MASK);
   
 #if defined(CPU_ppc)
   maptabp.add(Segment("boot",  SEG_BOOT_ADDR, SEG_BOOT_SIZE, IntTab(0), true));
