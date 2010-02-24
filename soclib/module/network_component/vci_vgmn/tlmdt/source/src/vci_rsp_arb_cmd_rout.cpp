@@ -61,6 +61,10 @@ tmpl(/**/)::VciRspArbCmdRout
   // bind vci target socket
   p_vci_target(*this);                     
 
+  //create payload and extension to a null message
+  m_null_payload_ptr = new tlm::tlm_generic_payload();
+  m_null_extension_ptr = new soclib_payload_extension();
+
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
   std::ostringstream file_name;
   file_name << name() << ".txt";
@@ -85,6 +89,10 @@ tmpl(/**/)::VciRspArbCmdRout
 {
   // bind vci target socket
   p_vci_target(*this);                     
+
+  //create payload and extension to a null message
+  m_null_payload_ptr = new tlm::tlm_generic_payload();
+  m_null_extension_ptr = new soclib_payload_extension();
 
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
   std::ostringstream file_name;
@@ -204,7 +212,23 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 #ifdef SOCLIB_MODULE_DEBUG
       std::cout << "[" << name() << "] POP NULL MESSAGE from = " << from << " time=" << m_time.value() << std::endl;
 #endif
+
+      // set the null message command
+      m_null_extension_ptr->set_null_message();
+      // set the extension to tlm payload
+      m_null_payload_ptr->set_extension(m_null_extension_ptr);
+ 
+      for(unsigned int i = 0; i < m_CmdArbRspRout.size(); i++){
+
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << "[" << name() << "] send NULL MESSAGE target " << i << " time = " << m_time.value() << std::endl;
+#endif
+	m_CmdArbRspRout[i]->put(m_null_payload_ptr,m_time);
+      }
+
       m_CmdArbRspRout[0]->getRspArbCmdRout(from)->p_vci_target->nb_transport_bw(*m_payload_ptr, m_phase, m_time);
+
+
     }
     //if transaction has a valid command then
     //it must be sent to appropriated target and the null messages must be sent to the other targets
@@ -238,15 +262,15 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	  unsigned int dest = m_routing_table[m_payload_ptr->get_address()];
 	  assert( dest >= 0 && dest < m_CmdArbRspRout.size() );
 	  m_time = m_time + m_delay;
-	  
+ 
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
 	  fprintf(myFile,"[%s] POP from %d dest %d pktid = %d time = %d\n", name(), m_extension_ptr->get_src_id(), dest, m_extension_ptr->get_pkt_id(), (int)m_time.value());
 #endif
 #ifdef SOCLIB_MODULE_DEBUG
 	  std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
 #endif
-	  
 	  m_CmdArbRspRout[dest]->put(m_payload_ptr,m_time);
+
 	}
       }
       //if global interconnect
@@ -264,7 +288,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
 #endif
-	    
+
 	m_CmdArbRspRout[dest]->put(m_payload_ptr,m_time);
       }
     }

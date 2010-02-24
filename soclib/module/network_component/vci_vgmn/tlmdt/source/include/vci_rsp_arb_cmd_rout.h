@@ -59,8 +59,8 @@ private:
   bool                                                       m_is_local_crossbar;
 
   //FIELDS OF A NULL MESSAGE
-  //tlm::tlm_generic_payload                                  *m_null_payload_ptr;
-  //soclib_payload_extension                                  *m_null_extension_ptr;
+  tlm::tlm_generic_payload                                  *m_null_payload_ptr;
+  soclib_payload_extension                                  *m_null_extension_ptr;
 
   FILE * myFile;
 
