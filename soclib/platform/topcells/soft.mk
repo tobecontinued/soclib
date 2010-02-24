@@ -55,7 +55,7 @@ MAY_CLEAN=$(shell test -r arch_stamp && (test "$(ARCH)" = "$$(cat /dev/null arch
 default: clean $(SOFT_IMAGE)
 
 $(SOFT_IMAGE): ldscript $(MAY_CLEAN) arch_stamp $(OBJS)
-	$(LD) -q $($(ARCH)_LDFLAGS) -o $@ $(filter %.o,$^) -T $(filter %ldscript,$^) $(LIBGCC)
+	$(LD) -q $($(ARCH)_LDFLAGS) $(ADD_LDFLAGS) -o $@ $(filter %.o,$^) -T $(filter %ldscript,$^) $(LIBGCC)
 
 arch_stamp:
 	echo $(ARCH) > $@

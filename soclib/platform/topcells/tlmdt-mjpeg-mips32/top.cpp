@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstdarg>
 #include <sys/timeb.h>
+#include <limits>
 
 #include "loader.h"           	
 #include "mapping_table.h"
