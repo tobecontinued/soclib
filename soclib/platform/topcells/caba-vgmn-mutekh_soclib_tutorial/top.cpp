@@ -32,7 +32,7 @@
 #   include "mips32.h"
 #   warning Using a Mips32
     typedef soclib::common::Mips32ElIss iss_t;
-    const char *default_kernel = "mutekh/kernel-soclib-mips.out";
+    const char *default_kernel = "mutekh/kernel-soclib-mips32el.out";
 #elif defined(CPU_ppc)
 #   include "ppc405.h"
 #   warning Using a PPC405
@@ -91,7 +91,7 @@ int _main(int argc, char *argv[])
 #if defined(CPU_ppc)
 	maptabp.add(Segment("boot",  0xffffff80, 0x00000080, IntTab(0), true));
 #elif defined(CPU_arm)
-	maptabp.add(Segment("boot",  0x00000000, 0x00000100, IntTab(0), true));
+	maptabp.add(Segment("boot",  0x00000000, 0x00000200, IntTab(0), true));
 #elif defined(CPU_mips) || defined(CPU_mips32el)
 	maptabp.add(Segment("boot",  0xbfc00000, 0x00001000, IntTab(0), true));
 #endif

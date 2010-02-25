@@ -28,6 +28,7 @@ $(KERNEL): mutekh
 	   -f $(MUTEKH_DIR)/Makefile \
 	   CONF=$(APP)/$(CONFIG) \
 	   CONF_DIR=$(shell pwd)/mutekh/$(CPU) \
+	   FINAL_KERNEL_FILE=kernel-soclib-$(CPU).out \
 	   BUILD_DIR=$(shell pwd)/mutekh \
 	   SRC_DIR=$(MUTEKH_DIR) -j 3 \
 	   BUILD=$(BUILD)
