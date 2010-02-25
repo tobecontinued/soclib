@@ -3319,9 +3319,9 @@ namespace soclib { namespace caba {
     p_vci_ini.cmd     = vci_param::CMD_WRITE;
     p_vci_ini.srcid   = m_srcid_ini;
     p_vci_ini.pktid   = 0;
-    p_vci_ini.cons    = false;
+    p_vci_ini.cons    = true;
     p_vci_ini.wrap    = false;
-    p_vci_ini.contig  = true;
+    p_vci_ini.contig  = false;
     p_vci_ini.clen    = 0;
     p_vci_ini.cfixed  = false;
 
