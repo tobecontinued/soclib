@@ -26,8 +26,8 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
-#ifndef TARGET_VCI_TRANSACTOR_BUFFER_H
-#define TARGET_VCI_TRANSACTOR_BUFFER_H
+#ifndef VCI_TARGET_TRANSACTOR_BUFFER_H
+#define VCI_TARGET_TRANSACTOR_BUFFER_H
 
 #include <tlmdt>	             // TLM-DT headers
 
@@ -35,7 +35,7 @@
 
 namespace soclib { namespace tlmdt {
 
-class target_vci_transactor_buffer
+class vci_target_transactor_buffer
 {
 private:
 
@@ -60,11 +60,11 @@ private:
 
 public:
 
-  target_vci_transactor_buffer(int n);
+  vci_target_transactor_buffer(int n);
 
-  target_vci_transactor_buffer();
+  vci_target_transactor_buffer();
 
-  ~target_vci_transactor_buffer();
+  ~vci_target_transactor_buffer();
 
   void init();
 

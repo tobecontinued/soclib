@@ -27,11 +27,11 @@
  */
 
 #include <systemc>
-#include "target_vci_transactor_buffer.h"
+#include "vci_target_transactor_buffer.h"
 
 namespace soclib { namespace tlmdt {
 
-target_vci_transactor_buffer::target_vci_transactor_buffer()
+vci_target_transactor_buffer::vci_target_transactor_buffer()
   : m_nentries(TAM_BUFFER)
   , m_header_ptr(0)
   , m_cmd_ptr(0)
@@ -40,7 +40,7 @@ target_vci_transactor_buffer::target_vci_transactor_buffer()
   init();
 }
 
-target_vci_transactor_buffer::target_vci_transactor_buffer(int n)
+vci_target_transactor_buffer::vci_target_transactor_buffer(int n)
   : m_nentries(n)
   , m_header_ptr(0)
   , m_cmd_ptr(0)
@@ -49,11 +49,11 @@ target_vci_transactor_buffer::target_vci_transactor_buffer(int n)
   init();
 }
 
-target_vci_transactor_buffer::~target_vci_transactor_buffer()
+vci_target_transactor_buffer::~vci_target_transactor_buffer()
 {
 }
 
-void target_vci_transactor_buffer::init()
+void vci_target_transactor_buffer::init()
 {
   m_table = new transaction_buffer[m_nentries];
   for(int i=0; i<m_nentries; i++){
@@ -61,7 +61,7 @@ void target_vci_transactor_buffer::init()
   }
 }
 
-bool target_vci_transactor_buffer::push
+bool vci_target_transactor_buffer::push
 ( tlm::tlm_generic_payload &payload,
   tlm::tlm_phase           &phase,
   sc_core::sc_time         &time)
@@ -84,7 +84,7 @@ bool target_vci_transactor_buffer::push
   return false;
 }
 
-bool target_vci_transactor_buffer::get_cmd_payload
+bool vci_target_transactor_buffer::get_cmd_payload
 ( tlm::tlm_generic_payload *&payload,
   tlm::tlm_phase           *&phase,
   sc_core::sc_time         *&time)
@@ -108,7 +108,7 @@ bool target_vci_transactor_buffer::get_cmd_payload
   return false;
 }
 
-int target_vci_transactor_buffer::get_rsp_payload
+int vci_target_transactor_buffer::get_rsp_payload
 ( unsigned int               src_id,
   unsigned int               trd_id,
   tlm::tlm_generic_payload *&payload,
@@ -185,7 +185,7 @@ int target_vci_transactor_buffer::get_rsp_payload
   return -1;
 }
 
-int target_vci_transactor_buffer::get_rsp_payload
+int vci_target_transactor_buffer::get_rsp_payload
 ( unsigned int               src_id,
   tlm::tlm_generic_payload *&payload,
   tlm::tlm_phase           *&phase,
@@ -259,7 +259,7 @@ int target_vci_transactor_buffer::get_rsp_payload
   return -1;
 }
 
-bool target_vci_transactor_buffer::pop(int idx)
+bool vci_target_transactor_buffer::pop(int idx)
 {
   if(m_table[idx].status == COMPLETED){
     m_table[idx].status = EMPTY;
@@ -271,12 +271,16 @@ bool target_vci_transactor_buffer::pop(int idx)
   return false;
 }
 
-bool target_vci_transactor_buffer::waiting_response(){
+bool vci_target_transactor_buffer::waiting_response(){
   if(m_rsp_ptr == m_cmd_ptr){
+#if SOCLIB_MODULE_DEBUG
     printf("DO NOT WAITING RESPONSE\n");
+#endif
     return false;
   }
+#if SOCLIB_MODULE_DEBUG
   printf("WAITING RESPONSE\n");
+#endif
   return true;
 }
 }}

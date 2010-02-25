@@ -26,8 +26,8 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
-#ifndef INITIATOR_VCI_TRANSACTOR_BUFFER_H
-#define INITIATOR_VCI_TRANSACTOR_BUFFER_H
+#ifndef VCI_INITIATOR_TRANSACTOR_BUFFER_H
+#define VCI_INITIATOR_TRANSACTOR_BUFFER_H
 
 #include <tlmdt>	             // TLM-DT headers
 
@@ -45,7 +45,7 @@ struct transaction_index_struct{
 };
 
 template<typename vci_param_caba, typename vci_param_tlmdt>
-class initiator_vci_transactor_buffer
+class vci_initiator_transactor_buffer
 {
 private:
   transaction_index_struct *m_buffer;
@@ -60,9 +60,9 @@ public:
     COMPLETED = 2,
   };
 
-  initiator_vci_transactor_buffer();
+  vci_initiator_transactor_buffer();
 
-  ~initiator_vci_transactor_buffer();
+  ~vci_initiator_transactor_buffer();
 
   void set_status(int idx, int status);
 

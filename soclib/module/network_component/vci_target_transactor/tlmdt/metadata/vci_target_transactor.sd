@@ -22,24 +22,24 @@
 #
 # Maintainers: alinevieiramello@hotmail.com
 #
-# Copyright (c) UPMC / Lip6, 20
+# Copyright (c) UPMC / Lip6, 2010
 #     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
 
-__id__ = "$Id: initiator_vci_transactor.sd 917 2009-03-12 10:10:06Z nipo $"
+__id__ = "$Id: vci_target_transactor.sd 917 2009-03-12 10:10:06Z nipo $"
 __version__ = "$Revision: 917 $"
 
-Module('tlmdt:initiator_vci_transactor',
-       classname = 'soclib::tlmdt::InitiatorVciTransactor',
+Module('tlmdt:vci_target_transactor',
+       classname = 'soclib::tlmdt::VciTargetTransactor',
        tmpl_parameters = [ parameter.Module('vci_param_caba',  default = 'caba:vci_param'),
                            parameter.Module('vci_param_tlmdt', default = 'tlmdt:vci_param') ],
-       header_files = ['../source/include/initiator_vci_transactor.h',],
-       implementation_files = ['../source/src/initiator_vci_transactor.cpp',],
-       ports = [ Port('caba:vci_target', 'p_vci_target'),
+       header_files = ['../source/include/vci_target_transactor.h',],
+       implementation_files = ['../source/src/vci_target_transactor.cpp',],
+       ports = [ Port('caba:vci_initiator', 'p_vci_initiator'),
                  Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
                  Port('caba:clock_in', 'p_clk', auto = 'clock') ],
        uses = [  Uses('common:tlmdt'),
-                 Uses('tlmdt:initiator_vci_transactor_buffer'),
-                 Uses('caba:vci_target'),
+                 Uses('tlmdt:vci_target_transactor_buffer'),
+                 Uses('caba:vci_initiator'),
                  Uses('common:mapping_table') ],
        #debug = True,
        )

@@ -26,23 +26,23 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
-#ifndef __TARGET_VCI_TRANSACTOR_H__ 
-#define __TARGET_VCI_TRANSACTOR_H__
+#ifndef __VCI_TARGET_TRANSACTOR_H__ 
+#define __VCI_TARGET_TRANSACTOR_H__
 
 #include <tlmdt>	   	             // TLM-DT headers
-#include "target_vci_transactor_buffer.h"
+#include "vci_target_transactor_buffer.h"
 #include "vci_initiator.h"
 
 namespace soclib { namespace tlmdt {
 
 template<typename vci_param_caba, typename vci_param_tlmdt>
-class TargetVciTransactor                        
+class VciTargetTransactor                        
   : public sc_core::sc_module               // inherit from SC module base class
   , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "forward interface"
 {
  private:
   //VCI port
-  target_vci_transactor_buffer  m_buffer;         
+  vci_target_transactor_buffer  m_buffer;         
   pdes_local_time          *m_pdes_local_time; // local time
 
   sc_core::sc_event         m_pop_event;   // pop event
@@ -118,7 +118,7 @@ class TargetVciTransactor
   ( tlm::tlm_generic_payload &payload);     // payload
 
  protected:
-  SC_HAS_PROCESS(TargetVciTransactor);
+  SC_HAS_PROCESS(VciTargetTransactor);
  public:
 
   // PORTS CABA
@@ -129,13 +129,13 @@ class TargetVciTransactor
   // PORTS TLMDT
   soclib::caba::VciInitiator<vci_param_caba>              p_vci_initiator; // TLMDT -> CABA
   tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target;    // INTERCONNECT -> TLMDT
-  std::vector<tlm_utils::simple_initiator_socket_tagged<TargetVciTransactor,32,tlm::tlm_base_protocol_types> *> p_irq_initiator;  // IRQ initiator port
+  std::vector<tlm_utils::simple_initiator_socket_tagged<VciTargetTransactor,32,tlm::tlm_base_protocol_types> *> p_irq_initiator;  // IRQ initiator port
 
-  TargetVciTransactor(sc_core::sc_module_name name);
+  VciTargetTransactor(sc_core::sc_module_name name);
   
-  TargetVciTransactor(sc_core::sc_module_name name, size_t n_irq);
+  VciTargetTransactor(sc_core::sc_module_name name, size_t n_irq);
 
-  ~TargetVciTransactor();
+  ~VciTargetTransactor();
 
 };
 }}

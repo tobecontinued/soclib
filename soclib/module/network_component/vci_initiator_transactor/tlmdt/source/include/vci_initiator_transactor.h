@@ -26,17 +26,17 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
-#ifndef __INITIATOR_VCI_TRANSACTOR_H__ 
-#define __INITIATOR_VCI_TRANSACTOR_H__
+#ifndef __VCI_INITIATOR_TRANSACTOR_H__ 
+#define __VCI_INITIATOR_TRANSACTOR_H__
 
 #include <tlmdt>	   	             // TLM-DT headers
 #include "vci_target.h"
-#include "initiator_vci_transactor_buffer.h"
+#include "vci_initiator_transactor_buffer.h"
 
 namespace soclib { namespace tlmdt {
 
 template<typename vci_param_caba, typename vci_param_tlmdt>
-class InitiatorVciTransactor                        
+class VciInitiatorTransactor                        
   : public sc_core::sc_module               // inherit from SC module base class
   , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "forward interface"
 {
@@ -71,7 +71,7 @@ class InitiatorVciTransactor
   std::map<sc_core::sc_time, std::pair<int, bool> > m_pending_irqs;
 
   //pending transaction buffer
-  initiator_vci_transactor_buffer<vci_param_caba, vci_param_tlmdt >  m_buffer;
+  vci_initiator_transactor_buffer<vci_param_caba, vci_param_tlmdt >  m_buffer;
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Fuctions
@@ -106,7 +106,7 @@ class InitiatorVciTransactor
     sc_core::sc_time         &time);     // time
 
  protected:
-  SC_HAS_PROCESS(InitiatorVciTransactor);
+  SC_HAS_PROCESS(VciInitiatorTransactor);
  public:
 
   // PORTS CABA 
@@ -117,13 +117,13 @@ class InitiatorVciTransactor
   // PORTS TLMDT
   soclib::caba::VciTarget<vci_param_caba>                    p_vci_target;    // CABA -> TLMDT
   tlm::tlm_initiator_socket<32,tlm::tlm_base_protocol_types> p_vci_initiator; // TLMDT -> INTERCONNECT
-  std::vector<tlm_utils::simple_target_socket_tagged<InitiatorVciTransactor,32,tlm::tlm_base_protocol_types> *> p_irq_target;  // IRQ target port
+  std::vector<tlm_utils::simple_target_socket_tagged<VciInitiatorTransactor,32,tlm::tlm_base_protocol_types> *> p_irq_target;  // IRQ target port
 
-  InitiatorVciTransactor(sc_core::sc_module_name name);
+  VciInitiatorTransactor(sc_core::sc_module_name name);
 
-  InitiatorVciTransactor(sc_core::sc_module_name name, size_t time_quantum);
+  VciInitiatorTransactor(sc_core::sc_module_name name, size_t time_quantum);
   
-  ~InitiatorVciTransactor();
+  ~VciInitiatorTransactor();
 
 };
 }}

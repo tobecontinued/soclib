@@ -26,7 +26,7 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
-#include "initiator_vci_transactor.h"
+#include "vci_initiator_transactor.h"
 
 template<typename T>
 T be2mask(T be)
@@ -45,12 +45,12 @@ T be2mask(T be)
 
 namespace soclib { namespace tlmdt {
 
-#define tmpl(x) template<typename vci_param_caba,typename vci_param_tlmdt> x InitiatorVciTransactor<vci_param_caba,vci_param_tlmdt>
+#define tmpl(x) template<typename vci_param_caba,typename vci_param_tlmdt> x VciInitiatorTransactor<vci_param_caba,vci_param_tlmdt>
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // CONSTRUCTOR
 //////////////////////////////////////////////////////////////////////////////////////////
-tmpl(/**/)::InitiatorVciTransactor( sc_core::sc_module_name name)
+tmpl(/**/)::VciInitiatorTransactor( sc_core::sc_module_name name)
 	   : sc_module(name)
 	  , m_nirq(0)
 	  , m_buffer()
@@ -62,7 +62,7 @@ tmpl(/**/)::InitiatorVciTransactor( sc_core::sc_module_name name)
   init();
 }
 
-tmpl(/**/)::InitiatorVciTransactor( sc_core::sc_module_name name, size_t n_irq)
+tmpl(/**/)::VciInitiatorTransactor( sc_core::sc_module_name name, size_t n_irq)
 	   : sc_module(name)
 	  , m_nirq(n_irq)
 	  , m_buffer()
@@ -74,7 +74,7 @@ tmpl(/**/)::InitiatorVciTransactor( sc_core::sc_module_name name, size_t n_irq)
   init();
 }
 
-tmpl(/**/)::~InitiatorVciTransactor(){}
+tmpl(/**/)::~VciInitiatorTransactor(){}
 
 tmpl(void)::init(void)
 {
@@ -104,8 +104,8 @@ tmpl(void)::init(void)
     for(size_t i=0; i<m_nirq; i++){
       std::ostringstream irq_name;
       irq_name << "irq" << i;
-      p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<InitiatorVciTransactor,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
-      p_irq_target[i]->register_nb_transport_fw(this, &InitiatorVciTransactor::irq_nb_transport_fw, i);
+      p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciInitiatorTransactor,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+      p_irq_target[i]->register_nb_transport_fw(this, &VciInitiatorTransactor::irq_nb_transport_fw, i);
     }
   }
 

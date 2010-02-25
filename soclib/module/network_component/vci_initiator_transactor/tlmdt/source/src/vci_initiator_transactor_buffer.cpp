@@ -27,18 +27,18 @@
  */
 
 #include <systemc>
-#include "initiator_vci_transactor_buffer.h"
+#include "vci_initiator_transactor_buffer.h"
 
 namespace soclib { namespace tlmdt {
 
-#define tmpl(x) template<typename vci_param_caba,typename vci_param_tlmdt> x initiator_vci_transactor_buffer<vci_param_caba,vci_param_tlmdt>
+#define tmpl(x) template<typename vci_param_caba,typename vci_param_tlmdt> x vci_initiator_transactor_buffer<vci_param_caba,vci_param_tlmdt>
 
-tmpl(/**/)::initiator_vci_transactor_buffer()
+tmpl(/**/)::vci_initiator_transactor_buffer()
 {
   init();
 }
 
-tmpl(/**/)::~initiator_vci_transactor_buffer()
+tmpl(/**/)::~vci_initiator_transactor_buffer()
 {
 }
 

@@ -73,7 +73,7 @@
 // has been returned.
 ////////////////////////////////////////////////////////////////
 
-#include "target_vci_transactor.h"
+#include "vci_target_transactor.h"
 
 template<typename T>
 T mask2be(T mask)
@@ -109,12 +109,12 @@ T be2mask(T be)
 
 namespace soclib { namespace tlmdt {
 
-#define tmpl(x) template<typename vci_param_caba,typename vci_param_tlmdt> x TargetVciTransactor<vci_param_caba,vci_param_tlmdt>
+#define tmpl(x) template<typename vci_param_caba,typename vci_param_tlmdt> x VciTargetTransactor<vci_param_caba,vci_param_tlmdt>
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // CONSTRUCTOR
 //////////////////////////////////////////////////////////////////////////////////////////
-tmpl(/**/)::TargetVciTransactor( sc_core::sc_module_name name )
+tmpl(/**/)::VciTargetTransactor( sc_core::sc_module_name name )
 	   : sc_module(name)
 	  , m_buffer()
 	  , m_nirq(0)
@@ -138,7 +138,7 @@ tmpl(/**/)::TargetVciTransactor( sc_core::sc_module_name name )
   SC_THREAD(behavior);    
 }
 
-tmpl(/**/)::TargetVciTransactor( sc_core::sc_module_name name, size_t nirq)
+tmpl(/**/)::VciTargetTransactor( sc_core::sc_module_name name, size_t nirq)
 	   : sc_module(name)
 	  , m_buffer()
 	  , m_nirq(nirq)
@@ -169,7 +169,7 @@ tmpl(/**/)::TargetVciTransactor( sc_core::sc_module_name name, size_t nirq)
 
     std::ostringstream irq_name;
     irq_name << "irq" << i;
-    p_irq_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<TargetVciTransactor,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+    p_irq_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciTargetTransactor,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
   }
 
   //create payload and extension of a irq transaction
@@ -180,7 +180,7 @@ tmpl(/**/)::TargetVciTransactor( sc_core::sc_module_name name, size_t nirq)
   SC_THREAD(behavior_irq);    
 }
 
-tmpl(/**/)::~TargetVciTransactor(){}
+tmpl(/**/)::~VciTargetTransactor(){}
     
 /////////////////////////////////////////////////////////////////////////////////////
 // BEHAVIOR THREAD
@@ -437,8 +437,7 @@ tmpl(void)::rsp()
       *m_rsp_time = *m_rsp_time + ((m_final_time - m_initial_time + m_rsp_count) * UNIT_TIME);
       m_pdes_local_time->set(*m_rsp_time + UNIT_TIME);
       
-      //m_working = m_buffer.waiting_response();
-      m_working = false;
+      m_working = m_buffer.waiting_response();
       
 #if SOCLIB_MODULE_DEBUG
       printf("[%s] SEND RESPONSE src_id = %d pkt_id = %d trdid = %d time = %d\n", name(), m_rscrid, m_rpktid, m_rtrdid, (int)(*m_rsp_time).value());

@@ -25,16 +25,13 @@
 # Copyright (c) UPMC / Lip6, 2010
 #     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
 
-__id__ = "$Id: initiator_vci_transactor_buffer.sd 917 2009-03-12 10:10:06Z nipo $"
+__id__ = "$Id: vci_target_transactor_buffer.sd 917 2009-03-12 10:10:06Z nipo $"
 __version__ = "$Revision: 917 $"
 
-Module('tlmdt:initiator_vci_transactor_buffer',
-       classname = 'soclib::tlmdt::initiator_vci_transactor_buffer',
-       tmpl_parameters = [ parameter.Module('vci_param_caba',  default = 'caba:vci_param'),
-                           parameter.Module('vci_param_tlmdt', default = 'tlmdt:vci_param') ],
-       header_files = ['../source/include/initiator_vci_transactor_buffer.h',],
-       implementation_files = [ '../source/src/initiator_vci_transactor_buffer.cpp',],
-       uses = [ Uses('common:tlmdt'),
-                ],
+Module('tlmdt:vci_target_transactor_buffer',
+       classname = 'soclib::tlmdt::vci_target_transactor_buffer',
+       header_files = ['../source/include/vci_target_transactor_buffer.h',],
+       implementation_files = [ '../source/src/vci_target_transactor_buffer.cpp',],
+       uses = [ Uses('common:tlmdt'),],
        #debug = True,
 )
