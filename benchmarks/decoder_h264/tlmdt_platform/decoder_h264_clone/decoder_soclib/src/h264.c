@@ -412,7 +412,9 @@ frame *h264_decode_frame()
   cycle_count = cpu_cycle_count() - cycle_count;
   printk("%d\n",cycle_count);
   
+#if defined(CONFIG_FRAMEBUFFER)
   fb_display_frame(this);
+#endif
 
 #if (defined(CONFIG_DRIVER_TIMER_SOCLIB) || defined(CONFIG_DRIVER_TIMER_EMU))
   //	printk("\033[1A\n-- H.264 -- Frame %d decoded in %d ms\033[K\n", frame_no, get_timer_value() / 200000);
