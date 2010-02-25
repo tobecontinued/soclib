@@ -184,7 +184,7 @@ private:
     sc_signal<bool>         r_dcache_buf_unc_valid;
 
     data_t                  *r_tgt_buf;
-    bool                    *r_tgt_val;
+    be_t                    *r_tgt_be;
 
     sc_signal<int>          r_vci_tgt_fsm;
     sc_signal<addr_40>       r_tgt_addr;

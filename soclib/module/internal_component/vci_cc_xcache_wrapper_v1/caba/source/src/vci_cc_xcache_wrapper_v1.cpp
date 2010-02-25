@@ -225,7 +225,7 @@ namespace caba {
                 r_icache_miss_buf = new data_t[icache_words];
                 r_dcache_miss_buf = new data_t[dcache_words];
                 r_tgt_buf         = new data_t[dcache_words];
-                r_tgt_val         = new bool[dcache_words];
+                r_tgt_be          = new be_t[dcache_words];
 
                 SC_METHOD(transition);
                 dont_initialize();
@@ -253,7 +253,7 @@ namespace caba {
     {
         delete [] r_icache_miss_buf;
         delete [] r_dcache_miss_buf;
-        delete [] r_tgt_val;
+        delete [] r_tgt_be;
         delete [] r_tgt_buf;
     }
 
@@ -390,7 +390,7 @@ namespace caba {
         // The TGT_FSM controls the following ressources:
         // - r_vci_tgt_fsm
         // - r_tgt_buf[nwords]
-        // - r_tgt_val[nwords]
+        // - r_tgt_be[nwords]
         // - r_tgt_update
         // - r_data_update
         // - r_tgt_word
@@ -528,7 +528,7 @@ namespace caba {
                         std::cout << "the MULTI-UPDATE command length must be N+2 words" << std::endl;
                         exit(0);
                     }
-                    for ( size_t i=0 ; i<m_dcache_words ; i++ ) r_tgt_val[i] = false;
+                    for ( size_t i=0 ; i<m_dcache_words ; i++ ) r_tgt_be[i] = 0;
                     r_tgt_word = p_vci_tgt.wdata.read(); // the first modified word index
                     r_vci_tgt_fsm = TGT_UPDT_DATA;
                 }
@@ -545,7 +545,7 @@ namespace caba {
                         exit(0);
                     }
                     r_tgt_buf[word] = p_vci_tgt.wdata.read();
-                    if(p_vci_tgt.be.read())    r_tgt_val[word] = true;
+                    r_tgt_be[word] = p_vci_tgt.be.read();
                     r_tgt_word = word + 1;
                     if (p_vci_tgt.eop.read()) {
                         if (r_data_update.read())  r_vci_tgt_fsm = TGT_REQ_DCACHE;
@@ -847,11 +847,10 @@ namespace caba {
                             r_icache_fsm = ICACHE_CC_UPDT;
                             // complete the line buffer in case of update
                             for ( size_t word = 0 ; word < m_icache_words ; word++ ) {
-                                if ( !r_tgt_val[word] ) {
-                                    addr_40  ad = addr_40 (r_tgt_addr.read() + word); //(addr_40)word;
-                                    r_icache.read(ad, &icache_rdata);
-                                    r_tgt_buf[word] = icache_rdata;
-                                }
+                                data_t mask = vci_param::be2mask(r_tgt_be[word]);
+                                addr_40  ad = addr_40 (r_tgt_addr.read() + word*4); //(addr_40)word;
+                                r_icache.read(ad, &icache_rdata);
+                                r_tgt_buf[word] = (mask & r_tgt_buf[word]) | (~mask & icache_rdata);
                             }
                         } else if ( icache_hit && !r_tgt_update ) {
                             r_icache_fsm = ICACHE_CC_INVAL;
@@ -875,7 +874,7 @@ namespace caba {
                     addr_40  ad     = r_tgt_addr;
                     data_t* buf     = r_tgt_buf;
                     for(size_t i=0; i<m_icache_words; i++){
-                        if(r_tgt_val[i]) r_icache.write( ad + i*4, buf[i]);
+                        if(r_tgt_be[i]) r_icache.write( ad + i*4, buf[i]);
                     }
                     r_tgt_icache_req = false;
                     r_tgt_icache_rsp = true;
@@ -1256,11 +1255,10 @@ namespace caba {
                             r_dcache_fsm = DCACHE_CC_UPDT;
                             // complete the line buffer in case of update
                             for ( size_t word = 0 ; word < m_dcache_words ; word++ ) {
-                                if ( !r_tgt_val[word] ) {
-                                    addr_40  ad = addr_40 (r_tgt_addr.read() + word); //(addr_40)word;
-                                    r_dcache.read(ad, &dcache_rdata);
-                                    r_tgt_buf[word] = dcache_rdata;
-                                }
+                                addr_40  ad = addr_40 (r_tgt_addr.read() + word*4); //(addr_40)word;
+                                data_t mask = vci_param::be2mask(r_tgt_be[word]);
+                                r_dcache.read(ad, &dcache_rdata);
+                                r_tgt_buf[word] = (mask & r_tgt_buf[word]) | (~mask & dcache_rdata);
                             }
                         } else if ( dcache_hit && !r_tgt_update ) {
                             r_dcache_fsm = DCACHE_CC_INVAL;
@@ -1284,7 +1282,7 @@ namespace caba {
                     addr_40  ad      = r_tgt_addr;
                     data_t* buf     = r_tgt_buf;
                     for(size_t i=0; i<m_dcache_words; i++){
-                        if(r_tgt_val[i]) r_dcache.write( ad + i*4, buf[i]);
+                        if(r_tgt_be[i]) r_dcache.write( ad + i*4, buf[i]);
                     }
                     r_tgt_dcache_req = false;
                     r_tgt_dcache_rsp = true;
