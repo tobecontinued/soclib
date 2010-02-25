@@ -121,7 +121,7 @@ class VciInitiatorTransactor
 
   VciInitiatorTransactor(sc_core::sc_module_name name);
 
-  VciInitiatorTransactor(sc_core::sc_module_name name, size_t time_quantum);
+  VciInitiatorTransactor(sc_core::sc_module_name name, size_t n_irq);
   
   ~VciInitiatorTransactor();
 
