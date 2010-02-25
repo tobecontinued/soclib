@@ -60,10 +60,6 @@
 #	include "vci_framebuffer.h"
 #	warning FRAMEBUFFER added on the platform
 #endif
-#ifdef CONFIG_TIMER
-#	include "vci_timer.h"
-#	warning Timer added on the platform
-#endif
 
 
 /****************************************************************************
@@ -151,9 +147,7 @@ int _main(int argc, char *argv[])
 #ifdef CONFIG_FRAMEBUFFER
   maptabp.add(Segment("fbuffer", SEG_BUFF_ADDR, SEG_BUFF_SIZE, IntTab(++nb_target), false));
 #endif
-  #ifdef CONFIG_TIMER
   maptabp.add(Segment("timer",   SEG_TIMER_ADDR,SEG_TIMER_SIZE,IntTab(++nb_target), false));
-#endif  
   //maptabp.add(Segment("simhelper",SEG_SIMHELPER_ADDR,SEG_SIMHELPER_SIZE,IntTab(++nb_target), false));
 
 
@@ -197,10 +191,8 @@ int _main(int argc, char *argv[])
 #	endif
 #endif
   
-#ifdef CONFIG_TIMER
   soclib::tlmdt::VciTimer<vci_param> vcitimer("vcittimer", IntTab(++nb_target), maptabp, 1);
-#endif
-    
+
   soclib::tlmdt::VciVgmn vgmn("vgmn",maptabp, NCPU, ++nb_target, 2, 8);
   
 
@@ -235,11 +227,9 @@ int _main(int argc, char *argv[])
   (*vgmn.p_to_target[++nb_target])(vciframebuffer.p_vci);
 #endif
   
-#ifdef CONFIG_TIMER
   // TIMER
   (*vcitimer.p_irq[0])(*vciicu.p_irq_in[0]);
   (*vgmn.p_to_target[++nb_target])(vcitimer.p_vci);
-#endif
     
 
   /////////////////////////////////////////////////////////////////////////////
