@@ -1,5 +1,5 @@
 
-#include "cpu_type.h"
+#include "config.h"
 
 #define USE_GDB_SERVER
 //#define USE_SIMHELPER
@@ -32,18 +32,16 @@
 #   include "mips32.h"
 #   warning Using a Mips32
     typedef soclib::common::Mips32ElIss iss_t;
-    const char *default_kernel = "mutekh/kernel-soclib-mips32el.out";
 #elif defined(CPU_ppc)
 #   include "ppc405.h"
 #   warning Using a PPC405
     typedef soclib::common::Ppc405Iss iss_t;
-    const char *default_kernel = "mutekh/kernel-soclib-ppc.out";
 #elif defined(CPU_arm)
 #   include "arm.h"
 #   warning Using an ARM
     typedef soclib::common::ArmIss iss_t;
-    const char *default_kernel = "mutekh/kernel-soclib-arm.out";
 #endif /* End of CPU switches */
+    const char *default_kernel = KERNEL_FILE;
 
 
 

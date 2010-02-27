@@ -18,17 +18,17 @@ help:
 	@echo "  $(KERNEL): only the mutekh kernel"
 	@echo "  block0.iso: only the iso file from iso_contents"
 
-$(SIMULATOR_BINARY): cpu_type.h
+$(SIMULATOR_BINARY): config.h
 
-cpu_type.h:
-	grep -q $(CPU) $@ || ( echo "#define CPU_$(CPU)" > $@ )
+config.h:
+	grep -q $(CPU) $@ || \
+	( ( echo "#define CPU_$(CPU)"; echo "#define KERNEL_FILE \"$(KERNEL)\"" ) > $@ )
 
 $(KERNEL): mutekh
 	$(MAKE) \
 	   -f $(MUTEKH_DIR)/Makefile \
 	   CONF=$(APP)/$(CONFIG) \
 	   CONF_DIR=$(shell pwd)/mutekh/$(CPU) \
-	   FINAL_KERNEL_FILE=kernel-soclib-$(CPU).out \
 	   BUILD_DIR=$(shell pwd)/mutekh \
 	   SRC_DIR=$(MUTEKH_DIR) -j 3 \
 	   BUILD=$(BUILD)
@@ -43,7 +43,7 @@ doc: mutekh
 mutekh:
 	mkdir -p $@
 
-.PHONY: $(KERNEL) cpu_type.h FORCE
+.PHONY: $(KERNEL) config.h FORCE
 
 FORCE:
 

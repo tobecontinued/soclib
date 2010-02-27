@@ -28,4 +28,4 @@ CPU=arm
 BUILD=soclib-$(CPU):pf-tutorial
 
 # Now we can define the expected kernel file
-KERNEL=mutekh/kernel-soclib-$(CPU).out
+KERNEL=mutekh/hello-soclib-$(CPU).out
