@@ -747,6 +747,7 @@ namespace soclib { namespace caba {
         {
           if (m_cmd_read_addr_fifo.rok()) {
             m_cpt_read++;
+            r_read_pass = false;
             r_read_fsm = READ_DIR_LOCK;
           }
           break;
@@ -755,30 +756,36 @@ namespace soclib { namespace caba {
       case READ_DIR_LOCK:	// check directory for hit / miss
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_READ ) {
-            size_t way = 0;
-            DirectoryEntry entry = m_cache_directory.read(m_cmd_read_addr_fifo.read(), way);
+            if(r_read_pass.read()){
+              size_t way = 0;
+              DirectoryEntry entry = m_cache_directory.read(m_cmd_read_addr_fifo.read(), way);
 #ifdef IDEBUG
 	   std::cout << "In READ_DIR_LOCK printing the entry of address is : " << std::hex << m_cmd_read_addr_fifo.read() << std::endl;
 	   entry.print();
 	   std::cout << "done" << std::endl;
 #endif
 
-            r_read_is_cnt   = entry.is_cnt;
-            r_read_dirty    = entry.dirty;
-            r_read_tag	    = entry.tag;
-            r_read_lock	    = entry.lock;
-            r_read_way	    = way;
-            r_read_word	    = m_cmd_read_word_fifo.read();
-            r_read_d_copies = entry.d_copies; 
-            r_read_i_copies = entry.i_copies; 
-            r_read_count    = entry.count;
+              r_read_is_cnt   = entry.is_cnt;
+              r_read_dirty    = entry.dirty;
+              r_read_tag	    = entry.tag;
+              r_read_lock	    = entry.lock;
+              r_read_way	    = way;
+              r_read_word	    = m_cmd_read_word_fifo.read();
+              r_read_d_copies = entry.d_copies; 
+              r_read_i_copies = entry.i_copies; 
+              r_read_count    = entry.count;
 
-            // In case of hit, the read acces must be registered in the copies bit-vector
-            if( entry.valid )  { 
-              r_read_fsm = READ_DIR_HIT;
+              // In case of hit, the read acces must be registered in the copies bit-vector
+              if( entry.valid )  { 
+                r_read_fsm = READ_DIR_HIT;
+              } else {
+                r_read_fsm = READ_TRT_LOCK;
+                m_cpt_read_miss++;
+              }
+
             } else {
-              r_read_fsm = READ_TRT_LOCK;
-              m_cpt_read_miss++;
+              r_read_pass = true;
+              r_read_fsm = READ_DIR_LOCK;
             }
           }
           break;
@@ -966,6 +973,7 @@ namespace soclib { namespace caba {
             r_write_srcid	    = m_cmd_write_srcid_fifo.read();
             r_write_trdid	    = m_cmd_write_trdid_fifo.read();
             r_write_pktid	    = m_cmd_write_pktid_fifo.read();
+            r_write_pass        = false;
 
             // the be field must be set for all words 
             for ( size_t i=0 ; i<m_words ; i++ ) {
@@ -1006,34 +1014,39 @@ namespace soclib { namespace caba {
       case WRITE_DIR_LOCK:	// access directory to check hit/miss
         {
           if ( r_alloc_dir_fsm.read() == ALLOC_DIR_WRITE ) {
-            size_t  way = 0;
-            DirectoryEntry entry(m_cache_directory.read(r_write_address.read(), way));
+            if (r_write_pass.read()){
+              size_t  way = 0;
+              DirectoryEntry entry(m_cache_directory.read(r_write_address.read(), way));
 
-            // copy directory entry in local buffers in case of hit
-            if ( entry.valid )  {	
-              r_write_is_cnt    = entry.is_cnt;
-              r_write_lock	    = entry.lock;
-              r_write_tag       = entry.tag;
-              r_write_d_copies  = entry.d_copies;
-              r_write_i_copies  = entry.i_copies;
-              r_write_count     = entry.count;
-              r_write_way  	    = way;
-              if(entry.is_cnt && entry.count){
-                r_write_fsm      = WRITE_DIR_HIT_READ;
-              } else {
-                if(r_write_byte.read())
-                  r_write_fsm      = WRITE_DIR_HIT_READ;
-                else {
-                    bool owner     = (bool) (entry.d_copies & (0x1 << r_write_srcid.read()));
-                    bool no_update = (owner && (entry.count == 1)) || (entry.count==0);
-                    if( no_update ) r_write_fsm  = WRITE_DIR_HIT_RSP; 
-                    else            r_write_fsm  = WRITE_DIR_HIT;
+              // copy directory entry in local buffers in case of hit
+              if ( entry.valid )  {	
+                r_write_is_cnt    = entry.is_cnt;
+                r_write_lock	  = entry.lock;
+                r_write_tag       = entry.tag;
+                r_write_d_copies  = entry.d_copies;
+                r_write_i_copies  = entry.i_copies;
+                r_write_count     = entry.count;
+                r_write_way  	  = way;
+                if(entry.is_cnt && entry.count){
+                  r_write_fsm     = WRITE_DIR_HIT_READ;
+                } else {
+                  if(r_write_byte.read())
+                    r_write_fsm   = WRITE_DIR_HIT_READ;
+                  else {
+                      bool owner     = (bool) (entry.d_copies & (0x1 << r_write_srcid.read()));
+                      bool no_update = (owner && (entry.count == 1)) || (entry.count==0);
+                      if( no_update ) r_write_fsm  = WRITE_DIR_HIT_RSP; 
+                      else            r_write_fsm  = WRITE_DIR_HIT;
+                  }
                 }
+              } else {
+                r_write_fsm = WRITE_TRT_LOCK;
+                m_cpt_write_miss++;
               }
-            } else {
-              r_write_fsm = WRITE_TRT_LOCK;
-              m_cpt_write_miss++;
-            }
+           } else {
+             r_write_pass = true;
+             r_write_fsm  = WRITE_DIR_LOCK;
+           }
           }
           break;
         }
@@ -1693,6 +1706,7 @@ namespace soclib { namespace caba {
       case XRAM_RSP_DIR_LOCK: 	// Take the lock on the directory
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_XRAM_RSP ) {
+            r_xram_rsp_pass          = false;
             r_xram_rsp_fsm           = XRAM_RSP_TRT_COPY;
 #ifdef IDEBUG
 	std::cout << "XRAM_RSP FSM in XRAM_RSP_DIR_LOCK state" << std::endl;
@@ -1704,36 +1718,41 @@ namespace soclib { namespace caba {
       case XRAM_RSP_TRT_COPY:		// Copy the TRT entry in the local buffer and eviction of a cache line
         {
           if ( (r_alloc_trt_fsm.read() == ALLOC_TRT_XRAM_RSP) ) {
-            size_t index = r_xram_rsp_trt_index.read();
-            TransactionTabEntry    trt_entry(m_transaction_tab.read(index));	
+            if (r_xram_rsp_pass.read()){
+              size_t index = r_xram_rsp_trt_index.read();
+              TransactionTabEntry    trt_entry(m_transaction_tab.read(index));	
 
-            r_xram_rsp_trt_buf.copy(trt_entry);  // TRT entry local buffer
+              r_xram_rsp_trt_buf.copy(trt_entry);  // TRT entry local buffer
 
-            // selects & extracts a victim line from cache
-            size_t way = 0;
-            size_t set = m_y[(vci_addr_t)(trt_entry.nline * m_words * 4)];
-            DirectoryEntry victim(m_cache_directory.select(set, way));
+              // selects & extracts a victim line from cache
+              size_t way = 0;
+              size_t set = m_y[(vci_addr_t)(trt_entry.nline * m_words * 4)];
+              DirectoryEntry victim(m_cache_directory.select(set, way));
 
-            for (size_t i=0 ; i<m_words ; i++) r_xram_rsp_victim_data[i] = m_cache_data[way][set][i];
+              for (size_t i=0 ; i<m_words ; i++) r_xram_rsp_victim_data[i] = m_cache_data[way][set][i];
 
-            bool inval = (victim.count && victim.valid) ;
+              bool inval = (victim.count && victim.valid) ;
 
-            r_xram_rsp_victim_d_copies = victim.d_copies;
-            r_xram_rsp_victim_i_copies = victim.i_copies;
-            r_xram_rsp_victim_count    = victim.count;
-            r_xram_rsp_victim_way      = way;
-            r_xram_rsp_victim_set      = set;
-            r_xram_rsp_victim_nline    = victim.tag*m_sets + set;
-            r_xram_rsp_victim_is_cnt   = victim.is_cnt;
-            r_xram_rsp_victim_inval    = inval ;
-            r_xram_rsp_victim_dirty    = victim.dirty;
+              r_xram_rsp_victim_d_copies = victim.d_copies;
+              r_xram_rsp_victim_i_copies = victim.i_copies;
+              r_xram_rsp_victim_count    = victim.count;
+              r_xram_rsp_victim_way      = way;
+              r_xram_rsp_victim_set      = set;
+              r_xram_rsp_victim_nline    = victim.tag*m_sets + set;
+              r_xram_rsp_victim_is_cnt   = victim.is_cnt;
+              r_xram_rsp_victim_inval    = inval ;
+              r_xram_rsp_victim_dirty    = victim.dirty;
 
-            r_xram_rsp_fsm = XRAM_RSP_INVAL_LOCK;
+              r_xram_rsp_fsm = XRAM_RSP_INVAL_LOCK;
 #ifdef IDEBUG
 	std::cout << "XRAM_RSP FSM in XRAM_RSP_TRT_COPY state" << std::endl;
 	std::cout << "Victim way : " << std::hex << way << " set " << std::hex << set << std::endl;
 	victim.print();
 #endif
+              }else{
+                r_xram_rsp_pass = true;
+                r_xram_rsp_fsm = XRAM_RSP_TRT_COPY;
+              }
           }
           break;
         }
@@ -1990,6 +2009,7 @@ namespace soclib { namespace caba {
               r_cleanup_trdid      = p_vci_tgt_cleanup.trdid.read();
               r_cleanup_pktid      = p_vci_tgt_cleanup.pktid.read();
 
+              r_cleanup_pass       = false;
               r_cleanup_fsm        = CLEANUP_DIR_LOCK;
             }
           }
@@ -1999,30 +2019,34 @@ namespace soclib { namespace caba {
       case CLEANUP_DIR_LOCK:
         {
           if ( r_alloc_dir_fsm.read() == ALLOC_DIR_CLEANUP ) {
-
-            // Read the directory
-            size_t way = 0;
-	   addr_t cleanup_address = r_cleanup_nline.read() * m_words * 4;
-           DirectoryEntry entry = m_cache_directory.read(cleanup_address , way);
+            if (r_cleanup_pass.read()){
+              // Read the directory
+              size_t way = 0;
+	          addr_t cleanup_address = r_cleanup_nline.read() * m_words * 4;
+              DirectoryEntry entry = m_cache_directory.read(cleanup_address , way);
 #ifdef IDEBUG
 	   std::cout << "In CLEANUP_DIR_LOCK printing the entry of address is : " << std::hex << cleanup_address << std::endl;
 	   entry.print();
 	   std::cout << "done" << std::endl;
 #endif
-            r_cleanup_is_cnt    = entry.is_cnt;
-            r_cleanup_dirty	    = entry.dirty;
-            r_cleanup_tag	    = entry.tag;
-            r_cleanup_lock	    = entry.lock;
-            r_cleanup_way	    = way;
-            r_cleanup_d_copies  = entry.d_copies;
-            r_cleanup_i_copies  = entry.i_copies;
-            r_cleanup_count     = entry.count;
+              r_cleanup_is_cnt    = entry.is_cnt;
+              r_cleanup_dirty	    = entry.dirty;
+              r_cleanup_tag	    = entry.tag;
+              r_cleanup_lock	    = entry.lock;
+              r_cleanup_way	    = way;
+              r_cleanup_d_copies  = entry.d_copies;
+              r_cleanup_i_copies  = entry.i_copies;
+              r_cleanup_count     = entry.count;
 
-            // In case of hit, the copy must be cleaned in the copies bit-vector
-            if( entry.valid )  { 
-              r_cleanup_fsm = CLEANUP_DIR_WRITE;
-            } else {
-              r_cleanup_fsm = CLEANUP_UPT_LOCK;
+              // In case of hit, the copy must be cleaned in the copies bit-vector
+              if( entry.valid )  { 
+                r_cleanup_fsm = CLEANUP_DIR_WRITE;
+              } else {
+                r_cleanup_fsm = CLEANUP_UPT_LOCK;
+              }
+            }else{
+              r_cleanup_pass = true;
+              r_cleanup_fsm  = CLEANUP_DIR_LOCK;
             }
           }
           break;
@@ -2175,6 +2199,7 @@ namespace soclib { namespace caba {
       case LLSC_IDLE:		// test LL / SC
         {
           if( m_cmd_llsc_addr_fifo.rok() ) {
+            r_llsc_pass = false;
             if(m_cmd_llsc_sc_fifo.read()){
               m_cpt_sc++;
               r_llsc_fsm = SC_DIR_LOCK;
@@ -2190,18 +2215,23 @@ namespace soclib { namespace caba {
       case LL_DIR_LOCK:		// check directory for hit / miss
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_LLSC ) {
-            size_t way = 0;
-            DirectoryEntry entry(m_cache_directory.read(m_cmd_llsc_addr_fifo.read(), way));
-            r_llsc_is_cnt     = entry.is_cnt;
-            r_llsc_dirty      = entry.dirty;
-            r_llsc_tag        = entry.tag;
-            r_llsc_way        = way;
-            r_llsc_d_copies   = entry.d_copies;
-            r_llsc_i_copies   = entry.i_copies ;
-            r_llsc_count      = entry.count ;
+            if (r_llsc_pass.read()){
+              size_t way = 0;
+              DirectoryEntry entry(m_cache_directory.read(m_cmd_llsc_addr_fifo.read(), way));
+              r_llsc_is_cnt     = entry.is_cnt;
+              r_llsc_dirty      = entry.dirty;
+              r_llsc_tag        = entry.tag;
+              r_llsc_way        = way;
+              r_llsc_d_copies   = entry.d_copies;
+              r_llsc_i_copies   = entry.i_copies ;
+              r_llsc_count      = entry.count ;
 
-            if ( entry.valid )  r_llsc_fsm = LL_DIR_HIT;
-            else                r_llsc_fsm = LLSC_TRT_LOCK;
+              if ( entry.valid )  r_llsc_fsm = LL_DIR_HIT;
+              else                r_llsc_fsm = LLSC_TRT_LOCK;
+            }else{
+              r_llsc_pass        = true;
+              r_llsc_fsm         = LL_DIR_LOCK;
+            }
           }
           break;
         }
@@ -2251,21 +2281,26 @@ namespace soclib { namespace caba {
       case SC_DIR_LOCK:
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_LLSC ) {
-            size_t way = 0;
-            DirectoryEntry entry(m_cache_directory.read(m_cmd_llsc_addr_fifo.read(), way));
-            bool ok = m_atomic_tab.isatomic(m_cmd_llsc_srcid_fifo.read(),m_cmd_llsc_addr_fifo.read());
-            if( ok ) {
-              r_llsc_is_cnt   = entry.is_cnt;
-              r_llsc_dirty    = entry.dirty;
-              r_llsc_tag      = entry.tag;
-              r_llsc_way      = way;
-              r_llsc_d_copies = entry.d_copies;
-              r_llsc_i_copies = entry.i_copies;
-              r_llsc_count    = entry.count;
-              if ( entry.valid )  r_llsc_fsm = SC_DIR_HIT;
-              else                r_llsc_fsm = LLSC_TRT_LOCK;
-            } else {
-              r_llsc_fsm = SC_RSP_FALSE;
+            if(r_llsc_pass.read()){
+              size_t way = 0;
+              DirectoryEntry entry(m_cache_directory.read(m_cmd_llsc_addr_fifo.read(), way));
+              bool ok = m_atomic_tab.isatomic(m_cmd_llsc_srcid_fifo.read(),m_cmd_llsc_addr_fifo.read());
+              if( ok ) {
+                r_llsc_is_cnt   = entry.is_cnt;
+                r_llsc_dirty    = entry.dirty;
+                r_llsc_tag      = entry.tag;
+                r_llsc_way      = way;
+                r_llsc_d_copies = entry.d_copies;
+                r_llsc_i_copies = entry.i_copies;
+                r_llsc_count    = entry.count;
+                if ( entry.valid )  r_llsc_fsm = SC_DIR_HIT;
+                else                r_llsc_fsm = LLSC_TRT_LOCK;
+              } else {
+                r_llsc_fsm = SC_RSP_FALSE;
+              }
+            }else{
+              r_llsc_pass       = true;
+              r_llsc_fsm        = SC_DIR_LOCK;
             }
           }
           break;

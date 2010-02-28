@@ -367,6 +367,7 @@ namespace soclib {  namespace caba {
       sc_signal<bool>        r_read_word;       // single word read
       sc_signal<size_t>      r_read_way;        // associative way (in cache)
       sc_signal<size_t>      r_read_trt_index;  // Transaction Table index
+      sc_signal<bool>        r_read_pass;       // Used to adjust with VHDL model
 
       // Buffer between READ fsm and IXR_CMD fsm (ask a missing cache line to XRAM)   
       sc_signal<bool>        r_read_to_ixr_cmd_req;     // valid request
@@ -404,6 +405,7 @@ namespace soclib {  namespace caba {
       sc_signal<size_t>	   r_write_way;		        // way of the line
       sc_signal<size_t>    r_write_trt_index;	    // index in Transaction Table
       sc_signal<size_t>    r_write_upt_index;	    // index in Update Table
+      sc_signal<bool>      r_write_pass;            // Used to adjust with VHDL model
 
       // Buffer between WRITE fsm and TGT_RSP fsm (acknowledge a write command from L1)
       sc_signal<bool>      r_write_to_tgt_rsp_req;		// valid request
@@ -465,6 +467,7 @@ namespace soclib {  namespace caba {
       sc_signal<bool>        r_cleanup_lock;	    // lock bit (in directory)
       sc_signal<bool>        r_cleanup_dirty;	    // dirty bit (in directory)
       sc_signal<size_t>      r_cleanup_way;	        // associative way (in cache)
+      sc_signal<bool>        r_cleanup_pass;        // Used to adjust with the VHDL model
 
       sc_signal<size_t>      r_cleanup_write_srcid; // srcid of write response
       sc_signal<size_t>      r_cleanup_write_trdid; // trdid of write rsp
@@ -494,6 +497,7 @@ namespace soclib {  namespace caba {
       sc_signal<size_t>    r_llsc_set;		    // set in directory
       sc_signal<data_t>    r_llsc_tag;		    // cache line tag (in directory)
       sc_signal<size_t>    r_llsc_trt_index;    // Transaction Table index
+      sc_signal<bool>      r_llsc_pass;         // Used to adjust with the VHDL model
 
       // Buffer between LLSC fsm and INIT_CMD fsm (XRAM read)	
       sc_signal<bool>	   r_llsc_to_ixr_cmd_req;   // valid request
@@ -536,6 +540,7 @@ namespace soclib {  namespace caba {
       sc_signal<copy_t>    r_xram_rsp_victim_count;	    // victim line number of copies
       sc_signal<data_t>	  *r_xram_rsp_victim_data;	    // victim line data
       sc_signal<size_t>	   r_xram_rsp_upt_index;	    // UPT entry index
+      sc_signal<bool>      r_xram_rsp_pass;             // Used to adjust with VHDL model
 
       // Buffer between XRAM_RSP fsm and TGT_RSP fsm  (response to L1 cache)
       sc_signal<bool>	   r_xram_rsp_to_tgt_rsp_req;	// Valid request
@@ -546,7 +551,7 @@ namespace soclib {  namespace caba {
       sc_signal<bool>     *r_xram_rsp_to_tgt_rsp_val;	// valid bit (for single word)
 
       // Buffer between XRAM_RSP fsm and INIT_CMD fsm (Inval L1 Caches) 
-      sc_signal<bool>	     r_xram_rsp_to_init_cmd_req;    // Valid request
+      sc_signal<bool>	   r_xram_rsp_to_init_cmd_req;    // Valid request
       sc_signal<bool>      r_xram_rsp_to_init_cmd_brdcast;  // Broadcast request
       sc_signal<addr_t>    r_xram_rsp_to_init_cmd_nline;    // cache line index;
       sc_signal<size_t>	   r_xram_rsp_to_init_cmd_trdid;    // index of UPT entry
