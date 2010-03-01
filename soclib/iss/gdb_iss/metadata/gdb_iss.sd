@@ -22,5 +22,6 @@ Module('common:gdb_iss',
 	],
 	   extensions = [
 	'dsx:cpu=wrapper:gdb_iss_t',
+	'dsx:static_config_lines=%(class)s::set_loader(%(env:loader)s)',
    ],
 )
