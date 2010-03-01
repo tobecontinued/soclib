@@ -158,7 +158,7 @@ public:
 
     void putc( char c )
     {
-        if ( c < ' ' && c != '\r' && c != '\n' )
+        if ( c < ' ' && c != '\r' && c != '\n' && c != '\t' )
             c = '.';
         std::cout << c;
         std::cout.flush();
