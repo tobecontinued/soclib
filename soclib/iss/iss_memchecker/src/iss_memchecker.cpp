@@ -555,8 +555,11 @@ public:
 #endif
 
         context_map_t::const_iterator i = m_contexts.find(id);
-        assert(i == m_contexts.end()
-               && "Creating two contexts with the same id...");
+        if ( i != m_contexts.end() ) {
+            std::cerr
+                << "Processor creating two contexts with the same id : "
+                << id << std::endl;
+        }
         for ( context_map_t::const_iterator i = m_contexts.begin();
               i != m_contexts.end();
               ++i ) {
