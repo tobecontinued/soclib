@@ -28,6 +28,8 @@
  */
 #include "../include/vci_mem_cache_v1.h"
 
+#define VHDL_ACCURATE
+
 //#define IDEBUG
 //#define DEBUG_VCI_MEM_CACHE 1
 
@@ -416,9 +418,9 @@ namespace soclib { namespace caba {
       r_tgt_rsp_fsm 	= TGT_RSP_READ_IDLE;
       r_init_cmd_fsm 	= INIT_CMD_INVAL_IDLE;
       r_init_rsp_fsm 	= INIT_RSP_IDLE;
-      r_read_fsm 	= READ_IDLE;
-      r_write_fsm 	= WRITE_IDLE;
-      r_llsc_fsm 	= LLSC_IDLE;
+      r_read_fsm        = READ_IDLE;
+      r_write_fsm       = WRITE_IDLE;
+      r_llsc_fsm        = LLSC_IDLE;
       r_cleanup_fsm 	= CLEANUP_IDLE;
       r_alloc_dir_fsm   = ALLOC_DIR_READ;
       r_alloc_trt_fsm   = ALLOC_TRT_READ;
@@ -747,7 +749,9 @@ namespace soclib { namespace caba {
         {
           if (m_cmd_read_addr_fifo.rok()) {
             m_cpt_read++;
+#ifdef VHDL_ACCURATE
             r_read_pass = false;
+#endif
             r_read_fsm = READ_DIR_LOCK;
           }
           break;
@@ -756,7 +760,9 @@ namespace soclib { namespace caba {
       case READ_DIR_LOCK:	// check directory for hit / miss
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_READ ) {
+#ifdef VHDL_ACCURATE
             if(r_read_pass.read()){
+#endif
               size_t way = 0;
               DirectoryEntry entry = m_cache_directory.read(m_cmd_read_addr_fifo.read(), way);
 #ifdef IDEBUG
@@ -774,6 +780,9 @@ namespace soclib { namespace caba {
               r_read_d_copies = entry.d_copies; 
               r_read_i_copies = entry.i_copies; 
               r_read_count    = entry.count;
+#ifdef VHDL_ACCURATE
+              r_read_pass     = false;
+#endif
 
               // In case of hit, the read acces must be registered in the copies bit-vector
               if( entry.valid )  { 
@@ -783,10 +792,12 @@ namespace soclib { namespace caba {
                 m_cpt_read_miss++;
               }
 
+#ifdef VHDL_ACCURATE
             } else {
               r_read_pass = true;
               r_read_fsm = READ_DIR_LOCK;
             }
+#endif
           }
           break;
         }
@@ -973,7 +984,9 @@ namespace soclib { namespace caba {
             r_write_srcid	    = m_cmd_write_srcid_fifo.read();
             r_write_trdid	    = m_cmd_write_trdid_fifo.read();
             r_write_pktid	    = m_cmd_write_pktid_fifo.read();
+#ifdef VHDL_ACCURATE
             r_write_pass        = false;
+#endif
 
             // the be field must be set for all words 
             for ( size_t i=0 ; i<m_words ; i++ ) {
@@ -1014,7 +1027,9 @@ namespace soclib { namespace caba {
       case WRITE_DIR_LOCK:	// access directory to check hit/miss
         {
           if ( r_alloc_dir_fsm.read() == ALLOC_DIR_WRITE ) {
+#ifdef VHDL_ACCURATE
             if (r_write_pass.read()){
+#endif
               size_t  way = 0;
               DirectoryEntry entry(m_cache_directory.read(r_write_address.read(), way));
 
@@ -1043,10 +1058,13 @@ namespace soclib { namespace caba {
                 r_write_fsm = WRITE_TRT_LOCK;
                 m_cpt_write_miss++;
               }
+#ifdef VHDL_ACCURATE
+              r_write_pass = false;
            } else {
              r_write_pass = true;
              r_write_fsm  = WRITE_DIR_LOCK;
            }
+#endif
           }
           break;
         }
@@ -1706,7 +1724,9 @@ namespace soclib { namespace caba {
       case XRAM_RSP_DIR_LOCK: 	// Take the lock on the directory
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_XRAM_RSP ) {
+#ifdef VHDL_ACCURATE
             r_xram_rsp_pass          = false;
+#endif
             r_xram_rsp_fsm           = XRAM_RSP_TRT_COPY;
 #ifdef IDEBUG
 	std::cout << "XRAM_RSP FSM in XRAM_RSP_DIR_LOCK state" << std::endl;
@@ -1718,7 +1738,9 @@ namespace soclib { namespace caba {
       case XRAM_RSP_TRT_COPY:		// Copy the TRT entry in the local buffer and eviction of a cache line
         {
           if ( (r_alloc_trt_fsm.read() == ALLOC_TRT_XRAM_RSP) ) {
+#ifdef VHDL_ACCURATE
             if (r_xram_rsp_pass.read()){
+#endif
               size_t index = r_xram_rsp_trt_index.read();
               TransactionTabEntry    trt_entry(m_transaction_tab.read(index));	
 
@@ -1749,10 +1771,13 @@ namespace soclib { namespace caba {
 	std::cout << "Victim way : " << std::hex << way << " set " << std::hex << set << std::endl;
 	victim.print();
 #endif
+#ifdef VHDL_ACCURATE
+                r_xram_rsp_pass = false;
               }else{
                 r_xram_rsp_pass = true;
                 r_xram_rsp_fsm = XRAM_RSP_TRT_COPY;
               }
+#endif
           }
           break;
         }
@@ -2009,7 +2034,9 @@ namespace soclib { namespace caba {
               r_cleanup_trdid      = p_vci_tgt_cleanup.trdid.read();
               r_cleanup_pktid      = p_vci_tgt_cleanup.pktid.read();
 
+#ifdef VHDL_ACCURATE
               r_cleanup_pass       = false;
+#endif
               r_cleanup_fsm        = CLEANUP_DIR_LOCK;
             }
           }
@@ -2019,7 +2046,9 @@ namespace soclib { namespace caba {
       case CLEANUP_DIR_LOCK:
         {
           if ( r_alloc_dir_fsm.read() == ALLOC_DIR_CLEANUP ) {
+#ifdef VHDL_ACCURATE
             if (r_cleanup_pass.read()){
+#endif
               // Read the directory
               size_t way = 0;
 	          addr_t cleanup_address = r_cleanup_nline.read() * m_words * 4;
@@ -2044,10 +2073,13 @@ namespace soclib { namespace caba {
               } else {
                 r_cleanup_fsm = CLEANUP_UPT_LOCK;
               }
+#ifdef VHDL_ACCURATE
+              r_cleanup_pass = false;
             }else{
               r_cleanup_pass = true;
               r_cleanup_fsm  = CLEANUP_DIR_LOCK;
             }
+#endif
           }
           break;
         }
@@ -2199,7 +2231,9 @@ namespace soclib { namespace caba {
       case LLSC_IDLE:		// test LL / SC
         {
           if( m_cmd_llsc_addr_fifo.rok() ) {
+#ifdef VHDL_ACCURATE
             r_llsc_pass = false;
+#endif
             if(m_cmd_llsc_sc_fifo.read()){
               m_cpt_sc++;
               r_llsc_fsm = SC_DIR_LOCK;
@@ -2215,7 +2249,9 @@ namespace soclib { namespace caba {
       case LL_DIR_LOCK:		// check directory for hit / miss
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_LLSC ) {
+#ifdef VHDL_ACCURATE
             if (r_llsc_pass.read()){
+#endif
               size_t way = 0;
               DirectoryEntry entry(m_cache_directory.read(m_cmd_llsc_addr_fifo.read(), way));
               r_llsc_is_cnt     = entry.is_cnt;
@@ -2228,10 +2264,13 @@ namespace soclib { namespace caba {
 
               if ( entry.valid )  r_llsc_fsm = LL_DIR_HIT;
               else                r_llsc_fsm = LLSC_TRT_LOCK;
+#ifdef VHDL_ACCURATE
+              r_llsc_pass        = false;
             }else{
               r_llsc_pass        = true;
               r_llsc_fsm         = LL_DIR_LOCK;
             }
+#endif
           }
           break;
         }
@@ -2281,7 +2320,9 @@ namespace soclib { namespace caba {
       case SC_DIR_LOCK:
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_LLSC ) {
+#ifdef VHDL_ACCURATE
             if(r_llsc_pass.read()){
+#endif
               size_t way = 0;
               DirectoryEntry entry(m_cache_directory.read(m_cmd_llsc_addr_fifo.read(), way));
               bool ok = m_atomic_tab.isatomic(m_cmd_llsc_srcid_fifo.read(),m_cmd_llsc_addr_fifo.read());
@@ -2298,10 +2339,13 @@ namespace soclib { namespace caba {
               } else {
                 r_llsc_fsm = SC_RSP_FALSE;
               }
+#ifdef VHDL_ACCURATE
+              r_llsc_pass       = false;
             }else{
               r_llsc_pass       = true;
               r_llsc_fsm        = SC_DIR_LOCK;
             }
+#endif
           }
           break;
         }
