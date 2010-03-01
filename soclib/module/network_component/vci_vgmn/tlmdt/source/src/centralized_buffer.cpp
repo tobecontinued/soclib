@@ -68,7 +68,6 @@ centralized_buffer::centralized_buffer( size_t nslots )
     m_centralized_buffer(new _command[nslots]),
     m_free_slots(nslots)
 {
-  pthread_spin_init(&m_lock, PTHREAD_PROCESS_PRIVATE);
 }
 
 centralized_buffer::~centralized_buffer()
