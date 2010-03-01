@@ -388,6 +388,13 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
             return;
         }
 
+    if (i >= 1 && !strcmp(tokens[0], "dump"))
+        {
+            CpuIss::dump();
+            write_packet("OK");
+            return;
+        }
+
     if (i >= 3 && !strcmp(tokens[0], "watch"))
         {
             const char *flags = tokens[1];
