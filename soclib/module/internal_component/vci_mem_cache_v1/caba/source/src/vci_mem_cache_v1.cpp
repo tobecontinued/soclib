@@ -31,7 +31,7 @@
 #define VHDL_ACCURATE
 
 //#define IDEBUG
-//#define DEBUG_VCI_MEM_CACHE 1
+//#define DEBUG_VCI_MEM_CACHE 2
 
 namespace soclib { namespace caba {
 
@@ -512,7 +512,7 @@ namespace soclib { namespace caba {
     bool    cmd_llsc_fifo_put = false;
     bool    cmd_llsc_fifo_get = false;
 
-#if DEBUG_VCI_MEM_CACHE 
+#if DEBUG_VCI_MEM_CACHE == 1
     std::cout << "---------------------------------------------" << std::dec << std::endl;
     std::cout << "MEM_CACHE " << m_srcid_ini << " ; Time = " << m_cpt_cycles << std::endl
       << " - TGT_CMD FSM   = " << tgt_cmd_fsm_str[r_tgt_cmd_fsm] << std::endl
@@ -523,13 +523,37 @@ namespace soclib { namespace caba {
       << " - WRITE FSM     = " << write_fsm_str[r_write_fsm] << std::endl
       << " - LLSC FSM      = " << llsc_fsm_str[r_llsc_fsm] << std::endl
       << " - CLEANUP FSM   = " << cleanup_fsm_str[r_cleanup_fsm] << std::endl
-      << " - IXR_CMD FSM  = " << ixr_cmd_fsm_str[r_ixr_cmd_fsm] << std::endl
+      << " - IXR_CMD FSM   = " << ixr_cmd_fsm_str[r_ixr_cmd_fsm] << std::endl
       << " - IXR_RSP FSM   = " << ixr_rsp_fsm_str[r_ixr_rsp_fsm] << std::endl
       << " - XRAM_RSP FSM  = " << xram_rsp_fsm_str[r_xram_rsp_fsm] << std::endl
       << " - ALLOC_DIR FSM = " << alloc_dir_fsm_str[r_alloc_dir_fsm] << std::endl
       << " - ALLOC_TRT FSM = " << alloc_trt_fsm_str[r_alloc_trt_fsm] << std::endl
       << " - ALLOC_UPT FSM = " << alloc_upt_fsm_str[r_alloc_upt_fsm] << std::endl;
+#elif DEBUG_VCI_MEM_CACHE == 2
+    std::cout << "---------------------------------------------" << std::dec << std::endl;
+    std::cout << "MEM_CACHE " << m_srcid_ini << " ; Time = " << m_cpt_cycles << std::endl
+      << " - TGT_CMD FSM   = " << tgt_cmd_fsm_str[r_tgt_cmd_fsm] << std::endl
+      << " - TGT_RSP FSM   = " << tgt_rsp_fsm_str[r_tgt_rsp_fsm] << std::endl
+      << " - INIT_CMD FSM  = " << init_cmd_fsm_str[r_init_cmd_fsm] << std::endl
+      << " - INIT_RSP FSM  = " << init_rsp_fsm_str[r_init_rsp_fsm] << std::endl
+      << " - READ FSM      = " << read_fsm_str[r_read_fsm] << std::endl
+      << " - WRITE FSM     = " << write_fsm_str[r_write_fsm] << std::endl
+      << " - LLSC FSM      = " << llsc_fsm_str[r_llsc_fsm] << std::endl
+      << " - CLEANUP FSM   = " << cleanup_fsm_str[r_cleanup_fsm] << std::endl
+      << " - IXR_CMD FSM   = " << ixr_cmd_fsm_str[r_ixr_cmd_fsm] << std::endl
+      << " - IXR_RSP FSM   = " << ixr_rsp_fsm_str[r_ixr_rsp_fsm] << std::endl
+      << " - XRAM_RSP FSM  = " << xram_rsp_fsm_str[r_xram_rsp_fsm] << std::endl
+      << " - ALLOC_DIR FSM = " << alloc_dir_fsm_str[r_alloc_dir_fsm] << std::endl
+      << " - ALLOC_TRT FSM = " << alloc_trt_fsm_str[r_alloc_trt_fsm] << std::endl
+      << " - ALLOC_UPT FSM = " << alloc_upt_fsm_str[r_alloc_upt_fsm] << std::endl;
+    std::cout << " - UPDATE/INVAL TABLE : " << std::endl;
+    m_update_tab.print();
+    std::cout << " - TRANSACTION TABLE = : " << std::endl;
+    for (unsigned int i = 0 ; i < m_transaction_tab.size() ; i++){
+      m_transaction_tab.print(i);
+    }
 #endif
+
 
 
     ////////////////////////////////////////////////////////////////////////////////////

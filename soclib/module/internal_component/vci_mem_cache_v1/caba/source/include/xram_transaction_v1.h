@@ -78,20 +78,20 @@ class TransactionTabEntry {
   // The print() function prints the entry 
   ////////////////////////////////////////////////////////////////////
   void print(){
-    std::cout << "valid       = " << valid        << std::endl;
-    std::cout << "xram_read   = " << xram_read    << std::endl;
+    std::cout << "valid       = " << valid             << std::endl;
+    std::cout << "xram_read   = " << xram_read         << std::endl;
     std::cout << "nline       = " << std::hex << nline << std::endl;
-    std::cout << "srcid       = " << srcid        << std::endl;
-    std::cout << "trdid       = " << trdid        << std::endl;
-    std::cout << "pktid       = " << pktid        << std::endl;
-    std::cout << "proc_read   = " << proc_read    << std::endl;
-    std::cout << "single_word = " << single_word  << std::endl;
-    std::cout << "word_index  = " << word_index   << std::endl; 
+    std::cout << "srcid       = " << srcid             << std::endl;
+    std::cout << "trdid       = " << trdid             << std::endl;
+    std::cout << "pktid       = " << pktid             << std::endl;
+    std::cout << "proc_read   = " << proc_read         << std::endl;
+    std::cout << "single_word = " << single_word       << std::endl;
+    std::cout << "word_index  = " << word_index        << std::endl; 
     for(size_t i=0; i<wdata_be.size() ; i++){
-      std::cout << "wdata_be [" << i <<"] = " << wdata_be[i] << std::endl;
+      std::cout << "wdata_be [" << i << "] = " << wdata_be[i] << std::endl;
     }
     for(size_t i=0; i<wdata.size() ; i++){
-      std::cout << "wdata [" << i <<"] = " << wdata[i] << std::endl;
+      std::cout << "wdata [" << i << "] = " << wdata[i] << std::endl;
     }
     std::cout << std::endl;
   }
