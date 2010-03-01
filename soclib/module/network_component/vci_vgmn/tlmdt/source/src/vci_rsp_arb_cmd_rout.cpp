@@ -168,7 +168,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
   //if all buffer positions are filled then a transaction can be sent 
   while ( m_centralized_buffer->can_pop() ) {
-    uint32_t from;
+    size_t from;
     tlm::tlm_generic_payload *m_payload_ptr;
     soclib_payload_extension *m_extension_ptr;
     tlm::tlm_phase            m_phase;
