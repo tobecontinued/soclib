@@ -14,7 +14,6 @@
 			device_type = "cpu";
 			reg = <0>;
 			icudev_type = "cpu:mips";
-			ipi = <&{/xicu@0/out@0} 0>;
 		};
 
 		Mips,32@1 {
@@ -22,7 +21,6 @@
 			device_type = "cpu";
 			reg = <1>;
 			icudev_type = "cpu:mips";
-			ipi = <&{/xicu@0/out@1} 1>;
 		};
 
 		Mips,32@2 {
@@ -30,7 +28,6 @@
 			device_type = "cpu";
 			reg = <2>;
 			icudev_type = "cpu:mips";
-			ipi = <&{/xicu@0/out@2} 2>;
 		};
 
 		Mips,32@3 {
@@ -38,7 +35,6 @@
 			device_type = "cpu";
 			reg = <3>;
 			icudev_type = "cpu:mips";
-			ipi = <&{/xicu@0/out@3} 3>;
 		};
 
 		Mips,32@4 {
@@ -46,7 +42,6 @@
 			device_type = "cpu";
 			reg = <4>;
 			icudev_type = "cpu:mips";
-			ipi = <&{/xicu@0/out@4} 4>;
 		};
 
 		Mips,32@5 {
@@ -54,78 +49,34 @@
 			device_type = "cpu";
 			reg = <5>;
 			icudev_type = "cpu:mips";
-			ipi = <&{/xicu@0/out@5} 5>;
 		};
 
 	};
+
+	icu@0 {
+	    device_type = "soclib:icu";
+	    irq_count = <2>;
+	    reg = <0xd2200000 0x10>;
+	    irq = <&{/cpus/Mips,32@0} 0>;
+	};
+
 
 	tty@0 {
 	    device_type = "soclib:tty";
 		tty_count = <1>;
 		reg = <0xd0200000 0x10>;
-		irq = <&{/xicu@0/out@0} 0>;
+		irq = <&{/icu@0} 0>;
 	};
 
 	block@0 {
 	    device_type = "soclib:ramdisk";
 		reg = <0x68200000 0x00100000>;
-		irq = <&{/xicu@0/out@0} 1>;
+		irq = <&{/icu@0} 1>;
 	};
 
 	framebuffer {
 	    device_type = "soclib:framebuffer";
 	        reg = <0x10200000 0x00200000>;
-	};
-
-	xicu@0 {
-	    device_type = "soclib:xicu:root";
-		input_lines = <2>;
-		ipis = <6>;
-		timers = <6>;
-		reg = <0xd2200000 0x1000>;
-
-	    	out@0 {
-	    	    device_type = "soclib:xicu:filter";
-	    	    parent = &{/xicu@0};
-	    		output_line = <0>;
-	    		irq = <&{/cpus/Mips,32@0} 0>;
-	    	};
-	    
-	    	out@1 {
-	    	    device_type = "soclib:xicu:filter";
-	    	    parent = &{/xicu@0};
-	    		output_line = <1>;
-	    		irq = <&{/cpus/Mips,32@1} 0>;
-	    	};
-
-	    	out@2 {
-	    	    device_type = "soclib:xicu:filter";
-	    	    parent = &{/xicu@0};
-	    		output_line = <2>;
-	    		irq = <&{/cpus/Mips,32@2} 0>;
-	    	};
-	    
-	    	out@3 {
-	    	    device_type = "soclib:xicu:filter";
-	    	    parent = &{/xicu@0};
-	    		output_line = <3>;
-	    		irq = <&{/cpus/Mips,32@3} 0>;
-	    	};
-
-		out@4 {
-	    	    device_type = "soclib:xicu:filter";
-	    	    parent = &{/xicu@0};
-	    		output_line = <4>;
-	    		irq = <&{/cpus/Mips,32@4} 0>;
-	    	};
-
-		out@5 {
-	    	    device_type = "soclib:xicu:filter";
-	    	    parent = &{/xicu@0};
-	    		output_line = <5>;
-	    		irq = <&{/cpus/Mips,32@5} 0>;
-	    	};
-
 	};
 
 	memory@0 {
@@ -136,7 +87,7 @@
 
 	chosen {
 		console = &{/tty@0};
-		timer = &{/xicu@0};
+		timer = &{/icu@0};
 	};
 
 };

@@ -55,6 +55,7 @@
 #include "vci_icu.h"
 #include "vci_blackhole.h"	// required for TLMDT implementation
 #include "vci_timer.h"
+#include "vci_simhelper.h"
 
 #ifdef CONFIG_FRAMEBUFFER
 #	include "vci_framebuffer.h"
@@ -148,7 +149,7 @@ int _main(int argc, char *argv[])
   maptabp.add(Segment("fbuffer", SEG_BUFF_ADDR, SEG_BUFF_SIZE, IntTab(++nb_target), false));
 #endif
   maptabp.add(Segment("timer",   SEG_TIMER_ADDR,SEG_TIMER_SIZE,IntTab(++nb_target), false));
-  //maptabp.add(Segment("simhelper",SEG_SIMHELPER_ADDR,SEG_SIMHELPER_SIZE,IntTab(++nb_target), false));
+  maptabp.add(Segment("simhelper",SEG_SIMHELPER_ADDR,SEG_SIMHELPER_SIZE,IntTab(++nb_target), false));
 
 
 #if defined(USE_GDB_SERVER) && defined(USE_MEMCHECKER)
@@ -192,6 +193,7 @@ int _main(int argc, char *argv[])
 #endif
   
   soclib::tlmdt::VciTimer<vci_param> vcitimer("vcittimer", IntTab(++nb_target), maptabp, 1);
+  soclib::tlmdt::VciSimhelper<vci_param> vcisimhelper("vcicimhelper", IntTab(++nb_target), maptabp);
 
   soclib::tlmdt::VciVgmn vgmn("vgmn",maptabp, NCPU, ++nb_target, 2, 8);
   
@@ -231,6 +233,9 @@ int _main(int argc, char *argv[])
   (*vcitimer.p_irq[0])(*vciicu.p_irq_in[0]);
   (*vgmn.p_to_target[++nb_target])(vcitimer.p_vci);
     
+  // SIMHELPER
+  (*vgmn.p_to_target[++nb_target])(vcisimhelper.p_vci);
+  
 
   /////////////////////////////////////////////////////////////////////////////
   // VciBlackhole Initiator
