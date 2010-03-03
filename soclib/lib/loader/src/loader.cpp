@@ -25,7 +25,8 @@
  */
 
 #include <algorithm>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include <sstream>
 #include <cassert>
 
@@ -41,6 +42,7 @@ Loader::Loader(
     const std::string &f4,
     const std::string &f5,
     const std::string &f6 )
+    : m_memory_init_value(DONT_TOUCH)
 {
     if ( f != "" )
         load_file(f);
@@ -54,16 +56,33 @@ Loader::Loader(
         load_file(f5);
     if ( f6 != "" )
         load_file(f6);
+
+    const char *init = std::getenv("SOCLIB_MEMORY_INIT");
+    if ( init )
+        memory_default(std::strtol(init, NULL, 0));
 }
 
 Loader::Loader( const Loader &ref )
 	: m_sections(ref.m_sections),
-      m_symbol_table(ref.m_symbol_table)
+      m_symbol_table(ref.m_symbol_table),
+      m_memory_init_value(ref.m_memory_init_value)
 {
+}
+
+void Loader::memory_default(uint8_t value)
+{
+    m_memory_init_value = value;
+    std::cout
+        << "Initializing memories with "
+        << std::hex << (int)m_memory_init_value
+        << std::endl;
 }
 
 void Loader::load( void *buffer, uintptr_t address, size_t length ) const
 {
+    if ( m_memory_init_value != DONT_TOUCH )
+        memset(buffer, m_memory_init_value, length);
+
     std::cout
         << std::showbase << std::hex
         << "Loading at " << address

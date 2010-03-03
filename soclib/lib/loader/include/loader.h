@@ -49,11 +49,15 @@ private:
 
     section_list_t m_sections;
     std::map<uintptr_t, BinaryFileSymbol> m_symbol_table;
+    static const uint32_t DONT_TOUCH = (uint32_t)-1;
+    uint32_t m_memory_init_value;
 
 	static loader_registry_t &registry();
 public:
 	static void register_loader( const std::string &name,
 								 binary_loader_t loader );
+
+    void memory_default(uint8_t value);
 
     section_list_t sections() const;
 
