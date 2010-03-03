@@ -126,7 +126,7 @@ class Action:
         del self.__out
         del self.__err
 
-        print '--'
+        #print '--'
         del self.__class__.__jobs[self.__handle.pid]
         if out:
             sys.stdout.write('\n')
@@ -139,13 +139,13 @@ class Action:
                 raise KeyboardInterrupt()
 #            print self.__handle.returncode
             raise ActionFailed(self.__handle.returncode, self.__command)
-        print '--'
+        #print '--'
         del self.__handle
         del self.__command
         for d in self.dests:
             d.rehash()
         self.done = True
-        print "---- done"
+        #print "---- done"
 
     def isBackground(self):
         try:
