@@ -428,7 +428,7 @@ namespace soclib { namespace common {
         setInsDelay(4);
         r_gp[ra] = r_npc ;// is pc + 4!!// return address
         m_cancel_next_ins = true; // To override r_npc
-        m_next_pc = r_pc+ r_gp[m_inst.R.rY];
+        m_next_pc = r_gp[m_inst.R.rY];
     }
 
     //!Instruction calli behavior method.
