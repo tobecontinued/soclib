@@ -43,37 +43,6 @@
 #include <SDL.h>
 
 
-#ifdef __linux__
-
-#  include <endian.h>
-
-#elif defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
-
-#  include <machine/endian.h>
-#  define __BYTE_ORDER BYTE_ORDER
-#  define __LITTLE_ENDIAN LITTLE_ENDIAN
-#  define __BIG_ENDIAN BIG_ENDIAN
-
-#else
-
-#  ifdef __LITTLE_ENDIAN__
-#	 define __BYTE_ORDER __LITTLE_ENDIAN
-#  endif
-
-#  if defined(i386) || defined(__i386__)
-#	 define __BYTE_ORDER __LITTLE_ENDIAN
-#  endif
-
-#  if defined(sun) && defined(unix) && defined(sparc)
-#	 define __BYTE_ORDER __BIG_ENDIAN
-#  endif
-
-#endif /* os switches */
-
-#ifndef __BYTE_ORDER
-# error Need to know endianess
-#endif
-
 static int do_exit = 0;
 
 void sig_catcher( int sig )
@@ -98,7 +67,8 @@ struct image_s
 void set_rgb( struct image_s *image, size_t line, size_t col,
 			  uint8_t r, uint8_t g, uint8_t b )
 {
-	uint8_t y = ((uint32_t)r + (uint32_t)g + (uint32_t)b) / 3;
+    uint32_t color = SDL_MapRGB(image->surface->format, r, g, b);
+
 	size_t bx, by;
 	for ( bx = 0; bx < image->scale; ++bx ) {
 		for ( by = 0; by < image->scale; ++by ) {
@@ -107,24 +77,26 @@ void set_rgb( struct image_s *image, size_t line, size_t col,
 				+ (col * image->scale + bx) * image->surface->format->BytesPerPixel;
 			switch(image->surface->format->BytesPerPixel) {
 			case 1:
-				*p = y;
+				*p = color;
 				break;
 				
 			case 2:
-				*(unsigned short *)p = y<<8;
+				*(unsigned short *)p = color;
 				break;
 				
 			case 3:
-			case 4:
-				p[1] = g;
-				if (__BYTE_ORDER == __BIG_ENDIAN) {
-					p[0] = r;
-					p[2] = b;
-				} else {
-					p[0] = b;
-					p[2] = r;
-				}
+                if(SDL_BYTEORDER == SDL_LIL_ENDIAN) {
+                    p[0] = color;
+                    p[1] = color >> 8;
+                    p[2] = color >> 16;
+                } else {
+                    p[2] = color;
+                    p[1] = color >> 8;
+                    p[0] = color >> 16;
+                }
 				break;
+			case 4:
+                *(uint32_t *)p = color;
 			}
 		}
 	}
@@ -351,7 +323,7 @@ int main( int argc, char **argv )
 		exit(2);
 	}
 
-	printf("Frame buffer: %ld %ld %ld %s\n", width, height, subsampling, file);
+	fprintf(stderr, "Frame buffer: %ld %ld %ld %s\n", width, height, subsampling, file);
 	
 	handle_display( mmap_res, width, height, subsampling);
 	return 0;
