@@ -105,7 +105,8 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
                   if ( mask[i] )
                       m_surface[address+i] = data[i];
           }
-          if ( address+payload.get_data_length() >=  m_framebuffer.m_width*m_framebuffer.m_height-4 )
+          if ( (address+payload.get_data_length()) >=
+               (m_framebuffer.m_surface_size-4) )
               m_framebuffer.update();
 		
           payload.set_response_status(tlm::TLM_OK_RESPONSE);
