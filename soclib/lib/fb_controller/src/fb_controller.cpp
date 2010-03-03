@@ -79,8 +79,19 @@ FbController::FbController(
         throw soclib::exception::RunTimeError("Cant mmap file");
 	}
 	
-    std::memset(m_surface, 128, m_surface_size);
-    std::memset(m_sim_surface, 128, m_surface_size);
+    switch ( m_subsampling ) {
+    case YUV420:
+    case YUV422:
+        std::memset(m_surface, 128, m_surface_size);
+        std::memset(m_sim_surface, 128, m_surface_size);
+        break;
+    case RGB:
+    case BW:
+    case RGB_PALETTE_256:
+        std::memset(m_surface, 0, m_surface_size);
+        std::memset(m_sim_surface, 0, m_surface_size);
+        break;
+    }
 
     char *soclib_fb = std::getenv("SOCLIB_FB");
     m_headless_mode = ( soclib_fb && !std::strcmp(soclib_fb, "HEADLESS") );
