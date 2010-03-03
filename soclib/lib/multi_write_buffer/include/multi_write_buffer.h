@@ -176,7 +176,7 @@ public:
     {
         for( size_t i = 0 ; i < m_nlines ; i++ )
         {
-            if ((r_state[i] != EMPTY) && (r_address[i] == (addr & ~m_mask))) return false;
+            if ((r_state[i] != EMPTY) && ((addr_t)r_address[i] == (addr & ~m_mask))) return false;
         }
         return true;
     }
