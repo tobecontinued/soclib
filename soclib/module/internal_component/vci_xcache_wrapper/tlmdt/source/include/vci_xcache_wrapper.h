@@ -246,6 +246,12 @@ public:
 
   void print_cpi();
   void print_stats();
+
+  const sc_core::sc_time get_time() const
+  {
+    return m_pdes_local_time->get();
+  }
+
 };
 
 }}
