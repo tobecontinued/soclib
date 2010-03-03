@@ -49,7 +49,7 @@ tmpl(/**/)::VciFrameBuffer
 	  , m_mt(mt)
 	  , m_segment(m_mt.getSegment(m_index))
 	  , m_framebuffer((const char*)name, width, height, subsampling)
-	  , m_surface((typename vci_param::data_t*)m_framebuffer.surface())
+      , m_surface((uint8_t*)m_framebuffer.surface())
 	  , p_vci("socket")
 {
   // bind target
@@ -79,71 +79,46 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     return tlm::TLM_COMPLETED;
   }
 
-  size_t nwords = (size_t)(payload.get_data_length() / vci_param::nbytes);
+  size_t address = payload.get_address() - m_segment.baseAddress();
+  size_t nwords = payload.get_data_length() / sizeof(typename vci_param::data_t);
 
   if ( m_segment.contains(payload.get_address())) {
-    switch(extension_pointer->get_command()){
-    case VCI_READ_COMMAND:
-      {
-	typename vci_param::addr_t address;
-	for( size_t i=0; i< nwords; i++){
-	  address = ((payload.get_address() - m_segment.baseAddress()) / vci_param::nbytes); //XXX contig = TRUE always
-	  utoa(m_framebuffer.w<typename vci_param::data_t>(address), payload.get_data_ptr(),(i * vci_param::nbytes));
-#ifdef SOCLIB_MODULE_DEBUG
-	  std::cout << "[" << name() << "] READ tab["<< address <<"] = " << m_framebuffer.w<typename vci_param::data_t>(address) << std::endl;
-#endif
-	}
+      switch(extension_pointer->get_command()){
+      case VCI_READ_COMMAND:
+          memcpy(payload.get_data_ptr(),
+                 m_surface + address,
+                 payload.get_data_length());
 	
-	payload.set_response_status(tlm::TLM_OK_RESPONSE);
-	phase = tlm::BEGIN_RESP;
-	time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
+          payload.set_response_status(tlm::TLM_OK_RESPONSE);
+          phase = tlm::BEGIN_RESP;
+          time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
 	
-	p_vci->nb_transport_bw(payload, phase, time);
-	return tlm::TLM_COMPLETED;
-	
-      }
-      break;
-    case VCI_WRITE_COMMAND:
-      {
-	typename vci_param::addr_t address;
-	uint32_t mask;
-	typename vci_param::data_t cur ;
-	
-	for (size_t i=0; i<nwords; i++){
-	  //if(payload.contig)
-	  address = ((payload.get_address() - m_segment.baseAddress()) / vci_param::nbytes);
-	  cur     = m_surface[address];
-	  mask    = atou(payload.get_byte_enable_ptr(), (i * vci_param::nbytes));
+          p_vci->nb_transport_bw(payload, phase, time);
+          return tlm::TLM_COMPLETED;
+          break;
 
-	  if ( address < m_framebuffer.m_surface_size ){
-	    m_framebuffer.w<typename vci_param::data_t>(address) = 
-	      (cur & ~mask) | (atou( payload.get_data_ptr(), (i * vci_param::nbytes) ) & mask);
-#ifdef SOCLIB_MODULE_DEBUG
-	    std::cout << "[" << name() << "] WRITE tab["<< address <<"] = " << ( (cur & ~mask) | (atou( payload.get_data_ptr(), (i * vci_param::nbytes) ) & mask) ) << std::endl;
-#endif
-	  }
-	  else
-	    m_framebuffer.update();
-	  
-	}	
+      case VCI_WRITE_COMMAND:
+          if ( address < m_framebuffer.m_surface_size ) {
+              uint8_t *data = payload.get_data_ptr();
+              uint8_t *mask = payload.get_byte_enable_ptr();
+              for ( size_t i=0; i<payload.get_data_length(); ++i )
+                  if ( mask[i] )
+                      m_surface[address+i] = data[i];
+          }
+          if ( address+payload.get_data_length() >=  m_framebuffer.m_width*m_framebuffer.m_height-4 )
+              m_framebuffer.update();
+		
+          payload.set_response_status(tlm::TLM_OK_RESPONSE);
+          phase = tlm::BEGIN_RESP;
+          time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
 	
-	if ( payload.get_address() ==  m_segment.baseAddress() + m_framebuffer.m_width*m_framebuffer.m_height-4 )
-	  m_framebuffer.update();
-	
-	
-	payload.set_response_status(tlm::TLM_OK_RESPONSE);
-	phase = tlm::BEGIN_RESP;
-	time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
-	
-	
-	p_vci->nb_transport_bw(payload, phase, time);
-	return tlm::TLM_COMPLETED;
+          p_vci->nb_transport_bw(payload, phase, time);
+          return tlm::TLM_COMPLETED;
+          break;
+      default:
+          assert("command does not exist in VciFrameBuffer");
+          break;
       }
-      break;
-    default:
-      assert("command does not exist in VciFrameBuffer");
-      break;
-    }
   }
 
   //send error message

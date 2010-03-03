@@ -48,7 +48,7 @@ private:
   soclib::common::MappingTable   m_mt;
   soclib::common::Segment        m_segment;
   soclib::common::FbController   m_framebuffer;
-  typename vci_param::data_t    *m_surface;
+  uint8_t                        *m_surface;
 
 
   /////////////////////////////////////////////////////////////////////////////////////
