@@ -28,6 +28,7 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
+#include <limits>
 #include "vci_icu.h"
 
 //ICU_INT = 0 read-only
