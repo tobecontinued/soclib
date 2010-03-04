@@ -64,7 +64,7 @@
  ****************************************************************************/
 #include "mips32.h"
 typedef soclib::common::Mips32ElIss iss_t;
-const char *default_kernel = "mutekh/kernel-soclib-mips.out";
+const char *default_kernel = "mutekh/kernel-soclib-mips32el.out";
 
 #define NCPU 3
 

@@ -2,8 +2,7 @@
 %common		# optional at file start
 
   # New source code module to be compiled
-  # CONFIG_MODULES +hello:$(CONFIGPATH)
-  CONFIG_MODULES +soclib_decoder:$(CONFIGPATH)
+  %append MODULES soclib_decoder:$(CONFIGPATH)
 
   # Application license
   CONFIG_LICENSE_APP_LGPL
@@ -69,7 +68,7 @@
   CONFIG_ROM_SIZE 0x00100000
 
   CONFIG_SOCLIB_EARLY_CONSOLE 0xd0200000
-  CONFIG_MODULES +pf_def:$(CONFIGPATH)/../../soclib_conf_files
+  %append MODULES pf_def:$(CONFIGPATH)/../../soclib_conf_files
   %set platform_name pf_decoder_h264
 
   # Device and drivers
@@ -88,9 +87,7 @@
 %section soclib-mips32el soclib-mipsel soclib-mips
   %types soclib_cpu
 
-  CONFIG_CPU_MIPS
-  CONFIG_CPU_MIPS_VERSION 32
-  CONFIG_CPU_ENDIAN_LITTLE
+  CONFIG_CPU_MIPS32EL_SOCLIB
   CONFIG_DRIVER_ICU_MIPS
 
 #################################################
