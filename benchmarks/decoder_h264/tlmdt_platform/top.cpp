@@ -62,6 +62,10 @@
 #	warning FRAMEBUFFER added on the platform
 #endif
 
+#ifdef CONFIG_DUMP_STATS
+#       include "tlmdt_cache_statdumper.h"
+#       warning TLM-DT stat dumper added on the platform
+#endif
 
 /****************************************************************************
   Global variables and structures
@@ -275,6 +279,11 @@ int _main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////////////////
   ftime(&initial);
   std::cout <<"Starts simulation now" <<endl;
+
+#ifdef CONFIG_DUMP_STATS
+  soclib::tlmdt::CacheStatdumper<soclib::tlmdt::VciXcacheWrapper<vci_param, complete_iss_t> > stats(procs[0]);
+#endif
+
   sc_core::sc_start();  // start the simulation
   ftime(&final);
 

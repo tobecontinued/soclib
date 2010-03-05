@@ -1,1 +1,1 @@
-/home/t0043357/sources/soclib/tools/tmp/soclib/benchmarks/decoder_h264/caba_platform/../common/decoder_h264_clone/decoder_soclib/soft_config/conf_3proc_qcif.h
+/home/t0043357/sources/soclib/tools/tmp/soclib/benchmarks/decoder_h264/tlmdt_platform/../common/decoder_h264_clone/decoder_soclib/soft_config/conf_1proc_qcif.h

@@ -29,6 +29,7 @@ cpu_type.h:
 	if [ $(TIMER) = "YES" ] ; then echo "#define CONFIG_TIMER" >> $@ ; fi
 	if [ $(FRAMEBUFFER) = "YES" ] ; then echo "#define CONFIG_FRAMEBUFFER" >> $@ ; fi
 	if [ $(DBF) = "YES" ] ; then echo "#define CONFIG_DB_FILTER" >> $@ ; fi
+	if [ $(DUMP_STATS) = "YES" ] ; then echo "#define CONFIG_DUMP_STATS" >> $@ ; fi
 	echo "#define NCPU $(NB_PROC)" >> $@
 	echo "#define CACHE_LINE_SIZE $(CACHE_LINE_SIZE)" >> $@
 	echo "#endif" >> $@

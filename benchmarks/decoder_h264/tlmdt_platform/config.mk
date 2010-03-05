@@ -23,6 +23,7 @@ DBF=YES
 GDB_SERVER=NO
 MEM_CHECKER=NO
 TIMER=YES
+DUMP_STATS=YES
 
 # Inside the $APP directory above must exist a MutekH build
 # configuration file. This variable is the name of this very file.
