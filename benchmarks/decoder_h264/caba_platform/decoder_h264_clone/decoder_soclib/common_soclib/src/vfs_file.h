@@ -16,14 +16,14 @@
 #include <stdio.h>
 
 #if defined(CONFIG_ARCH_EMU)
-  #include <drivers/device/block/file-emu/block-file-emu.h>
+  #include <drivers/block/file-emu/block-file-emu.h>
 #else
-  #include <drivers/device/block/ramdisk/block-ramdisk.h>
+  #include <drivers/block/ramdisk/block-ramdisk.h>
 #endif
 
-#include <drivers/fs/fat/fat.h>
-#include <drivers/fs/ramfs/ramfs.h>
-#include <drivers/fs/iso9660/iso9660.h>
+#include <libvfs/fs/fat/fat.h>
+#include <libvfs/fs/ramfs/ramfs.h>
+#include <libvfs/fs/iso9660/iso9660.h>
 #include <vfs/vfs.h>
 #include "soclib_addresses.h"
 

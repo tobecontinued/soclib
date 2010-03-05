@@ -3,7 +3,7 @@
 
   # New source code module to be compiled
   # CONFIG_MODULES +hello:$(CONFIGPATH)
-  CONFIG_MODULES +soclib_decoder:$(CONFIGPATH)
+  %append MODULES +soclib_decoder:$(CONFIGPATH)
 
   # Application license
   CONFIG_LICENSE_APP_LGPL

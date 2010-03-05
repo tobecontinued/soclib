@@ -34,9 +34,9 @@
   Include section
 ****************************************************************************/
 #if defined(CONFIG_DRIVER_TIMER_EMU)
-  #include <drivers/device/timer/emu/timer-emu.h>
+  #include <drivers/timer/emu/timer-emu.h>
 #elif defined(CONFIG_DRIVER_TIMER_SOCLIB)
-  #include <drivers/device/icu/soclib-xicu/xicu-soclib.h>
+  #include <drivers/icu/soclib-xicu/xicu-soclib.h>
   //#include <drivers/device/timer/soclib/timer-soclib.h>
   #include "../../../soclib_addresses.h"
 #endif

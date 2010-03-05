@@ -70,7 +70,7 @@
 #   include "mips32.h"
 #   warning Using a Mips32
 typedef soclib::common::Mips32ElIss iss_t;
-const char *default_kernel = "mutekh/kernel-soclib-mips.out";
+const char *default_kernel = "mutekh/kernel-soclib-mips32el.out";
 #elif defined(CPU_ppc)
 #   include "ppc405.h"
 #   warning Using a PPC405
