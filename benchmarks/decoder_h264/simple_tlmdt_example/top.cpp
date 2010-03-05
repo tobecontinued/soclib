@@ -57,7 +57,7 @@
 #include "vci_simhelper.h"
 
 #include "vci_framebuffer.h"
-
+#include "tlmdt_cache_statdumper.h"
 
 /****************************************************************************
   Global variables and structures
@@ -198,6 +198,7 @@ int _main(int argc, char *argv[])
   /////////////////////////////////////////////////////////////////////////////
   ftime(&initial);
   std::cout <<"Starts simulation now" <<endl;
+  soclib::tlmdt::CacheStatdumper<soclib::tlmdt::VciXcacheWrapper<vci_param, iss_t> > stats(procs[0]);
   sc_core::sc_start();  // start the simulation
   ftime(&final);
 
