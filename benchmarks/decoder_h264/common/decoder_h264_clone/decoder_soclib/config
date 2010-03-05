@@ -1,8 +1,6 @@
 
 %common		# optional at file start
 
-  # New source code module to be compiled
-  # CONFIG_MODULES +hello:$(CONFIGPATH)
   %append MODULES +soclib_decoder:$(CONFIGPATH)
 
   # Application license
@@ -36,5 +34,11 @@
   #CONFIG_VFS_LIBC_STREAM not supported any more
   CONFIG_LIBC_STREAM
 
-%include ../../soclib_conf_files/build_options.conf
-%include ../../soclib_conf_files/platforms.conf
+%section pf_caba
+  %include ../../../caba_platform/soclib_conf_files/build_options.conf
+  %include ../../../caba_platform/soclib_conf_files/platforms.conf
+
+%section pf_tlmdt
+  %include ../../../tlmdt_platform/soclib_conf_files/build_options.conf
+  %include ../../../tlmdt_platform/soclib_conf_files/platforms.conf
+

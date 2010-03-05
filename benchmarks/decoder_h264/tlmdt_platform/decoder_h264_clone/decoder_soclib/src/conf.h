@@ -1,1 +1,0 @@
-/home/t0043357/sources/soclib/tools/tmp/soclib/benchmarks/decoder_h264/tlmdt_platform/decoder_h264_clone/decoder_soclib/soft_config/conf_1proc_qcif.h

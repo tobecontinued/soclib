@@ -1,12 +1,9 @@
-==============================================================================
-==============================================================================
-=SOME EXPLANATIONS ON THE WORK PERFORMED ON THE PORTING OF SNAPGEAR ON SOCLIB=
-==============================================================================
-==============================================================================
+============================================
+= SOME EXPLANATIONS ON THE SOCLIB PLATFORM =
+============================================
 
-========================================================
-TGI : T0043357 Fabien Colas-Bigey, Thales Communications
-========================================================
+Fabien Colas-Bigey, Thales Communications
+-----------------------------------------
 
 --------------------------------------------
 - Structure of files at the root directory -
@@ -39,7 +36,7 @@ modify this file.
   Top of the platform. This file details the connexions of the blocks together.
 
 - disk
-  Contains the 264 streams required by the decoder.
+  Link to the 264 streams required by the decoder.
 
 ---------------------------------------------------------
 - Structure of files at the soclib_conf_files directory -
@@ -59,9 +56,9 @@ processor and processor number.
   Configuration files used to select operating system parameters. These files
 are used by mutekh.
 
-----------------------------------------------------------
-- Structure of files at the decoder_h264_clone directory -
-----------------------------------------------------------
+--------------------------------------------------------------------
+- Structure of files at the ../common/decoder_h264_clone directory -
+--------------------------------------------------------------------
 This folder contains the sources of the software application: the h264 decoder.
 The user does not have to modify these files.
 

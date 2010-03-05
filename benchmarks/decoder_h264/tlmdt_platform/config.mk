@@ -10,7 +10,7 @@
 # You may choose which application to build with MutekH. Here the
 # directory is relative to MutekH directory, but this is not mandatory
 # at all. You may specify another external directory.
-APP_DIR=$(shell pwd)/decoder_h264_clone/decoder_soclib
+APP_DIR=$(shell pwd)/../common/decoder_h264_clone/decoder_soclib
 
 # Then you may choose to build for mips, arm or ppc.
 CPU=mips32el
@@ -35,7 +35,7 @@ CONFIG=config
 # Standard configuration files provided in examples expect a ARCH-CPU
 # couple, plus a platform name (to compile hardware layout definition
 # in the kernel)
-BUILD=soclib-$(CPU):pf_decoder_h264
+BUILD=soclib-$(CPU):pf_decoder_h264:pf_tlmdt
 
 # Now we can define the expected kernel file
 KERNEL=mutekh/kernel-soclib-$(CPU).out
