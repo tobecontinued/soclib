@@ -1,8 +1,3 @@
-To create a ramdisk image containing files to be accessed by the programme:
-
-% mkfs.vfat -C -f 1 -F 32 img.bin 1024
-% mcopy     -o -i img.bin FOREMAN.264 ::
-
 List of files:
 - FOREMANA  : cif,  1 slice, 25 frames
 - FOREMANB  : cif,  2 slice, 25 frames
