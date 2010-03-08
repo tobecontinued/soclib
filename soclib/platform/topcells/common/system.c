@@ -67,6 +67,8 @@ uint32_t run_cycles()
 # endif
 #elif defined(PPC)
 	return dcr_get(3);
+#elif defined(__lm32__)
+	return get_cc();
 #elif defined(__arm__)
 	uint32_t ret;
 	asm (
