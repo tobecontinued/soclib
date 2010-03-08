@@ -67,8 +67,9 @@ arch_stamp:
 	$(CC) -o $@ $(CFLAGS) -c $<
 
 clean :
-	-rm -f $(SOFT_IMAGE) $(OBJS) arch_stamp
+	-rm -f $(SOFT_IMAGE) $(OBJS) arch_stamp deps.mk $(OBJS:.o=.deps)
 
+ifneq ($(MAKECMDGOALS),clean)
 deps.mk: $(OBJS:.o=.deps)
 	cat $^ /dev/null > $@
 
@@ -79,3 +80,4 @@ deps.mk: $(OBJS:.o=.deps)
 	touch $@
 
 include deps.mk
+endif
