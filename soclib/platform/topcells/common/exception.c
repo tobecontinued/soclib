@@ -36,6 +36,7 @@
 #elif __arm__
 # include "exception_arm.c"
 #elif __lm32__
+# include "exception_lm32.c"
 #elif __sparc__
 #else
 #error Unsupported arch
