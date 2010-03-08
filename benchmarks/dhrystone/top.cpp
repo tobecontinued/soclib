@@ -48,6 +48,7 @@
 #include "mips32.h"
 #include "ppc405.h"
 #include "arm.h"
+#include "lm32.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
@@ -60,6 +61,7 @@ typedef enum {
 	MIPSEB,
 	POWERPC,
 	ARM,
+	LM32,
 } arch_t;
 
 int _main(int argc, char *argv[])
@@ -93,6 +95,9 @@ int _main(int argc, char *argv[])
 	} else if ( loader.get_symbol_by_name("arm_irq") ) {
 		arch = ARM;
 		arch_string = "arm";
+	} else if ( loader.get_symbol_by_name("_exit_lm32") ) {
+		arch = LM32;
+		arch_string = "lm32";
 	} else
 		throw soclib::exception::RunTimeError("Incorrect architecture");
 
@@ -112,6 +117,9 @@ int _main(int argc, char *argv[])
 		break;
 	case ARM:
 		maptab.add(Segment("arm_boot", ARM_BOOT_BASE, ARM_BOOT_SIZE, IntTab(0), true));
+		break;
+	case LM32:
+		maptab.add(Segment("lm32_boot", LM32_BOOT_BASE, LM32_BOOT_SIZE, IntTab(0), true));
 		break;
 	}
 	maptab.add(Segment("text" , TEXT_BASE , TEXT_SIZE , IntTab(0), true));
@@ -135,6 +143,7 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> signal_cpu0_it3("signal_cpu0_it3"); 
 	sc_signal<bool> signal_cpu0_it4("signal_cpu0_it4"); 
 	sc_signal<bool> signal_cpu0_it5("signal_cpu0_it5");
+	sc_signal<bool> uncon_it       ("uncon_it");
 
 	soclib::caba::VciSignals<vci_param> signal_vci_m0("signal_vci_m0");
 
@@ -152,6 +161,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Mips32EbIss)> *mipseb0;
 	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Ppc405Iss)> *ppc0;
 	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::ArmIss)> *arm0;
+	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::LM32Iss)> *lm32_0;
 
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
@@ -211,6 +221,15 @@ int _main(int argc, char *argv[])
 		arm0->p_resetn(signal_resetn);  
 		arm0->p_irq[0](signal_cpu0_it0); 
 		arm0->p_vci(signal_vci_m0);
+		break;
+	case LM32:
+		lm32_0 = new soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::LM32Iss)>("lm32_0", 0, maptab,IntTab(0),4, 512,16,4, 128,16);
+		lm32_0->p_clk(signal_clk);  
+		lm32_0->p_resetn(signal_resetn);  
+		lm32_0->p_irq[0](signal_cpu0_it0); 
+		lm32_0->p_vci(signal_vci_m0);
+        for (int i=1; i<32; i++)
+            lm32_0->p_irq[i] (uncon_it);
 		break;
 	}
 
