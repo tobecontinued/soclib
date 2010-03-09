@@ -266,6 +266,9 @@ namespace soclib { namespace common {
             // Constructor
             LM32Iss(const std::string &name, uint32_t ident);
 
+            // Debug public function for gdb server
+            void  dump() const;
+
             // Reset function 
             void reset();
             /******  ISS2 API  ******/

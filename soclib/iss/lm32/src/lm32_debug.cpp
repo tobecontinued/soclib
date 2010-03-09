@@ -43,6 +43,12 @@
 
 namespace soclib { namespace common {
 
+    void LM32Iss::dump( ) const
+    {
+        dump_pc (m_name);
+        dump_regs("");
+    }
+
     void LM32Iss::dump_pc( const std::string &msg) const
     {
         std::cout
