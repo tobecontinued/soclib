@@ -8,7 +8,7 @@ original author: Alexandre Becoulet <alexandre.becoulet@free.fr>
 2) Add soclib hal support
 
    $ cd .../ecos-3.0/
-   $ cp -r .../soclib/bencmarks/soclib packages/hal/mips/
+   $ cp -r .../soclib/benchmarks/ecos/soclib packages/hal/mips/
    $ patch -p0 < .../soclib/benchmarks/ecos/ecos-3.0.diff
 
 3) Build ecos as explained in the documentation
