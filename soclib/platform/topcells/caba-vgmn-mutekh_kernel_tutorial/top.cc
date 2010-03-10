@@ -171,6 +171,7 @@ int _main(int argc, char **argv)
   // Avoid repeating these everywhere
   std::vector<CpuEntry*> cpus;
   common::Loader data_ldr;
+  data_ldr.memory_default(0x5a);
 
   // Mapping table
 
@@ -207,17 +208,20 @@ int _main(int argc, char **argv)
       common::Loader *text_ldr;
 
       if (heterogeneous) {
-	text_ldr = new common::Loader(std::string(kernel_p) + ";.text");
-	data_ldr.load_file(std::string(kernel_p) + ";.rodata;.boot;.excep");
-	if (i == 0)
-	  data_ldr.load_file(std::string(kernel_p) + ";.data;.cpudata;.contextdata");
+	  text_ldr = new common::Loader(std::string(kernel_p) + ";.text");
+	  text_ldr->memory_default(0x5a);
+	  data_ldr.load_file(std::string(kernel_p) + ";.rodata;.boot;.excep");
+	  if (i == 0)
+	    data_ldr.load_file(std::string(kernel_p) + ";.data;.cpudata;.contextdata");
 
       } else {
-	text_ldr = new common::Loader(std::string(kernel_p));
-	data_ldr.load_file(std::string(kernel_p));
+	  text_ldr = new common::Loader(std::string(kernel_p));
+	  text_ldr->memory_default(0x5a);
+	  data_ldr.load_file(std::string(kernel_p));
       }
 
       common::Loader tools_ldr(kernel_p);
+      tools_ldr.memory_default(0x5a);
 
       for (int j = 0; j < count; j++) {
 	int id = cpus.size();

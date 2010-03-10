@@ -70,21 +70,22 @@ int _main(int argc, char *argv[])
 	// Avoid repeating these everywhere
 	using soclib::common::IntTab;
 	using soclib::common::Segment;
-    const size_t ncpu = 4;
-    const size_t xicu_n_irq = 2;
+	const size_t ncpu = 4;
+	const size_t xicu_n_irq = 2;
 
 	// Define VCI parameters
 	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,4,4,1> vci_param;
 
-    const char *kernel = default_kernel;
-    if ( argc > 1 ) {
-        kernel = argv[1];
-    }
+	const char *kernel = default_kernel;
+	if ( argc > 1 ) {
+	  kernel = argv[1];
+	}
 
 	// Mapping table
-	soclib::common::Loader loader(kernel);
+       soclib::common::Loader loader(kernel);
+       loader.memory_default(0x5a);
 
-	soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0xf0000000);
+       soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0xf0000000);
 	
 #if defined(CPU_ppc)
 	maptabp.add(Segment("boot",  0xffffff80, 0x00000080, IntTab(0), true));
