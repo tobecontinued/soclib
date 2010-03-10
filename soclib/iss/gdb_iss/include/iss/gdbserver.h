@@ -141,6 +141,8 @@ private:
          wait_on_wpoint_:1;
     uintptr_t cur_func_;
     uintptr_t cur_addr_;
+    uint64_t cycles_;
+    uint64_t cycles_bp_;
 
     typedef dpp::interval_set<uint32_t, dpp::interval_bound_inclusive<uint32_t> > address_set_t;
 
@@ -187,6 +189,16 @@ private:
     {
         for (unsigned int i = 0; i < list_.size(); i++)
             list_[i]->state_ = s;
+    }
+
+    friend std::ostream & operator<<(std::ostream &o, GdbServer<CpuIss> &cpu)
+    {
+        uint32_t pc = cpu.CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
+        o << "[GDB] CPU " << std::dec << cpu.cpu_id_
+          << " (" << cpu.list_[cpu.id_]->name() << ")"
+          << " cycle:" << cpu.cycles_
+          << " PC:" << std::hex << pc << " ";
+        return o;
     }
 
     unsigned int id_;

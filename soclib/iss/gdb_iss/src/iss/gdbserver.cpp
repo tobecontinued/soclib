@@ -119,6 +119,8 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
       exit_on_trap_(false),
       wait_on_wpoint_(true),
       cur_addr_(0),
+      cycles_(0),
+      cycles_bp_(0),
       cpu_id_(ident)
     {
         init_state();
@@ -865,8 +867,7 @@ void GdbServer<CpuIss>::watch_mem_access()
                     if (break_write_access_[dreq.addr]) {
                         char buffer[32];
 
-                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                                  << ") WRITE watchpoint triggered at " << std::hex << dreq.addr << " with value " << dreq.wdata << std::endl;
+                        std::cerr << *this << "WRITE watchpoint triggered at " << std::hex << dreq.addr << " with value " << dreq.wdata << std::endl;
 
                         if (!wait_on_wpoint_)
                             break;
@@ -884,8 +885,7 @@ void GdbServer<CpuIss>::watch_mem_access()
                     if (break_read_access_[dreq.addr]) {
                         char buffer[32];
 
-                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                                  << ") READ watchpoint triggered at " << std::hex << dreq.addr << std::endl;
+                        std::cerr << *this << "READ watchpoint triggered at " << std::hex << dreq.addr << std::endl;
 
                         if (!wait_on_wpoint_)
                             break;
@@ -908,6 +908,7 @@ bool GdbServer<CpuIss>::check_break_points()
 {
     char buffer[32];
     uint32_t pc = CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
+    int sig;
 
     if (call_trace_)
         {
@@ -922,38 +923,42 @@ bool GdbServer<CpuIss>::check_break_points()
 
                          (sym.symbol().size() >= 4 || pc != cur_addr_ + 4) ) // avoid display pc+4 when out of symbol
 
-                        std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                                  << ") jumped from " << std::hex << cur_addr_ << " to " << sym << std::endl;
+                        std::cerr << *this << "jumped from " << std::hex << cur_addr_ << " to " << sym << std::endl;
                 }
 
             cur_addr_ = pc;
         }
 
+    if (cycles_bp_ && cycles_bp_ <= cycles_)
+        {
+            sig = 2;
+            cycles_bp_ = 0;
+            std::cerr << *this << "reached a cycle breakpoint" << std::endl;
+            goto stop;
+        }
+
     if (break_exec_.find(pc) != break_exec_.end())
         {
-            change_all_states(WaitIssMem);
-            current_id_ = id_;
-
-            sprintf(buffer, "T05thread:%x;", id_ + 1);
-            write_packet(buffer);
-
-            return true;
+            sig = 2;
+            goto stop;
         }
 
     if (ctrl_c_)
         {
-            change_all_states(WaitIssMem);
-            current_id_ = id_;
-
-            sprintf(buffer, "T02thread:%x;", id_ + 1);
-            write_packet(buffer);
-
             ctrl_c_ = false;
-
-            return true;
+            sig = 2;
+            goto stop;
         }
 
     return false;
+
+ stop:
+    change_all_states(WaitIssMem);
+    current_id_ = id_;
+
+    sprintf(buffer, "T%02ithread:%x;", sig, id_ + 1);
+    write_packet(buffer);
+    return true;
 }
 
 template<typename CpuIss>
@@ -987,8 +992,7 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
     switch ( cl )
         {
         case Iss2::EXCL_FAULT:
-            std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                      << ") FAULT: " << str[ca] << " at PC=" << std::hex << pc << std::endl;
+            std::cerr << *this << "FAULT: " << str[ca] << std::endl;
 
             switch ( ca )
                 {
@@ -1015,8 +1019,7 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
             break;
 
         case Iss2::EXCL_TRAP:            
-            std::cerr << "[GDB] CPU " << std::dec << cpu_id_ << " (" << list_[id_]->name()
-                      << ") TRAP at PC=" << std::hex << pc << std::endl;
+            std::cerr << *this << "TRAP" << std::endl;
             if ( exit_on_trap_ )
                 kill(getpid(), SIGINT);
 
@@ -1140,6 +1143,7 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
             // check memory access break point
             watch_mem_access();
 
+            cycles_ += ncycles_done;
             return ncycles_done;
         }
 
@@ -1154,6 +1158,7 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
             // check memory access break point
             watch_mem_access();
 
+            cycles_ += ncycles_done;
             return ncycles_done;
         }
 
@@ -1168,6 +1173,7 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
                 step_id_ = 0;
             }
 
+            cycles_ += cycles;
             return cycles;
         }
 
@@ -1217,9 +1223,11 @@ template<typename CpuIss>
 void GdbServer<CpuIss>::init_state()
 {
     const char *env_val = getenv("SOCLIB_GDB");
+    size_t id = list_.size();
+
     if ( env_val ) {
 
-        if (!list_.size())
+        if (!id)
             for (int i = 0; env_val[i]; i++)
                 if (!strchr("FCTZSXW", env_val[i]))
                     std::cerr << "[GDB] Warning: SOCLIB_GDB variable doesn't support the `" << env_val[i] << "' flag." << std::endl;
@@ -1256,7 +1264,22 @@ void GdbServer<CpuIss>::init_state()
 
     // Options below this point are handled once for all cpus
 
-    if (list_.size())
+    if (( env_val = getenv("SOCLIB_GDB_CYCLEBP") )) {
+        
+        while (*env_val) {
+            uint64_t bp = strtoul(env_val, (char**)&env_val, 0);
+
+            if (*env_val != ',' || strtoul(env_val + 1, (char**)&env_val, 0) == id) {
+                std::cerr << "[GDB] cycle breakpoint added at cycle " << std::dec << bp << " for cpu " << id << std::endl;
+                cycles_bp_ = bp;
+            }
+
+            if (*env_val == ':')
+                env_val++;
+        }
+    }
+
+    if (id)
         return;
 
     if (( env_val = getenv("SOCLIB_GDB_SLEEPMS") )) {
