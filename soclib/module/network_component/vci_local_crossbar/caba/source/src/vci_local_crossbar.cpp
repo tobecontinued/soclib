@@ -33,9 +33,7 @@
 #include "../include/vci_local_crossbar.h"
 #include "alloc_elems.h"
 
-#ifndef CROSSBAR_DEBUG
-#define CROSSBAR_DEBUG 0
-#endif
+//#define CROSSBAR_DEBUG
 
 namespace soclib { namespace caba {
 
@@ -59,6 +57,7 @@ template<typename pkt_t> class Crossbar
 	const routing_table_t m_rt;
 	const locality_table_t m_lt;
     const size_t m_non_local_target;
+    bool m_broadcast_waiting;
 
 public:
 	Crossbar(
@@ -82,25 +81,51 @@ public:
 		for (size_t i=0; i<m_out_size; ++i) {
 			m_allocated[i] = false;
 			m_origin[i] = 0;
+            m_broadcast_waiting = false;
 		}
 	}
 
     void transition( input_port_t **input_port, output_port_t **output_port )
     {
-		for( size_t out = 0; out < m_out_size; out++) {
-			if (m_allocated[out]) {
-				if( output_port[out]->toPeerEnd() )
-					m_allocated[out] = false;
-			} else {
-				for(size_t _in = 0; _in < m_in_size; _in++) {
-					size_t in = (_in + m_origin[out] + 1) % m_in_size;
-
+        if(!m_broadcast_waiting){
+            size_t in = m_in_size -1;
+            if(input_port[in]->getVal() && !input_port[in]->iAccepted()){ // second part is here to avoid resending the broadcast once every one has acknowledged
+                pkt_t tmp;
+                tmp.readFrom(*input_port[in]);
+                if(tmp.is_broadcast()){
+                    m_broadcast_waiting = true;
+#ifdef CROSSBAR_DEBUG
+                    std::cout << "Crossbar broadcast received " << std::endl;
+#endif
+                }
+            }
+        }
+#ifdef CROSSBAR_DEBUG
+        if(m_broadcast_waiting){
+                    std::cout << "Crossbar, broadcast waiting ! " << std::endl;
+        }
+#endif
+        for( size_t out = 0; out < m_out_size; out++) {
+            if (m_allocated[out]) {
+                if( output_port[out]->toPeerEnd() )
+                    m_allocated[out] = false;
+            } else {
+                if(m_broadcast_waiting && (out!=(m_out_size-1)) ){
+#ifdef CROSSBAR_DEBUG
+                    std::cout << "Crossbar, broadcast, allocating output " << std::dec << out << std::endl;
+#endif
+                    m_allocated[out] = true;
+                    m_origin[out] = m_in_size -1;
+                }
+                for(size_t _in = 0; _in < m_in_size; _in++) {
+                    size_t in = (_in + m_origin[out] + 1) % m_in_size;
 					if (input_port[in]->getVal()) {
 						pkt_t tmp;
 						tmp.readFrom(*input_port[in]);
 
-                        if ( ( ! tmp.isLocal(m_lt) && out == m_non_local_target ) ||
-                             ( tmp.isLocal(m_lt) && (size_t)tmp.route(m_rt) == out ) ) {
+                        if ( ( ! tmp.isLocal(m_lt) && out == m_non_local_target && !tmp.is_broadcast()) ||
+                             ( tmp.is_broadcast() && out == m_non_local_target && in != (m_in_size-1) ) ||
+                             ( tmp.isLocal(m_lt) && (size_t)tmp.route(m_rt) == out && !tmp.is_broadcast() ) ) {
                             m_allocated[out] = true;
                             m_origin[out] = in;
                             break;
@@ -113,26 +138,50 @@ public:
 
     void genMealy( input_port_t **input_port, output_port_t **output_port )
     {
+        bool ack[m_in_size];
+        for( size_t in = 0; in < m_in_size; in++)
+            ack[in] = false;
 		for( size_t out = 0; out < m_out_size; out++) {
 			if (m_allocated[out]) {
 				size_t in = m_origin[out];
-				pkt_t tmp;
-				tmp.readFrom(*input_port[in]);
-				tmp.writeTo(*output_port[out]);
+                // transfer only if it is not a broadcast
+                if((in!=m_in_size-1)||!m_broadcast_waiting){
+				    pkt_t tmp;
+				    tmp.readFrom(*input_port[in]);
+				    tmp.writeTo(*output_port[out]);
+					ack[in] = output_port[out]->getAck();
+                }
 			} else {
 				output_port[out]->setVal(false);
 			}
 		}
-		for( size_t in = 0; in < m_in_size; in++) {
-			bool ack = false;
-			for ( size_t out = 0; out < m_out_size; out++) {
-				if ( m_allocated[out] && m_origin[out] == in ) {
-					ack = output_port[out]->getAck();
-					break;
-				}
-			}
-			input_port[in]->setAck(ack);
-		}
+        // Special treatment when a broadcast is waiting
+        if(m_broadcast_waiting){
+            bool granted = true;
+            for(size_t out = 0; out < m_out_size-1; out++){
+                // Are all outputs free ?
+                granted = granted
+                    && (m_allocated[out]&&(m_origin[out]==m_in_size-1))
+                    && output_port[out]->getAck();
+            }
+            // If all outputs are free, we transfer the packet
+            // and acknowledge the broadcast
+            ack[m_in_size-1]=granted;
+            m_broadcast_waiting = !granted;
+            for(size_t out = 0; out < m_out_size-1; out++){
+                if(granted){
+				    pkt_t tmp;
+				    tmp.readFrom(*input_port[m_in_size-1]);
+				    tmp.writeTo(*output_port[out]);
+                } else {
+                    if(m_allocated[out]&&(m_origin[out]==m_in_size-1))
+                        output_port[out]->setVal(false);
+                }
+            }
+        }
+        // Send the acknowledges
+        for( size_t in = 0; in < m_in_size; in++)
+			input_port[in]->setAck(ack[in]);
     }
 };
 
