@@ -650,14 +650,14 @@ void GdbServer<CpuIss>::process_gdb_packet()
                     else
                         gs = this;
  
-                    if (data[1])        // continue at specified address
+                    if (data[1]) {        // continue at specified address
                         pc = strtoul(data + 1, 0, 16);
-                    else
+                        gs->CpuIss::debugSetRegisterValue(CpuIss::s_pc_register_no, pc);
+                    } else
                         pc = gs->CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
 
                     gs->state_ = Step;
                     gs->step_pc_ = pc;
-                    gs->CpuIss::debugSetRegisterValue(CpuIss::s_pc_register_no, pc);
                     return;
                 }
 
@@ -1164,7 +1164,7 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
 
         case Step: {
             char buffer[32];
-            uint32_t cycles = CpuIss::executeNCycles(1, irsp, drsp, irq_bit_field);
+            uint32_t cycles = CpuIss::executeNCycles(ncycle, irsp, drsp, irq_bit_field);
 
             if (CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no) != step_pc_) {
                 sprintf(buffer, "T05thread:%x;", id_ + 1);
