@@ -785,7 +785,7 @@ namespace soclib { namespace caba {
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_READ ) {
 #ifdef VHDL_ACCURATE
-            if(r_read_pass.read()){
+            if(!r_read_pass.read()){
 #endif
               size_t way = 0;
               DirectoryEntry entry = m_cache_directory.read(m_cmd_read_addr_fifo.read(), way);
@@ -797,20 +797,20 @@ namespace soclib { namespace caba {
 
               r_read_is_cnt   = entry.is_cnt;
               r_read_dirty    = entry.dirty;
-              r_read_tag	    = entry.tag;
-              r_read_lock	    = entry.lock;
-              r_read_way	    = way;
-              r_read_word	    = m_cmd_read_word_fifo.read();
+              r_read_tag	  = entry.tag;
+              r_read_lock	  = entry.lock;
+              r_read_way	  = way;
+              r_read_word	  = m_cmd_read_word_fifo.read();
               r_read_d_copies = entry.d_copies; 
               r_read_i_copies = entry.i_copies; 
               r_read_count    = entry.count;
 #ifdef VHDL_ACCURATE
-              r_read_pass     = false;
+              r_read_pass     = true;
 #endif
 
               // In case of hit, the read acces must be registered in the copies bit-vector
               if( entry.valid )  { 
-                r_read_fsm = READ_DIR_HIT;
+                r_read_fsm = READ_DIR_LOCK;
               } else {
                 r_read_fsm = READ_TRT_LOCK;
                 m_cpt_read_miss++;
@@ -818,8 +818,8 @@ namespace soclib { namespace caba {
 
 #ifdef VHDL_ACCURATE
             } else {
-              r_read_pass = true;
-              r_read_fsm = READ_DIR_LOCK;
+              r_read_pass = false;
+              r_read_fsm = READ_DIR_HIT;
             }
 #endif
           }
