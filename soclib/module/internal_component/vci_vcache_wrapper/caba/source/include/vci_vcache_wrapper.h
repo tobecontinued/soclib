@@ -77,6 +77,7 @@ class VciVCacheWrapper
         ICACHE_UNC_WAIT,            // 10
         ICACHE_MISS_UPDT,           // 11
         ICACHE_ERROR,               // 12
+        ICACHE_CACHE_INVAL_PA,      // 13
     };
 
     enum dcache_fsm_state_e {  
@@ -109,6 +110,8 @@ class VciVCacheWrapper
         DCACHE_MISS_UPDT,           // 1a
         DCACHE_UNC_WAIT,            // 1b
         DCACHE_ERROR,               // 1c
+	    DCACHE_ICACHE_INVAL_PA,     // 1d
+	    DCACHE_DCACHE_INVAL_PA,     // 1e
     };
 
     enum cmd_fsm_state_e {      
@@ -214,6 +217,8 @@ private:
     sc_signal<int>          r_mmu_mode;             // tlb mode register
     sc_signal<int>          r_mmu_params;           // mmu parameters register
     sc_signal<int>          r_mmu_release;          // mmu release register
+    sc_signal<int>          r_mmu_word_lo;          // mmu misc data low
+    sc_signal<int>          r_mmu_word_hi;          // mmu mmu misc data hight
 
     // DCACHE FSM REGISTERS
     sc_signal<int>          r_dcache_fsm;               // state register
@@ -264,6 +269,7 @@ private:
     sc_signal<tag_t>        r_icache_vpn_save;          // used for speculative cache access
     sc_signal<bool>         r_itlb_translation_valid;   // used for speculative physical address
     sc_signal<bool>         r_icache_buf_unc_valid;     // used for uncached read
+    sc_signal<vaddr_t>      r_icache_vaddr_req;         // software visible registers
 
     sc_signal<data_t>       r_icache_error_type;        // software visible registers
     sc_signal<vaddr_t>      r_icache_bad_vaddr;         // software visible registers
