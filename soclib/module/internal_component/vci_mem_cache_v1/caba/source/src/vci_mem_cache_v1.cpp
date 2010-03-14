@@ -1052,7 +1052,7 @@ namespace soclib { namespace caba {
         {
           if ( r_alloc_dir_fsm.read() == ALLOC_DIR_WRITE ) {
 #ifdef VHDL_ACCURATE
-            if (r_write_pass.read()){
+            if (!r_write_pass.read()){
 #endif
               size_t  way = 0;
               DirectoryEntry entry(m_cache_directory.read(r_write_address.read(), way));
@@ -1066,27 +1066,27 @@ namespace soclib { namespace caba {
                 r_write_i_copies  = entry.i_copies;
                 r_write_count     = entry.count;
                 r_write_way  	  = way;
-                if(entry.is_cnt && entry.count){
-                  r_write_fsm     = WRITE_DIR_HIT_READ;
-                } else {
-                  if(r_write_byte.read())
-                    r_write_fsm   = WRITE_DIR_HIT_READ;
-                  else {
-                      bool owner     = (bool) (entry.d_copies & (0x1 << r_write_srcid.read()));
-                      bool no_update = (owner && (entry.count == 1)) || (entry.count==0);
-                      if( no_update ) r_write_fsm  = WRITE_DIR_HIT_RSP; 
-                      else            r_write_fsm  = WRITE_DIR_HIT;
-                  }
-                }
+                r_write_fsm  = WRITE_DIR_LOCK;
+                r_write_pass = true;
               } else {
                 r_write_fsm = WRITE_TRT_LOCK;
                 m_cpt_write_miss++;
               }
 #ifdef VHDL_ACCURATE
-              r_write_pass = false;
            } else {
-             r_write_pass = true;
-             r_write_fsm  = WRITE_DIR_LOCK;
+             if(r_write_is_cnt.read() && r_write_count.read()){
+               r_write_fsm     = WRITE_DIR_HIT_READ;
+             } else {
+               if(r_write_byte.read())
+                 r_write_fsm   = WRITE_DIR_HIT_READ;
+               else {
+                   bool owner     = (bool) (r_write_d_copies & (0x1 << r_write_srcid.read()));
+                   bool no_update = (owner && (r_write_count == 1)) || (r_write_count==0);
+                   if( no_update ) r_write_fsm  = WRITE_DIR_HIT_RSP; 
+                   else            r_write_fsm  = WRITE_DIR_HIT;
+               }
+             }
+             r_write_pass = false;
            }
 #endif
           }
@@ -1763,7 +1763,7 @@ namespace soclib { namespace caba {
         {
           if ( (r_alloc_trt_fsm.read() == ALLOC_TRT_XRAM_RSP) ) {
 #ifdef VHDL_ACCURATE
-            if (r_xram_rsp_pass.read()){
+            if (!r_xram_rsp_pass.read()){
 #endif
               size_t index = r_xram_rsp_trt_index.read();
               TransactionTabEntry    trt_entry(m_transaction_tab.read(index));	
@@ -1789,17 +1789,21 @@ namespace soclib { namespace caba {
               r_xram_rsp_victim_inval    = inval ;
               r_xram_rsp_victim_dirty    = victim.dirty;
 
+#ifdef VHDL_ACCURATE
+              r_xram_rsp_fsm = XRAM_RSP_TRT_COPY;
+#else
               r_xram_rsp_fsm = XRAM_RSP_INVAL_LOCK;
+#endif
 #ifdef IDEBUG
 	std::cout << "XRAM_RSP FSM in XRAM_RSP_TRT_COPY state" << std::endl;
 	std::cout << "Victim way : " << std::hex << way << " set " << std::hex << set << std::endl;
 	victim.print();
 #endif
 #ifdef VHDL_ACCURATE
-                r_xram_rsp_pass = false;
-              }else{
                 r_xram_rsp_pass = true;
-                r_xram_rsp_fsm = XRAM_RSP_TRT_COPY;
+              }else{
+                r_xram_rsp_pass = false;
+                r_xram_rsp_fsm = XRAM_RSP_INVAL_LOCK;
               }
 #endif
           }
@@ -2071,7 +2075,7 @@ namespace soclib { namespace caba {
         {
           if ( r_alloc_dir_fsm.read() == ALLOC_DIR_CLEANUP ) {
 #ifdef VHDL_ACCURATE
-            if (r_cleanup_pass.read()){
+            if (!r_cleanup_pass.read()){
 #endif
               // Read the directory
               size_t way = 0;
@@ -2093,15 +2097,15 @@ namespace soclib { namespace caba {
 
               // In case of hit, the copy must be cleaned in the copies bit-vector
               if( entry.valid )  { 
-                r_cleanup_fsm = CLEANUP_DIR_WRITE;
+                r_cleanup_fsm = CLEANUP_DIR_LOCK;
               } else {
                 r_cleanup_fsm = CLEANUP_UPT_LOCK;
               }
 #ifdef VHDL_ACCURATE
-              r_cleanup_pass = false;
-            }else{
               r_cleanup_pass = true;
-              r_cleanup_fsm  = CLEANUP_DIR_LOCK;
+            }else{
+              r_cleanup_pass = false;
+              r_cleanup_fsm  = CLEANUP_DIR_WRITE;
             }
 #endif
           }
@@ -2274,7 +2278,7 @@ namespace soclib { namespace caba {
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_LLSC ) {
 #ifdef VHDL_ACCURATE
-            if (r_llsc_pass.read()){
+            if (!r_llsc_pass.read()){
 #endif
               size_t way = 0;
               DirectoryEntry entry(m_cache_directory.read(m_cmd_llsc_addr_fifo.read(), way));
@@ -2286,13 +2290,13 @@ namespace soclib { namespace caba {
               r_llsc_i_copies   = entry.i_copies ;
               r_llsc_count      = entry.count ;
 
-              if ( entry.valid )  r_llsc_fsm = LL_DIR_HIT;
+              if ( entry.valid )  r_llsc_fsm = LL_DIR_LOCK;
               else                r_llsc_fsm = LLSC_TRT_LOCK;
 #ifdef VHDL_ACCURATE
-              r_llsc_pass        = false;
-            }else{
               r_llsc_pass        = true;
-              r_llsc_fsm         = LL_DIR_LOCK;
+            }else{
+              r_llsc_pass        = false;
+              r_llsc_fsm         = LL_DIR_HIT;
             }
 #endif
           }
@@ -2345,7 +2349,7 @@ namespace soclib { namespace caba {
         {
           if( r_alloc_dir_fsm.read() == ALLOC_DIR_LLSC ) {
 #ifdef VHDL_ACCURATE
-            if(r_llsc_pass.read()){
+            if(!r_llsc_pass.read()){
 #endif
               size_t way = 0;
               DirectoryEntry entry(m_cache_directory.read(m_cmd_llsc_addr_fifo.read(), way));
@@ -2358,16 +2362,16 @@ namespace soclib { namespace caba {
                 r_llsc_d_copies = entry.d_copies;
                 r_llsc_i_copies = entry.i_copies;
                 r_llsc_count    = entry.count;
-                if ( entry.valid )  r_llsc_fsm = SC_DIR_HIT;
+                if ( entry.valid )  r_llsc_fsm = SC_DIR_LOCK;
                 else                r_llsc_fsm = LLSC_TRT_LOCK;
               } else {
                 r_llsc_fsm = SC_RSP_FALSE;
               }
 #ifdef VHDL_ACCURATE
-              r_llsc_pass       = false;
-            }else{
               r_llsc_pass       = true;
-              r_llsc_fsm        = SC_DIR_LOCK;
+            }else{
+              r_llsc_pass       = false;
+              r_llsc_fsm        = SC_DIR_HIT;
             }
 #endif
           }
