@@ -156,10 +156,10 @@ public:
         for( size_t i = 0 ; i < m_nlines ; i++ )
         {
             std::cout << "LINE " << i << " : " 
-                      << wbuf_state_str[r_state[i]] 
-                      << std::hex << " address = " << r_address[i] 
-                      << " min = " << r_min[i]
-                      << " max = " << r_max[i] << std::endl;
+                      << wbuf_state_str[r_state[i].read()] 
+                      << std::hex << " address = " << r_address[i].read() 
+                      << " min = " << r_min[i].read()
+                      << " max = " << r_max[i].read() << std::endl;
             for( size_t w = 0 ; w < m_nwords ; w++ )
             {
                 std::cout << " / D" << std::dec << w << " = " 
@@ -167,7 +167,7 @@ public:
             }
             std::cout << std::endl;
         }
-        std::cout << "  ptw = " << r_ptw << "  ptr = " << r_ptr << std::endl;
+        std::cout << "  ptw = " << r_ptw.read() << "  ptr = " << r_ptr.read() << std::endl;
     }
 
     ///////////////////////////////////////////////////
@@ -176,7 +176,7 @@ public:
     {
         for( size_t i = 0 ; i < m_nlines ; i++ )
         {
-            if ((r_state[i] != EMPTY) && ((addr_t)r_address[i] == (addr & ~m_mask))) return false;
+            if ((r_state[i].read() != EMPTY) && ((addr_t)r_address[i].read() == (addr & ~m_mask))) return false;
         }
         return true;
     }
@@ -185,11 +185,11 @@ public:
     inline bool wok( addr_t addr )
     ///////////////////////////////////////////////////
     {
-	if( r_state[r_ptw] == EMPTY) 					return true;
-        else if( (r_state[r_ptw] == OPEN) &&
-                  ((addr_t)r_address[r_ptw] == (addr & ~m_mask)) ) 	return true;
-        else if( (r_state[r_ptw] == OPEN) &&
-                   (r_state[(r_ptw + 1)%m_nlines] == EMPTY) ) 		return true;
+	if( r_state[r_ptw.read()].read() == EMPTY) 					return true;
+        else if( (r_state[r_ptw.read()].read() == OPEN) &&
+                  ((addr_t)r_address[r_ptw.read()].read() == (addr & ~m_mask)) ) 	return true;
+        else if( (r_state[r_ptw.read()].read() == OPEN) &&
+                   (r_state[(r_ptw.read() + 1)%m_nlines].read() == EMPTY) ) 		return true;
         else								return false;
     }
 
@@ -199,7 +199,7 @@ public:
     {
         for( size_t i = 0 ; i < m_nlines ; i++ )
         {
-            if ( r_state[i] != EMPTY ) return false;
+            if ( r_state[i].read() != EMPTY ) return false;
         }
         return true;
     }
@@ -224,10 +224,10 @@ public:
 	if( !valid )  		// no write request
         { 
             // update the write pointer & the line state if OPEN
-            if( r_state[r_ptw] == OPEN )  
+            if( r_state[r_ptw.read()].read() == OPEN )  
             {
-                r_state[r_ptw] = LOCKED; 
-                r_ptw = (r_ptw + 1) % m_nlines;  
+                r_state[r_ptw.read()] = LOCKED; 
+                r_ptw = (r_ptw.read() + 1) % m_nlines;  
             }
 
 	} 
@@ -244,25 +244,25 @@ std::cout << std::endl;
 #endif
 
             // find the line to be written and update r_state & r_ptw
-            if( r_state[r_ptw] == EMPTY) 
+            if( r_state[r_ptw.read()].read() == EMPTY) 
             {
                 found = true ;
-                lw = r_ptw ;
-                r_state[r_ptw] = OPEN ;
+                lw = r_ptw.read() ;
+                r_state[r_ptw.read()] = OPEN ;
             }
-            else if( r_state[r_ptw] == OPEN) 
+            else if( r_state[r_ptw.read()].read() == OPEN) 
             {
-                if(r_address[r_ptw] == address)  
+                if(r_address[r_ptw.read()].read() == address)  
                 {
                     found = true ;
-                    lw = r_ptw ;
+                    lw = r_ptw.read() ;
 	        } 
                 else   // no convenient open line : take next line if empty
                 {
-                    r_state[r_ptw] = LOCKED ;
-                    lw = (r_ptw + 1) % m_nlines ;
+                    r_state[r_ptw.read()] = LOCKED ;
+                    lw = (r_ptw.read() + 1) % m_nlines ;
                     r_ptw = lw ;		// increment r_ptw
-		    if( r_state[lw] == EMPTY ) 
+		    if( r_state[lw].read() == EMPTY ) 
                     {
                         found = true ;
                         r_state[lw] = OPEN ;
@@ -302,49 +302,49 @@ std::cout << std::endl;
     inline bool rok()
     ///////////////////////////////////////////////////
     {
-        return ( r_state[r_ptr].read() == LOCKED ) ;
+        return ( r_state[r_ptr.read()].read() == LOCKED ) ;
     }
 
     ///////////////////////////////////
     inline size_t getIndex()
     ///////////////////////////////////
     {
-        return  r_ptr ;
+        return  r_ptr.read() ;
     }
 
     ///////////////////////////////////
     inline size_t getMin()
     ///////////////////////////////////
     {
-        return  r_min[r_ptr] ;
+        return  r_min[r_ptr.read()].read() ;
     }
 
     ///////////////////////////////////
     inline size_t getMax()
     ///////////////////////////////////
     {
-        return  r_max[r_ptr] ;
+        return  r_max[r_ptr.read()].read() ;
     }
 
     //////////////////////////////////////
     inline addr_t getAddress(size_t word)
     //////////////////////////////////////
     {
-        return ( (addr_t)r_address[r_ptr] + (addr_t)(word << 2) ) ;
+        return ( (addr_t)r_address[r_ptr.read()].read() + (addr_t)(word << 2) ) ;
     } 
 
     ///////////////////////////////////
     data_t inline getData(size_t word)
     ///////////////////////////////////
     {
-        return r_data[r_ptr][word] ;
+        return r_data[r_ptr.read()][word] ;
     } 
 
     ///////////////////////////////////
     be_t inline getBe(size_t word)
     ///////////////////////////////////
     {
-        return r_be[r_ptr][word] ;
+        return r_be[r_ptr.read()][word] ;
     } 
 
     /////////////////////////////////////////////////////////////
@@ -361,7 +361,7 @@ std::cout << "********** write buffer : line " << index << " completed" << std::
 std::cout << std::endl;
 #endif
 
-        assert( (index < m_nlines) && (r_state[index] == SENT) &&
+        assert( (index < m_nlines) && (r_state[index].read() == SENT) &&
              "write buffer error : illegal completed command received");
         r_max[index]   	= 0 ;
         r_min[index]   	= m_nwords - 1 ;
@@ -380,12 +380,12 @@ std::cout << std::endl;
 
 #ifdef WRITE_BUFFER_DEBUG
 std::cout << std::endl;
-std::cout << "********** write buffer : line " << r_ptr << " sent" << std::endl;
+std::cout << "********** write buffer : line " << r_ptr.read() << " sent" << std::endl;
 std::cout << std::endl;
 #endif
-        assert( (r_state[r_ptr] == LOCKED) &&
+        assert( (r_state[r_ptr.read()].read() == LOCKED) &&
              "write buffer error : illegal sent command received");
-        r_state[r_ptr] = SENT;
+        r_state[r_ptr.read()] = SENT;
 	r_ptr = (r_ptr + 1) % m_nlines;  // increment index
     } 
 
