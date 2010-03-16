@@ -2507,6 +2507,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                 {
                     r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
                     r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+                    r_dcache_tlb_read_req = true;
+                    r_dcache_tlb_first_req = true;
                     r_dcache_tlb_ptba_read = true;
                     r_vci_rsp_data_ok = false;
                     r_dcache_fsm = DCACHE_TLB1_READ;

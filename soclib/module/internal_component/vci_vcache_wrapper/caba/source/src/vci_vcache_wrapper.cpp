@@ -31,6 +31,7 @@
 namespace soclib { 
 namespace caba {
 
+//#define SOCLIB_MODULE_DEBUG
 #ifdef SOCLIB_MODULE_DEBUG
 namespace {
 const char *icache_fsm_state_str[] = {
@@ -578,7 +579,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             }
 */
         } // end if xtn_req
-
+        
         // icache_hit_t_m, icache_hit_t_k, icache_hit_x, icache_hit_p 
         // icache_pte_info, icache_tlb_way, icache_tlb_set & ipaddr & cacheability 
         // - If MMU activated : cacheability is defined by the cachable bit in the TLB
@@ -1261,7 +1262,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             int        xtn_opcod      = (int)dreq.addr/4;
             paddr_t    tlb_dpaddr     = 0;        // physical address obtained from TLB
             paddr_t    spc_dpaddr     = 0;        // physical adress obtained from PPN_save (speculative)
-            bool       dcache_hit_t   = false;     // hit on TLB
+            bool       dcache_hit_t   = false;    // hit on TLB
             bool       dcache_hit_x   = false;    // VPN unmodified (can use spc_dpaddr)
             bool       dcache_hit_p   = false;    // PTP unmodified (can skip first level page table walk)
             bool       dcache_hit_c   = false;    // Cache hit
@@ -2490,6 +2491,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                     r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
                     r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                     r_dcache_tlb_ptba_read = true;
+                    r_dcache_tlb_read_req = true;
+                    r_dcache_tlb_first_req = true;
                     r_dcache_fsm = DCACHE_TLB1_READ;
                 }
             }        
