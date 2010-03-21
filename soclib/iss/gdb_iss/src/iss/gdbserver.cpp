@@ -985,7 +985,6 @@ void GdbServer<CpuIss>::cleanup()
 template<typename CpuIss>
 bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::ExceptionCause ca )
 {
-    uint32_t pc = CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
     static const char *str[] = { EXCEPTIONCAUSE_STRINGS };
     int signal = 5; // SIGTRAP by default
 
@@ -1097,7 +1096,7 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
             return ncycle;
 
         case WaitIssMem:
-            CpuIss::executeNCycles(0, irsp, drsp, irq_bit_field);
+            CpuIss::executeNCycles(0, irsp, drsp, 0);
 
             if (satisfied)
                 state_ = Frozen;
@@ -1164,7 +1163,7 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
 
         case Step: {
             char buffer[32];
-            uint32_t cycles = CpuIss::executeNCycles(ncycle, irsp, drsp, irq_bit_field);
+            uint32_t cycles = CpuIss::executeNCycles(ncycle, irsp, drsp, 0);
 
             if (CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no) != step_pc_) {
                 sprintf(buffer, "T05thread:%x;", id_ + 1);
