@@ -3,7 +3,7 @@
 
 cpus = []
 
-for cpu in "mips32el", "arm", "ppc405":
+for cpu in ["arm"]:
   cpus += [
     Uses('caba:vci_xcache_wrapper',
          iss_t = 'common:'+cpu),

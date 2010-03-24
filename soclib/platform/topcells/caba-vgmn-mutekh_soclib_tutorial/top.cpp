@@ -1,6 +1,4 @@
 
-#include "config.h"
-
 #define USE_GDB_SERVER
 //#define USE_SIMHELPER
 //#define USE_MEMCHECKER
@@ -26,24 +24,9 @@
 #include "vci_xicu.h"
 #include "vci_block_device.h"
 
+#include "arm.h"
 
-
-#if defined(CPU_mips32el) || defined(CPU_mips)
-#   include "mips32.h"
-#   warning Using a Mips32
-    typedef soclib::common::Mips32ElIss iss_t;
-#elif defined(CPU_ppc)
-#   include "ppc405.h"
-#   warning Using a PPC405
-    typedef soclib::common::Ppc405Iss iss_t;
-#elif defined(CPU_arm)
-#   include "arm.h"
-#   warning Using an ARM
-    typedef soclib::common::ArmIss iss_t;
-#endif /* End of CPU switches */
-    const char *default_kernel = KERNEL_FILE;
-
-
+typedef soclib::common::ArmIss iss_t;
 
 #if defined(USE_GDB_SERVER) && defined(USE_MEMCHECKER)
 #   include "gdbserver.h"
@@ -76,25 +59,23 @@ int _main(int argc, char *argv[])
 	// Define VCI parameters
 	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,4,4,1> vci_param;
 
-	const char *kernel = default_kernel;
-	if ( argc > 1 ) {
-	  kernel = argv[1];
+	if ( argc < 2 ) {
+        std::cerr << "Usage: " << argv[0] << " <arm_kernel_file>" << std::endl;
+        return 1;
 	}
 
+    const char *kernel = argv[1];
+
 	// Mapping table
-       soclib::common::Loader loader(kernel);
-       loader.memory_default(0x5a);
+    soclib::common::Loader loader(kernel);
 
-       soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0xf0000000);
+    // This puts 0x5a everywhere in the memory, this eases detection
+    // of uninitialized variables bugs.
+    loader.memory_default(0x5a);
+
+    soclib::common::MappingTable maptabp(32, IntTab(8), IntTab(8), 0xf0000000);
 	
-#if defined(CPU_ppc)
-	maptabp.add(Segment("boot",  0xffffff80, 0x00000080, IntTab(0), true));
-#elif defined(CPU_arm)
 	maptabp.add(Segment("boot",  0x00000000, 0x00000200, IntTab(0), true));
-#elif defined(CPU_mips) || defined(CPU_mips32el)
-	maptabp.add(Segment("boot",  0xbfc00000, 0x00001000, IntTab(0), true));
-#endif
-
 	maptabp.add(Segment("text",  0x60000000, 0x00100000, IntTab(0), true));
 	maptabp.add(Segment("rodata",0x80000000, 0x01000000, IntTab(0), true));
 
@@ -103,20 +84,20 @@ int _main(int argc, char *argv[])
 	maptabp.add(Segment("xicu",  0xd2200000, 0x00001000, IntTab(3), false));
 	maptabp.add(Segment("bdev0", 0xd1200000, 0x00000020, IntTab(4), false));
 
-#if defined(USE_GDB_SERVER) && defined(USE_MEMCHECKER)
+#if defined(USE_GDB_SERVER)
+# if defined(USE_MEMCHECKER)
     soclib::common::GdbServer<
         soclib::common::IssMemchecker<
             iss_t> >::set_loader(loader);
-#endif
-#if defined(USE_MEMCHECKER)
+# else /* GDB only */
+    soclib::common::GdbServer<iss_t>::set_loader(loader);
+# endif
+#else /* MEMCHECKER only */
     soclib::common::IssMemchecker<
         iss_t>::init(maptabp, loader, "tty,xicu,bdev0");
-#elif defined(USE_GDB_SERVER)
-    soclib::common::GdbServer<iss_t>::set_loader(loader);
 #endif
 
 	// Signals
-
 	sc_clock	signal_clk("clk");
 	sc_signal<bool> signal_resetn("resetn");
 
