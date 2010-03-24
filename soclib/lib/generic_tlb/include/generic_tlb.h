@@ -682,7 +682,7 @@ public:
                 pte_info->u = this->user(way,k_set);
                 pte_info->g = this->global(way,k_set);
                 pte_info->d = this->dirty(way,k_set);
-                *victim_index = nline(way,m_set);
+                *victim_index = nline(way,k_set);
                 *tw = way;
                 *ts = k_set;
                 *paddress = (paddr_t)((paddr_t)this->ppn(way,k_set) << PAGE_K_NBITS) | (paddr_t)(vaddress & PAGE_K_MASK);

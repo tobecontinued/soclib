@@ -72,16 +72,17 @@ class VciCcVCacheWrapper2V1
         ICACHE_TLB2_WRITE,          // 06
         ICACHE_TLB2_UPDT,           // 07
         ICACHE_SW_FLUSH,            // 08
-        ICACHE_CACHE_FLUSH,         // 09
-        ICACHE_TLB_INVAL,           // 0a
-        ICACHE_CACHE_INVAL,         // 0b
-        ICACHE_MISS_WAIT,           // 0c
-        ICACHE_UNC_WAIT,            // 0d
-        ICACHE_MISS_UPDT,           // 0e
-        ICACHE_ERROR,               // 0f
-        ICACHE_CC_INVAL,            // 10
-        ICACHE_TLB_CC_INVAL,        // 11
-        ICACHE_TLB_FLUSH,           // 12
+        ICACHE_TLB_FLUSH,           // 09
+        ICACHE_CACHE_FLUSH,         // 0a
+        ICACHE_TLB_INVAL,           // 0b
+        ICACHE_CACHE_INVAL,         // 0c
+        ICACHE_CACHE_INVAL_PA,      // 0d
+        ICACHE_MISS_WAIT,           // 0e
+        ICACHE_UNC_WAIT,            // 0f
+        ICACHE_MISS_UPDT,           // 10
+        ICACHE_ERROR,               // 11
+        ICACHE_CC_INVAL,            // 12
+        ICACHE_TLB_CC_INVAL,        // 13
     };
 
     enum dcache_fsm_state_e {  
@@ -106,26 +107,28 @@ class VciCcVCacheWrapper2V1
         DCACHE_DTLB_INVAL,          // 12
         DCACHE_ICACHE_INVAL,        // 13
         DCACHE_DCACHE_INVAL,        // 14
-        DCACHE_DCACHE_SYNC,         // 15
-        DCACHE_LL_DIRTY_WAIT,       // 16
-        DCACHE_SC_DIRTY_WAIT,       // 17
-        DCACHE_WRITE_UPDT,          // 18
-        DCACHE_WRITE_DIRTY,         // 19
-        DCACHE_WRITE_REQ,           // 1a
-        DCACHE_MISS_WAIT,           // 1b
-        DCACHE_MISS_UPDT,           // 1c
-        DCACHE_UNC_WAIT,            // 1d
-        DCACHE_ERROR,               // 1e
-        DCACHE_ITLB_READ,           // 1f
-        DCACHE_ITLB_UPDT,           // 20
-        DCACHE_ITLB_LL_WAIT,        // 21
-        DCACHE_ITLB_SC_WAIT,        // 22
-        DCACHE_CC_CHECK,            // 23
-        DCACHE_CC_INVAL,            // 24
-        DCACHE_CC_UPDT,             // 25
-        DCACHE_CC_NOP,              // 26
-        DCACHE_TLB_CC_INVAL,        // 27
-        DCACHE_ITLB_CLEANUP,        // 28
+	    DCACHE_ICACHE_INVAL_PA,     // 15
+	    DCACHE_DCACHE_INVAL_PA,     // 16
+        DCACHE_DCACHE_SYNC,         // 17
+        DCACHE_LL_DIRTY_WAIT,       // 18
+        DCACHE_SC_DIRTY_WAIT,       // 19
+        DCACHE_WRITE_UPDT,          // 1a
+        DCACHE_WRITE_DIRTY,         // 1b
+        DCACHE_WRITE_REQ,           // 1c
+        DCACHE_MISS_WAIT,           // 1d
+        DCACHE_MISS_UPDT,           // 1e
+        DCACHE_UNC_WAIT,            // 1f
+        DCACHE_ERROR,               // 20
+        DCACHE_ITLB_READ,           // 21
+        DCACHE_ITLB_UPDT,           // 22
+        DCACHE_ITLB_LL_WAIT,        // 23
+        DCACHE_ITLB_SC_WAIT,        // 24
+        DCACHE_CC_CHECK,            // 25
+        DCACHE_CC_INVAL,            // 26
+        DCACHE_CC_UPDT,             // 27
+        DCACHE_CC_NOP,              // 28
+        DCACHE_TLB_CC_INVAL,        // 29
+        DCACHE_ITLB_CLEANUP,        // 2a
     };
 
     enum cmd_fsm_state_e {      
@@ -265,6 +268,8 @@ private:
     sc_signal<int>          r_mmu_mode;             // tlb mode register
     sc_signal<int>          r_mmu_params;           // mmu parameters register
     sc_signal<int>          r_mmu_release;          // mmu release register
+    sc_signal<int>          r_mmu_word_lo;          // mmu misc data low
+    sc_signal<int>          r_mmu_word_hi;          // mmu mmu misc data hight
 
     // DCACHE FSM REGISTERS
     sc_signal<int>          r_dcache_fsm;               // state register
@@ -341,11 +346,12 @@ private:
     sc_signal<bool>         r_dcache_itlb_sc_acc_req;   // used for tlb access bit update
 
     sc_signal<bool>	        r_itlb_read_dcache_req;     // used for instruction tlb miss, request in data cache
-    sc_signal<bool>	        r_itlb_acc_dcache_req;          // used for itlb update access bit via dcache
-    sc_signal<bool>	        r_dcache_rsp_itlb_error;        // used for data cache rsp error when itlb miss
-    sc_signal<data_t>	    r_dcache_rsp_itlb_miss;	        // used for dcache rsp data when itlb miss
-    sc_signal<data_t>	    r_dcache_rsp_itlb_ppn;	        // used for dcache rsp ppn when itlb miss
-    sc_signal<vaddr_t>      r_icache_vaddr_req;                 // virtual address requested by the CPU
+    sc_signal<bool>	        r_itlb_k_read_dcache;       // used for instruction tlb miss, request in data cache
+    sc_signal<bool>	        r_itlb_acc_dcache_req;      // used for itlb update access bit via dcache
+    sc_signal<bool>	        r_dcache_rsp_itlb_error;    // used for data cache rsp error when itlb miss
+    sc_signal<data_t>	    r_dcache_rsp_itlb_miss;	    // used for dcache rsp data when itlb miss
+    sc_signal<data_t>	    r_dcache_rsp_itlb_ppn;	    // used for dcache rsp ppn when itlb miss
+    sc_signal<vaddr_t>      r_icache_vaddr_req;			// virtual address requested by the CPU
 
     // coherence registers
     sc_signal<int>          r_icache_fsm_save;          // state save register
