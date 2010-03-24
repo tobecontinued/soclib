@@ -43,6 +43,9 @@ enum SoclibIssMemcheckerRegisters {
 	ISS_MEMCHECKER_ENABLE_CHECKS,
 	ISS_MEMCHECKER_DISABLE_CHECKS,
 	
+    /* mark a single word as initialized */
+	ISS_MEMCHECKER_INITIALIZED,  // value = word addr
+
 	ISS_MEMCHECKER_REGISTER_MAX,
 };
 

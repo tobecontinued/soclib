@@ -818,6 +818,20 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
             report_error(ERROR_CREATING_STACK_NOT_ALLOC);
         break;
     }
+    case ISS_MEMCHECKER_INITIALIZED:
+    {
+        bool err = false;
+        AddressInfo *ai = s_memory_state->info_for_address(value);
+        err |= ! ( ai->region()->state() & (
+                         __iss_memchecker::RegionInfo::REGION_STATE_ALLOCATED
+                         | __iss_memchecker::RegionInfo::REGION_STATE_GLOBAL
+                         | __iss_memchecker::RegionInfo::REGION_STATE_STACK
+                         ) );
+        ai->set_initialized(true);
+        if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_REGION) && err)
+            report_error(ERROR_INVALID_REGION);
+        break;
+    }
 	case ISS_MEMCHECKER_CONTEXT_ID_CHANGE:
     {
         ContextState *ref = s_memory_state->context_get( m_r1 );
