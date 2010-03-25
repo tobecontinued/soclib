@@ -69,44 +69,6 @@ public:
     }
 };
 
-class XttyWrapper
-    : public TtyWrapper
-{
-    soclib::common::ProcessWrapper *m_process;
-    const std::string m_name;
-public:
-    XttyWrapper(const std::string &name)
-            : m_name(name)
-    {
-        std::vector<std::string> argv;
-        argv.push_back("soclib-xtty");
-        argv.push_back(name);
-        m_process = new soclib::common::ProcessWrapper("soclib-xtty", argv);
-    }
-
-    char getc()
-    {
-        char tmp;
-        m_process->read(&tmp, 1);
-        return tmp;
-    }
-
-    void putc( char c )
-    {
-        m_process->write(&c, 1);
-    }
-
-    bool hasData()
-    {
-        return m_process->poll();
-    }
-
-    ~XttyWrapper()
-    {
-        delete m_process;
-    }
-};
-
 class TtyPtsWrapper
     : public TtyWrapper
 {
@@ -210,8 +172,8 @@ public:
 
 TtyWrapper *allocateTty( const std::string &name )
 {
-	typedef enum { USE_XTERM, USE_XTTY, USE_TERM, USE_FILES, USE_PTS, USE_OTHER } tty_flavor_t;
-	const char *const vals[] = { "XTERM", "XTTY", "TERM", "FILES", "PTS" };
+	typedef enum { USE_XTERM, USE_TERM, USE_FILES, USE_PTS, USE_OTHER } tty_flavor_t;
+	const char *const vals[] = { "XTERM", "TERM", "FILES", "PTS" };
 
 	char *use_env = getenv("SOCLIB_TTY");
 	int tty_flavor = USE_OTHER;
@@ -223,14 +185,12 @@ TtyWrapper *allocateTty( const std::string &name )
 	}
 	if ( tty_flavor == USE_OTHER )
 		tty_flavor = USE_XTERM;
-    if ( tty_flavor <= USE_XTTY && !getenv("DISPLAY") )
+    if ( tty_flavor <= USE_XTERM && !getenv("DISPLAY") )
         tty_flavor = USE_TERM;
 
     switch (tty_flavor) {
     case USE_XTERM:
         return new _tty_wrapper::XtermWrapper(name);
-    case USE_XTTY:
-        return new _tty_wrapper::XttyWrapper(name);
     case USE_TERM:
         return new _tty_wrapper::TermWrapper(name);
     case USE_FILES:
