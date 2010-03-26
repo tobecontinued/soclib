@@ -21,6 +21,7 @@
  *
  * Copyright (c) UPMC, Lip6
  *         Nicolas Pouillon <nipo@ssji.net>, 2009
+ * Alexandre Becoulet <alexandre.becoulet@free.fr>, 2010
  *
  * Maintainers: nipo becoulet
  */
@@ -38,6 +39,12 @@
 
 #include "soclib_endian.h"
 #include "loader.h"
+
+#define MEMCHK_COLOR_WARN(str) "\x1b[93;1m" << str << "\x1b[m"
+#define MEMCHK_COLOR_ERR(str) "\x1b[91;1m" << str << "\x1b[m"
+#define MEMCHK_COLOR_INFOC(str) "\x1b[96;1m" << str << "\x1b[m"
+#define MEMCHK_COLOR_INFOS(str) "\x1b[94;1m" << str << "\x1b[m"
+#define MEMCHK_COLOR_INFOR(str) "\x1b[92;1m" << str << "\x1b[m"
 
 namespace soclib { namespace common {
 
@@ -58,8 +65,7 @@ enum {
     ERROR_DATA_ACCESS_BELOW_SP = 16,
     ERROR_CREATING_STACK_NOT_ALLOC = 32,
     ERROR_BAD_REGION_REALLOCATION = 64,
-    ERROR_INVALID_MAGIC_DISABLE = 128,
-    ERROR_CONTEXT_ON_TWO_CPUS = 256,
+    ERROR_CONTEXT_ON_TWO_CPUS = 128,
 };
 
 class ContextState
@@ -140,11 +146,8 @@ public:
 
     void print( std::ostream &o ) const
     {
-        o << "<Context "
-          << std::hex << std::showbase << m_id
-          << " " << m_stack_lower
-          << "->" << m_stack_upper
-          << ">";
+        o << "Context #" << std::hex << std::showbase << m_id
+          << ", with " << m_stack_lower << "-" << m_stack_upper << " stack range";
     }
 
     friend std::ostream &operator << (std::ostream &o, const ContextState &cs)
@@ -303,29 +306,35 @@ public:
     static const char *state_str(State state)
     {
         switch (state) {
-        case REGION_INVALID: return "inval";
-        case REGION_STATE_GLOBAL: return "globl";
-        case REGION_STATE_GLOBAL_READ_ONLY: return "gblRO";
-        case REGION_STATE_ALLOCATED: return "alloc";
-        case REGION_STATE_FREE: return "free ";
-        case REGION_STATE_PERIPHERAL: return "peri.";
+        case REGION_INVALID: return "invalid";
+        case REGION_STATE_GLOBAL: return "global";
+        case REGION_STATE_GLOBAL_READ_ONLY: return "global read only";
+        case REGION_STATE_ALLOCATED: return "allocated";
+        case REGION_STATE_FREE: return "free";
+        case REGION_STATE_PERIPHERAL: return "devices";
         case REGION_STATE_STACK: return "stack";
-        case REGION_STATE_WAS_STACK: return "!stak";
-        case REGION_STATE_RAW: return "raw  ";
-        default: return "uknwn";
+        case REGION_STATE_WAS_STACK: return "former stack";
+        case REGION_STATE_RAW: return "raw";
+        default: return "unknown";
         }
+    }
+
+    const char *state_str() const
+    {
+        return state_str(m_state);
     }
 
     void print( std::ostream &o ) const
     {
-        o << "[" << std::hex
-//          << "at "  << m_at
-          << "@"  << m_base_addr
-          << "-"  << m_end_addr
-          << ", "  << state_str(m_state);
-        if ( m_previous_state )
-            o << " was: " << *m_previous_state;
-        o << "]";
+        o << "Region " << std::hex
+            //          << "at "  << m_at << " "
+          << m_base_addr << "-"  << m_end_addr << " : " << state_str();
+        o << " memory";
+    }
+
+    RegionInfo *prev_state() const
+    {
+        return m_previous_state;
     }
 
     friend std::ostream &operator << (std::ostream &o, const RegionInfo &ri)
@@ -709,6 +718,12 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
       m_r1(0),
       m_r2(0),
       m_last_sp(0),
+      m_opt_dump_iss(false),
+      m_opt_dump_access(false),
+      m_opt_show_ctx(false),
+      m_opt_show_ctxsw(false),
+      m_opt_show_region(false),
+      m_opt_trap(false),
       m_magic_state(MAGIC_NONE)
 {
     struct iss_t::DataRequest init = ISS_DREQ_INITIALIZER;
@@ -730,6 +745,20 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
     m_last_context = s_memory_state->unknown_context;
     m_current_context->ref();
     m_last_context->ref();
+
+    if ( const char *env = getenv( "SOCLIB_MEMCHK" ) ) {
+        m_opt_dump_iss = strchr( env, 'I' );
+        m_opt_dump_access = strchr( env, 'A' );
+        m_opt_show_ctx = strchr( env, 'C' );
+        m_opt_show_ctxsw = strchr( env, 'S' );
+        m_opt_show_region = strchr( env, 'R' );
+        m_opt_trap = strchr( env, 'T' );
+    } else {
+        if ( ident == 0 )
+            std::cerr << "[MemChecker] SOCLIB_MEMCHK env variable may contain the following flag letters: " << std::endl
+                      << "  R (show region changes), C (show context ops), S (show context switch), " << std::endl
+                      << "  T (raise Gdb trap), I (show iss dump), A (show access details)" << std::endl;
+    }
 }
 
 template<typename iss_t>
@@ -757,7 +786,7 @@ uint32_t IssMemchecker<iss_t>::register_get(uint32_t reg_no) const
      ((ISS_MEMCHECKER_MAGIC_VAL >> 24) & 0x000000ff))
 
 template<typename iss_t>
-void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
+bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 {
     assert( reg_no < ISS_MEMCHECKER_REGISTER_MAX && "Undefined regsiter" );
 
@@ -785,8 +814,7 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
             }
             break;
         default:
-            if ( value != 0 )
-                report_error(ERROR_INVALID_MAGIC_DISABLE);
+            assert(value == 0 && "Wrong magic disable");
             m_magic_state = MAGIC_NONE;
             break;
         }
@@ -797,6 +825,7 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 	case ISS_MEMCHECKER_R2:
         m_r2 = value;
         break;
+
 	case ISS_MEMCHECKER_CONTEXT_ID_CREATE:
     {
         s_memory_state->context_create(
@@ -814,10 +843,21 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
                          ) );
             ai->set_initialized(false);
         }
+
+        if ( m_opt_show_ctx ) {
+            std::cout << " -----------------"
+                      << MEMCHK_COLOR_INFOC(" New execution context #" << std::hex << value)
+                      << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+            report_current_ctx();
+            std::cout << " New stack         " << std::hex << m_r1 << "-" << m_r1+m_r2
+                      << std::dec << " (" << m_r2 << " bytes)" << std::endl << std::endl;
+        }
+
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_REGION) && err)
-            report_error(ERROR_CREATING_STACK_NOT_ALLOC);
+            return report_error(ERROR_CREATING_STACK_NOT_ALLOC);
         break;
     }
+
     case ISS_MEMCHECKER_INITIALIZED:
     {
         bool err = false;
@@ -829,11 +869,19 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
                          ) );
         ai->set_initialized(true);
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_REGION) && err)
-            report_error(ERROR_INVALID_REGION);
+            return report_error(ERROR_INVALID_REGION);
         break;
     }
+
 	case ISS_MEMCHECKER_CONTEXT_ID_CHANGE:
     {
+        if ( m_opt_show_ctx ) {
+            std::cout << " -----------------"
+                      << MEMCHK_COLOR_INFOC(" Rename context #" << std::hex << m_r1 << " to " << value)
+                      << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+            report_current_ctx();
+        }
+
         ContextState *ref = s_memory_state->context_get( m_r1 );
         ContextState *n = new ContextState(
             value, ref->m_stack_lower, ref->m_stack_upper );
@@ -842,16 +890,36 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         if ( m_current_context->is( m_r1 ) ) {
             update_context(n);
         }
+
         break;
     }
+
 	case ISS_MEMCHECKER_CONTEXT_ID_DELETE:
+        if ( m_opt_show_ctx ) {
+            std::cout << " -----------------"
+                      << MEMCHK_COLOR_INFOC(" Delete context #" << std::hex << value)
+                      << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+            report_current_ctx();
+            std::cout << std::endl;
+        }
+
         if ( m_current_context->is( value ) ) {
             update_context(s_memory_state->unknown_context);
         }
         s_memory_state->context_delete(value);
         break;
+
 	case ISS_MEMCHECKER_CONTEXT_CURRENT:
         update_context(s_memory_state->context_get( value ));
+
+        if ( m_opt_show_ctxsw ) {
+            std::cout << " -----------------"
+                      << MEMCHK_COLOR_INFOS(" Context switch to #" << std::hex << value)
+                      << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+            report_current_ctx();
+            std::cout << std::endl;
+        }
+
         break;
 	case ISS_MEMCHECKER_MEMORY_REGION_UPDATE:
     {
@@ -875,8 +943,17 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
             get_cpu_pc(),
             m_r1, m_r2 );
         m_last_region_touched = s_memory_state->info_for_address(m_r1)->region();
-        report_error(error);
-        break;
+
+        if ( m_opt_show_region ) {
+            std::cout << " -----------------"
+                      << MEMCHK_COLOR_INFOR(" Region " << std::hex << m_r1 << "-" << m_r1+m_r2
+                                           << " now " << m_last_region_touched->state_str(state))
+                      << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+            report_current_ctx();
+            std::cout << std::endl;
+        }
+
+        return report_error(error);
     }
 	case ISS_MEMCHECKER_ENABLE_CHECKS:
         m_enabled_checks |= value;
@@ -888,6 +965,8 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         assert(!"Unknown register");
         break;
     }
+
+    return false;
 }
 
 template<typename iss_t>
@@ -913,10 +992,11 @@ void IssMemchecker<iss_t>::update_context( ContextState *state )
 }
 
 template<typename iss_t>
-void IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
+bool IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
 {
     uint32_t reg_no = (dreq.addr-m_comm_address)/4;
     assert( dreq.be == 0xf && "Only read/write word are allowed in memchecker area" );
+    bool err = false;
 
     switch ( dreq.type ) {
     case iss_t::DATA_READ:
@@ -929,7 +1009,7 @@ void IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
         m_data_answer_value = 0;
         if ( m_magic_state == MAGIC_BE )
             data = soclib::endian::uint32_swap(data);
-        register_set(reg_no, data);
+        err = register_set(reg_no, data);
         break;
     }
     case iss_t::XTN_WRITE:
@@ -937,13 +1017,15 @@ void IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
     case iss_t::DATA_LL:
     case iss_t::DATA_SC:
         assert(!"Only read & write allowed in memchecker area");
-        return;
+        break;
     }
     m_has_data_answer = true;
+
+    return err;
 }
 
 template<typename iss_t>
-void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &dreq )
+bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &dreq )
 {
     error_level_t err = ERROR_NONE;
     AddressInfo *ai = s_memory_state->info_for_address(dreq.addr);
@@ -962,7 +1044,7 @@ void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
         break;
     case iss_t::XTN_WRITE:
     case iss_t::XTN_READ:
-        return;
+        return false;
     }
 
     if ( m_current_context->stack_contains(dreq.addr) ) {
@@ -985,88 +1067,159 @@ void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
                 break;
             case iss_t::XTN_WRITE:
             case iss_t::XTN_READ:
-                return;
+                return false;
             }
         }
     }
 
-    report_error(err);
+    return report_error(err);
 }
 
 template<typename iss_t>
-void IssMemchecker<iss_t>::report_error(error_level_t errors)
+void IssMemchecker<iss_t>::report_current_ctx()
 {
-    if ( !errors )
-        return;
+    std::cout << " Executed from     PC=" << s_memory_state->get_symbol(get_cpu_pc())
+              << ", SP=" << get_cpu_sp() << std::endl;
+    std::cout << "                   " << *m_current_context << std::endl;
+}
 
-    uint32_t pc = get_cpu_pc();
-    uint32_t sp = get_cpu_sp();
+template<typename iss_t>
+bool IssMemchecker<iss_t>::report_error(error_level_t errors_)
+{
+    bool err = false;
 
-    // Signal to GDB
-    iss_t::debugExceptionBypassed( iss_t::EXCL_TRAP );
+    while ( errors_ ) {
 
+        static const char *acc;
 
+        switch (m_last_data_access.type) {
+        case iss_t::DATA_READ:
+            acc = "read";
+            break;
+        case iss_t::DATA_WRITE:
+            acc = "write";
+            break;
+        case iss_t::DATA_LL:
+            acc = "linked load";
+            break;
+        case iss_t::DATA_SC:
+            acc = "conditional store";
+            break;
+        default:
+            acc = "special";
+        }
 
-        
-    std::cout
-        << std::endl
-        << std::endl
-        << iss_t::m_name << " error:" << std::endl
-        << " " << *m_current_context << std::endl;
+        // process one error at once
+        error_level_t errors = errors_ & ~(errors_ - 1);
 
-    AddressInfo *ai = s_memory_state->info_for_address(m_last_data_access.addr);
-
-    if ( errors & ERROR_UNINITIALIZED_WORD )
-        std::cout << " access to uninitialized word" << std::endl;
-    if ( errors & ERROR_INVALID_REGION )
-        std::cout << " access to invalid region: " << *(ai->region()) << std::endl;
-    if ( errors & ERROR_CREATING_STACK_NOT_ALLOC )
-        std::cout << " creating stack in non-allocated memory" << std::endl;
-    if ( errors & ERROR_BAD_REGION_REALLOCATION )
-        std::cout << " bad reallocation of region" << std::endl;
-    if ( errors & ERROR_CONTEXT_ON_TWO_CPUS )
-        std::cout << " context running on two cpus" << std::endl;
-    if ( errors & ERROR_INVALID_MAGIC_DISABLE )
-        std::cout << " bad disabling of magic" << std::endl;
-    if ( errors & ERROR_SP_OUTOFBOUNDS ) {
-        std::cout << " stack pointer out of bounds: " << sp << ", ";
-        if ( sp < m_current_context->m_stack_lower )
-            std::cout << (m_current_context->m_stack_lower - sp) << " bytes below" << std::endl;
-        else if ( sp > m_current_context->m_stack_upper )
-            std::cout << (sp - m_current_context->m_stack_upper) << " bytes above" << std::endl;
-    }
-    if ( errors & ERROR_FP_OUTOFBOUNDS ) {
+        uint32_t sp = get_cpu_sp();
         uint32_t fp = get_cpu_fp();
-        std::cout << " frame pointer out of bounds: " << fp << ", ";
-        if ( fp < m_current_context->m_stack_lower )
-            std::cout << (m_current_context->m_stack_lower - fp) << " bytes below" << std::endl;
-        else if ( fp > m_current_context->m_stack_upper )
-            std::cout << (fp - m_current_context->m_stack_upper) << " bytes above" << std::endl;
+        uint32_t oob = 0;
+        bool show_stack_range = false;
+        bool show_access = false;
+
+        RegionInfo *ri = 0;
+
+        // Signal to GDB
+
+        std::cout << " -----------------";
+
+        AddressInfo *ai = s_memory_state->info_for_address(m_last_data_access.addr);
+
+        switch ( errors ) {
+
+        case ERROR_UNINITIALIZED_WORD:
+            std::cout << MEMCHK_COLOR_WARN(" Memory " << acc <<
+                                           " in uninitialized word at " << m_last_data_access.addr);
+            ri = ai->region();
+            show_access = true;
+            break;
+
+        case ERROR_INVALID_REGION:
+            ri = ai->region();
+            std::cout << MEMCHK_COLOR_ERR(" Memory " << acc <<
+                                          " in " << ri->state_str() << " region at " << m_last_data_access.addr);
+            show_access = true;
+            break;
+
+        case ERROR_CREATING_STACK_NOT_ALLOC:
+            std::cout << MEMCHK_COLOR_ERR(" Stack creation in non-allocated memory");
+            break;
+
+        case ERROR_BAD_REGION_REALLOCATION:
+            std::cout << MEMCHK_COLOR_ERR(" Bad memory region state change");
+            ri = m_last_region_touched;
+            break;
+
+        case ERROR_CONTEXT_ON_TWO_CPUS:
+            std::cout << MEMCHK_COLOR_ERR(" Context running on two processors");
+            break;
+
+        case ERROR_SP_OUTOFBOUNDS:
+            std::cout << MEMCHK_COLOR_ERR(" Stack pointer out of bounds: ") << sp;
+            show_stack_range = true;
+            oob = sp;
+            break;
+
+        case ERROR_FP_OUTOFBOUNDS:
+            std::cout << MEMCHK_COLOR_ERR(" Frame pointer out of bounds: ") << fp;
+            show_stack_range = true;
+            oob = fp;
+            break;
+
+        case ERROR_DATA_ACCESS_BELOW_SP:
+            std::cout << MEMCHK_COLOR_WARN(" Data " << acc <<
+                                           " below stack pointer at " << m_last_data_access.addr);
+            show_stack_range = true;
+            show_access = true;
+            break;
+
+        }
+
+        std::cout << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+
+        report_current_ctx();
+
+        if ( errors & (ERROR_FP_OUTOFBOUNDS | ERROR_SP_OUTOFBOUNDS ) ) {
+            if ( oob < m_current_context->m_stack_lower )
+                std::cout << " Out of bounds     " << (m_current_context->m_stack_lower - oob)
+                          << " bytes below" << std::endl;
+            else if ( oob > m_current_context->m_stack_upper )
+                std::cout << "                   " << (oob - m_current_context->m_stack_upper)
+                          << " bytes above" << std::endl;
+        }
+
+        if ( ri ) {
+            std::cout << " Region            Current    " << *ri << std::endl;
+
+            if ( RegionInfo *p = ri->prev_state() )
+                std::cout << "                   Previous   " << *p << std::endl;
+        }
+
+        if ( show_access ) {
+            if ( m_opt_dump_access )
+                std::cout << " Memory access     " << m_last_data_access << std::endl;
+
+            BinaryFileSymbolOffset s = s_memory_state->get_symbol(m_last_data_access.addr);
+
+            if (s.symbol().name() != "Unknown" )
+                std::cout << " Memory access to     " << s << std::endl;
+        }
+
+        std::cout << std::endl;
+
+        if ( m_opt_dump_iss ) {
+            iss_t::dump();
+            std::cout << std::endl;
+        }
+
+        if ( m_opt_trap && debugExceptionBypassed( iss_t::EXCL_TRAP ) )
+            err = true;
+
+        errors_ ^= errors;
     }
-    if ( errors & ERROR_DATA_ACCESS_BELOW_SP )
-        std::cout << " data access below SP" << std::endl;
-    if ( errors & (ERROR_FP_OUTOFBOUNDS | ERROR_SP_OUTOFBOUNDS | ERROR_DATA_ACCESS_BELOW_SP) ) {
-        std::cout
-            << " stack range: " << m_current_context->m_stack_lower
-            << "->" << m_current_context->m_stack_upper
-            << " (" << *(s_memory_state->info_for_address(m_current_context->m_stack_lower)->region()) << ')'
-            << std::endl;
-    }
 
-    if ( (errors & (ERROR_BAD_REGION_REALLOCATION | ERROR_INVALID_REGION)) && m_last_region_touched )
-        std::cout << " region: " << *m_last_region_touched << std::endl;
-
-
-    std::cout
-        << " at PC=" << s_memory_state->get_symbol(pc) << std::endl
-
-        << "    SP=" << s_memory_state->get_symbol(sp) << std::endl
-
-        << "    last Dreq: " << m_last_data_access << std::endl
-        << "          sym: " << s_memory_state->get_symbol(m_last_data_access.addr) << std::endl
-        << "           in: " << *(s_memory_state->info_for_address(m_last_data_access.addr)->region()) << std::endl;
-
-    iss_t::dump();
+    return err;
 }
 
 template<typename iss_t>
@@ -1077,11 +1230,12 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     struct iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
     struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     iss_t::getRequests(ireq, dreq);
+    bool err = false;
 
     if ( dreq.valid &&
          ( (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) ) {
         if ( ! ireq.valid || irsp.valid )
-            handle_comm( dreq );
+            err = handle_comm( dreq );
         dreq.valid = false;
     }
 
@@ -1093,15 +1247,12 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
         m_has_data_answer = false;
     } else {
         if ( drsp.valid ) {
-            check_data_access( dreq );
+            err |= check_data_access( dreq );
         }
     }
 
-//     std::cout << iss_t::m_name << ", " << ireq << irsp
-//               << std::endl
-//               << "        " << dreq << drsp << ' ' << ncycle << std::endl;
-
-    uint32_t nc = iss_t::executeNCycles( ncycle, irsp, drsp, irq_bit_field );
+    if ( err )
+        return 0;
 
     {
         uint32_t sp = get_cpu_sp();
@@ -1113,16 +1264,18 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     }
     
     if ( m_magic_state == MAGIC_NONE ) {
-        error_level_t err = ERROR_NONE;
+        error_level_t errl = ERROR_NONE;
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) &&
              ! m_current_context->stack_contains(get_cpu_sp()) )
-            err |= ERROR_SP_OUTOFBOUNDS;
+            errl |= ERROR_SP_OUTOFBOUNDS;
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_FP) &&
              ! m_current_context->stack_contains(get_cpu_fp()) )
-            err |= ERROR_FP_OUTOFBOUNDS;
-        report_error( err );
+            errl |= ERROR_FP_OUTOFBOUNDS;
+        if ( report_error( errl ) )
+            return 0;
     }
-    return nc;
+
+    return iss_t::executeNCycles( ncycle, irsp, drsp, irq_bit_field );
 }
 
 }}

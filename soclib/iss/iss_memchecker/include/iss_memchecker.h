@@ -22,6 +22,7 @@
  *
  * Copyright (c) UPMC, Lip6
  *         Nicolas Pouillon <nipo@ssji.net>, 2009
+ * Alexandre Becoulet <alexandre.becoulet@free.fr>, 2010
  *
  * Maintainers: nipo becoulet
  *
@@ -69,6 +70,14 @@ class IssMemchecker
     uint32_t m_r1;
     uint32_t m_r2;
     uint32_t m_last_sp;
+
+    bool m_opt_dump_iss;
+    bool m_opt_dump_access;
+    bool m_opt_show_ctx;
+    bool m_opt_show_ctxsw;
+    bool m_opt_show_region;
+    bool m_opt_trap;
+
     enum magic_state_e {
         MAGIC_NONE,
         MAGIC_BE,
@@ -103,12 +112,13 @@ private:
 
     void update_context(__iss_memchecker::ContextState *nc);
 
-    void register_set( uint32_t reg_no, uint32_t value );
+    bool register_set( uint32_t reg_no, uint32_t value );
     uint32_t register_get( uint32_t reg_no ) const;
-    void handle_comm( const struct iss_t::DataRequest &dreq );
-    void check_data_access( const struct iss_t::DataRequest &dreq );
+    bool handle_comm( const struct iss_t::DataRequest &dreq );
+    bool check_data_access( const struct iss_t::DataRequest &dreq );
 
-    void report_error( uint32_t errors );
+    bool report_error( uint32_t errors );
+    void report_current_ctx();
 
     uint32_t get_cpu_sp() const;
     uint32_t get_cpu_fp() const;
