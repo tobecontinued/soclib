@@ -428,7 +428,8 @@ public:
 
     error_level_t do_read()
     {
-        if ( ! is_initialized() )
+        if ( ! is_initialized() &&
+             ! (m_info->state() & RegionInfo::REGION_STATE_PERIPHERAL) )
             return ERROR_UNINITIALIZED_WORD;
         set_initialized(true);
         return ERROR_NONE;
@@ -531,8 +532,6 @@ public:
                 continue;
 
             region_update_state( RegionInfo::REGION_STATE_PERIPHERAL, 0, i->baseAddress(), i->size() );
-            for ( size_t j=0; j<i->size(); j+=4 )
-                info_for_address( i->baseAddress()+j )->do_write();
         }
 
         const BinaryFileSymbol *sym = loader.get_symbol_by_name( "soclib_iss_memchecker_addr" );
@@ -1129,8 +1128,8 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_)
         switch ( errors ) {
 
         case ERROR_UNINITIALIZED_WORD:
-            std::cout << MEMCHK_COLOR_WARN(" Memory " << acc <<
-                                           " in uninitialized word at " << m_last_data_access.addr);
+            std::cout << MEMCHK_COLOR_WARN(" Memory " << acc << " in uninitialized word at "
+                                           << std::hex << m_last_data_access.addr);
             ri = ai->region();
             show_access = true;
             break;
@@ -1138,7 +1137,8 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_)
         case ERROR_INVALID_REGION:
             ri = ai->region();
             std::cout << MEMCHK_COLOR_ERR(" Memory " << acc <<
-                                          " in " << ri->state_str() << " region at " << m_last_data_access.addr);
+                                          " in " << ri->state_str() << " region at "
+                                          << std::hex << m_last_data_access.addr);
             show_access = true;
             break;
 
@@ -1168,8 +1168,8 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_)
             break;
 
         case ERROR_DATA_ACCESS_BELOW_SP:
-            std::cout << MEMCHK_COLOR_WARN(" Data " << acc <<
-                                           " below stack pointer at " << m_last_data_access.addr);
+            std::cout << MEMCHK_COLOR_WARN(" Data " << acc << " below stack pointer at "
+                                           << std::hex << m_last_data_access.addr);
             show_stack_range = true;
             show_access = true;
             break;

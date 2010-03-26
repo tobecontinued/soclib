@@ -107,7 +107,7 @@ INIT_TOOLS(initialize_tools)
   ISS_NEST(Iss)::set_loader(ldr);
 #endif
 #if defined(CONFIG_SOCLIB_MEMCHECK)
-  common::IssMemchecker<Iss>::init(maptab, ldr, "tty,xicu");
+  common::IssMemchecker<Iss>::init(maptab, ldr, "tty,xicu,bdev0");
 #endif
 }
 
