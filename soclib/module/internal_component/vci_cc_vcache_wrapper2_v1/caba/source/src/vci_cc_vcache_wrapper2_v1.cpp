@@ -1988,7 +1988,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         } 
         else if (((r_icache_fsm_save == ICACHE_BIS)||(r_icache_fsm_save == ICACHE_MISS_WAIT) ||
                /* (r_icache_fsm_save == ICACHE_UNC_WAIT)||*/(r_icache_fsm_save == ICACHE_MISS_UPDT)) && 
-                (r_icache_tlb_nline == r_dcache_itlb_inval_line))
+                (r_icache_tlb_nline.read() == r_dcache_itlb_inval_line.read()))
         {
             r_icache_inval_tlb_rsp = true;
         }
@@ -4800,7 +4800,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
 
         if (((r_dcache_fsm_save == DCACHE_BIS)||(r_dcache_fsm_save == DCACHE_MISS_WAIT) ||
              (r_dcache_fsm_save == DCACHE_UNC_WAIT)||(r_dcache_fsm_save == DCACHE_MISS_UPDT)) && 
-             (r_dcache_tlb_nline == r_dcache_dtlb_inval_line))
+             (r_dcache_tlb_nline.read() == r_dcache_dtlb_inval_line.read()))
         {
             r_dcache_inval_tlb_rsp = true;
         }
