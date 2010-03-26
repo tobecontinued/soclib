@@ -10,7 +10,7 @@
 // see https://www.soclib.fr/trac/dev/wiki/Tools/GdbServer
 
 #define CONFIG_GDB_SERVER
-//#define CONFIG_SOCLIB_MEMCHECK
+#define CONFIG_SOCLIB_MEMCHECK
 
 # include "iss_memchecker.h"
 # include "gdbserver.h"
@@ -105,7 +105,8 @@ INIT_TOOLS(initialize_tools)
 {
 #if defined(CONFIG_GDB_SERVER)
   ISS_NEST(Iss)::set_loader(ldr);
-#elif defined(CONFIG_SOCLIB_MEMCHECK)
+#endif
+#if defined(CONFIG_SOCLIB_MEMCHECK)
   common::IssMemchecker<Iss>::init(maptab, ldr, "tty,xicu");
 #endif
 }
@@ -175,7 +176,7 @@ int _main(int argc, char **argv)
 
   // Mapping table
 
-  maptab.add(Segment("resetarm",  0x00000000, 0x0080, IntTab(1), true));
+  maptab.add(Segment("resetarm",  0x00000000, 0x0200, IntTab(1), true));
   maptab.add(Segment("resetmips", 0xbfc00000, 0x1000, IntTab(1), true));
   maptab.add(Segment("resetppc",  0xffffff80, 0x0080, IntTab(1), true));
 
