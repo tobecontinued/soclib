@@ -352,6 +352,27 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                 }
         }
 
+    if (i >= 2 && !strcmp(tokens[0], "load"))
+    {
+        if (! loader_)
+        {
+            std::cerr << "[GDB] no loader defined !!!" << std::cerr;
+        }
+        else
+        {
+            const char *file = tokens[1];
+            try {
+                loader_->load_file(file);
+            } catch (const soclib::exception::Exception &e ) {
+                std::cerr << "[GDB] " << e.what() << std::endl;
+                write_packet("");
+                return;
+            }
+            write_packet("OK");
+            return;
+        }
+    }
+
     if (i >= 2 && !strcmp(tokens[0], "calltrace"))
         {
             if (! loader_)
