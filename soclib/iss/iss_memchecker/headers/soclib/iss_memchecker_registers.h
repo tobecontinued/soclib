@@ -34,24 +34,36 @@ enum SoclibIssMemcheckerRegisters {
 	ISS_MEMCHECKER_R1,
 	ISS_MEMCHECKER_R2,
 	ISS_MEMCHECKER_CONTEXT_ID_CREATE, // r1 = base, r2 = size, val = id
-	ISS_MEMCHECKER_CONTEXT_ID_DELETE, // value = id
-	ISS_MEMCHECKER_CONTEXT_ID_CHANGE, // r1 = id_orig, value = new_id
-	ISS_MEMCHECKER_CONTEXT_CURRENT,  // value = id
 
+    /* delete given context */
+	ISS_MEMCHECKER_CONTEXT_ID_DELETE, // value = id
+    /* change id of given context (rename) */
+	ISS_MEMCHECKER_CONTEXT_ID_CHANGE, // r1 = id_orig, value = new_id
+    /* processor context switch occured */
+	ISS_MEMCHECKER_CONTEXT_SWITCH,  // value = id
+    /* update memory region state, used by malloc code */
 	ISS_MEMCHECKER_MEMORY_REGION_UPDATE, // r1 = base, r2 = size, val = new_state
 
 	ISS_MEMCHECKER_ENABLE_CHECKS,
 	ISS_MEMCHECKER_DISABLE_CHECKS,
-	
     /* mark a single word as initialized */
 	ISS_MEMCHECKER_INITIALIZED,  // value = word addr
+    /* delete current context */
+	ISS_MEMCHECKER_CONTEXT_INVALIDATE,
+    /* Creates a temporary context which vanish on next context switch */
+	ISS_MEMCHECKER_CONTEXT_ID_CREATE_TMP, // r1 = base, r2 = size, val = id
 
 	ISS_MEMCHECKER_REGISTER_MAX,
 };
 
+
+#define ISS_MEMCHECKER_ID_UNKNOWN ((uint32_t)-1)
+#define ISS_MEMCHECKER_ID_CURRENT ((uint32_t)-2)
+
 #define ISS_MEMCHECKER_REGION_FREE 1
 #define ISS_MEMCHECKER_REGION_ALLOC 2
 #define ISS_MEMCHECKER_REGION_NONALLOC_STACK 4
+#define ISS_MEMCHECKER_REGION_GLOBAL 8
 
 #define ISS_MEMCHECKER_CHECK_SP (1<<0)
 #define ISS_MEMCHECKER_CHECK_FP (1<<1)

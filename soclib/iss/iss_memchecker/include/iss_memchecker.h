@@ -117,7 +117,7 @@ private:
     bool handle_comm( const struct iss_t::DataRequest &dreq );
     bool check_data_access( const struct iss_t::DataRequest &dreq );
 
-    bool report_error( uint32_t errors );
+    bool report_error( uint32_t errors, uint32_t extra = 0 );
     void report_current_ctx();
 
     uint32_t get_cpu_sp() const;
