@@ -129,6 +129,11 @@ public:
     {
         return index*m_level_id_bits;
     }
+    
+    inline size_t level() const
+    {
+        return m_level_addr_bits.level();
+    }
 };
 
 }}
