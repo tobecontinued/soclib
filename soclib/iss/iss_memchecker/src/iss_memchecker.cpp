@@ -71,6 +71,9 @@ enum {
     ERROR_BAD_CONTEXT_INVALIDATE = 1024,
     ERROR_BAD_CONTEXT_SWITCH = 2048,
     ERROR_REGION_OVERLAP = 4096,
+    ERROR_IRQ_ENABLED_MAGIC = 8192,
+    ERROR_IRQ_ENABLED_TMP = 16384,
+    ERROR_IRQ_ENABLED_LOCK = 32768,
 };
 
 class ContextState
@@ -373,15 +376,20 @@ class AddressInfo
 {
     RegionInfo *m_info;
     static const uintptr_t s_initialized_bit = 1;
-    static const uintptr_t s_reserved_bit = 2;
+    static const uintptr_t s_islock_bit = 2;
     static const uintptr_t s_addr_mask = ~(uintptr_t)3;
+
+public:
 
     bool is_initialized() const
     {
         return (uintptr_t)m_info & s_initialized_bit;
     }
 
-public:
+    bool is_spinlock() const
+    {
+        return (uintptr_t)m_info & s_islock_bit;
+    }
 
     void set_initialized( bool initialized )
     {
@@ -389,6 +397,14 @@ public:
             m_info = (RegionInfo*)((uintptr_t)m_info | s_initialized_bit);
         else
             m_info = (RegionInfo*)((uintptr_t)m_info & ~s_initialized_bit);
+    }
+
+    void set_spinlock( bool islock )
+    {
+        if ( islock )
+            m_info = (RegionInfo*)((uintptr_t)m_info | s_islock_bit);
+        else
+            m_info = (RegionInfo*)((uintptr_t)m_info & ~s_islock_bit);
     }
 
     RegionInfo *region() const
@@ -851,6 +867,14 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 
     enum SoclibIssMemcheckerRegisters reg_id = (enum SoclibIssMemcheckerRegisters)reg_no;
 
+#if 0     // Irq get enabled before last write occurs, need a write barrier in software
+    if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
+         iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) ) {
+        if ( report_error( ERROR_IRQ_ENABLED_MAGIC ) )
+            return 0;
+    }
+#endif
+
     switch (reg_id) {
     case ISS_MEMCHECKER_MAGIC:
         switch (m_magic_state) {
@@ -921,6 +945,13 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
     {
         AddressInfo *ai = s_memory_state->info_for_address( value );
         ai->set_initialized(true);
+        break;
+    }
+
+    case ISS_MEMCHECKER_LOCK_DECLARE:
+    {
+        AddressInfo *ai = s_memory_state->info_for_address( m_r1 );
+        ai->set_spinlock(value != 0);
         break;
     }
 
@@ -1140,16 +1171,23 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
     case iss_t::DATA_SC:
     case iss_t::DATA_WRITE:
         err |= ai->do_write();
+
+        if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
+             iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) &&
+             ai->is_spinlock() && dreq.wdata ) // FIXME could check unlock too
+            err |= ERROR_IRQ_ENABLED_LOCK;
+
         break;
     case iss_t::XTN_WRITE:
     case iss_t::XTN_READ:
         return false;
     }
 
+    uint32_t sp_bound = get_cpu_sp() - iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_STACK_REDZONE_SIZE);
+
     if ( m_current_context->stack_contains(dreq.addr) ) {
         if ( ( m_enabled_checks & ISS_MEMCHECKER_CHECK_SP )
-//             && m_current_context != s_memory_state->unknown_context
-             && dreq.addr < (get_cpu_sp() - 64) ) {
+             && dreq.addr < sp_bound ) {
             err |= ERROR_DATA_ACCESS_BELOW_SP;
         }
     } else {
@@ -1171,7 +1209,7 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
         }
     }
 
-    return report_error(err);
+    return report_error(err, dreq.addr);
 }
 
 template<typename iss_t>
@@ -1304,6 +1342,20 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
                                           << std::hex << extra);
             show_access = true;
             break;
+
+        case ERROR_IRQ_ENABLED_MAGIC:
+            std::cout << MEMCHK_COLOR_ERR(" Processor IRQs enabled while in memchecker magic mode ");
+            break;
+
+        case ERROR_IRQ_ENABLED_TMP:
+            std::cout << MEMCHK_COLOR_ERR(" Processor IRQs enabled during temporary context execution ");
+            break;
+
+        case ERROR_IRQ_ENABLED_LOCK:
+            std::cout << MEMCHK_COLOR_WARN(" Processor IRQs enabled when changing spin lock state at: "
+                                           << std::hex << extra);
+            show_access = true;
+            break;
         }
 
         std::cout << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
@@ -1412,6 +1464,14 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
             errl |= ERROR_FP_OUTOFBOUNDS;
         if ( report_error( errl ) )
             return 0;
+    }
+
+    if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
+         iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) ) {
+        if ( m_current_context->temporary() ) {
+            if ( report_error( ERROR_IRQ_ENABLED_TMP ) )
+                return 0;
+        }
     }
 
     return iss_t::executeNCycles( ncycle, irsp, drsp, irq_bit_field );

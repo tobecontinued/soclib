@@ -53,6 +53,9 @@ enum SoclibIssMemcheckerRegisters {
     /* Creates a temporary context which vanish on next context switch */
 	ISS_MEMCHECKER_CONTEXT_ID_CREATE_TMP, // r1 = base, r2 = size, val = id
 
+    /* Creates a temporary context which vanish on next context switch */
+	ISS_MEMCHECKER_LOCK_DECLARE, // r1 = base, val = 1 declare, 0 undeclare
+
 	ISS_MEMCHECKER_REGISTER_MAX,
 };
 
@@ -69,6 +72,7 @@ enum SoclibIssMemcheckerRegisters {
 #define ISS_MEMCHECKER_CHECK_FP (1<<1)
 #define ISS_MEMCHECKER_CHECK_INIT (1<<2)
 #define ISS_MEMCHECKER_CHECK_REGION (1<<3)
+#define ISS_MEMCHECKER_CHECK_IRQ (1<<4)
 
 #define ISS_MEMCHECKER_MAGIC_VAL 0x4d656d63
 
