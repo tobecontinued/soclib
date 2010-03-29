@@ -416,6 +416,11 @@ Iss2::debug_register_t Mips32Iss::debugGetRegisterValue(unsigned int reg) const
             return r_cause.whole;
         case 37:
             return r_pc;
+        case ISS_DEBUG_REG_IS_USERMODE:
+            return !isPriviliged();
+        case ISS_DEBUG_REG_IS_INTERRUPTIBLE:
+            return r_status.ie && !r_status.exl && !r_status.erl;
+        case ISS_DEBUG_REG_STACK_REDZONE_SIZE:
         default:
             return 0;
         }

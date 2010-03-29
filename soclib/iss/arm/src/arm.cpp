@@ -361,6 +361,26 @@ void ArmIss::dump() const
     }
 }
 
+ArmIss::debug_register_t ArmIss::debugGetRegisterValue(unsigned int reg) const
+{
+    if ( reg <= 15 )
+        return r_gp[reg];
+
+    switch ( reg )
+        {
+        case 25:
+            return r_cpsr.whole;
+        case ISS_DEBUG_REG_IS_USERMODE:
+            return r_cpsr.mode == MOD_PSR_USER32;
+        case ISS_DEBUG_REG_IS_INTERRUPTIBLE:
+            return !r_cpsr.irq_disabled || !r_cpsr.fiq_disabled;
+        case ISS_DEBUG_REG_STACK_REDZONE_SIZE:
+            return 64; // FIXME access may be below sp during push/pop only, should handle dynamically
+        default:
+            return 0;
+        }
+}
+
 ArmIss::ArmIss( const std::string &name, uint32_t cpuid )
 	: Iss2(name, cpuid)
 {

@@ -418,6 +418,12 @@ uint32_t Ppc405Iss::debugGetRegisterValue(unsigned int reg) const
             return 0;
         case 71:                // fpscr
             return 0;
+        case ISS_DEBUG_REG_IS_USERMODE:
+            return r_msr.pr;
+        case ISS_DEBUG_REG_IS_INTERRUPTIBLE:
+            return r_msr.ee || r_msr.ce;
+        case ISS_DEBUG_REG_STACK_REDZONE_SIZE:
+            return 224;
         default:
             return 0;
         }

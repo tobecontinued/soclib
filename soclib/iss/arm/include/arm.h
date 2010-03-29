@@ -75,14 +75,7 @@ public:
         return 26;
     }
 
-    virtual debug_register_t debugGetRegisterValue(unsigned int reg) const
-    {
-        if ( reg <= 15 )
-            return r_gp[reg];
-        if ( reg == 25 )
-            return r_cpsr.whole;
-        return 0;
-    }
+    virtual debug_register_t debugGetRegisterValue(unsigned int reg) const;
 
     virtual void debugSetRegisterValue(unsigned int reg, debug_register_t value)
     {

@@ -402,7 +402,9 @@ public:
     virtual debug_register_t debugGetRegisterValue(unsigned int reg) const = 0;
     /**
      * Accessor for an Iss register, register number meaning is
-     * defined in GDB protocol for this architecture.
+     * defined in GDB protocol for this architecture. Special virtual
+     * register ids defined by debugSpecialRegisters enum can be used
+     * to get additionnal information on current processor state.
      */
     virtual void debugSetRegisterValue(unsigned int reg, debug_register_t value) = 0;
     /**
@@ -414,6 +416,15 @@ public:
     enum debugCpuEndianness {
         ISS_LITTLE_ENDIAN,
         ISS_BIG_ENDIAN,
+    };
+
+    enum debugSpecialRegisters {
+        /** is non-zero if processor is currently executing user code */
+        ISS_DEBUG_REG_IS_USERMODE               = 100000,
+        /** is non-zero if processor can react on irqs */
+        ISS_DEBUG_REG_IS_INTERRUPTIBLE          = 100001,
+        /** give number of bytes which can be legitimately accessed below stack pointer */
+        ISS_DEBUG_REG_STACK_REDZONE_SIZE        = 100002,
     };
 
 protected:
