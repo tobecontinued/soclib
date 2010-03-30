@@ -1,2 +1,0 @@
-MODULE=common:gdb_iss
-ARGS=gdb_iss_t=common:mips32el

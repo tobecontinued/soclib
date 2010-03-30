@@ -1,4 +1,0 @@
-MODULE=common:address_decoding_table
-ARGS=\
-	input_t=uint32_t \
-	output_t=uint32_t

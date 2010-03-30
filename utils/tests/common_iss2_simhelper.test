@@ -1,2 +1,0 @@
-MODULE=common:iss2_simhelper
-ARGS=simhelper_iss_t=common:mips32el

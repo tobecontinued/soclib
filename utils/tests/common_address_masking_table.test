@@ -1,3 +1,0 @@
-MODULE=common:address_masking_table
-ARGS=\
-	data_t=uint32_t
