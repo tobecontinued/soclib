@@ -77,6 +77,7 @@ class IssMemchecker
     bool m_opt_show_ctxsw;
     bool m_opt_show_region;
     bool m_opt_trap;
+    bool m_opt_show_lockops;
 
     enum magic_state_e {
         MAGIC_NONE,
@@ -115,7 +116,8 @@ private:
     bool register_set( uint32_t reg_no, uint32_t value );
     uint32_t register_get( uint32_t reg_no ) const;
     bool handle_comm( const struct iss_t::DataRequest &dreq );
-    bool check_data_access( const struct iss_t::DataRequest &dreq );
+    bool check_data_access( const struct iss_t::DataRequest &dreq,
+                            const struct iss_t::DataResponse &drsp );
 
     bool report_error( uint32_t errors, uint32_t extra = 0 );
     void report_current_ctx();

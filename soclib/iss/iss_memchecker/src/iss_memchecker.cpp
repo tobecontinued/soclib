@@ -45,6 +45,7 @@
 #define MEMCHK_COLOR_INFOC(str) "\x1b[96;1m" << str << "\x1b[m"
 #define MEMCHK_COLOR_INFOS(str) "\x1b[94;1m" << str << "\x1b[m"
 #define MEMCHK_COLOR_INFOR(str) "\x1b[92;1m" << str << "\x1b[m"
+#define MEMCHK_COLOR_INFOL(str) "\x1b[95;1m" << str << "\x1b[m"
 
 namespace soclib { namespace common {
 
@@ -792,6 +793,7 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
       m_opt_show_ctxsw(false),
       m_opt_show_region(false),
       m_opt_trap(false),
+      m_opt_show_lockops(false),
       m_magic_state(MAGIC_NONE)
 {
     struct iss_t::DataRequest init = ISS_DREQ_INITIALIZER;
@@ -821,11 +823,12 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
         m_opt_show_ctxsw = strchr( env, 'S' );
         m_opt_show_region = strchr( env, 'R' );
         m_opt_trap = strchr( env, 'T' );
+        m_opt_show_lockops = strchr( env, 'L' );
     } else {
         if ( ident == 0 )
             std::cerr << "[MemChecker] SOCLIB_MEMCHK env variable may contain the following flag letters: " << std::endl
                       << "  R (show region changes), C (show context ops), S (show context switch), " << std::endl
-                      << "  T (raise Gdb trap), I (show iss dump), A (show access details)" << std::endl;
+                      << "  T (raise Gdb trap), I (show iss dump), A (show access details), L (show locks accesses)" << std::endl;
     }
 }
 
@@ -867,7 +870,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 
     enum SoclibIssMemcheckerRegisters reg_id = (enum SoclibIssMemcheckerRegisters)reg_no;
 
-#if 0     // Irq get enabled before last write occurs, need a write barrier in software
+#if 1     // Irq get enabled before last write occurs, need a write barrier in software
     if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
          iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) ) {
         if ( report_error( ERROR_IRQ_ENABLED_MAGIC ) )
@@ -1155,12 +1158,11 @@ bool IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
 }
 
 template<typename iss_t>
-bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &dreq )
+bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &dreq,
+                                              const struct iss_t::DataResponse &drsp )
 {
     error_level_t err = ERROR_NONE;
     AddressInfo *ai = s_memory_state->info_for_address(dreq.addr);
-
-    m_last_data_access = dreq;
 
     switch ( dreq.type ) {
     case iss_t::DATA_READ:
@@ -1172,16 +1174,33 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
     case iss_t::DATA_WRITE:
         err |= ai->do_write();
 
-        if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
-             iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) &&
-             ai->is_spinlock() && dreq.wdata ) // FIXME could check unlock too
-            err |= ERROR_IRQ_ENABLED_LOCK;
+        if ( ai->is_spinlock() ) {
+
+            if ( dreq.type == iss_t::DATA_WRITE || drsp.rdata == Iss2::SC_ATOMIC ) {
+                const char *op = dreq.wdata ? "Lock" : "Unlock";
+
+                if ( m_opt_show_lockops ) {
+                    std::cout << " -----------------"
+                              << MEMCHK_COLOR_INFOL(" " << op << " #" << std::hex << dreq.addr)
+                              << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+                    report_current_ctx();
+                    std::cout << std::endl;
+                }
+            }
+
+            if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) && dreq.wdata &&
+                 iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) )
+                // FIXME could check unlock too
+                err |= ERROR_IRQ_ENABLED_LOCK;
+        }
 
         break;
     case iss_t::XTN_WRITE:
     case iss_t::XTN_READ:
         return false;
     }
+
+    m_last_data_access = dreq;
 
     uint32_t sp_bound = get_cpu_sp() - iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_STACK_REDZONE_SIZE);
 
@@ -1421,6 +1440,8 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     iss_t::getRequests(ireq, dreq);
     bool err = false;
 
+    assert( !(drsp.valid && !dreq.valid) );
+
     if ( dreq.valid ) {
         if ( (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) {
             if ( !ireq.valid || irsp.valid )
@@ -1436,10 +1457,10 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
         drsp.rdata = m_data_answer_value;
         m_has_data_answer = false;
 
-    }
-
-    if ( dreq.valid ) {
-        err |= check_data_access( dreq );
+    } else {
+        if ( drsp.valid ) {
+            err |= check_data_access( dreq, drsp );
+        }
     }
 
     if ( err )
