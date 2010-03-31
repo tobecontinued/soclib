@@ -304,7 +304,7 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
 
     if (i >= 2 && !strcmp(tokens[0], "stepcpu"))
         {
-            unsigned int id = atoi(tokens[1]) - 1;
+            unsigned int id = atoi(tokens[1]);
 
             if (id > 0 && id <= list_.size())
                 {
