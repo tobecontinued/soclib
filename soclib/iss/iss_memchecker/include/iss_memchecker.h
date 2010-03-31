@@ -66,6 +66,7 @@ class IssMemchecker
     const uint32_t m_cpuid;
     uint32_t m_data_answer_value;
     struct iss_t::DataRequest m_last_data_access;
+    struct iss_t::DataRequest m_blast_data_access;
     uint32_t m_enabled_checks;
     uint32_t m_r1;
     uint32_t m_r2;

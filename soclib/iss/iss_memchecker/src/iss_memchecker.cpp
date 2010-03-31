@@ -1163,10 +1163,15 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
 {
     error_level_t err = ERROR_NONE;
     AddressInfo *ai = s_memory_state->info_for_address(dreq.addr);
+    const char *op = NULL;
 
     switch ( dreq.type ) {
-    case iss_t::DATA_READ:
     case iss_t::DATA_LL:
+        if ( ai->is_spinlock() && m_opt_show_lockops &&
+             m_last_data_access == dreq && !(m_blast_data_access == m_last_data_access) ) {
+            op = "Spinning on";
+        }
+    case iss_t::DATA_READ:
         if ( m_enabled_checks & ISS_MEMCHECKER_CHECK_INIT )
             err |= ai->do_read();
         break;
@@ -1175,22 +1180,12 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
         err |= ai->do_write();
 
         if ( ai->is_spinlock() ) {
-
-            if ( dreq.type == iss_t::DATA_WRITE || drsp.rdata == Iss2::SC_ATOMIC ) {
-                const char *op = dreq.wdata ? "Lock" : "Unlock";
-
-                if ( m_opt_show_lockops ) {
-                    std::cout << " -----------------"
-                              << MEMCHK_COLOR_INFOL(" " << op << " #" << std::hex << dreq.addr)
-                              << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
-                    report_current_ctx();
-                    std::cout << std::endl;
-                }
+            if ( m_opt_show_lockops && ( dreq.type == iss_t::DATA_WRITE || drsp.rdata == Iss2::SC_ATOMIC ) ) {
+                op = dreq.wdata ? "Lock" : "Unlock";
             }
 
-            if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) && dreq.wdata &&
+            if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) /* && dreq.wdata */ &&
                  iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) )
-                // FIXME could check unlock too
                 err |= ERROR_IRQ_ENABLED_LOCK;
         }
 
@@ -1200,6 +1195,15 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
         return false;
     }
 
+    if (op) {
+        std::cout << " -----------------"
+                  << MEMCHK_COLOR_INFOL(" " << op << " #" << std::hex << dreq.addr)
+                  << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+        report_current_ctx();
+        std::cout << std::endl;
+    }
+
+    m_blast_data_access = m_last_data_access;
     m_last_data_access = dreq;
 
     uint32_t sp_bound = get_cpu_sp() - iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_STACK_REDZONE_SIZE);
