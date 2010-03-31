@@ -128,21 +128,22 @@ class GlobalDescCache:
 		if ignore_regexp:
 			self.__ignore_regexp = re.compile(ignore_regexp)
 		self.__registry = {}
-		self.__once_seen = []
+		self.__once_seen = set()
 
 	def visitSubtree(self, path):
 		"""
 		Recurse in a subtree looking for .sd files, or assume it is cached
 		"""
 		if path not in self.__once_seen:
-			self.parseSubtree(path)
-		self.__once_seen.append(path)
+		    self.parseSubtree(path)
+		self.__once_seen.add(path)
 
 	def parseSubtree(self, path):
 		"""
 		Inconditionally recurse in a subtree looking for .sd files.
 		"""
 		path = os.path.abspath(path)
+		self.__once_seen.add(path)
 		for root, dirs, files in os.walk(path):
 			if ".svn" in dirs:
 				dirs.remove(".svn")
@@ -195,6 +196,7 @@ class GlobalDescCache:
 		pickle.dump(self, fd, pickle.HIGHEST_PROTOCOL)
 
 	def cleanup(self):
+		self.__once_seen = set(self.__once_seen)
 		for p, d in self.__registry.iteritems():
 			d.cleanup()
 

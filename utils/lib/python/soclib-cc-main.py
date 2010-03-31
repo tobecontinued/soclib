@@ -171,7 +171,7 @@ def main():
 		return 0
 
 	for path in opts.includes:
-		soclib_desc.description_files.add_path(path)
+		soclib_desc.description_files.add_path(path, False)
 
 	for value in todef:
 		ms = value.split(":")

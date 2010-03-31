@@ -69,12 +69,15 @@ class DescCache:
 		except OSError, e:
 			pass
 		
-	def addPath(self, path):
+	def addPath(self, path, cacheable = True):
 		"""
 		Add a path, and get its definitions from cache by default.
 		"""
 		self.__enabled_paths.append(path)
-		self.__global_cache.visitSubtree(path)
+		if cacheable:
+			self.__global_cache.visitSubtree(path)
+		else:
+			self.__global_cache.parseSubtree(path)
 
 		def __add(module):
 			name = module.getModuleName()
@@ -196,11 +199,11 @@ def cleanup():
 	except:
 		pass
 
-def add_path(path):
+def add_path(path, cacheable = True):
 	init()
 	global soclib_desc_registry
 
-	soclib_desc_registry.addPath(path)
+	soclib_desc_registry.addPath(path, cacheable)
 
 def get_module(name):
 	init()
