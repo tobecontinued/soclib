@@ -46,6 +46,7 @@
 #define MEMCHK_COLOR_INFOS(str) "\x1b[94;1m" << str << "\x1b[m"
 #define MEMCHK_COLOR_INFOR(str) "\x1b[92;1m" << str << "\x1b[m"
 #define MEMCHK_COLOR_INFOL(str) "\x1b[95;1m" << str << "\x1b[m"
+#define MEMCHK_BOLD(str) "\x1b[1m" << str << "\x1b[m"
 
 namespace soclib { namespace common {
 
@@ -59,23 +60,31 @@ MemoryState * s_memory_state = NULL;
 
 enum {
     ERROR_NONE = 0,
-    ERROR_UNINITIALIZED_WORD = 1,
-    ERROR_INVALID_ACCESS = 2,
-    ERROR_SP_OUTOFBOUNDS = 4,
-    ERROR_FP_OUTOFBOUNDS = 8,
-    ERROR_DATA_ACCESS_BELOW_SP = 16,
-    ERROR_CREATING_STACK_NOT_ALLOC = 32,
-    ERROR_BAD_REGION_REALLOCATION = 64,
-    ERROR_CONTEXT_ON_TWO_CPUS = 128,
-    ERROR_BAD_CONTEXT_DEL = 256,
-    ERROR_BAD_CONTEXT_CREATE = 512,
-    ERROR_BAD_CONTEXT_INVALIDATE = 1024,
-    ERROR_BAD_CONTEXT_SWITCH = 2048,
-    ERROR_REGION_OVERLAP = 4096,
-    ERROR_IRQ_ENABLED_MAGIC = 8192,
-    ERROR_IRQ_ENABLED_TMP = 16384,
-    ERROR_IRQ_ENABLED_LOCK = 32768,
+    ERROR_UNINITIALIZED_WORD            = 0x00000001,
+    ERROR_INVALID_ACCESS                = 0x00000002,
+    ERROR_SP_OUTOFBOUNDS                = 0x00000004,
+    ERROR_FP_OUTOFBOUNDS                = 0x00000008,
+    ERROR_DATA_ACCESS_BELOW_SP          = 0x00000010,
+    ERROR_CREATING_STACK_NOT_ALLOC      = 0x00000020,
+    ERROR_BAD_REGION_REALLOCATION       = 0x00000040,
+    ERROR_CONTEXT_ON_TWO_CPUS           = 0x00000080,
+    ERROR_BAD_CONTEXT_DEL               = 0x00000100,
+    ERROR_BAD_CONTEXT_CREATE            = 0x00000200,
+    ERROR_BAD_CONTEXT_INVALIDATE        = 0x00000400,
+    ERROR_BAD_CONTEXT_SWITCH            = 0x00000800,
+    ERROR_REGION_OVERLAP                = 0x00001000,
+    ERROR_IRQ_ENABLED_MAGIC             = 0x00002000,
+    ERROR_IRQ_ENABLED_TMP               = 0x00004000,
+    ERROR_IRQ_ENABLED_LOCK              = 0x00008000,
+    ERROR_LOCK_DEAD_LOCK                = 0x00010000,
 };
+
+// errors which use a repeat mask to avoid flooding output
+static const uint32_t repeat_filter = ( ERROR_IRQ_ENABLED_LOCK |
+                                        ERROR_SP_OUTOFBOUNDS |
+                                        ERROR_FP_OUTOFBOUNDS |
+                                        ERROR_IRQ_ENABLED_TMP |
+                                        ERROR_LOCK_DEAD_LOCK);
 
 class ContextState
 {
@@ -792,8 +801,10 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
       m_opt_show_ctx(false),
       m_opt_show_ctxsw(false),
       m_opt_show_region(false),
-      m_opt_trap(false),
       m_opt_show_lockops(false),
+      m_trap_mask(0),
+      m_report_mask(-1),
+      m_no_repeat_mask(0),
       m_magic_state(MAGIC_NONE)
 {
     struct iss_t::DataRequest init = ISS_DREQ_INITIALIZER;
@@ -822,13 +833,21 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
         m_opt_show_ctx = strchr( env, 'C' );
         m_opt_show_ctxsw = strchr( env, 'S' );
         m_opt_show_region = strchr( env, 'R' );
-        m_opt_trap = strchr( env, 'T' );
+        m_trap_mask = strchr( env, 'T' ) ? -1 : 0;
         m_opt_show_lockops = strchr( env, 'L' );
     } else {
         if ( ident == 0 )
             std::cerr << "[MemChecker] SOCLIB_MEMCHK env variable may contain the following flag letters: " << std::endl
                       << "  R (show region changes), C (show context ops), S (show context switch), " << std::endl
                       << "  T (raise Gdb trap), I (show iss dump), A (show access details), L (show locks accesses)" << std::endl;
+    }
+
+    if ( const char *env = getenv( "SOCLIB_MEMCHK_TRAPON" ) ) {
+        m_trap_mask = strtoul(env, NULL, 0);
+    }
+
+    if ( const char *env = getenv( "SOCLIB_MEMCHK_REPORT" ) ) {
+        m_report_mask = strtoul(env, NULL, 0);
     }
 }
 
@@ -1027,6 +1046,8 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 
 	case ISS_MEMCHECKER_CONTEXT_SWITCH:
     {
+        m_no_repeat_mask &= ~ERROR_IRQ_ENABLED_TMP;
+
         if ( m_opt_show_ctxsw ) {
             std::cout << " -----------------"
                       << MEMCHK_COLOR_INFOS(" Context switch to #" << std::hex << value)
@@ -1167,9 +1188,14 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
 
     switch ( dreq.type ) {
     case iss_t::DATA_LL:
-        if ( ai->is_spinlock() && m_opt_show_lockops &&
-             m_last_data_access == dreq && !(m_blast_data_access == m_last_data_access) ) {
-            op = "Spinning on";
+        if ( ai->is_spinlock() ) {
+            if ( m_held_locks.count(dreq.addr) )
+                err |= ERROR_LOCK_DEAD_LOCK;
+
+            if ( m_opt_show_lockops &&
+                 m_last_data_access == dreq && !(m_blast_data_access == m_last_data_access) ) {
+                op = "Spinning on";
+            }
         }
     case iss_t::DATA_READ:
         if ( m_enabled_checks & ISS_MEMCHECKER_CHECK_INIT )
@@ -1179,14 +1205,22 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
     case iss_t::DATA_WRITE:
         err |= ai->do_write();
 
+        // record held spin-locks states
         if ( ai->is_spinlock() ) {
-            if ( m_opt_show_lockops && ( dreq.type == iss_t::DATA_WRITE || drsp.rdata == Iss2::SC_ATOMIC ) ) {
-                op = dreq.wdata ? "Lock" : "Unlock";
-            }
+            if ( dreq.type == iss_t::DATA_WRITE || drsp.rdata == Iss2::SC_ATOMIC ) {
+                m_no_repeat_mask &= ~(ERROR_IRQ_ENABLED_LOCK | ERROR_LOCK_DEAD_LOCK);
 
-            if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) /* && dreq.wdata */ &&
-                 iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) )
-                err |= ERROR_IRQ_ENABLED_LOCK;
+                if (dreq.wdata) {
+                    m_held_locks[dreq.addr] = true;
+
+                    if ( m_opt_show_lockops )
+                        op = "Lock";
+                } else {
+                    m_held_locks.erase(dreq.addr);
+                    if ( m_opt_show_lockops )
+                        op = "Unlock";
+                }
+            }
         }
 
         break;
@@ -1197,7 +1231,7 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
 
     if (op) {
         std::cout << " -----------------"
-                  << MEMCHK_COLOR_INFOL(" " << op << " #" << std::hex << dreq.addr)
+                  << MEMCHK_COLOR_INFOL(" " << op << " " << std::hex << dreq.addr)
                   << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
         report_current_ctx();
         std::cout << std::endl;
@@ -1248,6 +1282,10 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
 {
     bool err = false;
 
+    errors_ &= m_report_mask;
+    errors_ &= ~m_no_repeat_mask;
+    m_no_repeat_mask |= (errors_ & repeat_filter);
+
     while ( errors_ ) {
 
         static const char *acc;
@@ -1270,13 +1308,14 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
         }
 
         // process one error at once
-        error_level_t errors = errors_ & ~(errors_ - 1);
+        error_level_t error = errors_ & ~(errors_ - 1);
 
         uint32_t sp = get_cpu_sp();
         uint32_t fp = get_cpu_fp();
         uint32_t oob = 0;
         bool show_stack_range = false;
         bool show_access = false;
+        bool show_locks = false;
 
         RegionInfo *ri = 0, *ro = 0;
 
@@ -1286,7 +1325,7 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
 
         AddressInfo *ai = s_memory_state->info_for_address(m_last_data_access.addr);
 
-        switch ( errors ) {
+        switch ( error ) {
 
         case ERROR_UNINITIALIZED_WORD:
             std::cout << MEMCHK_COLOR_WARN(" Memory " << acc << " in uninitialized word at "
@@ -1375,9 +1414,13 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
             break;
 
         case ERROR_IRQ_ENABLED_LOCK:
-            std::cout << MEMCHK_COLOR_WARN(" Processor IRQs enabled when changing spin lock state at: "
-                                           << std::hex << extra);
-            show_access = true;
+            std::cout << MEMCHK_COLOR_WARN(" Processor IRQs enabled while some spinlocks are held ");
+            show_locks = true;
+            break;
+
+        case ERROR_LOCK_DEAD_LOCK:
+            std::cout << MEMCHK_COLOR_ERR(" Spinlock dead lock ");
+            show_locks = true;
             break;
         }
 
@@ -1385,7 +1428,7 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
 
         report_current_ctx();
 
-        if ( errors & (ERROR_FP_OUTOFBOUNDS | ERROR_SP_OUTOFBOUNDS ) ) {
+        if ( error & (ERROR_FP_OUTOFBOUNDS | ERROR_SP_OUTOFBOUNDS ) ) {
             if ( oob < m_current_context->m_stack_lower )
                 std::cout << " Out of bounds     " << (m_current_context->m_stack_lower - oob)
                           << " bytes below" << std::endl;
@@ -1418,6 +1461,12 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
                 std::cout << " Memory access to     " << s << std::endl;
         }
 
+        if ( show_locks ) {
+            std::cout << std::endl;
+            for ( held_locks_map_t::iterator i = m_held_locks.begin(); i != m_held_locks.end(); i++ )
+                std::cout << " Spin-lock held    " << MEMCHK_BOLD(i->first) << std::endl;
+        }
+
         std::cout << std::endl;
 
         if ( m_opt_dump_iss ) {
@@ -1425,10 +1474,10 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
             std::cout << std::endl;
         }
 
-        if ( m_opt_trap && debugExceptionBypassed( iss_t::EXCL_TRAP ) )
+        if ( ( m_trap_mask & error ) && debugExceptionBypassed( iss_t::EXCL_TRAP ) )
             err = true;
 
-        errors_ ^= errors;
+        errors_ ^= error;
     }
 
     return err;
@@ -1478,26 +1527,37 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
             m_last_sp = sp;
         }
     }
-    
+
+    error_level_t errl = ERROR_NONE;
+
     if ( m_magic_state == MAGIC_NONE ) {
-        error_level_t errl = ERROR_NONE;
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) &&
              ! m_current_context->stack_contains(get_cpu_sp()) )
             errl |= ERROR_SP_OUTOFBOUNDS;
+        else
+            m_no_repeat_mask &= ~ERROR_SP_OUTOFBOUNDS;
+
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_FP) &&
              ! m_current_context->stack_contains(get_cpu_fp()) )
             errl |= ERROR_FP_OUTOFBOUNDS;
-        if ( report_error( errl ) )
-            return 0;
+        else
+            m_no_repeat_mask &= ~ERROR_FP_OUTOFBOUNDS;
     }
 
     if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
          iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) ) {
+
         if ( m_current_context->temporary() ) {
-            if ( report_error( ERROR_IRQ_ENABLED_TMP ) )
-                return 0;
+            errl |=  ERROR_IRQ_ENABLED_TMP;
+        }
+
+        if ( !m_held_locks.empty() ) {
+            errl |= ERROR_IRQ_ENABLED_LOCK;
         }
     }
+
+    if ( report_error( errl ) )
+        return 0;
 
     return iss_t::executeNCycles( ncycle, irsp, drsp, irq_bit_field );
 }

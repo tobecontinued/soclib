@@ -72,13 +72,21 @@ class IssMemchecker
     uint32_t m_r2;
     uint32_t m_last_sp;
 
+    // processor spinlocks
+    typedef std::map<uint32_t, bool /* cycle */> held_locks_map_t;
+    held_locks_map_t m_held_locks;
+
     bool m_opt_dump_iss;
     bool m_opt_dump_access;
     bool m_opt_show_ctx;
     bool m_opt_show_ctxsw;
     bool m_opt_show_region;
-    bool m_opt_trap;
     bool m_opt_show_lockops;
+
+    uint32_t m_trap_mask;
+    uint32_t m_report_mask;
+
+    uint32_t m_no_repeat_mask;
 
     enum magic_state_e {
         MAGIC_NONE,
