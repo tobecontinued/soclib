@@ -480,9 +480,8 @@ void Ppc405Iss::op_ill()
 
 void Ppc405Iss::op_isync()
 {
-	// No cache support
-    m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
+    // We have to drop prefetched instructions also, but we dont :)
+    mem_xtn(XTN_WRITE, XTN_SYNC, 0);
 }
 
 void Ppc405Iss::op_lbz()
@@ -1289,9 +1288,7 @@ void Ppc405Iss::op_subfze()
 
 void Ppc405Iss::op_sync()
 {
-    // No cache support
-	m_exception = EXCEPT_PROGRAM;
-    r_esr = ESR_PEU;
+    mem_xtn(XTN_WRITE, XTN_SYNC, 0);
 }
 
 void Ppc405Iss::op_tw()
