@@ -113,7 +113,7 @@ void ArmIss::getRequests(
 	) const
 {
 	ireq.valid = m_microcode_func == NULL;
-	ireq.addr = m_current_pc;
+	ireq.addr = m_current_pc & ~3;
 
 	dreq = m_dreq;
 }
@@ -138,12 +138,17 @@ uint32_t ArmIss::executeNCycles(
 	if ( instruction_asked && irsp.valid ) {
 		m_ins_error |= irsp.error;
 		m_opcode.ins = irsp.instruction;
+        m_thumb_op.ins = irsp.instruction >> ((m_current_pc & 2) ? 16 : 0);
 		instruction_asked = false;
 	}
 
 	if ( data_req_nok && drsp.valid ) {
 		m_data_error |= drsp.error;
 		r15_changed = handle_data_response(drsp);
+        if ( r15_changed ) {
+            r_cpsr.thumb = r_gp[15] & 1;
+            r_gp[15] &= ~1;
+        }
 		data_req_nok = false;
 	}
 
@@ -170,14 +175,18 @@ uint32_t ArmIss::executeNCycles(
 	} else {
 		if ( r_gp[15] != m_current_pc ) {
 			m_opcode.decod.cond = 0xf; // Never
+            m_thumb_op.ins = 0x46c0; // Nop (special)
 		} else {
-			r_gp[15] += 4;
+			r_gp[15] += r_cpsr.thumb ? 2 : 4;
 		}
 
 #ifdef SOCLIB_MODULE_DEBUG
 		dump();
 #endif
-		run();
+        if ( r_cpsr.thumb )
+            run_thumb();
+        else
+            run();
 	}
 
 	if ( m_fiq_in ) {
@@ -261,8 +270,9 @@ uint32_t ArmIss::executeNCycles(
 
 		cpsr_update(new_psr);
 
-		r_gp[14] = r_gp[15] + info.return_offset;
+		r_gp[14] = r_gp[15] + info.return_offset + r_cpsr.thumb;
 		r_gp[15] = info.vector_address;
+        r_cpsr.thumb = 0;
 	}
 
 	m_exception = EXCEPT_NONE;
@@ -320,37 +330,61 @@ static const char *const mode_code[] = {
 
 void ArmIss::dump() const
 {
-	int8_t id = decod_main(m_opcode.ins);
-	const char *ins_name = func_names[id];
+    const char *ins_name;
 
     std::cout
         << m_name
 		<< std::hex << std::noshowbase << std::setfill('0')
-        << " PC: " << std::setw(8) << m_current_pc
-        << " Ins: " << std::setw(8) << m_opcode.ins
-		<< " [" << flag_code[r_cpsr.flags] << "]"
-		<< " + " << cond_code[m_opcode.dp.cond]
-		<< " = ";
-	if ( ! cond_eval() )
-		std::cout << " NO (";
-	std::cout << ins_name;
-	if ( ! cond_eval() )
-		std::cout << ")";
+        << " PC: " << std::setw(8) << m_current_pc;
+    if ( r_cpsr.thumb ) {
+        int8_t id = thumb_func_main(m_thumb_op.ins);
+        std::cout
+            << " Thumb: "
+            << std::setw(4) << m_thumb_op.ins
+            << " [" << flag_code[r_cpsr.flags] << "]"
+            << " " << thumb_func_names[id];
+    } else {
+        int8_t id = arm_func_main(m_opcode.ins);
+        std::cout
+            << " Arm: "
+            << std::setw(8) << m_opcode.ins
+            << " [" << flag_code[r_cpsr.flags] << "]"
+            << " + " << cond_code[m_opcode.dp.cond]
+            << " = ";
+        if ( ! cond_eval() )
+            std::cout << " NO (";
+        std::cout << arm_func_names[id];
+        if ( ! cond_eval() )
+            std::cout << ")";
+    }
 	std::cout
 		<< std::endl << std::dec
         << " Mode: "   << mode_code[psr_to_mode[r_cpsr.mode]]
         << " IRQ: "   << (r_cpsr.irq_disabled ? "disabled" : "enabled")
         << " FIQ: "   << (r_cpsr.fiq_disabled ? "disabled" : "enabled")
-		<< std::endl << std::dec
-        << " N rn: "   << m_opcode.dp.rn
-        << "  rd: "    << m_opcode.dp.rd
-        << "  rm: " << m_opcode.mul.rm
-        << std::endl
-        << " V rn: "   << r_gp[m_opcode.dp.rn]
-        << "  rd: "    << r_gp[m_opcode.dp.rd]
-        << "  rm: "    << r_gp[m_opcode.mul.rm]
-        << "  shift: " << (m_opcode.ins & 0xfff)
-        << std::endl;
+		<< std::endl << std::dec;
+    if ( r_cpsr.thumb ) {
+        std::cout
+            << " N rn: "   << m_thumb_op.reg3.rn
+            << "  rd: "    << m_thumb_op.reg3.rd
+            << "  rm: "    << m_thumb_op.reg3.rm
+            << std::endl
+            << " V rn: "   << r_gp[m_thumb_op.reg3.rn]
+            << "  rd: "    << r_gp[m_thumb_op.reg3.rd]
+            << "  rm: "    << r_gp[m_thumb_op.reg3.rm]
+            << std::endl;
+    } else {
+        std::cout
+            << " N rn: "   << m_opcode.dp.rn
+            << "  rd: "    << m_opcode.dp.rd
+            << "  rm: " << m_opcode.mul.rm
+            << std::endl
+            << " V rn: "   << r_gp[m_opcode.dp.rn]
+            << "  rd: "    << r_gp[m_opcode.dp.rd]
+            << "  rm: "    << r_gp[m_opcode.mul.rm]
+            << "  shift: " << (m_opcode.ins & 0xfff)
+            << std::endl;
+    }
     for ( size_t i=0; i<16; ++i ) {
         std::cout
 			<< " " << std::dec << std::setw(2) << i << ": "

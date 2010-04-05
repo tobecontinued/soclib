@@ -47,16 +47,26 @@ void ArmIss::run()
 
     data_t r15 = r_gp[15];
 
-	int8_t id = decod_main(m_opcode.ins);
-	func_t func = funcs[id];
+	int8_t id = arm_func_main(m_opcode.ins);
+	func_t func = arm_funcs[id];
 	(this->*func)();
 
-	if (r_gp[15] & 0x01) {
-        std::cerr << name() << " Thumb not supported yet" << std::endl;
+	if (r_gp[15] == ARM_RESET_ADDR) {
+        std::cerr << name() << " Jump to reset vector" << std::endl;
         r_gp[15] = r15;
         m_exception = EXCEPT_UNDEF;
         return;
 	}
+}
+
+void ArmIss::run_thumb()
+{
+    data_t r15 = r_gp[15];
+
+	int8_t id = thumb_func_main(m_thumb_op.ins);
+	func_t func = thumb_funcs[id];
+	(this->*func)();
+
 	if (r_gp[15] == ARM_RESET_ADDR) {
         std::cerr << name() << " Jump to reset vector" << std::endl;
         r_gp[15] = r15;

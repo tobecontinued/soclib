@@ -128,12 +128,20 @@ private:
 
     typedef int8_t (*decod_func_t)(data_t);
 
-    template<size_t byte_count, bool pre, bool load, bool signed_> void op_ldstrh();
-    template<bool reg, bool pre, bool load> void op_ldstr();
+    template<size_t byte_count, bool pre, bool load, bool signed_> void arm_ldstrh();
+    template<bool reg, bool pre, bool load> void arm_ldstr();
+    template<bool load, bool byte> void thumb_ldst_imm5();
+    template<bool load> void thumb_ldst_sprel();
+    template<bool unsigned_, bool byte> void thumb_xt();
+    template<bool load> void thumb_ldstmia();
+    template<bool link> void thumb_bx_r();
+
     static const uint16_t cond_table[16];
 
 # include "arm_instruction_formats.inc"
 # include "arm_ops.inc"
+# include "thumb_instruction_formats.inc"
+# include "thumb_ops.inc"
 
 	typedef union {
 		REG32_BITFIELD(
@@ -144,7 +152,7 @@ private:
 			uint32_t reserved1:20,
 			uint32_t irq_disabled:1,
 			uint32_t fiq_disabled:1,
-			uint32_t reserved2:1,
+			uint32_t thumb:1,
 			uint32_t mode:5,
 			);
 		PACKED_BITFIELD(
@@ -184,7 +192,8 @@ private:
         EXCEPT_Count = 7,
     };
 
-	ins_t m_opcode;
+	arm_ins_t m_opcode;
+	thumb_ins_t m_thumb_op;
 	static const ArmMode psr_to_mode[32];
 	static const ArmPsrMode mode_to_psr[MOD_Count];
     struct except_info_s {
@@ -242,7 +251,7 @@ private:
 			addr_t sp_value;
 		} bdt;
 	} m_microcode_status;
-	ins_t m_microcode_opcode;
+	arm_ins_t m_microcode_opcode;
 	func_t m_microcode_func;
 
 
@@ -266,8 +275,11 @@ private:
 
 	bool cond_eval() const;
     void run();
+    void run_thumb();
     void do_microcoded_ldstm_user();
     void do_sleep();
+
+    void thumb_get_reghi(uint8_t &rm, uint8_t &rd);
 
     data_t x_get_rot() const;
 
@@ -305,7 +317,8 @@ private:
     data_t *r_mem_dest_addr;
     enum post_memaccess_op_e r_mem_post_op;
 
-    soclib_static_assert(sizeof(ins_t) == 4);
+    soclib_static_assert(sizeof(arm_ins_t) == 4);
+    soclib_static_assert(sizeof(thumb_ins_t) == 2);
 };
 
 }}

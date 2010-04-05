@@ -86,9 +86,9 @@ uint32_t ArmIss::arm_shifter_shift()
     uint32_t value = r_gp[m_opcode.dp.rm];
 
     if ( m_opcode.dp.rm == 15 ) {
-        value += 4;
+        value += 4 - 2 * r_cpsr.thumb;
         if ( m_opcode.dp.i )
-            value += 4;
+            value += 4 - 2 * r_cpsr.thumb;
     }
 
     uint8_t shift_code = m_opcode.dp.shift_code;
@@ -185,7 +185,7 @@ template uint32_t ArmIss::arm_shifter_shift<false>();
 
 #define ARM_DATA_LOGICAL_INS_S(n, op, write_result)                     \
                                                                         \
-    ARM_OPS_PROTO(ArmIss::op_##n##s)                                    \
+    ARM_OPS_PROTO(ArmIss::arm_##n##s)                                    \
     {                                                                   \
         uint32_t shifted = (m_opcode.dp.rd == 15)                       \
             ? arm_shifter<false>()                                      \
@@ -193,9 +193,9 @@ template uint32_t ArmIss::arm_shifter_shift<false>();
                                                                         \
         uint32_t op1 = r_gp[m_opcode.dp.rn];                            \
         if (m_opcode.dp.rn == 15) {                                     \
-            op1 += 4;                                                   \
+            op1 += 4 - 2 * r_cpsr.thumb;                                                   \
             if ( m_opcode.dp.i && (m_opcode.dp.shift_code & 0x10) )     \
-                op1 += 4;                                               \
+                op1 += 4 - 2 * r_cpsr.thumb;                                               \
         }                                                               \
                                                                         \
         data_t res = arm_logical_##op(op1, shifted);                    \
@@ -206,7 +206,9 @@ template uint32_t ArmIss::arm_shifter_shift<false>();
         if (m_opcode.dp.rd == 15) {                                     \
             ArmMode cur_mode = psr_to_mode[r_cpsr.mode];               \
             assert(cur_mode < MOD_Count);                               \
+            r_gp[m_opcode.dp.rd] = res & ~1;                            \
             cpsr_update(r_spsr[cur_mode]);                              \
+            r_cpsr.thumb = res & 1;                                     \
         } else {                                                        \
             r_cpsr.zero = !res;                                         \
             r_cpsr.sign = res >> 31;                                    \
@@ -217,13 +219,13 @@ template uint32_t ArmIss::arm_shifter_shift<false>();
                                                                         \
     ARM_DATA_LOGICAL_INS_S(n, op, true)                                 \
                                                                         \
-    ARM_OPS_PROTO(ArmIss::op_##n)                                       \
+    ARM_OPS_PROTO(ArmIss::arm_##n)                                       \
     {                                                                   \
         uint32_t op1 = r_gp[m_opcode.dp.rn];                            \
         if (m_opcode.dp.rn == 15) {                                     \
-            op1 += 4;                                                   \
+            op1 += 4 - 2 * r_cpsr.thumb;                                                   \
             if ( m_opcode.dp.i && (m_opcode.dp.shift_code & 0x10) )     \
-                op1 += 4;                                               \
+                op1 += 4 - 2 * r_cpsr.thumb;                                               \
         }                                                               \
                                                                         \
         uint32_t res = arm_logical_##op(op1, arm_shifter<false>());     \
@@ -273,15 +275,15 @@ ARM_DATA_LOGICAL_INS(mvn, mvn)
 
 #define ARM_DATA_ARITH_INS_S(n, op, write_result)                       \
                                                                         \
-    ARM_OPS_PROTO(ArmIss::op_##n##s)                                    \
+    ARM_OPS_PROTO(ArmIss::arm_##n##s)                                    \
     {                                                                   \
         bool cout = r_cpsr.carry, vout;                                 \
                                                                         \
         uint32_t op1 = r_gp[m_opcode.dp.rn];                            \
         if (m_opcode.dp.rn == 15) {                                     \
-            op1 += 4;                                                   \
+            op1 += 4 - 2 * r_cpsr.thumb;                                                   \
             if ( m_opcode.dp.i && (m_opcode.dp.shift_code & 0x10) )     \
-                op1 += 4;                                               \
+                op1 += 4 - 2 * r_cpsr.thumb;                                               \
         }                                                               \
                                                                         \
         uint32_t res = arm_arith_##op(op1, arm_shifter<false>(), cout, vout); \
@@ -292,7 +294,9 @@ ARM_DATA_LOGICAL_INS(mvn, mvn)
         if (m_opcode.dp.rd == 15) {                                     \
             ArmMode cur_mode = psr_to_mode[r_cpsr.mode];               \
             assert(cur_mode < MOD_Count);                               \
+            r_gp[m_opcode.dp.rd] = res & ~1;                            \
             cpsr_update(r_spsr[cur_mode]);                              \
+            r_cpsr.thumb = res & 1;                                     \
         } else {                                                        \
             r_cpsr.carry = cout;                                        \
             r_cpsr.overflow = vout;                                     \
@@ -305,15 +309,15 @@ ARM_DATA_LOGICAL_INS(mvn, mvn)
                                                                         \
     ARM_DATA_ARITH_INS_S(n, op, true)                                   \
                                                                         \
-    ARM_OPS_PROTO(ArmIss::op_##n)                                       \
+    ARM_OPS_PROTO(ArmIss::arm_##n)                                       \
     {                                                                   \
         bool cout = r_cpsr.carry, vout;                                 \
                                                                         \
         uint32_t op1 = r_gp[m_opcode.dp.rn];                            \
         if (m_opcode.dp.rn == 15) {                                     \
-            op1 += 4;                                                   \
+            op1 += 4 - 2 * r_cpsr.thumb;                                                   \
             if ( m_opcode.dp.i && (m_opcode.dp.shift_code & 0x10) )         \
-                op1 += 4;                                               \
+                op1 += 4 - 2 * r_cpsr.thumb;                                               \
         }                                                               \
                                                                         \
         uint32_t res = arm_arith_##op(op1, arm_shifter<false>(), cout, vout); \
@@ -351,6 +355,11 @@ static inline uint32_t arm_arith_rsc(uint32_t a, uint32_t b, bool &cout, bool &v
   return add_cv(b, ~a, cout, cout, vout);
 }
 
+static inline uint32_t arm_arith_neg(uint32_t a, uint32_t b, bool &cout, bool &vout)
+{
+  return add_cv(0, ~a, 1, cout, vout);
+}
+
 ARM_DATA_ARITH_INS(sub, sub)
 ARM_DATA_ARITH_INS(rsb, rsb)
 ARM_DATA_ARITH_INS(add, add)
@@ -362,7 +371,8 @@ ARM_DATA_ARITH_INS_S(cmn, add, false)
 
 
 
-void ArmIss::op_mul()
+
+void ArmIss::arm_mul()
 {
     data_t res =
         r_gp[m_opcode.mul.rm] * r_gp[m_opcode.mul.rs];
@@ -374,7 +384,7 @@ void ArmIss::op_mul()
     }
 }
 
-void ArmIss::op_smul_xy()
+void ArmIss::arm_smul_xy()
 {
     int16_t x = r_gp[m_opcode.mul.rm] >> (16*m_opcode.mul.x);
     int16_t y = r_gp[m_opcode.mul.rs] >> (16*m_opcode.mul.y);
@@ -383,7 +393,7 @@ void ArmIss::op_smul_xy()
     r_gp[m_opcode.mul.rd] = res;
 }
 
-void ArmIss::op_smla_xy()
+void ArmIss::arm_smla_xy()
 {
     int16_t x = r_gp[m_opcode.mul.rm] >> (16*m_opcode.mul.x);
     int16_t y = r_gp[m_opcode.mul.rs] >> (16*m_opcode.mul.y);
@@ -392,7 +402,7 @@ void ArmIss::op_smla_xy()
     r_gp[m_opcode.mul.rd] = res + r_gp[m_opcode.mul.rn];
 }
 
-void ArmIss::op_smlaw_y()
+void ArmIss::arm_smlaw_y()
 {
     int16_t y = r_gp[m_opcode.mul.rs] >> (16*m_opcode.mul.y);
     uint64_t res64 = (int64_t)y * (int64_t)(int32_t)r_gp[m_opcode.mul.rm];
@@ -401,7 +411,7 @@ void ArmIss::op_smlaw_y()
     r_gp[m_opcode.mul.rd] = res + r_gp[m_opcode.mul.rn];
 }
 
-void ArmIss::op_smulw_y()
+void ArmIss::arm_smulw_y()
 {
     int16_t y = r_gp[m_opcode.mul.rs] >> (16*m_opcode.mul.y);
     uint64_t res64 = (int64_t)y * (int64_t)(int32_t)r_gp[m_opcode.mul.rm];
@@ -410,7 +420,7 @@ void ArmIss::op_smulw_y()
     r_gp[m_opcode.mul.rd] = res;
 }
 
-void ArmIss::op_mla()
+void ArmIss::arm_mla()
 {
     data_t res =
         r_gp[m_opcode.mul.rm] * r_gp[m_opcode.mul.rs]
@@ -423,7 +433,7 @@ void ArmIss::op_mla()
     }
 }
 
-void ArmIss::op_umaal()
+void ArmIss::arm_umaal()
 {
     uint64_t res = 
         (uint64_t)r_gp[m_opcode.mul.rm] * (uint64_t)r_gp[m_opcode.mul.rs]
@@ -434,7 +444,7 @@ void ArmIss::op_umaal()
     r_gp[m_opcode.mul.rd] = res >> 32;
 }
 
-void ArmIss::op_umull()
+void ArmIss::arm_umull()
 {
     uint64_t res = 
         (uint64_t)r_gp[m_opcode.mul.rm] * (uint64_t)r_gp[m_opcode.mul.rs];
@@ -447,7 +457,7 @@ void ArmIss::op_umull()
     }
 }
 
-void ArmIss::op_umlal()
+void ArmIss::arm_umlal()
 {
     uint64_t res =
         (uint64_t)r_gp[m_opcode.mul.rm] * (uint64_t)r_gp[m_opcode.mul.rs]
@@ -461,7 +471,7 @@ void ArmIss::op_umlal()
     }
 }
 
-void ArmIss::op_smull()
+void ArmIss::arm_smull()
 {
     int64_t res =
         (int64_t)(int32_t)r_gp[m_opcode.mul.rm] * (int64_t)(int32_t)r_gp[m_opcode.mul.rs];
@@ -474,7 +484,7 @@ void ArmIss::op_smull()
     }
 }
 
-void ArmIss::op_smlal()
+void ArmIss::arm_smlal()
 {
     int64_t res =
         ((int64_t)(int32_t)r_gp[m_opcode.mul.rm] * (int64_t)(int32_t)r_gp[m_opcode.mul.rs])
@@ -487,6 +497,55 @@ void ArmIss::op_smlal()
         r_cpsr.sign = ((int64_t)res) < 0;
     }
 }
+
+
+#define THUMB_DATA_ARITH_INS_S(n, op, write_result)                 \
+                                                                    \
+ARM_OPS_PROTO(ArmIss::thumb_##n)                                    \
+{                                                                   \
+    bool cout = r_cpsr.carry, vout;                                 \
+                                                                    \
+    uint32_t op1 = r_gp[m_thumb_op.reg2.rd];                        \
+    uint32_t op2 = r_gp[m_thumb_op.reg2.rm];                        \
+                                                                    \
+    uint32_t res = arm_arith_##op(op1, op2, cout, vout);            \
+                                                                    \
+    if (write_result)                                               \
+        r_gp[m_thumb_op.reg2.rd] = res;                             \
+                                                                    \
+    r_cpsr.carry = cout;                                            \
+    r_cpsr.overflow = vout;                                         \
+    r_cpsr.sign = res >> 31;                                        \
+    r_cpsr.zero = !res;                                             \
+}
+
+#define THUMB_DATA_LOGICAL_INS_S(n, op, write_result)               \
+                                                                    \
+ARM_OPS_PROTO(ArmIss::thumb_##n)                                    \
+{                                                                   \
+    uint32_t op1 = r_gp[m_thumb_op.reg2.rd];                        \
+    uint32_t op2 = r_gp[m_thumb_op.reg2.rm];                        \
+                                                                    \
+    data_t res = arm_logical_##op(op1, op2);                        \
+                                                                    \
+    if (write_result)                                               \
+        r_gp[m_thumb_op.reg2.rd] = res;                             \
+                                                                    \
+    r_cpsr.sign = res >> 31;                                        \
+    r_cpsr.zero = !res;                                             \
+}
+
+THUMB_DATA_ARITH_INS_S(adc, adc, true)
+THUMB_DATA_LOGICAL_INS_S(tst, and, false)
+THUMB_DATA_LOGICAL_INS_S(and, and, true)
+THUMB_DATA_LOGICAL_INS_S(bic, bic, true)
+THUMB_DATA_ARITH_INS_S(cmn, add, false)
+THUMB_DATA_ARITH_INS_S(cmp, sub, false)
+THUMB_DATA_LOGICAL_INS_S(eor, eor, true)
+THUMB_DATA_LOGICAL_INS_S(mvn, mvn, true)
+THUMB_DATA_ARITH_INS_S(neg, neg, true)
+THUMB_DATA_LOGICAL_INS_S(orr, or, true)
+THUMB_DATA_ARITH_INS_S(sbc, sbc, true)
 
 
 }}

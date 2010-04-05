@@ -40,41 +40,43 @@ namespace soclib { namespace common {
 
 using namespace soclib::common;
 
-void ArmIss::op_bx()
+void ArmIss::arm_bx()
 {
     addr_t dest = r_gp[m_opcode.brx.rn];
-	r_gp[15] = dest & 0xfffffffe;
+	r_gp[15] = dest & ~1;
+    r_cpsr.thumb = dest & 1;
 }
 
-void ArmIss::op_blx()
+void ArmIss::arm_blx()
 {
     addr_t dest = r_gp[m_opcode.brx.rn];
     r_gp[14] = r_gp[15];
-	r_gp[15] = dest & 0xfffffffe;
+	r_gp[15] = dest & ~1;
+    r_cpsr.thumb = dest & 1;
 }
 
-void ArmIss::op_b()
+void ArmIss::arm_b()
 {
 	r_gp[15] += sign_ext(m_opcode.brl.offset << 2, 26) + 4;
 }
 
-void ArmIss::op_bl()
+void ArmIss::arm_bl()
 {
     r_gp[14] = r_gp[15];
 	r_gp[15] += sign_ext(m_opcode.brl.offset << 2, 26) + 4;
 }
 
-void ArmIss::op_cdp()
+void ArmIss::arm_cdp()
 {
 
 }
 
-void ArmIss::op_ill()
+void ArmIss::arm_ill()
 {
     m_exception = EXCEPT_UNDEF;
 }
 
-void ArmIss::op_ldc()
+void ArmIss::arm_ldc()
 {
 
 }
@@ -140,7 +142,7 @@ void ArmIss::do_sleep()
     }
 }
 
-void ArmIss::op_ldstm()
+void ArmIss::arm_ldstm()
 {
 	m_microcode_opcode = m_opcode;
 
@@ -175,7 +177,7 @@ void ArmIss::op_ldstm()
 }
 
 // to coproc
-void ArmIss::op_mcr()
+void ArmIss::arm_mcr()
 {
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name()
@@ -196,7 +198,7 @@ void ArmIss::op_mcr()
 #if defined(SOCLIB_MODULE_DEBUG)
         std::cout << "error" << std::endl;
 #endif
-        return op_ill();
+        return arm_ill();
     } else {
 #if defined(SOCLIB_MODULE_DEBUG)
         std::cout << "ok" << std::endl;
@@ -205,7 +207,7 @@ void ArmIss::op_mcr()
 }
 
 // from coproc
-void ArmIss::op_mrc()
+void ArmIss::arm_mrc()
 {
 #if defined(SOCLIB_MODULE_DEBUG)
     std::cout << name()
@@ -226,7 +228,7 @@ void ArmIss::op_mrc()
 #if defined(SOCLIB_MODULE_DEBUG)
         std::cout << "error" << std::endl;
 #endif
-        return op_ill();
+        return arm_ill();
     } else {
 #if defined(SOCLIB_MODULE_DEBUG)
         std::cout << "ok: " << r_gp[m_opcode.coproc.rd] << std::endl;
@@ -234,10 +236,10 @@ void ArmIss::op_mrc()
     }
 }
 
-void ArmIss::op_mrs()
+void ArmIss::arm_mrs()
 {
     if ( m_opcode.dp.rn != 0xf )
-        return op_ill();
+        return arm_ill();
 
 	if (m_opcode.ms.p)
 		r_gp[m_opcode.ms.rd] = r_spsr[psr_to_mode[r_cpsr.mode]].whole;
@@ -245,10 +247,10 @@ void ArmIss::op_mrs()
 		r_gp[m_opcode.ms.rd] = r_cpsr.whole;
 }
 
-void ArmIss::op_msr()
+void ArmIss::arm_msr()
 {
     if ( m_opcode.ms.p && r_cpsr.mode == MOD_PSR_USER32 )
-        return op_ill();
+        return arm_ill();
 
     ArmMode cur_mode = psr_to_mode[r_cpsr.mode];
     assert(cur_mode < MOD_Count);
@@ -291,7 +293,7 @@ void ArmIss::op_msr()
     }
 }
 
-void ArmIss::op_clz()
+void ArmIss::arm_clz()
 {
     data_t d = r_gp[m_opcode.dp.rm];
     if ( d )
@@ -300,13 +302,13 @@ void ArmIss::op_clz()
         r_gp[m_opcode.dp.rd] = 32;
 }
 
-void ArmIss::op_stc()
+void ArmIss::arm_stc()
 {
 
 }
 
 template<size_t byte_count, bool pre, bool load, bool signed_>
-void ArmIss::op_ldstrh()
+void ArmIss::arm_ldstrh()
 {
 	addr_t addr = r_gp[m_opcode.sdth.rn];
 
@@ -340,7 +342,7 @@ void ArmIss::op_ldstrh()
 }
 
 template<bool reg, bool pre, bool load>
-void ArmIss::op_ldstr()
+void ArmIss::arm_ldstr()
 {
 	addr_t addr = r_gp[m_opcode.sdt.rn];
 
@@ -377,12 +379,12 @@ void ArmIss::op_ldstr()
 	}
 }
 
-void ArmIss::op_swi()
+void ArmIss::arm_swi()
 {
     m_exception = EXCEPT_SWI;
 }
 
-void ArmIss::op_bkpt()
+void ArmIss::arm_bkpt()
 {
     m_exception = EXCEPT_SWI;
 }
@@ -431,14 +433,14 @@ void ArmIss::do_microcoded_swp_decide()
 	}
 }
 
-void ArmIss::op_swp()
+void ArmIss::arm_swp()
 {
 	m_microcode_opcode = m_opcode;
 	m_microcode_status.swp.address = r_gp[m_opcode.swp.rn];
 	do_microcoded_swp_ll();
 }
 
-void ArmIss::op_strex()
+void ArmIss::arm_strex()
 {
 	do_mem_access(r_gp[m_opcode.atomic.rn], DATA_SC,
 				  4, r_gp[m_opcode.atomic.rm],
@@ -446,7 +448,7 @@ void ArmIss::op_strex()
 				  POST_OP_WB_SC );
 }
 
-void ArmIss::op_ldrex()
+void ArmIss::arm_ldrex()
 {
 	do_mem_access(r_gp[m_opcode.atomic.rn], DATA_LL,
 				  4, 0, &r_gp[m_opcode.atomic.rd],
@@ -460,55 +462,55 @@ ArmIss::data_t ArmIss::x_get_rot() const
     return (data >> shift) | (data << (32-shift));
 }
 
-void ArmIss::op_rev()
+void ArmIss::arm_rev()
 {
     r_gp[m_opcode.dp.rd] = soclib::endian::uint32_swap(r_gp[m_opcode.dp.rm]);
 }
 
-void ArmIss::op_sxtb()
+void ArmIss::arm_sxtb()
 {
     data_t rm = x_get_rot() & 0xff;
     r_gp[m_opcode.dp.rd] = sign_ext(rm, 8);
 }
 
-void ArmIss::op_uxtb()
+void ArmIss::arm_uxtb()
 {
     data_t rm = x_get_rot() & 0xff;
     r_gp[m_opcode.dp.rd] = rm;
 }
 
-void ArmIss::op_rev16()
+void ArmIss::arm_rev16()
 {
     data_t rm = soclib::endian::uint32_swap(r_gp[m_opcode.dp.rm]);
     r_gp[m_opcode.dp.rd] = (rm<<16) | (rm>>16);
 }
 
-void ArmIss::op_uxtb16()
+void ArmIss::arm_uxtb16()
 {
     data_t rm = x_get_rot();
     rm &= 0x00ff00ff;
     r_gp[m_opcode.dp.rd] = rm;
 }
 
-void ArmIss::op_sxth()
+void ArmIss::arm_sxth()
 {
     data_t rm = x_get_rot();
     r_gp[m_opcode.dp.rd] = sign_ext(rm, 16);
 }
 
-void ArmIss::op_uxth()
+void ArmIss::arm_uxth()
 {
     data_t rm = x_get_rot();
     r_gp[m_opcode.dp.rd] = rm & 0xffff;
 }
 
-void ArmIss::op_revsh()
+void ArmIss::arm_revsh()
 {
     uint16_t rm = soclib::endian::uint16_swap(r_gp[m_opcode.dp.rm]);
     r_gp[m_opcode.dp.rd] = sign_ext(rm, 16);
 }
 
-void ArmIss::op_sxtb16()
+void ArmIss::arm_sxtb16()
 {
     data_t rm = x_get_rot();
     rm &= 0x00ff00ff;
@@ -517,27 +519,27 @@ void ArmIss::op_sxtb16()
 }
 
 
-template void ArmIss::op_ldstrh<2, false, false, false>();
-template void ArmIss::op_ldstrh<1, false, false, true>();
-template void ArmIss::op_ldstrh<2, false, false, true>();
-template void ArmIss::op_ldstrh<2, true, false, false>();
-template void ArmIss::op_ldstrh<1, true, false, true>();
-template void ArmIss::op_ldstrh<2, true, false, true>();
-template void ArmIss::op_ldstrh<2, false, true, false>();
-template void ArmIss::op_ldstrh<1, false, true, true>();
-template void ArmIss::op_ldstrh<2, false, true, true>();
-template void ArmIss::op_ldstrh<2, true, true, false>();
-template void ArmIss::op_ldstrh<1, true, true, true>();
-template void ArmIss::op_ldstrh<2, true, true, true>();
+template void ArmIss::arm_ldstrh<2, false, false, false>();
+template void ArmIss::arm_ldstrh<1, false, false, true>();
+template void ArmIss::arm_ldstrh<2, false, false, true>();
+template void ArmIss::arm_ldstrh<2, true, false, false>();
+template void ArmIss::arm_ldstrh<1, true, false, true>();
+template void ArmIss::arm_ldstrh<2, true, false, true>();
+template void ArmIss::arm_ldstrh<2, false, true, false>();
+template void ArmIss::arm_ldstrh<1, false, true, true>();
+template void ArmIss::arm_ldstrh<2, false, true, true>();
+template void ArmIss::arm_ldstrh<2, true, true, false>();
+template void ArmIss::arm_ldstrh<1, true, true, true>();
+template void ArmIss::arm_ldstrh<2, true, true, true>();
 
-template void ArmIss::op_ldstr<false, false, false>();
-template void ArmIss::op_ldstr<false, true, false>();
-template void ArmIss::op_ldstr<true, false, false>();
-template void ArmIss::op_ldstr<true, true, false>();
-template void ArmIss::op_ldstr<false, false, true>();
-template void ArmIss::op_ldstr<false, true, true>();
-template void ArmIss::op_ldstr<true, false, true>();
-template void ArmIss::op_ldstr<true, true, true>();
+template void ArmIss::arm_ldstr<false, false, false>();
+template void ArmIss::arm_ldstr<false, true, false>();
+template void ArmIss::arm_ldstr<true, false, false>();
+template void ArmIss::arm_ldstr<true, true, false>();
+template void ArmIss::arm_ldstr<false, false, true>();
+template void ArmIss::arm_ldstr<false, true, true>();
+template void ArmIss::arm_ldstr<true, false, true>();
+template void ArmIss::arm_ldstr<true, true, true>();
 
 }}
 

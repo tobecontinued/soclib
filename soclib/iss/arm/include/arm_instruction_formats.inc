@@ -209,4 +209,4 @@ typedef union {
 		) si;
 
 	uint32_t ins;
-}  ins_t;
+}  arm_ins_t;

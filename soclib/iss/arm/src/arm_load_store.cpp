@@ -62,16 +62,6 @@ void ArmIss::do_mem_access( addr_t address,
 {
     int byte_le = address&3;
 
-    if ( address & (byte_count-1) ) {
-        m_exception = EXCEPT_DABT;
-        return;
-    }
-
-    if ( (byte_count + byte_le) > 4 ) {
-        dump();
-        abort();
-    }
-
 //     if ( ! m_little_endian ) {
 //         wdata = soclib::endian::uint32_swap(wdata) >> (8 * (4-byte_count));
 //     }
@@ -94,6 +84,16 @@ void ArmIss::do_mem_access( addr_t address,
 		<< " (gp+" << (int)((uint32_t*)rdata_dest-(uint32_t*)&r_gp[0]) << ")"
         << std::endl;
 #endif
+
+    if ( address & (byte_count-1) ) {
+        m_exception = EXCEPT_DABT;
+        return;
+    }
+
+    if ( (byte_count + byte_le) > 4 ) {
+        dump();
+        abort();
+    }
 
     r_mem_byte_le = byte_le;
     r_mem_byte_count = byte_count;
