@@ -11,6 +11,11 @@ Module('common:loader',
 							],
 	   instance_parameters = [
 	parameter.String('binary', auto = 'env:binary'),
+	parameter.String('binary2', default = ""),
+	parameter.String('binary3', default = ""),
+	parameter.String('binary4', default = ""),
+	parameter.String('binary5', default = ""),
+	parameter.String('binary6', default = ""),
 	],
 	uses = [
 		Uses('common:exception'),
