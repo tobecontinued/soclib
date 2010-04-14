@@ -58,6 +58,7 @@
 
 #include <cassert>
 #include <limits>
+#include "iss2.h"
 #include "arithmetics.h"
 #include "../include/vci_xcache_wrapper.h"
 
