@@ -50,7 +50,7 @@ Module('tlmt:vci_multi_tty',
 	],
 	   extensions = [
 	'dsx:addressable=ident',
-	'dsx:get_ident=ident:p_vci',
+	'dsx:get_ident=ident:p_vci:mt',
 	'dsx:max_segments=1',
 	'dsx:device=tty',
    ],

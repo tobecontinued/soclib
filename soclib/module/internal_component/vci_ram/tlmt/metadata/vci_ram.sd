@@ -52,7 +52,7 @@ Module('tlmt:vci_ram',
 	],
        extensions = [
     'dsx:addressable=ident',
-	'dsx:get_ident=ident:p_vci',
+	'dsx:get_ident=ident:p_vci:mt',
 	'dsx:mapping_type=memory',
    ],
 )

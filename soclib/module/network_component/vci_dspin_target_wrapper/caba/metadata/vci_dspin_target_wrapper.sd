@@ -31,6 +31,6 @@ Module('caba:vci_dspin_target_wrapper',
 	'dsx:obtain_ident_method=port',
 	'dsx:interconnect',
 	'dsx:mapping_type=interconnect',
-	'dsx:get_ident=srcid:p_dspin_in,tgtid:p_dspin_out',
+	'dsx:get_ident=srcid:p_dspin_in:mt,tgtid:p_dspin_out:mt',
 	],
 )

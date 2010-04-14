@@ -30,6 +30,6 @@ Module('caba:vci_fir16',
 	],
 	extensions = [
 		'dsx:addressable=tgtid',
-		'dsx:get_ident=srcid:p_vci_initiator,tgtid:p_vci_target'
+		'dsx:get_ident=srcid:p_vci_initiator:mt,tgtid:p_vci_target:mt'
 	],
 )

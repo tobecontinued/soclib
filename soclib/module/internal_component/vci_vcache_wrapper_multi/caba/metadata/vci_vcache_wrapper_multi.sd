@@ -49,7 +49,7 @@ Module('caba:vci_vcache_wrapper_multi',
     	parameter.Int('wbuf_nlines'),
 	],
 	   extensions = [
-	'dsx:get_ident=ident:p_vci',
+	'dsx:get_ident=ident:p_vci:mt',
 	'dsx:cpu=wrapper:iss_t',
 	'dsx:mapping_type=processor:proc_id',
    ],

@@ -24,6 +24,6 @@ Module('caba:vci_blackhole',
 	],
        extensions = [
 	'dsx:addressable=ident',
-	'dsx:get_ident=ident:p_vci',
+	'dsx:get_ident=ident:p_vci:mt',
         ],
 )

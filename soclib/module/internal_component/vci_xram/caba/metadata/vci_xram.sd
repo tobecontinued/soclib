@@ -18,5 +18,5 @@ Module('caba:vci_xram',
 		Port('caba:vci_initiator','p_vci_ini'),
                 Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
                 Port('caba:clock_in', 'p_clk', auto = 'clock'),],
-       extensions = ['dsx:get_ident=ident:p_vci',],
+       extensions = ['dsx:get_ident=ident:p_vci:mt',],
 )
