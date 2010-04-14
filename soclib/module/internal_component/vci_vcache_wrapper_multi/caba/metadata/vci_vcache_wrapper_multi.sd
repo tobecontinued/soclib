@@ -33,7 +33,7 @@ Module('caba:vci_vcache_wrapper_multi',
 	],
 	instance_parameters = [
 	parameter.Int('proc_id'),
-	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+	parameter.Module('mt', 'common:mapping_table'),
 	parameter.IntTab('index'),
     	parameter.Int('itlb_ways'),
     	parameter.Int('itlb_sets'),

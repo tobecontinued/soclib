@@ -20,7 +20,7 @@ Module('caba:half_gateway_target',
 	instance_parameters = [
         parameter.Bool('alloc_target'),
         parameter.Int('cmd_fifo_depth'),
-	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+	parameter.Module('mt', 'common:mapping_table'),
         parameter.IntTab('ringid'),
         parameter.Bool('local'),
 		],

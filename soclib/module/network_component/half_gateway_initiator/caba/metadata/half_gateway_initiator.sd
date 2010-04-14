@@ -20,7 +20,7 @@ Module('caba:half_gateway_initiator',
 	instance_parameters = [
         parameter.Bool('alloc_init'),
         parameter.Int('rsp_fifo_depth'),
-	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+	parameter.Module('mt', 'common:mapping_table'),
         parameter.IntTab('ringid'),
 	parameter.Bool('local'),
         

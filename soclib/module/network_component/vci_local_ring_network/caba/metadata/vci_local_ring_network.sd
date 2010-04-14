@@ -22,7 +22,7 @@ Module('caba:vci_local_ring_network',
 
 	],
 	instance_parameters = [
-		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+		parameter.Module('mt', 'common:mapping_table'),
 	        parameter.IntTab('ringid'),
                 parameter.Int('wrapper_fifo_depth'),
                 parameter.Int('half_gateway_fifo_depth'),

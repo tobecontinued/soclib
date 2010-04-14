@@ -31,7 +31,7 @@ Module('caba:vci_xcache_wrapper',
 		],
 	instance_parameters = [
 		parameter.Int('ident'),
-		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+		parameter.Module('mt', 'common:mapping_table'),
 		parameter.IntTab('index'),
 		parameter.Int('icache_ways'),
 		parameter.Int('icache_sets'),

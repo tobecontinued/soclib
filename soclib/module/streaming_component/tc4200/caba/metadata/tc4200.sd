@@ -22,6 +22,6 @@ Module('caba:tc4200',
 	],
 	instance_parameters = [
 		parameter.IntTab('ident'),
-		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+		parameter.Module('mt', 'common:mapping_table'),
 	]
 )

@@ -23,7 +23,7 @@ Module('caba:vci_ramdisk',
 		],
 	instance_parameters = [
 	parameter.IntTab('ident'),
-	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+	parameter.Module('mt', 'common:mapping_table'),
 	parameter.String('filename',),
 	],
 	   extensions = [

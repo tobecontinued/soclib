@@ -19,7 +19,7 @@ Module('caba:vci_simple_ring_network',
 	    Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	instance_parameters = [
-		parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+		parameter.Module('mt', 'common:mapping_table'),
 	        parameter.IntTab('ringid'),
                 parameter.Int('wrapper_fifo_depth'),
                 parameter.Int('nb_attached_initiator'),

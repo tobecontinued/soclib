@@ -47,7 +47,7 @@ Module('tlmt:vci_ram',
 		],
 	instance_parameters = [
 	parameter.IntTab('ident'),
-	parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+	parameter.Module('mt', 'common:mapping_table'),
 	parameter.Module('loader', 'common:loader', auto='env:loader'),
 	],
        extensions = [

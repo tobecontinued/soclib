@@ -18,7 +18,7 @@ Module('caba:vci_dspinplus_network',
 	    Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	instance_parameters = [
- 	    parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+ 	    parameter.Module('mt', 'common:mapping_table'),
 	    parameter.Int('width_network'),
 	    parameter.Int('height_network'),
 	],

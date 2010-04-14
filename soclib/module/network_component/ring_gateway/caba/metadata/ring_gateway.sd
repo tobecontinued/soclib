@@ -19,7 +19,7 @@ Module('caba:ring_gateway',
 	        Port('caba:gate_target',    'p_gate_target'),               
 	],
 	instance_parameters = [
-        parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+        parameter.Module('mt', 'common:mapping_table'),
         parameter.IntTab('ringid'),
         parameter.Bool('alloc_init'),
         parameter.Bool('alloc_target'),

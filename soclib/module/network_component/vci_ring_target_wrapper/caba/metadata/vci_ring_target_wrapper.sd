@@ -22,7 +22,7 @@ Module('caba:vci_ring_target_wrapper',
         instance_parameters = [
         parameter.Bool('alloc_target'), 
         parameter.Int('wrapper_fifo_depth'),
-        parameter.Module('mt', 'common:mapping_table', auto='env:mapping_table'),
+        parameter.Module('mt', 'common:mapping_table'),
         parameter.IntTab('ringid'),
         parameter.Int('tgtid'),
         
