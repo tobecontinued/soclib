@@ -48,7 +48,7 @@ Module('caba:vci_vcache_wrapper2',
     	parameter.Int('write_buf_size'),
 	],
 	   extensions = [
-	'dsx:get_ident=ident:p_vci:mt',
+	'dsx:get_ident=index:p_vci:mt',
 	'dsx:cpu=wrapper:iss_t',
 	'dsx:mapping_type=processor:proc_id',
    ],

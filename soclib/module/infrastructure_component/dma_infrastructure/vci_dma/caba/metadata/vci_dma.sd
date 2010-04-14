@@ -38,6 +38,6 @@ Module('caba:vci_dma',
 	   extensions = [
 	'dsx:addressable=tgtid',
 	'dsx:max_segments=1',
-	'dsx:get_ident=srcid:p_vci_target:mt,tgtid:p_vci_initiator:mt',
+	'dsx:get_ident=tgtid:p_vci_target:mt,srcid:p_vci_initiator:mt',
    ],
 )
