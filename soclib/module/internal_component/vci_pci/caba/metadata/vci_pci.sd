@@ -41,7 +41,7 @@ Module('caba:vci_pci',
 		],
 	instance_parameters = [
 		parameter.IntTab('ident'),
-        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+        parameter.Module('mt', typename = 'common:mapping_table'),
         parameter.Int('badrvalue'),
 	],
 	   extensions = [

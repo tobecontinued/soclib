@@ -30,7 +30,7 @@ Module('caba:vci_fd_access',
 	Uses('caba:vci_initiator_fsm'),
 	],
 	instance_parameters = [
-        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+        parameter.Module('mt', typename = 'common:mapping_table'),
 		parameter.IntTab('srcid'),
 		parameter.IntTab('tgtid'),
 	],

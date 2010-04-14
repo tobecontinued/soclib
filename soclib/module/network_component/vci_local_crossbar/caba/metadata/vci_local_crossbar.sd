@@ -20,7 +20,7 @@ Module('caba:vci_local_crossbar',
 		Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	instance_parameters = [
-        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+        parameter.Module('mt', typename = 'common:mapping_table'),
         parameter.IntTab('tgtid'),
         parameter.IntTab('srcid'),
         parameter.Int('nb_attached_initiator'),

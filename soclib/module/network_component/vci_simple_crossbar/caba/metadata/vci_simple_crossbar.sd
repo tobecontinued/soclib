@@ -18,7 +18,7 @@ Module('caba:vci_simple_crossbar',
 	Port('caba:vci_initiator', 'p_to_target', parameter.Reference('nb_target')),
 	],
 	instance_parameters = [
-		parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+		parameter.Module('mt', typename = 'common:mapping_table'),
 		parameter.Int('nb_initiator'),
 		parameter.Int('nb_target'),
 	],

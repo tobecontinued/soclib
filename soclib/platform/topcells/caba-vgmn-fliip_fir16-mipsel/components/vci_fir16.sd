@@ -23,7 +23,7 @@ Module('caba:vci_fir16',
 		Uses('caba:load_word', INPUT_BITWIDTH="16", OUTPUT_BITWIDTH="32", SWAP_IN="true", SWAP_OUT="true"),
 	],
 	instance_parameters = [
-		parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+		parameter.Module('mt', typename = 'common:mapping_table'),
 		parameter.IntTab('srcid'),
 		parameter.IntTab('tgtid'),
 		parameter.Int('burst_size'),

@@ -18,7 +18,7 @@ Module('caba:vci_vgsb',
 		Port('caba:clock_in', 'p_clk', auto = 'clock'),
 	],
 	instance_parameters = [
-        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+        parameter.Module('mt', typename = 'common:mapping_table'),
         parameter.Int('n_initiator'),
         parameter.Int('n_target'),
 	],

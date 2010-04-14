@@ -27,7 +27,7 @@ Module('caba:pibus_bcu',
 		Uses('caba:pibus'),
 		],
 	instance_parameters = [
-		parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+		parameter.Module('mt', typename = 'common:mapping_table'),
 		parameter.Int('nb_master'),
 		parameter.Int('nb_slave'),
 		parameter.Int('time_out'),

@@ -24,7 +24,7 @@ Module('caba:mailbox',
 	],
 	instance_parameters = [
 		##parameter.IntTab('ident'),
-        	parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+        	parameter.Module('mt', typename = 'common:mapping_table'),
 	],
 	###extensions = [
 	###	'dsx:addressable=ident',

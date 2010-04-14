@@ -45,7 +45,7 @@ Module('caba:vci_acc_dma',
 		Uses('caba:write_from_fifo_request'),
 	],
 	instance_parameters = [
-		parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+		parameter.Module('mt', typename = 'common:mapping_table'),
 		parameter.IntTab('srcid'),
 		parameter.IntTab('tgtid'),
 		parameter.Int('burst_size'),
@@ -90,7 +90,7 @@ Module('caba:vci_clock_enable',
 		Uses('caba:vci_target_fsm', default_target = 'true', support_llsc = 'false'),
 	],
 	instance_parameters = [
-		parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+		parameter.Module('mt', typename = 'common:mapping_table'),
 		parameter.IntTab('tgtid'),
 	],
 	extensions = [

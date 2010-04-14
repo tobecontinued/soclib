@@ -52,7 +52,7 @@ Module('tlmt:vci_vgmn',
 	instance_parameters = [
         parameter.Int('n_initiator'),
         parameter.Int('n_target'),
-        parameter.Module('mt', typename = 'common:mapping_table', auto = 'env:mapping_table'),
+        parameter.Module('mt', typename = 'common:mapping_table'),
         parameter.Int('min_latency'),
 	],
 	   extensions = [
