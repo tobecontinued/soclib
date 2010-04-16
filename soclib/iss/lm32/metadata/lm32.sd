@@ -21,5 +21,6 @@ Module('common:lm32',
     constants = {
         'n_irq':32
         },
-#    debug = True ,
+       tmpl_parameters = [parameter.Bool('lEndianInterface', default='true'), ],
+    #debug = True ,
 )

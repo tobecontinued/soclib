@@ -43,13 +43,15 @@
 
 namespace soclib { namespace common {
 
-    void LM32Iss::dump( ) const
+#define tmpl(x) template<bool lEndianInterface> x  LM32Iss<lEndianInterface>
+
+    tmpl(void)::dump( ) const
     {
         dump_pc (m_name);
         dump_regs("");
     }
 
-    void LM32Iss::dump_pc( const std::string &msg) const
+    tmpl(void)::dump_pc( const std::string &msg) const
     {
         std::cout
             << msg << std::endl
@@ -66,7 +68,7 @@ namespace soclib { namespace common {
 
     }
 
-    void LM32Iss::dump_regs( const std::string &msg) const
+    tmpl(void)::dump_regs( const std::string &msg) const
     {
     std::cout << msg << std::endl;
 #define DUMP_REG(n, prefix, val)                                    \
@@ -106,7 +108,7 @@ namespace soclib { namespace common {
 #undef DUMP_REG
     }
 
-    std::string LM32Iss::GetExceptioName (int type) const
+    tmpl(std::string)::GetExceptioName (int type) const
     {
         switch(type){
 #define rstr(x) case x: return #x
@@ -123,12 +125,12 @@ namespace soclib { namespace common {
         }
     }
 
-    unsigned int LM32Iss::debugGetRegisterCount() const
+    tmpl(unsigned int)::debugGetRegisterCount() const
     {
         return 32 + 5;
     }
 
-    Iss2::debug_register_t LM32Iss::debugGetRegisterValue(unsigned int reg) const
+    tmpl(Iss2::debug_register_t)::debugGetRegisterValue(unsigned int reg) const
     {
         switch (reg)
         {
@@ -151,12 +153,12 @@ namespace soclib { namespace common {
         }
     }
 
-    size_t LM32Iss::debugGetRegisterSize(unsigned int reg) const
+    tmpl(size_t)::debugGetRegisterSize(unsigned int reg) const
     {
         return 32;
     }
 
-    void LM32Iss::debugSetRegisterValue(unsigned int reg,  debug_register_t value)
+    tmpl(void)::debugSetRegisterValue(unsigned int reg,  debug_register_t value)
     {
         switch (reg)
         {
@@ -184,16 +186,18 @@ namespace soclib { namespace common {
         }
     }
 
-    Iss2::addr_t LM32Iss::debugGetPC() const
+    tmpl(Iss2::addr_t)::debugGetPC() const
     {
         return r_pc;
     }
 
-    void LM32Iss::debugSetPC(addr_t pc)
+    tmpl(void)::debugSetPC(addr_t pc)
     {
         r_pc = pc;
         r_npc = pc+4;
     }
+
+#undef tmpl
 
 }}
 

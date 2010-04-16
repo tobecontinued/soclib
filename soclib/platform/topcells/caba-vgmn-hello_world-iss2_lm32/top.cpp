@@ -102,7 +102,8 @@ int _main(int argc, char *argv[])
     // Here we have 2 way, 128 set and 8 bytes per set
     // To simulate a cache less processor these parameters should be
     // changed to 1,1,4
-    soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::LM32Iss > >
+    // LM32Iss template parameter lEndianInterface = 'true',
+    soclib::caba::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::LM32Iss <true> > >
         lm32("lm32", 0, maptab,IntTab(0), 2,128,8, 2,128,8);
     soclib::common::Loader loader("soft/bin.soft");
     soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);

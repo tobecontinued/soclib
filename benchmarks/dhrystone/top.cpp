@@ -161,7 +161,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Mips32EbIss)> *mipseb0;
 	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::Ppc405Iss)> *ppc0;
 	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::ArmIss)> *arm0;
-	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::LM32Iss)> *lm32_0;
+	soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::LM32Iss<true>)> *lm32_0;
 
 	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
 	soclib::caba::VciRam<vci_param> vcimultiram1("vcimultiram1", IntTab(1), maptab, loader);
@@ -223,7 +223,7 @@ int _main(int argc, char *argv[])
 		arm0->p_vci(signal_vci_m0);
 		break;
 	case LM32:
-		lm32_0 = new soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::LM32Iss)>("lm32_0", 0, maptab,IntTab(0),4, 512,16,4, 128,16);
+		lm32_0 = new soclib::caba::VciXcacheWrapper<vci_param, gdb(soclib::common::LM32Iss<true>)>("lm32_0", 0, maptab,IntTab(0),4, 512,16,4, 128,16);
 		lm32_0->p_clk(signal_clk);  
 		lm32_0->p_resetn(signal_resetn);  
 		lm32_0->p_irq[0](signal_cpu0_it0); 

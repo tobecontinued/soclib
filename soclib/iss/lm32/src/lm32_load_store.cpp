@@ -42,6 +42,7 @@
 #include "lm32.h"
 
 namespace soclib { namespace common {
+#define tmpl(x) template<bool lEndianInterface> x  LM32Iss<lEndianInterface>
 
     // Check if memory access is aligned
     // The LM32 spec says that the behavior is undefined and no hardware check is done
@@ -76,17 +77,25 @@ namespace soclib { namespace common {
         uint offset = (address) & 0x3;                                  \
         req.valid = true;                                               \
         req.addr = (address) & (~3);                                    \
+        if ( lEndianInterface ) {                                       \
         req.wdata = soclib::endian::uint32_swap(data);                  \
         req.wdata = (req.wdata) >> (8*(4-byte_count));                  \
         req.wdata = (req.wdata) << (8*offset);                          \
         req.be = (((1 << (byte_count))-1) << offset) & 0xf;             \
+        }                                                               \
+        else  {                                                         \
+        req.wdata = data ;                                              \
+        req.wdata = (req.wdata) << (8*(4 -byte_count - offset));        \
+        req.be = (((1 << (byte_count))-1)                               \
+                              << (4 -byte_count - offset)) & 0xf;       \
+        }                                                               \
         req.type = (operation);                                         \
         req.mode = MODE_USER;                                           \
     } while(0)
 
 
     // LM32 STORE/LOAD intructions
-#define LM32_function(x) void LM32Iss::OP_LM32_##x()
+#define LM32_function(x) tmpl(void)::OP_LM32_##x()
     //!Instruction lb behavior method.
     LM32_function( lb ){
         addr_t addr;
@@ -184,6 +193,7 @@ namespace soclib { namespace common {
 #undef BUILD_SUBREQ
 #undef INIT_REQ
 #undef CHECK_ALIGNED_ADDR
+#undef tmpl
 
 }}
 

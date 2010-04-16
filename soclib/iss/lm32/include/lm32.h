@@ -76,6 +76,8 @@
 
 namespace soclib { namespace common {
 
+    // soclib default vci interface is little endian
+template <bool lEndianInterface >
     class LM32Iss
         : public soclib::common::Iss2
     {
@@ -325,7 +327,7 @@ namespace soclib { namespace common {
             // Each entry contain a function pointer and
             // the opcode name
             typedef struct {
-                void (LM32Iss::*func)();
+                void (LM32Iss<lEndianInterface>::*func)();
                 const std::string name;
                 InstFormat instformat;
             } LM32_op_entry;
@@ -419,9 +421,10 @@ namespace soclib { namespace common {
 
 
     // Inline functions
+#define tmpl(x) template<bool lEndianInterface> x  LM32Iss<lEndianInterface>
 
     // give back instruction to iss
-    inline void LM32Iss::_setInstruction(const struct InstructionResponse &rsp)
+    tmpl(inline void)::_setInstruction(const struct InstructionResponse &rsp)
     {
         // Is there a response ?
         m_ireq_pending = !rsp.valid;
@@ -429,7 +432,10 @@ namespace soclib { namespace common {
             return;
 
         // LM32 is big endian
-        m_inst.ins = soclib::endian::uint32_swap(rsp.instruction);
+        if (lEndianInterface)
+            m_inst.ins = soclib::endian::uint32_swap(rsp.instruction);
+        else
+            m_inst.ins = rsp.instruction ;
         m_ibe = rsp.error;
 
         // Hazard is possible when two consecutive instructions use the same destination
@@ -442,7 +448,7 @@ namespace soclib { namespace common {
 
 
     // Set the data response
-    inline void LM32Iss::_setData(const struct DataResponse &rsp) {
+    tmpl(inline void)::_setData(const struct DataResponse &rsp) {
         if (!m_dreq.req.valid) // if no pending data request
         {
             m_dreq_pending = false;
@@ -468,43 +474,84 @@ namespace soclib { namespace common {
         // lm32 is big endian
         // If request was a read (load) then get the swaped data
         if ((m_dreq.req.type == DATA_READ) || (m_dreq.req.type == XTN_READ)) {
-            data_t data =  soclib::endian::uint32_swap(rsp.rdata);
+            data_t data ;
+            if (lEndianInterface) {
+                data =  soclib::endian::uint32_swap(rsp.rdata);
+                switch (m_dreq.req.be) {
+                    case 8 : 
+                        data = data & 0xff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 8);
+                        break;
+                    case 4 :
+                        data = (data>>8) & 0xff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 8);
+                        break;
 
-            switch (m_dreq.req.be) {
-                case 8 : 
-                    data = data & 0xff;
-                    if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext(data, 8);
-                    break;
-                case 4 :
-                    data = (data>>8) & 0xff;
-                    if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext(data, 8);
-                    break;
+                    case 2 :
+                        data = (data>>16) & 0xff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 8);
+                        break;
 
-                case 2 :
-                    data = (data>>16) & 0xff;
-                    if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext(data, 8);
-                    break;
+                    case 1 :
+                        data = (data>>24) & 0xff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 8);
+                        break;
 
-                case 1 :
-                    data = (data>>24) & 0xff;
-                    if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext(data, 8);
-                    break;
+                    case 12 :
+                        data = data & 0xffff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 16);
+                        break;
 
-                case 12 :
-                    data = data & 0xffff;
-                    if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext(data, 16);
-                    break;
+                    case 3 :
+                        data = (data>>16) & 0xffff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 16);
+                        break;
+                }
+            }
+            else {
+                data =  rsp.rdata ;
+                switch (m_dreq.req.be) {
+                    case 8 : 
+                        data = (data>>24) & 0xff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 8);
+                        break;
+                    case 4 :
+                        data = (data>>16) & 0xff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 8);
+                        break;
 
-                case 3 :
-                    data = (data>>16) & 0xffff;
-                    if (m_dreq.sign_extend)
-                        data = soclib::common::sign_ext(data, 16);
-                    break;
+                    case 2 :
+                        data = (data>>8) & 0xff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 8);
+                        break;
+
+                    case 1 :
+                        data = data & 0xff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 8);
+                        break;
+
+                    case 12 :
+                        data = (data>>16) & 0xffff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 16);
+                        break;
+
+                    case 3 :
+                        data = data & 0xffff;
+                        if (m_dreq.sign_extend)
+                            data = soclib::common::sign_ext(data, 16);
+                        break;
+                }
             }
 
             if (m_dreq.dest_reg != 0)
@@ -537,6 +584,7 @@ namespace soclib { namespace common {
 
 }}
 
+#undef tmpl
 #endif // _SOCLIB_LM32_ISS_H_
 
 // Local Variables:

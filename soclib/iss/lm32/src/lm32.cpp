@@ -45,7 +45,9 @@
 
 namespace soclib { namespace common {
 
-    LM32Iss::LM32Iss(const std::string &name, uint32_t ident)
+#define tmpl(x) template<bool lEndianInterface> x  LM32Iss<lEndianInterface>
+
+    tmpl(/**/)::LM32Iss(const std::string &name, uint32_t ident)
         :Iss2(name,ident)
     {
         r_CFG.M = 1;       // multiplier
@@ -66,7 +68,7 @@ namespace soclib { namespace common {
         //TODO define soclib's rev. number
     }
 
-    void LM32Iss::reset()
+    tmpl(void)::reset()
     {
         struct DataRequest null_dreq = ISS_DREQ_INITIALIZER;
 
@@ -108,7 +110,7 @@ namespace soclib { namespace common {
      */
 
     // get instruction and data requests from iss
-    void LM32Iss::getRequests( 
+    tmpl(void)::getRequests( 
             struct InstructionRequest &ireq,
             struct DataRequest &dreq 
             ) const
@@ -126,7 +128,7 @@ namespace soclib { namespace common {
 
 
     // Execute N cycles given instruction, data and irq
-    uint32_t LM32Iss::executeNCycles( 
+    tmpl(uint32_t)::executeNCycles( 
             uint32_t ncycle, 
             const struct InstructionResponse &irsp,
             const struct DataResponse &drsp,
@@ -352,6 +354,7 @@ house_keeping:
 
     } // executeNcycles
 
+#undef tmpl
 
 }}
 

@@ -43,7 +43,9 @@
 
 namespace soclib { namespace common {
 
-    uint32_t LM32Iss::get_absolute_dest_reg(ins_t ins) const
+#define tmpl(x) template<bool lEndianInterface> x  LM32Iss<lEndianInterface>
+
+    tmpl(uint32_t)::get_absolute_dest_reg(ins_t ins) const
     {
         switch(LM32Iss::OpcodesTable [ins.J.op].instformat) {
             case JI:
@@ -60,9 +62,11 @@ namespace soclib { namespace common {
         return 0;
     }
 
-#define OPTABLE(x,y) {&LM32Iss::OP_LM32_##x, #x, y}
+#define OPTABLE(x,y) {&LM32Iss<lEndianInterface>::OP_LM32_##x, #x, y}
 
-    LM32Iss::LM32_op_entry const LM32Iss::OpcodesTable [64]= {
+    template<bool lEndianInterface> 
+    typename LM32Iss<lEndianInterface>::LM32_op_entry 
+    const LM32Iss<lEndianInterface>::OpcodesTable [64]= {
         OPTABLE(srui   , RI ), OPTABLE(nori  , RI ),
         OPTABLE(muli   , RI ), OPTABLE(sh    , RR ),
         OPTABLE(lb     , RR ), OPTABLE(sri   , RI ),  
@@ -99,13 +103,13 @@ namespace soclib { namespace common {
 
 #undef OPTABLE
 
-    std::string LM32Iss::get_ins_name( void ) const
+    tmpl(std::string)::get_ins_name( void ) const
     {
         return this->OpcodesTable[m_inst.J.op].name;
     }
 
     // Run the instruction 
-    void LM32Iss::run() {
+    tmpl(void)::run() {
         // m_inst.J.op contains the opcode
         // The opcode is the same field for all instruction types
         void (LM32Iss::*func)() = LM32Iss::OpcodesTable [m_inst.J.op].func;
@@ -113,7 +117,7 @@ namespace soclib { namespace common {
     }
 
     // The instructions
-#define LM32_function(x) void LM32Iss::OP_LM32_##x()
+#define LM32_function(x) tmpl(void)::OP_LM32_##x()
 
     LM32_function(raise) {
         //Soft exception fonction
@@ -575,4 +579,5 @@ namespace soclib { namespace common {
     }
 #undef FLUSH
 #undef LM32_function
+#undef tmpl
 }}

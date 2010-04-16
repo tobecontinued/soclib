@@ -21,5 +21,6 @@ todo = Platform('caba', 'top.cpp',
         pktid_size = 1,
         trdid_size = 1,
         wrplen_size = 1,
+        lEndianInterface = 'true',
         debug=True
         )
