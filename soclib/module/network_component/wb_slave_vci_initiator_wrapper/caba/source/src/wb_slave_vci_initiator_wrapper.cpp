@@ -207,7 +207,9 @@ namespace soclib { namespace caba {
         // valid strobe
         p_wb.ACK_O      = p_wb.CYC_I && p_wb.STB_I && tmp_ack;
         p_wb.RTY_O      =   false;                 // No retry
-        p_wb.ERR_O      =   (p_vci.rerror.read() != vci_param::ERR_NORMAL) ; // default value
+        // we will miss write errrors as we dont wait for vci responce
+        p_wb.ERR_O      =   (p_vci.rerror.read() != vci_param::ERR_NORMAL) 
+                                && tmp_ack;
 
     }
 
