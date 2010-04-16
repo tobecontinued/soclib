@@ -33,6 +33,8 @@
  * $Id$
  *
  * History:
+ * - 2010-04-16
+ *   Tarik Graba : Added a template parameter to specify the endianess
  * - 2009-07-08
  *   Tarik Graba : the iss is now sensitive to high level irqs
  * - 2009-02-15
