@@ -98,7 +98,7 @@ public:
     }
 #undef ren
 
-    void trace( sc_core::sc_trace_file* tf, const std::string &name )
+    void trace( sc_core::sc_trace_file* tf, const std::string &name ) const
     {
 #define __trace(x) sc_core::sc_trace(tf, x, name+"_"+#x)
         __trace(rspack);
@@ -130,6 +130,16 @@ public:
 };
 
 }}
+
+
+namespace sc_core {
+    // sc_trace function
+    template <typename vci_param>
+    void sc_trace( sc_core::sc_trace_file* tf, const soclib::caba::VciSignals<vci_param>& vci, const std::string& name )
+    {
+        vci.trace(tf, name);
+    }
+}
 
 #endif /* SOCLIB_CABA_SIGNAL_VCI_SIGNALS_H_ */
 
