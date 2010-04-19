@@ -20,5 +20,5 @@ Module('caba:wb_slave_vci_initiator_wrapper',
 		Uses('caba:wishbone'),
 		Uses('common:mapping_table'),
 		],
-   debug = True ,
+   #debug = True ,
 )
