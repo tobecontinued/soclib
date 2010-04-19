@@ -21,17 +21,15 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) TelecomParisTECH
- *         Tarik Graba <tarik.graba@telecom-paristech.fr>, 2009
+ *         Tarik Graba <tarik.graba@telecom-paristech.fr>, 2010
  *
  * Maintainers: tarik.graba@telecom-paristech.fr
  *
  * $Id$
  *
  * History:
- * - 2009-07-08
- *   Tarik Graba : the iss is now sensitive to high level irqs
- * - 2009-02-15
- *   Tarik Graba : Ref. platform for the lm32
+ * - 2010-04-19
+ *   Tarik Graba : Ref. platform for the BE WB lm32
  */
 
 
