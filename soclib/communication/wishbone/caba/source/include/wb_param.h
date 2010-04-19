@@ -32,6 +32,8 @@
 #include <cassert>
 #include <systemc>
 
+#include "static_fast_int.h"
+
 namespace soclib { namespace caba {
 
     using namespace sc_core;
@@ -45,11 +47,29 @@ namespace soclib { namespace caba {
             public:
                 // Constants which can be used externally
                 static const int DataWidth = data_width;
-                static const int AddWidth = add_width;
+                static const int AddWidth  = add_width;
+                static const int BeWidth   = add_width/8;
                 // Signal types
                 typedef sc_dt::sc_uint<DataWidth>   wb_data_t;
                 typedef sc_dt::sc_uint<AddWidth>    wb_add_t;
                 typedef sc_dt::sc_uint<DataWidth/8> wb_sel_t;
+
+                typedef typename ::soclib::common::fast_int_t<DataWidth>::int_t fast_data_t;
+
+                // Generates a bit mask from a byte enable
+                static inline fast_data_t be2mask( fast_data_t be )
+                {
+                    fast_data_t ret = 0;
+                    const fast_data_t be_up = 1 << (BeWidth - 1);
+
+                    for (size_t i = 0; i < (size_t)BeWidth; ++i) {
+                        ret <<= 8;
+                        if ( be_up & be )
+                            ret |= 0xff;
+                        be <<= 1;
+                    }
+                    return ret;
+                }
         };
 
 }}
