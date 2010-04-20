@@ -26,6 +26,7 @@
 
 import traceback
 import copy
+import warnings
 
 from module import *
 import parameter, types
@@ -38,7 +39,7 @@ __all__ = ['Module', 'PortDecl',
            'parameter', 'types',
            'Signal','Port']
 
-class SubConn:
+class Port:
     def __init__(self, type, name, count = None, auto = None, **args):
         self.__type = type
         self.__name = name
@@ -74,12 +75,6 @@ class SubConn:
         return 'Port("%s", "%s", %s)'%(self.__type,
                                        self.__name,
                                        args)
-
-class Port(SubConn):
-    pass
-
-class SubSignal(SubConn):
-    pass
 
 class Signal(Module):
     tb_delta = Module.tb_delta-1
@@ -129,8 +124,9 @@ class Uses:
         self.name = name
         self.args = args
 
-        for k in filter(lambda x:':' in x, self.args.keys()):
-            del self.args[k]
+        for k in self.args.keys():
+            if isinstance(self.args[k], parameter.Foreign) or ':' in k:
+                del self.args[k]
 
         self.__hash = (
             hash(self.name)^
@@ -144,6 +140,11 @@ class Uses:
         a = {}
         a.update(args)
         a.update(self.args)
+
+        for k in a.keys():
+            if isinstance(a[k], parameter.Foreign) or ':' in k:
+                del a[k]
+
 #       print 'use', `self`
 #       from pprint import pprint
 #       pprint(a)
@@ -168,3 +169,6 @@ class Uses:
 
     def __hash__(self):
         return self.__hash
+
+class SubSignal(Uses):
+    pass
