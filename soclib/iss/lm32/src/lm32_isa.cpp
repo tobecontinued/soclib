@@ -549,11 +549,8 @@ namespace soclib { namespace common {
                 r_IM = wData;
                 break;
             case 0x2: // interrupt pending
-                for (int i=0; i<32; i++){
                     // Bits are cleared by writing '1'!!!
-                    if (wData>>i)
-                        r_IP = r_IP & ~(1<<i);
-                }
+                        r_IP = r_IP & ~wData;
                 break;
             case 0x3:  // inst cache ctrl
                 FLUSH(XTN_ICACHE_INVAL);

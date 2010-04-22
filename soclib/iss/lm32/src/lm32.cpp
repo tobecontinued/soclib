@@ -142,6 +142,9 @@ namespace soclib { namespace common {
         _setInstruction( irsp );
         _setData ( drsp );
 
+        // Interrupt pending register
+        r_IP = r_IP | (r_IM & irq_bit_field);
+
         // if instruction or data request is pending
         // or if we are in the time slot of a long instruction
         if (m_ireq_pending || m_dreq_pending || m_ins_delay) {
@@ -214,16 +217,17 @@ namespace soclib { namespace common {
         // Let's now handle external interrupts.
         // we do this before running instructions to avoid exec hazards with loads/stores
         // bits of r_IM set to '1' means the corresponding interrupt is allowed
-        if (r_IE.IE && (r_IM & irq_bit_field)){ 
+        if (r_IE.IE && (r_IP & r_IM)){ 
             m_exception = true;      
             m_exception_cause = X_INTERRUPT ;
-            r_IP = r_IM & irq_bit_field;
-            goto handle_except; 
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << name() << " Taking irqs " << std::hex << irq_bit_field << std::endl 
             << "Interrupt enable bit : " << r_IE.IE << std::endl
             << "Interrupt mask : " << r_IM
             << std::endl;
+#endif
+            goto handle_except; 
+#ifdef SOCLIB_MODULE_DEBUG
         } else {
             if ( irq_bit_field )
                 std::cout << name() << " Ignoring irqs " << std::hex << irq_bit_field << std::endl

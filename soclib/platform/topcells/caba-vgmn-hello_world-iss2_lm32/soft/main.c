@@ -74,6 +74,7 @@ void interrupt_handler()
     printf( "\n############################\n");
     printf(   " irq recieved @ time : %d\n",cpu_cycles());
     printf(   "############################\n");
+    ack_pend_irq(IRQ(1));
 }
 
 #undef IRQ
