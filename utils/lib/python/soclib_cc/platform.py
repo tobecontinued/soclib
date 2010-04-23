@@ -36,95 +36,97 @@ __id__ = "$Id$"
 __version__ = "$Revision$"
 
 try:
-	set
+    set
 except:
-	from sets import Set as set
+    from sets import Set as set
 
 __all__ = ['Platform', 'Uses']
 
 from soclib_desc.component import Uses
 
 class NotFound(Exception):
-	def __init__(self, name, mode):
-		Exception.__init__(self, "Implementation %s not found for %s"%(mode, name))
+    def __init__(self, name, mode):
+        Exception.__init__(self, "Implementation %s not found for %s"%(mode, name))
 
 class Platform:
-	"""
-	Platform definition, should be passed an arbitrary number of
-	Uses() and Source() statements that constitutes the platform.
-	"""
-	def addObj(self, o):
-		#if not o in self.objs:
-		self.objs.add(o)
-		self.todo.add(o)
-	def __init__(self, mode, source_file, uses = [], defines = {}, output = None, **params):
-		self.__mode = mode
-		self.__source = source_file
-		self.__uses = set(uses)
-		self.__defines = defines
-		self.__output = output
-		from soclib_desc.specialization import Specialization
-		component = Specialization(
-			Source(mode, source_file, uses, defines, **params),
-			**params)
-		self.component = component
-		self.todo = ToDo()
-		self.objs = set()
-#		component.printAllUses()
+    """
+    Platform definition, should be passed an arbitrary number of
+    Uses() and Source() statements that constitutes the platform.
+    """
+    def addObj(self, o):
+        #if not o in self.objs:
+        self.objs.add(o)
+        self.todo.add(o)
+    def __init__(self, mode, source_file, uses = [], defines = {}, output = None, **params):
+        self.__mode = mode
+        self.__source = source_file
+        self.__uses = set(uses)
+        self.__defines = defines
+        self.__output = output
+        from soclib_desc.specialization import Specialization
+        component = Specialization(
+            Source(mode, source_file, uses, defines, **params),
+            **params)
+        self.component = component
+        self.todo = ToDo()
+        self.objs = set()
+#       component.printAllUses()
 
-		for c in component.getSubTree():
-#			print 'aaa', hex(hash(c)), `c`
-			b = ComponentBuilder.fromSpecialization(c)
-			for o in b.results():
-				self.addObj( o )
-		if output is None:
-			output = config.output
-		self.todo.add( *CxxLink(output, self.objs ).dests )
-	def process(self):
-		self.todo.process()
-	def clean(self):
-		self.todo.clean()
+        for c in component.getSubTree():
+#           print 'aaa', hex(hash(c)), `c`
+            if c.externally_handled:
+                continue
+            b = ComponentBuilder.fromSpecialization(c)
+            for o in b.results():
+                self.addObj( o )
+        if output is None:
+            output = config.output
+        self.todo.add( *CxxLink(output, self.objs ).dests )
+    def process(self):
+        self.todo.process()
+    def clean(self):
+        self.todo.clean()
 
-	def genMakefile(self):
-		return self.todo.genMakefile()
+    def genMakefile(self):
+        return self.todo.genMakefile()
 
-	def embeddedCodeCflags(self):
-		paths = set([
-			os.path.join(config.path, 'soclib/lib/include')
-			])
-		for mod in self.component.getSubTree():
-			# I'm not sure addressable is mandatory.
-			# Safe approach: include more :)
-#			isAddressable = filter(
-#				lambda ext: ext.startswith('dsx:addressable='),
-#				mod.getExtensions())
-#			if isAddressable:
-				for d in map(os.path.dirname,mod.getInterfaceFiles()):
-					if os.path.basename(d) == 'soclib':
-						paths.add(os.path.dirname(d))
-		return ' '.join(map(lambda x: '-I'+x, paths))
+    def embeddedCodeCflags(self):
+        paths = set([
+            os.path.join(config.path, 'soclib/lib/include')
+            ])
+        for mod in self.component.getSubTree():
+            # I'm not sure addressable is mandatory.
+            # Safe approach: include more :)
+#           isAddressable = filter(
+#               lambda ext: ext.startswith('dsx:addressable='),
+#               mod.getExtensions())
+#           if isAddressable:
+                for d in map(os.path.dirname,mod.getInterfaceFiles()):
+                    if os.path.basename(d) == 'soclib':
+                        paths.add(os.path.dirname(d))
+        return ' '.join(map(lambda x: '-I'+x, paths))
 
-	def __repr__(self):
-		import pprint
-		return '%s(%r, %r,\n%s, %r, %r)'%(
-			self.__class__.__name__,
-			self.__mode,
-			self.__source,
-			pprint.pformat(list(self.__uses)),
-			self.__defines,
-			self.__output,
-			)
+    def __repr__(self):
+        import pprint
+        return '%s(%r, %r,\n%s, %r, %r)'%(
+            self.__class__.__name__,
+            self.__mode,
+            self.__source,
+            pprint.pformat(list(self.__uses)),
+            self.__defines,
+            self.__output,
+            )
 
 def Source(mode, source_file, uses = [], defines = {}, **params):
-	name = mode+':'+hex(hash(source_file))
-	from soclib_desc.module import Module
-	m = Module(name,
-			   uses = uses,
-			   defines = defines,
-			   implementation_files = [source_file],
-			   local = True,
-			   )
-	filename = traceback.extract_stack()[-3][0]
-	d = os.path.abspath(os.path.dirname(filename))
-	m._mk_abs_paths(d)
-	return m
+    name = mode+':'+hex(hash(source_file))
+    from soclib_desc.module import Module
+    m = Module(name,
+               uses = uses,
+               defines = defines,
+               implementation_files = [source_file],
+               local = True,
+               )
+    filename = traceback.extract_stack()[-3][0]
+    d = os.path.abspath(os.path.dirname(filename))
+    m._mk_abs_paths(d)
+    return m

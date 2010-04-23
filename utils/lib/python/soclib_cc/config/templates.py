@@ -48,6 +48,7 @@ config.toolchain = Config(
 	lib_ext = 'a',
 	
 	prefix = '',
+	vflags = [],
 	cflags = ['-Wall', '-Wno-pmf-conversions', '-DSOCLIB'],
 	libs = ['-lpthread'],
 	always_include = ['sys/types.h', 'inttypes.h'],	
@@ -76,7 +77,7 @@ def getTool(self, name, mode = ''):
 			tool = name.split(' ')
 			return tool
 		else:
-			return [tool]
+			return name
 	return [self.toolchain.prefix+name]
 def getCflags(self, mode=None):
 	if mode is None:

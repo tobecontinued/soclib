@@ -68,6 +68,8 @@ class Action:
     __jobs = {}
     def __init__(self, dests, sources, **options):
         from bblock import bblockize
+        if not dests:
+            dests = ['__anon_output_'+str(id(self))]
         self.dests = bblockize(dests, self)
         self.sources = bblockize(sources)
         self.options = options
@@ -78,14 +80,25 @@ class Action:
     def launch(self, cmd):
         import subprocess
         #print "---- run", cmd
-        self.__command = cmd
+
+        if isinstance(cmd, (str, unicode)):
+            vcmd = cmd
+            shell = True
+        else:
+#            print cmd
+            vcmd = ' '.join(cmd)
+            shell = False
+
+        self.__command = vcmd
+        if config.verbose:
+            self.runningCommand('lauch', self.dests, vcmd)
 
         self.__out = tempfile.TemporaryFile("w+b", bufsize=128)
         self.__err = tempfile.TemporaryFile("w+b", bufsize=128)
 
         self.__handle = subprocess.Popen(
             cmd,
-            shell = True,
+            shell = shell,
             bufsize = 128*1024,
             close_fds = True,
             stdin = None,

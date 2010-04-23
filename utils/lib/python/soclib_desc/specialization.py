@@ -77,6 +77,8 @@ class Specialization:
         
         deprecated = mod['deprecated']
 
+        self.externally_handled = False
+
         use = None
         if '__use' in args:
             use = args['__use']
@@ -112,6 +114,14 @@ class Specialization:
 
     def getTmplParamStr(self):
         return ','.join(map(lambda x:str(x), self.__tmpl_parameters))
+
+    def getTmplParamDict(self):
+        r = {}
+        for par, x in zip(
+            self.__cdef['tmpl_parameters'],
+            self.__tmpl_parameters):
+            r[par.name] = x
+        return r
 
     def getModuleName(self):
         return self.__cdef.getModuleName()
@@ -149,9 +159,13 @@ class Specialization:
 #           print pfx, 'getSubTree', self
 #           for d in self.__dependencies:
 #               print pfx, ' d: ', `d`
-        r = set((self,))
+        r = set()
         for m in set(self.__dependencies):
             r |= m.getSubTree(pfx + '  ')
+        if self.__cdef['implementation_type'] == 'mpy_vhdl':
+            for s in r:
+                s.externally_handled = (s.__cdef['implementation_type'] == 'mpy_vhdl')
+        r.add(self)
         return r
 
     def getTmplSubTree(self, pfx = ''):
@@ -196,6 +210,9 @@ class Specialization:
         return 'soclib_desc.specialization.Specialization(%r, %s)'%(
             self.getModuleName(),
             ', '.join(kv))
+
+    def getImplementationType(self):
+        return self.__cdef['implementation_type']
 
     def getHeaderFiles(self):
         return self.__cdef['abs_header_files']

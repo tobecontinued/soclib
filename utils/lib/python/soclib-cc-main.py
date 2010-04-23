@@ -143,8 +143,12 @@ def main():
 	parser.add_option('--embedded-cflags', dest = 'embedded_cflags',
 					  action='store_true',
 					  help="Print software include directories C flags")
+	parser.add_option('--work', dest = 'workpath',
+					  action='store',
+					  help="When using Modelsim, use this work path")
 	parser.set_defaults(auto_bug_report = "none",
 						includes = [],
+                        workpath = 'work',
 						embedded_cflags = False)
 	opts, args = parser.parse_args()
 
@@ -191,6 +195,7 @@ def main():
 	config.verbose = opts.verbose
 	config.debug = opts.debug
 	config.quiet = opts.quiet
+	config.workpath = os.path.abspath(opts.workpath)
 	if opts.jobs:
 		config.toolchain.max_processes = opts.jobs
 	if opts.progress_bar:

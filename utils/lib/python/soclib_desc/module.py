@@ -99,6 +99,7 @@ class Module:
         'header_files' : [],
         'global_header_files' : [],
         'implementation_files' : [],
+        'implementation_type' : 'systemc',
         'object_files' : [],
         'interface_files' : [],
         'uses' : [],
