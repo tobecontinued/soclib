@@ -109,11 +109,14 @@ clean:
     def _getall(self, dests):
         bbs = set(dests)
         todo = set()
+        done = set()
         while bbs:
             bb = bbs.pop()
+            done.add(bb)
             gen = bb.generator
             bbs |= set(gen.getDepends())
             todo.add(gen)
+            bbs -= done
         todo = filter(cr, todo)
         todo.sort()
         return todo
@@ -160,6 +163,14 @@ clean:
     def process(self):
         import sys
         self.prepare()
+        if config.verbose:
+            print 'Would do:'
+            print "="*80
+            print "="*80
+            for t in self.todo:
+                print t
+            print "="*80
+            print "="*80
         l = len(self.todo)
         for pi in self.todo:
             pi.todoRehash()

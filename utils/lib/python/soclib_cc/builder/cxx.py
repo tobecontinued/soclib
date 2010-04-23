@@ -30,6 +30,7 @@ import action
 import sys
 import fileops
 import mfparser
+import bblock
 from soclib_cc.config import config, Joined
 
 __id__ = "$Id$"
@@ -82,13 +83,13 @@ class CCompile(action.Action):
     def processDeps(self):
         return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
     def process(self):
-        fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
+        fileops.CreateDir(os.path.dirname(bblock.filenames(self.dests)[0])).process()
         if self.comp_mode == 'sccom':
             args = self.command_line('SCCOM')
             args += ['-work', config.workpath]
         else:
             args = self.command_line()
-            args += ['-c', '-o', str(self.dests[0])]
+            args += ['-c', '-o', bblock.filenames(self.dests)[0]]
         args += map(str, self.sources)
         r = self.call('compile', args)
         if r:
@@ -101,7 +102,7 @@ class CCompile(action.Action):
 
     def commands_to_run(self):
         args = self.command_line() + [
-                '-c', '-o', str(self.dests[0])]
+                '-c', '-o', bblock.filenames(self.dests)[0]]
         args += self.sources
         return ' '.join(map(lambda x:'"%s"'%str(x), args)),
 
@@ -122,12 +123,12 @@ class CLink(CCompile):
             args += ['-work', config.workpath]
             args += config.getLibs()
             objs = filter(lambda x:x.generator.comp_mode != 'sccom', self.sources)
-            args += map(str, objs)
+            args += bblock.filenames(objs)
         else:
-            args += ['-o', str(self.dests[0])]
+            args += ['-o', bblock.filenames(self.dests)[0]]
             args += config.getLibs()
             objs = self.sources
-            args += map(str, objs)
+            args += bblock.filenames(objs)
 
         r = self.call('link', args)
         if r:
@@ -155,11 +156,11 @@ class CMkobj(CLink):
             args = config.getTool("CXX_LINKER")
             args += ['-lpthread']
             args += config.getLibs()
-            args += map(str, filter(lambda x:x.generator.comp_mode != 'sccom', self.sources))
+            args += bblock.filenames(filter(lambda x:x.generator.comp_mode != 'sccom', self.sources))
         else:
             args = config.getTool(self.tool)
-            args += ['-r', '-o', str(self.dests[0])]
-            args += map(str, self.sources)
+            args += ['-r', '-o', bblock.filenames(self.dests)[0]]
+            args += bblock.filenames(self.sources)
         r = self.call('mkobj', args)
         if r:
             print

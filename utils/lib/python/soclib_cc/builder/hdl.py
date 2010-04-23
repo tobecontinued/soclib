@@ -34,23 +34,34 @@ __version__ = "$Revision$"
 __all__ = ['VhdlCompile']
 
 class HdlCompile(action.Action):
-    priority = 100
-    def __init__(self, dest, srcs, typename):
+    priority = 150
+    def __init__(self, dest, srcs, deps, typename):
         if dest:
             dests = [dest]
         else:
             if config.systemc.vendor in ['sccom', 'modelsim']:
-                assert dest is None, ValueError("Must not specify output path with Modelsim")
+                assert not dest, ValueError("Must not specify output path with Modelsim")
 #                dest = os.path.abspath(os.path.join(
 #                    config.workpath, typename, 'rtl.dat'
 #                    ))
                 dests = []
             else:
                 raise NotImplementedError("Not supported")
+        self.__deps = deps
         action.Action.__init__(self, dests, srcs, typename = typename)
 
+    def __users(self):
+        us = set()
+        for d in self.__deps:
+            for u in d.users:
+                us.add(u)
+        return us
     def processDeps(self):
-        return []
+        r = set()
+        for u in self.__users():
+            r |= set(u.dests)
+        r -= set(self.dests)
+        return list(r)
 
     def process(self):
         fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
@@ -73,6 +84,25 @@ class HdlCompile(action.Action):
 
     def results(self):
         return self.dests
+
+    def __cmp__(self, other):
+        if not isinstance(other, HdlCompile):
+            return cmp(self.priority, other.priority)
+        import bblock
+        self_users = self.__users()
+        other_users = other.__users()
+        if self in other_users:
+#            print '***', bblock.filenames(other.sources), '->', bblock.filenames(self.sources)
+            return -1
+        if other in self_users:
+#            print '***', bblock.filenames(self.sources), '->', bblock.filenames(other.sources)
+            return 1
+        return 0
+
+    def __str__(self):
+        import bblock
+        r = action.Action.__str__(self)
+        return r[:-1] + '\n Deps: %s>'%(map(str, self.processDeps()))
 
 class VhdlCompile(HdlCompile):
     tool = 'VHDL'

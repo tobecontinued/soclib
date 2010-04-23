@@ -34,63 +34,94 @@ __version__ = "$Revision$"
 _global_bblock_registry = {}
 
 class BBlock:
-	def __init__(self, filename, generator = None):
-		self.is_blob = False
-		if generator is None:
-			from action import Noop
-			generator = Noop()
-		self.filename = filename
-		assert( filename not in _global_bblock_registry )
-		_global_bblock_registry[filename] = self
-		self.generator = generator
-		self.rehash()
-	def touch(self):
-		self.rehash()
-	def setIsBlob(self, val = True):
-		self.is_blob = val
-	def rehash(self):
-		if self.filename is '':
-			self.last_mod = os.stat('.').st_mtime
-		else:
-			if os.path.exists(self.filename):
-				self.last_mod = os.stat(self.filename).st_mtime
-			else:
-				self.last_mod = -1
-		self.__exists = self.filename is '' or os.path.exists(self.filename)
-	def delete(self):
-		try:
-			os.unlink(self.filename)
-		except OSError:
-			pass
-		self.rehash()
-	def generate(self):
-		self.generator.process()
-	def __str__(self):
-		return self.filename
-	def exists(self):
-		return self.__exists
-	def clean(self):
-		if os.path.isfile(self.filename):
-			if not config.quiet:
-				print 'Deleting', self.filename
-			self.delete()
-	def __hash__(self):
-		return hash(self.filename)
+    def __init__(self, filename, generator = None):
+        self.anonymous = False
+        self.anonymous_done = False
+        self.is_blob = False
+        if generator is None:
+            from action import Noop
+            generator = Noop()
+        self.filename = filename
+        assert( filename not in _global_bblock_registry )
+        _global_bblock_registry[filename] = self
+        self.generator = generator
+        self.rehash()
+        self.users = set()
+
+    def addUser(self, gen):
+        self.users.add(gen)
+
+    @classmethod
+    def anonymous(cls, builder):
+        ret = cls('__anon_'+hex(id(builder)), builder)
+        ret.anonymous = True
+        return ret
+    
+    def touch(self):
+        self.rehash()
+    def setIsBlob(self, val = True):
+        self.is_blob = val
+    def rehash(self, success = False):
+        if self.anonymous:
+            self.anonymous_done |= success
+            return
+        if self.filename is '':
+            self.last_mod = os.stat('.').st_mtime
+        else:
+            if os.path.exists(self.filename):
+                self.last_mod = os.stat(self.filename).st_mtime
+            else:
+                self.last_mod = -1
+        self.__exists = self.filename is '' or os.path.exists(self.filename)
+    def delete(self):
+        try:
+            os.unlink(self.filename)
+        except OSError:
+            pass
+        if self.anonymous:
+            self.anonymous_done = False
+        self.rehash()
+    def generate(self):
+        self.generator.process()
+    def __str__(self):
+        return self.filename
+    def exists(self):
+        if self.anonymous:
+            return self.anonymous_done
+        return self.__exists
+    def clean(self):
+        if self.anonymous:
+            self.anonymous_done = False
+        if os.path.isfile(self.filename):
+            if not config.quiet:
+                print 'Deleting', self.filename
+            self.delete()
+    def __hash__(self):
+        return hash(self.filename)
 
 def bblockize1(f, gen = None):
-	if config.debug:
-		print 'BBlockizing', f,
-	if isinstance(f, BBlock):
-		if config.debug:
-			print 'already is'
-		return f
-	if f in _global_bblock_registry:
-		if config.debug:
-			print 'in global reg'
-		return _global_bblock_registry[f]
-	if config.debug:
-		print 'needs BBlock'
-	return BBlock(f, gen)
+    if config.debug:
+        print 'BBlockizing', f,
+    if isinstance(f, BBlock):
+        if config.debug:
+            print 'already is'
+        return f
+    if f in _global_bblock_registry:
+        if config.debug:
+            print 'in global reg'
+        return _global_bblock_registry[f]
+    if config.debug:
+        print 'needs BBlock'
+    return BBlock(f, gen)
 
 def bblockize(files, gen = None):
-	return map(lambda x:bblockize1(x, gen), files)
+    return map(lambda x:bblockize1(x, gen), files)
+
+def filenames(bblocks):
+    ret = []
+    for b in bblocks:
+        assert isinstance(b, BBlock)
+        if b.anonymous:
+            continue
+        ret.append(str(b))
+    return ret

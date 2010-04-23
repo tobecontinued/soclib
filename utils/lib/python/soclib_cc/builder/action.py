@@ -65,17 +65,20 @@ def check_exist(files):
 
 class Action:
     priority = 0
+    comp_mode = None
     __jobs = {}
     def __init__(self, dests, sources, **options):
-        from bblock import bblockize
+        from bblock import bblockize, BBlock
         if not dests:
-            dests = ['__anon_output_'+str(id(self))]
-        self.dests = bblockize(dests, self)
+            self.dests = [BBlock.anonymous(self)]
+        else:
+            self.dests = bblockize(dests, self)
         self.sources = bblockize(sources)
         self.options = options
         self.done = False
         self.hash = reduce(lambda x,y:(x ^ (y>>1)), map(hash, self.dests+self.sources), 0)
         self.has_deps = False
+        map(lambda x:x.addUser(self), self.sources)
 
     def launch(self, cmd):
         import subprocess
@@ -156,7 +159,7 @@ class Action:
         del self.__handle
         del self.__command
         for d in self.dests:
-            d.rehash()
+            d.rehash(True)
         self.done = True
         #print "---- done"
 
@@ -224,6 +227,9 @@ class Action:
     def __hash__(self):
         return self.hash
     def __cmp__(self, other):
+        if other.__class__.__cmp__ != self.__class__.__cmp__:
+            r = cmp(other, self)
+            return -r
         return cmp(self.priority, other.priority)
 
     def genMakefileCleanCommands(self):

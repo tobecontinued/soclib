@@ -149,18 +149,20 @@ class ComponentBuilder:
             force_debug = self.force_debug,
             **add)
 
-    def getVhdlBuilder(self, source):
+    def getVhdlBuilder(self, source, deps):
         vendor = config.systemc.vendor
         if vendor in ['sccom', 'modelsim']:
-            return VhdlCompile(dest = None, srcs = [source],
+            return VhdlCompile(dest = [], srcs = [source],
+                               deps = deps,
                                typename = self.specialization.getRawType())
         else:
             raise NotImplementedError("Unsuported vendor %s"%vendor)
 
-    def getVerilogBuilder(self, source):
+    def getVerilogBuilder(self, source, deps):
         vendor = config.systemc.vendor
         if vendor in ['sccom', 'modelsim']:
-            return VerilogCompile(dest = None, srcs = [source],
+            return VerilogCompile(dest = [], srcs = [source],
+                                  deps = deps,
                                   typename = self.specialization.getRawType())
         else:
             raise NotImplementedError("Unsuported vendor %s"%vendor)
@@ -196,15 +198,30 @@ class ComponentBuilder:
         map(lambda x:x.setIsBlob(True), objects)
         return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
 
+
     # Builders for verilog, vhdl, systemc and mpy_vhdl.
     def verilog_results(self):
-        impl = self.specialization.getImplementationFiles()
-        builders = map(self.getVerilogBuilder, impl)
-        return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
+        return self.hdl_results(
+            self.getVerilogBuilder,
+            self.specialization.getImplementationFiles()
+            )
 
     def vhdl_results(self):
-        impl = self.specialization.getImplementationFiles()
-        builders = map(self.getVhdlBuilder, impl)
+        return self.hdl_results(
+            self.getVhdlBuilder,
+            self.specialization.getImplementationFiles()
+            )
+
+    def hdl_results(self, func, files):
+        from soclib_desc.specialization import Specialization
+        deps = self.specialization.getSubTree()
+        deps = filter(lambda x:x.getImplementationType() in ['vhdl', 'verilog'],
+                      deps)
+        deps = reduce(lambda x,y:x+y,
+                      map(Specialization.getImplementationFiles, deps),
+                      [])
+        deps = bblockize(deps)
+        builders = map(lambda x:func(x, deps), files)
         return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
 
     def mpy_vhdl_results(self):
@@ -212,15 +229,7 @@ class ComponentBuilder:
         basedir = config.reposFile('mpy')
         input_file = os.path.basename(self.specialization.getImplementationFiles()[0])
         template = 'mpy_'+hex(hash(input_file))+'.mpy'
-        params = {}
-        for k, v in self.specialization.getTmplParamDict().iteritems():
-            keys = k.split('__')
-            p = params
-            for k in keys[:-1]:
-                if k not in p:
-                    p[k] = {}
-                p = p[k]
-            p[keys[-1]] = v
+        params = self.get_recursive_dict(self.specialization.getTmplParamDict())
         fd = open(os.path.join(basedir, template), 'w')
         fd.write('''{
 params = %(dict)s
@@ -231,9 +240,21 @@ mpygen('%(name)s', params)
          dict = pprint.pformat(params)))
         fd.close()
         vhd_files = self.call_mpy(template)
-        print vhd_files
-        builders = map(self.getVhdlBuilder, vhd_files)
-        return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
+        return self.hdl_results(self.getVhdlBuilder, vhd_files)
+
+
+    @staticmethod
+    def get_recursive_dict(d):
+        params = {}
+        for k, v in d.iteritems():
+            p = params
+            keys = k.split('__')
+            for k in keys[:-1]:
+                if k not in p:
+                    p[k] = {}
+                p = p[k]
+            p[keys[-1]] = v
+        return params
 
     def call_mpy(self, source_file):
         inst_name = 'mpy_'+hex(hash(source_file))
@@ -263,10 +284,15 @@ mpygen('%(name)s', params)
         (out, err) = proc.communicate()
         if proc.returncode:
             raise RuntimeError("mpy failed:\n"+out)
-        files = set(map(str.strip, open(os.path.join(basedir, inst_name+'.list')).readlines()))
+        files = map(str.strip, open(os.path.join(basedir, inst_name+'.list')).readlines())
         files = filter(lambda x:x.endswith('.vhd'), files)
+        ffiles = []
+        for f in files:
+            if f not in ffiles:
+                ffiles.append(f)
 #        files.add(os.path.join(basedir, inst_name+'.vhd'))
-        return files
+        ffiles.reverse()
+        return ffiles
 
     def cxxSource(self, *sources):
         if not '<' in self.specialization.getType():
