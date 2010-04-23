@@ -491,7 +491,7 @@ namespace soclib { namespace common {
     LM32_function( rcsr ){// read control & status register
         switch (m_inst.C.csr){
             case 0x0:  // interrupt enable
-                r_gp[m_inst.C.rR] = r_IE.whole ;
+                r_gp[m_inst.C.rR] =  (r_IE.BIE << 2) | (r_IE.EIE << 1) | r_IE.IE;
                 break;
             case 0x1:  // interrupt mask
                 r_gp[m_inst.C.rR] = r_IM ;
@@ -509,7 +509,15 @@ namespace soclib { namespace common {
                 r_gp[m_inst.C.rR] = r_CC ;
                 break;
             case 0x6:  // conf register 
-                r_gp[m_inst.C.rR] = r_CFG.whole ;
+                r_gp[m_inst.C.rR] = 
+                        r_CFG.REV << 26 | r_CFG.WP  << 22 |
+                        r_CFG.BP  << 18 | r_CFG.INT << 12 |
+                        r_CFG.J   << 11 | r_CFG.R   << 10 |
+                        r_CFG.H   <<  9 | r_CFG.G   <<  8 |
+                        r_CFG.DC  <<  7 | r_CFG.IC  <<  6 |
+                        r_CFG.CC  <<  5 | r_CFG.X   <<  4 |
+                        r_CFG.U   <<  3 | r_CFG.S   <<  2 |
+                        r_CFG.D   <<  1 | r_CFG.M   <<  0 ;
                 break;
             case 0x7:  // Exception base address
                 r_gp[m_inst.C.rR] = r_EBA ;
@@ -543,7 +551,9 @@ namespace soclib { namespace common {
         uint32_t wData = r_gp[m_inst.C.rW];
         switch (m_inst.C.csr){
             case 0x0: // interrupt enable
-                r_IE.IE = 0x1 & wData;
+                r_IE.IE  = (0x1 & wData)? 1: 0;
+                r_IE.EIE = (0x2 & wData)? 1: 0;
+                r_IE.BIE = (0x4 & wData)? 1: 0;
                 break;
             case 0x1: // interrupt mask
                 r_IM = wData;

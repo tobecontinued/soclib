@@ -133,7 +133,7 @@ template <bool lEndianInterface >
                     uint32_t M:1,       // multiplier
                     uint32_t D:1,       // divider
                     uint32_t S:1,       // barrel shifter
-                    uint32_t U:1,       // reserved 
+                    uint32_t U:1,       // user defined instructions
                     uint32_t X:1,       // sign extension 
                     uint32_t CC:1,      // cycle counter 
                     uint32_t IC:1,      // inst. cache

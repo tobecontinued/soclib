@@ -55,14 +55,15 @@ namespace soclib { namespace common {
         r_CFG.M = 1;       // multiplier
         r_CFG.D = 1;       // divider
         r_CFG.S = 1;       // barrel shifter
+        r_CFG.U = 0;       // User defined instructions
         r_CFG.X = 1;       // sign extension
         r_CFG.CC = 1;      // cycle counter
         r_CFG.IC = 1;      // inst. cache
         r_CFG.DC = 1;      // data  cache
-        r_CFG.G = 1;       // debug
-        r_CFG.H = 1;       // H/W debug
-        r_CFG.R = 1;       // ROM debug
-        r_CFG.J = 1;       // JTAG uart
+        r_CFG.G = 0;       // debug
+        r_CFG.H = 0;       // H/W debug
+        r_CFG.R = 0;       // ROM debug
+        r_CFG.J = 0;       // JTAG uart
         r_CFG.INT = 32;    // number of interupt (0-32)
         r_CFG.BP = 4;      // number of break points (0-4)
         r_CFG.WP = 4;      // number of watch points (0-4)
@@ -212,6 +213,8 @@ namespace soclib { namespace common {
         dump_regs("");
         std::cout << "IRQ Bitfield : " << irq_bit_field << std::endl;
         std::cout << "IE : " << r_IE.whole << std::endl;
+        std::cout << "IP : " << r_IP << std::endl;
+        std::cout << "IM : " << r_IM << std::endl;
 #endif
 
         // Let's now handle external interrupts.
@@ -354,6 +357,9 @@ house_keeping:
 #ifdef SOCLIB_MODULE_DEBUG
         dump_pc("After execution : ");
         dump_regs("");
+        std::cout << "IP : " << r_IP << std::endl;
+        std::cout << "IM : " << r_IM << std::endl;
+        std::cout << "CC : " << r_CC << std::endl;
 #endif
 
         return ncycle;
