@@ -370,7 +370,7 @@ def value(thing, args, value_type):
     if isinstance(thing, Base):
         try:
             va = args[thing.name]
-        except KeyError:
+        except Exception:
 #            print args, thing.name
             va = None
         if isinstance(va, Foreign):
