@@ -35,9 +35,8 @@ _global_bblock_registry = {}
 
 class BBlock:
     def __init__(self, filename, generator = None):
-        self.anonymous = False
-        self.anonymous_done = False
         self.is_blob = False
+        assert filename is not None
         if generator is None:
             from action import Noop
             generator = Noop()
@@ -46,25 +45,19 @@ class BBlock:
         _global_bblock_registry[filename] = self
         self.generator = generator
         self.rehash()
+        self.__i_need = None
+        self.__needed_by = None
+        self.__prepared = False
         self.users = set()
 
     def addUser(self, gen):
         self.users.add(gen)
-
-    @classmethod
-    def anonymous(cls, builder):
-        ret = cls('__anon_'+hex(id(builder)), builder)
-        ret.anonymous = True
-        return ret
     
     def touch(self):
         self.rehash()
     def setIsBlob(self, val = True):
         self.is_blob = val
     def rehash(self, success = False):
-        if self.anonymous:
-            self.anonymous_done |= success
-            return
         if self.filename is '':
             self.last_mod = os.stat('.').st_mtime
         else:
@@ -78,26 +71,78 @@ class BBlock:
             os.unlink(self.filename)
         except OSError:
             pass
-        if self.anonymous:
-            self.anonymous_done = False
         self.rehash()
     def generate(self):
         self.generator.process()
     def __str__(self):
         return self.filename
     def exists(self):
-        if self.anonymous:
-            return self.anonymous_done
         return self.__exists
     def clean(self):
-        if self.anonymous:
-            self.anonymous_done = False
         if os.path.isfile(self.filename):
             if not config.quiet:
                 print 'Deleting', self.filename
             self.delete()
     def __hash__(self):
         return hash(self.filename)
+
+    def __walk_i_need(self):
+        if self.__i_need is not None:
+            return self.__i_need
+
+        self.__i_need = set()
+        for d in self.generator.getDepends():
+            if d in self.__i_need:
+                continue
+            self.__i_need.add(d)
+            self.__i_need |= d.__walk_i_need()
+        return self.__i_need
+
+    def __walk_needed_by(self):
+        if self.__needed_by is not None:
+            return self.__needed_by
+
+        self.__needed_by = set()
+        for u in self.users:
+            for d in u.dests:
+                if d is self.__needed_by:
+                    continue
+                self.__needed_by.add(d)
+                self.__needed_by |= d.__walk_needed_by()
+        return self.__needed_by
+
+    def prepare(self):
+        if self.__prepared:
+            return
+
+        self.__walk_needed_by()
+        self.__walk_i_need()
+
+        self.__prepared = True
+
+    def __cmp__(self, other):
+        if self in other.__i_need or other in self.__needed_by:
+            return 1
+        if other in self.__i_need or self in other.__needed_by:
+            return -1
+        return 0
+
+class AnonymousBBlock(BBlock):
+    def __init__(self, builder):
+        self.__done = False
+        BBlock.__init__(self, '__anon_'+hex(id(builder)), builder)
+
+    def rehash(self, success = False):
+        self.__done |= success
+        
+    def exists(self):
+        return self.__done
+
+    def delete(self):
+        self.__done = False
+
+    def clean(self):
+        self.delete()
 
 def bblockize1(f, gen = None):
     if config.debug:
@@ -107,9 +152,15 @@ def bblockize1(f, gen = None):
             print 'already is'
         return f
     if f in _global_bblock_registry:
+        r = _global_bblock_registry[f]
         if config.debug:
-            print 'in global reg'
-        return _global_bblock_registry[f]
+            print 'in global reg', r
+        from action import Noop
+        assert isinstance(r.generator, Noop) or gen is None or r.generator.__class__ is gen.__class__, \
+               ValueError('Generator in reg: %s, passed: %s'%(r.generator.__class__, gen.__class__))
+        if gen:
+            r.generator = gen
+        return r
     if config.debug:
         print 'needs BBlock'
     return BBlock(f, gen)
@@ -121,7 +172,7 @@ def filenames(bblocks):
     ret = []
     for b in bblocks:
         assert isinstance(b, BBlock)
-        if b.anonymous:
+        if isinstance(b, AnonymousBBlock):
             continue
         ret.append(str(b))
     return ret

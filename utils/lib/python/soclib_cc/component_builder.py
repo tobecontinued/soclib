@@ -153,7 +153,7 @@ class ComponentBuilder:
         vendor = config.systemc.vendor
         if vendor in ['sccom', 'modelsim']:
             return VhdlCompile(dest = [], srcs = [source],
-                               deps = deps,
+                               usage_deps = deps,
                                typename = self.specialization.getRawType())
         else:
             raise NotImplementedError("Unsuported vendor %s"%vendor)
@@ -162,7 +162,7 @@ class ComponentBuilder:
         vendor = config.systemc.vendor
         if vendor in ['sccom', 'modelsim']:
             return VerilogCompile(dest = [], srcs = [source],
-                                  deps = deps,
+                                  usage_deps = deps,
                                   typename = self.specialization.getRawType())
         else:
             raise NotImplementedError("Unsuported vendor %s"%vendor)
@@ -185,7 +185,8 @@ class ComponentBuilder:
             func = getattr(self, impl+'_results')
         except:
             raise NotImplementedError("Unknown implementation type %s"%impl)
-        return func()
+        r = func()
+        return r
 
     def systemc_results(self):
         is_template = ('<' in self.specialization.getType())
@@ -276,7 +277,6 @@ mpygen('%(name)s', params)
         cmd += ['-n', inst_name]
         cmd += ['-w', basedir, source_file]
         cmd += ['-i', ':'.join(directories)]
-        print cmd
         proc = subprocess.Popen(cmd,
                                 shell = False,
                                 stdin = None, stdout = subprocess.PIPE,

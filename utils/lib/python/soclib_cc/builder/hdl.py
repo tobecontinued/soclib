@@ -35,7 +35,7 @@ __all__ = ['VhdlCompile']
 
 class HdlCompile(action.Action):
     priority = 150
-    def __init__(self, dest, srcs, deps, typename):
+    def __init__(self, dest, srcs, usage_deps, typename):
         if dest:
             dests = [dest]
         else:
@@ -47,21 +47,36 @@ class HdlCompile(action.Action):
                 dests = []
             else:
                 raise NotImplementedError("Not supported")
-        self.__deps = deps
+        self.__usage_deps = usage_deps
+        self.__prepared = False
         action.Action.__init__(self, dests, srcs, typename = typename)
 
     def __users(self):
         us = set()
-        for d in self.__deps:
+        for d in self.__usage_deps:
             for u in d.users:
                 us.add(u)
         return us
-    def processDeps(self):
+
+    def prepare(self):
+        if self.__prepared:
+            return
+        
         r = set()
         for u in self.__users():
             r |= set(u.dests)
         r -= set(self.dests)
-        return list(r)
+        self.__deps = list(r)
+
+        action.Action.prepare(self)
+
+        self.__prepared = True
+
+    def getBblocks(self):
+        return self.__deps + action.Action.getBblocks(self)
+
+    def processDeps(self):
+        return self.__deps
 
     def process(self):
         fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
@@ -102,7 +117,10 @@ class HdlCompile(action.Action):
     def __str__(self):
         import bblock
         r = action.Action.__str__(self)
-        return r[:-1] + '\n Deps: %s>'%(map(str, self.processDeps()))
+        if self.__prepared:
+            return r[:-1] + '\n Deps: %s>'%(map(str, self.processDeps()))
+        else:
+            return r[:-1] + '\n Deps: [unprepared]>'
 
 class VhdlCompile(HdlCompile):
     tool = 'VHDL'

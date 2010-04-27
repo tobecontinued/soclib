@@ -27,7 +27,7 @@
 import sys
 import os, os.path
 from soclib_cc.config import config
-from bblock import bblockize
+from bblock import bblockize, BBlock, filenames
 from action import Noop, ActionFailed, Action
 
 __id__ = "$Id$"
@@ -106,29 +106,74 @@ clean:
         self.dests += bblockize(dests)
         for d in self.dests:
             self.has_blob |= d.is_blob
-    def _getall(self, dests):
-        bbs = set(dests)
-        todo = set()
-        done = set()
-        while bbs:
-            bb = bbs.pop()
-            done.add(bb)
+    def _getall_bbs(self, dests):
+        dest_bb_list = set(dests)
+        viewed_bb_list = set(dests)
+        todo_generator_list = set()
+
+        while dest_bb_list:
+            bb = dest_bb_list.pop()
+            viewed_bb_list.add(bb)
+
             gen = bb.generator
-            bbs |= set(gen.getDepends())
-            todo.add(gen)
-            bbs -= done
-        todo = filter(cr, todo)
-        todo.sort()
-        return todo
+            gen.prepare()
+            dest_bb_list |= set(gen.getDepends())
+            todo_generator_list.add(gen)
+#            print gen
+            
+            dest_bb_list -= viewed_bb_list
+
+        todo_generator_list = filter(cr, todo_generator_list)
+        return todo_generator_list, viewed_bb_list
+    
     def prepare(self):
         if self.prepared:
             return
-        self.todo = []
+        
         try:
-            self.todo = self._getall(self.dests)
+            todo, bblocks = self._getall_bbs(self.dests)
         except ActionFailed, e:
             self.handle_failed_action(e)
+
+#         print '---'
+#         for a in todo:
+#             print a
+#             #a.prepare()
+#         print '---'
+# 
+#         print '=-='
+#         print filenames(self.dests)
+#         print '=-='
+
+        for b in bblocks:
+            b.generator.prepare()
+        for b in bblocks:
+            b.prepare()
+
+        bblocks = list(bblocks)
+        bblocks.sort()
+
+        self.todo = []
+        viewed = set()
+        for b in bblocks:
+            g = b.generator
+            if isinstance(g, Noop) or g in viewed:
+                continue
+            self.todo.append(g)
+            viewed.add(g)
+        if set(self.todo) < set(todo):
+            print 'Lost generators in battle:'
+            for i in set(todo) - set(self.todo):
+                for d in i.dests:
+                    print d in self.dests, d.generator.__class__, d
+            raise RuntimeError()
+
+        self.todo.reverse()
         self.prepared = True
+
+#        for i, g in enumerate(self.todo):
+#            print i, filenames(g.dests), filenames(g.sources)
+        
     def clean(self):
         self.prepare()
         for i in xrange(len(self.todo)-1,-1,-1):
@@ -167,8 +212,8 @@ clean:
             print 'Would do:'
             print "="*80
             print "="*80
-            for t in self.todo:
-                print t
+            for i, g in enumerate(self.todo):
+                print i, filenames(g.dests), filenames(g.sources)
             print "="*80
             print "="*80
         l = len(self.todo)

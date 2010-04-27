@@ -119,10 +119,11 @@ class CLink(CCompile):
     def process(self):
         args = config.getTool(self.tool)
         if config.systemc.vendor in ['sccom', 'modelsim']:
+            args += ['-link']
             args += ['-lpthread']
             args += ['-work', config.workpath]
             args += config.getLibs()
-            objs = filter(lambda x:x.generator.comp_mode != 'sccom', self.sources)
+            objs = filter(lambda x:x.generator.comp_mode not in ['sccom', 'modelsim'], self.sources)
             args += bblock.filenames(objs)
         else:
             args += ['-o', bblock.filenames(self.dests)[0]]
@@ -153,10 +154,8 @@ class CMkobj(CLink):
     tool = 'LD'
     def process(self):
         if config.systemc.vendor in ['sccom', 'modelsim']:
-            args = config.getTool("CXX_LINKER")
-            args += ['-lpthread']
-            args += config.getLibs()
-            args += bblock.filenames(filter(lambda x:x.generator.comp_mode != 'sccom', self.sources))
+            self.tool = "CXX_LINKER"
+            return CLink.process(self)
         else:
             args = config.getTool(self.tool)
             args += ['-r', '-o', bblock.filenames(self.dests)[0]]

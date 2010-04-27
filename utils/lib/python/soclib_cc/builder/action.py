@@ -61,26 +61,33 @@ get_oldest = lambda files, ignore_absent: get_times(files, time.time(), min, ign
 def check_exist(files):
 #    for i in files:
 #        print "check_exist(", i, ")", i.exists()
-    return reduce(lambda x,y:x and y, map(lambda x:x.exists(), files), True)
+    import operator
+    return reduce(operator.and_, map(lambda x:x.exists(), files), True)
 
 class Action:
     priority = 0
     comp_mode = None
     __jobs = {}
     def __init__(self, dests, sources, **options):
-        from bblock import bblockize, BBlock
+        from bblock import bblockize, BBlock, AnonymousBBlock
         if not dests:
-            self.dests = [BBlock.anonymous(self)]
+            self.dests = [AnonymousBBlock(self)]
         else:
             self.dests = bblockize(dests, self)
         self.sources = bblockize(sources)
         self.options = options
-        self.done = False
-        self.hash = reduce(lambda x,y:(x ^ (y>>1)), map(hash, self.dests+self.sources), 0)
+        self.__done = False
+        self.__hash = hash(reduce(lambda x,y:(x + (y<<1)), map(hash, self.dests+self.sources), 0))
         self.has_deps = False
         map(lambda x:x.addUser(self), self.sources)
 
-    def launch(self, cmd):
+    def prepare(self):
+        pass
+
+    def getBblocks(self):
+        return self.dests + self.sources
+
+    def launch(self, cmd, cwd = None):
         import subprocess
         #print "---- run", cmd
 
@@ -102,6 +109,7 @@ class Action:
         self.__handle = subprocess.Popen(
             cmd,
             shell = shell,
+            cwd = cwd,
             bufsize = 128*1024,
             close_fds = True,
             stdin = None,
@@ -128,9 +136,9 @@ class Action:
             p = job.__handle.poll()
 #            print "---- poll", job, p
             if job.__handle.returncode is not None:
-                job.__done()
+                job.__set_done()
 
-    def __done(self):
+    def __set_done(self):
         try:
             self.__handle.communicate()
         except:
@@ -160,7 +168,7 @@ class Action:
         del self.__command
         for d in self.dests:
             d.rehash(True)
-        self.done = True
+        self.__done = True
         #print "---- done"
 
     def isBackground(self):
@@ -173,7 +181,7 @@ class Action:
         self.must_be_processed = self.mustBeProcessed()
 
     def todoInfo(self):
-        if self.done:
+        if self.__done:
             return '='
         if self.isBackground():
             return 'W'
@@ -225,7 +233,7 @@ class Action:
         for i in self.dests:
             i.clean()
     def __hash__(self):
-        return self.hash
+        return self.__hash
     def __cmp__(self, other):
         if other.__class__.__cmp__ != self.__class__.__cmp__:
             r = cmp(other, self)
