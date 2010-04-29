@@ -66,12 +66,13 @@ static inline void soclib_io_set(void *comp_base, size_t reg, uint32_t val)
 
 static inline uint32_t soclib_io_get(void *comp_base, size_t reg)
 {
-	volatile uint32_t *addr = (uint32_t *)comp_base;
+	uint32_t *addr = (uint32_t *)comp_base;
     uint32_t val;
 
+    asm volatile("":"=m"(*addr));
 #if __PPC__
     reg <<= 2;
-    asm("lwbrx %0, %1, %2": "=b"(val): "b"(addr), "b"(reg) );
+    asm volatile("lwbrx %0, %1, %2": "=b"(val): "b"(addr), "b"(reg) );
     return val;
 #else
 	addr += reg;

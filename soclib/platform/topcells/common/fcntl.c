@@ -69,9 +69,9 @@ int close( const int fd )
 int read( const int fd, const void *buffer, const size_t len )
 {
 	uint32_t i;
-	for (i=0; i<len+16; i+=4){
-		asm volatile("lw $0, 0(%0)"::"r"((uint32_t)buffer+i));
-	}
+
+    cache_flush(buffer, len);
+
 	soclib_io_set(base(FD), FD_ACCESS_FD, fd);
 	soclib_io_set(base(FD), FD_ACCESS_BUFFER, (uint32_t)buffer);
 	soclib_io_set(base(FD), FD_ACCESS_SIZE, len);

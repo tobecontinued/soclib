@@ -68,3 +68,16 @@ static inline int procnum()
 {
     return dcr_get(0);
 }
+
+static inline void cache_flush(void *base, size_t len)
+{
+    size_t i;
+	for (i=0; i<len+16; i+=4){
+        asm volatile (
+            "dcbi 0, %0"
+            :
+            : "r" ((uint32_t)base+i)
+            : "memory"
+		);
+	}
+}

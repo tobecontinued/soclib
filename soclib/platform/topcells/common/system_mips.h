@@ -108,3 +108,17 @@ static inline int procnum()
     return (get_cp0(15)&0x3ff);
 #endif
 }
+
+static inline void cache_flush(void *base, size_t len)
+{
+    size_t i;
+	for (i=0; i<len+16; i+=4){
+#if __mips >= 32
+		asm volatile(
+            " cache %0, %1"
+            : : "i" (0x11) , "r" ((uint32_t)base+i));
+#else
+		asm volatile("lw $0, 0(%0)"::"r"((uint32_t)base+i));
+#endif
+	}
+}
