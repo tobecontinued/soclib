@@ -182,22 +182,21 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
   soclib_payload_extension *extension_pointer;
   payload.get_extension(extension_pointer);
   
-  m_pdes_local_time->set(time);
+  //update local time
+  if(time > m_pdes_local_time->get())
+    m_pdes_local_time->set(time);
+
+  verify_interruptions();
 
   //this target does not treat the null message
   if(extension_pointer->is_null_message()){
-    //update local time
-    if(time > m_pdes_local_time->get())
-      m_pdes_local_time->set(time);
-
-    verify_interruptions();
-
 #if SOCLIB_MODULE_DEBUG
-    std::cout << "[" << name() << "] Receive NULL MESSAGE time = "  << time.value() << std::endl;
+    //std::cout << "[" << name() << "] Receive NULL MESSAGE time = "  << time.value() << std::endl;
 #endif
     return tlm::TLM_COMPLETED;
   }
   
+  typename vci_param::data_t data;
   int cell, reg, term_no;
   uint32_t nwords = payload.get_data_length() / vci_param::nbytes;
   
@@ -211,32 +210,18 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     switch(extension_pointer->get_command()){
     case VCI_READ_COMMAND:
       {
-#if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive a read packet with time = "  << time.value() << std::endl;
-#endif
-	
 	m_cpt_idle  = m_cpt_idle + (time.value() - m_cpt_cycle);
 
 	for(unsigned int i=0; i<nwords; i++){
 	  
-	  //if (payload.contig)
 	  cell = (int)(((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes); // XXX contig = true always
-	  //else
-	  //cell = (int)((payload.address - s.baseAddress()) / vci_param::nbytes); // always write in the same address
-	  
 	  reg = cell % TTY_SPAN;
 	  term_no = cell / TTY_SPAN;
 	  
-#if SOCLIB_MODULE_DEBUG
-	  std::cout << "[" << name() << "] term_no=" << term_no << " reg=" << reg << std::endl;
-#endif
-	  
 	  if (term_no>=(int)m_term.size()){
-	    
 #if SOCLIB_MODULE_DEBUG
 	    std::cout << "term_no (" << term_no <<") greater than the maximum (" << m_term.size() << ")" << std::endl;
 #endif
-			    
 	    // remplir paquet d'erreur
 	    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
 	  }
@@ -244,23 +229,27 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	    
 	    switch (reg) {
 	    case TTY_STATUS:
-#if SOCLIB_MODULE_DEBUG
-	      std::cout << "[" << name() << "] Receive a read TTY_STATUS with time = "  << time.value() << std::endl;
-#endif
-	      utoa(m_term[term_no]->hasData(), payload.get_data_ptr(),(i * vci_param::nbytes));
+	      data = m_term[term_no]->hasData();
+	      utoa(data, payload.get_data_ptr(),(i * vci_param::nbytes));
  	      payload.set_response_status(tlm::TLM_OK_RESPONSE);
+
+#if SOCLIB_MODULE_DEBUG
+	      printf("[%s] term_no=%d TTY_STATUS data = 0x%09x time = %d\n", name(), term_no, (int)data, (int)time.value());
+#endif
  	      break;
 	    case TTY_READ:
-#if SOCLIB_MODULE_DEBUG
-	      std::cout << "[" << name() << "] Receive a read TTY_READ with time = "  << time.value() << std::endl;
-#endif
 	      if (m_term[term_no]->hasData()) {
-		char tmp = m_term[term_no]->getc();
-		utoa(tmp, payload.get_data_ptr(),(i * vci_param::nbytes));
+		data = m_term[term_no]->getc();
+		utoa(data, payload.get_data_ptr(),(i * vci_param::nbytes));
 		//std::cout << "[" << name() << "] i = " << i << " data = " << tmp << std::endl;
 		send_interruption(term_no, false);
 	      }	
 	      payload.set_response_status(tlm::TLM_OK_RESPONSE);
+
+#if SOCLIB_MODULE_DEBUG
+	      printf("[%s] term_no=%d TTY_READ   data = 0x%09x time = %d\n", name(), term_no, (int)data, (int)time.value());
+#endif
+
  	      break;
 	    default:
 	      //error message
@@ -276,38 +265,23 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	m_cpt_cycle = time.value();
 	m_cpt_read+=nwords;
 	
-#if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
-#endif
-	
         p_vci->nb_transport_bw(payload, phase, time);
  	return tlm::TLM_COMPLETED;
 	break;
       }
     case VCI_WRITE_COMMAND:
       {
-	char data;
-	
-#if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive a write packet with time = "  << time.value() << std::endl;
-#endif
-	
+	char _data;
 	for(unsigned int i=0; i<nwords; i++){
 	  //if (payload.contig)
 	  cell = (int)(((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes); /// XXX contig = true always
-	    //else
-	    //cell = (int)((payload.address - s.baseAddress()) / vci_param::nbytes); // always write in the same address
-	  
 	  reg = cell % TTY_SPAN;
 	  term_no = cell / TTY_SPAN;
 
 
           data = atou(payload.get_data_ptr(), (i * vci_param::nbytes));
-	  
-#if SOCLIB_MODULE_DEBUG
-	  //std::cout << "[" << name() << "] term_no=" << term_no << " reg=" << reg << " data=" << data << std::endl;
-#endif
-	  
+	  _data = data;	  
+
 	  if (term_no>=(int)m_term.size()){
 #if SOCLIB_MODULE_DEBUG
 	    std::cout << "term_no (" << term_no <<") greater than the maximum (" << m_term.size() << ")" << std::endl;
@@ -317,10 +291,9 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
  	  }
 	  else{
-	    
 	    switch (reg) {
 	    case TTY_WRITE:
-	      if ( data == '\a' ) {
+	      if ( _data == '\a' ) {
 		char tmp[32];
 		size_t ret = snprintf(tmp, sizeof(tmp), "[%d] ", (int)time.value());
 		
@@ -328,11 +301,15 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 		  m_term[term_no]->putc( tmp[i] );
 	      } 
 	      else{
-		m_term[term_no]->putc( data );
-		//std::cout << "[" << name() << "] write data=" << data << std::endl;
+		m_term[term_no]->putc( _data );
 	      }
 		
               payload.set_response_status(tlm::TLM_OK_RESPONSE);
+
+#if SOCLIB_MODULE_DEBUG
+	      printf("[%s] term_no=%d TTY_WRITE  data = 0x%09x time = %d\n", name(), term_no, (int)data, (int)time.value());
+#endif
+
  	      break;
 	    default:
 	      //error message
@@ -349,10 +326,6 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
 	m_cpt_cycle = time.value();
 	m_cpt_write+=nwords;
-	
-#if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
-#endif
 	
 	p_vci->nb_transport_bw(payload, phase, time);
  	return tlm::TLM_COMPLETED;
