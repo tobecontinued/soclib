@@ -56,6 +56,9 @@ enum SoclibIssMemcheckerRegisters {
     /* Creates a temporary context which vanish on next context switch */
 	ISS_MEMCHECKER_LOCK_DECLARE, // r1 = base, val = 1 declare, 0 undeclare
 
+    /* Enables the memchecker when going out of the range [PC:val] */
+    ISS_MEMCHECKER_DELAYED_MAGIC,
+
 	ISS_MEMCHECKER_REGISTER_MAX,
 };
 

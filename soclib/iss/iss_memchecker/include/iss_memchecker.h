@@ -71,6 +71,8 @@ class IssMemchecker
     uint32_t m_r1;
     uint32_t m_r2;
     uint32_t m_last_sp;
+    uint32_t m_delayed_pc_min;
+    uint32_t m_delayed_pc_max;
 
     // processor spinlocks
     typedef std::map<uint32_t, bool /* cycle */> held_locks_map_t;
@@ -92,6 +94,7 @@ class IssMemchecker
         MAGIC_NONE,
         MAGIC_BE,
         MAGIC_LE,
+        MAGIC_DELAYED,
     };
     enum magic_state_e m_magic_state;
 

@@ -138,7 +138,7 @@ public:
 
     inline bool stack_contains( uint32_t sp ) const
     {
-        return (m_stack_lower <= sp && sp < m_stack_upper);
+        return (m_stack_lower < sp && sp <= m_stack_upper);
     }
 
     inline bool is( uint32_t id ) const
@@ -913,6 +913,8 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
                 assert(!"Wrong magic");
             }
             break;
+        case MAGIC_DELAYED:
+            assert(0 && "Cant access memchecker when in delayed magic");
         default:
             assert(value == 0 && "Wrong magic disable");
             m_magic_state = MAGIC_NONE;
@@ -974,6 +976,14 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
     {
         AddressInfo *ai = s_memory_state->info_for_address( m_r1 );
         ai->set_spinlock(value != 0);
+        break;
+    }
+
+    case ISS_MEMCHECKER_DELAYED_MAGIC:
+    {
+        m_delayed_pc_min = get_cpu_pc();
+        m_delayed_pc_max = value;
+        m_magic_state = MAGIC_DELAYED;
         break;
     }
 
@@ -1530,7 +1540,8 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 
     error_level_t errl = ERROR_NONE;
 
-    if ( m_magic_state == MAGIC_NONE ) {
+    switch ( m_magic_state ) {
+    case MAGIC_NONE:
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) &&
              ! m_current_context->stack_contains(get_cpu_sp()) )
             errl |= ERROR_SP_OUTOFBOUNDS;
@@ -1542,6 +1553,16 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
             errl |= ERROR_FP_OUTOFBOUNDS;
         else
             m_no_repeat_mask &= ~ERROR_FP_OUTOFBOUNDS;
+        break;
+
+    case MAGIC_DELAYED:
+        if ( get_cpu_pc() < m_delayed_pc_min ||
+             get_cpu_pc() >= m_delayed_pc_max )
+            m_magic_state = MAGIC_NONE;
+        break;
+
+    default:
+        break;
     }
 
     if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
