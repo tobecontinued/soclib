@@ -31,11 +31,11 @@ from soclib_cc.config import config
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-__all__ = ['VhdlCompile']
+__all__ = ['VhdlCompile', 'VerilogCompile']
 
 class HdlCompile(action.Action):
     priority = 150
-    def __init__(self, dest, srcs, usage_deps, typename):
+    def __init__(self, dest, srcs, incs, usage_deps, typename):
         if dest:
             dests = [dest]
         else:
@@ -49,7 +49,8 @@ class HdlCompile(action.Action):
                 raise NotImplementedError("Not supported")
         self.__usage_deps = usage_deps
         self.__prepared = False
-        action.Action.__init__(self, dests, srcs, typename = typename)
+        action.Action.__init__(self, dests, srcs, typename = typename,
+                               incs = incs)
 
     def __users(self):
         us = set()
@@ -78,12 +79,16 @@ class HdlCompile(action.Action):
     def processDeps(self):
         return self.__deps
 
+    def add_args(self):
+        return []
+
     def process(self):
         fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
         args = config.getTool(self.tool)
         if config.systemc.vendor in ['sccom', 'modelsim']:
             args += ['-work', config.workpath]
             args += config.toolchain.vflags
+        args += self.add_args()
         args += map(str, self.sources)
         r = self.launch(args)
         if r:
@@ -128,3 +133,6 @@ class VhdlCompile(HdlCompile):
 class VerilogCompile(HdlCompile):
     tool = 'VERILOG'
 
+    def add_args(self):
+        return map('+incdir+'.__add__, self.options['incs'])
+        

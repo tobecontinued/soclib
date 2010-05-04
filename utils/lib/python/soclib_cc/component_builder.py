@@ -149,20 +149,22 @@ class ComponentBuilder:
             force_debug = self.force_debug,
             **add)
 
-    def getVhdlBuilder(self, source, deps):
+    def getVhdlBuilder(self, source, incs, deps):
         vendor = config.systemc.vendor
         if vendor in ['sccom', 'modelsim']:
             return VhdlCompile(dest = [], srcs = [source],
                                usage_deps = deps,
+                               incs = incs,
                                typename = self.specialization.getRawType())
         else:
             raise NotImplementedError("Unsuported vendor %s"%vendor)
 
-    def getVerilogBuilder(self, source, deps):
+    def getVerilogBuilder(self, source, incs, deps):
         vendor = config.systemc.vendor
         if vendor in ['sccom', 'modelsim']:
             return VerilogCompile(dest = [], srcs = [source],
                                   usage_deps = deps,
+                                  incs = incs,
                                   typename = self.specialization.getRawType())
         else:
             raise NotImplementedError("Unsuported vendor %s"%vendor)
@@ -222,7 +224,10 @@ class ComponentBuilder:
                       map(Specialization.getImplementationFiles, deps),
                       [])
         deps = bblockize(deps)
-        builders = map(lambda x:func(x, deps), files)
+        incs = set()
+        for i in list(self.headers) + list(self.tmpl_headers):
+            incs.add(os.path.dirname(i))
+        builders = map(lambda x:func(x, incs, deps), files)
         return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
 
     def mpy_vhdl_results(self):
