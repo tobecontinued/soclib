@@ -52,7 +52,8 @@ namespace soclib { namespace caba {
         : soclib::caba::BaseModule(insname),
         p_clk("p_clk"), p_resetn("p_resetn"),
         m_srcid(mt.indexForId(index)),
-        big_endian(big_endian)
+        big_endian(big_endian),
+        state("state")
     {
         //Test vci/wb parameters compatibility
         assert(vci_param::B*8 == wb_param::DataWidth && "VCI and WB data widths do not match!!");
@@ -74,7 +75,6 @@ namespace soclib { namespace caba {
         dont_initialize();
         sensitive << p_wb;
         sensitive << p_vci;
-        sensitive << read_cmd_not_accepted ;
 
     }
 
@@ -84,7 +84,8 @@ namespace soclib { namespace caba {
         : soclib::caba::BaseModule(insname),
         p_clk("p_clk"), p_resetn("p_resetn"),
         m_srcid(0),
-        big_endian(big_endian)
+        big_endian(big_endian),
+        state("state")
     {
         //Test vci/wb parameters compatibility
         assert(vci_param::B*8 == wb_param::DataWidth && "VCI and WB data widths do not match!!");
@@ -105,7 +106,6 @@ namespace soclib { namespace caba {
         dont_initialize();
         sensitive << p_wb;
         sensitive << p_vci;
-        sensitive << read_cmd_not_accepted ;
 
     }
 

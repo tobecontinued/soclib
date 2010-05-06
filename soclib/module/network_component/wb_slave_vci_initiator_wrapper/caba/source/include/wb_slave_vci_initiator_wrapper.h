@@ -82,7 +82,7 @@ namespace soclib { namespace caba {
                 const uint32_t m_srcid;
 
                 // for read requests
-                sc_core::sc_signal<bool> read_cmd_not_accepted;
+                bool read_cmd_not_accepted;
                 // this is a fifo to hold the requests
                 // true for write and false for read
                 std::queue<bool> w_response;
