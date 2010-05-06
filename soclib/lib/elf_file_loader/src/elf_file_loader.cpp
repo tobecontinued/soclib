@@ -55,9 +55,14 @@ bool elf_load( const std::string &name, Loader &loader )
 
     try {
         binary = new elfpp::object(filename);
+    } catch (std::runtime_error &e) {
+        throw soclib::exception::RunTimeError(e.what());
+    }
 
+    try {
         binary->parse_symbol_table();
     } catch (std::runtime_error &e) {
+        delete binary;
         throw soclib::exception::RunTimeError(e.what());
     }
 

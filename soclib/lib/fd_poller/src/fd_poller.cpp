@@ -224,6 +224,9 @@ void* FdPoller::thread( void *unused )
 		}
 		pthread_mutex_unlock(&s_lock);
 	}
+
+    if ( pfd )
+        delete [] pfd;
     return NULL;
 }
 
