@@ -128,8 +128,10 @@ tmpl(/**/)::VciSimpleRam(
 tmpl(/**/)::~VciSimpleRam()
 ///////////////////////////
 {
-	for (size_t i=0 ; i<m_nbseg ; ++i) delete [] m_ram[i];
+	for (size_t i=0 ; i<m_nbseg ; ++i)
+        delete [] m_ram[i];
 	delete [] m_ram;
+	delete [] m_seg;
 }
 
 /////////////////////
