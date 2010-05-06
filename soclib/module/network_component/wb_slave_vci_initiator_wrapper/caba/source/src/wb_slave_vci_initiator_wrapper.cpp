@@ -51,9 +51,9 @@ namespace soclib { namespace caba {
             const bool big_endian)
         : soclib::caba::BaseModule(insname),
         p_clk("p_clk"), p_resetn("p_resetn"),
+        state("state"),
         m_srcid(mt.indexForId(index)),
-        big_endian(big_endian),
-        state("state")
+        big_endian(big_endian)
     {
         //Test vci/wb parameters compatibility
         assert(vci_param::B*8 == wb_param::DataWidth && "VCI and WB data widths do not match!!");
@@ -83,9 +83,9 @@ namespace soclib { namespace caba {
             const bool big_endian)
         : soclib::caba::BaseModule(insname),
         p_clk("p_clk"), p_resetn("p_resetn"),
+        state("state"),
         m_srcid(0),
-        big_endian(big_endian),
-        state("state")
+        big_endian(big_endian)
     {
         //Test vci/wb parameters compatibility
         assert(vci_param::B*8 == wb_param::DataWidth && "VCI and WB data widths do not match!!");
