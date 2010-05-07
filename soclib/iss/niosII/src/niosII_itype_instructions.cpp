@@ -188,8 +188,8 @@ void  Nios2fIss::dumpRegisters() const
 			printf("R%2.2d=%8.8x ",i*4+j,(int)r_gpr[i*4+j]);
 		printf("\n");
 	}
-	for (int j=0;j<6;j++)
-		printf("CT%d=%8.8x ",j,(int)r_ctl[j]);
+//	for (int j=0;j<6;j++)
+//		printf("CT%d=%8.8x ",j,(int)r_ctl[j]);
 	printf("\n");
 	printf("pc=%8.8x ",r_pc);
 	printf("\n");

@@ -123,8 +123,8 @@ void Nios2fIss::RType_and()
 void Nios2fIss::RType_break()
 {
     //Debugging breakpoint p.8-25
-    r_ctl[bstatus] = r_ctl[status]; /* save the status register */
-    r_ctl[status] = (r_ctl[status]&0xFFFFFFFE); /* bit PIE forced to zero */
+    r_bstatus = r_status.whole; /* save the status register */
+    r_status.whole = (r_status.whole & 0xFFFFFFFE); /* bit PIE forced to zero */
     if (m_instruction.r.c == BA) {
         r_gpr[BA] = r_pc + 4; /* GPR[ba]=r31 */
         // 			m_branchAddress = BREAK_HANDLER_ADDRESS; /* update PC : PC<-break handler address */
@@ -140,7 +140,7 @@ void Nios2fIss::RType_break()
 void Nios2fIss::RType_bret()
 {
     //Breakpoint return p.8-26
-    r_ctl[status] = r_ctl[bstatus]; /* update status register */
+    r_status.whole = r_bstatus; /* update status register */
     if (m_instruction.r.a == BA) {
         m_branchAddress = r_gpr[BA]; /* GPR[ins_rs]=ba=r30 */
         m_branchTaken = true;
@@ -224,7 +224,7 @@ void Nios2fIss::RType_divu()
 void Nios2fIss::RType_eret()
 {
     //Exception Return p.8-52
-	r_ctl[status] = r_ctl[estatus];
+	r_status.whole = r_estatus;
     m_branchAddress = r_gpr[m_instruction.r.a]; /* exception return address ea=r29 */
     m_branchTaken = true;
 
@@ -347,10 +347,8 @@ void Nios2fIss::RType_or()
 void Nios2fIss::RType_rdctl()
 {
     //Read from control register p.8-81
-	if (m_instruction.r.sh == count)
-		r_gpr[m_instruction.r.c] = r_count;
-	else
-	r_gpr[m_instruction.r.c] = r_ctl[m_instruction.r.sh];
+	//r_gpr[m_instruction.r.c] = r_ctl[m_instruction.r.sh];
+	r_gpr[m_instruction.r.c] = controlRegisterGet(m_instruction.r.sh);
 
     // late result management
     m_listOfLateResultInstruction.add(m_instruction.r.c);
@@ -498,8 +496,8 @@ void Nios2fIss::RType_trap()
     //Exception intruction p.8-98
     m_exceptionSignal = X_TR;
 //    std::cout << "exception signal set to trap " <<  std::endl;
-    r_ctl[estatus] = r_ctl[status]; /* save status register */
-    r_ctl[status] = (r_ctl[status] & 0xFFFFFFFE); /* force to 0 PIE bit to status register */
+    r_estatus = r_status.whole; /* save status register */
+    r_status.whole = (r_status.whole & 0xFFFFFFFE); /* force to 0 PIE bit to status register */
     if (m_instruction.r.c == EA) {
         r_gpr[EA]= r_pc + 4; /* save the next address to ea register (r29) */
         m_branchAddress = EXCEPTION_HANDLER_ADDRESS;/* update PC : PC<-exception handler address */
@@ -512,7 +510,9 @@ void Nios2fIss::RType_trap()
 void Nios2fIss::RType_wrctl()
 {
     //Write to control register p.8-99
-    r_ctl[m_instruction.r.sh] = r_gpr[m_instruction.r.a];
+	//r_ctl[m_instruction.r.sh] = r_gpr[m_instruction.r.a];
+	controlRegisterSet(m_instruction.r.sh, r_gpr[m_instruction.r.a]);
+
     // 4 cycles per instruction
     setInsDelay( 4 );
 }

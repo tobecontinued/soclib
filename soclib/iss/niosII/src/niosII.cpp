@@ -175,12 +175,12 @@ void Nios2fIss::reset()
 		r_gpr[i] = 0;
 		r_cr[i] = 0;
 	}
-	for (size_t i=1; i<6; ++i)
-		r_ctl[i] = 0;
-	r_ctl[5] = m_ident;
 
-	r_ctl[status] = 0; // status control register is cleared
-	r_ctl[ienable] = 0; // ienable control register is cleared
+	r_cpuid = m_ident;
+
+	r_status.whole = 0; // status control register is cleared
+	r_ienable = 0; // ienable control register is cleared
+	r_ipending = 0;
 
 	r_pc = RESET_ADDRESS;
 	r_npc = RESET_ADDRESS + 4;
@@ -200,6 +200,8 @@ void Nios2fIss::reset()
 
 	m_hazard = false;
 	m_exceptionSignal = NO_EXCEPTION;
+
+//	r_ebase = r_reserved_17;
 
 	m_startOflriList = NULL;
 }
@@ -285,20 +287,24 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 	// ipending register indicates which interrupts are pending
 	// a value of 1 in bit n means that the corresponding irqn input is asserted and
 	// that the corresponding interrupt is enable in the ienable register
-	r_ctl[ipending] = r_ctl[ienable] & m_irq;
+	r_ipending = r_ienable & m_irq;
+
+//	if (m_irq)
+//		std::cout << "m_irq: " << m_irq << " cycle: " << r_count << std::endl;
+
 #ifdef SOCLIB_MODULE_DEBUG
 	if (m_irq)
-		std::cout << "m_irq" << m_irq << std::endl;
+		std::cout << "m_irq " << m_irq << std::endl;
 
-	if ( r_ctl[ipending])
-		std::cout << "r_ctl[ipending]" << r_ctl[ipending] << std::endl;
+	if ( r_ipending)
+		std::cout << "r_ipending " << r_ipending << std::endl;
 #endif
 
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout
-        << " m_irq: "<<m_irq<< " ctl0: "<<r_ctl[status] <<
-        " ctl3: " <<r_ctl[ienable] <<
-        " ctl4: "<<r_ctl[ipending] <<
+        << " m_irq: "<<m_irq<< " ctl0: "<<r_status.whole <<
+        " ctl3: " <<r_ienable <<
+        " ctl4: "<<r_ipending <<
         " m_exceptionSignal:   " <<
         m_exceptionSignal << std::endl;
 #endif
@@ -338,8 +344,8 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 		goto handle_exception;
 
 	// Interrupt detection
-	// 	if ( (r_ctl[status] & 1) && (r_ctl[ienable] & 0x1 ==  m_irq & 0x1) ) {
-	if ((r_ctl[status] & 1) && (r_ctl[ipending] != 0)) {
+	// 	if ( (r_status & 1) && (r_ienable & 0x1 ==  m_irq & 0x1) ) {
+	if ((r_status.whole & 1) && (r_ipending != 0)) {
 		m_exceptionSignal = X_INT;
 
 #ifdef SOCLIB_MODULE_DEBUG
@@ -415,16 +421,33 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
             << std::dec
             << std::endl<< std::endl;
 #endif
-		r_ctl[estatus] = r_ctl[status];/* status reg saving */
-		r_ctl[status] = r_ctl[status] & 0xFFFFFFFE; /* bit PIE forced to zero */
+		r_estatus = r_status.whole;/* status reg saving */
+		r_status.whole = r_status.whole & 0xFFFFFFFE; /* bit PIE forced to zero */
 
-		r_ctl[exception] = m_exceptionSignal;
+		r_exception = m_exceptionSignal;
 
 		r_gpr[EA] = r_npc-4; // ea register stores the address where processing can resume
 
-		r_pc = EXCEPTION_HANDLER_ADDRESS;
-		r_npc = EXCEPTION_HANDLER_ADDRESS + 4;
+	    addr_t except_address = exceptBaseAddr();
 
+	    std::cout
+	                << m_name
+	                << std::hex << std::showbase
+	                << " exception: " << except_address << std::dec
+            << std::endl<< std::endl;
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout
+        << m_name <<" exception: "<<m_exceptionSignal <<std::endl
+        << std::hex << std::showbase << " m_ins: " << m_instruction.j.op
+        << " exception address: " << except_address
+        << std::dec
+        << std::endl;
+#endif
+    //	    r_pc = EXCEPTION_HANDLER_ADDRESS;
+//		r_npc = EXCEPTION_HANDLER_ADDRESS + 4;
+
+	    r_pc = except_address;
+		r_npc = except_address + 4;
 	}
 	goto house_keeping;
 
@@ -552,6 +575,17 @@ void Nios2fIss::setDataResponse(const struct DataResponse &drsp)
 }
 
 
+Nios2fIss::addr_t Nios2fIss::exceptBaseAddr() const
+{
+//	 std::cout << name()
+//	    << std::hex << std::showbase
+//	    << " exceptBaseAddr: " << r_ebase << std::dec << "  " << "rcount: " << r_count
+//	<< std::endl<< std::endl;
+
+	return r_ebase & 0xfffff000;
+
+}
+
 
 uint32_t Nios2fIss::debugGetRegisterValue(unsigned int reg) const
 {
@@ -563,37 +597,43 @@ uint32_t Nios2fIss::debugGetRegisterValue(unsigned int reg) const
 	case 32:
 		return r_pc;
 	case 33:
-		return r_ctl[0];
+		return r_status.whole;
 	case 34:
-		return r_ctl[1];
+		return r_estatus;
 	case 35:
-		return r_ctl[2];
+		return r_bstatus;
 	case 36:
-		return r_ctl[3];
+		return r_ienable;
 	case 37:
-		return r_ctl[4];
+		return r_ipending;
 	case 38:
-		return r_ctl[5];
+		return r_cpuid;
 	case 39:
-		return r_ctl[6];
+		return r_reserved_6;
 	case 40:
-		return r_ctl[7];
+		return r_exception;
 	case 41:
-		return r_ctl[8];
+		return r_pteaddr;
 	case 42:
-		return r_ctl[9];
+		return r_tlbacc;
 	case 43:
-		return r_ctl[10];
+		return r_tlbmisc;
 	case 44:
-		return r_ctl[11];
+		return r_reserved_11;
 	case 45:
-		return r_ctl[12];
+		return r_badaddr;
 	case 46:
-		return r_ctl[13];
+		return r_config;
 	case 47:
-		return r_ctl[14];
+		return r_mpubase;
 	case 48:
-		return r_ctl[15];
+		return r_mpuacc;
+	case 49:
+		return r_reserved_16;
+	case 50:
+		return r_reserved_17;
+	case 51:
+		return r_reserved_18;
 	default:
 		return 0;
 	}
@@ -612,22 +652,6 @@ void Nios2fIss::debugSetRegisterValue(unsigned int reg, uint32_t value)
     default:
         break;
 	}
-}
-
-uint32_t Nios2fIss::controlRegisterGet( uint32_t reg ) const
-{
-    switch(reg) {
-    case cpuid:
-        return m_ident;
-    case count:
-        return r_count;
-    default:
-        return 0;
-    }
-}
-
-void Nios2fIss::controlRegisterSet( uint32_t reg, uint32_t val )
-{
 }
 
 }

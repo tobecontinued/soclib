@@ -51,8 +51,8 @@
 #ifndef _SOCLIB_NIOS2_ISS_H_
 #define _SOCLIB_NIOS2_ISS_H_
 
-#include <systemc>
-#include <fstream>
+#include <cassert>
+
 #include "iss2.h"
 #include "soclib_endian.h"
 #include "register.h"
@@ -101,42 +101,6 @@ private:
 		RA = 31
 	};
 
-	// control registers: names recognized by the assembler and used by the simulator
-	enum ctrlRegisterName {
-		status,
-		estatus,
-		bstatus,
-		ienable,
-		ipending,
-		cpuid,
-		ctl6,
-		exception,
-		pteaddr,
-		tlbacc,
-		tlbmisc,
-		ctl11,
-		badaddr,
-		config,
-		mpubase,
-		mpuacc,
-		ctl16,
-		count,
-		ctl18,
-		ctl19,
-		ctl20,
-		ctl21,
-		ctl22,
-		ctl23,
-		ctl24,
-		ctl25,
-		ctl26,
-		ctl27,
-		ctl28,
-		ctl29,
-		ctl30,
-		ctl31
-	};
-
 	// NiosII processor handbook page 3-35
 	enum ExceptCause {
 		X_RESET, // Interrupt
@@ -173,14 +137,14 @@ private:
         NO_EXCEPTION,
 	};
 
-	enum Iss2::ExecMode r_bus_mode;
+//	enum Iss2::ExecMode r_bus_mode;
 
 	// member variables (internal registers)
 
 	uint32_t r_gpr[32]; // General Registers
-	uint32_t r_cr[32]; // Coprocessor Registers
-	uint32_t r_ctl[32]; // Control registers
-	uint32_t r_pc; // rogram Counter
+	uint32_t r_cr[32]; // Coprocessor Registers used by custom instructions
+
+	uint32_t r_pc; // Program Counter
 	uint32_t r_npc; // Next Program Counter
 
 	struct DataRequest m_dreq;
@@ -192,9 +156,9 @@ private:
 	uint32_t r_mem_dest; // Data Cache destination register (read)
 	bool r_mem_unsigned; // unsigned or signed memory request
 
-    uint32_t r_count;
+	addr_t r_ebase;
 
-	   typedef union {
+	typedef union {
 		struct {
 			union {
 				PACKED_BITFIELD(
@@ -220,7 +184,68 @@ private:
 		uint32_t ins;
 	} ins_t;
 
-	uint32_t m_ins_delay; // Instruction latency simulation
+    enum UMode {
+        NIOS2_UM_SUPERVISOR,
+        NIOS2_UM_USER,
+    };
+
+    enum Nios2Mode {
+        NIOS2_SUPERVISOR,
+        NIOS2_USER,
+    };
+
+    typedef REG32_BITFIELD(
+    	uint32_t reserved:8,
+        uint32_t rsie:1,
+        uint32_t nmi:1,
+        uint32_t prs:6,
+        uint32_t crs:6,
+        uint32_t il:6,
+        uint32_t ih:1,
+        uint32_t eh:1,
+        uint32_t u:1,
+        uint32_t pie:1,
+        ) status_t;
+
+    enum Iss2::ExecMode r_bus_mode;
+    enum Nios2Mode r_cpu_mode;
+
+	status_t r_status; // control registers
+	uint32_t r_estatus;
+	uint32_t r_bstatus;
+	uint32_t r_ienable;
+	uint32_t r_ipending;
+	uint32_t r_cpuid;
+	uint32_t r_reserved_6;
+	uint32_t r_exception;
+	uint32_t r_pteaddr;
+	uint32_t r_tlbacc;
+	uint32_t r_tlbmisc;
+	uint32_t r_reserved_11;
+	uint32_t r_badaddr;
+	uint32_t r_config;
+	uint32_t r_mpubase;
+	uint32_t r_mpuacc;
+	uint32_t r_reserved_16;
+	uint32_t r_reserved_17;
+	uint32_t r_reserved_18;
+	uint32_t r_reserved_19;
+	uint32_t r_reserved_20;
+	uint32_t r_reserved_21;
+	uint32_t r_reserved_22;
+	uint32_t r_reserved_23;
+	uint32_t r_reserved_24;
+	uint32_t r_reserved_25;
+	uint32_t r_reserved_26;
+	uint32_t r_reserved_27;
+	uint32_t r_reserved_28;
+	uint32_t r_reserved_29;
+	uint32_t r_reserved_30;
+	uint32_t r_reserved_31; // used to manage r_count
+
+    uint32_t r_count;
+
+    uint32_t m_ins_delay; // Instruction latency simulation
 
 	// member variables used for communication between
 	// member functions (they are not registers)
@@ -325,7 +350,9 @@ private:
                         data_t wdata,
                         enum DataOperationType operation );
 
-	void op_addi();
+    addr_t exceptBaseAddr() const;
+
+    void op_addi();
 	void op_andhi();
 	void op_andi();
 	void op_beq();
@@ -424,6 +451,8 @@ private:
 
 	uint32_t controlRegisterGet( uint32_t reg ) const;
 	void controlRegisterSet( uint32_t reg, uint32_t value );
+
+    void update_mode();
 
 };
 
