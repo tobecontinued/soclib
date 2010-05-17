@@ -145,4 +145,5 @@ config.build_env = Config(
 	getLibs = getLibs,
 	reposFile = reposFile,
 	doConfigure = doConfigure,
+    desc_parsers = ['sd_parser.sd.SdFile'],
 	)

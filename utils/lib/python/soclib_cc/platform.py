@@ -42,7 +42,7 @@ except:
 
 __all__ = ['Platform', 'Uses']
 
-from soclib_desc.component import Uses
+from soclib_desc.module import Uses
 
 class NotFound(Exception):
     def __init__(self, name, mode):

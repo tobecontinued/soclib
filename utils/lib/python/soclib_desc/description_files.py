@@ -18,13 +18,13 @@ class DoubleRegistrationWarning(Warning):
 		return 'Module %s registered twice: in "%s" and "%s"'%(self.args[0], self.args[1], self.args[2])
 
 class DescCache:
-	def __init__(self, cache_file = None, ignore_regexp = None):
+	def __init__(self, cache_file = None, ignore_regexp = None, parsers = []):
 		"""
 		Create a new DescCache
 		"""
 		self.__cache_file = cache_file
 		self.__ignore_regexp = ignore_regexp
-		self.__global_cache = cache.GlobalDescCache(self.__ignore_regexp)
+		self.__global_cache = cache.GlobalDescCache(self.__ignore_regexp, parsers)
 		self.__enabled_paths = []
 		self.__modules = {}
 		self.__fresh = False
@@ -182,7 +182,7 @@ def init():
 	global soclib_desc_registry
 
 	from soclib_cc.config import config
-	soclib_desc_registry = DescCache(config.cache_file, config.sd_ignore_regexp)
+	soclib_desc_registry = DescCache(config.cache_file, config.sd_ignore_regexp, config.desc_parsers)
 	import os
 	import os.path
 	soclib_desc_registry.addPath(

@@ -28,34 +28,10 @@ import parameter
 import module
 import description_files
 import warnings
-from soclib_cc import exceptions
+from error import *
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
-
-class ModuleDeprecationWarning(DeprecationWarning):
-    def __str__(self):
-        return 'Module %s deprecated: "%s"'%(self.args[0], self.args[1])
-
-class ModuleExplicitFailure(exceptions.ExpectedException):
-    pass
-
-class ModuleSpecializationError(exceptions.ExpectedException):
-    def __init__(self, module, context = None, prev_error = None):
-        self.__module = module
-        self.__context = context
-        self.__prev_error = prev_error
-    def __str__(self):
-        return '\n'+self.format()
-    def format(self, pfx = ' '):
-        if isinstance(self.__prev_error, ModuleSpecializationError):
-            c = '\n'+pfx+self.__prev_error.format(pfx+' ')
-        else:
-            c = '\n'+pfx+' '+str(self.__prev_error)
-        at = ""
-        if self.__context:
-            at = (' at '+str(self.__context))
-        return 'Error specializing %s%s, error: %s'%(self.__module, at, c)
 
 class Specialization:
     '''
@@ -315,5 +291,4 @@ class Specialization:
 
 
     def getUse(self):
-        import component
-        return component.Uses(self.__cdef.getModuleName(), **self.__args)
+        return module.Uses(self.__cdef.getModuleName(), **self.__args)

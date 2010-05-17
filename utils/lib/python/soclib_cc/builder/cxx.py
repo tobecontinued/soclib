@@ -25,13 +25,14 @@
 # Maintainers: group:toolmakers
 
 import os, os.path
-import popen2
+import subprocess
 import action
 import sys
 import fileops
 import mfparser
 import bblock
 from soclib_cc.config import config, Joined
+import functools
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -64,14 +65,13 @@ class CCompile(action.Action):
         return args
     def _processDeps(self, filename):
         filename.generator.process()
-        args = self.command_line()+['-MM', '-MT', 'foo.o']
-        args.append(filename)
-        args = self.argSort(args)
-        cmd = Joined(args)
-        stdout, stdin, stderr = popen2.popen3(cmd)
-        stdin.close()
-        blob = stdout.read()
-        err = stderr.read()
+        cmd = self.command_line()+['-MM', '-MT', 'foo.o']
+        cmd.append(str(filename))
+        cmd = self.argSort(cmd)
+        process = subprocess.Popen(cmd,
+                                   stdout = subprocess.PIPE,
+                                   stderr = subprocess.PIPE)
+        blob, err = process.communicate()
         from bblock import bblockize
         try:
             deps = mfparser.MfRule(blob)
@@ -81,7 +81,7 @@ class CCompile(action.Action):
             raise action.ActionFailed("Unable to compute dependencies", cmd)
         return bblockize(deps.prerequisites)
     def processDeps(self):
-        return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
+        return functools.reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
     def process(self):
         fileops.CreateDir(os.path.dirname(bblock.filenames(self.dests)[0])).process()
         if self.comp_mode == 'sccom':

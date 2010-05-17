@@ -33,49 +33,52 @@ __version__ = "$Revision$"
 __all__ = ['Config']
 
 class Config:
-	_filter = re.compile("[a-z][a-z_]+")
-	def _do_expands(self):
-		for name in filter(self._filter.match, dir(self)):
-			at = getattr(self, name)
-			if isinstance(at, (list, tuple)):
-				at = map(self._do_expand, at)
-			elif isinstance(at, str):
-				at = self._do_expand(at)
-			setattr(self, name, at)
-	
-	def _do_expand(self, new):
-		old = ''
-		while old != new:
-			old = new
-			new = new%self
-			new = os.path.expandvars(new)
-		return new
+    _filter = re.compile("[a-z][a-z_]+")
+    def _do_expands(self):
+        for name in filter(self._filter.match, dir(self)):
+            at = getattr(self, name)
+            if isinstance(at, (list, tuple)):
+                at = map(self._do_expand, at)
+            elif isinstance(at, str):
+                at = self._do_expand(at)
+            setattr(self, name, at)
+    
+    def _do_expand(self, new):
+        old = ''
+        while old != new:
+            old = new
+            new = new%self
+            new = os.path.expandvars(new)
+        return new
 
-	def onInit(self):
-		pass
+    def onInit(self):
+        pass
 
-	def __init__(self, base = None, **kwargs):
-		import operator, new, inspect
-		if base is not None:
-			for k, v in base.__dict__.iteritems():
-				if operator.isCallable(v) and inspect.ismethod(v):
-					v = v.im_func
-					v = new.instancemethod(v, self, self.__class__)
-				setattr(self, k, v)
-		for k, v in kwargs.iteritems():
-			if operator.isCallable(v):
-				v = new.instancemethod(v, self, self.__class__)
-			setattr(self, k, v)
-		for name in filter(self._filter.match, dir(self)):
-			at = getattr(self, name)
-			#if isinstance(at, (list, tuple)):
-			#	at = ' '.join(map(lambda x:'"%s"'%x, at))
-			setattr(self, name, at)
-		self.onInit()
+    def __init__(self, base = None, **kwargs):
+        import operator, types, inspect
+        if base is not None:
+            for k, v in base.__dict__.iteritems():
+                if operator.isCallable(v) and inspect.ismethod(v):
+                    v = v.im_func
+                    v = types.MethodType(v, self, self.__class__)
+                setattr(self, k, v)
+        for k, v in kwargs.iteritems():
+            if operator.isCallable(v):
+                v = types.MethodType(v, self, self.__class__)
+            setattr(self, k, v)
+        for name in filter(self._filter.match, dir(self)):
+            at = getattr(self, name)
+            #if isinstance(at, (list, tuple)):
+            #   at = ' '.join(map(lambda x:'"%s"'%x, at))
+            setattr(self, name, at)
+        self.onInit()
 
-	def __getitem__(self, name):
-		return getattr(self, name)
+    def __getitem__(self, name):
+        return getattr(self, name)
 
-	def __str__(self):
-		import pprint
-		return pprint.pformat(self.__dict__)
+    def __str__(self):
+        import pprint
+        return pprint.pformat(self.__dict__)
+
+    def set(self, k, v):
+        setattr(self, k, v)

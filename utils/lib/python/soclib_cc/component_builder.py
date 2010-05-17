@@ -31,6 +31,7 @@ from soclib_cc.builder.cxx import *
 from soclib_cc.builder.hdl import *
 from soclib_cc.builder.bblock import *
 from soclib_cc.builder.textfile import *
+import functools
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -72,7 +73,6 @@ class ComponentBuilder:
         self.where = where
         self.deps = []
         self.local = self.specialization.isLocal()
-        from soclib_desc import component, module
         self.deepdeps = set()#(self,))
         try:
             self.deps = self.specialization.getSubTree()
@@ -199,7 +199,7 @@ class ComponentBuilder:
             builders = map(self.getCxxBuilder, impl)
         objects = bblockize(self.specialization.getObjectFiles())
         map(lambda x:x.setIsBlob(True), objects)
-        return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
+        return functools.reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
 
 
     # Builders for verilog, vhdl, systemc and mpy_vhdl.
@@ -220,7 +220,7 @@ class ComponentBuilder:
         deps = self.specialization.getSubTree()
         deps = filter(lambda x:x.getImplementationType() in ['vhdl', 'verilog'],
                       deps)
-        deps = reduce(lambda x,y:x+y,
+        deps = functools.reduce(lambda x,y:x+y,
                       map(Specialization.getImplementationFiles, deps),
                       [])
         deps = bblockize(deps)
@@ -228,7 +228,7 @@ class ComponentBuilder:
         for i in list(self.headers) + list(self.tmpl_headers):
             incs.add(os.path.dirname(i))
         builders = map(lambda x:func(x, incs, deps), files)
-        return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
+        return functools.reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
 
     def mpy_vhdl_results(self):
         import pprint
