@@ -10,7 +10,7 @@ class MetadataFile:
         for mn in parsers:
             tokens = mn.split('.')
             mod = '.'.join(tokens[:-1])
-            tmp = __import__(mod, fromlist = tokens[-1])
+            tmp = __import__(mod, globals(), {}, [tokens[-1]])
             p = getattr(tmp, tokens[-1])
             cls._known_parsers.add(p)
     init_parsers = classmethod(init_parsers)
