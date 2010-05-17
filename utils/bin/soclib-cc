@@ -48,13 +48,17 @@ export PYTHONPATH
 # And try out different pythons from the most recent ones
 # I basically dont trust default "python" command, it is often
 # the antic python-1.5.x on redhat enterprise :'(
+
+# Note to self: when dropping support for python2.4, move
+# soclib_cc_main.py to soclib_cc/main.py, -m soclib_cc.main is
+# accepted since 2.5.
 for py in python2.6 python2.5 python2.4 python ; do
 	if ($py -c "import sys;sys.exit(0)" 2>&1) >/dev/null ; then
         pyargs=
         if [ "$py" = "python2.6" ] ; then
             pyargs='-3'
         fi
-		exec $py $pyargs "${soclib_base_path}"/utils/lib/python/soclib-cc-main.py $*
+		exec $py $pyargs -m soclib_cc_main $*
 	fi
 done
 
