@@ -32,7 +32,10 @@ import fileops
 import mfparser
 import bblock
 from soclib_cc.config import config, Joined
-import functools
+try:
+    from functools import reduce
+except:
+    pass
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -81,7 +84,7 @@ class CCompile(action.Action):
             raise action.ActionFailed("Unable to compute dependencies", cmd)
         return bblockize(deps.prerequisites)
     def processDeps(self):
-        return functools.reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
+        return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
     def process(self):
         fileops.CreateDir(os.path.dirname(bblock.filenames(self.dests)[0])).process()
         if self.comp_mode == 'sccom':

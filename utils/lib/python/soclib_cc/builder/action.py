@@ -30,8 +30,11 @@ import os, os.path, time
 import sys
 import select
 import tempfile
-import functools
 import operator
+try:
+    from functools import reduce
+except:
+    pass
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -61,7 +64,7 @@ get_newest = lambda files, ignore_absent: get_times(files, 0, max, ignore_absent
 get_oldest = lambda files, ignore_absent: get_times(files, time.time(), min, ignore_absent)
 
 def check_exist(files):
-    return functools.reduce(operator.and_, map(lambda x:x.exists(), files), True)
+    return reduce(operator.and_, map(lambda x:x.exists(), files), True)
 
 class Action:
     priority = 0
@@ -78,7 +81,7 @@ class Action:
         self.done = False
         self.__done = False
         self.__hash = hash(
-            functools.reduce(
+            reduce(
             lambda x,y:(x + (y<<1)),
             map(hash, self.dests+self.sources),
             0))

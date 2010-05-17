@@ -31,7 +31,10 @@ from soclib_cc.builder.cxx import *
 from soclib_cc.builder.hdl import *
 from soclib_cc.builder.bblock import *
 from soclib_cc.builder.textfile import *
-import functools
+try:
+    from functools import reduce
+except:
+    pass
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -199,7 +202,7 @@ class ComponentBuilder:
             builders = map(self.getCxxBuilder, impl)
         objects = bblockize(self.specialization.getObjectFiles())
         map(lambda x:x.setIsBlob(True), objects)
-        return functools.reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
+        return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
 
 
     # Builders for verilog, vhdl, systemc and mpy_vhdl.
@@ -220,7 +223,7 @@ class ComponentBuilder:
         deps = self.specialization.getSubTree()
         deps = filter(lambda x:x.getImplementationType() in ['vhdl', 'verilog'],
                       deps)
-        deps = functools.reduce(lambda x,y:x+y,
+        deps = reduce(lambda x,y:x+y,
                       map(Specialization.getImplementationFiles, deps),
                       [])
         deps = bblockize(deps)
@@ -228,7 +231,7 @@ class ComponentBuilder:
         for i in list(self.headers) + list(self.tmpl_headers):
             incs.add(os.path.dirname(i))
         builders = map(lambda x:func(x, incs, deps), files)
-        return functools.reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
+        return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
 
     def mpy_vhdl_results(self):
         import pprint
