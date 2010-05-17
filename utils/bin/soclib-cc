@@ -48,9 +48,13 @@ export PYTHONPATH
 # And try out different pythons from the most recent ones
 # I basically dont trust default "python" command, it is often
 # the antic python-1.5.x on redhat enterprise :'(
-for py in python2.5 python2.4 python2.3 python ; do
+for py in python2.6 python2.5 python2.4 python ; do
 	if ($py -c "import sys;sys.exit(0)" 2>&1) >/dev/null ; then
-		exec $py "${soclib_base_path}"/utils/lib/python/soclib-cc-main.py $*
+        pyargs=
+        if [ "$py" = "python2.6" ] ; then
+            pyargs='-3'
+        fi
+		exec $py $pyargs "${soclib_base_path}"/utils/lib/python/soclib-cc-main.py $*
 	fi
 done
 
