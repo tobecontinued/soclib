@@ -189,7 +189,7 @@ def main():
         return 0
     
     if opts.one_module:
-        return compile_one_module(opts.output, opts.one_module)
+        return compile_one_module(opts.output, opts.one_module, one_args)
         
     if opts.list_files:
         m = soclib_desc.description_files.get_module(opts.list_files)
@@ -227,7 +227,7 @@ def main():
     parser.print_help()
     return 1
 
-def compile_one_module(output, one_module):
+def compile_one_module(output, one_module, one_args):
     from soclib_cc.builder.todo import ToDo
     from soclib_cc.builder.cxx import CxxMkobj
     from soclib_desc.specialization import Specialization
