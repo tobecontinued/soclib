@@ -121,7 +121,7 @@ class CLink(CCompile):
         return []
     def process(self):
         args = config.getTool(self.tool)
-        if config.systemc.vendor in ['sccom', 'modelsim']:
+        if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
             args += ['-link']
             args += ['-lpthread']
             args += ['-work', config.workpath]
@@ -156,7 +156,7 @@ class CMkobj(CLink):
     priority = 200
     tool = 'LD'
     def process(self):
-        if config.systemc.vendor in ['sccom', 'modelsim']:
+        if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
             self.tool = "CXX_LINKER"
             return CLink.process(self)
         else:

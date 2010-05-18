@@ -39,7 +39,7 @@ class HdlCompile(action.Action):
         if dest:
             dests = [dest]
         else:
-            if config.systemc.vendor in ['sccom', 'modelsim']:
+            if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
                 assert not dest, ValueError("Must not specify output path with Modelsim")
 #                dest = os.path.abspath(os.path.join(
 #                    config.workpath, typename, 'rtl.dat'
@@ -85,7 +85,7 @@ class HdlCompile(action.Action):
     def process(self):
         fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
         args = config.getTool(self.tool)
-        if config.systemc.vendor in ['sccom', 'modelsim']:
+        if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
             args += ['-work', config.workpath]
             args += config.toolchain.vflags
         args += self.add_args()

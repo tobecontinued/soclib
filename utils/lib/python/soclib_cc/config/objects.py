@@ -225,6 +225,12 @@ class BuildEnv(Config):
 
     # User API
 
+    def get_library(self, name):
+        for l in self.libraries:
+            if l.name == name:
+                return l
+        raise ValueError("No library %s found" % name)
+
     def getTool(self, name, mode = ''):
         '''
         Use API helper, see __get_tool

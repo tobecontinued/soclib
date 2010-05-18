@@ -133,13 +133,13 @@ class ComponentBuilder:
             out = config.reposFile(bn+"."+config.toolchain.obj_ext, self.force_mode)
 
         add = {}
-        if config.systemc.vendor in ['sccom', 'modelsim'] and \
+        if config.get_library('systemc').vendor in ['sccom', 'modelsim'] and \
                (self.specialization.getPorts()
                 or self.local
                 or ("sccom:force" in self.specialization.getExtensions())):
             add['comp_mode'] = 'sccom'
             out = os.path.abspath(os.path.join(
-                config.systemc.sc_workpath,
+                config.get_library('systemc').sc_workpath,
                 os.path.splitext(os.path.basename(str(src)))[0]
                 +'.'+config.toolchain.obj_ext
                 ))
@@ -153,7 +153,7 @@ class ComponentBuilder:
             **add)
 
     def getVhdlBuilder(self, source, incs, deps):
-        vendor = config.systemc.vendor
+        vendor = config.get_library('systemc').vendor
         if vendor in ['sccom', 'modelsim']:
             return VhdlCompile(dest = [], srcs = [source],
                                usage_deps = deps,
@@ -163,7 +163,7 @@ class ComponentBuilder:
             raise NotImplementedError("Unsuported vendor %s"%vendor)
 
     def getVerilogBuilder(self, source, incs, deps):
-        vendor = config.systemc.vendor
+        vendor = config.get_library('systemc').vendor
         if vendor in ['sccom', 'modelsim']:
             return VerilogCompile(dest = [], srcs = [source],
                                   usage_deps = deps,
