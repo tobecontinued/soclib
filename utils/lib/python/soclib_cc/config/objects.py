@@ -217,8 +217,6 @@ class BuildEnv(Config):
             return self.toolchain.get_tool(name, mode)
         except KeyError:
             pass
-        finally:
-            pass
         if self.parent:
             return self.parent.__get_tool(name, mode)
         return [self.toolchain.prefix + name]
