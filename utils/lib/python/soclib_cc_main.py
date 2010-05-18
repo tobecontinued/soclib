@@ -19,31 +19,30 @@
 # 02110-1301, USA.
 # 
 # SOCLIB_GPL_HEADER_END
-# 
-# Copyright (c) UPMC, Lip6, SoC
-#         Nicolas Pouillon <nipo@ssji.net>, 2007
-# 
-# Maintainers: group:toolmakers
+
+__author__ = 'Nicolas Pouillon, <nipo@ssji.net>'
+__copyright__ = 'UPMC, Lip6, SoC, 2007-2010'
+__license__ = 'GPL-v2'
+__id__ = "$Id$"
+__version__ = "$Revision$"
 
 import os, os.path
 import sys
+from optparse import OptionParser
+
 import soclib_desc
 import soclib_desc.description_files
 import soclib_cc
 
-__id__ = "$Id$"
-__version__ = "$Revision$"
-
-from optparse import OptionParser
-
-def main():
+def parse_args():
     todef = []
+    todb = []
+    one_args = {}
+
     def define_callback(option, opt, value, parser):
         todef.append(value)
-    todb = []
     def buggy_callback(option, opt, value, parser):
         todb.append(value)
-    one_args = {}
     def one_arg_callback(option, opt, value, parser):
         k, v = value.split('=', 1)
         try:
@@ -51,6 +50,7 @@ def main():
         except:
             pass
         one_args[k] = v
+
     parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
     parser.add_option('-v', '--verbose', dest = 'verbose',
                       action='store_true',
@@ -107,6 +107,9 @@ def main():
     parser.add_option('-x', '--clean', dest = 'clean',
                       action='store_true',
                       help="Clean all outputs, only compatible with -p")
+    parser.add_option('--dump-config', dest = 'dump_config',
+                      action='store_true',
+                      help="Dump configuration")
     parser.add_option('-X', '--clean-cache', dest = 'clean_cache',
                       action='store_true',
                       help="Clean .desc file cache")
@@ -152,6 +155,11 @@ def main():
                         embedded_cflags = False)
     opts, args = parser.parse_args()
 
+    return opts, args, todef, todb, one_args
+
+def main():
+    opts, args, todef, todb, one_args = parse_args()
+
     from soclib_cc import bugreport
     bugreport.bootstrap(opts.bug_report, opts.auto_bug_report)
 
@@ -162,6 +170,10 @@ def main():
         return 0
 
     config = setup_config(opts)
+
+    if opts.dump_config:
+        print str(config)
+        return 0
 
     for value in todef:
         ms = value.split(":")
@@ -312,9 +324,9 @@ def compile_platform(platform,
         todo.process()
 
 def setup_config(opts):
-    from soclib_cc.config import config, change_config
+    from soclib_cc.config import config
     if opts.type:
-        change_config(opts.type)
+        config.set_default(opts.type)
 
     for path in opts.includes:
         soclib_desc.description_files.add_path(path, False)

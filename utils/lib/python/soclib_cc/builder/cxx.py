@@ -31,7 +31,7 @@ import sys
 import fileops
 import mfparser
 import bblock
-from soclib_cc.config import config, Joined
+from soclib_cc.config import config
 try:
     from functools import reduce
 except:
