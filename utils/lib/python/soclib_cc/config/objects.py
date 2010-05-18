@@ -125,8 +125,8 @@ class Config:
             value = self.__remap(value)
         return value
 
-#    def set(self, key, val):
-#        self.__args[key] = val
+    def set(self, key, val):
+        self.__args[key] = val
 
     @property
     def parent(self):
