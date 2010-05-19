@@ -260,7 +260,7 @@ def compile_one_module(output, one_module, one_args):
                 todo.add(o)
                 out.append(o)
         if output:
-            todo.add(CxxMkobj(output, out).results()[0])
+            todo.add(CxxMkobj(output, out).dests[0])
     todo.process()
     return 0
 

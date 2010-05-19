@@ -83,7 +83,11 @@ class ConfigSpool(object):
         config_file = os.path.join(
             os.path.dirname(__file__),
             'built-in.conf')
+        objects.Config.unlock()
+        self.__locked = False
         self.__include(config_file, False)
+        objects.Config.lock()
+        self.__locked = True
 
     def __include(self, filename, ignore_if_absent = False):
         '''
@@ -161,13 +165,14 @@ class ConfigSpool(object):
             return r
         except KeyError:
             pass
-        if key in self.__configs:
-#            print "Getting %s from configs" % key
-            return self.__configs[key]
         if key == 'type':
             return self.__default_config
-        if key == 'default':
-            return self.__configs[self.__default_config]
+        if not self.__locked:
+            if key == 'default':
+                return self.__configs[self.__default_config]
+            if key in self.__configs:
+    #            print "Getting %s from configs" % key
+                return self.__configs[key]
 
     def __setattr__(self, key, value):
         """

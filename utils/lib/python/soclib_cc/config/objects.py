@@ -65,6 +65,16 @@ def _pformat(data, indent, dict_delim = ['dict(', ')']):
     return r
 
 class Config:
+    __locked = True
+
+    @classmethod
+    def lock(cls):
+        cls.__locked = True
+
+    @classmethod
+    def unlock(cls):
+        cls.__locked = False
+
     '''
     Base configuration object, handles all the attribute
     dereferencing.
@@ -101,6 +111,8 @@ class Config:
         '''
         if not isinstance(value, basestring):
             return value
+        if not self.__locked:
+            return str(value)
         old = ''
         while old != value:
             old, value = value, os.path.expandvars(value % self)
@@ -140,12 +152,12 @@ class Config:
         Pretty printer. Basically a str() with an optional indent
         argument.
         '''
-        data = {}
+        ks = set()
         p = self
         while p:
-            for k, v in p.__args.items():
-                data.setdefault(k, v)
+            ks |= set(p.__args.keys())
             p = p.parent
+        data = dict((k, getattr(self, k)) for k in ks)
         return _pformat(data, indent,
                         dict_delim = [self.__class__.__name__+'(', ')'])
 
