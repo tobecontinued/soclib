@@ -43,7 +43,7 @@ class DepPickler(pickle.Pickler):
 		pickle.Pickler.__init__(self, fd, pickle.HIGHEST_PROTOCOL)
 	def persistent_id(self, obj):
 		if isinstance(obj, bblock.BBlock):
-			return 'BBlock:'+obj.filename
+			return 'BBlock:'+str(obj)
 
 def dump(name, deps):
 	p = DepPickler(config.reposFile(name))
@@ -63,7 +63,7 @@ class DepUnpickler(pickle.Unpickler):
 		mode,ide = ident.split(':',1)
 		if mode == 'BBlock':
 			r = bblock.bblockize1(ide)
-			if r.exists() and r.last_mod > self.last_mod:
+			if r.exists() and r.mtime() > self.last_mod:
 				raise MustRehash()
 			return r
 

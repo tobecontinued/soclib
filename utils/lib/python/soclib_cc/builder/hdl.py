@@ -22,7 +22,9 @@
 # Copyright (c) UPMC, Lip6, SoC
 #         Nicolas Pouillon <nipo@ssji.net>, 2010
 
-import os, os.path
+import os
+import os.path
+import re
 import action
 import sys
 import fileops
@@ -35,22 +37,22 @@ __all__ = ['VhdlCompile', 'VerilogCompile']
 
 class HdlCompile(action.Action):
     priority = 150
+
     def __init__(self, dest, srcs, incs, usage_deps, typename):
         if dest:
             dests = [dest]
         else:
-            if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
+            v = config.get_library('systemc').vendor
+            if v in ['sccom', 'modelsim']:
+                self.stdout_reformat = self.__vcom_stdout_reformat
                 assert not dest, ValueError("Must not specify output path with Modelsim")
-#                dest = os.path.abspath(os.path.join(
-#                    config.workpath, typename, 'rtl.dat'
-#                    ))
                 dests = []
             else:
-                raise NotImplementedError("Not supported")
+                raise NotImplementedError("Vendor not supported: %s"%v)
         self.__usage_deps = usage_deps
-        self.__prepared = False
         action.Action.__init__(self, dests, srcs, typename = typename,
                                incs = incs)
+#        print self.dests, self.sources, usage_deps
 
     def __users(self):
         us = set()
@@ -59,73 +61,30 @@ class HdlCompile(action.Action):
                 us.add(u)
         return us
 
+    __err_re = re.compile(r'^\*\* Warning: (?P<filename>[^\(]+)\((?P<lineno>\d+)\): \((?P<tool>\w+)-(?P<error>\d+)\) (?P<warning_type>[\w\s\d]*)Warning: (?P<message>.*)$', re.M)
+
+    def __vcom_stdout_reformat(self, err):
+        repl = '\g<filename>:\g<lineno>: warning: \g<warning_type>(\g<tool>-\g<error>): \g<message>'
+        return self.__err_re.sub(repl, err)
+
     def prepare(self):
-        if self.__prepared:
-            return
-        
         r = set()
         for u in self.__users():
             r |= set(u.dests)
-        r -= set(self.dests)
-        self.__deps = list(r)
+        self.add_depends(*(r - set(self.dests)))
 
-        action.Action.prepare(self)
-
-        self.__prepared = True
-
-    def getBblocks(self):
-        return self.__deps + action.Action.getBblocks(self)
-
-    def processDeps(self):
-        return self.__deps
-
-    def add_args(self):
-        return []
-
-    def process(self):
-        fileops.CreateDir(os.path.dirname(str(self.dests[0]))).process()
         args = config.getTool(self.tool)
         if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
             args += ['-work', config.workpath]
             args += config.toolchain.vflags
-        args += self.add_args()
+        args += self.hdl_add_args()
         args += map(str, self.sources)
-        r = self.launch(args)
-        if r:
-            print
-            print r
-        action.Action.process(self)
+        self.run_command(args)
 
-    def mustBeProcessed(self):
-        try:
-            return not self.done
-        except:
-            return True
+        action.Action.prepare(self)
 
-    def results(self):
-        return self.dests
-
-    def __cmp__(self, other):
-        if not isinstance(other, HdlCompile):
-            return cmp(self.priority, other.priority)
-        import bblock
-        self_users = self.__users()
-        other_users = other.__users()
-        if self in other_users:
-#            print '***', bblock.filenames(other.sources), '->', bblock.filenames(self.sources)
-            return -1
-        if other in self_users:
-#            print '***', bblock.filenames(self.sources), '->', bblock.filenames(other.sources)
-            return 1
-        return 0
-
-    def __str__(self):
-        import bblock
-        r = action.Action.__str__(self)
-        if self.__prepared:
-            return r[:-1] + '\n Deps: %s>'%(map(str, self.processDeps()))
-        else:
-            return r[:-1] + '\n Deps: [unprepared]>'
+    def hdl_add_args(self):
+        return []
 
 class VhdlCompile(HdlCompile):
     tool = 'VHDL'
@@ -133,6 +92,6 @@ class VhdlCompile(HdlCompile):
 class VerilogCompile(HdlCompile):
     tool = 'VERILOG'
 
-    def add_args(self):
+    def hdl_add_args(self):
         return map('+incdir+'.__add__, self.options['incs'])
         

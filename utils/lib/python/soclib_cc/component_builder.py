@@ -226,11 +226,16 @@ class ComponentBuilder:
         deps = reduce(lambda x,y:x+y,
                       map(Specialization.getImplementationFiles, deps),
                       [])
+        deps = list(set(deps) - set(files))
         deps = bblockize(deps)
         incs = set()
         for i in list(self.headers) + list(self.tmpl_headers):
             incs.add(os.path.dirname(i))
-        builders = map(lambda x:func(x, incs, deps), files)
+        builders = []
+        for f in files:
+            b = func(f, incs, deps)
+            builders.append(b)
+            deps = b.dests
         return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
 
     def mpy_vhdl_results(self):

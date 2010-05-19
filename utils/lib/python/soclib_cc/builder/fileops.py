@@ -25,23 +25,22 @@
 # Maintainers: group:toolmakers
 
 import os
-import bblock
-from action import Action
+import os.path
+import action
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-class CreateDir(Action):
-	def __init__(self, directory):
-		Action.__init__(self, [directory], [])
-	def process(self):
-		if self.dests[0].exists():
-			return
-		self.runningCommand('gen', self.dests, 'mkdir')
-		os.makedirs(str(self.dests[0]))
-		self.dests[0].touch()
-		Action.process(self)
+class CreateDir(action.Action):
+    info_code = 'D'
 
-	def commands_to_run(self):
-		return 'mkdir "%s"'%(str(self.dests[0]).replace('"', '\\"')),
+    def __init__(self, directory):
+        action.Action.__init__(self, [directory], [])
 
+    def is_valid(self):
+        return os.path.isdir(str(self.dests[0]))
+
+    def prepare(self):
+        for b in self.dests:
+            self.run_command(['mkdir', '-p', str(b)])
+        action.Action.prepare(self)

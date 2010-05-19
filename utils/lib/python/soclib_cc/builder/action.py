@@ -18,15 +18,10 @@
 # 02110-1301, USA.
 # 
 # SOCLIB_GPL_HEADER_END
-# 
-# Copyright (c) UPMC, Lip6, SoC
-#         Nicolas Pouillon <nipo@ssji.net>, 2007
-# 
-# Maintainers: group:toolmakers
 
-from soclib_cc.config import config
-import depends
-import os, os.path, time
+import os
+import os.path
+import time
 import sys
 import select
 import tempfile
@@ -36,8 +31,16 @@ try:
 except:
     pass
 
+from soclib_cc.config import config
+import command
+
+__author__ = 'Nicolas Pouillon, <nipo@ssji.net>'
+__copyright__ = 'UPMC, Lip6, SoC, 2007-2010'
+__license__ = 'GPL-v2'
 __id__ = "$Id$"
 __version__ = "$Revision$"
+
+__all__ = ['Action', 'ActionFailed', 'NotFound', 'Noop']
 
 class NotFound(Exception):
     pass
@@ -60,6 +63,12 @@ def get_times(files, default, cmp_func, ignore_absent):
                 raise NotFound, f
     return most_time
 
+def merge_hash(objs):
+    return hash(reduce(
+        lambda x,y:(x + (y<<1)),
+        map(hash, objs),
+        0))
+
 get_newest = lambda files, ignore_absent: get_times(files, 0, max, ignore_absent)
 get_oldest = lambda files, ignore_absent: get_times(files, time.time(), min, ignore_absent)
 
@@ -68,8 +77,14 @@ def check_exist(files):
 
 class Action:
     priority = 0
-    comp_mode = None
-    __jobs = {}
+    info_code = ' '
+    
+    WORKING = 'Work'
+    TODO = 'Todo'
+    DONE = 'Done'
+    FAILED = 'Failed'
+    BLOCKED = 'Blocked'
+
     def __init__(self, dests, sources, **options):
         from bblock import bblockize, BBlock, AnonymousBBlock
         if not dests:
@@ -78,203 +93,200 @@ class Action:
             self.dests = bblockize(dests, self)
         self.sources = bblockize(sources)
         self.options = options
-        self.done = False
-        self.__done = False
-        self.__hash = hash(
-            reduce(
-            lambda x,y:(x + (y<<1)),
-            map(hash, self.dests+self.sources),
-            0))
-        self.has_deps = False
+        
+        self.__hash = merge_hash(self.dests+self.sources)
+
+        self.__state = self.TODO
+        self.__depends = []
+        self.__commands = []
+        
         map(lambda x:x.addUser(self), self.sources)
 
     def prepare(self):
-        pass
+        import fileops
+        for outdir in self.dests:
+            d = os.path.dirname(str(self.dests[0]))
+            if d:
+                self.add_depends(*fileops.CreateDir(d).dests)
 
-    def getBblocks(self):
-        return self.dests + self.sources
+        self.__state = [self.TODO, self.DONE][self.is_valid()]
 
-    def launch(self, cmd, cwd = None):
-        import subprocess
-        #print "---- run", cmd
+        self.prepare = lambda :None
 
-        if isinstance(cmd, (str, unicode)):
-            vcmd = cmd
-            shell = True
-        else:
-#            print cmd
-            vcmd = ' '.join(cmd)
-            shell = False
-
-        self.__command = vcmd
-        if config.verbose:
-            self.runningCommand('lauch', self.dests, vcmd)
-
-        self.__out = tempfile.TemporaryFile("w+b", bufsize=128)
-        self.__err = tempfile.TemporaryFile("w+b", bufsize=128)
-
-        self.__handle = subprocess.Popen(
-            cmd,
-            shell = shell,
-            cwd = cwd,
-            bufsize = 128*1024,
-            close_fds = True,
-            stdin = None,
-            stdout = self.__out,
-            stderr = self.__err,
-            )
-        self.__class__.__jobs[self.__handle.pid] = self
-
-    @classmethod
-    def pending_action_count(cls):
-        return len(cls.__jobs)
-
-    @classmethod
-    def wait(cls):
+    def is_valid(self):
         try:
-            (pid, st) = os.wait()
-            killed = st & 0x80
-            sig = st & 0x7f
-            ret = st >> 8
-            cls.__jobs[pid].__handle.returncode = killed and -sig or ret
-        except Exception, e:
-            pass
-        for job in cls.__jobs.values()[:]:
-            p = job.__handle.poll()
-#            print "---- poll", job, p
-            if job.__handle.returncode is not None:
-                job.__set_done()
-
-    def __set_done(self):
-        try:
-            self.__handle.communicate()
-        except:
-            pass
-        self.__out.seek(0)
-        out = self.__out.read()
-        self.__err.seek(0)
-        err = self.__err.read()
-        del self.__out
-        del self.__err
-
-        #print '--'
-        del self.__class__.__jobs[self.__handle.pid]
-        if out:
-            sys.stdout.write('\n')
-            sys.stdout.write(out)
-        if err:
-            sys.stderr.write('\n')
-            sys.stderr.write(err)
-        if self.__handle.returncode:
-            if self.__handle.returncode == -2: # sigint
-                raise KeyboardInterrupt()
-#            print self.__handle.returncode
-            raise ActionFailed(self.__handle.returncode, self.__command)
-        #print '--'
-        del self.__handle
-        del self.__command
-        for d in self.dests:
-            d.rehash(True)
-        self.__done = True
-        #print "---- done"
-
-    def isBackground(self):
-        try:
-            return self.__handle.poll() is None
-        except:
+            newest_dep = 0
+            oldest_dest = time.time()
+            for d in self.__depends + self.sources:
+                if d.is_dir():
+                    continue
+                if not d.exists():
+                    return False
+                newest_dep = max((newest_dep, d.mtime()))
+            for d in self.dests:
+                if not d.exists():
+                    return False
+                oldest_dest = min((oldest_dest, d.mtime()))
+            
+            return oldest_dest >= newest_dep
+        except NotFound:
             return False
 
-    def todoRehash(self):
-        self.must_be_processed = self.mustBeProcessed()
+    # Called by children to add things
 
-    def todoInfo(self):
-        if self.__done:
-            return '='
-        if self.isBackground():
-            return 'W'
-        if self.must_be_processed:
-            return ' '
-        return '-'
+    def add_depends(self, *deps):
+        map(lambda x:x.addUser(self), deps)
 
-    def processDeps(self):
-        return []
+        self.__depends += list(deps)
+
+    def run_command(self, cmd, cwd = None):
+        if isinstance(cmd, (str, unicode)):
+            raise ValueError("cmd must be a list of string")
+
+        cmd = command.Command(cmd,
+                              cwd = cwd,
+                              on_done = self.__set_done)
+        self.__commands.append(cmd)
+
+    def create_file(self, f_bblock, contents):
+        cmd = command.CreateFile(str(f_bblock), contents,
+                                 on_done = self.__set_done)
+        self.__commands.append(cmd)
+
+    # Called by children to process synchronously
+
     def process(self):
-        self.todoRehash()
-    def getDepends(self):
-        if not self.has_deps:
-            depname = self.__class__.__name__+'_%08u.deps'%hash(self.dests[0].filename)
-            try:
-                self.__depends = depends.load(depname)
-            except:
-                self.__depends = self._depList()
-                depends.dump(depname, self.__depends)
-            self.has_deps = True
-        return self.__depends
-    def mustBeProcessed(self):
-        deps = self.getDepends()
-        #print "mustBeProcessed", self,
-        if not check_exist(deps):
-            #print 'ne'
-            return True
-        newest_src = get_newest(deps, ignore_absent = False)
-        oldest_dest = get_oldest(self.dests, ignore_absent = True)
-        #print 'new', newest_src, 'old', oldest_dest, 'ex', check_exist(self.dests)
-        r = (newest_src > oldest_dest) or not check_exist(self.dests)
-        if r:
-            map(lambda x:x.delete(), self.dests)
-        return r
-    def _depList(self):
-        return self.sources+self.processDeps()
-    def canBeProcessed(self):
-        return check_exist(self.sources)
-    def dumpAbsentPrerequisites(self):
-        for s in self.sources:
-            if not s.exists():
-                print s
-    def runningCommand(self, what, outs, cmd):
-        if not config.quiet:
-            print self.__class__.__name__, what, ', '.join(map(str,outs))
-        if config.verbose:
-            print cmd
-    def clean(self):
+        self.prepare()
+
+        if config.debug:
+            print 'Synchronously processing', self,
+        if self.__state == self.DONE:
+            if config.debug:
+                print 'already done'
+            return
+
+        for d in list(self.__depends) + list(self.sources):
+            if d.generator.__state != self.DONE:
+                d.generator.process()
+
+        if config.debug:
+            print 'launching...', self.__commands
+        self.todo_launch(True)
+
+    # Private subprocess handling
+
+    def stdout_reformat(self, msg):
+        '''
+        Reformat stdout, to make error messages of specific tools
+        compatible with what is parsed by usual compilation tools.
+        '''
+        return msg
+
+    def stderr_reformat(self, msg):
+        '''
+        Reformat stderr, to make error messages of specific tools
+        compatible with what is parsed by usual compilation tools.
+        '''
+        return msg
+
+    def __set_done(self, cmd, returncode, out, err):
+
+        if out:
+            out = self.stdout_reformat(out)
+            sys.stdout.write('\n')
+            sys.stdout.write(out)
+
+        if err:
+            err = self.stderr_reformat(err)
+            sys.stderr.write('\n')
+            sys.stderr.write(err)
+
+        if returncode:
+            self.__state = self.FAILED
+            if returncode == -2: # sigint
+                raise KeyboardInterrupt()
+            raise ActionFailed(returncode, cmd.command)
+
+        for d in self.dests:
+            d.touch()
+
+        self.__next()
+
+    def __next(self):
+        if len(self.__commands) == self.__cpt:
+            self.__state = self.DONE
+            return
+        cmd = self.__commands[self.__cpt]
+        self.__cpt += 1
+
+        cmd.run(self.__sync)
+
+    # Todo API
+
+    def todo_launch(self, synchronous = False):
+        self.__cpt = 0
+        self.__state = self.WORKING
+        self.__sync = synchronous
+        self.__next()
+
+    def todo_state(self):
+        return self.__state
+
+    def todo_can_be_processed(self):
+        if not check_exist(self.sources):
+            self.__state = self.BLOCKED
+            return False
+        for d in list(self.__depends) + list(self.sources):
+            if d.generator.__state != self.DONE:
+                self.__state = self.BLOCKED
+                return False
+        self.__state = self.TODO
+        return True
+
+    def why_blocked(self):
+        print self, 'blocked because'
+        if not check_exist(self.sources):
+            print "not all sources"
+        for d in list(self.__depends) + list(self.sources):
+            if d.generator.__state != self.DONE:
+                print d.generator, "not ready:", d.generator.__state
+
+    def todo_get_depends(self):
+        return list(self.__depends) + list(self.sources)
+
+    def todo_clean(self):
         for i in self.dests:
-            i.clean()
+            i.delete()
+
+    def source_changed(self):
+        self.todo_can_be_processed()
+
+    # Helpers
+
     def __hash__(self):
         return self.__hash
+
     def __cmp__(self, other):
         if other.__class__.__cmp__ != self.__class__.__cmp__:
             r = cmp(other, self)
             return -r
         return cmp(self.priority, other.priority)
 
-    def genMakefileCleanCommands(self):
-        return '\t$(CMDPFX)-rm -f %s\n'%(' '.join(map(lambda x:'"%s"'%x, self.dests)))
-
-    def genMakefileTarget(self):
-        def ex(s):
-            return str(s).replace(' ', '\\ ').replace(':', '$(ECOLON)')
-        def ex2(s):
-            return str(s).replace(' ', '\\ ').replace(':', '$$(COLON)')
-        r = (' '.join(map(ex, self.dests)))+\
-               ' : '+\
-               (' '.join(map(ex2, self.sources)))+\
-               '\n'
-        r += '\t@echo "%s $@"\n'%self.__class__.__name__
-        for i in self.commands_to_run():
-            r += '\t$(CMDPFX)%s\n'%i
-        return r+'\n'
-
-    def commands_to_run(self):
-        return ('# Undefined command in '+self.__class__.__name__),
-
     def __str__(self):
-        l = lambda a:' '.join(map(lambda x:os.path.basename(x.filename), a))
-        return "<%s:\n sources: %s\n dests: %s>"%(self.__class__.__name__,
-                                                  l(self.sources),
-                                                  l(self.dests))
+        import bblock
+        l = lambda x:map(repr, x)
+        return "<%s: %s -> %s + %s>"%(
+            self.__class__.__name__,
+            l(self.sources),
+            l(self.dests),
+            l(self.__depends),
+            )
+            
 
 class Noop(Action):
+
     def __init__(self):
         Action.__init__(self, [], [])
-    def getDepends(self):
-        return []
+
+    def is_valid(self):
+        return True

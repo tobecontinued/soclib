@@ -29,7 +29,7 @@ import traceback
 from copy import copy
 from soclib_cc.config import config
 from soclib_cc.builder.todo import ToDo
-from soclib_cc.builder.cxx import CxxCompile, CxxLink
+from soclib_cc.builder.cxx import CxxCompile, CxxLink, CCompile
 from component_builder import ComponentBuilder
 
 __id__ = "$Id$"
@@ -81,7 +81,10 @@ class Platform:
                 self.addObj( o )
         if output is None:
             output = config.output
-        self.todo.add( *CxxLink(output, self.objs ).dests )
+        cobjs = filter(
+            lambda x: isinstance(x.generator, CCompile),
+            self.objs)
+        self.todo.add( *CxxLink(output, cobjs ).dests )
     def process(self):
         self.todo.process()
     def clean(self):

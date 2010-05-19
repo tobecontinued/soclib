@@ -79,9 +79,6 @@ def parse_args():
     parser.add_option('-c', '--compile', dest = 'compile',
                       action='store_true',
                       help="Do a simple compilation, not a linkage")
-    parser.add_option('-M', '--makefile', dest = 'gen_makefile',
-                      type = 'string', nargs = 1,
-                      help="Generate Makefile")
     parser.add_option('-l', dest = 'list_descs',
                       action='store_const', const = "long",
                       help="List known descriptions == --list-descs=long")
@@ -201,8 +198,8 @@ def main():
         return 0
     
     if opts.one_module:
-        return compile_one_module(opts.output, opts.one_module, one_args)
-        
+        return compile_one_module(opts.output, opts.one_module, one_args, opts)
+    
     if opts.list_files:
         m = soclib_desc.description_files.get_module(opts.list_files)
         for h in m['abs_header_files']+m['abs_implementation_files']:
@@ -221,27 +218,19 @@ def main():
         return 0
 
     if opts.platform:
-        compile_platform(opts.platform,
-                         embedded_cflags = opts.embedded_cflags,
-                         gen_makefile = opts.gen_makefile,
-                         clean = opts.clean)
-        if config.progress_bar:
-            print
-        return 0
+        return compile_platform(opts.platform, opts)
     
     if opts.compile:
         from soclib_cc.builder.cxx import CxxCompile
         CxxCompile(config.output, args[0]).process()
-        if config.progress_bar:
-            print
         return 0
     
     parser.print_help()
     return 1
 
-def compile_one_module(output, one_module, one_args):
+def compile_one_module(output, one_module, one_args, opts):
     from soclib_cc.builder.todo import ToDo
-    from soclib_cc.builder.cxx import CxxMkobj
+    from soclib_cc.builder.cxx import CxxMkobj, CCompile
     from soclib_desc.specialization import Specialization
     from soclib_cc.component_builder import ComponentBuilder
     todo = ToDo()
@@ -260,9 +249,11 @@ def compile_one_module(output, one_module, one_args):
                 todo.add(o)
                 out.append(o)
         if output:
-            todo.add(CxxMkobj(output, out).dests[0])
-    todo.process()
-    return 0
+            cobjs = filter(
+                lambda x: isinstance(x.generator, CCompile),
+                out)
+            todo.add(CxxMkobj(output, cobjs).dests[0])
+    return todo_do(todo, opts)
 
 def complete_name(name, separator):
     completions = set()
@@ -292,10 +283,7 @@ def list_descs(mode):
         return 1
     return 0
 
-def compile_platform(platform,
-                     embedded_cflags = False,
-                     gen_makefile = False,
-                     clean = False):
+def compile_platform(platform, opts):
     from soclib_cc.config import config
     if not config.quiet and not embedded_cflags:
         print "soclib-cc: Entering directory `%s'"%(
@@ -311,17 +299,17 @@ def compile_platform(platform,
         todo = locs['todo']
     except:
         raise ValueError("Can't find variable `todo' in `%s'."%platform)
-    if gen_makefile:
-        fd = open(gen_makefile, 'w')
-        fd.write(todo.genMakefile())
-        fd.close()
-    elif clean:
+    return todo_do(todo, opts)
+
+def todo_do(todo, opts):
+    if opts.clean:
         todo.clean()
         soclib_desc.description_files.cleanup()
-    elif embedded_cflags:
+    elif opts.embedded_cflags:
         print todo.embeddedCodeCflags()
     else:
         todo.process()
+    return 0
 
 def setup_config(opts):
     from soclib_cc.config import config

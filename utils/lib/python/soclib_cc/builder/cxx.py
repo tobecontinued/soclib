@@ -18,46 +18,49 @@
 # 02110-1301, USA.
 # 
 # SOCLIB_GPL_HEADER_END
-# 
-# Copyright (c) UPMC, Lip6, SoC
-#         Nicolas Pouillon <nipo@ssji.net>, 2007
-# 
-# Maintainers: group:toolmakers
+
+__author__ = 'Nicolas Pouillon, <nipo@ssji.net>'
+__copyright__ = 'UPMC, Lip6, SoC, 2007-2010'
+__license__ = 'GPL-v2'
+__id__ = "$Id$"
+__version__ = "$Revision$"
 
 import os, os.path
 import subprocess
-import action
 import sys
-import fileops
-import mfparser
-import bblock
-from soclib_cc.config import config
 try:
     from functools import reduce
 except:
     pass
 
-__id__ = "$Id$"
-__version__ = "$Revision$"
+from soclib_cc.config import config
+
+import action
+import fileops
+import mfparser
+import bblock
+import depends
 
 class CCompile(action.Action):
+    info_code = 'C'
     priority = 100
     tool = 'CC'
+    todo_code = 'C'
+
     def __init__(self, dest, src, defines = {}, inc_paths = [], includes = [], force_debug = False, comp_mode = 'normal'):
         action.Action.__init__(self, [dest], [src], defines = defines, inc_paths = inc_paths, includes = includes)
         self.mode = force_debug and "debug" or None
         self.comp_mode = comp_mode
         if force_debug:
             defines["SOCLIB_MODULE_DEBUG"] = '1'
-    def argSort(self, args):
+
+    def __arg_sort(self, args):
         libdirs = filter(lambda x:str(x).startswith('-L'), args)
         libs = filter(lambda x:str(x).startswith('-l'), args)
         args2 = filter(lambda x:x not in libs and x not in libdirs, args)
-        return args2+libdirs+libs
-    def call(self, what, args, disp_normal = True):
-        args = self.argSort(args)
-        self.launch(args)
-    def command_line(self, mode = ''):
+        return args2 + libdirs + libs
+        
+    def __command_line(self, mode = ''):
         args = config.getTool(self.tool, mode)
         args += map(lambda x:'-D%s=%s'%x, self.options['defines'].iteritems())
         args += map(lambda x:'-I%s'%x, self.options['inc_paths'])
@@ -66,48 +69,60 @@ class CCompile(action.Action):
             args.append(i)
         args += config.getCflags(self.mode)
         return args
-    def _processDeps(self, filename):
+
+    def __process_deps(self, filename):
+        if config.debug:
+            print 'Computing deps for', self
+            print 'Creating', repr(filename)
         filename.generator.process()
-        cmd = self.command_line()+['-MM', '-MT', 'foo.o']
-        cmd.append(str(filename))
-        cmd = self.argSort(cmd)
+        dep_name = hex(hash(filename))+'.deps'
+        try:
+            return depends.load(dep_name)
+        except depends.MustRehash:
+            pass
+        cmd = self.__command_line() + [
+            '-MM', '-MT', 'foo.o', str(filename)]
+        cmd = self.__arg_sort(cmd)
+
         process = subprocess.Popen(cmd,
                                    stdout = subprocess.PIPE,
                                    stderr = subprocess.PIPE)
         blob, err = process.communicate()
-        from bblock import bblockize
+
         try:
             deps = mfparser.MfRule(blob)
         except ValueError:
             sys.stderr.write(err)
             sys.stderr.write('\n\n')
             raise action.ActionFailed("Unable to compute dependencies", cmd)
-        return bblockize(deps.prerequisites)
-    def processDeps(self):
-        return reduce(lambda x, y:x+y, map(self._processDeps, self.sources), [])
-    def process(self):
-        fileops.CreateDir(os.path.dirname(bblock.filenames(self.dests)[0])).process()
+        
+        deps = bblock.bblockize(deps.prerequisites)
+        depends.dump(dep_name, deps)
+        return deps
+
+    def cc_get_command(self):
         if self.comp_mode == 'sccom':
-            args = self.command_line('SCCOM')
+            args = self.__command_line('SCCOM')
             args += ['-work', config.workpath]
         else:
-            args = self.command_line()
+            args = self.__command_line()
             args += ['-c', '-o', bblock.filenames(self.dests)[0]]
-        args += map(str, self.sources)
-        r = self.call('compile', args)
-        if r:
-            print
-            print r
-        self.dests[0].touch()
-        action.Action.process(self)
-    def results(self):
-        return self.dests
+            
+        return args + map(str, self.sources)
 
-    def commands_to_run(self):
-        args = self.command_line() + [
-                '-c', '-o', bblock.filenames(self.dests)[0]]
-        args += self.sources
-        return ' '.join(map(lambda x:'"%s"'%str(x), args)),
+    def prepare(self):
+        cmd = self.cc_get_command()
+        if cmd:
+            self.run_command(self.__arg_sort(cmd))
+
+        self.prepare_deps()
+
+        action.Action.prepare(self)
+
+    def prepare_deps(self):
+        for s in self.sources:
+            deps = self.__process_deps(s)
+            self.add_depends(*deps)
 
 class CxxCompile(CCompile):
     tool = 'CXX'
@@ -115,11 +130,11 @@ class CxxCompile(CCompile):
 class CLink(CCompile):
     priority = 200
     tool = 'CC_LINKER'
+
     def __init__(self, dest, objs):
         action.Action.__init__(self, [dest], objs)
-    def processDeps(self):
-        return []
-    def process(self):
+    
+    def cc_get_command(self):
         args = config.getTool(self.tool)
         if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
             args += ['-link']
@@ -134,40 +149,28 @@ class CLink(CCompile):
             objs = self.sources
             args += bblock.filenames(objs)
 
-        r = self.call('link', args)
-        if r:
-            print
-            print r
-        action.Action.process(self)
-    def mustBeProcessed(self):
-        return True
+        return args
 
-    def commands_to_run(self):
-        args = config.getTool(self.tool) + [
-                '-o', self.dests[0]]
-        args += config.getLibs()
-        args += self.sources
-        return ' '.join(map(lambda x:'"%s"'%str(x), args)),
+    def prepare_deps(self):
+        pass
 
 class CxxLink(CLink):
     tool = 'CXX_LINKER'
+    info_code = 'L'
 
 class CMkobj(CLink):
     priority = 200
     tool = 'LD'
-    def process(self):
+    
+    def cc_get_command(self):
         if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
             self.tool = "CXX_LINKER"
-            return CLink.process(self)
+            return CLink.cc_get_command(self)
         else:
             args = config.getTool(self.tool)
             args += ['-r', '-o', bblock.filenames(self.dests)[0]]
             args += bblock.filenames(self.sources)
-        r = self.call('mkobj', args)
-        if r:
-            print
-            print r
-        action.Action.process(self)
+        return args
 
 class CxxMkobj(CMkobj):
     pass

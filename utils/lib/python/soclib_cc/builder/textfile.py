@@ -33,39 +33,21 @@ __id__ = "$Id$"
 __version__ = "$Revision$"
 
 class Textfile(Action):
-	priority = 50
-	def __init__(self, output, contents):
-		Action.__init__(self, [output], [], contents = contents)
-		self.pargen = CreateDir(os.path.dirname(str(self.dests[0])))
-	def processDeps(self):
-		return [self.pargen.dests[0]]
-	def process(self):
-		if not self.mustBeProcessed():
-			return
-		self.runningCommand('gen', self.dests, '')
-		self.pargen.process()
-		fd = open(str(self.dests[0]), "w")
-		fd.write(self.options['contents'])
-		fd.close()
-		self.dests[0].touch()
-		Action.process(self)
-	def mustBeProcessed(self):
-		if not self.dests[0].exists():
-			return True
-		fd = open(str(self.dests[0]), "r")
-		buf = fd.read()
-		fd.close()
-		return buf != self.options['contents']
+    info_code = 'S'
+    priority = 50
 
-	def commands_to_run(self):
-		output = str(self.dests[0])
-		r = '> "%s"'%(output),
-		for line in self.options['contents'].split('\n'):
-			r += 'echo "%(line)s" >> "%(output)s"'%dict(
-				output = output,
-				line = line.replace('"', '\\"')
-				),
-		return r
+    def __init__(self, output, contents):
+        Action.__init__(self, [output], [], contents = contents)
+
+    def is_valid(self):
+        f = str(self.dests[0])
+        if os.path.exists(f):
+            return open(f, 'r').read() == self.options['contents']
+        return False
+
+    def prepare(self):
+        self.create_file(self.dests[0], self.options['contents'])
+        Action.prepare(self)
 
 class CxxSource(Textfile):
-	pass
+    pass
