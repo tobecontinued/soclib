@@ -285,7 +285,7 @@ def list_descs(mode):
 
 def compile_platform(platform, opts):
     from soclib_cc.config import config
-    if not config.quiet and not embedded_cflags:
+    if not config.quiet and not opts.embedded_cflags:
         print "soclib-cc: Entering directory `%s'"%(
             os.path.abspath(os.getcwd()))
     import soclib_cc.platform as pf

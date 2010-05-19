@@ -35,11 +35,7 @@ from soclib_utils.terminal import terminal_width
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-def cr(x):
-    return not isinstance(x, Noop)
-
-class Again(Exception):
-    pass
+__all__ = ['Todo']
 
 class ToDo:
     def __init__(self, *dests):
@@ -75,6 +71,9 @@ class ToDo:
             
             dest_bb_list -= viewed_bb_list
 
+
+        def cr(x):
+            return not isinstance(x, Noop)
         todo_generator_list = filter(cr, todo_generator_list)
         return todo_generator_list, viewed_bb_list
     
