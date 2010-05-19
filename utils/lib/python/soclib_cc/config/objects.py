@@ -270,8 +270,8 @@ class BuildEnv(Config):
         Retrieves an unique filename based on the name and the
         "repos" location.
         '''
+        from soclib_cc.config import config
         if mode is None:
-            from soclib_cc.config import config
             mode = config.mode
         if config.max_name_length:
             if len(name) > config.max_name_length:
