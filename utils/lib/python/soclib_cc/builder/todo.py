@@ -284,3 +284,16 @@ class ToDo:
         sys.stdout.write('['+pb+']\n')
         sys.stdout.flush()
     
+    def format(self, formatter_class_name, output):
+        self.prepare()
+        
+        nodes = formatter_class_name.split('.')
+        module = '.'.join(nodes[:-1])
+        tmp = __import__(module, globals(), locals(), [nodes[-1]])
+        formatter = getattr(tmp, nodes[-1])
+
+        f = formatter(output)
+        for a in self.__todo:
+            f.format_action(a)
+
+            

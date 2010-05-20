@@ -85,6 +85,9 @@ def parse_args():
     parser.add_option('-I', dest = 'includes',
                       action='append', nargs = 1,
                       help="Append directory to .sd search path")
+    parser.add_option('-F', '--format', dest = 'formatter',
+                      action = 'store', nargs = 1, type = 'string',
+                      help = 'Use a given formatter class name to format build actions')
     parser.add_option('--list-descs', dest = 'list_descs',
                       action='store', nargs = 1, type = 'string',
                       help="List known descriptions. arg may be 'long' or 'names'")
@@ -302,7 +305,9 @@ def compile_platform(platform, opts):
     return todo_do(todo, opts)
 
 def todo_do(todo, opts):
-    if opts.clean:
+    if opts.formatter:
+        todo.format(opts.formatter, opts.output)
+    elif opts.clean:
         todo.clean()
         soclib_desc.description_files.cleanup()
     elif opts.embedded_cflags:
