@@ -522,6 +522,7 @@ protected:
     config3_t r_config3;
     intctl_t r_intctl;
     uint32_t r_hwrena;
+    uint32_t r_tc_context;
     uint32_t r_tls_base;
 
     const bool m_little_endian;
