@@ -125,6 +125,7 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
     switch(COPROC_REGNUM(reg, sel)) {
     case TCCONTEXT:
         r_tc_context = val;
+	break;
     case COMPARE:
         r_compare = val;
         break;
