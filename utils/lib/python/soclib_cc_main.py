@@ -224,7 +224,7 @@ def main():
         return compile_platform(opts.platform, opts)
     
     if opts.compile:
-        from soclib_cc.builder.cxx import CxxCompile
+        from soclib_cc.actions.cxx import CxxCompile
         CxxCompile(config.output, args[0]).process()
         return 0
     
@@ -232,8 +232,8 @@ def main():
     return 1
 
 def compile_one_module(output, one_module, one_args, opts):
-    from soclib_cc.builder.todo import ToDo
-    from soclib_cc.builder.cxx import CxxMkobj, CCompile
+    from soclib_builder.todo import ToDo
+    from soclib_cc.actions.cxx import CxxMkobj, CCompile
     todo = ToDo()
     class foo:
         def fullyQualifiedModuleName(self, d):
@@ -285,7 +285,7 @@ def list_descs(mode):
     return 0
 
 def compile_platform(platform, opts):
-    import soclib_cc.platform as pf
+    import sd_parser.platform as pf
     from soclib_cc.config import config
     
     if not config.quiet and not opts.embedded_cflags:
@@ -303,7 +303,7 @@ def todo_do(todo, opts):
     elif opts.embedded_cflags:
         print todo.embeddedCodeCflags()
     else:
-        from soclib_cc.builder.action import ActionFailed
+        from soclib_builder.action import ActionFailed
         try:
             todo.process()
         except ActionFailed, e:

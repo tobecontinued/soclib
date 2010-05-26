@@ -34,12 +34,12 @@ except:
 
 from soclib_cc.config import config
 
-import action
-import command
-import fileops
-import mfparser
-import bblock
-import depends
+from soclib_builder import action
+from soclib_builder import command
+from soclib_builder import fileops
+from soclib_builder import mfparser
+from soclib_builder import bblock
+from soclib_builder import depends
 
 class CCompile(action.Action):
     info_code = 'C'

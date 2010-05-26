@@ -27,6 +27,7 @@ __version__ = "$Revision$"
 
 import sys
 import os, os.path
+
 from soclib_cc.config import config
 from bblock import bblockize, BBlock, filenames
 from action import Noop, ActionFailed, Action

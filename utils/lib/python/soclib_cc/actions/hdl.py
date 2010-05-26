@@ -25,10 +25,12 @@
 import os
 import os.path
 import re
-import action
 import sys
-import fileops
+
 from soclib_cc.config import config
+
+from soclib_builder import action
+from soclib_builder import fileops
 
 __id__ = "$Id$"
 __version__ = "$Revision$"

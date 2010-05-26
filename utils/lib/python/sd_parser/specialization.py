@@ -87,7 +87,7 @@ class Specialization:
                 +ty)
 
     def __hdl_builder(self):
-        from soclib_cc import component_builder
+        import component_builder
 
         deps = self.get_used_modules()
         deps = filter(lambda x:x.implementation_language() in self.HDL_HANGUAGES,
@@ -110,7 +110,7 @@ class Specialization:
             )
 
     def __cxx_builder(self):
-        from soclib_cc import component_builder
+        import component_builder
 
         tmpl_headers = set()
         for s in self.get_used_modules():

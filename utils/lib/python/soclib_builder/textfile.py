@@ -25,9 +25,11 @@
 # Maintainers: group:toolmakers
 
 import os, os.path
+
+from soclib_cc.config import config
+
 from fileops import CreateDir
 from action import Action
-from soclib_cc.config import config
 
 __id__ = "$Id$"
 __version__ = "$Revision$"

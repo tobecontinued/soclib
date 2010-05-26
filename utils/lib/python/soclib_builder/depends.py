@@ -24,10 +24,12 @@
 # 
 # Maintainers: group:toolmakers
 
-from soclib_cc.config import config
 import os, os.path, time
+import pickle
+
+from soclib_cc.config import config
+
 import bblock
-import  pickle
 
 __id__ = "$Id$"
 __version__ = "$Revision$"

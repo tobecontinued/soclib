@@ -27,9 +27,12 @@
 import os, os.path
 import traceback
 from copy import copy
+
+from soclib_builder.todo import ToDo
+
 from soclib_cc.config import config
-from soclib_cc.builder.todo import ToDo
-from soclib_cc.builder.cxx import CxxCompile, CxxLink, CCompile
+from soclib_cc.actions.cxx import CxxCompile, CxxLink, CCompile
+
 from component_builder import ComponentBuilder
 
 __id__ = "$Id$"

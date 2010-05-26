@@ -27,15 +27,19 @@
 import os, os.path
 import subprocess
 import operator
-from soclib_cc.builder.action import *
-from soclib_cc.builder.cxx import *
-from soclib_cc.builder.hdl import *
-from soclib_cc.builder.bblock import *
-from soclib_cc.builder.textfile import *
 try:
     from functools import reduce
 except:
     pass
+
+from soclib_cc.config import config
+
+from soclib_builder.action import *
+from soclib_builder.bblock import *
+from soclib_builder.textfile import *
+
+from soclib_cc.actions.cxx import *
+from soclib_cc.actions.hdl import *
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
@@ -97,7 +101,6 @@ class CxxComponentBuilder(ComponentBuilder):
             bn += '_all'
         else:
             bn += '_'+os.path.splitext(os.path.basename(filename))[0]
-        from config import config
         source = self.cxxSource(filename, *add_filenames)
         if source:
             tx = CxxSource(
@@ -196,7 +199,6 @@ class CxxComponentBuilder(ComponentBuilder):
         source = ""
         for h in set(map(os.path.basename, self.__tmpl_header_files)):
             source += '#include "%s"\n'%h
-        from config import config
         for h in config.toolchain.always_include:
             source += '#include <%s>\n'%h
         for s in sources:
@@ -223,7 +225,6 @@ class HdlComponentBuilder(ComponentBuilder):
         self.__implementation_files = list(implementation_files)
         self.__used_implementation_files = list(used_implementation_files)
 
-    # Builders for verilog, vhdl, systemc and mpy_vhdl.
     def verilog_results(self):
         return self.hdl_results(VerilogCompile)
 
@@ -252,71 +253,3 @@ class HdlComponentBuilder(ComponentBuilder):
 #            print b
             deps = b.sources
         return reduce(operator.add, map(lambda x:x.dests, builders), [])
-
-    def mpy_vhdl_results(self):
-        import pprint
-        basedir = config.reposFile('mpy')
-        input_file = os.path.basename(self.specialization.getImplementationFiles()[0])
-        template = 'mpy_'+hex(hash(input_file))+'.mpy'
-        params = self.get_recursive_dict(self.specialization.getTmplParamDict())
-        fd = open(os.path.join(basedir, template), 'w')
-        fd.write('''{
-params = %(dict)s
-
-mpygen('%(name)s', params)
-}
-'''%dict(name = input_file,
-         dict = pprint.pformat(params)))
-        fd.close()
-        vhd_files = self.call_mpy(template)
-        return self.hdl_results(self.getVhdlBuilder, vhd_files)
-    
-    @staticmethod
-    def get_recursive_dict(d):
-        params = {}
-        for k, v in d.iteritems():
-            p = params
-            keys = k.split('__')
-            for k in keys[:-1]:
-                if k not in p:
-                    p[k] = {}
-                p = p[k]
-            p[keys[-1]] = v
-        return params
-
-    def call_mpy(self, source_file):
-        inst_name = 'mpy_'+hex(hash(source_file))
-        basedir = config.reposFile('mpy')
-        try:
-            os.makedirs(basedir)
-        except:
-            pass
-
-        implementations = set()
-        for d in self.specialization.get_used_modules():
-            implementations |= set(d.getImplementationFiles())
-        for d in self.specialization.getTmplSubTree():
-            implementations |= set(d.getImplementationFiles())
-        directories = set(map(os.path.dirname, implementations))
-            
-        cmd = config.getTool('MPY')
-        cmd += ['-o', inst_name+'.results']
-        cmd += ['-n', inst_name]
-        cmd += ['-w', basedir, source_file]
-        cmd += ['-i', ':'.join(directories)]
-        proc = subprocess.Popen(cmd,
-                                shell = False,
-                                stdin = None, stdout = subprocess.PIPE,
-                                cwd = basedir)
-        (out, err) = proc.communicate()
-        if proc.returncode:
-            raise RuntimeError("mpy failed:\n"+out)
-        files = map(str.strip, open(os.path.join(basedir, inst_name+'.list')).readlines())
-        files = filter(lambda x:x.endswith('.vhd'), files)
-        ffiles = []
-        for f in files:
-            if f not in ffiles:
-                ffiles.append(f)
-#        files.add(os.path.join(basedir, inst_name+'.vhd'))
-        ffiles.reverse()
-        return ffiles
