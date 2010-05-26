@@ -33,262 +33,136 @@ from error import *
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-class Specialization:
-    '''
-    A specialization of a module, i.e. a module with
-     * all its template parameters
-     * all its defines
-    set so that it can be safely compiled.
-    '''
-    
-    def __init__(self, mod, **args):
-        """
-        Pass-in the module (fqmn or module instance) and set of arguments.
-        If arguments are missing, this will be reported.
-        """
-        if not isinstance(mod, module.Module):
-            mod = description_files.get_module(mod)
-        self.__cdef =  mod
-        self.__cdef.instanciated()
-        
-        deprecated = mod['deprecated']
+class SpecializationInterface:
 
-        self.externally_handled = False
+    def builder(self):
+        '''
+        Retrieves the soclib_cc builder instance able to compile the
+        specialization.
+        '''
+        raise NotImplementedError()
 
-        use = None
-        if '__use' in args:
-            use = args['__use']
-            del args['__use']
+    def port_list(self):
+        '''
+        Retrieves the port list. Some ports may depend from instance
+        parameters.
+        '''
+        raise NotImplementedError()
 
-        if deprecated:
-            if use:
-                warnings.warn_explicit(ModuleDeprecationWarning(mod.getModuleName(), deprecated), ModuleDeprecationWarning, use[0], use[1])
-            else:
-                warnings.warn(ModuleDeprecationWarning(mod.getModuleName(), deprecated), stacklevel = 2)
+    def implementation_language(self):
+        '''
+        Retrieves the native language of the module. It should probably
+        be vhdl, systemc, verilog, ...
+        '''
+        raise NotImplementedError()
 
-        try:
-            self.__init_args(args)
-            self.__init_tmpl_parameters()
-            self.__init_tmpl_dependencies()
-            self.__init_uses()
-        except ModuleSpecializationError, e:
-            raise ModuleSpecializationError(
-                self.getModuleName(), use, e)
-        except description_files.FileParsingError, e:
-            raise
-        except Exception, e:
-            raise
-#           print "Error while instanciating component %s from %s: %r"%(
-#               self.getModuleName(), use, e)
-            raise ModuleSpecializationError(
-                self.getModuleName(), use, e)
+    def get_header_files(self):
+        '''
+        Retrieves a collection of absolute header file paths to
+        include when using this module.
+        '''
+        raise NotImplementedError()
 
-
-        self.__dependencies = self.__uses | self.__tmpl_dependencies
-
-        self.__uid = hash(str(self))
-
-    def getTmplParamStr(self):
-        return ','.join(map(lambda x:str(x), self.__tmpl_parameters))
-
-    def getTmplParamDict(self):
-        r = {}
-        for par, x in zip(
-            self.__cdef['tmpl_parameters'],
-            self.__tmpl_parameters):
-            r[par.name] = x
-        return r
-
-    def getModuleName(self):
-        return self.__cdef.getModuleName()
-
-    def getRawType(self):
-        return self.__cdef['classname'] or ''
-
-    def getType(self):
-        if not self.__cdef['classname']:
-            return ''
-        tp = self.getTmplParamStr()
-        if tp:
-            tp = '<'+tp+' > '
-        return self.__cdef['classname']+tp
-
-    def getConstant(self, name):
-        c = self.__cdef['constants']
-        if name in c:
-            return c[name]
-        for s in self.__dependencies:
-            try:
-                return s.getConstant(name)
-            except Exception, e:
-                pass
-        raise ValueError('Constant %s not found in %s'%(name, self.getModuleName()))
-
-    def getParam(self, name):
-        try:
-            return self.__args[name]
-        except KeyError:
-            return self.__cdef[name]
-
-    def getSubTree(self, pfx = ''):
-#       if (self.__dependencies) and self.getModuleName() == 'caba:base_module':
-#           print pfx, 'getSubTree', self
-#           for d in self.__dependencies:
-#               print pfx, ' d: ', `d`
-        r = set()
-        for m in set(self.__dependencies):
-            r |= m.getSubTree(pfx + '  ')
-        if self.__cdef['implementation_type'] == 'mpy_vhdl':
-            for s in r:
-                s.externally_handled = (s.__cdef['implementation_type'] == 'mpy_vhdl')
-        r.add(self)
-        return r
-
-    def getTmplSubTree(self, pfx = ''):
-#       if (self.__dependencies) and self.getModuleName() == 'caba:base_module':
-#           print pfx, 'getSubTree', self
-#           for d in self.__dependencies:
-#               print pfx, ' d: ', `d`
-        r = set()
-        for m in set(self.__tmpl_dependencies):
-            r |= m.getSubTree(pfx + '  ')
-        return r
-
-    def printAllUses(self, pfx = ''):
-        print pfx, str(self)
-        for i in set(self.__dependencies):
-            i.printAllUses(pfx+'  ')
-
-    def getParamBuilders(self):
-        r = set()
-        for tp in self.__dependencies:
-            for i in tp.getSubTree():
-                r |= i.getParamBuilders()
-        return r
-
-    def def_uid(self):
-        return hash(self.__cdef)
+    def get_used_modules(self):
+        '''
+        Returns set of specializations used as dependancy of this
+        one. This is the exhaustive list of needed modules, even if
+        deep in the subtree.
+        '''
+        raise NotImplementedError()
 
     def __hash__(self):
-        return self.__uid
+        '''
+        Returns an uid for the specialization
+        '''
+        raise NotImplementedError()
 
     def __eq__(self, other):
-        return type(self) == type(other) and \
-               self.__uid == other.__uid
+        '''
+        Tests whether the two specializations are actually equal
+        '''
+        return False
 
-    def __str__(self):
-        return self.getType() or '<Spec of %s>'%self.getModuleName()
+    def get_extensions(self, namespace):
+        '''
+        Gets extensions defined for a given namespace. Extensions are
+        each in a string.
+        '''
+        raise NotImplementedError()
 
-    def __repr__(self):
-        kv = []
-        for k in sorted(self.__args.iterkeys()):
-            kv.append("%s = %r"%(k, self.__args[k]))
-        return 'soclib_desc.specialization.Specialization(%r, %s)'%(
-            self.getModuleName(),
-            ', '.join(kv))
+    def get_entity_name(self):
+        '''
+        Retrieves a string corresponding to the whole entity
+        name.
 
-    def getImplementationType(self):
-        return self.__cdef['implementation_type']
+        * For SystemC modules, this is a class name with qualified
+          namespace and template parameters.
+        * For rtl modules, this is a simple entity name
+        '''
+        raise NotImplementedError()
 
-    def getHeaderFiles(self):
-        return self.__cdef['abs_header_files']
+    def get_instance_parameters(self):
+        '''
+        List of parameters to be passed at run time, these are the
+        necessary parameters for getting a valid module instanciation.
+        Depending on the module implementation language, this may be a
+        string, a list of parameters, or a dictionary.
+        '''
+        raise NotImplementedError()
 
-    def getImplementationFiles(self):
-        return self.__cdef['abs_implementation_files']
+class SignalSpecializationInterface:
 
-    def getInterfaceFiles(self):
-        return self.__cdef['abs_interface_files']
+    def port_max_count(self, port):
+        """
+        Returns a maximal count of connectable port of type passed in
+        'port'. 'port' is a specialization.
+        """
+        raise NotImplementedError()
 
-    def getObjectFiles(self):
-        return self.__cdef['abs_object_files']
+    def can_meta_connect(self):
+        '''
+        Returns whether the signal can be connected at once
+        '''
+        return False
 
-    def getDefines(self):
-        defs = self.__cdef['defines']
-        if self.__cdef['debug']:
-            defs['SOCLIB_MODULE_DEBUG'] = '1'
-        return defs
+class PortSpecializationInterface:
 
-    def isLocal(self):
-        return self.__cdef['local']
-    
-    def isDebug(self):
-        return self.__cdef['debug']
+    def can_connect(self, signal):
+        '''
+        Returns whether the port can be connected to the signal. This
+        does not assert limitations on connection count.
+        '''
+        return False
 
-    def getInstanceParameters(self):
-        return self.__cdef['instance_parameters']
+    def get_signal(self):
+        '''
+        Returns the signal capable of connection to this port.
+        '''
+        raise NotImplementedError()
 
-    def getAccepts(self):
-        return self.__cdef['accepts']
+    def can_meta_connect(self):
+        '''
+        Returns whether the port can be connected at once
+        '''
+        return False
 
-    def getExtensions(self):
-        return self.__cdef['extensions']
+class Port:
 
-    def getSignal(self):
-        return self.__cdef['signal']
+    def __init__(self, spec, count = None, auto = None):
+        self.__spec = spec
+        self.__count = count
+        self.__auto = auto
 
-    def getPorts(self):
-        return self.__cdef['ports']
+    def array_size(self):
+        '''
+        Returns the array size. Returns None if not part of an array.
+        '''
+        return self.__count
 
-    def getSubSignals(self):
-        return self.__cdef['sub_signals']
+    @property
+    def specialization(self):
+        return self.__spec
 
-    def canMetaConnect(self):
-        return self.__cdef['can_metaconnect']
-
-
-    def __init_args(self, args):
-        self.__args = {}
-
-#        print '__init_args', args
-
-        args_to_resolve = list(args.iteritems())
-        last_args_to_resolve = []
-        while args_to_resolve:
-            if args_to_resolve == last_args_to_resolve:
-                raise RuntimeError("Unresolved parameters: %r"%args_to_resolve)
-            unresolved = []
-            for k, v in args_to_resolve:
-                try:
-                    a = {}
-                    a.update(args)
-                    a.update(self.__args)
-                    v = parameter.resolve(v, a)
-                    if isinstance(v, parameter.BinaryOp):
-                        v = v.resolve(a)
-                    elif isinstance(v, parameter.Base):
-                        v = v.value
-                    self.__args[k] = v
-                except KeyError, e:
-#                    print 'KeyError', e, k, v, self.__args.keys(), args.keys()
-                    if e == k:
-                        unresolved.append((k, v))
-                    else:
-                        raise
-                except Exception, e:
-                    raise
-                    unresolved.append((k, v))
-            last_args_to_resolve = args_to_resolve
-            args_to_resolve = unresolved
-
-    def __init_tmpl_parameters(self):
-        self.__tmpl_parameters = map(
-            lambda x:parameter.value(x, self.__args, 'tmpl'),
-            self.__cdef['tmpl_parameters'])
-
-    def __init_uses(self):
-        self.__uses = set()
-        for u in self.__cdef['uses']:
-            s = u.specialization(**self.__args)
-            self.__uses |= s.getSubTree()
-
-    def __init_tmpl_dependencies(self):
-        self.__tmpl_dependencies = set()
-        for i in self.__cdef['tmpl_parameters']:
-            if isinstance(i, parameter.Module):
-                val = parameter.value(i, self.__args, 'tmpl')
-                if not isinstance(val, parameter.Foreign):
-                    self.__tmpl_dependencies |= val.getSubTree()
-
-
-    def getUse(self):
-        return module.Uses(self.__cdef.getModuleName(), **self.__args)
+    @property
+    def auto(self):
+        return self.__auto

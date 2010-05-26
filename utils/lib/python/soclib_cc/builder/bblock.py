@@ -48,19 +48,24 @@ class BBlock:
         self.__i_need = None
         self.__needed_by = None
         self.__prepared = False
-        self.users = set()
+        self.__users = set()
 
         self.__rehash()
 
+    @property
+    def users(self):
+        return self.__users
+
     def addUser(self, gen):
-        self.users.add(gen)
+#        print 'addUser', repr(self), str(gen)[:40] + '...'
+        self.__users.add(gen)
 
     def touch(self):
         mt = self.__mtime
         e = self.__exists
         self.__rehash()
         if mt != self.__mtime or e != self.__exists:
-            for u in self.users:
+            for u in self.__users:
                 u.source_changed()
 
     def is_dir(self):
@@ -103,6 +108,9 @@ class BBlock:
     def __hash__(self):
         return hash(self.__filename)
 
+    def __eq__(self, other):
+        return self.__filename == other.__filename
+
     def __walk_i_need(self):
         if self.__i_need is not None:
             return self.__i_need
@@ -120,7 +128,7 @@ class BBlock:
             return self.__needed_by
 
         self.__needed_by = set()
-        for u in self.users:
+        for u in self.__users:
             for d in u.dests:
                 if d is self.__needed_by:
                     continue
@@ -142,16 +150,6 @@ class BBlock:
             (other in self.__i_need or self in other.__needed_by) and not
             (self in other.__i_need or other in self.__needed_by)
             )
-    
-#     def __cmp__(self, other):
-#         if self in other.__i_need or other in self.__needed_by:
-#             print '**', repr(other), 'needs', repr(self)
-#             return -1
-#         if other in self.__i_need or self in other.__needed_by:
-#             print '**', repr(self), 'needs', repr(other)
-#             return 1
-#         print '!!', repr(other), ' - ', repr(self)
-#         return cmp(id(self), id(other))
 
 class AnonymousBBlock(BBlock):
     def __init__(self, builder):
@@ -167,8 +165,12 @@ class AnonymousBBlock(BBlock):
     def delete(self):
         self.__done = False
 
+    def prepare(self):
+        BBlock.prepare(self)
+        self.__done = False
+
     def __repr__(self):
-        return '{anon %03d}' % (id(self) % 1000)
+        return '{anon %03d}' % (hash(str(self)) % 1000)
 
 def bblockize1(f, gen = None):
     if config.debug:
@@ -182,10 +184,11 @@ def bblockize1(f, gen = None):
         if config.debug:
             print 'in global reg', r
         from action import Noop
-        assert isinstance(r.generator, Noop) or gen is None or r.generator.__class__ is gen.__class__, \
-               ValueError('Generator in reg: %s, passed: %s'%(r.generator.__class__, gen.__class__))
-        if gen:
-            r.generator = gen
+        if gen is not None:
+            if isinstance(r.generator, Noop):
+                r.generator = gen
+            elif r.generator.__class__ is not gen.__class__:
+                raise ValueError('Generator in reg: %s, passed: %s'%(r.generator.__class__, gen.__class__))
         return r
     if config.debug:
         print 'needs BBlock'

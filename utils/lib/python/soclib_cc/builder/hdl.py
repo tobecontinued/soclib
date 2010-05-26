@@ -38,40 +38,40 @@ __all__ = ['VhdlCompile', 'VerilogCompile']
 class HdlCompile(action.Action):
     priority = 150
 
-    def __init__(self, dest, srcs, incs, usage_deps, typename):
-        if dest:
-            dests = [dest]
+    def __init__(self, dest, srcs, incs, needed_compiled_sources, typename):
+        v = config.get_library('systemc').vendor
+        if v in ['sccom', 'modelsim']:
+            self.stdout_reformat = self.__vcom_stdout_reformat
+            assert not dest, ValueError("Must not specify output path with Modelsim")
+            dests = []
         else:
-            v = config.get_library('systemc').vendor
-            if v in ['sccom', 'modelsim']:
-                self.stdout_reformat = self.__vcom_stdout_reformat
-                assert not dest, ValueError("Must not specify output path with Modelsim")
-                dests = []
-            else:
-                raise NotImplementedError("Vendor not supported: %s"%v)
-        self.__usage_deps = usage_deps
+            raise NotImplementedError("Vendor not supported: %s"%v)
+        self.__needed_compiled_sources = needed_compiled_sources
         action.Action.__init__(self, dests, srcs, typename = typename,
                                incs = incs)
-#        print self.dests, self.sources, usage_deps
+#        print '__f--', self.dests, self.sources, needed_compiled_sources
 
-    def __users(self):
+    def __needed_generators(self):
         us = set()
-        for d in self.__usage_deps:
-            for u in d.users:
-                us.add(u)
+        for s in self.__needed_compiled_sources:
+#            print 'needed_gen:', repr(s), s.users
+            us |= set(s.users)
         return us
 
-    __err_re = re.compile(r'^\*\* Warning: (?P<filename>[^\(]+)\((?P<lineno>\d+)\): \((?P<tool>\w+)-(?P<error>\d+)\) (?P<warning_type>[\w\s\d]*)Warning: (?P<message>.*)$', re.M)
+    __err_re = re.compile(r'^\*\* (?P<token>[^:]+): (?P<filename>[^\(]+)\((?P<lineno>\d+)\): \((?P<tool>\w+)-(?P<error>\d+)\) (?P<warning_type>[\w\s\d]*)Warning: (?P<message>.*)$', re.M)
 
     def __vcom_stdout_reformat(self, err):
-        repl = '\g<filename>:\g<lineno>: warning: \g<warning_type>(\g<tool>-\g<error>): \g<message>'
+        repl = '\g<filename>:\g<lineno>: \g<token>: \g<warning_type>(\g<tool>-\g<error>): \g<message>'
         return self.__err_re.sub(repl, err)
 
     def prepare(self):
         r = set()
-        for u in self.__users():
+        ng = self.__needed_generators()
+        for u in ng:
             r |= set(u.dests)
-        self.add_depends(*(r - set(self.dests)))
+        r -= set(self.dests)
+#        print 'needed_gens', self, self.__needed_compiled_sources, ng, map(str, r)
+        self.add_depends(*r)
 
         args = config.getTool(self.tool)
         if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
@@ -82,6 +82,8 @@ class HdlCompile(action.Action):
         self.run_command(args)
 
         action.Action.prepare(self)
+
+#        print 'prepared', self
 
     def hdl_add_args(self):
         return []

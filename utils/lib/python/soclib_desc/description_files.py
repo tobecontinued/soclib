@@ -80,12 +80,10 @@ class DescCache:
 			self.__global_cache.parseSubtree(path)
 
 		def __add(module):
-			name = module.getModuleName()
-			
-			if name in self.__modules and \
-				   hash(self.__modules[name]) != hash(module):
-				warnings.warn(DoubleRegistrationWarning(name, self.__modules[name], module), stacklevel = 3)
-			self.__modules[name] = module
+			if module.name in self.__modules and \
+				   hash(self.__modules[module.name]) != hash(module):
+				warnings.warn(DoubleRegistrationWarning(module.name, self.__modules[module.name], module), stacklevel = 3)
+			self.__modules[module.name] = module
 			
 		for cdf in self.__global_cache.getCachedDescFilesIn(path):
 			cdf.doForModules(__add)
@@ -95,9 +93,8 @@ class DescCache:
 		Disable definitions from path
 		"""
 		def __remove(module):
-			n = module.getModuleName()
-			if self.__modules[n] == module:
-				self.__modules[n]
+			if self.__modules[module.name] == module:
+				self.__modules[module.name]
 		for cdf in self.__global_cache.getCachedDescFilesIn(path):
 			cdf.doForModules(__remove)
 		self.__enabled_paths.remove(path)

@@ -21,9 +21,8 @@
 # 
 # Copyright (c) UPMC, Lip6, SoC
 #         Nicolas Pouillon <nipo@ssji.net>, 2009
-# 
-# Maintainers: group:toolmakers
 
+import warnings
 import operator
 
 __id__ = "$Id$"
@@ -252,8 +251,22 @@ class IntTab(Parameter):
 class Type(Parameter):
     valid_types = (str, unicode)
 
-    @staticmethod
-    def get_tmpl_value(v, **args):
+#    @staticmethod
+    def get_tmpl_value(self, v, **args):
+        try:
+            has_colon = ':' in v and not '::' in v
+        except:
+            has_colon = False
+        if has_colon:
+#            print self.name, self.default, v,
+            m = Module(self.name, self.default, self.auto)
+            try:
+                v = m.get_tmpl_value(v, **resolve(args, args))
+#                print v
+            except Exception, e:
+#                print 'failed', e
+                warnings.warn("Cant guarantee parameter '%s' with value '%s' is valid"%
+                              (self.name, v))
         return v
 
 class Module(Type):
@@ -293,8 +306,9 @@ class Module(Type):
 
     @staticmethod
     def get_tmpl_value(value, **args):
-        import specialization
-        return specialization.Specialization(value, **args)
+        import description_files
+        mod = description_files.get_module(value)
+        return mod.specialize(**args)
 
 class Reference(Base):
     def __init__(self, name, mode = 'val'):
@@ -347,7 +361,7 @@ class BinaryOp(Base):
     def resolve(self, args):
         left = value(self.__left, args, 'internal')
         right = value(self.__right, args, 'internal')
-#       print repr(self.__op), repr(self.__left), repr(self.__right)
+#        print repr(self.__op), repr(self.__left), repr(self.__right)
         if isinstance(self.__left, Foreign) or isinstance(self.__right, Foreign):
             return self.__fmt%dict(left = left, right = right)
         return self.__op(left, right)
@@ -362,6 +376,11 @@ def resolve(v, args):
     elif isinstance(v, (list, tuple)):
         v = type(v)(map(lambda x:resolve(x, args), v))
 #       print "pwet", v
+    elif isinstance(v, dict):
+        res = {}
+        for kk, vv in v.items():
+            res[kk] = resolve(vv, v)
+        return res
     elif isinstance(v, Base):
         return v.resolve(args)
     return v
@@ -377,11 +396,9 @@ def value(thing, args, value_type):
             return va
         v = resolve(thing, args)
         f = getattr(thing, 'get_%s_value'%value_type)
-#       print "***", thing, f, v
-        a = {}
-        for k in args:
-            a[k] = args[k]
-        return f(v, **a)
+        r = f(v, **args)
+#        print "***", thing, f, v, r
+        return resolve(r, dict(**args))
     if isinstance(thing, (list, tuple)):
         return type(thing)(map(lambda x:value(x, args, value_type), thing))
     return thing

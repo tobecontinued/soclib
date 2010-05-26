@@ -88,7 +88,7 @@ PortDecl('caba:clock_in',
 		 )
 
 Module('sc:uint',
-	   classname = "sc_core::sc_uint",
+	   classname = "sc_dt::sc_uint",
 	   tmpl_parameters = [
 	parameter.Int('W'),
 	],
@@ -96,7 +96,7 @@ Module('sc:uint',
 	   )
 
 Module('sc:int',
-	   classname = "sc_core::sc_int",
+	   classname = "sc_dt::sc_int",
 	   tmpl_parameters = [
 	parameter.Int('W'),
 	],

@@ -26,6 +26,7 @@
 
 import os, os.path
 import subprocess
+import operator
 from soclib_cc.builder.action import *
 from soclib_cc.builder.cxx import *
 from soclib_cc.builder.hdl import *
@@ -38,11 +39,6 @@ except:
 
 __id__ = "$Id$"
 __version__ = "$Revision$"
-
-try:
-    set
-except:
-    from sets import Set as set
 
 class UndefinedParam(Exception):
     def __init__(self, where, comp, param):
@@ -68,29 +64,32 @@ class TooSimple(Exception):
     pass
 
 class ComponentBuilder:
-    def __init__(self, spec, where, local = False):
-        self.force_debug = spec.isDebug()
+    
+    def results(self):
+        return []
+
+class CxxComponentBuilder(ComponentBuilder):
+    def __init__(self,
+                 module_name,
+                 classname,
+                 implementation_files,
+                 header_files,
+                 tmpl_header_files = [],
+                 interface_files = [],
+                 defines = {},
+                 local = False,
+                 force_debug = False,
+                 ):
+        self.__module_name = module_name
+        self.__classname = classname
+        self.__implementation_files = list(implementation_files)
+        self.__header_files = list(header_files)
+        self.__tmpl_header_files = list(tmpl_header_files)
+        self.__interface_files = list(interface_files)
+        self.__defines = defines
+        self.force_debug = force_debug
         self.force_mode = self.force_debug and "debug" or None
-        self.specialization = spec
-#       print self.specialization
-        self.where = where
-        self.deps = []
-        self.local = self.specialization.isLocal()
-        self.deepdeps = set()#(self,))
-        try:
-            self.deps = self.specialization.getSubTree()
-        except RuntimeError, e:
-            raise ComponentInstanciationError(where, spec, e)
-        except ComponentInstanciationError, e:
-            raise ComponentInstanciationError(where, spec, str(e))
-
-        self.headers = set()
-        for d in self.specialization.getSubTree():
-            self.headers |= set(d.getHeaderFiles()) | set(d.getInterfaceFiles())
-
-        self.tmpl_headers = set()
-        for d in self.specialization.getTmplSubTree():
-            self.tmpl_headers |= set(d.getHeaderFiles()) | set(d.getInterfaceFiles())
+        self.local = local
 
     def getCxxBuilder(self, filename, *add_filenames):
         bn = self.baseName()
@@ -107,12 +106,16 @@ class ComponentBuilder:
             src = tx.dests[0]
         else:
             src = filename
-        incls = set(map(os.path.dirname, self.headers))
+        incls = set(map(os.path.dirname,
+                        self.__header_files
+                        + self.__interface_files
+                        + self.__tmpl_header_files
+                        ))
 
         # Take list of headers where basenames collides
         bincludes = {}
         includes = set()
-        for h in list(self.headers):
+        for h in list(self.__header_files):
             name = os.path.basename(h)
             if name in bincludes:
                 includes.add(bincludes[name])
@@ -133,10 +136,7 @@ class ComponentBuilder:
             out = config.reposFile(bn+"."+config.toolchain.obj_ext, self.force_mode)
 
         add = {}
-        if config.get_library('systemc').vendor in ['sccom', 'modelsim'] and \
-               (self.specialization.getPorts()
-                or self.local
-                or ("sccom:force" in self.specialization.getExtensions())):
+        if config.get_library('systemc').vendor in ['sccom', 'modelsim']:
             add['comp_mode'] = 'sccom'
             out = os.path.abspath(os.path.join(
                 config.get_library('systemc').sc_workpath,
@@ -146,97 +146,112 @@ class ComponentBuilder:
         return CxxCompile(
             dest = out,
             src = src,
-            defines = self.specialization.getDefines(),
+            defines = self.__defines,
             inc_paths = incls,
             includes  = includes,
             force_debug = self.force_debug,
             **add)
 
-    def getVhdlBuilder(self, source, incs, deps):
-        vendor = config.get_library('systemc').vendor
-        if vendor in ['sccom', 'modelsim']:
-            return VhdlCompile(dest = [], srcs = [source],
-                               usage_deps = deps,
-                               incs = incs,
-                               typename = self.specialization.getRawType())
-        else:
-            raise NotImplementedError("Unsuported vendor %s"%vendor)
+    def __hash__(self):
+        return hash(self.__module_name + self.__classname)
 
-    def getVerilogBuilder(self, source, incs, deps):
-        vendor = config.get_library('systemc').vendor
-        if vendor in ['sccom', 'modelsim']:
-            return VerilogCompile(dest = [], srcs = [source],
-                                  usage_deps = deps,
-                                  incs = incs,
-                                  typename = self.specialization.getRawType())
-        else:
-            raise NotImplementedError("Unsuported vendor %s"%vendor)
+    def __cmp__(self):
+        return (self.__module_name + self.__classname) == \
+               (other.__module_name + other.__classname)
 
     def baseName(self):
-        basename = self.specialization.getModuleName()
-        tp = self.specialization.getType()
-        basename += "_%08x"%self.specialization.def_uid()
+        basename = self.__module_name
+        tp = self.__classname
+        basename += "_%08x"%hash(self)
         basename += "_" + tp.replace(' ', '_')
         params = ",".join(
             map(lambda x:'%s=%s'%x,
-                self.specialization.getDefines().iteritems()))
+                self.__defines.iteritems()))
         if params:
             basename += "_" + params
         return basename.replace(' ', '_')
 
     def results(self):
-        impl = self.specialization.getImplementationType()
-        try:
-            func = getattr(self, impl+'_results')
-        except:
-            raise NotImplementedError("Unknown implementation type %s"%impl)
-        r = func()
-        return r
-
-    def systemc_results(self):
-        is_template = ('<' in self.specialization.getType())
-        impl = self.specialization.getImplementationFiles()
+        is_template = '<' in self.__classname
+        impl = self.__implementation_files
         if is_template and len(impl) > 1:
             builders = [self.getCxxBuilder(*impl)]
         else:
             builders = map(self.getCxxBuilder, impl)
-        objects = bblockize(self.specialization.getObjectFiles())
-        map(lambda x:x.setIsBlob(True), objects)
-        return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), objects)
+        return reduce(operator.add, map(lambda x:x.dests, builders), [])
 
+
+    def cxxSource(self, *sources):
+        if not '<' in self.__classname:
+            if len(sources) > 1:
+                source = ''
+                for s in sources:
+                    source += '#include "%s"\n'%s
+                return source
+            else:
+                return ''
+
+        inst = 'class '+self.__classname
+
+        source = ""
+        for h in set(map(os.path.basename, self.__tmpl_header_files)):
+            source += '#include "%s"\n'%h
+        from config import config
+        for h in config.toolchain.always_include:
+            source += '#include <%s>\n'%h
+        for s in sources:
+            source += '#include "%s"\n'%s
+        source += "#ifndef ENABLE_SCPARSE\n"
+        source += 'template '+inst+';\n'
+        source += "#endif\n"
+        return source
+
+class HdlComponentBuilder(ComponentBuilder):
+    def __init__(self,
+                 module_name,
+                 classname,
+                 language,
+                 header_files,
+                 implementation_files,
+                 used_implementation_files,
+                 ):
+        self.__module_name = module_name
+        self.__classname = classname
+        self.__language = language
+        self.results = getattr(self, self.__language+'_results')
+        self.__header_files = list(header_files)
+        self.__implementation_files = list(implementation_files)
+        self.__used_implementation_files = list(used_implementation_files)
 
     # Builders for verilog, vhdl, systemc and mpy_vhdl.
     def verilog_results(self):
-        return self.hdl_results(
-            self.getVerilogBuilder,
-            self.specialization.getImplementationFiles()
-            )
+        return self.hdl_results(VerilogCompile)
 
     def vhdl_results(self):
-        return self.hdl_results(
-            self.getVhdlBuilder,
-            self.specialization.getImplementationFiles()
-            )
+        return self.hdl_results(VhdlCompile)
 
-    def hdl_results(self, func, files):
-        from soclib_desc.specialization import Specialization
-        deps = self.specialization.getSubTree()
-        deps = filter(lambda x:x.getImplementationType() in ['vhdl', 'verilog'],
-                      deps)
-        deps = reduce(lambda x,y:x+y,
-                      map(Specialization.getImplementationFiles, deps),
-                      [])
-        deps = list(set(deps) - set(files))
+    def hdl_results(self, func):
+        vendor = config.get_library('systemc').vendor
+        if vendor not in ['sccom', 'modelsim']:
+            raise NotImplementedError("Unsuported vendor %s"%vendor)
+
+        deps = list(set(self.__used_implementation_files)
+                    - set(self.__implementation_files))
         deps = bblockize(deps)
+
         incs = set()
-        for i in list(self.headers) + list(self.tmpl_headers):
+        for i in self.__header_files:
             incs.add(os.path.dirname(i))
         builders = []
-        for f in files:
-            b = func(f, incs, deps)
+        for f in self.__implementation_files:
+            b = func(dest = [], srcs = [f],
+                     needed_compiled_sources = deps,
+                     incs = incs,
+                     typename = self.__classname)
             builders.append(b)
-            deps = b.dests
-        return reduce(lambda x,y:x+y, map(lambda x:x.dests, builders), [])
+#            print b
+            deps = b.sources
+        return reduce(operator.add, map(lambda x:x.dests, builders), [])
 
     def mpy_vhdl_results(self):
         import pprint
@@ -255,8 +270,7 @@ mpygen('%(name)s', params)
         fd.close()
         vhd_files = self.call_mpy(template)
         return self.hdl_results(self.getVhdlBuilder, vhd_files)
-
-
+    
     @staticmethod
     def get_recursive_dict(d):
         params = {}
@@ -279,7 +293,7 @@ mpygen('%(name)s', params)
             pass
 
         implementations = set()
-        for d in self.specialization.getSubTree():
+        for d in self.specialization.get_used_modules():
             implementations |= set(d.getImplementationFiles())
         for d in self.specialization.getTmplSubTree():
             implementations |= set(d.getImplementationFiles())
@@ -306,41 +320,3 @@ mpygen('%(name)s', params)
 #        files.add(os.path.join(basedir, inst_name+'.vhd'))
         ffiles.reverse()
         return ffiles
-
-    def cxxSource(self, *sources):
-        if not '<' in self.specialization.getType():
-            if len(sources) > 1:
-                source = ''
-                for s in sources:
-                    source += '#include "%s"\n'%s
-                return source
-            else:
-                return ''
-
-        inst = 'class '+self.specialization.getType()
-
-        source = ""
-        for h in map(os.path.basename, self.tmpl_headers):
-            source += '#include "%s"\n'%h
-        from config import config
-        for h in config.toolchain.always_include:
-            source += '#include <%s>\n'%h
-        for s in sources:
-            source += '#include "%s"\n'%s
-        source += "#ifndef ENABLE_SCPARSE\n"
-        source += 'template '+inst+';\n'
-        source += "#endif\n"
-        return source
-
-    @classmethod
-    def fromSpecialization(cls, spec):
-        return cls(spec, None, spec.isLocal())
-
-    def __hash__(self):
-        return hash(self.specialization)
-
-    def __str__(self):
-        return '<builder %s>'%self.specialization
-
-    def __repr__(self):
-        return str(self)

@@ -35,7 +35,7 @@ class SdFile(MetadataFile):
         Creates the globals dictionary for exec()ing a .sd. This
         creates all the necessary CreatorProxies.
         """
-        from soclib_desc import module
+        from sd_parser import module
         from soclib_desc import parameter
         glbl = {}
 

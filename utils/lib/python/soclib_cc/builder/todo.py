@@ -18,11 +18,12 @@
 # 02110-1301, USA.
 # 
 # SOCLIB_GPL_HEADER_END
-# 
-# Copyright (c) UPMC, Lip6, SoC
-#         Nicolas Pouillon <nipo@ssji.net>, 2007
-# 
-# Maintainers: group:toolmakers
+
+__author__ = 'Nicolas Pouillon, <nipo@ssji.net>'
+__copyright__ = 'UPMC, Lip6, SoC, 2007-2010'
+__license__ = 'GPL-v2'
+__id__ = "$Id$"
+__version__ = "$Revision$"
 
 import sys
 import os, os.path
@@ -31,9 +32,6 @@ from bblock import bblockize, BBlock, filenames
 from action import Noop, ActionFailed, Action
 import command
 from soclib_utils.terminal import terminal_width
-
-__id__ = "$Id$"
-__version__ = "$Revision$"
 
 __all__ = ['Todo']
 
@@ -48,6 +46,7 @@ class ToDo:
             os.makedirs(d)
         self.max_actions = config.toolchain.max_processes
         self.__term_width = terminal_width()
+        self.__todo = []
 
     def add(self, *dests):
         self.dests += bblockize(dests)
@@ -120,7 +119,7 @@ class ToDo:
                     print d in self.dests, d.generator.__class__, d
             raise RuntimeError()
 
-        self.__todo.reverse()
+#        self.__todo.reverse()
         self.prepared = True
 
 #        for i, g in enumerate(self.todo):

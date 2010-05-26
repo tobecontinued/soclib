@@ -35,79 +35,33 @@ from component_builder import ComponentBuilder
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-try:
-    set
-except:
-    from sets import Set as set
+__all__ = ['Platform']
 
-__all__ = ['Platform', 'Uses']
-
-from soclib_desc.module import Uses
-
-class NotFound(Exception):
-    def __init__(self, name, mode):
-        Exception.__init__(self, "Implementation %s not found for %s"%(mode, name))
-
-class Platform:
+class Platform(ToDo):
     """
     Platform definition, should be passed an arbitrary number of
     Uses() and Source() statements that constitutes the platform.
     """
-    def addObj(self, o):
-        #if not o in self.objs:
-        self.objs.add(o)
-        self.todo.add(o)
+
     def __init__(self, mode, source_file, uses = [], defines = {}, output = None, **params):
         self.__mode = mode
         self.__source = source_file
-        self.__uses = set(uses)
+        self.__uses = uses
         self.__defines = defines
-        self.__output = output
-        from soclib_desc.specialization import Specialization
-        component = Specialization(
-            Source(mode, source_file, uses, defines, **params),
-            **params)
-        self.component = component
-        self.todo = ToDo()
-        self.objs = set()
-#       component.printAllUses()
+        self.__output = output or config.output
 
-        for c in component.getSubTree():
-#           print 'aaa', hex(hash(c)), `c`
-            if c.externally_handled:
-                continue
-            b = ComponentBuilder.fromSpecialization(c)
-            for o in b.results():
-                self.addObj( o )
-        if output is None:
-            output = config.output
-        cobjs = filter(
-            lambda x: isinstance(x.generator, CCompile),
-            self.objs)
-        self.todo.add( *CxxLink(output, cobjs ).dests )
-    def process(self):
-        self.todo.process()
-    def clean(self):
-        self.todo.clean()
+        src = Source(mode, source_file, uses, defines, **params)
+        spec = src.specialize(**params)
 
-    def genMakefile(self):
-        return self.todo.genMakefile()
+        objs = set()
+        for c in spec.get_used_modules():
+            for o in c.builder().results():
+                if isinstance(o.generator, CCompile):
+                    objs.add( o )
 
-    def embeddedCodeCflags(self):
-        paths = set([
-            os.path.join(config.path, 'soclib/lib/include')
-            ])
-        for mod in self.component.getSubTree():
-            # I'm not sure addressable is mandatory.
-            # Safe approach: include more :)
-#           isAddressable = filter(
-#               lambda ext: ext.startswith('dsx:addressable='),
-#               mod.getExtensions())
-#           if isAddressable:
-                for d in map(os.path.dirname,mod.getInterfaceFiles()):
-                    if os.path.basename(d) == 'soclib':
-                        paths.add(os.path.dirname(d))
-        return ' '.join(map(lambda x: '-I'+x, paths))
+        linked = CxxLink(self.__output, objs)
+        linked.dests[0].delete()
+        ToDo.__init__(self, *linked.dests )
 
     def __repr__(self):
         import pprint
@@ -121,15 +75,34 @@ class Platform:
             )
 
 def Source(mode, source_file, uses = [], defines = {}, **params):
+    from sd_parser import module
+
     name = mode+':'+hex(hash(source_file))
-    from soclib_desc.module import Module
-    m = Module(name,
+
+    filename = traceback.extract_stack()[-3][0]
+    d = os.path.abspath(os.path.dirname(filename))
+    if not os.path.isabs(source_file):
+        source_file = os.path.join(d, source_file)
+
+    return module.Module(name,
                uses = uses,
                defines = defines,
                implementation_files = [source_file],
                local = True,
                )
-    filename = traceback.extract_stack()[-3][0]
-    d = os.path.abspath(os.path.dirname(filename))
-    m._mk_abs_paths(d)
-    return m
+
+def parse(filename):
+    from sd_parser import module
+
+    glbls = {}
+    glbls['config'] = config
+    glbls['Platform'] = Platform
+    glbls['Uses'] = module.Uses
+    
+    locs = {}
+    exec file(filename) in glbls, locs
+    try:
+        todo = locs['todo']
+    except:
+        raise ValueError("Can't find variable `todo' in `%s'."%platform)
+    return todo

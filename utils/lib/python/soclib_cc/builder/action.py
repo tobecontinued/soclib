@@ -266,11 +266,10 @@ class Action:
     def __hash__(self):
         return self.__hash
 
-    def __cmp__(self, other):
-        if other.__class__.__cmp__ != self.__class__.__cmp__:
-            r = cmp(other, self)
-            return -r
-        return cmp(self.priority, other.priority)
+    def __eq__(self, other):
+        return self.__class__ is other.__class__ and \
+               set(self.sources) == set(other.sources) and \
+               set(self.dests) == set(other.dests)
 
     def __str__(self):
         import bblock

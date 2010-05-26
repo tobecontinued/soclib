@@ -234,8 +234,6 @@ def main():
 def compile_one_module(output, one_module, one_args, opts):
     from soclib_cc.builder.todo import ToDo
     from soclib_cc.builder.cxx import CxxMkobj, CCompile
-    from soclib_desc.specialization import Specialization
-    from soclib_cc.component_builder import ComponentBuilder
     todo = ToDo()
     class foo:
         def fullyQualifiedModuleName(self, d):
@@ -245,10 +243,10 @@ def compile_one_module(output, one_module, one_args, opts):
     out = []
     f = foo()
     for module in one_module.split(','):
-        mod = Specialization(module, **one_args)
-#           mod.printAllUses()
-        for b in mod.getSubTree():
-            for o in ComponentBuilder.fromSpecialization(b).results():
+        mod = soclib_desc.description_files.get_module(module)
+        spec = mod.specialize(**one_args)
+        for b in spec.get_used_modules():
+            for o in b.builder().results():
                 todo.add(o)
                 out.append(o)
         if output:
@@ -265,7 +263,7 @@ def complete_name(name, separator):
         suffix = suffix.split(sep)[-1]
     prefix_len = len(name)-len(suffix)
     for mod in soclib_desc.description_files.get_all_modules():
-        name = mod.getModuleName()
+        name = mod.name
         if name.startswith(name):
             client = name[prefix_len:]
             completions.add(client)
@@ -275,33 +273,25 @@ def complete_name(name, separator):
 def list_descs(mode):
     if mode == 'long':
         for desc in soclib_desc.description_files.get_all_modules():
-            print desc.getModuleName()
-            for f in desc.files():
+            print desc.name
+            for f in desc.related_files():
                 print ' -', f
     elif mode == 'names':
         for module in soclib_desc.description_files.get_all_modules():
-            print desc.getModuleName()
+            print desc.name
     else:
         print "Please give arg 'long' or 'names'"
         return 1
     return 0
 
 def compile_platform(platform, opts):
+    import soclib_cc.platform as pf
     from soclib_cc.config import config
+    
     if not config.quiet and not opts.embedded_cflags:
         print "soclib-cc: Entering directory `%s'"%(
             os.path.abspath(os.getcwd()))
-    import soclib_cc.platform as pf
-    glbls = {}
-    for n in pf.__all__:
-        glbls[n] = getattr(pf, n)
-    glbls['config'] = config
-    locs = {}
-    exec file(platform) in glbls, locs
-    try:
-        todo = locs['todo']
-    except:
-        raise ValueError("Can't find variable `todo' in `%s'."%platform)
+    todo = pf.parse(platform)
     return todo_do(todo, opts)
 
 def todo_do(todo, opts):
@@ -313,7 +303,12 @@ def todo_do(todo, opts):
     elif opts.embedded_cflags:
         print todo.embeddedCodeCflags()
     else:
-        todo.process()
+        from soclib_cc.builder.action import ActionFailed
+        try:
+            todo.process()
+        except ActionFailed, e:
+            print "soclib-cc: *** Compilation action failed: %s. Stop."%str(e)
+            return 2
     return 0
 
 def setup_config(opts):

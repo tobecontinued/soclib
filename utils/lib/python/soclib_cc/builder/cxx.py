@@ -26,7 +26,6 @@ __id__ = "$Id$"
 __version__ = "$Revision$"
 
 import os, os.path
-import subprocess
 import sys
 try:
     from functools import reduce
@@ -36,6 +35,7 @@ except:
 from soclib_cc.config import config
 
 import action
+import command
 import fileops
 import mfparser
 import bblock
@@ -84,16 +84,14 @@ class CCompile(action.Action):
             '-MM', '-MT', 'foo.o', str(filename)]
         cmd = self.__arg_sort(cmd)
 
-        process = subprocess.Popen(cmd,
-                                   stdout = subprocess.PIPE,
-                                   stderr = subprocess.PIPE)
-        blob, err = process.communicate()
+        process = command.Command(cmd)
+        ret = process.run(True)
 
         try:
-            deps = mfparser.MfRule(blob)
+            deps = mfparser.MfRule(process.stdout)
         except ValueError:
-            sys.stderr.write(err)
-            sys.stderr.write('\n\n')
+            sys.stderr.write(process.stderr)
+            sys.stderr.write('\n')
             raise action.ActionFailed("Unable to compute dependencies", cmd)
         
         deps = bblock.bblockize(deps.prerequisites)

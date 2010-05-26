@@ -41,6 +41,16 @@ class Command:
         self.__cwd = cwd
         self.__on_done = on_done
         self.__done = False
+        self.__stdout = ''
+        self.__stderr = ''
+
+    @property
+    def stdout(self):
+        return self.__stdout
+
+    @property
+    def stderr(self):
+        return self.__stderr
 
     @property
     def command(self):
@@ -71,7 +81,9 @@ class Command:
             self.__handle.wait()
             self.__out.seek(0)
             self.__err.seek(0)
-            ret = h.returncode, self.__out.read(), self.__err.read()
+            self.__stdout = self.__out.read()
+            self.__stderr = self.__err.read()
+            ret = self.__handle.returncode
             del self.__handle
             del self.__out
             del self.__err
@@ -105,9 +117,9 @@ class Command:
         except:
             pass
         self.__out.seek(0)
-        out = self.__out.read()
         self.__err.seek(0)
-        err = self.__err.read()
+        self.__stdout = self.__out.read()
+        self.__stderr = self.__err.read()
         del self.__out
         del self.__err
 
@@ -121,7 +133,7 @@ class Command:
             self.__done = True
 
         if self.__on_done:
-            self.__on_done(self, rc, out, err)
+            self.__on_done(self, rc, self.__stdout, self.__stderr)
 
     def is_background(self):
         try:
