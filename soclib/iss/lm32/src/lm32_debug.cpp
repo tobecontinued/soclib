@@ -96,14 +96,14 @@ namespace soclib { namespace common {
             DUMP_REG(25,"r",r_gp[25]);
             std::cout << std::endl;
 
-            DUMP_REG(26,"(gp) r",r_gp[26]);
-            DUMP_REG(27,"(fp) r",r_gp[27]);
+            DUMP_REG(26,"(LM32_R_gp) r",r_gp[26]);
+            DUMP_REG(27,"(LM32_R_fp) r",r_gp[27]);
             std::cout << std::endl;
-            DUMP_REG(28,"(sp) r",r_gp[28]);
-            DUMP_REG(29,"(ra) r",r_gp[29]);
+            DUMP_REG(28,"(LM32_R_sp) r",r_gp[28]);
+            DUMP_REG(29,"(LM32_R_ra) r",r_gp[29]);
             std::cout << std::endl;
-            DUMP_REG(30,"(ea) r",r_gp[30]);
-            DUMP_REG(31,"(ba) r",r_gp[31]);
+            DUMP_REG(30,"(LM32_R_ea) r",r_gp[30]);
+            DUMP_REG(31,"(LM32_R_ba) r",r_gp[31]);
             std::cout << std::endl;
 
 #undef DUMP_LINE

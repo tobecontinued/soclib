@@ -68,12 +68,12 @@
 #define X_INTERRUPT         6
 #define X_SYSTEM_CALL       7
 //Specific registers indexes
-#define gp                  26   // global pointer
-#define fp                  27   // frame pointer
-#define sp                  28   // stack pointer
-#define ra                  29   // return address
-#define ea                  30   // exception return address
-#define ba                  31   // breakpoint return address
+#define LM32_R_gp           26   // global pointer
+#define LM32_R_fp           27   // frame pointer
+#define LM32_R_sp           28   // stack pointer
+#define LM32_R_ra           29   // return address
+#define LM32_R_ea           30   // exception return address
+#define LM32_R_ba           31   // breakpoint return address
 
 
 namespace soclib { namespace common {

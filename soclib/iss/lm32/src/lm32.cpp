@@ -303,7 +303,7 @@ handle_except:
                 // debug exceptions
                 case ( X_BREAK_POINT):
                 case ( X_WATCH_POINT):
-                    r_gp[ba] = r_pc;
+                    r_gp[LM32_R_ba] = r_pc;
                     m_next_pc = r_DEBA + 8*4*m_exception_cause;
                     //disable interrupts and store interrupt enable
                     r_IE.BIE = r_IE.IE ;
@@ -316,7 +316,7 @@ handle_except:
                 case ( X_DIVISION_BY_ZERO  ):
                 case ( X_INTERRUPT         ):
                 case ( X_SYSTEM_CALL       ):
-                    r_gp[ea] = r_pc;
+                    r_gp[LM32_R_ea] = r_pc;
                     m_next_pc = (r_DC.RE ? r_DEBA :r_EBA )+8*4*m_exception_cause;
                     //disable interrupts and store interrupt enable
                     r_IE.EIE = r_IE.IE ;
