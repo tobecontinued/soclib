@@ -95,6 +95,6 @@ Module('caba:vci_clock_enable',
 	],
 	extensions = [
 		'dsx:addressable=tgtid',
-		'dsx:get_ident=tgtid:p_vci_target'
+		'dsx:get_ident=tgtid:p_vci_target:mt'
 	],
 )

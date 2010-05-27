@@ -187,7 +187,7 @@ tmpl(void)::read_request_done(VciInitiatorReq<vci_param> *req) {
 		r_read_confs[r_read_cur_conf].count -= count;
 		next_request();
 	} else {
-		std::cout << "DMA read request failed" << std::endl;
+		std::cout << name() << ": DMA read request failed" << std::endl;
 	}
 	delete req;
 }
@@ -231,7 +231,7 @@ tmpl(void)::next_write_request() {
 			//if (current_count > 0) {
 			if (fifo->filled_status() >= current_count) {
 #if SOCLIB_MODULE_DEBUG
-				std::cout << "DMA write request " << std::hex << current_count
+				std::cout << name() << ": DMA write request " << std::hex << current_count
 	    			<< " fifo=" << r_write_confs[r_write_cur_conf].fifo
 	    			<< " mem=" << r_write_confs[r_write_cur_conf].current << std::endl;
 #endif
@@ -288,7 +288,7 @@ tmpl(void)::write_request_done(VciInitiatorReq<vci_param> *req) {
 		r_write_confs[r_write_cur_conf].count -= count;
 		next_request();
 	} else {
-		std::cout << "DMA write request failed" << std::endl;
+		std::cout << name() << ": DMA write request failed" << std::endl;
 	}
 	delete req;
 }
