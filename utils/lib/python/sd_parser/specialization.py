@@ -39,8 +39,9 @@ from soclib_desc import specialization as sds
 
 class Specialization:
 
-    def __init__(self, module, **params):
+    def __init__(self, module, local = False, **params):
         self.__module = module
+        self.__local = local
 #        self.__used_parameters = self.__find_useful_parameters(**params)
         self.__passed_params = parameter.resolve(params, params)
         self.__entity_name = self.__get_cxx_type()
@@ -119,6 +120,7 @@ class Specialization:
         return component_builder.CxxComponentBuilder(
             self.__module.name,
             self.__entity_name,
+            local = self.__local,
             implementation_files = self.__module.get_info('abs_implementation_files'),
             header_files = self.__module.get_info('abs_header_files'),
             tmpl_header_files = tmpl_headers,
@@ -237,6 +239,9 @@ class Specialization:
 
     def get_header_files(self):
         return self.__module.get_info('abs_header_files')
+
+    def get_interface_files(self):
+        return self.__module.get_info('abs_interface_files')
 
     def __get_cxx_type(self):
         tmpl_parameters = map(

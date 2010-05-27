@@ -301,7 +301,7 @@ def todo_do(todo, opts):
         todo.clean()
         soclib_desc.description_files.cleanup()
     elif opts.embedded_cflags:
-        print todo.embeddedCodeCflags()
+        print todo.embedded_code_cflags()
     else:
         from soclib_builder.action import ActionFailed
         try:

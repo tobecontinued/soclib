@@ -54,7 +54,7 @@ class Platform(ToDo):
         self.__output = output or config.output
 
         src = Source(mode, source_file, uses, defines, **params)
-        spec = src.specialize(**params)
+        self.__spec = spec = src.specialize(**params)
 
         objs = set()
         for c in spec.get_used_modules():
@@ -76,6 +76,14 @@ class Platform(ToDo):
             self.__defines,
             self.__output,
             )
+
+    def embedded_code_cflags(self):
+        paths = set()
+        for spec in self.__spec.get_used_modules():
+            for d in map(os.path.dirname, spec.get_interface_files()):
+                if os.path.basename(d) == 'soclib':
+                    paths.add(os.path.dirname(d))
+        return ' '.join(map(lambda x: '-I'+x, paths))
 
 def Source(mode, source_file, uses = [], defines = {}, **params):
     from sd_parser import module
@@ -101,7 +109,7 @@ def parse(filename):
     glbls['config'] = config
     glbls['Platform'] = Platform
     glbls['Uses'] = module.Uses
-    
+
     locs = {}
     exec file(filename) in glbls, locs
     try:

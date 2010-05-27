@@ -230,7 +230,10 @@ class Module(module.ModuleCommon):
             return self.__spec_cache[h]
 
         import specialization
-        self.__spec_cache[h] = specialization.Specialization(self, **params)
+        self.__spec_cache[h] = specialization.Specialization(
+            self,
+            local = self.__attrs['local'],
+            **params)
         return self.__spec_cache[h]
 
 

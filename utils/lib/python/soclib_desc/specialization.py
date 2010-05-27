@@ -63,6 +63,13 @@ class SpecializationInterface:
         '''
         raise NotImplementedError()
 
+    def get_interface_files(self):
+        '''
+        Retrieves a collection of absolute interface file paths to
+        include from software using this module.
+        '''
+        raise NotImplementedError()
+
     def get_used_modules(self):
         '''
         Returns set of specializations used as dependancy of this
