@@ -32,6 +32,7 @@ enum SoclibSimhelperRegisters {
     SIMHELPER_END_WITH_RETVAL,
     SIMHELPER_EXCEPT_WITH_VAL,
     SIMHELPER_PAUSE_SIM,
+    SIMHELPER_CYCLES,
 };
 
 #endif /* SIMHELPER_REGS_H */

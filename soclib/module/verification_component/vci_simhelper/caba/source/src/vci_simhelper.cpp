@@ -66,6 +66,14 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
+
+    int cell = (int)addr / vci_param::B;
+
+	switch (cell) {
+    case SIMHELPER_CYCLES:
+		data = sc_time_stamp().value() / sc_get_default_time_unit().value(); 
+		return true;
+	}
 	return false;
 }
 
