@@ -37,6 +37,7 @@
 
 #include <inttypes.h>
 #include <systemc>
+#include "static_assert.h"
 #include "arithmetics.h"
 
 namespace soclib { 
