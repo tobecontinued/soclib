@@ -30,10 +30,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <cstring>
-#define SYSTEMC_SOURCE
-#include "fd_access.h"
-#undef SYSTEMC_SOURCE
-
 #define CHUNCK_SIZE (1<<(vci_param::K-1))
 
 namespace soclib { namespace caba {

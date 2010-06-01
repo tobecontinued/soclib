@@ -35,6 +35,11 @@
 #include "caba_base_module.h"
 #include "mapping_table.h"
 
+#define SYSTEMC_SOURCE
+#include "fd_access.h"
+#undef SYSTEMC_SOURCE
+
+
 namespace soclib {
 namespace caba {
 
