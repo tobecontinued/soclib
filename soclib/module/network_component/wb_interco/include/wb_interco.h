@@ -67,7 +67,6 @@ namespace soclib { namespace caba {
                 void genMealy();
 
                 _WbI_::Arbiter m_arbiter;
-                unsigned int reqs;
                 unsigned int granted;
 
                 std::list<soclib::common::Segment> segts;

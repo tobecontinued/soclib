@@ -62,7 +62,6 @@ namespace soclib { namespace caba {
             _WbI_::alloc_named_o <soclib::caba::WbSlave<wb_param> >
             ("p_master", m_masters_n);
 
-        reqs = 0;
         granted = 0;
 
         SC_METHOD(transition);
@@ -118,6 +117,10 @@ namespace soclib { namespace caba {
             m_arbiter.reset();
         }
         else {
+            // group requests
+            unsigned int reqs = 0;
+            for (size_t i=0; i< m_masters_n; i++)
+                if (p_from_master[i].CYC_I) reqs = reqs | 1 << i ;
             // arbiter
             granted = m_arbiter.run(reqs);
 #ifdef SOCLIB_MODULE_DEBUG
@@ -132,16 +135,12 @@ namespace soclib { namespace caba {
                 << std::endl;
             //<< p_from_master[granted]
 #endif
-            reqs = 0 ;
         }
     }// transition
 
     // Mealy for the bus multiplexors
     tmpl(void)::genMealy()
     {
-        // group requests
-        for (size_t i=0; i< m_masters_n; i++)
-            if (p_from_master[i].CYC_I) reqs = reqs | 1 << i ;
 
         size_t dest_slave = DestnationSlave(p_from_master[granted].ADR_I);
 #ifdef SOCLIB_MODULE_DEBUG
