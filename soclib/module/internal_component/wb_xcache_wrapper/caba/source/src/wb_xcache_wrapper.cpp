@@ -644,6 +644,14 @@ namespace soclib {
 
             ////////////////////////////////////////////////////////////////////////////
             // TODO Write DOC
+            // From TRANS_IDLE we start transaction with the following priority:
+            //      1. r_icache_miss_req --> Instruction miss
+            //      2. r_icache_unc_req ---> Uncached instruction
+            //      3. r_dcache_write_req -> Write request
+            //      4. r_dcache_miss_req --> Data miss
+            //      5. r_dcache_unc_req ---> Uncached data
+            //   This order must be preserved to avoid issues when reading after writing 
+            //   as the cache is write throw.
             //////////////////////////////////////////////////////////////////////////////
 
             switch (r_wb_trans_fsm) {
@@ -659,14 +667,6 @@ namespace soclib {
                         r_wb_trans_fsm = INS_UNC;
                         m_cpt_imiss_transaction++;
                     }
-                    else if ( r_dcache_miss_req )  {
-                        r_wb_trans_fsm = DATA_MISS;
-                        m_cpt_dmiss_transaction++;
-                    }
-                    else if ( r_dcache_unc_req )   {
-                        r_wb_trans_fsm = DATA_UNC;
-                        m_cpt_unc_transaction++;
-                    }
                     else if ( r_dcache_write_req ) {
                         r_wb_trans_fsm = DATA_WRITE;
                         m_cpt_write_transaction++;
@@ -676,6 +676,14 @@ namespace soclib {
                         r_wb_cmd_max = r_wbuf.getMax();
                         m_length_write_transaction += (r_wbuf.getMax() - r_wbuf.getMin() + 1);
 
+                    }
+                    else if ( r_dcache_miss_req )  {
+                        r_wb_trans_fsm = DATA_MISS;
+                        m_cpt_dmiss_transaction++;
+                    }
+                    else if ( r_dcache_unc_req )   {
+                        r_wb_trans_fsm = DATA_UNC;
+                        m_cpt_unc_transaction++;
                     }
                     break;
 
