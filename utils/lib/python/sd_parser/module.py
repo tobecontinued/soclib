@@ -208,7 +208,7 @@ class Module(module.ModuleCommon):
 
         deprecated = self.__attrs['deprecated']
         if deprecated:
-            warnings.warn(ModuleDeprecationWarning(mod.name, deprecated),
+            warnings.warn(ModuleDeprecationWarning(self.__typename, deprecated),
                           stacklevel = 2)
 
         # Put specialized modules in a cache, this saves ~3sec on
