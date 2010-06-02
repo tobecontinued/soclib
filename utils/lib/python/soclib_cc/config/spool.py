@@ -176,6 +176,7 @@ class ConfigSpool(object):
             if key in self.__configs:
     #            print "Getting %s from configs" % key
                 return self.__configs[key]
+        raise AttributeError(key)
 
     def __setattr__(self, key, value):
         """
