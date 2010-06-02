@@ -67,7 +67,7 @@ class ConfigSpool(object):
     mode = 'release'
     desc_parsers = ['sd_parser.sd.SdFile']
     output = 'system.x'
-    sd_ignore_regexp = None
+    sd_ignore_regexp = []
     workpath = 'work'
 
     def __init__(self, soclib_dir):
@@ -112,6 +112,9 @@ class ConfigSpool(object):
         """
         Sets the configuration used sor subsequent attribute gettings.
         """
+        v = self.__configs[name]
+        if not isinstance(v, objects.BuildEnv):
+            raise ValueError("You must select a build environment (BuildEnv) as default, not a %s"%type(v).__name__)
         self.__default_config = name
 
     def __str__(self):
@@ -187,7 +190,7 @@ class ConfigSpool(object):
         if key == 'default':
             for k, v in self.__configs.items():
                 if v is value:
-                    self.__default_config = k
+                    self.set_default(k)
                     return
             else:
                 raise ValueError("Configuration is not present in config yet, cant set it default !")

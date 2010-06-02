@@ -64,7 +64,7 @@ def _pformat(data, indent, dict_delim = ['dict(', ')']):
         r += repr(data)
     return r
 
-class Config:
+class Config(object):
     __locked = True
 
     @classmethod
@@ -138,6 +138,17 @@ class Config:
         return value
 
     def set(self, key, val):
+        self.__args[key] = val
+
+    def __setattr__(self, key, val):
+        if key.startswith('_'):
+            object.__setattr__(self, key, val)
+            return
+        found = False
+        try:
+            getattr(self, key)
+        except:
+            raise ValueError("You cant add a new attribute afterwards")
         self.__args[key] = val
 
     @property
