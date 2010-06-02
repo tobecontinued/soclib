@@ -66,7 +66,7 @@ class DescCache:
 		try:
 			os.unlink(self.__cache_file)
 #			print >> sys.stderr, "Deleted cache"
-		except OSError, e:
+		except:
 			pass
 		
 	def addPath(self, path, cacheable = True):
