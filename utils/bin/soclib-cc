@@ -58,7 +58,7 @@ for py in python2.6 python2.5 python2.4 python ; do
         if [ "$py" = "python2.6" ] ; then
             pyargs='-3'
         fi
-		exec $py $pyargs -m soclib_cc_main $*
+		exec $py $pyargs ${SOCLIB_CC_PY_ARGS} ${soclib_base_path}/utils/lib/python/soclib_cc_main.py $*
 	fi
 done
 
