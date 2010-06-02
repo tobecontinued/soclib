@@ -155,10 +155,10 @@ def parse_args():
                         embedded_cflags = False)
     opts, args = parser.parse_args()
 
-    return opts, args, todef, todb, one_args
+    return opts, args, todef, todb, one_args, parser
 
 def main():
-    opts, args, todef, todb, one_args = parse_args()
+    opts, args, todef, todb, one_args, parser = parse_args()
 
     from soclib_cc import bugreport
     bugreport.bootstrap(opts.bug_report, opts.auto_bug_report)
