@@ -265,6 +265,7 @@ tmpl(void)::transition()
 		r_irq = false;
 		m_irq_enabled = false;
 		m_op = BLOCK_DEVICE_NOOP;
+		m_current_op = BLOCK_DEVICE_NOOP;
 		m_access_latency = 0;
 		m_status = BLOCK_DEVICE_IDLE;
         m_lfsr = -1;
