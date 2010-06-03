@@ -20,22 +20,19 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, nipo, alinevieiramello@hotmail.com
+ * Maintainers: alinev
  *
- * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
- *     Nicolas Pouillon <nipo@ssji.net>
+ * Copyright (c) UPMC / Lip6, 2010
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
  
-#include <tlmdt>                // TLM-DT headers
+#include <tlmdt>
 #include <inttypes.h>
 
 #include "soclib_endian.h"
 #include "write_buffer.h"
 #include "generic_cache.h"
 #include "mapping_table.h"
-#include "mips32.h"
 
 namespace soclib { namespace tlmdt {
 
@@ -49,6 +46,45 @@ private:
   typedef typename vci_param::data_t data_t;
   typedef typename vci_param::data_t tag_t;
   typedef typename vci_param::data_t be_t;
+  
+  enum dcache_fsm_state_e {
+    DCACHE_IDLE,
+    DCACHE_WRITE_UPDT,
+    DCACHE_WRITE_REQ,
+    DCACHE_MISS_WAIT,
+    DCACHE_MISS_UPDT,
+    DCACHE_UNC_WAIT,
+    DCACHE_INVAL,
+    DCACHE_ERROR,
+  };
+
+  enum icache_fsm_state_e {
+    ICACHE_IDLE,
+    ICACHE_MISS_WAIT,
+    ICACHE_MISS_UPDT,
+    ICACHE_UNC_WAIT,
+    ICACHE_ERROR,
+  };
+
+  enum cmd_fsm_state_e {
+    CMD_IDLE,
+    CMD_INS_MISS,
+    CMD_INS_UNC,
+    CMD_DATA_MISS,
+    CMD_DATA_UNC,
+    CMD_DATA_WRITE,
+  };
+  
+  enum rsp_fsm_state_e {
+    RSP_IDLE,
+    RSP_INS_MISS,
+    RSP_INS_UNC,
+    RSP_DATA_MISS,
+    RSP_DATA_UNC,
+    RSP_DATA_WRITE,
+    RSP_DATA_WRITE_TIME_WAIT,
+  };
+  
   /////////////////////////////////////////////////////////////////////////////////////
   // Member Variables
   /////////////////////////////////////////////////////////////////////////////////////
@@ -69,6 +105,42 @@ private:
   const size_t            m_dcache_sets;
   const size_t            m_dcache_words;
   const addr_t            m_dcache_yzmask;
+
+  // REGISTERS
+  int          m_dcache_fsm;
+  addr_t       m_dcache_addr_save;
+  data_t       m_dcache_wdata_save;
+  data_t       m_dcache_rdata_save;
+  int          m_dcache_type_save;
+  be_t         m_dcache_be_save;
+  bool         m_dcache_cached_save;
+  bool         m_dcache_miss_req;
+  bool         m_dcache_unc_req;
+  bool         m_dcache_write_req;
+  data_t       m_dcache_write_time_req;
+  data_t       m_dcache_read_time_req;
+
+  int          m_icache_fsm;
+  addr_t       m_icache_addr_save;
+  bool         m_icache_miss_req;
+  bool         m_icache_unc_req;
+  data_t       m_icache_time_req;
+
+  int          m_vci_cmd_fsm;
+  size_t       m_vci_cmd_min;
+  size_t       m_vci_cmd_max;
+  size_t       m_vci_cmd_cpt;
+  
+  int          m_vci_rsp_fsm;
+  bool         m_vci_rsp_ins_error;
+  bool         m_vci_rsp_data_error;
+  size_t       m_vci_rsp_cpt;
+
+  data_t      *m_icache_miss_buf;
+  data_t      *m_dcache_miss_buf;
+  bool         m_icache_buf_unc_valid;
+  bool         m_dcache_buf_unc_valid;
+
  
   WriteBuffer<addr_t>     m_wbuf;
   GenericCache<addr_t>    m_icache;
@@ -80,7 +152,7 @@ private:
   unsigned char           m_byte_enable_ptr[MAXIMUM_PACKET_SIZE * vci_param::nbytes];
   unsigned char           m_data_ptr[MAXIMUM_PACKET_SIZE * vci_param::nbytes];
   sc_core::sc_event       m_rsp_received;
-  bool                    m_error;
+  sc_core::sc_time        m_rsp_time;
 
   //FIELDS OF A NORMAL MESSAGE
   tlm::tlm_generic_payload *m_payload_ptr;
@@ -101,67 +173,53 @@ private:
   sc_core::sc_time          m_activity_time;
 
   // Activity counters
+  uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
+  uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
+  uint32_t m_cpt_dcache_dir_read;         // DCACHE DIR READ
+  uint32_t m_cpt_dcache_dir_write;        // DCACHE DIR WRITE
+  
+  uint32_t m_cpt_icache_data_read;        // ICACHE DATA READ
+  uint32_t m_cpt_icache_data_write;       // ICACHE DATA WRITE
+  uint32_t m_cpt_icache_dir_read;         // ICACHE DIR READ
+  uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
+  
   uint32_t m_cpt_frz_cycles;	          // number of cycles where the cpu is frozen
-  uint32_t m_cpt_total_cycles;	          // total number of cycles
+  //uint32_t m_cpt_total_cycles;	          // total number of cycles
+  
   uint32_t m_cpt_read;                    // total number of read instructions
   uint32_t m_cpt_write;                   // total number of write instructions
   uint32_t m_cpt_data_miss;               // number of read miss
   uint32_t m_cpt_ins_miss;                // number of instruction miss
   uint32_t m_cpt_unc_read;                // number of read uncached
   uint32_t m_cpt_write_cached;            // number of cached write
-
+  
+  uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer
+  uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss
+  uint32_t m_cost_unc_read_frz;           // number of frozen cycles related to uncached read
+  uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss
+  
+  uint32_t m_cpt_imiss_transaction;       // number of VCI instruction miss transactions
+  uint32_t m_cpt_dmiss_transaction;       // number of VCI data miss transactions
+  uint32_t m_cpt_unc_transaction;         // number of VCI uncached read transactions
+  uint32_t m_cpt_write_transaction;       // number of VCI write transactions
+  
+  uint32_t m_cost_imiss_transaction;      // cumulated duration for VCI IMISS transactions
+  uint32_t m_cost_dmiss_transaction;      // cumulated duration for VCI DMISS transactions
+  uint32_t m_cost_unc_transaction;        // cumulated duration for VCI UNC transactions
+  uint32_t m_cost_write_transaction;      // cumulated duration for VCI WRITE transactions
+  uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
+  
   /////////////////////////////////////////////////////////////////////////////////////
   // Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
-  void init( size_t time_quantum );
-
-  uint32_t xcacheAccess(
-			struct iss_t::InstructionRequest ireq,
-			struct iss_t::DataRequest dreq,
-			struct iss_t::InstructionResponse &irsp,
-			struct iss_t::DataResponse &drsp
-			);
-  
-  void xcacheAccessInternal(
-			    struct iss_t::InstructionRequest ireq,
-			    struct iss_t::DataRequest dreq,
-			    struct iss_t::InstructionResponse &irsp,
-			    struct iss_t::DataResponse &drsp
-			    );
-  
   void execLoop();
-  
-  uint32_t ram_uncacheable_write(
-				 enum command command,
-				 addr_t address,
-				 data_t wdata, 
-				 int be, 
-				 data_t &rdata, 
-				 bool &rerror
-				 );
 
-  uint32_t ram_cacheable_write(
-			       enum command command, 
-			       data_t &rdata, 
-			       bool &rerror
-			       );
-
-  uint32_t ram_read(
-		    enum command command, 
-		    addr_t address,
-		    data_t *rdata, 
-		    bool &rerror,
-		    size_t size = 1
-		    );
-
-  uint32_t fill_cache(
-		      GenericCache<addr_t> &cache,
-		      addr_t address,
-		      bool &error
-		      );
-
+  void init( size_t time_quantum );
+  void iss();
+  void frozen_iss(int time);
+  void cmd_fsm();
+  void rsp_fsm();
   void update_time(sc_core::sc_time t);
-  void send_activity();
   void send_null_message();
   
   /////////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +237,7 @@ private:
   /////////////////////////////////////////////////////////////////////////////////////
   // Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ TARGET SOCKET)
   /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum my_nb_transport_fw      // receive interruption from initiator
+  tlm::tlm_sync_enum irq_nb_transport_fw     // receive interruption from initiator
   ( int                      id,             // interruption id
     tlm::tlm_generic_payload &payload,       // payload
     tlm::tlm_phase           &phase,         // phase

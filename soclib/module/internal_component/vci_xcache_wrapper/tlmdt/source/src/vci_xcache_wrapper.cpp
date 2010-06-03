@@ -20,31 +20,56 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, nipo, alinevieiramello@hotmail.com
+ * Maintainers: alinev
  *
- * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
- *     Nicolas Pouillon <nipo@ssji.net>
+ * Copyright (c) UPMC / Lip6, 2010
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
 #include "alloc_elems.h"
 #include "vci_xcache_wrapper.h"
 
-template<typename T>
-T be2mask(T be)
-{
-	const T m = (1<<sizeof(T));
-	T r = 0;
+#define MY_DEBUG 0
 
-	for ( size_t i=0; i<sizeof(T); ++i ) {
-		r <<= 8;
-		be <<= 1;
-		if ( be & m )
-			r |= 0xff;
-	}
-	return r;
+#ifdef SOCLIB_MODULE_DEBUG
+namespace {
+const char *dcache_fsm_state_str[] = {
+        "DCACHE_IDLE",
+        "DCACHE_WRITE_UPDT",
+        "DCACHE_WRITE_REQ",
+        "DCACHE_MISS_WAIT",
+        "DCACHE_MISS_UPDT",
+        "DCACHE_UNC_WAIT",
+        "DCACHE_INVAL",
+        "DCACHE_ERROR",
+    };
+const char *icache_fsm_state_str[] = {
+        "ICACHE_IDLE",
+        "ICACHE_MISS_WAIT",
+        "ICACHE_MISS_UPDT",
+        "ICACHE_UNC_WAIT",
+        "ICACHE_ERROR",
+    };
+const char *cmd_fsm_state_str[] = {
+        "CMD_IDLE",
+        "CMD_INS_MISS",
+        "CMD_INS_UNC",
+        "CMD_DATA_MISS",
+        "CMD_DATA_UNC",
+        "CMD_DATA_WRITE",
+    };
+const char *rsp_fsm_state_str[] = {
+        "RSP_IDLE",
+        "RSP_INS_MISS",
+        "RSP_INS_UNC",
+        "RSP_DATA_MISS",
+        "RSP_DATA_UNC",
+        "RSP_DATA_WRITE",
+	"RSP_DATA_WRITE_TIME_WAIT",
+    };
 }
+#endif
+
 
 namespace soclib{ namespace tlmdt {
 
@@ -199,9 +224,6 @@ tmpl (/**/)::VciXcacheWrapper
 
 tmpl (void)::init( size_t time_quantum)
 {
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " INIT" << std::endl;
-#endif
   // bind initiator
   p_vci(*this);                     
 
@@ -211,11 +233,9 @@ tmpl (void)::init( size_t time_quantum)
     irq_name << "irq" << i;
     p_irq.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
     
-    p_irq[i]->register_nb_transport_fw(this, &VciXcacheWrapper::my_nb_transport_fw, i);
+    p_irq[i]->register_nb_transport_fw(this, &VciXcacheWrapper::irq_nb_transport_fw, i);
   }
 
-  m_error       = false;
-  
   typename iss_t::CacheInfo cache_info;
   cache_info.has_mmu = false;
   cache_info.icache_line_size = m_icache_words*sizeof(data_t);
@@ -227,6 +247,9 @@ tmpl (void)::init( size_t time_quantum)
   m_iss.setCacheInfo(cache_info);
 
   m_iss.reset();
+
+  m_icache_miss_buf = new data_t[m_icache_words];
+  m_dcache_miss_buf = new data_t[m_dcache_words];
 
   // write buffer & caches
   m_wbuf.reset();
@@ -256,12 +279,26 @@ tmpl (void)::init( size_t time_quantum)
     m_byte_enable_ptr[i] = '0';
     m_data_ptr[i] = '0';
   }
-  m_error = false;
+  
+  // synchronisation flip-flops from ICACHE & DCACHE FSMs to VCI  FSMs
+  m_icache_miss_req    = false;
+  m_icache_unc_req     = false;
+  m_dcache_miss_req    = false;
+  m_dcache_unc_req     = false;
+  m_dcache_write_req   = false;
 
+  m_icache_time_req       = 0;
+  m_dcache_read_time_req  = 0;
+  m_dcache_write_time_req = 0;
+  
+  // signals from the VCI RSP FSM to the ICACHE or DCACHE FSMs
+  m_dcache_buf_unc_valid = false;
+  m_icache_buf_unc_valid = false;
+  m_vci_rsp_data_error   = false;
+  m_vci_rsp_ins_error    = false;
+  
   // activity counters
   m_cpt_frz_cycles = 0;
-  m_cpt_total_cycles = 0;
-  
   m_cpt_read = 0;
   m_cpt_write = 0;
   m_cpt_data_miss = 0;
@@ -269,10 +306,12 @@ tmpl (void)::init( size_t time_quantum)
   m_cpt_unc_read = 0;
   m_cpt_write_cached = 0;
   
+  m_icache_fsm = ICACHE_IDLE;
+  m_dcache_fsm = DCACHE_IDLE;
+  m_vci_cmd_fsm = CMD_IDLE;
+  m_vci_rsp_fsm = RSP_IDLE;
+
   SC_THREAD(execLoop);
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " END INIT" << std::endl;
-#endif
 }
 
 ////////////////////////
@@ -280,15 +319,15 @@ tmpl(void)::print_cpi()
 ////////////////////////
 {
     std::cout << name() << " CPU " << m_id << " : CPI = "
-              << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl;
+              << (float)((int)m_pdes_local_time->get().value())/(((int)m_pdes_local_time->get().value()) - m_cpt_frz_cycles) << std::endl;
 }
 ////////////////////////
 tmpl(void)::print_stats()
 ////////////////////////
 {
-    float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
+    float run_cycles = (float)(((int)m_pdes_local_time->get().value()) - m_cpt_frz_cycles);
     std::cout << name() << std::endl;
-    std::cout << "- CPI                = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
+    std::cout << "- CPI                = " << (float)((int)m_pdes_local_time->get().value())/run_cycles << std::endl ;
     std::cout << "- READ RATE          = " << (float)m_cpt_read/run_cycles << std::endl ;
     std::cout << "- WRITE RATE         = " << (float)m_cpt_write/run_cycles << std::endl;
     std::cout << "- UNCACHED READ RATE = " << (float)m_cpt_unc_read/m_cpt_read << std::endl ;
@@ -315,484 +354,910 @@ tmpl (void)::update_time(sc_core::sc_time t)
 
 tmpl (void)::execLoop ()
 {
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " EXEC LOOP" << std::endl;
-#endif
+  int before_time, after_time;
   while(m_pdes_local_time->get() < m_simulation_time){
 
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " EXEC LOOP WHILE" << std::endl;
-#endif
-    m_cpt_total_cycles++;
-
-    struct iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
-    struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
-    
-    struct iss_t::InstructionResponse meanwhile_irsp = ISS_IRSP_INITIALIZER;
-    struct iss_t::DataResponse meanwhile_drsp = ISS_DRSP_INITIALIZER;
-    
-    struct iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
-    struct iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
-    
-    m_iss.getRequests(ireq, dreq);
+    m_pdes_local_time->add(UNIT_TIME);
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << std::endl;
-    std::cout << name() << " before cache access: " << ireq << ' ' << dreq << std::endl;
+    std::cout
+        << name()
+        << " clock: " << std::dec << ((int)m_pdes_local_time->get().value())
+        << " dcache fsm: " << dcache_fsm_state_str[m_dcache_fsm]
+        << " icache fsm: " << icache_fsm_state_str[m_icache_fsm]
+        << " cmd fsm: " << cmd_fsm_state_str[m_vci_cmd_fsm]
+        << " rsp fsm: " << rsp_fsm_state_str[m_vci_rsp_fsm] << std::endl;
 #endif
 
-    // While frozen, the only functionnal part of the cache is the
-    // one which does not accesses external resources.
-    // Preventively fetch responses from the cache without side
-    // effects before actually trying to know if we can answer without delay.
-    //xcacheAccessInternal(ireq, dreq, meanwhile_irsp, meanwhile_drsp);
+#if MY_DEBUG
+    std::cout
+        << name()
+        << " clock: " << std::dec << ((int)m_pdes_local_time->get().value())
+        << " dcache fsm: " << dcache_fsm_state_str[m_dcache_fsm]
+        << " icache fsm: " << icache_fsm_state_str[m_icache_fsm]
+        << " cmd fsm: " << cmd_fsm_state_str[m_vci_cmd_fsm]
+        << " rsp fsm: " << rsp_fsm_state_str[m_vci_rsp_fsm] << std::endl;
+#endif
     
-    // This call is _with_ side effects and gives delay information.
-    xcacheAccess(ireq, dreq, irsp, drsp);
-    //uint32_t del = xcacheAccess(ireq, dreq, irsp, drsp);
-    
+    iss();
+
+    before_time = m_pdes_local_time->get().value();
+
+    cmd_fsm();
+
+    rsp_fsm();
+
+    after_time  = m_pdes_local_time->get().value();
+
+    if(after_time > before_time)
+      frozen_iss(after_time - before_time);
+
+    // if initiator needs synchronize then it sends a null message
+    if (m_pdes_local_time->need_sync()) {
+      send_null_message();
+    }
+ 
+  }
+  sc_core::sc_stop();
+}
+
+tmpl(void)::iss()
+{
+    /////////////////////////////////////////////////////////////////////
+    // The ICACHE FSM controls the following ressources:
+    // - m_icache_fsm
+    // - m_icache (instruction cache access)
+    // - m_icache_addr_save
+    // - m_icache_buf_unc_valid 
+    // - m_icache_miss_req set
+    // - m_icache_unc_req set
+    // - m_icache_unc_req set
+    // - m_vci_rsp_ins_error reset
+    // - ireq & irsp structures for communication with the processor
+    //
+    // Processor requests are taken into account only in the IDLE state.
+    // In case of MISS, or in case of uncached instruction, the FSM 
+    // writes the missing address line in the  m_icache_addr_save register 
+    // and sets the m_icache_miss_req (or the m_icache_unc_req) flip-flop.
+    // The request flip-flop is reset by the VCI_RSP FSM when the VCI 
+    // transaction is completed. 
+    // The m_icache_buf_unc_valid is set in case of uncached access.
+    // In case of bus error, the VCI_RSP FSM sets the m_vci_rsp_ins_error
+    // flip-flop. It is reset by the ICACHE FSM.
+    ///////////////////////////////////////////////////////////////////////
+
+    typename iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
+    typename iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
+
+    typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
+    typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
+
+    m_iss.getRequests( ireq, dreq );
+
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " after cache access: " << irsp << ' ' << drsp << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Request: " << ireq << std::endl;
+#endif
+#if MY_DEBUG
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Request: " << ireq << std::endl;
+#endif
+
+    switch(m_icache_fsm) {
+
+    case ICACHE_IDLE:
+        if ( ireq.valid ) {
+            data_t  icache_ins = 0;
+            bool    icache_hit = false;
+            addr_t  ireq_paddr = ireq.addr;
+            m_iss.virtualToPhys(ireq_paddr);
+
+            bool    icache_cached = m_cacheability_table[ireq_paddr];
+
+            // icache_hit & icache_ins evaluation
+            if ( icache_cached ) {
+                icache_hit = m_icache.read(ireq_paddr, &icache_ins);
+            } else {
+                icache_hit = ( m_icache_buf_unc_valid && (ireq_paddr == m_icache_addr_save) );
+                icache_ins = m_icache_miss_buf[0];
+            }
+            if ( ! icache_hit ) {
+                m_cpt_ins_miss++;
+                m_cost_ins_miss_frz++;
+                m_icache_addr_save = ireq_paddr;
+                if ( icache_cached ) {
+                    m_icache_fsm = ICACHE_MISS_WAIT;
+                    m_icache_miss_req = true;
+		    m_icache_time_req = m_pdes_local_time->get().value();
+                } else {
+                    m_icache_fsm = ICACHE_UNC_WAIT;
+                    m_icache_unc_req = true;
+		    m_icache_time_req = m_pdes_local_time->get().value();
+                    m_icache_buf_unc_valid = false;
+                } 
+            } else {
+                m_icache_buf_unc_valid = false;
+            }
+            m_cpt_icache_dir_read += m_icache_ways;
+            m_cpt_icache_data_read += m_icache_ways;
+            irsp.valid          = icache_hit;
+            irsp.instruction    = icache_ins;
+        }
+        break;
+
+    case ICACHE_MISS_WAIT:
+        m_cost_ins_miss_frz++;
+        if ( !m_icache_miss_req ) {
+            if ( m_vci_rsp_ins_error ) {
+                m_icache_fsm = ICACHE_ERROR;
+                m_vci_rsp_ins_error = false;
+            } else {
+                m_icache_fsm = ICACHE_MISS_UPDT;
+            }
+        }
+        break;
+
+    case ICACHE_UNC_WAIT:
+        m_cost_ins_miss_frz++;
+        if ( !m_icache_unc_req ) {
+            if ( m_vci_rsp_ins_error ) {
+                m_icache_fsm = ICACHE_ERROR;
+                m_vci_rsp_ins_error = false;
+            } else {
+                m_icache_fsm = ICACHE_IDLE;
+                m_icache_buf_unc_valid = true;
+            }
+        }
+        break;
+
+    case ICACHE_ERROR:
+        m_icache_fsm = ICACHE_IDLE;
+        m_vci_rsp_ins_error = false;
+        irsp.valid          = true;
+        irsp.error          = true;
+        break;
+
+    case ICACHE_MISS_UPDT:
+      {
+        addr_t  ad  = m_icache_addr_save;
+        data_t* buf = m_icache_miss_buf;
+        data_t  victim_index = 0;
+        m_cpt_icache_dir_write++;
+        m_cpt_icache_data_write++;
+        m_cost_ins_miss_frz++;
+        m_icache.update(ad, buf, &victim_index);
+        m_icache_fsm = ICACHE_IDLE;
+        break;
+      }
+      
+    } // end switch m_icache_fsm
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Response: " << irsp << std::endl;
+#endif
+#if MY_DEBUG
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Response: " << irsp << std::endl;
+#endif
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    // The DCACHE FSM controls the following ressources:
+    // - m_dcache_fsm
+    // - m_dcache (data cache access)
+    // - m_dcache_addr_save
+    // - m_dcache_wdata_save
+    // - m_dcache_rdata_save
+    // - m_dcache_type_save
+    // - m_dcache_be_save
+    // - m_dcache_cached_save
+    // - m_dcache_buf_unc_valid
+    // - m_dcache_miss_req set
+    // - m_dcache_unc_req set
+    // - m_dcache_write_req set
+    // - m_vci_rsp_data_error reset
+    // - m_wbuf write
+    // - dreq & drsp structures for communication with the processor
+    //
+    // In order to support VCI write burst, the processor requests are taken into account
+    // in the WRITE_REQ state as well as in the IDLE state.
+    // - In the IDLE state, the processor request cannot be satisfied if
+    //   there is a cached read miss, or an uncached read.
+    // - In the WRITE_REQ state, the request cannot be satisfied if
+    //   there is a cached read miss, or an uncached read,
+    //   or when the write buffer is full.
+    // - In all other states, the processor request is not satisfied.
+    //
+    // The cache access takes into account the cacheability_table.
+    // In case of processor request, there is five conditions to exit the IDLE state:
+    //   - CACHED READ MISS => to the MISS_WAIT state (waiting the m_miss_ok signal),
+    //     then to the MISS_UPDT state, and finally to the IDLE state.
+    //   - UNCACHED READ  => to the UNC_WAIT state (waiting the m_miss_ok signal),
+    //     and to the IDLE state.
+    //   - CACHE INVALIDATE HIT => to the INVAL state for one cycle, then to IDLE state.
+    //   - WRITE MISS => directly to the WRITE_REQ state to access the write buffer.
+    //   - WRITE HIT => to the WRITE_UPDT state, then to the WRITE_REQ state.
+    //
+    // Error handling :  Read Bus Errors are synchronous events, but
+    // Write Bus Errors are asynchronous events (processor is not frozen).
+    // - If a Read Bus Error is detected, the VCI_RSP FSM sets the
+    //   m_vci_rsp_data_error flip-flop, and the synchronous error is signaled
+    //   by the DCACHE FSM.
+    // - If a Write Bus Error is detected, the VCI_RSP FSM  signals
+    //   the asynchronous error using the setWriteBerr() method.
+    ////////////////////////////////////////////////////////////////////////
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Request: " << dreq << std::endl;
+#endif
+#if MY_DEBUG
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Request: " << dreq << std::endl;
+#endif
+
+
+
+    if(m_dcache_fsm==DCACHE_WRITE_UPDT && m_vci_cmd_fsm != CMD_IDLE){
+      m_cpt_dcache_data_write++;
+      data_t mask = vci_param::be2mask(m_dcache_be_save);
+      data_t wdata = (mask & m_dcache_wdata_save) | (~mask & m_dcache_rdata_save);
+      m_dcache.write(m_dcache_addr_save, wdata);
+      m_dcache_fsm = DCACHE_WRITE_REQ;
+      m_dcache_write_time_req = m_pdes_local_time->get().value() + 1;
+   }
+
+
+
+    switch ( m_dcache_fsm ) {
+
+    case DCACHE_WRITE_REQ:
+
+      // try to post the write request in the write buffer
+      if ( !m_dcache_write_req ) {
+	// no previous write transaction
+	if ( m_wbuf.wok(m_dcache_addr_save) ) {
+	  // write request in the same cache line
+	  m_wbuf.write(m_dcache_addr_save, m_dcache_be_save, m_dcache_wdata_save);
+	  // closing the write packet if uncached
+	  if ( !m_dcache_cached_save ){
+	    m_dcache_write_req = true ;
+	    if(m_dcache_write_time_req < m_pdes_local_time->get().value())
+	      m_dcache_write_time_req = m_pdes_local_time->get().value();
+	  }
+	} else {
+	  // close the write packet if write request not in the same cache line
+	  m_dcache_write_req = true;
+	  if(m_dcache_write_time_req < m_pdes_local_time->get().value())
+	    m_dcache_write_time_req = m_pdes_local_time->get().value();
+	  m_cost_write_frz++;
+	  break;
+	  //  posting not possible : stay in DCACHE_WRITEREQ state
+	}
+      } else {
+	//  previous write transaction not completed
+	m_cost_write_frz++;
+	break;
+	//  posting not possible : stay in DCACHE_WRITEREQ state
+      }
+      
+      // close the write packet if the next processor request is not a write
+      if ( !dreq.valid || dreq.type != iss_t::DATA_WRITE ){
+	m_dcache_write_req = true ;
+	if(m_dcache_write_time_req < m_pdes_local_time->get().value())
+	  m_dcache_write_time_req = m_pdes_local_time->get().value();
+      }
+
+      // The next state and the processor request parameters are computed
+      // as in the DCACHE_IDLE state (see below ...)
+      
+      
+      // processor request are not accepted in the WRITE_REQUEST state
+      // when the write buffer is not writeable
+      if ( m_dcache_write_req || !m_wbuf.wok(m_dcache_addr_save) ) {
+	drsp.valid = false;
+      }
+      
+
+    case DCACHE_IDLE:
+
+        if ( dreq.valid ) {
+            bool        dcache_hit     = false;
+            data_t      dcache_rdata   = 0;
+            bool        dcache_cached;
+            addr_t      dreq_paddr = dreq.addr;
+            m_iss.virtualToPhys(dreq_paddr);
+
+            m_cpt_dcache_data_read += m_dcache_ways;
+            m_cpt_dcache_dir_read += m_dcache_ways;
+
+            // dcache_cached evaluation
+            switch (dreq.type) {
+            case iss_t::DATA_LL:
+            case iss_t::DATA_SC:
+            case iss_t::XTN_READ:
+            case iss_t::XTN_WRITE:
+                dcache_cached = false;
+                break;
+            default:
+                dcache_cached = m_cacheability_table[dreq_paddr];
+            }
+
+            // dcache_hit & dcache_rdata evaluation
+            if ( dcache_cached ) {
+                dcache_hit = m_dcache.read(dreq_paddr, &dcache_rdata);
+            } else {
+                dcache_hit = ( (dreq_paddr == m_dcache_addr_save) && m_dcache_buf_unc_valid );
+                dcache_rdata = m_dcache_miss_buf[0];
+            }
+
+            switch( dreq.type ) {
+                case iss_t::DATA_READ:
+                case iss_t::DATA_LL:
+                case iss_t::DATA_SC:
+                    m_cpt_read++;
+                    if ( dcache_hit ) {
+                        m_dcache_fsm = DCACHE_IDLE;
+                        drsp.valid = true;
+                        drsp.rdata = dcache_rdata;
+                        m_dcache_buf_unc_valid = false;
+                    } else {
+                        if ( dcache_cached ) {
+                            m_cpt_data_miss++;
+                            m_cost_data_miss_frz++;
+                            m_dcache_miss_req = true;
+ 			    m_dcache_read_time_req = m_pdes_local_time->get().value();
+                           m_dcache_fsm = DCACHE_MISS_WAIT;
+                        } else {
+                            m_cpt_unc_read++;
+                            m_cost_unc_read_frz++;
+                            m_dcache_unc_req = true;
+			    m_dcache_read_time_req = m_pdes_local_time->get().value();
+                            m_dcache_fsm = DCACHE_UNC_WAIT;
+                        }
+                    }
+                    break;
+                case iss_t::XTN_READ:
+                case iss_t::XTN_WRITE:
+                    // only DCACHE INVALIDATE request are supported
+                    switch ( dreq_paddr/4 ) {
+                    case iss_t::XTN_DCACHE_INVAL:
+                        m_dcache_fsm = DCACHE_INVAL;
+                    case iss_t::XTN_SYNC:
+                    default:
+                        drsp.valid = true;
+                        drsp.rdata = 0;
+                        break;
+                    }
+                    break;
+                case iss_t::DATA_WRITE:
+                    m_cpt_write++;
+                    if ( dcache_hit && dcache_cached ) {
+		      m_cpt_write_cached++;
+		      m_dcache_fsm = DCACHE_WRITE_UPDT;
+                    } else {
+		      m_dcache_fsm = DCACHE_WRITE_REQ;
+                    }
+                    drsp.valid = true;
+                    drsp.rdata = 0;
+                    break;
+            } // end switch dreq.type
+
+            m_dcache_addr_save      = dreq_paddr;
+            m_dcache_type_save      = dreq.type;
+            m_dcache_wdata_save     = dreq.wdata;
+            m_dcache_be_save        = dreq.be;
+            m_dcache_rdata_save     = dcache_rdata;
+            m_dcache_cached_save    = dcache_cached;
+
+        } else {    // if no dcache_req
+	  m_dcache_fsm = DCACHE_IDLE;
+        }
+        break;
+	
+    case DCACHE_WRITE_UPDT:
+    {
+        m_cpt_dcache_data_write++;
+        data_t mask = vci_param::be2mask(m_dcache_be_save);
+        data_t wdata = (mask & m_dcache_wdata_save) | (~mask & m_dcache_rdata_save);
+        m_dcache.write(m_dcache_addr_save, wdata);
+        m_dcache_fsm = DCACHE_WRITE_REQ;
+
+
+        break;
+    }
+
+    case DCACHE_MISS_WAIT:
+        if ( dreq.valid ) m_cost_data_miss_frz++;
+        if ( !m_dcache_miss_req ) {
+            if ( m_vci_rsp_data_error )
+                m_dcache_fsm = DCACHE_ERROR;
+            else
+                m_dcache_fsm = DCACHE_MISS_UPDT;
+        }
+        break;
+
+    case DCACHE_MISS_UPDT:
+    {
+        addr_t  ad  = m_dcache_addr_save;
+        data_t* buf = m_dcache_miss_buf;
+        data_t  victim_index = 0;
+        if ( dreq.valid )
+            m_cost_data_miss_frz++;
+        m_cpt_dcache_data_write++;
+        m_cpt_dcache_dir_write++;
+        m_dcache.update(ad, buf, &victim_index);
+        m_dcache_fsm = DCACHE_IDLE;
+        break;
+    }
+
+    case DCACHE_UNC_WAIT:
+        if ( dreq.valid ) m_cost_unc_read_frz++;
+        if ( !m_dcache_unc_req ) {
+            if ( m_vci_rsp_data_error ) {
+                m_dcache_fsm = DCACHE_ERROR;
+            } else {
+                m_dcache_fsm = DCACHE_IDLE;
+                // If request was a DATA_SC we need to invalidate the corresponding cache line, 
+                // so that subsequent access to this line are read from RAM
+                if (dreq.type == iss_t::DATA_SC) {
+                    m_dcache_fsm = DCACHE_INVAL;
+                    m_dcache_wdata_save = m_dcache_addr_save;
+                }
+                m_dcache_buf_unc_valid = true;
+            }
+        }
+        break;
+
+    case DCACHE_ERROR:
+        m_dcache_fsm = DCACHE_IDLE;
+        m_vci_rsp_data_error = false;
+        drsp.error = true;
+        drsp.valid = true;
+        break;
+
+    case DCACHE_INVAL:
+        m_cpt_dcache_dir_read += m_dcache_ways;
+        m_dcache.inval(m_dcache_wdata_save);
+        m_dcache_fsm = DCACHE_IDLE;
+        break;
+    }
+
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Response: " << drsp << std::endl;
+#endif
+#if MY_DEBUG
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Response: " << drsp << std::endl;
 #endif
     
     while ( ! m_pending_irqs.empty() && m_pending_irqs.begin()->first <= m_pdes_local_time->get() ) {
       std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
-#ifdef SOCLIB_MODULE_DEBUG
-      std::cout << "[" << name() << "] Time = " << m_pdes_local_time->get() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << " time = " <<  i->first << std::endl;
-#endif
+      //#ifdef SOCLIB_MODULE_DEBUG
+      std::cout << "[" << name() << "] Time = " << m_pdes_local_time->get().value() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << " time = " <<  i->first.value() << std::endl;
+      //#endif
       if ( i->second.second )
 	m_irq |= 1<<i->second.first;
       else
 	m_irq &= ~(1<<i->second.first);
       m_pending_irqs.erase(i);
-    }
-
-    uint32_t nc = 0;
-    // Now if we had a delay, give the information to the CPU,
-    // with the cache state before fetching the answer.
-    //if ( del )
-    //nc += m_iss.executeNCycles(del, meanwhile_irsp, meanwhile_drsp, m_irq);
-    nc += m_iss.executeNCycles(1, irsp, drsp, m_irq);
+    } 
+    
+    /////////// execute one iss cycle /////////////////////////////////
+    m_iss.executeNCycles(1, irsp, drsp, m_irq);
 
     if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) )
         m_cpt_frz_cycles++;
 
-    m_pdes_local_time->add(nc * UNIT_TIME);
+
+}
+
+tmpl(void)::frozen_iss(int cycles){
+  struct iss_t::InstructionResponse meanwhile_irsp = ISS_IRSP_INITIALIZER;
+  struct iss_t::DataResponse meanwhile_drsp = ISS_DRSP_INITIALIZER;
+  int n = m_iss.executeNCycles(cycles, meanwhile_irsp, meanwhile_drsp, m_irq);
+  //printf("[%s] Frozen iss = %d cycles real = %d\n", name(), cycles, n);
+}
+
+tmpl(void)::cmd_fsm(){
+
+  ////////////////////////////////////////////////////////////////////////////
+  // The VCI_CMD FSM controls the following ressources:
+  // - m_vci_cmd_fsm
+  // - m_vci_cmd_min
+  // - m_vci_cmd_max
+  // - m_vci_cmd_cpt
+  // - wbuf reset
+  //
+  // This FSM handles requests from both the DCACHE FSM & the ICACHE FSM.
+  // There is 4 request types, with the following priorities :
+  // 1 - Instruction Miss     : m_icache_miss_req
+  // 2 - Instruction Uncached : m_icache_unc_req
+  // 3 - Data Write           : m_dcache_write_req
+  // 4 - Data Read Miss       : m_dcache_miss_req
+  // 5 - Data Read Uncached   : m_dcache_unc_req
+  // There is at most one (CMD/RSP) VCI transaction, as both CMD_FSM
+  // and RSP_FSM exit simultaneously the IDLE state.
+  //
+  // VCI formats:
+  // According to the VCI advanced specification, all read command packets
+  // (Uncached, Miss data, Miss instruction) are one word packets.
+  // For write burst packets, all words must be in the same cache line,
+  // and addresses must be contiguous (the BE field is 0 in case of "holes").
+  // The PLEN VCI field is always documented.
+  //////////////////////////////////////////////////////////////////////////////
+  
+  switch (m_vci_cmd_fsm) {
     
-    // if initiator needs synchronize then it sends a null message
-    if (m_pdes_local_time->need_sync()) {
-      send_null_message();
-    }
-
-  }
-  sc_core::sc_stop();
-}
-
-tmpl (uint32_t)::xcacheAccess
-(
- struct iss_t::InstructionRequest ireq,
- struct iss_t::DataRequest dreq,
- struct iss_t::InstructionResponse &irsp,
- struct iss_t::DataResponse &drsp )
-{
-  if ( ireq.valid ) {
-    data_t  icache_ins = 0;
-    bool    icache_hit = m_icache.read( ireq.addr, &icache_ins);
-
-    if ( !icache_hit ) {
-      m_cpt_ins_miss++;
-      bool err = false;
-      uint32_t del = fill_cache( m_icache, ireq.addr, err );
-      if ( err ) {
-	irsp.valid = true;
-	irsp.error = true;
-	return del;
-      } else {
-	irsp.valid = false;
-	return del;
-      }
-    } else {
-      irsp.valid = true;
-      irsp.instruction = icache_ins;
-    }
-  } else {
-    irsp.valid = false;
-  }
-  
-  if ( dreq.valid ) {
-    data_t  dcache_rdata   = 0;
-    bool    dcache_hit     = false;
-
-    switch ( dreq.type ) {
-    case iss_t::DATA_READ:
-      m_cpt_read++;
-      if ( m_cacheability_table[dreq.addr] ) {
-	dcache_hit = m_dcache.read(dreq.addr, &dcache_rdata);
-	if ( !dcache_hit ) {
-	  m_cpt_data_miss++;
-	  bool err = false;
-	  uint32_t del = fill_cache( m_dcache, dreq.addr, err );
-	  if ( err ) {
-	    drsp.valid = true;
-	    drsp.error = true;
-	    return del;
-	  } else {
-	    drsp.valid = false;
-	    return del;
-	  }
-	} else {
-	  drsp.valid = true;
-	  drsp.rdata = dcache_rdata;
-	  drsp.error = false;
-	}
-      } else {
-	m_cpt_unc_read++;
-	drsp.valid = true;
-	return ram_read(VCI_READ_COMMAND, dreq.addr, &drsp.rdata, drsp.error );
-      }
+  case CMD_IDLE:
+    if (m_vci_rsp_fsm != RSP_IDLE)
       break;
-    case iss_t::DATA_WRITE: {
-      m_cpt_write++;
-      drsp.valid = true;
-      uint32_t del = 0;
-      // no previous write transaction
-      if ( m_wbuf.wok(dreq.addr) ) {
-	// write request in the same cache line
-	m_wbuf.write(dreq.addr, dreq.be, dreq.wdata);
+    
+    m_vci_cmd_cpt = 0;
+    if ( m_icache_miss_req && m_pdes_local_time->get().value()>m_icache_time_req) {
+      m_vci_cmd_fsm = CMD_INS_MISS;
+      m_cpt_imiss_transaction++;
+    } else if ( m_icache_unc_req && m_pdes_local_time->get().value()>m_icache_time_req) {
+      m_vci_cmd_fsm = CMD_INS_UNC;
+      m_cpt_imiss_transaction++;
+    } else if ( m_dcache_write_req && m_pdes_local_time->get().value()>m_dcache_write_time_req) {
+      m_vci_cmd_fsm = CMD_DATA_WRITE;
+      m_vci_cmd_cpt = m_wbuf.getMin();
+      m_vci_cmd_min = m_wbuf.getMin();
+      m_vci_cmd_max = m_wbuf.getMax();
+      m_cpt_write_transaction++;
+      m_length_write_transaction += (m_wbuf.getMax() - m_wbuf.getMin() + 1);
+    } else if ( m_dcache_miss_req && m_pdes_local_time->get().value()>m_dcache_read_time_req) {
+      m_vci_cmd_fsm = CMD_DATA_MISS;
+      m_cpt_dmiss_transaction++;
+    } else if ( m_dcache_unc_req && m_pdes_local_time->get().value()>m_dcache_read_time_req) {
+      m_vci_cmd_fsm = CMD_DATA_UNC;
+      m_cpt_unc_transaction++;
+    }
+    break;
+    
+  case CMD_DATA_WRITE:
+    { 
+      addr_t address = m_wbuf.getAddress(m_wbuf.getMin());
+      data_t be;
+      size_t nwords = m_wbuf.getMax()- m_wbuf.getMin() + 1;
+      
+      //printf("write addr = %08x cpt = %d min = %d max = %d time = %d\n", address, nwords, m_wbuf.getMin(), m_wbuf.getMax(), ((int)m_pdes_local_time->get().value()));
+      
+      for(size_t i=m_wbuf.getMin(), j=0; i<m_wbuf.getMin()+nwords; i++, j+=vci_param::nbytes){
+#ifdef SOCLIB_MODULE_DEBUG
+	std::cout << name() << " ram_write( " << std::hex << m_wbuf.getAddress(i) << ", " << m_wbuf.getData(i) << ", " <<  m_wbuf.getBe(i) << ")" << std::endl;
+#endif
+	
+	be = vci_param::be2mask(m_wbuf.getBe(i));
+	utoa(be, m_byte_enable_ptr, j);
+	utoa(m_wbuf.getData(i), m_data_ptr, j);
+      }
+
+      m_nbytes = nwords * vci_param::nbytes;
+      
+      // set the values in tlm payload
+      m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+      m_payload_ptr->set_address(address & ~3);
+      m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
+      m_payload_ptr->set_byte_enable_length(m_nbytes);
+      m_payload_ptr->set_data_ptr(m_data_ptr);
+      m_payload_ptr->set_data_length(m_nbytes);
+      // set the values in payload extension
+      m_extension_ptr->set_command(VCI_WRITE_COMMAND);
+      m_extension_ptr->set_src_id(m_id);
+      m_extension_ptr->set_trd_id(0);
+      m_extension_ptr->set_pkt_id(0);
+      // set the extension to tlm payload
+      m_payload_ptr->set_extension(m_extension_ptr);
+      //set the tlm phase
+      m_phase = tlm::BEGIN_REQ;
+      //set the local time to transaction time
+      m_time = m_pdes_local_time->get();
+
+      m_vci_cmd_fsm = CMD_IDLE ;
+      m_wbuf.reset() ;
  
-	if ( !m_cacheability_table[dreq.addr] ) {
-	  del = ram_cacheable_write( VCI_WRITE_COMMAND, drsp.rdata, drsp.error );
-	}
-	else{
-	  m_cpt_write_cached++;
-	}
-      }
-      else {
-	del = ram_uncacheable_write( VCI_WRITE_COMMAND, dreq.addr, dreq.wdata, dreq.be, drsp.rdata, drsp.error );
-      }
+      //send a write message
+      p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
 
-      dcache_hit = m_dcache.read(dreq.addr, &dcache_rdata);
-      if ( dcache_hit ) {
-	data_t mask = be2mask<data_t>(dreq.be);
-	data_t wdata = (dreq.wdata & mask) | (dcache_rdata & ~mask);
-	m_dcache.write(dreq.addr, wdata);
+    }
+    break;
+    
+  case CMD_DATA_MISS:
+   { 
+      addr_t address = m_dcache_addr_save & m_dcache_yzmask;
+      data_t be = vci_param::be2mask(0xF);;
 
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << " wdata update: " << dreq << " new data:" << std::hex << wdata << std::endl;
-#endif
+      m_nbytes = m_dcache_words * vci_param::nbytes;
+      for(data_t i=0; i< m_nbytes; i+=vci_param::nbytes){
+	utoa(be, m_byte_enable_ptr, i);
+	utoa(0, m_data_ptr, i);
       }
-      return del;
+      
+      // set the values in tlm payload
+      m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+      m_payload_ptr->set_address(address);
+      m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
+      m_payload_ptr->set_byte_enable_length(m_nbytes);
+      m_payload_ptr->set_data_ptr(m_data_ptr);
+      m_payload_ptr->set_data_length(m_nbytes);
+      // set the values in payload extension
+      m_extension_ptr->set_read();
+      m_extension_ptr->set_src_id(m_id);
+      m_extension_ptr->set_trd_id(0);
+      m_extension_ptr->set_pkt_id(0);
+      // set the extension to tlm payload
+      m_payload_ptr->set_extension(m_extension_ptr);
+      //set the tlm phase
+      m_phase = tlm::BEGIN_REQ;
+      //set the local time to transaction time
+      m_time = m_pdes_local_time->get();
+
+      //send a write message
+      p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+
+      m_vci_cmd_fsm = CMD_IDLE ;
+    }
+    break;
+    
+  case CMD_DATA_UNC:
+
+    // set the values in tlm payload
+    m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+    m_payload_ptr->set_address(m_dcache_addr_save & ~0x3);
+
+    switch( m_dcache_type_save ) {
+    case iss_t::DATA_READ:
+      {
+	data_t mask = vci_param::be2mask(m_dcache_be_save);
+
+	utoa(mask, m_byte_enable_ptr, 0);
+	utoa(0, m_data_ptr, 0);
+
+	m_extension_ptr->set_read();
+      }
       break;
-    }
     case iss_t::DATA_LL:
-      m_cpt_read++;
-      m_cpt_unc_read++;
-      drsp.valid = true;
-      return ram_read( VCI_LINKED_READ_COMMAND, dreq.addr, &drsp.rdata, drsp.error );
-    case iss_t::DATA_SC:
-      m_cpt_read++;
-      m_cpt_unc_read++;
-      drsp.valid = true;
-      return ram_uncacheable_write(VCI_STORE_COND_COMMAND, dreq.addr, dreq.wdata, 0xf, drsp.rdata, drsp.error );
-    case iss_t::XTN_READ:
-    case iss_t::XTN_WRITE:
-      switch (dreq.addr/4) {
-      case iss_t::XTN_DCACHE_INVAL:
-	dcache_hit = m_dcache.read(dreq.wdata, &dcache_rdata);
-	if ( dcache_hit ){
-	  m_dcache.inval( dreq.wdata );
-	}
+      {
+	data_t mask = vci_param::be2mask(0xF);
+	
+	utoa(mask, m_byte_enable_ptr, 0);
+	utoa(0, m_data_ptr, 0);
+	m_extension_ptr->set_locked_read();
       }
-      drsp.valid = true;
-      drsp.error = false;
+      break;
+    case iss_t::DATA_SC:
+      {
+	data_t mask = vci_param::be2mask(0xF);
+	
+	utoa(mask, m_byte_enable_ptr, 0);
+	utoa(m_dcache_wdata_save, m_data_ptr, 0);
+	m_extension_ptr->set_store_cond();
+      }
+      break;
+    default:
+      assert("this should not happen");
     }
-  } else {
-    drsp.valid = false;
-  }
-  return 0;
-}
+    
+    m_nbytes = vci_param::nbytes;
+
+    m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
+    m_payload_ptr->set_byte_enable_length(m_nbytes);
+    m_payload_ptr->set_data_ptr(m_data_ptr);
+    m_payload_ptr->set_data_length(m_nbytes);
+    // set the values in payload extension
+    m_extension_ptr->set_src_id(m_id);
+    m_extension_ptr->set_trd_id(0);
+    m_extension_ptr->set_pkt_id(0);
+    // set the extension to tlm payload
+    m_payload_ptr->set_extension(m_extension_ptr);
+    //set the tlm phase
+    m_phase = tlm::BEGIN_REQ;
+    //set the local time to transaction time
+    m_time = m_pdes_local_time->get();
+
+    //send a message
+    p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+
+    m_vci_cmd_fsm = CMD_IDLE;
+    break;
+
+
+  case CMD_INS_MISS:
+    {
+      addr_t address = m_icache_addr_save & m_icache_yzmask;
+      data_t be = vci_param::be2mask(0xF);;
+
+      m_nbytes = m_icache_words * vci_param::nbytes;
+      for(data_t i=0; i< m_nbytes; i+=vci_param::nbytes){
+	utoa(be, m_byte_enable_ptr, i);
+	utoa(0, m_data_ptr, i);
+      }
+      
+      // set the values in tlm payload
+      m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+      m_payload_ptr->set_address(address);
+      m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
+      m_payload_ptr->set_byte_enable_length(m_nbytes);
+      m_payload_ptr->set_data_ptr(m_data_ptr);
+      m_payload_ptr->set_data_length(m_nbytes);
+      // set the values in payload extension
+      m_extension_ptr->set_read();
+      m_extension_ptr->set_src_id(m_id);
+      m_extension_ptr->set_trd_id(0);
+      m_extension_ptr->set_pkt_id(0);
+      // set the extension to tlm payload
+      m_payload_ptr->set_extension(m_extension_ptr);
+      //set the tlm phase
+      m_phase = tlm::BEGIN_REQ;
+      //set the local time to transaction time
+      m_time = m_pdes_local_time->get();
+
+      //send a write message
+      p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+
+      m_vci_cmd_fsm = CMD_IDLE ;
+    }
+    break;
+  case CMD_INS_UNC:
+    {
+      addr_t address = m_icache_addr_save & ~0x3;
+      data_t be = vci_param::be2mask(0xF);;
+
+      m_nbytes = vci_param::nbytes;
+      utoa(be, m_byte_enable_ptr, 0);
+      utoa(0, m_data_ptr, 0);
+      
+      // set the values in tlm payload
+      m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+      m_payload_ptr->set_address(address);
+      m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
+      m_payload_ptr->set_byte_enable_length(m_nbytes);
+      m_payload_ptr->set_data_ptr(m_data_ptr);
+      m_payload_ptr->set_data_length(m_nbytes);
+      // set the values in payload extension
+      m_extension_ptr->set_read();
+      m_extension_ptr->set_src_id(m_id);
+      m_extension_ptr->set_trd_id(0);
+      m_extension_ptr->set_pkt_id(0);
+      // set the extension to tlm payload
+      m_payload_ptr->set_extension(m_extension_ptr);
+      //set the tlm phase
+      m_phase = tlm::BEGIN_REQ;
+      //set the local time to transaction time
+      m_time = m_pdes_local_time->get();
+
+      //send a write message
+      p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
+
+      m_vci_cmd_fsm = CMD_IDLE ;
+    }
+    break;
+    
+  } // end  switch m_vci_cmd_fsm
+}    
+
+
+tmpl (void)::rsp_fsm(){
+
+  //////////////////////////////////////////////////////////////////////////
+  // The VCI_RSP FSM controls the following ressources:
+  // - m_vci_rsp_fsm:
+  // - m_icache_miss_buf[m_icache_words]
+  // - m_dcache_miss_buf[m_dcache_words]
+  // - m_icache_miss_req reset
+  // - m_icache_unc_req reset
+  // - m_dcache_miss_req reset
+  // - m_dcache_unc_req reset
+  // - m_icache_write_req reset
+  // - m_vci_rsp_data_error set
+  // - m_vci_rsp_ins_error set
+  // - m_vci_rsp_cpt
+  // In order to have only one active VCI transaction, this VCI_RSP_FSM
+  // is synchronized with the VCI_CMD FSM, and both FSMs exit the
+  // IDLE state simultaneously.
+  //
+  // VCI formats:
+  // This component accepts single word or multi-word response packets for
+  // write response packets.
+  //
+  // Error handling:
+  // This FSM analyzes the VCI error code and signals directly the
+  // Write Bus Error.
+  // In case of Read Data Error, the VCI_RSP FSM sets the m_vci_rsp_data_error
+  // flip_flop and the error is signaled by the DCACHE FSM.
+  // In case of Instruction Error, the VCI_RSP FSM sets the m_vci_rsp_ins_error
+  // flip_flop and the error is signaled by the DCACHE FSM.
+  // In case of Cleanup Error, the simulation stops with an error message...
+  //////////////////////////////////////////////////////////////////////////
+  
+  switch (m_vci_rsp_fsm) {
+    
+  case RSP_IDLE:
+    //if (m_vci_cmd_fsm != CMD_IDLE) break;
+    
+    m_vci_rsp_cpt = 0;
+    if      ( m_icache_miss_req && m_pdes_local_time->get().value()>m_icache_time_req)        m_vci_rsp_fsm = RSP_INS_MISS;
+    else if ( m_icache_unc_req && m_pdes_local_time->get().value()>m_icache_time_req)         m_vci_rsp_fsm = RSP_INS_UNC;
+    else if ( m_dcache_write_req && m_pdes_local_time->get().value()>m_dcache_write_time_req) m_vci_rsp_fsm = RSP_DATA_WRITE;
+    else if ( m_dcache_miss_req && m_pdes_local_time->get().value()>m_dcache_read_time_req)       m_vci_rsp_fsm = RSP_DATA_MISS;
+    else if ( m_dcache_unc_req && m_pdes_local_time->get().value()>m_dcache_read_time_req)        m_vci_rsp_fsm = RSP_DATA_UNC;
+    break;
+    
+  case RSP_INS_MISS:
+    m_cost_imiss_transaction++;
+    wait(m_rsp_received);
+    m_pdes_local_time->reset_sync();
+    for(unsigned int i=0;i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++){
+      m_icache_miss_buf[i] = atou(m_payload_ptr->get_data_ptr(), (i * vci_param::nbytes));
+    }
+    m_icache_miss_req = false;
+    m_vci_rsp_fsm = RSP_IDLE;
+    m_vci_rsp_ins_error = m_payload_ptr->is_response_error();
    
-tmpl (void)::xcacheAccessInternal
-(
- struct iss_t::InstructionRequest ireq,
- struct iss_t::DataRequest dreq,
- struct iss_t::InstructionResponse &irsp,
- struct iss_t::DataResponse &drsp
- )
-{
-  data_t  icache_ins   = 0;
-  bool    icache_hit   = m_icache.read(ireq.addr, &icache_ins);
-  data_t  dcache_rdata = 0;
-  bool    dcache_hit   = m_dcache.read(dreq.addr, &dcache_rdata);
-  
-  if ( ireq.valid && icache_hit ) {
-    irsp.valid = true;
-    irsp.instruction = icache_ins;
-  }
+    break;
+    
+  case RSP_INS_UNC:
+    m_cost_imiss_transaction++;
+    wait(m_rsp_received);
+    m_pdes_local_time->reset_sync();
+    m_icache_miss_buf[0] = atou(m_payload_ptr->get_data_ptr(), 0);
+    m_icache_buf_unc_valid = true;
+    m_vci_rsp_fsm = RSP_IDLE;
+    m_icache_unc_req = false;
+    m_vci_rsp_ins_error = m_payload_ptr->is_response_error();
 
-  if ( dreq.valid
-       && dreq.type == iss_t::DATA_READ
-       && m_cacheability_table[dreq.addr]
-       && dcache_hit ) {
-    drsp.valid = true;
-    drsp.rdata = dcache_rdata;
-    drsp.error = false;
-  }
-}
-
-tmpl (uint32_t)::fill_cache
-(
- GenericCache<addr_t> &cache,
- addr_t address,
- bool &error
- )
-{
+    break;
+    
+  case RSP_DATA_MISS:
+    m_cost_dmiss_transaction++;
+    wait(m_rsp_received);
+    m_pdes_local_time->reset_sync();
+    for(unsigned int i=0;i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++){
+      m_dcache_miss_buf[i] = atou(m_payload_ptr->get_data_ptr(), (i * vci_param::nbytes));
+    }
+    m_dcache_miss_req = false;
+    m_vci_rsp_fsm = RSP_IDLE;
+    m_vci_rsp_data_error = m_payload_ptr->is_response_error();
+    break;
+    
+  case RSP_DATA_WRITE:
+    m_cost_write_transaction++;
+    wait(m_rsp_received);
+    if(m_pdes_local_time->get()>=m_rsp_time){
+      m_vci_rsp_fsm = RSP_IDLE;
+      m_pdes_local_time->reset_sync();
+      m_dcache_write_req = false;
+      if ( m_payload_ptr->is_response_error()) {
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " fill_cache( " << std::hex << address << ", " << error << ")" << std::endl;
+	std::cout << name() << " write BERR" << std::endl;
 #endif
-  size_t words;
-  size_t yzmask;
-  if(&cache == &m_icache){
-    words  = m_icache_words;
-    yzmask = m_icache_yzmask;
-  }
-  else{
-    words  = m_dcache_words;
-    yzmask = m_dcache_yzmask;
-  }
-
-  data_t data[words];
-
-  uint32_t del = ram_read( VCI_READ_COMMAND, address & yzmask,
-			   &data[0], error, words);
-
-  if ( ! error ) {
-   data_t  victim_index = 0;
-
-   if(&cache == &m_icache){
-     m_icache.update( address, &data[0], &victim_index);
-   }
-   else{
-     m_dcache.update( address, &data[0], &victim_index);
-   }
-
-  }
+	m_iss.setWriteBerr();
+      }
+    }
+    else
+      m_vci_rsp_fsm = RSP_DATA_WRITE_TIME_WAIT;
+   break;
+  case RSP_DATA_WRITE_TIME_WAIT:
+    if(m_pdes_local_time->get()>=m_rsp_time){
+      m_vci_rsp_fsm = RSP_IDLE;
+      m_pdes_local_time->reset_sync();
+      m_dcache_write_req = false;
+      if ( m_payload_ptr->is_response_error()) {
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " fill_cache, error: " << error << ", data: ";
-  for ( size_t i=0; i<words; ++i )
-    std::cout << std::hex << data[i] << ' ';
-  std::cout << std::endl;
+	std::cout << name() << " write BERR" << std::endl;
 #endif
-  return del;
-}
+	m_iss.setWriteBerr();
+      }
+    }
+    break;
+  case RSP_DATA_UNC:
+    m_cost_unc_transaction++;
+    wait(m_rsp_received);
+    m_pdes_local_time->reset_sync();
 
-tmpl (uint32_t)::ram_uncacheable_write
-(
- enum command command, 
- addr_t address,
- data_t wdata, 
- int be, 
- data_t &rdata, 
- bool &rerror
- )
-{
-#ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " ram_write( " << std::hex << address << ", " << wdata << ", " << be << ")" << std::endl;
-#endif
-
-  data_t byte_enable = be2mask<data_t>(be);
-
-  m_nbytes = vci_param::nbytes;
-  utoa(byte_enable, m_byte_enable_ptr, 0);
-  utoa(wdata, m_data_ptr, 0);
-
-  // set the values in tlm payload
-  m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
-  m_payload_ptr->set_address(address & ~3);
-  m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
-  m_payload_ptr->set_byte_enable_length(m_nbytes);
-  m_payload_ptr->set_data_ptr(m_data_ptr);
-  m_payload_ptr->set_data_length(m_nbytes);
-  // set the values in payload extension
-  m_extension_ptr->set_command(command);
-  m_extension_ptr->set_src_id(m_id);
-  m_extension_ptr->set_trd_id(0);
-  m_extension_ptr->set_pkt_id(0);
-  // set the extension to tlm payload
-  m_payload_ptr->set_extension(m_extension_ptr);
-  //set the tlm phase
-  m_phase = tlm::BEGIN_REQ;
-  //set the local time to transaction time
-  m_time = m_pdes_local_time->get();
-  sc_core::sc_time before = m_time;
-
-  //send a write message
-  //std::cout << name() << " send time: " << m_pdes_local_time->get().value() << std::endl;
-  p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
-  wait(m_rsp_received);
-  //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
-  m_pdes_local_time->reset_sync();
-
-  //update response
-  rdata = atou(m_payload_ptr->get_data_ptr(), 0);
-  rerror = m_error;
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " time: " << std::dec << m_pdes_local_time->get().value() << " ram_write, error: " << rerror << " address: " << std::hex << m_payload_ptr->get_address() << " data: " << rdata << std::endl;
-#endif
-  return (m_pdes_local_time->get() - before).value();
-}
-
-tmpl (uint32_t)::ram_cacheable_write
-(
- enum command command, 
- data_t &rdata, 
- bool &rerror
- )
-{
-  addr_t address = m_wbuf.getAddress(m_wbuf.getMin());
-  data_t be;
-  size_t nwords = m_wbuf.getMax()- m_wbuf.getMin() + 1;
-  
-  for(size_t i=m_wbuf.getMin(), j=0; i<m_wbuf.getMin()+nwords; i++, j+=vci_param::nbytes){
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " ram_write( " << std::hex << m_wbuf.getAddress(i) << ", " << m_wbuf.getData(i) << ", " <<  m_wbuf.getBe(i) << ")" << std::endl;
-#endif
-
-    be = be2mask<data_t>(m_wbuf.getBe(i));
-    utoa(be, m_byte_enable_ptr, j);
-    utoa(m_wbuf.getData(i), m_data_ptr, j);
-  }
-
-  m_nbytes = nwords * vci_param::nbytes;
-
-  // set the values in tlm payload
-  m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
-  m_payload_ptr->set_address(address & ~3);
-  m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
-  m_payload_ptr->set_byte_enable_length(m_nbytes);
-  m_payload_ptr->set_data_ptr(m_data_ptr);
-  m_payload_ptr->set_data_length(m_nbytes);
-  // set the values in payload extension
-  m_extension_ptr->set_command(command);
-  m_extension_ptr->set_src_id(m_id);
-  m_extension_ptr->set_trd_id(0);
-  m_extension_ptr->set_pkt_id(0);
-  // set the extension to tlm payload
-  m_payload_ptr->set_extension(m_extension_ptr);
-  //set the tlm phase
-  m_phase = tlm::BEGIN_REQ;
-  //set the local time to transaction time
-  m_time = m_pdes_local_time->get();
-  sc_core::sc_time before = m_time;
-
-  //std::cout << name() << " send time: " << m_pdes_local_time->get().value() << std::endl;
-  //send a write message
-  p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
-  wait(m_rsp_received);
-  m_pdes_local_time->reset_sync();
-  //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
-
-  //update response
-  rdata = atou(m_payload_ptr->get_data_ptr(), 0);
-  rerror = m_error;
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " time: " << std::dec << m_pdes_local_time->get().value() << " ram_write, error: " << rerror << " address: " << std::hex << m_payload_ptr->get_address() << " data: " << rdata << std::endl;
-#endif
-
-  m_wbuf.reset();
-
-  return (m_pdes_local_time->get() - before).value();
-}
-
-tmpl (uint32_t)::ram_read
-(
- enum command command, 
- addr_t address,
- data_t *rdata, 
- bool &rerror,
- size_t size
- )
-{
-  
-  if(m_wbuf.rok()){
-    data_t wdata;
-    bool werror;
-    //uint32_t del = ram_cacheable_write( VCI_WRITE_COMMAND, wdata, werror );
-    ram_cacheable_write( VCI_WRITE_COMMAND, wdata, werror );
-  }
-  
-
-#ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " ram_read( " << std::hex << address << ")" << std::endl;
-#endif
-  
-  m_nbytes = size * vci_param::nbytes;
-  for(uint32_t i=0; i<m_nbytes; i++){
-    m_byte_enable_ptr[i] = 0xFF;
-  }
-
-  // set the values in tlm payload
-  m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
-  m_payload_ptr->set_address(address & ~3);
-  m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
-  m_payload_ptr->set_byte_enable_length(m_nbytes);
-  m_payload_ptr->set_data_ptr(m_data_ptr);
-  m_payload_ptr->set_data_length(m_nbytes);
-  // set the values in payload extension
-  m_extension_ptr->set_command(command);
-  m_extension_ptr->set_src_id(m_id);
-  m_extension_ptr->set_trd_id(0);
-  m_extension_ptr->set_pkt_id(0);
-  // set the extension to tlm payload
-  m_payload_ptr->set_extension(m_extension_ptr);
-  //set the tlm phase
-  m_phase = tlm::BEGIN_REQ;
-  //set the local m_time to transaction time
-  m_time = m_pdes_local_time->get();
-  sc_core::sc_time before = m_time;
-
-  //std::cout << name() << " send time: " << m_pdes_local_time->get().value() << std::endl;
-  //send a write message
-  p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
-  wait(m_rsp_received);
-  m_pdes_local_time->reset_sync();
-  //std::cout << name() << " receive time: " << m_pdes_local_time->get().value() << std::endl;
-
-  //update response
-  for(uint32_t i=0; i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++)
-     rdata[i] = atou(m_payload_ptr->get_data_ptr(), (i * vci_param::nbytes));
-  rerror = m_error;
-
-#ifdef SOCLIB_MODULE_DEBUG
-  std::cout << name() << " time: " << m_pdes_local_time->get().value() << " ram_read, error: " << rerror << std::endl;
-  for(uint32_t i=0; i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++)
-    std::cout << " address: " << std::hex << (m_payload_ptr->get_address() + (i * vci_param::nbytes)) << " data: " << rdata[i] << std::endl;
-#endif
-  return (m_pdes_local_time->get() - before).value();
-}
-
-
-tmpl (void)::send_activity()
-{
-  // set the active or inactive command
-  if(m_pdes_activity_status->get())
-    m_activity_extension_ptr->set_active();
-  else
-    m_activity_extension_ptr->set_inactive();
-  m_activity_extension_ptr->set_src_id(m_id);
-  // set the extension to tlm payload
-  m_activity_payload_ptr->set_extension(m_activity_extension_ptr);
-  //set the tlm phase
-  m_activity_phase = tlm::BEGIN_REQ;
-  //set the local time to transaction time
-  m_activity_time = m_pdes_local_time->get();
-   
-  std::cout << std::endl << name() << " SEND ACTIVITY " << m_activity_extension_ptr->is_active() << std::endl;
-
-  //send a message with command equals to PDES_ACTIVE or PDES_INACTIVE
-  p_vci->nb_transport_fw(*m_activity_payload_ptr, m_activity_phase, m_activity_time);
-  //deschedule the initiator thread
-  wait(sc_core::SC_ZERO_TIME);
+    m_dcache_miss_buf[0] = atou(m_payload_ptr->get_data_ptr(), 0);
+    m_vci_rsp_fsm = RSP_IDLE;
+    m_dcache_unc_req = false;
+    m_vci_rsp_data_error = m_payload_ptr->is_response_error();
+    break;
+    
+  } // end switch m_vci_rsp_fsm
 }
 
 tmpl (void)::send_null_message()
@@ -815,7 +1280,11 @@ tmpl (void)::send_null_message()
   p_vci->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
   //deschedule the initiator thread
   wait(m_rsp_received);
-  //std::cout << name() << " receive time = " << m_pdes_local_time->get().value() << std::endl;
+
+#ifdef SOCLIB_MODULE_DEBUG
+  std::cout << name() << " receive time = " << m_pdes_local_time->get().value() << std::endl;
+#endif
+
   m_pdes_local_time->reset_sync();
 }
 
@@ -831,14 +1300,20 @@ tmpl (tlm::tlm_sync_enum)::nb_transport_bw
   std::cout << name() << " Receive response time = " << time.value() << std::endl;
 #endif
 
+  //update local time if the command message is different to write
   soclib_payload_extension *extension_ptr;
   payload.get_extension(extension_ptr);
+  if(!extension_ptr->is_null_message()){
 
-  m_error = payload.is_response_error();
+    m_rsp_time = time;
     
-  update_time(time);
-    
+    if(!extension_ptr->is_write()){
+      update_time(time);
+    }
+  }
+
   m_rsp_received.notify (sc_core::SC_ZERO_TIME);
+    
   return tlm::TLM_COMPLETED;
 }
 
@@ -853,7 +1328,7 @@ tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ SOCKET)
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::my_nb_transport_fw
+tmpl (tlm::tlm_sync_enum)::irq_nb_transport_fw
 ( int                      id,         // interruption id
   tlm::tlm_generic_payload &payload,   // payload
   tlm::tlm_phase           &phase,     // phase
