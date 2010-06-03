@@ -263,10 +263,10 @@ public:
     //  the pte informations, way and set are returned. 
     /////////////////////////////////////////////////////////
     inline bool translate(  vaddr_t vaddress,      // virtual address
-                            paddr_t *paddress,       // return physique address
-                            pte_info_t *pte_info,   // return pte information
-                            size_t *tw,             // return way  
-                            size_t *ts )            // return set   
+                            paddr_t *paddress,     // return physique address
+                            pte_info_t *pte_info,  // return pte information
+                            size_t *tw,            // return way  
+                            size_t *ts )           // return set   
     {
         size_t m_set = (vaddress >> PAGE_M_NBITS) & m_sets_mask; 
         size_t k_set = (vaddress >> PAGE_K_NBITS) & m_sets_mask; 
@@ -694,7 +694,7 @@ public:
     } // end translate()
 
     //////////////////////////////////////////////////////////////
-    //  This method invalidates a TLB entry
+    //  This method invalidates a TLB entry for cc_vcache2
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
     inline bool inval(vaddr_t vaddress, paddr_t* victim)
@@ -739,6 +739,40 @@ public:
     } // end inval()
 
     //////////////////////////////////////////////////////////////
+    //  This method invalidates a TLB entry for cc_vcache
+    //  identified by the virtual page number.
+    //////////////////////////////////////////////////////////////
+    inline bool inval1(vaddr_t vaddress, paddr_t* victim)
+    {
+        paddr_t vic_nline = 0;
+        size_t m_set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask; 
+        size_t k_set = (vaddress >> PAGE_K_NBITS) & this->m_sets_mask; 
+
+        for( size_t way = 0; way < this->m_nways; way++ ) 
+        {
+            if( this->valid(way,m_set) && this->pagesize(way,m_set) &&
+                this->vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + this->m_sets_shift))) 
+            {
+                vic_nline = nline(way,m_set);
+                this->valid(way,m_set) = false;
+                break;
+            } 
+
+            if( this->valid(way,k_set) && !(this->pagesize(way,k_set)) &&
+                this->vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + this->m_sets_shift))) 
+            {
+                vic_nline = nline(way,k_set);
+                this->valid(way,k_set) = false;
+                break;
+            }
+            if ( way == (this->m_nways-1)) return false; 
+        } 
+
+        *victim = vic_nline;
+        return true;
+    } // end inval1()
+
+    //////////////////////////////////////////////////////////////
     //  This method coherence invalidates a TLB entry
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
@@ -757,13 +791,14 @@ public:
     } // end getnline()
 
     /////////////////////////////////////////////////////////////
-    //  This method is used for context switch. In this case, all 
-    //  TLB entries should be invalidated except global entries.
-    //  All the entries that are in the same data cache line have
-    //  the same NLINE. Therefore only all the entries of one data 
-    //  cache line are not global, it send a cleanup request to 
-    //  data cache. The return value indicates whether need a cleanup
-    //  and cleanup_nline contains the NLINE that is for cleanup.   
+    //  This method for cc_vcache2 is used for context switch.  
+    //  In this case, allTLB entries should be invalidated except 
+    //  global entries.All the entries that are in the same data 
+    //  cache line have the same NLINE. Therefore only all the  
+    //  entries of one datacache line are not global, it send a  
+    //  cleanup request todata cache. The return value indicates 
+    //  whether need a cleanupand cleanup_nline contains the NLINE 
+    //  that is for cleanup.   
     /////////////////////////////////////////////////////////////
     inline bool checkcleanup(size_t nway, size_t nset, paddr_t* cleanup_nline)
     {
@@ -797,8 +832,41 @@ public:
     } // end checkcleanup
 
     /////////////////////////////////////////////////////////////
-    //  This method writes a new 2M page size entry in the TLB.
+    //  This method for cc_vcache is used for context switch.  
+    //  In this case, allTLB entries should be invalidated except 
+    //  global entries.All the entries that are in the same data 
+    //  cache line have the same NLINE. Therefore only all the  
+    //  entries of one datacache line are not global, it send a  
+    //  cleanup request todata cache. The return value indicates 
+    //  whether need a cleanupand cleanup_nline contains the NLINE 
+    //  that is for cleanup.   
     /////////////////////////////////////////////////////////////
+    inline bool checkcleanup1(size_t nway, size_t nset, paddr_t* cleanup_nline)
+    {
+        bool cleanup = false;
+        bool isglobal = false;
+        if ( this->valid(nway,nset) )
+        {
+            size_t inval_line = nline(nway,nset);
+            if (!this->global(nway,nset))
+            {
+                this->valid(nway,nset) = false;
+            }
+            else
+            {
+                isglobal = true;
+            }
+
+            cleanup = !isglobal;
+            if(cleanup)
+                *cleanup_nline = inval_line;
+        }
+        return cleanup;
+    } // end checkcleanup1
+
+    //////////////////////////////////////////////////////////////////////////
+    //  This method writes a new 2M page size entry in the TLB for cc_vcache2.
+    //////////////////////////////////////////////////////////////////////////
     inline bool update(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
         bool cleanup = false;
@@ -891,9 +959,90 @@ public:
         return cleanup;
     } // end update()
 
-    /////////////////////////////////////////////////////////////
-    //  This method writes a new 4K page size entry in the TLB.
-    /////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    //  This method writes a new 2M page size entry in the TLB for cc_vcache.
+    //////////////////////////////////////////////////////////////////////////
+    inline bool update1(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
+    {
+        bool cleanup = false;
+        bool found = false;
+        size_t set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask;
+        size_t selway = 0;
+
+        // check val bit firstly, replace the invalid PTE
+        for(size_t way = 0; way < this->m_nways && !found; way++) 
+        {
+            if( !(this->valid(way,set)) ) 
+            {
+                found = true;
+                cleanup = false;
+                selway = way;
+            }
+        } 
+        if ( !found ) // if no invalid way, we check bit lock ...
+        {
+            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
+            {
+                if( !this->global(way,set) && !this->lru(way, set) ) 
+                {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                } 
+            }
+            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
+            {
+                if( !this->global(way,set) && this->lru(way, set) ) 
+                {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                } 
+            }
+            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
+            {
+                if( this->global(way,set) && !this->lru(way, set) ) 
+                {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                } 
+            }
+            if ( !found )
+            {
+                for( size_t way = 0; way < this->m_nways; way++ ) 
+                {
+                    this->lru(way,set) = false; 
+                }
+                cleanup = true;
+                selway = 0;
+            }
+        }
+
+        this->vpn(selway,set) = vaddress >> (PAGE_M_NBITS + this->m_sets_shift);
+        this->ppn(selway,set) = pte & ((1<<(this->m_paddr_nbits - PAGE_M_NBITS))-1); 
+ 
+        this->valid(selway,set)      = true;
+        this->pagesize(selway,set)   = true;
+        this->lru(selway,set)        = true;
+
+        this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
+        this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
+        this->cacheable(selway,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
+        this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
+        this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
+        this->global(selway,set)     = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+        this->dirty(selway,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
+        
+        *victim = nline(selway,set);
+        nline(selway,set) = line;  
+        return cleanup;
+    } // end update1()
+
+    //////////////////////////////////////////////////////////////////////////
+    //  This method writes a new 4K page size entry in the TLB for cc_vcache2.
+    //////////////////////////////////////////////////////////////////////////
     inline bool update(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
         bool cleanup = false;
@@ -986,6 +1135,87 @@ public:
         return cleanup;
     } // end update()
 
+    //////////////////////////////////////////////////////////////////////////
+    //  This method writes a new 4K page size entry in the TLB for cc_vcache.
+    //////////////////////////////////////////////////////////////////////////
+    inline bool update1(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
+    {
+        bool cleanup = false;
+        bool found = false;
+        size_t set = (vaddress >> PAGE_K_NBITS) & this->m_sets_mask;
+        size_t selway = 0;
+
+        // check val bit firstly, replace the invalid PTE
+        for(size_t way = 0; way < this->m_nways && !found; way++) 
+        {
+            if( !(this->valid(way,set)) ) 
+            {
+                found = true;
+                cleanup = false;
+                selway = way;
+            }
+        } 
+        if ( !found ) // if no invalid way, we check bit lock ...
+        {
+            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
+            {
+                if( !this->global(way,set) && !this->lru(way, set) ) 
+                {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                } 
+            }
+            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
+            {
+                if( !this->global(way,set) && this->lru(way, set) ) 
+                {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                } 
+            }
+            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
+            {
+                if( this->global(way,set) && !this->lru(way, set) ) 
+                {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
+                } 
+            }
+            if ( !found )
+            {
+                for( size_t way = 0; way < this->m_nways; way++ ) 
+                {
+                    this->lru(way,set) = false; 
+                }
+                cleanup = true;
+                selway = 0;
+            }
+        }
+
+        this->vpn(selway,set) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
+        this->ppn(selway,set) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
+        this->valid(selway,set)      = true;
+        this->pagesize(selway,set)   = false;
+        this->lru(selway,set)        = true;
+
+        this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
+        this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
+        this->cacheable(selway,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
+        this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
+        this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
+        this->global(selway,set)     = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+        this->dirty(selway,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
+        
+        *victim = nline(selway,set);
+        nline(selway,set) = line; 
+
+        return cleanup;
+    } // end update1()
+
     //////////////////////////////////////////////////////////////
     //  This method verify whether all 16 words of a data cache line 
     //  that are as PTE don't exist in TLB. If is true, a cleanup 
@@ -1015,15 +1245,15 @@ public:
                          size_t* n_way, size_t* n_set,
                          bool* end )
     {
-        for( size_t way = start_way; way < this->m_nways; way++ ) 
+        for( size_t way = 0; way < this->m_nways; way++ ) 
         {
-            for( size_t set = start_set; set < this->m_nsets; set++ ) 
+            for( size_t set = 0; set < this->m_nsets; set++ ) 
             {
                 if (( nline(way,set) == n_line ) && this->valid(way,set)) 
                 {
                     *n_way = way;
                     *n_set = set;
-                    if ( way == (this->m_nways-1) && set == (this->m_nsets-1) )
+                    if ( (way == (this->m_nways-1)) && (set == (this->m_nsets-1)) )
                     {
                         *end = true;
                     }
@@ -1035,6 +1265,7 @@ public:
                 }
             } 
         } 
+        *end = true;
         return false;
     } // end cccheck()
 }; // GenericCcTlb
