@@ -39,8 +39,7 @@
 #include "mapping_table.h"
 #include "static_assert.h"
 
-namespace soclib {
-namespace caba {
+namespace soclib { namespace caba {
 
 using namespace sc_core;
 
@@ -62,6 +61,7 @@ class VciXcacheWrapperMulti
         DCACHE_MISS_WAIT,
         DCACHE_MISS_UPDT,
         DCACHE_UNC_WAIT,
+        DCACHE_UNC_GO,
         DCACHE_INVAL,
         DCACHE_SYNC,
         DCACHE_ERROR,
@@ -72,6 +72,7 @@ class VciXcacheWrapperMulti
         ICACHE_MISS_WAIT,
         ICACHE_MISS_UPDT,
         ICACHE_UNC_WAIT,
+        ICACHE_UNC_GO,
         ICACHE_ERROR,
     };
 
@@ -112,7 +113,6 @@ private:
 
     // STRUCTURAL PARAMETERS
     const soclib::common::AddressDecodingTable<uint32_t, bool>  m_cacheability_table;
-    iss_t                                                       m_iss;
     const uint32_t                                              m_srcid;
 
     const size_t                                                m_dcache_ways;
@@ -122,6 +122,13 @@ private:
     const size_t                                                m_icache_words;
     const addr_t                                                m_icache_yzmask;
 
+    // ISS 
+    iss_t                                                       m_iss;
+    typename iss_t::InstructionRequest				m_ireq;
+    typename iss_t::InstructionResponse				m_irsp;
+    typename iss_t::DataRequest					m_dreq;
+    typename iss_t::DataResponse				m_drsp;
+
     // REGISTERS
     sc_signal<int>          r_dcache_fsm;
     sc_signal<addr_t>       r_dcache_addr_save;
@@ -129,7 +136,6 @@ private:
     sc_signal<data_t>       r_dcache_rdata_save;
     sc_signal<int>          r_dcache_type_save;
     sc_signal<be_t>         r_dcache_be_save;
-    sc_signal<bool>         r_dcache_cached_save;
     sc_signal<bool>         r_dcache_miss_req;
     sc_signal<bool>         r_dcache_unc_req;
 
@@ -157,7 +163,7 @@ private:
     GenericCache<addr_t>    	r_icache;
     GenericCache<addr_t>    	r_dcache;
 
-    // Activity counters
+    // Activity counters 
     uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
     uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
     uint32_t m_cpt_dcache_dir_read;         // DCACHE DIR READ
@@ -171,21 +177,25 @@ private:
     uint32_t m_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
     uint32_t m_cpt_total_cycles;	    // total number of cycles
 
-    uint32_t m_cpt_read;                    // total number of read instructions
-    uint32_t m_cpt_write;                   // total number of write instructions
-    uint32_t m_cpt_data_miss;               // number of read miss
-    uint32_t m_cpt_ins_miss;                // number of instruction miss
-    uint32_t m_cpt_unc_read;                // number of read uncached
+    uint32_t m_cpt_read;                    // total number of read requests
+    uint32_t m_cpt_write;                   // total number of write requests
     uint32_t m_cpt_write_cached;            // number of cached write
+    uint32_t m_cpt_data_unc;                // number of uncachable data requests
+    uint32_t m_cpt_ins_unc;                 // number of uncachable instruction requests
+    uint32_t m_cpt_ll;			    // number of ll requests
+    uint32_t m_cpt_sc;			    // number of sc requests
+    uint32_t m_cpt_data_miss;               // number of data miss
+    uint32_t m_cpt_ins_miss;                // number of instruction miss
 
     uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer
     uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss
-    uint32_t m_cost_unc_read_frz;           // number of frozen cycles related to uncached read
+    uint32_t m_cost_unc_frz;                // number of frozen cycles related to uncached data
     uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss
 
     uint32_t m_cpt_imiss_transaction;       // number of VCI instruction miss transactions
     uint32_t m_cpt_dmiss_transaction;       // number of VCI data miss transactions
-    uint32_t m_cpt_unc_transaction;         // number of VCI uncached read transactions
+    uint32_t m_cpt_data_unc_transaction;    // number of VCI uncachable data transactions
+    uint32_t m_cpt_ins_unc_transaction;     // number of VCI uncachable instruction transactions
     uint32_t m_cpt_write_transaction;       // number of VCI write transactions
 
     uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
@@ -207,17 +217,17 @@ public:
         size_t dcache_sets,
         size_t dcache_words, 
         size_t wbuf_nwords,
-        size_t wbuf_nlines);
+        size_t wbuf_nlines,
+        size_t wbuf_timeout);
 
     ~VciXcacheWrapperMulti();
 
-    void print_cpi();
-    void print_stats();
+    void printStatistics();
+    void printTrace(size_t mode = 0);
 
 private:
 
     void transition();
-
     void genMoore();
 
     soclib_static_assert((int)iss_t::SC_ATOMIC == (int)vci_param::STORE_COND_ATOMIC);
@@ -236,6 +246,5 @@ private:
 // End:
 
 // vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
-
 
 
