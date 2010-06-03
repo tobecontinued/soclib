@@ -47,13 +47,15 @@ class VciRam                                 // vci ram
   /////////////////////////////////////////////////////////////////////////////////////
   // Member Variables
   /////////////////////////////////////////////////////////////////////////////////////
-  uint32_t                                                                  m_tgtid;
   soclib::common::MappingTable                                              m_mt;
   soclib::common::Loader                                                   *m_loader;
   std::list<soclib::common::Segment>                                        m_segments;
   typedef typename vci_param::data_t                                        ram_t;
   ram_t                                                                   **m_contents;
   soclib::common::LinkedAccessBuffer<typename vci_param::addr_t,uint32_t>   m_atomic;
+
+  // local time
+  pdes_local_time                                                          *m_pdes_local_time;
 
   //counters
   uint32_t                                                                  m_cpt_read;

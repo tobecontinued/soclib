@@ -31,6 +31,10 @@
 
 namespace soclib { namespace tlmdt {
 
+#ifndef MY_DEBUG
+#define MY_DEBUG 0
+#endif
+
 #define tmpl(x) template<typename vci_param> x VciRam<vci_param>
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -50,9 +54,9 @@ tmpl(/**/)::VciRam
   // bind target
   p_vci(*this);                     
 
-  // identification
-  m_tgtid = m_mt.indexForId(index);
-  
+  //PDES local time
+  m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
+
   // segments
   m_segments = m_mt.getSegmentList(index);
   m_contents = new ram_t*[m_segments.size()];
@@ -62,6 +66,7 @@ tmpl(/**/)::VciRam
   for (i=0, seg = m_segments.begin(); seg != m_segments.end(); ++i, ++seg ) {
     soclib::common::Segment &s = *seg;
     m_contents[i] = new ram_t[(s.size()+word_size-1)/word_size];
+    memset(m_contents[i], 0, s.size());
   }
   
   if ( m_loader ){
@@ -79,7 +84,6 @@ tmpl(/**/)::VciRam
   //counters
   m_cpt_read = 0;
   m_cpt_write = 0;
-
 }
 
 tmpl(/**/)::~VciRam(){}
@@ -106,16 +110,18 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     return tlm::TLM_COMPLETED;
   }
 
+  //update the message time
+  if ( time < m_pdes_local_time->get() ){
+    time = m_pdes_local_time->get();
+  }
+
   // First, find the right segment using the first address of the packet
   std::list<soclib::common::Segment>::iterator seg;	
   size_t segIndex;
 
   uint32_t nwords = (uint32_t)(payload.get_data_length() / vci_param::nbytes);
   uint32_t srcid  = extension_pointer->get_src_id();
-
-#ifdef SOCLIB_MODULE_DEBUG
   uint32_t pktid  = extension_pointer->get_pkt_id();
-#endif
 
 
   for (segIndex=0,seg = m_segments.begin(); seg != m_segments.end(); ++segIndex, ++seg ) {
@@ -127,7 +133,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     case VCI_READ_COMMAND:
       {
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[RAM " << m_tgtid << "] Receive from source "<< srcid << " a read packet " << pktid << " Time = "  << time.value() << std::endl;
+	std::cout << "[" << name() << "] Receive from source "<< srcid << " a read packet " << pktid << " Time = "  << time.value() << std::endl;
 #endif
 
 	typename vci_param::addr_t address;
@@ -139,34 +145,22 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
 	  utoa(m_contents[segIndex][address / vci_param::nbytes], payload.get_data_ptr(),(i * vci_param::nbytes));
 
-#ifdef SOCLIB_MODULE_DEBUG
-	  printf("[%s] read %d address = 0x%09x data = 0x%09x\n", name(), m_cpt_read, address,  (m_contents[segIndex][address / vci_param::nbytes]));
-          //std::cout << "[" << name() <<"] read " << m_cpt_read << " address = " << std::hex << address << " data  = " <<  m_contents[segIndex][address / vci_param::nbytes] << std::dec << std::endl;
+#if MY_DEBUG
+	  printf("[%s] time %d read %d address = 0x%09x data = 0x%09x\n", name(), (int)time.value(), (int)m_cpt_read, (int)address, (int)m_contents[segIndex][address / vci_param::nbytes]);
 #endif
-	
-	  m_cpt_read++;
 
+	  m_cpt_read++;
+	  time = time + UNIT_TIME;
 	}
 	
 	payload.set_response_status(tlm::TLM_OK_RESPONSE);
-	phase = tlm::BEGIN_RESP;
-	time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
-
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value() << std::endl;
-#endif
-	
-	p_vci->nb_transport_bw(payload, phase, time);
-	return tlm::TLM_COMPLETED;
       }
       break;
     case VCI_WRITE_COMMAND:
       {
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Write packet "<< pktid << " Time = "  << time.value() << std::endl;
+	std::cout << "[" << name() << "] Receive from source " << srcid <<" a Write packet "<< pktid << " Time = "  << time.value() << std::endl;
 #endif
-        m_cpt_write+=nwords;
-	
 	typename vci_param::addr_t address;
 	for (size_t i=0; i<nwords; i++){
 	  //if(payload.contig)
@@ -183,26 +177,24 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	  
 	  tab[index] = (cur & ~mask) | (atou( payload.get_data_ptr(), (i * vci_param::nbytes) ) & mask);
 
-	  //std::cout << "[RAM " << m_tgtid << "] WRITE address = " << std::hex << (payload.get_address()+(i*vci_param::nbytes)) << " data  = " <<  tab[index] << std::endl;
-
+#if MY_DEBUG
+	  if(tab[index]==0)
+	    printf("[%s] time %d write %d address = 0x%09x data = 0x%09x tab[%d] = %x\n",name(), (int)time.value(), (int)m_cpt_write, (int)address, (int)(atou( payload.get_data_ptr(), (i * vci_param::nbytes))), (int)index, (int)tab[index]);
+	  else
+	    printf("[%s] time %d write %d address = 0x%09x data = 0x%09x tab[%d] = 0x%x\n",name(), (int)time.value(), (int)m_cpt_write, (int)address, (int)(atou( payload.get_data_ptr(), (i * vci_param::nbytes))), (int)index, (int)tab[index]);
+#endif
+	    
+	  m_cpt_write++;
+	  time = time + UNIT_TIME;
 	}
 	
 	payload.set_response_status(tlm::TLM_OK_RESPONSE);
-	phase = tlm::BEGIN_RESP;
-	time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
- 	
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
-#endif
-	
-	p_vci->nb_transport_bw(payload, phase, time);
-	return tlm::TLM_COMPLETED;
       }
       break;
     case VCI_LINKED_READ_COMMAND:
       {
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Locked Read packet "<< pktid << " Time = " << time.value() << std::endl;
+	std::cout << "[" << name() << "] Receive from source " << srcid <<" a Locked Read packet "<< pktid << " Time = " << time.value() << std::endl;
 #endif
         m_cpt_read+=nwords;
 
@@ -215,29 +207,24 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
           utoa(m_contents[segIndex][address / vci_param::nbytes], payload.get_data_ptr(),(i * vci_param::nbytes));
 
-          //std::cout << "[RAM " << m_tgtid << "] LOCKED READ address = " << std::hex << (payload.get_address()+(i*vci_param::nbytes)) << " data  = " <<  m_contents[segIndex][address / vci_param::nbytes] << std::endl;
-
+#if MY_DEBUG
+	  printf("[%s] time %d read %d address = 0x%09x data = 0x%09x\n", name(), (int)time.value(), (int)m_cpt_read, (int)address, (int)(m_contents[segIndex][address / vci_param::nbytes]));
+#endif
+	  
           m_atomic.doLoadLinked(address, srcid);
+	  m_cpt_read++;
+	  time = time + UNIT_TIME;
         }
 
         payload.set_response_status(tlm::TLM_OK_RESPONSE);
-        phase = tlm::BEGIN_RESP;
-	time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
-
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
-#endif
-
-        p_vci->nb_transport_bw(payload, phase, time);
-        return tlm::TLM_COMPLETED;
       }
       break;
     case VCI_STORE_COND_COMMAND:
       {
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[RAM " << m_tgtid << "] Receive from source " << srcid <<" a Store Conditionnel packet "<< pktid << " Time = "  << time.value() << std::endl;
+	std::cout << "[" << name() << "] Receive from source " << srcid <<" a Store Conditionnel packet "<< pktid << " Time = "  << time.value() << std::endl;
 #endif
-	m_cpt_write+=nwords;
+
 	typename vci_param::addr_t address;
         for (size_t i=0; i<nwords; i++){
           //if(payload.contig)
@@ -255,41 +242,59 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
 	    tab[index] = (cur & ~mask) | (atou(payload.get_data_ptr(), (i * vci_param::nbytes)) & mask);
 
-            //std::cout << "[RAM " << m_tgtid << "] STORE COND address = " << std::hex << (payload.get_address()+(i*vci_param::nbytes)) << " data  = " <<  tab[index] << std::endl;
+#if MY_DEBUG
+	    if(tab[index]==0)
+	      printf("[%s] time %d write %d address = 0x%09x data = 0x%09x tab[%d] = %x\n",name(), (int)time.value(), (int)m_cpt_write, (int)address, (int)(atou( payload.get_data_ptr(), (i * vci_param::nbytes))), (int)index, (int)tab[index]);
+	    else
+	      printf("[%s] time %d write %d address = 0x%09x data = 0x%09x tab[%d] = 0x%x\n",name(), (int)time.value(), (int)m_cpt_write, (int)address, (int)(atou( payload.get_data_ptr(), (i * vci_param::nbytes))), (int)index, (int)tab[index]);
+#endif
 
 	    utoa(0, payload.get_data_ptr(),(i * vci_param::nbytes));
           }
           else{
             utoa(1, payload.get_data_ptr(),(i * vci_param::nbytes));
           }
+	  m_cpt_write++;
+	  time = time + UNIT_TIME;
         }
 
         payload.set_response_status(tlm::TLM_OK_RESPONSE);
-        phase = tlm::BEGIN_RESP;
-        time = time + ((( 2 * nwords) - 1) * UNIT_TIME);
-
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
-#endif
-
-        p_vci->nb_transport_bw(payload, phase, time);
-        return tlm::TLM_COMPLETED;
       }
       break;
     default:
+      //send error message
+      payload.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
+      
+#ifdef SOCLIB_MODULE_DEBUG
+      std::cout << "[" << name() << "] Command is not supported" << std::endl;
+#endif
+
       break;
     }
-  }
+
+    m_pdes_local_time->set(time + UNIT_TIME);
+  
+    phase = tlm::BEGIN_RESP;
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << "[" << name() << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
+#endif
+
+    p_vci->nb_transport_bw(payload, phase, time);
+    return tlm::TLM_COMPLETED;
+
+
+  }//end switch
   
   //send error message
-  payload.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
-  
-  phase = tlm::BEGIN_RESP;
+  payload.set_response_status(tlm::TLM_ADDRESS_ERROR_RESPONSE);
   time = time + (nwords * UNIT_TIME);
+  m_pdes_local_time->set(time + UNIT_TIME);
+  phase = tlm::BEGIN_RESP;
   
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << "[RAM " << m_tgtid << "] Address " << std::hex << payload.get_address() << std::dec << " does not match any segment " << std::endl;
-  std::cout << "[RAM " << m_tgtid << "] Send to source "<< srcid << " a error packet with time = "  << time.value() << std::endl;
+  std::cout << "[" << name() << "] Address " << std::hex << payload.get_address() << std::dec << " does not match any segment " << std::endl;
+  std::cout << "[" << name() << "] Send to source "<< srcid << " a error packet with time = "  << time.value() << std::endl;
 #endif
   p_vci->nb_transport_bw(payload, phase, time);
   return tlm::TLM_COMPLETED;
