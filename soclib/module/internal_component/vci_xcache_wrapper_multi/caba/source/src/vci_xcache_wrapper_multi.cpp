@@ -644,8 +644,14 @@ r_wbuf.printTrace();
             {
                 m_drsp.valid = true;
                 m_drsp.rdata = 0;
-                if ( m_dreq.addr/4 == iss_t::XTN_DCACHE_INVAL )  	r_dcache_fsm = DCACHE_INVAL;
-                else if ( m_dreq.addr/4 == iss_t::XTN_SYNC ) 	r_dcache_fsm = DCACHE_SYNC;
+                if ( m_dreq.addr/4 == iss_t::XTN_DCACHE_INVAL ) 
+                {
+                    r_dcache_fsm = DCACHE_INVAL;
+                }
+                else if ( m_dreq.addr/4 == iss_t::XTN_SYNC ) 	
+                {
+                    r_dcache_fsm = DCACHE_SYNC;
+                }
                 else
                 {
                     std::cout << "error in VCI_CC_XCACHE_WRAPPER " << name() << std::endl;
@@ -734,8 +740,17 @@ r_wbuf.printTrace();
 
     } // end DCACHE_FSM switch
 
-    ////////// write buffer handling ///////////////////////////////
-    r_wbuf.lock();
+    ////////// write buffer state update ////////////////////////////////////////////
+    // The update() method must be called at each cycle to update the internal state.
+    // All pending write requests must be locked in case of SYNC or in case of MISS.
+    if( (r_dcache_fsm == DCACHE_SYNC) || (r_dcache_fsm == DCACHE_MISS_WAIT) )
+    {
+	r_wbuf.update(true);
+    }
+    else
+    {
+	r_wbuf.update(false);
+    }
 
 #ifdef SOCLIB_MODULE_DEBUG
 std::cout << m_ireq << std::endl << m_irsp << std::endl << m_dreq << std::endl << m_drsp << std::endl;
@@ -884,11 +899,9 @@ std::cout << m_ireq << std::endl << m_irsp << std::endl << m_dreq << std::endl <
     case RSP_DATA_WRITE:
         if ( p_vci.rspval.read() )
         {
-            if ( p_vci.reop.read() ) 
-            {
-                r_rsp_fsm = RSP_IDLE;
-                r_wbuf.completed( p_vci.rpktid.read() >> 1 );
-            }
+            assert( p_vci.reop.read() && "A VCI response packet must contains one flit" ); 
+            r_rsp_fsm = RSP_IDLE;
+            r_wbuf.completed( p_vci.rpktid.read() >> 1 );
             if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )  m_iss.setWriteBerr();
         }
         break;
