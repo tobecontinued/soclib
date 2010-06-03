@@ -611,7 +611,6 @@ public:
 
     ///////////////////////////////////////////////////////////////////
     // cleanupcheck function is used for checking whether a line exists
-    ///////////////////////////////////////////////////////////////////
     inline bool cleanupcheck( addr_t ad )
     {
         const tag_t       tag  = m_z[ad];
@@ -625,6 +624,26 @@ public:
         return false;
     }
 
+    ////////////////////////
+    inline void printTrace()
+    {
+        for ( size_t way = 0; way < m_ways ; way++ ) 
+        {
+            for ( size_t set = 0 ; set < m_sets ; set++ )
+            {
+                if ( cache_val(way,set) ) std::cout << "  * " ;
+                else                      std::cout << "    " ;
+                std::cout << std::dec << "way " << way << std::hex << " | " ;
+                std::cout << "@ " << (cache_tag(way,set)*m_words*m_sets+m_words*set)*4 ;
+                for ( size_t word = 0 ; word < m_words ; word++ )
+                {
+                    std::cout << " | " << cache_data(way,set,word) ;
+                }
+                std::cout << std::endl ;
+            }
+        }
+    }
+    
 };
 
 } // namespace soclib
