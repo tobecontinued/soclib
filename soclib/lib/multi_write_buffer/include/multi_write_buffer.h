@@ -42,9 +42,10 @@
 // This write buffer can be seen as a set of FSM : one FSM per slot.
 // A slot can be in four states : EMPTY, OPEN, LOCKED, SENT.
 // Each slot has a local timer that is initialised when the
-// slot goes to OPEN. For all OPEN slots, the timer should be decremented 
-// at each cycle by the lock() method, that must called at all cycles.
-// The slot is LOCKED when the timer reach the 0 value.
+// slot goes to OPEN. For all OPEN slots, the timer must be decremented 
+// at each cycle by the update() method (that must called at all cycles).
+// An OPEN slot goes to LOCKED state when the timer reach the 0 value,
+// or if a global flush is requested by the update() argument.
 // - The write() method is used to store a write request in the buffer.
 //   it returns false if the buffer is full. 
 //   If previously EMPTY, the selected slot state goes to OPEN.
@@ -67,7 +68,7 @@
 //   several SENT slots, and several OPEN slot.
 ////////////////////////////////////////////////////////////////////////////
 // User note :
-// The lock() method must be called at all cycles by the transition 
+// The update() method must be called at all cycles by the transition 
 // function of the hardware component that contains this write buffer
 // to update the internal state.
 ////////////////////////////////////////////////////////////////////////////
@@ -127,7 +128,7 @@ public:
         r_ptr = 0 ;
 	for( size_t slot = 0 ; slot < m_nslots ; slot++) {
             r_address[slot] 	= 0 ;
-            r_tout[slot] 	= m_timeout ;
+            r_tout[slot] 	= 0 ;
             r_max[slot]   	= 0 ;
             r_min[slot]   	= m_nwords - 1 ;
             r_state[slot] 	= EMPTY ;
@@ -217,58 +218,61 @@ public:
     // It can only change a slot state from LOCKED to SENT when
     // the corresponding write command has been fully transmitted.
     {
-
-#ifdef WRITE_BUFFER_DEBUG
-std::cout << std::endl;
-std::cout << "********** write buffer : slot " << r_ptr << " sent" << std::endl;
-std::cout << std::endl;
-#endif
         assert( (r_state[r_ptr] == LOCKED) &&
              "write buffer error : illegal sent command received");
         r_state[r_ptr] = SENT;
     } 
 
     /////////////////////////////////////////////////////////////////////
-    void lock()
+    void update(bool flush)
     // This method is intended to be called at each cycle.
-    // It can change a slot state from OPEN to LOCKED,
-    // and it decrements the tout[i] values.
-    // It has two different actions:
+    // It can change slots state from OPEN to LOCKED.
+    // If the flush argument is true, all open slots become LOCKED.
+    // If not, it has two different actions :
     // - The tout value is decremented for all open slots
     // that have a non zero tout value.
-    // - It implement the write after write policy :
-    // If there is one open slot with tout == 0, and there is 
+    // - If there is one open slot with tout == 0, and there is 
     // no pending slot (locked or sent) with the same address,
     // this slot is locked : at most one locked slot per cycle,
     // because the hardware cost is high...
     {
-        bool	found = false;
-	// tout decrement for all open slots
-        for(size_t i=0 ; i<m_nslots ; i++)
+        if(flush)
         {
-            if( (r_state[i] == OPEN) && (r_tout[i] > 0)	)  r_tout[i] = r_tout[i] - 1;
-        }
-        // possible locking for one single open slot
-        for(size_t i=0 ; i<m_nslots ; i++)
-        {
-            if( (r_state[i] == OPEN) && (r_tout[i] == 0) )
+            for(size_t i=0 ; i<m_nslots ; i++)
             {
-                // searching for a pending request with the same address
-                for( size_t j=0 ; j<m_nslots ; j++ )
-                {
-                    if ( (r_state[j] != EMPTY) && 
-                         (r_state[j] != OPEN)  &&
-                         (r_address[i] == r_address[j]) ) 
-                    {
-                        found = true;
-                        break; 
-                    }
-                }
-                // locking the slot if no conflict
-                if ( !found ) r_state[i] = LOCKED;
+                if( r_state[i] == OPEN )   r_state[i] = LOCKED;
             }
         }
-    } // end lock()
+        else
+        {
+            bool	found = false;
+	    // tout decrement for all open slots
+            for(size_t i=0 ; i<m_nslots ; i++)
+            {
+                if( (r_state[i] == OPEN) && (r_tout[i] > 0)	)  r_tout[i] = r_tout[i] - 1;
+            }
+            // possible locking for one single open slot
+            for(size_t i=0 ; i<m_nslots ; i++)
+            {
+                if( (r_state[i] == OPEN) && (r_tout[i] == 0) )
+                {
+                    // searching for a pending request with the same address
+                    for( size_t j=0 ; j<m_nslots ; j++ )
+                    {
+                        if ( (r_state[j] != EMPTY) && 
+                             (r_state[j] != OPEN)  &&
+                             (r_address[i] == r_address[j]) ) 
+                        {
+                            found = true;
+                            break; 
+                        }
+                    }
+                    // locking the slot if no conflict
+                    if ( !found ) r_state[i] = LOCKED;
+                }
+            }
+        }
+    } // end update()
 
     //////////////////////////////////////////////////////////////////////////
     bool write(addr_t addr, be_t be , data_t  data)
@@ -282,15 +286,6 @@ std::cout << std::endl;
         addr_t 	address = addr & ~m_mask ;
 	bool	found = false;	
         size_t  lw;
-
-#ifdef WRITE_BUFFER_DEBUG
-std::cout << std::endl;
-std::cout << "********** write buffer : write access" << std::endl;
-std::cout << "address = " << addr << std::endl;
-std::cout << "data    = " << data << std::endl;
-std::cout << "be      = " << be   << std::endl;
-std::cout << std::endl;
-#endif
 
         // search a slot to be written
         // scan open slots, then scan empty slots 
@@ -368,13 +363,6 @@ std::cout << std::endl;
     // It can only change a slot state from SENT to EMPTY when
     // the corresponding write transaction is completed.
     {
-
-#ifdef WRITE_BUFFER_DEBUG
-std::cout << std::endl;
-std::cout << "********** write buffer : slot " << index << " completed" << std::endl;
-std::cout << std::endl;
-#endif
-
         assert( (index < m_nslots) && (r_state[index].read() == SENT) &&
              "write buffer error : illegal completed command received");
         r_max[index]   	= 0 ;
@@ -388,7 +376,6 @@ std::cout << std::endl;
                      size_t 		nwords, 
                      size_t 		nslots,
                      size_t		timeout)
-    /////////////////////////////////////////////////////////////////////// 
         :
         m_nslots(nslots),
         m_nwords(nwords),
