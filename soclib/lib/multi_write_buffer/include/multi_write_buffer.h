@@ -28,65 +28,57 @@
 
 ////////////////////////////////////////////////////////////////////////////
 // This Write Buffer, supports several simultaneous write bursts.
-// It contains an integer number of buffer lines, and each buffer line 
-// contains one or several 32 bits words. This nwords parameter
-// must be a power of 2, and  defines the max length of a write burst.
-// The nlines parameter defines the max number of concurrent transactions.
-// All word adresses in a buffer line are contiguous, and the
-// buffer line base address is aligned on a buffer line boundary.
+// It contains an integer number of slots, and each slot can contain
+// one buffer line. The m_nwords parameter defines the slot width.
+// (max length of a write burst). It must be a power of 2.
+// The m_nslots parameter defines the max number of concurrent transactions.
+// All word adresses in a buffer slot are contiguous, and the
+// slot base address is aligned on a buffer line boundary.
 // One buffer line is typically a cache line, or half a cache line.
-// Byte enable controlled write after write are supported.
-// All write requests in the same buffer line will be transmitted
-// in a single VCI transaction.
-// A line is "closed" when it is ready to be send: The condition is to
-// have more than zero cycles between to successive write request 
-// from the processor in the same buffer line.
-// - The wok() method returns true when a write request can be accepted.
-// - The write() method is used to store a write request in the buffer,
-//   and increment the write pointer if necessary.
-// - The rok() method returns true when a buffer line can be sent.
-// - The getXXX() methods are used to build a write transaction,
-//   when a buffer line is ready to be send.
-// - The sent() method is used to signal that the last flit of a write burst 
-//   transaction has been send, and increment the read pointer.
+// Byte enable controlled "write after write" are supported
+// in the same line, and in the same word.
+// All write requests in the same buffer slot will be transmitted
+// as a single VCI transaction.
+// This write buffer can be seen as a set of FSM : one FSM per slot.
+// A slot can be in four states : EMPTY, OPEN, LOCKED, SENT.
+// Each slot has a local timer that is initialised when the
+// slot goes to OPEN. For all OPEN slots, the timer should be decremented 
+// at each cycle by the lock() method, that must called at all cycles.
+// The slot is LOCKED when the timer reach the 0 value.
+// - The write() method is used to store a write request in the buffer.
+//   it returns false if the buffer is full. 
+//   If previously EMPTY, the selected slot state goes to OPEN.
+// - The rok() method returns true when there is at least one LOCKED slot
+//   that can be sent, and updates the read pointer.
+// - The sent() method must be used when the last flit of a write burst 
+//   transaction has been send, to switch the slot state to SENT.
 // - The completed() method is used to signal that a write transaction
-//   has been completed, and to reset the corresponding line buffer.
-// - The empty() method returns true when all lines are empty.
-// - The miss() method returns false if a given adress matches a pending 
-//   write request (the word index in the buffer line is ignored).
+//   has been completed, and to reset to EMPTY the corresponding slot.
+// - The empty() method returns true when all slots are empty.
+// - The miss(address) method can be used to chek that a read request does 
+//   not match a pending write transaction. The matching criteria is the buffer
+//   line : the word index in the buffer slot is ignored.
+// - This write buffer enforces the write after write policy :
+//   An open slot is locked only if there is no other pending write
+//   transaction in the same buffer line.
+// - The general write policy is associative (when looking for an empty slot)
+//   but the read policy uses a round robin pointer.
+// - It can exist several EMPTY slots, several LOCKED slots,
+//   several SENT slots, and several OPEN slot.
+////////////////////////////////////////////////////////////////////////////
 // User note :
-// The write() method must be called at all cycles by the transition 
+// The lock() method must be called at all cycles by the transition 
 // function of the hardware component that contains this write buffer
-// even if there is no valid transaction, because the internal state
-// must be updated at each cycle.
-///////////////////////////////////////////////////////////////////////////
-// It has three constructor parameters :
+// to update the internal state.
+////////////////////////////////////////////////////////////////////////////
+// It has 4 constructor parameters :
 // - std::string    name
-// - size_t         nwords : buffer width (number of words)
-// - size_t	    nlines : buffer depth (number of lines)
-//
+// - size_t         nwords  : buffer width (number of words)
+// - size_t	    nslots  : buffer depth (number of slots)
+// - size_t	    timeout : max life time for an open slot
 // It has one template parameter :
 // - addr_t defines the address format
-////////////////////////////////////////////////////////////////////////////
-// Implementation notes :
-// The write buffer has a FIFO behavior, with two read & write pointer.
-// A buffer line can be in four states:
-// - EMPTY  : mofified by the write() method to go to OPEN state.
-// - OPEN   : modified by the write() method to go to LOCKED state.
-// - LOCKED : modified by the sent() method to go to SENT state.
-// - SENT   : modified by the completed() method to go to EMPTY state.
-// - The r_ptw register contains the index of the next line to be written.
-//   It can only be modified by the producer using the write() method.
-// - The r_ptr register contains the index of the next line to be read.
-//   It can only be modified by the consumer using the the sent() method.
-// A write request is accepted if the line pointed by the write pointer
-// is EMPTY, or the line is OPEN and the addresses match, 
-// or if the next line is EMPTY.
-// There is a read request when the line pointed by the read pointer is
-// in LOCKED state.
-// It can exist several empty lines, several locked lines,
-// several sent lines, but only one open line.
-////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_MULTI_WRITE_BUFFER_H
 #define SOCLIB_MULTI_WRITE_BUFFER_H
@@ -98,7 +90,7 @@ namespace soclib {
 
 using namespace sc_core;
 
-enum line_state_e {
+enum slot_state_e {
 	EMPTY,
 	OPEN,
 	LOCKED,
@@ -113,126 +105,183 @@ class MultiWriteBuffer
     typedef uint32_t    data_t;
     typedef uint32_t    be_t;
 
-    sc_signal<size_t>	r_ptr;		// line to be read
-    sc_signal<size_t>	r_ptw;		// line to be written
-    sc_signal<int>      *r_state;       // line state array[nlines]
-    sc_signal<addr_t>  	*r_address;     // line base address[nlines]
-    sc_signal<size_t>  	*r_min;         // smallest valid word index array[nlines]
-    sc_signal<size_t>  	*r_max;         // largest valid word index array[nlines]
-    data_t   		**r_data;       // write data  array[nlines][nwords]
-    be_t     		**r_be;         // byte enable array[nlines][nwords]
+    sc_signal<size_t>	r_ptr;		// next slot to be read
+    sc_signal<int>      *r_state;       // slot state array[nslots]
+    sc_signal<addr_t>  	*r_address;     // slot base address array[nslots]
+    sc_signal<size_t>  	*r_tout;        // slot timeout array[nslots]
+    sc_signal<size_t>  	*r_min;         // smallest valid word index array[nslots]
+    sc_signal<size_t>  	*r_max;         // largest valid word index array[nslots]
+    data_t   		**r_data;       // write data  array[nslots][nwords]
+    be_t     		**r_be;         // byte enable array[nslots][nwords]
 
-    size_t              m_nlines;       // buffer depth (number of lines)
+    size_t              m_nslots;       // buffer depth (number of slots)
     size_t              m_nwords;       // buffer width (number of words)
-    addr_t              m_mask;         // cache line mask
+    size_t		m_timeout;	// max life time for an open slot
+    addr_t              m_mask;         // cache slot mask
  
 public:
 
     /////////////
     void reset()
-    /////////////
     {
         r_ptr = 0 ;
-        r_ptw = 0 ;
-	for( size_t line = 0 ; line < m_nlines ; line++) {
-            r_address[line] 	= 0 ;
-            r_max[line]   	= 0 ;
-            r_min[line]   	= m_nwords - 1 ;
-            r_state[line] 	= EMPTY ;
+	for( size_t slot = 0 ; slot < m_nslots ; slot++) {
+            r_address[slot] 	= 0 ;
+            r_tout[slot] 	= m_timeout ;
+            r_max[slot]   	= 0 ;
+            r_min[slot]   	= m_nwords - 1 ;
+            r_state[slot] 	= EMPTY ;
             for( size_t word = 0 ; word < m_nwords ; word++ ) {
-                r_be[line][word] 	= 0 ;
-                r_data[line][word] 	= 0 ;
+                r_be[slot][word] 	= 0 ;
+                r_data[slot][word] 	= 0 ;
             }
         }
     } 
 
-    ///////////////////////////////////////////////////
-    inline void print()
-    ///////////////////////////////////////////////////
+    ////////////////////////
+    inline void printTrace()
     {
         const char *wbuf_state_str[] = { "EMPTY ", "OPEN  ", "LOCKED", "SENT  " };
 
-        std::cout << "*** Write Buffer State ***" << std::endl;
-        for( size_t i = 0 ; i < m_nlines ; i++ )
+        std::cout << "  Write Buffer : ptr = " << r_ptr << std::endl;
+        for( size_t i = 0 ; i < m_nslots ; i++ )
         {
-            std::cout << "LINE " << i << " : " 
-                      << wbuf_state_str[r_state[i].read()] 
+            std::cout << "  LINE " << i << " : " 
+                      << wbuf_state_str[r_state[i]] 
                       << std::hex << " address = " << r_address[i].read() 
                       << " min = " << r_min[i].read()
-                      << " max = " << r_max[i].read() << std::endl;
+                      << " max = " << r_max[i].read()
+                      << " tout = " << r_tout[i].read() << std::endl;
             for( size_t w = 0 ; w < m_nwords ; w++ )
             {
-                std::cout << " / D" << std::dec << w << " = " 
+                std::cout << "  / D" << std::dec << w << " = " 
                           << std::hex << r_data[i][w] << "  be = " << r_be[i][w] ;
             }
             std::cout << std::endl;
         }
-        std::cout << "  ptw = " << r_ptw.read() << "  ptr = " << r_ptr.read() << std::endl;
     }
 
-    ///////////////////////////////////////////////////
-    inline bool miss( addr_t addr )
-    ///////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////
+    inline bool miss(addr_t addr)
+    // This method is intended to be used by the VCI_CMD FSM
+    // to comply with the read after write policy, and
+    // decide if a read miss transaction can be launched.
+    // There is an hardware cost associated with this service,
+    // because all buffer entries must be tested. 
     {
-        for( size_t i = 0 ; i < m_nlines ; i++ )
+        for( size_t i = 0 ; i < m_nslots ; i++ )
         {
-            if ((r_state[i].read() != EMPTY) && ((addr_t)r_address[i].read() == (addr & ~m_mask))) return false;
+            if ( (r_state[i].read() != EMPTY) && 
+                 ((addr_t)r_address[i].read() == (addr & ~m_mask))) return false;
         }
         return true;
     }
     
     ///////////////////////////////////////////////////
-    inline bool wok( addr_t addr )
-    ///////////////////////////////////////////////////
-    {
-	if( r_state[r_ptw.read()].read() == EMPTY) 					return true;
-        else if( (r_state[r_ptw.read()].read() == OPEN) &&
-                  ((addr_t)r_address[r_ptw.read()].read() == (addr & ~m_mask)) ) 	return true;
-        else if( (r_state[r_ptw.read()].read() == OPEN) &&
-                   (r_state[(r_ptw.read() + 1)%m_nlines].read() == EMPTY) ) 		return true;
-        else								return false;
-    }
-
-    ///////////////////////////////////////////////////
     inline bool empty( )
-    ///////////////////////////////////////////////////
     {
-        for( size_t i = 0 ; i < m_nlines ; i++ )
+        for( size_t i=0 ; i<m_nslots ; i++ )
         {
             if ( r_state[i].read() != EMPTY ) return false;
         }
         return true;
     }
 
-    /////////////////////////////////////////////////////////////////
-    void write(bool valid, addr_t addr, be_t be , data_t  data)
-    // This method must be called at each cycle.
-    // It can modify the write pointer.
-    // It can change the pointed line state from EMPTY to OPEN, 
-    // or fom OPEN to LOCKED.
-    // It can change the state of the next line from EMPTY to OPEN
-    // If there is a valid write request, it registers the request
-    // in the pointed line if it is EMPTY, or if it is OPEN and the
-    // address matches, or in the the next line if it is EMPTY. 
-    /////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////
+    inline bool rok(size_t* min, size_t* max)
+    // This method is intended to be called by the VCI_CMD FSM,
+    // to test if a locked slot is available.
+    // It changes the pointer to the next available locked slot, 
+    // and returns the min & max indexes when it has been found.
+    {
+	bool	found = false;	
+        size_t  lw;
+        for( size_t i=0 ; i<m_nslots ; i++)
+        {
+            lw = (r_ptr+i)%m_nslots;
+            if( r_state[lw] == LOCKED ) 
+            { 
+                found = true;
+                r_ptr = lw;
+                *min = r_min[lw];
+                *max = r_max[lw];
+                break;
+            }
+        }
+        return found;
+    } // end rok()
+
+    ////////////////////////////////////////////////////////////////////
+    void inline sent()  
+    // This method is intended to be used by the VCI_CMD FSM.
+    // It can only change a slot state from LOCKED to SENT when
+    // the corresponding write command has been fully transmitted.
+    {
+
+#ifdef WRITE_BUFFER_DEBUG
+std::cout << std::endl;
+std::cout << "********** write buffer : slot " << r_ptr << " sent" << std::endl;
+std::cout << std::endl;
+#endif
+        assert( (r_state[r_ptr] == LOCKED) &&
+             "write buffer error : illegal sent command received");
+        r_state[r_ptr] = SENT;
+    } 
+
+    /////////////////////////////////////////////////////////////////////
+    void lock()
+    // This method is intended to be called at each cycle.
+    // It can change a slot state from OPEN to LOCKED,
+    // and it decrements the tout[i] values.
+    // It has two different actions:
+    // - The tout value is decremented for all open slots
+    // that have a non zero tout value.
+    // - It implement the write after write policy :
+    // If there is one open slot with tout == 0, and there is 
+    // no pending slot (locked or sent) with the same address,
+    // this slot is locked : at most one locked slot per cycle,
+    // because the hardware cost is high...
+    {
+        bool	found = false;
+	// tout decrement for all open slots
+        for(size_t i=0 ; i<m_nslots ; i++)
+        {
+            if( (r_state[i] == OPEN) && (r_tout[i] > 0)	)  r_tout[i] = r_tout[i] - 1;
+        }
+        // possible locking for one single open slot
+        for(size_t i=0 ; i<m_nslots ; i++)
+        {
+            if( (r_state[i] == OPEN) && (r_tout[i] == 0) )
+            {
+                // searching for a pending request with the same address
+                for( size_t j=0 ; j<m_nslots ; j++ )
+                {
+                    if ( (r_state[j] != EMPTY) && 
+                         (r_state[j] != OPEN)  &&
+                         (r_address[i] == r_address[j]) ) 
+                    {
+                        found = true;
+                        break; 
+                    }
+                }
+                // locking the slot if no conflict
+                if ( !found ) r_state[i] = LOCKED;
+            }
+        }
+    } // end lock()
+
+    //////////////////////////////////////////////////////////////////////////
+    bool write(addr_t addr, be_t be , data_t  data)
+    // This method is intended to be used by the DCACHE FSM.
+    // It can only change a slot state from EMPTY to OPEN.
+    // It can change the slot content : r_address, r_data, r_be, r_min, r_max
+    // It searches first an open slot, and then an empty slot.
+    // It returns true in case of success.
     {
         size_t 	word = (size_t)((addr &  m_mask) >> 2) ;
         addr_t 	address = addr & ~m_mask ;
-	bool	found ;				// line to be written found
-        size_t  lw ;				// index of the written line
-
-	if( !valid )  		// no write request
-        { 
-            // update the write pointer & the line state if OPEN
-            if( r_state[r_ptw.read()].read() == OPEN )  
-            {
-                r_state[r_ptw.read()] = LOCKED; 
-                r_ptw = (r_ptw.read() + 1) % m_nlines;  
-            }
-
-	} 
-        else 			// valid write request
-        {
+	bool	found = false;	
+        size_t  lw;
 
 #ifdef WRITE_BUFFER_DEBUG
 std::cout << std::endl;
@@ -243,46 +292,36 @@ std::cout << "be      = " << be   << std::endl;
 std::cout << std::endl;
 #endif
 
-            // find the line to be written and update r_state & r_ptw
-            if( r_state[r_ptw.read()].read() == EMPTY) 
-            {
-                found = true ;
-                lw = r_ptw.read() ;
-                r_state[r_ptw.read()] = OPEN ;
+        // search a slot to be written
+        // scan open slots, then scan empty slots 
+        for( size_t i=0 ; i<m_nslots ; i++)
+        {
+            if( (r_state[i] == OPEN) && (r_address[i] == address) )
+            { 
+                lw = i;
+                found = true;
+                break;
             }
-            else if( r_state[r_ptw.read()].read() == OPEN) 
+        }
+        if( !found )
+        {
+            for( size_t i=0 ; i<m_nslots ; i++)
             {
-                if(r_address[r_ptw.read()].read() == address)  
-                {
-                    found = true ;
-                    lw = r_ptw.read() ;
-	        } 
-                else   // no convenient open line : take next line if empty
-                {
-                    r_state[r_ptw.read()] = LOCKED ;
-                    lw = (r_ptw.read() + 1) % m_nlines ;
-                    r_ptw = lw ;		// increment r_ptw
-		    if( r_state[lw].read() == EMPTY ) 
-                    {
-                        found = true ;
-                        r_state[lw] = OPEN ;
-                    }
-                    else
-                    {
-                        found = false;
-                    }
+                if( r_state[i] == EMPTY )
+                { 
+                    lw = i;
+                    found = true;
+                    break;
                 }
             }
-            else 
-            {
-                found = false ;
-            }
-
-            if (!found) return ;
-
-            // register the request:  update r_address, r_be, r_data (building a mask from be)
-            r_address[lw] = address ;
-            r_be[lw][word]   = r_be[lw][word] | be ;
+        }
+        // register the request when a slot has been found:
+        // update r_state, r_address, r_be, r_data, r_min, r_max, r_tout
+        if ( found )
+        {
+            r_state[lw]	= OPEN;
+            r_address[lw] = address;
+            r_be[lw][word]   = r_be[lw][word] | be;
             data_t  data_mask = 0;
             be_t    be_up = (1<<(sizeof(data_t)-1));
             for (size_t i = 0 ; i < sizeof(data_t) ; ++i) 
@@ -292,76 +331,51 @@ std::cout << std::endl;
                 be <<= 1;
             }
             r_data[lw][word] = (r_data[lw][word] & ~data_mask) | (data & data_mask) ;
-            // update r_min & r_max
+            r_tout[lw] = m_timeout;
             if ( r_min[lw].read() > word ) r_min[lw] = word;
             if ( r_max[lw].read() < word ) r_max[lw] = word;
         }
+        return found;
     } // end write()
-
-    ///////////////////////////////////////////////////
-    inline bool rok()
-    ///////////////////////////////////////////////////
-    {
-        return ( r_state[r_ptr.read()].read() == LOCKED ) ;
-    }
-
-    ///////////////////////////////////
-    inline size_t getIndex()
-    ///////////////////////////////////
-    {
-        return  r_ptr.read() ;
-    }
-
-    ///////////////////////////////////
-    inline size_t getMin()
-    ///////////////////////////////////
-    {
-        return  r_min[r_ptr.read()].read() ;
-    }
-
-    ///////////////////////////////////
-    inline size_t getMax()
-    ///////////////////////////////////
-    {
-        return  r_max[r_ptr.read()].read() ;
-    }
 
     //////////////////////////////////////
     inline addr_t getAddress(size_t word)
-    //////////////////////////////////////
     {
         return ( (addr_t)r_address[r_ptr.read()].read() + (addr_t)(word << 2) ) ;
     } 
 
     ///////////////////////////////////
     data_t inline getData(size_t word)
-    ///////////////////////////////////
     {
         return r_data[r_ptr.read()][word] ;
     } 
 
-    ///////////////////////////////////
+    //////////////////////////////
     be_t inline getBe(size_t word)
-    ///////////////////////////////////
     {
         return r_be[r_ptr.read()][word] ;
     } 
 
+    /////////////////////////
+    size_t inline getIndex()
+    {
+        return r_ptr.read();
+    } 
+
     /////////////////////////////////////////////////////////////
     void inline completed(size_t index)
-    // This method reset the corresponding line to empty state.
-    // It is intended to be called by the response FSM when
+    // This method is intended to be used by the VCI_RSP FSM.
+    // It can only change a slot state from SENT to EMPTY when
     // the corresponding write transaction is completed.
-    /////////////////////////////////////////////////////////////
     {
 
 #ifdef WRITE_BUFFER_DEBUG
 std::cout << std::endl;
-std::cout << "********** write buffer : line " << index << " completed" << std::endl;
+std::cout << "********** write buffer : slot " << index << " completed" << std::endl;
 std::cout << std::endl;
 #endif
 
-        assert( (index < m_nlines) && (r_state[index].read() == SENT) &&
+        assert( (index < m_nslots) && (r_state[index].read() == SENT) &&
              "write buffer error : illegal completed command received");
         r_max[index]   	= 0 ;
         r_min[index]   	= m_nwords - 1 ;
@@ -369,42 +383,27 @@ std::cout << std::endl;
         for( size_t w = 0 ; w < m_nwords ; w++ ) r_be[index][w]	= 0 ;
     } //end completed()
 
-    ///////////////////////////////////////////////////////////////
-    void inline sent()  
-    // This method set the line  pointed by the read pointer
-    // to SENT state and increment the read pointer.
-    // It is intended to be called by the commande FSM when
-    // the corresponding write command has been fully transmitted.
-    //////////////////////////////////////////////////////////////
-    {
-
-#ifdef WRITE_BUFFER_DEBUG
-std::cout << std::endl;
-std::cout << "********** write buffer : line " << r_ptr.read() << " sent" << std::endl;
-std::cout << std::endl;
-#endif
-        assert( (r_state[r_ptr.read()].read() == LOCKED) &&
-             "write buffer error : illegal sent command received");
-        r_state[r_ptr.read()] = SENT;
-	r_ptr = (r_ptr + 1) % m_nlines;  // increment index
-    } 
-
     /////////////////////////////////////////////////////////////////////// 
-    MultiWriteBuffer(const std::string &name, size_t nwords, size_t nlines)
+    MultiWriteBuffer(const std::string 	&name, 
+                     size_t 		nwords, 
+                     size_t 		nslots,
+                     size_t		timeout)
     /////////////////////////////////////////////////////////////////////// 
         :
-        m_nlines(nlines),
+        m_nslots(nslots),
         m_nwords(nwords),
+        m_timeout(timeout),
         m_mask((nwords << 2) - 1)
     {
-        r_address = new sc_signal<addr_t>[nlines];
-        r_min     = new sc_signal<size_t>[nlines];
-        r_max     = new sc_signal<size_t>[nlines];
-        r_state   = new sc_signal<int>[nlines];
+        r_address = new sc_signal<addr_t>[nslots];
+        r_tout    = new sc_signal<size_t>[nslots];
+        r_min     = new sc_signal<size_t>[nslots];
+        r_max     = new sc_signal<size_t>[nslots];
+        r_state   = new sc_signal<int>[nslots];
 
-        r_data    = new data_t*[nlines];
-        r_be      = new be_t*[nlines];
-        for( size_t i = 0 ; i < nlines ; i++ )
+        r_data    = new data_t*[nslots];
+        r_be      = new be_t*[nslots];
+        for( size_t i = 0 ; i < nslots ; i++ )
         {
             assert(IS_POW_OF_2(nwords));
             r_data[i] = new data_t[nwords];
@@ -415,7 +414,7 @@ std::cout << std::endl;
     ~MultiWriteBuffer()
     ///////////////////
     {
-        for( size_t i = 0 ; i < m_nlines ; i++ )
+        for( size_t i = 0 ; i < m_nslots ; i++ )
         {
             delete [] r_data[i];
             delete [] r_be[i];
@@ -423,6 +422,7 @@ std::cout << std::endl;
         delete [] r_data;
         delete [] r_be;
         delete [] r_address;
+        delete [] r_tout;
         delete [] r_min;
         delete [] r_max;
         delete [] r_state;
