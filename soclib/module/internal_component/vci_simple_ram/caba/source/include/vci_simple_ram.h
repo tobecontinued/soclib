@@ -58,33 +58,32 @@ public:
 	typedef typename vci_param::trdid_t vci_trdid_t;
 	typedef typename vci_param::pktid_t vci_pktid_t;
 
-	typedef unsigned int       ram_t;
+	typedef uint32_t       ram_t;
 
     enum fsm_state_e {
         FSM_IDLE,
         FSM_CMD_GET,
-        FSM_WRITE_BURST,
-        FSM_WRITE_BURST_RSP,
-        FSM_READ_WORD,
-        FSM_READ_BURST,
-        FSM_SC,
-        FSM_LL,
-        FSM_ERROR,
-        FSM_WRITE_ERROR,
+        FSM_CMD_WRITE,
+        FSM_CMD_ERROR,
+        FSM_RSP_READ,
+        FSM_RSP_WRITE,
+        FSM_RSP_LL,
+        FSM_RSP_SC,
+        FSM_RSP_ERROR,
     };
 
 private:
 
     soclib::common::Loader                  m_loader;
     std::list<soclib::common::Segment>      m_seglist;
-    const uint32_t				    m_latency;
+    const uint32_t			    m_latency;
 
     soclib::common::LinkedAccessBuffer<
         vci_addr_t, vci_srcid_t>            r_llsc_buf;
 
     sc_signal<int>                          r_fsm_state;
     sc_signal<size_t>                       r_flit_count;
-    sc_signal<size_t>                       r_index;
+    sc_signal<size_t>                       r_seg_index;
     sc_signal<vci_addr_t>                   r_address;
     sc_signal<vci_data_t>                   r_wdata;
     sc_signal<vci_be_t>                     r_be;
@@ -92,14 +91,15 @@ private:
     sc_signal<vci_trdid_t>                  r_trdid;
     sc_signal<vci_pktid_t>                  r_pktid;
     sc_signal<bool>                         r_contig;
-    sc_signal<bool>                         r_eop_cmd;
-    sc_signal<bool>                         r_valid;
-    sc_signal<bool>                         r_eop_rsp;
     sc_signal<uint32_t>                     r_latency_count;
 
     size_t                                  m_nbseg;
     ram_t                                   **m_ram;
     soclib::common::Segment                 **m_seg;
+
+    // Activity counters
+    uint32_t 				m_cpt_read;   // Count READ access
+    uint32_t 				m_cpt_write;  // Count WRITE access
 
 protected:
 
@@ -120,18 +120,18 @@ public:
 
     ~VciSimpleRam();
 
+    void printTrace();
+    void printStatistics();
+
 private:
 
     bool write(size_t seg, vci_addr_t addr, vci_data_t wdata, vci_be_t be);
     bool read( size_t seg, vci_addr_t addr, vci_data_t &rdata );
     void transition();
     void genMoore();
-	void reload();
-	void reset();
+    void reload();
+    void reset();
 
-    // Activity counters
-    uint32_t m_cpt_read;   // Count READ access
-    uint32_t m_cpt_write;  // Count WRITE access
 };
 
 }}
