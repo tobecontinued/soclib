@@ -154,7 +154,8 @@ uint32_t Ppc405Iss::executeNCycles(
 
     r_tb++;
 
-    m_next_pc = r_pc+4;
+    if ( ! r_msr.we )
+        m_next_pc = r_pc+4;
 
     m_exception = EXCEPT_NONE;
 
@@ -187,7 +188,7 @@ uint32_t Ppc405Iss::executeNCycles(
     if ( m_microcode_func ) {
         m_next_pc = r_pc;
         (this->*m_microcode_func)();
-    } else
+    } else if ( ! r_msr.we )
         run();
 
     if ( m_exception == EXCEPT_NONE && m_microcode_func )
@@ -214,6 +215,7 @@ uint32_t Ppc405Iss::executeNCycles(
 #endif
 
     m_microcode_func = NULL;
+    r_msr.we = 0;
 
     {
         ExceptionClass ex_class = EXCL_FAULT;

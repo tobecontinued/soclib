@@ -318,7 +318,7 @@ public:
     inline void getRequests( struct InstructionRequest &ireq,
                              struct DataRequest &dreq ) const
     {
-        ireq.valid = (m_microcode_func == NULL);
+        ireq.valid = (m_microcode_func == NULL) && (r_msr.we == 0);
 		ireq.addr = r_pc;
 
         dreq = m_dreq;
