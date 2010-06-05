@@ -189,7 +189,7 @@ tmpl(void)::write_finish( req_t *req )
     }
 
 	ended(
-        ( ! req->failed() && ::write( m_fd, (char *)m_data, m_transfer_size ) > 0 )
+        ( ! req->failed() && m_fd >= 0 && ::write( m_fd, (char *)m_data, m_transfer_size ) > 0 )
         ? BLOCK_DEVICE_WRITE_SUCCESS : BLOCK_DEVICE_WRITE_ERROR );
     delete m_data;
 	delete req;
@@ -201,7 +201,7 @@ tmpl(void)::next_req()
     case BLOCK_DEVICE_READ:
     {
         m_transfer_size = m_count * m_block_size;
-        if ( m_chunck_offset == 0 ) {
+        if ( m_count && m_chunck_offset == 0 ) {
             if ( m_lba + m_count > m_device_size ) {
                 std::cerr << name() << " warning: trying to read beyond end of device" << std::endl;
                 ended(BLOCK_DEVICE_READ_ERROR);
@@ -230,7 +230,7 @@ tmpl(void)::next_req()
     case BLOCK_DEVICE_WRITE:
     {
         m_transfer_size = m_count * m_block_size;
-        if ( m_chunck_offset == 0 ) {
+        if ( m_count && m_chunck_offset == 0 ) {
             if ( m_lba + m_count > m_device_size ) {
                 std::cerr << name() << " warning: trying to write beyond end of device" << std::endl;
                 ended(BLOCK_DEVICE_WRITE_ERROR);
@@ -326,16 +326,17 @@ tmpl(/**/)::VciBlockDevice(
 
     m_fd = ::open(filename.c_str(), O_RDWR);
     if ( m_fd < 0 ) {
-        throw soclib::exception::RunTimeError(
-            std::string("Unable to open file ")+filename);
-    }
-    m_device_size = lseek(m_fd, 0, SEEK_END) / m_block_size;
-    if ( m_device_size > ((uint64_t)1<<(vci_param::B*8)) ) {
-        std::cerr
-            << "Warning: block device " << filename
-            << " has more blocks than addressable with "
-            << (8*vci_param::B) << "." << std::endl;
-        m_device_size = ((uint64_t)1<<(vci_param::B*8));
+        std::cerr << "Unable to open block device image file " << filename << std::endl;
+        m_device_size = 0;
+    } else {
+        m_device_size = lseek(m_fd, 0, SEEK_END) / m_block_size;
+        if ( m_device_size > ((uint64_t)1<<(vci_param::B*8)) ) {
+            std::cerr
+                << "Warning: block device " << filename
+                << " has more blocks than addressable with "
+                << (8*vci_param::B) << "." << std::endl;
+            m_device_size = ((uint64_t)1<<(vci_param::B*8));
+        }
     }
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout 
