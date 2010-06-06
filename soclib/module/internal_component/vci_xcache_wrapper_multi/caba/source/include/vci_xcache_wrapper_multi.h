@@ -124,10 +124,6 @@ private:
 
     // ISS 
     iss_t                                                       m_iss;
-    typename iss_t::InstructionRequest				m_ireq;
-    typename iss_t::InstructionResponse				m_irsp;
-    typename iss_t::DataRequest					m_dreq;
-    typename iss_t::DataResponse				m_drsp;
 
     // REGISTERS
     sc_signal<int>          r_dcache_fsm;
