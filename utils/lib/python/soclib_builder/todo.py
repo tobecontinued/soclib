@@ -148,10 +148,25 @@ class ToDo:
             print 
         if config.verbose:
             print "soclib-cc: Failed action: `%s'"%e.action
+        else:
+            import shlex
+            act = []
+            was = None
+            for a in shlex.split(e.action):
+                s = None
+                if a.startswith('-I'):
+                    s = '-I'
+                if was != s and s:
+                    act.append(s+'...')
+                elif not s:
+                    act.append(a)
+                was = s
+            print "soclib-cc: Failed action: `%s'" % ' '.join(act)
+            print "soclib-cc: Command line shortened, rerun with -v for complete command line"
         if command.Command.pending_action_count():
             print "soclib-cc: Waiting for unfinished jobs"
             self.__wait_done()
-            raise action.ActionFailed()
+            raise
 
     def wait(self):
         command.Command.wait()
@@ -200,6 +215,8 @@ class ToDo:
 
         try:
             self.__run(possible)
+        except ActionFailed, e:
+            return self.handle_failed_action(e)
         except OSError, e:
             if hasattr(e, 'child_traceback'):
                 print e.child_traceback

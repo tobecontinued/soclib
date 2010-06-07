@@ -191,23 +191,32 @@ class Toolchain(Config):
     Implements toolchain specificities
     '''
 
+    def __get_tool(self, name):
+        try:
+            return getattr(self, 'tool_'+name)
+        except KeyError:
+            pass
+        if name in self.tool_map:
+            #warnings.warn(
+            #    "Please migrate tool_map[%s] entry to tool_%s" % (name, name),
+            #    DeprecationWarning)
+            return self.tool_map[name]
+        if self.parent:
+            return self.parent.__get_tool(name)
+        return None
+
     def get_tool(self, name, mode):
         '''
         Retrieves a tool in the tool_map field. Recurses down to
         parent until found.
         '''
         tn = mode+'_'+name
-        _name = name
-        if mode and tn in self.tool_map:
-            _name = tn
-        if _name in self.tool_map:
-            tool = self.tool_map[_name]
+        tool = self.__get_tool(tn) or self.__get_tool(name)
+        if tool is not None:
             if isinstance(tool, str):
                 return tool.split(' ')
             else:
                 return tool
-        if self.parent:
-            return self.parent.get_tool(name, mode)
         raise KeyError(name)
 
 class Library(Config):

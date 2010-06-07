@@ -66,16 +66,20 @@ class Command:
         self.__out = tempfile.TemporaryFile("w+b", bufsize=128)
         self.__err = tempfile.TemporaryFile("w+b", bufsize=128)
 
-        self.__handle = subprocess.Popen(
-            self.__cmd,
-            shell = False,
-            cwd = self.__cwd,
-            bufsize = 128*1024,
-            close_fds = True,
-            stdin = None,
-            stdout = self.__out,
-            stderr = self.__err,
-            )
+        try:
+            self.__handle = subprocess.Popen(
+                self.__cmd,
+                shell = False,
+                cwd = self.__cwd,
+                bufsize = 128*1024,
+                close_fds = True,
+                stdin = None,
+                stdout = self.__out,
+                stderr = self.__err,
+                )
+        except OSError, e:
+            from action import ActionFailed
+            raise ActionFailed(-1, self.command)
 
         if synchronous:
             self.__handle.wait()

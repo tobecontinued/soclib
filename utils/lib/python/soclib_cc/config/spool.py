@@ -36,6 +36,7 @@ def _old_config(base, **kwargs):
     '''
     Emulation of the old Config() statement in configuration files.
     '''
+    #warnings.warn("Config() statements are deprecated")
     if isinstance(base, objects.Toolchain):
         return objects.Toolchain(base, **kwargs)
     elif isinstance(base, objects.Library):
