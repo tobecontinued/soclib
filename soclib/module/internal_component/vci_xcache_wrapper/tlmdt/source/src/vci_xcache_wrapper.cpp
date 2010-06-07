@@ -27,6 +27,8 @@
  */
 
 #include "alloc_elems.h"
+#include <limits>
+
 #include "vci_xcache_wrapper.h"
 
 #define MY_DEBUG 0
