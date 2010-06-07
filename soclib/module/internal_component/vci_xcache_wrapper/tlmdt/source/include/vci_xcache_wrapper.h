@@ -25,6 +25,8 @@
  * Copyright (c) UPMC / Lip6, 2010
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
+#ifndef _TLMDT_XCACHE_WRAPPER_H
+#define _TLMDT_XCACHE_WRAPPER_H
  
 #include <tlmdt>
 #include <inttypes.h>
@@ -314,3 +316,4 @@ public:
 
 }}
 
+#endif

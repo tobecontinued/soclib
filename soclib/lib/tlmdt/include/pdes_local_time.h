@@ -30,6 +30,8 @@
 #ifndef __PDES_LOCAL_TIME_H__
 #define __PDES_LOCAL_TIME_H__
 
+#include <systemc>
+
 //
 // pdes_local_time class
 //
