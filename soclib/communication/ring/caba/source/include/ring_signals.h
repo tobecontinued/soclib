@@ -33,25 +33,25 @@ namespace soclib { namespace caba {
 class RingSignals
 {
 public:
-	sc_signal<bool>                         cmd_grant;
-        sc_signal<sc_uint<37> >                 cmd_data;
-    	sc_signal<bool>                         cmd_w;
-    	sc_signal<bool>                        	cmd_r;
-    	sc_signal<bool>                         rsp_grant;
-    	sc_signal<sc_uint<33> >                 rsp_data;
-    	sc_signal<bool>                         rsp_w;
-    	sc_signal<bool>                        	rsp_r;
+	sc_core::sc_signal<bool>                         cmd_grant;
+    sc_core::sc_signal<sc_dt::sc_uint<37> >                 cmd_data;
+    sc_core::sc_signal<bool>                         cmd_w;
+    sc_core::sc_signal<bool>                        	cmd_r;
+    sc_core::sc_signal<bool>                         rsp_grant;
+    sc_core::sc_signal<sc_dt::sc_uint<33> >                 rsp_data;
+    sc_core::sc_signal<bool>                         rsp_w;
+    sc_core::sc_signal<bool>                        	rsp_r;
 
-	RingSignals(std::string name = (std::string)sc_gen_unique_name("ring_signals_"))
-	  : 	cmd_grant	((name+"cmd_grant").c_str()),
-                cmd_data	((name+"cmd_data").c_str()),
+	RingSignals(std::string name = (std::string)sc_core::sc_gen_unique_name("ring_signals_"))
+        : 	cmd_grant	((name+"cmd_grant").c_str()),
+            cmd_data	((name+"cmd_data").c_str()),
 	    	cmd_w		((name+"cmd_w").c_str()),
 	    	cmd_r		((name+"cmd_r").c_str()),
 	    	rsp_grant	((name+"rsp_grant").c_str()),
 	    	rsp_data	((name+"rsp_data").c_str()),
 	    	rsp_w		((name+"rsp_w").c_str()),
 	    	rsp_r		((name+"rsp_r").c_str()) 
-	  { }
+    { }
 };
 
 }} // end namespace
