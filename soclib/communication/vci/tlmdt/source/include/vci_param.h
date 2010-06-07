@@ -40,6 +40,20 @@ public:
   typedef _data_t data_t;
   static const int nbytes = sizeof(data_t);
 
+  static inline data_t be2mask( data_t be )
+  {
+    const data_t m = (1<<nbytes);
+    data_t r = 0;
+    
+    for ( int i=0; i<nbytes; ++i ) {
+      r <<= 8;
+      be <<= 1;
+      if ( be & m )
+	r |= 0xff;
+    }
+    return r;
+  }
+
 };
 
 }}
