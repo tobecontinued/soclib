@@ -187,7 +187,7 @@ def main():
         soclib_desc.description_files.get_module(cell).addDefine(name, val)
 
     for value in todb:
-        soclib_desc.description_files.get_module(value).forceDebug()
+        soclib_desc.description_files.get_module(value).set_debug_mode()
 
     ## Done with setup
 
