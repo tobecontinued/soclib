@@ -95,10 +95,10 @@ class VciXcacheWrapperMulti
     };
 
     enum transaction_type_e {
-        TYPE_DATA_MISS = 0,
-        TYPE_DATA_UNC = 2,
-        TYPE_INS_MISS = 4,
-        TYPE_INS_UNC = 6,
+        TYPE_DATA_UNC = 0,
+        TYPE_DATA_MISS = 1,
+        TYPE_INS_UNC = 2,
+        TYPE_INS_MISS = 3,
     };
 
 public:

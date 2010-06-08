@@ -203,7 +203,11 @@ tmpl(/**/)::VciXcacheWrapperMulti(
     r_icache_miss_buf = new data_t[icache_words];
     r_dcache_miss_buf = new data_t[dcache_words];
 
-    assert((icache_words*vci_param::B) < (1<<vci_param::K) && "I need more PLEN bits");
+    assert( (icache_words*vci_param::B) < (1<<vci_param::K) && 
+            "I need more PLEN bits");
+
+    assert( (vci_param::T > 2) && ((1<<(vci_param::T-1)) >= wbuf_nlines) &&
+            "I need more TRDID bits");
 
     SC_METHOD(transition);
     dont_initialize();
@@ -265,7 +269,7 @@ tmpl(void)::printStatistics()
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
         std::cout << "------------------------------------" << std:: dec << std::endl
-        << "CPU " << m_srcid << " / Time = " << m_cpt_total_cycles << std::endl
+        << "CPU " << m_srcid << " / cycles = " << m_cpt_total_cycles << std::endl
         << "- CPI               = " << (float)m_cpt_total_cycles/run_cycles << std::endl
         << "- READ RATE         = " << (float)m_cpt_read/run_cycles << std::endl
         << "- WRITE RATE        = " << (float)m_cpt_write/run_cycles << std::endl
@@ -514,10 +518,10 @@ std::cout << std::dec << "Xcache " << m_srcid << " / Time = " << m_cpt_total_cyc
     //   an XTN request, or a cachable write. 
     // - In WRITE_REQ state, the request is satisfied if it is a cachable read hit,
     //   an XTN request, or a write when the write buffer is not full.
-    // - Both the uncached read and the uncached write requests block the processor
+    // - Both the uncachable read and the uncachable write requests block the processor
     //   until the corresponding VCI transaction is completed.
     //
-    // In case of processor request, there is five conditions to exit the IDLE state:
+    // In case of processor request, there is six conditions to exit the IDLE state:
     //   - CACHED READ MISS => to the MISS_WAIT state (waiting r_rsp_data_ok),
     //     then to the MISS_UPDT state, and finally to the IDLE state.
     //   - UNCACHED READ or WRITE => to the UNC_WAIT state (waiting r_rsp_data_ok),
@@ -800,9 +804,9 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
     // For write burst packets, all words must be in the same write buffer line,
     // and addresses must be contiguous (the BE field is 0 in case of "holes").
     // The PLEN VCI field is always documented.
-    // As simultaneous VCI transactions are supported, the PKTID field is used:
-    // - Write transactions : PKTID = 2*wbuf_index + 1 			(odd values)
-    // - Read transactions  : PKTID = 4*cachable + 2*instruction	(even values)
+    // As simultaneous VCI transactions are supported, the TRDID field is used:
+    // - Write transactions : TRDID = wbuf_index + (1<<(trdid_size-1))
+    // - Read transactions  : TRDID = 2*cachable + instruction
     ///////////////////////////////////////////////////////////////////////////////////
 
     switch (r_cmd_fsm) {
@@ -881,40 +885,47 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
     // VCI formats:
     // This component accepts single word or multi-word response packets for
     // write response packets.
+    // As simultaneous VCI transactions are supported, the TRDID field is used:
+    // - Write transactions : TRDID = wbuf_index + (1<<(trdid_size-1))
+    // - Read transactions  : TRDID = 2*cachable + instruction
     //
     // Error handling:
-    // This FSM analyzes the VCI error code and signals the Write Bus Error.
-    // In case of Read Data Error, the VCI_RSP FSM sets the r_rsp_data_error
-    // flip_flop and the error is signaled by the DCACHE FSM.
-    // In case of Instruction Error, the VCI_RSP FSM sets the r_rsp_ins_error
-    // flip_flop and the error is signaled by the DCACHE FSM.
+    // - In case of Write error, the error is directly signaled by the RSP FSM.
+    // - In case of Read Data Error, the VCI_RSP FSM sets the r_rsp_data_error 
+    //   flip_flop and the error is signaled by the DCACHE FSM.  
+    // - In case of Instruction Error, the VCI_RSP FSM sets the r_rsp_ins_error 
+    //   flip_flop and the error is signaled by the ICACHE FSM.  
     //////////////////////////////////////////////////////////////////////////
 
     switch (r_rsp_fsm) {
 
     case RSP_IDLE:
+    {
         if( p_vci.rspval.read() ) 
         {
             r_rsp_cpt = 0;
-            if ( p_vci.rpktid.read()%2 == 1 ) 			r_rsp_fsm = RSP_DATA_WRITE;
-            else if ( p_vci.rpktid.read() == TYPE_DATA_MISS ) 	r_rsp_fsm = RSP_DATA_MISS;
-            else if ( p_vci.rpktid.read() == TYPE_DATA_UNC ) 	r_rsp_fsm = RSP_DATA_UNC;
-            else if ( p_vci.rpktid.read() == TYPE_INS_MISS ) 	r_rsp_fsm = RSP_INS_MISS;
-            else if ( p_vci.rpktid.read() == TYPE_INS_UNC ) 	r_rsp_fsm = RSP_INS_UNC;
+            if ( (p_vci.rtrdid.read()>>(vci_param::T-1)) != 0 ) r_rsp_fsm = RSP_DATA_WRITE;
+            else if ( p_vci.rtrdid.read() == TYPE_DATA_MISS ) 	r_rsp_fsm = RSP_DATA_MISS;
+            else if ( p_vci.rtrdid.read() == TYPE_DATA_UNC ) 	r_rsp_fsm = RSP_DATA_UNC;
+            else if ( p_vci.rtrdid.read() == TYPE_INS_MISS ) 	r_rsp_fsm = RSP_INS_MISS;
+            else if ( p_vci.rtrdid.read() == TYPE_INS_UNC ) 	r_rsp_fsm = RSP_INS_UNC;
         } 
         break;
-
+    }
     case RSP_DATA_WRITE:
+    {
         if ( p_vci.rspval.read() )
         {
-            assert( p_vci.reop.read() && "A VCI response packet must contains one flit" ); 
+            assert( p_vci.reop.read() && 
+               "A VCI response packet must contain one flit for a write transaction" ); 
             r_rsp_fsm = RSP_IDLE;
-            r_wbuf.completed( p_vci.rpktid.read() >> 1 );
+            r_wbuf.completed( p_vci.rtrdid.read() - (1<<(vci_param::T-1)) );
             if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )  m_iss.setWriteBerr();
         }
         break;
-
+    }
     case RSP_INS_MISS:
+    {
         if ( p_vci.rspval.read() )
         {
             assert( (r_rsp_cpt < m_icache_words) &&
@@ -931,8 +942,9 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
             if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_rsp_ins_error = true;
         }
         break;
-
+    }
     case RSP_INS_UNC:
+    {
         if ( p_vci.rspval.read() )
         {
             assert(p_vci.reop.read() &&
@@ -943,26 +955,28 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
             if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_rsp_ins_error = true;
         }
         break;
-
+    }
     case RSP_DATA_MISS:
+    {
         if ( p_vci.rspval.read() )
         {
-            assert(r_rsp_cpt != m_dcache_words &&
-               "illegal VCI response packet for data read miss");
+            assert( (r_rsp_cpt < m_dcache_words) &&
+                    "The VCI response packet for data miss is too long" );
             r_rsp_cpt = r_rsp_cpt + 1;
             r_dcache_miss_buf[r_rsp_cpt] = (data_t)p_vci.rdata.read();
-            if ( p_vci.reop.read() ) 
+            if ( p_vci.reop.read() )
             {
                 assert(r_rsp_cpt == m_dcache_words - 1 &&
-                   "illegal VCI response packet for instruction miss");
+                    "The VCI response packet for data miss is too short" );
                 r_rsp_data_ok = true;
                 r_rsp_fsm = RSP_IDLE;
             }
             if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_rsp_data_error = true;
         }
         break;
-
+    }
     case RSP_DATA_UNC:
+    {
         if ( p_vci.rspval.read() )
         {
             assert(p_vci.reop.read() &&
@@ -973,6 +987,7 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
             if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_rsp_data_error = true;
         }
         break;
+    }
     } // end switch r_rsp_fsm
 
 } // end transition()
@@ -1013,8 +1028,8 @@ tmpl(void)::genMoore()
         p_vci.be      = r_wbuf.getBe(r_cmd_cpt);
         p_vci.plen    = (r_cmd_max - r_cmd_min + 1)<<2;
         p_vci.cmd     = vci_param::CMD_WRITE;
-        p_vci.trdid   = 0;
-        p_vci.pktid   = (r_wbuf.getIndex() << 1) + 1;
+        p_vci.pktid   = 0;
+        p_vci.trdid   = r_wbuf.getIndex() + (1<<(vci_param::T-1));
         p_vci.srcid   = m_srcid;
         p_vci.cons    = false;
         p_vci.wrap    = false;
@@ -1030,15 +1045,15 @@ tmpl(void)::genMoore()
         p_vci.be     = 0xF;
         p_vci.plen   = m_dcache_words << 2;
         p_vci.cmd    = vci_param::CMD_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = TYPE_DATA_MISS;
+        p_vci.pktid  = 0;
+        p_vci.trdid  = TYPE_DATA_MISS;
         p_vci.srcid  = m_srcid;
         p_vci.cons   = false;
         p_vci.wrap   = false;
         p_vci.contig = true;
         p_vci.clen   = 0;
         p_vci.cfixed = false;
-        p_vci.eop = true;
+        p_vci.eop    = true;
         break;
 
     case CMD_DATA_UNC:
@@ -1069,8 +1084,8 @@ tmpl(void)::genMoore()
             assert("this should not happen");
         }
         p_vci.plen = 4;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = TYPE_DATA_UNC;
+        p_vci.pktid  = 0;
+        p_vci.trdid  = TYPE_DATA_UNC;
         p_vci.srcid  = m_srcid;
         p_vci.cons   = false;
         p_vci.wrap   = false;
@@ -1086,8 +1101,8 @@ tmpl(void)::genMoore()
         p_vci.be     = 0xF;
         p_vci.plen   = m_icache_words << 2;
         p_vci.cmd    = vci_param::CMD_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = TYPE_INS_MISS;
+        p_vci.pktid  = 0;
+        p_vci.trdid  = TYPE_INS_MISS;
         p_vci.srcid  = m_srcid;
         p_vci.cons   = false;
         p_vci.wrap   = false;
@@ -1103,8 +1118,8 @@ tmpl(void)::genMoore()
         p_vci.be     = 0xF;
         p_vci.plen   = 4;
         p_vci.cmd    = vci_param::CMD_READ;
-        p_vci.trdid  = 0;
-        p_vci.pktid  = TYPE_INS_UNC;
+        p_vci.pktid  = 0;
+        p_vci.trdid  = TYPE_INS_UNC;
         p_vci.srcid  = m_srcid;
         p_vci.cons   = false;
         p_vci.wrap   = false;
