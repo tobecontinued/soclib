@@ -15,6 +15,7 @@ These function implement the drivers for the SoCLib peripherals.
 #include "gcd.h"
 #include "icu.h"
 #include "dma.h"
+#include "block_device.h"
 
 /*********************************************************************
 We define a generic C function to implement all system calls.
@@ -63,8 +64,7 @@ Returns the processor ident.
 ********************************************************************/
 int 	procid()
 {
-	return	sys_call(SYSCALL_PROCID,
-			0, 0, 0, 0);
+	return	sys_call(SYSCALL_PROCID, 0, 0, 0, 0);
 }
 /********************************************************************
 	proctime()
@@ -72,8 +72,7 @@ Returns the local processor time.
 ********************************************************************/
 int	proctime()
 {
-	return sys_call(SYSCALL_PROCTIME,
-			0, 0, 0, 0);
+	return sys_call(SYSCALL_PROCTIME, 0, 0, 0, 0);
 }
 /********************************************************************
 	exit()     
@@ -81,32 +80,41 @@ Exit the program with a TTY message, and enter an infinite loop...
 ********************************************************************/
 int	exit()
 {
-	int	tty_index = procid();
-	return  sys_call(SYSCALL_EXIT, 
-			tty_index, 
-			0, 0, 0);
+	int	proc_index = procid();
+	return  sys_call(SYSCALL_EXIT, proc_index, 0, 0, 0);
+}
+/********************************************************************
+	rand()
+Returns a pseudo-random value derived from the processor cycle count.
+This value is comprised between 0 & 65535.
+********************************************************************/
+int	rand()
+{
+	int	x = sys_call(SYSCALL_PROCTIME, 0, 0, 0, 0);
+	if((x & 0xF) > 7) 	return (x*x & 0xFFFF);
+	else			return (x*x*x & 0xFFFF);
 }
 
-//////////////////////
-//	TTY
-//////////////////////
-
 /********************************************************************
+	MULTI-TTY
+*********************************************************************
 	tty_puts()
 Display a string on a terminal.
 The terminal index is implicitely defined by the processor ID.
+(and by the task ID in case of multi-tasking)
 The string must be terminated by a NUL character.
+It doesn't use the IRQ_PUT interrupt, and the associated kernel buffer.
 This function returns 0 in case of success.
 ********************************************************************/
 int 	tty_puts(char* string)
 {
-	int	tty_index = procid();
+	int	proc_index = procid();
 	int 	length = 0;
 	while ( string[length] != 0) {
 		length++;
 	}
 	return	sys_call(SYSCALL_TTY_WRITE, 
-		tty_index,
+		proc_index,
 		(int)string,
 		length,
 		0);
@@ -115,13 +123,15 @@ int 	tty_puts(char* string)
 	tty_putc()
 Display a single ascii character on a terminal.
 The terminal index is implicitely defined by the processor ID.
+(and by the task ID in case of multi-tasking)
+It doesn't use the IRQ_PUT interrupt, and the associated kernel buffer.
 This function returns 0 in case of success.
 ********************************************************************/
 int  	tty_putc(char byte)
 {
-	int	tty_index = procid();
+	int	proc_index = procid();
 	return sys_call(SYSCALL_TTY_WRITE, 
-		tty_index,
+		proc_index,
 		(int)(&byte),
 		1,
 		0);
@@ -130,11 +140,13 @@ int  	tty_putc(char byte)
 	tty_putw()
 Display the value of a 32 bits word (decimal characters).
 The terminal index is implicitely defined by the processor ID.
+(and by pthe task ID in case of multi-tasking)
+It doesn't use the IRQ_PUT interrupt, and the associated kernel buffer.
 This function returns 0 in case of success.
 ********************************************************************/
 int  	tty_putw(int val)
 {
-	int	tty_index = procid();
+	int	proc_index = procid();
 	char	buf[10];
 	int	i;
 	for( i=0 ; i<10 ; i++ ) {
@@ -142,7 +154,7 @@ int  	tty_putw(int val)
 		val = val / 10;
 	}
 	return sys_call(SYSCALL_TTY_WRITE, 
-		tty_index,
+		proc_index,
 		(int)buf,
 		10,
 		0);
@@ -151,79 +163,179 @@ int  	tty_putw(int val)
  	tty_gets()
 Fetch a string from a terminal to a bounded length buffer.
 The terminal index is implicitely defined by the processor ID.
+(and by the task ID in case of multi-tasking)
+It uses the IRQ_GET interrupt, anf the associated kernel buffer.
+It is a blocking function that returns 0 if a valid string is stored 
+in the buffer, and returns -1 in case of error.
 Up to (bufsize - 1) characters (including the non printable
 characters) will be copied into buffer, and the string is 
-completed by a NUL character.
-The function returns if a <LF> character is read. 
-The function returns 0 if a valid C string is stored in the buffer.
+always completed by a NUL character.
+The <LF> character is interpreted, as the function close
+the string with a NUL character if <LF> is read. 
+The <DEL> character is interpreted, and the corresponding 
+character(s) are removed from the target buffer.
 ********************************************************************/
 int  	tty_gets(char* buf, int bufsize)
 {
-	int	tty_index = procid();
-	int 	ret = sys_call(SYSCALL_TTY_READ,
-			tty_index,
-			(int)buf,
-			(bufsize - 1),
-			0);
-	if( ret >= 0) {
-		buf[ret] = 0;
-		return 0;
-	} else {
-		return -1;
-	}
+    int			ret;
+    unsigned char	byte;
+    unsigned int	index = 0;
+
+    while( index < (bufsize-1) )
+    {
+        ret = sys_call(SYSCALL_TTY_READ_IRQ,
+			procid(),
+			(int)(&byte),
+			1,
+			0);	
+
+        if ((ret < 0) || (ret > 1)) return -1;	// return error
+
+        else if ( ret == 1 )			// valid character
+        {
+            if ( byte == 0x0A )	break; // LF
+            else if ((byte == 0x7F) && (index>0)) index--; // DEL
+            else
+            {
+                buf[index] = byte;
+                index++;
+            }
+        }
+    } // end while
+    buf[index] = 0;
+    return 0;		// return ok
 }
 /********************************************************************
  	tty_getc()
 Fetch a single ascii character from a terminal.
 The terminal index is implicitely defined by the processor ID.
-The function returns 0 if a valid char is stored in the buffer.
+(and by the task ID in case of multi-tasking)
+It doesn't use the IRQ_GET interrupt, and the associated kernel buffer.
+It is a blocking function that returns 0 if a valid char is stored 
+in the buffer, and returns -1 in case of error.
 ********************************************************************/
 int 	tty_getc(char* buf)
 {
-	int	tty_index = procid();
-	return sys_call(SYSCALL_TTY_READ,
-			tty_index,
+    int 		ret;
+    unsigned int	done = 0;
+
+    while( done == 0 )
+    {
+        ret = sys_call(SYSCALL_TTY_READ,
+			procid(),
 			(int)buf,
 			1,
 			0);
+        if ((ret < 0) || (ret > 1)) return -1;	// return error
+        else if ( ret == 1 )	    done =  1; 
+    }
+    return 0;	// return ok
 }
 /********************************************************************
 	tty_getw()
-Fetch a string of decimal characters from a terminal.
+Fetch a string of decimal characters (most significant digit first)
+to build a 32 bits unsigned int. 
 The terminal index is implicitely defined by the processor ID.
-The characters are written in a 20 characters buffer, 
-that can be uncompletely filled if a <CR> character is read.
-This string is converted to a int value.
-The non decimal characters are ignored.
-The function returns 0 if a valid int is stored in the buffer.
+(and by the task ID in case of multi-tasking)
+This is a blocking function that returns 0 if a valid unsigned int 
+is stored in the buffer, and returns -1 in case of error.
+It uses the IRQ_GET interrupt, anf the associated kernel buffer.
+The non-blocking system function _tty_read is called several times,
+and the decimal characters are written in a 32 characters buffer
+until a <LF> character is read.
+The <DEL> character is interpreted, and previous characters can be
+cancelled. All others characters are ignored.
+When the <LF> character is received, the string is converted to 
+an unsigned int value. If the number of decimal digit is too large 
+for the 32 bits range, the zero value is returned.
 ********************************************************************/
-int	tty_getw(int* word)
+int	tty_getw(int* word_buffer)
 {
-	int		tty_index = procid();
-	unsigned char 	buf[20] = "abcdefghijllmnopqrs\0";
-	int 		val = 0;
-	int 		i;
-	int 		ret = sys_call(SYSCALL_TTY_READ,
-					tty_index,
-					(int)buf,
-					20,
-					0);
-	if ( ret >= 0 ) {
-		for( i=0 ; i<ret ; i++ ) {
-			if ( (buf[i] > 0x29) && (buf[i] < 0x40) ) {	
-				val = val*10 + (buf[i] - 0x30);
-			}
-		}
-		*word = val;
-		return 0;
-	} else {
-		return -1;
-	}
-}
+    unsigned char 	buf[32];
+    unsigned char	byte;
+    unsigned int 	save = 0;
+    unsigned int 	val = 0;
+    unsigned int	done = 0;
+    unsigned int	overflow = 0;
+    unsigned int 	max = 0;
+    unsigned int 	i;
+    int 		ret;
 
+    while(done == 0)
+    {
+        ret = sys_call(SYSCALL_TTY_READ_IRQ,
+			procid(),
+			(int)(&byte),
+			1,
+			0);
+        if ((ret < 0) || (ret > 1)) return -1;	// return error
+        else if ( ret == 1 )
+        {
+	    if (( byte > 0x29) && (byte < 0x40))  // decimal character
+            {
+                buf[max] = byte;
+                max++;
+                tty_putc(byte);
+            }
+            else if ( byte == 0x0A )		// LF character
+            {
+                done = 1;
+            }
+            else if ( byte == 0x7F )		// DEL character
+            {
+                if (max > 0) 
+                {
+                    max--;			// cancel the character
+                    tty_putc(0x08);
+                    tty_putc(0x20);
+                    tty_putc(0x08);
+                }
+            }
+            if ( max == 32 )			// decimal string overflow
+            {
+                for( i=0 ; i<max ; i++) 	// cancel the string
+                {
+                    tty_putc(0x08); 
+                    tty_putc(0x20);
+                    tty_putc(0x08);
+                }
+                tty_putc(0x30);
+                *word_buffer = 0;			// return 0 value
+                return 0;
+            }
+        }
+    } // end while
+            
+    // string conversion
+    for( i=0 ; i<max ; i++ )
+    {
+        val = val*10 + (buf[i] - 0x30);
+        if (val < save) overflow = 1;
+        save = val;
+    }
+    if (overflow == 0)
+    {
+        *word_buffer = val;		// return decimal value 	
+    }
+    else
+    {
+        for( i=0 ; i<max ; i++) 	// cancel the string
+        {
+            tty_putc(0x08);
+            tty_putc(0x20);
+            tty_putc(0x08);
+        }
+        tty_putc(0x30);
+        *word_buffer = 0;		// return 0 value
+    }
+    return 0;	
+}
 /*********************************************************************
 	tty_printf()
 This function is a simplified version of the mutek_printf() function.
+The terminal index is implicitely defined by the processor ID.
+(and by the task ID in case of multi-tasking)
+It doesn't use the IRQ_PUT interrupt, anf the associated kernel buffer.
 Only a limited number of formats are supported:
 	- %d : signed decimal
 	- %u : unsigned decimal
@@ -321,11 +433,9 @@ printf_arguments:
   	}
 } // end printf()
 
-///////////////////////
-//	TIMER
-//////////////////////
-
 /********************************************************************
+	MULTI-TIMER
+*********************************************************************
 	timer_set_mode()
 ********************************************************************/
 int 	timer_set_mode(int timer_index, int val) 
@@ -369,11 +479,9 @@ int	timer_get_time(int timer_index, int* time)
 			0);
 }
 
-///////////////////////
-//	GCD
-//////////////////////
-
 /********************************************************************
+	GCD COPROCESSOR
+*********************************************************************
 	gcd_set_opa(int val)
 Set operand A in the GCD (Greater Common Divider) coprocessor.
 ********************************************************************/
@@ -428,11 +536,10 @@ int 	gcd_get_result(int* val)
 			(int)val,
 			0, 0);
 }
-///////////////////////
-//	ICU
-//////////////////////
 
 /********************************************************************
+	ICU(s)
+*********************************************************************
 	icu_set_mask()
 Set some bits in the Interrupt Enable Mask of the ICU component.
 Each bit set in the written word will be set in the Mask Enable.
@@ -491,67 +598,17 @@ int 	icu_get_index(int* buffer)
 		0, 0);
 }
 
-///////////////////
-// 	DMA
-///////////////////
-
 /********************************************************************
-	dma_set_source()
-Set the source buffer address in the DMA coprocessor.
-********************************************************************/
-int 	dma_set_source(void *p) 
-{
-	return sys_call(SYSCALL_DMA_WRITE,
-			DMA_SRC,
-			(int)p,
-			0, 0);
-}
-/********************************************************************
-	dma_set_dest()
-Set the destination buffer address in the DMA coprocessor.
-********************************************************************/
-int 	dma_set_dest(void *p) 
-{
-	return sys_call(SYSCALL_DMA_WRITE,
-			DMA_DST,
-			(int)p,
-			0, 0);
-}
-/********************************************************************
-	dma_set_length()
-Set the operating mode in the DMA coprocessor.
-********************************************************************/
-int 	dma_set_length(int val) 
-{
-	return sys_call(SYSCALL_DMA_WRITE,
-			DMA_MODE,
-			val,
-			0, 0);
-}
-/********************************************************************
-	dma_reset
-Reset the DMA coprocessor & aknowledge the DMA IRQ.
-********************************************************************/
-int 	dma_reset() 
-{
-	return sys_call(SYSCALL_DMA_WRITE,
-			DMA_RESET,
-			0, 0, 0);
-}
-
-///////////////////
-//    LOCKS
-///////////////////
-
-/********************************************************************
-	lock_get()
+	LOCKS
+*********************************************************************
+	lock_acquire()
 This system call performs a spin-lock acquisition.
 It is dedicated to the SoCLib LOCKS peripheral.
 In case of busy waiting, there is a random delay 
 of about 100 cycles between two successive lock read, 
 to avoid bus saturation.
 ********************************************************************/
-int	lock_get(int lock_index)
+int	lock_acquire(int lock_index)
 {
 	return sys_call(SYSCALL_LOCKS_READ,
 			lock_index,
@@ -569,15 +626,140 @@ int	lock_release(int lock_index)
 		lock_index,
 		0, 0, 0);
 }
+
 /********************************************************************
-	rand()
-Returns the local processor time.
+	I/O BLOCK DEVICE
+*********************************************************************
+	ioc_write()
+Transfer data from a memory buffer to a file on the block_device.
+- lba        : Logical Block Address (first block index)
+- buffer     : base address of the memory buffer
+- count      : number of blocks to be transfered
+This function returns 0 if the transfert can be done.
+It returns -1 if the buffer is not in user address space.
 ********************************************************************/
-int	rand()
+int 	ioc_write(size_t lba, void* buffer, size_t count) 
 {
-	int	x = sys_call(SYSCALL_PROCTIME,
+	return sys_call(SYSCALL_IOC_WRITE,
+			lba,
+			(int)buffer,
+			count,
+			0);
+}
+/********************************************************************
+	ioc_read()
+Transfer data from a file on the block_device to a memory buffer.
+- lba        : Logical Block Address (first block index)
+- buffer     : base address of the memory buffer
+- count      : number of blocks to be transfered
+This function returns 0 if the transfert can be done.
+It returns -1 if the buffer is not in user address space.
+********************************************************************/
+int 	ioc_read(size_t lba, void* buffer, size_t count) 
+{
+	return sys_call(SYSCALL_IOC_READ,
+			lba,
+			(int)buffer,
+			count,
+			0);
+}
+/********************************************************************
+	ioc_completed()
+This blocking function returns 0 when the I/O transfer is 
+successfully completed, and returns -1 if an address error
+has been detected.
+********************************************************************/
+int 	ioc_completed()
+{
+	return sys_call(SYSCALL_IOC_COMPLETED,
 			0, 0, 0, 0);
-	if((x & 0xF) > 7) 	return (x*x & 0xFFFF);
-	else			return (x*x*x & 0xFFFF);
+}
+
+/********************************************************************
+	FRAME BUFFER
+*********************************************************************
+	fb_sync_write()
+This blocking function use a memory copy strategy to transfer data
+from a user buffer to the frame buffer device in kernel space,
+- offset     : offset (in bytes) in the frame buffer
+- buffer     : base address of the memory buffer
+- length     : number of bytes to be transfered
+It returns 0 when the transfer is completed.
+********************************************************************/
+int 	fb_sync_write(size_t offset, void* buffer, size_t length)
+{
+	return sys_call(SYSCALL_FB_SYNC_WRITE,
+			offset,
+			(int)buffer,
+			length,
+			0);
+}
+/********************************************************************
+	fb_sync_read()
+This blocking function use a memory copy strategy to transfer data
+from the frame buffer device in kernel space to an user buffer.
+- offset     : offset (in bytes) in the frame buffer
+- buffer     : base address of the user buffer
+- length     : number of bytes to be transfered
+It returns 0 when the transfer is completed.
+********************************************************************/
+int 	fb_sync_read(size_t offset, void* buffer, size_t length)
+{
+	return sys_call(SYSCALL_FB_SYNC_READ,
+			offset,
+			(int)buffer,
+			length,
+			0);
+}
+/********************************************************************
+	fb_write()
+This non-blocking function use the DMA coprocessor to transfer data
+from a user buffer to the frame buffer device in kernel space,
+- offset     : offset (in bytes) in the frame buffer
+- buffer     : base address of the user buffer
+- length     : number of bytes to be transfered
+It returns 0 when the transfer can be started.
+It returns -1 if the buffer is not in user address space.
+The transfer completion is signaled by an IRQ, and must be
+tested by the fb_completed() function.
+********************************************************************/
+int 	fb_write(size_t offset, void* buffer, size_t length)
+{
+	return sys_call(SYSCALL_FB_WRITE,
+			offset,
+			(int)buffer,
+			length,
+			0);
+}
+/********************************************************************
+	fb_read()
+This non-blocking function use the DMA coprocessor to transfer data
+from the frame buffer device in kernel space to an user buffer.
+- offset     : offset (in bytes) in the frame buffer
+- buffer     : base address of the memory buffer
+- length     : number of bytes to be transfered
+It returns 0 when the transfer can be started.
+It returns -1 if the buffer is not in user address space.
+The transfer completion is signaled by an IRQ, and must be
+tested by the fb_completed() function.
+********************************************************************/
+int 	fb_read(size_t offset, void* buffer, size_t length)
+{
+	return sys_call(SYSCALL_FB_READ,
+			offset,
+			(int)buffer,
+			length,
+			0);
+}
+/********************************************************************
+	fb_completed()
+This blocking function returns when the transfer is completed.
+It returns 0 if the transfer is successful.
+It returns -1 if an address error has been detected.
+********************************************************************/
+int 	fb_completed()
+{
+	return sys_call(SYSCALL_FB_COMPLETED,
+			0, 0, 0, 0);
 }
 

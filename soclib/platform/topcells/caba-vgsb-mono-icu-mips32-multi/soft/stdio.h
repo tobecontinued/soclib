@@ -7,21 +7,32 @@
 #ifndef _STDIO_H_
 #define _STDIO_H_
 
-#define SYSCALL_PROCID		0x0
-#define SYSCALL_PROCTIME	0x1
-#define SYSCALL_TTY_WRITE	0x2
-#define SYSCALL_TTY_READ 	0x3
-#define SYSCALL_TIMER_WRITE	0x4
-#define SYSCALL_TIMER_READ 	0x5
-#define SYSCALL_GCD_WRITE	0x6
-#define SYSCALL_GCD_READ	0x7
-#define SYSCALL_ICU_WRITE	0x8
-#define SYSCALL_ICU_READ	0x9
-#define SYSCALL_DMA_WRITE	0xA
-#define SYSCALL_DMA_READ	0xB
-#define SYSCALL_LOCKS_WRITE	0xC
-#define SYSCALL_LOCKS_READ	0xD
-#define SYSCALL_EXIT    	0xE
+#define SYSCALL_PROCID		0x00
+#define SYSCALL_PROCTIME	0x01
+#define SYSCALL_TTY_WRITE	0x02
+#define SYSCALL_TTY_READ 	0x03
+#define SYSCALL_TIMER_WRITE	0x04
+#define SYSCALL_TIMER_READ 	0x05
+#define SYSCALL_GCD_WRITE	0x06
+#define SYSCALL_GCD_READ	0x07
+#define SYSCALL_ICU_WRITE	0x08
+#define SYSCALL_ICU_READ	0x09
+#define SYSCALL_TTY_READ_IRQ    0x0A
+#define SYSCALL_TTY_WRITE_IRQ   0x0B
+#define SYSCALL_LOCKS_WRITE	0x0C
+#define SYSCALL_LOCKS_READ	0x0D
+#define SYSCALL_EXIT    	0x0E
+
+#define SYSCALL_FB_SYNC_WRITE   0x10
+#define SYSCALL_FB_SYNC_READ    0x11
+#define SYSCALL_FB_WRITE   	0x12
+#define SYSCALL_FB_READ    	0x13
+#define SYSCALL_FB_COMPLETED	0x14
+#define SYSCALL_IOC_WRITE   	0x15
+#define SYSCALL_IOC_READ    	0x16
+#define SYSCALL_IOC_COMPLETED	0x17
+
+typedef unsigned int	size_t;
 
 /****************************************************************
 this is a generic C function to implement all system calls.
@@ -57,8 +68,8 @@ int	tty_printf(char* format,...);
 /****************************************************************
 These functions access the MULTI_TIMER peripheral
 ****************************************************************/
-int	timer_set_mode(int timer_index, int val);
-int	timer_set_period(int timer_index, int val);
+int	timer_set_mode(int timer_index, int mode);
+int	timer_set_period(int timer_index, int period);
 int	timer_reset_irq(int timer_index);
 int	timer_get_time(int timer_index, int* time);
 
@@ -81,17 +92,25 @@ int	icu_get_irqs(int* buffer);
 int	icu_get_index(int* buffer);
 		
 /****************************************************************
-These functions access the DMA peripheral
-****************************************************************/
-int    	dma_set_source(void *p);
-int    	dma_set_dest(void *p);
-int    	dma_set_length(int val);
-int    	dma_reset();
-
-/****************************************************************
 These functions access the LOCKS peripheral
 ****************************************************************/
-int	lock_get(int lock_index);
+int	lock_acquire(int lock_index);
 int	lock_release(int lock_index);
+
+/****************************************************************
+These functions access the BLOCK_DEVICE peripheral
+****************************************************************/
+int	ioc_read(size_t lba, void* buffer, size_t count);
+int	ioc_write(size_t lba, void* buffer, size_t count);
+int	ioc_completed();
+
+/****************************************************************
+These functions access the FRAME_BUFFER peripheral
+****************************************************************/
+int	fb_read(size_t offset, void* buffer, size_t length);
+int	fb_write(size_t offset, void* buffer, size_t length);
+int	fb_completed();
+int	fb_sync_read(size_t offset, void* buffer, size_t length);
+int	fb_sync_write(size_t offset, void* buffer, size_t length);
 
 #endif

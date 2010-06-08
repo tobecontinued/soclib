@@ -28,16 +28,15 @@ reset:
 
 # initializes stack pointer
 	la	$29,	seg_stack_base
-	addiu	$29,	$29,	0x4000	
+	li	$26,	0x00100000
+	addu	$29,	$29,	$26
 
 # initializes interrupt vector
-        la      $26,    interrupt_vector        # interrupt vector address
-        la      $27,    _isr_timer0             # isr_timer0 address
-        sw      $27,    0($26)                  # interrupt_vector[0] <= _isr_timer0
-        la      $27,    _isr_tty0_get           # isr_tty_get address
+        la      $26,    _interrupt_vector 
+        la      $27,    _isr_timer 
+        sw      $27,    0($26)                  # interrupt_vector[0] <= _isr_timer
+        la      $27,    _isr_tty_get  
         sw      $27,    4($26)                  # interrupt_vector[1] <= _isr_tty_get
-        la      $27,    _isr_dma                # isr_dma address
-        sw      $27,    8($26)                  # interrupt_vector[2] <= _isr_dma
 
 # initializes SR register
        	li	$26,	0x0000FF13		# IRQ activation
