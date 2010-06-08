@@ -196,7 +196,7 @@ tmpl(/**/)::VciXcacheWrapperMulti(
       r_rsp_ins_ok("r_rsp_ins_ok"),
       r_rsp_data_ok("r_rsp_data_ok"),
 
-      r_wbuf("wbuf", wbuf_nwords, wbuf_nlines, wbuf_timeout),
+      r_wbuf("wbuf", wbuf_nwords, wbuf_nlines, wbuf_timeout, dcache_words),
       r_icache("icache", icache_ways, icache_sets, icache_words),
       r_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 {
@@ -804,6 +804,7 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
     // For write burst packets, all words must be in the same write buffer line,
     // and addresses must be contiguous (the BE field is 0 in case of "holes").
     // The PLEN VCI field is always documented.
+    const size_t                                                m_wbuf_nlines;
     // As simultaneous VCI transactions are supported, the TRDID field is used:
     // - Write transactions : TRDID = wbuf_index + (1<<(trdid_size-1))
     // - Read transactions  : TRDID = 2*cachable + instruction
