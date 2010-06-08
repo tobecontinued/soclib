@@ -96,8 +96,8 @@ class ContextState
     bool m_tmp;
 
 public:
-    const uint32_t m_stack_lower;
-    const uint32_t m_stack_upper;
+    const uint64_t m_stack_lower;
+    const uint64_t m_stack_upper;
 
     ContextState( uint32_t id, uint32_t stack_low, uint32_t stack_up, bool tmp = false )
         : m_id(id),
@@ -106,17 +106,17 @@ public:
           m_valid(true),
           m_tmp(tmp),
           m_stack_lower(stack_low),
-          m_stack_upper(stack_up ? stack_up : (uint32_t)-1)
+          m_stack_upper(stack_up ? stack_up : ((uint64_t)1<<32))
     {
         assert(m_stack_lower <= m_stack_upper && "Stack upside down");
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
         std::cout << "Creating new context " << *this << std::endl;
 #endif
     }
 
     ~ContextState()
     {
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
         std::cout << "Deleting context " << *this << std::endl;
 #endif
     }
@@ -136,7 +136,7 @@ public:
         m_valid = false;
     }
 
-    inline bool stack_contains( uint32_t sp ) const
+    inline bool stack_contains( uint64_t sp ) const
     {
         return (m_stack_lower < sp && sp <= m_stack_upper);
     }
@@ -172,7 +172,7 @@ public:
             other.m_stack_upper );
     }
 
-    bool overlaps( uint32_t base, uint32_t end ) const
+    bool overlaps( uint64_t base, uint64_t end ) const
     {
         if ( end <= m_stack_lower )
             return false;
@@ -200,7 +200,7 @@ public:
     void unref()
     {
         if ( --m_refcount == 0 ) {
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
             std::cout << *this << " has not more refs, del" << std::endl;
 #endif
             delete this;
@@ -227,18 +227,18 @@ private:
     enum State m_state;
     uint32_t m_at;
     uint32_t m_refcount;
-    uint32_t m_base_addr;
-    uint32_t m_end_addr;
+    uint64_t m_base_addr;
+    uint64_t m_end_addr;
     RegionInfo *m_previous_state;
 
 public:
-    RegionInfo *get_updated_region( enum State state, uint32_t at, uint32_t base_addr, uint32_t end_addr )
+    RegionInfo *get_updated_region( enum State state, uint32_t at, uint64_t base_addr, uint64_t end_addr )
     {
         RegionInfo *n = new RegionInfo( state, at, base_addr, end_addr, this );
         return n;
     }
 
-    RegionInfo( enum State state, uint32_t at, uint32_t base_addr, uint32_t end_addr, RegionInfo *previous_state = 0 )
+    RegionInfo( enum State state, uint32_t at, uint64_t base_addr, uint64_t end_addr, RegionInfo *previous_state = 0 )
         : m_state(state),
           m_at(at),
           m_refcount(0),
@@ -248,6 +248,10 @@ public:
     {
         if ( m_previous_state )
             m_previous_state->ref();
+#if defined(SOCLIB_MODULE_DEBUG)
+        std::cout << "Creating a new region info " << *this
+                  << std::endl;
+#endif
     }
 
     ~RegionInfo()
@@ -303,7 +307,7 @@ public:
         return valid_new_states & new_state;
     }
 
-    bool contains( uint32_t addr ) const
+    bool contains( uint64_t addr ) const
     {
         return m_base_addr <= addr && addr < m_end_addr;
     }
@@ -509,8 +513,8 @@ class MemoryState
 {
     Loader m_binary;
 
-    typedef std::map<uint32_t, ContextState *> context_map_t;
-    typedef std::map<uint32_t, std::vector<AddressInfo> *> region_map_t;
+    typedef std::map<uint64_t, ContextState *> context_map_t;
+    typedef std::map<uint64_t, std::vector<AddressInfo> *> region_map_t;
     context_map_t m_contexts;
     region_map_t m_regions;
     AddressInfo m_default_address;
@@ -543,7 +547,7 @@ public:
 
             RegionInfo *ri = new RegionInfo(
                 RegionInfo::REGION_STATE_RAW, 0,
-                i->baseAddress(), i->baseAddress() + i->size() );
+                i->baseAddress(), (uint64_t)i->baseAddress() + i->size() );
             std::vector<AddressInfo> *rm = new std::vector<AddressInfo>( i->size() / 4 );
 
             for ( size_t j=0; j<i->size()/4; ++j )
@@ -572,7 +576,7 @@ public:
             region_new_state( state, 0, i->lma(), i->size() );
 //            if ( i->has_data() )
             for ( size_t j=0; j<i->size(); j+=4 )
-                    info_for_address( i->lma()+j )->do_write();
+                info_for_address( (uint64_t)i->lma()+j )->do_write();
         }
 
         for ( std::list<Segment>::const_iterator i = segments.begin();
@@ -619,7 +623,7 @@ public:
         for ( context_map_t::const_iterator i = m_contexts.begin();
               i != m_contexts.end();
               ++i ) {
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
             std::cout << "Checking " << *context << " and " << *i->second << std::endl;
 #endif
             if ( context->overlaps( *i->second ) ) {
@@ -657,7 +661,7 @@ public:
             return false;
         }
 
-        for ( uint32_t addr = i->second->m_stack_lower; addr < i->second->m_stack_upper; addr+= 4 ) {
+        for ( uint64_t addr = i->second->m_stack_lower; addr < i->second->m_stack_upper; addr+= 4 ) {
             AddressInfo *ai = s_memory_state->info_for_address(addr);
             ai->set_initialized(false);
         }
@@ -675,7 +679,7 @@ public:
             --i;
 
         if ( i == m_regions.end() ) {
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
              std::cout
                  << "Address " << std::hex << address << " in no region." << std::endl
                  << "Regions: " << std::endl;
@@ -688,12 +692,12 @@ public:
             //abort();
             return &m_default_address;
         }
-        uint32_t region_base = i->first;
-        uint32_t word_no = (address-region_base)/4;
+        uint64_t region_base = i->first;
+        uint64_t word_no = (address-region_base)/4;
         std::vector<AddressInfo> &r = *(i->second);
         if ( region_base <= address && word_no < r.size() )
             return &r[word_no];
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
          std::cout << "Warning: address " << std::hex << address
                    << " " << std::dec << (r.size()-word_no) << " words beyond "
                    << r[r.size()-1] << std::endl;
@@ -702,14 +706,14 @@ public:
         return &m_default_address;
     }
 
-    error_level_t region_update_state( RegionInfo::State new_state, uint32_t at, uint32_t addr,
-                                       uint32_t size, RegionInfo ** lrt = 0, uint32_t *lat = 0)
+    error_level_t region_update_state( RegionInfo::State new_state, uint32_t at, uint64_t addr,
+                                       uint64_t size, RegionInfo ** lrt = 0, uint32_t *lat = 0)
     {
         error_level_t r = 0;
         RegionInfo *lri = info_for_address(addr)->region();
-        RegionInfo *nri = lri->get_updated_region( new_state, at, addr, addr+size );
+        RegionInfo *nri = lri->get_updated_region( new_state, at, addr, (uint64_t)addr+size );
 
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
         std::cout << "Updating " << *nri << std::endl;
 #endif
 
@@ -726,7 +730,7 @@ public:
             }
         }
 
-        for ( uint32_t a = addr; a < addr+size; a+=4 ) {
+        for ( uint64_t a = addr; a < addr+size; a+=4 ) {
             AddressInfo *ai = info_for_address(a);
             RegionInfo *ri = ai->region();
             if ( ai->region_set(nri) && !r ) {
@@ -740,10 +744,10 @@ public:
         return r;
     }
 
-    void region_new_state( RegionInfo::State new_state, uint32_t at, uint32_t addr, uint32_t size )
+    void region_new_state( RegionInfo::State new_state, uint32_t at, uint64_t addr, uint64_t size )
     {
         RegionInfo *nri = new RegionInfo( new_state, at, addr, addr+size );
-        for ( uint32_t a = addr; a < addr+size; a+=4 )
+        for ( uint64_t a = addr; a < addr+size; a+=4 )
             info_for_address(a)->region_set(nri);
     }
  
@@ -880,7 +884,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 {
     assert( reg_no < ISS_MEMCHECKER_REGISTER_MAX && "Undefined regsiter" );
 
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
     std::cout
         << "memchecker register set " << std::dec << reg_no
         << " val: " << std::hex << value
@@ -947,7 +951,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 
         bool err = false;
 
-        for ( uint32_t addr = m_r1; addr < m_r1+m_r2; addr+= 4 ) {
+        for ( uint64_t addr = m_r1; addr < m_r1+m_r2; addr+= 4 ) {
             AddressInfo *ai = s_memory_state->info_for_address(addr);
             if ( ! ( ai->region()->state() & (
                          __iss_memchecker::RegionInfo::REGION_STATE_ALLOCATED
@@ -1136,7 +1140,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 template<typename iss_t>
 void IssMemchecker<iss_t>::update_context( ContextState *state )
 {
-#ifdef SOCLIB_MODULE_DEBUG
+#if defined(SOCLIB_MODULE_DEBUG)
      std::cout << iss_t::m_name
                << " switching from " << *m_current_context
                << " to " << *state << std::endl;
