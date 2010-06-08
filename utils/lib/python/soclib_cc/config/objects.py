@@ -203,7 +203,7 @@ class Toolchain(Config):
             return self.tool_map[name]
         if self.parent:
             return self.parent.__get_tool(name)
-        return None
+        raise KeyError(name)
 
     def get_tool(self, name, mode):
         '''
@@ -211,7 +211,13 @@ class Toolchain(Config):
         parent until found.
         '''
         tn = mode+'_'+name
-        tool = self.__get_tool(tn) or self.__get_tool(name)
+        try:
+            tool = self.__get_tool(tn)
+        except KeyError:
+            try:
+                tool = self.__get_tool(name)
+            except KeyError:
+                tool = None
         if tool is not None:
             if isinstance(tool, str):
                 return tool.split(' ')
