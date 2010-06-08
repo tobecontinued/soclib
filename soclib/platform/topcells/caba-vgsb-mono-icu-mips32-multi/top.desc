@@ -21,6 +21,6 @@ todo = Platform('caba', 'top.cpp',
 	rflag_size = 1,
 	srcid_size = 12,
 	pktid_size = 4,
-	trdid_size = 1,
+	trdid_size = 4,
 	wrplen_size = 1
 )

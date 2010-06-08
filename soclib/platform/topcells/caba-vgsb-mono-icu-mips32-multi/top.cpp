@@ -48,26 +48,32 @@
 #define SEG_KERNEL_BASE	0x80000000
 #define SEG_KERNEL_SIZE	0x00004000
 
-#define SEG_DATA_BASE 	0x10000000
-#define SEG_DATA_SIZE 	0x00004000
+#define SEG_KDATA_BASE 	0x81000000
+#define SEG_KDATA_SIZE 	0x00010000
+
+#define SEG_KSAVE_BASE 	0x82000000
+#define SEG_KSAVE_SIZE 	0x00010000
 
 #define SEG_CODE_BASE 	0x00400000
 #define SEG_CODE_SIZE 	0x00004000
 
+#define SEG_DATA_BASE 	0x10000000
+#define SEG_DATA_SIZE 	0x00020000
+
 #define SEG_STACK_BASE	0x20000000
-#define SEG_STACK_SIZE	0x00010000
-
-#define SEG_TTY_BASE  	0xC0000000
-#define SEG_TTY_SIZE  	0x00000040
-
-#define SEG_GCD_BASE  	0x90000000
-#define SEG_GCD_SIZE  	0x00000010
+#define SEG_STACK_SIZE	0x00100000
 
 #define SEG_ICU_BASE  	0xF0000000
-#define SEG_ICU_SIZE  	0x00000014
+#define SEG_ICU_SIZE  	32
 
-#define SEG_TIMER_BASE  0xD0000000
-#define SEG_TIMER_SIZE  0x00000040
+#define SEG_TTY_BASE  	0x90000000
+#define SEG_TTY_SIZE  	16
+
+#define SEG_TIMER_BASE  0x91000000
+#define SEG_TIMER_SIZE  16
+
+#define SEG_GCD_BASE    0x95000000
+#define SEG_GCD_SIZE    16
 
 int _main(int argc, char *argv[])
 {
@@ -84,27 +90,29 @@ int _main(int argc, char *argv[])
 	// 	rflag_size	= 1;
 	// 	srcid_size	= 12;
 	// 	pktid_size	= 4;
-	// 	trdid_size	= 1;
+	// 	trdid_size	= 4;
 	// 	wrplen_size	= 1;
 
-	typedef VciParams<4,8,32,1,1,1,12,4,1,1> vci_param;
+	typedef VciParams<4,8,32,1,1,1,12,4,4,1> vci_param;
 
 	///////////////////////////////////////////////////////////////////////////
 	// simulation arguments : number of cycles & seed for the random generation
 	///////////////////////////////////////////////////////////////////////////
         int ncycles = std::numeric_limits<int>::max();
         char soft_name[256] = "soft/bin.soft";
-        if (argc > 1) strcpy(soft_name, argv[1]) ;
-        if (argc > 2) ncycles = atoi(argv[2]) ;
+        if (argc > 1) ncycles = atoi(argv[1]) ;
+        if (argc > 2) strcpy(soft_name, argv[2]) ;
 
 	//////////////////////////////////////////////////////////////////////////
 	// Mapping Table
 	//////////////////////////////////////////////////////////////////////////
-	MappingTable maptab(32, IntTab(8), IntTab(8), 0xF0000000);
+	MappingTable maptab(32, IntTab(8), IntTab(8), 0xFF000000);
 
 	maptab.add(Segment("seg_reset" , SEG_RESET_BASE , SEG_RESET_SIZE , IntTab(0), true));
 
 	maptab.add(Segment("seg_kernel", SEG_KERNEL_BASE, SEG_KERNEL_SIZE, IntTab(1), true));
+	maptab.add(Segment("seg_kdata" , SEG_KDATA_BASE , SEG_KDATA_SIZE , IntTab(1), false));
+	maptab.add(Segment("seg_ksave" , SEG_KSAVE_BASE , SEG_KSAVE_SIZE , IntTab(1), true));
 	maptab.add(Segment("seg_code"  , SEG_CODE_BASE  , SEG_CODE_SIZE  , IntTab(1), true));
 	maptab.add(Segment("seg_data"  , SEG_DATA_BASE  , SEG_DATA_SIZE  , IntTab(1), true));
 	maptab.add(Segment("seg_stack" , SEG_STACK_BASE , SEG_STACK_SIZE , IntTab(1), true));
@@ -141,7 +149,7 @@ int _main(int argc, char *argv[])
 	Loader	loader(soft_name);
 
 	VciXcacheWrapperMulti<vci_param, GdbServer<Mips32ElIss> >
-		mips0("mips0", 0,maptab,IntTab(0),4,128,8,4,128,8, 4, 8);
+		proc("proc", 0,maptab,IntTab(0),4,128,8,4,128,8,4,8,0);
 	VciSimpleRam<vci_param>
 		rom("rom", IntTab(0), maptab, loader);
 	VciSimpleRam<vci_param>
@@ -160,15 +168,15 @@ int _main(int argc, char *argv[])
 	//////////////////////////////////////////////////////////////////////////
 	// Net-List
 	//////////////////////////////////////////////////////////////////////////
-	mips0.p_clk(signal_clk);
-	mips0.p_resetn(signal_resetn);
-	mips0.p_vci(signal_vci_m0);
-	mips0.p_irq[0](signal_irq_proc);
-	mips0.p_irq[1](signal_false);
-	mips0.p_irq[2](signal_false);
-	mips0.p_irq[3](signal_false);
-	mips0.p_irq[4](signal_false);
-	mips0.p_irq[5](signal_false);
+	proc.p_clk(signal_clk);
+	proc.p_resetn(signal_resetn);
+	proc.p_vci(signal_vci_m0);
+	proc.p_irq[0](signal_irq_proc);
+	proc.p_irq[1](signal_false);
+	proc.p_irq[2](signal_false);
+	proc.p_irq[3](signal_false);
+	proc.p_irq[4](signal_false);
+	proc.p_irq[5](signal_false);
 
 	rom.p_clk(signal_clk);
 	rom.p_resetn(signal_resetn);
@@ -221,7 +229,37 @@ int _main(int argc, char *argv[])
         sc_start( sc_time( 1, SC_NS ) ) ;
 
         signal_resetn = true;
-	for ( int n=1 ; n<ncycles ; n++ ) { sc_start( sc_time( 1 , SC_NS ) ) ;
+	for ( int n=1 ; n<ncycles ; n++ ) 
+        { 
+/*
+            std::cout << "******************************* cycle = " << std::dec << n 
+                      << " ******************************************" << std::endl;
+            proc.printTrace(0x1);
+            bus.printTrace();
+            rom.printTrace();
+            ram.printTrace();
+            std::cout << " proc.cmdval  = " << signal_vci_m0.cmdval << std::endl;
+            std::cout << " proc.cmdack  = " << signal_vci_m0.cmdack << std::endl;
+            std::cout << " proc.address = " << signal_vci_m0.address << std::endl;
+            std::cout << " proc.trdid   = " << signal_vci_m0.trdid << std::endl;
+            std::cout << " proc.wdata   = " << signal_vci_m0.wdata << std::endl;
+            std::cout << " proc.eop     = " << signal_vci_m0.eop << std::endl;
+            std::cout << " proc.len     = " << signal_vci_m0.plen << std::endl;
+            std::cout << " proc.rspval  = " << signal_vci_m0.rspval << std::endl;
+            std::cout << " proc.rspack  = " << signal_vci_m0.rspack << std::endl;
+            std::cout << " proc.reop    = " << signal_vci_m0.reop << std::endl;
+            std::cout << " proc.rdata   = " << signal_vci_m0.rdata << std::endl;
+            std::cout << " proc.rerror  = " << signal_vci_m0.rerror << std::endl;
+            std::cout << " rom.cmdval   = " << signal_vci_t0.cmdval << std::endl;
+            std::cout << " rom.cmdack   = " << signal_vci_t0.cmdack << std::endl;
+            std::cout << " rom.rspval   = " << signal_vci_t0.rspval << std::endl;
+            std::cout << " rom.rspack   = " << signal_vci_t0.rspack << std::endl;
+            std::cout << " rom.rdata    = " << signal_vci_t0.rdata << std::endl;
+            std::cout << " rom.rtrdid   = " << signal_vci_t0.rtrdid << std::endl;
+            std::cout << " rom.rerror   = " << signal_vci_t0.rerror << std::endl;
+            std::cout << " rom.reop     = " << signal_vci_t0.reop << std::endl;
+*/
+            sc_start( sc_time( 1 , SC_NS ) ) ;
 	}
 
         return(0);
