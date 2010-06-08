@@ -383,7 +383,7 @@ public:
         m_nslots(wbuf_nslots),
         m_nwords(wbuf_nwords),
         m_timeout(timeout),
-        m_wbuf_line_mask((wbuf_nwords << 2) - 1)
+        m_wbuf_line_mask((wbuf_nwords << 2) - 1),
         m_cache_line_mask((cache_nwords << 2) - 1)
     {
         r_address = new sc_signal<addr_t>[wbuf_nslots];
