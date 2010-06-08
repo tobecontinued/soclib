@@ -106,10 +106,8 @@ public:
           m_valid(true),
           m_tmp(tmp),
           m_stack_lower(stack_low),
-          m_stack_upper(stack_up)
+          m_stack_upper(stack_up ? stack_up : (uint32_t)-1)
     {
-        if ( m_stack_upper == 0 )
-            m_stack_upper--;
         assert(m_stack_lower <= m_stack_upper && "Stack upside down");
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout << "Creating new context " << *this << std::endl;
