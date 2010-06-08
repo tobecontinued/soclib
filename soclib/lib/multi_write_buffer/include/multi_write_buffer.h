@@ -106,19 +106,20 @@ class MultiWriteBuffer
     typedef uint32_t    data_t;
     typedef uint32_t    be_t;
 
-    sc_signal<size_t>	r_ptr;		// next slot to be read
-    sc_signal<int>      *r_state;       // slot state array[nslots]
-    sc_signal<addr_t>  	*r_address;     // slot base address array[nslots]
-    sc_signal<size_t>  	*r_tout;        // slot timeout array[nslots]
-    sc_signal<size_t>  	*r_min;         // smallest valid word index array[nslots]
-    sc_signal<size_t>  	*r_max;         // largest valid word index array[nslots]
-    data_t   		**r_data;       // write data  array[nslots][nwords]
-    be_t     		**r_be;         // byte enable array[nslots][nwords]
+    sc_signal<size_t>	r_ptr;			// next slot to be read
+    sc_signal<int>      *r_state;       	// slot state array[nslots]
+    sc_signal<addr_t>  	*r_address;     	// slot base address array[nslots]
+    sc_signal<size_t>  	*r_tout;        	// slot timeout array[nslots]
+    sc_signal<size_t>  	*r_min;         	// smallest valid word index array[nslots]
+    sc_signal<size_t>  	*r_max;         	// largest valid word index array[nslots]
+    data_t   		**r_data;       	// write data  array[nslots][nwords]
+    be_t     		**r_be;         	// byte enable array[nslots][nwords]
 
-    size_t              m_nslots;       // buffer depth (number of slots)
-    size_t              m_nwords;       // buffer width (number of words)
-    size_t		m_timeout;	// max life time for an open slot
-    addr_t              m_mask;         // cache slot mask
+    size_t              m_nslots;       	// buffer depth (number of slots)
+    size_t              m_nwords;       	// buffer width (number of words)
+    size_t		m_timeout;		// max life time for an open slot
+    addr_t              m_wbuf_line_mask;       // Mask for a write buffer line
+    addr_t              m_cache_line_mask;      // Mask for a cache line
  
 public:
 
@@ -173,7 +174,8 @@ public:
         for( size_t i = 0 ; i < m_nslots ; i++ )
         {
             if ( (r_state[i].read() != EMPTY) && 
-                 ((addr_t)r_address[i].read() == (addr & ~m_mask))) return false;
+                 ((r_address[i].read() & ~m_cache_line_mask) == (addr & ~m_cache_line_mask)) ) 
+                    return false;
         }
         return true;
     }
@@ -282,8 +284,8 @@ public:
     // It searches first an open slot, and then an empty slot.
     // It returns true in case of success.
     {
-        size_t 	word = (size_t)((addr &  m_mask) >> 2) ;
-        addr_t 	address = addr & ~m_mask ;
+        size_t 	word = (size_t)((addr &  m_wbuf_line_mask) >> 2) ;
+        addr_t 	address = addr & ~m_wbuf_line_mask ;
 	bool	found = false;	
         size_t  lw;
 
@@ -373,33 +375,34 @@ public:
 
     /////////////////////////////////////////////////////////////////////// 
     MultiWriteBuffer(const std::string 	&name, 
-                     size_t 		nwords, 
-                     size_t 		nslots,
-                     size_t		timeout)
+                     size_t 		wbuf_nwords, 
+                     size_t 		wbuf_nslots,
+                     size_t		timeout,
+                     size_t		cache_nwords)
         :
-        m_nslots(nslots),
-        m_nwords(nwords),
+        m_nslots(wbuf_nslots),
+        m_nwords(wbuf_nwords),
         m_timeout(timeout),
-        m_mask((nwords << 2) - 1)
+        m_wbuf_line_mask((wbuf_nwords << 2) - 1)
+        m_cache_line_mask((cache_nwords << 2) - 1)
     {
-        r_address = new sc_signal<addr_t>[nslots];
-        r_tout    = new sc_signal<size_t>[nslots];
-        r_min     = new sc_signal<size_t>[nslots];
-        r_max     = new sc_signal<size_t>[nslots];
-        r_state   = new sc_signal<int>[nslots];
+        r_address = new sc_signal<addr_t>[wbuf_nslots];
+        r_tout    = new sc_signal<size_t>[wbuf_nslots];
+        r_min     = new sc_signal<size_t>[wbuf_nslots];
+        r_max     = new sc_signal<size_t>[wbuf_nslots];
+        r_state   = new sc_signal<int>[wbuf_nslots];
 
-        r_data    = new data_t*[nslots];
-        r_be      = new be_t*[nslots];
-        for( size_t i = 0 ; i < nslots ; i++ )
+        r_data    = new data_t*[wbuf_nslots];
+        r_be      = new be_t*[wbuf_nslots];
+        for( size_t i = 0 ; i < wbuf_nslots ; i++ )
         {
-            assert(IS_POW_OF_2(nwords));
-            r_data[i] = new data_t[nwords];
-            r_be[i]   = new be_t[nwords];
+            assert(IS_POW_OF_2(wbuf_nwords));
+            r_data[i] = new data_t[wbuf_nwords];
+            r_be[i]   = new be_t[wbuf_nwords];
         }
     }
     ///////////////////
     ~MultiWriteBuffer()
-    ///////////////////
     {
         for( size_t i = 0 ; i < m_nslots ; i++ )
         {
