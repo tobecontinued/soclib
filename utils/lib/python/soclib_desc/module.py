@@ -97,23 +97,6 @@ class ModuleInterface:
 
     # API to implement
 
-    def cleanup(self):
-        self.set_debug_mode(False)
-
-    def set_debug_mode(self, debug = True):
-        '''
-        Sets module to debug mode, what happens in specialized modules
-        when they are in debug mode is implementation-dependant
-        '''
-        self.__debug_mode = debug
-
-    @property
-    def debug_mode(self):
-        '''
-        Current debug mode
-        '''
-        return self.__debug_mode
-
     def is_used(self):
         '''
         Returns whether the module got specialized at least once.
