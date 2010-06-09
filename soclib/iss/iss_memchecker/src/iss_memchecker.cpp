@@ -671,7 +671,7 @@ public:
         return true;
     }
 
-    AddressInfo *info_for_address(uint32_t address)
+    AddressInfo *info_for_address(uint64_t address)
     {
         region_map_t::iterator i = m_regions.upper_bound(address);
         while ( i != m_regions.begin()
@@ -711,7 +711,7 @@ public:
     {
         error_level_t r = 0;
         RegionInfo *lri = info_for_address(addr)->region();
-        RegionInfo *nri = lri->get_updated_region( new_state, at, addr, (uint64_t)addr+size );
+        RegionInfo *nri = lri->get_updated_region( new_state, at, addr, addr+size );
 
 #if defined(SOCLIB_MODULE_DEBUG)
         std::cout << "Updating " << *nri << std::endl;
@@ -940,18 +940,19 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
                       << MEMCHK_COLOR_INFOC(" New execution context #" << std::hex << value)
                       << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
             report_current_ctx();
-            std::cout << " New stack         " << std::hex << m_r1 << "-" << m_r1+m_r2
+            std::cout << " New stack         " << std::hex << m_r1 << "-" << (uint64_t)m_r1+m_r2
                       << std::dec << " (" << m_r2 << " bytes)" << std::endl << std::endl;
         }
 
-        if ( ! s_memory_state->context_create( value,
-                  new ContextState( value, m_r1, m_r1+m_r2,
-                                    reg_id == ISS_MEMCHECKER_CONTEXT_ID_CREATE_TMP ) ) )
+        if ( ! s_memory_state->context_create(
+                 value,
+                 new ContextState( value, m_r1, (uint64_t)m_r1+m_r2,
+                                   reg_id == ISS_MEMCHECKER_CONTEXT_ID_CREATE_TMP ) ) )
             return report_error(ERROR_BAD_CONTEXT_CREATE, value);
 
         bool err = false;
 
-        for ( uint64_t addr = m_r1; addr < m_r1+m_r2; addr+= 4 ) {
+        for ( uint64_t addr = m_r1; addr < (uint64_t)m_r1+m_r2; addr+= 4 ) {
             AddressInfo *ai = s_memory_state->info_for_address(addr);
             if ( ! ( ai->region()->state() & (
                          __iss_memchecker::RegionInfo::REGION_STATE_ALLOCATED
@@ -1110,7 +1111,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 
         if ( m_opt_show_region ) {
             std::cout << " -----------------"
-                      << MEMCHK_COLOR_INFOR(" Region " << std::hex << m_r1 << "-" << m_r1+m_r2
+                      << MEMCHK_COLOR_INFOR(" Region " << std::hex << m_r1 << "-" << (uint64_t)m_r1+m_r2
                                             << " now " << RegionInfo::state_str(state))
                       << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
             report_current_ctx();
