@@ -1,34 +1,36 @@
 
-Build simulator only
-====================
+Build simulator
+===============
 
 $ make system.x
 
 
-Build simulator and mutekh
-==========================
+Build MutekH
+============
 
-Export environment variable MUTEKH_DIR=/path/to/mutekh and run make.
+In the MutekH directory, compile the desired kernel using the intended
+configuration files and BUILD flags.
 
- $ export MUTEKH_DIR=~/mutekh
- $ make all APP=~/mutekh/examples/hello CONFIG=config_soclib_mipsel
+ $ make CONF=config BUILD=pf-tutorial:soclib-mips32el
 
 See MutekH quick start guide for Soclib for more informations:
 
 https://www.mutek.fr/trac/mutekh/wiki/QuickStartSoclib
-
+http://www.mutekh.org/trac/mutekh/wiki/Arch/Soclib/Tutorial
 
 Run the simulator
 =================
 
-You may dynamically request creation of processors on command line:
+You must specify the CPU you want to use on command line. General syntax is:
 
- Single mips processor
- $ ./system.x ~/mutekh/kernel-soclib-mips.out:mips32
+ $ ./system.x cpu_type0:count0 cpu_specific_kernel_image0 cpu_type1:count1 cpu_specific_kernel_image1 ...
 
- Four arm processors
- $ ./system.x ~/mutekh/kernel-soclib-arm.out:arm:4
+ Single mips processor:
+ $ ./system.x mips32el:1 ~/mutekh/kernel-soclib-mips.out
 
- 2 arm and 2 mips processors
- $ ./system.x ~/mutekh/kernel-soclib-arm.out:arm:2 ~/mutekh/kernel-soclib-mips.out:mips32:2
+ Four arm processors:
+ $ ./system.x arm:4 ~/mutekh/kernel-soclib-arm.out
+
+ 2 arm and 2 mips processors:
+ $ ./system.x arm:2 ~/mutekh/kernel-soclib-arm.out mips32:2 ~/mutekh/kernel-soclib-mips.out
 
