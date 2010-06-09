@@ -301,8 +301,10 @@ class BuildEnv(Config):
             mode = config.mode
         if config.max_name_length:
             if len(name) > config.max_name_length:
-                name, ext = os.path.splitext(name)
-                name = 'ln_'+hex(hash(name))+ext
+                name_ = name
+                name, ext = os.path.splitext(name_)
+                name = '_'+hex(hash(name))+ext
+                name = name_[:config.max_name_length-1-len(name)]+name
         r = os.path.join(self.repos, mode, name)
         if config.max_name_length:
             r = r.replace(':','_')
