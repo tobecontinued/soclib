@@ -122,7 +122,8 @@ class Module(module.ModuleCommon):
             self.set_debug_mode()
 
     def get_info(self, key):
-        return self.__attrs[key]
+        from copy import copy
+        return copy(self.__attrs[key])
 
     def __check_classname(self):
         if self.__attrs['classname']:
