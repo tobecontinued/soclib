@@ -75,7 +75,7 @@ class VciVCacheWrapper2
         ICACHE_UNC_WAIT,            // 0e
         ICACHE_MISS_UPDT,           // 0f
         ICACHE_ERROR,               // 10
-	ICACHE_CACHE_INVAL_PA,	    // 11
+	    ICACHE_CACHE_INVAL_PA,	    // 11
     };
 
     enum dcache_fsm_state_e {  
@@ -286,9 +286,9 @@ private:
 
     sc_signal<bool>	        r_itlb_read_dcache_req;     // used for instruction tlb miss, request in data cache
     sc_signal<bool>	        r_itlb_acc_dcache_req;      // used for itlb update entry type bits via dcache
-    sc_signal<bool>	        r_dcache_rsp_itlb_error;        // used for data cache rsp error when itlb miss
-    sc_signal<data_t>	    r_dcache_rsp_itlb_miss;	        // used for dcache rsp data when itlb miss
-    sc_signal<data_t>	    r_dcache_rsp_itlb_ppn;	        // used for dcache rsp data when itlb miss
+    sc_signal<bool>	        r_dcache_rsp_itlb_error;    // used for data cache rsp error when itlb miss
+    sc_signal<data_t>	    r_dcache_rsp_itlb_miss;	    // used for dcache rsp data when itlb miss
+    sc_signal<data_t>	    r_dcache_rsp_itlb_ppn;	    // used for dcache rsp data when itlb miss
     sc_signal<vaddr_t>      r_icache_vaddr_req;			// virtual address requested by the CPU
     // VCI_CMD FSM REGISTERS
     sc_signal<int>          r_vci_cmd_fsm;
@@ -314,6 +314,7 @@ private:
     uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
     uint32_t m_cpt_dcache_dir_read;         // DCACHE DIR READ
     uint32_t m_cpt_dcache_dir_write;        // DCACHE DIR WRITE
+    uint32_t m_cpt_data_tlb_miss_cache;
 
     uint32_t m_cpt_icache_data_read;        // ICACHE DATA READ
     uint32_t m_cpt_icache_data_write;       // ICACHE DATA WRITE
@@ -321,6 +322,7 @@ private:
     uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
 
     uint32_t m_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
+    uint32_t m_cpt_dcache_frz_cycles;       // number of cycles where the data cache is frozen
     uint32_t m_cpt_total_cycles;	        // total number of cycles 
 
     // Cache activity counters
@@ -341,35 +343,55 @@ private:
     uint32_t m_cpt_dmiss_transaction;       // number of VCI data miss transactions
     uint32_t m_cpt_unc_transaction;         // number of VCI uncached read transactions
     uint32_t m_cpt_write_transaction;       // number of VCI write transactions
+    uint32_t m_cpt_icache_unc_transaction;
 
     uint32_t m_cost_imiss_transaction;      // cumulated duration for VCI IMISS transactions
     uint32_t m_cost_dmiss_transaction;      // cumulated duration for VCI DMISS transactions
-    uint32_t m_cost_unc_transaction;        // cumulated duration for VCI UNC transactions
+    uint32_t m_cost_unc_transaction;        // cumulated duration for VCI DUNC transactions
     uint32_t m_cost_write_transaction;      // cumulated duration for VCI WRITE transactions
+    uint32_t m_cost_icache_unc_transaction; // cumulated duration for VCI IUNC transactions
     uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
 
     // TLB activity counters
     uint32_t m_cpt_ins_tlb_read;            // number of instruction tlb read
     uint32_t m_cpt_ins_tlb_miss;            // number of instruction tlb miss
-    uint32_t m_cpt_ins_tlb_write_et;        // number of instruction tlb write ET
-
+    uint32_t m_cpt_ins_tlb_update_acc;      // number of instruction tlb update acc
     uint32_t m_cpt_data_tlb_read;           // number of data tlb read
     uint32_t m_cpt_data_tlb_miss;           // number of data tlb miss
-    uint32_t m_cpt_data_tlb_write_et;       // number of data tlb write ET
-    uint32_t m_cpt_data_tlb_write_dirty;    // number of data tlb write dirty
+    uint32_t m_cpt_data_tlb_update_acc;     // number of data tlb update acc
+    uint32_t m_cpt_data_tlb_update_dirty;   // number of data tlb update dirty
+    uint32_t m_cpt_ctxt_sw;                 // number of context switch
+    uint32_t m_cpt_ins_tlb_hit_dcache;      // number of instruction tlb hit in data cache
+    uint32_t m_cpt_data_tlb_hit_dcache;     // number of data tlb hit in data cache
+    uint32_t m_cpt_ins_tlb_occup_cache;     // number of instruction tlb occupy data cache line 
+    uint32_t m_cpt_data_tlb_occup_cache;    // number of data tlb occupy data cache line
     
-    uint32_t m_cost_ins_tlb_miss_frz;       // number of frozen cycles related to instruction tlb miss
-    uint32_t m_cost_data_tlb_miss_frz;      // number of frozen cycles related to data tlb miss
+    uint32_t m_cost_ins_tlb_miss_frz;          // number of frozen cycles related to instruction tlb miss
+    uint32_t m_cost_data_tlb_miss_frz;         // number of frozen cycles related to data tlb miss
+    uint32_t m_cost_ins_tlb_update_acc_frz;    // number of frozen cycles related to instruction tlb update acc
+    uint32_t m_cost_data_tlb_update_acc_frz;   // number of frozen cycles related to data tlb update acc
+    uint32_t m_cost_data_tlb_update_dirty_frz; // number of frozen cycles related to data tlb update dirty
+    uint32_t m_cost_ctxt_sw_frz;               // number of frozen cycles related to context switch 
+    uint32_t m_cost_ins_tlb_occup_cache_frz;   // number of frozen cycles related to instruction tlb miss operate in dcache
+    uint32_t m_cost_data_tlb_occup_cache_frz;  // number of frozen cycles related to data tlb miss operate in dcache
 
-    uint32_t m_cpt_itlbmiss_transaction;    // number of itlb miss transactions
-    uint32_t m_cpt_itlb_write_transaction;  // number of itlb write ET transactions
-    uint32_t m_cpt_dtlbmiss_transaction;    // number of dtlb miss transactions
-    uint32_t m_cpt_dtlb_write_transaction;  // number of dtlb write ET and dirty transactions
-
-    uint32_t m_cost_itlbmiss_transaction;   // cumulated duration for VCI instruction TLB miss transactions
-    uint32_t m_cost_itlb_write_transaction; // cumulated duration for VCI instruction TLB write ET transactions
-    uint32_t m_cost_dtlbmiss_transaction;   // cumulated duration for VCI data TLB miss transactions
-    uint32_t m_cost_dtlb_write_transaction; // cumulated duration for VCI data TLB write transactions
+    uint32_t m_cpt_itlbmiss_transaction;       // number of itlb miss transactions
+    uint32_t m_cpt_itlb_ll_transaction;        // number of itlb ll acc transactions
+    uint32_t m_cpt_itlb_sc_transaction;        // number of itlb sc acc transactions
+    uint32_t m_cpt_dtlbmiss_transaction;       // number of dtlb miss transactions
+    uint32_t m_cpt_dtlb_ll_transaction;        // number of dtlb ll acc transactions
+    uint32_t m_cpt_dtlb_sc_transaction;        // number of dtlb sc acc transactions
+    uint32_t m_cpt_dtlb_ll_dirty_transaction;  // number of dtlb ll dirty transactions
+    uint32_t m_cpt_dtlb_sc_dirty_transaction;  // number of dtlb sc dirty transactions
+ 
+    uint32_t m_cost_itlbmiss_transaction;     // cumulated duration for VCI instruction TLB miss transactions
+    uint32_t m_cost_itlb_ll_transaction;      // cumulated duration for VCI instruction TLB ll acc transactions
+    uint32_t m_cost_itlb_sc_transaction;      // cumulated duration for VCI instruction TLB sc acc transactions
+    uint32_t m_cost_dtlbmiss_transaction;     // cumulated duration for VCI data TLB miss transactions
+    uint32_t m_cost_dtlb_ll_transaction;      // cumulated duration for VCI data TLB ll acc transactions
+    uint32_t m_cost_dtlb_sc_transaction;      // cumulated duration for VCI data TLB sc acc transactions
+    uint32_t m_cost_dtlb_ll_dirty_transaction;// cumulated duration for VCI data TLB ll dirty transactions
+    uint32_t m_cost_dtlb_sc_dirty_transaction;// cumulated duration for VCI data TLB sc dirty transactions
 
 protected:
     SC_HAS_PROCESS(VciVCacheWrapper2);

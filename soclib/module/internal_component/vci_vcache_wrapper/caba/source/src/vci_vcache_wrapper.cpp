@@ -293,31 +293,33 @@ tmpl(void)::print_stats()
 ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
-    std::cout << name() << std::endl
+    std::cout << "--------------------------------------" << std::endl
+              << name() << " / cycles = " << m_cpt_total_cycles << std::endl
               << "- CPI                    = " << (float)m_cpt_total_cycles/run_cycles << std::endl 
               << "- READ RATE              = " << (float)m_cpt_read/run_cycles << std::endl 
               << "- WRITE RATE             = " << (float)m_cpt_write/run_cycles << std::endl
-              << "- UNCACHED READ RATE     = " << (float)m_cpt_unc_read/m_cpt_read << std::endl 
-              << "- CACHED WRITE RATE      = " << (float)m_cpt_write_cached/m_cpt_write << std::endl 
               << "- IMISS_RATE             = " << (float)m_cpt_ins_miss/m_cpt_ins_read << std::endl    
               << "- DMISS RATE             = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl 
               << "- INS MISS COST          = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl
-              << "- IMISS TRANSACTION      = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl
               << "- DMISS COST             = " << (float)m_cost_data_miss_frz/m_cpt_data_miss << std::endl
-              << "- DMISS TRANSACTION      = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl
-              << "- UNC COST               = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl
-              << "- UNC TRANSACTION        = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl
               << "- WRITE COST             = " << (float)m_cost_write_frz/m_cpt_write << std::endl
-              << "- WRITE TRANSACTION      = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl
-              << "- WRITE LENGTH           = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl
+              << "- UNC COST               = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl
+              << "- UNCACHED READ RATE     = " << (float)m_cpt_unc_read/m_cpt_read << std::endl 
+              << "- CACHED WRITE RATE      = " << (float)m_cpt_write_cached/m_cpt_write << std::endl
               << "- INS TLB MISS RATE      = " << (float)m_cpt_ins_tlb_miss/m_cpt_ins_tlb_read << std::endl
               << "- DATA TLB MISS RATE     = " << (float)m_cpt_data_tlb_miss/m_cpt_data_tlb_read << std::endl
+              << "- ITLB MISS COST         = " << (float)m_cost_ins_tlb_miss_frz/m_cpt_ins_tlb_miss << std::endl
+              << "- DTLB MISS COST         = " << (float)m_cost_data_tlb_miss_frz/m_cpt_data_tlb_miss << std::endl      
+              << "- ITLB UPDATE ACC COST   = " << (float)m_cost_ins_tlb_update_acc_frz/m_cpt_ins_tlb_update_acc << std::endl
+              << "- DTLB UPDATE ACC COST   = " << (float)m_cost_data_tlb_update_acc_frz/m_cpt_data_tlb_update_acc << std::endl
+              << "- DTLB UPDATE DIRTY COST = " << (float)m_cost_data_tlb_update_dirty_frz/m_cpt_data_tlb_update_dirty << std::endl              
+              << "- IMISS TRANSACTION      = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl
+              << "- DMISS TRANSACTION      = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl
+              << "- UNC TRANSACTION        = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl
+              << "- WRITE TRANSACTION      = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl
+              << "- WRITE LENGTH           = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl
               << "- ITLB MISS TRANSACTION  = " << (float)m_cost_itlbmiss_transaction/m_cpt_itlbmiss_transaction << std::endl
-              << "- ITLB WRITE TRANSACTION = " << (float)m_cost_itlb_write_transaction/m_cpt_itlb_write_transaction << std::endl
-              << "- ITLB MISS COST         = " << (float)m_cost_ins_tlb_miss_frz/(m_cpt_ins_tlb_miss+m_cpt_ins_tlb_write_et) << std::endl
-              << "- DTLB MISS TRANSACTION  = " << (float)m_cost_dtlbmiss_transaction/m_cpt_dtlbmiss_transaction << std::endl
-              << "- DTLB WRITE TRANSACTION = " << (float)m_cost_dtlb_write_transaction/m_cpt_dtlb_write_transaction << std::endl
-              << "- DTLB MISS COST         = " << (float)m_cost_data_tlb_miss_frz/(m_cpt_data_tlb_miss+m_cpt_data_tlb_write_et+m_cpt_data_tlb_write_dirty) << std::endl;
+              << "- DTLB MISS TRANSACTION  = " << (float)m_cost_dtlbmiss_transaction/m_cpt_dtlbmiss_transaction << std::endl;
 }
 
 /*************************************************/
@@ -371,6 +373,7 @@ tmpl(void)::transition()
 
         r_dcache_dirty_save       = false;
         r_dcache_hit_p_save       = false;
+        r_dcache_cached_save      = false;
 
         r_icache_buf_unc_valid    = false;
         r_dcache_buf_unc_valid    = false;
@@ -420,38 +423,53 @@ tmpl(void)::transition()
         m_cost_unc_read_frz  = 0;
         m_cost_ins_miss_frz  = 0;
 
-        m_cpt_imiss_transaction = 0;
-        m_cpt_dmiss_transaction = 0;
-        m_cpt_unc_transaction   = 0;
-        m_cpt_write_transaction = 0;
+        m_cpt_imiss_transaction      = 0;
+        m_cpt_dmiss_transaction      = 0;
+        m_cpt_unc_transaction        = 0;
+        m_cpt_write_transaction      = 0;
+        m_cpt_icache_unc_transaction = 0;
 
-        m_cost_imiss_transaction   = 0;
-        m_cost_dmiss_transaction   = 0;
-        m_cost_unc_transaction     = 0;
-        m_cost_write_transaction   = 0;
-        m_length_write_transaction = 0;
+        m_cost_imiss_transaction      = 0;
+        m_cost_dmiss_transaction      = 0;
+        m_cost_unc_transaction        = 0;
+        m_cost_write_transaction      = 0;
+        m_cost_icache_unc_transaction = 0;
+        m_length_write_transaction    = 0;
 
-        m_cpt_ins_tlb_read         = 0;             
-        m_cpt_ins_tlb_miss         = 0;             
-        m_cpt_ins_tlb_write_et     = 0;         
+        m_cpt_ins_tlb_read       = 0;             
+        m_cpt_ins_tlb_miss       = 0;             
+        m_cpt_ins_tlb_update_acc = 0;         
 
-        m_cpt_data_tlb_read        = 0;           
-        m_cpt_data_tlb_miss        = 0;           
-        m_cpt_data_tlb_write_et    = 0;       
-        m_cpt_data_tlb_write_dirty = 0;    
+        m_cpt_data_tlb_read         = 0;           
+        m_cpt_data_tlb_miss         = 0;           
+        m_cpt_data_tlb_update_acc   = 0;       
+        m_cpt_data_tlb_update_dirty = 0;    
+        m_cpt_ctxt_sw               = 0;
 
-        m_cost_ins_tlb_miss_frz    = 0;      
-        m_cost_data_tlb_miss_frz   = 0;      
+        m_cost_ins_tlb_miss_frz          = 0;      
+        m_cost_data_tlb_miss_frz         = 0;      
+        m_cost_ins_tlb_update_acc_frz    = 0;
+        m_cost_data_tlb_update_acc_frz   = 0;
+        m_cost_data_tlb_update_dirty_frz = 0;
+        m_cost_ctxt_sw_frz               = 0;
 
-        m_cpt_itlbmiss_transaction   = 0;    
-        m_cpt_itlb_write_transaction = 0;  
-        m_cpt_dtlbmiss_transaction   = 0;  
-        m_cpt_dtlb_write_transaction = 0;  
+        m_cpt_itlbmiss_transaction      = 0;    
+        m_cpt_itlb_ll_transaction       = 0;  
+        m_cpt_itlb_sc_transaction       = 0;  
+        m_cpt_dtlbmiss_transaction      = 0;  
+        m_cpt_dtlb_ll_transaction       = 0;  
+        m_cpt_dtlb_sc_transaction       = 0;  
+        m_cpt_dtlb_ll_dirty_transaction = 0;  
+        m_cpt_dtlb_sc_dirty_transaction = 0;  
  
-        m_cost_itlbmiss_transaction   = 0;   
-        m_cost_itlb_write_transaction = 0;  
-        m_cost_dtlbmiss_transaction   = 0;   
-        m_cost_dtlb_write_transaction = 0;  
+        m_cost_itlbmiss_transaction      = 0;   
+        m_cost_itlb_ll_transaction       = 0;  
+        m_cost_itlb_sc_transaction       = 0;  
+        m_cost_dtlbmiss_transaction      = 0;   
+        m_cost_dtlb_ll_transaction       = 0;   
+        m_cost_dtlb_sc_transaction       = 0;   
+        m_cost_dtlb_ll_dirty_transaction = 0;   
+        m_cost_dtlb_sc_dirty_transaction = 0;   
         return;
     }
 
@@ -510,8 +528,10 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     //----------------------------------------------------------------------------------- 
     // Instruction TLB: 
     //  
-    // - int        ET          (00: unmapped; 01: unused or PTD)
-    //                          (10: PTE new;  11: PTE old      )
+    // - bool       valid       (valid bit)
+    // - bool       type        (1 is PTD; 0 is PTE)
+    // - bool       local acc   (local access bit)
+    // - bool       remote acc  (remote access bit)
     // - bool       cachable    (cached bit)
     // - bool       writable    (** not used alwayse false) 
     // - bool       executable  (executable bit)
@@ -695,7 +715,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                 r_icache_paddr_save = tlb_ipaddr;   // save actual physical address for BIS
                 r_icache_vaddr_req = ireq.addr;
                 r_icache_fsm = ICACHE_BIS;
-                m_cost_ins_miss_frz++;
+                m_cost_ins_tlb_miss_frz++;
             }
             else    // cached or uncached access with a correct speculative physical address 
             {   
@@ -741,7 +761,6 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         paddr_t     tlb_ipaddr     = 0;         // physical address obtained from TLB      
  
         // acces always cached and MMU activated in this state
-        m_cpt_ins_tlb_read++;
         m_cpt_icache_dir_read += m_icache_ways;
         m_cpt_icache_data_read += m_icache_ways;
 
@@ -790,10 +809,10 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         {  
 	        if (r_icache_vaddr_req.read() != ireq.addr || !ireq.valid) 
             {
-		    /* request modified, drop response and restart */
-		    r_icache_ptba_ok = false;
-		    r_icache_fsm = ICACHE_IDLE;
-		    break;
+		        /* request modified, drop response and restart */
+		        r_icache_ptba_ok = false;
+		        r_icache_fsm = ICACHE_IDLE;
+		        break;
 	        }
 
             if ( !r_vci_rsp_ins_error ) // vci response ok
@@ -832,7 +851,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_icache_pte_update = r_icache_miss_buf[0] | PTE_L_MASK;
                             r_icache_tlb_ll_req = true;
                             r_icache_fsm        = ICACHE_TLB1_LL_WAIT;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_ins_tlb_update_acc++;
+                            m_cost_ins_tlb_update_acc_frz++;
 	                    }
                     }
 	                else // remotely
@@ -847,7 +867,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_icache_pte_update = r_icache_miss_buf[0] | PTE_R_MASK;
                             r_icache_tlb_ll_req = true;
                             r_icache_fsm        = ICACHE_TLB1_LL_WAIT;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_ins_tlb_update_acc++;
+                            m_cost_ins_tlb_update_acc_frz++;
 	                    }
 	                }
 	            }
@@ -864,6 +885,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case ICACHE_TLB1_LL_WAIT:
     {
+        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
+
 	    if ( !r_icache_tlb_ll_req )
 	    {
             if ( r_vci_rsp_ins_error ) // VCI response ko
@@ -893,6 +917,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case ICACHE_TLB1_SC_WAIT:
     {
+        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
+
         if ( !r_icache_tlb_sc_req && r_vci_rsp_ins_error ) // VCI response ko
 	    {
             r_icache_fsm        = ICACHE_ERROR;
@@ -913,6 +940,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     case ICACHE_TLB1_UPDT:
     {
         if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
 
         icache_tlb.update(r_icache_pte_update,r_icache_vaddr_req.read());
         r_icache_fsm = ICACHE_IDLE;
@@ -955,7 +983,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_icache_pte_update = r_icache_miss_buf[0] | PTE_L_MASK;
                             r_icache_tlb_ll_req = true;
                             r_icache_fsm        = ICACHE_TLB2_LL_WAIT;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_ins_tlb_update_acc++;
+                            m_cost_ins_tlb_update_acc_frz++;
 	                    }
                     }
 	                else // remotely
@@ -970,7 +999,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_icache_pte_update = r_icache_miss_buf[0] | PTE_R_MASK;
                             r_icache_tlb_ll_req = true;
                             r_icache_fsm        = ICACHE_TLB2_LL_WAIT;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_ins_tlb_update_acc++;
+                            m_cost_ins_tlb_update_acc_frz++;
 	                    }
 	                }
 	            }
@@ -987,6 +1017,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case ICACHE_TLB2_LL_WAIT:
     {
+        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
+
 	    if ( !r_icache_tlb_ll_req )
 	    {
             if ( r_vci_rsp_ins_error ) // VCI response ko
@@ -1016,6 +1049,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case ICACHE_TLB2_SC_WAIT:
     {
+        if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
+
         if ( !r_icache_tlb_sc_req && r_vci_rsp_ins_error ) // VCI response ko
 	    {
             r_icache_fsm        = ICACHE_ERROR;
@@ -1036,6 +1072,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     case ICACHE_TLB2_UPDT: 
     {
         if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
 
         icache_tlb.update(r_icache_pte_update,r_icache_miss_buf[1],r_icache_vaddr_req.read()); 
         r_icache_fsm = ICACHE_IDLE;  
@@ -1202,8 +1239,10 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     //--------------------------------------------------------------------- 
     // Data TLB: 
     //  
-    // - int        ET          (00: unmapped; 01: unused or PTD)
-    //                          (10: PTE new;  11: PTE old      )
+    // - bool       valid       (valid bit)
+    // - bool       type        (1 is PTD; 0 is PTE)
+    // - bool       local acc   (local access bit)
+    // - bool       remote acc  (remote access bit)
     // - bool       cachable    (cached bit)
     // - bool       writable    (writable bit) 
     // - bool       executable  (** not used alwayse false)
@@ -1364,6 +1403,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                         r_dcache_type_save = dreq.addr/4; 
                         r_dcache_xtn_req = true;
                         r_dcache_fsm = DCACHE_CTXT_SWITCH;
+                        m_cpt_ctxt_sw++;
                     } 
                     else 
                     { 
@@ -1600,7 +1640,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                 }
 
                 // update LRU, save ppn, vpn and page type
-                if ( dcache_hit_t ) {
+                if ( dcache_hit_t ) 
+                {
                     dcache_tlb.setlru(dcache_tlb_way,dcache_tlb_set); 
                     r_dcache_ppn_save = tlb_dpaddr >> PAGE_K_NBITS;
                     r_dcache_vpn_save = dreq.addr >> PAGE_K_NBITS;
@@ -1640,6 +1681,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             {
                 r_dcache_hit_p_save = dcache_hit_p;
                 r_dcache_fsm = DCACHE_BIS;
+                m_cost_data_tlb_miss_frz++;
             }
             else  // cached or uncached access with a correct speculative physical address
             {
@@ -1676,6 +1718,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                     case iss_t::DATA_WRITE:
                         m_cpt_write++;
                         if ( dcache_cached ) m_cpt_write_cached++;
+                        m_cost_write_frz++;
 
                         if ( dcache_hit_c && dcache_cached )    // cache update required
                         {
@@ -1684,13 +1727,14 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                         } 
                         else if ((r_mmu_mode.read() & DATA_TLB_MASK) && !dcache_pte_info.d)   // dirty bit update required
                         {
+                            m_cpt_data_tlb_update_dirty++;
+                            m_cost_data_tlb_update_dirty_frz++;               
                             if (dcache_tlb.getpagesize(dcache_tlb_way, dcache_tlb_set)) 
                             {
                                 r_dcache_pte_update = dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
                                 r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                                 r_dcache_tlb_ll_dirty_req = true;
                                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                                m_cpt_data_tlb_write_dirty++;
                             }
                             else
                             {   
@@ -1700,7 +1744,6 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                                     r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                                     r_dcache_tlb_ll_dirty_req = true;
                                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                                    m_cpt_data_tlb_write_dirty++;
                                 }
                                 else    // get PTBA to calculate the physical address of PTE
                                 {
@@ -1712,7 +1755,6 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                                     r_dcache_fsm = DCACHE_TLB1_READ;
                                 }
                             }
-                            m_cost_data_tlb_miss_frz++;
                         }
                         else                                    // no cache update, not dirty bit update
                         {
@@ -1791,6 +1833,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             {
                 m_cpt_write++;
                 m_cpt_write_cached++;
+                m_cost_write_frz++;
+
                 if ( dcache_hit_c )    // cache update required
                 {
                 	r_dcache_rdata_save = dcache_rdata;
@@ -1799,13 +1843,15 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                 } 
                 else if ( !r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
                 {
+                    m_cpt_data_tlb_update_dirty++;
+                    m_cost_data_tlb_update_dirty_frz++;   
+
                     if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
                     {
                         r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
                         r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                         r_dcache_tlb_ll_dirty_req = true;
                         r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                        m_cpt_data_tlb_write_dirty++;
                     }
                     else
                     {   
@@ -1815,7 +1861,6 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                             r_dcache_tlb_ll_dirty_req = true;
                             r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                            m_cpt_data_tlb_write_dirty++;
                         }
                         else
                         {
@@ -1848,6 +1893,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     //////////////////////////
     case DCACHE_LL_DIRTY_WAIT:
     {
+        m_cost_data_tlb_update_dirty_frz++;
+
         if (!r_dcache_tlb_ll_dirty_req)
         {
             if ( r_vci_rsp_data_error ) // VCI response ko
@@ -1891,6 +1938,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     //////////////////////////
     case DCACHE_SC_DIRTY_WAIT:
     {
+        m_cost_data_tlb_update_dirty_frz++;
+
         if ( !r_dcache_tlb_sc_dirty_req && r_vci_rsp_data_error ) // VCI response ko
 	    {
 	        if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save))
@@ -1949,7 +1998,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                         r_dcache_tlb_ptba_read = false;
                         r_dcache_tlb_ll_dirty_req = true;
                         r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                        m_cpt_data_tlb_write_dirty++;
+                        m_cost_data_tlb_update_dirty_frz++;
                     }
                     else
                     {
@@ -1973,7 +2022,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_dcache_pte_update = r_dcache_miss_buf[0] | PTE_L_MASK;
                             r_dcache_tlb_ll_acc_req = true;
                             r_dcache_fsm        = DCACHE_TLB1_LL_WAIT;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_data_tlb_update_acc++;
+                            m_cost_data_tlb_update_acc_frz++;
 	                    }
                     }
 	                else // remotely
@@ -1988,7 +2038,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_dcache_pte_update = r_dcache_miss_buf[0] | PTE_R_MASK;
                             r_dcache_tlb_ll_acc_req = true;
                             r_dcache_fsm        = DCACHE_TLB1_LL_WAIT;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_data_tlb_update_acc++;
+                            m_cost_data_tlb_update_acc_frz++;
 	                    }
 	                }
 	            }
@@ -2012,6 +2063,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case DCACHE_TLB1_LL_WAIT:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_acc_frz++;
+
 	    if (!r_dcache_tlb_ll_acc_req)
 	    {
             if ( r_vci_rsp_data_error ) // VCI response ko
@@ -2055,6 +2109,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case DCACHE_TLB1_SC_WAIT:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_acc_frz++;
+
         if ( !r_dcache_tlb_sc_acc_req && r_vci_rsp_data_error ) // VCI response ko
 	    {
             if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
@@ -2128,7 +2185,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_dcache_pte_update = r_dcache_miss_buf[0] | PTE_L_MASK;
                             r_dcache_tlb_ll_acc_req = true; 
                             r_dcache_fsm = DCACHE_TLB2_LL_WAIT;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_data_tlb_update_acc++;
+                            m_cost_data_tlb_update_acc_frz++;
 	                    }
                     }
 	                else // remotely
@@ -2143,7 +2201,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                             r_dcache_pte_update = r_dcache_miss_buf[0] | PTE_R_MASK;
                             r_dcache_tlb_ll_acc_req = true;
                             r_dcache_fsm = DCACHE_TLB2_LL_WAIT;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_data_tlb_update_acc++;
+                            m_cost_data_tlb_update_acc_frz++;
 	                    }
 	                }
                 }
@@ -2167,6 +2226,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case DCACHE_TLB2_LL_WAIT:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_acc_frz++;
+
 	    if (!r_dcache_tlb_ll_acc_req)
 	    {
             if ( r_vci_rsp_data_error ) // VCI response ko
@@ -2210,6 +2272,9 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case DCACHE_TLB2_SC_WAIT:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_acc_frz++;
+
         if ( !r_dcache_tlb_sc_acc_req && r_vci_rsp_data_error ) // VCI response ko
 	    {
             if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
@@ -2245,6 +2310,8 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     ///////////////////////
     case DCACHE_CTXT_SWITCH:
     {
+        m_cost_ctxt_sw_frz++;
+
         dcache_tlb.flush(false);      // global entries are not invalidated
         if ( !r_dcache_xtn_req ) 
         {
@@ -2387,6 +2454,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     }
     /////////////////////
     case DCACHE_MISS_WAIT:
+    {
         if ( dreq.valid ) m_cost_data_miss_frz++; 
 
         if ( !r_dcache_miss_req ) 
@@ -2412,6 +2480,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
             } 
         } 
         break;
+    }
     /////////////////////
     case DCACHE_MISS_UPDT:
     {
@@ -2468,13 +2537,14 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
 
         if ( !r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   
         {
+            m_cpt_data_tlb_update_dirty++;
+            m_cost_data_tlb_update_dirty_frz++;            
             if ( dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save) )	// 2M page size, one level page table 
             {
                 r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
                 r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                 r_dcache_tlb_ll_dirty_req = true;
                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                m_cpt_data_tlb_write_dirty++;
             }
             else
             {   
@@ -2484,7 +2554,6 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
                     r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                     r_dcache_tlb_ll_dirty_req = true;
                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                    m_cpt_data_tlb_write_dirty++;
                 }
                 else
                 {
@@ -2509,6 +2578,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
     case DCACHE_WRITE_DIRTY:
     {
         if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_dirty_frz++;
 
         dcache_tlb.setdirty(r_dcache_tlb_way_save, r_dcache_tlb_set_save);
         r_dcache_fsm = DCACHE_WRITE_REQ;
@@ -2583,12 +2653,12 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         else if (r_icache_tlb_ll_req)      
         {  
             r_vci_cmd_fsm = CMD_ITLB_ACC_LL;
-            m_cpt_itlb_write_transaction++; 
+            m_cpt_itlb_ll_transaction++; 
         }
         else if (r_icache_tlb_sc_req)      
         {  
             r_vci_cmd_fsm = CMD_ITLB_ACC_SC;
-            m_cpt_itlb_write_transaction++; 
+            m_cpt_itlb_sc_transaction++; 
         }  
         else if (r_icache_miss_req) 
         {    
@@ -2598,7 +2668,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         else if (r_icache_unc_req) 
         {    
             r_vci_cmd_fsm = CMD_INS_UNC;
-            m_cpt_imiss_transaction++; 
+            m_cpt_icache_unc_transaction++; 
         }  
         else if (r_dcache_tlb_read_req) 
         {            
@@ -2608,22 +2678,22 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         else if (r_dcache_tlb_ll_dirty_req)      
         {  
             r_vci_cmd_fsm = CMD_DTLB_DIRTY_LL;
-            m_cpt_dtlb_write_transaction++; 
+            m_cpt_dtlb_ll_dirty_transaction++; 
         }
         else if (r_dcache_tlb_sc_dirty_req)      
         {  
             r_vci_cmd_fsm = CMD_DTLB_DIRTY_SC;
-            m_cpt_dtlb_write_transaction++; 
+            m_cpt_dtlb_sc_dirty_transaction++; 
         }  
         else if (r_dcache_tlb_ll_acc_req)      
         {  
             r_vci_cmd_fsm = CMD_DTLB_ACC_LL;
-            m_cpt_dtlb_write_transaction++; 
+            m_cpt_dtlb_ll_transaction++; 
         }
         else if (r_dcache_tlb_sc_acc_req)      
         {  
             r_vci_cmd_fsm = CMD_DTLB_ACC_SC;
-            m_cpt_dtlb_write_transaction++; 
+            m_cpt_dtlb_sc_transaction++; 
         }  
         else if (r_dcache_write_req)
         {
@@ -2691,7 +2761,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         {   
             r_vci_rsp_fsm = RSP_ITLB_ACC_LL;
         } 
-        else if (r_icache_tlb_sc_req)       // ITLB linked load response
+        else if (r_icache_tlb_sc_req)       // ITLB store conditional response
         {   
             r_vci_rsp_fsm = RSP_ITLB_ACC_SC;
         } 
@@ -2703,23 +2773,23 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         {   
             r_vci_rsp_fsm = RSP_INS_UNC;
         }  
-        else if (r_dcache_tlb_read_req)     // ITLB miss response
+        else if (r_dcache_tlb_read_req)     // DTLB miss response
         {
             r_vci_rsp_fsm = RSP_DTLB_READ; 
         }
-        else if (r_dcache_tlb_ll_dirty_req)      
+        else if (r_dcache_tlb_ll_dirty_req)    // DTLB dirty bit linked load response  
         {  
             r_vci_rsp_fsm = RSP_DTLB_DIRTY_LL;
         }
-        else if (r_dcache_tlb_sc_dirty_req)      
+        else if (r_dcache_tlb_sc_dirty_req)    // DTLB dirty bit store conditional response  
         {  
             r_vci_rsp_fsm = RSP_DTLB_DIRTY_SC;
         }  
-        else if (r_dcache_tlb_ll_acc_req)      
+        else if (r_dcache_tlb_ll_acc_req)    // DTLB access bits linked load response  
         {  
             r_vci_rsp_fsm = RSP_DTLB_ACC_LL;
         }
-        else if (r_dcache_tlb_sc_acc_req)      
+        else if (r_dcache_tlb_sc_acc_req)    // DTLB access bits store conditional response  
         {  
             r_vci_rsp_fsm = RSP_DTLB_ACC_SC;
         }  
@@ -2767,6 +2837,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         break;
 
     case RSP_ITLB_ACC_LL:
+        m_cost_itlb_ll_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2786,6 +2857,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
 	    break;
 
     case RSP_ITLB_ACC_SC:
+        m_cost_itlb_sc_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2829,7 +2901,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         break;
 
     case RSP_INS_UNC:
-        m_cost_imiss_transaction++;
+        m_cost_icache_unc_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2877,6 +2949,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
         break;
 
     case RSP_DTLB_ACC_LL:
+        m_cost_dtlb_ll_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2896,6 +2969,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
 	    break;
 
     case RSP_DTLB_ACC_SC:
+        m_cost_dtlb_sc_transaction++; 
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2915,6 +2989,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
 	    break;
 
     case RSP_DTLB_DIRTY_LL:
+        m_cost_dtlb_ll_dirty_transaction++; 
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2934,6 +3009,7 @@ std::cout << name() << "cycle = " << m_cpt_total_cycles
 	    break;
 
     case RSP_DTLB_DIRTY_SC:
+        m_cost_dtlb_sc_dirty_transaction++; 
         if ( ! p_vci.rspval.read() )
             break;
 

@@ -31,6 +31,7 @@
 namespace soclib { 
 namespace caba {
 
+//#define SOCLIB_MODULE_DEBUG
 #ifdef SOCLIB_MODULE_DEBUG
 namespace {
 const char *icache_fsm_state_str[] = {
@@ -51,7 +52,7 @@ const char *icache_fsm_state_str[] = {
         "ICACHE_UNC_WAIT",  
         "ICACHE_MISS_UPDT",  
         "ICACHE_ERROR", 	
-	"ICACHE_CACHE_INVAL_PA",
+	    "ICACHE_CACHE_INVAL_PA",
     };
 const char *dcache_fsm_state_str[] = {
         "DCACHE_IDLE",       
@@ -89,8 +90,8 @@ const char *dcache_fsm_state_str[] = {
         "DCACHE_ITLB_UPDT",
         "DCACHE_ITLB_LL_WAIT",        
         "DCACHE_ITLB_SC_WAIT",
-	"DCACHE_ICACHE_INVAL_PA",
-	"DCACHE_DCACHE_INVAL_PA",
+	    "DCACHE_ICACHE_INVAL_PA",
+	    "DCACHE_DCACHE_INVAL_PA",
     };
 const char *cmd_fsm_state_str[] = {
         "CMD_IDLE",           
@@ -270,32 +271,37 @@ tmpl(void)::print_stats()
 ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
-    std::cout
-        << name() << std::endl
+    std::cout << "--------------------------------------" << std::endl
+        << name() << " / cycles = " << m_cpt_total_cycles << std::endl
         << "- CPI                    = " << (float)m_cpt_total_cycles/run_cycles << std::endl 
         << "- READ RATE              = " << (float)m_cpt_read/run_cycles << std::endl 
         << "- WRITE RATE             = " << (float)m_cpt_write/run_cycles << std::endl
+        << "- IMISS_RATE             = " << (float)m_cpt_ins_miss/m_cpt_ins_read << std::endl
+        << "- DMISS RATE             = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl  
+        << "- INS MISS COST          = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl     
+        << "- DATA MISS COST         = " << (float)m_cost_data_miss_frz/m_cpt_data_miss << std::endl 
+        << "- WRITE COST             = " << (float)m_cost_write_frz/m_cpt_write << std::endl        
+        << "- UNC COST               = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl
         << "- UNCACHED READ RATE     = " << (float)m_cpt_unc_read/m_cpt_read << std::endl 
         << "- CACHED WRITE RATE      = " << (float)m_cpt_write_cached/m_cpt_write << std::endl 
-        << "- IMISS_RATE             = " << (float)m_cpt_ins_miss/m_cpt_ins_read << std::endl
-        << "- DMISS RATE             = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl 
-        << "- INS MISS COST          = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl
-        << "- IMISS TRANSACTION      = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl
-        << "- DMISS COST             = " << (float)m_cost_data_miss_frz/m_cpt_data_miss << std::endl
-        << "- DMISS TRANSACTION      = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl
-        << "- UNC COST               = " << (float)m_cost_unc_read_frz/m_cpt_unc_read << std::endl
-        << "- UNC TRANSACTION        = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl
-        << "- WRITE COST             = " << (float)m_cost_write_frz/m_cpt_write << std::endl
-        << "- WRITE TRANSACTION      = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl
-        << "- WRITE LENGTH           = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl
         << "- INS TLB MISS RATE      = " << (float)m_cpt_ins_tlb_miss/m_cpt_ins_tlb_read << std::endl
         << "- DATA TLB MISS RATE     = " << (float)m_cpt_data_tlb_miss/m_cpt_data_tlb_read << std::endl
+        << "- ITLB MISS COST         = " << (float)m_cost_ins_tlb_miss_frz/m_cpt_ins_tlb_miss << std::endl
+        << "- DTLB MISS COST         = " << (float)m_cost_data_tlb_miss_frz/m_cpt_data_tlb_miss << std::endl      
+        << "- ITLB UPDATE ACC COST   = " << (float)m_cost_ins_tlb_update_acc_frz/m_cpt_ins_tlb_update_acc << std::endl
+        << "- DTLB UPDATE ACC COST   = " << (float)m_cost_data_tlb_update_acc_frz/m_cpt_data_tlb_update_acc << std::endl
+        << "- DTLB UPDATE DIRTY COST = " << (float)m_cost_data_tlb_update_dirty_frz/m_cpt_data_tlb_update_dirty << std::endl
+        << "- ITLB HIT IN DCACHE RATE= " << (float)m_cpt_ins_tlb_hit_dcache/m_cpt_ins_tlb_miss << std::endl
+        << "- DTLB HIT IN DCACHE RATE= " << (float)m_cpt_data_tlb_hit_dcache/m_cpt_data_tlb_miss << std::endl
+        << "- DCACHE FROZEN BY TLB OP= " << (float)(m_cost_ins_tlb_occup_cache_frz+m_cost_data_tlb_occup_cache_frz)/m_cpt_dcache_frz_cycles << std::endl
+        << "- DCACHE FOR TLB %       = " << (float)(m_cpt_ins_tlb_occup_cache+m_cpt_data_tlb_occup_cache)/(m_dcache_ways*m_dcache_sets) << std::endl
+        << "- IMISS TRANSACTION      = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl
+        << "- DMISS TRANSACTION      = " << (float)m_cost_dmiss_transaction/m_cpt_dmiss_transaction << std::endl
+        << "- UNC TRANSACTION        = " << (float)m_cost_unc_transaction/m_cpt_unc_transaction << std::endl
+        << "- WRITE TRANSACTION      = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl
+        << "- WRITE LENGTH           = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl
         << "- ITLB MISS TRANSACTION  = " << (float)m_cost_itlbmiss_transaction/m_cpt_itlbmiss_transaction << std::endl
-        << "- ITLB WRITE TRANSACTION = " << (float)m_cost_itlb_write_transaction/m_cpt_itlb_write_transaction << std::endl
-        << "- ITLB MISS COST         = " << (float)m_cost_ins_tlb_miss_frz/(m_cpt_ins_tlb_miss+m_cpt_ins_tlb_write_et) << std::endl
-        << "- DTLB MISS TRANSACTION  = " << (float)m_cost_dtlbmiss_transaction/m_cpt_dtlbmiss_transaction << std::endl
-        << "- DTLB WRITE TRANSACTION = " << (float)m_cost_dtlb_write_transaction/m_cpt_dtlb_write_transaction << std::endl
-        << "- DTLB MISS COST         = " << (float)m_cost_data_tlb_miss_frz/(m_cpt_data_tlb_miss+m_cpt_data_tlb_write_et+m_cpt_data_tlb_write_dirty) << std::endl;
+        << "- DTLB MISS TRANSACTION  = " << (float)m_cost_dtlbmiss_transaction/m_cpt_dtlbmiss_transaction << std::endl;
 }
 
 /*************************************************/
@@ -351,7 +357,7 @@ tmpl(void)::transition()
 
         r_dcache_dirty_save      = false;
         r_dcache_hit_p_save      = false;
-
+        r_dcache_cached_save     = false;
         r_icache_buf_unc_valid   = false;
         r_dcache_buf_unc_valid   = false;
 
@@ -384,8 +390,9 @@ tmpl(void)::transition()
         m_cpt_icache_dir_read   = 0;
         m_cpt_icache_dir_write  = 0;
 
-	    m_cpt_frz_cycles   = 0;
-        m_cpt_total_cycles = 0;
+	    m_cpt_frz_cycles        = 0;
+        m_cpt_dcache_frz_cycles = 0;
+        m_cpt_total_cycles      = 0;
 
         m_cpt_read         = 0;
         m_cpt_write        = 0;
@@ -400,38 +407,59 @@ tmpl(void)::transition()
         m_cost_unc_read_frz  = 0;
         m_cost_ins_miss_frz  = 0;
 
-        m_cpt_imiss_transaction = 0;
-        m_cpt_dmiss_transaction = 0;
-        m_cpt_unc_transaction   = 0;
-        m_cpt_write_transaction = 0;
+        m_cpt_imiss_transaction      = 0;
+        m_cpt_dmiss_transaction      = 0;
+        m_cpt_unc_transaction        = 0;
+        m_cpt_write_transaction      = 0;
+        m_cpt_icache_unc_transaction = 0;
 
-        m_cost_imiss_transaction   = 0;
-        m_cost_dmiss_transaction   = 0;
-        m_cost_unc_transaction     = 0;
-        m_cost_write_transaction   = 0;
-        m_length_write_transaction = 0;
+        m_cost_imiss_transaction      = 0;
+        m_cost_dmiss_transaction      = 0;
+        m_cost_unc_transaction        = 0;
+        m_cost_write_transaction      = 0;
+        m_cost_icache_unc_transaction = 0;
+        m_length_write_transaction    = 0;
 
-        m_cpt_ins_tlb_read         = 0;             
-        m_cpt_ins_tlb_miss         = 0;             
-        m_cpt_ins_tlb_write_et     = 0;         
+        m_cpt_ins_tlb_read       = 0;             
+        m_cpt_ins_tlb_miss       = 0;             
+        m_cpt_ins_tlb_update_acc = 0;         
 
-        m_cpt_data_tlb_read        = 0;           
-        m_cpt_data_tlb_miss        = 0;           
-        m_cpt_data_tlb_write_et    = 0;       
-        m_cpt_data_tlb_write_dirty = 0;    
+        m_cpt_data_tlb_read         = 0;           
+        m_cpt_data_tlb_miss         = 0;           
+        m_cpt_data_tlb_update_acc   = 0;       
+        m_cpt_data_tlb_update_dirty = 0;    
+        m_cpt_ctxt_sw               = 0;
+        m_cpt_ins_tlb_hit_dcache    = 0;
+        m_cpt_data_tlb_hit_dcache   = 0;
+        m_cpt_ins_tlb_occup_cache   = 0;
+        m_cpt_data_tlb_occup_cache  = 0;
 
-        m_cost_ins_tlb_miss_frz    = 0;      
-        m_cost_data_tlb_miss_frz   = 0;      
+        m_cost_ins_tlb_miss_frz          = 0;      
+        m_cost_data_tlb_miss_frz         = 0;      
+        m_cost_ins_tlb_update_acc_frz    = 0;
+        m_cost_data_tlb_update_acc_frz   = 0;
+        m_cost_data_tlb_update_dirty_frz = 0;
+        m_cost_ctxt_sw_frz               = 0;
+        m_cost_ins_tlb_occup_cache_frz   = 0;
+        m_cost_data_tlb_occup_cache_frz  = 0;
 
-        m_cpt_itlbmiss_transaction   = 0;    
-        m_cpt_itlb_write_transaction = 0;  
-        m_cpt_dtlbmiss_transaction   = 0;  
-        m_cpt_dtlb_write_transaction = 0;  
+        m_cpt_itlbmiss_transaction      = 0;    
+        m_cpt_itlb_ll_transaction       = 0;  
+        m_cpt_itlb_sc_transaction       = 0;  
+        m_cpt_dtlbmiss_transaction      = 0;  
+        m_cpt_dtlb_ll_transaction       = 0;  
+        m_cpt_dtlb_sc_transaction       = 0;  
+        m_cpt_dtlb_ll_dirty_transaction = 0;  
+        m_cpt_dtlb_sc_dirty_transaction = 0;  
  
-        m_cost_itlbmiss_transaction   = 0;   
-        m_cost_itlb_write_transaction = 0;  
-        m_cost_dtlbmiss_transaction   = 0;   
-        m_cost_dtlb_write_transaction = 0;   
+        m_cost_itlbmiss_transaction      = 0;   
+        m_cost_itlb_ll_transaction       = 0;  
+        m_cost_itlb_sc_transaction       = 0;  
+        m_cost_dtlbmiss_transaction      = 0;   
+        m_cost_dtlb_ll_transaction       = 0;   
+        m_cost_dtlb_sc_transaction       = 0;   
+        m_cost_dtlb_ll_dirty_transaction = 0;   
+        m_cost_dtlb_sc_dirty_transaction = 0;   
         return;
     }
 
@@ -490,8 +518,10 @@ tmpl(void)::transition()
     //----------------------------------------------------------------------------------- 
     // Instruction TLB: 
     //  
-    // - int        ET          (00: unmapped; 01: unused or PTD)
-    //                          (10: PTE new;  11: PTE old      )
+    // - bool       valid       (valid bit)
+    // - bool       type        (1 is PTD; 0 is PTE)
+    // - bool       local acc   (local access bit)
+    // - bool       remote acc  (remote access bit)
     // - bool       cachable    (cached bit)
     // - bool       writable    (** not used alwayse false) 
     // - bool       executable  (executable bit)
@@ -651,7 +681,7 @@ tmpl(void)::transition()
                 r_icache_paddr_save = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((ireq.addr>>PAGE_M_NBITS)<<2);
                 r_itlb_read_dcache_req = true;
                 r_icache_fsm = ICACHE_TLB1_READ;
-		r_icache_vaddr_req = ireq.addr;
+		        r_icache_vaddr_req = ireq.addr;
                 m_cpt_ins_tlb_miss++;
                 m_cost_ins_tlb_miss_frz++;
             }
@@ -662,7 +692,7 @@ tmpl(void)::transition()
                                       (paddr_t)(((ireq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                 r_itlb_read_dcache_req = true;
                 r_icache_fsm = ICACHE_TLB2_READ;
-		r_icache_vaddr_req = ireq.addr;
+		        r_icache_vaddr_req = ireq.addr;
                 m_cpt_ins_tlb_miss++;
                 m_cost_ins_tlb_miss_frz++;
             }
@@ -670,8 +700,8 @@ tmpl(void)::transition()
             {
                 r_icache_paddr_save = tlb_ipaddr;   // save actual physical address for BIS
                 r_icache_fsm = ICACHE_BIS;
-		r_icache_vaddr_req = ireq.addr;
-                m_cost_ins_miss_frz++;
+		        r_icache_vaddr_req = ireq.addr;
+                m_cost_ins_tlb_miss_frz++;
             }
             else    // cached or uncached access with a correct speculative physical address 
             {        
@@ -685,7 +715,7 @@ tmpl(void)::transition()
                         r_icache_miss_req = true;
                         r_icache_paddr_save = spc_ipaddr; 
                         r_icache_fsm = ICACHE_MISS_WAIT;
-			r_icache_vaddr_req = ireq.addr;
+			            r_icache_vaddr_req = ireq.addr;
                     } 
                     else 
                     {
@@ -693,7 +723,7 @@ tmpl(void)::transition()
                         r_icache_buf_unc_valid = false;
                         r_icache_paddr_save = tlb_ipaddr; 
                         r_icache_fsm = ICACHE_UNC_WAIT;
-			r_icache_vaddr_req = ireq.addr;
+			            r_icache_vaddr_req = ireq.addr;
                     } 
                 } 
                 else 
@@ -717,7 +747,6 @@ tmpl(void)::transition()
         paddr_t     tlb_ipaddr     = 0;         // physical address obtained from TLB      
  
         // acces always cached and MMU activated in this state
-        m_cpt_ins_tlb_read++;
         m_cpt_icache_dir_read += m_icache_ways;
         m_cpt_icache_data_read += m_icache_ways;
 
@@ -742,7 +771,7 @@ tmpl(void)::transition()
                 r_icache_fsm = ICACHE_IDLE;
             }
             irsp.valid = icache_hit_c;
-	    if (irsp.valid)
+	        if (irsp.valid)
 	            assert((r_icache_vaddr_req.read() == ireq.addr) &&
 		        "vaddress should not be modified while ICACHE_BIS");
             irsp.error = false;
@@ -764,12 +793,13 @@ tmpl(void)::transition()
 
         if ( !r_itlb_read_dcache_req ) // TLB miss read response
         {
-	    if (r_icache_vaddr_req.read() != ireq.addr || !ireq.valid) {
-		/* request modified, drop response and restart */
-		r_icache_ptba_ok = false;
-		r_icache_fsm = ICACHE_IDLE;
-		break;
-	    }
+	        if (r_icache_vaddr_req.read() != ireq.addr || !ireq.valid) 
+            {
+		        /* request modified, drop response and restart */
+		        r_icache_ptba_ok = false;
+		        r_icache_fsm = ICACHE_IDLE;
+		        break;
+	        }
 		
             if (!r_dcache_rsp_itlb_error ) // vci response ok
             { 
@@ -806,7 +836,8 @@ tmpl(void)::transition()
                             r_icache_pte_update   = r_dcache_rsp_itlb_miss | PTE_L_MASK;
                             r_itlb_acc_dcache_req = true;
                             r_icache_fsm          = ICACHE_TLB1_WRITE;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_ins_tlb_update_acc++;
+                            m_cost_ins_tlb_update_acc_frz++;
 	                    }
                     }
 	                else // remotely
@@ -821,7 +852,8 @@ tmpl(void)::transition()
                             r_icache_pte_update   = r_dcache_rsp_itlb_miss | PTE_R_MASK;
                             r_itlb_acc_dcache_req = true;
                             r_icache_fsm          = ICACHE_TLB1_WRITE;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_ins_tlb_update_acc++;
+                            m_cost_ins_tlb_update_acc_frz++;
 	                    }
 	                }
 	            }
@@ -839,6 +871,7 @@ tmpl(void)::transition()
     case ICACHE_TLB1_WRITE:  
     {
         if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
 
         if (!r_itlb_acc_dcache_req )        
         { 
@@ -859,6 +892,7 @@ tmpl(void)::transition()
     case ICACHE_TLB1_UPDT:
     {
         if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
 
         icache_tlb.update(r_icache_pte_update,r_icache_vaddr_req.read());
         r_icache_fsm = ICACHE_IDLE;
@@ -871,12 +905,14 @@ tmpl(void)::transition()
 
         if ( !r_itlb_read_dcache_req )
         { 
-	    if (r_icache_vaddr_req.read() != ireq.addr || !ireq.valid) {
-		/* request modified, drop response and restart */
-		r_icache_ptba_ok = false;
-		r_icache_fsm = ICACHE_IDLE;
-		break;
-	    }
+	        if (r_icache_vaddr_req.read() != ireq.addr || !ireq.valid) 
+            {
+		        /* request modified, drop response and restart */
+		        r_icache_ptba_ok = false;
+		        r_icache_fsm = ICACHE_IDLE;
+		        break;
+	        }
+
             if ( !r_dcache_rsp_itlb_error ) // VCI response ok        
             {
 	            if ( !(r_dcache_rsp_itlb_miss >> PTE_V_SHIFT) ) // unmapped
@@ -899,7 +935,8 @@ tmpl(void)::transition()
                             r_icache_pte_update   = r_dcache_rsp_itlb_miss | PTE_L_MASK;
                             r_itlb_acc_dcache_req = true;
                             r_icache_fsm          = ICACHE_TLB2_WRITE;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_ins_tlb_update_acc++;
+                            m_cost_ins_tlb_update_acc_frz++;
 	                    }
                     }
 	                else // remotely
@@ -914,7 +951,8 @@ tmpl(void)::transition()
                             r_icache_pte_update   = r_dcache_rsp_itlb_miss | PTE_R_MASK;
                             r_itlb_acc_dcache_req = true;
                             r_icache_fsm          = ICACHE_TLB2_WRITE;
-                            m_cpt_ins_tlb_write_et++;
+                            m_cpt_ins_tlb_update_acc++;
+                            m_cost_ins_tlb_update_acc_frz++;
 	                    }
 	                }
 	            }
@@ -932,6 +970,7 @@ tmpl(void)::transition()
     case ICACHE_TLB2_WRITE:
     {  
         if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
 
         if (!r_itlb_acc_dcache_req)         
         {
@@ -952,6 +991,7 @@ tmpl(void)::transition()
     case ICACHE_TLB2_UPDT: 
     {
         if ( ireq.valid ) m_cost_ins_tlb_miss_frz++;
+        m_cost_ins_tlb_update_acc_frz++;
 
         icache_tlb.update(r_icache_pte_update,r_dcache_rsp_itlb_ppn,r_icache_vaddr_req.read()); 
         r_icache_fsm = ICACHE_IDLE;  
@@ -1122,8 +1162,10 @@ tmpl(void)::transition()
     //--------------------------------------------------------------------- 
     // Data TLB: 
     //  
-    // - int        ET          (00: unmapped; 01: unused or PTD)
-    //                          (10: PTE new;  11: PTE old      )
+    // - bool       valid       (valid bit)
+    // - bool       type        (1 is PTD; 0 is PTE)
+    // - bool       local acc   (local access bit)
+    // - bool       remote acc  (remote access bit)
     // - bool       cachable    (cached bit)
     // - bool       writable    (writable bit) 
     // - bool       executable  (** not used alwayse false)
@@ -1179,6 +1221,8 @@ tmpl(void)::transition()
         // instruction tlb miss
     	if ( r_itlb_read_dcache_req )
     	{
+            if ( dreq.valid ) m_cost_ins_tlb_occup_cache_frz++; 
+    
             data_t rsp_itlb_miss;
             data_t rsp_itlb_ppn;
 
@@ -1192,6 +1236,7 @@ tmpl(void)::transition()
 
     	    if ( itlb_hit_dcache ) // ins TLB request hits in data cache
     	    {
+                if (!((rsp_itlb_miss & PTE_T_MASK ) >> PTE_T_SHIFT)) m_cpt_ins_tlb_hit_dcache++;
                 r_dcache_rsp_itlb_miss = rsp_itlb_miss; 
                 r_dcache_rsp_itlb_ppn = rsp_itlb_ppn;
     	    	r_itlb_read_dcache_req = false;
@@ -1205,6 +1250,7 @@ tmpl(void)::transition()
     	}
     	else if ( r_itlb_acc_dcache_req )  // instruction tlb ET write
     	{
+            if ( dreq.valid ) m_cost_ins_tlb_occup_cache_frz++; 
             r_dcache.write(r_icache_paddr_save, r_icache_pte_update);
             //assert(write_hit && "Write on miss ignores data");
             r_dcache_itlb_ll_acc_req = true;
@@ -1318,6 +1364,7 @@ tmpl(void)::transition()
                         r_dcache_type_save = dreq.addr/4; 
                         r_dcache_xtn_req = true;
                         r_dcache_fsm = DCACHE_CTXT_SWITCH;
+                        m_cpt_ctxt_sw++;
                     } 
                     else 
                     { 
@@ -1583,6 +1630,7 @@ tmpl(void)::transition()
             {
                 r_dcache_hit_p_save = dcache_hit_p;
                 r_dcache_fsm = DCACHE_BIS;
+                m_cost_data_tlb_miss_frz++;
             }
             else  // cached or uncached access with a correct speculative physical address
             {
@@ -1619,6 +1667,7 @@ tmpl(void)::transition()
                     case iss_t::DATA_WRITE:
                         m_cpt_write++;
                         if ( dcache_cached ) m_cpt_write_cached++;
+                        m_cost_write_frz++;
 
                         if ( dcache_hit_c && dcache_cached )    // cache update required
                         {
@@ -1626,13 +1675,14 @@ tmpl(void)::transition()
                         } 
                         else if ((r_mmu_mode.read() & DATA_TLB_MASK) && !dcache_pte_info.d)   // dirty bit update required
                         {
+                            m_cpt_data_tlb_update_dirty++;
+                            m_cost_data_tlb_update_dirty_frz++;
                             if (dcache_tlb.getpagesize(dcache_tlb_way, dcache_tlb_set)) 
                             {
                                 r_dcache_pte_update = dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
                                 r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                                 r_dcache_tlb_ll_dirty_req = true;
                                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                                m_cpt_data_tlb_write_dirty++;
                             }
                             else
                             {   
@@ -1642,7 +1692,6 @@ tmpl(void)::transition()
                                     r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                                     r_dcache_tlb_ll_dirty_req = true;
                                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                                    m_cpt_data_tlb_write_dirty++;
                                 }
                                 else    // get PTBA to calculate the physical address of PTE
                                 {
@@ -1698,7 +1747,7 @@ tmpl(void)::transition()
         data_t      dcache_rdata = 0;       // read data
         bool        dcache_hit_c = false;   // cache hit
         bool        dcache_hit_t = false;   // TLB hit        
-        paddr_t     tlb_dpaddr   = 0;       // physical address obtained from TLB    
+        paddr_t     tlb_dpaddr   = 0;       // physical address obtained from TLB   
  
         // processor address translation
         dcache_hit_t = dcache_tlb.translate(dreq.addr, &tlb_dpaddr);
@@ -1730,6 +1779,8 @@ tmpl(void)::transition()
             {
                 m_cpt_write++;
                 m_cpt_write_cached++;
+                m_cost_write_frz++;
+
                 if ( dcache_hit_c )    // cache update required
                 {
                 	r_dcache_rdata_save = dcache_rdata;
@@ -1737,13 +1788,15 @@ tmpl(void)::transition()
                 } 
                 else if (!r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   // dirty bit update required
                 {
+                    m_cpt_data_tlb_update_dirty++;
+                    m_cost_data_tlb_update_dirty_frz++;
+
                     if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save)) 
                     {
                         r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
                         r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                         r_dcache_tlb_ll_dirty_req = true;
                         r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                        m_cpt_data_tlb_write_dirty++;
                     }
                     else
                     {   
@@ -1753,7 +1806,6 @@ tmpl(void)::transition()
                             r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                             r_dcache_tlb_ll_dirty_req = true;
                             r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                            m_cpt_data_tlb_write_dirty++;
                         }
                         else
                         {
@@ -1784,6 +1836,8 @@ tmpl(void)::transition()
     //////////////////////////
     case DCACHE_LL_DIRTY_WAIT:
     {
+        m_cost_data_tlb_update_dirty_frz++;
+
         if (!r_dcache_tlb_ll_dirty_req)
         {
             if ( r_vci_rsp_data_error ) // VCI response ko
@@ -1827,6 +1881,8 @@ tmpl(void)::transition()
     //////////////////////////
     case DCACHE_SC_DIRTY_WAIT:
     {
+        m_cost_data_tlb_update_dirty_frz++;
+
         if ( !r_dcache_tlb_sc_dirty_req && r_vci_rsp_data_error ) // VCI response ko
 	    {
 	        if (dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save))
@@ -1891,7 +1947,7 @@ tmpl(void)::transition()
                     //assert(write_hit && "Write on miss ignores data");
                     r_dcache_tlb_ll_dirty_req = true;
                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                    m_cpt_data_tlb_write_dirty++;
+                    m_cost_data_tlb_update_dirty_frz++;
                 }
                 else
                 {
@@ -1900,6 +1956,7 @@ tmpl(void)::transition()
 	        }
 	        else	// PTE
 	        {
+                m_cpt_data_tlb_hit_dcache++;
                 r_dcache_ptba_ok = false;
 	            if ( (m_srcid >> 4) == ((r_dcache_tlb_paddr.read() & ((1<<(m_paddr_nbits - PAGE_M_NBITS))-1)) >> (m_paddr_nbits - PAGE_M_NBITS -10)) ) // local
 	            {
@@ -1915,7 +1972,8 @@ tmpl(void)::transition()
                         write_hit = r_dcache.write(r_dcache_tlb_paddr,(tlb_data | PTE_L_MASK));  
                         assert(write_hit && "Write on miss ignores data");  
                         r_dcache_fsm = DCACHE_TLB1_LL_WAIT;
-                        m_cpt_ins_tlb_write_et++;
+                        m_cpt_data_tlb_update_acc++;
+                        m_cost_data_tlb_update_acc_frz++;
 	                }
                 }
 	            else // remotely
@@ -1932,7 +1990,8 @@ tmpl(void)::transition()
                         write_hit = r_dcache.write(r_dcache_tlb_paddr,(tlb_data | PTE_R_MASK));  
                         assert(write_hit && "Write on miss ignores data");  
                         r_dcache_fsm = DCACHE_TLB1_LL_WAIT;
-                        m_cpt_ins_tlb_write_et++;
+                        m_cpt_data_tlb_update_acc++;
+                        m_cost_data_tlb_update_acc_frz++;
 	                }
 	            }
 	        }
@@ -1942,12 +2001,16 @@ tmpl(void)::transition()
             // DTLB request miss in cache and walk page table level 1
             r_dcache_tlb_read_req = true;
             r_dcache_fsm = DCACHE_TLB1_READ;
+            m_cpt_data_tlb_miss_cache++;
         }
         break;
     }
     ///////////////////////
     case DCACHE_TLB1_LL_WAIT:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_acc_frz++;
+
 	    if (!r_dcache_tlb_ll_acc_req)
 	    {
             if ( r_vci_rsp_data_error ) // VCI response ko
@@ -1991,6 +2054,9 @@ tmpl(void)::transition()
     ///////////////////////
     case DCACHE_TLB1_SC_WAIT:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_acc_frz++;
+
         if ( !r_dcache_tlb_sc_acc_req && r_vci_rsp_data_error ) // VCI response ko
 	    {
             if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
@@ -2052,7 +2118,8 @@ tmpl(void)::transition()
         bool write_hit = false;
         r_dcache.update(r_dcache_tlb_paddr, r_dcache_miss_buf, &victim_index);
         r_dcache.read(r_dcache_tlb_paddr, &rsp_dtlb_miss);
-	
+        m_cpt_data_tlb_occup_cache++;	
+
 	    if ( !(rsp_dtlb_miss >> PTE_V_SHIFT) )	// unmapped
 	    {
             r_dcache_ptba_ok    = false;
@@ -2082,7 +2149,8 @@ tmpl(void)::transition()
                 //assert(write_hit && "Write on miss ignores data");
                 r_dcache_tlb_ll_dirty_req = true;
                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                m_cpt_data_tlb_write_dirty++;
+                m_cpt_data_tlb_update_dirty++;
+                m_cost_data_tlb_update_dirty_frz++;
             }
             else
             {
@@ -2106,7 +2174,8 @@ tmpl(void)::transition()
                 	write_hit = r_dcache.write(r_dcache_tlb_paddr,(rsp_dtlb_miss | PTE_L_MASK));  
                 	assert(write_hit && "Write on miss ignores data");  
                     r_dcache_fsm        = DCACHE_TLB1_LL_WAIT;
-                    m_cpt_ins_tlb_write_et++;
+                    m_cpt_data_tlb_update_acc++;
+                    m_cost_data_tlb_update_acc_frz++;
 		        }
     	    }
 		    else // remotely
@@ -2123,7 +2192,8 @@ tmpl(void)::transition()
                 	write_hit = r_dcache.write(r_dcache_tlb_paddr,(rsp_dtlb_miss | PTE_R_MASK));  
                 	assert(write_hit && "Write on miss ignores data");  
                     r_dcache_fsm        = DCACHE_TLB1_LL_WAIT;
-                    m_cpt_ins_tlb_write_et++;
+                    m_cpt_data_tlb_update_acc++;
+                    m_cost_data_tlb_update_acc_frz++;
 		        }
 		    }
 	    }
@@ -2178,6 +2248,7 @@ tmpl(void)::transition()
 	        }
             else
             {
+                m_cpt_data_tlb_hit_dcache++;
 	            if ( (m_srcid >> 4) == ((r_dcache_tlb_paddr.read() & ((1<<(m_paddr_nbits - PAGE_M_NBITS))-1)) >> (m_paddr_nbits - PAGE_M_NBITS -10)) ) // local
 		        {
 		            if ( (tlb_data & PTE_L_MASK ) >> PTE_L_SHIFT ) // L bit is set
@@ -2194,7 +2265,8 @@ tmpl(void)::transition()
                 	    write_hit = r_dcache.write(r_dcache_tlb_paddr,(tlb_data | PTE_L_MASK));  
                 	    assert(write_hit && "Write on miss ignores data");  
                         r_dcache_fsm = DCACHE_TLB2_LL_WAIT;
-                        m_cpt_ins_tlb_write_et++;
+                        m_cpt_data_tlb_update_acc++;
+                        m_cost_data_tlb_update_acc_frz++;
 		            }
     	        }
 		        else // remotely
@@ -2213,7 +2285,8 @@ tmpl(void)::transition()
                 	    write_hit = r_dcache.write(r_dcache_tlb_paddr,(tlb_data | PTE_R_MASK));  
                 	    assert(write_hit && "Write on miss ignores data");  
                         r_dcache_fsm = DCACHE_TLB2_LL_WAIT;
-                        m_cpt_ins_tlb_write_et++;
+                        m_cpt_data_tlb_update_acc++;
+                        m_cost_data_tlb_update_acc_frz++;
 		            }
 		        }
             }
@@ -2223,12 +2296,16 @@ tmpl(void)::transition()
             // DTLB request miss in cache and walk page table level 2
             r_dcache_tlb_read_req = true;
             r_dcache_fsm = DCACHE_TLB2_READ;
+            m_cpt_data_tlb_miss_cache++;
         }
         break;
     }
     ///////////////////////
     case DCACHE_TLB2_LL_WAIT:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_acc_frz++;
+
 	    if (!r_dcache_tlb_ll_acc_req)
 	    {
             if ( r_vci_rsp_data_error ) // VCI response ko
@@ -2272,6 +2349,9 @@ tmpl(void)::transition()
     ///////////////////////
     case DCACHE_TLB2_SC_WAIT:
     {
+        if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_acc_frz++;
+
         if ( !r_dcache_tlb_sc_acc_req && r_vci_rsp_data_error ) // VCI response ko
 	    {
             if ((r_dcache_type_save == iss_t::DATA_READ)||(r_dcache_type_save == iss_t::DATA_LL))
@@ -2335,6 +2415,7 @@ tmpl(void)::transition()
 
         r_dcache.update(r_dcache_tlb_paddr, r_dcache_miss_buf, &victim_index);
         r_dcache.read(r_dcache_tlb_paddr, &rsp_dtlb_miss);	
+        m_cpt_data_tlb_occup_cache++;	
 
         bool tlb_hit_ppn = r_dcache.read(r_dcache_tlb_paddr.read()+4, &tlb_data_ppn);	
 	    assert(tlb_hit_ppn && "Address of pte[64-32] and pte[31-0] should be successive");
@@ -2376,7 +2457,8 @@ tmpl(void)::transition()
                 	write_hit = r_dcache.write(r_dcache_tlb_paddr,(rsp_dtlb_miss | PTE_L_MASK));  
                 	assert(write_hit && "Write on miss ignores data");  
                     r_dcache_fsm = DCACHE_TLB2_LL_WAIT;
-                    m_cpt_ins_tlb_write_et++;
+                    m_cpt_data_tlb_update_acc++;
+                    m_cost_data_tlb_update_acc_frz++;
 		        }
     	    }
 		    else // remotely
@@ -2395,7 +2477,8 @@ tmpl(void)::transition()
                 	write_hit = r_dcache.write(r_dcache_tlb_paddr,(rsp_dtlb_miss | PTE_R_MASK));  
                 	assert(write_hit && "Write on miss ignores data");  
                     r_dcache_fsm = DCACHE_TLB2_LL_WAIT;
-                    m_cpt_ins_tlb_write_et++;
+                    m_cpt_data_tlb_update_acc++;
+                    m_cost_data_tlb_update_acc_frz++;
 		        }
 		    }
         }
@@ -2412,6 +2495,8 @@ tmpl(void)::transition()
     ///////////////////////
     case DCACHE_CTXT_SWITCH:
     {
+        m_cost_ctxt_sw_frz++;
+
         dcache_tlb.flush(false);      // global entries are not invalidated   
         if ( !r_dcache_xtn_req ) 
         {
@@ -2569,7 +2654,7 @@ tmpl(void)::transition()
     ///////////////////////
     case DCACHE_WRITE_UPDT:
     {
-        m_cpt_dcache_data_write++;
+        m_cpt_dcache_data_write++; 
         data_t mask = vci_param::be2mask(r_dcache_be_save.read());
         data_t wdata = (mask & r_dcache_wdata_save) | (~mask & r_dcache_rdata_save);
         bool write_hit = r_dcache.write(r_dcache_paddr_save, wdata);
@@ -2577,13 +2662,14 @@ tmpl(void)::transition()
 
         if ( !r_dcache_dirty_save && (r_mmu_mode.read() & DATA_TLB_MASK))   
         {
+            m_cpt_data_tlb_update_dirty++;
+            m_cost_data_tlb_update_dirty_frz++;
             if ( dcache_tlb.getpagesize(r_dcache_tlb_way_save, r_dcache_tlb_set_save) )	// 2M page size, one level page table 
             {
                 r_dcache_pte_update = dcache_tlb.getpte(r_dcache_tlb_way_save, r_dcache_tlb_set_save) | PTE_D_MASK;
                 r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
                 r_dcache_tlb_ll_dirty_req = true;
                 r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                m_cpt_data_tlb_write_dirty++;
             }
             else
             {   
@@ -2593,7 +2679,6 @@ tmpl(void)::transition()
                     r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save|(paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
                     r_dcache_tlb_ll_dirty_req = true;
                     r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
-                    m_cpt_data_tlb_write_dirty++;
                 }
                 else
                 {
@@ -2616,6 +2701,7 @@ tmpl(void)::transition()
     case DCACHE_WRITE_DIRTY:
     {
         if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
+        m_cost_data_tlb_update_dirty_frz++;
 
         r_dcache.write(r_dcache_tlb_paddr, r_dcache_pte_update);
         dcache_tlb.setdirty(r_dcache_tlb_way_save, r_dcache_tlb_set_save);
@@ -2637,6 +2723,8 @@ tmpl(void)::transition()
     //////////////////////
     case DCACHE_ITLB_READ:
     {
+        if ( dreq.valid ) m_cost_ins_tlb_occup_cache_frz++;
+
     	if ( !r_dcache_itlb_read_req ) // vci response ok
         {  
             if ( r_vci_rsp_data_error )
@@ -2656,11 +2744,14 @@ tmpl(void)::transition()
     //////////////////////
     case DCACHE_ITLB_UPDT:
     {
+        if ( dreq.valid ) m_cost_ins_tlb_occup_cache_frz++;   
+
         data_t rsp_itlb_miss = 0;
         data_t rsp_itlb_ppn = 0;
         paddr_t  victim_index = 0;
         r_dcache.update(r_icache_paddr_save, r_dcache_miss_buf, &victim_index);
         bool itlb_hit_dcache = r_dcache.read(r_icache_paddr_save, &rsp_itlb_miss);	
+        m_cpt_ins_tlb_occup_cache++;
        
 	    if ( (r_icache_fsm == ICACHE_TLB2_READ) && itlb_hit_dcache )
 	    {	
@@ -2677,6 +2768,8 @@ tmpl(void)::transition()
     //////////////////////////
     case DCACHE_ITLB_LL_WAIT:
     {
+        if ( dreq.valid ) m_cost_ins_tlb_occup_cache_frz++;  
+
 	    if (!r_dcache_itlb_ll_acc_req)
 	    {
             if ( r_vci_rsp_data_error ) // VCI response ko
@@ -2707,6 +2800,8 @@ tmpl(void)::transition()
     //////////////////////////
     case DCACHE_ITLB_SC_WAIT:
     {
+        if ( dreq.valid ) m_cost_ins_tlb_occup_cache_frz++;  
+
         if ( !r_dcache_itlb_sc_acc_req && r_vci_rsp_data_error ) // VCI response ko
 	    {
             r_dcache_rsp_itlb_error = true;  
@@ -2744,6 +2839,10 @@ tmpl(void)::transition()
         m_cpt_frz_cycles++;
     }
 
+    if ( dreq.valid && !drsp.valid ) 
+    {
+        m_cpt_dcache_frz_cycles++;
+    }
     ////////////////////////////////////////////////////////////////////////////
     //     VCI_CMD FSM 
     //
@@ -2781,12 +2880,12 @@ tmpl(void)::transition()
 	    else if (r_dcache_itlb_ll_acc_req)
 	    {
 	        r_vci_cmd_fsm = CMD_ITLB_ACC_LL;
-            m_cpt_itlb_write_transaction++; 
+            m_cpt_itlb_ll_transaction++; 
 	    }
 	    else if (r_dcache_itlb_sc_acc_req)
 	    {
 	        r_vci_cmd_fsm = CMD_ITLB_ACC_SC;
-            m_cpt_itlb_write_transaction++; 
+            m_cpt_itlb_sc_transaction++; 
 	    }
         else if (r_icache_miss_req) 
         {    
@@ -2796,7 +2895,7 @@ tmpl(void)::transition()
         else if (r_icache_unc_req) 
         {    
             r_vci_cmd_fsm = CMD_INS_UNC;
-            m_cpt_imiss_transaction++; 
+            m_cpt_icache_unc_transaction++; 
         }  
         else if (r_dcache_tlb_read_req) 
         {            
@@ -2806,22 +2905,22 @@ tmpl(void)::transition()
         else if (r_dcache_tlb_ll_acc_req) 
         {  
             r_vci_cmd_fsm = CMD_DTLB_ACC_LL;
-            m_cpt_dtlb_write_transaction++; 
+            m_cpt_dtlb_ll_transaction++; 
         } 
         else if (r_dcache_tlb_sc_acc_req) 
         {  
             r_vci_cmd_fsm = CMD_DTLB_ACC_SC;
-            m_cpt_dtlb_write_transaction++; 
+            m_cpt_dtlb_sc_transaction++; 
         } 
         else if (r_dcache_tlb_ll_dirty_req) 
         {  
             r_vci_cmd_fsm = CMD_DTLB_DIRTY_LL;
-            m_cpt_dtlb_write_transaction++; 
+            m_cpt_dtlb_ll_dirty_transaction++; 
         } 
         else if (r_dcache_tlb_sc_dirty_req) 
         {  
             r_vci_cmd_fsm = CMD_DTLB_DIRTY_SC;
-            m_cpt_dtlb_write_transaction++; 
+            m_cpt_dtlb_sc_dirty_transaction++; 
         } 
         else if (r_dcache_write_req)
         {
@@ -2901,7 +3000,7 @@ tmpl(void)::transition()
         {   
             r_vci_rsp_fsm = RSP_INS_UNC;
         }  
-        else if (r_dcache_tlb_read_req)     // ITLB miss response
+        else if (r_dcache_tlb_read_req)     // DTLB miss response
         {
             r_vci_rsp_fsm = RSP_DTLB_READ; 
         }
@@ -2959,6 +3058,7 @@ tmpl(void)::transition()
         break;
 
     case RSP_ITLB_ACC_LL:
+        m_cost_itlb_ll_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -2978,6 +3078,7 @@ tmpl(void)::transition()
 	    break;
 
     case RSP_ITLB_ACC_SC:
+        m_cost_itlb_sc_transaction++;
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -3021,7 +3122,7 @@ tmpl(void)::transition()
         break;
 
     case RSP_INS_UNC:
-        m_cost_imiss_transaction++;
+        m_cost_icache_unc_transaction++; 
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -3063,6 +3164,7 @@ tmpl(void)::transition()
         break;
 
     case RSP_DTLB_ACC_LL:
+        m_cost_dtlb_ll_transaction++; 
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -3082,6 +3184,7 @@ tmpl(void)::transition()
 	    break;
 
     case RSP_DTLB_ACC_SC:
+        m_cost_dtlb_sc_transaction++; 
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -3101,6 +3204,7 @@ tmpl(void)::transition()
 	    break;
 
     case RSP_DTLB_DIRTY_LL:
+        m_cost_dtlb_ll_dirty_transaction++; 
         if ( ! p_vci.rspval.read() )
             break;
 
@@ -3120,6 +3224,7 @@ tmpl(void)::transition()
 	    break;
 
     case RSP_DTLB_DIRTY_SC:
+        m_cost_dtlb_sc_dirty_transaction++; 
         if ( ! p_vci.rspval.read() )
             break;
 
