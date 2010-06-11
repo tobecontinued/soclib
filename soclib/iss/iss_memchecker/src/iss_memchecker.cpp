@@ -674,8 +674,17 @@ public:
     AddressInfo *info_for_address(uint64_t address)
     {
         region_map_t::iterator i = m_regions.upper_bound(address);
+
+#if defined(SOCLIB_MODULE_DEBUG)
+        std::cout
+            << "info_for_address(" << std::hex << address << "): " << i->first << " is_end: " << (i == m_regions.end()) << std::endl;
+#endif
+
+        if ( ! ( i == m_regions.end() && (--i)->first <= address ) )
+            ++i;
+
         while ( i != m_regions.begin()
-             && i->first > address )
+                && i->first > address )
             --i;
 
         if ( i == m_regions.end() ) {
@@ -714,7 +723,7 @@ public:
         RegionInfo *nri = lri->get_updated_region( new_state, at, addr, addr+size );
 
 #if defined(SOCLIB_MODULE_DEBUG)
-        std::cout << "Updating " << *nri << std::endl;
+        std::cout << "Updating " << *lri << " to " << *nri << std::endl;
 #endif
 
         for ( context_map_t::const_iterator i = m_contexts.begin();
