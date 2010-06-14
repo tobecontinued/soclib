@@ -51,6 +51,7 @@
 #ifndef _SOCLIB_NIOS2_ISS_H_
 #define _SOCLIB_NIOS2_ISS_H_
 
+#include <fstream>
 #include <cassert>
 
 #include "iss2.h"
