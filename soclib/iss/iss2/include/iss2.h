@@ -427,6 +427,11 @@ public:
         ISS_DEBUG_REG_STACK_REDZONE_SIZE        = 100002,
     };
 
+    /** Dump processor state (optional) */
+    virtual void dump() const
+    {
+    }
+
 protected:
     
     /**
