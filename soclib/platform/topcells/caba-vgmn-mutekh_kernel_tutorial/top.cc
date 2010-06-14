@@ -15,9 +15,11 @@
 # include "iss_memchecker.h"
 # include "gdbserver.h"
 
+# include "niosII.h"
 # include "mips32.h"
 # include "ppc405.h"
 # include "arm.h"
+# include "sparcv8.h"
 
 #include "mapping_table.h"
 
@@ -94,7 +96,7 @@ CPU_CONNECT(cpu_connect)
   e->irq_sig_count = Iss::n_irq;
   e->irq_sig = new sc_core::sc_signal<bool>[Iss::n_irq];
 
-  for ( size_t irq = 0; irq < Iss::n_irq; ++irq )
+  for ( size_t irq = 0; irq < (size_t)Iss::n_irq; ++irq )
     cpu->p_irq[irq](e->irq_sig[irq]); 
 
   cpu->p_vci(m);
@@ -155,9 +157,17 @@ struct CpuEntry * newCpuEntry(const std::string &type, int id, common::Loader *l
       if (type == "arm")
 	return newCpuEntry_<common::ArmIss>(e);
 
+    case 'n':
+      if (type == "niosII")
+	return newCpuEntry_<common::Nios2fIss>(e);
+
     case 'p':
       if (type == "ppc405")
 	return newCpuEntry_<common::Ppc405Iss>(e);
+
+    case 's':
+      if (type == "sparcv8")
+	return newCpuEntry_<common::Sparcv8Iss<8> >(e);
     }
 
   throw std::runtime_error(type + ": wrong processor type");
@@ -176,7 +186,8 @@ int _main(int argc, char **argv)
 
   // Mapping table
 
-  maptab.add(Segment("resetarm",  0x00000000, 0x0200, IntTab(1), true));
+  maptab.add(Segment("resetnios", 0x00802000, 0x1000, IntTab(1), true));
+  maptab.add(Segment("resetarmsparc", 0x00000000, 0x1000, IntTab(1), true));
   maptab.add(Segment("resetmips", 0xbfc00000, 0x1000, IntTab(1), true));
   maptab.add(Segment("resetppc",  0xffffff80, 0x0080, IntTab(1), true));
 
@@ -188,9 +199,12 @@ int _main(int argc, char **argv)
   maptab.add(Segment("xicu",      0xd2200000, 0x00001000, IntTab(4), false));
   maptab.add(Segment("bdev0",     0xd1200000, 0x00000020, IntTab(5), false));
 
+  std::cerr << "caba-vgmn-mutekh_kernel_tutorial SoCLib simulator for MutekH" << std::endl;
+
   if ( (argc < 2) || ((argc % 2) == 0) )
     {
-      std::cerr << std::endl << "usage: " << *argv << " < cpu-type[:count] kernel-binary-file > ... " << std::endl;
+      std::cerr << std::endl << "usage: " << *argv << " < cpu-type[:count] kernel-binary-file > ... " << std::endl
+		<<   "available cpu types: arm, mips32el, mips32eb, niosII, ppc405, sparcv8" << std::endl;
       exit(0);
     }
   argc--;
