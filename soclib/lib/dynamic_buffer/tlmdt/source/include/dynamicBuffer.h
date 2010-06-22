@@ -53,7 +53,7 @@ class DynamicBuffer{
 
   //Customer Private
   size_t c_size, c_real_size;
-  DynamicBufferElement<T> *c_gen_pt1, *c_begin, *c_end;
+  DynamicBufferElement<T> *c_gen_pt1, *c_gen_pt2, *c_begin, *c_end;
 
  public:
   //ITERATOR
@@ -84,7 +84,7 @@ class DynamicBuffer{
     inline bool     operator!=(const iterator &it){return e != it.e;}
     inline iterator advance(int n){for(int i=0;i<n;i++)++*this; return *this;}
     inline T operator*(){return *e;}
-    inline operator T(){return *e;}
+    inline operator T(){return *e;} //For Casting Issues
   };
   friend std::ostream &operator<<(std::ostream &os,const iterator &it){
     return os << it.e;
@@ -119,7 +119,7 @@ class DynamicBuffer{
     inline reverse_iterator operator!=(iterator &it){return e != it.e;}
     inline reverse_iterator advance(int n){for(int i=0;i<n;i++)++*this; return *this;}
     inline T operator*(){return *e;}
-    inline operator T(){return *e;}
+    inline operator T(){return *e;} //For Casting Issues
   };
   friend std::ostream &operator<<(std::ostream &os,const reverse_iterator &it){
     return os << it.e;
@@ -169,7 +169,7 @@ class DynamicBuffer{
   }
 
  public:
-  DynamicBuffer(size_t d, bool i):m_ordered(i),m_delta(d){
+  DynamicBuffer(bool i, size_t d=10):m_ordered(i),m_delta(d){
     assert(m_delta >= 2);
     p_begin = new DynamicBufferElement<T>[m_delta];
     p_end = p_begin;
@@ -209,12 +209,32 @@ class DynamicBuffer{
     }
     delete [] p_gen_pt1;
   }
+  //reserveSlot / commitSlot allows to directly use the elements of the dynamicBuffer
+  //Faster because there is no use of the copy constructor
+  //Need more control from the user thread (reserve then commit)
+  T* reserveSlot(){
+    while(p_end != c_begin){
+      p_end = p_end->phys_next;
+      ++p_size;
+    }
+    if(p_size == m_delta)
+      expand();
+    while(p_size >= 3*m_delta){
+      reduce();
+    }
+    return p_begin->getElem();
+  }
+  void commitSlot(){
+    p_begin->setValid();
+    --p_size;
+    p_begin = p_begin->phys_next;
+  }
+  //This push is a standard, one call push but requires the copy constructor
   void push(T& e){
     *p_begin->getElem() = e;
     p_begin->setValid();
     --p_size;
-    p_gen_pt1 = c_begin;
-    while(p_end != p_gen_pt1){
+    while(p_end != c_begin){
       p_end = p_end->phys_next;
       ++p_size;
     }
@@ -255,6 +275,21 @@ class DynamicBuffer{
       return m_fake.virt_next->getElem();
     else
       return NULL;
+  }
+  void reorder(iterator it){
+    c_gen_pt1 = (DynamicBufferElement<T>*)it.e;
+    c_gen_pt2 = c_gen_pt1->virt_next;
+    //Find the new place
+    while(c_gen_pt2 < c_gen_pt1 && c_gen_pt2 != &m_fake)
+      c_gen_pt2 = c_gen_pt2->virt_next;
+    //Disconnect moved elem
+    c_gen_pt1->virt_next->virt_prev = c_gen_pt1->virt_prev;
+    c_gen_pt1->virt_prev->virt_next = c_gen_pt1->virt_next;
+    //Reconnect
+    c_gen_pt1->virt_next = c_gen_pt2;
+    c_gen_pt1->virt_prev = c_gen_pt2->virt_prev;
+    c_gen_pt2->virt_prev->virt_next = c_gen_pt1;
+    c_gen_pt2->virt_prev = c_gen_pt1;    
   }
   bool empty(){return c_real_size;}
   size_t size(){return c_real_size;}
