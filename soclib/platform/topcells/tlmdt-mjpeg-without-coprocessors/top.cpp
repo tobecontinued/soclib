@@ -11,6 +11,8 @@
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_xcache_wrapper.h"
+#include "mips32.h"
+#include "iss2.h"
 #include "iss2_simhelper.h"
 #include "vci_blackhole.h"
 
@@ -105,7 +107,7 @@ int sc_main (int   argc, char  **argv)
     fake_name << "fake" << i;
     fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), iss_t::n_irq);
     
-    for(int irq=0; irq<iss_t::n_irq; irq++){
+    for(unsigned int irq=0; irq<iss_t::n_irq; irq++){
       (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq[irq]);
     }
 

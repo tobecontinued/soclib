@@ -14,14 +14,14 @@ def VgmnNoirqMulti(nproc, nram, icache_nline = 16, icache_nword = 8, dcache_nlin
 				 wrplen_size = 1
 				 )
 	
-	pf.create('common:mapping_table',
-			  'mapping_table',
-			  addr_bits = [8],
-			  srcid_bits = [8],
-			  cacheability_mask = 0x200000)
+	mt = pf.create('common:mapping_table',
+		       'mapping_table',
+		       addr_bits = [8],
+		       srcid_bits = [8],
+		       cacheability_mask = 0x200000)
 	pf.create('common:loader', 'loader')
 
-	vgmn = pf.create('caba:vci_vgmn', 'vgmn0', min_latency = 2, fifo_depth = 8)
+	vgmn = pf.create('caba:vci_vgmn', 'vgmn0', min_latency = 2, fifo_depth = 8, mt = mt)
 
 	for i in range(nproc):
 		xcache = pf.create('caba:vci_xcache_wrapper',
