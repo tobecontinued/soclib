@@ -62,12 +62,12 @@ const ArmIss::ArmPsrMode ArmIss::mode_to_psr[MOD_Count] = {
 
 const ArmIss::except_info_s ArmIss::except_info[EXCEPT_Count] = {
 	/* EXCEPT_NONE */ {},
-	/* EXCEPT_UNDEF*/ { false, MOD_PSR_UNDEF32, 0x04, 4 },
-	/* EXCEPT_SWI  */ { false, MOD_PSR_SUPER32, 0x08, 4 },
-	/* EXCEPT_FIQ  */ { true,  MOD_PSR_FIQ32,   0x1C, 4 },
-	/* EXCEPT_IRQ  */ { false, MOD_PSR_IRQ32,   0x18, 4 },
-	/* EXCEPT_PABT */ { false, MOD_PSR_ABORT32, 0x0C, 4 },
-	/* EXCEPT_DABT */ { false, MOD_PSR_ABORT32, 0x10, 8 },
+	/* EXCEPT_UNDEF*/ { "UNDEF", false, MOD_PSR_UNDEF32, 0x04, 4 },
+	/* EXCEPT_SWI  */ { "SWI",   false, MOD_PSR_SUPER32, 0x08, 4 },
+	/* EXCEPT_FIQ  */ { "FIQ",   true,  MOD_PSR_FIQ32,   0x1C, 4 },
+	/* EXCEPT_IRQ  */ { "IRQ",   false, MOD_PSR_IRQ32,   0x18, 4 },
+	/* EXCEPT_PABT */ { "PABT",  false, MOD_PSR_ABORT32, 0x0C, 4 },
+	/* EXCEPT_DABT */ { "DABT",  false, MOD_PSR_ABORT32, 0x10, 8 },
 };
 
 void ArmIss::cpsr_update(psr_t psr)
@@ -255,7 +255,9 @@ uint32_t ArmIss::executeNCycles(
     }
 
 #if defined(SOCLIB_MODULE_DEBUG)
-	std::cout << name() << " exception " << (int)m_exception << std::endl;
+	std::cout << name() << " exception "
+              << except_info[m_exception].name
+              << std::endl;
 #endif
 
 	assert(m_exception != EXCEPT_NONE);
@@ -330,8 +332,6 @@ static const char *const mode_code[] = {
 
 void ArmIss::dump() const
 {
-    const char *ins_name;
-
     std::cout
         << m_name
 		<< std::hex << std::noshowbase << std::setfill('0')

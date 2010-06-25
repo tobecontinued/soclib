@@ -197,6 +197,7 @@ private:
 	static const ArmMode psr_to_mode[32];
 	static const ArmPsrMode mode_to_psr[MOD_Count];
     struct except_info_s {
+        const char *name;
         bool disable_fiq;
         ArmPsrMode new_mode;
         addr_t vector_address;
