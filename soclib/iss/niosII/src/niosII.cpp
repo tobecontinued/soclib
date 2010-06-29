@@ -270,6 +270,9 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 		lateResultInstruction * ptr = m_startOflriList;
 		while (ptr != NULL) {
 			if ( (ptr->reg == m_instruction.r.a) || (ptr->reg == m_instruction.r.b) ) {
+#ifdef SOCLIB_MODULE_DEBUG
+				std::cout << "hazard set to one " << " reg: " << ptr->reg << "  inst.a: " << m_instruction.r.a << "  inst.b: " << m_instruction.r.b << std::endl;
+#endif
 				m_hazard = true;
 			}
 			ptr = ptr->next;
@@ -494,19 +497,6 @@ void Nios2fIss::setDataResponse(const struct DataResponse &drsp)
 		break;
 	}
 
-	// detection of a possible data dependency for late result instruction
-	// late result instructions have a two cycle bubble placed between them and instructions
-	// that use their results, this is managed through m_listOfLateResultInstruction
-	if (m_startOflriList != NULL) {
-		lateResultInstruction * ptr = m_startOflriList;
-		//m_hazard = false;
-		while (ptr != NULL) {
-			if ( (ptr->reg == m_instruction.r.a) || (ptr->reg == m_instruction.r.b)) {
-				m_hazard = true;
-			}
-			ptr = ptr->next;
-		}
-	}
 
 	// when destination register is zero, this is a load or a store instruction
 	if (r_mem_dest == 0)

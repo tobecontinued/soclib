@@ -394,8 +394,8 @@ void  Nios2fIss::op_jmpi()
     m_branchAddress = ((0xF0000000 & r_pc) | (m_instruction.j.immed26 * 4));
     m_branchTaken=true;
 
-    // 3 cycles per instruction
-    setInsDelay( 3 );
+    // 2 cycles per instruction
+    setInsDelay( 2 );
 }
 
 void  Nios2fIss::op_ldb()
