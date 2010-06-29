@@ -41,10 +41,10 @@ tmpl()::mailbox(sc_module_name		insname, 		// instance name
 		const soclib::common::IntTab 	&index,		// VCI target index
 		const soclib::common::MappingTable 	&mt)    	// segment table
 		: soclib::caba::BaseModule(insname),
-		m_segment(mt.getSegment(index)),		
 		p_clk("clk"),
 		p_resetn("resetn"),
-		p_vci("vci")
+		p_vci("vci"),
+		m_segment(mt.getSegment(index))
 {
 	
 	SC_METHOD(transition);
