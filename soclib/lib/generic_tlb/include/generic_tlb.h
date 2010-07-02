@@ -807,6 +807,22 @@ public:
         if ( this->valid(nway,nset) )
         {
             size_t inval_line = nline(nway,nset);
+            for (size_t start = (nway*this->m_nsets+nset); start < this->m_nways*this->m_nsets; start++)
+            {
+                if ( this->valid(start/this->m_nsets,start%this->m_nsets) && (inval_line == nline(start/this->m_nsets,start%this->m_nsets)) )
+                {
+                    if (!this->global(start/this->m_nsets,start%this->m_nsets))
+                    {
+                        this->valid(start/this->m_nsets,start%this->m_nsets) = false;
+                    }
+                    else
+                    {
+                        isglobal = true;
+                    }
+                }
+            }
+
+/*
             for ( size_t way = nway; way < this->m_nways; way++ )
             {            
                 for ( size_t set = nset; set < this->m_nsets; set++ )            
@@ -824,6 +840,7 @@ public:
                     }
                 }
             }
+*/
             cleanup = !isglobal;
             if(cleanup)
                 *cleanup_nline = inval_line;
@@ -1245,6 +1262,26 @@ public:
                          size_t* n_way, size_t* n_set,
                          bool* end )
     {
+        for ( size_t start = start_way*(this->m_nsets)+start_set; start < this->m_nways*this->m_nsets; start++ )
+        {
+            if (( nline((start/this->m_nsets),(start%this->m_nsets)) == n_line ) && this->valid((start/this->m_nsets),(start%this->m_nsets))) 
+            {
+                *n_way = start/this->m_nsets;
+                *n_set = start%this->m_nsets;
+                if ( ((start/this->m_nsets) == (this->m_nways-1)) && ((start%this->m_nsets) == (this->m_nsets-1)) )
+                {
+                    *end = true;
+                }
+                else
+                {
+                    *end = false;
+                }
+                return true;
+            }
+        }
+        *end = true;
+        return false;
+/*
         for( size_t way = 0; way < this->m_nways; way++ ) 
         {
             for( size_t set = 0; set < this->m_nsets; set++ ) 
@@ -1267,6 +1304,7 @@ public:
         } 
         *end = true;
         return false;
+*/
     } // end cccheck()
 }; // GenericCcTlb
 
