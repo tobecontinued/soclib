@@ -73,29 +73,30 @@ tmpl(void)::add_srcid(soclib::common::Loader &loader, const IntTab &srcid)
 {
 	const size_t word_size = vci_param::B; // B is VCI's cell size
     typename m_groups_map_t::iterator j = m_groups.find(&loader);
+    rom_t **rom;
 
     if (j == m_groups.end())
         {
-            group_s g(loader);
-
-            g.m_rom.resize(m_vci_fsm.nbSegments(), 0);
+            rom = (rom_t**)malloc(sizeof(rom_t*) * m_vci_fsm.nbSegments());
 
             for (size_t i = 0; i < m_vci_fsm.nbSegments(); ++i)
                 {
-                    g.m_rom[i] = new rom_t[(m_vci_fsm.getSize(i)+word_size-1)/word_size];
+                    rom[i] = (rom_t*)malloc(m_vci_fsm.getSize(i) + word_size);
 
-                    loader.load(g.m_rom[i], 
+                    loader.load(rom[i], 
                                 m_vci_fsm.getBase(i), 
                                 m_vci_fsm.getSize(i));
 
-                    for (size_t addr = 0; addr < m_vci_fsm.getSize(i)/vci_param::B; ++addr)
-                        g.m_rom[i][addr] = le_to_machine(g.m_rom[i][addr]);
+                    for (size_t addr = 0; addr < m_vci_fsm.getSize(i)/word_size; ++addr)
+                        rom[i][addr] = le_to_machine(rom[i][addr]);
                 }
-
-            j = m_groups.insert(m_groups_pair_t(&loader, g)).first;
+        }
+    else
+        {
+            rom = j->second;
         }
 
-    m_assoc[m_mt.indexForId(srcid)] = &j->second.m_rom.front();
+    m_assoc[m_mt.indexForId(srcid)] = rom;
 }
 
 tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)

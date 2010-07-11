@@ -51,21 +51,10 @@ class VciHeterogeneousRom
 
     typedef uint32_t rom_t;
 
-    struct group_s
-    {
-      group_s(soclib::common::Loader &loader)
-	: m_loader(loader), m_rom()
-      {
-      }
+    rom_t ** m_assoc[1 << vci_param::S];
 
-      soclib::common::Loader m_loader;
-      std::vector<rom_t *> m_rom;
-    };
-
-    rom_t ** m_assoc[vci_param::S];
-
-    typedef std::pair<soclib::common::Loader *, struct group_s> m_groups_pair_t;
-    typedef std::map<soclib::common::Loader *, struct group_s> m_groups_map_t;
+    typedef std::pair<soclib::common::Loader *, rom_t**> m_groups_pair_t;
+    typedef std::map<soclib::common::Loader *, rom_t**> m_groups_map_t;
 
     m_groups_map_t m_groups;
 
