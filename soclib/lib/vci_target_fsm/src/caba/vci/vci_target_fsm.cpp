@@ -135,7 +135,14 @@ tmpl(void)::handle_one()
         break;
 
     case vci_param::CMD_STORE_COND:
-        assert(support_llsc && "Received a SC on a non-SC-supporting target");
+        if (!support_llsc) {
+            m_current_cmd.rdata = vci_param::STORE_COND_NOT_ATOMIC;
+            m_current_cmd.error = vci_param::ERR_GENERAL_DATA_ERROR;
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << name() << " ERROR: SC on a non-SC-supporting target" << std::endl;
+#endif
+            break;
+        }
         if ( ! m_atomic.isAtomic( address, m_current_cmd.srcid ) ) {
             m_current_cmd.rdata = vci_param::STORE_COND_NOT_ATOMIC;
             break;
@@ -156,7 +163,15 @@ tmpl(void)::handle_one()
         break;
 
     case vci_param::CMD_LOCKED_READ:
-        assert(support_llsc && "Received a LL on a non-LL-supporting target");
+        if (!support_llsc) {
+            m_current_cmd.error = vci_param::ERR_GENERAL_DATA_ERROR;
+            m_current_cmd.rdata = 0x1bad1bad;
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << name() << " ERROR: LL on a non-LL-supporting target @ "
+                      << std::hex << m_current_cmd.addr << std::endl;
+#endif
+            break;
+        }
         m_atomic.doLoadLinked( address, m_current_cmd.srcid );
     case vci_param::CMD_READ:
         if ( ! (m_owner->*m_on_read_f)(seg_no, offset, m_current_cmd.rdata)) {
