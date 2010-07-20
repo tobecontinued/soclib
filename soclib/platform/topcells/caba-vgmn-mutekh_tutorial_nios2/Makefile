@@ -2,6 +2,7 @@ include config.mk
 
 SIMULATION_ARGS=$(KERNEL)
 SOFT=$(KERNEL)
+NO_SOFT=1
 SOCLIB?=$(shell soclib-cc --getpath)
 SIMULATOR_BINARY=system.x
 # No need to change this, the soclib part does not build software.
@@ -9,7 +10,9 @@ SIMULATOR_BINARY=system.x
 ARCH=nios2
 export SOCLIB
 
-all: $(KERNEL) block0.iso 
+all: $(SIMULATOR_BINARY) $(KERNEL) block0.iso 
+
+$(SIMULATOR_BINARY):
 
 mutekh:
 	mkdir -p $@
@@ -27,11 +30,9 @@ block0.iso: iso_contents
 	mkisofs -f -R -V volname -o $@ $<
 
 
-
 .PHONY: $(KERNEL)
 
-#include $(SOCLIB)/soclib/platform/topcells/all.mk
-
+include $(SOCLIB)/soclib/platform/topcells/all.mk
 
 
 
