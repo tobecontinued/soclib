@@ -977,7 +977,7 @@ bool GdbServer<CpuIss>::check_break_points()
     change_all_states(WaitIssMem);
     current_id_ = id_;
 
-    sprintf(buffer, "T%02ithread:%x;", sig, id_ + 1);
+    sprintf(buffer, "T%02xthread:%x;", sig, id_ + 1);
     write_packet(buffer);
     return true;
 }
@@ -1058,6 +1058,9 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
 
     if ((asocket_ < 0 && !wait_on_except_) || !catch_exceptions_)
         return false;
+
+    if (state_ == WaitIssMem)
+        return true;     // An other cpu already froze execution
 
     char buffer[32];
 
