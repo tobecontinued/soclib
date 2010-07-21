@@ -28,6 +28,7 @@
  */
 
 #include <systemc>
+#include <vector>
 #include <cassert>
 #include <dpp/ref>
 #include "../include/vci_vgmn.h"
@@ -302,11 +303,12 @@ class InputRouter
     size_t m_n_outputs;
     dest_fifo_t *m_dest;
     typename vci_pkt_t::ptr m_waiting_packet;
-    uint32_t m_broadcast_waiting;
+    std::vector<bool> m_broadcast_waiting;
 
 public:
     InputRouter()
-    {}
+    {
+    }
 
     ~InputRouter()
     {
@@ -322,33 +324,44 @@ public:
         m_n_outputs = n_outputs;
         m_dest = NULL;
         m_output_fifos = new dest_fifo_t*[m_n_outputs];
-        for ( size_t i=0; i<m_n_outputs; ++i )
+        m_broadcast_waiting.resize(m_n_outputs, false);
+        for ( size_t i=0; i<m_n_outputs; ++i ) {
             m_output_fifos[i] = dest_fifos[i];
-        m_broadcast_waiting = 0;
+            m_broadcast_waiting[i] = false;
+        }
     }
 
     void reset()
     {
         m_waiting_packet.invalidate();
-        m_broadcast_waiting = 0;
+        for ( size_t i=0; i<m_n_outputs; ++i )
+            m_broadcast_waiting[i] = false;
         m_dest = NULL;
+    }
+
+    ssize_t next_broadcast()
+    {
+        for ( size_t i=0; i<m_n_outputs; ++i )
+            if ( m_broadcast_waiting[i] )
+                return i;
+        return -1;
     }
 
     void transition( const std::string &name, const input_port_t &port )
     {
         if ( m_waiting_packet.valid() ) {
-            if ( m_broadcast_waiting ) {
+            if ( next_broadcast() != -1 ) {
                 for ( size_t i=0; i<m_n_outputs; ++i ) {
-                    if ( ! ((m_broadcast_waiting>>i) & 1) )
+                    if ( ! m_broadcast_waiting[i] )
                         continue;
 
                     dest_fifo_t *dest = m_output_fifos[i];
                     if ( ! dest->full() ) {
                         dest->push( name, m_waiting_packet );
-                        m_broadcast_waiting &= ~(1<<i);
+                        m_broadcast_waiting[i] = false;
                     }
                 }
-                if ( m_broadcast_waiting == 0 ) {
+                if ( next_broadcast() == -1 ) {
                     m_waiting_packet.invalidate();
                 }
             } else {
@@ -363,6 +376,7 @@ public:
         }
 
         if ( port.iAccepted() ) {
+            bool broadcasted = false;
             assert( ! m_waiting_packet.valid() );
             m_waiting_packet = DPP_REFNEW(vci_pkt_t, );
             m_waiting_packet->readFrom( port );
@@ -371,13 +385,15 @@ DEBUG_BEGIN;
 DEBUG_END;
             if ( m_dest == NULL ) {
                 if ( m_waiting_packet->is_broadcast() ) {
-                    m_broadcast_waiting = (1<<m_n_outputs)-1;
+                    for ( size_t i = 0; i<m_n_outputs; ++i )
+                        m_broadcast_waiting[i] = true;
+                    broadcasted = true;
                     assert( m_waiting_packet->eop() );
                 } else {
                     m_dest = m_output_fifos[m_waiting_packet->route( m_routing_table )];
                 }
 DEBUG_BEGIN;
-                if ( m_broadcast_waiting )
+                if ( broadcasted )
                     std::cout << name << " broadcasted" << std::endl;
                 else
                     std::cout << name << " routed to port " << m_waiting_packet->route( m_routing_table ) << std::endl;
@@ -505,8 +521,6 @@ tmpl(/**/)::VciVgmn(
 {
     assert(min_latency >= 1 && "How good is a network, if you are unable to forward packets ?");
     assert(fifo_depth  >= 1 && "How good is a network, if you are unable to forward packets ?");
-    assert(m_nb_target <= 31);
-    assert(m_nb_initiat <= 31);
 
     p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("to_initiator", nb_attached_initiat);
     p_to_target = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("to_target", nb_attached_target);
