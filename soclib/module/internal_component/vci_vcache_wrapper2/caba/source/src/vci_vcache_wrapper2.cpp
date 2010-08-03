@@ -1657,10 +1657,45 @@ tmpl(void)::transition()
                             } 
                             else 
                             {
-                                r_dcache_unc_req = true;
-                                r_dcache_fsm = DCACHE_UNC_WAIT;
-                                m_cpt_unc_read++;
-                                m_cost_unc_read_frz++;
+				if (dreq.type == iss_t::DATA_SC &&
+				    (r_mmu_mode.read() & DATA_TLB_MASK) &&
+				    !dcache_pte_info.d)
+				{
+					/* dirty bit update */
+				    m_cpt_data_tlb_update_dirty++;
+				    m_cost_data_tlb_update_dirty_frz++;
+				    if (dcache_tlb.getpagesize(dcache_tlb_way, dcache_tlb_set)) 
+				    {
+					r_dcache_pte_update = dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
+					r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+					r_dcache_tlb_ll_dirty_req = true;
+					r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
+				    }
+				    else
+				    {   
+					if (dcache_hit_p) 
+					{
+					    r_dcache_pte_update = dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
+					    r_dcache_tlb_paddr = (paddr_t)r_dcache_ptba_save | (paddr_t)(((dreq.addr&PTD_ID2_MASK)>>PAGE_K_NBITS) << 3);
+					    r_dcache_tlb_ll_dirty_req = true;
+					    r_dcache_fsm = DCACHE_LL_DIRTY_WAIT;
+					}
+					else    // get PTBA to calculate the physical address of PTE
+					{
+					    r_dcache_pte_update = dcache_tlb.getpte(dcache_tlb_way, dcache_tlb_set) | PTE_D_MASK;
+					    r_dcache_tlb_paddr = (paddr_t)r_mmu_ptpr << (INDEX1_NBITS+2) | (paddr_t)((dreq.addr>>PAGE_M_NBITS)<<2);
+					    r_dcache_tlb_ptba_read = true;
+					    r_dcache_fsm = DCACHE_DTLB1_READ_CACHE;
+					}
+				    }
+				}
+				else
+				{
+					r_dcache_unc_req = true;
+					r_dcache_fsm = DCACHE_UNC_WAIT;
+					m_cpt_unc_read++;
+					m_cost_unc_read_frz++;
+				}
                             }
                         }
                         break;
@@ -2703,11 +2738,16 @@ tmpl(void)::transition()
         if ( dreq.valid ) m_cost_data_tlb_miss_frz++;
         m_cost_data_tlb_update_dirty_frz++;
 
+
         r_dcache.write(r_dcache_tlb_paddr, r_dcache_pte_update);
         dcache_tlb.setdirty(r_dcache_tlb_way_save, r_dcache_tlb_set_save);
-        r_dcache_fsm = DCACHE_WRITE_REQ;
-        drsp.valid = true;
-        drsp.rdata = 0;
+	if (dreq.valid && dreq.type == iss_t::DATA_SC) {
+		r_dcache_fsm = DCACHE_IDLE;
+	} else {
+		r_dcache_fsm = DCACHE_WRITE_REQ;
+		drsp.valid = true;
+		drsp.rdata = 0;
+	}
         break;
     }
     /////////////////
