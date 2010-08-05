@@ -79,5 +79,5 @@ deps.mk: $(OBJS:.o=.deps)
 %.deps: %.s
 	touch $@
 
-include deps.mk
+-include deps.mk
 endif
