@@ -2,10 +2,10 @@
 # -*- python -*-
 
 
-Signal('caba:wishbone',
+MetaSignal('caba:wishbone',
 	   tmpl_parameters = [parameter.Module('wb_param', default = 'caba:wb_param')],
 	   classname = 'soclib::caba::WbSignal',
-	   header_files = ['../source/include/wb_signals.h'],
+	   header_files = ['../source/include/wb_signal.h'],
 	   accepts = {
 	'caba:wb_master': 1,
 	'caba:wb_slave': 1,
