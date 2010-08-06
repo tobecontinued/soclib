@@ -432,7 +432,7 @@ namespace soclib { namespace common {
     //!Instruction call behavior method.
     LM32_function( call ){// jump to sub routine
         setInsDelay(4);
-        r_gp[LM32_R_ra] = r_npc ;// is pc + 4!!// return address
+        r_gp[ra] = r_npc ;// is pc + 4!!// return address
         m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_gp[m_inst.R.rY];
     }
@@ -440,7 +440,7 @@ namespace soclib { namespace common {
     //!Instruction calli behavior method.
     LM32_function( calli ){//jump to sub routine immediate
         setInsDelay(4);
-        r_gp[LM32_R_ra] = r_npc ; // is pc + 4!!// return address
+        r_gp[ra] = r_npc ; // is pc + 4!!// return address
         m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_pc + (sign_ext(m_inst.J.imd,26)<<2);
     }

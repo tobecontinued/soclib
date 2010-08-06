@@ -55,27 +55,6 @@
 #include "arithmetics.h"
 
 
-// Reset and debug/exception base addresses
-#define RESET_ADDRESS       0x00000000
-#define DEBA_RESET          0x00000000
-// Exception causes
-#define X_RESET             0
-#define X_BREAK_POINT       1
-#define X_INST_BUS_ERROR    2
-#define X_WATCH_POINT       3
-#define X_DATA_BUS_ERROR    4
-#define X_DIVISION_BY_ZERO  5
-#define X_INTERRUPT         6
-#define X_SYSTEM_CALL       7
-//Specific registers indexes
-#define LM32_R_gp           26   // global pointer
-#define LM32_R_fp           27   // frame pointer
-#define LM32_R_sp           28   // stack pointer
-#define LM32_R_ra           29   // return address
-#define LM32_R_ea           30   // exception return address
-#define LM32_R_ba           31   // breakpoint return address
-
-
 namespace soclib { namespace common {
 
     // soclib default vci interface is little endian
@@ -191,6 +170,34 @@ template <bool lEndianInterface >
             //////////////////////////////////////////
             // End of Control and status registers
             //////////////////////////////////////////
+
+            //Specific registers indexes
+            enum {
+                gp        =  26,   // global pointer
+                fp        =  27,   // frame pointer
+                sp        =  28,   // stack pointer
+                ra        =  29,   // return address
+                ea        =  30,   // exception return address
+                ba        =  31    // breakpoint return address
+            };
+
+            // Reset and debug/exception base addresses
+            enum {
+                RESET_ADDRESS     = 0x00000000,
+                DEBA_RESET        = 0x00000000
+            };
+
+            // Exception causes
+            enum {
+                X_RESET             = 0,
+                X_BREAK_POINT       = 1,
+                X_INST_BUS_ERROR    = 2,
+                X_WATCH_POINT       = 3,
+                X_DATA_BUS_ERROR    = 4,
+                X_DIVISION_BY_ZERO  = 5,
+                X_INTERRUPT         = 6,
+                X_SYSTEM_CALL       = 7
+            };
 
             // Instruction type
             typedef union {
