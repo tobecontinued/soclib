@@ -82,6 +82,7 @@ class GenericCache
     size_t              m_ways;	
     size_t              m_sets;	
     size_t              m_words;
+    size_t		m_next_way;
 
     const soclib::common::AddressMaskingTable<addr_t>  m_x ;
     const soclib::common::AddressMaskingTable<addr_t>  m_y ;
@@ -153,6 +154,7 @@ public:
         r_tag  = new tag_t[nways*nsets];
         r_val  = new bool[nways*nsets];
         r_lru  = new bool[nways*nsets];
+	m_next_way = 0;
     }
 
     ////////////////
@@ -558,7 +560,7 @@ public:
             }
         }
         // verify in_itlb & in_tlb 
-        if ( !found ) { // No invalid way
+        if ( !found ) { // No old way
             for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
                 if (!itlb_buf[m_sets*way+set] && !dtlb_buf[m_sets*way+set]) {
                     found = true;
@@ -566,13 +568,8 @@ public:
                     selway = way;
                 }
             }
-            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if (!itlb_buf[m_sets*way+set] && dtlb_buf[m_sets*way+set]) {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                }
-            }
+	 }
+        if ( !found ) { // no way with no tlb entry
             for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
                 if (itlb_buf[m_sets*way+set] && !dtlb_buf[m_sets*way+set]) {
                     found = true;
@@ -580,15 +577,42 @@ public:
                     selway = way;
                 }
             }
-            if ( !found ) { // No old way => all ways become recent
-                for ( size_t way = 0; way < m_ways; way++ ) {
-                    cache_lru(way, set) = false;
+	 }
+#if 0
+	/*
+	 * don't use this check, it can lead to the following livelock
+	 * get TLB entry for vaddr va, gives a PTE address with physical
+	 * address pte, in set s_pte, way w_pte. the cache line for pte has
+	 * dtlb_buf set and not itlb_buf.
+	 * This TLB entry translate va to a physical address pa, in the
+	 * same set as pte. The cache miss needs to select a victim,
+	 * theres's no way without PTE and only ways with only dtlb PTE.
+	 * so we evict s_pte, w_pte, invalidating the TLB entry we just
+	 * looked up
+	 * now the cache needs to translate va again to complete the cache
+	 * miss, needs to get the cache line for pte, and the algorith
+	 * will select once again s_pte, w_pte as victim.
+	 */
+	 if ( !found ) { // no way with no itlb entry
+            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
+                if (!itlb_buf[m_sets*way+set] && dtlb_buf[m_sets*way+set]) {
+                    found = true;
+                    cleanup = true;
+                    selway = way;
                 }
-                cleanup = true;
-                selway  = 0;
             }
+	  }
+#endif
+        if ( !found ) { // No old way => all ways become old
+            for ( size_t way = 0; way < m_ways; way++ ) {
+                cache_lru(way, set) = false;
+            }
+            cleanup = true;
+            selway  = m_next_way;
+	    m_next_way++;
+	    if (m_next_way >= m_ways)
+		m_next_way = 0;
         }
-
         *victim = (addr_t)((cache_tag(selway, set) * m_sets) + set);
         cache_val(selway, set) = false;
         *n_way = selway;
