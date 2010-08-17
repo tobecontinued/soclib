@@ -1,0 +1,40 @@
+# -*- python -*-
+
+__id__ = "$Id: vci_local_ring.sd 1698 2010-04-14 03:29:34Z nipo $"
+__version__ = "$Revision: 1698 $"
+
+Module('caba:vci_local_ring',
+	classname = 'soclib::caba::VciLocalRing',
+	tmpl_parameters = [ 
+            parameter.Module('vci_param', default = 'caba:vci_param'), 
+	    parameter.Int('cmd_width'), 
+	    parameter.Int('rsp_width'), 
+        ],
+	header_files = ['../source/include/vci_local_ring.h',],
+	implementation_files = ['../source/src/vci_local_ring.cpp',],
+	ports = [
+	    Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	    Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+            Port('caba:vci_initiator', 'p_to_target', parameter.Reference('nb_attached_target')),
+	    Port('caba:vci_target', 'p_to_initiator', parameter.Reference('nb_attached_initiator')),
+            Port('caba:dspin_output', 'p_gate_cmd_out', dspin_data_size = parameter.Reference('cmd_width')),
+            Port('caba:dspin_input', 'p_gate_rsp_in', dspin_data_size = parameter.Reference('rsp_width')),
+            Port('caba:dspin_input', 'p_gate_cmd_in', dspin_data_size = parameter.Reference('cmd_width')),
+            Port('caba:dspin_output', 'p_gate_rsp_out', dspin_data_size = parameter.Reference('rsp_width')),
+	],
+	instance_parameters = [
+	    parameter.Module('mt', 'common:mapping_table'),
+            parameter.IntTab('ringid'),
+            parameter.Int('wrapper_fifo_depth'),
+            parameter.Int('half_gateway_fifo_depth'),
+            parameter.Int('nb_attached_initiator'),
+            parameter.Int('nb_attached_target'),
+	],
+	uses = [
+	    Uses('caba:base_module'),
+	    Uses('common:mapping_table'),
+	    Uses('caba:vci_ring_initiator_wrapper'),
+	    Uses('caba:vci_ring_target_wrapper'),
+            Uses('caba:ring_dspin_gateway', cmd_width = 37, rsp_width = 33),
+	],
+)
