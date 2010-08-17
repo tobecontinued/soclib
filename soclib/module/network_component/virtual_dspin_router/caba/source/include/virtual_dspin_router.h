@@ -19,169 +19,120 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Authors  : Noé Girand noe.girand@polytechnique.org
- * Date     : june 2009
+ * Authors  : alain.greiner@lip6.fr noe.girand@polytechnique.org
+ * Date     : july 2010
  * Copyright: UPMC - LIP6
  */
 
-#ifndef VIRTUAL_DSPIN_ROUTER_H_
-#define VIRTUAL_DSPIN_ROUTER_H_
+#ifndef VIRTUAL_DSPIN_ROUTER_H
+#define VIRTUAL_DSPIN_ROUTER_H
 
 #include <systemc>
 #include "caba_base_module.h"
 #include "generic_fifo.h"
 #include "dspin_interface.h"
 
-namespace soclib 
-{ 
-	namespace caba 
-	{
-		using namespace sc_core;
+namespace soclib { namespace caba {
 
-		enum{
-			LOCAL		= 0,								// Current allocated is LOCAL
-			NORTH		= 1,								// Current allocated is NORTH
-			SOUTH		= 2,								// Current allocated is SOUTH
-			EAST		= 3,								// Current allocated is EAST
-			WEST		= 4,								// Current allocated is WEST
+enum{  // port indexing
+	NORTH	= 0,
+	SOUTH	= 1,
+	EAST	= 2,
+	WEST	= 3,
+	LOCAL	= 4,
+};
 
-			NOP_LOCAL	= 5,								// Last allocated was LOCAL
-			NOP_NORTH	= 6,								// Last allocated was NORTH
-			NOP_SOUTH	= 7,								// Last allocated was SOUTH
-			NOP_EAST	= 8,								// Last allocated was EAST
-			NOP_WEST	= 9,								// Last allocated was WEST
+enum{   // request type (six values, can be encoded on 3 bits)
+        REQ_NORTH,
+	REQ_SOUTH,
+	REQ_EAST,
+	REQ_WEST,
+	REQ_LOCAL,
+        REQ_NOP,
+};
 
-			NOP		= 10,								// Last allocated was unknown
-		};
+enum {  // step index for a broadcast (all broadcast have 4 steps)
+	FIRST,
+	SECOND,
+	THIRD,
+	FOURTH,
+};
 
-		enum {
-			_11,
-			_12,
-			_21,
-			_22,
-			_LOCAL,
-		};
+enum{	// INFSM States : In the REQ states, the request and the corresponding
+        // data are sent simultaneously, which means at least two cycles in this state
+	INFSM_REQ_FIRST,
+	INFSM_DTN,
+	INFSM_DT_FIRST,
+	INFSM_REQ_SECOND,
+	INFSM_DT_SECOND,
+	INFSM_REQ_THIRD,
+	INFSM_DT_THIRD,
+	INFSM_REQ_FOURTH,
+	INFSM_DT_FOURTH,
+	};
 
-		enum{	// INFSM States
-			FSM_REQ,
+template<int flit_width>
+class VirtualDspinRouter: public soclib::caba::BaseModule
+{			
 
-			FSM_DTN,
+protected:
+	SC_HAS_PROCESS(VirtualDspinRouter);
 
-			FSM_DT_11,
+public:
 
-			FSM_REQ_12,
-			FSM_DT_12,
+	// ports
+	sc_core::sc_in<bool>             	p_clk;
+	sc_core::sc_in<bool>             	p_resetn;
+	soclib::caba::DspinOutput<flit_width>	**p_out;
+	soclib::caba::DspinInput<flit_width>	**p_in;
 
-			FSM_REQ_21,
-			FSM_DT_21,
+	// constructor 
+	VirtualDspinRouter( 	sc_module_name  insname,
+				int	x,			// x coordinate in the mesh
+				int	y,			// y coordinate in the mesh 
+                                int	x_size,			// number of bits for x field
+				int	y_size,			// number of bits for y field
+                                int	in_fifo_depth,		// input fifo depth
+				int	out_fifo_depth);	// output fifo depth
 
-			FSM_REQ_22,
-			FSM_DT_22,
+	// destructor 
+	~VirtualDspinRouter();
 
-			FSM_REQ_LOCAL,
-			FSM_DT_LOCAL,
-		};
+private:
 
-		template<int x_size, int y_size> 
-		class clusterCoordinates
-		{
-			public :
-				sc_uint<x_size>	x;
-				sc_uint<y_size> y;
-		};
+	// input port registers & fifos
+	sc_core::sc_signal<bool>        		r_tdm[5];		// Time Multiplexing
+	sc_core::sc_signal<int>				r_input_fsm[2][5];	// FSM state
+	sc_core::sc_signal<sc_uint<flit_width> >		r_buf[2][5];		// fifo extension
+	soclib::caba::GenericFifo<sc_uint<flit_width> > 	**in_fifo;		// input fifos
 
-		template<	int data_size, 								// Size of flit
-				int io_mask_offset, 							// Emplacement of IO checking
-				int io_mask_size, 							// Size of IO checking
-				int io_number_offset, 							// Emplacement of IO index in IO table
-				int io_number_size, 							// Size of IO index
-				int x_addressing_offset,						// Emplacement of target x in first flit
-				int x_addressing_size, 							// Size of target x
-				int y_addressing_offset, 						// Emplacement of target y in first flit
-				int y_addressing_size, 							// Size of target y
-				int eop_offset,								// Emplacement of eop checking
-				int broadcast_offset, 							// Emplacement of broadcast checking
-				int in_fifo_size, 							// 
-				int out_fifo_size,							//
-				int x_min_offset,
-				int x_max_offset,
-				int y_min_offset,
-				int y_max_offset
-		>
-		class VirtualDspinRouter: public soclib::caba::BaseModule
-		{			
+	// output port registers & fifos
+	sc_core::sc_signal<int>				r_output_index[2][5];	// allocated input index 
+	sc_core::sc_signal<bool>			r_output_alloc[2][5];	// allocation status 
+	soclib::caba::GenericFifo<sc_uint<flit_width> > 	**out_fifo;		// output fifos
 
-		protected:
-			SC_HAS_PROCESS(VirtualDspinRouter);
+	// structural variables
+	int	m_local_x;					// router x coordinate
+	int	m_local_y;					// router y coordinate
+        int	m_x_size;					// number of bits for x field
+        int	m_y_size;					// number of bits for y field
+        int	m_x_shift;					// number of bits to shift for x field
+        int	m_x_mask;					// number of bits to mask for x field
+        int	m_y_shift;					// number of bits to shift for y field
+        int	m_y_mask;					// number of bits to mask for y field
 
-		public:
+	// methods 
+	void transition();
+	void genMoore();
 
-			// ports
-			sc_in<bool>             p_clk;
-			sc_in<bool>             p_resetn;
+	// Utility functions
+	int 	xfirst_route(sc_uint<flit_width> data);			
+	int 	broadcast_route(int dst, int src, sc_uint<flit_width> data);	
+	bool 	is_eop(sc_uint<flit_width> data);			
+	bool 	is_broadcast(sc_uint<flit_width> data);
 
-			DspinOutput<data_size>	**p_out;
-			DspinInput<data_size>	**p_in;
+}; // end class VirtualDspinRouter
+	
+}} // end namespace
 
-			// constructor 
-			VirtualDspinRouter( sc_module_name  insname, 
-				int		x,							// x position in the network
-				int		y,							// y position in the network
-				bool		n,							// North connexion enabled
-				bool		s,							// South connexion enabled
-				bool		e,							// East connexion enabled
-				bool		w,							// West connexion enabled
-				bool		broadcast0,						// Broadcast activated for channel 0
-				bool		broadcast1,						// Broadcast activated for channel 1
-				bool		io0,							// IO enable for channel 0
-				bool		io1,							// IO enable for channel 1
-				clusterCoordinates<x_addressing_size, y_addressing_size> * aIO_table	// List of IO clusters, NULL if unused.
-			);
-
-			// destructor 
-			~VirtualDspinRouter();
-
-		private:
-
-			// internal registers
-			sc_signal<int>			r_output_index[2][5];				// for each channel & each output, input index (INFSM)
-			sc_signal<bool>			r_input_alloc[2][5];				// for each channel & each input, alloc  
-			sc_signal<bool>           	r_tdm[5];					// for each input, Time Multiplexing
-			sc_signal<sc_uint<data_size> >	r_buf[2][5];					// for each channel & each input, fifo extension
-			sc_signal<int>			r_infsm[2][5];					// for each channel & each input FSM state
-
-			// input fifos 
-			soclib::caba::GenericFifo<sc_uint<data_size> > **in_fifo;
-			soclib::caba::GenericFifo<sc_uint<data_size> > **out_fifo;
-
-			// structural variables
-			bool	m_broadcast[2];								// broadcast activated (for the two channels)
-			bool	m_io[2];								// io activated (for the two channels)
-			int	m_local_x;								// router x coordinate
-			int	m_local_y;								// router y coordinate
-			bool	m_c[5];									// External connexion enabled on i
-			clusterCoordinates<x_addressing_size, y_addressing_size> * m_IO_table;		// IO Maptable
-
-			// methods 
-			void transition();
-			void genMoore();
-
-			// Internal function to improve code's lisibility
-			int decode(sc_uint<data_size> adata, int ASHIFT, int AMASK);			// Extract information in adata
-			int route(sc_uint<data_size> data, bool aio);					// Routing function
-
-			bool f_bound_check(int dir, int x_min, int y_min, int x_max, int y_max);
-			int f_input_req(int target, int i, sc_uint<data_size> data);			// To calculate input_req
-			int f_infsm(int target, int i, sc_uint<data_size> data);			// To calculate next infsm
-
-			bool is_eop(sc_uint<data_size> data);						// Is data eop ?
-			bool is_broadcast(sc_uint<data_size> data);					// Is data broadcast ?
-
-			int r_o(int target, bool b);							// Convert virtual output to real output
-
-			bool broadcast_parity(sc_uint<data_size> data);					// To calculate parity of broadcast
-		};
-	}
-} // end namespace
-
-#endif // VIRTUAL_DSPIN_ROUTER_H_
+#endif // end VIRTUAL_DSPIN_ROUTER_H_
