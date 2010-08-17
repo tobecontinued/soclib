@@ -24,6 +24,8 @@
  * Copyright: UPMC - LIP6
  */
 
+#include <systemc>
+
 #ifndef SOCLIB_CABA_RING_SIGNALS_H_
 #define SOCLIB_CABA_RING_SIGNALS_H_
 
@@ -33,18 +35,18 @@ namespace soclib { namespace caba {
 class RingSignals
 {
 public:
-	sc_core::sc_signal<bool>                         cmd_grant;
-    sc_core::sc_signal<sc_dt::sc_uint<37> >                 cmd_data;
-    sc_core::sc_signal<bool>                         cmd_w;
-    sc_core::sc_signal<bool>                        	cmd_r;
-    sc_core::sc_signal<bool>                         rsp_grant;
-    sc_core::sc_signal<sc_dt::sc_uint<33> >                 rsp_data;
-    sc_core::sc_signal<bool>                         rsp_w;
-    sc_core::sc_signal<bool>                        	rsp_r;
+    sc_core::sc_signal<bool>                    cmd_grant;
+    sc_core::sc_signal<sc_dt::sc_uint<37> >     cmd_data;
+    sc_core::sc_signal<bool>                    cmd_w;
+    sc_core::sc_signal<bool>                    cmd_r;
+    sc_core::sc_signal<bool>                    rsp_grant;
+    sc_core::sc_signal<sc_dt::sc_uint<33> >     rsp_data;
+    sc_core::sc_signal<bool>                    rsp_w;
+    sc_core::sc_signal<bool>                    rsp_r;
 
 	RingSignals(std::string name = (std::string)sc_core::sc_gen_unique_name("ring_signals_"))
         : 	cmd_grant	((name+"cmd_grant").c_str()),
-            cmd_data	((name+"cmd_data").c_str()),
+            	cmd_data	((name+"cmd_data").c_str()),
 	    	cmd_w		((name+"cmd_w").c_str()),
 	    	cmd_r		((name+"cmd_r").c_str()),
 	    	rsp_grant	((name+"rsp_grant").c_str()),
