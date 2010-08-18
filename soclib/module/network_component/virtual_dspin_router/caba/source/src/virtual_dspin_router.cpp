@@ -45,7 +45,7 @@ using namespace soclib::common;
     // in case of broadcast, and are right aligned
     // 
     //  |EOP|   X    |   Y    |---|  XMIN  |  XMAX  |  YMIN  |  YMAX  |BC |
-    //  | 1 | x_size | y_size |---| x_size | x_size | y_size | y_size | 2 |
+    //  | 1 | x_size | y_size |---| x_size | x_size | y_size | y_size | 1 |
     //
     /////////////////////////////////////////////////////////////////////////
 
@@ -64,10 +64,10 @@ using namespace soclib::common;
     tmpl(int)::broadcast_route(int iter, int source, sc_uint<flit_width> data)
     {
         int sel = REQ_NOP;
-        int xmin = (data >> (2 + 2*m_y_size + m_x_size) ) & m_x_mask;
-        int xmax = (data >> (2 + 2*m_y_size           ) ) & m_x_mask;
-        int ymin = (data >> (2 + m_y_size             ) ) & m_y_mask;
-        int ymax = (data >> (2                        ) ) & m_y_mask;
+        int xmin = (data >> (1 + 2*m_y_size + m_x_size) ) & m_x_mask;
+        int xmax = (data >> (1 + 2*m_y_size           ) ) & m_x_mask;
+        int ymin = (data >> (1 + m_y_size             ) ) & m_y_mask;
+        int ymax = (data >> (1                        ) ) & m_y_mask;
 
         switch(source) {
         case LOCAL :
@@ -141,6 +141,7 @@ using namespace soclib::common;
         sensitive  << p_clk.neg();
 
         // The minimal width of a DSPIN flit is 33 bits
+        // if we want to transport 32 bits data words
         if ( flit_width < 33 )
         {
             std::cout << "Error in the virtual_dspin_router" << name() << std::endl;
@@ -175,8 +176,8 @@ using namespace soclib::common;
         m_local_y 		= y;
         m_x_size		= x_size;
         m_y_size		= y_size;
-        m_x_shift		= flit_width - x_size;
-        m_y_shift		= flit_width - x_size - y_size;
+        m_x_shift		= flit_width - x_size - 1;
+        m_y_shift		= flit_width - x_size - y_size - 1;
         m_x_mask		= (0x1 << x_size) - 1;
         m_y_mask		= (0x1 << y_size) - 1;
 
