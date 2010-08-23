@@ -91,8 +91,8 @@ class CxxComponentBuilder(ComponentBuilder):
         self.__tmpl_header_files = list(tmpl_header_files)
         self.__interface_files = list(interface_files)
         self.__defines = defines
-        self.force_debug = force_debug
-        self.force_mode = self.force_debug and "debug" or None
+        self.__force_debug = force_debug
+        self.force_mode = self.__force_debug and "debug" or None
         self.local = local
 
     def getCxxBuilder(self, filename, *add_filenames):
@@ -152,7 +152,7 @@ class CxxComponentBuilder(ComponentBuilder):
             defines = self.__defines,
             inc_paths = incls,
             includes  = includes,
-            force_debug = self.force_debug,
+            force_debug = self.__force_debug,
             **add)
 
     def __hash__(self):

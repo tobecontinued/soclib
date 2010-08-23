@@ -118,6 +118,20 @@ class ConfigSpool(object):
             raise ValueError("You must select a build environment (BuildEnv) as default, not a %s"%type(v).__name__)
         self.__default_config = name
 
+    def available(self):
+        """
+        Lists the available configuration types
+        """
+        r = []
+        for k, v in self.__configs.items():
+            if not isinstance(v, objects.BuildEnv):
+                continue
+            r.append(k)
+        r.remove("build_env")
+        r.remove(self.__default_config)
+        r.insert(0, "default")
+        return r
+
     def __str__(self):
         r = objects._pformat(self.__configs, "",
                              dict_delim = ["configurations:", '']) + '\n'

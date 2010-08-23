@@ -91,6 +91,7 @@ class Module(module.ModuleCommon):
         self.__use_count = 0
         self.__typename = typename
         self.__set_origin()
+        self.__used = False
 
         self.__spec_cache = {}
 

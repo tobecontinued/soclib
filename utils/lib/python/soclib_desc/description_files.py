@@ -218,5 +218,5 @@ def get_all_used_modules():
 	init()
 	global soclib_desc_registry
 
-	return filter(lambda x:x.isUsed(),
+	return filter(lambda x:x.is_used(),
 				  soclib_desc_registry.all())

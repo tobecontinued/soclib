@@ -28,19 +28,16 @@ __version__ = "$Revision$"
 
 import os, os.path
 import sys
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup, TitledHelpFormatter
 
 import soclib_desc
 import soclib_desc.description_files
 import soclib_cc
 
-def parse_args():
-    todef = []
+def parse_args(available_configs):
     todb = []
     one_args = {}
 
-    def define_callback(option, opt, value, parser):
-        todef.append(value)
     def buggy_callback(option, opt, value, parser):
         todb.append(value)
     def one_arg_callback(option, opt, value, parser):
@@ -51,119 +48,196 @@ def parse_args():
             pass
         one_args[k] = v
 
-    parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
-    parser.add_option('-v', '--verbose', dest = 'verbose',
+    epilog = """
+
+In the above options, MODULE is always a module name in the
+abstraction_level:module_name format (e.g. caba:vci_ram).
+
+Run soclib-cc --examples to see some common command-line examples.
+"""
+    f = TitledHelpFormatter()
+    f.format_epilog = lambda x: x
+    parser = OptionParser(
+        usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]",
+        epilog = epilog,
+        formatter = f)
+
+    parser.add_option('--examples', dest = 'examples',
                       action='store_true',
-                      help="Chat a lot")
-    parser.add_option('-d', '--debug', dest = 'debug',
-                      action='store_true',
-                      help="Print too much things")
-    parser.add_option('-P', '--progress_bar', dest = 'progress_bar',
-                      action='store_true',
-                      help="Print evolution with a progress bar")
-    parser.add_option('-D', '--define', nargs = 1, type = "string",
-                      action='callback', callback = define_callback,
-                      help="mode:name:DEFINE=VALUE")
-    parser.add_option('-b', '--buggy', nargs = 1, type = "string",
-                      action='callback', callback = buggy_callback,
-                      help="Put <mode:name> module in debug mode (disable opt, ...)")
-    parser.add_option('-1', '--one-module', nargs = 1, type = "string",
-                      action='store', dest = 'one_module',
-                      help="Only try to compile one module")
-    parser.add_option('-a', '--arg', nargs = 1, type = "string",
-                      action='callback', callback = one_arg_callback,
-                      help="Specify arguments for one-module build")
-    parser.add_option('-q', '--quiet', dest = 'quiet',
+                      help="Show some example commands")
+
+    group = OptionGroup(parser, "Pretty printing")
+    parser.add_option_group(group)
+    
+    group.add_option('-q', '--quiet', dest = 'quiet',
                       action='store_true',
                       help="Print nothing but errors")
-    parser.add_option('-c', '--compile', dest = 'compile',
+    group.add_option('-v', '--verbose', dest = 'verbose',
                       action='store_true',
-                      help="Do a simple compilation, not a linkage")
-    parser.add_option('-l', dest = 'list_descs',
-                      action='store_const', const = "long",
-                      help="List known descriptions == --list-descs=long")
-    parser.add_option('-I', dest = 'includes',
+                      help="Chat a lot")
+    group.add_option('-d', '--debug', dest = 'debug',
+                      action='store_true',
+                      help="Print too much things")
+    group.add_option('-P', '--progress_bar', dest = 'progress_bar',
+                      action='store_true',
+                      help="Print evolution with a progress bar")
+
+    group = OptionGroup(parser, "Environment tweaks",
+                        "These options can change the build flags or the "
+                        "index of modules")
+    parser.add_option_group(group)
+
+    group.add_option('-I', dest = 'includes', metavar="DIR",
                       action='append', nargs = 1,
                       help="Append directory to .sd search path")
-    parser.add_option('-F', '--format', dest = 'formatter',
-                      action = 'store', nargs = 1, type = 'string',
-                      help = 'Use a given formatter class name to format build actions')
-    parser.add_option('--list-descs', dest = 'list_descs',
-                      action='store', nargs = 1, type = 'string',
-                      help="List known descriptions. arg may be 'long' or 'names'")
-    parser.add_option('--list-files', dest = 'list_files',
-                      action='store', nargs = 1, type = 'string',
-                      help="List files belonging to a given module")
-    parser.add_option('--sd-convert', dest = 'sd_convert',
-                      action='store_true',
-                      help="Convert sd files to xml")
-    parser.add_option('--complete-name', dest = 'complete_name',
-                      action='store', nargs = 1, type = 'string',
-                      help="Complete module name starting with ...")
-    parser.add_option('--complete-separator', dest = 'complete_separator',
-                      action='store', nargs = 1, type = 'string',
-                      default = '',
-                      help="Complete words splitted by this arg")
-    parser.add_option('-x', '--clean', dest = 'clean',
-                      action='store_true',
-                      help="Clean all outputs, only compatible with -p")
-    parser.add_option('--dump-config', dest = 'dump_config',
-                      action='store_true',
-                      help="Dump configuration")
-    parser.add_option('-X', '--clean-cache', dest = 'clean_cache',
-                      action='store_true',
-                      help="Clean .desc file cache")
-    parser.add_option('-o', '--output', dest = 'output',
-                      action='store', type = 'string',
-                      help="Select output file")
-    parser.add_option('-m', '--mode', dest = 'mode',
-                      action='store', type = 'string',
+    group.add_option('-m', '--mode', dest = 'mode',
+                      action='store', nargs = 1,
                       default = 'release',
-                      help="Select mode: *release|debug|prof")
-    parser.add_option('-p', '--platform', dest = 'platform',
-                      action='store', type = 'string',
-                      help="Use a platform description")
-    parser.add_option('--getpath', dest = 'getpath',
+                      help="Select mode: *release|debug|prof",
+                      choices = ("release", "debug", "prof"))
+    group.add_option('-t', '--type', dest = 'type',
+                      action='store',
+                      choices = available_configs,
+                      help="Use a different configuration: <%s>"%(', '.join(available_configs)))
+    group.add_option('-b', '--buggy', nargs = 1, type = "string", metavar="MODULE",
+                      action='callback', callback = buggy_callback,
+                      help="Put MODULE in debug mode (disable opt, set SOCLIB_MODULE_DEBUG preprocessor variable)")
+
+    group = OptionGroup(parser, "Information gathering",
+                        "These options show various information "
+                        "about the currently indexed modules "
+                        "and SoCLib environment")
+    parser.add_option_group(group)
+
+    group.add_option('--getpath', dest = 'getpath',
                       action='store_true',
                       help="Print soclib path")
-    parser.add_option('--getflags', dest = 'getflags',
-                      action='store', type = 'string',
-                      help="Get a configuration value")
-    parser.add_option('-t', '--type', dest = 'type',
-                      action='store', type = 'string',
-                      help="Use a different configuration: *default")
-    parser.add_option('-j', '--jobs', dest = 'jobs',
+    group.add_option('-l', dest = 'list_descs',
+                      action='store_const', const = "long",
+                      help="List known descriptions == --list-descs=long")
+    group.add_option('--list-descs', dest = 'list_descs', metavar = "FORMAT",
+                      action='store', nargs = 1, choices = ("long", "names"),
+                      help="List known descriptions. Format may be 'long' or 'names'")
+    group.add_option('--list-files', dest = 'list_files', metavar = "MODULE",
+                      action='store', nargs = 1, type = 'string',
+                      help="List files belonging to a given module")
+    group.add_option('--complete-name', dest = 'complete_name', metavar="MODULE",
+                      action='store', nargs = 1, type = 'string',
+                      help="Complete module name starting with ...")
+    group.add_option('--complete-separator', dest = 'complete_separator', metavar="SEP",
+                      action='store', nargs = 1, type = 'string',
+                      default = ':',
+                      help="Complete words splitted by this arg")
+    group.add_option('--getflags', dest = 'getflags', metavar = "KIND",
+                      action='store', choices = ("cflags",),
+                      help="Get flags of some KIND <cflags>")
+    group.add_option('--embedded-cflags', dest = 'embedded_cflags',
+                      action='store_true',
+                      help="Print software include directories C flags")
+
+    group = OptionGroup(parser, "Compilation tweaks",
+                        "These options change various behaviors of the compilation itself")
+    parser.add_option_group(group)
+
+    group.add_option('-j', '--jobs', dest = 'jobs', metavar = "N",
                       action='store', type = 'int',
                       default = 0,
-                      help="Allow n parallel jobs")
-    parser.add_option('--bug-report', dest = 'bug_report',
+                      help="Allow N parallel jobs")
+    group.add_option('--work', dest = 'workpath', metavar = "DIR",
+                      action='store',
+                      help="When using ModelSim, use this work DIR")
+
+    group = OptionGroup(parser, "What to do",
+                        "These options tell soclib-cc what to do")
+    parser.add_option_group(group)
+
+    group.add_option('-c', '--compile', dest = 'compile',
+                      action='store_true',
+                      help="Do a simple compilation, not a linkage")
+    group.add_option('-x', '--clean', dest = 'clean',
+                      action='store_true',
+                      help="Clean all outputs, only compatible with -p")
+    group.add_option('-X', '--clean-cache', dest = 'clean_cache',
+                      action='store_true',
+                      help="Clean .desc file cache")
+    group.add_option('-o', '--output', dest = 'output',
+                      action='store', type = 'string',
+                      help="Select output file")
+    group.add_option('-F', '--format', dest = 'formatter',
+                      action = 'store', nargs = 1, type = 'string',
+                      help = 'Use a given formatter class name to format build actions')
+
+    group.add_option('-p', '--platform', dest = 'platform', metavar="PLATFORM_DESC",
+                      action='store', type = 'string',
+                      help="Use a platform description PLATFORM_DESC")
+    group.add_option('-1', '--one-module', nargs = 1, type = "string", metavar="MODULE",
+                      action='store', dest = 'one_module',
+                      help="Only try to compile MODULE (try -a for the parameters)")
+    group.add_option('-a', '--arg', nargs = 1, type = "string", metavar="KEY=VALUE",
+                      action='callback', callback = one_arg_callback,
+                      help="Specify arguments for one-module build")
+
+    group = OptionGroup(parser, "Debugging")
+    parser.add_option_group(group)
+
+    group.add_option('--dump-config', dest = 'dump_config',
+                      action='store_true',
+                      help="Dump configuration")
+    group.add_option('--bug-report', dest = 'bug_report',
                       action='store_true',
                       help="Create a bug-reporting log")
-    parser.add_option('--auto-bug-report', dest = 'auto_bug_report',
+    group.add_option('--auto-bug-report', dest = 'auto_bug_report', metavar = "METHOD",
                       action='store', nargs = 1,
                       help="Auto report bug. Methods allowed: openbrowser, *none",
                       choices = ("openbrowser", "none"))
-    parser.add_option('--embedded-cflags', dest = 'embedded_cflags',
-                      action='store_true',
-                      help="Print software include directories C flags")
-    parser.add_option('--work', dest = 'workpath',
-                      action='store',
-                      help="When using Modelsim, use this work path")
+
     parser.set_defaults(auto_bug_report = "none",
                         includes = [],
                         workpath = 'work',
                         embedded_cflags = False)
     opts, args = parser.parse_args()
 
-    return opts, args, todef, todb, one_args, parser
+    return opts, args, todb, one_args, parser
 
 def main():
-    opts, args, todef, todb, one_args, parser = parse_args()
+    from soclib_cc.config import config
+
+    opts, args, todb, one_args, parser = parse_args(config.available())
+
+    if opts.examples:
+        print """
+Some common command lines:
+
+* Compile a complete platform described in platform_desc
+
+  - with default configuration
+
+    $ soclib-cc -P -o system.x -p platform_desc
+
+  - with debug mode
+
+    $ soclib-cc -P -o system.x -p platform_desc -m debug
+
+  - with some_config (if "some_config" exists in your configuration)
+
+    $ soclib-cc -P -o system.x -p platform_desc -t some_config
+
+  - compiling with only the caba:vci_xcache_wrapper in debug mode
+
+    $ soclib-cc -P -o system.x -p platform_desc -b caba:vci_xcache_wrapper
+
+* Compile just the FifoReader to fifo_reader.o
+
+  $ soclib-cc -v -c -o fifo_reader.o -1 caba:fifo_reader -a word_t=int32_t
+
+* Looking for the vci_ram implementation code ?
+
+  $ soclib-cc --list-files=caba:vci_ram
+"""
+        return 0
 
     from soclib_cc import bugreport
     bugreport.bootstrap(opts.bug_report, opts.auto_bug_report)
-
-    from soclib_cc.config import config
 
     if opts.getpath:
         print config.path
@@ -175,17 +249,6 @@ def main():
         print str(config)
         return 0
 
-    for value in todef:
-        ms = value.split(":")
-        define = ms[-1]
-        cell = ':'.join(ms[:-1])
-        try:
-            name, val = define.split('=', 1)
-        except:
-            name = define
-            val = ''
-        soclib_desc.description_files.get_module(cell).addDefine(name, val)
-
     for value in todb:
         soclib_desc.description_files.get_module(value).set_debug_mode()
 
@@ -194,18 +257,13 @@ def main():
     if opts.clean_cache:
         soclib_desc.description_files.cleanup()
         return 0
-
-    if opts.sd_convert:
-        from soclib_xml import run
-        run.convert_all()
-        return 0
     
     if opts.one_module:
         return compile_one_module(opts.output, opts.one_module, one_args, opts)
     
     if opts.list_files:
         m = soclib_desc.description_files.get_module(opts.list_files)
-        for h in m['abs_header_files']+m['abs_implementation_files']:
+        for h in m.related_files():
             print h
         return 0
     
@@ -217,7 +275,7 @@ def main():
     
     if opts.getflags:
         if opts.getflags == 'cflags':
-            print ' '.join(config.common_cflags)
+            print ' '.join(config.getCflags())
         return 0
 
     if opts.platform:
@@ -256,15 +314,15 @@ def compile_one_module(output, one_module, one_args, opts):
             todo.add(CxxMkobj(output, cobjs).dests[0])
     return todo_do(todo, opts)
 
-def complete_name(name, separator):
+def complete_name(start, separator):
     completions = set()
-    suffix = name
+    suffix = start
     for sep in separator:
         suffix = suffix.split(sep)[-1]
-    prefix_len = len(name)-len(suffix)
+    prefix_len = len(start)-len(suffix)
     for mod in soclib_desc.description_files.get_all_modules():
         name = mod.name
-        if name.startswith(name):
+        if name.startswith(start):
             client = name[prefix_len:]
             completions.add(client)
     print '\n'.join(completions)
