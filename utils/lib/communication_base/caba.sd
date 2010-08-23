@@ -31,7 +31,8 @@ __version__ = "$Revision$"
 Signal('caba:clock',
 		   classname = 'sc_core::sc_clock',
 		   header_files = [],
-		   accepts = {'caba:clock_in':True},
+		   accepts = {'caba:clock_in':True,
+                      'caba:clock_out':1,},
 		   )
 
 Signal('caba:bit',
@@ -84,6 +85,12 @@ PortDecl('caba:word_out',
 PortDecl('caba:clock_in',
 		 signal = 'caba:clock',
 		 classname = 'sc_core::sc_in<bool>',
+		   header_files = []
+		 )
+
+PortDecl('caba:clock_out',
+		 signal = 'caba:clock',
+		 classname = 'sc_core::sc_out<bool>',
 		   header_files = []
 		 )
 
