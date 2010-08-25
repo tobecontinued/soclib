@@ -35,6 +35,7 @@ Module('caba:vci_local_ring',
 	    Uses('common:mapping_table'),
 	    Uses('caba:vci_ring_initiator_wrapper'),
 	    Uses('caba:vci_ring_target_wrapper'),
-            Uses('caba:ring_dspin_gateway', cmd_width = 37, rsp_width = 33),
+            Uses('caba:ring_dspin_half_gateway_initiator'),
+            Uses('caba:ring_dspin_half_gateway_target'),
 	],
 )

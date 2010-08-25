@@ -30,7 +30,8 @@
 #include "caba_base_module.h"
 #include "vci_ring_target_wrapper.h"
 #include "vci_ring_initiator_wrapper.h"
-#include "ring_dspin_gateway.h"
+#include "ring_dspin_half_gateway_initiator.h"
+#include "ring_dspin_half_gateway_target.h"
 #include "mapping_table.h"
 #include "dspin_interface.h"
 #include "vci_initiator.h"
@@ -43,20 +44,21 @@ class VciLocalRing : public soclib::caba::BaseModule
 {
 public:
     // ports
-    sc_core::sc_in<bool>             			p_clk;
-    sc_core::sc_in<bool>             			p_resetn;
-    soclib::caba::VciInitiator<vci_param>* 		p_to_target;
-    soclib::caba::VciTarget<vci_param>*			p_to_initiator;
-    soclib::caba::DspinOutput<cmd_width>		p_gate_cmd_out;
-    soclib::caba::DspinInput<rsp_width>			p_gate_rsp_in;
-    soclib::caba::DspinInput<cmd_width>      		p_gate_cmd_in;
-    soclib::caba::DspinOutput<rsp_width>     		p_gate_rsp_out;
+    sc_core::sc_in<bool>             					p_clk;
+    sc_core::sc_in<bool>             					p_resetn;
+    soclib::caba::VciInitiator<vci_param>* 				p_to_target;
+    soclib::caba::VciTarget<vci_param>*					p_to_initiator;
+    soclib::caba::DspinOutput<cmd_width>				p_gate_cmd_out;
+    soclib::caba::DspinInput<rsp_width>					p_gate_rsp_in;
+    soclib::caba::DspinInput<cmd_width>      				p_gate_cmd_in;
+    soclib::caba::DspinOutput<rsp_width>     				p_gate_rsp_out;
 
     // instanciated components & signals
-    soclib::caba::VciRingInitiatorWrapper<vci_param>** 		m_initiator_wrapper;
-    soclib::caba::VciRingTargetWrapper<vci_param>** 		m_target_wrapper;
-    soclib::caba::RingDspinGateway<cmd_width,rsp_width>* 	m_ring_gateway; 
-    soclib::caba::RingSignals * 				m_ring_signals;  
+    soclib::caba::VciRingInitiatorWrapper<vci_param>** 			m_initiator_wrapper;
+    soclib::caba::VciRingTargetWrapper<vci_param>** 			m_target_wrapper;
+    soclib::caba::RingDspinHalfGatewayInitiator<cmd_width,rsp_width>* 	m_init_gateway; 
+    soclib::caba::RingDspinHalfGatewayTarget<cmd_width,rsp_width>* 	m_tgt_gateway; 
+    soclib::caba::RingSignals * 					m_ring_signals;  
                
 protected:
     SC_HAS_PROCESS(VciLocalRing);

@@ -53,45 +53,52 @@ tmpl(/**/)::VciLocalRing( sc_module_name 	insname,
 	m_target_wrapper    = new VciRingTargetWrapper<vci_param>*[m_nat];        
 	p_to_initiator      = alloc_elems<VciTarget<vci_param> >("p_to_initiator", m_nai);
 	p_to_target         = alloc_elems<VciInitiator<vci_param> >("p_to_target", m_nat);
-	m_ring_signals      = alloc_elems<RingSignals>("m_ring_signals", m_nai + m_nat + 1);
+	m_ring_signals      = alloc_elems<RingSignals>("m_ring_signals", m_nai + m_nat + 2);
+
+	std::ostringstream o;
+
 	// initiator wrappers generation  
 	for( int x = 0; x < m_nai ; x++ )
 	{
-            bool alloc_init = (x==0);             
-            std::ostringstream o;
             o << name() << "_i_wrapper_" << x;
             m_initiator_wrapper[x] = new VciRingInitiatorWrapper<vci_param>(o.str().c_str(), 
-                                                                            alloc_init, 
-                                                                            wrapper_fifo_depth,   
-                                                                            mt, 
-                                                                            ringid, 
-                                                                            x);
+                                                                            	false, 
+                                                                            	wrapper_fifo_depth,   
+                                                                            	mt, 
+                                                                            	ringid, 
+                                                                            	x);
         }
         // target wrappers generation 
         for( int x = 0; x < m_nat ; x++ ) 
         {
-            bool alloc_target = (x==0); 
-            std::ostringstream o;
             o << name() << "_t_wrapper_" << x;
             m_target_wrapper[x] = new VciRingTargetWrapper<vci_param>(o.str().c_str(), 
-                                                                      alloc_target,
-                                                                      wrapper_fifo_depth,   
-                                                                      mt, 
-                                                                      ringid, 
-                                                                      x);
+                                                                      		false,
+                                                                      		wrapper_fifo_depth,   
+                                                                      		mt, 
+                                                                      		ringid, 
+                                                                      		x);
         }
-        // gateway generation
-	std::ostringstream o;
-	o << name() << "_m_ring_gateway_";
-        m_ring_gateway = new RingDspinGateway<cmd_width, rsp_width>(o.str().c_str(), 
-                                                                    mt, 
-                                                                    ringid, 
-                                                                    false, false, false, 
-                                                                    gateway_fifo_depth); 
+        // initiator half gateway generation
+	o << name() << "_i_gateway_";
+        m_init_gateway = new RingDspinHalfGatewayInitiator<cmd_width, rsp_width>(o.str().c_str(), 
+										true,
+                                                                    		gateway_fifo_depth, 
+                                                                    		mt, 
+                                                                    		ringid, 
+                                                                    		false);
+        // target half gateway generation
+	o << name() << "_t_gateway_";
+        m_tgt_gateway = new RingDspinHalfGatewayTarget<cmd_width, rsp_width>(o.str().c_str(), 
+										true,
+                                                                    		gateway_fifo_depth, 
+                                                                    		mt, 
+                                                                    		ringid, 
+                                                                    		false);
 
         // NETLIST
         int nbsig = 0;
-        // connexion initiateurs
+        // connecting initiator wrappers
 	for( int x = 0; x < m_nai ; x++ )
         {
              m_initiator_wrapper[x]->p_clk		(p_clk);
@@ -100,7 +107,7 @@ tmpl(/**/)::VciLocalRing( sc_module_name 	insname,
              m_initiator_wrapper[x]->p_ring_out		(m_ring_signals[++nbsig]);
              m_initiator_wrapper[x]->p_vci		(p_to_initiator[x]);                    
         }       
-        // connexion targets              
+        // connecting target wrappers              
         for( int x = 0 ; x < m_nat ; x++ )
         {
             m_target_wrapper[x]->p_clk			(p_clk);
@@ -109,21 +116,29 @@ tmpl(/**/)::VciLocalRing( sc_module_name 	insname,
             m_target_wrapper[x]->p_ring_in		(m_ring_signals[nbsig]);
             m_target_wrapper[x]->p_ring_out		(m_ring_signals[++nbsig]);                 
         }
-        // connecting gateway 
-	m_ring_gateway->p_clk				(p_clk);
-	m_ring_gateway->p_resetn			(p_resetn);       
-	m_ring_gateway->p_ring_in			(m_ring_signals[nbsig]);
-	m_ring_gateway->p_ring_out			(m_ring_signals[0]);    
-	m_ring_gateway->p_gate_cmd_out			(p_gate_cmd_out);    
-	m_ring_gateway->p_gate_rsp_in			(p_gate_rsp_in);    
-	m_ring_gateway->p_gate_cmd_in			(p_gate_cmd_in);    
-	m_ring_gateway->p_gate_rsp_out			(p_gate_rsp_out);    
+        // connecting initiator half gateway 
+	m_init_gateway->p_clk				(p_clk);
+	m_init_gateway->p_resetn			(p_resetn);       
+	m_init_gateway->p_ring_in			(m_ring_signals[nbsig]);
+	m_init_gateway->p_ring_out			(m_ring_signals[++nbsig]);    
+	m_init_gateway->p_gate_cmd_in			(p_gate_cmd_in);    
+	m_init_gateway->p_gate_rsp_out			(p_gate_rsp_out);    
+
+        // connecting target half gateway 
+	m_tgt_gateway->p_clk				(p_clk);
+	m_tgt_gateway->p_resetn				(p_resetn);       
+	m_tgt_gateway->p_ring_in			(m_ring_signals[nbsig]);
+	m_tgt_gateway->p_ring_out			(m_ring_signals[0]);    
+	m_tgt_gateway->p_gate_cmd_out			(p_gate_cmd_out);    
+	m_tgt_gateway->p_gate_rsp_in 			(p_gate_rsp_in);    
+
     }
    
     ///////////////////////////
     tmpl(/**/)::~VciLocalRing()
     {
-	delete m_ring_gateway;
+	delete m_init_gateway;
+	delete m_tgt_gateway;
 	
 	for(int x = 0; x < m_nai; x++)
 		delete m_initiator_wrapper[x];
@@ -136,7 +151,7 @@ tmpl(/**/)::VciLocalRing( sc_module_name 	insname,
 	
 	dealloc_elems(p_to_initiator,m_nai);
 	dealloc_elems(p_to_target, m_nat);
-	dealloc_elems(m_ring_signals, m_nai + m_nat + 1);
+	dealloc_elems(m_ring_signals, m_nai + m_nat + 2);
     }
 
 }} // end namespace
