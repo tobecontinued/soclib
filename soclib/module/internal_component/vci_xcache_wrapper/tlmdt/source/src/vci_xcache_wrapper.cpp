@@ -953,6 +953,7 @@ tmpl(void)::cmd_fsm(){
 
       m_vci_cmd_fsm = CMD_IDLE ;
       m_wbuf.reset() ;
+      m_pdes_local_time->reset_sync();
  
       //send a write message
       p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
@@ -989,6 +990,7 @@ tmpl(void)::cmd_fsm(){
       m_phase = tlm::BEGIN_REQ;
       //set the local time to transaction time
       m_time = m_pdes_local_time->get();
+      m_pdes_local_time->reset_sync();
 
       //send a write message
       p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
@@ -1052,6 +1054,7 @@ tmpl(void)::cmd_fsm(){
     m_phase = tlm::BEGIN_REQ;
     //set the local time to transaction time
     m_time = m_pdes_local_time->get();
+    m_pdes_local_time->reset_sync();
 
     //send a message
     p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
@@ -1089,6 +1092,7 @@ tmpl(void)::cmd_fsm(){
       m_phase = tlm::BEGIN_REQ;
       //set the local time to transaction time
       m_time = m_pdes_local_time->get();
+      m_pdes_local_time->reset_sync();
 
       //send a write message
       p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
@@ -1123,6 +1127,7 @@ tmpl(void)::cmd_fsm(){
       m_phase = tlm::BEGIN_REQ;
       //set the local time to transaction time
       m_time = m_pdes_local_time->get();
+      m_pdes_local_time->reset_sync();
 
       //send a write message
       p_vci->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
@@ -1184,7 +1189,6 @@ tmpl (void)::rsp_fsm(){
   case RSP_INS_MISS:
     m_cost_imiss_transaction++;
     wait(m_rsp_received);
-    m_pdes_local_time->reset_sync();
     for(unsigned int i=0;i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++){
       m_icache_miss_buf[i] = atou(m_payload_ptr->get_data_ptr(), (i * vci_param::nbytes));
     }
@@ -1197,7 +1201,6 @@ tmpl (void)::rsp_fsm(){
   case RSP_INS_UNC:
     m_cost_imiss_transaction++;
     wait(m_rsp_received);
-    m_pdes_local_time->reset_sync();
     m_icache_miss_buf[0] = atou(m_payload_ptr->get_data_ptr(), 0);
     m_icache_buf_unc_valid = true;
     m_vci_rsp_fsm = RSP_IDLE;
@@ -1209,7 +1212,6 @@ tmpl (void)::rsp_fsm(){
   case RSP_DATA_MISS:
     m_cost_dmiss_transaction++;
     wait(m_rsp_received);
-    m_pdes_local_time->reset_sync();
     for(unsigned int i=0;i<(m_payload_ptr->get_data_length()/vci_param::nbytes); i++){
       m_dcache_miss_buf[i] = atou(m_payload_ptr->get_data_ptr(), (i * vci_param::nbytes));
     }
@@ -1223,7 +1225,6 @@ tmpl (void)::rsp_fsm(){
     wait(m_rsp_received);
     if(m_pdes_local_time->get()>=m_rsp_time){
       m_vci_rsp_fsm = RSP_IDLE;
-      m_pdes_local_time->reset_sync();
       m_dcache_write_req = false;
       if ( m_payload_ptr->is_response_error()) {
 #ifdef SOCLIB_MODULE_DEBUG
@@ -1238,7 +1239,6 @@ tmpl (void)::rsp_fsm(){
   case RSP_DATA_WRITE_TIME_WAIT:
     if(m_pdes_local_time->get()>=m_rsp_time){
       m_vci_rsp_fsm = RSP_IDLE;
-      m_pdes_local_time->reset_sync();
       m_dcache_write_req = false;
       if ( m_payload_ptr->is_response_error()) {
 #ifdef SOCLIB_MODULE_DEBUG
@@ -1251,8 +1251,6 @@ tmpl (void)::rsp_fsm(){
   case RSP_DATA_UNC:
     m_cost_unc_transaction++;
     wait(m_rsp_received);
-    m_pdes_local_time->reset_sync();
-
     m_dcache_miss_buf[0] = atou(m_payload_ptr->get_data_ptr(), 0);
     m_vci_rsp_fsm = RSP_IDLE;
     m_dcache_unc_req = false;
@@ -1278,6 +1276,7 @@ tmpl (void)::send_null_message()
   std::cout << name() << " send NULL MESSAGE time = " << m_null_time.value() << std::endl;
 #endif
 
+  m_pdes_local_time->reset_sync();
   //send a null message
   p_vci->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
   //deschedule the initiator thread
@@ -1286,8 +1285,6 @@ tmpl (void)::send_null_message()
 #ifdef SOCLIB_MODULE_DEBUG
   std::cout << name() << " receive time = " << m_pdes_local_time->get().value() << std::endl;
 #endif
-
-  m_pdes_local_time->reset_sync();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
