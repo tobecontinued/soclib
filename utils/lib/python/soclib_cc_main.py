@@ -57,10 +57,13 @@ Run soclib-cc --examples to see some common command-line examples.
 """
     f = TitledHelpFormatter()
     f.format_epilog = lambda x: x
-    parser = OptionParser(
-        usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]",
-        epilog = epilog,
-        formatter = f)
+    try:
+        parser = OptionParser(
+            usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]",
+            epilog = epilog,
+            formatter = f)
+    except TypeError:
+        parser = OptionParser(usage="%prog [ -m mode ] [ -t config ] [ -vqd ] [ -c -o output input | -p pf_desc ]")
 
     parser.add_option('--examples', dest = 'examples',
                       action='store_true',
