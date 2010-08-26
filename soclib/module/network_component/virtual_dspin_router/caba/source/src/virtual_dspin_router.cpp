@@ -49,6 +49,25 @@ using namespace soclib::common;
     //
     /////////////////////////////////////////////////////////////////////////
 
+    ////////////////////////
+    tmpl(void)::printTrace()
+    {
+        std::cout << "*** dspin_virtual_router " << name() << std::endl;
+        for( size_t k=0 ; k<2 ; k++) // loop on channels
+        {
+            std::cout << "-- channel " << k << std::endl;
+            for( size_t i=0 ; i<5 ; i++)  // loop on input ports
+            {
+                std::cout << "input[" << i << "] state = " << r_input_fsm[k][i] << std::endl;
+            }
+            for( size_t i=0 ; i<5 ; i++)  // loop on output ports
+            {
+                std::cout << "output[" << i << "] alloc = " << r_output_alloc[k][i]
+                          << " / index = " <<  r_output_index[k][i] << std::endl;
+            }
+        }
+    } 
+
     ////////////////////////////////////////////////
     tmpl(int)::xfirst_route(sc_uint<flit_width> data)
     {
