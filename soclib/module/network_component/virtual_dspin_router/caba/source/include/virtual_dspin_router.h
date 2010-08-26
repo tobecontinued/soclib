@@ -98,6 +98,9 @@ public:
 	// destructor 
 	~VirtualDspinRouter();
 
+	// public methods
+        void	printTrace();
+
 private:
 
 	// input port registers & fifos
@@ -126,7 +129,6 @@ private:
 	void genMoore();
 
 	// Utility functions
-        void	printTrace();
 	int 	xfirst_route(sc_uint<flit_width> data);			
 	int 	broadcast_route(int dst, int src, sc_uint<flit_width> data);	
 	bool 	is_eop(sc_uint<flit_width> data);			
