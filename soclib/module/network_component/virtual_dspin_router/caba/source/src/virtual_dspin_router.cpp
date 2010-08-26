@@ -45,14 +45,14 @@ using namespace soclib::common;
     // in case of broadcast, and are right aligned
     // 
     //  |EOP|   X    |   Y    |---|  XMIN  |  XMAX  |  YMIN  |  YMAX  |BC |
-    //  | 1 | x_size | y_size |---| x_size | x_size | y_size | y_size | 1 |
+    //  | 1 | x_width | y_width |---| x_width | x_width | y_width | y_width | 1 |
     //
     /////////////////////////////////////////////////////////////////////////
 
     ////////////////////////
     tmpl(void)::printTrace()
     {
-        std::cout << "*** dspin_virtual_router " << name() << std::endl;
+        std::cout << "***  " << name() << std::endl;
         for( size_t k=0 ; k<2 ; k++) // loop on channels
         {
             std::cout << "-- channel " << k << std::endl;
@@ -83,9 +83,9 @@ using namespace soclib::common;
     tmpl(int)::broadcast_route(int iter, int source, sc_uint<flit_width> data)
     {
         int sel = REQ_NOP;
-        int xmin = (data >> (1 + 2*m_y_size + m_x_size) ) & m_x_mask;
-        int xmax = (data >> (1 + 2*m_y_size           ) ) & m_x_mask;
-        int ymin = (data >> (1 + m_y_size             ) ) & m_y_mask;
+        int xmin = (data >> (1 + 2*m_y_width + m_x_width) ) & m_x_mask;
+        int xmax = (data >> (1 + 2*m_y_width           ) ) & m_x_mask;
+        int ymin = (data >> (1 + m_y_width             ) ) & m_y_mask;
         int ymax = (data >> (1                        ) ) & m_y_mask;
 
         switch(source) {
@@ -143,8 +143,8 @@ using namespace soclib::common;
     tmpl(/**/)::VirtualDspinRouter(	sc_module_name 	insname, 
 					int 	x,
 					int 	y,
-					int	x_size,
-					int	y_size,
+					int	x_width,
+					int	y_width,
                                        	int	in_fifo_depth,
                                        	int	out_fifo_depth)
     : BaseModule(insname),
@@ -159,8 +159,17 @@ using namespace soclib::common;
         dont_initialize();
         sensitive  << p_clk.neg();
 
+        // The maximal width of the x & y fields is 5 bits
+        // to support limited broadcast
+        if ( (x_width > 5) || (y_width > 5) )
+        {
+            std::cout << "Error in the virtual_dspin_router" << name() << std::endl;
+            std::cout << "The x_width & y_width parameters cannot be larger than 5" << std::endl;
+            exit(0);
+        }
+
         // The minimal width of a DSPIN flit is 33 bits
-        // if we want to transport 32 bits data words
+        // to transport 32 bits data words
         if ( flit_width < 33 )
         {
             std::cout << "Error in the virtual_dspin_router" << name() << std::endl;
@@ -193,12 +202,12 @@ using namespace soclib::common;
 
         m_local_x 		= x;
         m_local_y 		= y;
-        m_x_size		= x_size;
-        m_y_size		= y_size;
-        m_x_shift		= flit_width - x_size - 1;
-        m_y_shift		= flit_width - x_size - y_size - 1;
-        m_x_mask		= (0x1 << x_size) - 1;
-        m_y_mask		= (0x1 << y_size) - 1;
+        m_x_width		= x_width;
+        m_y_width		= y_width;
+        m_x_shift		= flit_width - x_width - 1;
+        m_y_shift		= flit_width - x_width - y_width - 1;
+        m_x_mask		= (0x1 << x_width) - 1;
+        m_y_mask		= (0x1 << y_width) - 1;
 
     } //  end constructor
 
@@ -310,6 +319,10 @@ using namespace soclib::common;
                             input_req[k][i] = xfirst_route(input_data[k][i]);
                         }
                     }
+                    else
+                    {
+                        input_req[k][i] = REQ_NOP;
+                    }
                 break;
                 case INFSM_REQ_SECOND :
                     input_req[k][i] = broadcast_route(SECOND, i, input_data[k][i]);
@@ -324,6 +337,9 @@ using namespace soclib::common;
                     input_req[k][i] = REQ_NOP;
                 break;
                 } // end switch r_input_fsm
+
+std::cout << "req[" << k << "][" << i << "] = " << input_req[k][i] << std::endl;
+
             } // enf for channels
         } // end for input ports
 

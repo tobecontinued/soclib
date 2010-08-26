@@ -90,8 +90,8 @@ public:
 	VirtualDspinRouter( 	sc_module_name  insname,
 				int	x,			// x coordinate in the mesh
 				int	y,			// y coordinate in the mesh 
-                                int	x_size,			// number of bits for x field
-				int	y_size,			// number of bits for y field
+                                int	x_width,		// number of bits for x field
+				int	y_width,		// number of bits for y field
                                 int	in_fifo_depth,		// input fifo depth
 				int	out_fifo_depth);	// output fifo depth
 
@@ -117,8 +117,8 @@ private:
 	// structural variables
 	int	m_local_x;					// router x coordinate
 	int	m_local_y;					// router y coordinate
-        int	m_x_size;					// number of bits for x field
-        int	m_y_size;					// number of bits for y field
+        int	m_x_width;	 				// number of bits for x field
+        int	m_y_width;					// number of bits for y field
         int	m_x_shift;					// number of bits to shift for x field
         int	m_x_mask;					// number of bits to mask for x field
         int	m_y_shift;					// number of bits to shift for y field
