@@ -40,31 +40,29 @@ using namespace soclib::common;
     // The four functions xfirst_route(), broadcast_route() 
     // is_eop() and is_broadcast() defined below are used 
     // to decode the DSPIN first flit format:
-    // The EOP, X, and Y fiels are left aligned.
-    // The XMIN, XMAX, YMIN, YMAX and BC fields are used
-    // in case of broadcast, and are right aligned
-    // 
-    //  |EOP|   X    |   Y    |---|  XMIN  |  XMAX  |  YMIN  |  YMAX  |BC |
-    //  | 1 | x_width | y_width |---| x_width | x_width | y_width | y_width | 1 |
     //
+    // - In case of a non-broadcast packet :
+    //  |EOP|   X     |   Y     |---------------------------------------|BC |
+    //  | 1 | x_width | y_width |  flit_width - (x_width + y_width + 2) | 1 |
+    //
+    //  - In case of a broacast 
+    //  |EOP|  XMIN   |  XMAX   |  YMIN   |  YMAX   |-------------------|BC |
+    //  | 1 |   5     |   5     |   5     |   5     | flit_width - 22   | 1 |
     /////////////////////////////////////////////////////////////////////////
 
-    ////////////////////////
-    tmpl(void)::printTrace()
+    //////////////////////////////////////
+    tmpl(void)::printTrace(int channel)
     {
-        std::cout << "***  " << name() << std::endl;
-        for( size_t k=0 ; k<2 ; k++) // loop on channels
+        int k = channel%2;
+        std::cout << "-- " << name() << " : channel " << k << std::endl;
+        for( size_t i=0 ; i<5 ; i++)  // loop on input ports
         {
-            std::cout << "-- channel " << k << std::endl;
-            for( size_t i=0 ; i<5 ; i++)  // loop on input ports
-            {
-                std::cout << "input[" << i << "] state = " << r_input_fsm[k][i] << std::endl;
-            }
-            for( size_t i=0 ; i<5 ; i++)  // loop on output ports
-            {
-                std::cout << "output[" << i << "] alloc = " << r_output_alloc[k][i]
-                          << " / index = " <<  r_output_index[k][i] << std::endl;
-            }
+            std::cout << "input[" << i << "] state = " << r_input_fsm[k][i] << std::endl;
+        }
+        for( size_t i=0 ; i<5 ; i++)  // loop on output ports
+        {
+            std::cout << "output[" << i << "] alloc = " << r_output_alloc[k][i]
+                      << " / index = " <<  r_output_index[k][i] << std::endl;
         }
     } 
 
@@ -83,10 +81,10 @@ using namespace soclib::common;
     tmpl(int)::broadcast_route(int iter, int source, sc_uint<flit_width> data)
     {
         int sel = REQ_NOP;
-        int xmin = (data >> (1 + 2*m_y_width + m_x_width) ) & m_x_mask;
-        int xmax = (data >> (1 + 2*m_y_width           ) ) & m_x_mask;
-        int ymin = (data >> (1 + m_y_width             ) ) & m_y_mask;
-        int ymax = (data >> (1                        ) ) & m_y_mask;
+        int xmin = (data >> (flit_width - 6 )) & 0x1F;
+        int xmax = (data >> (flit_width - 11)) & 0x1F;
+        int ymin = (data >> (flit_width - 16)) & 0x1F;
+        int ymax = (data >> (flit_width - 21)) & 0x1F;
 
         switch(source) {
         case LOCAL :
@@ -136,7 +134,7 @@ using namespace soclib::common;
     /////////////////////////////////////////////////
     tmpl(bool)::is_broadcast(sc_uint<flit_width> data)
     {
-        return ( (data & 0x3) != 0);
+        return ( (data & 0x1) != 0);
     }
 
     ////////////////////////////////////////////////////////////
@@ -159,8 +157,7 @@ using namespace soclib::common;
         dont_initialize();
         sensitive  << p_clk.neg();
 
-        // The maximal width of the x & y fields is 5 bits
-        // to support limited broadcast
+        // maximal width of the x & y fields (to support limited broadcast)
         if ( (x_width > 5) || (y_width > 5) )
         {
             std::cout << "Error in the virtual_dspin_router" << name() << std::endl;
@@ -168,20 +165,19 @@ using namespace soclib::common;
             exit(0);
         }
 
-        // The minimal width of a DSPIN flit is 33 bits
-        // to transport 32 bits data words
-        if ( flit_width < 33 )
+        // minimal width of a flit
+        if ( flit_width < 22 )
         {
             std::cout << "Error in the virtual_dspin_router" << name() << std::endl;
-            std::cout << "The flit_width parameter cannot be smaller than 33" << std::endl;
+            std::cout << "The flit_width cannot be smaller than 22 bits" << std::endl;
             exit(0);
         }
 
-        // ports are inconditionnaly constructed
+        // ports
         p_in  = alloc_elems<DspinInput<flit_width> >("p_in", 2, 5);
         p_out = alloc_elems<DspinOutput<flit_width> >("p_out", 2, 5);
 			
-        // input & output fifos are unconditionnally constructed 
+        // input & output fifos 
         std::ostringstream str;
         in_fifo = (GenericFifo<sc_uint<flit_width> >**)malloc(sizeof(GenericFifo<sc_uint<flit_width> >*)*2);
         out_fifo = (GenericFifo<sc_uint<flit_width> >**)malloc(sizeof(GenericFifo<sc_uint<flit_width> >*)*2);
@@ -337,9 +333,6 @@ using namespace soclib::common;
                     input_req[k][i] = REQ_NOP;
                 break;
                 } // end switch r_input_fsm
-
-std::cout << "req[" << k << "][" << i << "] = " << input_req[k][i] << std::endl;
-
             } // enf for channels
         } // end for input ports
 
@@ -360,12 +353,24 @@ std::cout << "req[" << k << "][" << i << "] = " << input_req[k][i] << std::endl;
                             ( output_get[k][i][3]) ||
                             ( output_get[k][i][4]);
 
+//if(k == 0) std::cout << "rok[" << i << "] = " << in_fifo[k][i].rok() << std::endl;
+//if(k == 0) std::cout << "req[" << i << "] = " << input_req[k][i] << std::endl;
+//if(k == 0) std::cout << "put[" << i << "] = " << put[k][i] << std::endl;
+//if(k == 0) std::cout << "get[" << i << "] = " << get[k][i] << std::endl;
+
                 in_fifo_write[k][i] = p_in[k][i].write.read();
 
                 switch( r_input_fsm[k][i] ) {
                 case INFSM_REQ_FIRST:
                     if( in_fifo[k][i].rok() )
                     {
+                        if( is_eop(input_data[k][i]) ) // checking packet length
+                        {
+                            std::cout << "Error in the virtual_dspin_router" << name() << std::endl;
+                            std::cout << "A single flit packet has been received on input port["
+                                      << k << "][" << i << "]" << std::endl;
+                            exit(0);
+                        } 
                         if( is_broadcast(input_data[k][i]) )  // broadcast request
                         {
                             in_fifo_read[k][i] = true;				
@@ -429,22 +434,20 @@ std::cout << "req[" << k << "][" << i << "] = " << input_req[k][i] << std::endl;
             {
                 // out_fifo_read[k][i], out_fifo_write[k][i], output_data[k][i]
                 out_fifo_read[k][j] = p_out[k][j].read;
+                out_fifo_write[k][j] = (output_get[k][0][j] && final_write[k][0]) ||
+                                       (output_get[k][1][j] && final_write[k][1]) ||
+                                       (output_get[k][2][j] && final_write[k][2]) ||
+                                       (output_get[k][3][j] && final_write[k][3]) ||
+                                       (output_get[k][4][j] && final_write[k][4]) ;
                 for(int i=0; i<5; i++)  // loop on input ports
                 {
-                    if( output_get[k][i][j] && final_write[k][i] )
-                    {
-                        output_data[k][j] = final_data[i];
-                        out_fifo_write[k][j] = true;
-                    }
-                    else
-                    {
-                        out_fifo_write[k][j] = false;
-                    }
+                    if( output_get[k][i][j] ) 	output_data[k][j] = final_data[i];
                 }
                 // r_output_alloc[k][j] & r_output_index[k][j]
                 int index = r_output_index[k][j];
                 if( !r_output_alloc[k][j] ) 		// allocation
                 { 
+
                     for(int n = index+1; n < index+6; n++) // loop on input ports
                     { 
                         int x = n % 5;
@@ -460,8 +463,9 @@ std::cout << "req[" << k << "][" << i << "] = " << input_req[k][i] << std::endl;
                          out_fifo_write[k][j] && 
                          out_fifo[k][j].wok() ) 	// de-allocation
                 { 
-                    r_output_alloc[k][index] = false;
+                    r_output_alloc[k][j] = false;
                 }
+
             } // end for channels
         } // end for outputs
 

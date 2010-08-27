@@ -59,7 +59,7 @@ enum {  // step index for a broadcast (all broadcast have 4 steps)
 };
 
 enum{	// INFSM States : In the REQ states, the request and the corresponding
-        // data are sent simultaneously, which means at least two cycles in this state
+        // data are sent simultaneously, which means two cycles in this state
 	INFSM_REQ_FIRST,
 	INFSM_DTN,
 	INFSM_DT_FIRST,
@@ -99,7 +99,7 @@ public:
 	~VirtualDspinRouter();
 
 	// public methods
-        void	printTrace();
+        void	printTrace(int channel);
 
 private:
 
