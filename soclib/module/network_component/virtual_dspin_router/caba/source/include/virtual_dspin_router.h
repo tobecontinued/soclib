@@ -51,17 +51,11 @@ enum{   // request type (six values, can be encoded on 3 bits)
         REQ_NOP,
 };
 
-enum {  // step index for a broadcast (all broadcast have 4 steps)
-	FIRST,
-	SECOND,
-	THIRD,
-	FOURTH,
-};
-
 enum{	// INFSM States : In the REQ states, the request and the corresponding
         // data are sent simultaneously, which means two cycles in this state
+	INFSM_IDLE,
+        INFSM_DTN,
 	INFSM_REQ_FIRST,
-	INFSM_DTN,
 	INFSM_DT_FIRST,
 	INFSM_REQ_SECOND,
 	INFSM_DT_SECOND,

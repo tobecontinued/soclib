@@ -88,34 +88,34 @@ using namespace soclib::common;
 
         switch(source) {
         case LOCAL :
-            if      ( iter == FIRST  )	sel = REQ_NORTH;
-            else if ( iter == SECOND )	sel = REQ_SOUTH;
-            else if ( iter == THIRD  )	sel = REQ_EAST;
-            else if ( iter == FOURTH )	sel = REQ_WEST;
+            if      ( iter == 1 )	sel = REQ_NORTH;
+            else if ( iter == 2 )	sel = REQ_SOUTH;
+            else if ( iter == 3 )	sel = REQ_EAST;
+            else if ( iter == 4 )	sel = REQ_WEST;
         break;
         case NORTH :
-            if      ( iter == FIRST  )	sel = REQ_SOUTH;
-            else if ( iter == SECOND )	sel = REQ_LOCAL;
-            else if ( iter == THIRD  )	sel = REQ_NOP;
-            else if ( iter == FOURTH )	sel = REQ_NOP;
+            if      ( iter == 1 )	sel = REQ_SOUTH;
+            else if ( iter == 2 )	sel = REQ_LOCAL;
+            else if ( iter == 3 )	sel = REQ_NOP;
+            else if ( iter == 4 )	sel = REQ_NOP;
         break;
         case SOUTH :
-            if      ( iter == FIRST  )	sel = REQ_NORTH;
-            else if ( iter == SECOND )	sel = REQ_LOCAL;
-            else if ( iter == THIRD  )	sel = REQ_NOP;
-            else if ( iter == FOURTH )	sel = REQ_NOP;
+            if      ( iter == 1 )	sel = REQ_NORTH;
+            else if ( iter == 2 )	sel = REQ_LOCAL;
+            else if ( iter == 3 )	sel = REQ_NOP;
+            else if ( iter == 4 )	sel = REQ_NOP;
         break;
         case EAST :
-            if      ( iter == FIRST  )	sel = REQ_WEST;
-            else if ( iter == SECOND )	sel = REQ_NORTH;
-            else if ( iter == THIRD  )	sel = REQ_SOUTH;
-            else if ( iter == FOURTH )	sel = REQ_LOCAL;
+            if      ( iter == 1 )	sel = REQ_WEST;
+            else if ( iter == 2 )	sel = REQ_NORTH;
+            else if ( iter == 3 )	sel = REQ_SOUTH;
+            else if ( iter == 4 )	sel = REQ_LOCAL;
         break;
         case WEST :
-            if      ( iter == FIRST  )	sel = REQ_EAST;
-            else if ( iter == SECOND )	sel = REQ_NORTH;
-            else if ( iter == THIRD  )	sel = REQ_SOUTH;
-            else if ( iter == FOURTH )	sel = REQ_LOCAL;
+            if      ( iter == 1 )	sel = REQ_EAST;
+            else if ( iter == 2 )	sel = REQ_NORTH;
+            else if ( iter == 3 )	sel = REQ_SOUTH;
+            else if ( iter == 4 )	sel = REQ_LOCAL;
         break;
         }
         if      ( (sel == REQ_NORTH) && !(m_local_y < ymax) ) 	sel = REQ_NOP;
@@ -222,7 +222,7 @@ using namespace soclib::common;
                 r_tdm[i]	= false;
                 for(int k=0 ; k<2 ; k++) 
                 {
-                    r_input_fsm[k][i]		= INFSM_REQ_FIRST;			
+                    r_input_fsm[k][i]		= INFSM_IDLE;			
                     r_output_index[k][i] 	= 0;
                     r_output_alloc[k][i]  	= false;
                     in_fifo[k][i].init();
@@ -278,7 +278,8 @@ using namespace soclib::common;
             // input_data[k][i] & put[k][i]
             for(int k=0; k<2; k++) // loop on channels
             {
-                if( (r_input_fsm[k][i].read() == INFSM_REQ_SECOND) ||
+                if( (r_input_fsm[k][i].read() == INFSM_REQ_FIRST)  ||
+                    (r_input_fsm[k][i].read() == INFSM_REQ_SECOND) ||
                     (r_input_fsm[k][i].read() == INFSM_REQ_THIRD ) ||
                     (r_input_fsm[k][i].read() == INFSM_REQ_FOURTH) )
                 {
@@ -303,43 +304,42 @@ using namespace soclib::common;
             for(int k=0; k<2; k++) // loop on channels
             {
                 switch( r_input_fsm[k][i] ) {
-                case INFSM_REQ_FIRST :
+                case INFSM_IDLE :
                     if( in_fifo[k][i].rok() )
                     {
-                        if( is_broadcast(input_data[k][i]) )  // broadcast request
-                        {
-                            input_req[k][i] = broadcast_route(FIRST, i, input_data[k][i]);
-                        }
-                        else			             // not a broadcast request
-                        {
-                            input_req[k][i] = xfirst_route(input_data[k][i]);
-                        }
+                        if( is_broadcast(input_data[k][i]) ) 
+                            input_req[k][i] = broadcast_route(1, i, in_fifo[k][i].read() );
+                        else
+                            input_req[k][i] = xfirst_route(in_fifo[k][i].read() );
                     }
                     else
                     {
                         input_req[k][i] = REQ_NOP;
                     }
-                break;
+                    break;
+                case INFSM_REQ_FIRST:
+                    input_req[k][i] = broadcast_route(1, i, r_buf[k][i].read() );
+                    break;
                 case INFSM_REQ_SECOND :
-                    input_req[k][i] = broadcast_route(SECOND, i, input_data[k][i]);
-                break;
+                    input_req[k][i] = broadcast_route(2, i, r_buf[k][i].read() );
+                    break;
                 case INFSM_REQ_THIRD :
-                    input_req[k][i] = broadcast_route(THIRD, i, input_data[k][i]);
-                break;
+                    input_req[k][i] = broadcast_route(3, i, r_buf[k][i].read() );
+                    break;
                 case INFSM_REQ_FOURTH :
-                    input_req[k][i] = broadcast_route(FOURTH, i, input_data[k][i]);
-                break;
+                    input_req[k][i] = broadcast_route(4, i, r_buf[k][i].read() );
+                    break;
                 default :
                     input_req[k][i] = REQ_NOP;
-                break;
+                    break;
                 } // end switch r_input_fsm
             } // enf for channels
         } // end for input ports
 
-        ///////////////////////////////////
+        ////////////////////////////////////////////////////////
         // input ports registers and fifos
-        // r_tdm, r_input_fsm, r_buf, 
-        // in_fifo_write, in_fifo_read
+        // r_tdm, r_input_fsm, r_buf, in_fifo_write, in_fifo_read
+        //
 
         for(int i=0; i<5; i++)  // loop on the input ports
         {
@@ -352,21 +352,23 @@ using namespace soclib::common;
                             ( output_get[k][i][2]) ||
                             ( output_get[k][i][3]) ||
                             ( output_get[k][i][4]);
-
-//if(k == 0) std::cout << "rok[" << i << "] = " << in_fifo[k][i].rok() << std::endl;
-//if(k == 0) std::cout << "req[" << i << "] = " << input_req[k][i] << std::endl;
-//if(k == 0) std::cout << "put[" << i << "] = " << put[k][i] << std::endl;
-//if(k == 0) std::cout << "get[" << i << "] = " << get[k][i] << std::endl;
-
+/*
+if((k==0) && (i==4)) std::cout << "rok[" << i << "] = " << in_fifo[k][i].rok() << std::endl << std::hex;
+if((k==0) && (i==4)) std::cout << "din[" << i << "] = " << input_data[k][i] << std::endl;
+if((k==0) && (i==4)) std::cout << "eop[" << i << "] = " << is_eop(input_data[k][i]) << std::endl;
+if((k==0) && (i==4)) std::cout << "req[" << i << "] = " << input_req[k][i] << std::endl;
+if((k==0) && (i==4)) std::cout << "put[" << i << "] = " << put[k][i] << std::endl;
+if((k==0) && (i==4)) std::cout << "get[" << i << "] = " << get[k][i] << std::endl << std::endl;
+*/
                 in_fifo_write[k][i] = p_in[k][i].write.read();
 
                 switch( r_input_fsm[k][i] ) {
-                case INFSM_REQ_FIRST:
+                case INFSM_IDLE:
                     if( in_fifo[k][i].rok() )
                     {
-                        if( is_eop(input_data[k][i]) ) // checking packet length
+                        if( is_eop(input_data[k][i]) )
                         {
-                            std::cout << "Error in the virtual_dspin_router" << name() << std::endl;
+                            std::cout << "Error in the virtual_dspin_router " << name() << std::endl;
                             std::cout << "A single flit packet has been received on input port["
                                       << k << "][" << i << "]" << std::endl;
                             exit(0);
@@ -376,7 +378,7 @@ using namespace soclib::common;
                             in_fifo_read[k][i] = true;				
                             r_buf[k][i] = in_fifo[k][i].read();
                             if( input_req[k][i] == REQ_NOP )	r_input_fsm[k][i] = INFSM_REQ_SECOND;
-                            else if( get[k][i] )  		r_input_fsm[k][i] = INFSM_DT_FIRST; 
+                            else                  		r_input_fsm[k][i] = INFSM_REQ_FIRST; 
                         }
                         else 				// not a broadcast request
                         {
@@ -387,38 +389,43 @@ using namespace soclib::common;
                 break;
                 case INFSM_DTN:
                     in_fifo_read[k][i] = get[k][i];
-	            if( get[k][i] && is_eop(input_data[k][i]) ) r_input_fsm[k][i] = INFSM_REQ_FIRST;
-                break;
+	            if( get[k][i] && is_eop(input_data[k][i]) ) r_input_fsm[k][i] = INFSM_IDLE;
+                    break;
+                case INFSM_REQ_FIRST:
+                    in_fifo_read[k][i] = false;
+                    if( input_req[k][i] == REQ_NOP )	r_input_fsm[k][i] = INFSM_REQ_SECOND;
+                    else if( get[k][i] ) 		r_input_fsm[k][i] = INFSM_DT_FIRST;
+                    break;
                 case INFSM_DT_FIRST:		
                     in_fifo_read[k][i] = false;
                     if( get[k][i] )			r_input_fsm[k][i] = INFSM_REQ_SECOND;
-                break;
+                    break;
                 case INFSM_REQ_SECOND:
                     in_fifo_read[k][i] = false;
                     if( input_req[k][i] == REQ_NOP )	r_input_fsm[k][i] = INFSM_REQ_THIRD;
                     else if( get[k][i] ) 		r_input_fsm[k][i] = INFSM_DT_SECOND;
-                break;
+                    break;
                 case INFSM_DT_SECOND:	
                     in_fifo_read[k][i] = false;
                     if( get[k][i] )			r_input_fsm[k][i] = INFSM_REQ_THIRD;
-                break;
+                    break;
                 case INFSM_REQ_THIRD:
                     in_fifo_read[k][i] = false;
                     if( input_req[k][i] == REQ_NOP )	r_input_fsm[k][i] = INFSM_REQ_FOURTH;
                     if( get[k][i] ) 			r_input_fsm[k][i] = INFSM_DT_THIRD;
-                break;
+                    break;
                 case INFSM_DT_THIRD:	
                     in_fifo_read[k][i] = false;
                     if( get[k][i] )			r_input_fsm[k][i] = INFSM_REQ_FOURTH;
-                break;
+                    break;
                 case INFSM_REQ_FOURTH:
                     in_fifo_read[k][i] = false;
-                    if( input_req[k][i] == REQ_NOP )	r_input_fsm[k][i] = INFSM_REQ_FIRST;
+                    if( input_req[k][i] == REQ_NOP )	r_input_fsm[k][i] = INFSM_IDLE;
                     if( get[k][i] ) 			r_input_fsm[k][i] = INFSM_DT_FOURTH;
-                break;
+                    break;
                 case INFSM_DT_FOURTH:
-                    if( get[k][i] )			r_input_fsm[k][i] = INFSM_REQ_FIRST;
-                break;
+                    if( get[k][i] )			r_input_fsm[k][i] = INFSM_IDLE;
+                    break;
                 } // end switch infsm
             } // end for channels
         } // end for inputs
