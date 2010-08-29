@@ -294,14 +294,7 @@ using namespace soclib::common;
                     input_data[k][i] = in_fifo[k][i].read();
                     if( in_fifo[k][i].rok() )
                     {
-                        put[k][i] = true;
-                        if( is_eop(input_data[k][i]) )
-                        {
-                            std::cout << "Error in the virtual_dspin_router " << name() << std::endl;
-                            std::cout << "A single flit packet has been received on input port["
-                                      << k << "][" << i << "]" << std::endl;
-                            exit(0);
-                        } 
+                        put[k][i] = false;
                         if( is_broadcast(input_data[k][i]) )  // broadcast request
                         {
                             input_req[k][i] = broadcast_route(1, i, in_fifo[k][i].read() );
@@ -313,8 +306,8 @@ using namespace soclib::common;
                         else 				// not a broadcast request
                         {
                             input_req[k][i] = xfirst_route(in_fifo[k][i].read() );
-                            in_fifo_read[k][i] = get[k][i];				
-                            if( get[k][i] ) r_input_fsm[k][i] = INFSM_DTN;
+                            in_fifo_read[k][i] = false;
+                            r_input_fsm[k][i] = INFSM_REQ;
                         }
                     }
                     else
@@ -323,8 +316,16 @@ using namespace soclib::common;
                         in_fifo_read[k][i] = false;				
                         put[k][i] = false;
                     }
-                break;
-                case INFSM_DTN:
+                    break;
+                case INFSM_REQ:
+                    input_data[k][i] = in_fifo[k][i].read();
+                    put[k][i] = true;
+                    input_req[k][i] = xfirst_route(in_fifo[k][i].read());
+                    in_fifo_read[k][i] = get[k][i];
+	            if( is_eop(in_fifo[k][i].read()) )	r_input_fsm[k][i] = INFSM_IDLE;
+                    else				r_input_fsm[k][i] = INFSM_DT;	
+                    break;
+                case INFSM_DT:
                     input_data[k][i] = in_fifo[k][i].read();
                     put[k][i] = in_fifo[k][i].rok();
                     input_req[k][i] = REQ_NOP;

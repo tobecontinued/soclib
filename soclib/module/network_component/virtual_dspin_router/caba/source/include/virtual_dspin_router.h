@@ -54,7 +54,8 @@ enum{   // request type (six values, can be encoded on 3 bits)
 enum{	// INFSM States : In the REQ states, the request and the corresponding
         // data are sent simultaneously, which means two cycles in this state
 	INFSM_IDLE,
-        INFSM_DTN,
+        INFSM_REQ,
+        INFSM_DT,
 	INFSM_REQ_FIRST,
 	INFSM_DT_FIRST,
 	INFSM_REQ_SECOND,
