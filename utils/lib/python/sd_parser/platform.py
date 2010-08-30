@@ -88,7 +88,7 @@ class Platform(ToDo):
 def Source(mode, source_file, uses = [], defines = {}, **params):
     from sd_parser import module
 
-    name = mode+':'+hex(hash(source_file))
+    name = mode+':platform_desc_'+hex(hash(source_file))[-4:]
 
     filename = traceback.extract_stack()[-3][0]
     d = os.path.abspath(os.path.dirname(filename))

@@ -56,18 +56,85 @@ class ModuleExplicitFailure(exceptions.ExpectedException):
     pass
 
 class ModuleSpecializationError(exceptions.ExpectedException):
-    def __init__(self, module, context = None, prev_error = None):
+    """
+    Error raised on module specialization when an error occurs below.
+    We dont let the exception propagate because we loose the
+    information about the faulty component. This exception saves the
+    nested traceback to show it in the end.
+    """
+    max_stack_levels = 16
+    
+    def __init__(self, module, error):
+        """
+        module: the module name where the error occured
+        error:  the error that occured
+        """
+
+        # Try to avoid big clutter when printing huge nested errors
+        # but let soclib-cc -v print the whole if needed
+        from soclib_cc.config import config
+        self.__short = not config.verbose
+
         self.__module = module
-        self.__context = context
-        self.__prev_error = prev_error
-    def __str__(self):
-        return '\n'+self.format()
-    def format(self, pfx = ' '):
+        self.__prev_error = error
+
+        import sys
+        import traceback
+
+        sei = sys.exc_info()
+        exc_frame = traceback.extract_tb(sei[2])
+
+        lines = traceback.format_list(exc_frame)
+        if len(lines) > self.max_stack_levels+1 and self.__short:
+            lines = lines[:self.max_stack_levels/2] + ['\n', '[%d lines ommitted]\n'%(len(lines)-self.max_stack_levels), '\n'] + lines[-self.max_stack_levels/2:]
+        self.__exc = ''.join(lines)
+
+    @property
+    def actual_error(self):
+        """
+        This is the inner-most error that must be displayed to the
+        user.
+        """
+        error = self.__prev_error
+        if isinstance(error, ModuleSpecializationError):
+            return error.actual_error
+        return self.__prev_error
+
+    @property
+    def path(self):
+        """
+        This is the specialization path to the inner-most error.
+        """
         if isinstance(self.__prev_error, ModuleSpecializationError):
-            c = '\n'+pfx+self.__prev_error.format(pfx+' ')
+            return self.__module + " -> " + self.__prev_error.path
+        return self.__module
+        
+
+    def __str__(self):
+        r = '\n\n'+self.__format()
+        r += '\n'
+        r += '\nSpecialization path: '+self.path
+        r += '\n'
+        r += '\n'+self.__format_exc(self.actual_error)
+        return r
+
+    def __format_exc(self, err):
+        import traceback
+        return ''.join(traceback.format_exception_only(err.__class__, err))
+
+    def __format_previous(self):
+        error = self.__prev_error
+        r = '\n'
+        if isinstance(error, ModuleSpecializationError):
+            if not self.__short:
+                r += self.__exc
+            r += error.__format()
         else:
-            c = '\n'+pfx+' '+str(self.__prev_error)
-        at = ""
-        if self.__context:
-            at = (' at '+str(self.__context))
-        return 'Error specializing %s%s, error: %s'%(self.__module, at, c)
+            r += self.__exc
+            r += self.__format_exc(error)
+        return r.replace("\n", "\n| ")
+
+    def __format(self):
+        r = 'Error specializing module "%s", nested error:'%(self.__module)
+        r += "\n" + self.__format_previous()
+        return r

@@ -43,25 +43,24 @@ class Specialization:
         self.__module = module
         self.__local = local
 #        self.__used_parameters = self.__find_useful_parameters(**params)
-        self.__passed_params = parameter.resolve(params, params)
-        self.__entity_name = self.__get_cxx_type()
-        self.__hash = hash(self.__entity_name) ^ hash(self.__module)
 
-#        try:
-#        except error.ModuleSpecializationError, e:
-#            raise error.ModuleSpecializationError(
-#                self.getModuleName(), use, e)
+        try:
+            self.__passed_params = parameter.resolve(params, params)
+            self.__entity_name = self.__get_cxx_type()
+            self.__hash = hash(self.__entity_name) ^ hash(self.__module)
 
-        self.__tmpl_dependencies = set()
-        for i in self.__module.get_info('tmpl_parameters'):
-            if isinstance(i, parameter.Module):
-                val = parameter.value(i, self.__passed_params, 'tmpl')
-                if not isinstance(val, parameter.Foreign):
-                    self.__tmpl_dependencies |= val.__get_subtree()
+            self.__tmpl_dependencies = set()
+            for i in self.__module.get_info('tmpl_parameters'):
+                if isinstance(i, parameter.Module):
+                    val = parameter.value(i, self.__passed_params, 'tmpl')
+                    if not isinstance(val, parameter.Foreign):
+                        self.__tmpl_dependencies |= val.__get_subtree()
 
-        self.__uses = self.__module._get_uses(**self.__passed_params)
-        self.__dependencies = self.__uses | self.__tmpl_dependencies
-        self.__used_modules = self.__get_used_modules()
+            self.__uses = self.__module._get_uses(**self.__passed_params)
+            self.__dependencies = self.__uses | self.__tmpl_dependencies
+            self.__used_modules = self.__get_used_modules()
+        except Exception, e:
+            raise error.ModuleSpecializationError(self.__module.name, e)
 
     def __get_subtree(self, pfx = ''):
         r = set()
