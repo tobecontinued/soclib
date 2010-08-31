@@ -152,7 +152,10 @@ class ToDo:
             import shlex
             act = []
             was = None
-            for a in shlex.split(e.action):
+            cmdlist = e.action
+            if not isinstance(cmdlist, (list, tuple)):
+                cmdlist = shlex.split(cmdlist)
+            for a in cmdlist:
                 s = None
                 if a.startswith('-I'):
                     s = '-I'
