@@ -109,23 +109,20 @@ class CxxComponentBuilder(ComponentBuilder):
             src = tx.dests[0]
         else:
             src = filename
-        incls = set(map(os.path.dirname,
-                        self.__header_files
-                        + self.__interface_files
-                        + self.__tmpl_header_files
-                        ))
+        headers = set(self.__header_files + self.__interface_files + self.__tmpl_header_files)
+        incls = set(map(os.path.dirname, headers))
 
         # Take list of headers where basenames collides
-        bincludes = {}
-        includes = set()
-        for h in list(self.__header_files):
+        basename_to_inc = {}
+        colliding_inc = set()
+        for h in list(headers):
             name = os.path.basename(h)
-            if name in bincludes:
-                includes.add(bincludes[name])
-                includes.add(h)
+            if name in basename_to_inc:
+                colliding_inc.add(basename_to_inc[name])
+                colliding_inc.add(h)
             else:
-                bincludes[name] = h
-        includes = list(includes)
+                basename_to_inc[name] = h
+        colliding_inc = list(colliding_inc)
         
         if self.local:
             try:
@@ -151,7 +148,7 @@ class CxxComponentBuilder(ComponentBuilder):
             src = src,
             defines = self.__defines,
             inc_paths = incls,
-            includes  = includes,
+            includes  = colliding_inc,
             force_debug = self.__force_debug,
             **add)
 
