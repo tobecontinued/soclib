@@ -322,8 +322,11 @@ using namespace soclib::common;
                     put[k][i] = true;
                     input_req[k][i] = xfirst_route(in_fifo[k][i].read());
                     in_fifo_read[k][i] = get[k][i];
-	            if( is_eop(in_fifo[k][i].read()) )	r_input_fsm[k][i] = INFSM_IDLE;
-                    else				r_input_fsm[k][i] = INFSM_DT;	
+                    if( get[k][i] )
+                    {
+	                if( is_eop(in_fifo[k][i].read()) )	r_input_fsm[k][i] = INFSM_IDLE;
+                        else 					r_input_fsm[k][i] = INFSM_DT;	
+                    }
                     break;
                 case INFSM_DT:
                     input_data[k][i] = in_fifo[k][i].read();
