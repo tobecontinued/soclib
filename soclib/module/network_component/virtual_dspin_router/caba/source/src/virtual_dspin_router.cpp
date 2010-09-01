@@ -20,7 +20,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Authors  : alain.greiner@lip6.fr noe.girand@polytechnique.org
- * Date     : july 2010
+ * Date     : august 2010
  * Copyright: UPMC - LIP6
  */
 
@@ -36,11 +36,23 @@ using namespace soclib::common;
 
 #define tmpl(x) template<int flit_width> x VirtualDspinRouter<flit_width>
 
-    ///////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    // Implementation Note :
+    // The TDM (Time dependant Multiplexing) introduces a strong coupling
+    // between the two FSMs controling the two virtual channels 
+    // in the input port. Therefore, it is necessary to have two successive
+    // loops one the 2 * 5 input FSMs:
+    // - The first loop computes - put[k][i] : input(k,i) wishes to produce
+    //                           - get[k][i] : output(k,i) wishes to consume
+    // - The second loop uses these values to implement the TDM policy
+    //   and compute final_put[k][i], final_data[k][i], in_fifo_read[k][i]
+    //   and the next FSM state r_input_fsm[k][i].
+    // In this implementation, there is only one comrbinational transfer 
+    // per cycle from input(i) to output(j) or from output(j) to input(i).
+    ///////////////////////////////////////////////////////////////////////////
     // The four functions xfirst_route(), broadcast_route() 
     // is_eop() and is_broadcast() defined below are used 
     // to decode the DSPIN first flit format:
-    //
     // - In case of a non-broadcast packet :
     //  |EOP|   X     |   Y     |---------------------------------------|BC |
     //  | 1 | x_width | y_width |  flit_width - (x_width + y_width + 2) | 1 |
@@ -48,7 +60,7 @@ using namespace soclib::common;
     //  - In case of a broacast 
     //  |EOP|  XMIN   |  XMAX   |  YMIN   |  YMAX   |-------------------|BC |
     //  | 1 |   5     |   5     |   5     |   5     | flit_width - 22   | 1 |
-    /////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////
     tmpl(void)::printTrace(int channel)
@@ -127,14 +139,14 @@ using namespace soclib::common;
         return sel;
     }
 
-    ///////////////////////////////////////////
-    tmpl(bool)::is_eop(sc_uint<flit_width> data)
+    ///////////////////////////////////////////////////
+    tmpl(inline bool)::is_eop(sc_uint<flit_width> data)
     {
         return ( ((data>>(flit_width-1)) & 0x1) != 0);
     }
 
-    /////////////////////////////////////////////////
-    tmpl(bool)::is_broadcast(sc_uint<flit_width> data)
+    /////////////////////////////////////////////////////////
+    tmpl(inline bool)::is_broadcast(sc_uint<flit_width> data)
     {
         return ( (data & 0x1) != 0);
     }
@@ -236,11 +248,10 @@ using namespace soclib::common;
 
         // internal variables used in each input port module
         // they will not be implemented as inter-module signals in the RTL
-        bool	 		in_fifo_read[2][5];	// consume data in input_fifo 
-        bool	       		in_fifo_write[2][5];	// write data in input_fifo
-        sc_uint<flit_width> 	input_data[2][5]; 	// for each channel, data to be transmitted
+        bool	 		in_fifo_read[2][5];	// wishes to consume data in in_fifo 
+        bool	       		in_fifo_write[2][5];	// writes data in in_fifo
         bool 			put[2][5];		// input port wishes to transmit data
-        bool			get[2][5];		// the selected oupput port consume data
+        bool			get[2][5];		// selected output port wishes to consume data
 
         // internal variables used in each output port module
         // they will not be implemented as inter-module signals in the RTL
@@ -253,7 +264,7 @@ using namespace soclib::common;
         bool            	output_get[2][5][5];    // output j consume data from input i in channel k 
         int	        	input_req[2][5];        // requested output port (NOP means no request)
 	sc_uint<flit_width>	final_data[5];          // per input : data value 
-	bool            	final_write[2][5];      // per input : data valid 
+	bool            	final_put[2][5];        // per input : data valid 
 
         ///////////////////////////////////////////////////////////////
         // output_get[k][i][j] : depends only on the output port states
@@ -271,16 +282,13 @@ using namespace soclib::common;
             }
         }
 
-        ////////////////////////////////////////////////////////////////
-        // input registers, signals and fifos computation :
-        //     r_tdm[i], r_input_fsm[k][i], r_buf[k][i] 
-        //     in_fifo_write[k][i], in_fifo_read[k][i]
-        //     input_req[k][i], get[k][i], put[k][i], input_data[k][i]
+        ///////////////////////////////////////////////////////////////////
+        //  The following signals depend on the input FSM & FIFO states
+        //  but do not depent on r_tdm :
+        //  in_fifo_write[k][i], input_req[k][i], get[k][i], put[k][i]
 
         for(int i=0; i<5; i++)  // loop on the input ports
         {
-            r_tdm[i] = (r_tdm[i].read() && !put[1][i]) || (!r_tdm[i].read() && put[0][i]);
-
             for(int k=0; k<2; k++)  // loop on the channels
             {
                 get[k][i] = ( output_get[k][i][0]) ||
@@ -293,65 +301,46 @@ using namespace soclib::common;
 
                 switch( r_input_fsm[k][i] ) {
                 case INFSM_IDLE:
-                    input_data[k][i] = in_fifo[k][i].read();
+                    put[k][i] = false;
                     if( in_fifo[k][i].rok() )
                     {
-                        put[k][i] = false;
-                        if( is_broadcast(input_data[k][i]) )  // broadcast request
-                        {
-                            input_req[k][i] = broadcast_route(1, i, in_fifo[k][i].read() );
-                            in_fifo_read[k][i] = true;				
-                            r_buf[k][i] = in_fifo[k][i].read();
-                            if( input_req[k][i] == REQ_NOP )	r_input_fsm[k][i] = INFSM_REQ_SECOND;
-                            else                  		r_input_fsm[k][i] = INFSM_REQ_FIRST; 
-                        }
-                        else 				// not a broadcast request
-                        {
-                            input_req[k][i] = xfirst_route(in_fifo[k][i].read() );
-                            in_fifo_read[k][i] = false;
-                            r_input_fsm[k][i] = INFSM_REQ;
-                        }
+                        if( is_broadcast(in_fifo[k][i].read()) )  
+                            input_req[k][i] = broadcast_route(1, i, in_fifo[k][i].read());
+                        else 
+                            input_req[k][i] = xfirst_route(in_fifo[k][i].read());
                     }
-                    else
-                    {
-                        input_req[k][i] = REQ_NOP;
-                        in_fifo_read[k][i] = false;				
-                        put[k][i] = false;
-                    }
+                    else    input_req[k][i] = REQ_NOP;
                     break;
                 case INFSM_REQ:
-                    input_data[k][i] = in_fifo[k][i].read();
                     put[k][i] = true;
                     input_req[k][i] = xfirst_route(in_fifo[k][i].read());
-                    in_fifo_read[k][i] = get[k][i];
-                    if( get[k][i] )
-                    {
-	                if( is_eop(in_fifo[k][i].read()) )	r_input_fsm[k][i] = INFSM_IDLE;
-                        else 					r_input_fsm[k][i] = INFSM_DT;	
-                    }
                     break;
                 case INFSM_DT:
-                    input_data[k][i] = in_fifo[k][i].read();
                     put[k][i] = in_fifo[k][i].rok();
                     input_req[k][i] = REQ_NOP;
-                    in_fifo_read[k][i] = get[k][i];
-	            if( in_fifo[k][i].rok() && get[k][i] && is_eop(input_data[k][i]) )
-                         r_input_fsm[k][i] = INFSM_IDLE;
                     break;
                 case INFSM_REQ_FIRST:
-                    input_data[k][i] = r_buf[k][i].read();
                     put[k][i] = true;
                     input_req[k][i] = broadcast_route(1, i, r_buf[k][i].read() );
-                    in_fifo_read[k][i] = false;
-                    if( input_req[k][i] == REQ_NOP )		r_input_fsm[k][i] = INFSM_REQ_SECOND;
-                    else if( get[k][i] ) 			r_input_fsm[k][i] = INFSM_DT_FIRST;
                     break;
-                case INFSM_DT_FIRST:		
-                    input_data[k][i] = in_fifo[k][i].read();
+                case INFSM_REQ_SECOND:
+                    put[k][i] = true;
+                    input_req[k][i] = broadcast_route(2, i, r_buf[k][i].read() );
+                    break;
+                case INFSM_REQ_THIRD:
+                    put[k][i] = true;
+                    input_req[k][i] = broadcast_route(3, i, r_buf[k][i].read() );
+                    break;
+                case INFSM_REQ_FOURTH:
+                    put[k][i] = true;
+                    input_req[k][i] = broadcast_route(4, i, r_buf[k][i].read() );
+                    break;
+                case INFSM_DT_FIRST:	
+                case INFSM_DT_SECOND:	
+                case INFSM_DT_THIRD:	
+                case INFSM_DT_FOURTH:
                     put[k][i] = in_fifo[k][i].rok();
                     input_req[k][i] = REQ_NOP;
-                    in_fifo_read[k][i] = false;
-                    if( get[k][i] && in_fifo[k][i].rok() )	r_input_fsm[k][i] = INFSM_REQ_SECOND;
                     if( in_fifo[k][i].rok() && !is_eop(in_fifo[k][i].read()) )
                     {
                         std::cout << "Error in the virtual_dspin_router " << name() << std::endl;
@@ -360,75 +349,183 @@ using namespace soclib::common;
                         exit(0);
                     }
                     break;
-                case INFSM_REQ_SECOND:
-                    input_data[k][i] = r_buf[k][i].read();
-                    put[k][i] = true;
-                    input_req[k][i] = broadcast_route(2, i, r_buf[k][i].read() );
+                } // end switch infsm
+            } // end for channels
+        } // end for inputs
+
+/*
+if((k==0) && (i==4)) std::cout << "rok[" << i << "] = " << in_fifo[k][i].rok() << std::endl << std::hex;
+if((k==0) && (i==4)) std::cout << "din[" << i << "] = " << in_fifo[k][i].read() << std::endl;
+if((k==0) && (i==4)) std::cout << "req[" << i << "] = " << input_req[k][i] << std::endl;
+if((k==0) && (i==4)) std::cout << "put[" << i << "] = " << put[k][i] << std::endl;
+if((k==0) && (i==4)) std::cout << "get[" << i << "] = " << get[k][i] << std::endl << std::endl;
+*/
+        ////////////////////////////////////////////////////////////////
+        // Time multiplexing in input ports : 
+        // final_put[k][i] & final_data[i], final_fifo_read[k][i],
+        // and r_input_fsm[k][i] depend on r_tdm.
+
+        for(size_t i=0; i<5; i++) // loop on input ports
+        {
+            // Virtual channel 1 has priority when r_tdm is true
+            // The r_tdm[i] flip-flop toggle each time the owner uses the physical channel
+            r_tdm[i] = (r_tdm[i].read() && !put[1][i]) || (!r_tdm[i].read() && put[0][i]);
+
+            for(size_t k=0 ; k<2 ; k++)
+            {
+                // A virtual channel [k][i] is tdm_ok if he has the priority (r_tdm[i] value),
+                // or if the other channel does not use the physical channel (put[nk][i] == false) 
+                bool tdm_ok;
+                if( k == 0 ) 	tdm_ok = !r_tdm[i].read() || !put[1][i];
+                else        	tdm_ok =  r_tdm[i].read() || !put[0][i];
+                
+                switch( r_input_fsm[k][i] ) {
+                case INFSM_IDLE:	// does not depend on tdm in IDLE state
+                    final_put[k][i] = false;
+                    if( in_fifo[k][i].rok() )
+                    {
+                        if( is_broadcast(in_fifo[k][i].read()) )  // broadcast request
+                        {
+                            in_fifo_read[k][i] = true;
+                            r_buf[k][i] = in_fifo[k][i].read();
+                            if( input_req[k][i] == REQ_NOP )	r_input_fsm[k][i] = INFSM_REQ_SECOND;
+                            else                  		r_input_fsm[k][i] = INFSM_REQ_FIRST; 
+                        }
+                        else 				// not a broadcast request
+                        {
+                            in_fifo_read[k][i] = false;
+                            r_input_fsm[k][i] = INFSM_REQ;
+                        }
+                    }
+                    break;
+                case INFSM_REQ:
+                    in_fifo_read[k][i] = get[k][i] && tdm_ok;
+                    final_put[k][i] =  tdm_ok;
+                    if ( get[k][i] && tdm_ok )
+                    {
+                        final_data[i] = in_fifo[k][i].read();
+	                if( is_eop(in_fifo[k][i].read()) )	r_input_fsm[k][i] = INFSM_IDLE;
+                        else 					r_input_fsm[k][i] = INFSM_DT;	
+                    }
+                    break;
+                case INFSM_DT:
+                    in_fifo_read[k][i] = get[k][i] && tdm_ok;
+                    final_put[k][i] = put[k][i] && tdm_ok;
+                    if ( get[k][i] && put[k][i] && tdm_ok )
+                    {
+                        final_data[i] = in_fifo[k][i].read();
+			if( is_eop(in_fifo[k][i].read()) ) r_input_fsm[k][i] = INFSM_IDLE;
+                    } 
+                    break;
+                case INFSM_REQ_FIRST:
                     in_fifo_read[k][i] = false;
-                    if( input_req[k][i] == REQ_NOP )		r_input_fsm[k][i] = INFSM_REQ_THIRD;
-                    else if( get[k][i] ) 			r_input_fsm[k][i] = INFSM_DT_SECOND;
+                    if( input_req[k][i] == REQ_NOP )		
+                    {
+                        final_put[k][i] = false;
+	                r_input_fsm[k][i] = INFSM_REQ_SECOND;
+                    }
+                    else
+                    {
+                        final_put[k][i] = tdm_ok;
+                        if( get[k][i] && tdm_ok )	
+                        {
+                            final_data[i] = r_buf[k][i].read();
+                            r_input_fsm[k][i] = INFSM_DT_FIRST;
+                        }
+                    }
+                    break;
+                case INFSM_DT_FIRST:		
+                    in_fifo_read[k][i] = false;
+                    final_put[k][i] = put[k][i] && tdm_ok;
+                    if( get[k][i] && put[k][i] && tdm_ok )
+                    {
+                        final_data[i] = in_fifo[k][i].read();
+                        r_input_fsm[k][i] = INFSM_REQ_SECOND;
+                    }
+                    break;
+                case INFSM_REQ_SECOND:
+                    in_fifo_read[k][i] = false;
+                    if( input_req[k][i] == REQ_NOP )		
+                    {
+                        final_put[k][i] = false;
+                        r_input_fsm[k][i] = INFSM_REQ_THIRD;
+                    }
+                    else
+                    {
+                        final_put[k][i] = tdm_ok;
+                        if( get[k][i] && tdm_ok )
+                        {
+                            final_data[i] = r_buf[k][i].read();
+                            r_input_fsm[k][i] = INFSM_DT_SECOND;
+                        }
+                    }
                     break;
                 case INFSM_DT_SECOND:	
-                    input_data[k][i] = in_fifo[k][i].read();
-                    put[k][i] = in_fifo[k][i].rok();
-                    input_req[k][i] = REQ_NOP;
                     in_fifo_read[k][i] = false;
-                    if( get[k][i] && in_fifo[k][i].rok() )	r_input_fsm[k][i] = INFSM_REQ_THIRD;
+                    final_put[k][i] = put[k][i] && tdm_ok;
+                    if( get[k][i] && put[k][i] && tdm_ok )
+                    {
+                        final_data[i] = in_fifo[k][i].read();
+                        r_input_fsm[k][i] = INFSM_REQ_THIRD;
+                    }
                     break;
                 case INFSM_REQ_THIRD:
-                    input_data[k][i] = r_buf[k][i].read();
-                    put[k][i] = true;
-                    input_req[k][i] = broadcast_route(3, i, r_buf[k][i].read() );
                     in_fifo_read[k][i] = false;
-                    if( input_req[k][i] == REQ_NOP )		r_input_fsm[k][i] = INFSM_REQ_FOURTH;
-                    else if( get[k][i] ) 			r_input_fsm[k][i] = INFSM_DT_THIRD;
+                    if( input_req[k][i] == REQ_NOP )		
+                    {
+                        final_put[k][i] = false;
+                        r_input_fsm[k][i] = INFSM_REQ_FOURTH;
+                    }
+                    else
+                    {
+                        final_put[k][i] = tdm_ok;
+                        if( get[k][i] && tdm_ok )
+                        {
+                            final_data[i] = r_buf[k][i].read();
+                            r_input_fsm[k][i] = INFSM_DT_THIRD;
+                        }
+                    }
                     break;
                 case INFSM_DT_THIRD:	
-                    input_data[k][i] = in_fifo[k][i].read();
-                    put[k][i] = in_fifo[k][i].rok();
-                    input_req[k][i] = REQ_NOP;
                     in_fifo_read[k][i] = false;
-                    if( get[k][i] && in_fifo[k][i].rok() )	r_input_fsm[k][i] = INFSM_REQ_FOURTH;
+                    final_put[k][i] = put[k][i] && tdm_ok;
+                    if( get[k][i] && put[k][i] && tdm_ok )
+                    {
+                        final_data[i] = in_fifo[k][i].read();
+                        r_input_fsm[k][i] = INFSM_REQ_FOURTH;
+                    }
                     break;
                 case INFSM_REQ_FOURTH:
-                    input_data[k][i] = r_buf[k][i].read();
-                    put[k][i] = true;
-                    input_req[k][i] = broadcast_route(4, i, r_buf[k][i].read() );
-                    in_fifo_read[k][i] = ( input_req[k][i] == REQ_NOP );
-                    if( input_req[k][i] == REQ_NOP ) 		r_input_fsm[k][i] = INFSM_IDLE;
-                    else if( get[k][i] ) 			r_input_fsm[k][i] = INFSM_DT_FOURTH;
+                    if( input_req[k][i] == REQ_NOP )		
+                    {
+                        in_fifo_read[k][i] = true;
+                        final_put[k][i] = false;
+                        r_input_fsm[k][i] = INFSM_IDLE;
+                    }
+                    else
+                    {
+                        in_fifo_read[k][i] = false;
+                        final_put[k][i] = tdm_ok;
+                        if( get[k][i] && tdm_ok )
+                        {
+                            final_data[i] = r_buf[k][i].read();
+                            r_input_fsm[k][i] = INFSM_DT_FOURTH;
+                        }
+                    }
                     break;
                 case INFSM_DT_FOURTH:
-                    input_data[k][i] = in_fifo[k][i].read();
-                    put[k][i] = in_fifo[k][i].rok();
-                    input_req[k][i] = REQ_NOP;
-                    in_fifo_read[k][i] = get[k][i];
-                    if( get[k][i] && in_fifo[k][i].rok() )	r_input_fsm[k][i] = INFSM_IDLE;
+                    in_fifo_read[k][i] = get[k][i] && tdm_ok;
+                    final_put[k][i] = put[k][i] && tdm_ok;
+                    if( get[k][i] && put[k][i] && tdm_ok )
+                    {
+                        final_data[i] = in_fifo[k][i].read();
+                        r_input_fsm[k][i] = INFSM_IDLE;
+                    }
                     break;
                 } // end switch infsm
             } // end for channels
         } // end for inputs
 
-        /////////////////////////////////////////////////////////////////
-        // Time multiplexing : final_write[k][i] & final_data[i]
-
-        for(int i=0; i<5; i++) // loop on input ports
-        {
-            bool tdm = r_tdm[i].read();		// channel 1 has priority when tdm is true
-            final_write[0][i] = put[0][i]&&(!tdm||!put[1][i]);
-            final_write[1][i] = put[1][i]&&( tdm||!put[0][i]);
-            if(final_write[1][i]) 		final_data[i] = input_data[1][i];
-            else                        	final_data[i] = input_data[0][i];
-        } // end for input ports
-
-/*
-if((k==0) && (i==4)) std::cout << "rok[" << i << "] = " << in_fifo[k][i].rok() << std::endl << std::hex;
-if((k==0) && (i==4)) std::cout << "din[" << i << "] = " << input_data[k][i] << std::endl;
-if((k==0) && (i==4)) std::cout << "eop[" << i << "] = " << is_eop(input_data[k][i]) << std::endl;
-if((k==0) && (i==4)) std::cout << "req[" << i << "] = " << input_req[k][i] << std::endl;
-if((k==0) && (i==4)) std::cout << "put[" << i << "] = " << put[k][i] << std::endl;
-if((k==0) && (i==4)) std::cout << "get[" << i << "] = " << get[k][i] << std::endl << std::endl;
-*/
         ////////////////////////////////////////////////
         // output ports registers and fifos
         // r_output_index , r_output_alloc
@@ -440,11 +537,11 @@ if((k==0) && (i==4)) std::cout << "get[" << i << "] = " << get[k][i] << std::end
             {
                 // out_fifo_read[k][i], out_fifo_write[k][i], output_data[k][i]
                 out_fifo_read[k][j] = p_out[k][j].read;
-                out_fifo_write[k][j] = (output_get[k][0][j] && final_write[k][0]) ||
-                                       (output_get[k][1][j] && final_write[k][1]) ||
-                                       (output_get[k][2][j] && final_write[k][2]) ||
-                                       (output_get[k][3][j] && final_write[k][3]) ||
-                                       (output_get[k][4][j] && final_write[k][4]) ;
+                out_fifo_write[k][j] = (output_get[k][0][j] && final_put[k][0]) ||
+                                       (output_get[k][1][j] && final_put[k][1]) ||
+                                       (output_get[k][2][j] && final_put[k][2]) ||
+                                       (output_get[k][3][j] && final_put[k][3]) ||
+                                       (output_get[k][4][j] && final_put[k][4]) ;
                 for(int i=0; i<5; i++)  // loop on input ports
                 {
                     if( output_get[k][i][j] ) 	output_data[k][j] = final_data[i];
