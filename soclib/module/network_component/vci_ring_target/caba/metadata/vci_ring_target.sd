@@ -1,0 +1,11 @@
+
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('caba:vci_ring_target',
+	classname = 'soclib::caba::VciRingTarget',
+	header_files = ['../source/include/vci_ring_target.h',],
+
+)

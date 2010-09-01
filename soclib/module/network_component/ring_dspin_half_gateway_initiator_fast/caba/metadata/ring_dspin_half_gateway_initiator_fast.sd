@@ -1,0 +1,10 @@
+
+# -*- python -*-
+
+__id__ = "$Id$"
+__version__ = "$Revision$"
+
+Module('caba:ring_dspin_half_gateway_initiator_fast',
+	classname = 'soclib::caba::RingDspinHalfGatewayInitiatorFast',
+	header_files = ['../source/include/ring_dspin_half_gateway_initiator_fast.h',],
+)
