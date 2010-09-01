@@ -65,8 +65,8 @@
 //  next flit   | eop | res |                   nline                               |
 //     (40)       (1)   (5)                     (34)                                    
 /////////////////////////////////////////////////////////////////////////////////////
-#ifndef SOCLIB_CABA_VCI_RING_INITIATOR_H
-#define SOCLIB_CABA_VCI_RING_INITIATOR_H
+#ifndef SOCLIB_CABA_VCI_RING_INITIATOR_FAST_H
+#define SOCLIB_CABA_VCI_RING_INITIATOR_FAST_H
 
 #include "vci_target.h"
 #include "generic_fifo.h"
@@ -107,7 +107,7 @@ namespace {
 #endif
 
 template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
-class VciRingInitiator
+class VciRingInitiatorFast
 {
 
 typedef soclib::caba::VciTarget<vci_param> vci_target_t;
@@ -179,7 +179,7 @@ return sc_time_stamp >= time_stamp;
 
 public :
 
-VciRingInitiator(
+VciRingInitiatorFast(
 	const char     *name,
         bool            alloc_init,
         const int       &wrapper_fifo_depth,
@@ -708,6 +708,6 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 };
 
 }} // end namespace
-#endif // SOCLIB_CABA_VCI_RING_INITIATOR_H
+#endif // SOCLIB_CABA_VCI_RING_INITIATOR_FAST_H
 
 

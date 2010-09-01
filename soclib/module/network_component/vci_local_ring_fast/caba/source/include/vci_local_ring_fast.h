@@ -33,8 +33,8 @@
 #include "address_decoding_table.h"
 #include "address_masking_table.h"
 #include "ring_signals_2.h"
-#include "vci_ring_initiator.h"
-#include "vci_ring_target.h"
+#include "vci_ring_initiator_fast.h"
+#include "vci_ring_target_fast.h"
 #include "ring_dspin_half_gateway_initiator_fast.h"
 #include "ring_dspin_half_gateway_target_fast.h"
 #include "dspin_interface.h"
@@ -72,8 +72,8 @@ namespace soclib { namespace caba {
                 int m_nat; // number of attached targets
                                          
                 typedef RingSignals2 ring_signal_t;
-                typedef VciRingInitiator<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
-                typedef VciRingTarget<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;
+                typedef VciRingInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
+                typedef VciRingTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;
                 typedef RingDspinHalfGatewayInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> half_gateway_initiator_t;
                 typedef RingDspinHalfGatewayTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> half_gateway_target_t;
  
