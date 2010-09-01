@@ -197,7 +197,7 @@ void transition(const vci_initiator_t &p_vci, const ring_signal_t p_ring_in)
 	uint64_t  rsp_fifo_data = 0;
 
 #ifdef T_DEBUG_FSM
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
     std::cout << sc_time_stamp() << " - " << m_name
                                  << " - vci cmd = " << vci_cmd_fsm_state_str_t[r_vci_cmd_fsm]
                                  << " - vci rsp = " << vci_rsp_fsm_state_str_t[r_vci_rsp_fsm]
@@ -214,7 +214,7 @@ if( trace(sc_time_stamp()))
                         if (m_cmd_fifo.rok() == true)
                         {
 #ifdef T_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- r_vci_cmd_fsm -- CMD_FIRST_HEADER "
               << " -- fifo_rok : " << m_cmd_fifo.rok()
@@ -252,7 +252,7 @@ if( trace(sc_time_stamp()))
 			{
 
 #ifdef T_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- r_vci_cmd_fsm -- CMD_SECOND_HEADER "
               << " -- r_addr : " << std::hex << r_addr 
@@ -289,7 +289,7 @@ if( trace(sc_time_stamp()))
 
 		case WDATA:
 #ifdef T_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- r_vci_cmd_fsm -- WDATA "
               << " -- vci_cmdack : " << p_vci.cmdack.read()
@@ -319,7 +319,7 @@ if( trace(sc_time_stamp()))
 	{
 		case RSP_HEADER:
 #ifdef T_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- r_vci_rsp_fsm -- RSP_HEADER "
               << " -- fifo_rsp_wok : " << m_rsp_fifo.wok()
@@ -342,7 +342,7 @@ if( trace(sc_time_stamp()))
 
 		case DATA:
  #ifdef T_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- r_vci_rsp_fsm -- RSP_DATA "
               << " -- fifo_rsp_wok : " << m_rsp_fifo.wok()
@@ -374,7 +374,7 @@ if( trace(sc_time_stamp()))
 	{
 		case RSP_IDLE:   
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
 std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : RSP_IDLE"
           << " -- fifo rok : " <<  m_rsp_fifo.rok()
           << " -- in rok : " <<  p_ring_in.rsp_w
@@ -394,7 +394,7 @@ std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : RSP_IDL
                         if ( m_rsp_fifo.rok())  
 			{
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
 std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : DEFAULT " 
           << " -- fifo data : " << std::hex << m_rsp_fifo.read()
           << std::endl;
@@ -411,7 +411,7 @@ std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : DEFAULT
 			if(m_rsp_fifo.rok() && p_ring_in.rsp_r) 
 			{
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
 std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : KEEP "
           << " -- fifo rok : " << m_rsp_fifo.rok()
           << " -- in wok : " << p_ring_in.rsp_r
@@ -445,7 +445,7 @@ std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : KEEP "
                         bool eop     = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1); 
 
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " - ring_cmd_fsm -- CMD_IDLE "
               << " - in rok : " << p_ring_in.cmd_w
@@ -490,7 +490,7 @@ if( trace(sc_time_stamp()))
                 case BROADCAST_0:
 
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- ring_cmd_fsm -- BROADCAST_0 "
               << " -- ringin cmd rok : " << p_ring_in.cmd_w
@@ -513,7 +513,7 @@ if( trace(sc_time_stamp()))
                 case BROADCAST_1:
                 {
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- ring_cmd_fsm -- BROADCAST_1 "
               << " -- ringin cmd rok : " << p_ring_in.cmd_w
@@ -544,7 +544,7 @@ if( trace(sc_time_stamp()))
 
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- ring_cmd_fsm -- LOCAL "
               << " -- in cmd rok : " << p_ring_in.cmd_w
@@ -581,7 +581,7 @@ if( trace(sc_time_stamp()))
 			bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- ring_cmd_fsm -- RING "
               << " -- in cmd rok : " << p_ring_in.cmd_w

@@ -154,7 +154,7 @@ void transition(const cmd_in_t &p_gate_cmd_in, const rsp_out_t &p_gate_rsp_out, 
 	uint64_t  rsp_fifo_data = 0;
 
 #ifdef HI_DEBUG_FSM
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
     std::cout << sc_time_stamp() << " - " << m_name 
                                  << " - ring cmd  = " << ring_cmd_fsm_state_str_hi[r_ring_cmd_fsm] 
                                  << " - ring rsp  = " << ring_rsp_fsm_state_str_hi[r_ring_rsp_fsm] 
@@ -174,7 +174,7 @@ if( trace(sc_time_stamp()))
 	{
 		case CMD_IDLE:    
 #ifdef HI_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
 std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : CMD_IDLE "
           << " -- fifo ROK : " << m_cmd_fifo.rok()
           << " -- in grant : " << p_ring_in.cmd_grant
@@ -191,7 +191,7 @@ std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : CMD_ID
 
 		case DEFAULT: 
 #ifdef HI_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
 std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : DEFAULT "
           << " -- fifo ROK : " << m_cmd_fifo.rok()
           << " -- in grant : " << p_ring_in.cmd_grant
@@ -211,7 +211,7 @@ std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : DEFAUL
 
 		case KEEP:   
  #ifdef HI_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
 std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : KEEP "
           << " -- fifo_rok : " << m_cmd_fifo.rok()
           << " -- in grant : " << p_ring_in.cmd_grant
@@ -247,7 +247,7 @@ std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : KEEP "
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
 #ifdef HI_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
 	std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- ring_rsp_fsm -- RSP_IDLE "
               << " -- islocal : " << islocal
@@ -280,7 +280,7 @@ if( trace(sc_time_stamp()))
 
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 #ifdef HI_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- ring_rsp_fsm -- LOCAL "
               << " -- in rok : " << p_ring_in.rsp_w
@@ -313,7 +313,7 @@ if( trace(sc_time_stamp()))
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
 #ifdef I_DEBUG
-if( trace(sc_time_stamp()))
+if( trace(sc_time_stamp().to_double()))
          std::cout << sc_time_stamp() << " -- " << m_name  
               << " -- ring_rsp_fsm -- RING "
               << " -- in rok : " << p_ring_in.rsp_w
