@@ -89,15 +89,9 @@ private:
         };
         
         // structural parameters
-        bool          m_alloc_target;
-        bool          m_local;
  	std::string   m_name;
+        bool          m_alloc_target;
       
-        // internal registers
-        sc_signal<int>	        r_ring_cmd_fsm;	    // ring command packet FSM 
-        sc_signal<int>		r_ring_rsp_fsm;	    // ring response packet FSM
-        
-            
         // internal fifos 
         GenericFifo<uint64_t > m_cmd_fifo;     // fifo for the local command paquet
         GenericFifo<uint64_t > m_rsp_fifo;     // fifo for the local response paquet
@@ -105,6 +99,12 @@ private:
         // locality table 
 	soclib::common::AddressDecodingTable<vci_addr_t, bool> m_lt;
         soclib::common::IntTab m_ringid;
+
+        bool          m_local;
+
+        // internal registers
+        sc_signal<int>	        r_ring_cmd_fsm;	    // ring command packet FSM 
+        sc_signal<int>		r_ring_rsp_fsm;	    // ring response packet FSM
 
 bool trace(int sc_time_stamp)
 {

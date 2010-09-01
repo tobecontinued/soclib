@@ -82,32 +82,33 @@ private:
             };
         
         // structural parameters
-        bool                m_alloc_init;
-        bool                m_local;
  	std::string         m_name;
+        bool                m_alloc_init;
        
-        // internal registers
-        sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
-        sc_signal<int>	    r_ring_rsp_fsm;    // ring response packet FSM
+
         
-           
         // internal fifos 
         GenericFifo<uint64_t > m_cmd_fifo;     // fifo for the local command packet
         GenericFifo<uint64_t > m_rsp_fifo;     // fifo for the local response packet
         
         // routing table
         soclib::common::AddressDecodingTable<uint32_t, bool> m_lt;
+        bool                m_local;
 
-bool trace(int sc_time_stamp)
-{
-int time_stamp=0;
-char *ctime_stamp= getenv("FROM_CYCLE");
+        // internal registers
+        sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
+        sc_signal<int>	    r_ring_rsp_fsm;    // ring response packet FSM
 
-if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
+        bool trace(int sc_time_stamp)
+        {
+                int time_stamp=0;
+                char *ctime_stamp= getenv("FROM_CYCLE");
 
-return sc_time_stamp >= time_stamp;
+                if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
 
-}
+                return sc_time_stamp >= time_stamp;
+
+        }
 
 public :
 

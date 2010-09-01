@@ -142,15 +142,7 @@ private:
         // structural parameters
         std::string         m_name;
         bool                m_alloc_init;
-        uint32_t            m_srcid;
-        uint32_t            m_shift;
 
-        // internal registers
-        sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
-        sc_signal<int>	    r_ring_rsp_fsm;    // ring response packet FSM
-        sc_signal<int>	    r_vci_cmd_fsm;    // vci command packet FSM
-        sc_signal<int>	    r_vci_rsp_fsm;    // vci response packet FSM
-        
         sc_signal<bool>     r_read_ack;       // vci ack  if vci cmd read 
          
         sc_signal<sc_uint<vci_param::S> >      r_srcid_save;
@@ -166,16 +158,25 @@ private:
         soclib::common::AddressMaskingTable<uint32_t> m_rt;
         soclib::common::AddressDecodingTable<uint32_t, bool> m_lt;
 
-bool trace(int sc_time_stamp)
-{
-int time_stamp=0;
-char *ctime_stamp= getenv("FROM_CYCLE");
+        uint32_t            m_srcid;
+        uint32_t            m_shift;
 
-if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
+        // internal registers
+        sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
+        sc_signal<int>	    r_ring_rsp_fsm;    // ring response packet FSM
+        sc_signal<int>	    r_vci_cmd_fsm;    // vci command packet FSM
+        sc_signal<int>	    r_vci_rsp_fsm;    // vci response packet FSM
 
-return sc_time_stamp >= time_stamp;
-
-}
+        bool trace(int sc_time_stamp)
+        {
+                int time_stamp=0;
+                char *ctime_stamp= getenv("FROM_CYCLE");
+                
+                if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
+                
+                return sc_time_stamp >= time_stamp;
+        
+        }
 
 public :
 

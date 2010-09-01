@@ -101,6 +101,16 @@ private:
         // structural parameters
 	std::string   m_name;
         bool          m_alloc_target;
+
+        // internal fifos 
+        GenericFifo<uint64_t > m_cmd_fifo;     // fifo for the local command paquet
+        GenericFifo<uint64_t > m_rsp_fifo;     // fifo for the local response paquet
+
+        // routing table 
+        soclib::common::AddressDecodingTable<vci_addr_t, int> m_rt;
+        // locality table
+        soclib::common::AddressDecodingTable<vci_addr_t, bool> m_lt;
+
         int           m_tgtid;
         uint32_t      m_shift;
        
@@ -119,25 +129,16 @@ private:
         sc_core::sc_signal<sc_dt::sc_uint<1> >                 r_const;
         sc_core::sc_signal<sc_dt::sc_uint<vci_param::N> >      r_addr;
             
-        // internal fifos 
-        GenericFifo<uint64_t > m_cmd_fifo;     // fifo for the local command paquet
-        GenericFifo<uint64_t > m_rsp_fifo;     // fifo for the local response paquet
+        bool trace(int sc_time_stamp)
+        {
+                int time_stamp=0;
+                char *ctime_stamp= getenv("FROM_CYCLE");
+                
+                if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
+                
+                return sc_time_stamp >= time_stamp;
         
-        // routing table 
-        soclib::common::AddressDecodingTable<vci_addr_t, int> m_rt;
-        // locality table
-        soclib::common::AddressDecodingTable<vci_addr_t, bool> m_lt;
-
-bool trace(int sc_time_stamp)
-{
-int time_stamp=0;
-char *ctime_stamp= getenv("FROM_CYCLE");
-
-if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
-
-return sc_time_stamp >= time_stamp;
-
-}
+        }
 
 public :
 
@@ -438,7 +439,8 @@ std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : KEEP "
 		{ // for variable scope
 
 			vci_addr_t rtgtid = (vci_addr_t) ((p_ring_in.cmd_data >> m_shift) << 2);
-			bool islocal = m_lt[rtgtid]  && (m_rt[rtgtid] == (vci_addr_t) m_tgtid); 
+			bool islocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid);
+//			bool islocal = m_lt[rtgtid]  && (m_rt[rtgtid] == (vci_addr_t) m_tgtid); 
                         bool brdcst  = (p_ring_in.cmd_data & 0x1) == 0X1 ;
                         bool eop     = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1); 
 
@@ -738,7 +740,7 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 		case CMD_IDLE:
 		{
 			vci_addr_t rtgtid = (vci_addr_t) ((p_ring_in.cmd_data >> m_shift) << 2);
-		        bool islocal = m_lt[rtgtid]  && (m_rt[rtgtid] == (vci_addr_t) m_tgtid); 
+		        bool islocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid); 
                         bool brdcst  = (p_ring_in.cmd_data & 0x1) == 0X1 ;
                         bool eop     = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1); 
 

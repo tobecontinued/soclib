@@ -73,14 +73,14 @@ tmpl(/**/)::VciLocalRingFast( sc_module_name insname,
 	bool alloc_hg_target = (m_nat == 0);
         m_half_gateway_target    = new half_gateway_target_t(p.str().c_str(), alloc_hg_target, half_gateway_fifo_depth, mt, ringid, false);
 
-        for(size_t i=0; i<m_nai; ++i) {
+        for(int i=0; i<m_nai; ++i) {
                 bool alloc_init = (i==0);
 		std::ostringstream o;
 		o << name() << "_init_" << i;
                 m_ring_initiator[i] = new ring_initiator_t(o.str().c_str(), alloc_init, wrapper_fifo_depth, mt, ringid, i);
         }
 
-        for(size_t i=0; i<m_nat; ++i) {
+        for(int i=0; i<m_nat; ++i) {
                 bool alloc_target = (i==0);
 		std::ostringstream o;
 		o << name() << "_target_" << i;
@@ -102,9 +102,9 @@ tmpl(void)::transition()    //
 
 
         if ( ! p_resetn.read() ) {
-                for(size_t i=0;i<m_nai;i++) 
+                for(int i=0;i<m_nai;i++) 
                         m_ring_initiator[i]->reset();
-                for(size_t t=0;t<m_nat;t++)
+                for(int t=0;t<m_nat;t++)
                         m_ring_target[t]->reset();
 
                 m_half_gateway_initiator->reset();
@@ -117,22 +117,22 @@ tmpl(void)::transition()    //
 // this rule is based on relaxation principle
 
 //-*--------------- 1st iteration 
-       for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+       for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
         }
 
 if(m_nai > 0) {
-        for(size_t i=0;i<m_nat;i++){
+        for(int i=0;i<m_nat;i++){
                 m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
         }
  }
 else {
 
-        for(size_t i=0;i<m_nat;i++){
-                size_t h = 0;
+        for(int i=0;i<m_nat;i++){
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_target[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i] );
@@ -144,22 +144,22 @@ else {
         m_half_gateway_target->update_ring_signals(m_ring_signal[m_ns-2], m_ring_signal[m_ns-1] );
 
 //-*--------------- 2nd iteration
-       for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+       for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
         }
 
 if(m_nai > 0) {
-        for(size_t i=0;i<m_nat;i++){
+        for(int i=0;i<m_nat;i++){
                 m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
         }
  }
 else {
 
-        for(size_t i=0;i<m_nat;i++){
-                size_t h = 0;
+        for(int i=0;i<m_nat;i++){
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_target[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i] );
@@ -173,22 +173,22 @@ else {
 
 
 //-*--------------- 3rd iteration 
-       for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+       for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
         }
 
 if(m_nai > 0) {
-        for(size_t i=0;i<m_nat;i++){
+        for(int i=0;i<m_nat;i++){
                 m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
         }
  }
 else {
 
-        for(size_t i=0;i<m_nat;i++){
-                size_t h = 0;
+        for(int i=0;i<m_nat;i++){
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_target[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i] );
@@ -204,22 +204,22 @@ else {
 // transition                                    //
 //----------------------------------------------//
 
-        for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+        for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h]);
         }
 
 if(m_nai > 0) {
-        for(size_t t=0;t<m_nat;t++) {
+        for(int t=0;t<m_nat;t++) {
                 m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1]);
         }
 }
 else {
 
-        for(size_t t=0;t<m_nat;t++) {
-		size_t h = 0;
+        for(int t=0;t<m_nat;t++) {
+		int h = 0;
                 if(t == 0) h = m_ns-1;
                 else h = t-1;
 
@@ -233,13 +233,13 @@ else {
 
 
 /*-------- print
-        for(size_t t=0;t<m_nat;t++) {
+        for(int t=0;t<m_nat;t++) {
                 print_signal(m_nai+t-1);
                 print_vci_target(t);
         }
 
-        for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+        for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 print_signal(h);
@@ -251,9 +251,9 @@ else {
 tmpl(void)::genMoore()
 {
 
-        for(size_t i=0;i<m_nai;i++) 
+        for(int i=0;i<m_nai;i++) 
                 m_ring_initiator[i]->genMoore(p_to_initiator[i]);
-        for(size_t t=0;t<m_nat;t++)
+        for(int t=0;t<m_nat;t++)
                 m_ring_target[t]->genMoore(p_to_target[t]);    
 
         m_half_gateway_initiator->genMoore(p_gate_cmd_in, p_gate_rsp_out);
@@ -267,10 +267,10 @@ tmpl(/**/)::~VciLocalRingFast()
         delete m_half_gateway_initiator;
         delete m_half_gateway_target;
 
-	for(size_t x = 0; x < m_nai; x++)
+	for(int x = 0; x < m_nai; x++)
 		delete m_ring_initiator[x];
 	
-	for(size_t x = 0; x < m_nat; x++)
+	for(int x = 0; x < m_nat; x++)
 		delete m_ring_target[x];
 
 	delete [] m_ring_initiator;
