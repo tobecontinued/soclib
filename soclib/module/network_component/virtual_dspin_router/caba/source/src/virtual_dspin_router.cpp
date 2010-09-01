@@ -57,7 +57,9 @@ using namespace soclib::common;
         std::cout << "-- " << name() << " : channel " << k << std::endl;
         for( size_t i=0 ; i<5 ; i++)  // loop on input ports
         {
-            std::cout << "input[" << i << "] state = " << r_input_fsm[k][i] << std::endl;
+            std::cout << "input[" << i << "] state = " << r_input_fsm[k][i];
+            if( in_fifo[k][i].rok() ) std::cout << " / dtin = " << std::hex << in_fifo[k][i].read();
+            std::cout << std::endl;
         }
         for( size_t i=0 ; i<5 ; i++)  // loop on output ports
         {
