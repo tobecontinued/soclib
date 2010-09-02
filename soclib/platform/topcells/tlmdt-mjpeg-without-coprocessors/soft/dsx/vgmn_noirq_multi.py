@@ -21,7 +21,7 @@ def VgmnNoirqMulti(nproc, nram, icache_nline = 16, icache_nword = 8, dcache_nlin
 		       cacheability_mask = 0x200000)
 	pf.create('common:loader', 'loader')
 
-	vgmn = pf.create('caba:vci_vgmn', 'vgmn0', min_latency = 2, fifo_depth = 8, mt = mt)
+	vgmn = pf.create('caba:vci_vgmn', 'vgmn0', min_latency = 10, fifo_depth = 8, mt = mt)
 
 	for i in range(nproc):
 		xcache = pf.create('caba:vci_xcache_wrapper',

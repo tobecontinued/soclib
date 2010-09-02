@@ -44,7 +44,7 @@ int sc_main (int   argc, char  **argv)
 
   size_t dcache_size     = 32;
   size_t icache_size     = 32;
-  size_t network_latence = 11;
+  size_t network_latence = 10;
 
   int n_initiators = 1;
   char * n_initiators_env; //env variable that says the number of initiators to be used
