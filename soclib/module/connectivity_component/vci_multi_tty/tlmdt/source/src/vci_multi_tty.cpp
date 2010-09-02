@@ -123,6 +123,12 @@ tmpl(void)::init(const std::vector<std::string> &names){
 
 }
 
+tmpl(/**/)::~VciMultiTty()
+{
+  for (unsigned int i=0; i<m_term.size(); i++ )
+    delete m_term[i];
+}
+
 tmpl(void)::verify_interruptions()
 {
   for ( size_t i=0; i<m_term.size(); ++i ) {

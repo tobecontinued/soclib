@@ -113,6 +113,8 @@ class VciMultiTty
 	      const soclib::common::MappingTable &mt,
 	      const std::vector<std::string> &names);
  
+  ~VciMultiTty();
+
   size_t getNRead();
 
   size_t getNWrite();
