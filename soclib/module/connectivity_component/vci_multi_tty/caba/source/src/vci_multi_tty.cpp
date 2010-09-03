@@ -50,6 +50,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	case TTY_WRITE:
         m_term[term_no]->putc( _data );
         m_cpt_write++;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] term_no=" << term_no << " TTY_WRITE  data = " << std::hex << data << std::dec << " time = " << m_cpt_cycles << std::endl;
+#endif
 		return true;
 	default:
 		return false;
@@ -68,6 +71,9 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	switch (reg) {
 	case TTY_STATUS:
 		data = m_term[term_no]->hasData();
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] term_no=" << term_no << " TTY_STATUS data = " << std::hex << data << std::dec << " time = " << m_cpt_cycles << std::endl;
+#endif
 		return true;
 	case TTY_READ:
         m_cpt_read++;
@@ -75,6 +81,10 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
             char tmp = m_term[term_no]->getc();
             data = tmp;
         }
+
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] term_no=" << term_no << " TTY_READ   data = " << std::hex << data << std::dec << " time = " << m_cpt_cycles << std::endl;
+#endif
         return true;
  	default:
 		return false;
@@ -83,10 +93,13 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 
 tmpl(void)::transition()
 {
+    m_cpt_cycles++;
+
 	if (!p_resetn) {
 		m_vci_fsm.reset();
         m_cpt_read = 0;
         m_cpt_write = 0;
+        m_cpt_cycles = 0;
 		r_counter = 0;
 		return;
 	}

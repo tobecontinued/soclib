@@ -60,6 +60,7 @@ private:
     // Activity counters
     uint32_t m_cpt_read;   // READ access
     uint32_t m_cpt_write;  // WRITE access
+    uint32_t m_cpt_cycles; // clock cycles counter
 
 protected:
     SC_HAS_PROCESS(VciMultiTty);
