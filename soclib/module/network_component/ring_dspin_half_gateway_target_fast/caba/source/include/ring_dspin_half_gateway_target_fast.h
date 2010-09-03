@@ -250,7 +250,7 @@ std::cout << sc_time_stamp() << " -- " << m_name << " -- ring_rsp_fsm : KEEP "
 		case CMD_IDLE: 
 		{
 			vci_addr_t rtgtid = (vci_addr_t) ((p_ring_in.cmd_data >> (ring_cmd_data_size-vci_param::N+1)) << 2);
-                        int cluster =  (int) (p_ring_in.cmd_data >> 35) & 0xF; // a voir FF *** a revoir
+                        int cluster =  (int) ((sc_dt::sc_uint<vci_param::S-4>) (p_ring_in.cmd_data >> 9)); 
                         bool brdcst = ((p_ring_in.cmd_data & 0x1) == 0X1) && (IntTab(cluster) == m_ringid);                       
                         bool loc = !((p_ring_in.cmd_data & 0x1) == 0x1) && !m_lt[rtgtid] && !m_local;
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
@@ -490,7 +490,7 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 		{
 
 			vci_addr_t rtgtid = (vci_addr_t) ((p_ring_in.cmd_data >> (ring_cmd_data_size-vci_param::N+1)) << 2);
-                        int cluster = (int) (p_ring_in.cmd_data >> 35) & 0xF; // a voir FF *** a revoir
+                        int cluster =  (int) ((sc_dt::sc_uint<vci_param::S-4>) (p_ring_in.cmd_data >> 9));
                         bool brdcst = ((p_ring_in.cmd_data & 0x1) == 0X1) && (IntTab(cluster) == m_ringid);
                         bool loc = !((p_ring_in.cmd_data & 0x1) == 0x1) && !m_lt[rtgtid] && !m_local;
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);

@@ -76,7 +76,9 @@ using namespace soclib::common;
         for( size_t i=0 ; i<5 ; i++)  // loop on output ports
         {
             std::cout << "output[" << i << "] alloc = " << r_output_alloc[k][i]
-                      << " / index = " <<  r_output_index[k][i] << std::endl;
+                      << " / index = " <<  r_output_index[k][i];
+            if( out_fifo[k][i].rok() ) std::cout << " / dtout = " << std::hex << out_fifo[k][i].read();
+            std::cout << std::endl;
         }
     } 
 

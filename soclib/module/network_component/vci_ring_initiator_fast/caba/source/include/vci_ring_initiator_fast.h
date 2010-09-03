@@ -52,13 +52,13 @@
 /////////////////////////////////////////////////////////////////////////////////////
 //   Ring : Broadcast : 2 flits                                                    //
 //-----------------------------------------------------------------------------------
-//  1st flit    | eop |xmin  |xmax  |ymin  |ymax  |  srcid        | trdid |1|
+//  1st flit    | eop |xmin  |xmax  |ymin  |ymax  |  srcid*       | trdid |1|
 //     (40)       (1)   (5)    (5)    (5)    (5)     (14)            (4)  (1)
-// @todo
-//  1st flit    | eop |xmin  |xmax  |ymin  |ymax  |  cid  | pktid | trdid |1|
+//  1st flit    | eop |xmin  |xmax  |ymin  |ymax  |  cid* | local | trdid |1|
 //     (40)       (1)   (5)    (5)    (5)    (5)     (10)    (4)     (4)  (1)
+// (*) : cluster id (x,y) taille variable de 2 à 10, local id taille fixe (4)
 //-----------------------------------------------------------------------------------
-// @ de confinement broadcast fournie par le memory cache 
+// @ de confinement broadcast fournie par le memory cache (sur 10 bits) 
 //-----------------------------------------------------------------------------------
 //  next flits  | eop |res| be |                wdata                               |
 //    (40)        (1)  (3)  (4)                 (32)                                 
