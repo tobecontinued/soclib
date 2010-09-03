@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, alinevieiramello@hotmail.com
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     Francois Pecheux <francois.pecheux@lip6.fr>
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
@@ -61,10 +61,6 @@ tmpl(/**/)::VciRspArbCmdRout
   // bind vci target socket
   p_vci_target(*this);                     
 
-  //create payload and extension to a null message
-  m_null_payload_ptr = new tlm::tlm_generic_payload();
-  m_null_extension_ptr = new soclib_payload_extension();
-
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
   std::ostringstream file_name;
   file_name << name() << ".txt";
@@ -90,10 +86,6 @@ tmpl(/**/)::VciRspArbCmdRout
   // bind vci target socket
   p_vci_target(*this);                     
 
-  //create payload and extension to a null message
-  m_null_payload_ptr = new tlm::tlm_generic_payload();
-  m_null_extension_ptr = new soclib_payload_extension();
-
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
   std::ostringstream file_name;
   file_name << name() << ".txt";
@@ -117,17 +109,18 @@ tmpl(/**/)::~VciRspArbCmdRout(){
 tmpl(void)::create_token(){
   // create token message in beginning of simulation
   // extension payload token
-  soclib_payload_extension *m_extension_token = new soclib_payload_extension();
-  tlm::tlm_generic_payload *m_payload_token = new tlm::tlm_generic_payload();
-  m_extension_token->set_token_message();
-  m_payload_token->set_extension(m_extension_token);
-  sc_core::sc_time m_time_token = sc_core::SC_ZERO_TIME;
+  soclib_payload_extension *extension_token = new soclib_payload_extension();
+  tlm::tlm_generic_payload payload_token;
+  extension_token->set_token_message();
+  payload_token.set_extension(extension_token);
+  tlm::tlm_phase phase_token = tlm::BEGIN_REQ;
+  sc_core::sc_time time_token = sc_core::SC_ZERO_TIME;
 
 #ifdef SOCLIB_MODULE_DEBUG
-  printf("[%s] send TOKEN MESSAGE time = %d\n", name(), (int)m_time_token.value());
+  printf("[%s] send TOKEN MESSAGE time = %d\n", name(), (int)time_token.value());
 #endif
   //push a token in the centralized buffer
-  m_CmdArbRspRout[m_CmdArbRspRout.size() - 1]->put(m_payload_token, m_time_token);
+  m_CmdArbRspRout[m_CmdArbRspRout.size() - 1]->put(payload_token, phase_token, time_token);
 }
 
 
@@ -168,65 +161,60 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
   //if all buffer positions are filled then a transaction can be sent 
   while ( m_centralized_buffer->can_pop() ) {
-    size_t from;
-    tlm::tlm_generic_payload *m_payload_ptr;
-    soclib_payload_extension *m_extension_ptr;
-    tlm::tlm_phase            m_phase;
-    sc_core::sc_time          m_time;
+    size_t                    from;
+    tlm::tlm_generic_payload *payload_ptr;
+    soclib_payload_extension *extension_ptr;
+    tlm::tlm_phase           *phase_ptr;
+    sc_core::sc_time         *time_ptr;
 
     //false pop get the selected transaction from centralized buffer but NOT POP
-    m_centralized_buffer->get_selected_transaction(from, m_payload_ptr, m_phase, m_time);
+    m_centralized_buffer->get_selected_transaction(from, payload_ptr, phase_ptr, time_ptr);
 
     //get payload extension
-    m_payload_ptr->get_extension(m_extension_ptr);
+    payload_ptr->get_extension(extension_ptr);
 
     //if transaction command is active or inactive command then
     //the source is actived or desactived and the transaction is not sent
-    if(m_extension_ptr->is_active() || m_extension_ptr->is_inactive()){
+    if(extension_ptr->is_active() || extension_ptr->is_inactive()){
       //pop a transaction from centralized buffer
       m_centralized_buffer->pop(from);
-      m_centralized_buffer->set_activity(from, m_extension_ptr->is_active());
+      m_centralized_buffer->set_activity(from, extension_ptr->is_active());
     }
     //if transaction command is a token then it must be sent to the target[from]
-    else if(m_extension_ptr->is_token_message()){
+    else if(extension_ptr->is_token_message()){
       m_centralized_buffer->pop(from);
 #ifdef SOCLIB_MODULE_DEBUG
-      printf("[%s] ROUTING from = %d TOKEN MSG time = %d\n", name(), from, (int)time.value());
+      printf("[%s] ROUTING from = %d TOKEN MSG time = %d\n", name(), from, (int)(*time_ptr).value());
 #endif
-      m_time = m_time + m_delay;
+      (*time_ptr) = (*time_ptr) + m_delay;
 
       if (m_is_local_crossbar)
-	m_CmdArbRspRout[m_CmdArbRspRout.size() - 1]->put(m_payload_ptr, m_time);
+	m_CmdArbRspRout[m_CmdArbRspRout.size() - 1]->put(*payload_ptr, *phase_ptr, *time_ptr);
       else
-	m_CmdArbRspRout[from]->put(m_payload_ptr, m_time);
+	m_CmdArbRspRout[from]->put(*payload_ptr, *phase_ptr, *time_ptr);
     }
      //if transaction command is a null message then it must be sent to all target
-    else if(m_extension_ptr->is_null_message()){
+    else if(extension_ptr->is_null_message()){
       //pop a transaction from centralized buffer
       m_centralized_buffer->pop(from);
 
-      m_time = m_time + m_delay;
+      (*time_ptr) = (*time_ptr) + m_delay;
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
-      fprintf(myFile,"[%s] POP NULL MESSAGE time = %d\n", name(), (int)m_time.value());
+      fprintf(myFile,"[%s] POP NULL MESSAGE time = %d\n", name(), (int)(*time_ptr).value());
 #endif
 #ifdef SOCLIB_MODULE_DEBUG
-      std::cout << "[" << name() << "] POP NULL MESSAGE from = " << from << " time=" << m_time.value() << std::endl;
+      std::cout << "[" << name() << "] POP NULL MESSAGE from = " << from << " time=" << (*time_ptr).value() << std::endl;
 #endif
-
-      // set the null message command
-      m_null_extension_ptr->set_null_message();
-      // set the extension to tlm payload
-      m_null_payload_ptr->set_extension(m_null_extension_ptr);
  
       for(unsigned int i = 0; i < m_CmdArbRspRout.size(); i++){
 
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] send NULL MESSAGE target " << i << " time = " << m_time.value() << std::endl;
+	std::cout << "[" << name() << "] send NULL MESSAGE target " << i << " time = " << (*time_ptr).value() << std::endl;
 #endif
-	m_CmdArbRspRout[i]->put(m_null_payload_ptr,m_time);
+	m_CmdArbRspRout[i]->put(*payload_ptr,*phase_ptr,*time_ptr);
       }
 
-      m_CmdArbRspRout[0]->getRspArbCmdRout(from)->p_vci_target->nb_transport_bw(*m_payload_ptr, m_phase, m_time);
+      m_CmdArbRspRout[0]->getRspArbCmdRout(from)->p_vci_target->nb_transport_bw(*payload_ptr, *phase_ptr, *time_ptr);
 
 
     }
@@ -236,21 +224,21 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       if(m_is_local_crossbar){
 
 	//if target is NOT local then ... (only possible in vci_local_crossbar) 
-	if (!m_locality_table[m_payload_ptr->get_address()]){
+	if (!m_locality_table[payload_ptr->get_address()]){
 	  unsigned int dest =  m_CmdArbRspRout.size() - 1;
 
 	  m_centralized_buffer->pop(from);
-	  m_time = m_time + m_delay;
+	  (*time_ptr) = (*time_ptr) + m_delay;
 	  
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
-	  fprintf(myFile,"[%s] POP IS NOT LOCAL from %d dest %d pktid = %d time = %d\n", name(), m_extension_ptr->get_src_id(), dest, m_extension_ptr->get_pkt_id(), (int)m_time.value());
+	  fprintf(myFile,"[%s] POP IS NOT LOCAL from %d dest %d pktid = %d time = %d\n", name(), extension_ptr->get_src_id(), dest, extension_ptr->get_pkt_id(), (int)(*time_ptr).value());
 #endif
 #ifdef SOCLIB_MODULE_DEBUG
-	  std::cout << "[" << name() << "] POP IS NOT LOCAL from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
+	  std::cout << "[" << name() << "] POP IS NOT LOCAL from " << extension_ptr->get_src_id() << " dest " << dest << " time=" << (*time_ptr).value() <<  std::endl;
 #endif
 
 	  m_centralized_buffer->set_external_access(from, true);
-	  m_CmdArbRspRout[dest]->put(m_payload_ptr, m_time);
+	  m_CmdArbRspRout[dest]->put(*payload_ptr, *phase_ptr, *time_ptr);
 
 	}
 	//if target IS local then
@@ -259,17 +247,17 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	  //pop a transaction from centralized buffer
 	  m_centralized_buffer->pop(from);
 	  
-	  unsigned int dest = m_routing_table[m_payload_ptr->get_address()];
+	  unsigned int dest = m_routing_table[payload_ptr->get_address()];
 	  assert( dest >= 0 && dest < m_CmdArbRspRout.size() );
-	  m_time = m_time + m_delay;
+	  (*time_ptr) = (*time_ptr) + m_delay;
  
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
-	  fprintf(myFile,"[%s] POP from %d dest %d pktid = %d time = %d\n", name(), m_extension_ptr->get_src_id(), dest, m_extension_ptr->get_pkt_id(), (int)m_time.value());
+	  fprintf(myFile,"[%s] POP from %d dest %d pktid = %d time = %d\n", name(), extension_ptr->get_src_id(), dest, extension_ptr->get_pkt_id(), (int)(*time_ptr).value());
 #endif
 #ifdef SOCLIB_MODULE_DEBUG
-	  std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
+	  std::cout << "[" << name() << "] POP from " << extension_ptr->get_src_id() << " dest " << dest << " time=" << (*time_ptr).value() <<  std::endl;
 #endif
-	  m_CmdArbRspRout[dest]->put(m_payload_ptr,m_time);
+	  m_CmdArbRspRout[dest]->put(*payload_ptr, *phase_ptr, *time_ptr);
 
 	}
       }
@@ -278,18 +266,18 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	//pop a transaction from centralized buffer
 	m_centralized_buffer->pop(from);
 	
-	unsigned int dest = m_routing_table[m_payload_ptr->get_address()];
+	unsigned int dest = m_routing_table[payload_ptr->get_address()];
 	assert( dest >= 0 && dest < m_CmdArbRspRout.size() );
-	m_time = m_time + m_delay;
+	(*time_ptr) = (*time_ptr) + m_delay;
 	
 #if VCI_RSP_ARB_CMD_ROUT_FILE_DEBUG
-	fprintf(myFile,"[%s] POP from %d dest %d pktid = %d time = %d\n", name(), m_extension_ptr->get_src_id(), dest, m_extension_ptr->get_pkt_id(), (int)m_time.value());
+	fprintf(myFile,"[%s] POP from %d dest %d pktid = %d time = %d\n", name(), extension_ptr->get_src_id(), dest, extension_ptr->get_pkt_id(), (int)(*time_ptr).value());
 #endif
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] POP from " << m_extension_ptr->get_src_id() << " dest " << dest << " time=" << m_time.value() <<  std::endl;
+	std::cout << "[" << name() << "] POP from " << extension_ptr->get_src_id() << " dest " << dest << " time=" << (*time_ptr).value() <<  std::endl;
 #endif
 
-	m_CmdArbRspRout[dest]->put(m_payload_ptr,m_time);
+	m_CmdArbRspRout[dest]->put(*payload_ptr, *phase_ptr, *time_ptr);
       }
     }
   }

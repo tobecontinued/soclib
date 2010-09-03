@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, alinevieiramello@hotmail.com
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     Francois Pecheux <francois.pecheux@lip6.fr>
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
@@ -32,11 +32,6 @@
 
 #include <tlmdt>			          // TLM-DT headers
 #include "vci_rsp_arb_cmd_rout.h"                 // Our header
-
-struct packet_struct{
-  tlm::tlm_generic_payload *payload;
-  sc_core::sc_time time;
-} ;
 
 namespace soclib { namespace tlmdt {
 
@@ -48,6 +43,12 @@ class VciCmdArbRspRout                        //
 {
 private:
   
+  struct packet_struct{
+    tlm::tlm_generic_payload *payload;
+    tlm::tlm_phase           *phase;
+    sc_core::sc_time         *time;
+  } ;
+
   typedef soclib::common::AddressMaskingTable<uint32_t>        routing_table_t;  // routing table
   typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t; // locality table
 
@@ -65,11 +66,7 @@ private:
   bool                                                       m_external_access;   // true if module has external access (crossbar parameter)
   bool                                                       m_is_local_crossbar; // true if module is vci_local_crossbar
 
-  // FIELDS OF A NORMAL TRANSACTION
-  tlm::tlm_generic_payload                                   m_payload;           // payload
   soclib_payload_extension                                  *m_extension_pointer; // payload extension
-  tlm::tlm_phase                                             m_phase;             // phase
-  sc_core::sc_time                                           m_time;              // time
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Fuctions
@@ -111,7 +108,11 @@ public:
 
   VciRspArbCmdRout* getRspArbCmdRout(unsigned int index);            
 
-  void put(tlm::tlm_generic_payload *payload, const sc_core::sc_time &time);
+  void put
+  ( tlm::tlm_generic_payload &payload,    // transaction payload
+    tlm::tlm_phase           &phase,      // transaction phase
+    sc_core::sc_time         &time);      // transaction time
+
 }; 
 }}
 #endif /* __VCI_CMD_ARB_RSP_ROUT_H__ */

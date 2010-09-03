@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, alinevieiramello@hotmail.com
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     Francois Pecheux <francois.pecheux@lip6.fr>
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
@@ -57,10 +57,6 @@ private:
   const locality_table_t                                     m_locality_table;     // locality table
   std::vector<VciCmdArbRspRout *>                            m_CmdArbRspRout;      // cmd_arb_rsp_rout blocks
   bool                                                       m_is_local_crossbar;
-
-  //FIELDS OF A NULL MESSAGE
-  tlm::tlm_generic_payload                                  *m_null_payload_ptr;
-  soclib_payload_extension                                  *m_null_extension_ptr;
 
   FILE * myFile;
 

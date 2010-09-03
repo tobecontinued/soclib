@@ -23,7 +23,7 @@
  * Maintainers: fpecheux, alinevieiramello@hotmail.com
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     Francois Pecheux <francois.pecheux@lip6.fr>
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
@@ -94,16 +94,6 @@ tmpl(/***/)::VciCmdArbRspRout                       // constructor
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl(void)::behavior(void)   // initiator thread
 {
-  /*
-  // send null messages in the simulation begin
-  m_extension_pointer->set_null_message();
-  m_payload.set_extension(m_extension_pointer);
-
-  m_phase = tlm::BEGIN_REQ;
-  m_time = m_pdes_local_time->get() + m_delay;
-
-  p_vci_initiator->nb_transport_fw(m_payload, m_phase, m_time);
-  */
   packet_struct packet;
   while (true){
     if (!packet_fifo.empty()) {
@@ -120,20 +110,19 @@ tmpl(void)::behavior(void)   // initiator thread
       continue;
     }
 
-    m_phase = tlm::BEGIN_REQ;
-    m_time = packet.time;
-    if ( m_time < m_pdes_local_time->get() ){
+    if ( *packet.time < m_pdes_local_time->get() ){
 #ifdef SOCLIB_MODULE_DEBUG
-      std::cout << "[" << name() << "] UPDATE MESSAGE TIME time = " << m_time.value() << std::endl;
+      std::cout << "[" << name() << "] UPDATE MESSAGE TIME time = " << *packet.time.value() << std::endl;
 #endif
-      m_time = m_pdes_local_time->get();
+      *packet.time = m_pdes_local_time->get();
     }
 
+
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << "[" << name() << "] send message to target time = " << m_time.value() << std::endl;
+  std::cout << "[" << name() << "] send message to target time = " << *packet.time.value() << std::endl;
 #endif
 
-    p_vci_initiator->nb_transport_fw(*packet.payload, m_phase, m_time);
+    p_vci_initiator->nb_transport_fw(*packet.payload, *packet.phase, *packet.time);
 
   } // end while true
 } // end initiator_thread 
@@ -148,11 +137,12 @@ tmpl(VciRspArbCmdRout*)::getRspArbCmdRout(unsigned int index)
   return m_RspArbCmdRout[index];
 }
 
-tmpl(void)::put(tlm::tlm_generic_payload *payload, const sc_core::sc_time &time)
+tmpl(void)::put(tlm::tlm_generic_payload &payload, tlm::tlm_phase &phase, sc_core::sc_time &time)
 {
   packet_struct packet;
-  packet.payload = payload;
-  packet.time = time;
+  packet.payload = &payload;
+  packet.phase = &phase;
+  packet.time = &time;
   
   packet_fifo.push_back(packet);
 

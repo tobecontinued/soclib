@@ -40,22 +40,23 @@
 
 namespace soclib { namespace tlmdt {
 
-struct transaction{
-  tlm::tlm_generic_payload *payload;
-  tlm::tlm_phase phase;
-  sc_core::sc_time time;
-};
-
+    struct transaction{
+      tlm::tlm_generic_payload *payload;
+      tlm::tlm_phase           *phase;
+      sc_core::sc_time         *time;
+    };
+    
 class _command;
 
 class centralized_buffer
 {
-  const size_t m_slots;
-  _command *m_centralized_buffer;
-  size_t m_free_slots;
-  int m_selected_init;
-  int m_count_push;
-  int m_count_pop;
+
+  const size_t    m_slots;
+  _command       *m_centralized_buffer;
+  size_t          m_free_slots;
+  int             m_selected_slot;
+  int             m_count_push;
+  int             m_count_pop;
 
   soclib::common::SpinLock m_lock;
 
@@ -65,34 +66,21 @@ public:
   ~centralized_buffer();
 
   void push(
-	    size_t from,
+	    size_t                    from,
 	    tlm::tlm_generic_payload &payload,
-	    tlm::tlm_phase &phase,
-	    const sc_core::sc_time &time);
+	    tlm::tlm_phase           &phase,
+	    sc_core::sc_time         &time);
 
   bool can_pop();
-
-  void pop(
-	   size_t &from,
-	   tlm::tlm_generic_payload *&payload,
-	   tlm::tlm_phase &phase,
-	   sc_core::sc_time &time);
 
   void pop(
 	   size_t from);
 
   void get_selected_transaction(
-				size_t &from,
+				size_t                    &from,
 				tlm::tlm_generic_payload *&payload,
-				tlm::tlm_phase &phase,
-				sc_core::sc_time &time);
-
-  bool pop_inf(
-	   size_t &from,
-	   tlm::tlm_generic_payload *&payload,
-	   tlm::tlm_phase &phase,
-	   sc_core::sc_time &time,
-	   const sc_core::sc_time &max_time);
+				tlm::tlm_phase           *&phase,
+				sc_core::sc_time         *&time);
 
   void set_activity(unsigned int index, bool b);
 
