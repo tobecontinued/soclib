@@ -207,7 +207,7 @@ public:
 
     inline bool is_broadcast() const
     {
-        return address == s_broadcast_addr;
+        return (address & s_broadcast_addr) == s_broadcast_addr;
     }
 
 	inline void readFrom( const VciMonitor<vci_param> &port )
