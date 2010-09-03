@@ -20,13 +20,31 @@
  *
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: alinevieiramello@hotmail.com
+ * Maintainers: alinev
  *
  * Copyright (c) UPMC / Lip6, 2010
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
+
 #include "vci_initiator_transactor.h"
+
+template<typename T>
+T mask2be(T mask)
+{
+  T be = 0;
+  T m = 0xFF;
+  for(size_t i=1; i<sizeof(T); i++)
+    m <<= 8;
+
+  for (size_t i=0; i<sizeof(T); i++) {
+    be <<= 1;
+    if((mask & m) == m )
+      be|=1;
+    mask <<= 8;
+  }
+  return be;
+}
 
 template<typename T>
 T be2mask(T be)
@@ -50,375 +68,377 @@ namespace soclib { namespace tlmdt {
 //////////////////////////////////////////////////////////////////////////////////////////
 // CONSTRUCTOR
 //////////////////////////////////////////////////////////////////////////////////////////
-tmpl(/**/)::VciInitiatorTransactor( sc_core::sc_module_name name)
+tmpl(/**/)::VciInitiatorTransactor( sc_core::sc_module_name name )
 	   : sc_module(name)
-	  , m_nirq(0)
 	  , m_buffer()
+	  , m_nirq(0)
 	  , p_clk("p_clk")
 	  , p_resetn("p_resetn")
-          , p_vci_target("vci_target")
 	  , p_vci_initiator("vci_initiator")
+	  , p_vci_target("vci_target")
 {
-  init();
+  //PDES local time
+  m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
+  m_cmd_working     = false;
+  m_clock_count     = 0;
+  m_cmd_count       = 0;
+  m_rsp_count       = 0;
+  m_active_irq      = false;
+
+  // bind target vci socket
+  p_vci_target(*this);                     
+
+  SC_METHOD(transition);
+  dont_initialize();
+  sensitive << p_clk.pos();
+  
+  SC_METHOD(genMoore);
+  dont_initialize();
+  sensitive << p_clk.neg();
 }
 
-tmpl(/**/)::VciInitiatorTransactor( sc_core::sc_module_name name, size_t n_irq)
+tmpl(/**/)::VciInitiatorTransactor( sc_core::sc_module_name name, size_t nirq)
 	   : sc_module(name)
-	  , m_nirq(n_irq)
 	  , m_buffer()
+	  , m_nirq(nirq)
 	  , p_clk("p_clk")
 	  , p_resetn("p_resetn")
-          , p_vci_target("vci_target")
 	  , p_vci_initiator("vci_initiator")
+	  , p_vci_target("vci_target")
 {
-  init();
+  //PDES local time
+  m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
+  m_cmd_working     = false;
+  m_clock_count     = 0;
+  m_cmd_count       = 0;
+  m_rsp_count       = 0;
+
+  // bind target vci socket
+  p_vci_target(*this); 
+
+  //IRQ
+  p_irq_target  = new sc_core::sc_in<bool>[m_nirq];
+  m_irq         = new bool[m_nirq];
+  m_active_irq  = false;
+  
+  //create irq sockets
+  for(size_t i=0; i<m_nirq; i++){
+    m_irq[i] = 0;
+
+    std::ostringstream irq_name;
+    irq_name << "irq" << i;
+    p_irq_initiator.push_back(new tlm_utils::simple_initiator_socket_tagged<VciInitiatorTransactor,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
+  }
+
+  //create payload and extension of a irq transaction
+  m_irq_payload_ptr = new tlm::tlm_generic_payload();
+  m_irq_extension_ptr = new soclib_payload_extension();
+
+  //has received a null message
+  has_null_message = false;
+
+  SC_METHOD(transition);
+  dont_initialize();
+  sensitive << p_clk.pos();
+  
+  SC_METHOD(genMoore);
+  dont_initialize();
+  sensitive << p_clk.neg();
 }
 
 tmpl(/**/)::~VciInitiatorTransactor(){}
 
-tmpl(void)::init(void)
+tmpl(void)::transition()
 {
-  // bind vci initiator socket
-  p_vci_initiator(*this);                     
+  if (!p_resetn) {
+    return;
+  }
 
-  //PDES local time
-  m_pdes_local_time = new pdes_local_time(100 * UNIT_TIME);
+  //CLOCK
+  m_clock_count++;
+  m_pdes_local_time->add(UNIT_TIME);
+  //std::cout << name() << " " << m_pdes_local_time->get().value() << std::endl;
 
-  //create payload and extension of a null message
-  m_null_payload = new tlm::tlm_generic_payload();
-  m_null_extension = new soclib_payload_extension();
-
-  has_null_message = false;
-  has_cmd_transaction = false;
-  has_rsp_transaction = false;
-  m_cmd_index = 0;
-  m_cmd_count = 0;
-  m_rsp_count = 0;
-  m_rsp_index = 0;
-  m_clock_count = 0;
-  
-  //IRQ Port
-  if(m_nirq>0){
-    p_irq_initiator = new sc_core::sc_out<bool>[m_nirq];
-
-    for(size_t i=0; i<m_nirq; i++){
-      std::ostringstream irq_name;
-      irq_name << "irq" << i;
-      p_irq_target.push_back(new tlm_utils::simple_target_socket_tagged<VciInitiatorTransactor,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
-      p_irq_target[i]->register_nb_transport_fw(this, &VciInitiatorTransactor::irq_nb_transport_fw, i);
+  ///CMD
+  if(!m_cmd_working){
+    if(m_buffer.get_cmd_payload( m_clock_count, m_cmd_payload, m_cmd_phase, m_cmd_time)){
+      m_cmd_payload->get_extension(m_cmd_extension);
+      
+      if(m_cmd_extension->is_write())
+	m_cmd_nwords = m_cmd_payload->get_data_length() / vci_param_tlmdt::nbytes;
+      else
+	m_cmd_nwords = 1;
+      
+      m_cmd_count = 0;
+      m_cmd_working = true;
+    }
+  }
+  else{
+    if(p_vci_initiator.cmdack.read()){
+      m_cmd_count++;
+      if(m_cmd_count == m_cmd_nwords){
+	m_cmd_working = false;
+      }
     }
   }
 
-  // register thread process
-  SC_THREAD(behavior);    
-}
-
+  ///RSP
+  if(p_vci_initiator.rspval){
+    if(m_rsp_count==0){
+      m_rscrid = p_vci_initiator.rsrcid.read();
+      m_rpktid = p_vci_initiator.rpktid.read();
+      m_rtrdid = p_vci_initiator.rtrdid.read();
+      
+      m_rsp_index = m_buffer.get_rsp_payload( m_rscrid, m_rtrdid, m_rsp_payload, m_rsp_phase, m_rsp_time); 
+      assert(m_rsp_index!=-1 && "response do not compatible with any command");
+      
+      if(p_vci_initiator.rerror.read())
+	m_rsp_payload->set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
+      else
+	m_rsp_payload->set_response_status(tlm::TLM_OK_RESPONSE);
+    }
     
-/////////////////////////////////////////////////////////////////////////////////////
-// BEHAVIOR THREAD
-/////////////////////////////////////////////////////////////////////////////////////
-tmpl(void)::behavior(void)
-{
-  for(size_t i=0; i<m_nirq; i++){
-    p_irq_initiator[i].write(false);
-  }
-
-  p_clk.write(true);
-  p_resetn.write(false);
-  sc_core::wait(sc_core::SC_ZERO_TIME);
-  p_clk.write(false);
-  sc_core::wait(sc_core::SC_ZERO_TIME);
-  p_resetn.write(true);
-
-  while (true){
-    m_clock_count++;
-    m_pdes_local_time->set(m_clock_count*UNIT_TIME);
-    p_clk.write(true);
-    sc_core::wait(sc_core::SC_ZERO_TIME);
-
-    cmd();
-
-    p_clk.write(false);
-    sc_core::wait(sc_core::SC_ZERO_TIME);
- 
-    rsp();
-
-    if(has_cmd_transaction){
-      has_cmd_transaction = false;
+    utoa((int)p_vci_initiator.rdata.read(), m_rsp_payload->get_data_ptr(), m_rsp_count*vci_param_tlmdt::nbytes);
 #if SOCLIB_MODULE_DEBUG
-      printf("[%s] SEND COMMAND address = %x time = %d\n", name(), (int)m_buffer.get_address(m_cmd_index), (int)m_buffer.get_time_value(m_cmd_index));
+    printf("[%s] RECEIVE RESPONSE count = %d src_id = %d trd_id = %d rdata = %x local_time %d\n", name(), m_rsp_count, m_rscrid, m_rtrdid, (int)p_vci_initiator.rdata.read(), m_clock_count);
 #endif
-
-      p_vci_initiator->nb_transport_fw(*m_buffer.get_payload(m_cmd_index), *m_buffer.get_phase(m_cmd_index), *m_buffer.get_time(m_cmd_index));
-      sc_core::wait(m_rsp_event);
-      m_pdes_local_time->reset_sync();
+    
+    
+    if(p_vci_initiator.reop.read()){
+      //modify the phase
+      *m_rsp_phase = tlm::BEGIN_RESP;
+      
+      //update the message time
+      *m_rsp_time = m_pdes_local_time->get();
+      
+#if SOCLIB_MODULE_DEBUG
+      printf("[%s] SEND RESPONSE src_id = %d pkt_id = %d trdid = %d local_time = %d time = %d\n", name(), m_rscrid, m_rpktid, m_rtrdid, m_clock_count, (int)(*m_rsp_time).value());
+#endif
+      
+      //send the response
+      p_vci_target->nb_transport_bw(*m_rsp_payload, *m_rsp_phase, *m_rsp_time);
+      //pop transaction
+      m_buffer.pop( m_rsp_index );
+      m_pop_event.notify(sc_core::SC_ZERO_TIME);
+      m_rsp_count = 0;
     }
-    //if initiator needs synchronization then it sends a null message
-    else if(!has_rsp_transaction && !has_null_message && m_pdes_local_time->need_sync()){
-      send_null_message();
+    else{
+      m_rsp_count++;
     }
-
-    send_interruption();
   }
+  
+  //if there is a null message response to be sent, then send it
+  if(has_null_message && m_pdes_local_time->get().value()>=m_null_time->value()){
+    has_null_message = false;
+#if SOCLIB_MODULE_DEBUG
+    printf("[%s] SEND RESPONSE NULL MESSAGE %d\n", name(), (int)m_pdes_local_time->get().value());
+#endif
+    p_vci_target->nb_transport_bw(*m_null_payload, *m_null_phase, *m_null_time);
+  }
+
+  irq();
 }
 
-tmpl(void)::cmd()
-{
-  if(!has_cmd_transaction){
-    p_vci_target.cmdack = true; 
-    if( p_vci_target.cmdval){
-      m_cmd_index = p_vci_target.trdid.read();
+tmpl(void)::genMoore(){
+  p_vci_initiator.rspack = true;
+
+  if(m_cmd_working){
+    if(m_cmd_count < m_cmd_nwords){
       if(m_cmd_count==0){
-	m_buffer.set_status( m_cmd_index, m_buffer.OPEN );
-	m_buffer.set_command( m_cmd_index, tlm::TLM_IGNORE_COMMAND );
-	m_buffer.set_address( m_cmd_index, p_vci_target.address.read() );
-	
-	switch( p_vci_target.cmd.read() ){
-	case vci_param_caba::CMD_READ:
-	  m_buffer.set_ext_command( m_cmd_index, VCI_READ_COMMAND);
+	switch(m_cmd_extension->get_command()){
+	case VCI_READ_COMMAND:
+	  p_vci_initiator.cmd   = vci_param_caba::CMD_READ;
 	  break;
-	case vci_param_caba::CMD_WRITE:
-	  m_buffer.set_ext_command( m_cmd_index, VCI_WRITE_COMMAND);
+	case VCI_WRITE_COMMAND:
+	  p_vci_initiator.cmd   = vci_param_caba::CMD_WRITE;
 	  break;
-	case vci_param_caba::CMD_STORE_COND:
-	  m_buffer.set_ext_command( m_cmd_index, VCI_STORE_COND_COMMAND);
+	case VCI_STORE_COND_COMMAND:
+	  p_vci_initiator.cmd   = vci_param_caba::CMD_STORE_COND;
 	  break;
-	case vci_param_caba::CMD_LOCKED_READ:
-	  m_buffer.set_ext_command( m_cmd_index, VCI_LINKED_READ_COMMAND);
+	case VCI_LINKED_READ_COMMAND:
+	  p_vci_initiator.cmd   = vci_param_caba::CMD_LOCKED_READ;
 	  break;
 	default:
-	  m_buffer.set_ext_command( m_cmd_index, VCI_READ_COMMAND);
+	  p_vci_initiator.cmd   = vci_param_caba::CMD_NOP;
 	  break;
-	}
+	}       
 	
-	m_buffer.set_trd_id( m_cmd_index, p_vci_target.trdid.read() );
-	m_buffer.set_pkt_id( m_cmd_index, p_vci_target.pktid.read() );
-	m_buffer.set_src_id( m_cmd_index, p_vci_target.srcid.read() );
-
-	m_cmd_nbytes = p_vci_target.plen.read();
-	if(m_cmd_nbytes < vci_param_tlmdt::nbytes)
-	  m_cmd_nbytes= vci_param_tlmdt::nbytes;
-      }// if count
+	p_vci_initiator.trdid   = m_cmd_extension->get_trd_id();
+	p_vci_initiator.pktid   = m_cmd_extension->get_pkt_id();
+	p_vci_initiator.srcid   = m_cmd_extension->get_src_id();
+	p_vci_initiator.cons    = false;
+	p_vci_initiator.wrap    = false;
+	p_vci_initiator.contig  = true;
+	p_vci_initiator.clen    = 0;
+	p_vci_initiator.cfixed  = false;
+	p_vci_initiator.plen    = m_cmd_payload->get_data_length();
+      }//if (m_cmd_count == 0)
       
-      m_buffer.set_data( m_cmd_index, m_cmd_count, p_vci_target.wdata.read());
-      m_buffer.set_byte_enable( m_cmd_index, m_cmd_count, be2mask<typename vci_param_caba::data_t>(p_vci_target.be.read()));
-
-      m_cmd_count++;
+      p_vci_initiator.cmdval  = true;
+      p_vci_initiator.address = (m_cmd_payload->get_address() + (m_cmd_count*vci_param_tlmdt::nbytes));
+      p_vci_initiator.wdata   = atou(m_cmd_payload->get_data_ptr(),(m_cmd_count*vci_param_tlmdt::nbytes));
       
-      if(p_vci_target.eop){
-	m_buffer.set_data_length( m_cmd_index, m_cmd_nbytes);
-	m_buffer.set_byte_enable_length( m_cmd_index, m_cmd_nbytes);
-	m_buffer.set_phase( m_cmd_index, tlm::BEGIN_REQ);
-	m_buffer.set_time( m_cmd_index, m_pdes_local_time->get());
-
-	m_cmd_count=0;
-	has_cmd_transaction = true;
-      }
-    }// if cmdval
-  }//if !cmd_transaction
-  else{
-    p_vci_target.cmdack = false; 
-  }
-}
-
-tmpl(void)::rsp()
-{
-  if(!has_null_message && has_rsp_transaction && m_clock_count>=m_pdes_local_time->get().value()){
-    if(p_vci_target.rspack && m_rsp_count<m_rsp_nwords){
-      p_vci_target.rspval = true;
-
-
-      if(m_rsp_count==0){
-	p_vci_target.rsrcid = m_buffer.get_src_id( m_rsp_index );
-	p_vci_target.rpktid = m_buffer.get_pkt_id( m_rsp_index );
-	p_vci_target.rtrdid = m_buffer.get_trd_id( m_rsp_index );
-	p_vci_target.rerror = m_buffer.get_response_status( m_rsp_index );
-      }
-
-      p_vci_target.rdata = m_buffer.get_data(m_rsp_index, m_rsp_count);
+      m_cmd_be = atou(m_cmd_payload->get_byte_enable_ptr(),(m_cmd_count*vci_param_tlmdt::nbytes));
+      typename vci_param_caba::be_t be = mask2be<typename vci_param_tlmdt::data_t>(m_cmd_be);
+      p_vci_initiator.be = be;
+      
 #if SOCLIB_MODULE_DEBUG
-      printf("[%s] rsp_count = %d rdata = 0x%08x\n", name(), m_rsp_count, (int)m_buffer.get_data(m_rsp_index, m_rsp_count));
+      printf("[%s] SEND COMMAND count = %d address = %x src_id = %d pkt_id = %d trdid = %d local_time = %d\n", name(), m_cmd_count, (int)(m_cmd_payload->get_address() + (m_cmd_count*vci_param_tlmdt::nbytes)), m_cmd_extension->get_src_id(), m_cmd_extension->get_pkt_id(), m_cmd_extension->get_trd_id(), m_clock_count);
 #endif
 
-      m_rsp_count++;
-      if(m_rsp_count==m_rsp_nwords){
-	p_vci_target.reop = true;
-	has_rsp_transaction = false;
-	m_buffer.set_status(m_rsp_index, m_buffer.EMPTY);
+      if(m_cmd_count==m_cmd_nwords-1){
+	p_vci_initiator.eop   = true;
       }
-      else
-	p_vci_target.reop = false;
-
-    }//if rspack
+      else{
+	p_vci_initiator.eop   = false;
+      }
+    }//if(m_cmd_count < m_cmd_nwords)
+    else{
+      p_vci_initiator.cmdval = false;
+    }
+  }//if(m_cmd_working)
+  else{
+    p_vci_initiator.cmdval = false;
   }
-  else
-    p_vci_target.rspval = false;
 }
 
-tmpl(void)::send_null_message(){
-  has_null_message = true;
-  m_null_extension->set_null_message();
-  m_null_payload->set_command(tlm::TLM_IGNORE_COMMAND);
-  m_null_payload->set_extension(m_null_extension);  
-  m_null_phase = tlm::BEGIN_REQ;
-  m_null_time = m_pdes_local_time->get();
-
-#ifdef SOCLIB_MODULE_DEBUG
-  printf("[%s] SEND NULL MESSAGE time = %d\n", name(), (int)m_null_time.value());
-#endif
-
-  p_vci_initiator->nb_transport_fw(*m_null_payload, m_null_phase, m_null_time);
-  sc_core::wait(m_rsp_event);
-  has_null_message = false;
-  m_pdes_local_time->reset_sync();
-}
-
-tmpl (void)::print_transaction(bool fw, tlm::tlm_generic_payload &payload)
+tmpl(void)::irq()
 {
-  soclib_payload_extension *extension_ptr;
-  payload.get_extension(extension_ptr);
-   
-  if(fw)
-    printf("[%s] SEND COMMAND ", name());
-  else
-    printf("[%s] RECEIVE RESPONSE ", name());
-
-  switch(extension_ptr->get_command()){
-  case VCI_READ_COMMAND:
-    printf("VCI_READ_COMMAND\n");
-    break;
-  case VCI_WRITE_COMMAND:
-    printf("VCI_WRITE_COMMAND\n");
-    break;
-  case VCI_STORE_COND_COMMAND:
-    printf("VCI_STORE_COND_COMMAND\n");
-    break;
-  case VCI_LINKED_READ_COMMAND:
-    printf("LINKED_READ_COMMAND\n");
-    break;
-  case PDES_NULL_MESSAGE:
-    printf("PDES_NULL_MESSAGE\n");
-    break;
-  default:
-    printf("DEFAULT\n");
-    break;
-  }       
-
-  int nwords = payload.get_data_length()/vci_param_tlmdt::nbytes;
-  printf("nword = %d\n", nwords);
-  
-  for(int i=0; i<nwords; i++){
-    printf("address = 0x%08x\n",(int)(payload.get_address() + (i*vci_param_tlmdt::nbytes)));
-    printf("be = 0x%08x\n",atou(payload.get_byte_enable_ptr(),(i*vci_param_tlmdt::nbytes)));
-    if((fw && extension_ptr->is_write()) || (!fw && !extension_ptr->is_write()))
-      printf("data = 0x%08x\n",atou(payload.get_data_ptr(),(i*vci_param_tlmdt::nbytes)));
-  }
-  
-  printf("src_id = %d\n", extension_ptr->get_src_id());
-  //printf("pkt_id = %d\n", extension_ptr->get_pkt_id());
-  printf("trd_id = %d\n", extension_ptr->get_trd_id());
-}
-
-tmpl(void)::send_interruption(){
-  if ( ! m_pending_irqs.empty() && m_pending_irqs.begin()->first <= m_pdes_local_time->get() ) {
-    std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
-
-    if((p_irq_initiator[i->second.first].read() && !i->second.second) || 
-       (!p_irq_initiator[i->second.first].read() && i->second.second)){
-
+  bool i;
+  for (size_t n=0; n<m_nirq; n++){
+    i = p_irq_target[n].read();
+    if(i != m_irq[n]){
 #ifdef SOCLIB_MODULE_DEBUG
-      std::cout << "[" << name() << "] Time = " << m_pdes_local_time->get().value() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << std::endl;
+      std::cout << "[" << name() << "] Receive Interrupt " << n << " val = " << i << std::endl;
 #endif
-	
-      p_irq_initiator[i->second.first].write(i->second.second);
-      
-      m_pending_irqs.erase(i);
+      m_irq[n] = i;
+      send_interrupt(n, i);
     }
   }
 }
 
+tmpl(void)::send_interrupt(int id, bool irq){
+  size_t nbytes = vci_param_tlmdt::nbytes; //1 word
+  unsigned char data_ptr[nbytes];
+  unsigned char byte_enable_ptr[nbytes];
+  unsigned int bytes_enabled = be2mask<unsigned int>(0xF);
+
+  //if initiator is blocking waiting a response to a null message then send it
+  if(has_null_message){
+    has_null_message = false;
+#if SOCLIB_MODULE_DEBUG
+    printf("[%s] SEND RESPONSE NULL MESSAGE %d\n", name(), (int)m_pdes_local_time->get().value());
+#endif
+    p_vci_target->nb_transport_bw(*m_null_payload, *m_null_phase, *m_null_time);
+  }
+
+  m_irq[id] = irq;
+
+  // set the all bytes to enabled
+  utoa(bytes_enabled, byte_enable_ptr, 0);
+  // set the val to data
+  utoa(m_irq[id], data_ptr, 0);
+
+  // set the values in tlm payload
+  m_irq_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
+  m_irq_payload_ptr->set_byte_enable_ptr(byte_enable_ptr);
+  m_irq_payload_ptr->set_byte_enable_length(nbytes);
+  m_irq_payload_ptr->set_data_ptr(data_ptr);
+  m_irq_payload_ptr->set_data_length(nbytes);
+  // set the values in payload extension
+  m_irq_extension_ptr->set_write();
+  // set the extension to tlm payload
+  m_irq_payload_ptr->set_extension(m_irq_extension_ptr);
+  
+  // set the tlm phase
+  m_irq_phase = tlm::BEGIN_REQ;
+  // set the local time to transaction time
+  m_irq_time = m_pdes_local_time->get();
+  //m_irq_time = sc_core::SC_ZERO_TIME;
+  
+#ifdef SOCLIB_MODULE_DEBUG
+  std::cout << "[" << name() << "] Send Interrupt " << id << " val = " << m_irq[id] <<  " time = " << m_irq_time.value() << std::endl;
+#endif
+  
+  // send the transaction
+  (*p_irq_initiator[id])->nb_transport_fw(*m_irq_payload_ptr, m_irq_phase, m_irq_time);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_bw_transport_if VCI INITIATOR SOCKET
+// Virtual Fuctions  tlm::tlm_fw_transport_if VCI SOCKET
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::nb_transport_bw
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 ( tlm::tlm_generic_payload &payload,
   tlm::tlm_phase           &phase,  
   sc_core::sc_time         &time)   
 {
-  
-  soclib_payload_extension *rsp_extension_ptr;
-  //print_transaction(false, payload);
-
-  payload.get_extension(rsp_extension_ptr);
-  if(rsp_extension_ptr->is_write())
-    m_rsp_nwords = 1;
-  else
-    m_rsp_nwords = payload.get_data_length() / vci_param_tlmdt::nbytes;
-
-  m_pdes_local_time->set(time - (m_rsp_nwords*UNIT_TIME));
-  m_rsp_count = 0;
-  if(!has_null_message){
-    has_rsp_transaction = true;
-    m_rsp_index = m_buffer.set_response(payload);
+  soclib_payload_extension *extension;
+  payload.get_extension(extension);
+  if(extension->is_null_message()){
+ 
+    m_null_payload = &payload;
+    m_null_phase   = &phase;
+    m_null_time    = &time;
+    *m_null_time   = *m_null_time - UNIT_TIME;
+    has_null_message = true;
+#if SOCLIB_MODULE_DEBUG
+    printf("[%s] RECEIVE NULL MESSAGE %d null_time = %d\n", name(), (int)m_pdes_local_time->get().value(), (int)(*m_null_time).value());
+#endif
+ 
+    //send response to a null message
+    if(m_pdes_local_time->get().value()>=m_null_time->value()){
+      has_null_message = false;
+#if SOCLIB_MODULE_DEBUG
+      printf("[%s] SEND RESPONSE NULL MESSAGE %d\n", name(), (int)m_pdes_local_time->get().value());
+#endif
+      p_vci_target->nb_transport_bw(*m_null_payload, *m_null_phase, *m_null_time);
+    }
+      
+    return tlm::TLM_COMPLETED;
   }
 
-#if SOCLIB_MODULE_DEBUG
-  printf("[%s] RECEIVE RESPONSE clock_count = %d time = %d\n", name(), m_clock_count, (int)m_pdes_local_time->get().value());
-#endif
+  bool push = false;
+  int try_push = 0;
+  do{
 
-  m_rsp_event.notify(sc_core::SC_ZERO_TIME);
+#if SOCLIB_MODULE_DEBUG
+    printf("[%s] RECEIVE COMMAND time = %d local_time = %d\n", name(), (int)time.value(), m_clock_count);
+#endif
+    time = time - UNIT_TIME;
+    push = m_buffer.push(payload, phase, time);
+
+    if(!push){
+      try_push++;
+#if SOCLIB_MODULE_DEBUG
+      printf("[%s] <<<<<<<<< NOT PUSH >>>>>>>> try_push = %d \n", name(), try_push);
+#endif
+      sc_core::wait(m_pop_event);
+    }
+  }while(!push);
   return tlm::TLM_COMPLETED;
 }
 
 // Not implemented for this example but required by interface
-tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
-( sc_dt::uint64 start_range,                        // start range
-  sc_dt::uint64 end_range                           // end range
-  )
+tmpl(void)::b_transport
+( tlm::tlm_generic_payload &payload,                // payload
+  sc_core::sc_time         &time)                   //time
 {
+  return;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ TARGET SOCKET)
-/////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::irq_nb_transport_fw
-( int                      id,         // interruption id
-  tlm::tlm_generic_payload &payload,   // payload
-  tlm::tlm_phase           &phase,     // phase
-  sc_core::sc_time         &time)      // time
+// Not implemented for this example but required by interface
+tmpl(bool)::get_direct_mem_ptr
+( tlm::tlm_generic_payload &payload,                // address + extensions
+  tlm::tlm_dmi             &dmi_data)               // DMI data
+{ 
+  return false;
+}
+    
+// Not implemented for this example but required by interface
+tmpl(unsigned int):: transport_dbg                            
+( tlm::tlm_generic_payload &payload)                // debug payload
 {
-  std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i;
-  bool v = (bool) atou(payload.get_data_ptr(), 0);
-  bool find = false;
- 
-#ifdef SOCLIB_MODULE_DEBUG
-  std::cout << "[" << name() << "] receive Interrupt " << id << " value " << v << " time " << time.value() << std::endl;
-#endif
-
-  //if false interruption then it must be tested if there is a true interruption with the same id.
-  //In afirmative case, the true interruption must be deleted
-  if(!v){
-    for( i = m_pending_irqs.begin(); i != m_pending_irqs.end(); ++i){
-      if(i->second.first == id && i->first == time){
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] delete interrupt " << i->second.first << " value " << i->second.second << " time " << i->first.value() << std::endl;
-#endif
-	find = true;
-	m_pending_irqs.erase(i);
-      }
-    }
-  }
-
-  //if true interruption or (false interruption and no true interruption with the same id) the it adds
-  if(!find){
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << "[" << name() << "] insert interrupt " << id << " value " << v << " time " << time.value() << std::endl;
-#endif
-    m_pending_irqs[time] = std::pair<int, bool>(id, v);
-  }
-
-  return tlm::TLM_COMPLETED;
-
-} // end backward nb transport 
+  return false;
+}
 
 }}

@@ -30,8 +30,11 @@ __version__ = "$Revision: 917 $"
 
 Module('tlmdt:vci_target_transactor_buffer',
        classname = 'soclib::tlmdt::vci_target_transactor_buffer',
+       tmpl_parameters = [ parameter.Module('vci_param_caba',  default = 'caba:vci_param'),
+                           parameter.Module('vci_param_tlmdt', default = 'tlmdt:vci_param') ],
        header_files = ['../source/include/vci_target_transactor_buffer.h',],
        implementation_files = [ '../source/src/vci_target_transactor_buffer.cpp',],
-       uses = [ Uses('common:tlmdt'),],
+       uses = [ Uses('common:tlmdt'),
+                ],
        #debug = True,
 )

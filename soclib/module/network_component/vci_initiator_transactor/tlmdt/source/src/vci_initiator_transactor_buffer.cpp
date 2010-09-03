@@ -20,7 +20,7 @@
  *
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: alinevieiramello@hotmail.com
+ * Maintainers: alinev
  *
  * Copyright (c) UPMC / Lip6, 2010
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
@@ -31,165 +31,187 @@
 
 namespace soclib { namespace tlmdt {
 
-#define tmpl(x) template<typename vci_param_caba,typename vci_param_tlmdt> x vci_initiator_transactor_buffer<vci_param_caba,vci_param_tlmdt>
-
-tmpl(/**/)::vci_initiator_transactor_buffer()
+vci_initiator_transactor_buffer::vci_initiator_transactor_buffer()
+  : m_nentries(TAM_BUFFER)
+  , m_header_ptr(0)
+  , m_cmd_ptr(0)
+  , m_rsp_ptr(0)
 {
   init();
 }
 
-tmpl(/**/)::~vci_initiator_transactor_buffer()
+vci_initiator_transactor_buffer::vci_initiator_transactor_buffer(int n)
+  : m_nentries(n)
+  , m_header_ptr(0)
+  , m_cmd_ptr(0)
+  , m_rsp_ptr(0)
+{
+  init();
+}
+
+vci_initiator_transactor_buffer::~vci_initiator_transactor_buffer()
 {
 }
 
-tmpl(void)::init()
+void vci_initiator_transactor_buffer::init()
 {
-  int n_entries = (int)pow(2,vci_param_caba::T);
-  m_buffer = new transaction_index_struct[n_entries];
-  for(int i=0; i<n_entries; i++){
-    m_buffer[i].status = EMPTY;
-    //create payload and extension of a transaction
-    m_buffer[i].payload = new tlm::tlm_generic_payload();
-    unsigned char *data = new unsigned char[100];
-    m_buffer[i].payload->set_data_ptr(data);
-    unsigned char *byte_enable = new unsigned char[100];
-    m_buffer[i].payload->set_byte_enable_ptr(byte_enable);
-    soclib_payload_extension *extension = new soclib_payload_extension();
-    m_buffer[i].payload->set_extension(extension);
-    m_buffer[i].phase = tlm::UNINITIALIZED_PHASE;
-    m_buffer[i].time = sc_core::SC_ZERO_TIME;
+  m_table = new transaction_buffer[m_nentries];
+  for(int i=0; i<m_nentries; i++){
+    m_table[i].status = EMPTY;
   }
 }
 
-tmpl(void)::set_status(int idx, int status){
-  m_buffer[idx].status = status;
+bool vci_initiator_transactor_buffer::push
+( tlm::tlm_generic_payload &payload,
+  tlm::tlm_phase           &phase,
+  sc_core::sc_time         &time)
+{
+  int i = m_header_ptr;
+  if(m_table[i].status == EMPTY){
+    m_table[i].status  = OPEN;
+    m_table[i].payload = &payload;
+    m_table[i].phase   = &phase;
+    m_table[i].time    = &time;
+
+    m_header_ptr++;
+    if(m_header_ptr == m_nentries)
+      m_header_ptr = 0;
+#if SOCLIB_MODULE_DEBUG
+    printf("PUSH [%d] STATUS = %d time = %d\n",i, m_table[i].status, (int)(*m_table[i].time).value());
+#endif
+    return true;
+  }
+  return false;
 }
 
-tmpl(void)::set_command(int idx, tlm::tlm_command cmd){
-  m_buffer[idx].payload->set_command(cmd);
+bool vci_initiator_transactor_buffer::get_cmd_payload
+( uint32_t                   local_time,
+  tlm::tlm_generic_payload *&payload,
+  tlm::tlm_phase           *&phase,
+  sc_core::sc_time         *&time)
+{
+  int i = m_cmd_ptr;
+  if(m_table[i].status == OPEN){
+    payload = m_table[i].payload;
+    phase = m_table[i].phase;
+    time = m_table[i].time;
+
+    if(((*time).value())<=local_time){
+      m_table[i].status = COMPLETED;
+    
+      m_cmd_ptr++;
+      if(m_cmd_ptr == m_nentries)
+	m_cmd_ptr = 0;
+    
+#if SOCLIB_MODULE_DEBUG
+      printf("SELECT [%d] time = %d local_time = %d\n", i, (int)(*m_table[i].time).value(), (int)local_time);
+#endif
+      return true;
+    }
+  }
+  return false;
 }
 
-tmpl(void)::set_address(int idx, sc_dt::uint64 add){
-  m_buffer[idx].payload->set_address(add);
+int vci_initiator_transactor_buffer::get_rsp_payload
+( unsigned int               src_id,
+  unsigned int               trd_id,
+  tlm::tlm_generic_payload *&payload,
+  tlm::tlm_phase           *&phase,
+  sc_core::sc_time         *&time)
+{
+#if SOCLIB_MODULE_DEBUG
+  printf("GET_RSP_PAYLOAD src_id = %d trd_id = %d\n", src_id, trd_id);
+#endif
+  soclib_payload_extension *ext;
+  if(m_rsp_ptr < m_cmd_ptr){
+    for(int i=m_rsp_ptr; i < m_cmd_ptr; i++){
+      if(m_table[i].status == COMPLETED){
+	
+	m_table[i].payload->get_extension(ext);
+	
+	if(ext->get_src_id() == src_id &&
+	   ext->get_trd_id() == trd_id){
+	  payload = m_table[i].payload;
+	  phase   = m_table[i].phase;
+	  time    = m_table[i].time;
+	  
+	  if(i == m_rsp_ptr){
+	    m_rsp_ptr++;
+	    if(m_rsp_ptr == m_nentries) m_rsp_ptr = 0;
+	  }
+	  
+	  return i;
+	}
+      }
+    }
+  }
+  else{
+    for(int i=m_rsp_ptr; i < m_nentries; i++){
+      if(m_table[i].status == COMPLETED){
+	
+	m_table[i].payload->get_extension(ext);
+	
+	if(ext->get_src_id() == src_id &&
+	   ext->get_trd_id() == trd_id){
+	  payload = m_table[i].payload;
+	  phase   = m_table[i].phase;
+	  time    = m_table[i].time;
+	  
+	  if(i == m_rsp_ptr){
+	    m_rsp_ptr++;
+	    if(m_rsp_ptr == m_nentries) m_rsp_ptr = 0;
+	  }
+	  
+	  return i;
+	}
+      }
+    }
+    for(int i=0; i < m_cmd_ptr; i++){
+      if(m_table[i].status == COMPLETED){
+	
+	m_table[i].payload->get_extension(ext);
+	
+	if(ext->get_src_id() == src_id &&
+	   ext->get_trd_id() == trd_id){
+	  payload = m_table[i].payload;
+	  phase   = m_table[i].phase;
+	  time    = m_table[i].time;
+	  
+	  if(i == m_rsp_ptr){
+	    m_rsp_ptr++;
+	  }
+	  
+	  return i;
+	}
+      }
+    }
+  }
+  return -1;
 }
 
-tmpl(void)::set_ext_command(int idx, enum command cmd){
-  soclib_payload_extension *extension;
-  m_buffer[idx].payload->get_extension(extension);
-  extension->set_command(cmd);
+
+bool vci_initiator_transactor_buffer::pop(int idx)
+{
+  if(m_table[idx].status == COMPLETED){
+    m_table[idx].status = EMPTY;
+#if SOCLIB_MODULE_DEBUG
+    printf("POP [%d] =  %d\n",idx,m_table[idx].status);
+#endif
+    return true;
+  }
+  return false;
 }
 
-tmpl(void)::set_src_id(int idx, unsigned int src){
-  soclib_payload_extension *extension;
-  m_buffer[idx].payload->get_extension(extension);
-  extension->set_src_id(src);
-}
-
-tmpl(void)::set_trd_id(int idx, unsigned int trd){
-  soclib_payload_extension *extension;
-  m_buffer[idx].payload->get_extension(extension);
-  extension->set_trd_id(trd);
-}
-
-tmpl(void)::set_pkt_id(int idx, unsigned int pkt){
-  soclib_payload_extension *extension;
-  m_buffer[idx].payload->get_extension(extension);
-  extension->set_pkt_id(pkt);
-}
-
-tmpl(void)::set_data(int idx, int idx_data, typename vci_param_caba::data_t int_data){
-  unsigned char *data = m_buffer[idx].payload->get_data_ptr();
-  utoa(int_data, data, idx_data * vci_param_tlmdt::nbytes);
-}
-
-tmpl(void)::set_data_length(int idx, unsigned int length){
-  m_buffer[idx].payload->set_data_length(length);
-}
-
-tmpl(void)::set_byte_enable(int idx, int idx_be, typename vci_param_caba::data_t int_be){
-  unsigned char *be = m_buffer[idx].payload->get_byte_enable_ptr();
-  utoa(int_be, be, idx_be * vci_param_tlmdt::nbytes);
-}
-
-tmpl(void)::set_byte_enable_length(int idx, unsigned int length){
-  m_buffer[idx].payload->set_byte_enable_length(length);
-}
-
-tmpl(void)::set_phase(int idx, tlm::tlm_phase phase){
-  m_buffer[idx].phase = phase;
-}
-
-tmpl(void)::set_time(int idx, sc_core::sc_time time){
-  m_buffer[idx].time = time;
-}
-
-tmpl(int)::set_response(tlm::tlm_generic_payload &payload){
-  int idx;
-  soclib_payload_extension *extension;
-  unsigned char *rsp_data = payload.get_data_ptr();
-  unsigned int length = payload.get_data_length();
-  payload.get_extension(extension);
-  idx = extension->get_trd_id();
-
-  //set response to buffer
-  m_buffer[idx].status = COMPLETED;
-  m_buffer[idx].payload->set_response_status(payload.get_response_status());
-
-  unsigned char *data = m_buffer[idx].payload->get_data_ptr();
-  for(unsigned int i=0; i<length; i++)
-    data[i] = rsp_data[i];
-      //m_buffer[idx].payload->set_data_ptr(payload.get_data_ptr());
-
-  return idx;
-}
-
-tmpl(unsigned int)::get_src_id(int idx){
-  soclib_payload_extension *extension;
-  m_buffer[idx].payload->get_extension(extension);
-  return extension->get_src_id();
-}
-
-tmpl(unsigned int)::get_pkt_id(int idx){
-  soclib_payload_extension *extension;
-  m_buffer[idx].payload->get_extension(extension);
-  return extension->get_pkt_id();
-}
-
-tmpl(unsigned int)::get_trd_id(int idx){
-  soclib_payload_extension *extension;
-  m_buffer[idx].payload->get_extension(extension);
-  return extension->get_trd_id();
-}  
-
-tmpl(bool)::get_response_status(int idx){
-  if(m_buffer[idx].payload->get_response_status()==tlm::TLM_OK_RESPONSE)
+bool vci_initiator_transactor_buffer::waiting_response(){
+  if(m_rsp_ptr == m_cmd_ptr){
+#if SOCLIB_MODULE_DEBUG
+    printf("DO NOT WAITING RESPONSE\n");
+#endif
     return false;
-
+  }
+#if SOCLIB_MODULE_DEBUG
+  printf("WAITING RESPONSE\n");
+#endif
   return true;
 }
-
-tmpl(sc_dt::uint64)::get_address(int idx){
-  return m_buffer[idx].payload->get_address();
-}
-
-tmpl(typename vci_param_caba::data_t)::get_data(int idx, int idx_data){
-  return atou(m_buffer[idx].payload->get_data_ptr(), idx_data*vci_param_tlmdt::nbytes);
-}
-
-tmpl(tlm::tlm_generic_payload*)::get_payload(int idx){
-  return m_buffer[idx].payload;
-}
-
-tmpl(tlm::tlm_phase*)::get_phase(int idx){
-  return &m_buffer[idx].phase;
-}
-
-tmpl(sc_core::sc_time*)::get_time(int idx){
-  return &m_buffer[idx].time;
-}
-
-tmpl(unsigned int)::get_time_value(int idx){
-  return m_buffer[idx].time.value();
-}
-
 }}

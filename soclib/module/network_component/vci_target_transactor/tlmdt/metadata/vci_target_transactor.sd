@@ -20,7 +20,7 @@
 # 
 # SOCLIB_LGPL_HEADER_END
 #
-# Maintainers: alinevieiramello@hotmail.com
+# Maintainers: alinev
 #
 # Copyright (c) UPMC / Lip6, 2010
 #     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
@@ -34,12 +34,12 @@ Module('tlmdt:vci_target_transactor',
                            parameter.Module('vci_param_tlmdt', default = 'tlmdt:vci_param') ],
        header_files = ['../source/include/vci_target_transactor.h',],
        implementation_files = ['../source/src/vci_target_transactor.cpp',],
-       ports = [ Port('caba:vci_initiator', 'p_vci_initiator'),
+       ports = [ Port('caba:vci_target', 'p_vci_target'),
                  Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
                  Port('caba:clock_in', 'p_clk', auto = 'clock') ],
        uses = [  Uses('common:tlmdt'),
                  Uses('tlmdt:vci_target_transactor_buffer'),
-                 Uses('caba:vci_initiator'),
+                 Uses('caba:vci_target'),
                  Uses('common:mapping_table') ],
        #debug = True,
        )
