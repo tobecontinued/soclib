@@ -39,7 +39,7 @@ p=procnum();
 
 
   puts("Hello from processor ");
-  putchar(p+'0');
+  puti(p);
   putchar('\n');
 
 

@@ -10,10 +10,10 @@
 #include "iss2_simhelper.h"
 #include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
-#include "vci_mem_cache_v4.h"
+#include "vci_mem_cache_v3.h"
 #include "vci_cc_xcache_wrapper_v1.h"
 #include "vci_local_ring_fast.h"
-#include "vci_vgmn.h"
+#include "vci_simple_ring_fast.h"
 #include "virtual_dspin_router.h"
 
 #ifdef USE_GDB_SERVER
@@ -402,70 +402,70 @@ int _main(int argc, char *argv[])
 
 	//                                  init_rw   init_c   tgt
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc0("proc0", 0, maptabp, maptabc, IntTab(0,0),IntTab(0,0),IntTab(0,0),4,64,16,4,64,16);
+        proc0("proc0", 0, maptabp, maptabc, IntTab(0,0),IntTab(0,0),IntTab(0,0),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc1("proc1", 1, maptabp, maptabc, IntTab(0,1),IntTab(0,1),IntTab(0,1),4,64,16,4,64,16);
+        proc1("proc1", 1, maptabp, maptabc, IntTab(0,1),IntTab(0,1),IntTab(0,1),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc2("proc2", 2, maptabp, maptabc, IntTab(0,2),IntTab(0,2),IntTab(0,2),4,64,16,4,64,16);
+        proc2("proc2", 2, maptabp, maptabc, IntTab(0,2),IntTab(0,2),IntTab(0,2),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc3("proc3", 3, maptabp, maptabc, IntTab(0,3),IntTab(0,3),IntTab(0,3),4,64,16,4,64,16);
+        proc3("proc3", 3, maptabp, maptabc, IntTab(0,3),IntTab(0,3),IntTab(0,3),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc4("proc4", 4, maptabp, maptabc, IntTab(1,0),IntTab(1,0),IntTab(1,0),4,64,16,4,64,16);
+        proc4("proc4", 4, maptabp, maptabc, IntTab(1,0),IntTab(1,0),IntTab(1,0),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc5("proc5", 5, maptabp, maptabc, IntTab(1,1),IntTab(1,1),IntTab(1,1),4,64,16,4,64,16);
+        proc5("proc5", 5, maptabp, maptabc, IntTab(1,1),IntTab(1,1),IntTab(1,1),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc6("proc6", 6, maptabp, maptabc, IntTab(1,2),IntTab(1,2),IntTab(1,2),4,64,16,4,64,16);
+        proc6("proc6", 6, maptabp, maptabc, IntTab(1,2),IntTab(1,2),IntTab(1,2),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc7("proc7", 7, maptabp, maptabc, IntTab(1,3),IntTab(1,3),IntTab(1,3),4,64,16,4,64,16);
+        proc7("proc7", 7, maptabp, maptabc, IntTab(1,3),IntTab(1,3),IntTab(1,3),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc8("proc8", 8, maptabp, maptabc, IntTab(2,0),IntTab(2,0),IntTab(2,0),4,64,16,4,64,16);
+        proc8("proc8", 8, maptabp, maptabc, IntTab(2,0),IntTab(2,0),IntTab(2,0),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc9("proc9", 9, maptabp, maptabc, IntTab(2,1),IntTab(2,1),IntTab(2,1),4,64,16,4,64,16);
+        proc9("proc9", 9, maptabp, maptabc, IntTab(2,1),IntTab(2,1),IntTab(2,1),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc10("proc10", 10, maptabp, maptabc, IntTab(2,2),IntTab(2,2),IntTab(2,2),4,64,16,4,64,16);
+        proc10("proc10", 10, maptabp, maptabc, IntTab(2,2),IntTab(2,2),IntTab(2,2),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc11("proc11", 11, maptabp, maptabc, IntTab(2,3),IntTab(2,3),IntTab(2,3),4,64,16,4,64,16);
+        proc11("proc11", 11, maptabp, maptabc, IntTab(2,3),IntTab(2,3),IntTab(2,3),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc12("proc12", 12, maptabp, maptabc, IntTab(3,0),IntTab(3,0),IntTab(3,0),4,64,16,4,64,16);
+        proc12("proc12", 12, maptabp, maptabc, IntTab(3,0),IntTab(3,0),IntTab(3,0),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc13("proc13", 13, maptabp, maptabc, IntTab(3,1),IntTab(3,1),IntTab(3,1),4,64,16,4,64,16);
+        proc13("proc13", 13, maptabp, maptabc, IntTab(3,1),IntTab(3,1),IntTab(3,1),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc14("proc14", 14, maptabp, maptabc, IntTab(3,2),IntTab(3,2),IntTab(3,2),4,64,16,4,64,16);
+        proc14("proc14", 14, maptabp, maptabc, IntTab(3,2),IntTab(3,2),IntTab(3,2),4,4,16,4,4,16);
 
         soclib::caba::VciCcXCacheWrapperV1<vci_param, proc_iss > 
-        proc15("proc15", 15, maptabp, maptabc, IntTab(3,3),IntTab(3,3),IntTab(3,3),4,64,16,4,64,16);
+        proc15("proc15", 15, maptabp, maptabc, IntTab(3,3),IntTab(3,3),IntTab(3,3),4,4,16,4,4,16);
 
 
 	soclib::caba::VciSimpleRam<vci_param> 
 	xram("xram",IntTab(0),maptabx, loader);
 
         //                                  x_init    c_init    p_tgt     c_tgt
-	soclib::caba::VciMemCacheV4<vci_param> 
+	soclib::caba::VciMemCacheV3<vci_param> 
 //	memc0("memc0",maptabp,maptabc,maptabx,IntTab(0),IntTab(0,4),IntTab(0,0), IntTab(0,4), 16,256,16);
-        memc0("memc0",maptabp,maptabc,maptabx,IntTab(0),IntTab(0,4),IntTab(0,0), IntTab(0,4), 16,256,16);
+        memc0("memc0",maptabp,maptabc,maptabx,IntTab(0),IntTab(0,4),IntTab(0,0), IntTab(0,4), 4,16,16);
 
-	soclib::caba::VciMemCacheV4<vci_param> 
-	memc1("memc1",maptabp,maptabc,maptabx,IntTab(1),IntTab(1,4),IntTab(1,0), IntTab(1,4), 16,256,16);
+	soclib::caba::VciMemCacheV3<vci_param> 
+	memc1("memc1",maptabp,maptabc,maptabx,IntTab(1),IntTab(1,4),IntTab(1,0), IntTab(1,4), 4,16,16);
 
-	soclib::caba::VciMemCacheV4<vci_param> 
-	memc2("memc2",maptabp,maptabc,maptabx,IntTab(2),IntTab(2,4),IntTab(2,0), IntTab(2,4), 16,256,16);
+	soclib::caba::VciMemCacheV3<vci_param> 
+	memc2("memc2",maptabp,maptabc,maptabx,IntTab(2),IntTab(2,4),IntTab(2,0), IntTab(2,4), 4,16,16);
 
-	soclib::caba::VciMemCacheV4<vci_param> 
-	memc3("memc3",maptabp,maptabc,maptabx,IntTab(3),IntTab(3,4),IntTab(3,0), IntTab(3,4), 16,256,16);
+	soclib::caba::VciMemCacheV3<vci_param> 
+	memc3("memc3",maptabp,maptabc,maptabx,IntTab(3),IntTab(3,4),IntTab(3,0), IntTab(3,4), 4,16,16);
 	
 	soclib::caba::VciMultiTty<vci_param> 
 	tty("tty",IntTab(3,1),maptabp,"tty0","tty1","tty2","tty3","tty4","tty5","tty6","tty7","tty8","tty9","tty10","tty11","tty12","tty13","tty14","tty15",NULL);
@@ -495,9 +495,8 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciLocalRingFast<vci_param, 40, 33> 
 	clusterCN3("clusterCN3",maptabc, IntTab(3), 2, 2, 5, 5 );
 
-        //      name, mapping t, nb_init, nb_tgt, min_latency, fifo_depth
-	soclib::caba::VciVgmn<vci_param> 
-	xring("xring",maptabx, 4, 1, 2, 2);
+        soclib::caba::VciSimpleRingFast<vci_param, 40, 33>
+    	xring("xring",maptabx, IntTab(), 2, 4, 1);
 
 	// Distributed Global Interconnect : one cmd router & one rsp router per cluster
 	VirtualDspinRouter<cmd_width>* cmdrouter = (VirtualDspinRouter<cmd_width>*)
@@ -1094,9 +1093,11 @@ int _main(int argc, char *argv[])
 
 	for (int i = 0; i < ncycles ; i+=1) {
 		sc_start(sc_core::sc_time(1, SC_NS));
-	//std::cout << " +++++++++ cycle : " << i << std::endl;
-        //rsprouter[3].printTrace(0); 		
-        //rsprouter[2].printTrace(0); 		
+	       //std::cout << " +++++++++ cycle : " << std::dec << i << std::endl;
+               //cmdrouter[0].printTrace(1);   // channel 0 : Direct, channel 1 : Coherence
+               //cmdrouter[1].printTrace(1); 		
+               //cmdrouter[2].printTrace(1); 		
+               //cmdrouter[3].printTrace(1); 		
 	}
 
         std::cout << "Hit ENTER to end simulation" << std::endl;
