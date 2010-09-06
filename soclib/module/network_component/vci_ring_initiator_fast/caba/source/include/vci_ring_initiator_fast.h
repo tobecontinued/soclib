@@ -74,8 +74,8 @@
 #include "ring_signals_2.h"
 #include <systemc.h>
 
-//#define I_DEBUG
-//#define IR_DEBUG
+#define I_DEBUG
+#define IR_DEBUG
 //#define I_DEBUG_FSM
 
 namespace soclib { namespace caba {

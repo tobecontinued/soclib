@@ -33,7 +33,7 @@
 #include "dspin_interface.h"
 //#include "gate_ports_2.h"
 
-//#define HI_DEBUG
+#define HI_DEBUG
 //#define HI_DEBUG_FSM
 
 namespace soclib { namespace caba {
