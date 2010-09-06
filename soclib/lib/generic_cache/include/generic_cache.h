@@ -112,6 +112,23 @@ class GenericCache
         return r_lru[(way*m_sets)+set];
     }
 
+    //////////////////////////////////////////////
+    inline void cache_set_lru(size_t way, size_t set)
+    {
+	size_t way2;
+
+        cache_lru(way, set) = true;
+	for (way2 = 0; way2 < m_ways; way2++ ) {
+	    if (cache_lru(way2, set) == false) break;
+	}
+	if (way2 == m_ways) {
+		/* all lines are new -> they all become old */
+		for (way2 = 0; way2 < m_ways; way2++ ) {
+		    cache_lru(way2, set) = false;
+		}
+	}
+    }
+
 public:
 
     //////////////////////////////////////////////
@@ -203,7 +220,7 @@ public:
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 *dt = cache_data(way, set, word);
-                cache_lru(way, set) = true;
+                cache_set_lru(way, set);
 
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
@@ -236,7 +253,7 @@ public:
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 *dt = cache_data(way, set, word);
-                cache_lru(way, set) = true;
+                cache_set_lru(way, set);
                 *n_way = way;
                 *n_set = set;
 
@@ -300,7 +317,7 @@ public:
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 cache_data(way, set, word) = dt;
-                cache_lru(way, set) = true;
+                cache_set_lru(way, set);
 
 #ifdef GENERIC_CACHE_DEBUG
                 std::cout << "hit"
@@ -333,7 +350,7 @@ public:
         for ( size_t way = 0; way < m_ways; way++ ) {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) {
                 cache_data(way, set, word) = dt;
-                cache_lru(way, set) = true;
+                cache_set_lru(way, set);
                 *nway = way;
                 *nset = set;
 
@@ -455,17 +472,12 @@ public:
                 }
             }
         }
-        if ( !found ) { // No old way => all ways become old
-            for ( size_t way = 0; way < m_ways; way++ ) {
-                cache_lru(way, set) = false;
-            }
-            cleanup = true;
-            selway  = 0;
-        }
+	assert(found && "all ways can't be new at the same time");
+
         *victim = (addr_t)((cache_tag(selway,set) * m_sets) + set);
         cache_tag(selway, set) = tag;
         cache_val(selway, set) = true;
-        cache_lru(selway, set) = true;
+        cache_set_lru(selway, set);
         for ( size_t word = 0 ; word < m_words ; word++ ) {
             cache_data(selway, set, word) = buf[word] ;
         }
@@ -506,11 +518,7 @@ public:
                 return  true;
             }
         }
-        // No old line => all lines become old and we select slot 0
-        for ( size_t way = 0; way < m_ways; way++ )  cache_lru(way, set) = false;
-        cache_val(0, set) = false;
-        *selway = 0;
-        *victim = (addr_t)((cache_tag(0, set) * m_sets) + set);
+	assert("all lines can't be new at the same time");
         return true;
     }
 
@@ -526,9 +534,10 @@ public:
     {
         tag_t       tag     = m_z[ad];
         size_t      set     = m_y[ad];
+
         cache_tag(way, set) = tag;
         cache_val(way, set) = true;
-        cache_lru(way, set) = true;
+        cache_set_lru(way, set);
         for ( size_t word = 0 ; word < m_words ; word++ ) cache_data(way, set, word) = buf[word] ;
     }
 
@@ -540,7 +549,6 @@ public:
     {
         size_t      set     = m_y[ad];
         size_t      selway  = 0;
-        size_t      dtlb_way = 0;
         bool        found   = false;
         bool        cleanup = false;
 
@@ -551,57 +559,44 @@ public:
                 selway  = way;
             }
         }
-        if ( !found ) { // No invalid way
+        if ( !found ) {
+	    /* No invalid way, look for an old way, in priotity order:
+	     * an old way which is not refereced by any tlb
+	     * an old way which is not referenced by the itlb
+	     * an old way which is not referenced by the dtlb
+	     * an old way 
+	     */
             for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if ( !cache_lru(way, set) ) {
+                if ( !cache_lru(way, set) && !itlb_buf[m_sets*way+set]
+		    && !dtlb_buf[m_sets*way+set]) {
                     found   = true;
                     cleanup = true;
                     selway  = way;
                 }
             }
-        }
-        // verify in_itlb & in_tlb 
-        if ( !found ) { // No invalid way
             for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if (!itlb_buf[m_sets*way+set] && !dtlb_buf[m_sets*way+set]) {
-                    found = true;
+                if ( !cache_lru(way, set) && !itlb_buf[m_sets*way+set]) {
+                    found   = true;
                     cleanup = true;
                     selway = way;
                 }
             }
             for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if (!itlb_buf[m_sets*way+set] && dtlb_buf[m_sets*way+set] && (m_z[ad] != cache_tag(way, set))) {
-                    found = true;
+                if ( !cache_lru(way, set) && !dtlb_buf[m_sets*way+set]) {
+                    found   = true;
                     cleanup = true;
                     selway = way;
                 }
             }
             for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if (itlb_buf[m_sets*way+set] && !dtlb_buf[m_sets*way+set]) {
-                    found = true;
+                if ( !cache_lru(way, set)) {
+                    found   = true;
                     cleanup = true;
                     selway = way;
                 }
-            }
-            if ( !found ) { // No old way => all ways become recent
-                for ( size_t way = 0 ; way < m_ways ; way++ ) {
-                    if ((m_z[ad] == cache_tag(way, set)) && dtlb_buf[m_sets*way+set]) {
-                        dtlb_way = way;
-                        break;
-                    }
-                }                
-
-                for ( size_t way = 0; way < m_ways; way++ ) {
-                    if ( way != dtlb_way )
-                        cache_lru(way, set) = false;
-                }
-                cleanup = true;
-                if (m_next_way == dtlb_way) selway = ((m_next_way+1) % m_ways); 
-                else selway = m_next_way; 
-                m_next_way = (selway+1) % m_ways;
             }
         }
-
+	assert(found && "all ways can't be new at the same time");
         *victim = (addr_t)((cache_tag(selway, set) * m_sets) + set);
         cache_val(selway, set) = false;
         *n_way = selway;
@@ -616,7 +611,7 @@ public:
 
         cache_tag(n_way, n_set) = tag;
         cache_val(n_way, n_set) = true;
-        cache_lru(n_way, n_set) = true;
+        cache_set_lru(n_way, n_set);
         for ( size_t word = 0 ; word < m_words ; word++ ) {
             cache_data(n_way, n_set, word) = buf[word] ;
         }
