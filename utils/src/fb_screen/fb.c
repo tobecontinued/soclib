@@ -54,7 +54,9 @@ void sig_catcher( int sig )
         YUV420 = 420,
         YUV422 = 422,
         RGB = 0,
+        RGB32 = 32,
         RGB_PALETTE_256 = 256,
+        RGB_16 = 16,
         BW = 1,
     };
 
@@ -137,16 +139,29 @@ void transform_yuv( struct image_s *image, uint8_t *fb,
 }
 
 void transform_rgb( struct image_s *image, uint8_t *fb,
-					size_t width, size_t height )
+					size_t width, size_t height, size_t pixs )
 {
 	size_t line, col;
 	for ( line=0; line<height; line++ ) {
 		for ( col=0; col<width; ++col ) {
 			uint8_t r, v, b;
-			r = fb[width*line*3 + col];
-			v = fb[width*line*3 + col + 1];
-			b = fb[width*line*3 + col + 2];
+			r = fb[width*line*pixs + col*pixs];
+			v = fb[width*line*pixs + col*pixs + 1];
+			b = fb[width*line*pixs + col*pixs + 2];
 			set_rgb( image, line, col, r, v, b );
+		}
+	}
+}
+
+void transform_rgb16( struct image_s *image, uint8_t *fb,
+                      size_t width, size_t height )
+{
+	size_t line, col;
+	for ( line=0; line<height; line++ ) {
+		for ( col=0; col<width; ++col ) {
+			uint16_t p = ((uint16_t*)fb)[width*line + col];
+			set_rgb( image, line, col,
+                     (p >> 8) & ~7, (p >> 3) & 0xfc, (p & 0x1f) << 3 );
 		}
 	}
 }
@@ -262,7 +277,13 @@ void handle_display( uint8_t *fb, long width, long height, long subsampling )
 			transform_yuv( &image, fb, width, height, subsampling );
 			break;
 		case RGB:
-			transform_rgb( &image, fb, width, height );
+			transform_rgb( &image, fb, width, height, 3 );
+			break;
+		case RGB32:
+			transform_rgb( &image, fb, width, height, 4 );
+			break;
+		case RGB_16:
+			transform_rgb16( &image, fb, width, height );
 			break;
 		case RGB_PALETTE_256:
 			transform_rgb_palette_256( &image, fb, width, height );
@@ -317,7 +338,7 @@ int main( int argc, char **argv )
 		perror(file);
 		exit(2);
 	}
-	mmap_res = mmap(0, width*height*2, PROT_READ, MAP_FILE|MAP_SHARED, buffer_fd, 0);
+	mmap_res = mmap(0, width*height*4, PROT_READ, MAP_FILE|MAP_SHARED, buffer_fd, 0);
 	if ( mmap_res == (void*)-1 ) {
 		perror("mmap");
 		exit(2);
