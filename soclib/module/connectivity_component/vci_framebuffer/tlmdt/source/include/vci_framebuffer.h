@@ -83,7 +83,7 @@ public:
 		 const soclib::common::MappingTable &mt,
 		 size_t width,
 		 size_t height,
-		 size_t subsampling);
+		 size_t subsampling = 420);
   
   ~VciFrameBuffer();
 
