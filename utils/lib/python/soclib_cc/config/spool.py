@@ -128,9 +128,8 @@ class ConfigSpool(object):
                 continue
             r.append(k)
         r.remove("build_env")
-        r.remove(self.__default_config)
         r.insert(0, "default")
-        return r
+        return list(set(r))
 
     def __str__(self):
         r = objects._pformat(self.__configs, "",
