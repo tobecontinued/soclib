@@ -32,8 +32,8 @@
 #include "mapping_table.h"
 #include "ring_signals_2.h"
 
-#define T_DEBUG
-#define TR_DEBUG
+//#define T_DEBUG
+//#define TR_DEBUG
 //#define T_DEBUG_FSM
 
 namespace soclib { namespace caba {
