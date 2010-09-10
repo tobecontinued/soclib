@@ -35,7 +35,7 @@
 #include "ring_signals_2.h"
 #include "dspin_interface.h"
 
-//#define HT_DEBUG
+#define HT_DEBUG
 //#define HT_DEBUG_FSM
 
 namespace soclib { namespace caba {
