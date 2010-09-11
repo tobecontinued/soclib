@@ -54,6 +54,9 @@
 //   The VCI CMD FSM has been modified to send single cell packet in case of MISS.
 //   The uncached mode (using the mapping table) has been introduced  in the
 //   ICACHE FSM.
+// - 12/09/2010
+//   The VCI RSP FSM has been modified to accept single flit response packets
+//   in case of read bus error.
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <cassert>
@@ -837,13 +840,15 @@ tmpl(void)::transition()
                "The VCI response packet for instruction miss is too long" );
         r_vci_rsp_cpt = r_vci_rsp_cpt + 1;
         r_icache_miss_buf[r_vci_rsp_cpt] = (data_t)p_vci.rdata.read();
-        if ( p_vci.reop.read() ) {
-            assert( (r_vci_rsp_cpt == m_icache_words - 1) &&
-                   "The VCI response packet for instruction miss is too short");
+        if ( p_vci.reop.read() )
+        {
+            if ( (p_vci.rerror.read() & 0x1) == 0x0 ) // no error
+                assert( (r_vci_rsp_cpt == m_icache_words - 1) &&
+                "The VCI response packet for instruction miss is too short");
             r_icache_miss_req = false;
             r_vci_rsp_fsm = RSP_IDLE;
         }
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+        if ( (p_vci.rerror.read() & 0x1) == 0x1 )
             r_vci_rsp_ins_error = true;
         break;
 
@@ -857,7 +862,7 @@ tmpl(void)::transition()
         r_icache_buf_unc_valid = true;
         r_vci_rsp_fsm = RSP_IDLE;
         r_icache_unc_req = false;
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+        if ( (p_vci.rerror.read() & 0x1) == 0x1 )
             r_vci_rsp_ins_error = true;
         break;
 
@@ -869,13 +874,15 @@ tmpl(void)::transition()
                "illegal VCI response packet for data read miss");
         r_vci_rsp_cpt = r_vci_rsp_cpt + 1;
         r_dcache_miss_buf[r_vci_rsp_cpt] = (data_t)p_vci.rdata.read();
-        if ( p_vci.reop.read() ) {
-            assert(r_vci_rsp_cpt == m_dcache_words - 1 &&
-                   "illegal VCI response packet for instruction miss");
+        if ( p_vci.reop.read() ) 
+        {
+            if ( (p_vci.rerror.read() & 0x1) == 0x0 ) // no error
+                assert(r_vci_rsp_cpt == m_dcache_words - 1 &&
+                "illegal VCI response packet for instruction miss");
             r_dcache_miss_req = false;
             r_vci_rsp_fsm = RSP_IDLE;
         }
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+        if ( (p_vci.rerror.read() & 0x1) == 0x1 )
             r_vci_rsp_data_error = true;
         break;
 
@@ -887,7 +894,9 @@ tmpl(void)::transition()
             r_vci_rsp_fsm = RSP_IDLE;
             r_dcache_write_req = false;
         }
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) {
+        if ( (p_vci.rerror.read() & 0x1) == 0x1 ) 
+        {
+
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " write BERR" << std::endl;
 #endif
@@ -904,7 +913,7 @@ tmpl(void)::transition()
         r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
         r_vci_rsp_fsm = RSP_IDLE;
         r_dcache_unc_req = false;
-        if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )
+        if ( (p_vci.rerror.read() &0x1) == 0x1 )
             r_vci_rsp_data_error = true;
         break;
 
