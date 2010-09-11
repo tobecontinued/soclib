@@ -83,6 +83,9 @@
 //   these rules, and to have an associative behavior: it can exist several
 //   open lines, with a private time-out for each open line.
 //   A printTrace() method has been defined.
+// - 12/09/2010
+//   The VCI RSP FSM has been modified to accept single flit packets
+//   in case of read bus errors. 
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <cassert>
@@ -921,7 +924,7 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
                "A VCI response packet must contain one flit for a write transaction" ); 
             r_rsp_fsm = RSP_IDLE;
             r_wbuf.completed( p_vci.rtrdid.read() - (1<<(vci_param::T-1)) );
-            if ( p_vci.rerror.read() != vci_param::ERR_NORMAL )  m_iss.setWriteBerr();
+            if ( (p_vci.rerror.read() & 0x1) == 0x1 )  m_iss.setWriteBerr();
         }
         break;
     }
@@ -935,12 +938,13 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
             r_icache_miss_buf[r_rsp_cpt] = (data_t)p_vci.rdata.read();
             if ( p_vci.reop.read() ) 
             {
-                assert( (r_rsp_cpt == m_icache_words - 1) &&
-                   "The VCI response packet for instruction miss is too short");
+                if ( (p_vci.rerror.read() & 0x1) == 0x0 ) // no error
+                    assert( (r_rsp_cpt == m_icache_words - 1) &&
+                    "The VCI response packet for instruction miss is too short");
                 r_rsp_ins_ok = true;
                 r_rsp_fsm = RSP_IDLE;
             }
-            if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_rsp_ins_error = true;
+            if ( (p_vci.rerror.read() & 0x1) == 0x1 ) r_rsp_ins_error = true;
         }
         break;
     }
@@ -953,7 +957,7 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
             r_icache_miss_buf[0] = (data_t)p_vci.rdata.read();
             r_rsp_ins_ok = true;
             r_rsp_fsm = RSP_IDLE;
-            if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_rsp_ins_error = true;
+            if ( (p_vci.rerror.read() & 0x1) == 0x1 ) r_rsp_ins_error = true;
         }
         break;
     }
@@ -967,12 +971,13 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
             r_dcache_miss_buf[r_rsp_cpt] = (data_t)p_vci.rdata.read();
             if ( p_vci.reop.read() )
             {
-                assert(r_rsp_cpt == m_dcache_words - 1 &&
+                if ( (p_vci.rerror.read() & 0x1) == 0x0 ) // no error
+                    assert(r_rsp_cpt == m_dcache_words - 1 &&
                     "The VCI response packet for data miss is too short" );
                 r_rsp_data_ok = true;
                 r_rsp_fsm = RSP_IDLE;
             }
-            if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_rsp_data_error = true;
+            if ( (p_vci.rerror.read() & 0x1) == 0x1 ) r_rsp_data_error = true;
         }
         break;
     }
@@ -985,7 +990,7 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
             r_dcache_miss_buf[0] = (data_t)p_vci.rdata.read();
             r_rsp_data_ok = true;
             r_rsp_fsm = RSP_IDLE;
-            if ( p_vci.rerror.read() != vci_param::ERR_NORMAL ) r_rsp_data_error = true;
+            if ( (p_vci.rerror.read() & 0x1) == 0x1 ) r_rsp_data_error = true;
         }
         break;
     }
