@@ -113,7 +113,9 @@ private:
 
         int           m_tgtid;
         uint32_t      m_shift;
-       
+        uint32_t      m_current_cycle;
+        uint32_t      max_cycle;      
+
         // internal registers
         sc_core::sc_signal<int>	        r_ring_cmd_fsm;	    // ring command packet FSM 
         sc_core::sc_signal<int>		r_ring_rsp_fsm;	    // ring response packet FSM
@@ -129,14 +131,13 @@ private:
         sc_core::sc_signal<sc_dt::sc_uint<1> >                 r_const;
         sc_core::sc_signal<sc_dt::sc_uint<vci_param::N> >      r_addr;
             
-        bool trace(int sc_time_stamp)
+        uint32_t trace_catch()
         {
-                int time_stamp=0;
+                //uint32_t time_stamp=0;
                 char *ctime_stamp= getenv("FROM_CYCLE");
                 
-                if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
-                
-                return sc_time_stamp >= time_stamp;
+                //if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
+                return ctime_stamp ? atoi(ctime_stamp) : 99999999;
         
         }
 
@@ -183,7 +184,9 @@ void reset()
         r_vci_rsp_fsm = RSP_HEADER;
         r_ring_cmd_fsm = CMD_IDLE;
         m_cmd_fifo.init();
-        m_rsp_fifo.init();       
+        m_rsp_fifo.init();    
+        m_current_cycle  = 0;
+        max_cycle = trace_catch();  
 }
 void transition(const vci_initiator_t &p_vci, const ring_signal_t p_ring_in)       
 {
@@ -196,9 +199,10 @@ void transition(const vci_initiator_t &p_vci, const ring_signal_t p_ring_in)
 	bool      rsp_fifo_put = false;
 	uint64_t  rsp_fifo_data = 0;
 
+
 #ifdef T_DEBUG_FSM
-if( trace(sc_time_stamp().to_default_time_units()))
-    std::cout << sc_time_stamp() << " - " << m_name
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name
                                  << " - vci cmd = " << vci_cmd_fsm_state_str_t[r_vci_cmd_fsm]
                                  << " - vci rsp = " << vci_rsp_fsm_state_str_t[r_vci_rsp_fsm]
                                  << " - ring cmd = " << ring_cmd_fsm_state_str_t[r_ring_cmd_fsm] 
@@ -214,8 +218,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
                         if (m_cmd_fifo.rok() == true)
                         {
 #ifdef T_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- r_vci_cmd_fsm -- CMD_FIRST_HEADER "
               << " -- fifo_rok : " << m_cmd_fifo.rok()
               << " -- fifo_data : " << std::hex << m_cmd_fifo.read()
@@ -252,8 +256,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
 			{
 
 #ifdef T_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- r_vci_cmd_fsm -- CMD_SECOND_HEADER "
               << " -- r_addr : " << std::hex << r_addr 
               << " -- fifo_rok : " << m_cmd_fifo.rok()
@@ -289,8 +293,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
 
 		case WDATA:
 #ifdef T_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- r_vci_cmd_fsm -- WDATA "
               << " -- vci_cmdack : " << p_vci.cmdack.read()
               << " -- fifo_rok : " << m_cmd_fifo.rok()
@@ -319,8 +323,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
 	{
 		case RSP_HEADER:
 #ifdef T_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- r_vci_rsp_fsm -- RSP_HEADER "
               << " -- fifo_rsp_wok : " << m_rsp_fifo.wok()
               << " -- vci_rspval : " << p_vci.rspval.read()
@@ -342,8 +346,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
 
 		case DATA:
  #ifdef T_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- r_vci_rsp_fsm -- RSP_DATA "
               << " -- fifo_rsp_wok : " << m_rsp_fifo.wok()
               << " -- vci_rspval : " << p_vci.rspval.read()
@@ -374,8 +378,9 @@ if( trace(sc_time_stamp().to_default_time_units()))
 	{
 		case RSP_IDLE:   
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : RSP_IDLE"
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name 
+          << " -- ring_rsp_fsm : RSP_IDLE"
           << " -- fifo rok : " <<  m_rsp_fifo.rok()
           << " -- in rok : " <<  p_ring_in.rsp_w
           << " -- in wok : " <<  p_ring_in.rsp_r
@@ -394,8 +399,9 @@ std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : RSP_IDL
                         if ( m_rsp_fifo.rok())  
 			{
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : DEFAULT " 
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name 
+          <<  " -- ring_rsp_fsm : DEFAULT " 
           << " -- fifo data : " << std::hex << m_rsp_fifo.read()
           << std::endl;
 #endif
@@ -411,8 +417,9 @@ std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : DEFAULT
 			if(m_rsp_fifo.rok() && p_ring_in.rsp_r) 
 			{
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : KEEP "
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name 
+          <<  " -- ring_rsp_fsm : KEEP "
           << " -- fifo rok : " << m_rsp_fifo.rok()
           << " -- in wok : " << p_ring_in.rsp_r
           << " -- fifo data : " << std::hex << m_rsp_fifo.read()
@@ -445,8 +452,8 @@ std::cout << sc_time_stamp() << " -- " << m_name <<  " -- ring_rsp_fsm : KEEP "
                         bool eop     = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1); 
 
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " - ring_cmd_fsm -- CMD_IDLE "
               << " - in rok : " << p_ring_in.cmd_w
               << " - isloc : " << islocal
@@ -490,8 +497,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
                 case BROADCAST_0:
 
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- ring_cmd_fsm -- BROADCAST_0 "
               << " -- ringin cmd rok : " << p_ring_in.cmd_w
               << " -- ringin cmd wok : " << p_ring_in.cmd_r 
@@ -513,8 +520,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
                 case BROADCAST_1:
                 {
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- ring_cmd_fsm -- BROADCAST_1 "
               << " -- ringin cmd rok : " << p_ring_in.cmd_w
               << " -- ringin cmd wok : " << p_ring_in.cmd_r 
@@ -544,8 +551,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
 
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- ring_cmd_fsm -- LOCAL "
               << " -- in cmd rok : " << p_ring_in.cmd_w
               << " -- in cmd wok : " << p_ring_in.cmd_r 
@@ -581,8 +588,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
 			bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 
 #ifdef TR_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- ring_cmd_fsm -- RING "
               << " -- in cmd rok : " << p_ring_in.cmd_w
               << " -- in data : " << std::hex << p_ring_in.cmd_data
@@ -600,6 +607,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
 		break;
 
 	} // end switch cmd fsm 
+
+        m_current_cycle++;
 
     ////////////////////////
     //  fifos update      //

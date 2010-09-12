@@ -31,7 +31,6 @@
 #include "mapping_table.h"
 #include "ring_signals_2.h"
 #include "dspin_interface.h"
-//#include "gate_ports_2.h"
 
 #define HI_DEBUG
 //#define HI_DEBUG_FSM
@@ -84,7 +83,8 @@ private:
         // structural parameters
  	std::string         m_name;
         bool                m_alloc_init;
-       
+        uint32_t            m_current_cycle;
+        uint32_t            max_cycle;      
 
         
         // internal fifos 
@@ -99,15 +99,14 @@ private:
         sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
         sc_signal<int>	    r_ring_rsp_fsm;    // ring response packet FSM
 
-        bool trace(int sc_time_stamp)
+        uint32_t trace_catch()
         {
-                int time_stamp=0;
+                //uint32_t time_stamp=0;
                 char *ctime_stamp= getenv("FROM_CYCLE");
-
-                if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
-
-                return sc_time_stamp >= time_stamp;
-
+                
+                //if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
+                return ctime_stamp ? atoi(ctime_stamp) : 99999999;
+        
         }
 
 public :
@@ -139,6 +138,8 @@ void reset()
 	r_ring_rsp_fsm = RSP_IDLE;
 	m_cmd_fifo.init();
 	m_rsp_fifo.init();
+        m_current_cycle  = 0;
+        max_cycle = trace_catch();
 }
 
 //void transition(const gate_initiator_t &p_gate_initiator, const ring_signal_t p_ring_in) 
@@ -154,8 +155,8 @@ void transition(const cmd_in_t &p_gate_cmd_in, const rsp_out_t &p_gate_rsp_out, 
 	uint64_t  rsp_fifo_data = 0;
 
 #ifdef HI_DEBUG_FSM
-if( trace(sc_time_stamp().to_default_time_units()))
-    std::cout << sc_time_stamp() << " - " << m_name 
+if( m_current_cycle >= max_cycle )
+   std::cout << std::dec << m_current_cycle << " - " << m_name 
                                  << " - ring cmd  = " << ring_cmd_fsm_state_str_hi[r_ring_cmd_fsm] 
                                  << " - ring rsp  = " << ring_rsp_fsm_state_str_hi[r_ring_rsp_fsm] 
                                  << std::endl;
@@ -174,8 +175,9 @@ if( trace(sc_time_stamp().to_default_time_units()))
 	{
 		case CMD_IDLE:    
 #ifdef HI_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : CMD_IDLE "
+if( m_current_cycle >= max_cycle )
+   std::cout << std::dec << m_current_cycle << " - " << m_name 
+          << " -- r_ring_cmd_fsm : CMD_IDLE "
           << " -- fifo ROK : " << m_cmd_fifo.rok()
           << " -- in grant : " << p_ring_in.cmd_grant
           << " -- fifo _data : " << std::hex << m_cmd_fifo.read()
@@ -191,8 +193,9 @@ std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : CMD_ID
 
 		case DEFAULT: 
 #ifdef HI_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : DEFAULT "
+if( m_current_cycle >= max_cycle )
+   std::cout << std::dec << m_current_cycle << " - " << m_name 
+          << " -- r_ring_cmd_fsm : DEFAULT "
           << " -- fifo ROK : " << m_cmd_fifo.rok()
           << " -- in grant : " << p_ring_in.cmd_grant
           << " -- fifo _data : " << std::hex << m_cmd_fifo.read()
@@ -211,8 +214,9 @@ std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : DEFAUL
 
 		case KEEP:   
  #ifdef HI_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : KEEP "
+if( m_current_cycle >= max_cycle )
+   std::cout << std::dec << m_current_cycle << " - " << m_name 
+          << " -- r_ring_cmd_fsm : KEEP "
           << " -- fifo_rok : " << m_cmd_fifo.rok()
           << " -- in grant : " << p_ring_in.cmd_grant
           << " -- ring_in_wok : " << p_ring_in.cmd_r
@@ -247,8 +251,8 @@ std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : KEEP "
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
 #ifdef HI_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-	std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+   std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- ring_rsp_fsm -- RSP_IDLE "
               << " -- islocal : " << islocal
               << " -- eop : " << reop
@@ -280,8 +284,8 @@ if( trace(sc_time_stamp().to_default_time_units()))
 
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 #ifdef HI_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+if( m_current_cycle >= max_cycle )
+   std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- ring_rsp_fsm -- LOCAL "
               << " -- in rok : " << p_ring_in.rsp_w
               << " -- fifo wok : " <<  m_rsp_fifo.wok()   
@@ -312,9 +316,9 @@ if( trace(sc_time_stamp().to_default_time_units()))
 		{
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
-#ifdef I_DEBUG
-if( trace(sc_time_stamp().to_default_time_units()))
-         std::cout << sc_time_stamp() << " -- " << m_name  
+#ifdef HI_DEBUG
+if( m_current_cycle >= max_cycle )
+   std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- ring_rsp_fsm -- RING "
               << " -- in rok : " << p_ring_in.rsp_w
               << " -- in wok : " <<  p_ring_in.rsp_r   
@@ -336,7 +340,9 @@ if( trace(sc_time_stamp().to_default_time_units()))
 		break;
 
 	} // end switch rsp fsm
-      
+
+         m_current_cycle++;     
+
     ////////////////////////
     //  fifos update      //
    ////////////////////////
