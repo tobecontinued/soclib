@@ -68,7 +68,6 @@
 namespace soclib {
 namespace caba {
 
-#ifdef SOCLIB_MODULE_DEBUG
 namespace {
 const char *dcache_fsm_state_str[] = {
         "DCACHE_IDLE",
@@ -104,7 +103,6 @@ const char *rsp_fsm_state_str[] = {
         "RSP_DATA_WRITE",
     };
 }
-#endif
 
 #define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciXcacheWrapper<vci_param, iss_t>
 
@@ -236,7 +234,22 @@ tmpl(void)::print_stats()
     std::cout << "- WRITE TRANSACTION  = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl;
     std::cout << "- WRITE LENGTH       = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl;
 }
+/////////////////////////
+tmpl(void)::print_trace()
+/////////////////////////
+{
+    typename iss_t::InstructionRequest  ireq;
+    typename iss_t::DataRequest         dreq;
+    m_iss.getRequests( ireq, dreq );
 
+    std::cout << std::dec << "XCACHE_WRAPPER " << m_srcid << std::endl;
+    std::cout << " cache state : " << icache_fsm_state_str[r_icache_fsm] << " / "
+                                   << dcache_fsm_state_str[r_dcache_fsm] << " / "
+                                   << cmd_fsm_state_str[r_vci_cmd_fsm] << " / "
+                                   << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
+    std::cout << " proc state : PC = " << std::hex << ireq.addr << " / AD = " << dreq.addr
+              << std::dec << " / V = " << dreq.valid << " / TYPE = " << dreq.type << std::endl;
+}
 //////////////////////////
 tmpl(void)::transition()
 //////////////////////////

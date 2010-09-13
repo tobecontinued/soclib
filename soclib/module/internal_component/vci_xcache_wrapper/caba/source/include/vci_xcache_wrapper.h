@@ -208,11 +208,11 @@ public:
 
     void print_cpi();
     void print_stats();
+    void print_trace();
 
 private:
 
     void transition();
-
     void genMoore();
 
     soclib_static_assert((int)iss_t::SC_ATOMIC == (int)vci_param::STORE_COND_ATOMIC);
