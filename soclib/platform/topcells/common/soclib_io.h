@@ -66,7 +66,7 @@ static inline void soclib_io_set(void *comp_base, size_t reg, uint32_t val)
 
 static inline uint32_t soclib_io_get(void *comp_base, size_t reg)
 {
-	uint32_t *addr = (uint32_t *)comp_base;
+	volatile uint32_t *addr = (uint32_t *)comp_base;
     uint32_t val;
 
     asm volatile("":"=m"(*addr));
