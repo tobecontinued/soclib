@@ -69,6 +69,25 @@ class WriteBuffer
  
 public:
 
+    //////////////////////// 
+    void inline printTrace()
+    //////////////////////// 
+    {
+        std::cout << "  Write Buffer / empty = " << r_empty.read() 
+                  << " / addr = " << std::hex << r_address.read() 
+                  << " / min = " << r_min.read() << " / max = " << r_max.read() 
+                  << std::endl << "  data = / ";
+        for( size_t w=0 ; w<m_nwords ; w++ )
+        {
+            std::cout << r_data[w].read() << " / ";
+        }
+        std::cout << std::endl << "  be   = ";
+        for( size_t w=0 ; w<m_nwords ; w++ )
+        {
+            std::cout << r_be[w].read() << " / ";
+        }
+        std::cout << std::endl;
+    }
     /////////////
     void reset()
     /////////////
