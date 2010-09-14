@@ -45,18 +45,29 @@ tmpl(void)::transition()
     switch ( (enum state_e)r_fsm.read() ) {
     case I_IDLE:
         if ( p_irq && ! r_last_irq ) {
+#if defined(SOCLIB_MODULE_DEBUG)
+            std::cout << name() << " Detected raising edge" << std::endl;
+#endif
             r_fsm = I_SEND_FLIT;
         }
         break;
 
     case I_SEND_FLIT:
-        if ( p_vci.cmdack.read() )
+        if ( p_vci.cmdack.read() ) {
+#if defined(SOCLIB_MODULE_DEBUG)
+            std::cout << name() << " Flit gone" << std::endl;
+#endif
             r_fsm = I_WAIT_RSP;
+        }
         break;
 
     case I_WAIT_RSP:
-        if ( p_vci.rspack.read() )
+        if ( p_vci.iAccepted() ) {
+#if defined(SOCLIB_MODULE_DEBUG)
+            std::cout << name() << " Got response" << std::endl;
+#endif
             r_fsm = I_IDLE;
+        }
         break;
     }
 
@@ -75,10 +86,10 @@ tmpl(void)::genMoore()
         p_vci.rspack = false;
         p_vci.cmdval = true;
         p_vci.address = m_addr;
-        p_vci.be = vci_param::B-1;
+        p_vci.be = (1<<vci_param::B) - 1;
         p_vci.cmd = vci_param::CMD_WRITE;
         p_vci.contig = 1;
-        p_vci.wdata = 1;
+        p_vci.wdata = 0x90711120;
         p_vci.eop = 1;
         p_vci.cons = 1;
         p_vci.plen = vci_param::B;
