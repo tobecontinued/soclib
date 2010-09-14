@@ -239,7 +239,7 @@ tmpl(/**/)::~VciXcacheWrapperMulti()
 }
 
 ///////////////////////////////////
-tmpl(void)::printTrace(size_t mode)
+tmpl(void)::print_trace(size_t mode)
 {
     typename iss_t::InstructionRequest 	ireq;
     typename iss_t::DataRequest		dreq;

@@ -219,7 +219,7 @@ public:
     ~VciXcacheWrapperMulti();
 
     void printStatistics();
-    void printTrace(size_t mode = 0);
+    void print_trace(size_t mode = 0);
 
 private:
 
