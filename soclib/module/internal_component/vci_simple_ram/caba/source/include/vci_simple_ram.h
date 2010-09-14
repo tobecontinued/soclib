@@ -120,7 +120,7 @@ public:
 
     ~VciSimpleRam();
 
-    void printTrace();
+    void print_trace();
     void printStatistics();
 
 private:
