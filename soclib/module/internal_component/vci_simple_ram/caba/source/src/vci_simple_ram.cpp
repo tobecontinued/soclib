@@ -188,7 +188,7 @@ tmpl(bool)::read(size_t seg, vci_addr_t addr, vci_data_t &rdata )
 }
 
 //////////////////////////
-tmpl(void)::print_tTrace()
+tmpl(void)::print_trace()
 {
     const char* state_str[] = { "IDLE", 
                                 "CMD_GET",
