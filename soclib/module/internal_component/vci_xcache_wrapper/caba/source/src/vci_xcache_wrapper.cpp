@@ -234,21 +234,35 @@ tmpl(void)::print_stats()
     std::cout << "- WRITE TRANSACTION  = " << (float)m_cost_write_transaction/m_cpt_write_transaction << std::endl;
     std::cout << "- WRITE LENGTH       = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl;
 }
-/////////////////////////
-tmpl(void)::print_trace()
-/////////////////////////
+////////////////////////////////////
+tmpl(void)::print_trace(size_t mode)
+////////////////////////////////////
 {
     typename iss_t::InstructionRequest  ireq;
     typename iss_t::DataRequest         dreq;
     m_iss.getRequests( ireq, dreq );
 
-    std::cout << std::dec << "XCACHE_WRAPPER " << m_srcid << std::endl;
+    std::cout << std::dec << "xcache_wrapper " << m_srcid << std::endl;
+    std::cout << ireq << std::endl;
+    std::cout << dreq << std::endl;
     std::cout << " cache state : " << icache_fsm_state_str[r_icache_fsm] << " / "
                                    << dcache_fsm_state_str[r_dcache_fsm] << " / "
                                    << cmd_fsm_state_str[r_vci_cmd_fsm] << " / "
                                    << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
-    std::cout << " proc state : PC = " << std::hex << ireq.addr << " / AD = " << dreq.addr
-              << std::dec << " / V = " << dreq.valid << " / TYPE = " << dreq.type << std::endl;
+    if(mode & 0x1)
+    {
+        r_wbuf.printTrace();
+    }
+    if(mode & 0x2)
+    {
+        std::cout << "  Data cache" << std::endl;
+        r_dcache.printTrace();
+    }
+    if(mode & 0x4)
+    {
+        std::cout << "  Instruction cache" << std::endl;
+        r_icache.printTrace();
+    }
 }
 //////////////////////////
 tmpl(void)::transition()

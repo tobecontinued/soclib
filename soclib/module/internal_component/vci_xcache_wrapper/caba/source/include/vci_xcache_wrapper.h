@@ -162,7 +162,7 @@ private:
     uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
 
     uint32_t m_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
-    uint32_t m_cpt_total_cycles;	        // total number of cycles
+    uint32_t m_cpt_total_cycles;	    // total number of cycles
 
     uint32_t m_cpt_read;                    // total number of read instructions
     uint32_t m_cpt_write;                   // total number of write instructions
@@ -208,7 +208,7 @@ public:
 
     void print_cpi();
     void print_stats();
-    void print_trace();
+    void print_trace(size_t mode = 0);
 
 private:
 
