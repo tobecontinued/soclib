@@ -146,6 +146,10 @@ private:
     sc_signal<bool>         r_icache_buf_unc_valid;
     sc_signal<bool>         r_dcache_buf_unc_valid;
 
+    // The two following registers are used by the file_trace() & print_trace() methods
+    sc_signal<bool> 	    r_icache_updated;	// icache has been modified at previous cycle
+    sc_signal<bool> 	    r_dcache_updated;	// dcache has been modified at previous cycle
+
     WriteBuffer<addr_t>     r_wbuf;
     GenericCache<addr_t>    r_icache;
     GenericCache<addr_t>    r_dcache;
@@ -187,6 +191,7 @@ private:
     uint32_t m_cost_write_transaction;      // cumulated duration for VCI WRITE transactions
     uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
 
+
 protected:
     SC_HAS_PROCESS(VciXcacheWrapper);
 
@@ -209,6 +214,8 @@ public:
     void print_cpi();
     void print_stats();
     void print_trace(size_t mode = 0);
+    void file_stats(FILE* file);
+    void file_trace(FILE* file);
 
 private:
 

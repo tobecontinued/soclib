@@ -168,6 +168,9 @@ tmpl(/**/)::VciXcacheWrapper(
       r_icache_buf_unc_valid("r_icache_buf_unc_valid"),
       r_dcache_buf_unc_valid("r_dcache_buf_unc_valid"),
 
+      r_icache_updated("r_icache_updated"),
+      r_dcache_updated("r_dcache_updated"),
+
       r_wbuf("wbuf", dcache_words ),
       r_icache("icache", icache_ways, icache_sets, icache_words),
       r_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
@@ -204,11 +207,45 @@ tmpl(/**/)::~VciXcacheWrapper()
     delete [] r_dcache_miss_buf;
 }
 
+//////////////////////////////////
+tmpl(void)::file_trace(FILE* file)
+//////////////////////////////////
+{
+    if(r_dcache_updated) 
+    {
+        fprintf(file, "*****************************  cycle %d       DATA \n", m_cpt_total_cycles);
+        r_dcache.fileTrace(file);
+    }
+    if(r_icache_updated) 
+    {
+        fprintf(file, "*****************************  cycle %d       INSTRUCTION\n", m_cpt_total_cycles);
+        r_icache.fileTrace(file);
+    }
+}
+//////////////////////////////////
+tmpl(void)::file_stats(FILE* file)
+//////////////////////////////////
+{
+    float imiss_rate 	= (float)m_cpt_ins_miss / (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
+    float dmiss_rate 	= (float)m_cpt_data_miss / (float)(m_cpt_read - m_cpt_unc_read);
+    float cpi		= (float)m_cpt_total_cycles / (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
+
+    fprintf(file,"%8d %8d %8d %8d %8d    %f    %f    %f \n", 
+            m_cpt_total_cycles, 
+            m_cpt_total_cycles - m_cpt_frz_cycles,
+            m_cpt_ins_miss,
+            m_cpt_read-m_cpt_unc_read,
+            m_cpt_data_miss,
+            imiss_rate, 
+            dmiss_rate,
+            cpi);
+}
 ////////////////////////
 tmpl(void)::print_cpi()
 ////////////////////////
 {
     std::cout << name() << " CPU " << m_srcid << " : CPI = "
+
               << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl;
 }
 ////////////////////////
@@ -253,12 +290,12 @@ tmpl(void)::print_trace(size_t mode)
     {
         r_wbuf.printTrace();
     }
-    if(mode & 0x2)
+    if(((mode & 0x2) != 0) && r_dcache_updated)
     {
         std::cout << "  Data cache" << std::endl;
         r_dcache.printTrace();
     }
-    if(mode & 0x4)
+    if(((mode & 0x4) != 0) && r_icache_updated)
     {
         std::cout << "  Instruction cache" << std::endl;
         r_icache.printTrace();
@@ -294,6 +331,10 @@ tmpl(void)::transition()
         r_vci_rsp_data_error   = false;
         r_vci_rsp_ins_error    = false;
 
+        // instrumentation registers
+        r_icache_updated	= false;
+        r_dcache_updated	= false;
+
         // activity counters
         m_cpt_dcache_data_read  = 0;
         m_cpt_dcache_data_write = 0;
@@ -304,7 +345,7 @@ tmpl(void)::transition()
         m_cpt_icache_dir_read  = 0;
         m_cpt_icache_dir_write = 0;
 
-	    m_cpt_frz_cycles = 0;
+	m_cpt_frz_cycles = 0;
         m_cpt_total_cycles = 0;
 
         m_cpt_read = 0;
@@ -343,6 +384,10 @@ tmpl(void)::transition()
 #endif
 
     m_cpt_total_cycles++;
+
+    r_icache_updated = (r_icache_fsm.read() == ICACHE_MISS_UPDT);
+    r_dcache_updated = ((r_dcache_fsm.read() == DCACHE_MISS_UPDT) ||
+                        (r_dcache_fsm.read() == DCACHE_WRITE_UPDT));
 
     /////////////////////////////////////////////////////////////////////
     // The ICACHE FSM controls the following ressources:
