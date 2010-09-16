@@ -632,6 +632,28 @@ public:
         return false;
     }
 
+    ///////////////////////////
+    void fileTrace(FILE* file)
+    {
+        for( size_t nway = 0 ; nway < m_ways ; nway++) 
+        {
+            for( size_t nset = 0 ; nset < m_sets ; nset++) 
+            {
+                if( cache_val(nway, nset) ) fprintf(file, " V / ");
+                else                        fprintf(file, "   / ");
+                fprintf(file, "way %d / ", (int)nway);
+                fprintf(file, "set %d / ", (int)nset);
+                fprintf(file, "@ = %08X / ", ((cache_tag(nway, nset)*m_sets+nset)*m_words*4));
+                for( size_t nword = m_words ; nword > 0 ; nword--) 
+                {
+                    unsigned int data = cache_data(nway, nset, nword-1);
+                    fprintf(file, "%08X ", data );
+                }
+                fprintf(file, "\n");
+            }
+        }
+    }
+
     ////////////////////////
     inline void printTrace()
     {
