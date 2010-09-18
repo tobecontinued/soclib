@@ -36,6 +36,21 @@ using namespace soclib;
 
 #define tmpl(t) template<typename vci_param> t VciTimer<vci_param>
 
+/////////////////////////
+tmpl(void)::print_trace()
+{
+    for(size_t n=0 ; n<m_ntimer ; n++)
+    {
+        std::cout << "Timer " << n 
+                  << " : counter = " << r_counter[0].read()
+                  << " / mode = " << r_mode[0].read()
+                  << " / period = " << r_period[0].read()
+                  << " / mode = " << r_mode[0].read()
+                  << " / irq = " << r_irq[0].read() << std::endl;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
     int cell = (int)addr / vci_param::B;
@@ -81,6 +96,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	return true;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
     int cell = (int)addr / vci_param::B;
@@ -124,6 +140,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	return true;
 }
 
+////////////////////////
 tmpl(void)::transition()
 {
     m_cpt_cycles++;
@@ -168,6 +185,7 @@ tmpl(void)::transition()
 	}
 }
 
+//////////////////////
 tmpl(void)::genMoore()
 {
 	m_vci_fsm.genMoore();
@@ -176,6 +194,7 @@ tmpl(void)::genMoore()
 		p_irq[i] = r_irq[i].read();
 }
 
+/////////////////////
 tmpl(/**/)::VciTimer(
     sc_module_name name,
     const IntTab &index,
@@ -205,6 +224,7 @@ tmpl(/**/)::VciTimer(
 	sensitive << p_clk.neg();
 }
 
+///////////////////////
 tmpl(/**/)::~VciTimer()
 {
     soclib::common::dealloc_elems(r_value, m_ntimer);

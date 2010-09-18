@@ -72,10 +72,10 @@ protected:
     SC_HAS_PROCESS(VciTimer);
 
 public:
-    sc_in<bool> p_clk;
-    sc_in<bool> p_resetn;
-    soclib::caba::VciTarget<vci_param> p_vci;
-    sc_out<bool> *p_irq;
+    	sc_in<bool> p_clk;
+    	sc_in<bool> p_resetn;
+    	soclib::caba::VciTarget<vci_param> p_vci;
+    	sc_out<bool> *p_irq;
 
 	VciTimer(
 		sc_module_name name,
@@ -84,6 +84,8 @@ public:
         size_t nirq);
 
 	~VciTimer();
+
+        void print_trace();
 };
 
 }}
