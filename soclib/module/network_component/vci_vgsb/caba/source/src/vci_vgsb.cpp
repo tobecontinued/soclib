@@ -95,6 +95,16 @@ VciVgsb<vci_param>::~VciVgsb()
     soclib::common::dealloc_elems(r_vci_counter, m_nb_initiator, m_nb_target);
 } // end destructor
 
+////////////////////////////
+template<typename vci_param>
+void VciVgsb<vci_param>::print_trace()
+{
+    const char* state_str[] = { "IDLE", "CMD", "RSP" };
+    std::cout << "Vgsb : state = " << state_str[r_fsm] 
+              << " / index_ini = " << r_initiator_index 
+              << " / index_tgt = " << r_target_index << std::endl;
+}
+
 ///////////////////////////
 template<typename vci_param>
 void VciVgsb<vci_param>::transition()

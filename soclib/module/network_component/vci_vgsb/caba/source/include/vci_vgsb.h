@@ -125,13 +125,13 @@ public:
 			size_t				nb_slave);
 	~VciVgsb();
 
-
 	// member functions
 	void transition(); 
 	void genMealy_rspval();
 	void genMealy_rspack();
 	void genMealy_cmdval();
 	void genMealy_cmdack();
+        void print_trace();
 
 }; // end class VciVgsb
 
