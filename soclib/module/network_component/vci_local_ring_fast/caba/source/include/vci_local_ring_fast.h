@@ -54,10 +54,6 @@ namespace soclib { namespace caba {
                 soclib::caba::VciInitiator<vci_param>* p_to_target;
                 soclib::caba::VciTarget<vci_param>   * p_to_initiator;
 
-                // Gate interface
-		//soclib::caba::GateInitiator2<ring_cmd_data_size, ring_rsp_data_size> p_gate_initiator;
-		//soclib::caba::GateTarget2<ring_cmd_data_size, ring_rsp_data_size>    p_gate_target;
-
 		soclib::caba::DspinOutput<ring_cmd_data_size>	p_gate_cmd_out;
 		soclib::caba::DspinInput<ring_rsp_data_size>    p_gate_rsp_in;
 		soclib::caba::DspinInput<ring_cmd_data_size>    p_gate_cmd_in;
@@ -97,6 +93,7 @@ namespace soclib { namespace caba {
                          int nb_attached_target);
                                                                    
                ~VciLocalRingFast();
+               void print_trace(); 
         };
 }} // end namespace
 

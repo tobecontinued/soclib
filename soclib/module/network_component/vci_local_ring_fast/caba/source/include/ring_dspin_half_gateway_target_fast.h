@@ -35,14 +35,11 @@
 #include "ring_signals_2.h"
 #include "dspin_interface.h"
 
-#define HT_DEBUG
-//#define HT_DEBUG_FSM
 
 namespace soclib { namespace caba {
 
 using soclib::common::IntTab;
 
-#ifdef HT_DEBUG_FSM
 namespace {
         const char *ring_rsp_fsm_state_str_ht[] = {
                 "RSP_IDLE",
@@ -57,7 +54,6 @@ namespace {
                 "RING",
         };
 }
-#endif
 
 template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
 class RingDspinHalfGatewayTargetFast
@@ -65,7 +61,6 @@ class RingDspinHalfGatewayTargetFast
 
 typedef typename vci_param::fast_addr_t vci_addr_t;
 typedef RingSignals2 ring_signal_t; 
-//typedef soclib::caba::GateTarget2<ring_cmd_data_size, ring_rsp_data_size> gate_target_t;
 
 typedef soclib::caba::DspinOutput<ring_cmd_data_size >  cmd_out_t;
 typedef soclib::caba::DspinInput<ring_rsp_data_size >   rsp_in_t;
@@ -91,7 +86,6 @@ private:
  	std::string   m_name;
         bool          m_alloc_target;
         uint32_t      m_current_cycle;
-        uint32_t      max_cycle;   
  
         // internal fifos 
         GenericFifo<uint64_t > m_cmd_fifo;     // fifo for the local command paquet
@@ -107,15 +101,7 @@ private:
         sc_signal<int>	        r_ring_cmd_fsm;	    // ring command packet FSM 
         sc_signal<int>		r_ring_rsp_fsm;	    // ring response packet FSM
 
-        uint32_t trace_catch()
-        {
-                //uint32_t time_stamp=0;
-                char *ctime_stamp= getenv("FROM_CYCLE");
-                
-                //if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
-                return ctime_stamp ? atoi(ctime_stamp) : 99999999;
-        
-        }
+
 public :
 
 RingDspinHalfGatewayTargetFast(
@@ -137,6 +123,28 @@ RingDspinHalfGatewayTargetFast(
 {
 } //  end constructor
 
+void print_trace(const ring_signal_t p_ring_in)
+{
+if(p_ring_in.cmd_w)
+   std::cout << std::dec << m_current_cycle << " - " << m_name 
+                         << " - ring cmd  = " << ring_cmd_fsm_state_str_ht[r_ring_cmd_fsm]
+                         << " - in rok : " << p_ring_in.cmd_w
+                         << " - in data : " << std::hex << p_ring_in.cmd_data
+                         << " - in wok : " << p_ring_in.cmd_r
+                         << " - fifo wok : " << m_cmd_fifo.wok()
+                         << std::endl;
+
+if(m_rsp_fifo.rok())
+   std::cout << std::dec << m_current_cycle << " - " << m_name
+                         << " - ring rsp  = " << ring_rsp_fsm_state_str_ht[r_ring_rsp_fsm] 
+                         << " - fifo rok : " <<  m_rsp_fifo.rok()
+                         << " - ring_in_wok : " << p_ring_in.rsp_r
+                         << " - ringin rsp grant : " << p_ring_in.rsp_grant
+                         << " - fifo data  : " << std::hex << m_rsp_fifo.read()
+                         << std::endl;
+
+}
+
 void reset()
 {
         if(m_alloc_target)
@@ -148,7 +156,6 @@ void reset()
         m_cmd_fifo.init();
         m_rsp_fifo.init();     
         m_current_cycle  = 0;
-        max_cycle = trace_catch(); 
 }
 ////////////////////////////////
 //	transition 
@@ -165,13 +172,6 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
 	bool      rsp_fifo_put = false;
 	uint64_t  rsp_fifo_data = 0;
 
-#ifdef HT_DEBUG_FSM
-if( m_current_cycle >= max_cycle )
-   std::cout << std::dec << m_current_cycle << " - " << m_name
-             << " -- ring cmd = " << ring_cmd_fsm_state_str_ht[r_ring_cmd_fsm]
-             << " -- ring rsp = " << ring_rsp_fsm_state_str_ht[r_ring_rsp_fsm] 
-             <<< std::endl;
-#endif
 	
 //////////// VCI CMD FSM /////////////////////////
 
@@ -188,7 +188,6 @@ if( m_current_cycle >= max_cycle )
 	{
 		case RSP_IDLE:   
 #ifdef HT_DEBUG
-if( m_current_cycle >= max_cycle )
    std::cout << std::dec << m_current_cycle << " - " << m_name
           << " -- ring_rsp_fsm : RSP_IDLE"
           << " -- fifo rok : " <<  m_rsp_fifo.rok()
@@ -205,7 +204,6 @@ if( m_current_cycle >= max_cycle )
 
 		case DEFAULT:  
 #ifdef HT_DEBUG
-if( m_current_cycle >= max_cycle )
    std::cout << std::dec << m_current_cycle << " - " << m_name
           << " --  ring_rsp_fsm : DEFAULT " 
           << " -- fifo_rsp_rok : " << m_rsp_fifo.rok()
@@ -227,7 +225,6 @@ if( m_current_cycle >= max_cycle )
 			if(m_rsp_fifo.rok() && p_ring_in.rsp_r) 
 			{
 #ifdef HT_DEBUG
-if( m_current_cycle >= max_cycle )
    std::cout << std::dec << m_current_cycle << " - " << m_name
           << " -- ring_rsp_fsm : KEEP "
           << " -- fifo_rok : " << m_rsp_fifo.rok()
@@ -261,7 +258,6 @@ if( m_current_cycle >= max_cycle )
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
  
 #ifdef HT_DEBUG
-if( m_current_cycle >= max_cycle )
    std::cout << std::dec << m_current_cycle << " - " << m_name 
               << " -- ring_cmd_fsm -- CMD_IDLE "
               << " - in rok : " << p_ring_in.cmd_w
@@ -309,7 +305,6 @@ if( m_current_cycle >= max_cycle )
                 case BROADCAST_0:
 
 #ifdef HT_DEBUG
-if( m_current_cycle >= max_cycle )
    std::cout << std::dec << m_current_cycle << " - " << m_name  
               << " -- ring_cmd_fsm -- BROADCAST_0 "
               << " -- ringin cmd rok : " << p_ring_in.cmd_w
@@ -332,7 +327,6 @@ if( m_current_cycle >= max_cycle )
                 case BROADCAST_1:
                 {
 #ifdef HT_DEBUG
-if( m_current_cycle >= max_cycle )
    std::cout << std::dec << m_current_cycle << " - " << m_name 
               << " -- ring_cmd_fsm -- BROADCAST_1 "
               << " -- ringin cmd rok : " << p_ring_in.cmd_w
@@ -362,7 +356,6 @@ if( m_current_cycle >= max_cycle )
                 {
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 #ifdef HT_DEBUG
-if( m_current_cycle >= max_cycle )
    std::cout << std::dec << m_current_cycle << " - " << m_name 
               << " -- ring_cmd_fsm -- LOCAL "
               << " -- in cmd rok : " << p_ring_in.cmd_w
@@ -398,7 +391,6 @@ if( m_current_cycle >= max_cycle )
  
 			bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 #ifdef HT_DEBUG
-if( m_current_cycle >= max_cycle )
    std::cout << std::dec << m_current_cycle << " - " << m_name 
               << " -- ring_cmd_fsm -- RING "
               << " -- in cmd rok : " << p_ring_in.cmd_w

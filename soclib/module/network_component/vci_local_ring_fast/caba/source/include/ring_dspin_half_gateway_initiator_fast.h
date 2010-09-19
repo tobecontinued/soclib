@@ -32,14 +32,11 @@
 #include "ring_signals_2.h"
 #include "dspin_interface.h"
 
-#define HI_DEBUG
-//#define HI_DEBUG_FSM
 
 namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-#ifdef HI_DEBUG_FSM
 namespace {
 
         const char *ring_cmd_fsm_state_str_hi[] = {
@@ -53,7 +50,6 @@ namespace {
                 "RING",
         };
 }
-#endif
 
 template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
 class RingDspinHalfGatewayInitiatorFast
@@ -84,7 +80,6 @@ private:
  	std::string         m_name;
         bool                m_alloc_init;
         uint32_t            m_current_cycle;
-        uint32_t            max_cycle;      
 
         
         // internal fifos 
@@ -99,15 +94,6 @@ private:
         sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
         sc_signal<int>	    r_ring_rsp_fsm;    // ring response packet FSM
 
-        uint32_t trace_catch()
-        {
-                //uint32_t time_stamp=0;
-                char *ctime_stamp= getenv("FROM_CYCLE");
-                
-                //if (ctime_stamp) time_stamp=atoi(ctime_stamp); 	
-                return ctime_stamp ? atoi(ctime_stamp) : 99999999;
-        
-        }
 
 public :
 
@@ -128,6 +114,27 @@ RingDspinHalfGatewayInitiatorFast(
         r_ring_rsp_fsm("r_ring_rsp_fsm")
  { } //  end constructor
 
+void print_trace(const ring_signal_t p_ring_in)
+{
+if(m_cmd_fifo.rok())
+   std::cout << std::dec << m_current_cycle << " - " << m_name 
+                         << " - ring cmd  = " << ring_cmd_fsm_state_str_hi[r_ring_cmd_fsm] 
+                         << " - fifo ROK : " << m_cmd_fifo.rok()
+                         << " - in grant : " << p_ring_in.cmd_grant
+                         << " - ring_in_wok : " << p_ring_in.cmd_r
+                         << " - fifo _data : " << std::hex << m_cmd_fifo.read()
+                         << std::endl;
+
+if(p_ring_in.rsp_w)
+   std::cout << std::dec << m_current_cycle << " - " << m_name
+                         << " - ring rsp  = " << ring_rsp_fsm_state_str_hi[r_ring_rsp_fsm] 
+                         << " - in rok : " << p_ring_in.rsp_w
+                         << " - fifo wok : " <<  m_rsp_fifo.wok()   
+                         << " -- in wok : " << p_ring_in.rsp_r 
+                         << " - in data : " << std::hex << p_ring_in.rsp_data
+                         << std::endl;
+
+}
 void reset()
 {
 	if(m_alloc_init)
@@ -139,10 +146,8 @@ void reset()
 	m_cmd_fifo.init();
 	m_rsp_fifo.init();
         m_current_cycle  = 0;
-        max_cycle = trace_catch();
 }
 
-//void transition(const gate_initiator_t &p_gate_initiator, const ring_signal_t p_ring_in) 
 void transition(const cmd_in_t &p_gate_cmd_in, const rsp_out_t &p_gate_rsp_out, const ring_signal_t p_ring_in)      
 {
 
@@ -150,17 +155,10 @@ void transition(const cmd_in_t &p_gate_cmd_in, const rsp_out_t &p_gate_rsp_out, 
 	bool      cmd_fifo_put = false;
 	uint64_t  cmd_fifo_data = 0;
 
-//	bool      rsp_fifo_get = false;
 	bool      rsp_fifo_put = false;
 	uint64_t  rsp_fifo_data = 0;
 
-#ifdef HI_DEBUG_FSM
-if( m_current_cycle >= max_cycle )
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
-                                 << " - ring cmd  = " << ring_cmd_fsm_state_str_hi[r_ring_cmd_fsm] 
-                                 << " - ring rsp  = " << ring_rsp_fsm_state_str_hi[r_ring_rsp_fsm] 
-                                 << std::endl;
-#endif
+
 //////////// VCI CMD FSM /////////////////////////
 
 	if (p_gate_cmd_in.write.read()) {
@@ -174,15 +172,6 @@ if( m_current_cycle >= max_cycle )
 	switch( r_ring_cmd_fsm ) 
 	{
 		case CMD_IDLE:    
-#ifdef HI_DEBUG
-if( m_current_cycle >= max_cycle )
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
-          << " -- r_ring_cmd_fsm : CMD_IDLE "
-          << " -- fifo ROK : " << m_cmd_fifo.rok()
-          << " -- in grant : " << p_ring_in.cmd_grant
-          << " -- fifo _data : " << std::hex << m_cmd_fifo.read()
-          << std::endl;
-#endif
     
 			if ( p_ring_in.cmd_grant && m_cmd_fifo.rok() )  
                         {
@@ -192,15 +181,7 @@ if( m_current_cycle >= max_cycle )
 		break;
 
 		case DEFAULT: 
-#ifdef HI_DEBUG
-if( m_current_cycle >= max_cycle )
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
-          << " -- r_ring_cmd_fsm : DEFAULT "
-          << " -- fifo ROK : " << m_cmd_fifo.rok()
-          << " -- in grant : " << p_ring_in.cmd_grant
-          << " -- fifo _data : " << std::hex << m_cmd_fifo.read()
-          << std::endl;
-#endif
+
         
 			if ( m_cmd_fifo.rok() ) 
 			{
@@ -213,16 +194,6 @@ if( m_current_cycle >= max_cycle )
 		break;
 
 		case KEEP:   
- #ifdef HI_DEBUG
-if( m_current_cycle >= max_cycle )
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
-          << " -- r_ring_cmd_fsm : KEEP "
-          << " -- fifo_rok : " << m_cmd_fifo.rok()
-          << " -- in grant : " << p_ring_in.cmd_grant
-          << " -- ring_in_wok : " << p_ring_in.cmd_r
-          << " -- fifo_out_data : " << std::hex << m_cmd_fifo.read()
-          << std::endl;
-#endif
                          
 			if(m_cmd_fifo.rok() && p_ring_in.cmd_r ) 
 			{
@@ -250,18 +221,6 @@ if( m_current_cycle >= max_cycle )
 			bool islocal = (m_lt[rsrcid] && m_local) || (!m_lt[rsrcid] && !m_local);
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
-#ifdef HI_DEBUG
-if( m_current_cycle >= max_cycle )
-   std::cout << std::dec << m_current_cycle << " - " << m_name  
-              << " -- ring_rsp_fsm -- RSP_IDLE "
-              << " -- islocal : " << islocal
-              << " -- eop : " << reop
-              << " -- rsrcid : " << std::hex << rsrcid
-              << " -- in rok : " << p_ring_in.rsp_w
-              << " -- in wok : " << p_ring_in.rsp_r
-              << " -- fifo wok : " <<  m_rsp_fifo.wok()         
-              << std::endl;
-#endif
 			if (p_ring_in.rsp_w  &&  !reop && islocal) 
 			{   
 				r_ring_rsp_fsm = LOCAL;
@@ -283,16 +242,6 @@ if( m_current_cycle >= max_cycle )
 		{
 
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
-#ifdef HI_DEBUG
-if( m_current_cycle >= max_cycle )
-   std::cout << std::dec << m_current_cycle << " - " << m_name  
-              << " -- ring_rsp_fsm -- LOCAL "
-              << " -- in rok : " << p_ring_in.rsp_w
-              << " -- fifo wok : " <<  m_rsp_fifo.wok()   
-              << " -- in data : " << std::hex << p_ring_in.rsp_data
-	      << " -- eop : " << reop
-              << std::endl;
-#endif
 
 
 			if (p_ring_in.rsp_w && m_rsp_fifo.wok() && reop)         
@@ -315,17 +264,6 @@ if( m_current_cycle >= max_cycle )
 		case RING:     
 		{
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
-
-#ifdef HI_DEBUG
-if( m_current_cycle >= max_cycle )
-   std::cout << std::dec << m_current_cycle << " - " << m_name  
-              << " -- ring_rsp_fsm -- RING "
-              << " -- in rok : " << p_ring_in.rsp_w
-              << " -- in wok : " <<  p_ring_in.rsp_r   
-              << " -- in data : " << std::hex << p_ring_in.rsp_data
-	      << " -- eop : " << reop	
-              << std::endl;
-#endif
 
 
 			if (p_ring_in.rsp_w && reop)

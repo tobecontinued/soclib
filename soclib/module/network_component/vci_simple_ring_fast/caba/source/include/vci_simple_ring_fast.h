@@ -62,9 +62,6 @@ class VciSimpleRingFast
                 typedef VciRingInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
                 typedef VciRingTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;
 
-                void print_signal(size_t i);
-                void print_vci_init(size_t i);
-                void print_vci_target(size_t i);
                 void transition();
                 void genMoore();
 
@@ -81,6 +78,7 @@ class VciSimpleRingFast
                                         size_t nb_attached_target);
                                                                    
                 ~VciSimpleRingFast();
+                void print_trace();
 };
 }} // end namespace
 

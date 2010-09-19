@@ -226,9 +226,7 @@ else {
                 m_ring_target[t]->transition(p_to_target[t], m_ring_signal[h]);
         }
 }
-//      m_half_gateway_initiator->transition(p_gate_initiator, m_ring_signal[m_nai+m_nat-1]);
         m_half_gateway_initiator->transition(p_gate_cmd_in, p_gate_rsp_out, m_ring_signal[m_nai+m_nat-1]);
-//      m_half_gateway_target->transition(p_gate_target, m_ring_signal[m_nai+m_nat]);
         m_half_gateway_target->transition(p_gate_cmd_out, p_gate_rsp_in, m_ring_signal[m_nai+m_nat]);
 
 
@@ -280,4 +278,35 @@ tmpl(/**/)::~VciLocalRingFast()
 	dealloc_elems(p_to_initiator,m_nai);
 	dealloc_elems(p_to_target, m_nat);;       
     }
+
+tmpl(void)::print_trace()
+{
+
+        for(int i=0;i<m_nai;i++) {
+                int h = 0;
+                if(i == 0) h = m_ns-1;
+                else h = i-1;
+                m_ring_initiator[i]->print_trace(p_to_initiator[i], m_ring_signal[h]);
+        }
+
+        if(m_nai > 0) {
+                for(int t=0;t<m_nat;t++) {
+                        m_ring_target[t]->print_trace(p_to_target[t], m_ring_signal[m_nai+t-1]);
+                }
+        }
+        else {
+
+                for(int t=0;t<m_nat;t++) {
+                	int h = 0;
+                        if(t == 0) h = m_ns-1;
+                        else h = t-1;
+                
+                        m_ring_target[t]->print_trace(p_to_target[t], m_ring_signal[h]);
+                }
+        }
+
+                m_half_gateway_initiator->print_trace(m_ring_signal[m_nai+m_nat-1]);
+                m_half_gateway_target->print_trace(m_ring_signal[m_nai+m_nat]);
+
+}
 }} // end namespace

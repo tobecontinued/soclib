@@ -139,32 +139,15 @@ tmpl(void)::transition()
 
 // transition
         for(size_t i=0;i<m_nai;i++) {
-//              std::cout << sc_time_stamp() << " -- " << name() << " *** vci_initiator : " << i << std::endl;
                 size_t h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h]);
         }
         for(size_t t=0;t<m_nat;t++) {
-//              std::cout << sc_time_stamp() << " -- " << name() << " *** vci_target : " << t << std::endl;
                 m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1]);
         }
 
-
-/*-------- print
-        for(size_t t=0;t<m_nat;t++) {
-                print_signal(m_nai+t-1);
-                print_vci_target(t);
-        }
-
-        for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
-                if(i == 0) h = m_ns-1;
-                else h = i-1;
-                print_signal(h);
-                print_vci_init(i);
-        }
-*/
 }
 
 tmpl(void)::genMoore()
@@ -178,53 +161,6 @@ tmpl(void)::genMoore()
 
 }
 
-tmpl(void)::print_vci_init(size_t i)
-{
-        std::cout << sc_time_stamp() << " -- " << name() << " *** vci_initiator : " << i << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_cmdval  : " <<             p_to_initiator[i].cmdval.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_cmdack  : " <<             p_to_initiator[i].cmdack.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_address : " << std::hex << p_to_initiator[i].address.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_plen    : " <<             p_to_initiator[i].plen.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_wdata   : " <<             p_to_initiator[i].wdata.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_cmd     : " <<             p_to_initiator[i].cmd.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rspval  : " <<             p_to_initiator[i].rspval.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rspack  : " <<             p_to_initiator[i].rspack.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rdata   : " << std::hex << p_to_initiator[i].rdata.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rsrcid  : " <<             p_to_initiator[i].rsrcid.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_reop    : " <<             p_to_initiator[i].reop.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rerror  : " <<             p_to_initiator[i].rerror.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << "*******************************" << std::endl;
-}
-tmpl(void)::print_vci_target(size_t i)
-{
-        std::cout << sc_time_stamp() << " -- " << name() << " *** vci_target : " << i << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_cmdval  : " <<             p_to_target[i].cmdval.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_cmdack  : " <<             p_to_target[i].cmdack.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_address : " << std::hex << p_to_target[i].address.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_plen    : " <<             p_to_target[i].plen.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_wdata   : " <<             p_to_target[i].wdata.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_cmd     : " <<             p_to_target[i].cmd.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rspval  : " <<             p_to_target[i].rspval.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rspack  : " <<             p_to_target[i].rspack.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rdata   : " << std::hex << p_to_target[i].rdata.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rsrcid  : " <<             p_to_target[i].rsrcid.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_reop    : " <<             p_to_target[i].reop.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " vci_rerror  : " <<             p_to_target[i].rerror.read() << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << "*******************************" << std::endl;
-}
-tmpl(void)::print_signal(size_t i)
-{
-        std::cout << sc_time_stamp() << " -- " << name() << " ++++ signals index : " << i << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " cmd_grant : " << m_ring_signal[i].cmd_grant << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " cmd_data  : " << std::hex << m_ring_signal[i].cmd_data << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " cmd_rok/w : " << m_ring_signal[i].cmd_w << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " cmd_r/wok : " << m_ring_signal[i].cmd_r << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " rsp_grant : " << m_ring_signal[i].rsp_grant << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " rsp_data  : " << m_ring_signal[i].rsp_data  << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " rsp_rok/w : " << m_ring_signal[i].rsp_w     << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " rsp_wok/r : " << m_ring_signal[i].rsp_r     << std::endl;
-        std::cout << sc_time_stamp() << " -- " << name() << " ++++++++++++++++++++++++++++++++++++" << std::endl;
-} 
 //---------------- destructor
 tmpl(/**/)::~VciSimpleRingFast()
 {
@@ -235,14 +171,26 @@ tmpl(/**/)::~VciSimpleRingFast()
 	for(size_t x = 0; x < m_nat; x++)
 		delete m_ring_target[x];
 
-//for(size_t x = 0; x < m_ns; x++)
-//	delete m_ring_signal[x];
-
 	delete [] m_ring_initiator;
 	delete [] m_ring_target;
         delete [] m_ring_signal;
 	
 	dealloc_elems(p_to_initiator,m_nai);
 	dealloc_elems(p_to_target, m_nat);
+}
+
+tmpl(void)::print_trace()
+{
+
+        for(size_t i=0;i<m_nai;i++) {
+                size_t h = 0;
+                if(i == 0) h = m_ns-1;
+                else h = i-1;
+                m_ring_initiator[i]->print_trace(p_to_initiator[i], m_ring_signal[h]);
+        }
+        for(size_t t=0;t<m_nat;t++) {
+                m_ring_target[t]->print_trace(p_to_target[t], m_ring_signal[m_nai+t-1]);
+        }
+
 }
 }} // end namespace
