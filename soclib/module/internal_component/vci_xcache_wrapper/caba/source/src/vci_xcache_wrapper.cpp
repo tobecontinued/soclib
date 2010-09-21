@@ -443,7 +443,7 @@ tmpl(void)::transition()
                 icache_ins = r_icache_miss_buf[0];
             }
             if ( ! icache_hit ) {
-                m_cpt_ins_miss++;
+                if (icache_cached) m_cpt_ins_miss++;
                 m_cost_ins_miss_frz++;
                 r_icache_addr_save = ireq_paddr;
                 if ( icache_cached ) {
