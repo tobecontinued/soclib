@@ -134,7 +134,7 @@ void dealloc_elems(elem_t ***elems, size_t m, size_t n, size_t p)
 }
 
 template<typename elem_t>
-void dealloc_elems(elem_t ***elems, size_t m, size_t n, size_t p, size_t q)
+void dealloc_elems(elem_t ****elems, size_t m, size_t n, size_t p, size_t q)
 {
     for ( size_t i = 0; i<m; ++i ) {
         for ( size_t j = 0; j<n; ++j ) {
