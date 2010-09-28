@@ -83,7 +83,42 @@ def get_useless_bits(slices, values):
     return useless_bits
 
 class OpRegistry:
+    """
+    Entry point for a complete decoder. This creates a decoder
+    handling opcodes for a given subset of the instruction word.
+    """
     def __init__(self, base_width, mask, format, *ops):
+        """
+        Constructor
+        
+        Parameters::
+      
+          base_width: base width of instruction word, in bits
+      
+          mask: mask to AND with instruction word to get the useful bits
+      
+          format: format string of subsequent instructions, with spaces and X
+      
+          *ops: instruction set definition
+    
+        Instruction set definition elements::
+    
+          a tuple: ("ins_format", "function")
+    
+            ins_format: a string corresponding to format above, with some 1
+            and 0 imposed
+           
+            function: a function name. if there are some [key]-enclosed
+            strings in function name string, they get expanded to if_false
+            or if_true strings defined below
+        
+          a dict: {"key": (bit, "if_false", "if_true")}
+    
+            key: an arbitrary name
+    
+            bit: bit (0-based little endian) in instruction word
+            (corresponding bit in ins_format will probably be X)
+        """
         format_re = re.compile(r'\[([a-z A-Z_0-9-]*)\]')
 
         self.__base_width = base_width
@@ -96,8 +131,8 @@ class OpRegistry:
         self.__ops = {}
         self.__funcs = {}
         self.__ops_by_mop = {}
-        self.func('ill')
-        self.__ill = Op("ill", 0, 0, self.func('ill'))
+        self.__func('ill')
+        self.__ill = Op("ill", 0, 0, self.__func('ill'))
         
         cor = {}
         for op in ops:
@@ -120,19 +155,34 @@ class OpRegistry:
                 fdict = self.fdict(opcod, cor)
                 mname = name%fdict
                 mfunc = func%fdict
-                op = self.mkop(mname, opcod, mask, self.func(mfunc))
+                op = self.__mkop(mname, opcod, mask, self.__func(mfunc))
 #               print cor
 #               print hex(plain), hex(mid), hex(mask), mname, mfunc, op, fdict
                 
     def lookup(self, mop):
+        """
+        Gets an instruction name for a given instruction word
+        """
         return self.__ops.get(mop, self.__ill)
                 
-    def func(self, name):
+    def __func(self, name):
+        """
+        Gets a function definition by its name. Functions all get an
+        unique number.
+        """
         if name not in self.__funcs:
             self.__funcs[name] = Func(name, len(self.__funcs))
         return self.__funcs[name]
 
-    def mkop(self, name, bits, mask, func):
+    def __mkop(self, name, bits, mask, func):
+        """
+        Creates an entry for an opcode.
+
+        name: name of the opcode
+        bits: used bits for decoding the opcode
+        mask: mask string
+        func: corresponding function
+        """
         op = Op(name, bits, mask, func)
         assert bits not in self.__ops, ValueError(
             'Collision:', self.__ops[bits], op)
@@ -157,6 +207,9 @@ class OpRegistry:
         return self.__funcs
 
     def functable(self):
+        """
+        Gets the list of function names sorted by their number
+        """
         r = self.__funcs.values()
 #       print r
         r.sort(lambda x, y:cmp(x.uid(), y.uid()))
@@ -164,6 +217,9 @@ class OpRegistry:
         return r
 
     def ops_for_func(self, func):
+        """
+        Gets all the opcodes calling a given function
+        """
         return filter(lambda x:x.func() == func, self.__ops.itervalues())
 
     def _table(self, format, exact = True):
@@ -256,7 +312,7 @@ class OpRegistry:
         for k, op in ops.iteritems():
             rops[pack.mop_to_plain(k)] = op
 
-        ill = Op("ill", 0, 0, self.func('ill'))
+        ill = Op("ill", 0, 0, self.__func('ill'))
         table = [rops.get(i, ill) for i in range(1<<pack.size())]
 
         useless_bits = get_useless_bits(pack.slices(), table)
@@ -268,7 +324,7 @@ class OpRegistry:
                 for k, op in ops.iteritems():
                     rops[pack.mop_to_plain(k)] = op
 
-                ill = Op("ill", 0, 0, self.func('ill'))
+                ill = Op("ill", 0, 0, self.__func('ill'))
                 table = [rops.get(i, ill) for i in range(1<<pack.size())]
 
         return OpTable(pack, *table)
@@ -307,9 +363,24 @@ class OpRegistry:
         return self.__packer.mops()
 
 class Decoder:
+    """
+    Opcode decoder generator
+    """
     prefix = "arm_"
 
     def __init__(self, registry, verbose, max_depth, *slices):
+        """
+        Creates an opcode decoder.
+
+        Parameters::
+
+          registry: an OpRegistry
+          verbose: whether to generate C++ source code with tables
+          containing comments
+          max_depth: maximal depth of recursion of tables
+          *slices: subparts of the instruction word to start decoding
+           with (this is mostly a hint)
+        """
         self.__registry = registry
         self.__funcs = self.__registry.functable()
         self.__subtables = []
@@ -325,9 +396,9 @@ class Decoder:
 #       else:
 #           self.__entry = self.create_table(None)
 #       print self.__tables[-self.__entry]
-        self.cleanup()
+        self.__cleanup()
 
-    def cleanup(self):
+    def __cleanup(self):
         new_tables = []
         remap = {}
         
@@ -366,6 +437,13 @@ class Decoder:
         self.__entry = 0
 
     def put_table(self, mask, slices, table):
+        """
+        Generate the table for a given mask, using the given slices
+
+        mask: Mask selecting constant bits
+        slices: bits to take for indexing table
+        table: subtable
+        """
         n = -len(self.__tables)
         self.__slices[n] = slices
         self.__masks[n] = self.__registry.pprint_mask(slices, mask)
@@ -490,12 +568,23 @@ class Decoder:
             return 1
 
     def mkname(self, base, tn):
+        """
+        Creates an unique name with mask in it
+        """
         assert tn <= 0
         if not base.endswith("_"):
             base += '_'
         return base + self.__masks[tn]
 
     def gen_tables(self, class_name, headers, namespaces):
+        """
+        Creates a table definition file with given C++ code constraints
+
+        class_name: name of class in which to declare variables
+        headers: headers to include
+        namespaces: a list corresponding to path to namespace
+        class_name is in
+        """
         todo = set([(self.prefix+"table_"+"main", self.__entry)])
         done = set()
         funcs = {}
@@ -604,6 +693,10 @@ class Decoder:
         return ret
 
     def gen_decls(self):
+        """
+        Creates a table forward declarations corresponding to
+        gen_tables entries
+        """
         ret = self.__generator.decls()+'\n'
         for func in self.__funcs:
             n = func.name()
@@ -612,6 +705,10 @@ class Decoder:
         return ret
 
     def gen_funcs(self, pfx):
+        """
+        Creates empty bodies for each function used in the opcode
+        decoder.
+        """
         l = []
         for func in self.__funcs:
             n = func.name()
@@ -635,6 +732,9 @@ class Decoder:
         return ret
 
     def stats(self, sizeof_ptr = 4):
+        """
+        Prints statistics about in-memory size of tables and pointers
+        """
         r = 0
         for t, size in (
             ('B', 1),
