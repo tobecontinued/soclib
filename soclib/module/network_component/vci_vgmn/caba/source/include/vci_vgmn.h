@@ -63,8 +63,8 @@ public:
     soclib::caba::VciTarget<vci_param> *p_to_initiator;
 
 private:
-    size_t m_nb_initiat;
-    size_t m_nb_target;
+    const size_t m_nb_initiat;
+    const size_t m_nb_target;
 
     typedef _vgmn::OutputPortQueue<soclib::caba::VciCmdBuffer<vci_param> > cmd_queue_t;
     typedef _vgmn::OutputPortQueue<soclib::caba::VciRspBuffer<vci_param> > rsp_queue_t;

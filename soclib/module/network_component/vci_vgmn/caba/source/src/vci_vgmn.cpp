@@ -79,7 +79,9 @@ public:
     {
         typename data_t::ptr tmp = m_line[m_ptr];
         m_line[m_ptr] = input;
-        m_ptr = (m_ptr+1)%m_size;
+        // do {m_ptr = (m_ptr+1)%m_size;} without using %
+	if (++m_ptr == m_size)
+		m_ptr = 0;
         return tmp;
     }
 
@@ -104,6 +106,7 @@ class AdHocFifo
     size_t m_rptr;
     size_t m_wptr;
     size_t m_usage;
+    size_t *m_globusage;
 
 public:
     AdHocFifo()
@@ -114,9 +117,10 @@ public:
         return m_size;
     }
 
-    void init( size_t fifo_size )
+    void init( size_t fifo_size, size_t *globusage )
     {
         m_size = fifo_size;
+	m_globusage = globusage;
         m_data = new typename data_t::ptr[m_size];
         m_rptr = 0;
         m_wptr = 0;
@@ -148,7 +152,10 @@ public:
         m_data[m_rptr].invalidate();
         assert(!empty());
         --m_usage;
-        m_rptr = (m_rptr+1)%m_size;
+	--(*m_globusage);
+        // do {m_rptr = (m_rptr+1)%m_size;} without using %
+	if (++m_rptr == m_size)
+		m_rptr = 0;
         return tmp;
     }
 
@@ -156,11 +163,14 @@ public:
     {
         assert(!full());
         ++m_usage;
+	++(*m_globusage);
 DEBUG_BEGIN;
         std::cout << name << " pushing data " << *data << " usage: " << m_usage << std::endl;
 DEBUG_END;
         m_data[m_wptr] = data;
-        m_wptr = (m_wptr+1)%m_size;
+        // do {m_wptr = (m_wptr+1)%m_size;} without using %
+	if (++m_wptr == m_size)
+		m_wptr = 0;
     }
 
     inline bool empty() const
@@ -189,6 +199,7 @@ private:
     uint32_t m_rand_state;
     size_t m_n_inputs;
     size_t m_current_input;
+    size_t m_inputpackets;
     bool m_in_transaction;
 
 public:
@@ -199,7 +210,7 @@ public:
     {
         m_input_queues = new input_fifo_t[n_inputs];
         for ( size_t i=0; i<n_inputs; ++i )
-            m_input_queues[i].init(fifo_size);
+            m_input_queues[i].init(fifo_size, &m_inputpackets);
         m_output_delay_line.init(min_delay);
         m_n_inputs = n_inputs;
         m_rand_state = 0x55555555;
@@ -221,6 +232,7 @@ public:
         m_output_delay_line.reset();
         m_current_input = 0;
         m_in_transaction = false;
+	m_inputpackets = 0;
         for (size_t i=0; i<42; ++i)
             next_rand();
     }
@@ -252,18 +264,21 @@ public:
         if ( m_in_transaction ) {
             if ( !m_input_queues[m_current_input].empty() )
                 pkt = m_input_queues[m_current_input].pop();
-        } else {
-            size_t offset = next_rand() % m_n_inputs;
-            for ( size_t _i = m_current_input+offset;
-                  _i != m_current_input+m_n_inputs+offset;
-                  ++_i ) {
-                size_t i = _i%m_n_inputs;
+        } else if (m_inputpackets > 0) {
+	    size_t next_input = m_current_input + 1;
+	    if (next_input == m_n_inputs)
+		next_input = 0;
+
+	    size_t i = next_input;
+	    do {
                 if ( ! m_input_queues[i].empty() ) {
                     m_current_input = i;
                     pkt = m_input_queues[m_current_input].pop();
                     break;
                 }
-            }
+		if (++i == m_n_inputs)
+		    i = 0;
+            } while (i != next_input);
         }
 
 DEBUG_BEGIN;
@@ -428,21 +443,21 @@ class MicroNetwork
     typedef typename queue_t::vci_pkt_t::routing_table_t routing_table_t;
     typedef typename queue_t::input_fifo_t mid_fifo_t;
 
-    size_t m_in_size;
-    size_t m_out_size;
+    const size_t m_in_size;
+    const size_t m_out_size;
     queue_t *m_queue;
     router_t *m_router;
 
 public:
     MicroNetwork(
-        size_t in_size, size_t out_size,
+        const size_t in_size, const size_t out_size,
         size_t min_latency, size_t fifo_size,
-        const routing_table_t &rt )
+        const routing_table_t &rt ) : 
+        m_in_size(in_size),
+        m_out_size(out_size)
     {
-        mid_fifo_t *fifos[out_size];
+        mid_fifo_t *fifos[m_out_size];
 
-        m_in_size = in_size;
-        m_out_size = out_size;
         m_router = new router_t[m_in_size];
         m_queue = new queue_t[m_out_size];
         for ( size_t i=0; i<m_out_size; ++i )
