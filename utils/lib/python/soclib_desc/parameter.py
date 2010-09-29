@@ -206,6 +206,45 @@ class Int(Parameter):
     def get_tmpl_decl(self):
         return 'int '+self.name
 
+class Float(Parameter):
+    valid_types = (float, double)
+    def __init__(self, name, default = None, min = None, max = None, auto = None):
+        Parameter.__init__(self, name, default, auto)
+        self.min = min
+        self.max = max
+
+
+    def __repr__(self):
+        return 'parameter.%s(%r, %r, min = %r, max = %r, auto = %r)'%(self.__class__.__name__,
+                                 self.name,
+                                 self.default,
+                                                            self.min, self.max,
+                                 self.auto)
+
+    @staticmethod
+    def getTmplType(value):
+        return value
+
+    def assertValid(self, value):
+        Parameter.assertValid(self, value)
+        if self.max is not None and value >= self.max:
+            raise ParameterError("Invalid value `%s' for parameter `%s': above %d"%(value, self.name, self.max))
+        if self.min is not None and value < self.min:
+            raise ParameterError("Invalid value `%s' for parameter `%s': below %d"%(value, self.name, self.min))
+
+    @staticmethod
+    def get_inst_value(v, **args):
+        if v < 4096:
+            return '%d'%v
+        else:
+            return '0x%08x'%v
+
+    def get_inst_decl(self):
+        return 'float '+self.name
+
+    def get_tmpl_decl(self):
+        return 'float '+self.name
+
 class String(Parameter):
     valid_types = (str,)
     @staticmethod
