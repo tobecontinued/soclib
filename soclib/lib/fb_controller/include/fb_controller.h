@@ -51,6 +51,8 @@ public:
         YUV420 = 420,
         YUV422 = 422,
         RGB = 0,
+        RGB_16 = 16,
+        RGB_32 = 32,
         RGB_PALETTE_256 = 256,
         BW = 1,
     };

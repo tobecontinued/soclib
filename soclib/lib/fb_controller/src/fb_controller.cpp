@@ -86,6 +86,8 @@ FbController::FbController(
         std::memset(m_sim_surface, 128, m_surface_size);
         break;
     case RGB:
+    case RGB_16:
+    case RGB_32:
     case BW:
     case RGB_PALETTE_256:
         std::memset(m_surface, 0, m_surface_size);
@@ -135,6 +137,10 @@ size_t FbController::surface_size() const
         return (m_width*m_height) * 2;
     case RGB:
         return (m_width*m_height) * 3;
+    case RGB_16:
+        return (m_width*m_height) * 2;
+    case RGB_32:
+        return (m_width*m_height) * 4;
     case RGB_PALETTE_256:
         return (m_width*m_height) + 3*256;
     case BW:
