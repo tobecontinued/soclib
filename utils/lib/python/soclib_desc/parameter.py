@@ -207,7 +207,7 @@ class Int(Parameter):
         return 'int '+self.name
 
 class Float(Parameter):
-    valid_types = (float, double)
+    valid_types = (float)
     def __init__(self, name, default = None, min = None, max = None, auto = None):
         Parameter.__init__(self, name, default, auto)
         self.min = min
