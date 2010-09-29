@@ -71,7 +71,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 
 	switch (cell) {
     case SIMHELPER_CYCLES:
-		data = sc_time_stamp().value() / sc_get_default_time_unit().value(); 
+		data = m_cycles;
 		return true;
 	}
 	return false;
@@ -83,6 +83,7 @@ tmpl(void)::transition()
 		m_vci_fsm.reset();
 
 	m_vci_fsm.transition();
+	m_cycles++;
 }
 
 tmpl(void)::genMoore()
