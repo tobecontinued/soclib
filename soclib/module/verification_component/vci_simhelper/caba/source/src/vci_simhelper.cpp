@@ -79,8 +79,10 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 
 tmpl(void)::transition()
 {
-	if (!p_resetn)
+	if (!p_resetn) {
 		m_vci_fsm.reset();
+		m_cycles = 0;
+	}
 
 	m_vci_fsm.transition();
 	m_cycles++;
