@@ -21,7 +21,7 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6
- *         Alain Greiner <aline.vieira-de-mello@lip6.fr> Sep 2009
+ *         Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr> Sep 2009
  *
  * Maintainers: alinevieiramello@hotmail.com
  */
@@ -72,9 +72,21 @@ class WriteBuffer
 public:
 
     /////////////
+    void print_status()
+    /////////////
+    {
+        std::cout << "BUFFER PRINT STATUS" << std::endl;
+        for( size_t i = 0 ; i < m_nwords ; i++ ) {
+            std::cout << "data[" << i << "] = " << std::hex <<  m_data[i] << std::dec << std::endl ;
+        }
+        std::cout << std::endl;
+    } 
+
+    /////////////
     void reset()
     /////////////
     {
+        //printf("reset\n");
         m_max   = 0 ;
         m_min   = m_nwords - 1 ;
         m_empty = true ;
@@ -125,9 +137,11 @@ public:
         }
         m_data[word] = (m_data[word] & ~data_mask) | (data & data_mask) ;
 
+
         // update m_min & m_max
         if ( m_min > word ) m_min = word;
         if ( m_max < word ) m_max = word;
+
     }
     ///////////////////////////////////
     inline size_t getMin()
