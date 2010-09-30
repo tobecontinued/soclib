@@ -10,7 +10,7 @@ FUNC(prod_func) {
   short ia, ib;
   short in;
 
-  srl_log_printf(TRACE, "PROD WORKING INITIAL_A = %d FINAL_A = %d INIT\
+  srl_log_printf(NONE, "PROD WORKING INITIAL_A = %d FINAL_A = %d INIT\
 IAL_B = %d FINAL_B = %d\n", initial_a, final_a, initial_b, final_b);
 
   for (ia=initial_a ; ia < final_a ; ia++){

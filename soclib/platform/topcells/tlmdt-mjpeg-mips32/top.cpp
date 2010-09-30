@@ -12,7 +12,9 @@
 #include "vci_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_xcache_wrapper.h"
+#include "iss2.h"
 #include "iss2_simhelper.h"
+#include "mips32.h"
 #include "vci_mwmr_controller.h"
 #include "fifo_reader.h"
 #include "fifo_writer.h"
@@ -38,6 +40,8 @@ std::vector<std::string> stringArray(
 int sc_main (int   argc, char  **argv)
 {
   typedef soclib::tlmdt::VciParams<uint32_t,uint32_t> vci_param;
+  typedef soclib::common::Mips32ElIss iss_t;
+  typedef soclib::common::Iss2Simhelper<iss_t> iss_simhelper_t;
 
   struct timeb initial, final;
 
@@ -64,16 +68,16 @@ int sc_main (int   argc, char  **argv)
   /////////////////////////////////////////////////////////////////////////////
   // MAPPING TABLE
   /////////////////////////////////////////////////////////////////////////////
-  soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00c00000);
+  soclib::common::MappingTable maptab(32, IntTab(8), IntTab(8), 0x00300000);
   maptab.add(soclib::common::Segment("boot",        0xbfc00000,       2048, soclib::common::IntTab(1), 1));
   maptab.add(soclib::common::Segment("cram0",       0x10000000, 0x00100000, soclib::common::IntTab(0), 1));
   maptab.add(soclib::common::Segment("cram1",       0x20000000, 0x00100000, soclib::common::IntTab(1), 1));
   maptab.add(soclib::common::Segment("excep",       0x80000080,       2048, soclib::common::IntTab(1), 1));
-  maptab.add(soclib::common::Segment("ramdac_ctrl", 0x71400000,        256, soclib::common::IntTab(4), 0));
-  maptab.add(soclib::common::Segment("tg_ctrl",     0x70400000,        256, soclib::common::IntTab(3), 0));
-  maptab.add(soclib::common::Segment("tty0",        0x90400000,         32, soclib::common::IntTab(2), 0));
-  maptab.add(soclib::common::Segment("uram0",       0x10400000, 0x00100000, soclib::common::IntTab(0), 0));
-  maptab.add(soclib::common::Segment("uram1",       0x20400000, 0x00100000, soclib::common::IntTab(1), 0));
+  maptab.add(soclib::common::Segment("ramdac_ctrl", 0x71200000,        256, soclib::common::IntTab(4), 0));
+  maptab.add(soclib::common::Segment("tg_ctrl",     0x70200000,        256, soclib::common::IntTab(3), 0));
+  maptab.add(soclib::common::Segment("tty0",        0x90200000,         32, soclib::common::IntTab(2), 0));
+  maptab.add(soclib::common::Segment("uram0",       0x10200000, 0x00100000, soclib::common::IntTab(0), 0));
+  maptab.add(soclib::common::Segment("uram1",       0x20200000, 0x00100000, soclib::common::IntTab(1), 0));
 
   /////////////////////////////////////////////////////////////////////////////
   // LOADER
@@ -90,11 +94,11 @@ int sc_main (int   argc, char  **argv)
   /////////////////////////////////////////////////////////////////////////////
   // VCI_XCACHE_WRAPPER
   /////////////////////////////////////////////////////////////////////////////
-  soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> > *xcache[n_initiators]; 
+  soclib::tlmdt::VciXcacheWrapper<vci_param, iss_simhelper_t > *xcache[n_initiators]; 
   for (int i=0 ; i < n_initiators ; i++) {
     std::ostringstream cpu_name;
     cpu_name << "xcache" << i;
-    xcache[i] = new soclib::tlmdt::VciXcacheWrapper<vci_param, soclib::common::Iss2Simhelper<soclib::common::Mips32ElIss> >((cpu_name.str()).c_str(), i, IntTab(i), maptab, 1, icache_size, 4, 1, dcache_size, 4, 1000 * UNIT_TIME);
+    xcache[i] = new soclib::tlmdt::VciXcacheWrapper<vci_param, iss_simhelper_t>((cpu_name.str()).c_str(), i, maptab, IntTab(i), 1, icache_size, 8, 1, dcache_size, 8);
   }
   
   /////////////////////////////////////////////////////////////////////////////
@@ -177,9 +181,9 @@ int sc_main (int   argc, char  **argv)
   for (int i=0 ; i < n_initiators ; i++) {
     std::ostringstream fake_name;
     fake_name << "fake" << i;
-    fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), soclib::common::Mips32ElIss::n_irq);
+    fake_initiator[i] = new soclib::tlmdt::VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), iss_t::n_irq);
     
-    for(int irq=0; irq<soclib::common::Mips32ElIss::n_irq; irq++){
+    for(unsigned int irq=0; irq<iss_t::n_irq; irq++){
       (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq[irq]);
     }
   }

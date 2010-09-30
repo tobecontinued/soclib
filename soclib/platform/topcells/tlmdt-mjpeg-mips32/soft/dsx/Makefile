@@ -3,7 +3,7 @@ N_INITS?=1
 all: compile clean
 
 compile:
-	./mjpeg$(N_INITS)proc.py 32 32
+	./mjpeg.py $(N_INITS)
 	cp muteks/soft/bin.soft ../bin$(N_INITS)proc.soft
 
 clean:
@@ -14,7 +14,4 @@ clean:
 	@rm -rf posix/
 	@rm -rf semantic.cache
 	@rm -rf srl_trace.txt
-	@rm -rf ramdac*
-	@rm -rf tg*
-	@rm -rf wt*
 	@rm -rf *~

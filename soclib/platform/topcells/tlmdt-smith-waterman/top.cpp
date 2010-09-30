@@ -9,6 +9,7 @@
 #include "mapping_table.h"
 #include "vci_vgmn.h"
 #include "vci_ram.h"
+#include "mips32.h"
 #include "vci_multi_tty.h"
 #include "iss2_simhelper.h"
 #include "vci_xcache_wrapper.h"
@@ -16,6 +17,32 @@
 
 using namespace  soclib::tlmdt;
 using namespace  soclib::common;
+
+std::vector<std::string> stringArray(
+	const char *first, ... )
+{
+	std::vector<std::string> ret;
+	va_list arg;
+	va_start(arg, first);
+	const char *s = first;
+	while(s) {
+		ret.push_back(std::string(s));
+		s = va_arg(arg, const char *);
+	};
+	va_end(arg);
+	return ret;
+}
+
+std::vector<std::string> getTTYNames(int n)
+{
+    std::vector<std::string> ret;
+    for(int i=0; i<n; i++){
+      std::ostringstream tty_name;
+      tty_name << "tty" << i;
+      ret.push_back(tty_name.str());
+    }
+    return ret;
+}
 
 int sc_main (int   argc, char  *argv[])
 {
@@ -26,9 +53,7 @@ int sc_main (int   argc, char  *argv[])
   struct timeb initial, final;
  
   int n_initiators       = 1;
-  size_t dcache_size     = 1024;
-  size_t icache_size     = 1024;
-  size_t network_latence = 11;
+  size_t network_latence = 10;
 
   char * ncpu_env; //env variable that says the number of MIPS processors to be used
   ncpu_env = getenv("N_INITS");
@@ -38,30 +63,21 @@ int sc_main (int   argc, char  *argv[])
     n_initiators = atoi( ncpu_env );
   }
 
-  uint32_t simulation_time = std::numeric_limits<uint32_t>::max();
-  char * simulation_time_env; //env variable that says the simulation time
-  simulation_time_env = getenv("SIMULATION_TIME");
-
-  if (simulation_time_env==NULL) {
-    printf("WARNING : You can specify the simulation time in variable SIMULATION_TIME. For example, export SIMULATION_TIME=100000\n");
-  }else {
-    simulation_time = atoi( simulation_time_env );
-  }
-
-  std::cout << "SIMULATION PARAMETERS: number of initiators = " << n_initiators << " simulation time = " << simulation_time << " icache size = " << icache_size << " dcache size = " << dcache_size << " network latence = " << network_latence << std::endl << std::endl;
-
+  std::cout << "SIMULATION PARAMETERS: number of initiators = " << n_initiators << std::endl << std::endl;
+  
   /////////////////////////////////////////////////////////////////////////////
   // MAPPING TABLE
   /////////////////////////////////////////////////////////////////////////////
   MappingTable maptab(32, IntTab(8), IntTab(8), 0x00200000);
   maptab.add(Segment("boot",  0xbfc00000,       2048, IntTab(1), 1));
-  maptab.add(Segment("cram0", 0x10000000, 0x00100000, IntTab(0), 1));
-  maptab.add(Segment("cram1", 0x40000000, 0x00100000, IntTab(1), 1));
   maptab.add(Segment("excep", 0x80000080,       2048, IntTab(1), 1));
-  maptab.add(Segment("tty",   0x90200000,         32, IntTab(2), 0));
-  maptab.add(Segment("uram0", 0x30200000, 0x00100000, IntTab(0), 0));
-  maptab.add(Segment("uram1", 0x60200000, 0x00100000, IntTab(1), 0));
-
+  maptab.add(Segment("text" , 0x00400000, 0x00050000, IntTab(1), 1));
+  maptab.add(Segment("cram0", 0x10000000, 0x00100000, IntTab(0), 1));
+  maptab.add(Segment("cram1", 0x20000000, 0x00100000, IntTab(1), 1));
+  maptab.add(Segment("uram0", 0x10200000, 0x00100000, IntTab(0), 0));
+  maptab.add(Segment("uram1", 0x20200000, 0x00100000, IntTab(1), 0));
+  maptab.add(Segment("tty",   0x90200000,         96, IntTab(2), 0));
+ 
   /////////////////////////////////////////////////////////////////////////////
   // LOADER
   /////////////////////////////////////////////////////////////////////////////
@@ -81,16 +97,17 @@ int sc_main (int   argc, char  *argv[])
   VciXcacheWrapper<vci_param, simhelper > *xcache[n_initiators];
   VciBlackhole<tlm::tlm_initiator_socket<> > *fake_initiator[n_initiators];
   for (int i=0; i<n_initiators; i++) {
+    printf("XCACHE %d\n",i);
     std::ostringstream name;
     name << "xcache" << i;
-    xcache[i] = new VciXcacheWrapper<vci_param, simhelper >((name.str()).c_str(), i, IntTab(i), maptab, 1, icache_size, 8, 1, dcache_size, 8,  1000 * UNIT_TIME);
+    xcache[i] = new VciXcacheWrapper<vci_param, simhelper >((name.str()).c_str(), i,  maptab, IntTab(i), 1, 8, 4, 1, 8, 4);
     xcache[i]->p_vci(*vgmn_1.p_to_initiator[i]);
 
     std::ostringstream fake_name;
     fake_name << "fake" << i;
     fake_initiator[i] = new VciBlackhole<tlm::tlm_initiator_socket<> >((fake_name.str()).c_str(), iss_t::n_irq);
     
-    for(int irq=0; irq<iss_t::n_irq; irq++){
+    for(unsigned int irq=0; irq<iss_t::n_irq; irq++){
       (*fake_initiator[i]->p_socket[irq])(*xcache[i]->p_irq[irq]);
     }
     
@@ -112,18 +129,21 @@ int sc_main (int   argc, char  *argv[])
   /////////////////////////////////////////////////////////////////////////////
   // TARGET - TTY
   /////////////////////////////////////////////////////////////////////////////
-  VciMultiTty<vci_param> vcitty("tty0", IntTab(n_rams), maptab, "TTY0", NULL);
+  VciMultiTty<vci_param> vcitty("tty0", IntTab(n_rams), maptab, getTTYNames(n_initiators));
   (*vgmn_1.p_to_target[n_rams])(vcitty.p_vci);
 
   VciBlackhole<tlm_utils::simple_target_socket_tagged<VciBlackholeBase, 32, tlm::tlm_base_protocol_types> > *fake_target_tagged;
   
-  fake_target_tagged = new VciBlackhole<tlm_utils::simple_target_socket_tagged<VciBlackholeBase, 32, tlm::tlm_base_protocol_types> >("fake_target_tagged", 1);
-  
-  (*vcitty.p_irq[0])(*fake_target_tagged->p_socket[0]);
+  fake_target_tagged = new VciBlackhole<tlm_utils::simple_target_socket_tagged<VciBlackholeBase, 32, tlm::tlm_base_protocol_types> >("fake_target_tagged", n_initiators);
+
+  for (int i=0; i<n_initiators; i++) {
+    (*vcitty.p_irq[i])(*fake_target_tagged->p_socket[i]);
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // SIMULATION
   /////////////////////////////////////////////////////////////////////////////
+  printf("run\n");
   ftime(&initial);
 
   sc_core::sc_start();  // start the simulation

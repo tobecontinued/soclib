@@ -40,13 +40,19 @@ void irq_handler()
 int main(void)
 {
   printf("Hello from processor %d\n", procnum());
-  
+  /*  
   set_irq_handler(irq_handler);
   enable_hw_irq(0);
   irq_enable();
   
-  while (1){
-    pause();
+  int a;
+  while(1){
+    a++;
+    if(a%100000==0){
+      printf("a = %d\n", a);
+    }
   }
+  */
+  while(1);
   return 0;
 }

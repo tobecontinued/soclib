@@ -28,7 +28,7 @@ FUNC(maxi_func) {
 		  maxia=in_desc.ia;
 		  maxib=in_desc.ib;
 		}
-              srl_log_printf(NONE, "A=%d B=%d\n",in_desc.ia,in_desc.ib);
+              //srl_log_printf(NONE, "A=%d B=%d\n",in_desc.ia,in_desc.ib);
 	    }
 	}
 	srl_log_printf(NONE, "MAXI A=%d B=%d LENGTH=%d\n", maxia, maxib, maxv);

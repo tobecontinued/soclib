@@ -8,6 +8,11 @@
     :file "Makefile"
     :pointmax 139
     )
+   (semanticdb-table "segmentation.h"
+    :major-mode 'c-mode
+    :tags 'nil
+    :file "segmentation.h"
+    )
    )
   :file "semantic.cache"
   :semantic-tag-version "2.0beta3"

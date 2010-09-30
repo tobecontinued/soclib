@@ -29,7 +29,7 @@ FUNC(crunch_func) {
 
 
 	//printf("CRUNCH WORKING");
-	//srl_log_printf(NONE, "CRUNCH WORKING");
+	//srl_log_printf(NONE, "CRUNCH WORKING\n");
 		
         for (i=0;i<AA;i++)
         {
@@ -46,9 +46,12 @@ FUNC(crunch_func) {
   
 		ia=in_desc.ia;
 		ib=in_desc.ib;
+        	Max=max=0;
 
 		//printf("CRUNCH IA=%d IB=%d\n", ia,ib);
-		//srl_log_printf(NONE, "CRUNCH IA=%d IB=%d", ia,ib);
+		srl_log_printf(NONE, "CRUNCH IA=%d IB=%d\n", ia,ib);
+
+		
 	        a[0]=qseq_lengthes[ia];
         	for (i=1;i<=a[0];i++)
                 	a[i]=char2AA(*(qseq_data[ia]+i-1));
@@ -58,12 +61,10 @@ FUNC(crunch_func) {
         	for (i=1;i<=b[0];i++)
                 	b[i]=char2AA(*(dbseq_data[ib]+i-1));
 
-        	Max=max=0;
-
         	for (i=0;i<=a[0];i++) h[i][0]=-i;
         	for (j=0;j<=b[0];j++) h[0][j]=-j;
 
-        	for (i=1;i<=a[0];i++)
+        	for (i=1;i<=a[0];i++){
                 	for (j=1;j<=b[0];j++) {
                         	diag    = h[i-1][j-1] + sim[a[i]][b[j]];
                         	up    = h[i-1][j] + DELTA;
@@ -86,7 +87,8 @@ FUNC(crunch_func) {
                                 	Max=max;
                                 }
                         } 
-
+		}
+		
   		out_desc.ia=in_desc.ia;
   		out_desc.ib=in_desc.ib;
   		out_desc.length=Max;
