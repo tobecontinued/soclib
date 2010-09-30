@@ -44,9 +44,9 @@ class FbController
 	uint32_t *m_surface;
 	void *m_sim_surface;
 
+public:
     size_t surface_size() const;
 
-public:
     enum SubsamplingType {
         YUV420 = 420,
         YUV422 = 422,

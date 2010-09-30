@@ -42,7 +42,7 @@ using namespace soclib;
 
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
-    if (addr>m_fb_controller.m_width*m_fb_controller.m_height*2)
+    if (addr>m_fb_controller.surface_size())
         return false;
 
     int index = addr / vci_param::B;
@@ -62,7 +62,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
-    if (addr>m_fb_controller.m_width*m_fb_controller.m_height*2)
+    if (addr>m_fb_controller.surface_size())
         return false;
 
 	data = m_fb_controller.surface()[addr / vci_param::B];
