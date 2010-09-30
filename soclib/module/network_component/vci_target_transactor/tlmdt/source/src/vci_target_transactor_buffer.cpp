@@ -240,7 +240,7 @@ tmpl(unsigned int)::get_initial_time_value(int idx){
 tmpl(unsigned int)::select_response(int clock_count){
   int i = 0;
   int idx = -1;
-  sc_core::sc_time min_time = MAX_TIME;
+  uint64_t min_time = MAX_TIME;
   //clock_count--;
 
   if(m_rsp_ptr == m_header_ptr)
@@ -253,12 +253,12 @@ tmpl(unsigned int)::select_response(int clock_count){
   if(m_rsp_ptr < m_header_ptr){
     for(i=m_rsp_ptr; i<m_header_ptr; i++){
       if(m_buffer[i].status == COMPLETED){
-	if((int) m_buffer[i].initial_time.value() <= clock_count && m_buffer[i].initial_time < min_time){
+	if((int) m_buffer[i].initial_time.value() <= clock_count && m_buffer[i].initial_time.value() < min_time){
 #if SOCLIB_MODULE_DEBUG
 	  printf("SELECT RESPONSE i = %d COMPLETED clock_count = %d initial_time = %d time = %d\n", i, clock_count, (int)m_buffer[i].initial_time.value(), (int)m_buffer[i].time.value());
 #endif
 	  idx = i;
-	  min_time = m_buffer[i].initial_time;
+	  min_time = m_buffer[i].initial_time.value();
 	}
       }
     }
@@ -266,23 +266,23 @@ tmpl(unsigned int)::select_response(int clock_count){
   else{
     for(i=m_rsp_ptr; i<m_nentries; i++){
       if(m_buffer[i].status == COMPLETED){
-	if((int)m_buffer[i].initial_time.value() <= clock_count && m_buffer[i].initial_time < min_time){
+	if((int)m_buffer[i].initial_time.value() <= clock_count && m_buffer[i].initial_time.value() < min_time){
 #if SOCLIB_MODULE_DEBUG
 	  printf("SELECT RESPONSE i = %d COMPLETED clock_count = %d initial_time = %d time = %d \n", i, clock_count, (int)m_buffer[i].initial_time.value(),(int)m_buffer[i].time.value());
 #endif
 	  idx = i;
-	  min_time = m_buffer[i].initial_time;
+	  min_time = m_buffer[i].initial_time.value();
 	}
       }
     }
     for(i=0; i<m_header_ptr; i++){
       if(m_buffer[i].status == COMPLETED){
-	if((int)m_buffer[i].initial_time.value() <= clock_count && m_buffer[i].initial_time < min_time){
+	if((int)m_buffer[i].initial_time.value() <= clock_count && m_buffer[i].initial_time.value() < min_time){
 #if SOCLIB_MODULE_DEBUG
 	  printf("SELECT RESPONSE i = %d COMPLETED clock_count = %d initial_time = %d time = %d \n", i, clock_count, (int)m_buffer[i].initial_time.value(),(int)m_buffer[i].time.value());
 #endif
 	  idx = i;
-	  min_time = m_buffer[i].initial_time;
+	  min_time = m_buffer[i].initial_time.value();
 	}
       }
     }

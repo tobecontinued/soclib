@@ -134,7 +134,7 @@ void centralized_buffer::get_selected_transaction
 {
   size_t min_i = 0;
   size_t idx = 0;
-  sc_core::sc_time min_time = MAX_TIME;
+  uint64_t min_time = MAX_TIME;
 
   transaction trans;
   soclib_payload_extension *extension_ptr;
@@ -160,8 +160,8 @@ void centralized_buffer::get_selected_transaction
       }
     }while(get_next);
 
-    if ( m_centralized_buffer[idx].active && m_centralized_buffer[idx].eligible && *trans.time < min_time ) {
-      min_time = *trans.time;
+    if ( m_centralized_buffer[idx].active && m_centralized_buffer[idx].eligible && (*trans.time).value() < min_time ) {
+      min_time = (*trans.time).value();
       min_i = idx;
     }
   }

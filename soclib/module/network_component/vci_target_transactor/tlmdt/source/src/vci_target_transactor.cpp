@@ -244,7 +244,7 @@ tmpl(void)::rsp()
   if(has_rsp_transaction){
     p_vci_target.cmdack = false; 
 
-    if(p_vci_target.rspack && m_rsp_count<m_rsp_nwords){
+    if((p_vci_target.rspack && m_rsp_count<m_rsp_nwords) || m_rsp_count==0){
       p_vci_target.rspval = true;
       
       if(m_rsp_count==0){

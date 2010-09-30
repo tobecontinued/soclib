@@ -36,8 +36,6 @@
 #include <tlmdt>	   // TLM-DT headers
 #include "soclib_spinlock.h"
 
-#define MAX_TIME sc_core::sc_time((double)(std::numeric_limits<uint32_t>::max()),sc_core::SC_NS)
-
 namespace soclib { namespace tlmdt {
 
     struct transaction{
