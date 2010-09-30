@@ -148,6 +148,7 @@ class VciMwmrController
   // Fuctions
   /////////////////////////////////////////////////////////////////////////////////////
   void update_time(sc_core::sc_time t);
+  void update_time(uint64_t t);
   void send_activity();
   void reset();
   void execLoop();

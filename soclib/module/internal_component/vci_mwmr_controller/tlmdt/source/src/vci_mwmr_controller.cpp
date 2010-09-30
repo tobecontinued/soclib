@@ -41,6 +41,13 @@ tmpl (void)::update_time(sc_core::sc_time t)
   }
 }
 
+tmpl (void)::update_time(uint64_t t)
+{
+  if(t > m_pdes_local_time->get().value()){
+    m_pdes_local_time->set(t * UNIT_TIME);
+  }
+}
+
 tmpl(void)::send_activity()
 {
   // set the active or inactive command
@@ -1081,7 +1088,7 @@ tmpl(void)::releasePendingWriteFifo(uint32_t fifo_index)
 tmpl(void)::execLoop() 
 {
   bool                       fifo_serviceable = false;
-  sc_core::sc_time           fifo_time;
+  uint64_t                   fifo_time;
   uint32_t                   fifo_index = 0;
   bool                       fifo_read = false;
   uint32_t                   status[4];
@@ -1125,9 +1132,9 @@ tmpl(void)::execLoop()
       std::cout << "[MWMR Initiator " <<  m_srcid << "] READ CHANNEL " << i << " EMPTY = " << m_read_fifo[i].empty << " RUNNING = " << m_read_channel[i].running << " max fifo_time = " << fifo_time.value() << " fifo time = " << m_read_fifo[i].time.value() << " current time = " << m_pdes_local_time->get().value() << std::endl;
 #endif
       if ( m_read_fifo[i].empty && m_read_channel[i].running){
-	if (fifo_time >= m_read_fifo[i].time) {
+	if (fifo_time >= m_read_fifo[i].time.value()) {
 	  fifo_serviceable = true;
-	  fifo_time = m_read_fifo[i].time;
+	  fifo_time = m_read_fifo[i].time.value();
 	  fifo_index = i;
 	  fifo_read  = true;
 	} // end if date
@@ -1140,9 +1147,9 @@ tmpl(void)::execLoop()
       std::cout << "[MWMR Initiator " <<  m_srcid << "] WRITE CHANNEL " << i << " FULL = " << m_write_fifo[i].full << " RUNNING = " << m_write_channel[i].running << " max fifo_time = " << fifo_time.value() << " fifo time = " << m_write_fifo[i].time.value() << " current time = " << m_pdes_local_time->get().value() << std::endl;
 #endif
       if ( m_write_fifo[i].full && m_write_channel[i].running) {
-	if (fifo_time >= m_write_fifo[i].time) {
+	if (fifo_time >= m_write_fifo[i].time.value()) {
 	  fifo_serviceable = true;
-	  fifo_time = m_write_fifo[i].time;
+	  fifo_time = m_write_fifo[i].time.value();
 	  fifo_index = i;
 	  fifo_read  = false;
 	} // end if date
