@@ -27,7 +27,7 @@
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  */
 
-#include "vci_multi_tty.h"
+#include "../include/vci_multi_tty.h"
 
 template<typename T>
 T be2mask(T be)
