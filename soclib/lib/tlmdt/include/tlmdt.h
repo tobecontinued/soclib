@@ -1,6 +1,7 @@
 #ifndef __TLMDT_H__
 #define __TLMDT_H__
 
+#include <systemc>
 #include "vci_param.h"                         // VCI parameters header
 
 //convert unsigned char[4] to an unsigned integer
@@ -13,8 +14,9 @@
 			     data[idx + 3] = num >> 24  )
 
 
-#define UNIT_TIME sc_core::sc_time(1,sc_core::SC_PS)
-#define MAX_TIME sc_core::sc_time((double)(std::numeric_limits<uint32_t>::max()),sc_core::SC_NS)
+const sc_core::sc_time UNIT_TIME = sc_core::sc_time(1,sc_core::SC_PS);
+const uint64_t MAX_TIME  = std::numeric_limits<uint64_t>::max();
+
 #define MAXIMUM_PACKET_SIZE 100 //100 words
 
 #include "soclib_payload_extension.h"                  // PAYLOAD EXTENSION
