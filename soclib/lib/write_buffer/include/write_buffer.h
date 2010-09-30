@@ -89,6 +89,17 @@ public:
         std::cout << std::endl;
     }
     /////////////
+    void print_status()
+    /////////////
+    {
+        std::cout << "BUFFER PRINT STATUS" << std::endl;
+        for( size_t i = 0 ; i < m_nwords ; i++ ) {
+            std::cout << "data[" << i << "] = " << std::hex <<  r_data[i] << std::dec << std::endl ;
+        }
+        std::cout << std::endl;
+    } 
+
+    /////////////
     void reset()
     /////////////
     {
