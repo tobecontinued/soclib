@@ -271,6 +271,7 @@ std::cout << " fsm_state = " << r_fsm_state
             assert( (p_vci.plen.read() != 0) && "VCI command packets should have plen != 0");
             if ( p_vci.cmd.read() == vci_param::CMD_WRITE ) 
             {
+                r_contig     = p_vci.contig.read();
                 if( p_vci.eop.read() )  r_fsm_state = FSM_RSP_WRITE;
                 else 			r_fsm_state = FSM_CMD_WRITE;
             }
