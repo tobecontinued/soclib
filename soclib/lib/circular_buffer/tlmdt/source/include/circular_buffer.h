@@ -81,7 +81,7 @@ public:
 
   inline const bool is_empty() { return (buffer_length == 0); }
 
-  inline const bool is_full()  { return (buffer_length == MAX_SIZE); }
+  inline const bool is_full()  { return (buffer_length == max_size); }
                                    
   inline const int get_size() { return buffer_length; }
 
