@@ -81,7 +81,7 @@ bool circular_buffer::push
 
   ATOMIC_ADD(&buffer_length, 1);
   
-  assert( buffer_length < max_size );
+  assert( buffer_length <= max_size );
 
 #if SOCLIB_MODULE_DEBUG
   std::cout << "[" << name << "] INCREMENT QUEUE buffer_length = " << buffer_length << " front = " << front << " rear = " << rear << std::endl;
