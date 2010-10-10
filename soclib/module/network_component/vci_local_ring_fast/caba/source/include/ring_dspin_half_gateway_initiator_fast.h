@@ -217,9 +217,9 @@ void transition(const cmd_in_t &p_gate_cmd_in, const rsp_out_t &p_gate_rsp_out, 
 	{
 		case RSP_IDLE:  
 		{
-			int  rsrcid  = (int)  (p_ring_in.rsp_data >> ring_rsp_data_size-vci_param::S-1);
-			bool islocal = (m_lt[rsrcid] && m_local) || (!m_lt[rsrcid] && !m_local);
-			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
+			uint32_t rsrcid = (uint32_t) (p_ring_in.rsp_data >> ring_rsp_data_size-vci_param::S-1);
+			bool islocal    = (m_lt[rsrcid] && m_local) || (!m_lt[rsrcid] && !m_local);
+			bool reop       = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
 			if (p_ring_in.rsp_w  &&  !reop && islocal) 
 			{   
@@ -353,9 +353,9 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 	{
 		case RSP_IDLE:	
 		{
-			int  rsrcid  = (int)  (p_ring_in.rsp_data >> ring_rsp_data_size-vci_param::S-1);
-			bool islocal = (m_lt[rsrcid] && m_local) || (!m_lt[rsrcid] && !m_local);
-			bool reop    = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
+			uint32_t rsrcid = (uint32_t) (p_ring_in.rsp_data >> ring_rsp_data_size-vci_param::S-1);
+			bool islocal    = (m_lt[rsrcid] && m_local) || (!m_lt[rsrcid] && !m_local);
+			bool reop       = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
 			if(p_ring_in.rsp_w && !reop && islocal) {
 				p_ring_out.rsp_r = m_rsp_fifo.wok();

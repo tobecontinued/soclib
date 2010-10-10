@@ -92,7 +92,8 @@ private:
         GenericFifo<uint64_t > m_rsp_fifo;     // fifo for the local response paquet
         
         // locality table 
-	soclib::common::AddressDecodingTable<vci_addr_t, bool> m_lt;
+	soclib::common::AddressDecodingTable<vci_addr_t, bool> m_lt_adr;
+	soclib::common::AddressDecodingTable<uint32_t, bool> m_lt_src;
         soclib::common::IntTab m_ringid;
 
         bool          m_local;
@@ -115,7 +116,8 @@ RingDspinHalfGatewayTargetFast(
         m_alloc_target(alloc_target),
         m_cmd_fifo("m_cmd_fifo", wrapper_fifo_depth),
         m_rsp_fifo("m_rsp_fifo", wrapper_fifo_depth),
-        m_lt(mt.getLocalityTable<typename vci_param::fast_addr_t>(ringid)),
+        m_lt_adr(mt.getLocalityTable<typename vci_param::fast_addr_t>(ringid)),
+        m_lt_src(mt.getIdLocalityTable(ringid)),
         m_ringid(ringid),
         m_local(local),
        	r_ring_cmd_fsm("r_ring_cmd_fsm"),
@@ -252,9 +254,9 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
 		case CMD_IDLE: 
 		{
 			vci_addr_t rtgtid = (vci_addr_t) ((p_ring_in.cmd_data >> (ring_cmd_data_size-vci_param::N+1)) << 2);
-                        int cluster =  (int) ((sc_dt::sc_uint<vci_param::S-4>) (p_ring_in.cmd_data >> 9)); 
-                        bool brdcst = ((p_ring_in.cmd_data & 0x1) == 0X1) && (IntTab(cluster) == m_ringid);                       
-                        bool loc = !((p_ring_in.cmd_data & 0x1) == 0x1) && !m_lt[rtgtid] && !m_local;
+                        uint32_t rsrcid   = (uint32_t) ((sc_dt::sc_uint<vci_param::S>) (p_ring_in.cmd_data >> 5)); 
+                        bool brdcst = ((p_ring_in.cmd_data & 0x1) == 0X1) && m_lt_src[rsrcid]; // to avoid looping broadcast                       
+                        bool loc = !((p_ring_in.cmd_data & 0x1) == 0x1) && !m_lt_adr[rtgtid] && !m_local;
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
  
 #ifdef HT_DEBUG
@@ -487,9 +489,9 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 		{
 
 			vci_addr_t rtgtid = (vci_addr_t) ((p_ring_in.cmd_data >> (ring_cmd_data_size-vci_param::N+1)) << 2);
-                        int cluster =  (int) ((sc_dt::sc_uint<vci_param::S-4>) (p_ring_in.cmd_data >> 9));
-                        bool brdcst = ((p_ring_in.cmd_data & 0x1) == 0X1) && (IntTab(cluster) == m_ringid);
-                        bool loc = !((p_ring_in.cmd_data & 0x1) == 0x1) && !m_lt[rtgtid] && !m_local;
+                        uint32_t rsrcid   = (uint32_t) ((sc_dt::sc_uint<vci_param::S>) (p_ring_in.cmd_data >> 5)); 
+                        bool brdcst = ((p_ring_in.cmd_data & 0x1) == 0X1) && m_lt_src[rsrcid]; // to avoid looping broadcast                       
+                        bool loc = !((p_ring_in.cmd_data & 0x1) == 0x1) && !m_lt_adr[rtgtid] && !m_local;
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 
                         if(p_ring_in.cmd_w && !eop && brdcst && !m_cmd_fifo.wok()) {
