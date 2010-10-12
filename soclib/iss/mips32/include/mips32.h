@@ -15,7 +15,7 @@
  * 
  * You should have received a copy of the GNU Lesser General Public
  * License along with SoCLib; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * Foundation, Inc., 5 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA
  * 
  * SOCLIB_LGPL_HEADER_END
@@ -45,14 +45,18 @@
 #include "soclib_endian.h"
 #include "register.h"
 
-namespace soclib { namespace common {
+#ifdef SOCVIEW3
+#include "/Users/khouloudzineelabidine/socview-3.0/include/Tracer.h"
+#endif
 
+
+namespace soclib { namespace common {
 class Mips32Iss
     : public Iss2
 {
 public:
     static const size_t n_irq = 6;
-
+ 
 protected:
     enum MipsDataAccessType {
         MDAT_LB,
@@ -514,6 +518,8 @@ protected:
     addr_t    m_ifetch_addr;
 
     uint32_t    m_exec_cycles;
+    uint32_t    m_run;
+    uint32_t   m_sleep;
     bool m_hazard;
 
     config_t r_config;
@@ -530,8 +536,13 @@ protected:
     static uint32_t m_reset_address;
 
 public:
+    
     Mips32Iss(const std::string &name, uint32_t ident, bool default_little_endian);
 
+    #ifdef SOCVIEW3
+    void register_debugger(tracer &t);
+    #endif
+    
     void dump() const;
 
     uint32_t executeNCycles(
