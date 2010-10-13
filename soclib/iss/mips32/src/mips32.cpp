@@ -244,8 +244,11 @@ uint32_t Mips32Iss::executeNCycles(
     if ( m_exception != NO_EXCEPTION )
         goto got_exception;
 
-    if ( (r_status.im & r_cause.ip) && may_take_irq && check_irq_state() )
-        goto handle_irq;
+        if ( (r_status.im & r_cause.ip)
+             && may_take_irq
+             && check_irq_state()
+             && dreq_ok )
+            goto handle_irq;
 
     r_npc = m_jump_pc;
     r_pc = m_next_pc;
@@ -263,6 +266,21 @@ uint32_t Mips32Iss::executeNCycles(
     goto early_end;
 
  handle_irq:
+    /*
+      If we are about to take an interrupt, we know we have all data
+      requests satisfied, but we may juste have posted a new one. If
+      so, kill it (and reset the next instruction address) and take
+      the interrupt.
+
+      The data-access-in-delay-slot case is handled in
+      handle_exception()
+     */
+    if ( m_dreq.valid ) {
+        m_dreq.valid = false;
+        m_jump_pc = r_npc;
+        m_next_pc = r_pc;
+        m_resume_pc = r_pc;
+    }
     m_resume_pc = m_next_pc;
     m_exception = X_INT;
  got_exception:
