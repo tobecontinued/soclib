@@ -87,7 +87,7 @@ irq_enable(void)
 		    ".set push			\n"
 		    ".set noat			\n"
 		    ".set reorder		\n"
-#if __mips >= 32 __mips_isa_rev >= 2
+#if __mips >= 32 && __mips_isa_rev >= 2
 		    "ei				\n"
 		    "ehb			\n"
 #else
