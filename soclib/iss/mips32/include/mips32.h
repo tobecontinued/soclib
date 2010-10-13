@@ -412,7 +412,7 @@ protected:
     addr_t r_bar;
     addr_t r_epc;
     addr_t r_error_epc;
-    uint32_t r_count;
+    uint32_t r_cycle_count;
     uint32_t r_compare;
 
     uint32_t m_irqs;
@@ -513,7 +513,7 @@ protected:
 
     addr_t    m_ifetch_addr;
 
-    uint32_t    m_exec_cycles;
+    uint32_t    m_instruction_count;
     bool m_hazard;
 
     config_t r_config;

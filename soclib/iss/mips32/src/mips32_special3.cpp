@@ -75,7 +75,7 @@ void Mips32Iss::op_special3()
             r_gp[m_ins.r.rt] = m_ident;
             break;
         case RDHWR_CC:
-            r_gp[m_ins.r.rt] = r_count;
+            r_gp[m_ins.r.rt] = r_cycle_count;
             break;
         case RDHWR_CCRES:
             r_gp[m_ins.r.rt] = 1;

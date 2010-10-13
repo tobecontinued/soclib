@@ -84,7 +84,7 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
     case BAR:
         return r_bar;
     case COUNT:
-        return r_count;
+        return r_cycle_count;
     case COMPARE:
         return r_compare;
     case STATUS:
@@ -100,7 +100,7 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
     case EBASE:
         return r_ebase;
     case EXEC_CYCLES:
-        return m_exec_cycles;
+        return m_instruction_count;
     case CONFIG:
         return r_config.whole;
     case CONFIG_1:
@@ -130,7 +130,7 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
         r_compare = val;
         break;
     case COUNT:
-        r_count = val;
+        r_cycle_count = val;
         break;
     case USERLOCAL:
         r_tls_base = val;

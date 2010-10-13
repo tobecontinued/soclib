@@ -77,10 +77,10 @@ void Mips32Iss::reset()
     m_ins_delay = 0;
     r_status.whole = 0x00400004;
     r_cause.whole = 0;
-    m_exec_cycles = 0;
+    m_instruction_count = 0;
     r_gp[0] = 0;
     m_microcode_func = NULL;
-    r_count = 0;
+    r_cycle_count = 0;
     r_compare = 0;
     r_tls_base = 0;
     r_hwrena = 0;
@@ -156,7 +156,7 @@ void Mips32Iss::dump() const
 #define RUN_FOR(x)                                      \
     do { uint32_t __tmp = (x);                          \
         ncycle -= __tmp;                                \
-        r_count += __tmp;                               \
+        r_cycle_count += __tmp;                               \
         time_spent += __tmp;                            \
         m_ins_delay -= std::min(m_ins_delay, __tmp);    \
     } while(0)
@@ -232,9 +232,9 @@ uint32_t Mips32Iss::executeNCycles(
         if ( m_dreq.valid ) {
             m_pc_for_dreq = r_pc;
             m_pc_for_dreq_is_ds = m_next_pc != r_pc+4; 
-            m_exec_cycles++;
+            m_instruction_count++;
         }
-        // m_exec_cycles++;
+        // m_instruction_count++;
     }
 
     if ( m_exception != NO_EXCEPTION )
@@ -530,7 +530,7 @@ uint32_t Mips32Iss::m_reset_address = 0xbfc00000;
 #ifdef SOCVIEW3
 void Mips32Iss::register_debugger(tracer &t)
 {    t.add(m_next_pc,name()+"_"+"m_next_pc");
-    t.add(m_exec_cycles,name()+"_"+"processor_is_running");
+    t.add(m_instruction_count,name()+"_"+"processor_is_running");
     //t.add(m_resume_pc,name()+"_"+"m_resume_pc");
    
     }
