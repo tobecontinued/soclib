@@ -64,7 +64,7 @@ enum Cp0Reg {
     // count of instructions
     INS_CYCLES = COPROC_REGNUM(9,6),
     // count of pipeline cycles
-    PIPE_CYCLES = COPROC_REGNUM(9,6),
+    PIPE_CYCLES = COPROC_REGNUM(9,7),
 };
 
 static inline uint32_t merge(uint32_t oldval, uint32_t newval, uint32_t newmask)
