@@ -7,11 +7,11 @@ mipsel_CFLAGS=-mips2 -mno-branch-likely -gstabs+ -DSOCLIB_MIPS_R3000 -EL
 mipsel_LDFLAGS=-EL
 
 mips32eb_CC_PREFIX=mipsel-unknown-elf-
-mips32eb_CFLAGS=-mips32r2 -gstabs+ -DSOCLIB_MIPS32 -EB
+mips32eb_CFLAGS=-mips32r1 -gstabs+ -DSOCLIB_MIPS32 -EB
 mips32eb_LDFLAGS=-EB
 
 mips32el_CC_PREFIX=mipsel-unknown-elf-
-mips32el_CFLAGS=-mips32r2 -gstabs+ -DSOCLIB_MIPS32 -EL
+mips32el_CFLAGS=-mips32r1 -gstabs+ -DSOCLIB_MIPS32 -EL
 mips32el_LDFLAGS=-EL
 
 powerpc_CC_PREFIX=powerpc-unknown-elf-
