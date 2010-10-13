@@ -61,8 +61,10 @@ enum Cp0Reg {
     ERROR_EPC = COPROC_REGNUM(30,0),
 
     // Implementation dependant,
-    // count of non-frozen cycles
-    EXEC_CYCLES = COPROC_REGNUM(9,6),
+    // count of instructions
+    INS_CYCLES = COPROC_REGNUM(9,6),
+    // count of pipeline cycles
+    PIPE_CYCLES = COPROC_REGNUM(9,6),
 };
 
 static inline uint32_t merge(uint32_t oldval, uint32_t newval, uint32_t newmask)
@@ -99,8 +101,10 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
         return MIPS32_CPUID;
     case EBASE:
         return r_ebase;
-    case EXEC_CYCLES:
+    case INS_CYCLES:
         return m_instruction_count;
+    case PIPE_CYCLES:
+        return m_pipeline_use_count;
     case CONFIG:
         return r_config.whole;
     case CONFIG_1:

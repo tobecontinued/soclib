@@ -514,6 +514,7 @@ protected:
     addr_t    m_ifetch_addr;
 
     uint32_t    m_instruction_count;
+    uint32_t    m_pipeline_use_count;
     bool m_hazard;
 
     config_t r_config;

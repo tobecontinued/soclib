@@ -87,6 +87,7 @@ void Mips32Iss::run()
         return;
     }
 
+    m_instruction_count++;
     (this->*func)();
 }
 

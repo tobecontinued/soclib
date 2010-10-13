@@ -78,6 +78,7 @@ void Mips32Iss::reset()
     r_status.whole = 0x00400004;
     r_cause.whole = 0;
     m_instruction_count = 0;
+    m_pipeline_use_count = 0;
     r_gp[0] = 0;
     m_microcode_func = NULL;
     r_cycle_count = 0;
@@ -153,14 +154,17 @@ void Mips32Iss::dump() const
     }
 }
 
-#define RUN_FOR(x)                                      \
-    do { uint32_t __tmp = (x);                          \
-        ncycle -= __tmp;                                \
-        r_cycle_count += __tmp;                               \
-        time_spent += __tmp;                            \
-        m_ins_delay -= std::min(m_ins_delay, __tmp);    \
-    } while(0)
-
+static inline
+void run_for(uint32_t &ncycle, uint32_t &time_spent,
+             uint32_t in_pipe, uint32_t stalled)
+{
+    uint32_t total = in_pipe + stalled;
+    ncycle -= total;
+    r_cycle_count += total;
+    time_spent += total;
+    m_ins_delay -= std::min(m_ins_delay, total);
+    m_pipeline_use_count += in_pipe;
+}
 
 uint32_t Mips32Iss::executeNCycles(
                                    uint32_t ncycle,
@@ -190,7 +194,7 @@ uint32_t Mips32Iss::executeNCycles(
     uint32_t time_spent = 0;
 
     if ( m_ins_delay )
-        RUN_FOR(std::min(m_ins_delay, ncycle));
+        run_for(ncycle, time_spent, std::min(m_ins_delay, ncycle), 0);
 
     // The current instruction is executed in case of interrupt, but
     // the next instruction will be delayed.
@@ -207,7 +211,7 @@ uint32_t Mips32Iss::executeNCycles(
     bool dreq_ok = handle_dfetch(drsp);
 
     if ( m_hazard && ncycle )
-        RUN_FOR(1);
+        run_for(ncycle, time_spent, 0, 1);
 
     if ( m_exception != NO_EXCEPTION )
         goto got_exception;
@@ -215,12 +219,12 @@ uint32_t Mips32Iss::executeNCycles(
     if ( ncycle == 0 )
         goto early_end;
 
-    RUN_FOR(1);
-
     if ( dreq_ok && ireq_ok ) {
 #ifdef SOCLIB_MODULE_DEBUG
         dump();
 #endif
+        run_for(ncycle, time_spent, 1, 0);
+
         if ( m_microcode_func ) {
             (this->*m_microcode_func)();
         } else {
@@ -232,9 +236,9 @@ uint32_t Mips32Iss::executeNCycles(
         if ( m_dreq.valid ) {
             m_pc_for_dreq = r_pc;
             m_pc_for_dreq_is_ds = m_next_pc != r_pc+4; 
-            m_instruction_count++;
         }
-        // m_instruction_count++;
+    } else {
+        run_for(ncycle, time_spent, 0, 1);
     }
 
     if ( m_exception != NO_EXCEPTION )
@@ -517,6 +521,8 @@ Mips32Iss::addr_t Mips32Iss::exceptBaseAddr() const
 
 void Mips32Iss::do_microcoded_sleep()
 {
+    // The sleep doesnt count as a pipeline usage... we do nothing.
+    --m_pipeline_use_count;
     if ( m_irqs ) {
         m_microcode_func = NULL;
 #ifdef SOCLIB_MODULE_DEBUG
