@@ -78,10 +78,6 @@ void Mips32Iss::reset()
     r_status.whole = 0x00400004;
     r_cause.whole = 0;
     m_exec_cycles = 0;
-     //socview
-    m_run = 0;
-    m_sleep=0;
-    //socview 
     r_gp[0] = 0;
     m_microcode_func = NULL;
     r_count = 0;
@@ -115,6 +111,7 @@ void Mips32Iss::reset()
     m_exception = NO_EXCEPTION;
     update_mode();
 }
+
 
 void Mips32Iss::dump() const
 {
@@ -230,26 +227,21 @@ uint32_t Mips32Iss::executeNCycles(
             m_next_pc = r_npc;
             m_jump_pc = r_npc+4;
             m_resume_pc = r_pc;
-            //socview
-            m_run++;
-            //socview
             run();
         }
         if ( m_dreq.valid ) {
             m_pc_for_dreq = r_pc;
-            m_pc_for_dreq_is_ds = m_next_pc != r_pc+4;
+            m_pc_for_dreq_is_ds = m_next_pc != r_pc+4; 
+            m_exec_cycles++;
         }
-        m_exec_cycles++;
+        // m_exec_cycles++;
     }
 
     if ( m_exception != NO_EXCEPTION )
         goto got_exception;
 
-        if ( (r_status.im & r_cause.ip)
-             && may_take_irq
-             && check_irq_state()
-             && dreq_ok )
-            goto handle_irq;
+    if ( (r_status.im & r_cause.ip) && may_take_irq && check_irq_state() )
+        goto handle_irq;
 
     r_npc = m_jump_pc;
     r_pc = m_next_pc;
@@ -267,21 +259,6 @@ uint32_t Mips32Iss::executeNCycles(
     goto early_end;
 
  handle_irq:
-    /*
-      If we are about to take an interrupt, we know we have all data
-      requests satisfied, but we may juste have posted a new one. If
-      so, kill it (and reset the next instruction address) and take
-      the interrupt.
-
-      The data-access-in-delay-slot case is handled in
-      handle_exception()
-     */
-    if ( m_dreq.valid ) {
-        m_dreq.valid = false;
-        m_jump_pc = r_npc;
-        m_next_pc = r_pc;
-        m_resume_pc = r_pc;
-    }
     m_resume_pc = m_next_pc;
     m_exception = X_INT;
  got_exception:
@@ -377,15 +354,6 @@ void Mips32Iss::handle_exception()
 
     if ( debugExceptionBypassed( ex_class, ex_cause ) )
         return;
-
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << m_name
-        << " m_resume_pc: " << std::hex << m_resume_pc
-        << " m_pc_for_dreq_is_ds: " << std::hex << m_pc_for_dreq_is_ds
-        << " m_pc_for_dreq: " << std::hex << m_pc_for_dreq
-        << std::endl;
-#endif
 
     addr_t except_address = exceptBaseAddr();
     bool branch_taken = m_next_pc+4 != m_jump_pc;
@@ -537,6 +505,8 @@ Mips32Iss::addr_t Mips32Iss::exceptOffsetAddr( enum ExceptCause cause ) const
     }
 }
 
+
+
 Mips32Iss::addr_t Mips32Iss::exceptBaseAddr() const
 {
     if ( r_status.bev )
@@ -553,22 +523,20 @@ void Mips32Iss::do_microcoded_sleep()
         std::cout << name() << " IRQ while sleeping" << std::endl;
 #endif
     }
-    m_sleep++;
 }
 
 uint32_t Mips32Iss::m_reset_address = 0xbfc00000;
 
-
-
 #ifdef SOCVIEW3
 void Mips32Iss::register_debugger(tracer &t)
-{   t.add(m_next_pc,name()+"_"+"m_next_pc");
+{    t.add(m_next_pc,name()+"_"+"m_next_pc");
     t.add(m_exec_cycles,name()+"_"+"processor_is_running");
-    t.add(m_run, name()+"_"+"m_run");
-    t.add(m_sleep, name()+"_"+"m_sleep");
+    //t.add(m_resume_pc,name()+"_"+"m_resume_pc");
    
     }
 #endif
+
+
 
 }}
 
