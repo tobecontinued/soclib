@@ -45,6 +45,10 @@
 #include "soclib_endian.h"
 #include "register.h"
 
+#ifdef SOCVIEW3
+#include "Tracer.h"
+#endif
+
 namespace soclib { namespace common {
 
 class Mips32Iss
@@ -533,6 +537,10 @@ protected:
 public:
     Mips32Iss(const std::string &name, uint32_t ident, bool default_little_endian);
 
+#ifdef SOCVIEW3
+    void register_debugger(tracer &t);
+#endif
+    
     void dump() const;
 
     uint32_t executeNCycles(

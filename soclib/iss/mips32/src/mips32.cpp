@@ -359,6 +359,15 @@ void Mips32Iss::handle_exception()
     if ( debugExceptionBypassed( ex_class, ex_cause ) )
         return;
 
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout
+        << m_name
+        << " m_resume_pc: " << std::hex << m_resume_pc
+        << " m_pc_for_dreq_is_ds: " << std::hex << m_pc_for_dreq_is_ds
+        << " m_pc_for_dreq: " << std::hex << m_pc_for_dreq
+        << std::endl;
+#endif
+
     addr_t except_address = exceptBaseAddr();
     bool branch_taken = m_next_pc+4 != m_jump_pc;
 
@@ -537,7 +546,9 @@ uint32_t Mips32Iss::m_reset_address = 0xbfc00000;
 void Mips32Iss::register_debugger(tracer &t)
 {    t.add(m_next_pc,name()+"_"+"m_next_pc");
     t.add(m_instruction_count,name()+"_"+"processor_is_running");
-    //t.add(m_resume_pc,name()+"_"+"m_resume_pc");
+    t.add(m_pipeline_use_count, name()+"_"+"m_pipeline_use_count");
+    t.add(m_instruction_count, name()+"_"+"m_instruction_count");
+    t.add(r_cycle_count, name()+"_"+"r_cycle_count");
    
     }
 #endif
