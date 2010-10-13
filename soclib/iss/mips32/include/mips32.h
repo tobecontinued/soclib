@@ -593,6 +593,9 @@ public:
         m_reset_address = addr;
     }
 
+    void run_for(uint32_t &ncycle, uint32_t &time_spent,
+                 uint32_t in_pipe, uint32_t stalled);
+
 protected:
     void run();
 

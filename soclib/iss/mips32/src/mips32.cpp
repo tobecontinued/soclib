@@ -154,8 +154,7 @@ void Mips32Iss::dump() const
     }
 }
 
-static inline
-void run_for(uint32_t &ncycle, uint32_t &time_spent,
+void Mips32Iss::run_for(uint32_t &ncycle, uint32_t &time_spent,
              uint32_t in_pipe, uint32_t stalled)
 {
     uint32_t total = in_pipe + stalled;
