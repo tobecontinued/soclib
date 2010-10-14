@@ -25,6 +25,9 @@
  * - bool       lru         (recently used for replace in TLB)
  * - uint32_t   vpn         (virtual page number)
  * - uint32_t   ppn         (physical page number)
+ *
+ * valid, lru and global are stored in registers, others are in ram.
+ *
  *****************************************************************
  * This file has three constructor parameters:
  * - nways  : number of ways per associative set.
@@ -98,34 +101,174 @@ namespace caba {
 
 using soclib::common::uint32_log2;
 
+// registers describing a TLB entry state
+typedef struct tlb_entry_state {
+	sc_signal<bool> v; //valid
+	sc_signal<bool> g; //global
+	sc_signal<bool> l; //LRU
+} tlb_entry_state_t;
+
+// registers describing a tlb set state
+typedef class tlb_set_state {
+private:
+	tlb_entry_state_t *entries;
+	size_t nways;
+public:
+	tlb_set_state()
+	{
+		entries = new tlb_entry_state_t[nways];
+	}
+
+	~tlb_set_state()
+	{
+		delete [] entries;
+	}
+
+	void
+	init(size_t m_nways)
+	{
+		nways = m_nways;
+		entries = new tlb_entry_state_t[nways];
+	}
+
+	bool get_valid(size_t way)
+	{
+		return entries[way].v;
+	}
+	void set_valid(size_t way)
+	{
+		assert(entries[way].l == false &&
+		    "invalid entry should not have LRU");
+		entries[way].v = true;
+	}
+	void clear_valid(size_t way)
+	{
+		entries[way].v = false;
+		entries[way].l = false;
+	}
+
+	bool get_global(size_t way)
+	{
+		return entries[way].g;
+	}
+	void set_global(size_t way)
+	{
+		entries[way].g = true;
+	}
+	void clear_global(size_t way)
+	{
+		entries[way].g = false;
+	}
+
+	bool get_lru(size_t way)
+	{
+		return entries[way].l;
+	}
+	void set_lru(size_t way)
+	{
+		entries[way].l = true;
+		/*
+		 * if all LRU bits for the set are true, clear them
+		 */
+		for (size_t i = 0; i < nways; i++) {
+			if (i == way)
+				continue;
+			if (entries[i].l == false)
+				return;
+		}
+		// all LRU bits are set
+		for (size_t i = 0; i < nways; i++) {
+			entries[i].l = false;
+		}
+	}
+	void clear_lru(size_t way)
+	{
+		entries[way].l = false;
+	}
+
+	void reset()
+	{
+		for (size_t i = 0; i < nways; i++) {
+			entries[i].l = false;
+			entries[i].g = false;
+			entries[i].v = false;
+		}
+	}
+} tlb_set_state_t;
+
 template<typename paddr_t>
 class GenericTlb
 {
-public:
+protected:
     typedef uint32_t vaddr_t;
     typedef uint32_t data_t;
 
-    size_t  m_nways;
-    size_t  m_nsets;
-    size_t  m_paddr_nbits;
-    size_t  m_sets_shift;
-    size_t  m_sets_mask;
+    const size_t  m_nways;
+    const size_t  m_nsets;
+    const size_t  m_paddr_nbits;
+    const size_t  m_sets_shift;
+    const size_t  m_sets_mask;
 
     data_t  *m_ppn; 
     data_t  *m_vpn;
-    bool    *m_lru;
     bool    *m_pagesize;  
-    bool    *m_valid;
     bool    *m_locacc;
     bool    *m_remacc;
     bool    *m_cacheable;
     bool    *m_writable;
     bool    *m_executable;
     bool    *m_user;
-    bool    *m_global;
     bool    *m_dirty;
 
+    tlb_set_state_t *m_setsstate;
+
+public:
     // access methods 
+    inline void setlru(size_t way, size_t set)
+    { 
+        m_setsstate[set].set_lru(way); 
+    }
+
+    inline void clearlru(size_t way, size_t clear)
+    { 
+        m_setsstate[clear].clear_lru(way); 
+    }
+
+    inline bool lru(size_t way, size_t set)
+    { 
+        return m_setsstate[set].get_lru(way); 
+    }
+
+    inline void setvalid(size_t way, size_t set)
+    { 
+        m_setsstate[set].set_valid(way); 
+    }
+
+    inline void clearvalid(size_t way, size_t clear)
+    { 
+        m_setsstate[clear].clear_valid(way); 
+    }
+
+    inline bool valid(size_t way, size_t set)
+    { 
+        return m_setsstate[set].get_valid(way); 
+    }
+
+    inline void setglobal(size_t way, size_t set)
+    { 
+        m_setsstate[set].set_global(way); 
+    }
+
+    inline void clearglobal(size_t way, size_t clear)
+    { 
+        m_setsstate[clear].clear_global(way); 
+    }
+
+    inline bool global(size_t way, size_t set)
+    { 
+        return m_setsstate[set].get_global(way); 
+    }
+
     inline data_t &ppn(size_t way, size_t set)
     { 
         return m_ppn[(way*m_nsets)+set]; 
@@ -136,19 +279,9 @@ public:
         return m_vpn[(way*m_nsets)+set]; 
     }
 
-    inline bool &lru(size_t way, size_t set)
-    { 
-        return m_lru[(way*m_nsets)+set]; 
-    }
-
     inline bool &pagesize(size_t way, size_t set)
     { 
         return m_pagesize[(way*m_nsets)+set]; 
-    }
-
-    inline bool &valid(size_t way, size_t set)
-    { 
-        return m_valid[(way*m_nsets)+set]; 
     }
 
     inline bool &locacc(size_t way, size_t set)
@@ -181,30 +314,22 @@ public:
         return m_user[(way*m_nsets)+set]; 
     }
 
-    inline bool &global(size_t way, size_t set)
-    { 
-        return m_global[(way*m_nsets)+set]; 
-    }
-
     inline bool &dirty(size_t way, size_t set)
     { 
         return m_dirty[(way*m_nsets)+set]; 
     }
 
-public:
     //////////////////////////////////////////////////////////////
     // constructor checks parameters, allocates the memory
     // and computes m_page_mask, m_sets_mask and m_sets_shift
     //////////////////////////////////////////////////////////////
-    GenericTlb(size_t nways, size_t nsets, size_t paddr_nbits)
+    GenericTlb(size_t nways, size_t nsets, size_t paddr_nbits):
+    m_nways(nways),
+    m_nsets(nsets),
+    m_paddr_nbits(paddr_nbits),
+    m_sets_shift(uint32_log2(nsets)),
+    m_sets_mask((1<<(int)uint32_log2(nsets))-1)
     {
-        m_nways = nways;
-        m_nsets = nsets;
-        m_paddr_nbits = paddr_nbits;
-
-        m_sets_shift = uint32_log2(nsets);
-        m_sets_mask = (1<<(int)uint32_log2(nsets))-1;
-
         assert(IS_POW_OF_2(nsets));
         assert(IS_POW_OF_2(nways));
         assert(nsets <= 64);
@@ -219,17 +344,17 @@ public:
 
         m_ppn        = new data_t[nways * nsets];
         m_vpn        = new data_t[nways * nsets];
-        m_lru        = new bool[nways * nsets];
         m_pagesize   = new bool[nways * nsets];
-        m_valid      = new bool[nways * nsets];
         m_locacc     = new bool[nways * nsets];
         m_remacc     = new bool[nways * nsets];
         m_cacheable   = new bool[nways * nsets];
         m_writable   = new bool[nways * nsets];
         m_executable = new bool[nways * nsets];
         m_user       = new bool[nways * nsets];
-        m_global     = new bool[nways * nsets];
         m_dirty      = new bool[nways * nsets];
+	m_setsstate = new tlb_set_state_t[nsets];
+	for (size_t i = 0; i < nsets; i++)
+		m_setsstate[i].init(nways);
 
     } // end constructor
 
@@ -237,17 +362,15 @@ public:
     {
         delete [] m_ppn;
         delete [] m_vpn;
-        delete [] m_lru;
         delete [] m_pagesize;
-        delete [] m_valid;
         delete [] m_locacc;
         delete [] m_remacc;
         delete [] m_cacheable;
         delete [] m_writable;
         delete [] m_executable;
         delete [] m_user;
-        delete [] m_global;
         delete [] m_dirty;
+	delete [] m_setsstate;
     }
 
     /////////////////////////////////////////////////////////////
@@ -255,8 +378,8 @@ public:
     /////////////////////////////////////////////////////////////
     inline void reset() 
     {
-        memset(m_valid, false, sizeof(*m_valid)*m_nways*m_nsets);
-        memset(m_lru, false, sizeof(*m_lru)*m_nways*m_nsets);
+	for (size_t i = 0; i < m_nsets; i++)
+		m_setsstate[i].reset();
     } 
 
     /////////////////////////////////////////////////////////
@@ -396,14 +519,12 @@ public:
                 if(global(way,set)) 
                 {
                     if(all) {
-			valid(way,set) = false;  // forced reset, the locked page invalid too
-			lru(way,set) = false; 
+			clearvalid(way,set); // forced reset, the locked page invalid too
 		    }
                 } 
                 else 
                 {
-                    valid(way,set) = false; // not forced reset, the locked page conserve  
-                    lru(way,set) = false; 
+                    clearvalid(way,set); // not forced reset, the locked page conserve  
                 }
             } 
         } 
@@ -458,34 +579,11 @@ public:
     } // end getpte()
 
     /////////////////////////////////////////////////////////////
-    //  This sets the LRU bit of the given descriptor. If all
-    //  ways of the set have the LRU bit set, they are all reset to
-    // false. This ensures that at last one LRU bit per set is false.
-    /////////////////////////////////////////////////////////////
-    inline void setlru(size_t way, size_t set)
-    {
-	size_t way2;
-	assert(valid(way, set) && "setting lru on invalid entry");
-	lru(way, set) = true;
-	for (way2 = 0; way2 < m_nways; way2++ ) {
-		if (lru(way2, set) == false) break;
-	}
-	if (way2 == m_nways) {
-		/* all ways are new -> they all become old */
-		for (way2 = 0; way2 < m_nways; way2++ ) {
-			lru(way2, set) = false;
-		}
-	}
-    }
-
-    /////////////////////////////////////////////////////////////
     //  This method return the index of the least recently
     //  used descriptor in the associative set.
     /////////////////////////////////////////////////////////////
     inline size_t getlru(size_t set)
     {
-        size_t defaul = 0;
-        
         // check val bit firstly, replace the invalid PTE
         for(size_t way = 0; way < m_nways; way++) 
         {
@@ -528,7 +626,7 @@ public:
         vpn(way,set) = vaddress >> (PAGE_M_NBITS + m_sets_shift);
         ppn(way,set) = pte & ((1<<(m_paddr_nbits - PAGE_M_NBITS))-1);
 
-        valid(way,set)      = true;
+        setvalid(way,set);
         pagesize(way,set)   = true;
         setlru(way,set);
         locacc(way,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
@@ -537,7 +635,11 @@ public:
         writable(way,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         executable(way,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         user(way,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
-        global(way,set)     = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+	if (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1)
+		setglobal(way,set);
+	else
+		clearglobal(way,set);
+
         dirty(way,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
     } // end update()
 
@@ -552,7 +654,7 @@ public:
         vpn(way,set) = vaddress >> (PAGE_K_NBITS + m_sets_shift);
         ppn(way,set) = ppn2 & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1);  
 
-        valid(way,set)      = true;
+        setvalid(way,set);
         pagesize(way,set)   = false;
         setlru(way,set);
         locacc(way,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
@@ -561,7 +663,10 @@ public:
         writable(way,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         executable(way,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         user(way,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
-        global(way,set)     = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+	if (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1)
+		setglobal(way,set);
+	else
+		clearglobal(way,set);
         dirty(way,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
     } // end update()
 
@@ -579,8 +684,7 @@ public:
             if( valid(way,m_set) && pagesize(way,m_set) &&
                (vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + m_sets_shift))) ) 
             {
-                valid(way,m_set) = false;
-                lru(way,m_set) = false;
+                clearvalid(way,m_set);
                 return true;
             }
 
@@ -588,8 +692,7 @@ public:
             if( valid(way,k_set) && !pagesize(way,k_set) &&
                (vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + m_sets_shift))) ) 
             {  
-                valid(way,k_set) = false;
-                lru(way,k_set) = false;
+                clearvalid(way,k_set);
                 return true;   
             } 
         } 
@@ -610,7 +713,7 @@ public:
     inline bool getpagesize(size_t way, size_t set)
     {
         return pagesize(way,set);
-    } // end setdirty()
+    }
 
 }; // GenericTlb
 
@@ -720,8 +823,7 @@ public:
                 this->vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + this->m_sets_shift))) 
             {
                 vic_nline = nline(way,m_set);
-                this->valid(way,m_set) = false;
-                this->lru(way,m_set) = false;
+                this->clearvalid(way,m_set);
                 break;
             } 
 
@@ -729,8 +831,7 @@ public:
                 this->vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + this->m_sets_shift))) 
             {
                 vic_nline = nline(way,k_set);
-                this->valid(way,k_set) = false;
-                this->lru(way,k_set) = false;
+                this->clearvalid(way,k_set);
                 break;
             }
             if ( way == (this->m_nways-1)) return false; 
@@ -767,8 +868,7 @@ public:
                 this->vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + this->m_sets_shift))) 
             {
                 vic_nline = nline(way,m_set);
-                this->valid(way,m_set) = false;
-                this->lru(way,m_set) = false;
+                this->clearvalid(way,m_set);
                 break;
             } 
 
@@ -776,8 +876,7 @@ public:
                 this->vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + this->m_sets_shift))) 
             {
                 vic_nline = nline(way,k_set);
-                this->valid(way,k_set) = false;
-                this->lru(way,k_set) = false;
+                this->clearvalid(way,k_set);
                 break;
             }
             if ( way == (this->m_nways-1)) return false; 
@@ -793,8 +892,7 @@ public:
     //////////////////////////////////////////////////////////////
     inline void ccinval(size_t invway, size_t invset)
     {
-        this->valid(invway,invset) = false;
-        this->lru(invway,invset) = false;
+        this->clearvalid(invway,invset);
     } // end ccinval()
 
     //////////////////////////////////////////////////////////////
@@ -829,8 +927,7 @@ public:
                 {
                     if (!this->global(start/this->m_nsets,start%this->m_nsets))
                     {
-                        this->valid(start/this->m_nsets,start%this->m_nsets) = false;
-                        this->lru(start/this->m_nsets,start%this->m_nsets) = false;
+                        this->clearvalid(start/this->m_nsets,start%this->m_nsets);
                     }
                     else
                     {
@@ -848,8 +945,7 @@ public:
                     {
                         if (!this->global(way,set))
                         {
-                            this->valid(way,set) = false;
-                            this->lru(way,set) = false;
+                            this->clearvalid(way,set);
                         }
                         else
                         {
@@ -885,8 +981,7 @@ public:
             size_t inval_line = nline(nway,nset);
             if (!this->global(nway,nset))
             {
-                this->valid(nway,nset) = false;
-                this->lru(nway,nset) = false;
+                this->clearvalid(nway,nset);
             }
             else
             {
@@ -960,7 +1055,7 @@ public:
         this->vpn(selway,set) = vaddress >> (PAGE_M_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = pte & ((1<<(this->m_paddr_nbits - PAGE_M_NBITS))-1); 
  
-        this->valid(selway,set)      = true;
+        this->setvalid(selway,set);
         this->pagesize(selway,set)   = true;
         this->setlru(selway,set);
 
@@ -970,7 +1065,10 @@ public:
         this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
-        this->global(selway,set)     = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+	if (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1)
+		this->setglobal(selway,set);
+	else
+		this->clearglobal(selway,set);
         this->dirty(selway,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
         
         *victim = nline(selway,set);
@@ -1026,7 +1124,7 @@ public:
         this->vpn(selway,set) = vaddress >> (PAGE_M_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = pte & ((1<<(this->m_paddr_nbits - PAGE_M_NBITS))-1); 
  
-        this->valid(selway,set)      = true;
+        this->setvalid(selway,set);
         this->pagesize(selway,set)   = true;
         this->setlru(selway,set);
 
@@ -1036,7 +1134,10 @@ public:
         this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
-        this->global(selway,set)     = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+	if (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1)
+		this->setglobal(selway,set);
+	else
+		this->clearglobal(selway,set);
         this->dirty(selway,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
         
         *victim = nline(selway,set);
@@ -1103,7 +1204,7 @@ public:
 
         this->vpn(selway,set) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
-        this->valid(selway,set)      = true;
+        this->setvalid(selway,set);
         this->pagesize(selway,set)   = false;
         this->setlru(selway,set);
 
@@ -1113,7 +1214,11 @@ public:
         this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
-        this->global(selway,set)     = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+	if (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1)
+		this->setglobal(selway,set);
+	else
+		this->clearglobal(selway,set);
+		
         this->dirty(selway,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
         
         *victim = nline(selway,set);
@@ -1169,7 +1274,7 @@ public:
 
         this->vpn(selway,set) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
-        this->valid(selway,set)      = true;
+        this->setvalid(selway,set);
         this->pagesize(selway,set)   = false;
         this->setlru(selway,set);
 
@@ -1179,7 +1284,10 @@ public:
         this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
         this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
         this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
-        this->global(selway,set)     = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+	if (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1)
+		this->setglobal(selway,set);
+	else
+		this->clearglobal(selway,set);
         this->dirty(selway,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
         
         *victim = nline(selway,set);
