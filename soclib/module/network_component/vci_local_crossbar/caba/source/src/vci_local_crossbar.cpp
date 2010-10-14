@@ -24,7 +24,7 @@
  *
  * Based on previous works by Alain Greiner, 2005
  *
- * Maintainers: nipo
+ * Maintainers: nipo, alain
  */
 
 #include <systemc>
@@ -44,47 +44,67 @@ using namespace sc_core;
 
 namespace _local_crossbar {
 
+///////////////////////////////////////
 template<typename pkt_t> class Crossbar
 {
     typedef typename pkt_t::routing_table_t routing_table_t;
     typedef typename pkt_t::locality_table_t locality_table_t;
     typedef typename pkt_t::input_port_t input_port_t;
     typedef typename pkt_t::output_port_t output_port_t;
-	const size_t m_in_size;
-	const size_t m_out_size;
-	bool *m_allocated;
-	size_t *m_origin;
-	const routing_table_t m_rt;
-	const locality_table_t m_lt;
-    const size_t m_non_local_target;
-    bool m_broadcast_waiting;
+
+    const size_t 	m_in_size;
+    const size_t 	m_out_size;
+    bool*		m_allocated;
+    size_t*		m_origin;
+    const 		routing_table_t m_rt;
+    const 		locality_table_t m_lt;
+    const size_t 	m_non_local_target;
+    bool 		m_broadcast_waiting;
 
 public:
-	Crossbar(
-		size_t in_size, size_t out_size,
-		const routing_table_t &rt,
-		const locality_table_t &lt,
-        const size_t non_local_target )
-		: m_in_size(in_size),
-		  m_out_size(out_size),
-		  m_allocated(new bool[m_out_size]),
-		  m_origin(new size_t[m_out_size]),
-		  m_rt(rt),
-		  m_lt(lt),
-          m_non_local_target(non_local_target)
+    /////////
+    Crossbar(
+	size_t in_size, size_t out_size,
+	const routing_table_t &rt,
+	const locality_table_t &lt,
+	const size_t non_local_target )
+	: m_in_size(in_size),
+	  m_out_size(out_size),
+	  m_allocated(new bool[m_out_size]),
+	  m_origin(new size_t[m_out_size]),
+	  m_rt(rt),
+	  m_lt(lt),
+       	  m_non_local_target(non_local_target)
 	{
         reset();
 	}
 
-	void reset()
-	{
-		for (size_t i=0; i<m_out_size; ++i) {
-			m_allocated[i] = false;
-			m_origin[i] = 0;
-            m_broadcast_waiting = false;
-		}
+    ////////////
+    void reset()
+    {
+	for (size_t i=0; i<m_out_size; ++i) 
+        {
+	m_allocated[i] = false;
+	m_origin[i] = 0;
+	m_broadcast_waiting = false;
 	}
+    }
 
+    //////////////////
+    void print_trace()
+    {
+        for( size_t n=0 ; n<m_out_size ; n++)
+        {
+            if( m_allocated[n] ) std::cout << std::dec 
+                                           << " output " 
+                                           << n 
+                                           << " allocated to input " 
+                                           << m_origin[n] 
+                                           << std::endl;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////
     void transition( input_port_t **input_port, output_port_t **output_port )
     {
         if(!m_broadcast_waiting){
@@ -136,6 +156,7 @@ public:
 		}
     }
 
+    ///////////////////////////////////////////////////////////////////////
     void genMealy( input_port_t **input_port, output_port_t **output_port )
     {
         bool ack[m_in_size];
@@ -189,6 +210,16 @@ public:
 
 #define tmpl(x) template<typename vci_param> x VciLocalCrossbar<vci_param>
 
+/////////////////////////
+tmpl(void)::print_trace()
+{
+    std::cout << "LocalCrossbar " << name() << " / command" << std::endl;
+    m_cmd_crossbar->print_trace();
+    std::cout << "LocalCrossbar " << name() << " / response" << std::endl;
+    m_rsp_crossbar->print_trace();
+}
+
+////////////////////////
 tmpl(void)::transition()
 {
     if ( ! p_resetn.read() ) {
@@ -201,12 +232,14 @@ tmpl(void)::transition()
     m_rsp_crossbar->transition( m_ports_to_target, m_ports_to_initiator );
 }
 
+//////////////////////
 tmpl(void)::genMealy()
 {
     m_cmd_crossbar->genMealy( m_ports_to_initiator, m_ports_to_target );
     m_rsp_crossbar->genMealy( m_ports_to_target, m_ports_to_initiator );
 }
 
+/////////////////////////////
 tmpl(/**/)::VciLocalCrossbar(
 	sc_core::sc_module_name name,
 	const soclib::common::MappingTable &mt,
@@ -217,9 +250,9 @@ tmpl(/**/)::VciLocalCrossbar(
            : BaseModule(name),
            p_clk("clk"),
            p_resetn("resetn"),
-		   p_to_target(soclib::common::alloc_elems<VciInitiator<vci_param> >(
+	   p_to_target(soclib::common::alloc_elems<VciInitiator<vci_param> >(
                            "to_target", nb_attached_target)),
-		   p_to_initiator(soclib::common::alloc_elems<VciTarget<vci_param> >(
+	   p_to_initiator(soclib::common::alloc_elems<VciTarget<vci_param> >(
                               "to_initiator", nb_attached_initiat)),
            p_target_to_up("target_to_up"),
            p_initiator_to_up("initiator_to_up"),
@@ -243,27 +276,31 @@ tmpl(/**/)::VciLocalCrossbar(
               << p_initiator_to_up;
 
 	m_cmd_crossbar = new cmd_crossbar_t(
-		nb_attached_initiat+1, nb_attached_target+1,
+		nb_attached_initiat+1, 
+		nb_attached_target+1,
 		mt.getRoutingTable(tgtid),
-        mt.getLocalityTable(tgtid),
-        nb_attached_target );
+        	mt.getLocalityTable(tgtid),
+        	nb_attached_target );
 
 	m_rsp_crossbar = new rsp_crossbar_t(
-		nb_attached_target+1, nb_attached_initiat+1,
+		nb_attached_target+1, 
+		nb_attached_initiat+1,
 		mt.getIdMaskingTable(srcid.level()),
-        mt.getIdLocalityTable(srcid),
-        nb_attached_initiat );
+        	mt.getIdLocalityTable(srcid),
+        	nb_attached_initiat );
 
     m_ports_to_initiator = new VciTarget<vci_param>*[nb_attached_initiat+1];
     for (size_t i=0; i<nb_attached_initiat; ++i)
         m_ports_to_initiator[i] = &p_to_initiator[i];
     m_ports_to_initiator[nb_attached_initiat] = &p_target_to_up;
+
     m_ports_to_target = new VciInitiator<vci_param>*[nb_attached_target+1];
     for (size_t i=0; i<nb_attached_target; ++i)
         m_ports_to_target[i] = &p_to_target[i];
     m_ports_to_target[nb_attached_target] = &p_initiator_to_up;
 }
 
+///////////////////////////////
 tmpl(/**/)::~VciLocalCrossbar()
 {
     soclib::common::dealloc_elems(p_to_initiator, m_nb_attached_initiat);

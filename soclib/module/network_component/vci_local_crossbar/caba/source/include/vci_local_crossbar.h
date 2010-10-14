@@ -76,6 +76,8 @@ protected:
     SC_HAS_PROCESS(VciLocalCrossbar);
 
 public:
+    void print_trace();
+
     VciLocalCrossbar( sc_module_name name,
 					  const soclib::common::MappingTable &mt,
 					  const soclib::common::IntTab &srcid,
