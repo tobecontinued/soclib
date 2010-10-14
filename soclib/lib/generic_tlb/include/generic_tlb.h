@@ -37,6 +37,7 @@
 
 #include <inttypes.h>
 #include <systemc>
+#include <assert.h>
 #include "static_assert.h"
 #include "arithmetics.h"
 
@@ -255,6 +256,7 @@ public:
     inline void reset() 
     {
         memset(m_valid, false, sizeof(*m_valid)*m_nways*m_nsets);
+        memset(m_lru, false, sizeof(*m_lru)*m_nways*m_nsets);
     } 
 
     /////////////////////////////////////////////////////////
@@ -288,6 +290,7 @@ public:
                 *tw = way;
                 *ts = m_set;
                 *paddress = (paddr_t)((paddr_t)ppn(way,m_set) << PAGE_M_NBITS) | (paddr_t)(vaddress & PAGE_M_MASK);
+		setlru(way, m_set);
                 return true;
             }
 
@@ -306,6 +309,7 @@ public:
                 *tw = way;
                 *ts = k_set;
                 *paddress = (paddr_t)((paddr_t)ppn(way,k_set) << PAGE_K_NBITS) | (paddr_t)(vaddress & PAGE_K_MASK);
+		setlru(way, k_set);
                 return true;   
             } 
         } 
@@ -327,6 +331,7 @@ public:
                (vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + m_sets_shift))) ) 
             {
                 *paddress = (paddr_t)((paddr_t)ppn(way,m_set) << PAGE_M_NBITS) | (paddr_t)(vaddress & PAGE_M_MASK);
+		setlru(way, m_set);
                 return true;
             }
 
@@ -335,6 +340,7 @@ public:
                (vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + m_sets_shift))) ) 
             {  
                 *paddress = (paddr_t)((paddr_t)ppn(way,k_set) << PAGE_K_NBITS) | (paddr_t)(vaddress & PAGE_K_MASK);
+		setlru(way, k_set);
                 return true;   
             } 
         }
@@ -357,6 +363,7 @@ public:
             {
                 *paddress = (paddr_t)((paddr_t)ppn(way,m_set) << PAGE_M_NBITS) | (paddr_t)(vaddress & PAGE_M_MASK);
                 *cached = cacheable(way,m_set);
+		setlru(way, m_set);
                 return true;
             }
 
@@ -366,6 +373,7 @@ public:
             {  
                 *paddress = (paddr_t)((paddr_t)ppn(way,k_set) << PAGE_K_NBITS) | (paddr_t)(vaddress & PAGE_K_MASK);
                 *cached = cacheable(way,k_set);
+		setlru(way, k_set);
                 return true;   
             } 
         }
@@ -387,31 +395,20 @@ public:
 			continue;
                 if(global(way,set)) 
                 {
-                    if(all) valid(way,set) = false;  // forced reset, the locked page invalid too
+                    if(all) {
+			valid(way,set) = false;  // forced reset, the locked page invalid too
+			lru(way,set) = false; 
+		    }
                 } 
                 else 
                 {
                     valid(way,set) = false; // not forced reset, the locked page conserve  
+                    lru(way,set) = false; 
                 }
             } 
         } 
     } // end flush
 
-    //////////////////////////////////////////////////////////////
-    //  This method modifies all LRU bits of a given set :
-    //  The LRU bit of the accessed descriptor is set to true,
-    //  all other LRU bits in the set are reset to false.
-    /////////////////////////////////////////////////////////////
-    inline void setlru(size_t way,size_t set)   
-    {
-        lru(way,set) = true;  // set bit lru for recently used
-    } // end setlru()
-
-    //////////////////////////////////////////////////////////////
-    //  This method modifies all LRU bits of a given set :
-    //  The LRU bit of the accessed descriptor is set to true,
-    //  all other LRU bits in the set are reset to false.
-    /////////////////////////////////////////////////////////////
     inline uint32_t getpte(size_t way,size_t set)   
     {
         data_t pte = 0; 
@@ -459,6 +456,28 @@ public:
         }
         return pte;
     } // end getpte()
+
+    /////////////////////////////////////////////////////////////
+    //  This sets the LRU bit of the given descriptor. If all
+    //  ways of the set have the LRU bit set, they are all reset to
+    // false. This ensures that at last one LRU bit per set is false.
+    /////////////////////////////////////////////////////////////
+    inline void setlru(size_t way, size_t set)
+    {
+	size_t way2;
+	assert(valid(way, set) && "setting lru on invalid entry");
+	lru(way, set) = true;
+	for (way2 = 0; way2 < m_nways; way2++ ) {
+		if (lru(way2, set) == false) break;
+	}
+	if (way2 == m_nways) {
+		/* all ways are new -> they all become old */
+		for (way2 = 0; way2 < m_nways; way2++ ) {
+			lru(way2, set) = false;
+		}
+	}
+    }
+
     /////////////////////////////////////////////////////////////
     //  This method return the index of the least recently
     //  used descriptor in the associative set.
@@ -476,7 +495,7 @@ public:
             }
         } 
 
-        // then we check bit lock ... 
+        // then we check bit lock, remplace and old way which is not global
         for( size_t way = 0; way < m_nways; way++ ) 
         {
             if( !global(way,set) && !lru(way,set) ) 
@@ -484,30 +503,18 @@ public:
                 return way;
             } 
         }
-
+	
+	// finally remplace the first old way
         for( size_t way = 0; way < m_nways; way++ ) 
         {
-            if( !global(way,set) && lru(way,set) ) 
+            if( !lru(way,set) ) 
             {
                 return way;
             } 
         }
 
-        for( size_t way = 0; way < m_nways; way++ ) 
-        {
-            if( global(way,set) && !lru(way,set) ) 
-            {
-                return way;
-            } 
-        }
-
-        // reset lru bits of four ways
-        for( size_t way = 0; way < m_nways; way++ ) 
-        {
-            lru(way,set) = false; 
-        }
- 
-        return defaul;
+        assert(0 && "all TLB ways can't be new at the same time");
+	return 0; /* avoid gcc warning */
     } // end getlru()
 
     /////////////////////////////////////////////////////////////
@@ -523,7 +530,7 @@ public:
 
         valid(way,set)      = true;
         pagesize(way,set)   = true;
-        lru(way,set)        = true;
+        setlru(way,set);
         locacc(way,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         remacc(way,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
         cacheable(way,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
@@ -547,7 +554,7 @@ public:
 
         valid(way,set)      = true;
         pagesize(way,set)   = false;
-        lru(way,set)        = true;
+        setlru(way,set);
         locacc(way,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         remacc(way,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
         cacheable(way,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
@@ -573,6 +580,7 @@ public:
                (vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + m_sets_shift))) ) 
             {
                 valid(way,m_set) = false;
+                lru(way,m_set) = false;
                 return true;
             }
 
@@ -581,6 +589,7 @@ public:
                (vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + m_sets_shift))) ) 
             {  
                 valid(way,k_set) = false;
+                lru(way,k_set) = false;
                 return true;   
             } 
         } 
@@ -668,6 +677,7 @@ public:
                 *tw = way;
                 *ts = m_set;
                 *paddress = (paddr_t)((paddr_t)this->ppn(way,m_set) << PAGE_M_NBITS) | (paddr_t)(vaddress & PAGE_M_MASK);
+		this->setlru(way, m_set);
                 return true;
             }
 
@@ -687,6 +697,7 @@ public:
                 *tw = way;
                 *ts = k_set;
                 *paddress = (paddr_t)((paddr_t)this->ppn(way,k_set) << PAGE_K_NBITS) | (paddr_t)(vaddress & PAGE_K_MASK);
+		this->setlru(way, k_set);
                 return true;   
             } 
         } 
@@ -710,6 +721,7 @@ public:
             {
                 vic_nline = nline(way,m_set);
                 this->valid(way,m_set) = false;
+                this->lru(way,m_set) = false;
                 break;
             } 
 
@@ -718,6 +730,7 @@ public:
             {
                 vic_nline = nline(way,k_set);
                 this->valid(way,k_set) = false;
+                this->lru(way,k_set) = false;
                 break;
             }
             if ( way == (this->m_nways-1)) return false; 
@@ -755,6 +768,7 @@ public:
             {
                 vic_nline = nline(way,m_set);
                 this->valid(way,m_set) = false;
+                this->lru(way,m_set) = false;
                 break;
             } 
 
@@ -763,6 +777,7 @@ public:
             {
                 vic_nline = nline(way,k_set);
                 this->valid(way,k_set) = false;
+                this->lru(way,k_set) = false;
                 break;
             }
             if ( way == (this->m_nways-1)) return false; 
@@ -779,6 +794,7 @@ public:
     inline void ccinval(size_t invway, size_t invset)
     {
         this->valid(invway,invset) = false;
+        this->lru(invway,invset) = false;
     } // end ccinval()
 
     //////////////////////////////////////////////////////////////
@@ -814,6 +830,7 @@ public:
                     if (!this->global(start/this->m_nsets,start%this->m_nsets))
                     {
                         this->valid(start/this->m_nsets,start%this->m_nsets) = false;
+                        this->lru(start/this->m_nsets,start%this->m_nsets) = false;
                     }
                     else
                     {
@@ -832,6 +849,7 @@ public:
                         if (!this->global(way,set))
                         {
                             this->valid(way,set) = false;
+                            this->lru(way,set) = false;
                         }
                         else
                         {
@@ -868,6 +886,7 @@ public:
             if (!this->global(nway,nset))
             {
                 this->valid(nway,nset) = false;
+                this->lru(nway,nset) = false;
             }
             else
             {
@@ -901,8 +920,9 @@ public:
                 selway = way;
             }
         } 
-        if ( !found ) // if no invalid way, we check bit lock ...
+        if ( !found )
         {
+	    //then we check bit lock, remplace and old way which is not global
             for( size_t way = 0; way < this->m_nways && !found; way++ ) 
             {
                 if( !this->global(way,set) && !this->lru(way, set) ) 
@@ -912,47 +932,29 @@ public:
                     selway = way;
                 } 
             }
+	    // finally remplace the first old way
             for( size_t way = 0; way < this->m_nways && !found; way++ ) 
             {
-                if( !this->global(way,set) && this->lru(way, set) ) 
+                if( !this->lru(way, set) ) 
                 {
                     found = true;
                     cleanup = true;
                     selway = way;
                 } 
             }
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
+	    assert(found && "all TLB ways can't be new at the same time");
+            // check if we really need to do a cleanup
+            for( size_t way = 0; way < this->m_nways; way++ ) 
             {
-                if( this->global(way,set) && !this->lru(way, set) ) 
+                for( size_t set = 0; set < this->m_nsets; set++ ) 
                 {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-            if ( !found )
-            {
-                for( size_t way = 0; way < this->m_nways; way++ ) 
-                {
-                    this->lru(way,set) = false; 
-                }
-                cleanup = true;
-                selway = 0;
-            }
-            if ( cleanup )
-            {
-                for( size_t way = 0; way < this->m_nways; way++ ) 
-                {
-                    for( size_t set = 0; set < this->m_nsets; set++ ) 
+                    if ((nline(way,set) == nline(selway,set)) && this->valid(way,set)) 
                     {
-                        if ((nline(way,set) == nline(selway,set)) && this->valid(way,set)) 
-                        {
-                            cleanup = false;
-                            break;
-                        }
-                    } 
+                        cleanup = false;
+                        break;
+                    }
                 } 
-            }
+            } 
         }
 
         this->vpn(selway,set) = vaddress >> (PAGE_M_NBITS + this->m_sets_shift);
@@ -960,7 +962,7 @@ public:
  
         this->valid(selway,set)      = true;
         this->pagesize(selway,set)   = true;
-        this->lru(selway,set)        = true;
+        this->setlru(selway,set);
 
         this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
@@ -996,8 +998,9 @@ public:
                 selway = way;
             }
         } 
-        if ( !found ) // if no invalid way, we check bit lock ...
+        if ( !found ) 
         {
+	    //then we check bit lock, remplace and old way which is not global
             for( size_t way = 0; way < this->m_nways && !found; way++ ) 
             {
                 if( !this->global(way,set) && !this->lru(way, set) ) 
@@ -1007,33 +1010,17 @@ public:
                     selway = way;
                 } 
             }
+	    // finally remplace the first old way
             for( size_t way = 0; way < this->m_nways && !found; way++ ) 
             {
-                if( !this->global(way,set) && this->lru(way, set) ) 
+                if( !this->lru(way, set) ) 
                 {
                     found = true;
                     cleanup = true;
                     selway = way;
                 } 
             }
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( this->global(way,set) && !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-            if ( !found )
-            {
-                for( size_t way = 0; way < this->m_nways; way++ ) 
-                {
-                    this->lru(way,set) = false; 
-                }
-                cleanup = true;
-                selway = 0;
-            }
+            assert(found && "all TLB ways can't be new at the same time");
         }
 
         this->vpn(selway,set) = vaddress >> (PAGE_M_NBITS + this->m_sets_shift);
@@ -1041,7 +1028,7 @@ public:
  
         this->valid(selway,set)      = true;
         this->pagesize(selway,set)   = true;
-        this->lru(selway,set)        = true;
+        this->setlru(selway,set);
 
         this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
@@ -1077,8 +1064,9 @@ public:
                 selway = way;
             }
         } 
-        if ( !found ) // if no invalid way, we check bit lock ...
+        if ( !found )
         {
+	    //then we check bit lock, remplace and old way which is not global
             for( size_t way = 0; way < this->m_nways && !found; way++ ) 
             {
                 if( !this->global(way,set) && !this->lru(way, set) ) 
@@ -1088,54 +1076,36 @@ public:
                     selway = way;
                 } 
             }
+	    // finally remplace the first old way
             for( size_t way = 0; way < this->m_nways && !found; way++ ) 
             {
-                if( !this->global(way,set) && this->lru(way, set) ) 
+                if( !this->lru(way, set) ) 
                 {
                     found = true;
                     cleanup = true;
                     selway = way;
                 } 
             }
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
+            assert(found && "all TLB ways can't be new at the same time");
+            // check if we really need to do a cleanup
+            for( size_t way = 0; way < this->m_nways; way++ ) 
             {
-                if( this->global(way,set) && !this->lru(way, set) ) 
+                for( size_t set = 0; set < this->m_nsets; set++ ) 
                 {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-            if ( !found )
-            {
-                for( size_t way = 0; way < this->m_nways; way++ ) 
-                {
-                    this->lru(way,set) = false; 
-                }
-                cleanup = true;
-                selway = 0;
-            }
-            if ( cleanup )
-            {
-                for( size_t way = 0; way < this->m_nways; way++ ) 
-                {
-                    for( size_t set = 0; set < this->m_nsets; set++ ) 
+                    if ((nline(way,set) == nline(selway,set)) && this->valid(way,set)) 
                     {
-                        if ((nline(way,set) == nline(selway,set)) && this->valid(way,set)) 
-                        {
-                            cleanup = false;
-                            break;
-                        }
-                    } 
+                        cleanup = false;
+                        break;
+                    }
                 } 
-            }
+            } 
         }
 
         this->vpn(selway,set) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
         this->valid(selway,set)      = true;
         this->pagesize(selway,set)   = false;
-        this->lru(selway,set)        = true;
+        this->setlru(selway,set);
 
         this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
@@ -1172,8 +1142,9 @@ public:
                 selway = way;
             }
         } 
-        if ( !found ) // if no invalid way, we check bit lock ...
+        if ( !found )
         {
+	    //then we check bit lock, remplace and old way which is not global
             for( size_t way = 0; way < this->m_nways && !found; way++ ) 
             {
                 if( !this->global(way,set) && !this->lru(way, set) ) 
@@ -1183,40 +1154,24 @@ public:
                     selway = way;
                 } 
             }
+	    // finally remplace the first old way
             for( size_t way = 0; way < this->m_nways && !found; way++ ) 
             {
-                if( !this->global(way,set) && this->lru(way, set) ) 
+                if( !this->lru(way, set) ) 
                 {
                     found = true;
                     cleanup = true;
                     selway = way;
                 } 
             }
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( this->global(way,set) && !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-            if ( !found )
-            {
-                for( size_t way = 0; way < this->m_nways; way++ ) 
-                {
-                    this->lru(way,set) = false; 
-                }
-                cleanup = true;
-                selway = 0;
-            }
+	    assert(found && "all TLB ways can't be new at the same time");
         }
 
         this->vpn(selway,set) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
         this->valid(selway,set)      = true;
         this->pagesize(selway,set)   = false;
-        this->lru(selway,set)        = true;
+        this->setlru(selway,set);
 
         this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
