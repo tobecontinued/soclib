@@ -47,6 +47,8 @@
 namespace soclib { 
 namespace caba {
 
+using namespace sc_core;
+
     // PTE information struct
     typedef struct pte_info_s {
         bool v;    // valid             
