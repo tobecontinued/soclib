@@ -118,7 +118,6 @@ private:
 public:
 	tlb_set_state()
 	{
-		entries = new tlb_entry_state_t[nways];
 	}
 
 	~tlb_set_state()
