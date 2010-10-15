@@ -219,7 +219,13 @@ asm(
 #if __mips >= 32
 	"la $8, main \n"
 	"mtc0 $8, $30 \n"
+# if __mips_isa_rev >= 2
 	"ei			\n"
+# else
+    "mfc0	$9,	$12	\n"
+    "ori	$9,	1	\n"
+    "mtc0	$9,	$12	\n"
+# endif
 	"eret      \n"
 #else
     "la         $8,   main				\n"
