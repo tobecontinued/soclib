@@ -1001,45 +1001,11 @@ public:
     //////////////////////////////////////////////////////////////////////////
     inline bool update(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
-        bool cleanup = false;
-        bool found = false;
         size_t set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask;
-        size_t selway = 0;
+        size_t selway = this->getlru(set);
+        bool cleanup = this->valid(selway,set);
 
-        // check val bit firstly, replace the invalid PTE
-        for(size_t way = 0; way < this->m_nways && !found; way++) 
-        {
-            if( !(this->valid(way,set)) ) 
-            {
-                found = true;
-                cleanup = false;
-                selway = way;
-            }
-        } 
-        if ( !found )
-        {
-	    //then we check bit lock, remplace and old way which is not global
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( !this->global(way,set) && !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-	    // finally remplace the first old way
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-	    assert(found && "all TLB ways can't be new at the same time");
-            // check if we really need to do a cleanup
+	if (cleanup) {
             for( size_t way = 0; way < this->m_nways; way++ ) 
             {
                 for( size_t set = 0; set < this->m_nsets; set++ ) 
@@ -1082,45 +1048,9 @@ public:
     //////////////////////////////////////////////////////////////////////////
     inline bool update1(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
-        bool cleanup = false;
-        bool found = false;
         size_t set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask;
-        size_t selway = 0;
-
-        // check val bit firstly, replace the invalid PTE
-        for(size_t way = 0; way < this->m_nways && !found; way++) 
-        {
-            if( !(this->valid(way,set)) ) 
-            {
-                found = true;
-                cleanup = false;
-                selway = way;
-            }
-        } 
-        if ( !found ) 
-        {
-	    //then we check bit lock, remplace and old way which is not global
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( !this->global(way,set) && !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-	    // finally remplace the first old way
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-            assert(found && "all TLB ways can't be new at the same time");
-        }
+        size_t selway = this->getlru(set);
+        bool cleanup = this->valid(selway,set);
 
         this->vpn(selway,set) = vaddress >> (PAGE_M_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = pte & ((1<<(this->m_paddr_nbits - PAGE_M_NBITS))-1); 
@@ -1151,45 +1081,12 @@ public:
     //////////////////////////////////////////////////////////////////////////
     inline bool update(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
-        bool cleanup = false;
-        bool found = false;
         size_t set = (vaddress >> PAGE_K_NBITS) & this->m_sets_mask;
-        size_t selway = 0;
+        size_t selway = this->getlru(set);
+        bool cleanup = this->valid(selway,set);
 
-        // check val bit firstly, replace the invalid PTE
-        for(size_t way = 0; way < this->m_nways && !found; way++) 
-        {
-            if( !(this->valid(way,set)) ) 
-            {
-                found = true;
-                cleanup = false;
-                selway = way;
-            }
-        } 
-        if ( !found )
-        {
-	    //then we check bit lock, remplace and old way which is not global
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( !this->global(way,set) && !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-	    // finally remplace the first old way
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-            assert(found && "all TLB ways can't be new at the same time");
-            // check if we really need to do a cleanup
+        // check if we really need to do a cleanup
+	if (cleanup) {
             for( size_t way = 0; way < this->m_nways; way++ ) 
             {
                 for( size_t set = 0; set < this->m_nsets; set++ ) 
@@ -1201,7 +1098,7 @@ public:
                     }
                 } 
             } 
-        }
+	}
 
         this->vpn(selway,set) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
@@ -1233,45 +1130,9 @@ public:
     //////////////////////////////////////////////////////////////////////////
     inline bool update1(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
-        bool cleanup = false;
-        bool found = false;
         size_t set = (vaddress >> PAGE_K_NBITS) & this->m_sets_mask;
-        size_t selway = 0;
-
-        // check val bit firstly, replace the invalid PTE
-        for(size_t way = 0; way < this->m_nways && !found; way++) 
-        {
-            if( !(this->valid(way,set)) ) 
-            {
-                found = true;
-                cleanup = false;
-                selway = way;
-            }
-        } 
-        if ( !found )
-        {
-	    //then we check bit lock, remplace and old way which is not global
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( !this->global(way,set) && !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-	    // finally remplace the first old way
-            for( size_t way = 0; way < this->m_nways && !found; way++ ) 
-            {
-                if( !this->lru(way, set) ) 
-                {
-                    found = true;
-                    cleanup = true;
-                    selway = way;
-                } 
-            }
-	    assert(found && "all TLB ways can't be new at the same time");
-        }
+        size_t selway = this->getlru(set);
+        bool cleanup = this->valid(selway,set);
 
         this->vpn(selway,set) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
         this->ppn(selway,set) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
