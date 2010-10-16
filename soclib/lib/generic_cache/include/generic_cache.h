@@ -119,13 +119,11 @@ class GenericCache
 
         cache_lru(way, set) = true;
 	for (way2 = 0; way2 < m_ways; way2++ ) {
-	    if (cache_lru(way2, set) == false) break;
+	    if (cache_lru(way2, set) == false) return;
 	}
-	if (way2 == m_ways) {
-		/* all lines are new -> they all become old */
-		for (way2 = 0; way2 < m_ways; way2++ ) {
-		    cache_lru(way2, set) = false;
-		}
+	/* all lines are new -> they all become old */
+	for (way2 = 0; way2 < m_ways; way2++ ) {
+	    cache_lru(way2, set) = false;
 	}
     }
 
