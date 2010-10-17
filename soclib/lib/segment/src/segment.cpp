@@ -43,12 +43,12 @@ bool Segment::isOverlapping( const Segment &other ) const
 void Segment::print( std::ostream &o ) const
 {
     o << "<Segment \""<<m_name<<"\": "
-      << "@0x" << std::hex << m_base_address << ", "
-      << "0x" << m_size << " bytes, "
-      << m_target_index << ", "
+      << "base = " << std::hex << m_base_address 
+      << " / size = " << m_size 
+      << " / tgtid = " << std::dec << m_target_index << " / "
       << (m_cacheability?"cached":"uncached");
     if ( m_initiator )
-        o << " init " << m_initiator_index;
+        o << " / init = " << m_initiator_index;
     o << ">";
 }
 
