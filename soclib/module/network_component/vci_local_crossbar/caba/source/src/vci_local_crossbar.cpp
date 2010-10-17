@@ -100,7 +100,7 @@ public:
                                            << n 
                                            << " allocated to input " 
                                            << m_origin[n] 
-                                           << std::endl;
+                                           << " /";
         }
     }
 
@@ -213,10 +213,12 @@ public:
 /////////////////////////
 tmpl(void)::print_trace()
 {
-    std::cout << "LocalCrossbar " << name() << " / command" << std::endl;
+    std::cout << "LocalCrossbar " << name() << " / command  /";
     m_cmd_crossbar->print_trace();
-    std::cout << "LocalCrossbar " << name() << " / response" << std::endl;
+    std::cout << std::endl;
+    std::cout << "LocalCrossbar " << name() << " / response /";
     m_rsp_crossbar->print_trace();
+    std::cout << std::endl;
 }
 
 ////////////////////////
