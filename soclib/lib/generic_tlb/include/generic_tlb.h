@@ -230,9 +230,9 @@ public:
         m_setsstate[set].set_lru(way); 
     }
 
-    inline void clearlru(size_t way, size_t clear)
+    inline void clearlru(size_t way, size_t set)
     { 
-        m_setsstate[clear].clear_lru(way); 
+        m_setsstate[set].clear_lru(way); 
     }
 
     inline bool lru(size_t way, size_t set)
@@ -245,9 +245,9 @@ public:
         m_setsstate[set].set_valid(way); 
     }
 
-    inline void clearvalid(size_t way, size_t clear)
+    inline void clearvalid(size_t way, size_t set)
     { 
-        m_setsstate[clear].clear_valid(way); 
+        m_setsstate[set].clear_valid(way); 
     }
 
     inline bool valid(size_t way, size_t set)
@@ -260,9 +260,9 @@ public:
         m_setsstate[set].set_global(way); 
     }
 
-    inline void clearglobal(size_t way, size_t clear)
+    inline void clearglobal(size_t way, size_t set)
     { 
-        m_setsstate[clear].clear_global(way); 
+        m_setsstate[set].clear_global(way); 
     }
 
     inline bool global(size_t way, size_t set)
