@@ -30,6 +30,8 @@
 #ifndef SOCLIB_TLMT_VCI_PARAM_H
 #define SOCLIB_TLMT_VCI_PARAM_H
 
+#include "static_fast_int.h"
+
 namespace soclib { namespace tlmdt {
 
 template<typename _addr_t, typename _data_t>
@@ -39,6 +41,7 @@ public:
   typedef _addr_t addr_t;
   typedef _data_t data_t;
   static const int nbytes = sizeof(data_t);
+  typedef typename ::soclib::common::fast_int_t<nbytes*8>::int_t fast_data_t;
 
   static inline data_t be2mask( data_t be )
   {
