@@ -225,97 +225,97 @@ protected:
 
 public:
     // access methods 
-    inline void setlru(size_t way, size_t set)
+    void setlru(size_t way, size_t set)
     { 
         m_setsstate[set].set_lru(way); 
     }
 
-    inline void clearlru(size_t way, size_t set)
+    void clearlru(size_t way, size_t set)
     { 
         m_setsstate[set].clear_lru(way); 
     }
 
-    inline bool lru(size_t way, size_t set)
+    bool lru(size_t way, size_t set)
     { 
         return m_setsstate[set].get_lru(way); 
     }
 
-    inline void setvalid(size_t way, size_t set)
+    void setvalid(size_t way, size_t set)
     { 
         m_setsstate[set].set_valid(way); 
     }
 
-    inline void clearvalid(size_t way, size_t set)
+    void clearvalid(size_t way, size_t set)
     { 
         m_setsstate[set].clear_valid(way); 
     }
 
-    inline bool valid(size_t way, size_t set)
+    bool valid(size_t way, size_t set)
     { 
         return m_setsstate[set].get_valid(way); 
     }
 
-    inline void setglobal(size_t way, size_t set)
+    void setglobal(size_t way, size_t set)
     { 
         m_setsstate[set].set_global(way); 
     }
 
-    inline void clearglobal(size_t way, size_t set)
+    void clearglobal(size_t way, size_t set)
     { 
         m_setsstate[set].clear_global(way); 
     }
 
-    inline bool global(size_t way, size_t set)
+    bool global(size_t way, size_t set)
     { 
         return m_setsstate[set].get_global(way); 
     }
 
-    inline data_t &ppn(size_t way, size_t set)
+    data_t &ppn(size_t way, size_t set)
     { 
         return m_ppn[(way*m_nsets)+set]; 
     }
 
-    inline data_t &vpn(size_t way, size_t set)
+    data_t &vpn(size_t way, size_t set)
     { 
         return m_vpn[(way*m_nsets)+set]; 
     }
 
-    inline bool &pagesize(size_t way, size_t set)
+    bool &pagesize(size_t way, size_t set)
     { 
         return m_pagesize[(way*m_nsets)+set]; 
     }
 
-    inline bool &locacc(size_t way, size_t set)
+    bool &locacc(size_t way, size_t set)
     { 
         return m_locacc[(way*m_nsets)+set]; 
     }
 
-    inline bool &remacc(size_t way, size_t set)
+    bool &remacc(size_t way, size_t set)
     { 
         return m_remacc[(way*m_nsets)+set]; 
     }
 
-    inline bool &cacheable(size_t way, size_t set)
+    bool &cacheable(size_t way, size_t set)
     { 
         return m_cacheable[(way*m_nsets)+set]; 
     }
 
-    inline bool &writable(size_t way, size_t set)
+    bool &writable(size_t way, size_t set)
     { 
         return m_writable[(way*m_nsets)+set]; 
     }
 
-    inline bool &executable(size_t way, size_t set)
+    bool &executable(size_t way, size_t set)
     { 
         return m_executable[(way*m_nsets)+set]; 
     }
 
-    inline bool &user(size_t way, size_t set)
+    bool &user(size_t way, size_t set)
     { 
         return m_user[(way*m_nsets)+set]; 
     }
 
-    inline bool &dirty(size_t way, size_t set)
+    bool &dirty(size_t way, size_t set)
     { 
         return m_dirty[(way*m_nsets)+set]; 
     }
@@ -377,7 +377,7 @@ public:
     /////////////////////////////////////////////////////////////
     //  This method resets all the TLB entry.
     /////////////////////////////////////////////////////////////
-    inline void reset() 
+    void reset() 
     {
 	for (size_t i = 0; i < m_nsets; i++)
 		m_setsstate[i].reset();
@@ -388,7 +388,7 @@ public:
     //  In case of HIT, the physical address, 
     //  the pte informations, way and set are returned. 
     /////////////////////////////////////////////////////////
-    inline bool translate(  vaddr_t vaddress,      // virtual address
+    bool translate(  vaddr_t vaddress,      // virtual address
                             paddr_t *paddress,     // return physique address
                             pte_info_t *pte_info,  // return pte information
                             size_t *tw,            // return way  
@@ -444,7 +444,7 @@ public:
     //  This method returns "false" in case of MISS
     //  In case of HIT, the physical page number is returned. 
     /////////////////////////////////////////////////////////
-    inline bool translate(vaddr_t vaddress, paddr_t *paddress) 
+    bool translate(vaddr_t vaddress, paddr_t *paddress) 
     {
         size_t m_set = (vaddress >> PAGE_M_NBITS) & m_sets_mask; 
         size_t k_set = (vaddress >> PAGE_K_NBITS) & m_sets_mask; 
@@ -475,7 +475,7 @@ public:
     //  This method returns "false" in case of MISS
     //  In case of HIT, the physical page number is returned. 
     /////////////////////////////////////////////////////////
-    inline bool translate(vaddr_t vaddress, paddr_t *paddress, bool *cached) 
+    bool translate(vaddr_t vaddress, paddr_t *paddress, bool *cached) 
     {
         size_t m_set = (vaddress >> PAGE_M_NBITS) & m_sets_mask; 
         size_t k_set = (vaddress >> PAGE_K_NBITS) & m_sets_mask; 
@@ -509,7 +509,7 @@ public:
     //  when the the argument is true.
     //  Locked descriptors are preserved when it is false.
     /////////////////////////////////////////////////////////////
-    inline void flush(bool all) 
+    void flush(bool all) 
     {
         for( size_t way = 0; way < m_nways; way++ ) 
         {
@@ -531,7 +531,7 @@ public:
         } 
     } // end flush
 
-    inline uint32_t getpte(size_t way,size_t set)   
+    uint32_t getpte(size_t way,size_t set)   
     {
         data_t pte = 0; 
         if ( pagesize(way,set) )    // 2M page size
@@ -583,7 +583,7 @@ public:
     //  This method return the index of the least recently
     //  used descriptor in the associative set.
     /////////////////////////////////////////////////////////////
-    inline size_t getlru(size_t set)
+    size_t getlru(size_t set)
     {
         // check val bit firstly, replace the invalid PTE
         for(size_t way = 0; way < m_nways; way++) 
@@ -619,7 +619,7 @@ public:
     /////////////////////////////////////////////////////////////
     //  This method writes a new 2M page size entry in the TLB.
     /////////////////////////////////////////////////////////////
-    inline void update(data_t pte, vaddr_t vaddress) 
+    void update(data_t pte, vaddr_t vaddress) 
     {
         size_t set = (vaddress >> PAGE_M_NBITS) & m_sets_mask; 
         size_t way = getlru(set);
@@ -647,7 +647,7 @@ public:
     /////////////////////////////////////////////////////////////
     //  This method writes a new 4K page size entry in the TLB.
     /////////////////////////////////////////////////////////////
-    inline void update(data_t pte, data_t ppn2 , vaddr_t vaddress) 
+    void update(data_t pte, data_t ppn2 , vaddr_t vaddress) 
     {
         size_t set = (vaddress >> PAGE_K_NBITS) & m_sets_mask; 
         size_t way = getlru(set);
@@ -675,7 +675,7 @@ public:
     //  This method invalidates a TLB entry
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
-    inline bool inval(vaddr_t vaddress) 
+    bool inval(vaddr_t vaddress) 
     {
         size_t m_set = (vaddress >> PAGE_M_NBITS) & m_sets_mask; 
         size_t k_set = (vaddress >> PAGE_K_NBITS) & m_sets_mask; 
@@ -703,7 +703,7 @@ public:
     /////////////////////////////////////////////////////////////
     //  This method writes a new entry in the TLB.
     /////////////////////////////////////////////////////////////
-    inline void setdirty(size_t way, size_t set)
+    void setdirty(size_t way, size_t set)
     {
         dirty(way,set) = true;
     } // end setdirty()
@@ -711,7 +711,7 @@ public:
     /////////////////////////////////////////////////////////////
     //  This method return the page size. 
     /////////////////////////////////////////////////////////////
-    inline bool getpagesize(size_t way, size_t set)
+    bool getpagesize(size_t way, size_t set)
     {
         return pagesize(way,set);
     }
@@ -728,7 +728,7 @@ public:
     paddr_t  *m_nline; 
 
     // access methods 
-    inline paddr_t &nline(size_t way, size_t set)
+    paddr_t &nline(size_t way, size_t set)
     { 
         return m_nline[(way*this->m_nsets)+set]; 
     }
@@ -753,7 +753,7 @@ public:
     //  In case of HIT, the physical address, 
     //  the pte informations, way and set are returned. 
     /////////////////////////////////////////////////////////
-    inline bool cctranslate( vaddr_t vaddress,      // virtual address
+    bool cctranslate( vaddr_t vaddress,      // virtual address
                              paddr_t *paddress,     // return physique address
                              pte_info_t *pte_info,  // return pte information
                              paddr_t *victim_index, // return nline
@@ -812,7 +812,7 @@ public:
     //  This method invalidates a TLB entry for cc_vcache2
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
-    inline bool inval(vaddr_t vaddress, paddr_t* victim)
+    bool inval(vaddr_t vaddress, paddr_t* victim)
     {
         paddr_t vic_nline = 0;
         size_t m_set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask; 
@@ -857,7 +857,7 @@ public:
     //  This method invalidates a TLB entry for cc_vcache
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
-    inline bool inval1(vaddr_t vaddress, paddr_t* victim)
+    bool inval1(vaddr_t vaddress, paddr_t* victim)
     {
         paddr_t vic_nline = 0;
         size_t m_set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask; 
@@ -891,7 +891,7 @@ public:
     //  This method coherence invalidates a TLB entry
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
-    inline void ccinval(size_t invway, size_t invset)
+    void ccinval(size_t invway, size_t invset)
     {
         this->clearvalid(invway,invset);
     } // end ccinval()
@@ -900,7 +900,7 @@ public:
     //  This method coherence invalidates a TLB entry
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
-    inline size_t getnline(size_t way, size_t set)
+    size_t getnline(size_t way, size_t set)
     {
         return nline(way,set);
     } // end getnline()
@@ -915,7 +915,7 @@ public:
     //  whether need a cleanupand cleanup_nline contains the NLINE 
     //  that is for cleanup.   
     /////////////////////////////////////////////////////////////
-    inline bool checkcleanup(size_t nway, size_t nset, paddr_t* cleanup_nline)
+    bool checkcleanup(size_t nway, size_t nset, paddr_t* cleanup_nline)
     {
         bool cleanup = false;
         bool isglobal = false;
@@ -973,7 +973,7 @@ public:
     //  whether need a cleanupand cleanup_nline contains the NLINE 
     //  that is for cleanup.   
     /////////////////////////////////////////////////////////////
-    inline bool checkcleanup1(size_t nway, size_t nset, paddr_t* cleanup_nline)
+    bool checkcleanup1(size_t nway, size_t nset, paddr_t* cleanup_nline)
     {
         bool cleanup = false;
         bool isglobal = false;
@@ -999,7 +999,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //  This method writes a new 2M page size entry in the TLB for cc_vcache2.
     //////////////////////////////////////////////////////////////////////////
-    inline bool update(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
+    bool update(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
         size_t set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask;
         size_t selway = this->getlru(set);
@@ -1046,7 +1046,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //  This method writes a new 2M page size entry in the TLB for cc_vcache.
     //////////////////////////////////////////////////////////////////////////
-    inline bool update1(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
+    bool update1(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
         size_t set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask;
         size_t selway = this->getlru(set);
@@ -1079,7 +1079,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //  This method writes a new 4K page size entry in the TLB for cc_vcache2.
     //////////////////////////////////////////////////////////////////////////
-    inline bool update(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
+    bool update(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
         size_t set = (vaddress >> PAGE_K_NBITS) & this->m_sets_mask;
         size_t selway = this->getlru(set);
@@ -1128,7 +1128,7 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //  This method writes a new 4K page size entry in the TLB for cc_vcache.
     //////////////////////////////////////////////////////////////////////////
-    inline bool update1(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
+    bool update1(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
         size_t set = (vaddress >> PAGE_K_NBITS) & this->m_sets_mask;
         size_t selway = this->getlru(set);
@@ -1163,7 +1163,7 @@ public:
     //  that are as PTE don't exist in TLB. If is true, a cleanup 
     //  request is actived.
     //////////////////////////////////////////////////////////////
-    inline bool cleanupcheck( paddr_t n_line ) 
+    bool cleanupcheck( paddr_t n_line ) 
     {
         for( size_t way = 0; way < this->m_nways; way++ ) 
         {
@@ -1182,7 +1182,7 @@ public:
     //  This method invalidates a TLB entry
     //  identified by the virtual page number.
     //////////////////////////////////////////////////////////////
-    inline bool cccheck( paddr_t n_line, 
+    bool cccheck( paddr_t n_line, 
                          size_t start_way, size_t start_set, 
                          size_t* n_way, size_t* n_set,
                          bool* end )
