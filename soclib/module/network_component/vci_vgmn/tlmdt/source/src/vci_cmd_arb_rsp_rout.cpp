@@ -112,14 +112,14 @@ tmpl(void)::behavior(void)   // initiator thread
 
     if ( *packet.time < m_pdes_local_time->get() ){
 #ifdef SOCLIB_MODULE_DEBUG
-      std::cout << "[" << name() << "] UPDATE MESSAGE TIME time = " << *packet.time.value() << std::endl;
+      std::cout << "[" << name() << "] UPDATE MESSAGE TIME time = " << (*packet.time).value() << std::endl;
 #endif
       *packet.time = m_pdes_local_time->get();
     }
 
 
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << "[" << name() << "] send message to target time = " << *packet.time.value() << std::endl;
+    std::cout << "[" << name() << "] send message to target time = " << (*packet.time).value() << std::endl;
 #endif
 
     p_vci_initiator->nb_transport_fw(*packet.payload, *packet.phase, *packet.time);
