@@ -1001,16 +1001,18 @@ public:
     //////////////////////////////////////////////////////////////////////////
     bool update(data_t pte, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
-        size_t set = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask;
-        size_t selway = this->getlru(set);
-        bool cleanup = this->valid(selway,set);
+        size_t selset = (vaddress >> PAGE_M_NBITS) & this->m_sets_mask;
+        size_t selway = this->getlru(selset);
+        bool cleanup = this->valid(selway,selset);
 
 	if (cleanup) {
             for( size_t way = 0; way < this->m_nways; way++ ) 
             {
                 for( size_t set = 0; set < this->m_nsets; set++ ) 
                 {
-                    if ((nline(way,set) == nline(selway,set)) && this->valid(way,set)) 
+		    if (way == selway && set == selset)
+			continue;
+                    if ((nline(way,set) == nline(selway,selset)) && this->valid(way,set)) 
                     {
                         cleanup = false;
                         break;
@@ -1019,27 +1021,27 @@ public:
             } 
         }
 
-        this->vpn(selway,set) = vaddress >> (PAGE_M_NBITS + this->m_sets_shift);
-        this->ppn(selway,set) = pte & ((1<<(this->m_paddr_nbits - PAGE_M_NBITS))-1); 
+        this->vpn(selway,selset) = vaddress >> (PAGE_M_NBITS + this->m_sets_shift);
+        this->ppn(selway,selset) = pte & ((1<<(this->m_paddr_nbits - PAGE_M_NBITS))-1); 
  
-        this->setvalid(selway,set);
-        this->pagesize(selway,set)   = true;
-        this->setlru(selway,set);
+        this->setvalid(selway,selset);
+        this->pagesize(selway,selset)   = true;
+	this->setlru(selway,selset);
 
-        this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
-        this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
-        this->cacheable(selway,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
-        this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
-        this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
-        this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
+        this->locacc(selway,selset)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
+        this->remacc(selway,selset)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
+        this->cacheable(selway,selset)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        this->writable(selway,selset)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
+        this->executable(selway,selset) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
+        this->user(selway,selset)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
 	if (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1)
-		this->setglobal(selway,set);
+		this->setglobal(selway,selset);
 	else
-		this->clearglobal(selway,set);
-        this->dirty(selway,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
+		this->clearglobal(selway,selset);
+        this->dirty(selway,selset)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
         
-        *victim = nline(selway,set);
-        nline(selway,set) = line;  
+        *victim = nline(selway,selset);
+        nline(selway,selset) = line;  
         return cleanup;
     } // end update()
 
@@ -1081,9 +1083,9 @@ public:
     //////////////////////////////////////////////////////////////////////////
     bool update(data_t pte, data_t ppn2, vaddr_t vaddress, paddr_t line, paddr_t* victim ) 
     {
-        size_t set = (vaddress >> PAGE_K_NBITS) & this->m_sets_mask;
-        size_t selway = this->getlru(set);
-        bool cleanup = this->valid(selway,set);
+        size_t selset = (vaddress >> PAGE_K_NBITS) & this->m_sets_mask;
+        size_t selway = this->getlru(selset);
+        bool cleanup = this->valid(selway,selset);
 
         // check if we really need to do a cleanup
 	if (cleanup) {
@@ -1091,7 +1093,9 @@ public:
             {
                 for( size_t set = 0; set < this->m_nsets; set++ ) 
                 {
-                    if ((nline(way,set) == nline(selway,set)) && this->valid(way,set)) 
+		    if (way == selway && set == selset)
+			continue;
+                    if ((nline(way,set) == nline(selway,selset)) && this->valid(way,set)) 
                     {
                         cleanup = false;
                         break;
@@ -1100,27 +1104,27 @@ public:
             } 
 	}
 
-        this->vpn(selway,set) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
-        this->ppn(selway,set) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
-        this->setvalid(selway,set);
-        this->pagesize(selway,set)   = false;
-        this->setlru(selway,set);
+        this->vpn(selway,selset) = vaddress >> (PAGE_K_NBITS + this->m_sets_shift);
+        this->ppn(selway,selset) = ppn2 & ((1<<(this->m_paddr_nbits - PAGE_K_NBITS))-1);  
+        this->setvalid(selway,selset);
+        this->pagesize(selway,selset)   = false;
+	this->setlru(selway,selset);
 
-        this->locacc(selway,set)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
-        this->remacc(selway,set)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
-        this->cacheable(selway,set)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
-        this->writable(selway,set)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
-        this->executable(selway,set) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
-        this->user(selway,set)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
+        this->locacc(selway,selset)     = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
+        this->remacc(selway,selset)     = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
+        this->cacheable(selway,selset)  = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        this->writable(selway,selset)   = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;       
+        this->executable(selway,selset) = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
+        this->user(selway,selset)       = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
 	if (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1)
-		this->setglobal(selway,set);
+		this->setglobal(selway,selset);
 	else
-		this->clearglobal(selway,set);
+		this->clearglobal(selway,selset);
 		
-        this->dirty(selway,set)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
+        this->dirty(selway,selset)      = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false; 
         
-        *victim = nline(selway,set);
-        nline(selway,set) = line; 
+        *victim = nline(selway,selset);
+        nline(selway,selset) = line; 
 
         return cleanup;
     } // end update()
