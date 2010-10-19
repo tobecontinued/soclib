@@ -62,6 +62,9 @@ private:
     uint32_t *r_pti_per;
     uint32_t *r_pti_val;
     uint32_t *r_wti_reg;
+
+    uint32_t m_clock_cycles;
+
 protected:
     SC_HAS_PROCESS(VciXicu);
 

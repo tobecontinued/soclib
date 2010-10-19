@@ -69,7 +69,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
         r_wti_reg[idx] = data;
         r_wti_pending |= 1<<idx;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write WTI_REG[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write WTI_REG[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_PTI_PER:
@@ -82,77 +82,77 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
             r_pti_val[idx] = data;
         }
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write PTI_PER[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write PTI_PER[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_PTI_VAL:
         CHECK_BOUNDS(pti);
         r_pti_val[idx] = data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write PTI_VAL[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write PTI_VAL[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_PTI:
         CHECK_BOUNDS(irq);
         r_msk_pti[idx] = data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write MASK_PTI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write MASK_PTI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_PTI_ENABLE:
         CHECK_BOUNDS(irq);
         r_msk_pti[idx] |= data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write PTI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write PTI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_PTI_DISABLE:
         CHECK_BOUNDS(irq);
         r_msk_pti[idx] &= ~data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write PTI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write PTI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_HWI:
         CHECK_BOUNDS(irq);
         r_msk_hwi[idx] = data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write MSK_HWI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write MSK_HWI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_HWI_ENABLE:
         CHECK_BOUNDS(irq);
         r_msk_hwi[idx] |= data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write HWI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write HWI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_HWI_DISABLE:
         CHECK_BOUNDS(irq);
         r_msk_hwi[idx] &= ~data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write HWI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write HWI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_WTI:
         CHECK_BOUNDS(irq);
         r_msk_wti[idx] = data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write MSK_WTI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write MSK_WTI[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_WTI_ENABLE:
         CHECK_BOUNDS(irq);
         r_msk_wti[idx] |= data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write WTI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write WTI_ENABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_WTI_DISABLE:
         CHECK_BOUNDS(irq);
         r_msk_wti[idx] &= ~data;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write WTI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Write WTI_DISABLE[" << std::dec << idx << "] = "  << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
 	}
@@ -162,30 +162,31 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
 	size_t cell = (size_t)addr / vci_param::B;
-	size_t idx = cell & 0x1f;
+    size_t idx = cell & 0x1f;
 	size_t func = (cell >> 5) & 0x1f;
 
 	switch (func) {
     case XICU_WTI_REG:
         CHECK_BOUNDS(wti);
         data = r_wti_reg[idx];
-        r_wti_pending &= ~(1<<idx);
+        r_wti_pending &= ~(1<<idx);        
+
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_WTI_REG[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_WTI_REG[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_PTI_PER:
         CHECK_BOUNDS(pti);
         data = r_pti_per[idx];
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_PTI_PER[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_PTI_PER[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_PTI_VAL:
         CHECK_BOUNDS(pti);
         data = r_pti_val[idx];
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_PTI_VAL[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_PTI_VAL[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_PTI_ACK:
@@ -193,49 +194,49 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         r_pti_pending &= ~(1<<idx);
         data = 0;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_PTI_ACK[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_PTI_ACK[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_PTI:
         CHECK_BOUNDS(irq);
         data = r_msk_pti[idx];
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_MSK_PTI[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_MSK_PTI[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_PTI_ACTIVE:
         CHECK_BOUNDS(irq);
         data = r_msk_pti[idx] & r_pti_pending;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_PTI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_PTI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_HWI:
         CHECK_BOUNDS(irq);
         data = r_msk_hwi[idx];
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_MSK_HWI[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_MSK_HWI[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_HWI_ACTIVE:
         CHECK_BOUNDS(irq);
         data = r_msk_hwi[idx] & r_hwi_pending;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_HWI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_HWI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_MSK_WTI:
         CHECK_BOUNDS(irq);
         data = r_msk_wti[idx];
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_MSK_WTI[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_MSK_WTI[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_WTI_ACTIVE:
         CHECK_BOUNDS(irq);
         data = r_msk_wti[idx] & r_wti_pending;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_WTI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_WTI_ACTIVE[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
     case XICU_PRIO:
@@ -248,7 +249,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
             ((soclib::common::ctz<uint32_t>(r_msk_hwi[idx] & r_hwi_pending) & 0x1f) << 16) |
             ((soclib::common::ctz<uint32_t>(r_msk_wti[idx] & r_wti_pending) & 0x1f) << 24);
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Read XICU_PRIO[" << std::dec << idx << "] = " << std::hex << (int)data << std::endl;
+        std::cout << "[" << name() << "] Read XICU_PRIO[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
 	}
@@ -257,6 +258,10 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 
 tmpl(void)::transition()
 {
+#if SOCLIB_MODULE_DEBUG
+    m_clock_cycles++;
+#endif
+
 	if (!p_resetn.read()) {
 		m_vci_fsm.reset();
 
@@ -300,6 +305,16 @@ tmpl(void)::genMoore()
 	m_vci_fsm.genMoore();
 
     for ( size_t i = 0; i<m_irq_count; ++i ) {
+#if SOCLIB_MODULE_DEBUG
+        bool b =
+            (r_msk_pti[i] & r_pti_pending) ||
+            (r_msk_wti[i] & r_wti_pending) ||
+            (r_msk_hwi[i] & r_hwi_pending);
+
+        if(b != p_irq[i].read()){
+            std::cout << "p_irq[" << i << "] = " << b << std::endl;
+        }
+#endif
         p_irq[i] = 
             (r_msk_pti[i] & r_pti_pending) ||
             (r_msk_wti[i] & r_wti_pending) ||
@@ -330,6 +345,7 @@ tmpl(/**/)::VciXicu(
            r_pti_per(new uint32_t[pti_count]),
            r_pti_val(new uint32_t[pti_count]),
            r_wti_reg(new uint32_t[wti_count]),
+           m_clock_cycles(0),
            p_clk("clk"),
            p_resetn("resetn"),
            p_vci("vci"),
