@@ -31,10 +31,6 @@
 
 namespace soclib { namespace tlmdt {
 
-#ifndef MY_DEBUG
-#define MY_DEBUG 0
-#endif
-
 #define tmpl(x) template<typename vci_param> x VciRam<vci_param>
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -121,8 +117,9 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
   uint32_t nwords = (uint32_t)(payload.get_data_length() / vci_param::nbytes);
   uint32_t srcid  = extension_pointer->get_src_id();
+#ifdef SOCLIB_MODULE_DEBUG
   uint32_t pktid  = extension_pointer->get_pkt_id();
-
+#endif
 
   for (segIndex=0,seg = m_segments.begin(); seg != m_segments.end(); ++segIndex, ++seg ) {
     soclib::common::Segment &s = *seg;
@@ -132,10 +129,6 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     switch(extension_pointer->get_command()){
     case VCI_READ_COMMAND:
       {
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive from source "<< srcid << " a read packet " << pktid << " Time = "  << time.value() << std::endl;
-#endif
-
 	typename vci_param::addr_t address;
 	for (size_t i=0;i<nwords;i++){
 	  //if (payload.contig) 
@@ -145,7 +138,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
 	  utoa(m_contents[segIndex][address / vci_param::nbytes], payload.get_data_ptr(),(i * vci_param::nbytes));
 
-#if MY_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	  printf("[%s] time %d read %d address = 0x%09x data = 0x%09x\n", name(), (int)time.value(), (int)m_cpt_read, (int)address, (int)m_contents[segIndex][address / vci_param::nbytes]);
 #endif
 
@@ -158,9 +151,6 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       break;
     case VCI_WRITE_COMMAND:
       {
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive from source " << srcid <<" a Write packet "<< pktid << " Time = "  << time.value() << std::endl;
-#endif
 	typename vci_param::addr_t address;
 	for (size_t i=0; i<nwords; i++){
 	  //if(payload.contig)
@@ -177,7 +167,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 	  
 	  tab[index] = (cur & ~mask) | (atou( payload.get_data_ptr(), (i * vci_param::nbytes) ) & mask);
 
-#if MY_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	  if(tab[index]==0)
 	    printf("[%s] time %d write %d address = 0x%09x data = 0x%09x tab[%d] = %x\n",name(), (int)time.value(), (int)m_cpt_write, (int)address, (int)(atou( payload.get_data_ptr(), (i * vci_param::nbytes))), (int)index, (int)tab[index]);
 	  else
@@ -193,9 +183,6 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       break;
     case VCI_LINKED_READ_COMMAND:
       {
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive from source " << srcid <<" a Locked Read packet "<< pktid << " Time = " << time.value() << std::endl;
-#endif
         m_cpt_read+=nwords;
 
 	typename vci_param::addr_t address;
@@ -207,7 +194,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
           utoa(m_contents[segIndex][address / vci_param::nbytes], payload.get_data_ptr(),(i * vci_param::nbytes));
 
-#if MY_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	  printf("[%s] time %d read %d address = 0x%09x data = 0x%09x\n", name(), (int)time.value(), (int)m_cpt_read, (int)address, (int)(m_contents[segIndex][address / vci_param::nbytes]));
 #endif
 	  
@@ -221,10 +208,6 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
       break;
     case VCI_STORE_COND_COMMAND:
       {
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive from source " << srcid <<" a Store Conditionnel packet "<< pktid << " Time = "  << time.value() << std::endl;
-#endif
-
 	typename vci_param::addr_t address;
         for (size_t i=0; i<nwords; i++){
           //if(payload.contig)
@@ -242,7 +225,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
 	    tab[index] = (cur & ~mask) | (atou(payload.get_data_ptr(), (i * vci_param::nbytes)) & mask);
 
-#if MY_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
 	    if(tab[index]==0)
 	      printf("[%s] time %d write %d address = 0x%09x data = 0x%09x tab[%d] = %x\n",name(), (int)time.value(), (int)m_cpt_write, (int)address, (int)(atou( payload.get_data_ptr(), (i * vci_param::nbytes))), (int)index, (int)tab[index]);
 	    else
@@ -275,10 +258,6 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     m_pdes_local_time->set(time + UNIT_TIME);
   
     phase = tlm::BEGIN_RESP;
-
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << "[" << name() << "] Send to source "<< srcid << " a anwser packet " << pktid << " Time = "  << time.value()  << std::endl;
-#endif
 
     p_vci->nb_transport_bw(payload, phase, time);
     return tlm::TLM_COMPLETED;
