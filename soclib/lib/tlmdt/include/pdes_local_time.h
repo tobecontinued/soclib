@@ -31,6 +31,7 @@
 #define __PDES_LOCAL_TIME_H__
 
 #include <systemc>
+#include <tlmdt>
 
 //
 // pdes_local_time class
@@ -43,7 +44,7 @@ class pdes_local_time
 
 public:
   
-  pdes_local_time( sc_core::sc_time time_quantum )     // time quantum
+  pdes_local_time( sc_core::sc_time time_quantum = 100 * UNIT_TIME )     // time quantum
     : m_local_time(sc_core::SC_ZERO_TIME)
   {
     m_time_quantum = time_quantum;
