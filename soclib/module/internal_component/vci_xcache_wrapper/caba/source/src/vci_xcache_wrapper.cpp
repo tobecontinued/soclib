@@ -253,7 +253,8 @@ tmpl(void)::print_stats()
 ////////////////////////
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
-    std::cout << name() << std::endl;
+    std::cout << "------------------------------------" << std:: dec << std::endl;
+    std::cout << name() << " / Time = " << m_cpt_total_cycles << std::endl;
     std::cout << "- CPI                = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
     std::cout << "- READ RATE          = " << (float)m_cpt_read/run_cycles << std::endl ;
     std::cout << "- WRITE RATE         = " << (float)m_cpt_write/run_cycles << std::endl;
