@@ -37,34 +37,9 @@
 namespace soclib {
 namespace caba {
 
-template<typename vci_param>
-class VciLoggerElem
-{
-    typedef std::vector<VciCmdBuffer<vci_param> > cmd_list_t;
-    typedef std::vector<VciRspBuffer<vci_param> > rsp_list_t;
-    cmd_list_t m_cmd_packets;
-    rsp_list_t m_rsp_packets;
-    bool m_cmd_ended;
-    bool m_rsp_ended;
+#define tmpl(...) template<typename vci_param> __VA_ARGS__ VciLoggerElem<vci_param>
 
-public:
-    VciLoggerElem();
-
-    void takeRsp( const VciMonitor<vci_param> &port);
-    void takeCmd( const VciMonitor<vci_param> &port);
-    void print(std::ostream &o) const;
-    void reset();
-
-    friend std::ostream &operator <<(std::ostream &o, const VciLoggerElem<vci_param> &c)
-    {
-        c.print(o);
-        return o;
-    }
-};
-
-#define tmpl(x) template<typename vci_param> x VciLoggerElem<vci_param>
-
-tmpl(/**/)::VciLoggerElem()
+tmpl()::VciLoggerElem()
 {
     m_cmd_ended = false;
     m_rsp_ended = false;
@@ -168,13 +143,13 @@ tmpl(void)::reset()
 }
 
 #undef tmpl
-#define tmpl(x) template<typename vci_param> x VciLogger<vci_param>
+#define tmpl(...) template<typename vci_param> __VA_ARGS__ VciLogger<vci_param>
 
-tmpl(/**/)::VciLogger(
+tmpl()::VciLogger(
 	sc_core::sc_module_name insname,
 	const soclib::common::MappingTable &mt )
 	: BaseModule(insname),
-      m_pending_commands(new VciLoggerElem<vci_param>[1<<vci_param::T]),
+       m_pending_commands(new VciLoggerElem<vci_param>[1<<(vci_param::S+vci_param::T)]),
       p_resetn("resetn"),
       p_clk("clk"),
       p_vci("vci")
@@ -184,20 +159,29 @@ tmpl(/**/)::VciLogger(
 	sensitive << p_clk.pos();
 }
 
-tmpl(/**/)::~VciLogger()
+tmpl()::~VciLogger()
 {
     delete [] m_pending_commands;
 }
 
+tmpl(void)::handle_txn(const VciLoggerElem<vci_param> &elem)
+{
+    std::cout << name() << ' ' << elem << std::endl;
+}
+
 tmpl(void)::transition()
 {
+    size_t cindex = (p_vci.srcid.read() << vci_param::T) | p_vci.trdid.read();
+    size_t rindex = (p_vci.rsrcid.read() << vci_param::T) | p_vci.rtrdid.read();
+
     if ( p_vci.cmdval.read() && p_vci.cmdack.read() )
-        m_pending_commands[p_vci.trdid.read()].takeCmd(p_vci);
+        m_pending_commands[cindex].takeCmd(p_vci);
+
     if ( p_vci.rspval.read() && p_vci.rspack.read() ) {
-        m_pending_commands[p_vci.rtrdid.read()].takeRsp(p_vci);
+        m_pending_commands[rindex].takeRsp(p_vci);
         if ( p_vci.reop.read() ) {
-        std::cout << name() << ' ' << m_pending_commands[p_vci.rtrdid.read()] << std::endl;
-        m_pending_commands[p_vci.rtrdid.read()].reset();
+            handle_txn(m_pending_commands[rindex]);
+            m_pending_commands[rindex].reset();
         }
     }
 }

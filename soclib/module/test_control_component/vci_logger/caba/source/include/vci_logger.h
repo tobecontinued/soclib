@@ -25,18 +25,86 @@
  *
  * Maintainers: nipo
  */
-#ifndef SOCLIB_CABA_LOGGER_H
-#define SOCLIB_CABA_LOGGER_H
+#ifndef SOCLIB_CABA_VCI_LOGGER_H
+#define SOCLIB_CABA_VCI_LOGGER_H
 
 #include <systemc>
 #include "vci_monitor.h"
+#include "vci_buffers.h"
 #include "caba_base_module.h"
 #include "mapping_table.h"
 
 namespace soclib {
 namespace caba {
 
-template<typename vci_param> class VciLoggerElem;
+template<typename vci_param>
+class VciLoggerElem
+{
+    typedef std::vector<VciCmdBuffer<vci_param> > cmd_list_t;
+    typedef std::vector<VciRspBuffer<vci_param> > rsp_list_t;
+    cmd_list_t m_cmd_packets;
+    rsp_list_t m_rsp_packets;
+    bool m_cmd_ended;
+    bool m_rsp_ended;
+
+public:
+    VciLoggerElem();
+
+    void takeRsp( const VciMonitor<vci_param> &port);
+    void takeCmd( const VciMonitor<vci_param> &port);
+    void print(std::ostream &o) const;
+    void reset();
+
+    friend std::ostream &operator <<(std::ostream &o, const VciLoggerElem<vci_param> &c)
+    {
+        c.print(o);
+        return o;
+    }
+
+    typename vci_param::fast_addr_t address() const
+    {
+        return m_cmd_packets[0].address;
+    }
+
+    typename vci_param::cmd_t command() const
+    {
+        return m_cmd_packets[0].cmd;
+    }
+
+    typename vci_param::cmd_t plen() const
+    {
+        return m_cmd_packets[0].plen;
+    }
+
+    std::vector<typename vci_param::fast_data_t> rdata() const
+    {
+        std::vector<typename vci_param::fast_data_t> ret;
+
+        for ( typename rsp_list_t::const_iterator i = m_rsp_packets.begin();
+              i != m_rsp_packets.end();
+              ++i ) {
+            ret.push_back(i->rdata);
+        }
+        return ret;
+    }
+
+    std::vector<typename vci_param::fast_data_t> wdata() const
+    {
+        std::vector<typename vci_param::fast_data_t> ret;
+
+        for ( typename cmd_list_t::const_iterator i = m_cmd_packets.begin();
+              i != m_cmd_packets.end();
+              ++i ) {
+            ret.push_back(i->wdata);
+        }
+        return ret;
+    }
+
+    typename vci_param::srcid_t srcid() const
+    {
+        return m_cmd_packets[0].srcid;
+    }
+};
 
 template<typename vci_param>
 class VciLogger
@@ -46,6 +114,7 @@ class VciLogger
 
 protected:
 	SC_HAS_PROCESS(VciLogger);
+    virtual void handle_txn(const VciLoggerElem<vci_param> &elem);
 
 public:
     sc_core::sc_in<bool> p_resetn;
@@ -63,7 +132,7 @@ private:
 
 }}
 
-#endif /* SOCLIB_CABA_LOGGER_H */
+#endif /* SOCLIB_CABA_VCI_LOGGER_H */
 
 // Local Variables:
 // tab-width: 4
