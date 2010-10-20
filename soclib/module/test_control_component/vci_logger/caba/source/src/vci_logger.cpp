@@ -80,8 +80,9 @@ tmpl(void)::print( std::ostream &o ) const
         if ( m_cmd_packets[0].plen )
             o << " plen = " << std::noshowbase << std::dec << m_cmd_packets[0].plen;
             o << " const = " << m_cmd_packets[0].cons;
-            o << " (r)srcid = " << m_cmd_packets[0].srcid,
-            o << " be = " << m_cmd_packets[0].be;
+            o << " (r)srcid = " << m_cmd_packets[0].srcid;
+            o << " (r)trdid = " << m_cmd_packets[0].trdid;
+            o << " be = " << std::hex << std::showbase << m_cmd_packets[0].be;
     }
     if ( m_cmd_packets[0].cmd == vci_param::CMD_WRITE
          || m_cmd_packets[0].cmd == vci_param::CMD_STORE_COND ) {
