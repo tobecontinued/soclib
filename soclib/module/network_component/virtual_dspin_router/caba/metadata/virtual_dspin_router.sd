@@ -13,6 +13,15 @@ Module('caba:virtual_dspin_router',
 		Port('caba:dspin_output', 'p_out', [2, 5], dspin_data_size = parameter.Reference('flit_width')), 
 		Port('caba:dspin_input', 'p_in', [2, 5], dspin_data_size = parameter.Reference('flit_width')),
 	],
+	instance_parameters = [
+                parameter.Int('x'),
+                parameter.Int('y'),
+                parameter.Int('x_width'),
+                parameter.Int('y_width'),
+                parameter.Int('in_fifo_depth'),
+                parameter.Int('out_fifo_depth'),
+
+	],
 	uses = [
 		Uses('caba:base_module'),
 		Uses('caba:generic_fifo',),
