@@ -52,7 +52,7 @@ export PYTHONPATH
 # Note to self: when dropping support for python2.4, move
 # soclib_cc_main.py to soclib_cc/main.py, -m soclib_cc.main is
 # accepted since 2.5.
-for py in python2.6 python2.5 python2.4 python ; do
+for py in python2.7 python2.6 python2.5 python2.4 python ; do
 	if ($py -c "import sys;sys.exit(0)" 2>&1) >/dev/null ; then
         pyargs=
         if [ "$py" = "python2.6" ] ; then
