@@ -83,7 +83,6 @@ namespace soclib { namespace common {
         m_dbe =             false;
         m_dreq.req =        null_dreq;
         m_ins_delay =       0;
-        m_cancel_next_ins = false;
         m_hazard =          false;
         m_exception =       false;
         m_exception_cause = X_RESET;
@@ -97,7 +96,7 @@ namespace soclib { namespace common {
         r_DC.whole = 0; // debug control
         r_DEBA = DEBA_RESET;   // Debug Exception base
         for (unsigned int i = 0; i<4; i++) { 
-            r_PB[i].whole = 0; // break points
+            r_BP[i].whole = 0; // break points
             r_WP[i] = 0; // watch points
         }
 
@@ -187,8 +186,27 @@ namespace soclib { namespace common {
         }
         // Initialize future value of npc.
         // In case of jump, the instruction will modify it.
-        m_next_pc = r_npc+4;
-        m_cancel_next_ins = false;
+        m_next_pc = r_pc + 4;
+
+#undef LM32_HARDWARE_BP
+#ifdef LM32_HARDWARE_BP
+        // Check if we reached a hardware break points
+        for (unsigned int i = 0; i<4;i++) {
+            if (r_BP[i].E && ((r_pc >> 2) == r_BP[i].A)) {
+#ifdef SOCLIB_MODULE_DEBUG
+                std::cout
+                    << name()
+                    << " Hardware breakpoint "
+                    << i
+                    <<" reached"
+                    << std::endl;
+#endif
+                m_exception = true;
+                m_exception_cause = X_BREAK_POINT;
+                goto handle_except;
+            }
+        }
+#endif // LM32_HARDWARE_BP
 
         // If there is an instruction bus error, then handle it !
         if (m_ibe) {
@@ -206,7 +224,6 @@ namespace soclib { namespace common {
             m_dbe = false;
             goto handle_except;
         }
-
 
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout << m_name << std::endl;
@@ -226,18 +243,18 @@ namespace soclib { namespace common {
             m_exception_cause = X_INTERRUPT ;
 #ifdef SOCLIB_MODULE_DEBUG
             std::cout << name() << " Taking irqs " << std::hex << irq_bit_field << std::endl 
-            << "Interrupt enable bit : " << r_IE.IE << std::endl
-            << "Interrupt mask : " << r_IM
-            << std::endl;
+                << "Interrupt enable bit : " << r_IE.IE << std::endl
+                << "Interrupt mask : " << r_IM
+                << std::endl;
 #endif
             goto handle_except; 
 #ifdef SOCLIB_MODULE_DEBUG
         } else {
             if ( irq_bit_field )
                 std::cout << name() << " Ignoring irqs " << std::hex << irq_bit_field << std::endl
-            << "Interrupt enable bit : " << r_IE.IE << std::endl
-            << "Interrupt mask : " << r_IM
-            << std::endl;
+                    << "Interrupt enable bit : " << r_IE.IE << std::endl
+                    << "Interrupt mask : " << r_IM
+                    << std::endl;
 #endif
         }
 
@@ -259,34 +276,34 @@ namespace soclib { namespace common {
 
             switch (m_exception_cause) {
 
-            case  X_RESET             :
-            case  X_INTERRUPT         :
-                ex_class = EXCL_IRQ;
-                break;
+                case  X_RESET             :
+                case  X_INTERRUPT         :
+                    ex_class = EXCL_IRQ;
+                    break;
 
-            case  X_BREAK_POINT       :
-                ex_class = EXCL_TRAP;
-                break;
+                case  X_BREAK_POINT       :
+                    ex_class = EXCL_TRAP;
+                    break;
 
-            case  X_DATA_BUS_ERROR    :
-            case  X_INST_BUS_ERROR    :
-                ex_cause = EXCA_BADADDR;
-                break;
+                case  X_DATA_BUS_ERROR    :
+                case  X_INST_BUS_ERROR    :
+                    ex_cause = EXCA_BADADDR;
+                    break;
 
-            case  X_DIVISION_BY_ZERO  :
-                ex_cause = EXCA_DIVBYZERO;
-                break;
+                case  X_DIVISION_BY_ZERO  :
+                    ex_cause = EXCA_DIVBYZERO;
+                    break;
 
-            case  X_WATCH_POINT       :
-                ex_cause = EXCA_FPU;
-                break;
+                case  X_WATCH_POINT       :
+                    ex_cause = EXCA_FPU;
+                    break;
 
-            case  X_SYSTEM_CALL       :
-                ex_class = EXCL_SYSCALL;
-                break;
+                case  X_SYSTEM_CALL       :
+                    ex_class = EXCL_SYSCALL;
+                    break;
 
-            default:  // unkown exception!!
-                ;
+                default:  // unkown exception!!
+                    ;
             }
 
             // Let's now handle traps... or let GDB handle them for us :)
@@ -334,19 +351,11 @@ handle_except:
                 << " next_pc: " << m_next_pc
                 << std::endl;
 #endif
-            m_cancel_next_ins = true;
 
         }
 no_except:
-        if (m_cancel_next_ins) {
-            r_pc = m_next_pc;
-            r_npc = m_next_pc+4;
-            m_cancel_next_ins = false;
-        }
-        else {
-            r_pc = r_npc;
-            r_npc = m_next_pc;
-        }
+        r_pc  = m_next_pc;
+        r_npc = m_next_pc+4;
 
         // hazard refers to simulation hazard, not functionnal hazard
         // Thus, cycle counter should not be incremented

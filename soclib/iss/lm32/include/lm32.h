@@ -94,10 +94,10 @@ template <bool lEndianInterface >
 
             // Interrupt enable
             REG32_BITFIELD(
-                    uint32_t  IE:1, // int ena
-                    uint32_t EIE:1, // copy IE if exception
+                    uint32_t not_used:29,
                     uint32_t BIE:1, // copy IE if breakpoint
-                    uint32_t not_used:29
+                    uint32_t EIE:1, // copy IE if exception
+                    uint32_t  IE:1, // int ena
                     )r_IE; 
             //Interrupt mask
             uint32_t r_IM; // Int ena if bit set to 1
@@ -109,34 +109,34 @@ template <bool lEndianInterface >
             uint32_t r_CC; // 0 at reset and incremented at each clock cycle
             // Configuration 
             REG32_BITFIELD(
-                    uint32_t M:1,       // multiplier
-                    uint32_t D:1,       // divider
-                    uint32_t S:1,       // barrel shifter
-                    uint32_t U:1,       // user defined instructions
-                    uint32_t X:1,       // sign extension 
-                    uint32_t CC:1,      // cycle counter 
-                    uint32_t IC:1,      // inst. cache
-                    uint32_t DC:1,      // data  cache 
-                    uint32_t G:1,       // debug 
-                    uint32_t H:1,       // H/W debug 
-                    uint32_t R:1,       // ROM debug 
-                    uint32_t J:1,       // JTAG uart 
-                    uint32_t INT:6,     // number of interupt (0-32) 
-                    uint32_t BP:4,      // number of break points (0-4)
+                    uint32_t REV:6,     // Processor Rev. number (0-63)
                     uint32_t WP:4,      // number of watch points (0-4) 
-                    uint32_t REV:6      // Processor Rev. number (0-63)
+                    uint32_t BP:4,      // number of break points (0-4)
+                    uint32_t INT:6,     // number of interupt (0-32) 
+                    uint32_t J:1,       // JTAG uart 
+                    uint32_t R:1,       // ROM debug 
+                    uint32_t H:1,       // H/W debug 
+                    uint32_t G:1,       // debug 
+                    uint32_t DC:1,      // data  cache 
+                    uint32_t IC:1,      // inst. cache
+                    uint32_t CC:1,      // cycle counter 
+                    uint32_t X:1,       // sign extension 
+                    uint32_t U:1,       // user defined instructions
+                    uint32_t S:1,       // barrel shifter
+                    uint32_t D:1,       // divider
+                    uint32_t M:1,       // multiplier
                     ) r_CFG;
             // Exception base address
             addr_t r_EBA;         // Exception are 256 byte aligned The lower byte have to be forced to 0
             // Debug control
             REG32_BITFIELD(
-                    uint32_t SS:1,      // Single step
-                    uint32_t RE:1,      // Remap all exceptions
-                    uint32_t C0:2,      // 00 WP disabled
-                    uint32_t C1:2,      // 01 Break on read
-                    uint32_t C2:2,      // 10 Break on write
+                    uint32_t not_used:22,
                     uint32_t C3:2,      // 11 Break on read/write
-                    uint32_t not_used:22
+                    uint32_t C2:2,      // 10 Break on write
+                    uint32_t C1:2,      // 01 Break on read
+                    uint32_t C0:2,      // 00 WP disabled
+                    uint32_t RE:1,      // Remap all exceptions
+                    uint32_t SS:1,      // Single step
                     ) r_DC;
 
             // Debug exception base address
@@ -144,25 +144,25 @@ template <bool lEndianInterface >
 
             // JTAG UART transmit
             REG32_BITFIELD(
-                    uint8_t TXD,        // Transmits data
+                    uint32_t not_used:23,
                     uint32_t F:1,       // TXD reg is full
-                    uint32_t not_used:23
+                    uint8_t TXD,        // Transmits data
                     ) r_JTX;
 
             // JTAG UART receive
             REG32_BITFIELD(
-                    uint8_t RXD,        // Receives data
+                    uint32_t not_used:23,
                     uint32_t F:1,       // RXD reg is full
-                    uint32_t not_used:23
+                    uint8_t RXD,        // Receives data
                     ) r_JRX;
 
             // Break point 
             typedef REG32_BITFIELD(
-                    uint32_t E:1,       // Enable the breakpoint
+                    uint32_t A:30,      // The BP address word aligned
                     uint32_t not_used:1,
-                    uint32_t A:30       // The BP address word aligned
+                    uint32_t E:1,       // Enable the breakpoint
                     )bp_t;
-            bp_t r_PB[4];                // 4 possible break points
+            bp_t r_BP[4];                // 4 possible break points
 
             // Watch point
             addr_t r_WP [4];              // 4 possible watch points
@@ -257,7 +257,6 @@ template <bool lEndianInterface >
             bool        m_exception;        // True if an exception is generated
             except_t    m_exception_cause;  // Exception cause
 
-            bool        m_cancel_next_ins;   // True if instruction in delay slot has to be canceled
             addr_t      m_next_pc;          // Next PC value, stored in r_npc at the end of instruction execution
 
 

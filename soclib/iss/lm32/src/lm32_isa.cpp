@@ -214,7 +214,6 @@ namespace soclib { namespace common {
     LM32_function( be ){// branch if equal
         if (r_gp[m_inst.I.rY] == r_gp[m_inst.I.rX])
         {
-            m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
@@ -224,7 +223,6 @@ namespace soclib { namespace common {
     LM32_function( bg ){// branch if greater
         if ((signed)r_gp[m_inst.I.rY] > (signed)r_gp[m_inst.I.rX])
         {
-            m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
@@ -234,7 +232,6 @@ namespace soclib { namespace common {
     LM32_function( bge ){// branch if greater or equal
         if ((signed)r_gp[m_inst.I.rY] >= (signed)r_gp[m_inst.I.rX])
         {
-            m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
@@ -244,7 +241,6 @@ namespace soclib { namespace common {
     LM32_function( bgeu ){// branch if greater or equal unsigned
         if ((unsigned)r_gp[m_inst.I.rY] >= (unsigned)r_gp[m_inst.I.rX])
         {
-            m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
@@ -254,7 +250,6 @@ namespace soclib { namespace common {
     LM32_function( bgu ){// branch if greater unsigned
         if ((unsigned)r_gp[m_inst.I.rY] > (unsigned)r_gp[m_inst.I.rX])
         {
-            m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
@@ -264,7 +259,6 @@ namespace soclib { namespace common {
     LM32_function( bne ){// branch if not equal
         if (r_gp[m_inst.I.rY] != r_gp[m_inst.I.rX])
         {
-            m_cancel_next_ins = true; // To override r_npc
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
             setInsDelay(4);
         }
@@ -392,7 +386,6 @@ namespace soclib { namespace common {
     //!Instruction b behavior method.
     LM32_function( b ){ // branch
         setInsDelay(4);
-        m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_gp[m_inst.R.rY];
         if (m_inst.R.rY == 30)      // eret // return from exception
             r_IE.IE = r_IE.EIE;
@@ -433,7 +426,6 @@ namespace soclib { namespace common {
     LM32_function( call ){// jump to sub routine
         setInsDelay(4);
         r_gp[ra] = r_npc ;// is pc + 4!!// return address
-        m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_gp[m_inst.R.rY];
     }
 
@@ -441,14 +433,12 @@ namespace soclib { namespace common {
     LM32_function( calli ){//jump to sub routine immediate
         setInsDelay(4);
         r_gp[ra] = r_npc ; // is pc + 4!!// return address
-        m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_pc + (sign_ext(m_inst.J.imd,26)<<2);
     }
 
     //!Instruction bi behavior method.
     LM32_function( bi ){// branch immediate
         setInsDelay(4);
-        m_cancel_next_ins = true; // To override r_npc
         m_next_pc = r_pc + (sign_ext(m_inst.J.imd,26)<<2);
     }
 
@@ -522,6 +512,20 @@ namespace soclib { namespace common {
             case 0x7:  // Exception base address
                 r_gp[m_inst.C.rR] = r_EBA ;
                 break;
+            case 0x10: // break point 0
+            case 0x11: // break point 1
+            case 0x12: // break point 2
+            case 0x13: // break point 3
+                r_gp[m_inst.C.rR] = 
+                                      r_BP[(m_inst.C.csr & 0x3)].A << 2 
+                                    | r_BP[(m_inst.C.csr & 0x3)].E ;
+                break;
+            case 0x18: // watch point 0
+            case 0x19: // watch point 1
+            case 0x1a: // watch point 2
+            case 0x1b: // watch point 3
+                r_gp[m_inst.C.rR] = r_WP[(m_inst.C.csr & 0x3)];
+                break;
             default:
                 std::cout   << name()
                     << "Error: Read to Unkown CSR !!"<<std::endl;
@@ -538,13 +542,19 @@ namespace soclib { namespace common {
         m_dreq.sign_extend = false;                            \
         m_dreq.dest_reg = 0;                                   \
         m_dreq.addr = 0;                                       \
-        m_dreq.req.valid = true;                                      \
-        m_dreq.req.addr = XTN_CACHE*4;                                  \
-        m_dreq.req.wdata = 0;                                         \
-        m_dreq.req.be = 0;                                            \
-        m_dreq.req.type = XTN_WRITE;                                 \
-        m_dreq.req.mode = MODE_USER;                                  \
+        m_dreq.req.valid = true;                               \
+        m_dreq.req.addr = XTN_CACHE*4;                         \
+        m_dreq.req.wdata = 0;                                  \
+        m_dreq.req.be = 0;                                     \
+        m_dreq.req.type = XTN_WRITE;                           \
+        m_dreq.req.mode = MODE_USER;                           \
     } while(0)
+
+#define WRITE_BP__(NUM,DATA)                    \
+    do {                                        \
+        r_BP[NUM].E = DATA & 0x1;               \
+        r_BP[NUM].A = (DATA & 0xfffffffc) >> 2; \
+    }while(0)
 
     //!Instruction wcsr behavior method.
     LM32_function( wcsr ){// write control & status register
@@ -579,6 +589,18 @@ namespace soclib { namespace common {
             case 0x7: // Exception base address
                 r_EBA  = wData & 0xFFFFFF00;
                 break;
+            case 0x10: // break point 0
+            case 0x11: // break point 1
+            case 0x12: // break point 2
+            case 0x13: // break point 3
+                WRITE_BP__((m_inst.C.csr & 0x3),wData);
+                break;
+            case 0x18: // watch point 0
+            case 0x19: // watch point 1
+            case 0x1a: // watch point 2
+            case 0x1b: // watch point 3
+                r_WP[(m_inst.C.csr & 0x3)] = wData;
+                break;
             default:
                 std::cout   << name()
                     << "Error: Write to Unkown CSR !!"<<std::endl;
@@ -586,6 +608,7 @@ namespace soclib { namespace common {
                 break;
         }
     }
+#undef WRITE_BP
 #undef FLUSH
 #undef LM32_function
 #undef tmpl
