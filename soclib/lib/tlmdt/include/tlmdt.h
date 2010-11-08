@@ -2,6 +2,7 @@
 #define __TLMDT_H__
 
 #include <systemc>
+#include <limits>
 #include "vci_param.h"                         // VCI parameters header
 
 //convert unsigned char[4] to an unsigned integer
