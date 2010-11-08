@@ -829,9 +829,9 @@ tmpl(void)::iss()
     
     while ( ! m_pending_irqs.empty() && m_pending_irqs.begin()->first <= m_pdes_local_time->get() ) {
       std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
-      //#ifdef SOCLIB_MODULE_DEBUG
+#ifdef SOCLIB_MODULE_DEBUG
       std::cout << "[" << name() << "] Time = " << m_pdes_local_time->get().value() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << " time = " <<  i->first.value() << std::endl;
-      //#endif
+#endif
       if ( i->second.second )
 	m_irq |= 1<<i->second.first;
       else
