@@ -437,10 +437,10 @@ tmpl(void)::iss()
     m_iss.getRequests( ireq, dreq );
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Request: " << ireq << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Request: " << ireq << std::dec << std::endl;
 #endif
 #if MY_DEBUG
-    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Request: " << ireq << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Request: " << ireq << std::dec << std::endl;
 #endif
 
     switch(m_icache_fsm) {
@@ -533,10 +533,10 @@ tmpl(void)::iss()
     } // end switch m_icache_fsm
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Response: " << irsp << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Response: " << irsp << std::dec << std::endl;
 #endif
 #if MY_DEBUG
-    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Response: " << irsp << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Instruction Response: " << irsp << std::dec << std::endl;
 #endif
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -586,10 +586,10 @@ tmpl(void)::iss()
     ////////////////////////////////////////////////////////////////////////
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Request: " << dreq << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Request: " << dreq << std::dec << std::endl;
 #endif
 #if MY_DEBUG
-    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Request: " << dreq << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Request: " << dreq << std::dec << std::endl;
 #endif
 
 
@@ -821,14 +821,14 @@ tmpl(void)::iss()
 
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Response: " << drsp << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Response: " << drsp << std::dec << std::endl;
 #endif
 #if MY_DEBUG
-    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Response: " << drsp << std::endl;
+    std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Response: " << drsp << std::dec << std::endl;
 #endif
     
     while ( ! m_pending_irqs.empty() && m_pending_irqs.begin()->first <= m_pdes_local_time->get() ) {
-      std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
+      std::multimap<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
 #ifdef SOCLIB_MODULE_DEBUG
       std::cout << "[" << name() << "] Time = " << m_pdes_local_time->get().value() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << " time = " <<  i->first.value() << std::endl;
 #endif
@@ -922,7 +922,7 @@ tmpl(void)::cmd_fsm(){
       
       for(size_t i=m_wbuf.getMin(), j=0; i<m_wbuf.getMin()+nwords; i++, j+=vci_param::nbytes){
 #ifdef SOCLIB_MODULE_DEBUG
-	std::cout << name() << " ram_write( " << std::hex << m_wbuf.getAddress(i) << ", " << m_wbuf.getData(i) << ", " <<  m_wbuf.getBe(i) << ")" << std::endl;
+	std::cout << name() << " ram_write( " << std::hex << m_wbuf.getAddress(i) << ", " << m_wbuf.getData(i) << ", " <<  m_wbuf.getBe(i) << ")" << std::dec << std::endl;
 #endif
 	
 	be = vci_param::be2mask(m_wbuf.getBe(i));
@@ -1333,7 +1333,7 @@ tmpl (tlm::tlm_sync_enum)::irq_nb_transport_fw
   tlm::tlm_phase           &phase,     // phase
   sc_core::sc_time         &time)      // time
 {
-  std::map<sc_core::sc_time, std::pair<int, bool> >::iterator i;
+  std::multimap<sc_core::sc_time, std::pair<int, bool> >::iterator i;
   bool v = (bool) atou(payload.get_data_ptr(), 0);
   bool find = false;
  
@@ -1360,7 +1360,8 @@ tmpl (tlm::tlm_sync_enum)::irq_nb_transport_fw
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << "[" << name() << "] insert interrupt " << id << " value " << v << " time " << time.value() << std::endl;
 #endif
-    m_pending_irqs[time] = std::pair<int, bool>(id, v);
+    m_pending_irqs.insert(std::pair<sc_core::sc_time, std::pair<int, bool> > 
+			  (time, std::pair<int, bool>(id, v)));
   }
 
   return tlm::TLM_COMPLETED;

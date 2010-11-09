@@ -93,7 +93,7 @@ private:
   uint32_t                m_id;
   iss_t                   m_iss;
   uint32_t                m_irq;
-  std::map<sc_core::sc_time, std::pair<int, bool> > m_pending_irqs;
+  std::multimap<sc_core::sc_time, std::pair<int, bool> > m_pending_irqs;
   pdes_local_time        *m_pdes_local_time;
   pdes_activity_status   *m_pdes_activity_status;
   sc_core::sc_time        m_simulation_time;
