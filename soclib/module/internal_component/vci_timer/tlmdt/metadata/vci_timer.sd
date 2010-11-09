@@ -39,5 +39,5 @@ Module('tlmdt:vci_timer',
        uses = [ Uses('common:tlmdt'),
 		Uses('common:mapping_table'),
 		],
-       debug = False,
+       #debug = True,
        )

@@ -248,7 +248,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	    m_irq_time = time;
 	    
 #if SOCLIB_MODULE_DEBUG
-	    //std::cout << "[" << name() << "] Desactive Interruption " << t <<" with time = " << time.value() << std::endl;
+	    std::cout << "[" << name() << "] Desactive Interruption " << t <<" with time = " << time.value() << std::endl;
 #endif
 	    
 	    // send the transaction
@@ -276,11 +276,16 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw     // receive command from initiator
 	      
 	      // set the tlm phase
 	      m_irq_phase = tlm::BEGIN_REQ;
-	      // set the local time to transaction time
+	      // set the local time to transaction time 
+	      // the new interruption cannot have a time inferior than desactivation
+	      if(m_timer[t].irq < time)
+		m_timer[t].irq = time;
+	      
 	      m_irq_time = m_timer[t].irq;
+		
 	      
 #if SOCLIB_MODULE_DEBUG
-	      //std::cout << "[" << name() << "] Send Interruption " << t <<" with time = " << m_timer[t].irq.value() << std::endl;
+	      std::cout << "[" << name() << "] Send Interruption " << t <<" with time = " << m_timer[t].irq.value() << std::endl;
 #endif
 	      
 	      // send the transaction

@@ -21,9 +21,9 @@
  * SOCLIB_GPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, SoC
- *         Nicolas Pouillon <nipo@ssji.net>, 2006-2007
+ *         Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>, 2010
  *
- * Maintainers: nipo
+ * Maintainers: alinev
  */
 
 #include "soclib/timer.h"
@@ -35,7 +35,6 @@
 static const int period[4] = {10000, 11000, 12000, 13000};
 
 static int max_interrupts = 80;
-static int desactive = 0;
 
 void irq_handler(int irq)
 {
@@ -51,16 +50,13 @@ void irq_handler(int irq)
 		procnum()*TIMER_SPAN+TIMER_RESETIRQ,
 		0);
 
-	if(left%20==0){
+	if(left==0){
 	  soclib_io_set(
 			base(TIMER),
 			procnum()*TIMER_SPAN+TIMER_MODE,
 			0);
-	  desactive = 1;
 	}
 
-	if ( ! left )
-		exit(0);
 }
 
 int main(void)
@@ -83,13 +79,6 @@ int main(void)
 		TIMER_RUNNING|TIMER_IRQ_ENABLED);
 	
 	while (1){
-	  if(desactive){
-	    soclib_io_set(
-			  base(TIMER),
-			  procnum()*TIMER_SPAN+TIMER_MODE,
-			  TIMER_RUNNING|TIMER_IRQ_ENABLED);
-	    desactive = 0;
-	  }
 	  pause();
 	}
 	return 0;
