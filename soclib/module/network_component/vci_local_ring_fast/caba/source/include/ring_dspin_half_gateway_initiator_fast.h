@@ -37,7 +37,7 @@
 namespace soclib { namespace caba {
 
 using namespace sc_core;
-/*
+
 namespace {
 
         const char *ring_cmd_fsm_state_str_hi[] = {
@@ -51,7 +51,7 @@ namespace {
                 "RING",
         };
 }
-*/
+
 
 template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
 class RingDspinHalfGatewayInitiatorFast
