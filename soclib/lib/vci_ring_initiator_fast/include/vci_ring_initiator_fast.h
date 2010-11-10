@@ -74,10 +74,12 @@
 #include "ring_signals_2.h"
 #include <systemc.h>
 
+//#define I_DEBUG
+
 namespace soclib { namespace caba {
 
 using namespace sc_core;
-
+/*
 namespace {
         const char *vci_cmd_fsm_state_str_i[] = {
                 "CMD_FIRST_HEADER",
@@ -99,6 +101,7 @@ namespace {
                 "RING",
         };
 }
+*/
 
 template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
 class VciRingInitiatorFast
@@ -154,7 +157,6 @@ private:
 
         uint32_t            m_srcid;
         uint32_t            m_shift;
-        uint32_t            m_current_cycle;
 
         // internal registers
         sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
@@ -186,53 +188,6 @@ VciRingInitiatorFast(
   
  {} //  end constructor
 
-void print_trace(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
-{
-
-if (p_vci.cmdval.read())
-        std::cout << std::dec << m_current_cycle << " - " << m_name
-                  << " - r_vci_cmd_fsm = " << vci_cmd_fsm_state_str_i[r_vci_cmd_fsm]
-                  << " - vci_cmdval : " << p_vci.cmdval.read()
-                  << " - vci_cmd : " << std::hex << p_vci.cmd.read()
-                  << " - vci_plen : " << p_vci.plen.read()
-                  << " - vci_address : " << p_vci.address.read()
-                  << " - vci_srcid : " << p_vci.srcid.read()
-                  << " - vci_wdata : " << p_vci.wdata.read()
-                  << " - vci_be : " << p_vci.be.read() 
-                  << " - vci_eop : " << p_vci.eop.read()
-                  << " - fifo_wok : " << m_cmd_fifo.wok()                  
-                  << std::endl;
-
-if(m_rsp_fifo.rok())
-        std::cout << std::dec << m_current_cycle << " - " << m_name
-                  << " - r_vci_rsp_fsm = " << vci_rsp_fsm_state_str_i[r_vci_rsp_fsm]
-                  << " - rspack : " <<  p_vci.rspack.read()
-                  << " - rsrcid : " << std::hex << r_srcid_save.read()
-                  << " - rdata : " <<  m_rsp_fifo.read()
-                  << " - rerror : " << r_error_save.read()
-                  << " - fifo_rsp_rok : " << m_rsp_fifo.rok()
-                  << std::endl;
-
-if(m_cmd_fifo.rok())
-        std::cout << std::dec << m_current_cycle << " - " << m_name
-                  << " - r_ring_cmd_fsm = " << ring_cmd_fsm_state_str_i[r_ring_cmd_fsm] 
-                  << " -- in grant : " << p_ring_in.cmd_grant  
-                  << " -- fifo ROK : " << m_cmd_fifo.rok()
-                  << " -- in wok : " << p_ring_in.cmd_r
-                  << " -- fifo data : " << std::hex << m_cmd_fifo.read()
-                  << std::endl;
-
-if(p_ring_in.rsp_w)
-        std::cout << std::dec << m_current_cycle << " - " << m_name
-                  << " - r_ring_rsp_fsm = " << ring_rsp_fsm_state_str_i[r_ring_rsp_fsm]
-                  << " -- in rok : " << p_ring_in.rsp_w
-                  << " -- in wok : " << p_ring_in.rsp_r
-                  << " -- fifo wok : " <<  m_rsp_fifo.wok() 
-                  << " -- in data : " << std::hex << p_ring_in.rsp_data
-                  << std::endl;
-}
-
-
 void reset()
 {
 	if(m_alloc_init)
@@ -245,10 +200,9 @@ void reset()
 	r_ring_rsp_fsm = RSP_IDLE;
 	m_cmd_fifo.init();
 	m_rsp_fifo.init();
-        m_current_cycle  = 0;
 }
 
-void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)       
+void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in, bool &init_cmd_val, bool &init_rsp_val)
 {
 
 	bool      cmd_fifo_get = false;
@@ -266,7 +220,20 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 		case CMD_FIRST_HEADER:       
 			if ( p_vci.cmdval.read() ) 
 			{  
-
+#ifdef I_DEBUG
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_vci_cmd_fsm = " << vci_cmd_fsm_state_str_i[r_vci_cmd_fsm]
+                  << " - vci_cmdval : " << p_vci.cmdval.read()
+                  << " - vci_cmd : " << std::hex << p_vci.cmd.read()
+                  << " - vci_plen : " << p_vci.plen.read()
+                  << " - vci_address : " << p_vci.address.read()
+                  << " - vci_srcid : " << p_vci.srcid.read()
+                  << " - vci_wdata : " << p_vci.wdata.read()
+                  << " - vci_be : " << p_vci.be.read() 
+                  << " - vci_eop : " << p_vci.eop.read()
+                  << " - fifo_wok : " << m_cmd_fifo.wok()                  
+                  << std::endl;
+#endif
                                 cmd_fifo_data = (uint64_t) (((uint64_t) (p_vci.address.read() >> 2)) << m_shift); 
                                 r_read_ack = p_vci.eop.read() 
                                                 && ((p_vci.cmd.read() == vci_param::CMD_READ) 
@@ -299,7 +266,21 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 		break;
    
 		case CMD_SECOND_HEADER:
-
+#ifdef I_DEBUG
+if (p_vci.cmdval.read())
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_vci_cmd_fsm = " << vci_cmd_fsm_state_str_i[r_vci_cmd_fsm]
+                  << " - vci_cmdval : " << p_vci.cmdval.read()
+                  << " - vci_cmd : " << std::hex << p_vci.cmd.read()
+                  << " - vci_plen : " << p_vci.plen.read()
+                  << " - vci_address : " << p_vci.address.read()
+                  << " - vci_srcid : " << p_vci.srcid.read()
+                  << " - vci_wdata : " << p_vci.wdata.read()
+                  << " - vci_be : " << p_vci.be.read() 
+                  << " - vci_eop : " << p_vci.eop.read()
+                  << " - fifo_wok : " << m_cmd_fifo.wok()                  
+                  << std::endl;
+#endif
 			if ( p_vci.cmdval.read() && m_cmd_fifo.wok() ) 
 			{
 
@@ -328,7 +309,21 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 		break;    
 
 		case WDATA:  
-
+#ifdef I_DEBUG
+if (p_vci.cmdval.read())
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_vci_cmd_fsm = " << vci_cmd_fsm_state_str_i[r_vci_cmd_fsm]
+                  << " - vci_cmdval : " << p_vci.cmdval.read()
+                  << " - vci_cmd : " << std::hex << p_vci.cmd.read()
+                  << " - vci_plen : " << p_vci.plen.read()
+                  << " - vci_address : " << p_vci.address.read()
+                  << " - vci_srcid : " << p_vci.srcid.read()
+                  << " - vci_wdata : " << p_vci.wdata.read()
+                  << " - vci_be : " << p_vci.be.read() 
+                  << " - vci_eop : " << p_vci.eop.read()
+                  << " - fifo_wok : " << m_cmd_fifo.wok()                  
+                  << std::endl;
+#endif
 			if ( p_vci.cmdval.read() && m_cmd_fifo.wok() ) 
 			{
 
@@ -355,7 +350,14 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
  
 			if ( m_rsp_fifo.rok() ) 
 			{
-
+#ifdef I_DEBUG
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_vci_rsp_fsm = " << vci_rsp_fsm_state_str_i[r_vci_rsp_fsm]
+                  << " - rspack : " <<  p_vci.rspack.read()
+                  << " - rdata : " <<  m_rsp_fifo.read()
+                  << " - fifo_rsp_rok : " << m_rsp_fifo.rok()
+                  << std::endl;
+#endif
 				rsp_fifo_get = true;
 				r_srcid_save = (sc_uint<vci_param::S>)  (m_rsp_fifo.read() >> (ring_rsp_data_size-vci_param::S-1));
 				r_trdid_save = ((sc_uint<vci_param::T>) (m_rsp_fifo.read() >> 8)) & 0xF; 
@@ -366,7 +368,17 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 		break;
 
 		case RSP_DATA:
-
+#ifdef I_DEBUG
+if(m_rsp_fifo.rok())
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_vci_rsp_fsm = " << vci_rsp_fsm_state_str_i[r_vci_rsp_fsm]
+                  << " - rspack : " <<  p_vci.rspack.read()
+                  << " - rsrcid : " << std::hex << r_srcid_save.read()
+                  << " - rdata : " <<  m_rsp_fifo.read()
+                  << " - rerror : " << r_error_save.read()
+                  << " - fifo_rsp_rok : " << m_rsp_fifo.rok()
+                  << std::endl;
+#endif
 			if ( p_vci.rspack.read() && m_rsp_fifo.rok() ) 
 			{
 
@@ -382,7 +394,16 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 	switch( r_ring_cmd_fsm ) 
 	{
 		case CMD_IDLE:    
-    
+#ifdef I_DEBUG
+if(m_cmd_fifo.rok())
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_ring_cmd_fsm = " << ring_cmd_fsm_state_str_i[r_ring_cmd_fsm] 
+                  << " -- in grant : " << p_ring_in.cmd_grant  
+                  << " -- fifo ROK : " << m_cmd_fifo.rok()
+                  << " -- in wok : " << p_ring_in.cmd_r
+                  << " -- fifo data : " << std::hex << m_cmd_fifo.read()
+                  << std::endl;
+#endif    
 			if ( p_ring_in.cmd_grant && m_cmd_fifo.rok() )  
                         {
                 		r_ring_cmd_fsm = KEEP; 
@@ -390,7 +411,16 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 		break;
 
 		case DEFAULT: 
-
+#ifdef I_DEBUG
+if(m_cmd_fifo.rok())
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_ring_cmd_fsm = " << ring_cmd_fsm_state_str_i[r_ring_cmd_fsm] 
+                  << " -- in grant : " << p_ring_in.cmd_grant  
+                  << " -- fifo ROK : " << m_cmd_fifo.rok()
+                  << " -- in wok : " << p_ring_in.cmd_r
+                  << " -- fifo data : " << std::hex << m_cmd_fifo.read()
+                  << std::endl;
+#endif
         
 			if ( m_cmd_fifo.rok() ) 
 			{
@@ -402,6 +432,16 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 		break;
 
 		case KEEP:   
+#ifdef I_DEBUG
+if(m_cmd_fifo.rok())
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_ring_cmd_fsm = " << ring_cmd_fsm_state_str_i[r_ring_cmd_fsm] 
+                  << " -- in grant : " << p_ring_in.cmd_grant  
+                  << " -- fifo ROK : " << m_cmd_fifo.rok()
+                  << " -- in wok : " << p_ring_in.cmd_r
+                  << " -- fifo data : " << std::hex << m_cmd_fifo.read()
+                  << std::endl;
+#endif
                          
 			if(m_cmd_fifo.rok() && p_ring_in.cmd_r ) 
 			{
@@ -422,8 +462,20 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
     
 	switch( r_ring_rsp_fsm ) 
 	{
+
 		case RSP_IDLE:  
 		{
+#ifdef I_DEBUG
+if(p_ring_in.rsp_w)
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_ring_rsp_fsm = " << ring_rsp_fsm_state_str_i[r_ring_rsp_fsm]
+                  << " -- in rok : " << p_ring_in.rsp_w
+                  << " -- in wok : " << p_ring_in.rsp_r
+                  << " -- fifo wok : " <<  m_rsp_fifo.wok() 
+                  << " -- in data : " << std::hex << p_ring_in.rsp_data
+                  << std::endl;
+#endif
+
 			uint32_t rsrcid = (uint32_t) (p_ring_in.rsp_data >> ring_rsp_data_size-vci_param::S-1);
 			bool islocal    = m_lt[rsrcid] && (m_rt[rsrcid] == m_srcid);
 			bool reop       = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1; 
@@ -447,6 +499,17 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 
 		case LOCAL:
 		{
+#ifdef I_DEBUG
+if(p_ring_in.rsp_w)
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_ring_rsp_fsm = " << ring_rsp_fsm_state_str_i[r_ring_rsp_fsm]
+                  << " -- in rok : " << p_ring_in.rsp_w
+                  << " -- in wok : " << p_ring_in.rsp_r
+                  << " -- fifo wok : " <<  m_rsp_fifo.wok() 
+                  << " -- in data : " << std::hex << p_ring_in.rsp_data
+                  << std::endl;
+#endif
+
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
 			if (p_ring_in.rsp_w && m_rsp_fifo.wok() && reop)         
@@ -468,6 +531,16 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 
 		case RING:    
 		{
+#ifdef I_DEBUG
+if(p_ring_in.rsp_w)
+        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+                  << " - r_ring_rsp_fsm = " << ring_rsp_fsm_state_str_i[r_ring_rsp_fsm]
+                  << " -- in rok : " << p_ring_in.rsp_w
+                  << " -- in wok : " << p_ring_in.rsp_r
+                  << " -- fifo wok : " <<  m_rsp_fifo.wok() 
+                  << " -- in data : " << std::hex << p_ring_in.rsp_data
+                  << std::endl;
+#endif
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
 			if (p_ring_in.rsp_w && reop)
@@ -483,12 +556,13 @@ void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in)
 
 	} // end switch rsp fsm
 
-        m_current_cycle++;
 
     ////////////////////////
     //  fifos update      //
    ////////////////////////
-
+//-- to keep trace on ring traffic : a valid initiator command is being sent 
+	init_cmd_val = cmd_fifo_get;
+	init_rsp_val = rsp_fifo_put;
 // local cmd fifo update
 	if (  cmd_fifo_put &&  cmd_fifo_get ) m_cmd_fifo.put_and_get(cmd_fifo_data);
 	else if (  cmd_fifo_put && !cmd_fifo_get ) m_cmd_fifo.simple_put(cmd_fifo_data);
