@@ -35,11 +35,13 @@
 #include "ring_signals_2.h"
 #include "dspin_interface.h"
 
+//#define HT_DEBUG
 
 namespace soclib { namespace caba {
 
 using soclib::common::IntTab;
 
+/*
 namespace {
         const char *ring_rsp_fsm_state_str_ht[] = {
                 "RSP_IDLE",
@@ -54,6 +56,7 @@ namespace {
                 "RING",
         };
 }
+*/
 
 template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
 class RingDspinHalfGatewayTargetFast
@@ -85,7 +88,6 @@ private:
         // structural parameters
  	std::string   m_name;
         bool          m_alloc_target;
-        uint32_t      m_current_cycle;
  
         // internal fifos 
         GenericFifo<uint64_t > m_cmd_fifo;     // fifo for the local command paquet
@@ -125,28 +127,6 @@ RingDspinHalfGatewayTargetFast(
 {
 } //  end constructor
 
-void print_trace(const ring_signal_t p_ring_in)
-{
-if(p_ring_in.cmd_w)
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
-                         << " - ring cmd  = " << ring_cmd_fsm_state_str_ht[r_ring_cmd_fsm]
-                         << " - in rok : " << p_ring_in.cmd_w
-                         << " - in data : " << std::hex << p_ring_in.cmd_data
-                         << " - in wok : " << p_ring_in.cmd_r
-                         << " - fifo wok : " << m_cmd_fifo.wok()
-                         << std::endl;
-
-if(m_rsp_fifo.rok())
-   std::cout << std::dec << m_current_cycle << " - " << m_name
-                         << " - ring rsp  = " << ring_rsp_fsm_state_str_ht[r_ring_rsp_fsm] 
-                         << " - fifo rok : " <<  m_rsp_fifo.rok()
-                         << " - ring_in_wok : " << p_ring_in.rsp_r
-                         << " - ringin rsp grant : " << p_ring_in.rsp_grant
-                         << " - fifo data  : " << std::hex << m_rsp_fifo.read()
-                         << std::endl;
-
-}
-
 void reset()
 {
         if(m_alloc_target)
@@ -157,13 +137,11 @@ void reset()
         r_ring_cmd_fsm = CMD_IDLE;
         m_cmd_fifo.init();
         m_rsp_fifo.init();     
-        m_current_cycle  = 0;
 }
 ////////////////////////////////
 //	transition 
 ////////////////////////////////
-//void transition(const gate_target_t &p_gate_target, const ring_signal_t p_ring_in)       
-void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, const ring_signal_t p_ring_in)
+void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, const ring_signal_t p_ring_in, bool &tgt_cmd_val, bool &tgt_rsp_val)
 {
 
 //	bool      cmd_fifo_get = false;
@@ -190,7 +168,7 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
 	{
 		case RSP_IDLE:   
 #ifdef HT_DEBUG
-   std::cout << std::dec << m_current_cycle << " - " << m_name
+   std::cout << std::dec << sc_time_stamp() << " - " << m_name
           << " -- ring_rsp_fsm : RSP_IDLE"
           << " -- fifo rok : " <<  m_rsp_fifo.rok()
           << " -- ring rok : " <<  p_ring_in.rsp_w
@@ -206,7 +184,7 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
 
 		case DEFAULT:  
 #ifdef HT_DEBUG
-   std::cout << std::dec << m_current_cycle << " - " << m_name
+   std::cout << std::dec << sc_time_stamp() << " - " << m_name
           << " --  ring_rsp_fsm : DEFAULT " 
           << " -- fifo_rsp_rok : " << m_rsp_fifo.rok()
           << " -- fifo_rsp_data : " << std::hex << m_rsp_fifo.read()
@@ -227,7 +205,7 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
 			if(m_rsp_fifo.rok() && p_ring_in.rsp_r) 
 			{
 #ifdef HT_DEBUG
-   std::cout << std::dec << m_current_cycle << " - " << m_name
+   std::cout << std::dec << sc_time_stamp() << " - " << m_name
           << " -- ring_rsp_fsm : KEEP "
           << " -- fifo_rok : " << m_rsp_fifo.rok()
           << " -- ring_in_wok : " << p_ring_in.rsp_r
@@ -260,7 +238,7 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
  
 #ifdef HT_DEBUG
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
+   std::cout << std::dec << sc_time_stamp() << " - " << m_name 
               << " -- ring_cmd_fsm -- CMD_IDLE "
               << " - in rok : " << p_ring_in.cmd_w
 	      << " - addr : " << std::hex << rtgtid
@@ -270,8 +248,6 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
               << " - in wok : " << p_ring_in.cmd_r
               << " - fifo wok : " << m_cmd_fifo.wok()
 	      << " - ringid  : " << m_ringid
-              << " - cluster : " << cluster
-              << " - intTab : " << IntTab(cluster)
               << std::endl;
 #endif
                       if(p_ring_in.cmd_w && !eop && brdcst && !m_cmd_fifo.wok()) {
@@ -307,7 +283,7 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
                 case BROADCAST_0:
 
 #ifdef HT_DEBUG
-   std::cout << std::dec << m_current_cycle << " - " << m_name  
+   std::cout << std::dec << sc_time_stamp() << " - " << m_name  
               << " -- ring_cmd_fsm -- BROADCAST_0 "
               << " -- ringin cmd rok : " << p_ring_in.cmd_w
               << " -- ringin cmd wok : " << p_ring_in.cmd_r 
@@ -329,7 +305,7 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
                 case BROADCAST_1:
                 {
 #ifdef HT_DEBUG
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
+   std::cout << std::dec << sc_time_stamp() << " - " << m_name 
               << " -- ring_cmd_fsm -- BROADCAST_1 "
               << " -- ringin cmd rok : " << p_ring_in.cmd_w
               << " -- ringin cmd wok : " << p_ring_in.cmd_r 
@@ -358,7 +334,7 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
                 {
                         bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 #ifdef HT_DEBUG
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
+   std::cout << std::dec << sc_time_stamp() << " - " << m_name 
               << " -- ring_cmd_fsm -- LOCAL "
               << " -- in cmd rok : " << p_ring_in.cmd_w
               << " -- in cmd wok : " << p_ring_in.cmd_r 
@@ -393,7 +369,7 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
  
 			bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 #ifdef HT_DEBUG
-   std::cout << std::dec << m_current_cycle << " - " << m_name 
+   std::cout << std::dec << sc_time_stamp() << " - " << m_name 
               << " -- ring_cmd_fsm -- RING "
               << " -- in cmd rok : " << p_ring_in.cmd_w
               << " -- in data : " << std::hex << p_ring_in.cmd_data
@@ -412,12 +388,13 @@ void transition(const cmd_out_t &p_gate_cmd_out, const rsp_in_t &p_gate_rsp_in, 
 		break;
 	} // end switch cmd fsm
 
-        m_current_cycle++;
 
     ////////////////////////
     //  fifos update      //
    ////////////////////////
-
+//-- keep trace on ring traffic
+	tgt_cmd_val = cmd_fifo_put;
+	tgt_rsp_val = rsp_fifo_get;
 // local cmd fifo update
 	if ( cmd_fifo_put && cmd_fifo_get ) m_cmd_fifo.put_and_get(cmd_fifo_data);
 	else if (  cmd_fifo_put && !cmd_fifo_get ) m_cmd_fifo.simple_put(cmd_fifo_data);

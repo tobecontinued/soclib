@@ -66,7 +66,13 @@ namespace soclib { namespace caba {
                 int m_ns;   // network number of signals
                 int m_nai; // number of attached initiators 
                 int m_nat; // number of attached targets
-                                         
+
+//-- to keep trace on ring traffic
+		bool *init_cmd_val;
+		bool *tgt_cmd_val;
+		bool *init_rsp_val;
+		bool *tgt_rsp_val;
+//--                                        
                 typedef RingSignals2 ring_signal_t;
                 typedef VciRingInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
                 typedef VciRingTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;

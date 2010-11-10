@@ -58,6 +58,12 @@ tmpl(/**/)::VciLocalRingFast( sc_module_name insname,
 	p_to_initiator =  soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("p_to_initiator", m_nai);
 	p_to_target = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target", m_nat);
 
+//-- to keep trace on ring traffic
+	init_cmd_val = new bool[m_nai+1];
+	tgt_cmd_val  = new bool[m_nat+1];
+	init_rsp_val = new bool[m_nai+1];
+	tgt_rsp_val  = new bool[m_nat+1];
+//--
         m_ring_initiator = new ring_initiator_t*[m_nai];
 	m_ring_target    = new ring_target_t*[m_nat]; 
         m_ring_signal    = new ring_signal_t[m_ns];
@@ -208,12 +214,12 @@ else {
                 int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
-                m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h]);
+                m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h], init_cmd_val[i], init_rsp_val[i]);
         }
 
 if(m_nai > 0) {
         for(int t=0;t<m_nat;t++) {
-                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1]);
+                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1], tgt_cmd_val[t], tgt_rsp_val[t]);
         }
 }
 else {
@@ -223,27 +229,12 @@ else {
                 if(t == 0) h = m_ns-1;
                 else h = t-1;
 
-                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[h]);
+                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[h], tgt_cmd_val[t], tgt_rsp_val[t]);
         }
 }
-        m_half_gateway_initiator->transition(p_gate_cmd_in, p_gate_rsp_out, m_ring_signal[m_nai+m_nat-1]);
-        m_half_gateway_target->transition(p_gate_cmd_out, p_gate_rsp_in, m_ring_signal[m_nai+m_nat]);
+        m_half_gateway_initiator->transition(p_gate_cmd_in, p_gate_rsp_out, m_ring_signal[m_nai+m_nat-1], init_cmd_val[m_nai], init_rsp_val[m_nai]);
+        m_half_gateway_target->transition(p_gate_cmd_out, p_gate_rsp_in, m_ring_signal[m_nai+m_nat], tgt_cmd_val[m_nat], tgt_rsp_val[m_nat]);
 
-
-/*-------- print
-        for(int t=0;t<m_nat;t++) {
-                print_signal(m_nai+t-1);
-                print_vci_target(t);
-        }
-
-        for(int i=0;i<m_nai;i++) {
-                int h = 0;
-                if(i == 0) h = m_ns-1;
-                else h = i-1;
-                print_signal(h);
-                print_vci_init(i);
-        }
-*/
 }
 
 tmpl(void)::genMoore()
@@ -281,32 +272,57 @@ tmpl(/**/)::~VciLocalRingFast()
 
 tmpl(void)::print_trace()
 {
+	int init_cmd_index = 0;
+	bool init_cmd_found   = false;
+	int tgt_rsp_index = 0;
+	bool tgt_rsp_found = false;
 
-        for(int i=0;i<m_nai;i++) {
-                int h = 0;
-                if(i == 0) h = m_ns-1;
-                else h = i-1;
-                m_ring_initiator[i]->print_trace(p_to_initiator[i], m_ring_signal[h]);
-        }
+	// cmd trace
+	//*-- one initiator has token at one time 
+	for(int i=0;i<m_nai+1;i++) {
+	       if(init_cmd_val[i]) {
+			init_cmd_index = i;
+			init_cmd_found = true;
+			break;
+		}
+	
+	}
 
-        if(m_nai > 0) {
-                for(int t=0;t<m_nat;t++) {
-                        m_ring_target[t]->print_trace(p_to_target[t], m_ring_signal[m_nai+t-1]);
-                }
-        }
-        else {
+	// rsp trace
+	//*-- one target has token at one time 
+	for(int t=0;t<m_nat+1;t++) {
+	       if(tgt_rsp_val[t]) {
+			tgt_rsp_index = t;
+			tgt_rsp_found = true;
+			break;
+		}
+	
+	}
+	
+	// cmd display
+	if(init_cmd_found) {
+		//*-- in case of broadcast (on coherence ring), all targets can receive the command at the same time
+		for(int t=0;t<m_nat+1;t++) {
+	        	if(tgt_cmd_val[t]) {
+				std::cout << "RING " << name() 
+			  		  << " -- initiator_" << std::dec << init_cmd_index
+			  		  << " ... cmd to ... target_" << t
+			  		  << std::endl;
+			}
+		}
+	}
 
-                for(int t=0;t<m_nat;t++) {
-                	int h = 0;
-                        if(t == 0) h = m_ns-1;
-                        else h = t-1;
-                
-                        m_ring_target[t]->print_trace(p_to_target[t], m_ring_signal[h]);
-                }
-        }
-
-                m_half_gateway_initiator->print_trace(m_ring_signal[m_nai+m_nat-1]);
-                m_half_gateway_target->print_trace(m_ring_signal[m_nai+m_nat]);
+	// rsp display
+	if(tgt_rsp_found) {
+		for(int i=0;i<m_nai+1;i++) {
+	        	if(init_rsp_val[i]) {
+				std::cout << "RING " << name() 
+			  		  << " ++ target_" << std::dec << tgt_rsp_index
+			  		  << " ... rsp to ... initiator_" << i
+			  		  << std::endl;
+			}
+		}
+	}
 
 }
 }} // end namespace
