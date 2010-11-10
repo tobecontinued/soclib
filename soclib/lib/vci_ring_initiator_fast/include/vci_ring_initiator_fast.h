@@ -79,7 +79,7 @@
 namespace soclib { namespace caba {
 
 using namespace sc_core;
-/*
+
 namespace {
         const char *vci_cmd_fsm_state_str_i[] = {
                 "CMD_FIRST_HEADER",
@@ -101,7 +101,7 @@ namespace {
                 "RING",
         };
 }
-*/
+
 
 template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
 class VciRingInitiatorFast
