@@ -57,6 +57,13 @@ tmpl(/**/)::VciSimpleRingFast(
 	p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("p_to_initiator", m_nai);
 	p_to_target    = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target", m_nat);
 
+//-- to keep trace on ring traffic
+	init_cmd_val = new bool[m_nai];
+	tgt_cmd_val  = new bool[m_nat];
+	init_rsp_val = new bool[m_nai];
+	tgt_rsp_val  = new bool[m_nat];
+//--
+
 	m_ring_initiator = new ring_initiator_t*[m_nai];
 	m_ring_target    = new ring_target_t*[m_nat]; 
         m_ring_signal    = new ring_signal_t[m_ns];
@@ -142,10 +149,10 @@ tmpl(void)::transition()
                 size_t h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
-                m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h]);
+                m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h], init_cmd_val[i], init_rsp_val[i]);
         }
         for(size_t t=0;t<m_nat;t++) {
-                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1]);
+                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1], tgt_cmd_val[t], tgt_rsp_val[t]);
         }
 
 }
@@ -181,16 +188,58 @@ tmpl(/**/)::~VciSimpleRingFast()
 
 tmpl(void)::print_trace()
 {
+	int init_cmd_index = 0;
+	bool init_cmd_found   = false;
+	int tgt_rsp_index = 0;
+	bool tgt_rsp_found = false;
 
-        for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
-                if(i == 0) h = m_ns-1;
-                else h = i-1;
-                m_ring_initiator[i]->print_trace(p_to_initiator[i], m_ring_signal[h]);
-        }
-        for(size_t t=0;t<m_nat;t++) {
-                m_ring_target[t]->print_trace(p_to_target[t], m_ring_signal[m_nai+t-1]);
-        }
+	// cmd trace
+	//*-- one initiator has token at one time 
+	for(int i=0;i<m_nai;i++) {
+	       if(init_cmd_val[i]) {
+			init_cmd_index = i;
+			init_cmd_found = true;
+			break;
+		}
+	
+	}
+
+	// rsp trace
+	//*-- one target has token at one time 
+	for(int t=0;t<m_nat;t++) {
+	       if(tgt_rsp_val[t]) {
+			tgt_rsp_index = t;
+			tgt_rsp_found = true;
+			break;
+		}
+	
+	}
+	
+	// cmd display
+	if(init_cmd_found) {
+		//*-- in case of broadcast (on coherence ring), all targets can receive the command at the same time
+		for(int t=0;t<m_nat;t++) {
+	        	if(tgt_cmd_val[t]) {
+				std::cout << "RING " << name() 
+			  		  << " -- initiator_" << std::dec << init_cmd_index
+			  		  << " ... cmd to ... target_" << t
+			  		  << std::endl;
+			}
+		}
+	}
+
+	// rsp display
+	if(tgt_rsp_found) {
+		for(int i=0;i<m_nai;i++) {
+	        	if(init_rsp_val[i]) {
+				std::cout << "RING " << name() 
+			  		  << " ++ target_" << std::dec << tgt_rsp_index
+			  		  << " ... rsp to ... initiator_" << i
+			  		  << std::endl;
+			}
+		}
+	}
 
 }
+
 }} // end namespace

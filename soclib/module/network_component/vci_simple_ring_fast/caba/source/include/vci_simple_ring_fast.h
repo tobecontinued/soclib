@@ -58,6 +58,12 @@ class VciSimpleRingFast
                 size_t m_nai; // number of attached initiators 
                 size_t m_nat; // number of attached targets
 
+//-- to keep trace on ring traffic
+		bool *init_cmd_val; // valid command sent
+		bool *tgt_cmd_val;  // valid command received
+		bool *init_rsp_val; // valid response received
+		bool *tgt_rsp_val;  // valid response sent
+//--
                 typedef RingSignals2 ring_signal_t;
                 typedef VciRingInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
                 typedef VciRingTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;
