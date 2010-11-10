@@ -35,7 +35,7 @@
 //#define T_DEBUG
 
 namespace soclib { namespace caba {
-/*
+
 namespace {
         const char *vci_cmd_fsm_state_str_t[] = {
                 "CMD_FIRST_HEADER",
@@ -59,7 +59,7 @@ namespace {
                 "RING",
         };
 }
-*/
+
 
 template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
 class VciRingTargetFast
