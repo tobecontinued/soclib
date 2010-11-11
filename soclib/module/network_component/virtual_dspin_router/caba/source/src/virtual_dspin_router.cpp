@@ -62,8 +62,8 @@ using namespace soclib::common;
     //  | 1 |   5     |   5     |   5     |   5     | flit_width - 22   | 1 |
     ///////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////
-    tmpl(void)::printTrace(int channel)
+    ////////////////////////////////////
+    tmpl(void)::print_trace(int channel)
     {
         int k = channel%2;
         std::cout << "-- " << name() << " : channel " << k << std::endl;

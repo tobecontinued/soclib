@@ -94,7 +94,7 @@ public:
 	~VirtualDspinRouter();
 
 	// public methods
-        void	printTrace(int channel);
+        void	print_trace(int channel = 0);
 
 private:
 
