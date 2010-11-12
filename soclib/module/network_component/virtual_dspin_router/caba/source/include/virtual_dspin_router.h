@@ -95,6 +95,7 @@ public:
 
 	// public methods
         void	print_trace(int channel = 0);
+        void	debug_trace(int channel = 0);
 
 private:
 

@@ -41,7 +41,7 @@ using namespace soclib::common;
     // The TDM (Time dependant Multiplexing) introduces a strong coupling
     // between the two FSMs controling the two virtual channels 
     // in the input port. Therefore, it is necessary to have two successive
-    // loops one the 2 * 5 input FSMs:
+    // loops to scan the 2 * 5 input FSMs:
     // - The first loop computes - put[k][i] : input(k,i) wishes to produce
     //                           - get[k][i] : output(k,i) wishes to consume
     // - The second loop uses these values to implement the TDM policy
@@ -64,6 +64,26 @@ using namespace soclib::common;
 
     ////////////////////////////////////
     tmpl(void)::print_trace(int channel)
+    {
+        const char* port_name[] = {"NORTH","SOUTH","EAST ","WEST ","LOCAL"};
+        int k = channel%2;
+        std::cout << "DSPIN_ROUTER " << name() << " : channel " << k << std::hex ; 
+        for( size_t i=0 ; i<5 ; i++)  // loop on output ports
+        {
+            if ( r_output_alloc[k][i].read() )
+            {
+                int j = r_output_index[k][i];
+                std::cout << " / " << port_name[j] << " -> " << port_name[i] ;
+                std::cout << " in_buf = " << r_buf[k][j].read() ;
+                if ( in_fifo[k][j].rok() )  std::cout << " in_fifo = " << in_fifo[k][j].read() ;
+                if ( out_fifo[k][i].rok() ) std::cout << " out_fifo = " << out_fifo[k][i].read() ;
+            }   
+        }
+        std::cout << std::endl;
+    }
+
+    /////////////////////////////////////
+    tmpl(void)::debug_trace(int channel)
     {
         int k = channel%2;
         std::cout << "-- " << name() << " : channel " << k << std::endl;
@@ -355,13 +375,6 @@ using namespace soclib::common;
             } // end for channels
         } // end for inputs
 
-/*
-if((k==0) && (i==4)) std::cout << "rok[" << i << "] = " << in_fifo[k][i].rok() << std::endl << std::hex;
-if((k==0) && (i==4)) std::cout << "din[" << i << "] = " << in_fifo[k][i].read() << std::endl;
-if((k==0) && (i==4)) std::cout << "req[" << i << "] = " << input_req[k][i] << std::endl;
-if((k==0) && (i==4)) std::cout << "put[" << i << "] = " << put[k][i] << std::endl;
-if((k==0) && (i==4)) std::cout << "get[" << i << "] = " << get[k][i] << std::endl << std::endl;
-*/
         ////////////////////////////////////////////////////////////////
         // Time multiplexing in input ports : 
         // final_put[k][i] & final_data[i], final_fifo_read[k][i],
@@ -376,7 +389,7 @@ if((k==0) && (i==4)) std::cout << "get[" << i << "] = " << get[k][i] << std::end
             for(size_t k=0 ; k<2 ; k++)
             {
                 // A virtual channel [k][i] is tdm_ok if he has the priority (r_tdm[i] value),
-                // or if the other channel does not use the physical channel (put[nk][i] == false) 
+                // or if the other channel does not use the physical channel (put[k][i] == false) 
                 bool tdm_ok;
                 if( k == 0 ) 	tdm_ok = !r_tdm[i].read() || !put[1][i];
                 else        	tdm_ok =  r_tdm[i].read() || !put[0][i];
