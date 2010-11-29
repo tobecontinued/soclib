@@ -1,3 +1,6 @@
+#ifndef __DYNAMIC_BUFFER_H__
+#define __DYNAMIC_BUFFER_H__
+
 #include <assert.h>
 #include <iostream>
 #include <stdio.h>
@@ -36,7 +39,7 @@ class DynamicBufferElement{
   void setValid(){valid = true;}
   void setInvalid(){valid = false;}
   bool getValidity(){return valid;}
-  bool operator< (DynamicBufferElement<T> c){return element < c.element;}
+  bool operator< (DynamicBufferElement<T> &c){return element < c.element;}
 };
 
 template<class T>
@@ -84,6 +87,7 @@ class DynamicBuffer{
     inline bool     operator!=(const iterator &it){return e != it.e;}
     inline iterator advance(int n){for(int i=0;i<n;i++)++*this; return *this;}
     inline T operator*(){return *e;}
+    inline T* operator&(){return e;}
     inline operator T(){return *e;} //For Casting Issues
   };
   friend std::ostream &operator<<(std::ostream &os,const iterator &it){
@@ -119,6 +123,7 @@ class DynamicBuffer{
     inline reverse_iterator operator!=(iterator &it){return e != it.e;}
     inline reverse_iterator advance(int n){for(int i=0;i<n;i++)++*this; return *this;}
     inline T operator*(){return *e;}
+    inline T* operator&(){return e;}
     inline operator T(){return *e;} //For Casting Issues
   };
   friend std::ostream &operator<<(std::ostream &os,const reverse_iterator &it){
@@ -255,13 +260,25 @@ class DynamicBuffer{
     while(!c_begin->getValidity() && c_size)
       clear();
   }
+  void desynch(iterator it){
+    c_gen_pt1 = (DynamicBufferElement<T>*)it.e;
+    c_gen_pt1->virt_next->virt_prev = c_gen_pt1->virt_prev;
+    c_gen_pt1->virt_prev->virt_next = c_gen_pt1->virt_next;
+    --c_real_size;
+  }
+  void pop_desynched(iterator it){
+    c_gen_pt1 = (DynamicBufferElement<T>*)it.e; 
+    c_gen_pt1->setInvalid();
+    while(!c_begin->getValidity() && c_size)
+      clear();
+  }
   T *front(){
     while(c_end != p_begin){
       c_gen_pt1 = m_fake.virt_prev;
       if(m_ordered)
 	while(*c_end < *c_gen_pt1 && c_gen_pt1 != &m_fake)
 	  c_gen_pt1 = c_gen_pt1->virt_prev;
-      
+
       c_end->virt_prev = c_gen_pt1;
       c_end->virt_next = c_gen_pt1->virt_next;
       c_gen_pt1->virt_next->virt_prev = c_end;
@@ -271,7 +288,7 @@ class DynamicBuffer{
       ++c_size;
       ++c_real_size;
     }
-    if(c_size)
+    if(c_real_size)
       return m_fake.virt_next->getElem();
     else
       return NULL;
@@ -291,7 +308,9 @@ class DynamicBuffer{
     c_gen_pt2->virt_prev->virt_next = c_gen_pt1;
     c_gen_pt2->virt_prev = c_gen_pt1;    
   }
-  bool empty(){return c_real_size;}
+  bool empty(){return !c_real_size;}
   size_t size(){return c_real_size;}
   size_t capacity(){return m_delta*m_delta_size;}
 };
+
+#endif /* __DYNAMIC_BUFFER_H__ */
