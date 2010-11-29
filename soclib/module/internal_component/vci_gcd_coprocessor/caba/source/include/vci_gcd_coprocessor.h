@@ -86,6 +86,8 @@ public:
         			const soclib::common::MappingTable &mt);
 	~VciGcdCoprocessor();
 
+        void print_trace();
+
 private:
 	// member functions
 	void transition();

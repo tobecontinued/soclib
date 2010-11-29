@@ -80,12 +80,6 @@ void VciGcdCoprocessor<vci_param>::transition()
 		return;
 	}
 
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << "  vci_fsm = " << r_vci_fsm.read() << std::endl;
-std::cout << name() << "  exe_fsm = " << r_exe_fsm.read() << std::endl;
-std::cout << name() << "  opa_reg = " << r_opa.read() << std::endl;
-std::cout << name() << "  opb_reg = " << r_opb.read() << std::endl;
-#endif
 
 	switch ( r_exe_fsm.read() ) {
 	case EXE_IDLE:
@@ -151,6 +145,28 @@ std::cout << name() << "  opb_reg = " << r_opb.read() << std::endl;
 	} // end switch vci_fsm
 
 } // end transition()
+
+////////////////////////////////////////////////
+template<typename vci_param> 
+void VciGcdCoprocessor<vci_param>::print_trace()
+{
+    const char* vci_fsm_str[] = { "GET_CMD   ",
+                                  "RSP_OPA   ",
+                                  "RSP_OPB   ",
+                                  "RSP_START ",
+                                  "RSP_STATUS",
+                                  "RSP_RESULT" };
+
+    const char* exe_fsm_str[] = { "IDLE   ",
+                                  "COMPARE",
+                                  "DECA   ",
+                                  "DECB   " };
+
+    std::cout << "  GCD_COPROCESSOR " << name() 
+              << " : vci_fsm = " << vci_fsm_str[r_vci_fsm.read()] 
+              << " / exe_fsm = " << exe_fsm_str[r_exe_fsm.read()]
+              << std::endl;
+}
 
 ////////////////////////////////////////
 template<typename vci_param> 
