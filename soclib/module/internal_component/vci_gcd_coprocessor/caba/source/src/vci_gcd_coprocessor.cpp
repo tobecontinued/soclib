@@ -162,7 +162,7 @@ void VciGcdCoprocessor<vci_param>::print_trace()
                                   "DECA   ",
                                   "DECB   " };
 
-    std::cout << "  GCD_COPROCESSOR " << name() 
+    std::cout << "  Coprocessor " << name() 
               << " : vci_fsm = " << vci_fsm_str[r_vci_fsm.read()] 
               << " / exe_fsm = " << exe_fsm_str[r_exe_fsm.read()]
               << std::endl;
