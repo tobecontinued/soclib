@@ -172,7 +172,7 @@ tmpl(void)::handle_txn(const VciLoggerElem<vci_param> &elem, const mwmr_info_t &
 
 tmpl(void)::transition()
 {
-    if ( this->p_resetn == 0 ) {
+    if ( this->p_resetn.read() == 0 ) {
         m_cycle = 0;
         return;
     }

@@ -30,6 +30,7 @@
 
 #include <systemc>
 #include <ios>
+#include <fstream>
 #include "loader.h"
 #include "vci_logger.h"
 #include "mapping_table.h"
