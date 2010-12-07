@@ -171,14 +171,16 @@ public:
 		/*
 		 * if all LRU bits for the set are true, clear them
 		 */
-		for (size_t i = 0; i < nways; i++) {
+		for (size_t i = 0; i < nways; i++) 
+        {
 			if (i == way)
 				continue;
 			if (entries[i].l == false)
 				return;
 		}
 		// all LRU bits are set
-		for (size_t i = 0; i < nways; i++) {
+		for (size_t i = 0; i < nways; i++) 
+        {
 			entries[i].l = false;
 		}
 	}
@@ -189,7 +191,8 @@ public:
 
 	void reset()
 	{
-		for (size_t i = 0; i < nways; i++) {
+		for (size_t i = 0; i < nways; i++) 
+        {
 			entries[i].l = false;
 			entries[i].g = false;
 			entries[i].v = false;
@@ -481,13 +484,14 @@ public:
         {
             for(size_t set = 0; set < m_nsets; set++) 
             {
-		if (!valid (way,set))
-			continue;
+		        if (!valid (way,set))
+			        continue;
                 if(global(way,set)) 
                 {
-                    if(all) {
-			clearvalid(way,set); // forced reset, the locked page invalid too
-		    }
+                    if(all) 
+                    {
+			            clearvalid(way,set); // forced reset, the locked page invalid too
+		            }
                 } 
                 else 
                 {
@@ -787,7 +791,7 @@ public:
         for( size_t way = 0; way < this->m_nways; way++ ) 
         {
             if( this->valid(way,m_set) && this->pagesize(way,m_set) &&
-                this->vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + this->m_sets_shift))) 
+                (this->vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + this->m_sets_shift))) ) 
             {
                 vic_nline = nline(way,m_set);
                 this->clearvalid(way,m_set);
@@ -795,7 +799,7 @@ public:
             } 
 
             if( this->valid(way,k_set) && !(this->pagesize(way,k_set)) &&
-                this->vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + this->m_sets_shift))) 
+                (this->vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + this->m_sets_shift))) ) 
             {
                 vic_nline = nline(way,k_set);
                 this->clearvalid(way,k_set);
@@ -832,7 +836,7 @@ public:
         for( size_t way = 0; way < this->m_nways; way++ ) 
         {
             if( this->valid(way,m_set) && this->pagesize(way,m_set) &&
-                this->vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + this->m_sets_shift))) 
+                (this->vpn(way,m_set) == (vaddress >> (PAGE_M_NBITS + this->m_sets_shift))) ) 
             {
                 vic_nline = nline(way,m_set);
                 this->clearvalid(way,m_set);
@@ -840,7 +844,7 @@ public:
             } 
 
             if( this->valid(way,k_set) && !(this->pagesize(way,k_set)) &&
-                this->vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + this->m_sets_shift))) 
+                (this->vpn(way,k_set) == (vaddress >> (PAGE_K_NBITS + this->m_sets_shift))) ) 
             {
                 vic_nline = nline(way,k_set);
                 this->clearvalid(way,k_set);
@@ -958,7 +962,7 @@ public:
             {
                 for( size_t set = 0; set < this->m_nsets; set++ ) 
                 {
-		            if (way == selway && set == selset)
+		            if ((way == selway) && (set == selset))
 			        continue;
                     if ((nline(way,set) == nline(selway,selset)) && this->valid(way,set)) 
                     {
@@ -1140,7 +1144,6 @@ public:
 // End:
 
 // vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
-
 
 
 
