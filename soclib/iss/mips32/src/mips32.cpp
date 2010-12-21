@@ -243,11 +243,19 @@ uint32_t Mips32Iss::executeNCycles(
     if ( m_exception != NO_EXCEPTION )
         goto got_exception;
 
-        if ( (r_status.im & r_cause.ip)
-             && may_take_irq
-             && check_irq_state()
-             && dreq_ok )
-            goto handle_irq;
+    if ( m_dbe && dreq_ok ) {
+        m_exception = X_DBE;
+        m_dbe = false;
+        goto handle_wdbe_irq;
+    }
+
+    if ( (r_status.im & r_cause.ip)
+         && may_take_irq
+         && check_irq_state()
+         && dreq_ok ) {
+        m_exception = X_INT;
+        goto handle_wdbe_irq;
+    }
 
     r_npc = m_jump_pc;
     r_pc = m_next_pc;
@@ -264,9 +272,9 @@ uint32_t Mips32Iss::executeNCycles(
 #endif
     goto early_end;
 
- handle_irq:
     /*
-      If we are about to take an interrupt, we know we have all data
+      If we are about to take an interrupt or an async write berr,
+      we know we have all data
       requests satisfied, but we may juste have posted a new one. If
       so, kill it (and reset the next instruction address) and take
       the interrupt.
@@ -274,6 +282,7 @@ uint32_t Mips32Iss::executeNCycles(
       The data-access-in-delay-slot case is handled in
       handle_exception()
      */
+  handle_wdbe_irq:
     if ( m_dreq.valid ) {
         m_dreq.valid = false;
         m_jump_pc = r_npc;
@@ -281,7 +290,6 @@ uint32_t Mips32Iss::executeNCycles(
         m_resume_pc = r_pc;
     }
     m_resume_pc = m_next_pc;
-    m_exception = X_INT;
  got_exception:
     handle_exception();
     return time_spent;
