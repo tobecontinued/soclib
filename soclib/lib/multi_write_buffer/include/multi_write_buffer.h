@@ -396,7 +396,13 @@ public:
         r_be      = new be_t*[wbuf_nslots];
         for( size_t i = 0 ; i < wbuf_nslots ; i++ )
         {
-            assert(IS_POW_OF_2(wbuf_nwords));
+            assert( ((wbuf_nwords ==  1) || 
+                     (wbuf_nwords ==  2) ||
+                     (wbuf_nwords ==  4) || 
+                     (wbuf_nwords ==  8) ||
+                     (wbuf_nwords == 16)) &&
+                     " the number of words must be a pawer of 2");
+     
             r_data[i] = new data_t[wbuf_nwords];
             r_be[i]   = new be_t[wbuf_nwords];
         }
