@@ -267,8 +267,8 @@ tmpl(void)::print_trace(size_t mode)
         r_icache.printTrace();
     }
 }
-/////////////////////////////
-tmpl(void)::printStatistics()
+/////////////////////////
+tmpl(void)::print_stats()
 {
     float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
         std::cout << "------------------------------------" << std:: dec << std::endl
