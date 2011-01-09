@@ -807,7 +807,6 @@ std::cout << ireq << std::endl << irsp << std::endl << dreq << std::endl << drsp
     // For write burst packets, all words must be in the same write buffer line,
     // and addresses must be contiguous (the BE field is 0 in case of "holes").
     // The PLEN VCI field is always documented.
-    const size_t                                                m_wbuf_nlines;
     // As simultaneous VCI transactions are supported, the TRDID field is used:
     // - Write transactions : TRDID = wbuf_index + (1<<(trdid_size-1))
     // - Read transactions  : TRDID = 2*cachable + instruction
