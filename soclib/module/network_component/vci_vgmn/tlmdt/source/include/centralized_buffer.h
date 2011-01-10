@@ -30,67 +30,52 @@
 #ifndef CENTRALIZED_BUFFER_H
 #define CENTRALIZED_BUFFER_H
 
-#include <inttypes.h>
-#include <list>
-#include <sstream>
-#include <tlmdt>	   // TLM-DT headers
-#include "soclib_spinlock.h"
+#include <tlmdt>	             // TLM-DT headers
+#include "circular_buffer.h"
 
 namespace soclib { namespace tlmdt {
 
-    struct transaction{
-      tlm::tlm_generic_payload *payload;
-      tlm::tlm_phase           *phase;
-      sc_core::sc_time         *time;
-    };
-    
 class _command;
 
 class centralized_buffer
+  : public sc_core::sc_module        // inherit from SC module base clase
 {
+  const size_t        m_slots;
+  _command           *m_centralized_struct;
 
-  const size_t    m_slots;
-  _command       *m_centralized_buffer;
-  size_t          m_free_slots;
-  int             m_selected_slot;
-  int             m_count_push;
-  int             m_count_pop;
-
-  soclib::common::SpinLock m_lock;
+  int                 m_count_push;
+  int                 m_count_pop;
 
 public:
-  centralized_buffer(size_t max);
+  centralized_buffer
+  ( sc_core::sc_module_name module_name,  // SC module name
+    size_t                  max);
 
   ~centralized_buffer();
 
-  void push(
-	    size_t                    from,
-	    tlm::tlm_generic_payload &payload,
-	    tlm::tlm_phase           &phase,
-	    sc_core::sc_time         &time);
+  bool push
+  ( size_t                    from,
+    tlm::tlm_generic_payload &payload,
+    tlm::tlm_phase           &phase,
+    sc_core::sc_time         &time);
 
-  bool can_pop();
+  bool pop
+  ( size_t                    &from,
+    tlm::tlm_generic_payload *&payload,
+    tlm::tlm_phase           *&phase,
+    sc_core::sc_time         *&time);
 
-  void pop(
-	   size_t from);
+  circular_buffer get_buffer(int i);
 
-  void get_selected_transaction(
-				size_t                    &from,
-				tlm::tlm_generic_payload *&payload,
-				tlm::tlm_phase           *&phase,
-				sc_core::sc_time         *&time);
+  const size_t get_nslots();
+
+  const size_t get_free_slots();
+
+  sc_core::sc_time get_delta_time(unsigned int index);
 
   void set_activity(unsigned int index, bool b);
 
-  void set_external_access(unsigned int index, bool b);
-
-  inline void lock(){
-      m_lock.spin();
-  }
-
-  inline void unlock(){
-      m_lock.release();
-  }
+  void set_delta_time(unsigned int index, sc_core::sc_time t);
 };
 
 }}

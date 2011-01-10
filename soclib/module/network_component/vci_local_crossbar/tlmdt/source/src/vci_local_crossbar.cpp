@@ -31,9 +31,12 @@
 
 namespace soclib { namespace tlmdt {
 
+#define DELAY 1
+
 /////////////////////////////////////////////////////////////////////////////////////
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////
+
 VciLocalCrossbar::VciLocalCrossbar
 (
  sc_core::sc_module_name name,                      // module name
@@ -43,9 +46,11 @@ VciLocalCrossbar::VciLocalCrossbar
  size_t nb_init,                                    // number of initiators
  size_t nb_target)                                  // number of targets
   : sc_module(name)
-  , m_centralized_buffer(++nb_init)                 // centralized buffer
 {
-  init(name, mt, init_index, nb_init,++nb_target, UNIT_TIME);
+  std::ostringstream module_name;
+  module_name << name  << "_interconnect";
+  m_interconnect = new Interconnect(module_name.str().c_str(), mt.getRoutingTable(init_index), mt.getLocalityTable(init_index), mt.getIdMaskingTable(init_index.level()), mt.getIdLocalityTable(init_index), (nb_init + 1), (nb_target + 1), DELAY);
+  init(nb_init,nb_target);
 }
 
 VciLocalCrossbar::VciLocalCrossbar
@@ -56,9 +61,11 @@ VciLocalCrossbar::VciLocalCrossbar
  size_t nb_init,                                    // number of initiators
  size_t nb_target)                                  // number of targets
   : sc_module(name)
-  , m_centralized_buffer(++nb_init)                 // centralized buffer
 {
-  init(name, mt, index, nb_init,++nb_target, UNIT_TIME);
+  std::ostringstream module_name;
+  module_name << name  << "_interconnect";
+  m_interconnect = new Interconnect(module_name.str().c_str(), mt.getRoutingTable(index), mt.getLocalityTable(index), mt.getIdMaskingTable(index.level()), mt.getIdLocalityTable(index), (nb_init + 1), (nb_target + 1), DELAY);
+  init(nb_init,nb_target);
 }
 
 VciLocalCrossbar::VciLocalCrossbar
@@ -70,50 +77,19 @@ VciLocalCrossbar::VciLocalCrossbar
  int nb_target,                                     // number of targets
  sc_core::sc_time delay )                           // interconnect delay
   : sc_module(name)
-  , m_centralized_buffer(++nb_init)                 // centralized buffer
 {
-  init(name, mt, index, nb_init,++nb_target, delay);
+  std::ostringstream module_name;
+  module_name << name  << "_interconnect";
+  m_interconnect = new Interconnect(module_name.str().c_str(), mt.getRoutingTable(index), mt.getLocalityTable(index), mt.getIdMaskingTable(index.level()), mt.getIdLocalityTable(index), (nb_init + 1), (nb_target + 1), delay.value());
+  init(nb_init,nb_target);
 }
-    
+   
 void VciLocalCrossbar::init
-( sc_core::sc_module_name name, 
-  const soclib::common::MappingTable &mt,
-  const soclib::common::IntTab &index,
-  size_t nb_init,
-  size_t nb_target,
-  sc_core::sc_time delay )
+( size_t nb_init,
+  size_t nb_target)
 {
-
-  // Phase 1, allocate nb_target CmdArbRspRout blocks
-  for (size_t i=0;i<nb_target;i++){
-    std::ostringstream tmpName;
-    tmpName << name << "_CmdArbRspRout" << i;
-    
-    if(i==(nb_target - 1)) // only the last CMD block has external access
-      m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt.getIdMaskingTable(index.level()), mt.getIdLocalityTable(index), delay, true));
-    else
-      m_CmdArbRspRout.push_back(new VciCmdArbRspRout(tmpName.str().c_str(), mt.getIdMaskingTable(index.level()), mt.getIdLocalityTable(index), delay, false));
-  }
-  
-  // Phase 2, allocate nb_init RspArbCmdRout blocks
-  for (size_t i=0;i<nb_init;i++){
-    std::ostringstream tmpName;
-    tmpName << name << "_RspArbCmdRout" << i;
-    m_RspArbCmdRout.push_back(new VciRspArbCmdRout(tmpName.str().c_str(), mt.getRoutingTable(index), mt.getLocalityTable(index), i, delay, &m_centralized_buffer));
-  }
-  
-  // Phase 3, each cmdArbRspRout sees all the RspArbCmdRout
-  for (size_t i=0;i<nb_target;i++){
-    m_CmdArbRspRout[i]->setRspArbCmdRout(m_RspArbCmdRout);
-  }
-  
-  // Phase 4, each rspArbCmdRout sees all the CmdArbRspRout
-  for (size_t i=0;i<nb_init;i++){
-    m_RspArbCmdRout[i]->setCmdArbRspRout(m_CmdArbRspRout);
-  }
-
   // bind VCI TARGET SOCKETS
-  for(size_t i=0;i<nb_init-1;i++){
+  for(size_t i=0;i<nb_init;i++){
     std::ostringstream target_name;
     target_name << "target" << i;
     p_to_initiator.push_back(new tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types>(target_name.str().c_str()));
@@ -124,11 +100,12 @@ void VciLocalCrossbar::init
     p_vci_initiators.push_back(new tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types>(inits_name.str().c_str()));
     p_vci_initiators[i]->register_nb_transport_bw(this, &VciLocalCrossbar::nb_transport_bw_up, i);
 
-    (*p_vci_initiators[i])(m_RspArbCmdRout[i]->p_vci_target);
+    (*p_vci_initiators[i])(*m_interconnect->p_to_initiator[i]);
   }
 
+
   // bind VCI INITIATOR SOCKETS
-  for(size_t i=0;i<nb_target-1;i++){
+  for(size_t i=0;i<nb_target;i++){
     std::ostringstream init_name;
     init_name << "init" << i;
     p_to_target.push_back(new tlm_utils::simple_initiator_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types>(init_name.str().c_str()));
@@ -139,9 +116,7 @@ void VciLocalCrossbar::init
     p_vci_targets.push_back(new tlm_utils::simple_target_socket_tagged<VciLocalCrossbar,32,tlm::tlm_base_protocol_types>(targets_name.str().c_str()));
     p_vci_targets[i]->register_nb_transport_fw(this, &VciLocalCrossbar::nb_transport_fw_up, i);
 
-
-    (*p_vci_targets[i])(m_CmdArbRspRout[i]->p_vci_initiator);
-    
+    (*p_vci_targets[i])(*m_interconnect->p_to_target[i]);
   }
 
   p_target_to_up.register_nb_transport_fw(this, &VciLocalCrossbar::nb_transport_fw_down);
@@ -150,8 +125,9 @@ void VciLocalCrossbar::init
   p_initiator_to_up.register_nb_transport_bw(this, &VciLocalCrossbar::nb_transport_bw_down);
   p_vci_initiator_to_down.register_nb_transport_bw(this, &VciLocalCrossbar::nb_transport_bw_up);
 
-  p_vci_initiator_to_down(m_RspArbCmdRout[nb_init-1]->p_vci_target);
-  p_vci_target_to_down(m_CmdArbRspRout[nb_target-1]->p_vci_initiator);
+  p_vci_initiator_to_down(*m_interconnect->p_to_initiator[nb_init]);
+  p_vci_target_to_down(*m_interconnect->p_to_target[nb_target]);
+
 }
 
   

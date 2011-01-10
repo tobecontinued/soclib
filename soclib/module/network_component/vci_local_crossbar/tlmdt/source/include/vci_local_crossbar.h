@@ -30,24 +30,16 @@
 #ifndef VCI_LOCAL_CROSSBAR_H
 #define VCI_LOCAL_CROSSBAR_H
 
-#include <vector>
-#include <sstream>
 #include <tlmdt>                         // TLM-DT headers
-
-#include "mapping_table.h"               //mapping table
-#include "vci_cmd_arb_rsp_rout.h"        //Our header
-#include "vci_rsp_arb_cmd_rout.h"        //Our header
-#include "centralized_buffer.h"          //centralized buffer
+#include "interconnect.h"
 
 namespace soclib { namespace tlmdt {
 
 class VciLocalCrossbar
-  : public sc_core::sc_module            // inherit from SC module base clase
+  : public sc_core::sc_module // inherit from SC module base clase
 {
 private:
-  std::vector<VciCmdArbRspRout *> m_CmdArbRspRout;                     //vci_cmd_arb_rsp_rout modules
-  std::vector<VciRspArbCmdRout *> m_RspArbCmdRout;                     //vci_rsp_arb_cmd_rout modules
-  centralized_buffer              m_centralized_buffer;                //centralized buffer
+  Interconnect *m_interconnect;
 
   tlm_utils::simple_initiator_socket<VciLocalCrossbar,32,tlm::tlm_base_protocol_types> p_vci_initiator_to_down; // VCI initiator port connected to local crossbar
 
@@ -126,13 +118,8 @@ private:
     tlm::tlm_phase           &phase,      // phase
     sc_core::sc_time         &time);      // time
 
-  void init(
-	    sc_core::sc_module_name name, 
-	    const soclib::common::MappingTable &mt,
-	    const soclib::common::IntTab &index,
-	    size_t nb_init,
-	    size_t nb_target,
-	    sc_core::sc_time delay );
+  void init(size_t nb_init,
+	    size_t nb_target );
 
 public:
 

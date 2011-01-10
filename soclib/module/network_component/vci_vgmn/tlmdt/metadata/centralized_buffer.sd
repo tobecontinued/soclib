@@ -36,5 +36,7 @@ Module('tlmdt:centralized_buffer',
        implementation_files = [ '../source/src/centralized_buffer.cpp',],
        uses = [ Uses('common:tlmdt'),
                 Uses('common:mapping_table'),
+                Uses('tlmdt:circular_buffer'),
                 ],
-)
+       #debug = True,
+       )

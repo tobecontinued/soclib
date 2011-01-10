@@ -28,205 +28,154 @@
  */
 
 #include <systemc>
-#include <cmath>
-#include <climits>
-#include <limits>
-#include <cstdlib>
-
 #include "centralized_buffer.h"
-
-#ifndef CENTRALIZED_BUFFER_DEBUG
-#define CENTRALIZED_BUFFER_DEBUG 0
-#endif
 
 namespace soclib { namespace tlmdt {
 
 class _command
 {
   friend class centralized_buffer;
-
-  std::list<transaction> fifo;
-  bool active;
-  bool eligible;
+  
+  circular_buffer         buffer;
+  sc_core::sc_time        delta_time;
+  bool                    active;
 
 public:
   _command()
-  {
-    init();
-  }
-
-  void init()
+    : buffer()
+    , delta_time(sc_core::SC_ZERO_TIME)
   {
     active = true;
-    eligible = true;
   }
 
 };
 
-centralized_buffer::centralized_buffer( size_t nslots )
-  : m_slots(nslots),
-    m_centralized_buffer(new _command[nslots]),
-    m_free_slots(nslots),
-    m_selected_slot(0)
+centralized_buffer::centralized_buffer
+( sc_core::sc_module_name module_name,               // module name
+  size_t nslots )
+  : sc_module(module_name)
+  , m_slots(nslots)
+  , m_centralized_struct(new _command[nslots])
 {
+  for(unsigned int i=0; i<nslots; i++){
+    std::ostringstream buf_name;
+    buf_name << name() << "_buf" << i;
+    m_centralized_struct[i].buffer.set_name(buf_name.str());
+  }
 }
 
 centralized_buffer::~centralized_buffer()
 {
-  delete [] m_centralized_buffer;
+  delete [] m_centralized_struct;
 }
 
-void centralized_buffer::push
+bool centralized_buffer::push
 ( size_t                    from,
   tlm::tlm_generic_payload &payload,
   tlm::tlm_phase           &phase,
   sc_core::sc_time         &time)
 {
- 
-#if CENTRALIZED_BUFFER_DEBUG
-  std::cout << "PUSH pending[" << from <<"] ";
+#if SOCLIB_MODULE_DEBUG
+  std::cout << "[" << name() << "] PUSH [" << from <<"] " << std::endl;
 #endif
 
-  //get payload extension
-  soclib_payload_extension *extension_pointer;
-  payload.get_extension(extension_pointer);
+  assert(!(time < m_centralized_struct[from].delta_time) && "PUSH transaction with the time smaller than the precedent");
 
-  //if transaction command is active
-  //the source is actived and the transaction is not sent
-  if(extension_pointer->is_active()){
-    set_activity(from, extension_pointer->is_active());
-  }
-  else{
-    //if there is no transaction in the slot then the number of free slots is reduced
-    if (m_centralized_buffer[from].fifo.empty()) {
-      m_free_slots--;
-    }    
-    
-    transaction trans;
-    trans.payload = &payload;
-    trans.phase   = &phase;
-    trans.time    = &time;
-    
-    m_centralized_buffer[from].fifo.push_back(trans);
-    
-#if CENTRALIZED_BUFFER_DEBUG
-    std::cout << "PUSH m_free_slots=" << m_free_slots << std::endl;
-#endif
-  }
+  return m_centralized_struct[from].buffer.push(payload, phase, time);
 }
 
-void centralized_buffer::pop( size_t from)
-{
-#if CENTRALIZED_BUFFER_DEBUG
-  std::cout << "POP selected " << from << std::endl;
-#endif
-
-  m_centralized_buffer[from].fifo.pop_front();
-  if (m_centralized_buffer[from].fifo.empty())
-    m_free_slots++;
-}
-
-void centralized_buffer::get_selected_transaction
+    
+bool centralized_buffer::pop
 ( size_t                    &from,
   tlm::tlm_generic_payload *&payload,
   tlm::tlm_phase           *&phase,
   sc_core::sc_time         *&time)
 {
-  size_t min_i = 0;
-  size_t idx = 0;
+  bool ok = false;
+  int min_idx = -1;
   uint64_t min_time = MAX_TIME;
-
-  transaction trans;
-  soclib_payload_extension *extension_ptr;
-  bool get_next;
-
-   for ( size_t i = m_selected_slot + 1; i< m_selected_slot + 1 + m_slots; ++i ) {
-    idx = i % m_slots;
-    
-    //optimization
-    //if the current transaction is a null message and the fifo has more packets then it gets next transaction
-    do{
-      get_next = false;
-      trans =  m_centralized_buffer[idx].fifo.front();
-      
-      if(!m_centralized_buffer[idx].fifo.empty()){
-      	trans.payload->get_extension(extension_ptr);
-	if(extension_ptr->is_null_message()){
-	  if(m_centralized_buffer[idx].fifo.size()>1){
-	    m_centralized_buffer[idx].fifo.pop_front();
-	    get_next = true;
-	  }
+  uint64_t time_value;
+  
+  for(unsigned int i=0; i<m_slots; i++){
+    if(m_centralized_struct[i].active){
+      if(m_centralized_struct[i].buffer.is_empty()){
+	time = &m_centralized_struct[i].delta_time;
+	time_value = (*time).value();
+#if SOCLIB_MODULE_DEBUG
+	std::cout << "[" << name() << "] MD FOR POP " << i << " IS EMPTY time = " << time_value << std::endl;
+#endif
+	if(time_value < min_time){
+	  min_idx = i;
+	  min_time = time_value;
+	  ok = false;
 	}
       }
-    }while(get_next);
+      else{
+	bool header = m_centralized_struct[i].buffer.get_front(payload, phase, time);
+	assert(header);
+	time_value = (*time).value();
+	  
+#if SOCLIB_MODULE_DEBUG
+	std::cout << "[" << name() << "] MD FOR POP " << i << " NOT EMPTY time = " << time_value << std::endl;
+#endif
 
-    if ( m_centralized_buffer[idx].active && m_centralized_buffer[idx].eligible && (*trans.time).value() < min_time ) {
-      min_time = (*trans.time).value();
-      min_i = idx;
+	if(time_value < min_time || time_value == min_time){
+	  min_idx = i;
+	  min_time = time_value;
+	  ok = true;
+	}
+      }
     }
   }
 
-  from = min_i;
+  from = min_idx;
 
-  trans =  m_centralized_buffer[min_i].fifo.front();
-  trans.payload->get_extension(extension_ptr);
-  if(!extension_ptr->is_null_message()){
-      m_selected_slot = min_i;
-      //std::cout << "select " << min_i << std::endl;
+  if(ok){
+#if SOCLIB_MODULE_DEBUG
+  std::cout << "[" << name() << "] POP from " << min_idx << std::endl;
+#endif
+    bool pop = m_centralized_struct[min_idx].buffer.pop(payload, phase, time);
+    assert(pop);
+  }
+  else{
+#if SOCLIB_MODULE_DEBUG
+    std::cout << "[" << name() << "] NOT POP from " << min_idx << " IS EMPTY" << std::endl;
+#endif
   }
 
-#if CENTRALIZED_BUFFER_DEBUG
-  std::cout << "select " << from << std::endl;
-#endif
+  return ok;
+}
+   
 
-
-  transaction min_trans =  m_centralized_buffer[min_i].fifo.front();
-  payload = min_trans.payload;
-  phase = min_trans.phase;
-  time = min_trans.time;
-  
-#if CENTRALIZED_BUFFER_DEBUG
-  soclib_payload_extension *ext;
-  payload->get_extension(ext);
-  std::cout << "GET SELECTED TRANSACTION srcid =  " << ext->get_src_id() << " command = " << ext->get_command() << std::endl;
-#endif
+circular_buffer centralized_buffer::get_buffer(int i)
+{
+  return m_centralized_struct[i].buffer;
 }
 
-bool centralized_buffer::can_pop()
+const size_t centralized_buffer::get_nslots()
 {
+  return m_slots;
+}
 
-  if(m_free_slots == 0){
-    for ( size_t i = 0; i<m_slots; ++i ) {
-      if(m_centralized_buffer[i].active)
-	return true;
-    }
-  }
-  return false;
+sc_core::sc_time centralized_buffer::get_delta_time(unsigned int index)
+{
+  return m_centralized_struct[index].delta_time;
+}
+
+void centralized_buffer::set_delta_time(unsigned int index, sc_core::sc_time t)
+{
+  m_centralized_struct[index].delta_time = t;
+#if SOCLIB_MODULE_DEBUG
+  std::cout << "[" << name() << "] DELTA_TIME[" << index <<"] = " << t.value() << std::endl;
+#endif
 }
 
 void centralized_buffer::set_activity(unsigned int index, bool b)
 {
-  m_centralized_buffer[index].active = b;
-  if(m_centralized_buffer[index].fifo.empty()){
-    if(b)
-      m_free_slots++;
-    else
-      m_free_slots--;
-  }
-
-#if CENTRALIZED_BUFFER_DEBUG
-  std::cout << "ACTIVE[" << index <<"] = " << b << " m_free_slots=" << m_free_slots << std::endl;
+  m_centralized_struct[index].active = b;
+#if SOCLIB_MODULE_DEBUG
+  std::cout << "[" << name() << "] ACTIVE[" << index <<"] = " << b << std::endl;
 #endif
-}
-
-void centralized_buffer::set_external_access(unsigned int index, bool external_access)
-{
-  m_centralized_buffer[index].eligible = !external_access;
- 
-  if(external_access)
-    m_free_slots--;
-  else
-    m_free_slots++;
 }
 
 }}

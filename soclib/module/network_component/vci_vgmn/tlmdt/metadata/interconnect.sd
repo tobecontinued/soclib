@@ -27,15 +27,16 @@
 #     Nicolas Pouillon <nipo@ssji.net>
 #     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
 
-__id__ = "$Id: vci_rsp_arb_cmd_rout.sd 917 2009-03-12 10:10:06Z nipo $"
+__id__ = "$Id: interconnect.sd 917 2009-03-12 10:10:06Z nipo $"
 __version__ = "$Revision: 917 $"
 
-Module('tlmdt:vci_rsp_arb_cmd_rout',
-       classname = 'soclib::tlmdt::VciRspArbCmdRout',
-       header_files = [ '../source/include/vci_rsp_arb_cmd_rout.h', ],
-       implementation_files = [ '../source/src/vci_rsp_arb_cmd_rout.cpp', ],
+Module('tlmdt:interconnect',
+       classname = 'soclib::tlmdt::Interconnect',
+       header_files = [ '../source/include/interconnect.h', ],
+       implementation_files = ['../source/src/interconnect.cpp', ],
        uses = [ Uses('common:tlmdt'),
 		Uses('common:mapping_table'),
+		Uses('tlmdt:centralized_buffer'),
 		],
-       debug = False,
+       #debug = True,
        )
