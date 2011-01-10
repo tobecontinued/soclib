@@ -39,6 +39,7 @@ Module('tlmdt:vci_multi_tty',
        uses = [  Uses('common:tlmdt'),
                  Uses('common:tty_wrapper'),
                  Uses('common:mapping_table'),
+                 Uses('tlmdt:tlmdt_target'),
                  ],
        debug = False,
        )
