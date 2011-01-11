@@ -187,11 +187,8 @@ tmpl(void)::ended(int status){
 #endif
 
 	if ( m_irq_enabled ){
-        if(m_irq)
-            m_irq_changed = false;
-        else
-            m_irq_changed = true;
 		m_irq = true;
+        m_irq_changed = true;
     }
 	m_current_op = m_op = BLOCK_DEVICE_NOOP;
     m_status = status;
@@ -315,7 +312,7 @@ tmpl(void)::send_interruption(){
     m_irq_time = m_pdes_local_time->get();
 
 #if SOCLIB_MODULE_DEBUG
-    std::cout << "[" << name() << "] Send Interruption with time = " <<  m_irq_time.value() << std::endl;
+    std::cout << "[" << name() << "] Send Interruption " << m_irq << " with time = " <<  m_irq_time.value() << std::endl;
 #endif
 
     // send the transaction
@@ -351,8 +348,10 @@ tmpl (void)::execLoop (){
             send_null_message();
         }
 
-        if(m_irq_enabled && m_irq_changed)
+        if(m_irq_enabled && m_irq_changed){
             send_interruption();
+            m_irq_changed = false;
+        }
     }
     sc_core::sc_stop();
 }
@@ -367,10 +366,18 @@ tmpl (tlm::tlm_sync_enum)::nb_transport_bw
 {
     update_time(time);
 
+    //this target does not treat the null message
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " Receive response time = " << time.value() << std::endl;
+    soclib_payload_extension *extension_pointer;
+    payload.get_extension(extension_pointer);
+    if(extension_pointer->is_null_message()){
+        //std::cout << name() << " Receive response NULL MESSAGE time = " << time.value() << std::endl;
+    }
+    else{
+        std::cout << name() << " Receive response time = " << time.value() << std::endl;
+    }
 #endif
-  
+
     m_rsp_received.notify (sc_core::SC_ZERO_TIME);
 
     return tlm::TLM_COMPLETED;
@@ -445,11 +452,8 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
                         payload.set_response_status(tlm::TLM_OK_RESPONSE);
                         if (m_status != BLOCK_DEVICE_BUSY) {
                             m_status = BLOCK_DEVICE_IDLE;
-                            if(m_irq)
-                                m_irq_changed = true;
-                            else 
-                                m_irq_changed = false;
                             m_irq = false;
+                            m_irq_changed = true;
                         }
                         break;
                     default:
