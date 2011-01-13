@@ -130,6 +130,9 @@ void VciLocalCrossbar::init
 
 }
 
+void VciLocalCrossbar::print(){
+  m_interconnect->print();
+}
   
 /////////////////////////////////////////////////////////////////////////////////////
 // Virtual Fuctions  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)

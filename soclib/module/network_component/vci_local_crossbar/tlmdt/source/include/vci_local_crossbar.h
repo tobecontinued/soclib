@@ -156,6 +156,7 @@ public:
 		   size_t nb_init,                                      //number of initiators connect to interconnect
 		   size_t nb_target);                                   //number of targets connect to interconnect
 
+  void print();
 };
 
 }}
