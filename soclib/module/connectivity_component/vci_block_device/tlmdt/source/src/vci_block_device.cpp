@@ -217,7 +217,7 @@ tmpl(void)::next_req(){
         if ( chunck_size > CHUNCK_SIZE )
             chunck_size = CHUNCK_SIZE;
 
-        send_read_message(chunck_size);
+        send_write_message(chunck_size);
         m_chunck_offset += CHUNCK_SIZE;
 		m_status = BLOCK_DEVICE_BUSY;
         read_done();
@@ -239,7 +239,7 @@ tmpl(void)::next_req(){
         if ( chunck_size > CHUNCK_SIZE )
             chunck_size = CHUNCK_SIZE;
 
-        send_write_message(chunck_size);
+        send_read_message(chunck_size);
         m_chunck_offset += CHUNCK_SIZE;
 		m_status = BLOCK_DEVICE_BUSY;
         write_finish();
