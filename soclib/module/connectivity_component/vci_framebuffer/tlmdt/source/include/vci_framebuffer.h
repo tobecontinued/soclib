@@ -49,6 +49,7 @@ private:
   soclib::common::Segment        m_segment;
   soclib::common::FbController   m_framebuffer;
   uint8_t                        *m_surface;
+  size_t                         m_update;
 
 
   /////////////////////////////////////////////////////////////////////////////////////

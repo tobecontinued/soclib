@@ -49,7 +49,8 @@ tmpl(/**/)::VciFrameBuffer
 	  , m_mt(mt)
 	  , m_segment(m_mt.getSegment(m_index))
 	  , m_framebuffer((const char*)name, width, height, subsampling)
-      , m_surface((uint8_t*)m_framebuffer.surface())
+	  , m_surface((uint8_t*)m_framebuffer.surface())
+	  , m_update(width-1)
 	  , p_vci("socket")
 {
   // bind target
@@ -81,6 +82,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
 
   size_t address = payload.get_address() - m_segment.baseAddress();
   size_t nwords = payload.get_data_length() / sizeof(typename vci_param::data_t);
+  int index;
 
   if ( m_segment.contains(payload.get_address())) {
       switch(extension_pointer->get_command()){
@@ -98,16 +100,22 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
           break;
 
       case VCI_WRITE_COMMAND:
-          if ( address < m_framebuffer.m_surface_size ) {
-              uint8_t *data = payload.get_data_ptr();
-              uint8_t *mask = payload.get_byte_enable_ptr();
-              for ( size_t i=0; i<payload.get_data_length(); ++i )
-                  if ( mask[i] )
-                      m_surface[address+i] = data[i];
-          }
-          if ( (address+payload.get_data_length()) >=
-               (m_framebuffer.m_surface_size-4) )
-              m_framebuffer.update();
+	  for ( size_t i=0; i<nwords; ++i ){
+	    index = address / vci_param::nbytes;
+	    uint32_t *tab = m_framebuffer.surface();
+	    unsigned int cur = tab[index];
+	    uint32_t mask =  atou(payload.get_byte_enable_ptr(), (i * vci_param::nbytes));
+	    uint32_t data =  atou( payload.get_data_ptr(), (i * vci_param::nbytes) );
+	    
+	    tab[index] = (cur & ~mask) | (data & mask);
+	    
+#ifdef SOCLIB_MODULE_DEBUG
+	    std::cout << "[" << name() << "] WRITE tab["<< index <<"] = " << ( (cur & ~mask) | (data & mask)) << std::endl;
+#endif
+	  }
+	  
+	  if((index%m_update)==0)
+	    m_framebuffer.update();
 		
           payload.set_response_status(tlm::TLM_OK_RESPONSE);
           phase = tlm::BEGIN_RESP;
