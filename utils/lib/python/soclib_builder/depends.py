@@ -37,38 +37,41 @@ __version__ = "$Revision$"
 __all__ = ['load', 'dump']
 
 class MustRehash(Exception):
-	pass
+    pass
 
 class DepPickler(pickle.Pickler):
-	def __init__(self, filename):
-		fd = open(filename, 'w')
-		pickle.Pickler.__init__(self, fd, pickle.HIGHEST_PROTOCOL)
-	def persistent_id(self, obj):
-		if isinstance(obj, bblock.BBlock):
-			return 'BBlock:'+str(obj)
+    def __init__(self, filename):
+        fd = open(filename, 'w')
+        pickle.Pickler.__init__(self, fd, pickle.HIGHEST_PROTOCOL)
+    def persistent_id(self, obj):
+        if isinstance(obj, bblock.BBlock):
+            return 'BBlock:'+str(obj)
 
 def dump(name, deps):
-	p = DepPickler(config.reposFile(name))
-	p.dump(deps)
+    p = DepPickler(config.reposFile(name))
+    p.dump(deps)
 
 class DepUnpickler(pickle.Unpickler):
-	def __init__(self, filename):
-		try:
-			fd = open(filename, 'r')
-#			print 'loading back depends %s'%filename
-		except IOError:
-#			print '%s not loadable'%filename
-			raise MustRehash()
-		pickle.Unpickler.__init__(self, fd)
-		self.last_mod = os.stat(filename).st_mtime
-	def persistent_load(self, ident):
-		mode,ide = ident.split(':',1)
-		if mode == 'BBlock':
-			r = bblock.bblockize1(ide)
-			if r.exists() and r.mtime() > self.last_mod:
-				raise MustRehash()
-			return r
+    def __init__(self, filename):
+        try:
+            fd = open(filename, 'r')
+#           print 'loading back depends %s'%filename
+        except IOError:
+#           print '%s not loadable'%filename
+            raise MustRehash()
+        pickle.Unpickler.__init__(self, fd)
+        self.last_mod = os.stat(filename).st_mtime
+    def persistent_load(self, ident):
+        mode,ide = ident.split(':',1)
+        if mode == 'BBlock':
+            r = bblock.bblockize1(ide)
+            if r.exists() and r.mtime() > self.last_mod:
+                raise MustRehash()
+            return r
 
 def load(name):
-	p = DepUnpickler(config.reposFile(name))
-	return p.load()
+    p = DepUnpickler(config.reposFile(name))
+    try:
+        return p.load()
+    except:
+        raise MustRehash
