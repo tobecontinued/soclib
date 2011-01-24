@@ -367,6 +367,11 @@ public:
         return false;
     }
 
+    inline void write(size_t way, size_t set, size_t word, data_t data)
+    {
+        cache_data(way, set, word) = data;
+    }
+
     //////////////////////////////
     inline bool inval( addr_t ad )
     {
@@ -448,40 +453,67 @@ public:
     ///////////////////////////////////////////////////////////////////
     inline bool update( addr_t ad, data_t* buf, addr_t* victim )
     {
-        tag_t       tag     = m_z[ad];
-        size_t      set     = m_y[ad];
-        bool        found   = false;
-        bool        cleanup = false;
-        size_t      selway  = 0;
+        size_t set, way;
+        bool   cleanup = victim_select(ad, victim, &way, &set);
+        victim_update_tag (ad, way, set);
 
-        for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-            if ( !cache_val(way, set) ) {
-                found   = true;
-                cleanup = false;
-                selway  = way;
-            }
-        }
-        if ( !found ) { // No invalid way
-            for ( size_t way = 0 ; way < m_ways && !found ; way++ ) {
-                if ( !cache_lru(way, set) ) {
-                    found   = true;
-                    cleanup = true;
-                    selway  = way;
-                }
-            }
-        }
-	assert(found && "all ways can't be new at the same time");
-
-        *victim = (addr_t)((cache_tag(selway,set) * m_sets) + set);
-        cache_tag(selway, set) = tag;
-        cache_val(selway, set) = true;
-        cache_set_lru(selway, set);
         for ( size_t word = 0 ; word < m_words ; word++ ) {
-            cache_data(selway, set, word) = buf[word] ;
+            cache_data(way, set, word) = buf[word] ;
         }
+
         return cleanup;
     }
 
+    inline bool victim_select( addr_t ad, addr_t* victim, size_t * way, size_t * set )
+    {
+        bool   found   = false;
+        bool   cleanup = false;
+        *set = m_y[ad];
+        *way = 0;
+
+        // Schearch and invalid slot
+        for ( size_t _way = 0 ; _way < m_ways && !found ; _way++ )
+        {
+            if ( !cache_val(_way, *set) )
+            {
+                found   = true;
+                cleanup = false;
+                *way    = _way;
+            }
+        }
+
+        // No invalid way, scearch the lru
+        if ( !found )
+        { 
+            for ( size_t _way = 0 ; _way < m_ways && !found ; _way++ )
+            {
+                if ( !cache_lru(_way, *set) )
+                {
+                    cache_val (_way, *set) = false;
+                    found   = true;
+                    cleanup = true;
+                    *way    = _way;
+                }
+            }
+        }
+
+        assert(found && "all ways can't be new at the same time");
+
+        *victim = (addr_t)((cache_tag(*way,*set) * m_sets) + *set);
+
+        return cleanup;
+    }
+
+    inline void victim_update_tag( addr_t ad, size_t way, size_t set )
+    {
+        tag_t  tag     = m_z[ad];
+
+        cache_tag    (way, set) = tag;
+        cache_val    (way, set) = true;
+        cache_set_lru(way, set);
+    }
+
+/*
     //////////////////////////////////////////////////////////////////////////////
     // The two functions select_before_update() & update_after_select()
     // can be used to perform a line replacement in two cycles
@@ -516,7 +548,7 @@ public:
                 return  true;
             }
         }
-	assert("all lines can't be new at the same time");
+        assert("all lines can't be new at the same time");
         return true;
     }
 
@@ -538,7 +570,7 @@ public:
         cache_set_lru(way, set);
         for ( size_t word = 0 ; word < m_words ; word++ ) cache_data(way, set, word) = buf[word] ;
     }
-
+*/
     ///////////////////////////
     inline bool find( addr_t ad, 
                       bool* itlb_buf, bool* dtlb_buf,

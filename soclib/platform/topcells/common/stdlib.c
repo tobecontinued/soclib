@@ -55,6 +55,10 @@ void *malloc( size_t sz )
 	return rp;
 }
 
+void free(void* ptr)
+{
+}
+
 void trap()
 {
 #if defined(__mips__)

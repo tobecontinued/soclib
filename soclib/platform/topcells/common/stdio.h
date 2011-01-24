@@ -46,7 +46,7 @@ do {																	\
 char *strcpy( char *dst, const char *src );
 int printf( const char *fmt, ... );
 int strcmp( const char *, const char *);
-void *memcpy( void *_dst, void *_src, unsigned long size );
+// void *memcpy( void *_dst, void *_src, unsigned long size );
 
 #endif
 

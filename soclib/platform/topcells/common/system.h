@@ -55,6 +55,8 @@ uint32_t cpu_cycles();
 typedef void irq_handler_t(int);
 void set_irq_handler(irq_handler_t *handler);
 
+void enable_hw_irq(unsigned int n);
+
 typedef void sys_handler_t(unsigned int, void*, void*, void*);
 void set_sys_handler(sys_handler_t *handler);
 
@@ -86,6 +88,8 @@ static inline int putchar(const int x)
 #elif defined(__sparc__)
 #error MMU support for sparc not yet implemented...
 #endif
+
+  #error "shit"
 
 	uint32_t tlb_mode = get_cp2(1, 0);
 

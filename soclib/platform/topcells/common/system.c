@@ -248,10 +248,19 @@ void interrupt_hw_handler(unsigned int irq)
 #endif
 }
 
+static inline void sync(void)
+{
+#if __mips__
+	__asm__ __volatile__("sync");
+#else
+#warning TODO : implement sync for this CPU !
+#endif
+}
 
 static inline uint32_t ll( uint32_t *addr )
 {
 	uint32_t ret;
+        //sync();
 #if __mips__
 	__asm__ __volatile__("ll %0, 0(%1)":"=r"(ret):"p"(addr));
 #elif PPC
@@ -260,6 +269,7 @@ static inline uint32_t ll( uint32_t *addr )
 #warning TODO : implement ll for this CPU !
 	ret = *(volatile uint32_t*)addr;
 #endif
+        //sync();
 	return ret;
 }
 
@@ -268,12 +278,13 @@ static inline uint32_t ll( uint32_t *addr )
  */
 static inline uint32_t sc( uint32_t *addr, uint32_t value )
 {
+        sync();
 	uint32_t ret;
 #if __mips__
-	__asm__ __volatile__("sc %0, 0(%1)":"=r"(ret):"p"(addr), "0"(value):"memory");
+        __asm__ __volatile__("sc %0, 0(%1)":"=r"(ret):"p"(addr), "0"(value):"memory");
 	ret = !ret;
 #elif PPC
-	ret = 0;
+        ret = 0;
 	__asm__ __volatile__("stwcx. %2, 0, %1    \n\t"
 						 "mfcr   %0    \n\t"
 						 :"=r"(ret)
@@ -282,9 +293,10 @@ static inline uint32_t sc( uint32_t *addr, uint32_t value )
 	ret = ! (ret&0x20000000);
 #else
 #warning TODO : implement sc for this CPU !
-	*(volatile uint32_t*)addr = value;
+        *(volatile uint32_t*)addr = value;
 	ret = 0;
 #endif
+        sync();
 	return ret;
 }
 
@@ -358,7 +370,9 @@ void lock_lock( uint32_t *lock )
 
 void lock_unlock( uint32_t *lock )
 {
-	*lock = 0;
+        sync();
+  	*lock = 0;
+        sync();
 }
 
 void pause()

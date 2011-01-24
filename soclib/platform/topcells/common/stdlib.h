@@ -30,5 +30,8 @@
 
 void *malloc(size_t);
 void free(void*);
+void *memcpy(void *, void *, size_t);
+
 void exit(int);
+void trap();
 void abort();

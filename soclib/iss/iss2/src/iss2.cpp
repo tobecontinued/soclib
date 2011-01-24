@@ -30,7 +30,7 @@ namespace soclib { namespace common {
 
 #define rstr(x) case Iss2::x: return #x
 
-static const char *mode_str(Iss2::ExecMode mode)
+const char *mode_str(Iss2::ExecMode mode)
 {
     switch(mode) {
         rstr(MODE_HYPER);
@@ -40,7 +40,7 @@ static const char *mode_str(Iss2::ExecMode mode)
     }
 }
 
-static const char *type_str(Iss2::DataOperationType type)
+const char *type_str(Iss2::DataOperationType type)
 {
     switch(type) {
         rstr(DATA_READ);
@@ -52,8 +52,7 @@ static const char *type_str(Iss2::DataOperationType type)
     default: return "invalid";
     }
 }
-
-static const char *xtn_str(Iss2::ExternalAccessType type)
+const char *xtn_str(Iss2::ExternalAccessType type)
 {
     switch(type) {
         rstr(XTN_PTPR);
@@ -79,26 +78,27 @@ static const char *xtn_str(Iss2::ExternalAccessType type)
 
 void Iss2::InstructionRequest::print( std::ostream &o ) const
 {
-    o << "<InsReq "
+    o << "<InsReq  "
+      << (valid ? "  valid" : "invalid")
       << " mode " << mode_str(mode)
-      << (valid ? "   valid" : " invalid")
       << " @ " << std::hex << std::showbase << addr
       << ">";
 }
 
 void Iss2::InstructionResponse::print( std::ostream &o ) const
 {
-    o << "<InsRsp  " << (valid ? "valid" : "invalid")
-      << " " << (error ? "error" : "no error")
+    o << "<InsRsp  " 
+      << (valid ? "  valid" : "invalid")
+      << " " << (error ? "   error" : "no error")
       << " ins " << std::hex << std::showbase << instruction
       << ">";
 }
 
 void Iss2::DataRequest::print( std::ostream &o ) const
 {
-    o << "<DataReq"
+    o << "<DataReq "
+      << (valid ? "  valid" : "invalid")
       << " mode " << mode_str(mode)
-      << (valid ? "   valid" : " invalid")
       << " type " << type_str(type);
     if ( type == XTN_READ || type == XTN_WRITE )
         //o << " (" << xtn_str((enum ExternalAccessType)addr) << ")";
@@ -112,8 +112,9 @@ void Iss2::DataRequest::print( std::ostream &o ) const
 
 void Iss2::DataResponse::print( std::ostream &o ) const
 {
-    o << "<DataRsp " << (valid ? "valid" : "invalid")
-      << " " << (error ? "error" : "no error")
+    o << "<DataRsp "
+      << (valid ? "  valid" : "invalid")
+      << " " << (error ? "   error" : "no error")
       << " rdata " << std::hex << std::showbase << rdata
       << ">";
 }

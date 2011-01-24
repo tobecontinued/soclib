@@ -38,16 +38,18 @@ static int max_interrupts = 80;
 
 void irq_handler(int irq)
 {
+	const int cpu = procnum();
+
 	uint32_t ti;
 	int left = atomic_add(&max_interrupts, -1);
 
 	ti = soclib_io_get(
 		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_VALUE);
-	printf("IRQ %d received at cycle %d on cpu %d %d interrupts to go\n\n", irq, ti, procnum(), left);
+		cpu*TIMER_SPAN+TIMER_VALUE);
+	printf("IRQ %d received at cycle %d on cpu %d %d interrupts to go\n\n", irq, ti, cpu, left);
 	soclib_io_set(
 		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_RESETIRQ,
+		cpu*TIMER_SPAN+TIMER_RESETIRQ,
 		0);
 
 	if ( ! left )
@@ -58,7 +60,7 @@ int main(void)
 {
 	const int cpu = procnum();
 
-	printf("Hello from processor %d\n", procnum());
+	printf("Hello from processor %d\n", cpu);
 	
 	set_irq_handler(irq_handler);
 	enable_hw_irq(0);
@@ -66,11 +68,11 @@ int main(void)
 
 	soclib_io_set(
 		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_PERIOD,
+		cpu*TIMER_SPAN+TIMER_PERIOD,
 		period[cpu]);
 	soclib_io_set(
 		base(TIMER),
-		procnum()*TIMER_SPAN+TIMER_MODE,
+		cpu*TIMER_SPAN+TIMER_MODE,
 		TIMER_RUNNING|TIMER_IRQ_ENABLED);
 	
 	while (1)

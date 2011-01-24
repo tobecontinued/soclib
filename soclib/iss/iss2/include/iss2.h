@@ -73,6 +73,7 @@ namespace soclib { namespace common {
  * You may want to use first-generation Iss instanciating them through
  * an IssIss2 wrapper. See soclib/lib/ississ2.
  */
+
 class Iss2
 {
 public:
@@ -446,6 +447,10 @@ protected:
     }
 
 };
+
+const char *mode_str(Iss2::ExecMode mode);
+const char *type_str(Iss2::DataOperationType type);
+const char *xtn_str(Iss2::ExternalAccessType type);
 
 }}
 

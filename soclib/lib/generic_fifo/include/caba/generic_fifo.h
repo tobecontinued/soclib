@@ -47,6 +47,20 @@ class GenericFifo
 public:
     typedef T data_t;
 
+    void print (void) const
+    {
+        std::cout << "r_fill_state  : " << r_fill_state << std::endl;
+        std::cout << "r_ptr/ptw/max : " << r_ptr << " - " << r_ptw << " - " << m_depth << std::endl;
+        std::cout << "m_data        : " << std::hex;
+        int i=0;
+        while (i<r_fill_state)
+            {
+                std::cout << m_data[(r_ptr+i)%m_depth] <<", ";
+                i++;
+            }
+        std::cout << std::dec << "end" << std::endl;
+    }
+
     size_t size() const
     {
         return m_depth;
