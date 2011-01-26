@@ -35,8 +35,14 @@
 
 #define MAX_SIZE (1 << 9)      //2^9 = 512
 
-#define ATOMIC_ADD __sync_fetch_and_add
-#define ATOMIC_SUB __sync_fetch_and_sub
+#if defined(__APPLE__)
+# include <libkern/OSAtomic.h>
+# define ATOMIC_ADD(addr, val) OSAtomicAdd32(val, addr)
+# define ATOMIC_SUB(addr, val) OSAtomicAdd32(-val, addr)
+#else
+# define ATOMIC_ADD __sync_fetch_and_add
+# define ATOMIC_SUB __sync_fetch_and_sub
+#endif
 
 namespace soclib { namespace tlmdt {
 
