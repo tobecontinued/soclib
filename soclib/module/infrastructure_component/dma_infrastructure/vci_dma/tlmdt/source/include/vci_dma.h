@@ -82,24 +82,31 @@ private:
     data_t 			m_length;		// tranfer length (bytes)
     bool     			m_irq_disabled;		// no IRQ when true
     bool     			m_stop;			// DMA running when false
-    char*			m_vci_data_buf;		// pointer on the local data buffer for VCI (N bytes)
-    char*			m_vci_be_buf;		// pointer on the local be buffer for VCI (N bytes)
-    char			m_irq_data_buf;		// local data buffer for IRQ (1 byte)
+
+    unsigned char*		m_vci_data_buf;		// pointer on the local data buffer for VCI (N bytes)
+    unsigned  char*		m_vci_be_buf;		// pointer on the local be buffer for VCI (N bytes)
+    unsigned char		m_irq_data_buf;		// local data buffer for IRQ (1 byte)
 
     soclib::common::Segment 	m_segment;		// segment associated
     pdes_local_time*		m_pdes_local_time;	// local time
     sc_core::sc_event         	m_rsp_received;		// event to wake-up the DMA
 
     // VCI READ/WRITE TRANSACTION
-    tlm::tlm_generic_payload*	m_rw_payload_ptr;
-    soclib_payload_extension*	m_rw_extension_ptr;
+    tlm::tlm_generic_payload	m_vci_payload;
+    tlm::tlm_phase		m_vci_phase;
+    sc_core::sc_time		m_vci_time;
+    soclib_payload_extension	m_vci_extension;
     
     // NULL MESSAGE
-    tlm::tlm_generic_payload*	m_null_payload_ptr;
-    soclib_payload_extension*	m_null_extension_ptr;
+    tlm::tlm_generic_payload	m_null_payload;
+    tlm::tlm_phase		m_null_phase;
+    sc_core::sc_time		m_null_time;
+    soclib_payload_extension	m_null_extension;
     
     // IRQ TRANSACTION
     tlm::tlm_generic_payload  	m_irq_payload;
+    tlm::tlm_phase		m_irq_phase;
+    sc_core::sc_time		m_irq_time;
 
 public:
 
@@ -110,12 +117,13 @@ public:
         STATE_ERROR_WRITE,
         STATE_READ,
         STATE_WRITE,
-    }
+    };
 
     // Functions
     void execLoop();
     bool vci_rsp_error();
-    void send_interrupt();
+    void set_interrupt();
+    void reset_interrupt();
     void send_null();
     void send_write(size_t burst_length);
     void send_read(size_t burst_length);
