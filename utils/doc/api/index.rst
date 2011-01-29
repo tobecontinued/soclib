@@ -4,6 +4,8 @@
 The soclib Python modules
 =========================
 
+.. index:: API
+
 Soclib comes with a Python library. This library is split in three
 parts:
 

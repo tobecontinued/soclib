@@ -25,6 +25,9 @@ option to build a complete simulator.
 Format
 ======
 
+.. index::
+   pair: platform description; syntax
+
 The global syntax is the same as :ref:`.sd file syntax
 <sd-syntax>`.
 

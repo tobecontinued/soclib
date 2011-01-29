@@ -6,6 +6,8 @@
 The soclib builder module
 =========================
 
+.. index:: builder
+
 Overview
 ========
 

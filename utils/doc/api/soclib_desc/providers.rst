@@ -4,6 +4,8 @@
 Metadata providers
 ==================
 
+.. index:: metadata provider modules
+
 Entry point of metadata providers is a class inheriting from
 :py:class:`soclib_desc.metadata_file.MetadataFile`.
 This class will be instanciated once per found metadata file, and must

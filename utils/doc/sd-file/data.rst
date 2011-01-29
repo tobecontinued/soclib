@@ -7,6 +7,9 @@ Provided data
 Syntax
 ------
 
+.. index::
+   pair: .sd file; syntax
+
 Fundamental datatype are:
 
 Strings:
@@ -41,6 +44,11 @@ them:
 
 Root statements
 ---------------
+
+.. index::
+   triple: module; definition; metadata
+   triple: port; definition; metadata
+   triple: signal; definition; metadata
 
 ``Module``, ``PortDecl`` and ``Signal`` take the declared module name
 as first argument. All other arguments are named and specify attached

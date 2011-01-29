@@ -5,6 +5,9 @@
 Parameters
 ==========
 
+.. index::
+   pair: parameters; API
+
 Purpose
 =======
 

@@ -3,6 +3,9 @@
 Parameters
 ==========
 
+.. index::
+   pair: .sd files; parameters
+
 General parameters description is covered in
 :ref:`relevant chapter in metadata module description <soclib_desc-parameter>`.
 

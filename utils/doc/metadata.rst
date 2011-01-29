@@ -6,6 +6,8 @@
 Metadata
 ========
 
+.. index:: metadata
+
 .. _md-goals:
 
 Metadata are needed to serve different goals:
@@ -46,6 +48,8 @@ We will describe these stages below.
 Module
 ======
 
+.. index:: module
+
 A ``Module`` is the module description, in an abstract way.
 
 The some module description is not enough to compile it. If this is a
@@ -76,6 +80,9 @@ Complete API implemented by modules is described in
 Specialization
 ==============
 
+.. index::
+   pair: specialization; module
+
 With addition of template parameters, a Module_ description can evolve
 into a ``Specialization``. ``Specialization`` is a module definition
 with fixed template parameters. This permits:
@@ -98,6 +105,8 @@ Complete API implemented by specializations is described in
 ComponentBuilder
 ================
 
+.. index:: component builder
+
 The builder is the last thing you can obtain with module
 descriptions. It is able to generate program command lines to issue to
 :py:mod:`soclib_builder`.
@@ -109,6 +118,9 @@ Complete API implemented by component builders is described in
 
 Module Index
 ============
+
+.. index::
+   pair: module; index
 
 Upon initialization, :py:mod:`soclib_desc` scans the directories
 defined in `metadata paths`_.  All found modules declarations are

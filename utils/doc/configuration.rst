@@ -8,6 +8,8 @@ Configuration files
 Overview
 ========
 
+.. index:: configuration overview
+
 SoCLib's configuration file is parsed by :py:mod:`soclib_cc.config`,
 and is used by other modules:
 
@@ -23,6 +25,9 @@ and is used by other modules:
 
 Configuration file paths
 ========================
+
+.. index::
+   pair: configuration; files
 
 SoCLib configuration module will set default parameters, then look for
 the following files, in order:
@@ -40,6 +45,9 @@ Any of these files can be absent, this will be silently ignored.
 
 Configuration file format
 =========================
+
+.. index::
+   pair: configuration; format
 
 SoCLib configuration files are:
 
@@ -254,6 +262,9 @@ Expected data
   C/C++-specific. List of header files to unconditionally add to
   compilation commands with ``-include <file>``.
 
+.. index::
+   triple: build; parallel compilation; job count
+
 ``max_processes``:
   Maximal count of concurrent build processes.
 
@@ -270,6 +281,9 @@ Expected data
 
 ``toolchain``:
   A Toolchain_ object.
+
+.. index::
+   pair: build; temporary objects
 
 ``repos``:
   Writeable path in filesystem, used as temporary object spool

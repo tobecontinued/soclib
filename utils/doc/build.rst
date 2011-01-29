@@ -5,6 +5,9 @@
 The build process
 =================
 
+.. index::
+   pair: build; process
+
 The C++ template compilation problem
 ====================================
 
@@ -47,6 +50,9 @@ Therefore we need two features in the build-system:
 Temporary objects reuse
 =======================
 
+.. index::
+   pair: build; temporary objects
+
 When modules are compiled, object files resulting from their
 compilation are put in a separate temporary `repos` directory where
 file names are indexed depending on:
@@ -70,6 +76,9 @@ C++ code.
 
 Per-module debug mode
 =====================
+
+.. index::
+   pair: debug; module
 
 User sometimes need to debug just one module. Soclib-cc include
 support for such an usage with the `debug mode`. This permits to have

@@ -2,6 +2,8 @@
 Rationale
 =========
 
+.. index:: .sd files
+
 Design
 ------
 

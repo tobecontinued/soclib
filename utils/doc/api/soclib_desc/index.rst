@@ -6,6 +6,9 @@
 The soclib metadata description module
 ======================================
 
+.. index::
+   pair: API, metadata
+
 Overview
 ========
 
