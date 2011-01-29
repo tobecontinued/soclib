@@ -198,13 +198,17 @@ class Toolchain(Config):
     def __get_tool(self, name):
         try:
             return getattr(self, 'tool_'+name)
-        except KeyError:
+        except AttributeError:
             pass
-        if name in self.tool_map:
+        try:
+            tm = self.tool_map
+        except:
+            tm = {}
+        if name in tm:
             #warnings.warn(
             #    "Please migrate tool_map[%s] entry to tool_%s" % (name, name),
             #    DeprecationWarning)
-            return self.tool_map[name]
+            return tm[name]
         if self.parent:
             return self.parent.__get_tool(name)
         raise KeyError(name)
