@@ -1,6 +1,11 @@
 /* http://colorschemedesigner.com/#0z62KueE8rTA1 */
 
-a, div.related ul li a {
+div.body a {
+    color: #066A81;
+    text-decoration: none;
+}
+
+div.related ul li a {
     color: #0F99BA;
     text-decoration: none;
 }
