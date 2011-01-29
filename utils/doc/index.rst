@@ -3,8 +3,8 @@
 Soclib tools documentation
 ==========================
 
-This document aims to provide documentation about the SoCLib build
-tools:
+This document describes the SoCLib build tools. It covers the
+following topics:
 
 * General concepts_ about the component's :ref:`metadata <md>`,
   and the :py:mod:`underlying library <soclib_desc>`.
@@ -18,8 +18,8 @@ tools:
   <sd_parser>`, :ref:`platform decsriptions <pf-def>`, and
   :ref:`configuration files <soclib.conf>`
 
-This document does not contain documentation about components or
-platform modelization concepts.
+This document neither covers components nor
+platform modeling concepts.
 
 Usage
 =====

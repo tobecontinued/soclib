@@ -15,8 +15,7 @@ The main entry point in soclib is the ``soclib-cc`` command.
 * build a platform, a component.
 
 * get cflags needed to access compilation headers for software-centric
-  view of the modules. This is used to build an embedded software
-  piece.
+  view of the modules. This is used to build an embedded software.
 
 * gather information about a module's :ref:`md`.
 
@@ -142,7 +141,7 @@ in :option:`soclib-cc -1` mode.
 
 .. option:: -c
 
-Tells soclib-cc to only compile, and not link. This is onlu available
+Tells soclib-cc to only compile, and not link. This is only available
 for module building (:option:`soclib-cc -1` mode).
 
 .. option:: -x
@@ -208,7 +207,8 @@ Bug-reporting
 Sometimes, user needs help from other people having more experience
 with SoCLib. If this process happens through email, having all the
 information peer needs to understand what happened can be a tedious
-enumeration. These options try to automate this information gathering.
+enumeration. These options try to automate this information gathering
+process.
 
 .. option:: --bug-report
 

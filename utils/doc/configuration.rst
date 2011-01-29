@@ -119,9 +119,9 @@ Configuration files contain 3 types of objects:
 * ``BuildEnv``, a build environment, assembling the latter two
 
 As definition of compiler and library variants are often nearly the
-same, build-environment specifiers can inherit one another. Moreover,
+same, build-environment specifiers can be inherited. Moreover,
 some build environment specifiers can be templates where usual data is
-provided with parts to replace transparently. See `inheriting
+provided with parts to replace. See `inheriting
 configuration`_ for an example, see
 :py:mod:`soclib_cc.config.objects` for implementation details.
 
@@ -294,4 +294,4 @@ Expected data
 
 ``sd_ignore_regexp``:
   Regexp of filenames to ignore while indexing metadata files. This
-  can ensure VCS files are ignored.
+  can be used to ensure VCS files are ignored.

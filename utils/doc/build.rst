@@ -12,7 +12,7 @@ The C++ template compilation problem
 ====================================
 
 The usual way of using templated code is to put all code in .h, having
-template code emitted at use in main C++ file. 
+template code emitted when used in main C++ file. 
 
 This is good for utility libraries (like STL), but SystemC modules may
 be more than 1000 lines long, and more that 40 of them may be used in
@@ -22,7 +22,7 @@ one topcell. This may yield a single translation unit with more than
 This implies some usability issues:
 
 * compiler getting out of memory,
-* unreasonnable compile times.
+* unreasonable compile times.
 
 Therefore we need two features in the build-system:
 
@@ -31,7 +31,7 @@ Therefore we need two features in the build-system:
   * Put template class definition (.h) and implementation (.cpp) in
     two separate files. Compile the implementation separately.
 
-  * This implies that the C++ templates must be explicitely
+  * This implies that the C++ templates must be explicitly
     instanciated with some ``template class ns::Foo<parameters>;``
     code.
 
@@ -80,8 +80,8 @@ Per-module debug mode
 .. index::
    pair: debug; module
 
-User sometimes need to debug just one module. Soclib-cc include
-support for such an usage with the `debug mode`. This permits to have
+User sometimes needs to debug just one module. Soclib-cc includes
+support for such an usage with its `debug mode`. This permits to have
 just one module compiled with no optimization and debug symbols, with
 the rest of simulator running optimized code.
 

@@ -73,7 +73,7 @@ A complete example::
                   wrplen_size = 1
                   )
 
-Semantically equivalent to the verbose counterpart::
+Semantically equivalent to its verbose counterpart::
 
   todo = Platform('caba', 'top.cpp',
                   uses = [
