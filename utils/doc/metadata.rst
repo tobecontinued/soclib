@@ -52,11 +52,11 @@ Module
 
 A ``Module`` is the module description, in an abstract way.
 
-The some module description is not enough to compile it. If this is a
+The sole module description is not enough to compile it. If this is a
 SystemC (C++) module, it may have some template parameters which
 change the template instanciation. Therefore, user must provide the
 template parameters to the build system in order to compile the
-module's code. This is the role of the Specialization_.
+module's code. This is the role of the specialization_.
 
 Module definition contains the objective description of the module,
 with a set of attributes:
@@ -75,7 +75,7 @@ with a set of attributes:
 * other side-band data.
 
 Complete API implemented by modules is described in
-:py:class:`soclib_desc.module.ModuleInterface`.
+:py:class:`~soclib_desc.module.ModuleInterface`.
 
 Specialization
 ==============
@@ -83,7 +83,7 @@ Specialization
 .. index::
    pair: specialization; module
 
-With addition of template parameters, a Module_ description can evolve
+With addition of template parameters, a module_ description can evolve
 into a ``Specialization``. ``Specialization`` is a module definition
 with fixed template parameters. This permits:
 
@@ -96,11 +96,11 @@ with fixed template parameters. This permits:
 
 * to retrieve entity name (C++ class name, or VHDL entity)
 
-* to obtain a ComponentBuilder_, which is able to build the needed
-  source files to obtain objects.
+* to cast a ComponentBuilder_, which is able to build the needed
+  source files and obtain object files.
 
 Complete API implemented by specializations is described in
-:py:class:`soclib_desc.specialization.SpecializationInterface`.
+:py:class:`~soclib_desc.specialization.SpecializationInterface`.
 
 ComponentBuilder
 ================
@@ -108,11 +108,13 @@ ComponentBuilder
 .. index:: component builder
 
 The builder is the last thing you can obtain with module
-descriptions. It is able to generate program command lines to issue to
+descriptions. It is able to generate
+:py:class:`~soclib_builder.bblock.BBlock` and associated
+:py:class:`~soclib_builder.action.Action` objects of
 :py:mod:`soclib_builder`.
 
 Complete API implemented by component builders is described in
-:py:class:`soclib_desc.component_builder.ComponentBuilderInterface`.
+:py:class:`~soclib_desc.component_builder.ComponentBuilderInterface`.
 
 .. _md-index:
 
