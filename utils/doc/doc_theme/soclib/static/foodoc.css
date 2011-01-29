@@ -5,6 +5,10 @@ div.body a {
     text-decoration: none;
 }
 
+div.body a:hover {
+    text-decoration: underline;
+}
+
 div.related ul li a {
     color: #0F99BA;
     text-decoration: none;
