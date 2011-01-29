@@ -78,6 +78,7 @@ int _main(int argc, char *argv[])
 	sc_signal<bool> signal_mips0_it5("signal_mips0_it5");
 
 	soclib::caba::Pibus pibus("pibus");
+
 	sc_signal<bool> req("req");
 	sc_signal<bool> gnt("gnt");
 	sc_signal<bool> sel0("sel0");
@@ -92,19 +93,26 @@ int _main(int argc, char *argv[])
 
 	// Components
 
-	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > mips0("mips0", 0,maptab,0,1,8,4,1,8,4);
-
-
-	soclib::common::Loader loader("soft/bin.soft");
-	soclib::caba::VciRam<vci_param> vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
-	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptab, "vcitty0", NULL);
-	soclib::caba::VciSimhelper<vci_param> simhelper("vcisimhelper", IntTab(2), maptab);
-	
-	soclib::caba::PibusBcu bcu("bcu", maptab, 1, 3, 100);
-	soclib::caba::VciPiInitiatorWrapper<vci_param> cache_wrapper("cache_wrapper");
-	soclib::caba::VciPiTargetWrapper<vci_param> multiram_wrapper("multiram_wrapper");
-	soclib::caba::VciPiTargetWrapper<vci_param> tty_wrapper("tty_wrapper");
-	soclib::caba::VciPiTargetWrapper<vci_param> simhelper_wrapper("simhelper_wrapper");
+	soclib::caba::VciXcacheWrapper<vci_param, soclib::common::IssIss2<soclib::common::MipsElIss> > 
+            mips0("mips0", 0,maptab,0,1,8,4,1,8,4);
+	soclib::common::Loader 
+            loader("soft/bin.soft");
+	soclib::caba::VciRam<vci_param> 
+            vcimultiram0("vcimultiram0", IntTab(0), maptab, loader);
+	soclib::caba::VciMultiTty<vci_param> 
+            vcitty("vcitty",	IntTab(1), maptab, "vcitty0", NULL);
+	soclib::caba::VciSimhelper<vci_param> 
+            simhelper("vcisimhelper", IntTab(2), maptab);
+	soclib::caba::PibusBcu 
+            bcu("bcu", maptab, 1, 3, 100);
+	soclib::caba::VciPiInitiatorWrapper<vci_param> 
+            cache_wrapper("cache_wrapper");
+	soclib::caba::VciPiTargetWrapper<vci_param> 
+            multiram_wrapper("multiram_wrapper");
+	soclib::caba::VciPiTargetWrapper<vci_param> 
+            tty_wrapper("tty_wrapper");
+	soclib::caba::VciPiTargetWrapper<vci_param> 
+            simhelper_wrapper("simhelper_wrapper");
 
 	//	Net-List
  

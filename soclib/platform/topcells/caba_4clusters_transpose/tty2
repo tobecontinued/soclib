@@ -1,0 +1,24 @@
+[20h !!!  Processor 2 running !!!
+
+ *** starting display for image 0 at cycle 1145207
+*** success fb_write ***
+ *** completing display for image 0 at cycle 1166020
+
+ *** starting display for image 1 at cycle 2312692
+*** success fb_write ***
+ *** completing display for image 1 at cycle 2332900
+
+ *** starting display for image 2 at cycle 3492578
+*** success fb_write ***
+ *** completing display for image 2 at cycle 3512786
+
+ *** starting display for image 3 at cycle 4522129
+*** success fb_write ***
+ *** completing display for image 3 at cycle 4542337
+
+ *** starting display for image 4 at cycle 5616780
+*** success fb_write ***
+ *** completing display for image 4 at cycle 5636987
+
+
+!!!  Exit  Processor  0x002   !!!
