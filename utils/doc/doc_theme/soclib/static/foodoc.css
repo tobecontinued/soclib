@@ -1,26 +1,27 @@
+/* http://colorschemedesigner.com/#0z62KueE8rTA1 */
 
 a, div.related ul li a {
-    color: #116C81;
+    color: #0F99BA;
     text-decoration: none;
 }
 
 .literal {
-    color: #771189;
+    color: #A60FC1;
 }
 
 dl.function > dt, dl.method > dt {
-    background-color: #A8D8E3;
+    background-color: #7ECFE2;
 }
 
 dl.class > dt {
-    background-color: #F5B16F;
+    background-color: #FFC58C;
 }
 
 dl.attribute > dt {
-    background-color: #F5F5B3;
+    background-color: #FFFF8C;
 }
 
 div.section {
     padding-left: 1em;
-    border-left: 1px #650B74 dashed;
+    border-left: 1px #066A81 dashed;
 }
