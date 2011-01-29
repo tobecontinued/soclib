@@ -121,11 +121,9 @@ tmpl (void)::execLoop ()
         switch ( m_state ) {
         case STATE_IDLE:
         {
-//std::cout << " DMA : IDLE at cycle " << m_pdes_local_time->get() << std::endl;
             if ( !m_stop ) m_state = STATE_READ;
             else if ( m_pdes_local_time->need_sync() )
             {
-//std::cout << "     ********* sending a null message ************" << std::endl;
                 send_null();
                 wait(m_rsp_received);
             }
@@ -137,8 +135,12 @@ tmpl (void)::execLoop ()
             if ( m_length < m_max_burst_length )	length = m_length;
             else					length = m_max_burst_length;
             // blocking command
+
+#ifdef SOCLIB_MODULE_DEBUG
 std::cout << " DMA : READ at cycle " << m_pdes_local_time->get() << std::hex << std::endl;
 std::cout << "    length = " << length << " / source = " << m_source << std::endl;
+#endif
+
             send_read(length);
             wait(m_rsp_received);
             // response analysis
@@ -159,8 +161,12 @@ std::cout << "    length = " << length << " / source = " << m_source << std::end
             if ( m_length < m_max_burst_length )        length = m_length; 
             else                                        length = m_max_burst_length;
             // blocking command
+
+#ifdef SOCLIB_MODULE_DEBUG
 std::cout << " DMA : WRITE at cycle " << m_pdes_local_time->get() << std::hex << std::endl;
 std::cout << "    length = " << length << " / destination = " << m_destination << std::endl;
+#endif
+
             send_write(length);
             wait(m_rsp_received);
             // registers update
@@ -192,10 +198,6 @@ std::cout << "    length = " << length << " / destination = " << m_destination <
         case STATE_ERROR_WRITE:
         case STATE_SUCCESS:
         {
-if ( m_state == STATE_SUCCESS )
-std::cout << " DMA : SUCCESS at cycle " << m_pdes_local_time->get() << std::endl;
-else
-std::cout << " DMA : ERROR at cycle " << m_pdes_local_time->get() << std::endl;
             if ( m_stop ) 
             {
                 m_state = STATE_IDLE;
@@ -221,7 +223,7 @@ tmpl (tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload,
     if(time > m_pdes_local_time->get()) m_pdes_local_time->set(time);
 
 #ifdef SOCLIB_MODULE_DEBUG
-//    std::cout << name() << " Receive VCI response / time = " << time.value() << std::endl;
+    std::cout << name() << " Receive VCI response / time = " << time.value() << std::endl;
 #endif
   
     m_rsp_received.notify (sc_core::SC_ZERO_TIME);
@@ -297,7 +299,7 @@ std::cout << name() << " read config register " << cell << std::endl;
             data_t data = atou(payload.get_data_ptr(), 0);
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " write config register " << cell << " with data 0x" << std::hex << data << std::endl;
+std::cout << name() << " write config register " << cell << " / data = 0x" << std::hex << data << std::endl;
 #endif
             switch (cell) {
             case DMA_SRC:
@@ -344,7 +346,7 @@ tmpl (tlm::tlm_sync_enum)::irq_nb_transport_bw ( tlm::tlm_generic_payload    &pa
                                                  sc_core::sc_time            &time) 
 {
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " Receive IRQ response time = " << time.value() << std::endl;
+std::cout << name() << " Receive IRQ response time = " << time.value() << std::endl;
 #endif
   return tlm::TLM_COMPLETED;
 }
