@@ -24,6 +24,7 @@
  *
  * Copyright (c) UPMC / Lip6, 2010
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
+ *     Alain Greiner
  */
 #ifndef SOCLIB_TLMDT_VCI_FRAMEBUFFER_H
 #define SOCLIB_TLMDT_VCI_FRAMEBUFFER_H
@@ -37,8 +38,8 @@ namespace soclib { namespace tlmdt {
 
 template<typename vci_param>
 class VciFrameBuffer 
-  : public sc_core::sc_module                                             // inherit from SC module base class
-  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "forward interface"
+  : public sc_core::sc_module                                             
+  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> 
 {
 private:
   /////////////////////////////////////////////////////////////////////////////////////
@@ -47,38 +48,38 @@ private:
   soclib::common::IntTab         m_index;
   soclib::common::MappingTable   m_mt;
   soclib::common::Segment        m_segment;
-  soclib::common::FbController   m_framebuffer;
-  uint8_t                        *m_surface;
-  size_t                         m_update;
-
+  soclib::common::FbController   m_fb_controler;
 
   /////////////////////////////////////////////////////////////////////////////////////
-  // Virtual Fuctions  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
+  // Interface functiont associated to the target VCI port
   /////////////////////////////////////////////////////////////////////////////////////
-  tlm::tlm_sync_enum nb_transport_fw        // receive command from initiator
-  ( tlm::tlm_generic_payload &payload,      // payload
-    tlm::tlm_phase           &phase,        // phase
-    sc_core::sc_time         &time);        // time
+  tlm::tlm_sync_enum nb_transport_fw  ( tlm::tlm_generic_payload &payload,
+                                        tlm::tlm_phase           &phase, 
+                                        sc_core::sc_time         &time); 
 
-  // Not implemented for this example but required by interface
-  void b_transport                          // b_transport() - Blocking Transport
-  ( tlm::tlm_generic_payload &payload,      // payload
-    sc_core::sc_time         &time);        // time
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Not implemented but required by interface
+  /////////////////////////////////////////////////////////////////////////////////////
+  void b_transport ( tlm::tlm_generic_payload &payload, 
+                     sc_core::sc_time         &time);  
   
-  // Not implemented for this example but required by interface
-  bool get_direct_mem_ptr
-  ( tlm::tlm_generic_payload &payload,      // payload
-    tlm::tlm_dmi             &dmi_data);    // DMI data
+  bool get_direct_mem_ptr ( tlm::tlm_generic_payload &payload,  
+                            tlm::tlm_dmi             &dmi_data);  
   
-  // Not implemented for this example but required by interface
-  unsigned int transport_dbg                            
-  ( tlm::tlm_generic_payload &payload);     // payload
+  unsigned int transport_dbg ( tlm::tlm_generic_payload &payload); 
 
 protected:
   SC_HAS_PROCESS(VciFrameBuffer);
 public:
+
+  ////////////////////////////////
+  // VCI port
+  ///////////////////////////////
   tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci;   // VCI TARGET socket
 
+  ////////////////////////////////////////////////
+  //  Constructor
+  ////////////////////////////////////////////////
   VciFrameBuffer(sc_core::sc_module_name name,
 		 const soclib::common::IntTab &index,
 		 const soclib::common::MappingTable &mt,
