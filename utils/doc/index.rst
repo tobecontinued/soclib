@@ -1,13 +1,28 @@
-.. Soclib-cc documentation master file, created by
-   sphinx-quickstart on Fri Jan 14 17:30:52 2011.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
+==========================
 Soclib tools documentation
 ==========================
 
+This document aims to provide documentation about the SoCLib build
+tools:
+
+* General concepts_ about the component's :ref:`metadata <md>`,
+  and the :py:mod:`underlying library <soclib_desc>`.
+
+* Overview of the :ref:`build-system <build>` and its
+  :py:mod:`implementation <soclib_builder>`.
+
+* :ref:`soclib-cc` usage.
+
+* User-provided file formats, like :py:mod:`.sd file format
+  <sd_parser>`, :ref:`platform decsriptions <pf-def>`, and
+  :ref:`configuration files <soclib.conf>`
+
+This document does not contain documentation about components or
+platform modelization concepts.
+
 Usage
------
+=====
 
 .. toctree::
    :maxdepth: 2
@@ -18,7 +33,7 @@ Usage
    sd-file/index
 
 Concepts
---------
+========
 
 .. toctree::
    :maxdepth: 2
@@ -27,7 +42,7 @@ Concepts
    metadata
 
 API
----
+===
 
 .. toctree::
    :maxdepth: 2
