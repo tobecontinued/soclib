@@ -101,7 +101,7 @@ Run soclib-cc --examples to see some common command-line examples.
     group.add_option('-t', '--type', dest = 'type',
                       action='store',
                       choices = available_configs,
-                      help="Use a different configuration: <%s>"%(', '.join(available_configs)))
+                      help="Use a different configuration: <*%s>"%(', '.join(available_configs)))
     group.add_option('-b', '--buggy', nargs = 1, type = "string", metavar="MODULE",
                       action='callback', callback = buggy_callback,
                       help="Put MODULE in debug mode (disable opt, set SOCLIB_MODULE_DEBUG preprocessor variable)")

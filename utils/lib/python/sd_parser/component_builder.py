@@ -38,6 +38,8 @@ from soclib_builder.action import *
 from soclib_builder.bblock import *
 from soclib_builder.textfile import *
 
+from soclib_desc import component_builder
+
 from soclib_cc.actions.cxx import *
 from soclib_cc.actions.hdl import *
 
@@ -67,12 +69,7 @@ class ComponentInstanciationError(Exception):
 class TooSimple(Exception):
     pass
 
-class ComponentBuilder:
-    
-    def results(self):
-        return []
-
-class CxxComponentBuilder(ComponentBuilder):
+class CxxComponentBuilder(component_builder.ComponentBuilderInterface):
     def __init__(self,
                  module_name,
                  classname,
@@ -205,7 +202,7 @@ class CxxComponentBuilder(ComponentBuilder):
         source += "#endif\n"
         return source
 
-class HdlComponentBuilder(ComponentBuilder):
+class HdlComponentBuilder(component_builder.ComponentBuilderInterface):
     def __init__(self,
                  module_name,
                  classname,

@@ -127,8 +127,8 @@ class ConfigSpool(object):
             if not isinstance(v, objects.BuildEnv):
                 continue
             r.append(k)
-        r.remove("build_env")
-        r.insert(0, "default")
+        r.remove(self.__default_config)
+        r.insert(0, self.__default_config)
         return list(set(r))
 
     def __str__(self):
@@ -153,6 +153,8 @@ class ConfigSpool(object):
         Needed by the configuration file API, adds a description path
         to the default list. Accepts paths relative the soclib's root
         or absolute.
+
+        :param path: Root path to add to soclib index path
         """
         if not os.path.isabs(path):
             path = os.path.join(self.path, path)
@@ -162,17 +164,21 @@ class ConfigSpool(object):
         '''
         Configuration file API, adds a class name to be imported,
         capable of parsing metadata files
+
+        :param parser: A :ref:`metadata provider class
+                       <soclib_desc-metadata_providers>` name string.
         '''
         self.desc_parsers.append(parser)
 
 
     def __getattr__(self, key):
         '''
-        Attribute getter hack, returns a Config present in the spool
-        by its name, or equivalent attribute in the defaut config.
+        Attribute getter hack, returns a
+        :py:class`soclib_cc.config.objects.Config` present in the
+        spool by its name, or equivalent attribute in the defaut
+        config.
 
-        Special attribute "type" returns the current default config
-        name.
+        Special key "type" returns the current default config name.
         '''
         if key.startswith('_'):
             raise AttributeError(key)
@@ -180,6 +186,8 @@ class ConfigSpool(object):
             r = getattr(self.__configs[self.__default_config], key)
 #            print "Getting %s from default" % key
             return r
+        except AttributeError:
+            pass
         except KeyError:
             pass
         if key == 'type':

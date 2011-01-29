@@ -28,97 +28,134 @@ __version__ = "$Revision$"
 __all__ = ['ModuleInterface', 'PortInterface', 'SignalInterface']
 
 class ModuleCommon:
+    """
+    This is the base class of all Module (and Signal or Ports)
+    implementations. This class provides sane defaults for most
+    methods.
+    """
 
     def __init__(self, name, source_filename, source_lineno = 0):
-        '''
-        Creates the Module.
-         * name is the fully qualified module name, like caba:vci_foo_bar
-         * source_filename is the file where this module got declared
-         * source_lineno is the line number where module got declared
-        '''
+        """
+        Creates a Module.
+
+        :param name: the fully qualified module name, like
+                     "caba:vci_foo_bar"
+        :param source_filename: the absolute path of file where this
+                                module got declared
+        :param source_lineno: the line number where module got
+                              declared inside ``source_filename``
+        """
         self.__name = name
         self.__filename = source_filename
         self.__lineno = source_lineno
         self.__debug_mode = False
 
     def cleanup(self):
+        """
+        Resets transient state attached to this module, like debug
+        mode.
+        """
         self.set_debug_mode(False)
 
     def set_debug_mode(self, debug = True):
-        '''
+        """
         Sets module to debug mode, what happens in specialized modules
         when they are in debug mode is implementation-dependant
-        '''
+
+        :param debug: next debug mode
+        """
         self.__debug_mode = debug
 
     @property
     def debug_mode(self):
-        '''
+        """
         Current debug mode
-        '''
+        """
         return self.__debug_mode
 
     def __hash__(self):
-        '''
+        """
         Unique ID for the module
-        '''
+        """
         return hash((self.__filename, self.__lineno, self.__name))
 
     def __eq__(self, other):
-        '''
-        Returns whether modules are equivalent
-        '''
+        """
+        Returns whether modules are the same
+        """
         return (self.__filename, self.__lineno, self.__name) == \
                (other.__filename, other.__lineno, other.__name)
 
     def path_is(self, path):
-        '''
-        Tells whether the given path is the path where module got
+        """
+        Tells whether the given file path is the file where module got
         declared.
-        '''
+
+        :param path: an absolute filename
+        """
         return path == self.__filename
 
     @property
     def name(self):
-        '''
-        fully qualified module name
-        '''
+        """
+        Fully qualified module name in the :ref:`md-index`.
+        """
         return self.__name
 
     # API to implement
 
     def related_files(self):
-        '''
-        Gets a collection of files related to this module
-        '''
+        """
+        Gets a collection of files related to this module. This method
+        must be implemeted in subclasses.
+        """
         raise NotImplementedError()
 
 class ModuleInterface:
+    """
+    This is the protocol that must be implemented by Modules. Modules
+    must inherit :py:class:`soclib_desc.module.ModuleCommon`.
+    """
 
     # API to implement
 
     def is_used(self):
-        '''
+        """
         Returns whether the module got specialized at least once.
-        '''
+        """
         raise NotImplementedError()
 
     def get_template_parameters(self):
-        '''
-        Returns a list of parameters to define in order to be able to
+        """
+        Returns a list of :ref:`parameter objects
+        <sd-file-parameters>` to define in order to be able to
         specialize this module.
-        '''
+        """
         raise NotImplementedError()
 
     def specialize(self, **params):
-        '''
+        """
         Creates a Specialization for the module, with the given
         parameters.
-        '''
+
+        :param params: a mapping of key/values.
+        
+        :returns: a :py:class:`Specialization
+                  <soclib_desc.specialization.SpecializationInterface>`
+                  object.
+        """
         raise NotImplementedError()
 
 class PortInterface:
-    pass
+    """
+    This is the protocol that must be implemented by Ports. Ports must
+    inherit :py:class:`~soclib_desc.module.ModuleCommon`, and implement
+    the :py:class:`~soclib_desc.module.ModuleInterface`.
+    """
 
 class SignalInterface:
-    pass
+    """
+    This is the protocol that must be implemented by Signals. Signals
+    must inherit :py:class:`~soclib_desc.module.ModuleCommon`, and
+    implement the :py:class:`~soclib_desc.module.ModuleInterface`.
+    """

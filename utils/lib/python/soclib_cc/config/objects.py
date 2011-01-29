@@ -1,4 +1,5 @@
 
+
 # SOCLIB_GPL_HEADER_BEGIN
 # 
 # This file is part of SoCLib, GNU GPLv2.
@@ -127,7 +128,10 @@ class Config(object):
         '''
         if key.startswith('__'):
             raise AttributeError(key)
-        value = self[key]
+        try:
+            value = self[key]
+        except KeyError:
+            raise AttributeError(key)
         if isinstance(value, (list, tuple)):
             return map(self.__remap, value)
         if isinstance(value, dict):
@@ -148,7 +152,7 @@ class Config(object):
         try:
             getattr(self, key)
         except:
-            raise ValueError("You cant add a new attribute afterwards")
+            raise AttributeError("You cant add a new attribute afterwards")
         self.__args[key] = val
 
     @property
