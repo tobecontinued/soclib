@@ -1,0 +1,26 @@
+
+a, div.related ul li a {
+    color: #116C81;
+    text-decoration: none;
+}
+
+.literal {
+    color: #771189;
+}
+
+dl.function > dt, dl.method > dt {
+    background-color: #A8D8E3;
+}
+
+dl.class > dt {
+    background-color: #F5B16F;
+}
+
+dl.attribute > dt {
+    background-color: #F5F5B3;
+}
+
+div.section {
+    padding-left: 1em;
+    border-left: 1px #650B74 dashed;
+}
