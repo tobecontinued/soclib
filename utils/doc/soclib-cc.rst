@@ -160,7 +160,7 @@ Compilation mode
 
 .. option:: -m MODE, --mode=MODE
 
-Sets the build mode. This can be ``debug``, ``profile`` or
+Sets the build mode. This can be ``debug``, ``prof`` or
 ``release``. This changes the used compilation/linkage flags. Default
 is ``release``. Intent is:
 
@@ -168,7 +168,7 @@ is ``release``. Intent is:
   Maximal optimization level, no debug symbols.
 ``debug``:
   All debug symbols included, no optimization.
-``profile``:
+``prof``:
   Maximal optimization with profiling (gprof) included.
 
 .. option:: -t ENV, --type=ENV

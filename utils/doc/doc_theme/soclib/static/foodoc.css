@@ -1,5 +1,9 @@
 /* http://colorschemedesigner.com/#0z62KueE8rTA1 */
 
+a {
+    font-weight: bold;
+}
+
 div.body a {
     color: #066A81;
     text-decoration: none;
