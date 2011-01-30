@@ -25,7 +25,7 @@ Usage
 =====
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    soclib-cc
    configuration
@@ -36,7 +36,7 @@ Concepts
 ========
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    build
    metadata
@@ -45,10 +45,12 @@ API
 ===
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    api/index
+   api/client_howto
 
+==================
 Indices and tables
 ==================
 
