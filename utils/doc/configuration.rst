@@ -162,7 +162,7 @@ Built-In configuration is made of:
 * One default build environment ``config.build_env`` using the default
   toolchain and SystemC as sole library.
 
-See ``utils/lib/python/soclib_cc/config/built-in.conf`` for its
+See :file:`utils/lib/python/soclib_cc/config/built-in.conf` for its
 implementation. Dont modify this file directly, use `configuration
 file paths`_.
 
@@ -208,90 +208,152 @@ we'll have::
   --type=TYPE, -t TYPE    Use a different configuration: <*my_build_env,
                           build_env>
 
-and explicitely setting ``-t`` wont be necessary any more.
+and explicitly setting ``-t`` wont be necessary any more.
 
 
 Expected data
 =============
 
-``Library``
------------
+.. index::
+   pair: configuration; Library
 
-``name``:
-  String, mandatory.
+.. _Library:
 
-  Name of the library. Expected library name, for SystemC
-  implementations, is ``"systemc"``. Other libraries have a free
-  naming.
+.. function:: Library(name, vendor = "name", ...)
+   :noindex:
 
-``vendor``:
-  String, mandatory for SystemC implementations.
+   :type name: string
+   :param name: Mandatory.
 
-  Vendor of implementation of SystemC. Defined values are ``"OSCI"``,
-  ``"systemcass"`` and ``"modelsim"``. This changes quirks used in the
-  compilation process.
+                Name of the library. Expected library name, for
+                SystemC implementations, is ``"systemc"``. Other
+                libraries have a free naming.
 
-``libs``, ``release_libs``, ``debug_libs``, ``prof_libs``:
-  Flags added at linking stage. ``libs`` is always present, others are
-  select by current compilation mode.
+   :type vendor: string
+   :param vendor: Mandatory for SystemC implementations.
+                
+                  Vendor of implementation of SystemC. Defined values are ``"OSCI"``,
+                  ``"systemcass"`` and ``"modelsim"``. This changes quirks used in the
+                  compilation process.
 
-``cflags``, ``release_cflags``, ``debug_cflags``, ``prof_cflags``:
-  Flags added at compilation stage. ``cflags`` is always present,
-  others are select by current compilation mode.
+   :type libs: list of strings
+   :param libs: Flags added at linking stage. Always used.
 
-``Toolchain``
--------------
+   :type release_libs: list of strings
+   :param release_libs: Flags added at linking stage. Used if in
+                        `release` compilation mode.
 
-``obj_ext``:
-  Extension of object files. Defaults to ``o``. Some compilation
-  drivers use other extensions.
+   :type debug_libs: list of strings
+   :param debug_libs: Flags added at linking stage. Used if in `debug`
+                      compilation mode.
 
-``lib_ext``:
-  Extension of a library archive. Defaults to ``a``. Some compilation
-  drivers use other extensions.
+   :type prof_libs: list of strings
+   :param prof_libs: Flags added at linking stage. Used if in `prof`
+                     compilation mode.
 
-``libs``, ``release_libs``, ``debug_libs``, ``prof_libs``:
-  Flags added at linking stage. ``libs`` is always present, others are
-  select by current compilation mode.
+   :type cflags: list of strings
+   :param cflags: Flags added at compilation stage. Always used.
 
-``cflags``, ``release_cflags``, ``debug_cflags``, ``prof_cflags``:
-  Flags added at compilation stage. ``cflags`` is always present,
-  others are select by current compilation mode.
+   :type release_cflags: list of strings
+   :param release_cflags: Flags added at compilation stage. Used if in
+                          `release` compilation mode.
 
-``always_include``:
-  C/C++-specific. List of header files to unconditionally add to
-  compilation commands with ``-include <file>``.
+   :type debug_cflags: list of strings
+   :param debug_cflags: Flags added at compilation stage. Used if in
+                        `debug` compilation mode.
+
+   :type prof_cflags: list of strings
+   :param prof_cflags: Flags added at compilation stage. Used if in
+                       `prof` compilation mode.
 
 .. index::
-   triple: build; parallel compilation; job count
+   pair: configuration; Toolchain
 
-``max_processes``:
-  Maximal count of concurrent build processes.
+.. _Toolchain:
 
-``tool_<TOOL_IDENTIFIER>``:
-  Definition of command used for `TOOL_IDENTIFIER`. Known tool
-  identifiers are ``CC``, ``CXX``, ``CC_LINKER``, ``CXX_LINKER``,
-  ``LD``, ``VHDL`` and ``VERILOG``.
+.. function:: Toolchain(...)
+   :noindex:
 
-``BuildEnv``
-------------
+   :type obj_ext: string
+   :param obj_ext: extension of object files. defaults to ``o``. some compilation
+                   drivers use other extensions.
 
-``libraries``:
-  A list of Library_ objects.
+   :type lib_ext: string
+   :param lib_ext: Extension of a library archive. Defaults to
+                   ``a``. Some compilation drivers use other
+                   extensions.
 
-``toolchain``:
-  A Toolchain_ object.
+   :type always_include: list of strings
+   :param always_include: C/C++-specific. List of header files to
+                          unconditionally add to compilation commands
+                          with ``-include <file>``.
+
+   :type max_processes: int
+   :param max_processes: Maximal count of concurrent build processes.
+
+                         .. index::
+                            triple: build; parallel compilation; job count
+
+   :type tool_<TOOL_IDENTIFIER>: string or list of strings
+   :param tool_<TOOL_IDENTIFIER>: Definition of command used for
+                                  `TOOL_IDENTIFIER`. Known tool
+                                  identifiers are ``CC``, ``CXX``,
+                                  ``CC_LINKER``, ``CXX_LINKER``,
+                                  ``LD``, ``VHDL`` and ``VERILOG``.
+
+   :type libs: list of strings
+   :param libs: Flags added at linking stage. Always used.
+
+   :type release_libs: list of strings
+   :param release_libs: Flags added at linking stage. Used if in
+                        `release` compilation mode.
+
+   :type debug_libs: list of strings
+   :param debug_libs: Flags added at linking stage. Used if in `debug`
+                      compilation mode.
+
+   :type prof_libs: list of strings
+   :param prof_libs: Flags added at linking stage. Used if in `prof`
+                     compilation mode.
+
+   :type cflags: list of strings
+   :param cflags: Flags added at compilation stage. Always used.
+
+   :type release_cflags: list of strings
+   :param release_cflags: Flags added at compilation stage. Used if in
+                          `release` compilation mode.
+
+   :type debug_cflags: list of strings
+   :param debug_cflags: Flags added at compilation stage. Used if in
+                        `debug` compilation mode.
+
+   :type prof_cflags: list of strings
+   :param prof_cflags: Flags added at compilation stage. Used if in
+                       `prof` compilation mode.
 
 .. index::
-   pair: build; temporary objects
+   pair: configuration; BuildEnv
 
-``repos``:
-  Writeable path in filesystem, used as temporary object spool
-  directory.
+.. function:: BuildEnv(libraries = [], toolchain = obj, ...)
+   :noindex:
 
-``cache_file``:
-  Metadata cache file path, defaults to a file under ``repos``.
+   :type libraries: list of :ref:`Library` objects.
+   :param libraries: Libraries to use with this build environment
 
-``sd_ignore_regexp``:
-  Regexp of filenames to ignore while indexing metadata files. This
-  can be used to ensure VCS files are ignored.
+   :type toolchain: :ref:`Toolchain`
+   :param toolchain: Toolchain to use with this build environment
+
+   :type repos: string
+   :param repos: Writeable path in filesystem, used as temporary object spool
+                 directory.
+
+                 .. index::
+                    pair: build; temporary objects
+               
+   :type cache_file: string
+   :param cache_file: Metadata cache file path, defaults to a file under ``repos``.
+
+   :type sd_ignore_regexp: string
+   :param sd_ignore_regexp: Regexp of filenames to ignore while indexing metadata files. This
+                            can be used to ensure VCS files are ignored.
+

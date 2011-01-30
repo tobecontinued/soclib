@@ -141,8 +141,31 @@ cached. See :option:`soclib-cc -X` for cache cleaning.
 Metadata providers
 ==================
 
+.. index::
+   pair: metadata; provider
+
+Metadata providers are soclib-cc plugins able to extract metadata from
+files (or other means). With soclib-cc comes a built-in metadata
+provider: the :ref:`sd-file`.
+
+Metadata providers are Python modules implementing the
+:py:class:`soclib_desc.metadata_file.MetadataFile` protocol, and must
+be registered from :ref:`soclib.conf` with
+:py:func:`config.add_desc_parser()`.
+
 .. _md-paths:
 
 Metadata paths
 ==============
 
+Metadata files can be searched anywhere in the filesystem. Sepcified
+directories are searched recursively.
+
+Default configuration searches for modules in the soclib installation
+(:file:`soclib/module/`, :file:`soclib/communication/`,
+:file:`soclib/iss/`, :file:`soclib/lib/`), and also in the current
+directory (where ``soclib-cc`` is executed).
+
+Users can add new filesystem trees to index through the command line,
+with :option:`soclib-cc -I`, or through the :ref:`soclib.conf` with
+:py:func:`config.addDescPath()`.
