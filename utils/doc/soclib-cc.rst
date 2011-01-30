@@ -22,7 +22,7 @@ The main entry point in soclib is the ``soclib-cc`` command.
 * gather information about the current soclib installation and
   configuration.
 
-Build-in quick help
+Built-in quick help
 -------------------
 
 .. option:: --help
