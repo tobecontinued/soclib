@@ -45,8 +45,8 @@ tmpl(/**/)::VciSimpleRingFast(
         const soclib::common::MappingTable &mt,
         const soclib::common::IntTab &ringid,
         const int &wrapper_fifo_depth,
-        size_t nb_attached_initiator,
-        size_t nb_attached_target)                                             
+        int nb_attached_initiator,
+        int nb_attached_target)                                             
                 : soclib::caba::BaseModule(insname),
                 p_clk("clk"),
                 p_resetn("resetn"), 
@@ -58,24 +58,26 @@ tmpl(/**/)::VciSimpleRingFast(
 	p_to_target    = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target", m_nat);
 
 //-- to keep trace on ring traffic
-	init_cmd_val = new bool[m_nai];
+        init_cmd     = new cmd_str[m_nai];
+        tgt_rsp      = new rsp_str[m_nat];
+	//init_cmd_val = new bool[m_nai];
 	tgt_cmd_val  = new bool[m_nat];
 	init_rsp_val = new bool[m_nai];
-	tgt_rsp_val  = new bool[m_nat];
+	//tgt_rsp_val  = new bool[m_nat];
 //--
 
 	m_ring_initiator = new ring_initiator_t*[m_nai];
 	m_ring_target    = new ring_target_t*[m_nat]; 
         m_ring_signal    = new ring_signal_t[m_ns];
 
-        for(size_t i=0; i<m_nai; ++i) {
+        for(int i=0; i<m_nai; ++i) {
                 bool alloc_init = (i==0);
 		std::ostringstream o;
 		o << name() << "_init_" << i;
                 m_ring_initiator[i] = new ring_initiator_t(o.str().c_str(), alloc_init, wrapper_fifo_depth, mt, ringid, i);
         }
 
-        for(size_t i=0; i<m_nat; ++i) {
+        for(int i=0; i<m_nat; ++i) {
                 bool alloc_target = (i==0);
 		std::ostringstream o;
 		o << name() << "_target_" << i;
@@ -89,7 +91,7 @@ tmpl(/**/)::VciSimpleRingFast(
         SC_METHOD(genMoore);
         dont_initialize();
         sensitive << p_clk.neg();
-
+ 
 }
 
 tmpl(void)::transition()
@@ -97,9 +99,9 @@ tmpl(void)::transition()
 
 
         if ( ! p_resetn.read() ) {
-                for(size_t i=0;i<m_nai;i++) 
+                for(int i=0;i<m_nai;i++) 
                         m_ring_initiator[i]->reset();
-                for(size_t t=0;t<m_nat;t++)
+                for(int t=0;t<m_nat;t++)
                         m_ring_target[t]->reset();
                 return;
         }
@@ -109,50 +111,50 @@ tmpl(void)::transition()
 // this rule is based based on relaxation principle
 
 //- 1st 
-       for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+       for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
         }
 
-        for(size_t i=0;i<m_nat;i++){
+        for(int i=0;i<m_nat;i++){
                 m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
         }
 
 //- 2nd
-       for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+       for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
         }
 
-        for(size_t i=0;i<m_nat;i++){
+        for(int i=0;i<m_nat;i++){
                 m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
         }
 
 //- 3rd 
-       for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+       for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
         }
 
-        for(size_t i=0;i<m_nat;i++){
+        for(int i=0;i<m_nat;i++){
                 m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
         }
 
 // transition
-        for(size_t i=0;i<m_nai;i++) {
-                size_t h = 0;
+        for(int i=0;i<m_nai;i++) {
+                int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
-                m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h], init_cmd_val[i], init_rsp_val[i]);
+                m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h], init_cmd[i], init_rsp_val[i]);
         }
-        for(size_t t=0;t<m_nat;t++) {
-                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1], tgt_cmd_val[t], tgt_rsp_val[t]);
+        for(int t=0;t<m_nat;t++) {
+                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1], tgt_cmd_val[t], tgt_rsp[t]);
         }
 
 }
@@ -161,10 +163,10 @@ tmpl(void)::genMoore()
 {
 
 
-        for(size_t i=0;i<m_nai;i++) 
+        for(int i=0;i<m_nai;i++) 
                 m_ring_initiator[i]->genMoore(p_to_initiator[i]);
-        for(size_t t=0;t<m_nat;t++)
-                m_ring_target[t]->genMoore(p_to_target[t]);       
+        for(int t=0;t<m_nat;t++)
+                m_ring_target[t]->genMoore(p_to_target[t]);    
 
 }
 
@@ -172,10 +174,10 @@ tmpl(void)::genMoore()
 tmpl(/**/)::~VciSimpleRingFast()
 {
 
-	for(size_t x = 0; x < m_nai; x++)
+	for(int x = 0; x < m_nai; x++)
 		delete m_ring_initiator[x];
 	
-	for(size_t x = 0; x < m_nat; x++)
+	for(int x = 0; x < m_nat; x++)
 		delete m_ring_target[x];
 
 	delete [] m_ring_initiator;
@@ -196,7 +198,7 @@ tmpl(void)::print_trace()
 	// cmd trace
 	//*-- one initiator has token at one time 
 	for(int i=0;i<m_nai;i++) {
-	       if(init_cmd_val[i]) {
+	       if(init_cmd[i].cmdval) {
 			init_cmd_index = i;
 			init_cmd_found = true;
 			break;
@@ -207,7 +209,7 @@ tmpl(void)::print_trace()
 	// rsp trace
 	//*-- one target has token at one time 
 	for(int t=0;t<m_nat;t++) {
-	       if(tgt_rsp_val[t]) {
+	       if(tgt_rsp[t].rspval) {
 			tgt_rsp_index = t;
 			tgt_rsp_found = true;
 			break;
@@ -222,7 +224,9 @@ tmpl(void)::print_trace()
 	        	if(tgt_cmd_val[t]) {
 				std::cout << "RING " << name() 
 			  		  << " -- initiator_" << std::dec << init_cmd_index
-			  		  << " ... cmd to ... target_" << t
+			  		  << " ... cmd to ... target_" << t 
+                                          << " -state : " << init_cmd[init_cmd_index].state     
+                                          << " -flit : "  << std::hex << init_cmd[init_cmd_index].flit
 			  		  << std::endl;
 			}
 		}
@@ -235,11 +239,12 @@ tmpl(void)::print_trace()
 				std::cout << "RING " << name() 
 			  		  << " ++ target_" << std::dec << tgt_rsp_index
 			  		  << " ... rsp to ... initiator_" << i
+                                          << " +state : " << tgt_rsp[tgt_rsp_index].state
+                                          << " +flit : "  << std::hex << tgt_rsp[tgt_rsp_index].flit 
 			  		  << std::endl;
 			}
 		}
 	}
 
 }
-
 }} // end namespace

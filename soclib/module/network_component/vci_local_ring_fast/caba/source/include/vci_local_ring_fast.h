@@ -19,8 +19,8 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Authors  : Abdelmalek SI MERABET 
- * Date     : March 2010 
+ * Author   : Abdelmalek SI MERABET 
+ * Date     : Februrary 2011
  * Copyright: UPMC - LIP6
  */
 #ifndef VCI_LOCAL_RING_FAST_H_
@@ -32,16 +32,17 @@
 #include "generic_fifo.h"
 #include "address_decoding_table.h"
 #include "address_masking_table.h"
-#include "ring_signals_2.h"
-#include "vci_ring_initiator_fast.h"
-#include "vci_ring_target_fast.h"
+#include "ring_signals_fast.h"
+#include "vci_local_ring_initiator_fast.h"
+#include "vci_local_ring_target_fast.h"
 #include "ring_dspin_half_gateway_initiator_fast.h"
 #include "ring_dspin_half_gateway_target_fast.h"
 #include "dspin_interface.h"
 
 namespace soclib { namespace caba {
 
-    using namespace sc_core;
+using namespace sc_core;
+
 
     template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
         class VciLocalRingFast
@@ -67,20 +68,22 @@ namespace soclib { namespace caba {
                 int m_nai; // number of attached initiators 
                 int m_nat; // number of attached targets
 
-//-- to keep trace on ring traffic
-		bool *init_cmd_val;
+                bool  tga;  // target gate allocated
+                bool  iga;  // initiator gate allocated
+ 
+                cmd_str *init_cmd;
+                rsp_str *tgt_rsp;
 		bool *tgt_cmd_val;
 		bool *init_rsp_val;
-		bool *tgt_rsp_val;
-//--                                        
-                typedef RingSignals2 ring_signal_t;
-                typedef VciRingInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
-                typedef VciRingTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;
+//--                                         
+                typedef LocalRingSignals ring_signal_t;
+                typedef VciLocalRingInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
+                typedef VciLocalRingTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;
                 typedef RingDspinHalfGatewayInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> half_gateway_initiator_t;
                 typedef RingDspinHalfGatewayTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> half_gateway_target_t;
  
                 void transition();
-                void genMoore();  
+                void genMoore(); 
      
                 ring_signal_t    *m_ring_signal; 
                 ring_initiator_t **m_ring_initiator;
@@ -99,7 +102,10 @@ namespace soclib { namespace caba {
                          int nb_attached_target);
                                                                    
                ~VciLocalRingFast();
-               void print_trace(); 
+               void print_trace();
+//---- stats
+//             void print_stats(uint32_t local = 0);  
+//----
         };
 }} // end namespace
 

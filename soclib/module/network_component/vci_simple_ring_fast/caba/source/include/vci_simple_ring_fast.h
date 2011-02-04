@@ -31,9 +31,10 @@
 #include "mapping_table.h"
 #include "address_decoding_table.h"
 #include "address_masking_table.h"
-#include "ring_signals_2.h"
-#include "vci_ring_initiator_fast.h"
-#include "vci_ring_target_fast.h"
+#include "ring_signals_fast.h"
+#include "vci_simple_ring_initiator_fast.h"
+#include "vci_simple_ring_target_fast.h"
+
 
 namespace soclib { namespace caba {
 
@@ -43,6 +44,8 @@ template<typename vci_param, int ring_cmd_data_size, int ring_rsp_data_size>
 class VciSimpleRingFast
         : public soclib::caba::BaseModule
 {
+
+
         public:
                 sc_in<bool>             p_clk;
                 sc_in<bool>             p_resetn;
@@ -54,19 +57,22 @@ class VciSimpleRingFast
                 SC_HAS_PROCESS(VciSimpleRingFast);
 
         private:                
-                size_t m_ns;  // number of ring signals
-                size_t m_nai; // number of attached initiators 
-                size_t m_nat; // number of attached targets
+                int m_ns;  // number of ring signals
+                int m_nai; // number of attached initiators 
+                int m_nat; // number of attached targets
 
-//-- to keep trace on ring traffic
-		bool *init_cmd_val; // valid command sent
+                
+                cmd_str *init_cmd;
+                rsp_str *tgt_rsp;
+               	//bool *init_cmd_val; // valid command sent
 		bool *tgt_cmd_val;  // valid command received
 		bool *init_rsp_val; // valid response received
-		bool *tgt_rsp_val;  // valid response sent
+		//bool *tgt_rsp_val;  // valid response sent
+                
 //--
-                typedef RingSignals2 ring_signal_t;
-                typedef VciRingInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
-                typedef VciRingTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;
+                typedef SimpleRingSignals ring_signal_t;
+                typedef VciSimpleRingInitiatorFast<vci_param, ring_cmd_data_size, ring_rsp_data_size> ring_initiator_t;
+                typedef VciSimpleRingTargetFast<vci_param, ring_cmd_data_size, ring_rsp_data_size>    ring_target_t;
 
                 void transition();
                 void genMoore();
@@ -76,12 +82,13 @@ class VciSimpleRingFast
                 ring_target_t    **m_ring_target;
 
         public:
+
                 VciSimpleRingFast(   sc_module_name insname,
                                         const soclib::common::MappingTable &mt,
                                         const soclib::common::IntTab &ringid,   
                                         const int &wrapper_fifo_depth,
-                                        size_t nb_attached_initiator,
-                                        size_t nb_attached_target);
+                                        int nb_attached_initiator,
+                                        int nb_attached_target);
                                                                    
                 ~VciSimpleRingFast();
                 void print_trace();

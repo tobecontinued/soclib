@@ -19,8 +19,8 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Authors  : Abdelmalek SI MERABET 
- * Date     : March 2010 
+ * Author   : Abdelmalek SI MERABET 
+ * Date     : February 2011
  * Copyright: UPMC - LIP6
  */
 
@@ -53,19 +53,17 @@ tmpl(/**/)::VciLocalRingFast( sc_module_name insname,
                            m_nat(nb_attached_target)
  {
         
-
-        
-	p_to_initiator =  soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("p_to_initiator", m_nai);
-	p_to_target = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target", m_nat);
+	p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("p_to_initiator", m_nai);
+	p_to_target    = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("p_to_target", m_nat);
 
 //-- to keep trace on ring traffic
-	init_cmd_val = new bool[m_nai+1];
+        init_cmd     = new cmd_str[m_nai+1];
+        tgt_rsp      = new rsp_str[m_nat+1];
 	tgt_cmd_val  = new bool[m_nat+1];
 	init_rsp_val = new bool[m_nai+1];
-	tgt_rsp_val  = new bool[m_nat+1];
 //--
         m_ring_initiator = new ring_initiator_t*[m_nai];
-	m_ring_target    = new ring_target_t*[m_nat]; 
+        m_ring_target    = new ring_target_t*[m_nat]; 
         m_ring_signal    = new ring_signal_t[m_ns];
 
 
@@ -118,8 +116,8 @@ tmpl(void)::transition()    //
                 return;
         }
 
-// update ring signals three times
-// this is intended in order to break the loop due to dependency existing between ring signals
+// update ring signals four times
+// in order to break the loop due to dependency existing between ring signals
 // this rule is based on relaxation principle
 
 //-*--------------- 1st iteration 
@@ -145,9 +143,10 @@ else {
         }
 }
 
-        m_half_gateway_initiator->update_ring_signals(m_ring_signal[m_nai+m_nat-1], m_ring_signal[m_nai+m_nat] );
 
-        m_half_gateway_target->update_ring_signals(m_ring_signal[m_ns-2], m_ring_signal[m_ns-1] );
+      m_half_gateway_initiator->update_ring_signals(m_ring_signal[m_nai+m_nat-1], m_ring_signal[m_nai+m_nat], tga, iga);
+
+      m_half_gateway_target->update_ring_signals(m_ring_signal[m_ns-2], m_ring_signal[m_ns-1], tga, iga);
 
 //-*--------------- 2nd iteration
        for(int i=0;i<m_nai;i++) {
@@ -172,11 +171,9 @@ else {
         }
 }
 
+      m_half_gateway_initiator->update_ring_signals(m_ring_signal[m_nai+m_nat-1], m_ring_signal[m_nai+m_nat], tga, iga);
 
-        m_half_gateway_initiator->update_ring_signals(m_ring_signal[m_nai+m_nat-1], m_ring_signal[m_nai+m_nat] );
-
-        m_half_gateway_target->update_ring_signals(m_ring_signal[m_ns-2], m_ring_signal[m_ns-1] );
-
+      m_half_gateway_target->update_ring_signals(m_ring_signal[m_ns-2], m_ring_signal[m_ns-1], tga, iga);
 
 //-*--------------- 3rd iteration 
        for(int i=0;i<m_nai;i++) {
@@ -202,9 +199,37 @@ else {
 }
 
 
-        m_half_gateway_initiator->update_ring_signals(m_ring_signal[m_nai+m_nat-1], m_ring_signal[m_nai+m_nat] );
+      m_half_gateway_initiator->update_ring_signals(m_ring_signal[m_nai+m_nat-1], m_ring_signal[m_nai+m_nat], tga, iga);
 
-        m_half_gateway_target->update_ring_signals(m_ring_signal[m_ns-2], m_ring_signal[m_ns-1] );
+      m_half_gateway_target->update_ring_signals(m_ring_signal[m_ns-2], m_ring_signal[m_ns-1], tga, iga);
+
+//--------------- 4th iteration 
+       for(int i=0;i<m_nai;i++) {
+                int h = 0;
+                if(i == 0) h = m_ns-1;
+                else h = i-1;
+                m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
+        }
+
+if(m_nai > 0) {
+        for(int i=0;i<m_nat;i++){
+                m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
+        }
+ }
+else {
+
+        for(int i=0;i<m_nat;i++){
+                int h = 0;
+                if(i == 0) h = m_ns-1;
+                else h = i-1;
+                m_ring_target[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i] );
+        }
+}
+
+
+      m_half_gateway_initiator->update_ring_signals(m_ring_signal[m_nai+m_nat-1], m_ring_signal[m_nai+m_nat], tga, iga);
+
+      m_half_gateway_target->update_ring_signals(m_ring_signal[m_ns-2], m_ring_signal[m_ns-1], tga, iga);
 
 //-----------------------------------------------//
 // transition                                    //
@@ -214,12 +239,12 @@ else {
                 int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
-                m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h], init_cmd_val[i], init_rsp_val[i]);
+                m_ring_initiator[i]->transition(p_to_initiator[i], m_ring_signal[h], init_cmd[i], init_rsp_val[i]);
         }
 
 if(m_nai > 0) {
         for(int t=0;t<m_nat;t++) {
-                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1], tgt_cmd_val[t], tgt_rsp_val[t]);
+                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[m_nai+t-1], tgt_cmd_val[t], tgt_rsp[t]);
         }
 }
 else {
@@ -229,12 +254,12 @@ else {
                 if(t == 0) h = m_ns-1;
                 else h = t-1;
 
-                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[h], tgt_cmd_val[t], tgt_rsp_val[t]);
+                m_ring_target[t]->transition(p_to_target[t], m_ring_signal[h], tgt_cmd_val[t], tgt_rsp[t]);
         }
 }
-        m_half_gateway_initiator->transition(p_gate_cmd_in, p_gate_rsp_out, m_ring_signal[m_nai+m_nat-1], init_cmd_val[m_nai], init_rsp_val[m_nai]);
-        m_half_gateway_target->transition(p_gate_cmd_out, p_gate_rsp_in, m_ring_signal[m_nai+m_nat], tgt_cmd_val[m_nat], tgt_rsp_val[m_nat]);
 
+      m_half_gateway_initiator->transition(p_gate_cmd_in, p_gate_rsp_out, m_ring_signal[m_nai+m_nat-1], init_cmd[m_nai], init_rsp_val[m_nai], tga);
+      m_half_gateway_target->transition(p_gate_cmd_out, p_gate_rsp_in, m_ring_signal[m_nai+m_nat], tgt_cmd_val[m_nat], tgt_rsp[m_nat], iga);
 }
 
 tmpl(void)::genMoore()
@@ -243,12 +268,12 @@ tmpl(void)::genMoore()
         for(int i=0;i<m_nai;i++) 
                 m_ring_initiator[i]->genMoore(p_to_initiator[i]);
         for(int t=0;t<m_nat;t++)
-                m_ring_target[t]->genMoore(p_to_target[t]);    
+                m_ring_target[t]->genMoore(p_to_target[t]);
 
         m_half_gateway_initiator->genMoore(p_gate_cmd_in, p_gate_rsp_out);
    
         m_half_gateway_target->genMoore(p_gate_cmd_out, p_gate_rsp_in);
-}   
+}
 //---------------- destructor
 tmpl(/**/)::~VciLocalRingFast()
     {
@@ -280,7 +305,7 @@ tmpl(void)::print_trace()
 	// cmd trace
 	//*-- one initiator has token at one time 
 	for(int i=0;i<m_nai+1;i++) {
-	       if(init_cmd_val[i]) {
+	       if(init_cmd[i].cmdval) {
 			init_cmd_index = i;
 			init_cmd_found = true;
 			break;
@@ -291,7 +316,7 @@ tmpl(void)::print_trace()
 	// rsp trace
 	//*-- one target has token at one time 
 	for(int t=0;t<m_nat+1;t++) {
-	       if(tgt_rsp_val[t]) {
+	       if(tgt_rsp[t].rspval) {
 			tgt_rsp_index = t;
 			tgt_rsp_found = true;
 			break;
@@ -307,6 +332,8 @@ tmpl(void)::print_trace()
 				std::cout << "RING " << name() 
 			  		  << " -- initiator_" << std::dec << init_cmd_index
 			  		  << " ... cmd to ... target_" << t
+                                          << " -state : " << init_cmd[init_cmd_index].state     
+                                          << " -flit : "  << std::hex << init_cmd[init_cmd_index].flit
 			  		  << std::endl;
 			}
 		}
@@ -319,10 +346,26 @@ tmpl(void)::print_trace()
 				std::cout << "RING " << name() 
 			  		  << " ++ target_" << std::dec << tgt_rsp_index
 			  		  << " ... rsp to ... initiator_" << i
+                                          << " +state : " << tgt_rsp[tgt_rsp_index].state
+                                          << " +flit : "  << std::hex << tgt_rsp[tgt_rsp_index].flit
 			  		  << std::endl;
 			}
 		}
 	}
 
 }
+/*
+tmpl(void)::print_stats(uint32_t local)
+{
+        if(!local)
+        {
+                //std::cout << name() << " , cycles , flits sent , token wait , fifo full  , preempt , palloc wait " << std::endl;
+
+                for(int i=0;i<m_nai;i++) 
+                        m_ring_initiator[i]->print_stats();
+        }
+        else
+                m_half_gateway_initiator->print_stats();
+}
+*/
 }} // end namespace
