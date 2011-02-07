@@ -44,7 +44,7 @@ tmpl(/**/)::VciRam
   : sc_module(name),
     m_mt(mt),
     m_loader(new soclib::common::Loader(loader)),
-    m_atomic(256), // 256 equals to maximal number of initiator
+    m_atomic(4096), 	//  maximal number of initiator
     p_vci("socket")
 {
   // bind target
