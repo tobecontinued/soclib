@@ -11,7 +11,7 @@ peripherals are not present in the architecture */
 
 NB_LOCKS        	= 0;
 NB_TIMERS       	= 0;
-NB_PROCS		= 2;
+NB_PROCS		= 8;
 NB_TASKS		= 1;
 
 /* definition of the base address for all segments 

@@ -77,19 +77,25 @@ void main()
     // Main loop (on images)
     while(image < NMAX) 
     {
-        // pseudo parallel load from disk to A[c] buffers
-        tty_printf("\n *** Starting load for image %d *** at cycle %d \n", image, proctime());
-        if( ioc_read(image*NBLOCKS + NBLOCKS*id/NC , A[id], NBLOCKS/NC) )
+        // sequencial load from disk to A[c] buffers
+        if ( id == 0)
         {
-            tty_printf("echec ioc_read\n");
-            exit();
+            tty_printf("\n *** Starting load for image %d *** at cycle %d \n", image, proctime());
+            for ( c=0 ; c<NC ; c++ )
+            {
+                if( ioc_read(image*NBLOCKS + NBLOCKS*c/NC , A[c], NBLOCKS/NC) )
+                {
+                    tty_printf("echec ioc_read\n");
+                    exit();
+                }
+                if ( ioc_completed() )
+                {
+                    tty_printf("echec ioc_completed\n");
+                    exit();
+                }
+            }
+            tty_printf(" *** Completing load for image %d *** at cycle %d \n", image, proctime());
         }
-        if ( ioc_completed() )
-        {
-            tty_printf("echec ioc_completed\n");
-            exit();
-        }
-        tty_printf(" *** Completing load for image %d *** at cycle %d \n", image, proctime());
 
         barrier_wait(0);
 
@@ -106,16 +112,11 @@ void main()
 
         barrier_wait(1);
 
-        // parallel display from B[c] to frame buffer using DMA
+        // parallel display from B[c] to frame buffer without DMA
         tty_printf("\n *** starting display for image %d at cycle %d\n", image, proctime());
-        if ( fb_write(id*NSTRIPE, B[id], NSTRIPE) )
+        if ( fb_sync_write(id*NSTRIPE, B[id], NSTRIPE) )
         {
             tty_printf("echec fb_sync_write\n");
-            exit();
-        }
-        if ( fb_completed() )
-        {
-            tty_printf("echec fb_completed\n");
             exit();
         }
         tty_printf(" *** completing display for image %d at cycle %d\n", image, proctime());
