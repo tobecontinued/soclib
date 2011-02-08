@@ -20,10 +20,11 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: alinev
+ * Maintainers: alinev, alain
  *
  * Copyright (c) UPMC / Lip6, 2010
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
+ *     Alain Greiner <alain.greiner@lip6.fr>
  */
 #ifndef _TLMDT_XCACHE_WRAPPER_H
 #define _TLMDT_XCACHE_WRAPPER_H
@@ -92,8 +93,10 @@ private:
   /////////////////////////////////////////////////////////////////////////////////////
   uint32_t                m_id;
   iss_t                   m_iss;
-  uint32_t                m_irq;
-  std::multimap<sc_core::sc_time, std::pair<int, bool> > m_pending_irqs;
+
+  bool*	                  m_pending_irq;
+  sc_core::sc_time*       m_pending_time;
+
   pdes_local_time        *m_pdes_local_time;
   pdes_activity_status   *m_pdes_activity_status;
   sc_core::sc_time        m_simulation_time;
@@ -249,8 +252,8 @@ protected:
   SC_HAS_PROCESS(VciXcacheWrapper);
   
 public:
-  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci;   // VCI initiator port
-  std::vector<tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types> *> p_irq;  // IRQ target port
+  tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> 	p_vci;  
+  std::vector<tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types> *> p_irq; 
   
   VciXcacheWrapper(
 		   sc_core::sc_module_name name,

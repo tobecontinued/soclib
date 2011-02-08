@@ -79,6 +79,7 @@ namespace soclib{ namespace tlmdt {
    
 using soclib::common::uint32_log2;
 
+/////////////////////////////
 tmpl (/**/)::VciXcacheWrapper
 (
  sc_core::sc_module_name name,
@@ -95,8 +96,6 @@ tmpl (/**/)::VciXcacheWrapper
   : sc_module(name)
 	   , m_id(mt.indexForId(index))
 	   , m_iss(this->name(), cpuid)
-	   , m_irq(0)
-	   , m_pending_irqs()
 	   , m_simulation_time(std::numeric_limits<size_t>::max() * UNIT_TIME)
 	   , m_icache_ways(icache_ways)
 	   , m_icache_sets(icache_sets)
@@ -110,12 +109,12 @@ tmpl (/**/)::VciXcacheWrapper
 	   , m_icache("icache", icache_ways, icache_sets, icache_words)
 	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 	   , m_cacheability_table(mt.getCacheabilityTable())
-	   , p_vci("socket")   // vci initiator socket name
+	   , p_vci("socket")  
 {
   init( (size_t)time_quantum.value());
-
 }
 
+////////////////////////////
 tmpl (/**/)::VciXcacheWrapper
 (
  sc_core::sc_module_name name,
@@ -131,8 +130,6 @@ tmpl (/**/)::VciXcacheWrapper
   : sc_module(name)
 	   , m_id(mt.indexForId(index))
 	   , m_iss(this->name(), cpuid)
-	   , m_irq(0)
-	   , m_pending_irqs()
 	   , m_simulation_time(std::numeric_limits<size_t>::max() * UNIT_TIME)
 	   , m_icache_ways(icache_ways)
 	   , m_icache_sets(icache_sets)
@@ -146,11 +143,12 @@ tmpl (/**/)::VciXcacheWrapper
 	   , m_icache("icache", icache_ways, icache_sets, icache_words)
 	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 	   , m_cacheability_table(mt.getCacheabilityTable())
-	   , p_vci("socket")   // vci initiator socket name
+	   , p_vci("socket")   
 {
   init( 100 );
 }
 
+////////////////////////////
 tmpl (/**/)::VciXcacheWrapper
 (
  sc_core::sc_module_name name,
@@ -167,8 +165,6 @@ tmpl (/**/)::VciXcacheWrapper
   : sc_module(name)
 	   , m_id(mt.indexForId(index))
 	   , m_iss(this->name(), cpuid)
-	   , m_irq(0)
-	   , m_pending_irqs()
 	   , m_simulation_time(std::numeric_limits<size_t>::max() * UNIT_TIME)
 	   , m_icache_ways(icache_ways)
 	   , m_icache_sets(icache_sets)
@@ -182,11 +178,12 @@ tmpl (/**/)::VciXcacheWrapper
 	   , m_icache("icache", icache_ways, icache_sets, icache_words)
 	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 	   , m_cacheability_table(mt.getCacheabilityTable())
-	   , p_vci("socket")   // vci initiator socket name
+	   , p_vci("socket")   
 {
   init( time_quantum );
 }
 
+/////////////////////////////
 tmpl (/**/)::VciXcacheWrapper
 (
  sc_core::sc_module_name name,
@@ -204,8 +201,6 @@ tmpl (/**/)::VciXcacheWrapper
 	    : sc_module(name)
 	   , m_id(mt.indexForId(index))
 	   , m_iss(this->name(), cpuid)
-	   , m_irq(0)
-	   , m_pending_irqs()
 	   , m_simulation_time(simulation_time * UNIT_TIME)
 	   , m_icache_ways(icache_ways)
 	   , m_icache_sets(icache_sets)
@@ -219,22 +214,28 @@ tmpl (/**/)::VciXcacheWrapper
 	   , m_icache("icache", icache_ways, icache_sets, icache_words)
 	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 	   , m_cacheability_table(mt.getCacheabilityTable())
-	   , p_vci("socket")   // vci initiator socket name
+	   , p_vci("socket")   
 {
   init( time_quantum );
 }
 
+///////////////////////////////////////
 tmpl (void)::init( size_t time_quantum)
 {
   // bind initiator
   p_vci(*this);                     
 
-  //register callback function IRQ TARGET SOCKET
-  for(unsigned int i=0; i<iss_t::n_irq; i++){
+  // create IRQ arrays
+  m_pending_irq = new bool[iss_t::n_irq];
+  m_pending_time	= new sc_core::sc_time[iss_t::n_irq];
+
+  //register IRQ interface function 
+  for(unsigned int i=0; i<iss_t::n_irq; i++)
+  {
     std::ostringstream irq_name;
     irq_name << "irq" << i;
-    p_irq.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
-    
+    p_irq.push_back(new tlm_utils::simple_target_socket_tagged<VciXcacheWrapper,32,tlm::tlm_base_protocol_types>
+                                        (irq_name.str().c_str()));
     p_irq[i]->register_nb_transport_fw(this, &VciXcacheWrapper::irq_nb_transport_fw, i);
   }
 
@@ -347,6 +348,7 @@ tmpl(void)::print_stats()
 //     std::cout << "- WRITE LENGTH       = " << (float)m_length_write_transaction/m_cpt_write_transaction << std::endl;
 }
 
+////////////////////////////////////////////
 tmpl (void)::update_time(sc_core::sc_time t)
 {
   if(t > m_pdes_local_time->get()){
@@ -354,10 +356,12 @@ tmpl (void)::update_time(sc_core::sc_time t)
   }
 }
 
+////////////////////////
 tmpl (void)::execLoop ()
 {
   int before_time, after_time;
-  while(m_pdes_local_time->get() < m_simulation_time){
+  while(m_pdes_local_time->get() < m_simulation_time)
+  {
 
     m_pdes_local_time->add(UNIT_TIME);
 
@@ -381,28 +385,27 @@ tmpl (void)::execLoop ()
         << " rsp fsm: " << rsp_fsm_state_str[m_vci_rsp_fsm] << std::endl;
 #endif
     
-    iss();
+        iss();
 
-    before_time = m_pdes_local_time->get().value();
+        before_time = m_pdes_local_time->get().value();
 
-    cmd_fsm();
+        cmd_fsm();
 
-    rsp_fsm();
+        rsp_fsm();
 
-    after_time  = m_pdes_local_time->get().value();
+        after_time  = m_pdes_local_time->get().value();
 
-    if(after_time > before_time)
-      frozen_iss(after_time - before_time);
+        if(after_time > before_time) frozen_iss(after_time - before_time);
 
-    // if initiator needs synchronize then it sends a null message
-    if (m_pdes_local_time->need_sync()) {
-      send_null_message();
-    }
+        if (m_pdes_local_time->need_sync())  send_null_message();
  
-  }
-  sc_core::sc_stop();
-}
+    } // end while
 
+    sc_core::sc_stop();
+
+} // end execLoop()
+
+/////////////////
 tmpl(void)::iss()
 {
     /////////////////////////////////////////////////////////////////////
@@ -826,36 +829,34 @@ tmpl(void)::iss()
 #if MY_DEBUG
     std::cout << name() << " " << std::dec << m_pdes_local_time->get().value() << " Data Response: " << drsp << std::dec << std::endl;
 #endif
+
+    uint32_t	irq = 0;
     
-    while ( ! m_pending_irqs.empty() && m_pending_irqs.begin()->first <= m_pdes_local_time->get() ) {
-      std::multimap<sc_core::sc_time, std::pair<int, bool> >::iterator i = m_pending_irqs.begin();
-#ifdef SOCLIB_MODULE_DEBUG
-      std::cout << "[" << name() << "] Time = " << m_pdes_local_time->get().value() << " execute interruption id  = " << i->second.first << " val = " << i->second.second << " time = " <<  i->first.value() << std::endl;
-#endif
-      if ( i->second.second )
-	m_irq |= 1<<i->second.first;
-      else
-	m_irq &= ~(1<<i->second.first);
-      m_pending_irqs.erase(i);
-    } 
+    for ( size_t i=0 ; i<iss_t::n_irq ; i++)
+    {
+        if ( m_pending_irq[i] && (m_pending_time[i] <= m_pdes_local_time->get()) ) irq |= 1<<i;
+    }
     
     /////////// execute one iss cycle /////////////////////////////////
-    m_iss.executeNCycles(1, irsp, drsp, m_irq);
+    m_iss.executeNCycles(1, irsp, drsp, irq);
 
     if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) )
         m_cpt_frz_cycles++;
 
+} // end iss()
 
+///////////////////////////////////
+tmpl(void)::frozen_iss(int cycles)
+{
+  struct iss_t::InstructionResponse 	meanwhile_irsp = ISS_IRSP_INITIALIZER;
+  struct iss_t::DataResponse 		meanwhile_drsp = ISS_DRSP_INITIALIZER;
+
+  m_iss.executeNCycles(cycles, meanwhile_irsp, meanwhile_drsp, 0);
 }
 
-tmpl(void)::frozen_iss(int cycles){
-  struct iss_t::InstructionResponse meanwhile_irsp = ISS_IRSP_INITIALIZER;
-  struct iss_t::DataResponse meanwhile_drsp = ISS_DRSP_INITIALIZER;
-  int n = m_iss.executeNCycles(cycles, meanwhile_irsp, meanwhile_drsp, m_irq);
-  //printf("[%s] Frozen iss = %d cycles real = %d\n", name(), cycles, n);
-}
-
-tmpl(void)::cmd_fsm(){
+//////////////////////
+tmpl(void)::cmd_fsm()
+{
 
   ////////////////////////////////////////////////////////////////////////////
   // The VCI_CMD FSM controls the following ressources:
@@ -1139,8 +1140,9 @@ tmpl(void)::cmd_fsm(){
   } // end  switch m_vci_cmd_fsm
 }    
 
-
-tmpl (void)::rsp_fsm(){
+//////////////////////
+tmpl (void)::rsp_fsm()
+{
 
   //////////////////////////////////////////////////////////////////////////
   // The VCI_RSP FSM controls the following ressources:
@@ -1260,6 +1262,7 @@ tmpl (void)::rsp_fsm(){
   } // end switch m_vci_rsp_fsm
 }
 
+////////////////////////////////
 tmpl (void)::send_null_message()
 {
   // set the null message command
@@ -1288,7 +1291,7 @@ tmpl (void)::send_null_message()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
+// Interface function called when receiving a VCI response
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl (tlm::tlm_sync_enum)::nb_transport_bw    
 ( tlm::tlm_generic_payload           &payload,       // payload
@@ -1325,7 +1328,7 @@ tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_fw_transport_if (IRQ SOCKET)
+// Interface function called when receiving an IRQ event
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl (tlm::tlm_sync_enum)::irq_nb_transport_fw
 ( int                      id,         // interruption id
@@ -1333,40 +1336,20 @@ tmpl (tlm::tlm_sync_enum)::irq_nb_transport_fw
   tlm::tlm_phase           &phase,     // phase
   sc_core::sc_time         &time)      // time
 {
-  std::multimap<sc_core::sc_time, std::pair<int, bool> >::iterator i;
-  bool v = (bool) atou(payload.get_data_ptr(), 0);
-  bool find = false;
- 
+     bool	value = (bool) atou(payload.get_data_ptr(), 0);
+
 #ifdef SOCLIB_MODULE_DEBUG
-  std::cout << "[" << name() << "] receive Interrupt " << id << " value " << v << " time " << time.value() << std::endl;
+std::cout << "[" << name() << "] time = " << std::dec << time 
+          << " receive Interrupt " << id << " / value = " << value << std::endl;
 #endif
 
-  //if false interruption then it must be tested if there is a true interruption with the same id.
-  //In afirmative case, the true interruption must be deleted
-  if(!v){
-    for( i = m_pending_irqs.begin(); i != m_pending_irqs.end(); ++i){
-      if(i->second.first == id && i->first == time){
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] delete interrupt " << i->second.first << " value " << i->second.second << " time " << i->first.value() << std::endl;
-#endif
-	find = true;
-	m_pending_irqs.erase(i);
-      }
-    }
-  }
+      assert(time >= m_pending_time[id] && "IRQ event received with a wrong date");
 
-  //if true interruption or (false interruption and no true interruption with the same id) the it adds
-  if(!find){
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << "[" << name() << "] insert interrupt " << id << " value " << v << " time " << time.value() << std::endl;
-#endif
-    m_pending_irqs.insert(std::pair<sc_core::sc_time, std::pair<int, bool> > 
-			  (time, std::pair<int, bool>(id, v)));
-  }
+      m_pending_irq[id] = value;
+      m_pending_time[id] = time;
 
-  return tlm::TLM_COMPLETED;
-
-} // end backward nb transport 
+      return tlm::TLM_COMPLETED;
+}  
 
 
 }}
