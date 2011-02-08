@@ -9,5 +9,5 @@ Module('tlmdt:vci_dma',
        uses = [	Uses('common:tlmdt'),
 		Uses('common:mapping_table'),
 		],
-       #debug = True,
+       debug = True,
        )

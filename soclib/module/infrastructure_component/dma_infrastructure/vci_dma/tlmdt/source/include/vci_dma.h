@@ -84,8 +84,8 @@ private:
     bool     			m_stop;			// DMA running when false
 
     unsigned char*		m_vci_data_buf;		// pointer on the local data buffer for VCI (N bytes)
-    unsigned  char*		m_vci_be_buf;		// pointer on the local be buffer for VCI (N bytes)
-    unsigned char		m_irq_data_buf;		// local data buffer for IRQ (1 byte)
+    unsigned char*		m_vci_be_buf;		// pointer on the local be buffer for VCI (N bytes)
+    unsigned char*		m_irq_data_buf;		// pointer on the local data buffer for IRQ (1 byte)
 
     soclib::common::Segment 	m_segment;		// segment associated
     pdes_local_time*		m_pdes_local_time;	// local time

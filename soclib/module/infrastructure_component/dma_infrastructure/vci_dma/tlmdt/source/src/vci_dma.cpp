@@ -54,6 +54,11 @@ tmpl (void)::send_write(size_t burst_length)
     m_vci_extension.set_write();
     m_vci_time = m_pdes_local_time->get();
 
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout <<  "[" <<name() << "] time = " << m_vci_time 
+          << std::hex << " WRITE COMMAND / address = " << m_destination << std::endl;
+#endif
+
     p_vci_initiator->nb_transport_fw(m_vci_payload, 
                                      m_vci_phase,
                                      m_vci_time);
@@ -69,6 +74,11 @@ tmpl (void)::send_read(size_t burst_length)
     m_vci_payload.set_byte_enable_length(burst_length);
     m_vci_extension.set_read();
     m_vci_time = m_pdes_local_time->get();
+
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout <<  "[" <<name() << "] time = " << m_vci_time 
+          << std::hex << " READ  COMMAND / address = " << m_source << std::endl;
+#endif
 
     p_vci_initiator->nb_transport_fw(m_vci_payload, 
                                      m_vci_phase, 
@@ -90,8 +100,13 @@ tmpl (void)::send_null()
 ///////////////////////////
 tmpl(void)::set_interrupt()
 {
-    m_irq_data_buf = 0xFF;
+    *m_irq_data_buf = 0xFF;
     m_irq_time = m_pdes_local_time->get();
+
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "[" <<name() << "] time = " << m_irq_time
+          << " SET INTERRUPT : value = " << atou(m_irq_payload.get_data_ptr(),0) << std::endl;
+#endif
 
     p_irq->nb_transport_fw(m_irq_payload, 
                            m_irq_phase,
@@ -101,8 +116,13 @@ tmpl(void)::set_interrupt()
 /////////////////////////////
 tmpl(void)::reset_interrupt()
 {
-    m_irq_data_buf = 0;
+    *m_irq_data_buf = 0x00;
     m_irq_time = m_pdes_local_time->get();
+
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout <<  "[" <<name() << "] time = " << m_irq_time
+          << " RESET INTERRUPT : value = " << atou(m_irq_payload.get_data_ptr(),0) << std::endl;
+#endif
 
     p_irq->nb_transport_fw(m_irq_payload, 
                            m_irq_phase,
@@ -136,11 +156,6 @@ tmpl (void)::execLoop ()
             else					length = m_max_burst_length;
             // blocking command
 
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << " DMA : READ at cycle " << m_pdes_local_time->get() << std::hex << std::endl;
-std::cout << "    length = " << length << " / source = " << m_source << std::endl;
-#endif
-
             send_read(length);
             wait(m_rsp_received);
             // response analysis
@@ -161,12 +176,6 @@ std::cout << "    length = " << length << " / source = " << m_source << std::end
             if ( m_length < m_max_burst_length )        length = m_length; 
             else                                        length = m_max_burst_length;
             // blocking command
-
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << " DMA : WRITE at cycle " << m_pdes_local_time->get() << std::hex << std::endl;
-std::cout << "    length = " << length << " / destination = " << m_destination << std::endl;
-#endif
-
             send_write(length);
             wait(m_rsp_received);
             // registers update
@@ -222,10 +231,6 @@ tmpl (tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload,
 {
     if(time > m_pdes_local_time->get()) m_pdes_local_time->set(time);
 
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " Receive VCI response / time = " << time.value() << std::endl;
-#endif
-  
     m_rsp_received.notify (sc_core::SC_ZERO_TIME);
 
     return tlm::TLM_COMPLETED;
@@ -271,7 +276,8 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw ( tlm::tlm_generic_payload &payload,
         {
                     
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " read config register " << cell << std::endl;
+std::cout <<  "[" <<name() << "] time = " << time 
+          << " STATUS REQUEST / " << cell << std::endl;
 #endif
 
             switch (cell) {
@@ -299,8 +305,10 @@ std::cout << name() << " read config register " << cell << std::endl;
             data_t data = atou(payload.get_data_ptr(), 0);
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " write config register " << cell << " / data = 0x" << std::hex << data << std::endl;
+std::cout <<  "[" <<name() << "] time = " << time 
+          << " CONFIGURATION REQUEST / " << cell << std::endl;
 #endif
+
             switch (cell) {
             case DMA_SRC:
                 is_legal = true;
@@ -345,9 +353,6 @@ tmpl (tlm::tlm_sync_enum)::irq_nb_transport_bw ( tlm::tlm_generic_payload    &pa
                                                  tlm::tlm_phase              &phase,
                                                  sc_core::sc_time            &time) 
 {
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " Receive IRQ response time = " << time.value() << std::endl;
-#endif
   return tlm::TLM_COMPLETED;
 }
 
@@ -414,6 +419,9 @@ tmpl(/**/)::VciDma( sc_module_name name,
         m_vci_be_buf[i] = 0xFF;
     }
 
+    // create the local buffer for IRQ transaction
+    m_irq_data_buf = new unsigned char;
+
     // initialize payload, phase and extension for a VCI read/write transaction
     m_vci_payload.set_command(tlm::TLM_IGNORE_COMMAND);
     m_vci_payload.set_data_ptr(m_vci_data_buf);
@@ -430,7 +438,7 @@ tmpl(/**/)::VciDma( sc_module_name name,
     m_null_phase = tlm::BEGIN_REQ;
 
     // initialize payload and phase for an irq message
-    m_irq_payload.set_data_ptr(&m_irq_data_buf);
+    m_irq_payload.set_data_ptr(m_irq_data_buf);
     m_irq_phase = tlm::BEGIN_REQ;
 
     // register initialisation 
