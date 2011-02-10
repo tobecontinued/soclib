@@ -33,6 +33,8 @@
  * $Id$
  *
  * History:
+ * - 2011-02-10
+ *   Tarik Graba : The instructions issu delay are grouped in the opcode table
  * - 2010-04-16
  *   Tarik Graba : Added a template parameter to specify the endianess
  * - 2009-07-08
@@ -337,17 +339,13 @@ template <bool lEndianInterface >
             typedef struct {
                 void (LM32Iss<lEndianInterface>::*func)();
                 const std::string name;
-                InstFormat instformat;
+                const InstFormat instformat;
+                const uint32_t cycles_for_issue;
             } LM32_op_entry;
 
             // Ordered opcode table
             static LM32_op_entry const OpcodesTable [64];
 
-            inline void setInsDelay( uint32_t delay )
-            {
-                assert( delay > 0 );
-                m_ins_delay = delay-1;
-            }
             uint32_t get_absolute_dest_reg(ins_t ins) const;
 
             // debug functions

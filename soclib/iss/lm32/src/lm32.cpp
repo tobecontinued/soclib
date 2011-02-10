@@ -33,6 +33,8 @@
  * $Id$
  *
  * History:
+ * - 2011-02-10
+ *   Tarik Graba : The instructions issu delay are grouped in the opcode table
  * - 2010-04-16
  *   Tarik Graba : Added a template parameter to specify the endianess
  * - 2009-07-08

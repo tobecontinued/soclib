@@ -33,6 +33,8 @@
  * $Id$
  *
  * History:
+ * - 2011-02-10
+ *   Tarik Graba : The instructions issu delay are grouped in the opcode table
  * - 2010-04-16
  *   Tarik Graba : Added a template parameter to specify the endianess
  * - 2009-07-08
@@ -64,43 +66,43 @@ namespace soclib { namespace common {
         return 0;
     }
 
-#define OPTABLE(x,y) {&LM32Iss<lEndianInterface>::OP_LM32_##x, #x, y}
+#define OPTABLE(x,y,d) {&LM32Iss<lEndianInterface>::OP_LM32_##x, #x, y, d}
 
     template<bool lEndianInterface> 
     typename LM32Iss<lEndianInterface>::LM32_op_entry 
     const LM32Iss<lEndianInterface>::OpcodesTable [64]= {
-        OPTABLE(srui   , RI ), OPTABLE(nori  , RI ),
-        OPTABLE(muli   , RI ), OPTABLE(sh    , RR ),
-        OPTABLE(lb     , RR ), OPTABLE(sri   , RI ),  
-        OPTABLE(xori   , RI ), OPTABLE(lh    , RR ),
-        OPTABLE(andi   , RI ), OPTABLE(xnori , RI ),  
-        OPTABLE(lw     , RR ), OPTABLE(lhu   , RR ),
-        OPTABLE(sb     , RR ), OPTABLE(addi  , RI ),  
-        OPTABLE(ori    , RI ), OPTABLE(sli   , RI ),
-        OPTABLE(lbu    , RR ), OPTABLE(be    , RR ),
-        OPTABLE(bg     , RI ), OPTABLE(bge   , RI ),  
-        OPTABLE(bgeu   , RI ), OPTABLE(bgu   , RI ),
-        OPTABLE(sw     , RR ), OPTABLE(bne   , RR ),
-        OPTABLE(andhi  , RI ), OPTABLE(cmpei , RI ),
-        OPTABLE(cmpgi  , RI ), OPTABLE(cmpgei, RI ),
-        OPTABLE(cmpgeui, RI ), OPTABLE(cmpgui, RI ),
-        OPTABLE(orhi   , RI ), OPTABLE(cmpnei, RI ),
-        OPTABLE(sru    , RR ), OPTABLE(nor   , RR ),
-        OPTABLE(mul    , RR ), OPTABLE(divu  , RR ),
-        OPTABLE(rcsr   , CR ), OPTABLE(sr    , RR ),
-        OPTABLE(xor    , RR ), OPTABLE(div   , RR ),
-        OPTABLE(and    , RR ), OPTABLE(xnor  , RR ),
-        OPTABLE(reser  , JI ), OPTABLE(raise , JI ),
-        OPTABLE(sextb  , RR ), OPTABLE(add   , RR ),
-        OPTABLE(or     , RR ), OPTABLE(sl    , RR ),
-        OPTABLE(b      , RR ), OPTABLE(modu  , RR ),
-        OPTABLE(sub    , RR ), OPTABLE(user  , USR),
-        OPTABLE(wcsr   , CR ), OPTABLE(mod   , RR ),
-        OPTABLE(call   , RR ), OPTABLE(sexth , RR ),
-        OPTABLE(bi     , JI ), OPTABLE(cmpe  , RR ),
-        OPTABLE(cmpg   , RR ), OPTABLE(cmpge , RR ),
-        OPTABLE(cmpgeu , RR ), OPTABLE(cmpgu , RR ),
-        OPTABLE(calli  , JI ), OPTABLE(cmpne , RR ),
+        OPTABLE(srui   , RI , 1), OPTABLE(nori  , RI , 1),
+        OPTABLE(muli   , RI , 1), OPTABLE(sh    , RR , 1),
+        OPTABLE(lb     , RR , 3), OPTABLE(sri   , RI , 1),  
+        OPTABLE(xori   , RI , 1), OPTABLE(lh    , RR , 3),
+        OPTABLE(andi   , RI , 1), OPTABLE(xnori , RI , 1),  
+        OPTABLE(lw     , RR , 3), OPTABLE(lhu   , RR , 3),
+        OPTABLE(sb     , RR , 1), OPTABLE(addi  , RI , 1),  
+        OPTABLE(ori    , RI , 1), OPTABLE(sli   , RI , 1),
+        OPTABLE(lbu    , RR , 3), OPTABLE(be    , RR , 4),
+        OPTABLE(bg     , RI , 4), OPTABLE(bge   , RI , 4),  
+        OPTABLE(bgeu   , RI , 4), OPTABLE(bgu   , RI , 4),
+        OPTABLE(sw     , RR , 1), OPTABLE(bne   , RR , 4),
+        OPTABLE(andhi  , RI , 1), OPTABLE(cmpei , RI , 1),
+        OPTABLE(cmpgi  , RI , 1), OPTABLE(cmpgei, RI , 1),
+        OPTABLE(cmpgeui, RI , 1), OPTABLE(cmpgui, RI , 1),
+        OPTABLE(orhi   , RI , 1), OPTABLE(cmpnei, RI , 1),
+        OPTABLE(sru    , RR , 1), OPTABLE(nor   , RR , 1),
+        OPTABLE(mul    , RR , 1), OPTABLE(divu  , RR ,34),
+        OPTABLE(rcsr   , CR , 1), OPTABLE(sr    , RR , 1),
+        OPTABLE(xor    , RR , 1), OPTABLE(div   , RR ,34),
+        OPTABLE(and    , RR , 1), OPTABLE(xnor  , RR , 1),
+        OPTABLE(reser  , JI , 1), OPTABLE(raise , JI , 4),
+        OPTABLE(sextb  , RR , 1), OPTABLE(add   , RR , 1),
+        OPTABLE(or     , RR , 1), OPTABLE(sl    , RR , 1),
+        OPTABLE(b      , RR , 4), OPTABLE(modu  , RR ,34),
+        OPTABLE(sub    , RR , 1), OPTABLE(user  , USR, 1),
+        OPTABLE(wcsr   , CR , 1), OPTABLE(mod   , RR ,34),
+        OPTABLE(call   , RR , 4), OPTABLE(sexth , RR , 1),
+        OPTABLE(bi     , JI , 4), OPTABLE(cmpe  , RR , 1),
+        OPTABLE(cmpg   , RR , 1), OPTABLE(cmpge , RR , 1),
+        OPTABLE(cmpgeu , RR , 1), OPTABLE(cmpgu , RR , 1),
+        OPTABLE(calli  , JI , 4), OPTABLE(cmpne , RR , 1),
     };
 
 #undef OPTABLE
@@ -110,10 +112,14 @@ namespace soclib { namespace common {
         return this->OpcodesTable[m_inst.J.op].name;
     }
 
+    // Instruction delay
+#define setInsDelay(d)    do {m_ins_delay = d-1;} while(0)
+#define unsetInsDelay()   do {m_ins_delay = 0;} while(0)
     // Run the instruction 
     tmpl(void)::run() {
         // m_inst.J.op contains the opcode
         // The opcode is the same field for all instruction types
+        setInsDelay(LM32Iss::OpcodesTable [m_inst.J.op].cycles_for_issue);
         void (LM32Iss::*func)() = LM32Iss::OpcodesTable [m_inst.J.op].func;
         (this->*func)();
     }
@@ -123,7 +129,6 @@ namespace soclib { namespace common {
 
     LM32_function(raise) {
         //Soft exception fonction
-        setInsDelay(4);
         if ((m_inst.ins & 0x7) == 0x7) {
             m_exception = true; 
             m_exception_cause = X_SYSTEM_CALL ; // scall instruction
@@ -215,8 +220,8 @@ namespace soclib { namespace common {
         if (r_gp[m_inst.I.rY] == r_gp[m_inst.I.rX])
         {
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
-            setInsDelay(4);
         }
+        else unsetInsDelay();
     }
 
     //!Instruction bg behavior method.
@@ -224,8 +229,8 @@ namespace soclib { namespace common {
         if ((signed)r_gp[m_inst.I.rY] > (signed)r_gp[m_inst.I.rX])
         {
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
-            setInsDelay(4);
         }
+        else unsetInsDelay();
     }
 
     //!Instruction bge behavior method.
@@ -233,8 +238,8 @@ namespace soclib { namespace common {
         if ((signed)r_gp[m_inst.I.rY] >= (signed)r_gp[m_inst.I.rX])
         {
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
-            setInsDelay(4);
         }
+        else unsetInsDelay();
     }
 
     //!Instruction bgeu behavior method.
@@ -242,8 +247,8 @@ namespace soclib { namespace common {
         if ((unsigned)r_gp[m_inst.I.rY] >= (unsigned)r_gp[m_inst.I.rX])
         {
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
-            setInsDelay(4);
         }
+        else unsetInsDelay();
     }
 
     //!Instruction bgu behavior method.
@@ -251,8 +256,8 @@ namespace soclib { namespace common {
         if ((unsigned)r_gp[m_inst.I.rY] > (unsigned)r_gp[m_inst.I.rX])
         {
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
-            setInsDelay(4);
         }
+        else unsetInsDelay();
     }
 
     //!Instruction bne behavior method.
@@ -260,8 +265,8 @@ namespace soclib { namespace common {
         if (r_gp[m_inst.I.rY] != r_gp[m_inst.I.rX])
         {
             m_next_pc = r_pc+ (sign_ext(m_inst.I.imd, 16)<<2);
-            setInsDelay(4);
         }
+        else unsetInsDelay();
     }
 
     //!Instruction andhi behavior method.
@@ -324,10 +329,10 @@ namespace soclib { namespace common {
         if (r_gp[m_inst.R.rZ] == 0){
             m_exception = true;
             m_exception_cause = X_DIVISION_BY_ZERO; // division by 0
+            unsetInsDelay();
         }
         else {
             r_gp[m_inst.R.rX] = (unsigned)r_gp[m_inst.R.rY] / (unsigned)r_gp[m_inst.R.rZ];
-            setInsDelay(34);
         }
     }
 
@@ -346,10 +351,10 @@ namespace soclib { namespace common {
         if (r_gp[m_inst.R.rZ] == 0){
             m_exception = true;
             m_exception_cause = X_DIVISION_BY_ZERO; // division by 0
+            unsetInsDelay();
         }
         else {
             r_gp[m_inst.R.rX] = (signed)r_gp[m_inst.R.rY] / (signed)r_gp[m_inst.R.rZ];
-            setInsDelay(34);
         }
     }
 
@@ -385,7 +390,6 @@ namespace soclib { namespace common {
 
     //!Instruction b behavior method.
     LM32_function( b ){ // branch
-        setInsDelay(4);
         m_next_pc = r_gp[m_inst.R.rY];
         if (m_inst.R.rY == 30)      // eret // return from exception
             r_IE.IE = r_IE.EIE;
@@ -398,10 +402,10 @@ namespace soclib { namespace common {
         if (r_gp[m_inst.R.rZ] == 0){
             m_exception = true;
             m_exception_cause = X_DIVISION_BY_ZERO; // division by 0
+            unsetInsDelay();
         }
         else {
             r_gp[m_inst.R.rX] = (unsigned)r_gp[m_inst.R.rY] % (unsigned)r_gp[m_inst.R.rZ]; 
-            setInsDelay(34);
         }
     }
 
@@ -415,30 +419,27 @@ namespace soclib { namespace common {
         if (r_gp[m_inst.R.rZ] == 0){
             m_exception = true;
             m_exception_cause = X_DIVISION_BY_ZERO; // division by 0
+            unsetInsDelay();
         }
         else {
             r_gp[m_inst.R.rX] = (signed)r_gp[m_inst.R.rY] % (signed)r_gp[m_inst.R.rZ]; 
-            setInsDelay(34);
         }
     }
 
     //!Instruction call behavior method.
     LM32_function( call ){// jump to sub routine
-        setInsDelay(4);
         r_gp[ra] = r_npc ;// is pc + 4!!// return address
         m_next_pc = r_gp[m_inst.R.rY];
     }
 
     //!Instruction calli behavior method.
     LM32_function( calli ){//jump to sub routine immediate
-        setInsDelay(4);
         r_gp[ra] = r_npc ; // is pc + 4!!// return address
         m_next_pc = r_pc + (sign_ext(m_inst.J.imd,26)<<2);
     }
 
     //!Instruction bi behavior method.
     LM32_function( bi ){// branch immediate
-        setInsDelay(4);
         m_next_pc = r_pc + (sign_ext(m_inst.J.imd,26)<<2);
     }
 
@@ -608,6 +609,8 @@ namespace soclib { namespace common {
                 break;
         }
     }
+#undef setInsDelay
+#undef unsetInsDelay
 #undef WRITE_BP
 #undef FLUSH
 #undef LM32_function
