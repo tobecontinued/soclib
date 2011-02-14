@@ -185,8 +185,9 @@ Supported ``types`` are either:
 
 * Built-in port types, depending on language:
 
-  * SystemC types: ``sc:bit_in``, ``sc:bit_out``, ``sc:clock_in``,
-    ``sc:clock_out``, ``sc:word_in``, ``sc:word_out``.
+  * SystemC types: ``caba:bit_in``, ``caba:bit_out``,
+    ``caba:clock_in``, ``caba:clock_out``, ``caba:word_in``,
+    ``caba:word_out``.
 
   * HDL types: ``rtl:bit_in``, ``rtl:bit_out``, ``rtl:word_in``,
     ``rtl:word_out``.
