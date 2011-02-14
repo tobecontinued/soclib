@@ -27,7 +27,7 @@ Built-in quick help
 
 .. option:: --help
 
-As most programs, ``soclib-cc`` embeds an in-line help option, to
+Like other programs, ``soclib-cc`` embeds an in-line help option, to
 quickly list all available options.
 
 Configuration information
