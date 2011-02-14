@@ -98,7 +98,7 @@ the ``my_module.h`` and ``my_module.cc`` files::
    :param header_files: Like in :py:func:`Module`
    :param implementation_files: Like in :py:func:`Module`
    :param accepts: A dictionnary of port names associated to maximum
-                   connection count.
+                   connection count. If there is no limit, put ``True``.
 
 .. function:: PortDecl(name, classname, tmpl_parameters = [], header_files = [], implementation_files = [], signal = None)
 
@@ -110,6 +110,32 @@ the ``my_module.h`` and ``my_module.cc`` files::
    :param header_files: Like in :py:func:`Module`
    :param implementation_files: Like in :py:func:`Module`
    :param signal: The name in :ref:`md-index` of a correponding signal
+
+Example defining the bit type::
+
+  # A bit signal only supports one driver, but any number of bit input
+  # ports may be connected on it.
+ 
+  # No specific header files are necessary for these declarations as
+  # they use builtin SystemC types.
+
+  Signal('caba:bit',
+         classname = 'sc_core::sc_signal<bool>',
+         accepts = {'caba:bit_in'  : True,
+                    'caba:bit_out' : 1,
+                   },
+         )
+
+  PortDecl('caba:bit_in',
+           signal = 'caba:bit',
+           classname = 'sc_core::sc_in<bool>',
+           )
+  
+  PortDecl('caba:bit_out',
+           signal = 'caba:bit',
+           classname = 'sc_core::sc_out<bool>',
+           )
+
 
 .. _sd-uses:
 
