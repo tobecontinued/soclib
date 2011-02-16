@@ -25,6 +25,7 @@
  * Copyright (c) UPMC / Lip6, 2008
  *     François Pêcheux <francois.pecheux@lip6.fr>
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
+ *     Alain Greiner <alain.greiner@lip6.fr>
  */
 
 #ifndef __INTERCONNECT_H__ 
@@ -41,49 +42,53 @@ class Interconnect                                              // Interconnect
 {
 private:
  
-  typedef soclib::common::AddressDecodingTable<uint32_t, int>  routing_table_t;      // type of routing table
-  typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;     // type of locality table
-  typedef soclib::common::AddressMaskingTable<uint32_t>        resp_routing_table_t; // type of response routing table
-  typedef soclib::common::AddressDecodingTable<uint32_t, bool> resp_locality_table_t;// type of response locality table
+  typedef soclib::common::AddressDecodingTable<uint32_t, int>  routing_table_t;     
+  typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;   
+  typedef soclib::common::AddressMaskingTable<uint32_t>        resp_routing_table_t; 
+  typedef soclib::common::AddressDecodingTable<uint32_t, bool> resp_locality_table_t;
 
   /////////////////////////////////////////////////////////////////////////////////////
   // Member Variables
   /////////////////////////////////////////////////////////////////////////////////////
-  int                                                        m_id;                 // identifier
-  int                                                        m_inits;              // number of inits
-  int                                                        m_targets;            // number of targets
-  size_t                                                     m_delay;              // interconnect delay
-  size_t                                                     m_local_delta_time;   // minimal delta time between send message and receive response LOCAL
-  size_t                                                     m_no_local_delta_time;// minimal delta time between send message and receive response NOT LOCAL
-  bool                                                       m_is_local_crossbar;  // true if the module is a local_croosbar
+  int 				m_id;                 	// identifier
+  int 				m_inits;              	// number of initiiators
+  int 				m_targets;            	// number of targets
+  size_t 			m_delay;              	// interconnect delay
+  size_t 			m_local_delta_time;	// minimal time between send & response LOCAL
+  size_t  			m_no_local_delta_time;  // minimal time between send & response NOT LOCAL
+  bool                          m_is_local_crossbar;  	// true if the module is a loca interconnect
+  int                           m_waiting_from;         // identifier of awaited initiator 
 
-  int                                                        m_waiting_from;       // identifier of initiator which the interconnect is waiting a transaction
+  centralized_buffer 		m_centralized_buffer; 	// centralized buffer
+  const routing_table_t         m_routing_table;      	// routing table
+  const locality_table_t        m_locality_table;     	// locality table
+  const resp_routing_table_t    m_resp_routing_table; 	// response routing table
+  const resp_locality_table_t   m_resp_locality_table;	// response locality table
+  pdes_local_time*              m_pdes_local_time;    	// local time
 
+  // instrumentation counters
+  size_t                        m_msg_count;
+  size_t                        m_local_msg_count;
+  size_t                        m_non_local_msg_count;
+  size_t                        m_token_msg_count;
+  size_t                        m_wait_count;
+  size_t                        m_notify_count;
+  size_t                        m_pop_count;
 
-  centralized_buffer                                         m_centralized_buffer; // centralized buffer
-  const routing_table_t                                      m_routing_table;      // routing table
-  const locality_table_t                                     m_locality_table;     // locality table
-  const resp_routing_table_t                                 m_resp_routing_table; // response routing table
-  const resp_locality_table_t                                m_resp_locality_table;// response locality table
-  pdes_local_time                                           *m_pdes_local_time;    // local time
+  // FIELDS OF TOKEN TRANSACTION
+  tlm::tlm_generic_payload      m_payload_token;
+  tlm::tlm_phase                m_phase_token;
+  sc_core::sc_time              m_time_token;
+  soclib_payload_extension      m_extension_token;
 
-  //counters
-  size_t                                                     m_msg_count;
-  size_t                                                     m_local_msg_count;
-  size_t                                                     m_non_local_msg_count;
-  size_t                                                     m_token_msg_count;
-  size_t                                                     m_wait_count;
-  size_t                                                     m_notify_count;
-  size_t                                                     m_pop_count;
-
-  // FIELDS OF TOKEN MESSAGE
-  tlm::tlm_generic_payload                                   m_payload_token;
-  tlm::tlm_phase                                             m_phase_token;
-  sc_core::sc_time                                           m_time_token;
-  soclib_payload_extension                                  *m_extension_token;
+  // FIELDS OF NULL TRANSACTION
+  tlm::tlm_generic_payload      m_null_payload;
+  tlm::tlm_phase                m_null_phase;
+  sc_core::sc_time              m_null_time;
+  soclib_payload_extension      m_null_extension;
 
   /////////////////////////////////////////////////////////////////////////////////////
-  // Fuction
+  // Functions
   /////////////////////////////////////////////////////////////////////////////////////
   void init();
 
