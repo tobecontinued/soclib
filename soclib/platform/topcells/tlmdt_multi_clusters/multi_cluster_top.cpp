@@ -402,7 +402,7 @@ int _main(int argc, char *argv[])
         }
     } // en for clusters
 
-    std::cout << "components connected OK" << std::endl;
+    std::cout << "components connected OK" << std::endl << std::endl;
 
     //////////////////////////////////////////////////////////////////////////
     // simulation

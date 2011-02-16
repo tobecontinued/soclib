@@ -58,7 +58,7 @@ reset:
 # initializes ICU depending on the proc_id
     la      $27,    seg_icu_base
     addu    $27,    $27,    $11		# $27 <= seg_icu_base + proc_id * increment
-    li      $26,    0x7                 # IRQ[0] IRQ[1] IRQ[2]
+    li      $26,    0x7                 # unmask IRQ[0] IRQ[1] IRQ[2]
     sw      $26,    8($27)              # ICU_MASK_SET
 
 # initializes EPC register
