@@ -38,7 +38,7 @@
 #include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_locks.h"
-#include "vci_simple_ring_network.h"
+#include "vci_simple_ring_fast.h"
 
 #include "iss_simhelper.h"
 
@@ -139,7 +139,7 @@ int _main(int argc, char *argv[])
 
         
 	// Ring
-        soclib::caba::VciSimpleRingNetwork<vci_param> 
+        soclib::caba::VciSimpleRingFast<vci_param, 40, 33> 
 	ring("ring",maptab, IntTab(), 2, 4, 5);
 	
 	//	Net-List

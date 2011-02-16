@@ -36,7 +36,7 @@
 #include "vci_simple_ram.h"
 #include "vci_multi_tty.h"
 #include "vci_simhelper.h"
-#include "vci_simple_ring_network.h"
+#include "vci_simple_ring_fast.h"
 
 #include "segmentation.h"
 
@@ -120,7 +120,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciSimhelper<vci_param> vcisimhelper("vcisimhelper",	IntTab(2), maptab);
 	
         // Ring
-        soclib::caba::VciSimpleRingNetwork<vci_param> 
+        soclib::caba::VciSimpleRingFast<vci_param, 40, 33> 
 	ring("ring",maptab, IntTab(), 2, 4, 3);
 
 	//	Net-List
