@@ -28,23 +28,27 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // Implementation Note
-// This component is both a VCI initiator and a VCI target, but
-// it has only one PDES thread, and one local time.
-// The component can be in six states:
+// This component is both a VCI initiator and a VCI target.
+// The initiator FSM is modeled by a sc_thread, and can be in 6 states :
 // - IDLE        : not running : waiting a VCI command on the target port
 // - READ        : running     : performing a VCI read transaction
 // - WRITE       : running     : performing a VCI write transaction
 // - SUCCESS     : not running : waiting a VCI command on the target port
 // - ERROR_READ  : not running : waiting a VCI command on the target port
 // - ERROR_WRITE : not running : waiting a VCI command on the target port
+// The target FSM is modeled by a purely reactive interface function.
 //
-// When the DMA is in a running, state the local time is not updated by a
-// received command on the target port, and the software visible registers 
-// are not written. As it makes continuously read/write transactions, 
+// The local time is entirely controlled by the initiator FSM, and is not 
+// updated by a received command on the target port. 
+// When the DMA is in a running state (READ or WRITE), the configuration
+// commands are ignored, and the registers are not modified.
+// In these running states, it makes continuously read/write transactions, 
 // there is no need to send null messages.,
-// When the DMA is not in a running state, it is frozen) waiting a VCI
-// command on the target port, and should not be taken into account
-// in the time arbitration.
+// When the DMA is not in a running state, it send null messages.
+// The IRQ flip-flop is implemented as an unsigned char.
+// The IRQ value is periodically transmitted on the IRQ port (each time there is
+// a VCI command or a NULL message) to allow the ICU to implement
+// the PDES time filtering.
 //////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_VCI_DMA_H
@@ -72,26 +76,27 @@ class VciDma
 
 private:
 
-    // Member Variables
-    uint32_t 			m_srcid;		// DMA SRCID
-    uint32_t 			m_max_burst_length;	// local buffer length (bytes)
+    // structural constants
+    const uint32_t 		m_srcid;		// DMA SRCID
+    const uint32_t 		m_max_burst_length;	// local buffer length (bytes)
 
+    // registers
     int				m_state;		// DMA state
     data_t 			m_source;		// source buffer pointer
     data_t 			m_destination;		// destination buffer pointer
     data_t 			m_length;		// tranfer length (bytes)
     bool     			m_irq_disabled;		// no IRQ when true
     bool     			m_stop;			// DMA running when false
+    uint8_t			m_irq_value;		// IRQ current value
+    uint8_t*			m_vci_data_buf;		// the local data buffer  
+    uint8_t*			m_vci_be_buf;		// the local be buffer  
 
-    unsigned char*		m_vci_data_buf;		// pointer on the local data buffer for VCI (N bytes)
-    unsigned char*		m_vci_be_buf;		// pointer on the local be buffer for VCI (N bytes)
-    unsigned char*		m_irq_data_buf;		// pointer on the local data buffer for IRQ (1 byte)
 
-    soclib::common::Segment 	m_segment;		// segment associated
+    soclib::common::Segment 	m_segment;		// segment associated to DMA
     pdes_local_time*		m_pdes_local_time;	// local time
     sc_core::sc_event         	m_rsp_received;		// event to wake-up the DMA
 
-    // VCI READ/WRITE TRANSACTION
+    // VCI TRANSACTION
     tlm::tlm_generic_payload	m_vci_payload;
     tlm::tlm_phase		m_vci_phase;
     sc_core::sc_time		m_vci_time;
@@ -121,29 +126,26 @@ public:
 
     // Functions
     void execLoop();
-    bool vci_rsp_error();
-    void set_interrupt();
-    void reset_interrupt();
     void send_null();
-    void send_write(size_t burst_length);
-    void send_read(size_t burst_length);
+    void send_write();
+    void send_read();
 
-    // Virtual Fuction to receive response on the VCI initiator port
+    // Interface function to receive response on the VCI initiator port
     tlm::tlm_sync_enum 	nb_transport_bw ( tlm::tlm_generic_payload   &payload,
                                           tlm::tlm_phase             &phase,  
                                           sc_core::sc_time           &time);   
     
-    // Virtual Fuction to receive response on the IRQ port
+    // Interface Function to receive response on the IRQ port
     tlm::tlm_sync_enum 	irq_nb_transport_bw ( tlm::tlm_generic_payload  &payload, 
                                               tlm::tlm_phase            &phase,  
                                               sc_core::sc_time          &time);  
 
-    // Virtual Fuction to receive command on the VCI target port
+    // Interface function to receive command on the VCI target port
     tlm::tlm_sync_enum 	nb_transport_fw ( tlm::tlm_generic_payload &payload,  
                                           tlm::tlm_phase           &phase,      
                                           sc_core::sc_time         &time);        
     
-    // Not implemented 
+    // Not implemented but mandatory
     void b_transport ( tlm::tlm_generic_payload &payload, 
                        sc_core::sc_time         &time); 
     

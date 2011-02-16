@@ -35,105 +35,89 @@ namespace soclib { namespace tlmdt {
 
 #define tmpl(t) template<typename vci_param> t VciDma<vci_param>
 
-////////////////////////////
-// service functions
-////////////////////////////
-tmpl (bool)::vci_rsp_error()
-{
-    return m_vci_payload.is_response_error();
-}
-
-////////////////////////////////////////////
-tmpl (void)::send_write(size_t burst_length)
+/////////////////////////
+tmpl (void)::send_write()
 {
     m_pdes_local_time->reset_sync();
     
+    // send VCI command
+    uint32_t length;
+    if ( m_length < m_max_burst_length )	length = m_length;
+    else					length = m_max_burst_length;
     m_vci_payload.set_address(m_destination & ~3);
-    m_vci_payload.set_byte_enable_length(burst_length);
-    m_vci_payload.set_data_length(burst_length);
+    m_vci_payload.set_byte_enable_length(length);
+    m_vci_payload.set_data_length(length);
     m_vci_extension.set_write();
     m_vci_time = m_pdes_local_time->get();
+    p_vci_initiator->nb_transport_fw(m_vci_payload, m_vci_phase, m_vci_time);
+
+    // send IRQ 
+    m_irq_time = m_pdes_local_time->get();
+    p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
+
+    // registers update
+    m_length            = m_length - length;
+    m_source            = m_source + length;
+    m_destination       = m_destination + length;
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout <<  "[" <<name() << "] time = " << m_vci_time 
-          << std::hex << " WRITE COMMAND / address = " << m_destination << std::endl;
+std::cout <<  "[" <<name() << "] time = " << std::dec << m_vci_time.value() 
+          << std::hex << " WRITE COMMAND / address = " << m_destination 
+          << " IRQ value = " << std::dec << (int)m_irq_value << std::endl;
 #endif
-
-    p_vci_initiator->nb_transport_fw(m_vci_payload, 
-                                     m_vci_phase,
-                                     m_vci_time);
 }
 
-///////////////////////////////////////////
-tmpl (void)::send_read(size_t burst_length)
+////////////////////////
+tmpl (void)::send_read()
 {
     m_pdes_local_time->reset_sync();
 
+    // send VCI read command
+    uint32_t length;
+    if ( m_length < m_max_burst_length )        length = m_length; 
+    else                                        length = m_max_burst_length;
     m_vci_payload.set_address(m_source & ~3);
-    m_vci_payload.set_data_length(burst_length);
-    m_vci_payload.set_byte_enable_length(burst_length);
+    m_vci_payload.set_data_length(length);
+    m_vci_payload.set_byte_enable_length(length);
     m_vci_extension.set_read();
     m_vci_time = m_pdes_local_time->get();
+    p_vci_initiator->nb_transport_fw(m_vci_payload, m_vci_phase, m_vci_time);
+
+    // send IRQ 
+    m_irq_time = m_pdes_local_time->get();
+    p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout <<  "[" <<name() << "] time = " << m_vci_time 
-          << std::hex << " READ  COMMAND / address = " << m_source << std::endl;
+std::cout <<  "[" <<name() << "] time = " << std::dec << m_vci_time.value()
+          << std::hex << " READ  COMMAND / address = " << m_source 
+          << " / IRQ value = " << std::dec << (int)m_irq_value << std::endl;
 #endif
-
-    p_vci_initiator->nb_transport_fw(m_vci_payload, 
-                                     m_vci_phase, 
-                                     m_vci_time);
 }
 
 ////////////////////////
 tmpl (void)::send_null()
 {
     m_pdes_local_time->reset_sync();
-    
+
+    // send NULL message
     m_null_time = m_pdes_local_time->get();
+    p_vci_initiator->nb_transport_fw(m_null_payload, m_null_phase, m_null_time);
 
-    p_vci_initiator->nb_transport_fw(m_null_payload, 
-                                     m_null_phase,
-                                     m_null_time);
-}
-
-///////////////////////////
-tmpl(void)::set_interrupt()
-{
-    *m_irq_data_buf = 0xFF;
+    // send IRQ
     m_irq_time = m_pdes_local_time->get();
+    p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << "[" <<name() << "] time = " << m_irq_time
-          << " SET INTERRUPT : value = " << atou(m_irq_payload.get_data_ptr(),0) << std::endl;
+std::cout <<  "[" <<name() << "] time = " << std::dec << m_null_time.value()
+          << " NULL MESSAGE / IRQ value = " << (int)m_irq_value << std::endl;
 #endif
-
-    p_irq->nb_transport_fw(m_irq_payload, 
-                           m_irq_phase,
-                           m_irq_time);
 }
 
-/////////////////////////////
-tmpl(void)::reset_interrupt()
-{
-    *m_irq_data_buf = 0x00;
-    m_irq_time = m_pdes_local_time->get();
-
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout <<  "[" <<name() << "] time = " << m_irq_time
-          << " RESET INTERRUPT : value = " << atou(m_irq_payload.get_data_ptr(),0) << std::endl;
-#endif
-
-    p_irq->nb_transport_fw(m_irq_payload, 
-                           m_irq_phase,
-                           m_irq_time);
-}
 ////////////////////////////////////////////
 // thread associated to the initiator
 ////////////////////////////////////////////
 tmpl (void)::execLoop ()
 {
-
     while(true)
     {
         m_pdes_local_time->add(UNIT_TIME);
@@ -151,51 +135,46 @@ tmpl (void)::execLoop ()
         break;
         case STATE_READ:
         {
-            uint32_t length;
-            if ( m_length < m_max_burst_length )	length = m_length;
-            else					length = m_max_burst_length;
             // blocking command
-
-            send_read(length);
+            send_read();
             wait(m_rsp_received);
+
             // response analysis
-            if ( !vci_rsp_error() ) 
+            if ( !m_vci_payload.is_response_error() )
             {
                 m_state = STATE_WRITE;
             }
             else  			
             {
                 m_state = STATE_ERROR_READ; 
-                if ( !m_irq_disabled )	set_interrupt();
+                if ( !m_irq_disabled )	m_irq_value = 0xFF;
             }
         }
         break;
         case STATE_WRITE:
         {
-            uint32_t length;
-            if ( m_length < m_max_burst_length )        length = m_length; 
-            else                                        length = m_max_burst_length;
             // blocking command
-            send_write(length);
+            send_write();
             wait(m_rsp_received);
-            // registers update
-            m_length            = m_length - length;
-            m_source            = m_source + length;
-            m_destination       = m_destination + length;
+
             // response analysis
             if ( m_stop ) 		
             {
                 m_state = STATE_IDLE;
             }
-            else if ( vci_rsp_error() )
+            else if ( m_vci_payload.is_response_error() )
             {
                 m_state = STATE_ERROR_WRITE;
-                if ( !m_irq_disabled )	set_interrupt();
+                if ( !m_irq_disabled )	m_irq_value = 0xFF;
+                m_irq_time = m_pdes_local_time->get();
+                p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
             }
             else if ( m_length == 0 )
             {
                 m_state = STATE_SUCCESS;
-                if ( !m_irq_disabled )	set_interrupt();
+                if ( !m_irq_disabled )	m_irq_value = 0xFF;
+                m_irq_time = m_pdes_local_time->get();
+                p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
             }
             else
             {
@@ -210,7 +189,9 @@ tmpl (void)::execLoop ()
             if ( m_stop ) 
             {
                 m_state = STATE_IDLE;
-                if ( !m_irq_disabled )	reset_interrupt();
+                m_irq_value = 0x00;
+                m_irq_time = m_pdes_local_time->get();
+                p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
             }
             else if ( m_pdes_local_time->need_sync() )
             {
@@ -222,17 +203,27 @@ tmpl (void)::execLoop ()
     } // end while
 } // end execLoop
 
-////////////////////////////////////////////////////////////////////////////////////////////
-// Interface function used when receiving a response to a VCI command on the initiator port
-////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Interface function executed when receiving a response on the initiator port
+////////////////////////////////////////////////////////////////////////////////
 tmpl (tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload, 
                                              tlm::tlm_phase           &phase,       
                                              sc_core::sc_time         &time)  
 {
+    // update local time and notify
     if(time > m_pdes_local_time->get()) m_pdes_local_time->set(time);
-
     m_rsp_received.notify (sc_core::SC_ZERO_TIME);
+    return tlm::TLM_COMPLETED;
+}
 
+/////////////////////////////////////////////////////////////////////////////////////
+// Interface function executed when receiving a response to an IRQ transaction
+/////////////////////////////////////////////////////////////////////////////////////
+tmpl (tlm::tlm_sync_enum)::irq_nb_transport_bw ( tlm::tlm_generic_payload    &payload,
+                                                 tlm::tlm_phase              &phase,
+                                                 sc_core::sc_time            &time) 
+{
+    // no action
     return tlm::TLM_COMPLETED;
 }
 
@@ -244,116 +235,83 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw ( tlm::tlm_generic_payload &payload,
                                             sc_core::sc_time         &time)   
 {
     int 	cell;
-    bool	is_legal = false;
     bool	one_flit = (payload.get_data_length() == (unsigned int)vci_param::nbytes);
     addr_t	address = payload.get_address();
 
     soclib_payload_extension* extension_pointer;
     payload.get_extension(extension_pointer);
     
-    // If a VCI or null message is received when the DMA is running
-    // (stare READ or state WRITE), we do not update local time and
-    // we do not write in the software visible registers.
+    // No response and no action for a received NULL messages
+    if ( extension_pointer->is_null_message() ) return tlm::TLM_COMPLETED;
 
-    if ( extension_pointer->is_null_message() )
-    { 
-        if ( (m_state != STATE_READ) && (m_state != STATE_WRITE) )
-            if (time > m_pdes_local_time->get()) m_pdes_local_time->set(time);
-        return tlm::TLM_COMPLETED;
-    }
-
-    // address checking
-    if ( m_segment.contains(payload.get_address()) && one_flit )
+    // address and length checking for a VCI command
+    if ( m_segment.contains(address) && one_flit )
     {
-        if ( (m_state != STATE_READ) && (m_state != STATE_WRITE) )
-        {
-            if(time > m_pdes_local_time->get()) m_pdes_local_time->set(time);
-        }
-
         cell = (int)((address - m_segment.baseAddress()) / vci_param::nbytes);
+        payload.set_response_status(tlm::TLM_OK_RESPONSE);
 
         if (extension_pointer->get_command() == VCI_READ_COMMAND)
         {
                     
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout <<  "[" <<name() << "] time = " << time 
+std::cout <<  "[" <<name() << "] time = " << std::dec << time.value()
           << " STATUS REQUEST / " << cell << std::endl;
 #endif
 
-            switch (cell) {
-            case DMA_SRC:
-                utoa(m_source, payload.get_data_ptr(), 0);
-                is_legal = true;
-            break;
-            case DMA_DST:
-                utoa(m_destination, payload.get_data_ptr(), 0);
-                is_legal = true;
-            break;
-            case DMA_LEN:
-                utoa(m_state, payload.get_data_ptr(), 0);
-                is_legal = true;
-            break;
-            case DMA_IRQ_DISABLED:
-                utoa((int)(m_irq_disabled), payload.get_data_ptr(), 0);
-                is_legal = true;
-            break;
-            } // end switch read
-        } // end READ
+            if      ( cell == DMA_SRC )          utoa(m_source, payload.get_data_ptr(), 0);
+            else if ( cell == DMA_DST )          utoa(m_destination, payload.get_data_ptr(), 0);
+            else if ( cell == DMA_LEN )          utoa(m_state, payload.get_data_ptr(), 0);
+            else if ( cell == DMA_IRQ_DISABLED ) utoa((int)(m_irq_disabled), payload.get_data_ptr(), 0);
+            else                                 payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+        } // end read
 
-        if (extension_pointer->get_command() == VCI_WRITE_COMMAND)
+        else if (extension_pointer->get_command() == VCI_WRITE_COMMAND)
         {
-            data_t data = atou(payload.get_data_ptr(), 0);
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout <<  "[" <<name() << "] time = " << time 
+std::cout <<  "[" <<name() << "] time = " << std::dec << time.value() 
           << " CONFIGURATION REQUEST / " << cell << std::endl;
 #endif
 
-            switch (cell) {
-            case DMA_SRC:
-                is_legal = true;
-                if ( (m_state != STATE_READ) && (m_state != STATE_WRITE) ) m_source = data;
-            break;
-            case DMA_DST:
-                is_legal = true;
-                if ( (m_state != STATE_READ) && (m_state != STATE_WRITE) ) m_destination = data;
-            break;
-            case DMA_LEN:
-                is_legal = true;
-                if ( (m_state != STATE_READ) && (m_state != STATE_WRITE) ) m_length = data;
-                m_stop = false;
-            break;
-            case DMA_IRQ_DISABLED:
-                is_legal = true;
-                if ( (m_state != STATE_READ) && (m_state != STATE_WRITE) ) m_irq_disabled = (data != 0);
-            break;
-            case DMA_RESET:
-                is_legal = true;
-                m_stop = true;
-            break;
-            } // end switch
-        } // end WRITE
+            // configuration command are ignored when the DMA is active
+            if ( (m_state != STATE_READ) && (m_state != STATE_WRITE) )
+            {
+                data_t data = atou(payload.get_data_ptr(), 0);
+                if      ( cell == DMA_SRC )  m_source = data;
+                else if ( cell == DMA_DST )  m_destination = data;
+                else if ( cell == DMA_LEN ) 
+                {
+                    m_length = data;
+                    m_stop = false;
+                }
+                else if ( cell == DMA_IRQ_DISABLED )  m_irq_disabled = (data != 0);
+                else if ( cell == DMA_RESET )  m_stop = true; 
+                else    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+            }
+            else
+            {
+                std::cerr << name() 
+                << " warning: receiving a new command while busy, ignored" << std::endl;
+            }
+        } // end if write
+        else // illegal command
+        {
+            payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+        }
     } // end if legal address 
+    else // illegal address
+    {
+        payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+    }
 
-    if (is_legal)   payload.set_response_status(tlm::TLM_OK_RESPONSE);
-    else            payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-
+    // update transaction phase and time
     phase = tlm::BEGIN_RESP;
-    time  = m_pdes_local_time->get();
-    p_vci_target->nb_transport_bw(payload,
-                                  phase,
-                                  time);
-    return tlm::TLM_COMPLETED;
-}
+    if ( time.value() < m_pdes_local_time->get().value() ) time  = m_pdes_local_time->get();
+    else                                                   time  = time + UNIT_TIME;
 
-/////////////////////////////////////////////////////////////////////////////////////
-// Interface function used when receiving a response to an IRQ transaction
-/////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::irq_nb_transport_bw ( tlm::tlm_generic_payload    &payload,
-                                                 tlm::tlm_phase              &phase,
-                                                 sc_core::sc_time            &time) 
-{
-  return tlm::TLM_COMPLETED;
+    // send response 
+    p_vci_target->nb_transport_bw(payload, phase, time);
+    return tlm::TLM_COMPLETED;
 }
 
 /////////////////////////////////////////////////////////////
@@ -382,9 +340,9 @@ tmpl(void)::invalidate_direct_mem_ptr ( sc_dt::uint64 start_range,
     return;
 }
 
-////////////////////////////////
-// Constructor
-////////////////////////////////
+///////////////////
+// constructor
+///////////////////
 tmpl(/**/)::VciDma( sc_module_name name,
                     const soclib::common::MappingTable &mt,
                     const soclib::common::IntTab &srcid,
@@ -413,16 +371,9 @@ tmpl(/**/)::VciDma( sc_module_name name,
     // create and initialize the local buffers for VCI transactions (N bytes)
     m_vci_data_buf = new unsigned char[max_burst_length];
     m_vci_be_buf = new unsigned char[max_burst_length];
-    for ( size_t i=0 ; i<max_burst_length ; i++)
-    {
-        m_vci_data_buf[i] = 0;
-        m_vci_be_buf[i] = 0xFF;
-    }
+    for ( size_t i=0 ; i<max_burst_length ; i++) m_vci_be_buf[i] = 0xFF;
 
-    // create the local buffer for IRQ transaction
-    m_irq_data_buf = new unsigned char;
-
-    // initialize payload, phase and extension for a VCI read/write transaction
+    // initialize payload, phase and extension for a VCI transaction
     m_vci_payload.set_command(tlm::TLM_IGNORE_COMMAND);
     m_vci_payload.set_data_ptr(m_vci_data_buf);
     m_vci_payload.set_byte_enable_ptr(m_vci_be_buf);
@@ -438,13 +389,14 @@ tmpl(/**/)::VciDma( sc_module_name name,
     m_null_phase = tlm::BEGIN_REQ;
 
     // initialize payload and phase for an irq message
-    m_irq_payload.set_data_ptr(m_irq_data_buf);
+    m_irq_payload.set_data_ptr(&m_irq_value);
     m_irq_phase = tlm::BEGIN_REQ;
 
     // register initialisation 
     m_state = STATE_IDLE;
     m_stop  = true;
     m_irq_disabled = false;
+    m_irq_value = 0;
     
     SC_THREAD(execLoop);
 }
@@ -454,7 +406,7 @@ tmpl(/**/)::VciDma( sc_module_name name,
 // Local Variables:
 // tab-width: 4
 // c-basic-offset: 4
-// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// cle-offsets:((innamespace . 0)(inline-open . 0))
 // indent-tabs-mode: nil
 // End:
 
