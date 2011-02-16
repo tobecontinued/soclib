@@ -20,96 +20,124 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, alinev
+ * Maintainers: alain
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
- *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
+ *     Alain Greiner <alain.greiner@lip6.fr>
  */
+
+/////////////////////////////////////////////////////////////////////////////////////
+// Implementation Note
+// This component is a VCI target. It has a rariable number of IRQ ports.
+// It is modeled as a purely reactive interface function : no thread, no local time.
+// It sends periodically timed values on the IRQ port, to support the PDES
+// time filtering in the ICU component. 
+// To synchronizes with the system, it uses the NULL message received on the VCI 
+// port : The IRQ values are transmitted on the IRQ port each time a NULL message
+// is received on the VCI port.
+////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef __VCI_MULTI_TTY_H
 #define __VCI_MULTI_TTY_H
 
 #include <stdarg.h>
-#include <tlmdt>                                 // TLM-DT headers
-#include "mapping_table.h"                       // mapping table
+#include <tlmdt>             
+#include "mapping_table.h"   
 #include "tty.h"
 #include "tty_wrapper.h"
-#include "tlmdt_target.h"
 
 namespace soclib { namespace tlmdt {
 
 template <typename vci_param>
 class VciMultiTty
-  : public TlmdtTarget                  // inherit from Tlmdt Target module base class
+  : public sc_core::sc_module 
+  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types>
+  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types>
 {
+
 private:
 
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Member Variables
-  /////////////////////////////////////////////////////////////////////////////////////
-  std::vector<soclib::common::TtyWrapper*> m_term;
-  
-  soclib::common::IntTab                   m_index;
-  soclib::common::MappingTable             m_mt;
-  std::list<soclib::common::Segment>       segList;
-  bool                                    *m_irq;
-  pdes_local_time                         *m_pdes_local_time;
-  
-  //FIELDS OF A IRQ TRANSACTION
-  tlm::tlm_generic_payload                *m_payload_ptr;
-  soclib_payload_extension                *m_extension_ptr;
-  tlm::tlm_phase                           m_phase;
-  sc_core::sc_time                         m_time;
+    typedef typename vci_param::addr_t addr_t;
+    typedef typename vci_param::data_t data_t;
 
-  size_t m_cpt_read;
-  size_t m_cpt_write;
-  size_t m_cpt_cycle;
-  size_t m_cpt_idle;
+    // Member Variables
+    std::vector<soclib::common::TtyWrapper*> 	m_term;			// terminals
+    soclib::common::Segment       		m_segment;		// associated segment
+    uint8_t*					m_irq_value; 		// interrupt values
+
+    // IRQ TRANSACTION
+    tlm::tlm_generic_payload*			m_irq_payload;
+    tlm::tlm_phase				m_irq_phase;
+    sc_core::sc_time 				m_irq_time;
+
+    // Instrumentation counters
+    size_t m_cpt_read;
+    size_t m_cpt_write;
     
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Local Fuctions
-  /////////////////////////////////////////////////////////////////////////////////////
-  void init(const std::vector<std::string> &names);
-  void behavior_target();
-  void send_interruption(size_t idx, bool val);
+    //  Functions
+    void init(const std::vector<std::string> &names);
 
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Fuctions
-  /////////////////////////////////////////////////////////////////////////////////////
-  void target_processing                    // target processing - receive command from initiator
-  ( tlm::tlm_generic_payload &payload,      // payload
-    tlm::tlm_phase           &phase,        // phase
-    sc_core::sc_time         &time);        // time
-  
+    tlm::tlm_sync_enum nb_transport_fw ( tlm::tlm_generic_payload &payload,
+                                         tlm::tlm_phase           &phase,  
+                                         sc_core::sc_time         &time);   
+
+    tlm::tlm_sync_enum irq_nb_transport_bw ( int                      id,
+                                             tlm::tlm_generic_payload &payload,
+                                             tlm::tlm_phase           &phase,  
+                                             sc_core::sc_time         &time);   
+    // Not implemented but mandatory
+    void b_transport ( tlm::tlm_generic_payload &payload,
+                       sc_core::sc_time         &time);
+
+    bool get_direct_mem_ptr ( tlm::tlm_generic_payload &payload,
+                              tlm::tlm_dmi             &dmi_data);
+
+    unsigned int transport_dbg ( tlm::tlm_generic_payload &payload);
+
+    void invalidate_direct_mem_ptr ( sc_dt::uint64 start_range,
+                                     sc_dt::uint64 end_range);
+
+    tlm::tlm_sync_enum nb_transport_bw ( tlm::tlm_generic_payload &payload,
+                                         tlm::tlm_phase           &phase,
+                                         sc_core::sc_time         &time);
 protected:
-  SC_HAS_PROCESS(VciMultiTty);
+    SC_HAS_PROCESS(VciMultiTty);
+
 public:
 
-  std::vector<tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types> *> p_irq; // IRQ INITIATOR socket
+    // ports
+    tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types>						  p_vci;
+    std::vector<tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types> *> p_irq; 
 
-  VciMultiTty(sc_core::sc_module_name name,
+    // constructors
+    VciMultiTty(sc_core::sc_module_name name,
 	      const soclib::common::IntTab &index,
 	      const soclib::common::MappingTable &mt,
 	      const char *first_name,
 	      ...);
 
-  VciMultiTty(sc_core::sc_module_name name,
+    VciMultiTty(sc_core::sc_module_name name,
 	      const soclib::common::IntTab &index,
 	      const soclib::common::MappingTable &mt,
 	      const std::vector<std::string> &names);
  
-  size_t getNRead();
+    size_t getNRead();
 
-  size_t getNWrite();
+    size_t getNWrite();
 
-  size_t getTotalCycles();
-
-  size_t getActiveCycles();
-
-  size_t getIdleCycles();
-
-  void print_stats();
+    void print_stats();
 };
+
 }}
+
 #endif /* __VCI_MULTI_TTY_H */
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// c-file-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+

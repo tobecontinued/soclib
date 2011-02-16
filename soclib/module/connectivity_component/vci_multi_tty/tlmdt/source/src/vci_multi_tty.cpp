@@ -20,378 +20,234 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, alinev
+ * Maintainers: alain
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
- *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
+ *     Alain Greiner <alain.greiner@lip6.fr>
  */
 
+//#define SOCLIB_MODULE_DEBUG 1
+
 #include "vci_multi_tty.h"
-
-template<typename T>
-T be2mask(T be)
-{
-	const T m = (1<<sizeof(T));
-	T r = 0;
-
-	for ( size_t i=0; i<sizeof(T); ++i ) {
-		r <<= 8;
-		be <<= 1;
-		if ( be & m )
-			r |= 0xff;
-	}
-	return r;
-}
 
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) template<typename vci_param> x VciMultiTty<vci_param>
 
-tmpl(/**/)::VciMultiTty
-( sc_core::sc_module_name name,
-  const soclib::common::IntTab &index,
-  const soclib::common::MappingTable &mt,
-  const char *first_name,
-  ...)
-	   : TlmdtTarget(name)
-	  , m_index(index)
-	  , m_mt(mt)
+//////////////////////////////////////////////////////
+// constructors
+///////////////////////////////////////////////////////
+tmpl(/**/)::VciMultiTty ( sc_core::sc_module_name name,
+                          const soclib::common::IntTab &index,
+                          const soclib::common::MappingTable &mt,
+                          const char *first_name,
+                          ...)
+    : sc_core::sc_module(name)
+    , m_segment(mt.getSegment(index))
+    , p_vci("p_vci")
 {
-  va_list va_tty;
-  va_start (va_tty, first_name);
-  std::vector<std::string> names;
-  const char *cur_tty = first_name;
-  while (cur_tty) {
-    names.push_back(cur_tty);
-    cur_tty = va_arg( va_tty, char * );
-  }
-  va_end( va_tty );
-  init(names);
-}
-
-tmpl(/**/)::VciMultiTty
-( sc_core::sc_module_name name,
-  const soclib::common::IntTab &index,
-  const soclib::common::MappingTable &mt,
-  const std::vector<std::string> &names)
-	   : TlmdtTarget(name)
-	  , m_index(index)
-	  , m_mt(mt)
-{
-  init(names);
-}
-
-tmpl(void)::init(const std::vector<std::string> &names){
-
-  segList=m_mt.getSegmentList(m_index);
-  int j=0;
-
-  for(std::vector<std::string>::const_iterator i = names.begin(); i != names.end();++i){
-    m_term.push_back(soclib::common::allocateTty(*i));
-
-    std::ostringstream irq_name;
-    irq_name << "irq" << j;
-    p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types>(irq_name.str().c_str()));
-
-    j++;
-  }
-
-  m_irq = new bool[m_term.size()];
-  for(size_t i=0; i<m_term.size(); i++){
-    m_irq[i] = 0;
-  }
-  
-  //PDES local time
-  m_pdes_local_time = new pdes_local_time(sc_core::SC_ZERO_TIME);
-
-  //create payload and extension to irq message
-  m_payload_ptr = new tlm::tlm_generic_payload();
-  m_extension_ptr = new soclib_payload_extension();
-  
-  m_cpt_cycle = 0;
-  m_cpt_idle  = 0;
-  m_cpt_read  = 0;
-  m_cpt_write = 0;
-
-  SC_THREAD(behavior_target);
-
-}
-
-tmpl(void)::behavior_target()
-{
-#if SOCLIB_MODULE_DEBUG
-  std::cout << "[" << name() << "] Behavior target" << std::endl;
-#endif
-
-  while (1) {
-    for ( size_t i=0; i<m_term.size(); ++i ) {
-      bool val = m_term[i]->hasData();
-      if ( val != m_irq[i] ) {
-	send_interruption(i,val);
-      }
+    va_list va_tty;
+    va_start (va_tty, first_name);
+    std::vector<std::string> names;
+    const char *cur_tty = first_name;
+    while (cur_tty) 
+    {
+        names.push_back(cur_tty);
+        cur_tty = va_arg( va_tty, char * );
     }
-    wait(sc_core::SC_ZERO_TIME);
-  }
+    va_end( va_tty );
+    init(names);
 }
 
-tmpl(void)::send_interruption(size_t idx, bool val)
+tmpl(/**/)::VciMultiTty ( sc_core::sc_module_name name,
+                          const soclib::common::IntTab &index,
+                          const soclib::common::MappingTable &mt,
+                          const std::vector<std::string> &names)
+    : sc_core::sc_module(name)
+    , m_segment(mt.getSegment(index))
+    , p_vci("p_vci")
 {
-  size_t nbytes = vci_param::nbytes; //1 word
-  unsigned char data_ptr[nbytes];
-  unsigned char byte_enable_ptr[nbytes];
-  typename vci_param::data_t be = be2mask<typename vci_param::data_t>(0xF);
+    init(names);
+}
 
-  m_irq[idx] = val;
+///////////////////////////////////////////////////////
+tmpl(void)::init(const std::vector<std::string> &names)
+{
+    int	j = 0;
 
-  // set the all bytes to enabled
-  utoa(be, byte_enable_ptr, 0);
-  // set the val to data
-  utoa(val, data_ptr, 0);
+    // allocate terminals and IRQ ports
+    for(std::vector<std::string>::const_iterator i = names.begin() ; i != names.end() ; ++i)
+    {
+        m_term.push_back(soclib::common::allocateTty(*i));
 
-  // set the values in tlm payload
-  m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
-  m_payload_ptr->set_byte_enable_ptr(byte_enable_ptr);
-  m_payload_ptr->set_byte_enable_length(nbytes);
-  m_payload_ptr->set_data_ptr(data_ptr);
-  m_payload_ptr->set_data_length(nbytes);
-  // set the values in payload extension
-  m_extension_ptr->set_write();
-  // set the extension to tlm payload
-  m_payload_ptr->set_extension(m_extension_ptr);
+        std::ostringstream irq_name;
+        irq_name << "irq" << j;
+        p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,
+                            tlm::tlm_base_protocol_types> (irq_name.str().c_str()));
+        j++;
+    }
+
+    // bind VCI target port
+    p_vci(*this);
+
+    // register interface function on irq ports
+    for ( size_t i=0 ; i<m_term.size() ; i++ ) 
+    {  
+        (*p_irq[i]).register_nb_transport_bw(this, &VciMultiTty::irq_nb_transport_bw, i);
+    }
+
+    // allocate and initialize IRQ values
+    m_irq_value = new uint8_t[m_term.size()];
+    for ( size_t i=0 ; i<m_term.size() ; i++) m_irq_value[i] = 0; 
   
-  // set the tlm phase
-  m_phase = tlm::BEGIN_REQ;
-  // set the local time to transaction time
-  m_time = m_pdes_local_time->get();
-  
-#ifdef SOCLIB_MODULE_DEBUG
-  std::cout << "[" << name() << "] Send Interrupt " << idx << " : " << val << " time : " << m_time.value() << " hex : " << std::hex << m_time.value() << std::dec << std::endl;
-#endif
-  
-  // send the transaction
-  (*p_irq[idx])->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
-  
+    // initialize instrumentation counters
+    m_cpt_read  = 0;
+    m_cpt_write = 0;
+
+    // create and initialize the IRQ transactions
+    m_irq_payload = new tlm::tlm_generic_payload[m_term.size()];
+    for ( size_t i=0 ; i<m_term.size() ; i++) m_irq_payload[i].set_data_ptr(&m_irq_value[i]); 
+    m_irq_phase = tlm::BEGIN_REQ;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-// PROCESSING (VCI TARGET SOCKET)
+// interface function executed when receiving a command on the VCI port
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(void)::target_processing
-( tlm::tlm_generic_payload &payload,
-  tlm::tlm_phase           &phase,  
-  sc_core::sc_time         &time)   
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw ( tlm::tlm_generic_payload &payload,
+                                            tlm::tlm_phase           &phase,  
+                                            sc_core::sc_time         &time)   
 {
-  soclib_payload_extension *extension_pointer;
-  payload.get_extension(extension_pointer);
+    soclib_payload_extension *extension_pointer;
+    payload.get_extension(extension_pointer);
   
-  //this target does not treat the null message
-  if(extension_pointer->is_null_message()){
-    return;
-  }
-  
-  //update the message time
-  if ( time < m_pdes_local_time->get() ){
-    time = m_pdes_local_time->get();
-  }
+    // two actions in case of NULL message:
+    // - character acquisition on the terminals
+    // - send IRQ values on the IRQ ports
+    if( extension_pointer->is_null_message() )
+    {
 
-  int cell, reg, term_no;
-  uint32_t nwords = payload.get_data_length() / vci_param::nbytes;
-  
-  std::list<soclib::common::Segment>::iterator seg;
-  size_t segIndex;
-  for (segIndex=0,seg = segList.begin();seg != segList.end(); ++segIndex, ++seg ){
-    soclib::common::Segment &s = *seg;
-    
-    if (!s.contains(payload.get_address()))
-      continue;
-    switch(extension_pointer->get_command()){
-    case VCI_READ_COMMAND:
-      {
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() <<"] Receive a read packet with time = "  << time.value() << std::endl;
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] time = " << std::dec << time.value()
+          << " RECEIVE NULL MESSAGE" << std::endl;
 #endif
-	
-	m_cpt_idle  = m_cpt_idle + (time.value() - m_cpt_cycle);
 
-	for(unsigned int i=0; i<nwords; i++){
-	  
-	  //if (payload.contig)
-	  cell = (int)(((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes); // XXX contig = true always
-	    //else
-	    //cell = (int)((payload.address - s.baseAddress()) / vci_param::nbytes); // always write in the same address
-	  
-	  reg = cell % TTY_SPAN;
-	  term_no = cell / TTY_SPAN;
-	  
-#ifdef SOCLIB_MODULE_DEBUG
-	  std::cout << "[" << name() <<"] term_no=" << term_no << " reg=" << reg << std::endl;
+        m_irq_time = time;
+        for ( size_t i=0 ; i<m_term.size() ; ++i ) 
+        {
+            if ( m_term[i]->hasData() )	m_irq_value[i] = 0xFF;
+            else			m_irq_value[i] = 0x00;
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] time = " << std::dec << time.value()
+          << " SEND  IRQ / terminal = " << i 
+          << " / value = " << (int)m_irq_payload[i].get_data_ptr()[0] << std::endl;
 #endif
-	  
-	  if (term_no>=(int)m_term.size()){
+
+            (*p_irq[i])->nb_transport_fw(m_irq_payload[i], m_irq_phase, m_irq_time);
+        }    
+        return tlm::TLM_COMPLETED;
+    } // end NULL
+
+    // execute the command and send a response in case of VCI command 
+    else 
+    {
+        int 	cell;
+        int	reg;		// register index
+        int 	term;		// terminal index
+        bool	one_flit = (payload.get_data_length() == (unsigned int)vci_param::nbytes);
+        addr_t	address  = payload.get_address();
+ 
+        // address and length checking for a VCI command
+        if ( m_segment.contains(address) && one_flit )
+        {
+            cell = (int)((address - m_segment.baseAddress()) / vci_param::nbytes);
+            reg  = cell % TTY_SPAN;
+            term = cell / TTY_SPAN;
+            payload.set_response_status(tlm::TLM_OK_RESPONSE);
+
+	    assert ( (term < (int)m_term.size() ) &&
+                   " Illegal access to TTY : terminal index larger than the number of terminals");
 	    
+            if ( extension_pointer->get_command() == VCI_READ_COMMAND )
+            {
+
 #ifdef SOCLIB_MODULE_DEBUG
-	    std::cout << "[" << name() <<"] term_no (" << term_no <<") greater than the maximum (" << m_term.size() << ")" << std::endl;
+std::cout << "[" << name() <<"] time = " << std::dec << time.value()
+          << " RECEIVE READ COMMAND : term = "<< term << " / reg = " << reg << std::endl;
 #endif
-			    
-	    // remplir paquet d'erreur
-	    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-	  }
-	  else{
-	    
-	    switch (reg) {
-	    case TTY_STATUS:
-	      utoa(m_term[term_no]->hasData(), payload.get_data_ptr(),(i * vci_param::nbytes));
- 	      payload.set_response_status(tlm::TLM_OK_RESPONSE);
- 	      break;
-	    case TTY_READ:
-	      if (m_term[term_no]->hasData()) {
-		char tmp = m_term[term_no]->getc();
-		//printf("[%d] = %c\n", i, tmp);
-		utoa(tmp, payload.get_data_ptr(),(i * vci_param::nbytes));
-	      }	
-	      payload.set_response_status(tlm::TLM_OK_RESPONSE);
- 	      break;
-	    default:
-	      //error message
-	      payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
- 	      break;
-	    }
-	  }
-	}
-			
+	        switch (reg) {
+	        case TTY_STATUS: 
+                    utoa(m_term[term]->hasData(), payload.get_data_ptr(),0);
+ 	            break;
+	        case TTY_READ:
+		    utoa(m_term[term]->getc(), payload.get_data_ptr(),0);
+ 	            break;
+	        default:
+	            payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+ 	        break;
+	        }
+	        m_cpt_read++;
+	    } // end read
+            else if ( extension_pointer->get_command() == VCI_WRITE_COMMAND )
+            {
+
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() <<"] time = " << std::dec << time.value()
+          << " RECEIVE WRITE COMMAND : term = "<< term << " / reg = " << reg << std::endl;
+#endif
+	        if ( reg == TTY_WRITE )
+                {
+	            if ( payload.get_data_ptr()[0] == '\a' ) 
+                    {
+		        char tmp[32];
+		        size_t ret = snprintf(tmp, sizeof(tmp), "[%d] ", (int)time.value());
+		        for ( size_t i=0 ; i<ret ; ++i ) m_term[term]->putc( tmp[i] );
+	            } 
+	            else
+                    {
+		        m_term[term]->putc( payload.get_data_ptr()[0] );
+	            }
+ 	        }
+	        else
+                {
+                    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+	        }
+	        m_cpt_write++;
+	    } // end write
+            else // illegal command
+            {
+                payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+            }
+        }
+        else // illegal address
+        {
+            payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+        }
+
+	//update the transaction time & send the response
+	time = time + UNIT_TIME;
 	phase = tlm::BEGIN_RESP;
-	time = time + (nwords * UNIT_TIME);
-	
-	m_cpt_cycle = time.value();
-	m_cpt_read+=nwords;
-	
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
-#endif
-	
-	//update the target local time
-	m_pdes_local_time->set(time + UNIT_TIME);
-
         p_vci->nb_transport_bw(payload, phase, time);
- 	return;
-	break;
-      }
-    case VCI_WRITE_COMMAND:
-      {
-	char data;
-	
-#ifdef SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Receive a write packet nwords = " << nwords << " with time = "  << time.value() << std::endl;
-#endif
-	
-	for(unsigned int i=0; i<nwords; i++){
-	  //if (payload.contig)
-	  cell = (int)(((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes); /// XXX contig = true always
-	    //else
-	    //cell = (int)((payload.address - s.baseAddress()) / vci_param::nbytes); // always write in the same address
-	  
-	  reg = cell % TTY_SPAN;
-	  term_no = cell / TTY_SPAN;
 
+        return tlm::TLM_COMPLETED;
+    } // end VCI
+} // end nb_transport_fw
 
-          data = atou(payload.get_data_ptr(), (i * vci_param::nbytes));
-	  
-#if SOCLIB_MODULE_DEBUG
-	  std::cout << "[" << name() << "] term_no=" << term_no << " reg=" << reg << " data=" << data << std::endl;
-#endif
-	  
-	  if (term_no>=(int)m_term.size()){
-#if SOCLIB_MODULE_DEBUG
-	    std::cout << "[" << name() << "] term_no (" << term_no <<") greater than the maximum (" << m_term.size() << ")" << std::endl;
-#endif
-	    
-	    // remplir paquet d'erreur
-	    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
- 	  }
-	  else{
-	    
-	    switch (reg) {
-	    case TTY_WRITE:
-	      if ( data == '\a' ) {
-		char tmp[32];
-		size_t ret = snprintf(tmp, sizeof(tmp), "[%d] ", (int)time.value());
-		
-		for ( size_t i=0; i<ret; ++i )
-		  m_term[term_no]->putc( tmp[i] );
-	      } 
-	      else{
-		//std::cout << "[" << name() << "] data = " << data << std::endl;
-		m_term[term_no]->putc( data );
-	      }
-		
-              payload.set_response_status(tlm::TLM_OK_RESPONSE);
- 	      break;
-	    default:
-	      //error message
-              payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
- 	      break;
-	    }
-	  }
-	}
-	
-	m_cpt_idle  = m_cpt_idle + (time.value() - m_cpt_cycle);
-
-	phase = tlm::BEGIN_RESP;
-	time = time + (nwords * UNIT_TIME);
-
-	m_cpt_cycle = time.value();
-	m_cpt_write+=nwords;
-	
-#if SOCLIB_MODULE_DEBUG
-	std::cout << "[" << name() << "] Send answer with time = " << time.value() << std::endl;
-#endif
-	
-	//update the target local time
-	m_pdes_local_time->set(time + UNIT_TIME);
-
-	p_vci->nb_transport_bw(payload, phase, time);
- 	return;
-	break;
-      }
-    default:
-      break;
-    }
-  }
-
-  //send error message
-  payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-   
-  phase  = tlm::BEGIN_RESP;
-  time = time + UNIT_TIME;
-  
-#if SOCLIB_MODULE_DEBUG
-  std::cout << "[" << name() << "] Address " << payload.get_address() << " does not match any segment " << std::endl;
-  std::cout << "[" << name() << "] Send to source "<< extension_pointer->get_src_id() << " a error packet with time = "  << time.value() << std::endl;
-#endif
-  
-  //update the target local time
-  m_pdes_local_time->set(time + UNIT_TIME);
-    
-  p_vci->nb_transport_bw(payload, phase, time);
-  return;
+/////////////////////////////////////////////////////////////////////////////////////
+// Interface function executed when receiving a response to an IRQ transaction
+/////////////////////////////////////////////////////////////////////////////////////
+tmpl (tlm::tlm_sync_enum)::irq_nb_transport_bw ( int                        id,
+                                                 tlm::tlm_generic_payload    &payload,
+                                                 tlm::tlm_phase              &phase,
+                                                 sc_core::sc_time            &time) 
+{
+    // no action
+    return tlm::TLM_COMPLETED;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-// local Fuctions
+// Service  Functions
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(size_t)::getTotalCycles(){
-  return m_cpt_cycle;
-}
-
-tmpl(size_t)::getActiveCycles(){
-  return (m_cpt_cycle - m_cpt_idle);
-}
-
-tmpl(size_t)::getIdleCycles(){
-  return m_cpt_idle;
-}
-
 tmpl(size_t)::getNRead(){
   return m_cpt_read;
 }
@@ -406,5 +262,44 @@ tmpl(void)::print_stats(){
   std::cout << "- WRITE              = " << m_cpt_write << std::endl;
 }
 
+/////////////////////////////////////////////////////////////
+// Not implemented but required by interface
+/////////////////////////////////////////////////////////////
+tmpl(void)::b_transport ( tlm::tlm_generic_payload &payload,
+                          sc_core::sc_time         &_time)
+{
+    return;
+}
+tmpl(bool)::get_direct_mem_ptr ( tlm::tlm_generic_payload &payload,
+                                 tlm::tlm_dmi             &dmi_data)
+{
+    return false;
+}
+tmpl(unsigned int):: transport_dbg ( tlm::tlm_generic_payload &payload)
+{
+    return false;
+}
+tmpl(void)::invalidate_direct_mem_ptr ( sc_dt::uint64 start_range,
+                                        sc_dt::uint64 end_range)
+{
+    return;
+}
+tmpl (tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload,
+                                             tlm::tlm_phase           &phase,
+                                             sc_core::sc_time         &time)
+{
+    return tlm::TLM_COMPLETED;
+}
 
 }}
+
+// Local Variables:
+// tab-width: 4
+// c-basic-offset: 4
+// cle-offsets:((innamespace . 0)(inline-open . 0))
+// indent-tabs-mode: nil
+// End:
+
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+
+
