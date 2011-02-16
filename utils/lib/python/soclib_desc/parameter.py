@@ -114,6 +114,7 @@ class Parameter(Base):
         self.auto = auto
 
     def resolve(self, args):
+#        print "resolve %s %s %s %s"%(self, args, self.default, self.auto)
         value = None
         if self.name in args:
             value = args[self.name]
@@ -322,9 +323,10 @@ class Module(Type):
         type = mod['classname']
         return type+' '+self.name
 
-    def __init__(self, name, typename = None, default = None, auto = None):
+    def __init__(self, name, typename = None, default = None, auto = None, **kwargs):
         Parameter.__init__(self, name, default, auto)
         self.typename = typename
+        self.kwargs = kwargs
 
     def __repr__(self):
         r = 'parameter.%s(%r'%(
@@ -337,16 +339,19 @@ class Module(Type):
             r += ', default = %r'%self.default
         if self.auto:
             r += ', auto = %r'%self.auto
+        for k, v in sorted(self.kwargs.items()):
+            r += ', %s = %r'%(k, v)
         return r + ')'
 
     @staticmethod
     def get_inst_value(value, **args):
         return value.ref()
 
-    @staticmethod
-    def get_tmpl_value(value, **args):
+    def get_tmpl_value(self, value, **args):
         import description_files
         mod = description_files.get_module(value)
+        args.update(self.kwargs)
+#        print value, mod, args
         return mod.specialize(**args)
 
 class Reference(Base):

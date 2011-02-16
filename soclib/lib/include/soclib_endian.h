@@ -74,6 +74,11 @@ template<int W> class sc_uint;
 
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
+# define uint64_le_to_machine(x) (x)
+# define uint64_machine_to_le(x) (x)
+# define uint64_be_to_machine(x) ::soclib::endian::uint64_swap(x)
+# define uint64_machine_to_be(x) ::soclib::endian::uint64_swap(x)
+
 # define uint32_le_to_machine(x) (x)
 # define uint32_machine_to_le(x) (x)
 # define uint32_be_to_machine(x) ::soclib::endian::uint32_swap(x)
@@ -84,6 +89,11 @@ template<int W> class sc_uint;
 # define uint16_be_to_machine(x) ::soclib::endian::uint16_swap(x)
 # define uint16_machine_to_be(x) ::soclib::endian::uint16_swap(x)
 #else
+# define uint64_le_to_machine(x) ::soclib::endian::uint64_swap(x)
+# define uint64_machine_to_le(x) ::soclib::endian::uint64_swap(x)
+# define uint64_be_to_machine(x) (x)
+# define uint64_machine_to_be(x) (x)
+
 # define uint32_le_to_machine(x) ::soclib::endian::uint32_swap(x)
 # define uint32_machine_to_le(x) ::soclib::endian::uint32_swap(x)
 # define uint32_be_to_machine(x) (x)
@@ -108,6 +118,24 @@ static inline uint32_t uint32_swap(uint32_t x)
         );
 }
 
+static inline uint64_t uint64_swap(uint64_t x)
+{
+#if 0
+    return (
+        ( (x & 0xff)       << 56 ) |
+        ( (x & 0xff00)     << 40 ) |
+        ( (x & 0xff0000)   << 24 ) |
+        ( (x & 0xff000000) << 8  ) |
+        ( (x >>  8) & 0xff000000 ) |
+        ( (x >> 24) &   0xff0000 ) |
+        ( (x >> 40) &     0xff00 ) |
+        ( (x >> 56) &       0xff )
+        );
+#else
+    return ((uint64_t)uint32_swap(x)<<32) | uint32_swap(x>>32);
+#endif
+}
+
 static inline uint16_t uint16_swap(uint16_t x)
 {
     return ((x << 8) | (x >> 8));
@@ -126,8 +154,18 @@ static inline uint32_t uint32_swap16(uint32_t x)
     uint32_t tmp = uint32_swap(x);
     return (tmp<<16) | (tmp>>16);
 #else
-    return uint16_swap(x) | (uint16_swap(x>>16)<<16);
+    return uint16_swap(x) | ((uint32_t)uint16_swap(x>>16)<<16);
 #endif
+}
+
+static inline uint64_t uint64_swap16(uint64_t x)
+{
+    return uint16_swap(x) | ((uint64_t)uint16_swap(x>>16)<<16) | ((uint64_t)uint16_swap(x>>32)<<32) | ((uint64_t)uint16_swap(x>>48)<<48);
+}
+
+static inline uint64_t uint64_swap32(uint64_t x)
+{
+    return uint32_swap(x) | ((uint64_t)uint32_swap(x>>32)<<32);
 }
 
 template<size_t t> struct baset;
@@ -153,6 +191,12 @@ template<>struct swapper_funcs<4> {
     static uint32_t machine_to_le(uint32_t x) { return uint32_machine_to_le(x); }
     static uint32_t be_to_machine(uint32_t x) { return uint32_be_to_machine(x); }
     static uint32_t machine_to_be(uint32_t x) { return uint32_machine_to_be(x); }
+};
+template<>struct swapper_funcs<8> {
+    static uint64_t le_to_machine(uint64_t x) { return uint64_le_to_machine(x); }
+    static uint64_t machine_to_le(uint64_t x) { return uint64_machine_to_le(x); }
+    static uint64_t be_to_machine(uint64_t x) { return uint64_be_to_machine(x); }
+    static uint64_t machine_to_be(uint64_t x) { return uint64_machine_to_be(x); }
 };
 
 template<typename io_t> struct swapper
