@@ -31,7 +31,7 @@
 
 #include "vci_xcache_wrapper.h"
 
-#define MY_DEBUG 0
+//#define SOCLIB_MODULE_DEBUG 1
 
 #ifdef SOCLIB_MODULE_DEBUG
 namespace {
@@ -226,7 +226,7 @@ tmpl (void)::init( size_t time_quantum)
   p_vci(*this);                     
 
   // create IRQ arrays
-  m_pending_irq = new bool[iss_t::n_irq];
+  m_pending_irq 	= new bool[iss_t::n_irq];
   m_pending_time	= new sc_core::sc_time[iss_t::n_irq];
 
   //register IRQ interface function 
@@ -372,7 +372,8 @@ tmpl (void)::execLoop ()
         << " dcache fsm: " << dcache_fsm_state_str[m_dcache_fsm]
         << " icache fsm: " << icache_fsm_state_str[m_icache_fsm]
         << " cmd fsm: " << cmd_fsm_state_str[m_vci_cmd_fsm]
-        << " rsp fsm: " << rsp_fsm_state_str[m_vci_rsp_fsm] << std::endl;
+        << " rsp fsm: " << rsp_fsm_state_str[m_vci_rsp_fsm] 
+        << std::endl;
 #endif
 
 #if MY_DEBUG
@@ -1331,24 +1332,25 @@ tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
 // Interface function called when receiving an IRQ event
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl (tlm::tlm_sync_enum)::irq_nb_transport_fw
-( int                      id,         // interruption id
-  tlm::tlm_generic_payload &payload,   // payload
-  tlm::tlm_phase           &phase,     // phase
-  sc_core::sc_time         &time)      // time
+( int                      id,       
+  tlm::tlm_generic_payload &payload, 
+  tlm::tlm_phase           &phase,  
+  sc_core::sc_time         &time)  
 {
-     bool	value = (bool) atou(payload.get_data_ptr(), 0);
+   uint8_t	value = payload.get_data_ptr()[0];
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << "[" << name() << "] time = " << std::dec << time 
-          << " receive Interrupt " << id << " / value = " << value << std::endl;
+std::cout << "[" << name() << "] time = " << std::dec << time.value()
+          << " receive Interrupt " << id << " / value = " << (int)value << std::endl;
 #endif
 
-      assert(time >= m_pending_time[id] && "IRQ event received with a wrong date");
+    assert(time.value() >= m_pending_time[id].value() 
+               && "IRQ event received with a wrong date");
 
-      m_pending_irq[id] = value;
-      m_pending_time[id] = time;
+    m_pending_irq[id] = ( value != 0 );
+    m_pending_time[id] = time;
 
-      return tlm::TLM_COMPLETED;
+    return tlm::TLM_COMPLETED;
 }  
 
 
