@@ -365,9 +365,9 @@ public:
             // searching for a pending request with the same address
             for( size_t i=0 ; i<m_nslots ; i++ )
             {
-                if ( (r_state[i] != EMPTY) and 
-                     (r_state[i] != OPEN)  and
-                     (r_address[num_slot] == r_address[i]) ) 
+                if ( (r_state[i].read() != EMPTY) and 
+                     (r_state[i].read() != OPEN)  and
+                     (r_address[num_slot].read() == r_address[i].read()) ) 
                 {
                     // find a line with the same adress and the sate is locked or sent
                     found = true;
@@ -442,7 +442,7 @@ public:
         // first : search an open slot with the same address
         for( size_t i=0 ; i<m_nslots ; i++)
         {
-            if( (r_state[i] == OPEN) && (r_address[i] == address) )
+            if( (r_state[i].read() == OPEN) && (r_address[i].read() == address) )
             { 
                 lw = i;
                 found = true;
