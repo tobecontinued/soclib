@@ -22,6 +22,7 @@
  *
  * Copyright (c) UPMC, Lip6, Asim
  *         Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>, 2010
+ *         Alain Greiner <alain.greiner@lip6.fr>
  */
 
 #include <stdint.h>
@@ -31,11 +32,12 @@
 #include <fcntl.h>
 #include "block_device.h"
 
-#define CHUNCK_SIZE (1<<8)
+//#define SOCLIB_MODULE_DEBUG 1
+
+#define MAX_BURST_LENGTH 64
 
 namespace soclib { namespace tlmdt {
 
-#ifdef SOCLIB_MODULE_DEBUG
     namespace {
         const char* SoclibBlockDeviceRegisters_str[] = {
             "BLOCK_DEVICE_BUFFER",
@@ -62,119 +64,64 @@ namespace soclib { namespace tlmdt {
             "BLOCK_DEVICE_ERROR",
         };
     }
-#endif
 
 #define tmpl(t) template<typename vci_param> t VciBlockDevice<vci_param>
 
-tmpl (void)::update_time(sc_core::sc_time t){
-    if(t > m_pdes_local_time->get()){
-        m_pdes_local_time->set(t);
-    }
-}
+/////////////////////////
+tmpl (void)::send_null()
+{
+    m_pdes_local_time->reset_sync();
 
-tmpl (void)::send_null_message(){
-    // set the null message command
-    m_null_extension_ptr->set_null_message();
-    m_null_extension_ptr->set_src_id(m_id);
-    // set the extension to tlm payload
-    m_null_payload_ptr->set_extension(m_null_extension_ptr);
-    //set the tlm phase
-    m_null_phase = tlm::BEGIN_REQ;
-    //set the local time to transaction time
+    // send NULL message
     m_null_time = m_pdes_local_time->get();
+    p_vci_initiator->nb_transport_fw(m_null_payload, m_null_phase, m_null_time);
 
-    m_pdes_local_time->reset_sync();
-    
+    // send IRQ
+    m_irq_time = m_pdes_local_time->get();
+    p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
+
 #ifdef SOCLIB_MODULE_DEBUG
-    //std::cout << name() << " send NULL MESSAGE time = " << m_null_time.value() << std::endl;
+std::cout <<  "[" <<name() << "] time = " << std::dec << m_null_time.value()
+          << " NULL MESSAGE / IRQ value = " << (int)m_irq_value << std::endl;
 #endif
-    
-    //send a null message
-    p_vci_initiator->nb_transport_fw(*m_null_payload_ptr, m_null_phase, m_null_time);
-    //deschedule the initiator thread
-    wait(m_rsp_received);
+
 }
 
-tmpl (void)::send_write_message(size_t chunck_size){
-    
-    m_nbytes = chunck_size;
-    m_address = m_buffer+m_chunck_offset;
-    
-    data_t be = vci_param::be2mask(0xF);;
-    for(data_t i=0; i< m_nbytes; i+=vci_param::nbytes){
-        utoa(be, m_byte_enable_ptr, i);
-    }
-        
-    // set the values in tlm payload
-    m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
-    m_payload_ptr->set_address(m_address & ~3);
-    m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
-    m_payload_ptr->set_byte_enable_length(m_nbytes);
-    m_payload_ptr->set_data_ptr(m_data+m_chunck_offset);
-    m_payload_ptr->set_data_length(m_nbytes);
-    // set the values in payload extension
-    m_extension_ptr->set_write();
-    m_extension_ptr->set_src_id(m_id);
-    m_extension_ptr->set_trd_id(0);
-    m_extension_ptr->set_pkt_id(0);
-    // set the extension to tlm payload
-    m_payload_ptr->set_extension(m_extension_ptr);
-    //set the tlm phase
-    m_phase = tlm::BEGIN_REQ;
-    //set the local time to transaction time
-    m_time = m_pdes_local_time->get();
-    //reset the counter to synchronize
+////////////////////////////////////////////////////
+tmpl (void)::send_vci_command(bool read_from_memory)
+{        
     m_pdes_local_time->reset_sync();
-    
-    //send a write message
-    p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
-    //deschedule the initiator thread
-    wait(m_rsp_received);
-}
 
-tmpl (void)::send_read_message(size_t chunck_size){
-    m_nbytes = chunck_size;
-    m_address = m_buffer+m_chunck_offset;
+    // send VCI command
+    size_t	length =  m_transfer_size - m_transfer_offset;
+    if ( length > MAX_BURST_LENGTH) length = MAX_BURST_LENGTH;
+    if ( read_from_memory ) 	m_vci_extension.set_read();
+    else			m_vci_extension.set_write();
+    m_vci_payload.set_data_ptr(m_vci_data_buf + m_transfer_offset);
+    m_vci_payload.set_address(m_buffer + m_transfer_offset);
+    m_vci_payload.set_data_length(length);
+    m_vci_payload.set_byte_enable_length(length);
+    m_vci_time = m_pdes_local_time->get();
+    p_vci_initiator->nb_transport_fw(m_vci_payload, m_vci_phase, m_vci_time);
 
-    data_t be = vci_param::be2mask(0xF);;
-    for(data_t i=0; i< m_nbytes; i+=vci_param::nbytes){
-        utoa(be, m_byte_enable_ptr, i);
-    }
+    // send IRQ 
+    m_irq_time = m_pdes_local_time->get();
+    p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
 
-    m_payload_ptr = new tlm::tlm_generic_payload();
-    m_extension_ptr = new soclib_payload_extension();
-  
-    // set the values in tlm payload
-    m_payload_ptr->set_command(tlm::TLM_IGNORE_COMMAND);
-    m_payload_ptr->set_address(m_address & ~3);
-    m_payload_ptr->set_byte_enable_ptr(m_byte_enable_ptr);
-    m_payload_ptr->set_byte_enable_length(m_nbytes);
-    m_payload_ptr->set_data_ptr(m_data+m_chunck_offset);
-    //m_payload_ptr->set_data_ptr(m_data_ptr);
-    m_payload_ptr->set_data_length(m_nbytes);
-    // set the values in payload extension
-    m_extension_ptr->set_read();
-    m_extension_ptr->set_src_id(m_id);
-    m_extension_ptr->set_trd_id(0);
-    m_extension_ptr->set_pkt_id(0);
-    // set the extension to tlm payload
-    m_payload_ptr->set_extension(m_extension_ptr);
-    //set the tlm phase
-    m_phase = tlm::BEGIN_REQ;
-    //set the local time to transaction time
-    m_time = m_pdes_local_time->get();
-    //reset the counter to synchronize
-    m_pdes_local_time->reset_sync();
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " send READ message time = " << std::dec << m_time.value() << std::endl;
+std::cout <<  "[" <<name() << "] time = " << std::dec << m_vci_time.value();
+if ( read_from_memory )	std::cout << " VCI READ at address ";
+else                   	std::cout << " VCI WRITE at address ";
+std::cout << std::hex << m_buffer + m_transfer_offset;
+std::cout << " / IRQ value = " << (int)m_irq_value << std::endl;
 #endif
-    //send a read message
-    p_vci_initiator->nb_transport_fw(*m_payload_ptr, m_phase, m_time);
-    //deschedule the initiator thread
-    wait(m_rsp_received);
+
+    m_transfer_offset += length;
 }
 
-tmpl(void)::ended(int status){
+/////////////////////////////
+tmpl(void)::ended(int status)
+{
     
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout 
@@ -186,62 +133,65 @@ tmpl(void)::ended(int status){
         << std::endl;
 #endif
 
-	if ( m_irq_enabled ){
-		m_irq = true;
-        m_irq_changed = true;
-    }
-	m_current_op = m_op = BLOCK_DEVICE_NOOP;
+    if ( m_irq_enabled ) m_irq_value = 0xFF;
+    m_current_op = m_op = BLOCK_DEVICE_NOOP;
     m_status = status;
 }
 
-tmpl(void)::next_req(){
+//////////////////////
+tmpl(void)::next_req()
+{
     switch (m_current_op) {
     case BLOCK_DEVICE_READ:
     {
-        m_transfer_size = m_count * m_block_size;
-        if ( m_count && m_chunck_offset == 0 ) {
-            if ( m_lba + m_count > m_device_size ) {
+        if ( m_count && m_transfer_offset == 0 ) 
+        {
+            if ( m_lba + m_count > m_device_size ) 
+            {
                 std::cerr << name() << " warning: trying to read beyond end of device" << std::endl;
                 ended(BLOCK_DEVICE_READ_ERROR);
                 break;
             }
-            m_data = new uint8_t[m_transfer_size];
+            m_vci_data_buf = new uint8_t[m_transfer_size];
             lseek(m_fd, m_lba*m_block_size, SEEK_SET);
-            int retval = ::read(m_fd, m_data, m_transfer_size);
-            if ( retval < 0 ) {
+            int retval = ::read(m_fd, m_vci_data_buf, m_transfer_size);
+            if ( retval < 0 ) 
+            {
                 ended(BLOCK_DEVICE_READ_ERROR);
                 break;
             }
         }
-        size_t chunck_size = m_transfer_size-m_chunck_offset;
-        if ( chunck_size > CHUNCK_SIZE )
-            chunck_size = CHUNCK_SIZE;
 
-        send_write_message(chunck_size);
-        m_chunck_offset += CHUNCK_SIZE;
-		m_status = BLOCK_DEVICE_BUSY;
+        // blocking command
+        bool read_from_memory = false;
+        send_vci_command(read_from_memory);
+        wait(m_rsp_received);
+
+	m_status = BLOCK_DEVICE_BUSY;
         read_done();
         break;
     }
     case BLOCK_DEVICE_WRITE:
     {
-        m_transfer_size = m_count * m_block_size;
-        if ( m_count && m_chunck_offset == 0 ) {
-            if ( m_lba + m_count > m_device_size ) {
+        if ( m_count && m_transfer_offset == 0 ) 
+        {
+            if ( m_lba + m_count > m_device_size ) 
+            {
                 std::cerr << name() << " warning: trying to write beyond end of device" << std::endl;
                 ended(BLOCK_DEVICE_WRITE_ERROR);
                 break;
             }
-            m_data = new uint8_t[m_transfer_size];
+            m_vci_data_buf = new uint8_t[m_transfer_size];
             lseek(m_fd, m_lba*m_block_size, SEEK_SET);
         }
-        size_t chunck_size = m_transfer_size-m_chunck_offset;
-        if ( chunck_size > CHUNCK_SIZE )
-            chunck_size = CHUNCK_SIZE;
 
-        send_read_message(chunck_size);
-        m_chunck_offset += CHUNCK_SIZE;
-		m_status = BLOCK_DEVICE_BUSY;
+        // blocking command
+        bool read_from_memory = true;
+        send_vci_command(read_from_memory);
+        wait(m_rsp_received);
+
+        
+        m_status = BLOCK_DEVICE_BUSY;
         write_finish();
         break;
     }
@@ -251,292 +201,181 @@ tmpl(void)::next_req(){
     }
 }
     
-tmpl(void)::write_finish( ){
-    
-    if ( ! m_payload_ptr->is_response_error() && m_chunck_offset < m_transfer_size ) {
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout 
-        << name()
-        << " completed transferring a chunck. Do now the next one..."
-        << std::endl;
-#endif
+///////////////////////////
+tmpl(void)::write_finish( )
+{
+    if ( ! m_vci_payload.is_response_error() && m_transfer_offset < m_transfer_size ) 
+    {
         next_req();
         return;
     }
 
-	ended(
-        ( ! m_payload_ptr->is_response_error() && m_fd >= 0 && ::write( m_fd, (char *)m_data, m_transfer_size ) > 0 )
-        ? BLOCK_DEVICE_WRITE_SUCCESS : BLOCK_DEVICE_WRITE_ERROR );
-    delete m_data;
-    
+    if ( ! m_vci_payload.is_response_error() && m_fd >= 0 && 
+          ::write( m_fd, (char *)m_vci_data_buf, m_transfer_size ) > 0 ) ended(BLOCK_DEVICE_WRITE_SUCCESS);
+    else                                                         ended(BLOCK_DEVICE_WRITE_ERROR);
+
+    delete m_vci_data_buf;
 }
 
-tmpl(void)::read_done( ){
-    
-    if ( ! m_payload_ptr->is_response_error() && m_chunck_offset < m_transfer_size ) {
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout 
-        << name()
-        << " completed transferring a chunck. Do now the next one..."
-        << std::endl;
-#endif
+///////////////////////
+tmpl(void)::read_done()
+{
+    if ( ! m_vci_payload.is_response_error() && m_transfer_offset < m_transfer_size ) 
+    {
         next_req();
         return;
     }
 
-	ended( m_payload_ptr->is_response_error() ? BLOCK_DEVICE_READ_ERROR : BLOCK_DEVICE_READ_SUCCESS );
-    delete m_data;
-    
-}
-    
-tmpl(void)::send_interruption(){
-    // set the values in irq tlm payload
-    data_t nwords= 1;
-    data_t nbytes= nwords * vci_param::nbytes;
-    data_t byte_enable = vci_param::be2mask(0xF);
-    unsigned char data_ptr[nbytes];
-    unsigned char byte_enable_ptr[nbytes];
-    
-    utoa(byte_enable, byte_enable_ptr, 0);
-    utoa(m_irq, data_ptr, 0);
-  
-    // set the values in irq tlm payload
-    m_irq_payload.set_byte_enable_ptr(byte_enable_ptr);
-    m_irq_payload.set_byte_enable_length(nbytes);
-    m_irq_payload.set_data_ptr(data_ptr);
-    m_irq_payload.set_data_length(nbytes);
-    
-    // set the tlm phase
-    m_irq_phase = tlm::BEGIN_REQ;
-    // set the local time to transaction time
-    m_irq_time = m_pdes_local_time->get();
+    if ( m_vci_payload.is_response_error() ) ended(BLOCK_DEVICE_READ_ERROR);
+    else                                     ended(BLOCK_DEVICE_READ_SUCCESS);
 
-#if SOCLIB_MODULE_DEBUG
-    std::cout << "[" << name() << "] Send Interruption " << m_irq << " with time = " <<  m_irq_time.value() << std::endl;
-#endif
-
-    // send the transaction
-    p_irq->nb_transport_fw(m_irq_payload, m_irq_phase, m_irq_time);
+    delete m_vci_data_buf;
 }
 
-tmpl (void)::execLoop (){
-    while(true){
-        
+//////////////////////////////////////////////////////
+// initiator thread
+//////////////////////////////////////////////////////
+tmpl (void)::execLoop ()
+{
+    while(true)
+    {
         m_pdes_local_time->add(UNIT_TIME);
 
-        if ( m_current_op == BLOCK_DEVICE_NOOP &&
-             m_op != BLOCK_DEVICE_NOOP ) {
-            if ( m_access_latency ) {
+        if ( m_current_op == BLOCK_DEVICE_NOOP && m_op != BLOCK_DEVICE_NOOP ) 
+        {
+            if ( m_access_latency ) 
+            {
                 m_access_latency--;
-            } else {
+            } 
+            else 
+            {
+
 #ifdef SOCLIB_MODULE_DEBUG
-                std::cout 
-                    << name()
-                    << " launch an operation "
-                    << SoclibBlockDeviceOp_str[m_op]
-                    << std::endl;
+std::cout << name() << " launch an operation " << SoclibBlockDeviceOp_str[m_op] << std::endl;
 #endif
-                m_current_op = m_op;
-                m_op = BLOCK_DEVICE_NOOP;
-                m_chunck_offset = 0;
+                m_current_op 		= m_op;
+                m_op 			= BLOCK_DEVICE_NOOP;
+                m_transfer_offset 	= 0;
+                m_transfer_size 	= m_count * m_block_size;
                 next_req();
             }
         }        
 
-        // if initiator needs synchronize then it sends a null message
-        if (m_pdes_local_time->need_sync()) {
-            send_null_message();
-        }
-
-        if(m_irq_enabled && m_irq_changed){
-            send_interruption();
-            m_irq_changed = false;
+        // send a null message if required
+        if (m_pdes_local_time->need_sync())   
+        {
+            send_null(); 
+            wait( m_rsp_received );
         }
     }
     sc_core::sc_stop();
-}
+} // end execLoop()
 
-/////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
-/////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Interface function used when receiving a response on the initiator port
+///////////////////////////////////////////////////////////////////////////////
 tmpl (tlm::tlm_sync_enum)::nb_transport_bw    
-( tlm::tlm_generic_payload           &payload,       // payload
-  tlm::tlm_phase                     &phase,         // phase
-  sc_core::sc_time                   &time)          // time
+( tlm::tlm_generic_payload           &payload,     
+  tlm::tlm_phase                     &phase,     
+  sc_core::sc_time                   &time)    
 {
-    update_time(time);
-
-    //this target does not treat the null message
-#ifdef SOCLIB_MODULE_DEBUG
-    soclib_payload_extension *extension_pointer;
-    payload.get_extension(extension_pointer);
-    if(extension_pointer->is_null_message()){
-        //std::cout << name() << " Receive response NULL MESSAGE time = " << time.value() << std::endl;
-    }
-    else{
-        std::cout << name() << " Receive response time = " << time.value() << std::endl;
-    }
-#endif
-
+    if(time > m_pdes_local_time->get()) m_pdes_local_time->set(time);
     m_rsp_received.notify (sc_core::SC_ZERO_TIME);
-
     return tlm::TLM_COMPLETED;
 }
 
-// Not implemented for this example but required by interface
-tmpl(void)::invalidate_direct_mem_ptr               // invalidate_direct_mem_ptr
-( sc_dt::uint64 start_range,                        // start range
-  sc_dt::uint64 end_range                           // end range
-) 
+/////////////////////////////////////////////////////////////////////////////////////
+// Interface function used when receiving a VCI command on the target port
+/////////////////////////////////////////////////////////////////////////////////////
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw ( tlm::tlm_generic_payload &payload, 
+                                            tlm::tlm_phase           &phase,  
+                                            sc_core::sc_time         &time)  
 {
-}
+    typename vci_param::addr_t	address = payload.get_address();
+    int 			cell;
+    bool			one_flit = (payload.get_data_length() == (unsigned int)vci_param::nbytes);
 
-/////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_fw_transport_if (VCI TARGET SOCKET)
-/////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::nb_transport_fw 
-( tlm::tlm_generic_payload &payload, // payload
-  tlm::tlm_phase           &phase,   // phase
-  sc_core::sc_time         &time)    // time
-{
-    soclib_payload_extension *extension_pointer;
+    soclib_payload_extension*	extension_pointer;
     payload.get_extension(extension_pointer);
     
-    //update local time
-    if(time > m_pdes_local_time->get())
-        m_pdes_local_time->set(time);
-    
-    //this target does not treat the null message
-    if(extension_pointer->is_null_message()){
-        return tlm::TLM_COMPLETED;
-    }
+    // No action and no response when receiving a null message
+    if(extension_pointer->is_null_message()) return tlm::TLM_COMPLETED;
   
-    typename vci_param::data_t data;
-    int cell;
-    uint32_t nwords = payload.get_data_length() / vci_param::nbytes;
-  
-    std::list<soclib::common::Segment>::iterator seg;
-    size_t segIndex;
-    for (segIndex=0,seg = segList.begin();seg != segList.end(); ++segIndex, ++seg ){
-        soclib::common::Segment &s = *seg;
-    
-        if (!s.contains(payload.get_address()))
-            continue;
-        switch(extension_pointer->get_command()){
-        case VCI_READ_COMMAND:
-            {
-                for(unsigned int i=0; i<nwords; i++){
-                    
-                    cell = (int)(((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes);
+    // address  and pcket length checking
+    if ( m_segment.contains(payload.get_address()) && one_flit )
+    {
+        cell = (int)((address - m_segment.baseAddress()) / vci_param::nbytes);
+        payload.set_response_status(tlm::TLM_OK_RESPONSE);
+
+        if (extension_pointer->get_command() == VCI_READ_COMMAND)
+        {
                     
 #ifdef SOCLIB_MODULE_DEBUG
-                    std::cout 
-                        << name()
-                        << " read config register "
-                        << SoclibBlockDeviceRegisters_str[cell]
-                        << std::endl;
+std::cout << "[" << name() << "] time = " << std::dec << time.value()
+          << " STATUS REQUEST " << SoclibBlockDeviceRegisters_str[cell] << std::endl;
 #endif
                     
-                    switch ((enum SoclibBlockDeviceRegisters)cell) {
-                    case BLOCK_DEVICE_SIZE:
-                        data = (typename vci_param::fast_data_t)m_device_size;
-                        utoa(data, payload.get_data_ptr(),(i * vci_param::nbytes));
-                        payload.set_response_status(tlm::TLM_OK_RESPONSE);
-                        break;
-                    case BLOCK_DEVICE_BLOCK_SIZE:
-                        utoa(m_block_size, payload.get_data_ptr(),(i * vci_param::nbytes));
-                        payload.set_response_status(tlm::TLM_OK_RESPONSE);
-                        break;
-                    case BLOCK_DEVICE_STATUS:
-                        utoa(m_status, payload.get_data_ptr(),(i * vci_param::nbytes));
-                        payload.set_response_status(tlm::TLM_OK_RESPONSE);
-                        if (m_status != BLOCK_DEVICE_BUSY) {
-                            m_status = BLOCK_DEVICE_IDLE;
-                            m_irq = false;
-                            m_irq_changed = true;
-                        }
-                        break;
-                    default:
-                        payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-                        break;
-                    }
+            if      ( cell == BLOCK_DEVICE_SIZE ) utoa(m_device_size, payload.get_data_ptr(),0);
+            else if ( cell == BLOCK_DEVICE_BLOCK_SIZE ) utoa(m_block_size, payload.get_data_ptr(),0);
+            else if ( cell == BLOCK_DEVICE_STATUS ) 
+            {
+                utoa(m_status, payload.get_data_ptr(),0);
+                if (m_status != BLOCK_DEVICE_BUSY) 
+                {
+                    m_status = BLOCK_DEVICE_IDLE;
+		    m_irq_value = 0x00;
                 }
-                
-                phase = tlm::BEGIN_RESP;
-                time = time + (nwords * UNIT_TIME);
-                p_vci_target->nb_transport_bw(payload, phase, time);
-                return tlm::TLM_COMPLETED;
-            }//end case READ
-            break;
-        case VCI_WRITE_COMMAND:
-            {
-                for(unsigned int i=0; i<nwords; i++){
-                    cell = (int)(((payload.get_address()+(i*vci_param::nbytes)) - s.baseAddress()) / vci_param::nbytes);
-                    data = atou(payload.get_data_ptr(), (i * vci_param::nbytes));
+            }
+            else    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+        } //end if READ
+        else if (extension_pointer->get_command() == VCI_WRITE_COMMAND)
+        {
 
 #ifdef SOCLIB_MODULE_DEBUG
-                    std::cout 
-                        << name()
-                        << " write config register "
-                        << SoclibBlockDeviceRegisters_str[cell]
-                        << " with data 0x"
-                        << std::hex << data
-                        << std::endl;
+std::cout << "[" << name() << "] time = " << std::dec << time.value()
+          << " CONFIG REQUEST to " << SoclibBlockDeviceRegisters_str[cell] 
+          << " with value = " << std::hex << atou(payload.get_data_ptr(),0) << std::endl;
 #endif
+            if ( m_status != BLOCK_DEVICE_BUSY ) 
+            {
+                data_t data = atou(payload.get_data_ptr(),0);
+                if      ( cell == BLOCK_DEVICE_BUFFER ) m_buffer = data;
+                else if ( cell == BLOCK_DEVICE_COUNT ) m_count = data;
+                else if ( cell == BLOCK_DEVICE_LBA ) m_lba = data;
+                else if ( cell == BLOCK_DEVICE_OP )
+                {
+                    m_op = data;
+                    m_access_latency = m_lfsr % (m_average_latency+1);
+                    m_lfsr = (m_lfsr >> 1) ^ ((-(m_lfsr & 1)) & 0xd0000001);
+                }
+                else if ( cell == BLOCK_DEVICE_IRQ_ENABLE ) m_irq_enabled = (bool)data;
+                else    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+            }
+            else
+            {
+                std::cerr << name() 
+                << " warning: receiving a new command while busy, ignored" << std::endl;
+            } 
+        } // end if WRITE
+        else // illegal command
+        {
+            payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+        }
+    }
+    else // illegal address
+    {
+        payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
+    }
 
-                    switch ((enum SoclibBlockDeviceRegisters)cell) {
-                    case BLOCK_DEVICE_BUFFER:
-                        m_buffer = data;
-                        payload.set_response_status(tlm::TLM_OK_RESPONSE);
-                        break;
-                     case BLOCK_DEVICE_COUNT:
-                        m_count = data;
-                        payload.set_response_status(tlm::TLM_OK_RESPONSE);
-                        break;
-                    case BLOCK_DEVICE_LBA:
-                        m_lba = data;
-                        payload.set_response_status(tlm::TLM_OK_RESPONSE);
-                        break;
-                    case BLOCK_DEVICE_OP:
-                        if ( m_status == BLOCK_DEVICE_BUSY ||
-                             m_op != BLOCK_DEVICE_NOOP ) {
-                            std::cerr << name() << " warning: receiving a new command while busy, ignored" << std::endl;
-                        } else {
-                            m_op = data;
-                            m_access_latency = m_lfsr % (m_latency+1);
-                            m_lfsr = (m_lfsr >> 1) ^ ((-(m_lfsr & 1)) & 0xd0000001);
-                        }
-                        payload.set_response_status(tlm::TLM_OK_RESPONSE);
-                        break;
-                      case BLOCK_DEVICE_IRQ_ENABLE:
-                        m_irq_enabled = data;
-                        payload.set_response_status(tlm::TLM_OK_RESPONSE);
-                        break;
-                      default:
-                        payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-                        break;
-                    }
-                } //end for
-
-                phase = tlm::BEGIN_RESP;
-                time = time + (nwords * UNIT_TIME);
-                p_vci_target->nb_transport_bw(payload, phase, time);
-                return tlm::TLM_COMPLETED;
-            }//end case WRITE
-            break;
-	    default:
-            break;
-        }// end switch
-    }//end for segments        
-    
-    //send error message
-    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-    phase  = tlm::BEGIN_RESP;
-    time = time + UNIT_TIME;
-        
+    // update transaction phase and time
+    phase = tlm::BEGIN_RESP;
+    if ( time.value() < m_pdes_local_time->get().value() )  time = m_pdes_local_time->get();
+    else                                                    time = time + UNIT_TIME;
+    // send response
     p_vci_target->nb_transport_bw(payload, phase, time);
     return tlm::TLM_COMPLETED;
-}
+
+} // end nb_transport_fw
 
 // Not implemented for this example but required by interface
 tmpl(void)::b_transport
@@ -561,21 +400,25 @@ tmpl(unsigned int):: transport_dbg
   return false;
 }
 
+// Not implemented for this example but required by interface
+tmpl(void)::invalidate_direct_mem_ptr 
+( sc_dt::uint64 start_range, 
+  sc_dt::uint64 end_range) { }
+
 /////////////////////////////////////////////////////////////////////////////////////
-// Virtual Fuctions  tlm::tlm_bw_transport_if (IRQ INITIATOR SOCKET)
+// Interface function executed when receiving a response to an IRQ transaction
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl (tlm::tlm_sync_enum)::irq_nb_transport_bw    
 ( tlm::tlm_generic_payload           &payload,       // payload
   tlm::tlm_phase                     &phase,         // phase
   sc_core::sc_time                   &time)          // time
 {
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " Receive IRQ response time = " << time.value() << std::endl;
-#endif
-
   return tlm::TLM_COMPLETED;
 }
 
+////////////////////////////
+// constructor
+////////////////////////////
 tmpl(/**/)::VciBlockDevice(
     sc_module_name name,
     const soclib::common::MappingTable &mt,
@@ -586,51 +429,69 @@ tmpl(/**/)::VciBlockDevice(
     const uint32_t latency)
            : sc_core::sc_module(name)
           , m_block_size(block_size)
-          , m_latency(latency)
-          , m_id(mt.indexForId(srcid))
-          , p_vci_initiator("init") // vci initiator socket
-          , p_vci_target("tgt")     // vci target socket
-          , p_irq("irq")            // irq initiator socket
+          , m_average_latency(latency)
+          , m_srcid(mt.indexForId(srcid))
+          , m_segment(mt.getSegment(tgtid))
+          , p_vci_initiator("init") 
+          , p_vci_target("tgt")   
+          , p_irq("irq")        
 {
-    // bind vci initiator
+    // bind vci initiator port
     p_vci_initiator(*this);                     
     
-    // bind vci target
+    // bind vci target port
     p_vci_target(*this);                     
     
-    // register irq initiator
+    // register irq initiator port
     p_irq.register_nb_transport_bw(this, &VciBlockDevice::irq_nb_transport_bw);
     
-    //PDES local time
+    // PDES local time
     m_pdes_local_time = new pdes_local_time(100*UNIT_TIME);
-    
-    //create payload and extension to a normal message
-    m_payload_ptr = new tlm::tlm_generic_payload();
-    m_extension_ptr = new soclib_payload_extension();
-    
-    //create payload and extension to a null message
-    m_null_payload_ptr = new tlm::tlm_generic_payload();
-    m_null_extension_ptr = new soclib_payload_extension();
-    
+
+    // create and initialize the be buffer for VCI transactions 
+    m_vci_be_buf = new uint8_t[MAX_BURST_LENGTH];
+    for ( size_t i=0 ; i<MAX_BURST_LENGTH ; i++) m_vci_be_buf[i] = 0xFF;
+
+    // initialize payload, phase and extension for a VCI transaction
+    m_vci_payload.set_command(tlm::TLM_IGNORE_COMMAND);
+    m_vci_payload.set_byte_enable_ptr(m_vci_be_buf);
+    m_vci_payload.set_extension(&m_vci_extension);
+    m_vci_extension.set_src_id(m_srcid);
+    m_vci_extension.set_trd_id(0);
+    m_vci_extension.set_pkt_id(0);
+    m_vci_phase = tlm::BEGIN_REQ;
+
+    // initialize payload, phase and extension for a null message
+    m_null_payload.set_extension(&m_null_extension);
+    m_null_extension.set_null_message();
+    m_null_phase = tlm::BEGIN_REQ;
+
+    // initialize payload and phase for an irq message
+    m_irq_payload.set_data_ptr(&m_irq_value);
+    m_irq_phase = tlm::BEGIN_REQ;
+
+    // open file
     m_fd = ::open(filename.c_str(), O_RDWR);
-    if ( m_fd < 0 ) {
+    if ( m_fd < 0 ) 
+    {
         std::cerr << "Unable to open block device image file " << filename << std::endl;
         m_device_size = 0;
-    } else {
+    } 
+    else 
+    {
         m_device_size = lseek(m_fd, 0, SEEK_END) / m_block_size;
-        if ( m_device_size > ((uint64_t)1<<(vci_param::nbytes*8)) ) {
+        if ( m_device_size > 0xFFFFFFFF)
+        {
             std::cerr
                 << "Warning: block device " << filename
-                << " has more blocks than addressable with "
-                << (8*vci_param::nbytes) << "." << std::endl;
-            m_device_size = ((uint64_t)1<<(vci_param::nbytes*8));
+                << " has more blocks than addressable with 32 bits" << std::endl;
+            m_device_size = 0xFFFFFFFF;
         }
     }
     
-    segList=mt.getSegmentList(tgtid);
-    m_irq = false;
+    // initialise registers
     m_irq_enabled = false;
-    m_irq_changed = false;
+    m_irq_value = 0x00;
     m_op = BLOCK_DEVICE_NOOP;
     m_current_op = BLOCK_DEVICE_NOOP;
     m_access_latency = 0;
@@ -651,7 +512,6 @@ tmpl(/**/)::VciBlockDevice(
 #endif
 
   SC_THREAD(execLoop);
-  
 }
 
 }}

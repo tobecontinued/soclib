@@ -22,8 +22,9 @@
  *
  * Copyright (c) UPMC, Lip6, Asim
  *         Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>, 2010
+ *         Alain Greiner <alain.greiner@lip6.fr>
  *
- * Maintainers: alinev
+ * Maintainers: alinev, alain
  */
 #ifndef SOCLIB_VCI_BLOCK_DEVICE_H
 #define SOCLIB_VCI_BLOCK_DEVICE_H
@@ -41,141 +42,114 @@ using namespace sc_core;
 template<typename vci_param>
 class VciBlockDevice
   : public sc_core::sc_module
-  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "backward interface"
-  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> // inherit from TLM "forward interface"
+  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> 
+  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> 
 {
-private:
-	
     typedef typename vci_param::addr_t addr_t;
     typedef typename vci_param::data_t data_t;
-    typedef typename vci_param::data_t tag_t;
-    typedef typename vci_param::data_t be_t;
 
-    /////////////////////////////////////////////////////////////////////////////////////
-    // Member Variables
-    /////////////////////////////////////////////////////////////////////////////////////
-    const uint32_t m_block_size;
-	const uint32_t m_latency;
+private:
+	
+    // Structural constants
+    const uint32_t 		m_block_size;		// physical block size
+    const uint32_t 		m_average_latency;	// requested latency
+    const uint32_t 		m_srcid;		// VCI source id
+    int      			m_fd;			// file descriptor
+    uint32_t 			m_device_size;		// max number of blocks on device
 
-    uint32_t m_id;
-	int      m_fd;
-	int      m_op;
-	uint32_t m_buffer;
-	uint32_t m_count;
-	uint64_t m_device_size;
-	uint32_t m_lba;
-    int      m_status;
-    uint32_t m_chunck_offset;
-    uint32_t m_transfer_size;
-    uint32_t m_access_latency;
-    bool     m_irq_changed;
-	bool     m_irq_enabled;
-	bool     m_irq;
+    // Registers
+    int      			m_status;		// initiator status
+    int      			m_op;			// operation requested (read/write)
+    uint32_t 			m_buffer;		// buffer address in memory
+    uint32_t 			m_count;		// number of blocks to transfer 
+    uint32_t 			m_lba;			// base block index 
+    uint32_t 			m_transfer_offset;	// number of bytes already transfered
+    uint32_t 			m_transfer_size;	// number of bytes to be transfered
+    uint32_t 			m_access_latency;	// actual latency (after random)
+    bool     			m_irq_enabled;		// no comment
+    uint32_t 			m_lfsr;			// randomization of the latency
+    int      			m_current_op;		// running operation
+    uint8_t*             	m_vci_be_buf;		// local be buffer
+    uint8_t* 			m_vci_data_buf;		// local buffer (disk cache)
+    uint8_t      		m_irq_value;		// IRQ current value
 
-    uint32_t m_lfsr;
+    soclib::common::Segment	m_segment;
+    pdes_local_time*		m_pdes_local_time;
+    sc_core::sc_event         	m_rsp_received;
 
-	int      m_current_op;
-
-	uint8_t *m_data;
-
-    std::list<soclib::common::Segment>  segList;
-
-    pdes_local_time          *m_pdes_local_time;
-
-    //VCI COMMUNICATION
-    unsigned int              m_nbytes;
-    addr_t                    m_address;
-    unsigned char             m_byte_enable_ptr[MAXIMUM_PACKET_SIZE * vci_param::nbytes];
-    unsigned char             m_data_ptr[MAXIMUM_PACKET_SIZE * vci_param::nbytes];
-    sc_core::sc_event         m_rsp_received;
-
-    //FIELDS OF A NORMAL MESSAGE
-    tlm::tlm_generic_payload *m_payload_ptr;
-    soclib_payload_extension *m_extension_ptr;
-    tlm::tlm_phase            m_phase;
-    sc_core::sc_time          m_time;
+    // VCI TRANSACTION
+    tlm::tlm_generic_payload	m_vci_payload;
+    soclib_payload_extension	m_vci_extension;
+    tlm::tlm_phase		m_vci_phase;
+    sc_core::sc_time		m_vci_time;
     
-    //FIELDS OF A NULL MESSAGE
-    tlm::tlm_generic_payload *m_null_payload_ptr;
-    soclib_payload_extension *m_null_extension_ptr;
-    tlm::tlm_phase            m_null_phase;
-    sc_core::sc_time          m_null_time;
+    // NULL MESSAGE
+    tlm::tlm_generic_payload 	m_null_payload;
+    soclib_payload_extension 	m_null_extension;
+    tlm::tlm_phase            	m_null_phase;
+    sc_core::sc_time          	m_null_time;
     
-    //FIELDS OF AN IRQ TRANSACTION
-    tlm::tlm_generic_payload  m_irq_payload;
-    tlm::tlm_phase            m_irq_phase;
-    sc_core::sc_time          m_irq_time;
+    // IRQ TRANSACTION
+    tlm::tlm_generic_payload  	m_irq_payload;
+    tlm::tlm_phase            	m_irq_phase;
+    sc_core::sc_time          	m_irq_time;
 
-    /////////////////////////////////////////////////////////////////////////////////////
-    // Fuctions
-    /////////////////////////////////////////////////////////////////////////////////////
+    // Functions
     void execLoop();
-    void update_time(sc_core::sc_time t);
-    void send_interruption();
-    void send_null_message();
-    void send_write_message(size_t chunck_size);
-    void send_read_message(size_t chunck_size);
+    void send_null();
+    void send_vci_command(bool read_from_memory);
     void ended(int status);
     void write_finish();
     void read_done();
     void next_req();
 
-    /////////////////////////////////////////////////////////////////////////////////////
-    // Virtual Fuctions  tlm::tlm_bw_transport_if (VCI INITIATOR SOCKET)
-    /////////////////////////////////////////////////////////////////////////////////////
-    tlm::tlm_sync_enum nb_transport_bw         // receive rsp from target
-    ( tlm::tlm_generic_payload   &payload,     // payload
-      tlm::tlm_phase             &phase,       // phase
-      sc_core::sc_time           &time);       // time
+    // Virtual Fuction  to receive response on the VCI initiator port
+    tlm::tlm_sync_enum nb_transport_bw 
+    ( tlm::tlm_generic_payload   &payload,   
+      tlm::tlm_phase             &phase,   
+      sc_core::sc_time           &time);  
     
-    void invalidate_direct_mem_ptr             // invalidate_direct_mem_ptr
-    ( sc_dt::uint64 start_range,               // start range
-      sc_dt::uint64 end_range);                // end range
+    // Virtual Fuctions  to receive command on the VCI target port    
+    tlm::tlm_sync_enum nb_transport_fw 
+    ( tlm::tlm_generic_payload &payload, 
+      tlm::tlm_phase           &phase,   
+      sc_core::sc_time         &time);  
     
-    
-    /////////////////////////////////////////////////////////////////////////////////////
-    // Virtual Fuctions  tlm::tlm_fw_transport_if  (VCI TARGET SOCKET)
-    /////////////////////////////////////////////////////////////////////////////////////
-    tlm::tlm_sync_enum nb_transport_fw       // receive command from initiator
-    ( tlm::tlm_generic_payload &payload,      // payload
-      tlm::tlm_phase           &phase,        // phase
-      sc_core::sc_time         &time);        // time
-    
-    // Not implemented for this example but required by interface
-    void b_transport                          // b_transport() - Blocking Transport
-    ( tlm::tlm_generic_payload &payload,      // payload
-      sc_core::sc_time         &time);        // time
-    
-    // Not implemented for this example but required by interface
-    bool get_direct_mem_ptr
-    ( tlm::tlm_generic_payload &payload,      // payload
-      tlm::tlm_dmi             &dmi_data);    // DMI data
-    
-    // Not implemented for this example but required by interface
-    unsigned int transport_dbg                            
-    ( tlm::tlm_generic_payload &payload);     // payload
-    
-    /////////////////////////////////////////////////////////////////////////////////////
-    // Virtual Fuctions  tlm::tlm_bw_transport_if (IRQ INITIATOR SOCKET)
-    /////////////////////////////////////////////////////////////////////////////////////
+    // Virtual Fuction to receive response on the IRQ port
     tlm::tlm_sync_enum irq_nb_transport_bw    
-    ( tlm::tlm_generic_payload           &payload,       // payload
-      tlm::tlm_phase                     &phase,         // phase
-      sc_core::sc_time                   &time);         // time
+    ( tlm::tlm_generic_payload           &payload, 
+      tlm::tlm_phase                     &phase, 
+      sc_core::sc_time                   &time); 
 
+    // Not implemented for this example but required by interface
+    void b_transport                       
+    ( tlm::tlm_generic_payload &payload, 
+      sc_core::sc_time         &time); 
+    
+    bool get_direct_mem_ptr
+    ( tlm::tlm_generic_payload &payload,  
+      tlm::tlm_dmi             &dmi_data); 
+    
+    unsigned int transport_dbg                            
+    ( tlm::tlm_generic_payload &payload); 
+    
+    void invalidate_direct_mem_ptr      
+    ( sc_dt::uint64 start_range,      
+      sc_dt::uint64 end_range);     
+    
 protected:
     SC_HAS_PROCESS(VciBlockDevice);
     
 public:
-    tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> p_vci_initiator; // VCI INITIATOR socket
-    tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> p_vci_target;        // VCI TARGET socket
-    tlm_utils::simple_initiator_socket<VciBlockDevice, 32, tlm::tlm_base_protocol_types> p_irq;           // IRQ INITIATOR socket
+    tlm::tlm_initiator_socket<32, tlm::tlm_base_protocol_types> 			p_vci_initiator; 
+    tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types> 				p_vci_target;      
+    tlm_utils::simple_initiator_socket<VciBlockDevice,32, tlm::tlm_base_protocol_types> p_irq; 
 
 	VciBlockDevice(
-		sc_module_name name,
-		const soclib::common::MappingTable &mt,
-		const soclib::common::IntTab &srcid,
-		const soclib::common::IntTab &tgtid,
+	sc_module_name name,
+	const soclib::common::MappingTable &mt,
+	const soclib::common::IntTab &srcid,
+	const soclib::common::IntTab &tgtid,
         const std::string &filename,
         const uint32_t block_size = 512,
         const uint32_t latency = 0);
