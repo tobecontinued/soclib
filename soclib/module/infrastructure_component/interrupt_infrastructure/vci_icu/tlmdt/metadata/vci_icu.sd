@@ -20,11 +20,10 @@
 # 
 # SOCLIB_LGPL_HEADER_END
 #
-# Maintainers: fpecheux, nipo, alinevieiramello@hotmail.com
+# Maintainers: alain, aline
 #
 # Copyright (c) UPMC / Lip6, 2008
-#     François Pêcheux <fancois.pecheux@lip6.fr>
-#     Nicolas Pouillon <nipo@ssji.net>
+#     Alain Greinerlon <alain.greiner@lip6.fr>
 #     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
 
 __id__ = "$Id: vci_icu.sd 917 2009-03-12 10:10:06Z nipo $"
