@@ -47,7 +47,7 @@ template <typename vci_param> class VciSnooper;
 template <typename vci_param> class VciLoggerElem;
 
 template <typename vci_param>
-class VciRspBuffer : public dpp::refobj<VciRspBuffer<vci_param> >
+class VciRspBuffer : public dpp::ref_base<VciRspBuffer<vci_param> >
 {
     friend class VciSnooper<vci_param>;
     friend class VciLoggerElem<vci_param>;
@@ -65,7 +65,6 @@ public:
     VciRspBuffer()
     {}
 
-    DPP_REFTYPE(VciRspBuffer<vci_param>)
     typedef soclib::common::AddressMaskingTable<uint32_t> routing_table_t;
     typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;
 
@@ -155,7 +154,7 @@ public:
 };
 
 template <typename vci_param>
-class VciCmdBuffer : public dpp::refobj<VciCmdBuffer<vci_param> >
+class VciCmdBuffer : public dpp::ref_base<VciCmdBuffer<vci_param> >
 {
     friend class VciSnooper<vci_param>;
     friend class VciLoggerElem<vci_param>;
@@ -181,8 +180,6 @@ class VciCmdBuffer : public dpp::refobj<VciCmdBuffer<vci_param> >
 public:
     VciCmdBuffer()
     {}
-
-    DPP_REFTYPE(VciCmdBuffer)
 
     typedef soclib::common::AddressDecodingTable<uint32_t, int> routing_table_t;
     typedef soclib::common::AddressDecodingTable<uint32_t, bool> locality_table_t;

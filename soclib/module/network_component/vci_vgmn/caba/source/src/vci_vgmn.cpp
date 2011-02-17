@@ -51,7 +51,7 @@ namespace _vgmn {
 template<typename data_t>
 class DelayLine
 {
-    typename data_t::ptr *m_line;
+    typename dpp::ref<data_t> *m_line;
     size_t m_size;
     size_t m_ptr;
 public:
@@ -65,7 +65,7 @@ public:
 
     void init( size_t n_alloc )
     {
-        m_line = new typename data_t::ptr[n_alloc];
+        m_line = new typename dpp::ref<data_t>[n_alloc];
         m_size = n_alloc;
         m_ptr = 0;
     }
@@ -75,9 +75,9 @@ public:
         delete [] m_line;
     }
 
-    inline typename data_t::ptr shift( const typename data_t::ptr &input )
+    inline typename dpp::ref<data_t> shift( const typename dpp::ref<data_t> &input )
     {
-        typename data_t::ptr tmp = m_line[m_ptr];
+        typename dpp::ref<data_t> tmp = m_line[m_ptr];
         m_line[m_ptr] = input;
         // do {m_ptr = (m_ptr+1)%m_size;} without using %
 	if (++m_ptr == m_size)
@@ -85,7 +85,7 @@ public:
         return tmp;
     }
 
-    inline const typename data_t::ptr &head()
+    inline const typename dpp::ref<data_t> &head()
     {
         return m_line[m_ptr];
     }
@@ -102,7 +102,7 @@ template<typename data_t>
 class AdHocFifo
 {
     size_t m_size;
-    typename data_t::ptr *m_data;
+    typename dpp::ref<data_t> *m_data;
     size_t m_rptr;
     size_t m_wptr;
     size_t m_usage;
@@ -121,7 +121,7 @@ public:
     {
         m_size = fifo_size;
 	m_globusage = globusage;
-        m_data = new typename data_t::ptr[m_size];
+        m_data = new typename dpp::ref<data_t>[m_size];
         m_rptr = 0;
         m_wptr = 0;
         m_usage = 0;
@@ -141,14 +141,14 @@ public:
         m_usage = 0;
     }
 
-    inline typename data_t::ptr head() const
+    inline typename dpp::ref<data_t> head() const
     {
         return m_data[m_rptr];
     }
 
-    inline typename data_t::ptr pop()
+    inline typename dpp::ref<data_t> pop()
     {
-        typename data_t::ptr tmp = head();
+        typename dpp::ref<data_t> tmp = head();
         m_data[m_rptr].invalidate();
         assert(!empty());
         --m_usage;
@@ -159,7 +159,7 @@ public:
         return tmp;
     }
 
-    inline void push( const std::string &name, const typename data_t::ptr data )
+    inline void push( const std::string &name, const typename dpp::ref<data_t> data )
     {
         assert(!full());
         ++m_usage;
@@ -260,7 +260,7 @@ public:
         if (port.iProposed() && ! port.peerAccepted())
             return;
 
-        typename vci_pkt_t::ptr pkt;
+        typename dpp::ref<vci_pkt_t> pkt;
         if ( m_in_transaction ) {
             if ( !m_input_queues[m_current_input].empty() )
                 pkt = m_input_queues[m_current_input].pop();
@@ -293,7 +293,7 @@ DEBUG_END;
 
     void genMoore( const std::string &name, output_port_t &port )
     {
-        typename vci_pkt_t::ptr pkt = m_output_delay_line.head();
+        typename dpp::ref<vci_pkt_t> pkt = m_output_delay_line.head();
 
         if ( pkt.valid() ) {
 DEBUG_BEGIN;
@@ -317,7 +317,7 @@ class InputRouter
     dest_fifo_t **m_output_fifos;
     size_t m_n_outputs;
     dest_fifo_t *m_dest;
-    typename vci_pkt_t::ptr m_waiting_packet;
+    typename dpp::ref<vci_pkt_t> m_waiting_packet;
     std::vector<bool> m_broadcast_waiting;
 
 public:
