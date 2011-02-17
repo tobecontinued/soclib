@@ -61,43 +61,43 @@
 
 // Special FPU number tests:
 #define Is_ZEROs(x)                                 \
-	((x == PZEROs) || (x == NZEROs)) ? true : false
+	((x == PZEROs) || (x == NZEROs))
 
 #define Is_SNaNs(x)                                                     \
-	(((x & SNaNsMaskE)== 0x7F800000) && (x & NaNsMaskF)) ? true : false
+	(((x & SNaNsMaskE)== 0x7F800000) && (x & NaNsMaskF))
 
 #define Is_QNaNs(x)                                     \
-	(((x & QNaNsMaskE)== 0x7FC00000)) ? true : false
+	(((x & QNaNsMaskE)== 0x7FC00000))
 
 #define Is_NaNs(x)                              \
-	(Is_SNaNs(x) || Is_QNaNs(x)) ? true : false
+	(Is_SNaNs(x) || Is_QNaNs(x))
 
 #define Is_PINFs(x)                                 \
-	((unsigned int)(x) == PINFIs) ? true : false
+	((unsigned int)(x) == PINFIs)
 
 #define Is_NINFs(x)                                 \
-	((unsigned int)(x) == NINFIs) ? true : false
+	((unsigned int)(x) == NINFIs)
 
 #define Is_INFs(x)                              \
-	(Is_PINFs(x) || Is_NINFs(x)) ? true : false
+	(Is_PINFs(x) || Is_NINFs(x))
 
 #define Is_ZEROd(x)                                 \
-	((x == PZEROd) || (x == NZEROd)) ? true : false
+	((x == PZEROd) || (x == NZEROd))
 
 #define Is_SNaNd(x,y)                                                   \
-	(((x & SNaNdMaskE)== 0x7FF00000) && ((x & NaNdMaskF) | y )) ? true : false
+	(((x & SNaNdMaskE)== 0x7FF00000) && ((x & NaNdMaskF) | y ))
 
 #define Is_QNaNd(x,y)                                   \
-	(((x & SNaNdMaskE)== 0x7FF80000) ) ? true : false
+	(((x & SNaNdMaskE)== 0x7FF80000) )
 
 #define Is_NaNd(x,y)                                \
-	(Is_SNaNd(x,y) || Is_QNaNd(x,y)) ? true : false
+	(Is_SNaNd(x,y) || Is_QNaNd(x,y))
 
 #define Is_PINFd(x,y)                                                   \
-	(((unsigned int)(x) == PINFId) && (y == 0x00000000)) ? true : false
+	(((unsigned int)(x) == PINFId) && (y == 0x00000000))
 
 #define Is_NINFd(x,y)                                                   \
-	(((unsigned int)(x) == NINFId) && (y == 0x00000000)) ? true : false
+	(((unsigned int)(x) == NINFId) && (y == 0x00000000))
 
 
 inline unsigned int only_msb(unsigned int v){
