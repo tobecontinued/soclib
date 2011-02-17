@@ -673,7 +673,7 @@ public:
                 else                        fprintf(file, "   / ");
                 fprintf(file, "way %d / ", (int)nway);
                 fprintf(file, "set %d / ", (int)nset);
-                fprintf(file, "@ = %08X / ", ((cache_tag(nway, nset)*m_sets+nset)*m_words*4));
+                fprintf(file, "@ = %08zX / ", ((cache_tag(nway, nset)*m_sets+nset)*m_words*4));
                 for( size_t nword = m_words ; nword > 0 ; nword--) 
                 {
                     unsigned int data = cache_data(nway, nset, nword-1);
