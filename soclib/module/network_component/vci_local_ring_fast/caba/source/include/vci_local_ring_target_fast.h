@@ -679,9 +679,9 @@ if(m_cpt > m_cyc)
                         { 
 				cmd_fifo_data = p_ring_in.cmd_data;
 				cmd_fifo_put  = true;
-                                if(r_brdcst_p)  // r_brdcst_p = 1 => cmd_preempt = 1 
+                                if (p_ring_in.cmd_palloc == 2)   // palloc = 2 : last flit of preempt but Target Gate still allocated 
 				        r_ring_cmd_fsm = NALLOC;
-                                else
+                                else				// last flit, palloc = 0 => no preempt or palloc = 1 => last flit of preempt and Target Gate free
                                         r_ring_cmd_fsm = CMD_IDLE;
                         }
                         
