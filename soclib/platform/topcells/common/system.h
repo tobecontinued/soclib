@@ -89,8 +89,6 @@ static inline int putchar(const int x)
 #error MMU support for sparc not yet implemented...
 #endif
 
-  #error "shit"
-
 	uint32_t tlb_mode = get_cp2(1, 0);
 
 	if (tlb_mode & 4)
