@@ -29,6 +29,8 @@
 
 #include "interconnect.h"                           // our header
                     
+//#define SOCLIB_MODULE_DEBUG 1
+
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) x Interconnect
@@ -53,7 +55,6 @@ tmpl(/**/)::Interconnect
   , m_targets(n_targets)
   , m_delay(delay)
   , m_is_local_crossbar(true)
-  , m_waiting_from(-1)
   , m_centralized_buffer("centralized_buffer", n_inits)
   , m_routing_table(rt)
   , m_locality_table(lt)
@@ -83,7 +84,6 @@ tmpl(/**/)::Interconnect
   , m_targets(n_targets)
   , m_delay(delay)
   , m_is_local_crossbar(true)
-  , m_waiting_from(-1)
   , m_centralized_buffer("centralized_buffer", n_inits)
   , m_routing_table(rt)
   , m_locality_table(lt)
@@ -112,7 +112,6 @@ tmpl(/**/)::Interconnect
   , m_targets(n_targets)
   , m_delay(delay)
   , m_is_local_crossbar(false)
-  , m_waiting_from(-1)
   , m_centralized_buffer("centralized_buffer", n_inits)
   , m_routing_table(rt)
   , m_resp_routing_table(rrt)
@@ -138,7 +137,6 @@ tmpl(/**/)::Interconnect
   , m_targets(n_targets)
   , m_delay(delay)
   , m_is_local_crossbar(false)
-  , m_waiting_from(-1)
   , m_centralized_buffer("centralized_buffer", n_inits)
   , m_routing_table(rt)
   , m_resp_routing_table(rrt)
@@ -235,158 +233,144 @@ tmpl(void)::routing( size_t                       from,
                      tlm::tlm_phase              &phase,  
                      sc_core::sc_time            &time)  
 {
-  bool send = false;
-  int dest = 0;
+    bool 	send;
+    int 	dest;
 
-#ifdef SOCLIB_MODULE_DEBUG
-    printf("[%s] ROUTING from = %d\n", name(), from);
-#endif
+    // get payload extension
+    soclib_payload_extension *extension_ptr;
+    payload.get_extension(extension_ptr);
 
-  // get payload extension
-  soclib_payload_extension *extension_ptr;
-  payload.get_extension(extension_ptr);
-
-  ///////////////////////////////////////////////////////////////
-  // if transaction command is activation/deactivation
-  // the source is actived or desactived and no transaction is sent
-  if(extension_ptr->is_active() || extension_ptr->is_inactive())
-  {
-
-#ifdef SOCLIB_MODULE_DEBUG
-    printf("[%s] ROUTING from = %d ACTIVE OR INACTIVE MSG\n", name(), from);
-#endif
-
-    send = false;
-    m_centralized_buffer.set_activity(from, extension_ptr->is_active());
-  }
-
-  /////////////////////////////////////////////////////////////////////////
-  // if transaction command is a token, it must be sent to the target[from]
-  else if(extension_ptr->is_token_message())
-  {
-
-#ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] ROUTING from = %d TOKEN MSG time = %d\n", name(), from, (int)time.value());
-#endif
-
-    //set the delta_time which this init wont send another message
-    m_centralized_buffer.set_delta_time(from, time);
-
-    send = true;
-
-    m_msg_count++;
-    m_token_msg_count++;
-
-    if(m_is_local_crossbar)
+    ///////////////////////////////////////////////////////////////
+    // if transaction command is activation/deactivation
+    // the source is actived or desactived and no transaction is sent
+    if(extension_ptr->is_active() || extension_ptr->is_inactive())
     {
-      dest = m_targets - 1;
-      extension_ptr->set_pkt_id(extension_ptr->get_pkt_id()+1);
+
+#ifdef SOCLIB_MODULE_DEBUG
+printf("[%s] time = %d  HANDLING ACTIVITY MSG from = %d\n", 
+       name(), (int)time.value(), (int)from);
+#endif
+
+        send = false;
+        m_centralized_buffer.set_activity(from, extension_ptr->is_active());
     }
+
+    /////////////////////////////////////////////////////////////////////////
+    // if transaction command is a token, it must be sent to the target[from]
+    else if(extension_ptr->is_token_message())
+    {
+
+#ifdef SOCLIB_MODULE_DEBUG
+printf("[%s] time = %d  HANDLING TOKEN MSG from = %d\n", 
+       name(), (int)time.value(), (int)from);
+#endif
+
+        // set the delta_time which this init wont send another message
+        m_centralized_buffer.set_delta_time(from, time);
+
+        send = true;
+
+        m_msg_count++;
+        m_token_msg_count++;
+
+        if ( m_is_local_crossbar )
+        {
+            dest = m_targets - 1;
+            extension_ptr->set_pkt_id(extension_ptr->get_pkt_id()+1);
+        }
+        else
+        {
+            dest = from;
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // if transaction command is a null message, the response is sent to the initiator
+    // to synchronize it, but this null message is not transmited
+    else if(extension_ptr->is_null_message())
+    {
+
+#ifdef SOCLIB_MODULE_DEBUG
+printf("[%s] time = %d  HANDLING NULL MSG from = %d\n", 
+       name(), (int)time.value(), (int)from);
+#endif
+
+        // set the delta_time which this init wont send another message
+        m_centralized_buffer.set_delta_time(from, time);
+
+        // send the response
+        (*p_to_initiator[from])->nb_transport_bw(payload, phase, time);
+
+        send = false;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // if transaction is a VCI command, it must be sent to appropriated target
+    // no response is sent to the initiator
     else
     {
-      dest = from;
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////////
-  // if transaction command is a null message, the response is sent to the initiator
-  // but this null message is not transmited
-  else if(extension_ptr->is_null_message())
-  {
+        send = true;
+        if(m_is_local_crossbar)  // local interconnect
+        {
+            if (!m_locality_table[payload.get_address()]) // non local target
+            {
+	        if(from == m_centralized_buffer.get_nslots()-1)
+                {
+	            // set the delta_time which this init wont send another message
+	            m_centralized_buffer.set_delta_time(from, time);
+	        }
+	        else
+                {
+	            // set the delta_time which this init wont send another message
+	            m_centralized_buffer.set_delta_time(from, time + (m_no_local_delta_time*UNIT_TIME));
+	        }
+	
+	        m_msg_count++;
+	        m_non_local_msg_count++;
+	        dest = m_targets - 1;
+            }
+            else  // local target
+            {
+	        if(from == m_centralized_buffer.get_nslots()-1)
+                {
+	            //set the delta_time which this init wont send another message
+	            m_centralized_buffer.set_delta_time(from, time);
+	        }
+	        else
+                {
+	            //set the delta_time which this init wont send another message
+	            m_centralized_buffer.set_delta_time(from, time + (m_local_delta_time*UNIT_TIME));
+	        }
+	
+	        m_msg_count++;
+	        m_local_msg_count++;
+	        dest = m_routing_table[payload.get_address()];
+	        assert( dest >= 0 && dest < m_targets );
+            }
+        }
+        else  // global interconnect
+        {
+            // set the delta_time which this init wont send another message
+            m_centralized_buffer.set_delta_time(from, time);
+            dest = m_routing_table[payload.get_address()];
+            assert( dest >= 0 && dest < m_targets );
+	
+            m_msg_count++;
+            m_local_msg_count++;
+        }
 
 #ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] ROUTING from = %d NULL MSG time = %d\n", name(), from, (int)time.value());
+printf("[%s] time = %d  ROUTING VCI MSG from = %d to %d\n", 
+       name(), (int)time.value(), (int)from, (int)dest);
 #endif
+	
+    }
 
-    // set the delta_time which this init wont send another message
-    m_centralized_buffer.set_delta_time(from, time);
-
-    // send the response
-    (*p_to_initiator[from])->nb_transport_bw(payload, phase, time);
-
-    send = false;
-  }
-  ///////////////////////////////////////////////////////////////////////////////
-  // if transaction is a valid command, it must be sent to appropriated target
-  // no response is sent to the initiator
-  else
-  {
-    send = true;
-    if(m_is_local_crossbar)  // local interconnect
+    if (send)  // transmit the command to the selected target
     {
-      if (!m_locality_table[payload.get_address()]) // non local target
-      {
-
-#ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] ROUTING from = %d NOT LOCAL MSG address = %x\n", name(), from, (int)payload.get_address());
-#endif
-	
-	if(from == m_centralized_buffer.get_nslots()-1)
-        {
-	  //set the delta_time which this init wont send another message
-	  m_centralized_buffer.set_delta_time(from, time);
-	}
-	else
-        {
-	  //set the delta_time which this init wont send another message
-	  m_centralized_buffer.set_delta_time(from, time + (m_no_local_delta_time*UNIT_TIME));
-	}
-	
-	m_msg_count++;
-	m_non_local_msg_count++;
-	dest = m_targets - 1;
-      }
-      else  // local target
-      {
-
-#ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] ROUTING from = %d LOCAL MSG\n", name(), from);
-#endif
-	
-	if(from == m_centralized_buffer.get_nslots()-1)
-        {
-	  //set the delta_time which this init wont send another message
-	  m_centralized_buffer.set_delta_time(from, time);
-	}
-	else
-        {
-	  //set the delta_time which this init wont send another message
-	  m_centralized_buffer.set_delta_time(from, time + (m_local_delta_time*UNIT_TIME));
-	  m_msg_count++;
-	  m_local_msg_count++;
-	}
-	
-	dest = m_routing_table[payload.get_address()];
-	assert( dest >= 0 && dest < m_targets );
-      }
+        time = time + (m_delay*UNIT_TIME);
+        (*p_to_target[dest])->nb_transport_fw(payload, phase, time);
     }
-    else  // global interconnect
-    {
-
-#ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] ROUTING from = %d LOCAL MSG\n", name(), from);
-#endif
-      
-      //set the delta_time which this init wont send another message
-      m_centralized_buffer.set_delta_time(from, time);
-      dest = m_routing_table[payload.get_address()];
-      assert( dest >= 0 && dest < m_targets );
-	
-      m_msg_count++;
-      m_local_msg_count++;
-    }
-  }
-
-  if(send)  // transmit the command to the selected target
-  {
-    time = time + (m_delay*UNIT_TIME);
-    
-#ifdef SOCLIB_MODULE_DEBUG
-    printf("[%s] SEND to %d src_id = %d pkt_id = %d time = %d\n", name(), dest, extension_ptr->get_src_id(), extension_ptr->get_pkt_id(),(int)time.value());
-#endif
-
-    (*p_to_target[dest])->nb_transport_fw(payload, phase, time);
-  }
 }  // end routing()
   
 //////////////////////////
@@ -401,7 +385,7 @@ tmpl(void)::create_token()
   m_time_token = UNIT_TIME;
 
 #ifdef SOCLIB_MODULE_DEBUG
-  printf("[%s] send Token time = %d\n", name(), (int)m_time_token.value());
+printf("[%s] send Token time = %d\n", name(), (int)m_time_token.value());
 #endif
 
   //push a token in the centralized buffer
@@ -441,27 +425,25 @@ printf("[%s] WHILE CONSUMER\n", name());
 
             // process the transaction
             routing(from, *payload_ptr, *phase_ptr, *time_ptr);
-
-            // send periodically NULL messages to all local targets 
-            // if it is a local interconnect
-            if ( m_is_local_crossbar && m_pdes_local_time->need_sync() )
-            {
-                m_pdes_local_time->reset_sync();
-                m_null_time = m_pdes_local_time->get();
-                for ( int i=0 ; i<(m_targets-1) ; i++ )
-                    (*p_to_target[i])->nb_transport_fw(m_null_payload, 
-                                                       m_null_phase, 
-                                                       m_null_time);
-            }
         } // end while buffer not empty
     
+        // send periodically NULL messages to all local targets 
+        // if it is a local interconnect
+        if ( m_is_local_crossbar && m_pdes_local_time->need_sync() )
+        {
+            m_pdes_local_time->reset_sync();
+            m_null_time = m_pdes_local_time->get();
+            for ( int i=0 ; i<(m_targets-1) ; i++ )
+                (*p_to_target[i])->nb_transport_fw(m_null_payload, 
+                                                   m_null_phase, 
+                                                   m_null_time);
+        }
+
 #ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] CONSUMER WAITING id = %d\n", name(), from);
+printf("[%s] CONSUMER WAITING id = %d\n", name(), (int)from);
 #endif
 
-        m_waiting_from = from;
         sc_core::wait(sc_core::SC_ZERO_TIME);
-        m_waiting_from = -1;
 
 #ifdef SOCLIB_MODULE_DEBUG
 printf("[%s] CONSUMER WAKE-UP\n", name());
@@ -474,11 +456,10 @@ printf("[%s] CONSUMER WAKE-UP\n", name());
 // Interface function executed when receiving a command on an initiator port
 // It registers the command in the central buffer
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::nb_transport_fw   
-( int                          id,          
-  tlm::tlm_generic_payload    &payload,    
-  tlm::tlm_phase              &phase,     
-  sc_core::sc_time            &time)     
+tmpl(tlm::tlm_sync_enum)::nb_transport_fw   (int                         id,          
+                                             tlm::tlm_generic_payload    &payload,    
+                                             tlm::tlm_phase              &phase,     
+                                             sc_core::sc_time            &time)     
 {
     bool push = false;
     int try_push = 0;
@@ -486,7 +467,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
     {
 
 #ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] PUSH id = %d\n", name(), id);
+printf("[%s] time = %d RECEIVE a COMMAND on port %d\n", name(), (int)time.value(), id);
 #endif
 
         //push a transaction in the centralized buffer
@@ -512,48 +493,44 @@ printf("[%s] PRODUCER id = %d <<<<<<<<< NOT PUSH >>>>>>>> try_push = %d \n",name
 // Interface function executed when receiving a response on a target port
 // It directly routes the response to the proper initiator
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(tlm::tlm_sync_enum)::nb_transport_bw 
-( int                        id,   
-  tlm::tlm_generic_payload   &payload,  
-  tlm::tlm_phase             &phase,   
-  sc_core::sc_time           &time)  
+tmpl(tlm::tlm_sync_enum)::nb_transport_bw ( int                        id,   
+                                            tlm::tlm_generic_payload   &payload,  
+                                            tlm::tlm_phase             &phase,   
+                                            sc_core::sc_time           &time)  
 {
+    unsigned int	srcid;
+    unsigned int	dest;
 
-#ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] id = %d RECEIVE RESPONSE\n", name(), id);
-#endif
-
-  //get extension payload
-  soclib_payload_extension *resp_extension_ptr;
-  payload.get_extension(resp_extension_ptr);
-
-  //get message source 
-  unsigned int src = resp_extension_ptr->get_src_id();
-  
-  if(m_is_local_crossbar){
-    //if source IS NOT local (only possible in vci_local_crossbar module)
-    if (!m_resp_locality_table[src]){
-      src = m_inits - 1;
-    }
-    // if source IS local
-    else{
-      src = m_resp_routing_table[src];
-    }
-  }
-  else{
-    src = m_resp_routing_table[src];
-  }
-
-  //updated the transaction time
-  time = time + (m_delay*UNIT_TIME);
+    // get message SRCID
+    soclib_payload_extension *resp_extension_ptr;
+    payload.get_extension(resp_extension_ptr);
+    srcid = resp_extension_ptr->get_src_id();
   
 #ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] SEND RESPONSE to %d src_id = %d pkt_id = %d time = %d\n", name(), src, resp_extension_ptr->get_src_id(), resp_extension_ptr->get_pkt_id(),(int)time.value());
+printf("[%s] time = %d  RECEIVE RESPONSE on port %d / srcid = %d\n", 
+        name(), (int)time.value(), id, srcid);
 #endif
 
-  (*p_to_initiator[src])->nb_transport_bw(payload, phase, time);
+    if(m_is_local_crossbar)
+    {
+        if (!m_resp_locality_table[srcid])  	dest = m_inits - 1;
+        else  					dest = m_resp_routing_table[srcid]; 
+    }
+    else	// global interconnect
+    {
+    						dest = m_resp_routing_table[srcid];
+    }
+
+    // update the transaction time
+    time = time + (m_delay*UNIT_TIME);
   
-  return tlm::TLM_COMPLETED;
+#ifdef SOCLIB_MODULE_DEBUG
+printf("[%s] time = %d  SEND RESPONSE on port %d / srcid = %d\n", 
+        name(), (int)time.value(), dest, srcid);
+#endif
+
+    (*p_to_initiator[dest])->nb_transport_bw(payload, phase, time);
+    return tlm::TLM_COMPLETED;
 } // end nb_transport_bw 
 
 }}

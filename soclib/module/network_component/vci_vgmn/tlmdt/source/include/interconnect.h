@@ -20,7 +20,7 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, alinevieiramello@hotmail.com
+ * Maintainers: fpecheux, alain, aline
  *
  * Copyright (c) UPMC / Lip6, 2008
  *     François Pêcheux <francois.pecheux@lip6.fr>
@@ -57,7 +57,6 @@ private:
   size_t 			m_local_delta_time;	// minimal time between send & response LOCAL
   size_t  			m_no_local_delta_time;  // minimal time between send & response NOT LOCAL
   bool                          m_is_local_crossbar;  	// true if the module is a loca interconnect
-  int                           m_waiting_from;         // identifier of awaited initiator 
 
   centralized_buffer 		m_centralized_buffer; 	// centralized buffer
   const routing_table_t         m_routing_table;      	// routing table
@@ -124,9 +123,8 @@ private:
   SC_HAS_PROCESS(Interconnect);
 public:  
 
-  std::vector<tlm_utils::simple_target_socket_tagged<Interconnect,32,tlm::tlm_base_protocol_types> *> p_to_initiator; // VCI TARGET SOCKET
-  
-  std::vector<tlm_utils::simple_initiator_socket_tagged<Interconnect,32,tlm::tlm_base_protocol_types> *> p_to_target; // VCI INITIATOR SOCKET
+  std::vector<tlm_utils::simple_target_socket_tagged<Interconnect,32,tlm::tlm_base_protocol_types> *> p_to_initiator;
+  std::vector<tlm_utils::simple_initiator_socket_tagged<Interconnect,32,tlm::tlm_base_protocol_types> *> p_to_target;
 
   Interconnect(                                                // constructor
 	       sc_core::sc_module_name module_name             // SC module name
