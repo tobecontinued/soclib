@@ -22,23 +22,24 @@
  *
  * Maintainers: alain
  *
- * Copyright (c) UPMC / Lip6, 2008
+ * Copyright (c) UPMC / Lip6, 2011
  *     Alain Greiner <alain.greiner@lip6.fr>
  */
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Implementation Note
-// This component is a VCI target. It has a rariable number of IRQ ports.
+// This component is a VCI target. It has a variable number of IRQ ports,
+// asociated to a variable number of TTY termnals..
 // It is modeled as a purely reactive interface function : no thread, no local time.
-// It sends periodically timed values on the IRQ port, to support the PDES
+// It sends periodically timed values on the IRQ ports, to support the PDES
 // time filtering in the ICU component. 
 // To synchronizes with the system, it uses the NULL message received on the VCI 
-// port : The IRQ values are transmitted on the IRQ port each time a NULL message
+// port : The IRQ values are transmitted on the IRQ ports each time a NULL message
 // is received on the VCI port.
 ////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __VCI_MULTI_TTY_H
-#define __VCI_MULTI_TTY_H
+#ifndef SOCLIB_TLMDT_VCI_MULTI_TTY_H
+#define SOCLIB_TLMDT_VCI_MULTI_TTY_H
 
 #include <stdarg.h>
 #include <tlmdt>             
@@ -65,7 +66,7 @@ private:
     soclib::common::Segment       		m_segment;		// associated segment
     uint8_t*					m_irq_value; 		// interrupt values
 
-    // IRQ TRANSACTION
+    // IRQ transactions (one for each terminal
     tlm::tlm_generic_payload*			m_irq_payload;
     tlm::tlm_phase				m_irq_phase;
     sc_core::sc_time 				m_irq_time;

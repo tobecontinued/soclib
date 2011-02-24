@@ -40,8 +40,7 @@ namespace soclib { namespace tlmdt {
 tmpl(/**/)::VciMultiTty ( sc_core::sc_module_name name,
                           const soclib::common::IntTab &index,
                           const soclib::common::MappingTable &mt,
-                          const char *first_name,
-                          ...)
+                          const char *first_name, ...)
     : sc_core::sc_module(name)
     , m_segment(mt.getSegment(index))
     , p_vci("p_vci")
@@ -120,9 +119,9 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw ( tlm::tlm_generic_payload &payload,
     soclib_payload_extension *extension_pointer;
     payload.get_extension(extension_pointer);
   
-    // two actions in case of NULL message:
+    // two actions in case of a NULL message:
     // - character acquisition on the terminals
-    // - send IRQ values on the IRQ ports
+    // - update IRQ values on the IRQ ports
     if( extension_pointer->is_null_message() )
     {
 
@@ -148,7 +147,9 @@ std::cout << "[" << name() << "] time = " << std::dec << time.value()
         return tlm::TLM_COMPLETED;
     } // end NULL
 
-    // execute the command and send a response in case of VCI command 
+    // two actions in case of a VCI command 
+    // - execute the command  
+    // - send a response 
     else 
     {
         int 	cell;
@@ -184,7 +185,7 @@ std::cout << "[" << name() <<"] time = " << std::dec << time.value()
  	            break;
 	        default:
 	            payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
- 	        break;
+ 	            break;
 	        }
 	        m_cpt_read++;
 	    } // end read
@@ -248,18 +249,21 @@ tmpl (tlm::tlm_sync_enum)::irq_nb_transport_bw ( int                        id,
 /////////////////////////////////////////////////////////////////////////////////////
 // Service  Functions
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl(size_t)::getNRead(){
-  return m_cpt_read;
+tmpl(size_t)::getNRead()
+{
+    return m_cpt_read;
 }
 
-tmpl(size_t)::getNWrite(){
-  return m_cpt_write;
+tmpl(size_t)::getNWrite()
+{
+    return m_cpt_write;
 }
 
-tmpl(void)::print_stats(){
-  std::cout << name() << std::endl;
-  std::cout << "- READ               = " << m_cpt_read << std::endl;
-  std::cout << "- WRITE              = " << m_cpt_write << std::endl;
+tmpl(void)::print_stats()
+{
+    std::cout << name() << std::endl;
+    std::cout << "- READ               = " << m_cpt_read << std::endl;
+    std::cout << "- WRITE              = " << m_cpt_write << std::endl;
 }
 
 /////////////////////////////////////////////////////////////
