@@ -47,6 +47,7 @@
 #include "vci_icu.h"
 #include "vci_block_device.h"
 #include "vci_dma.h"
+#include "vci_timer.h"
 #include "vci_framebuffer.h"
 #include "vci_ram.h"
 #include "alloc_elems.h"
@@ -81,9 +82,6 @@
 #define SEG_TTY_BASE     	0x80900000
 #define SEG_TTY_SIZE     	0x00000010
 
-#define SEG_DMA_BASE   		0x80D00000
-#define SEG_DMA_SIZE   		0x00000014
-
 #define SEG_IOC_BASE     	0xBFA00000
 #define SEG_IOC_SIZE     	0x00000020
 
@@ -93,6 +91,12 @@
 #define SEG_RESET_BASE   	0xBFC00000
 #define SEG_RESET_SIZE   	0x00001000
 
+#define SEG_DMA_BASE   		0x80D00000
+#define SEG_DMA_SIZE   		0x00000014
+
+#define SEG_TIM_BASE   		0x80E00000
+#define SEG_TIM_SIZE   		0x00000010
+
 #define SEGMENT_INCREMENT 	0x01000000
 
 // local TGTID definition
@@ -100,9 +104,10 @@
 #define TGTID_TTY       1
 #define TGTID_ICU       2
 #define TGTID_DMA       3
-#define TGTID_IOC       4
-#define TGTID_FBF       5
-#define TGTID_ROM       6
+#define TGTID_TIM       4
+#define TGTID_IOC       5
+#define TGTID_FBF       6
+#define TGTID_ROM       7
 
 // local SRCID definition
 #define SRCID_PROC	0
@@ -112,7 +117,8 @@
 // IRQ index definition
 #define IRQID_TTY	0
 #define IRQID_DMA	1
-#define IRQID_IOC	2
+#define IRQID_TIM	2
+#define IRQID_IOC	3
 
 // Cache parameters definition
 #define icache_ways     4
@@ -270,15 +276,20 @@ int _main(int argc, char *argv[])
         std::ostringstream seg_dma_name;
         seg_dma_name << "seg_dma_" << c;
         maptab.add(Segment(seg_dma_name.str(), dma_base, dma_size, IntTab(c, TGTID_DMA), false));
+
+        uint32_t tim_base = SEG_TIM_BASE + c*SEGMENT_INCREMENT;
+        uint32_t tim_size = SEG_TIM_SIZE;
+        std::ostringstream seg_tim_name;
+        seg_tim_name << "seg_tim_" << c;
+        maptab.add(Segment(seg_tim_name.str(), tim_base, tim_size, IntTab(c, TGTID_TIM), false));
     }
 
     std::cout << std::endl << maptab << std::endl;
 
     ////////////////////////////////////////////////////////////////////
     // Each cluster contains 1 PROC, 1 RAM, 1 TTY, 1 ICU, 1 DMA
-    // and a LOCAL_CROSSBAR.
-    // Three (different) clusters contains an extra component,
-    // that can be IOC, FBF or ROM.
+    // 1 TIMER, and a LOCAL_CROSSBAR.
+    // The io_cluster contains 3 extra components : IOC, FBF & ROM.
     // The global interconnect is a VGMN.
     ////////////////////////////////////////////////////////////////////
 
@@ -289,6 +300,7 @@ int _main(int argc, char *argv[])
     VciMultiTty<vci_param>* 				        tty[nc];
     VciIcu<vci_param>* 					        icu[nc];
     VciDma<vci_param>* 					        dma[nc];
+    VciTimer<vci_param>* 					timer[nc];
     VciLocalCrossbar*			        		xbar[nc];
     VciBlackhole<tlm::tlm_initiator_socket<> >*			fake[nc];
 
@@ -306,8 +318,8 @@ int _main(int argc, char *argv[])
         if ( c == cluster_io )
         {
             nb_init	= 3;
-            nb_target	= 7;
-            nb_irq	= 3;
+            nb_target	= 8;
+            nb_irq	= 4;
 
             ioc = new VciBlockDevice<vci_param>("ioc", maptab, IntTab(cluster_io, SRCID_IOC), 
                                          IntTab(cluster_io,TGTID_IOC), ioc_filename, 128, 100);
@@ -320,8 +332,8 @@ int _main(int argc, char *argv[])
         else
         {
             nb_init	= 2;
-            nb_target	= 4;
-            nb_irq	= 2;
+            nb_target	= 5;
+            nb_irq	= 3;
         }
 
         std::ostringstream fake_name;
@@ -352,7 +364,17 @@ int _main(int argc, char *argv[])
         dma_name << "dma_" << c;
         dma[c]   = new VciDma<vci_param>(dma_name.str().c_str(), maptab, IntTab(c, SRCID_DMA),
                                          IntTab(c, TGTID_DMA), 128); 
+/*
+        std::ostringstream timer_name;
+        timer_name << "timer_" << c;
+        timer[c]   = new VciMultiTty<vci_param>(timer_name.str().c_str(), IntTab(c, TGTID_TTY), 
+                                              maptab, timer_name.str().c_str(), NULL);
+*/
 
+        std::ostringstream timer_name;
+        timer_name << "timer_" << c;
+        timer[c]   = new VciTimer<vci_param>(timer_name.str().c_str(), IntTab(c, TGTID_TIM), 
+                                             maptab, 1); 
         std::ostringstream proc_name;
         proc_name << "proc_" << c;
         proc[c] = new VciXcacheWrapper<vci_param, GdbServer<Mips32ElIss> > 
@@ -380,12 +402,14 @@ int _main(int argc, char *argv[])
         (*xbar[c]->p_to_target[TGTID_TTY])		(tty[c]->p_vci);
         (*xbar[c]->p_to_target[TGTID_ICU])		(icu[c]->p_vci);
         (*xbar[c]->p_to_target[TGTID_DMA])		(dma[c]->p_vci_target);
+        (*xbar[c]->p_to_target[TGTID_TIM])		(timer[c]->p_vci);
         (*xbar[c]->p_to_initiator[SRCID_DMA])		(dma[c]->p_vci_initiator);
         (*xbar[c]->p_to_initiator[SRCID_PROC])		(proc[c]->p_vci);
 
         (*proc[c]->p_irq[0])				(icu[c]->p_irq);
         (*tty[c]->p_irq[0])				(*icu[c]->p_irq_in[IRQID_TTY]);
         (dma[c]->p_irq)					(*icu[c]->p_irq_in[IRQID_DMA]);
+        (*timer[c]->p_irq[0])				(*icu[c]->p_irq_in[IRQID_TIM]);
         
         for ( size_t n = 0 ; n < 5 ; n++ )
         {
