@@ -32,7 +32,7 @@
 #include "mapping_table.h"
 #include "ring_signals_fast.h"
 
-//#define T_DEBUG
+// #define T_DEBUG
 
 namespace soclib { namespace caba {
 
@@ -408,7 +408,7 @@ if(m_cpt > m_cyc)
 
 				rsp_fifo_put = true;
 				rsp_fifo_data = (uint64_t) p_vci.rdata.read();  
-         
+
 				if (p_vci.reop.read()) 
 				{ 
 					rsp_fifo_data = rsp_fifo_data |  (((uint64_t) 0x1) << (ring_rsp_data_size-1)) ;
@@ -874,10 +874,6 @@ if(m_cpt > m_cyc)
 
 	} // end switch cmd fsm 
 
-#ifdef T_DEBUG
-	m_cpt +=1;
-#endif
-
     ////////////////////////
     //  fifos update      //
    ////////////////////////
@@ -897,6 +893,17 @@ if(m_cpt > m_cyc)
 	else if (  rsp_fifo_put && !rsp_fifo_get ) m_rsp_fifo.simple_put(rsp_fifo_data);
 	else if ( !rsp_fifo_put &&  rsp_fifo_get ) m_rsp_fifo.simple_get();
  
+#ifdef T_DEBUG
+        if(m_cpt > m_cyc)
+          {
+            m_cmd_fifo.print();
+            m_rsp_fifo.print();
+          }
+#endif
+
+#ifdef T_DEBUG
+	m_cpt +=1;
+#endif
 }  // end Transition()
   
 ///////////////////////////////////////////////////////////////////

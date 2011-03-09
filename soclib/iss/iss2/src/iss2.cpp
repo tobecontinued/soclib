@@ -90,7 +90,7 @@ void Iss2::InstructionResponse::print( std::ostream &o ) const
     o << "<InsRsp  " 
       << (valid ? "  valid" : "invalid")
       << " " << (error ? "   error" : "no error")
-      << " ins " << std::hex << std::showbase << instruction
+      << " ins " << std::hex << std::showbase << instruction << std::dec
       << ">";
 }
 
@@ -104,9 +104,9 @@ void Iss2::DataRequest::print( std::ostream &o ) const
         //o << " (" << xtn_str((enum ExternalAccessType)addr) << ")";
         o << " (" << xtn_str((enum ExternalAccessType)(addr/4)) << ")";
     else
-        o << " @ " << std::hex << std::showbase << addr;
+        o << " @ " << std::hex << std::showbase << addr << std::dec;
     o << " wdata " << std::hex << std::showbase << wdata
-      << " be " << std::hex << (int)be
+      << " be " << (int)be  << std::dec
       << ">";
 }
 

@@ -33,7 +33,7 @@
 #include "ring_signals_fast.h"
 #include "dspin_interface.h"
 
-//#define HT_DEBUG
+// #define HT_DEBUG
 
 namespace soclib { namespace caba {
 
@@ -191,8 +191,9 @@ if(m_cpt > m_cyc)
                         if(m_rsp_fifo.rok() && iga)
                         {
                                 rsp_fifo_get = p_ring_in.rsp_r;
+                                //if(p_ring_in.rsp_r && eop)
 
-                                if(p_ring_in.rsp_r && eop)
+                                if(eop)
                                         r_ring_rsp_fsm = RSP_IDLE;
                                 else 
                                         r_ring_rsp_fsm = PREEMPT;

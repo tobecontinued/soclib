@@ -34,11 +34,14 @@
 #include "../include/vci_vgmn.h"
 #include "alloc_elems.h"
 
+// #define SOCLIB_MODULE_DEBUG
+#define DEBUG_VGMN false
+
 #ifdef SOCLIB_MODULE_DEBUG
 #define DEBUG_BEGIN do { do{} while(0)
 #define DEBUG_END } while(0)
 #else
-#define DEBUG_BEGIN do { if (0) { do{} while(0)
+#define DEBUG_BEGIN do { if (DEBUG_VGMN) { do{} while(0)
 #define DEBUG_END } } while(0)
 #endif
 
@@ -397,6 +400,8 @@ public:
             m_waiting_packet->readFrom( port );
 DEBUG_BEGIN;
             std::cout << name << " accepting " << *m_waiting_packet << std::endl;
+            // std::cout << name << " routing_table : " << m_routing_table << std::endl;
+            std::cout << name << " routing       : " << m_waiting_packet->route( m_routing_table) << std::endl;
 DEBUG_END;
             if ( m_dest == NULL ) {
                 if ( m_waiting_packet->is_broadcast() ) {

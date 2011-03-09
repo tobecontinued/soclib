@@ -220,8 +220,8 @@ public:
         std::cout << "- NB WRITE REFUSED               : " << m_stat_nb_write_refused      << " (" << (float)m_stat_nb_write_refused*100.0/(float)m_stat_nb_write << "%)" << std::endl;
         std::cout << "- NB WRITE ACCEPTED              : " << m_stat_nb_write_accepted      << " (" << (float)m_stat_nb_write_accepted*100.0/(float)m_stat_nb_write << "%)" << std::endl;
         std::cout << "  + IN OPEN SLOT                 : " << m_stat_nb_write_accepted_in_open_slot << " (" << (float)m_stat_nb_write_accepted_in_open_slot*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
-        std::cout << "    + TIMEOUT                    : " << m_stat_nb_write_accepted_in_open_slot_timeout << " (" << (float)m_stat_nb_write_accepted_in_open_slot_timeout*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
-        std::cout << "    + IN SAME WORD               : " << m_stat_nb_write_accepted_in_same_word << " (" << (float)m_stat_nb_write_accepted_in_same_word*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
+        std::cout << "    + TIMEOUT > 0                : " << m_stat_nb_write_accepted_in_open_slot_timeout << " (" << (float)m_stat_nb_write_accepted_in_open_slot_timeout*100.0/(float)m_stat_nb_write_accepted_in_open_slot << "%)" << std::endl;
+        std::cout << "    + IN SAME WORD               : " << m_stat_nb_write_accepted_in_same_word << " (" << (float)m_stat_nb_write_accepted_in_same_word*100.0/(float)m_stat_nb_write_accepted_in_open_slot << "%)" << std::endl;
         std::cout << "  + IN EMPTY SLOT                : " << m_stat_nb_write_accepted-m_stat_nb_write_accepted_in_open_slot << " (" << (float)m_stat_nb_state_sent*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
         std::cout << "- NB READ AFTER WRITE TEST       : " << m_stat_nb_read_after_write_test << std::endl;
         std::cout << "- NB READ AFTER WRITE            : " << m_stat_nb_read_after_write << " (" << (float)m_stat_nb_read_after_write*100.0/(float)m_stat_nb_read_after_write_test << "%)" << std::endl;
@@ -232,7 +232,12 @@ public:
             m_stat_slot_utilization_sum += i*m_stat_slot_utilization[i];
         std::cout << "- SLOT UTILIZATION               : " << (float)m_stat_slot_utilization_sum/(float)m_stat_nb_cycles << std::endl;
         for(size_t i=0 ; i<=m_nslots ; i++)
-            std::cout << "  + [" << i << "] " << (float)m_stat_slot_utilization[i]*100.0/(float)m_stat_nb_cycles << "%" << std::endl;
+        {
+            std::cout << "  + [" << i << "] " << (float)m_stat_slot_utilization[i]*100.0/(float)m_stat_nb_cycles << "%";
+            if (i!=0)
+                std::cout << " - "<< (float)m_stat_slot_utilization[i]*100.0/(float)(m_stat_nb_cycles-m_stat_slot_utilization[0]) << "%";
+            std::cout << std::endl;
+        }
 
         stat_t m_stat_word_utilization_sum = 0;
         for(size_t i=0 ; i<m_nwords ; i++)
@@ -298,6 +303,32 @@ public:
                 r_ptr = lw;
                 *min = r_min[lw];
                 *max = r_max[lw];
+                break;
+            }
+        }
+        return found;
+    } // end rok()
+
+    //////////////////////////////////////////////////////////////
+    inline bool debug_rok(size_t* min, size_t* max, addr_t * addr, size_t * index)
+    // This method is intended to be called by the VCI_CMD FSM,
+    // to test if a locked slot is available.
+    // It changes the pointer to the next available locked slot, 
+    // and returns the min & max indexes when it has been found.
+    {
+        bool	found = false;	
+        size_t  lw;
+        for( size_t i=0 ; i<m_nslots ; i++)
+        {
+            lw = (r_ptr+i)%m_nslots;
+            if( r_state[lw] == LOCKED ) 
+            { 
+                found  = true;
+                r_ptr  = lw;
+                *min   = r_min[lw].read();
+                *max   = r_max[lw].read();
+                *index = lw;
+                *addr  = r_address[lw].read();
                 break;
             }
         }

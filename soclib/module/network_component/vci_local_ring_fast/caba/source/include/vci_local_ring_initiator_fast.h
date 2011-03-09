@@ -73,7 +73,7 @@
 #include "mapping_table.h"
 #include "ring_signals_fast.h"
 
-//#define I_DEBUG
+// #define I_DEBUG
 
 namespace soclib { namespace caba {
 

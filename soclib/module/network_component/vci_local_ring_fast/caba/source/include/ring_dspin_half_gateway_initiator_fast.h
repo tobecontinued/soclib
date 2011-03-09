@@ -32,7 +32,7 @@
 #include "ring_signals_fast.h"
 #include "dspin_interface.h"
 
-//#define  HI_DEBUG
+// #define  HI_DEBUG
 
 namespace soclib { namespace caba {
 

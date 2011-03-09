@@ -399,7 +399,7 @@ void Mips32Iss::cop1_div()
 template <class T>
 void Mips32Iss::cop1_rsqrt()
 {
-    T r = (T)1 / std::sqrt(readFPU<T>(m_ins.fpu_r.fs));
+    T r = (T)((T)1 / std::sqrt(readFPU<T>(m_ins.fpu_r.fs)));
     storeFPU<T>(m_ins.fpu_r.fd, r);
 }
 
