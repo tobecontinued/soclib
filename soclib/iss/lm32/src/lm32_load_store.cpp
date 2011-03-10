@@ -55,7 +55,8 @@ namespace soclib { namespace common {
         if (addr & (byte_count - 1)) {                                       \
             std::cout << name() << "WARNING: Unaligned memory access!!!"     \
             << std::endl                                                     \
-            << " Adress : " << addr << " byte count : " << byte_count        \
+            << " Adress : " << std::hex << addr                              \
+            << " byte count : "  << std::dec << byte_count                   \
             << std::endl;                                                    \
         }                                                                    \
     } while(0)
@@ -106,7 +107,6 @@ namespace soclib { namespace common {
         uint32_t rd;
         addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         rd  = m_inst.I.rX;
-        CHECK_ALIGNED_ADDR (addr, 1);
         INIT_REQ (addr, true , rd);
         BUILD_SUBREQ(m_dreq.req, addr, 1, 0, DATA_READ );
     }
@@ -117,7 +117,6 @@ namespace soclib { namespace common {
         uint32_t rd;
         addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         rd  = m_inst.I.rX;
-        CHECK_ALIGNED_ADDR (addr, 1);
         INIT_REQ (addr, false, rd);
         BUILD_SUBREQ(m_dreq.req, addr, 1, 0, DATA_READ );
     }
@@ -161,7 +160,6 @@ namespace soclib { namespace common {
         uint32_t wd;
         addr = r_gp[m_inst.I.rY] + sign_ext(m_inst.I.imd, 16);
         wd  = r_gp[m_inst.I.rX] & 0xFF;
-        CHECK_ALIGNED_ADDR (addr, 1);
         INIT_REQ (addr, false, 0);
         BUILD_SUBREQ(m_dreq.req, addr, 1, wd, DATA_WRITE);
     }
