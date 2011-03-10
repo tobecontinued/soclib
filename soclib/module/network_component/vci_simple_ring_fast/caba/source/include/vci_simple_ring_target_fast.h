@@ -534,7 +534,8 @@ if(p_ring_in.cmd_w)
 #endif
                 	if ( m_cmd_fifo.wok() )
                         { 
-				cmd_fifo_data = p_ring_in.cmd_data;
+				cmd_fifo_data  = p_ring_in.cmd_data;
+                                cmd_fifo_put   = 1;
 				r_ring_cmd_fsm = BROADCAST_1;
 
                         } else {
