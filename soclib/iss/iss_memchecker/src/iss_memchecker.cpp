@@ -889,7 +889,7 @@ uint32_t IssMemchecker<iss_t>::register_get(uint32_t reg_no) const
      ((ISS_MEMCHECKER_MAGIC_VAL >> 24) & 0x000000ff))
 
 template<typename iss_t>
-bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
+void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 {
     assert( reg_no < ISS_MEMCHECKER_REGISTER_MAX && "Undefined regsiter" );
 
@@ -905,8 +905,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 #if 1     // Irq get enabled before last write occurs, need a write barrier in software
     if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
          iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) ) {
-        if ( report_error( ERROR_IRQ_ENABLED_MAGIC ) )
-            return 0;
+        report_error( ERROR_IRQ_ENABLED_MAGIC );
     }
 #endif
 
@@ -957,7 +956,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
                  value,
                  new ContextState( value, m_r1, (uint64_t)m_r1+m_r2,
                                    reg_id == ISS_MEMCHECKER_CONTEXT_ID_CREATE_TMP ) ) )
-            return report_error(ERROR_BAD_CONTEXT_CREATE, value);
+            report_error(ERROR_BAD_CONTEXT_CREATE, value);
 
         bool err = false;
 
@@ -975,7 +974,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         }
 
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_REGION) && err)
-            return report_error(ERROR_CREATING_STACK_NOT_ALLOC);
+            report_error(ERROR_CREATING_STACK_NOT_ALLOC);
         break;
     }
 
@@ -1015,10 +1014,10 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
             value, ref->m_stack_lower, ref->m_stack_upper );
 
         if ( ! s_memory_state->context_delete(m_r1) )
-            return report_error(ERROR_BAD_CONTEXT_DEL, m_r1);
+            report_error(ERROR_BAD_CONTEXT_DEL, m_r1);
 
         if ( ! s_memory_state->context_create( value, n ) )
-            return report_error(ERROR_BAD_CONTEXT_CREATE, value);
+            report_error(ERROR_BAD_CONTEXT_CREATE, value);
 
         if ( m_current_context->is( m_r1 ) ) {
             update_context(n);
@@ -1041,7 +1040,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         }
 
         if ( !s_memory_state->context_invalidate( value ) ) {
-            return report_error(ERROR_BAD_CONTEXT_INVALIDATE, value);
+            report_error(ERROR_BAD_CONTEXT_INVALIDATE, value);
         }
 
         break;
@@ -1064,7 +1063,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         }
 
         if ( !s_memory_state->context_delete(value) )
-            return report_error(ERROR_BAD_CONTEXT_DEL, value);
+            report_error(ERROR_BAD_CONTEXT_DEL, value);
 
         break;
 
@@ -1093,7 +1092,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         update_context( cs );
 
         if ( cs == s_memory_state->unknown_context || !cs->valid() )
-            return report_error(ERROR_BAD_CONTEXT_SWITCH, value);
+            report_error(ERROR_BAD_CONTEXT_SWITCH, value);
 
         break;
     }
@@ -1131,7 +1130,7 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         error_level_t e = s_memory_state->region_update_state(
           state, get_cpu_pc(), m_r1, m_r2, &m_last_region_touched, &lta );
 
-        return report_error( e, lta );
+        report_error( e, lta );
     }
 	case ISS_MEMCHECKER_ENABLE_CHECKS:
         m_enabled_checks |= value;
@@ -1143,8 +1142,6 @@ bool IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         assert(!"Unknown register");
         break;
     }
-
-    return false;
 }
 
 template<typename iss_t>
@@ -1170,7 +1167,7 @@ void IssMemchecker<iss_t>::update_context( ContextState *state )
 }
 
 template<typename iss_t>
-bool IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
+void IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
 {
     uint32_t reg_no = (dreq.addr-m_comm_address)/4;
     assert( dreq.be == 0xf && "Only read/write word are allowed in memchecker area" );
@@ -1187,7 +1184,7 @@ bool IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
         m_data_answer_value = 0;
         if ( m_magic_state == MAGIC_BE )
             data = soclib::endian::uint32_swap(data);
-        err = register_set(reg_no, data);
+        register_set(reg_no, data);
         break;
     }
     case iss_t::XTN_WRITE:
@@ -1198,12 +1195,10 @@ bool IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
         break;
     }
     m_has_data_answer = true;
-
-    return err;
 }
 
 template<typename iss_t>
-bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &dreq,
+void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &dreq,
                                               const struct iss_t::DataResponse &drsp )
 {
     error_level_t err = ERROR_NONE;
@@ -1250,7 +1245,7 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
         break;
     case iss_t::XTN_WRITE:
     case iss_t::XTN_READ:
-        return false;
+        return;
     }
 
     if (op) {
@@ -1285,12 +1280,12 @@ bool IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
                 break;
             case iss_t::XTN_WRITE:
             case iss_t::XTN_READ:
-                return false;
+                return;
             }
         }
     }
 
-    return report_error(err, dreq.addr);
+    report_error(err, dreq.addr);
 }
 
 template<typename iss_t>
@@ -1302,10 +1297,8 @@ void IssMemchecker<iss_t>::report_current_ctx()
 }
 
 template<typename iss_t>
-bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
+void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
 {
-    bool err = false;
-
     errors_ &= m_report_mask;
     errors_ &= ~m_no_repeat_mask;
     m_no_repeat_mask |= (errors_ & repeat_filter);
@@ -1498,13 +1491,11 @@ bool IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
             std::cout << std::endl;
         }
 
-        if ( ( m_trap_mask & error ) && debugExceptionBypassed( iss_t::EXCL_TRAP ) )
-            err = true;
+        if ( ( m_trap_mask & error ) && m_bypass && debugExceptionBypassed( iss_t::EXCL_TRAP ) )
+            m_bypass == false;
 
         errors_ ^= error;
     }
-
-    return err;
 }
 
 template<typename iss_t>
@@ -1515,14 +1506,14 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
     struct iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
     struct iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     iss_t::getRequests(ireq, dreq);
-    bool err = false;
+    m_bypass = true;
 
     assert( !(drsp.valid && !dreq.valid) );
 
     if ( dreq.valid ) {
         if ( (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) {
             if ( !ireq.valid || irsp.valid )
-                err = handle_comm( dreq );
+                handle_comm( dreq );
             dreq.valid = false;
         }
     }
@@ -1536,12 +1527,9 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 
     } else {
         if ( drsp.valid ) {
-            err |= check_data_access( dreq, drsp );
+            check_data_access( dreq, drsp );
         }
     }
-
-    if ( err )
-        return 0;
 
     {
         uint32_t sp = get_cpu_sp();
@@ -1591,7 +1579,7 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
         }
     }
 
-    if ( report_error( errl ) )
+    if ( !m_bypass )
         return 0;
 
     return iss_t::executeNCycles( ncycle, irsp, drsp, irq_bit_field );

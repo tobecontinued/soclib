@@ -87,6 +87,7 @@ class IssMemchecker
 
     uint32_t m_trap_mask;
     uint32_t m_report_mask;
+    bool m_bypass;
 
     uint32_t m_no_repeat_mask;
 
@@ -125,13 +126,13 @@ private:
 
     void update_context(__iss_memchecker::ContextState *nc);
 
-    bool register_set( uint32_t reg_no, uint32_t value );
+    void register_set( uint32_t reg_no, uint32_t value );
     uint32_t register_get( uint32_t reg_no ) const;
-    bool handle_comm( const struct iss_t::DataRequest &dreq );
-    bool check_data_access( const struct iss_t::DataRequest &dreq,
+    void handle_comm( const struct iss_t::DataRequest &dreq );
+    void check_data_access( const struct iss_t::DataRequest &dreq,
                             const struct iss_t::DataResponse &drsp );
 
-    bool report_error( uint32_t errors, uint32_t extra = 0 );
+    void report_error( uint32_t errors, uint32_t extra = 0 );
     void report_current_ctx();
 
     uint32_t get_cpu_sp() const;
