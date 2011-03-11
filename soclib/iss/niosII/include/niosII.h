@@ -331,6 +331,7 @@ private:
 	void run();
     void dumpInstruction() const;
     void dumpRegisters() const;
+    bool handle_exception();
 
 	inline void setInsDelay(uint32_t delay) {
 		assert(delay > 0);

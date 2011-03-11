@@ -162,7 +162,6 @@ Nios2fIss::~Nios2fIss()
 #endif
 }
 
-
 void Nios2fIss::reset()
 {
 
@@ -204,6 +203,97 @@ void Nios2fIss::reset()
 //	r_ebase = r_reserved_17;
 
 	m_startOflriList = NULL;
+}
+
+bool Nios2fIss::handle_exception()
+{
+    ExceptionClass ex_class = EXCL_FAULT;
+    ExceptionCause ex_cause = EXCA_OTHER;
+
+    switch (m_exceptionSignal) {
+    case X_INT:
+    case X_RESET:
+        ex_class = EXCL_IRQ;
+        break;
+    case X_SYS:
+        ex_class = EXCL_SYSCALL;
+        break;
+    case X_BP:
+    case X_TR:
+        ex_class = EXCL_TRAP;
+        break;
+
+    case X_MOD:
+    case X_reserved:
+        abort();
+
+    case X_TLBL:
+    case X_TLBS:
+        ex_cause = EXCA_PAGEFAULT;
+        break;
+    case X_ADEL:
+    case X_ADES:
+    case X_MALLDATAADR:
+    case X_MALLDESTADR:
+        ex_cause = EXCA_ALIGN;
+        break;
+    case X_IBE:
+    case X_DBE:
+        ex_cause = EXCA_BADADDR;
+        break;
+    case X_RI:
+    case X_CPU:
+    case X_ILLEGAL:
+    case X_UIINST:
+        ex_cause = EXCA_ILL;
+        break;
+    case X_OV:
+    case X_FPE:
+        ex_cause = EXCA_FPU;
+        break;
+    case X_DIV:
+        ex_cause = EXCA_DIVBYZERO;
+        break;
+
+    default:
+        abort();
+    }
+
+    if ( debugExceptionBypassed( ex_class, ex_cause  ) )
+        return true;
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout
+        << m_name
+        << std::hex << std::showbase
+        << " exception: "<<m_exceptionSignal<<std::endl
+        << " PC: " << r_pc
+        << " next_PC: " << r_npc
+        << std::dec
+        << std::endl<< std::endl;
+#endif
+    r_estatus = r_status.whole;/* status reg saving */
+    r_status.whole = r_status.whole & 0xFFFFFFFE; /* bit PIE forced to zero */
+
+    r_exception = m_exceptionSignal;
+
+    r_gpr[EA] = r_npc-4; // ea register stores the address where processing can resume
+
+    addr_t except_address = exceptBaseAddr();
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout
+        << m_name <<" exception: "<<m_exceptionSignal <<std::endl
+        << std::hex << std::showbase << " m_ins: " << m_instruction.j.op
+        << " exception address: " << except_address
+        << std::dec
+        << std::endl;
+#endif
+
+    r_pc = except_address;
+    r_npc = except_address + 4;
+
+    return false;
 }
 
 uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
@@ -255,6 +345,9 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 		goto handle_exception;
 	}
 
+    if (ncycle == 0)
+        return 0;
+
 	// Asynchronous Data bus error detection
 //	if (r_dbe) {
 //		m_exceptionSignal = X_DBE;
@@ -274,6 +367,7 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 				std::cout << "hazard set to one " << " reg: " << ptr->reg << "  inst.a: " << m_instruction.r.a << "  inst.b: " << m_instruction.r.b << std::endl;
 #endif
 				m_hazard = true;
+                break;
 			}
 			ptr = ptr->next;
 		}
@@ -282,7 +376,8 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 	if (m_startOflriList != NULL) {
 
 		m_listOfLateResultInstruction.update();
-		if (m_startOflriList == NULL) m_hazard = false;
+		if (m_startOflriList == NULL)
+            m_hazard = false;
 #ifdef SOCLIB_MODULE_DEBUG
 		m_listOfLateResultInstruction.print();
 #endif
@@ -292,41 +387,34 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 	// that the corresponding interrupt is enable in the ienable register
 	r_ipending = r_ienable & m_irq;
 
-//	if (m_irq)
-//		std::cout << "m_irq: " << m_irq << " cycle: " << r_count << std::endl;
-
 #ifdef SOCLIB_MODULE_DEBUG
 	if (m_irq)
 		std::cout << "m_irq " << m_irq << std::endl;
 
 	if ( r_ipending)
 		std::cout << "r_ipending " << r_ipending << std::endl;
-#endif
 
-#ifdef SOCLIB_MODULE_DEBUG
 	std::cout
         << " m_irq: "<<m_irq<< " ctl0: "<<r_status.whole <<
         " ctl3: " <<r_ienable <<
         " ctl4: "<<r_ipending <<
         " m_exceptionSignal:   " <<
         m_exceptionSignal << std::endl;
-#endif
 
-#ifdef SOCLIB_MODULE_DEBUG
 	m_log << std::hex << r_pc << std::endl;
-#endif
 
-
-#ifdef SOCLIB_MODULE_DEBUG
 	dumpInstruction();
 	dumpRegisters();
 #endif
+
 	// Execute instruction if no data dependency & no bus error
 	//
 	// The run() function can modify the following registers:
 	// r_gpr[i], r_mem_type, r_mem_addr; r_mem_wdata, r_mem_dest
 	// as well as the m_exception, m_branchAddress & m_branchTaken variables
+
 	if (m_hazard) {
+
 #ifdef SOCLIB_MODULE_DEBUG
 		std::cout << "  m_hazard: " << m_hazard << std::endl;
 #endif
@@ -334,14 +422,16 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 
 		if (m_startOflriList == NULL)
 			m_hazard = false;
-		goto house_keeping;
-	} else {
-		run();
-		m_exec_cycles++;
+
+        return ncycle;
+    }
+
+    run();
+    m_exec_cycles++;
+
 #ifdef SOCLIB_MODULE_DEBUG
-		std::cout << " m_exec_cycles: "<<m_exec_cycles << std::endl;
+    std::cout << " m_exec_cycles: "<<m_exec_cycles << std::endl;
 #endif
-	}
 
 	if (m_exceptionSignal != NO_EXCEPTION)
 		goto handle_exception;
@@ -358,104 +448,12 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 	}
 	goto no_exception;
 
- handle_exception: {
+ handle_exception:
+    if (handle_exception())
+        return ncycle;
 
-	    ExceptionClass ex_class = EXCL_FAULT;
-	    ExceptionCause ex_cause = EXCA_OTHER;
-
-	    switch (m_exceptionSignal) {
-	    case X_INT:
-        case X_RESET:
-	        ex_class = EXCL_IRQ;
-	        break;
-	    case X_SYS:
-	        ex_class = EXCL_SYSCALL;
-	        break;
-	    case X_BP:
-	    case X_TR:
-	        ex_class = EXCL_TRAP;
-	        break;
-
-	    case X_MOD:
-	    case X_reserved:
-	        abort();
-
-	    case X_TLBL:
-	    case X_TLBS:
-	        ex_cause = EXCA_PAGEFAULT;
-	        break;
-	    case X_ADEL:
-	    case X_ADES:
-        case X_MALLDATAADR:
-        case X_MALLDESTADR:
-	        ex_cause = EXCA_ALIGN;
-	        break;
-	    case X_IBE:
-	    case X_DBE:
-	        ex_cause = EXCA_BADADDR;
-	        break;
-	    case X_RI:
-	    case X_CPU:
-	    case X_ILLEGAL:
-        case X_UIINST:
-	        ex_cause = EXCA_ILL;
-	        break;
-	    case X_OV:
-	    case X_FPE:
-	        ex_cause = EXCA_FPU;
-	        break;
-        case X_DIV:
-            ex_cause = EXCA_DIVBYZERO;
-            break;
-
-        default:
-            assert(!"This must not happen");	    }
-
-	    if ( debugExceptionBypassed( ex_class, ex_cause  ) )
-            goto no_exception;
-
-#ifdef SOCLIB_MODULE_DEBUG
-		std::cout
-            << m_name
-            << std::hex << std::showbase
-            << " exception: "<<m_exceptionSignal<<std::endl
-            << " PC: " << r_pc
-            << " next_PC: " << r_npc
-            << std::dec
-            << std::endl<< std::endl;
-#endif
-		r_estatus = r_status.whole;/* status reg saving */
-		r_status.whole = r_status.whole & 0xFFFFFFFE; /* bit PIE forced to zero */
-
-		r_exception = m_exceptionSignal;
-
-		r_gpr[EA] = r_npc-4; // ea register stores the address where processing can resume
-
-	    addr_t except_address = exceptBaseAddr();
-
-	    std::cout
-	                << m_name
-	                << std::hex << std::showbase
-	                << " exception: " << except_address << std::dec
-            << std::endl<< std::endl;
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << m_name <<" exception: "<<m_exceptionSignal <<std::endl
-        << std::hex << std::showbase << " m_ins: " << m_instruction.j.op
-        << " exception address: " << except_address
-        << std::dec
-        << std::endl;
-#endif
-    //	    r_pc = EXCEPTION_HANDLER_ADDRESS;
-//		r_npc = EXCEPTION_HANDLER_ADDRESS + 4;
-
-	    r_pc = except_address;
-		r_npc = except_address + 4;
-	}
-	goto house_keeping;
-
- no_exception: {
-	 if (m_branchTaken) {
+ no_exception:
+    if (m_branchTaken) {
 		r_pc = m_branchAddress;
 		r_npc = m_branchAddress + 4;
 	} else {
@@ -463,11 +461,8 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 		r_npc = r_npc + 4;
 	}
 	r_count += ncycle;
- }
 
- house_keeping:
-//	 r_gpr[0] = 0;
-	 return ncycle;
+    return ncycle;
 }
 
 void Nios2fIss::setDataResponse(const struct DataResponse &drsp)
