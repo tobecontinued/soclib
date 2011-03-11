@@ -1161,11 +1161,7 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
             size_t ncycles_done = CpuIss::executeNCycles(ncycle, irsp, drsp, irq_bit_field);
 
             if (pc != CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no))
-                {
-                    state_ = Running;
-                    if (check_break_points())
-                        return 1;
-                }
+                state_ = Running;
 
             // check memory access break point
             watch_mem_access();
