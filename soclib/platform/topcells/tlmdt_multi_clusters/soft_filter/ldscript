@@ -10,8 +10,8 @@ and must be defined, even if the corresponding
 peripherals are not present in the architecture */
 
 NB_LOCKS        	= 0;
-NB_TIMERS       	= 1;
-NB_PROCS		= 2;
+NB_TIMERS       	= 0;
+NB_PROCS		= 4;
 NB_TASKS		= 1;
 
 /* definition of the base address for all segments 
@@ -32,13 +32,13 @@ seg_kunc_base   = 0x80200000;       /* les données non cachées du système */
 seg_icu_base    = 0x80800000;       /* controleur ICU */
 seg_tty_base    = 0x80900000;       /* controleur TTY */
 seg_dma_base    = 0x80D00000;       /* controleur DMA */
-seg_timer_base  = 0x80E00000;       /* controleur TIMER */
 
 seg_ioc_base    = 0xBFA00000;       /* controleur I/O */
 seg_fb_base     = 0xBFB00000;       /* controleur FRAME BUFFER */
 
 seg_locks_base  = 0x80F00000;       /* controleur LOCKS */
 seg_gcd_base    = 0x80F10000;       /* controleur GCD */
+seg_timer_base  = 0x80F20000;       /* controleur TIMER */
 
 seg_reset_base  = 0xBFC00000;       /* le code de boot */
 

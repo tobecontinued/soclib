@@ -4,5 +4,5 @@ cluster : multi_cluster_top.desc multi_cluster_top.cpp
 
 clean:
 	soclib-cc -x -p multi_cluster_top.desc 
-	rm -f *.o *.x core tmp temp *.deps stats trace simul*
+	rm -f *.o *.x core tmp temp *.deps stats trace simul* tty*
 

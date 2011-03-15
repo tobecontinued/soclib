@@ -189,6 +189,10 @@ int _main(int argc, char *argv[])
             {
                 fbf_size = atoi(argv[n+1]) ;
             }
+            // These 3 parameters are interpreted by the parallel simulator
+            else if( ((strcmp(argv[n],"-m") == 0) && (n+1<argc)) ||
+                     ((strcmp(argv[n],"-ga") == 0) && (n+1<argc)) || 
+                     (strcmp(argv[n],"-l") == 0) ) {}
             else
             {
                 std::cout << "   Arguments on the command line are (key,value) couples." << std::endl;
@@ -364,12 +368,6 @@ int _main(int argc, char *argv[])
         dma_name << "dma_" << c;
         dma[c]   = new VciDma<vci_param>(dma_name.str().c_str(), maptab, IntTab(c, SRCID_DMA),
                                          IntTab(c, TGTID_DMA), 128); 
-/*
-        std::ostringstream timer_name;
-        timer_name << "timer_" << c;
-        timer[c]   = new VciMultiTty<vci_param>(timer_name.str().c_str(), IntTab(c, TGTID_TTY), 
-                                              maptab, timer_name.str().c_str(), NULL);
-*/
 
         std::ostringstream timer_name;
         timer_name << "timer_" << c;

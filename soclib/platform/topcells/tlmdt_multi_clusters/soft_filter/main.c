@@ -23,6 +23,8 @@ void main()
     unsigned int	c;	// cluster index for loops
     unsigned int	l;	// line index for loops
     unsigned int	p;	// pixel index for loops
+    unsigned int	x;	// pixel index for filter
+    unsigned int	val;	// pseudo-fiter result
 
     // base address for the shared buffers
     unsigned int	BASE      = (unsigned int)&seg_heap_base;
@@ -99,9 +101,16 @@ void main()
         {
             for ( p=0 ; p<NP ; p++)
             {
-                B[p/NPR][((p%NPR)*NL) + l + (id*NLR)] = A[id][l*NP + p];
+                // pseudo horizontal filter
+                val = 0;
+                for ( x=0 ; x<NP ; x++)
+                {
+                    if ( x == p ) 	val += A[id][l*NP + p];
+                    else		val += A[id][l*NP + p]/210;
+                }
+                B[p/NPR][((p%NPR)*NL) + l + (id*NLR)] = val;
             }
-//            tty_printf("     - line %d completed\n",l);
+            tty_printf("     - line %d completed\n",l);
         }
         tty_printf(" *** Completing transpose for image %d *** at cycle %d \n", image, proctime());
 
