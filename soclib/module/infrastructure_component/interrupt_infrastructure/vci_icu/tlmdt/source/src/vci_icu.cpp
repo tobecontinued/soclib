@@ -122,8 +122,8 @@ std::cout << "[" << name() << "] time = "  << time.value()
           << " Receive a VCI read command = "  << cell << std::endl;
 #endif
 
-	    if      ( cell == ICU_INT)       utoa(getActiveIrqs(time), payload.get_data_ptr(), 0);
-	    else if ( cell == ICU_IT_VECTOR) utoa(getIrqIndex(time), payload.get_data_ptr(), 0);
+	    if      ( cell == ICU_INT)       utoa(getActiveIrqs(), payload.get_data_ptr(), 0);
+	    else if ( cell == ICU_IT_VECTOR) utoa(getIrqIndex(), payload.get_data_ptr(), 0);
 	    else if ( cell == ICU_MASK)      utoa(getMask(), payload.get_data_ptr(), 0);
 	    else    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
 	}
@@ -157,7 +157,7 @@ std::cout << "[" << name() << "] time = "  << time.value()
 } // end nb_transport_fw()
 
 /////////////////////////////////////////////////////////////////////////////////////
-// Interface function executed when receiving a reponse on the IRQ port
+// Interface function executed when receiving a response on the IRQ port
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl(tlm::tlm_sync_enum)::nb_transport_bw  
 ( tlm::tlm_generic_payload &payload,     
@@ -219,19 +219,21 @@ std::cout << "      index = " << i << " / enabled = " << m_irq_in_enabled[i]
 
         if ( irqTransmissible( &irq_value, &new_time) )
         {
-            m_irq_out_value	= irq_value;
-            m_irq_out_time 	= m_pdes_local_time->get();
             m_pdes_local_time->set(new_time);
-            p_irq->nb_transport_fw(m_irq_out_payload, m_irq_out_phase, m_irq_out_time);
+            if ( m_irq_out_value != irq_value )
+            {
+                m_irq_out_value = irq_value;
+            	m_irq_out_time 	= m_pdes_local_time->get();
+            	p_irq->nb_transport_fw(m_irq_out_payload, m_irq_out_phase, m_irq_out_time);
 
 #if SOCLIB_MODULE_DEBUG
 std::cout << "[" << name() << "] time = " << m_pdes_local_time->get().value()
           << " Send Interruption" << " with value = " << (int)irq_value << std::endl;
 #endif
-      
-        } 
+            } // end if new value
+        } // end if transmissible
         wait( m_irq_received );
-    } // end while
+    } // end while thread
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +248,7 @@ tmpl(bool)::irqTransmissible(unsigned char* irq_value, sc_core::sc_time* new_tim
     bool 	at_least_one     = false;
 
     *irq_value    	= 0;
-    *new_time 		= 0xFFFFFFFF*UNIT_TIME; // assez moche... à améliore
+    *new_time 		= 0xFFFFFFFF*UNIT_TIME; // assez moche... à améliorer
 
     for(size_t i = 0 ; i<m_nirq ; i++)
     {
@@ -270,33 +272,25 @@ tmpl(bool)::irqTransmissible(unsigned char* irq_value, sc_core::sc_time* new_tim
 
 ///////////////////////////////////////////////////////////////////////////////
 // This function returns a bit vector containing the enabled active IRQs
-// whose time is smaller than the current time
 ////////////////////////////////////////////////////////////////////////////////
-tmpl(uint32_t)::getActiveIrqs(sc_core::sc_time current_time)
+tmpl(uint32_t)::getActiveIrqs()
 {
     uint32_t irqs = 0;
     for ( size_t j=0 ; j<m_nirq ; j++) 
     {
-        if ( m_irq_in_enabled[j] && 
-//            (m_irq_in_time[j].value() <= current_time.value()) && 
-            (m_irq_in_value[j] != 0) ) 
-                  irqs = irqs | (1 << j);
+        if ( m_irq_in_enabled[j] && (m_irq_in_value[j] != 0) ) irqs = irqs | (1 << j);
     }
     return irqs;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-// This function returns the index of the hignest priority
-// enabled and active IRQ whose time is smaller than the current time
-//////////////////////////////////////////////////////////////////////////////
-tmpl(size_t)::getIrqIndex(sc_core::sc_time current_time)
+///////////////////////////////////////////////////////////////////////////////////
+// This function returns the index of the hignest priority enabled and active IRQ 
+///////////////////////////////////////////////////////////////////////////////////
+tmpl(size_t)::getIrqIndex()
 {
     for (size_t j=0 ; j<m_nirq ; j++) 
     {
-        if ( m_irq_in_enabled[j] && 
-//            (m_irq_in_time[j].value() <= current_time.value()) &&
-            (m_irq_in_value[j] != 0) ) 
-                  return j;
+        if ( m_irq_in_enabled[j] && (m_irq_in_value[j] != 0) ) return j;
     }
     return 32;
 }

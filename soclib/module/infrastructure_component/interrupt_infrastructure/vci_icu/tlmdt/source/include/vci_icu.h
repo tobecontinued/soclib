@@ -71,8 +71,8 @@ private:
     //  Functions
     /////////////////////////////////////////////////////////////////////////////////////
     bool irqTransmissible(unsigned char* value, sc_core::sc_time* new_time);
-    uint32_t getActiveIrqs(sc_core::sc_time current_time);
-    size_t getIrqIndex(sc_core::sc_time current_time);
+    uint32_t getActiveIrqs();
+    size_t getIrqIndex();
     uint32_t getMask();
     void setMask(uint32_t data);
     void clearMask(uint32_t data);
