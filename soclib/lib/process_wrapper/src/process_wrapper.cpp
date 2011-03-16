@@ -104,9 +104,10 @@ ProcessWrapper::ProcessWrapper(
     
 ProcessWrapper::~ProcessWrapper()
 {
-    kill(SIGTERM);
     close(m_fd_to_process);
     close(m_fd_from_process);
+    kill(SIGTERM);
+    kill(SIGKILL);
 }
 
 ssize_t ProcessWrapper::read( void *buffer, size_t len, bool block )
