@@ -46,7 +46,7 @@ class VciRam
     soclib::caba::VciTargetFsm<vci_param,true,true> m_vci_fsm;
     soclib::common::Loader m_loader;
 
-	typedef unsigned int ram_t;
+	typedef typename vci_param::fast_data_t ram_t;
     ram_t **m_contents;
 
 protected:

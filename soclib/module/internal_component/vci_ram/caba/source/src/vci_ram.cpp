@@ -101,7 +101,7 @@ tmpl(bool)::on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be)
     int index = addr / vci_param::B;
     ram_t *tab = m_contents[seg];
 	unsigned int cur = tab[index];
-    uint32_t mask = vci_param::be2mask(be);
+    vci_data_t mask = vci_param::be2mask(be);
 
     tab[index] = (cur & ~mask) | (data & mask);
 
