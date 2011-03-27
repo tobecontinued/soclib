@@ -67,10 +67,12 @@ public:
     sc_out<bool> p_irq;
     sc_in<bool> *p_irq_in;
 
-	VciIcu(
-		sc_module_name name,
-		const soclib::common::IntTab &index,
-		const soclib::common::MappingTable &mt,
+    void print_trace();
+
+    VciIcu(
+	sc_module_name name,
+	const soclib::common::IntTab &index,
+	const soclib::common::MappingTable &mt,
         size_t nirq);
 };
 

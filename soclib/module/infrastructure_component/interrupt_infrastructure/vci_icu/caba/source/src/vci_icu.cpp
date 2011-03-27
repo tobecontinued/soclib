@@ -84,6 +84,13 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	return true;
 }
 
+tmpl(void)::print_trace()
+{
+    std::cout << std::dec << name() << std::endl;
+    std::cout << " r_mask = " << r_mask.read()
+              << " / r_interrupt = " << r_interrupt.read() << std::endl;
+}
+
 tmpl(void)::transition()
 {
 	if (!p_resetn.read()) {
