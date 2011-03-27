@@ -1171,7 +1171,6 @@ void IssMemchecker<iss_t>::handle_comm( const struct iss_t::DataRequest &dreq )
 {
     uint32_t reg_no = (dreq.addr-m_comm_address)/4;
     assert( dreq.be == 0xf && "Only read/write word are allowed in memchecker area" );
-    bool err = false;
 
     switch ( dreq.type ) {
     case iss_t::DATA_READ:
@@ -1492,7 +1491,7 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
         }
 
         if ( ( m_trap_mask & error ) && m_bypass && debugExceptionBypassed( iss_t::EXCL_TRAP ) )
-            m_bypass == false;
+            m_bypass = false;
 
         errors_ ^= error;
     }
