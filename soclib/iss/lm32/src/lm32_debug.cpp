@@ -152,6 +152,10 @@ namespace soclib { namespace common {
                 return r_DEBA; 
             case 36:
                 return r_IE.whole; 
+            case 37:
+                return r_IM;
+            case 38:
+                return r_IP;
             default:
                 return 0;
         }
@@ -184,6 +188,12 @@ namespace soclib { namespace common {
                 break;
             case 36:
                 r_IE.whole = value;
+                break;
+            case 37:
+                r_IM = value;
+                break;
+            case 38:
+                r_IP = value;
                 break;
             default:
                 break;
