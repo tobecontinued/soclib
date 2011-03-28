@@ -74,6 +74,7 @@
 #include "ring_signals_fast.h"
 
 // #define I_DEBUG
+#define I_STATS
 
 namespace soclib { namespace caba {
 
@@ -169,8 +170,10 @@ private:
         uint32_t m_srcid;
         uint32_t m_shift;
 
-#ifdef I_DEBUG
+#if defined(I_DEBUG) or defined(I_STATS)
         uint32_t m_cpt;
+#endif
+#ifdef I_DEBUG
 	uint32_t m_cyc; 
 #endif
         // internal registers
@@ -179,14 +182,13 @@ private:
         sc_core::sc_signal<int>	    r_vci_cmd_fsm;    // vci command packet FSM
         sc_core::sc_signal<int>	    r_vci_rsp_fsm;    // vci response packet FSM
 
-/*----- stats
-        uint32_t m_cpt;
+#ifdef I_STATS
         uint32_t tok_wait;
         uint32_t fifo_full;
         uint32_t flits_sent;
         uint32_t palloc_wait;
         uint32_t preempt;
-*/
+#endif
 
 public :
 
@@ -227,20 +229,20 @@ VciLocalRingInitiatorFast(
 	m_rsp_fifo.init();
 
 
-#ifdef I_DEBUG
+#if defined(I_DEBUG) or defined(I_STATS)
 	m_cpt = 0;
+#endif
+#ifdef I_DEBUG
 	m_cyc = (uint32_t) atoi(getenv("CYCLES"));
 #endif
 
-
-/*----- stats
-	m_cpt       = 0;
+#ifdef I_STATS
         tok_wait    = 0;
         fifo_full   = 0;
         flits_sent  = 0;
         palloc_wait = 0;
         preempt     = 0;
-*/
+#endif
  }
 
 void transition(const vci_target_t &p_vci, const ring_signal_t p_ring_in, cmd_str &init_cmd, bool &init_rsp_val)
@@ -509,11 +511,10 @@ if(m_cpt > m_cyc)
                   << std::endl;
 #endif  
 
-/*----- stats
+#ifdef I_STATS
         if ( m_cmd_fifo.rok() && !p_ring_in.cmd_grant )
                 tok_wait +=1;
-*/
- 
+#endif 
 			if ( m_cmd_fifo.rok() && p_ring_in.cmd_grant )  
                         {
                 		r_ring_cmd_fsm = SENDING; 
@@ -534,12 +535,12 @@ if(m_cpt > m_cyc)
                   << std::endl;
 #endif
 
-/*----- stats
+#ifdef I_STATS
         if( m_cmd_fifo.rok() & p_ring_in.cmd_r)
                 flits_sent += 1;
         if( m_cmd_fifo.rok() & !p_ring_in.cmd_r)
                 fifo_full  += 1;
-*/        
+#endif
 			if ( m_cmd_fifo.rok() ) 
 			{
 				cmd_fifo_get = p_ring_in.cmd_r;  
@@ -568,14 +569,15 @@ if(m_cpt > m_cyc)
                   << " - fifo data : " << std::hex << m_cmd_fifo.read()
                   << std::endl;
 #endif                       
-/*----- stats
+
+#ifdef I_STATS
 if(p_ring_in.cmd_preempt)
         preempt    +=1;
 else if (m_cmd_fifo.rok() && p_ring_in.cmd_r)
         flits_sent +=1;
      else if  (m_cmd_fifo.rok() && !p_ring_in.cmd_r) 
                 fifo_full  +=1;
-*/
+#endif
                         if(p_ring_in.cmd_preempt) break;
 
 			if(m_cmd_fifo.rok() && p_ring_in.cmd_r) 
@@ -616,12 +618,12 @@ if(m_cpt > m_cyc)
                   << std::endl;
 #endif                  
 
-/*----- stats
+#ifdef I_STATS
 if(p_ring_in.cmd_w)
         preempt +=1;
 if(!p_ring_in.cmd_w || !p_ring_in.cmd_r || !eop)
         palloc_wait += 1;
-*/      
+#endif
                         if(p_ring_in.cmd_w && p_ring_in.cmd_r && eop) // last flit from init gate
 			{
 				if (p_ring_in.cmd_grant)
@@ -847,7 +849,7 @@ if(m_cpt > m_cyc)
 		break;
 	} // end switch rsp fsm
 
-#ifdef I_DEBUG
+#if defined(I_DEBUG) or defined(I_STATS)
 	m_cpt+=1;
 #endif
 
@@ -1057,13 +1059,13 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 
 } // end update_ring_signals
 
-/*
+#ifdef I_STATS
 void print_stats() {
 
 std::cout << m_name << " , " << m_cpt << " , " << flits_sent << " , " << tok_wait << " , " << fifo_full << " , " << preempt << " , " << palloc_wait << std::endl;
  
 }
-*/
+#endif
 };
 
 }} // end namespace

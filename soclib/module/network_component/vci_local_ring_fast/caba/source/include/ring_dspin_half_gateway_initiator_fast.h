@@ -33,6 +33,7 @@
 #include "dspin_interface.h"
 
 // #define  HI_DEBUG
+#define HI_STATS
 
 namespace soclib { namespace caba {
 
@@ -92,8 +93,10 @@ private:
         soclib::common::AddressDecodingTable<uint32_t, bool> m_lt;
         bool                m_local;
 
-#ifdef HI_DEBUG
+#if defined(HI_DEBUG) or defined(HI_STATS)
         uint32_t            m_cpt;
+#endif
+#ifdef HI_DEBUG
 	uint32_t            m_cyc;
 #endif
 
@@ -101,14 +104,13 @@ private:
         sc_core::sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
         sc_core::sc_signal<int>	    r_ring_rsp_fsm;    // ring response packet FSM
 
-/*----- stats
-        uint32_t m_cpt;
+#ifdef HI_STATS
         uint32_t tok_wait;
         uint32_t fifo_full;
         uint32_t flits_sent;
         uint32_t preempt;
         uint32_t wait_rok;
-*/
+#endif
 
 public :
 
@@ -141,19 +143,20 @@ void reset()
 	m_cmd_fifo.init();
 	m_rsp_fifo.init();
 
-#ifdef HI_DEBUG
+#if defined(HI_DEBUG) or defined(HI_STATS)
 	m_cpt = 0;
+#endif
+#ifdef HI_DEBUG
 	m_cyc = (uint32_t) atoi(getenv("CYCLES"));
 #endif
 
-/*----- stats
-	m_cpt      = 0;
+#ifdef HI_STATS
         tok_wait   = 0;
         fifo_full  = 0;
         flits_sent = 0;
         preempt    = 0;
         wait_rok   = 0;
-*/
+#endif
 }
 
 void transition(const cmd_in_t &p_gate_cmd_in, const rsp_out_t &p_gate_rsp_out, const ring_signal_t p_ring_in, cmd_str &init_cmd, bool &init_rsp_val, const bool tga)      
@@ -196,7 +199,7 @@ if(m_cpt > m_cyc)
                          << std::endl;
 #endif
 
-/*----- stats
+#ifdef HI_STATS
         if ( m_cmd_fifo.rok() && tga )
         {
                 preempt +=1;
@@ -207,7 +210,7 @@ if(m_cpt > m_cyc)
         }
         else if ( m_cmd_fifo.rok() && !p_ring_in.cmd_grant )
                 tok_wait +=1;
-*/
+#endif
                         // tga : target gate allocated
                         if(m_cmd_fifo.rok() && tga)  
                         {
@@ -236,12 +239,12 @@ if(m_cpt > m_cyc)
                          << std::endl;
 #endif       
 
-/*----- stats
+#ifdef HI_STATS
         if( m_cmd_fifo.rok() & p_ring_in.cmd_r)
                 flits_sent += 1;
         if( m_cmd_fifo.rok() & !p_ring_in.cmd_r)
                 fifo_full  += 1;
-*/
+#endif
 
 			if ( m_cmd_fifo.rok() ) 
 			{
@@ -264,12 +267,12 @@ if(m_cpt > m_cyc)
                          << std::endl;
 #endif                 
 
-/*----- stats
+#ifdef HI_STATS
 if (m_cmd_fifo.rok() && p_ring_in.cmd_r)
      flits_sent +=1;
 else if  (m_cmd_fifo.rok() && !p_ring_in.cmd_r) 
          fifo_full  +=1;
-*/
+#endif
 
 
 			if(m_cmd_fifo.rok() && p_ring_in.cmd_r ) 
@@ -299,7 +302,7 @@ if(m_cpt > m_cyc)
                          << std::endl;
 #endif                 
 
-/*----- stats
+#ifdef HI_STATS
 if (m_cmd_fifo.rok())
 {
         preempt +=1; 
@@ -310,7 +313,7 @@ if (m_cmd_fifo.rok())
 }
 else
         wait_rok +=1;
-*/
+#endif
 
 			if(m_cmd_fifo.rok() && p_ring_in.cmd_r ) 
 			{
@@ -449,7 +452,7 @@ if(m_cpt > m_cyc)
 
 	} // end switch rsp fsm
 
-#ifdef HI_DEBUG
+#if defined(HI_DEBUG) or defined(HI_STATS)
 	m_cpt+=1;
 #endif
 
@@ -626,13 +629,13 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out, boo
 
 } // end update_ring_signals
 
-/*
+#ifdef HI_STATS
 void print_stats() {
 
 std::cout << m_name << " , " << m_cpt << " , " << flits_sent << " , " << tok_wait << " , " << fifo_full << " , " << preempt << " , " << wait_rok << std::endl;
  
 }
-*/
+#endif
 };
 
 }} // end namespace

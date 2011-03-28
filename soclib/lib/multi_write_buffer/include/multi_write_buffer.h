@@ -92,6 +92,9 @@ namespace soclib {
 
 using namespace sc_core;
 
+#define CC_XCACHE_MULTI_CPU 1
+// To manage bus error with multi processor per cache, need cpu_id in wbuf.
+
 enum slot_state_e {
 	EMPTY,
 	OPEN,
@@ -115,7 +118,10 @@ class MultiWriteBuffer
     sc_signal<size_t>  	*r_tout;        	// slot timeout array[nslots]
     sc_signal<size_t>  	*r_min;         	// smallest valid word index array[nslots]
     sc_signal<size_t>  	*r_max;         	// largest valid word index array[nslots]
-    sc_signal<size_t>	r_ptr_update;			// next slot to be read
+#if CC_XCACHE_MULTI_CPU
+    sc_signal<size_t>  	*r_cpu_id;
+#endif
+    sc_signal<size_t>	r_ptr_update;		//	next slot to be read
     
     data_t   		**r_data;       	// write data  array[nslots][nwords]
     be_t     		**r_be;         	// byte enable array[nslots][nwords]
@@ -154,6 +160,10 @@ public:
             r_max[slot]   	= 0 ;
             r_min[slot]   	= m_nwords - 1 ;
             r_state[slot] 	= EMPTY ;
+#if CC_XCACHE_MULTI_CPU
+            r_cpu_id[slot]  = 0;
+#endif
+
             for( size_t word = 0 ; word < m_nwords ; word++ ) {
                 r_data[slot][word] 	= 0 ;
                 r_be  [slot][word] 	= 0 ;
@@ -193,7 +203,11 @@ public:
                       << std::hex << r_address[i].read() << std::dec
                       << " " << r_cached[i].read()
                       << " {" << r_min[i].read() << "," << r_max[i].read() << "}"
-                      << " - " << r_tout[i].read();
+                      << " - " << r_tout[i].read()
+#if CC_XCACHE_MULTI_CPU
+                      << " - " << r_cpu_id[i].read()
+#endif
+                ;
 
             if(mode & 0x1)
             {
@@ -455,7 +469,7 @@ public:
 
 
     //////////////////////////////////////////////////////////////////////////
-    bool write(addr_t addr, be_t be , data_t  data, bool cached)
+    bool write(addr_t addr, be_t be , data_t  data, bool cached, size_t cpu_id=0)
     // This method is intended to be used by the DCACHE FSM.
     // It can only change a slot state from EMPTY to OPEN.
     // It can change the slot content : r_address, r_data, r_be, r_min, r_max
@@ -506,7 +520,10 @@ public:
             r_state  [lw] = (cached)?OPEN:LOCKED;
             r_address[lw] = address;
             r_cached [lw] = cached;
-            
+#if CC_XCACHE_MULTI_CPU
+            r_cpu_id [lw] = cpu_id;
+#endif
+
             if (r_be[lw][word] != 0)
                 m_stat_nb_write_accepted_in_same_word ++;
 
@@ -556,6 +573,16 @@ public:
         return r_ptr.read();
     } 
 
+    /////////////////////////
+    size_t inline getCpuId(size_t index)
+    {
+#if CC_XCACHE_MULTI_CPU
+        return r_cpu_id[index].read();
+#else
+        return 0;
+#endif
+    }
+
     /////////////////////////////////////////////////////////////
     bool inline completed(size_t index)
     // This method is intended to be used by the VCI_RSP FSM.
@@ -593,7 +620,9 @@ public:
         r_min     = new sc_signal<size_t>[wbuf_nslots];
         r_max     = new sc_signal<size_t>[wbuf_nslots];
         r_state   = new sc_signal<int>[wbuf_nslots];
-
+#if CC_XCACHE_MULTI_CPU
+        r_cpu_id  = new sc_signal<size_t>[wbuf_nslots];
+#endif
         r_data    = new data_t*[wbuf_nslots];
         r_be      = new be_t*[wbuf_nslots];
         for( size_t i = 0 ; i < wbuf_nslots ; i++ )
@@ -633,6 +662,10 @@ public:
         delete [] r_min;
         delete [] r_max;
         delete [] r_state;
+#if CC_XCACHE_MULTI_CPU
+        delete [] r_cpu_id;
+#endif
+
     }
 };
 

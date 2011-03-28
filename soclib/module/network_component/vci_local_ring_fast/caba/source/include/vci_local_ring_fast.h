@@ -26,6 +26,8 @@
 #ifndef VCI_LOCAL_RING_FAST_H_
 #define VCI_LOCAL_RING_FAST_H_
 
+#define VCI_LOCAL_RING_FAST_STAT
+
 #include <systemc>
 #include "caba_base_module.h"
 #include "mapping_table.h"
@@ -103,9 +105,9 @@ using namespace sc_core;
                                                                    
                ~VciLocalRingFast();
                void print_trace();
-//---- stats
-//             void print_stats(uint32_t local = 0);  
-//----
+#ifdef VCI_LOCAL_RING_FAST_STAT
+          void print_stats(uint32_t local = 0);  
+#endif
         };
 }} // end namespace
 

@@ -354,18 +354,22 @@ tmpl(void)::print_trace()
 	}
 
 }
-/*
+#ifdef VCI_LOCAL_RING_FAST_STAT
 tmpl(void)::print_stats(uint32_t local)
 {
+  std::cout << name() << " , cycles , flits sent , token wait , fifo full  , preempt , palloc wait " << std::endl;
         if(!local)
         {
-                //std::cout << name() << " , cycles , flits sent , token wait , fifo full  , preempt , palloc wait " << std::endl;
 
+#ifdef I_STATS
                 for(int i=0;i<m_nai;i++) 
                         m_ring_initiator[i]->print_stats();
+#endif
         }
+#ifdef HI_STATS
         else
                 m_half_gateway_initiator->print_stats();
+#endif
 }
-*/
+#endif
 }} // end namespace
