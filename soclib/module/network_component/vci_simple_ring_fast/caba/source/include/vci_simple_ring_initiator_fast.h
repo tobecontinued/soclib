@@ -169,6 +169,7 @@ private:
 
 public :
 
+#define __renRegInitS(x) x((((std::string) name)+"_" #x).c_str())
 
 VciSimpleRingInitiatorFast(
 	const char     *name,
@@ -179,16 +180,16 @@ VciSimpleRingInitiatorFast(
         const uint32_t &srcid)
       : m_name(name),
         m_alloc_init(alloc_init),
-        m_cmd_fifo("m_cmd_fifo", wrapper_fifo_depth),
-        m_rsp_fifo("m_rsp_fifo", wrapper_fifo_depth),
+        m_cmd_fifo(((std::string) name)+"m_cmd_fifo", wrapper_fifo_depth),
+        m_rsp_fifo(((std::string) name)+"m_rsp_fifo", wrapper_fifo_depth),
         m_rt(mt.getIdMaskingTable(ringid.level())),
         m_lt(mt.getIdLocalityTable(ringid)),
         m_srcid(srcid),
         m_shift(ring_cmd_data_size-vci_param::N+1),
-        r_ring_cmd_fsm("r_ring_cmd_fsm"),
-        r_ring_rsp_fsm("r_ring_rsp_fsm"),
-	r_vci_cmd_fsm("r_vci_cmd_fsm"),
-	r_vci_rsp_fsm("r_vci_rsp_fsm")
+        __renRegInitS(r_ring_cmd_fsm),
+        __renRegInitS(r_ring_rsp_fsm),
+	__renRegInitS(r_vci_cmd_fsm),
+	__renRegInitS(r_vci_rsp_fsm)
   
  {} //  end constructor
 

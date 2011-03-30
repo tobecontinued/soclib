@@ -114,6 +114,8 @@ private:
 
 public :
 
+#define __renRegGateInit(x) x((((std::string) name)+"_" #x).c_str())
+
 RingDspinHalfGatewayInitiatorFast(
 	const char     *name,
         bool            alloc_init,
@@ -123,12 +125,12 @@ RingDspinHalfGatewayInitiatorFast(
         bool local)
       : m_name(name),
         m_alloc_init(alloc_init),
-        m_cmd_fifo("m_cmd_fifo", wrapper_fifo_depth),
-        m_rsp_fifo("m_rsp_fifo", wrapper_fifo_depth),
+        m_cmd_fifo(((std::string) name)+"m_cmd_fifo", wrapper_fifo_depth),
+        m_rsp_fifo(((std::string) name)+"m_rsp_fifo", wrapper_fifo_depth),
         m_lt(mt.getIdLocalityTable(ringid)),
         m_local(local),
-        r_ring_cmd_fsm("r_ring_cmd_fsm"),
-        r_ring_rsp_fsm("r_ring_rsp_fsm")
+        __renRegGateInit(r_ring_cmd_fsm),
+        __renRegGateInit(r_ring_rsp_fsm)
  { } //  end constructor
 
 

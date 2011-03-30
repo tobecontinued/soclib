@@ -150,6 +150,8 @@ private:
             
 public :
 
+#define __renRegTgt(x) x((((std::string) name)+"_" #x).c_str())
+
 VciLocalRingTargetFast(
 	const char     *name,
         bool            alloc_target,
@@ -159,25 +161,25 @@ VciLocalRingTargetFast(
         const int &tgtid)
      :  m_name(name),
         m_alloc_target(alloc_target),
-        m_cmd_fifo("m_cmd_fifo", wrapper_fifo_depth),
-        m_rsp_fifo("m_rsp_fifo", wrapper_fifo_depth),
+        m_cmd_fifo(((std::string) name)+"m_cmd_fifo", wrapper_fifo_depth),
+        m_rsp_fifo(((std::string) name)+"m_rsp_fifo", wrapper_fifo_depth),
         m_rt(mt.getRoutingTable<typename vci_param::fast_addr_t>(ringid)),
         m_lt_addr(mt.getLocalityTable<typename vci_param::fast_addr_t>(ringid)),
         m_lt_src(mt.getIdLocalityTable(ringid)),
         m_tgtid(tgtid),
         m_shift(ring_cmd_data_size-vci_param::N+1),
-        r_ring_cmd_fsm("r_ring_cmd_fsm"),
-	r_ring_rsp_fsm("r_ring_rsp_fsm"),
-	r_vci_cmd_fsm("r_vci_cmd_fsm"),
-	r_vci_rsp_fsm("r_vci_rsp_fsm"),
-        r_srcid("r_srcid"),
-        r_cmd("r_cmd"),
-        r_trdid("r_trdid"),
-        r_pktid("r_pktid"),
-        r_plen("r_plen"),
-        r_contig("r_contig"),
-        r_const("r_const"),
-        r_addr("r_addr")
+        __renRegTgt(r_ring_cmd_fsm),
+        __renRegTgt(r_ring_rsp_fsm),
+        __renRegTgt(r_vci_cmd_fsm),
+        __renRegTgt(r_vci_rsp_fsm),
+        __renRegTgt(r_srcid),
+        __renRegTgt(r_cmd),
+        __renRegTgt(r_trdid),
+        __renRegTgt(r_pktid),
+        __renRegTgt(r_plen),
+        __renRegTgt(r_contig),
+        __renRegTgt(r_const),
+        __renRegTgt(r_addr)
 
 {} //  end constructor
 

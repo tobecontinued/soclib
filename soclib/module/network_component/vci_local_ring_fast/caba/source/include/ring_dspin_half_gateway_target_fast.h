@@ -109,6 +109,8 @@ private:
 
 public :
 
+#define __renRegGateTgt(x) x((((std::string) name)+"_" #x).c_str())
+
 RingDspinHalfGatewayTargetFast(
 	const char     *name,
         bool            alloc_target,
@@ -123,8 +125,8 @@ RingDspinHalfGatewayTargetFast(
         m_lt_addr(mt.getLocalityTable<typename vci_param::fast_addr_t>(ringid)),
         m_lt_src(mt.getIdLocalityTable(ringid)),
         m_local(local),
-       	r_ring_cmd_fsm("r_ring_cmd_fsm"),
-	r_ring_rsp_fsm("r_ring_rsp_fsm")
+        __renRegGateTgt(r_ring_cmd_fsm),
+        __renRegGateTgt(r_ring_rsp_fsm)
 {
 } //  end constructor
 
