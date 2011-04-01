@@ -1,4 +1,4 @@
- /*
+/*
  *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
@@ -301,6 +301,12 @@ std::cout << " fsm_state = " << r_fsm_state
         if ( p_vci.cmdval.read() ) 
         {
             vci_addr_t next_address = r_address.read() + (vci_addr_t)vci_param::B;
+/*
+std::cout << std::hex << "contig    = " << r_contig.read() << std::endl;
+std::cout << "r_address = " << r_address.read() << std::endl;
+std::cout << "p_address = " << p_vci.address.read() << std::endl;
+std::cout << "next      = " << next_address << std::endl;
+*/
             assert( ((r_contig && (next_address == p_vci.address.read())) ||
                      (!r_contig && (r_address.read() == p_vci.address.read()))) &&
                         "addresses must be contiguous or constant in a VCI write burst" );
@@ -454,8 +460,10 @@ tmpl(void)::genMoore()
     {
         p_vci.cmdack = false;
         p_vci.rspval = true;
-        if ( r_llsc_buf.isAtomic(r_address.read(), r_srcid.read()) ) p_vci.rdata = 0;
-        else                                                         p_vci.rdata = 1;
+        if ( r_llsc_buf.isAtomic(r_address.read(), r_srcid.read()) )
+            p_vci.rdata = vci_param::STORE_COND_ATOMIC;
+        else
+            p_vci.rdata = vci_param::STORE_COND_NOT_ATOMIC;
         p_vci.rsrcid = r_srcid.read();
         p_vci.rtrdid = r_trdid.read();
         p_vci.rpktid = r_pktid.read();
