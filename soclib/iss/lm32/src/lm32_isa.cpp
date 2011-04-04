@@ -177,7 +177,7 @@ namespace soclib { namespace common {
 
     //!Instruction muli behavior method.
     LM32_function( muli ){// immediate multiplication
-        r_gp[m_inst.I.rX] = r_gp[m_inst.I.rY] * m_inst.I.imd;
+        r_gp[m_inst.I.rX] = r_gp[m_inst.I.rY] * sign_ext(m_inst.I.imd, 16);
     }
 
     //!Instruction sri behavior method.
