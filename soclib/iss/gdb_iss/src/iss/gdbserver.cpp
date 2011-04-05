@@ -1033,6 +1033,9 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
                     signal = 11;
                     break;
 
+                case Iss2::EXCA_REGWINDOW:
+                    return false;
+
                 default:
                     signal = 5;
                 };
