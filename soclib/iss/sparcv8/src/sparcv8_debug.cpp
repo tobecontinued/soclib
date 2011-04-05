@@ -112,20 +112,80 @@ tmpl(void)::dump_regs(const std::string &msg) const
 
 tmpl(Iss2::debug_register_t)::debugGetRegisterValue(unsigned int reg) const
 {
-    // TODO : implement this !
-    return 0;
-}
+    switch (reg)
+        {
+        case 0 ... 31:
+            return GPR(reg);
+        case 32 ... 63:
+            return r_f[reg - 32];
+        case 64:
+            return r_y;
+        case 65:
+            return r_psr.whole;
+        case 66:
+            return r_wim;
+        case 67:
+            return r_tbr.whole;
+        case 68:
+            return r_pc;
+        case 69:
+            return r_npc;
+        case 70:
+            return r_fsr.whole;
+        case 71:
+            return 0; /* no csr */
 
+        case ISS_DEBUG_REG_IS_USERMODE:
+            return r_psr.s == 0;
+        case ISS_DEBUG_REG_IS_INTERRUPTIBLE:
+            return r_psr.et && r_psr.pil < 15;
+        case ISS_DEBUG_REG_STACK_REDZONE_SIZE:
+        default:
+            return 0;
+        }
+}
 
 tmpl(void)::debugSetRegisterValue(unsigned int reg, debug_register_t value)
 {
-    // TODO : implement this !
+    switch (reg)
+        {
+        case 0 ... 31:
+            GPR(reg) = value;
+            break;
+        case 32 ... 63:
+            r_f[reg - 32] = value;
+            break;
+        case 64:
+            r_y = value;
+            break;
+        case 65:
+            r_psr.whole = value;
+            break;
+        case 66:
+            r_wim = value;
+            break;
+        case 67:
+            r_tbr.whole = value;
+            break;
+        case 68:
+            r_pc = value;
+            r_npc = value + 4;
+            break;
+        case 69:
+            r_npc = value;
+            break;
+        case 70:
+            r_fsr.whole = value;
+            break;
+        case 71:
+            /* no csr */
+            break;
+        }
 }
 
 tmpl(unsigned int)::debugGetRegisterCount() const
 {
-    // TODO : check this !
-    return 32 + 6;
+    return 32 + 32 + 8;
 }
 
 tmpl(size_t)::debugGetRegisterSize(unsigned int reg) const

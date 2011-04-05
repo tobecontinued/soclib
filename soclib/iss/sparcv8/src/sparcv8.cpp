@@ -34,6 +34,7 @@
 #include "arithmetics.h"
 #include <iomanip>
 #include <cassert>
+#include <cstring>
 
 namespace soclib { namespace common {
 
@@ -87,8 +88,8 @@ tmpl(void)::reset()
     r_npc       = r_pc + 4;
     r_psr.et    = 0;
 
-    for(unsigned int i = 0; i<NWINDOWS*16+8; i++)
-      r_gp[i] = 0;
+    std::memset(r_gp, 0, sizeof(r_gp));
+    std::memset(r_f, 0, sizeof(r_f));
 
     r_error_mode = false;
   }
@@ -157,7 +158,7 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
     // then do nothing and advance time as far as possible :
     //    - if we are not in the middle of a long instruction : ncycle
     //    - if we are in the middle of a long instruction : to the end of current instruction
-    if (m_ireq_pending || m_dreq_pending || m_ins_delay) {
+    if (m_ireq_pending || m_dreq_pending || m_ins_delay || ncycle == 0) {
       uint32_t t = ncycle;
       if (m_ins_delay) {
         if (m_ins_delay < ncycle)
@@ -322,6 +323,9 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
           << " and the Enable Trap flag is not set." << std::endl
           << " Entering Error Mode and rebooting."
           << std::endl;
+
+        if ( debugExceptionBypassed( EXCL_FAULT, EXCA_OTHER ) )
+            goto no_except;
 
           r_error_mode = true;
 

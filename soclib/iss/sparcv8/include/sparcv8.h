@@ -254,7 +254,7 @@ private:
     tbr_t       r_tbr;                  // Trap Base Register
     data_t      r_y;                    // Multiply / divide (ASR 0)
     bool        r_error_mode;           // True is sparc is in error mode
-    int         r_f[32];                // 32 floating point registers
+    int32_t     r_f[32];                // 32 floating point registers
     fsr_t       r_fsr;                  // Program Status Register
 
     ins_t       m_ins;                  // Current instruction
