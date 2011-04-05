@@ -1041,7 +1041,8 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
         case Iss2::EXCL_TRAP:            
             std::cerr << *this << "TRAP" << std::endl;
             if ( exit_on_trap_ )
-                kill(getpid(), SIGINT);
+                sc_stop();
+            //                kill(getpid(), SIGINT);
 
             signal = 5;
             break;
@@ -1248,11 +1249,18 @@ void GdbServer<CpuIss>::init_state()
     const char *env_val = getenv("SOCLIB_GDB");
     size_t id = list_.size();
 
+    if ( id == 0 )
+        std::cerr << "[GDB] SOCLIB_GDB env variable may contain the following flag letters: " << std::endl
+                  << "  X (dont break on except),      S (wait connect on except)," << std::endl
+                  << "  C (functions branch trace),    Z (functions entry trace),   D (gdb protocol debug)," << std::endl
+                  << "  W (dont break on watchpoints), T (exit sumilation on trap), F (start frozen)" << std::endl
+                  << "  => See http://www.soclib.fr/trac/dev/wiki/Tools/GdbServer" << std::endl;
+
     if ( env_val ) {
 
         if (!id)
             for (int i = 0; env_val[i]; i++)
-                if (!strchr("FCTZSXW", env_val[i]))
+                if (!strchr("FCTZSXWD", env_val[i]))
                     std::cerr << "[GDB] Warning: SOCLIB_GDB variable doesn't support the `" << env_val[i] << "' flag." << std::endl;
 
         if (strchr( env_val, 'F' ))
@@ -1260,6 +1268,8 @@ void GdbServer<CpuIss>::init_state()
         else 
             state_ = init_state_;
 
+        if (strchr( env_val, 'D' ))
+            debug_ = true;
         if (strchr( env_val, 'C' ))
             call_trace_ = true;
         if (strchr( env_val, 'Z' ))
