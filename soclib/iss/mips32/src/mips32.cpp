@@ -456,6 +456,8 @@ Iss2::debug_register_t Mips32Iss::debugGetRegisterValue(unsigned int reg) const
             return r_cause.whole;
         case 37:
             return r_pc;
+        case 38 ... 69:
+            return r_f[reg-38];
         case ISS_DEBUG_REG_IS_USERMODE:
             return !isPriviliged();
         case ISS_DEBUG_REG_IS_INTERRUPTIBLE:
@@ -492,6 +494,8 @@ void Mips32Iss::debugSetRegisterValue(unsigned int reg, debug_register_t value)
             r_pc = value;
             r_npc = value+4;
             break;
+        case 38 ... 69:
+            r_f[reg-38] = value;
         default:
             break;
         }
