@@ -661,8 +661,12 @@ tmpl(void)::transition()
                     switch ( dreq_paddr/4 ) {
                     case iss_t::XTN_DCACHE_INVAL:
                         r_dcache_fsm = DCACHE_INVAL;
+                        drsp.valid = true;
+                        drsp.rdata = 0;
+                        break;
                     case iss_t::XTN_SYNC:
                     default:
+                        r_dcache_fsm = DCACHE_IDLE;
                         drsp.valid = true;
                         drsp.rdata = 0;
                         break;
