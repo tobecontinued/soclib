@@ -19,7 +19,7 @@
 #else:
 #  raise ValueError('No suitable cpu found in mutekh configuration')
 
-cpus = [ "ppc405", "arm", 'mips32eb', 'mips32el', 'niosII', 'sparcv8' ]
+cpus = [ "ppc405", "arm", 'mips32eb', 'mips32el', 'niosII', 'sparcv8', 'lm32' ]
 use =  [
 	Uses('caba:vci_locks'),
 	Uses('caba:vci_ram'),
@@ -27,6 +27,7 @@ use =  [
 	Uses('caba:vci_multi_tty'),
 	Uses('caba:vci_xicu'),
 	Uses('caba:vci_block_device'),
+        Uses('caba:vci_simhelper'),
 	Uses('caba:vci_vgmn'),
         Uses('common:elf_file_loader'),
         ]

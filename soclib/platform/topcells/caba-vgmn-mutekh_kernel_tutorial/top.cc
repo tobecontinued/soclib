@@ -20,6 +20,7 @@
 # include "ppc405.h"
 # include "arm.h"
 # include "sparcv8.h"
+# include "lm32.h"
 
 #include "mapping_table.h"
 
@@ -31,6 +32,7 @@
 #include "vci_xicu.h"
 #include "vci_vgmn.h"
 #include "vci_block_device.h"
+#include "vci_simhelper.h"
 
 using namespace soclib;
 using common::IntTab;
@@ -168,6 +170,10 @@ struct CpuEntry * newCpuEntry(const std::string &type, int id, common::Loader *l
     case 's':
       if (type == "sparcv8")
 	return newCpuEntry_<common::Sparcv8Iss<8> >(e);
+
+    case 'l':
+      if (type == "lm32")
+	return newCpuEntry_<common::LM32Iss<true> >(e);
     }
 
   throw std::runtime_error(type + ": wrong processor type");
@@ -187,7 +193,7 @@ int _main(int argc, char **argv)
   // Mapping table
 
   maptab.add(Segment("resetnios", 0x00802000, 0x1000, IntTab(1), true));
-  maptab.add(Segment("resetarmsparc", 0x00000000, 0x1000, IntTab(1), true));
+  maptab.add(Segment("resetzero", 0x00000000, 0x1000, IntTab(1), true));
   maptab.add(Segment("resetmips", 0xbfc00000, 0x1000, IntTab(1), true));
   maptab.add(Segment("resetppc",  0xffffff80, 0x0080, IntTab(1), true));
 
@@ -198,13 +204,14 @@ int _main(int argc, char **argv)
   maptab.add(Segment("tty"  ,     0xd0200000, 0x00000010, IntTab(3), false));
   maptab.add(Segment("xicu",      0xd2200000, 0x00001000, IntTab(4), false));
   maptab.add(Segment("bdev0",     0xd1200000, 0x00000020, IntTab(5), false));
+  maptab.add(Segment("simhelper", 0xd3200000, 0x00000100, IntTab(6), false));
 
   std::cerr << "caba-vgmn-mutekh_kernel_tutorial SoCLib simulator for MutekH" << std::endl;
 
   if ( (argc < 2) || ((argc % 2) == 0) )
     {
       std::cerr << std::endl << "usage: " << *argv << " < cpu-type[:count] kernel-binary-file > ... " << std::endl
-		<<   "available cpu types: arm, mips32el, mips32eb, niosII, ppc405, sparcv8" << std::endl;
+		<<   "available cpu types: arm, mips32el, mips32eb, niosII, ppc405, sparcv8, lm32" << std::endl;
       exit(0);
     }
   argc--;
@@ -262,8 +269,9 @@ int _main(int argc, char **argv)
   caba::VciMultiTty<vci_param> vcitty           ("vcitty", IntTab(3), maptab, "vcitty", NULL);
   caba::VciXicu<vci_param> vcixicu              ("vcixicu", maptab, IntTab(4), cpus.size(), xicu_n_irq, cpus.size(), cpus.size());
   caba::VciBlockDevice<vci_param> vcibd0        ("vcibd", maptab, IntTab(cpus.size()), IntTab(5), "block0.iso", 2048);
+  caba::VciSimhelper<vci_param> vcisimhelper    ("vcisimhelper", IntTab(6), maptab);
 
-  caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size() + 1, 6, 2, 8);
+  caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size() + 1, 7, 2, 8);
 
   // Signals
 
@@ -277,6 +285,7 @@ int _main(int argc, char **argv)
   caba::VciSignals<vci_param> signal_vci_vcihetrom("signal_vci_vcihetrom");
   caba::VciSignals<vci_param> signal_vci_vcirom("signal_vci_vcirom");
   caba::VciSignals<vci_param> signal_vci_vcimultiram("signal_vci_vcimultiram");
+  caba::VciSignals<vci_param> signal_vci_vcisimhelper("signal_vci_vcisimhelper");
 
   sc_core::sc_signal<bool> signal_xicu_irq[xicu_n_irq];
 
@@ -297,15 +306,18 @@ int _main(int argc, char **argv)
   vcihetrom.p_clk(signal_clk);
   vcirom.p_clk(signal_clk);
   vcixicu.p_clk(signal_clk);
+  vcisimhelper.p_clk(signal_clk);
 
   vcimultiram.p_resetn(signal_resetn);
   vcihetrom.p_resetn(signal_resetn);
   vcirom.p_resetn(signal_resetn);
   vcixicu.p_resetn(signal_resetn);
+  vcisimhelper.p_resetn(signal_resetn);
 
   vcihetrom.p_vci(signal_vci_vcihetrom);
   vcirom.p_vci(signal_vci_vcirom);
   vcimultiram.p_vci(signal_vci_vcimultiram);
+  vcisimhelper.p_vci(signal_vci_vcisimhelper);
 
   vcixicu.p_vci(signal_vci_xicu);
 
@@ -332,6 +344,7 @@ int _main(int argc, char **argv)
   vgmn.p_to_target[3](signal_vci_tty);
   vgmn.p_to_target[4](signal_vci_xicu);
   vgmn.p_to_target[5](signal_vci_bdt);
+  vgmn.p_to_target[6](signal_vci_vcisimhelper);
 
   sc_core::sc_start(sc_core::sc_time(0, sc_core::SC_NS));
   signal_resetn = false;
