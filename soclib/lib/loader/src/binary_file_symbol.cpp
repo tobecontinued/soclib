@@ -80,14 +80,15 @@ BinaryFileSymbolOffset::BinaryFileSymbolOffset( const BinaryFileSymbolOffset &re
 
 void BinaryFileSymbolOffset::print( std::ostream &o ) const
 {
-    o << "[@" << std::showbase << std::hex
-      << m_addr << ": ";
-    ptrdiff_t d = m_addr - m_sym.address();
-    if ( (size_t)d < m_sym.size() )
-        o << '(' << m_sym.name() << " + " << d << ')';
-    else
-        o << '(' << m_sym.name() << ", " << d-m_sym.size() << " bytes above)";
-    o << "]";
+    o << std::showbase << std::hex << m_addr;
+
+    if ( m_sym.name() != "Unknown" ) {
+        ptrdiff_t d = m_addr - m_sym.address();
+        if ( (size_t)d < m_sym.size() )
+            o << " (" << m_sym.name() << " + " << d << ')';
+        else
+            o << " (" << m_sym.name() << ", " << d-m_sym.size() << " bytes above)";
+    }
 }
 
 }}
