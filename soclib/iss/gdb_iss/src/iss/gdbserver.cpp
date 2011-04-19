@@ -117,6 +117,7 @@ GdbServer<CpuIss>::GdbServer(const std::string &name, uint32_t ident)
       call_trace_zero_(false),
       wait_on_except_(false),
       exit_on_trap_(false),
+      exit_on_fault_(false),
       wait_on_wpoint_(true),
       cur_addr_(0),
       cycles_(0),
@@ -1039,13 +1040,15 @@ bool GdbServer<CpuIss>::debugExceptionBypassed( Iss2::ExceptionClass cl, Iss2::E
                 default:
                     signal = 5;
                 };
+
+            if ( exit_on_fault_ )
+                exit(42);
             break;
 
         case Iss2::EXCL_TRAP:            
             std::cerr << *this << "TRAP" << std::endl;
             if ( exit_on_trap_ )
-                sc_stop();
-            //                kill(getpid(), SIGINT);
+                exit(41);
 
             signal = 5;
             break;
@@ -1254,9 +1257,9 @@ void GdbServer<CpuIss>::init_state()
 
     if ( id == 0 )
         std::cerr << "[GDB] SOCLIB_GDB env variable may contain the following flag letters: " << std::endl
-                  << "  X (dont break on except),      S (wait connect on except)," << std::endl
+                  << "  X (dont break on except),      S (wait connect on except),  F (start frozen)" << std::endl
                   << "  C (functions branch trace),    Z (functions entry trace),   D (gdb protocol debug)," << std::endl
-                  << "  W (dont break on watchpoints), T (exit sumilation on trap), F (start frozen)" << std::endl
+                  << "  W (dont break on watchpoints), T (exit sumilation on trap), E (exit on fault)" << std::endl
                   << "  => See http://www.soclib.fr/trac/dev/wiki/Tools/GdbServer" << std::endl;
 
     if ( env_val ) {
@@ -1288,6 +1291,9 @@ void GdbServer<CpuIss>::init_state()
 
         if (strchr( env_val, 'T' ))
             exit_on_trap_ = true;
+
+        if (strchr( env_val, 'E' ))
+            exit_on_fault_ = true;
 
         if (strchr( env_val, 'W' ))
             wait_on_wpoint_ = false;
