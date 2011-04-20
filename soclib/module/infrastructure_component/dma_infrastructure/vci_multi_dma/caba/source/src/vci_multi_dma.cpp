@@ -44,6 +44,13 @@
 //  and only 10 address bits are decoded :
 //  - The 5 LSB bits define the target register (see dma.h)
 //  - The 3 MSB bits define the selected channel.
+//
+//  In order to support multiple simultaneous transactions, the channel
+//  index is transmited in the VCI TRDID field.
+//  As the LSB bit of the TRDID Ris used to indicate a non-cachable access,
+//  the channel index is encoded in the next 3 bits, and the TRDID width
+//  must be at least 4bits.
+//  
 //////////////////////////////////////////////////////////////////////////////
 //  Implementation note:
 //  This component contains three FSMs :
@@ -328,7 +335,7 @@ tmpl(void)::transition()
         {
             if ( p_vci_initiator.rspval.read() )
             {
-                size_t k = (size_t)p_vci_initiator.rtrdid.read();
+                size_t k = (size_t)p_vci_initiator.rtrdid.read()/2;
                 r_rsp_count = 0;
                 r_rsp_index = k;
 		if ( r_channel_fsm[k].read() == CHANNEL_READ_WAIT) // read response expected
@@ -419,7 +426,7 @@ tmpl(void)::genMoore()
             p_vci_initiator.be      = 0xF;
             p_vci_initiator.plen    = r_cmd_length.read();
             p_vci_initiator.cmd     = vci_param::CMD_READ;
-            p_vci_initiator.trdid   = k;
+            p_vci_initiator.trdid   = k*2;	
             p_vci_initiator.pktid   = 0;
             p_vci_initiator.srcid   = m_srcid;
             p_vci_initiator.cons    = false;
@@ -440,7 +447,7 @@ tmpl(void)::genMoore()
             p_vci_initiator.be      = 0xF;
             p_vci_initiator.plen    = r_cmd_length.read();
             p_vci_initiator.cmd     = vci_param::CMD_WRITE;
-            p_vci_initiator.trdid   = k;
+            p_vci_initiator.trdid   = k*2;
             p_vci_initiator.pktid   = 0;
             p_vci_initiator.srcid   = m_srcid;
             p_vci_initiator.cons    = false;
@@ -606,8 +613,10 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		name,
           p_vci_initiator("p_vci_initiator"),
           p_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_irq", channels))
 {
+    assert( (vci_param::T >= 4) && 
+    "VCI_MULTI_DMA error : The VCI TRDID field must be at least 4 bits");
     assert( (vci_param::B == 4) && 
-    "VCI_MULTI_DMA error : The VCI data field must be 32 bits");
+    "VCI_MULTI_DMA error : The VCI DATA field must be 32 bits");
     assert( burst_max_length && 
     "VCI_MULTI_DMA error : The requested burst length cannot be 0");
     assert( (burst_max_length < (1<<vci_param::K)) && 
