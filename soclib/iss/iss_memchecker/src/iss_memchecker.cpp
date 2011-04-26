@@ -848,14 +848,14 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
         m_opt_show_region = strchr( env, 'R' );
         m_trap_mask = strchr( env, 'T' ) ? -1 : 0;
         m_opt_show_lockops = strchr( env, 'L' );
-    } else {
+    }
+
         if ( ident == 0 )
             std::cerr << "[MemChecker] SOCLIB_MEMCHK env variable may contain the following flag letters: " << std::endl
                       << "  R (show region changes),     C (show context ops), S (show context switch), " << std::endl
                       << "  T (raise gdb except on err), I (show iss dump),    A (show access details), " << std::endl
                       << "  L (show locks accesses)" << std::endl
                       << "  => See http://www.soclib.fr/trac/dev/wiki/Tools/MemoryChecker" << std::endl;
-    }
 
     if ( const char *env = getenv( "SOCLIB_MEMCHK_TRAPON" ) ) {
         m_trap_mask = strtoul(env, NULL, 0);

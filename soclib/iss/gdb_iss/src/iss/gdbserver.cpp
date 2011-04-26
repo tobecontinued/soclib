@@ -1266,7 +1266,7 @@ void GdbServer<CpuIss>::init_state()
 
         if (!id)
             for (int i = 0; env_val[i]; i++)
-                if (!strchr("FCTZSXWD", env_val[i]))
+                if (!strchr("FCTZSXWDE", env_val[i]))
                     std::cerr << "[GDB] Warning: SOCLIB_GDB variable doesn't support the `" << env_val[i] << "' flag." << std::endl;
 
         if (strchr( env_val, 'F' ))
