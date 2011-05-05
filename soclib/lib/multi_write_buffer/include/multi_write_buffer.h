@@ -75,8 +75,8 @@
 // It has 4 constructor parameters :
 // - std::string    name
 // - size_t         nwords  : buffer width (number of words)
-// - size_t	    nslots  : buffer depth (number of slots)
-// - size_t	    timeout : max life time for an open slot
+// - size_t         nslots  : buffer depth (number of slots)
+// - size_t         timeout : max life time for an open slot
 // It has one template parameter :
 // - addr_t defines the address format
 /////////////////////////////////////////////////////////////////////////////
@@ -90,48 +90,70 @@
 
 namespace soclib { 
 
-using namespace sc_core;
+  using namespace sc_core;
 
-#define CC_XCACHE_MULTI_CPU 1
-// To manage bus error with multi processor per cache, need cpu_id in wbuf.
+  /*
+   * CC_XCACHE_MULTI_CPU
+   *   To manage bus error with multi processor per cache,
+   *   need cpu_id in wbuf
+   *
+   * MWBUF_TIMEOUT
+   *   Add timeout for each slot
+   *
+   * MWBUF_SENT_SCAN
+   *   In sent step, scan all slot or one
+   *
+   # MWBUF_UPDATE_SCHEME
+   *   Write buffer scheme for update step :
+   *     1    - multi_scan
+   *     2    - round_robin_scan
+   *     3    - one_scan
+   */
 
-enum slot_state_e {
-	EMPTY,
-	OPEN,
-	LOCKED,
-	SENT,
-	};
+#define CC_XCACHE_MULTI_CPU  1
+#define MWBUF_TIMEOUT        0
+#define MWBUF_SENT_SCAN      0
+#define MWBUF_UPDATE_SCHEME  2
 
-//////////////////////////////
-template<typename addr_t>
-class MultiWriteBuffer
-//////////////////////////////
-{
+  enum slot_state_e 
+    {
+      EMPTY,
+      OPEN,
+      LOCKED,
+      SENT,
+    };
+
+  //////////////////////////////
+  template<typename addr_t>
+  class MultiWriteBuffer
+  //////////////////////////////
+  {
     typedef uint32_t    data_t;
     typedef uint32_t    be_t;
     typedef uint32_t    stat_t;
 
-    sc_signal<size_t>	r_ptr;			// next slot to be read
-    sc_signal<int>      *r_state;       	// slot state array[nslots]
-    sc_signal<addr_t>  	*r_address;     	// slot base address array[nslots]
+    sc_signal<size_t>   r_ptr_read;         // next slot to be read
+    sc_signal<size_t>   r_ptr_update;       // next slot to be update
+    sc_signal<int>      *r_state;           // slot state array[nslots]
+    sc_signal<addr_t>   *r_address;         // slot base address array[nslots]
     sc_signal<bool>     *r_cached;
-    sc_signal<size_t>  	*r_tout;        	// slot timeout array[nslots]
-    sc_signal<size_t>  	*r_min;         	// smallest valid word index array[nslots]
-    sc_signal<size_t>  	*r_max;         	// largest valid word index array[nslots]
-#if CC_XCACHE_MULTI_CPU
-    sc_signal<size_t>  	*r_cpu_id;
+#if MWBUF_TIMEOUT
+    sc_signal<size_t>   *r_tout;            // slot timeout array[nslots]
 #endif
-    sc_signal<size_t>	r_ptr_update;		//	next slot to be read
-    
-    data_t   		**r_data;       	// write data  array[nslots][nwords]
-    be_t     		**r_be;         	// byte enable array[nslots][nwords]
+    sc_signal<size_t>   *r_min;             // smallest valid word index array[nslots]
+    sc_signal<size_t>   *r_max;             // largest valid word index array[nslots]
+#if CC_XCACHE_MULTI_CPU
+    sc_signal<size_t>   *r_cpu_id;
+#endif
+    data_t             **r_data;            // write data  array[nslots][nwords]
+    be_t               **r_be;              // byte enable array[nslots][nwords]
     
 
-    size_t              m_nslots;       	// buffer depth (number of slots)
-    size_t              m_nwords;       	// buffer width (number of words)
-    size_t	            m_timeout;		// max life time for an open slot
-    addr_t              m_wbuf_line_mask;       // Mask for a write buffer line
-    addr_t              m_cache_line_mask;      // Mask for a cache line
+    size_t              m_nslots;           // buffer depth (number of slots)
+    size_t              m_nwords;           // buffer width (number of words)
+    size_t              m_timeout;          // max life time for an open slot
+    addr_t              m_wbuf_line_mask;   // Mask for a write buffer line
+    addr_t              m_cache_line_mask;  // Mask for a cache line
  
     stat_t              m_stat_nb_cycles;
     stat_t             *m_stat_slot_utilization;
@@ -146,78 +168,82 @@ class MultiWriteBuffer
     stat_t              m_stat_nb_read_after_write;
     stat_t             *m_stat_cycle_sent;
     stat_t              m_stat_sum_latence;
-public:
+  public:
 
     /////////////
     void reset()
     {
-        r_ptr = 0 ;
-        r_ptr_update = 0;
-        for( size_t slot = 0 ; slot < m_nslots ; slot++) {
-            r_address[slot]	= 0 ;
-            r_cached [slot]	= 0 ;
-            r_tout[slot] 	= 0 ;
-            r_max[slot]   	= 0 ;
-            r_min[slot]   	= m_nwords - 1 ;
-            r_state[slot] 	= EMPTY ;
+      r_ptr_read   = 0 ;
+      r_ptr_update = 0;
+      for( size_t slot = 0 ; slot < m_nslots ; slot++) {
+        r_address[slot] = 0 ;
+        r_cached [slot] = 0 ;
+#if MWBUF_TIMEOUT
+        r_tout[slot]    = 0 ;
+#endif
+        r_max[slot]     = 0 ;
+        r_min[slot]     = m_nwords - 1 ;
+        r_state[slot]   = EMPTY ;
 #if CC_XCACHE_MULTI_CPU
-            r_cpu_id[slot]  = 0;
+        r_cpu_id[slot]  = 0;
 #endif
 
-            for( size_t word = 0 ; word < m_nwords ; word++ ) {
-                r_data[slot][word] 	= 0 ;
-                r_be  [slot][word] 	= 0 ;
-            }
-
-            m_stat_cycle_sent         [slot] = 0;
+        for( size_t word = 0 ; word < m_nwords ; word++ ) {
+          r_data[slot][word]      = 0 ;
+          r_be  [slot][word]      = 0 ;
         }
 
-        for( size_t slot = 0 ; slot <= m_nslots ; slot++)
-            m_stat_slot_utilization [slot] = 0;
-        for( size_t word = 0 ; word < m_nwords ; word++ )
-            m_stat_word_utilization [word] = 0;
-        m_stat_word_useful                            = 0;
-        m_stat_nb_cycles                              = 0;
-        m_stat_nb_write                               = 0;
-        m_stat_nb_write_accepted_in_open_slot         = 0;
-        m_stat_nb_write_accepted_in_open_slot_timeout = 0;
-        m_stat_nb_write_accepted_in_same_word         = 0;
-        m_stat_nb_write_refused                       = 0;
-        m_stat_nb_read_after_write_test               = 0;
-        m_stat_nb_read_after_write                    = 0;
-        m_stat_sum_latence                            = 0;
+        m_stat_cycle_sent         [slot] = 0;
+      }
+
+      for( size_t slot = 0 ; slot <= m_nslots ; slot++)
+        m_stat_slot_utilization [slot] = 0;
+      for( size_t word = 0 ; word < m_nwords ; word++ )
+        m_stat_word_utilization [word] = 0;
+      m_stat_word_useful                            = 0;
+      m_stat_nb_cycles                              = 0;
+      m_stat_nb_write                               = 0;
+      m_stat_nb_write_accepted_in_open_slot         = 0;
+      m_stat_nb_write_accepted_in_open_slot_timeout = 0;
+      m_stat_nb_write_accepted_in_same_word         = 0;
+      m_stat_nb_write_refused                       = 0;
+      m_stat_nb_read_after_write_test               = 0;
+      m_stat_nb_read_after_write                    = 0;
+      m_stat_sum_latence                            = 0;
     } 
 
     ////////////////////////
     inline void printTrace(size_t mode=0)
     {
-        const char *wbuf_state_str[] = { "EMPTY ", "OPEN  ", "LOCKED", "SENT  " };
+      const char *wbuf_state_str[] = { "EMPTY ", "OPEN  ", "LOCKED", "SENT  " };
 
-        std::cout << "  Write Buffer - ptr = " << r_ptr << std::endl
-                  << "  [slot] state address cached {min,max} - timer" << std::endl;
+      std::cout << "  Write Buffer - ptr_read = " << r_ptr_read << " - ptr_update = " << r_ptr_update << std::endl
+                << "  [slot] state address cached {min,max} - timer" << std::endl;
 
-        for( size_t i = 0 ; i < m_nslots ; i++ )
+      for( size_t i = 0 ; i < m_nslots ; i++ )
         {
-            std::cout << "  [" << i << "] " 
-                      << wbuf_state_str[r_state[i]] 
-                      << std::hex << r_address[i].read() << std::dec
-                      << " " << r_cached[i].read()
-                      << " {" << r_min[i].read() << "," << r_max[i].read() << "}"
-                      << " - " << r_tout[i].read()
-#if CC_XCACHE_MULTI_CPU
-                      << " - " << r_cpu_id[i].read()
+          std::cout << "  [" << i << "] " 
+                    << wbuf_state_str[r_state[i]] 
+                    << std::hex << r_address[i].read() << std::dec
+                    << " " << r_cached[i].read()
+                    << " {" << r_min[i].read() << "," << r_max[i].read() << "}"
+#if MWBUF_TIMEOUT
+                    << " - " << r_tout[i].read()
 #endif
-                ;
+#if CC_XCACHE_MULTI_CPU
+                    << " - " << r_cpu_id[i].read()
+#endif
+            ;
 
-            if(mode & 0x1)
+          if(mode & 0x1)
             {
-                std::cout << "  ";
-                for( size_t w = 0 ; w < m_nwords ; w++ )
+              std::cout << "  ";
+              for( size_t w = 0 ; w < m_nwords ; w++ )
                 {
-                    std::cout << " | " << std::hex << r_data[i][w] << std::dec << " - " << r_be[i][w];
+                  std::cout << " | " << std::hex << r_data[i][w] << std::dec << " - " << r_be[i][w];
                 }
             }
-            std::cout << std::endl;
+          std::cout << std::endl;
 
         }
     }
@@ -225,41 +251,41 @@ public:
     ////////////////////////
     inline void printStatistics()
     {
-        stat_t m_stat_nb_write_accepted = m_stat_nb_write - m_stat_nb_write_refused;
-        stat_t m_stat_nb_state_sent = m_stat_nb_write_accepted-m_stat_nb_write_accepted_in_open_slot;
+      stat_t m_stat_nb_write_accepted = m_stat_nb_write - m_stat_nb_write_refused;
+      stat_t m_stat_nb_state_sent = m_stat_nb_write_accepted-m_stat_nb_write_accepted_in_open_slot;
 
-        std::cout << "------------------------------------" << std:: dec << std::endl;
-        std::cout << "MultiWriteBuffer : " << m_nslots << "x" << m_nwords << " words - timeout : " << m_timeout << std::endl;
-        std::cout << "- NB WRITE                       : " << m_stat_nb_write              << std::endl;
-        std::cout << "- NB WRITE REFUSED               : " << m_stat_nb_write_refused      << " (" << (float)m_stat_nb_write_refused*100.0/(float)m_stat_nb_write << "%)" << std::endl;
-        std::cout << "- NB WRITE ACCEPTED              : " << m_stat_nb_write_accepted      << " (" << (float)m_stat_nb_write_accepted*100.0/(float)m_stat_nb_write << "%)" << std::endl;
-        std::cout << "  + IN OPEN SLOT                 : " << m_stat_nb_write_accepted_in_open_slot << " (" << (float)m_stat_nb_write_accepted_in_open_slot*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
-        std::cout << "    + TIMEOUT > 0                : " << m_stat_nb_write_accepted_in_open_slot_timeout << " (" << (float)m_stat_nb_write_accepted_in_open_slot_timeout*100.0/(float)m_stat_nb_write_accepted_in_open_slot << "%)" << std::endl;
-        std::cout << "    + IN SAME WORD               : " << m_stat_nb_write_accepted_in_same_word << " (" << (float)m_stat_nb_write_accepted_in_same_word*100.0/(float)m_stat_nb_write_accepted_in_open_slot << "%)" << std::endl;
-        std::cout << "  + IN EMPTY SLOT                : " << m_stat_nb_write_accepted-m_stat_nb_write_accepted_in_open_slot << " (" << (float)m_stat_nb_state_sent*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
-        std::cout << "- NB READ AFTER WRITE TEST       : " << m_stat_nb_read_after_write_test << std::endl;
-        std::cout << "- NB READ AFTER WRITE            : " << m_stat_nb_read_after_write << " (" << (float)m_stat_nb_read_after_write*100.0/(float)m_stat_nb_read_after_write_test << "%)" << std::endl;
-        std::cout << "- AVERAGE LATENCE TO COMPLETE    : " << (float)m_stat_sum_latence/(float)m_stat_nb_state_sent << " cycle(s)" << std::endl;
+      std::cout << "------------------------------------" << std:: dec << std::endl;
+      std::cout << "MultiWriteBuffer : " << m_nslots << "x" << m_nwords << " words - timeout : " << m_timeout << std::endl;
+      std::cout << "- NB WRITE                       : " << m_stat_nb_write              << std::endl;
+      std::cout << "- NB WRITE REFUSED               : " << m_stat_nb_write_refused      << " (" << (float)m_stat_nb_write_refused*100.0/(float)m_stat_nb_write << "%)" << std::endl;
+      std::cout << "- NB WRITE ACCEPTED              : " << m_stat_nb_write_accepted      << " (" << (float)m_stat_nb_write_accepted*100.0/(float)m_stat_nb_write << "%)" << std::endl;
+      std::cout << "  + IN OPEN SLOT                 : " << m_stat_nb_write_accepted_in_open_slot << " (" << (float)m_stat_nb_write_accepted_in_open_slot*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
+      std::cout << "    + TIMEOUT > 0                : " << m_stat_nb_write_accepted_in_open_slot_timeout << " (" << (float)m_stat_nb_write_accepted_in_open_slot_timeout*100.0/(float)m_stat_nb_write_accepted_in_open_slot << "%)" << std::endl;
+      std::cout << "    + IN SAME WORD               : " << m_stat_nb_write_accepted_in_same_word << " (" << (float)m_stat_nb_write_accepted_in_same_word*100.0/(float)m_stat_nb_write_accepted_in_open_slot << "%)" << std::endl;
+      std::cout << "  + IN EMPTY SLOT                : " << m_stat_nb_write_accepted-m_stat_nb_write_accepted_in_open_slot << " (" << (float)m_stat_nb_state_sent*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
+      std::cout << "- NB READ AFTER WRITE TEST       : " << m_stat_nb_read_after_write_test << std::endl;
+      std::cout << "- NB READ AFTER WRITE            : " << m_stat_nb_read_after_write << " (" << (float)m_stat_nb_read_after_write*100.0/(float)m_stat_nb_read_after_write_test << "%)" << std::endl;
+      std::cout << "- AVERAGE LATENCE TO COMPLETE    : " << (float)m_stat_sum_latence/(float)m_stat_nb_state_sent << " cycle(s)" << std::endl;
 
-        stat_t m_stat_slot_utilization_sum = 0;
-        for(size_t i=1 ; i<=m_nslots ; i++)
-            m_stat_slot_utilization_sum += i*m_stat_slot_utilization[i];
-        std::cout << "- SLOT UTILIZATION               : " << (float)m_stat_slot_utilization_sum/(float)m_stat_nb_cycles << std::endl;
-        for(size_t i=0 ; i<=m_nslots ; i++)
+      stat_t m_stat_slot_utilization_sum = 0;
+      for(size_t i=1 ; i<=m_nslots ; i++)
+        m_stat_slot_utilization_sum += i*m_stat_slot_utilization[i];
+      std::cout << "- SLOT UTILIZATION               : " << (float)m_stat_slot_utilization_sum/(float)m_stat_nb_cycles << std::endl;
+      for(size_t i=0 ; i<=m_nslots ; i++)
         {
-            std::cout << "  + [" << i << "] " << (float)m_stat_slot_utilization[i]*100.0/(float)m_stat_nb_cycles << "%";
-            if (i!=0)
-                std::cout << " - "<< (float)m_stat_slot_utilization[i]*100.0/(float)(m_stat_nb_cycles-m_stat_slot_utilization[0]) << "%";
-            std::cout << std::endl;
+          std::cout << "  + [" << i << "] " << (float)m_stat_slot_utilization[i]*100.0/(float)m_stat_nb_cycles << "%";
+          if (i!=0)
+            std::cout << " - "<< (float)m_stat_slot_utilization[i]*100.0/(float)(m_stat_nb_cycles-m_stat_slot_utilization[0]) << "%";
+          std::cout << std::endl;
         }
 
-        stat_t m_stat_word_utilization_sum = 0;
-        for(size_t i=0 ; i<m_nwords ; i++)
-            m_stat_word_utilization_sum += (i+1)*m_stat_word_utilization[i];
-        std::cout << "- WORD UTILIZATION               : " << (float)m_stat_word_utilization_sum/(float)m_stat_nb_state_sent << std::endl;
-        for(size_t i=0 ; i<m_nwords ; i++)
-            std::cout << "  + [" << i+1 << "] " << (float)m_stat_word_utilization[i]*100.0/(float)m_stat_nb_state_sent << "%" << std::endl;
-        std::cout << "- WORD USEFUL                    : " << (float)m_stat_word_useful*100/(float)m_stat_word_utilization_sum << "%" << std::endl;
+      stat_t m_stat_word_utilization_sum = 0;
+      for(size_t i=0 ; i<m_nwords ; i++)
+        m_stat_word_utilization_sum += (i+1)*m_stat_word_utilization[i];
+      std::cout << "- WORD UTILIZATION               : " << (float)m_stat_word_utilization_sum/(float)m_stat_nb_state_sent << std::endl;
+      for(size_t i=0 ; i<m_nwords ; i++)
+        std::cout << "  + [" << i+1 << "] " << (float)m_stat_word_utilization[i]*100.0/(float)m_stat_nb_state_sent << "%" << std::endl;
+      std::cout << "- WORD USEFUL                    : " << (float)m_stat_word_useful*100/(float)m_stat_word_utilization_sum << "%" << std::endl;
     }
 
     /////////////////////////////////////////////////////////
@@ -270,33 +296,34 @@ public:
     // There is an hardware cost associated with this service,
     // because all buffer entries must be tested. 
     {
-        bool miss = true;
-        for( size_t i = 0 ; i < m_nslots ; i++ )
+      bool miss = true;
+      for( size_t i = 0 ; i < m_nslots ; i++ )
         {
-            if ( (r_state[i].read() != EMPTY) and
-                 ((r_address[i].read() & ~m_cache_line_mask) == (addr & ~m_cache_line_mask)) )
+          if ( (r_state[i].read() != EMPTY) and
+               ((r_address[i].read() & ~m_cache_line_mask) == (addr & ~m_cache_line_mask)) )
             {
-                miss = false;
-                r_tout[i] = 0;
-
-                m_stat_nb_read_after_write ++;
+              miss = false;
+#if MWBUF_TIMEOUT
+              r_tout[i] = 0;
+#endif
+              m_stat_nb_read_after_write ++;
             }
         }
 
-        m_stat_nb_read_after_write_test ++;
+      m_stat_nb_read_after_write_test ++;
 
-        return miss;
+      return miss;
     }
     
     ///////////////////////////////////////////////////
     inline bool empty( )
     // Test if have an empty slot in the multi_write_buffer
     {
-        for( size_t i=0 ; i<m_nslots ; i++ )
+      for( size_t i=0 ; i<m_nslots ; i++ )
         {
-            if ( r_state[i].read() != EMPTY ) return false;
+          if ( r_state[i].read() != EMPTY ) return false;
         }
-        return true;
+      return true;
     }
 
     //////////////////////////////////////////////////////////////
@@ -306,47 +333,68 @@ public:
     // It changes the pointer to the next available locked slot, 
     // and returns the min & max indexes when it has been found.
     {
-        bool	found = false;	
-        size_t  lw;
-        for( size_t i=0 ; i<m_nslots ; i++)
+      bool    found = false;     
+      size_t  num_slot;
+      size_t  i=0;
+
+#if MWBUF_SENT_SCAN
+      for(; i<m_nslots ; i++)
+#endif
         {
-            lw = (r_ptr+i)%m_nslots;
-            if( r_state[lw] == LOCKED ) 
+          num_slot = (r_ptr_read+i)%m_nslots;
+          if( r_state[num_slot] == LOCKED ) 
             { 
-                found = true;
-                r_ptr = lw;
-                *min = r_min[lw];
-                *max = r_max[lw];
-                break;
+              found      = true;
+              *min       = r_min[num_slot];
+              *max       = r_max[num_slot];
+#if MWBUF_SENT_SCAN
+              r_ptr_read = num_slot;
+              break;
+#endif
             }
+#if not MWBUF_SENT_SCAN
+          else
+            r_ptr_read = (r_ptr_read+1)%m_nslots;
+#endif
         }
-        return found;
+      return found;
     } // end rok()
 
     //////////////////////////////////////////////////////////////
-    inline bool debug_rok(size_t* min, size_t* max, addr_t * addr, size_t * index)
+    inline bool rok_info(size_t* min, size_t* max, addr_t * addr, size_t * index)
     // This method is intended to be called by the VCI_CMD FSM,
     // to test if a locked slot is available.
     // It changes the pointer to the next available locked slot, 
     // and returns the min & max indexes when it has been found.
     {
-        bool	found = false;	
-        size_t  lw;
-        for( size_t i=0 ; i<m_nslots ; i++)
+      bool    found = false;     
+      size_t  num_slot;
+      size_t  i=0;
+
+#if MWBUF_SENT_SCAN
+      for(; i<m_nslots ; i++)
+#endif
         {
-            lw = (r_ptr+i)%m_nslots;
-            if( r_state[lw] == LOCKED ) 
-            { 
-                found  = true;
-                r_ptr  = lw;
-                *min   = r_min[lw].read();
-                *max   = r_max[lw].read();
-                *index = lw;
-                *addr  = r_address[lw].read();
-                break;
+          num_slot = (r_ptr_read+i)%m_nslots;
+          if( r_state[num_slot] == LOCKED)
+            {
+              found      = true;
+              *min       = r_min[num_slot].read();
+              *max       = r_max[num_slot].read();
+              *addr      = r_address[num_slot].read();
+              *index     = num_slot;
+#if MWBUF_SENT_SCAN
+              r_ptr_read = num_slot;
+              break;
+#endif
             }
+#if not MWBUF_SENT_SCAN
+          else
+            r_ptr_read = (r_ptr_read+1)%m_nslots;
+#endif
         }
-        return found;
+
+      return found;
     } // end rok()
 
     ////////////////////////////////////////////////////////////////////
@@ -355,16 +403,16 @@ public:
     // It can only change a slot state from LOCKED to SENT when
     // the corresponding write command has been fully transmitted.
     {
-        assert( (r_state[r_ptr] == LOCKED) &&
-             "write buffer error : illegal sent command received");
-        r_state[r_ptr] = SENT;
+      assert( (r_state[r_ptr_read] == LOCKED) &&
+              "write buffer error : illegal sent command received");
+      r_state[r_ptr_read] = SENT;
 
-        m_stat_cycle_sent [r_ptr] = m_stat_nb_cycles;
+      m_stat_cycle_sent [r_ptr_read] = m_stat_nb_cycles;
 
-        m_stat_word_utilization [r_max[r_ptr]-r_min[r_ptr]] ++;
-        for( size_t word = r_min[r_ptr]; word <= r_max[r_ptr]; word++ )
-            if (r_be [r_ptr][word] != 0)
-                m_stat_word_useful ++;
+      m_stat_word_utilization [r_max[r_ptr_read]-r_min[r_ptr_read]] ++;
+      for( size_t word = r_min[r_ptr_read]; word <= r_max[r_ptr_read]; word++ )
+        if (r_be [r_ptr_read][word] != 0)
+          m_stat_word_useful ++;
     } 
 
     void update(bool flush)
@@ -380,91 +428,109 @@ public:
     // this slot is locked : at most one locked slot per cycle,
     // because the hardware cost is high...
     {
-        update_multi_scan(flush);
+#if   (MWBUF_UPDATE_SCHEME==1)
+      update_multi_scan      (flush);
+#elif (MWBUF_UPDATE_SCHEME==2)
+      update_round_robin_scan(flush);
+#elif (MWBUF_UPDATE_SCHEME==3)
+      update_one_scan        (flush);
+#else
+#error "Invalid value for MWBUF_UPDATE_SCHEME."
+#endif
     }
         
     /////////////////////////////////////////////////////////////////////
     inline void update_timeout_decrease(bool flush)
     {
-        m_stat_nb_cycles ++;
+      m_stat_nb_cycles ++;
 
-        // decrement timer for all open slots, if flush must be sent as soon as possible (then timer is set at 0)
-        size_t stat_nb_not_empty = 0;
-        for(size_t i=0 ; i<m_nslots ; i++)
+      // decrement timer for all open slots, if flush must be sent as soon as possible (then timer is set at 0)
+      size_t stat_nb_not_empty = 0;
+      for(size_t i=0 ; i<m_nslots ; i++)
         {
-            if( (r_state[i] == OPEN) and (r_tout[i] > 0))
-                r_tout[i] = (flush)?0:(r_tout[i] - 1);
-            if (r_state[i] != EMPTY)
-                stat_nb_not_empty ++;
+#if MWBUF_TIMEOUT
+          if( (r_state[i] == OPEN) and (r_tout[i] > 0))
+            r_tout[i] = (flush)?0:(r_tout[i] - 1);
+#endif
+          if (r_state[i] != EMPTY)
+            stat_nb_not_empty ++;
         }
-        m_stat_slot_utilization[stat_nb_not_empty] ++;
+      m_stat_slot_utilization[stat_nb_not_empty] ++;
     }
 
     inline void update_slot_lock(size_t num_slot)
     {
-        bool found = false;
+      bool found = false;
             
-        // is a candidate ?
-        if( (r_state[num_slot] == OPEN) and (r_tout[num_slot] == 0) )
+      // is a candidate ?
+      if( (r_state[num_slot] == OPEN) 
+#if MWBUF_TIMEOUT
+          and (r_tout[num_slot] == 0) 
+#endif
+          )
         {
-            // searching for a pending request with the same address
-            for( size_t i=0 ; i<m_nslots ; i++ )
+          // searching for a pending request with the same address
+          for( size_t i=0 ; i<m_nslots ; i++ )
             {
-                if ( (r_state[i].read() != EMPTY) and 
-                     (r_state[i].read() != OPEN)  and
-                     (r_address[num_slot].read() == r_address[i].read()) ) 
+              if ( (r_state[i].read() != EMPTY) and 
+                   (r_state[i].read() != OPEN)  and
+                   (r_address[num_slot].read() == r_address[i].read()) ) 
                 {
-                    // find a line with the same adress and the sate is locked or sent
-                    found = true;
-                    break; 
+                  // find a line with the same adress and the sate is locked or sent
+                  found = true;
+                  break; 
                 }
             }
-            // locking the slot if no conflict
-            if ( !found )
-                r_state[num_slot] = LOCKED;
+          // locking the slot if no conflict
+          if ( !found )
+            r_state[num_slot] = LOCKED;
         }
     }
 
     void update_multi_scan(bool flush)
     {
-        update_timeout_decrease(flush);
+      update_timeout_decrease(flush);
 
-        for(size_t i=0 ; i<m_nslots ; i++)
-            update_slot_lock(i);
+      for(size_t i=0 ; i<m_nslots ; i++)
+        update_slot_lock(i);
     }
 
     void update_round_robin_scan(bool flush)
     {
-        update_timeout_decrease(flush);
+      update_timeout_decrease(flush);
 
-        update_slot_lock(r_ptr_update);
+      update_slot_lock(r_ptr_update);
         
-        r_ptr_update = (r_ptr_update+1)%m_nslots;
+      r_ptr_update = (r_ptr_update+1)%m_nslots;
     }
 
     void update_one_scan(bool flush)
     {
-        update_timeout_decrease(flush);
+      update_timeout_decrease(flush);
 
-        bool   find     = false;
-        size_t num_slot = r_ptr_update;
+      bool   find     = false;
+      size_t num_slot = r_ptr_update;
 
-        for(size_t i=0 ; i<m_nslots ; i++)
+      for(size_t i=0 ; i<m_nslots ; i++)
         {
-            num_slot = (num_slot+1)%m_nslots;
+          num_slot = (num_slot+1)%m_nslots;
 
-            // is a candidate ?
-            if((r_state[num_slot] == OPEN) and (r_tout[num_slot] == 0))
+          // is a candidate ?
+          if((r_state[num_slot] == OPEN)
+#if MWBUF_TIMEOUT
+             and (r_tout[num_slot] == 0)
+#endif
+             )
             {
-                find = true;
-                break;
+              find = true;
+              break;
             }
         }
 
-        if (find)
-            update_slot_lock(num_slot);
+      if (find)
+        update_slot_lock(num_slot);
         
-        r_ptr_update = num_slot;
+      r_ptr_update = num_slot;
     }
 
 
@@ -476,110 +542,118 @@ public:
     // It searches first an open slot, and then an empty slot.
     // It returns true in case of success.
     {
-        assert (be != 0);
+      assert (be != 0);
 
-        size_t 	word = (size_t)((addr &  m_wbuf_line_mask) >> 2) ;
-        addr_t 	address = addr & ~m_wbuf_line_mask ;
-        bool	found = false;	
-        size_t  lw;
+      size_t      word = (size_t)((addr &  m_wbuf_line_mask) >> 2) ;
+      addr_t      address = addr & ~m_wbuf_line_mask;
+      bool     found = false;     
+      size_t  num_slot;
 
-        // Search a slot to be written
-        // first : search an open slot with the same address
-        for( size_t i=0 ; i<m_nslots ; i++)
+      // Search a slot to be written
+      // first : search an open slot with the same address
+      for( size_t i=0 ; i<m_nslots ; i++)
         {
-            if( (r_state[i].read() == OPEN) && (r_address[i].read() == address) )
+          if(    (r_state  [i].read() == OPEN)
+             and (r_address[i].read() == address)
+#if CC_XCACHE_MULTI_CPU
+             and (r_cpu_id [i].read() == cpu_id)
+#endif
+                  )
             { 
-                lw = i;
-                found = true;
-                m_stat_nb_write_accepted_in_open_slot ++;
+              num_slot = i;
+              found = true;
+              m_stat_nb_write_accepted_in_open_slot ++;
 
-                if (r_tout[i] == 0)
-                  m_stat_nb_write_accepted_in_open_slot_timeout ++;
-
-                break;
+#if MWBUF_TIMEOUT
+              if (r_tout[i] == 0)
+                m_stat_nb_write_accepted_in_open_slot_timeout ++;
+#endif
+              break;
             }
         }
-        // second : search an empty slot
-        if( !found )
+      // second : search an empty slot
+      if( !found )
         {
-            for( size_t i=0 ; i<m_nslots ; i++)
+          for( size_t i=0 ; i<m_nslots ; i++)
             {
-                if( r_state[i] == EMPTY )
+              if( r_state[i] == EMPTY )
                 { 
-                    lw = i;
-                    found = true;
-                    break;
+                  num_slot = i;
+                  found = true;
+                  break;
                 }
             }
         }
-        // register the request when a slot has been found:
-        // update r_state, r_address, r_be, r_data, r_min, r_max, r_tout
-        if ( found )
+      // register the request when a slot has been found:
+      // update r_state, r_address, r_be, r_data, r_min, r_max, r_tout
+      if ( found )
         {
-            // if instruction is uncached, force the lock (no rewrite in the same slot)
-            r_state  [lw] = (cached)?OPEN:LOCKED;
-            r_address[lw] = address;
-            r_cached [lw] = cached;
+          // if instruction is uncached, force the lock (no rewrite in the same slot)
+          r_state  [num_slot] = (cached)?OPEN:LOCKED;
+          r_address[num_slot] = address;
+          r_cached [num_slot] = cached;
 #if CC_XCACHE_MULTI_CPU
-            r_cpu_id [lw] = cpu_id;
+          r_cpu_id [num_slot] = cpu_id;
 #endif
 
-            if (r_be[lw][word] != 0)
-                m_stat_nb_write_accepted_in_same_word ++;
+          if (r_be[num_slot][word] != 0)
+            m_stat_nb_write_accepted_in_same_word ++;
 
-            r_be[lw][word]   = r_be[lw][word] | be;
-            data_t  data_mask = 0;
-            be_t    be_up = (1<<(sizeof(data_t)-1));
-            for (size_t i = 0 ; i < sizeof(data_t) ; ++i) 
+          r_be[num_slot][word]   = r_be[num_slot][word] | be;
+          data_t  data_mask = 0;
+          be_t    be_up = (1<<(sizeof(data_t)-1));
+          for (size_t i = 0 ; i < sizeof(data_t) ; ++i) 
             {
-                data_mask <<= 8;
-                if ( be_up & be ) data_mask |= 0xff;
-                be <<= 1;
+              data_mask <<= 8;
+              if ( be_up & be ) data_mask |= 0xff;
+              be <<= 1;
             }
-            r_data[lw][word] = (r_data[lw][word] & ~data_mask) | (data & data_mask) ;
-            r_tout[lw] = m_timeout;
-            if ( r_min[lw].read() > word ) r_min[lw] = word;
-            if ( r_max[lw].read() < word ) r_max[lw] = word;
+          r_data[num_slot][word] = (r_data[num_slot][word] & ~data_mask) | (data & data_mask) ;
+#if MWBUF_TIMEOUT
+          r_tout[num_slot] = m_timeout;
+#endif
+          if ( r_min[num_slot].read() > word ) r_min[num_slot] = word;
+          if ( r_max[num_slot].read() < word ) r_max[num_slot] = word;
         }
-        else
-            m_stat_nb_write_refused ++;
+      else
+        m_stat_nb_write_refused ++;
         
-        m_stat_nb_write ++;
+      m_stat_nb_write ++;
 
-        return found;
+      return found;
     } // end write()
 
     //////////////////////////////////////
     inline addr_t getAddress(size_t word)
     {
-        return ( (addr_t)r_address[r_ptr.read()].read() + (addr_t)(word << 2) ) ;
+      return ( (addr_t)r_address[r_ptr_read.read()].read() + (addr_t)(word << 2) ) ;
     } 
 
     ///////////////////////////////////
     data_t inline getData(size_t word)
     {
-        return r_data[r_ptr.read()][word] ;
+      return r_data[r_ptr_read.read()][word] ;
     } 
 
     //////////////////////////////
     be_t inline getBe(size_t word)
     {
-        return r_be[r_ptr.read()][word] ;
+      return r_be[r_ptr_read.read()][word] ;
     } 
 
     /////////////////////////
     size_t inline getIndex()
     {
-        return r_ptr.read();
+      return r_ptr_read.read();
     } 
 
     /////////////////////////
     size_t inline getCpuId(size_t index)
     {
 #if CC_XCACHE_MULTI_CPU
-        return r_cpu_id[index].read();
+      return r_cpu_id[index].read();
 #else
-        return 0;
+      return 0;
 #endif
     }
 
@@ -589,85 +663,90 @@ public:
     // It can only change a slot state from SENT to EMPTY when
     // the corresponding write transaction is completed.
     {
-        assert( (index < m_nslots) && (r_state[index].read() == SENT) &&
-             "write buffer error : illegal completed command received");
-        r_max[index]   	= 0 ;
-        r_min[index]   	= m_nwords - 1 ;
-        r_state[index] 	= EMPTY ;
-        for( size_t w = 0 ; w < m_nwords ; w++ ) r_be[index][w]	= 0 ;
+      assert( (index < m_nslots) && (r_state[index].read() == SENT) &&
+              "write buffer error : illegal completed command received");
+      r_max[index]        = 0 ;
+      r_min[index]        = m_nwords - 1 ;
+      r_state[index]      = EMPTY ;
+      for( size_t w = 0 ; w < m_nwords ; w++ ) 
+      r_be[index][w]      = 0 ;
 
-        m_stat_sum_latence += (m_stat_nb_cycles-m_stat_cycle_sent [index]);
+      m_stat_sum_latence += (m_stat_nb_cycles-m_stat_cycle_sent [index]);
 
-        return r_cached[index].read();
+      return r_cached[index].read();
     } //end completed()
 
     /////////////////////////////////////////////////////////////////////// 
-    MultiWriteBuffer(const std::string 	&name, 
-                     size_t 		wbuf_nwords, 
-                     size_t 		wbuf_nslots,
-                     size_t		timeout,
-                     size_t		cache_nwords)
-        :
-        m_nslots(wbuf_nslots),
-        m_nwords(wbuf_nwords),
-        m_timeout(timeout),
-        m_wbuf_line_mask((wbuf_nwords << 2) - 1),
-        m_cache_line_mask((cache_nwords << 2) - 1)
+    MultiWriteBuffer(const std::string &name, 
+                     size_t             wbuf_nwords, 
+                     size_t             wbuf_nslots,
+                     size_t             timeout,
+                     size_t             cache_nwords)
+      :
+      m_nslots(wbuf_nslots),
+      m_nwords(wbuf_nwords),
+      m_timeout(timeout),
+      m_wbuf_line_mask((wbuf_nwords << 2) - 1),
+      m_cache_line_mask((cache_nwords << 2) - 1)
     {
-        r_address = new sc_signal<addr_t>[wbuf_nslots];
-        r_cached  = new sc_signal<bool  >[wbuf_nslots];
-        r_tout    = new sc_signal<size_t>[wbuf_nslots];
-        r_min     = new sc_signal<size_t>[wbuf_nslots];
-        r_max     = new sc_signal<size_t>[wbuf_nslots];
-        r_state   = new sc_signal<int>[wbuf_nslots];
-#if CC_XCACHE_MULTI_CPU
-        r_cpu_id  = new sc_signal<size_t>[wbuf_nslots];
+      r_address = new sc_signal<addr_t>[wbuf_nslots];
+      r_cached  = new sc_signal<bool  >[wbuf_nslots];
+#if MWBUF_TIMEOUT
+      r_tout    = new sc_signal<size_t>[wbuf_nslots];
 #endif
-        r_data    = new data_t*[wbuf_nslots];
-        r_be      = new be_t*[wbuf_nslots];
-        for( size_t i = 0 ; i < wbuf_nslots ; i++ )
+      r_min     = new sc_signal<size_t>[wbuf_nslots];
+      r_max     = new sc_signal<size_t>[wbuf_nslots];
+      r_state   = new sc_signal<int>[wbuf_nslots];
+#if CC_XCACHE_MULTI_CPU
+      r_cpu_id  = new sc_signal<size_t>[wbuf_nslots];
+#endif
+      r_data    = new data_t*[wbuf_nslots];
+      r_be      = new be_t*[wbuf_nslots];
+      for( size_t i = 0 ; i < wbuf_nslots ; i++ )
         {
-            assert( ((wbuf_nwords ==  1) || 
-                     (wbuf_nwords ==  2) ||
-                     (wbuf_nwords ==  4) || 
-                     (wbuf_nwords ==  8) ||
-                     (wbuf_nwords == 16)) &&
-                     " the number of words must be a pawer of 2");
+          assert( ((wbuf_nwords ==  1) || 
+                   (wbuf_nwords ==  2) ||
+                   (wbuf_nwords ==  4) || 
+                   (wbuf_nwords ==  8) ||
+                   (wbuf_nwords == 16)) &&
+                  " the number of words must be a pawer of 2");
      
-            r_data[i] = new data_t[wbuf_nwords];
-            r_be[i]   = new be_t[wbuf_nwords];
+          r_data[i] = new data_t[wbuf_nwords];
+          r_be[i]   = new be_t[wbuf_nwords];
         }
 
-        m_stat_cycle_sent       = new stat_t [wbuf_nslots];
-        m_stat_slot_utilization = new stat_t [wbuf_nslots+1];
-        m_stat_word_utilization = new stat_t [wbuf_nwords];
+      m_stat_cycle_sent       = new stat_t [wbuf_nslots];
+      m_stat_slot_utilization = new stat_t [wbuf_nslots+1];
+      m_stat_word_utilization = new stat_t [wbuf_nwords];
     }
     ///////////////////
     ~MultiWriteBuffer()
     {
-        delete [] m_stat_word_utilization;
-        delete [] m_stat_slot_utilization;
-        delete [] m_stat_cycle_sent;
+      delete [] m_stat_word_utilization;
+      delete [] m_stat_slot_utilization;
+      delete [] m_stat_cycle_sent;
 
-        for( size_t i = 0 ; i < m_nslots ; i++ )
+      for( size_t i = 0 ; i < m_nslots ; i++ )
         {
-            delete [] r_data[i];
-            delete [] r_be[i];
+          delete [] r_data[i];
+          delete [] r_be[i];
         }
-        delete [] r_data;
-        delete [] r_be;
-        delete [] r_cached;
-        delete [] r_address;
-        delete [] r_tout;
-        delete [] r_min;
-        delete [] r_max;
-        delete [] r_state;
+      delete [] r_data;
+      delete [] r_be;
+      delete [] r_cached;
+      delete [] r_address;
+#if MWBUF_TIMEOUT
+      delete [] r_tout;
+#endif
+      delete [] r_min;
+      delete [] r_max;
+      delete [] r_state;
 #if CC_XCACHE_MULTI_CPU
-        delete [] r_cpu_id;
+      delete [] r_cpu_id;
 #endif
 
     }
-};
+  };
 
 } // end name space soclib
 
