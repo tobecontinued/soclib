@@ -20,12 +20,37 @@
  * SOCLIB_LGPL_HEADER_END
  *
  * Copyright (c) UPMC, Lip6, Asim
+           Alain Greiner <alain.greiner@lip6.fr> 2005 & 2011
  *         Nicolas Pouillon <nipo@ssji.net>, 2008
- *
- * Based on previous works by Alain Greiner, 2005
  *
  * Maintainers: nipo, alain
  */
+
+///////////////////////////////////////////////////////////////////////////
+// Implementation Note :
+// This component is implemented as two independant crossbars,
+// for VCI commands and VCI responses respectively.
+// - The CMD crossbar has NI local plus one global input
+// ports. It has NT local + one global output ports.
+// - The RSP crossbar has NT target local plus one global input
+// ports. It has NI local + one global output ports.
+// For each generic crossbar, the input and output ports are impemented
+// as arrays of ports, and the last port (i.e. the largest index value)
+// is the ports connected to the global interconnect.
+//
+// This component support single flit VCI broadcast commands : If the
+// two lsb bits of the VCI ADDRESS are non zero, the corresponding
+// command is considered as a broadcast. 
+// As the broadcast command arriving on input port (i) should not be 
+// transmitted to the requester, it is not transmitted on output port (i).
+// Therefore, in case of broadcast, NI & NT must be equal, and all
+// connected components mus have the same index dfor input & output ports.
+// 
+// In case of broadcast, the single VCI flit is SEQUENCIALLY transmitted 
+// to the (NT+1) output ports, but not to the requesting input port.
+// For each transmitted flit to a given output port, the standard 
+// round-robin allocation policy is respected.
+///////////////////////////////////////////////////////////////////////////
 
 #include <systemc>
 #include <cassert>
@@ -52,31 +77,31 @@ template<typename pkt_t> class Crossbar
     typedef typename pkt_t::input_port_t input_port_t;
     typedef typename pkt_t::output_port_t output_port_t;
 
-    const size_t 	m_in_size;
-    const size_t 	m_out_size;
-    bool*		m_allocated;
-    size_t*		m_origin;
-    const 		routing_table_t m_rt;
-    const 		locality_table_t m_lt;
-    const size_t 	m_non_local_target;
-    bool 		m_broadcast_waiting;
+    const size_t 		m_in_size;		// total number of inputs (local + global)
+    const size_t 		m_out_size;		// total number of outputs (local + global)
+    const routing_table_t 	m_rt;
+    const locality_table_t 	m_lt;
+
+    sc_signal<bool>*		r_allocated;		// for each output port: allocation state 
+    sc_signal<size_t>*		r_origin;		// for each output port: input port index
+    sc_signal<bool>*		r_bc_state;		// for each input port: broadcast requested
+    sc_signal<size_t>*		r_bc_count;		// for each input port: requested output index
 
 public:
     /////////
     Crossbar(
 	size_t in_size, size_t out_size,
 	const routing_table_t &rt,
-	const locality_table_t &lt,
-	const size_t non_local_target )
+	const locality_table_t &lt)
 	: m_in_size(in_size),
 	  m_out_size(out_size),
-	  m_allocated(new bool[m_out_size]),
-	  m_origin(new size_t[m_out_size]),
 	  m_rt(rt),
-	  m_lt(lt),
-       	  m_non_local_target(non_local_target)
+	  m_lt(lt)
 	{
-        reset();
+	    r_allocated = new sc_signal<bool>[out_size];
+	    r_origin	= new sc_signal<size_t>[out_size];
+            r_bc_state	= new sc_signal<bool>[in_size];
+	    r_bc_count	= new sc_signal<size_t>[in_size];
 	}
 
     ////////////
@@ -84,127 +109,146 @@ public:
     {
 	for (size_t i=0; i<m_out_size; ++i) 
         {
-	m_allocated[i] = false;
-	m_origin[i] = 0;
-	m_broadcast_waiting = false;
+	    r_origin[i]    = 0;
+	    r_allocated[i] = false;
+	}
+	for (size_t i=0; i<m_in_size; ++i) 
+        {
+	    r_bc_state[i] = false;
+	    r_bc_count[i] = 0;
 	}
     }
 
-    //////////////////
-    void print_trace()
+    //////////////////////////////
+    void print_trace(bool command)
     {
-        for( size_t n=0 ; n<m_out_size ; n++)
+        for( size_t out=0 ; out<m_out_size ; out++)
         {
-            if( m_allocated[n] ) std::cout << std::dec 
-                                           << " output " 
-                                           << n 
-                                           << " allocated to input " 
-                                           << m_origin[n] 
-                                           << " /";
+            if( r_allocated[out].read() ) 
+            {
+                if(command) std::cout << std::dec << "target " << out
+                                      << " allocated to initiator " << r_origin[out].read() << std::endl;
+                else        std::cout << std::dec << "initiator " << out
+                                      << " allocated to target " << r_origin[out].read() << std::endl;
+            }
+        }
+        for ( size_t in=0 ; in<m_in_size ; in++)
+        {
+            if( r_bc_state[in].read() )
+            {
+                if(command) std::cout << " broadcast request from initiator " << in 
+                                      << " requesting target " << r_bc_count[in].read() << std::endl;
+                else        std::cout << " broadcast request from target " << in 
+                                      << " requesting initiator " << r_bc_count[in].read() << std::endl;
+            }
         }
     }
 
     ////////////////////////////////////////////////////////////////////////
     void transition( input_port_t **input_port, output_port_t **output_port )
     {
-        if(!m_broadcast_waiting){
-            size_t in = m_in_size -1;
-            if(input_port[in]->getVal() && !input_port[in]->iAccepted()){ // second part is here to avoid resending the broadcast once every one has acknowledged
-                pkt_t tmp;
-                tmp.readFrom(*input_port[in]);
-                if(tmp.is_broadcast()){
-                    m_broadcast_waiting = true;
-#ifdef CROSSBAR_DEBUG
-                    std::cout << "Crossbar broadcast received " << std::endl;
-#endif
+        // loop on the input ports to handle r_bc_state[in] and r_bc_count[in]
+        for( size_t in = 0 ; in < m_in_size ; in++ )
+        {
+            if ( input_port[in]->getVal() )
+            {
+                if ( r_bc_state[in].read() )	// pending broadcast
+                {
+                    size_t out = r_bc_count[in];
+                    if ( ( r_allocated[out].read() ) &&
+                         ( r_origin[out].read() == in ) &&
+                         ( output_port[out]->toPeerEnd() ) )	// flit successfully transmitted 
+                    {
+                        // the broadcast should not be sent to the requester...
+                        if ( (out == 0) || ((out == 1) && (in == 0)) ) 	r_bc_state[in] = false;
+                        else if ( (out-1) != in )			r_bc_count[in] = out-1;
+                        else 						r_bc_count[in] = out-2;
+                    }
+                }
+                else				// no pending proadcast
+                {
+                    pkt_t tmp;
+                    tmp.readFrom(*input_port[in]);
+                    if ( tmp.is_broadcast() )		// broadcast request
+                    {
+                        assert( input_port[in]->eop && 
+                                "error in vci_local_crossbar : VCI broacast packet must be one flit");
+                        r_bc_state[in] = true;
+                        // the broadcast should not be sent to the requester...
+                        if ( in == m_in_size-1 ) r_bc_count[in] = m_out_size-2;  
+                        else			 r_bc_count[in] = m_out_size-1; 
+                    }
                 }
             }
         }
-#ifdef CROSSBAR_DEBUG
-        if(m_broadcast_waiting){
-                    std::cout << "Crossbar, broadcast waiting ! " << std::endl;
-        }
-#endif
-        for( size_t out = 0; out < m_out_size; out++) {
-            if (m_allocated[out]) {
-                if( output_port[out]->toPeerEnd() )
-                    m_allocated[out] = false;
-            } else {
-                if(m_broadcast_waiting && (out!=(m_out_size-1)) ){
-#ifdef CROSSBAR_DEBUG
-                    std::cout << "Crossbar, broadcast, allocating output " << std::dec << out << std::endl;
-#endif
-                    m_allocated[out] = true;
-                    m_origin[out] = m_in_size -1;
-                }
-                for(size_t _in = 0; _in < m_in_size; _in++) {
-                    size_t in = (_in + m_origin[out] + 1) % m_in_size;
-					if (input_port[in]->getVal()) {
-						pkt_t tmp;
-						tmp.readFrom(*input_port[in]);
 
-                        if ( ( ! tmp.isLocal(m_lt) && out == m_non_local_target && !tmp.is_broadcast()) ||
-                             ( tmp.is_broadcast() && out == m_non_local_target && in != (m_in_size-1) ) ||
-                             ( tmp.isLocal(m_lt) && (size_t)tmp.route(m_rt) == out && !tmp.is_broadcast() ) ) {
-                            m_allocated[out] = true;
-                            m_origin[out] = in;
+        // loop on the output ports to handle r_allocated[out] and r_origin[out]
+        for ( size_t out = 0; out < m_out_size; out++) 
+        {
+            //  de-allocation if the last flit is accepted
+            if ( r_allocated[out] ) 
+            {
+                if ( output_port[out]->toPeerEnd() )   r_allocated[out] = false;
+            } 
+            // allocation respecting round-robin priority (even for broadcast)
+            else 
+            {
+                for(size_t _in = 0; _in < m_in_size; _in++) 
+                {
+                    size_t in = (_in + r_origin[out] + 1) % m_in_size;
+                    if ( input_port[in]->getVal() )
+                    {
+                        pkt_t tmp;
+                        tmp.readFrom(*input_port[in]);
+
+                        if ( (tmp.is_broadcast() && r_bc_state[in].read() && (r_bc_count[in].read() == out)) ||
+                             (!tmp.is_broadcast() && !tmp.isLocal(m_lt) && (out == m_out_size-1))            ||
+                             (!tmp.is_broadcast() && tmp.isLocal(m_lt) && (out == (size_t)tmp.route(m_rt)))  )  
+                        {
+                            r_allocated[out] = true;
+                            r_origin[out] = in;
                             break;
                         }
-					}
-				}
-			}
-		}
-    }
+                    }
+                }
+            }
+        }
+    } // end transition
 
     ///////////////////////////////////////////////////////////////////////
     void genMealy( input_port_t **input_port, output_port_t **output_port )
     {
         bool ack[m_in_size];
-        for( size_t in = 0; in < m_in_size; in++)
-            ack[in] = false;
-		for( size_t out = 0; out < m_out_size; out++) {
-			if (m_allocated[out]) {
-				size_t in = m_origin[out];
-                // transfer only if it is not a broadcast
-                if((in!=m_in_size-1)||!m_broadcast_waiting){
-				    pkt_t tmp;
-				    tmp.readFrom(*input_port[in]);
-				    tmp.writeTo(*output_port[out]);
-					ack[in] = output_port[out]->getAck();
+        for( size_t in = 0; in < m_in_size; in++) ack[in] = false;
+
+        // transmit flits on output ports
+        for( size_t out = 0; out < m_out_size; out++) 
+        {
+            if (r_allocated[out]) 
+            {
+		size_t in = r_origin[out];
+                pkt_t tmp;
+                tmp.readFrom(*input_port[in]);
+                tmp.writeTo(*output_port[out]);
+                ack[in] = output_port[out]->getAck();
+                if ( r_bc_state[in].read() )			// its a broacast
+                {
+                    // in case of broadcast, the flit must be consumed only
+                    // if it is the last output port ...
+                    ack[in] = ack[in] && ( (out == 0) || ((out == 1) && (in == 0)) );
                 }
-			} else {
-				output_port[out]->setVal(false);
-			}
-		}
-        // Special treatment when a broadcast is waiting
-        if(m_broadcast_waiting){
-            bool granted = true;
-            for(size_t out = 0; out < m_out_size-1; out++){
-                // Are all outputs free ?
-                granted = granted
-                    && (m_allocated[out]&&(m_origin[out]==m_in_size-1))
-                    && output_port[out]->getAck();
-            }
-            // If all outputs are free, we transfer the packet
-            // and acknowledge the broadcast
-            ack[m_in_size-1]=granted;
-            m_broadcast_waiting = !granted;
-            for(size_t out = 0; out < m_out_size-1; out++){
-                if(granted){
-				    pkt_t tmp;
-				    tmp.readFrom(*input_port[m_in_size-1]);
-				    tmp.writeTo(*output_port[out]);
-                } else {
-                    if(m_allocated[out]&&(m_origin[out]==m_in_size-1))
-                        output_port[out]->setVal(false);
-                }
+            } 
+            else 
+            {
+                output_port[out]->setVal(false);
             }
         }
-        // Send the acknowledges
-        for( size_t in = 0; in < m_in_size; in++)
-			input_port[in]->setAck(ack[in]);
-    }
-};
+
+        // Send acknowledges on input ports
+        for( size_t in = 0; in < m_in_size; in++) input_port[in]->setAck(ack[in]);
+    } // en genmealy
+
+}; // end class Crossbar
 
 }
 
@@ -213,18 +257,17 @@ public:
 /////////////////////////
 tmpl(void)::print_trace()
 {
-    std::cout << "LocalCrossbar " << name() << " / command  /";
-    m_cmd_crossbar->print_trace();
-    std::cout << std::endl;
-    std::cout << "LocalCrossbar " << name() << " / response /";
-    m_rsp_crossbar->print_trace();
+    std::cout << "LOCAL_CROSSBAR " << name() << " / ";
+    m_cmd_crossbar->print_trace(true);
+    m_rsp_crossbar->print_trace(false);
     std::cout << std::endl;
 }
 
 ////////////////////////
 tmpl(void)::transition()
 {
-    if ( ! p_resetn.read() ) {
+    if ( ! p_resetn.read() ) 
+    {
         m_cmd_crossbar->reset();
         m_rsp_crossbar->reset();
         return;
@@ -281,15 +324,13 @@ tmpl(/**/)::VciLocalCrossbar(
 		nb_attached_initiat+1, 
 		nb_attached_target+1,
 		mt.getRoutingTable(tgtid),
-        	mt.getLocalityTable(tgtid),
-        	nb_attached_target );
+        	mt.getLocalityTable(tgtid));
 
 	m_rsp_crossbar = new rsp_crossbar_t(
 		nb_attached_target+1, 
 		nb_attached_initiat+1,
 		mt.getIdMaskingTable(srcid.level()),
-        	mt.getIdLocalityTable(srcid),
-        	nb_attached_initiat );
+        	mt.getIdLocalityTable(srcid));
 
     m_ports_to_initiator = new VciTarget<vci_param>*[nb_attached_initiat+1];
     for (size_t i=0; i<nb_attached_initiat; ++i)
