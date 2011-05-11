@@ -121,6 +121,19 @@ public:
         }
     }
 
+    void update (bool get, bool put, const T& din)
+    {
+        if (put and get)
+            put_and_get(din);
+        else
+        {
+            if (put)
+                simple_put(din);
+            if (get)
+                simple_get();
+        }
+    }
+
     inline bool rok() const
     {
         return (r_fill_state != 0);

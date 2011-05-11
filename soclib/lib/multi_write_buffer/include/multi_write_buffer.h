@@ -97,23 +97,9 @@ namespace soclib {
    *   To manage bus error with multi processor per cache,
    *   need cpu_id in wbuf
    *
-   * MWBUF_TIMEOUT
-   *   Add timeout for each slot
-   *
-   * MWBUF_SENT_SCAN
-   *   In sent step, scan all slot or one
-   *
-   # MWBUF_UPDATE_SCHEME
-   *   Write buffer scheme for update step :
-   *     1    - multi_scan
-   *     2    - round_robin_scan
-   *     3    - one_scan
    */
 
 #define CC_XCACHE_MULTI_CPU  1
-#define MWBUF_TIMEOUT        0
-#define MWBUF_SENT_SCAN      0
-#define MWBUF_UPDATE_SCHEME  2
 
   enum slot_state_e 
     {
@@ -137,9 +123,6 @@ namespace soclib {
     sc_signal<int>      *r_state;           // slot state array[nslots]
     sc_signal<addr_t>   *r_address;         // slot base address array[nslots]
     sc_signal<bool>     *r_cached;
-#if MWBUF_TIMEOUT
-    sc_signal<size_t>   *r_tout;            // slot timeout array[nslots]
-#endif
     sc_signal<size_t>   *r_min;             // smallest valid word index array[nslots]
     sc_signal<size_t>   *r_max;             // largest valid word index array[nslots]
 #if CC_XCACHE_MULTI_CPU
@@ -178,9 +161,6 @@ namespace soclib {
       for( size_t slot = 0 ; slot < m_nslots ; slot++) {
         r_address[slot] = 0 ;
         r_cached [slot] = 0 ;
-#if MWBUF_TIMEOUT
-        r_tout[slot]    = 0 ;
-#endif
         r_max[slot]     = 0 ;
         r_min[slot]     = m_nwords - 1 ;
         r_state[slot]   = EMPTY ;
@@ -227,9 +207,6 @@ namespace soclib {
                     << std::hex << r_address[i].read() << std::dec
                     << " " << r_cached[i].read()
                     << " {" << r_min[i].read() << "," << r_max[i].read() << "}"
-#if MWBUF_TIMEOUT
-                    << " - " << r_tout[i].read()
-#endif
 #if CC_XCACHE_MULTI_CPU
                     << " - " << r_cpu_id[i].read()
 #endif
@@ -303,9 +280,6 @@ namespace soclib {
                ((r_address[i].read() & ~m_cache_line_mask) == (addr & ~m_cache_line_mask)) )
             {
               miss = false;
-#if MWBUF_TIMEOUT
-              r_tout[i] = 0;
-#endif
               m_stat_nb_read_after_write ++;
             }
         }
@@ -337,9 +311,7 @@ namespace soclib {
       size_t  num_slot;
       size_t  i=0;
 
-#if MWBUF_SENT_SCAN
       for(; i<m_nslots ; i++)
-#endif
         {
           num_slot = (r_ptr_read+i)%m_nslots;
           if( r_state[num_slot] == LOCKED ) 
@@ -347,15 +319,9 @@ namespace soclib {
               found      = true;
               *min       = r_min[num_slot];
               *max       = r_max[num_slot];
-#if MWBUF_SENT_SCAN
               r_ptr_read = num_slot;
               break;
-#endif
             }
-#if not MWBUF_SENT_SCAN
-          else
-            r_ptr_read = (r_ptr_read+1)%m_nslots;
-#endif
         }
       return found;
     } // end rok()
@@ -371,9 +337,7 @@ namespace soclib {
       size_t  num_slot;
       size_t  i=0;
 
-#if MWBUF_SENT_SCAN
       for(; i<m_nslots ; i++)
-#endif
         {
           num_slot = (r_ptr_read+i)%m_nslots;
           if( r_state[num_slot] == LOCKED)
@@ -383,15 +347,9 @@ namespace soclib {
               *max       = r_max[num_slot].read();
               *addr      = r_address[num_slot].read();
               *index     = num_slot;
-#if MWBUF_SENT_SCAN
               r_ptr_read = num_slot;
               break;
-#endif
             }
-#if not MWBUF_SENT_SCAN
-          else
-            r_ptr_read = (r_ptr_read+1)%m_nslots;
-#endif
         }
 
       return found;
@@ -428,53 +386,28 @@ namespace soclib {
     // this slot is locked : at most one locked slot per cycle,
     // because the hardware cost is high...
     {
-#if   (MWBUF_UPDATE_SCHEME==1)
-      update_multi_scan      (flush);
-#elif (MWBUF_UPDATE_SCHEME==2)
-      update_round_robin_scan(flush);
-#elif (MWBUF_UPDATE_SCHEME==3)
-      update_one_scan        (flush);
-#else
-#error "Invalid value for MWBUF_UPDATE_SCHEME."
-#endif
-    }
-        
-    /////////////////////////////////////////////////////////////////////
-    inline void update_timeout_decrease(bool flush)
-    {
+
       m_stat_nb_cycles ++;
 
-      // decrement timer for all open slots, if flush must be sent as soon as possible (then timer is set at 0)
       size_t stat_nb_not_empty = 0;
       for(size_t i=0 ; i<m_nslots ; i++)
         {
-#if MWBUF_TIMEOUT
-          if( (r_state[i] == OPEN) and (r_tout[i] > 0))
-            r_tout[i] = (flush)?0:(r_tout[i] - 1);
-#endif
           if (r_state[i] != EMPTY)
             stat_nb_not_empty ++;
         }
       m_stat_slot_utilization[stat_nb_not_empty] ++;
-    }
 
-    inline void update_slot_lock(size_t num_slot)
-    {
       bool found = false;
             
       // is a candidate ?
-      if( (r_state[num_slot] == OPEN) 
-#if MWBUF_TIMEOUT
-          and (r_tout[num_slot] == 0) 
-#endif
-          )
+      if(r_state[r_ptr_update] == OPEN)
         {
           // searching for a pending request with the same address
           for( size_t i=0 ; i<m_nslots ; i++ )
             {
               if ( (r_state[i].read() != EMPTY) and 
                    (r_state[i].read() != OPEN)  and
-                   (r_address[num_slot].read() == r_address[i].read()) ) 
+                   (r_address[r_ptr_update].read() == r_address[i].read()) ) 
                 {
                   // find a line with the same adress and the sate is locked or sent
                   found = true;
@@ -483,56 +416,11 @@ namespace soclib {
             }
           // locking the slot if no conflict
           if ( !found )
-            r_state[num_slot] = LOCKED;
+            r_state[r_ptr_update] = LOCKED;
         }
-    }
 
-    void update_multi_scan(bool flush)
-    {
-      update_timeout_decrease(flush);
-
-      for(size_t i=0 ; i<m_nslots ; i++)
-        update_slot_lock(i);
-    }
-
-    void update_round_robin_scan(bool flush)
-    {
-      update_timeout_decrease(flush);
-
-      update_slot_lock(r_ptr_update);
-        
       r_ptr_update = (r_ptr_update+1)%m_nslots;
     }
-
-    void update_one_scan(bool flush)
-    {
-      update_timeout_decrease(flush);
-
-      bool   find     = false;
-      size_t num_slot = r_ptr_update;
-
-      for(size_t i=0 ; i<m_nslots ; i++)
-        {
-          num_slot = (num_slot+1)%m_nslots;
-
-          // is a candidate ?
-          if((r_state[num_slot] == OPEN)
-#if MWBUF_TIMEOUT
-             and (r_tout[num_slot] == 0)
-#endif
-             )
-            {
-              find = true;
-              break;
-            }
-        }
-
-      if (find)
-        update_slot_lock(num_slot);
-        
-      r_ptr_update = num_slot;
-    }
-
 
     //////////////////////////////////////////////////////////////////////////
     bool write(addr_t addr, be_t be , data_t  data, bool cached, size_t cpu_id=0)
@@ -564,10 +452,6 @@ namespace soclib {
               found = true;
               m_stat_nb_write_accepted_in_open_slot ++;
 
-#if MWBUF_TIMEOUT
-              if (r_tout[i] == 0)
-                m_stat_nb_write_accepted_in_open_slot_timeout ++;
-#endif
               break;
             }
         }
@@ -609,9 +493,7 @@ namespace soclib {
               be <<= 1;
             }
           r_data[num_slot][word] = (r_data[num_slot][word] & ~data_mask) | (data & data_mask) ;
-#if MWBUF_TIMEOUT
-          r_tout[num_slot] = m_timeout;
-#endif
+
           if ( r_min[num_slot].read() > word ) r_min[num_slot] = word;
           if ( r_max[num_slot].read() < word ) r_max[num_slot] = word;
         }
@@ -691,9 +573,6 @@ namespace soclib {
     {
       r_address = new sc_signal<addr_t>[wbuf_nslots];
       r_cached  = new sc_signal<bool  >[wbuf_nslots];
-#if MWBUF_TIMEOUT
-      r_tout    = new sc_signal<size_t>[wbuf_nslots];
-#endif
       r_min     = new sc_signal<size_t>[wbuf_nslots];
       r_max     = new sc_signal<size_t>[wbuf_nslots];
       r_state   = new sc_signal<int>[wbuf_nslots];
@@ -735,9 +614,6 @@ namespace soclib {
       delete [] r_be;
       delete [] r_cached;
       delete [] r_address;
-#if MWBUF_TIMEOUT
-      delete [] r_tout;
-#endif
       delete [] r_min;
       delete [] r_max;
       delete [] r_state;
