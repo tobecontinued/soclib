@@ -76,7 +76,6 @@
 // - std::string    name
 // - size_t         nwords  : buffer width (number of words)
 // - size_t         nslots  : buffer depth (number of slots)
-// - size_t         timeout : max life time for an open slot
 // It has one template parameter :
 // - addr_t defines the address format
 /////////////////////////////////////////////////////////////////////////////
@@ -134,7 +133,6 @@ namespace soclib {
 
     size_t              m_nslots;           // buffer depth (number of slots)
     size_t              m_nwords;           // buffer width (number of words)
-    size_t              m_timeout;          // max life time for an open slot
     addr_t              m_wbuf_line_mask;   // Mask for a write buffer line
     addr_t              m_cache_line_mask;  // Mask for a cache line
  
@@ -144,7 +142,6 @@ namespace soclib {
     stat_t              m_stat_word_useful;
     stat_t              m_stat_nb_write;
     stat_t              m_stat_nb_write_accepted_in_open_slot;
-    stat_t              m_stat_nb_write_accepted_in_open_slot_timeout;
     stat_t              m_stat_nb_write_accepted_in_same_word;
     stat_t              m_stat_nb_write_refused;
     stat_t              m_stat_nb_read_after_write_test;
@@ -184,7 +181,6 @@ namespace soclib {
       m_stat_nb_cycles                              = 0;
       m_stat_nb_write                               = 0;
       m_stat_nb_write_accepted_in_open_slot         = 0;
-      m_stat_nb_write_accepted_in_open_slot_timeout = 0;
       m_stat_nb_write_accepted_in_same_word         = 0;
       m_stat_nb_write_refused                       = 0;
       m_stat_nb_read_after_write_test               = 0;
@@ -232,12 +228,11 @@ namespace soclib {
       stat_t m_stat_nb_state_sent = m_stat_nb_write_accepted-m_stat_nb_write_accepted_in_open_slot;
 
       std::cout << "------------------------------------" << std:: dec << std::endl;
-      std::cout << "MultiWriteBuffer : " << m_nslots << "x" << m_nwords << " words - timeout : " << m_timeout << std::endl;
+      std::cout << "MultiWriteBuffer : " << m_nslots << "x" << m_nwords << " words" << std::endl;
       std::cout << "- NB WRITE                       : " << m_stat_nb_write              << std::endl;
       std::cout << "- NB WRITE REFUSED               : " << m_stat_nb_write_refused      << " (" << (float)m_stat_nb_write_refused*100.0/(float)m_stat_nb_write << "%)" << std::endl;
       std::cout << "- NB WRITE ACCEPTED              : " << m_stat_nb_write_accepted      << " (" << (float)m_stat_nb_write_accepted*100.0/(float)m_stat_nb_write << "%)" << std::endl;
       std::cout << "  + IN OPEN SLOT                 : " << m_stat_nb_write_accepted_in_open_slot << " (" << (float)m_stat_nb_write_accepted_in_open_slot*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
-      std::cout << "    + TIMEOUT > 0                : " << m_stat_nb_write_accepted_in_open_slot_timeout << " (" << (float)m_stat_nb_write_accepted_in_open_slot_timeout*100.0/(float)m_stat_nb_write_accepted_in_open_slot << "%)" << std::endl;
       std::cout << "    + IN SAME WORD               : " << m_stat_nb_write_accepted_in_same_word << " (" << (float)m_stat_nb_write_accepted_in_same_word*100.0/(float)m_stat_nb_write_accepted_in_open_slot << "%)" << std::endl;
       std::cout << "  + IN EMPTY SLOT                : " << m_stat_nb_write_accepted-m_stat_nb_write_accepted_in_open_slot << " (" << (float)m_stat_nb_state_sent*100.0/(float)m_stat_nb_write_accepted << "%)" << std::endl;
       std::cout << "- NB READ AFTER WRITE TEST       : " << m_stat_nb_read_after_write_test << std::endl;
@@ -562,12 +557,10 @@ namespace soclib {
     MultiWriteBuffer(const std::string &name, 
                      size_t             wbuf_nwords, 
                      size_t             wbuf_nslots,
-                     size_t             timeout,
                      size_t             cache_nwords)
       :
       m_nslots(wbuf_nslots),
       m_nwords(wbuf_nwords),
-      m_timeout(timeout),
       m_wbuf_line_mask((wbuf_nwords << 2) - 1),
       m_cache_line_mask((cache_nwords << 2) - 1)
     {
