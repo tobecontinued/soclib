@@ -200,6 +200,7 @@ int _main(int argc, char **argv)
   maptab.add(Segment("text" ,     0x60000000, 0x00100000, IntTab(0), true));
   maptab.add(Segment("rodata" ,   0x80000000, 0x01000000, IntTab(1), true));
   maptab.add(Segment("data",      0x7f000000, 0x01000000, IntTab(2), false));
+  maptab.add(Segment("data2",     0x6f000000, 0x01000000, IntTab(2), false));
 
   maptab.add(Segment("tty"  ,     0xd0200000, 0x00000010, IntTab(3), false));
   maptab.add(Segment("xicu",      0xd2200000, 0x00001000, IntTab(4), false));
