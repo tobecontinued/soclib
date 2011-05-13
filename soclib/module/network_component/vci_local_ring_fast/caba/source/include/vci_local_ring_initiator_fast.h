@@ -668,7 +668,7 @@ if(m_cpt > m_cyc)
 				        rsp_fifo_put  = m_rsp_fifo.wok();
 				        rsp_fifo_data = p_ring_in.rsp_data;
 
-                                        if (reop)
+                                        if (reop && m_rsp_fifo.wok())
                                                 r_ring_rsp_fsm = RSP_IDLE;
                                         else
                                                 r_ring_rsp_fsm = ALLOC;
@@ -677,7 +677,7 @@ if(m_cpt > m_cyc)
 			        else   //  !islocal 
 			        {
 
-                                        if (reop)
+                                        if (reop && p_ring_in.rsp_r)
                                                 r_ring_rsp_fsm = RSP_IDLE;
                                         else
                                                 r_ring_rsp_fsm = NALLOC;
