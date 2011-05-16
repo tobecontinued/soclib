@@ -31,7 +31,10 @@ namespace soclib { namespace caba {
     namespace _WbI_ { // wishbone interconnect
 
         Arbiter::Arbiter (size_t nb_m):m_masters_n(nb_m) {
-            assert ( (m_masters_n <= 32) && "Arniter does not support more than 32 msters");
+            assert ( (m_masters_n <= 32) && "Arbiter does not support more than 32 msters");
+            assert ( (m_masters_n != 0)  && "At least one master has to be declared");
+            // To avoid segfaults when reset has not been done yet
+            grant = 1;
         }
 
 
