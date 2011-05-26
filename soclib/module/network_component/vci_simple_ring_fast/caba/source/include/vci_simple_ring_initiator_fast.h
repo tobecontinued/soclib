@@ -663,16 +663,12 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 		case CMD_IDLE:
 			p_ring_out.cmd_grant = p_ring_in.cmd_grant && !m_cmd_fifo.rok();
 
-                     	p_ring_out.cmd_r     = p_ring_in.cmd_r;
-
         		p_ring_out.cmd_w     = p_ring_in.cmd_w;
 	        	p_ring_out.cmd_data  = p_ring_in.cmd_data;
 		break;
 	
 		case DEFAULT:        
 			p_ring_out.cmd_grant = !( m_cmd_fifo.rok());  
-
-                   	p_ring_out.cmd_r    = 1;
 
 	        	p_ring_out.cmd_w    =  m_cmd_fifo.rok();
 		        p_ring_out.cmd_data =  m_cmd_fifo.read();
@@ -682,18 +678,17 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 			int cmd_fifo_eop = (int) ((m_cmd_fifo.read() >> (ring_cmd_data_size - 1)) & 0x1) ; //39
 			p_ring_out.cmd_grant = m_cmd_fifo.rok() && p_ring_in.cmd_r && (cmd_fifo_eop == 1);
 
-                   	p_ring_out.cmd_r    = 1;	
-
         		p_ring_out.cmd_w    =  m_cmd_fifo.rok();
 	        	p_ring_out.cmd_data =  m_cmd_fifo.read();
 		break;
 	
 	} // end switch
 
-	p_ring_out.rsp_grant = p_ring_in.rsp_grant;
+	p_ring_out.cmd_r       = p_ring_in.cmd_r;
 
-	p_ring_out.rsp_w    = p_ring_in.rsp_w;
-	p_ring_out.rsp_data = p_ring_in.rsp_data;
+	p_ring_out.rsp_grant   = p_ring_in.rsp_grant;
+	p_ring_out.rsp_w       = p_ring_in.rsp_w;
+	p_ring_out.rsp_data    = p_ring_in.rsp_data;
 
 	switch( r_ring_rsp_fsm ) 
 	{

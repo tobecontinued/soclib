@@ -492,33 +492,30 @@ if(p_ring_in.cmd_w)
                         bool brdcst  = (p_ring_in.cmd_data & 0x1) == 0X1 ;
                         bool eop     = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1); 
 
-
-                      if(p_ring_in.cmd_w && !eop && brdcst && !m_cmd_fifo.wok()) {
-                              r_ring_cmd_fsm = BROADCAST_0; 
-                      }  
-        
-                      if(p_ring_in.cmd_w && !eop && brdcst && m_cmd_fifo.wok()) {
-                              r_ring_cmd_fsm = BROADCAST_1;
-                              cmd_fifo_put  = true;
-                      	      cmd_fifo_data = p_ring_in.cmd_data;
-
-                      }  
-        
-                      if (p_ring_in.cmd_w && !eop && !brdcst && islocal) {
-                              r_ring_cmd_fsm = LOCAL; 
-                              cmd_fifo_put   = m_cmd_fifo.wok();
-                              cmd_fifo_data  = p_ring_in.cmd_data;  
-
-                      } 
-        
-                      if (p_ring_in.cmd_w && !eop && !brdcst && !islocal) {
-                              r_ring_cmd_fsm = RING;
-                      }  
-
-                      if (!p_ring_in.cmd_w || eop) {
-                              r_ring_cmd_fsm = CMD_IDLE;
-                      }
-
+			if(p_ring_in.cmd_w && !eop)
+			{
+				if(brdcst)
+				{
+					if(m_cmd_fifo.wok())
+					{
+						r_ring_cmd_fsm = BROADCAST_1;
+						cmd_fifo_put  = true;
+						cmd_fifo_data = p_ring_in.cmd_data;
+					}
+					else
+						r_ring_cmd_fsm = BROADCAST_0;
+				}
+				else if (islocal)
+					{
+						r_ring_cmd_fsm = LOCAL; 
+                              			cmd_fifo_put   = m_cmd_fifo.wok();
+                              			cmd_fifo_data  = p_ring_in.cmd_data;
+					}
+					else
+						r_ring_cmd_fsm = RING;
+			}
+			else
+				r_ring_cmd_fsm = CMD_IDLE;
                 }
 
 		break;
@@ -623,7 +620,7 @@ if(p_ring_in.cmd_w)
 #endif 
 			bool eop = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1);
 
-			if ( p_ring_in.cmd_w && eop ) {        
+			if ( p_ring_in.cmd_w && eop  && p_ring_in.cmd_r) {        
         			r_ring_cmd_fsm = CMD_IDLE;
                         }
                         else {
@@ -752,7 +749,6 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 	        	p_ring_out.rsp_w    = p_ring_in.rsp_w;
 		        p_ring_out.rsp_data = p_ring_in.rsp_data;
 
-                	p_ring_out.rsp_r    = p_ring_in.rsp_r;
 		break;
 
 		case DEFAULT:
@@ -763,7 +759,6 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
         		p_ring_out.rsp_w    =  m_rsp_fifo.rok();
 	        	p_ring_out.rsp_data =  m_rsp_fifo.read(); 
 
-                	p_ring_out.rsp_r = 1;
                 }
 		break;
 
@@ -775,15 +770,14 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
         		p_ring_out.rsp_w    =  m_rsp_fifo.rok();
 	        	p_ring_out.rsp_data =  m_rsp_fifo.read();
 
-                	p_ring_out.rsp_r = 1;
                 }
 		break; 
 
 	} // end switch
+	p_ring_out.rsp_r     = p_ring_in.rsp_r;
 
-	p_ring_out.cmd_w    = p_ring_in.cmd_w;
-	p_ring_out.cmd_data = p_ring_in.cmd_data;
-
+	p_ring_out.cmd_w     = p_ring_in.cmd_w;
+	p_ring_out.cmd_data  = p_ring_in.cmd_data;
 	p_ring_out.cmd_grant = p_ring_in.cmd_grant;
 
 	switch( r_ring_cmd_fsm ) 
@@ -794,39 +788,31 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 		        bool islocal = m_lt[rtgtid]  && (m_rt[rtgtid] == m_tgtid); 
                         bool brdcst  = (p_ring_in.cmd_data & 0x1) == 0X1 ;
                         bool eop     = ( (int) ((p_ring_in.cmd_data >> (ring_cmd_data_size - 1) ) & 0x1) == 1); 
-
-                        if(p_ring_in.cmd_w && !eop && brdcst && !m_cmd_fifo.wok()) {
-                                p_ring_out.cmd_r = m_cmd_fifo.wok() && p_ring_in.cmd_r;
+			// m_alloc_target sert à casser la boucle combinatoire sur le wok (cmd_r)
+			// dans le cas d'un broadcast
+                        if(p_ring_in.cmd_w && !eop && brdcst) 
+			{
+                                p_ring_out.cmd_r = m_cmd_fifo.wok() && (m_alloc_target || p_ring_in.cmd_r);
                         }  
         
-                        if(p_ring_in.cmd_w && !eop && brdcst && m_cmd_fifo.wok()) {
-                                p_ring_out.cmd_r = m_cmd_fifo.wok() && p_ring_in.cmd_r;
+                        else if (p_ring_in.cmd_w && !eop && !brdcst && islocal) 
+				{
+                                	p_ring_out.cmd_r =  m_cmd_fifo.wok();
 
-                        }  
-        
-                        if (p_ring_in.cmd_w && !eop && !brdcst && islocal) {
-                                p_ring_out.cmd_r =  m_cmd_fifo.wok();
-
-                        } 
-        
-                        if (p_ring_in.cmd_w && !eop && !brdcst && !islocal) {
-                                p_ring_out.cmd_r =  p_ring_in.cmd_r; 
-                        }  
-
-                        if (!p_ring_in.cmd_w || eop) {
-                                p_ring_out.cmd_r =  p_ring_in.cmd_r; 
-                        }
-
-
+                        	} 
+        			else
+                         	{
+                                	p_ring_out.cmd_r =  p_ring_in.cmd_r; 
+                        	}
 		}
 		break;
 
                 case BROADCAST_0:
-                        p_ring_out.cmd_r =  m_cmd_fifo.wok() && p_ring_in.cmd_r; 
+                        p_ring_out.cmd_r =  m_cmd_fifo.wok() && (m_alloc_target || p_ring_in.cmd_r); 
                 break;
 
                 case BROADCAST_1:
-                        p_ring_out.cmd_r =  m_cmd_fifo.wok() && p_ring_in.cmd_r; 
+                        p_ring_out.cmd_r =  m_cmd_fifo.wok() && (m_alloc_target || p_ring_in.cmd_r); 
                 break;
 
 		case LOCAL:
