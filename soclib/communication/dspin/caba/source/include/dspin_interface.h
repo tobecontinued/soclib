@@ -42,7 +42,7 @@ enum{
 template<int dspin_data_size>
 class DspinSignals {
     public:
-        sc_signal<sc_uint<dspin_data_size> >  	data;    // data
+        sc_signal<sc_uint<dspin_data_size> >  		data;    // data
         sc_signal<bool>                 		write;   // write command 
         sc_signal<bool>                 		read;    // read command
 
@@ -62,13 +62,19 @@ class DspinSignals {
             __trace(read); 
 #undef __trace
         }
+
+        void print_trace(std::string name)
+        {
+            if ( write )
+            std::cout << name << " DSPIN : data = " << std::hex << data << " | ack = " << read << std::endl;
+        }
 };
 
 
 /***  DSPIN OUT Ports ***/
 template<int dspin_data_size>
 struct DspinOutput {
-    sc_out<sc_uint<dspin_data_size> >     	data;    // data
+    sc_out<sc_uint<dspin_data_size> >   data;    // data
     sc_out<bool>                    	write;   // valid data
     sc_in<bool>                     	read;    // data accepted
 
