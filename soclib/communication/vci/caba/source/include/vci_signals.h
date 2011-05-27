@@ -127,6 +127,35 @@ public:
         __trace(pktid);
 #undef __trace
     }
+
+    void print_trace(std::string name)
+    {
+        if ( cmdval )
+        {
+            std::cout << name << std::hex << " CMD VCI :";
+            if ( cmd.read() == 1 )      std::cout << " RD ";
+            if ( cmd.read() == 2 )      std::cout << " WR ";
+            if ( cmd.read() == 3 )      std::cout << " LL ";
+            if ( cmd.read() == 0 )      std::cout << " SC ";
+            std::cout << " @ = "       << address
+                      << " | wdata = " << wdata
+                      << " | srcid = " << srcid
+                      << " | trdid = " << trdid
+                      << " | eop = "   << eop
+                      << " | ack = "   << cmdack << std::endl;
+        }
+        if ( rspval )
+        {
+            std::cout << name << std::hex << " RSP VCI :";
+            std::cout << " rerror = "   << rerror
+                      << " | rdata = "  << rdata
+                      << " | rsrcid = " << rsrcid
+                      << " | rtrdid = " << rtrdid
+                      << " | reop = "   << reop
+                      << " | ack = "    << rspack << std::endl;
+        }
+    } // end print_trace()
+    
 };
 
 }}
