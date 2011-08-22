@@ -31,6 +31,7 @@
 #include <string>
 #include "stdint.h"
 #include <ios>
+#include <cstddef>
 
 namespace soclib { namespace common {
 
