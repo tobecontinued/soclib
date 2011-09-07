@@ -165,7 +165,8 @@ private:
     uint32_t m_cpt_icache_dir_read;         // ICACHE DIR READ
     uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
 
-    uint32_t m_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
+    addr_t   m_cpt_pc_previous;             // previous valid instruction address
+    uint32_t m_cpt_exec_ins;	            // number of executed instructions
     uint32_t m_cpt_total_cycles;	    // total number of cycles
 
     uint32_t m_cpt_read;                    // total number of read instructions

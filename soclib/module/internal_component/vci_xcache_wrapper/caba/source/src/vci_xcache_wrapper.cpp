@@ -226,13 +226,13 @@ tmpl(void)::file_trace(FILE* file)
 tmpl(void)::file_stats(FILE* file)
 //////////////////////////////////
 {
-    float imiss_rate 	= (float)m_cpt_ins_miss / (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
+    float imiss_rate 	= (float)m_cpt_ins_miss / (float)(m_cpt_exec_ins);
     float dmiss_rate 	= (float)m_cpt_data_miss / (float)(m_cpt_read - m_cpt_unc_read);
-    float cpi		= (float)m_cpt_total_cycles / (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
+    float cpi		= (float)m_cpt_total_cycles / (float)(m_cpt_exec_ins);
 
     fprintf(file,"%8d %8d %8d %8d %8d    %f    %f    %f \n", 
             m_cpt_total_cycles, 
-            m_cpt_total_cycles - m_cpt_frz_cycles,
+            m_cpt_exec_ins,
             m_cpt_ins_miss,
             m_cpt_read-m_cpt_unc_read,
             m_cpt_data_miss,
@@ -246,21 +246,20 @@ tmpl(void)::print_cpi()
 {
     std::cout << name() << " CPU " << m_srcid << " : CPI = "
 
-              << (float)m_cpt_total_cycles/(m_cpt_total_cycles - m_cpt_frz_cycles) << std::endl;
+              << (float)m_cpt_total_cycles/(float)(m_cpt_exec_ins) << std::endl;
 }
 ////////////////////////
 tmpl(void)::print_stats()
 ////////////////////////
 {
-    float run_cycles = (float)(m_cpt_total_cycles - m_cpt_frz_cycles);
     std::cout << "------------------------------------" << std:: dec << std::endl;
     std::cout << name() << " / Time = " << m_cpt_total_cycles << std::endl;
-    std::cout << "- CPI                = " << (float)m_cpt_total_cycles/run_cycles << std::endl ;
-    std::cout << "- READ RATE          = " << (float)m_cpt_read/run_cycles << std::endl ;
-    std::cout << "- WRITE RATE         = " << (float)m_cpt_write/run_cycles << std::endl;
+    std::cout << "- CPI                = " << (float)m_cpt_total_cycles/m_cpt_exec_ins << std::endl ;
+    std::cout << "- READ RATE          = " << (float)m_cpt_read/m_cpt_exec_ins << std::endl ;
+    std::cout << "- WRITE RATE         = " << (float)m_cpt_write/m_cpt_exec_ins << std::endl;
     std::cout << "- UNCACHED READ RATE = " << (float)m_cpt_unc_read/m_cpt_read << std::endl ;
     std::cout << "- CACHED WRITE RATE  = " << (float)m_cpt_write_cached/m_cpt_write << std::endl ;
-    std::cout << "- IMISS_RATE         = " << (float)m_cpt_ins_miss/run_cycles << std::endl;
+    std::cout << "- IMISS_RATE         = " << (float)m_cpt_ins_miss/m_cpt_exec_ins << std::endl;
     std::cout << "- DMISS RATE         = " << (float)m_cpt_data_miss/(m_cpt_read-m_cpt_unc_read) << std::endl ;
     std::cout << "- INS MISS COST      = " << (float)m_cost_ins_miss_frz/m_cpt_ins_miss << std::endl;
     std::cout << "- IMISS TRANSACTION  = " << (float)m_cost_imiss_transaction/m_cpt_imiss_transaction << std::endl;
@@ -276,13 +275,16 @@ tmpl(void)::print_stats()
 tmpl(void)::print_trace(size_t mode)
 ////////////////////////////////////
 {
-    typename iss_t::InstructionRequest  ireq;
-    typename iss_t::DataRequest         dreq;
+    typename iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
+    typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
     m_iss.getRequests( ireq, dreq );
 
-    std::cout << std::dec << "xcache_wrapper " << m_srcid << std::endl;
-    std::cout << ireq << std::endl;
-    std::cout << dreq << std::endl;
+    std::cout << std::dec << "XCACHE_WRAPPER " << name() << std::endl;
+    std::cout << " proc state  : PC = " << std::hex << ireq.addr 
+              << " / IREQ = " << std::dec << ireq.valid
+              << " / AD = " << std::hex << dreq.addr
+              << " / DREQ = " << std::dec << dreq.valid 
+              << " / DTYPE = " << dreq.type << std::endl;
     std::cout << " cache state : " << icache_fsm_state_str[r_icache_fsm] << " / "
                                    << dcache_fsm_state_str[r_dcache_fsm] << " / "
                                    << cmd_fsm_state_str[r_vci_cmd_fsm] << " / "
@@ -346,7 +348,7 @@ tmpl(void)::transition()
         m_cpt_icache_dir_read  = 0;
         m_cpt_icache_dir_write = 0;
 
-	m_cpt_frz_cycles = 0;
+	m_cpt_exec_ins = 0;
         m_cpt_total_cycles = 0;
 
         m_cpt_read = 0;
@@ -784,8 +786,13 @@ tmpl(void)::transition()
         m_iss.executeNCycles(1, irsp, drsp, it);
     }
 
-    if ( (ireq.valid && !irsp.valid) || (dreq.valid && !drsp.valid) )
-        m_cpt_frz_cycles++;
+    if ( (ireq.valid && irsp.valid) && 
+         (!dreq.valid || drsp.valid) && 
+         (ireq.addr != m_cpt_pc_previous) )
+    {
+        m_cpt_exec_ins++;
+        m_cpt_pc_previous = ireq.addr;
+    }
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -974,9 +981,9 @@ tmpl(void)::transition()
         if ( (p_vci.rerror.read() & 0x1) == 0x1 ) 
         {
 
-#ifdef SOCLIB_MODULE_DEBUG
+//#ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " write BERR" << std::endl;
-#endif
+//#endif
             m_iss.setWriteBerr();
         }
         break;
