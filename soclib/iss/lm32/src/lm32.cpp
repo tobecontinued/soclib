@@ -272,6 +272,7 @@ namespace soclib { namespace common {
             run();
         } 
 
+handle_except:
         {
             ExceptionClass ex_class = EXCL_FAULT;
             ExceptionCause ex_cause = EXCA_OTHER;
@@ -283,6 +284,7 @@ namespace soclib { namespace common {
                     ex_class = EXCL_IRQ;
                     break;
 
+                case  X_WATCH_POINT       :
                 case  X_BREAK_POINT       :
                     ex_class = EXCL_TRAP;
                     break;
@@ -294,10 +296,6 @@ namespace soclib { namespace common {
 
                 case  X_DIVISION_BY_ZERO  :
                     ex_cause = EXCA_DIVBYZERO;
-                    break;
-
-                case  X_WATCH_POINT       :
-                    ex_cause = EXCA_FPU;
                     break;
 
                 case  X_SYSTEM_CALL       :
@@ -316,7 +314,6 @@ namespace soclib { namespace common {
         if (!m_exception)
             goto no_except;
 
-handle_except:
         {
             m_exception = false;
             switch ( m_exception_cause ) {
