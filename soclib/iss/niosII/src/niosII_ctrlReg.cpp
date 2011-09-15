@@ -99,8 +99,14 @@ uint32_t Nios2fIss::controlRegisterGet( uint32_t reg) const
     switch(CTRL_REGNUM(reg)) {
     case STATUS:
         return r_status.whole;
+    case ESTATUS:
+        return r_estatus;
+    case IPENDING:
+        return r_ipending;
     case IENABLE:
         return r_ienable;
+    case EXCEPTION:
+        return r_exception;
     case CPUID:
     	return r_cpuid;
     case RESERVED_17:
@@ -118,6 +124,9 @@ void Nios2fIss::controlRegisterSet( uint32_t reg, uint32_t val )
     switch(CTRL_REGNUM(reg)) {
     case STATUS:
         r_status.whole = val;
+        break;
+    case ESTATUS:
+        r_estatus = val;
         break;
     case IENABLE:
         r_ienable = val;

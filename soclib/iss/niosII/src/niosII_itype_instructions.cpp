@@ -144,7 +144,7 @@ void Nios2fIss::run()
 #if SOCLIB_MODULE_DEBUG
     std::cout
 		<< m_name << std::hex
-		<< " PC: " << r_pc << " nextPC: " << r_npc << " branchAddress: " <<m_branchAddress << " branchTaken: " << m_branchTaken
+		<< " PC: " << r_pc << " branchAddress: " <<m_branchAddress << " branchTaken: " << m_branchTaken
         << std::endl
         << " exceptionSignal: " << std::hex << m_exceptionSignal
         << std::endl << std::endl << std::dec;

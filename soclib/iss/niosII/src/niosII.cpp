@@ -182,11 +182,9 @@ void Nios2fIss::reset()
 	r_ipending = 0;
 
 	r_pc = RESET_ADDRESS;
-	r_npc = RESET_ADDRESS + 4;
 
     r_count = 0;
 
-    r_dbe = false;
 	m_ibe = false;
 	m_dbe = false;
 
@@ -195,7 +193,6 @@ void Nios2fIss::reset()
 	m_dreq = null_dreq;
 
 	m_ins_delay = 0;
-	m_exec_cycles = 0;
 
 	m_hazard = false;
 	m_exceptionSignal = NO_EXCEPTION;
@@ -268,30 +265,23 @@ bool Nios2fIss::handle_exception()
         << std::hex << std::showbase
         << " exception: "<<m_exceptionSignal<<std::endl
         << " PC: " << r_pc
-        << " next_PC: " << r_npc
         << std::dec
         << std::endl<< std::endl;
-#endif
-    r_estatus = r_status.whole;/* status reg saving */
-    r_status.whole = r_status.whole & 0xFFFFFFFE; /* bit PIE forced to zero */
-
-    r_exception = m_exceptionSignal;
-
-    r_gpr[EA] = r_npc-4; // ea register stores the address where processing can resume
-
-    addr_t except_address = exceptBaseAddr();
-
-#ifdef SOCLIB_MODULE_DEBUG
     std::cout
         << m_name <<" exception: "<<m_exceptionSignal <<std::endl
         << std::hex << std::showbase << " m_ins: " << m_instruction.j.op
-        << " exception address: " << except_address
         << std::dec
         << std::endl;
 #endif
 
-    r_pc = except_address;
-    r_npc = except_address + 4;
+    r_estatus = r_status.whole;/* status reg saving */
+    r_status.whole = r_status.whole & 0xFFFFFFFE; /* bit PIE forced to zero */
+
+    r_exception = m_exceptionSignal << 2;
+
+    r_gpr[EA] = r_pc + 4; // ea register stores the address of the next instruction
+    m_branchAddress = exceptBaseAddr();
+    m_branchTaken = true;
 
     return false;
 }
@@ -347,17 +337,6 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 
     if (ncycle == 0)
         return 0;
-
-	// Asynchronous Data bus error detection
-//	if (r_dbe) {
-//		m_exceptionSignal = X_DBE;
-//		r_dbe = false;
-//#if SOCLIB_MODULE_DEBUG
-//		std::cout
-//            << " Asynchronous data bus error detection (write) : X_DBE set - addr :  "<< std::hex
-//            << std::showbase << m_dreq.addr << std::dec << std::endl;
-//#endif
-//	}
 
 	if (m_startOflriList != NULL) {
 		lateResultInstruction * ptr = m_startOflriList;
@@ -426,41 +405,31 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
         return ncycle;
     }
 
-    run();
-    m_exec_cycles++;
-
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << " m_exec_cycles: "<<m_exec_cycles << std::endl;
-#endif
-
-	if (m_exceptionSignal != NO_EXCEPTION)
-		goto handle_exception;
-
 	// Interrupt detection
-	// 	if ( (r_status & 1) && (r_ienable & 0x1 ==  m_irq & 0x1) ) {
-	if ((r_status.whole & 1) && (r_ipending != 0)) {
+	if ((r_status.whole & 1) && r_ipending) {
 		m_exceptionSignal = X_INT;
 
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;
 #endif
-        goto handle_exception;
-	}
-	goto no_exception;
+
+	} else {
+        // according to the handbook, we must skip current instruction
+        // execution when taking an irq.
+
+        run();
+    }
 
  handle_exception:
-    if (handle_exception())
+    if (m_exceptionSignal != NO_EXCEPTION && handle_exception())
         return ncycle;
 
- no_exception:
     if (m_branchTaken) {
-		r_pc = m_branchAddress;
-		r_npc = m_branchAddress + 4;
-	} else {
-		r_pc = r_npc;
-		r_npc = r_npc + 4;
-	}
-	r_count += ncycle;
+        r_pc = m_branchAddress;
+    } else {
+        r_pc = r_pc + 4;
+    }
+    r_count += ncycle;
 
     return ncycle;
 }
@@ -632,7 +601,6 @@ void Nios2fIss::debugSetRegisterValue(unsigned int reg, uint32_t value)
         break;
     case 32:
         r_pc = value;
-        r_npc = value+4;
         break;
     default:
         break;

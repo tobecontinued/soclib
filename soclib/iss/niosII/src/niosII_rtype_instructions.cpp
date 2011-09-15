@@ -329,7 +329,7 @@ void Nios2fIss::RType_mulxuu()
 void Nios2fIss::RType_nextpc()
 {
     //Get address of following instruction p.8-75
-    r_gpr[m_instruction.r.c] = r_pc + 8;
+    r_gpr[m_instruction.r.c] = r_pc + 4;
 }
 
 void Nios2fIss::RType_nor()

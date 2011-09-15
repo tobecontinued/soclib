@@ -146,14 +146,12 @@ private:
 	uint32_t r_cr[32]; // Coprocessor Registers used by custom instructions
 
 	uint32_t r_pc; // Program Counter
-	uint32_t r_npc; // Next Program Counter
 
 	struct DataRequest m_dreq;
 	int r_mem_do_sign_extend;
 	int r_mem_byte_le;
 	int r_mem_byte_count;
 	int r_mem_offset_byte_in_reg;
-	bool r_dbe; // Asynchronous Data Bus Error (write)
 	uint32_t r_mem_dest; // Data Cache destination register (read)
 	bool r_mem_unsigned; // unsigned or signed memory request
 
@@ -259,7 +257,6 @@ private:
 	uint32_t m_next_pc;
 	bool m_branchTaken;
 	bool m_hazard;
-	uint32_t m_exec_cycles; // number of executed instructions
 
 	uint32_t m_rdata;
 	uint32_t m_irq;
@@ -304,7 +301,7 @@ public:
 	void setDataResponse(const struct DataResponse &);
 
 	inline void setWriteBerr() {
-		r_dbe = true;
+		m_dbe = true;
 	}
 
 	// processor internal registers access API, used by debugger
