@@ -42,7 +42,8 @@
 #include <algorithm>
 
 #include <systemc.h>
-#include "interval_set.hh"
+#include <dpp/interval_set>
+
 #include "iss2.h"
 #include "exception.h"
 #include "soclib_endian.h"
