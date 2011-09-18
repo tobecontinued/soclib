@@ -131,8 +131,8 @@ typedef struct {
 
 
 #define START_FPOP(restype)                                 \
-    uint32_t rs1, rs2, rd;                                  \
-    vfloat_t op1, op2, res;                                 \
+    __attribute__((unused)) uint32_t rs1, rs2, rd;                 \
+    __attribute__((unused)) vfloat_t op1, op2, res;                                 \
     unsigned char texc = 0;                                 \
     unsigned char tfcc = 0;                                 \
     bool unfinished = false;                                \

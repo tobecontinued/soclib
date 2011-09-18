@@ -390,7 +390,7 @@ tmpl(void)::op_ldd()
 
 tmpl(void)::op_ldsba()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -402,7 +402,7 @@ tmpl(void)::op_ldsba()
 
 tmpl(void)::op_ldsha()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -414,7 +414,7 @@ tmpl(void)::op_ldsha()
 
 tmpl(void)::op_lduba()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -426,7 +426,7 @@ tmpl(void)::op_lduba()
 
 tmpl(void)::op_lduha()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -438,7 +438,7 @@ tmpl(void)::op_lduha()
 
 tmpl(void)::op_lda()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -450,7 +450,7 @@ tmpl(void)::op_lda()
 
 tmpl(void)::op_ldda()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -511,7 +511,7 @@ tmpl(void)::op_std()
 
 tmpl(void)::op_stba()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -523,7 +523,7 @@ tmpl(void)::op_stba()
 
 tmpl(void)::op_stha()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -535,7 +535,7 @@ tmpl(void)::op_stha()
 
 tmpl(void)::op_sta()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -547,7 +547,7 @@ tmpl(void)::op_sta()
 
 tmpl(void)::op_stda()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -587,7 +587,7 @@ tmpl(void)::op_ldstub()
 
 tmpl(void)::op_swapa()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -601,7 +601,7 @@ tmpl(void)::op_swapa()
 
 tmpl(void)::op_ldstuba()
 {
-    addr_t addr, asi;
+    __attribute__((unused)) addr_t addr, asi;
     uint32_t rd;
     ENSURE_PRIVILEDGED_MODE();
     GET_OPERANDS_ASI(m_ins, addr, asi, rd);
@@ -616,7 +616,7 @@ tmpl(void)::op_ldstuba()
 tmpl(void)::op_flush() 
 {
     addr_t addr;
-    uint32_t rd;
+    __attribute__((unused)) uint32_t rd;
     GET_OPERANDS(m_ins, addr, rd);
     ENSURE_ALIGNED_ADDR(addr, 4);
     
@@ -693,7 +693,7 @@ tmpl(void)::op_stf()
 tmpl(void)::op_stfsr()
 {
     addr_t addr;
-    uint32_t rd;
+    __attribute__((unused)) uint32_t rd;
     GET_OPERANDSF(m_ins, addr, rd);
     ENSURE_EF_SET();
     ENSURE_ALIGNED_ADDR(addr, 4);

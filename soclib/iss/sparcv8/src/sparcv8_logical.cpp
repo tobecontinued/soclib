@@ -748,14 +748,13 @@ tmpl(void)::op_rett()
 
 #define op(x) tmpl(void)::op_##x()                          \
     {                                                       \
-        uint32_t op1, op2, trap, offset;                    \
+        uint32_t op1, op2, trap;                    \
         GET_LOGIC_OPERANDS(m_ins, op1, op2);                      \
                                                             \
         if(!evaluate_icc(m_ins.branches.cond))              \
             return;                                         \
                                                             \
         trap = (op1 + op2) & 0x7f;                          \
-        offset = trap + 128;                                \
                                                             \
         if (!m_exception) {                                 \
             m_exception = true;                             \
