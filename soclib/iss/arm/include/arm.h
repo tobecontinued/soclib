@@ -221,6 +221,7 @@ private:
 
     addr_t m_exception_pc;
     addr_t m_exception_dptr;
+    uint32_t m_ldstm_sp_offset;
 
     enum exception_e m_exception;
 

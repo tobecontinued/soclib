@@ -166,6 +166,7 @@ uint32_t ArmIss::executeNCycles(
 	}
 
 	if ( m_ins_error || m_data_error ) {
+        m_ldstm_sp_offset = 0;
 		goto handle_except;
 	}
 
@@ -173,6 +174,7 @@ uint32_t ArmIss::executeNCycles(
 	if ( m_microcode_func ) {
 		(this->*m_microcode_func)();
 	} else {
+        m_ldstm_sp_offset = 0;
 		if ( r_gp[15] != m_current_pc ) {
 			m_opcode.decod.cond = 0xf; // Never
             m_thumb_op.ins = 0x46c0; // Nop (special)
@@ -304,6 +306,7 @@ void ArmIss::reset()
 	m_ins_error = false;
 	m_data_error = false;
 	m_microcode_func = NULL;
+    m_ldstm_sp_offset = 0;
 	m_cycle_count = 0;
 	m_run_count = 0;
 	m_exception = EXCEPT_NONE;
@@ -409,7 +412,8 @@ ArmIss::debug_register_t ArmIss::debugGetRegisterValue(unsigned int reg) const
         case ISS_DEBUG_REG_IS_INTERRUPTIBLE:
             return !r_cpsr.irq_disabled || !r_cpsr.fiq_disabled;
         case ISS_DEBUG_REG_STACK_REDZONE_SIZE:
-            return 64; // FIXME access may be below sp during push/pop only, should handle dynamically
+            // sp is pre-decremented during pop
+            return m_ldstm_sp_offset;
         default:
             return 0;
         }

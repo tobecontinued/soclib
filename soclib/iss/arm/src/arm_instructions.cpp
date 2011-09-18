@@ -170,9 +170,13 @@ void ArmIss::arm_ldstm()
         do_microcoded_ldstm_user();
     } else {
         m_microcode_func = &ArmIss::do_microcoded_ldstm;
-        do_microcoded_ldstm();
-        if ( m_opcode.bdt.write_back )
+        m_ldstm_sp_offset = 0;
+        if ( m_opcode.bdt.write_back ) {
+            if ( m_opcode.bdt.rn == 13 )
+                m_ldstm_sp_offset = offset;
             r_gp[m_opcode.bdt.rn] = wbck_address;
+        }
+        do_microcoded_ldstm();
     }
 }
 
