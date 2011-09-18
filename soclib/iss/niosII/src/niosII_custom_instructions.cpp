@@ -71,13 +71,6 @@ static const char *customNameTable[] = {
 };
 #endif
 
-#define check_align(address, align)             \
-    if ( (address)%(align) ) {                  \
-        m_dreq.addr = address;                  \
-        m_exceptionSignal = X_ADEL;             \
-        return;                                 \
-    }
-
 //custom p.8-49
 void Nios2fIss::op_custom() {
 	// opx field carrries readra, readrb, m_writerc information
@@ -109,7 +102,8 @@ void Nios2fIss::op_custom() {
 void Nios2fIss::custom_ll()
 {
     uint32_t address =  m_gprA;
-    check_align(address, 4);
+    if (check_align(address, 4, X_MALLDATAADR))
+        return;
     do_mem_access(address, 4, 0, m_instruction.r.c, 0, 0, DATA_LL);
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout
@@ -126,7 +120,8 @@ void Nios2fIss::custom_ll()
 void Nios2fIss::custom_sc()
 {
     uint32_t address =  m_gprA;
-    check_align(address, 4);
+    if (check_align(address, 4, X_MALLDESTADR))
+        return;
     do_mem_access(address, 4, 8, m_instruction.r.c, 0, r_gpr[m_instruction.r.c], DATA_SC);
 #ifdef SOCLIB_MODULE_DEBUG
 	std::cout

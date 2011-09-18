@@ -104,37 +104,25 @@ private:
 
 	// NiosII processor handbook page 3-35
 	enum ExceptCause {
-		X_RESET, // Interrupt
-		X_PRESET, // Processor-only Interrupt
-		X_INT, // Interrupt
-		X_TR, // Trap
-		X_UIINST, // Unimplemented instruction
-		X_ILLEGAL, // Illegal instruction
-		X_MALLDATAADR, // Misaligned data address
-		X_MALLDESTADR, // Misaligned destination address
-		X_DIV, // Division
-		X_SOINSTADDR, // Supervisor-only instruction address
-		X_SOINST, // Supervisor-only instruction
-		X_SODATAADDR, // Supervisor-only data address
-		X_FTLBMISS, // SFast TLB miss
-		X_TLBPVIOLE, // TLB permission violation (execute)
-		X_TLBPVIOLR, // TLB permission violation (read)
-		X_TLBPVIOLW, // TLB permission violation (write)
-		X_MPURVIOL, // MPU Region Violation (data)
-		X_MOD, // TLB Modification
-		X_TLBL, // TLB Load error
-		X_TLBS, // TLB Store error
-		X_ADEL, // Address error (load or fetch)
-		X_ADES, // Address error (store)
-		X_IBE, // Ins bus error
-		X_DBE, // Data bus error (load/store)
-		X_SYS, // Syscall
-		X_BP, // Break point
-		X_RI, // Reserved
-		X_CPU, // Coproc unusable
-		X_OV, // Overflow
-		X_reserved, // Reserved
-		X_FPE, // Floating point
+		X_RESET  = 0, // Interrupt
+		X_PRESET = 1, // Processor-only Interrupt
+		X_INT    = 2, // Interrupt
+		X_TR     = 3, // Trap
+		X_UIINST = 4, // Unimplemented instruction
+		X_ILLEGAL = 5, // Illegal instruction
+		X_MALLDATAADR = 6, // Misaligned data address
+		X_MALLDESTADR = 7, // Misaligned destination address
+		X_DIV = 8, // Division
+		X_SOINSTADDR = 9, // Supervisor-only instruction address
+		X_SOINST = 10, // Supervisor-only instruction
+		X_SODATAADDR = 11, // Supervisor-only data address
+		X_FTLBMISS = 12, // SFast TLB miss
+		X_TLBPVIOLE = 13, // TLB permission violation (execute)
+		X_TLBPVIOLR = 14, // TLB permission violation (read)
+		X_TLBPVIOLW = 15, // TLB permission violation (write)
+		X_MPURVIOLI = 16, // MPU Region Violation (instruction)
+		X_MPURVIOLD = 17, // MPU Region Violation (data)
+        X_BR = 18,
         NO_EXCEPTION,
 	};
 
@@ -277,6 +265,17 @@ private:
 	} m_resultCustomInstruction, m_operandA, m_operandB;
 	int m_readra, m_readrb, m_writerc;
 	bool loadingFromCustomRegister;
+
+    inline bool check_align(addr_t address, unsigned align, ExceptCause fault)
+    {
+        if ( (address)%(align) ) {
+            m_dreq.addr = address;
+            m_exceptionSignal = fault;
+            r_badaddr = address;
+            return true;
+        }
+        return false;
+    }
 
 public:
 	Nios2fIss(const std::string &name, uint32_t ident);

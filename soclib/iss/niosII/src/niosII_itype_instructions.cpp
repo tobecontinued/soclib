@@ -152,13 +152,6 @@ void Nios2fIss::run()
 
 }
 
-#define check_align(address, align)             \
-    if ( (address)%(align) ) {                  \
-        m_dreq.addr = address;                  \
-        m_exceptionSignal = X_ADEL;             \
-        return;                                 \
-    }
-
 void  Nios2fIss::dump() const
 {
 	Nios2fIss::dumpInstruction();
@@ -383,6 +376,11 @@ void  Nios2fIss::op_flushda()
 
 void  Nios2fIss::op_initd()
 {
+    if (r_status.u) {
+        m_exceptionSignal = X_SOINST;
+        return;
+    }
+
 	// Initialize data cache line p.8-57
 	/* instruction implemented in genMoore() */
 }
@@ -453,7 +451,8 @@ void  Nios2fIss::op_ldh()
 {
 	// Load rB<-Mem16[rA+IMM16] p.8-62
 	uint32_t address = m_gprA + sign_ext(m_instruction.i.imm16, 16);
-	check_align(address, 2);
+	if (check_align(address, 2, X_MALLDATAADR))
+        return;
     do_mem_access(address, 2, 2, m_instruction.i.b, 0, 0, DATA_READ);
 
 #if SOCLIB_MODULE_DEBUG
@@ -481,7 +480,8 @@ void  Nios2fIss::op_ldhu()
 {
 	// Load rB<-0x0000:Mem16[rA+IMM16] p.8-63
 	uint32_t address = m_gprA + sign_ext(m_instruction.i.imm16, 16);
-	check_align(address, 2);
+	if (check_align(address, 2, X_MALLDATAADR))
+        return;
     do_mem_access(address, 2, -2, m_instruction.i.b, 0, 0, DATA_READ);
 
 #if SOCLIB_MODULE_DEBUG
@@ -508,7 +508,8 @@ void  Nios2fIss::op_ldw()
 {
 	// Load(rB<_Mem32[rA+IMM16]) p.8.64
 	uint32_t address = m_gprA + sign_ext(m_instruction.i.imm16, 16);
-	check_align(address, 4);
+	if (check_align(address, 4, X_MALLDATAADR))
+        return;
     do_mem_access(address, 4, 0, m_instruction.i.b, 0, 0, DATA_READ);
 
 #if SOCLIB_MODULE_DEBUG
@@ -582,7 +583,8 @@ void  Nios2fIss::op_sth()
 	// Store Mem16[rA+IMM16]<-rB(15..0) p.8-93
 	uint16_t tmp = m_gprB&0xffff;
 	uint32_t address = m_gprA + sign_ext(m_instruction.i.imm16, 16);
-	check_align(address, 2);
+	if (check_align(address, 2, X_MALLDESTADR))
+        return;
 	do_mem_access(address, 2, 0, 0, 0, tmp, DATA_WRITE);
 
 #if SOCLIB_MODULE_DEBUG
@@ -603,7 +605,8 @@ void  Nios2fIss::op_stw()
 {
 	// Store Mem32[rA+IMM16]<-rB p.8-94
 	uint32_t address = m_gprA + sign_ext(m_instruction.i.imm16, 16);
-	check_align(address, 4);
+	if (check_align(address, 4, X_MALLDESTADR))
+        return;
 	do_mem_access(address, 4, 0, 0, 0, m_gprB, DATA_WRITE);
 
 #if SOCLIB_MODULE_DEBUG
@@ -634,7 +637,7 @@ void  Nios2fIss::op_xori()
 
 void  Nios2fIss::op_illegal()
 {
-	m_exceptionSignal = X_RI;
+	m_exceptionSignal = X_ILLEGAL;
 }
 
 }

@@ -36,6 +36,8 @@
  * - summer 2006: First version developed on a first SoCLib template by Reeb, Charot.
  * - september 2007: the model has been completely rewritten and adapted to the SocLib
  * 						rules defined during the first months of the SocLib ANR project
+ * - september 2011: fixed exception enum, irq return address, nextpc instruction and
+ *                   added user mode checks by A.Becoulet
  *
  * Functional description:
  * Four files:
@@ -210,43 +212,37 @@ bool Nios2fIss::handle_exception()
     switch (m_exceptionSignal) {
     case X_INT:
     case X_RESET:
+    case X_PRESET:
         ex_class = EXCL_IRQ;
         break;
-    case X_SYS:
+    case X_TR:
         ex_class = EXCL_SYSCALL;
         break;
-    case X_BP:
-    case X_TR:
+    case X_BR:
         ex_class = EXCL_TRAP;
         break;
-
-    case X_MOD:
-    case X_reserved:
-        abort();
-
-    case X_TLBL:
-    case X_TLBS:
+ 
+    case X_SOINSTADDR:
+    case X_SODATAADDR:
+    case X_TLBPVIOLE:
+    case X_TLBPVIOLR:
+    case X_TLBPVIOLW:
+    case X_FTLBMISS:
         ex_cause = EXCA_PAGEFAULT;
         break;
-    case X_ADEL:
-    case X_ADES:
+
     case X_MALLDATAADR:
     case X_MALLDESTADR:
         ex_cause = EXCA_ALIGN;
         break;
-    case X_IBE:
-    case X_DBE:
+    case X_MPURVIOLI:
+    case X_MPURVIOLD:
         ex_cause = EXCA_BADADDR;
         break;
-    case X_RI:
-    case X_CPU:
     case X_ILLEGAL:
     case X_UIINST:
+    case X_SOINST:
         ex_cause = EXCA_ILL;
-        break;
-    case X_OV:
-    case X_FPE:
-        ex_cause = EXCA_FPU;
         break;
     case X_DIV:
         ex_cause = EXCA_DIVBYZERO;
@@ -275,11 +271,16 @@ bool Nios2fIss::handle_exception()
 #endif
 
     r_estatus = r_status.whole;/* status reg saving */
-    r_status.whole = r_status.whole & 0xFFFFFFFE; /* bit PIE forced to zero */
+    r_status.pie = 0;
+    r_status.u = 0;
 
-    r_exception = m_exceptionSignal << 2;
+    if (m_exceptionSignal == X_BR) {
+        r_gpr[BA] = r_pc + 4;
+    } else {
+        r_gpr[EA] = r_pc + 4; // ea register stores the address of the next instruction
+        r_exception = m_exceptionSignal << 2;
+    }
 
-    r_gpr[EA] = r_pc + 4; // ea register stores the address of the next instruction
     m_branchAddress = exceptBaseAddr();
     m_branchTaken = true;
 
@@ -325,13 +326,14 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 	// checking for various exceptions
 	// Instruction bus error detection.
 	if (m_ibe) {
-		m_exceptionSignal = X_IBE;
+		m_exceptionSignal = X_SOINSTADDR;
 		goto handle_exception;
 	}
 
 	// Synchronous Data bus error detection.
 	if (m_dbe) {
-		m_exceptionSignal = X_DBE;
+		m_exceptionSignal = X_SODATAADDR;
+        
 		goto handle_exception;
 	}
 
@@ -406,7 +408,7 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
     }
 
 	// Interrupt detection
-	if ((r_status.whole & 1) && r_ipending) {
+	if (r_status.pie && r_ipending) {
 		m_exceptionSignal = X_INT;
 
 #ifdef SOCLIB_MODULE_DEBUG
@@ -443,24 +445,8 @@ void Nios2fIss::setDataResponse(const struct DataResponse &drsp)
 	m_dreq_ok = drsp.valid;
 	m_dbe = drsp.error;
 
-	int nb = 0;
-
-	switch (m_dreq.be) {
-	case 1:
-	case 2:
-	case 4:
-	case 8:
-		nb = 1;
-		break;
-	case 3:
-	case 0xc:
-		nb = 2;
-		break;
-	case 0xf:
-		nb = 4;
-		break;
-	}
-
+    if (m_dbe)
+        r_badaddr = drsp.rdata;
 
 	// when destination register is zero, this is a load or a store instruction
 	if (r_mem_dest == 0)
@@ -588,6 +574,11 @@ uint32_t Nios2fIss::debugGetRegisterValue(unsigned int reg) const
 		return r_reserved_17;
 	case 51:
 		return r_reserved_18;
+    case ISS_DEBUG_REG_IS_USERMODE:
+        return r_status.u;
+    case ISS_DEBUG_REG_IS_INTERRUPTIBLE:
+        return r_status.pie;
+    case ISS_DEBUG_REG_STACK_REDZONE_SIZE:
 	default:
 		return 0;
 	}

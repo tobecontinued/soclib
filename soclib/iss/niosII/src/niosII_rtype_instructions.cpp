@@ -123,15 +123,7 @@ void Nios2fIss::RType_and()
 void Nios2fIss::RType_break()
 {
     //Debugging breakpoint p.8-25
-    r_bstatus = r_status.whole; /* save the status register */
-    r_status.whole = (r_status.whole & 0xFFFFFFFE); /* bit PIE forced to zero */
-    if (m_instruction.r.c == BA) {
-        r_gpr[BA] = r_pc + 4; /* GPR[ba]=r31 */
-        // 			m_branchAddress = BREAK_HANDLER_ADDRESS; /* update PC : PC<-break handler address */
-		m_branchAddress = EXCEPTION_HANDLER_ADDRESS; /* update PC : PC<-break handler address */
-		m_branchTaken = true;
-	}
-	m_exceptionSignal = X_BP;
+	m_exceptionSignal = X_BR;
 
 	// 4 cycles per instruction
     setInsDelay( 4 );
@@ -139,6 +131,11 @@ void Nios2fIss::RType_break()
 
 void Nios2fIss::RType_bret()
 {
+    if (r_status.u) {
+        m_exceptionSignal = X_SOINST;
+        return;
+    }
+
     //Breakpoint return p.8-26
     r_status.whole = r_bstatus; /* update status register */
     if (m_instruction.r.a == BA) {
@@ -223,6 +220,11 @@ void Nios2fIss::RType_divu()
 
 void Nios2fIss::RType_eret()
 {
+    if (r_status.u) {
+        m_exceptionSignal = X_SOINST;
+        return;
+    }
+
     //Exception Return p.8-52
 	r_status.whole = r_estatus;
     m_branchAddress = r_gpr[m_instruction.r.a]; /* exception return address ea=r29 */
@@ -346,6 +348,11 @@ void Nios2fIss::RType_or()
 
 void Nios2fIss::RType_rdctl()
 {
+    if (r_status.u) {
+        m_exceptionSignal = X_SOINST;
+        return;
+    }
+
     //Read from control register p.8-81
 	//r_gpr[m_instruction.r.c] = r_ctl[m_instruction.r.sh];
 	r_gpr[m_instruction.r.c] = controlRegisterGet(m_instruction.r.sh);
@@ -495,20 +502,17 @@ void Nios2fIss::RType_trap()
 {
     //Exception intruction p.8-98
     m_exceptionSignal = X_TR;
-//    std::cout << "exception signal set to trap " <<  std::endl;
-    r_estatus = r_status.whole; /* save status register */
-    r_status.whole = (r_status.whole & 0xFFFFFFFE); /* force to 0 PIE bit to status register */
-    if (m_instruction.r.c == EA) {
-        r_gpr[EA]= r_pc + 4; /* save the next address to ea register (r29) */
-        m_branchAddress = EXCEPTION_HANDLER_ADDRESS;/* update PC : PC<-exception handler address */
-        m_branchTaken = true;
-    }
-    // 4 cycles per instruction
+
     setInsDelay( 4 );
 }
 
 void Nios2fIss::RType_wrctl()
 {
+    if (r_status.u) {
+        m_exceptionSignal = X_SOINST;
+        return;
+    }
+
     //Write to control register p.8-99
 	//r_ctl[m_instruction.r.sh] = r_gpr[m_instruction.r.a];
 	controlRegisterSet(m_instruction.r.sh, r_gpr[m_instruction.r.a]);
@@ -525,7 +529,7 @@ void Nios2fIss::RType_xor()
 
 void Nios2fIss::RType_illegal()
 {
-    m_exceptionSignal = X_RI;
+    m_exceptionSignal = X_ILLEGAL;
 }
 
 void Nios2fIss::op_RType()

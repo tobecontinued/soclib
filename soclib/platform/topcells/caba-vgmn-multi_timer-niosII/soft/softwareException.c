@@ -45,12 +45,13 @@ __asm__(
 /*     ".type softwareException, @function \n" */
 	
     ".set noat                           \n"
-	     
+    ".set nobreak                        \n"
 "softwareException:                     \n"
    /*
     * Did a trap instruction cause the exception?
     */
-    "ldw et,-4(ea)                       \n"  /* instruction that caused the exception */
+    "addi ea, ea, -4                     \n"
+    "ldw et,0(ea)                        \n"  /* instruction that caused the exception */
     "xorhi et,et,0x003b                  \n"  /* upper half of trap opcode */ 
     "xori  et,et,0x683a                  \n"  /* lower half of trap opcode */ 
     "beq et,zero,trap_handler            \n"
