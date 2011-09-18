@@ -53,11 +53,15 @@ enum SoclibIssMemcheckerRegisters {
     /* Creates a temporary context which vanish on next context switch */
 	ISS_MEMCHECKER_CONTEXT_ID_CREATE_TMP, // r1 = base, r2 = size, val = id
 
-    /* Creates a temporary context which vanish on next context switch */
+    /* Declare a spinlock address */
 	ISS_MEMCHECKER_LOCK_DECLARE, // r1 = base, val = 1 declare, 0 undeclare
 
-    /* Enables the memchecker when going out of the range [PC:val] */
+    /* Temporarily disable stack pointer range check until PC leaves [PC:val] range */
     ISS_MEMCHECKER_DELAYED_MAGIC,
+
+    /* Update PC interval where stack pointer range check is ignored
+       with [r1:r2] range. Add to interval set when val!=0. */
+    ISS_MEMCHECKER_BYPASS_SP_CHECK,
 
 	ISS_MEMCHECKER_REGISTER_MAX,
 };

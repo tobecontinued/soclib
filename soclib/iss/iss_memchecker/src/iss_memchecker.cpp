@@ -77,6 +77,8 @@ enum {
     ERROR_IRQ_ENABLED_TMP               = 0x00004000,
     ERROR_IRQ_ENABLED_LOCK              = 0x00008000,
     ERROR_LOCK_DEAD_LOCK                = 0x00010000,
+    ERROR_NULL_POINTER_ACCESS           = 0x00020000,
+    ERROR_BAD_MAGIC_OP                  = 0x00040000,
 };
 
 // errors which use a repeat mask to avoid flooding output
@@ -530,7 +532,7 @@ public:
           m_contexts(),
           m_regions(),
           m_default_address(new RegionInfo(RegionInfo::REGION_INVALID, 0, 0, 0), true),
-          m_comm_address(0x4200),
+          m_comm_address(0x400),
           unknown_context(new ContextState(ISS_MEMCHECKER_ID_UNKNOWN, 0, 0 )) //(uint32_t)-1 ))
     {
         unknown_context->ref();
@@ -811,6 +813,7 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
       m_last_sp(0),
       m_opt_dump_iss(false),
       m_opt_dump_access(false),
+      m_opt_show_enable(false),
       m_opt_show_ctx(false),
       m_opt_show_ctxsw(false),
       m_opt_show_region(false),
@@ -843,6 +846,7 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
     if ( const char *env = getenv( "SOCLIB_MEMCHK" ) ) {
         m_opt_dump_iss = strchr( env, 'I' );
         m_opt_dump_access = strchr( env, 'A' );
+        m_opt_show_enable = strchr( env, 'E' );
         m_opt_show_ctx = strchr( env, 'C' );
         m_opt_show_ctxsw = strchr( env, 'S' );
         m_opt_show_region = strchr( env, 'R' );
@@ -854,7 +858,7 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
             std::cerr << "[MemChecker] SOCLIB_MEMCHK env variable may contain the following flag letters: " << std::endl
                       << "  R (show region changes),     C (show context ops), S (show context switch), " << std::endl
                       << "  T (raise gdb except on err), I (show iss dump),    A (show access details), " << std::endl
-                      << "  L (show locks accesses)" << std::endl
+                      << "  L (show locks accesses),     E (show checks enable/disable)" << std::endl
                       << "  => See http://www.soclib.fr/trac/dev/wiki/Tools/MemoryChecker" << std::endl;
 
     if ( const char *env = getenv( "SOCLIB_MEMCHK_TRAPON" ) ) {
@@ -911,6 +915,9 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
     }
 #endif
 
+    if (reg_id != ISS_MEMCHECKER_MAGIC && m_magic_state == MAGIC_NONE)
+        return;
+
     switch (reg_id) {
     case ISS_MEMCHECKER_MAGIC:
         switch (m_magic_state) {
@@ -923,14 +930,17 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
                 m_magic_state = MAGIC_BE;
                 break;
             default:
-                std::cout << "Received magic " << std::hex << value << std::endl;
-                assert(!"Wrong magic");
+                report_error(ERROR_BAD_MAGIC_OP, value);
+                return;
             }
             break;
         case MAGIC_DELAYED:
-            assert(0 && "Cant access memchecker when in delayed magic");
+            // Cant access memchecker when in delayed magic
+            report_error(ERROR_BAD_MAGIC_OP, value);
+            break;
         default:
-            assert(value == 0 && "Wrong magic disable");
+            if (value != 0)
+                report_error(ERROR_BAD_MAGIC_OP, value);
             m_magic_state = MAGIC_NONE;
             break;
         }
@@ -999,6 +1009,18 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         m_delayed_pc_min = get_cpu_pc();
         m_delayed_pc_max = value;
         m_magic_state = MAGIC_DELAYED;
+        break;
+    }
+
+    case ISS_MEMCHECKER_BYPASS_SP_CHECK:
+    {
+        assert( m_r1 <= m_r2 );
+        if (value) {
+            assert( m_r2 - m_r1 < 512 ); // ensure we do not declare large areas
+            m_bypass_pc |= address_set_t(m_r1, m_r2);
+        }
+        else
+            m_bypass_pc &= ~address_set_t(m_r1, m_r2);
         break;
     }
 
@@ -1135,10 +1157,32 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         report_error( e, lta );
     }
 	case ISS_MEMCHECKER_ENABLE_CHECKS:
+
         m_enabled_checks |= value;
+
+        if ( m_opt_show_enable ) {
+            std::cout << " -----------------"
+                      << MEMCHK_COLOR_INFOR(" Enabled checks " << std::hex << value
+                                            << " (new value is " << m_enabled_checks << ")" )
+                      << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+            report_current_ctx();
+            std::cout << std::endl;
+        }
+
         break;
 	case ISS_MEMCHECKER_DISABLE_CHECKS:
+
         m_enabled_checks &= ~value;
+
+        if ( m_opt_show_enable ) {
+            std::cout << " -----------------"
+                      << MEMCHK_COLOR_INFOR(" Disabled checks " << std::hex << value
+                                            << " (new value is " << m_enabled_checks << ")" )
+                      << " by " << iss_t::m_name << " cpu" << std::endl << std::endl;
+            report_current_ctx();
+            std::cout << std::endl;
+        }
+
         break;
     default:
         assert(!"Unknown register");
@@ -1205,6 +1249,9 @@ void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
     error_level_t err = ERROR_NONE;
     AddressInfo *ai = s_memory_state->info_for_address(dreq.addr);
     const char *op = NULL;
+
+    if (dreq.addr == 0)
+        err |= ERROR_NULL_POINTER_ACCESS;
 
     switch ( dreq.type ) {
     case iss_t::DATA_LL:
@@ -1331,7 +1378,6 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
         uint32_t sp = get_cpu_sp();
         uint32_t fp = get_cpu_fp();
         uint32_t oob = 0;
-        bool show_stack_range = false;
         bool show_access = false;
         bool show_locks = false;
 
@@ -1364,6 +1410,11 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
             show_access = true;
             break;
 
+        case ERROR_NULL_POINTER_ACCESS:
+            ri = ai->region();
+            std::cout << MEMCHK_COLOR_ERR(" Null pointer " << acc << " access" );
+            break;
+
         case ERROR_CREATING_STACK_NOT_ALLOC:
             std::cout << MEMCHK_COLOR_ERR(" Stack creation in non-allocated memory");
             ri = m_last_region_touched;
@@ -1382,20 +1433,17 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
 
         case ERROR_SP_OUTOFBOUNDS:
             std::cout << MEMCHK_COLOR_ERR(" Stack pointer out of bounds: ") << sp;
-            show_stack_range = true;
             oob = sp;
             break;
 
         case ERROR_FP_OUTOFBOUNDS:
             std::cout << MEMCHK_COLOR_ERR(" Frame pointer out of bounds: ") << fp;
-            show_stack_range = true;
             oob = fp;
             break;
 
         case ERROR_DATA_ACCESS_BELOW_SP:
             std::cout << MEMCHK_COLOR_WARN(" Data " << acc << " below stack pointer at "
                                            << std::hex << m_last_data_access.addr);
-            show_stack_range = true;
             show_access = true;
             break;
 
@@ -1439,6 +1487,10 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
         case ERROR_LOCK_DEAD_LOCK:
             std::cout << MEMCHK_COLOR_ERR(" Spinlock dead lock ");
             show_locks = true;
+            break;
+
+        case ERROR_BAD_MAGIC_OP:
+            std::cout << MEMCHK_COLOR_ERR(" Bad magic register operation: " << std::hex << extra);
             break;
         }
 
@@ -1513,9 +1565,14 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 
     if ( dreq.valid ) {
         if ( (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) {
-            if ( !ireq.valid || irsp.valid )
-                handle_comm( dreq );
-            dreq.valid = false;
+            if ( m_magic_state != MAGIC_NONE || 
+                 ( dreq.type == iss_t::DATA_WRITE
+                   && ( dreq.wdata == ISS_MEMCHECKER_MAGIC_VAL ||
+                        dreq.wdata == ISS_MEMCHECKER_MAGIC_VAL_SWAPPED ) ) ) {
+                if ( !ireq.valid || irsp.valid )
+                    handle_comm( dreq );
+                dreq.valid = false;
+            }
         }
     }
 
@@ -1545,14 +1602,17 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 
     switch ( m_magic_state ) {
     case MAGIC_NONE:
+        //        std::cout <<std::hex<< m_current_context->m_stack_lower <<"<"<< get_cpu_sp() <<"<"<< m_current_context->m_stack_upper << "\n";
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) &&
-             ! m_current_context->stack_contains(get_cpu_sp()) )
+             ! m_current_context->stack_contains(get_cpu_sp()) &&
+             ! m_bypass_pc[get_cpu_pc()] )
             errl |= ERROR_SP_OUTOFBOUNDS;
         else
             m_no_repeat_mask &= ~ERROR_SP_OUTOFBOUNDS;
 
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_FP) &&
-             ! m_current_context->stack_contains(get_cpu_fp()) )
+             ! m_current_context->stack_contains(get_cpu_fp()) &&
+             ! m_bypass_pc[get_cpu_pc()] )
             errl |= ERROR_FP_OUTOFBOUNDS;
         else
             m_no_repeat_mask &= ~ERROR_FP_OUTOFBOUNDS;
@@ -1579,6 +1639,8 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
             errl |= ERROR_IRQ_ENABLED_LOCK;
         }
     }
+
+    report_error(errl, 0);
 
     if ( !m_bypass )
         return 0;

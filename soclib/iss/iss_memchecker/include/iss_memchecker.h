@@ -39,6 +39,8 @@
 #include <map>
 #include <algorithm>
 
+#include <dpp/interval_set>
+
 #include <systemc.h>
 #include "iss2.h"
 #include "exception.h"
@@ -78,8 +80,13 @@ class IssMemchecker
     typedef std::map<uint32_t, bool /* cycle */> held_locks_map_t;
     held_locks_map_t m_held_locks;
 
+    typedef dpp::interval_set<uint32_t, dpp::interval_bound_inclusive<uint32_t> > address_set_t;
+
+    address_set_t m_bypass_pc;
+
     bool m_opt_dump_iss;
     bool m_opt_dump_access;
+    bool m_opt_show_enable;
     bool m_opt_show_ctx;
     bool m_opt_show_ctxsw;
     bool m_opt_show_region;
