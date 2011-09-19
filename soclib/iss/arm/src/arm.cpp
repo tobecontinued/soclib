@@ -127,7 +127,6 @@ uint32_t ArmIss::executeNCycles(
 {
 	m_irq_in = irq_state & 0x1;
 	m_fiq_in = irq_state & 0x2;
-	bool r15_changed = false;
 
 	bool accept_external_interrupts = !r_cpsr.irq_disabled && !m_microcode_func;
 	bool accept_fast_external_interrupts = !r_cpsr.fiq_disabled && !m_microcode_func;
@@ -135,6 +134,7 @@ uint32_t ArmIss::executeNCycles(
 	
 	bool data_req_nok = m_dreq.valid;
 
+    /* handle instruction fetch response */
 	if ( instruction_asked && irsp.valid ) {
 		m_ins_error |= irsp.error;
 		m_opcode.ins = irsp.instruction;
@@ -142,99 +142,86 @@ uint32_t ArmIss::executeNCycles(
 		instruction_asked = false;
 	}
 
+    /* handle data fetch response */
 	if ( data_req_nok && drsp.valid ) {
 		m_data_error |= drsp.error;
-		r15_changed = handle_data_response(drsp);
-        if ( r15_changed ) {
+		data_req_nok = false;
+
+        if ( handle_data_response(drsp) ) {
+            /* if r15 changed, we need to fetch an other instruction */
             r_cpsr.thumb = r_gp[15] & 1;
             r_gp[15] &= ~1;
-        }
-		data_req_nok = false;
-	}
+            m_current_pc = r_gp[15];
 
-	// if r15 changed, the fetch error we will
-	// eventually get from ifetch is broken.
-	// else, the fetched instruction is not valid
-	m_ins_error &= !r15_changed;
+            /* discard fetch error due to wrong ifetch address */
+            m_ins_error = false;
+
+            return ncycle;
+        }
+	}
 	
-	if ( ncycle == 0 )
+    /* no cycle to spend? */
+	if ( ncycle == 0 ) {
 		return 0;
 
-	if ( instruction_asked || data_req_nok ) {
+    /* waiting on ifetch or dfecth? */
+    } else if ( instruction_asked || data_req_nok ) {
 		m_cycle_count += ncycle;
 		return ncycle;
-	}
 
-	if ( m_ins_error || m_data_error ) {
+    /* have an ifetch error pending? */
+    } else if ( m_ins_error ) {
+		m_exception = EXCEPT_PABT;
+		m_ins_error = false;
+
+    /* have a dfetch error pending? */
+	} else if ( m_data_error ) {
+		m_exception = EXCEPT_DABT;
+		m_data_error = false;
+
+    /* currently inside an instruction microcode? */
+	} else if ( m_microcode_func ) {
+        (this->*m_microcode_func)();
+
+    /* process pending fast irq? */
+    } else if ( m_fiq_in && accept_fast_external_interrupts &&
+                !r_cpsr.fiq_disabled ) {
+        m_exception = EXCEPT_FIQ;
+
+    /* process pending irq? */
+	} else if ( m_irq_in && accept_external_interrupts &&
+                !r_cpsr.irq_disabled ) {
+        m_exception = EXCEPT_IRQ;
+
+    /* then, execute the current instruction. */
+    } else {
+
+        m_run_count += 1;
         m_ldstm_sp_offset = 0;
-		goto handle_except;
-	}
 
-	m_run_count += 1;
-	if ( m_microcode_func ) {
-		(this->*m_microcode_func)();
-	} else {
-        m_ldstm_sp_offset = 0;
-		if ( r_gp[15] != m_current_pc ) {
-			m_opcode.decod.cond = 0xf; // Never
-            m_thumb_op.ins = 0x46c0; // Nop (special)
-		} else {
-			r_gp[15] += r_cpsr.thumb ? 2 : 4;
-		}
+        /* r15 actually points to what has been fetched? */
+        assert( r_gp[15] == m_current_pc );
 
-#ifdef SOCLIB_MODULE_DEBUG
-		dump();
-#endif
+        /* move r15 to next instruction */
+        r_gp[15] += r_cpsr.thumb ? 2 : 4;
+
+        /* perform instruction operation */
         if ( r_cpsr.thumb )
             run_thumb();
         else
             run();
-	}
 
-	if ( m_fiq_in ) {
-		if ( accept_fast_external_interrupts &&
-			 !r_cpsr.fiq_disabled &&
-			 !m_microcode_func &&
-			 !m_dreq.valid
-			)
-			m_exception = EXCEPT_FIQ;
 #ifdef SOCLIB_MODULE_DEBUG
-		else
-			std::cout << name() << " ignoring FIQs" << std::endl;
-#endif
-	}
-  else if ( m_irq_in ) {
-		if ( accept_external_interrupts &&
-			 !r_cpsr.irq_disabled &&
-			 !m_microcode_func &&
-			 !m_dreq.valid
-			)
-			m_exception = EXCEPT_IRQ;
-#ifdef SOCLIB_MODULE_DEBUG
-		else
-			std::cout << name() << " ignoring IRQs" << std::endl;
+		dump();
 #endif
 	}
 
-	if ( m_exception == EXCEPT_NONE )
-		goto normal_end;
+    /* some pending exception to process? */
+    if ( m_exception != EXCEPT_NONE ) {
 
-  handle_except:
+        m_ldstm_sp_offset = 0;
+        m_microcode_func = NULL;
 
-	m_microcode_func = NULL;
-
-	if ( m_ins_error ) {
-		m_exception = EXCEPT_PABT;
-		m_ins_error = false;
-		m_exception_pc = m_current_pc;
-	} else if ( m_data_error ) {
-		m_exception = EXCEPT_DABT;
-		m_data_error = false;
-		m_exception_pc = m_current_pc;
-		m_exception_dptr = m_dreq.addr;
-	}
-
-    {
         ExceptionClass ex_class;
 
         switch (m_exception) {
@@ -247,46 +234,50 @@ uint32_t ArmIss::executeNCycles(
             ex_class = EXCL_IRQ;
             break;
 
+        case EXCEPT_DABT:
+            m_exception_dptr = m_dreq.addr;
+        case EXCEPT_PABT:
+            m_exception_pc = m_current_pc;
+        case EXCEPT_UNDEF:
         default:
             ex_class = EXCL_FAULT;
             break;
         }
 
+        /* gdbserver hook */
         if ( debugExceptionBypassed( ex_class ) )
-            goto normal_end;
-    }
+            return 1;
 
 #if defined(SOCLIB_MODULE_DEBUG)
-	std::cout << name() << " exception "
-              << except_info[m_exception].name
-              << std::endl;
+        std::cout << name() << " exception "
+                  << except_info[m_exception].name
+                  << std::endl;
 #endif
 
-	assert(m_exception != EXCEPT_NONE);
+        const struct except_info_s & info = except_info[m_exception];
 
-	{
-		const struct except_info_s & info = except_info[m_exception];
+        /* operating mode switch */
+        psr_t new_psr = r_cpsr;
+        new_psr.fiq_disabled |= info.disable_fiq;
+        new_psr.irq_disabled = true;
+        new_psr.mode = info.new_mode;
 
-		psr_t new_psr = r_cpsr;
-		new_psr.fiq_disabled |= info.disable_fiq;
-		new_psr.irq_disabled = true;
-		new_psr.mode = info.new_mode;
+        cpsr_update(new_psr);
 
-		cpsr_update(new_psr);
+        /* exception link register is relative to current instruction address */
+        r_gp[14] = m_current_pc + info.return_offset + r_cpsr.thumb;
 
-		r_gp[14] = r_gp[15] + info.return_offset + r_cpsr.thumb;
-		r_gp[15] = info.vector_address;
+        r_gp[15] = info.vector_address;
         r_cpsr.thumb = 0;
-	}
+        m_exception = EXCEPT_NONE;
+    }
 
-	m_exception = EXCEPT_NONE;
-
-  normal_end:
-	m_current_pc = m_microcode_func ? 0 : r_gp[15];
+    /* next instruction to fetch is pointed to by r15 */
+    m_current_pc = r_gp[15];
 	m_cycle_count += 1;
-	return 1;
-}
 
+    return 1;
+}
 
 void ArmIss::reset()
 {

@@ -67,6 +67,12 @@ void ArmIss::do_mem_access( addr_t address,
 //     }
 
     m_dreq.addr = address & (~3);
+
+    if ( address & (byte_count-1) ) {
+        m_exception = EXCEPT_DABT;
+        return;
+    }
+
     m_dreq.be = (((1<<byte_count)-1) << byte_le) & 0xf;
 
     m_dreq.valid = true;
@@ -85,11 +91,6 @@ void ArmIss::do_mem_access( addr_t address,
         << std::endl;
 #endif
 
-    if ( address & (byte_count-1) ) {
-        m_exception = EXCEPT_DABT;
-        return;
-    }
-
     if ( (byte_count + byte_le) > 4 ) {
         dump();
         abort();
@@ -105,7 +106,7 @@ bool ArmIss::handle_data_response( const struct DataResponse &drsp )
 {
 	m_dreq.valid = false;
 
-	if ( ! r_mem_dest_addr )
+	if ( drsp.error || ! r_mem_dest_addr )
 		return false;
 
 	data_t data = drsp.rdata >> (8 * r_mem_byte_le);
