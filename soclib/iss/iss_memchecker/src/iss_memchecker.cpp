@@ -1155,6 +1155,7 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
           state, get_cpu_pc(), m_r1, m_r2, &m_last_region_touched, &lta );
 
         report_error( e, lta );
+        break;
     }
 	case ISS_MEMCHECKER_ENABLE_CHECKS:
 
@@ -1602,7 +1603,6 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 
     switch ( m_magic_state ) {
     case MAGIC_NONE:
-        //        std::cout <<std::hex<< m_current_context->m_stack_lower <<"<"<< get_cpu_sp() <<"<"<< m_current_context->m_stack_upper << "\n";
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) &&
              ! m_current_context->stack_contains(get_cpu_sp()) &&
              ! m_bypass_pc[get_cpu_pc()] )
