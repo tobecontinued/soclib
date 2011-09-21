@@ -61,6 +61,10 @@ class IssMemchecker
     : public iss_t
 {
     uint32_t m_comm_address;
+
+    int m_fp_reg_id;
+    int m_sp_reg_id;
+
     __iss_memchecker::ContextState *m_current_context;
     __iss_memchecker::ContextState *m_last_context;
     __iss_memchecker::RegionInfo *m_last_region_touched;

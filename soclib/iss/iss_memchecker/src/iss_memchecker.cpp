@@ -776,13 +776,13 @@ using namespace __iss_memchecker;
 template<typename iss_t>
 uint32_t IssMemchecker<iss_t>::get_cpu_sp() const
 {
-    return iss_t::debugGetRegisterValue(iss_t::s_sp_register_no);
+    return iss_t::debugGetRegisterValue(m_sp_reg_id);
 }
 
 template<typename iss_t>
 uint32_t IssMemchecker<iss_t>::get_cpu_fp() const
 {
-    return iss_t::debugGetRegisterValue(iss_t::s_fp_register_no);
+    return iss_t::debugGetRegisterValue(m_fp_reg_id);
 }
 
 template<typename iss_t>
@@ -837,6 +837,8 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
     }
 
     m_comm_address = s_memory_state->comm_address();
+    m_fp_reg_id = iss_t::s_fp_register_no;
+    m_sp_reg_id = iss_t::s_sp_register_no;
 
     m_current_context = s_memory_state->unknown_context;
     m_last_context = s_memory_state->unknown_context;
@@ -1016,7 +1018,7 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
     {
         assert( m_r1 <= m_r2 );
         if (value) {
-            assert( m_r2 - m_r1 < 512 ); // ensure we do not declare large areas
+            assert( m_r2 - m_r1 < 8192 ); // ensure we do not declare large areas
             m_bypass_pc |= address_set_t(m_r1, m_r2);
         }
         else
@@ -1185,6 +1187,14 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         }
 
         break;
+
+	case ISS_MEMCHECKER_SET_SP_REG:
+        m_sp_reg_id = value;
+        break;
+	case ISS_MEMCHECKER_SET_FP_REG:
+        m_fp_reg_id = value;
+        break;
+
     default:
         assert(!"Unknown register");
         break;
@@ -1433,12 +1443,12 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
             break;
 
         case ERROR_SP_OUTOFBOUNDS:
-            std::cout << MEMCHK_COLOR_ERR(" Stack pointer out of bounds: ") << sp;
+            std::cout << MEMCHK_COLOR_ERR(" Stack pointer out of bounds: ") << std::hex << sp;
             oob = sp;
             break;
 
         case ERROR_FP_OUTOFBOUNDS:
-            std::cout << MEMCHK_COLOR_ERR(" Frame pointer out of bounds: ") << fp;
+            std::cout << MEMCHK_COLOR_ERR(" Frame pointer out of bounds: ") << std::hex << fp;
             oob = fp;
             break;
 

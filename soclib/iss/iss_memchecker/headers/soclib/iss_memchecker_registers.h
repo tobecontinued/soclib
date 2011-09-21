@@ -63,6 +63,11 @@ enum SoclibIssMemcheckerRegisters {
        with [r1:r2] range. Add to interval set when val!=0. */
     ISS_MEMCHECKER_BYPASS_SP_CHECK,
 
+    /* Set processor stack pointer register id */
+    ISS_MEMCHECKER_SET_SP_REG,
+    /* Set processor frame pointer register id */
+    ISS_MEMCHECKER_SET_FP_REG,
+
 	ISS_MEMCHECKER_REGISTER_MAX,
 };
 
