@@ -79,6 +79,7 @@ enum {
     ERROR_LOCK_DEAD_LOCK                = 0x00010000,
     ERROR_NULL_POINTER_ACCESS           = 0x00020000,
     ERROR_BAD_MAGIC_OP                  = 0x00040000,
+    ERROR_IRQ_DISABLED_USER             = 0x00080000,
 };
 
 // errors which use a repeat mask to avoid flooding output
@@ -86,6 +87,7 @@ static const uint32_t repeat_filter = ( ERROR_IRQ_ENABLED_LOCK |
                                         ERROR_SP_OUTOFBOUNDS |
                                         ERROR_FP_OUTOFBOUNDS |
                                         ERROR_IRQ_ENABLED_TMP |
+                                        ERROR_IRQ_DISABLED_USER |
                                         ERROR_LOCK_DEAD_LOCK);
 
 class ContextState
@@ -818,6 +820,7 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
       m_opt_show_ctxsw(false),
       m_opt_show_region(false),
       m_opt_show_lockops(false),
+      m_opt_exit_on_error(false),
       m_trap_mask(0),
       m_report_mask(-1),
       m_no_repeat_mask(0),
@@ -854,13 +857,14 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
         m_opt_show_region = strchr( env, 'R' );
         m_trap_mask = strchr( env, 'T' ) ? -1 : 0;
         m_opt_show_lockops = strchr( env, 'L' );
+        m_opt_exit_on_error = strchr( env, 'X' );
     }
 
         if ( ident == 0 )
             std::cerr << "[MemChecker] SOCLIB_MEMCHK env variable may contain the following flag letters: " << std::endl
                       << "  R (show region changes),     C (show context ops), S (show context switch), " << std::endl
                       << "  T (raise gdb except on err), I (show iss dump),    A (show access details), " << std::endl
-                      << "  L (show locks accesses),     E (show checks enable/disable)" << std::endl
+                      << "  L (show locks accesses),     E (show checks enable X (exit simulation on err)" << std::endl
                       << "  => See http://www.soclib.fr/trac/dev/wiki/Tools/MemoryChecker" << std::endl;
 
     if ( const char *env = getenv( "SOCLIB_MEMCHK_TRAPON" ) ) {
@@ -1361,6 +1365,7 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
     errors_ &= m_report_mask;
     errors_ &= ~m_no_repeat_mask;
     m_no_repeat_mask |= (errors_ & repeat_filter);
+    error_level_t old_errors = errors_;
 
     while ( errors_ ) {
 
@@ -1495,6 +1500,10 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
             show_locks = true;
             break;
 
+        case ERROR_IRQ_DISABLED_USER:
+            std::cout << MEMCHK_COLOR_WARN(" Processor IRQs disabled in user mode ");
+            break;
+
         case ERROR_LOCK_DEAD_LOCK:
             std::cout << MEMCHK_COLOR_ERR(" Spinlock dead lock ");
             show_locks = true;
@@ -1560,6 +1569,9 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
 
         errors_ ^= error;
     }
+
+    if (old_errors && m_opt_exit_on_error)
+        abort();
 }
 
 template<typename iss_t>
@@ -1613,6 +1625,9 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 
     switch ( m_magic_state ) {
     case MAGIC_NONE:
+        if (iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_USERMODE))
+            break;
+
         if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) &&
              ! m_current_context->stack_contains(get_cpu_sp()) &&
              ! m_bypass_pc[get_cpu_pc()] )
@@ -1638,15 +1653,19 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
         break;
     }
 
-    if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) &&
-         iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) ) {
+    if (m_enabled_checks & ISS_MEMCHECKER_CHECK_IRQ) {
+        if ( iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_INTERRUPTIBLE) ) {
 
-        if ( m_current_context->temporary() ) {
-            errl |=  ERROR_IRQ_ENABLED_TMP;
-        }
+            if ( m_current_context->temporary() ) {
+                errl |=  ERROR_IRQ_ENABLED_TMP;
+            }
 
-        if ( !m_held_locks.empty() ) {
-            errl |= ERROR_IRQ_ENABLED_LOCK;
+            if ( !m_held_locks.empty() ) {
+                errl |= ERROR_IRQ_ENABLED_LOCK;
+            }
+        } else {
+            if (iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_IS_USERMODE))
+                errl |= ERROR_IRQ_DISABLED_USER;
         }
     }
 

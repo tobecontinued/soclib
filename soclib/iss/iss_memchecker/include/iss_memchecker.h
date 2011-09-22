@@ -95,6 +95,7 @@ class IssMemchecker
     bool m_opt_show_ctxsw;
     bool m_opt_show_region;
     bool m_opt_show_lockops;
+    bool m_opt_exit_on_error;
 
     uint32_t m_trap_mask;
     uint32_t m_report_mask;
