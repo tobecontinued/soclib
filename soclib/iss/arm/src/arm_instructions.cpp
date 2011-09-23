@@ -92,10 +92,10 @@ void ArmIss::do_microcoded_ldstm_user()
     if ( (r_cpsr.mode == MOD_PSR_FIQ32) &&
          (reg_to_xfer >= 8) &&
          (reg_to_xfer <= 12) )
-        reg = &r_r8_r12[0][reg_to_xfer-8];
+        reg = &r_r8_r12[MOD_USER32][reg_to_xfer-8];
     if ( (reg_to_xfer >= 13) &&
          (reg_to_xfer <= 14) )
-        reg = &r_r13_r14[psr_to_mode[r_cpsr.mode]][reg_to_xfer-13];
+        reg = &r_r13_r14[MOD_USER32][reg_to_xfer-13];
 
 	if ( m_microcode_opcode.bdt.reg_list == 0 )
 		m_microcode_func = NULL;

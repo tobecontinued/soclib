@@ -142,24 +142,28 @@ uint32_t ArmIss::executeNCycles(
 		instruction_asked = false;
 	}
 
+    bool r15_changed = m_current_pc != r_gp[15];
+
     /* handle data fetch response */
 	if ( data_req_nok && drsp.valid ) {
 		m_data_error |= drsp.error;
 		data_req_nok = false;
 
-        if ( handle_data_response(drsp) ) {
-            /* if r15 changed, we need to fetch an other instruction */
-            r_cpsr.thumb = r_gp[15] & 1;
-            r_gp[15] &= ~1;
-            m_current_pc = r_gp[15];
-
-            /* discard fetch error due to wrong ifetch address */
-            m_ins_error = false;
-
-            return ncycle;
-        }
+        r15_changed |= handle_data_response(drsp);
 	}
-	
+
+    if (r15_changed) {
+        /* if r15 changed, we need to fetch an other instruction */
+        r_cpsr.thumb = r_gp[15] & 1;
+        r_gp[15] &= ~1;
+        m_current_pc = r_gp[15];
+
+        /* discard fetch error due to wrong ifetch address */
+        m_ins_error = false;
+
+        return ncycle;
+	}
+
     /* no cycle to spend? */
 	if ( ncycle == 0 ) {
 		return 0;
