@@ -160,7 +160,7 @@ struct CpuEntry * newCpuEntry(const std::string &type, int id, common::Loader *l
 	return newCpuEntry_<common::ArmIss>(e);
 
     case 'n':
-      if (type == "niosII")
+      if (type == "nios2")
 	return newCpuEntry_<common::Nios2fIss>(e);
 
     case 'p':
@@ -170,6 +170,8 @@ struct CpuEntry * newCpuEntry(const std::string &type, int id, common::Loader *l
     case 's':
       if (type == "sparcv8")
 	return newCpuEntry_<common::Sparcv8Iss<8> >(e);
+      else if (type == "sparcv8_2wins")
+	return newCpuEntry_<common::Sparcv8Iss<2> >(e);
 
     case 'l':
       if (type == "lm32")
@@ -212,7 +214,7 @@ int _main(int argc, char **argv)
   if ( (argc < 2) || ((argc % 2) == 0) )
     {
       std::cerr << std::endl << "usage: " << *argv << " < cpu-type[:count] kernel-binary-file > ... " << std::endl
-		<<   "available cpu types: arm, mips32el, mips32eb, niosII, ppc405, sparcv8, lm32" << std::endl;
+		<<   "available cpu types: arm, mips32el, mips32eb, nios2, ppc405, sparcv8, sparcv8_2wins, lm32" << std::endl;
       exit(0);
     }
   argc--;

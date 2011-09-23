@@ -19,7 +19,6 @@
 #else:
 #  raise ValueError('No suitable cpu found in mutekh configuration')
 
-cpus = [ "ppc405", "arm", 'mips32eb', 'mips32el', 'niosII', 'sparcv8', 'lm32' ]
 use =  [
 	Uses('caba:vci_locks'),
 	Uses('caba:vci_ram'),
@@ -30,13 +29,15 @@ use =  [
         Uses('caba:vci_simhelper'),
 	Uses('caba:vci_vgmn'),
         Uses('common:elf_file_loader'),
+        Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:ppc405'),
+        Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:arm'),
+        Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:mips32eb'),
+        Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:mips32el'),
+        Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:niosII'),
+        Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:lm32'),
+        Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:sparcv8', NWIN=8),
+        Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:sparcv8', NWIN=2),
         ]
-
-for i in cpus:
-    use.append(Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+i))
-    use.append(Uses('caba:vci_xcache_wrapper', iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:'+i))
-    use.append(Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:'+i))
-    use.append(Uses('caba:vci_xcache_wrapper', iss_t = 'common:'+i))
 
 todo = Platform('caba', 'top.cc',
         uses=use,
