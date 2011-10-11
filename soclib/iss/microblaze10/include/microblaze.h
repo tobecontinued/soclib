@@ -675,6 +675,7 @@ namespace soclib {
          void insn_bralid();
          void insn_brd();
          void insn_bri();
+         void insn_brim();
          void insn_brid();
          void insn_brk();
          void insn_brki();
@@ -688,6 +689,7 @@ namespace soclib {
          void insn_bsrai();
          void insn_bsrl();
          void insn_bsrli();
+         void insn_clz();
          void insn_cmp();
          void insn_cmpu();
          void insn_div();
@@ -718,6 +720,7 @@ namespace soclib {
          void insn_lw();
          void insn_lwi();
          void insn_lwx();
+         void insn_mbar();
          void insn_mfs();
          void insn_misc();
          void insn_msr();

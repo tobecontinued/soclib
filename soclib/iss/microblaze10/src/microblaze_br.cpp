@@ -106,7 +106,7 @@ void MicroblazeIss::insn_ub()
  * Second decoding stage for the unconditionnal branch immediat instructions
 \*/
 MicroblazeIss::func_t const MicroblazeIss::ubi_table[] = {
-   op4(   bri,  ill,  ill,  ill),
+   op4(  brim,  ill,  ill,  ill),
    op4(   ill,  ill,  ill,  ill),
 
    op4(  brai,  ill,  ill,  ill),
@@ -126,6 +126,16 @@ void MicroblazeIss::insn_ubi()
    (this->*func)();
 }
 
+void MicroblazeIss::insn_brim()
+{
+   if (m_ins.typeB.rd == 0 && m_ins.typeB.ra == 0 && m_ins.typeB.imm != 4) {
+      r_btr = r_pc - 4;    /* In case the branch is not taken */
+      insn_bri();
+   } else if (m_ins.typeB.ra == 0 && m_ins.typeB.imm == 4)
+      insn_mbar();
+   else
+      insn_ill();
+}
 
 /*\
  * Actual instructions execution
@@ -466,6 +476,21 @@ void MicroblazeIss::insn_brki()
    jump(imm_op, true);
    r_msr.bip = 1;
    m_reservation = 0;
+   setInsDelay(3);
+}
+
+void MicroblazeIss::insn_mbar()
+{
+   DASM_TYPEB_B;
+   /* The MBAR description in the doc seems to be wrong, so I believed
+    * the pseudo code and not the text. */
+   if ((m_ins.typeB.rd & 1) == 0)
+      /* flush instruction pipeline, i.e. nothing in this ISS */
+      ;
+   if ((m_ins.typeB.rd & 2) == 0)
+      /* TODO: empty the write buffer and ends the loads */
+      ;
+   jump(imm_op + r_pc, false);
    setInsDelay(3);
 }
 

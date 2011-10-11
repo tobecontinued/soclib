@@ -123,6 +123,7 @@ bool MicroblazeIss::check_irq_state() const
 #define DASM_TYPEMTS DASM_HEADER \
    << " " << (m_ins.typeB.imm & 0x3FFF) \
    << ", r" << std::dec << m_ins.typeB.ra << std::endl
+
 #else
 #define DASM_TYPEA
 #define DASM_TYPEA_B

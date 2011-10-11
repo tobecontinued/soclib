@@ -147,7 +147,7 @@ void MicroblazeIss::insn_misc()
 {
    enum {SRA = 0x1,       SRC = 0x21, SRL = 0x41, SEXT8 = 0x60,
          SEXT16 = 0x61,   WIC = 0x68, WDC = 0x64, WDCFLUSH = 0x74,
-         WDCCLEAR = 0x76};
+         WDCCLEAR = 0x76, CLZ = 0xE0};
 
    switch (m_ins.typeA.sh) {
    case SRA:
@@ -176,6 +176,9 @@ void MicroblazeIss::insn_misc()
       break;
    case WDCCLEAR:
       insn_wdcclear();
+      break;
+   case CLZ:
+      insn_clz();
       break;
    default:
       insn_ill();
@@ -219,6 +222,34 @@ void MicroblazeIss::insn_bslli()
 {
    DASM_TYPEB;
    r_gp[m_ins.typeA.rd] = r_gp[m_ins.typeA.ra] << (m_ins.typeA.sh & 0x1F);
+}
+
+
+void MicroblazeIss::insn_clz()
+{
+#ifdef __GNUC__
+#define clz(n) (((n)==0) ? 32 : __builtin_clz(n))
+#else
+/* Taken for bid_binarydecimal.c in gcc-4.6 distribution.
+ * Strangely enough, I changed the ?: by a << and it was less
+ * efficient on an x86! I can't see why. */
+#define CLZ32_MASK16 0xFFFF0000ul
+#define CLZ32_MASK8  0xFF00FF00ul
+#define CLZ32_MASK4  0xF0F0F0F0ul
+#define CLZ32_MASK2  0xCCCCCCCCul
+#define CLZ32_MASK1  0xAAAAAAAAul
+
+#define clz32_nz(n)                                               \
+    (((((n) & CLZ32_MASK16) <= ((n) & ~CLZ32_MASK16)) ? 16 : 0) + \
+       ((((n) & CLZ32_MASK8) <= ((n) & ~CLZ32_MASK8)) ? 8 : 0) +  \
+       ((((n) & CLZ32_MASK4) <= ((n) & ~CLZ32_MASK4)) ? 4 : 0) +  \
+       ((((n) & CLZ32_MASK2) <= ((n) & ~CLZ32_MASK2)) ? 2 : 0) +  \
+       ((((n) & CLZ32_MASK1) <= ((n) & ~CLZ32_MASK1)) ? 1 : 0))
+
+#define clz(n) (((n)==0) ? 32 : clz32_nz(n))
+#endif
+   DASM_TYPEB_WI;
+   r_gp[m_ins.typeA.rd] = clz(r_gp[m_ins.typeA.ra]);
 }
 
 void MicroblazeIss::insn_rsubk()
