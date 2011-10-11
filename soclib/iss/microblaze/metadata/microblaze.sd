@@ -3,8 +3,8 @@
 __id__ = "$Id$"
 __version__ = "$Revision$"
 
-Module('common:microblaze',
-	classname = 'soclib::common::MicroBlazeIss',
+Module('common:microblazeobsolete',
+	classname = 'soclib::common::MicroBlazeObsoleteIss',
 	header_files = ["../include/iss/microblaze.h",],
 	implementation_files = [
 		"../src/iss/microblaze.cpp",
