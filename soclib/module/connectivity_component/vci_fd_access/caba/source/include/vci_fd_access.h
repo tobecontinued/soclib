@@ -28,8 +28,17 @@
 #ifndef SOCLIB_VCI_FD_ACCESS_H
 #define SOCLIB_VCI_FD_ACCESS_H
 
+#include <map>
+#include <set>
 #include <stdint.h>
 #include <systemc>
+
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+
 #include "vci_target_fsm.h"
 #include "vci_initiator_fsm.h"
 #include "caba_base_module.h"
@@ -58,7 +67,6 @@ private:
     bool on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data);
     void read_done( req_t *req );
     void write_finish( req_t *req );
-    void open_finish( req_t *req );
     void transition();
     void genMoore();
 
@@ -81,6 +89,40 @@ private:
 	inline void ended();
 	void next_req();
 
+    std::string _tmp_path;
+    unsigned int _tmp_id;
+
+    enum node_type_e {
+        node_dir,
+        node_file,
+    };
+
+    struct Fd
+    {
+        /** root create */
+        Fd(VciFdAccess *fda, const char *name);
+        /** create node */
+        Fd(VciFdAccess *fda, enum node_type_e t, uint32_t &id);
+        /** lookup node */
+        Fd(VciFdAccess *fda, Fd *parent, const char *name, uint32_t &size, uint32_t &mode, uint32_t &id);
+        ~Fd();
+
+        int link(Fd *child, const char *name);
+        int unlink(const char *name);
+        ssize_t read(off_t offset, size_t size, void *buf);
+        int readdir(off_t index, char *name, uint32_t &mode);
+        ssize_t write(off_t offset, size_t size, const void *buf);
+        int stat(uint32_t &size, uint32_t &mode);
+
+        bool _has_tmp;
+        enum node_type_e _type;
+        int _fd;
+        VciFdAccess *_fda;
+        std::string _path;
+    };
+
+    std::map<uint32_t, Fd*> _ino_map;
+
 protected:
     SC_HAS_PROCESS(VciFdAccess);
 
@@ -96,6 +138,8 @@ public:
 		const soclib::common::MappingTable &mt,
 		const soclib::common::IntTab &srcid,
 		const soclib::common::IntTab &tgtid );
+
+	~VciFdAccess();
 };
 
 }}

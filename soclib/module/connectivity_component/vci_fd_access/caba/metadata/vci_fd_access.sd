@@ -28,6 +28,7 @@ Module('caba:vci_fd_access',
 	Uses('caba:vci_initiator_simple_read_req'),
 	Uses('caba:vci_initiator_simple_write_req'),
 	Uses('caba:vci_initiator_fsm'),
+        Uses('common:dpp'),
 	],
 	instance_parameters = [
         parameter.Module('mt', typename = 'common:mapping_table'),
