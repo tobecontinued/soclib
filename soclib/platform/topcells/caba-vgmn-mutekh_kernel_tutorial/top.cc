@@ -33,6 +33,7 @@
 #include "vci_vgmn.h"
 #include "vci_block_device.h"
 #include "vci_simhelper.h"
+#include "vci_fd_access.h"
 
 using namespace soclib;
 using common::IntTab;
@@ -111,7 +112,7 @@ INIT_TOOLS(initialize_tools)
   ISS_NEST(Iss)::set_loader(ldr);
 #endif
 #if defined(CONFIG_SOCLIB_MEMCHECK)
-  common::IssMemchecker<Iss>::init(maptab, ldr, "tty,xicu,bdev0");
+  common::IssMemchecker<Iss>::init(maptab, ldr, "tty,xicu,bdev0,fdacccess");
 #endif
 }
 
@@ -208,6 +209,7 @@ int _main(int argc, char **argv)
   maptab.add(Segment("xicu",      0xd2200000, 0x00001000, IntTab(4), false));
   maptab.add(Segment("bdev0",     0xd1200000, 0x00000020, IntTab(5), false));
   maptab.add(Segment("simhelper", 0xd3200000, 0x00000100, IntTab(6), false));
+  maptab.add(Segment("fdacccess", 0xd4200000, 0x00000100, IntTab(7), false));
 
   std::cerr << "caba-vgmn-mutekh_kernel_tutorial SoCLib simulator for MutekH" << std::endl;
 
@@ -260,7 +262,7 @@ int _main(int argc, char **argv)
       }
     }
 
-  const size_t xicu_n_irq = 2;
+  const size_t xicu_n_irq = 3;
 
   caba::VciHeterogeneousRom<vci_param> vcihetrom("vcihetrom",    IntTab(0), maptab);
   for ( size_t i = 0; i < cpus.size(); ++i )
@@ -272,9 +274,13 @@ int _main(int argc, char **argv)
   caba::VciMultiTty<vci_param> vcitty           ("vcitty", IntTab(3), maptab, "vcitty", NULL);
   caba::VciXicu<vci_param> vcixicu              ("vcixicu", maptab, IntTab(4), cpus.size(), xicu_n_irq, cpus.size(), cpus.size());
   caba::VciBlockDevice<vci_param> vcibd0        ("vcibd", maptab, IntTab(cpus.size()), IntTab(5), "block0.iso", 2048);
+
+  caba::VciFdAccess<vci_param> vcifd            ("vcitfd", maptab, IntTab(cpus.size()+1), IntTab(7));
+  vcihetrom.add_srcid(*cpus[0]->text_ldr, IntTab(cpus.size()+1)); /* allows dma read in rodata */
+
   caba::VciSimhelper<vci_param> vcisimhelper    ("vcisimhelper", IntTab(6), maptab);
 
-  caba::VciVgmn<vci_param> vgmn("vgmn",maptab, cpus.size() + 1, 7, 2, 8);
+  caba::VciVgmn<vci_param> vgmn("vgmn", maptab, cpus.size() + 2, 8, 2, 8);
 
   // Signals
 
@@ -290,10 +296,13 @@ int _main(int argc, char **argv)
   caba::VciSignals<vci_param> signal_vci_vcimultiram("signal_vci_vcimultiram");
   caba::VciSignals<vci_param> signal_vci_vcisimhelper("signal_vci_vcisimhelper");
 
-  sc_core::sc_signal<bool> signal_xicu_irq[xicu_n_irq];
+  caba::VciSignals<vci_param> signal_vci_vcifdaccessi;
+  caba::VciSignals<vci_param> signal_vci_vcifdaccesst;
 
   caba::VciSignals<vci_param> signal_vci_bdi;
   caba::VciSignals<vci_param> signal_vci_bdt;
+
+  sc_core::sc_signal<bool> signal_xicu_irq[xicu_n_irq];
 
   size_t i;
   // cpus
@@ -302,20 +311,24 @@ int _main(int argc, char **argv)
     vgmn.p_to_initiator[i](signal_vci_m[i]);
     vcixicu.p_irq[i](cpus[i]->irq_sig[0]);
   }
-  // blk dev
-  vgmn.p_to_initiator[i](signal_vci_bdi);
 
+  vcitty.p_clk(signal_clk);
   vcimultiram.p_clk(signal_clk);
   vcihetrom.p_clk(signal_clk);
   vcirom.p_clk(signal_clk);
   vcixicu.p_clk(signal_clk);
   vcisimhelper.p_clk(signal_clk);
+  vcibd0.p_clk(signal_clk);
+  vcifd.p_clk(signal_clk);
 
+  vcitty.p_resetn(signal_resetn);
   vcimultiram.p_resetn(signal_resetn);
   vcihetrom.p_resetn(signal_resetn);
   vcirom.p_resetn(signal_resetn);
   vcixicu.p_resetn(signal_resetn);
   vcisimhelper.p_resetn(signal_resetn);
+  vcibd0.p_resetn(signal_resetn);
+  vcifd.p_resetn(signal_resetn);
 
   vcihetrom.p_vci(signal_vci_vcihetrom);
   vcirom.p_vci(signal_vci_vcirom);
@@ -327,13 +340,13 @@ int _main(int argc, char **argv)
   for ( size_t i = 0; i < xicu_n_irq; ++i )
     vcixicu.p_hwi[i](signal_xicu_irq[i]);
 
-  vcitty.p_clk(signal_clk);
-  vcitty.p_resetn(signal_resetn);
   vcitty.p_vci(signal_vci_tty);
   vcitty.p_irq[0](signal_xicu_irq[0]);
 
-  vcibd0.p_clk(signal_clk);
-  vcibd0.p_resetn(signal_resetn);
+  vcifd.p_irq(signal_xicu_irq[2]);
+  vcifd.p_vci_target(signal_vci_vcifdaccesst);
+  vcifd.p_vci_initiator(signal_vci_vcifdaccessi);
+
   vcibd0.p_irq(signal_xicu_irq[1]);
   vcibd0.p_vci_target(signal_vci_bdt);
   vcibd0.p_vci_initiator(signal_vci_bdi);
@@ -348,6 +361,10 @@ int _main(int argc, char **argv)
   vgmn.p_to_target[4](signal_vci_xicu);
   vgmn.p_to_target[5](signal_vci_bdt);
   vgmn.p_to_target[6](signal_vci_vcisimhelper);
+  vgmn.p_to_target[7](signal_vci_vcifdaccesst);
+
+  vgmn.p_to_initiator[cpus.size()](signal_vci_bdi);
+  vgmn.p_to_initiator[cpus.size()+1](signal_vci_vcifdaccessi);
 
   sc_core::sc_start(sc_core::sc_time(0, sc_core::SC_NS));
   signal_resetn = false;
