@@ -107,6 +107,9 @@ namespace soclib { namespace caba {
 						 size_t height_network); //Y
 
 		~VciDspinPlusNetwork();
+
+        public:
+        void trace(sc_core::sc_trace_file*);
 	};
 }}
 //end

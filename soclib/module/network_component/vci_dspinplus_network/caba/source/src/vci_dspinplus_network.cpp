@@ -226,6 +226,77 @@ namespace soclib { namespace caba {
         soclib::common::dealloc_elems(s_rsp_WR, m_height_network    , m_width_network    );
 
     }
+
+    tmpl(void)::trace(sc_core::sc_trace_file* tf)
+    {
+        char tmp[100];
+        for ( size_t y  = 0 ; y < m_height_network; y++ )
+            for ( size_t x = 0 ; x < m_width_network ; x ++ )
+            { 
+                // --- CMD --- //
+                sprintf(tmp,"cmd_router(%d,%d)_N_input",y,x);
+                s_req_SN[y+2][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"cmd_router(%d,%d)_S_input",y,x);
+                s_req_NS[y][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"cmd_router(%d,%d)_E_input",y,x);
+                s_req_WE[y+1][x+2].trace(tf,tmp);
+
+                sprintf(tmp,"cmd_router(%d,%d)_W_input",y,x);
+                s_req_EW[y+1][x].trace(tf,tmp);
+
+                sprintf(tmp,"cmd_router(%d,%d)_N_output",y,x);
+                s_req_NS[y+1][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"cmd_router(%d,%d)_S_output",y,x);
+                s_req_SN[y+1][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"cmd_router(%d,%d)_E_output",y,x);
+                s_req_EW[y+1][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"cmd_router(%d,%d)_W_output",y,x);
+                s_req_WE[y+1][x+1].trace(tf,tmp);
+
+
+                sprintf(tmp,"cmd_router(%d,%d)_L_input",y,x);
+                s_req_WR[y][x].trace(tf,tmp);
+
+                sprintf(tmp,"cmd_router(%d,%d)_L_output",y,x);
+                s_req_RW[y][x].trace(tf,tmp);
+
+                // --- RSP ---//
+                sprintf(tmp,"rsp_router(%d,%d)_N_input",y,x);
+                s_rsp_SN[y+2][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_S_input",y,x);
+                s_rsp_NS[y][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_E_input",y,x);
+                s_rsp_WE[y+1][x+2].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_W_input",y,x);
+                s_rsp_EW[y+1][x].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_N_output",y,x);
+                s_rsp_NS[y+1][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_S_output",y,x);
+                s_rsp_SN[y+1][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_E_output",y,x);
+                s_rsp_EW[y+1][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_W_output",y,x);
+                s_rsp_WE[y+1][x+1].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_L_input",y,x);
+                s_rsp_WR[y][x].trace(tf,tmp);
+
+                sprintf(tmp,"rsp_router(%d,%d)_L_output",y,x);
+                s_rsp_RW[y][x].trace(tf,tmp);
+            }
+    }
 }}
 
 // Local Variables:
