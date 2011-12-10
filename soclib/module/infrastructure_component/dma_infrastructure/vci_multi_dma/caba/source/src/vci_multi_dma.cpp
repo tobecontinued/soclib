@@ -47,9 +47,9 @@
 //
 //  In order to support multiple simultaneous transactions, the channel
 //  index is transmited in the VCI TRDID field.
-//  As the LSB bit of the TRDID Ris used to indicate a non-cachable access,
+//  As the LSB bit of the TRDID is used to indicate a non-cachable access,
 //  the channel index is encoded in the next 3 bits, and the TRDID width
-//  must be at least 4bits.
+//  must be at least 4 bits.
 //  
 //////////////////////////////////////////////////////////////////////////////
 //  Implementation note:
@@ -369,7 +369,7 @@ tmpl(void)::transition()
                     assert( (r_rsp_count.read() == r_rsp_length.read() - 4 ) &&
                     "VCI_MULTI_DMA error : the number of flits of a read response packet is wrong");
                     r_done[k] = true;
-                    r_error[k] = (p_vci_initiator.rerror.read() != 0);
+                    r_error[k] = (p_vci_initiator.rerror.read()&0x1 != 0);
                     r_rsp_fsm = RSP_IDLE;
                 } 
                 r_rsp_count = r_rsp_count + 4;
@@ -385,7 +385,7 @@ tmpl(void)::transition()
                 size_t k  = r_rsp_index.read();
                 r_length[k]  = r_length[k].read() - r_rsp_length.read();
                 r_done[k] = true;
-                r_error[k] = (p_vci_initiator.rerror.read() != 0);
+                r_error[k] = (p_vci_initiator.rerror.read()&0x1 != 0);
                 r_rsp_fsm = RSP_IDLE;
             }
             break;
