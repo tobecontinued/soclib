@@ -1,7 +1,7 @@
-LD=/Users/alain/soc/cctools/bin/mipsel-unknown-elf-ld
-CC=/Users/alain/soc/cctools/bin/mipsel-unknown-elf-gcc
-AS=/Users/alain/soc/cctools/bin/mipsel-unknown-elf-as
-DU=/Users/alain/soc/cctools/bin/mipsel-unknown-elf-objdump
+LD=/users/outil/soc/cxtools/gcc_mips/obj/bin/mipsel-unknown-elf-ld
+CC=/users/outil/soc/cxtools/gcc_mips/obj/bin/mipsel-unknown-elf-gcc
+AS=/users/outil/soc/cxtools/gcc_mips/obj/bin/mipsel-unknown-elf-as
+DU=/users/outil/soc/cxtools/gcc_mips/obj/bin/mipsel-unknown-elf-objdump
 
 OBJS=   reset.o \
 	giet.o \

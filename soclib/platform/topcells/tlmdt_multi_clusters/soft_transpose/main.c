@@ -2,7 +2,7 @@
 
 #define NL		128
 #define NP		128
-#define NMAX		20
+#define NMAX		2
 
 ///////////////////////////////////////////
 // tricks to read parameters from ldscript

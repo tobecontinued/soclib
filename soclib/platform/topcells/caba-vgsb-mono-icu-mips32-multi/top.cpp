@@ -149,7 +149,7 @@ int _main(int argc, char *argv[])
 	Loader	loader(soft_name);
 
 	VciXcacheWrapperMulti<vci_param, GdbServer<Mips32ElIss> >
-		proc("proc", 0,maptab,IntTab(0),4,128,8,4,128,8,4,8,0);
+		proc("proc", 0,maptab,IntTab(0),4,128,8,4,128,8,4,8);
 	VciSimpleRam<vci_param>
 		rom("rom", IntTab(0), maptab, loader);
 	VciSimpleRam<vci_param>

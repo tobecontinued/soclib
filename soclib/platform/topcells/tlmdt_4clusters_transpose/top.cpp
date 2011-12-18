@@ -1,5 +1,5 @@
 /**********************************************************************
- * File : tp7_tlmdt_top.cpp
+ * File : top.cpp
  * Date : 01/01/2011
  * Author :  Alain Greiner
  * UPMC - LIP6
