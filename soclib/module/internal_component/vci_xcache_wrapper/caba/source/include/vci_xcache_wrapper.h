@@ -38,6 +38,7 @@
 #include "vci_initiator.h"
 #include "mapping_table.h"
 #include "static_assert.h"
+#include "iss2.
 
 namespace soclib {
 namespace caba {
@@ -154,29 +155,28 @@ private:
     GenericCache<addr_t>    r_icache;
     GenericCache<addr_t>    r_dcache;
 
-
     ////////////////////////////////////////
     // Variables used by print_trace()
     ////////////////////////////////////////
 
-    bool							            m_ireq_valid;
-    uint32_t						            m_ireq_addr;
-    soclib::common::Iss2::ExecMode	            m_ireq_mode;
+    bool                                        m_ireq_valid;
+    uint32_t                                    m_ireq_addr;
+    soclib::common::Iss2::ExecMode              m_ireq_mode;
 
-    bool					            		m_irsp_valid;
-    uint32_t				            		m_irsp_instruction;
-    bool						            	m_irsp_error;
+    bool                                        m_irsp_valid;
+    uint32_t                                    m_irsp_instruction;
+    bool                                        m_irsp_error;
 
-    bool							            m_dreq_valid;
-    uint32_t						            m_dreq_addr;
-    soclib::common::Iss2::ExecMode	            m_dreq_mode;
-    soclib::common::Iss2::DataOperationType		m_dreq_type;
-    uint32_t							        m_dreq_wdata;
-    uint8_t				    		        	m_dreq_be;
+    bool                                        m_dreq_valid;
+    uint32_t                                    m_dreq_addr;
+    soclib::common::Iss2::ExecMode              m_dreq_mode;
+    soclib::common::Iss2::DataOperationType     m_dreq_type;
+    uint32_t                                    m_dreq_wdata;
+    uint8_t                                     m_dreq_be;
 
-    bool					            		m_drsp_valid;
-    uint32_t							        m_drsp_rdata;
-    bool	                                    m_drsp_error;			  
+    bool                                        m_drsp_valid;
+    uint32_t                                    m_drsp_rdata;
+    bool                                        m_drsp_error;			  
 
     // Activity counters
     uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
