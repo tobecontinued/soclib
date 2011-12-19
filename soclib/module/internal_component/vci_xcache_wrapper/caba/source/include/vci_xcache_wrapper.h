@@ -38,7 +38,7 @@
 #include "vci_initiator.h"
 #include "mapping_table.h"
 #include "static_assert.h"
-#include "iss2"
+#include "iss2.h"
 
 namespace soclib {
 namespace caba {
