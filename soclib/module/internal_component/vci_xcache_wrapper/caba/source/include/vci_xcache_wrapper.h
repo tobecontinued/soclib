@@ -147,12 +147,36 @@ private:
     sc_signal<bool>         r_dcache_buf_unc_valid;
 
     // The two following registers are used by the file_trace() & print_trace() methods
-    sc_signal<bool> 	    r_icache_updated;	// icache has been modified at previous cycle
-    sc_signal<bool> 	    r_dcache_updated;	// dcache has been modified at previous cycle
+    sc_signal<bool> 	    r_icache_updated;	// icache modified at previous cycle
+    sc_signal<bool> 	    r_dcache_updated;	// dcache modified at previous cycle
 
     WriteBuffer<addr_t>     r_wbuf;
     GenericCache<addr_t>    r_icache;
     GenericCache<addr_t>    r_dcache;
+
+
+    ////////////////////////////////////////
+    // Variables used by print_trace()
+    ////////////////////////////////////////
+
+    bool							            m_ireq_valid;
+    uint32_t						            m_ireq_addr;
+    soclib::common::Iss2::ExecMode	            m_ireq_mode;
+
+    bool					            		m_irsp_valid;
+    uint32_t				            		m_irsp_instruction;
+    bool						            	m_irsp_error;
+
+    bool							            m_dreq_valid;
+    uint32_t						            m_dreq_addr;
+    soclib::common::Iss2::ExecMode	            m_dreq_mode;
+    soclib::common::Iss2::DataOperationType		m_dreq_type;
+    uint32_t							        m_dreq_wdata;
+    uint8_t				    		        	m_dreq_be;
+
+    bool					            		m_drsp_valid;
+    uint32_t							        m_drsp_rdata;
+    bool	                                    m_drsp_error;			  
 
     // Activity counters
     uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
@@ -167,7 +191,7 @@ private:
 
     addr_t   m_cpt_pc_previous;             // previous valid instruction address
     uint32_t m_cpt_exec_ins;	            // number of executed instructions
-    uint32_t m_cpt_total_cycles;	    // total number of cycles
+    uint32_t m_cpt_total_cycles;	        // total number of cycles
 
     uint32_t m_cpt_read;                    // total number of read instructions
     uint32_t m_cpt_write;                   // total number of write instructions
@@ -176,21 +200,21 @@ private:
     uint32_t m_cpt_unc_read;                // number of read uncached
     uint32_t m_cpt_write_cached;            // number of cached write
 
-    uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer
-    uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss
-    uint32_t m_cost_unc_read_frz;           // number of frozen cycles related to uncached read
-    uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss
+    uint32_t m_cost_write_frz;              // frozen cycles related to write buffer
+    uint32_t m_cost_data_miss_frz;          // frozen cycles related to data miss
+    uint32_t m_cost_unc_read_frz;           // frozen cycles related to uncached read
+    uint32_t m_cost_ins_miss_frz;           // frozen cycles related to ins miss
 
-    uint32_t m_cpt_imiss_transaction;       // number of VCI instruction miss transactions
-    uint32_t m_cpt_dmiss_transaction;       // number of VCI data miss transactions
-    uint32_t m_cpt_unc_transaction;         // number of VCI uncached read transactions
-    uint32_t m_cpt_write_transaction;       // number of VCI write transactions
+    uint32_t m_cpt_imiss_transaction;       // VCI instruction miss transactions
+    uint32_t m_cpt_dmiss_transaction;       // VCI data miss transactions
+    uint32_t m_cpt_unc_transaction;         // VCI uncached read transactions
+    uint32_t m_cpt_write_transaction;       // VCI write transactions
 
-    uint32_t m_cost_imiss_transaction;      // cumulated duration for VCI IMISS transactions
-    uint32_t m_cost_dmiss_transaction;      // cumulated duration for VCI DMISS transactions
-    uint32_t m_cost_unc_transaction;        // cumulated duration for VCI UNC transactions
-    uint32_t m_cost_write_transaction;      // cumulated duration for VCI WRITE transactions
-    uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
+    uint32_t m_cost_imiss_transaction;      // cumulated duration IMISS transactions
+    uint32_t m_cost_dmiss_transaction;      // cumulated duration DMISS transactions
+    uint32_t m_cost_unc_transaction;        // cumulated duration UNC transactions
+    uint32_t m_cost_write_transaction;      // cumulated duration WRITE transactions
+    uint32_t m_length_write_transaction;    // cumulated length   WRITE transactions
 
 
 protected:

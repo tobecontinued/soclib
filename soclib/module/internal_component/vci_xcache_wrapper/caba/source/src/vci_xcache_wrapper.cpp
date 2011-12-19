@@ -275,29 +275,53 @@ tmpl(void)::print_stats()
 tmpl(void)::print_trace(size_t mode)
 ////////////////////////////////////
 {
-    typename iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
-    typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
-    m_iss.getRequests( ireq, dreq );
+    typename iss_t::InstructionRequest  ireq;
+    typename iss_t::InstructionResponse irsp;
+    typename iss_t::DataRequest         dreq;
+    typename iss_t::DataResponse        drsp;
 
-    std::cout << std::dec << "XCACHE_WRAPPER " << name() << std::endl;
-    std::cout << " proc state  : PC = " << std::hex << ireq.addr 
-              << " / IREQ = " << std::dec << ireq.valid
-              << " / AD = " << std::hex << dreq.addr
-              << " / DREQ = " << std::dec << dreq.valid 
-              << " / DTYPE = " << dreq.type << std::endl;
-    std::cout << " cache state : " << icache_fsm_state_str[r_icache_fsm] << " / "
-                                   << dcache_fsm_state_str[r_dcache_fsm] << " / "
-                                   << cmd_fsm_state_str[r_vci_cmd_fsm] << " / "
-                                   << rsp_fsm_state_str[r_vci_rsp_fsm] << std::endl;
+    ireq.valid       = m_ireq_valid;
+    ireq.addr        = m_ireq_addr;
+    ireq.mode        = m_ireq_mode;
+
+    irsp.valid       = m_irsp_valid;
+    irsp.instruction = m_irsp_instruction;
+    irsp.error       = m_irsp_error;
+
+    dreq.valid       = m_dreq_valid;
+    dreq.addr        = m_dreq_addr;
+    dreq.mode        = m_dreq_mode;
+    dreq.type        = m_dreq_type;
+    dreq.wdata       = m_dreq_wdata;
+    dreq.be          = m_dreq_be;
+
+    drsp.valid       = m_drsp_valid;
+    drsp.rdata       = m_drsp_rdata;
+    drsp.error       = m_drsp_error;
+
+    std::cout << std::dec << "PROC " << name() << std::endl;
+
+    std::cout << "  " << ireq << std::endl;
+    std::cout << "  " << irsp << std::endl;
+    std::cout << "  " << dreq << std::endl;
+    std::cout << "  " << drsp << std::endl;
+
+    std::cout << "  " << icache_fsm_state_str[r_icache_fsm.read()]
+              << " | " << dcache_fsm_state_str[r_dcache_fsm.read()]
+              << " | " << cmd_fsm_state_str[r_vci_cmd_fsm.read()]
+              << " | " << rsp_fsm_state_str[r_vci_rsp_fsm.read()] << std::endl;
+
     if(mode & 0x1)
     {
         r_wbuf.printTrace();
     }
+
     if(((mode & 0x2) != 0) && r_dcache_updated)
     {
         std::cout << "  Data cache" << std::endl;
         r_dcache.printTrace();
     }
+
     if(((mode & 0x4) != 0) && r_icache_updated)
     {
         std::cout << "  Instruction cache" << std::endl;
@@ -513,6 +537,15 @@ tmpl(void)::transition()
     }
 
     } // end switch r_icache_fsm
+
+    // save the IREQ and IRSP fields for the print_trace() function
+    m_ireq_valid        = ireq.valid;
+    m_ireq_addr         = ireq.addr;
+    m_ireq_mode         = ireq.mode;
+    
+    m_irsp_valid        = irsp.valid;
+    m_irsp_instruction  = irsp.instruction;
+    m_irsp_error        = irsp.error;
 
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " Instruction Response: " << irsp << std::endl;
@@ -771,6 +804,17 @@ tmpl(void)::transition()
         break;
     }
 
+    //////////////////// save DREQ and DRSP fields for print_trace() ////////////////
+    m_dreq_valid = dreq.valid;
+    m_dreq_addr  = dreq.addr;
+    m_dreq_mode  = dreq.mode;
+    m_dreq_type  = dreq.type;
+    m_dreq_wdata = dreq.wdata;
+    m_dreq_be    = dreq.be;
+    
+    m_drsp_valid = drsp.valid;
+    m_drsp_rdata = drsp.rdata;
+    m_drsp_error = drsp.error;
 
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " Data Response: " << drsp << std::endl;
