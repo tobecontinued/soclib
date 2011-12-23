@@ -50,39 +50,39 @@ private:
     void genMoore();
 
     // registers
-    sc_signal<int>				r_tgt_fsm;
+    sc_signal<int>				            r_tgt_fsm;
     sc_signal<typename vci_param::srcid_t>	r_srcid;
     sc_signal<typename vci_param::trdid_t>	r_trdid;
     sc_signal<typename vci_param::pktid_t>	r_pktid;
     sc_signal<typename vci_param::data_t>	r_rdata;
 
-    sc_signal<bool>*				r_activate;		// channel[k] activated
+    sc_signal<bool>*				        r_activate;		// channel[k] activated
 
-    sc_signal<int>*				r_channel_fsm;		// channel[k] state
+    sc_signal<int>*				            r_channel_fsm;	// channel[k] state
     sc_signal<typename vci_param::addr_t>* 	r_src_addr;		// source address for channel[k]
     sc_signal<typename vci_param::addr_t>* 	r_dst_addr;		// dest address for channel[k]
-    sc_signal<size_t>*				r_length;		// buffer length (bytes) for k	
+    sc_signal<size_t>*				        r_length;		// buffer length (bytes) for k	
     sc_signal<typename vci_param::data_t>**	r_buf;			// local bufferfor channel[k]
 
-    sc_signal<bool>*				r_done;			// transfer completed for [k]
-    sc_signal<bool>*				r_error;		// VCI error signaled for [k]
+    sc_signal<bool>*				        r_done;			// transfer completed for [k]
+    sc_signal<bool>*				        r_error;		// VCI error signaled for [k]
 
-    sc_signal<int>				r_cmd_fsm;
-    sc_signal<size_t>				r_cmd_count;		// bytes counter for a command
-    sc_signal<size_t>				r_cmd_index;		// channel index for a command
-    sc_signal<size_t>				r_cmd_length;		// actual write burst length (bytes)
+    sc_signal<int>				            r_cmd_fsm;
+    sc_signal<size_t>				        r_cmd_count;	// bytes counter for a command
+    sc_signal<size_t>				        r_cmd_index;	// channel index for a command
+    sc_signal<size_t>				        r_cmd_length;	// actual write burst length (bytes)
 
-    sc_signal<int>				r_rsp_fsm;
-    sc_signal<size_t>				r_rsp_count;		// bytes counter for a response
-    sc_signal<size_t>				r_rsp_index;		// channel index for a response
-    sc_signal<size_t>				r_rsp_length;		// actual read burst length (bytes)
+    sc_signal<int>				            r_rsp_fsm;
+    sc_signal<size_t>				        r_rsp_count;	// bytes counter for a response
+    sc_signal<size_t>				        r_rsp_index;	// channel index for a response
+    sc_signal<size_t>				        r_rsp_length;	// actual read burst length (bytes)
 
 
     // sructural parameters
-    soclib::common::Segment			m_segment;
-    const size_t				m_burst_max_length;	// number of bytes
-    const size_t				m_channels;		// no more than 16
-    const size_t				m_srcid;
+    soclib::common::Segment			        m_segment;
+    const size_t				            m_burst_max_length;	// number of bytes
+    const size_t				            m_channels;		    // no more than 8
+    const size_t				            m_srcid;
 
 protected:
     SC_HAS_PROCESS(VciMultiDma);
@@ -96,13 +96,14 @@ public:
         TGT_ERROR,
     };
     enum channel_fsm_state_e {
-        CHANNEL_IDLE,
-        CHANNEL_READ_REQ,
-        CHANNEL_READ_WAIT,
-        CHANNEL_WRITE_REQ,
-        CHANNEL_WRITE_WAIT,
-        CHANNEL_DONE,
-        CHANNEL_ERROR,
+        CHANNEL_DONE        = 0,
+        CHANNEL_READ_ERROR  = 1,
+        CHANNEL_IDLE        = 2,
+        CHANNEL_WRITE_ERROR = 3,
+        CHANNEL_READ_REQ    = 4,
+        CHANNEL_READ_WAIT   = 5,
+        CHANNEL_WRITE_REQ   = 6,
+        CHANNEL_WRITE_WAIT  = 7,
     };
     enum cmd_fsm_state_e {
         CMD_IDLE,
@@ -116,11 +117,11 @@ public:
     };
 
     // ports
-    sc_in<bool> 				p_clk;
-    sc_in<bool> 				p_resetn;
+    sc_in<bool> 				            p_clk;
+    sc_in<bool> 				            p_resetn;
     soclib::caba::VciTarget<vci_param> 		p_vci_target;
     soclib::caba::VciInitiator<vci_param> 	p_vci_initiator;
-    sc_out<bool>* 				p_irq;
+    sc_out<bool>* 				            p_irq;
 
     void print_trace();
 
@@ -128,7 +129,7 @@ public:
 		const soclib::common::MappingTable 	&mt,
 		const soclib::common::IntTab 		&srcid,
 		const soclib::common::IntTab 		&tgtid,
-		const size_t 				burst_max_length,
+		const size_t 				        burst_max_length,
                 const size_t				channels);
 };
 

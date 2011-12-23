@@ -26,24 +26,30 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //  This component is a multi-channels DMA controller.
-//  The number of channels and the burst length are constructor parameters.
-//  The max_burst_length parameter must be a multiple of 4 bytes.
+//  The number of channels and the burst length (in bytes)
+//  are constructor parameters. The burst length must be a multiple of 4 bytes.
 //  The number of channels (simultaneous transfers) cannot be larger than 8.
 //  This component makes the assumption that the VCI RDATA & WDATA fields
 //  have 32 bits: The source buffer address, the destination buffer address, 
 //  and the memory buffer length must be multiple of 4 bytes.
 //  The memory buffer length is not constrained to be a multiple of the
-//  max_burst_length.
+//  burst length.
 //
-//  The general arbitration policy between the active channels is round-robin.
-//  The choice of the channel, the base adress of the source and destination
-//  buffers, the length of the transfer, are controled by the software.
+//  In order to support various protection mechanisms, each channel
+//  takes 4K bytes in the address space, and the segment size is 32 K bytes. 
+//  Only 8 address bits are decoded :
+//  - The 5 bits ADDRESS[4:Ø] define the target register (see dma.h)
+//  - The 3 bits ADDRESS[14:12] define the selected channel.
+//
+//  For each channel, the DMA_LEN register is used as status register.
+//  A read command returns the channel_fsm state value. Relevant values are
+//  - DMA_DONE        : 0
+//  - DMA_IDLE        : 2
+//  - DMA_READ_ERROR  : 1
+//  - DMA_WRITE_ERROR : 3
+//  - DMA_BUSY        : >3
+// 
 //  There is one private IRQ line for each channel.
-//
-//  The aligned segment size associated to this component is 256 bytes,
-//  and only 10 address bits are decoded :
-//  - The 5 LSB bits define the target register (see dma.h)
-//  - The 3 MSB bits define the selected channel.
 //
 //  In order to support multiple simultaneous transactions, the channel
 //  index is transmited in the VCI TRDID field.
@@ -67,12 +73,12 @@
 //    (counter of bytes in a burst), r_rsp_index (selected channel),
 //    r_rsp_length (actual length of a burst).
 //  Each channel [k] has a set of "state" registers: 
-//  - r_activate[k]	channel actived (a transfer has been requested)
-//  - r_src_addr[k]	address of the source memory buffer
-//  - r_dst_addr[k]	address of the destination memory buffer
-//  - r_length[k]	total length of the memory buffer (bytes)
-//  - r_read[k]		status of the burst transfer (read or write)
-//  - r_irq[k]		IRQ status
+//  - r_activate[k]	    channel actived (a transfer has been requested)
+//  - r_src_addr[k]	    address of the source memory buffer
+//  - r_dst_addr[k]	    address of the destination memory buffer
+//  - r_length[k]	    total length of the memory buffer (bytes)
+//  - r_read[k]		    phase of the burst transfer (read or write)
+//  - r_irq[k]		    IRQ status
 //  - r_buf[k][word]	local burst buffer 
 /////////////////////////////////////////////////////////////////////////
 
@@ -99,9 +105,9 @@ tmpl(void)::transition()
         for ( size_t k = 0 ; k < m_channels ; k++ )
         {
             r_channel_fsm[k] 	= CHANNEL_IDLE;
-            r_activate[k]	= false;
-            r_done[k] 		= false;
-            r_error[k] 		= false;
+            r_activate[k]	    = false;
+            r_done[k] 		    = false;
+            r_error[k] 		    = false;
         }
         return;
     }
@@ -130,7 +136,7 @@ tmpl(void)::transition()
                 r_trdid					= p_vci_target.trdid.read();
                 r_pktid					= p_vci_target.pktid.read();
                 
-                int 				cell    = (int)((address & 0x1C) >> 2);
+                int 			cell    = (int)((address & 0x1C) >> 2);
                 int				channel = (int)((address & 0xE0) >> 5);
 
                 assert( p_vci_target.eop.read() &&
@@ -170,7 +176,7 @@ tmpl(void)::transition()
                 }
                 else if ( (cell == DMA_LEN) && (cmd == vci_param::CMD_READ) )
                 {
-                    r_rdata   = r_length[channel].read();
+                    r_rdata   = r_channel_fsm[channel].read();
                     r_tgt_fsm = TGT_READ;
                 }
                 else if ( (cell == DMA_RESET) && (cmd == vci_param::CMD_WRITE) )
@@ -228,8 +234,8 @@ tmpl(void)::transition()
             {
                 if ( r_done[k] ) 
                 {
-                    if ( r_error[k] )   r_channel_fsm[k] = CHANNEL_ERROR;
-                    else		r_channel_fsm[k] = CHANNEL_WRITE_REQ;
+                    if ( r_error[k] )   r_channel_fsm[k] = CHANNEL_READ_ERROR;
+                    else		        r_channel_fsm[k] = CHANNEL_WRITE_REQ;
                     r_done[k] = false;
                 }
                 break;
@@ -244,15 +250,16 @@ tmpl(void)::transition()
             {
                 if ( r_done[k] ) 
                 {
-                    if ( r_error[k] )  			r_channel_fsm[k] = CHANNEL_ERROR;
+                    if ( r_error[k] )  			        r_channel_fsm[k] = CHANNEL_WRITE_ERROR;
                     else if ( r_length[k].read() == 0 ) r_channel_fsm[k] = CHANNEL_DONE;
-                    else 				r_channel_fsm[k] = CHANNEL_READ_REQ;
+                    else 				                r_channel_fsm[k] = CHANNEL_READ_REQ;
                     r_done[k] = false;
                 }
                 break;
             }
             case CHANNEL_DONE:
-            case CHANNEL_ERROR:
+            case CHANNEL_READ_ERROR:
+            case CHANNEL_WRITE_ERROR:
             {
                 if ( !r_activate[k] )	r_channel_fsm[k] = CHANNEL_IDLE;
                 break; 
@@ -513,34 +520,45 @@ tmpl(void)::genMoore()
     /////// IRQ ports //////////
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-	p_irq[k] = (r_channel_fsm[k] == CHANNEL_DONE) || (r_channel_fsm[k] == CHANNEL_ERROR);
+	p_irq[k] = (r_channel_fsm[k] == CHANNEL_DONE) || 
+               (r_channel_fsm[k] == CHANNEL_READ_ERROR) ||
+               (r_channel_fsm[k] == CHANNEL_WRITE_ERROR);
     }
 }
 
 /////////////////////////
 tmpl(void)::print_trace()
 {
-    const char* tgt_state_str[] = {
+    const char* tgt_state_str[] = 
+    {
         "  TGT_IDLE ",
         "  TGT_READ ",
         "  TGT_WRITE",
-        "  TGT_ERROR"};
-    const char* cmd_state_str[] = {
+        "  TGT_ERROR"
+    };
+    const char* cmd_state_str[] = 
+    {
         "  CMD_IDLE ",
         "  CMD_READ ",
-        "  CMD_WRITE"};
-    const char* rsp_state_str[] = {
+        "  CMD_WRITE"
+    };
+    const char* rsp_state_str[] = 
+    {
         "  RSP_IDLE ",
         "  RSP_READ ",
-        "  RSP_WRITE"};
-    const char* channel_state_str[] = {
-        "  CHANNEL_IDLE      ",
-        "  CHANNEL_READ_REQ  ",
-        "  CHANNEL_READ_WAIT ",
-        "  CHANNEL_WRITE_REQ ",
-        "  CHANNEL_WRITE_WAIT",
-        "  CHANNEL_DONE      ",
-        "  CHANNEL_ERROR     "};
+        "  RSP_WRITE"
+    };
+    const char* channel_state_str[] = 
+    {
+        "  CHANNEL_DONE       ",
+        "  CHANNEL_READ_ERROR ",
+        "  CHANNEL_IDLE       ",
+        "  CHANNEL_WRITE_ERROR",
+        "  CHANNEL_READ_REQ   ",
+        "  CHANNEL_READ_WAIT  ",
+        "  CHANNEL_WRITE_REQ  ",
+        "  CHANNEL_WRITE_WAIT "
+    };
 
     std::cout << "MULTI_DMA " << name() << " : " << tgt_state_str[r_tgt_fsm.read()] << std::endl;
     for ( size_t k = 0 ; k < m_channels ; k++ )
@@ -551,26 +569,26 @@ tmpl(void)::print_trace()
                       << " : " << channel_state_str[r_channel_fsm[k].read()]
                       << " / src = " << r_src_addr[k].read()
                       << " / dst = " << r_dst_addr[k].read() << std::dec
-                      << " / len = " << r_length[k].read() << std::endl;
+                      << " / length = " << r_length[k].read() << std::endl;
         }
     }
-    std::cout << cmd_state_str[r_cmd_fsm.read()] 
+    std::cout << cmd_state_str[r_cmd_fsm.read()] << std::dec 
               << " / channel = " << r_cmd_index.read()
               << " / length = " << r_cmd_length.read()
               << " / count = " << r_cmd_count.read()/4 << std::endl;
-    std::cout << rsp_state_str[r_rsp_fsm.read()] 
+    std::cout << rsp_state_str[r_rsp_fsm.read()] << std::dec 
               << " / channel = " << r_rsp_index.read()
               << " / length = " << r_rsp_length.read()
               << " / count = " << r_rsp_count.read()/4 << std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////
-tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		name,
+tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
                          const soclib::common::MappingTable 	&mt,
-                         const soclib::common::IntTab 		&srcid,
-                         const soclib::common::IntTab 		&tgtid,
-	                 const size_t 				burst_max_length,
-                         const size_t 				channels )
+                         const soclib::common::IntTab 		    &srcid,
+                         const soclib::common::IntTab 		    &tgtid,
+	                     const size_t 				            burst_max_length,
+                         const size_t 				            channels )
 	: caba::BaseModule(name),
           r_tgt_fsm("r_tgt_fsm"),
           r_srcid("r_srcid"),
