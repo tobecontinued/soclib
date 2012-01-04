@@ -68,8 +68,6 @@ int close( const int fd )
 
 int read( const int fd, const void *buffer, const size_t len )
 {
-	uint32_t i;
-
     cache_flush(buffer, len);
 
 	soclib_io_set(base(FD), FD_ACCESS_FD, fd);
