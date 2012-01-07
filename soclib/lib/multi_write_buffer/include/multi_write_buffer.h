@@ -39,29 +39,32 @@
 // in the same line, and in the same word.
 // All write requests in the same buffer slot will be transmitted
 // as a single VCI transaction.
-// This write buffer can be seen as a set of FSM : one FSM per slot.
+// This write buffer can be described as a set of FSM : one FSM per slot.
 // A slot can be in four states : EMPTY, OPEN, LOCKED, SENT.
-// Each slot has a local timer that is initialised when the
-// slot goes to OPEN. For all OPEN slots, the timer must be decremented 
-// at each cycle by the update() method (that must called at all cycles).
-// An OPEN slot goes to LOCKED state when the timer reach the 0 value,
-// or if a global flush is requested by the update() argument.
-// - The write() method is used to store a write request in the buffer.
-//   it returns false if the buffer is full. 
-//   If previously EMPTY, the selected slot state goes to OPEN.
-// - The rok() method returns true when there is at least one LOCKED slot
-//   that can be sent, and updates the read pointer.
-// - The sent() method must be used when the last flit of a write burst 
-//   transaction has been send, to switch the slot state to SENT.
-// - The completed() method is used to signal that a write transaction
-//   has been completed, and to reset to EMPTY the corresponding slot.
-// - The empty() method returns true when all slots are empty.
-// - The miss(address) method can be used to chek that a read request does 
-//   not match a pending write transaction. The matching criteria is the buffer
-//   line : the word index in the buffer slot is ignored.
-// - This write buffer enforces the write after write policy :
-//   An open slot is locked only if there is no other pending write
-//   transaction in the same buffer line.
+// 1) The write(address, data, be, cacheable) method is used by the 
+//    DCACHE_FM to store a write request in the buffer.
+//    It first search an OPEN slot matching the address.
+//    If not found, it select an EMPTY slot that goes to OPEN.
+//    It returns false if the buffer is full.
+// 2) The update() method should be called at each cycle.
+//    It increments the circular counter r_ptr_update at each cycle,
+//    and the pointed slot goes to LOCKED when it is OPEN and there
+//    is not another slot (LOCKED or SENT) with the same address.
+// 3) The rok(&min, &max) method is usedby the CMD_FSM. 
+//    It returns true when there is at least one LOCKED slot, and returns
+//    also the min and max indexes. It updates the read pointer.
+// 4) The getAddress(word), getData(word) and getBe(word) methods are
+//    used by the CMD_FSM to consume a word in the write bffer. It returns
+//    the address, data and be of the word in the slot pointed by r_ptr_read.
+// 5) The sent() method is used by the CMD_FSM when the last flit of a write 
+//    burst transaction has been send, to switch the slot state to SENT.
+// 6) The completed(index) method is used by the RSP_FSM to signal that a write 
+//    transaction has been completed, to reset to EMPTY the corresponding slot.
+// 7) The empty() method returns true when all slots are empty.
+// 8) The miss(address) method can be used by the CMD_FSM to chek that a read 
+//    request does not match a pending write transaction. The matching criteria 
+//    is the buffer line : the word index in the buffer slot is ignored.
+//
 // - The general write policy is associative (when looking for an empty slot)
 //   but the read policy uses a round robin pointer.
 // - It can exist several EMPTY slots, several LOCKED slots,
@@ -70,12 +73,13 @@
 // User note :
 // The update() method must be called at all cycles by the transition 
 // function of the hardware component that contains this write buffer
-// to update the internal state.
+// to update the slot states (from OPEN to LOCKED).
 ////////////////////////////////////////////////////////////////////////////
 // It has 4 constructor parameters :
 // - std::string    name
 // - size_t         nwords  : buffer width (number of words)
 // - size_t         nslots  : buffer depth (number of slots)
+// - size_t         cache_line_words : cache_line width
 // It has one template parameter :
 // - addr_t defines the address format
 /////////////////////////////////////////////////////////////////////////////
@@ -98,7 +102,7 @@ namespace soclib {
    *
    */
 
-#define CC_XCACHE_MULTI_CPU  1
+//#define CC_XCACHE_MULTI_CPU  1
 
   enum slot_state_e 
     {
@@ -121,12 +125,14 @@ namespace soclib {
     sc_signal<size_t>   r_ptr_update;       // next slot to be update
     sc_signal<int>      *r_state;           // slot state array[nslots]
     sc_signal<addr_t>   *r_address;         // slot base address array[nslots]
-    sc_signal<bool>     *r_cached;
+    sc_signal<bool>     *r_cacheable;       // cacheable array[nslots]
     sc_signal<size_t>   *r_min;             // smallest valid word index array[nslots]
     sc_signal<size_t>   *r_max;             // largest valid word index array[nslots]
+
 #if CC_XCACHE_MULTI_CPU
     sc_signal<size_t>   *r_cpu_id;
 #endif
+
     data_t             **r_data;            // write data  array[nslots][nwords]
     be_t               **r_be;              // byte enable array[nslots][nwords]
     
@@ -148,80 +154,89 @@ namespace soclib {
     stat_t              m_stat_nb_read_after_write;
     stat_t             *m_stat_cycle_sent;
     stat_t              m_stat_sum_latence;
-  public:
+
+public:
 
     /////////////
     void reset()
     {
-      r_ptr_read   = 0 ;
-      r_ptr_update = 0;
-      for( size_t slot = 0 ; slot < m_nslots ; slot++) {
-        r_address[slot] = 0 ;
-        r_cached [slot] = 0 ;
-        r_max[slot]     = 0 ;
-        r_min[slot]     = m_nwords - 1 ;
-        r_state[slot]   = EMPTY ;
+        r_ptr_read   = 0 ;
+        r_ptr_update = 0;
+        for( size_t slot = 0 ; slot < m_nslots ; slot++) 
+        {
+            r_address[slot] = 0 ;
+            r_cacheable [slot] = 0 ;
+            r_max[slot]     = 0 ;
+            r_min[slot]     = m_nwords - 1 ;
+            r_state[slot]   = EMPTY ;
+
 #if CC_XCACHE_MULTI_CPU
-        r_cpu_id[slot]  = 0;
+            r_cpu_id[slot]  = 0;
 #endif
 
-        for( size_t word = 0 ; word < m_nwords ; word++ ) {
-          r_data[slot][word]      = 0 ;
-          r_be  [slot][word]      = 0 ;
+            for( size_t word = 0 ; word < m_nwords ; word++ ) 
+            {
+                r_data[slot][word]      = 0 ;
+                r_be  [slot][word]      = 0 ;
+            }
+
+            m_stat_cycle_sent         [slot] = 0;
         }
 
-        m_stat_cycle_sent         [slot] = 0;
-      }
-
-      for( size_t slot = 0 ; slot <= m_nslots ; slot++)
-        m_stat_slot_utilization [slot] = 0;
-      for( size_t word = 0 ; word < m_nwords ; word++ )
-        m_stat_word_utilization [word] = 0;
-      m_stat_word_useful                            = 0;
-      m_stat_nb_cycles                              = 0;
-      m_stat_nb_write                               = 0;
-      m_stat_nb_write_accepted_in_open_slot         = 0;
-      m_stat_nb_write_accepted_in_same_word         = 0;
-      m_stat_nb_write_refused                       = 0;
-      m_stat_nb_read_after_write_test               = 0;
-      m_stat_nb_read_after_write                    = 0;
-      m_stat_sum_latence                            = 0;
+        for( size_t slot = 0 ; slot <= m_nslots ; slot++)
+        {
+            m_stat_slot_utilization [slot] = 0;
+        }
+        for( size_t word = 0 ; word < m_nwords ; word++ )
+        {
+            m_stat_word_utilization [word] = 0;
+        }
+        m_stat_word_useful                            = 0;
+        m_stat_nb_cycles                              = 0;
+        m_stat_nb_write                               = 0;
+        m_stat_nb_write_accepted_in_open_slot         = 0;
+        m_stat_nb_write_accepted_in_same_word         = 0;
+        m_stat_nb_write_refused                       = 0;
+        m_stat_nb_read_after_write_test               = 0;
+        m_stat_nb_read_after_write                    = 0;
+        m_stat_sum_latence                            = 0;
     } 
 
-    ////////////////////////
+    /////////////////////////////////////
     inline void printTrace(size_t mode=0)
     {
-      const char *wbuf_state_str[] = { "EMPTY ", "OPEN  ", "LOCKED", "SENT  " };
+        const char *wbuf_state_str[] = { "EMPTY  ", "OPEN   ", "LOCKED ", "SENT   " };
 
-      std::cout << "  Write Buffer - ptr_read = " << r_ptr_read << " - ptr_update = " << r_ptr_update << std::endl
-                << "  [slot] state address cached {min,max} - timer" << std::endl;
+        std::cout << "  Write Buffer - ptr_read = " << r_ptr_read 
+                  << " - ptr_update = " << r_ptr_update << std::endl
+                  << "  [slot] state  address  cached {min,max} " << std::endl;
 
-      for( size_t i = 0 ; i < m_nslots ; i++ )
+        for( size_t i = 0 ; i < m_nslots ; i++ )
         {
-          std::cout << "  [" << i << "] " 
-                    << wbuf_state_str[r_state[i]] 
-                    << std::hex << r_address[i].read() << std::dec
-                    << " " << r_cached[i].read()
-                    << " {" << r_min[i].read() << "," << r_max[i].read() << "}"
+            std::cout << "  [" << i << "]    " 
+                      << wbuf_state_str[r_state[i]] 
+                      << std::hex << r_address[i].read() << std::dec
+                      << "  " << r_cacheable[i].read()
+                      << "  {" << r_min[i].read() << "," << r_max[i].read() << "}"
 #if CC_XCACHE_MULTI_CPU
                     << " - " << r_cpu_id[i].read()
 #endif
             ;
 
-          if(mode & 0x1)
+            if(mode & 0x1)
             {
-              std::cout << "  ";
-              for( size_t w = 0 ; w < m_nwords ; w++ )
+                std::cout << "  ";
+                for( size_t w = 0 ; w < m_nwords ; w++ )
                 {
-                  std::cout << " | " << std::hex << r_data[i][w] << std::dec << " - " << r_be[i][w];
+                    std::cout << " | " << std::hex << r_data[i][w] 
+                              << std::dec << " - " << r_be[i][w];
                 }
             }
-          std::cout << std::endl;
-
+            std::cout << std::endl;
         }
     }
 
-    ////////////////////////
+    /////////////////////////////
     inline void printStatistics()
     {
       stat_t m_stat_nb_write_accepted = m_stat_nb_write - m_stat_nb_write_refused;
@@ -261,243 +276,239 @@ namespace soclib {
     }
 
     /////////////////////////////////////////////////////////
-    inline bool miss(addr_t addr)
     // This method is intended to be used by the VCI_CMD FSM
     // to comply with the read after write policy, and
     // decide if a read miss transaction can be launched.
     // There is an hardware cost associated with this service,
     // because all buffer entries must be tested. 
+    inline bool miss(addr_t addr)
     {
-      bool miss = true;
-      for( size_t i = 0 ; i < m_nslots ; i++ )
+        bool miss = true;
+        for( size_t i = 0 ; i < m_nslots ; i++ )
         {
-          if ( (r_state[i].read() != EMPTY) and
-               ((r_address[i].read() & ~m_cache_line_mask) == (addr & ~m_cache_line_mask)) )
+            if ( (r_state[i].read() != EMPTY) and
+                 ((r_address[i].read() & ~m_cache_line_mask) == 
+                  (addr & ~m_cache_line_mask)) )
             {
-              miss = false;
-              m_stat_nb_read_after_write ++;
+                miss = false;
+                m_stat_nb_read_after_write ++;
             }
         }
 
-      m_stat_nb_read_after_write_test ++;
+        m_stat_nb_read_after_write_test ++;
 
-      return miss;
+        return miss;
     }
     
-    ///////////////////////////////////////////////////
+    //////////////////////////////////
+    // Test if all slots are empty
     inline bool empty( )
-    // Test if have an empty slot in the multi_write_buffer
     {
-      for( size_t i=0 ; i<m_nslots ; i++ )
+        for( size_t i=0 ; i<m_nslots ; i++ )
         {
-          if ( r_state[i].read() != EMPTY ) return false;
+            if ( r_state[i].read() != EMPTY ) return false;
         }
-      return true;
+        return true;
     }
 
     //////////////////////////////////////////////////////////////
-    inline bool rok(size_t* min, size_t* max)
     // This method is intended to be called by the VCI_CMD FSM,
     // to test if a locked slot is available.
     // It changes the pointer to the next available locked slot, 
     // and returns the min & max indexes when it has been found.
+    inline bool rok(size_t* min, size_t* max)
     {
-      bool    found = false;     
-      size_t  num_slot;
-      size_t  i=0;
+        bool    found = false;     
+        size_t  num_slot;
+        size_t  i=0;
 
-      for(; i<m_nslots ; i++)
+        for(; i<m_nslots ; i++)
         {
-          num_slot = (r_ptr_read+i)%m_nslots;
-          if( r_state[num_slot] == LOCKED ) 
+            num_slot = (r_ptr_read+i)%m_nslots;
+            if( r_state[num_slot] == LOCKED ) 
             { 
-              found      = true;
-              *min       = r_min[num_slot];
-              *max       = r_max[num_slot];
-              r_ptr_read = num_slot;
-              break;
+                found      = true;
+                *min       = r_min[num_slot];
+                *max       = r_max[num_slot];
+                r_ptr_read = num_slot;
+                break;
             }
         }
-      return found;
+        return found;
     } // end rok()
 
     //////////////////////////////////////////////////////////////
-    inline bool rok_info(size_t* min, size_t* max, addr_t * addr, size_t * index)
     // This method is intended to be called by the VCI_CMD FSM,
     // to test if a locked slot is available.
     // It changes the pointer to the next available locked slot, 
-    // and returns the min & max indexes when it has been found.
+    // and returns the min & max indexes, address and slot index
+    inline bool rok(size_t* min, size_t* max, addr_t * addr, size_t * index)
     {
-      bool    found = false;     
-      size_t  num_slot;
-      size_t  i=0;
+        bool    found = false;     
+        size_t  num_slot;
+        size_t  i=0;
 
-      for(; i<m_nslots ; i++)
+        for(; i<m_nslots ; i++)
         {
-          num_slot = (r_ptr_read+i)%m_nslots;
-          if( r_state[num_slot] == LOCKED)
+            num_slot = (r_ptr_read+i)%m_nslots;
+            if( r_state[num_slot] == LOCKED)
             {
-              found      = true;
-              *min       = r_min[num_slot].read();
-              *max       = r_max[num_slot].read();
-              *addr      = r_address[num_slot].read();
-              *index     = num_slot;
-              r_ptr_read = num_slot;
-              break;
+                found      = true;
+                *min       = r_min[num_slot].read();
+                *max       = r_max[num_slot].read();
+                *addr      = r_address[num_slot].read();
+                *index     = num_slot;
+                r_ptr_read = num_slot;
+                break;
             }
         }
-
-      return found;
+        return found;
     } // end rok()
 
     ////////////////////////////////////////////////////////////////////
-    void inline sent()  
     // This method is intended to be used by the VCI_CMD FSM.
     // It can only change a slot state from LOCKED to SENT when
     // the corresponding write command has been fully transmitted.
+    void inline sent()  
     {
-      assert( (r_state[r_ptr_read] == LOCKED) &&
+        assert( (r_state[r_ptr_read.read()] == LOCKED) &&
               "write buffer error : illegal sent command received");
-      r_state[r_ptr_read] = SENT;
 
-      m_stat_cycle_sent [r_ptr_read] = m_stat_nb_cycles;
+        r_state[r_ptr_read.read()] = SENT;
 
-      m_stat_word_utilization [r_max[r_ptr_read]-r_min[r_ptr_read]] ++;
-      for( size_t word = r_min[r_ptr_read]; word <= r_max[r_ptr_read]; word++ )
-        if (r_be [r_ptr_read][word] != 0)
-          m_stat_word_useful ++;
+        m_stat_cycle_sent [r_ptr_read.read()] = m_stat_nb_cycles;
+
+        m_stat_word_utilization [r_max[r_ptr_read]-r_min[r_ptr_read]] ++;
+        for( size_t word = r_min[r_ptr_read]; word <= r_max[r_ptr_read]; word++ )
+            if (r_be [r_ptr_read][word] != 0) m_stat_word_useful ++;
     } 
 
-    void update(bool flush)
-    // This method is intended to be called at each cycle.
-    // It can change slots state from OPEN to LOCKED.
-    // If the flush argument is true, all open slots must be LOCKED 
-    // as soon as possible (tout=0).
-    // If not, it has two different actions :
-    // - The tout value is decremented for all open slots
-    // that have a non zero tout value.
-    // - If there is one open slot with tout == 0, and there is 
-    // no pending slot (locked or sent) with the same address,
-    // this slot is locked : at most one locked slot per cycle,
-    // because the hardware cost is high...
+    ////////////////////////////////////////////////////////////////////
+    // This method must be called at each cycle.
+    // It can change a slot state from OPEN to LOCKED,
+    // using the circular counter r_ptr_update.
+    // If the slot pointed by r_ptr_update is OPEN, and there is not
+    // another slot (LOCKED or SENT) with the same address,
+    // the pointed slot goes to LOCKED.
+    void update()
     {
+        m_stat_nb_cycles ++;
 
-      m_stat_nb_cycles ++;
-
-      size_t stat_nb_not_empty = 0;
-      for(size_t i=0 ; i<m_nslots ; i++)
+        size_t stat_nb_not_empty = 0;
+        for(size_t i=0 ; i<m_nslots ; i++)
         {
-          if (r_state[i] != EMPTY)
-            stat_nb_not_empty ++;
+            if (r_state[i] != EMPTY) stat_nb_not_empty ++;
         }
-      m_stat_slot_utilization[stat_nb_not_empty] ++;
+        m_stat_slot_utilization[stat_nb_not_empty] ++;
 
-      bool found = false;
+        bool found = false;
             
-      // is a candidate ?
-      if(r_state[r_ptr_update] == OPEN)
+        if(r_state[r_ptr_update.read()] == OPEN)
         {
-          // searching for a pending request with the same address
-          for( size_t i=0 ; i<m_nslots ; i++ )
+            // searching for a pending request with the same address
+            for( size_t i=0 ; i<m_nslots ; i++ )
             {
-              if ( (r_state[i].read() != EMPTY) and 
-                   (r_state[i].read() != OPEN)  and
-                   (r_address[r_ptr_update].read() == r_address[i].read()) ) 
+                if ( (r_state[i].read() != EMPTY) and 
+                     (r_state[i].read() != OPEN)  and
+                     (r_address[r_ptr_update.read()].read() == r_address[i].read()) ) 
                 {
-                  // find a line with the same adress and the sate is locked or sent
-                  found = true;
-                  break; 
+                    found = true;
+                    break; 
                 }
             }
-          // locking the slot if no conflict
-          if ( !found )
-            r_state[r_ptr_update] = LOCKED;
+            if ( !found ) r_state[r_ptr_update] = LOCKED;
         }
-
-      r_ptr_update = (r_ptr_update+1)%m_nslots;
+        r_ptr_update = (r_ptr_update.read() + 1)%m_nslots;
     }
 
     //////////////////////////////////////////////////////////////////////////
-    bool write(addr_t addr, be_t be , data_t  data, bool cached, size_t cpu_id=0)
     // This method is intended to be used by the DCACHE FSM.
     // It can only change a slot state from EMPTY to OPEN.
     // It can change the slot content : r_address, r_data, r_be, r_min, r_max
     // It searches first an open slot, and then an empty slot.
     // It returns true in case of success.
+    bool write( addr_t  addr,
+                be_t    be, 
+                data_t  data, 
+                bool    cached, 
+                size_t  cpu_id=0)
     {
-      assert (be != 0);
+        assert (be != 0);
 
-      size_t      word = (size_t)((addr &  m_wbuf_line_mask) >> 2) ;
-      addr_t      address = addr & ~m_wbuf_line_mask;
-      bool     found = false;     
-      size_t  num_slot;
+        size_t    word = (size_t)((addr &  m_wbuf_line_mask) >> 2) ;
+        addr_t    address = addr & ~m_wbuf_line_mask;
+        bool      found = false;     
+        size_t    num_slot;
 
-      // Search a slot to be written
-      // first : search an open slot with the same address
-      for( size_t i=0 ; i<m_nslots ; i++)
+        // Search a slot to be written
+        // first : search an open slot with the same address
+        for( size_t i=0 ; i<m_nslots ; i++)
         {
-          if(    (r_state  [i].read() == OPEN)
-             and (r_address[i].read() == address)
+            if( (r_state[i].read() == OPEN) and (r_address[i].read() == address)
+
 #if CC_XCACHE_MULTI_CPU
-             and (r_cpu_id [i].read() == cpu_id)
+                 and (r_cpu_id [i].read() == cpu_id)
 #endif
                   )
             { 
-              num_slot = i;
-              found = true;
-              m_stat_nb_write_accepted_in_open_slot ++;
-
-              break;
+                num_slot = i;
+                found = true;
+                m_stat_nb_write_accepted_in_open_slot ++;
+                break;
             }
         }
-      // second : search an empty slot
-      if( !found )
+        // second : search an empty slot
+        if( !found )
         {
-          for( size_t i=0 ; i<m_nslots ; i++)
+            for( size_t i=0 ; i<m_nslots ; i++)
             {
-              if( r_state[i] == EMPTY )
+                if( r_state[i] == EMPTY )
                 { 
-                  num_slot = i;
-                  found = true;
-                  break;
+                    num_slot = i;
+                    found = true;
+                    break;
                 }
             }
         }
-      // register the request when a slot has been found:
-      // update r_state, r_address, r_be, r_data, r_min, r_max, r_tout
-      if ( found )
+
+        // register the request when a slot has been found:
+        // update r_state, r_address, r_be, r_data, r_min, r_max, r_tout
+        if ( found )
         {
-          // if instruction is uncached, force the lock (no rewrite in the same slot)
-          r_state  [num_slot] = (cached)?OPEN:LOCKED;
-          r_address[num_slot] = address;
-          r_cached [num_slot] = cached;
+            // if instruction is uncached, force the lock (no rewrite in the same slot)
+            r_state  [num_slot] = (cached)?OPEN:LOCKED;
+            r_address[num_slot] = address;
+            r_cacheable [num_slot] = cached;
+
 #if CC_XCACHE_MULTI_CPU
-          r_cpu_id [num_slot] = cpu_id;
+            r_cpu_id [num_slot] = cpu_id;
 #endif
 
-          if (r_be[num_slot][word] != 0)
-            m_stat_nb_write_accepted_in_same_word ++;
+            if (r_be[num_slot][word] != 0) m_stat_nb_write_accepted_in_same_word ++;
 
-          r_be[num_slot][word]   = r_be[num_slot][word] | be;
-          data_t  data_mask = 0;
-          be_t    be_up = (1<<(sizeof(data_t)-1));
-          for (size_t i = 0 ; i < sizeof(data_t) ; ++i) 
+            r_be[num_slot][word]   = r_be[num_slot][word] | be;
+            data_t  data_mask = 0;
+            be_t    be_up = (1<<(sizeof(data_t)-1));
+            for (size_t i = 0 ; i < sizeof(data_t) ; ++i) 
             {
-              data_mask <<= 8;
-              if ( be_up & be ) data_mask |= 0xff;
-              be <<= 1;
+                data_mask <<= 8;
+                if ( be_up & be ) data_mask |= 0xff;
+                be <<= 1;
             }
-          r_data[num_slot][word] = (r_data[num_slot][word] & ~data_mask) | (data & data_mask) ;
-
-          if ( r_min[num_slot].read() > word ) r_min[num_slot] = word;
-          if ( r_max[num_slot].read() < word ) r_max[num_slot] = word;
+            r_data[num_slot][word] = (r_data[num_slot][word] & ~data_mask) 
+                                     | (data & data_mask) ;
+ 
+            if ( r_min[num_slot].read() > word ) r_min[num_slot] = word;
+            if ( r_max[num_slot].read() < word ) r_max[num_slot] = word;
         }
-      else
-        m_stat_nb_write_refused ++;
+        else
+        {
+            m_stat_nb_write_refused ++;
+        }
         
-      m_stat_nb_write ++;
+        m_stat_nb_write ++;
 
-      return found;
+        return found;
     } // end write()
 
     //////////////////////////////////////
@@ -535,22 +546,22 @@ namespace soclib {
     }
 
     /////////////////////////////////////////////////////////////
-    bool inline completed(size_t index)
     // This method is intended to be used by the VCI_RSP FSM.
-    // It can only change a slot state from SENT to EMPTY when
+    // It changes a slot state from SENT to EMPTY when
     // the corresponding write transaction is completed.
+    bool inline completed(size_t index)
     {
-      assert( (index < m_nslots) && (r_state[index].read() == SENT) &&
+        assert( (index < m_nslots) && (r_state[index].read() == SENT) &&
               "write buffer error : illegal completed command received");
-      r_max[index]        = 0 ;
-      r_min[index]        = m_nwords - 1 ;
-      r_state[index]      = EMPTY ;
-      for( size_t w = 0 ; w < m_nwords ; w++ ) 
-      r_be[index][w]      = 0 ;
 
-      m_stat_sum_latence += (m_stat_nb_cycles-m_stat_cycle_sent [index]);
+        r_max[index]        = 0 ;
+        r_min[index]        = m_nwords - 1 ;
+        r_state[index]      = EMPTY ;
+        for( size_t w = 0 ; w < m_nwords ; w++ ) r_be[index][w] = 0 ;
 
-      return r_cached[index].read();
+        m_stat_sum_latence += (m_stat_nb_cycles-m_stat_cycle_sent [index]);
+
+        return r_cacheable[index].read();
     } //end completed()
 
     /////////////////////////////////////////////////////////////////////// 
@@ -565,7 +576,7 @@ namespace soclib {
       m_cache_line_mask((cache_nwords << 2) - 1)
     {
       r_address = new sc_signal<addr_t>[wbuf_nslots];
-      r_cached  = new sc_signal<bool  >[wbuf_nslots];
+      r_cacheable  = new sc_signal<bool  >[wbuf_nslots];
       r_min     = new sc_signal<size_t>[wbuf_nslots];
       r_max     = new sc_signal<size_t>[wbuf_nslots];
       r_state   = new sc_signal<int>[wbuf_nslots];
@@ -605,7 +616,7 @@ namespace soclib {
         }
       delete [] r_data;
       delete [] r_be;
-      delete [] r_cached;
+      delete [] r_cacheable;
       delete [] r_address;
       delete [] r_min;
       delete [] r_max;
