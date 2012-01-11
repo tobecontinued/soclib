@@ -336,14 +336,10 @@ public:
     ////////////////////////////////////////////////////////////////////////////
     // this function is deprecated, as it is difficult to implement in 1 cycle. 
     ////////////////////////////////////////////////////////////////////////////
+    __attribute__((deprecated))
     inline bool write(addr_t 	ad, 
                       data_t 	dt)
     {
-
-std::cout << std::endl;
-std::cout << "Generic Cache error: The write(address,data,...) method is deprecated";
-std::cout << std::endl;
-
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
@@ -363,16 +359,12 @@ std::cout << std::endl;
     ////////////////////////////////////////////////////////////////////////////
     // this function is deprecated, as it is difficult to implement in 1 cycle. 
     ////////////////////////////////////////////////////////////////////////////
+    __attribute__((deprecated))
     inline bool write(addr_t 	ad, 
                       data_t 	dt, 
                       be_t 	be)
     {
-
-std::cout << std::endl;
-std::cout << "Generic Cache error: The write(address,data,...) method is deprecated";
-std::cout << std::endl;
-
-        const tag_t       tag  = m_z[ad];
+        tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
 
@@ -393,15 +385,11 @@ std::cout << std::endl;
     /////////////////////////////////////////////////////////////////////////////
     // this function is deprecated, as it is difficult to implement in 1 cycle. 
     /////////////////////////////////////////////////////////////////////////////
+    __attribute__((deprecated))
     inline bool write(addr_t 	ad, 
                       data_t 	dt, 
                       size_t* 	nway)
     {
-
-std::cout << std::endl;
-std::cout << "Generic Cache error: The write(address,data,...) method is deprecated";
-std::cout << std::endl;
-
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
@@ -422,16 +410,12 @@ std::cout << std::endl;
     /////////////////////////////////////////////////////////////////////////////
     // this function is deprecated, as it is difficult to implement in 1 cycle. 
     /////////////////////////////////////////////////////////////////////////////
+    __attribute__((deprecated))
     inline bool write(addr_t 	ad, 
                       data_t 	dt, 
                       size_t* 	nway, 
                       be_t 	be)
     {
-
-std::cout << std::endl;
-std::cout << "Generic Cache error: The write(address,data,...) method is deprecated";
-std::cout << std::endl;
-
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
@@ -500,13 +484,9 @@ std::cout << std::endl;
     ///////////////////////////////////////////////////////////////////////////
     // This function is deprecated as it is difficult to implement in 1 cycle.
     ///////////////////////////////////////////////////////////////////////////
+    __attribute__((deprecated))
     inline bool inval(addr_t 	ad)
     {
-
-std::cout << std::endl;
-std::cout << "Generic Cache error: The inval(address,...) method is deprecated";
-std::cout << std::endl;
-
         bool              hit = false;
         const tag_t       tag = m_z[ad];
         const size_t      set = m_y[ad];
@@ -526,15 +506,11 @@ std::cout << std::endl;
     ////////////////////////////////////////////////////////////////////////////////
     // This function is deprecated as it is difficult to implement in 1 cycle.
     ////////////////////////////////////////////////////////////////////////////////
+    __attribute__((deprecated))
     inline bool inval( addr_t 	ad, 
                        size_t* 	selway, 
                        size_t* 	selset )
     {
-
-std::cout << std::endl;
-std::cout << "Generic Cache error: The inval(address,...) method is deprecated";
-std::cout << std::endl;
-
         bool    	hit = false;
         const tag_t     tag = m_z[ad];
         const size_t    set = m_y[ad];
@@ -556,15 +532,11 @@ std::cout << std::endl;
     ////////////////////////////////////////////////////////////////////////////////
     // This function is deprecated as the directory must be a dual port RAM...
     ////////////////////////////////////////////////////////////////////////////////
+    __attribute__((deprecated))
     inline bool update( addr_t 	ad, 
                         data_t* buf, 
                         addr_t* victim )
     {
-
-std::cout << std::endl;
-std::cout << "Generic Cache error: The update(address,...) method is deprecated";
-std::cout << std::endl;
-
         size_t set, way;
         bool   cleanup = victim_select(ad, victim, &way, &set);
         victim_update_tag (ad, way, set);
