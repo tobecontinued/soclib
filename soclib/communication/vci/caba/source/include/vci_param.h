@@ -159,6 +159,9 @@ public:
 
     static inline fast_data_t be2mask( fast_data_t be )
     {
+        fast_data_t ret = (be * 0x0100040010004000ULL | be * 0x0002000800200080ULL) & 0x8080808080808080ULL;
+        ret |= ret >> 1; ret |= ret >> 2; ret |= ret >> 4;
+#if 0
         fast_data_t ret = 0;
         const fast_data_t be_up = 1 << (B - 1);
 
@@ -168,6 +171,7 @@ public:
                 ret |= 0xff;
             be <<= 1;
         }
+#endif
         return ret;
     }
 };
