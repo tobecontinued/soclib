@@ -538,13 +538,18 @@ public:
         assert("all TLB ways can't be new at the same time");
     } // end select()
 
-    /////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     //  This method writes a new entry in the TLB,
     //  in the slot defined by the way & set arguments.
-    //  The big argument defines the page type.
-    /////////////////////////////////////////////////////////////////
+    //  The big argument defines the page type (true for 2M page).
+    //  PTE1 is 32 bits / PTE2 is 64 bits
+    //  For both types of page, the pte_flags argument contains the flags.
+    //  For 4K pages, the PPN value is contained in the pte_ppn argument.
+    //  For 2M pages, the PPN value is contained in the pte_flags argument.
+    ////////////////////////////////////////////////////////////////////////
     void write(bool         big,
-               uint32_t 	pte, 
+               uint32_t 	pte_flags, 
+               uint32_t 	pte_ppn,
                uint32_t		vaddr,
                size_t 		way, 
                size_t 		set, 
@@ -555,7 +560,7 @@ public:
             assert ( (set == ((vaddr >> PAGE_M_NBITS) & m_sets_mask)) and  
                       "error in tlb write for a 2M page"); 
             m_vpn[way*m_nsets+set]     = vaddr >> (PAGE_M_NBITS + m_sets_shift);
-            m_ppn[way*m_nsets+set]     = pte & ((1<<(m_paddr_nbits - PAGE_M_NBITS))-1);
+            m_ppn[way*m_nsets+set]     = pte_flags & ((1<<(m_paddr_nbits - PAGE_M_NBITS))-1);
             m_big[way*m_nsets+set]     = true;
         }
         else        // 4K page
@@ -563,20 +568,20 @@ public:
             assert ( (set == ((vaddr >> PAGE_K_NBITS)) & m_sets_mask) and 
                       "error in tlb write for a 4K page"); 
             m_vpn[way*m_nsets+set]     = vaddr >> (PAGE_K_NBITS + m_sets_shift);
-            m_ppn[way*m_nsets+set]     = ppn & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1);
+            m_ppn[way*m_nsets+set]     = pte_ppn & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1);
             m_big[way*m_nsets+set]     = false;
         }
         m_nline[way*m_nsets+set]       = nline;
         m_valid[way*m_nsets+set]       = true;
         m_recent[way*m_nsets+set]      = true;
-        m_local[way*m_nsets+set]       = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
-        m_remote[way*m_nsets+set]      = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
-        m_cacheable[way*m_nsets+set]   = (((pte & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
-        m_writable[way*m_nsets+set]    = (((pte & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;
-        m_executable[way*m_nsets+set]  = (((pte & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
-        m_unprotected[way*m_nsets+set] = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
-        m_global[way*m_nsets+set]      = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
-        m_dirty[way*m_nsets+set]       = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false;
+        m_local[way*m_nsets+set]       = (((pte_flags & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
+        m_remote[way*m_nsets+set]      = (((pte_flags & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
+        m_cacheable[way*m_nsets+set]   = (((pte_flags & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
+        m_writable[way*m_nsets+set]    = (((pte_flags & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;
+        m_executable[way*m_nsets+set]  = (((pte_flags & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
+        m_unprotected[way*m_nsets+set] = (((pte_flags & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
+        m_global[way*m_nsets+set]      = (((pte_flags & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
+        m_dirty[way*m_nsets+set]       = (((pte_flags & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false;
     }  // end write()
 
     //////////////////////////////////////////////////////////////
