@@ -54,7 +54,7 @@
  * - uint32_t   ppn     physical page number (28 bits / 19 bits)
  * - paddr_t    nline	cache line index of the corresponding PTE
  *
- * This TLB supports a bypass mechanism in order to avoid to access 
+ * This TLB supports a bypass mechanism in order to avoid access to 
  * PT1 in case of tlb miss for a small page : It keep the last valid 
  * (vpn -> ptba) translation in four specific registers.
  *
@@ -148,27 +148,29 @@ class GenericTlb
 protected:
 
     // structure constants
-    const size_t  	m_nways;
-    const size_t  	m_nsets;
-    const size_t  	m_paddr_nbits;
-    const size_t  	m_sets_shift;
-    const size_t  	m_sets_mask;
+    const std::string   m_name;
+    const size_t        m_procid;
+    const size_t  	    m_nways;
+    const size_t  	    m_nsets;
+    const size_t  	    m_paddr_nbits;
+    const size_t  	    m_sets_shift;
+    const size_t  	    m_sets_mask;
 
     // TLB content: arrays[m_nsets*m_nways]
-    paddr_t		    *m_nline;
-    uint32_t		*m_ppn; 
-    uint32_t		*m_vpn;
-    bool    		*m_valid;  
-    bool    		*m_local;
-    bool    		*m_remote;
-    bool    		*m_cacheable;
-    bool    		*m_writable;
-    bool    		*m_executable;
-    bool    		*m_unprotected;
-    bool    		*m_global;
-    bool    		*m_dirty;
-    bool    		*m_big;
-    bool    		*m_recent;
+    paddr_t		        *m_nline;
+    uint32_t		    *m_ppn; 
+    uint32_t		    *m_vpn;
+    bool    		    *m_valid;  
+    bool    		    *m_local;
+    bool    		    *m_remote;
+    bool    		    *m_cacheable;
+    bool    		    *m_writable;
+    bool    		    *m_executable;
+    bool    		    *m_unprotected;
+    bool    		    *m_global;
+    bool    		    *m_dirty;
+    bool    		    *m_big;
+    bool    		    *m_recent;
 
     // bypass registers
     bool		m_bypass_valid;		// valid bypass registered
@@ -253,8 +255,14 @@ public:
     // constructor checks parameters, allocates the memory
     // and computes m_page_mask, m_sets_mask and m_sets_shift
     //////////////////////////////////////////////////////////////
-    GenericTlb(size_t nways, size_t nsets, size_t paddr_nbits)
-    : m_nways(nways),
+    GenericTlb(const std::string &name,
+               size_t procid,
+               size_t nways, 
+               size_t nsets, 
+               size_t paddr_nbits)
+    : m_name(name),
+      m_procid(procid),
+      m_nways(nways),
       m_nsets(nsets),
       m_paddr_nbits(paddr_nbits),
       m_sets_shift(uint32_log2(nsets)),
@@ -531,22 +539,35 @@ public:
     } // end select()
 
     /////////////////////////////////////////////////////////////////
-    //  This method writes a new 2M page size entry in the TLB.
+    //  This method writes a new entry in the TLB,
+    //  in the slot defined by the way & set arguments.
+    //  The big argument defines the page type.
     /////////////////////////////////////////////////////////////////
-    void write(uint32_t 	pte, 
+    void write(bool         big,
+               uint32_t 	pte, 
                uint32_t		vaddr,
                size_t 		way, 
                size_t 		set, 
                paddr_t 		nline) 
     {
-        assert ( (set == ((vaddr >> PAGE_M_NBITS) & m_sets_mask)) and "error in tlb update"); 
-
+        if ( big )  // 2M page
+        {
+            assert ( (set == ((vaddr >> PAGE_M_NBITS) & m_sets_mask)) and  
+                      "error in tlb write for a 2M page"); 
+            m_vpn[way*m_nsets+set]     = vaddr >> (PAGE_M_NBITS + m_sets_shift);
+            m_ppn[way*m_nsets+set]     = pte & ((1<<(m_paddr_nbits - PAGE_M_NBITS))-1);
+            m_big[way*m_nsets+set]     = true;
+        }
+        else        // 4K page
+        {
+            assert ( (set == ((vaddr >> PAGE_K_NBITS)) & m_sets_mask) and 
+                      "error in tlb write for a 4K page"); 
+            m_vpn[way*m_nsets+set]     = vaddr >> (PAGE_K_NBITS + m_sets_shift);
+            m_ppn[way*m_nsets+set]     = ppn & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1);
+            m_big[way*m_nsets+set]     = false;
+        }
         m_nline[way*m_nsets+set]       = nline;
-        m_vpn[way*m_nsets+set]         = vaddr >> (PAGE_M_NBITS + m_sets_shift);
-        m_ppn[way*m_nsets+set]         = pte & ((1<<(m_paddr_nbits - PAGE_M_NBITS))-1);
-
         m_valid[way*m_nsets+set]       = true;
-        m_big[way*m_nsets+set]         = true;
         m_recent[way*m_nsets+set]      = true;
         m_local[way*m_nsets+set]       = (((pte & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         m_remote[way*m_nsets+set]      = (((pte & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
@@ -556,36 +577,7 @@ public:
         m_unprotected[way*m_nsets+set] = (((pte & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
         m_global[way*m_nsets+set]      = (((pte & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
         m_dirty[way*m_nsets+set]       = (((pte & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false;
-    } // end update()
-
-    /////////////////////////////////////////////////////////////
-    //  This method writes a new 4K page size entry in the TLB.
-    /////////////////////////////////////////////////////////////
-    void write(uint32_t 	flags, 
-               uint32_t 	ppn, 
-               uint32_t 	vaddr,
-               size_t   	way,
-               size_t   	set,
-               size_t   	nline) 
-    {
-        assert ( (set == (vaddr >> PAGE_K_NBITS) & m_sets_mask) and "error in tlb update"); 
-      
-        m_nline[way*m_nsets+set]       = nline;
-        m_vpn[way*m_nsets+set]         = vaddr >> (PAGE_K_NBITS + m_sets_shift);
-        m_ppn[way*m_nsets+set]         = ppn & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1);
-
-        m_valid[way*m_nsets+set]       = true;
-        m_big[way*m_nsets+set]         = false;
-        m_recent[way*m_nsets+set]      = true;
-        m_local[way*m_nsets+set]       = (((flags & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
-        m_remote[way*m_nsets+set]      = (((flags & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
-        m_cacheable[way*m_nsets+set]   = (((flags & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
-        m_writable[way*m_nsets+set]    = (((flags & PTE_W_MASK) >> PTE_W_SHIFT) == 1) ? true : false;
-        m_executable[way*m_nsets+set]  = (((flags & PTE_X_MASK) >> PTE_X_SHIFT) == 1) ? true : false;
-        m_unprotected[way*m_nsets+set] = (((flags & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
-        m_global[way*m_nsets+set]      = (((flags & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
-        m_dirty[way*m_nsets+set]       = (((flags & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false;
-    } // end update()
+    }  // end write()
 
     //////////////////////////////////////////////////////////////
     //  This method invalidates a TLB entry
