@@ -565,7 +565,7 @@ public:
         }
         else        // 4K page
         {
-            assert ( (set == ((vaddr >> PAGE_K_NBITS)) & m_sets_mask) and 
+            assert ( (set == ((vaddr >> PAGE_K_NBITS) & m_sets_mask)) and 
                       "error in tlb write for a 4K page"); 
             m_vpn[way*m_nsets+set]     = vaddr >> (PAGE_K_NBITS + m_sets_shift);
             m_ppn[way*m_nsets+set]     = pte_ppn & ((1<<(m_paddr_nbits - PAGE_K_NBITS))-1);
