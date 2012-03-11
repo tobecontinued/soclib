@@ -325,7 +325,7 @@ public:
         {
             for (size_t set = 0 ; set < m_nsets ; set++)
             {
-		        m_valid[m_nsets*way+set] = true;
+		        m_valid[m_nsets*way+set] = false;
             }
         }
         m_bypass_valid = false;
@@ -370,7 +370,7 @@ public:
                 *paddress = (paddr_t)((paddr_t)get_ppn(way,m_set) << PAGE_M_NBITS) | 
                             (paddr_t)(vaddress & PAGE_M_MASK);
 
-		set_recent(way, m_set);
+                set_recent(way, m_set);
                 return true;
             }
 
@@ -390,14 +390,14 @@ public:
                 pte_info->b = get_big(way,k_set);
                 pte_info->z = get_recent(way,k_set);
 
-                *nline      = get_nline(way,m_set);
+                *nline      = get_nline(way,k_set);
                 *tw         = way;
                 *ts         = k_set;
 
                 *paddress = (paddr_t)((paddr_t)get_ppn(way,k_set) << PAGE_K_NBITS) | 
                             (paddr_t)(vaddress & PAGE_K_MASK);
 
-		set_recent(way, k_set);
+                set_recent(way, k_set);
                 return true;   
             } 
         } 
@@ -707,7 +707,7 @@ public:
     ///////////////////////////////////////////////////////////////////////
     //  The print method displays the TLB content
     ///////////////////////////////////////////////////////////////////////
-    void print()
+    void printTrace()
     {
         std::cout << "     set way    V  L  R  C  W  X  U  G  D  B  Z  TAG    PPN    NLINE" 
                   << std::endl;
@@ -734,7 +734,8 @@ public:
                           << std::hex
                           << m_vpn[m_nsets*way+set] << "]["
                           << m_ppn[m_nsets*way+set] << "]["
-                          << m_nline[m_nsets*way+set] << "]" << std::endl;
+                          << m_nline[m_nsets*way+set] << "]" 
+                          << std::endl;
             }
         }
     }
