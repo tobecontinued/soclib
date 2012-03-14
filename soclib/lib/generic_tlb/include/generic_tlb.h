@@ -78,6 +78,8 @@
 #include <assert.h>
 #include "static_assert.h"
 #include "arithmetics.h"
+#include <iostream>
+#include <iomanip>
 
 namespace soclib { 
 namespace caba {
@@ -174,7 +176,7 @@ protected:
 
     // bypass registers
     bool		m_bypass_valid;		// valid bypass registered
-    uint32_t	m_bypass_id1;		// IX1 fild in the VPN
+    uint32_t	m_bypass_id1;		// IX1 field in the VPN
     uint32_t	m_bypass_ptba;		// PTBA value 
     paddr_t		m_bypass_nline;		// cache line index for the corresponding PTE
 
@@ -318,6 +320,7 @@ public:
 
     /////////////////////////////////////////////////////////////
     //  This method resets all the TLB entries
+    //  as well as the bypass
     /////////////////////////////////////////////////////////////
     void reset() 
     {
@@ -442,10 +445,12 @@ public:
 
     /////////////////////////////////////////////////////////////
     //  This method resets all valid bits in one cycle, 
-    // for non global tlb entries.
+    //  for non global tlb entries.
     /////////////////////////////////////////////////////////////
     void flush() 
     {
+        m_bypass_valid = false;
+
         for( size_t way = 0; way < m_nways; way++ ) 
         {
             for(size_t set = 0; set < m_nsets; set++) 
@@ -618,11 +623,14 @@ public:
     //  This method conditionnally invalidates a TLB entry
     //  identified by the way and set arguments, if it matches 
     //  the nline argument.
+    //  The bypass is also inalidated if it matches the nline.
     //////////////////////////////////////////////////////////////
     bool inval(paddr_t 	nline,
                size_t	way,
                size_t	set)
     {
+        if ( m_bypass_nline == nline ) m_bypass_valid = false;
+        
         if ( m_nline[way*m_nsets+set] == nline )
         {
             m_valid[way*m_nsets+set] = false;
@@ -700,24 +708,24 @@ public:
     //  The reset_bypass() method conditionnally resets the bypass 
     //  when the nline argument matches the registered nline.
     ///////////////////////////////////////////////////////////////////////
-    void reset_bypass(paddr_t	nline)
+    void reset_bypass()
     {
-        if ( m_bypass_nline == nline ) m_bypass_valid = false;
+        m_bypass_valid = false;
     }
     ///////////////////////////////////////////////////////////////////////
-    //  The print method displays the TLB content
+    //  The printTrace() method displays the TLB content
     ///////////////////////////////////////////////////////////////////////
     void printTrace()
     {
-        std::cout << "     set way    V  L  R  C  W  X  U  G  D  B  Z  TAG    PPN    NLINE" 
-                  << std::endl;
+        std::cout << "     set way    V  L  R  C  W  X  U  G  D  B  Z"
+                  << "   TAG        PPN          NLINE" << std::endl;
 
         for ( size_t set=0 ; set < m_nsets ; set++ )
         {
             for ( size_t way=0 ; way < m_nways ; way++ )
             {
                 if ( m_valid[m_nsets*way+set] )
-                std::cout << std::dec
+                std::cout << std::dec << std::noshowbase
                           << "     [" << set << "] [" 
                           << way << "]   ["
                           << m_valid[m_nsets*way+set] << "]["
@@ -731,10 +739,10 @@ public:
                           << m_dirty[m_nsets*way+set] << "]["
                           << m_big[m_nsets*way+set] << "]["
                           << m_recent[m_nsets*way+set] << "]["
-                          << std::hex
-                          << m_vpn[m_nsets*way+set] << "]["
-                          << m_ppn[m_nsets*way+set] << "]["
-                          << m_nline[m_nsets*way+set] << "]" 
+                          << std::hex << std::showbase
+                          << std::setw(7)  << m_vpn[m_nsets*way+set] << "]["
+                          << std::setw(9)  << m_ppn[m_nsets*way+set] << "]["
+                          << std::setw(11) << m_nline[m_nsets*way+set] << "]" 
                           << std::endl;
             }
         }
