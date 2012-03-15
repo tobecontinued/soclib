@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Alain Greiner <alain.greiner@lip6.fr>, 2011
  *
- * Maintainers: nipo
+ * Maintainers: alain
  */
 #ifndef SOCLIB_CABA_GENERIC_CAM_H
 #define SOCLIB_CABA_GENERIC_CAM_H
