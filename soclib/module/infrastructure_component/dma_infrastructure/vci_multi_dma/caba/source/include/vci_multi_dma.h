@@ -57,12 +57,12 @@ private:
     sc_signal<typename vci_param::data_t>	r_rdata;
 
     sc_signal<bool>*				        r_activate;		// channel[k] activated
-
+    sc_signal<bool>*				        r_no_burst;     // no burst for channel[k] 
     sc_signal<int>*				            r_channel_fsm;	// channel[k] state
     sc_signal<typename vci_param::addr_t>* 	r_src_addr;		// source address for channel[k]
     sc_signal<typename vci_param::addr_t>* 	r_dst_addr;		// dest address for channel[k]
-    sc_signal<size_t>*				        r_length;		// buffer length (bytes) for k	
-    sc_signal<typename vci_param::data_t>**	r_buf;			// local bufferfor channel[k]
+    sc_signal<size_t>*				        r_length;		// buffer length (bytes) for [k]	
+    sc_signal<typename vci_param::data_t>**	r_buf;			// local buffer for channel[k]
 
     sc_signal<bool>*				        r_done;			// transfer completed for [k]
     sc_signal<bool>*				        r_error;		// VCI error signaled for [k]

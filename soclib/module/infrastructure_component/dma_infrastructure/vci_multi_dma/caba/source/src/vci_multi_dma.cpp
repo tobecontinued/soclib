@@ -26,14 +26,17 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //  This component is a multi-channels DMA controller.
-//  The number of channels and the burst length (in bytes)
-//  are constructor parameters. The burst length must be a multiple of 4 bytes.
-//  The number of channels (simultaneous transfers) cannot be larger than 8.
 //  This component makes the assumption that the VCI RDATA & WDATA fields
-//  have 32 bits: The source buffer address, the destination buffer address, 
-//  and the memory buffer length must be multiple of 4 bytes.
-//  The memory buffer length is not constrained to be a multiple of the
-//  burst length.
+//  have 32 bits. The number of channels and the burst length (in bytes)
+//  are constructor parameters. 
+//  - The number of channels (simultaneous transfers) cannot be larger than 8.
+//  - The burst length (in bytes) must be a power of 2 no larger than 64.
+//  - The source buffer base address and the destination destination buffer
+//    must be multiple of 4 bytes. If the source and destination buffers 
+//    are not multiple of the burst length, all VCI transactions contain 
+//    only one 4 bytes flit (no burst).
+//  - The memory buffers length is not constrained to be a multiple of the
+//    burst length.
 //
 //  In order to support various protection mechanisms, each channel
 //  takes 4K bytes in the address space, and the segment size is 32 K bytes. 
@@ -77,7 +80,7 @@
 //  - r_src_addr[k]	    address of the source memory buffer
 //  - r_dst_addr[k]	    address of the destination memory buffer
 //  - r_length[k]	    total length of the memory buffer (bytes)
-//  - r_read[k]		    phase of the burst transfer (read or write)
+//  - r_no_burst[k]  memory buffers not aligned => no burst
 //  - r_irq[k]		    IRQ status
 //  - r_buf[k][word]	local burst buffer 
 /////////////////////////////////////////////////////////////////////////
@@ -119,7 +122,6 @@ tmpl(void)::transition()
     // - r_src_addr[k] (when the channel is not active)
     // - r_dst_addr[k] (when the channel is not active)
     // - r_length[k]   (when the channel is not active)
-    // - r_read[k]     (when the channel is not active)
     // - r_activate[k]  
     //////////////////////////////////////////////////////////////////////
     switch(r_tgt_fsm.read()) 
@@ -136,55 +138,77 @@ tmpl(void)::transition()
                 r_trdid					= p_vci_target.trdid.read();
                 r_pktid					= p_vci_target.pktid.read();
                 
-                int 			cell    = (int)((address & 0x1C) >> 2);
-                int				channel = (int)((address & 0xE0) >> 5);
+                int 	cell    = (int)((address & 0x1C) >> 2);
+                size_t	channel = (size_t)((address & 0x7000) >> 12);
 
-                assert( p_vci_target.eop.read() &&
+                assert( (channel < m_channels) and 
+                "VCI_MULTI_DMA error : The channel index (ADDR[14:12] is too large");
+
+                assert( p_vci_target.eop.read() and
                 "VCI_MULTI_DMA error : A configuration or status request mut be one single VCI flit");
 
-	        if ( (cell == DMA_SRC) && (cmd == vci_param::CMD_WRITE) && (wdata%4 == 0) )
+	            if ( (cell == DMA_SRC) and (cmd == vci_param::CMD_WRITE) )
                 {
-                    assert( !r_activate[channel] &&
+                    assert( !r_activate[channel] and
                     "VCI_MULTI_DMA error : Configuration request received for an active channel");
+                    assert( (wdata%4 == 0) and
+                    "VCI_MULTI_DMA error : The source buffer address mut be multiple of 4 bytes");
+
                     r_src_addr[channel] = wdata;
                     r_tgt_fsm = TGT_WRITE;
                 }
-                else if ( (cell == DMA_SRC) && (cmd == vci_param::CMD_READ) )
+                else if ( (cell == DMA_SRC) and (cmd == vci_param::CMD_READ) )
                 {
                     r_rdata   = r_src_addr[channel].read();
                     r_tgt_fsm = TGT_READ;
                 }
-                else if ( (cell == DMA_DST) && (cmd == vci_param::CMD_WRITE) && (wdata%4 == 0) )
+                else if ( (cell == DMA_DST) and (cmd == vci_param::CMD_WRITE) )
                 {
-                    assert( !r_activate[channel] &&
+                    assert( !r_activate[channel] and
                     "VCI_MULTI_DMA error : Configuration request received for an active channel");
+                    assert( (wdata%4 == 0) and
+                    "VCI_MULTI_DMA error : The destination buffer address mut be multiple of 4 bytes");
+
                     r_dst_addr[channel] = wdata;
                     r_tgt_fsm = TGT_WRITE;
                 }
-                else if ( (cell == DMA_DST) && (cmd == vci_param::CMD_READ) )
+                else if ( (cell == DMA_DST) and (cmd == vci_param::CMD_READ) )
                 {
                     r_rdata   = r_dst_addr[channel].read();
                     r_tgt_fsm = TGT_READ;
                 }
-                else if ( (cell == DMA_LEN) && (cmd == vci_param::CMD_WRITE) && (wdata%4 == 0) )
+                else if ( (cell == DMA_LEN) and (cmd == vci_param::CMD_WRITE) )
                 {
-                    assert( !r_activate[channel] &&
+                    assert( !r_activate[channel] and
                     "VCI_MULTI_DMA error : Configuration request received for an active channel");
+                    assert( ((wdata==4) or (wdata==8) or (wdata==16) or (wdata==32) or (wdata==64)) and
+                    "VCI_MULTI_DMA error : The burst length must be a power of 2 no larger than 64");
+
+                    // test source and destination buffers alignment 
+                    if ( (r_src_addr[channel].read()/wdata != 0) or (r_dst_addr[channel].read()/wdata != 0) )
+                    {
+                        r_no_burst[channel] = true;  // buffers not aligned => no burts
+                    }
+                    else
+                    {
+                        r_no_burst[channel] = false; // buffers aligned => burst supported
+                    } 
+
                     r_length[channel] = wdata;
                     r_activate[channel] = true;
                     r_tgt_fsm = TGT_WRITE;
                 }
-                else if ( (cell == DMA_LEN) && (cmd == vci_param::CMD_READ) )
+                else if ( (cell == DMA_LEN) and (cmd == vci_param::CMD_READ) )
                 {
                     r_rdata   = r_channel_fsm[channel].read();
                     r_tgt_fsm = TGT_READ;
                 }
-                else if ( (cell == DMA_RESET) && (cmd == vci_param::CMD_WRITE) )
+                else if ( (cell == DMA_RESET) and (cmd == vci_param::CMD_WRITE) )
                 {
                     r_activate[channel] = false;
                     r_tgt_fsm = TGT_WRITE;
                 }
-                else if ( (cell == DMA_IRQ_DISABLED) && (cmd == vci_param::CMD_WRITE) )
+                else if ( (cell == DMA_IRQ_DISABLED) and (cmd == vci_param::CMD_WRITE) )
                 {
                    // No action : this is just for compatibility with previous vci_dma 
                     r_tgt_fsm = TGT_WRITE;
@@ -226,7 +250,7 @@ tmpl(void)::transition()
             }
             case CHANNEL_READ_REQ:	// requesting a VCI READ transaction
             {
-                if ( (r_cmd_fsm == CMD_READ) && (r_cmd_index.read() == k) ) 
+                if ( (r_cmd_fsm == CMD_READ) and (r_cmd_index.read() == k) ) 
                     r_channel_fsm[k] = CHANNEL_READ_WAIT;
                 break;
             }
@@ -242,7 +266,7 @@ tmpl(void)::transition()
             }
             case CHANNEL_WRITE_REQ:	// requesting a VCI WRITE transaction
             {
-                if ( (r_cmd_fsm == CMD_WRITE) && (r_cmd_index.read() == k) ) 
+                if ( (r_cmd_fsm == CMD_WRITE) and (r_cmd_index.read() == k) ) 
                     r_channel_fsm[k] = CHANNEL_WRITE_WAIT;
                 break;
             }
@@ -283,7 +307,7 @@ tmpl(void)::transition()
         {
             // round-robin arbitration between channels to send a command
             bool not_found = true;
-            for( size_t n = 0 ; (n < m_channels) && not_found ; n++ )
+            for( size_t n = 0 ; (n < m_channels) and not_found ; n++ )
             {
                 size_t k = (r_cmd_index.read() + n) % m_channels;
                 if ( (r_channel_fsm[k] == CHANNEL_READ_REQ) || (r_channel_fsm[k] == CHANNEL_WRITE_REQ) )
@@ -291,8 +315,11 @@ tmpl(void)::transition()
                     not_found        = false;
                     r_cmd_index      = k;
                     r_cmd_count = 0;
-                    if ( r_length[k].read() < m_burst_max_length ) r_cmd_length = r_length[k].read();
-                    else                                           r_cmd_length = m_burst_max_length;
+
+                    if      ( r_no_burst[k].read() )                 r_cmd_length = 4;
+                    else if ( r_length[k].read() < m_burst_max_length ) r_cmd_length = r_length[k].read();
+                    else                                                r_cmd_length = m_burst_max_length;
+
                     if ( r_channel_fsm[k] == CHANNEL_READ_REQ )    r_cmd_fsm    = CMD_READ; 	
                     else                                           r_cmd_fsm    = CMD_WRITE;
                 }
@@ -345,7 +372,7 @@ tmpl(void)::transition()
                 size_t k = (size_t)p_vci_initiator.rtrdid.read()/2;
                 r_rsp_count = 0;
                 r_rsp_index = k;
-		if ( r_channel_fsm[k].read() == CHANNEL_READ_WAIT) // read response expected
+                if ( r_channel_fsm[k].read() == CHANNEL_READ_WAIT) // read response expected
                 {
                     r_rsp_fsm   = RSP_READ;
                 }
@@ -373,8 +400,9 @@ tmpl(void)::transition()
                 r_buf[k][word] = p_vci_initiator.rdata.read(); 
                 if ( p_vci_initiator.reop.read() )
                 {
-                    assert( (r_rsp_count.read() == r_rsp_length.read() - 4 ) &&
+                    assert( (r_rsp_count.read() == r_rsp_length.read() - 4 ) and
                     "VCI_MULTI_DMA error : the number of flits of a read response packet is wrong");
+
                     r_done[k] = true;
                     r_error[k] = (p_vci_initiator.rerror.read()&0x1 != 0);
                     r_rsp_fsm = RSP_IDLE;
@@ -387,8 +415,9 @@ tmpl(void)::transition()
         {
             if ( p_vci_initiator.rspval.read() )
             {
-                 assert( (p_vci_initiator.reop.read() == true) &&
+                 assert( (p_vci_initiator.reop.read() == true) and
                  "VCI_MULTI_DMA error : a write response packed cannot contain more than one flit");  
+
                 size_t k  = r_rsp_index.read();
                 r_length[k]  = r_length[k].read() - r_rsp_length.read();
                 r_done[k] = true;
@@ -563,14 +592,13 @@ tmpl(void)::print_trace()
     std::cout << "MULTI_DMA " << name() << " : " << tgt_state_str[r_tgt_fsm.read()] << std::endl;
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        if ( r_activate[k].read() )
-        {
-            std::cout << "  CHANNEL " << k << std::hex
-                      << " : " << channel_state_str[r_channel_fsm[k].read()]
-                      << " / src = " << r_src_addr[k].read()
-                      << " / dst = " << r_dst_addr[k].read() << std::dec
-                      << " / length = " << r_length[k].read() << std::endl;
-        }
+        std::cout << "  CHANNEL " << k << std::hex
+                  << " : active = " << r_activate[k].read() 
+                  << " : state = " << channel_state_str[r_channel_fsm[k].read()]
+                  << " / src = " << r_src_addr[k].read()
+                  << " / dst = " << r_dst_addr[k].read() << std::dec
+                  << " / length = " << r_length[k].read()
+                  << " / noburst = " << r_no_burst[k].read() << std::endl;
     }
     std::cout << cmd_state_str[r_cmd_fsm.read()] << std::dec 
               << " / channel = " << r_cmd_index.read()
@@ -597,6 +625,8 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
           r_rdata("r_rdata"),
           r_activate(soclib::common::alloc_elems<sc_signal<bool> >
                     ("r_activate", channels)),
+          r_no_burst(soclib::common::alloc_elems<sc_signal<bool> >
+                    ("r_no_burst", channels)),
           r_channel_fsm(soclib::common::alloc_elems<sc_signal<int> >
                     ("r_channel_fsm", channels)),
           r_src_addr(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
@@ -631,17 +661,17 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
           p_vci_initiator("p_vci_initiator"),
           p_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_irq", channels))
 {
-    assert( (vci_param::T >= 4) && 
+    assert( (vci_param::T >= 4) and 
     "VCI_MULTI_DMA error : The VCI TRDID field must be at least 4 bits");
-    assert( (vci_param::B == 4) && 
+    assert( (vci_param::B == 4) and 
     "VCI_MULTI_DMA error : The VCI DATA field must be 32 bits");
-    assert( burst_max_length && 
+    assert( burst_max_length and 
     "VCI_MULTI_DMA error : The requested burst length cannot be 0");
-    assert( (burst_max_length < (1<<vci_param::K)) && 
+    assert( (burst_max_length < (1<<vci_param::K)) and 
     "VCI_MULTI_DMA error : The requested burst length is not possible with the current VCI PLEN size");
-    assert( (burst_max_length%4 == 0) &&
+    assert( (burst_max_length%4 == 0) and
     "VCI_MULTI_DMA error : The requested burst length must be multiple of 4 bytes");
-    assert( (channels <= 8)  &&
+    assert( (channels <= 8)  and
     "VCI_MULTI_DMA error : The number of channels cannot be larger than 8");
 
     SC_METHOD(transition);
