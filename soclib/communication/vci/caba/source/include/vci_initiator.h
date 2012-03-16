@@ -43,6 +43,7 @@ template <typename vci_param>
 class VciInitiator
 {
 public:
+	sc_out<typename vci_param::ack_t>     rspack;
 	sc_in<typename vci_param::val_t>      rspval;
 	sc_in<typename vci_param::data_t>     rdata;
 	sc_in<bool>                           reop;
@@ -52,9 +53,6 @@ public:
 	sc_in<typename vci_param::pktid_t >   rpktid;
 
 	sc_in<typename vci_param::ack_t>      cmdack;
-
-	sc_out<typename vci_param::ack_t>     rspack;
-
 	sc_out<typename vci_param::val_t>     cmdval;
 	sc_out<typename vci_param::addr_t>    address;
 	sc_out<typename vci_param::be_t>      be;
@@ -73,7 +71,7 @@ public:
 
 #define __ren(x) x((name+"_" #x).c_str())
     VciInitiator(const std::string &name = sc_gen_unique_name("vci_initiator"))
-		:
+		: __ren(rspack),
           __ren(rspval),
           __ren(rdata),
           __ren(reop),
@@ -82,7 +80,6 @@ public:
           __ren(rtrdid),
           __ren(rpktid),
           __ren(cmdack),
-	  __ren(rspack),
           __ren(cmdval),
           __ren(address),
           __ren(be),
