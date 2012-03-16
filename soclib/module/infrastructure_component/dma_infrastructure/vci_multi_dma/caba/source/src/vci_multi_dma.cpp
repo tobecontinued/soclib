@@ -80,10 +80,11 @@
 //  - r_src_addr[k]	    address of the source memory buffer
 //  - r_dst_addr[k]	    address of the destination memory buffer
 //  - r_length[k]	    total length of the memory buffer (bytes)
-//  - r_no_burst[k]  memory buffers not aligned => no burst
+//  - r_src_no_burst[k] source memory buffer not aligned => no burst
+//  - r_dst_no_burst[k] destination memory buffer not aligned => no burst
 //  - r_irq[k]		    IRQ status
 //  - r_buf[k][word]	local burst buffer 
-/////////////////////////////////////////////////////////////////////////
+///////////////////////////////////i//////////////////////////////////////////
 
 #include <stdint.h>
 #include <cassert>
@@ -154,6 +155,8 @@ tmpl(void)::transition()
                     assert( (wdata%4 == 0) and
                     "VCI_MULTI_DMA error : The source buffer address mut be multiple of 4 bytes");
 
+                    if ( wdata%m_burst_max_length != 0) r_src_no_burst[channel] = true;  // no burts
+                    else                                r_src_no_burst[channel] = false; // burst supported
                     r_src_addr[channel] = wdata;
                     r_tgt_fsm = TGT_WRITE;
                 }
@@ -169,6 +172,8 @@ tmpl(void)::transition()
                     assert( (wdata%4 == 0) and
                     "VCI_MULTI_DMA error : The destination buffer address mut be multiple of 4 bytes");
 
+                    if ( wdata%m_burst_max_length != 0) r_dst_no_burst[channel] = true;  // no burts
+                    else                                r_dst_no_burst[channel] = false; // burst supported
                     r_dst_addr[channel] = wdata;
                     r_tgt_fsm = TGT_WRITE;
                 }
@@ -181,18 +186,8 @@ tmpl(void)::transition()
                 {
                     assert( !r_activate[channel] and
                     "VCI_MULTI_DMA error : Configuration request received for an active channel");
-                    assert( ((wdata==4) or (wdata==8) or (wdata==16) or (wdata==32) or (wdata==64)) and
-                    "VCI_MULTI_DMA error : The burst length must be a power of 2 no larger than 64");
-
-                    // test source and destination buffers alignment 
-                    if ( (r_src_addr[channel].read()/wdata != 0) or (r_dst_addr[channel].read()/wdata != 0) )
-                    {
-                        r_no_burst[channel] = true;  // buffers not aligned => no burts
-                    }
-                    else
-                    {
-                        r_no_burst[channel] = false; // buffers aligned => burst supported
-                    } 
+                    assert( (wdata%4 == 0) and
+                    "VCI_MULTI_DMA error : The burst length must be a multiple of 4 bytes");
 
                     r_length[channel] = wdata;
                     r_activate[channel] = true;
@@ -316,9 +311,9 @@ tmpl(void)::transition()
                     r_cmd_index      = k;
                     r_cmd_count = 0;
 
-                    if      ( r_no_burst[k].read() )                 r_cmd_length = 4;
-                    else if ( r_length[k].read() < m_burst_max_length ) r_cmd_length = r_length[k].read();
-                    else                                                r_cmd_length = m_burst_max_length;
+                    if ( r_src_no_burst[k].read() or r_dst_no_burst[k].read() ) r_cmd_length = 4;
+                    else if ( r_length[k].read() < m_burst_max_length )         r_cmd_length = r_length[k].read();
+                    else                                                        r_cmd_length = m_burst_max_length;
 
                     if ( r_channel_fsm[k] == CHANNEL_READ_REQ )    r_cmd_fsm    = CMD_READ; 	
                     else                                           r_cmd_fsm    = CMD_WRITE;
@@ -385,8 +380,9 @@ tmpl(void)::transition()
                     std::cout << "VCI_MULTI_DMA error : unexpected VCI response packed" << std::endl;
                     exit(0);
                 }  
-                if ( r_length[k].read() < m_burst_max_length ) r_rsp_length = r_length[k].read();
-                else                                           r_rsp_length = m_burst_max_length;
+                if ( r_src_no_burst[k].read() or r_dst_no_burst[k].read() ) r_rsp_length = 4;
+                else if ( r_length[k].read() < m_burst_max_length )         r_rsp_length = r_length[k].read();
+                else                                                        r_rsp_length = m_burst_max_length;
             }
             break;
         }
@@ -598,7 +594,8 @@ tmpl(void)::print_trace()
                   << " / src = " << r_src_addr[k].read()
                   << " / dst = " << r_dst_addr[k].read() << std::dec
                   << " / length = " << r_length[k].read()
-                  << " / noburst = " << r_no_burst[k].read() << std::endl;
+                  << " / noburst = " << (r_src_no_burst[k].read() or r_dst_no_burst[k].read()) 
+                  << std::endl;
     }
     std::cout << cmd_state_str[r_cmd_fsm.read()] << std::dec 
               << " / channel = " << r_cmd_index.read()
@@ -625,8 +622,10 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
           r_rdata("r_rdata"),
           r_activate(soclib::common::alloc_elems<sc_signal<bool> >
                     ("r_activate", channels)),
-          r_no_burst(soclib::common::alloc_elems<sc_signal<bool> >
-                    ("r_no_burst", channels)),
+          r_src_no_burst(soclib::common::alloc_elems<sc_signal<bool> >
+                    ("r_src_no_burst", channels)),
+          r_dst_no_burst(soclib::common::alloc_elems<sc_signal<bool> >
+                    ("r_dst_no_burst", channels)),
           r_channel_fsm(soclib::common::alloc_elems<sc_signal<int> >
                     ("r_channel_fsm", channels)),
           r_src_addr(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
@@ -663,14 +662,20 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
 {
     assert( (vci_param::T >= 4) and 
     "VCI_MULTI_DMA error : The VCI TRDID field must be at least 4 bits");
+
     assert( (vci_param::B == 4) and 
     "VCI_MULTI_DMA error : The VCI DATA field must be 32 bits");
+
     assert( burst_max_length and 
     "VCI_MULTI_DMA error : The requested burst length cannot be 0");
+
     assert( (burst_max_length < (1<<vci_param::K)) and 
     "VCI_MULTI_DMA error : The requested burst length is not possible with the current VCI PLEN size");
-    assert( (burst_max_length%4 == 0) and
-    "VCI_MULTI_DMA error : The requested burst length must be multiple of 4 bytes");
+
+    assert( ((burst_max_length==4) or (burst_max_length==8) or (burst_max_length==16) or 
+             (burst_max_length==32) or (burst_max_length==64)) and
+    "VCI_MULTI_DMA error : The requested burst length must be 4, 8, 16, 32 or 64 bytes");
+    
     assert( (channels <= 8)  and
     "VCI_MULTI_DMA error : The number of channels cannot be larger than 8");
 
