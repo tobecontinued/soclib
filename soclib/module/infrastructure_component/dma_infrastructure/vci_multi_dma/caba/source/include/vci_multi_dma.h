@@ -58,7 +58,7 @@ private:
 
     sc_signal<bool>*				        r_activate;		// channel[k] activated
     sc_signal<bool>*				        r_src_no_burst; // no burst for channel[k] 
-    sc_signal<bool>*				        r_dsdsto_burst; // no burst for channel[k] 
+    sc_signal<bool>*				        r_dst_no_burst; // no burst for channel[k] 
     sc_signal<int>*				            r_channel_fsm;	// channel[k] state
     sc_signal<typename vci_param::addr_t>* 	r_src_addr;		// source address for channel[k]
     sc_signal<typename vci_param::addr_t>* 	r_dst_addr;		// dest address for channel[k]
