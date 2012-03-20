@@ -259,6 +259,36 @@ public:
         return false;
     }
 
+    ////////////////////////////////////////////////////////////////////
+    // Read a single 32 bits word, checking the miss condition without
+    // LRU update
+    // Both data & directory are accessed. 
+    // The selected way, set and word index are returned in case of hit.
+    /////////////////////////////////////////////////////////////////////
+    inline bool read_neutral( addr_t 	ad, 
+			      data_t* 	dt,
+			      size_t*   selway,
+			      size_t*   selset,
+			      size_t*   selword) 
+    {
+        const tag_t       tag  = m_z[ad];
+        const size_t      set  = m_y[ad];
+        const size_t      word = m_x[ad];
+
+        for ( size_t way = 0; way < m_ways; way++ ) 
+        {
+            if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) 
+            {
+                *selway  = way;
+                *selset  = set;
+                *selword = word;
+                *dt = cache_data(way, set, word);
+                return true;
+            }
+        }
+        return false;
+    }
+
     /////////////////////////////////////////////////////////////////////////////
     // Read one or two 32 bits word, checking the miss condition.
     // Both data & directory are accessed. 
@@ -581,7 +611,6 @@ public:
             {
                 if ( !cache_lru(_way, *set) )
                 {
-                    cache_val (_way, *set) = false;
                     found   = true;
                     cleanup = true;
                     *way    = _way;
