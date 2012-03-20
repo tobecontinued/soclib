@@ -35,6 +35,7 @@
 #include "caba_base_module.h"
 #include "write_buffer.h"
 #include "generic_cache.h"
+#include "generic_fifo.h"
 #include "vci_initiator.h"
 #include "mapping_table.h"
 #include "static_assert.h"
@@ -60,19 +61,20 @@ class VciXcacheWrapper
         DCACHE_IDLE,
         DCACHE_WRITE_UPDT,
         DCACHE_WRITE_REQ,
+        DCACHE_MISS_SELECT,
+        DCACHE_MISS_INVAL,
         DCACHE_MISS_WAIT,
-        DCACHE_MISS_UPDT,
         DCACHE_UNC_WAIT,
-        DCACHE_INVAL,
-        DCACHE_ERROR,
+        DCACHE_XTN_HIT,
+        DCACHE_XTN_INVAL,
     };
 
     enum icache_fsm_state_e {
         ICACHE_IDLE,
+        ICACHE_MISS_SELECT,
+        ICACHE_MISS_INVAL,
         ICACHE_MISS_WAIT,
-        ICACHE_MISS_UPDT,
         ICACHE_UNC_WAIT,
-        ICACHE_ERROR,
     };
 
     enum cmd_fsm_state_e {
@@ -117,18 +119,23 @@ private:
 
     // REGISTERS
     sc_signal<int>          r_dcache_fsm;
-    sc_signal<addr_t>       r_dcache_addr_save;
-    sc_signal<data_t>       r_dcache_wdata_save;
-    sc_signal<data_t>       r_dcache_rdata_save;
-    sc_signal<int>          r_dcache_type_save;
-    sc_signal<be_t>         r_dcache_be_save;
-    sc_signal<bool>         r_dcache_cached_save;
+    sc_signal<addr_t>       r_dcache_addr_save;         // request address
+    sc_signal<data_t>       r_dcache_wdata_save;        // request wdata
+    sc_signal<int>          r_dcache_type_save;         // request type
+    sc_signal<be_t>         r_dcache_be_save;           // request be
+    sc_signal<bool>         r_dcache_cacheable_save;    // cacheable request
+    sc_signal<size_t>       r_dcache_way_save;          // selected slot way 
+    sc_signal<size_t>       r_dcache_set_save;          // selected slot set
+    sc_signal<size_t>       r_dcache_word_save;         // word counter
     sc_signal<bool>         r_dcache_miss_req;
     sc_signal<bool>         r_dcache_unc_req;
     sc_signal<bool>         r_dcache_write_req;
 
     sc_signal<int>          r_icache_fsm;
-    sc_signal<addr_t>       r_icache_addr_save;
+    sc_signal<addr_t>       r_icache_addr_save;         // request address
+    sc_signal<size_t>       r_icache_way_save;          // selected slot way
+    sc_signal<size_t>       r_icache_set_save;          // selected slot set
+    sc_signal<size_t>       r_icache_word_save;         // word counter
     sc_signal<bool>         r_icache_miss_req;
     sc_signal<bool>         r_icache_unc_req;
 
@@ -141,15 +148,12 @@ private:
     sc_signal<bool>         r_vci_rsp_ins_error;
     sc_signal<bool>         r_vci_rsp_data_error;
     sc_signal<size_t>       r_vci_rsp_cpt;
-
-    data_t                  *r_icache_miss_buf;
-    data_t                  *r_dcache_miss_buf;
-    sc_signal<bool>         r_icache_buf_unc_valid;
-    sc_signal<bool>         r_dcache_buf_unc_valid;
+    GenericFifo<uint32_t>   r_vci_rsp_fifo_ins;     // response fifo for instructions
+    GenericFifo<uint32_t>   r_vci_rsp_fifo_data;    // response fifo for data
 
     // The two following registers are used by the file_trace() & print_trace() methods
-    sc_signal<bool> 	    r_icache_updated;	// icache modified at previous cycle
-    sc_signal<bool> 	    r_dcache_updated;	// dcache modified at previous cycle
+    sc_signal<bool> 	    r_icache_updated;	    // icache modified at previous cycle
+    sc_signal<bool> 	    r_dcache_updated;	    // dcache modified at previous cycle
 
     WriteBuffer<addr_t>     r_wbuf;
     GenericCache<addr_t>    r_icache;
@@ -179,15 +183,11 @@ private:
     bool                                        m_drsp_error;			  
 
     // Activity counters
-    uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
-    uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
-    uint32_t m_cpt_dcache_dir_read;         // DCACHE DIR READ
-    uint32_t m_cpt_dcache_dir_write;        // DCACHE DIR WRITE
+    uint32_t m_cpt_icache_read;             // ICACHE READ
+    uint32_t m_cpt_icache_write;            // ICACHE WRITE
 
-    uint32_t m_cpt_icache_data_read;        // ICACHE DATA READ
-    uint32_t m_cpt_icache_data_write;       // ICACHE DATA WRITE
-    uint32_t m_cpt_icache_dir_read;         // ICACHE DIR READ
-    uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
+    uint32_t m_cpt_dcache_read;             // DCACHE READ
+    uint32_t m_cpt_dcache_write;            // DCACHE WRITE
 
     addr_t   m_cpt_pc_previous;             // previous valid instruction address
     uint32_t m_cpt_exec_ins;	            // number of executed instructions
