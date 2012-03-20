@@ -30,7 +30,7 @@
 //  have 32 bits. The number of channels and the burst length (in bytes)
 //  are constructor parameters. 
 //  - The number of channels (simultaneous transfers) cannot be larger than 8.
-//  - The burst length (in bytes) must be a power of 2 no larger than 64.
+//  - The burst length (in bytes) must be a power of 2 no larger than 128.
 //  - The source buffer base address and the destination destination buffer
 //    must be multiple of 4 bytes. If the source and destination buffers 
 //    are not multiple of the burst length, all VCI transactions contain 
@@ -673,8 +673,8 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
     "VCI_MULTI_DMA error : The requested burst length is not possible with the current VCI PLEN size");
 
     assert( ((burst_max_length==4) or (burst_max_length==8) or (burst_max_length==16) or 
-             (burst_max_length==32) or (burst_max_length==64)) and
-    "VCI_MULTI_DMA error : The requested burst length must be 4, 8, 16, 32 or 64 bytes");
+             (burst_max_length==32) or (burst_max_length==64)) or (burst_max_length==128) and
+    "VCI_MULTI_DMA error : The requested burst length must be 4, 8, 16, 32, 64, or 128 bytes");
     
     assert( (channels <= 8)  and
     "VCI_MULTI_DMA error : The number of channels cannot be larger than 8");
