@@ -149,11 +149,15 @@ tmpl(void)::reset()
     for ( size_t i=0 ; i<m_nbseg ; ++i ) std::memset(&m_ram[i][0], 0, m_seg[i]->size()); 
     m_cpt_read = 0;
     m_cpt_write = 0;
-    if (m_latency) {
- 	r_fsm_state = FSM_IDLE;
+    m_monitor_ok = false;
+    if (m_latency) 
+    {
+ 	    r_fsm_state = FSM_IDLE;
         r_latency_count = m_latency - 1;
-    } else {
-	r_fsm_state = FSM_CMD_GET;
+    } 
+    else 
+    {
+	    r_fsm_state = FSM_CMD_GET;
         r_latency_count = 0;
     }
     r_llsc_buf.clearAll();
@@ -162,6 +166,18 @@ tmpl(void)::reset()
 /////////////////////////////////////////////////////////////////////////////
 tmpl(bool)::write(size_t seg, vci_addr_t addr, vci_data_t wdata, vci_be_t be)
 {
+    if ( m_monitor_ok )
+    {
+        if ( (addr >= m_monitor_base) and 
+             (addr < m_monitor_base + m_monitor_length) )
+        {
+            std::cout << " RAM " << name() << std::hex
+                      << " change : address = " << addr
+                      << " / data = " << wdata
+                      << " / be = " << be << std::endl;
+        }
+    }
+
     if ( m_seg[seg]->contains(addr) ) 
     {
         size_t index = (size_t)((addr - m_seg[seg]->baseAddress()) / vci_param::B);
@@ -185,6 +201,20 @@ tmpl(bool)::read(size_t seg, vci_addr_t addr, vci_data_t &rdata )
         return true;
     }
     return false;
+}
+
+///////////////////////////////////////////////////////////
+tmpl(void)::start_monitor(vci_addr_t base, vci_addr_t length)
+{
+    m_monitor_ok        = true;
+    m_monitor_base      = base;
+    m_monitor_length    = length;
+}
+
+//////////////////////////
+tmpl(void)::stop_monitor()
+{
+    m_monitor_ok        = false;
 }
 
 //////////////////////////

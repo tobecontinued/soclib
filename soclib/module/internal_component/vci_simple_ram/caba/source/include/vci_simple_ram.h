@@ -76,7 +76,11 @@ private:
 
     soclib::common::Loader                  m_loader;
     std::list<soclib::common::Segment>      m_seglist;
-    const uint32_t			    m_latency;
+    const uint32_t			                m_latency;
+
+    bool                                    m_monitor_ok;
+    vci_addr_t                              m_monitor_base;
+    vci_addr_t                              m_monitor_length;
 
     soclib::common::LinkedAccessBuffer<
         vci_addr_t, vci_srcid_t>            r_llsc_buf;
@@ -131,7 +135,8 @@ private:
     void genMoore();
     void reload();
     void reset();
-
+    void start_monitor(vci_addr_t base, vci_addr_t length);
+    void stop_monitor();
 };
 
 }}
