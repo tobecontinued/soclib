@@ -137,8 +137,8 @@ public:
             if ( cmd.read() == 2 )      std::cout << " WR";
             if ( cmd.read() == 3 )      std::cout << " LL";
             if ( cmd.read() == 0 )      std::cout << " SC";
-            if ( address.read()&0x3 )   std::cout << "/@ = BROADCAST";
-            else                        std::cout << "/@ = " << address;
+            if ( address.read()&0x3 )   std::cout << " /@ = BROADCAST";
+            else                        std::cout << " /@ = " << address;
             std::cout << std::hex 
                       << "/wdata = " << wdata
                       << "/be = " << be
@@ -153,11 +153,11 @@ public:
         {
             std::cout << name << std::hex << " RSP VCI :";
             std::cout << " rerror = "   << rerror
-                      << " | rdata = "  << rdata
-                      << " | rsrcid = " << rsrcid
-                      << " | rtrdid = " << rtrdid
-                      << " | reop = "   << reop
-                      << " | ack = "    << rspack << std::endl;
+                      << "/rdata = "  << rdata
+                      << "/rsrcid = " << rsrcid
+                      << "/rtrdid = " << rtrdid
+                      << "/reop = "   << reop
+                      << "/ack = "    << rspack << std::endl;
         }
     } // end print_trace()
     
