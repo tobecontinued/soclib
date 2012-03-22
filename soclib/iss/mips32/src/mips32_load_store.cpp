@@ -94,13 +94,15 @@ void Mips32Iss::do_mem_access( addr_t address,
         dest = NULL;
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << name()
-        << " do_mem_access: " << m_dreq
-        << " off: " << byte_le
-        << " sign_ext: " << sign_extend
-        << " dest: gp+" << dest - &r_gp[0]
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_DATA) {
+        std::cout
+            << name()
+            << " do_mem_access: " << m_dreq
+            << " off: " << byte_le
+            << " sign_ext: " << sign_extend
+            << " dest: gp+" << dest - &r_gp[0]
+            << std::endl;
+    }
 #endif
 
     r_mem_byte_le = byte_le;
@@ -120,13 +122,15 @@ bool Mips32Iss::handle_dfetch(const struct DataResponse &rsp)
         return false;
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << name()
-        << " setData: " << rsp
-        << " off: " << r_mem_offset_byte_in_reg
-        << " sign_ext: " << r_mem_do_sign_extend
-        << " dest: r_gp+" << r_mem_dest - &r_gp[0]
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_DATA) {
+        std::cout
+            << name()
+            << " setData: " << rsp
+            << " off: " << r_mem_offset_byte_in_reg
+            << " sign_ext: " << r_mem_do_sign_extend
+            << " dest: r_gp+" << r_mem_dest - &r_gp[0]
+            << std::endl;
+    }
 #endif
 
     m_dreq.valid = false;
@@ -169,16 +173,18 @@ bool Mips32Iss::handle_dfetch(const struct DataResponse &rsp)
         data_t mask = be_to_mask<data_t>((1 << byte_count) - 1);
         data = sdata & mask;
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << name()
-        << " BE swapping"
-        << " count: " << byte_count
-        << " le: " << r_mem_byte_le
-        << " orig data: " << rsp.rdata
-        << " swapped data: " << sdata
-        << " mask: " << mask
-        << " data: " << data
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_DATA) {
+        std::cout
+            << name()
+            << " BE swapping"
+            << " count: " << byte_count
+            << " le: " << r_mem_byte_le
+            << " orig data: " << rsp.rdata
+            << " swapped data: " << sdata
+            << " mask: " << mask
+            << " data: " << data
+            << std::endl;
+    }
 #endif
     }
 
@@ -210,17 +216,19 @@ bool Mips32Iss::handle_dfetch(const struct DataResponse &rsp)
 
     data_t new_data = (data&mask) | (*r_mem_dest&~mask);
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << name()
-        << " setData: " << rsp
-        << " off: " << r_mem_offset_byte_in_reg
-        << " count: " << r_mem_byte_count
-        << " le: " << r_mem_byte_le
-        << " old: " << *r_mem_dest
-        << " from_mem: " << rsp.rdata
-        << " mask: " << mask
-        << " new_data: " << new_data
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_DATA) {
+        std::cout
+            << name()
+            << " setData: " << rsp
+            << " off: " << r_mem_offset_byte_in_reg
+            << " count: " << r_mem_byte_count
+            << " le: " << r_mem_byte_le
+            << " old: " << *r_mem_dest
+            << " from_mem: " << rsp.rdata
+            << " mask: " << mask
+            << " new_data: " << new_data
+            << std::endl;
+    }
 #endif
     *r_mem_dest = new_data;
 

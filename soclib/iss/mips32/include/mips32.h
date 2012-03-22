@@ -834,6 +834,13 @@ typedef Mips32EndianIss<Iss2::ISS_BIG_ENDIAN, Mips32Iss> Mips32EbIss;
 
 }}
 
+/** debug flags */
+#define MIPS32_DEBUG_ISS	0x0001	// print iss signal state
+#define MIPS32_DEBUG_CPU 	0x0002	// print CPU instructions & registers
+#define MIPS32_DEBUG_INTERNAL	0x0004	// print CPU internal state
+#define MIPS32_DEBUG_IRQ	0x0008	// print CPU internal state
+#define MIPS32_DEBUG_DATA	0x0010	// print CPU load/store
+
 #endif // _SOCLIB_MIPS32_ISS_H_
 
 // Local Variables:

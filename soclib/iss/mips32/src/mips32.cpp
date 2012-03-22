@@ -59,6 +59,10 @@ Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_littl
     r_config3.ulri = 1; // Advertize for TLS register
 
     m_cache_info.has_mmu = false;
+
+#ifdef SOCLIB_MODULE_DEBUG
+    m_debug_mask = 0xffffffff; // for backward compat
+#endif
 }
 
 void Mips32Iss::reset()
@@ -172,14 +176,16 @@ uint32_t Mips32Iss::executeNCycles(
                                    uint32_t irq_bit_field )
 {
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << name()
-        << " executeNCycles( "
-        << ncycle << ", "
-        << irsp << ", "
-        << drsp << ", "
-        << irq_bit_field << ")"
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_ISS) {
+	std::cout
+	    << name()
+	    << " executeNCycles( "
+	    << ncycle << ", "
+	    << irsp << ", "
+	    << drsp << ", "
+	    << irq_bit_field << ")"
+	    << std::endl;
+    }
 #endif
 
     m_irqs = irq_bit_field;
@@ -220,7 +226,9 @@ uint32_t Mips32Iss::executeNCycles(
 
     if ( dreq_ok && ireq_ok ) {
 #ifdef SOCLIB_MODULE_DEBUG
-        dump();
+	if (m_debug_mask & MIPS32_DEBUG_CPU) {
+	    dump();
+	}
 #endif
         run_for(ncycle, time_spent, 1, 0);
 
@@ -262,13 +270,15 @@ uint32_t Mips32Iss::executeNCycles(
     m_ifetch_addr = m_next_pc;
     r_gp[0] = 0;
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << std::hex << std::showbase
-        << m_name
-        << " m_next_pc: " << m_next_pc
-        << " m_jump_pc: " << m_jump_pc
-        << " m_ifetch_addr: " << m_ifetch_addr
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_INTERNAL) {
+        std::cout
+            << std::hex << std::showbase
+            << m_name
+            << " m_next_pc: " << m_next_pc
+            << " m_jump_pc: " << m_jump_pc
+            << " m_ifetch_addr: " << m_ifetch_addr
+            << std::endl;
+     }
 #endif
     goto early_end;
 
@@ -295,16 +305,18 @@ uint32_t Mips32Iss::executeNCycles(
     return time_spent;
  early_end:
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << std::hex << std::showbase
-        << m_name
-        << " early_end:"
-        << " ireq_ok=" << ireq_ok
-        << " dreq_ok=" << dreq_ok
-        << " m_ins_delay=" << m_ins_delay
-        << " ncycle=" << ncycle
-        << " time_spent=" << time_spent
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_INTERNAL) {
+        std::cout
+            << std::hex << std::showbase
+            << m_name
+            << " early_end:"
+            << " ireq_ok=" << ireq_ok
+            << " dreq_ok=" << dreq_ok
+            << " m_ins_delay=" << m_ins_delay
+            << " ncycle=" << ncycle
+            << " time_spent=" << time_spent
+            << std::endl;
+     }
 #endif
     return time_spent;
 }
@@ -385,12 +397,14 @@ void Mips32Iss::handle_exception()
         return;
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << m_name
-        << " m_resume_pc: " << std::hex << m_resume_pc
-        << " m_pc_for_dreq_is_ds: " << std::hex << m_pc_for_dreq_is_ds
-        << " m_pc_for_dreq: " << std::hex << m_pc_for_dreq
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_INTERNAL) {
+        std::cout
+            << m_name
+            << " m_resume_pc: " << std::hex << m_resume_pc
+            << " m_pc_for_dreq_is_ds: " << std::hex << m_pc_for_dreq_is_ds
+            << " m_pc_for_dreq: " << std::hex << m_pc_for_dreq
+            << std::endl;
+     }
 #endif
 
     addr_t except_address = exceptBaseAddr();
@@ -416,19 +430,21 @@ void Mips32Iss::handle_exception()
     update_mode();
 
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout
-        << m_name <<" exception: "<<m_exception<<std::endl
-        << " m_ins: " << m_ins.j.op
-        << " epc: " << r_epc
-        << " error_epc: " << r_error_epc
-        << " bar: " << m_dreq.addr
-        << " cause.xcode: " << r_cause.xcode
-        << " .bd: " << r_cause.bd
-        << " .ip: " << r_cause.ip
-        << " status.exl: " << r_status.exl
-        << " .erl: " << r_status.erl
-        << " exception address: " << except_address
-        << std::endl;
+    if (m_debug_mask & MIPS32_DEBUG_IRQ) {
+        std::cout
+            << m_name <<" exception: "<<m_exception<<std::endl
+            << " m_ins: " << m_ins.j.op
+            << " epc: " << r_epc
+            << " error_epc: " << r_error_epc
+            << " bar: " << m_dreq.addr
+            << " cause.xcode: " << r_cause.xcode
+            << " .bd: " << r_cause.bd
+            << " .ip: " << r_cause.ip
+            << " status.exl: " << r_status.exl
+            << " .erl: " << r_status.erl
+            << " exception address: " << except_address
+            << std::endl;
+     }
 #endif
 
     r_pc = except_address;
@@ -564,7 +580,9 @@ void Mips32Iss::do_microcoded_sleep()
     if ( m_irqs ) {
         m_microcode_func = NULL;
 #ifdef SOCLIB_MODULE_DEBUG
-        std::cout << name() << " IRQ while sleeping" << std::endl;
+        if (m_debug_mask & MIPS32_DEBUG_IRQ) {
+            std::cout << name() << " IRQ while sleeping" << std::endl;
+	}
 #endif
     }
 }

@@ -176,25 +176,33 @@ void Mips32Iss::op_cop0()
         switch (co) {
         case ERET:
 #ifdef SOCLIB_MODULE_DEBUG
+        if (m_debug_mask & MIPS32_DEBUG_CPU) {
             std::cout << name() << " ERET ";
+        }
 #endif
             if ( r_status.erl ) {
                 jump(r_error_epc, true);
                 r_status.erl = 0;
 #ifdef SOCLIB_MODULE_DEBUG
-            std::cout << "erl";
+                if (m_debug_mask & MIPS32_DEBUG_CPU) {
+                    std::cout << "erl";
+	        }
 #endif
             } else if ( r_status.exl ) {
                 jump(r_epc, true);
                 r_status.exl = 0;
 #ifdef SOCLIB_MODULE_DEBUG
-            std::cout << " exl";
+                if (m_debug_mask & MIPS32_DEBUG_CPU) {
+                    std::cout << " exl";
+		}
 #endif
             } else {
                 std::cout << m_name << " calling ERET without exl nor erl, ignored" << std::endl;
             }
 #ifdef SOCLIB_MODULE_DEBUG
-            std::cout << " jump_pc: " << m_jump_pc << std::endl;
+            if (m_debug_mask & MIPS32_DEBUG_CPU) {
+                std::cout << " jump_pc: " << m_jump_pc << std::endl;
+	    }
 #endif
             update_mode();
             break;
