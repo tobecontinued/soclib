@@ -126,6 +126,8 @@ public:
 
     void print_trace();
     void printStatistics();
+    void start_monitor(vci_addr_t base, vci_addr_t length);
+    void stop_monitor();
 
 private:
 
@@ -135,8 +137,6 @@ private:
     void genMoore();
     void reload();
     void reset();
-    void start_monitor(vci_addr_t base, vci_addr_t length);
-    void stop_monitor();
 };
 
 }}
