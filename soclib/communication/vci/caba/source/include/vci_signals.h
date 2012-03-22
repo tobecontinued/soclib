@@ -137,14 +137,17 @@ public:
             if ( cmd.read() == 2 )      std::cout << " WR";
             if ( cmd.read() == 3 )      std::cout << " LL";
             if ( cmd.read() == 0 )      std::cout << " SC";
-            if ( address.read()&0x3 )   std::cout << "  @ = BROADCAST";
-            else                        std::cout << "  @ = " << address;
-            std::cout << "  wdata = " << wdata
-                      << "  srcid = " << srcid
-                      << "  trdid = " << trdid
-                      << "  plen  = " << plen 
-                      << "  eop = "   << eop
-                      << "  ack = "   << cmdack << std::endl;
+            if ( address.read()&0x3 )   std::cout << "/@ = BROADCAST";
+            else                        std::cout << "/@ = " << address;
+            std::cout << std::hex 
+                      << "/wdata = " << wdata
+                      << "/be = " << be
+                      << std::dec
+                      << "/srcid = " << srcid
+                      << "/trdid = " << trdid
+                      << "/plen = " << plen 
+                      << "/eop = "   << eop
+                      << "/ack = "   << cmdack << std::endl;
         }
         if ( rspval )
         {
