@@ -309,6 +309,10 @@ protected:
      * Iss instance name
      */
     const std::string m_name;
+    /**
+     * debug mask
+     */
+    uint m_debug_mask;
 
 public:
     virtual ~Iss2() {}
@@ -431,6 +435,11 @@ public:
     /** Dump processor state (optional) */
     virtual void dump() const
     {
+    }
+
+    /** set debug mask */
+    inline void set_debug_mask(uint v) {
+	m_debug_mask = v;
     }
 
 protected:
