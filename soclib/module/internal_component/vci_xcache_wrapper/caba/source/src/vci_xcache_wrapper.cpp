@@ -281,36 +281,12 @@ tmpl(void)::print_stats()
 tmpl(void)::print_trace(size_t mode)
 ////////////////////////////////////
 {
-    typename iss_t::InstructionRequest  ireq;
-    typename iss_t::InstructionResponse irsp;
-    typename iss_t::DataRequest         dreq;
-    typename iss_t::DataResponse        drsp;
-
-    ireq.valid       = m_ireq_valid;
-    ireq.addr        = m_ireq_addr;
-    ireq.mode        = m_ireq_mode;
-
-    irsp.valid       = m_irsp_valid;
-    irsp.instruction = m_irsp_instruction;
-    irsp.error       = m_irsp_error;
-
-    dreq.valid       = m_dreq_valid;
-    dreq.addr        = m_dreq_addr;
-    dreq.mode        = m_dreq_mode;
-    dreq.type        = m_dreq_type;
-    dreq.wdata       = m_dreq_wdata;
-    dreq.be          = m_dreq_be;
-
-    drsp.valid       = m_drsp_valid;
-    drsp.rdata       = m_drsp_rdata;
-    drsp.error       = m_drsp_error;
-
     std::cout << std::dec << "PROC " << name() << std::endl;
 
-    std::cout << "  " << ireq << std::endl;
-    std::cout << "  " << irsp << std::endl;
-    std::cout << "  " << dreq << std::endl;
-    std::cout << "  " << drsp << std::endl;
+    std::cout << "  " << m_ireq << std::endl;
+    std::cout << "  " << m_irsp << std::endl;
+    std::cout << "  " << m_dreq << std::endl;
+    std::cout << "  " << m_drsp << std::endl;
 
     std::cout << "  " << icache_fsm_state_str[r_icache_fsm.read()]
               << " | " << dcache_fsm_state_str[r_dcache_fsm.read()]
@@ -432,6 +408,13 @@ tmpl(void)::transition()
                          (r_dcache_word_save.read() == m_dcache_words-1) ) or
                          (r_dcache_fsm.read() == DCACHE_WRITE_UPDT);
 
+    m_iss.getRequests( m_ireq, m_dreq );
+
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << name() << " Instruction Request: " << m_ireq << std::endl;
+    std::cout << name() << " Data        Request: " << m_dreq << std::endl;
+#endif
+
     /////////////////////////////////////////////////////////////////////
     // The ICACHE FSM controls the intruction cache
     //
@@ -444,54 +427,47 @@ tmpl(void)::transition()
     // flip-flop. It is reset by the ICACHE FSM.
     ///////////////////////////////////////////////////////////////////////
 
-    typename iss_t::InstructionRequest ireq = ISS_IREQ_INITIALIZER;
-    typename iss_t::InstructionResponse irsp = ISS_IRSP_INITIALIZER;
-
-    typename iss_t::DataRequest dreq = ISS_DREQ_INITIALIZER;
-    typename iss_t::DataResponse drsp = ISS_DRSP_INITIALIZER;
-
-    m_iss.getRequests( ireq, dreq );
-
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " Instruction Request: " << ireq << std::endl;
-#endif
+    // default value for m_irsp
+    m_irsp.valid       = false;
+    m_irsp.error       = false;
+    m_irsp.instruction = 0;
 
     switch(r_icache_fsm) 
     {
     /////////////////
     case ICACHE_IDLE:
     {
-        if ( ireq.valid ) 
+        if ( m_ireq.valid ) 
         {
             data_t  icache_ins;
             bool    icache_hit;
 
             m_cpt_icache_read++;
 
-            bool    icache_cacheable = m_cacheability_table[ireq.addr];
+            bool    icache_cacheable = m_cacheability_table[m_ireq.addr];
 
             if ( icache_cacheable )    // cacheable access
             {
-                icache_hit = r_icache.read(ireq.addr, &icache_ins);
+                icache_hit = r_icache.read(m_ireq.addr, &icache_ins);
                 if ( not icache_hit )   // miss
                 {
                     m_cpt_ins_miss++;
                     m_cost_ins_miss_frz++;
 
-                    r_icache_addr_save = ireq.addr;
+                    r_icache_addr_save = m_ireq.addr;
                     r_icache_word_save = 0;
                     r_icache_fsm       = ICACHE_MISS_SELECT;
                     r_icache_miss_req  = true;
                 } 
                 else                    // hit
                 {
-                    irsp.valid          = true;
-                    irsp.instruction    = icache_ins;
+                    m_irsp.valid          = true;
+                    m_irsp.instruction    = icache_ins;
                 } 
             }
             else                        // non cacheable access 
             {
-                r_icache_addr_save = ireq.addr;
+                r_icache_addr_save = m_ireq.addr;
                 r_icache_fsm       = ICACHE_UNC_WAIT;
                 r_icache_unc_req   = true;
             }
@@ -539,8 +515,8 @@ tmpl(void)::transition()
 
         if ( r_vci_rsp_ins_error.read() )      // error reported
         {
-            irsp.valid          = true;
-            irsp.error          = true;
+            m_irsp.valid          = true;
+            m_irsp.error          = true;
             r_vci_rsp_ins_error = false;
         }
         else if ( r_vci_rsp_fifo_ins.rok() )   // available instruction 
@@ -572,17 +548,17 @@ tmpl(void)::transition()
         if ( r_vci_rsp_ins_error.read() )   // error reported
         {
             r_vci_rsp_ins_error  = false;
-            irsp.valid           = true;
-            irsp.error           = true;
+            m_irsp.valid           = true;
+            m_irsp.error           = true;
             r_icache_fsm         = ICACHE_IDLE;
         }
         else if ( r_vci_rsp_fifo_ins.rok() ) // instruction available
         {
             vci_rsp_fifo_ins_get = true;
-            if ( ireq.valid and (ireq.addr == r_icache_addr_save.read()) ) // request unmodified
+            if ( m_ireq.valid and (m_ireq.addr == r_icache_addr_save.read()) ) // unmodified
             {
-                irsp.valid       = true;
-                irsp.instruction = r_vci_rsp_fifo_ins.read();
+                m_irsp.valid       = true;
+                m_irsp.instruction = r_vci_rsp_fifo_ins.read();
             }
             r_icache_fsm         = ICACHE_IDLE;
         }
@@ -591,17 +567,8 @@ tmpl(void)::transition()
 
     } // end switch r_icache_fsm
 
-    // save the IREQ and IRSP fields for the print_trace() function
-    m_ireq_valid        = ireq.valid;
-    m_ireq_addr         = ireq.addr;
-    m_ireq_mode         = ireq.mode;
-    
-    m_irsp_valid        = irsp.valid;
-    m_irsp_instruction  = irsp.instruction;
-    m_irsp_error        = irsp.error;
-
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " Instruction Response: " << irsp << std::endl;
+    std::cout << name() << " Instruction Response: " << m_irsp << std::endl;
 #endif
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -630,9 +597,10 @@ tmpl(void)::transition()
     //   the asynchronous error using the setWriteBerr() method.
     //////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " Data Request: " << dreq << std::endl;
-#endif
+    // default value for m_drsp 
+    m_drsp.valid = false;
+    m_drsp.error = false;
+    m_drsp.rdata = 0;
 
     switch ( r_dcache_fsm ) 
     {
@@ -663,7 +631,7 @@ tmpl(void)::transition()
         }
 
         // close the write packet if the next processor request is not a write
-        if ( not dreq.valid || dreq.type != iss_t::DATA_WRITE )
+        if ( not m_dreq.valid || m_dreq.type != iss_t::DATA_WRITE )
             r_dcache_write_req = true ;
 
         // The next state and the processor request parameters are computed
@@ -672,39 +640,40 @@ tmpl(void)::transition()
     /////////////////
     case DCACHE_IDLE:
     {
-        if ( dreq.valid ) 
+        if ( m_dreq.valid ) 
         {
-            bool        dcache_hit;
-            data_t      dcache_rdata;
             bool        dcache_cacheable;
-            size_t      dcache_way;
-            size_t      dcache_set;
-            size_t      dcache_word;
 
             m_cpt_dcache_read++;
 
             // dcache_cacheable evaluation
-            if ( (dreq.type == iss_t::DATA_LL) or (dreq.type == iss_t::DATA_SC) or
-                 (dreq.type == iss_t::XTN_READ) or (dreq.type == iss_t::XTN_WRITE) )
+            if ( (m_dreq.type == iss_t::DATA_LL) or (m_dreq.type == iss_t::DATA_SC) or
+                 (m_dreq.type == iss_t::XTN_READ) or (m_dreq.type == iss_t::XTN_WRITE) )
                       dcache_cacheable = false;
             else
-                      dcache_cacheable = m_cacheability_table[dreq.addr];
+                      dcache_cacheable = m_cacheability_table[m_dreq.addr];
 
-            r_dcache_addr_save      = dreq.addr;
-            r_dcache_type_save      = dreq.type;
-            r_dcache_wdata_save     = dreq.wdata;
-            r_dcache_be_save        = dreq.be;
+            r_dcache_addr_save      = m_dreq.addr;
+            r_dcache_type_save      = m_dreq.type;
+            r_dcache_wdata_save     = m_dreq.wdata;
+            r_dcache_be_save        = m_dreq.be;
             r_dcache_cacheable_save = dcache_cacheable;
 
             if ( dcache_cacheable ) // cacheable read or write
             {
-                dcache_hit = r_dcache.read( dreq.addr, 
+                bool        dcache_hit;
+                data_t      dcache_rdata = 0;
+                size_t      dcache_way   = 0;
+                size_t      dcache_set   = 0;
+                size_t      dcache_word  = 0;
+
+                dcache_hit = r_dcache.read( m_dreq.addr, 
                                             &dcache_rdata,
                                             &dcache_way,
                                             &dcache_set,
                                             &dcache_word );
 
-                if ( dreq.type == iss_t::DATA_READ )        // cacheable read
+                if ( m_dreq.type == iss_t::DATA_READ )        // cacheable read
                 {
                     if ( not dcache_hit )   // read miss
                     {
@@ -719,21 +688,21 @@ tmpl(void)::transition()
                     } 
                     else                    // read hit
                     {
-                        drsp.valid          = true;
-                        drsp.rdata          = dcache_rdata;
+                        m_drsp.valid        = true;
+                        m_drsp.rdata        = dcache_rdata;
                         r_dcache_fsm        = DCACHE_IDLE;
                     } 
                 }
-                else if ( dreq.type == iss_t::DATA_WRITE )  // cacheable write
+                else if ( m_dreq.type == iss_t::DATA_WRITE )  // cacheable write
                 {
                     if ( not dcache_hit )   // write miss
                     {
-                        drsp.valid          = true;
+                        m_drsp.valid        = true;
                         r_dcache_fsm        = DCACHE_WRITE_REQ;
                     }
                     else                    // write hit
                     {
-                        drsp.valid          = true;
+                        m_drsp.valid        = true;
                         r_dcache_fsm        = DCACHE_WRITE_UPDT;
                         r_dcache_way_save   = dcache_way;
                         r_dcache_set_save   = dcache_set;
@@ -751,7 +720,7 @@ tmpl(void)::transition()
             else                    // uncacheable request
             {
                 r_dcache_cacheable_save = false;
-                switch( dreq.type ) 
+                switch( m_dreq.type ) 
                 {
                 // we expect a single word rdata for these 3 requests
                 case iss_t::DATA_READ:
@@ -762,7 +731,7 @@ tmpl(void)::transition()
                     m_cost_unc_read_frz++;
 
                     r_dcache_unc_req   = true;
-                    r_dcache_addr_save = dreq.addr;
+                    r_dcache_addr_save = m_dreq.addr;
                     r_dcache_fsm       = DCACHE_UNC_WAIT;
                     break;
                 }
@@ -775,19 +744,17 @@ tmpl(void)::transition()
                 }
                 case iss_t::XTN_WRITE:  // only SYNC and INVAL requests are supported
                 {
-                    if ( dreq.addr/4 == iss_t::XTN_DCACHE_INVAL )
+                    if ( m_dreq.addr/4 == iss_t::XTN_DCACHE_INVAL )
                     {
                         // two cycles 
                         r_dcache_fsm = DCACHE_XTN_HIT;
-                        drsp.valid = true;
-                        drsp.rdata = 0;
                     }
-                    else if ( dreq.addr/4 == iss_t::XTN_SYNC )
+                    else if ( m_dreq.addr/4 == iss_t::XTN_SYNC )
                     {
                         // nothing to do
                         r_dcache_fsm = DCACHE_IDLE;
-                        drsp.valid = true;
-                        drsp.rdata = 0;
+                        m_drsp.valid = true;
+                        m_drsp.rdata = 0;
                     }
                     else
                     {
@@ -803,11 +770,11 @@ tmpl(void)::transition()
                     m_cpt_write++;
 
                     r_dcache_fsm = DCACHE_WRITE_REQ;
-                    drsp.valid = true;
-                    drsp.rdata = 0;
+                    m_drsp.valid = true;
+                    m_drsp.rdata = 0;
                     break;
                 }
-                } // end switch dreq.type
+                } // end switch m_dreq.type
             } // end non cacheable request
         } 
         else    // no dcache_req 
@@ -869,8 +836,8 @@ tmpl(void)::transition()
 
         if ( r_vci_rsp_data_error.read() )       // error reported
         {
-            drsp.valid           = true;
-            drsp.error           = true;
+            m_drsp.valid         = true;
+            m_drsp.error         = true;
             r_vci_rsp_data_error = false;
         }
         else if ( r_vci_rsp_fifo_data.rok() )    // available data 
@@ -902,17 +869,17 @@ tmpl(void)::transition()
         if ( r_vci_rsp_data_error.read() )      // error reported
         {
             r_vci_rsp_data_error  = false;
-            drsp.valid            = true;
-            drsp.error            = true;
+            m_drsp.valid          = true;
+            m_drsp.error          = true;
             r_dcache_fsm          = DCACHE_IDLE;
         }
         else if ( r_vci_rsp_fifo_data.rok() )   // available data
         {
             vci_rsp_fifo_data_get = true;
-            if ( dreq.valid and (dreq.addr == r_dcache_addr_save.read()) ) // request unmodified
+            if ( m_dreq.valid and (m_dreq.addr == r_dcache_addr_save.read()) ) // request unmodified
             {
-                drsp.valid = true;
-                drsp.rdata = r_vci_rsp_fifo_data.read();
+                m_drsp.valid = true;
+                m_drsp.rdata = r_vci_rsp_fifo_data.read();
             }
             r_dcache_fsm = DCACHE_IDLE;
         }
@@ -939,7 +906,7 @@ tmpl(void)::transition()
         else		// miss : nothing to do
         {
             r_dcache_fsm      = DCACHE_IDLE;
-            drsp.valid        = true;
+            m_drsp.valid      = true;
         }
         break;
     }
@@ -951,43 +918,29 @@ tmpl(void)::transition()
                         r_dcache_set_save.read(),
                         &nline );
         r_dcache_fsm = DCACHE_IDLE;
-        drsp.valid   = true;
+        m_drsp.valid = true;
         break;
     }
     } // end switch r_dcache_fsm
 
-    //////////////////// save DREQ and DRSP fields for print_trace() ////////////////
-    m_dreq_valid = dreq.valid;
-    m_dreq_addr  = dreq.addr;
-    m_dreq_mode  = dreq.mode;
-    m_dreq_type  = dreq.type;
-    m_dreq_wdata = dreq.wdata;
-    m_dreq_be    = dreq.be;
-    
-    m_drsp_valid = drsp.valid;
-    m_drsp_rdata = drsp.rdata;
-    m_drsp_error = drsp.error;
-
 #ifdef SOCLIB_MODULE_DEBUG
-    std::cout << name() << " Data Response: " << drsp << std::endl;
+    std::cout << name() << " Data Response: " << m_drsp << std::endl;
 #endif
 
     /////////// execute one iss cycle /////////////////////////////////
+    uint32_t it = 0;
+    for (size_t i=0; i<(size_t)iss_t::n_irq; i++)
     {
-        uint32_t it = 0;
-        for (size_t i=0; i<(size_t)iss_t::n_irq; i++)
-            if(p_irq[i].read())
-                it |= (1<<i);
-
-        m_iss.executeNCycles(1, irsp, drsp, it);
+            if(p_irq[i].read()) it |= (1<<i);
     }
+    m_iss.executeNCycles(1, m_irsp, m_drsp, it);
 
-    if ( (ireq.valid and irsp.valid) and 
-         (!dreq.valid || drsp.valid) and 
-         (ireq.addr != m_cpt_pc_previous) )
+    if ( (m_ireq.valid and m_irsp.valid) and 
+         (!m_dreq.valid or m_drsp.valid) and 
+         (m_ireq.addr != m_pc_previous) )
     {
         m_cpt_exec_ins++;
-        m_cpt_pc_previous = ireq.addr;
+        m_pc_previous = m_ireq.addr;
     }
 
     ////////////////////////////////////////////////////////////////////////////

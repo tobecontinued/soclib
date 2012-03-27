@@ -117,6 +117,12 @@ private:
     const size_t                                                m_icache_words;
     const addr_t                                                m_icache_yzmask;
 
+    // Communication with processor ISS
+    typename iss_t::InstructionRequest          m_ireq;
+    typename iss_t::InstructionResponse         m_irsp;
+    typename iss_t::DataRequest                 m_dreq;
+    typename iss_t::DataResponse                m_drsp;
+
     // REGISTERS
     sc_signal<int>          r_dcache_fsm;
     sc_signal<addr_t>       r_dcache_addr_save;         // request address
@@ -159,29 +165,6 @@ private:
     GenericCache<addr_t>    r_icache;
     GenericCache<addr_t>    r_dcache;
 
-    ////////////////////////////////////////
-    // Variables used by print_trace()
-    ////////////////////////////////////////
-
-    bool                                        m_ireq_valid;
-    uint32_t                                    m_ireq_addr;
-    soclib::common::Iss2::ExecMode              m_ireq_mode;
-
-    bool                                        m_irsp_valid;
-    uint32_t                                    m_irsp_instruction;
-    bool                                        m_irsp_error;
-
-    bool                                        m_dreq_valid;
-    uint32_t                                    m_dreq_addr;
-    soclib::common::Iss2::ExecMode              m_dreq_mode;
-    soclib::common::Iss2::DataOperationType     m_dreq_type;
-    uint32_t                                    m_dreq_wdata;
-    uint8_t                                     m_dreq_be;
-
-    bool                                        m_drsp_valid;
-    uint32_t                                    m_drsp_rdata;
-    bool                                        m_drsp_error;			  
-
     // Activity counters
     uint32_t m_cpt_icache_read;             // ICACHE READ
     uint32_t m_cpt_icache_write;            // ICACHE WRITE
@@ -189,7 +172,7 @@ private:
     uint32_t m_cpt_dcache_read;             // DCACHE READ
     uint32_t m_cpt_dcache_write;            // DCACHE WRITE
 
-    addr_t   m_cpt_pc_previous;             // previous valid instruction address
+    addr_t   m_pc_previous;                 // previous valid instruction address
     uint32_t m_cpt_exec_ins;	            // number of executed instructions
     uint32_t m_cpt_total_cycles;	        // total number of cycles
 
