@@ -154,6 +154,7 @@ public:
             std::cout << name << std::hex << " RSP VCI :";
             std::cout << " rerror = "   << rerror
                       << "/rdata = "  << rdata
+                      << std::dec
                       << "/rsrcid = " << rsrcid
                       << "/rtrdid = " << rtrdid
                       << "/reop = "   << reop
