@@ -659,7 +659,7 @@ public:
 
 	    for ( size_t i = 0 ; i < m_nways ; i++ ) 
        	{
-            if ( (i != way) and not get_recent(way, set)) reset = false;
+            if ( (i != way) and not get_recent(i, set)) reset = false;
         }
         if ( reset )	// all recent bits must be reset
         {
