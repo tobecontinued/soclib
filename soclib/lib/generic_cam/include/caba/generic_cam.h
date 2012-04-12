@@ -36,9 +36,11 @@ using namespace sc_core;
 
 ///////////////////////////////////////////////////////////////
 // This hardware component implements a fully associative 
-// registration buffer, providing two access functions:
-// - register_value()
-// - cancel_value()
+// registration buffer, providing four access functions:
+// - write()
+// - inval()
+// - hit()
+// - reset()
 ////////////////////////////////////////////////////////////////
 
 template<typename DataType>
@@ -51,57 +53,50 @@ class GenericCam
 public:
 
     //////////////////////////////////////////////////////////////////////////
-    // This function try to register a new value in the registration buffer.
-    // It checks two conditions, requiring to scan all entries:
-    // - the value argument is not already registered 
-    // - the registration buffer is not full (at least one empty slot)
-    // If both conditions are true, the value argument is registered
-    // It returns true, and the slot index in case of success.
-    bool    register_value( DataType value,
-                            size_t*  index )
+    // This function test returns true, if a given value is registered 
+    // in the registration buffer, The matching entry index is returned.
+    //////////////////////////////////////////////////////////////////////////
+    bool hit( DataType value,
+              size_t* index)
     {
-        bool    full  = true;
-        bool    hit   = false;
-
-        // checks buffer not full
-        for ( size_t i=0 ; i<m_max ; i++ )
-        {
-            if ( not m_valid[i] ) 
-            {
-                full  = false;
-                *index = i;
-                break;
-            }
-        }
-
-        // cheks not hit
         for ( size_t i=0 ; i<m_max ; i++ )
         {
             if ( m_valid[i] and (m_value[i] == value) )
             {
-                hit = true;
-                break;
+                *index = i;
+                return true;
             }
         }
+        return false;
+    } // end hit()
 
-        // makes the registration if it's posssible
-        if ( not full and not hit ) 
+    //////////////////////////////////////////////////////////////////////////
+    // This function try to register a new value in the registration buffer.
+    // It returns false if there is no empty slot.
+    // It returns true, and the slot index in case of success.
+    //////////////////////////////////////////////////////////////////////////
+    bool    write( DataType value,
+                   size_t*  index )
+    {
+        for ( size_t i=0 ; i<m_max ; i++ )
         {
-            m_value[*index] = value;
-            m_valid[*index] = true;
-            return true;
+            if ( not m_valid[i] ) 
+            {
+                m_valid[i] = true;
+                m_value[i] = value;
+                *index = i;
+                return true;
+            }
         }
-        else
-        {
-            return false;
-        }
-    } // end register_value()
+        return false;
+    } // end write()
     
     ////////////////////////////////////////////////////////////////////
     // this function checks if the index argument is compatible
     // with the buffer size and invalidate the corresponding slot.
     // It returns true in case of success.
-    bool cancel_index( size_t index )
+    ////////////////////////////////////////////////////////////////////
+    bool inval( size_t index )
     {
         if ( index < m_max )
         {
@@ -109,7 +104,7 @@ public:
             return true;
         }
         return false;
-    } // end cancel_index()
+    } // end inval()
 
     ////////////
     void reset()
