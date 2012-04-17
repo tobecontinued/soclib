@@ -886,13 +886,13 @@ tmpl(void)::transition()
         break;
     }
     ////////////////////
-    case DCACHE_XTN_HIT:
+    case DCACHE_XTN_HIT:    // test hit in case of XTN_INVAL
     {
-        uint32_t	data;   //unused
-        size_t		word;   //unused
+        uint32_t	data;   // unused
+        size_t		word;   // unused
         size_t		way;
         size_t		set;
-        bool		hit = r_dcache.read( r_dcache_addr_save.read(),
+        bool		hit = r_dcache.read( r_dcache_wdata_save.read(),
                                          &data,
                                          &way,
                                          &set,
