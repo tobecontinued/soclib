@@ -640,9 +640,28 @@ public:
     } // end inval()
 
     ///////////////////////////////////////////////////
+    // set local bit 
+    //////////////////////////////////////////////////
+    void set_local( size_t way, 
+                    size_t set )
+    {
+        m_local[way*m_nsets+set] = true;
+    }
+
+    ///////////////////////////////////////////////////
+    // set remote bit 
+    //////////////////////////////////////////////////
+    void set_remote( size_t way, 
+                     size_t set )
+    {
+        m_remote[way*m_nsets+set] = true;
+    }
+
+    ///////////////////////////////////////////////////
     // set dirty bit 
     //////////////////////////////////////////////////
-    void set_dirty(size_t way, size_t set)
+    void set_dirty( size_t way, 
+                    size_t set )
     {
         m_dirty[way*m_nsets+set] = true;
     }
@@ -653,7 +672,8 @@ public:
     // all recent bits must be reset
     // else only the target bit is set
     //////////////////////////////////////////////////
-    void set_recent(size_t way, size_t set)
+    void set_recent( size_t way, 
+                     size_t set )
     {
         bool reset = true;
 
