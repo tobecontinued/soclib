@@ -67,7 +67,7 @@ int _main(int argc, char *argv[])
     const char *kernel = argv[1];
 
 	// Mapping table
-    soclib::common::Loader loader(kernel);
+    soclib::common::Loader loader(kernel, "platform.dtb@0xe0000000:RO");
 
     // This puts 0x5a everywhere in the memory, this eases detection
     // of uninitialized variables bugs.
@@ -78,6 +78,7 @@ int _main(int argc, char *argv[])
 	maptabp.add(Segment("boot",  0x00000000, 0x00000200, IntTab(0), true));
 	maptabp.add(Segment("text",  0x60000000, 0x00100000, IntTab(0), true));
 	maptabp.add(Segment("rodata",0x80000000, 0x01000000, IntTab(0), true));
+	maptabp.add(Segment("fdt",   0xe0000000, 0x00001000, IntTab(0), false)); // device tree
 
 	maptabp.add(Segment("tty",   0xd0200000, 0x00000040, IntTab(1), false));
 	maptabp.add(Segment("mem",   0x7f000000, 0x01000000, IntTab(2), false));
@@ -132,7 +133,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciMultiTty<vci_param> vcitty("vcitty",	IntTab(1), maptabp, "vcitty0", NULL);
 #endif
 	soclib::caba::VciRam<vci_param> ram("ram", IntTab(2), maptabp, loader);
-	soclib::caba::VciXicu<vci_param> vciicu("vciicu", maptabp,IntTab(3), 1, xicu_n_irq, ncpu, ncpu);
+	soclib::caba::VciXicu<vci_param> vciicu("vcixicu", maptabp,IntTab(3), 1, xicu_n_irq, ncpu, ncpu);
 	soclib::caba::VciBlockDevice<vci_param> vcibd0("vcibd0", maptabp, IntTab(ncpu), IntTab(4), "block0.iso", 2048);
 	
 	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, ncpu+1, 5, 2, 8);

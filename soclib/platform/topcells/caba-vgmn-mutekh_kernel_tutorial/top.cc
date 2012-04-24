@@ -112,7 +112,7 @@ INIT_TOOLS(initialize_tools)
   ISS_NEST(Iss)::set_loader(ldr);
 #endif
 #if defined(CONFIG_SOCLIB_MEMCHECK)
-  common::IssMemchecker<Iss>::init(maptab, ldr, "tty,xicu,bdev0,fdacccess");
+  common::IssMemchecker<Iss>::init(maptab, ldr, "tty,xicu,bdev0,fdacccess,fdt");
 #endif
 }
 
@@ -204,6 +204,7 @@ int _main(int argc, char **argv)
   maptab.add(Segment("rodata" ,   0x80000000, 0x01000000, IntTab(1), true));
   maptab.add(Segment("data",      0x7f000000, 0x01000000, IntTab(2), false));
   maptab.add(Segment("data2",     0x6f000000, 0x01000000, IntTab(2), false));
+  maptab.add(Segment("fdt",       0xe0000000, 0x00001000, IntTab(1), false)); // device tree
 
   maptab.add(Segment("tty"  ,     0xd0200000, 0x00000010, IntTab(3), false));
   maptab.add(Segment("xicu",      0xd2200000, 0x00001000, IntTab(4), false));
@@ -246,6 +247,8 @@ int _main(int argc, char **argv)
 	  text_ldr->memory_default(0x5a);
 	  data_ldr.load_file(std::string(kernel_p));
       }
+
+      data_ldr.load_file("platform.dtb@0xe0000000:R");
 
       common::Loader tools_ldr(kernel_p);
       tools_ldr.memory_default(0x5a);

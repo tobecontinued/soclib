@@ -7,7 +7,7 @@ SIMULATOR_BINARY=system.x
 ARCH=mips32el
 export SOCLIB
 
-all: $(KERNEL) block0.iso
+all: $(KERNEL) block0.iso platform.dtb
 
 .PHONY: $(KERNEL) config.h FORCE
 
@@ -17,3 +17,6 @@ include $(SOCLIB)/soclib/platform/topcells/all.mk
 
 block0.iso: iso_contents FORCE
 	mkisofs -f -R -V volname -o $@ $<
+
+platform.dtb: platform.dts
+	dtc -O dtb platform.dts -o platform.dtb

@@ -30,6 +30,7 @@ use =  [
         Uses('caba:vci_simhelper'),
 	Uses('caba:vci_vgmn'),
         Uses('common:elf_file_loader'),
+	Uses('common:plain_file_loader'),
         Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:ppc405'),
         Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:arm'),
         Uses('caba:vci_xcache_wrapper', iss_t = 'common:gdb_iss', gdb_iss_t = 'common:iss_memchecker', iss_memchecker_t = 'common:mips32eb'),
