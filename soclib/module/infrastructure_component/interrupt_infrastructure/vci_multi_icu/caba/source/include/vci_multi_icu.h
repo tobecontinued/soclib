@@ -65,8 +65,8 @@ public:
     sc_in<bool> p_clk;
     sc_in<bool> p_resetn;
     soclib::caba::VciTarget<vci_param> p_vci;
-    sc_out<bool> *p_irq_out;
     sc_in<bool> *p_irq_in;
+    sc_out<bool> *p_irq_out;
 
     void print_trace();
 
