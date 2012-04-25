@@ -8,7 +8,7 @@ SIMULATOR_BINARY=system.x
 ARCH=mips32el
 export SOCLIB
 
-all: $(SIMULATOR_BINARY) block0.iso platform.dtb
+all: $(SIMULATOR_BINARY) block0.iso
 
 block0.iso:
 	touch $@
@@ -20,5 +20,3 @@ APP=$(MUTEKH_DIR)/examples/hello
 
 include $(SOCLIB)/soclib/platform/topcells/all.mk
 
-platform.dtb: platform.dts
-	dtc -O dtb platform.dts -o platform.dtb

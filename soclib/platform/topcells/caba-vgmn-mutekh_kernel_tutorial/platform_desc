@@ -22,6 +22,7 @@
 use =  [
 	Uses('caba:vci_locks'),
 	Uses('caba:vci_ram'),
+	Uses('caba:vci_fdt_rom'),
 	Uses('caba:vci_heterogeneous_rom'),
 	Uses('caba:vci_multi_tty'),
 	Uses('caba:vci_xicu'),

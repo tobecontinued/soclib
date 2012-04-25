@@ -81,6 +81,7 @@ public:
     void add_property(const std::string &name);
     void add_property(const std::string &name, int value);
     void add_property(const std::string &name, const std::vector<int> &values);
+    void add_property(const std::string &name, const int * values, size_t size);
 
 private:
     bool on_write(size_t seg, vci_addr_t addr, vci_data_t data, int be);

@@ -4,7 +4,6 @@ Build simulator
 
 $ make system.x
 
-
 Build MutekH
 ============
 
@@ -15,7 +14,6 @@ configuration files and BUILD flags.
 
 See MutekH quick start guide for Soclib for more informations:
 
-https://www.mutek.fr/trac/mutekh/wiki/QuickStartSoclib
 http://www.mutekh.org/trac/mutekh/wiki/Arch/Soclib/Tutorial
 
 Run the simulator
@@ -32,5 +30,5 @@ You must specify the CPU you want to use on command line. General syntax is:
  $ ./system.x arm:4 ~/mutekh/kernel-soclib-arm.out
 
  2 arm and 2 mips processors:
- $ ./system.x arm:2 ~/mutekh/kernel-soclib-arm.out mips32:2 ~/mutekh/kernel-soclib-mips.out
+ $ ./system.x arm:2 ~/mutekh/kernel-soclib-arm.out mips32el:2 ~/mutekh/kernel-soclib-mips.out
 

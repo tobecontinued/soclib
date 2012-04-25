@@ -239,7 +239,7 @@ tmpl(void):: begin_cpu_node(const std::string &compatible, int id)
     fdt_writer_node_entry(name);
 
     uint32_t val = uint32_machine_to_be(id);
-    fdt_writer_node_prop("linux-phandle", &val, 4);
+    fdt_writer_node_prop("linux,phandle", &val, 4);
 
     fdt_writer_node_prop("compatible", compatible.c_str(), compatible.size());
 
@@ -263,7 +263,7 @@ tmpl(void):: begin_device_node(const std::string &segname, const std::string &co
     fdt_writer_node_entry(name);
 
     uint32_t val = uint32_machine_to_be(0x1000 + s->index().sum());
-    fdt_writer_node_prop("linux-handle", &val, 4);
+    fdt_writer_node_prop("linux,phandle", &val, 4);
 
     fdt_writer_node_prop("compatible", compatible.c_str(), compatible.size());
 
@@ -292,9 +292,17 @@ tmpl(void):: add_property(const std::string &name, int value)
 tmpl(void):: add_property(const std::string &name, const std::vector<int> &values)
 {
     uint32_t a[values.size()];
-    for (int i = 0; i < values.size(); i++)
+    for (unsigned int i = 0; i < values.size(); i++)
         a[i] = uint32_machine_to_be(values[i]);
     fdt_writer_node_prop(name.c_str(), a, 4*values.size());
+}
+
+tmpl(void):: add_property(const std::string &name, const int * values, size_t size)
+{
+    uint32_t a[size];
+    for (unsigned int i = 0; i < size; i++)
+        a[i] = uint32_machine_to_be(values[i]);
+    fdt_writer_node_prop(name.c_str(), a, 4*size);
 }
 
 tmpl(void):: end_node()
