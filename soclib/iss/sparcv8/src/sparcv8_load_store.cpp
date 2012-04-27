@@ -181,10 +181,30 @@ tmpl(void)::setData(const struct DataResponse &rsp)
     if ( rsp.error )
         return;
 
+    data_t data = soclib::endian::uint32_swap(rsp.rdata);
+
     // If request was a read (LOAD), then get data, swap bytes and
     // store them into destination register
-    if ((req.type == DATA_READ) || (req.type == XTN_READ) || (req.type == DATA_LL)) {
-        data_t data = soclib::endian::uint32_swap(rsp.rdata);
+    switch (req.type) {
+    case DATA_LL:
+            if (m_dreq.cmp_reg >= 0) {
+#ifdef SOCLIB_MODULE_DEBUG
+                std::cout << name() << " compare " << data << " <=> " << m_dreq.cmp_reg << " " << r_gp[m_dreq.cmp_reg] << "\n";
+#endif
+                if (data == r_gp[m_dreq.cmp_reg]) {
+                    if (data != soclib::endian::uint32_swap(m_dreq.ext_req.wdata))
+                        // send DATA_SC prepared in ext_req and postpone write to rd register
+                        m_dreq_pending = m_dreq.ext_req.valid = true;
+                    else
+                        // memory already contains value to write, do not write to memory
+                        r_gp[m_dreq.dest_reg] = data;
+                }
+
+                break;
+            }
+
+    case DATA_READ:
+    case XTN_READ: {
         // Extract data from word on data bus
         switch (req.be) {
         case 8 :
@@ -275,13 +295,23 @@ tmpl(void)::setData(const struct DataResponse &rsp)
         << " data: " << data
         << std::endl;
 #endif
-
+    break;
     }
-    else {
+
+    case DATA_SC:
+        // DATA_SC returns 0 on success.
+
+        // CASA instruction case
+        if (m_dreq.cmp_reg >= 0) {
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << name() << " casa ok " << r_gp[m_dreq.cmp_reg] << " => " << m_dreq.dest_reg << "\n";
+#endif
+            if (rsp.rdata == 0)
+                r_gp[m_dreq.dest_reg] = r_gp[m_dreq.cmp_reg];
+        }
+
         // Handle special case of DATA_SC (used to try to mimic SWAP and LDSTUB)
-        if(req.type == DATA_SC) {
-            // DATA_SC returns 0 on success.
-            if (rsp.rdata != 0) {
+        else if (rsp.rdata != 0) {
                 // If unsuccess, we may either send a TRAP or try the SWAP again...
 #ifdef SPARC_SWAP_TRAPS
                 // We raise a custom trap, to give the underlying system the possibility to
@@ -302,8 +332,10 @@ tmpl(void)::setData(const struct DataResponse &rsp)
                 std::cout << "SWAP / LDSTUB : unsuccess. Retrying..." << std::endl;
 #endif
 #endif
-            }
         }
+        break;
+
+    default: {
         // Transaction was a write... Just dump it !
 #ifdef SOCLIB_MODULE_DEBUG
         uint dest_reg = (ext_req) ? m_dreq.ext_dest_reg : m_dreq.dest_reg;
@@ -316,7 +348,7 @@ tmpl(void)::setData(const struct DataResponse &rsp)
             << std::endl;
 #endif
     }
-    
+    }
 }
 
 tmpl(void)::op_ldsb()
@@ -582,6 +614,7 @@ tmpl(void)::op_ldstub()
     INIT_REQ(addr, false, rd, 0, TYPE_GP);
     BUILD_SUBREQ(m_dreq.req, addr, 1, 0, DATA_LL);
     BUILD_SUBREQ(m_dreq.ext_req, addr, 1, 0xff, DATA_SC);
+    m_dreq.cmp_reg = -1;
     setInsDelay(1);
 }
 
@@ -596,6 +629,27 @@ tmpl(void)::op_swapa()
     INIT_REQ(addr, false, rd, 0, TYPE_GP);
     BUILD_SUBREQ(m_dreq.req, addr, 4, 0, DATA_LL);
     BUILD_SUBREQ(m_dreq.ext_req, addr, 4, r_gp[rd], DATA_SC);
+    m_dreq.cmp_reg = -1;
+    setInsDelay(1);
+}
+
+tmpl(void)::op_casa()  // casa is a v9 instruction also present in leon sparc v8
+{
+    __attribute__((unused)) addr_t addr, asi;
+    uint32_t rd;
+    ENSURE_PRIVILEDGED_MODE();
+
+    addr = GPR(m_ins.format3a.rs1);
+    asi = m_ins.format3a.asi;
+    rd = RR(m_ins.format3a.rd);
+
+    ENSURE_ALIGNED_ADDR(addr, 4);
+
+    INIT_REQ(addr, false, rd, 0, TYPE_GP);
+    BUILD_SUBREQ(m_dreq.req, addr, 4, 0, DATA_LL);
+    BUILD_SUBREQ(m_dreq.ext_req, addr, 4, r_gp[rd], DATA_SC);
+    m_dreq.cmp_reg = RR(m_ins.format3a.rs2);
+    m_dreq.ext_req.valid = false; // prepare SC but don't send it yet
     setInsDelay(1);
 }
 
@@ -610,6 +664,7 @@ tmpl(void)::op_ldstuba()
     INIT_REQ(addr, false, rd, 0, TYPE_GP);
     BUILD_SUBREQ(m_dreq.req, addr, 1, 0, DATA_LL);
     BUILD_SUBREQ(m_dreq.ext_req, addr, 1, 0xff, DATA_SC);
+    m_dreq.cmp_reg = -1;
     setInsDelay(1);
 }
 

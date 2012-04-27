@@ -285,6 +285,7 @@ private:
         DataRequest     req;            // First (or only) data request
         DataRequest     ext_req;        // For double words requests (SWAP, LDD, LDSTUB), this is the second 
                                         // part of the request
+        int32_t         cmp_reg;        // in case of compare and swap, register used for compare. -1 in other LL/SC cases 
         uint32_t        dest_reg;       // Destination register (for a load). In case of LDD/STD, this is the first
                                         // of the register pair. This index is an absolute index : a reference in the
                                         // flat register file (ie : independent of CWP).
@@ -420,7 +421,7 @@ private:
     op4(lda,    lduba,  lduha,  ldda);
     op4(sta,    stba,   stha,   stda);
     op2(ldsba,  ldsha);
-    op2(ldstuba,swapa);
+    op3(ldstuba,swapa,  casa);
     op3(ldf,    ldfsr,  lddf);
     op4(stf,    stfsr,  stdfq,  stdf);
     op3(ldc,    ldcsr,  lddc);

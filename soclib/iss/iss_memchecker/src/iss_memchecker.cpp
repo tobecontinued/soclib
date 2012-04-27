@@ -1283,7 +1283,13 @@ void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
         if ( m_enabled_checks & ISS_MEMCHECKER_CHECK_INIT )
             err |= ai->do_read();
         break;
+
     case iss_t::DATA_SC:
+        err |= ai->do_write();
+
+        if ( drsp.rdata ) // sc failed
+            break;
+
     case iss_t::DATA_WRITE:
         err |= ai->do_write();
 

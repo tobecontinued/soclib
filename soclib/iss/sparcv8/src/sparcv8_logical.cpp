@@ -566,6 +566,11 @@ tmpl(void)::op_rdasr()
         GPR(m_ins.format3a.rd) = m_ident; 
         break;
 
+    case 17 :
+        // LEON3 cpu id
+        GPR(m_ins.format3a.rd) = m_ident << 28;
+        break;
+
     default :
         m_exception = true;
         m_exception_cause = TP_ILLEGAL_INSTRUCTION;

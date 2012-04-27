@@ -118,7 +118,7 @@ func_table(loadstore_table) = {
     op4(ldc,    ldcsr,  unimp,  lddc),
     op4(stc,    stcse,  stdcq,  stdc),
     op4(unimp,  unimp,  unimp,  unimp),
-    op4(unimp,  unimp,  unimp,  unimp),
+    op4(casa,   unimp,  unimp,  unimp),
 };
 
 #if FPU
