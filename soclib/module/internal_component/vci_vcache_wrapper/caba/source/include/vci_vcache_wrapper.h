@@ -2,6 +2,7 @@
  * File : vci_vcache_wrapper.h
  * Copyright (c) UPMC, Lip6, SoC
  * Authors : Alain GREINER, Yang GAO
+ * Date : 24/03/2012
  *
  * SOCLIB_LGPL_HEADER_BEGIN
  * 
@@ -30,12 +31,15 @@
 #include <inttypes.h>
 #include <systemc>
 #include "caba_base_module.h"
-#include "write_buffer.h"
+#include "multi_write_buffer.h"
+#include "generic_fifo.h"
+#include "generic_tlb.h"
 #include "generic_cache.h"
 #include "vci_initiator.h"
+#include "vci_target.h"
 #include "mapping_table.h"
-#include "generic_tlb.h"
 #include "static_assert.h"
+#include "iss2.h"
 
 namespace soclib {
 namespace caba {
@@ -44,113 +48,102 @@ using namespace sc_core;
 
 ////////////////////////////////////////////
 template<typename vci_param, typename iss_t>
-class VciVCacheWrapper
+class VciVcacheWrapper
 ////////////////////////////////////////////
     : public soclib::caba::BaseModule
 {
     typedef uint32_t vaddr_t;
-    typedef uint32_t data_t;
     typedef uint32_t tag_t;
     typedef uint32_t type_t;
     typedef typename iss_t::DataOperationType data_op_t;
 
-    typedef typename vci_param::addr_t paddr_t;
-    typedef typename vci_param::be_t   be_t;
+    typedef typename vci_param::addr_t  paddr_t;
+    typedef typename vci_param::be_t    vci_be_t;
+    typedef typename vci_param::srcid_t vci_srcid_t;
+    typedef typename vci_param::trdid_t vci_trdid_t;
+    typedef typename vci_param::pktid_t vci_pktid_t;
+    typedef typename vci_param::plen_t  vci_plen_t;
 
     enum icache_fsm_state_e {  
-        ICACHE_IDLE,                // 00
-        ICACHE_BIS,                 // 01
-        ICACHE_TLB1_READ,           // 02
-        ICACHE_TLB1_LL_WAIT,        // 03
-        ICACHE_TLB1_SC_WAIT,        // 04
-        ICACHE_TLB1_UPDT,           // 05
-        ICACHE_TLB2_READ,           // 06
-        ICACHE_TLB2_LL_WAIT,        // 07
-        ICACHE_TLB2_SC_WAIT,        // 08
-        ICACHE_TLB2_UPDT,           // 09
-        ICACHE_TLB_FLUSH,           // 0a
-        ICACHE_CACHE_FLUSH,         // 0b
-        ICACHE_TLB_INVAL,           // 0c
-        ICACHE_CACHE_INVAL,         // 0d
-        ICACHE_CACHE_PREFETCH,      // 0e
-        ICACHE_MISS_WAIT,           // 0f
-        ICACHE_UNC_WAIT,            // 10
-        ICACHE_MISS_UPDT,           // 11
-        ICACHE_ERROR,               // 12
-        ICACHE_CACHE_INVAL_PA,      // 13
+        ICACHE_IDLE,             
+        // handling XTN processor requests
+        ICACHE_XTN_TLB_FLUSH,
+        ICACHE_XTN_CACHE_FLUSH, 
+        ICACHE_XTN_TLB_INVAL,  
+        ICACHE_XTN_CACHE_INVAL_VA,
+        ICACHE_XTN_CACHE_INVAL_PA,  
+        ICACHE_XTN_CACHE_INVAL_GO,
+        // handling tlb miss
+        ICACHE_TLB_WAIT,
+        // handling cache miss
+        ICACHE_MISS_VICTIM,   
+        ICACHE_MISS_INVAL,   
+        ICACHE_MISS_WAIT,   
+        ICACHE_MISS_UPDT, 
+        // handling unc read
+        ICACHE_UNC_WAIT,  
     };
 
     enum dcache_fsm_state_e {  
-        DCACHE_IDLE,                // 00
-        DCACHE_BIS,                 // 01
-        DCACHE_LL_DIRTY_WAIT,       // 02
-        DCACHE_SC_DIRTY_WAIT,       // 03
-        DCACHE_TLB1_READ,           // 04
-        DCACHE_TLB1_LL_WAIT,        // 05
-        DCACHE_TLB1_SC_WAIT,        // 06
-        DCACHE_TLB1_UPDT,           // 07
-        DCACHE_TLB2_READ,           // 08
-        DCACHE_TLB2_LL_WAIT,        // 09
-        DCACHE_TLB2_SC_WAIT,        // 0a
-        DCACHE_TLB2_UPDT,           // 0b
-        DCACHE_CTXT_SWITCH,         // 0c
-        DCACHE_ICACHE_FLUSH,        // 0d
-        DCACHE_DCACHE_FLUSH,        // 0e
-        DCACHE_ITLB_INVAL,          // 0f
-        DCACHE_DTLB_INVAL,          // 10
-        DCACHE_ICACHE_INVAL,        // 11
-        DCACHE_DCACHE_INVAL,        // 12
-        DCACHE_ICACHE_PREFETCH,     // 13
-        DCACHE_DCACHE_PREFETCH,     // 14
-        DCACHE_DCACHE_SYNC,         // 15
-        DCACHE_WRITE_UPDT,          // 16
-        DCACHE_WRITE_DIRTY,         // 17
-        DCACHE_WRITE_REQ,           // 18
-        DCACHE_MISS_WAIT,           // 19
-        DCACHE_MISS_UPDT,           // 1a
-        DCACHE_UNC_WAIT,            // 1b
-        DCACHE_ERROR,               // 1c
-	    DCACHE_ICACHE_INVAL_PA,     // 1d
-	    DCACHE_DCACHE_INVAL_PA,     // 1e
+        DCACHE_IDLE,                
+        // handling itlb & dtlb miss
+        DCACHE_TLB_MISS,
+        DCACHE_TLB_PTE1_GET,           
+        DCACHE_TLB_PTE1_SELECT,      
+        DCACHE_TLB_PTE1_UPDT,       
+        DCACHE_TLB_PTE2_GET,    
+        DCACHE_TLB_PTE2_SELECT,       
+        DCACHE_TLB_PTE2_UPDT,           
+        DCACHE_TLB_LR_WAIT,           
+        DCACHE_TLB_RETURN,         
+	    // handling processor XTN requests
+        DCACHE_XTN_SWITCH,
+        DCACHE_XTN_SYNC,
+        DCACHE_XTN_IC_INVAL_VA,        
+        DCACHE_XTN_IC_FLUSH,        
+        DCACHE_XTN_IC_INVAL_PA,     
+        DCACHE_XTN_IT_INVAL,          
+        DCACHE_XTN_DC_FLUSH,        
+        DCACHE_XTN_DC_INVAL_VA,        
+        DCACHE_XTN_DC_INVAL_PA,     
+        DCACHE_XTN_DC_INVAL_END,
+        DCACHE_XTN_DC_INVAL_GO,          
+        DCACHE_XTN_DT_INVAL,          
+        //handling dirty bit update
+        DCACHE_DIRTY_GET_PTE,
+        DCACHE_DIRTY_SC_WAIT,           
+	    // handling processor miss requests
+        DCACHE_MISS_VICTIM,
+        DCACHE_MISS_INVAL,   
+        DCACHE_MISS_WAIT,           
+        DCACHE_MISS_UPDT,           
+        // handling processor unc and sc requests
+        DCACHE_UNC_WAIT,            
+        DCACHE_SC_WAIT,            
     };
 
     enum cmd_fsm_state_e {      
-        CMD_IDLE,                   // 00
-        CMD_ITLB_READ,              // 01
-        CMD_ITLB_ACC_LL,            // 02
-        CMD_ITLB_ACC_SC,            // 03
-        CMD_INS_MISS,               // 04
-        CMD_INS_UNC,                // 05
-        CMD_DTLB_READ,              // 06
-        CMD_DTLB_DIRTY_LL,          // 07
-        CMD_DTLB_DIRTY_SC,          // 08
-        CMD_DTLB_ACC_LL,            // 09
-        CMD_DTLB_ACC_SC,            // 0a
-        CMD_DATA_UNC,               // 0b
-        CMD_DATA_MISS,              // 0c
-        CMD_DATA_WRITE,             // 0d
+        CMD_IDLE,
+        CMD_INS_MISS,
+        CMD_INS_UNC,
+        CMD_DATA_MISS,
+        CMD_DATA_UNC,
+        CMD_DATA_WRITE,
+        CMD_DATA_SC, 
     };
 
     enum rsp_fsm_state_e {       
-        RSP_IDLE,                   // 00
-        RSP_ITLB_READ,              // 01
-        RSP_ITLB_ACC_LL,            // 02
-        RSP_ITLB_ACC_SC,            // 03
-        RSP_INS_MISS,               // 04
-        RSP_INS_UNC,                // 05
-        RSP_DTLB_READ,              // 06
-        RSP_DTLB_DIRTY_LL,          // 07
-        RSP_DTLB_DIRTY_SC,          // 08
-        RSP_DTLB_ACC_LL,            // 09
-        RSP_DTLB_ACC_SC,            // 0a
-        RSP_DATA_MISS,              // 0b
-        RSP_DATA_UNC,               // 0c
-        RSP_DATA_WRITE,             // 0d
+        RSP_IDLE,
+        RSP_INS_MISS,
+        RSP_INS_UNC,
+        RSP_DATA_MISS,
+        RSP_DATA_UNC,
+        RSP_DATA_WRITE,
+        RSP_DATA_SC,
     };
 
-    // TLB Mode ITLB / DTLB / ICACHE / DCACHE
+    // TLB Mode : ITLB / DTLB / ICACHE / DCACHE
     enum {          
-        ALL_DEACTIVE    = 0x0,   // TLBs disactive caches disactive
         INS_TLB_MASK    = 0x8,
         DATA_TLB_MASK   = 0x4,
         INS_CACHE_MASK  = 0x2,
@@ -158,24 +151,44 @@ class VciVCacheWrapper
     };
 
     // Error Type
-    enum mmu_error_type_e {
+    enum mmu_error_type_e 
+    {
         MMU_NONE                      = 0x0000, // None
-        MMU_WRITE_PT1_UNMAPPED 	      = 0x0001, // Write access of Page fault on Page Table 1          (non fatal error)
-        MMU_WRITE_PT2_UNMAPPED 	      = 0x0002, // Write access of Page fault on Page Table 2          (non fatal error)
-        MMU_WRITE_PRIVILEGE_VIOLATION = 0x0004, // Write access of Protected access in user mode       (user error)
-        MMU_WRITE_ACCES_VIOLATION 	  = 0x0008, // Write access of write access to a non writable page (user error)
-        MMU_WRITE_UNDEFINED_XTN 	  = 0x0020, // Write access of undefined external access address   (user error)
-        MMU_WRITE_PT1_ILLEGAL_ACCESS  = 0x0040, // Write access of Bus Error accessing Table 1         (kernel error)
-        MMU_WRITE_PT2_ILLEGAL_ACCESS  = 0x0080, // Write access of Bus Error accessing Table 2         (kernel error)
-        MMU_WRITE_DATA_ILLEGAL_ACCESS = 0x0100, // Write access of Bus Error in cache access           (kernel error)
-        MMU_READ_PT1_UNMAPPED 	      = 0x1001, // Read access of Page fault on Page Table 1  	       (non fatal error)
-        MMU_READ_PT2_UNMAPPED 	      = 0x1002, // Read access of Page fault on Page Table 2  	       (non fatal error)
-        MMU_READ_PRIVILEGE_VIOLATION  = 0x1004, // Read access of Protected access in user mode 	   (user error)
-        MMU_READ_EXEC_VIOLATION 	  = 0x1010, // Exec access to a non exec page                      (user error)
-        MMU_READ_UNDEFINED_XTN 	      = 0x1020, // Read access of Undefined external access address    (user error)
-        MMU_READ_PT1_ILLEGAL_ACCESS   = 0x1040, // Read access of Bus Error in Table1 access           (kernel error)
-        MMU_READ_PT2_ILLEGAL_ACCESS   = 0x1080, // Read access of Bus Error in Table2 access 	       (kernel error)
-        MMU_READ_DATA_ILLEGAL_ACCESS  = 0x1100, // Read access of Bus Error in cache access 	       (kernel error)
+        MMU_WRITE_PT1_UNMAPPED 	      = 0x0001, // Page fault on Page Table 1          
+        MMU_WRITE_PT2_UNMAPPED 	      = 0x0002, // Page fault on Page Table 2          
+        MMU_WRITE_PRIVILEGE_VIOLATION = 0x0004, // Protected access in user mode      
+        MMU_WRITE_ACCES_VIOLATION     = 0x0008, // Write access to a non writable page
+        MMU_WRITE_UNDEFINED_XTN       = 0x0020, // Undefined external access   
+        MMU_WRITE_PT1_ILLEGAL_ACCESS  = 0x0040, // Bus Error accessing Table 1       
+        MMU_WRITE_PT2_ILLEGAL_ACCESS  = 0x0080, // Bus Error accessing Table 2      
+        MMU_WRITE_DATA_ILLEGAL_ACCESS = 0x0100, // Bus Error in cache access     
+        MMU_READ_PT1_UNMAPPED 	      = 0x1001, // Page fault on Page Table 1  	
+        MMU_READ_PT2_UNMAPPED 	      = 0x1002, // Page fault on Page Table 2  
+        MMU_READ_PRIVILEGE_VIOLATION  = 0x1004, // Protected access in user mode 
+        MMU_READ_EXEC_VIOLATION       = 0x1010, // Exec access to a non exec page 
+        MMU_READ_UNDEFINED_XTN 	      = 0x1020, // Undefined external access address 
+        MMU_READ_PT1_ILLEGAL_ACCESS   = 0x1040, // Bus Error in Table1 access      
+        MMU_READ_PT2_ILLEGAL_ACCESS   = 0x1080, // Bus Error in Table2 access 	
+        MMU_READ_DATA_ILLEGAL_ACCESS  = 0x1100, // Bus Error in cache access 
+    };
+
+    // miss types for data cache
+    enum dcache_miss_type_e
+    {
+        PTE1_MISS, 
+        PTE2_MISS,
+        PROC_MISS,  
+        DIRTY_MISS,
+    };
+
+    enum transaction_type_d_e
+    {
+        // b0 : 1 if cached
+        // b1 : 1 if instruction
+        TYPE_DATA_UNC     = 0x0,
+        TYPE_DATA_MISS    = 0x1,
+        TYPE_INS_UNC      = 0x2,
+        TYPE_INS_MISS     = 0x3,
     };
 
 public:
@@ -185,222 +198,295 @@ public:
     soclib::caba::VciInitiator<vci_param>   p_vci;
 
 private:
+
     // STRUCTURAL PARAMETERS
-    soclib::common::AddressDecodingTable<uint32_t, bool>    m_cacheability_table;
-    const uint32_t                                          m_srcid;
-    iss_t                                                   m_iss;   
+    soclib::common::AddressDecodingTable<uint32_t, bool>    	m_cacheability_table;
+    const vci_srcid_t                                       	m_srcid;
 
-    const size_t  m_itlb_ways;
-    const size_t  m_itlb_sets;
+    const size_t  						m_tlb_ways;
+    const size_t  						m_tlb_sets;
 
-    const size_t  m_dtlb_ways;
-    const size_t  m_dtlb_sets;
+    const size_t  						m_icache_ways;
+    const size_t  						m_icache_sets;
+    const paddr_t 						m_icache_yzmask;
+    const size_t  						m_icache_words;
 
-    const size_t  m_icache_ways;
-    const size_t  m_icache_sets;
-    const size_t  m_icache_yzmask;
-    const size_t  m_icache_words;
+    const size_t  						m_dcache_ways;
+    const size_t  						m_dcache_sets;
+    const paddr_t 						m_dcache_yzmask;
+    const size_t  						m_dcache_words;
 
-    const size_t  m_dcache_ways;
-    const size_t  m_dcache_sets;
-    const size_t  m_dcache_yzmask;
-    const size_t  m_dcache_words;
+    const size_t                        m_procid;
+    const size_t  						m_paddr_nbits;  
 
-    const size_t  m_write_buf_size;  
-    const size_t  m_paddr_nbits;  
+    const uint32_t						m_max_frozen_cycles;   
+    const uint32_t                      m_debug_start_cycle;    
+    const bool                          m_debug_ok;
 
-    // instruction and data vcache tlb instances 
-    soclib::caba::GenericTlb<paddr_t>    icache_tlb;
-    soclib::caba::GenericTlb<paddr_t>    dcache_tlb;
+    ////////////////////////////////////////
+    // Communication with processor ISS
+    ////////////////////////////////////////
+    typename iss_t::InstructionRequest  m_ireq;
+    typename iss_t::InstructionResponse m_irsp;
+    typename iss_t::DataRequest         m_dreq;
+    typename iss_t::DataResponse        m_drsp;
 
-    sc_signal<vaddr_t>      r_mmu_ptpr;             // page table pointer register
-    sc_signal<int>          r_mmu_mode;             // tlb mode register
-    sc_signal<int>          r_mmu_params;           // mmu parameters register
-    sc_signal<int>          r_mmu_release;          // mmu release register
-    sc_signal<int>          r_mmu_word_lo;          // mmu misc data low
-    sc_signal<int>          r_mmu_word_hi;          // mmu mmu misc data hight
+    ///////////////////////////////
+    // Software visible REGISTERS
+    ///////////////////////////////
+    sc_signal<uint32_t>     r_mmu_ptpr;             	// page table pointer register
+    sc_signal<uint32_t>     r_mmu_mode;             	// mmu mode register
+    sc_signal<uint32_t>     r_mmu_word_lo;          	// mmu misc data low
+    sc_signal<uint32_t>     r_mmu_word_hi;          	// mmu misc data hight
+    sc_signal<uint32_t>     r_mmu_ibvar;      	    	// mmu bad instruction address
+    sc_signal<uint32_t>     r_mmu_dbvar;              	// mmu bad data address
+    sc_signal<uint32_t>     r_mmu_ietr;                 // mmu instruction error type
+    sc_signal<uint32_t>     r_mmu_detr;                 // mmu data error type
+    uint32_t	            r_mmu_params;		        // read-only
+    uint32_t	            r_mmu_release;		        // read_only
 
-    // DCACHE FSM REGISTERS
-    sc_signal<int>          r_dcache_fsm;               // state register
-    sc_signal<paddr_t>      r_dcache_paddr_save;        // physical address
-    sc_signal<data_t>       r_dcache_wdata_save;        // write data
-    sc_signal<data_t>       r_dcache_rdata_save;        // read data
-    sc_signal<type_t>       r_dcache_type_save;         // access type
-    sc_signal<be_t>         r_dcache_be_save;           // byte enable
-    sc_signal<bool>         r_dcache_cached_save;       // used by the write buffer
-    sc_signal<paddr_t>      r_dcache_tlb_paddr;         // physical address of tlb miss
-    sc_signal<bool>         r_dcache_dirty_save;        // used for TLB dirty bit update
-    sc_signal<size_t>       r_dcache_tlb_set_save;      // used for TLB dirty bit update
-    sc_signal<size_t>       r_dcache_tlb_way_save;      // used for TLB dirty bit update
-    sc_signal<vaddr_t>      r_dcache_id1_save;          // used by the PT1 bypass
-    sc_signal<paddr_t>      r_dcache_ptba_save;         // used by the PT1 bypass
-    sc_signal<bool>         r_dcache_ptba_ok;           // used by the PT1 bypass
-    sc_signal<data_t>       r_dcache_pte_update;        // used for page table update
-    sc_signal<tag_t>        r_dcache_ppn_save;          // used for speculative cache access
-    sc_signal<tag_t>        r_dcache_vpn_save;          // used for speculative cache access
-    sc_signal<bool>         r_dtlb_translation_valid;   // used for speculative address
-    sc_signal<bool>         r_dcache_buf_unc_valid;     // used for uncached read
-    sc_signal<bool>         r_dcache_hit_p_save;        // used to save hit_p in case BIS
-
-    sc_signal<data_t>       r_dcache_error_type;        // software visible register
-    sc_signal<vaddr_t>      r_dcache_bad_vaddr;         // software visible register 
-
-    sc_signal<bool>         r_dcache_miss_req;          // used for cached read miss
-    sc_signal<bool>         r_dcache_unc_req;           // used for uncached read miss
-    sc_signal<bool>         r_dcache_write_req;         // used for write 
-    sc_signal<bool>         r_dcache_tlb_read_req;      // used for tlb ptba or pte read 
-    sc_signal<bool>         r_dcache_tlb_first_req;     // used for tlb ptba or pte read
-    sc_signal<bool>         r_dcache_tlb_ll_dirty_req;  // used for tlb dirty bit update
-    sc_signal<bool>         r_dcache_tlb_sc_dirty_req;  // used for tlb dirty bit update
-    sc_signal<bool>         r_dcache_tlb_ll_acc_req;    // used for tlb access bit update
-    sc_signal<bool>         r_dcache_tlb_sc_acc_req;    // used for tlb access bit update
-    sc_signal<bool>         r_dcache_tlb_ptba_read;     // used for tlb ptba read when write dirty bit 
-    sc_signal<bool>         r_dcache_xtn_req;           // used for xtn write for ICACHE
-    sc_signal<bool>         r_dcache_prefetch_req;      // used for xtn write prefetch
-
+    //////////////////////////////
     // ICACHE FSM REGISTERS
+    //////////////////////////////
     sc_signal<int>          r_icache_fsm;               // state register
-    sc_signal<paddr_t>      r_icache_paddr_save;        // physical address
-    sc_signal<vaddr_t>      r_icache_id1_save;          // used by the PT1 bypass
-    sc_signal<paddr_t>      r_icache_ptba_save;         // used by the PT1 bypass
-    sc_signal<bool>         r_icache_ptba_ok;           // used by the PT1 bypass
-    sc_signal<data_t>       r_icache_pte_update;        // used for page table update
-    sc_signal<tag_t>        r_icache_ppn_save;          // used for speculative cache access
-    sc_signal<tag_t>        r_icache_vpn_save;          // used for speculative cache access
-    sc_signal<bool>         r_itlb_translation_valid;   // used for speculative physical address
-    sc_signal<bool>         r_icache_buf_unc_valid;     // used for uncached read
-    sc_signal<vaddr_t>      r_icache_vaddr_req;         // software visible registers
+    sc_signal<paddr_t>      r_icache_vci_paddr;      	// physical address 
+    sc_signal<uint32_t>     r_icache_vaddr_save;        // virtual address 
 
-    sc_signal<data_t>       r_icache_error_type;        // software visible registers
-    sc_signal<vaddr_t>      r_icache_bad_vaddr;         // software visible registers
+    // icache miss handling
+    sc_signal<size_t>       r_icache_miss_way;		    // selected way for cache update
+    sc_signal<size_t>       r_icache_miss_set;		    // selected set for cache update 
+    sc_signal<size_t>       r_icache_miss_word;		    // word index (cache update)
+    sc_signal<bool>         r_icache_miss_inval;        // cc request match pending miss
 
-    sc_signal<bool>         r_icache_miss_req;          // used for cached read miss
-    sc_signal<bool>         r_icache_unc_req;           // used for uncached read miss
-    sc_signal<bool>         r_icache_tlb_read_req;      // used for tlb ptba or pte read
-    sc_signal<bool>         r_icache_tlb_first_req;     // used for tlb ptba or pte read
-    sc_signal<bool>         r_icache_tlb_ll_req;        // used for tlb access bit update
-    sc_signal<bool>         r_icache_tlb_sc_req;        // used for tlb access bit update
+    // icache flush handling
+    sc_signal<size_t>       r_icache_flush_count;	    // slot counter (cache flush)
 
+    // communication between ICACHE FSM and VCI_CMD FSM
+    sc_signal<bool>         r_icache_miss_req;          // cached read miss
+    sc_signal<bool>         r_icache_unc_req;           // uncached read miss
+
+    // communication between ICACHE FSM and DCACHE FSM
+    sc_signal<bool>	        r_icache_tlb_miss_req;      // set icache/reset dcache
+    sc_signal<bool>         r_icache_tlb_rsp_error;     // itlb miss response error
+
+    ///////////////////////////////
+    // DCACHE FSM REGISTERS
+    ///////////////////////////////
+    sc_signal<int>          r_dcache_fsm;               // state register
+    // registers written in P0 stage (used in P1 stage)
+    sc_signal<bool>         r_dcache_p0_valid;		    // P1 pipe stage to be executed
+    sc_signal<uint32_t>     r_dcache_p0_vaddr;          // virtual address (from proc)
+    sc_signal<uint32_t>     r_dcache_p0_wdata;          // write data (from proc)
+    sc_signal<vci_be_t>     r_dcache_p0_be;             // byte enable (from proc)
+    sc_signal<paddr_t>      r_dcache_p0_paddr;          // physical address 
+    sc_signal<bool>         r_dcache_p0_cacheable;	    // address cacheable 
+    // registers written in P1 stage (used in P2 stage)
+    sc_signal<bool>         r_dcache_p1_valid;		    // P2 pipe stage to be executed
+    sc_signal<uint32_t>     r_dcache_p1_wdata;          // write data (from proc)
+    sc_signal<vci_be_t>     r_dcache_p1_be;             // byte enable (from proc)
+    sc_signal<paddr_t>      r_dcache_p1_paddr;          // physical address 
+    sc_signal<size_t>       r_dcache_p1_cache_way;	    // selected way (from dcache) 
+    sc_signal<size_t>       r_dcache_p1_cache_set;	    // selected set (from dcache)    
+    sc_signal<size_t>       r_dcache_p1_cache_word;	    // selected word (from dcache)    
+    // registers used by the Dirty bit sub-fsm
+    sc_signal<paddr_t>      r_dcache_dirty_paddr;       // PTE physical address 
+    sc_signal<size_t>       r_dcache_dirty_way;	        // way in dcache
+    sc_signal<size_t>       r_dcache_dirty_set;	        // set in dcache
+    sc_signal<size_t>       r_dcache_dirty_word;	    // word in dcache
+
+    // communication between DCACHE FSM and VCI_CMD FSM
+    sc_signal<paddr_t>      r_dcache_vci_paddr;		    // physical address for VCI 
+    sc_signal<bool>         r_dcache_vci_miss_req;      // read miss request
+    sc_signal<bool>         r_dcache_vci_unc_req;       // uncacheable read request
+    sc_signal<bool>         r_dcache_vci_unc_be;        // uncacheable read byte enable
+    sc_signal<bool>         r_dcache_vci_sc_req;        // atomic write request
+    sc_signal<uint32_t>     r_dcache_vci_sc_old;        // previous data (atomic write)
+    sc_signal<uint32_t>     r_dcache_vci_sc_new;        // new data (atomic write)
+
+    // register used for XTN inval
+    sc_signal<size_t>       r_dcache_xtn_way;		    // selected way (from dcache) 
+    sc_signal<size_t>       r_dcache_xtn_set;		    // selected set (from dcache)    
+
+    // write buffer state extension
+    sc_signal<bool>         r_dcache_pending_unc_write; // pending uncacheable write
+
+    // handling dcache miss
+    sc_signal<int>	        r_dcache_miss_type;		    // depending on the requester
+    sc_signal<size_t>       r_dcache_miss_word;		    // word index for cache update
+    sc_signal<size_t>       r_dcache_miss_way;		    // selected way for cache update
+    sc_signal<size_t>       r_dcache_miss_set;		    // selected set for cache update
+
+    // dcache flush handling
+    sc_signal<size_t>       r_dcache_flush_count;	    // slot counter for cache flush
+
+    // used by the TLB miss sub-fsm
+    sc_signal<uint32_t>     r_dcache_tlb_vaddr;		    // virtual address for a tlb miss
+    sc_signal<bool>         r_dcache_tlb_ins;		    // target tlb (itlb if true)
+    sc_signal<paddr_t>      r_dcache_tlb_paddr;		    // physical address of pte
+    sc_signal<uint32_t>     r_dcache_tlb_pte_flags;	    // pte1 or first word of pte2
+    sc_signal<uint32_t>     r_dcache_tlb_pte_ppn;	    // second word of pte2
+    sc_signal<size_t>       r_dcache_tlb_cache_way;	    // selected way in dcache 
+    sc_signal<size_t>       r_dcache_tlb_cache_set;	    // selected set in dcache 
+    sc_signal<size_t>       r_dcache_tlb_cache_word;	// selected word in dcache
+    sc_signal<size_t>       r_dcache_tlb_way;		    // selected way in tlb    
+    sc_signal<size_t>       r_dcache_tlb_set;		    // selected set in tlb    
+
+    // LL reservation handling
+    sc_signal<bool>         r_dcache_ll_valid;		    // valid LL reservation
+    sc_signal<uint32_t>     r_dcache_ll_data;		    // LL reserved data
+    sc_signal<paddr_t>      r_dcache_ll_vaddr;		    // LL reserved address 
+                            
+    // communication between DCACHE FSM and ICACHE FSM
+    sc_signal<bool>         r_dcache_xtn_req;           // xtn request 
+    sc_signal<int>          r_dcache_xtn_opcode;        // xtn request type
+
+    ///////////////////////////////////
     // VCI_CMD FSM REGISTERS
+    ///////////////////////////////////
     sc_signal<int>          r_vci_cmd_fsm;
-    sc_signal<size_t>       r_vci_cmd_min;       
-    sc_signal<size_t>       r_vci_cmd_max;       
-    sc_signal<size_t>       r_vci_cmd_cpt;     
+    sc_signal<size_t>       r_vci_cmd_min;      	    // used for write bursts 
+    sc_signal<size_t>       r_vci_cmd_max;      	    // used for write bursts 
+    sc_signal<size_t>       r_vci_cmd_cpt;    		    // used for write bursts 
+    sc_signal<bool>         r_vci_cmd_imiss_prio;	    // round-robin imiss / dmiss
 
+    ///////////////////////////////////
     // VCI_RSP FSM REGISTERS
+    ///////////////////////////////////
     sc_signal<int>          r_vci_rsp_fsm;
     sc_signal<size_t>       r_vci_rsp_cpt;
     sc_signal<bool>         r_vci_rsp_ins_error;
     sc_signal<bool>         r_vci_rsp_data_error;
+    GenericFifo<uint32_t>   r_vci_rsp_fifo_icache;	    // response FIFO to ICACHE FSM
+    GenericFifo<uint32_t>   r_vci_rsp_fifo_dcache;	    // response FIFO to DCACHE FSM
 
-    data_t                  *r_icache_miss_buf;    
-    data_t                  *r_dcache_miss_buf;  
+    //////////////////////////////////////////////////////////////////////////////////
+    // processor, write buffer, caches , TLBs 
+    //////////////////////////////////////////////////////////////////////////////////
+    iss_t                       r_iss;   
+    MultiWriteBuffer<paddr_t>	r_wbuf;
+    GenericCache<paddr_t>   	r_icache;
+    GenericCache<paddr_t>    	r_dcache;
+    GenericTlb<paddr_t>       	r_itlb;
+    GenericTlb<paddr_t>     	r_dtlb;
 
-    WriteBuffer<paddr_t>     r_wbuf;
-    GenericCache<paddr_t>    r_icache;
-    GenericCache<paddr_t>    r_dcache;
+    //////////////////////////////////////////////////////////////////////////////////
+    // debug registers
+    //////////////////////////////////////////////////////////////////////////////////
+    uint32_t r_cpt_stop_simulation;         // frozen cycles counter
+    bool     r_debug_icache_previous_hit;   // previous hit for monitored icache line
+    bool     r_debug_dcache_previous_hit;   // previous hit for monitored dcache line
+    bool     r_debug_active;                // detailed debug activated
 
-    // Activity counters
-    uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
-    uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
-    uint32_t m_cpt_dcache_dir_read;         // DCACHE DIR READ
-    uint32_t m_cpt_dcache_dir_write;        // DCACHE DIR WRITE
+    ///////////////////////////////////////////////////////////////////////////////////
+    // Activity Counters
+    ///////////////////////////////////////////////////////////////////////////////////
 
-    uint32_t m_cpt_icache_data_read;        // ICACHE DATA READ
-    uint32_t m_cpt_icache_data_write;       // ICACHE DATA WRITE
-    uint32_t m_cpt_icache_dir_read;         // ICACHE DIR READ
-    uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
+    // Caches access (for power consumption)
+    uint32_t r_cpt_dcache_read;             // DCACHE read access
+    uint32_t r_cpt_dcache_write;            // DCACHE write access
+    uint32_t r_cpt_icache_read;             // ICACHE read access
+    uint32_t r_cpt_icache_write;            // ICACHE write access
 
-    uint32_t m_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
-    uint32_t m_cpt_total_cycles;	        // total number of cycles 
+    // TLBs access (for power consumption)
+    uint32_t r_cpt_dtlb_read;               // DTLB read access
+    uint32_t r_cpt_dtlb_write;              // DTLB write access
+    uint32_t r_cpt_itlb_read;               // ITLB read access
+    uint32_t r_cpt_itlb_write;              // ITLB write access
 
-    // Cache activity counters
-    uint32_t m_cpt_read;                    // total number of read data
-    uint32_t m_cpt_write;                   // total number of write data
-    uint32_t m_cpt_data_miss;               // number of read miss
-    uint32_t m_cpt_ins_miss;                // number of instruction miss
-    uint32_t m_cpt_unc_read;                // number of read uncached
-    uint32_t m_cpt_write_cached;            // number of cached write
-    uint32_t m_cpt_ins_read;                // number of instruction read    
+    // WBUF access (for power consumtion)
+    uint32_t r_cpt_wbuf_read;               // WBUF read access
+    uint32_t r_cpt_wbuf_write;              // WBUF write access
 
-    uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer of cache         
-    uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss of cache
-    uint32_t m_cost_unc_read_frz;           // number of frozen cycles related to uncached read of cache
-    uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss of cache
+    // general
+    uint32_t r_pc_previous;                 // previous pc value
+    uint32_t r_cpt_exec_ins;                // number of executed instructions 
+    uint32_t r_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
+    uint32_t r_cpt_total_cycles;	        // total number of cycles
 
-    uint32_t m_cpt_imiss_transaction;       // number of VCI instruction miss transactions
-    uint32_t m_cpt_dmiss_transaction;       // number of VCI data miss transactions
-    uint32_t m_cpt_unc_transaction;         // number of VCI uncached read transactions
-    uint32_t m_cpt_write_transaction;       // number of VCI write transactions
-    uint32_t m_cpt_icache_unc_transaction;  // number of VCI instruction uncached transactions
+    // Other ICACHE FSM activity counters
+    uint32_t r_cpt_ins;                     // number of requested instructions 
+    uint32_t r_cpt_ins_uncacheable;         // number of uncachable instructions
+    uint32_t r_cpt_icache_miss;             // number of ICACHE miss
+    uint32_t r_cpt_icache_spec_miss;        // number of ICACHE speculative miss
+    uint32_t r_cpt_itlb_miss;               // number of ITLB miss
+    uint32_t r_cpt_itlb_miss_bypass;        // number of ITLB miss & bypass
 
-    uint32_t m_cost_imiss_transaction;      // cumulated duration for VCI IMISS transactions
-    uint32_t m_cost_dmiss_transaction;      // cumulated duration for VCI DMISS transactions
-    uint32_t m_cost_unc_transaction;        // cumulated duration for VCI UNC transactions
-    uint32_t m_cost_write_transaction;      // cumulated duration for VCI WRITE transactions
-    uint32_t m_cost_icache_unc_transaction; // cumulated duration for VCI IUNC transactions
-    uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
+    // Other DCACHE FSM activity counters
+    uint32_t r_cpt_read;                    // number of READ instructions
+    uint32_t r_cpt_read_uncacheable;        // number of READ uncacheable instructions
+    uint32_t r_cpt_write;                   // number of WRITE instructions
+    uint32_t r_cpt_write_uncacheable;       // number of WRITE uncacheable instructions
+    uint32_t r_cpt_write_cached;            // number of WRITE & cache hit instructions
+    uint32_t r_cpt_sc;                      // number of SC instructions
+    uint32_t r_cpt_ll;                      // number of LL instructions
+    uint32_t r_cpt_dcache_miss;             // number of DCACHE miss
+    uint32_t r_cpt_dcache_spec_miss;        // number of DCACHE speculative miss
+    uint32_t r_cpt_dirty_bit_updt;          // number of dirty bit updt
+    uint32_t r_cpt_access_bit_updt;         // number of access bit updt
+    uint32_t r_cpt_dtlb_miss;               // number of DTLB miss
+    uint32_t r_cpt_dtlb_miss_bypass;        // number of DTLB miss & bypass
+    
+    // costs (processor frozen)
+    uint32_t r_cost_icache_miss_frz;        // frozen cycles caused by ICACHE miss
+    uint32_t r_cost_dcache_miss_frz;        // frozen cycles caused by DCACHE miss
+    uint32_t r_cost_iunc_frz;               // frozen cycles caused by IUNC 
+    uint32_t r_cost_dunc_frz;               // frozen cycles caused by DUNC
+    uint32_t r_cost_itlb_miss_frz;          // frozen cycles caused by ITLB miss
+    uint32_t r_cost_dtlb_miss_frz;          // frozen cycles caused by DTLB miss
+    uint32_t r_cost_dirty_bit_updt_frz;     // frozen cycles caused by dirty bit updt
+    uint32_t r_cost_access_bit_updt_frz;    // frozen cycles caused by access bit updt
+    uint32_t r_cost_wbuf_full_frz;          // frozen cycles caused by wbuf full 
+    uint32_t r_cost_sc_frz;                 // frozen cycles caused by data sc 
+    uint32_t r_cost_unc_write_frz;          // frozen cycles caused by unc write
 
-    // TLB activity counters
-    uint32_t m_cpt_ins_tlb_read;            // number of instruction tlb read
-    uint32_t m_cpt_ins_tlb_miss;            // number of instruction tlb miss
-    uint32_t m_cpt_ins_tlb_update_acc;      // number of instruction tlb update acc
-    uint32_t m_cpt_data_tlb_read;           // number of data tlb read
-    uint32_t m_cpt_data_tlb_miss;           // number of data tlb miss
-    uint32_t m_cpt_data_tlb_update_acc;     // number of data tlb update acc
-    uint32_t m_cpt_data_tlb_update_dirty;   // number of data tlb update dirty
-    uint32_t m_cpt_ctxt_sw;                 // number of context switch
+    // VCI transactions
+    uint32_t r_cpt_imiss_transaction;       // number of VCI IMISS transactions
+    uint32_t r_cpt_dmiss_transaction;       // number of VCI DMISS transactions
+    uint32_t r_cpt_iunc_transaction;        // number of VCI IUNC transactions
+    uint32_t r_cpt_dunc_transaction;        // number of VCI DUNC transactions
+    uint32_t r_cpt_sc_transaction;          // number of VCI SC transactions
+    uint32_t r_cpt_write_transaction;       // number of VCI WRITE transactions
+    uint32_t r_length_write_transaction;    // cumulated length for VCI WRITE 
 
-    uint32_t m_cost_ins_tlb_miss_frz;          // number of frozen cycles related to instruction tlb miss
-    uint32_t m_cost_data_tlb_miss_frz;         // number of frozen cycles related to data tlb miss
-    uint32_t m_cost_ins_tlb_update_acc_frz;    // number of frozen cycles related to instruction tlb update acc
-    uint32_t m_cost_data_tlb_update_acc_frz;   // number of frozen cycles related to data tlb update acc
-    uint32_t m_cost_data_tlb_update_dirty_frz; // number of frozen cycles related to data tlb update dirty
-    uint32_t m_cost_ctxt_sw_frz;               // number of frozen cycles related to context switch 
+    // FSM activity counters
+    uint32_t r_cpt_fsm_icache     [64];
+    uint32_t r_cpt_fsm_dcache     [64];
+    uint32_t r_cpt_fsm_cmd        [64];
+    uint32_t r_cpt_fsm_rsp        [64];
 
-    uint32_t m_cpt_itlbmiss_transaction;       // number of itlb miss transactions
-    uint32_t m_cpt_itlb_ll_transaction;        // number of itlb ll acc transactions
-    uint32_t m_cpt_itlb_sc_transaction;        // number of itlb sc acc transactions
-    uint32_t m_cpt_dtlbmiss_transaction;       // number of dtlb miss transactions
-    uint32_t m_cpt_dtlb_ll_transaction;        // number of dtlb ll acc transactions
-    uint32_t m_cpt_dtlb_sc_transaction;        // number of dtlb sc acc transactions
-    uint32_t m_cpt_dtlb_ll_dirty_transaction;  // number of dtlb ll dirty transactions
-    uint32_t m_cpt_dtlb_sc_dirty_transaction;  // number of dtlb sc dirty transactions
-
-    uint32_t m_cost_itlbmiss_transaction;     // cumulated duration for VCI instruction TLB miss transactions
-    uint32_t m_cost_itlb_ll_transaction;      // cumulated duration for VCI instruction TLB ll acc transactions
-    uint32_t m_cost_itlb_sc_transaction;      // cumulated duration for VCI instruction TLB sc acc transactions
-    uint32_t m_cost_dtlbmiss_transaction;     // cumulated duration for VCI data TLB miss transactions
-    uint32_t m_cost_dtlb_ll_transaction;      // cumulated duration for VCI data TLB ll acc transactions
-    uint32_t m_cost_dtlb_sc_transaction;      // cumulated duration for VCI data TLB sc acc transactions
-    uint32_t m_cost_dtlb_ll_dirty_transaction;// cumulated duration for VCI data TLB ll dirty transactions
-    uint32_t m_cost_dtlb_sc_dirty_transaction;// cumulated duration for VCI data TLB sc dirty transactions
 
 protected:
-    SC_HAS_PROCESS(VciVCacheWrapper);
+    SC_HAS_PROCESS(VciVcacheWrapper);
 
 public:
-    VciVCacheWrapper(
+    VciVcacheWrapper(
         sc_module_name insname,
-        int proc_id,
-        const soclib::common::MappingTable &mt,
-        const soclib::common::IntTab &initiator_index,
-        size_t itlb_ways,
-        size_t itlb_sets,
-        size_t dtlb_ways,
-        size_t dtlb_sets,
-        size_t icache_ways,
-        size_t icache_sets,
-        size_t icache_words,
-        size_t dcache_ways,
-        size_t dcache_sets,
-        size_t dcache_words,
-        size_t write_buf_size );
+        int procid,
+        const soclib::common::MappingTable &mtp,
+        const soclib::common::IntTab &srcid,
+        size_t   tlb_ways,
+        size_t   tlb_sets,
+        size_t   icache_ways,
+        size_t   icache_sets,
+        size_t   icache_words,
+        size_t   dcache_ways,
+        size_t   dcache_sets,
+        size_t   dcache_words,
+        size_t   wbuf_nlines, 
+        size_t   wbuf_nwords, 
+        uint32_t max_frozen_cycles,
+        uint32_t debug_start_cycle,
+        bool     debug_ok);
 
-    ~VciVCacheWrapper();
+    ~VciVcacheWrapper();
 
     void print_cpi();
     void print_stats();
+    void print_trace(size_t mode = 0);
+    void cache_monitor(paddr_t addr);
+    inline void iss_set_debug_mask(uint v) {
+	r_iss.set_debug_mask(v);
+    }
 
 private:
     void transition();
@@ -412,7 +498,7 @@ private:
 
 }}
 
-#endif /* SOCLIB_CABA_VCI_VCACHE_WRAPPER_H */
+#endif /* SOCLIB_CABA_VCI_CC_VCACHE_WRAPPER_V4_H */
 
 // Local Variables:
 // tab-width: 4
@@ -422,4 +508,7 @@ private:
 // End:
 
 // vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=4:softtabstop=4
+
+
+
 
