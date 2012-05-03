@@ -35,23 +35,25 @@
 //    contains one single flit. 
 //    The response packet length is defined by the PLEN field.
 //    The zero value for the PLEN field is not supported.
-//    An ERROR response packets contain one single flit,
+//    An error response packets contain one single flit,
 //  - WRITE burst command packets at consecutive addresses are supported.
 //    The zero value for the PLEN field is not supported.
 //    Write response packets contain always one single flit.
-//  - The LL & SC command packets are supported, but the packet
-//    must contain one single flit.
+//  - Regarding LL/SC instructions, it supports both the classical
+//    semantic (one flit SC instruction / registration of LL reservation
+//    in a linked_buffer) and the Compare&Swap semantic for the SC 
+//    (when the VCI SC command contains 2 flits : old value / new value).
 //  The RAM latency is a parameter, that can have a zero value.
 ////////////////////////////////////////////////////////////////////////
 //  Implementation note: This component does not contain any FIFO,
 //  and is controlled by a single FSM.
 //  The latency counter is decremented in the IDLE state.
 //  The VCI command is analysed and checked in the CMD_GET state.
-//  - For read, ll or sc commands, the command is acknowledged in
+//  - For read or ll commands, the command is acknowledged in
 //  the CMD_STATE. It is executed and the response is sent in the
-//  RSP_READ, RSP_LL or RSP_SC states. 
-//  - For write commands, the command is acknowledged in the CMD_STATE,
-//  or in the CMD_WRITE & CMD_ERROR states in case of bursts.
+//  RSP_READ, RSP_LL states. 
+//  - For write or sc commands, the command is acknowledged in the 
+//  CMD_STATE, or in the CMD_WRITE & CMD_ERROR states in case of bursts.
 //  The command is executed in the CMD_WRITE state, or in the RSP_WRITE
 //  state for the last flit of a burst. The response packet is sent
 //  in the RSP_WRITE state.
@@ -224,11 +226,13 @@ tmpl(void)::print_trace()
                                 "CMD_GET",
                                 "CMD_WRITE",
                                 "CMD_ERROR",
+                                "CMD_CAS",
                                 "RSP_READ",
                                 "RSP_WRITE",
                                 "RSP_LL",
                                 "RSP_SC",
-                                "RSP_ERROR" };
+                                "RSP_ERROR", 
+                                "RSP_CAS" };
     std::cout << "Simple_ram " << name() 
               << " : state = " << state_str[r_fsm_state] 
               << " / latency_count = " << r_latency_count 
@@ -314,20 +318,28 @@ std::cout << " fsm_state = " << r_fsm_state
             }
             else if ( p_vci.cmd.read() == vci_param::CMD_STORE_COND )
             {
-                r_fsm_state = FSM_RSP_SC;
-                assert( p_vci.eop.read() && "VCI sc command packets should be one flit");
+                if ( p_vci.eop.read() )     // One flit => classical SC
+                {
+                    r_fsm_state = FSM_RSP_SC;
+                }
+                else                        // Two flits => Compare & Swap
+                {
+                    r_fsm_state = FSM_CMD_CAS;
+                }
             }
             else if ( p_vci.cmd.read() == vci_param::CMD_LOCKED_READ )
             {
                 r_fsm_state = FSM_RSP_LL;
-                assert( p_vci.eop.read() && "VCI ll command packets should be one flit");
+                assert( p_vci.eop.read() && 
+                        "a VCI ll command packets should be one flit");
             }
         }
         break;
     }
     case FSM_CMD_WRITE:
     {
-        assert( write (r_seg_index, r_address , r_wdata, r_be ) && "out of bounds access in a write burst" );
+        assert( write (r_seg_index, r_address , r_wdata, r_be ) && 
+                "out of bounds access in a write burst" );
         if ( p_vci.cmdval.read() ) 
         {
             vci_addr_t next_address = r_address.read() + (vci_addr_t)vci_param::B;
@@ -347,9 +359,10 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
-    case FSM_RSP_WRITE:
+    case FSM_RSP_WRITE: // send response for a write (after receiving last flit) 
     {
-        assert( write (r_seg_index, r_address , r_wdata, r_be ) && "out of bounds access in a write burst" );
+        assert( write (r_seg_index, r_address , r_wdata, r_be ) && 
+                "out of bounds access in a write burst" );
         if( p_vci.rspack.read() )
         { 
             if( m_latency )	r_fsm_state = FSM_IDLE;
@@ -357,7 +370,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
-    case FSM_RSP_READ:
+    case FSM_RSP_READ:  // send one response word in a read burst
     {
         if ( p_vci.rspack.read() )
         {
@@ -371,7 +384,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
-    case FSM_CMD_ERROR:
+    case FSM_CMD_ERROR: // waits lat flit of a VCI CMD erroneous packet 
     {
         if ( p_vci.cmdval.read() && p_vci.eop.read() )
         {
@@ -379,7 +392,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
-    case FSM_RSP_ERROR:
+    case FSM_RSP_ERROR: // send a response error
     {
         if ( p_vci.rspack.read() ) 
         {
@@ -388,7 +401,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
-    case FSM_RSP_LL:
+    case FSM_RSP_LL:    // register the LL, and send the response
     {
         if ( p_vci.rspack.read() ) 
         {   
@@ -398,7 +411,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
-    case FSM_RSP_SC:
+    case FSM_RSP_SC:    // write if SC success, and send the response
     {
         if ( p_vci.rspack.read() ) 
         {    
@@ -407,6 +420,32 @@ std::cout << "next      = " << next_address << std::endl;
                 r_llsc_buf.accessDone(r_address.read());
                 write (r_seg_index, r_address , r_wdata, r_be);
             }
+            if( m_latency )	r_fsm_state = FSM_IDLE;
+            else           	r_fsm_state = FSM_CMD_GET;
+        }
+        break;
+    }
+    case FSM_CMD_CAS:   // consume the second VCI CMD flit, and compare old/new
+    {
+        if ( p_vci.cmdval.read() )
+        {
+            assert( p_vci.eop.read() && 
+                    "a VCI SC (CAS) command cannot contain more than two flits" );
+            vci_data_t   rdata;
+            assert( read(r_seg_index, r_address, rdata) && 
+                    "out of bounds access in a read burst" );
+            r_cmp_success = ( rdata == r_wdata.read() );
+            r_wdata       = p_vci.wdata.read();
+            r_be          = 0xF;
+            r_fsm_state = FSM_RSP_CAS;
+        }
+        break;
+    }
+    case FSM_RSP_CAS:   // Write if success, and send the response to the CAS
+    {
+        if ( p_vci.rspack.read() ) 
+        {    
+            if ( r_cmp_success.read() ) write (r_seg_index, r_address , r_wdata, r_be);
             if( m_latency )	r_fsm_state = FSM_IDLE;
             else           	r_fsm_state = FSM_CMD_GET;
         }
@@ -435,6 +474,7 @@ tmpl(void)::genMoore()
     case FSM_CMD_GET:
     case FSM_CMD_WRITE:
     case FSM_CMD_ERROR:
+    case FSM_CMD_CAS:
     {
         p_vci.cmdack  = true;
         p_vci.rspval  = false;
@@ -461,7 +501,8 @@ tmpl(void)::genMoore()
     case FSM_RSP_READ:
     {
         vci_data_t   rdata;
-        assert( read(r_seg_index, r_address, rdata) && "out of bounds access in a read burst" );
+        assert( read(r_seg_index, r_address, rdata) && 
+                "out of bounds access in a read burst" );
         p_vci.cmdack = false;
         p_vci.rspval = true;
         p_vci.rdata  = rdata;
@@ -499,6 +540,19 @@ tmpl(void)::genMoore()
         p_vci.rpktid = r_pktid.read();
         p_vci.rerror = vci_param::ERR_NORMAL;
         p_vci.reop   = true;
+        break;
+    }
+    case FSM_RSP_CAS:
+    {
+        p_vci.cmdack  = false;
+        p_vci.rspval  = true;
+        if ( r_cmp_success.read() ) p_vci.rdata = vci_param::STORE_COND_ATOMIC;
+        else                        p_vci.rdata = vci_param::STORE_COND_NOT_ATOMIC;
+        p_vci.rsrcid  = r_srcid.read();
+        p_vci.rtrdid  = r_trdid.read();
+        p_vci.rpktid  = r_pktid.read();
+        p_vci.rerror  = vci_param::ERR_NORMAL;
+        p_vci.reop    = true;
         break;
     }
     case FSM_RSP_ERROR:

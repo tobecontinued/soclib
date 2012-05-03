@@ -65,11 +65,13 @@ public:
         FSM_CMD_GET,
         FSM_CMD_WRITE,
         FSM_CMD_ERROR,
+        FSM_CMD_CAS,
         FSM_RSP_READ,
         FSM_RSP_WRITE,
         FSM_RSP_LL,
         FSM_RSP_SC,
         FSM_RSP_ERROR,
+        FSM_RSP_CAS,
     };
 
 private:
@@ -95,6 +97,7 @@ private:
     sc_signal<vci_trdid_t>                  r_trdid;
     sc_signal<vci_pktid_t>                  r_pktid;
     sc_signal<bool>                         r_contig;
+    sc_signal<bool>                         r_cmp_success;
     sc_signal<uint32_t>                     r_latency_count;
 
     size_t                                  m_nbseg;
