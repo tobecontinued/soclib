@@ -256,6 +256,7 @@ std::cout << " fsm_state = " << r_fsm_state
 #endif
 
     switch ( r_fsm_state ) {
+    /////////////
     case FSM_IDLE: 	// unreachable state if m_latency == 0 
     {
         if ( p_vci.cmdval.read() ) 
@@ -272,7 +273,8 @@ std::cout << " fsm_state = " << r_fsm_state
 	}				   
 	break;
     }
-    case FSM_CMD_GET:
+    //////////////// 
+    case FSM_CMD_GET:   // decode the VCI command
     {
         if ( !p_vci.cmdval.read() ) break;
 
@@ -297,8 +299,8 @@ std::cout << " fsm_state = " << r_fsm_state
 
         if ( error ) 
         {
-            if( p_vci.eop.read() )	r_fsm_state = FSM_RSP_ERROR;
-            else			r_fsm_state = FSM_CMD_ERROR;
+            if( p_vci.eop.read() )  r_fsm_state = FSM_RSP_ERROR;
+            else                    r_fsm_state = FSM_CMD_ERROR;
         }
         else
         {
@@ -307,7 +309,7 @@ std::cout << " fsm_state = " << r_fsm_state
             {
                 r_contig     = p_vci.contig.read();
                 if( p_vci.eop.read() )  r_fsm_state = FSM_RSP_WRITE;
-                else 			r_fsm_state = FSM_CMD_WRITE;
+                else 			        r_fsm_state = FSM_CMD_WRITE;
             }
             else if ( p_vci.cmd.read() == vci_param::CMD_READ )
             {
@@ -336,19 +338,14 @@ std::cout << " fsm_state = " << r_fsm_state
         }
         break;
     }
-    case FSM_CMD_WRITE:
+    ///////////////////
+    case FSM_CMD_WRITE:     // write data but no response (in case of write burst)
     {
         assert( write (r_seg_index, r_address , r_wdata, r_be ) && 
                 "out of bounds access in a write burst" );
         if ( p_vci.cmdval.read() ) 
         {
             vci_addr_t next_address = r_address.read() + (vci_addr_t)vci_param::B;
-/*
-std::cout << std::hex << "contig    = " << r_contig.read() << std::endl;
-std::cout << "r_address = " << r_address.read() << std::endl;
-std::cout << "p_address = " << p_vci.address.read() << std::endl;
-std::cout << "next      = " << next_address << std::endl;
-*/
             assert( ((r_contig && (next_address == p_vci.address.read())) ||
                      (!r_contig && (r_address.read() == p_vci.address.read()))) &&
                         "addresses must be contiguous or constant in a VCI write burst" );
@@ -359,17 +356,19 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
+    ///////////////////
     case FSM_RSP_WRITE: // send response for a write (after receiving last flit) 
     {
-        assert( write (r_seg_index, r_address , r_wdata, r_be ) && 
-                "out of bounds access in a write burst" );
         if( p_vci.rspack.read() )
         { 
+            assert( write (r_seg_index, r_address , r_wdata, r_be ) && 
+                    "out of bounds access in a write burst" );
             if( m_latency )	r_fsm_state = FSM_IDLE;
             else           	r_fsm_state = FSM_CMD_GET;
         }
         break;
     }
+    //////////////////
     case FSM_RSP_READ:  // send one response word in a read burst
     {
         if ( p_vci.rspack.read() )
@@ -384,6 +383,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
+    ///////////////////
     case FSM_CMD_ERROR: // waits lat flit of a VCI CMD erroneous packet 
     {
         if ( p_vci.cmdval.read() && p_vci.eop.read() )
@@ -392,6 +392,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
+    //////////////////
     case FSM_RSP_ERROR: // send a response error
     {
         if ( p_vci.rspack.read() ) 
@@ -401,6 +402,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
+    ////////////////
     case FSM_RSP_LL:    // register the LL, and send the response
     {
         if ( p_vci.rspack.read() ) 
@@ -411,6 +413,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
+    ////////////////
     case FSM_RSP_SC:    // write if SC success, and send the response
     {
         if ( p_vci.rspack.read() ) 
@@ -425,6 +428,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
+    /////////////////
     case FSM_CMD_CAS:   // consume the second VCI CMD flit, and compare old/new
     {
         if ( p_vci.cmdval.read() )
@@ -441,6 +445,7 @@ std::cout << "next      = " << next_address << std::endl;
         }
         break;
     }
+    /////////////////
     case FSM_RSP_CAS:   // Write if success, and send the response to the CAS
     {
         if ( p_vci.rspack.read() ) 
