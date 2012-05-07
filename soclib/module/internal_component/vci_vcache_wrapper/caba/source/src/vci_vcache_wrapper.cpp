@@ -341,6 +341,10 @@ tmpl(void)::print_trace(size_t mode)
     if (r_dcache_p1_valid.read() ) std::cout << " | P2_WRITE";
     std::cout << std::endl;
 
+    if ( r_dcache_ll_valid.read() ) std::cout << "  Registered LL : address = " 
+                                              << r_dcache_ll_vaddr.read()
+                                              << " / data = "
+                                              << r_dcache_ll_data.read() << std::endl;
     if(mode & 0x01)
     {
         r_wbuf.printTrace((mode>>1)&1);
@@ -1835,16 +1839,6 @@ if ( r_debug_active )
                             r_dcache_fsm          = DCACHE_UNC_WAIT;
                         }
 
-                        // makes reservation in case of LL
-                        if ( m_dreq.type == iss_t::DATA_LL )
-                        {
-#if INSTRUMENTATION
-r_cpt_read++;
-#endif
-                            r_dcache_ll_valid = true;
-                            r_dcache_ll_data  = cache_rdata;
-                            r_dcache_ll_vaddr = m_dreq.addr;
-                        }
                         r_dcache_p0_valid = false;
                     } // end READ or LL
 
@@ -2676,9 +2670,11 @@ if ( r_debug_active )
     }
     ///////////////////////
     case DCACHE_XTN_SWITCH:		// Both itlb and dtlb must be flushed
+                                        // LL reservation must be invalidated...
     {
         if ( not r_dcache_xtn_req.read() )
         {
+            r_dcache_ll_valid = false;
             r_dtlb.flush();
             r_dcache_fsm = DCACHE_IDLE;
             m_drsp.valid = true;
@@ -3075,8 +3071,8 @@ r_cost_dunc_frz++;
             r_dcache_fsm         = DCACHE_IDLE;
             break;
         }
-	else if ( r_vci_rsp_fifo_dcache.rok() )     // data available
-	{
+	    else if ( r_vci_rsp_fifo_dcache.rok() )     // data available
+	    {
             vci_rsp_fifo_dcache_get = true;     
             r_dcache_fsm            = DCACHE_IDLE;
 
@@ -3090,6 +3086,13 @@ r_cpt_read_uncacheable++;
 #endif
 	        m_drsp.valid          = true;
 	        m_drsp.rdata          = r_vci_rsp_fifo_dcache.read();
+				// makes reservation in case of LL
+				if ( m_dreq.type == iss_t::DATA_LL )
+				{
+					r_dcache_ll_valid = true;
+					r_dcache_ll_data  = r_vci_rsp_fifo_dcache.read();
+					r_dcache_ll_vaddr = m_dreq.addr;
+				}
             }
 
 #if DEBUG_DCACHE
@@ -3101,7 +3104,7 @@ if ( r_debug_active )
 }
 #endif
   
-	}	
+	    }	
         break;
     }
     ////////////////////
@@ -3293,7 +3296,7 @@ if ( r_debug_active )
         r_cpt_stop_simulation++;	// used for debug
         if ( r_cpt_stop_simulation > m_max_frozen_cycles )
         {
-            std::cout << std::dec << "\nERROR in CC_VCACHE_WRAPPER " << name() << std::endl
+            std::cout << std::dec << "\nERROR in VCI_VCACHE_WRAPPER " << name() << std::endl
                       << " stop at cycle " << r_cpt_total_cycles
                       << " frozen since cycle " << r_cpt_total_cycles - m_max_frozen_cycles 
                       << std::endl;
