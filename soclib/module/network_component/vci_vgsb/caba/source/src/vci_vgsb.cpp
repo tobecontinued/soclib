@@ -109,14 +109,17 @@ void VciVgsb<vci_param>::print_trace()
 template<typename vci_param>
 void VciVgsb<vci_param>::transition()
 {
-    if (p_resetn == false) {
+    if (p_resetn == false) 
+    {
         r_fsm = FSM_IDLE;
         r_initiator_index = 0;
         r_target_index = 0;
-	r_cycle = 0;
-        for(size_t i=0 ; i<(m_nb_initiator) ; i++) {
-            for(size_t j=0 ; j<(m_nb_target) ; j++) { 
-		r_vci_counter[i][j] = 0; 
+	    r_cycle = 0;
+        for(size_t i=0 ; i<(m_nb_initiator) ; i++) 
+        {
+            for(size_t j=0 ; j<(m_nb_target) ; j++) 
+            { 
+		        r_vci_counter[i][j] = 0; 
             }
         }
         return;
@@ -132,10 +135,14 @@ std::cout << "vgsb tgt = " << r_target_index.read() << std::endl;
     r_cycle = r_cycle + 1;
 
     switch( r_fsm.read() ) {
+    //////////////
 	case FSM_IDLE:
-        for (size_t x = 0 ; x < m_nb_initiator ; x++) {
+    {
+        for (size_t x = 0 ; x < m_nb_initiator ; x++) 
+        {
             size_t ini = ( x + 1 + r_initiator_index.read() ) % m_nb_initiator;
-            if( p_to_initiator[ini].cmdval.read() ) {
+            if( p_to_initiator[ini].cmdval.read() ) 
+            {
                 size_t tgt = m_routing_table[p_to_initiator[ini].address.read()];
                 r_initiator_index = ini;
                 r_target_index = tgt;
@@ -144,32 +151,41 @@ std::cout << "vgsb tgt = " << r_target_index.read() << std::endl;
                 break;
             } // end if
         } // end for
-        break;
-
+    }
+    break;
+    /////////////
 	case FSM_CMD:
+    {
         if ( p_to_initiator[r_initiator_index.read()].eop.read() && 
              p_to_initiator[r_initiator_index.read()].cmdval.read() && 
              p_to_target[r_target_index.read()].cmdack.read() ) r_fsm = FSM_RSP;  
-        break;
-
+    }
+    break;
+    /////////////
 	case FSM_RSP:
+    {
         if ( p_to_target[r_target_index.read()].reop && 
              p_to_target[r_target_index.read()].rspval && 
-             p_to_initiator[r_initiator_index.read()].rspack ) { 
-	     for (size_t x = 0 ; x < m_nb_initiator ; x++) {
+             p_to_initiator[r_initiator_index.read()].rspack ) 
+        { 
+            bool found = false; 
+	        for (size_t x = 0 ; (x < m_nb_initiator) and not found ; x++) 
+            {
                 size_t ini = ( x + 1 + r_initiator_index.read() ) % m_nb_initiator;
-                if( p_to_initiator[ini].cmdval.read() ) {
+                if( p_to_initiator[ini].cmdval.read() ) 
+                {
                     size_t tgt = m_routing_table[p_to_initiator[ini].address.read()];
                     r_initiator_index = ini;
                     r_target_index = tgt;
                     r_vci_counter[ini][tgt] = r_vci_counter[ini][tgt].read() + 1;
                     r_fsm = FSM_CMD;
-                    break;
+                    found = true;
                 } // end if
             } // end for
-            r_fsm = FSM_IDLE;
+            if ( not found ) r_fsm = FSM_IDLE;
         } // end if
         break;
+    }
     } // end switch FSM
 
 } // end transition()
