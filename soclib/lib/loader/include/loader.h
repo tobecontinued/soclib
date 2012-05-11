@@ -74,8 +74,11 @@ public:
             const std::string &f5 = "",
             const std::string &f6 = ""
         );
-	void load( void *buffer, uintptr_t address, size_t length ) const;
 	~Loader();
+
+	virtual void load( void *buffer, uintptr_t address, size_t length );
+
+	void match_load( void *buffer, uintptr_t address, size_t length );//used by the VLoader to load a specific section
 
     void print( std::ostream &o ) const;
 
@@ -87,6 +90,7 @@ public:
         el.print(o);
         return o;
     }
+    
 };
 
 }}

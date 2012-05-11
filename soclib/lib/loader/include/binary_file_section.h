@@ -62,6 +62,11 @@ public:
     bool load_overlap_in_buffer( void *buffer,
                                  uintptr_t buffer_base_address,
                                  uintptr_t buffer_size ) const;
+    
+    bool load_match_in_buffer( void *buffer,
+                                 uintptr_t buffer_base_address,
+                                 uintptr_t buffer_size ) const;
+
     void get_data( void *buffer ) const;
 
     bool has_data() const;

@@ -39,9 +39,10 @@
 #include "vci_framebuffer.h"
 #include "vci_simple_ram.h"
 #include "alloc_elems.h"
+#include "vloader.h"
 
 #define PSEG_ROM_BASE    0xBFC00000
-#define PSEG_ROM_SIZE    0x00008000    // ROM de boot: 32 Kbytes
+#define PSEG_ROM_SIZE    0x00010000    // ROM de boot: 32 Kbytes
 
 #define PSEG_RAU_BASE    0x00000000    
 #define PSEG_RAU_SIZE    0x01000000    // RAM user: 16 Mbytes
@@ -102,8 +103,11 @@ int _main(int argc, char *argv[])
 
     char    sys_name[256]     = "soft/sys.bin";
     char    hello_name[256]   = "soft/hello.bin";
+    char    router_name[256]   = "soft/router.bin";
+    char    pgcd_name[256]   = "soft/pgcd.bin";
     char    fifo_name[256]    = "soft/fifo.bin";
-    char    map_name[256]     = "soft/map.bin@0xBFC04000:D";
+
+    char    map_name[256]     = "soft/map.bin@0xBFC0C000:D";
 
     size_t  n_cycles        = 1000000000;       // simulated cycles
     size_t  tlb_ways        = 8;                // Itlb & Dtlb parameters
@@ -195,6 +199,10 @@ int _main(int argc, char *argv[])
             {
                 ram_latency = atoi(argv[n+1]);
             }
+            else if( (strcmp(argv[n],"-MAP") == 0) && (n+1<argc) )
+            {
+                strcpy(map_name, argv[n+1]);
+            }
             else
             {
                 std::cout << "   Arguments on the command line are (key,value)" << std::endl;
@@ -222,6 +230,7 @@ int _main(int argc, char *argv[])
     std::cout << "    dcache_words = " << dcache_words << std::endl;
     std::cout << "    dcache_ways  = " << dcache_ways << std::endl;
     std::cout << "    ram_latency  = " << ram_latency << std::endl;
+    std::cout << "    map_name  = " << map_name << std::endl;
     if(trace_ok) std::cout << "    trace_file   = " << trace_filename << std::endl;
     if(stats_ok) std::cout << "    stats_file   = " << stats_filename << std::endl;
     if(ioc_ok)   std::cout << "    ioc_file     = " << ioc_filename << std::endl;
@@ -337,9 +346,7 @@ int _main(int argc, char *argv[])
     // - IRQ[31] : dma7  (processor 7)
     ////////////////////////////////////////////////////////////////////////////
 
-    Loader sys_loader(sys_name);
-    Loader app_loader(fifo_name, hello_name);
-    Loader boot_loader(sys_name, map_name);
+    VLoader vloader(map_name);
 
     // GdbServer<Mips32ElIss>::set_loader(&loader);
 
@@ -368,7 +375,7 @@ std::cout << std::endl << "proc(s) constructed" << std::endl;
     rau = new VciSimpleRam<vci_param>("rau",
             IntTab(RAU_TGTID),
             maptab,
-            app_loader,
+            vloader,
             ram_latency);
 
 std::cout << "rau constructed" << std::endl;
@@ -377,7 +384,7 @@ std::cout << "rau constructed" << std::endl;
     rak = new VciSimpleRam<vci_param>("rak",
             IntTab(RAK_TGTID),
             maptab,
-            sys_loader,
+            vloader,
             ram_latency);
 
 std::cout << "rak constructed" << std::endl;
@@ -386,7 +393,7 @@ std::cout << "rak constructed" << std::endl;
     rom = new VciSimpleRam<vci_param>("rom",
             IntTab(ROM_TGTID),
             maptab,
-            boot_loader);
+            vloader);
 
 std::cout << "rom constructed" << std::endl;
 
@@ -608,8 +615,18 @@ std::cout << "bus connected" << std::endl;
         {
             std::cout << "***************** cycle " << std::dec << n
                 << " ***********************" << std::endl;
+
+            proc[0]->print_trace();
+            signal_vci_init_proc[0].print_trace("signal_proc_0");
+            proc[1]->print_trace();
+            signal_vci_init_proc[1].print_trace("signal_proc_1");
+#if 0
             proc[2]->print_trace();
             signal_vci_init_proc[2].print_trace("signal_proc_2");
+            proc[3]->print_trace();
+            signal_vci_init_proc[3].print_trace("signal_proc_3");
+#endif
+
             bus->print_trace();
             rom->print_trace();
             signal_vci_tgt_rom.print_trace("signal_rom");

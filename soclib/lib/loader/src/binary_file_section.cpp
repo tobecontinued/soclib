@@ -204,6 +204,38 @@ bool BinaryFileSection::load_overlap_in_buffer(
 	return true;
 }
 
+bool BinaryFileSection::load_match_in_buffer( 
+    void *buffer,
+    uintptr_t buffer_base_address,
+    size_t buffer_size ) const
+{
+	if ( !m_data )
+		return false;
+
+    size_t copy_size;
+    if ( buffer_base_address != m_lma )
+        return false;
+
+    if ( buffer_size > m_data->size() )
+        copy_size = m_data->size();
+    else
+        copy_size = buffer_size ;
+
+    if ( copy_size == 0 )
+        return false;
+
+    if ( m_data )
+        m_data->check();
+
+    if ( copy_size < m_data->size() )
+        std::cout
+            << "Warning, loading only " << (m_data->size() - copy_size)
+            << " bytes from " << *this
+            << std::endl;
+    memcpy( buffer, m_data->data(), copy_size );
+	return true;
+}
+
 void BinaryFileSection::print( std::ostream &o ) const
 {
 	o << "<Section "

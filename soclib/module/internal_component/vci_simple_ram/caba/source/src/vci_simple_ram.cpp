@@ -75,7 +75,7 @@ tmpl(/**/)::VciSimpleRam(
     sc_module_name insname,
     const soclib::common::IntTab index,
     const soclib::common::MappingTable &mt,
-    const soclib::common::Loader &loader,
+    soclib::common::Loader &loader,
     const uint32_t latency)
 	: caba::BaseModule(insname),
       m_loader(loader),

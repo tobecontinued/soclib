@@ -85,7 +85,7 @@ const char *xram_fsm_str[] = {
       p_resetn("p_resetn"),
       p_vci_tgt("p_vci_tgt"),
 
-      m_loader(new common::Loader(loader)),
+      m_loader(&loader),
       m_nwords(line_cache_words),
       m_segment(mt.getSegment(target_index)),
       m_xram_nlines(ram_byte_size / (line_cache_words*4) ),

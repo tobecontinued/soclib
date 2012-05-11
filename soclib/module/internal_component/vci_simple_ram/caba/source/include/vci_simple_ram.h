@@ -76,7 +76,7 @@ public:
 
 private:
 
-    soclib::common::Loader                  m_loader;
+    soclib::common::Loader&                  m_loader;
     std::list<soclib::common::Segment>      m_seglist;
     const uint32_t			                m_latency;
 
@@ -122,7 +122,7 @@ public:
     VciSimpleRam(sc_module_name insname,
                  const soclib::common::IntTab index,
                  const soclib::common::MappingTable &mt,
-                 const soclib::common::Loader &loader,
+                 soclib::common::Loader &loader,
                  const uint32_t latency = 0);
 
     ~VciSimpleRam();
