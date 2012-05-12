@@ -88,7 +88,7 @@ template<typename vci_param> class VciXRam
 	sc_module_name name,
 	const soclib::common::MappingTable &mt,
         const soclib::common::IntTab &target_index,
-	const soclib::common::Loader &loader,
+	soclib::common::Loader &loader,
 	const size_t mem_cache_words,
 	const size_t ram_byte_size,
 	const size_t read_latency

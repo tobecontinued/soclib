@@ -74,7 +74,7 @@ const char *xram_fsm_str[] = {
 	sc_module_name name,
 	const soclib::common::MappingTable &mt,
 	const soclib::common::IntTab &target_index,
-	const common::Loader &loader,
+	common::Loader &loader,
 	const size_t line_cache_words,
 	const size_t ram_byte_size,
 	const size_t read_latency
@@ -128,7 +128,6 @@ const char *xram_fsm_str[] = {
   {
     for(size_t i=0; i<m_nwords ; i++) delete [] m_ram_data[i];
     delete [] m_ram_data;
-    delete m_loader;
     delete [] r_xram_wdata;
   }
 
