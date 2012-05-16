@@ -267,6 +267,7 @@ private:
     bool        m_ireq_pending;         // True while an instruction request is pending
     bool        m_dreq_pending;         // True while a data request is pending
     bool        m_hazard;               // true if there is a hazard between previous load/store and the current instruction
+    bool        m_wait_irq;             // processor in idle state, waiting for irq
 
     bool        m_exception;            // true if a trap is generated
     trap_t      m_exception_cause;      // explain which trap it is

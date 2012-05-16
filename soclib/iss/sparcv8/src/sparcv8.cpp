@@ -64,6 +64,7 @@ tmpl(void)::reset()
     m_cancel_next_ins           = false;
     m_ins_delay                 = 0;
     m_hazard                    = false;
+    m_wait_irq                  = false;
     m_exception                 = false;
     m_exception_cause           = TP_RESET;
 
@@ -100,7 +101,7 @@ tmpl(void)::reset()
 tmpl(void)::getRequests( struct InstructionRequest &ireq,
                          struct DataRequest &dreq ) const
 {
-    ireq.valid = true;
+    ireq.valid = !m_wait_irq;
     ireq.addr = r_pc;
     ireq.mode = r_psr.s ? MODE_KERNEL : MODE_USER;
 
@@ -126,7 +127,7 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 
     {
         // Is there a response ?
-        m_ireq_pending = !irsp.valid;
+        m_ireq_pending = !irsp.valid && !m_wait_irq;
         if (irsp.valid) {
             // Swap instruction bytes (sparc is big endian), and store it for later use
             m_ins.ins = soclib::endian::uint32_swap(irsp.instruction);
@@ -243,8 +244,11 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 #endif
     }
 
+    if (m_wait_irq)
+        return ncycle;
+
     // Execute currrent instruction
-      run();
+    run();
 
     // Let's handle the case where the current instruction caused an exception
     {
@@ -312,6 +316,7 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
   handle_except:
 
     {
+      m_wait_irq = false;
       m_exception = false;
 
       // Double exception ?

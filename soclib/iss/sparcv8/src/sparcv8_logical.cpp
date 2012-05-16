@@ -611,6 +611,11 @@ tmpl(void)::op_wrasr()
         ENSURE_PRIVILEDGED_MODE();
         break;
 
+    case 19: // enter irq wait state
+        ENSURE_PRIVILEDGED_MODE();
+        m_wait_irq = true;
+        break;
+
     default :
         m_exception = true;
         m_exception_cause = TP_ILLEGAL_INSTRUCTION;
