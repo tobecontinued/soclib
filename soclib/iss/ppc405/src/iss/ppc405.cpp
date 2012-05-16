@@ -132,7 +132,7 @@ uint32_t Ppc405Iss::executeNCycles(
     if ( drsp.valid )
         setDataResponse(drsp);
 
-    if ( ( m_microcode_func == NULL && !irsp.valid )
+    if ( ( m_microcode_func == NULL && !irsp.valid && !r_msr.we)
          || ( m_dreq.valid && ! drsp.valid ) ) {
         if ( m_ins_delay ) {
             if ( m_ins_delay > ncycle )
@@ -154,8 +154,7 @@ uint32_t Ppc405Iss::executeNCycles(
 
     r_tb++;
 
-    if ( ! r_msr.we )
-        m_next_pc = r_pc+4;
+    m_next_pc = r_pc+4;
 
     m_exception = EXCEPT_NONE;
 
@@ -185,25 +184,36 @@ uint32_t Ppc405Iss::executeNCycles(
 #ifdef SOCLIB_MODULE_DEBUG
     dump();
 #endif
+
     if ( m_microcode_func ) {
         m_next_pc = r_pc;
         (this->*m_microcode_func)();
-    } else if ( ! r_msr.we )
+
+    } else {
+
+        // IRQs
+        if ( irq_bit_field&(1<<IRQ_CRITICAL_INPUT) ) {
+            r_dcr[DCR_CRITICAL] = true;
+            if ( r_msr.ce ) {
+                m_next_pc = r_pc;
+                m_exception = EXCEPT_CRITICAL;
+                goto handle_except;
+            }
+        }
+
+        if ( irq_bit_field&(1<<IRQ_EXTERNAL) ) {
+            r_dcr[DCR_EXTERNAL] = true;
+            if ( r_msr.ee ) {
+                m_next_pc = r_pc;
+                m_exception = EXCEPT_EXTERNAL;
+                goto handle_except;
+            }
+        }
+
+        if ( r_msr.we )
+            return 1;
+
         run();
-
-    if ( m_exception == EXCEPT_NONE && m_microcode_func )
-        goto no_except;
-
-    // IRQs
-    if ( irq_bit_field&(1<<IRQ_EXTERNAL) ) {
-        r_dcr[DCR_EXTERNAL] = true;
-        if ( m_exception == EXCEPT_NONE && saved_ee )
-            m_exception = EXCEPT_EXTERNAL;
-    }
-    if ( irq_bit_field&(1<<IRQ_CRITICAL_INPUT) ) {
-        r_dcr[DCR_CRITICAL] = true;
-        if ( m_exception == EXCEPT_NONE && saved_ce )
-            m_exception = EXCEPT_CRITICAL;
     }
 
     if (m_exception == EXCEPT_NONE)
