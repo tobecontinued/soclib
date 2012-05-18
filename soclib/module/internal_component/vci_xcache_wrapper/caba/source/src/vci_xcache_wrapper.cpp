@@ -1248,7 +1248,8 @@ tmpl(void)::genMoore()
             p_vci.wdata = 0;
             p_vci.be  = r_dcache_be_save.read();
             p_vci.cmd = vci_param::CMD_READ;
-            p_vci.plen = 4;
+            p_vci.plen = soclib::common::fls(r_dcache_be_save.read())
+                         - ffs(r_dcache_be_save.read()) + 1;
             break;
         case iss_t::DATA_LL:
             p_vci.wdata = 0;
@@ -1281,7 +1282,9 @@ tmpl(void)::genMoore()
         p_vci.address = r_wbuf.getAddress(r_vci_cmd_cpt);
         p_vci.wdata   = r_wbuf.getData(r_vci_cmd_cpt);
         p_vci.be      = r_wbuf.getBe(r_vci_cmd_cpt);
-        p_vci.plen    = (r_vci_cmd_max - r_vci_cmd_min + 1)<<2;
+        p_vci.plen    = soclib::common::fls(r_wbuf.getBe(r_vci_cmd_max))
+                        - ffs(r_wbuf.getBe(r_vci_cmd_min))
+                        + (r_vci_cmd_max - r_vci_cmd_min) * vci_param::B + 1;
         p_vci.cmd     = vci_param::CMD_WRITE;
         p_vci.trdid   = 0;
         p_vci.pktid   = 0;
