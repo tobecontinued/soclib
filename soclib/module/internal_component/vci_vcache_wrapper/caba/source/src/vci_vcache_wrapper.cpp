@@ -25,6 +25,7 @@
  * SOCLIB_LGPL_HEADER_END
  */
 
+#include "arithmetics.h"
 #include "../include/vci_vcache_wrapper.h"
 
 #define INSTRUMENTATION		1
@@ -1398,12 +1399,12 @@ r_cpt_write_uncacheable++;
         else if ( m_dreq.valid )
         {
             // dcache access using speculative PPN only if pipe-line empty
-            paddr_t	cache_paddr;
-            size_t	cache_way;
-            size_t	cache_set;
-            size_t	cache_word;
-            uint32_t	cache_rdata;
-            bool	cache_hit;
+            paddr_t		cache_paddr;
+            size_t		cache_way;
+            size_t		cache_set;
+            size_t		cache_word;
+            uint32_t	cache_rdata = 0;
+            bool		cache_hit;
 
             if ( (r_mmu_mode.read() & DATA_CACHE_MASK) and 	// cache activated
                  not r_dcache_p0_valid.read() and 
@@ -3748,7 +3749,8 @@ tmpl(void)::genMoore()
         p_vci.wdata   = 0;
         p_vci.be      = r_dcache_vci_unc_be.read();
         p_vci.trdid   = TYPE_DATA_UNC;
-        p_vci.plen    = 4;
+        p_vci.plen    = soclib::common::fls(r_dcache_vci_unc_be.read())
+                        - ffs(r_dcache_vci_unc_be.read()) + 1;
         p_vci.cmd     = vci_param::CMD_READ;
         p_vci.eop     = true;
         break;
@@ -3759,7 +3761,9 @@ tmpl(void)::genMoore()
         p_vci.wdata   = r_wbuf.getData(r_vci_cmd_cpt.read());
         p_vci.be      = r_wbuf.getBe(r_vci_cmd_cpt.read());
         p_vci.trdid   = r_wbuf.getIndex() + (1<<(vci_param::T-1));
-        p_vci.plen    = (r_vci_cmd_max.read() - r_vci_cmd_min.read() + 1) << 2;
+        p_vci.plen    = soclib::common::fls(r_wbuf.getBe(r_vci_cmd_max))
+                        - ffs(r_wbuf.getBe(r_vci_cmd_min)) + 1
+                        + (r_vci_cmd_max - r_vci_cmd_min) * vci_param::B;
         p_vci.cmd     = vci_param::CMD_WRITE;
         p_vci.eop     = (r_vci_cmd_cpt.read() == r_vci_cmd_max.read());
         break;
@@ -3770,7 +3774,7 @@ tmpl(void)::genMoore()
         if ( r_vci_cmd_cpt.read() == 0 ) p_vci.wdata = r_dcache_vci_sc_old.read();
         else                             p_vci.wdata = r_dcache_vci_sc_new.read();
         p_vci.be      = 0xF;
-        p_vci.trdid   = TYPE_DATA_UNC;  
+        p_vci.trdid   = TYPE_DATA_UNC;  // SC transactions are handled as UNC by the RSP_FSM
         p_vci.plen    = 8;
         p_vci.cmd     = vci_param::CMD_STORE_COND;
         p_vci.eop     = (r_vci_cmd_cpt.read() == 1);
