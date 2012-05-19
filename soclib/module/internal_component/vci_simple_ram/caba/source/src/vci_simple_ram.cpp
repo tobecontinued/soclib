@@ -30,14 +30,17 @@
 //  This component is a multi-segments Ram controller.
 //
 //  It supports only the compact VCI packets defined 
-//  in the VCI advanced specification:
+//  in the VCI advanced specification.
+//  The VCI adress should be multiple of vci_paramm::B.
 //  - A READ burst command packet (such a cache line request) 
 //    contains one single flit. 
 //    The response packet length is defined by the PLEN field.
-//    The zero value for the PLEN field is not supported.
-//    An error response packets contain one single flit,
+//    The zero value for the PLEN field is not supported, 
+//    but there is no other restrictions on the pakek length,
+//    and unaligned packet bursts are supported: the number 
+//    of response flits is computed from both BE and PLEN fields.
+//    An error response packets contain one single flit.
 //  - WRITE burst command packets at consecutive addresses are supported.
-//    The zero value for the PLEN field is not supported.
 //    Write response packets contain always one single flit.
 //  - Regarding LL/SC instructions, it supports both the classical
 //    semantic (one flit SC instruction / registration of LL reservation
@@ -61,6 +64,7 @@
 
 #include <iostream>
 #include <cstring>
+#include "arithmetics.h"
 #include "vci_simple_ram.h"
 
 namespace soclib {
@@ -280,6 +284,13 @@ std::cout << " fsm_state = " << r_fsm_state
 
         vci_addr_t   address = p_vci.address.read();
         bool         error = true;
+
+        assert( ((address & 0x3) == 0) and
+                 "VCI_SIMPLE_RAM ERROR : The VCI ADDRESS must be multiple of 4");
+
+        assert( (p_vci.plen.read() != 0) and
+                 "VCI_SIMPLE_RAM ERROR : The VCI PLLEN should be != 0");
+
         for ( size_t index = 0 ; index<m_nbseg  && error ; ++index) 
         {
             if ( (m_seg[index]->contains(address)) &&
@@ -304,27 +315,33 @@ std::cout << " fsm_state = " << r_fsm_state
         }
         else
         {
-            assert( (p_vci.plen.read() != 0) && "VCI command packets should have plen != 0");
             if ( p_vci.cmd.read() == vci_param::CMD_WRITE ) 
             {
+                // we don't use the PLEN field : response is always one flit
                 r_contig     = p_vci.contig.read();
                 if( p_vci.eop.read() )  r_fsm_state = FSM_RSP_WRITE;
                 else 			        r_fsm_state = FSM_CMD_WRITE;
             }
             else if ( p_vci.cmd.read() == vci_param::CMD_READ )
             {
-                r_flit_count = p_vci.plen.read()/vci_param::B;
-                r_contig     = p_vci.contig.read();
+                assert( p_vci.eop.read() and
+                        "VCI_SIMPLE_RAM ERROR : read command packets should be one flit");
+
+                // The number of response flits depends on PLEN and BE fields
+                // (ctz returns the number of trailing 0 in the BE field)
+                r_flit_count = ( p_vci.plen.read() +
+                                 soclib::common::ctz(p_vci.be.read()) + 
+                                 vci_param::B-1) / vci_param::B;
+                r_contig = p_vci.contig.read();
                 r_fsm_state = FSM_RSP_READ;
-                assert( p_vci.eop.read() && "VCI read command packets should be one flit");
             }
             else if ( p_vci.cmd.read() == vci_param::CMD_STORE_COND )
             {
-                if ( p_vci.eop.read() )     // One flit => classical SC
+                if ( p_vci.eop.read() )     // One flit command => classical SC
                 {
                     r_fsm_state = FSM_RSP_SC;
                 }
-                else                        // Two flits => Compare & Swap
+                else                        // Two flits command => Compare & Swap
                 {
                     r_fsm_state = FSM_CMD_CAS;
                 }
@@ -342,7 +359,8 @@ std::cout << " fsm_state = " << r_fsm_state
     case FSM_CMD_WRITE:     // write data but no response (in case of write burst)
     {
         assert( write (r_seg_index, r_address , r_wdata, r_be ) && 
-                "out of bounds access in a write burst" );
+                "VCI_SIMPLE_RAM ERROR : out of bounds access in a write burst" );
+
         if ( p_vci.cmdval.read() ) 
         {
             vci_addr_t next_address = r_address.read() + (vci_addr_t)vci_param::B;
