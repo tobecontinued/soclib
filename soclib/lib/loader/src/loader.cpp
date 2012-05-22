@@ -80,7 +80,7 @@ void Loader::memory_default(uint8_t value)
         << std::endl;
 }
 
-void Loader::load( void *buffer, uintptr_t address, size_t length)
+void Loader::load( void *buffer, uintptr_t address, size_t length) const
 {
     if ( m_memory_init_value != DONT_TOUCH )
         memset(buffer, m_memory_init_value, length);

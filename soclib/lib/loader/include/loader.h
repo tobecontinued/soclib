@@ -76,7 +76,7 @@ public:
         );
 	~Loader();
 
-	virtual void load( void *buffer, uintptr_t address, size_t length );
+	virtual void load( void *buffer, uintptr_t address, size_t length ) const;
 
 	void match_load( void *buffer, uintptr_t address, size_t length );//used by the VLoader to load a specific section
 
