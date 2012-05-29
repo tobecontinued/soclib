@@ -37,17 +37,18 @@ namespace soclib { namespace common {
 
 class VLoader;
 
-class FileVAddress
+class VSeg
 {
     friend class PSegHandler;
     friend class PSeg;
     friend class VLoader;
 
-    std::string m_file;
     std::string m_name;
+    std::string m_file;
     uintptr_t m_vma;   //The address of the section to load in the binary file.
-    uintptr_t m_lma;   //Physical address to which we load the seg (getted from the associated PSeg), setted by PSeg::AddFVA
+    uintptr_t m_lma;   //Physical address to which we load the seg (getted from the associated PSeg), setted by PSeg::add/addIdent.
     size_t m_length;
+    bool m_loadable;     // wether this is a loadable vseg ( code, data...)
 
 public:
     bool m_ident;//Indicate if the idententy mapping is activited. used by PSegHandler::makeIdent()
@@ -57,21 +58,22 @@ public:
     uintptr_t vma() const;
     uintptr_t lma() const;
     size_t length() const;
+    //void add( VObj& vobj );//add a VObj
 
     void print( std::ostream &o ) const;
-    friend std::ostream &operator<<( std::ostream &o, const FileVAddress &s )
+    friend std::ostream &operator<<( std::ostream &o, const VSeg &s )
     {
         s.print(o);
         return o;
     }
 
-    FileVAddress& operator=( const FileVAddress &ref );
+    VSeg& operator=( const VSeg &ref );
 
-    FileVAddress();
-    FileVAddress( const FileVAddress &ref );
-    FileVAddress(std::string& binaryName, std::string& name, uintptr_t vma, size_t length, bool ident);
+    VSeg();
+    VSeg( const VSeg &ref );
+    VSeg(std::string& binaryName, std::string& name, uintptr_t vma, size_t length, bool loadable, bool ident);
 
-    ~FileVAddress();
+    ~VSeg();
 };
 
 
@@ -81,13 +83,13 @@ class PSeg
     uintptr_t m_lma;
     size_t m_length;
 
-    uintptr_t m_pageLimit;// the end (m_lma + m_length)  address of the segment pageSize aligned 
-    uintptr_t m_nextLma;//next free base 
+    uintptr_t m_pageLimit;  //The end (m_lma + m_length)  address of the segment pageSize aligned 
+    uintptr_t m_nextLma;    //next free base 
     
-    void confNextLma(); //check that m_nextLma has a correct value: whithin the seg limits
+    void confNextLma();     //check that m_nextLma has a correct value: whithin the seg limits
 
 public:
-    std::vector<FileVAddress> m_fileVAddress;
+    std::vector<VSeg> m_vsegs;
     uintptr_t m_limit;// m_lma + m_length
 
 
@@ -103,12 +105,13 @@ public:
     void setLma( uintptr_t lma);
     void setLength(size_t length);
 
-    size_t pageAlign( size_t toAlign );
+    static size_t align( unsigned toAlign, unsigned alignPow2);
+    static size_t pageAlign( size_t toAlign );
     static void setPageSize(size_t pg);
     static size_t& pageSize();
 
-    void add( FileVAddress& fva );//add a FileVAddress
-    void addIdent( FileVAddress& fva );
+    void add( VSeg& vseg );//add a VSeg
+    void addIdent( VSeg& vseg );
 
     void setNextLma( uintptr_t nextLma);
     void incNextLma( size_t inc_next);

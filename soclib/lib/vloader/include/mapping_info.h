@@ -17,8 +17,8 @@
 // - mapping_pseg_t     pseg[psegs]         (MAPPING_PSEG_SIZE * psegs)
 // - mapping_vspace_t   vspace[vspaces]     (MAPPING_VSPACE_SIZE * vspaces)
 // - mapping_vseg_t     vseg[vsegs]         (MAPPING_VSEG_SIZE * vsegs)
+// - mapping_vseg_t     vobj[vsegs]         (MAPPING_VOBJ_SIZE * vsegs)
 // - mapping_task_t     task[tasks]         (MAPPING_TASK_SIZE * tasks)
-// - mapping_mwmr_t     mwmr[mwmrs]         (MAPPING_MWMR_SIZE * mwmrs)
 //
 // The number of clusters and the number of vspaces are defined in the header.
 // The number of psegs are defined in each cluster.
@@ -42,6 +42,7 @@
 #define MAPPING_CLUSTER_SIZE    sizeof(mapping_cluster_t)
 #define MAPPING_VSPACE_SIZE     sizeof(mapping_vspace_t)
 #define MAPPING_VSEG_SIZE	    sizeof(mapping_vseg_t)
+#define MAPPING_VOBJ_SIZE	    sizeof(mapping_vobj_t)
 #define MAPPING_PSEG_SIZE	    sizeof(mapping_pseg_t)
 #define MAPPING_TASK_SIZE	    sizeof(mapping_task_t)
 
@@ -53,6 +54,19 @@
 #define IN_MAPPING_SIGNATURE    0xDEADBEEF
 #define OUT_MAPPING_SIGNATURE   0xBABEF00D
 
+enum 
+{
+    ELF = 0,    //loadable code object
+    PTAB,       //page table 
+    SCHED,      //schedulers
+    PERI,       //hardware component
+    MWMR,       //MWMR channel
+    LOCK,       //Lock
+    BUFFER,     //Any "no intialiasation needed" objects (stacks...)
+    BARRIER     //Barrier
+};
+
+
 ///////////////////////////////
 typedef struct mapping_header_s
 {
@@ -62,10 +76,10 @@ typedef struct mapping_header_s
     unsigned int    ttys;           // number of TTY terminals 
 	unsigned int	globals;		// number of vsegs mapped in all vspaces
 	unsigned int	vspaces;		// number of virtual spaces
-	unsigned int	vsegs;  		// total number of virtual segments (for all vspaces
+	unsigned int	vsegs;  		// total number of virtual segments (for all vspaces)
+	unsigned int	vobjs;  		// total number of virtual memory objects (for all vspaces)
 	unsigned int	tasks;  		// total number of tasks (for all vspaces)
     char            name[32];       // mapping name
-    char            syspath[64];    // path for the system binary code ("sys.bin")
 } mapping_header_t;
 
 ////////////////////////////////
@@ -89,14 +103,14 @@ typedef struct mapping_pseg_s
 typedef struct mapping_vspace_s
 {
     char            name[32];       // virtual space name
-    char            binpath[64];    // pathname to the binary code ("app.bin")
+    unsigned int    funcs_offset;   // offset of the vobj containing the function entry table (relative to vobj_offset)
 	unsigned int	vsegs;		    // number of private virtual segments
+	unsigned int	vobjs;		    // number of vobjs channels
 	unsigned int	tasks;		    // number of tasks
-	unsigned int	mwmrs;		    // number of mwmr channels
 	unsigned int	ttys;		    // number of required TTY terminals
     unsigned int    vseg_offset;    // index of first vseg in vspace 
+    unsigned int    vobj_offset;    // index of first vobjs in vspace
     unsigned int    task_offset;    // index of first task in vspace
-    unsigned int    mwmr_offset;    // index of first mwmr in vspace
 } mapping_vspace_t;
 
 /////////////////////////////
@@ -109,7 +123,8 @@ typedef struct mapping_vseg_s
 	unsigned int    psegid;	        // physical segment index
 	unsigned char   mode;	        // C-X-W-U flags
     unsigned char   ident;          // identity mapping if non zero
-    unsigned char   mwmr;           // mwmr channel if non zero
+	unsigned int	vobjs;		    // number of vobjs channels
+    unsigned int    vobj_offset;    // index of first vobjs in vspace
     unsigned char   reserved;       // unused
 } mapping_vseg_t;
 
@@ -119,10 +134,22 @@ typedef struct mapping_task_s
 	char            name[32];       // task name (unique in vspace)
 	unsigned int	clusterid;	    // physical cluster index
 	unsigned int	proclocid;      // processor local index (inside cluster)
-    unsigned int    vseglocid;      // stack vseg index in vspace
+    unsigned int    vobjlocid;      // stack vobj index in vspace
     unsigned int    startid;        // index in start_vector (in seg_data)
     unsigned int    ttylocid;       // tty index (inside the vspace)
 } mapping_task_t;
+
+/////////////////////////////
+typedef struct mapping_vobj_s 
+{
+    char            name[32];       // vobj name (unique in a vspace)
+    char            binpath[64];    // path for the binary code ("*.bin")
+	unsigned int    type;           // type of vobj
+	unsigned int	length;         // size (bytes)
+	unsigned int	align;          // required alignement (logarithm of 2)
+	unsigned int	vaddr;          // virtual addresse of the vobj location (bytes)
+	unsigned int	paddr;          // physical addresse of the vobj location (bytes)
+} mapping_vobj_t;
 
 #endif
 

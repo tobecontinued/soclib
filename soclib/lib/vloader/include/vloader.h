@@ -54,12 +54,14 @@ class VLoader:public Loader//to override the virtual methode "load" defined in t
 {
     friend class Loader;
 
-    std::string m_reference; //xml reference: filename@addr:flag
-    std::string m_filename; //xml filename
-    uintptr_t m_mapAddr; //xml filename
-    void* m_data;
+    std::string m_path;         //map_info path name
+    std::string m_wd;           //map_info path to directory TODO: make the name defined in the map_info relative to this wd.
+    std::string m_simpleName;   //map_info filename TODO
+    void* m_data;               //map_info structure 
+    uintptr_t m_addr;           //map_info address (virtual)
+    size_t m_size;              //size of the structure
     PSegHandler m_psegh;
-    std::map<std::string, Loader> m_loaders;
+    mutable std::map<std::string, Loader> m_loaders;
 
     void* load_bin(std::string name);
 
@@ -68,7 +70,7 @@ public:
     VLoader( const std::string &name, const size_t pageSize = 4096);
     ~VLoader();
 
-	void load( void *buffer, uintptr_t address, size_t length );
+	void load( void *buffer, uintptr_t address, size_t length ) const;
 
     void print( std::ostream &o ) const;
 
@@ -84,9 +86,10 @@ public:
     mapping_pseg_t* get_pseg_base( mapping_header_t* header );
     mapping_vspace_t* get_vspace_base( mapping_header_t* header );
     mapping_vseg_t* get_vseg_base( mapping_header_t* header );
+    mapping_vobj_t* get_vobj_base( mapping_header_t* header );
     void print_mapping_info(void* desc);
-    void pseg_map( mapping_pseg_t* pseg) ;
-    void vseg_map( mapping_vseg_t* vseg , char * file) ;
+    void pseg_map( mapping_pseg_t* pseg);
+    void vseg_map( mapping_vseg_t* vseg);
     void buildMap(void* desc);
 
 };

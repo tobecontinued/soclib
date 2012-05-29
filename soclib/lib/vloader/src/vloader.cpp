@@ -40,52 +40,33 @@
 
 namespace soclib { namespace common {
 
+#define VLOADER_DEBUG
 
 
 VLoader::VLoader( const std::string &filename, const size_t pageSize)
 {
-    m_reference = filename;
-
-    std::string::size_type at = filename.find('@');
-    if ( at != std::string::npos )
-    {
-        std::string::size_type colon = filename.find(':', at+1);
-        if ( colon == std::string::npos )
-            throw soclib::exception::RunTimeError(std::string("Bad binary file ") + filename + 
-                                                    "The format must look like this: path_to_map_info@0XADD0000:FLAGS");
-        std::string fname = filename.substr(0, at);
-        std::string address = filename.substr(at+1, colon-at-1);
-        std::string flags = filename.substr(colon+1);
-        m_filename = fname;
-        uintptr_t addr;
-        std::istringstream( address ) >> std::hex >> addr;
-        m_mapAddr = addr;
-        //std::cout << std::hex << "map address: " << addr << std::endl;
-    }else
-    {
-        m_filename = filename;
-        m_mapAddr = 0;
-    }
-
+    m_path = filename;
+ 
     PSeg::setPageSize(pageSize);
 
-    void *map = load_bin(m_filename);
+    load_bin(m_path);
 #ifdef VLOADER_DEBUG
-    std::cout << "Binary filename = " << m_filename << std::endl;
-    print_mapping_info(map);
+    std::cout << "Binary filename = " << m_path << std::endl;
+    //print_mapping_info(m_data);
 #endif
 
-    buildMap(map);
+    buildMap(m_data);
     
 #ifdef VLOADER_DEBUG
     std::cout << "parsing done" << std::endl ;
 #endif
 
-    m_psegh.check();
-    
 #ifdef VLOADER_DEBUG
     std::cout << m_psegh << std::endl;
 #endif
+
+    m_psegh.check();
+    
 }
 
 void VLoader::print( std::ostream &o ) const
@@ -93,8 +74,10 @@ void VLoader::print( std::ostream &o ) const
     std::cout << m_psegh << std::endl;
 }
 
-void VLoader::load( void *buffer, uintptr_t address, size_t length )
+void VLoader::load( void *buffer, uintptr_t address, size_t length ) const
 {
+    Loader  loader;
+
     //TODO:  A memory init value choosed by the user ?
     memset(buffer, 0, length);
 
@@ -112,19 +95,28 @@ void VLoader::load( void *buffer, uintptr_t address, size_t length )
             << std::endl;
     
 
-    std::vector<FileVAddress>::const_iterator it ;
-    for(it = ps.m_fileVAddress.begin(); it < ps.m_fileVAddress.end(); it++)
+    std::vector<VSeg>::const_iterator it ;
+    for(it = ps.m_vsegs.begin(); it < ps.m_vsegs.end(); it++)
     {
+        bool local = false;
+
         /* Get a hand of the corresponding loader               */
         const std::string file = (*it).file();
-        Loader  loader = m_loaders[file];//prohibit the use of const for function
+        if(!file.compare(m_path))
+        {
+            local = true; //loading the local structure
+        }
+        else
+            loader = m_loaders[file];//prohibit the use of the const keyword for this function
+        //TODO assert that the loader really existe
         
         /* The offset of the appropriate physical address       */
         size_t offset = (*it).lma() - ps.lma();
+        size_t available_buf_size = length - offset;
 
         /* Load with (*it).m_vma() and the corresponding size  */
 #ifdef VLOADER_DEBUG
-        std::cout << "Loading: "*it << std::endl;
+        std::cout << "Loading: " << (*it) << std::endl;
 #endif
 
         assert(ps.lma() <= (*it).lma());
@@ -133,8 +125,16 @@ void VLoader::load( void *buffer, uintptr_t address, size_t length )
 	              << std::hex << std::noshowbase 
                   << std::setw (8) << std::setfill('0') 
                   << (*it).lma() << " || the virtual segment: ";
-        
-        loader.match_load(((char *)buffer + offset), (*it).vma(), length);
+        if(local)
+        {
+            size_t copy_size = (m_size < available_buf_size)? m_size : available_buf_size;
+            if ( copy_size > available_buf_size )
+               std::cout << "Warning, loading only " << copy_size
+                         << " bytes from " << m_path  << std::endl;
+            //TODO: the printing!
+            memcpy( ((char *)buffer + offset), m_data, copy_size );
+        }else
+            loader.match_load(((char *)buffer + offset), (*it).vma(), available_buf_size);
         std::cout << "(" << (*it).file() << ")" << std::endl;
     }
 
@@ -143,25 +143,23 @@ void VLoader::load( void *buffer, uintptr_t address, size_t length )
 void* VLoader::load_bin(std::string filename)
 {
     
-#ifdef VLOADER_DEBUG
-    std::cout  << "Trying to load the binary blob from file '" << m_filename << "'" << std::endl;
-#endif
+    std::cout  << "Trying to load the binary blob from file '" << m_path << "'" << std::endl;
 
-    std::ifstream input(m_filename.c_str(), std::ios_base::binary|std::ios_base::in);
+    std::ifstream input(m_path.c_str(), std::ios_base::binary|std::ios_base::in);
 
     if ( ! input.good() )
-        throw soclib::exception::RunTimeError(std::string("Can't open the file: ") + m_filename);
+        throw soclib::exception::RunTimeError(std::string("Can't open the file: ") + m_path);
 
     input.seekg( 0, std::ifstream::end );
-    size_t size = input.tellg();
+    m_size = input.tellg();
     input.seekg( 0, std::ifstream::beg );
 
-    //m_data = std::malloc(size);
-    m_data = new void*[size];
+    //m_data = new void*[m_size];
+    m_data = std::malloc(m_size);
     if ( !m_data )
-        throw soclib::exception::RunTimeError("failed malloc... No space");
+        throw soclib::exception::RunTimeError("malloc failed... No memory space");
 
-    input.read( (char*)m_data, size );
+    input.read( (char*)m_data, m_size );
     
     return m_data;
 }
@@ -202,6 +200,16 @@ mapping_vseg_t* VLoader::get_vseg_base( mapping_header_t* header )
                                   MAPPING_PSEG_SIZE*header->psegs +
                                   MAPPING_VSPACE_SIZE*header->vspaces);
 }
+/////////////////////////////////////////////////////////////////////////////
+mapping_vobj_t* VLoader::get_vobj_base( mapping_header_t* header )
+{
+    return   (mapping_vobj_t*)    ((char*)header +
+                                  MAPPING_HEADER_SIZE +
+                                  MAPPING_CLUSTER_SIZE*header->clusters +
+                                  MAPPING_PSEG_SIZE*header->psegs +
+                                  MAPPING_VSPACE_SIZE*header->vsegs +
+                                  MAPPING_VSPACE_SIZE*header->vspaces);
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // print the content of the mapping_info data structure 
@@ -224,8 +232,7 @@ void VLoader::print_mapping_info(void* desc)
              << " + vspaces = " << header->vspaces  << std::endl
              << " + globals = " << header->globals  << std::endl
              << " + vsegs = " << header->vsegs  << std::endl
-             << " + tasks = " << header->tasks  << std::endl
-             << " + syspath = " << header->syspath  << std::endl;
+             << " + tasks = " << header->tasks  << std::endl;
 
     // psegs
     for ( size_t pseg_id = 0 ; pseg_id < header->psegs ; pseg_id++ )
@@ -246,6 +253,7 @@ void VLoader::print_mapping_info(void* desc)
          << " + mode = " << (size_t)vseg[vseg_id].mode << std::endl 
          << " + ident = " << (bool)vseg[vseg_id].ident << std::endl 
          << " + psegname" << pseg[vseg[vseg_id].psegid].name << std::endl;
+        //TODO print vobjs
     }
 
 
@@ -254,10 +262,6 @@ void VLoader::print_mapping_info(void* desc)
     {
         std::cout << "***vspace: " << vspace_id << "***" << std::endl
          << " + name = " <<  vspace[vspace_id].name  << std::endl 
-         << " + binpath = " <<  vspace[vspace_id].binpath  << std::endl 
-         << " + vsegs = " <<  vspace[vspace_id].vsegs  << std::endl
-         << " + tasks = " <<  vspace[vspace_id].tasks  << std::endl
-         << " + mwmrs = " <<  vspace[vspace_id].mwmrs  << std::endl
          << " + ttys = " <<  vspace[vspace_id].ttys  << std::endl;
 
         for ( size_t vseg_id = vspace[vspace_id].vseg_offset ; 
@@ -272,6 +276,7 @@ void VLoader::print_mapping_info(void* desc)
              << " + mode = " <<  (size_t)vseg[vseg_id].mode  << std::endl
              << " + ident = " <<  (bool)vseg[vseg_id].ident  << std::endl
              << " + psegname = " << pseg[vseg[vseg_id].psegid].name  << std::endl << std::endl;
+        //TODO print vobjs
         }
 
     }
@@ -284,36 +289,92 @@ void VLoader::pseg_map( mapping_pseg_t* pseg)
     m_psegh.m_pSegs.push_back(PSeg(name, pseg->base, pseg->length));
 }
 
-
-
 ///////////////////////////////////////////////////////////////////////////
-void VLoader::vseg_map( mapping_vseg_t* vseg , char * file) 
+void VLoader::vseg_map( mapping_vseg_t* vseg) 
 {
-    FileVAddress     * vs = new FileVAddress;
 
-    
+    mapping_vobj_t*     vobj   = get_vobj_base( (mapping_header_t*) m_data ); 
+    PSeg *ps = &(m_psegh.get(vseg->psegid));// get physical segment pointer(PSegHandler::get)
+    size_t cur_vaddr;
+    size_t cur_paddr;
+    bool first = true;
+    bool aligned = false;
+
+    VSeg     * vs = new VSeg;
     std::string s(vseg->name);
     vs->m_name = s;
-    
-    vs->m_length = vseg->length;
-    
-    // get physical segment pointer
-    PSeg *ps = &(m_psegh.get(vseg->psegid));//PSegHandler::get
 
     vs->m_vma = vseg->vbase;
 
-    //in case we are handling the map_info vseg=> then the correcte file is m_filename
-    if(vs->m_vma == m_mapAddr)
-    {
-        //std::cout << "map address: " << m_mapAddr << std::endl;
-        vs->m_file = m_filename;
-        m_loaders[m_filename] = *(new Loader(m_reference));
-    }else
-    {
-        std::string f(file);
-        vs->m_file = f;
-    }
+    cur_vaddr = vseg->vbase;
+    cur_paddr = ps->nextLma();
     
+    vs->m_length = 0;
+    mapping_vobj_t* cur_vobj;
+
+    size_t simple_size = 0; //for debug
+    
+    for ( size_t vobj_id = vseg->vobj_offset ; vobj_id < (vseg->vobj_offset + vseg->vobjs) ; vobj_id++ )
+    {
+        cur_vobj = &vobj[vobj_id];
+
+        std::cout << "cur vobj("<< vobj_id <<"): " << cur_vobj->name << " (" <<cur_vobj->vaddr << ")" 
+                        << " size "<< cur_vobj->length << " type " <<  cur_vobj->type << std::endl;
+
+        if(cur_vobj->type == ELF)
+        {
+
+            if(!first) 
+                throw soclib::exception::RunTimeError(std::string("elf vobj type, must be placed first in a vseg"));
+
+            std::string f(cur_vobj->binpath);
+            size_t elf_size;
+            std::cout << f <<  " vs "<< m_path << ", vobj_id " <<  vobj_id << std::endl;
+            if(!f.compare(m_path))    //local blob: map_info
+                elf_size = this->m_size;       
+            else
+            { 
+                if(m_loaders.count(f) == 0 )
+                    m_loaders[f] = *(new Loader(f));
+
+                elf_size =  (m_loaders[f]).get_section_size(cur_vaddr);
+                assert((elf_size >0) and "ELF section empty ?");
+            }
+            cur_vobj->length = elf_size;//set the actual size
+            if(elf_size > cur_vobj->length)
+               std::cout << "Warning, specified elf type vobj ("<< cur_vobj->name  <<") size is "<< cur_vobj->length
+                         << ", the actual size is "  << elf_size  << std::endl;
+
+            vs->m_file = f;
+            vs->m_loadable = true;        
+        }
+        first = false;
+
+        if(cur_vobj->align)
+        {
+            cur_paddr = PSeg::align(cur_paddr, cur_vobj->align);
+            aligned = true;
+        }
+
+
+        cur_vaddr += cur_vobj->length;
+        cur_paddr += cur_vobj->length;
+        simple_size += cur_vobj->length;
+    }
+
+    assert((cur_vaddr >= vseg->vbase ));
+    assert((cur_paddr >= ps->nextLma() ));
+
+    //vs->m_length = PSeg::pageAlign(cur_vaddr - vseg->vbase); 
+    vs->m_length = (cur_paddr - ps->nextLma()); //pageAlign is done by the psegs
+
+    if(aligned)
+    {
+        std::cout << "vseg aligned:: base: " << std::hex << ps->nextLma() 
+            <<" to "<< std::hex << ps->nextLma()+vs->m_length<< " size " << std::dec << vs->m_length << std::endl;
+        std::cout << "simple vseg(same base) to "<< std::hex <<(ps->nextLma()+simple_size)  <<" size " << std::dec << simple_size << std::endl;
+    }
+     
     vs->m_ident = vseg->ident;      
 
     if ( vseg->ident != 0 )            // identity mapping required
@@ -337,7 +398,7 @@ void VLoader::buildMap(void* desc)
 #ifdef VLOADER_DEBUG
 std::cout << "\n******* Storing Pseg information *********\n" << std::endl;
 #endif
-    for ( size_t pseg_id = 0 ; pseg_id < header->psegs ; pseg_id++ )//TO fix in boot_handler globals
+    for ( size_t pseg_id = 0 ; pseg_id < header->psegs ; pseg_id++ )
     {
         pseg_map( &pseg[pseg_id]);
     }
@@ -346,10 +407,9 @@ std::cout << "\n******* Storing Pseg information *********\n" << std::endl;
 #ifdef VLOADER_DEBUG
 std::cout << "\n******* mapping global vsegs *********\n" << std::endl;
 #endif
-    m_loaders[header->syspath] = *(new Loader(header->syspath));
     for ( size_t vseg_id = 0 ; vseg_id < header->globals ; vseg_id++ )
     {
-        vseg_map( &vseg[vseg_id] , header->syspath);
+        vseg_map( &vseg[vseg_id]);
     }
 
     // second loop on virtual spaces to map private vsegs
@@ -360,18 +420,13 @@ std::cout << "\n******* mapping global vsegs *********\n" << std::endl;
 std::cout << "\n******* mapping all vsegs of " << vspace[vspace_id].name << " *********\n" << std::endl;
 #endif
             
-        m_loaders[(vspace[vspace_id].binpath)] = *(new Loader(vspace[vspace_id].binpath));
         for ( size_t vseg_id = vspace[vspace_id].vseg_offset ; 
               vseg_id < (vspace[vspace_id].vseg_offset + vspace[vspace_id].vsegs) ; 
               vseg_id++ )
         {
-            vseg_map( &vseg[vseg_id], vspace[vspace_id].binpath ); 
+            vseg_map( &vseg[vseg_id]); 
         }
     } 
-
-#ifdef VLOADER_DEBUG
-    print_mapping_info(desc);
-#endif
 
 } // end buildMap()
 

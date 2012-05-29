@@ -40,35 +40,35 @@
 namespace soclib { namespace common {
 
 /*
- * FileVAddress
+ * VSeg
  */
 
-const std::string & FileVAddress::name() const
+const std::string & VSeg::name() const
 {
 	return m_name;
 }
 
-const std::string & FileVAddress::file() const
+const std::string & VSeg::file() const
 {
 	return m_file;
 }
 
-uintptr_t FileVAddress::vma() const
+uintptr_t VSeg::vma() const
 {
 	return m_vma;
 }
 
-uintptr_t FileVAddress::lma() const
+uintptr_t VSeg::lma() const
 {
 	return m_lma;
 }
 
-uintptr_t FileVAddress::length() const
+uintptr_t VSeg::length() const
 {
 	return m_length;
 }
 
-void FileVAddress::print( std::ostream &o ) const
+void VSeg::print( std::ostream &o ) const
 {
 	o << std::hex << std::noshowbase 
       << "<Virtual segment from(vaddr): 0x" 
@@ -82,12 +82,12 @@ void FileVAddress::print( std::ostream &o ) const
       << m_file << ", name: " << m_name << ">";
 }
 
-FileVAddress::~FileVAddress()
+VSeg::~VSeg()
 {
-//    std::cout << "Deleted FileVAddress " << *this << std::endl;
+//    std::cout << "Deleted VSeg " << *this << std::endl;
 }
 
-FileVAddress & FileVAddress::operator=( const FileVAddress &ref )
+VSeg & VSeg::operator=( const VSeg &ref )
 {
     if ( &ref == this )
         return *this;
@@ -102,34 +102,37 @@ FileVAddress & FileVAddress::operator=( const FileVAddress &ref )
 	return *this;
 }
 
-FileVAddress::FileVAddress()
-    : m_file("Empty section"),
-      m_name("No Name"),
+VSeg::VSeg()
+    : m_name("No Name"),
+      m_file("Empty section"),
       m_vma(0),
       m_length(0),
-      m_ident(0) 
+      m_loadable(false),
+      m_ident(0)
 {
-    //std::cout << "New empty FileVAddress " << *this << std::endl;
+    //std::cout << "New empty VSeg " << *this << std::endl;
 }
 
-FileVAddress::FileVAddress(std::string& binaryName, std::string& name, uintptr_t vma, size_t length, bool ident)
-    : m_file(binaryName),
-      m_name(name),
+VSeg::VSeg(std::string& binaryName, std::string& name, uintptr_t vma, size_t length, bool loadable, bool ident)
+    : m_name(name),
+      m_file(binaryName),
       m_vma(vma),
       m_length(length),
-      m_ident(ident) 
+      m_loadable(loadable),
+      m_ident(ident)
 {
-    //std::cout << "New FileVAddress " << *this << std::endl;
+    //std::cout << "New VSeg " << *this << std::endl;
 }
 
-FileVAddress::FileVAddress( const FileVAddress &ref )
-    : m_file("Empty"),
-      m_name("To be copied"),
+VSeg::VSeg( const VSeg &ref )
+    : m_name("To be copied"),
+      m_file("Empty"),
       m_vma(0),
       m_length(0),
-      m_ident(0) 
+      m_loadable(false),
+      m_ident(0)
 {
-    //std::cout << "New FileVAddress " << *this << " copied from " << ref << std::endl;
+    //std::cout << "New VSeg " << *this << " copied from " << ref << std::endl;
     (*this) = ref;
 }
 
@@ -166,12 +169,12 @@ const std::string & PSeg::name() const
 
 void PSeg::check() const
 {
-    size_t size = m_fileVAddress.size();
+    size_t size = m_vsegs.size();
     size_t used[size][2];//lma, lma+length
     size_t i,j;
     
-    std::vector<FileVAddress>::const_iterator it;
-    for(it = m_fileVAddress.begin(), i= 0; it < m_fileVAddress.end(); it++, i++)
+    std::vector<VSeg>::const_iterator it;
+    for(it = m_vsegs.begin(), i= 0; it < m_vsegs.end(); it++, i++)
     {
         size_t it_limit = (*it).lma() + (*it).length();
         for(j=0; j< i; j++)
@@ -183,7 +186,7 @@ void PSeg::check() const
             {
                 std::ostringstream err;
                 err << "Ovelapping Buffers:" << std::endl 
-                    << *it << std::endl << m_fileVAddress[j] << std::endl; 
+                    << *it << std::endl << m_vsegs[j] << std::endl; 
                 throw soclib::exception::RunTimeError( err.str().c_str() );
             }
         }
@@ -197,12 +200,18 @@ void PSeg::setName(std::string& name )
     m_name = name;
 }
 
+size_t PSeg::align( unsigned toAlign, unsigned alignPow2)
+{
+    return ((toAlign + (1 << alignPow2) - 1 ) >> alignPow2) << alignPow2;//page aligned 
+}
+
+
 size_t PSeg::pageAlign( size_t toAlign )
 {
     size_t pgs = pageSize();
     size_t pageSizePow2 = __builtin_ctz(pgs);
     
-    return ((toAlign + pgs - 1 ) >> pageSizePow2) << pageSizePow2;//page aligned 
+    return align(toAlign, pageSizePow2);//page aligned 
 
 }
 
@@ -230,18 +239,18 @@ void PSeg::setLength( size_t length )
     //std::cout << *this <<std::endl;
 }
 
-void PSeg::add( FileVAddress& fva )
+void PSeg::add( VSeg& vseg )
 {
-    fva.m_lma = m_nextLma;
-    incNextLma(fva.length());//for the next vseg
-    m_fileVAddress.push_back(fva); 
+    vseg.m_lma = m_nextLma;
+    incNextLma(vseg.length());//for the next vseg
+    m_vsegs.push_back(vseg); 
 }
 
-void PSeg::addIdent( FileVAddress& fva )
+void PSeg::addIdent( VSeg& vseg )
 {
-    fva.m_lma = fva.m_vma;
-    incNextLma(fva.length());//to keep track of space used
-    m_fileVAddress.push_back(fva); 
+    vseg.m_lma = vseg.m_vma;
+    incNextLma(vseg.length());//to keep track of space used
+    m_vsegs.push_back(vseg); 
 }
 
 void PSeg::setNextLma( uintptr_t nextLma)
@@ -309,7 +318,7 @@ PSeg & PSeg::operator=( const PSeg &ref )
     m_pageLimit = ref.m_pageLimit;
     m_lma = ref.m_lma;
     m_nextLma = ref.m_nextLma;
-    m_fileVAddress = ref.m_fileVAddress;
+    m_vsegs = ref.m_vsegs;
 
 	return *this;
 }
@@ -323,8 +332,8 @@ void PSeg::print( std::ostream &o ) const
       << ", size : "  << m_length 
       << ", filled to: "  << m_nextLma 
       << ", containing: "<< std::endl;
-        std::vector<FileVAddress>::const_iterator it;
-        for(it = m_fileVAddress.begin(); it < m_fileVAddress.end(); it++)
+        std::vector<VSeg>::const_iterator it;
+        for(it = m_vsegs.begin(); it < m_vsegs.end(); it++)
     o << " " << *it << std::endl;
 
     o << ">";
