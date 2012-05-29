@@ -647,7 +647,8 @@ tmpl(void)::op_wrpsr()
     }
     
     // Bits impl, ver, reserved, ec, and ef are read-only
-    r_psr.whole = (r_psr.whole & 0xff0ff000) | (res & 0x00f00fff);
+    r_psr_write.whole = (r_psr.whole & 0xff0ff000) | (res & 0x00f00fff);
+    r_psr_delay = 3;
 }
 
 tmpl(void)::op_wrwim() 

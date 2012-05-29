@@ -250,6 +250,8 @@ private:
 	data_t      r_prev_pc;              // Previous Program Counter (in case of DBE)
     data_t      r_gp[NWINDOWS*16+8];    // Register file
     psr_t       r_psr;                  // Program Status Register
+    psr_t       r_psr_write;            // Program Status Register delayed write
+    int         r_psr_delay;            // Program Status Register delay counter
     data_t      r_wim;                  // Window Invalid Mask
     tbr_t       r_tbr;                  // Trap Base Register
     data_t      r_y;                    // Multiply / divide (ASR 0)

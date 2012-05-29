@@ -81,6 +81,8 @@ tmpl(void)::reset()
     r_psr.pil   = 0xf;   // No ext IRQ enabled
     r_psr.cwp   = 0;     // Current window pointer.
 
+    r_psr_delay = 0;
+
     // Simulate a reset exception
     r_tbr.whole = 0;
     r_tbr.tba   = DEFAULT_TBA;
@@ -190,6 +192,11 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
     }
     else {
       ncycle = 1;
+    }
+
+    if (r_psr_delay) {
+        if (!--r_psr_delay)
+            r_psr.whole = r_psr_write.whole;
     }
 
     // Initialize future value of npc.
