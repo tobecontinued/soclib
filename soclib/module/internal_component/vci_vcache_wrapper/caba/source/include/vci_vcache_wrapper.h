@@ -58,11 +58,11 @@ class VciVcacheWrapper
     typedef typename iss_t::DataOperationType data_op_t;
 
     typedef typename vci_param::addr_t  paddr_t;
-    typedef typename vci_param::be_t    vci_be_t;
     typedef typename vci_param::srcid_t vci_srcid_t;
     typedef typename vci_param::trdid_t vci_trdid_t;
     typedef typename vci_param::pktid_t vci_pktid_t;
     typedef typename vci_param::plen_t  vci_plen_t;
+    typedef uint32_t                    vci_be_t;       // don't use vci_param::be_t
 
     enum icache_fsm_state_e {  
         ICACHE_IDLE,             
@@ -298,7 +298,7 @@ private:
     sc_signal<paddr_t>      r_dcache_vci_paddr;		    // physical address for VCI 
     sc_signal<bool>         r_dcache_vci_miss_req;      // read miss request
     sc_signal<bool>         r_dcache_vci_unc_req;       // uncacheable read request
-    sc_signal<bool>         r_dcache_vci_unc_be;        // uncacheable read byte enable
+    sc_signal<vci_be_t>     r_dcache_vci_unc_be;        // uncacheable read byte enable
     sc_signal<bool>         r_dcache_vci_sc_req;        // atomic write request
     sc_signal<uint32_t>     r_dcache_vci_sc_old;        // previous data (atomic write)
     sc_signal<uint32_t>     r_dcache_vci_sc_new;        // new data (atomic write)

@@ -42,7 +42,7 @@ const char *icache_fsm_state_str[] = {
         "ICACHE_XTN_TLB_FLUSH", 
         "ICACHE_XTN_CACHE_FLUSH", 
         "ICACHE_XTN_TLB_INVAL",  
-	"ICACHE_XTN_CACHE_INVAL_VA",
+	    "ICACHE_XTN_CACHE_INVAL_VA",
         "ICACHE_XTN_CACHE_INVAL_PA",
         "ICACHE_XTN_CACHE_INVAL_GO",
 
@@ -1218,17 +1218,17 @@ r_cpt_ins_uncacheable++;
     switch ( r_dcache_fsm.read() ) 
     {
     case DCACHE_IDLE:	// There is several causes to exit the IDLE state :
-    			// - Dirty bit update 		=> DCACHE_DIRTY_GET_PTE
-    			// - ITLB miss  		=> DCACHE_TLB_MISS
-    			// - DTLB miss  		=> DCACHE_TLB_MISS
-    			// - Cacheable read miss  	=> DCACHE_MISS_VICTIM
-    			// - Uncacheable read  		=> DCACHE_UNC_WAIT 
-    			// - SC access 			=> DCACHE_SC_WAIT
-    			// - XTN request 		=> DCACHE_XTN_*
+                        // - Dirty bit update 		=> DCACHE_DIRTY_GET_PTE
+                        // - ITLB miss  		=> DCACHE_TLB_MISS
+                        // - DTLB miss  		=> DCACHE_TLB_MISS
+                        // - Cacheable read miss  	=> DCACHE_MISS_VICTIM
+                        // - Uncacheable read  		=> DCACHE_UNC_WAIT 
+                        // - SC access 			=> DCACHE_SC_WAIT
+                        // - XTN request 		=> DCACHE_XTN_*
                         //
                         // In this state, the dtlb is unconditionally accessed to translate 
-			// the virtual adress from processor, but there is 4 configurations 
-			// to access the cache, depending on the pipe-line state, defined 
+                        // the virtual adress from processor, but there is 4 configurations 
+			            // to access the cache, depending on the pipe-line state, defined 
                         // by the r_dcache_p0_valid (V0) flip-flop : P1 stage activated
                         // and    r_dcache_p1_valid (V1) flip-flop : P2 stage activated
                         //  V0 / V1 / Data      / Directory / comment                    
@@ -1427,12 +1427,12 @@ r_cpt_dcache_read++;
             } // end dcache access    
 
             // systematic dtlb access using virtual address
-            paddr_t	tlb_paddr;
+            paddr_t	    tlb_paddr;
             pte_info_t 	tlb_flags; 
             size_t     	tlb_way; 
             size_t     	tlb_set; 
             paddr_t    	tlb_nline; 
-            bool	tlb_hit;    	
+            bool	    tlb_hit;    	
 
             if ( r_mmu_mode.read() & DATA_TLB_MASK )	// DTLB activated
             {
@@ -1593,16 +1593,17 @@ r_cpt_dtlb_read++;
 
                     case iss_t::XTN_MMU_DCACHE_PA_INV:  	// dcache, dtlb & itlb access
                         r_dcache_fsm   = DCACHE_XTN_DC_INVAL_PA;
-			if (sizeof(paddr_t) <= 32) {
-				assert(r_mmu_word_hi.read() == 0 &&
-				    "high bits should be 0 for 32bit paddr");
-				r_dcache_p0_paddr =
-					(paddr_t)r_mmu_word_lo.read();
-			} else {
-				r_dcache_p0_paddr =
-					(paddr_t)r_mmu_word_hi.read() << 32 | 
-					(paddr_t)r_mmu_word_lo.read();
-			}
+                        if (sizeof(paddr_t) <= 32) 
+                        {
+                            assert(r_mmu_word_hi.read() == 0 &&
+                            "high bits should be 0 for 32bit paddr");
+                            r_dcache_p0_paddr = (paddr_t)r_mmu_word_lo.read();
+                        } 
+                        else 
+                        {
+                            r_dcache_p0_paddr = (paddr_t)r_mmu_word_hi.read() << 32 | 
+                                                (paddr_t)r_mmu_word_lo.read();
+                        }
                         break;
 
                     case iss_t::XTN_DCACHE_FLUSH:   	       // itlb and dtlb must be reset  
@@ -1641,11 +1642,11 @@ r_cpt_dtlb_read++;
                         r_dcache_fsm  = DCACHE_IDLE;
                         break;
 
-	            case iss_t::XTN_ICACHE_PREFETCH:		// not implemented : no action
-	            case iss_t::XTN_DCACHE_PREFETCH:		// not implemented : no action
+                    case iss_t::XTN_ICACHE_PREFETCH:		// not implemented : no action
+                    case iss_t::XTN_DCACHE_PREFETCH:		// not implemented : no action
                         m_drsp.valid   = true;
                         r_dcache_fsm = DCACHE_IDLE;
-		        break;
+                    break;
 	
                     default:
                         r_mmu_detr = MMU_WRITE_UNDEFINED_XTN; 
@@ -1838,6 +1839,15 @@ if ( r_debug_active )
                             r_dcache_vci_unc_be   = m_dreq.be;
                             r_dcache_vci_unc_req  = true;
                             r_dcache_fsm          = DCACHE_UNC_WAIT;
+#if DEBUG_DCACHE
+if ( r_debug_active )
+{
+    std::cout << name() << " <DCACHE_IDLE> Uncachable Read :" << std::hex 
+                        << " VADDR = " << m_dreq.addr
+                        << " | PADDR = " << paddr
+                        << " | BE = " << (uint32_t)m_dreq.be << std::endl;
+}
+#endif
                         }
 
                         r_dcache_p0_valid = false;
@@ -3763,7 +3773,7 @@ tmpl(void)::genMoore()
         p_vci.trdid   = r_wbuf.getIndex() + (1<<(vci_param::T-1));
         p_vci.plen    = soclib::common::fls(r_wbuf.getBe(r_vci_cmd_max))
                         - ffs(r_wbuf.getBe(r_vci_cmd_min)) + 1
-                        + (r_vci_cmd_max - r_vci_cmd_min) * vci_param::B;
+                        + (r_vci_cmd_max.read() - r_vci_cmd_min.read()) * vci_param::B;
         p_vci.cmd     = vci_param::CMD_WRITE;
         p_vci.eop     = (r_vci_cmd_cpt.read() == r_vci_cmd_max.read());
         break;
