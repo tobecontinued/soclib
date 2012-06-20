@@ -208,7 +208,7 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
     if (m_ibe) {
       m_exception = true;
       m_exception_cause = TP_INSTRUCTION_ACCESS_ERROR;
-      goto handle_except;
+      goto check_except;
     }
 
     // Instruction bus exceptions are set / reset synchronously at each cycle by wrapper.
@@ -218,7 +218,7 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
       m_exception = true;
       m_exception_cause = TP_DATA_ACCESS_ERROR;
       m_dbe = false;
-      goto handle_except;
+      goto check_except;
     }
 
 #ifdef SOCLIB_MODULE_DEBUG
@@ -243,7 +243,7 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 #ifdef SOCLIB_MODULE_DEBUG
       std::cout << name() << " Taking irqs " << irq_bit_field << std::endl;
 #endif
-      goto handle_except;
+      goto check_except;
     } else {
 #ifdef SOCLIB_MODULE_DEBUG
       if (irq_bit_field)
@@ -256,6 +256,8 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 
     // Execute currrent instruction
     run();
+
+ check_except:
 
     // Let's handle the case where the current instruction caused an exception
     {
@@ -319,8 +321,6 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 
     if (!m_exception)
       goto no_except;
-
-  handle_except:
 
     if (r_psr_delay) {
         r_psr.whole = r_psr_write.whole;
