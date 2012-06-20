@@ -322,6 +322,11 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 
   handle_except:
 
+    if (r_psr_delay) {
+        r_psr.whole = r_psr_write.whole;
+        r_psr_delay = 0;
+    }
+
     {
       m_wait_irq = false;
       m_exception = false;
