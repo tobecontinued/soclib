@@ -294,7 +294,7 @@ std::cout << " fsm_state = " << r_fsm_state
         for ( size_t index = 0 ; index<m_nbseg  && error ; ++index) 
         {
             if ( (m_seg[index]->contains(address)) &&
-                 (m_seg[index]->contains(address + p_vci.plen.read() - vci_param::B)) ) 
+                 (m_seg[index]->contains(address + p_vci.plen.read() - 1)) ) 
             {
                 error = false;
                 r_seg_index = index;
