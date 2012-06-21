@@ -39,7 +39,7 @@
 #include "vci_framebuffer.h"
 #include "vci_simple_ram.h"
 #include "alloc_elems.h"
-#include "vloader.h"
+#include "loader.h"
 
 #define PSEG_ROM_BASE    0xBFC00000
 #define PSEG_ROM_SIZE    0x00010000    // ROM de boot: 32 Kbytes
@@ -101,13 +101,7 @@ int _main(int argc, char *argv[])
 
     typedef VciParams<4,8,32,1,1,1,12,1,4,1> vci_param;
 
-    char    sys_name[256]     = "soft/sys.bin";
-    char    hello_name[256]   = "soft/hello.bin";
-    char    router_name[256]   = "soft/router.bin";
-    char    pgcd_name[256]   = "soft/pgcd.bin";
-    char    fifo_name[256]    = "soft/fifo.bin";
-
-    char    map_name[256]     = "soft/map.bin@0xBFC0C000:D";
+    char    soft_name[256]     = "soft/soft.elf";
 
     size_t  n_cycles        = 1000000000;       // simulated cycles
     size_t  tlb_ways        = 8;                // Itlb & Dtlb parameters
@@ -199,10 +193,6 @@ int _main(int argc, char *argv[])
             {
                 ram_latency = atoi(argv[n+1]);
             }
-            else if( (strcmp(argv[n],"-MAP") == 0) && (n+1<argc) )
-            {
-                strcpy(map_name, argv[n+1]);
-            }
             else
             {
                 std::cout << "   Arguments on the command line are (key,value)" << std::endl;
@@ -230,7 +220,6 @@ int _main(int argc, char *argv[])
     std::cout << "    dcache_words = " << dcache_words << std::endl;
     std::cout << "    dcache_ways  = " << dcache_ways << std::endl;
     std::cout << "    ram_latency  = " << ram_latency << std::endl;
-    std::cout << "    map_name  = " << map_name << std::endl;
     if(trace_ok) std::cout << "    trace_file   = " << trace_filename << std::endl;
     if(stats_ok) std::cout << "    stats_file   = " << stats_filename << std::endl;
     if(ioc_ok)   std::cout << "    ioc_file     = " << ioc_filename << std::endl;
@@ -346,9 +335,10 @@ int _main(int argc, char *argv[])
     // - IRQ[31] : dma7  (processor 7)
     ////////////////////////////////////////////////////////////////////////////
 
-    VLoader vloader(map_name);
+    //VLoader loader(map_name);
+    Loader loader(soft_name);
 
-    // GdbServer<Mips32ElIss>::set_loader(&loader);
+    GdbServer<Mips32ElIss>::set_loader(&loader);
 
     VciVcacheWrapper<vci_param, GdbServer<Mips32ElIss> >* proc[NB_PROCS];
     for( size_t p = 0 ; p < NB_PROCS ; p++ )
@@ -375,7 +365,7 @@ std::cout << std::endl << "proc(s) constructed" << std::endl;
     rau = new VciSimpleRam<vci_param>("rau",
             IntTab(RAU_TGTID),
             maptab,
-            vloader,
+            loader,
             ram_latency);
 
 std::cout << "rau constructed" << std::endl;
@@ -384,7 +374,7 @@ std::cout << "rau constructed" << std::endl;
     rak = new VciSimpleRam<vci_param>("rak",
             IntTab(RAK_TGTID),
             maptab,
-            vloader,
+            loader,
             ram_latency);
 
 std::cout << "rak constructed" << std::endl;
@@ -393,7 +383,7 @@ std::cout << "rak constructed" << std::endl;
     rom = new VciSimpleRam<vci_param>("rom",
             IntTab(ROM_TGTID),
             maptab,
-            vloader);
+            loader);
 
 std::cout << "rom constructed" << std::endl;
 
