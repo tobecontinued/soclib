@@ -42,11 +42,11 @@ tmpl(void)::print_trace()
     for(size_t n=0 ; n<m_ntimer ; n++)
     {
         std::cout << "Timer " << n 
-                  << " : counter = " << r_counter[0].read()
-                  << " / mode = " << r_mode[0].read()
-                  << " / period = " << r_period[0].read()
-                  << " / mode = " << r_mode[0].read()
-                  << " / irq = " << r_irq[0].read() << std::endl;
+                  << " : counter = " << r_counter[n].read()
+                  << " / mode = " << r_mode[n].read()
+                  << " / period = " << r_period[n].read()
+                  << " / mode = " << r_mode[n].read()
+                  << " / irq = " << r_irq[n].read() << std::endl;
     }
 }
 
