@@ -123,13 +123,13 @@ namespace soclib { namespace caba {
             return;
         }
 
-        if (p_wb.CYC_I){ // CYC signal enables the transaction
-            if (p_wb.STB_I && !p_vci.cmdack && read_cmd_not_accepted ) {
+        if (p_wb.STB_I){ // STB signal enables the transaction
+            if (!p_vci.cmdack && read_cmd_not_accepted ) {
 #ifdef SOCLIB_MODULE_DEBUG
                 std::cout << name() << " Received WB request and vci not ready" << std::endl;
 #endif
             }
-            if (p_wb.STB_I && p_vci.cmdack && read_cmd_not_accepted) {
+            if (p_vci.cmdack && read_cmd_not_accepted) {
 #ifdef SOCLIB_MODULE_DEBUG
                 std::cout << name() << " Received WB request and vci ready" << std::endl;
 #endif
