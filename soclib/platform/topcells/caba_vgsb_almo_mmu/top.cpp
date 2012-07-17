@@ -6,7 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // Implementation note:
 // This architecture supports multi-tasking, multi-processing, and virtual memory.
-// It has been designed to run the GIET V2.0. 
+// It has been designed to run the GIET-VM nano-kernel.
 // There is two separated RAM for user and kernel, as we use the SoCLib pre-loader.
 // The processor is a MIPS32 supporting the SoCLib generic MMU.
 // The interconnect is the SoCLib VGSB : flat 32 bits address space.
@@ -21,7 +21,7 @@
 #include <limits>
 #include <cstdlib>
 
-#include "soft/giet_config.h"
+#include "/Users/alain/Documents/licence/almo_svn_2011/soft/giet_vm/giet_config.h"
 
 #include "vci_signals.h"
 #include "vci_param.h"
@@ -101,7 +101,11 @@ int _main(int argc, char *argv[])
 
     typedef VciParams<4,8,32,1,1,1,12,1,4,1> vci_param;
 
-    char    soft_name[256]     = "soft/soft.elf";
+    char    soft_name[256]  = 
+    "/Users/alain/Documents/licence/almo_svn_2011/soft/giet_vm/soft.elf";
+
+    char    ioc_filename[256] = 
+    "/Users/alain/Documents/licence/almo_svn_2011/soft/giet_vm/apps/display/images.raw";
 
     size_t  n_cycles        = 1000000000;       // simulated cycles
     size_t  tlb_ways        = 8;                // Itlb & Dtlb parameters
@@ -117,9 +121,6 @@ int _main(int argc, char *argv[])
     size_t  wbuf_nlines     = 4;                // Write Buffer parameters
     size_t  wbuf_nwords     = 4;
     size_t  ram_latency     = 0;                // Ram latency (L2 MISS emulation)
-    bool    ioc_ok          = false;            // IOC activated
-    char    ioc_filename[256];                  // pathname for the ioc file
-    bool    fbf_ok          = false;            // FBF acctivated
     size_t  fbf_size        = 128;              // number of lines = number of pixels
     bool    debug_ok        = false;            // debug activated
     size_t  from_cycle      = 0;                // debug start cycle
@@ -181,12 +182,10 @@ int _main(int argc, char *argv[])
             }
             else if( (strcmp(argv[n],"-IOCFILE") == 0) && (n+1<argc) )
             {
-                ioc_ok = true;
                 strcpy(ioc_filename, argv[n+1]) ;
             }
             else if( (strcmp(argv[n],"-FBFSIZE") == 0) && (n+1<argc) )
             {
-                fbf_ok = true;
                 fbf_size = atoi(argv[n+1]) ;
             }
             else if( (strcmp(argv[n],"-LATENCY") == 0) && (n+1<argc) )
@@ -212,7 +211,10 @@ int _main(int argc, char *argv[])
         }
     }
     std::cout << std::endl;
-    std::cout << "    n_cycles     = " << n_cycles << std::endl;
+    std::cout << "    nb_procs     = " << NB_PROCS << std::endl;
+    std::cout << "    nb_ttys      = " << NB_TTYS << std::endl;
+    std::cout << "    nb_dmas      = " << NB_DMAS << std::endl;
+    std::cout << "    nb_timers    = " << NB_TIMERS << std::endl;
     std::cout << "    icache_sets  = " << icache_sets << std::endl;
     std::cout << "    icache_words = " << icache_words << std::endl;
     std::cout << "    icache_ways  = " << icache_ways << std::endl;
@@ -220,10 +222,10 @@ int _main(int argc, char *argv[])
     std::cout << "    dcache_words = " << dcache_words << std::endl;
     std::cout << "    dcache_ways  = " << dcache_ways << std::endl;
     std::cout << "    ram_latency  = " << ram_latency << std::endl;
+    std::cout << "    ioc_file     = " << ioc_filename << std::endl;
+    std::cout << "    frame buffer = " << fbf_size << " * " << fbf_size << std::endl;
     if(trace_ok) std::cout << "    trace_file   = " << trace_filename << std::endl;
     if(stats_ok) std::cout << "    stats_file   = " << stats_filename << std::endl;
-    if(ioc_ok)   std::cout << "    ioc_file     = " << ioc_filename << std::endl;
-    if(fbf_ok)   std::cout << "    frame buffer = " << fbf_size << " * " << fbf_size << std::endl;
 
     /* parameters checking : limitations are related to ICU inputs */
     if ( NB_PROCS > 8 )
@@ -235,7 +237,19 @@ int _main(int argc, char *argv[])
     if ( NB_TTYS > 15 )
     {
         std::cout << std::endl;
-        std::cout << "The number of TTYs cannot be larger than 8" << std::endl;
+        std::cout << "NB_TTYs cannot be larger than 15" << std::endl;
+        exit(0);
+    }
+    if ( NB_DMAS > 8 )
+    {
+        std::cout << std::endl;
+        std::cout << "NB_DMAs cannot be larger than 8" << std::endl;
+        exit(0);
+    }
+    if ( NB_TIMERS != NB_PROCS )
+    {
+        std::cout << std::endl;
+        std::cout << "NB_TIMERS must be equal to NB_PROCS" << std::endl;
         exit(0);
     }
 
@@ -304,35 +318,41 @@ int _main(int argc, char *argv[])
     // - srcid ioc  : NB_PROCS+1 : ioc
     //////////////////////////////////////////////////////////////////////////
     // The ICU controls at most 32 input IRQs:
-    // - IRQ[0]  : ioc   (processor 0)
-    // - IRQ[1]  : tty0  (processor 0)
-    // - IRQ[2]  : tty1  (processor 0)
-    // - IRQ[3]  : tty2  (processor 0)
-    // - IRQ[4]  : tty3  (processor 0)
-    // - IRQ[5]  : tty4  (processor 0)
-    // - IRQ[6]  : tty5  (processor 0)
-    // - IRQ[7]  : tty6  (processor 0)
-    // - IRQ[8]  : tty7  (processor 0)
-    // - IRQ[9]  : tty8  (processor 0)
+    // - IRQ[0]  : tim0  (processor 0)
+    // - IRQ[1]  : tim1  (processor 1)
+    // - IRQ[2]  : tim2  (processor 2)
+    // - IRQ[3]  : tim3  (processor 3)
+    // - IRQ[4]  : tim4  (processor 4)
+    // - IRQ[5]  : tim5  (processor 5)
+    // - IRQ[6]  : tim6  (processor 6)
+    // - IRQ[7]  : tim7  (processor 7)
+
+    // - IRQ[8]  : dma0  (processor 0)
+    // - IRQ[9]  : dma1  (processor 0)
+    // - IRQ[10] : dma2  (processor 0)
+    // - IRQ[11] : dma3  (processor 0)
+    // - IRQ[12] : dma4  (processor 0)
+    // - IRQ[13] : dma5  (processor 0)
+    // - IRQ[14] : dma6  (processor 0)
+    // - IRQ[15] : dma7  (processor 0)
     //
-    // - unused  : IRQ[10] to IRQ]15]
+    // - IRQ[16] : tty0  (processor 0)
+    // - IRQ[17] : tty1  (processor 0)
+    // - IRQ[18] : tty2  (processor 0)
+    // - IRQ[19] : tty3  (processor 0)
+    // - IRQ[20] : tty4  (processor 0)
+    // - IRQ[21] : tty5  (processor 0)
+    // - IRQ[22] : tty6  (processor 0)
+    // - IRQ[23] : tty7  (processor 0)
+    // - IRQ[24] : tty8  (processor 0)
+    // - IRQ[25] : tty9  (processor 0)
+    // - IRQ[26] : tty10 (processor 0)
+    // - IRQ[27] : tty11 (processor 0)
+    // - IRQ[28] : tty12 (processor 0)
+    // - IRQ[29] : tty13 (processor 0)
+    // - IRQ[30] : tty14 (processor 0)
     //
-    // - IRQ[16] : tim0  (processor 0)
-    // - IRQ[17] : dma0  (processor 0)
-    // - IRQ[18] : tim1  (processor 1)
-    // - IRQ[19] : dma1  (processor 1)
-    // - IRQ[20] : tim2  (processor 2)
-    // - IRQ[21] : dma2  (processor 2)
-    // - IRQ[22] : tim3  (processor 3)
-    // - IRQ[23] : dma3  (processor 3)
-    // - IRQ[24] : tim4  (processor 4)
-    // - IRQ[25] : dma4  (processor 4)
-    // - IRQ[26] : tim5  (processor 5)
-    // - IRQ[27] : dma5  (processor 5)
-    // - IRQ[28] : tim6  (processor 6)
-    // - IRQ[29] : dma6  (processor 6)
-    // - IRQ[30] : tim7  (processor 7)
-    // - IRQ[31] : dma7  (processor 7)
+    // - IRQ[31] : ioc   (processor 0)
     ////////////////////////////////////////////////////////////////////////////
 
     //VLoader loader(map_name);
@@ -415,7 +435,7 @@ std::cout << "icu constructed" << std::endl;
     timer = new VciTimer<vci_param>("timer",
             IntTab(TIM_TGTID),
             maptab,
-            NB_PROCS);
+            NB_TIMERS);
 
 std::cout << "timer constructed" << std::endl;
 
@@ -425,26 +445,28 @@ std::cout << "timer constructed" << std::endl;
             IntTab(DMA_SRCID),
             IntTab(DMA_TGTID),
             128,
-            NB_PROCS);
+            NB_DMAS);
 
 std::cout << "dma constructed" << std::endl;
 
     VciFrameBuffer<vci_param>* fbf;
-    if( fbf_ok ) fbf = new VciFrameBuffer<vci_param>("fbf",
+    fbf = new VciFrameBuffer<vci_param>("fbf",
             IntTab(FBF_TGTID),
             maptab,
             fbf_size, fbf_size);
-    else fbf = NULL;
+
+std::cout << "fbf constructed" << std::endl;
 
     VciBlockDevice<vci_param>* ioc;
-    if( ioc_ok ) ioc = new VciBlockDevice<vci_param>("ioc",
+    ioc = new VciBlockDevice<vci_param>("ioc",
             maptab,
             IntTab(IOC_SRCID),
             IntTab(IOC_TGTID),
             ioc_filename,
             512,
             200000);
-    else ioc = NULL;
+
+std::cout << "ioc constructed" << std::endl;
 
     VciVgsb<vci_param>* bus;
     bus = new VciVgsb<vci_param>("bus",
@@ -505,24 +527,16 @@ std::cout << "tty connected" << std::endl;
     for (size_t p = 0 ; p < NB_PROCS ; p++)
         icu->p_irq_out[p]       (signal_irq_proc[p]);
 
-    for (size_t t = 0 ; t < (NB_TTYS) ; t++)
-        icu->p_irq_in[t+1]      (signal_irq_tty[t]);
-
-    for (size_t t = (NB_TTYS) ; t < 15 ; t++)
-        icu->p_irq_in[t+1]      (signal_false);
-
-    for (size_t p = 0 ; p < NB_PROCS ; p++)
+    for (size_t i = 0 ; i < 32 ; i++ )
     {
-        icu->p_irq_in[16+2*p]   (signal_irq_tim[p]);
-        icu->p_irq_in[17+2*p]   (signal_irq_dma[p]);
+       if      ( i < NB_TIMERS )      icu->p_irq_in[i] (signal_irq_tim[i]);
+       else if ( i < 8 )              icu->p_irq_in[i] (signal_false);
+       else if ( i < (8 + NB_DMAS) )  icu->p_irq_in[i] (signal_irq_dma[i-8]);
+       else if ( i < 16 )             icu->p_irq_in[i] (signal_false);
+       else if ( i < (16 + NB_TTYS) ) icu->p_irq_in[i] (signal_irq_tty[i-16]);
+       else if ( i < 31 )             icu->p_irq_in[i] (signal_false);
+       else                           icu->p_irq_in[i] (signal_irq_ioc);
     }
-    for (size_t p = NB_PROCS ; p < 8 ; p++)
-    {
-        icu->p_irq_in[16+2*p]   (signal_false);
-        icu->p_irq_in[17+2*p]   (signal_false);
-    }
-    if( ioc_ok ) icu->p_irq_in[0] (signal_irq_ioc);
-    else         icu->p_irq_in[0] (signal_false);
 
 std::cout << "icu connected" << std::endl;
 
@@ -538,26 +552,24 @@ std::cout << "timer connected" << std::endl;
     dma->p_resetn       (signal_resetn);
     dma->p_vci_initiator(signal_vci_init_dma);
     dma->p_vci_target   (signal_vci_tgt_dma);
-    for (size_t p = 0 ; p < NB_PROCS ; p++)
+    for (size_t p = 0 ; p < NB_DMAS ; p++)
         dma->p_irq[p] (signal_irq_dma[p]);
 
 std::cout << "dma connected" << std::endl;
 
-    if( fbf_ok )
-    {
-        fbf->p_clk      (signal_clk);
-        fbf->p_resetn   (signal_resetn);
-        fbf->p_vci      (signal_vci_tgt_fbf);
-    }
+    fbf->p_clk      (signal_clk);
+    fbf->p_resetn   (signal_resetn);
+    fbf->p_vci      (signal_vci_tgt_fbf);
 
-    if( ioc_ok )
-    {
-        ioc->p_clk          (signal_clk);
-        ioc->p_resetn       (signal_resetn);
-        ioc->p_vci_initiator(signal_vci_init_ioc);
-        ioc->p_vci_target   (signal_vci_tgt_ioc);
-        ioc->p_irq          (signal_irq_ioc);
-    }
+std::cout << "fbf connected" << std::endl;
+
+    ioc->p_clk          (signal_clk);
+    ioc->p_resetn       (signal_resetn);
+    ioc->p_vci_initiator(signal_vci_init_ioc);
+    ioc->p_vci_target   (signal_vci_tgt_ioc);
+    ioc->p_irq          (signal_irq_ioc);
+
+std::cout << "ioc connected" << std::endl;
 
     bus->p_clk      (signal_clk);
     bus->p_resetn   (signal_resetn);
@@ -583,10 +595,6 @@ std::cout << "bus connected" << std::endl;
     // simulation
     //////////////////////////////////////////////////////////////////////////
 
-    if( !ioc_ok ) signal_vci_init_ioc.cmdval = false;
-    if( !ioc_ok ) signal_vci_tgt_ioc.rspval = false;
-    if( !fbf_ok ) signal_vci_tgt_fbf.rspval = false;
-
     signal_resetn = false;
     sc_start( sc_time( 1, SC_NS ) ) ;
 
@@ -594,53 +602,69 @@ std::cout << "bus connected" << std::endl;
     for ( size_t n=1 ; n<n_cycles ; n++ )
     {
         sc_start( sc_time( 1 , SC_NS ) ) ;
-/*
-        if( stats_ok && (n%10 == 0) )
-            proc[0]->file_stats(stats_file);
 
-        if( trace_ok )
-            proc[0]->file_trace(trace_file);
-*/
         if( debug_ok && (n > from_cycle) )
         {
             std::cout << "***************** cycle " << std::dec << n
                 << " ***********************" << std::endl;
 
-            proc[0]->print_trace();
-            signal_vci_init_proc[0].print_trace("signal_proc_0");
-            proc[1]->print_trace();
-            signal_vci_init_proc[1].print_trace("signal_proc_1");
-#if 0
-            proc[2]->print_trace();
-            signal_vci_init_proc[2].print_trace("signal_proc_2");
-            proc[3]->print_trace();
-            signal_vci_init_proc[3].print_trace("signal_proc_3");
-#endif
+            if ( NB_PROCS > 0 )
+            {
+                proc[0]->print_trace();
+                signal_vci_init_proc[0].print_trace("signal_proc_0");
+            }
+            if ( NB_PROCS > 1 )
+            {
+                proc[1]->print_trace();
+                signal_vci_init_proc[1].print_trace("signal_proc_1");
+            }
+            if ( NB_PROCS > 2 )
+            {
+                proc[2]->print_trace();
+                signal_vci_init_proc[2].print_trace("signal_proc_2");
+            }
+            if ( NB_PROCS > 2 )
+            {
+                proc[3]->print_trace();
+                signal_vci_init_proc[3].print_trace("signal_proc_3");
+            }
 
             bus->print_trace();
-            rom->print_trace();
-            signal_vci_tgt_rom.print_trace("signal_rom");
+
+//            icu->print_trace();
+//            signal_vci_tgt_icu.print_trace("signal_icu");
+
+//            rom->print_trace();
+//            signal_vci_tgt_rom.print_trace("signal_rom");
+
             rau->print_trace();
             signal_vci_tgt_rau.print_trace("signal_rau");
+
             rak->print_trace();
             signal_vci_tgt_rak.print_trace("signal_rak");
+
+//            timer->print_trace();
+//            signal_vci_tgt_tim.print_trace("signal_tim");
+    
+/*
             if ( signal_irq_tim[0].read() ) 
             {
                 std::cout << "!!! IRQ_TIMER [0] ACTIVATED !!!" << std::endl; 
                 std::cout << "    PROC_IRQ [0] = " << signal_irq_proc[0] << std::endl;
-            }
-            if ( signal_irq_tim[1].read() ) 
-            {
-                std::cout << "!!! IRQ_TIMER [1] ACTIVATED !!!" << std::endl; 
-                std::cout << "    PROC_IRQ [1] = " << signal_irq_proc[1] << std::endl;
             }
             if ( signal_irq_tim[2].read() ) 
             {
                 std::cout << "!!! IRQ_TIMER [2] ACTIVATED !!!" << std::endl; 
                 std::cout << "    PROC_IRQ [2] = " << signal_irq_proc[2] << std::endl;
             }
-        }
-    }
+            if ( signal_irq_tty[1].read() )
+            {
+                std::cout << "!!! IRQ_TTY [1] ACTIVATED !!!" << std::endl; 
+                std::cout << "    PROC_IRQ [0] = " << signal_irq_proc[0] << std::endl;
+            }
+*/
+        } // end if debug
+    } // end simul loop
 
     /* forcing xterm to quit too */
     kill(0, SIGINT);
