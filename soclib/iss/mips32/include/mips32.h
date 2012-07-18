@@ -418,6 +418,7 @@ protected:
     addr_t r_error_epc;
     uint32_t r_cycle_count;
     uint32_t r_compare;
+    uint32_t r_scheduler_paddr;
 
     uint32_t m_irqs;
     

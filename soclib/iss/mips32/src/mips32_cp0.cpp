@@ -65,6 +65,8 @@ enum Cp0Reg {
     INS_CYCLES = COPROC_REGNUM(9,6),
     // count of pipeline cycles
     PIPE_CYCLES = COPROC_REGNUM(9,7),
+    // scheduler physical address
+    SCHED_PADDR = COPROC_REGNUM(22,0),
 };
 
 static inline uint32_t merge(uint32_t oldval, uint32_t newval, uint32_t newmask)
@@ -115,6 +117,8 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
         return r_config3.whole;
     case ERROR_EPC:
         return r_error_epc;
+    case SCHED_PADDR:
+        return r_scheduler_paddr;
     default:
         return 0;
     }
@@ -160,6 +164,9 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
         break;
     case ERROR_EPC:
         r_error_epc = val;
+        break;
+    case SCHED_PADDR:
+        r_scheduler_paddr = val;
         break;
     default:
         return;
