@@ -468,7 +468,12 @@ std::cout << " fsm_state = " << r_fsm_state
     {
         if ( p_vci.rspack.read() ) 
         {    
-            if ( r_cmp_success.read() ) write (r_seg_index, r_address , r_wdata, r_be);
+            if ( r_cmp_success.read() )
+            {
+                //In the case where we use both CAS and SC
+                r_llsc_buf.accessDone(r_address.read());
+                write (r_seg_index, r_address , r_wdata, r_be);
+            }
             if( m_latency )	r_fsm_state = FSM_IDLE;
             else           	r_fsm_state = FSM_CMD_GET;
         }
