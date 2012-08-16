@@ -1,19 +1,20 @@
 ///////////////////////////////////////////////////////////////////////////////////
-// File     : top.cpp for the 'caba_vgsb_almo_mmu' generic architecture
-// Date     : 01/04/2012
+// File     : top.cpp for the 'caba_vgsb_xicu_mmu' generic architecture
+// Date     : 01/08/2012
 // Author   : alain greiner
 // Copyright (c) UPMC-LIP6
 ///////////////////////////////////////////////////////////////////////////////////
 // Implementation note:
 // This architecture supports multi-tasking, multi-processing, and virtual memory.
 // It has been designed to run the GIET-VM nano-kernel.
-// There is two separated RAM for user and kernel, as we use the SoCLib pre-loader.
+// There is one single RAM and one boot ROM. 
 // The processor is a MIPS32 supporting the SoCLib generic MMU.
 // The interconnect is the SoCLib VGSB : flat 32 bits address space.
-// An IO controler and a Frame buffer can be optionally activated.
+// It uses the XICU interrupt controler.
+// IT contains an IO controler, a DM controler and a Frame buffer.
 // It uses the NB_PROCS_MAX and NB_TTYS parameters, defined in the giet_config.h file.
 // - The number of processors cannot be larger than 8, because each processor
-//   has a private timer and a private DMA, and the number of IRQs must be < 32.
+//   has a private timer and a private DMA, and the number of HWIs must be < 32.
 // - The number of TTYs cannot be larger than 15 for the same reason.
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -32,8 +33,7 @@
 #include "vci_vgsb.h"
 #include "vci_vcache_wrapper.h"
 #include "vci_multi_tty.h"
-#include "vci_timer.h"
-#include "vci_multi_icu.h"
+#include "vci_xicu.h"
 #include "vci_multi_dma.h"
 #include "vci_block_device.h"
 #include "vci_framebuffer.h"
@@ -41,38 +41,34 @@
 #include "alloc_elems.h"
 #include "loader.h"
 
+#define PSEG_RAM_BASE    0x00000000    
+#define PSEG_RAM_SIZE    0x00C00000    // RAM : 12 Mbytes
+
 #define PSEG_ROM_BASE    0xBFC00000
-#define PSEG_ROM_SIZE    0x00010000    // ROM : 32 Kbytes
+#define PSEG_ROM_SIZE    0x00010000    // ROM : 64 Kbytes
 
-#define PSEG_RAM_BASE    0x01000000    
-#define PSEG_RAM_SIZE    0x01000000    // RAM : 16 Mbytes
+#define PSEG_FBF_BASE    0x00D00000    // Frame buffer : 2 Mbytes
+#define PSEG_FBF_SIZE    0x0020000  
 
-#define PSEG_TTY_BASE    0x90000000
-#define PSEG_TTY_SIZE    0x00001000
+#define PSEG_ICU_BASE    0x00F00000
+#define PSEG_ICU_SIZE    0x00001000
 
-#define PSEG_TIM_BASE    0x90100000
-#define PSEG_TIM_SIZE    0x00001000
-
-#define PSEG_IOC_BASE    0x90200000
+#define PSEG_IOC_BASE    0x00F10000
 #define PSEG_IOC_SIZE    0x00001000
 
-#define PSEG_DMA_BASE    0x90300000
+#define PSEG_TTY_BASE    0x00F20000
+#define PSEG_TTY_SIZE    0x00001000
+
+#define PSEG_DMA_BASE    0x00F30000
 #define PSEG_DMA_SIZE    NB_DMAS_MAX * 0x1000
-
-#define PSEG_FBF_BASE    0x90600000
-#define PSEG_FBF_SIZE    128 * 128  
-
-#define PSEG_ICU_BASE    0x90700000
-#define PSEG_ICU_SIZE    NB_PROCS_MAX * 32 
 
 #define ROM_TGTID   0
 #define RAM_TGTID   1
-#define TIM_TGTID   2
-#define FBF_TGTID   3
-#define IOC_TGTID   4
-#define DMA_TGTID   5
-#define TTY_TGTID   6
-#define ICU_TGTID   7
+#define FBF_TGTID   2
+#define IOC_TGTID   3
+#define DMA_TGTID   4
+#define TTY_TGTID   5
+#define ICU_TGTID   6
 
 #define DMA_SRCID   NB_PROCS_MAX
 #define IOC_SRCID   NB_PROCS_MAX + 1
@@ -210,6 +206,7 @@ int _main(int argc, char *argv[])
     std::cout << "    nb_procs     = " << NB_PROCS_MAX << std::endl;
     std::cout << "    nb_ttys      = " << NB_TTYS << std::endl;
     std::cout << "    nb_dmas      = " << NB_DMAS_MAX << std::endl;
+    std::cout << "    nb_timers    = " << NB_TIMERS_MAX << std::endl;
     std::cout << "    icache_sets  = " << icache_sets << std::endl;
     std::cout << "    icache_words = " << icache_words << std::endl;
     std::cout << "    icache_ways  = " << icache_ways << std::endl;
@@ -222,7 +219,6 @@ int _main(int argc, char *argv[])
     if(trace_ok) std::cout << "    trace_file   = " << trace_filename << std::endl;
     if(stats_ok) std::cout << "    stats_file   = " << stats_filename << std::endl;
 
-    /* parameters checking : limitations are related to ICU inputs */
     if ( NB_PROCS_MAX > 8 )
     {
         std::cout << std::endl;
@@ -241,7 +237,7 @@ int _main(int argc, char *argv[])
         std::cout << "NB_DMAS_MAX cannot be larger than 8" << std::endl;
         exit(0);
     }
-    if ( NB_TIMERS_MAX > 0 )
+    if ( NB_TIMERS_MAX + NB_PROCS_MAX > 32 )
     {
         std::cout << std::endl;
         std::cout << "NB_TIMERS_MAX (user timers) must be 0" << std::endl;
@@ -251,11 +247,10 @@ int _main(int argc, char *argv[])
     //////////////////////////////////////////////////////////////////////////
     // Mapping Table
     //////////////////////////////////////////////////////////////////////////
-    MappingTable maptab(32, IntTab(12), IntTab(12), 0xFFF00000);
+    MappingTable maptab(32, IntTab(16), IntTab(12), 0x00FF0000);
 
     maptab.add(Segment("seg_rom", PSEG_ROM_BASE, PSEG_ROM_SIZE, IntTab(ROM_TGTID) , true));
     maptab.add(Segment("seg_ram", PSEG_RAM_BASE, PSEG_RAM_SIZE, IntTab(RAM_TGTID) , true));
-    maptab.add(Segment("seg_tim", PSEG_TIM_BASE, PSEG_TIM_SIZE, IntTab(TIM_TGTID) , false));
     maptab.add(Segment("seg_dma", PSEG_DMA_BASE, PSEG_DMA_SIZE, IntTab(DMA_TGTID) , false));
     maptab.add(Segment("seg_fbf", PSEG_FBF_BASE, PSEG_FBF_SIZE, IntTab(FBF_TGTID) , false));
     maptab.add(Segment("seg_ioc", PSEG_IOC_BASE, PSEG_IOC_SIZE, IntTab(IOC_TGTID) , false));
@@ -278,7 +273,6 @@ int _main(int argc, char *argv[])
 
     VciSignals<vci_param> signal_vci_tgt_rom("signal_vci_tgt_rom");
     VciSignals<vci_param> signal_vci_tgt_ram("signal_vci_tgt_ram");
-    VciSignals<vci_param> signal_vci_tgt_tim("signal_vci_tgt_tim");
     VciSignals<vci_param> signal_vci_tgt_fbf("signal_vci_tgt_fbf");
     VciSignals<vci_param> signal_vci_tgt_ioc("signal_vci_tgt_ioc");
     VciSignals<vci_param> signal_vci_tgt_dma("signal_vci_tgt_dma");
@@ -289,9 +283,6 @@ int _main(int argc, char *argv[])
 
     sc_signal<bool> *signal_irq_proc =
         alloc_elems<sc_signal<bool> >("signal_irq_proc", NB_PROCS_MAX);
-
-    sc_signal<bool> *signal_irq_tim =
-        alloc_elems<sc_signal<bool> >("signal_irq_tim", NB_PROCS_MAX);
 
     sc_signal<bool> *signal_irq_dma =
         alloc_elems<sc_signal<bool> >("signal_irq_dma", NB_DMAS_MAX);
@@ -310,42 +301,42 @@ int _main(int argc, char *argv[])
     // - srcid dma  : NB_PROCS_MAX   : dma
     // - srcid ioc  : NB_PROCS_MAX+1 : ioc
     //////////////////////////////////////////////////////////////////////////
-    // The ICU controls at most 32 input IRQs:
-    // - IRQ[0]  : tim0  (processor 0)
-    // - IRQ[1]  : tim1  (processor 1)
-    // - IRQ[2]  : tim2  (processor 2)
-    // - IRQ[3]  : tim3  (processor 3)
-    // - IRQ[4]  : tim4  (processor 4)
-    // - IRQ[5]  : tim5  (processor 5)
-    // - IRQ[6]  : tim6  (processor 6)
-    // - IRQ[7]  : tim7  (processor 7)
-
-    // - IRQ[8]  : dma0  (processor 0)
-    // - IRQ[9]  : dma1  (processor 0)
-    // - IRQ[10] : dma2  (processor 0)
-    // - IRQ[11] : dma3  (processor 0)
-    // - IRQ[12] : dma4  (processor 0)
-    // - IRQ[13] : dma5  (processor 0)
-    // - IRQ[14] : dma6  (processor 0)
-    // - IRQ[15] : dma7  (processor 0)
+    // The XICU controls at most 24 HardWare Interrupt inputs
+    // that are all routed to processor 0
+    // - HWI[0]  : unused             
+    // - HWI[1]  : unused             
+    // - HWI[2]  : unused             
+    // - HWI[3]  : unused             
+    // - HWI[4]  : unused             
+    // - HWI[5]  : unused             
+    // - HWI[6]  : unused             
+    // - HWI[7]  : unused             
+    // - HWI[8]  : dma0  (processor 0)
+    // - HWI[9]  : dma1  (processor 0)
+    // - HWI[10] : dma2  (processor 0)
+    // - HWI[11] : dma3  (processor 0)
+    // - HWI[12] : dma4  (processor 0)
+    // - HWI[13] : dma5  (processor 0)
+    // - HWI[14] : dma6  (processor 0)
+    // - HWI[15] : dma7  (processor 0)
     //
-    // - IRQ[16] : tty0  (processor 0)
-    // - IRQ[17] : tty1  (processor 0)
-    // - IRQ[18] : tty2  (processor 0)
-    // - IRQ[19] : tty3  (processor 0)
-    // - IRQ[20] : tty4  (processor 0)
-    // - IRQ[21] : tty5  (processor 0)
-    // - IRQ[22] : tty6  (processor 0)
-    // - IRQ[23] : tty7  (processor 0)
-    // - IRQ[24] : tty8  (processor 0)
-    // - IRQ[25] : tty9  (processor 0)
-    // - IRQ[26] : tty10 (processor 0)
-    // - IRQ[27] : tty11 (processor 0)
-    // - IRQ[28] : tty12 (processor 0)
-    // - IRQ[29] : tty13 (processor 0)
-    // - IRQ[30] : tty14 (processor 0)
+    // - HWI[16] : tty0  (processor 0)
+    // - HWI[17] : tty1  (processor 0)
+    // - HWI[18] : tty2  (processor 0)
+    // - HWI[19] : tty3  (processor 0)
+    // - HWI[20] : tty4  (processor 0)
+    // - HWI[21] : tty5  (processor 0)
+    // - HWI[22] : tty6  (processor 0)
+    // - HWI[23] : tty7  (processor 0)
+    // - HWI[24] : tty8  (processor 0)
+    // - HWI[25] : tty9  (processor 0)
+    // - HWI[26] : tty10 (processor 0)
+    // - HWI[27] : tty11 (processor 0)
+    // - HWI[28] : tty12 (processor 0)
+    // - HWI[29] : tty13 (processor 0)
+    // - HWI[30] : tty14 (processor 0)
     //
-    // - IRQ[31] : ioc   (processor 0)
+    // - HWI[31] : ioc   (processor 0)
     ////////////////////////////////////////////////////////////////////////////
 
     //VLoader loader(map_name);
@@ -406,22 +397,16 @@ std::cout << "rom constructed" << std::endl;
 
 std::cout << "tty constructed" << std::endl;
 
-    VciMultiIcu<vci_param> *icu;
-    icu = new VciMultiIcu<vci_param>("icu",
-            IntTab(ICU_TGTID),
+    VciXicu<vci_param> *icu;
+    icu = new VciXicu<vci_param>("icu",
             maptab,
+            IntTab(ICU_TGTID),
+            NB_PROCS_MAX + NB_TIMERS_MAX,
             32,
-            NB_PROCS_MAX);
+            0,
+            NB_PROCS_MAX );
 
 std::cout << "icu constructed" << std::endl;
-
-    VciTimer<vci_param>* timer;
-    timer = new VciTimer<vci_param>("timer",
-            IntTab(TIM_TGTID),
-            maptab,
-            NB_PROCS_MAX);
-
-std::cout << "timer constructed" << std::endl;
 
     VciMultiDma<vci_param>* dma;
     dma = new VciMultiDma<vci_param>("dma",
@@ -456,7 +441,7 @@ std::cout << "ioc constructed" << std::endl;
     bus = new VciVgsb<vci_param>("bus",
             maptab,
             NB_PROCS_MAX+2,
-            8);
+            7);
 
 std::cout << "bus constructed" << std::endl << std::endl;
 
@@ -503,28 +488,19 @@ std::cout << "tty connected" << std::endl;
     icu->p_vci      (signal_vci_tgt_icu);
 
     for (size_t p = 0 ; p < NB_PROCS_MAX ; p++)
-        icu->p_irq_out[p]       (signal_irq_proc[p]);
+        icu->p_irq[p]       (signal_irq_proc[p]);
 
     for (size_t i = 0 ; i < 32 ; i++ )
     {
-       if      ( i < NB_PROCS_MAX )       icu->p_irq_in[i] (signal_irq_tim[i]);
-       else if ( i < 8 )                  icu->p_irq_in[i] (signal_false);
-       else if ( i < (8 + NB_DMAS_MAX) )  icu->p_irq_in[i] (signal_irq_dma[i-8]);
-       else if ( i < 16 )                 icu->p_irq_in[i] (signal_false);
-       else if ( i < (16 + NB_TTYS) )     icu->p_irq_in[i] (signal_irq_tty[i-16]);
-       else if ( i < 31 )                 icu->p_irq_in[i] (signal_false);
-       else                               icu->p_irq_in[i] (signal_irq_ioc);
+       if      ( i < 8 )                  icu->p_hwi[i] (signal_false);
+       else if ( i < (8 + NB_DMAS_MAX) )  icu->p_hwi[i] (signal_irq_dma[i-8]);
+       else if ( i < 16 )                 icu->p_hwi[i] (signal_false);
+       else if ( i < (16 + NB_TTYS) )     icu->p_hwi[i] (signal_irq_tty[i-16]);
+       else if ( i < 31 )                 icu->p_hwi[i] (signal_false);
+       else                               icu->p_hwi[i] (signal_irq_ioc);
     }
 
 std::cout << "icu connected" << std::endl;
-
-    timer->p_clk    (signal_clk);
-    timer->p_resetn (signal_resetn);
-    timer->p_vci    (signal_vci_tgt_tim);
-    for (size_t p = 0 ; p < NB_PROCS_MAX ; p++)
-        timer->p_irq[p] (signal_irq_tim[p]);
-
-std::cout << "timer connected" << std::endl;
 
     dma->p_clk          (signal_clk);
     dma->p_resetn       (signal_resetn);
@@ -559,7 +535,6 @@ std::cout << "ioc connected" << std::endl;
     bus->p_to_initiator[IOC_SRCID]  (signal_vci_init_ioc);
     bus->p_to_target[ROM_TGTID]     (signal_vci_tgt_rom);
     bus->p_to_target[RAM_TGTID]     (signal_vci_tgt_ram);
-    bus->p_to_target[TIM_TGTID]     (signal_vci_tgt_tim);
     bus->p_to_target[DMA_TGTID]     (signal_vci_tgt_dma);
     bus->p_to_target[FBF_TGTID]     (signal_vci_tgt_fbf);
     bus->p_to_target[IOC_TGTID]     (signal_vci_tgt_ioc);
@@ -580,13 +555,6 @@ std::cout << "bus connected" << std::endl << std::endl;
     {
         sc_start( sc_time( 1 , SC_NS ) ) ;
 
-/*
-if ( signal_irq_tty[0].read() )
-{
-    std::cout << "!!! IRQ_TTY[0] ACTIVATED !!!" << std::endl; 
-    std::cout << "    PROC_IRQ[0] = " << signal_irq_proc[0] << std::endl;
-}
-*/
         if( debug_ok && (n > from_cycle) )
         {
             std::cout << "***************** cycle " << std::dec << n
@@ -594,8 +562,8 @@ if ( signal_irq_tty[0].read() )
 
             if ( NB_PROCS_MAX > 0 )
             {
-//                proc[0]->print_trace();
-//                signal_vci_init_proc[0].print_trace("signal_proc_0");
+                proc[0]->print_trace();
+                signal_vci_init_proc[0].print_trace("signal_proc_0");
             }
             if ( NB_PROCS_MAX > 1 )
             {
@@ -604,8 +572,8 @@ if ( signal_irq_tty[0].read() )
             }
             if ( NB_PROCS_MAX > 2 )
             {
-                proc[2]->print_trace();
-                signal_vci_init_proc[2].print_trace("signal_proc_2");
+//                proc[2]->print_trace();
+//                signal_vci_init_proc[2].print_trace("signal_proc_2");
             }
             if ( NB_PROCS_MAX > 2 )
             {
@@ -616,7 +584,7 @@ if ( signal_irq_tty[0].read() )
             bus->print_trace();
 
 //            icu->print_trace();
-//            signal_vci_tgt_icu.print_trace("signal_icu");
+            signal_vci_tgt_icu.print_trace("signal_icu");
 
 //            rom->print_trace();
 //            signal_vci_tgt_rom.print_trace("signal_rom");
@@ -628,24 +596,22 @@ if ( signal_irq_tty[0].read() )
 //            signal_vci_tgt_dma.print_trace("signal_dma_tgt");
 //            signal_vci_init_dma.print_trace("signal_dma_init");
 
-            timer->print_trace();
-            signal_vci_tgt_tim.print_trace("signal_tim");
     
 /*
             if ( signal_irq_tim[0].read() ) 
             {
-                std::cout << "!!! IRQ_TIMER [0] ACTIVATED !!!" << std::endl; 
-                std::cout << "    PROC_IRQ [0] = " << signal_irq_proc[0] << std::endl;
+                std::cout << "!!! HWI_TIMER [0] ACTIVATED !!!" << std::endl; 
+                std::cout << "    PROC_HWI [0] = " << signal_irq_proc[0] << std::endl;
             }
             if ( signal_irq_tim[2].read() ) 
             {
-                std::cout << "!!! IRQ_TIMER [2] ACTIVATED !!!" << std::endl; 
-                std::cout << "    PROC_IRQ [2] = " << signal_irq_proc[2] << std::endl;
+                std::cout << "!!! HWI_TIMER [2] ACTIVATED !!!" << std::endl; 
+                std::cout << "    PROC_HWI [2] = " << signal_irq_proc[2] << std::endl;
             }
             if ( signal_irq_tty[1].read() )
             {
-                std::cout << "!!! IRQ_TTY [1] ACTIVATED !!!" << std::endl; 
-                std::cout << "    PROC_IRQ [0] = " << signal_irq_proc[0] << std::endl;
+                std::cout << "!!! HWI_TTY [1] ACTIVATED !!!" << std::endl; 
+                std::cout << "    PROC_HWI [0] = " << signal_irq_proc[0] << std::endl;
             }
 */
         } // end if debug

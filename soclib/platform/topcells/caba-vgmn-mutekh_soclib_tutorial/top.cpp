@@ -53,18 +53,20 @@ int _main(int argc, char *argv[])
 	// Avoid repeating these everywhere
 	using soclib::common::IntTab;
 	using soclib::common::Segment;
-	const size_t ncpu = 4;
+	const size_t ncpu = 1;
 	const size_t xicu_n_irq = 2;
 
 	// Define VCI parameters
 	typedef soclib::caba::VciParams<4,8,32,1,1,1,8,4,4,1> vci_param;
 
-	if ( argc < 2 ) {
-        std::cerr << "Usage: " << argv[0] << " <arm_kernel_file>" << std::endl;
+	if ( argc < 3 ) {
+        std::cerr << "Usage: " << argv[0] << " <arm_kernel_file> debug" << std::endl;
         return 1;
 	}
 
     const char *kernel = argv[1];
+
+    uint32_t debug = atoi(argv[2]);
 
 	// Mapping table
     soclib::common::Loader loader(kernel, "platform.dtb@0xe0000000:RO");
@@ -195,9 +197,20 @@ int _main(int argc, char *argv[])
 
 	sc_start(sc_core::sc_time(1, SC_NS));
 	signal_resetn = true;
-	
-	sc_start();
 
+    for ( size_t n=1 ; 10000000 ; n++ )
+    {
+        sc_start( sc_time( 1 , SC_NS ) ) ;
+        if ( debug )
+        {
+            std::cout << "***************** cycle " << std::dec << n
+                << " ***********************" << std::endl;
+            procs[0]->print_trace();
+            signal_vci_proc[0].print_trace("signal_proc_0");
+            signal_vci_rom.print_trace("signal_rom");
+            signal_vci_ram.print_trace("signal_ram");
+        }
+    }
 	return EXIT_SUCCESS;
 }
 
