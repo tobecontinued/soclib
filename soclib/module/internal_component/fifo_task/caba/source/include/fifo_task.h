@@ -102,7 +102,7 @@ public:
 public:
     virtual void task_func();
 
-    /*** All the following function must be in this class ***/
+    /*** All the following function must be in this class and public***/
 
     /**** MWMR ****/
     #define SRL_GET_MWMR(name) get_mwmr( #name)
@@ -123,5 +123,4 @@ public:
 
 }}
 
-//TODO: endianness, use soclib endiannes?
 #endif /* FIFO_TASK_H_ */

@@ -289,12 +289,12 @@ tmpl(void)::srl_mwmr_write( srl_mwmr_t fifo, void *mem, size_t len )
 
 tmpl(ssize_t)::srl_mwmr_try_read( srl_mwmr_t fifo, void *mem, size_t len )
 {
-    srl_assert(!"Not implemented");
+    srl_assert(!" srl_mwmr_try_read is not implemented");
 }
 
 tmpl(ssize_t)::srl_mwmr_try_write( srl_mwmr_t fifo, void *mem, size_t len )
 {
-    srl_assert(!"Not implemented");
+    srl_assert(!"srl_mwmr_try_write not implemented");
 }
 
 /***** hardware helpers ******/

@@ -23,6 +23,16 @@
 
 namespace dsx { namespace caba {
 
+#define srl_exit() return;
+
+#define SRL_GET_LOCK            #error "SRL_MEMSPACE_ADDR is not implemneted in the COPROC context"//
+#define SRL_MEMSPACE_ADDR       #error "SRL_MEMSPACE_ADDR is not implemneted in the COPROC context"//
+#define SRL_MEMSPACE_SIZE       #error "SRL_MEMSPACE_SIZE is not implemneted in the COPROC context"//
+#define SRL_GET_BARRIER         #error "SRL_GET_BARRIER is not implemneted in the COPROC context"//
+#define SRL_GET_MEMSPACE        #error "SRL_GET_MEMSPACE is not implemneted in the COPROC context"//
+#define SRL_GET_CONST           #error "SRL_GET_CONST is not implemneted in the COPROC context"//
+
+
 /****** MWMR ******/
 struct srl_mwmr_s {
     size_t width;//words 
