@@ -480,6 +480,7 @@ tmpl(void)::transition()
                 {
                     not_found    = false;
                     r_cmd_index  = k;
+                    r_cmd_count  = 0;
                     r_cmd_nbytes = r_channel_nbytes_second[k].read();
                     r_cmd_fsm    = CMD_READ;
                 }
@@ -495,6 +496,7 @@ tmpl(void)::transition()
                 {
                     not_found    = false;
                     r_cmd_index  = k;
+                    r_cmd_count  = 0;
                     r_cmd_nbytes = r_channel_nbytes_second[k].read();
                     r_cmd_fsm    = CMD_WRITE;
                 }
