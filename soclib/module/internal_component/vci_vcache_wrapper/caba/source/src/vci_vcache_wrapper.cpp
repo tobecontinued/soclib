@@ -28,9 +28,9 @@
 #include "arithmetics.h"
 #include "../include/vci_vcache_wrapper.h"
 
-#define INSTRUMENTATION		1
-#define DEBUG_DCACHE		1
-#define DEBUG_ICACHE		1
+#define INSTRUMENTATION        1
+#define DEBUG_DCACHE        1
+#define DEBUG_ICACHE        1
 
 namespace soclib { 
 namespace caba {
@@ -42,7 +42,7 @@ const char *icache_fsm_state_str[] = {
         "ICACHE_XTN_TLB_FLUSH", 
         "ICACHE_XTN_CACHE_FLUSH", 
         "ICACHE_XTN_TLB_INVAL",  
-	    "ICACHE_XTN_CACHE_INVAL_VA",
+        "ICACHE_XTN_CACHE_INVAL_VA",
         "ICACHE_XTN_CACHE_INVAL_PA",
         "ICACHE_XTN_CACHE_INVAL_GO",
 
@@ -60,10 +60,10 @@ const char *dcache_fsm_state_str[] = {
 
         "DCACHE_TLB_MISS",
         "DCACHE_TLB_PTE1_GET",
-	"DCACHE_TLB_PTE1_SELECT",  
+        "DCACHE_TLB_PTE1_SELECT",  
         "DCACHE_TLB_PTE1_UPDT", 
         "DCACHE_TLB_PTE2_GET", 
-	"DCACHE_TLB_PTE2_SELECT",
+        "DCACHE_TLB_PTE2_SELECT",
         "DCACHE_TLB_PTE2_UPDT",   
         "DCACHE_TLB_LR_WAIT",
         "DCACHE_TLB_RETURN",
@@ -117,23 +117,23 @@ using soclib::common::uint32_log2;
 
 /////////////////////////////////
 tmpl(/**/)::VciVcacheWrapper(
-    sc_module_name 			name,
-    int 				procid,
-    const soclib::common::MappingTable 	&mtp,
-    const soclib::common::IntTab 	&srcid,
-    size_t 				tlb_ways,
-    size_t 				tlb_sets,
-    size_t 				icache_ways,
-    size_t 				icache_sets,
-    size_t 				icache_words,
-    size_t 				dcache_ways,
-    size_t 				dcache_sets,
-    size_t 				dcache_words,
-    size_t 				wbuf_nlines, 
-    size_t 				wbuf_nwords, 
-    uint32_t				max_frozen_cycles,
-    uint32_t				debug_start_cycle,
-    bool				debug_ok)
+    sc_module_name             name,
+    int                 procid,
+    const soclib::common::MappingTable     &mtp,
+    const soclib::common::IntTab     &srcid,
+    size_t                 tlb_ways,
+    size_t                 tlb_sets,
+    size_t                 icache_ways,
+    size_t                 icache_sets,
+    size_t                 icache_words,
+    size_t                 dcache_ways,
+    size_t                 dcache_sets,
+    size_t                 dcache_words,
+    size_t                 wbuf_nlines, 
+    size_t                 wbuf_nwords, 
+    uint32_t                max_frozen_cycles,
+    uint32_t                debug_start_cycle,
+    bool                debug_ok)
     : soclib::caba::BaseModule(name),
 
       p_clk("p_clk"),
@@ -256,8 +256,8 @@ tmpl(/**/)::VciVcacheWrapper(
       r_vci_rsp_cpt("r_vci_rsp_cpt"),
       r_vci_rsp_ins_error("r_vci_rsp_ins_error"),
       r_vci_rsp_data_error("r_vci_rsp_data_error"),
-      r_vci_rsp_fifo_icache("r_vci_rsp_fifo_icache", 2),	// 2 words depth
-      r_vci_rsp_fifo_dcache("r_vci_rsp_fifo_dcache", 2),	// 2 words depth
+      r_vci_rsp_fifo_icache("r_vci_rsp_fifo_icache", 2),    // 2 words depth
+      r_vci_rsp_fifo_dcache("r_vci_rsp_fifo_dcache", 2),    // 2 words depth
 
       r_iss(this->name(), procid),
       r_wbuf("wbuf", wbuf_nwords, wbuf_nlines, dcache_words ),
@@ -275,11 +275,11 @@ tmpl(/**/)::VciVcacheWrapper(
     assert( (icache_words == dcache_words) and
              "icache_words and dcache_words parameters must be equal");
 
-    r_mmu_params = (uint32_log2(m_tlb_ways)   << 29)   | (uint32_log2(m_tlb_sets)   << 25) |
-                   (uint32_log2(m_dcache_ways) << 22)   | (uint32_log2(m_dcache_sets) << 18) |
-                   (uint32_log2(m_tlb_ways)   << 15)   | (uint32_log2(m_tlb_sets)   << 11) |
-                   (uint32_log2(m_icache_ways) << 8)    | (uint32_log2(m_icache_sets) << 4)  |
-                   (uint32_log2(m_icache_words<<2));
+    r_mmu_params = (uint32_log2(m_tlb_ways)    << 29) | (uint32_log2(m_tlb_sets)    << 25) |
+                   (uint32_log2(m_dcache_ways) << 22) | (uint32_log2(m_dcache_sets) << 18) |
+                   (uint32_log2(m_tlb_ways)    << 15) | (uint32_log2(m_tlb_sets)    << 11) |
+                   (uint32_log2(m_icache_ways) << 8)  | (uint32_log2(m_icache_sets) << 4)  |
+                   (uint32_log2(m_icache_words << 2));
 
     r_mmu_release = (uint32_t)(1 << 16) | 0x1;
 
@@ -376,17 +376,17 @@ tmpl(void)::print_trace(size_t mode)
 tmpl(void)::cache_monitor( paddr_t addr )
 //////////////////////////////////////////
 { 
-    size_t	cache_way;
-    size_t	cache_set;
-    size_t	cache_word;
-    uint32_t	cache_rdata;
+    size_t    cache_way;
+    size_t    cache_set;
+    size_t    cache_word;
+    uint32_t    cache_rdata;
 
-    bool	dcache_hit = r_dcache.read_neutral( addr,
+    bool    dcache_hit = r_dcache.read_neutral( addr,
                                            &cache_rdata,
                                            &cache_way,
                                            &cache_set,
                                            &cache_word );
-    bool	icache_hit = r_icache.read_neutral( addr,
+    bool    icache_hit = r_icache.read_neutral( addr,
                                            &cache_rdata,
                                            &cache_way,
                                            &cache_set,
@@ -397,7 +397,7 @@ tmpl(void)::cache_monitor( paddr_t addr )
                   << " dcache change at cycle " << std::dec << r_cpt_total_cycles
                   << " for adresse " << std::hex << addr
                   << " / HIT = " << dcache_hit << std::endl;
-	r_debug_dcache_previous_hit = dcache_hit;
+    r_debug_dcache_previous_hit = dcache_hit;
     }
     if ( icache_hit != r_debug_dcache_previous_hit )
     {
@@ -405,7 +405,7 @@ tmpl(void)::cache_monitor( paddr_t addr )
                   << " icache change at cycle " << std::dec << r_cpt_total_cycles
                   << " for adresse " << std::hex << addr
                   << " / HIT = " << icache_hit << std::endl;
-	r_debug_icache_previous_hit = icache_hit;
+    r_debug_icache_previous_hit = icache_hit;
     }
 }
 
@@ -473,7 +473,7 @@ tmpl(void)::transition()
         // ICACHE & DCACHE activated
         r_mmu_mode = 0x3;
 
-	// No request from ICACHE FSM to CMD FSM
+        // No request from ICACHE FSM to CMD FSM
         r_icache_miss_req          = false;
         r_icache_unc_req           = false;
 
@@ -493,7 +493,7 @@ tmpl(void)::transition()
         r_dcache_pending_unc_write = false;
 
         // No LL reservation
-	r_dcache_ll_valid          = false;
+        r_dcache_ll_valid          = false;
 
         // No processor XTN request pending
         r_dcache_xtn_req           = false;
@@ -505,44 +505,44 @@ tmpl(void)::transition()
         // Debug registers
         r_debug_icache_previous_hit = false;
         r_debug_dcache_previous_hit = false;
-        r_debug_active	  	    = false;
-	r_cpt_stop_simulation       = 0;
+        r_debug_active              = false;
+        r_cpt_stop_simulation       = 0;
 
         // Instrumentation counters 
-        r_cpt_dcache_read  	  = 0;
-        r_cpt_dcache_write 	  = 0;
-        r_cpt_icache_read  	  = 0;
-        r_cpt_icache_write 	  = 0;
+        r_cpt_dcache_read        = 0;
+        r_cpt_dcache_write       = 0;
+        r_cpt_icache_read        = 0;
+        r_cpt_icache_write       = 0;
 
-        r_cpt_dtlb_read  	  = 0;
-        r_cpt_dtlb_write 	  = 0;
-        r_cpt_itlb_read  	  = 0;
-        r_cpt_itlb_write 	  = 0;
+        r_cpt_dtlb_read        = 0;
+        r_cpt_dtlb_write       = 0;
+        r_cpt_itlb_read        = 0;
+        r_cpt_itlb_write       = 0;
 
-        r_cpt_wbuf_read  	  = 0;
-        r_cpt_wbuf_write 	  = 0;
+        r_cpt_wbuf_read        = 0;
+        r_cpt_wbuf_write       = 0;
 
         r_pc_previous             = 1;
-	r_cpt_exec_ins            = 0;
-	r_cpt_frz_cycles          = 0;
-	r_cpt_total_cycles        = 0;
+        r_cpt_exec_ins            = 0;
+        r_cpt_frz_cycles          = 0;
+        r_cpt_total_cycles        = 0;
 
         r_cpt_ins                 = 0;
         r_cpt_ins_uncacheable     = 0;
         r_cpt_icache_miss         = 0;
-	r_cpt_icache_spec_miss    = 0;
+        r_cpt_icache_spec_miss    = 0;
         r_cpt_itlb_miss           = 0;
         r_cpt_itlb_miss_bypass    = 0;
 
-        r_cpt_read		  = 0;
-        r_cpt_read_uncacheable	  = 0;
+        r_cpt_read          = 0;
+        r_cpt_read_uncacheable      = 0;
         r_cpt_write               = 0;
         r_cpt_write_uncacheable   = 0;
         r_cpt_write_cached        = 0;
         r_cpt_sc                  = 0;
         r_cpt_ll                  = 0;
         r_cpt_dcache_miss         = 0;
-	r_cpt_dcache_spec_miss    = 0;
+        r_cpt_dcache_spec_miss    = 0;
         r_cpt_dirty_bit_updt      = 0;
         r_cpt_access_bit_updt     = 0;
         r_cpt_dtlb_miss           = 0;
@@ -566,12 +566,12 @@ tmpl(void)::transition()
         r_cpt_dunc_transaction    = 0;
         r_cpt_sc_transaction      = 0;
         r_cpt_write_transaction   = 0;
-        r_length_write_transaction = 0;	
+        r_length_write_transaction = 0;    
 
-        for (uint32_t i=0; i<32 ; ++i) r_cpt_fsm_icache      [i]   = 0;
-        for (uint32_t i=0; i<32 ; ++i) r_cpt_fsm_dcache      [i]   = 0;
-        for (uint32_t i=0; i<32 ; ++i) r_cpt_fsm_cmd         [i]   = 0;
-        for (uint32_t i=0; i<32 ; ++i) r_cpt_fsm_rsp         [i]   = 0;
+        for (uint32_t i = 0; i < 32; ++i) r_cpt_fsm_icache[i] = 0;
+        for (uint32_t i = 0; i < 32; ++i) r_cpt_fsm_dcache[i] = 0;
+        for (uint32_t i = 0; i < 32; ++i) r_cpt_fsm_cmd[i] = 0;
+        for (uint32_t i = 0; i < 32; ++i) r_cpt_fsm_rsp[i] = 0;
 
         return;
     }
@@ -610,15 +610,15 @@ tmpl(void)::transition()
     // 
     // There is 8 causes to exit the IDLE state:
     // Five configurations corresponding to XTN processor requests (from DCACHE FSM) :
-    // - Flush ITLB 					=> ICACHE_XTN_TLB_FLUSH 
-    // - Flush ICACHE 					=> ICACHE_XTN_CACHE_FLUSH 
-    // - Invalidate ITLB entry 				=> ICACHE_XTN_TLB_INVAL
-    // - Invalidate ICACHE line using virtual address	=> ICACHE_XTN_CACHE_INVAL_VA
-    // - Invalidate ICACHE line using physical address	=> ICACHE_XTN_CACHE_INVAL_PA
+    // - Flush ITLB                     => ICACHE_XTN_TLB_FLUSH 
+    // - Flush ICACHE                     => ICACHE_XTN_CACHE_FLUSH 
+    // - Invalidate ITLB entry                 => ICACHE_XTN_TLB_INVAL
+    // - Invalidate ICACHE line using virtual address    => ICACHE_XTN_CACHE_INVAL_VA
+    // - Invalidate ICACHE line using physical address    => ICACHE_XTN_CACHE_INVAL_PA
     // Three configurations corresponding to instruction processor requests :
-    // - tlb miss 					=> ICACHE_TLB_WAIT 
-    // - cacheable read miss 				=> ICACHE_MISS_VICTIM
-    // - uncacheable read miss 				=> ICACHE_UNC_REQ 
+    // - tlb miss                     => ICACHE_TLB_WAIT 
+    // - cacheable read miss                 => ICACHE_MISS_VICTIM
+    // - uncacheable read miss                 => ICACHE_UNC_REQ 
     // 
     // In case of cache miss, the ICACHE FSM request a VCI transaction to CMD FSM
     // using the r_icache_tlb_miss_req flip-flop, that reset this flip-flop when the
@@ -659,10 +659,10 @@ tmpl(void)::transition()
     switch( r_icache_fsm.read() ) 
     {
     /////////////////
-    case ICACHE_IDLE:	// In this state, we handle processor requests, and XTN requests 
+    case ICACHE_IDLE:    // In this state, we handle processor requests, and XTN requests 
                         // sent by DCACHE FSM. XTN requests are handled first.
                         // We access the itlb and dcache in parallel:
-			// - with the virtual address for ITLB 
+            // - with the virtual address for ITLB 
                         // - with a speculative physical address for ICACHE
                         //   (address computed during the previous cycle)
     {
@@ -694,15 +694,15 @@ tmpl(void)::transition()
             }
             if ( (int)r_dcache_xtn_opcode.read() == (int)iss_t::XTN_MMU_ICACHE_PA_INV) 
             {
-		if (sizeof(paddr_t) <= 32) {
-			assert(r_mmu_word_hi.read() == 0 &&
-			    "high bits should be 0 for 32bit paddr");
-			r_icache_vci_paddr = (paddr_t)r_mmu_word_lo.read();
-		} else {
-			r_icache_vci_paddr =
-				(paddr_t)r_mmu_word_hi.read() << 32 | 
-				(paddr_t)r_mmu_word_lo.read();
-		}
+        if (sizeof(paddr_t) <= 32) {
+            assert(r_mmu_word_hi.read() == 0 &&
+                "high bits should be 0 for 32bit paddr");
+            r_icache_vci_paddr = (paddr_t)r_mmu_word_lo.read();
+        } else {
+            r_icache_vci_paddr =
+                (paddr_t)r_mmu_word_hi.read() << 32 | 
+                (paddr_t)r_mmu_word_lo.read();
+        }
                 r_icache_fsm         = ICACHE_XTN_CACHE_INVAL_PA;   
                 break;
             }
@@ -711,8 +711,8 @@ tmpl(void)::transition()
         // processor request
         if ( m_ireq.valid )
         {
-            bool	cacheable;
-            paddr_t	paddr;
+            bool    cacheable;
+            paddr_t    paddr;
 
             // We register processor request
             r_icache_vaddr_save = m_ireq.addr;
@@ -720,8 +720,8 @@ tmpl(void)::transition()
             // speculative icache access (if cache activated)
             // we use the speculative PPN computed during the previous cycle
             
-            uint32_t 	cache_inst = 0;
-            bool	cache_hit  = false;
+            uint32_t     cache_inst = 0;
+            bool    cache_hit  = false;
 
             if ( r_mmu_mode.read() & INS_CACHE_MASK )
             {
@@ -738,12 +738,12 @@ r_cpt_icache_read++;
             // systematic itlb access (if tlb activated)
             // we use the virtual address
 
-            paddr_t	tlb_paddr;
+            paddr_t    tlb_paddr;
             pte_info_t  tlb_flags; 
             size_t      tlb_way;  
             size_t      tlb_set;
             paddr_t     tlb_nline;
-            bool	tlb_hit   = false;;  
+            bool    tlb_hit   = false;;  
 
             if ( r_mmu_mode.read() & INS_TLB_MASK )
             {
@@ -754,9 +754,9 @@ r_cpt_itlb_read++;
                 tlb_hit = r_itlb.translate( m_ireq.addr,
                                             &tlb_paddr,
                                             &tlb_flags,
-                                            &tlb_nline,	// unused
-                                            &tlb_way,	// unused
-                                            &tlb_set );	// unused
+                                            &tlb_nline,    // unused
+                                            &tlb_way,    // unused
+                                            &tlb_set );    // unused
             }
 
             // We compute cacheability, physical address and check access rights:
@@ -767,7 +767,7 @@ r_cpt_itlb_read++;
             //   the physical address is equal to the virtual address (identity mapping)
             //   and there is no access rights checking
 
-            if ( not (r_mmu_mode.read() & INS_TLB_MASK) ) 	// tlb not activated: 
+            if ( not (r_mmu_mode.read() & INS_TLB_MASK) )     // tlb not activated: 
             {
                 // cacheability
                 if ( not (r_mmu_mode.read() & INS_CACHE_MASK) ) cacheable = false;
@@ -776,9 +776,9 @@ r_cpt_itlb_read++;
                 // physical address
                 paddr = (paddr_t)m_ireq.addr;
             }
-            else						// itlb activated
+            else                        // itlb activated
             {
-                if ( tlb_hit )	// tlb hit
+                if ( tlb_hit )    // tlb hit
                 {  
                     // cacheability
                     if ( not (r_mmu_mode.read() & INS_CACHE_MASK) ) cacheable = false;
@@ -826,10 +826,10 @@ r_cpt_itlb_miss++;
             // We enter this section only in case of TLB hit:
             // Finally, we get the instruction depending on cacheability,
             // we send the response to processor, and compute next state
-            if ( cacheable )  	// cacheable read
+            if ( cacheable )      // cacheable read
             {
                 if ( (r_icache_vci_paddr.read() & ~PAGE_K_MASK) 
-                      != (paddr & ~PAGE_K_MASK) ) 	// speculative access KO 
+                      != (paddr & ~PAGE_K_MASK) )     // speculative access KO 
                 {
 
 #if INSTRUMENTATION
@@ -840,7 +840,7 @@ r_cpt_icache_spec_miss++;
                     break;
                 }
                 
-                if ( not cache_hit )	// cache miss
+                if ( not cache_hit )    // cache miss
                 {
 
 #if INSTRUMENTATION
@@ -849,7 +849,7 @@ r_cpt_icache_miss++;
                     r_icache_fsm      = ICACHE_MISS_VICTIM;
                     r_icache_miss_req = true;
                 }
-                else			// cache hit
+                else            // cache hit
                 {
       
 #if INSTRUMENTATION
@@ -859,7 +859,7 @@ r_cpt_ins++;
                     m_irsp.instruction = cache_inst;
                 }
             }
-            else             	// non cacheable read
+            else                 // non cacheable read
             {
                 r_icache_unc_req  = true;
                 r_icache_fsm      = ICACHE_UNC_WAIT;
@@ -868,7 +868,7 @@ r_cpt_ins++;
         break;
     }
     /////////////////////
-    case ICACHE_TLB_WAIT:	// Waiting the itlb update by the DCACHE FSM after a tlb miss
+    case ICACHE_TLB_WAIT:    // Waiting the itlb update by the DCACHE FSM after a tlb miss
                                 // the itlb is udated by the DCACHE FSM, as well as the 
                                 // r_mmu_ietr and r_mmu_ibvar registers in case of error.
                                 // the itlb is not accessed by ICACHE FSM until DCACHE FSM
@@ -887,7 +887,7 @@ r_cost_itlb_miss_frz++;
                 m_irsp.valid             = true;
                 r_icache_fsm           = ICACHE_IDLE;
             }
-            else				// tlb updated : return to IDLE state
+            else                // tlb updated : return to IDLE state
             {
                 r_icache_fsm  = ICACHE_IDLE;
             }
@@ -907,9 +907,9 @@ r_cost_itlb_miss_frz++;
                                   // the r_icache_flush_count register as a slot counter.
                                   // We loop in this state until all slots have been visited.
     {
-        size_t	way = r_icache_flush_count.read()/m_icache_sets;
-        size_t	set = r_icache_flush_count.read()%m_icache_sets;
-        paddr_t 	nline;	// unused
+        size_t    way = r_icache_flush_count.read()/m_icache_sets;
+        size_t    set = r_icache_flush_count.read()%m_icache_sets;
+        paddr_t     nline;    // unused
 
         r_icache.inval( way, 
                         set, 
@@ -919,14 +919,14 @@ r_cost_itlb_miss_frz++;
        
         if ( r_icache_flush_count.read() == (m_icache_sets*m_icache_ways - 1) )
         {
-            r_dcache_xtn_req 	= false;
-            r_icache_fsm 	= ICACHE_IDLE;
+            r_dcache_xtn_req     = false;
+            r_icache_fsm     = ICACHE_IDLE;
         }
         break;
     }
     //////////////////////////
-    case ICACHE_XTN_TLB_INVAL: 	  // invalidate one TLB entry selected by the virtual address 
-        		  	  // stored in the r_dcache_p0_wdata register
+    case ICACHE_XTN_TLB_INVAL:       // invalidate one TLB entry selected by the virtual address 
+                        // stored in the r_dcache_p0_wdata register
     {
         r_itlb.inval(r_dcache_p0_wdata.read());
         r_dcache_xtn_req     = false;
@@ -936,14 +936,14 @@ r_cost_itlb_miss_frz++;
     ///////////////////////////////
     case ICACHE_XTN_CACHE_INVAL_VA:  // Selective cache line invalidate with virtual address
                                      // requires 3 cycles (in case of hit on itlb and icache).
-				     // In this state, we access TLB to translate virtual 
+                     // In this state, we access TLB to translate virtual 
                                      // address stored in the r_dcache_p0_wdata register.
     {
-        paddr_t 	paddr;                     
-        bool    	hit;
+        paddr_t     paddr;                     
+        bool        hit;
 
         // read physical address in TLB when MMU activated
-        if ( r_mmu_mode.read() & INS_TLB_MASK ) 	// itlb activated
+        if ( r_mmu_mode.read() & INS_TLB_MASK )     // itlb activated
         {
 
 #if INSTRUMENTATION
@@ -952,18 +952,18 @@ r_cpt_itlb_read++;
             hit = r_itlb.translate(r_dcache_p0_wdata.read(), 
                                    &paddr); 
         } 
-        else 						// itlb not activated
+        else                         // itlb not activated
         {
-            paddr 	= (paddr_t)r_dcache_p0_wdata.read();
-            hit 	= true;
+            paddr     = (paddr_t)r_dcache_p0_wdata.read();
+            hit     = true;
         }
 
-        if ( hit )		// continue the selective inval process
+        if ( hit )        // continue the selective inval process
         {
             r_icache_vci_paddr    = paddr;                
             r_icache_fsm          = ICACHE_XTN_CACHE_INVAL_PA;
         }
-        else			// miss : send a request to DCACHE FSM
+        else            // miss : send a request to DCACHE FSM
         {
 
 #if INSTRUMENTATION
@@ -979,27 +979,27 @@ r_cpt_itlb_miss++;
                                      // require 2 cycles. In this state, we read dcache,
                                      // with address stored in r_icache_vci_paddr register.
     {
-        uint32_t	data;
-        size_t		way;
-        size_t		set;
-        size_t		word;
+        uint32_t    data;
+        size_t        way;
+        size_t        set;
+        size_t        word;
 
 #if INSTRUMENTATION
 r_cpt_icache_read++;
 #endif
-        bool 		hit = r_icache.read(r_icache_vci_paddr.read(),
+        bool         hit = r_icache.read(r_icache_vci_paddr.read(),
                                             &data,
                                             &way,
                                             &set,
                                             &word);
 
-        if ( hit )	// inval to be done
+        if ( hit )    // inval to be done
         {
                 r_icache_miss_way = way;
                 r_icache_miss_set = set;
                 r_icache_fsm      = ICACHE_XTN_CACHE_INVAL_GO;
         }
-        else		// miss : acknowlege the XTN request and return
+        else        // miss : acknowlege the XTN request and return
         {
             r_dcache_xtn_req = false; 
             r_icache_fsm     = ICACHE_IDLE;
@@ -1009,7 +1009,7 @@ r_cpt_icache_read++;
     ///////////////////////////////
     case ICACHE_XTN_CACHE_INVAL_GO:  // In this state, we invalidate the cache line 
     {
-        paddr_t nline;	// unused
+        paddr_t nline;    // unused
 
         bool hit = r_icache.inval( r_icache_miss_way.read(),
                                    r_icache_miss_set.read(),
@@ -1028,10 +1028,10 @@ r_cpt_icache_read++;
 #if INSTRUMENTATION
 r_cost_icache_miss_frz++;
 #endif
-        bool	valid;
+        bool    valid;
         size_t  way;
         size_t  set;
-        paddr_t victim;	
+        paddr_t victim;    
 
         valid = r_icache.victim_select(r_icache_vci_paddr.read(),
                                        &victim, 
@@ -1045,27 +1045,27 @@ r_cost_icache_miss_frz++;
         break;
     }
     ///////////////////////
-    case ICACHE_MISS_INVAL:	// invalidate the victim line
+    case ICACHE_MISS_INVAL:    // invalidate the victim line
     {
-        paddr_t	nline;	// unused
-	bool hit;
+        paddr_t    nline;    // unused
+    bool hit;
 
         hit = r_icache.inval( r_icache_miss_way.read(),
                         r_icache_miss_set.read(),
                         &nline );
-	assert(hit && "selected way/set line should be in icache");
+    assert(hit && "selected way/set line should be in icache");
 
         r_icache_fsm = ICACHE_MISS_WAIT;
         break;
     }
     //////////////////////
-    case ICACHE_MISS_WAIT:	// waiting a response to a miss request from VCI_RSP FSM
+    case ICACHE_MISS_WAIT:    // waiting a response to a miss request from VCI_RSP FSM
     {
 #if INSTRUMENTATION
 r_cost_icache_miss_frz++;
 #endif
-	if ( r_vci_rsp_ins_error.read() ) // bus error 
-	{
+    if ( r_vci_rsp_ins_error.read() ) // bus error 
+    {
             r_mmu_ietr = MMU_READ_DATA_ILLEGAL_ACCESS; 
             r_mmu_ibvar  = r_icache_vaddr_save.read();
             m_irsp.valid           = true;
@@ -1077,17 +1077,17 @@ r_cost_icache_miss_frz++;
         {
             r_icache_miss_word = 0;
             r_icache_fsm       = ICACHE_MISS_UPDT;  
-	}	
+    }    
         break;
     }
     //////////////////////
-    case ICACHE_MISS_UPDT:	// update the cache (one word per cycle)
+    case ICACHE_MISS_UPDT:    // update the cache (one word per cycle)
     {
 #if INSTRUMENTATION
 r_cost_icache_miss_frz++;
 #endif
 
-        if ( r_vci_rsp_fifo_icache.rok() )	// response available
+        if ( r_vci_rsp_fifo_icache.rok() )    // response available
         {
 
 #if INSTRUMENTATION
@@ -1117,7 +1117,7 @@ r_cpt_icache_write++;
 r_cost_iunc_frz++;
 #endif
 
-	if ( r_vci_rsp_ins_error.read() ) // bus error
+    if ( r_vci_rsp_ins_error.read() ) // bus error
         {
             r_mmu_ietr          = MMU_READ_DATA_ILLEGAL_ACCESS;    
             r_mmu_ibvar         = m_ireq.addr;
@@ -1141,7 +1141,7 @@ r_cpt_ins_uncacheable++;
                 m_irsp.valid       = true;
                 m_irsp.instruction = r_vci_rsp_fifo_icache.read();
             }
-	}	
+    }    
         break;
     }
     } // end switch r_icache_fsm
@@ -1217,18 +1217,18 @@ r_cpt_ins_uncacheable++;
 
     switch ( r_dcache_fsm.read() ) 
     {
-    case DCACHE_IDLE:	// There is several causes to exit the IDLE state :
-                        // - Dirty bit update 		=> DCACHE_DIRTY_GET_PTE
-                        // - ITLB miss  		=> DCACHE_TLB_MISS
-                        // - DTLB miss  		=> DCACHE_TLB_MISS
-                        // - Cacheable read miss  	=> DCACHE_MISS_VICTIM
-                        // - Uncacheable read  		=> DCACHE_UNC_WAIT 
-                        // - SC access 			=> DCACHE_SC_WAIT
-                        // - XTN request 		=> DCACHE_XTN_*
+    case DCACHE_IDLE:    // There is several causes to exit the IDLE state :
+                        // - Dirty bit update         => DCACHE_DIRTY_GET_PTE
+                        // - ITLB miss          => DCACHE_TLB_MISS
+                        // - DTLB miss          => DCACHE_TLB_MISS
+                        // - Cacheable read miss      => DCACHE_MISS_VICTIM
+                        // - Uncacheable read          => DCACHE_UNC_WAIT 
+                        // - SC access             => DCACHE_SC_WAIT
+                        // - XTN request         => DCACHE_XTN_*
                         //
                         // In this state, the dtlb is unconditionally accessed to translate 
                         // the virtual adress from processor, but there is 4 configurations 
-			            // to access the cache, depending on the pipe-line state, defined 
+                        // to access the cache, depending on the pipe-line state, defined 
                         // by the r_dcache_p0_valid (V0) flip-flop : P1 stage activated
                         // and    r_dcache_p1_valid (V1) flip-flop : P2 stage activated
                         //  V0 / V1 / Data      / Directory / comment                    
@@ -1244,7 +1244,7 @@ r_cpt_ins_uncacheable++;
         // If the modified cache line has copies in TLBs, we launch a TLB invalidate
         // operation, going to DCACHE_INVAL_TLB_SCAN state.
 
-        if ( r_dcache_p1_valid.read() )		// P2 stage activated
+        if ( r_dcache_p1_valid.read() )        // P2 stage activated
         {
             size_t   way        = r_dcache_p1_cache_way.read();
             size_t   set        = r_dcache_p1_cache_set.read();
@@ -1331,7 +1331,7 @@ r_cpt_write_uncacheable++;
             size_t  cache_word;
             bool    local_copy;
 
-            if ( r_mmu_mode.read() & DATA_CACHE_MASK) 	// cache activated
+            if ( r_mmu_mode.read() & DATA_CACHE_MASK)     // cache activated
             {
                 local_copy = r_dcache.hit( r_dcache_p0_paddr.read(),
                                            &cache_way,
@@ -1359,7 +1359,7 @@ r_cpt_write_uncacheable++;
                 r_dcache_p1_valid       = false;
             }
         }
-        else				// P1 stage not activated 
+        else                // P1 stage not activated 
         {
             r_dcache_p1_valid = false; 
         } // end P1 stage
@@ -1386,29 +1386,20 @@ r_cpt_write_uncacheable++;
         //    The data is not modified in dcache, as it will be done by the
         //    coherence transaction.   
 
-        // itlb miss request 
-    	if ( r_icache_tlb_miss_req.read() )
-        {
-            r_dcache_tlb_ins    = true;
-            r_dcache_tlb_vaddr  = r_icache_vaddr_save.read();
-            r_dcache_fsm        = DCACHE_TLB_MISS;
-            r_dcache_p0_valid   = false;
-        }
-
-        // processor request
-        else if ( m_dreq.valid )
+                // processor request
+        if ( m_dreq.valid )
         {
             // dcache access using speculative PPN only if pipe-line empty
-            paddr_t		cache_paddr;
-            size_t		cache_way;
-            size_t		cache_set;
-            size_t		cache_word;
-            uint32_t	cache_rdata = 0;
-            bool		cache_hit;
+            paddr_t        cache_paddr;
+            size_t        cache_way;
+            size_t        cache_set;
+            size_t        cache_word;
+            uint32_t    cache_rdata = 0;
+            bool        cache_hit;
 
-            if ( (r_mmu_mode.read() & DATA_CACHE_MASK) and 	// cache activated
+            if ( (r_mmu_mode.read() & DATA_CACHE_MASK) and     // cache activated
                  not r_dcache_p0_valid.read() and 
-                 not r_dcache_p1_valid.read() )			// pipe-line empty
+                 not r_dcache_p1_valid.read() )            // pipe-line empty
             {
                 cache_paddr = (r_dcache_p0_paddr.read() & ~PAGE_K_MASK) | 
                               ((paddr_t)m_dreq.addr & PAGE_K_MASK);
@@ -1427,14 +1418,14 @@ r_cpt_dcache_read++;
             } // end dcache access    
 
             // systematic dtlb access using virtual address
-            paddr_t	    tlb_paddr;
-            pte_info_t 	tlb_flags; 
-            size_t     	tlb_way; 
-            size_t     	tlb_set; 
-            paddr_t    	tlb_nline; 
-            bool	    tlb_hit;    	
+            paddr_t        tlb_paddr;
+            pte_info_t     tlb_flags; 
+            size_t         tlb_way; 
+            size_t         tlb_set; 
+            paddr_t        tlb_nline; 
+            bool        tlb_hit;        
 
-            if ( r_mmu_mode.read() & DATA_TLB_MASK )	// DTLB activated
+            if ( r_mmu_mode.read() & DATA_TLB_MASK )    // DTLB activated
             {
 #if INSTRUMENTATION
 r_cpt_dtlb_read++;
@@ -1443,8 +1434,8 @@ r_cpt_dtlb_read++;
                                             &tlb_paddr,
                                             &tlb_flags,
                                             &tlb_nline,
-                                            &tlb_way,	
-                                            &tlb_set );	
+                                            &tlb_way,    
+                                            &tlb_set );    
             }
             else
             {
@@ -1566,32 +1557,32 @@ r_cpt_dtlb_read++;
                 {
                     switch( xtn_opcode ) 
                     {     
-                    case iss_t::XTN_PTPR:   			// itlb & dtlb must be flushed
+                    case iss_t::XTN_PTPR:               // itlb & dtlb must be flushed
                         r_mmu_ptpr       = m_dreq.wdata;
                         r_dcache_xtn_req = true;
                         r_dcache_fsm     = DCACHE_XTN_SWITCH;
                         break;
 
-                    case iss_t::XTN_TLB_MODE:			// no cache or tlb access 
+                    case iss_t::XTN_TLB_MODE:            // no cache or tlb access 
                         r_mmu_mode = m_dreq.wdata;
                         m_drsp.valid = true;
                         r_dcache_fsm = DCACHE_IDLE;
                         break;
 
-                    case iss_t::XTN_DTLB_INVAL:     		// dtlb access
+                    case iss_t::XTN_DTLB_INVAL:             // dtlb access
                         r_dcache_fsm = DCACHE_XTN_DT_INVAL;  
                         break;
 
-                    case iss_t::XTN_ITLB_INVAL:     		// itlb access
+                    case iss_t::XTN_ITLB_INVAL:             // itlb access
                         r_dcache_xtn_req = true;
                         r_dcache_fsm = DCACHE_XTN_IT_INVAL;  
                         break;
 
-                    case iss_t::XTN_DCACHE_INVAL:   		// dcache, dtlb & itlb access
+                    case iss_t::XTN_DCACHE_INVAL:           // dcache, dtlb & itlb access
                         r_dcache_fsm = DCACHE_XTN_DC_INVAL_VA;
                         break;
 
-                    case iss_t::XTN_MMU_DCACHE_PA_INV:  	// dcache, dtlb & itlb access
+                    case iss_t::XTN_MMU_DCACHE_PA_INV:      // dcache, dtlb & itlb access
                         r_dcache_fsm   = DCACHE_XTN_DC_INVAL_PA;
                         if (sizeof(paddr_t) <= 32) 
                         {
@@ -1606,48 +1597,48 @@ r_cpt_dtlb_read++;
                         }
                         break;
 
-                    case iss_t::XTN_DCACHE_FLUSH:   	       // itlb and dtlb must be reset  
+                    case iss_t::XTN_DCACHE_FLUSH:              // itlb and dtlb must be reset  
                         r_dcache_flush_count = 0;
                         r_dcache_fsm         = DCACHE_XTN_DC_FLUSH; 
                         break;
 
-                    case iss_t::XTN_ICACHE_INVAL:   		// icache and itlb access
+                    case iss_t::XTN_ICACHE_INVAL:           // icache and itlb access
                         r_dcache_xtn_req = true;
                         r_dcache_fsm     = DCACHE_XTN_IC_INVAL_VA; 
                         break;
 
-                    case iss_t::XTN_MMU_ICACHE_PA_INV:		// icache access 
+                    case iss_t::XTN_MMU_ICACHE_PA_INV:        // icache access 
                         r_dcache_xtn_req = true;
                         r_dcache_fsm     = DCACHE_XTN_IC_INVAL_PA; 
                         break;
 
-                    case iss_t::XTN_ICACHE_FLUSH:   		// icache access
+                    case iss_t::XTN_ICACHE_FLUSH:           // icache access
                         r_dcache_xtn_req = true; 
                         r_dcache_fsm     = DCACHE_XTN_IC_FLUSH;
                         break;
 
-                    case iss_t::XTN_SYNC:           		// wait until write buffer empty
+                    case iss_t::XTN_SYNC:                   // wait until write buffer empty
                         r_dcache_fsm     = DCACHE_XTN_SYNC;
                         break;
 
-                    case iss_t::XTN_MMU_WORD_LO: 		// no cache or tlb access
+                    case iss_t::XTN_MMU_WORD_LO:         // no cache or tlb access
                         r_mmu_word_lo = m_dreq.wdata;
                         m_drsp.valid    = true;
                         r_dcache_fsm  = DCACHE_IDLE;
                         break;
 
-                    case iss_t::XTN_MMU_WORD_HI: 		// no cache or tlb access
+                    case iss_t::XTN_MMU_WORD_HI:         // no cache or tlb access
                         r_mmu_word_hi = m_dreq.wdata;
                         m_drsp.valid    = true;
                         r_dcache_fsm  = DCACHE_IDLE;
                         break;
 
-                    case iss_t::XTN_ICACHE_PREFETCH:		// not implemented : no action
-                    case iss_t::XTN_DCACHE_PREFETCH:		// not implemented : no action
+                    case iss_t::XTN_ICACHE_PREFETCH:        // not implemented : no action
+                    case iss_t::XTN_DCACHE_PREFETCH:        // not implemented : no action
                         m_drsp.valid   = true;
                         r_dcache_fsm = DCACHE_IDLE;
                     break;
-	
+    
                     default:
                         r_mmu_detr = MMU_WRITE_UNDEFINED_XTN; 
                         r_mmu_dbvar  = m_dreq.addr;
@@ -1674,11 +1665,11 @@ r_cpt_dtlb_read++;
             // The processor LL or SC accesses are handled as uncacheable.
             else
             {
-                bool	valid_req = false;
-                bool	cacheable = false;
-                paddr_t	paddr     = 0;
+                bool    valid_req = false;
+                bool    cacheable = false;
+                paddr_t    paddr     = 0;
 
-                if ( not (r_mmu_mode.read() & DATA_TLB_MASK) )		// dtlb not activated 
+                if ( not (r_mmu_mode.read() & DATA_TLB_MASK) )        // dtlb not activated 
                 {
                     valid_req     = true;
 
@@ -1697,9 +1688,9 @@ r_cpt_dtlb_read++;
                     // physical address
                     paddr       = (paddr_t)m_dreq.addr;
                 }
-                else 							// dtlb activated
+                else                             // dtlb activated
                 {
-                    if ( tlb_hit )					// tlb hit
+                    if ( tlb_hit )                    // tlb hit
                     {
                         // cacheability
                         if ( (m_dreq.type == iss_t::DATA_LL) or 
@@ -1757,7 +1748,7 @@ if ( r_debug_active )
                         // physical address
                         paddr = tlb_paddr;
                     }
-                    else						// tlb miss
+                    else                        // tlb miss
                     {
 #if INSTRUMENTATION
 r_cpt_dtlb_miss++;
@@ -1768,7 +1759,7 @@ r_cpt_dtlb_miss++;
                     }
                 }    // end DTLB activated
 
-                if ( valid_req ) 	// processor request is valid after TLB check
+                if ( valid_req )     // processor request is valid after TLB check
                 {
                     // physical address and cacheability registration 
                     r_dcache_p0_paddr          = paddr;
@@ -1783,7 +1774,7 @@ r_cpt_dtlb_miss++;
                     if ( ((m_dreq.type == iss_t::DATA_READ) or (m_dreq.type == iss_t::DATA_LL)) 
                         and not r_dcache_p0_valid.read() and not r_dcache_p1_valid.read() )
                     { 
-                        if ( cacheable )            		// cacheable read
+                        if ( cacheable )                    // cacheable read
                         {
                             // if the speculative access is illegal, we pay an extra cycle
                             if ( (r_dcache_p0_paddr.read() & ~PAGE_K_MASK) 
@@ -1833,7 +1824,7 @@ if ( r_debug_active )
 #endif
                             }
                         }
-                        else					// uncacheable read
+                        else                    // uncacheable read
                         {
                             r_dcache_vci_paddr    = paddr;
                             r_dcache_vci_unc_be   = m_dreq.be;
@@ -1863,19 +1854,19 @@ if ( r_debug_active )
                     else if ( m_dreq.type == iss_t::DATA_WRITE )
                     {
                         if ( (r_mmu_mode.read() & DATA_TLB_MASK ) 
-                              and not tlb_flags.d )		// Dirty bit must be set
+                              and not tlb_flags.d )        // Dirty bit must be set
                         {
 #if INSTRUMENTATION
 r_cpt_dirty_bit_updt++;
 #endif
                             // The PTE physical address is obtained from the nline value (dtlb),
                             // and the word index (proper bits of the virtual address)
-                            if ( tlb_flags.b )	// PTE1
+                            if ( tlb_flags.b )    // PTE1
                             {
                                 r_dcache_dirty_paddr = (paddr_t)(tlb_nline*(m_dcache_words<<2)) |
                                                        (paddr_t)((m_dreq.addr>>19) & 0x3c);
                             }
-                            else		// PTE2
+                            else        // PTE2
                             {
                                 r_dcache_dirty_paddr = (paddr_t)(tlb_nline*(m_dcache_words<<2)) |
                                                        (paddr_t)((m_dreq.addr>>9) & 0x38);
@@ -1885,7 +1876,7 @@ r_cpt_dirty_bit_updt++;
                             r_dcache_fsm      = DCACHE_DIRTY_GET_PTE;
                             r_dcache_p0_valid = false;
                         }
-                        else					// Write request accepted
+                        else                    // Write request accepted
                         {
 #if INSTRUMENTATION
 r_cpt_write++;
@@ -1908,7 +1899,7 @@ r_cpt_write++;
                     else if ( m_dreq.type == iss_t::DATA_SC )
                     {
                         if ( (r_dcache_ll_vaddr.read() != m_dreq.addr)
-                             or not r_dcache_ll_valid.read() ) 	// no valid registered LL
+                             or not r_dcache_ll_valid.read() )     // no valid registered LL
                         { 
 #if INSTRUMENTATION
 r_cpt_sc++;
@@ -1917,22 +1908,22 @@ r_cpt_sc++;
                             m_drsp.rdata        = 1;
                             r_dcache_ll_valid   = false;
                         }
-                        else					// valid registered LL
+                        else                    // valid registered LL
                         {
                             if ( (r_mmu_mode.read() & DATA_TLB_MASK ) 
-                                  and not tlb_flags.d )			// Dirty bit must be set
+                                  and not tlb_flags.d )            // Dirty bit must be set
                             {
 #if INSTRUMENTATION
 r_cpt_dirty_bit_updt++;
 #endif
                                 // The PTE physical address is obtained from the nline value (dtlb),
                                 // and the word index (proper bits of the virtual address)
-                                if ( tlb_flags.b )	// PTE1
+                                if ( tlb_flags.b )    // PTE1
                                 {
                                     r_dcache_dirty_paddr = (paddr_t)(tlb_nline*(m_dcache_words<<2)) |
                                                            (paddr_t)((m_dreq.addr>>19) & 0x3c);
                                 }
-                                else			// PTE2
+                                else            // PTE2
                                 {
                                     r_dcache_dirty_paddr = (paddr_t)(tlb_nline*(m_dcache_words<<2)) |
                                                            (paddr_t)((m_dreq.addr>>9) & 0x38);
@@ -1941,7 +1932,7 @@ r_cpt_dirty_bit_updt++;
                                 r_dcache_tlb_set    = tlb_set;
                                 r_dcache_fsm        = DCACHE_DIRTY_GET_PTE;
                             }
-                            else					// SC request accepted
+                            else                    // SC request accepted
                             {
                                 r_dcache_vci_paddr  = paddr;
                                 r_dcache_vci_sc_req = true;
@@ -1962,8 +1953,17 @@ r_cpt_dirty_bit_updt++;
                 {
                     r_dcache_p0_valid = false;
                 }
-            }  // end if read/write/ll/sc request	
+            }  // end if read/write/ll/sc request    
         } // end dreq.valid
+        
+        // itlb miss request 
+        else if ( r_icache_tlb_miss_req.read() )
+        {
+            r_dcache_tlb_ins    = true;
+            r_dcache_tlb_vaddr  = r_icache_vaddr_save.read();
+            r_dcache_fsm        = DCACHE_TLB_MISS;
+            r_dcache_p0_valid   = false;
+        }
         else
         {
             r_dcache_p0_valid = false;
@@ -1983,16 +1983,16 @@ r_cpt_dirty_bit_updt++;
                           // It directly updates the itlb or dtlb, and writes into the 
                           // r_mmu_ins_* or r_mmu_data* error reporting registers.
     {
-        uint32_t	ptba = 0;
-        bool		bypass;
-        paddr_t		pte_paddr;
+        uint32_t    ptba = 0;
+        bool        bypass;
+        paddr_t        pte_paddr;
 
 #if INSTRUMENTATION
 if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
 #endif
 
         // evaluate bypass in order to skip first level page table access
-        if ( r_dcache_tlb_ins.read() )				// itlb miss
+        if ( r_dcache_tlb_ins.read() )                // itlb miss
         {
             bypass = r_itlb.get_bypass(r_dcache_tlb_vaddr.read(), &ptba);
 
@@ -2000,13 +2000,13 @@ if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
 if ( bypass ) r_cpt_itlb_miss_bypass++;
 #endif
         }
-        else							// dtlb miss
+        else                            // dtlb miss
         {
             bypass = r_dtlb.get_bypass(r_dcache_tlb_vaddr.read(), &ptba);
 
-#if INSTRUMENTATION
-if ( bypass ) r_cpt_dtlb_miss_bypass++;
-#endif
+            #if INSTRUMENTATION
+                if ( bypass ) r_cpt_dtlb_miss_bypass++;
+            #endif
         }
 
         if ( not bypass )     // Try to read PTE1/PTD1 in dcache
@@ -2044,17 +2044,17 @@ if ( r_debug_active )
         break;
     }
     /////////////////////////  
-    case DCACHE_TLB_PTE1_GET:	// try to read a PT1 entry in dcache
+    case DCACHE_TLB_PTE1_GET:    // try to read a PT1 entry in dcache
     {
 
 #if INSTRUMENTATION
 if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
 #endif
 
-        uint32_t 	entry;
-        size_t		way;
-        size_t		set;
-        size_t		word;
+        uint32_t     entry;
+        size_t        way;
+        size_t        set;
+        size_t        word;
 
 #if INSTRUMENTATION
 r_cpt_dcache_read++;
@@ -2064,9 +2064,9 @@ r_cpt_dcache_read++;
                                       &way,
                                       &set,
                                       &word );
-        if ( hit )	//  hit in dcache 
+        if ( hit )    //  hit in dcache 
         {
-            if ( not (entry & PTE_V_MASK) )	// unmapped
+            if ( not (entry & PTE_V_MASK) )    // unmapped
             {
                 if ( r_dcache_tlb_ins.read() ) 
                 {
@@ -2097,16 +2097,16 @@ if ( r_debug_active )
 #endif
   
             }
-            else if( entry & PTE_T_MASK ) 	//  PTD : me must access PT2
+            else if( entry & PTE_T_MASK )     //  PTD : me must access PT2
             {
                 // register bypass
-                if ( r_dcache_tlb_ins.read() )		// itlb
+                if ( r_dcache_tlb_ins.read() )        // itlb
                 {
                     r_itlb.set_bypass(r_dcache_tlb_vaddr.read(),
                                       entry & ((1 << (m_paddr_nbits-PAGE_K_NBITS)) - 1), 
                                       r_dcache_tlb_paddr.read() >> (uint32_log2(m_icache_words<<2))); 
                 }
-                else					// dtlb
+                else                    // dtlb
                 {
                     r_dtlb.set_bypass(r_dcache_tlb_vaddr.read(),
                                       entry & ((1 << (m_paddr_nbits-PAGE_K_NBITS)) - 1),
@@ -2128,7 +2128,7 @@ if ( r_debug_active )
 }
 #endif
             }
-            else			//  PTE1 :  we must update the TLB
+            else            //  PTE1 :  we must update the TLB
             {
                 r_dcache_tlb_pte_flags  = entry;
                 r_dcache_tlb_cache_way  = way;
@@ -2149,12 +2149,12 @@ if ( r_debug_active )
 #endif
             }
         }
-        else		// we must load the missing cache line in dcache
+        else        // we must load the missing cache line in dcache
         {
-            r_dcache_vci_miss_req  = true;		
+            r_dcache_vci_miss_req  = true;        
             r_dcache_vci_paddr     = r_dcache_tlb_paddr.read(); 
             r_dcache_miss_type     = PTE1_MISS;
-            r_dcache_fsm           = DCACHE_MISS_VICTIM;	 
+            r_dcache_fsm           = DCACHE_MISS_VICTIM;     
 
 #if DEBUG_DCACHE
 if ( r_debug_active )
@@ -2167,15 +2167,15 @@ if ( r_debug_active )
         break;
     }
     ////////////////////////////
-    case DCACHE_TLB_PTE1_SELECT:	// select a slot for PTE1 
+    case DCACHE_TLB_PTE1_SELECT:    // select a slot for PTE1 
     {
 
 #if INSTRUMENTATION
 if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
 #endif
 
-        size_t 	way;
-        size_t 	set;
+        size_t     way;
+        size_t     set;
 
         if ( r_dcache_tlb_ins.read() )
         {
@@ -2209,8 +2209,8 @@ if ( r_debug_active )
         break;
     }
     //////////////////////////
-    case DCACHE_TLB_PTE1_UPDT:	// write a new PTE1 in tlb after testing the L/R bit
-				// if L/R bit already set, exit the sub-fsm
+    case DCACHE_TLB_PTE1_UPDT:    // write a new PTE1 in tlb after testing the L/R bit
+                // if L/R bit already set, exit the sub-fsm
                                 // if not, dcache is updated, and the page table
                                 // must be updated by a SC transaction.
     {
@@ -2219,10 +2219,10 @@ if ( r_debug_active )
 if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
 #endif
 
-        paddr_t	  nline = r_dcache_tlb_paddr.read() >> (uint32_log2(m_dcache_words)+2);   
+        paddr_t      nline = r_dcache_tlb_paddr.read() >> (uint32_log2(m_dcache_words)+2);   
         uint32_t  pte   = r_dcache_tlb_pte_flags.read();
-        bool	  updt  = false;
-        bool	  local = true;
+        bool      updt  = false;
+        bool      local = true;
 
         // We should compute the access locality: 
         // The PPN MSB bits define the destination cluster index.
@@ -2231,7 +2231,7 @@ if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
         // and can be obtained in the mapping table.
         // As this computation is not done yet, all access are marked as local.
 
-        if ( local )					  // local access
+        if ( local )                      // local access
         {
             if ( not ((pte & PTE_L_MASK) == PTE_L_MASK) ) // we must set the L bit
             {
@@ -2285,9 +2285,9 @@ r_cpt_dcache_write++;
         // update TLB for a PTE1
         if ( r_dcache_tlb_ins.read() )  
         {
-            r_itlb.write( true,		// 2M page
+            r_itlb.write( true,        // 2M page
                           pte,
-                          0,		// argument unused for a PTE1
+                          0,        // argument unused for a PTE1
                           r_dcache_tlb_vaddr.read(),    
                           r_dcache_tlb_way.read(), 
                           r_dcache_tlb_set.read(),
@@ -2298,9 +2298,9 @@ r_cpt_itlb_write++;
         }
         else
         {
-            r_dtlb.write( true,		// 2M page
+            r_dtlb.write( true,        // 2M page
                           pte,
-                          0,		// argument unused for a PTE1
+                          0,        // argument unused for a PTE1
                           r_dcache_tlb_vaddr.read(),    
                           r_dcache_tlb_way.read(), 
                           r_dcache_tlb_set.read(),
@@ -2311,8 +2311,8 @@ r_cpt_dtlb_write++;
         }
 
         // next state
-        if ( updt ) r_dcache_fsm = DCACHE_TLB_LR_WAIT; 	// waiting SC response
-        else        r_dcache_fsm = DCACHE_TLB_RETURN;	// exit sub-fsm
+        if ( updt ) r_dcache_fsm = DCACHE_TLB_LR_WAIT;     // waiting SC response
+        else        r_dcache_fsm = DCACHE_TLB_RETURN;    // exit sub-fsm
 
 #if DEBUG_DCACHE
 if ( r_debug_active )
@@ -2341,18 +2341,18 @@ if ( r_debug_active )
         break;
     }
     /////////////////////////
-    case DCACHE_TLB_PTE2_GET:	// Try to get a PTE2 (64 bits) in the dcache
+    case DCACHE_TLB_PTE2_GET:    // Try to get a PTE2 (64 bits) in the dcache
     {
 
 #if INSTRUMENTATION
 if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
 #endif
 
-        uint32_t 	pte_flags;
-        uint32_t 	pte_ppn;
-        size_t   	way;
-        size_t   	set;
-        size_t		word; 
+        uint32_t     pte_flags;
+        uint32_t     pte_ppn;
+        size_t       way;
+        size_t       set;
+        size_t        word; 
  
 #if INSTRUMENTATION
 r_cpt_dcache_read++;
@@ -2365,7 +2365,7 @@ r_cpt_dcache_read++;
                                       &word );
         if ( hit )      // request hits in dcache 
         {
-            if ( not (pte_flags & PTE_V_MASK) )	// unmapped
+            if ( not (pte_flags & PTE_V_MASK) )    // unmapped
             {
                 if ( r_dcache_tlb_ins.read() ) 
                 {
@@ -2393,7 +2393,7 @@ if ( r_debug_active )
 }
 #endif
             }
-            else				// mapped : we must update the TLB
+            else                // mapped : we must update the TLB
             {
                 r_dcache_tlb_pte_flags  = pte_flags;
                 r_dcache_tlb_pte_ppn    = pte_ppn;
@@ -2444,14 +2444,14 @@ if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
         if ( r_dcache_tlb_ins.read() )
         {
             r_itlb.select( r_dcache_tlb_vaddr.read(),
-                           false,	// PTE2 
+                           false,    // PTE2 
                            &way,
                            &set );
         }
         else
         {
             r_dtlb.select( r_dcache_tlb_vaddr.read(),
-                           false,	// PTE2 
+                           false,    // PTE2 
                            &way,
                            &set );
         }
@@ -2473,9 +2473,9 @@ if ( r_debug_active )
         break;
     }
     //////////////////////////
-    case DCACHE_TLB_PTE2_UPDT:      	// write a new PTE2 in tlb after testing the L/R bit
-				    	// if L/R bit already set, exit the sub-fsm
-                                    	// if not, the dcache entry is updated, and the
+    case DCACHE_TLB_PTE2_UPDT:          // write a new PTE2 in tlb after testing the L/R bit
+                        // if L/R bit already set, exit the sub-fsm
+                                        // if not, the dcache entry is updated, and the
                                         // page table must be updated by an atomic access
     {
 
@@ -2483,7 +2483,7 @@ if ( r_debug_active )
 if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
 #endif
 
-        paddr_t	        nline     = r_dcache_tlb_paddr.read() >> (uint32_log2(m_dcache_words)+2);   
+        paddr_t            nline     = r_dcache_tlb_paddr.read() >> (uint32_log2(m_dcache_words)+2);   
         uint32_t        pte_flags = r_dcache_tlb_pte_flags.read();
         uint32_t        pte_ppn   = r_dcache_tlb_pte_ppn.read();
         bool            updt      = false;
@@ -2496,7 +2496,7 @@ if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
         // and can be obtained in the mapping table.
         // As this computation is not done yet, all access are marked as local.
 
-        if ( local )						// local access
+        if ( local )                        // local access
         {
             if ( not ((pte_flags & PTE_L_MASK) == PTE_L_MASK) ) // we must set the L bit
             {
@@ -2550,7 +2550,7 @@ r_cpt_dcache_write++;
         // update TLB for a PTE2
         if ( r_dcache_tlb_ins.read() )  
         {
-            r_itlb.write( false,	// 4K page
+            r_itlb.write( false,    // 4K page
                           pte_flags,
                           pte_ppn,
                           r_dcache_tlb_vaddr.read(),    
@@ -2563,7 +2563,7 @@ r_cpt_itlb_write++;
         }
         else
         {
-            r_dtlb.write( false,	// 4K page
+            r_dtlb.write( false,    // 4K page
                           pte_flags,
                           pte_ppn,
                           r_dcache_tlb_vaddr.read(),    
@@ -2599,14 +2599,14 @@ if ( r_debug_active )
 }
 #endif
         // next state
-        if ( updt ) r_dcache_fsm = DCACHE_TLB_LR_WAIT; 	// waiting response to SC
-        else        r_dcache_fsm = DCACHE_TLB_RETURN;	// exit sub-fsm
+        if ( updt ) r_dcache_fsm = DCACHE_TLB_LR_WAIT;     // waiting response to SC
+        else        r_dcache_fsm = DCACHE_TLB_RETURN;    // exit sub-fsm
         break;
     }
     ////////////////////////
-    case DCACHE_TLB_LR_WAIT:		// Waiting a response to SC transaction for L/R update.
+    case DCACHE_TLB_LR_WAIT:        // Waiting a response to SC transaction for L/R update.
                                         // We consume the response in rsp FIFO, and we update
-					// the cache in case of success. 
+                    // the cache in case of success. 
                                         // We just return in case of failure, because we don't
                                         // care if the L/R bit update is not done.
                                         // We must take the coherence requests because
@@ -2618,15 +2618,15 @@ if ( not r_dcache_tlb_ins ) r_cost_dtlb_miss_frz++;
 r_cost_access_bit_updt_frz++;
 #endif
 
-        if ( r_vci_rsp_data_error.read() ) 	// bus error
+        if ( r_vci_rsp_data_error.read() )     // bus error
         {
             std::cout << "BUS ERROR in DCACHE_TLB_LR_WAIT state" << std::endl;
             std::cout << "This should not happen in this state" << std::endl;
             exit(0);
         }
-	else if ( r_vci_rsp_fifo_dcache.rok() ) // response available
-	{
-            if ( r_vci_rsp_fifo_dcache.read() == 0 )	// update dcache and dtlb if atomic
+    else if ( r_vci_rsp_fifo_dcache.rok() ) // response available
+    {
+            if ( r_vci_rsp_fifo_dcache.read() == 0 )    // update dcache and dtlb if atomic
             {
                 // update dcache
                 r_dcache.write( r_dcache_tlb_cache_way.read(),
@@ -2661,7 +2661,7 @@ if ( r_debug_active )
         break;
     }
     ///////////////////////
-    case DCACHE_TLB_RETURN:		// return to caller depending on tlb miss type
+    case DCACHE_TLB_RETURN:        // return to caller depending on tlb miss type
     {
 
 #if INSTRUMENTATION
@@ -2680,7 +2680,7 @@ if ( r_debug_active )
         break;
     }
     ///////////////////////
-    case DCACHE_XTN_SWITCH:		// Both itlb and dtlb must be flushed
+    case DCACHE_XTN_SWITCH:        // Both itlb and dtlb must be flushed
                                         // LL reservation must be invalidated...
     {
         if ( not r_dcache_xtn_req.read() )
@@ -2693,7 +2693,7 @@ if ( r_debug_active )
         break;
     }
     /////////////////////
-    case DCACHE_XTN_SYNC:		// waiting until write buffer empty
+    case DCACHE_XTN_SYNC:        // waiting until write buffer empty
     {
         if ( r_wbuf.empty() )
         {
@@ -2703,10 +2703,10 @@ if ( r_debug_active )
         break;
     }
     ////////////////////////
-    case DCACHE_XTN_IC_FLUSH:		// Waiting completion of an XTN request to the ICACHE FSM
-    case DCACHE_XTN_IC_INVAL_VA:	// Caution : the itlb miss requests must be taken 
-    case DCACHE_XTN_IC_INVAL_PA:	// because the XTN_ICACHE_INVAL request to icache
-    case DCACHE_XTN_IT_INVAL:		// can generate an itlb miss...
+    case DCACHE_XTN_IC_FLUSH:        // Waiting completion of an XTN request to the ICACHE FSM
+    case DCACHE_XTN_IC_INVAL_VA:    // Caution : the itlb miss requests must be taken 
+    case DCACHE_XTN_IC_INVAL_PA:    // because the XTN_ICACHE_INVAL request to icache
+    case DCACHE_XTN_IT_INVAL:        // can generate an itlb miss...
     {
         // itlb miss request
         if ( r_icache_tlb_miss_req.read() )
@@ -2726,16 +2726,16 @@ if ( r_debug_active )
         break;
     }
     /////////////////////////
-    case DCACHE_XTN_DC_FLUSH:	// Invalidate sequencially all cache lines, using
+    case DCACHE_XTN_DC_FLUSH:    // Invalidate sequencially all cache lines, using
                                 // the r_dcache_flush counter as a slot counter.
                                 // We loop in this state until all slots have been visited.
-	                        // Finally, both the itlb and dtlb are flushed
+                            // Finally, both the itlb and dtlb are flushed
                                 // (including global entries)
 
     {
-        paddr_t nline;	// unused
-        size_t	way = r_dcache_flush_count.read()/m_icache_sets;
-        size_t	set = r_dcache_flush_count.read()%m_icache_sets;
+        paddr_t nline;    // unused
+        size_t    way = r_dcache_flush_count.read()/m_icache_sets;
+        size_t    set = r_dcache_flush_count.read()%m_icache_sets;
 
         r_dcache.inval( way,
                         set,
@@ -2743,17 +2743,17 @@ if ( r_debug_active )
 
         r_dcache_flush_count = r_dcache_flush_count.read() + 1;
 
-        if ( r_dcache_flush_count.read() == (m_dcache_sets*m_dcache_ways - 1) )	// last 
+        if ( r_dcache_flush_count.read() == (m_dcache_sets*m_dcache_ways - 1) )    // last 
         {
             r_dtlb.reset();
             r_itlb.reset();
             r_dcache_fsm = DCACHE_IDLE;
             m_drsp.valid = true;
         }
-	break;
+    break;
     }
     /////////////////////////
-    case DCACHE_XTN_DT_INVAL: 	// handling processor XTN_DTLB_INVAL request
+    case DCACHE_XTN_DT_INVAL:     // handling processor XTN_DTLB_INVAL request
     {
         r_dtlb.inval(r_dcache_p0_wdata.read());
         r_dcache_fsm        = DCACHE_IDLE;
@@ -2763,12 +2763,12 @@ if ( r_debug_active )
     ////////////////////////////
     case DCACHE_XTN_DC_INVAL_VA:  // selective cache line invalidate with virtual address
                                   // requires 3 cycles: access tlb, read cache, inval cache
-                               	  // we compute the physical address in this state 
+                                     // we compute the physical address in this state 
     {
         paddr_t paddr;
         bool    hit;
 
-        if ( r_mmu_mode.read() & DATA_TLB_MASK ) 	// dtlb activated
+        if ( r_mmu_mode.read() & DATA_TLB_MASK )     // dtlb activated
         {
 #if INSTRUMENTATION
 r_cpt_dtlb_read++;
@@ -2776,23 +2776,23 @@ r_cpt_dtlb_read++;
             hit = r_dtlb.translate( r_dcache_p0_wdata.read(),
                                     &paddr ); 
         }
-        else 						// dtlb not activated
+        else                         // dtlb not activated
         {
             paddr = (paddr_t)r_dcache_p0_wdata.read();
             hit   = true;
         }
 
-        if ( hit )		// tlb hit
+        if ( hit )        // tlb hit
         {
             r_dcache_p0_paddr = paddr;
             r_dcache_fsm      = DCACHE_XTN_DC_INVAL_PA;
         }
-        else			// tlb miss
-       	{
+        else            // tlb miss
+           {
 #if INSTRUMENTATION
 r_cpt_dtlb_miss++;
 #endif
-            r_dcache_tlb_ins    = false;		// dtlb
+            r_dcache_tlb_ins    = false;        // dtlb
             r_dcache_tlb_vaddr  = r_dcache_p0_wdata.read();
             r_dcache_fsm        = DCACHE_TLB_MISS; 
         } 
@@ -2813,26 +2813,26 @@ if ( r_debug_active )
                                   // requires 2 cycles: read cache / inval cache
                                   // In this state we read dcache.
     {
-        uint32_t	data;
-        size_t		way;
-        size_t		set;
-        size_t		word;
+        uint32_t    data;
+        size_t        way;
+        size_t        set;
+        size_t        word;
 
 #if INSTRUMENTATION
 r_cpt_dcache_read++;
 #endif
-        bool		hit = r_dcache.read( r_dcache_p0_paddr.read(),
+        bool        hit = r_dcache.read( r_dcache_p0_paddr.read(),
                                              &data,
                                              &way,
                                              &set,
                                              &word );
-        if ( hit )	// inval to be done
+        if ( hit )    // inval to be done
         {
             r_dcache_xtn_way = way;
             r_dcache_xtn_set = set;
             r_dcache_fsm      = DCACHE_XTN_DC_INVAL_GO;
         }
-        else		// miss : nothing to do
+        else        // miss : nothing to do
         {
             r_dcache_fsm      = DCACHE_IDLE;
             m_drsp.valid        = true;
@@ -2853,9 +2853,9 @@ if ( r_debug_active )
     ////////////////////////////
     case DCACHE_XTN_DC_INVAL_GO:  // In this state, we invalidate the cache line 
     {
-        paddr_t	nline;
-        size_t	way        = r_dcache_xtn_way.read();
-        size_t	set        = r_dcache_xtn_set.read();
+        paddr_t    nline;
+        size_t    way        = r_dcache_xtn_way.read();
+        size_t    set        = r_dcache_xtn_set.read();
         bool hit;
    
         hit = r_dcache.inval( way,
@@ -2877,14 +2877,14 @@ if ( r_debug_active )
         break;
     }
     //////////////////////////////
-    case DCACHE_XTN_DC_INVAL_END:  	// send response to processor XTN request
+    case DCACHE_XTN_DC_INVAL_END:      // send response to processor XTN request
     {
         r_dcache_fsm = DCACHE_IDLE;
         m_drsp.valid = true;
         break;
     }
     ////////////////////////
-    case DCACHE_MISS_VICTIM:		// Selects a victim line
+    case DCACHE_MISS_VICTIM:        // Selects a victim line
     {
 #if INSTRUMENTATION
 r_cost_dcache_miss_frz++;
@@ -2892,7 +2892,7 @@ r_cost_dcache_miss_frz++;
         bool      valid;
         size_t    way;
         size_t    set;
-        paddr_t   victim;	// unused
+        paddr_t   victim;    // unused
 
         valid = r_dcache.victim_select( r_dcache_vci_paddr.read(),
                                         &victim,
@@ -2915,18 +2915,18 @@ if ( r_debug_active )
         break;
     }
     ///////////////////////
-    case DCACHE_MISS_INVAL:		// invalidate the victim line
+    case DCACHE_MISS_INVAL:        // invalidate the victim line
     {
-        paddr_t	nline;
-        size_t	way        = r_dcache_miss_way.read();
-        size_t	set        = r_dcache_miss_set.read();
-	bool hit;
+        paddr_t    nline;
+        size_t    way        = r_dcache_miss_way.read();
+        size_t    set        = r_dcache_miss_set.read();
+    bool hit;
 
         hit = r_dcache.inval( way, 
                         set,
                         &nline );
 
-	assert(hit && "selected way/set line should be in dcache");
+    assert(hit && "selected way/set line should be in dcache");
 
 #if DEBUG_DCACHE
 if ( r_debug_active )
@@ -2941,14 +2941,14 @@ if ( r_debug_active )
         break;
     }
     //////////////////////
-    case DCACHE_MISS_WAIT:	// waiting the response to a miss request from VCI_RSP FSM
+    case DCACHE_MISS_WAIT:    // waiting the response to a miss request from VCI_RSP FSM
                                 // This state is in charge of error signaling
                                 // There is 5 types of error depending on the requester
     {
 #if INSTRUMENTATION
 r_cost_dcache_miss_frz++;
 #endif
-        if ( r_vci_rsp_data_error.read() ) 			// bus error
+        if ( r_vci_rsp_data_error.read() )             // bus error
         {
             switch ( r_dcache_miss_type.read() )
             {
@@ -3003,15 +3003,15 @@ r_cost_dcache_miss_frz++;
             } // end switch type
             r_vci_rsp_data_error = false;
         }
-        else if ( r_vci_rsp_fifo_dcache.rok() )		// valid response available
+        else if ( r_vci_rsp_fifo_dcache.rok() )        // valid response available
         {
             r_dcache_miss_word = 0;
-	    r_dcache_fsm       = DCACHE_MISS_UPDT;
-        }	
+        r_dcache_fsm       = DCACHE_MISS_UPDT;
+        }    
         break;
     }
     //////////////////////
-    case DCACHE_MISS_UPDT:	// update the dcache (one word per cycle)
+    case DCACHE_MISS_UPDT:    // update the dcache (one word per cycle)
                                 // returns the response depending on the miss type
     {
 
@@ -3019,7 +3019,7 @@ r_cost_dcache_miss_frz++;
 r_cost_dcache_miss_frz++;
 #endif
 
-        if ( r_vci_rsp_fifo_dcache.rok() )	// one word available
+        if ( r_vci_rsp_fifo_dcache.rok() )    // one word available
         {
             size_t way  = r_dcache_miss_way.read();
             size_t set  = r_dcache_miss_set.read();
@@ -3046,7 +3046,7 @@ r_cpt_dcache_write++;
                 if      (r_dcache_miss_type.read()==PTE1_MISS) r_dcache_fsm = DCACHE_TLB_PTE1_GET; 
                 else if (r_dcache_miss_type.read()==PTE2_MISS) r_dcache_fsm = DCACHE_TLB_PTE2_GET;
                 else if (r_dcache_miss_type.read()==PROC_MISS) r_dcache_fsm = DCACHE_IDLE;
-                else	                                       r_dcache_fsm = DCACHE_DIRTY_GET_PTE;
+                else                                           r_dcache_fsm = DCACHE_DIRTY_GET_PTE;
             }
 
 #if DEBUG_DCACHE
@@ -3072,7 +3072,7 @@ if ( r_debug_active )
 r_cost_dunc_frz++;
 #endif
 
-        if ( r_vci_rsp_data_error.read() ) 	// bus error
+        if ( r_vci_rsp_data_error.read() )     // bus error
         {
             r_mmu_detr           = MMU_READ_DATA_ILLEGAL_ACCESS; 
             r_mmu_dbvar          = m_dreq.addr;
@@ -3082,8 +3082,8 @@ r_cost_dunc_frz++;
             r_dcache_fsm         = DCACHE_IDLE;
             break;
         }
-	    else if ( r_vci_rsp_fifo_dcache.rok() )     // data available
-	    {
+        else if ( r_vci_rsp_fifo_dcache.rok() )     // data available
+        {
             vci_rsp_fifo_dcache_get = true;     
             r_dcache_fsm            = DCACHE_IDLE;
 
@@ -3095,15 +3095,15 @@ r_cost_dunc_frz++;
 r_cpt_read++;
 r_cpt_read_uncacheable++;
 #endif
-	        m_drsp.valid          = true;
-	        m_drsp.rdata          = r_vci_rsp_fifo_dcache.read();
-				// makes reservation in case of LL
-				if ( m_dreq.type == iss_t::DATA_LL )
-				{
-					r_dcache_ll_valid = true;
-					r_dcache_ll_data  = r_vci_rsp_fifo_dcache.read();
-					r_dcache_ll_vaddr = m_dreq.addr;
-				}
+            m_drsp.valid          = true;
+            m_drsp.rdata          = r_vci_rsp_fifo_dcache.read();
+                // makes reservation in case of LL
+                if ( m_dreq.type == iss_t::DATA_LL )
+                {
+                    r_dcache_ll_valid = true;
+                    r_dcache_ll_data  = r_vci_rsp_fifo_dcache.read();
+                    r_dcache_ll_vaddr = m_dreq.addr;
+                }
             }
 
 #if DEBUG_DCACHE
@@ -3115,18 +3115,18 @@ if ( r_debug_active )
 }
 #endif
   
-	    }	
+        }    
         break;
     }
     ////////////////////
-    case DCACHE_SC_WAIT:	// waiting VCI response after a processor SC request
+    case DCACHE_SC_WAIT:    // waiting VCI response after a processor SC request
     {
 
 #if INSTRUMENTATION
 r_cost_sc_frz++;
 #endif
 
-        if ( r_vci_rsp_data_error.read() ) 		// bus error
+        if ( r_vci_rsp_data_error.read() )         // bus error
         {
             r_mmu_detr           = MMU_READ_DATA_ILLEGAL_ACCESS; 
             r_mmu_dbvar          = m_dreq.addr;
@@ -3136,15 +3136,15 @@ r_cost_sc_frz++;
             r_dcache_fsm         = DCACHE_IDLE;
             break;
         }
-	else if ( r_vci_rsp_fifo_dcache.rok() )     	// response available
-	{
+    else if ( r_vci_rsp_fifo_dcache.rok() )         // response available
+    {
 
 #if INSTRUMENTATION
 r_cpt_sc++;
 #endif
             vci_rsp_fifo_dcache_get = true;     
-	    m_drsp.valid            = true;
-	    m_drsp.rdata            = r_vci_rsp_fifo_dcache.read();
+        m_drsp.valid            = true;
+        m_drsp.rdata            = r_vci_rsp_fifo_dcache.read();
             r_dcache_fsm            = DCACHE_IDLE;
 
 #if DEBUG_DCACHE
@@ -3155,13 +3155,13 @@ if ( r_debug_active )
               << " / DATA = "  << r_vci_rsp_fifo_dcache.read() << std::endl; 
 }
 #endif
-	}	
+    }    
         break;
     }
     //////////////////////////
-    case DCACHE_DIRTY_GET_PTE:		// This sub_fsm set the PTE Dirty bit in memory 
+    case DCACHE_DIRTY_GET_PTE:        // This sub_fsm set the PTE Dirty bit in memory 
                                         // before handling a processor WRITE or SC request  
-					// Input argument is r_dcache_dirty_paddr
+                    // Input argument is r_dcache_dirty_paddr
                                         // In this first state, we get PTE value in dcache
                                         // and post a SC request to CMD FSM
     {
@@ -3174,7 +3174,7 @@ r_cost_dirty_bit_updt_frz++;
         uint32_t pte;
         size_t   way;
         size_t   set;
-        size_t   word;	// unused
+        size_t   word;    // unused
 
 #if INSTRUMENTATION
 r_cpt_dcache_read++;
@@ -3185,7 +3185,7 @@ r_cpt_dcache_read++;
                                       &set,
                                       &word );
 
-	if ( hit )	// request sc transaction to CMD_FSM
+    if ( hit )    // request sc transaction to CMD_FSM
         {
             r_dcache_dirty_way  = way; 
             r_dcache_dirty_set  = set; 
@@ -3207,7 +3207,7 @@ if ( r_debug_active )
 }
 #endif
         }
-        else		// request the missing line
+        else        // request the missing line
         {
             r_dcache_vci_paddr  = r_dcache_dirty_paddr.read();
             r_dcache_vci_miss_req = true;
@@ -3225,7 +3225,7 @@ if ( r_debug_active )
         break;
     }
     //////////////////////////
-    case DCACHE_DIRTY_SC_WAIT:		// wait completion of SC for Dirty bit update
+    case DCACHE_DIRTY_SC_WAIT:        // wait completion of SC for Dirty bit update
                                         // If PTE update is a success, we update both
                                         // DCACHE and DTLB, and return to IDLE state.
                                         // If PTE update is a failure, we invalidate the
@@ -3234,16 +3234,16 @@ if ( r_debug_active )
 #if INSTRUMENTATION
 r_cost_dirty_bit_updt_frz++;
 #endif
-        if ( r_vci_rsp_data_error.read() )	// bus error
+        if ( r_vci_rsp_data_error.read() )    // bus error
         {
             std::cout << "BUS ERROR in DCACHE_DIRTY_SC_WAIT state" << std::endl;
             std::cout << "This should not happen in this state" << std::endl;
             exit(0);
         }
-        else if ( r_vci_rsp_fifo_dcache.rok() )	// response available
+        else if ( r_vci_rsp_fifo_dcache.rok() )    // response available
         {
             vci_rsp_fifo_dcache_get = true;
-            if ( r_vci_rsp_fifo_dcache.read() == 0 )	// update dcache and dtlb if atomic
+            if ( r_vci_rsp_fifo_dcache.read() == 0 )    // update dcache and dtlb if atomic
             {
                 // update dcache
                 r_dcache.write( r_dcache_dirty_way.read(),
@@ -3271,9 +3271,9 @@ if ( r_debug_active )
 }
 #endif
             }
-            else					// invalidate cache line and flush TLBs
+            else                    // invalidate cache line and flush TLBs
             {
-                paddr_t	nline;	
+                paddr_t    nline;    
                 r_dcache.inval( r_dcache_dirty_way.read(),
                                 r_dcache_dirty_set.read(),
                                 &nline );
@@ -3303,8 +3303,8 @@ if ( r_debug_active )
     // is larger than the m_max_frozen_cycles (constructor parameter)
     if ( (m_ireq.valid and not m_irsp.valid) or (m_dreq.valid and not m_drsp.valid) )       
     {
-        r_cpt_frz_cycles++; 		// used for instrumentation
-        r_cpt_stop_simulation++;	// used for debug
+        r_cpt_frz_cycles++;         // used for instrumentation
+        r_cpt_stop_simulation++;    // used for debug
         if ( r_cpt_stop_simulation > m_max_frozen_cycles )
         {
             std::cout << std::dec << "\nERROR in VCI_VCACHE_WRAPPER " << name() << std::endl
