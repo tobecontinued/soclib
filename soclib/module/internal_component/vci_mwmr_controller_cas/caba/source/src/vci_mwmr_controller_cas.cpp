@@ -41,7 +41,7 @@
 #include <algorithm>
 
 #ifndef SOCLIB_MODULE_DEBUG
-#define SOCLIB_MODULE_DEBUG 0
+#define SOCLIB_MODULE_DEBUG 1
 #endif
 
 #if SOCLIB_MODULE_DEBUG
@@ -153,26 +153,26 @@ tmpl(void)::rehashConfigFifo()
 tmpl(void)::elect()
 {
 DEBUG_BEGIN;
-    std::cout << name() << " elect, last one: " << m_last_elected << " ";
+    //std::cout << name() << " elect, last one: " << m_last_elected << " ";
 DEBUG_END;
 	for ( size_t _i=1; _i<=m_n_all; ++_i ) {
 		size_t i = (m_last_elected+_i)%m_n_all;
 		fifo_state_t *st = &m_all_state[i];
 
 DEBUG_BEGIN;
-        std::cout << i;
+        //std::cout << i;
 DEBUG_END;
 
 		if ( st->timer != 0 ) {
 DEBUG_BEGIN;
-            std::cout << "!T";
+            //std::cout << "!T";
 DEBUG_END;
             continue;
         }
 
 		if ( ! st->running ) {
 DEBUG_BEGIN;
-            std::cout << "!R";
+            //std::cout << "!R";
 DEBUG_END;
             continue;
         }
@@ -180,7 +180,7 @@ DEBUG_END;
 		if ( st->way == MWMR_TO_COPROC ) {
             if ( !(st->fifo->empty()) ) {
 DEBUG_BEGIN;
-                std::cout << "!D";
+                //std::cout << "!D";
 DEBUG_END;
                 st->waiting = 0;
                 continue;
@@ -188,14 +188,14 @@ DEBUG_END;
         } else {
             if ( st->fifo->filled_status() < st->width ) {
 DEBUG_BEGIN;
-                std::cout << "!D";
+                //std::cout << "!D";
 DEBUG_END;
                 continue;
             } else {
                 if ( !st->fifo->full() && st->waiting != 0 ) {
                     st->waiting--;
 DEBUG_BEGIN;
-                    std::cout << "!W";
+                    //std::cout << "!W";
 DEBUG_END;
                     continue;
                 }
@@ -208,9 +208,9 @@ DEBUG_END;
 	}
 DEBUG_BEGIN;
     if ( m_current ) {
-        std::cout << " new one: " << m_last_elected << std::endl;
+        //std::cout << " new one: " << m_last_elected << //std::endl;
     } else {
-        std::cout << " none" << std::endl;
+        //std::cout << " none" << //std::endl;
     }
 DEBUG_END;
 }
@@ -445,8 +445,7 @@ DEBUG_END;
             // data space AND the MWMR hace at least one atomic data AND
             // timer is finished THEN send the data
             if ( m_current->depth - r_current_usage >= m_current->width ) {
-                //to assure contigous address
-                //FIXME: could use the wrap field of the vci?
+                //word availability on the ram ( min( max_to_depth, empty_spaces) )
                 size_t word_to_send = std::min<size_t>(m_current->depth - r_current_wptr, m_current->depth - r_current_usage);
                 // Dont transfer more than possible
                 word_to_send = std::min<size_t>(
@@ -455,19 +454,29 @@ DEBUG_END;
                 //Normalize to an item size
                 word_to_send -= word_to_send % m_current->width;
 
-                size_t max_to_send = std::min<size_t>(word_to_send, m_max_burst);
+                //align the burst!
+                size_t transfer_addr = (m_current->buffer_address + r_current_wptr * vci_param::B) >> 2 ;
+                size_t offset = transfer_addr % m_max_burst;
+                size_t max_burst = std::min<size_t>(word_to_send, m_max_burst - offset);
 
                 if ( word_to_send ) {
-                    r_plen = max_to_send;
-                    r_part_count = max_to_send;
+                    r_plen = max_burst;
+                    r_part_count = max_burst;
                     r_cmd_count = word_to_send;
-                    r_rsp_count = word_to_send%m_max_burst ? word_to_send/m_max_burst + 1: word_to_send/m_max_burst;
+    
+                    size_t nb_pk = word_to_send/m_max_burst;
+                    if(offset + word_to_send > m_max_burst) //if we got a first slice(offset) to send +1
+                        r_rsp_count = word_to_send % m_max_burst ? nb_pk + 2: nb_pk + 1; //if we got a last slice to send then +1
+                    else
+                        r_rsp_count = word_to_send % m_max_burst ? nb_pk + 1: nb_pk; //if we got a last slice to send then +1
+
                     r_init_fsm = INIT_DATA_WRITE;
                     r_status_modified = true;
 
                     m_n_xfers++;
 DEBUG_BEGIN;
                     std::cout << "going to read from coproc " << word_to_send << " words" << std::endl;
+                    std::cout << "transfert address" << transfer_addr << " offset " << offset << " max_burst " << max_burst << std::endl;
 DEBUG_END;
                     break;
                 }
@@ -486,10 +495,17 @@ DEBUG_END;
                 //Normalize to an item size
                 word_to_get -= word_to_get%m_current->width;
                 
-                size_t max_to_get = std::min<size_t>(word_to_get, m_max_burst);
+                //size_t max_burst = std::min<size_t>(word_to_get, m_max_burst);
+                
+                //align the burst!
+                size_t transfer_addr = (m_current->buffer_address + r_current_wptr * vci_param::B) >> 2 ;
+                size_t offset = transfer_addr % m_max_burst;
+                size_t max_burst = std::min<size_t>(word_to_get, m_max_burst - offset);
+
+                    std::cout << "rtransfert address" << transfer_addr << " offset " << offset << " max_burst " << max_burst << std::endl;
                 if ( word_to_get ) {
-                    r_plen = max_to_get;
-                    r_part_count = max_to_get;
+                    r_plen = max_burst;
+                    r_part_count = max_burst;
                     r_cmd_count = word_to_get;
                     r_rsp_count = word_to_get;
                     r_init_fsm = INIT_DATA_READ;
@@ -519,46 +535,61 @@ DEBUG_END;
 		break;
 	case INIT_DATA_WRITE:
 		if ( p_vci_initiator.cmdack.read() ) {
+
             if ( r_cmd_count == 1 )
                 r_init_fsm = INIT_DECIDE;
-
+        
+            size_t next_wptr = (r_current_wptr  + 1) % m_current->depth;
+            size_t next_cmd_count = r_cmd_count - 1;
+            
             if(r_part_count == 1)
             {
-                size_t max_to_send = std::min<size_t>(r_cmd_count - r_plen, m_max_burst);
+                size_t transfer_addr = (m_current->buffer_address + next_wptr * vci_param::B) >> 2 ;
+                size_t offset = transfer_addr % m_max_burst;
+                size_t max_burst = std::min<size_t>(next_cmd_count, m_max_burst - offset);
+
+                //size_t max_burst = std::min<size_t>(r_cmd_count - r_plen, m_max_burst);
 
 DEBUG_BEGIN;
                 std::cout << name() << " --> refill part @ " <<  std::hex << 
-                            (m_current->buffer_address + r_current_wptr*vci_param::B) << ", left:" << r_cmd_count
-                            << ", part " << r_part_count << ", going to send nb: " << max_to_send << " on VCI" << std::endl;
+                            transfer_addr << ", left:" << r_cmd_count
+                            << ", offset " << offset << ", going to send nb: " << max_burst << " on VCI" << std::endl;
 DEBUG_END;
-                r_part_count = max_to_send;
-                r_plen = max_to_send;
+                r_part_count = max_burst;
+                r_plen = max_burst;
             }else
             {
                 r_part_count = r_part_count -1;
             }
 
-            r_cmd_count = r_cmd_count - 1;
+            r_cmd_count = next_cmd_count;
             r_current_usage = r_current_usage + 1;
-            r_current_wptr = (r_current_wptr  + 1) % m_current->depth;
+            r_current_wptr = next_wptr;
             current_fifo_get = true;
 		}
 		break;
 	case INIT_DATA_READ:
 
 		if ( p_vci_initiator.cmdack.read() ) {
-            size_t max_to_get = std::min<size_t>(r_cmd_count - r_plen, m_max_burst);
             if ( r_cmd_count <= m_max_burst )
                 r_init_fsm = INIT_DECIDE;
+
+            size_t next_rptr = (r_current_rptr + r_plen) % m_current->depth;
+			size_t next_cmd_count  = r_cmd_count - r_plen.read();
+            //size_t max_to_get = std::min<size_t>(r_cmd_count - r_plen, m_max_burst);
+            
+            size_t transfer_addr = (m_current->buffer_address + next_rptr * vci_param::B) >> 2 ;
+            size_t offset = transfer_addr % m_max_burst;
+            size_t max_burst = std::min<size_t>(next_cmd_count, m_max_burst - offset);
 DEBUG_BEGIN;
             std::cout << name() << "--> send read cmd data @" << std::hex << (m_current->buffer_address + r_current_rptr *vci_param::B) << ", nb: " << r_plen.read() << std::endl;
 DEBUG_END;
-			r_cmd_count  = r_cmd_count - r_plen.read();
+			r_cmd_count  = next_cmd_count;
+            r_current_rptr = next_rptr;
             r_current_usage = r_current_usage - r_plen;
-            r_current_rptr = (r_current_rptr + r_plen) % m_current->depth;
 
-			r_part_count = max_to_get;
-            r_plen = max_to_get;
+			r_part_count = max_burst;
+            r_plen = max_burst;
 		}
 		break;
 
@@ -765,7 +796,7 @@ DEBUG_END;
 		p_vci_initiator.address = m_current->buffer_address + r_current_rptr*vci_param::B;
 		p_vci_initiator.cmd = vci_param::CMD_READ;
 DEBUG_BEGIN;
-        std::cout << name() << " reading data @" << std::hex << (m_current->buffer_address + r_current_rptr *vci_param::B) << ", nb: " << r_plen.read() << std::endl;
+        std::cout << name() << " reading data @" << std::hex << (m_current->buffer_address + r_current_rptr*vci_param::B) << ", nb: " << r_plen.read() << std::endl;
 DEBUG_END;
 		p_vci_initiator.be = 0xf;
 		p_vci_initiator.eop = 1;
@@ -846,7 +877,7 @@ tmpl(/**/)::VciMwmrControllerCas(
 	const size_t n_from_coproc,
 	const size_t n_config,
 	const size_t n_status,
-    const size_t max_burst_size)
+    const size_t max_burst_size)//burst_align
 		   : caba::BaseModule(name),
 		   m_vci_target_fsm(p_vci_target, mt.getSegmentList(tgtid)),
            m_ident(mt.indexForId(srcid)),
