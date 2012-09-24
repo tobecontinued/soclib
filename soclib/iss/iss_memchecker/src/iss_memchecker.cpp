@@ -1570,7 +1570,7 @@ void IssMemchecker<iss_t>::report_error(error_level_t errors_, uint32_t extra)
             std::cout << std::endl;
         }
 
-        if ( ( m_trap_mask & error ) && m_bypass && debugExceptionBypassed( iss_t::EXCL_TRAP ) )
+        if ( ( m_trap_mask & error ) && m_bypass && this->debugExceptionBypassed( iss_t::EXCL_TRAP ) )
             m_bypass = false;
 
         errors_ ^= error;

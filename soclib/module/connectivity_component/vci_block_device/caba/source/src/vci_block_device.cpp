@@ -24,6 +24,7 @@
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  */
 
+#include <unistd.h>
 #include <stdint.h>
 #include <iostream>
 #include "register.h"
