@@ -408,6 +408,8 @@ tmpl(void)::transition()
                          (r_dcache_word_save.read() == m_dcache_words-1) ) or
                          (r_dcache_fsm.read() == DCACHE_WRITE_UPDT);
 
+    m_ireq.valid = m_dreq.valid = false;
+
     m_iss.getRequests( m_ireq, m_dreq );
 
 #ifdef SOCLIB_MODULE_DEBUG
@@ -836,6 +838,7 @@ tmpl(void)::transition()
 
         if ( r_vci_rsp_data_error.read() )       // error reported
         {
+            assert(m_dreq.valid);
             m_drsp.valid         = true;
             m_drsp.error         = true;
             r_vci_rsp_data_error = false;
@@ -869,6 +872,7 @@ tmpl(void)::transition()
         if ( r_vci_rsp_data_error.read() )      // error reported
         {
             r_vci_rsp_data_error  = false;
+            assert(m_dreq.valid);
             m_drsp.valid          = true;
             m_drsp.error          = true;
             r_dcache_fsm          = DCACHE_IDLE;
@@ -878,6 +882,7 @@ tmpl(void)::transition()
             vci_rsp_fifo_data_get = true;
             if ( m_dreq.valid and (m_dreq.addr == r_dcache_addr_save.read()) ) // request unmodified
             {
+                assert(m_dreq.valid);
                 m_drsp.valid = true;
                 m_drsp.rdata = r_vci_rsp_fifo_data.read();
             }
@@ -906,6 +911,7 @@ tmpl(void)::transition()
         else		// miss : nothing to do
         {
             r_dcache_fsm      = DCACHE_IDLE;
+            assert(m_dreq.valid);
             m_drsp.valid      = true;
         }
         break;
@@ -918,6 +924,7 @@ tmpl(void)::transition()
                         r_dcache_set_save.read(),
                         &nline );
         r_dcache_fsm = DCACHE_IDLE;
+        assert(m_dreq.valid);
         m_drsp.valid = true;
         break;
     }
