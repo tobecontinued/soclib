@@ -35,6 +35,7 @@
 #include "vci_block_device.h"
 #include "vci_simhelper.h"
 #include "vci_fd_access.h"
+#include "vci_ethernet.h"
 
 using namespace soclib;
 using common::IntTab;
@@ -114,7 +115,7 @@ INIT_TOOLS(initialize_tools)
   ISS_NEST(Iss)::set_loader(ldr);
 #endif
 #if defined(CONFIG_SOCLIB_MEMCHECK)
-  common::IssMemchecker<Iss>::init(maptab, ldr, "vci_multi_tty,vci_xicu,bdev0,fdacccess,vci_fdt_rom");
+  common::IssMemchecker<Iss>::init(maptab, ldr, "vci_multi_tty,vci_xicu,vci_block_device,vci_fd_acccess,vci_ethernet,vci_fdt_rom");
 #endif
 }
 
@@ -208,12 +209,13 @@ int _main(int argc, char **argv)
   maptab.add(Segment("data",      0x7f000000, 0x01000000, IntTab(2), false));
   maptab.add(Segment("data2",     0x6f000000, 0x01000000, IntTab(2), false));
 
-  maptab.add(Segment("vci_multi_tty"  , 0xd0200000, 0x00000010, IntTab(3), false));
-  maptab.add(Segment("vci_xicu",        0xd2200000, 0x00001000, IntTab(4), false));
-  maptab.add(Segment("bdev0",           0xd1200000, 0x00000020, IntTab(5), false));
-  maptab.add(Segment("simhelper",       0xd3200000, 0x00000100, IntTab(6), false));
-  maptab.add(Segment("fdacccess",       0xd4200000, 0x00000100, IntTab(7), false));
-  maptab.add(Segment("vci_fdt_rom",     0xe0000000, 0x00001000, IntTab(8), false));
+  maptab.add(Segment("vci_multi_tty"  ,  0xd0200000, 0x00000010, IntTab(3), false));
+  maptab.add(Segment("vci_xicu",         0xd2200000, 0x00001000, IntTab(4), false));
+  maptab.add(Segment("vci_block_device", 0xd1200000, 0x00000020, IntTab(5), false));
+  maptab.add(Segment("simhelper",        0xd3200000, 0x00000100, IntTab(6), false));
+  maptab.add(Segment("vci_fd_access",    0xd4200000, 0x00000100, IntTab(7), false));
+  maptab.add(Segment("vci_ethernet",     0xd5000000, 0x00000020, IntTab(9), false));
+  maptab.add(Segment("vci_fdt_rom",      0xe0000000, 0x00001000, IntTab(8), false));
 
   std::cerr << "caba-vgmn-mutekh_kernel_tutorial SoCLib simulator for MutekH" << std::endl;
 
@@ -266,7 +268,7 @@ int _main(int argc, char **argv)
       }
     }
 
-  const size_t xicu_n_irq = 3;
+  const size_t xicu_n_irq = 4;
 
   // Signals
 
@@ -284,13 +286,19 @@ int _main(int argc, char **argv)
   caba::VciSignals<vci_param> signal_vci_bdi;
   caba::VciSignals<vci_param> signal_vci_bdt;
 
+  caba::VciSignals<vci_param> signal_vci_etherneti;
+  caba::VciSignals<vci_param> signal_vci_ethernett;
+
   sc_core::sc_signal<bool> signal_xicu_irq[xicu_n_irq];
   sc_core::sc_clock signal_clk("signal_clk");
   sc_core::sc_signal<bool> signal_resetn("signal_resetn");
 
   ////////////////// interconnect
 
-  caba::VciVgmn<vci_param> vgmn("vgmn", maptab, cpus.size() + 2, 9, 2, 8);
+  caba::VciVgmn<vci_param> vgmn("vgmn", maptab,
+				cpus.size() + 3, /* nb_initiator */
+				10,              /* nb_target */
+				2, 8);
 
   vgmn.p_clk(signal_clk);
   vgmn.p_resetn(signal_resetn);
@@ -302,9 +310,11 @@ int _main(int argc, char **argv)
   vgmn.p_to_target[6](signal_vci_vcisimhelper);
   vgmn.p_to_target[7](signal_vci_vcifdaccesst);
   vgmn.p_to_target[8](signal_vci_vcifdtrom);
+  vgmn.p_to_target[9](signal_vci_ethernett);
 
   vgmn.p_to_initiator[cpus.size()](signal_vci_bdi);
   vgmn.p_to_initiator[cpus.size()+1](signal_vci_vcifdaccessi);
+  vgmn.p_to_initiator[cpus.size()+2](signal_vci_etherneti);
 
   ///////////////// memories
 
@@ -403,6 +413,10 @@ int _main(int argc, char **argv)
   vcibd0.p_vci_target(signal_vci_bdt);
   vcibd0.p_vci_initiator(signal_vci_bdi);
 
+  vcifdtrom.begin_device_node("vci_block_device", "soclib:vci_block_device");
+  vcifdtrom.add_property("interrupts", 1);
+  vcifdtrom.end_node();
+
   //////////////// fd access
 
   caba::VciFdAccess<vci_param> vcifd            ("vcitfd", maptab, IntTab(cpus.size()+1), IntTab(7));
@@ -412,6 +426,23 @@ int _main(int argc, char **argv)
   vcifd.p_irq(signal_xicu_irq[2]);
   vcifd.p_vci_target(signal_vci_vcifdaccesst);
   vcifd.p_vci_initiator(signal_vci_vcifdaccessi);
+
+  vcifdtrom.begin_device_node("vci_fd_access", "soclib:vci_fd_access");
+  vcifdtrom.add_property("interrupts", 2);
+  vcifdtrom.end_node();
+
+  //////////////// ethernet
+
+  caba::VciEthernet<vci_param> vcieth            ("vcieth", maptab, IntTab(cpus.size()+2), IntTab(9), "soclib0");
+  vcieth.p_clk(signal_clk);
+  vcieth.p_resetn(signal_resetn);
+  vcieth.p_irq(signal_xicu_irq[3]);
+  vcieth.p_vci_target(signal_vci_ethernett);
+  vcieth.p_vci_initiator(signal_vci_etherneti);
+
+  vcifdtrom.begin_device_node("vci_ethernet", "soclib:vci_ethernet");
+  vcifdtrom.add_property("interrupts", 3);
+  vcifdtrom.end_node();
 
   //////////////// sim helper
 
