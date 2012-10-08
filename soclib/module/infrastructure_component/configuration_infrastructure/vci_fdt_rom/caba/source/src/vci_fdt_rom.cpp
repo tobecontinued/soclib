@@ -210,6 +210,11 @@ tmpl(/**/)::~VciFdtRom()
 {
 }
 
+tmpl(void)::begin_node(const std::string &name)
+{
+    fdt_writer_node_entry(name.c_str());
+}
+
 tmpl(void)::begin_cpus()
 {
     fdt_writer_node_entry("cpus");

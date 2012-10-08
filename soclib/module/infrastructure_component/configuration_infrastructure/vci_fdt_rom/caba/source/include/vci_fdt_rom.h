@@ -64,6 +64,9 @@ public:
         const MappingTable &mt);
     ~VciFdtRom();
 
+    /** Start a section */
+    void begin_node(const std::string &name);
+
     /** Start cpus section */
     void begin_cpus();
 
