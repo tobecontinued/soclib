@@ -44,3 +44,4 @@ run_tests
 	all of them print "test passsed" :). Directories are explicitely
 	listed in the run_tests script (order does matter to have a readable
 	output)
+
