@@ -30,22 +30,22 @@ _start:
 	PRINTX
 	PUTCHAR(' ')
 
-	/* now write to myvar with sc, without ll first
+	/* now write to myvar with sc, without ll first */
 	la	s1, myvar 
 1:
 	li	a1, MAGIC2
 	sc	a1, 0(s1)
 	beqz	a1, 2f
 	nop
-
+	
+	move a0, a1
+	PRINTX
 	/* we should not get there */
 	EXIT(1)
 
 2:
 	/* we jump here when the sc failed */
-	PRINTX
 	PUTCHAR('\n');
-	
 	EXIT(0)
 
 	.globl excep
