@@ -45,6 +45,8 @@ _start:
 
 2:
 	/* we jump here when the sc failed */
+	move a0, a1
+	PRINTX
 	PUTCHAR('\n');
 	EXIT(0)
 
