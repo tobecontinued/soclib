@@ -12,7 +12,7 @@ for dir in test_sanity test_exceptions test_mmu_basic \
    test_dtlb_inval test_itlb_inval \
    test_dtlb_ptprinval test_itlb_ptprinval \
    test_sync \
-   test_llsc test_sc_update_cache test_pte_llsc \
+   test_llsc test_sc_no_ll test_sc_update_cache test_pte_llsc \
    test_interrupt test_interrupt_extended test_interrupt_extended2 \
    test_interrupt_extended3 test_interrupt_extended4 \
    test_interrupt_epc_modify \
