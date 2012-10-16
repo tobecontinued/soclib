@@ -30,16 +30,25 @@ _start:
 	PRINTX
 	PUTCHAR(' ')
 
-	/* now write to myvar via ll/sc
+	/* now write to myvar via ll/sc */
 	la	s1, myvar 
 1:
 	ll	a0, 0(s1)
 	li	a1, MAGIC2
 	sc	a1, 0(s1)
-	beqz	a1, 2b
+	beqz	a1, 1b
 	nop
 
+	PRINTX /* print what we read with ll */
+	PUTCHAR(' ')
+
+	la	s1, myvar 
+	lw	a0, 0(s1) /* print the new value */
+	PRINTX
+	PUTCHAR(' ')
+
 	/* restore myvar value via normal write */
+	la	s1, myvar 
 	li	a1, MAGIC1
 	sw	a1, 0(s1)
 
@@ -92,7 +101,7 @@ myvar:	.word MAGIC1
 	.globl pte1
 pte1:
 	.align 13
-	.word PTE1_V | PTE1_C | PTE1_W | 0x0 /* map PA 0 at VA 0 */
+	.word PTE1_V | PTE1_W | 0x0 /* map PA 0 at VA 0 */
 	.org pte1 + (BOOT_ADDRESS >> 21) * 4
 	.word PTE1_V | PTE1_C | PTE1_X | (BOOT_ADDRESS >> 21) /* map PA 0xbfc00000 at VA 0xbfc00000 */
 	.org pte1 + (TTY_BASE >> 21) * 4
