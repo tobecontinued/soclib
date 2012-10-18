@@ -404,7 +404,15 @@ tmpl(/**/)::VciEthernet(sc_module_name name, const MappingTable &mt,
                       << std::endl;
         }
 
-        memcpy(_mac, _tap_ifr.ifr_hwaddr.sa_data, 6);
+        // ioctl(_fd, SIOCGIFHWADDR, &_tap_ifr);
+        // memcpy(_mac, _tap_ifr.ifr_hwaddr.sa_data, 6);
+        srand(time(0) * getpid());
+        _mac[0] = 0x00;
+        _mac[1] = 0x16;
+        _mac[2] = 0x3e;
+        _mac[3] = rand();
+        _mac[4] = rand();
+        _mac[5] = rand();
     }
 
     _link_check_counter = 1;
