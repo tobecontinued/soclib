@@ -146,7 +146,7 @@ private:
     uint64_t cycles_;
     uint64_t cycles_bp_;
 
-    typedef dpp::interval_set<uint32_t, dpp::interval_bound_inclusive<uint32_t> > address_set_t;
+    typedef dpp::interval_set<uint32_t> address_set_t;
 
     static std::map<uint32_t, bool> break_exec_;
     static address_set_t break_read_access_;
