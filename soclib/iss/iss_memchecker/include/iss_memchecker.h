@@ -76,7 +76,6 @@ class IssMemchecker
     uint32_t m_enabled_checks;
     uint32_t m_r1;
     uint32_t m_r2;
-    uint32_t m_last_sp;
     uint32_t m_delayed_pc_min;
     uint32_t m_delayed_pc_max;
 
@@ -100,6 +99,7 @@ class IssMemchecker
     uint32_t m_trap_mask;
     uint32_t m_report_mask;
     bool m_bypass;
+    bool m_req_checked;
 
     uint32_t m_no_repeat_mask;
 
