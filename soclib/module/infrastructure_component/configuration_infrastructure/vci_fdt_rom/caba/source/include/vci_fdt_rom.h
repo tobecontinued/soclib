@@ -76,13 +76,19 @@ public:
 
     /** Starts a new device node, must be paired with end_node */
     void begin_device_node(const std::string &segname, const std::string &compatible);
+
+    /** Get phandle associated with node in fdt tree */
     int get_device_phandle(const std::string &segname) const;
+
+    /** Get name associated with node in fdt tree */
+    std::string get_device_name(const std::string &segname) const;
 
     /** End device or cpu node */
     void end_node();
 
     void add_property(const std::string &name);
     void add_property(const std::string &name, int value);
+    void add_property(const std::string &name, const std::string &value);
     void add_property(const std::string &name, const std::vector<int> &values);
     void add_property(const std::string &name, const int * values, size_t size);
 

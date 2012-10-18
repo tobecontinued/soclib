@@ -259,6 +259,15 @@ tmpl(int)::get_cpu_phandle(int cpu_id) const
     return cpu_id;
 }
 
+tmpl(std::string):: get_device_name(const std::string &segname) const
+{
+    const Segment *s = find_segment(segname);
+
+    char name[512];
+    snprintf(name, 512, "%s@%08x", s->name().c_str(), (unsigned int)s->baseAddress());
+    return std::string(name);
+}
+
 tmpl(void):: begin_device_node(const std::string &segname, const std::string &compatible)
 {
     const Segment *s = find_segment(segname);
@@ -287,11 +296,16 @@ tmpl(void):: add_property(const std::string &name)
 {
     fdt_writer_node_prop(name.c_str(), "", 0);
 }
-
+ 
 tmpl(void):: add_property(const std::string &name, int value)
 {
     uint32_t val = uint32_machine_to_be(value); /* FIXME */
     fdt_writer_node_prop(name.c_str(), &val, 4);
+}
+
+tmpl(void):: add_property(const std::string &name, const std::string &value)
+{
+    fdt_writer_node_prop(name.c_str(), value.c_str(), value.size() + 1);
 }
 
 tmpl(void):: add_property(const std::string &name, const std::vector<int> &values)
