@@ -46,8 +46,8 @@ enum SoclibIssMemcheckerRegisters {
 
 	ISS_MEMCHECKER_ENABLE_CHECKS,
 	ISS_MEMCHECKER_DISABLE_CHECKS,
-    /* mark a single word as initialized */
-	ISS_MEMCHECKER_INITIALIZED,  // value = word addr
+    /* mark a single memory word or a memory range as initialized */
+	ISS_MEMCHECKER_INITIALIZED,  // value = word addr, or value == 0 and r1 = base, r2 = size
     /* delete current context */
 	ISS_MEMCHECKER_CONTEXT_INVALIDATE,
     /* Creates a temporary context which vanish on next context switch */

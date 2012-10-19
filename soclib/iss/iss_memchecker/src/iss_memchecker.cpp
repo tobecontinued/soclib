@@ -1013,8 +1013,17 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 
     case ISS_MEMCHECKER_INITIALIZED:
     {
-        AddressInfo *ai = s_memory_state->info_for_address( value );
-        ai->set_initialized(true);
+        if ( value ) {    // single address
+            AddressInfo *ai = s_memory_state->info_for_address( value );
+            ai->set_initialized(true);
+
+        } else {          // address range
+            for ( uint32_t addr = m_r1; addr < m_r1 + m_r2; addr += 4 ) {
+                AddressInfo *ai = s_memory_state->info_for_address( addr );
+                ai->set_initialized(true);
+            }
+        }
+
         break;
     }
 
