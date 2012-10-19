@@ -39,6 +39,10 @@ using namespace soclib;
 
 tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
 {
+  if (addr % 4)
+    return false;
+  addr /= 4;
+
     if (addr >= SOCLIB_RTTIMER_DLN1)
       {
 	unsigned int i = (addr - SOCLIB_RTTIMER_DLN1) / 16;
@@ -47,13 +51,14 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	if (i > m_deadlines)
 	  return false;
 
-	switch ((addr - SOCLIB_RTTIMER_DLN1) % 16)
+	unsigned int r = (addr - SOCLIB_RTTIMER_DLN1) % 16;
+	switch (r)
 	  {
 	  case 0: // SOCLIB_RTTIMER_DLN1
 	    r_dln[i] = ((uint64_t)r_rtc_tmp.read() << 32) | data;
 
 	    if (r_ctrl.read() & SOCLIB_RTTIMER_CTRL_IEW)
-	      r_ie = r_ie.read() | m;
+	      m_ie = m_ie | m;
 	    return true;
 
 	  case 4: // SOCLIB_RTTIMER_DLN1S set
@@ -83,7 +88,7 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	    return true;
 
 	  case SOCLIB_RTTIMER_SCRLD:
-	    r_scrld = data;
+	    r_scrld = data & 0xffff;
 	    return true;
 	
 	  case SOCLIB_RTTIMER_CTRL:
@@ -99,11 +104,11 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	    return true;
 
 	  case SOCLIB_RTTIMER_IE:
-	    r_ie = data;
+	    m_ie = data;
 	    return true;
 
 	  case SOCLIB_RTTIMER_IP:
-	    r_ip = r_ip.read() & ~data;
+	    m_ip = m_ip & ~data;
 	    return true;
 
 	  case SOCLIB_RTTIMER_COPY: {
@@ -113,10 +118,15 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	      r_dln[i-1] = r_dln[i].read();
 
 	    if (r_ctrl.read() & SOCLIB_RTTIMER_CTRL_IEC)
-	      r_ie = r_ie.read() | data;
+	      m_ie = m_ie | data;
 
 	    return true;
 	  }
+
+	  case SOCLIB_RTTIMER_CANCEL:
+	    m_ip = m_ip & ~data;
+	    m_ie = m_ie & ~data;
+	    return true;
 
 	  default:
 	    return false;
@@ -126,6 +136,10 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 
 tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
 {
+  if (addr % 4)
+    return false;
+  addr /= 4;
+
     if (addr >= SOCLIB_RTTIMER_DLN1)
       {
 	unsigned int i = (addr - SOCLIB_RTTIMER_DLN1) / 16;
@@ -188,11 +202,11 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	    return true;
 
 	  case SOCLIB_RTTIMER_IE:
-	    data = r_ie.read();
+	    data = m_ie;
 	    return true;
 
 	  case SOCLIB_RTTIMER_IP:
-	    data = r_ip.read();
+	    data = m_ip;
 	    return true;
 
 	  default:
@@ -211,8 +225,8 @@ tmpl(void)::transition()
       r_ctrl = 0;
       r_rtc = 0;
       r_pe = 0;
-      r_ie = 0;
-      r_ip = 0;
+      m_ie = 0;
+      m_ip = 0;
       r_rtc_tmp = 0;
       r_data = 0;
 
@@ -248,18 +262,18 @@ tmpl(void)::transition()
 	{
 	case r_cmd_compare:
 
-	  if (r_dln[i].read() >= r_rtc.read()) // deadline reached
+	  if (r_dln[i].read() <= r_rtc.read()) // deadline reached
 	    {
 	      // interrupt pending if irq enabled
-	      if (r_ie.read() & m)
-		r_ip = r_ip.read() | m;
+	      if (m_ie & m)
+		m_ip = m_ip | m;
 
 	      if (r_pe.read() & m)
 		// add period
 		r_cmd[i] = r_cmd_dln_period;
 	      else
 		// or disable deadline irq
-		r_ie = r_ie.read() & ~m;
+		m_ie = m_ie & ~m;
 	    }
 	  break;
 
@@ -268,7 +282,7 @@ tmpl(void)::transition()
 	  r_cmd[i] = r_cmd_compare;
 
 	  if (r_ctrl.read() & SOCLIB_RTTIMER_CTRL_IES)
-	    r_ie = r_ie.read() | m;
+	    m_ie = m_ie | m;
 	  break;
 
 	case r_cmd_dln_add:
@@ -276,7 +290,7 @@ tmpl(void)::transition()
 	  r_cmd[i] = r_cmd_compare;
 
 	  if (r_ctrl.read() & SOCLIB_RTTIMER_CTRL_IEA)
-	    r_ie = r_ie.read() | m;
+	    m_ie = m_ie | m;
 	  break;
 
 	case r_cmd_dln_period:
@@ -298,11 +312,11 @@ tmpl(void)::genMoore()
   if (m_separate_irqs)
     {
       for (size_t i = 0 ; i < m_deadlines ; i++)
-	p_irq[i] = (r_ip.read() << i) != 0;
+	p_irq[i] = (m_ip >> i) & 1;
     }
   else
     {
-      p_irq[0] = r_ip.read() != 0;
+      p_irq[0] = m_ip != 0;
     }
 }
 
@@ -319,8 +333,6 @@ tmpl(/**/)::VciRtTimer(sc_module_name name, const IntTab &index,
     r_ctrl( "ctrl"),
     r_rtc("ctrl"),
     r_pe("pe"),
-    r_ie("ie"),
-    r_ip("ip"),
     r_rtc_tmp("rtc_tmp"),
 
     r_dln(soclib::common::alloc_elems<sc_signal<uint64_t> >("dln", deadlines)),

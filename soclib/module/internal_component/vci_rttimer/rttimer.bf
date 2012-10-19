@@ -16,7 +16,7 @@ align: 32
   longname: Prescaler reload register
   direction: rw
   address: 4
-  doc: This register holds the reload value for the prescaler counter.
+  doc: This register holds the reload value for the prescaler counter. The max value is 0xffff.
 
 %cfg: 32
   longname: Device configuration register
@@ -101,6 +101,11 @@ align: 32
   address: 44
   doc: When bit N is written to one in this register, the associated deadline register value is overwritten with the value of the N+1 deadline register. The last deadline register can not be overwritten.
 
+%cancel: 32
+  longname: Deadline cancel register
+  direction: w
+  address: 48
+  doc: When bit N is written to one in this register, the corresponding irq enable and pending flags are both cleared.
 
 %dln1: 32
   longname: Deadline1 value register

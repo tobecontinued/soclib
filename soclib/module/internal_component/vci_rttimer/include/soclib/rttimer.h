@@ -39,11 +39,12 @@ enum SoclibRtTimerRegisters {
     SOCLIB_RTTIMER_IE       = 9,
     SOCLIB_RTTIMER_IP       = 10,
     SOCLIB_RTTIMER_COPY     = 11,
+    SOCLIB_RTTIMER_CANCEL   = 12,
 
     SOCLIB_RTTIMER_DLN1     = 32,
-    SOCLIB_RTTIMER_DLN1S    = 36,
-    SOCLIB_RTTIMER_DLN1A    = 40,
-    SOCLIB_RTTIMER_DLN1P    = 44,
+    SOCLIB_RTTIMER_DLN1S    = 33,
+    SOCLIB_RTTIMER_DLN1A    = 34,
+    SOCLIB_RTTIMER_DLN1P    = 35,
 };
 
 enum SoclibRtTimerCtrl {

@@ -59,8 +59,8 @@ private:
   sc_signal<uint32_t>  r_ctrl;
   sc_signal<uint64_t>  r_rtc;
   sc_signal<uint32_t>  r_pe;
-  sc_signal<uint32_t>  r_ie;
-  sc_signal<uint32_t>  r_ip;
+  uint32_t  m_ie;
+  uint32_t  m_ip;
   sc_signal<uint32_t>  r_rtc_tmp;
 
   sc_signal<uint64_t> *r_dln;
