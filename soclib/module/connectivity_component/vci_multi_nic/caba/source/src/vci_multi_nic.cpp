@@ -22,75 +22,337 @@
  *
  * Copyright (c) UPMC, Lip6
  *         Alain Greiner <alain.greiner@lip6.fr> Juin 2012
+ *         Clement Devigne <clement.devigne@etu.upmc.fr>
+ *         Marc Kakou <marc.kakou@etu.upmc.fr>
  */
 
 //////////////////////////////////////////////////////////////////////////////////
-//  This component is a multi-channels, GMII compliant, NIC controller.
-//  This component makes the assumption that the VCI RDATA & WDATA fields
-//  have 32 bits. The number of channels is a constructor parameter  
-//  and cannot be larger than 8.
+// This component is a multi-channels, GMII compliant, NIC controller.
+// If the system clock frequency is larger or equal to the GMII clock
+// frequency (ie 125 MHz), it can support a throughput of 1 Gigabit/s).
+// This component makes the assumption that the VCI RDATA & WDATA fields 
+// have 32 bits. The number of channels is a constructor parameter,
+// and cannot be larger than 8.
+// 
+// It is a VCI target with no DMA capability : All data transfers must be 
+// performed by software, or by an external DMA engine.
+// 
+// The packet length is variable, between 64 to 1538 bytes.
+// The data transfer unit between software and the NIC is a container, 
+// containing an integer number of variable size packets. 
+// 
+// Each channel contains two RX containers and two TX containers, 
+// organised as standard multi_chained_buffers, in order to be accessed by
+// an external DMA engine.
+// 
+// A container is a 4 Kbytes buffer. 
+// The first 34 words of a container are the container header :
+// 
+//     word0  	| 	NB_WORDS	|	NB_PACKETS	|
+//     word1	|	PLEN[1]		|	PLEN[0]		|
+//      ...	    |	.......		|	........	|
+//     word33	|	PLEN[65]	|	PLEN[64]	|
+// 
+//  - NB_PACKETS is the actual number of packets in the container.
+//	- NB_WORDS   is the number of useful words in the container.
+//	- PLEN[i]    is the number of bytes for the packet[i].
 //
-//  Thic component has no DMA capability: All data transfers mut be performed
-//  by software, or by an external DMA engine.
-//  The data transfer unit between software and the NIC is a container. 
-//  A container is a 4K bytes buffer, containing an integer number 
-//  of ariable size packets. Packet length is between 64 to 1538 bytes.
-//
-//  The first 32 words of a container are the container descriptor:
-//      word0:       | NB_WORDS          | NB_PACKETS        |
-//      word1:       | PLEN[1]           | PLEN[0]           |
-//                   | ...               | ...               |
-//      word31:      | PLEN[61]          | PLEN[60]          |
-//
-// There is at most 62 packets in a container.
-// - NB_PACKETS is the actual number of packets in the container
-// - NB_WORDS is the number of useful words in the container
-// - PLEN[i] is the number of bytes for packet [i].  
-//
-// The packets are stored in the (1024-32) following words,
+// The packets are stored in the (1024 - 34) following words, 
 // and the packets are word-aligned.
+// 
+// In a virtualized environment each channel segment will be mapped in
+// the address space of a different virtual machine.
+// Each channel takes a segment of 32 Kbytes in the address space,
+// to simplify the address decoding. Only 20K bytes are used.
+// 
+// 	- The first 4 Kbytes contain the RX_0 container data
+// 	- The next  4 Kbytes contain the RX_1 container data
+// 	- The next  4 Kbytes contain the TX_0 container data
+// 	- The next  4 Kbytes contain the TX_1 container data
+// 	- The next  4 Kbytes contain the channel addressable registers
+// 		* NIC_C_RX_FULL_0  : RX_0 container status       (read/write)
+// 		* NIC_C_RX_PBUF_0  : RX_0 container base address (read/write)  
+// 		* NIC_C_RX_FULL_1  : RX_1 container status       (read/write)
+// 		* NIC_C_RX_PBUF_1  : RX_1 container base address (read/write)
+// 		* NIC_C_TX_FULL_0  : TX_0 container status       (read/write)
+// 		* NIC_C_TX_PBUF_0  : TX_0 container base address (read/write)
+// 		* NIC_C_TX_FULL_1  : TX_1 container status       (read/write)
+// 		* NIC_C_TX_PBUF_1  : TX_1 container base address (read/write)
+// 		* NIC_C_MAC_4      : MAC @ 32 MSB bits           (read_only)
+// 		* NIC_C_MAC_2      : MAC @ 16 LSB bits           (read_only)
 //
-//  In order to support various protection mechanisms, each channel takes
-//  a segment of 8 Kbytes in the address space:
-//  - The first 4K bytes contain the configuration and status registers
-//  - The second 4K bytes define the current container. 
+// On top of the channels segments is the hypervisor segment, taking 8 Kbytes:
+// It cannot be accessed by the virtual machines.
+// 
+// 	- It contains global configuration registers (read/write)
+// 		* NIC_G_VIS             : bitfield / bit N = 0 -> channel N is disabled
+// 		* NIC_G_ON 		        : NIC active if non zero (inactive at reset)
+// 		* NIC_G_BC_ENABLE 	    : boolean / broadcast enabled if true (disabled at reset)
+// 		* NIC_G_TDM_ENABLE 	    : boolean / enable TDM dor TX if true (disabled at reset)
+// 		* NIC_G_TDM_PERIOD      : value of TDM time slot
+// 		* NIC_G_MAC_4[8]        : initialize the channels MAC_4 (wired value at reset)
+// 		* NIC_G_MAC_2[8]        : initialize the channels MAC_2 (wired value at reset)
 //
-//  There is two IRQ lines for each channel:
-//  - RX_IRQ[k] is activated as soon as ther is at least one RX_container 
-//    containing data for channel (k).
-//  - TX_IRQ[k] is activated as soon a there is at least one TX_container
-//    empty for chnnel (k).
-/////////////////////////////////////////////////////////////////////////////////
+// - It contains various event counters for statistics (read/write)
+//      * NIC_G_NPKT_BYPASS           : number of "channel to channel" packets
+//      * NIC_G_NPKT_RX_G2S_RECEIVED  : number of packets received on GMII RX port 
+//      * NIC_G_NPKT_RX_G2S_DISCARDED : number of packets discarded by RX_G2S FSM
+//      * NIC_G_NPKT_RX_G2S_ERROR     : number of error packets transmited by RX_G2S FSM
+////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <stdint.h>
 #include <cassert>
-
+#include <cstdio>
 #include "alloc_elems.h"
 #include "../include/vci_multi_nic.h"
 #include "../../../include/soclib/multi_nic.h"
 
 namespace soclib { namespace caba {
 
+#define INTER_FRAME_GAP     12
+#define DEFAULT_TDM_PERIOD  50000
+#define DEFAULT_MAC_4       0xBABEF00D
+#define DEFAULT_MAC_2       0xBEEF    
+
+
+// CRC Table Definition 
+
+static uint32_t crc_table[] =
+{
+    0x4DBDF21C, 0x500AE278, 0x76D3D2D4, 0x6B64C2B0,
+    0x3B61B38C, 0x26D6A3E8, 0x000F9344, 0x1DB88320,
+    0xA005713C, 0xBDB26158, 0x9B6B51F4, 0x86DC4190,
+    0xD6D930AC, 0xCB6E20C8, 0xEDB71064, 0xF0000000
+};
+
+
 #define tmpl(t) template<typename vci_param> t VciMultiNic<vci_param>
+
+#ifdef SOCLIB_PERF_NIC
+
+// return total number Bytes count in rx_gmii
+tmpl(uint32_t)::get_total_len_gmii()
+{
+    return r_total_len_rx_gmii.read();
+}
+
+// return total number Bytes successfully writen in rx_chbuf
+tmpl(uint32_t)::get_total_len_rx_chan()
+{
+    return r_total_len_rx_chan.read();
+}
+
+// return total number Bytes read from a tx_chbuf
+tmpl(uint32_t)::get_total_len_tx_chan()
+{
+    return r_total_len_tx_chan.read();
+}
+
+// return total number Bytes writen in the output_file
+tmpl(uint32_t)::get_total_len_tx_gmii()
+{
+    return r_total_len_tx_gmii.read();
+}
+#endif
+
+///////////////////////////////////////////////////////////////////////
+// This function returns the value of hypervisor registers 
+///////////////////////////////////////////////////////////////////////
+tmpl(uint32_t)::read_hyper_register(uint32_t addr)
+{
+    uint32_t word    = (addr & 0x00000FFF) >> 2;
+    uint32_t data;
+
+    if ( (word >= NIC_G_MAC_4) and (word < (NIC_G_MAC_4 + 8)) )
+    {
+        uint32_t channel = word - NIC_G_MAC_4;
+        return r_channel_mac_4[channel];
+    }
+    
+    if ( (word >= NIC_G_MAC_2) and (word < (NIC_G_MAC_2 + 8)) )
+    {
+        uint32_t channel = word - NIC_G_MAC_2;
+        return r_channel_mac_2[channel];
+    }
+    
+    switch(word)
+    {
+        case NIC_G_BC_ENABLE:
+            data = r_global_bc_enable.read();
+            break;
+        case NIC_G_ON:
+            data = r_global_nic_on.read();
+            break;
+        case NIC_G_TDM_ENABLE:
+            data = r_global_tdm_enable.read();
+            break;
+        case NIC_G_TDM_PERIOD:
+            data = r_global_tdm_period.read();
+            break;
+        case NIC_G_VIS:
+            data = r_global_active_channels.read();
+            break;
+/*
+        case NIC_G_NPKT_BYPASS :
+            data = r_tx_dispatch_npkt_bypass.read();
+            break;
+        case NIC_G_NPKT_RX_G2S_RECEIVED :
+            data = r_rx_g2s_npkt_received.read();
+            break;
+        case NIC_G_NPKT_RX_G2S_DISCARDED :
+            data = r_rx_g2s_npkt_discarded.read();
+            break;
+        case NIC_G_NPKT_RX_DES_SUCCESS :
+            data = r_rx_des_npkt_success.read();
+            break;
+        case NIC_G_NPKT_RX_DES_TOO_SMALL :
+            data = r_rx_des_npkt_too_small.read();
+            break;
+        case NIC_G_NPKT_RX_DES_TOO_BIG :
+            data = r_rx_des_npkt_too_big.read();
+            break;
+        case NIC_G_NPKT_RX_DES_MFIFO_FULL :
+            data = r_rx_des_npkt_mfifo_full.read();
+            break;
+        case NIC_G_NPKT_RX_DES_CS_FAIL :
+            data = r_rx_des_npkt_cs_fail.read();
+            break;
+        case NIC_G_RX_NPKT_CHANNEL_SUCCESS :
+           data = r_rx_dispatch_npkt_wchannel_success.read();
+           break;
+        case NIC_G_RX_CHBUF_FAIL :
+            data = r_rx_dispatch_npkt_wchannel_fail.read();
+            break;
+        case NIC_G_NPKT_RX_MAC_FAIL :
+            data = r_rx_dispatch_npkt_skip_adrmac_fail.read();
+            break;
+        case NIC_G_NPKT_TX_PKT :
+            data = r_tx_npkt.read();
+            break;
+        case NIC_G_TX_NPKT_TOO_SMALL :
+            data = r_tx_npkt_small.read();
+            break;
+        case NIC_G_TX_NPKT_TOO_BIG :
+            data = r_tx_npkt_overflow.read();
+            break;
+*/
+        default:
+            assert ( false and
+            "ERROR in VCI_MULTI_NIC : illegal register index in VCI write");
+    }
+    return data;
+} // end read_hyper_register()
+
+///////////////////////////////////////////////////////////////////////
+// This function returns the value of addressable channel registers 
+///////////////////////////////////////////////////////////////////////
+tmpl(uint32_t)::read_channel_register(uint32_t addr)
+{
+
+    uint32_t channel = (addr & 0x00038000) >> 15;
+    uint32_t word    = (addr & 0x00000FFF) >> 2;
+    uint32_t data;
+
+    switch(word)
+    {
+        case NIC_C_RX_FULL_0:
+            data = r_rx_chbuf[channel].full(0);
+            break;
+        case NIC_C_RX_FULL_1:
+            data = r_rx_chbuf[channel].full(1);
+            break;
+        case NIC_C_TX_FULL_0:
+            data = r_tx_chbuf[channel].full(0);
+            break;
+        case NIC_C_TX_FULL_1:
+            data = r_tx_chbuf[channel].full(1);
+            break;
+        case NIC_C_RX_PBUF_0:
+            data = r_channel_rx_bufaddr_0[channel].read();
+            break;
+        case NIC_C_RX_PBUF_1:
+            data = r_channel_rx_bufaddr_1[channel].read();
+            break;
+        case NIC_C_TX_PBUF_0:
+            data = r_channel_tx_bufaddr_0[channel].read();
+            break;
+        case NIC_C_TX_PBUF_1:
+            data = r_channel_tx_bufaddr_1[channel].read();
+            break;
+        case NIC_C_MAC_4:
+            data = r_channel_mac_4[channel].read();
+            break;
+        case NIC_C_MAC_2:
+            data = r_channel_mac_2[channel].read();
+            break;
+        default:
+            assert ( false and
+            "ERROR in VCI_MULTI_NIC : illegal register index in VCI write");
+    } 
+    return data;
+} // end read_channel_register()
 
 /////////////////////////
 tmpl(void)::transition()
+/////////////////////////
 {
     if (!p_resetn) 
     {
-        r_vci_fsm          = VCI_IDLE;
-        r_vci_ptr          = 0;
-        r_vci_ptw          = 0;
+        r_global_bc_enable           = false;
+        r_global_nic_on              = false;
+        r_global_active_channels     = 0;
+        r_global_tdm_enable          = false;
+        r_global_tdm_period          = DEFAULT_TDM_PERIOD;
+        r_global_tdm_timer           = DEFAULT_TDM_PERIOD;
+        r_global_tdm_channel         = 0;
 
-        r_rx_g2s_fsm       = RX_G2S_IDLE;
-        r_rx_des_fsm       = RX_DES_READ_FIRST;
-        r_rx_dispatch_fsm  = RX_DISPATCH_IDLE;
-        r_tx_dispatch_fsm  = TX_DISPATCH_IDLE;
-        r_tx_s2g_fsm       = TX_S2G_IDLE;
+        for ( size_t k=0 ; k<m_channels ; k++ )
+        {
+            r_channel_mac_4[k]       = DEFAULT_MAC_4;
+            r_channel_mac_2[k]       = DEFAULT_MAC_2 + k;
+        }
+        
+        r_vci_fsm                    = VCI_IDLE;
+
+        r_rx_g2s_fsm                 = RX_G2S_IDLE;
+        r_rx_g2s_npkt_received       = 0;
+        r_rx_g2s_npkt_discarded      = 0;
+
+        r_rx_des_fsm                 = RX_DES_READ_0;
+        r_rx_des_npkt_success        = 0;
+        r_rx_des_npkt_too_small      = 0;
+        r_rx_des_npkt_too_big        = 0;
+        r_rx_des_npkt_mfifo_full     = 0;
+        r_rx_des_npkt_cs_fail        = 0;
+
+        r_rx_dispatch_fsm            = RX_DISPATCH_IDLE;
+        r_rx_dispatch_bp             = false;
+        r_rx_dispatch_npkt_received  = 0;
+        r_rx_dispatch_npkt_broadcast = 0;
+        r_rx_dispatch_npkt_mac_fail  = 0;
+        r_rx_dispatch_npkt_full      = 0;
+
+        r_tx_dispatch_fsm            = TX_DISPATCH_IDLE;
+        r_tx_dispatch_channel        = 0;
+        r_tx_dispatch_npkt_received  = 0;
+        r_tx_dispatch_npkt_too_small = 0;
+        r_tx_dispatch_npkt_too_big   = 0;
+        r_tx_dispatch_npkt_src_fail  = 0;
+        r_tx_dispatch_npkt_self      = 0;
+        r_tx_dispatch_npkt_broadcast        = 0;
+        r_tx_dispatch_npkt_bypass    = 0;
+        r_tx_dispatch_npkt_transmit  = 0;
+
+        r_tx_ser_fsm                 = TX_SER_IDLE;
+        r_tx_ser_ifg                 = INTER_FRAME_GAP;
+
+        r_tx_s2g_fsm                 = TX_S2G_IDLE;
+        r_tx_s2g_checksum            = 0;
 
         r_rx_fifo_stream.init();
-        r_rx_fifo_multi.reset();
         r_tx_fifo_stream.init();
+        r_rx_fifo_multi.reset();
+        r_tx_fifo_multi.reset();
         r_bp_fifo_multi.reset();
 
         r_gmii_rx.reset();
@@ -98,28 +360,75 @@ tmpl(void)::transition()
 
         for ( size_t k = 0 ; k < m_channels ; k++ )
         {
-            r_rx_channel[k]->reset();
-            r_tx_channel[k]->reset();
+            r_rx_chbuf[k].reset();
+            r_tx_chbuf[k].reset();
         }
+
+#ifdef SOCLIB_PERF_NIC
+        r_total_len_rx_gmii = 0;
+        r_total_len_rx_chan = 0;
+        r_total_len_tx_chan = 0;
+        r_total_len_tx_gmii = 0;
+#endif
         return;
+    } // end reset
+
+    // rx_chbuf and tx_chbuf commands
+    tx_chbuf_wcmd_t tx_chbuf_wcmd[m_channels];
+    uint32_t        tx_chbuf_wdata   = 0;
+    uint32_t        tx_chbuf_cont    = 0;
+    uint32_t        tx_chbuf_word    = 0;
+    tx_chbuf_rcmd_t tx_chbuf_rcmd[m_channels];
+
+    rx_chbuf_wcmd_t rx_chbuf_wcmd[m_channels];
+    uint32_t        rx_chbuf_wdata   = 0;
+    uint32_t        rx_chbuf_padding = 0;
+    rx_chbuf_rcmd_t rx_chbuf_rcmd[m_channels];
+    uint32_t        rx_chbuf_cont    = 0;
+    uint32_t        rx_chbuf_word    = 0;
+
+    // default values for rx_chbuf and tx chbuf commands
+    for ( size_t k=0 ; k<m_channels ; k++) 
+    {
+        tx_chbuf_wcmd[k] = TX_CHBUF_WCMD_NOP;
+        tx_chbuf_rcmd[k] = TX_CHBUF_RCMD_NOP;
+        rx_chbuf_wcmd[k] = RX_CHBUF_WCMD_NOP;
+        rx_chbuf_rcmd[k] = RX_CHBUF_RCMD_NOP;
     }
 
+    // multi_fifos commands
+    fifo_multi_wcmd_t rx_fifo_multi_wcmd    = FIFO_MULTI_WCMD_NOP;
+    uint32_t          rx_fifo_multi_wdata   = 0;
+    uint32_t          rx_fifo_multi_padding = 0;  
+    fifo_multi_rcmd_t rx_fifo_multi_rcmd    = FIFO_MULTI_RCMD_NOP;
+
+    fifo_multi_wcmd_t tx_fifo_multi_wcmd    = FIFO_MULTI_WCMD_NOP;
+    uint32_t          tx_fifo_multi_wdata   = 0;
+    uint32_t          tx_fifo_multi_padding = 0; 
+    fifo_multi_rcmd_t tx_fifo_multi_rcmd    = FIFO_MULTI_RCMD_NOP;
+
+    fifo_multi_wcmd_t bp_fifo_multi_wcmd    = FIFO_MULTI_WCMD_NOP;
+    uint32_t          bp_fifo_multi_wdata   = 0;
+    uint32_t          bp_fifo_multi_padding = 0;
+    fifo_multi_rcmd_t bp_fifo_multi_rcmd    = FIFO_MULTI_RCMD_NOP;
+
+    // stream_fifos commands
+    bool     rx_fifo_stream_read            = true;    // always  try to get data 
+    bool     rx_fifo_stream_write           = false;   
+    uint16_t rx_fifo_stream_wdata           = 0;
+    
+    bool     tx_fifo_stream_read            = false; 
+    bool     tx_fifo_stream_write           = false;   
+    uint16_t tx_fifo_stream_wdata           = 0;
+    
     ///////////////////////////////////////////////////////////////////////////
     // This VCI_FSM controls the VCI TARGET port
-    // It is inspired from the model of the vci_simple_ram.
     // The VCI PLEN field must be multiple of 4, and the BE field is not used.
-    // We acknowledge the VCI command, and decod it in the IDLE state. 
+    // We acknowledge the VCI command, and decode it in the IDLE state.
     // - All configuration (write) and status (read) accesses must be one flit.
-    // - The read data transfers (from RX channel container), or the 
-    //   write data transfers (to TX channel container) can be split 
-    //   into several bursts, at contiguous addresses, as the container
-    //   behave as FIFOs.
+    // - The read data transfers (from RX channel container), or the
+    //   write data transfers (to TX channel container) can use bursts.
     ///////////////////////////////////////////////////////////////////////////
-
-    // default values for rx_channel and tx_channel commands
-    rx_channel_rcmd_t rx_channel_rcmd  = RX_CHANNEL_RCMD_NOP;
-    tx_channel_wcmd_t tx_channel_wcmd  = TX_CHANNEL_WCMD_NOP;
-    uint32_t          tx_channel_wdata = 0;
 
     switch(r_vci_fsm.read()) 
     {
@@ -131,78 +440,89 @@ tmpl(void)::transition()
                 typename vci_param::addr_t	address = p_vci.address.read();
                 typename vci_param::cmd_t	cmd     = p_vci.cmd.read();
                 typename vci_param::plen_t  plen    = p_vci.plen.read();
-               
+
                 assert ( ((plen & 0x3) == 0) and
                 "ERROR in VCI_MULTI_NIC : PLEN field must be multiple of 4 bytes");
 
                 assert ( (m_segment.contains(address)) and
                 "ERROR in VCI_MULTI_NIC : ADDRESS is out of segment");
 
+                uint32_t channel = (uint32_t)((address & 0x00038000) >> 15);
+                bool     hyper   =            (address & 0x00040000);
+                bool     write   = not        (address & 0x00002000);
+                bool     burst   = not        (address & 0x00004000);
+                size_t   cont    = (uint32_t)((address & 0x00001000) >> 12); 
+                uint32_t word    = (uint32_t)((address & 0x00000FFF) >> 2); 
+
+                r_vci_address  = (uint32_t)address;
                 r_vci_srcid	   = p_vci.srcid.read();
                 r_vci_trdid	   = p_vci.trdid.read();
                 r_vci_pktid	   = p_vci.pktid.read();
                 r_vci_wdata    = p_vci.wdata.read();
+                r_vci_nwords   = (uint32_t)plen >> 2;
 
-                size_t channel = (size_t)((address & 0x0000E000) >> 13);
-                size_t cell    = (size_t)((address & 0x00000FFF) >> 2);
-                bool   burst   = (address & 0x00001000);
+                // checking channel index
+                if (not hyper)
+                {
+                    assert( (channel < m_channels) and
+                    "VCI_MULTI_NIC error : The channel index (ADDR[16:14] is too large");
+                }
+              
+                // hypervisor register write
+                if (hyper and (cmd==vci_param::CMD_WRITE))
+                {
+                    assert( p_vci.eop.read() and
+                    "ERROR in VCI_MULTI_NIC : RX_REG read access must be one flit");
 
-                r_vci_channel  = channel;
+                    r_vci_fsm = VCI_WRITE_HYPER_REG;
+                }
 
-                assert( (channel < m_channels) and 
-                "VCI_MULTI_NIC error : The channel index (ADDR[15:13] is too large");
+                // hypervisor register read 
+                else if (hyper and (cmd==vci_param::CMD_READ))
+                {
+                    assert( p_vci.eop.read() and
+                    "ERROR in VCI_MULTI_NIC : RX_REG read access must be one flit");
 
-	            if ( burst and (cmd == vci_param::CMD_WRITE) )      // TX_BURST transfer
-                {
-                    if ( p_vci.eop.read() ) r_vci_fsm = VCI_WRITE_TX_BURST;
-                    else                           r_vci_fsm = VCI_WRITE_TX_BURST;
+                    r_vci_fsm = VCI_READ_HYPER_REG;
                 }
-                else if ( burst  and (cmd == vci_param::CMD_READ) ) // RX_BURST transfer
+              
+                // TX_BURST write transfer
+                else if ( (not hyper) and burst and 
+                           write and (cmd==vci_param::CMD_WRITE) ) 
                 {
-                    r_vci_nwords  = (size_t)(plen >> 2);
-                    r_vci_fsm     = VCI_READ_RX_BURST;
+                    assert( not r_tx_chbuf[channel].full(cont) and
+                    "ERROR in VCI_MULTI_NIC : TX_BURST write access in full container");
+
+                    if ( p_vci.eop.read() ) r_vci_fsm = VCI_WRITE_TX_LAST;
+                    else                    r_vci_fsm = VCI_WRITE_TX_BURST;
                 }
-                else if ( not burst and (cmd == vci_param::CMD_READ) and
-                          (cell == NIC_TX_WOK ) )           // TX_WOK read access
+                // RX_BURST read transfer
+                else if ( (not hyper) and burst and 
+                          (not write) and (cmd==vci_param::CMD_READ) ) 
+                {
+                    assert( r_rx_chbuf[channel].full(cont) and
+                    "ERROR in VCI_MULTI_NIC : RX_BURST read access in container not full");
+
+                    rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_READ;
+                    rx_chbuf_cont          = cont;
+                    rx_chbuf_word          = word;
+                    r_vci_fsm              = VCI_READ_RX_BURST;
+                }
+                // channel register read 
+                else if ( (not hyper) and (not burst) and (cmd==vci_param::CMD_READ) ) 
                 {
                     assert( p_vci.eop.read() and
-                    "ERROR in VCI_MULTI_NIC : TX_WOK read access must be one flit");
-                    r_vci_fsm = VCI_READ_TX_WOK;
+                    "ERROR in VCI_MULTI_NIC : RX_REG read access must be one flit");
+
+                    r_vci_fsm = VCI_READ_CHANNEL_REG;
                 }
-                else if ( not burst and (cmd == vci_param::CMD_READ) and
-                          (cell == NIC_RX_ROK ) )           // RX_ROK read access
+                // channel register write access
+                else if ( (not hyper) and (not burst) and (cmd==vci_param::CMD_WRITE) )
                 {
-                    assert( p_vci.eop.read() and
-                    "ERROR in VCI_MULTI_NIC : RX_ROK read access must be one flit");
-                    r_vci_fsm = VCI_READ_RX_ROK;
-                }
-                else if ( not burst and (cmd == vci_param::CMD_WRITE) and
-                          (cell == NIC_TX_CLOSE) )          // TX_CLOSE write access
-                {
-                    assert( p_vci.eop.read() and
-                    "ERROR in VCI_MULTI_NIC : TX_CLOSE write access must be one flit");
-                    r_vci_fsm = VCI_WRITE_TX_CLOSE;
-                }
-                else if ( not burst and (cmd == vci_param::CMD_WRITE) and
-                          (cell == NIC_RX_RELEASE) )         // RX_RELEASE write access
-                {
-                    assert( p_vci.eop.read() and
-                    "ERROR in VCI_MULTI_NIC : RX_RELEASE write access must be one flit");
-                    r_vci_fsm = VCI_WRITE_RX_RELEASE;
-                }
-                else if ( not burst and (cmd == vci_param::CMD_WRITE) and
-                          (cell == NIC_MAC_4) )             // MAC_4 write access
-                {
-                    assert( p_vci.eop.read() and
-                    "ERROR in VCI_MULTI_NIC : MAC_4 write access must be one flit");
-                    r_vci_fsm = VCI_WRITE_MAC_4;
-                }
-                else if ( not burst and (cmd == vci_param::CMD_WRITE) and
-                          (cell == NIC_MAC_2) )             // MAC_2 write access
-                {
-                    assert( p_vci.eop.read() and
-                    "ERROR in VCI_MULTI_NIC : MAC_2 write access must be one flit");
-                    r_vci_fsm = VCI_WRITE_MAC_2;
+                    assert ( p_vci.eop.read() and
+                    "ERROR in VCI_MULTI_NIC : WRITE_REG write access must be one flit");
+
+                    r_vci_fsm = VCI_WRITE_CHANNEL_REG;
                 }
                 else
                 {
@@ -212,89 +532,157 @@ tmpl(void)::transition()
             }
             break;
         }
-        ///////////////////////
-        case VCI_WRITE_TX_BURST: // write data[i-1] in tx_channel[k]
-                                 // and check if data[i] matches write pointer 
+        ////////////////////////
+        case VCI_WRITE_TX_BURST: // write data[i-1] in tx_chbuf[k]
+                                 // and read data[i] on VCI port 
         {
-            size_t channel = r_vci_channel.read();
-
-            assert ( r_tx_channel[channel]->wok() and
-            "ERROR in VCI_MULTI_NIC : tx_channel should not be full in VCI_WRITE_TX_BURST");
-            
             if ( p_vci.cmdval.read() )
             {
-                // data[i-1] 
-                tx_channel_wcmd  = TX_CHANNEL_WCMD_WRITE;
-                tx_channel_wdata = r_vci_wdata.read();
+                // write data[i-1]
+                uint32_t address       = r_vci_address.read();
+                uint32_t channel       = (address & 0x00038000) >> 15;
+                tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_WRITE;
+                tx_chbuf_wdata         = r_vci_wdata.read();
+                tx_chbuf_cont          = (address & 0x00001000) >> 12;
+                tx_chbuf_word          = (address & 0x00000FFF) >> 2;
 
-                // data[i]
-                typename vci_param::addr_t	address = p_vci.address.read();
+                // read data[i]
+                address       = p_vci.address.read();
+                r_vci_address = address;
+                r_vci_wdata   = p_vci.wdata.read();
 
-                assert( (((address & 0x00000FFF) >> 2) == r_vci_ptw.read()) and
+                assert( (address == r_vci_address.read()+4) and
                 "ERROR in VCI_MULTI_NIC : address must be contiguous in VCI_WRITE_TX_BURST");
-   
-                r_vci_wdata      = p_vci.wdata.read();
-                r_vci_ptw        = r_vci_ptw.read() + 1;
+  
                 if ( p_vci.eop.read() ) r_vci_fsm = VCI_WRITE_TX_LAST;
             }
             break;
         }
         ///////////////////////
-        case VCI_WRITE_TX_LAST: // write last word of the burst in tx_channel
+        case VCI_WRITE_TX_LAST: // write last word of burst in tx_chbuf[k]
                                 // and send VCI write response
         {
             if ( p_vci.rspack.read() )
             {
-                tx_channel_wcmd  = TX_CHANNEL_WCMD_WRITE;
-                tx_channel_wdata = r_vci_wdata.read();
-                r_vci_fsm = VCI_IDLE;
-            }
-            break;
-        }
-        /////////////////////
-        case VCI_READ_TX_WOK:   // send tx_channnel WOK in VCI response
-        {
-            if ( p_vci.rspack.read() )
-            {
-                r_vci_fsm = VCI_IDLE;
-            }
-            break;
-        }
-        ////////////////////////
-        case VCI_WRITE_TX_CLOSE: // close tx_channel, reset r_vci_ptw pointer
-                                 // and send VCI write response
-        {
-            if ( p_vci.rspack.read() )
-            {
-                tx_channel_wcmd  = TX_CHANNEL_WCMD_CLOSE;
-                r_vci_ptw        = 0;
-                r_vci_fsm        = VCI_IDLE;
+                uint32_t address       = r_vci_address.read();
+                uint32_t channel       = (address & 0x00038000) >> 15;
+                tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_WRITE;
+                tx_chbuf_wdata         = r_vci_wdata.read();
+                tx_chbuf_cont          = (address & 0x00001000) >> 12;
+                tx_chbuf_word          = (address & 0x00000FFF) >> 2;
+                r_vci_fsm              = VCI_IDLE;
             }
             break;
         }
         ///////////////////////
-        case VCI_READ_RX_BURST: // check pointer and send data in VCI response
+        case VCI_READ_RX_BURST: // check number of words and send data in VCI response
         {
-            size_t channel = r_vci_channel.read();
-
-            assert ( r_rx_channel[channel]->rok() and
-            "ERROR in VCI_MULTI_NIC : rx_channel should not be empty in VCI_READ_RX_BURST");
-            
             if ( p_vci.rspack.read() )
             {
-                typename vci_param::addr_t	address = p_vci.address.read();
-
-                assert( (((address & 0x00000FFF) >> 2) == r_vci_ptr.read()) and
-                "ERROR in VCI_MULTI_NIC : address must be contiguous in VCI_WRITE_TX_BURST");
-
-                r_vci_nwords     = r_vci_nwords.read() - 1;
-                r_vci_ptr        = r_vci_ptr.read() + 1;
+                uint32_t address       = r_vci_address.read();
+                uint32_t channel       = (address & 0x00038000) >> 15;
+                rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_READ;
+                rx_chbuf_cont          = (size_t)((address & 0x00001000) >> 12); 
+                rx_chbuf_word          = (size_t)((address & 0x00000FFF) >> 2); 
+                r_vci_nwords           = r_vci_nwords.read() - 1;
                 if ( r_vci_nwords.read() == 1 ) r_vci_fsm = VCI_IDLE;
             }
             break;
         }
-        /////////////////////
-        case VCI_READ_RX_ROK:   // send rx_channel ROK in VCI response
+        /////////////////////////
+        case VCI_WRITE_HYPER_REG: 
+        {
+            if ( p_vci.rspack.read() )
+            {
+                uint32_t address = r_vci_address.read();
+                uint32_t word    = (address & 0x00000FFF) >> 2;
+
+                if ( (word < (NIC_G_MAC_4 + 8) ) and (word >= NIC_G_MAC_4 ) )
+                {
+                    uint32_t channel = word - NIC_G_MAC_4;
+                    r_channel_mac_4[channel] = r_vci_wdata.read();
+                }
+
+                else if ( (word < (NIC_G_MAC_2 + 8) ) and (word >= NIC_G_MAC_2 ) )
+                {
+                    uint32_t channel = word - NIC_G_MAC_2;
+                    r_channel_mac_2[channel] = r_vci_wdata.read();
+                }
+                else
+                {
+                    switch(word)
+                    {
+                        case NIC_G_TDM_ENABLE :
+                            r_global_tdm_enable = r_vci_wdata.read();
+                            break;
+                        case NIC_G_TDM_PERIOD :
+                            r_global_tdm_period = r_vci_wdata.read();
+                            break;
+                        case NIC_G_BC_ENABLE :
+                            r_global_bc_enable = r_vci_wdata.read();
+                            break;
+                        case NIC_G_ON :
+                            r_global_nic_on = r_vci_wdata.read();
+                            break;
+                        case NIC_G_VIS :
+                            r_global_active_channels = r_vci_wdata.read();
+                            break;
+                    }
+                }
+            }
+            r_vci_fsm = VCI_IDLE;
+            break;
+        }
+        ///////////////////////////
+        case VCI_WRITE_CHANNEL_REG: 
+        {  
+            if ( p_vci.rspack.read() )
+            {
+                uint32_t address = r_vci_address.read();
+                uint32_t word    = (address & 0x00000FFF) >> 2;
+                uint32_t channel = (address & 0x00038000) >> 15;
+
+                switch(word)
+                {
+                    case NIC_C_RX_FULL_0:    // release container RX[channel][0]
+                        rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
+                        rx_chbuf_cont          = 0;
+                        break;
+                    case NIC_C_RX_FULL_1:    // release container RX[channel][1]
+                        rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
+                        rx_chbuf_cont          = 1;
+                        break;
+                    case NIC_C_TX_FULL_0:    // release container TX[channel][0]
+                        tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
+                        tx_chbuf_cont          = 0;
+                        break;
+                    case NIC_C_TX_FULL_1:    // release container TX[channel][1]
+                        tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
+                        tx_chbuf_cont          = 1;
+                        break;
+                    case NIC_C_RX_PBUF_0:    // set base address of RX[channel][0]
+                        r_channel_rx_bufaddr_0[channel] = r_vci_wdata.read();   
+                        break;
+                    case NIC_C_RX_PBUF_1:    // set base address of RX[channel][1]
+                        r_channel_rx_bufaddr_1[channel] = r_vci_wdata.read();   
+                        break;
+                    case NIC_C_TX_PBUF_0:    // set base address of TX[channel][0]
+                        r_channel_tx_bufaddr_0[channel] = r_vci_wdata.read();   
+                        break;
+                    case NIC_C_TX_PBUF_1:    // set base address of TX[channel][1]
+                        r_channel_tx_bufaddr_1[channel] = r_vci_wdata.read();   
+                        break;
+                    default:
+                        assert( false and 
+                        "ERROR in VCI_MULTI_NIC : Illegal channel configuration access");
+                }
+            }
+            r_vci_fsm = VCI_IDLE;
+            break;
+        }
+        ////////////////////////
+        case VCI_READ_HYPER_REG:   // send REG value in VCI response
+        case VCI_READ_CHANNEL_REG:
         {
             if ( p_vci.rspack.read() )
             {
@@ -302,53 +690,17 @@ tmpl(void)::transition()
             }
             break;
         }
-        //////////////////////////
-        case VCI_WRITE_RX_RELEASE:   // release tx_channel, reset r_vci_ptr,
-                                    // and send VCI write response
-        {
-            if ( p_vci.rspack.read() )
-            {
-                rx_channel_rcmd = RX_CHANNEL_RCMD_RELEASE;
-                r_vci_ptr       = 0;
-                r_vci_fsm       = VCI_IDLE;
-            }
-            break;
-        }
-        /////////////////////
-        case VCI_WRITE_MAC_4:       // set r_channel_mac_4 for selected channel,
-                                    // and send VCI write response
-        {
-            if ( p_vci.rspack.read() )
-            {
-                size_t channel = r_vci_channel.read();
-                r_channel_mac_4[channel] = r_vci_wdata.read();
-                r_vci_fsm       = VCI_IDLE;
-            }
-            break;
-        }
-        /////////////////////
-        case VCI_WRITE_MAC_2:       // set r_channel_mac_2 for selected channel,
-                                    // and send VCI write response
-        {
-            if ( p_vci.rspack.read() )
-            {
-                size_t channel = r_vci_channel.read();
-                r_channel_mac_2[channel] = r_vci_wdata.read();
-                r_vci_fsm       = VCI_IDLE;
-            }
-            break;
-        }
-    } // end switch tgt_fsm
+    } // end switch vci_fsm
 
     ///////////////////////////////////////////////////////////////////////////
     // This RX_G2S module makes the GMII to STREAM format conversion.
     // It cheks the checksum, ans signals a possible error.
     // The input is the gmii_in module.
     // The output is the rx_fifo_stream, but this fifo is only used for
-    // clock boundary handling, and should never be full,
-    // as the consumer (RX_DES module) read all available bytes. 
+    // clock boundary handling, and should never be full, as the consumer 
+    // (RX_DES module) read all available bytes at all cycles. 
     ///////////////////////////////////////////////////////////i////////////////
-    
+
     // get data from PHY component
     bool    gmii_rx_dv;
     bool    gmii_rx_er;
@@ -356,15 +708,13 @@ tmpl(void)::transition()
 
     r_gmii_rx.get( &gmii_rx_dv, 
                    &gmii_rx_er, 
-                   &gmii_rx_data );
+                   &gmii_rx_data);
 
-    // default values for fifo commands
-    bool              rx_fifo_stream_write = false;
-    uint16_t          rx_fifo_stream_wdata;
     
     assert( r_rx_fifo_stream.wok() and
     "ERROR in VCI_MULTI_NIC : the rs_fifo_stream should never be full");
 
+    // update data pipe-line
     r_rx_g2s_dt0 = gmii_rx_data;
     r_rx_g2s_dt1 = r_rx_g2s_dt0.read();
     r_rx_g2s_dt2 = r_rx_g2s_dt1.read();
@@ -378,10 +728,11 @@ tmpl(void)::transition()
         /////////////////
         case RX_G2S_IDLE:   // waiting start of packet
         {
-            if ( gmii_rx_dv and not gmii_rx_er ) // start of packet / no error
+            if (r_global_nic_on.read() and gmii_rx_dv and not gmii_rx_er ) // start of packet 
             {
-                r_rx_g2s_fsm   = RX_G2S_DELAY; 
-                r_rx_g2s_delay = 0;
+                r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
+                r_rx_g2s_fsm           = RX_G2S_DELAY; 
+                r_rx_g2s_delay         = 0;
             }
             break;
         }
@@ -390,11 +741,13 @@ tmpl(void)::transition()
         {
             if ( not gmii_rx_dv or gmii_rx_er ) // data invalid or error
             {
-                r_rx_g2s_fsm = RX_G2S_IDLE;
+                r_rx_g2s_npkt_discarded = r_rx_g2s_npkt_discarded.read() + 1;
+                r_rx_g2s_fsm            = RX_G2S_IDLE;
             }
             else if ( r_rx_g2s_delay.read() == 3 ) 
             {
-                r_rx_g2s_fsm = RX_G2S_LOAD;
+                r_rx_g2s_fsm      = RX_G2S_LOAD;
+                r_rx_g2s_checksum = 0x00000000; // reset checksum register
             }
             else
             {
@@ -403,16 +756,23 @@ tmpl(void)::transition()
             break;
         }
         /////////////////
-        case RX_G2S_LOAD:   // load first in checksum accu
+        case RX_G2S_LOAD:   // initialize checksum accu
         {
             if ( gmii_rx_dv and not gmii_rx_er ) // data valid / no error
             {
-                r_rx_g2s_checksum = r_rx_g2s_dt4.read();
+                //compute CRC
+                r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
+                                    ^ crc_table[(r_rx_g2s_checksum.read() 
+                                    ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
+                r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
+                                    ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
+                                    ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
                 r_rx_g2s_fsm      = RX_G2S_SOS;
             }
             else
             {
-                r_rx_g2s_fsm      = RX_G2S_IDLE;
+                r_rx_g2s_npkt_discarded = r_rx_g2s_npkt_discarded.read() + 1;
+                r_rx_g2s_fsm            = RX_G2S_IDLE;
             }
             break;
         }
@@ -421,14 +781,26 @@ tmpl(void)::transition()
         {
             if ( gmii_rx_dv and not gmii_rx_er ) // data valid / no error
             {
-                r_rx_g2s_checksum = r_rx_g2s_checksum.read() + r_rx_g2s_dt4.read();
-                r_rx_g2s_fsm      = RX_G2S_LOOP;
                 rx_fifo_stream_write = true;
                 rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_SOS << 8);
+
+                //compute CRC
+                r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
+                                    ^ crc_table[(r_rx_g2s_checksum.read() 
+                                    ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
+                r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
+                                    ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
+                                    ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
+                r_rx_g2s_fsm      = RX_G2S_LOOP;
+
+#ifdef SOCLIB_PERF_NIC
+r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
+#endif
             }
             else
             {
-                r_rx_g2s_fsm      = RX_G2S_IDLE;
+                r_rx_g2s_npkt_discarded = r_rx_g2s_npkt_discarded.read() + 1;
+                r_rx_g2s_fsm            = RX_G2S_IDLE;
             }
             break;
         }
@@ -438,9 +810,19 @@ tmpl(void)::transition()
             rx_fifo_stream_write = true;
             rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_NEV << 8);
 
+            //compute CRC
+            r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
+                                ^ crc_table[(r_rx_g2s_checksum.read() 
+                                ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
+            r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
+                                ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
+                                ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
+#ifdef SOCLIB_PERF_NIC
+r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
+#endif
+
             if ( not gmii_rx_dv and not gmii_rx_er ) // end of paquet
             {
-                r_rx_g2s_checksum = r_rx_g2s_checksum.read() + r_rx_g2s_dt4.read();
                 r_rx_g2s_fsm = RX_G2S_END;
             }
             else if ( gmii_rx_dv and gmii_rx_er ) // error
@@ -449,7 +831,7 @@ tmpl(void)::transition()
             }
             else if ( not gmii_rx_dv and gmii_rx_er ) // error extend
             {
-                r_rx_g2s_fsm = RX_G2S_FAIL;
+                r_rx_g2s_fsm = RX_G2S_EXTD;
             }
             break;
         }
@@ -460,6 +842,11 @@ tmpl(void)::transition()
                              (uint32_t)r_rx_g2s_dt3.read() << 8  | 
                              (uint32_t)r_rx_g2s_dt2.read() << 16 | 
                              (uint32_t)r_rx_g2s_dt1.read() << 24 ; 
+
+#ifdef SOCLIB_PERF_NIC
+r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1 + INTER_FRAME_GAP ;
+#endif
+
             if ( r_rx_g2s_checksum.read() == check )
             {
                 rx_fifo_stream_write = true;
@@ -473,8 +860,9 @@ tmpl(void)::transition()
 
             if ( gmii_rx_dv and not gmii_rx_er ) // start of packet / no error
             {
-                r_rx_g2s_fsm   = RX_G2S_DELAY;
-                r_rx_g2s_delay = 0;
+                r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
+                r_rx_g2s_fsm           = RX_G2S_DELAY;
+                r_rx_g2s_delay         = 0;
             }
             else 
             {
@@ -496,11 +884,12 @@ tmpl(void)::transition()
         {
             rx_fifo_stream_write = true;
             rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_ERR << 8);
- 
+
             if ( gmii_rx_dv and not gmii_rx_er ) // start of packet / no error
             {
-                r_rx_g2s_fsm   = RX_G2S_DELAY;
-                r_rx_g2s_delay = 0;
+                r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
+                r_rx_g2s_fsm           = RX_G2S_DELAY;
+                r_rx_g2s_delay         = 0;
             }
             else 
             {
@@ -518,211 +907,365 @@ tmpl(void)::transition()
             break;
         }
     } // end switch rx_g2s_type_fsm
-    
+
     ///////////////////////////////////////////////////////////////////////////
     // This RX_DES module is in charge of deserialisation (4 bytes -> 1 word).
-    // - The input is the rx_fifo_stream, respecting the stream format: 
+    // - The input is the rx_fifo_stream, respecting the stream format:
     //   8 bits data + 2 bits type.
     // - The output is the rx_fifo_multi that can store a full paquet.
-    // It is also charge of discarding input packets in two cases:
+    // It is also charge of discarding input packets in four cases:
+    // - if a packet is too small (64 - 4)B
+    // - if a packet is too long (1518 - 4)B
     // - if a checksum error is reported by the RS_G2S FSM
     // - if there not space in the rx_fifo_multi
+    // Implementation note:
+    // - The FSM try to read a byte in rx_fifo_stream at all cycles.
+    // - It test if the rx_fifo_multi is full in the state where it reads 
+    //   the last byte of a 32 bits word.
     ///////////////////////////////////////////////////////////i////////////////
+
     
-    // default values for fifo commands
-    bool              rx_fifo_stream_read   = true;
-    fifo_multi_wcmd_t rx_fifo_multi_wcmd    = FIFO_MULTI_WCMD_NOP;
-    uint32_t          rx_fifo_multi_wdata   = 0;
-    uint32_t          rx_fifo_multi_padding = 0;  // only used for the last word
-    
-    switch(r_rx_des_fsm.read()) 
+    switch (r_rx_des_fsm.read())
     {
-        ///////////////////////
-        case RX_DES_READ_FIRST:    // read first 4 bytes in fifo_stream
+        ///////////////////
+        case RX_DES_READ_0:     // read first byte in rx_fifo_stream
         {
-            size_t   index = r_rx_des_byte_index.read();
-            uint16_t data;
-            uint32_t type;
-            if ( r_rx_fifo_stream.rok() ) // do nothing if we cannot read
+            uint16_t data = r_rx_fifo_stream.read();
+            uint32_t type = (data >> 8) & 0x3;
+
+            if ( r_rx_fifo_stream.rok() )   // do nothing if we cannot read
             {
-                data                = r_rx_fifo_stream.read();
-                type                = (data >> 8) & 0x3;
-                if ( ((index == 0) and (type != STREAM_TYPE_SOS)) or
-                     ((index != 0) and (type != STREAM_TYPE_NEV)) )  // illegal byte type
+                r_rx_des_data[0] = (uint8_t)(data & 0xFF);
+                r_rx_des_counter_bytes = 1;
+                if ( type == STREAM_TYPE_SOS ) r_rx_des_fsm = RX_DES_READ_1;
+            }
+            break;
+        }
+        ///////////////////
+        case RX_DES_READ_1:     // read second byte in rx_fifo_stream
+        {
+            uint16_t data = r_rx_fifo_stream.read();
+            uint32_t type = (data >> 8) & 0x3;
+
+            if ( r_rx_fifo_stream.rok() )   // do nothing if we cannot read
+            {
+                r_rx_des_data[1] = (uint8_t)(data & 0xFF);
+                r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;
+                if ( type == STREAM_TYPE_NEV )
                 {
-                    r_rx_des_byte_index     = 0;
+                    r_rx_des_fsm = RX_DES_READ_2;
                 }
-                else              
+                else
                 {
-                    r_rx_des_data[index]    = (uint8_t)(data & 0xFF);
-                    if ( index == 3 )                               // last byte in word
-                    {
-                        r_rx_des_byte_index = 0;
-                        r_rx_des_fsm        = RX_DES_READ_WRITE;
-                    }
-                    else
-                    {
-                        r_rx_des_byte_index  = index + 1;
-                    }
+                    r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
+                    r_rx_des_fsm = RX_DES_READ_0;
                 }
             }
             break;
         }
-        ///////////////////////
-        case RX_DES_READ_WRITE:     // read next 4 bytes in fifo_stream
-                                    // and write one word in fifo_multi
-                                    // when reading the first byte in fifo_stream
-        {
-            size_t   index = r_rx_des_byte_index.read();
-            uint16_t data;
-            uint32_t type;
-
-            if ( index == 0 )       // accessing both fifo_stream & fifo_multi  
-            {
-                if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
+        ///////////////////
+        case RX_DES_READ_2:     // read third byte in rx_fifo_stream
+	    {
+            uint16_t data = r_rx_fifo_stream.read();
+            uint32_t type = (data >> 8) & 0x3;
+		
+		    if ( r_rx_fifo_stream.rok() )   // do nothing if we cannot read
+		    {
+		        r_rx_des_data[2] = (uint8_t)(data & 0xFF);
+                r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;
+			    if ( type == STREAM_TYPE_NEV )
                 {
-                    if ( r_rx_fifo_multi.wok() )  // both fifos OK => read & write
-                    {
-                        rx_fifo_stream_read = true;
-                        data                = r_rx_fifo_stream.read();
-                        type                = (data >> 8) & 0x3;
-                        if ( (type == STREAM_TYPE_SOS) or 
-                             (type == STREAM_TYPE_ERR) )    // illegal type => drop packet
-                        {
-                            if(r_rx_des_dirty.read()) rx_fifo_multi_wcmd = FIFO_MULTI_WCMD_CLEAR;
-                            rx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_CLEAR;
-                            r_rx_des_fsm         = RX_DES_READ_FIRST;
-                            r_rx_des_byte_index  = 0;
-                            r_rx_des_dirty       = false;
-                        }
-                        else // legal types : STREAM_TYPE_NEV or STREAM_TYPE_EOS
-                        {
-                            // write previous word into fifo_multi
-                            rx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_WRITE;
-                            rx_fifo_multi_wdata = (uint32_t)(r_rx_des_data[0].read()      ) |
-                                                  (uint32_t)(r_rx_des_data[1].read() << 8 ) |
-                                                  (uint32_t)(r_rx_des_data[2].read() << 16) |
-                                                  (uint32_t)(r_rx_des_data[3].read() << 24) ;
-                            r_rx_des_dirty       = true;
-
-                            // register read data
-                            r_rx_des_data[index] = (uint8_t)(data & 0xFF);
-                            if ( type == STREAM_TYPE_EOS ) 
-                            {
-                                r_rx_des_fsm = RX_DES_WRITE_LAST;
-                            }
-                            else
-                            {
-                                r_rx_des_byte_index  = index + 1;
-                            }
-                        }
-                    }
-                    else    // drop packet if we cannot write
-                    {
-                        if ( r_rx_des_dirty.read() ) rx_fifo_multi_wcmd = FIFO_MULTI_WCMD_CLEAR;
-                        r_rx_des_fsm        = RX_DES_READ_FIRST;
-                        r_rx_des_byte_index = 0;
-                        r_rx_des_dirty      = false;
-                    }
+                    r_rx_des_fsm = RX_DES_READ_3;
                 }
-            }
-            else  // index > 0  => accessing fifo_stream without accessing fifo_multi
-            {
-                if ( r_rx_fifo_stream.rok() )  // do nothing if we cannot read
+                else
                 {
-                    rx_fifo_stream_read = true;
-                    data                = r_rx_fifo_stream.read();
-                    type                = (data >> 8) & 0x3;
-                    if ( (type == STREAM_TYPE_SOS) or (type == STREAM_TYPE_ERR) )
-                    {
-                        rx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_CLEAR;
-                        r_rx_des_fsm         = RX_DES_READ_FIRST;
-                        r_rx_des_byte_index  = 0;
-                        r_rx_des_dirty       = false;
-                    }
-                    else // type == STREAM_TYPE_NEV or type == STREAM_TYPE_EOS
-                    {
-                        r_rx_des_data[index] = (uint8_t)(data & 0xFF);
-                        if ( type == STREAM_TYPE_EOS ) 
-                        {
-                            r_rx_des_fsm = RX_DES_WRITE_LAST;
-                        }
-                        else if (index == 3)
-                        {
-                            r_rx_des_data[index] = (uint8_t)(data & 0xFF);
-                            r_rx_des_byte_index  = 0;
-                        }
-                        else
-                        {
-                            r_rx_des_byte_index  = index + 1;
-                        }
-                    }
+                    r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
+                    r_rx_des_fsm = RX_DES_READ_0;
                 }
-            }
-            break;
-        }
+		    }
+		    break;
+	    }
+        ///////////////////
+        case RX_DES_READ_3:    // read thirs byte in rx_fifo_stream
+                               // and test if rx_fifo_multi can be written
+	    {
+            uint16_t data = r_rx_fifo_stream.read();
+            uint32_t type = (data >> 8) & 0x3;
+		
+		    if ( r_rx_fifo_stream.rok() )   // do nothing if we cannot read
+		    {
+		        r_rx_des_data[3]	= (uint8_t)(data & 0xFF);
+                r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;
+
+			    if ( (type == STREAM_TYPE_NEV) and r_rx_fifo_multi.wok() )
+			    {
+				    r_rx_des_fsm = RX_DES_READ_WRITE_0;
+			    }			
+                else if ( type != STREAM_TYPE_NEV )
+                {
+                    r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
+                    r_rx_des_fsm = RX_DES_READ_0;
+                }
+                else  // fifo_multi full
+			    {
+                    r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
+                    r_rx_des_fsm = RX_DES_READ_0;
+                }
+		    }
+		    break;
+	    }
+        /////////////////////////
+        case RX_DES_READ_WRITE_0:   // write previous word in rx_fifo_multi
+                                    // and read firs byte in rx_fifo_stream
+	    {
+		    // write previous word into fifo_multi (wok has been previouly checked)
+		    rx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_WRITE;
+		    rx_fifo_multi_wdata = (uint32_t)(r_rx_des_data[0].read()      ) |
+			    				  (uint32_t)(r_rx_des_data[1].read() << 8 ) |
+				    			  (uint32_t)(r_rx_des_data[2].read() << 16) |
+					    		  (uint32_t)(r_rx_des_data[3].read() << 24) ;
+		    // Read new byte
+            uint16_t data = r_rx_fifo_stream.read();
+            uint32_t type = (data >> 8) & 0x3;
+
+		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
+		    {
+		        r_rx_des_data[0]	   = (uint8_t)(data & 0xFF);
+                r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;
+		        r_rx_des_padding	   = 3;
+
+    		    if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
+	    	    {
+                    r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
+				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+		        }
+			    else if ( type == STREAM_TYPE_NEV )
+			    {
+				    r_rx_des_fsm = RX_DES_READ_WRITE_1;
+			    }
+			    else if ( (type == STREAM_TYPE_EOS) )
+                {
+                    if ( not r_rx_fifo_multi.wok() )
+			        {
+                        r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
+				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                    }
+                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
+                    {
+                        r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
+                        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                    }
+                    else // success: EOS and WOK and not TOO_SMALL
+                    {
+                        r_rx_des_npkt_success = r_rx_des_npkt_success.read() + 1;
+                        r_rx_des_fsm = RX_DES_WRITE_LAST;
+                    }
+			    }
+                else // TYPE == ERR or SOS
+                {
+                    r_rx_des_npkt_cs_fail = r_rx_des_npkt_cs_fail.read() + 1;
+				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                }
+		    }
+		    break;
+	    }
+        /////////////////////////
+       	case RX_DES_READ_WRITE_1:   // read second byte in rx_fifo_stream
+    	{
+            uint16_t data = r_rx_fifo_stream.read();
+		    uint32_t type = (data >> 8) & 0x3;
+		
+		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
+            {
+		        r_rx_des_data[1]	= (uint8_t)(data & 0xFF);
+		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        r_rx_des_padding	= 2;
+		        
+                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
+		        {
+                    r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
+				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+		        }
+			    else if ( type == STREAM_TYPE_NEV )
+			    {
+				    r_rx_des_fsm = RX_DES_READ_WRITE_2;
+			    }
+			    else if ( (type == STREAM_TYPE_EOS) )
+                {
+                    if ( not r_rx_fifo_multi.wok() )
+			        {
+                        r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
+				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                    }
+                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
+                    {
+                        r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
+                        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                    }
+                    else // success: EOS and WOK and not TOO_SMALL
+                    {
+                        r_rx_des_npkt_success = r_rx_des_npkt_success.read() + 1;
+                        r_rx_des_fsm = RX_DES_WRITE_LAST;
+                    }
+			    }
+                else // TYPE == ERR or SOS
+                {
+                    r_rx_des_npkt_cs_fail = r_rx_des_npkt_cs_fail.read() + 1;
+				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                }
+		    }
+		    break;
+	    }
+        /////////////////////////
+       	case RX_DES_READ_WRITE_2:   // read third byte in rx_fifo_stream
+    	{
+	    	uint16_t data = r_rx_fifo_stream.read();
+		    uint32_t type = (data >> 8) & 0x3;
+		    		
+		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
+            {
+		        r_rx_des_data[2]	= (uint8_t)(data & 0xFF);
+		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        r_rx_des_padding	= 1;
+		        
+                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
+		        {
+                    r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
+				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+		        }
+			    else if ( type == STREAM_TYPE_NEV )
+			    {
+				    r_rx_des_fsm = RX_DES_READ_WRITE_3;
+			    }
+			    else if ( (type == STREAM_TYPE_EOS) )
+                {
+                    if ( not r_rx_fifo_multi.wok() )
+			        {
+                        r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
+				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                    }
+                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
+                    {
+                        r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
+                        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                    }
+                    else // success: EOS and WOK and not TOO_SMALL
+                    {
+                        r_rx_des_npkt_success = r_rx_des_npkt_success.read() + 1;
+                        r_rx_des_fsm = RX_DES_WRITE_LAST;
+                    }
+			    }
+                else // TYPE == ERR or SOS
+                {
+                    r_rx_des_npkt_cs_fail = r_rx_des_npkt_cs_fail.read() + 1;
+				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                }
+		    }
+		    break;
+	    }
+       	/////////////////////////
+        case RX_DES_READ_WRITE_3:    // read fourth byte in rx_fifo_stream
+    	{
+            uint16_t data = r_rx_fifo_stream.read();
+		    uint32_t type = (data >> 8) & 0x3;
+		
+		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
+            {
+		        r_rx_des_data[3]	= (uint8_t)(data & 0xFF);
+		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        r_rx_des_padding	= 0;
+		        
+                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
+		        {
+                    r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
+				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+		        }
+			    else if ( type == STREAM_TYPE_NEV )
+			    {
+				    r_rx_des_fsm = RX_DES_READ_WRITE_0;
+			    }
+			    else if ( (type == STREAM_TYPE_EOS) )
+                {
+                    if ( not r_rx_fifo_multi.wok() )
+			        {
+                        r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
+				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                    }
+                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
+                    {
+                        r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
+                        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                    }
+                    else // success : EOS and WOK and not TOO_SMALL
+                    {
+                        r_rx_des_npkt_success = r_rx_des_npkt_success.read() + 1;
+                        r_rx_des_fsm = RX_DES_WRITE_LAST;
+                    }
+			    }
+                else // TYPE == ERR or SOS
+                {
+                    r_rx_des_npkt_cs_fail = r_rx_des_npkt_cs_fail.read() + 1;
+				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
+                }
+		    }
+		    break;
+	    }
         ///////////////////////
         case RX_DES_WRITE_LAST:     // write last word in rx_fifo_multi
-                                    // or drop packet if fifo full
-                                    // and read first byte in fifo_stream if possible
-        {
-            // access fifo_multi
-            if ( r_rx_fifo_multi.wok() )
+	    {
+            if ( r_rx_des_padding.read() == 0 )
             {
-                rx_fifo_multi_wdata = (uint32_t)(r_rx_des_data[0].read()      ) |
-                                      (uint32_t)(r_rx_des_data[1].read() << 8 ) |
-                                      (uint32_t)(r_rx_des_data[2].read() << 16) |
-                                      (uint32_t)(r_rx_des_data[3].read() << 24) ;
-                rx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_LAST;
-                rx_fifo_multi_padding = 4 - r_rx_des_byte_index.read();
+		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read()      ) |
+                                          (uint32_t)(r_rx_des_data[1].read() << 8 ) |
+                                          (uint32_t)(r_rx_des_data[2].read() << 16) |
+                                          (uint32_t)(r_rx_des_data[3].read() << 24) ;
             }
-            else
+            else if ( r_rx_des_padding.read() == 1 )
             {
-                rx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_CLEAR;
+		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read()      ) |
+                                          (uint32_t)(r_rx_des_data[1].read() << 8 ) |
+                                          (uint32_t)(r_rx_des_data[3].read() << 16) ;
+            }
+            else if ( r_rx_des_padding.read() == 2 )
+            {
+		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read()      ) |
+                                          (uint32_t)(r_rx_des_data[1].read() << 8 ) ;
+            }
+            else  // padding = 3
+            {
+		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read()      ) ;
             }
 
-            // access fifo_stream
-            size_t   index = 0;
-            uint16_t data;
-            uint32_t type;
-            if ( r_rx_fifo_stream.rok() )
-            {
-                data                = r_rx_fifo_stream.read();
-                type                = (data >> 8) & 0x3;
-                if ( type == STREAM_TYPE_SOS )
-                {
-                    r_rx_des_data[0] = (uint8_t)(data & 0xFF);
-                    index = 1;
-                }
-            }
-            r_rx_des_byte_index = index;
-            r_rx_des_fsm        = RX_DES_READ_FIRST;
-            r_rx_des_dirty      = false;
-            break;
-        }
-    } // end swich rx_des_fsm
+		    rx_fifo_multi_wcmd    = FIFO_MULTI_WCMD_LAST;
+		    rx_fifo_multi_padding = r_rx_des_padding.read();
+	        r_rx_des_fsm = RX_DES_READ_0;	
+		    break;
+	    }
+        ////////////////////////
+	    case RX_DES_WRITE_CLEAR:
+	    {
+		    rx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_CLEAR;
+		    r_rx_des_fsm        = RX_DES_READ_0;
+	    }
+    } // end swich rx_des_fsm           
 
-
-    ///////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////
     // The RX_DISPATCH FSM performs the actual transfer of
-    // a packet from the rx_fifo_multi or bp_fifo_multi to 
-    // the rx_channel container selected by the MAC address decoding. 
-    // Packets with unexpected MAC address are discarded.
-    // It imlements a round-robin priority between the two fifos.
+    // a packet from the rx_fifo_multi or bp_fifo_multi to one or several
+    // rx_chbuf containers selected by the MAC address decoding. 
+    // It implements a round-robin priority between the two multi-fifos.
     // Allocation is only done when a complete packet has been
     // transfered, and the DISPATCH FSM is IDLE.
-    ///////////////////////////////////////////////////////////////////
-
-    // default values for channel & fifos commands
-    fifo_multi_rcmd_t    rx_fifo_multi_rcmd    = FIFO_MULTI_RCMD_NOP;
-    fifo_multi_rcmd_t    bp_fifo_multi_rcmd    = FIFO_MULTI_RCMD_NOP;
-    rx_channel_wcmd_t    rx_channel_wcmd       = RX_CHANNEL_WCMD_NOP;
-    uint32_t             rx_channel_wdata      = 0;
-    uint32_t             rx_channel_padding    = 0;
+    // To select the destination(s), all channels are checked in parallel.
+    // Packets with unexpected MAC address are discarded.
+    // In case of a broadcast packet, the packet is transfered in parallel
+    // to all writable running channels (but the sender).
+    ///////////////////////////////////////////////////////////////////////
 
     switch( r_rx_dispatch_fsm.read() )
     {
-        case RX_DISPATCH_IDLE:  // ready to start a new packet transfer
+        //////////////////////
+        case RX_DISPATCH_IDLE:  // round-robin allocation
         {
             if ( r_rx_dispatch_bp.read() )  // previously allocated to bp_fifo
             {
@@ -735,351 +1278,708 @@ tmpl(void)::transition()
       
             if ( r_bp_fifo_multi.rok() or r_rx_fifo_multi.rok() ) // packet available
             {
+                r_rx_dispatch_npkt_received = r_rx_dispatch_npkt_received.read() + 1;
                 r_rx_dispatch_fsm = RX_DISPATCH_GET_PLEN;
             }
             break;
         }
-        case RX_DISPATCH_GET_PLEN: // get packet length from fifo
+        //////////////////////////
+        case RX_DISPATCH_GET_PLEN: // get packet length from source fifo_multi
         {   
             uint32_t plen;
+            
             if ( r_rx_dispatch_bp.read() ) plen = r_bp_fifo_multi.plen();  
             else                           plen = r_rx_fifo_multi.plen();  
-            r_rx_dispatch_plen = plen;
-            if ( (plen & 0x3) == 0 ) r_rx_dispatch_words = plen >> 2;
-            else                     r_rx_dispatch_words = (plen >> 2) + 1;
+            if ( (plen & 0x3) == 0 )       r_rx_dispatch_nwords = plen >> 2;
+            else                           r_rx_dispatch_nwords = (plen >> 2) + 1;
             r_rx_dispatch_fsm  = RX_DISPATCH_READ_FIRST;
             break;
         }
-        case RX_DISPATCH_READ_FIRST: // read first word from fifo
+        ////////////////////////////
+        case RX_DISPATCH_READ_FIRST: // read first word from fifo_multi
+                                     // containing the 4 first bytes of MAC address    
         {
             if ( r_rx_dispatch_bp.read() )
             {
-                bp_fifo_multi_rcmd       = FIFO_MULTI_RCMD_READ;
-                r_rx_dispatch_data = r_bp_fifo_multi.data();  
+                bp_fifo_multi_rcmd   = FIFO_MULTI_RCMD_READ;
+                r_rx_dispatch_data   = r_bp_fifo_multi.data(); 
             }
             else
             {
-                rx_fifo_multi_rcmd       = FIFO_MULTI_RCMD_READ;
-                r_rx_dispatch_data = r_rx_fifo_multi.data();
+                rx_fifo_multi_rcmd   = FIFO_MULTI_RCMD_READ;
+                r_rx_dispatch_data   = r_rx_fifo_multi.data(); 
             }
-            r_rx_dispatch_words = r_rx_dispatch_words.read() - 1;
-            r_rx_dispatch_fsm   = RX_DISPATCH_CHANNEL_SELECT;
+            r_rx_dispatch_nwords     = r_rx_dispatch_nwords.read() - 1;
+            r_rx_dispatch_fsm        = RX_DISPATCH_CHECK_BC;
             break;
         }
-        case RX_DISPATCH_CHANNEL_SELECT:  // check MAC address
+        //////////////////////////
+        case RX_DISPATCH_CHECK_BC:    // read second word (without consuming the flit 
+                                      // in source fifo) to get the MAC extension
+                                      // and analyse broadcast
         {
-            // we read the second data word, without modifying the fifo state
-            unsigned int    data_ext;
-            bool            found = false;
-            if ( r_rx_dispatch_bp.read() )  data_ext = r_bp_fifo_multi.data() & 0x0000FFFF;  
-            else                            data_ext = r_rx_fifo_multi.data() & 0x0000FFFF;
-            for ( size_t k = 0 ; (k < m_channels) and not found ; k++ )
+            uint32_t ext; 
+            if ( r_rx_dispatch_bp.read() ) ext = r_bp_fifo_multi.data()>>16;
+            else                           ext = r_rx_fifo_multi.data()>>16;  
+            
+            if ( (r_rx_dispatch_data.read() == 0xFFFFFFFF) and 
+                 (ext == 0x0000FFFF) and r_global_bc_enable.read() )     // broadcast 
             {
-                if ( (r_channel_mac_4[k].read() == r_rx_dispatch_data.read() ) and
-                     (r_channel_mac_2[k].read() == data_ext) )
-                {
-                    found                 = true;
-                    r_rx_dispatch_channel = k;
-                }
+                r_rx_dispatch_dest           = 0;
+                r_rx_dispatch_fsm            = RX_DISPATCH_SELECT_BC;
+                r_rx_dispatch_npkt_broadcast = r_rx_dispatch_npkt_broadcast.read() + 1;
             }
-            if (found) r_rx_dispatch_fsm = RX_DISPATCH_GET_WOK;
-            else       r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
+            else                                        // unicast
+            {    
+                r_rx_dispatch_dest           = 0;
+                r_rx_dispatch_fsm            = RX_DISPATCH_SELECT;
+            }
             break;
         }
-        case RX_DISPATCH_PACKET_SKIP:	// clear an unexpected packet in source fifo
+        ////////////////////////
+        case RX_DISPATCH_SELECT:  // For all channels we test in parallel:
+                                  // if the channel is running, 
+                                  // if the mac address matches, and if there is an open 
+                                  // container with enough space and time 
+                                  // at most one channel is selected for unicast
+        {
+            bool found = false;
+
+            uint32_t dst_mac_4 = r_rx_dispatch_data.read();
+            uint32_t dst_mac_2;
+            if ( r_rx_dispatch_bp.read() ) dst_mac_2 = r_bp_fifo_multi.data() & 0x0000FFFF;
+            else                           dst_mac_2 = r_rx_fifo_multi.data() & 0x0000FFFF;;  
+
+            for ( size_t k=0 ; (k<m_channels) && not found ; k++ )
+            {
+                bool run   = ((r_global_active_channels.read()>>k) & 0x1); 
+                bool wok   = r_rx_chbuf[k].wok();          
+                bool space = ((r_rx_chbuf[k].space() >> 2) > r_rx_dispatch_nwords.read()); 
+                bool time  = (r_rx_chbuf[k].time() > r_rx_dispatch_nwords.read());
+                bool mac   = ( (dst_mac_4 == r_channel_mac_4[k].read()) and
+                               (dst_mac_2 == r_channel_mac_2[k].read()) );
+            
+                if ( run and mac ) // matching channel found
+                {  
+                    found = true;
+                    r_rx_dispatch_dest = 1<<k;
+                    if ( not wok )  // container full => discard packet
+                    {
+                        r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
+                        r_rx_dispatch_npkt_full = r_rx_dispatch_npkt_full.read() + 1;
+                    }
+                    else if (space and time)    // transfer possible
+                    {
+                        r_rx_dispatch_fsm  = RX_DISPATCH_READ_WRITE;
+                    }
+                    else    // not enough space or time => close container and retry    
+                    {
+                        r_rx_dispatch_fsm = RX_DISPATCH_CLOSE_CONT;
+                    }
+                }
+            } // end for channels
+            if ( not found )
+            {
+                r_rx_dispatch_npkt_mac_fail = r_rx_dispatch_npkt_mac_fail.read() + 1;
+                r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
+            }
+            break;
+        }
+        ////////////////////////////
+        case RX_DISPATCH_SELECT_BC:  // For all channels, we test in parallel
+                                     // if the channel is running,
+                                     // if the MAC address doesn't match
+                                     // and if it there is an open container
+                                     // with enough space and time.
+                                     // Several channels can be selected for broadcast
+        {
+            uint32_t    channels = 0;
+
+            uint32_t dst_mac_4 = r_rx_dispatch_data.read();
+            uint32_t dst_mac_2;
+            if ( r_rx_dispatch_bp.read() ) dst_mac_2 = r_bp_fifo_multi.data() & 0x0000FFFF;
+            else                           dst_mac_2 = r_rx_fifo_multi.data() & 0x0000FFFF;;  
+
+            for ( size_t k=0 ; (k<m_channels) ; k++ )
+            {
+                bool run   = ((r_global_active_channels.read()>>k) & 0x1); 
+                bool wok   = r_rx_chbuf[k].wok();          
+                bool space = ((r_rx_chbuf[k].space() >> 2) > r_rx_dispatch_nwords.read()); 
+                bool time  = (r_rx_chbuf[k].time() > r_rx_dispatch_nwords.read());
+                bool mac   = ( (dst_mac_4 == r_channel_mac_4[k].read()) and
+                               (dst_mac_2 == r_channel_mac_2[k].read()) );
+
+                if ( run and wok and space and time and not mac ) // transfer possible
+                {
+                    channels = channels | (1<<k);
+                }
+            } // end for channels
+            if ( channels )         // at least one channel selected
+            {
+                r_rx_dispatch_dest = channels;
+                r_rx_dispatch_fsm  = RX_DISPATCH_READ_WRITE;
+            }
+            else                    // no channel selected => discard packet
+            {
+                r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
+            }
+            break; 
+        }
+        /////////////////////////////
+        case RX_DISPATCH_PACKET_SKIP:	// clear an unexpected packet in fifo_multi
         {
             if ( r_rx_dispatch_bp.read() )  bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_SKIP;
             else                            rx_fifo_multi_rcmd = FIFO_MULTI_RCMD_SKIP;
+
             r_rx_dispatch_fsm = RX_DISPATCH_IDLE;
             break;
         }
-        case RX_DISPATCH_GET_WOK: // test if there is an open container in selected channel
+        ////////////////////////////
+        case RX_DISPATCH_CLOSE_CONT:  // Not enough space or time to write: close container
         {
-            uint32_t channel = r_rx_dispatch_channel.read();
-            bool wok         = r_rx_channel[channel]->wok();
-            if ( wok )  r_rx_dispatch_fsm = RX_DISPATCH_GET_SPACE;
-            break;
-        }
-        case RX_DISPATCH_GET_SPACE: // test available space in selected channel
-        {
-            uint32_t channel = r_rx_dispatch_channel.read();
-            uint32_t space   = r_rx_channel[channel]->space();
-            uint32_t plen    = r_rx_dispatch_plen.read();
-            if ( plen < space ) r_rx_dispatch_fsm = RX_DISPATCH_READ_WRITE;
-            else                r_rx_dispatch_fsm = RX_DISPATCH_CLOSE_CONT;
-            break;
-        }
-        case RX_DISPATCH_CLOSE_CONT:  // Not enough space : close container
-        {
-            rx_channel_wcmd   = RX_CHANNEL_WCMD_CLOSE;
-            r_rx_dispatch_fsm = RX_DISPATCH_GET_WOK;
+            for ( size_t k = 0 ; (k < m_channels); k++ )
+            {
+                if ( (r_rx_dispatch_dest.read() >> k) & 0x1 )
+                {
+                    rx_chbuf_wcmd[k]   = RX_CHBUF_WCMD_RELEASE;
+                    r_rx_dispatch_fsm = RX_DISPATCH_SELECT;
+                    break;
+                }
+            }
             break; 
         }
-        case RX_DISPATCH_READ_WRITE:    // read a new word from fifo and
-                                        // write previous word to channel
+        ////////////////////////////
+        case RX_DISPATCH_READ_WRITE: // read a new word from fifo and write previous word 
+                                     // to selected channel(s) for both unicast and broadcast
         {
-            rx_channel_wcmd     = RX_CHANNEL_WCMD_WRITE;
-            rx_channel_wdata    = r_rx_dispatch_data.read();
+            // write previous data
+            for ( size_t k = 0 ; (k < m_channels); k++ )
+            {
+                if ( (r_rx_dispatch_dest.read() >> k) & 0x1 )
+                {
+                    rx_chbuf_wcmd[k] = RX_CHBUF_WCMD_WRITE;
+                    rx_chbuf_wdata    = r_rx_dispatch_data.read();
+                }
+            }
+            // read next data
             if ( r_rx_dispatch_bp.read() )
             {
-                if ( r_rx_dispatch_words.read() == 1 ) bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
-                else                                   bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
-                r_rx_dispatch_data = r_bp_fifo_multi.data();  
+                r_rx_dispatch_data = r_bp_fifo_multi.data();
+                if ( r_rx_dispatch_nwords.read() > 1 ) bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
+                else                                  bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
             }
             else
             {
-                if ( r_rx_dispatch_words.read() == 1 ) rx_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
-                else                                   rx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
                 r_rx_dispatch_data = r_rx_fifo_multi.data();
+                if ( r_rx_dispatch_nwords.read() > 1 ) rx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
+                else                                  rx_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
             }
-            r_rx_dispatch_words = r_rx_dispatch_words.read() - 1;
-            r_rx_dispatch_fsm   = RX_DISPATCH_WRITE_LAST;
-            break;
-            
+            r_rx_dispatch_nwords = r_rx_dispatch_nwords.read() - 1;
+
+            if (r_rx_dispatch_nwords.read() == 0) r_rx_dispatch_fsm   = RX_DISPATCH_WRITE_LAST;
             break;
         }
-        case RX_DISPATCH_WRITE_LAST:  // write last word to selected channel
+        ////////////////////////////
+        case RX_DISPATCH_WRITE_LAST:  // write last word to selected channel(s)
+                                      // for both unicast and broadcast
         {
-            uint32_t plen = r_rx_dispatch_plen.read();
-            if ( (plen & 0x3) == 0 )    rx_channel_padding  = 0;
-            else                        rx_channel_padding = 4 - (plen & 0x3);
-            rx_channel_wcmd     = RX_CHANNEL_WCMD_LAST;
-            rx_channel_wdata    = r_rx_dispatch_data.read();
+            for ( size_t k = 0 ; (k < m_channels); k++ )
+            {
+                if ( ( r_rx_dispatch_dest.read() >> k) & 0x1 )
+                {
+                    uint32_t plen      = r_rx_dispatch_nwords.read();
+                    rx_chbuf_wcmd[k] = RX_CHBUF_WCMD_LAST;
+                    rx_chbuf_wdata   = r_rx_dispatch_data.read();
+                    if ( (plen & 0x3) == 0 ) rx_chbuf_padding = 0;
+                    else                     rx_chbuf_padding = 4 - (plen & 0x3);
+                }
+            }
             r_rx_dispatch_fsm   = RX_DISPATCH_IDLE;
             break;
         }
     } // end switch r_rx_dispatch_fsm
-                
+
     /////////////////////////////////////////////////////////////////////
-    // The TX_DISPATCH FSM performs the actual transfer of
-    // all packet from a tx_channel[k] container to tx_fifo or bp_fifo,
+    // The TX_DISPATCH FSM performs the  transfer of a packet 
+    // from a tx_chbuf[k] container to the tx_fifo or bp_fifo,
     // depending on the MAC address.
-    // - the by-pass fifo is a multi-buffer fifo (typically 2 Kbytes).
-    // - the tx_fifo is a simple fifo (10 bits width / é slots depth).
-    // It implements a round-robin priority between the channels.
+    // Both the bp_fifo and the tx_fifo are multi-buffer fifos (4 Kbytes).
     // A new allocation is only done when a complete container has been
     // transmitted, and the TX_DISPATCH FSM is IDLE.
+    // Two scheduling policy between the output channels are supported,
+    // depending on the r_global_tx_tdm flip-flop:
+    // - Time dependant multiplexing (r_global_tx_tdm true) 
+    // - Round-Robin (r_global_tx_tdm false) 
     /////////////////////////////////////////////////////////////////////
 
-    // default values for channel & fifos commands and data
-    bool                 tx_fifo_stream_write  = false;
-    fifo_multi_wcmd_t    bp_fifo_multi_wcmd    = FIFO_MULTI_WCMD_NOP;
-    tx_channel_rcmd_t    tx_channel_rcmd       = TX_CHANNEL_RCMD_NOP;
-    uint32_t             tx_fifo_stream_wdata  = 0;
-    uint32_t             bp_fifo_multi_padding = 0;
-    uint32_t             bp_fifo_multi_wdata   = 0;
-
+    // update the selected channel if TDM activated
+    if ( r_global_tdm_enable.read() )
+    {
+        r_global_tdm_timer = r_global_tdm_timer.read() - 1;
+        if( r_global_tdm_timer.read() == 0 )
+        {
+            r_global_tdm_channel = (r_global_tdm_channel.read()+1) % m_channels;
+            r_global_tdm_timer   = r_global_tdm_period.read();
+        }
+    }
+    
     switch( r_tx_dispatch_fsm.read() )
     {
         //////////////////////
-        case TX_DISPATCH_IDLE:  // ready to start a new packet transfer
+        case TX_DISPATCH_IDLE:  // ready to start a new container transfer
+                                // channel allocation is done for a full container
         {
-            for ( size_t x = 0 ; x < m_channels ; x++ )
+            if ( r_global_tdm_enable.read() ) // TDM scheduler
             {
-                size_t k = (x + 1 + r_tx_dispatch_channel.read()) % m_channels;
-                if ( r_tx_channel[k]->rok() ) 
+                uint32_t channel = r_global_tdm_channel.read();
+                if( r_tx_chbuf[channel].rok() and 
+                    r_global_nic_on.read() and
+                    ((r_global_active_channels.read()>>channel)&0x1) ) 
                 {
-                    r_tx_dispatch_channel = k;
+                    r_tx_dispatch_channel = channel;
                     r_tx_dispatch_fsm     = TX_DISPATCH_GET_NPKT;
-                    break;
+                }
+            }
+            else                             // RR scheduler
+            {
+                for ( size_t x = 0 ; x < m_channels ; x++ )
+                {
+                    uint32_t channel = (x + 1 + r_tx_dispatch_channel.read()) % m_channels;
+                    if ( r_tx_chbuf[channel].rok() and 
+                         r_global_nic_on.read() and
+                         ((r_global_active_channels.read()>>channel)&0x1) ) 
+                    {
+                        r_tx_dispatch_channel = channel;
+                        r_tx_dispatch_fsm     = TX_DISPATCH_GET_NPKT;
+                        break;
+                    }
                 }
             }
             break;
         }
         //////////////////////////
-        case TX_DISPATCH_GET_NPKT: // get packet number from tx_channel
+        case TX_DISPATCH_GET_NPKT: // get packet number from tx_chbuf
         {   
             uint32_t    channel   = r_tx_dispatch_channel.read();
-            r_tx_dispatch_packets = r_tx_channel[channel]->npkt();
+            uint32_t    npkt      = r_tx_chbuf[channel].npkt();
+            r_tx_dispatch_packets = npkt;
+            if ((npkt == 0) or (npkt > 66))
+            {
+                r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT;
+            }
+            else
+            {
+                r_tx_dispatch_fsm = TX_DISPATCH_GET_PLEN;
+            }
             break;
         }
-        case TX_DISPATCH_GET_PLEN: // get packet length from tx_channel
+        //////////////////////////
+        case TX_DISPATCH_GET_PLEN: // get packet length from tx_chbuf
         {   
-            uint32_t channel      = r_tx_dispatch_channel.read();
-            uint32_t plen         = r_tx_channel[channel]->plen();
-            r_tx_dispatch_bytes   = plen & 0x3;
+            uint32_t channel    = r_tx_dispatch_channel.read();
+            uint32_t plen       = r_tx_chbuf[channel].plen();
+
+            r_tx_dispatch_bytes = plen & 0x3;
             if ( (plen & 0x3) == 0 ) r_tx_dispatch_words = plen >> 2;
             else                     r_tx_dispatch_words = (plen >> 2) + 1;
-            r_tx_dispatch_fsm  = TX_DISPATCH_READ_FIRST;
-            break;
-        }
-        case TX_DISPATCH_READ_FIRST: // read first word from tx_channel
-        {
-            uint32_t channel    = r_tx_dispatch_channel.read();
-            tx_channel_rcmd     = TX_CHANNEL_RCMD_READ;
-            r_tx_dispatch_data  = r_tx_channel[channel]->data();
-            r_tx_dispatch_words = r_rx_dispatch_words.read() - 1;
-            r_tx_dispatch_fsm   = TX_DISPATCH_FIFO_SELECT;
-            break;
-        }
-        case TX_DISPATCH_FIFO_SELECT: // check MAC address
-        {
-            // we read the second data word, without modifying the channel state
-            uint32_t        channel  = r_tx_dispatch_channel.read();
-            unsigned int    data_ext = r_tx_channel[channel]->data() & 0x0000FFFF;  
-            bool            found    = false;
-            for ( size_t k = 0 ; (k < m_channels) and not found ; k++ )
+
+            if (plen < 60 ) // pkt too small
             {
-                if ( (r_channel_mac_4[k].read() == r_tx_dispatch_data.read() ) and
-                     (r_channel_mac_2[k].read() == data_ext) ) found = true;
+                r_tx_dispatch_fsm            = TX_DISPATCH_SKIP_PKT;
+                r_tx_dispatch_npkt_too_small = r_tx_dispatch_npkt_too_small.read() + 1;
             }
-            if ( found )    r_tx_dispatch_fsm = TX_DISPATCH_READ_WRITE_BP;
-            else            r_tx_dispatch_fsm = TX_DISPATCH_WRITE_B0_TX;
+            else if (plen > 1514) // pkt too long
+            {
+                r_tx_dispatch_fsm            = TX_DISPATCH_SKIP_PKT;
+                r_tx_dispatch_npkt_too_big   = r_tx_dispatch_npkt_too_big.read() + 1;
+            }
+            else
+            {
+                r_tx_dispatch_fsm  = TX_DISPATCH_READ_FIRST;
+            }
             break;
         }
-        case TX_DISPATCH_READ_WRITE_BP: // write previous data in bp_fifo
-                                        // and read a new data from selected channel
+        //////////////////////////
+        case TX_DISPATCH_SKIP_PKT:  // discard too small or too large packets
         {
             uint32_t  channel = r_tx_dispatch_channel.read();
-            uint32_t  words   = r_tx_dispatch_words.read();  
-
-            if ( r_bp_fifo_multi.wok() )
-            {     
-                bp_fifo_multi_wcmd    = FIFO_MULTI_WCMD_WRITE;
-                bp_fifo_multi_wdata   = r_tx_dispatch_data.read();
-                r_tx_dispatch_data    = r_tx_channel[channel]->data();
-                r_tx_dispatch_words   = words - 1;
-                if ( words == 1 )       // read last word
-                {
-                    tx_channel_rcmd   = TX_CHANNEL_RCMD_LAST;
-                    r_tx_dispatch_fsm = TX_DISPATCH_WRITE_LAST_BP;
-                }
-                else
-                {
-                    tx_channel_rcmd   = TX_CHANNEL_RCMD_READ;
-                }
-            }
-            break;
-        }
-        case TX_DISPATCH_WRITE_LAST_BP:  // write last word in bp_fifo
-        {
             uint32_t  packets = r_tx_dispatch_packets.read();
-            uint32_t  bytes   = r_tx_dispatch_bytes.read();
 
-            if ( r_bp_fifo_multi.wok() )
+            tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_SKIP;
+            r_tx_dispatch_packets  = packets - 1;
+
+            if(packets == 1)
             {
-                bp_fifo_multi_wcmd    = FIFO_MULTI_WCMD_LAST;
-                bp_fifo_multi_wdata   = r_tx_dispatch_data.read();
-                if ( bytes == 0 ) bp_fifo_multi_padding = 0;
-                else              bp_fifo_multi_padding = 4 - bytes;
-                r_tx_dispatch_packets = packets - 1;
-                if ( packets == 1 ) r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT; 
-                else                r_tx_dispatch_fsm = TX_DISPATCH_GET_PLEN; 
+                r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT;
+            }
+            else
+            {
+                r_tx_dispatch_fsm = TX_DISPATCH_GET_PLEN;
             }
             break;
         }
-        case TX_DISPATCH_WRITE_B0_TX: // write byte 0 in tx_fifo
+        ////////////////////////////
+        case TX_DISPATCH_READ_FIRST: // read first word from tx_chbuf
         {
-            uint32_t words   = r_tx_dispatch_words.read();
-            uint32_t bytes   = r_tx_dispatch_bytes.read();
-            uint32_t packets = r_tx_dispatch_packets.read();
+            uint32_t  channel = r_tx_dispatch_channel.read();
+
+            r_tx_dispatch_data0    = r_tx_chbuf[channel].data();
+            tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_READ;
+            r_tx_dispatch_words    = r_tx_dispatch_words.read() - 1;
+            r_tx_dispatch_fsm      = TX_DISPATCH_READ_SECOND;
+            break;
+        }
+        /////////////////////////////
+        case TX_DISPATCH_READ_SECOND: // read second word from tx_chbuf
+        {
+            uint32_t  channel = r_tx_dispatch_channel.read();
+
+            r_tx_dispatch_data1    = r_tx_chbuf[channel].data();
+            tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_READ;
+            r_tx_dispatch_words    = r_tx_dispatch_words.read() - 1;
+            r_tx_dispatch_fsm      = TX_DISPATCH_FIFO_SELECT;
+            break;
+        }
+        /////////////////////////////
+        case TX_DISPATCH_FIFO_SELECT: // check SRC & DST MAC addresses
+                                      // we read the third data word in tx_chbuf
+                                      // without modifying the channel state
+        {
+            uint32_t channel       = r_tx_dispatch_channel.read();
+
+            uint32_t data0         = r_tx_dispatch_data0.read();
+            uint32_t data1         = r_tx_dispatch_data1.read();
+            uint32_t data2         = r_tx_chbuf[channel].data();
+
+            uint32_t mac_src_4 = ((data1>>16) & 0x0000FFFF) | ((data2<<16) & 0xFFFF0000);
+            uint32_t mac_src_2 = ((data2>>16) & 0x0000FFFF);
+
+            uint32_t mac_dst_4 = data0;
+            uint32_t mac_dst_2 = data1 & 0x0000FFFF;
+
+            // check source mac address
+            if ( not (mac_src_4 == r_channel_mac_4[channel]) or
+                 not (mac_src_2 == r_channel_mac_2[channel]) )
+            {
+                r_tx_dispatch_fsm = TX_DISPATCH_SKIP_PKT;
+                r_tx_dispatch_npkt_src_fail = r_tx_dispatch_npkt_src_fail.read() + 1;
+                break;
+            }
+
+            // check broadcast           
+            if( (mac_dst_4 == 0xFFFFFFFF) and (mac_dst_2 == 0x0000FFFFFF) )
+            {
+                r_tx_dispatch_npkt_broadcast  = r_tx_dispatch_npkt_broadcast.read() + 1;
+                r_tx_dispatch_write_bp = true;
+                r_tx_dispatch_write_tx = true;
+                r_tx_dispatch_fsm      = TX_DISPATCH_WRITE_FIRST;
+            }
+            else                                   // non broadcast packet
+            {
+                bool     bypass_found   = false;
+                uint32_t bypass_channel = 0;
+                for ( size_t k = 0 ; (k < m_channels) and (not bypass_found) ; k++ )
+                {
+                    // check bypass
+                    if ( (mac_dst_4 == r_channel_mac_4[k]) and
+                         (mac_dst_2 == r_channel_mac_2[k]) )
+                    {
+                        bypass_found   = true;
+                        bypass_channel = k;
+                    }
+                }
+
+                if ( bypass_found ) 
+                {
+                    if ( bypass_channel == channel ) // DST == SRC => skip packet
+                    {
+                        r_tx_dispatch_npkt_self = r_tx_dispatch_npkt_self.read() + 1; 
+                        r_tx_dispatch_fsm = TX_DISPATCH_SKIP_PKT;
+                    }
+                    else                // BYPASS => to BP fifo
+                    {
+                        r_tx_dispatch_npkt_bypass = r_tx_dispatch_npkt_bypass.read() + 1;
+                        r_tx_dispatch_write_tx    = false;
+                        r_tx_dispatch_write_bp    = true;
+                        r_tx_dispatch_fsm         = TX_DISPATCH_WRITE_FIRST;
+                    }
+                }
+                else                   // No BYPASS => to TX fifo
+                {
+                    r_tx_dispatch_npkt_transmit = r_tx_dispatch_npkt_transmit.read() + 1;
+                    r_tx_dispatch_write_tx      = true;
+                    r_tx_dispatch_write_bp      = false;
+                    r_tx_dispatch_fsm           = TX_DISPATCH_WRITE_FIRST;
+                }
+            }
+            break;
+        }
+        /////////////////////////////
+        case TX_DISPATCH_WRITE_FIRST: // write first word (data0) in multi_fifos
+        {
+            if ( (r_bp_fifo_multi.wok() or ( not r_tx_dispatch_write_bp.read()) ) and
+                 (r_tx_fifo_multi.wok() or ( not r_tx_dispatch_write_tx.read()) ) )
+            {     
+                if ( r_tx_dispatch_write_bp.read() ) 
+                {
+                    bp_fifo_multi_wcmd = FIFO_MULTI_WCMD_WRITE;
+                    bp_fifo_multi_wdata = r_tx_dispatch_data0.read();
+                }
+                if ( r_tx_dispatch_write_tx.read() ) 
+                {
+                    tx_fifo_multi_wcmd = FIFO_MULTI_WCMD_WRITE;
+                    tx_fifo_multi_wdata = r_tx_dispatch_data0.read();
+                }
+                r_tx_dispatch_fsm = TX_DISPATCH_READ_WRITE;
+            }
+            break;
+        }
+        ////////////////////////////
+        case TX_DISPATCH_READ_WRITE: // write previous word (data1) in multi_fifos
+                                     // and read a new word from selected chbuf
+        {
+            uint32_t  channel = r_tx_dispatch_channel.read();
+
+            if ( (r_bp_fifo_multi.wok() or ( not r_tx_dispatch_write_bp.read()) ) and
+                 (r_tx_fifo_multi.wok() or ( not r_tx_dispatch_write_tx.read()) ) )
+            {     
+                // write word (i-1)
+                if ( r_tx_dispatch_write_bp.read() ) 
+                {
+                    bp_fifo_multi_wcmd = FIFO_MULTI_WCMD_WRITE;
+                    bp_fifo_multi_wdata = r_tx_dispatch_data1.read();
+                }
+                if ( r_tx_dispatch_write_tx.read() ) 
+                {
+                    tx_fifo_multi_wcmd = FIFO_MULTI_WCMD_WRITE;
+                    tx_fifo_multi_wdata = r_tx_dispatch_data1.read();
+                }
+        
+                // read word (i)
+                if ( r_tx_dispatch_words.read() == 1 )  // last word in packet
+                {
+                    tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_LAST;
+                    r_tx_dispatch_data1    = r_tx_chbuf[channel].data();
+                    r_tx_dispatch_fsm      = TX_DISPATCH_WRITE_LAST;
+                }
+                else                                   // not the last word
+                {
+                    tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_READ;
+                    r_tx_dispatch_data1    = r_tx_chbuf[channel].data();
+                    r_tx_dispatch_words    = r_tx_dispatch_words.read() - 1;
+                }
+            }
+            break;
+        }
+        ////////////////////////////
+        case TX_DISPATCH_WRITE_LAST:  // write last word (data1) in multi_fifos
+        {
+            uint32_t  bytes        = r_tx_dispatch_bytes.read();
+
+            if ( (r_bp_fifo_multi.wok() or ( not r_tx_dispatch_write_bp.read()) ) and
+                 (r_tx_fifo_multi.wok() or ( not r_tx_dispatch_write_tx.read()) ) )
+            {     
+                if ( r_tx_dispatch_write_bp.read() ) 
+                {
+                    bp_fifo_multi_wcmd  = FIFO_MULTI_WCMD_LAST;
+                    bp_fifo_multi_wdata = r_tx_dispatch_data1.read();
+                    if ( bytes == 0 ) bp_fifo_multi_padding = 0;
+                    else              bp_fifo_multi_padding = 4 - bytes;
+                }
+                if ( r_tx_dispatch_write_tx.read() ) 
+                {
+                    tx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_LAST;
+                    tx_fifo_multi_wdata = r_tx_dispatch_data1.read();
+                    if ( bytes == 0 ) tx_fifo_multi_padding = 0;
+                    else              tx_fifo_multi_padding = 4 - bytes;
+                }
+                
+                if ( r_tx_dispatch_packets.read() == 1 )  // last packet in container
+                {
+                    r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT;
+                }
+                else                              // not the last packet
+                {
+                    r_tx_dispatch_packets = r_tx_dispatch_packets.read() - 1;
+                    r_tx_dispatch_fsm     = TX_DISPATCH_GET_PLEN;
+                }
+            }
+            break;
+        }
+        //////////////////////////////
+        case TX_DISPATCH_RELEASE_CONT: // release the container in tx_chbuf
+        {
+            uint32_t channel       = r_tx_dispatch_channel.read();
+            tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_RELEASE;
+            r_tx_dispatch_fsm      = TX_DISPATCH_IDLE;
+            break;
+        }
+    } // end switch tx_dispatch_fsm  
+
+    ////////////////////////////////////////////////////////////////////////////
+    // This TX_SER FSM performs the serialisation (1 word => 4 bytes),
+    // The input is the tx_fifo_multi.
+    // The output is the tx_fifo_stream.
+    ////////////////////////////////////////////////////////////////////////////
+
+    switch(r_tx_ser_fsm.read()) 
+    {
+        /////////////////
+        case TX_SER_IDLE:
+        {
+            if ( r_tx_fifo_multi.rok() )
+            {
+                uint32_t plen = r_tx_fifo_multi.plen();
+     
+                r_tx_ser_bytes = plen & 0x3;
+                if ( (plen & 0x3) == 0 ) r_tx_ser_words = plen>>2;
+                else                     r_tx_ser_words = plen>>2 + 1;
+                r_tx_ser_fsm = TX_SER_READ_FIRST;
+            }
+            break;
+        }
+        ///////////////////////
+        case TX_SER_READ_FIRST:
+        {
+            tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
+            r_tx_ser_words     = r_tx_ser_words.read() - 1;
+            r_tx_ser_data      = r_tx_fifo_multi.data();
+            r_tx_ser_first     = true;
+            r_tx_ser_fsm       = TX_SER_WRITE_B0;
+            break;
+        }
+        /////////////////////
+        case TX_SER_WRITE_B0: // write first byte from current word
+        {
             if ( r_tx_fifo_stream.wok() )
             {
-                tx_fifo_stream_write = true;
-                tx_fifo_stream_wdata = r_tx_dispatch_data.read() & 0x000000FF;
-                if ( (words == 0) and (bytes == 1) )   // last byte to write in tx_fifo
+                uint32_t words = r_tx_ser_words.read();
+                uint32_t bytes = r_tx_ser_bytes.read();
+                bool     first = r_tx_ser_first.read();
+                
+                if ( first and (index == 0) )            // first byte in packet
                 {
-                    tx_fifo_stream_wdata         = tx_fifo_stream_wdata | 0x00000100;
-                    r_tx_dispatch_packets = packets - 1;
-                    if ( packets == 1 ) r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT;
-                    else                r_tx_dispatch_fsm = TX_DISPATCH_GET_PLEN;
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0x000000FF)
+                                                       | (STREAM_TYPE_SOS << 8));
+                    r_tx_ser_fsm = TX_SER_WRITE_B1;
                 }
-                else
+                else if ( (words == 0) and (bytes == 1) ) // last byte in packet
                 {
-                    r_tx_dispatch_fsm = TX_DISPATCH_WRITE_B1_TX;
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0x000000FF)
+                                                       | (STREAM_TYPE_EOS << 8));
+                    r_tx_ser_fsm = TX_SER_GAP;
+                }
+                else                                     // simple byte 
+                {
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0x000000FF)
+                                                       | (STREAM_TYPE_NEV << 8));
+                    r_tx_ser_fsm = TX_SER_WRITE_B1;
                 }
             }
             break;
         }
-        case TX_DISPATCH_WRITE_B1_TX: // write byte 1 in tx_fifo
+        /////////////////////
+        case TX_SER_WRITE_B1:  // write second byte from current word
         {
-            uint32_t    words = r_tx_dispatch_words.read();
-            uint32_t    bytes = r_tx_dispatch_bytes.read(); 
-            uint32_t packets = r_tx_dispatch_packets.read();
             if ( r_tx_fifo_stream.wok() )
             {
-                tx_fifo_stream_write = true;
-                tx_fifo_stream_wdata = (r_tx_dispatch_data.read() >> 8) & 0x000000FF;
-                if ( (words == 0) and (bytes == 2) )   // last byte to write in tx_fifo
+                uint32_t words = r_tx_ser_words.read();
+                uint32_t bytes = r_tx_ser_bytes.read();
+                
+                if ( (words == 0) and (bytes == 2) ) // last byte in packet
                 {
-                    tx_fifo_stream_wdata = tx_fifo_stream_wdata | 0x00000100;
-                    r_tx_dispatch_packets = packets - 1;
-                    if ( packets == 1 ) r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT;
-                    else                r_tx_dispatch_fsm = TX_DISPATCH_GET_PLEN;
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x0000FF00)>>8
+                                                       | (STREAM_TYPE_EOS << 8));
+                    r_tx_ser_fsm = TX_SER_GAP;
                 }
-                else
+                else                                 // simple byte 
                 {
-                    r_tx_dispatch_fsm = TX_DISPATCH_WRITE_B2_TX;
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x0000FF00)>>8
+                                                       | (STREAM_TYPE_NEV << 8));
+                    r_tx_ser_fsm = TX_SER_WRITE_B2;
                 }
             }
             break;
         }
-        case TX_DISPATCH_WRITE_B2_TX: // write byte 2 in tx_fifo
+        ///////////i/////////
+        case TX_SER_WRITE_B2:  // write third byte from current word
         {
-            uint32_t    words = r_tx_dispatch_words.read();
-            uint32_t    bytes = r_tx_dispatch_bytes.read(); 
-            uint32_t packets = r_tx_dispatch_packets.read();
             if ( r_tx_fifo_stream.wok() )
             {
-                tx_fifo_stream_write = true;
-                tx_fifo_stream_wdata = (r_tx_dispatch_data.read() >> 16) & 0x000000FF;
-                if ( (words == 0) and (bytes == 3) )   // last byte to write in tx_fifo
+                uint32_t words = r_tx_ser_words.read();
+                uint32_t bytes = r_tx_ser_bytes.read();
+                
+                if ( (words == 0) and (bytes == 3) ) // last byte in packet
                 {
-                    tx_fifo_stream_wdata = tx_fifo_stream_wdata | 0x00000100;
-                    r_tx_dispatch_packets = packets - 1;
-                    if ( packets == 1 ) r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT;
-                    else                r_tx_dispatch_fsm = TX_DISPATCH_GET_PLEN;
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x00FF0000)>>16
+                                                       | (STREAM_TYPE_EOS << 8));
+                    r_tx_ser_fsm = TX_SER_GAP;
                 }
-                else
+                else                                     // simple byte 
                 {
-                    r_tx_dispatch_fsm = TX_DISPATCH_READ_WRITE_TX;
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x00FF0000)>>16
+                                                       | (STREAM_TYPE_NEV << 8));
+                    r_tx_ser_fsm = TX_SER_READ_WRITE;
                 }
             }
             break;
         }
-        case TX_DISPATCH_READ_WRITE_TX: // write byte 3 in tx_fifo
-                                        // and read word from selected channel
-                                        // if the current word is not the last
+        ///////////////////////
+        case TX_SER_READ_WRITE:  // write fourth byte from current word
+                                 // and read next word in tx_fifo_multi
+                                 // if packet not completed
         {
-            uint32_t channel = r_tx_dispatch_channel.read();
-            uint32_t words   = r_tx_dispatch_words.read();
-            uint32_t packets = r_tx_dispatch_packets.read();
             if ( r_tx_fifo_stream.wok() )
             {
-                tx_fifo_stream_write = true;
-                tx_fifo_stream_wdata = (r_tx_dispatch_data.read() >> 24) & 0x000000FF;
-                if ( words == 0 )       // last byte to write in tx_fifo
+                uint32_t words = r_tx_ser_words.read();
+                uint32_t bytes = r_tx_ser_bytes.read();
+
+                if ( (words == 0) and (bytes == 4) ) // last byte in packet
                 {
-                    tx_fifo_stream_wdata = tx_fifo_stream_wdata | 0x00000100;
-                    r_tx_dispatch_packets = packets - 1;
-                    if ( packets == 1 ) r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT;
-                    else                r_tx_dispatch_fsm = TX_DISPATCH_GET_PLEN;
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0xFF000000)>>24
+                                                       | (STREAM_TYPE_EOS << 8));
+                    r_tx_ser_fsm = TX_SER_GAP;
                 }
-                else if ( words == 1 )  // last word to read in tx_channel
+                else                                     // simple byte 
                 {
-                    tx_channel_rcmd     = TX_CHANNEL_RCMD_LAST;
-                    r_tx_dispatch_data  = r_tx_channel[channel]->data();
-                    r_tx_dispatch_words = words - 1;
-                    r_tx_dispatch_fsm   = TX_DISPATCH_WRITE_B0_TX;
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0xFF000000)>>24
+                                                       | (STREAM_TYPE_NEV << 8));
                 }
-                else if ( words > 1 )   // not the last word to read in tx_channel
+                
+                if ( words > 0 ) // packet not completed
                 {
-                    tx_channel_rcmd     = TX_CHANNEL_RCMD_READ;
-                    r_tx_dispatch_data  = r_tx_channel[channel]->data();
-                    r_tx_dispatch_words = words - 1;
-                    r_tx_dispatch_fsm   = TX_DISPATCH_WRITE_B0_TX;
+                    if ( words == 1 ) tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
+                    else              tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
+                    r_tx_ser_words     = words - 1;
+                    r_tx_ser_data      = r_tx_fifo_multi.data();
+                    r_tx_ser_first     = true;
+                    r_tx_ser_fsm       = TX_SER_WRITE_B0;
                 }
             }
             break;
         }
-        case TX_DISPATCH_RELEASE_CONT: // release the container in tx_channel
+        ////////////////
+        case TX_SER_GAP: // Inter Frame Gap delay
         {
-            tx_channel_rcmd   = TX_CHANNEL_RCMD_RELEASE;
-            r_tx_dispatch_fsm = TX_DISPATCH_IDLE;
+            r_tx_ser_ifg = r_tx_ser_ifg.read() - 1;
+            if (r_tx_ser_ifg.read() == 1)
+            {
+                r_tx_ser_ifg = INTER_FRAME_GAP;
+                r_tx_ser_fsm = TX_SER_IDLE;
+            }
             break;
         }
-    } // end switch tx_dispatch_fsm   
-    
+    } // end switch r_tx_ser_fsm
+   
     ////////////////////////////////////////////////////////////////////////////
     // This TX_S2G FSM performs the STREAM to GMII format conversion,
     // computes the checksum, and append this checksum to the packet.
@@ -1087,14 +1987,12 @@ tmpl(void)::transition()
     // The output is the r_gmii_tx module.
     ////////////////////////////////////////////////////////////////////////////
 
-    // default value for fifo command
-    bool    tx_fifo_stream_read = false;
-
     switch(r_tx_s2g_fsm.read()) 
     {
         /////////////////
         case TX_S2G_IDLE:           // read one byte from stream fifo 
         {
+            
             if ( r_tx_fifo_stream.rok() )
             {
                 uint32_t data = r_tx_fifo_stream.read();
@@ -1105,10 +2003,10 @@ tmpl(void)::transition()
 
                 tx_fifo_stream_read = true;
                 r_tx_s2g_fsm        = TX_S2G_WRITE_DATA;
-                r_tx_s2g_checksum   = data & 0xFF;
                 r_tx_s2g_data       = data & 0xFF;
+                r_tx_s2g_checksum = 0x00000000; // reset checksum
             } 
-            r_gmii_tx.put(0, false, false);
+            r_gmii_tx.put(false, false,0);
             break;
         }
         //////////////////////
@@ -1119,24 +2017,47 @@ tmpl(void)::transition()
             {
                 uint32_t data = r_tx_fifo_stream.read();
                 uint32_t type = (data >> 8) & 0x3;
-
+#ifdef SOCLIB_NIC_DEBUG
+printf("S2G_WRITE_DATA\n");
+#endif
                 assert ( (type != STREAM_TYPE_SOS) and (type != STREAM_TYPE_ERR) and
                 "ERROR in VCI_MULTI_NIC : illegal type received in TX_S2G_WRITE_DATA");
-                    
-                if ( type == STREAM_TYPE_EOS ) r_tx_s2g_fsm = TX_S2G_WRITE_CS; 
 
                 tx_fifo_stream_read = true;
                 r_tx_s2g_data       = data & 0xFF;
-                r_tx_s2g_checksum   = r_tx_s2g_checksum.read() + (data & 0xFF);
+                //compute CRC
+                r_tx_s2g_checksum = (r_tx_s2g_checksum.read() >> 4) ^ crc_table[(r_tx_s2g_checksum.read() ^ (r_tx_s2g_data.read() >> 0)) & 0x0F];
+                r_tx_s2g_checksum = (r_tx_s2g_checksum.get_new_value() >> 4) ^ crc_table[(r_tx_s2g_checksum.get_new_value() ^ (r_tx_s2g_data.read() >> 4)) & 0x0F];
+#ifdef SOCLIB_PERF_NIC
+            r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1;
+#endif
+                if ( type == STREAM_TYPE_EOS ) 
+                {
+                    r_tx_s2g_fsm = TX_S2G_WRITE_LAST_DATA; 
+                }
             }
             else
             {
                 assert (false and  
                 "ERROR in VCI_MULTI_NIC : tx_fifo should not be empty");
-            } 
-            r_gmii_tx.put( r_tx_s2g_data.read(), true, false);
+            }
+            r_gmii_tx.put(true,false,r_tx_s2g_data.read());
             break;
         }
+        ////////////////////
+        case TX_S2G_WRITE_LAST_DATA :
+        {
+            r_tx_s2g_fsm = TX_S2G_WRITE_CS; 
+            r_gmii_tx.put(true,false,r_tx_s2g_data.read());
+            // compute CRC
+            r_tx_s2g_checksum = (r_tx_s2g_checksum.read() >> 4) ^ crc_table[(r_tx_s2g_checksum.read() ^ (r_tx_s2g_data.read() >> 0)) & 0x0F];
+            r_tx_s2g_checksum = (r_tx_s2g_checksum.get_new_value() >> 4) ^ crc_table[(r_tx_s2g_checksum.get_new_value() ^ (r_tx_s2g_data.read() >> 4)) & 0x0F];
+#ifdef SOCLIB_PERF_NIC
+            r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1 + INTER_FRAME_GAP;
+#endif
+            break;
+        }
+
         ////////////////////
         case TX_S2G_WRITE_CS:       // write one cs byte into gmii_out
         {
@@ -1161,73 +2082,62 @@ tmpl(void)::transition()
                 gmii_data      = (r_tx_s2g_checksum.read() >> 24) & 0xFF;
                 r_tx_s2g_index = 0;
                 r_tx_s2g_fsm   = TX_S2G_IDLE;
-            }    
-            r_gmii_tx.put( gmii_data, true, false);
+                r_tx_s2g_checksum = 0x00000000;
+            }
+            r_gmii_tx.put(true,false, gmii_data);
             break;
         }
     } // end switch tx_s2g_fsm
     
-    ////////////////////////////////////////////////////////////////////////////
     // update multi_fifos
-    ////////////////////////////////////////////////////////////////////////////
+
     r_rx_fifo_multi.update( rx_fifo_multi_wcmd, 
                             rx_fifo_multi_rcmd, 
                             rx_fifo_multi_wdata, 
                             rx_fifo_multi_padding );
+
+    r_tx_fifo_multi.update( tx_fifo_multi_wcmd, 
+                            tx_fifo_multi_rcmd, 
+                            tx_fifo_multi_wdata, 
+                            tx_fifo_multi_padding );
 
     r_bp_fifo_multi.update( bp_fifo_multi_wcmd, 
                             bp_fifo_multi_rcmd, 
                             bp_fifo_multi_wdata, 
                             bp_fifo_multi_padding );
 
-    ////////////////////////////////////////////////////////////////////////////
-    // update stream_fifos
-    ////////////////////////////////////////////////////////////////////////////
-    r_rx_fifo_stream.update( rx_fifo_stream_write,
-                             rx_fifo_stream_read, 
+    // update stream_fifos 
+
+    r_rx_fifo_stream.update( rx_fifo_stream_read,
+                             rx_fifo_stream_write, 
                              rx_fifo_stream_wdata );
 
-    r_tx_fifo_stream.update( tx_fifo_stream_write,
-                             tx_fifo_stream_read, 
+    r_tx_fifo_stream.update( tx_fifo_stream_read,
+                             tx_fifo_stream_write, 
                              tx_fifo_stream_wdata );
 
-    ////////////////////////////////////////////////////////////////////////////
-    // update rx_channels
-    ////////////////////////////////////////////////////////////////////////////
+    // update rx_chbuf for all channels
+
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        rx_channel_rcmd_t read;
-        rx_channel_wcmd_t write;
-
-        if ( r_rx_dispatch_channel.read() == k )    write = rx_channel_wcmd;
-        else                                        write = RX_CHANNEL_WCMD_NOP;
-        if ( r_vci_channel.read() == k )            read  = rx_channel_rcmd;
-        else                                        read  = RX_CHANNEL_RCMD_NOP;
-
-        r_rx_channel[k]->update( write,
-                                read, 
-                                rx_channel_wdata, 
-                                rx_channel_padding );
+        r_rx_chbuf[k].update( rx_chbuf_wcmd[k],
+                               rx_chbuf_wdata,
+                               rx_chbuf_padding, 
+                               rx_chbuf_rcmd[k],
+                               rx_chbuf_cont,
+                               rx_chbuf_word );
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // update tx_channels
-    ////////////////////////////////////////////////////////////////////////////
+    // update tx_chbuf for all channels
+
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        tx_channel_rcmd_t read;
-        tx_channel_wcmd_t write;
-
-        if ( r_tx_dispatch_channel.read() == k )    read  = tx_channel_rcmd;
-        else                                        read  = TX_CHANNEL_RCMD_NOP;
-        if ( r_vci_channel.read() == k )            write = tx_channel_wcmd;
-        else                                        write = TX_CHANNEL_WCMD_NOP;
-
-        r_tx_channel[k]->update( write, 
-                                read, 
-                                tx_channel_wdata );
+        r_tx_chbuf[k].update( tx_chbuf_wcmd[k],
+                               tx_chbuf_wdata,
+                               tx_chbuf_cont,
+                               tx_chbuf_word, 
+                               tx_chbuf_rcmd[k] );
     }
-
 } // end transition
 
 //////////////////////
@@ -1236,8 +2146,8 @@ tmpl(void)::genMoore()
     ///////////  Interrupts ////////
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        p_rx_irq[k] = r_rx_channel[k]->rok();
-        p_tx_irq[k] = r_tx_channel[k]->wok();
+        p_rx_irq[k] =     ( r_rx_chbuf[k].full(0) or  r_rx_chbuf[k].full(1) );
+        p_tx_irq[k] = not ( r_tx_chbuf[k].full(0) and r_tx_chbuf[k].full(1) );
     }
 
     ////// VCI TARGET port /////// 
@@ -1251,11 +2161,22 @@ tmpl(void)::genMoore()
             p_vci.rspval = false;
             break;
         }
+        case VCI_READ_RX_BURST:
+        {
+            p_vci.cmdack = false;
+            p_vci.rspval = true;
+            p_vci.rdata  = r_rx_chbuf[channel].data();
+            p_vci.rerror = vci_param::ERR_NORMAL;
+            p_vci.rsrcid = r_vci_srcid.read();
+            p_vci.rtrdid = r_vci_trdid.read();
+            p_vci.rpktid = r_vci_pktid.read();
+            if ( r_vci_nwords == 1 ) p_vci.reop = true;
+            else                     p_vci.reop = false;
+            break;
+        }
         case VCI_WRITE_TX_LAST:
-        case VCI_WRITE_TX_CLOSE:
-        case VCI_WRITE_RX_RELEASE:
-        case VCI_WRITE_MAC_4:
-        case VCI_WRITE_MAC_2:
+        case VCI_WRITE_HYPER_REG:
+        case VCI_WRITE_CHANNEL_REG:
         {
             p_vci.cmdack = false;
             p_vci.rspval = true;
@@ -1267,24 +2188,18 @@ tmpl(void)::genMoore()
             p_vci.reop   = true;
             break;
         }
-        case VCI_READ_RX_BURST:
+
+        case VCI_READ_HYPER_REG:
+        case VCI_READ_CHANNEL_REG:
         {
+            uint32_t rdata;
+            if ( r_vci_fsm.read() == VCI_READ_HYPER_REG )
+                rdata  = read_hyper_register((uint32_t)p_vci.address.read());
+            else
+                rdata  = read_channel_register((uint32_t)p_vci.address.read());
             p_vci.cmdack = false;
             p_vci.rspval = true;
-            p_vci.rdata  = r_rx_channel[channel]->data();
-            p_vci.rerror = vci_param::ERR_NORMAL;
-            p_vci.rsrcid = r_vci_srcid.read();
-            p_vci.rtrdid = r_vci_trdid.read();
-            p_vci.rpktid = r_vci_pktid.read();
-            if ( r_vci_nwords == 1 ) p_vci.reop = true;
-            else                     p_vci.reop = false;
-            break;
-        }
-        case VCI_READ_RX_ROK:
-        {
-            p_vci.cmdack = false;
-            p_vci.rspval = true;
-            p_vci.rdata  = r_rx_channel[channel]->rok();
+            p_vci.rdata   = rdata;
             p_vci.rerror = vci_param::ERR_NORMAL;
             p_vci.rsrcid = r_vci_srcid.read();
             p_vci.rtrdid = r_vci_trdid.read();
@@ -1292,11 +2207,11 @@ tmpl(void)::genMoore()
             p_vci.reop   = true;
             break;
         }
-        case VCI_READ_TX_WOK:
+        case VCI_ERROR:
         {
             p_vci.cmdack = false;
             p_vci.rspval = true;
-            p_vci.rdata  = r_tx_channel[channel]->wok();
+            p_vci.rdata  = 0;
             p_vci.rerror = vci_param::ERR_GENERAL_DATA_ERROR;
             p_vci.rsrcid = r_vci_srcid.read();
             p_vci.rtrdid = r_vci_trdid.read();
@@ -1304,25 +2219,25 @@ tmpl(void)::genMoore()
             p_vci.reop   = true;
             break;
         }
+
     } // end switch vci_fsm
 
 } // end genMore()
 
-/////////////////////////
-tmpl(void)::print_trace()
+//////////////////////////////////////
+tmpl(void)::print_trace(uint32_t mode)
 {
     const char* vci_state_str[] = 
     {
         "VCI_IDLE",
-        "VCI_READ_TX_WOK",
         "VCI_WRITE_TX_BURST",
         "VCI_WRITE_TX_LAST",
-        "VCI_WRITE_TX_CLOSE",
-        "VCI_READ_RX_ROK",
+        "VCI_WRITE_HYPER_REG",
+        "VCI_WRITE_CHANNEL_REG",
         "VCI_READ_RX_BURST",
-        "VCI_WRITE_RX_RELEASE",
-        "VCI_WRITE_MAC_4",
-        "VCI_WRITE_MAC_2",
+        "VCI_READ_HYPER_REG",
+        "VCI_READ_CHANNEL_REG",
+        "VCI_ERROR",
     };
     const char* rx_g2s_state_str[] = 
     {
@@ -1338,20 +2253,27 @@ tmpl(void)::print_trace()
     };
     const char* rx_des_state_str[] = 
     {
-        "RX_DES_READ_FIRST",
-        "RX_DES_READ_WRITE",
+        "RX_DES_READ_0",
+        "RX_DES_READ_1",
+        "RX_DES_READ_2",
+        "RX_DES_READ_3",
+        "RX_DES_READ_WRITE_0",
+        "RX_DES_READ_WRITE_1",
+        "RX_DES_READ_WRITE_2",
+        "RX_DES_READ_WRITE_3",
         "RX_DES_WRITE_LAST",
+        "RX_DES_WRITE_CLEAR",
     };
     const char* rx_dispatch_state_str[] =
     {
         "RX_DISPATCH_IDLE",
         "RX_DISPATCH_GET_PLEN",
         "RX_DISPATCH_READ_FIRST",
-        "RX_DISPATCH_CHANNEL_SELECT",
+        "RX_DISPATCH_CHECK_BC",
+        "RX_DISPATCH_SELECT",
+        "RX_DISPATCH_SELECT_BC",
         "RX_DISPATCH_PACKET_SKIP",
-        "RX_DISPATCH_GET_WOK",
         "RX_DISPATCH_CLOSE_CONT",
-        "RX_DISPATCH_GET_SPACE",
         "RX_DISPATCH_READ_WRITE",
         "RX_DISPATCH_WRITE_LAST",
     };
@@ -1360,30 +2282,142 @@ tmpl(void)::print_trace()
         "TX_DISPATCH_IDLE",
         "TX_DISPATCH_GET_NPKT",
         "TX_DISPATCH_GET_PLEN",
+        "TX_DISPATCH_SKIP_PKT", 
         "TX_DISPATCH_READ_FIRST",
+        "TX_DISPATCH_READ_SECOND",
         "TX_DISPATCH_FIFO_SELECT",
-        "TX_DISPATCH_READ_WRITE_BP",
-        "TX_DISPATCH_WRITE_LAST_BP",
-        "TX_DISPATCH_WRITE_B0_TX",
-        "TX_DISPATCH_WRITE_B1_TX",
-        "TX_DISPATCH_WRITE_B2_TX",
-        "TX_DISPATCH_READ_WRITE_TX",
+        "TX_DISPATCH_WRITE_FIRST",
+        "TX_DISPATCH_READ_WRITE",
+        "TX_DISPATCH_WRITE_LAST",
         "TX_DISPATCH_RELEASE_CONT",
+    };
+    const char* tx_ser_state_str[] =
+    {
+        "TX_SER_IDLE",
+        "TX_SER_READ_FIRST",
+        "TX_SER_WRITE_B0",
+        "TX_SER_WRITE_B1",
+        "TX_SER_WRITE_B2",
+        "TX_SER_READ_WRITE",
+        "TX_SER_GAP",
     };
     const char* tx_s2g_state_str[] =
     {
         "TX_S2G_IDLE",
         "TX_S2G_WRITE_DATA",
+        "TX_S2G_WRITE_LAST_DATA",
         "TX_S2G_WRITE_CS",
     };
 
-    std::cout << "MULTI_NIC " << name() << " : " 
+    if ( mode & 0x001 ) // display FSM states
+    {
+        std::cout << "MULTI_NIC " << name() << " : " 
               << vci_state_str[r_vci_fsm.read()]                 << " | "
               << rx_g2s_state_str[r_rx_g2s_fsm.read()]           << " | "
               << rx_des_state_str[r_rx_des_fsm.read()]           << " | "
               << rx_dispatch_state_str[r_rx_dispatch_fsm.read()] << " | "
               << tx_dispatch_state_str[r_tx_dispatch_fsm.read()] << " | "
+              << tx_ser_state_str[r_tx_ser_fsm.read()]           << " | "
               << tx_s2g_state_str[r_tx_s2g_fsm.read()]           << std::endl;
+    }
+
+#ifdef SOCLIB_PERF_NIC
+    if ( mode & 0x002 ) // display instrumentation registers
+    {
+        std::cout << "- Instrumentation Registers" << std::endl;
+        std::cout << "r_total_len_rx_gmii : " << r_total_len_rx_gmii.read() << std::endl;
+        std::cout << "r_total_len_rx_chan : " << r_total_len_rx_chan.read() << std::endl;
+        std::cout << "r_total_len_tx_chan : " << r_total_len_tx_chan.read() << std::endl;
+        std::cout << "r_total_len_tx_gmii : " << r_total_len_tx_gmii.read() << std::endl;
+    }
+#endif
+
+    if ( mode & 0x004 ) // display global configuration registers
+    {
+        std::cout << "- Global Registers" << std::endl;
+        std::cout << "r_global_bc_enable  : " << r_global_bc_enable.read()  << std::endl;
+        std::cout << "r_global_nic_on     : " << r_global_nic_on.read()     << std::endl;
+        std::cout << "r_global_active     : " << r_global_active_channels.read() << std::endl;
+        std::cout << "r_global_tdm_enable : " << r_global_tdm_enable.read()  << std::endl;
+    }
+
+    if ( mode & 0x008 ) // display channels configuration registers
+    {
+        for( size_t k=0 ; k<m_channels ; k++ )
+        {
+            std::cout << "- Channel " << k << std::endl; 
+            std::cout << "r_channel_mac_4   : " << r_channel_mac_4[k].read() << std::endl;
+            std::cout << "r_channel_mac_2   : " << r_channel_mac_4[k].read() << std::endl;
+            std::cout << "r_channel_rx_buf0 : " << r_channel_rx_bufaddr_0[k].read() << std::endl;
+            std::cout << "r_channel_rx_buf1 : " << r_channel_rx_bufaddr_1[k].read() << std::endl;
+            std::cout << "r_channel_tx_buf0 : " << r_channel_tx_bufaddr_0[k].read() << std::endl;
+            std::cout << "r_channel_tx_buf1 : " << r_channel_tx_bufaddr_1[k].read() << std::endl;
+        }
+    }
+
+    if ( mode & 0x010 ) // display RX_G2S registers
+    {
+        std::cout << "- RX_G2S Registers" << std::endl;
+        std::cout << "r_rx_g2s_checksum : " << r_rx_g2s_checksum.read() << std::endl;
+        std::cout << "r_rx_g2s_dt0      : " << (unsigned int)r_rx_g2s_dt0.read() << std::endl;
+        std::cout << "r_rx_g2s_dt1      : " << (unsigned int)r_rx_g2s_dt1.read() << std::endl;
+        std::cout << "r_rx_g2s_dt2      : " << (unsigned int)r_rx_g2s_dt2.read() << std::endl;
+        std::cout << "r_rx_g2s_dt3      : " << (unsigned int)r_rx_g2s_dt3.read() << std::endl;
+        std::cout << "r_rx_g2s_dt4      : " << (unsigned int)r_rx_g2s_dt4.read() << std::endl;
+        std::cout << "r_rx_g2s_dt5      : " << (unsigned int)r_rx_g2s_dt5.read() << std::endl;
+        std::cout << "r_rx_g2s_delay    : " << r_rx_g2s_delay.read() << std::endl;
+    }
+
+    if ( mode & 0x020 ) // display RX_DES registers
+    {
+        std::cout << "- RX_DES Registers" << std::endl;
+        std::cout << "r_rx_des_counter  : " << r_rx_des_counter_bytes.read() << std::endl;
+        std::cout << "r_rx_des_padding  : " << r_rx_des_padding.read() << std::endl;
+        std::cout << "r_rx_des_data[0]  : " << r_rx_des_data[0].read() << std::endl;
+        std::cout << "r_rx_des_data[1]  : " << r_rx_des_data[1].read() << std::endl;
+        std::cout << "r_rx_des_data[2]  : " << r_rx_des_data[2].read() << std::endl;
+        std::cout << "r_rx_des_data[3]  : " << r_rx_des_data[3].read() << std::endl;
+    }
+
+    if ( mode & 0x040 ) // display RX_DISPATCH registers
+    {
+        std::cout << "- RX_DISPATCH Registers" << std::endl;
+        std::cout << "r_rx_dispatch_bp     : " << r_rx_dispatch_bp.read() << std::endl;
+        std::cout << "r_rx_dispatch_data   : " << r_rx_dispatch_data.read() << std::endl;
+        std::cout << "r_rx_dispatch_nwords : " << r_rx_dispatch_nwords.read() << std::endl;
+        std::cout << "r_rx_dispatch_dest   : " << r_rx_dispatch_dest.read() << std::endl;
+    }
+
+    if ( mode & 0x080 ) // display TX_DISPATCH registers
+    {
+        std::cout << "- TX_DISPATCH Registers" << std::endl;
+        std::cout << "r_tx_dispatch_channel  : " << r_tx_dispatch_channel.read()  << std::endl;
+        std::cout << "r_tx_dispatch_data0    : " << r_tx_dispatch_data0.read()    << std::endl;
+        std::cout << "r_tx_dispatch_data1    : " << r_tx_dispatch_data1.read()    << std::endl;
+        std::cout << "r_tx_dispatch_packets  : " << r_tx_dispatch_packets.read()  << std::endl;
+        std::cout << "r_tx_dispatch_words    : " << r_tx_dispatch_words.read()    << std::endl;
+        std::cout << "r_tx_dispatch_bytes    : " << r_tx_dispatch_bytes.read()    << std::endl;
+        std::cout << "r_tx_dispatch_write_bp : " << r_tx_dispatch_write_bp.read() << std::endl;
+        std::cout << "r_tx_dispatch_write_tx : " << r_tx_dispatch_write_tx.read() << std::endl;
+    }
+
+    if ( mode & 0x100 ) // display TX_SER registers
+    {
+        std::cout << "- TX_SER Registers" << std::endl;
+        std::cout << "r_tx_ser_words   : " << r_tx_ser_ifg.read() << std::endl;
+        std::cout << "r_tx_ser_bytes   : " << r_tx_ser_ifg.read() << std::endl;
+        std::cout << "r_tx_ser_first   : " << r_tx_ser_ifg.read() << std::endl;
+        std::cout << "r_tx_ser_ifg     : " << r_tx_ser_ifg.read() << std::endl;
+        std::cout << "r_tx_ser_data    : " << r_tx_ser_ifg.read() << std::endl;
+    }
+
+    if ( mode & 0x200 ) // display TX_S2G registers
+    {
+        std::cout << "- TX_S2G Registers" << std::endl;
+        std::cout << "r_tx_s2g_checksum : " << r_tx_s2g_checksum.read() << std::endl;
+        std::cout << "r_tx_s2g_data     : " << (unsigned int)r_tx_s2g_data.read() << std::endl;
+        std::cout << "r_tx_s2g_index    : " << r_tx_s2g_index.read() << std::endl;
+    }
 } // end print_trace()
 
 ////////////////////////////////////////////////////////////////////
@@ -1392,18 +2426,46 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
                          const soclib::common::MappingTable 	&mt,
                          const size_t 				            channels,
                          const char*                            rx_file_pathname,
-                         const char*                            tx_file_pathname, 
-                         const size_t 				            timeout )
+                         const char*                            tx_file_pathname,
+                         const uint32_t                         mac_4,
+                         const uint32_t                         mac_2) 
 	    : caba::BaseModule(name),
+
+#ifdef SOCLIB_PERF_NIC
+          r_total_len_rx_gmii("r_total_len_rx_gmii"),
+          r_total_len_rx_chan("r_total_len_rx_chan"),
+          r_total_len_tx_chan("r_total_len_tx_chan"),
+          r_total_len_tx_gmii("r_total_len_tx_gmii"),
+#endif
+          r_global_bc_enable("r_global_bc_enable"), 
+          r_global_nic_on("r_global_nic_on"),
+          r_global_active_channels("r_global_active_channels"), 
+          r_global_tdm_enable("r_global_tdm_enable"),
+          r_global_tdm_period("r_global_tdm_period"),
+          r_global_tdm_timer("r_global_tdm_timer"),
+          r_global_tdm_channel("r_global_tdm_channel"),
+
+          r_channel_mac_4(soclib::common::alloc_elems<sc_signal<uint32_t> >
+                ("r_channel_mac_4", 8)),
+          r_channel_mac_2(soclib::common::alloc_elems<sc_signal<uint32_t> >
+                ("r_channel_mac_2", 8)),
+          r_channel_rx_bufaddr_0(soclib::common::alloc_elems<sc_signal<uint32_t> >
+                ("r_channel_rx_bufaddr_0", 8)),
+          r_channel_rx_bufaddr_1(soclib::common::alloc_elems<sc_signal<uint32_t> >
+                ("r_channel_rx_bufaddr_1", 8)),
+          r_channel_tx_bufaddr_0(soclib::common::alloc_elems<sc_signal<uint32_t> >
+                ("r_channel_tx_bufaddr_0", 8)),
+          r_channel_tx_bufaddr_1(soclib::common::alloc_elems<sc_signal<uint32_t> >
+                ("r_channel_tx_bufaddr_1", 8)),
 
           r_vci_fsm("r_vci_fsm"),
           r_vci_srcid("r_vci_srcid"),
           r_vci_trdid("r_vci_trdid"),
           r_vci_pktid("r_vci_pktid"),
           r_vci_wdata("r_vci_wdata"),
-          r_vci_ptw("r_vci_ptw"),
-          r_vci_ptr("r_vci_ptr"),
+          r_vci_channel("r_vci_channel"),
           r_vci_nwords("r_vci_nwords"),
+          r_vci_address("r_vci_address"),
 
           r_rx_g2s_fsm("r_rx_g2s_fsm"),
           r_rx_g2s_checksum("r_rx_g2s_checksum"),
@@ -1415,40 +2477,79 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
           r_rx_g2s_dt5("r_rx_g2s_dt5"),
           r_rx_g2s_delay("r_rx_g2s_delay"),
 
+          r_rx_g2s_npkt_received("r_rx_g2s_npkt_received"),
+          r_rx_g2s_npkt_discarded("r_rx_g2s_npkt_discarded"),
+
           r_rx_des_fsm("r_rx_des_fsm"),
-          r_rx_des_data(soclib::common::alloc_elems<sc_signal<uint8_t> >("r_rx_des_data", 4)),
-          r_rx_des_byte_index("r_rx_des_byte_index"),
-          r_rx_des_dirty("r_rx_des_dirty"),
+          r_rx_des_counter_bytes("r_rx_des_counter_bytes"),
+          r_rx_des_padding("r_rx_des_padding"),
+          r_rx_des_data(soclib::common::alloc_elems<sc_signal<uint8_t> >
+                ("r_rx_des_data", 4)),
+
+          r_rx_des_npkt_success("r_rx_des_npkt_success"),
+          r_rx_des_npkt_too_small("r_rx_des_npkt_too_small"),
+          r_rx_des_npkt_too_big("r_rx_des_npkt_too_big"),
+          r_rx_des_npkt_mfifo_full("r_rx_des_npkt_mfifo_full"),
+          r_rx_des_npkt_cs_fail("r_rx_des_npkt_cs_fail"),
 
           r_rx_dispatch_fsm("r_rx_dispatch_fsm"),
-          r_rx_dispatch_channel("r_rx_dispatch_channel"),
           r_rx_dispatch_bp("r_rx_dispatch_bp"),
-          r_rx_dispatch_plen("r_rx_dispatch_plen"),
           r_rx_dispatch_data("r_rx_dispatch_data"),
-          r_rx_dispatch_words("r_rx_dispatch_words"),
+          r_rx_dispatch_nwords("r_rx_dispatch_nwords"),
+          r_rx_dispatch_dest("r_rx_dispatch_dest"),
+
+          r_rx_dispatch_npkt_received("r_rx_dispatch_npkt_received"),
+          r_rx_dispatch_npkt_broadcast("r_rx_dispatch_npkt_broadcast"),
+          r_rx_dispatch_npkt_mac_fail("r_rx_dispatch_npkt_mac_fail"),
+          r_rx_dispatch_npkt_full("r_rx_dispatch_npkt_full"),
 
           r_tx_dispatch_fsm("r_tx_dispatch_fsm"),
           r_tx_dispatch_channel("r_tx_dispatch_channel"),
-          r_tx_dispatch_data("r_tx_dispatch_data"),
+          r_tx_dispatch_data0("r_tx_dispatch_data0"),
+          r_tx_dispatch_data1("r_tx_dispatch_data1"),
           r_tx_dispatch_packets("r_tx_dispatch_packets"),
           r_tx_dispatch_words("r_tx_dispatch_words"),
           r_tx_dispatch_bytes("r_tx_dispatch_bytes"),
+          r_tx_dispatch_write_bp("r_tx_dispatch_write_bp"),
+          r_tx_dispatch_write_tx("r_tx_dispatch_write_tx"),
+
+          r_tx_dispatch_npkt_received("r_tx_dispatch_npkt_received"),
+          r_tx_dispatch_npkt_too_small("r_tx_dispatch_npkt_too_small"),
+          r_tx_dispatch_npkt_too_big("r_tx_dispatch_npkt_too_big"),
+          r_tx_dispatch_npkt_src_fail("r_tx_dispatch_npkt_src_fail"),
+          r_tx_dispatch_npkt_self("r_tx_dispatch_npkt_self"),
+          r_tx_dispatch_npkt_broadcast("r_tx_dispatch_npkt_broadcast"),
+          r_tx_dispatch_npkt_bypass("r_tx_dispatch_npkt_bypass"),
+          r_tx_dispatch_npkt_transmit("r_tx_dispatch_npkt_transmit"),
+
+          r_tx_ser_fsm("r_tx_ser_fsm"),
+          r_tx_ser_words("r_tx_ser_words"),
+          r_tx_ser_bytes("r_tx_ser_bytes"),
+          r_tx_ser_first("r_tx_ser_first"),
+          r_tx_ser_ifg("r_tx_ser_ifg"),
+          r_tx_ser_data("r_tx_ser_data"),
 
           r_tx_s2g_fsm("r_tx_s2g_fsm"),
           r_tx_s2g_checksum("r_tx_s2g_checksum"),
           r_tx_s2g_data("r_tx_s2g_data"),
           r_tx_s2g_index("r_tx_s2g_index"),
 
+          r_rx_chbuf(soclib::common::alloc_elems<NicRxChbuf>("r_rx_chbuf", channels)),
+          r_tx_chbuf(soclib::common::alloc_elems<NicTxChbuf>("r_tx_chbuf", channels)),
+
           r_rx_fifo_stream("r_rx_fifo_stream", 2),      // 2 slots of one byte
-          r_rx_fifo_multi("r_rx_fifo_multi", 32, 32),   // 1024 slots of one word
           r_tx_fifo_stream("r_tx_fifo_stream", 2),      // 2 slots of one byte
+          r_rx_fifo_multi("r_rx_fifo_multi", 32, 32),   // 1024 slots of one word
+          r_tx_fifo_multi("r_tx_fifo_multi", 32, 32),   // 1024 slots of one word
           r_bp_fifo_multi("r_bp_fifo_multi", 32, 32),   // 1024 slots of one word
 
-          r_gmii_rx("r_gmii_rx", "rx_file_pathname", 1),  // one cycle between packets
-          r_gmii_tx("r_gmii_tx", "tx_file_pathname"),
+          r_gmii_rx("r_gmii_rx", "in-mixte.txt", INTER_FRAME_GAP),  // one cycle between packets
+          r_gmii_tx("r_gmii_tx", "out_tx.txt"),
 
           m_segment(mt.getSegment(tgtid)),
           m_channels(channels),
+          m_default_mac_4(mac_4),
+          m_default_mac_2(mac_2),
 
           p_clk("p_clk"),
           p_resetn("p_resetn"),
@@ -1462,15 +2563,6 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
     assert( (channels <= 8)  and
     "VCI_MULTI_NIC error : The number of channels cannot be larger than 8");
 
-    r_rx_channel = new NicRxChannel*[channels];
-    r_tx_channel = new NicTxChannel*[channels];
-
-    for ( size_t k=0 ; k<channels ; k++)
-    {
-        r_rx_channel[k] = new NicRxChannel("r_rx_channel", timeout);
-        r_tx_channel[k] = new NicTxChannel("r_tx_channel");
-    }
-
     SC_METHOD(transition);
     dont_initialize();
     sensitive << p_clk.pos();
@@ -1479,8 +2571,8 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
     dont_initialize();
     sensitive << p_clk.neg();
 }
-
 }}
+
 
 // Local Variables:
 // tab-width: 4

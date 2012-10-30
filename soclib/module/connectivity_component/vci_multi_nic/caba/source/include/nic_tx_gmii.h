@@ -22,6 +22,7 @@
  *
  * Copyright (c) UPMC, Lip6
  *         Alain Greiner <alain.greiner@lip6.fr> July 2008
+ *         Clement Devigne <clement.devigne@etu.upmc.fr>
  *
  * Maintainers: alain 
  */
@@ -48,6 +49,13 @@
 #include <systemc>
 #include <assert.h>
 
+#include <string>
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
+
 namespace soclib { 
 namespace caba {
 
@@ -58,18 +66,59 @@ class NicTxGmii
 {
     // structure constants
     const std::string   m_name;
-//  const FILE          m_file;
+    std::ofstream       m_file;
 
     // registers
     uint32_t            r_counter;      // cycles counter (used for both gap and plen)
     uint8_t*	        r_buffer;       // local buffer containing one packet
+    
 
     ///////////////////////////////////////////////////////////////////
     // This function is used to write one packet to the input file
     ///////////////////////////////////////////////////////////////////
     void write_one_packet()
     {
-        assert( false and "function write_paket of GMII_TX not defined");
+        if (m_file)
+        {
+            uint32_t cpt = 0;
+            uint32_t data = 0;
+            // write in the file r_counter value
+            m_file << (unsigned)r_counter << ' ';
+            for (cpt = 0; cpt < (r_counter - 4) ; cpt += 4)
+            {
+                data = r_buffer[cpt];
+
+                if( (cpt+1) >= (r_counter-4) )
+                {
+                    m_file <<std::setfill('0')<<std::setw(2)<< std::hex << data;
+                    break;
+                }
+                data = data | (r_buffer[cpt+1]<<8);
+                
+                if( (cpt+2) >= (r_counter-4) )
+                {
+                    m_file <<std::setfill('0')<<std::setw(4)<< std::hex << data;
+                    break;
+                }
+                data = data | (r_buffer[cpt+2]<<16);
+                
+                if( (cpt+3) >= (r_counter-4) )
+                {
+                    m_file <<std::setfill('0')<<std::setw(6)<< std::hex << data;
+                    break;
+                }
+                data = data | (r_buffer[cpt+3]<<24);
+
+                //write data from r_buffer[cpt] in the file
+                m_file <<std::setfill('0')<<std::setw(8)<< std::hex << data;
+            }
+            data = r_buffer[r_counter-4];
+            data = data | (r_buffer[r_counter-3]<<8);
+            data = data | (r_buffer[r_counter-2]<<16);
+            data = data | (r_buffer[r_counter-1]<<24);
+            m_file <<std::setfill('0')<<std::setw(8)<< std::hex << data;
+            m_file << std::dec << std::endl;
+        }
     }
 
 public:
@@ -77,7 +126,7 @@ public:
     /////////////
     void reset()
     {
-        r_counter = true;
+        r_counter = 0;
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -105,7 +154,8 @@ public:
     //////////////////////////////////////////////////////////////
     NicTxGmii( const std::string  &name,
                const std::string  &path )
-    : m_name(name)
+    : m_name(name),
+      m_file(path.c_str(),std::ios::out)
     {
         r_buffer        = new uint8_t[2048];
     } 
@@ -116,6 +166,7 @@ public:
     ~NicTxGmii()
     {
         delete [] r_buffer;
+        m_file.close();
     }
 
 }; // end GmiiTx

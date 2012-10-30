@@ -22,6 +22,7 @@
  *
  * Copyright (c) UPMC, Lip6
  *         Alain Greiner <alain.greiner@lip6.fr> July 2008
+ *         Clement Devigne <clement.devigne@etu.upmc.fr>
  *
  * Maintainers: alain 
  */
@@ -114,9 +115,15 @@ public:
     {
         r_ptr          = 0;             
         r_ptw          = 0;
-        r_sts          = 0;
+        r_sts          = 32;  // Because STS checks start from the MAX buffers number value
         r_ptw_buf_save = 0;
         r_word_count   = 0;
+        for ( size_t x=0 ; x<m_buffers ; x++)
+        {
+            r_eop[x]=0;
+            r_plen[x]=0;
+        }
+        memset(r_buf,0,(m_buffers*m_words));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -136,37 +143,57 @@ public:
         // WCMD registers update (depends only on cmd_w)
         if ( cmd_w == FIFO_MULTI_WCMD_WRITE )       // write one word 
         {
+            // Data to write
             r_buf[r_ptw]               = dtin;
+            
+            // Counting how many words are writen to be able to 
+            // compute plen
             r_word_count               = r_word_count + 1;
-            r_ptw                      = (r_ptw + 1) % (m_buffers * m_words);
-            if ( ptw_word == 0)  r_sts = r_sts - 1; 
+
+            // If we are writing the last word of a buffer,
+            // we mark this buffer as full
+            if (ptw_word == m_word_mask)
+                r_sts = r_sts - 1; 
+
+            // If last word of a buffer, we go to the next buffer
+            // else we continue in that buffer
+            r_ptw = (r_ptw + 1) % (m_buffers * m_words);
+
+
         }
         else if ( cmd_w == FIFO_MULTI_WCMD_LAST )  // write last word
         {
             r_buf[r_ptw]               = dtin;
-            r_plen[r_ptw_buf_save]     = r_word_count<<2 + 4 - padding;
+            r_plen[r_ptw_buf_save]     = (r_word_count<<2) + 4 - padding;
             r_eop[ptw_buf]             = true;
             r_ptw_buf_save             = (ptw_buf + 1) % m_buffers;
             r_word_count               = 0;
-            r_ptw                      = ((ptw_buf + 1) % m_buffers) * m_words;
-            if ( ptw_word == 0)  r_sts = r_sts - 1; 
+
+            // Going to next buffer
+            // m_words -> used to shift left to set ptw_buf value to the msb
+            r_ptw = ((ptw_buf + 1) % m_buffers) * m_words;
+
+            // In any case, we consume a buffer when finishing
+            // to write a packet.
+            r_sts = r_sts - 1; 
         }
         else if ( cmd_w == FIFO_MULTI_WCMD_CLEAR ) // clear the current packet
         {
             uint32_t first_buf = r_ptw_buf_save;
             uint32_t nbuf;
-            if ( ptw_buf >= first_buf ) nbuf = ptw_buf - first_buf;
-            else                        nbuf = (ptw_buf + m_buffers) - first_buf;
+            if ( ptw_buf >= first_buf ) nbuf = ptw_buf - first_buf + 1;
+            else                        nbuf = (ptw_buf + m_buffers) - first_buf + 1;
             r_ptw                      = r_ptw_buf_save * m_words;
             r_word_count               = 0;
-            r_sts                      = r_sts + nbuf;
+            r_sts                      = r_sts + nbuf ;
         }
 
         // RCMD registers update (depends only on cmd_r)
         if ( cmd_r == FIFO_MULTI_RCMD_READ )    // read one word
         {
             r_ptr                                = (r_ptr + 1) % (m_buffers * m_words);
-            if ( ptr_word == (m_words-1) ) r_sts = r_sts + 1;
+            if ( ptr_word == (m_words-1) )
+                r_sts = r_sts + 1;
         }
         else if ( cmd_r == FIFO_MULTI_RCMD_LAST ) // read last word
         {
@@ -177,11 +204,18 @@ public:
         else if ( cmd_r == FIFO_MULTI_RCMD_SKIP ) // skip one packet
         {
             uint32_t plen     = r_plen[ptr_buf];
-            uint32_t last_ptr = (r_ptr + plen - 4) % (m_buffers * m_words);
+            uint32_t last_ptr;
+            if((plen%4)==0)
+                last_ptr = (r_ptr + ((plen - 4)>>2)-1) % (m_buffers * m_words);
+            else
+                last_ptr = ((r_ptr + ((plen - 4)>>2)-1) + 1) % (m_buffers * m_words);
             uint32_t last_buf = last_ptr >> m_word_shift;
             r_eop[last_buf]   = false;
             r_ptr             = ((last_buf + 1) % m_buffers) * m_words;
-            r_sts             = r_sts + 1 + (plen / m_words);
+            if(((plen>>2)%m_words)==0)
+                r_sts             = r_sts + ((plen>>2) / m_words);
+            else
+                r_sts             = r_sts + 1 + ((plen>>2) / m_words);
         }
     } // end update()
 
@@ -212,7 +246,8 @@ public:
     {
         for ( size_t x=0 ; x<m_buffers ; x++)
         {
-            if ( r_eop[x] ) return true;
+            if ( r_eop[x] ) 
+                return true; 
         }
         return false;
     }
@@ -223,7 +258,7 @@ public:
     //////////////////////////////////////////////////////////////
     bool wok()
     {
-        return (r_sts < m_buffers);
+        return (r_sts > 0);
     }
 
     //////////////////////////////////////////////////////////////
