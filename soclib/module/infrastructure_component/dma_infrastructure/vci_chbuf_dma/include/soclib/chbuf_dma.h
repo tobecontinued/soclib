@@ -28,15 +28,19 @@
 #ifndef CHBUF_DMA_REGS_H
 #define CHBUF_DMA_REGS_H
 
+// each channel define 8 addressable registers (32 bits),
+// but the channel sub-segment is aligned on a 4Kbytes page boundary
+
 enum SoclibChbufDmaRegisters 
 {
-    CHBUF_RUN           = 0,
-    CHBUF_STATUS        = 1,
-    CHBUF_SRC_DESC      = 2,
-    CHBUF_DST_DESC      = 3,
-    CHBUF_SRC_NBUFS     = 4,
-    CHBUF_DST_NBUFS     = 5,
-    CHBUF_BUF_SIZE      = 6, 
+    CHBUF_RUN           = 0,    // write-only : channel activated
+    CHBUF_STATUS        = 1,    // read-only  : channel fsm state
+    CHBUF_SRC_DESC      = 2,    // read/write : source chbuf : descriptor base address
+    CHBUF_DST_DESC      = 3,    // read/write : destination chbuf : descriptor base address,
+    CHBUF_SRC_NBUFS     = 4,    // read/write : source chbuf : number of buffers,
+    CHBUF_DST_NBUFS     = 5,    // read/write : destination chbuf : number of buffers,
+    CHBUF_BUF_SIZE      = 6,    // read/write : buffer size for both source & destination  
+    CHBUF_PERIOD        = 7,    // read/write : period for status polling 
     /****/
     CHBUF_CHANNEL_SPAN	= 1024,
 };

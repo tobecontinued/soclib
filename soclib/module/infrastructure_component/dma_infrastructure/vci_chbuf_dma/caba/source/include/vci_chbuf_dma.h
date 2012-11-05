@@ -74,8 +74,9 @@ private:
     sc_signal<uint32_t>*    r_channel_dst_offset;   // non aligned bytes
     sc_signal<bool>*        r_channel_dst_full;     // current DST buffer status 
 
-    sc_signal<uint32_t>*    r_channel_delay;        // cycle counter for polling
-    sc_signal<uint32_t>*	r_channel_todo_bytes;   // number of bytes to transfer
+    sc_signal<uint32_t>*    r_channel_timer;        // cycle counter for polling
+    sc_signal<uint32_t>*    r_channel_period;       // status polling period    
+    sc_signal<uint32_t>*	r_channel_todo_words;   // number of words to transfer
     sc_signal<uint32_t>*    r_channel_bytes_first;  // first SRC or DST burst length
     sc_signal<uint32_t>*    r_channel_bytes_second; // second SRC or DST burst length
     sc_signal<bool>*		r_channel_vci_req;      // valid request to CMD FSM
@@ -101,11 +102,9 @@ private:
     const uint32_t			m_burst_max_length;	    // number of bytes
     const uint32_t			m_channels;		        // no more than 8
     const uint32_t			m_srcid;                // DMA component SRCID
-    const uint32_t			m_delay;                // delay for status polling
 
     enum vci_req_type_e 
     {
-        REQ_NONE,
         REQ_READ_SRC_STATUS,
         REQ_READ_SRC_BUFADDR,
         REQ_READ_DST_STATUS,
@@ -197,8 +196,7 @@ public:
 		const soclib::common::IntTab 		&srcid,
 		const soclib::common::IntTab 		&tgtid,
 		const uint32_t 				        burst_max_length,
-        const uint32_t				        channels,
-        const uint32_t                      delay = 1000);
+        const uint32_t				        channels);
 };
 
 }}
