@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2008
  *
- * Maintainers: nipo
+ * Maintainers: nipo, mohamed
  *
  * Based on previous works by Etienne Faure & Alain Greiner, 2005
  *
@@ -41,7 +41,7 @@
 #include <algorithm>
 
 #ifndef SOCLIB_MODULE_DEBUG
-#define SOCLIB_MODULE_DEBUG 1
+#define SOCLIB_MODULE_DEBUG 0
 #endif
 
 #if SOCLIB_MODULE_DEBUG
@@ -248,7 +248,7 @@ DEBUG_END;
 		check_fifo();
 		m_config_fifo->width = data;
         assert( ((size_t)data%vci_param::B == 0) &&
-               "You must configure word-aligned widths");
+               "You must configure a word-aligned width");
 DEBUG_BEGIN;
         std::cout <<  name() << ": receiveid width is "<< 
                 m_config_fifo->width << ", fifo size: " 
@@ -267,11 +267,8 @@ DEBUG_END;
 		return true;
     case MWMR_CONFIG_RUNNING:
 		check_fifo();
-        /*
         assert( m_config_fifo->width
-                && "You API for this module is not updated."
-                " Please update the API and recompile the software");
-        */
+                && "You need to first configure the channel (width, way...).");
         assert( (m_config_fifo->depth % m_config_fifo->width == 0)
                 && "Fifo depth must be a multiple of width");
 		m_config_fifo->running = !!data;
@@ -445,37 +442,45 @@ DEBUG_END;
             // data space AND the MWMR hace at least one atomic data AND
             // timer is finished THEN send the data
             if ( m_current->depth - r_current_usage >= m_current->width ) {
-                //word availability on the ram ( min( max_to_depth, empty_spaces) )
+
+                //Compute the number of words availabile on the mwmr channel (ram) ( min( max_to_depth, empty_spaces) )
                 size_t word_to_send = std::min<size_t>(m_current->depth - r_current_wptr, m_current->depth - r_current_usage);
-                // Dont transfer more than possible
+
+                // Dont transfer more than possible (max of the hardware fifo)
                 word_to_send = std::min<size_t>(
                     word_to_send,//m_current->depth - r_current_usage,
-                    m_current->fifo->filled_status()  );
+                    m_current->fifo->filled_status());
+
                 //Normalize to an item size
                 word_to_send -= word_to_send % m_current->width;
 
-                //align the burst!
-                size_t transfer_addr = (m_current->buffer_address + r_current_wptr * vci_param::B) >> 2 ;
-                size_t offset = transfer_addr % m_max_burst;
-                size_t max_burst = std::min<size_t>(word_to_send, m_max_burst - offset);
 
                 if ( word_to_send ) {
+
+                    //Align the first burst
+                    size_t transfer_addr = (m_current->buffer_address >> 2) + r_current_wptr ;
+                    size_t offset = transfer_addr % m_max_burst;
+                    size_t max_burst = std::min<size_t>(word_to_send, m_max_burst - offset);
+
+                    //Assign the necessary fields
                     r_plen = max_burst;
                     r_part_count = max_burst;
                     r_cmd_count = word_to_send;
-    
-                    size_t nb_pk = word_to_send/m_max_burst;
-                    if(offset + word_to_send > m_max_burst) //if we got a first slice(offset) to send +1
-                        r_rsp_count = word_to_send % m_max_burst ? nb_pk + 2: nb_pk + 1; //if we got a last slice to send then +1
-                    else
-                        r_rsp_count = word_to_send % m_max_burst ? nb_pk + 1: nb_pk; //if we got a last slice to send then +1
-
                     r_init_fsm = INIT_DATA_WRITE;
                     r_status_modified = true;
 
                     m_n_xfers++;
+
+    
+                    //Compute the expected number of response packet 
+                    size_t first_slice = offset ? m_max_burst - offset : 0 ;
+                    size_t last_slice = (offset + word_to_send) % m_max_burst; 
+                    r_rsp_count = ((word_to_send - first_slice - last_slice) / m_max_burst )// number of aligned packet
+                                    + (first_slice ? 1 : 0)                                 // + 1 if we got a first slice 
+                                    + (last_slice ? 1 : 0) ;                                // + 1 if we got a last slice 
+
 DEBUG_BEGIN;
-                    std::cout << "going to read from coproc " << word_to_send << " words" << std::endl;
+                    std::cout << "going to write to the mwmr channel (ram) " << word_to_send << " words" << std::endl;
                     std::cout << "transfert address" << transfer_addr << " offset " << offset << " max_burst " << max_burst << std::endl;
 DEBUG_END;
                     break;
@@ -497,13 +502,14 @@ DEBUG_END;
                 
                 //size_t max_burst = std::min<size_t>(word_to_get, m_max_burst);
                 
-                //align the burst!
-                size_t transfer_addr = (m_current->buffer_address + r_current_wptr * vci_param::B) >> 2 ;
-                size_t offset = transfer_addr % m_max_burst;
-                size_t max_burst = std::min<size_t>(word_to_get, m_max_burst - offset);
 
-                    std::cout << "rtransfert address" << transfer_addr << " offset " << offset << " max_burst " << max_burst << std::endl;
                 if ( word_to_get ) {
+
+                    //align the burst!
+                    size_t transfer_addr = (m_current->buffer_address + r_current_wptr * vci_param::B) >> 2 ;
+                    size_t offset = transfer_addr % m_max_burst;
+                    size_t max_burst = std::min<size_t>(word_to_get, m_max_burst - offset);
+
                     r_plen = max_burst;
                     r_part_count = max_burst;
                     r_cmd_count = word_to_get;
@@ -514,6 +520,7 @@ DEBUG_END;
                     m_n_xfers++;
 DEBUG_BEGIN;
                     std::cout << "going to put " << word_to_get << " words to coproc" << std::endl;
+                    std::cout << "read transfert address" << transfer_addr << " offset " << offset << " max_burst " << max_burst << std::endl;
 DEBUG_END;
                     break;
                 }
@@ -552,7 +559,7 @@ DEBUG_END;
 
 DEBUG_BEGIN;
                 std::cout << name() << " --> refill part @ " <<  std::hex << 
-                            transfer_addr << ", left:" << r_cmd_count
+                            transfer_addr << ", cmd_count :" << r_cmd_count
                             << ", offset " << offset << ", going to send nb: " << max_burst << " on VCI" << std::endl;
 DEBUG_END;
                 r_part_count = max_burst;
@@ -854,8 +861,10 @@ DEBUG_END;
 	p_vci_initiator.trdid = 0;
 	p_vci_initiator.pktid = 0;
 
+DEBUG_BEGIN;
     if(p_vci_initiator.cmdval.read())
         ;//std::cout << name() << " sending cmd " << p_vci_initiator.address.read() << ", size(one cycle back): "<< p_vci_initiator.plen.read() << ", seted plen " << plen*vci_param::B << std::endl;
+DEBUG_END;
 
     for ( size_t i = 0; i<m_n_from_coproc; ++i )
         p_from_coproc[i].r = m_from_coproc_state[i].fifo->wok();

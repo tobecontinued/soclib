@@ -33,8 +33,8 @@
  * Maintainers: nipo
  *              karaoui mohamed
  */
-#ifndef SOCLIB_VCI_MWMR_CONTROLLER_H
-#define SOCLIB_VCI_MWMR_CONTROLLER_H
+#ifndef SOCLIB_VCI_MWMR_CONTROLLER_CAS_H
+#define SOCLIB_VCI_MWMR_CONTROLLER_CAS_H
 
 #include <systemc>
 #include "vci_target_fsm.h"
@@ -146,7 +146,7 @@ public:
 
 }}
 
-#endif /* SOCLIB_VCI_MWMR_CONTROLLER_H */
+#endif /* SOCLIB_VCI_MWMR_CONTROLLER_CAS_H */
 
 // Local Variables:
 // tab-width: 4
