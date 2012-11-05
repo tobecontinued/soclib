@@ -35,6 +35,8 @@
  * This object implements a multi-buffer FiFO designed to be used
  * by a GMII compliant multi-channels network controller. 
  * The internal structure is not known by the writer or reader:
+ * it contains a fixed number (m_buffers) of buffers. Each buffer
+ * contains m_words 32 bits words.
  * The WOK flag is true if there is at least one writable buffer.
  * The ROK flag is true if there is at least one readable packet.
  * - On the writer side, the writer does not know the packet length
@@ -70,18 +72,18 @@ using namespace sc_core;
 
     // writer commands
     enum fifo_multi_wcmd_t {
-        FIFO_MULTI_WCMD_NOP,       // no operation       (fifo state not modified)
-        FIFO_MULTI_WCMD_WRITE,     // write one word     (fifo state modified)
-        FIFO_MULTI_WCMD_LAST,      // write last word    (fifo state modified)
-        FIFO_MULTI_WCMD_CLEAR,     // cancel a packet    (fifo state modified)
+        FIFO_MULTI_WCMD_NOP,        // no operation       (fifo state not modified)
+        FIFO_MULTI_WCMD_WRITE,      // write one word     (fifo state modified)
+        FIFO_MULTI_WCMD_LAST,       // write last word    (fifo state modified)
+        FIFO_MULTI_WCMD_CLEAR,      // cancel a packet    (fifo state modified)
     } ;
 
     // reader commands
     enum fifo_multi_rcmd_t {
-        FIFO_MULTI_RCMD_NOP,       // no operation        (fifo state not modified)
-        FIFO_MULTI_RCMD_READ,      // read one word       (fifo state modified)
-        FIFO_MULTI_RCMD_LAST,      // read last word      (fifo state modified) 
-        FIFO_MULTI_RCMD_SKIP,      // jump to next packet (fifo state modified)
+        FIFO_MULTI_RCMD_NOP,        // no operation        (fifo state not modified)
+        FIFO_MULTI_RCMD_READ,       // read one word       (fifo state modified)
+        FIFO_MULTI_RCMD_LAST,       // read last word      (fifo state modified) 
+        FIFO_MULTI_RCMD_SKIP,       // jump to next packet (fifo state modified)
     };
 
 using soclib::common::uint32_log2;
@@ -91,15 +93,15 @@ class FifoMultiBuffer
 {
     // structure constants
     const std::string   m_name;
-    const uint32_t	    m_buffers;
-    const uint32_t	    m_words;
+    const uint32_t	    m_buffers;      // number of buffers
+    const uint32_t	    m_words;        // number of words per buffer
     const uint32_t      m_word_mask;
     const uint32_t      m_word_shift;
 
     // non replicated registers
-    uint32_t            r_ptw;          // word write pointer
-    uint32_t            r_ptr;          // word read pointer
-    uint32_t            r_sts;          // number of filled buffers
+    uint32_t            r_ptw;          // word write pointer (m_words * m_buffers)
+    uint32_t            r_ptr;          // word read pointer  (m_words * m_buffers)
+    uint32_t            r_sts;          // number of free buffers
     uint32_t            r_ptw_buf_save; // index of buffer containing packet first word
     uint32_t            r_word_count;   // number of written words in a packet
 
@@ -115,15 +117,14 @@ public:
     {
         r_ptr          = 0;             
         r_ptw          = 0;
-        r_sts          = 32;  // Because STS checks start from the MAX buffers number value
+        r_sts          = m_buffers;  
         r_ptw_buf_save = 0;
         r_word_count   = 0;
         for ( size_t x=0 ; x<m_buffers ; x++)
         {
-            r_eop[x]=0;
-            r_plen[x]=0;
+            r_eop[x]   = false;
+            r_plen[x]  = 0;
         }
-        memset(r_buf,0,(m_buffers*m_words));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -135,31 +136,24 @@ public:
                  uint32_t              dtin,           // data to be written
                  uint32_t              padding )       // number of invalid bytes
     {
-        uint32_t ptr_buf  = r_ptr >> m_word_shift;
-        uint32_t ptw_buf  = r_ptw >> m_word_shift;
-        uint32_t ptw_word = r_ptw &  m_word_mask;
-        uint32_t ptr_word = r_ptr &  m_word_mask;
+        uint32_t ptr_buf  = r_ptr >> m_word_shift;  // buffer index
+        uint32_t ptw_buf  = r_ptw >> m_word_shift;  // buffer index
+        uint32_t ptw_word = r_ptw &  m_word_mask;   // word index in buffer
+        uint32_t ptr_word = r_ptr &  m_word_mask;   // word index in buffer
         
         // WCMD registers update (depends only on cmd_w)
         if ( cmd_w == FIFO_MULTI_WCMD_WRITE )       // write one word 
         {
-            // Data to write
             r_buf[r_ptw]               = dtin;
-            
-            // Counting how many words are writen to be able to 
-            // compute plen
             r_word_count               = r_word_count + 1;
 
             // If we are writing the last word of a buffer,
             // we mark this buffer as full
-            if (ptw_word == m_word_mask)
+            if ( ptw_word == (m_words-1) )
                 r_sts = r_sts - 1; 
 
-            // If last word of a buffer, we go to the next buffer
-            // else we continue in that buffer
+            // update write pointer
             r_ptw = (r_ptw + 1) % (m_buffers * m_words);
-
-
         }
         else if ( cmd_w == FIFO_MULTI_WCMD_LAST )  // write last word
         {
@@ -170,11 +164,9 @@ public:
             r_word_count               = 0;
 
             // Going to next buffer
-            // m_words -> used to shift left to set ptw_buf value to the msb
             r_ptw = ((ptw_buf + 1) % m_buffers) * m_words;
 
-            // In any case, we consume a buffer when finishing
-            // to write a packet.
+            // mark buffer full when writing last word of a packet.
             r_sts = r_sts - 1; 
         }
         else if ( cmd_w == FIFO_MULTI_WCMD_CLEAR ) // clear the current packet
@@ -191,7 +183,7 @@ public:
         // RCMD registers update (depends only on cmd_r)
         if ( cmd_r == FIFO_MULTI_RCMD_READ )    // read one word
         {
-            r_ptr                                = (r_ptr + 1) % (m_buffers * m_words);
+            r_ptr = (r_ptr + 1) % (m_buffers * m_words);
             if ( ptr_word == (m_words-1) )
                 r_sts = r_sts + 1;
         }
@@ -220,14 +212,13 @@ public:
     } // end update()
 
     //////////////////////////////////////////////////////////////
-    // This method returns the pointed word.
+    // This method returns the read pointed word.
     // It does not modify the fifo state
     //////////////////////////////////////////////////////////////
     uint32_t data()
     { 
         return r_buf[r_ptr];
     }
-
     //////////////////////////////////////////////////////////////
     // This method returns the current packet length.
     // It must be used before reading the data.
@@ -237,7 +228,6 @@ public:
     { 
         return r_plen[r_ptr>>m_word_shift];
     }
-
     //////////////////////////////////////////////////////////////
     // This method returns true if there is a completed packet. 
     // It does not modify the fifo state
@@ -251,7 +241,6 @@ public:
         }
         return false;
     }
-
     //////////////////////////////////////////////////////////////
     // This method returns true if there is a free buffer.
     // It does not modify the fifo state
@@ -259,6 +248,23 @@ public:
     bool wok()
     {
         return (r_sts > 0);
+    }  
+    //////////////////////////////////////////////////////////////
+    // This method prints the internal fifo state
+    //////////////////////////////////////////////////////////////
+    void print_trace()
+    {
+        std::cout << "FIFO_MULTI_BUFFERS " << m_name << std::endl << std::dec
+                  << "- ptw_buf    = " << (r_ptw >> m_word_shift) << std::endl
+                  << "- ptw_word   = " << (r_ptw &  m_word_mask) << std::endl
+                  << "- ptr_buf    = " << (r_ptr >> m_word_shift) << std::endl
+                  << "- ptr_word   = " << (r_ptr &  m_word_mask) << std::endl;
+        for ( size_t x=0 ; x<m_buffers ; x++)
+        {
+            std::cout << "- buf " << x 
+                      << " : eop = " << r_eop[x]
+                      << " / plen = " << r_plen[x] << std::endl;
+        }
     }
 
     //////////////////////////////////////////////////////////////

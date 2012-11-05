@@ -28,13 +28,13 @@
  */
 
 /*************************************************************************
- * File         : gmii_tx.h
+ * File         : gmii_rx.h
  * Date         : 01/06/2012
  * Authors      : Alain Greiner
  *************************************************************************
  * This object implements a packet receiver, acting as a PHY component,
  * and respecting the GMII protocol (one byte per cycle).
- * It writes packets in a file defined by the "path" constructor argument.
+ * It reads packets in a file defined by the "path" constructor argument.
  * The inter-packet gap is another constructor argument.
  *************************************************************************
  * This object has 3 constructor parameters:
@@ -74,7 +74,6 @@ class NicRxGmii
     bool                r_fsm_gap;      // inter_packet state when true
     uint32_t            r_counter;      // cycles counter (used for both gap and plen)
     uint8_t*	        r_buffer;       // local buffer containing one packet
-    uint8_t*	        r_buffer_tmp;       // local buffer containing one packet
     uint32_t            r_plen;         // packet length (in bytes)
 
     ///////////////////////////////////////////////////////////////////
@@ -95,68 +94,35 @@ class NicRxGmii
     
     ///////////////////////////////////////////////////////////////////
     // This function is used to read one packet from the input file
-    // It must update the r_buffer and the r_plen variables.
+    // It updates the r_buffer and the r_plen variables.
     ///////////////////////////////////////////////////////////////////
     void read_one_packet()
     {
-        if(m_file)
-        {
-                uint32_t cpt = 0;
-                uint32_t data = 0;
-                uint32_t nb_words = 0;
-                uint32_t nb_bytes_available;
-                std::string string;
-                m_file >> r_plen >> string;
-                nb_bytes_available = r_plen-4;
-                uint32_t i = 0;
-                //string contains a packet
-                
-                // check end of file and restart it
-                if(m_file.eof())
-                {
-                        m_file.clear();
-                        m_file.seekg(0, std::ios::beg);
-                        m_file >> r_plen >> string;
-                }
-                // convert all the char in string into a hexa
-                for(cpt = 0; cpt < (r_plen << 1) ; cpt++)
-                {
-                    string[cpt] = atox(string[cpt]);
-                    data = (data << 4)|string[cpt];
-                    if(cpt%2)
-                    {
-                        r_buffer_tmp[cpt>>1]    = data;
-                        data = 0;
-                    }
-                }
-                cpt = 0;
+        uint32_t      data = 0;
+        std::string   string;
 
-               
-                while(nb_bytes_available)
-                {
-                    if(nb_bytes_available > 3)
-                        i = ((nb_words + 1)<<2) - 1;
-                    else
-                        i = ((nb_words + 1)<<2) - (4 - nb_bytes_available) - 1;
-                    while ( i >= (nb_words << 2) )
-                    {
-                        r_buffer[i] = r_buffer_tmp[cpt];
-                        nb_bytes_available -- ;
-                        cpt ++ ;
-                        if ( i%4 == 0 )
-                        {
-                            nb_words ++ ;
-                            break;
-                        }
-                        else i--;
-                    }
-                }
-                r_buffer[r_plen-4] = r_buffer_tmp[r_plen-1];
-                r_buffer[r_plen-3] = r_buffer_tmp[r_plen-2];
-                r_buffer[r_plen-2] = r_buffer_tmp[r_plen-3];
-                r_buffer[r_plen-1] = r_buffer_tmp[r_plen-4];
+        // string contains one packet and r_plen contains number of byres
+        m_file >> r_plen >> string;
+
+        // check end of file and restart it 
+        if(m_file.eof())
+        {
+            m_file.clear();
+            m_file.seekg(0, std::ios::beg);
+            m_file >> r_plen >> string;
         }
-    }
+
+        // convert two hexadecimal characters into one uint8_t
+        for( size_t n = 0; n < (r_plen << 1) ; n++)
+        {
+            data = (data << 4)| atox(string[n]);
+            if(n%2)
+            {
+                r_buffer[n>>1] = data;
+                data = 0;
+            }
+        }
+    } // end read_one packet()
 
 public:
 
@@ -166,7 +132,6 @@ public:
         r_fsm_gap   = true;
         r_counter   = m_gap;
         memset(r_buffer,0,2048);
-        memset(r_buffer_tmp,0,2048);
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -177,8 +142,7 @@ public:
     ///////////////////////////////////////////////////////////////////
     void get( bool*     dv,         // data valid
               bool*     er,         // data error
-              uint8_t*  dt  )        // data value
-              //bool      on)         // power enable
+              uint8_t*  dt  )       // data value
     {
         if ( r_fsm_gap )    // inter-packet state
         {
@@ -211,17 +175,24 @@ public:
     } // end get()
                 
     //////////////////////////////////////////////////////////////
-    // constructor open the file
+    // constructor 
     //////////////////////////////////////////////////////////////
     NicRxGmii( const std::string  &name,
                const std::string  &path,
                uint32_t           gap )
         : m_name(name),
           m_gap( gap ),
-          m_file(path.c_str())
+          m_file( path.c_str() )
     {
-        r_buffer_tmp    = new uint8_t[2048];
         r_buffer        = new uint8_t[2048];
+        if ( m_file )
+        {
+            std::cout << "input file = " << path << std::endl;
+        }
+        else
+        {
+            std::cout << "ERROR in RX_GMII : cannot open file " << path << std::endl;
+        }
     } // end constructor
 
     //////////////////
@@ -230,7 +201,6 @@ public:
     ~NicRxGmii()
     {
         delete [] r_buffer;
-        delete [] r_buffer_tmp;
         m_file.close();
     }
 

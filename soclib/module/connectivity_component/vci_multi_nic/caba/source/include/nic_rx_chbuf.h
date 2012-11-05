@@ -32,11 +32,11 @@
  * Date         : 01/10/2012
  * Authors      : Alain Greiner
  **********************************************************************
- * This object implements an hardware chained buffer controler, 
- * used to store received packets (from NIC to software), 
- * in a multi-channels, GMII compliant, network controller.
+ * This object implements an hardware chained buffer controler. 
+ * It is used to store received packets (from NIC to software), 
+ * by a multi-channels, GMII compliant, network controller.
  * It contains two  4K bytes containers, acting as a two slots
- * chained buffer.
+ * "standard" chained buffer that can be accessed by software.
  *
  * Read an write accesses are not symetrical: 
  *
@@ -56,8 +56,6 @@
  *   and each container is adressable as a classical synchronous 
  *   memory bank: address registered at cycle (n) / data available 
  *   at cycle (n+1).
- *   Therefore the containers can be accessed by the software as a
- *   "standard", memory mapped, chained buffers data structure.
  **********************************************************************/
 
 #ifndef SOCLIB_CABA_NIC_RX_CHBUF
@@ -72,7 +70,7 @@ namespace caba {
 
 using namespace sc_core;
 
-#define RX_TIMEOUT_VALUE            5000
+#define RX_TIMEOUT_VALUE            10000
 #define NIC_CONTAINER_SIZE          1024                                // Size in words
 #define MAX_PACKET                  ((NIC_CONTAINER_SIZE*4-4)/62)
 
@@ -116,15 +114,16 @@ public:
     /////////////
     void reset()
     {
-        r_full[0]     = false;
-        r_full[1]     = false;
-        r_ptw_word    = (MAX_PACKET/2)+1;
-        r_ptw_cont    = 0;
-        r_ptr_word    = 0;
-        r_ptr_cont    = 0;
-        r_pkt_index   = 0;
-        r_pkt_length  = 0;
-        r_timer       = 1024;
+        r_full[0]      = false;
+        r_full[1]      = false;
+        r_cont[0][0]   = 0;
+        r_cont[1][0]   = 0;
+        r_ptw_word     = (MAX_PACKET>>1)+1;
+        r_ptw_cont     = 0;
+        r_ptr_word     = 0;
+        r_ptr_cont     = 0;
+        r_pkt_length   = 0;
+        r_timer        = RX_TIMEOUT_VALUE;
     }
 
     /////////////////////////////////////////////////////////////////////////////
@@ -185,6 +184,7 @@ public:
             r_pkt_length                   = 0;
         }
         else if ( cmd_w == RX_CHBUF_WCMD_RELEASE ) // release the current container
+                                                   // and update packet number & word number
         {
             assert( (r_full[r_ptw_cont] == false )
                    and "ERROR in NIX_RX_CHBUF : RELEASE request on a full container");
@@ -198,7 +198,8 @@ public:
         }
         else // cmd_w == RX_CHBUF_WCMD_NOP 
         {
-            if ( r_timer <= 0 ) // release the current container if time-out
+            if ( r_timer <= 0 ) // time_out : release the current container
+                                // and update packet number
             {
                 r_full[r_ptw_cont]     = true;
                 r_cont[r_ptw_cont][0]  = (r_ptw_word<<16) | r_pkt_index;
@@ -237,7 +238,8 @@ public:
             assert( (r_full[ptr_cont] == true )
                    and "ERROR in NIX_RX_CHBUF : RELEASE request on a container not full");
 
-            r_full[ptr_cont] = false;
+            r_full[ptr_cont]    = false;
+            r_cont[ptr_cont][0] = 0;
         }
     } // end update()
 
@@ -274,7 +276,7 @@ public:
     /////////////////////////////////////////////////////////////
     bool wok()
     {
-        return (not( r_full[0] or r_full[1]));
+        return ( not (r_full[0] and r_full[1]) );
     }
     /////////////////////////////////////////////////////////////
     // This method returns the current value of timer.
@@ -284,9 +286,56 @@ public:
     {
         return r_timer;
     }
+    /////////////////////////////////////////////////////////////
+    // This method prints the chbuf state, including the two
+    // containers headers.
+    /////////////////////////////////////////////////////////////
+    void print_trace( uint32_t channel)
+    {
+        bool     display;
+        uint32_t packets;
+        uint32_t words;
+
+        for ( size_t cont=0 ; cont<2 ; cont++ )
+        {
+            if ( r_full[cont] )
+            {
+                packets = r_cont[cont][0] & 0x0000FFFF;
+                words   = r_cont[cont][0] >> 16;
+                display = true;
+            }
+            else if ( r_ptw_cont == cont )
+            {    
+                packets = r_pkt_index;
+                words   = r_ptw_word;
+                display = true;
+            }
+            else
+            {
+                display = false;
+            }
+
+            if ( display )
+            {
+                std::cout << std::dec << "RX_CHBUF[" << channel 
+                          << "] / container[" << cont
+                          << "] / full = " << r_full[cont]
+                          << " / words = " << words
+                          << " / packets = " << packets << std::endl;
+
+                for ( size_t p = 0 ; p < packets ; p++ )
+                {
+                    uint32_t word = 1 + (p>>1);
+                    uint32_t plen;
+                    if ( p&0x1 == 0x1 ) plen = r_cont[cont][word] >> 16;
+                    else                plen = r_cont[cont][word] & 0x0000FFFF;
+                    std::cout << "- plen[" << p << "] = " << plen << std::endl;
+                }
+            }
+        }
+    }
     //////////////////////////////////////////////////////////////
-    // constructor checks parameters and allocates the memory
-    // for the containers.
+    // constructor allocates the memory for the containers.
     //////////////////////////////////////////////////////////////
     NicRxChbuf( const std::string  &name )
         : m_name(name)
@@ -306,7 +355,7 @@ public:
         delete [] r_cont;
     }
 
-}; // end NicRxChannel
+}; // end NicRxChbuf
 
 }}
 

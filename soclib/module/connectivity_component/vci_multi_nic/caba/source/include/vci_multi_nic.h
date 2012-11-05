@@ -74,6 +74,7 @@ class VciMultiNic
     sc_signal<uint32_t>         r_global_tdm_period;       // TDM time slot
     sc_signal<uint32_t>         r_global_tdm_timer;        // TDM timer (all cycles)
     sc_signal<uint32_t>         r_global_tdm_channel;      // current channel for TDM
+    sc_signal<bool>             r_global_bypass_enable;    // current channel for TDM
 
     // Channel CONFIGURATION registers
     sc_signal<uint32_t>         *r_channel_mac_4;          // MAC address (first 4 bytes)
@@ -90,9 +91,8 @@ class VciMultiNic
     sc_signal<typename vci_param::trdid_t>	r_vci_trdid;   // for rtrdid
     sc_signal<typename vci_param::pktid_t>	r_vci_pktid;   // for rpktid
     sc_signal<typename vci_param::data_t>	r_vci_wdata;   // for write burst
-    sc_signal<size_t>           r_vci_channel;             // selected channel
     sc_signal<size_t>           r_vci_nwords;              // word counter 
-    sc_signal<uint32_t>         r_vci_address;             // address vci for TX_WRITE_BURST
+    sc_signal<uint32_t>         r_vci_address;             // used for bursts
 
     // RX_G2S FSM registers
     sc_signal<int>              r_rx_g2s_fsm;
@@ -124,7 +124,7 @@ class VciMultiNic
     sc_signal<int>              r_rx_dispatch_fsm;
     sc_signal<bool>             r_rx_dispatch_bp;          // previouly allocated to bp
     sc_signal<uint32_t>         r_rx_dispatch_data;        // first word mac address
-    sc_signal<uint32_t>         r_rx_dispatch_nwords;      // number of words to be written
+    sc_signal<uint32_t>         r_rx_dispatch_nbytes;      // number of bytes to be written
     sc_signal<uint32_t>         r_rx_dispatch_dest;        // bit vector: 1 bit per channel
 
     sc_signal<uint32_t>         r_rx_dispatch_npkt_received;     // received packets
@@ -218,7 +218,7 @@ public:
         RX_G2S_FAIL,
     };
     enum rx_des_fsm_state_e {
-    	RX_DES_READ_0,
+    	RX_DES_IDLE,
 	    RX_DES_READ_1,
 	    RX_DES_READ_2,
 	    RX_DES_READ_3,
@@ -285,7 +285,7 @@ public:
     sc_out<bool>* 				            p_rx_irq;
     sc_out<bool>* 				            p_tx_irq;
 
-    void print_trace(uint32_t option = 0);
+    void print_trace(uint32_t option = 1);
     uint32_t get_total_len_gmii();
     uint32_t get_total_len_rx_chan();
     uint32_t get_total_len_tx_chan();

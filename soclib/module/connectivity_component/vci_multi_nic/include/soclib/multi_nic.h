@@ -35,9 +35,10 @@ enum SoclibMultiNicHyperviseurRegisters
 {
     NIC_G_VIS                   = 0,   // bitfield : bit N = 0 -> channel N disabled
     NIC_G_ON                    = 1,   // boolean : NIC component activated
-    NIC_G_BC_ENABLE             = 2,   // Enable Broadcast if non zero
-    NIC_G_TDM_ENABLE            = 3,   // TDM Scheduler if non zero / Round-Robin if zero
+    NIC_G_BC_ENABLE             = 2,   // boolean : Enable Broadcast if non zero
+    NIC_G_TDM_ENABLE            = 3,   // boolean : TDM Scheduler if non zero / Round-Robin if zero
     NIC_G_TDM_PERIOD            = 4,   // TDM time slot value
+    NIC_G_BYPASS_ENABLE         = 5,   // boolean : Enable bypass for TX packets
     //
     NIC_G_MAC_4                 = 8,   // channel mac address 32 LSB bits array[8]
     //

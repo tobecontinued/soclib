@@ -32,10 +32,10 @@
  * Authors      : Alain Greiner
  **********************************************************************
  * This object implements an hardware chained buffer controler, 
- * used to store transmited packets (from software to NIC), 
- * in a multi-channels, GMII compliant, network controller.
+ * It is used to store transmited packets (from software to NIC), 
+ * by a multi-channels, GMII compliant, network controller.
  * It contains two  4K bytes containers, acting as a two slots 
- * chained buffer.
+ * chained buffer that can be accessed by software.
  *
  * Read an write accesses are not symetrical: 
  *
@@ -43,9 +43,6 @@
  *   and each container is adressable as a classical synchronous 
  *   memory bank: address & data registered at cycle (n) / actual
  *   write done at cycle (n+1).
- *   Therefore the containers can be accessed by the software 
- *   or by a software controled DMA component as a "standard", 
- *   memory mapped, chained buffers data structure.
  * - On the reader side (NIC), the number of containers is not visible:
  *   The ROK flag is true if there is a readable container.
  *   The NIC reads all paquets in the container, after checking the number 
@@ -111,6 +108,8 @@ public:
     {
         r_full[0]     = false;
         r_full[1]     = false;
+        r_cont[0][0]  = 0;
+        r_cont[1][0]  = 0;
         r_ptr_word    = (MAX_PACKET/2)+1;
         r_ptr_first   = (MAX_PACKET/2)+1;
         r_ptr_cont    = 0;
@@ -255,9 +254,42 @@ public:
         if ( container ) return r_full[1];
         else             return r_full[0];
     }
+    /////////////////////////////////////////////////////////////
+    // This method prints the chbuf state, including the two
+    // containers headers, when the container is full.
+    /////////////////////////////////////////////////////////////
+    void print_trace( uint32_t channel )
+    {
+        uint32_t packets;
+        uint32_t words;
+
+        for ( size_t cont=0 ; cont<2 ; cont++)
+        {
+            if ( r_full[cont] )
+            {
+                packets = r_cont[cont][0] & 0x0000FFFF;
+                words   = r_cont[cont][0] >> 16;
+
+                std::cout << std::dec << "TX_CHBUF[" << channel 
+                      << "] / container[" << cont 
+                      << "] / full = " << r_full[cont]    
+                      << " / words = " << words
+                      << " / packets = " << packets << std::endl;
+
+                for ( size_t p = 0 ; p < packets ; p++ )
+                {
+                    uint32_t word = 1 + (p>>1);
+                    uint32_t plen;
+                    if ( p&0x1 == 0x1 ) plen = r_cont[cont][word] >> 16;
+                    else                plen = r_cont[cont][word] & 0x0000FFFF;
+                    std::cout << "- plen[" << p << "] = " << plen << std::endl;
+                }
+            }
+        }
+    }
+
     //////////////////////////////////////////////////////////////
-    // constructor checks parameters and allocates the memory
-    // for the containers.
+    // constructor allocates the memory for the containers.
     //////////////////////////////////////////////////////////////
     NicTxChbuf( const std::string  &name)
     : m_name(name)
@@ -276,7 +308,7 @@ public:
         delete [] r_cont;
     }
 
-}; // end NicTxChannel
+}; // end NicTxChbuf
 
 }}
 

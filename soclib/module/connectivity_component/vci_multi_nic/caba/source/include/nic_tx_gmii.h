@@ -36,10 +36,9 @@
  * and respecting the GMII protocol (one byte per cycle).
  * It writes packets in a file defined by the "path" constructor argument.
  *************************************************************************
- * This object has 3 constructor parameters:
+ * This object has 2 constructor parameters:
  * - string   name    : module name
  * - string   path    : file pathname.
- * - uint32_t gap     : number of cycles between packets
  *************************************************************************/
 
 #ifndef SOCLIB_CABA_GMII_TX_H
@@ -71,54 +70,19 @@ class NicTxGmii
     // registers
     uint32_t            r_counter;      // cycles counter (used for both gap and plen)
     uint8_t*	        r_buffer;       // local buffer containing one packet
-    
 
     ///////////////////////////////////////////////////////////////////
     // This function is used to write one packet to the input file
     ///////////////////////////////////////////////////////////////////
     void write_one_packet()
     {
-        if (m_file)
+
+        m_file << std::dec << r_counter << ' ';
+        for ( size_t cpt = 0; cpt < r_counter ; cpt++ )
         {
-            uint32_t cpt = 0;
-            uint32_t data = 0;
-            // write in the file r_counter value
-            m_file << (unsigned)r_counter << ' ';
-            for (cpt = 0; cpt < (r_counter - 4) ; cpt += 4)
-            {
-                data = r_buffer[cpt];
-
-                if( (cpt+1) >= (r_counter-4) )
-                {
-                    m_file <<std::setfill('0')<<std::setw(2)<< std::hex << data;
-                    break;
-                }
-                data = data | (r_buffer[cpt+1]<<8);
-                
-                if( (cpt+2) >= (r_counter-4) )
-                {
-                    m_file <<std::setfill('0')<<std::setw(4)<< std::hex << data;
-                    break;
-                }
-                data = data | (r_buffer[cpt+2]<<16);
-                
-                if( (cpt+3) >= (r_counter-4) )
-                {
-                    m_file <<std::setfill('0')<<std::setw(6)<< std::hex << data;
-                    break;
-                }
-                data = data | (r_buffer[cpt+3]<<24);
-
-                //write data from r_buffer[cpt] in the file
-                m_file <<std::setfill('0')<<std::setw(8)<< std::hex << data;
-            }
-            data = r_buffer[r_counter-4];
-            data = data | (r_buffer[r_counter-3]<<8);
-            data = data | (r_buffer[r_counter-2]<<16);
-            data = data | (r_buffer[r_counter-1]<<24);
-            m_file <<std::setfill('0')<<std::setw(8)<< std::hex << data;
-            m_file << std::dec << std::endl;
+            m_file <<std::setfill('0')<<std::setw(2)<< std::hex << (uint32_t)r_buffer[cpt];
         }
+        m_file << std::dec << std::endl;
     }
 
 public:
@@ -134,7 +98,6 @@ public:
     // at all cycles of a 125MHz clock.
     ///////////////////////////////////////////////////////////////////
     void put( bool     dv,          // data valid
-              bool     er,          // data error
               uint8_t  dt )         // data value
     {
         if ( not dv and (r_counter != 0) )    // end of packet
@@ -150,14 +113,22 @@ public:
     } // end put()
                 
     //////////////////////////////////////////////////////////////
-    // constructor open the file
+    // constructor 
     //////////////////////////////////////////////////////////////
     NicTxGmii( const std::string  &name,
                const std::string  &path )
     : m_name(name),
       m_file(path.c_str(),std::ios::out)
     {
-        r_buffer        = new uint8_t[2048];
+        r_buffer    = new uint8_t[2048];
+        if ( m_file )
+        {
+            std::cout << "output file = " << path << std::endl;
+        }
+        else
+        {
+            std::cout << "ERROR in TX_GMII : cannot open file " << path << std::endl;
+        }
     } 
 
     //////////////////
