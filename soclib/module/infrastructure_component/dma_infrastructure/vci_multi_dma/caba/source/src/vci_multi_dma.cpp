@@ -596,7 +596,7 @@ tmpl(void)::transition()
                     "VCI_MULTI_DMA error : wrong number of flits for a read response packet");
 
                     r_channel_done[k] = true;
-                    r_channel_error[k] = (p_vci_initiator.rerror.read()&0x1 != 0);
+                    r_channel_error[k] = ((p_vci_initiator.rerror.read() & 0x1) != 0);
                     r_rsp_fsm = RSP_IDLE;
                 } 
                 r_rsp_count = r_rsp_count.read() + 4;
@@ -614,7 +614,7 @@ tmpl(void)::transition()
                 size_t k  = r_rsp_index.read();
                 r_channel_length[k] = r_channel_length[k].read() - r_rsp_nbytes.read();
                 r_channel_done[k]   = true;
-                r_channel_error[k]  = (p_vci_initiator.rerror.read()&0x1 != 0);
+                r_channel_error[k]  = ((p_vci_initiator.rerror.read() & 0x1) != 0);
                 r_rsp_fsm           = RSP_IDLE;
             }
             break;
@@ -878,7 +878,7 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
     "VCI_MULTI_DMA error : The requested burst length is not possible with the VCI PLEN size");
 
     assert( ((burst_max_length==4) or (burst_max_length==8) or (burst_max_length==16) or 
-             (burst_max_length==32) or (burst_max_length==64)) or (burst_max_length==128) and
+             (burst_max_length==32) or (burst_max_length==64) or (burst_max_length==128)) and
     "VCI_MULTI_DMA error : The requested burst length must be 4, 8, 16, 32, 64, or 128 bytes");
     
     assert( (channels <= 8)  and
