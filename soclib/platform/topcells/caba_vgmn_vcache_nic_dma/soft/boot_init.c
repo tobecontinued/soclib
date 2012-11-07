@@ -168,6 +168,7 @@ void boot_activate_nic(unsigned int channels)
     }
     nic_hyper_base[NIC_G_VIS]             = active;
     nic_hyper_base[NIC_G_BYPASS_ENABLE]   = 0x0;
+    nic_hyper_base[NIC_G_BC_ENABLE]       = 0x1;
     nic_hyper_base[NIC_G_ON]              = 0x1;
 
 } // end boot_activate_nic()

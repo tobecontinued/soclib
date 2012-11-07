@@ -645,7 +645,7 @@ int _main(int argc, char *argv[])
             ram->print_trace();
             signal_vci_tgt_ram.print_trace("signal_ram");
 #endif
-            nic->print_trace(0x3001);
+            nic->print_trace(0x3FF1);
             signal_vci_tgt_nic.print_trace("signal_nic");
             dma->print_trace();
             signal_vci_tgt_dma.print_trace("signal_tgt_dma");
