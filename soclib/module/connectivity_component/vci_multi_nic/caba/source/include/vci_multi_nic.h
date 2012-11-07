@@ -129,8 +129,8 @@ class VciMultiNic
 
     sc_signal<uint32_t>         r_rx_dispatch_npkt_received;     // received packets
     sc_signal<uint32_t>         r_rx_dispatch_npkt_broadcast;    // broadcast packets
-    sc_signal<uint32_t>         r_rx_dispatch_npkt_mac_fail;     // discarded packets 
-    sc_signal<uint32_t>         r_rx_dispatch_npkt_full;         // discarded packets
+    sc_signal<uint32_t>         r_rx_dispatch_npkt_dst_fail;     // discarded packets 
+    sc_signal<uint32_t>         r_rx_dispatch_npkt_channel_full; // discarded packets
 
     // TX_DISPATCH registers
     sc_signal<int>              r_tx_dispatch_fsm;
@@ -147,7 +147,6 @@ class VciMultiNic
     sc_signal<uint32_t>         r_tx_dispatch_npkt_too_small;    // discarded packets
     sc_signal<uint32_t>         r_tx_dispatch_npkt_too_big;      // discarded packets
     sc_signal<uint32_t>         r_tx_dispatch_npkt_src_fail;     // discarded packets
-    sc_signal<uint32_t>         r_tx_dispatch_npkt_self;         // discarded packets
     sc_signal<uint32_t>         r_tx_dispatch_npkt_broadcast;    // broadcast packets
     sc_signal<uint32_t>         r_tx_dispatch_npkt_bypass;       // bypass packets
     sc_signal<uint32_t>         r_tx_dispatch_npkt_transmit;     // transmit packets

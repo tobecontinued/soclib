@@ -96,11 +96,30 @@
 // 		* NIC_G_MAC_2[8]        : initialize the channels MAC_2 (wired value at reset)
 //
 // - It contains various event counters for statistics (read/write)
-//      * NIC_G_NPKT_BYPASS           : number of "channel to channel" packets
-//      * NIC_G_NPKT_RX_G2S_RECEIVED  : number of packets received on GMII RX port 
-//      * NIC_G_NPKT_RX_G2S_DISCARDED : number of packets discarded by RX_G2S FSM
-//      * NIC_G_NPKT_RX_G2S_ERROR     : number of error packets transmited by RX_G2S FSM
-////////////////////////////////////////////////////////////////////////////////////////////
+//
+//      * NIC_G_NPKT_RX_G2S_RECEIVED       : number of packets received on GMII RX port 
+//      * NIC_G_NPKT_RX_G2S_DISCARDED      : number of TX packets discarded by RX_G2S FSM
+//
+//      * NIC_G_NPKT_RX_DES_SUCCESS        : number of TX packets transmited by RX_DES FSM
+//      * NIC_G_NPKT_RX_DES_TOO_SMALL      : number of discarded too small TX packets 
+//      * NIC_G_NPKT_RX_DES_TOO_BIG        : number of discarded too big TX packets 
+//      * NIC_G_NPKT_RX_DES_MFIFO_FULL     : number of discarded TX packets because fifo full
+//      * NIC_G_NPKT_RX_DES_CS_FAIL        : number of discarded TX packets because checksum 
+//
+//      * NIC_G_NPKT_RX_DISPATCH_RECEIVED  : number of packets received by RX_DISPATCH FSM
+//      * NIC_G_NPKT_RX_DISPATCH_BROADCAST : number of broadcast TX packets received 
+//      * NIC_G_NPKT_RX_DISPATCH_DST_FAIL  : number of discarded TX packets because DST MAC 
+//      * NIC_G_NPKT_RX_DISPATCH_CH_FULL   : number of discarded TX packets because channel full
+//
+//      * NIC_G_NPKT_TX_DISPATCH_RECEIVED  : number of packets received by TX_DISPATCH FSM
+//      * NIC_G_NPKT_RX_DISPATCH_TOO_SMALL : number of discarded too small TX packets 
+//      * NIC_G_NPKT_RX_DISPATCH_TOO_BIG   : number of discarded too big TX packets 
+//      * NIC_G_NPKT_RX_DISPATCH_SRC_FAIL  : number of discarded TX packets because SRC MAC
+//      * NIC_G_NPKT_RX_DISPATCH_BROADCAST : number of broadcast TX packets received
+//      * NIC_G_NPKT_RX_DISPATCH_BYPASS    : number of bypassed TX->RX packets
+//      * NIC_G_NPKT_RX_DISPATCH_TRANSMIT  : number of transmit TX packets
+// 
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <stdint.h>
 #include <cassert>
@@ -198,20 +217,18 @@ tmpl(uint32_t)::read_hyper_register(uint32_t addr)
         case NIC_G_BYPASS_ENABLE:
             data = r_global_bypass_enable.read();
             break;
-/*
-        case NIC_G_NPKT_BYPASS :
-            data = r_tx_dispatch_npkt_bypass.read();
-            break;
+
         case NIC_G_NPKT_RX_G2S_RECEIVED :
             data = r_rx_g2s_npkt_received.read();
             break;
         case NIC_G_NPKT_RX_G2S_DISCARDED :
             data = r_rx_g2s_npkt_discarded.read();
             break;
+
         case NIC_G_NPKT_RX_DES_SUCCESS :
             data = r_rx_des_npkt_success.read();
             break;
-        case NIC_G_NPKT_RX_DES_TOO_SMALL :
+        case NIC_G_NPKT_RX_DES_TOO_SMALL : 
             data = r_rx_des_npkt_too_small.read();
             break;
         case NIC_G_NPKT_RX_DES_TOO_BIG :
@@ -223,25 +240,42 @@ tmpl(uint32_t)::read_hyper_register(uint32_t addr)
         case NIC_G_NPKT_RX_DES_CS_FAIL :
             data = r_rx_des_npkt_cs_fail.read();
             break;
-        case NIC_G_RX_NPKT_CHANNEL_SUCCESS :
-           data = r_rx_dispatch_npkt_wchannel_success.read();
-           break;
-        case NIC_G_RX_CHBUF_FAIL :
-            data = r_rx_dispatch_npkt_wchannel_fail.read();
+
+        case NIC_G_NPKT_RX_DISPATCH_RECEIVED :
+            data = r_rx_dispatch_npkt_received.read();
             break;
-        case NIC_G_NPKT_RX_MAC_FAIL :
-            data = r_rx_dispatch_npkt_skip_adrmac_fail.read();
+        case NIC_G_NPKT_RX_DISPATCH_BROADCAST :
+            data = r_rx_dispatch_npkt_broadcast.read();
             break;
-        case NIC_G_NPKT_TX_PKT :
-            data = r_tx_npkt.read();
+        case NIC_G_NPKT_RX_DISPATCH_DST_FAIL :
+            data = r_rx_dispatch_npkt_dst_fail.read();
             break;
-        case NIC_G_TX_NPKT_TOO_SMALL :
-            data = r_tx_npkt_small.read();
+        case NIC_G_NPKT_RX_DISPATCH_CH_FULL :
+            data = r_rx_dispatch_npkt_channel_full.read();
             break;
-        case NIC_G_TX_NPKT_TOO_BIG :
-            data = r_tx_npkt_overflow.read();
+
+        case NIC_G_NPKT_TX_DISPATCH_RECEIVED :
+            data = r_tx_dispatch_npkt_received.read();
             break;
-*/
+        case NIC_G_NPKT_TX_DISPATCH_TOO_SMALL :
+            data = r_tx_dispatch_npkt_too_small.read();
+            break;
+        case NIC_G_NPKT_TX_DISPATCH_TOO_BIG :
+            data = r_tx_dispatch_npkt_too_big.read();
+            break;
+        case NIC_G_NPKT_TX_DISPATCH_SRC_FAIL :
+            data = r_tx_dispatch_npkt_src_fail.read();
+            break;
+        case NIC_G_NPKT_TX_DISPATCH_BROADCAST :
+            data = r_tx_dispatch_npkt_broadcast.read();
+            break;
+        case NIC_G_NPKT_TX_DISPATCH_BYPASS :
+            data = r_tx_dispatch_npkt_bypass.read();
+            break;
+        case NIC_G_NPKT_TX_DISPATCH_TRANSMIT :
+            data = r_tx_dispatch_npkt_transmit.read();
+            break;
+
         default:
             assert ( false and
             "ERROR in VCI_MULTI_NIC : illegal global register index in VCI write");
@@ -304,57 +338,56 @@ tmpl(void)::transition()
 {
     if (!p_resetn) 
     {
-        r_global_bc_enable           = false;
-        r_global_nic_on              = false;
-        r_global_active_channels     = 0;
-        r_global_tdm_enable          = false;
-        r_global_tdm_period          = DEFAULT_TDM_PERIOD;
-        r_global_tdm_timer           = DEFAULT_TDM_PERIOD;
-        r_global_tdm_channel         = 0;
-        r_global_bypass_enable       = true;
+        r_global_bc_enable              = false;
+        r_global_nic_on                 = false;
+        r_global_active_channels        = 0;
+        r_global_tdm_enable             = false;
+        r_global_tdm_period             = DEFAULT_TDM_PERIOD;
+        r_global_tdm_timer              = DEFAULT_TDM_PERIOD;
+        r_global_tdm_channel            = 0;
+        r_global_bypass_enable          = true;
 
         for ( size_t k=0 ; k<m_channels ; k++ )
         {
-            r_channel_mac_4[k]       = DEFAULT_MAC_4;
-            r_channel_mac_2[k]       = DEFAULT_MAC_2 + k;
+            r_channel_mac_4[k]          = DEFAULT_MAC_4;
+            r_channel_mac_2[k]          = DEFAULT_MAC_2 + k;
         }
         
-        r_vci_fsm                    = VCI_IDLE;
+        r_vci_fsm                       = VCI_IDLE;
 
-        r_rx_g2s_fsm                 = RX_G2S_IDLE;
-        r_rx_g2s_npkt_received       = 0;
-        r_rx_g2s_npkt_discarded      = 0;
+        r_rx_g2s_fsm                    = RX_G2S_IDLE;
+        r_rx_g2s_npkt_received          = 0;
+        r_rx_g2s_npkt_discarded         = 0;
+ 
+        r_rx_des_fsm                    = RX_DES_IDLE;
+        r_rx_des_npkt_success           = 0;
+        r_rx_des_npkt_too_small         = 0;
+        r_rx_des_npkt_too_big           = 0;
+        r_rx_des_npkt_mfifo_full        = 0;
+        r_rx_des_npkt_cs_fail           = 0;
 
-        r_rx_des_fsm                 = RX_DES_IDLE;
-        r_rx_des_npkt_success        = 0;
-        r_rx_des_npkt_too_small      = 0;
-        r_rx_des_npkt_too_big        = 0;
-        r_rx_des_npkt_mfifo_full     = 0;
-        r_rx_des_npkt_cs_fail        = 0;
+        r_rx_dispatch_fsm               = RX_DISPATCH_IDLE;
+        r_rx_dispatch_bp                = false;
+        r_rx_dispatch_npkt_received     = 0;
+        r_rx_dispatch_npkt_broadcast    = 0;
+        r_rx_dispatch_npkt_dst_fail     = 0;
+        r_rx_dispatch_npkt_channel_full = 0;
 
-        r_rx_dispatch_fsm            = RX_DISPATCH_IDLE;
-        r_rx_dispatch_bp             = false;
-        r_rx_dispatch_npkt_received  = 0;
-        r_rx_dispatch_npkt_broadcast = 0;
-        r_rx_dispatch_npkt_mac_fail  = 0;
-        r_rx_dispatch_npkt_full      = 0;
+        r_tx_dispatch_fsm               = TX_DISPATCH_IDLE;
+        r_tx_dispatch_channel           = 0;
+        r_tx_dispatch_npkt_received     = 0;
+        r_tx_dispatch_npkt_too_small    = 0;
+        r_tx_dispatch_npkt_too_big      = 0;
+        r_tx_dispatch_npkt_src_fail     = 0;
+        r_tx_dispatch_npkt_broadcast    = 0;
+        r_tx_dispatch_npkt_bypass       = 0;
+        r_tx_dispatch_npkt_transmit     = 0;
+ 
+        r_tx_ser_fsm                    = TX_SER_IDLE;
+        r_tx_ser_ifg                    = INTER_FRAME_GAP;
 
-        r_tx_dispatch_fsm            = TX_DISPATCH_IDLE;
-        r_tx_dispatch_channel        = 0;
-        r_tx_dispatch_npkt_received  = 0;
-        r_tx_dispatch_npkt_too_small = 0;
-        r_tx_dispatch_npkt_too_big   = 0;
-        r_tx_dispatch_npkt_src_fail  = 0;
-        r_tx_dispatch_npkt_self      = 0;
-        r_tx_dispatch_npkt_broadcast        = 0;
-        r_tx_dispatch_npkt_bypass    = 0;
-        r_tx_dispatch_npkt_transmit  = 0;
-
-        r_tx_ser_fsm                 = TX_SER_IDLE;
-        r_tx_ser_ifg                 = INTER_FRAME_GAP;
-
-        r_tx_s2g_fsm                 = TX_S2G_IDLE;
-        r_tx_s2g_checksum            = 0;
+        r_tx_s2g_fsm                    = TX_S2G_IDLE;
+        r_tx_s2g_checksum               = 0;
 
         r_rx_fifo_stream.init();
         r_tx_fifo_stream.init();
@@ -647,6 +680,65 @@ tmpl(void)::transition()
                         case NIC_G_BYPASS_ENABLE :
                             r_global_bypass_enable = r_vci_wdata.read();
                             break;
+
+                        case NIC_G_NPKT_RX_G2S_RECEIVED :
+                            r_rx_g2s_npkt_received = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_RX_G2S_DISCARDED :
+                            r_rx_g2s_npkt_discarded = r_vci_wdata.read();
+                            break;
+
+                        case NIC_G_NPKT_RX_DES_SUCCESS :
+                            r_rx_des_npkt_success = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_RX_DES_TOO_SMALL : 
+                            r_rx_des_npkt_too_small = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_RX_DES_TOO_BIG :
+                            r_rx_des_npkt_too_big = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_RX_DES_MFIFO_FULL :
+                            r_rx_des_npkt_mfifo_full = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_RX_DES_CS_FAIL :
+                            r_rx_des_npkt_cs_fail = r_vci_wdata.read();
+                            break;
+
+                        case NIC_G_NPKT_RX_DISPATCH_RECEIVED :
+                            r_rx_dispatch_npkt_received = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_RX_DISPATCH_BROADCAST :
+                            r_rx_dispatch_npkt_broadcast = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_RX_DISPATCH_DST_FAIL :
+                            r_rx_dispatch_npkt_dst_fail = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_RX_DISPATCH_CH_FULL :
+                            r_rx_dispatch_npkt_channel_full = r_vci_wdata.read();
+                            break;
+
+                        case NIC_G_NPKT_TX_DISPATCH_RECEIVED :
+                            r_tx_dispatch_npkt_received = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_TX_DISPATCH_TOO_SMALL :
+                            r_tx_dispatch_npkt_too_small = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_TX_DISPATCH_TOO_BIG :
+                            r_tx_dispatch_npkt_too_big = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_TX_DISPATCH_SRC_FAIL :
+                            r_tx_dispatch_npkt_src_fail = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_TX_DISPATCH_BROADCAST :
+                            r_tx_dispatch_npkt_broadcast = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_TX_DISPATCH_BYPASS :
+                            r_tx_dispatch_npkt_bypass = r_vci_wdata.read();
+                            break;
+                        case NIC_G_NPKT_TX_DISPATCH_TRANSMIT :
+                            r_tx_dispatch_npkt_transmit = r_vci_wdata.read();
+                            break;
+
                         default:
                             assert ( false and
                             "ERROR in VCI_MULTI_NIC : illegal global register in VCI read");
@@ -1402,7 +1494,8 @@ if ( r_rx_g2s_checksum.read() != check )
                     if ( not wok )  // container full => discard packet
                     {
                         r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
-                        r_rx_dispatch_npkt_full = r_rx_dispatch_npkt_full.read() + 1;
+                        r_rx_dispatch_npkt_channel_full =
+                            r_rx_dispatch_npkt_channel_full.read() + 1;
                     }
                     else if (space and time)    // transfer possible
                     {
@@ -1416,8 +1509,9 @@ if ( r_rx_g2s_checksum.read() != check )
             } // end for channels
             if ( not found )
             {
-                r_rx_dispatch_npkt_mac_fail = r_rx_dispatch_npkt_mac_fail.read() + 1;
                 r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
+                r_rx_dispatch_npkt_dst_fail = 
+                    r_rx_dispatch_npkt_dst_fail.read() + 1;
             }
             break;
         }
@@ -1458,6 +1552,8 @@ if ( r_rx_g2s_checksum.read() != check )
             else                    // no channel selected => discard packet
             {
                 r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
+                r_rx_dispatch_npkt_channel_full =
+                    r_rx_dispatch_npkt_channel_full.read() + 1;
             }
             break; 
         }
@@ -1734,7 +1830,7 @@ if ( r_rx_g2s_checksum.read() != check )
                 {
                     if ( bypass_channel == channel ) // DST == SRC => skip packet
                     {
-                        r_tx_dispatch_npkt_self = r_tx_dispatch_npkt_self.read() + 1; 
+                        r_tx_dispatch_npkt_src_fail = r_tx_dispatch_npkt_src_fail.read() + 1; 
                         r_tx_dispatch_fsm = TX_DISPATCH_SKIP_PKT;
                     }
                     else                // BYPASS => to BP fifo
@@ -2561,8 +2657,8 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
 
           r_rx_dispatch_npkt_received("r_rx_dispatch_npkt_received"),
           r_rx_dispatch_npkt_broadcast("r_rx_dispatch_npkt_broadcast"),
-          r_rx_dispatch_npkt_mac_fail("r_rx_dispatch_npkt_mac_fail"),
-          r_rx_dispatch_npkt_full("r_rx_dispatch_npkt_full"),
+          r_rx_dispatch_npkt_dst_fail("r_rx_dispatch_npkt_dst_fail"),
+          r_rx_dispatch_npkt_channel_full("r_rx_dispatch_npkt_channel_full"),
 
           r_tx_dispatch_fsm("r_tx_dispatch_fsm"),
           r_tx_dispatch_channel("r_tx_dispatch_channel"),
@@ -2578,7 +2674,6 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
           r_tx_dispatch_npkt_too_small("r_tx_dispatch_npkt_too_small"),
           r_tx_dispatch_npkt_too_big("r_tx_dispatch_npkt_too_big"),
           r_tx_dispatch_npkt_src_fail("r_tx_dispatch_npkt_src_fail"),
-          r_tx_dispatch_npkt_self("r_tx_dispatch_npkt_self"),
           r_tx_dispatch_npkt_broadcast("r_tx_dispatch_npkt_broadcast"),
           r_tx_dispatch_npkt_bypass("r_tx_dispatch_npkt_bypass"),
           r_tx_dispatch_npkt_transmit("r_tx_dispatch_npkt_transmit"),
