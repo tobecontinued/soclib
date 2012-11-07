@@ -1206,7 +1206,7 @@ if ( r_rx_g2s_checksum.read() != check )
     	{
             uint16_t data = r_rx_fifo_stream.read();
 		    uint32_t type = (data >> 8) & 0x3;
-		
+
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
             {
 		        r_rx_des_data[3]	= (uint8_t)(data & 0xFF);
@@ -1353,12 +1353,13 @@ if ( r_rx_g2s_checksum.read() != check )
                                       // in source fifo) to get the MAC extension
                                       // and analyse broadcast
         {
-            uint32_t ext; 
-            if ( r_rx_dispatch_bp.read() ) ext = r_bp_fifo_multi.data()>>16;
-            else                           ext = r_rx_fifo_multi.data()>>16;  
+            uint32_t dst_mac_4 = r_rx_dispatch_data.read();
+            uint32_t dst_mac_2;
+            if ( r_rx_dispatch_bp.read() ) dst_mac_2 = r_bp_fifo_multi.data() & 0x0000FFFF;
+            else                           dst_mac_2 = r_rx_fifo_multi.data() & 0x0000FFFF;
             
-            if ( (r_rx_dispatch_data.read() == 0xFFFFFFFF) and 
-                 (ext == 0x0000FFFF) and r_global_bc_enable.read() )     // broadcast 
+            if ( (dst_mac_4 == 0xFFFFFFFF) and (dst_mac_2 == 0x0000FFFF) 
+               and r_global_bc_enable.read() )          // broadcast 
             {
                 r_rx_dispatch_dest           = 0;
                 r_rx_dispatch_fsm            = RX_DISPATCH_SELECT_BC;
@@ -1383,7 +1384,7 @@ if ( r_rx_g2s_checksum.read() != check )
             uint32_t dst_mac_4 = r_rx_dispatch_data.read();
             uint32_t dst_mac_2;
             if ( r_rx_dispatch_bp.read() ) dst_mac_2 = r_bp_fifo_multi.data() & 0x0000FFFF;
-            else                           dst_mac_2 = r_rx_fifo_multi.data() & 0x0000FFFF;;  
+            else                           dst_mac_2 = r_rx_fifo_multi.data() & 0x0000FFFF;  
 
             for ( size_t k=0 ; (k<m_channels) && not found ; k++ )
             {
