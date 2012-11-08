@@ -69,16 +69,16 @@ enum SoclibMultiNicHyperviseurRegisters
 
 enum SoclibMultiNicChannelRegisters 
 {
-    NIC_C_RX_FULL_0             = 0,   // RX_0 container status            (Read/Write)
-    NIC_C_RX_PBUF_0             = 1,   // RX_0 container base address      (Read/Write) 
-    NIC_C_RX_FULL_1             = 2,   // RX_1 container status            (Read/Write)
-    NIC_C_RX_PBUF_1             = 3,   // RX_1 container base address      (Read/Write) 
-    NIC_C_TX_FULL_0             = 4,   // RX_0 container status            (Read/Write)
-    NIC_C_TX_PBUF_0             = 5,   // RX_0 container base address      (Read/Write) 
-    NIC_C_TX_FULL_1             = 6,   // RX_1 container status            (Read/Write)
-    NIC_C_TX_PBUF_1             = 7,   // RX_1 container base address      (Read/Write) 
-    NIC_C_MAC_4                 = 8,   // channel mac address 32 LSB bits  (Read Only)
-    NIC_C_MAC_2                 = 9,   // channel mac address 16 LSB bits  (Read Only)
+    NIC_RX_FULL_0             = 0,   // RX_0 container status            (Read/Write)
+    NIC_RX_PBUF_0             = 1,   // RX_0 container base address      (Read/Write) 
+    NIC_RX_FULL_1             = 2,   // RX_1 container status            (Read/Write)
+    NIC_RX_PBUF_1             = 3,   // RX_1 container base address      (Read/Write) 
+    NIC_TX_FULL_0             = 4,   // RX_0 container status            (Read/Write)
+    NIC_TX_PBUF_0             = 5,   // RX_0 container base address      (Read/Write) 
+    NIC_TX_FULL_1             = 6,   // RX_1 container status            (Read/Write)
+    NIC_TX_PBUF_1             = 7,   // RX_1 container base address      (Read/Write) 
+    NIC_MAC_4                 = 8,   // channel mac address 32 LSB bits  (Read Only)
+    NIC_MAC_2                 = 9,   // channel mac address 16 LSB bits  (Read Only)
 };
 
 #endif 

@@ -71,16 +71,16 @@
 // 	- The next  4 Kbytes contain the TX_0 container data
 // 	- The next  4 Kbytes contain the TX_1 container data
 // 	- The next  4 Kbytes contain the channel addressable registers
-// 		* NIC_C_RX_FULL_0  : RX_0 container status       (read/write)
-// 		* NIC_C_RX_PBUF_0  : RX_0 container base address (read/write)  
-// 		* NIC_C_RX_FULL_1  : RX_1 container status       (read/write)
-// 		* NIC_C_RX_PBUF_1  : RX_1 container base address (read/write)
-// 		* NIC_C_TX_FULL_0  : TX_0 container status       (read/write)
-// 		* NIC_C_TX_PBUF_0  : TX_0 container base address (read/write)
-// 		* NIC_C_TX_FULL_1  : TX_1 container status       (read/write)
-// 		* NIC_C_TX_PBUF_1  : TX_1 container base address (read/write)
-// 		* NIC_C_MAC_4      : MAC @ 32 MSB bits           (read_only)
-// 		* NIC_C_MAC_2      : MAC @ 16 LSB bits           (read_only)
+// 		* NIC_RX_FULL_0  : RX_0 container status       (read/write)
+// 		* NIC_RX_PBUF_0  : RX_0 container base address (read/write)  
+// 		* NIC_RX_FULL_1  : RX_1 container status       (read/write)
+// 		* NIC_RX_PBUF_1  : RX_1 container base address (read/write)
+// 		* NIC_TX_FULL_0  : TX_0 container status       (read/write)
+// 		* NIC_TX_PBUF_0  : TX_0 container base address (read/write)
+// 		* NIC_TX_FULL_1  : TX_1 container status       (read/write)
+// 		* NIC_TX_PBUF_1  : TX_1 container base address (read/write)
+// 		* NIC_MAC_4      : MAC @ 32 MSB bits           (read_only)
+// 		* NIC_MAC_2      : MAC @ 16 LSB bits           (read_only)
 //
 // On top of the channels segments is the hypervisor segment, taking 8 Kbytes:
 // It cannot be accessed by the virtual machines.
@@ -295,34 +295,34 @@ tmpl(uint32_t)::read_channel_register(uint32_t addr)
 
     switch(word)
     {
-        case NIC_C_RX_FULL_0:
+        case NIC_RX_FULL_0:
             data = r_rx_chbuf[channel].full(0);
             break;
-        case NIC_C_RX_FULL_1:
+        case NIC_RX_FULL_1:
             data = r_rx_chbuf[channel].full(1);
             break;
-        case NIC_C_TX_FULL_0:
+        case NIC_TX_FULL_0:
             data = r_tx_chbuf[channel].full(0);
             break;
-        case NIC_C_TX_FULL_1:
+        case NIC_TX_FULL_1:
             data = r_tx_chbuf[channel].full(1);
             break;
-        case NIC_C_RX_PBUF_0:
+        case NIC_RX_PBUF_0:
             data = r_channel_rx_bufaddr_0[channel].read();
             break;
-        case NIC_C_RX_PBUF_1:
+        case NIC_RX_PBUF_1:
             data = r_channel_rx_bufaddr_1[channel].read();
             break;
-        case NIC_C_TX_PBUF_0:
+        case NIC_TX_PBUF_0:
             data = r_channel_tx_bufaddr_0[channel].read();
             break;
-        case NIC_C_TX_PBUF_1:
+        case NIC_TX_PBUF_1:
             data = r_channel_tx_bufaddr_1[channel].read();
             break;
-        case NIC_C_MAC_4:
+        case NIC_MAC_4:
             data = r_channel_mac_4[channel].read();
             break;
-        case NIC_C_MAC_2:
+        case NIC_MAC_2:
             data = r_channel_mac_2[channel].read();
             break;
         default:
@@ -759,32 +759,32 @@ tmpl(void)::transition()
 
                 switch(word)
                 {
-                    case NIC_C_RX_FULL_0:    // release container RX[channel][0]
+                    case NIC_RX_FULL_0:    // release container RX[channel][0]
                         rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
                         rx_chbuf_cont          = 0;
                         break;
-                    case NIC_C_RX_FULL_1:    // release container RX[channel][1]
+                    case NIC_RX_FULL_1:    // release container RX[channel][1]
                         rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
                         rx_chbuf_cont          = 1;
                         break;
-                    case NIC_C_TX_FULL_0:    // release container TX[channel][0]
+                    case NIC_TX_FULL_0:    // release container TX[channel][0]
                         tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
                         tx_chbuf_cont          = 0;
                         break;
-                    case NIC_C_TX_FULL_1:    // release container TX[channel][1]
+                    case NIC_TX_FULL_1:    // release container TX[channel][1]
                         tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
                         tx_chbuf_cont          = 1;
                         break;
-                    case NIC_C_RX_PBUF_0:    // set base address of RX[channel][0]
+                    case NIC_RX_PBUF_0:    // set base address of RX[channel][0]
                         r_channel_rx_bufaddr_0[channel] = r_vci_wdata.read();   
                         break;
-                    case NIC_C_RX_PBUF_1:    // set base address of RX[channel][1]
+                    case NIC_RX_PBUF_1:    // set base address of RX[channel][1]
                         r_channel_rx_bufaddr_1[channel] = r_vci_wdata.read();   
                         break;
-                    case NIC_C_TX_PBUF_0:    // set base address of TX[channel][0]
+                    case NIC_TX_PBUF_0:    // set base address of TX[channel][0]
                         r_channel_tx_bufaddr_0[channel] = r_vci_wdata.read();   
                         break;
-                    case NIC_C_TX_PBUF_1:    // set base address of TX[channel][1]
+                    case NIC_TX_PBUF_1:    // set base address of TX[channel][1]
                         r_channel_tx_bufaddr_1[channel] = r_vci_wdata.read();   
                         break;
                     default:
@@ -1115,7 +1115,7 @@ if ( r_rx_g2s_checksum.read() != check )
 		    break;
 	    }
         ///////////////////
-        case RX_DES_READ_3:    // read thirs byte in rx_fifo_stream
+        case RX_DES_READ_3:    // read fourth byte in rx_fifo_stream
                                // and test if rx_fifo_multi can be written
 	    {
             uint16_t data = r_rx_fifo_stream.read();
