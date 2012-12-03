@@ -106,44 +106,21 @@ tmpl(void)::transition()
                 return;
         }
 
-// update ring signals Three iterations
+// update ring signals Ninitiators-1 iterations
 // this is intended in order to break the loop due to dependency existing between ring signals
 // this rule is based based on relaxation principle
 
-//- 1st 
-       for(int i=0;i<m_nai;i++) {
+       for (int niter = 0; niter < m_nai - 1; niter++) {
+           for(int i=0;i<m_nai;i++) {
                 int h = 0;
                 if(i == 0) h = m_ns-1;
                 else h = i-1;
                 m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
-        }
+            }
 
-        for(int i=0;i<m_nat;i++){
+            for(int i=0;i<m_nat;i++){
                 m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
-        }
-
-//- 2nd
-       for(int i=0;i<m_nai;i++) {
-                int h = 0;
-                if(i == 0) h = m_ns-1;
-                else h = i-1;
-                m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
-        }
-
-        for(int i=0;i<m_nat;i++){
-                m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
-        }
-
-//- 3rd 
-       for(int i=0;i<m_nai;i++) {
-                int h = 0;
-                if(i == 0) h = m_ns-1;
-                else h = i-1;
-                m_ring_initiator[i]->update_ring_signals(m_ring_signal[h], m_ring_signal[i]);
-        }
-
-        for(int i=0;i<m_nat;i++){
-                m_ring_target[i]->update_ring_signals(m_ring_signal[m_nai+i-1], m_ring_signal[m_nai+i] );
+            }
         }
 
 // transition
