@@ -74,7 +74,7 @@ tmpl(/**/)::VciSimpleRingFast(
                 bool alloc_init = (i==0);
 		std::ostringstream o;
 		o << name() << "_init_" << i;
-                m_ring_initiator[i] = new ring_initiator_t(o.str().c_str(), alloc_init, wrapper_fifo_depth, mt, ringid, i);
+                m_ring_initiator[i] = new ring_initiator_t(o.str().c_str(), alloc_init, wrapper_fifo_depth, mt, ringid, i, nb_attached_target);
         }
 
         for(int i=0; i<m_nat; ++i) {
