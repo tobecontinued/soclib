@@ -43,10 +43,10 @@ namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-////////////////////////////////////////////
+//////////////////////////////////////////////
 template<typename vci_param, typename iss_t>
 class VciXcacheWrapperMulti
-///////////////////////////////////////////
+//////////////////////////////////////////////
     : public soclib::caba::BaseModule
 {
     typedef uint32_t    addr_t;
@@ -58,17 +58,20 @@ class VciXcacheWrapperMulti
         DCACHE_IDLE,
         DCACHE_WRITE_UPDT,
         DCACHE_WRITE_REQ,
+        DCACHE_MISS_SELECT,
         DCACHE_MISS_WAIT,
         DCACHE_MISS_UPDT,
         DCACHE_UNC_WAIT,
         DCACHE_UNC_GO,
         DCACHE_INVAL,
+        DCACHE_INVAL_GO,
         DCACHE_SYNC,
         DCACHE_ERROR,
     };
 
     enum icache_fsm_state_e {
         ICACHE_IDLE,
+        ICACHE_MISS_SELECT,
         ICACHE_MISS_WAIT,
         ICACHE_MISS_UPDT,
         ICACHE_UNC_WAIT,
@@ -95,10 +98,10 @@ class VciXcacheWrapperMulti
     };
 
     enum transaction_type_e {
-        TYPE_DATA_UNC = 0,
+        TYPE_DATA_UNC  = 0,
         TYPE_DATA_MISS = 1,
-        TYPE_INS_UNC = 2,
-        TYPE_INS_MISS = 3,
+        TYPE_INS_UNC   = 2,
+        TYPE_INS_MISS  = 3,
     };
 
 public:
@@ -132,13 +135,20 @@ private:
     sc_signal<data_t>       r_dcache_rdata_save;
     sc_signal<int>          r_dcache_type_save;
     sc_signal<be_t>         r_dcache_be_save;
+    sc_signal<size_t>       r_dcache_way_save;
+    sc_signal<size_t>       r_dcache_set_save;
+    sc_signal<size_t>       r_dcache_word_save;
     sc_signal<bool>         r_dcache_miss_req;
     sc_signal<bool>         r_dcache_unc_req;
+    sc_signal<bool> 	    r_dcache_updated;	// dcache modified at previous cycle
 
     sc_signal<int>          r_icache_fsm;
     sc_signal<addr_t>       r_icache_addr_save;
+    sc_signal<size_t>       r_icache_way_save;
+    sc_signal<size_t>       r_icache_set_save;
     sc_signal<bool>         r_icache_miss_req;
     sc_signal<bool>         r_icache_unc_req;
+    sc_signal<bool> 	    r_icache_updated;	// icache modified at previous cycle
 
     sc_signal<int>          r_cmd_fsm;
     sc_signal<size_t>       r_cmd_min;
@@ -159,6 +169,12 @@ private:
     GenericCache<addr_t>    	r_icache;
     GenericCache<addr_t>    	r_dcache;
 
+    // Processor interface
+    typename iss_t::InstructionRequest   m_ireq;
+    typename iss_t::InstructionResponse  m_irsp;
+    typename iss_t::DataRequest          m_dreq;
+    typename iss_t::DataResponse         m_drsp;
+
     // Activity counters 
     uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
     uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
@@ -170,31 +186,32 @@ private:
     uint32_t m_cpt_icache_dir_read;         // ICACHE DIR READ
     uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
 
-    uint32_t m_cpt_frz_cycles;	            // number of cycles where the cpu is frozen
-    uint32_t m_cpt_total_cycles;	    // total number of cycles
+    addr_t   m_cpt_pc_previous;             // previous valid instruction address
+    uint32_t m_cpt_exec_ins;	            // number of executed instructions
+    uint32_t m_cpt_total_cycles;	        // total number of cycles
 
     uint32_t m_cpt_read;                    // total number of read requests
     uint32_t m_cpt_write;                   // total number of write requests
     uint32_t m_cpt_write_cached;            // number of cached write
     uint32_t m_cpt_data_unc;                // number of uncachable data requests
     uint32_t m_cpt_ins_unc;                 // number of uncachable instruction requests
-    uint32_t m_cpt_ll;			    // number of ll requests
-    uint32_t m_cpt_sc;			    // number of sc requests
+    uint32_t m_cpt_ll;			            // number of ll requests
+    uint32_t m_cpt_sc;			            // number of sc requests
     uint32_t m_cpt_data_miss;               // number of data miss
     uint32_t m_cpt_ins_miss;                // number of instruction miss
 
-    uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer
-    uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss
-    uint32_t m_cost_unc_frz;                // number of frozen cycles related to uncached data
-    uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss
+    uint32_t m_cost_write_frz;              // frozen cycles related to write buffer
+    uint32_t m_cost_data_miss_frz;          // frozen cycles related to data miss
+    uint32_t m_cost_unc_frz;                // frozen cycles related to uncached data
+    uint32_t m_cost_ins_miss_frz;           // frozen cycles related to ins miss
 
-    uint32_t m_cpt_imiss_transaction;       // number of VCI instruction miss transactions
-    uint32_t m_cpt_dmiss_transaction;       // number of VCI data miss transactions
-    uint32_t m_cpt_data_unc_transaction;    // number of VCI uncachable data transactions
-    uint32_t m_cpt_ins_unc_transaction;     // number of VCI uncachable instruction transactions
-    uint32_t m_cpt_write_transaction;       // number of VCI write transactions
+    uint32_t m_cpt_imiss_transaction;       // VCI instruction miss transactions
+    uint32_t m_cpt_dmiss_transaction;       // VCI data miss transactions
+    uint32_t m_cpt_data_unc_transaction;    // VCI uncachable data transactions
+    uint32_t m_cpt_ins_unc_transaction;     // VCI uncachable instruction transactions
+    uint32_t m_cpt_write_transaction;       // VCI write transactions
 
-    uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
+    uint32_t m_length_write_transaction;    // cumulated length VCI write transactions
 
 protected:
     SC_HAS_PROCESS(VciXcacheWrapperMulti);
@@ -213,13 +230,15 @@ public:
         size_t dcache_sets,
         size_t dcache_words, 
         size_t wbuf_nwords,
-        size_t wbuf_nlines,
-        size_t wbuf_timeout);
+        size_t wbuf_nlines);
 
     ~VciXcacheWrapperMulti();
 
     void print_stats();
     void print_trace(size_t mode = 0);
+
+    void file_stats(FILE* file);
+    void file_trace(FILE* file);
 
 private:
 
