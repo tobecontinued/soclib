@@ -52,18 +52,11 @@
 /////////////////////////////////////////////////////////////////////////////////////
 //   Ring : Broadcast : 2 flits                                                    //
 //-----------------------------------------------------------------------------------
-//  1st flit    | eop |xmin  |xmax  |ymin  |ymax  |  srcid*       | trdid |1|
-//     (40)       (1)   (5)    (5)    (5)    (5)     (14)            (4)  (1)
-//  1st flit    | eop |xmin  |xmax  |ymin  |ymax  |  cid* | local | trdid |1|
-//     (40)       (1)   (5)    (5)    (5)    (5)     (10)    (4)     (4)  (1)
-// (*) : cluster id (x,y) taille variable de 2 à 10, local id taille fixe (4)
+//  1st flit    | eop | tgtid (proc)        | res   |  srcid  (memc)      | trdid |1|
+//     (40)       (1)   (14)                  (6)      (14)                  (4)  (1)
 //-----------------------------------------------------------------------------------
-// @ de confinement broadcast fournie par le memory cache (sur 10 bits) 
-//-----------------------------------------------------------------------------------
-//  next flits  | eop |res| be |                wdata                               |
-//    (40)        (1)  (3)  (4)                 (32)                                 
-//  next flit   | eop | res |                   nline                               |
-//     (40)       (1)   (5)                     (34)                                    
+//  next flit   | eop | res |     nline (be + wdata)                                |
+//     (40)       (1)   (5)       (34)    4    32                                       
 /////////////////////////////////////////////////////////////////////////////////////
 #ifndef SOCLIB_CABA_VCI_SIMPLE_RING_INITIATOR_FAST_H
 #define SOCLIB_CABA_VCI_SIMPLE_RING_INITIATOR_FAST_H
@@ -82,6 +75,8 @@ namespace {
 const char *ring_cmd_fsm_state_str_si[] = {
                 "CMD_IDLE",
                 "DEFAULT",
+                "BDC_FIRST",
+                "BDC_SECOND",
                 "KEEP",
 };
 
@@ -134,7 +129,9 @@ private:
         // cmd token allocation fsm
         enum ring_cmd_fsm_state_e {
             	CMD_IDLE,	    
-             	DEFAULT,  	
+             	DEFAULT,  
+                BDC_FIRST,
+                BDC_SECOND,	
             	KEEP,          	    
             };
         
@@ -144,11 +141,11 @@ private:
 
         sc_core::sc_signal<bool>     r_read_ack;       // vci ack  if vci cmd read 
          
-        sc_core::sc_signal<sc_dt::sc_uint<vci_param::S> >      r_srcid_save;
-        sc_core::sc_signal<sc_dt::sc_uint<vci_param::T> >      r_trdid_save;
-        sc_core::sc_signal<sc_dt::sc_uint<vci_param::P> >      r_pktid_save;
-        sc_core::sc_signal<sc_dt::sc_uint<vci_param::E> >      r_error_save;
-           
+        sc_core::sc_signal<sc_dt::sc_uint<vci_param::S> > r_srcid_save;
+        sc_core::sc_signal<sc_dt::sc_uint<vci_param::T> > r_trdid_save;
+        sc_core::sc_signal<sc_dt::sc_uint<vci_param::P> > r_pktid_save;
+        sc_core::sc_signal<sc_dt::sc_uint<vci_param::E> > r_error_save;
+        sc_core::sc_signal<uint32_t>                     r_cpt_tgt;
         // internal fifos 
         GenericFifo<uint64_t > m_cmd_fifo;     // fifo for the local command packet
         GenericFifo<uint64_t > m_rsp_fifo;     // fifo for the local response packet
@@ -157,8 +154,11 @@ private:
         soclib::common::AddressMaskingTable<uint32_t> m_rt;
         soclib::common::AddressDecodingTable<uint32_t, bool> m_lt;
 
-        uint32_t            m_srcid;
-        uint32_t            m_shift;
+	//uint32_t          r_cpt_tgt;    
+	uint64_t          r_brdcst_save; 
+        uint32_t          m_srcid;
+        uint32_t          m_nb_target;
+        uint32_t          m_shift;
         
         // internal registers
         sc_core::sc_signal<int>	    r_ring_cmd_fsm;    // ring command packet FSM (distributed)
@@ -177,7 +177,8 @@ VciSimpleRingInitiatorFast(
         const int       &wrapper_fifo_depth,
         const soclib::common::MappingTable &mt,
         const soclib::common::IntTab &ringid,
-        const uint32_t &srcid)
+        const uint32_t &srcid,
+	const uint32_t &nb_target)
       : m_name(name),
         m_alloc_init(alloc_init),
         m_cmd_fifo(((std::string) name)+"m_cmd_fifo", wrapper_fifo_depth),
@@ -185,7 +186,9 @@ VciSimpleRingInitiatorFast(
         m_rt(mt.getIdMaskingTable(ringid.level())),
         m_lt(mt.getIdLocalityTable(ringid)),
         m_srcid(srcid),
+	m_nb_target(nb_target),
         m_shift(ring_cmd_data_size-vci_param::N+1),
+        __renRegInitS(r_cpt_tgt),
         __renRegInitS(r_ring_cmd_fsm),
         __renRegInitS(r_ring_rsp_fsm),
 	__renRegInitS(r_vci_cmd_fsm),
@@ -200,8 +203,8 @@ VciSimpleRingInitiatorFast(
 	else
 		r_ring_cmd_fsm = CMD_IDLE;
 
-	r_vci_cmd_fsm = CMD_FIRST_HEADER;
-	r_vci_rsp_fsm = RSP_HEADER;
+	r_vci_cmd_fsm  = CMD_FIRST_HEADER;
+	r_vci_rsp_fsm  = RSP_HEADER;
 	r_ring_rsp_fsm = RSP_IDLE;
 	m_cmd_fifo.init();
 	m_rsp_fifo.init();
@@ -355,14 +358,14 @@ if (p_vci.cmdval.read())
  
 			if ( m_rsp_fifo.rok() ) 
 			{
-#ifdef I_DEBUG
+/* #ifdef I_DEBUG
         std::cout << std::dec << sc_time_stamp() << " - " << m_name
                   << " - r_vci_rsp_fsm = " << vci_rsp_fsm_state_str_si[r_vci_rsp_fsm]
                   << " - rspack : " <<  p_vci.rspack.read()
                   << " - rdata : " <<  m_rsp_fifo.read()
                   << " - fifo_rsp_rok : " << m_rsp_fifo.rok()
                   << std::endl;
-#endif
+#endif */
 
                                 bool eop = ( (int) ((m_rsp_fifo.read() >> (ring_rsp_data_size - 1) ) & 0x1) == 1);
                                 if (eop) 
@@ -383,7 +386,7 @@ if (p_vci.cmdval.read())
 		break;
 
 		case RSP_DATA:
-#ifdef I_DEBUG
+/* #ifdef I_DEBUG
 if(m_rsp_fifo.rok())
         std::cout << std::dec << sc_time_stamp() << " - " << m_name
                   << " - r_vci_rsp_fsm = " << vci_rsp_fsm_state_str_si[r_vci_rsp_fsm]
@@ -393,7 +396,7 @@ if(m_rsp_fifo.rok())
                   << " - rerror : " << r_error_save.read()
                   << " - fifo_rsp_rok : " << m_rsp_fifo.rok()
                   << std::endl;
-#endif
+#endif */
 			if ( p_vci.rspack.read() && m_rsp_fifo.rok() ) 
 			{
 
@@ -409,47 +412,111 @@ if(m_rsp_fifo.rok())
 	switch( r_ring_cmd_fsm ) 
 	{
 		case CMD_IDLE:    
- #ifdef I_DEBUG
-if(m_cmd_fifo.rok())
-        std::cout << std::dec << sc_time_stamp() << " - " << m_name
-                  << " - r_ring_cmd_fsm = " << ring_cmd_fsm_state_str_si[r_ring_cmd_fsm] 
-                  << " -- in grant : " << p_ring_in.cmd_grant  
-                  << " -- fifo ROK : " << m_cmd_fifo.rok()
-                  << " -- in wok : " << p_ring_in.cmd_r
-                  << " -- fifo data : " << std::hex << m_cmd_fifo.read()
-                  << std::endl;
-#endif   
 			if ( p_ring_in.cmd_grant && m_cmd_fifo.rok() )  
                         {
-                		r_ring_cmd_fsm = KEEP; 
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : CMD_IDLE " 
+          << " -- in grant : " << p_ring_in.cmd_grant
+          << " -- fifo rok : " << m_cmd_fifo.rok()
+          << " -- fifo data : " << std::hex << m_cmd_fifo.read()          
+          << std::endl;
+#endif
+
+                                if (m_cmd_fifo.read() & 0x1 == 0x1) // broadcast
+                                {
+                                        r_cpt_tgt      = 0;                   
+                                        r_brdcst_save  = m_cmd_fifo.read(); // save first flit of brdcst
+                                        r_ring_cmd_fsm = BDC_FIRST;                                  
+
+                                } else {
+                        		r_ring_cmd_fsm = KEEP; 
+                                }
                         }
 		break;
 
 		case DEFAULT: 
-#ifdef I_DEBUG
-if(m_cmd_fifo.rok())
-        std::cout << std::dec << sc_time_stamp() << " - " << m_name
-                  << " - r_ring_cmd_fsm = " << ring_cmd_fsm_state_str_si[r_ring_cmd_fsm] 
-                  << " -- in grant : " << p_ring_in.cmd_grant  
-                  << " -- fifo ROK : " << m_cmd_fifo.rok()
-                  << " -- in wok : " << p_ring_in.cmd_r
-                  << " -- fifo data : " << std::hex << m_cmd_fifo.read()
-                  << std::endl;
-#endif
-        
-			if ( m_cmd_fifo.rok() ) 
+			if ( m_cmd_fifo.rok()) // && p_ring_in.cmd_wok.read() ) 
 			{
-				cmd_fifo_get = p_ring_in.cmd_r;  
-				r_ring_cmd_fsm = KEEP;             
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << m_name 
+          << " -- r_ring_cmd_fsm : DEFAULT "
+          << " -- in grant   : " << p_ring_in.cmd_grant
+          << " -- fifo rok : " << m_cmd_fifo.rok()
+          << " -- fifo_cmd_data : " << std::hex << m_cmd_fifo.read()
+          << std::endl;
+#endif 
+                                if (m_cmd_fifo.read() & 0x1 == 0x1) // broadcast
+                                {
+                                        r_cpt_tgt      = 0;                   
+                                        r_brdcst_save  = m_cmd_fifo.read(); // save first flit of brdcst
+                                        r_ring_cmd_fsm = BDC_FIRST;                                        
+                                } 
+				else 
+				{
+                                            
+                                        cmd_fifo_get   = p_ring_in.cmd_r;
+        		                r_ring_cmd_fsm = KEEP; 
+                                }             
 			}   
-			else if ( !p_ring_in.cmd_grant )
+			else if ( !p_ring_in.cmd_grant)
 				r_ring_cmd_fsm = CMD_IDLE; 
 		break;
 
+                case BDC_FIRST:
+                       
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : BDC_FIRST "
+          << " -- in grant   : " << p_ring_in.cmd_grant
+          << " -- cpt_tgt : " << r_cpt_tgt
+          << " -- fifo rok : " << m_cmd_fifo.rok()
+          << " -- in wok : " << p_ring_in.cmd_r
+          << " -- fifo_cmd_data : " << std::hex << m_cmd_fifo.read()
+          << std::endl;
+#endif
+
+                        if (p_ring_in.cmd_r)                                 
+			{
+                        	if (r_cpt_tgt.read() == 0)
+				{
+                                	cmd_fifo_get = true;
+				}
+                                //r_cpt_tgt = r_cpt_tgt.read() + 1;
+                                r_ring_cmd_fsm = BDC_SECOND;
+			}
+                break;
+
+                case BDC_SECOND:
+#ifdef I_DEBUG
+std::cout << sc_time_stamp() << " -- " << m_name << " -- r_ring_cmd_fsm : BDC_SECOND "
+          << " -- in grant   : " << p_ring_in.cmd_grant
+          << " -- fifo rok : " << m_cmd_fifo.rok()
+          << " -- in wok : " << p_ring_in.cmd_r
+          << " -- fifo_cmd_data : " << std::hex << m_cmd_fifo.read()
+          << std::endl;
+#endif
+          		if(m_cmd_fifo.rok() && p_ring_in.cmd_r)
+			{ 
+				if(r_cpt_tgt.read() == m_nb_target - 2)
+				{
+					cmd_fifo_get = true;  
+
+					if ( p_ring_in.cmd_grant )
+						r_ring_cmd_fsm = DEFAULT;  
+					else   
+						r_ring_cmd_fsm = CMD_IDLE;
+				}
+				else
+				{
+					r_cpt_tgt      = r_cpt_tgt + 1;
+                                	r_ring_cmd_fsm = BDC_FIRST;
+				}
+
+			}
+                break;
+
 		case KEEP:   
- #ifdef I_DEBUG
-if(m_cmd_fifo.rok())
-        std::cout << std::dec << sc_time_stamp() << " - " << m_name
+#ifdef I_DEBUG
+std::cout << std::dec << sc_time_stamp() << " - " << m_name
                   << " - r_ring_cmd_fsm = " << ring_cmd_fsm_state_str_si[r_ring_cmd_fsm] 
                   << " -- in grant : " << p_ring_in.cmd_grant  
                   << " -- fifo ROK : " << m_cmd_fifo.rok()
@@ -478,7 +545,7 @@ if(m_cmd_fifo.rok())
 	{
 		case RSP_IDLE:  
 		{
-#ifdef I_DEBUG
+/* #ifdef I_DEBUG
 if(p_ring_in.rsp_w)
         std::cout << std::dec << sc_time_stamp() << " - " << m_name
                   << " - r_ring_rsp_fsm = " << ring_rsp_fsm_state_str_si[r_ring_rsp_fsm]
@@ -487,7 +554,7 @@ if(p_ring_in.rsp_w)
                   << " -- fifo wok : " <<  m_rsp_fifo.wok() 
                   << " -- in data : " << std::hex << p_ring_in.rsp_data
                   << std::endl;
-#endif
+#endif */
 			uint32_t  rsrcid  = (uint32_t)  ((sc_dt::sc_uint<vci_param::S>) (p_ring_in.rsp_data >> ring_rsp_data_size-vci_param::S-1));
 			bool islocal      = m_lt[rsrcid] && (m_rt[rsrcid] == m_srcid);
 			bool reop         = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1; 
@@ -522,7 +589,7 @@ if(p_ring_in.rsp_w)
 
 		case LOCAL:
 		{
-#ifdef I_DEBUG
+/* #ifdef I_DEBUG
 if(p_ring_in.rsp_w)
         std::cout << std::dec << sc_time_stamp() << " - " << m_name
                   << " - r_ring_rsp_fsm = " << ring_rsp_fsm_state_str_si[r_ring_rsp_fsm]
@@ -531,7 +598,7 @@ if(p_ring_in.rsp_w)
                   << " -- fifo wok : " <<  m_rsp_fifo.wok() 
                   << " -- in data : " << std::hex << p_ring_in.rsp_data
                   << std::endl;
-#endif
+#endif */
 
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
@@ -554,7 +621,7 @@ if(p_ring_in.rsp_w)
 
 		case RING:    
 		{
-#ifdef I_DEBUG
+/* #ifdef I_DEBUG
 if(p_ring_in.rsp_w)
         std::cout << std::dec << sc_time_stamp() << " - " << m_name
                   << " - r_ring_rsp_fsm = " << ring_rsp_fsm_state_str_si[r_ring_rsp_fsm]
@@ -563,7 +630,7 @@ if(p_ring_in.rsp_w)
                   << " -- fifo wok : " <<  m_rsp_fifo.wok() 
                   << " -- in data : " << std::hex << p_ring_in.rsp_data
                   << std::endl;
-#endif
+#endif */
 			bool reop     = ((p_ring_in.rsp_data >> (ring_rsp_data_size - 1)) & 0x1) == 1;
 
 			if (p_ring_in.rsp_w && reop && p_ring_in.rsp_r)
@@ -667,19 +734,37 @@ void update_ring_signals(ring_signal_t p_ring_in, ring_signal_t &p_ring_out)
 	        	p_ring_out.cmd_data  = p_ring_in.cmd_data;
 		break;
 	
-		case DEFAULT:        
+		case DEFAULT:       
+		{ 
+                        bool brdcst = (m_cmd_fifo.read() & 0x1 == 0x1);
 			p_ring_out.cmd_grant = !( m_cmd_fifo.rok());  
 
-	        	p_ring_out.cmd_w    =  m_cmd_fifo.rok();
+	        	p_ring_out.cmd_w    =  m_cmd_fifo.rok() && !brdcst;
 		        p_ring_out.cmd_data =  m_cmd_fifo.read();
+		}
 		break;
-	
-		case KEEP:  
+
+	       	case BDC_FIRST:
+			p_ring_out.cmd_grant = false;
+			p_ring_out.cmd_w     = true;
+			p_ring_out.cmd_data  =  r_brdcst_save | (((uint64_t) r_cpt_tgt.read()) << (ring_cmd_data_size-vci_param::S-1));     
+                break;
+		
+		case BDC_SECOND:			
+			p_ring_out.cmd_grant = m_cmd_fifo.rok() && p_ring_in.cmd_r && (r_cpt_tgt.read() == m_nb_target - 2);
+       			p_ring_out.cmd_w    =  m_cmd_fifo.rok();
+	        	p_ring_out.cmd_data =  m_cmd_fifo.read();
+
+		break;
+
+		case KEEP: 
+		{ 
 			int cmd_fifo_eop = (int) ((m_cmd_fifo.read() >> (ring_cmd_data_size - 1)) & 0x1) ; //39
 			p_ring_out.cmd_grant = m_cmd_fifo.rok() && p_ring_in.cmd_r && (cmd_fifo_eop == 1);
 
         		p_ring_out.cmd_w    =  m_cmd_fifo.rok();
 	        	p_ring_out.cmd_data =  m_cmd_fifo.read();
+		}
 		break;
 	
 	} // end switch
