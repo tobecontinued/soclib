@@ -1698,9 +1698,10 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 
         uint32_t sp = get_cpu_sp();
         uint32_t rsp = sp - iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_STACK_REDZONE_SIZE);
+        bool bypass_pc = m_bypass_pc[get_cpu_pc()];
 
         // keep track of non-initialized and invalid memory as the stack pointer changes
-        if ( m_current_context->m_last_sp && m_current_context->stack_contains(rsp) ) {
+        if ( !bypass_pc && m_current_context->m_last_sp && m_current_context->stack_contains(rsp) ) {
             for (uint32_t i = rsp; i < m_current_context->m_last_sp; i += 4) {
                 // std::cout << std::hex << "valid   " << i << " " << get_cpu_pc() << "\n";
                 s_memory_state->info_for_address(i)->set_invalid(false);
@@ -1714,9 +1715,8 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
         }
 
         // check sp bounds
-        if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) &&
-             (!m_current_context->stack_contains(sp) || !m_current_context->stack_contains(rsp)) &&
-             ! m_bypass_pc[get_cpu_pc()] )
+        if ( (m_enabled_checks & ISS_MEMCHECKER_CHECK_SP) && !bypass_pc &&
+             (!m_current_context->stack_contains(sp) || !m_current_context->stack_contains(rsp)) )
             errl |= ERROR_SP_OUTOFBOUNDS;
         else
             m_no_repeat_mask &= ~ERROR_SP_OUTOFBOUNDS;
