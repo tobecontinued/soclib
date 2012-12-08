@@ -143,9 +143,10 @@ public:
                       << "/wdata = " << wdata
                       << "/be = " << be
                       << std::dec
-                      << "/srcid = " << srcid
-                      << "/trdid = " << trdid
-                      << "/plen = " << plen 
+                      << "/srcid = " << (uint32_t)srcid
+                      << "/trdid = " << (uint32_t)trdid
+                      << "/pktid = " << (uint32_t)pktid
+                      << "/plen = " << (uint32_t)plen 
                       << "/eop = "   << eop
                       << "/ack = "   << cmdack << std::endl;
         }
@@ -155,8 +156,9 @@ public:
             std::cout << " rerror = "   << rerror
                       << "/rdata = "  << rdata
                       << std::dec
-                      << "/rsrcid = " << rsrcid
-                      << "/rtrdid = " << rtrdid
+                      << "/rsrcid = " << (uint32_t)rsrcid
+                      << "/rtrdid = " << (uint32_t)rtrdid
+                      << "/rpktid = " << (uint32_t)rpktid
                       << "/reop = "   << reop
                       << "/ack = "    << rspack << std::endl;
         }
