@@ -126,6 +126,27 @@ public:
         RSP_WRITE,
     };
 
+    /* transaction type, pktid field, TSAR encoding */
+    enum transaction_type_e
+    {
+        // b3 unused
+        // b2 READ / NOT READ
+        // Si READ
+        //  b1 DATA / INS
+        //  b0 UNC / MISS
+        // Si NOT READ
+        //  b1 accès table llsc type SW / other
+        //  b2 WRITE/CAS/LL/SC
+        TYPE_READ_DATA_UNC          = 0x0,
+        TYPE_READ_DATA_MISS         = 0x1,
+        TYPE_READ_INS_UNC           = 0x2,
+        TYPE_READ_INS_MISS          = 0x3,
+        TYPE_WRITE                  = 0x4,
+        TYPE_CAS                    = 0x5,
+        TYPE_LL                     = 0x6,
+        TYPE_SC                     = 0x7
+    };
+
     // ports
     sc_in<bool> 				            p_clk;
     sc_in<bool> 				            p_resetn;

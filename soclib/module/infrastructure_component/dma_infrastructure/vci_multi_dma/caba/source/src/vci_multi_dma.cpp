@@ -29,7 +29,7 @@
 //  This component makes the assumption that the VCI RDATA & WDATA fields
 //  have 32 bits. The number of channels and the max burst length (in bytes)
 //  are constructor parameters. 
-//  - The number of channels (simultaneous transfers) cannot be larger than 8.
+//  - The number of channels (simultaneous transfers) cannot be larger than 16.
 //  - The burst length (in bytes) must be a power of 2 no larger than 128,
 //    and is typically equal to the sytem cache line width.
 //  - The source buffer base address and the destination destination buffer
@@ -544,7 +544,7 @@ tmpl(void)::transition()
         {
             if ( p_vci_initiator.rspval.read() )
             {
-                size_t k = (size_t)p_vci_initiator.rtrdid.read()/2;
+                size_t k = (size_t)p_vci_initiator.rtrdid.read();
 
                 if ( r_channel_fsm[k].read() == CHANNEL_READ_WAIT_FIRST ) 
                 {
@@ -655,8 +655,8 @@ tmpl(void)::genMoore()
             p_vci_initiator.be      = 0xF;
             p_vci_initiator.plen    = r_cmd_nbytes.read();
             p_vci_initiator.cmd     = vci_param::CMD_READ;
-            p_vci_initiator.trdid   = k*2;	
-            p_vci_initiator.pktid   = 0;
+            p_vci_initiator.trdid   = k;
+            p_vci_initiator.pktid   = TYPE_READ_DATA_UNC; // compatible with TSAR pktid encoding
             p_vci_initiator.srcid   = m_srcid;
             p_vci_initiator.cons    = false;
             p_vci_initiator.wrap    = false;
@@ -676,8 +676,8 @@ tmpl(void)::genMoore()
             p_vci_initiator.be      = 0xF;
             p_vci_initiator.plen    = r_cmd_nbytes.read();
             p_vci_initiator.cmd     = vci_param::CMD_WRITE;
-            p_vci_initiator.trdid   = k*2;
-            p_vci_initiator.pktid   = 0;
+            p_vci_initiator.trdid   = k;
+            p_vci_initiator.pktid   = TYPE_WRITE; // compatible with TSAR pktid encoding
             p_vci_initiator.srcid   = m_srcid;
             p_vci_initiator.cons    = false;
             p_vci_initiator.wrap    = false;
@@ -881,8 +881,8 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
              (burst_max_length==32) or (burst_max_length==64) or (burst_max_length==128)) and
     "VCI_MULTI_DMA error : The requested burst length must be 4, 8, 16, 32, 64, or 128 bytes");
     
-    assert( (channels <= 8)  and
-    "VCI_MULTI_DMA error : The number of channels cannot be larger than 8");
+    assert( (channels <= 16)  and
+    "VCI_MULTI_DMA error : The number of channels cannot be larger than 16");
 
     SC_METHOD(transition);
     dont_initialize();
