@@ -78,7 +78,7 @@ tmpl(void)::fdt_writer_add_rsvmap(	uint64_t addr, uint64_t size)
 tmpl(uint32_t)::fdt_writer_node_entry(	const char *name)
 {
 	if ( err || (void*)struct_ptr > (void*)rst ) {
-		err = -ENOMEM;
+		err = -1;
 		return 0;
 	}
 
@@ -111,7 +111,7 @@ tmpl(uint32_t)::fdt_writer_push_string(const char *str)
 tmpl(void)::fdt_writer_node_prop(const char *name, const void *data, size_t len)
 {
 	if ( err || (char*)struct_ptr + 8 + len > (char*)rst ) {
-		err = -ENOMEM;
+		err = -1;
 		return;
 	}
 
@@ -126,7 +126,7 @@ tmpl(void)::fdt_writer_node_prop(const char *name, const void *data, size_t len)
 tmpl(void)::fdt_writer_node_leave()
 {
 	if ( err || (void*)struct_ptr > (void*)rst ) {
-		err = -ENOMEM;
+		err = -1;
 		return;
 	}
 	*struct_ptr++ = uint32_machine_to_be(FDT_NODE_END);
