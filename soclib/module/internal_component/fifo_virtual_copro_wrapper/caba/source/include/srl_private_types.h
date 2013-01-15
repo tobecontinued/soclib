@@ -25,26 +25,32 @@ namespace dsx { namespace caba {
 
 #define srl_exit() return;
 
-#define SRL_GET_LOCK            #error "SRL_MEMSPACE_ADDR is not implemneted in the COPROC context"//
-#define SRL_MEMSPACE_ADDR       #error "SRL_MEMSPACE_ADDR is not implemneted in the COPROC context"//
-#define SRL_MEMSPACE_SIZE       #error "SRL_MEMSPACE_SIZE is not implemneted in the COPROC context"//
-#define SRL_GET_BARRIER         #error "SRL_GET_BARRIER is not implemneted in the COPROC context"//
-#define SRL_GET_MEMSPACE        #error "SRL_GET_MEMSPACE is not implemneted in the COPROC context"//
-#define SRL_GET_CONST           #error "SRL_GET_CONST is not implemneted in the COPROC context"//
+#define SRL_GET_LOCK            #error "SRL_MEMSPACE_ADDR is not implemented in the COPROC context"//
+#define SRL_MEMSPACE_ADDR       #error "SRL_MEMSPACE_ADDR is not implemented in the COPROC context"//
+#define SRL_MEMSPACE_SIZE       #error "SRL_MEMSPACE_SIZE is not implemented in the COPROC context"//
+#define SRL_GET_BARRIER         #error "SRL_GET_BARRIER is not implemented in the COPROC context"//
+#define SRL_GET_MEMSPACE        #error "SRL_GET_MEMSPACE is not implemented in the COPROC context"//
+#define SRL_GET_CONST           #error "SRL_GET_CONST is not implemented in the COPROC context"//
 
 
 /****** MWMR ******/
-struct srl_mwmr_s {
-    size_t width;//words 
-    const char *name;
-    uint32_t id;
-    int way;//1:read , 0: write
 
-    srl_mwmr_s(size_t width, const char* name, uint32_t id, int way):
+typedef enum _mwmr_way {
+   MWMR_WAY_READ,
+   MWMR_WAY_WRITE,
+} mwmr_way;
+
+struct srl_mwmr_s {
+    size_t width; // words 
+    const char * name;
+    uint32_t id;
+    mwmr_way way;
+
+    srl_mwmr_s(size_t width, const char * name, uint32_t id, mwmr_way way):
     name(name)
     {
         this->width = width;
-        this->id =   id;
+        this->id = id;
         this->way = way;
     }
 };
