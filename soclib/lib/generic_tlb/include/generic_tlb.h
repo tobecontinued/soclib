@@ -609,7 +609,7 @@ public:
             }
 
             // TLB hit test for 4K page size
-            if( get_valid(way,k_set) and get_big(way,k_set) and
+            if( get_valid(way,k_set) and not get_big(way,k_set) and
                ( get_vpn(way,k_set) == (vaddr >> (PAGE_K_NBITS + m_sets_shift))) ) 
             {  
                 m_valid[way*m_nsets+k_set] = false;
