@@ -331,10 +331,14 @@ private:
     sc_signal<size_t>       r_dcache_tlb_way;		    // selected way in tlb    
     sc_signal<size_t>       r_dcache_tlb_set;		    // selected set in tlb    
 
-    // LL reservation handling
-    sc_signal<bool>         r_dcache_ll_valid;		    // valid LL reservation
-    sc_signal<uint32_t>     r_dcache_ll_data;		    // LL reserved data
-    sc_signal<paddr_t>      r_dcache_ll_vaddr;		    // LL reserved address 
+    // LL/SC handling
+    sc_signal<bool>         r_dcache_ll_valid;          // valid LL reservation
+    sc_signal<uint32_t>     r_dcache_ll_data;           // LL reserved data
+    sc_signal<paddr_t>      r_dcache_ll_vaddr;          // LL reserved address 
+    sc_signal<uint32_t>     r_dcache_sc_word;           // SC word index in cache line
+    sc_signal<uint32_t>     r_dcache_sc_way;            // SC way in cache
+    sc_signal<uint32_t>     r_dcache_sc_set;            // SC set in cache
+    sc_signal<bool>         r_dcache_sc_hit;            // SC hit in cache
                             
     // communication between DCACHE FSM and ICACHE FSM
     sc_signal<bool>         r_dcache_xtn_req;           // xtn request 

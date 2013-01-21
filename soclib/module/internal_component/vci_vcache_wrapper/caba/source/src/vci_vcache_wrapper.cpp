@@ -227,6 +227,11 @@ tmpl(/**/)::VciVcacheWrapper(
       r_dcache_miss_way("r_dcache_miss_way"),
       r_dcache_miss_set("r_dcache_miss_set"),
 
+      r_dcache_sc_word("r_dcache_sc_word"),
+      r_dcache_sc_way("r_dcache_sc_way"),
+      r_dcache_sc_set("r_dcache_sc_set"),
+      r_dcache_sc_hit("r_dcache_sc_hit"),
+
       r_dcache_flush_count("r_dcache_flush_count"),
 
       r_dcache_tlb_vaddr("r_dcache_tlb_vaddr"),
@@ -1934,11 +1939,27 @@ r_cpt_dirty_bit_updt++;
                             }
                             else                    // SC request accepted
                             {
+                                uint32_t    cache_sc_way;
+                                uint32_t    cache_sc_set;
+                                uint32_t    cache_sc_word;
+                                uint32_t    cache_sc_rdata;
+                                bool        sc_hit;
+
+                                sc_hit = r_dcache.read(  paddr,
+                                                         &cache_sc_rdata,
+                                                         &cache_sc_way,
+                                                         &cache_sc_set,
+                                                         &cache_sc_word );
+                                    
+                                r_dcache_sc_hit     = sc_hit;
                                 r_dcache_vci_paddr  = paddr;
                                 r_dcache_vci_sc_req = true;
                                 r_dcache_vci_sc_old = r_dcache_ll_data.read();
                                 r_dcache_vci_sc_new = m_dreq.wdata;
                                 r_dcache_ll_valid   = false;
+                                r_dcache_sc_way     = cache_sc_way;
+                                r_dcache_sc_set     = cache_sc_set;
+                                r_dcache_sc_word    = cache_sc_word;
                                 r_dcache_fsm        = DCACHE_SC_WAIT;
                             }
                         }
@@ -3138,6 +3159,14 @@ r_cost_sc_frz++;
         }
     else if ( r_vci_rsp_fifo_dcache.rok() )         // response available
     {
+
+            if(r_dcache_sc_hit && (r_vci_rsp_fifo_dcache.read() == 0))
+	        {
+                	r_dcache.write( r_dcache_sc_way,
+                                    r_dcache_sc_set,
+                                    r_dcache_sc_word,
+                                    r_dcache_vci_sc_new.read() );
+	        }
 
 #if INSTRUMENTATION
 r_cpt_sc++;
