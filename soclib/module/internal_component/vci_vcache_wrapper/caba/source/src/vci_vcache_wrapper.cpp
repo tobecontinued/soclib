@@ -1939,9 +1939,9 @@ r_cpt_dirty_bit_updt++;
                             }
                             else                    // SC request accepted
                             {
-                                uint32_t    cache_sc_way;
-                                uint32_t    cache_sc_set;
-                                uint32_t    cache_sc_word;
+                                size_t      cache_sc_way;
+                                size_t      cache_sc_set;
+                                size_t      cache_sc_word;
                                 uint32_t    cache_sc_rdata;
                                 bool        sc_hit;
 
