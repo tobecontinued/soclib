@@ -1680,7 +1680,6 @@ r_cpt_dtlb_read++;
 
                     // cacheability
                     if ( (m_dreq.type == iss_t::DATA_LL) or 
-                         (m_dreq.type == iss_t::DATA_SC) or
                          not (r_mmu_mode.read() & DATA_CACHE_MASK) ) 
                     {
                         cacheable = false;
@@ -1699,7 +1698,6 @@ r_cpt_dtlb_read++;
                     {
                         // cacheability
                         if ( (m_dreq.type == iss_t::DATA_LL) or 
-                             (m_dreq.type == iss_t::DATA_SC) or
                              not (r_mmu_mode.read() & DATA_CACHE_MASK) ) 
                         {
                             cacheable = false;
@@ -1939,28 +1937,20 @@ r_cpt_dirty_bit_updt++;
                             }
                             else                    // SC request accepted
                             {
-                                size_t      cache_sc_way;
-                                size_t      cache_sc_set;
-                                size_t      cache_sc_word;
-                                uint32_t    cache_sc_rdata;
-                                bool        sc_hit;
-
-                                sc_hit = r_dcache.read(  paddr,
-                                                         &cache_sc_rdata,
-                                                         &cache_sc_way,
-                                                         &cache_sc_set,
-                                                         &cache_sc_word );
-                                    
-                                r_dcache_sc_hit     = sc_hit;
-                                r_dcache_vci_paddr  = paddr;
-                                r_dcache_vci_sc_req = true;
-                                r_dcache_vci_sc_old = r_dcache_ll_data.read();
-                                r_dcache_vci_sc_new = m_dreq.wdata;
-                                r_dcache_ll_valid   = false;
-                                r_dcache_sc_way     = cache_sc_way;
-                                r_dcache_sc_set     = cache_sc_set;
-                                r_dcache_sc_word    = cache_sc_word;
-                                r_dcache_fsm        = DCACHE_SC_WAIT;
+                                // (speculative access success) or not cacheable
+                                if ( not cacheable or ((r_dcache_p0_paddr.read() & ~PAGE_K_MASK) == (paddr & ~PAGE_K_MASK)))
+                                {
+                                    r_dcache_sc_hit     = cache_hit;
+                                    r_dcache_sc_way     = cache_way;
+                                    r_dcache_sc_set     = cache_set;
+                                    r_dcache_sc_word    = cache_word;
+                                    r_dcache_vci_paddr  = paddr;
+                                    r_dcache_vci_sc_req = true;
+                                    r_dcache_vci_sc_old = r_dcache_ll_data.read();
+                                    r_dcache_vci_sc_new = m_dreq.wdata;
+                                    r_dcache_ll_valid   = false;
+                                    r_dcache_fsm        = DCACHE_SC_WAIT;
+                                }
                             }
                         }
                         r_dcache_p0_valid = false;
