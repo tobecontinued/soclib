@@ -28,7 +28,7 @@
 #include "arithmetics.h"
 #include "../include/vci_vcache_wrapper.h"
 
-#define INSTRUMENTATION        1
+#define INSTRUMENTATION     1
 #define DEBUG_DCACHE        1
 #define DEBUG_ICACHE        1
 
@@ -1242,6 +1242,7 @@ r_cpt_ins_uncacheable++;
                         //  1  / 0  / nop       / read(A1)  / read request delayed
                         //  1  / 1  / write(A2) / read(A1)  / read request delayed
     { 
+        bool write_pipe_frozen  = false;
         ////////////////////////////////////////////////////////////////////////////////
         // Handling P2 pipe-line stage 
         // Inputs are r_dcache_p1_* registers.
@@ -1299,75 +1300,79 @@ if ( r_debug_active )
 r_cost_unc_write_frz++;
 #endif
                 r_dcache_p1_valid = false;
-                break;
+				write_pipe_frozen = true;
             }
-
-            // try a registration into write buffer
-            bool wok = r_wbuf.write( r_dcache_p0_paddr.read(),
-                                     r_dcache_p0_be.read(),
-                                     r_dcache_p0_wdata.read(),
-                                     r_dcache_p0_cacheable.read() );
+			else
+			{
+				// try a registration into write buffer
+				bool wok = r_wbuf.write( r_dcache_p0_paddr.read(),
+										 r_dcache_p0_be.read(),
+										 r_dcache_p0_wdata.read(),
+										 r_dcache_p0_cacheable.read() );
 #if INSTRUMENTATION
 r_cpt_wbuf_write++;
 #endif
 
-            // write buffer full : frozen
-            if ( not wok ) 
-            {
+				// write buffer full : frozen
+				if ( not wok ) 
+				{
 #if INSTRUMENTATION
 r_cost_wbuf_full_frz++;
 #endif
-                r_dcache_p1_valid = false;
-                break; 
-            }
-
-            // update the write_buffer state extension
-            if ( not r_dcache_p0_cacheable.read() )
-            {
+					r_dcache_p1_valid = false;
+					write_pipe_frozen = true;
+				}
+				else
+				{
+					// update the write_buffer state extension
+					if ( not r_dcache_p0_cacheable.read() )
+					{
 #if INSTRUMENTATION
 r_cpt_write_uncacheable++;
 #endif
-                r_dcache_pending_unc_write = true;
-            }
+						r_dcache_pending_unc_write = true;
+					}
 
-            // read directory to check local copy
-            size_t  cache_way;
-            size_t  cache_set;
-            size_t  cache_word;
-            bool    local_copy;
+					// read directory to check local copy
+					size_t  cache_way;
+					size_t  cache_set;
+					size_t  cache_word;
+					bool    local_copy;
 
-            if ( r_mmu_mode.read() & DATA_CACHE_MASK)     // cache activated
-            {
-                local_copy = r_dcache.hit( r_dcache_p0_paddr.read(),
-                                           &cache_way,
-                                           &cache_set,
-                                           &cache_word );
-            }
-            else
-            {
-                local_copy = false;
-            }
+					if ( r_mmu_mode.read() & DATA_CACHE_MASK)     // cache activated
+					{
+						local_copy = r_dcache.hit( r_dcache_p0_paddr.read(),
+								&cache_way,
+								&cache_set,
+								&cache_word );
+					}
+					else
+					{
+						local_copy = false;
+					}
 
-            // store values for P2 pipe stage
-            if ( local_copy )
-            {
-                r_dcache_p1_valid       = true;
-                r_dcache_p1_wdata       = r_dcache_p0_wdata.read();
-                r_dcache_p1_be          = r_dcache_p0_be.read();
-                r_dcache_p1_paddr       = r_dcache_p0_paddr.read();
-                r_dcache_p1_cache_way   = cache_way;
-                r_dcache_p1_cache_set   = cache_set;
-                r_dcache_p1_cache_word  = cache_word;
-            }
-            else
-            {
-                r_dcache_p1_valid       = false;
-            }
-        }
-        else                // P1 stage not activated 
-        {
-            r_dcache_p1_valid = false; 
-        } // end P1 stage
+					// store values for P2 pipe stage
+					if ( local_copy )
+					{
+						r_dcache_p1_valid       = true;
+						r_dcache_p1_wdata       = r_dcache_p0_wdata.read();
+						r_dcache_p1_be          = r_dcache_p0_be.read();
+						r_dcache_p1_paddr       = r_dcache_p0_paddr.read();
+						r_dcache_p1_cache_way   = cache_way;
+						r_dcache_p1_cache_set   = cache_set;
+						r_dcache_p1_cache_word  = cache_word;
+					}
+					else
+					{
+						r_dcache_p1_valid       = false;
+					}
+				}
+			}
+		}
+		else // P1 stage not activated 
+		{
+			r_dcache_p1_valid = false; 
+		} // end P1 stage
 
         /////////////////////////////////////////////////////////////////////////////////
         // handling P0 pipe-line stage
@@ -1391,14 +1396,16 @@ r_cpt_write_uncacheable++;
         //    The data is not modified in dcache, as it will be done by the
         //    coherence transaction.   
 
-                // processor request
-        if ( m_dreq.valid )
+		// processor request
+		// A new processor request is only treated if the pipe-line is not frozen
+		// due to a non finished write operation in the P1 stage
+        if ( m_dreq.valid and not write_pipe_frozen)
         {
             // dcache access using speculative PPN only if pipe-line empty
-            paddr_t        cache_paddr;
-            size_t        cache_way;
-            size_t        cache_set;
-            size_t        cache_word;
+            paddr_t     cache_paddr;
+            size_t      cache_way;
+            size_t      cache_set;
+            size_t      cache_word;
             uint32_t    cache_rdata = 0;
             bool        cache_hit;
 
@@ -1423,11 +1430,11 @@ r_cpt_dcache_read++;
             } // end dcache access    
 
             // systematic dtlb access using virtual address
-            paddr_t        tlb_paddr;
-            pte_info_t     tlb_flags; 
-            size_t         tlb_way; 
-            size_t         tlb_set; 
-            paddr_t        tlb_nline; 
+            paddr_t     tlb_paddr;
+            pte_info_t  tlb_flags; 
+            size_t      tlb_way; 
+            size_t      tlb_set; 
+            paddr_t     tlb_nline; 
             bool        tlb_hit;        
 
             if ( r_mmu_mode.read() & DATA_TLB_MASK )    // DTLB activated
@@ -1462,11 +1469,11 @@ r_cpt_dtlb_read++;
                 // checking processor mode:
                 if (m_dreq.mode  == iss_t::MODE_USER)
                 {
-                    r_mmu_detr = MMU_READ_PRIVILEGE_VIOLATION; 
+                    r_mmu_detr   = MMU_READ_PRIVILEGE_VIOLATION; 
                     r_mmu_dbvar  = m_dreq.addr;
-                    m_drsp.valid            = true;
-                    m_drsp.error            = true;
-                    r_dcache_fsm          = DCACHE_IDLE;
+                    m_drsp.valid = true;
+                    m_drsp.error = true;
+                    r_dcache_fsm = DCACHE_IDLE;
                 }
                 else 
                 {
@@ -1539,7 +1546,8 @@ r_cpt_dtlb_read++;
             // that are already accessed for speculative read.
             // Caches can be invalidated or flushed in user mode,
             // and the sync instruction can be executed in user mode
-            else if (m_dreq.type == iss_t::XTN_WRITE) 
+            else if (m_dreq.type == iss_t::XTN_WRITE and
+					not r_dcache_p0_valid) 
             {
                 int xtn_opcode      = (int)m_dreq.addr/4;
                 r_dcache_xtn_opcode = xtn_opcode;
@@ -1756,6 +1764,15 @@ if ( r_debug_active )
 #if INSTRUMENTATION
 r_cpt_dtlb_miss++;
 #endif
+						// The pipeline must be empty before treatment of DTLB MISS
+						// We do not care about the P2 state valid register because if it is
+						// valid, the operation is already made
+						if ( r_dcache_p0_valid.read() )
+						{
+							r_dcache_p0_valid = false;
+							break;
+						}
+
                         r_dcache_tlb_vaddr   = m_dreq.addr;
                         r_dcache_tlb_ins     = false; 
                         r_dcache_fsm         = DCACHE_TLB_MISS;
@@ -1862,6 +1879,16 @@ if ( r_debug_active )
 #if INSTRUMENTATION
 r_cpt_dirty_bit_updt++;
 #endif
+							// The pipeline must be empty before treatment of WRITE request
+							// with PTE Dirty bit not set
+							// We do not care about the P2 state valid register because if it is
+							// valid, the operation is already made
+							if ( r_dcache_p0_valid.read() )
+							{
+								r_dcache_p0_valid = false;
+								break;
+							}
+
                             // The PTE physical address is obtained from the nline value (dtlb),
                             // and the word index (proper bits of the virtual address)
                             if ( tlb_flags.b )    // PTE1
@@ -1877,7 +1904,6 @@ r_cpt_dirty_bit_updt++;
                             r_dcache_tlb_way  = tlb_way;
                             r_dcache_tlb_set  = tlb_set;
                             r_dcache_fsm      = DCACHE_DIRTY_GET_PTE;
-                            r_dcache_p0_valid = false;
                         }
                         else                    // Write request accepted
                         {
@@ -1913,6 +1939,13 @@ r_cpt_sc++;
                         }
                         else                    // valid registered LL
                         {
+							// The pipeline must be empty before treatment of SC valid request
+							if ( r_dcache_p0_valid.read() or r_dcache_p1_valid.read() )
+							{
+								r_dcache_p0_valid = false;
+								break;
+							}
+
                             if ( (r_mmu_mode.read() & DATA_TLB_MASK ) 
                                   and not tlb_flags.d )            // Dirty bit must be set
                             {
@@ -1970,14 +2003,22 @@ r_cpt_dirty_bit_updt++;
         // itlb miss request 
         else if ( r_icache_tlb_miss_req.read() )
         {
+			// The pipeline must be empty before treatment of ITLB MISS request
+			// We do not care about the P2 state valid register because if it is
+			// valid, the operation is already made
+			if ( r_dcache_p0_valid.read() )
+			{
+				r_dcache_p0_valid = write_pipe_frozen;
+				break;
+			}
+
             r_dcache_tlb_ins    = true;
             r_dcache_tlb_vaddr  = r_icache_vaddr_save.read();
             r_dcache_fsm        = DCACHE_TLB_MISS;
-            r_dcache_p0_valid   = false;
         }
         else
         {
-            r_dcache_p0_valid = false;
+            r_dcache_p0_valid = r_dcache_p0_valid.read() and write_pipe_frozen;
         } // end P0 pipe stage
         break;
     } 
@@ -3358,7 +3399,7 @@ if ( r_debug_active )
     // This FSM handles requests from both the DCACHE FSM & the ICACHE FSM.
     // There is 6 request types, with the following priorities : 
     // 1 - Data Read Miss         : r_dcache_vci_miss_req and miss in the write buffer
-    // 2 - Data Read Uncachable   : r_dcache_vci_unc_req  
+    // 2 - Data Read Uncachable   : r_dcache_vci_unc_req and miss in the write buffer 
     // 3 - Instruction Miss       : r_icache_miss_req and miss in the write buffer
     // 4 - Instruction Uncachable : r_icache_unc_req 
     // 5 - Data Write             : r_wbuf.rok()      
@@ -3408,7 +3449,7 @@ r_cpt_dmiss_transaction++;
 #endif
             }
             // 2 - Data Read Uncachable
-            else if ( r_dcache_vci_unc_req.read() )
+            else if ( r_dcache_vci_unc_req.read() and r_wbuf.miss(r_dcache_vci_paddr.read()))
             {
                 r_vci_cmd_fsm        = CMD_DATA_UNC;
                 r_dcache_vci_unc_req = false;
@@ -3472,7 +3513,7 @@ r_cpt_sc_transaction++;
 
 #if INSTRUMENTATION
 r_cpt_wbuf_read++;
-#endif;
+#endif
                 r_vci_cmd_cpt = r_vci_cmd_cpt + 1;
                 if (r_vci_cmd_cpt == r_vci_cmd_max) // last flit sent
                 {
