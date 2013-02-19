@@ -64,7 +64,7 @@
 // In a virtualized environment each channel segment will be mapped in
 // the address space of a different virtual machine.
 // Each channel takes a segment of 32 Kbytes in the address space,
-// to simplify the address decoding. Only 20K bytes are used.
+// to simplify the address decoding, but only 20K bytes are used.
 // 
 // 	- The first 4 Kbytes contain the RX_0 container data
 // 	- The next  4 Kbytes contain the RX_1 container data
@@ -75,14 +75,16 @@
 // 		* NIC_RX_PBUF_0  : RX_0 container base address (read/write)  
 // 		* NIC_RX_FULL_1  : RX_1 container status       (read/write)
 // 		* NIC_RX_PBUF_1  : RX_1 container base address (read/write)
+//      * NIC_RX_RUN     : RX chbuf activated          (write_only)
 // 		* NIC_TX_FULL_0  : TX_0 container status       (read/write)
 // 		* NIC_TX_PBUF_0  : TX_0 container base address (read/write)
 // 		* NIC_TX_FULL_1  : TX_1 container status       (read/write)
 // 		* NIC_TX_PBUF_1  : TX_1 container base address (read/write)
+//      * NIC_TX_RUN     : TX chbuf activated          (write_only)
 // 		* NIC_MAC_4      : MAC @ 32 MSB bits           (read_only)
 // 		* NIC_MAC_2      : MAC @ 16 LSB bits           (read_only)
 //
-// On top of the channels segments is the hypervisor segment, taking 8 Kbytes:
+// On top of the channels segments is the hypervisor segment, taking 4 Kbytes:
 // It cannot be accessed by the virtual machines.
 // 
 // 	- It contains global configuration registers (read/write)
@@ -349,6 +351,8 @@ tmpl(void)::transition()
 
         for ( size_t k=0 ; k<m_channels ; k++ )
         {
+            r_channel_rx_run[k]         = false;
+            r_channel_tx_run[k]         = false;
             r_channel_mac_4[k]          = DEFAULT_MAC_4;
             r_channel_mac_2[k]          = DEFAULT_MAC_2 + k;
         }
@@ -786,6 +790,12 @@ tmpl(void)::transition()
                         break;
                     case NIC_TX_PBUF_1:    // set base address of TX[channel][1]
                         r_channel_tx_bufaddr_1[channel] = r_vci_wdata.read();   
+                        break;
+                    case NIC_RX_RUN:       // activate/desactivate RX[channel]
+                        r_channel_rx_run[channel] = r_vci_wdata.read();
+                        break;
+                    case NIC_TX_RUN:       // activate/desactivate TX[channel]
+                        r_channel_tx_run[channel] = r_vci_wdata.read();
                         break;
                     default:
                         assert( false and 
@@ -1480,7 +1490,7 @@ if ( r_rx_g2s_checksum.read() != check )
 
             for ( size_t k=0 ; (k<m_channels) && not found ; k++ )
             {
-                bool run   = ((r_global_active_channels.read()>>k) & 0x1); 
+                bool run   = ((r_global_active_channels.read()>>k) & 0x1) && r_channel_rx_run[k]; 
                 bool wok   = r_rx_chbuf[k].wok();          
                 bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 4) ); 
                 bool time  = ( r_rx_chbuf[k].time() > (r_rx_dispatch_nbytes.read()>>2) );
@@ -1532,7 +1542,7 @@ if ( r_rx_g2s_checksum.read() != check )
 
             for ( size_t k=0 ; (k<m_channels) ; k++ )
             {
-                bool run   = ((r_global_active_channels.read()>>k) & 0x1); 
+                bool run   = ((r_global_active_channels.read()>>k) & 0x1) && r_channel_rx_run[k]; 
                 bool wok   = r_rx_chbuf[k].wok();          
                 bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 4) ); 
                 bool time  = ( r_rx_chbuf[k].time() > (r_rx_dispatch_nbytes.read()>>2) );
@@ -1670,7 +1680,8 @@ if ( r_rx_g2s_checksum.read() != check )
                 uint32_t channel = r_global_tdm_channel.read();
                 if( r_tx_chbuf[channel].rok() and 
                     r_global_nic_on.read() and
-                    ((r_global_active_channels.read()>>channel)&0x1) ) 
+                    ((r_global_active_channels.read()>>channel)&0x1) and
+                    r_channel_tx_run[channel] ) 
                 {
                     r_tx_dispatch_channel = channel;
                     r_tx_dispatch_fsm     = TX_DISPATCH_GET_NPKT;
@@ -1683,7 +1694,8 @@ if ( r_rx_g2s_checksum.read() != check )
                     uint32_t channel = (x + 1 + r_tx_dispatch_channel.read()) % m_channels;
                     if ( r_tx_chbuf[channel].rok() and 
                          r_global_nic_on.read() and
-                         ((r_global_active_channels.read()>>channel)&0x1) ) 
+                         ((r_global_active_channels.read()>>channel)&0x1) and
+                         r_channel_tx_run[channel] ) 
                     {
                         r_tx_dispatch_channel = channel;
                         r_tx_dispatch_fsm     = TX_DISPATCH_GET_NPKT;
@@ -2611,10 +2623,14 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
                 ("r_channel_rx_bufaddr_0", 8)),
           r_channel_rx_bufaddr_1(soclib::common::alloc_elems<sc_signal<uint32_t> >
                 ("r_channel_rx_bufaddr_1", 8)),
+          r_channel_rx_run(soclib::common::alloc_elems<sc_signal<bool> >
+                ("r_channel_rx_run", 8)),
           r_channel_tx_bufaddr_0(soclib::common::alloc_elems<sc_signal<uint32_t> >
                 ("r_channel_tx_bufaddr_0", 8)),
           r_channel_tx_bufaddr_1(soclib::common::alloc_elems<sc_signal<uint32_t> >
                 ("r_channel_tx_bufaddr_1", 8)),
+          r_channel_tx_run(soclib::common::alloc_elems<sc_signal<bool> >
+                ("r_channel_tx_run", 8)),
 
           r_vci_fsm("r_vci_fsm"),
           r_vci_srcid("r_vci_srcid"),

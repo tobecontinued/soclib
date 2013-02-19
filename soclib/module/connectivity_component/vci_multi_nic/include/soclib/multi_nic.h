@@ -56,7 +56,7 @@ enum SoclibMultiNicHyperviseurRegisters
     NIC_G_NPKT_RX_DISPATCH_RECEIVED  = 39,  // number of packets received by RX_DISPATCH FSM
     NIC_G_NPKT_RX_DISPATCH_BROADCAST = 40,  // number of broadcast TX packets received 
     NIC_G_NPKT_RX_DISPATCH_DST_FAIL  = 41,  // number of discarded TX packets because DST MAC 
-    NIC_G_NPKT_RX_DISPATCH_CH_FULL   = 42,  // number of discarded TX packets because channel full
+    NIC_G_NPKT_RX_DISPATCH_CH_FULL   = 42,  // number of discarded TX packets for channel full
 
     NIC_G_NPKT_TX_DISPATCH_RECEIVED  = 43,  // number of packets received by TX_DISPATCH FSM
     NIC_G_NPKT_TX_DISPATCH_TOO_SMALL = 44,  // number of discarded too small TX packets 
@@ -79,6 +79,8 @@ enum SoclibMultiNicChannelRegisters
     NIC_TX_PBUF_1             = 7,   // RX_1 container base address      (Read/Write) 
     NIC_MAC_4                 = 8,   // channel mac address 32 LSB bits  (Read Only)
     NIC_MAC_2                 = 9,   // channel mac address 16 LSB bits  (Read Only)
+    NIC_RX_RUN                = 10,  // RX packets can be received       (write_only)
+    NIC_TX_RUN                = 11,  // TX packets can be transmitted    (write_only)
 };
 
 #endif 

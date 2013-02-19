@@ -79,10 +79,12 @@ class VciMultiNic
     // Channel CONFIGURATION registers
     sc_signal<uint32_t>         *r_channel_mac_4;          // MAC address (first 4 bytes)
     sc_signal<uint32_t>         *r_channel_mac_2;          // MAC address (last 2 bytes)
-    sc_signal<uint32_t>         *r_channel_rx_bufaddr_0;   // base address of rx buffer[0]
-    sc_signal<uint32_t>         *r_channel_rx_bufaddr_1;   // base address of rx buffer[1]
-    sc_signal<uint32_t>         *r_channel_tx_bufaddr_0;   // base address of tx buffer[0]
-    sc_signal<uint32_t>         *r_channel_tx_bufaddr_1;   // base address of tx buffer[1]
+    sc_signal<uint32_t>         *r_channel_rx_bufaddr_0;   // base address of RX buffer[0]
+    sc_signal<uint32_t>         *r_channel_rx_bufaddr_1;   // base address of RX buffer[1]
+    sc_signal<bool>             *r_channel_rx_run;         // RX chbuf activated          
+    sc_signal<uint32_t>         *r_channel_tx_bufaddr_0;   // base address of TX buffer[0]
+    sc_signal<uint32_t>         *r_channel_tx_bufaddr_1;   // base address of TX buffer[1]
+    sc_signal<bool>             *r_channel_tx_run;         // TX chbuf activated          
 
     
     // VCI FSM registers
