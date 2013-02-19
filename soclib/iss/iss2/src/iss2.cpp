@@ -72,6 +72,13 @@ const char *xtn_str(Iss2::ExternalAccessType type)
         rstr(XTN_DATA_BAD_VADDR);
         rstr(XTN_MMU_PARAMS);
         rstr(XTN_MMU_RELEASE);
+        rstr(XTN_MMU_WORD_LO);
+        rstr(XTN_MMU_WORD_HI);
+        rstr(XTN_MMU_ICACHE_PA_INV);
+        rstr(XTN_MMU_DCACHE_PA_INV);
+        rstr(XTN_MMU_LL_RESET);
+        rstr(XTN_MMU_DOUBLE_LL);
+        rstr(XTN_MMU_DOUBLE_SC);
     default: return "invalid";
     }
 }
