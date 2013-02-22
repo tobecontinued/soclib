@@ -75,16 +75,18 @@ class VciNocMmu
         CMD_MISS_READ_PTD,
         CMD_MISS_WAIT_PTD,
         CMD_MISS_READ_PTE,
-        CMD_MISS_WAIT_PTE_FLAGS,
-        CMD_MISS_WAIT_PTE_PPN,
+        CMD_MISS_WAIT_PTE,
         CMD_MISS_TLB_UPDT,
     };
    
     enum rsp_fsm_state 
     {  
         RSP_IDLE,
-        RSP_SEND, 
-        RSP_ERROR,
+        RSP_STANDARD,
+        RSP_PTE_FLAGS,
+        RSP_PTE_PPN,
+        RSP_PTD,
+        RSP_FAILURE,
     };
     
     enum config_fsm_state 
@@ -101,16 +103,21 @@ class VciNocMmu
         CONFIG_ERROR_RSP,
 	};
     
-    enum noc_mmu_mode 
+    enum nmu_mode 
     {
-        MODE_BLOCKED,
-        MODE_FAILURE,
-        MODE_IDENTITY,
-        MODE_ACTIVATE,
+        NMU_MODE_BLOCKED,
+        NMU_MODE_FAILURE,
+        NMU_MODE_IDENTITY,
+        NMU_MODE_ACTIVATE,
 	};
+
+    enum nmu_pt_access_type
+    {
+        NMU_PT_ACCESS_PTD = 0x8,
+        NMU_PT_ACCESS_PTE = 0x9,
+    };
     
-    // Error Type
-    enum mmu_error_type_e 
+    enum nmu_error_type 
     {
         NO_ERROR,
         WRITE_ACCESS_VIOLATION,
@@ -126,7 +133,7 @@ public:
     // PORTS
     sc_in<bool>                                 p_clk;
     sc_in<bool>                                 p_resetn;
-    sc_out<bool>                               *p_irq;          // one per channel
+    sc_out<bool>                               *p_irq;          // one per vm
     soclib::caba::VciInitiator<vci_param>       p_vci_ini;      // to NoC
     soclib::caba::VciTarget<vci_param>          p_vci_tgt;      // from initiator
     soclib::caba::VciTarget<vci_param>          p_vci_config;   // from NoC
@@ -143,19 +150,13 @@ private:
     const uint32_t                m_debug_start;    // detailed debug start cycle
     const bool                    m_debug_ok;       // detailed debug activated
     
-    // addressable registers (one set per channel)
-    sc_signal<uint32_t>          *r_ptpr;           // page table pointer register
+    // addressable registers (one set per vm)
+    sc_signal<uint32_t>          *r_ptpr;           // page table pointer ( >> 13 )
     sc_signal<uint32_t>          *r_mode;           // NOC-MMU mode
     sc_signal<uint32_t>          *r_bvar;           // bad virtual address register
     sc_signal<uint32_t>          *r_xcode;          // error type
     
-    // prefetch buffers (one per channel)
-    sc_signal<uint32_t>         **r_buffer_ppn;     // prefetch : pte_ppn[m_words/2]
-    sc_signal<uint32_t>         **r_buffer_flags;   // prefetch : pte_flags[m_words/2]
-    sc_signal<uint32_t>          *r_buffer_tag;     // prefetch tag: VPN MSB bits
-    sc_signal<bool>              *r_buffer_val;     // prefetch buffer valid
-    
-    // TLBs (one TLB per channel)  
+    // TLBs (one TLB per vm)  
     GenericTlb<uint32_t>         *r_tlb[8];
 	
     // CMD FSM registers
@@ -166,11 +167,17 @@ private:
     sc_signal<uint32_t>           r_cmd_pktid;      // save pktid for error rsp;
     sc_signal<size_t>             r_cmd_tlb_way;    // selected way for TLB update
     sc_signal<size_t>             r_cmd_tlb_set;    // selected set for TLB update
-    sc_signal<uint32_t>           r_cmd_ptd;        // Page table descriptor (from PT1)
-    sc_signal<size_t>             r_cmd_pte_count;  // word counter for PTE2 burst read
     
     // RSP FSM registers
     sc_signal<int>                r_rsp_fsm;        // state register
+    sc_signal<uint32_t>         **r_rsp_buf_ppn;    // prefetch : pte_ppn[m_words/2]
+    sc_signal<uint32_t>         **r_rsp_buf_flags;  // prefetch : pte_flags[m_words/2]
+    sc_signal<uint32_t>          *r_rsp_buf_tag;    // prefetch tag: VPN MSB bits
+    sc_signal<bool>              *r_rsp_buf_val;    // prefetch buffer valid
+    sc_signal<uint32_t>           r_rsp_ptd;        // page table descriptor (PT1 entry)
+    sc_signal<bool>               r_rsp_ptd_val;    // page table descriptor valid
+    sc_signal<size_t>             r_rsp_pte_count;  // word counter for PTE2 burst read
+    sc_signal<bool>               r_rsp_pt_error;   // error returned by a page table access
 
     // CONFIG FSM
     sc_signal<int>                r_config_fsm;
@@ -202,9 +209,6 @@ private:
     GenericFifo<uint32_t>         r_rsp_fifo_rerror;
     GenericFifo<bool>             r_rsp_fifo_reop;
 
-    // RSP to CMD FIFO
-    GenericFifo<uint32_t>         r_rsp2cmd_fifo;
-
     // Communication SET/RESET Flip-flops
     sc_signal<bool>               r_config2cmd_req;  // PTE inval requested
     sc_signal<bool>               r_cmd2rsp_req;     // error RSP requested
@@ -226,7 +230,7 @@ public:
         const soclib::common::MappingTable  &mt,
         const soclib::common::IntTab        tgtid,
         const soclib::common::IntTab        srcid,
-        const uint32_t                      channels,
+        const uint32_t                      vms,
         const uint32_t                      dcache_words,
         const uint32_t                      tlb_ways,
         const uint32_t                      tlb_sets,
@@ -235,8 +239,8 @@ public:
 
     ~VciNocMmu();
 
-    void print_stats( uint32_t channel );
-    void clear_stats( uint32_t channel );
+    void print_stats( uint32_t vm );
+    void clear_stats( uint32_t vm );
     void print_trace( size_t mode = 0 );
     
 

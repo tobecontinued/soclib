@@ -41,8 +41,9 @@
 //
 // As the VCI initiator can be shared by several virtual machines, the vci_noc_mmu
 // component contains one private NMU (i.e. one private TLB) for each VM.
-// The VM index (vmx) is defined by the VCI PKTID field. The max number 
-// of VM is 8, and each NMU[vmx] is controled by private set of configuration 
+// The VM index (vm) is defined by the VCI PKTID field, and cannot be larger 
+// than 7 (at most 8 virtual machines).
+// Each NMU[vm] is controled by private set of configuration 
 // registers, corresponding to a 32 bytes sub-segment:
 // - NOC_MMU_PTPR[vm]  (R/W) : Page Table Pointer Register
 // - NOC_MMU_MODE[vm]  (R/W) : NMU mode 
@@ -66,18 +67,27 @@
 // As there is only one VCI port from the VCI initiator, the NOC_MMU component
 // provide only a "best effort" service to the virtual machines: There is one
 // private TLB[vm] per VM, but in case of TLB miss, the  incoming VCI command, 
-// and therefore, all VMs are stalled until the TLB miss for is resolved.
+// and therefore, all VMs are stalled until the TLB miss is resolved.
 ////////////////////////////////////////////////////////////////////////////////////
 // Implementation note:
+//
 // This component uses the SoCLib generic TLB, and relies on the same two levels
-// page table organisation as the vci_vcache_wrapper component.
-// The virtual address and the physical address must be 32 bits.
-// The page tables used by his component must only contain 4 KBytes pages
-// (2 Mbytes pages are not supported).
+// page table organisation as the vci_vcache_wrapper component, with restrictions:
+// - Both the virtual address and the physical address must be 32 bits.
+// - The page tables used by this component must only contain 4 KBytes pages
+//   (2 Mbytes pages are not supported).
+// - The page table L/R access bits, and the dirty bit are NOT updated by the
+//   NMU component, as the page tables are statically defined in the boot phase,
+//   and should not be modified during execution...
+// 
 // This component implements a prefetch buffer containing several contiguous PTE2
 // The number of PTE2 fetched in case of TLB miss is a constructor parameter
-// (usualy defined by the memory sub-system cache line width).
+// (usualy defined by the cache line width).
 //
+// The NOC_MMU component send two types of VCI commands to the NoC:
+// - commands from the VCI initiator (after address translation) : TRDID < 8
+// - commands to access the page tables in case of miss TLB :      TRDID = 8
+// 
 // The NOC_MMU component contains 3 FSMs:
 // - The CMD FSM handles (sequencially) the commands from the VCI initiator,
 //   including the TLB miss.
@@ -90,7 +100,8 @@
 //   translated commands from the VCI initiator, and the table walk commands)
 // - The r_rsp_fifo_* contains the VCI responses (from the NOC, or directly
 //   from the CMD FSM in case of failure.
-// - The r_rsp2cmd_fifo contains the responses to the table walk commands.VCI initiator
+// - The r_rsp2cmd_fifo contains the responses to the table walk commands
+//   sent by the CMD FSM.
 ////////////////////////////////////////////////////////////////////////////////////
 // Debug services: 
 // All debug messages are conditionned by two variables:
@@ -146,11 +157,6 @@ tmpl(/**/)::VciNocMmu(
       r_bvar(alloc_elems<sc_signal<uint32_t> >("r_bvar",vms)),
       r_xcode(alloc_elems<sc_signal<uint32_t> >("r_xcode",vms)),
 
-      r_buffer_ppn(alloc_elems<sc_signal<uint32_t> >("r_buffer_ppn",vms,cache_words/2)),
-      r_buffer_flags(alloc_elems<sc_signal<uint32_t> >("r_buffer_flags",vms,cache_words/2)),
-      r_buffer_tag(alloc_elems<sc_signal<uint32_t> >("r_buffer_tag",vms)),
-      r_buffer_val(alloc_elems<sc_signal<bool> >("r_buffer_val",vms)),
-
       r_cmd_fsm("r_cmd_fsm"),
       r_cmd_paddr("r_cmd_paddr"),
       r_cmd_srcid("r_cmd_srcid"),       
@@ -158,10 +164,16 @@ tmpl(/**/)::VciNocMmu(
       r_cmd_pktid("r_cmd_pktid"),       
       r_cmd_tlb_way("r_cmd_tlb_way"),
       r_cmd_tlb_set("r_cmd_tlb_set"),
-      r_cmd_ptd("r_cmd_ptd"),
-      r_cmd_pte_count("r_cmd_pte_count"),
 
       r_rsp_fsm("r_rsp_fsm"),
+      r_rsp_buf_ppn(alloc_elems<sc_signal<uint32_t> >("r_rsp_buf_ppn",vms,cache_words/2)),
+      r_rsp_buf_flags(alloc_elems<sc_signal<uint32_t> >("r_rsp_buf_flags",vms,cache_words/2)),
+      r_rsp_buf_tag(alloc_elems<sc_signal<uint32_t> >("r_rsp_buf_tag",vms)),
+      r_rsp_buf_val(alloc_elems<sc_signal<bool> >("r_rsp_buf_val",vms)),
+      r_rsp_ptd("r_rsp_ptd"),
+      r_rsp_ptd_val("r_rsp_ptd_val"),
+      r_rsp_pte_count("r_rsp_pte_count"),
+      r_rsp_pt_error("r_rsp_pt_error"),
 
       r_config_fsm("r_config_fsm"),
       r_config_vm("r_config_vm"),
@@ -190,21 +202,23 @@ tmpl(/**/)::VciNocMmu(
       r_rsp_fifo_rerror("r_rsp_fifo_rerror",2),
       r_rsp_fifo_reop("r_rsp_fifo_reop",2),
       
-      r_rsp2cmd_fifo("r_rsp2cmd_fifo",2),
-
       r_config2cmd_req("r_config2cmd_req"),
       r_cmd2rsp_req("r_cmd2rsp_req"),
       r_rsp2cmd_error("r_rsp2cmd_error")
 {
+    assert( (vci_param::P >=  4) and
+            "NMU ERROR: VCI PKTID field must have 4 bits");
+    assert( (vci_param::T >=  4) and
+            "NMU ERROR: VCI TRDID field must have 4 bits");
     assert( (vci_param::N ==  32) and
-            "NOC_MMU ERROR: VCI ADDRESS field must have 32 bits");
+            "NMU ERROR: VCI ADDRESS field must have 32 bits");
     assert( (vci_param::B ==  4) and
-            "NOC_MMU ERROR: VCI DATA field must have 32 bits");
+            "NMU ERROR: VCI DATA field must have 32 bits");
     assert( ( (cache_words == 2) or (cache_words == 4) or
               (cache_words == 8) or (cache_words == 16) ) and
-            "NOC_MMU ERROR: The cache_words argument must be 2,4,8, or 16"); 
+            "NMU ERROR: The cache_words argument must be 2,4,8, or 16"); 
     assert( (vms > 0) and (vms < 9) and
-            "NOC_MMU ERROR: The vms argument cannot be larger than 8");
+            "NMU ERROR: The vms argument cannot be larger than 8");
 
     for ( size_t vm = 0 ; vm < m_vms ; vm++ )
     {
@@ -246,15 +260,17 @@ tmpl(void)::print_trace(size_t mode)
         "CMD_MISS_READ_PTD",
         "CMD_MISS_WAIT_PTD",
         "CMD_MISS_READ_PTE",
-        "CMD_MISS_WAIT_PTE_FLAGS",
-        "CMD_MISS_WAIT_PTE_PPN",
+        "CMD_MISS_WAIT_PTE",
         "CMD_MISS_TLB_UPDT",
     };
     const char *rsp_fsm_str[] = 
     {
         "RSP_IDLE",
-        "RSP_SEND",
-        "RSP_ERROR",
+        "RSP_DATA",
+        "RSP_PTE_FLAGS",
+        "RSP_PTE_PPN",
+        "RSP_PTD",
+        "RSP_FAILURE",
     };
     const char *config_fsm_str[] = 
     {
@@ -278,7 +294,7 @@ tmpl(void)::print_trace(size_t mode)
         "ACTIVATE",
     };
 
-    std::cout << std::dec << "NOC_MMU " << name() 
+    std::cout << std::dec << "NMU " << name() 
               << "   " << cmd_fsm_str[r_cmd_fsm.read()]
               << " | " << rsp_fsm_str[r_rsp_fsm.read()]
               << " | " << config_fsm_str[r_config_fsm.read()] << std::endl;
@@ -299,7 +315,7 @@ tmpl(void)::print_trace(size_t mode)
 tmpl(void)::print_stats(uint32_t vm )
 ///////////////////////////////////////////
 {
-    std::cout << "NOC_MMU " << name() << "VM " << std::dec << vm << std::endl
+    std::cout << "NMU " << name() << "VM " << std::dec << vm << std::endl
     << "- TLB MISS RATE = " << (float)m_cpt_tlb_miss[vm]/m_cpt_tlb_read[vm] << std::endl
     << "- TLB MISS COST = " << (float)m_cost_tlb_miss[vm]/m_cpt_tlb_miss[vm] << std::endl;
 }
@@ -323,9 +339,9 @@ tmpl(void)::transition()
         for ( size_t vm = 0 ; vm < m_vms ; vm++ )
         {
             r_tlb[vm]->reset();
-            r_mode[vm]       = MODE_BLOCKED;
-            r_xcode[vm]      = NO_ERROR;
-            r_buffer_val[vm] = false;
+            r_mode[vm]        = NMU_MODE_BLOCKED;
+            r_xcode[vm]       = NO_ERROR;
+            r_rsp_buf_val[vm] = false;
         }
 
         // FSMs
@@ -355,13 +371,11 @@ tmpl(void)::transition()
         r_rsp_fifo_rerror.init();
         r_rsp_fifo_reop.init();
         
-        // RSP to CMD FIFO
-        r_rsp2cmd_fifo.init();
-
         // Communication flip-flops
-        r_cmd2rsp_req		   = false;
-        r_config2cmd_req       = false;
-        r_rsp2cmd_error        = false;
+        r_rsp_ptd_val         = false;
+        r_rsp_pt_error        = false;
+        r_cmd2rsp_req	      = false;
+        r_config2cmd_req      = false;
 
 	    // activity counters
 	    m_cpt_total_cycles     = 0;
@@ -389,7 +403,7 @@ tmpl(void)::transition()
     bool          cmd_fifo_cons;
     bool          cmd_fifo_wrap;
     bool          cmd_fifo_eop;
-    bool          cmd_fifo_get = false;
+    bool          cmd_fifo_get = p_vci_ini.cmdack.read();
 
     // default values for RSP FIFO
     bool          rsp_fifo_put = false; 
@@ -399,13 +413,8 @@ tmpl(void)::transition()
     uint32_t      rsp_fifo_rtrdid;
     uint32_t      rsp_fifo_rpktid;
     bool          rsp_fifo_reop;
-    bool          rsp_fifo_get = false; 
+    bool          rsp_fifo_get = p_vci_tgt.rspack.read();
     
-    // default values for RSP2CMD FIFO
-    bool          rsp2cmd_fifo_put = false;
-    uint32_t      rsp2cmd_fifo_wdata;
-    bool          rsp2cmd_fifo_get = false;
-
     m_cpt_total_cycles++;
 
     bool debug = (m_cpt_total_cycles > m_debug_start) and m_debug_ok;
@@ -418,8 +427,8 @@ tmpl(void)::transition()
     // It handles the TLB miss, looking in the prefetch buffer first.
     // It directly access the page table to fill the prefetch buffer. 
     // The prefetch buffer contains all PTE2 contained in a cache line (m_words/2).
-    // The prefetch buffer tag is the common part (not shifted) of the physical adress
-    // for all PTE2 contained in the prefetch buffer.
+    // The prefetch buffer tag is the common part (right shifted) of the physical i
+    // address for all PTE2 contained in the prefetch buffer.
     // Finally the CMD FSM handles PTE invalidation requests from CONFIG FSM,
     // invalidating both the TLB entry (if hit) and the prefetch buffer (if hit).
     // The VCI command is only consumed in CMD_SEND, CMD_FAIL_WAIT_EOP, 
@@ -443,8 +452,8 @@ tmpl(void)::transition()
             bool     tlb_hit = r_tlb[vm]->inval( r_config_wdata.read() );
 
             // reset prefetch buffer
-            bool     buf_hit = ( tag == r_buffer_tag[vm].read() ); 
-            if ( buf_hit ) r_buffer_val[vm] = false;
+            bool     buf_hit = ( tag == r_rsp_buf_tag[vm].read() ); 
+            if ( buf_hit ) r_rsp_buf_val[vm] = false;
 
             // reset request flip-flop
             r_config2cmd_req = false;
@@ -452,7 +461,8 @@ tmpl(void)::transition()
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_IDLE> PTE invalidation request :";
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_IDLE> PTE invalidation request :";
     if ( tlb_hit ) std::cout << " TLB cleared";
     if ( buf_hit ) std::cout << " / prefetch buffer cleared";
     std::cout << std::endl;
@@ -462,24 +472,31 @@ if( debug )
 
         else if ( p_vci_tgt.cmdval.read() )  // request from VCI initiator
         {
-            uint32_t vm = p_vci_tgt.pktid.read();
+            uint32_t vm = p_vci_tgt.pktid.read(); // VM index
+
+            assert( (vm < 8 ) and
+            "NMU ERROR : The VM index (PKTID) cannot be larger than 7");
  
-            if ( r_mode[vm].read() == MODE_BLOCKED )  // stalled => no response
+            if ( r_mode[vm].read() == NMU_MODE_BLOCKED )  // stalled => no response
             {
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_IDLE> VM " << std::dec << vm << " BLOCKED" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_IDLE> VCI command from VM " << std::dec << vm 
+              << " : BLOCKED" << std::endl;
 }
 #endif
                 break;
             }
-            else if ( r_mode[vm].read() == MODE_FAILURE )  // RSP FSM return an error response
+            else if ( r_mode[vm].read() == NMU_MODE_FAILURE )  // RSP FSM return an error response
             {
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_IDLE> VM " << std::dec << vm << " BLOCKED" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_IDLE> VCI command from VM " << std::dec << vm 
+              << " : FAILURE" << std::endl;
 }
 #endif
                 if ( p_vci_tgt.eop.read() ) 
@@ -493,12 +510,14 @@ if( debug )
                 }
             }
 
-            else if ( r_mode[vm].read() == MODE_IDENTITY )  // identity mapping 
+            else if ( r_mode[vm].read() == NMU_MODE_IDENTITY )  // identity mapping 
             {
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_IDLE> VM " << std::dec << vm << " IDENTITY" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_IDLE> VCI command from VM " << std::dec << vm 
+              << " : IDENTITY MAPPING" << std::endl;
 }
 #endif
                 r_cmd_paddr = p_vci_tgt.address.read();
@@ -533,13 +552,15 @@ if( debug )
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_IDLE> TLB HIT, but writable violation" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_IDLE> VCI command from VM " << std::dec << vm
+              << " : TLB HIT, but writable violation" << std::endl;
 }
 #endif
                         //  a VCI response error must be returned by the RSP FSM
                         r_xcode[vm]   = WRITE_ACCESS_VIOLATION;  
                         r_bvar[vm]    = p_vci_tgt.address.read();
-                        r_mode[vm]    = MODE_FAILURE;
+                        r_mode[vm]    = NMU_MODE_FAILURE;
                         if ( p_vci_tgt.eop.read() ) 
                         {
                             r_cmd2rsp_req = true;
@@ -555,7 +576,9 @@ if( debug )
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_IDLE> TLB HIT, access rights OK" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_IDLE> VCI command from VM " << std::dec << vm
+              << " : TLB HIT, access rights OK" << std::endl;
 }
 #endif
                         r_cmd_paddr = paddr;
@@ -567,7 +590,9 @@ if( debug )
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_IDLE> TLB MISS" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_IDLE> VCI command from VM " << std::dec << vm
+              << " : TLB MISS" << std::endl;
 }
 #endif
                     m_cpt_tlb_miss[vm]++;
@@ -602,7 +627,8 @@ if( debug )
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_SEND> Push VCI command into cmd_fifo :" 
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_SEND> Push VCI command into cmd_fifo :" 
               << " address = " << std::hex << cmd_fifo_address
               << " srcid = "   << std::hex << cmd_fifo_srcid
               << " trdid = "   << std::hex << cmd_fifo_trdid
@@ -629,7 +655,7 @@ if( debug )
     }
     ///////////////////////
     case CMD_FAIL_WAIT_RSP:     // returns to IDLE state when the error
-                               // response has been sent by the RSP FSM
+                                // response has been sent by the RSP FSM
     {
         if( not r_cmd2rsp_req.read() )
         { 
@@ -650,7 +676,7 @@ if( debug )
         uint32_t index = vpn & ((m_words >> 1) - 1);
         size_t   way;
         size_t   set;
-        bool     buf_hit = (tag == r_buffer_tag[vm].read()) and r_buffer_val[vm].read();
+        bool     buf_hit = (tag == r_rsp_buf_tag[vm].read()) and r_rsp_buf_val[vm].read();
 
         m_cost_tlb_miss[vm]++;
 
@@ -662,14 +688,15 @@ if( debug )
 
         if ( buf_hit ) // hit in prefetch buffer
         {
-            uint32_t pte_flags = r_buffer_flags[vm][index].read();
+            uint32_t pte_flags = r_rsp_buf_flags[vm][index].read();
 
             if ( pte_flags & PTE_V_MASK ) // hit in prefetch buffer, and PTE valid
             {
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_MISS_CHECK> PTE valid in prefetch buffer" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_CHECK> PTE valid in prefetch buffer" << std::endl;
 }
 #endif
                 r_cmd_fsm = CMD_MISS_TLB_UPDT;
@@ -681,13 +708,14 @@ if( debug )
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_MISS_CHECK> PTE unmapped in prefetch buffer" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_CHECK> PTE unmapped in prefetch buffer" << std::endl;
 }
 #endif
                 //  a VCI response error must be returned by the RSP FSM
                 r_xcode[vm]   = PT2_ENTRY_UNMAPPED;  
                 r_bvar[vm]    = p_vci_tgt.address.read();
-                r_mode[vm]    = MODE_FAILURE;
+                r_mode[vm]    = NMU_MODE_FAILURE;
                 if ( p_vci_tgt.eop.read() ) 
                 {
                     r_cmd2rsp_req = true;
@@ -705,12 +733,15 @@ if( debug )
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_MISS_CHECK> Miss in prefetch buffer : ";
-    std::cout << " TAG = " << std::hex << r_buffer_tag[vm].read() 
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_CHECK> Miss in prefetch buffer : "
+              << " TAG = " << std::hex << r_rsp_buf_tag[vm].read() 
               << " / VADDR = " << vaddr << std::endl;
 }
 #endif
-            r_cmd_fsm = CMD_MISS_READ_PTD;
+            // The prefetch buffer of the blocked vm must be invalidated
+            r_rsp_buf_val[vm] = false;
+            r_cmd_fsm         = CMD_MISS_READ_PTD;
         }
         break;
     }
@@ -723,7 +754,6 @@ if( debug )
 
         if ( r_cmd_fifo_address.wok() ) 
         {
-            uint32_t vm      = r_cmd_pktid.read();
             uint32_t vaddr   = (uint32_t)p_vci_tgt.address.read();
             uint32_t ix1     = vaddr >> IX1_SHIFT;
 
@@ -731,7 +761,7 @@ if( debug )
             cmd_fifo_address = (r_ptpr[vm].read() << PTPR_SHIFT) | (ix1 << 2);
             cmd_fifo_srcid   = m_srcid;
             cmd_fifo_trdid   = 0;
-            cmd_fifo_pktid   = 0;
+            cmd_fifo_pktid   = NMU_PT_ACCESS_PTD;
             cmd_fifo_be      = 0xF;
             cmd_fifo_cmd     = vci_param::CMD_READ;
             cmd_fifo_wdata   = 0;
@@ -741,12 +771,13 @@ if( debug )
             cmd_fifo_wrap    = false;
             cmd_fifo_eop     = true;
 
-            r_cmd_fsm = CMD_IDLE;
+            r_cmd_fsm = CMD_MISS_WAIT_PTD;
 
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_MISS_READ_PTD> Push PTD read into cmd_fifo :" 
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_READ_PTD> Push PTD read into cmd_fifo :" 
               << " address = " << std::hex << cmd_fifo_address
               << " srcid = "   << std::hex << cmd_fifo_srcid
               << " trdid = "   << std::hex << cmd_fifo_trdid
@@ -763,36 +794,38 @@ if( debug )
     }
     ///////////////////////
     case CMD_MISS_WAIT_PTD:  // wait the PTD value from RSP FSM
+                             // and check possible errors
     {
         uint32_t xcode = NO_ERROR;
-        uint32_t ptd   = r_rsp2cmd_fifo.read();
         uint32_t vm    = r_cmd_pktid.read();
+        uint32_t ptd   = r_rsp_ptd.read();
 
         m_cost_tlb_miss[vm]++;
 
-        if ( r_rsp2cmd_error.read() )   // bus error
+        if ( r_rsp_pt_error.read() )   // bus error
         {
+            r_rsp_pt_error = false;
             xcode = READ_PT1_BUS_ERROR;
-            r_rsp2cmd_error = false;
         }
-        if ( r_rsp2cmd_fifo.rok() )   // response available
+
+        if ( r_rsp_ptd_val.read() )   // response available
         {
             if      ( not (ptd & PTE_V_MASK) ) xcode = PT1_ENTRY_UNMAPPED;
             else if ( not (ptd & PTE_T_MASK) ) xcode = UNSUPPORTED_BIG_PAGE; 
         }
 
-        if ( r_rsp2cmd_fifo.rok() or r_rsp2cmd_error.read() ) 
+        if ( r_rsp_ptd_val.read() or r_rsp_pt_error.read() ) 
         {
             if ( (xcode == NO_ERROR) ) // PTD OK
             {
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_MISS_WAIT_PTD> PTD = "
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_WAIT_PTD> Received PTD = " 
               << std::hex << ptd << std::endl;
 }
 #endif
-                r_cmd_ptd = r_rsp2cmd_fifo.read();
                 r_cmd_fsm = CMD_MISS_READ_PTE;
             }
             else    // error detected
@@ -800,14 +833,15 @@ if( debug )
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_MISS_WAIT_PTD> ERROR : ";
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_WAIT_PTD> ERROR : ";
     if (xcode == READ_PT1_BUS_ERROR)      std::cout << "READ_PT1_BUS_ERROR "; 
     if (xcode == PT1_ENTRY_UNMAPPED)      std::cout << "PT1_ENTRY_UNMAPPED "; 
     if (xcode == UNSUPPORTED_BIG_PAGE)    std::cout << "UNSUPPORTED_BIG_PAGE "; 
-    std::cout << "for vaddr = " << std::hex << p_vci_ini.address.read() << std::endl;
+    std::cout << "for vaddr = " << std::hex << p_vci_tgt.address.read() << std::endl;
 }
 #endif
-                r_mode[vm]    = MODE_FAILURE;
+                r_mode[vm]    = NMU_MODE_FAILURE;
                 r_xcode[vm]   = xcode;
                 r_bvar[vm]    = p_vci_tgt.address.read();
                 if ( p_vci_tgt.eop.read() )
@@ -834,13 +868,13 @@ if( debug )
         {
             uint32_t vaddr   = p_vci_tgt.address.read();
             uint32_t ix2     = (vaddr >> IX2_SHIFT) & IX2_MASK;
-            uint32_t paddr   = (r_cmd_ptd.read() << PTBA_SHIFT) | (ix2<<3); 
+            uint32_t paddr   = (r_rsp_ptd.read() << PTBA_SHIFT) | (ix2<<3); 
 
             cmd_fifo_put     = true;
             cmd_fifo_address = paddr;
             cmd_fifo_srcid   = m_srcid;
             cmd_fifo_trdid   = 0;
-            cmd_fifo_pktid   = 0;
+            cmd_fifo_pktid   = NMU_PT_ACCESS_PTE;
             cmd_fifo_be      = 0xF;
             cmd_fifo_cmd     = vci_param::CMD_READ;
             cmd_fifo_wdata   = 0;
@@ -850,102 +884,71 @@ if( debug )
             cmd_fifo_wrap    = false;
             cmd_fifo_eop     = true;
 
-            r_cmd_fsm        = CMD_MISS_WAIT_PTE_FLAGS;
-            r_cmd_pte_count  = 0;
-        }
-        break;
-    }
-    /////////////////////////////
-    case CMD_MISS_WAIT_PTE_FLAGS:    // wait the PTE_FLAG values from RSP FSM
-                                     // and test possible errors...
-    {
-        uint32_t vm        = r_cmd_pktid.read();
-        uint32_t xcode     = NO_ERROR;
-        uint32_t index     = r_cmd_pte_count.read();
-        uint32_t pte_flags = r_rsp2cmd_fifo.read();
+            r_cmd_fsm        = CMD_MISS_WAIT_PTE;
+            r_rsp_ptd_val    = false;
 
-        m_cost_tlb_miss[vm]++;
-
-        if ( r_rsp2cmd_error.read() )   // bus error
-        {
-            r_rsp2cmd_error = false;
-            xcode = READ_PT2_BUS_ERROR; 
-        }
-        if ( r_rsp2cmd_fifo.rok() )    // response available  
-        {
-            if ( not (pte_flags & PTE_V_MASK ) ) xcode = PT2_ENTRY_UNMAPPED;
-            if ( (p_vci_tgt.cmd.read() == vci_param::CMD_WRITE) and
-                 not (pte_flags & PTE_W_MASK) )  xcode = WRITE_ACCESS_VIOLATION;
-        }
-
-        // get data in rsp2cmd fifo
-        rsp2cmd_fifo_get = true;
-
-        if ( r_rsp2cmd_fifo.rok() or r_rsp2cmd_error.read() )
-        {
-            if ( xcode == NO_ERROR )
-            {
 #if DEBUG_CMD_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CMD_MISS_WAIT_PTE_FLAGS> PTE_FLAGS = "
-              << std::hex << pte_flags << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_READ_PTD> Push PTD read into cmd_fifo :" 
+              << " address = " << std::hex << cmd_fifo_address
+              << " srcid = "   << std::hex << cmd_fifo_srcid
+              << " trdid = "   << std::hex << cmd_fifo_trdid
+              << " pktid = "   << std::hex << cmd_fifo_pktid
+              << " wdata = "   << std::hex << cmd_fifo_wdata
+              << " be = "      << std::hex << cmd_fifo_be
+              << " cmd = "     << std::dec << cmd_fifo_cmd 
+              << " plen = "    << std::dec << cmd_fifo_plen
+              << " eop = "     << std::dec << cmd_fifo_eop << std::endl; 
 }
 #endif
-                r_buffer_flags[vm][index] = pte_flags;
-                r_cmd_fsm                = CMD_MISS_WAIT_PTE_PPN;
-            }
-            else            // error detected
-            {
-#if DEBUG_CMD_FSM
-if( debug )
-{
-    std::cout << "  <NOC_MMU.CMD_MISS_WAIT_PTE_FLAGS> ERROR : ";
-    if (xcode == READ_PT2_BUS_ERROR)      std::cout << "READ_PT2_BUS_ERROR "; 
-    if (xcode == PT2_ENTRY_UNMAPPED)      std::cout << "PT2_ENTRY_UNMAPPED "; 
-    if (xcode == WRITE_ACCESS_VIOLATION)  std::cout << "WRITE_ACCESS_VIOLATION "; 
-    std::cout << "for vaddr = " << std::hex << p_vci_ini.address.read() << std::endl;
-}
-#endif
-                r_mode[vm]    = MODE_FAILURE;
-                r_xcode[vm]   = xcode;
-                r_bvar[vm]    = p_vci_tgt.address.read();
-                if ( p_vci_tgt.eop.read() )     // last CMD flit
-                {
-                    r_cmd2rsp_req = true;
-                    r_cmd_fsm     = CMD_FAIL_WAIT_RSP;
-                }
-                else
-                {
-                    r_cmd_fsm       = CMD_FAIL_WAIT_EOP;
-                }
-            }
+
         }
         break;
     }
-    ///////////////////////////
-    case CMD_MISS_WAIT_PTE_PPN: // get PPN from rsp2cmd fifo (no error possible)
+    ///////////////////////
+    case CMD_MISS_WAIT_PTE:    // wait availability of the prefetch buffer
     {
-        uint32_t vm      = r_cmd_pktid.read();
+        uint32_t vm    = r_cmd_pktid.read();
 
         m_cost_tlb_miss[vm]++;
 
-        if ( r_rsp2cmd_fifo.rok() )
+        if ( r_rsp_pt_error.read() )           // bus error
         {
-            uint32_t index   = r_cmd_pte_count.read();
-            uint32_t pte_ppn = r_rsp2cmd_fifo.read();
-
-            r_cmd_pte_count        = r_cmd_pte_count.read() + 1;
-            r_buffer_ppn[vm][index] = pte_ppn;
-
-            if ( r_cmd_pte_count.read() == ((m_words/2)-1) ) // last PTE
+#if DEBUG_CMD_FSM
+if( debug )
+{
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_WAIT_PTE> ERROR : READ_PT2_BUS_ERROR for vaddr = "
+              << std::hex << p_vci_tgt.address.read() << std::endl;
+}
+#endif
+            r_rsp_pt_error = false;
+            r_mode[vm]    = NMU_MODE_FAILURE;
+            r_xcode[vm]   = READ_PT2_BUS_ERROR; 
+            r_bvar[vm]    = p_vci_tgt.address.read();
+            if ( p_vci_tgt.eop.read() )
             {
-                r_cmd_fsm = CMD_MISS_TLB_UPDT;
+                r_cmd2rsp_req = true;
+                r_cmd_fsm     = CMD_FAIL_WAIT_RSP;
             }
             else
             {
-                r_cmd_fsm = CMD_MISS_WAIT_PTE_FLAGS;
+                r_cmd_fsm = CMD_FAIL_WAIT_EOP;
             }
+        }
+        else if ( r_rsp_buf_val[vm].read() )   // buffer available
+        {
+#if DEBUG_CMD_FSM
+if( debug )
+{
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_WAIT_PTE_FLAGS> Prefetch buffer loaded for vaddr = "
+              << std::hex << p_vci_tgt.address.read() << std::endl;
+}
+#endif
+            r_cmd_fsm = CMD_MISS_TLB_UPDT;
         }
         break;
     }
@@ -956,36 +959,74 @@ if( debug )
         uint32_t vaddr = p_vci_tgt.address.read();
         uint32_t vpn   = vaddr >> 12;
         uint32_t index = vpn & ((m_words >> 1) - 1);
+        uint32_t flags = r_rsp_buf_flags[vm][index].read();
+        uint32_t ppn   = r_rsp_buf_ppn[vm][index].read();
 
         m_cost_tlb_miss[vm]++;
 
-        r_tlb[vm]->write( false,     // it's not a big page
-                         r_buffer_flags[vm][index].read(),
-                         r_buffer_ppn[vm][index].read(),
-                         vaddr,
-                         r_cmd_tlb_way.read(),
-                         r_cmd_tlb_set.read(),
-                         0 );       // nline is not used in this component
+        if( not (flags & PTE_V_MASK) )  // PTE not valid
+        { 
+            r_mode[vm]    = NMU_MODE_FAILURE;
+            r_xcode[vm]   = PT2_ENTRY_UNMAPPED; 
+            r_bvar[vm]    = p_vci_tgt.address.read();
+            if ( p_vci_tgt.eop.read() )
+            {
+                r_cmd2rsp_req = true;
+                r_cmd_fsm     = CMD_FAIL_WAIT_RSP;
+            }
+            else
+            {
+                r_cmd_fsm = CMD_FAIL_WAIT_EOP;
+            }
+#if DEBUG_CMD_FSM
+if( debug ) 
+{
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_TLB_UPDT> ERROR : PT2_ENTRY_UNMAPPED for vaddr = "
+              << std::hex << p_vci_tgt.address.read() << std::endl;
+}
+#endif
+        }
+        else                            // PTE valid
+        {
+            r_tlb[vm]->write( false,     // it's not a big page
+                              flags,
+                              ppn,
+                              vaddr,
+                              r_cmd_tlb_way.read(),
+                              r_cmd_tlb_set.read(),
+                              0 );       // nline is not used in this component
 
-        r_cmd_fsm = CMD_IDLE;
+            r_cmd_fsm = CMD_IDLE;
 
 #if DEBUG_CMD_FSM
 if( debug ) 
 {
-    std::cout << "  <NOC_MMU.CMD_MISS_TLB_UPDT> Write a new PTE in TLB:"
+    std::cout << "  <NMU[" << name() 
+              << "].CMD_MISS_TLB_UPDT> Write a new PTE in TLB:"
               << std::hex << " VPN = " << (vaddr>>12)
-              << " PTE_FLAGS = " << r_buffer_flags[vm][index].read()
-              << " PTE_PPN = " << r_buffer_ppn[vm][index].read() << std::endl;
+              << " PTE_FLAGS = " << r_rsp_buf_flags[vm][index].read()
+              << " PTE_PPN = " << r_rsp_buf_ppn[vm][index].read() << std::endl;
 }
 #endif
+        }
         break;
     }
     } // end switch CMD_FSM
 
-    /////////////////////////////////////////////////////////////////////
-    // The RSP FSM handles both VCI responses from the NOC, and
-    // requests from the CMD FSM in case of write access violation.
-    /////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    // The RSP FSM handles both VCI responses from the NOC, decoding
+    // the TRDID field :
+    // a) TRDID < 8 : standard response to the VCI initiator
+    // b) TRDID = NMU_PT_ACCESS_PTD : single word response to a PTD read
+    // c) TRDID = NMU_PT_ACCESS_PTE : burst response to a PTE read
+    // In case of TLB miss (c), the RSP FSM directly writes the PTEs
+    // in the prefetch buffer of the virtual machine selected
+    // by the pending VCI command.
+    // Requests from the CMD FSM in case of address translation failure, 
+    // to directly send a response error to the VCI initiator have the
+    // highest priority in the IDLE state.
+    //////////////////////////////////////////////////////////////////////////
     switch( r_rsp_fsm.read() ) 
     {
     //////////////
@@ -994,23 +1035,36 @@ if( debug )
         if( r_cmd2rsp_req.read() )          // request from CMD FSM
         {
             r_cmd2rsp_req = false;
+            r_rsp_fsm     = RSP_FAILURE;
         }
         else if( p_vci_ini.rspval.read() )  // NoC response
 		{
-			r_rsp_fsm = RSP_SEND;
+			if( p_vci_ini.rpktid.read() == NMU_PT_ACCESS_PTD )
+            {
+                r_rsp_fsm = RSP_PTD;
+            }
+			else if( p_vci_ini.rpktid.read() == NMU_PT_ACCESS_PTE )
+            {
+                r_rsp_fsm       = RSP_PTE_FLAGS;
+                r_rsp_pte_count = 0;
+            }
+            else                                   // VCI initiator access
+            {
+                r_rsp_fsm = RSP_DATA;
+            }
 		}
 		break;
     }
     //////////////
-    case RSP_SEND:  // push the NOC VCI response into the RSP FIFO
+    case RSP_DATA:  // push the NOC response into the RSP FIFO
     {
         if( p_vci_ini.rspval.read() && r_rsp_fifo_rdata.wok() )
     	{
             rsp_fifo_put    = true;
             rsp_fifo_rdata  = p_vci_ini.rdata.read();
             rsp_fifo_rerror = p_vci_ini.rerror.read();
-            rsp_fifo_rsrcid = p_vci_ini.rpktid.read();
-            rsp_fifo_rtrdid = p_vci_ini.rpktid.read();
+            rsp_fifo_rsrcid = p_vci_ini.rsrcid.read();
+            rsp_fifo_rtrdid = p_vci_ini.rtrdid.read();
             rsp_fifo_rpktid = p_vci_ini.rpktid.read();
             rsp_fifo_reop   = p_vci_ini.reop.read();
 
@@ -1019,7 +1073,8 @@ if( debug )
 #if DEBUG_RSP_FSM
 if( debug ) 
 {
-    std::cout << "  <NOC_MMU.RSP_SEND> Push NoC response into rsp_fifo:" 
+    std::cout << "  <NMU[" << name() 
+              << "].RSP_STDANDARD> Push NoC response into rsp_fifo:" 
               << " rsrcid = " << std::hex << p_vci_ini.rsrcid.read()
               << " rtrdid = " << std::hex << p_vci_ini.rtrdid.read()
               << " rpktid = " << std::hex << p_vci_ini.rpktid.read()
@@ -1030,9 +1085,97 @@ if( debug )
     	}
     	break;
     }
-    ///////////////
-    case RSP_ERROR:  // push a single flit error response into the RSP FIFO
-                     // when the last flit of illegal command is arrived
+    /////////////
+    case RSP_PTD:   // write the NOC response in r_rsp_ptd register
+    {
+        if( p_vci_ini.rspval.read() )
+    	{
+            assert( p_vci_ini.reop.read() and
+            "NMU ERROR : The response to a Page Table access must be one flit");
+
+            if( p_vci_ini.rerror.read()&0x1 == 0x1 )
+            {
+                r_rsp_pt_error = true;
+            }
+            else
+            {
+                r_rsp_ptd = p_vci_ini.rdata.read();
+                r_rsp_ptd_val = true;
+            }
+            r_rsp_fsm = RSP_IDLE;
+        }
+        break;
+    }
+    ///////////////////
+    case RSP_PTE_FLAGS:  // write the NOC response (PTE_FLAGS) in the prefetch buffer 
+                         // of the virtual machine blocked by TLB miss.
+    {  
+        if( p_vci_ini.rspval.read() )
+    	{
+            unsigned int vm = r_cmd_pktid.read();
+            unsigned int id = r_rsp_pte_count.read();
+
+            if( p_vci_ini.rerror.read()&0x1 == 0x1 )
+            {
+                assert( p_vci_ini.reop.read() and
+                "NMU ERROR : we expect an EOP in case of bus error response");
+
+                r_rsp_pt_error = true;
+                r_rsp_fsm      = RSP_IDLE;
+            }
+            else
+            {
+                r_rsp_buf_flags[vm][id] = p_vci_ini.rdata.read();
+                r_rsp_fsm = RSP_PTE_PPN;
+            }
+        }
+        break;
+    }
+    /////////////////
+    case RSP_PTE_PPN:    // write the NOC response (PTE_PPN) in the prefetch buffer 
+                         // of the virtual machine blocked by TLB miss.
+    {
+        if( p_vci_ini.rspval.read() )
+    	{
+            unsigned int vm = r_cmd_pktid.read();
+            unsigned int id = r_rsp_pte_count.read();
+
+            if( p_vci_ini.rerror.read()&0x1 == 0x1 )
+            {
+                assert( p_vci_ini.reop.read() and
+                "NMU ERROR : we expect an EOP in case of bus error response");
+
+                r_rsp_pt_error = true;
+                r_rsp_fsm      = RSP_IDLE;
+            }
+            else
+            {
+                r_rsp_buf_ppn[vm][id] = p_vci_ini.rdata.read();
+                r_rsp_pte_count = r_rsp_pte_count.read() + 1;
+                if( r_rsp_pte_count.read() == ((m_words>>1)-1) )  // last PTE
+                {
+                    assert( p_vci_ini.reop.read() and
+                    "NMU ERROR : we expect an EOP at the end of a PTE burst");
+
+                    r_rsp_buf_val[vm] = true;
+                    r_rsp_buf_tag[vm] = (p_vci_tgt.address.read() >> 12) / (m_words>>1); 
+                    r_rsp_fsm = RSP_IDLE;
+                }
+                else                                            // not the last PTE
+                {
+                    assert( !p_vci_ini.reop.read() and
+                    "NMU ERROR : EOP before the end of a PTE burst");
+
+                    r_rsp_fsm = RSP_PTE_FLAGS;
+                    r_rsp_pte_count = r_rsp_pte_count.read() + 1;
+                }
+            }
+        }
+        break;
+    }
+    /////////////////
+    case RSP_FAILURE:  // push a single flit error response into the RSP FIFO
+                       // when the last flit of illegal command is arrived
     {
         if( r_rsp_fifo_rdata.wok() )
     	{
@@ -1051,7 +1194,8 @@ if( debug )
 #if DEBUG_RSP_FSM
 if( debug ) 
 {
-    std::cout << "  <NOC_MMU.RSP_ERROR> Push error response into rsp_fifo:" 
+    std::cout << "  <NMU[" << name() 
+              << "].RSP_ERROR> Push error response into rsp_fifo:" 
               << " rsrcid = " << std::hex << r_cmd_srcid.read()
               << " rtrdid = " << std::hex << r_cmd_trdid.read()
               << " rpktid = " << std::hex << r_cmd_pktid.read()
@@ -1084,8 +1228,9 @@ if( debug )
 #if DEBUG_CONFIG_FSM
 if( debug )
 {
-    std::cout << "  <NOC_MMU.CONFIG_IDLE> Configuration command received!" <<std::endl;
-    std::cout << " address = " << std::hex << p_vci_config.address.read()
+    std::cout << "  <NMU[" << name() 
+              << "].CONFIG_IDLE> Configuration command received :" <<std::endl;
+    std::cout << "  address = " << std::hex << p_vci_config.address.read()
               << " srcid = "   << std::hex << p_vci_config.srcid.read()
               << " trdid = "   << std::hex << p_vci_config.trdid.read()
               << " pktid = "   << std::hex << p_vci_config.pktid.read()
@@ -1096,8 +1241,8 @@ if( debug )
 #endif
             uint32_t   address = (uint32_t)p_vci_config.address.read();
             bool       read    = (p_vci_config.cmd.read() == vci_param::CMD_READ);
-            uint32_t   cell    = (uint32_t)((address & 0x0000000C)>>2); 
-            uint32_t   vm      = (uint32_t)((address & 0x00000070)>>4);
+            uint32_t   cell    = (uint32_t)((address & 0x0000001C)>>2); 
+            uint32_t   vm      = (uint32_t)((address & 0x000000E0)>>5);
             
             r_config_wdata   = p_vci_config.wdata.read();
             r_config_srcid   = p_vci_config.srcid.read();
@@ -1108,6 +1253,10 @@ if( debug )
             if ( not p_vci_config.eop.read() ) // more than one flit
             {
                 r_config_fsm = CONFIG_ERROR_WAIT;
+            }
+            else if ( vm >= m_vms )
+            {
+                r_config_fsm = CONFIG_ERROR_RSP;
             }
             else if ( m_segment.contains(address) )
             {
@@ -1153,7 +1302,8 @@ if( debug )
 #if DEBUG_CONFIG_FSM
 if( debug ) 
 {
-    std::cout << "  <NOC_MMU.CONFIG_PTPR_WRITE> PTPR[" << std::dec << vm << "] = " 
+    std::cout << "  <NMU[" << name() 
+              << "].CONFIG_PTPR_WRITE> PTPR[" << std::dec << vm << "] = " 
               <<  std::hex << (p_vci_config.wdata.read()) <<std::endl;
 }
 #endif
@@ -1161,27 +1311,25 @@ if( debug )
         break;
     }
     ///////////////////////
-    case CONFIG_MODE_WRITE: // TLB active if wdata > 1
-                            // does nothing if the response cannot be returned
+    case CONFIG_MODE_WRITE: // does nothing if the response cannot be returned
     {
         uint32_t vm = r_config_vm.read();
 
         if ( p_vci_config.rspack.read() )
         {
-            uint32_t mode = (uint32_t)(p_vci_config.wdata.read());
-
-            if     ( mode == MODE_FAILURE  ) r_mode[vm] = MODE_FAILURE;
-            else if( mode == MODE_IDENTITY ) r_mode[vm] = MODE_IDENTITY;
-            else                             r_mode[vm] = MODE_ACTIVATE;
+            uint32_t mode = (uint32_t)(p_vci_config.wdata.read() & 0x3);
+            r_mode[vm]    = mode;
             r_config_fsm  = CONFIG_IDLE;
 
 #if DEBUG_CONFIG_FSM
 if( debug ) 
 {
-    std::cout << "  <NOC_MMU.CONFIG_PTPR_WRITE> MODE[" << std::dec << vm << "] = ";
-    if      ( mode == MODE_FAILURE )  std::cout << "BLOCKED"  << std::endl;
-    else if ( mode == MODE_IDENTITY ) std::cout << "IDENTITY" << std::endl;
-    else                              std::cout << "ACTIVATE" << std::endl;
+    std::cout << "  <NMU[" << name() 
+              << "].CONFIG_MODE_WRITE> MODE[" << std::dec << vm << "] = ";
+    if      ( mode == NMU_MODE_FAILURE  ) std::cout << "FAILURE"  << std::endl;
+    else if ( mode == NMU_MODE_IDENTITY ) std::cout << "IDENTITY" << std::endl;
+    else if ( mode == NMU_MODE_ACTIVATE ) std::cout << "ACTIVATE" << std::endl;
+    else                                  std::cout << "BLOCKED"  << std::endl;
 }
 #endif
         }
@@ -1211,7 +1359,8 @@ if( debug )
 if( debug ) 
 {
     uint32_t vm = r_config_vm.read();
-    std::cout << "  <NOC_MMU.CONFIG_READ>";
+    std::cout << "  <NMU[" << name() 
+              << "].CONFIG_READ>";
     if ( r_config_fsm.read() == CONFIG_PTPR_READ )
     std::cout << " PTPR[" << vm << "] = " << std::hex << r_ptpr[vm].read() << std::endl;
     if ( r_config_fsm.read() == CONFIG_MODE_READ )
@@ -1234,7 +1383,8 @@ if( debug )
 #if DEBUG_CONFIG_FSM
 if( debug ) 
 {
-    std::cout << "  <NOC_MMU.CONFIG_READ_ERROR_WAIT> Wait the config command last flit"  
+    std::cout << "  <NMU[" << name() 
+              << "].CONFIG_READ_ERROR_WAIT> Wait the config command last flit"  
               << std::endl;
 }
 #endif
@@ -1252,7 +1402,8 @@ if( debug )
 #if DEBUG_CONFIG_FSM
 if( debug ) 
 {
-    std::cout << "  <NOC_MMU.CONFIG_READ_ERROR> Send a single flit error response " 
+    std::cout << "  <NMU[" << name() 
+              << "].CONFIG_READ_ERROR> Send a single flit error response " 
               << std::endl;
 }
 #endif
@@ -1284,9 +1435,6 @@ if( debug )
     r_rsp_fifo_rerror.update(  rsp_fifo_get, rsp_fifo_put, rsp_fifo_rerror );
     r_rsp_fifo_reop.update(    rsp_fifo_get, rsp_fifo_put, rsp_fifo_reop );
     
-    // RSP2CMD FIFO update
-    r_rsp2cmd_fifo.update(     rsp2cmd_fifo_get, rsp2cmd_fifo_put, rsp2cmd_fifo_wdata );
-
 } // end transition()
 
 ///////////////////////
@@ -1312,7 +1460,11 @@ tmpl(void)::genMoore()
     p_vci_ini.clen    = 0;
     p_vci_ini.eop     = r_cmd_fifo_eop.read();
     
-    p_vci_ini.rspack  = (r_rsp_fsm.read() == RSP_SEND) and r_rsp_fifo_rdata.wok();
+    p_vci_ini.rspack  = (((r_rsp_fsm.read() == RSP_DATA) and r_rsp_fifo_rdata.wok()) or
+                         (r_rsp_fsm.read() == RSP_PTD) or
+                         (r_rsp_fsm.read() == RSP_PTE_FLAGS) or
+                         (r_rsp_fsm.read() == RSP_PTE_PPN) );
+                          
 
     // VCI target port to VCI initiator
 
@@ -1357,7 +1509,7 @@ tmpl(void)::genMoore()
     // interrupts
     for ( size_t vm = 0 ; vm < m_vms ; vm++ )
     {
-        p_irq[vm] = (r_mode[vm] == MODE_FAILURE);
+        p_irq[vm] = (r_mode[vm] == NMU_MODE_FAILURE);
     }
 } // end genMoore
 
