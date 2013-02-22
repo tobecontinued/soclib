@@ -153,10 +153,16 @@ void boot_activate_nic(unsigned int channels)
     for ( k = 0 ; k<channels ; k++)
     {
         nic_channel_base = (unsigned int*)(&pseg_nic_base) + NIC_CHANNEL_SPAN*k;
-        nic_channel_base[NIC_C_RX_PBUF_0 + 4096] = (unsigned int)(nic_channel_base);
-        nic_channel_base[NIC_C_RX_PBUF_1 + 4096] = (unsigned int)(nic_channel_base + 1024);
-        nic_channel_base[NIC_C_TX_PBUF_0 + 4096] = (unsigned int)(nic_channel_base + 2048);
-        nic_channel_base[NIC_C_TX_PBUF_1 + 4096] = (unsigned int)(nic_channel_base + 3072);
+        nic_channel_base[NIC_RX_PBUF_0 + 4096] = (unsigned int)(nic_channel_base);
+        nic_channel_base[NIC_RX_PBUF_1 + 4096] = (unsigned int)(nic_channel_base + 1024);
+        nic_channel_base[NIC_TX_PBUF_0 + 4096] = (unsigned int)(nic_channel_base + 2048);
+        nic_channel_base[NIC_TX_PBUF_1 + 4096] = (unsigned int)(nic_channel_base + 3072);
+//        nic_channel_base[NIC_RX_FULL_0 + 4096] = 0;
+//        nic_channel_base[NIC_RX_FULL_1 + 4096] = 0;
+//        nic_channel_base[NIC_TX_FULL_0 + 4096] = 0;
+//        nic_channel_base[NIC_TX_FULL_1 + 4096] = 0;
+        nic_channel_base[NIC_RX_RUN    + 4096] = 1;
+        nic_channel_base[NIC_TX_RUN    + 4096] = 1;
     }
     
     // set global registers

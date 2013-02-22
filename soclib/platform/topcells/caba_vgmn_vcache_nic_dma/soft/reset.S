@@ -3,17 +3,10 @@
 /*	Author : Alain Greiner	                                                    */
 /*	Date : 01/11/2012							                                */
 /********************************************************************************/
-/* This boot code is for a multi-cluster, multi-processor architecture,		    */
-/* running one or several multi-tasks software application(s) defined in    	*/
-/* the mapping_info data-structure.						                        */
-/* Procesor 0 uses the mapping_info data structure to statically initialize		*/
-/* the kernel structures:														*/
-/* - build page tables for all vspaces											*/
-/* - initializes the vobjs not initialized by GCC								*/
-/* - initialize the schedulers and task contexts for all processeurs			*/
-/* - initialize the peripherals													*/				
-/* Other processors are waiting until the mapping_info signature has been       */
-/* modified by processor 0.														*/
+/* This boot code is an adhoc code used to test the MULTI_NIC and CHBUF_DMA     */
+/* Processor 0 initializes the NIC and DMA peripherals to build a loop-back:    */
+/* For each NIC(i) channel, a dedicated DMA(i) channel transfer the packets     */
+/* from the RX CHBUF to the TX CHBUF.        		                            */
 /*																				*/
 /* Implementation note:															*/
 /* The entry point is 0xbfc00000, but the actual boot code starts at address	*/
