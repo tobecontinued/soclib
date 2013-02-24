@@ -50,7 +50,7 @@
 //
 //  - The number of channels (simultaneous transfers) cannot be larger than 8.
 //  - The burst length (in bytes) must be a power of 2 no larger than 128,
-//    and is typically equal to the sytem cache line width.
+//    and is typically equal to the system cache line width.
 //  - The elementary buffer size and all buffers base addresses must be multiple 
 //    of 4 bytes. If the source and destination buffers are not aligned on a burst 
 //    boundary, the DMA controler split the burst in two VCI transactions.
@@ -62,15 +62,15 @@
 //  - The 3 bits ADDRESS[14:12] define the selected channel.
 //
 //  For each channel, the relevant values for the channel status are:
-//  - CHANNEL_IDLE           : 0
-//  - CHANNEL_SRC_DESC_ERROR : 1
-//  - CHANNEL_DST_DESC_ERROR : 2
-//  - CHANNEL_SRC_DATA_ERROR : 3
-//  - CHANNEL_DST_DATA_ERROR : 4
-//  - CHANNEL_BUSY           : > 4
+//  - CHANNEL_IDLE           : 0   / channel not running
+//  - CHANNEL_SRC_DESC_ERROR : 1   / bus error accessing SRC CHBUF descriptor
+//  - CHANNEL_DST_DESC_ERROR : 2   / bus error accessing DST CHBUF descriptor
+//  - CHANNEL_SRC_DATA_ERROR : 3   / bus error accessing SRC CHBUF data
+//  - CHANNEL_DST_DATA_ERROR : 4   / bus error accessing DST CHBUF data
+//  - CHANNEL_BUSY           : > 4 / channel running
 // 
 //  There is one private IRQ line for each channel, that is only used
-//  for error signaling.
+//  for bus error signaling.
 //
 //  In order to support multiple simultaneous transactions, the channel
 //  index is transmited in the VCI TRDID field.
