@@ -70,8 +70,7 @@ class VciNocMmu
         CMD_SEND,
         CMD_FAIL_WAIT_EOP,
         CMD_FAIL_WAIT_RSP,
-        CMD_MISS_CHECK_BUFFER,
-        CMD_MISS_CHECK_BYPASS,
+        CMD_MISS_CHECK,
         CMD_MISS_READ_PTD,
         CMD_MISS_WAIT_PTD,
         CMD_MISS_READ_PTE,
@@ -82,7 +81,7 @@ class VciNocMmu
     enum rsp_fsm_state 
     {  
         RSP_IDLE,
-        RSP_STANDARD,
+        RSP_DATA,
         RSP_PTE_FLAGS,
         RSP_PTE_PPN,
         RSP_PTD,
@@ -167,6 +166,8 @@ private:
     sc_signal<uint32_t>           r_cmd_pktid;      // save pktid for error rsp;
     sc_signal<size_t>             r_cmd_tlb_way;    // selected way for TLB update
     sc_signal<size_t>             r_cmd_tlb_set;    // selected set for TLB update
+    sc_signal<bool>               r_cmd_bypass;     // PTD read bypass when true
+    sc_signal<uint32_t>           r_cmd_ptba;       // PTBA value (from PTD bypass)
     
     // RSP FSM registers
     sc_signal<int>                r_rsp_fsm;        // state register
