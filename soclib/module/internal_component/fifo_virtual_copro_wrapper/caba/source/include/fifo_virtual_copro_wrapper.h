@@ -122,7 +122,7 @@ class FifoVirtualCoprocessorWrapper
 
 
     /**** MWMR ****/
-    #define SRL_GET_MWMR(name) get_mwmr(#name)
+    #define SRL_GET_MWMR(name) srl_get_mwmr(#name)
     srl_mwmr_t srl_get_mwmr(const char * name);
 
     ssize_t srl_mwmr_try_write(srl_mwmr_t fifo, void * mem, size_t len);

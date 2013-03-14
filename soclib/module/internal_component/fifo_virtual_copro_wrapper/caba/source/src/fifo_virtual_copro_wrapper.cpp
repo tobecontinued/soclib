@@ -331,6 +331,7 @@ tmpl(void)::srl_mwmr_read(srl_mwmr_t fifo, void * mem, size_t len) {
 
 }
 
+
 tmpl(void)::srl_mwmr_write(srl_mwmr_t fifo, void * mem, size_t len) {
     bool fifo_full = false;
     uint32_t nb_bytes;
