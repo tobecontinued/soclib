@@ -288,7 +288,8 @@ namespace soclib { namespace caba {
                     req_in[i]  = r_index_in[i];
                     if ( get_out[r_index_in[i].read()].read() ) // first flit transfered
                     {
-                        r_fsm_in[i]   = INFSM_ALLOC
+                        if ( is_eop( r_fifo_in[in].read() ) )  r_fsm_in[i] = INFSM_IDLE;
+                        else                                   r_fsm_in[i] = INFSM_ALLOC;
                     }
                     break;
                 }
