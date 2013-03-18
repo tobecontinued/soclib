@@ -24,8 +24,8 @@ Module('caba:dspin_local_crossbar',
                 parameter.Int('nb_local_outputs'),
                 parameter.Int('in_fifo_depth'),
                 parameter.Int('out_fifo_depth'),
-                parameter.bool('use_routing_table'),
-                parameter.bool('broadcast_supported'),
+                parameter.Bool('use_routing_table'),
+                parameter.Bool('broadcast_supported'),
 
 	],
 	uses = [
