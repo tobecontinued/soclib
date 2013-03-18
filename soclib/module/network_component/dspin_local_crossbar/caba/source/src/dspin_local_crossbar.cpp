@@ -256,7 +256,6 @@ namespace soclib { namespace caba {
                         if ( is_broadcast(r_fifo_in[i].read()) and 
                              m_broadcast_supported )   // broadcast required
                         {
-                            fifo_in_read[i] = true;
                             r_buf_in[i]     = r_fifo_in[i].read();
                             if ( i == m_local_inputs ) // global input port
                             {
@@ -323,10 +322,12 @@ namespace soclib { namespace caba {
                     data_in[i] = r_fifo_in[i].read();
                     put_in[i]  = r_fifo_in[i].rok();
                     req_in[i]  = 0xFFFFFFFF;                // no request
-                    if ( is_eop( r_fifo_in[i].read() ) and
-                         r_fifo_in[i].rok() and 
-                         get_out[r_index_in[i].read()] )  // last flit transfered
+                    if ( r_fifo_in[i].rok() and 
+                         get_out[r_index_in[i].read()] )    // last flit transfered
                     {
+                        assert( is_eop( r_fifo_in[i].read() ) and 
+                        "ERROR in DSPIN_LOCAL_CROSSBAR : broadcast packets must have 2 flits");
+
                         if ( r_index_in[i].read() == 0 ) r_fsm_in[i] = INFSM_IDLE;
                         else                             r_fsm_in[i] = INFSM_REQ_BC;
                     }
@@ -376,12 +377,21 @@ namespace soclib { namespace caba {
 		} // end loop on output ports
 
         // loop on input ports :
-	    // fifo_in_read[i] computation
+	    // fifo_in_read[i] computation 
+        // (computed here because it depends on get_out[])
 	    for( size_t i = 0 ; i <= m_local_inputs ; i++ ) 
         {
-		    if ( r_fsm_in[i].read() != INFSM_IDLE ) 
+		    if ( (r_fsm_in[i].read() == INFSM_REQ) or 
+                 (r_fsm_in[i].read() == INFSM_ALLOC) or
+                 ((r_fsm_in[i].read() == INFSM_ALLOC_BC) and (r_index_in[i].read() == 0)))
             {
                 fifo_in_read[i] = (get_out[r_index_in[i].read()] == i);
+            }
+            if ( r_fsm_in[i].read() == INFSM_IDLE) and
+                 is_broadcast(r_fifo_in[i].read() and 
+                 m_broadcast_supported )   
+            {
+                fifo_in_read[i] = true;
             }
 	    }  // end loop on input ports
 
