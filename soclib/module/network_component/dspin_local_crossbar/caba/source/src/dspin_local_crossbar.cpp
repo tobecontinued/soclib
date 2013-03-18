@@ -350,7 +350,7 @@ namespace soclib { namespace caba {
                      k++ ) 
                 { 
 			        i = k % (m_local_inputs + 1);
-			        if( req[i] == j ) 
+			        if( req_in[i] == j ) 
                     {
 			            r_alloc_out[j] = true;
 			            r_index_out[j] = i;
