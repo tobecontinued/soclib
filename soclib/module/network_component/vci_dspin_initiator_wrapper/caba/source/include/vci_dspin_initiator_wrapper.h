@@ -1,7 +1,8 @@
 /* -*- c++ -*-
-  * File : vci_dspin_initiator_warpper.h
+  *
+  * File : vci_dspin_initiator_wrapper.h
   * Copyright (c) UPMC, Lip6
-  * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
+  * Authors : Alain Greiner
   *
   * SOCLIB_LGPL_HEADER_BEGIN
   * 
@@ -30,87 +31,63 @@
 #include <systemc>
 #include "caba_base_module.h"
 #include "vci_target.h"
-#include "generic_fifo.h"
-#include "mapping_table.h"
 #include "dspin_interface.h"
 
 namespace soclib { namespace caba {
 
-    using namespace sc_core;
+using namespace sc_core;
 
-    template<typename vci_param, int dspin_fifo_size, int dspin_yx_size>
-	class VciDspinInitiatorWrapper
-	: public soclib::caba::BaseModule
-	{
+template< typename vci_param, 
+          size_t dspin_cmd_width,
+          size_t dspin_rsp_width >
+class VciDspinInitiatorWrapper
+: public soclib::caba::BaseModule
+{
+    // CMD FSM 
+    enum cmd_fsm_state
+    {
+        CMD_IDLE,
+        CMD_READ,
+        CMD_WRITE,
+        CMD_WDATA,
+    };
 
-	    // FSM of request
-	    enum fsm_state_req{
-		REQ_DSPIN_HEADER,
-		REQ_VCI_ADDRESS_HEADER,
-		REQ_VCI_CMD_READ_HEADER,
-		REQ_VCI_CMD_WRITE_HEADER,
-		REQ_VCI_DATA_PAYLOAD,
-	    };
+    // RSP FSM 
+	enum rsp_fsm_state
+    {
+		RSP_IDLE,
+        RSP_READ,
+        RSP_WRITE,
+    };
 
-	    // FSM of response
-	    enum fsm_state_rsp{
-		RSP_DSPIN_HEADER,
-		RSP_VCI_HEADER,		
-		RSP_VCI_DATA_PAYLOAD,
-	    };
+	protected:
+	SC_HAS_PROCESS(VciDspinInitiatorWrapper);
 
-	    protected:
-	    SC_HAS_PROCESS(VciDspinInitiatorWrapper);
+        public:
+        // ports
+        sc_in<bool>                             	p_clk;
+        sc_in<bool>                             	p_resetn;
+        DspinOutput<dspin_cmd_flit_width>			p_dspin_cmd;
+        DspinInput<dspin_rsp_flit_width>			p_dspin_rsp;
+        soclib::caba::VciTarget<vci_param>      	p_vci;
 
-	    public:
-	    // ports
-	    sc_in<bool>                             	p_clk;
-	    sc_in<bool>                             	p_resetn;
+        // constructor 
+        VciDspinInitiatorWrapper(sc_module_name name);
 
-	    // fifo req ant rsp
-	    DspinOutput<38>				p_dspin_out;
-	    DspinInput<34>				p_dspin_in;
+        private:
+        // internal registers
+        sc_signal<int>                             r_cmd_fsm;
+        sc_signal<int>                             r_rsp_fsm;
+        sc_signal<sc_uint<dspin_rsp_width> >  i    r_rsp_buf;
 
-	    // ports vci
-	    soclib::caba::VciTarget<vci_param>      	p_vci;
+	// methods 
+	void transition();
+	void genMealy_vci_cmd();
+	void genMealy_vci_rsp();
+	void genMealy_dspin_cmd();
+	void genMealy_dspin_rsp();
 
-	    // constructor / destructor
-	    VciDspinInitiatorWrapper(sc_module_name insname, const soclib::common::MappingTable &mt);
-
-	    private:
-	    // internal registers
-	    sc_signal<int>        r_fsm_state_req;
-	    sc_signal<int>        r_fsm_state_rsp;
-	    sc_signal<int>        r_srcid;
-	    sc_signal<int>        r_pktid;
-	    sc_signal<int>        r_trdid;
-	    sc_signal<int>        r_error;
-
-	    // deux fifos req and rsp
-	    soclib::caba::GenericFifo<sc_uint<38> >  fifo_req;
-	    soclib::caba::GenericFifo<sc_uint<34> >  fifo_rsp;
-
-	    // methods systemc
-	    void transition();
-	    void genMoore();
-
-	    // routing table
-	    soclib::common::AddressDecodingTable<uint32_t, int>  m_routing_table;
-	    int                                                  srcid_mask;
-
-	    // checker
-	    soclib_static_assert(vci_param::N == 32 || vci_param::N == 36); // checking VCI address size
-	    soclib_static_assert(vci_param::B == 4);   // checking VCI data size
-
-        soclib_static_assert(vci_param::K <= 8); // checking plen size
-        soclib_static_assert(vci_param::S <= 14); // checking srcid size
-        soclib_static_assert(vci_param::P <= 4); // checking pktid size
-        soclib_static_assert(vci_param::T <= 4); // checking trdid size
-        soclib_static_assert(vci_param::E <= 4); // checking rerror size
-
-	    soclib_static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1); // checking FIFO size
-	    soclib_static_assert(dspin_yx_size <= 6 && dspin_yx_size >= 1);  // checking DSPIN index size
-	};
+};
 
 }} // end namespace
                
