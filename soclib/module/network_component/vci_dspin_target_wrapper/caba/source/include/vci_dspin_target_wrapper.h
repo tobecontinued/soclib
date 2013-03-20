@@ -1,7 +1,8 @@
 /* -*- c++ -*-
-  * File : vci_dspin_target_warpper.h
+  *
+  * File : vci_dspin_target_wrapper.h
   * Copyright (c) UPMC, Lip6
-  * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
+  * Authors : Alain Greiner
   *
   * SOCLIB_LGPL_HEADER_BEGIN
   * 
@@ -28,101 +29,61 @@
 #define VCI_DSPIN_TARGET_WRAPPER_H_
 
 #include <systemc>
-#include "mapping_table.h"
 #include "caba_base_module.h"
 #include "vci_initiator.h"
-#include "generic_fifo.h"
 #include "dspin_interface.h"
 
 namespace soclib { namespace caba {
 
-    using namespace sc_core;
+template<typename vci_param , size_t dspin_cmd_width, size_t dspin_rsp_width>
+class VciDspinTargetWrapper
+: public soclib::caba::BaseModule
+{
+    // CMD FSM
+    enum cmd_fsm_state
+    {
+		CMD_IDLE,
+        CMD_RW,
+        CMD_READ,
+        CMD_WDATA,
+    }
 
-    template<typename vci_param, int dspin_fifo_size, int dspin_yx_size>
-	class VciDspinTargetWrapper
-	: public soclib::caba::BaseModule
-	{
+    // RSP FSM
+	enum rsp_fsm_state
+    {
+		RSP_IDLE,
+        RSP_SINGLE,
+        RSP_MULTI,
+    }
 
-	    // FSM of request
-	    enum fsm_state_req{
-		REQ_DSPIN_HEADER,
-		REQ_VCI_ADDRESS_HEADER,
-		REQ_VCI_CMD_HEADER,
-		REQ_VCI_DATA_PAYLOAD,
-		REQ_VCI_NOPAYLOAD,
-	    };
+    protected:
+    SC_HAS_PROCESS(VciDspinTargetWrapper);
 
-	    // FSM of response
-	    enum fsm_state_rsp{
-		RSP_DSPIN_HEADER,
-		RSP_VCI_HEADER,
-		RSP_VCI_DATA_PAYLOAD,
-	    };
+    public:
+    // ports
+    sc_in<bool>                             	p_clk;
+    sc_in<bool>                             	p_resetn;
+    soclib::caba::DspinInput<dspin_cmd_width>	p_dspin_cmd;
+    soclib::caba::DspinOutput<dspin_rsp_width>	p_dspin_rsp;
+	soclib::caba::VciInitiator<vci_param>      	p_vci;
 
-	    protected:
-	    SC_HAS_PROCESS(VciDspinTargetWrapper);
+	// constructor 
+	VciDspinTargetWrapper( sc_module_name name );
 
-	    public:
-	    // ports
-	    sc_in<bool>                             	p_clk;
-	    sc_in<bool>                             	p_resetn;
+    private:
+    // internal registers
+    sc_signal<int>                              r_cmd_fsm;
+    sc_signal<int>                              r_rsp_fsm;
+    sc_uint<dspin_cmd_width>                    r_cmd_buf0;
+    sc_uint<dspin_cmd_width>                    r_cmd_buf1;
 
-	    // fifo req ant rsp
-	    DspinOutput<34>				p_dspin_out;
-	    DspinInput<38>				p_dspin_in;
-
-	    // ports vci
-	    soclib::caba::VciInitiator<vci_param>      	p_vci;
-
-	    // constructor / destructor
-	    VciDspinTargetWrapper(
-			sc_module_name insname,
-			const soclib::common::MappingTable &mt);
-
-	    private:
-	    // internal registers
-	    sc_signal<int>				r_fsm_state_req;
-	    sc_signal<int>				r_fsm_state_rsp;
-	    sc_signal<sc_uint<2> >			r_cmd;
-	    //sc_signal<sc_uint<vci_param::B> >		r_be;
-	    sc_signal<sc_uint<vci_param::S> >		r_srcid;
-
-	    //sc_signal<sc_uint<32> >			r_msbad;
-	    //sc_signal<sc_uint<32> >			r_lsbad;
-
-	    sc_signal<sc_uint<vci_param::P> >		r_pktid;
-	    sc_signal<sc_uint<vci_param::T> >		r_trdid;
-	    sc_signal<bool >				r_cons;
-	    sc_signal<bool >				r_contig;
-
-	    sc_signal<sc_uint<vci_param::N> >		r_address;
-	    sc_signal<sc_uint<vci_param::K> >		r_plen;
-
-	    // SRCID extraction utility
-	    soclib::common::AddressMaskingTable<uint32_t> m_get_msb;
-	    int						  srcid_mask;
-
-	    // deux fifos req and rsp
-	    soclib::caba::GenericFifo<sc_uint<38> >  fifo_req;
-	    soclib::caba::GenericFifo<sc_uint<34> >  fifo_rsp;
-
-	    // methods systemc
-	    void transition();
-	    void genMoore();
-
-	    // checker
-	    soclib_static_assert(vci_param::N == 32 || vci_param::N == 36); // checking VCI address size
-	    soclib_static_assert(vci_param::B == 4);   // checking VCI data size
-
-        soclib_static_assert(vci_param::K <= 8); // checking plen size
-        soclib_static_assert(vci_param::S <= 14); // checking srcid size
-        soclib_static_assert(vci_param::P <= 4); // checking pktid size
-        soclib_static_assert(vci_param::T <= 4); // checking trdid size
-        soclib_static_assert(vci_param::E <= 4); // checking rerror size
-
-	    soclib_static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1); // checking FIFO size
-	    soclib_static_assert(dspin_yx_size <= 6 && dspin_yx_size >= 1);  // checking DSPIN index size	    
-	};
+	// methods systemc
+	void transition();
+	void genMealy_vci_cmd();
+	void genMealy_vci_rsp();
+	void genMealy_dspin_cmd();
+	void genMealy_dspin_rsp();
+};
 
 }} // end namespace
                

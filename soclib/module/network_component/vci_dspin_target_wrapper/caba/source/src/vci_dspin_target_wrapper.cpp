@@ -1,7 +1,8 @@
 /* -*- c++ -*-
-  * File : vci_dspin_initiator_warpper.h
+  *
+  * File : vci_dspin_initiator_wrapper.h
   * Copyright (c) UPMC, Lip6
-  * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
+  * Authors : Alain Greiner
   *
   * SOCLIB_LGPL_HEADER_BEGIN
   * 
@@ -25,244 +26,258 @@
   */
 
 #include "../include/vci_dspin_target_wrapper.h"
-#include "register.h"
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<typename vci_param, int dspin_fifo_size, int dspin_yx_size> x VciDspinTargetWrapper<vci_param, dspin_fifo_size, dspin_yx_size>
+#define tmpl(x) template<typename vci_param, size_t dspin_cmd_width, size_t dspin_rsp_width> x VciDspinTargetWrapper<vci_param, dspin_cmd_width, dspin_rsp_widt>
 
-    ////////////////////////////////
-    //      constructor
-    ////////////////////////////////
+///////////////////////////////////////////////////////
+tmpl(/**/)::VciDspinTargetWrapper(sc_module_name name )
+	   : soclib::caba::BaseModule(insname),
 
-    tmpl(/**/)::VciDspinTargetWrapper(sc_module_name insname,
-	    const soclib::common::MappingTable &mt)
-	       : soclib::caba::BaseModule(insname),
-			   p_clk("clk"),
-			   p_resetn("resetn"),
-			   p_dspin_out("dspin_out"),
-			   p_dspin_in("dspin_in"),
-			   p_vci("vci"),
-			   r_fsm_state_req("fsm_state_req"),
-			   r_fsm_state_rsp("fsm_state_rsp"),
-			   r_cmd("cmd"),
-			   r_srcid("srcid"),
-			   r_pktid("pktid"),
-			   r_trdid("trdid"),
-			   r_cons("cons"),
-			   r_contig("contig"),
-			   r_address("address"),
-    			   r_plen("plen"),
-			   m_get_msb(mt.getIdMaskingTable(0)),
-			   fifo_req("FIFO_REQ", dspin_fifo_size),
-			   fifo_rsp("FIFO_RSP", dspin_fifo_size)
-    {
+	   p_clk("clk"),
+	   p_resetn("resetn"),
+	   p_dspin_cmd("dspin_cmd"),
+	   p_dspin_rsp("dspin_rsp"),
+	   p_vci("vci"),
+
+	   r_cmd_fsm("r_cmd_fsm"),
+	   r_rsp_fsm("r_rsp_fsm"),
+{
 	SC_METHOD (transition);
 	dont_initialize();
 	sensitive << p_clk.pos();
-	SC_METHOD (genMoore);
+
+    SC_METHOD (genMealy_vci_cmd);
 	dont_initialize();
-	sensitive  << p_clk.neg();
+    sensitive << p_clk.neg();
+    sensitive << p_dspin_cmd.write;
+    sensitive << p_dspin_cmd.data;
 
-        srcid_mask = 0x7FFFFFFF >> ( 31 - vci_param::S ); 
-    } //  end constructor
+    SC_METHOD (genMealy_vci_rsp);
+	dont_initialize();
+    sensitive << p_clk.neg();
+    sensitive << p_dspin_rsp.read;
 
-    ////////////////////////////////
-    //      transition
-    ////////////////////////////////
-    tmpl(void)::transition()
+    SC_METHOD (genMealy_dspin_cmd);
+	dont_initialize();
+    sensitive << p_clk.neg();
+    sensitive << p_vci.cmdack;
+
+    sensitive << p_vci.cmdval;
+    sensitive << p_vci.address;
+    sensitive << p_vci.wdata;
+    sensitive << p_vci.srcid;
+    sensitive << p_vci.trdid;
+    sensitive << p_vci.pktid;
+    sensitive << p_vci.plen;
+    sensitive << p_vci.be;
+    sensitive << p_vci.cmd;
+    sensitive << p_vci.cons;
+    sensitive << p_vci.contig;
+
+    SC_METHOD (genMealy_dspin_rsp);
+	dont_initialize();
+    sensitive << p_clk.neg();
+    sensitive << p_vci.rspval;
+    sensitive << p_vci.rerror;
+    sensitive << p_vci.rdata;
+    sensitive << p_vci.rsrcid;
+    sensitive << p_vci.rtrdid;
+    sensitive << p_vci.rpktid;
+    sensitive << p_vci.reop;
+
+    assert( (dspin_cmd_width == 40) and "The DSPIN CMD flit width must have 40 bits");
+    assert( (dspin_rsp_width == 33) and "The DSPIN RSP flit width must have 33 bits");
+    assert( (vci_param::N    <= 40) and "The VCI ADDRESS field cannot have more than 40 bits");
+    assert( (vci_param::B    == 4 ) and "The VCI DATA filds must have 32 bits");
+    assert( (vci_param::K    == 8 ) and "The VCI PLEN field cannot have more than 8 bits");
+    assert( (vci_param::S    <= 14) and "The VCI SRCID field cannot have more than 14 bits");
+    assert( (vci_param::T    <= 4 ) and "The VCI TRDID field cannot have more than 4 bits");
+    assert( (vci_param::P    <= 4 ) and "The VCI PKTID field cannot have more than 4 bits");
+    assert( (vci_param::E    <= 2 ) and "The VCI RERROR field cannot have more than 2 bits");
+
+} //  end constructor
+
+////////////////////////
+tmpl(void)::transition()
+{
+	if ( p_resetn == false ) 
     {
-	sc_uint<38>	req_fifo_data;
-	bool		req_fifo_write;
-	bool		req_fifo_read;
-	sc_uint<34>	rsp_fifo_data;
-	bool		rsp_fifo_write;
-	bool		rsp_fifo_read;
-
-	if (p_resetn == false) {
-	    fifo_req.init();
-	    fifo_rsp.init();
-	    r_fsm_state_req = REQ_DSPIN_HEADER;
-	    r_fsm_state_rsp = RSP_DSPIN_HEADER;
+	    r_cmd_fsm = CMD_IDLE;
+	    r_rsp_fsm = RSP_IDLE;
 	    return;
-	} // end reset
+	} 
 
-	// DSPIN request to VCI request 
-	// The DSPIN packet is written into the fifo_req
-	// and the FIFO output is analysed and translated
+    /////////////////////////////////////////////////////////////
+    // VCI response packet to DSPIN response packet.
+    /////////////////////////////////////////////////////////////
+    // - A single flit VCI response packet with a 0 RDATA value
+    //   is translated to a single flit DSPIN response.
+    // - All other VCI responses are translated to a multi-flit
+    //   DSPIN response.
+    // In the RSP_IDLE state, the first DSPIN flit is written,
+    // but no VCI flit is consumed. 
+    // In RSP_SINGLE state no DSPIN flit is transmitted, but
+    // the VCI flit is consumed.
+    // In the RSP_MULTI state, a VCI flit is consumed and a
+    // DSPIN flit is transmited.
+    //////////////////////////////////////////////////////////////
 
-	// req_fifo_write and req_fifo_data
-	req_fifo_write = p_dspin_in.write.read();
-	req_fifo_data  = p_dspin_in.data.read();
-
-	// r_fsm_state_req, req_fifo_read, BUF_CMD, BUF_SRCID, BUF_PKTID, BUF_TRDID, BUF_MSBAD, BUF_LSBAD
-	req_fifo_read = false;
-	switch(r_fsm_state_req) {
-	    case REQ_DSPIN_HEADER :
-		if( fifo_req.rok() == true){
-		    req_fifo_read = true;
-		    r_fsm_state_req = REQ_VCI_ADDRESS_HEADER;
-		}
-		break;
-	    case REQ_VCI_ADDRESS_HEADER :
-		if(fifo_req.rok() == true) {
-		    req_fifo_read = true;
-		    r_address = (sc_uint<vci_param :: N>) (fifo_req.read());
-		    r_fsm_state_req = REQ_VCI_CMD_HEADER;
-		}
-		break;
-	    case REQ_VCI_CMD_HEADER : 
-		if( fifo_req.rok() == true  ){
-		    req_fifo_read = true;
-		    r_pktid  = (sc_uint<vci_param::P>) ((fifo_req.read())       & 0xF );
-		    r_trdid  = (sc_uint<vci_param::T>) ((fifo_req.read() >> 4)  & 0xF );
-		    r_plen   = (sc_uint<vci_param::K>) ((fifo_req.read() >> 8)  & 0xFF);
-		    r_cons   = (bool)         	       ((fifo_req.read() >> 16) & 0x1 );
-		    r_contig = (bool)                  ((fifo_req.read() >> 17) & 0x1 );
-		    r_cmd    = (sc_uint<2>)            ((fifo_req.read() >> 18) & 0x3 );
-		    r_srcid  = (sc_uint<vci_param::S>) ((fifo_req.read() >> 24) & srcid_mask );
-		    if(((fifo_req.read() >> 36) & DSPIN_EOP) == DSPIN_EOP) { r_fsm_state_req = REQ_VCI_NOPAYLOAD;    }
-		    else                                                   { r_fsm_state_req = REQ_VCI_DATA_PAYLOAD; }
-		}
-		break;
-	    case REQ_VCI_DATA_PAYLOAD :
-		if((p_vci.cmdack.read() == true) && (fifo_req.rok() == true)) {
-		    req_fifo_read = true;
-		    r_address = r_address.read() + (sc_uint<vci_param :: N>)vci_param::B;
-		    if(((fifo_req.read() >> 36) & DSPIN_EOP) == DSPIN_EOP) {r_fsm_state_req = REQ_DSPIN_HEADER; }
-		}
-		break;
-	    case REQ_VCI_NOPAYLOAD :		
-		if(p_vci.cmdack.read() == true)
-		    r_fsm_state_req = REQ_DSPIN_HEADER;
-		break;
-	} // end switch r_fsm_state_req
-	
-	// fifo_req
-	if((req_fifo_write == true)  && (req_fifo_read == false)) { fifo_req.simple_put(req_fifo_data); } 
-	if((req_fifo_write == true)  && (req_fifo_read == true))  { fifo_req.put_and_get(req_fifo_data); } 
-	if((req_fifo_write == false) && (req_fifo_read == true))  { fifo_req.simple_get(); }
-
-
-	// VCI response to DSPIN response 
-	// The VCI packet is analysed, translated, and
-	// the SPIN packet is written into the fifo_rsp
-	// 
-	// rsp_fifo_read 
-	rsp_fifo_read  = p_dspin_out.read.read();
-
-	// r_fsm_state_rsp, rsp_fifo_write and rsp_fifo_data
-	rsp_fifo_write = false;
-	switch(r_fsm_state_rsp) {
-	    case RSP_DSPIN_HEADER :
-		if((p_vci.rspval.read() == true) && (fifo_rsp.wok() == true)) { 
-		    rsp_fifo_write = true;
-		    rsp_fifo_data = ((sc_uint<34>(DSPIN_BOP)) << 32) |
-                                    ((sc_uint<34>(m_get_msb[p_vci.rsrcid.read()])) 
-				&  (0x7FFFFFFF >> (31 - dspin_yx_size * 2)));
-		    r_fsm_state_rsp = RSP_VCI_HEADER;
-		}
-		break;
-	    case RSP_VCI_HEADER :
-		if((p_vci.rspval.read() == true) && (fifo_rsp.wok() == true)) { 
-		    rsp_fifo_write = true;
-		    rsp_fifo_data = ((sc_uint<34>(p_vci.rsrcid.read())) << 20) |
-		  		    ((sc_uint<34>(p_vci.rerror.read())) << 8 ) |
-				    ((sc_uint<34>(p_vci.rtrdid.read())) << 4 ) |
-			             (sc_uint<34>(p_vci.rpktid.read()));
-		    r_fsm_state_rsp = RSP_VCI_DATA_PAYLOAD;
-		}
-		break;
-	    case RSP_VCI_DATA_PAYLOAD :
-		if((p_vci.rspval.read() == true) && (fifo_rsp.wok() == true)) { 
-		    rsp_fifo_write = true;
-		    rsp_fifo_data = (sc_uint<34>) (p_vci.rdata.read()); 
-		    if(p_vci.reop.read() == true){
-			rsp_fifo_data = rsp_fifo_data | ((sc_uint<34>(DSPIN_EOP)) << 32);
-			r_fsm_state_rsp = RSP_DSPIN_HEADER;	    
-		    }
-		}
-		break;
-	} // end switch r_fsm_state_rsp
-
-	// fifo_rsp
-	if((rsp_fifo_write == true)  && (rsp_fifo_read == false)) { fifo_rsp.simple_put(rsp_fifo_data); } 
-	if((rsp_fifo_write == true)  && (rsp_fifo_read == true))  { fifo_rsp.put_and_get(rsp_fifo_data); } 
-	if((rsp_fifo_write == false) && (rsp_fifo_read == true))  { fifo_rsp.simple_get(); }
-    } // end transition
-
-    ////////////////////////////////
-    //      genMoore
-    ////////////////////////////////
-    tmpl(void)::genMoore()
+    switch(r_rsp_fsm)
     {
-	// VCI REQ interface
+        case RSP_IDLE:        // transmit first DSPIN flit
+            if( p_vci.rspval.read() and p_dspin_rsp.read.read() )
+            {
+                if ( p_vci.reop.read() and 
+                     (p_vci.rdata.read() == 0) ) r_rsp_fsm = RSP_SINGLE;
+                else                             r_rsp_fsm = RSP_MULTI; 
+            }
+        break;
+        case RSP_SINGLE:     // consume VCI flit in case of SINGLE DSPIN flit
+            r_rsp_fsm = RSP_IDLE;
+        break;
+        case RSP_MULTI:      // write DSPIN data flit
+            if( p_vci.rspval.read() and 
+                p_dspin_rsp.read.read()() and  
+                p_vci.reop.read() ) r_rsp_fsm = RSP_IDLE;
+        break;
+    } // end switch r_rsp_fsm
 
-	switch(r_fsm_state_req) {
-	    case REQ_DSPIN_HEADER :
-	    case REQ_VCI_ADDRESS_HEADER :
-	    case REQ_VCI_CMD_HEADER :
-		p_vci.cmdval = false;
-		break;
-	    case REQ_VCI_DATA_PAYLOAD :
-		p_vci.cmdval = fifo_req.rok();
-		p_vci.address = r_address;
-		p_vci.be = (sc_uint<vci_param::B>)((fifo_req.read() >> 32) & 0xF);
-		p_vci.cmd = r_cmd;
-		p_vci.wdata = (sc_uint<8*vci_param::B>)(fifo_req.read());
-		p_vci.pktid = r_pktid;
-		p_vci.srcid = r_srcid;
-		p_vci.trdid = r_trdid;
-		p_vci.plen = r_plen;
-		p_vci.clen = 0;
-		p_vci.cfixed = false;
-		p_vci.cons = r_cons;
-		p_vci.contig = r_contig;
-		p_vci.wrap = false;
-		if(((fifo_req.read() >> 36) & DSPIN_EOP) == DSPIN_EOP ) { p_vci.eop = true; }
-		else                                                    { p_vci.eop = false; }
-		break;
-	    case REQ_VCI_NOPAYLOAD :
-		p_vci.cmdval = true;
-		p_vci.address = r_address;
-		p_vci.be = 0xF;
-		p_vci.cmd = r_cmd;
-		p_vci.wdata = 0;
-		p_vci.pktid = r_pktid;
-		p_vci.srcid = r_srcid;
-		p_vci.trdid = r_trdid;
-		p_vci.plen = r_plen;
-		p_vci.clen = 0;
-		p_vci.cfixed = false;
-		p_vci.cons = r_cons;
-		p_vci.contig = r_contig;
-		p_vci.wrap = false;
-		p_vci.eop  = true;
-		break;
-	} // end switch r_fsm_state_req
+    //////////////////////////////////////////////////////////////
+    // DSPIN command packet to VCI command packet
+    //////////////////////////////////////////////////////////////
+    // - A 2 flits DSPIN read command is translated
+    //   to a 1 flit VCI read command.
+    // - A N+2 flits DSPIN write command is translated
+    //   to a N flits VCI write command.
+    // The VCI flits are sent in the CMD_READ, CMD_WDATA states.
+    // The r_cmd_buf0 et r_cmd_buf1 buffers are used to store
+    // the two first DSPIN flits (in case of write).
+    //////////////////////////////////////////////////////////////
 
-	// VCI RSP interface
-	//
-	switch(r_fsm_state_rsp){
-	    case RSP_DSPIN_HEADER :
-	    case RSP_VCI_HEADER :
-		p_vci.rspack = false;
-		break;
-	    case RSP_VCI_DATA_PAYLOAD :
-		p_vci.rspack = fifo_rsp.wok();
-		break;
-	}
+    switch(r_cmd_fsm)
+    {
+        case CMD_IDLE:  // save first DSPIN flit (address)
+            if( p_dspin_cmd.write.read() )
+            {
+                r_cmd_buf0    = p_dspin_cmd.data.read();  
+                r_cmd_fsm = CMD_RW;
+            }
+        break;
+        case CMD_RW:   // save second DSPIN flit (command parameters)
+            if( p_dspin_cmd.write.read() )
+            {
+                r_cmd_buf1 = p_dspin_cmd.data.read();  // save command parameters
+                if ( (p_dspin_cmd.data.read() & 0x8000000000LL) ) r_cmd_fsm = CMD_READ;
+                else                                              r_cmd_fsm = CMD_WDATA;
+                r_cmd_count = 0;
+            }
+        break;
+        case CMD_READ: // send VCI flit if READ
+            if ( p_vci.cmdack.read() ) r_cmd_fsm = CMD_IDLE;
+        break;
+        case CMD_WDATA: // send one VCI flit if WRITE
+            if( p_dspin_cmd.write.read() && p_vci.cmdack.read() )
+            {
+                if ( (r_cmd_buf1.read() & 0x0000200000LL) == 0 )  // CONST
+                    r_cmd_count = r_cmd_count + 1;
+                if ( (p_dspin_cmd.data.read() & 0x8000000000LL) ) // EOP
+                    r_cmd_fsm = CMD_IDLE;
+            }
+        break;
+    } // end switch r_cmd_fsm
 
-	// p_dspin_in interface
+}  // end transition()
 
-	p_dspin_in.read = fifo_req.wok();
+////////////////////////////////
+tmpl(void)::genMealy_dspin_rsp()
+{
+    sc_uint<dspin_rsp_width>    dspin_data;
 
-	// p_dspin_out interface
+    if ( r_rsp_fsm.read() == RSP_IDLE )
+    {
+        p_dspin_rsp.write = p_vci.rspval.read();
+        dspin_data = (((sc_uint<dspin_rsp_width>)p_vci.rsrcid.read()) << 18) |
+                     (((sc_uint<dspin_rsp_width>)p_vci.rerror.read()) << 16) |
+                     (((sc_uint<dspin_rsp_width>)p_vci.rtrdid.read()) << 12) |
+                     (((sc_uint<dspin_rsp_width>)p_vci.rpktid.read()) << 8);
+        if (  p_vci.reop.read() and 
+              (p_vci.rdata.read() == 0) ) dspin_data = dspin_data | 0x100000000LL;              
+    }
+    else if ( r_rsp_fsm.read() == RSP_SINGLE )
+    {
+        p_dspin_rsp.write = false;
+    }
+    else //  r_rsp_fsm == RSP_MULTI 
+    {
+        p_dspin_rsp.write = p_vci.rspval.read();
+        dspin_data = (sc_uint<dspin_rsp_width>)p_vci.rdata.read();
+        if ( p_vci.reop.read() )
+            dspin_data = dspin_data | 0x100000000LL;
+    }
+    p_dspin_rsp.data = dspin_data;
+}
 
-	p_dspin_out.write = fifo_rsp.rok();
-	p_dspin_out.data = fifo_rsp.read();
+//////////////////////////////
+tmpl(void)::genMealy_vci_rsp()
+{
+    if ( r_rsp_fsm.read() == RSP_IDLE ) p_vci.rspack = false;
+    else                                p_vci.rspack = p_dspin_rsp.read();
+}
 
-    } // end genMoore
+//////////////////////////////
+tmpl(void)::genMealy_vci_cmd()
+{
+    sc_uint<vci_param::N> address;
+    if ( vci_param::N == 40 ) address = (r_cmd_buf0.read() << 1);
+    else                      address = (r_cmd_buf0.read() >> (39 - vci_param::N) );
+
+    if ( (r_cmd_fsm.read() == CMD_IDLE) or (r_cmd_fsm.read() == CMD_RW) )
+    {
+        p_pci.cmdval = false;
+    }
+    else if ( r_cmd_fsm.read() == CMD_READ )  // READ command
+    {
+        p_vci.cmdval = true;
+        p_vci.address = address;
+        p_vci.cmd     = (sc_uint<2>)((r_cmd_buf1.read()            & 0x0001800000LL) >> 23);
+        p_vci.wdata   = 0;
+        p_vci.be      = (sc_uint<vci_param::B>)((r_cmd_buf1.read() & 0x000000001ELL) >> 1);
+        p_vci.srcid   = (sc_uint<vci_param::S>)((r_cmd_buf1.read() & 0x7FFE000000LL) >> 25);
+        p_vci.pktid   = (sc_uint<vci_param::P>)((r_cmd_buf1.read() & 0x00000001E0LL) >> 5);
+        p_vci.trdid   = (sc_uint<vci_param::T>)((r_cmd_buf1.read() & 0x0000001E00LL) >> 9);
+        p_vci.plen    = (sc_uint<vci_param::K>)((r_cmd_buf1.read() & 0x00001FE000LL) >> 13);
+        p_vci.contig  = ((r_cmd_buf1.read() & 0x0000400000LL) != 0);
+        p_vci.cons    = ((r_cmd_buf1.read() & 0x0000200000LL) != 0);
+        p_vci.eop     = true;
+    }
+    else // r_cmd_fsm == CMD_WDATA : WRITE conmmand
+    {
+        p_vci.cmdval  = p_dspin_cmd.write.read();
+        p_vci.address = address + (r_cmd_count.read()*vci_param::B);
+        p_vci.cmd     = (sc_uint<2>)((r_cmd_buf1.read()             & 0x0001800000LL) >> 23);
+        p_vci.wdata   = (sc_uint<8*vci_param::B>)(r_fifo_cmd.read() & 0x00FFFFFFFFLL);
+        p_vci.be      = (sc_uint<vci_param::B>)((r_fifo_cmd.read()  & 0x0F00000000LL) >> 32);
+        p_vci.srcid   = (sc_uint<vci_param::S>)((r_cmd_buf1.read()  & 0x7FFE000000LL) >> 25);
+        p_vci.pktid   = (sc_uint<vci_param::P>)((r_cmd_buf1.read()  & 0x00000001E0LL) >> 5);
+        p_vci.trdid   = (sc_uint<vci_param::T>)((r_cmd_buf1.read()  & 0x0000001E00LL) >> 9);
+        p_vci.plen    = (sc_uint<vci_param::K>)((r_cmd_buf1.read()  & 0x00001FE000LL) >> 13);
+        p_vci.contig  = ((r_cmd_buf1.read() & 0x0000400000LL) != 0);
+        p_vci.cons    = ((r_cmd_buf1.read() & 0x0000200000LL) != 0);
+        p_vci.eop     = ((r_fifo_cmd.read() & 0x8000000000LL) == 0x8000000000LL);
+
+    }
+}
+
+////////////////////////////////
+tmpl(void)::genMealy_dspin_cmd()
+{
+    if ( (r_cmd_fsm.read() == CMD_IDLE) or 
+              (r_cmd_fsm.read() == CMD_RW) )  p_dspin_cmd.read = true;
+    else if ( r_cmd_fsm.read() == CMD_READ )  p_dspin_cmd.read = false;
+    else                                      p_dspin_cmd.read = p_vci.cmdack.read();
+}
 
 }} // end namespace
 
