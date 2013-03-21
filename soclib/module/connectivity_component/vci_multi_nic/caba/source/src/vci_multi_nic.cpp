@@ -100,26 +100,26 @@
 // - It contains various event counters for statistics (read/write)
 //
 //      * NIC_G_NPKT_RX_G2S_RECEIVED       : number of packets received on GMII RX port 
-//      * NIC_G_NPKT_RX_G2S_DISCARDED      : number of TX packets discarded by RX_G2S FSM
+//      * NIC_G_NPKT_RX_G2S_DISCARDED      : number of RX packets discarded by RX_G2S FSM
 //
-//      * NIC_G_NPKT_RX_DES_SUCCESS        : number of TX packets transmited by RX_DES FSM
-//      * NIC_G_NPKT_RX_DES_TOO_SMALL      : number of discarded too small TX packets 
-//      * NIC_G_NPKT_RX_DES_TOO_BIG        : number of discarded too big TX packets 
-//      * NIC_G_NPKT_RX_DES_MFIFO_FULL     : number of discarded TX packets because fifo full
-//      * NIC_G_NPKT_RX_DES_CS_FAIL        : number of discarded TX packets because checksum 
+//      * NIC_G_NPKT_RX_DES_SUCCESS        : number of RX packets transmited by RX_DES FSM
+//      * NIC_G_NPKT_RX_DES_TOO_SMALL      : number of discarded too small RX packets 
+//      * NIC_G_NPKT_RX_DES_TOO_BIG        : number of discarded too big RX packets 
+//      * NIC_G_NPKT_RX_DES_MFIFO_FULL     : number of discarded RX packets because fifo full
+//      * NIC_G_NPKT_RX_DES_CS_FAIL        : number of discarded RX packets because checksum 
 //
 //      * NIC_G_NPKT_RX_DISPATCH_RECEIVED  : number of packets received by RX_DISPATCH FSM
-//      * NIC_G_NPKT_RX_DISPATCH_BROADCAST : number of broadcast TX packets received 
-//      * NIC_G_NPKT_RX_DISPATCH_DST_FAIL  : number of discarded TX packets because DST MAC 
-//      * NIC_G_NPKT_RX_DISPATCH_CH_FULL   : number of discarded TX packets because channel full
+//      * NIC_G_NPKT_RX_DISPATCH_BROADCAST : number of broadcast RX packets received 
+//      * NIC_G_NPKT_RX_DISPATCH_DST_FAIL  : number of discarded RX packets because DST MAC 
+//      * NIC_G_NPKT_RX_DISPATCH_CH_FULL   : number of discarded RX packets because channel full
 //
 //      * NIC_G_NPKT_TX_DISPATCH_RECEIVED  : number of packets received by TX_DISPATCH FSM
-//      * NIC_G_NPKT_RX_DISPATCH_TOO_SMALL : number of discarded too small TX packets 
-//      * NIC_G_NPKT_RX_DISPATCH_TOO_BIG   : number of discarded too big TX packets 
-//      * NIC_G_NPKT_RX_DISPATCH_SRC_FAIL  : number of discarded TX packets because SRC MAC
-//      * NIC_G_NPKT_RX_DISPATCH_BROADCAST : number of broadcast TX packets received
-//      * NIC_G_NPKT_RX_DISPATCH_BYPASS    : number of bypassed TX->RX packets
-//      * NIC_G_NPKT_RX_DISPATCH_TRANSMIT  : number of transmit TX packets
+//      * NIC_G_NPKT_TX_DISPATCH_TOO_SMALL : number of discarded too small TX packets 
+//      * NIC_G_NPKT_TX_DISPATCH_TOO_BIG   : number of discarded too big TX packets 
+//      * NIC_G_NPKT_TX_DISPATCH_SRC_FAIL  : number of discarded TX packets because SRC MAC
+//      * NIC_G_NPKT_TX_DISPATCH_BROADCAST : number of broadcast TX packets received
+//      * NIC_G_NPKT_TX_DISPATCH_BYPASS    : number of bypassed TX->RX packets
+//      * NIC_G_NPKT_TX_DISPATCH_TRANSMIT  : number of transmit TX packets
 // 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -140,7 +140,9 @@ namespace soclib { namespace caba {
 #define DISPLAY_CHECKSUM    1
 
 // CRC Table Definition 
-
+// This table is Ethernet compatible if the crc_register initialized with zeros
+// (not ones, as described on IEEE 802.3 standard). Also, there is no need to 
+// complement the resulting CRC before sending.
 static uint32_t crc_table[] =
 {
     0x4DBDF21C, 0x500AE278, 0x76D3D2D4, 0x6B64C2B0,
@@ -859,11 +861,32 @@ tmpl(void)::transition()
         /////////////////
         case RX_G2S_IDLE:   // waiting start of packet
         {
-            if (r_global_nic_on.read() and gmii_rx_dv and not gmii_rx_er ) // start of packet 
+            if (r_global_nic_on.read() and gmii_rx_dv and not gmii_rx_er
+                and  gmii_rx_data == 0x55 ) // start of packet 
             {
                 r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
+                r_rx_g2s_fsm           = RX_G2S_PREAMBLE; 
+            }
+            break;
+        }
+        /////////////////
+        case RX_G2S_PREAMBLE:   // Preamble reception
+        {
+            if (gmii_rx_dv and not gmii_rx_er
+                and  gmii_rx_data == 0xD5 ) // SFD 
+            {
                 r_rx_g2s_fsm           = RX_G2S_DELAY; 
                 r_rx_g2s_delay         = 0;
+            }
+            else if (gmii_rx_dv and not gmii_rx_er
+                     and  gmii_rx_data == 0x55 ) // Normal preamble byte 
+            {
+                r_rx_g2s_fsm            = RX_G2S_PREAMBLE;
+            }
+            else // bad packet 0x55 or 0x5D expected
+            {
+                r_rx_g2s_npkt_discarded = r_rx_g2s_npkt_discarded.read() + 1;
+                r_rx_g2s_fsm            = RX_G2S_IDLE;
             }
             break;
         }
@@ -875,7 +898,7 @@ tmpl(void)::transition()
                 r_rx_g2s_npkt_discarded = r_rx_g2s_npkt_discarded.read() + 1;
                 r_rx_g2s_fsm            = RX_G2S_IDLE;
             }
-            else if ( r_rx_g2s_delay.read() == 3 ) 
+            else if ( r_rx_g2s_delay.read() == 4 ) 
             {
                 r_rx_g2s_fsm      = RX_G2S_LOAD;
                 r_rx_g2s_checksum = 0x00000000; // reset checksum register
@@ -962,7 +985,7 @@ r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
             }
             else if ( not gmii_rx_dv and gmii_rx_er ) // error extend
             {
-                r_rx_g2s_fsm = RX_G2S_EXTD;
+                r_rx_g2s_fsm = RX_G2S_ERR;
             }
             break;
         }
@@ -998,24 +1021,14 @@ if ( r_rx_g2s_checksum.read() != check )
                 rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_ERR << 8);
             }
 
-            if ( gmii_rx_dv and not gmii_rx_er ) // start of packet / no error
+            if ( gmii_rx_dv and not gmii_rx_er and  gmii_rx_data == 0x55) // start of packet / no error
             {
                 r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
-                r_rx_g2s_fsm           = RX_G2S_DELAY;
-                r_rx_g2s_delay         = 0;
+                r_rx_g2s_fsm           = RX_G2S_PREAMBLE;
             }
             else 
             {
                 r_rx_g2s_fsm   = RX_G2S_IDLE;
-            }
-            break;
-        }
-        /////////////////
-        case RX_G2S_EXTD:   // waiting end of extend to signal error
-        {
-            if ( not gmii_rx_er ) 
-            {
-                r_rx_g2s_fsm   = RX_G2S_ERR;
             }
             break;
         }
@@ -1025,11 +1038,10 @@ if ( r_rx_g2s_checksum.read() != check )
             rx_fifo_stream_write = true;
             rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_ERR << 8);
 
-            if ( gmii_rx_dv and not gmii_rx_er ) // start of packet / no error
+            if ( gmii_rx_dv and not gmii_rx_er and  gmii_rx_data == 0x55) // start of packet / no error
             {
                 r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
-                r_rx_g2s_fsm           = RX_G2S_DELAY;
-                r_rx_g2s_delay         = 0;
+                r_rx_g2s_fsm           = RX_G2S_PREAMBLE;
             }
             else 
             {
@@ -1159,10 +1171,10 @@ if ( r_rx_g2s_checksum.read() != check )
 	    {
 		    // write previous word into fifo_multi (wok has been previouly checked)
 		    rx_fifo_multi_wcmd  = FIFO_MULTI_WCMD_WRITE;
-		    rx_fifo_multi_wdata = (uint32_t)(r_rx_des_data[0].read()      ) |
-			    				  (uint32_t)(r_rx_des_data[1].read() << 8 ) |
-				    			  (uint32_t)(r_rx_des_data[2].read() << 16) |
-					    		  (uint32_t)(r_rx_des_data[3].read() << 24) ;
+		    rx_fifo_multi_wdata = (uint32_t)(r_rx_des_data[0].read() << 24) |
+			    				  (uint32_t)(r_rx_des_data[1].read() << 16) |
+				    			  (uint32_t)(r_rx_des_data[2].read() << 8 ) |
+					    		  (uint32_t)(r_rx_des_data[3].read()      ) ;
 
 		    // Read new byte
             uint16_t data = r_rx_fifo_stream.read();
@@ -1356,25 +1368,25 @@ if ( r_rx_g2s_checksum.read() != check )
 	    {
             if ( r_rx_des_padding.read() == 0 )
             {
-		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read()      ) |
-                                          (uint32_t)(r_rx_des_data[1].read() << 8 ) |
-                                          (uint32_t)(r_rx_des_data[2].read() << 16) |
-                                          (uint32_t)(r_rx_des_data[3].read() << 24) ;
+		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read() << 24) |
+                                          (uint32_t)(r_rx_des_data[1].read() << 16) |
+                                          (uint32_t)(r_rx_des_data[2].read() << 8 ) |
+                                          (uint32_t)(r_rx_des_data[3].read()      ) ;
             }
             else if ( r_rx_des_padding.read() == 1 )
             {
-		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read()      ) |
-                                          (uint32_t)(r_rx_des_data[1].read() << 8 ) |
-                                          (uint32_t)(r_rx_des_data[3].read() << 16) ;
+		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read() << 24) |
+                                          (uint32_t)(r_rx_des_data[1].read() << 16) |
+                                          (uint32_t)(r_rx_des_data[3].read() << 8 ) ;
             }
             else if ( r_rx_des_padding.read() == 2 )
             {
-		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read()      ) |
-                                          (uint32_t)(r_rx_des_data[1].read() << 8 ) ;
+		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read() << 24) |
+                                          (uint32_t)(r_rx_des_data[1].read() << 16) ;
             }
             else  // padding = 3
             {
-		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read()      ) ;
+		        rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read() << 24) ;
             }
 
 		    rx_fifo_multi_wcmd    = FIFO_MULTI_WCMD_LAST;
@@ -1455,12 +1467,12 @@ if ( r_rx_g2s_checksum.read() != check )
                                       // in source fifo) to get the MAC extension
                                       // and analyse broadcast
         {
-            uint32_t dst_mac_4 = r_rx_dispatch_data.read();
-            uint32_t dst_mac_2;
-            if ( r_rx_dispatch_bp.read() ) dst_mac_2 = r_bp_fifo_multi.data() & 0x0000FFFF;
-            else                           dst_mac_2 = r_rx_fifo_multi.data() & 0x0000FFFF;
+            uint32_t data0 = r_rx_dispatch_data.read(); // dst_addr 4 MSB bytes
+            uint32_t data1;                            // dst_addr 2 LSB bytes 
+            if ( r_rx_dispatch_bp.read() ) data1 = r_bp_fifo_multi.data() & 0xFFFF0000;
+            else                           data1 = r_rx_fifo_multi.data() & 0xFFFF0000;
             
-            if ( (dst_mac_4 == 0xFFFFFFFF) and (dst_mac_2 == 0x0000FFFF) 
+            if ( (data0 == 0xFFFFFFFF) and (data1 == 0xFFFF0000) 
                and r_global_bc_enable.read() )          // broadcast 
             {
                 r_rx_dispatch_dest           = 0;
@@ -1483,10 +1495,15 @@ if ( r_rx_g2s_checksum.read() != check )
         {
             bool found = false;
 
-            uint32_t dst_mac_4 = r_rx_dispatch_data.read();
-            uint32_t dst_mac_2;
-            if ( r_rx_dispatch_bp.read() ) dst_mac_2 = r_bp_fifo_multi.data() & 0x0000FFFF;
-            else                           dst_mac_2 = r_rx_fifo_multi.data() & 0x0000FFFF;  
+            uint32_t data0 = r_rx_dispatch_data.read();     // dst_addr 4 MSB bytes
+            uint32_t dst_mac_2 = (data0 & 0xFFFF0000)>>16;  // 2 MSB bytes
+            uint32_t dst_mac_4;                             // 4 LSB bytes 
+            if ( r_rx_dispatch_bp.read() ) 
+                dst_mac_4 = ((data0 & 0x0000FFFF)<<16) |
+                            ((r_bp_fifo_multi.data() & 0xFFFF0000)>>16);
+            else
+                dst_mac_4 = ((data0 & 0x0000FFFF)<<16) | 
+                            ((r_rx_fifo_multi.data() & 0xFFFF0000)>>16);
 
             for ( size_t k=0 ; (k<m_channels) && not found ; k++ )
             {
@@ -1535,21 +1552,15 @@ if ( r_rx_g2s_checksum.read() != check )
         {
             uint32_t    channels = 0;
 
-            uint32_t dst_mac_4 = r_rx_dispatch_data.read();
-            uint32_t dst_mac_2;
-            if ( r_rx_dispatch_bp.read() ) dst_mac_2 = r_bp_fifo_multi.data() & 0x0000FFFF;
-            else                           dst_mac_2 = r_rx_fifo_multi.data() & 0x0000FFFF;;  
-
             for ( size_t k=0 ; (k<m_channels) ; k++ )
             {
                 bool run   = ((r_global_active_channels.read()>>k) & 0x1) && r_channel_rx_run[k]; 
                 bool wok   = r_rx_chbuf[k].wok();          
                 bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 4) ); 
                 bool time  = ( r_rx_chbuf[k].time() > (r_rx_dispatch_nbytes.read()>>2) );
-                bool mac   = ( (dst_mac_4 == r_channel_mac_4[k].read()) and
-                               (dst_mac_2 == r_channel_mac_2[k].read()) );
-
-                if ( run and wok and space and time and not mac ) // transfer possible
+                
+                // In this version the sender also receives the broadcast
+                if ( run and wok and space and time ) // transfer possible
                 {
                     channels = channels | (1<<k);
                 }
@@ -1610,7 +1621,7 @@ if ( r_rx_g2s_checksum.read() != check )
                 if (r_rx_dispatch_nbytes.read() <= 4) bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
                 else                                  bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
             }
-            else                          // read from tx_fifo
+            else                          // read from rx_fifo
             {
                 r_rx_dispatch_data   = r_rx_fifo_multi.data();
                 if (r_rx_dispatch_nbytes.read() <= 4) rx_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
@@ -1800,12 +1811,12 @@ if ( r_rx_g2s_checksum.read() != check )
             uint32_t data1         = r_tx_dispatch_data1.read();
             uint32_t data2         = r_tx_chbuf[channel].data();
 
-            uint32_t mac_src_4 = ((data1>>16) & 0x0000FFFF) | ((data2<<16) & 0xFFFF0000);
-            uint32_t mac_src_2 = ((data2>>16) & 0x0000FFFF);
+            uint32_t mac_src_4 = data2;                     // 4 LSB bytes
+            uint32_t mac_src_2 = ((data1) & 0x0000FFFF);    // 2 MSB bytes
 
-            uint32_t mac_dst_4 = data0;
-            uint32_t mac_dst_2 = data1 & 0x0000FFFF;
-
+            uint32_t mac_dst_4 = ((data0 & 0x0000FFFF)<<16) |((data1 & 0xFFFF0000)>>16);
+            uint32_t mac_dst_2 = (data0 & 0xFFFF0000)>>16;
+        
             // check source mac address
             if ( not (mac_src_4 == r_channel_mac_4[channel]) or
                  not (mac_src_2 == r_channel_mac_2[channel]) )
@@ -1815,7 +1826,7 @@ if ( r_rx_g2s_checksum.read() != check )
                 break;
             }
 
-            if( (mac_dst_4 == 0xFFFFFFFF) and (mac_dst_2 == 0x0000FFFFFF) ) // broadcast           
+            if( (mac_dst_4 == 0xFFFFFFFF) and (mac_dst_2 == 0x0000FFFF) ) // broadcast 
             {
                 r_tx_dispatch_npkt_broadcast  = r_tx_dispatch_npkt_broadcast.read() + 1;
                 r_tx_dispatch_write_bp = true;
@@ -1982,47 +1993,61 @@ if ( r_rx_g2s_checksum.read() != check )
                 r_tx_ser_bytes = plen & 0x3;
                 if ( (plen & 0x3) == 0 ) r_tx_ser_words = plen>>2;
                 else                     r_tx_ser_words = (plen>>2) + 1;
-                r_tx_ser_fsm = TX_SER_READ_FIRST;
+                r_tx_ser_preamble = 0;
+                r_tx_ser_fsm = TX_SER_PREAMBLE;
             }
             break;
         }
-        ///////////////////////
-        case TX_SER_READ_FIRST: // read first word 
+        /////////////////////
+        case TX_SER_PREAMBLE: // write preamble before reading from multi_fifo
         {
-            tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
-            r_tx_ser_words     = r_tx_ser_words.read() - 1;
-            r_tx_ser_data      = r_tx_fifo_multi.data();
-            r_tx_ser_first     = true;
-            r_tx_ser_fsm       = TX_SER_WRITE_B0;
+            if ( r_tx_fifo_stream.wok() )
+            {
+                if (r_tx_ser_preamble == 0) // first byte
+                {
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)(0x55|(STREAM_TYPE_SOS << 8));
+                }
+                else if (r_tx_ser_preamble == 7) // last byte (SFD)
+                {
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)(0xD5|(STREAM_TYPE_NEV << 8));
+                    
+                    // now we can read first word on tx_multi-fifo 
+                    tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
+                    r_tx_ser_words     = r_tx_ser_words.read() - 1;
+                    r_tx_ser_data      = r_tx_fifo_multi.data();
+                    r_tx_ser_fsm       = TX_SER_WRITE_B0;
+                }
+                else // middle bytes
+                {
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)(0x55|(STREAM_TYPE_NEV << 8));
+                }
+
+                r_tx_ser_preamble = r_tx_ser_preamble.read() + 1;
+            }
             break;
         }
         /////////////////////
-        case TX_SER_WRITE_B0: // write first byte from current word
+        case TX_SER_WRITE_B0: // write first byte (MSB) from current word
         {
             if ( r_tx_fifo_stream.wok() )
             {
                 uint32_t words = r_tx_ser_words.read();
                 uint32_t bytes = r_tx_ser_bytes.read();
-                bool     first = r_tx_ser_first.read();
                 
-                if ( first )                              // first byte in packet
+                if ( (words == 0) and (bytes == 1) ) // last byte in packet
                 {
                     tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0x000000FF)
-                                                       | (STREAM_TYPE_SOS << 8));
-                    r_tx_ser_fsm = TX_SER_WRITE_B1;
-                }
-                else if ( (words == 0) and (bytes == 1) ) // last byte in packet
-                {
-                    tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0x000000FF)
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0xFF000000)>>24
                                                        | (STREAM_TYPE_EOS << 8));
                     r_tx_ser_fsm = TX_SER_GAP;
                 }
                 else                                     // simple byte 
                 {
                     tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0x000000FF)
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0xFF000000)>>24
                                                        | (STREAM_TYPE_NEV << 8));
                     r_tx_ser_fsm = TX_SER_WRITE_B1;
                 }
@@ -2030,7 +2055,7 @@ if ( r_rx_g2s_checksum.read() != check )
             break;
         }
         /////////////////////
-        case TX_SER_WRITE_B1:  // write second byte from current word
+        case TX_SER_WRITE_B1:  // write second byte (MSB->LSB) from current word
         {
             if ( r_tx_fifo_stream.wok() )
             {
@@ -2040,22 +2065,22 @@ if ( r_rx_g2s_checksum.read() != check )
                 if ( (words == 0) and (bytes == 2) ) // last byte in packet
                 {
                     tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x0000FF00)>>8
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x00FF0000)>>16
                                                        | (STREAM_TYPE_EOS << 8));
                     r_tx_ser_fsm = TX_SER_GAP;
                 }
                 else                                 // simple byte 
                 {
                     tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x0000FF00)>>8
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x00FF0000)>>16
                                                        | (STREAM_TYPE_NEV << 8));
                     r_tx_ser_fsm = TX_SER_WRITE_B2;
                 }
             }
             break;
         }
-        ///////////i/////////
-        case TX_SER_WRITE_B2:  // write third byte from current word
+        ////////////////////
+        case TX_SER_WRITE_B2:  // write third byte (MSB->LSB) from current word
         {
             if ( r_tx_fifo_stream.wok() )
             {
@@ -2065,14 +2090,14 @@ if ( r_rx_g2s_checksum.read() != check )
                 if ( (words == 0) and (bytes == 3) ) // last byte in packet
                 {
                     tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x00FF0000)>>16
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x0000FF00)>>8
                                                        | (STREAM_TYPE_EOS << 8));
                     r_tx_ser_fsm = TX_SER_GAP;
                 }
                 else                                     // simple byte 
                 {
                     tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x00FF0000)>>16
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x0000FF00)>>8
                                                        | (STREAM_TYPE_NEV << 8));
                     r_tx_ser_fsm = TX_SER_READ_WRITE;
                 }
@@ -2091,7 +2116,7 @@ if ( r_rx_g2s_checksum.read() != check )
                 if ( words == 0 )  // last byte in packet
                 {
                     tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0xFF000000)>>24
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x000000FF)
                                                        | (STREAM_TYPE_EOS << 8));
                     r_tx_ser_fsm = TX_SER_GAP;
                 }
@@ -2102,10 +2127,9 @@ if ( r_rx_g2s_checksum.read() != check )
                     else              tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
                     r_tx_ser_words     = words - 1;
                     r_tx_ser_data      = r_tx_fifo_multi.data();
-                    r_tx_ser_first     = false;
                     r_tx_ser_fsm       = TX_SER_WRITE_B0;
                     tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0xFF000000)>>24
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x000000FF)
                                                        | (STREAM_TYPE_NEV << 8));
                 }
             }
@@ -2146,13 +2170,49 @@ if ( r_rx_g2s_checksum.read() != check )
                 "ERROR in VCI_MULTI_NIC : illegal type received in TX_S2G_IDLE");
 
                 tx_fifo_stream_read = true;
-                r_tx_s2g_fsm        = TX_S2G_WRITE_DATA;
+                r_tx_s2g_fsm        = TX_S2G_WRITE_PREAMBLE;
                 r_tx_s2g_data       = data & 0xFF;
-                r_tx_s2g_checksum = 0x00000000; // reset checksum
+                r_tx_s2g_preamble = 0; // reset preamble counter
             } 
 
             // no data written
             r_gmii_tx.put( false, 0 );
+            break;
+        }
+        //////////////////////
+        case TX_S2G_WRITE_PREAMBLE:     // not considered on the checksum
+        {
+            if ( r_tx_fifo_stream.rok() )
+            {
+                // write data[i-1]
+                r_gmii_tx.put( true, r_tx_s2g_data.read() );
+
+                // read data[i]
+                uint32_t data = r_tx_fifo_stream.read();
+                uint32_t type = (data >> 8) & 0x3;
+
+                assert ( (type != STREAM_TYPE_SOS) and (type != STREAM_TYPE_ERR) and
+                         (type != STREAM_TYPE_EOS) and  
+                "ERROR in VCI_MULTI_NIC : illegal type received in TX_S2G_WRITE_DATA");
+
+                tx_fifo_stream_read = true;
+                r_tx_s2g_data       = data & 0xFF;
+
+#ifdef SOCLIB_PERF_NIC
+            r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1;
+#endif
+                if ( r_tx_s2g_preamble == 7 ) 
+                {
+                    r_tx_s2g_fsm = TX_S2G_WRITE_DATA; 
+                    r_tx_s2g_checksum = 0x00000000; // reset checksum
+                }
+                r_tx_s2g_preamble = r_tx_s2g_preamble.read() + 1;
+            }
+            else
+            {
+                assert (false and  
+                "ERROR in VCI_MULTI_NIC : tx_fifo should not be empty");
+            }
             break;
         }
         //////////////////////
@@ -2403,12 +2463,12 @@ tmpl(void)::print_trace(uint32_t mode)
     const char* rx_g2s_state_str[] = 
     {
         "RX_G2S_IDLE",
+        "RX_G2S_PREAMBLE",
         "RX_G2S_DELAY",
         "RX_G2S_LOAD",
         "RX_G2S_SOS",
         "RX_G2S_LOOP",
         "RX_G2S_END",
-        "RX_G2S_EXTD",
         "RX_G2S_ERR",
         "RX_G2S_FAIL",
     };
@@ -2455,7 +2515,7 @@ tmpl(void)::print_trace(uint32_t mode)
     const char* tx_ser_state_str[] =
     {
         "TX_SER_IDLE",
-        "TX_SER_READ_FIRST",
+        "TX_SER_PREAMBLE",
         "TX_SER_WRITE_B0",
         "TX_SER_WRITE_B1",
         "TX_SER_WRITE_B2",
@@ -2465,6 +2525,7 @@ tmpl(void)::print_trace(uint32_t mode)
     const char* tx_s2g_state_str[] =
     {
         "TX_S2G_IDLE",
+        "TX_S2G_WRITE_PREAMBLE",
         "TX_S2G_WRITE_DATA",
         "TX_S2G_WRITE_LAST_DATA",
         "TX_S2G_WRITE_CS",

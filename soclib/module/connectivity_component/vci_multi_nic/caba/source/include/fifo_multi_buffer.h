@@ -173,8 +173,9 @@ public:
         {
             uint32_t first_buf = r_ptw_buf_save;
             uint32_t nbuf;
-            if ( ptw_buf >= first_buf ) nbuf = ptw_buf - first_buf + 1;
-            else                        nbuf = (ptw_buf + m_buffers) - first_buf + 1;
+            //Counting only the completely consumed buffers (marked as full)
+            if ( ptw_buf >= first_buf ) nbuf = ptw_buf - first_buf;
+            else                        nbuf = (ptw_buf + m_buffers) - first_buf;
             r_ptw                      = r_ptw_buf_save * m_words;
             r_word_count               = 0;
             r_sts                      = r_sts + nbuf ;

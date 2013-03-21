@@ -47,16 +47,16 @@ enum SoclibMultiNicHyperviseurRegisters
     NIC_G_NPKT_RX_G2S_RECEIVED       = 32,  // number of packets received on GMII RX port 
     NIC_G_NPKT_RX_G2S_DISCARDED      = 33,  //: number of TX packets discarded by RX_G2S FSM
 
-    NIC_G_NPKT_RX_DES_SUCCESS        = 34,  // number of TX packets transmited by RX_DES FSM
-    NIC_G_NPKT_RX_DES_TOO_SMALL      = 35,  // number of discarded too small TX packets 
-    NIC_G_NPKT_RX_DES_TOO_BIG        = 36,  // number of discarded too big TX packets 
-    NIC_G_NPKT_RX_DES_MFIFO_FULL     = 37,  // number of discarded TX packets because fifo full
-    NIC_G_NPKT_RX_DES_CS_FAIL        = 38,  // number of discarded TX packets because checksum 
+    NIC_G_NPKT_RX_DES_SUCCESS        = 34,  // number of RX packets transmited by RX_DES FSM
+    NIC_G_NPKT_RX_DES_TOO_SMALL      = 35,  // number of discarded too small RX packets 
+    NIC_G_NPKT_RX_DES_TOO_BIG        = 36,  // number of discarded too big RX packets 
+    NIC_G_NPKT_RX_DES_MFIFO_FULL     = 37,  // number of discarded RX packets because fifo full
+    NIC_G_NPKT_RX_DES_CS_FAIL        = 38,  // number of discarded RX packets because checksum 
 
     NIC_G_NPKT_RX_DISPATCH_RECEIVED  = 39,  // number of packets received by RX_DISPATCH FSM
-    NIC_G_NPKT_RX_DISPATCH_BROADCAST = 40,  // number of broadcast TX packets received 
-    NIC_G_NPKT_RX_DISPATCH_DST_FAIL  = 41,  // number of discarded TX packets because DST MAC 
-    NIC_G_NPKT_RX_DISPATCH_CH_FULL   = 42,  // number of discarded TX packets for channel full
+    NIC_G_NPKT_RX_DISPATCH_BROADCAST = 40,  // number of broadcast RX packets received 
+    NIC_G_NPKT_RX_DISPATCH_DST_FAIL  = 41,  // number of discarded RX packets because DST MAC 
+    NIC_G_NPKT_RX_DISPATCH_CH_FULL   = 42,  // number of discarded RX packets for channel full
 
     NIC_G_NPKT_TX_DISPATCH_RECEIVED  = 43,  // number of packets received by TX_DISPATCH FSM
     NIC_G_NPKT_TX_DISPATCH_TOO_SMALL = 44,  // number of discarded too small TX packets 

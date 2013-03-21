@@ -280,7 +280,7 @@ public:
                 {
                     uint32_t word = 1 + (p>>1);
                     uint32_t plen;
-                    if ( p&0x1 == 0x1 ) plen = r_cont[cont][word] >> 16;
+                    if ( (p&0x1) == 0x1 ) plen = r_cont[cont][word] >> 16;
                     else                plen = r_cont[cont][word] & 0x0000FFFF;
                     std::cout << "- plen[" << p << "] = " << plen << std::endl;
                 }

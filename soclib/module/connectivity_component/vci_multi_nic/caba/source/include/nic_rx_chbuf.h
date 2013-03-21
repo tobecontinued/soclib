@@ -122,6 +122,7 @@ public:
         r_ptw_cont     = 0;
         r_ptr_word     = 0;
         r_ptr_cont     = 0;
+        r_pkt_index    = 0; 
         r_pkt_length   = 0;
         r_timer        = RX_TIMEOUT_VALUE;
     }
@@ -295,7 +296,7 @@ public:
         bool     display;
         uint32_t packets;
         uint32_t words;
-
+        
         for ( size_t cont=0 ; cont<2 ; cont++ )
         {
             if ( r_full[cont] )
@@ -327,7 +328,7 @@ public:
                 {
                     uint32_t word = 1 + (p>>1);
                     uint32_t plen;
-                    if ( p&0x1 == 0x1 ) plen = r_cont[cont][word] >> 16;
+                    if ( (p&0x1) == 0x1 ) plen = r_cont[cont][word] >> 16;
                     else                plen = r_cont[cont][word] & 0x0000FFFF;
                     std::cout << "- plen[" << p << "] = " << plen << std::endl;
                 }
