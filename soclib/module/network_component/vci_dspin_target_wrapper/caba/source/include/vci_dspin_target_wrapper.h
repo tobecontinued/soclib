@@ -44,7 +44,6 @@ class VciDspinTargetWrapper
     {
 		CMD_IDLE,
         CMD_RW,
-        CMD_READ,
         CMD_WDATA,
     }
 
@@ -74,8 +73,14 @@ class VciDspinTargetWrapper
     // internal registers
     sc_signal<int>                              r_cmd_fsm;
     sc_signal<int>                              r_rsp_fsm;
-    sc_uint<dspin_cmd_width>                    r_cmd_buf0;
-    sc_uint<dspin_cmd_width>                    r_cmd_buf1;
+    sc_signal<sc_uint<vci_param::N> >           r_cmd_addr;
+    sc_signal<sc_uint<vci_param::T> >           r_cmd_trdid;
+    sc_signal<sc_uint<vci_param::P> >           r_cmd_pktid;
+    sc_signal<sc_uint<vci_param::S> >           r_cmd_srcid;
+    sc_signal<sc_uint<vci_param::K> >           r_cmd_plen;
+    sc_signal<sc_uint<2> >                      r_cmd_cmd;
+    sc_signal<sc_uint<1> >                      r_cmd_contig;
+    sc_signal<sc_uint<1> >                      r_cmd_cons;
 
 	// methods systemc
 	void transition();
