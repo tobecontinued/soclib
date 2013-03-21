@@ -166,26 +166,28 @@ tmpl(void)::transition()
                 r_cmd_fsm = CMD_RW;
             }
         break;
-        case CMD_RW:   // send VCI flit in case of READ
-                       // or save other parameters from second DSPIN flit in case of WRITE
+        case CMD_RW:   // save other parameters from second DSPIN flit
+                       // and try to send VCI flit if READ
             if( p_dspin_cmd.write.read() )
             {
-                if ( (p_dspin_cmd.data.read() & 0x8000000000LL) ) 
+                r_cmd_cmd     = (sc_uint<2>)           ((p_dspin_cmd.data.read() & 0x0001800000LL) >> 23);
+                r_cmd_srcid   = (sc_uint<vci_param::S>)((p_dspin_cmd.data.read() & 0x7FFE000000LL) >> 25);
+                r_cmd_pktid   = (sc_uint<vci_param::P>)((p_dspin_cmd.data.read() & 0x00000001E0LL) >> 5);
+                r_cmd_trdid   = (sc_uint<vci_param::T>)((p_dspin_cmd.data.read() & 0x0000001E00LL) >> 9);
+                r_cmd_plen    = (sc_uint<vci_param::K>)((p_dspin_cmd.data.read() & 0x00001FE000LL) >> 13);
+                r_cmd_contig  = ((p_dspin_cmd.data.read() & 0x0000400000LL) != 0);
+                r_cmd_cons    = ((p_dspin_cmd.data.read() & 0x0000200000LL) != 0);
+
+                if ( (p_dspin_cmd.data.read() & 0x8000000000LL) )   // READ
                 {
                     if ( p_vci_cmdack.read() ) r_cmd_fsm = CMD_IDLE;
+                    else                       r_cmd_fsm = CMD_READ;
                 }
-                else
-                {
-                    r_cmd_fsm     = CMD_WDATA;
-                    r_cmd_cmd     = (sc_uint<2>)           ((p_dspin_cmd.data.read() & 0x0001800000LL) >> 23);
-                    r_cmd_srcid   = (sc_uint<vci_param::S>)((p_dspin_cmd.data.read() & 0x7FFE000000LL) >> 25);
-                    r_cmd_pktid   = (sc_uint<vci_param::P>)((p_dspin_cmd.data.read() & 0x00000001E0LL) >> 5);
-                    r_cmd_trdid   = (sc_uint<vci_param::T>)((p_dspin_cmd.data.read() & 0x0000001E00LL) >> 9);
-                    r_cmd_plen    = (sc_uint<vci_param::K>)((p_dspin_cmd.data.read() & 0x00001FE000LL) >> 13);
-                    r_cmd_contig  = ((p_dspin_cmd.data.read() & 0x0000400000LL) != 0);
-                    r_cmd_cons    = ((p_dspin_cmd.data.read() & 0x0000200000LL) != 0);
-                }
+                else                           r_cmd_fsm = CMD_WDATA;
             }
+        break;
+        case CMD_READ:  // send single VCI flit if not accepted in CME_RW state
+            if ( p_vci_cmdack.read() ) r_cmd_fsm = CMD_IDLE;
         break;
         case CMD_WDATA: // send one VCI flit if WRITE
             if( p_dspin_cmd.write.read() && p_vci.cmdack.read() )
@@ -257,6 +259,21 @@ tmpl(void)::genMealy_vci_cmd()
         p_vci.contig  = ((p_dspin_cmd.data.read() & 0x0000400000LL) != 0);
         p_vci.cons    = ((p_dspin_cmd.data.read() & 0x0000200000LL) != 0);
         p_vci.eop     = (p_dspin_cmd.data.read() & 0x8000000000LL);
+    }
+    else if ( r_cmd_fsm.read() == CMD_READ )
+    {
+        p_vci.cmdval  = true;
+        p_vci.address = r_cmd_address.read();
+        p_vci.cmd     = r_cmd_cmd.read();
+        p_vci.wdata   = 0;
+        p_vci.be      = 0;
+        p_vci.srcid   = r_cmd_srcid.read();
+        p_vci.pktid   = r_cmd_pktid.read();
+        p_vci.trdid   = r_cmd_trdid.read();
+        p_vci.plen    = r_cmd_plen.read();
+        p_vci.contig  = r_cmd_contig.read();
+        p_vci.cons    = r_cmd_cons.read();
+        p_vci.eop     = true;
     }
     else // r_cmd_fsm == CMD_WDATA : WRITE conmmand
     {
