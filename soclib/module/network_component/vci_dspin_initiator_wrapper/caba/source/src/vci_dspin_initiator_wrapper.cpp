@@ -118,8 +118,15 @@ tmpl(void)::transition()
 	    case CMD_IDLE:        // transmit first DSPIN CMD flit 
 		    if ( p_vci.cmdval.read() and p_dspin_cmd.read.read() )
             {
-                else if ( p_vci.eop.read() )             r_cmd_fsm = CMD_READ;
-                else                                     r_cmd_fsm = CMD_WRITE;
+                if ( (p_vci.cmd.read() == vci_param::CMD_READ) or
+                     (p_vci.cmd.read() == vci_param::CMD_LOCKED_READ) ) 
+                {
+                    r_cmd_fsm = CMD_READ;
+                }
+                else
+                {
+                    r_cmd_fsm = CMD_WRITE;
+                }
             } 
         break;
         case CMD_READ:        // transmit second DSPIN CMD flit
@@ -165,16 +172,16 @@ tmpl(void)::transition()
             {
                 r_rsp_buf = p_dspin_rsp.data.read();
                 if ( not is_eop( p_dspin_rsp.data.read()) ) r_rsp_fsm = RSP_READ; 
-                else if ( not p_vci.cmdack.read() )         r_rsp_fsm = RSP_WRITE;
+                else if ( not p_vci.rspack.read() )         r_rsp_fsm = RSP_WRITE;
             }
         break;
         case RSP_READ:    // try to transmit a flit VCI for a READ
-            if ( p_vci.cmdack.read() and 
+            if ( p_vci.rspack.read() and 
                  p_dspin_rsp.write.read() and
                  is_eop( p_dspin_rsp.data.read() ) )  r_rsp_fsm = RSP_IDLE;
         break;
         case RSP_WRITE:    // try to transmit a VCI flit for a WRITE
-            if ( p_vci.cmdack.read() ) r_rsp_fsm = RSP_IDLE;
+            if ( p_vci.rspack.read() ) r_rsp_fsm = RSP_IDLE;
         break;
     } // end switch RSP
 
@@ -195,9 +202,7 @@ tmpl(void)::genMealy_dspin_cmd()
     if      ( r_cmd_fsm.read() == CMD_IDLE )
     {
         sc_uint<dspin_cmd_width> address = (sc_uint<dspin_cmd_width)p_vci.address.read();
-        if ( vci_param::N == 40 ) address = address << 1;
-        else                      address = address << (39 - vci_param::N);
-        dspin_data = address & 0x7FFFFFFFFELL;
+        address = (address >> 2) << (dspin_cmd_width - vci_param::N + 1);
     }
     else if ( (r_cmd_fsm.read() == CMD_READ) or
               (r_cmd_fsm.read() == CMD_WRITE) )
