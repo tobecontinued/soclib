@@ -3,7 +3,7 @@ AS=mipsel-unknown-elf-as
 LD=mipsel-unknown-elf-ld
 DU=mipsel-unknown-elf-objdump
 
-SOCLIB  = /Users/alain/soc/soclib-svn-june-2009/soclib/soclib
+SOCLIB  = /users/outil/soc/soclib/soclib
 
 OBJS    = reset.o \
           boot_init.o 
