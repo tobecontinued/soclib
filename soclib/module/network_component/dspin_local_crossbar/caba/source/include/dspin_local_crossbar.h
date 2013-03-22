@@ -40,6 +40,7 @@
 namespace soclib { namespace caba {
 
     using namespace sc_core;
+    using namespace soclib::common;
 
     template<size_t flit_width>
 	class DspinLocalCrossbar
@@ -89,8 +90,8 @@ namespace soclib { namespace caba {
 	    sc_signal<bool>			        *r_alloc_out;  // output port allocated
 	    sc_signal<size_t>               *r_index_out;  // owner input port index
         sc_signal<sc_uint<flit_width> > *r_buf_in;     // input port fifo extension
-	    sc_signal<size_t>               *r_index_in;   // requested output port index
         sc_signal<int>                  *r_fsm_in;     // input port state
+	    sc_signal<size_t>               *r_index_in;   // requested output port index
 
 	    // fifos
 	    soclib::caba::GenericFifo<sc_uint<flit_width> >*  r_fifo_in;
@@ -108,15 +109,20 @@ namespace soclib { namespace caba {
 	    const size_t     m_l_width;
 	    const size_t     m_l_shift;
 	    const size_t     m_l_mask;
+        const size_t     m_local_inputs;
+        const size_t     m_local_outputs;
         const bool       m_use_routing_table;
         const bool       m_broadcast_supported;
 
-        const soclib::common::AddressDecodingTable<sc_uint<flit_width>,int>   
-                         m_routing_table;
+        const AddressDecodingTable<sc_uint<flit_width>,int>   m_routing_table;
 
 	    // methods 
-	    void transition();
-	    void genMoore();
+	    void      transition();
+	    void      genMoore();
+        size_t    route( sc_uint<flit_width> data, size_t index );
+        bool      is_eop( sc_uint<flit_width> data );
+        bool      is_broadcast( sc_uint<flit_width> data );
+        void      print_trace();
 	};
 
 }} // end namespace
