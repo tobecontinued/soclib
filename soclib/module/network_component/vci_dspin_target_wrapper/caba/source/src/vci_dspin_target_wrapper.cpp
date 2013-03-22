@@ -29,20 +29,28 @@
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<typename vci_param, size_t dspin_cmd_width, size_t dspin_rsp_width> x VciDspinTargetWrapper<vci_param, dspin_cmd_width, dspin_rsp_widt>
+#define tmpl(x) template<typename vci_param, size_t dspin_cmd_width, size_t dspin_rsp_width> x VciDspinTargetWrapper<vci_param, dspin_cmd_width, dspin_rsp_width>
 
 ///////////////////////////////////////////////////////
 tmpl(/**/)::VciDspinTargetWrapper(sc_module_name name )
-	   : soclib::caba::BaseModule(insname),
+	   : soclib::caba::BaseModule(name),
 
-	   p_clk("clk"),
-	   p_resetn("resetn"),
-	   p_dspin_cmd("dspin_cmd"),
-	   p_dspin_rsp("dspin_rsp"),
-	   p_vci("vci"),
+	   p_clk("p_clk"),
+	   p_resetn("p_resetn"),
+	   p_dspin_cmd("p_dspin_cmd"),
+	   p_dspin_rsp("p_dspin_rsp"),
+	   p_vci("p_vci"),
 
 	   r_cmd_fsm("r_cmd_fsm"),
-	   r_rsp_fsm("r_rsp_fsm"),
+       r_cmd_addr("r_cmd_addr"),
+       r_cmd_trdid("r_cmd_trdid"),
+       r_cmd_pktid("r_cmd_pktid"),
+       r_cmd_srcid("r_cmd_srcid"),
+       r_cmd_plen("r_cmd_plen"),
+       r_cmd_cmd("r_cmd_cmd"),
+       r_cmd_contig("r_cmd_contig"),
+       r_cmd_cons("r_cmd_cons"),
+	   r_rsp_fsm("r_rsp_fsm")
 {
 	SC_METHOD (transition);
 	dont_initialize();
@@ -139,7 +147,7 @@ tmpl(void)::transition()
         break;
         case RSP_MULTI:      // write DSPIN data flit
             if( p_vci.rspval.read() and 
-                p_dspin_rsp.read.read()() and  
+                p_dspin_rsp.read.read() and  
                 p_vci.reop.read() ) r_rsp_fsm = RSP_IDLE;
         break;
     } // end switch r_rsp_fsm
@@ -180,20 +188,20 @@ tmpl(void)::transition()
 
                 if ( (p_dspin_cmd.data.read() & 0x8000000000LL) )   // READ
                 {
-                    if ( p_vci_cmdack.read() ) r_cmd_fsm = CMD_IDLE;
+                    if ( p_vci.cmdack.read() ) r_cmd_fsm = CMD_IDLE;
                     else                       r_cmd_fsm = CMD_READ;
                 }
                 else                           r_cmd_fsm = CMD_WDATA;
             }
         break;
         case CMD_READ:  // send single VCI flit if not accepted in CME_RW state
-            if ( p_vci_cmdack.read() ) r_cmd_fsm = CMD_IDLE;
+            if ( p_vci.cmdack.read() ) r_cmd_fsm = CMD_IDLE;
         break;
         case CMD_WDATA: // send one VCI flit if WRITE
             if( p_dspin_cmd.write.read() && p_vci.cmdack.read() )
             {
                 if ( r_cmd_contig.read() )  // increment address if CONTIG
-                    r_cmd_addr = r_cmd_addr + vci_param::B;
+                    r_cmd_addr = r_cmd_addr.read() + vci_param::B;
                 if ( (p_dspin_cmd.data.read() & 0x8000000000LL) ) // EOP
                     r_cmd_fsm = CMD_IDLE;
             }
@@ -235,7 +243,7 @@ tmpl(void)::genMealy_dspin_rsp()
 tmpl(void)::genMealy_vci_rsp()
 {
     if ( r_rsp_fsm.read() == RSP_IDLE ) p_vci.rspack = false;
-    else                                p_vci.rspack = p_dspin_rsp.read();
+    else                                p_vci.rspack = p_dspin_rsp.read.read();
 }
 
 //////////////////////////////
@@ -243,7 +251,7 @@ tmpl(void)::genMealy_vci_cmd()
 {
     if ( r_cmd_fsm.read() == CMD_IDLE )
     {
-        p_pci.cmdval = false;
+        p_vci.cmdval = false;
     }
     else if ( r_cmd_fsm.read() == CMD_RW )  
     {
@@ -263,7 +271,7 @@ tmpl(void)::genMealy_vci_cmd()
     else if ( r_cmd_fsm.read() == CMD_READ )
     {
         p_vci.cmdval  = true;
-        p_vci.address = r_cmd_address.read();
+        p_vci.address = r_cmd_addr.read();
         p_vci.cmd     = r_cmd_cmd.read();
         p_vci.wdata   = 0;
         p_vci.be      = 0;
@@ -278,7 +286,7 @@ tmpl(void)::genMealy_vci_cmd()
     else // r_cmd_fsm == CMD_WDATA : WRITE conmmand
     {
         p_vci.cmdval  = p_dspin_cmd.write.read();
-        p_vci.address = r_cmd_address.read();
+        p_vci.address = r_cmd_addr.read();
         p_vci.cmd     = r_cmd_cmd.read();
         p_vci.wdata   = (sc_uint<8*vci_param::B>)p_dspin_cmd.data.read();
         p_vci.be      = (sc_uint<vci_param::B>)((p_dspin_cmd.data.read() & 0x0F00000000LL) >> 32);

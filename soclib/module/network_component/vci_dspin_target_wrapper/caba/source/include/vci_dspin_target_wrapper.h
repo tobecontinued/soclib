@@ -44,8 +44,9 @@ class VciDspinTargetWrapper
     {
 		CMD_IDLE,
         CMD_RW,
+        CMD_READ,
         CMD_WDATA,
-    }
+    };
 
     // RSP FSM
 	enum rsp_fsm_state
@@ -53,7 +54,7 @@ class VciDspinTargetWrapper
 		RSP_IDLE,
         RSP_SINGLE,
         RSP_MULTI,
-    }
+    };
 
     protected:
     SC_HAS_PROCESS(VciDspinTargetWrapper);
