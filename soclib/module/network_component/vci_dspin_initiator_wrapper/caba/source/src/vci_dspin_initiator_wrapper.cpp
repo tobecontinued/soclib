@@ -39,10 +39,11 @@ tmpl(/**/)::VciDspinInitiatorWrapper(sc_module_name name )
         p_resetn( "p_resetn" ),
         p_dspin_cmd( "p_dspin_cmd" ),
         p_dspin_rsp( "p_dspin_rsp" ),
-        p_vci( "p_vci" )
+        p_vci( "p_vci" ),
 
         r_cmd_fsm( "r_cmd_fsm" ),
         r_rsp_fsm( "r_rsp_fsm" ),
+        r_rsp_buf( "r_rsp_buf" )
 {
 	SC_METHOD (transition);
 	dont_initialize();
@@ -163,7 +164,7 @@ tmpl(void)::transition()
     // The VCI flits are sent in the RSP_READ & RSP_WRITE states.
     /////////////////////////////////////////////////////////////////
 
-    // DSPIN response to VCI response
+    bool is_eop = (p_dspin_rsp.data.read() & 0x8000000000LL);
 
     switch( r_rsp_fsm.read() )
     {
@@ -171,14 +172,14 @@ tmpl(void)::transition()
             if ( p_dspin_rsp.write.read() )  
             {
                 r_rsp_buf = p_dspin_rsp.data.read();
-                if ( not is_eop( p_dspin_rsp.data.read()) ) r_rsp_fsm = RSP_READ; 
-                else if ( not p_vci.rspack.read() )         r_rsp_fsm = RSP_WRITE;
+                if ( not is_eop )                    r_rsp_fsm = RSP_READ; 
+                else if ( not p_vci.rspack.read() )  r_rsp_fsm = RSP_WRITE;
             }
         break;
         case RSP_READ:    // try to transmit a flit VCI for a READ
             if ( p_vci.rspack.read() and 
                  p_dspin_rsp.write.read() and
-                 is_eop( p_dspin_rsp.data.read() ) )  r_rsp_fsm = RSP_IDLE;
+                 is_eop )              r_rsp_fsm = RSP_IDLE;
         break;
         case RSP_WRITE:    // try to transmit a VCI flit for a WRITE
             if ( p_vci.rspack.read() ) r_rsp_fsm = RSP_IDLE;
@@ -191,8 +192,8 @@ tmpl(void)::transition()
 tmpl(void)::genMealy_vci_cmd()
 {
     if ( (r_cmd_fsm.read() == CMD_IDLE) or
-         (r_cmd_fsm.read() == CMD_WRITE) ) p_vci_cmdack = false;
-    else                                   p_vci_cmdack = p_dspin_cmd.read.read();
+         (r_cmd_fsm.read() == CMD_WRITE) ) p_vci.cmdack = false;
+    else                                   p_vci.cmdack = p_dspin_cmd.read.read();
 }
 ////////////////////////////////
 tmpl(void)::genMealy_dspin_cmd()
@@ -201,17 +202,18 @@ tmpl(void)::genMealy_dspin_cmd()
 
     if      ( r_cmd_fsm.read() == CMD_IDLE )
     {
-        sc_uint<dspin_cmd_width> address = (sc_uint<dspin_cmd_width)p_vci.address.read();
+        sc_uint<dspin_cmd_width> address = (sc_uint<dspin_cmd_width>)p_vci.address.read();
         address = (address >> 2) << (dspin_cmd_width - vci_param::N + 1);
     }
     else if ( (r_cmd_fsm.read() == CMD_READ) or
               (r_cmd_fsm.read() == CMD_WRITE) )
     {
-        sc_uint<dspin_cmd_width> srcid   = (sc_uint<dspin_cmd_width)p_vci.srcid.read();
-        sc_uint<dspin_cmd_width> pktid   = (sc_uint<dspin_cmd_width)p_vci.pktid.read();
-        sc_uint<dspin_cmd_width> trdid   = (sc_uint<dspin_cmd_width)p_vci.trdid.read();
-        sc_uint<dspin_cmd_width> cmd     = (sc_uint<dspin_cmd_width)p_vci.cmd.read();
-        sc_uint<dspin_cmd_width> plen    = (sc_uint<dspin_cmd_width)p_vci.plen.read();
+        sc_uint<dspin_cmd_width> be      = (sc_uint<dspin_cmd_width>)p_vci.be.read();
+        sc_uint<dspin_cmd_width> srcid   = (sc_uint<dspin_cmd_width>)p_vci.srcid.read();
+        sc_uint<dspin_cmd_width> pktid   = (sc_uint<dspin_cmd_width>)p_vci.pktid.read();
+        sc_uint<dspin_cmd_width> trdid   = (sc_uint<dspin_cmd_width>)p_vci.trdid.read();
+        sc_uint<dspin_cmd_width> cmd     = (sc_uint<dspin_cmd_width>)p_vci.cmd.read();
+        sc_uint<dspin_cmd_width> plen    = (sc_uint<dspin_cmd_width>)p_vci.plen.read();
         dspin_data = ((be    << 1 ) & 0x000000001ELL) |
                      ((pktid << 5 ) & 0x00000001E0LL) |
                      ((trdid << 9 ) & 0x0000001E00LL) |
@@ -224,8 +226,8 @@ tmpl(void)::genMealy_dspin_cmd()
     }
     else  // r_cmd_fsm == CMD_WDATA
     {
-        sc_uint<dspin_cmd_width> wdata = (sc_uint<dspin_cmd_width)p_vci.wdata.read();
-        sc_uint<dspin_cmd_width> be    = (sc_uint<dspin_cmd_width)p_vci.be.read();
+        sc_uint<dspin_cmd_width> wdata = (sc_uint<dspin_cmd_width>)p_vci.wdata.read();
+        sc_uint<dspin_cmd_width> be    = (sc_uint<dspin_cmd_width>)p_vci.be.read();
         dspin_data =  (wdata      & 0x00FFFFFFFFLL) |
                       ((be << 32) & 0x0F00000000LL) ;
         if ( p_vci.eop.read() ) dspin_data = dspin_data | 0x8000000000LL;
@@ -236,14 +238,14 @@ tmpl(void)::genMealy_dspin_cmd()
 ////////////////////////////////
 tmpl(void)::genMealy_dspin_rsp()
 {
-    if ( r_rsp_fsm.read() == RSP_IDLE )        p_dspin_rsp.read = true;
+    if      ( r_rsp_fsm.read() == RSP_IDLE )   p_dspin_rsp.read = true;
     else if ( r_rsp_fsm.read() == RSP_READ )   p_dspin_rsp.read = p_vci.rspack.read();
-    else                                       p_dspin_rsp_read = false;
+    else                                       p_dspin_rsp.read = false;
 }
 //////////////////////////////
 tmpl(void)::genMealy_vci_rsp()
 {
-    bool dspin_eop = ((p_dspin_rsp.data.read() & 0x100000000LL) == 0x100000000LL);
+    bool dspin_eop = (p_dspin_rsp.data.read() & 0x100000000LL);
 
     if ( r_rsp_fsm.read() == RSP_IDLE )
     {
@@ -257,7 +259,7 @@ tmpl(void)::genMealy_vci_rsp()
     }
     else if ( r_rsp_fsm == RSP_READ )
     {
-        p_vci.rspval = p_dspin_rsp.write.read() 
+        p_vci.rspval = p_dspin_rsp.write.read();
         p_vci.rdata  = (sc_uint<8*vci_param::B>)(p_dspin_rsp.data.read() & 0x0FFFFFFFFLL);
         p_vci.rsrcid = (sc_uint<vci_param::S>)((r_rsp_buf.read()         & 0x0FFFC0000LL) >> 18);
         p_vci.rpktid = (sc_uint<vci_param::T>)((r_rsp_buf.read()         & 0x000000F00LL) >> 8);

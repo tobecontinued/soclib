@@ -67,8 +67,8 @@ class VciDspinInitiatorWrapper
         // ports
         sc_in<bool>                             	p_clk;
         sc_in<bool>                             	p_resetn;
-        DspinOutput<dspin_cmd_flit_width>			p_dspin_cmd;
-        DspinInput<dspin_rsp_flit_width>			p_dspin_rsp;
+        DspinOutput<dspin_cmd_width>			    p_dspin_cmd;
+        DspinInput<dspin_rsp_width>			        p_dspin_rsp;
         soclib::caba::VciTarget<vci_param>      	p_vci;
 
         // constructor 
@@ -78,7 +78,7 @@ class VciDspinInitiatorWrapper
         // internal registers
         sc_signal<int>                             r_cmd_fsm;
         sc_signal<int>                             r_rsp_fsm;
-        sc_signal<sc_uint<dspin_rsp_width> >  i    r_rsp_buf;
+        sc_signal<sc_uint<dspin_rsp_width> >       r_rsp_buf;
 
 	// methods 
 	void transition();
