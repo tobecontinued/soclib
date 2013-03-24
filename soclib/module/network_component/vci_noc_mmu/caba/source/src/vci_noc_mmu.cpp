@@ -820,8 +820,8 @@ if( debug )
               << " eop = "     << std::dec << cmd_fifo_eop << std::endl; 
 }
 #endif
-
         }
+        break;
     }
     ///////////////////////
     case CMD_MISS_WAIT_PTD:  // wait the PTD value from RSP FSM
@@ -1242,7 +1242,7 @@ if( debug )
 if( debug ) 
 {
     std::cout << "  <NMU[" << name() 
-              << "] RSP_ERROR> Push error response into rsp_fifo:" 
+              << "] RSP_FAILURE> Push error response into rsp_fifo:" 
               << " rsrcid = " << std::hex << r_cmd_srcid.read()
               << " rtrdid = " << std::hex << r_cmd_trdid.read()
               << " rpktid = " << std::hex << r_cmd_pktid.read()
