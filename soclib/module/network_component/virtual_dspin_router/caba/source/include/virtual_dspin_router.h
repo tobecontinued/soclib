@@ -43,19 +43,19 @@ enum{  // port indexing
 };
 
 enum{   // request type (six values, can be encoded on 3 bits)
-        REQ_NORTH,
-	REQ_SOUTH,
-	REQ_EAST,
+    REQ_NORTH,
+    REQ_SOUTH,
+    REQ_EAST,
 	REQ_WEST,
 	REQ_LOCAL,
-        REQ_NOP,
+    REQ_NOP,
 };
 
 enum{	// INFSM States : In the REQ states, the request and the corresponding
         // data are sent simultaneously, which means two cycles in this state
 	INFSM_IDLE,
-        INFSM_REQ,
-        INFSM_DT,
+    INFSM_REQ,
+    INFSM_DT,
 	INFSM_REQ_FIRST,
 	INFSM_DT_FIRST,
 	INFSM_REQ_SECOND,
@@ -82,13 +82,13 @@ public:
 	soclib::caba::DspinInput<flit_width>	**p_in;
 
 	// constructor 
-	VirtualDspinRouter( 	sc_module_name  insname,
-				int	x,			// x coordinate in the mesh
-				int	y,			// y coordinate in the mesh 
-                                int	x_width,		// number of bits for x field
-				int	y_width,		// number of bits for y field
-                                int	in_fifo_depth,		// input fifo depth
-				int	out_fifo_depth);	// output fifo depth
+	VirtualDspinRouter( sc_module_name  insname,
+                        int	            x,                  // x coordinate in the mesh
+                        int	            y,                  // y coordinate in the mesh 
+                        int	            x_width,            // number of bits for x field
+                        int	            y_width,            // number of bits for y field
+                        int	            in_fifo_depth,		// input fifo depth
+                        int	            out_fifo_depth );	// output fifo depth
 
 	// destructor 
 	~VirtualDspinRouter();
@@ -100,25 +100,27 @@ public:
 private:
 
 	// input port registers & fifos
-	sc_core::sc_signal<bool>        		r_tdm[5];		// Time Multiplexing
-	sc_core::sc_signal<int>				r_input_fsm[2][5];	// FSM state
-	sc_core::sc_signal<sc_uint<flit_width> >		r_buf[2][5];		// fifo extension
-	soclib::caba::GenericFifo<sc_uint<flit_width> > 	**in_fifo;		// input fifos
+	sc_core::sc_signal<bool>                 r_tdm[5];              // Time Multiplexing
+	sc_core::sc_signal<int>			         r_input_fsm[2][5];	    // FSM state
+	sc_core::sc_signal<sc_uint<flit_width> > r_buf[2][5];           // fifo extension
+
+	soclib::caba::GenericFifo<sc_uint<flit_width> > **in_fifo;      // input fifos
 
 	// output port registers & fifos
-	sc_core::sc_signal<int>				r_output_index[2][5];	// allocated input index 
-	sc_core::sc_signal<bool>			r_output_alloc[2][5];	// allocation status 
-	soclib::caba::GenericFifo<sc_uint<flit_width> > 	**out_fifo;		// output fifos
+	sc_core::sc_signal<int>                  r_output_index[2][5];  // allocated input index 
+	sc_core::sc_signal<bool>			     r_output_alloc[2][5];	// allocation status 
+
+	soclib::caba::GenericFifo<sc_uint<flit_width> > **out_fifo;		// output fifos
 
 	// structural variables
 	int	m_local_x;					// router x coordinate
 	int	m_local_y;					// router y coordinate
-        int	m_x_width;	 				// number of bits for x field
-        int	m_y_width;					// number of bits for y field
-        int	m_x_shift;					// number of bits to shift for x field
-        int	m_x_mask;					// number of bits to mask for x field
-        int	m_y_shift;					// number of bits to shift for y field
-        int	m_y_mask;					// number of bits to mask for y field
+    int	m_x_width;	 				// number of bits for x field
+    int	m_y_width;					// number of bits for y field
+    int	m_x_shift;					// number of bits to shift for x field
+    int	m_x_mask;					// number of bits to mask for x field
+    int	m_y_shift;					// number of bits to shift for y field
+    int	m_y_mask;					// number of bits to mask for y field
 
 	// methods 
 	void transition();
