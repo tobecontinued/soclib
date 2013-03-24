@@ -115,14 +115,15 @@ public:
 	// Ports
 	sc_in<bool>  							p_clk;	 
 	sc_in<bool>  							p_resetn;  
-	soclib::caba::VciInitiator<vci_param> 				*p_to_target;
-	soclib::caba::VciTarget<vci_param>    				*p_to_initiator;
+	soclib::caba::VciInitiator<vci_param>   *p_to_target;
+	soclib::caba::VciTarget<vci_param>      *p_to_initiator;
 
 	// constructor & destructor
-	VciVgsb(	sc_module_name 			name,
-			soclib::common::MappingTable 	&maptab,
-			size_t				nb_master,
-			size_t				nb_slave);
+	VciVgsb( sc_module_name                 name,
+             soclib::common::MappingTable 	&maptab,
+             size_t	                        nb_master,
+             size_t	                        nb_slave );
+
 	~VciVgsb();
 
 	// member functions
