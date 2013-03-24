@@ -81,7 +81,7 @@ using namespace soclib::caba;
       m_local_outputs( nb_local_outputs ),
       m_use_routing_table( use_routing_table ),
       m_broadcast_supported( broadcast_supported ),
-      m_routing_table(mt.getRoutingTable(IntTab((x << x_width) + y)))
+      m_routing_table(mt.getRoutingTable<uint64_t>(IntTab((x << x_width) + y)))
     {
 	    SC_METHOD (transition);
 	    dont_initialize();
@@ -111,6 +111,10 @@ using namespace soclib::caba;
 		    stro << "r_out_fifo_" << j;
 	        new(&r_fifo_out[j]) GenericFifo<sc_uint<flit_width> >(stro.str(), out_fifo_depth);
 	    }
+
+        assert( (flit_width >= x_width + y_width + l_width) and
+        "ERROR in DSPIN_LOCAL_CROSSBAR: flit_width < x_width + y_width + l_width");
+
 	} //  end constructor
 
     ////////////////////////////////////////////////////////////////////////////
@@ -118,7 +122,7 @@ using namespace soclib::caba;
                          size_t              index )   // input port index 
     {
         // extract address from first flit        
-        sc_uint<flit_width> address = data << 1;
+        uint64_t address = (uint64_t)(data << 1);
 
         size_t x_dest = (size_t)(address >> m_x_shift) & m_x_mask;
         size_t y_dest = (size_t)(address >> m_y_shift) & m_y_mask;

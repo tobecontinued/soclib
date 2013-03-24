@@ -114,7 +114,8 @@ namespace soclib { namespace caba {
         const bool       m_use_routing_table;
         const bool       m_broadcast_supported;
 
-        const AddressDecodingTable<sc_uint<flit_width>,int>   m_routing_table;
+        // using uint64_t to support both 32 bits and 40 bits addresses
+        const AddressDecodingTable<uint64_t, int>       m_routing_table;
 
 	    // methods 
 	    void      transition();
