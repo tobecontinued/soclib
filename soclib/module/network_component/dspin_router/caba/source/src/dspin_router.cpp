@@ -1,4 +1,5 @@
 /* -*- c++ -*-
+  *
   * File : dspin_router.cpp
   * Copyright (c) UPMC, Lip6
   * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
@@ -23,221 +24,291 @@
   *
   * SOCLIB_LGPL_HEADER_END
   *
-  * The DSPIN router architecture implemented in this file is the 
-  * Best Effort only architecture.
-  *
-  * Find detailed information in:
-  * Ivan MIRO PANADES, PhD thesis, 2008:
-  * "Conception et implémentation d'un micro-réseau sur puce avec 
-  * garantie de service"
-  * 
   */
 
 #include "../include/dspin_router.h"
-#include "register.h"
-#include <cstdlib>
-#include <cassert>
-#include <sstream>
-#include "alloc_elems.h"
-#include <new>
 
 namespace soclib { namespace caba {
 
-#define tmpl(x) template<int dspin_data_size, int dspin_fifo_size, int dspin_yx_size> x DspinRouter<dspin_data_size, dspin_fifo_size, dspin_yx_size>
+using namespace soclib::common;
+using namespace soclib::caba;
 
-    ////////////////////////////////
-    //      constructor
-    ////////////////////////////////
+#define tmpl(x) template<int flit_width> x DspinRouter<flit_width>
 
-    tmpl(/**/)::DspinRouter(sc_module_name insname, int indent)
-	: soclib::caba::BaseModule(insname)
+    ////////////////////////////////////////////////
+    //              constructor
+    ////////////////////////////////////////////////
+    tmpl(/**/)::DspinRouter( sc_module_name name, 
+                             const size_t   x,
+                             const size_t   y,
+                             const size_t   x_width,
+                             const size_t   y_width,
+                             const size_t   in_fifo_depth,
+                             const size_t   out_fifo_depth )
+	: soclib::caba::BaseModule(name),
+
+      p_clk( "p_clk" ),
+      p_resetn( "p_resetn" ),
+      p_in( alloc_elems<DspinInput<flit_width> >("p_in", 5) ),
+      p_out( alloc_elems<DspinOutput<flit_width> >("p_out", 5) ),
+
+	  r_alloc_out( alloc_elems<sc_signal<bool> >("r_alloc_out", 5)),
+	  r_index_out( soclib::common::alloc_elems<sc_signal<size_t> >("r_index_out", 5)),
+	  r_fsm_in( alloc_elems<sc_signal<int> >("r_fsm_in", 5)),
+	  r_index_in( alloc_elems<sc_signal<size_t> >("r_index_in", 5)),
+
+      m_local_x( x ),
+      m_local_y( y ),
+      m_x_width( x_width ),
+      m_x_shift( flit_width - x_width ),
+      m_x_mask( (0x1 << x_width) - 1 ),
+      m_y_width( y_width ),
+      m_y_shift(flit_width - x_width - y_width ),
+      m_y_mask( (0x1 << y_width) - 1 )
     {
-	SC_METHOD (transition);
-	dont_initialize();
-	sensitive << p_clk.pos();
-	SC_METHOD (genMoore);
-	dont_initialize();
-	sensitive  << p_clk.neg();
+	    SC_METHOD (transition);
+	    dont_initialize();
+	    sensitive << p_clk.pos();
 
-	fifo_in = (soclib::caba::GenericFifo<sc_uint<dspin_data_size> >*)
-	  malloc(sizeof(soclib::caba::GenericFifo<sc_uint<dspin_data_size> >)*5);
-	fifo_out = (soclib::caba::GenericFifo<sc_uint<dspin_data_size> >*)
-	  malloc(sizeof(soclib::caba::GenericFifo<sc_uint<dspin_data_size> >)*5);
+   	    SC_METHOD (genMoore);
+	    dont_initialize();
+	    sensitive  << p_clk.neg();
 
-	for( int i = 0 ;i < 5; i++ ){
-		std::ostringstream o;
-		o << i;
-	    new(&fifo_in[i])  soclib::caba::GenericFifo<sc_uint<dspin_data_size> >(std::string("FIFO_IN_")+o.str(), dspin_fifo_size) ;
-	    new(&fifo_out[i]) soclib::caba::GenericFifo<sc_uint<dspin_data_size> >(std::string("FIFO_OUT")+o.str(), dspin_fifo_size) ;
-	}
+	    r_fifo_in  = (GenericFifo<sc_uint<flit_width> >*)
+	    malloc(sizeof(GenericFifo<sc_uint<flit_width> >)*5);
+	    r_fifo_out = (GenericFifo<sc_uint<flit_width> >*)
+	    malloc(sizeof(GenericFifo<sc_uint<flit_width> >)*5);
 
-	p_out = soclib::common::alloc_elems<DspinOutput<dspin_data_size> >("out", 5);
-	p_in  = soclib::common::alloc_elems<DspinInput<dspin_data_size> >("in", 5);
-	r_alloc_out = soclib::common::alloc_elems<sc_signal<int> >("alloc_out", 5);
-	r_alloc_in  = soclib::common::alloc_elems<sc_signal<int> >("alloc_in",  5);
-	r_index_out = soclib::common::alloc_elems<sc_signal<int> >("index_out", 5);
-	r_index_in  = soclib::common::alloc_elems<sc_signal<int> >("index_in",  5);
+	    for( size_t i = 0 ; i < 5 ; i++ )
+        {
+		    std::ostringstream stri;
+		    stri << "r_in_fifo_" << i;
+	        new(&r_fifo_in[i])  
+                GenericFifo<sc_uint<flit_width> >(stri.str(), in_fifo_depth);
 
-	XLOCAL =  indent & 0x0000000F;
-	YLOCAL = (indent & 0x000000F0) >> 4;
-
-	assert( XLOCAL <= 15 && XLOCAL >= 0);
-	assert( YLOCAL <= 15 && YLOCAL >= 0);
+		    std::ostringstream stro;
+		    stro << "r_out_fifo_" << i;
+	        new(&r_fifo_out[i]) 
+                GenericFifo<sc_uint<flit_width> >(stro.str(), out_fifo_depth);
+	    }
     } //  end constructor
 
-    ////////////////////////////////
-    //      transition
-    ////////////////////////////////
+    //////////////////////////////////////////////////////
+    tmpl(size_t)::xfirst_route( sc_uint<flit_width> data )
+    {
+        size_t xdest = (size_t)(data >> m_x_shift) & m_x_mask;
+        size_t ydest = (size_t)(data >> m_y_shift) & m_y_mask;
+        return (xdest < m_local_x ? DSPIN_WEST : 
+               (xdest > m_local_x ? DSPIN_EAST : 
+               (ydest < m_local_y ? DSPIN_SOUTH : 
+               (ydest > m_local_y ? DSPIN_NORTH : DSPIN_LOCAL))));
+    }
+
+    ///////////////////////////////////////////////////
+    tmpl(inline bool)::is_eop(sc_uint<flit_width> data)
+    {
+        return ( ((data>>(flit_width-1)) & 0x1) != 0);
+    }
+
+    /////////////////////////
+    tmpl(void)::print_trace()
+    {
+        const char* port_name[] = {"NORTH","SOUTH","EAST ","WEST ","LOCAL"};
+
+        std::cout << "DSPIN_ROUTER " << name() << std::hex; 
+        for ( size_t out=0 ; out<5 ; out++)  // loop on output ports
+        {
+            if ( r_alloc_out[out].read() )
+            {
+                int in = r_index_out[out];
+                std::cout << " / " << port_name[in] << " -> " << port_name[out] ;
+            }   
+        }
+        std::cout << std::endl;
+    }
+
+    ////////////////////////
     tmpl(void)::transition()
     {
-	int                      i,j,k;
-	int                      xreq,yreq;
-	bool                     fifo_in_write[5];	// control signals
-	bool                     fifo_in_read[5];	// for the input fifos
-	sc_uint<dspin_data_size> fifo_in_data[5];
-	bool                     fifo_out_write[5];	// control signals
-	bool                     fifo_out_read[5];	// for the output fifos
-	sc_uint<dspin_data_size> fifo_out_data[5];
-	bool                     req[5][5];		// REQ[i][j] signals from
+        // Long wires connecting input and output ports
+        size_t              req_in[5];         // input ports  -> output ports
+        size_t              get_out[5];        // output ports -> input ports
+        bool                put_in[5];         // input ports  -> output ports
+        sc_uint<flit_width> data_in[5];        // input ports  -> output ports
 
-	// input i to output j
-	if(p_resetn == false) {
-	    for(i = 0 ; i < 5 ; i++) {
-		r_alloc_in[i] = false;
-		r_alloc_out[i] = false;
-		r_index_in[i] = 0;
-		r_index_out[i] = 0;
-		fifo_in[i].init();
-		fifo_out[i].init();
+        // control signals for the input fifos
+	    bool                fifo_in_write[5];
+	    bool                fifo_in_read[5];	
+	    sc_uint<flit_width> fifo_in_data[5];
+
+        // control signals for the output fifos
+	    bool                fifo_out_write[5];
+	    bool                fifo_out_read[5];
+	    sc_uint<flit_width> fifo_out_data[5];
+
+	    // Reset 
+	    if ( p_resetn == false ) 
+        {
+	        for(size_t i = 0 ; i < 5 ; i++) 
+            {
+		        r_alloc_out[i] = false;
+		        r_index_out[i] = 0;
+		        r_index_in[i]  = 0;
+		        r_fsm_in[i]    = INFSM_IDLE;
+		        r_fifo_in[i].init();
+		        r_fifo_out[i].init();
+	        }
+            return;
+        }
+
+	    // fifos control signals
+	    for(size_t i = 0 ; i < 5 ; i++) 
+        {
+		    fifo_in_read[i]  = false;
+		    fifo_in_write[i] = p_in[i].write.read();
+		    fifo_in_data[i]  = p_in[i].data.read();
+         
+		    fifo_out_read[i]  = p_out[i].read.read();
+		    fifo_out_write[i] = false;
+		    fifo_out_data[i]  = 0;
 	    }
-	} else {
 
-	    // fifo_in_write[i] and fifo_in_data[i]
+        // loop on the output ports:
+        // compute get_out[j] depending on the output port state
+        // and combining fifo_out_wok[j] and r_alloc_out[j]
+        for ( size_t j = 0 ; j < 5 ; j++ )
+        {
+		    if( r_alloc_out[j].read() and (r_fifo_out[j].wok()) ) 
+            {
+                get_out[j] = r_index_out[j].read();
+            }
+            else
+            {                       
+                get_out[j] = 0xFFFFFFFF;  
+            }
+        }
 
-	    for(i = 0 ; i < 5 ; i++) {
-		fifo_in_write[i] = p_in[i].write.read();
-		fifo_in_data[i] = p_in[i].data.read();
-	    }
+        // loop on the input ports :
+        // The port state is defined by r_fsm_in[i], r_index_in[i] 
+        // The req_in[i] computation implements the X-FIRST algorithm.
+        // Both put_in[i] and req_in[i] depend on the input port state.
 
-	    // fifo_out_read[i] 
+        for ( size_t i = 0 ; i < 5 ; i++ )
+        {
+            switch ( r_fsm_in[i].read() )
+            {
+                case INFSM_IDLE:    // no output port allocated
+                {
+                    put_in[i] = false;
+                    if ( r_fifo_in[i].rok() ) // packet available in input fifo
+                    {
+                        req_in[i]       = xfirst_route( r_fifo_in[i].read() );
+                        r_index_in[i]   = req_in[i];
+                        r_fsm_in[i]     = INFSM_REQ;
+                    }
+                    else
+                    {
+                        req_in[i] = 0xFFFFFFFF;  // no request
+                    }
+                    break;
+                }
+                case INFSM_REQ:   // waiting output port allocation
+                {
+                    data_in[i] = r_fifo_in[i].read();
+                    put_in[i]  = r_fifo_in[i].rok();
+                    req_in[i]  = r_index_in[i];
+                    if ( get_out[r_index_in[i].read()] == i ) // first flit transfered
+                    {
+                        if ( is_eop( r_fifo_in[i].read() ) ) r_fsm_in[i] = INFSM_IDLE;
+                        else                                 r_fsm_in[i] = INFSM_ALLOC;
+                    }
+                    break;
+                }
+                case INFSM_ALLOC:  // output port allocated
+                {
+                    data_in[i] = r_fifo_in[i].read();
+                    put_in[i] = r_fifo_in[i].rok();
+                    req_in[i] = 0xFFFFFFFF;                 // no request
+                    if ( is_eop( r_fifo_in[i].read() ) and
+                         r_fifo_in[i].rok() and 
+                         get_out[r_index_in[i].read()] == i ) // last flit transfered 
+                    {
+                        r_fsm_in[i] = INFSM_IDLE;
+                    }
+                    break;
+                }
+            } // end switch
+        } // end for input ports
+                                   
+        // loop on the output ports :
+	    // The r_alloc_out[j] and r_index_out[j] computation
+        // implements the round-robin allocation policy.
+        // These two registers implement a 10 states FSM.
+	    for( size_t j = 0 ; j < 5 ; j++ ) 
+        {
+		    if( not r_alloc_out[j].read() )  // not allocated: possible new allocation
+            {
+		        for( size_t k = r_index_out[j].read() + 1 ; 
+                     k < (r_index_out[j] + 6) ; k++) 
+                { 
+			        size_t i = k % 5;
 
-	    for(i = 0 ; i < 5 ; i++) {
-		fifo_out_read[i] = p_out[i].read.read();
-	    }
-
-	    // req[i][j]  : implement the X first routing algorithm
-
-	    for(i = 0 ; i < 5 ; i++) { // loop on the input ports
-		if((fifo_in[i].rok() == true) && 
-			(((fifo_in[i].read() >> (dspin_data_size-2) ) & DSPIN_BOP) == DSPIN_BOP)) {
-		    xreq = (int)(fifo_in[i].read() & 0xF);
-		    yreq = (int)((fifo_in[i].read() >> 4) & 0xF);
-		    if(xreq < XLOCAL) {
-			req[i][LOCAL] = false;
-			req[i][NORTH] = false;
-			req[i][SOUTH] = false;
-			req[i][EAST]  = false;
-			req[i][WEST]  = true;
-		    } else if(xreq > XLOCAL) {
-			req[i][LOCAL] = false;
-			req[i][NORTH] = false;
-			req[i][SOUTH] = false;
-			req[i][EAST]  = true;
-			req[i][WEST]  = false;
-		    } else if(yreq < YLOCAL) {
-			req[i][LOCAL] = false;
-			req[i][NORTH] = false;
-			req[i][SOUTH] = true;
-			req[i][EAST]  = false;
-			req[i][WEST]  = false;
-		    } else if(yreq > YLOCAL) {
-			req[i][LOCAL] = false;
-			req[i][NORTH] = true;
-			req[i][SOUTH] = false;
-			req[i][EAST]  = false;
-			req[i][WEST]  = false;
-		    } else {
-			req[i][LOCAL] = true;
-			req[i][NORTH] = false;
-			req[i][SOUTH] = false;
-			req[i][EAST]  = false;
-			req[i][WEST]  = false;
+			        if( req_in[i] == j ) 
+                    {
+			            r_alloc_out[j] = true;
+			            r_index_out[j] = i;
+                        break;
+                    }
+		        } // end loop on input ports
+		    } 
+            else                            // allocated: possible desallocation
+            {
+		        if ( is_eop( data_in[r_index_out[j]] ) and
+                     r_fifo_out[j].wok() and 
+                     put_in[r_index_out[j]] ) 
+                {
+			        r_alloc_out[j] = false;
+                }
 		    }
-		} else {
-		    req[i][LOCAL] = false;
-		    req[i][NORTH] = false;
-		    req[i][SOUTH] = false;
-		    req[i][EAST]  = false;
-		    req[i][WEST]  = false;
-		}
-	    } // end loop on the inputs
+		} // end loop on output ports
 
-	    // fifo_in_read[i]
+        // loop on input ports :
+	    // fifo_in_read[i] computation
+        // (computed here because it depends on get_out[])
+	    for( size_t i = 0 ; i < 5 ; i++ ) 
+        {
+		    if ( r_fsm_in[i].read() != INFSM_IDLE ) 
+            {
+                fifo_in_read[i] = (get_out[r_index_in[i].read()] == i);
+            }
+            else
+            {
+                fifo_in_read[i] = false;
+            }
+	    }  // end loop on input ports
 
-	    for(i = 0 ; i < 5 ; i++) { // loop on the inputs
-		if(r_alloc_in[i] == true) {
-		    fifo_in_read[i] = fifo_out[r_index_in[i]].wok();
-		} else {
-		    fifo_in_read[i] = false;
-		}
-	    } // end loop on the inputs
+        // loop on the output ports :
+        // The fifo_out_write[j] and fifo_out_wdata[j] computation
+        // implements the output port mux.
+	    for( size_t j = 0 ; j < 5 ; j++ ) 
+        {
+		    if( r_alloc_out[j] )  // output port allocated
+            {
+		        fifo_out_write[j] = put_in[r_index_out[j]];
+		        fifo_out_data[j]  = data_in[r_index_out[j]];
+            }
+        }  // end loop on the output ports
 
-	    // fifo_out_write[j] and fifo_out_data[j]
-
-	    for(j = 0 ; j < 5 ; j++) { // loop on the outputs
-		if(r_alloc_out[j] == true) {
-		    fifo_out_write[j] = fifo_in[r_index_out[j]].rok();
-		    fifo_out_data[j]  = fifo_in[r_index_out[j]].read();
-		} else {
-		    fifo_out_write[j] = false;
-		}
-	    } // end loop on the outputs
-
-	    // r_alloc_in, r_alloc_out, r_index_in et r_index_out : implements the round-robin allocation policy
-
-	    for(j = 0 ; j < 5 ; j++) { // loop on the outputs
-		if(r_alloc_out[j] == false) { // possible new allocation
-
-		    //Routage par round-robin
-		    for(k = r_index_out[j]+1 ; k < (r_index_out[j] + 6) ; k++) { // loop on the inputs
-			i = k % 5;
-			if(req[i][j] == true ) {
-			    r_alloc_out[j] = true;
-			    r_index_out[j] = i;
-			    r_alloc_in[i] = true;
-			    r_index_in[i] = j;
-			    break;
-			}
-		    } // end loop on the inputs
-
-
-
-		} else { // possible desallocation
-		  if((((fifo_in[r_index_out[j]].read() >> (dspin_data_size-2) ) & DSPIN_EOP) == DSPIN_EOP) && (fifo_out[j].wok() == true ) && fifo_in[r_index_out[j]].rok()) {
-			r_alloc_out[j] = false;
-			r_alloc_in[r_index_out[j]] = false;
-		    }
-		}
-	    } // end loop on the outputs
-
-	    //  FIFOS
-	    for(i = 0 ; i < 5 ; i++) {
-	      if((fifo_in_write[i] == true ) && (fifo_in_read[i] == true ))
-		{fifo_in[i].put_and_get(fifo_in_data[i]);}
-	      if((fifo_in_write[i] == true ) && (fifo_in_read[i] == false))
-		{fifo_in[i].simple_put(fifo_in_data[i]);}
-	      if((fifo_in_write[i] == false) && (fifo_in_read[i] == true ))
-		{fifo_in[i].simple_get();}
+	    //  FIFOS update
+	    for(size_t i = 0 ; i < 5 ; i++) 
+        {
+		    r_fifo_in[i].update(fifo_in_read[i],
+                                fifo_in_write[i],
+                                fifo_in_data[i]);
+		    r_fifo_out[i].update(fifo_out_read[i],
+                                 fifo_out_write[i],
+                                 fifo_out_data[i]);
 	    }
-	    for(i = 0 ; i < 5 ; i++) {
-	      if((fifo_out_write[i] == true ) && (fifo_out_read[i] == true ))
-		{fifo_out[i].put_and_get(fifo_out_data[i]);}
-	      if((fifo_out_write[i] == true ) && (fifo_out_read[i] == false))
-		{fifo_out[i].simple_put(fifo_out_data[i]);}
-	      if((fifo_out_write[i] == false) && (fifo_out_read[i] == true ))
-		{fifo_out[i].simple_get();}
-	    }
-	}
     } // end transition
 
     ////////////////////////////////
@@ -245,18 +316,15 @@ namespace soclib { namespace caba {
     ////////////////////////////////
     tmpl(void)::genMoore()
     {
-      int i;
-      // input ports : READ signals
-      for(i = 0 ; i < 5 ; i++) { 
-	p_in[i].read = fifo_in[i].wok();
-      }
+        for(size_t i = 0 ; i < 5 ; i++) 
+        { 
+            // input ports : READ signals
+	        p_in[i].read = r_fifo_in[i].wok();
       
-      // output ports : DATA & WRITE signals
-      for(i = 0 ; i < 5 ; i++) { 
-	p_out[i].data = fifo_out[i].read(); 
-	p_out[i].write =  fifo_out[i].rok();
-      }
-      
+            // output ports : DATA & WRITE signals
+	        p_out[i].data  = r_fifo_out[i].read(); 
+	        p_out[i].write = r_fifo_out[i].rok();
+        }
     } // end genMoore
 
 }} // end namespace

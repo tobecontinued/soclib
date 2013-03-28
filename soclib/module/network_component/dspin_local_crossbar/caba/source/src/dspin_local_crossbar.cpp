@@ -236,6 +236,21 @@ using namespace soclib::caba;
         fifo_out_write[m_local_outputs] = false;  // default value    
         fifo_out_data[m_local_outputs]  = 0;      // default value
 
+        // loop on the output ports:
+        // compute get_out[j] depending on the output port state
+        // and combining fifo_out_wok[j] and r_alloc_out[j]
+        for ( size_t j = 0 ; j <= m_local_outputs ; j++ )
+        {
+		    if( r_alloc_out[j].read() and (r_fifo_out[j].wok()) ) 
+            {
+                get_out[j] = r_index_out[j].read();
+            }
+            else
+            {                       
+                get_out[j] = 0xFFFFFFFF;  
+            }
+        }
+
         // loop on the input ports (including global input port, 
         // with the convention index[global] = m_local_inputs)
         // The port state is defined by r_fsm_in[i], r_index_in[i] 
@@ -339,8 +354,7 @@ using namespace soclib::caba;
         // with the convention index[global] = m_local_outputs)
 	    // The r_alloc_out[j] and r_index_out[j] computation
         // implements the round-robin allocation policy.
-        // These two registers implement a 10 states FSM.
-        // The get_out[j] computation combines fifo_out_wok[j] and r_alloc_out[j]
+        // These two registers implement a 2*N states FSM.
 	    for( size_t j = 0 ; j <= m_local_outputs ; j++ ) 
         {
 		    if( not r_alloc_out[j].read() )  // not allocated: possible new allocation
@@ -357,9 +371,6 @@ using namespace soclib::caba;
                     }
 			        break;
 		        } // end loop on input ports
-
-                // get_out[j] computation
-                get_out[j] = 0xFFFFFFFF;    // no allocation
 		    } 
             else                            // allocated: possible desallocation
             {
@@ -369,10 +380,6 @@ using namespace soclib::caba;
                 {
 			        r_alloc_out[j] = false;
                 }
-                
-                // get_out[j] computation
-                if ( r_fifo_out[j].wok() ) get_out[j] = r_index_out[j].read();
-                else                       get_out[j] = 0xFFFFFFFF;  
 		    }
 		} // end loop on output ports
 

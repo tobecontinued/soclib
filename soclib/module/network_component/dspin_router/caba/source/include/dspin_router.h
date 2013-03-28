@@ -1,4 +1,5 @@
 /* -*- c++ -*-
+  *
   * File : dspin_router.h
   * Copyright (c) UPMC, Lip6
   * Authors : Alain Greiner, Abbas Sheibanyrad, Ivan Miro, Zhen Zhang
@@ -23,14 +24,6 @@
   * 
   * SOCLIB_LGPL_HEADER_END
   *
-  * The DSPIN router architecture implemented in this file is the 
-  * Best Effort only architecture.
-  *
-  * Find detailed information in:
-  * Ivan MIRO PANADES, PhD thesis, 2008:
-  * "Conception et implémentation d'un micro-réseau sur puce avec 
-  * garantie de service"
-  *
   */
 
 #ifndef DSPIN_ROUTER_H_
@@ -40,67 +33,90 @@
 #include "caba_base_module.h"
 #include "generic_fifo.h"
 #include "dspin_interface.h"
+#include "alloc_elems.h"
 
 namespace soclib { namespace caba {
 
-    using namespace sc_core;
+using namespace sc_core;
 
-    template<int dspin_data_size, int dspin_fifo_size, int dspin_yx_size>
-	class DspinRouter
-	: public soclib::caba::BaseModule
-	{
-
-	    // FSM of request
-	    enum{
-		NORTH	= 0,
-		SOUTH	= 1,
-		EAST	= 2,
-		WEST	= 3,
-		LOCAL	= 4
-	    };
-
-	    protected:
-	    SC_HAS_PROCESS(DspinRouter);
-
-	    public:
-	    // ports
-	    sc_in<bool>                             	p_clk;
-	    sc_in<bool>                             	p_resetn;
-
-	    // fifo req ant rsp
-	    DspinOutput<dspin_data_size>		*p_out;
-	    DspinInput<dspin_data_size>			*p_in;
-
-	    // constructor / destructor
-	    DspinRouter(sc_module_name    insname, int indent);
-
-	    private:
-	    // internal registers
-	    sc_signal<int>				*r_alloc_out;
-	    sc_signal<int>				*r_alloc_in;
-	    sc_signal<int>              *r_index_out;
-	    sc_signal<int>              *r_index_in;
-
-	    // deux fifos req and rsp
-	    soclib::caba::GenericFifo<sc_uint<dspin_data_size> > *fifo_in;
-	    soclib::caba::GenericFifo<sc_uint<dspin_data_size> > *fifo_out;
-
-	    // Index of router
-	    int		XLOCAL;
-	    int		YLOCAL;
-
-	    // methods systemc
-	    void transition();
-	    void genMoore();
-
-	    // checker
-	    soclib_static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);
-	    soclib_static_assert(dspin_yx_size == 4); // DSPIN only supports YX adresses in 4 bits
+	// Port indexing
+	enum 
+    {
+		DSPIN_NORTH	= 0,
+		DSPIN_SOUTH	= 1,
+		DSPIN_EAST	= 2,
+		DSPIN_WEST	= 3,
+		DSPIN_LOCAL	= 4,
 	};
+
+    // Input Port FSM
+    enum 
+    {
+        INFSM_IDLE,
+        INFSM_REQ,
+        INFSM_ALLOC,
+    };
+
+template<int flit_width>
+class DspinRouter
+: public soclib::caba::BaseModule
+{
+    protected:
+    SC_HAS_PROCESS(DspinRouter);
+
+    public:
+
+	// ports
+	sc_in<bool>                 p_clk;
+	sc_in<bool>                 p_resetn;
+	DspinInput<flit_width>      *p_in;
+	DspinOutput<flit_width>	    *p_out;
+
+	// constructor / destructor
+	DspinRouter(sc_module_name  name, 
+                size_t          x,
+                size_t          y,
+                size_t          x_width,
+                size_t          y_width,
+                size_t          in_fifo_depth,
+                size_t          out_fifo_depth );
+
+    private:
+
+    // internal registers
+	sc_signal<bool>				*r_alloc_out;
+	sc_signal<size_t>           *r_index_out;
+    sc_signal<int>              *r_fsm_in;
+	sc_signal<size_t>           *r_index_in;
+
+	// fifos
+	soclib::caba::GenericFifo<sc_uint<flit_width> >*  r_fifo_in;
+	soclib::caba::GenericFifo<sc_uint<flit_width> >*  r_fifo_out;
+
+	// structural parameters
+	size_t	                    m_local_x;
+	size_t	                    m_local_y;
+	size_t	                    m_x_width;
+	size_t	                    m_x_shift;
+	size_t	                    m_x_mask;
+	size_t	                    m_y_width;
+	size_t	                    m_y_shift;
+	size_t	                    m_y_mask;
+
+    // methods 
+    void    transition();
+    void    genMoore();
+    size_t  xfirst_route( sc_uint<flit_width> data );
+    bool    is_eop( sc_uint<flit_width> data );
+
+    public:
+
+    void    print_trace();
+};
 
 }} // end namespace
                
-#endif // VCI_DSPIN_INITIATOR_WRAPPER_H_
+#endif // DSPIN_ROUTER_H_
 
 // Local Variables:
 // tab-width: 4
