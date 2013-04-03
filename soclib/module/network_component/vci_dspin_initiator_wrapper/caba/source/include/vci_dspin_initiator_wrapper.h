@@ -63,22 +63,28 @@ class VciDspinInitiatorWrapper
 	protected:
 	SC_HAS_PROCESS(VciDspinInitiatorWrapper);
 
-        public:
-        // ports
-        sc_in<bool>                             	p_clk;
-        sc_in<bool>                             	p_resetn;
-        DspinOutput<dspin_cmd_width>			    p_dspin_cmd;
-        DspinInput<dspin_rsp_width>			        p_dspin_rsp;
-        soclib::caba::VciTarget<vci_param>      	p_vci;
+    public:
+    // ports
+    sc_in<bool>                             	p_clk;
+    sc_in<bool>                             	p_resetn;
+    DspinOutput<dspin_cmd_width>			    p_dspin_cmd;
+    DspinInput<dspin_rsp_width>			        p_dspin_rsp;
+    soclib::caba::VciTarget<vci_param>      	p_vci;
 
-        // constructor 
-        VciDspinInitiatorWrapper(sc_module_name name);
+    // constructor 
+    VciDspinInitiatorWrapper(sc_module_name name,
+                             const size_t   srcid_width);
 
-        private:
-        // internal registers
-        sc_signal<int>                             r_cmd_fsm;
-        sc_signal<int>                             r_rsp_fsm;
-        sc_signal<sc_uint<dspin_rsp_width> >       r_rsp_buf;
+    void print_trace();
+
+    private:
+    // internal registers
+    sc_signal<int>                             r_cmd_fsm;
+    sc_signal<int>                             r_rsp_fsm;
+    sc_signal<sc_uint<dspin_rsp_width> >       r_rsp_buf;
+
+    // structural constants
+    const size_t                               m_srcid_width;
 
 	// methods 
 	void transition();

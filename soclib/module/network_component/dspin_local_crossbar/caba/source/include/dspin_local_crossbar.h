@@ -69,6 +69,8 @@ namespace soclib { namespace caba {
 	    DspinInput<flit_width>*		    p_local_in;
 	    DspinOutput<flit_width>*		p_local_out;
 
+        void      print_trace();
+
 	    // constructor / destructor
 	    DspinLocalCrossbar( sc_module_name      name, 
                             const MappingTable  &mt,
@@ -115,7 +117,7 @@ namespace soclib { namespace caba {
         const bool       m_broadcast_supported;
 
         // using uint64_t to support both 32 bits and 40 bits addresses
-        const AddressDecodingTable<uint64_t, int>       m_routing_table;
+        AddressDecodingTable<uint64_t, int>       m_routing_table;
 
 	    // methods 
 	    void      transition();
@@ -123,7 +125,6 @@ namespace soclib { namespace caba {
         size_t    route( sc_uint<flit_width> data, size_t index );
         bool      is_eop( sc_uint<flit_width> data );
         bool      is_broadcast( sc_uint<flit_width> data );
-        void      print_trace();
 	};
 
 }} // end namespace

@@ -32,7 +32,8 @@ namespace soclib { namespace caba {
 #define tmpl(x) template<typename vci_param, size_t dspin_cmd_width, size_t dspin_rsp_width> x VciDspinInitiatorWrapper<vci_param, dspin_cmd_width, dspin_rsp_width>
 
 //////////////////////////////////////////////////////////
-tmpl(/**/)::VciDspinInitiatorWrapper(sc_module_name name )
+tmpl(/**/)::VciDspinInitiatorWrapper( sc_module_name name,
+                                      const size_t  srcid_width)
        : soclib::caba::BaseModule(name),
      
         p_clk( "p_clk" ),
@@ -43,7 +44,9 @@ tmpl(/**/)::VciDspinInitiatorWrapper(sc_module_name name )
 
         r_cmd_fsm( "r_cmd_fsm" ),
         r_rsp_fsm( "r_rsp_fsm" ),
-        r_rsp_buf( "r_rsp_buf" )
+        r_rsp_buf( "r_rsp_buf" ),
+
+        m_srcid_width( srcid_width )
 {
 	SC_METHOD (transition);
 	dont_initialize();
@@ -164,7 +167,7 @@ tmpl(void)::transition()
     // The VCI flits are sent in the RSP_READ & RSP_WRITE states.
     /////////////////////////////////////////////////////////////////
 
-    bool is_eop = (p_dspin_rsp.data.read() & 0x8000000000LL);
+    bool is_eop = (p_dspin_rsp.data.read() & 0x100000000LL);
 
     switch( r_rsp_fsm.read() )
     {
@@ -202,8 +205,8 @@ tmpl(void)::genMealy_dspin_cmd()
 
     if      ( r_cmd_fsm.read() == CMD_IDLE )
     {
-        sc_uint<dspin_cmd_width> address = (sc_uint<dspin_cmd_width>)p_vci.address.read();
-        address = (address >> 2) << (dspin_cmd_width - vci_param::N + 1);
+        dspin_data = (sc_uint<dspin_cmd_width>)p_vci.address.read();
+        dspin_data = (dspin_data >> 2) << (dspin_cmd_width - vci_param::N + 1);
     }
     else if ( (r_cmd_fsm.read() == CMD_READ) or
               (r_cmd_fsm.read() == CMD_WRITE) )
@@ -214,12 +217,12 @@ tmpl(void)::genMealy_dspin_cmd()
         sc_uint<dspin_cmd_width> trdid   = (sc_uint<dspin_cmd_width>)p_vci.trdid.read();
         sc_uint<dspin_cmd_width> cmd     = (sc_uint<dspin_cmd_width>)p_vci.cmd.read();
         sc_uint<dspin_cmd_width> plen    = (sc_uint<dspin_cmd_width>)p_vci.plen.read();
-        dspin_data = ((be    << 1 ) & 0x000000001ELL) |
-                     ((pktid << 5 ) & 0x00000001E0LL) |
-                     ((trdid << 9 ) & 0x0000001E00LL) |
-                     ((plen  << 13) & 0x00001FE000LL) |
-                     ((cmd   << 23) & 0x0001800000LL) |
-                     ((srcid << 25) & 0x7FFE000000LL) ;
+        dspin_data = ((be    << 1 )                 & 0x000000001ELL) |
+                     ((pktid << 5 )                 & 0x00000001E0LL) |
+                     ((trdid << 9 )                 & 0x0000001E00LL) |
+                     ((plen  << 13)                 & 0x00001FE000LL) |
+                     ((cmd   << 23)                 & 0x0001800000LL) |
+                     ((srcid << (39-m_srcid_width)) & 0x7FFE000000LL) ;  // SRCID left aligned
         if ( p_vci.contig.read() )   dspin_data = dspin_data | 0x0000400000LL ;
         if ( p_vci.cons.read()   )   dspin_data = dspin_data | 0x0000200000LL ;
         if ( r_cmd_fsm == CMD_READ ) dspin_data = dspin_data | 0x8000000000LL ;
@@ -251,7 +254,7 @@ tmpl(void)::genMealy_vci_rsp()
     {
         p_vci.rspval = p_dspin_rsp.write.read() and dspin_eop;
         p_vci.rdata  = 0;
-        p_vci.rsrcid = (sc_uint<vci_param::S>)((p_dspin_rsp.data.read() & 0x0FFFC0000LL) >> 18);
+        p_vci.rsrcid = (sc_uint<vci_param::S>)((p_dspin_rsp.data.read() & 0x0FFFC0000LL) >> (32-m_srcid_width));
         p_vci.rpktid = (sc_uint<vci_param::T>)((p_dspin_rsp.data.read() & 0x000000F00LL) >> 8);
         p_vci.rtrdid = (sc_uint<vci_param::P>)((p_dspin_rsp.data.read() & 0x00000F000LL) >> 12);
         p_vci.rerror = (sc_uint<vci_param::E>)((p_dspin_rsp.data.read() & 0x000030000LL) >> 16);
@@ -261,7 +264,7 @@ tmpl(void)::genMealy_vci_rsp()
     {
         p_vci.rspval = p_dspin_rsp.write.read();
         p_vci.rdata  = (sc_uint<8*vci_param::B>)(p_dspin_rsp.data.read() & 0x0FFFFFFFFLL);
-        p_vci.rsrcid = (sc_uint<vci_param::S>)((r_rsp_buf.read()         & 0x0FFFC0000LL) >> 18);
+        p_vci.rsrcid = (sc_uint<vci_param::S>)((r_rsp_buf.read()         & 0x0FFFC0000LL) >> (32-m_srcid_width));
         p_vci.rpktid = (sc_uint<vci_param::T>)((r_rsp_buf.read()         & 0x000000F00LL) >> 8);
         p_vci.rtrdid = (sc_uint<vci_param::P>)((r_rsp_buf.read()         & 0x00000F000LL) >> 12);
         p_vci.rerror = (sc_uint<vci_param::E>)((r_rsp_buf.read()         & 0x000030000LL) >> 16);
@@ -271,12 +274,21 @@ tmpl(void)::genMealy_vci_rsp()
     {
         p_vci.rspval = true;
         p_vci.rdata  = 0;
-        p_vci.rsrcid = (sc_uint<vci_param::S>)((r_rsp_buf.read() & 0x0FFFC0000LL) >> 18);
+        p_vci.rsrcid = (sc_uint<vci_param::S>)((r_rsp_buf.read() & 0x0FFFC0000LL) >> (32-m_srcid_width));
         p_vci.rpktid = (sc_uint<vci_param::T>)((r_rsp_buf.read() & 0x000000F00LL) >> 8);
         p_vci.rtrdid = (sc_uint<vci_param::P>)((r_rsp_buf.read() & 0x00000F000LL) >> 12);
         p_vci.rerror = (sc_uint<vci_param::E>)((r_rsp_buf.read() & 0x000030000LL) >> 16);
         p_vci.reop   = true;
     }
+}
+/////////////////////////
+tmpl(void)::print_trace()
+{
+    const char* cmd_str[] = { "IDLE", "READ", "WRITE", "WDATA" };
+    const char* rsp_str[] = { "IDLE", "READ", "WRITE" };
+    std::cout << "VCI_DSPIN_INI_WRAPPER " << name()
+              << " : cmd_fsm = " << cmd_str[r_cmd_fsm.read()]
+              << " / rsp_fsm = " << rsp_str[r_rsp_fsm.read()] << std::endl; 
 }
 
 }} // end namespace

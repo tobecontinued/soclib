@@ -32,25 +32,28 @@ namespace soclib { namespace caba {
 #define tmpl(x) template<typename vci_param, size_t dspin_cmd_width, size_t dspin_rsp_width> x VciDspinTargetWrapper<vci_param, dspin_cmd_width, dspin_rsp_width>
 
 ///////////////////////////////////////////////////////
-tmpl(/**/)::VciDspinTargetWrapper(sc_module_name name )
+tmpl(/**/)::VciDspinTargetWrapper( sc_module_name name,
+                                   const size_t srcid_width )
 	   : soclib::caba::BaseModule(name),
 
-	   p_clk("p_clk"),
-	   p_resetn("p_resetn"),
-	   p_dspin_cmd("p_dspin_cmd"),
-	   p_dspin_rsp("p_dspin_rsp"),
-	   p_vci("p_vci"),
+	   p_clk( "p_clk" ),
+	   p_resetn( "p_resetn" ),
+	   p_dspin_cmd( "p_dspin_cmd" ),
+	   p_dspin_rsp( "p_dspin_rsp" ),
+	   p_vci( "p_vci" ),
 
-	   r_cmd_fsm("r_cmd_fsm"),
-       r_cmd_addr("r_cmd_addr"),
-       r_cmd_trdid("r_cmd_trdid"),
-       r_cmd_pktid("r_cmd_pktid"),
-       r_cmd_srcid("r_cmd_srcid"),
-       r_cmd_plen("r_cmd_plen"),
-       r_cmd_cmd("r_cmd_cmd"),
-       r_cmd_contig("r_cmd_contig"),
-       r_cmd_cons("r_cmd_cons"),
-	   r_rsp_fsm("r_rsp_fsm")
+	   r_cmd_fsm( "r_cmd_fsm" ),
+       r_cmd_addr( "r_cmd_addr" ),
+       r_cmd_trdid( "r_cmd_trdid" ),
+       r_cmd_pktid( "r_cmd_pktid" ),
+       r_cmd_srcid( "r_cmd_srcid" ),
+       r_cmd_plen( "r_cmd_plen" ),
+       r_cmd_cmd( "r_cmd_cmd" ),
+       r_cmd_contig( "r_cmd_contig" ),
+       r_cmd_cons( "r_cmd_cons" ),
+	   r_rsp_fsm( "r_rsp_fsm" ),
+
+       m_srcid_width( srcid_width )
 {
 	SC_METHOD (transition);
 	dont_initialize();
@@ -179,7 +182,7 @@ tmpl(void)::transition()
             if( p_dspin_cmd.write.read() )
             {
                 r_cmd_cmd     = (sc_uint<2>)           ((p_dspin_cmd.data.read() & 0x0001800000LL) >> 23);
-                r_cmd_srcid   = (sc_uint<vci_param::S>)((p_dspin_cmd.data.read() & 0x7FFE000000LL) >> 25);
+                r_cmd_srcid   = (sc_uint<vci_param::S>)((p_dspin_cmd.data.read() & 0x7FFE000000LL) >> (39-m_srcid_width));
                 r_cmd_pktid   = (sc_uint<vci_param::P>)((p_dspin_cmd.data.read() & 0x00000001E0LL) >> 5);
                 r_cmd_trdid   = (sc_uint<vci_param::T>)((p_dspin_cmd.data.read() & 0x0000001E00LL) >> 9);
                 r_cmd_plen    = (sc_uint<vci_param::K>)((p_dspin_cmd.data.read() & 0x00001FE000LL) >> 13);
@@ -218,9 +221,9 @@ tmpl(void)::genMealy_dspin_rsp()
     if ( r_rsp_fsm.read() == RSP_IDLE )
     {
         p_dspin_rsp.write = p_vci.rspval.read();
-        dspin_data = (((sc_uint<dspin_rsp_width>)p_vci.rsrcid.read()) << 18) |
-                     (((sc_uint<dspin_rsp_width>)p_vci.rerror.read()) << 16) |
-                     (((sc_uint<dspin_rsp_width>)p_vci.rtrdid.read()) << 12) |
+        dspin_data = (((sc_uint<dspin_rsp_width>)p_vci.rsrcid.read()) << (32-m_srcid_width)) |
+                     (((sc_uint<dspin_rsp_width>)p_vci.rerror.read()) << 16)                 |
+                     (((sc_uint<dspin_rsp_width>)p_vci.rtrdid.read()) << 12)                 |
                      (((sc_uint<dspin_rsp_width>)p_vci.rpktid.read()) << 8);
         if (  p_vci.reop.read() and 
               (p_vci.rdata.read() == 0) ) dspin_data = dspin_data | 0x100000000LL;              
@@ -238,14 +241,12 @@ tmpl(void)::genMealy_dspin_rsp()
     }
     p_dspin_rsp.data = dspin_data;
 }
-
 //////////////////////////////
 tmpl(void)::genMealy_vci_rsp()
 {
     if ( r_rsp_fsm.read() == RSP_IDLE ) p_vci.rspack = false;
     else                                p_vci.rspack = p_dspin_rsp.read.read();
 }
-
 //////////////////////////////
 tmpl(void)::genMealy_vci_cmd()
 {
@@ -260,7 +261,7 @@ tmpl(void)::genMealy_vci_cmd()
         p_vci.cmd     = (sc_uint<2>)((p_dspin_cmd.data.read()            & 0x0001800000LL) >> 23);
         p_vci.wdata   = 0;
         p_vci.be      = 0;
-        p_vci.srcid   = (sc_uint<vci_param::S>)((p_dspin_cmd.data.read() & 0x7FFE000000LL) >> 25);
+        p_vci.srcid   = (sc_uint<vci_param::S>)((p_dspin_cmd.data.read() & 0x7FFE000000LL) >> 39-m_srcid_width);
         p_vci.pktid   = (sc_uint<vci_param::P>)((p_dspin_cmd.data.read() & 0x00000001E0LL) >> 5);
         p_vci.trdid   = (sc_uint<vci_param::T>)((p_dspin_cmd.data.read() & 0x0000001E00LL) >> 9);
         p_vci.plen    = (sc_uint<vci_param::K>)((p_dspin_cmd.data.read() & 0x00001FE000LL) >> 13);
@@ -299,7 +300,6 @@ tmpl(void)::genMealy_vci_cmd()
         p_vci.eop     = (p_dspin_cmd.data.read() & 0x8000000000LL);
     }
 }
-
 ////////////////////////////////
 tmpl(void)::genMealy_dspin_cmd()
 {
@@ -307,6 +307,15 @@ tmpl(void)::genMealy_dspin_cmd()
               (r_cmd_fsm.read() == CMD_RW) )  p_dspin_cmd.read = true;
     else if ( r_cmd_fsm.read() == CMD_READ )  p_dspin_cmd.read = false;
     else                                      p_dspin_cmd.read = p_vci.cmdack.read();
+}
+/////////////////////////
+tmpl(void)::print_trace()
+{
+    const char* cmd_str[] = { "IDLE", "RW", "READ", "WDATA" };
+    const char* rsp_str[] = { "IDLE", "SINGLE", "MULTI" };
+    std::cout << "VCI_DSPIN_TGT_WRAPPER " << name()
+              << " : cmd_fsm = " << cmd_str[r_cmd_fsm.read()]
+              << " / rsp_fsm = " << rsp_str[r_rsp_fsm.read()] << std::endl; 
 }
 
 }} // end namespace

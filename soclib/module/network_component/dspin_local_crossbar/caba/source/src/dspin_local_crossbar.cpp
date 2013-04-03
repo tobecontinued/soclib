@@ -60,11 +60,11 @@ using namespace soclib::caba;
       p_local_in(alloc_elems<DspinInput<flit_width> >("p_local_in", nb_local_inputs)),
       p_local_out(alloc_elems<DspinOutput<flit_width> >("p_local_out", nb_local_outputs)),
 
-      r_alloc_out(alloc_elems<sc_signal<bool> > ("r_alloc_out", m_local_outputs + 1)),
-	  r_index_out(alloc_elems<sc_signal<size_t> > ("r_index_out", m_local_outputs + 1)),
-	  r_buf_in(alloc_elems<sc_signal<sc_uint<flit_width> > > ("r_buf_in",  m_local_inputs + 1)),
-	  r_fsm_in(alloc_elems<sc_signal<int> > ("r_fsm_in",  m_local_inputs + 1)),
-	  r_index_in(alloc_elems<sc_signal<size_t> > ("r_index_in",  m_local_inputs + 1)),
+      r_alloc_out(alloc_elems<sc_signal<bool> > ("r_alloc_out", nb_local_outputs + 1)),
+	  r_index_out(alloc_elems<sc_signal<size_t> > ("r_index_out", nb_local_outputs + 1)),
+	  r_buf_in(alloc_elems<sc_signal<sc_uint<flit_width> > > ("r_buf_in", nb_local_inputs + 1)),
+	  r_fsm_in(alloc_elems<sc_signal<int> > ("r_fsm_in", nb_local_inputs + 1)),
+	  r_index_in(alloc_elems<sc_signal<size_t> > ("r_index_in", nb_local_inputs + 1)),
 
       m_local_x( x ),
       m_local_y( y ),
@@ -80,8 +80,7 @@ using namespace soclib::caba;
       m_local_inputs( nb_local_inputs ),
       m_local_outputs( nb_local_outputs ),
       m_use_routing_table( use_routing_table ),
-      m_broadcast_supported( broadcast_supported ),
-      m_routing_table(mt.getRoutingTable<uint64_t>(IntTab((x << x_width) + y)))
+      m_broadcast_supported( broadcast_supported )
     {
 	    SC_METHOD (transition);
 	    dont_initialize();
@@ -90,6 +89,13 @@ using namespace soclib::caba;
    	    SC_METHOD (genMoore);
 	    dont_initialize();
 	    sensitive  << p_clk.neg();
+
+        // routing table
+        if ( use_routing_table )
+        {
+            assert( false and "MISSING CODE in DSPIN_LOCAL_CROSSBAR constructor");
+            //m_routing_table(mt.getRoutingTable<uint64_t>(IntTab((x << x_width) + y)));
+        }
 
         // construct FIFOs
 	    r_fifo_in  = (GenericFifo<sc_uint<flit_width> >*)
@@ -119,35 +125,38 @@ using namespace soclib::caba;
 
     ////////////////////////////////////////////////////////////////////////////
     tmpl(size_t)::route( sc_uint<flit_width> data,     // first flit
-                         size_t              index )   // input port index 
+                         size_t              input )   // input port index 
     {
+        size_t output;                          // selected output port
+
         // extract address from first flit        
         uint64_t address = (uint64_t)(data << 1);
 
         size_t x_dest = (size_t)(address >> m_x_shift) & m_x_mask;
         size_t y_dest = (size_t)(address >> m_y_shift) & m_y_mask;
-        size_t l_dest = (size_t)(address >> m_l_shift) & m_l_mask;
-        
-        if ( index < m_local_inputs )      // local input port
-        {
-            if ( (x_dest == m_local_x) and (y_dest == m_local_y) )  // local dest
-            {
-                if ( m_use_routing_table )  return m_routing_table[address];
-                else                        return l_dest;
-            }
-            else                                                    // global dest
-            {
-                return m_local_outputs;
-            }
-        }
-        else                                // global input port
-        {
-            assert( (x_dest == m_local_x) and (y_dest == m_local_y) and
-            "ERROR in DSPIN_LOCAL_CROSSBAR : illegal packet received on global input");
 
-            if ( m_use_routing_table ) return m_routing_table[address];
-            else                       return l_dest;
+        if ( (x_dest == m_local_x) and (y_dest == m_local_y) )          // local dest
+        {
+            if ( m_use_routing_table )
+            {
+                output = m_routing_table[address];
+            }
+            else
+            {
+                output = (size_t)(address >> m_l_shift) & m_l_mask;
+ 
+                assert( (output < m_local_outputs) and
+                "ERROR in DSPIN_LOCAL_CROSSBAR: illegal local destination");
+            }
         }
+        else                                                            // global dest
+        {
+            assert( (input < m_local_inputs) and
+            "ERROR in DSPIN_LOCAL_CROSSBAR : illegal global to global request");
+
+            output = m_local_outputs;
+        }
+        return output;
     }
 
     ///////////////////////////////////////////////////
@@ -165,8 +174,16 @@ using namespace soclib::caba;
     /////////////////////////
     tmpl(void)::print_trace()
     {
+        const char* infsm_str[] = { "IDLE", "REQ", "ALLOC", "REQ_BC", "ALLOC_BC" };
+
         std::cout << "DSPIN_LOCAL_CROSSBAR " << name() << std::hex; 
-        for( size_t out=0 ; out<m_local_outputs ; out++)  // loop on output ports
+
+        for( size_t i = 0 ; i <= m_local_inputs ; i++)  // loop on input ports
+        {
+            std::cout << " / infsm[" << i << "] = " << infsm_str[r_fsm_in[i].read()];
+        }
+
+        for( size_t out = 0 ; out <= m_local_outputs ; out++)  // loop on output ports
         {
             if ( r_alloc_out[out].read() )
             {
@@ -327,15 +344,15 @@ using namespace soclib::caba;
                     if ( get_out[r_index_in[i].read()] == i ) // first flit transfered
                     {
                         r_fsm_in[i] = INFSM_ALLOC_BC;
-                        r_index_in[i] = r_index_in[i].read() - 1;
                     }
                     break;
                 }
-                case INFSM_ALLOC_BC:  // waiting output port allocation
+                case INFSM_ALLOC_BC:  // output port allocated         
                 {
                     data_in[i] = r_fifo_in[i].read();
                     put_in[i]  = r_fifo_in[i].rok();
                     req_in[i]  = 0xFFFFFFFF;                // no request
+
                     if ( r_fifo_in[i].rok() and 
                          get_out[r_index_in[i].read()] == i )  // last flit transfered
                     {
@@ -344,6 +361,7 @@ using namespace soclib::caba;
 
                         if ( r_index_in[i].read() == 0 ) r_fsm_in[i] = INFSM_IDLE;
                         else                             r_fsm_in[i] = INFSM_REQ_BC;
+                        r_index_in[i] = r_index_in[i].read() - 1;
                     }
                     break;
                 }
@@ -364,12 +382,13 @@ using namespace soclib::caba;
                      k++ ) 
                 { 
 			        size_t i = k % (m_local_inputs + 1);
+
 			        if( req_in[i] == j ) 
                     {
 			            r_alloc_out[j] = true;
 			            r_index_out[j] = i;
+			            break;
                     }
-			        break;
 		        } // end loop on input ports
 		    } 
             else                            // allocated: possible desallocation
