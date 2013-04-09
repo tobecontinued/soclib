@@ -159,13 +159,11 @@ class VciMultiNic
     sc_signal<uint32_t>         r_tx_ser_bytes;            // bytes in last word
     sc_signal<bool>             r_tx_ser_first;            // first word 
     sc_signal<uint32_t>         r_tx_ser_ifg;              // inter-frame-gap counter
-    sc_signal<uint8_t>          r_tx_ser_preamble;         // preamble counter
     sc_signal<uint32_t>         r_tx_ser_data;             // 32 bits buffer
 
     
     // TX_S2G registers
     sc_signal<int>              r_tx_s2g_fsm;
-    sc_signal<uint8_t>          r_tx_s2g_preamble;         // preamble counter
     sc_signal<uint32_t>         r_tx_s2g_checksum;         // packet checksum
     sc_signal<uint8_t>          r_tx_s2g_data;             // local data buffer
     sc_signal<size_t>           r_tx_s2g_index;            // checksum byte index
@@ -211,7 +209,6 @@ public:
     };
     enum rx_g2s_fsm_state_e {
         RX_G2S_IDLE,
-        RX_G2S_PREAMBLE,
         RX_G2S_DELAY,
         RX_G2S_LOAD,
         RX_G2S_SOS,
@@ -259,7 +256,7 @@ public:
     };
     enum tx_ser_fsm_state_e {
         TX_SER_IDLE,
-        TX_SER_PREAMBLE,
+        TX_SER_READ_FIRST,
         TX_SER_WRITE_B0,
         TX_SER_WRITE_B1,
         TX_SER_WRITE_B2,
@@ -268,7 +265,6 @@ public:
     };
     enum tx_s2g_fsm_state_e {
         TX_S2G_IDLE,
-        TX_S2G_WRITE_PREAMBLE,
         TX_S2G_WRITE_DATA,
         TX_S2G_WRITE_LAST_DATA,
         TX_S2G_WRITE_CS,

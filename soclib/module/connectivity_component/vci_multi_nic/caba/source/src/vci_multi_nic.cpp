@@ -861,32 +861,11 @@ tmpl(void)::transition()
         /////////////////
         case RX_G2S_IDLE:   // waiting start of packet
         {
-            if (r_global_nic_on.read() and gmii_rx_dv and not gmii_rx_er
-                and  gmii_rx_data == 0x55 ) // start of packet 
+            if (r_global_nic_on.read() and gmii_rx_dv and not gmii_rx_er ) // start of packet 
             {
                 r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
-                r_rx_g2s_fsm           = RX_G2S_PREAMBLE; 
-            }
-            break;
-        }
-        /////////////////
-        case RX_G2S_PREAMBLE:   // Preamble reception
-        {
-            if (gmii_rx_dv and not gmii_rx_er
-                and  gmii_rx_data == 0xD5 ) // SFD 
-            {
                 r_rx_g2s_fsm           = RX_G2S_DELAY; 
                 r_rx_g2s_delay         = 0;
-            }
-            else if (gmii_rx_dv and not gmii_rx_er
-                     and  gmii_rx_data == 0x55 ) // Normal preamble byte 
-            {
-                r_rx_g2s_fsm            = RX_G2S_PREAMBLE;
-            }
-            else // bad packet 0x55 or 0x5D expected
-            {
-                r_rx_g2s_npkt_discarded = r_rx_g2s_npkt_discarded.read() + 1;
-                r_rx_g2s_fsm            = RX_G2S_IDLE;
             }
             break;
         }
@@ -898,7 +877,7 @@ tmpl(void)::transition()
                 r_rx_g2s_npkt_discarded = r_rx_g2s_npkt_discarded.read() + 1;
                 r_rx_g2s_fsm            = RX_G2S_IDLE;
             }
-            else if ( r_rx_g2s_delay.read() == 4 ) 
+            else if ( r_rx_g2s_delay.read() == 3 ) 
             {
                 r_rx_g2s_fsm      = RX_G2S_LOAD;
                 r_rx_g2s_checksum = 0x00000000; // reset checksum register
@@ -1021,10 +1000,11 @@ if ( r_rx_g2s_checksum.read() != check )
                 rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_ERR << 8);
             }
 
-            if ( gmii_rx_dv and not gmii_rx_er and  gmii_rx_data == 0x55) // start of packet / no error
+            if ( gmii_rx_dv and not gmii_rx_er ) // start of packet / no error
             {
                 r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
-                r_rx_g2s_fsm           = RX_G2S_PREAMBLE;
+                r_rx_g2s_fsm           = RX_G2S_DELAY;
+                r_rx_g2s_delay         = 0;
             }
             else 
             {
@@ -1038,10 +1018,11 @@ if ( r_rx_g2s_checksum.read() != check )
             rx_fifo_stream_write = true;
             rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_ERR << 8);
 
-            if ( gmii_rx_dv and not gmii_rx_er and  gmii_rx_data == 0x55) // start of packet / no error
+            if ( gmii_rx_dv and not gmii_rx_er ) // start of packet / no error
             {
                 r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
-                r_rx_g2s_fsm           = RX_G2S_PREAMBLE;
+                r_rx_g2s_fsm           = RX_G2S_DELAY;
+                r_rx_g2s_delay         = 0;
             }
             else 
             {
@@ -1993,40 +1974,18 @@ if ( r_rx_g2s_checksum.read() != check )
                 r_tx_ser_bytes = plen & 0x3;
                 if ( (plen & 0x3) == 0 ) r_tx_ser_words = plen>>2;
                 else                     r_tx_ser_words = (plen>>2) + 1;
-                r_tx_ser_preamble = 0;
-                r_tx_ser_fsm = TX_SER_PREAMBLE;
+                r_tx_ser_fsm = TX_SER_READ_FIRST;
             }
             break;
         }
-        /////////////////////
-        case TX_SER_PREAMBLE: // write preamble before reading from multi_fifo
+        ///////////////////////
+        case TX_SER_READ_FIRST: // read first word 
         {
-            if ( r_tx_fifo_stream.wok() )
-            {
-                if (r_tx_ser_preamble == 0) // first byte
-                {
-                    tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)(0x55|(STREAM_TYPE_SOS << 8));
-                }
-                else if (r_tx_ser_preamble == 7) // last byte (SFD)
-                {
-                    tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)(0xD5|(STREAM_TYPE_NEV << 8));
-                    
-                    // now we can read first word on tx_multi-fifo 
-                    tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
-                    r_tx_ser_words     = r_tx_ser_words.read() - 1;
-                    r_tx_ser_data      = r_tx_fifo_multi.data();
-                    r_tx_ser_fsm       = TX_SER_WRITE_B0;
-                }
-                else // middle bytes
-                {
-                    tx_fifo_stream_write = true;
-                    tx_fifo_stream_wdata = (uint16_t)(0x55|(STREAM_TYPE_NEV << 8));
-                }
-
-                r_tx_ser_preamble = r_tx_ser_preamble.read() + 1;
-            }
+            tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
+            r_tx_ser_words     = r_tx_ser_words.read() - 1;
+            r_tx_ser_data      = r_tx_fifo_multi.data();
+            r_tx_ser_first     = true;
+            r_tx_ser_fsm       = TX_SER_WRITE_B0;
             break;
         }
         /////////////////////
@@ -2036,8 +1995,16 @@ if ( r_rx_g2s_checksum.read() != check )
             {
                 uint32_t words = r_tx_ser_words.read();
                 uint32_t bytes = r_tx_ser_bytes.read();
+                bool     first = r_tx_ser_first.read();
                 
-                if ( (words == 0) and (bytes == 1) ) // last byte in packet
+                if ( first )                              // first byte in packet
+                {
+                    tx_fifo_stream_write = true;
+                    tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0xFF000000)>>24
+                                                       | (STREAM_TYPE_SOS << 8));
+                    r_tx_ser_fsm = TX_SER_WRITE_B1;
+                }
+                else if ( (words == 0) and (bytes == 1) ) // last byte in packet
                 {
                     tx_fifo_stream_write = true;
                     tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read() & 0xFF000000)>>24
@@ -2127,6 +2094,7 @@ if ( r_rx_g2s_checksum.read() != check )
                     else              tx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
                     r_tx_ser_words     = words - 1;
                     r_tx_ser_data      = r_tx_fifo_multi.data();
+                    r_tx_ser_first     = false;
                     r_tx_ser_fsm       = TX_SER_WRITE_B0;
                     tx_fifo_stream_write = true;
                     tx_fifo_stream_wdata = (uint16_t)((r_tx_ser_data.read()&0x000000FF)
@@ -2170,49 +2138,13 @@ if ( r_rx_g2s_checksum.read() != check )
                 "ERROR in VCI_MULTI_NIC : illegal type received in TX_S2G_IDLE");
 
                 tx_fifo_stream_read = true;
-                r_tx_s2g_fsm        = TX_S2G_WRITE_PREAMBLE;
+                r_tx_s2g_fsm        = TX_S2G_WRITE_DATA;
                 r_tx_s2g_data       = data & 0xFF;
-                r_tx_s2g_preamble = 0; // reset preamble counter
+                r_tx_s2g_checksum = 0x00000000; // reset checksum
             } 
 
             // no data written
             r_gmii_tx.put( false, 0 );
-            break;
-        }
-        //////////////////////
-        case TX_S2G_WRITE_PREAMBLE:     // not considered on the checksum
-        {
-            if ( r_tx_fifo_stream.rok() )
-            {
-                // write data[i-1]
-                r_gmii_tx.put( true, r_tx_s2g_data.read() );
-
-                // read data[i]
-                uint32_t data = r_tx_fifo_stream.read();
-                uint32_t type = (data >> 8) & 0x3;
-
-                assert ( (type != STREAM_TYPE_SOS) and (type != STREAM_TYPE_ERR) and
-                         (type != STREAM_TYPE_EOS) and  
-                "ERROR in VCI_MULTI_NIC : illegal type received in TX_S2G_WRITE_DATA");
-
-                tx_fifo_stream_read = true;
-                r_tx_s2g_data       = data & 0xFF;
-
-#ifdef SOCLIB_PERF_NIC
-            r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1;
-#endif
-                if ( r_tx_s2g_preamble == 7 ) 
-                {
-                    r_tx_s2g_fsm = TX_S2G_WRITE_DATA; 
-                    r_tx_s2g_checksum = 0x00000000; // reset checksum
-                }
-                r_tx_s2g_preamble = r_tx_s2g_preamble.read() + 1;
-            }
-            else
-            {
-                assert (false and  
-                "ERROR in VCI_MULTI_NIC : tx_fifo should not be empty");
-            }
             break;
         }
         //////////////////////
@@ -2463,7 +2395,6 @@ tmpl(void)::print_trace(uint32_t mode)
     const char* rx_g2s_state_str[] = 
     {
         "RX_G2S_IDLE",
-        "RX_G2S_PREAMBLE",
         "RX_G2S_DELAY",
         "RX_G2S_LOAD",
         "RX_G2S_SOS",
@@ -2515,7 +2446,7 @@ tmpl(void)::print_trace(uint32_t mode)
     const char* tx_ser_state_str[] =
     {
         "TX_SER_IDLE",
-        "TX_SER_PREAMBLE",
+        "TX_SER_READ_FIRST",
         "TX_SER_WRITE_B0",
         "TX_SER_WRITE_B1",
         "TX_SER_WRITE_B2",
@@ -2525,7 +2456,6 @@ tmpl(void)::print_trace(uint32_t mode)
     const char* tx_s2g_state_str[] =
     {
         "TX_S2G_IDLE",
-        "TX_S2G_WRITE_PREAMBLE",
         "TX_S2G_WRITE_DATA",
         "TX_S2G_WRITE_LAST_DATA",
         "TX_S2G_WRITE_CS",

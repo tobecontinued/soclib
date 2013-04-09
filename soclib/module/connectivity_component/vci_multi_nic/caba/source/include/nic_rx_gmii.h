@@ -111,11 +111,32 @@ class NicRxGmii
             m_file.seekg(0, std::ios::beg);
             m_file >> r_plen >> string;
         }
-
+       
+        // This version accepts packets containing preamble+SFD or only SFD
+        // Preamble consumption 
+        size_t preamb_cpt = 0;  //counts bytes on the preamble 
+        while(atox(string[2*preamb_cpt])==0x5 and atox(string[2*preamb_cpt+1])==0x5)
+        {
+            preamb_cpt ++;
+        }
+        // SFD consumption
+        if(atox(string[2*preamb_cpt])==0xD and atox(string[2*preamb_cpt+1])==0x5)
+        {
+            preamb_cpt ++;
+        }
+        else 
+        {
+            // Packet without SFD
+            std::cout << "RX_GMII ERROR: Packets must contain SFD byte 0xD5" 
+            << std::endl;
+            exit(0);
+        }
+        r_plen = r_plen - preamb_cpt;
+        
         // convert two hexadecimal characters into one uint8_t
         for( size_t n = 0; n < (r_plen << 1) ; n++)
         {
-            data = (data << 4)| atox(string[n]);
+            data = (data << 4)| atox(string[n+2*preamb_cpt]);
             if(n%2)
             {
                 r_buffer[n>>1] = data;

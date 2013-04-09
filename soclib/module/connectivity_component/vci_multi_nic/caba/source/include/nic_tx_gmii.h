@@ -55,6 +55,8 @@
 #include <fstream>
 #include <iomanip>
 
+#define PREAMBLE_SIZE 8
+#define PREAMBLE "55555555555555D5"
 namespace soclib { 
 namespace caba {
 
@@ -75,9 +77,9 @@ class NicTxGmii
     // This function is used to write one packet to the input file
     ///////////////////////////////////////////////////////////////////
     void write_one_packet()
-    {
-
-        m_file << std::dec << r_counter << ' ';
+    { 
+        m_file << std::dec << r_counter + PREAMBLE_SIZE << ' ';
+        m_file << PREAMBLE;
         for ( size_t cpt = 0; cpt < r_counter ; cpt++ )
         {
             m_file <<std::setfill('0')<<std::setw(2)<< std::hex << (uint32_t)r_buffer[cpt];
