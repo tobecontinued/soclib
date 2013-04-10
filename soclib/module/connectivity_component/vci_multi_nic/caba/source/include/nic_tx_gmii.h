@@ -113,6 +113,14 @@ public:
             r_counter           = r_counter + 1;
         }
     } // end put()
+    
+    //////////////////////////////////////////////////////////////
+    // This method returns true if the TX chain is to be frozen.
+    //////////////////////////////////////////////////////////////
+    bool frz()
+    {
+        return false;
+    }  
                 
     //////////////////////////////////////////////////////////////
     // constructor 

@@ -856,6 +856,8 @@ tmpl(void)::transition()
     assert( r_rx_fifo_stream.wok() and
     "ERROR in VCI_MULTI_NIC : the rs_fifo_stream should never be full");
 
+    if(!r_gmii_rx.frz())   // This signal freezes the whole state machine
+    {
     switch(r_rx_g2s_fsm.read()) 
     {
         /////////////////
@@ -1040,7 +1042,7 @@ if ( r_rx_g2s_checksum.read() != check )
             break;
         }
     } // end switch rx_g2s_type_fsm
-
+    }
     ///////////////////////////////////////////////////////////////////////////
     // This RX_DES module is in charge of deserialisation (4 bytes -> 1 word).
     // - The input is the rx_fifo_stream, respecting the stream format:
@@ -2123,6 +2125,8 @@ if ( r_rx_g2s_checksum.read() != check )
     // The output is the r_gmii_tx module.
     ////////////////////////////////////////////////////////////////////////////
 
+    if(!r_gmii_tx.frz())   // This signal freezes the whole state machine
+    {
     switch(r_tx_s2g_fsm.read()) 
     {
         /////////////////
@@ -2239,7 +2243,7 @@ if ( r_rx_g2s_checksum.read() != check )
             break;
         }
     } // end switch tx_s2g_fsm
-    
+    } 
     // update multi_fifos
 
     r_rx_fifo_multi.update( rx_fifo_multi_wcmd, 
