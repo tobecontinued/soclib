@@ -75,18 +75,6 @@ tmpl(/**/)::VciDspinTargetWrapper( sc_module_name name,
     sensitive << p_clk.neg();
     sensitive << p_vci.cmdack;
 
-    sensitive << p_vci.cmdval;
-    sensitive << p_vci.address;
-    sensitive << p_vci.wdata;
-    sensitive << p_vci.srcid;
-    sensitive << p_vci.trdid;
-    sensitive << p_vci.pktid;
-    sensitive << p_vci.plen;
-    sensitive << p_vci.be;
-    sensitive << p_vci.cmd;
-    sensitive << p_vci.cons;
-    sensitive << p_vci.contig;
-
     SC_METHOD (genMealy_dspin_rsp);
 	dont_initialize();
     sensitive << p_clk.neg();

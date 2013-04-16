@@ -77,6 +77,7 @@ tmpl(/**/)::VciDspinInitiatorWrapper( sc_module_name name,
     sensitive << p_vci.cmd;
     sensitive << p_vci.cons;
     sensitive << p_vci.contig;
+    sensitive << p_vci.eop;
 
     SC_METHOD (genMealy_dspin_rsp);
 	dont_initialize();
