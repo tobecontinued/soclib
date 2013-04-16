@@ -244,8 +244,9 @@ tmpl(void)::genMealy_dspin_rsp()
 //////////////////////////////
 tmpl(void)::genMealy_vci_rsp()
 {
-    if ( r_rsp_fsm.read() == RSP_IDLE ) p_vci.rspack = false;
-    else                                p_vci.rspack = p_dspin_rsp.read.read();
+    if      ( r_rsp_fsm.read() == RSP_IDLE )   p_vci.rspack = false;
+    else if ( r_rsp_fsm.read() == RSP_SINGLE ) p_vci.rspack = true;
+    else                                       p_vci.rspack = p_dspin_rsp.read.read();
 }
 //////////////////////////////
 tmpl(void)::genMealy_vci_cmd()
