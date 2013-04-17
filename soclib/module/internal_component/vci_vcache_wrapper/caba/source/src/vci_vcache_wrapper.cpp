@@ -1735,9 +1735,9 @@ if ( r_debug_active )
 }
 #endif
                         }
-                        else if ( not tlb_flags.w and 
-                                  ((m_dreq.type == iss_t::DATA_WRITE) or 
-                                   (m_dreq.type == iss_t::DATA_SC)) ) 
+                        else if ((m_dreq.mode == iss_t::MODE_USER ) and not tlb_flags.w and 
+                                ((m_dreq.type == iss_t::DATA_WRITE) or 
+                                 (m_dreq.type == iss_t::DATA_SC   ))) 
                         {
                             r_mmu_detr   = MMU_WRITE_ACCES_VIOLATION;  
                             r_mmu_dbvar  = m_dreq.addr;
