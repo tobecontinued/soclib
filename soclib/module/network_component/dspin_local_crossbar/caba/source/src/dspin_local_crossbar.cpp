@@ -93,8 +93,7 @@ using namespace soclib::caba;
         // routing table
         if ( use_routing_table )
         {
-            assert( false and "MISSING CODE in DSPIN_LOCAL_CROSSBAR constructor");
-            //m_routing_table(mt.getRoutingTable<uint64_t>(IntTab((x << x_width) + y)));
+            m_routing_table = mt.getRoutingTable<uint64_t>(IntTab((x << x_width) + y));
         }
 
         // construct FIFOs
@@ -139,7 +138,7 @@ using namespace soclib::caba;
         {
             if ( m_use_routing_table )
             {
-                output = m_routing_table[address];
+                output = m_routing_table[address>>8];
             }
             else
             {
