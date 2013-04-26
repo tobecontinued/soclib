@@ -454,6 +454,12 @@ int _main(int argc, char **argv)
 
   /////////////////
 
+  {
+    vcifdtrom.begin_node("aliases");
+    vcifdtrom.add_property("console", vcifdtrom.get_device_name("vci_multi_tty") + "[0]");
+    vcifdtrom.end_node();
+  }
+
   sc_core::sc_start(sc_core::sc_time(0, sc_core::SC_NS));
   signal_resetn = false;
   sc_core::sc_start(sc_core::sc_time(1, sc_core::SC_NS));
