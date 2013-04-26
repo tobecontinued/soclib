@@ -339,8 +339,11 @@ void ArmIss::arm_ldstrh()
 	}
 
 	if (!pre || m_opcode.sdth.write_back) {
-		if (!pre)
+		if (!pre) {
 			addr += offset;
+            if ( m_opcode.sdth.rn == 13 )
+                m_ldstm_sp_offset = 4;
+        }
 		r_gp[m_opcode.sdth.rn] = addr;
 	}
 }
@@ -377,8 +380,11 @@ void ArmIss::arm_ldstr()
 	}
 
 	if (!pre || m_opcode.sdt.write_back) {
-		if (!pre)
+		if (!pre) {
 			addr += offset;
+            if ( m_opcode.sdt.rn == 13 )
+                m_ldstm_sp_offset = 4;
+        }
 		r_gp[m_opcode.sdt.rn] = addr;
 	}
 }
