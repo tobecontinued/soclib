@@ -117,14 +117,14 @@ tmpl(/**/)::VciSimpleRam(
     std::list<soclib::common::Segment>::iterator seg;
     for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )  m_nbseg++;
  
-    m_ram = new ram_t*[m_nbseg];
+    m_ram = new vci_data_t*[m_nbseg];
     m_seg = new soclib::common::Segment*[m_nbseg];
 
     size_t i = 0;
-    size_t word_size = vci_param::B; // B is VCI's cell size
+    size_t data_size = vci_param::B; // number of bytes in vci_data_t
     for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
     { 
-        m_ram[i] = new ram_t[(seg->size()+word_size-1)/word_size];
+        m_ram[i] = new vci_data_t[(seg->size()+data_size-1)/data_size];
         m_seg[i] = &(*seg);
         i++;
     }
@@ -237,7 +237,7 @@ tmpl(void)::print_trace()
                                 "RSP_SC",
                                 "RSP_ERROR", 
                                 "RSP_CAS" };
-    std::cout << "Simple_ram " << name() 
+    std::cout << "SIMPLE_RAM " << name() 
               << " : state = " << state_str[r_fsm_state] 
               << " / latency_count = " << r_latency_count 
               << " / flit_count = " << r_flit_count << std::endl;

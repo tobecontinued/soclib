@@ -58,8 +58,6 @@ public:
 	typedef typename vci_param::trdid_t vci_trdid_t;
 	typedef typename vci_param::pktid_t vci_pktid_t;
 
-	typedef uint32_t       ram_t;
-
     enum fsm_state_e {
         FSM_IDLE,
         FSM_CMD_GET,
@@ -101,7 +99,7 @@ private:
     sc_signal<uint32_t>                     r_latency_count;
 
     size_t                                  m_nbseg;
-    ram_t                                   **m_ram;
+    vci_data_t                              **m_ram;
     soclib::common::Segment                 **m_seg;
 
     // Activity counters
