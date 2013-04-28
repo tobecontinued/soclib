@@ -28,24 +28,10 @@
 
 typedef soclib::common::ArmIss iss_t;
 
-#if defined(USE_GDB_SERVER) && defined(USE_MEMCHECKER)
-#   include "gdbserver.h"
-#   include "iss_memchecker.h"
-    typedef soclib::common::GdbServer<
-              soclib::common::IssMemchecker<
-                iss_t> > complete_iss_t;
-#elif defined(USE_MEMCHECKER)
-#   include "iss_memchecker.h"
-    typedef soclib::common::IssMemchecker<iss_t> complete_iss_t;
-#elif defined(USE_GDB_SERVER)
-#   include "gdbserver.h"
-    typedef soclib::common::GdbServer<iss_t> complete_iss_t;
-#elif defined(USE_SIMHELPER)
-#   include "iss2_simhelper.h"
-    typedef soclib::common::Iss2Simhelper<iss_t> complete_iss_t;
-#else
-    typedef iss_t complete_iss_t;
-#endif
+#include "gdbserver.h"
+#include "iss_memchecker.h"
+
+typedef soclib::common::GdbServer<soclib::common::IssMemchecker<soclib::common::ArmIss> > complete_iss_t;
 
 int _main(int argc, char *argv[])
 {
@@ -87,18 +73,12 @@ int _main(int argc, char *argv[])
 	maptabp.add(Segment("xicu",  0xd2200000, 0x00001000, IntTab(3), false));
 	maptabp.add(Segment("bdev0", 0xd1200000, 0x00000020, IntTab(4), false));
 
-#if defined(USE_GDB_SERVER)
-# if defined(USE_MEMCHECKER)
     soclib::common::GdbServer<
         soclib::common::IssMemchecker<
             iss_t> >::set_loader(loader);
-# else /* GDB only */
-    soclib::common::GdbServer<iss_t>::set_loader(loader);
-# endif
-#else /* MEMCHECKER only */
+
     soclib::common::IssMemchecker<
-        iss_t>::init(maptabp, loader, "tty,xicu,bdev0");
-#endif
+      iss_t>::init(maptabp, loader, "tty,xicu,bdev0");
 
 	// Signals
 	sc_clock	signal_clk("clk");
