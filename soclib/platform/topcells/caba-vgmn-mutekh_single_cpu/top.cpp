@@ -22,6 +22,7 @@
 #include "vci_vgmn.h"
 #include "vci_xcache_wrapper.h"
 #include "vci_icu.h"
+#include "vci_timer.h"
 #include "vci_block_device.h"
 
 #include "arm.h"
@@ -30,7 +31,7 @@ typedef soclib::common::ArmIss iss_t;
 
 #include "gdbserver.h"
 #include "iss_memchecker.h"
- 
+
 typedef soclib::common::GdbServer<soclib::common::IssMemchecker<iss_t> > complete_iss_t;
 
 //#include "iss2_simhelper.h"
@@ -42,7 +43,7 @@ int _main(int argc, char *argv[])
   // Avoid repeating these everywhere
   using soclib::common::IntTab;
   using soclib::common::Segment;
-  const size_t icu_n_irq = 2;
+  const size_t icu_n_irq = 4;
 
   // Define VCI parameters
   typedef soclib::caba::VciParams<4,8,32,1,1,1,8,4,4,1> vci_param;
@@ -68,11 +69,12 @@ int _main(int argc, char *argv[])
 
   maptabp.add(Segment("tty",   0xd0200000, 0x00000040, IntTab(1), false));
   maptabp.add(Segment("mem",   0x7f000000, 0x01000000, IntTab(2), false));
-  maptabp.add(Segment("icu",  0xd2200000, 0x00001000, IntTab(3), false));
+  maptabp.add(Segment("icu",   0xd2200000, 0x00001000, IntTab(3), false));
   maptabp.add(Segment("bdev0", 0xd1200000, 0x00000020, IntTab(4), false));
+  maptabp.add(Segment("timer", 0xd3200000, 0x00000020, IntTab(5), false));
 
   soclib::common::GdbServer<soclib::common::IssMemchecker<iss_t> >::set_loader(loader);
-  soclib::common::IssMemchecker<iss_t>::init(maptabp, loader, "tty,icu,bdev0");
+  soclib::common::IssMemchecker<iss_t>::init(maptabp, loader, "tty,icu,bdev0,timer");
 
   // Signals
   sc_clock	signal_clk("clk");
@@ -87,6 +89,8 @@ int _main(int argc, char *argv[])
 
   soclib::caba::VciSignals<vci_param> signal_vci_bdi[1];
   soclib::caba::VciSignals<vci_param> signal_vci_bdt[1];
+
+  soclib::caba::VciSignals<vci_param> signal_vci_timer("signal_vci_timer");
 
   soclib::caba::VciSignals<vci_param> signal_vci_ram("vci_tgt_ram");
   soclib::caba::VciSignals<vci_param> signal_vci_rom("vci_tgt_rom");
@@ -106,8 +110,10 @@ int _main(int argc, char *argv[])
   soclib::caba::VciRam<vci_param> ram("ram", IntTab(2), maptabp, loader);
   soclib::caba::VciIcu<vci_param> vciicu("vciicu",IntTab(3), maptabp, icu_n_irq);
   soclib::caba::VciBlockDevice<vci_param> vcibd0("vcibd0", maptabp, IntTab(1), IntTab(4), "block0.iso", 2048);
-	
-  soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, 1+1, 5, 2, 8);
+
+  soclib::caba::VciTimer<vci_param> vcitimer("timer", IntTab(5), maptabp, 2);
+
+  soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptabp, 1+1, 6, 2, 8);
 
   for ( size_t irq = 0; irq < iss_t::n_irq; ++irq )
     procs->p_irq[irq](signal_proc_it[irq]); 
@@ -127,6 +133,12 @@ int _main(int argc, char *argv[])
   vciicu.p_clk(signal_clk);
   vciicu.p_resetn(signal_resetn);
   vciicu.p_vci(signal_vci_icu);
+
+  vcitimer.p_clk(signal_clk);
+  vcitimer.p_resetn(signal_resetn);
+  vcitimer.p_vci(signal_vci_timer);
+  vcitimer.p_irq[0](signal_icu_irq[2]);
+  vcitimer.p_irq[1](signal_icu_irq[3]);
 
   // Input IRQs
   for ( size_t i = 0; i<icu_n_irq; ++i )
@@ -159,6 +171,7 @@ int _main(int argc, char *argv[])
   vgmn.p_to_target[2](signal_vci_ram);
   vgmn.p_to_target[3](signal_vci_icu);
   vgmn.p_to_target[4](signal_vci_bdt[0]);
+  vgmn.p_to_target[5](signal_vci_timer);
 
   sc_start(sc_core::sc_time(0, SC_NS));
   signal_resetn = false;

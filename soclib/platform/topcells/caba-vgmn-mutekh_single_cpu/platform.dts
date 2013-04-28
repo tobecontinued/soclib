@@ -22,6 +22,7 @@
                         compatible = "cpu:arm";
 			reg = <0>;
                         interrupt-controller;
+			frequency = <1000000>;
 		};
 	};
 
@@ -39,10 +40,12 @@
 		interrupts = <1>;
 	};
 
-	fdaccess@0 {
-                compatible = "soclib:vci_fdaccess";
-		reg = <0xd4200000 0x100>;
-		interrupts = <2>;
+	timer@0 {
+                compatible = "soclib:vci_timer";
+		reg = <0xd3200000 0x20>;
+		interrupts = <2 3>;
+		frequency = <1000000 1500000>;
+		param-int-count = <2>;
 	};
 
 	icu@0 {
@@ -54,12 +57,16 @@
 		interrupt-parent = <&{/cpus/cpu@0}>;
 		interrupts = <0>;
 
-                param-int-nirq = <2>;
+                param-int-nirq = <4>;
 	};
 
 	memory@0 {
        		compatible = "soclib:vci_ram";
 		reg = <0x7f000000 0x01000000>;
+	};
+
+	aliases {
+		timer = "timer@0";
 	};
 
 };
