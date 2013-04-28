@@ -35,6 +35,7 @@
 #include "vci_block_device.h"
 #include "vci_simhelper.h"
 #include "vci_fd_access.h"
+#include "vci_rttimer.h"
 #include "vci_ethernet.h"
 
 using namespace soclib;
@@ -115,7 +116,7 @@ INIT_TOOLS(initialize_tools)
   ISS_NEST(Iss)::set_loader(ldr);
 #endif
 #if defined(CONFIG_SOCLIB_MEMCHECK)
-  common::IssMemchecker<Iss>::init(maptab, ldr, "vci_multi_tty,vci_xicu,vci_block_device,vci_fd_acccess,vci_ethernet,vci_fdt_rom");
+  common::IssMemchecker<Iss>::init(maptab, ldr, "vci_multi_tty,vci_xicu,vci_block_device,vci_fd_acccess,vci_ethernet,vci_fdt_rom,vci_rttimer");
 #endif
 }
 
@@ -214,6 +215,7 @@ int _main(int argc, char **argv)
   maptab.add(Segment("vci_block_device", 0xd1200000, 0x00000020, IntTab(5), false));
   maptab.add(Segment("simhelper",        0xd3200000, 0x00000100, IntTab(6), false));
   maptab.add(Segment("vci_fd_access",    0xd4200000, 0x00000100, IntTab(7), false));
+  maptab.add(Segment("vci_rttimer",      0xd6000000, 0x00000100, IntTab(10), false));
   maptab.add(Segment("vci_ethernet",     0xd5000000, 0x00000020, IntTab(9), false));
   maptab.add(Segment("vci_fdt_rom",      0xe0000000, 0x00001000, IntTab(8), false));
 
@@ -268,7 +270,7 @@ int _main(int argc, char **argv)
       }
     }
 
-  const size_t xicu_n_irq = 4;
+  const size_t xicu_n_irq = 5;
 
   // Signals
 
@@ -279,6 +281,7 @@ int _main(int argc, char **argv)
   caba::VciSignals<vci_param> signal_vci_vcifdtrom("signal_vci_vcifdtrom");
   caba::VciSignals<vci_param> signal_vci_vcimultiram("signal_vci_vcimultiram");
   caba::VciSignals<vci_param> signal_vci_vcisimhelper("signal_vci_vcisimhelper");
+  caba::VciSignals<vci_param> signal_vci_vcirttimer;
 
   caba::VciSignals<vci_param> signal_vci_vcifdaccessi;
   caba::VciSignals<vci_param> signal_vci_vcifdaccesst;
@@ -297,7 +300,7 @@ int _main(int argc, char **argv)
 
   caba::VciVgmn<vci_param> vgmn("vgmn", maptab,
 				cpus.size() + 3, /* nb_initiator */
-				10,              /* nb_target */
+				11,              /* nb_target */
 				2, 8);
 
   vgmn.p_clk(signal_clk);
@@ -311,6 +314,7 @@ int _main(int argc, char **argv)
   vgmn.p_to_target[7](signal_vci_vcifdaccesst);
   vgmn.p_to_target[8](signal_vci_vcifdtrom);
   vgmn.p_to_target[9](signal_vci_ethernett);
+  vgmn.p_to_target[10](signal_vci_vcirttimer);
 
   vgmn.p_to_initiator[cpus.size()](signal_vci_bdi);
   vgmn.p_to_initiator[cpus.size()+1](signal_vci_vcifdaccessi);
@@ -360,6 +364,7 @@ int _main(int argc, char **argv)
       irq_map[i*3 + 2] = 0;
     }
   vcifdtrom.add_property("interrupt-map", irq_map, cpus.size() * 3);
+  vcifdtrom.add_property("frequency", 1000000);
 
   vcifdtrom.add_property("param-int-pti-count", 1);
   vcifdtrom.add_property("param-int-hwi-count", xicu_n_irq);
@@ -380,6 +385,7 @@ int _main(int argc, char **argv)
 
       // add cpu node to device tree
       vcifdtrom.begin_cpu_node(std::string("cpu:") + cpus[i]->type, i);
+      vcifdtrom.add_property("freq", 1000000);
       vcifdtrom.end_node();
 
       // connect cpu
@@ -444,6 +450,20 @@ int _main(int argc, char **argv)
   vcifdtrom.add_property("interrupts", 3);
   vcifdtrom.end_node();
 
+  //////////////// rttimer
+
+  caba::VciRtTimer<vci_param> vcirttimer    ("vcirttimer", IntTab(10), maptab, 1, true);
+
+  vcirttimer.p_clk(signal_clk);
+  vcirttimer.p_resetn(signal_resetn);
+  vcirttimer.p_vci(signal_vci_vcirttimer);
+  vcirttimer.p_irq[0](signal_xicu_irq[4]);
+
+  vcifdtrom.begin_device_node("vci_rttimer", "soclib:vci_rttimer");
+  vcifdtrom.add_property("interrupts", 4);
+  vcifdtrom.add_property("frequency", 1000000);
+  vcifdtrom.end_node();
+
   //////////////// sim helper
 
   caba::VciSimhelper<vci_param> vcisimhelper    ("vcisimhelper", IntTab(6), maptab);
@@ -456,6 +476,7 @@ int _main(int argc, char **argv)
 
   {
     vcifdtrom.begin_node("aliases");
+    vcifdtrom.add_property("timer", vcifdtrom.get_device_name("vci_rttimer") + "[0]");
     vcifdtrom.add_property("console", vcifdtrom.get_device_name("vci_multi_tty") + "[0]");
     vcifdtrom.end_node();
   }

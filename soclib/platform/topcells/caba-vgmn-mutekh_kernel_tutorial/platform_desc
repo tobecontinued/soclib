@@ -28,6 +28,7 @@ use =  [
 	Uses('caba:vci_xicu'),
 	Uses('caba:vci_block_device'),
 	Uses('caba:vci_ethernet'),
+	Uses('caba:vci_rttimer'),
 	Uses('caba:vci_fd_access'),
         Uses('caba:vci_simhelper'),
 	Uses('caba:vci_vgmn'),
