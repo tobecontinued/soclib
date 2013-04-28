@@ -681,7 +681,7 @@ public:
         }
 
         for ( uint64_t addr = i->second->m_stack_lower; addr < i->second->m_stack_upper; addr+= 4 ) {
-            AddressInfo *ai = s_memory_state->info_for_address(addr);
+            AddressInfo *ai = info_for_address(addr);
             ai->set_initialized(false);
         }
 
