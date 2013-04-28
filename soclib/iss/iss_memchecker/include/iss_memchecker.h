@@ -47,6 +47,7 @@
 #include "soclib_endian.h"
 #include "mapping_table.h"
 #include "loader.h"
+#include "iss_memchecker_registers.h"
 
 namespace soclib { namespace common {
 
@@ -111,6 +112,15 @@ class IssMemchecker
     };
     enum magic_state_e m_magic_state;
 
+    inline bool isMagicDreq(const struct iss_t::DataRequest &dreq) const
+    {
+        return dreq.valid &&
+            ( ( m_magic_state != MAGIC_NONE && (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) || 
+             ( dreq.type == iss_t::DATA_WRITE && dreq.addr == m_comm_address &&
+               ( dreq.wdata == ISS_MEMCHECKER_MAGIC_VAL ||
+                 dreq.wdata == ISS_MEMCHECKER_MAGIC_VAL_SWAPPED ) ) );
+    }
+
 public:
 
     IssMemchecker(const std::string &name, uint32_t ident);
@@ -123,11 +133,8 @@ public:
         struct iss_t::DataRequest &dreq) const
     {
         iss_t::getRequests(ireq, dreq);
-        if ( dreq.valid ) {
-            if ( (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) {
-                dreq.valid = false;
-            }
-        }
+        if ( isMagicDreq(dreq) )
+            dreq.valid = false;
     }
 
     static void init( const soclib::common::MappingTable &mt,

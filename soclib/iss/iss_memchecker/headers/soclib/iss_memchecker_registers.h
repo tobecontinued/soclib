@@ -88,6 +88,12 @@ enum SoclibIssMemcheckerRegisters {
 
 #define ISS_MEMCHECKER_MAGIC_VAL 0x4d656d63
 
+#define ISS_MEMCHECKER_MAGIC_VAL_SWAPPED                               \
+    (((ISS_MEMCHECKER_MAGIC_VAL << 24) & 0xff000000) |                 \
+     ((ISS_MEMCHECKER_MAGIC_VAL <<  8) & 0x00ff0000) |                 \
+     ((ISS_MEMCHECKER_MAGIC_VAL >>  8) & 0x0000ff00) |                 \
+     ((ISS_MEMCHECKER_MAGIC_VAL >> 24) & 0x000000ff))
+
 #endif /* ISS_MEMCHECKER_REGISTERS_H */
 
 // Local Variables:

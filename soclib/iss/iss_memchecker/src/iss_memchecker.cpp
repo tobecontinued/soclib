@@ -21,7 +21,7 @@
  *
  * Copyright (c) UPMC, Lip6
  *         Nicolas Pouillon <nipo@ssji.net>, 2009
- * Alexandre Becoulet <alexandre.becoulet@free.fr>, 2010
+ * Alexandre Becoulet <alexandre.becoulet@free.fr>, 2010-2013
  *
  * Maintainers: nipo becoulet
  */
@@ -869,9 +869,9 @@ IssMemchecker<iss_t>::IssMemchecker(const std::string &name, uint32_t ident)
 
         if ( ident == 0 )
             std::cerr << "[MemChecker] SOCLIB_MEMCHK env variable may contain the following flag letters: " << std::endl
-                      << "  R (show region changes),     C (show context ops), S (show context switch), " << std::endl
-                      << "  T (raise gdb except on err), I (show iss dump),    A (show access details), " << std::endl
-                      << "  L (show locks accesses),     E (show checks enable X (exit simulation on err)" << std::endl
+                      << "  R (show region changes),     C (show context ops),  S (show context switch), " << std::endl
+                      << "  T (raise gdb except on err), I (show iss dump),     A (show access details), " << std::endl
+                      << "  L (show locks accesses),     E (show checks enable) X (exit simulation on err)" << std::endl
                       << "  => See http://www.soclib.fr/trac/dev/wiki/Tools/MemoryChecker" << std::endl;
 
     if ( const char *env = getenv( "SOCLIB_MEMCHK_TRAPON" ) ) {
@@ -900,12 +900,6 @@ uint32_t IssMemchecker<iss_t>::register_get(uint32_t reg_no) const
         return 0;
     }
 }
-
-#define ISS_MEMCHECKER_MAGIC_VAL_SWAPPED                               \
-    (((ISS_MEMCHECKER_MAGIC_VAL << 24) & 0xff000000) |                 \
-     ((ISS_MEMCHECKER_MAGIC_VAL <<  8) & 0x00ff0000) |                 \
-     ((ISS_MEMCHECKER_MAGIC_VAL >>  8) & 0x0000ff00) |                 \
-     ((ISS_MEMCHECKER_MAGIC_VAL >> 24) & 0x000000ff))
 
 template<typename iss_t>
 void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
@@ -983,11 +977,15 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
         if ( ! s_memory_state->context_create(value, c) )
             report_error(ERROR_BAD_CONTEXT_CREATE, value);
 
-        c->m_last_sp = c->m_stack_upper - iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_STACK_REDZONE_SIZE) - 4;
+        uint32_t sp = get_cpu_sp();
+        if (!c->stack_contains(sp))
+            sp = c->m_stack_upper - 4;
+
+        c->m_last_sp = sp - iss_t::debugGetRegisterValue(iss_t::ISS_DEBUG_REG_STACK_REDZONE_SIZE);
 
         bool err = false;
 
-        for ( uint64_t addr = c->m_stack_lower; addr < c->m_stack_upper; addr+= 4 ) {
+        for ( uint64_t addr = c->m_stack_lower; addr < c->m_last_sp; addr+= 4 ) {
             AddressInfo *ai = s_memory_state->info_for_address(addr);
             if ( ! ( ai->region()->state() & (
                          __iss_memchecker::RegionInfo::REGION_STATE_ALLOCATED
@@ -1003,6 +1001,14 @@ void IssMemchecker<iss_t>::register_set(uint32_t reg_no, uint32_t value)
 
         for ( uint64_t addr = c->m_last_sp; addr < c->m_stack_upper; addr+= 4 ) {
             AddressInfo *ai = s_memory_state->info_for_address(addr);
+            if ( ! ( ai->region()->state() & (
+                         __iss_memchecker::RegionInfo::REGION_STATE_ALLOCATED
+                         | __iss_memchecker::RegionInfo::REGION_STATE_GLOBAL
+                         | __iss_memchecker::RegionInfo::REGION_STATE_STACK
+                                              ) ) ) {
+                err = true;
+                m_last_region_touched = ai->region();
+            }
             ai->set_invalid(false);
         }
 
@@ -1311,7 +1317,7 @@ void IssMemchecker<iss_t>::check_data_access( const struct iss_t::DataRequest &d
     AddressInfo *ai = s_memory_state->info_for_address(dreq.addr);
     const char *op = NULL;
 
-    if (new_req && dreq.addr == 0)
+    if (new_req && dreq.addr == 0 && (m_enabled_checks & ISS_MEMCHECKER_CHECK_INIT))
         err |= ERROR_NULL_POINTER_ACCESS;
 
     switch ( dreq.type ) {
@@ -1645,17 +1651,10 @@ uint32_t IssMemchecker<iss_t>::executeNCycles(
 
     assert( !(drsp.valid && !dreq.valid) );
 
-    if ( dreq.valid ) {
-        if ( (dreq.addr & ~(uint32_t)0xff) == m_comm_address ) {
-            if ( m_magic_state != MAGIC_NONE || 
-                 ( dreq.type == iss_t::DATA_WRITE
-                   && ( dreq.wdata == ISS_MEMCHECKER_MAGIC_VAL ||
-                        dreq.wdata == ISS_MEMCHECKER_MAGIC_VAL_SWAPPED ) ) ) {
-                if ( !ireq.valid || irsp.valid )
-                    handle_comm( dreq );
-                dreq.valid = false;
-            }
-        }
+    if ( isMagicDreq(dreq) ) {
+        if ( !ireq.valid || irsp.valid )
+            handle_comm( dreq );
+        dreq.valid = false;
     }
 
     if ( m_has_data_answer ) {
