@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <string.h>
 #include <errno.h>
 
 #include <iostream>
