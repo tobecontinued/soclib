@@ -384,11 +384,11 @@ tmpl(void)::transition()
     // Response FIFOs default values
     bool       vci_rsp_fifo_ins_get       = false;
     bool       vci_rsp_fifo_ins_put       = false;
-    data_t     vci_rsp_fifo_ins_data;
+    data_t     vci_rsp_fifo_ins_data      = 0;
 
     bool       vci_rsp_fifo_data_get       = false;
     bool       vci_rsp_fifo_data_put       = false;
-    data_t     vci_rsp_fifo_data_data;
+    data_t     vci_rsp_fifo_data_data      = 0;
 
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout
