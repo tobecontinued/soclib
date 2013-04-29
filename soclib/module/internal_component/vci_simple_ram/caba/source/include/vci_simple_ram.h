@@ -99,7 +99,7 @@ private:
     sc_signal<uint32_t>                     r_latency_count;
 
     size_t                                  m_nbseg;
-    vci_data_t                              **m_ram;
+    uint32_t                                **m_ram;
     soclib::common::Segment                 **m_seg;
 
     // Activity counters

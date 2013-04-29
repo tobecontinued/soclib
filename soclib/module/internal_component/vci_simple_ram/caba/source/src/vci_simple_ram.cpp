@@ -31,12 +31,13 @@
 //
 //  It supports only the compact VCI packets defined 
 //  in the VCI advanced specification.
-//  The VCI adress should be multiple of vci_paramm::B.
+//  The VCI DATA field must be 32 or 64 bits.
+//  The VCI ADDRESS should be multiple of vci_param::B.
 //  - A READ burst command packet (such a cache line request) 
 //    contains one single flit. 
 //    The response packet length is defined by the PLEN field.
 //    The zero value for the PLEN field is not supported, 
-//    but there is no other restrictions on the pakek length,
+//    but there is no other restrictions on the pakek length.
 //    and unaligned packet bursts are supported: the number 
 //    of response flits is computed from both BE and PLEN fields.
 //    An error response packets contain one single flit.
@@ -48,8 +49,10 @@
 //    (when the VCI SC command contains 2 flits : old value / new value).
 //  The RAM latency is a parameter, that can have a zero value.
 ////////////////////////////////////////////////////////////////////////
-//  Implementation note: This component does not contain any FIFO,
-//  and is controlled by a single FSM.
+//  Implementation note: 
+//  Ther RAM itself is implemented as a set of uint32_t arrays
+//  (one array per segment). 
+//  This component is controlled by a single FSM.
 //  The latency counter is decremented in the IDLE state.
 //  The VCI command is analysed and checked in the CMD_GET state.
 //  - For read or ll commands, the command is acknowledged in
@@ -106,6 +109,9 @@ tmpl(/**/)::VciSimpleRam(
       p_clk("p_clk"),
       p_vci("p_vci")
 {
+    assert( ((vci_param::B == 4) or (vci_param::B == 8)) and
+    "VCI_SIMPLE_RAM ERROR : The VCI DATA field must be 32 or 64 bits");
+
     SC_METHOD(transition);
     dont_initialize();
     sensitive << p_clk.pos();
@@ -117,14 +123,13 @@ tmpl(/**/)::VciSimpleRam(
     std::list<soclib::common::Segment>::iterator seg;
     for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )  m_nbseg++;
  
-    m_ram = new vci_data_t*[m_nbseg];
+    m_ram = new uint32_t*[m_nbseg];
     m_seg = new soclib::common::Segment*[m_nbseg];
 
     size_t i = 0;
-    size_t data_size = vci_param::B; // number of bytes in vci_data_t
     for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
     { 
-        m_ram[i] = new vci_data_t[(seg->size()+data_size-1)/data_size];
+        m_ram[i] = new uint32_t[ (seg->size()+3)/4 ];
         m_seg[i] = &(*seg);
         i++;
     }
@@ -186,10 +191,31 @@ tmpl(bool)::write(size_t seg, vci_addr_t addr, vci_data_t wdata, vci_be_t be)
 
     if ( m_seg[seg]->contains(addr) ) 
     {
-        size_t index = (size_t)((addr - m_seg[seg]->baseAddress()) / vci_param::B);
-        vci_data_t cur = m_ram[seg][index];
-        vci_data_t mask = vci_param::be2mask(be);
-        m_ram[seg][index] = (cur & ~mask) | (wdata & mask);
+        uint32_t  input;
+        uint32_t  current;
+        uint32_t  mask;
+        size_t index = (size_t)((addr - m_seg[seg]->baseAddress()) / 4);
+
+        if ( vci_param::B == 4 )        // VCI DATA == 32 bits 
+        {
+            mask    = (uint32_t)vci_param::be2mask(be);
+            current = m_ram[seg][index];
+            input   = (uint32_t)wdata;
+            m_ram[seg][index] = (current & ~mask) | (input & mask);
+        }
+        else                            // VCI DATA == 64 bits
+        {
+            // first 32 bits word
+            mask    = (uint32_t)vci_param::be2mask(be & 0x0F);
+            current = m_ram[seg][index];
+            input   = (uint32_t)(wdata);
+            m_ram[seg][index] = (current & ~mask) | (input & mask);
+            // second 32 bits word
+            mask    = (uint32_t)vci_param::be2mask(be >> 4);
+            current = m_ram[seg][index+1];
+            input   = (uint32_t)(wdata>>32);
+            m_ram[seg][index+1] = (current & ~mask) | (input & mask);
+        }
         m_cpt_write++;
         return true;
     } 
@@ -202,7 +228,15 @@ tmpl(bool)::read(size_t seg, vci_addr_t addr, vci_data_t &rdata )
     if ( m_seg[seg]->contains(addr) ) 
     {
         size_t index = (size_t)((addr - m_seg[seg]->baseAddress()) / vci_param::B);
-        rdata = m_ram[seg][index];
+
+        if ( vci_param::B == 4 )        // VCI DATA == 32 bits
+        {
+            rdata = (vci_data_t)m_ram[seg][index];
+        }
+        else                            // VCI DATA == 64 bits
+        {
+            rdata = (vci_data_t)m_ram[seg][index] | ((vci_data_t)m_ram[seg][index+1] << 32);
+        }
         m_cpt_read++;
         return true;
     }
