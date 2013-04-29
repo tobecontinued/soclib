@@ -227,7 +227,7 @@ tmpl(bool)::read(size_t seg, vci_addr_t addr, vci_data_t &rdata )
 {
     if ( m_seg[seg]->contains(addr) ) 
     {
-        size_t index = (size_t)((addr - m_seg[seg]->baseAddress()) / vci_param::B);
+        size_t index = (size_t)((addr - m_seg[seg]->baseAddress()) / 4);
 
         if ( vci_param::B == 4 )        // VCI DATA == 32 bits
         {
