@@ -182,7 +182,7 @@ tmpl(bool)::write(size_t seg, vci_addr_t addr, vci_data_t wdata, vci_be_t be)
         if ( (addr >= m_monitor_base) and 
              (addr < m_monitor_base + m_monitor_length) )
         {
-            std::cout << " RAM " << name() << std::hex
+            std::cout << " RAM Monitor " << name() << std::hex
                       << " change : address = " << addr
                       << " / data = " << wdata
                       << " / be = " << be << std::endl;
