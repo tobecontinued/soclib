@@ -212,3 +212,37 @@ Module('caba:vci_param',
 		],
 	   header_files = ['../source/include/vci_param.h',],
 )
+
+Module('caba:vci_param_bis',
+	   classname = 'soclib::caba::VciParamsBis',
+	   tmpl_parameters = [
+		parameter.Int('cell_size_bis'),
+		parameter.Int('plen_size_bis'),
+		parameter.Int('addr_size_bis'),
+		parameter.Int('rerror_size_bis'),
+		parameter.Int('clen_size_bis'),
+		parameter.Int('rflag_size_bis'),
+		parameter.Int('srcid_size_bis'),
+		parameter.Int('pktid_size_bis'),
+		parameter.Int('trdid_size_bis'),
+		parameter.Int('wrplen_size_bis'),
+		],
+	   header_files = ['../source/include/vci_param.h',],
+)
+
+Module('caba:vci_param_ter',
+	   classname = 'soclib::caba::VciParamsTer',
+	   tmpl_parameters = [
+		parameter.Int('cell_size_ter'),
+		parameter.Int('plen_size_ter'),
+		parameter.Int('addr_size_ter'),
+		parameter.Int('rerror_size_ter'),
+		parameter.Int('clen_size_ter'),
+		parameter.Int('rflag_size_ter'),
+		parameter.Int('srcid_size_ter'),
+		parameter.Int('pktid_size_ter'),
+		parameter.Int('trdid_size_ter'),
+		parameter.Int('wrplen_size_ter'),
+		],
+	   header_files = ['../source/include/vci_param.h',],
+)
