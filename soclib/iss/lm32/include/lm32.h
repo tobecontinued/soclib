@@ -309,6 +309,12 @@ template <bool lEndianInterface >
             {
                 m_dbe = true;
             }
+
+            static inline void setBoostrapCpuId(int id = -1)
+            {
+                assert(id < 1);
+            }
+
             /******  END ISS2 API  ******/
 
             /******     DEBUG API ******/

@@ -100,6 +100,11 @@ public:
 
     void setCacheInfo( const struct CacheInfo &info );
 
+    static inline void setBoostrapCpuId(int id = -1)
+    {
+        m_bootstrap_cpu_id = id;
+    }
+
 private:
 
     enum {
@@ -318,6 +323,7 @@ private:
     size_t r_mem_byte_count;
     data_t *r_mem_dest_addr;
     enum post_memaccess_op_e r_mem_post_op;
+    static int m_bootstrap_cpu_id;
 
     soclib_static_assert(sizeof(arm_ins_t) == 4);
     soclib_static_assert(sizeof(thumb_ins_t) == 2);

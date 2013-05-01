@@ -202,6 +202,8 @@ void Nios2fIss::reset()
 //	r_ebase = r_reserved_17;
 
 	m_startOflriList = NULL;
+
+    m_reset_wait_irq = m_bootstrap_cpu_id >= 0 && m_bootstrap_cpu_id != (int)m_ident;
 }
 
 bool Nios2fIss::handle_exception()
@@ -294,6 +296,11 @@ uint32_t Nios2fIss::executeNCycles(uint32_t ncycle,
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name() << " executeNCycles( " << ncycle << ", "<< irsp << ", " << drsp << ", " << irq_bit_field << ")" << std::endl;
 #endif
+
+    if (m_reset_wait_irq && !irq_bit_field)
+        return ncycle;
+    else
+        m_reset_wait_irq = false;
 
     // default values
 	m_exceptionSignal = NO_EXCEPTION;
@@ -597,6 +604,8 @@ void Nios2fIss::debugSetRegisterValue(unsigned int reg, uint32_t value)
         break;
 	}
 }
+
+int Nios2fIss::m_bootstrap_cpu_id = -1;
 
 }
 }

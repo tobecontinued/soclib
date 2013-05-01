@@ -253,6 +253,8 @@ private:
 
 	bool m_ireq_ok;
     bool m_dreq_ok;
+    static int m_bootstrap_cpu_id;
+    bool m_reset_wait_irq;       // procrssor in idle state after reset
 
     lateResultInstruction m_listOfLateResultInstruction;
 
@@ -290,7 +292,7 @@ public:
 
 	inline void getRequests(struct InstructionRequest &ireq,
                             struct DataRequest &dreq) const {
-		ireq.valid = true;
+		ireq.valid = !m_reset_wait_irq;
 		ireq.addr = r_pc;
 
 		dreq = m_dreq;
@@ -322,6 +324,10 @@ public:
 
 	void debugSetRegisterValue(unsigned int reg, uint32_t value);
 
+    static inline void setBoostrapCpuId(int id = -1)
+    {
+        m_bootstrap_cpu_id = id;
+    }
 
 private:
 	void run();

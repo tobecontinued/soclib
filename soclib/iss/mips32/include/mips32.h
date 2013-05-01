@@ -534,6 +534,7 @@ protected:
     const bool m_little_endian;
 
     static uint32_t m_reset_address;
+    static int m_bootstrap_cpu_id;
 
 public:
     Mips32Iss(const std::string &name, uint32_t ident, bool default_little_endian);
@@ -592,6 +593,11 @@ public:
     static inline void setResetAddress( uint32_t addr = 0xbfc00000 )
     {
         m_reset_address = addr;
+    }
+
+    static inline void setBoostrapCpuId(int id = -1)
+    {
+        m_bootstrap_cpu_id = id;
     }
 
     void run_for(uint32_t &ncycle, uint32_t &time_spent,

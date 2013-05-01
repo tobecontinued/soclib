@@ -84,7 +84,8 @@ void Mips32Iss::reset()
     m_instruction_count = 0;
     m_pipeline_use_count = 0;
     r_gp[0] = 0;
-    m_microcode_func = NULL;
+    m_microcode_func = m_bootstrap_cpu_id < 0 || m_bootstrap_cpu_id == (int)m_ident
+                                            ? NULL : &Mips32Iss::do_microcoded_sleep;
     r_cycle_count = 0;
     r_compare = 0;
     r_tls_base = 0;
@@ -588,6 +589,7 @@ void Mips32Iss::do_microcoded_sleep()
 }
 
 uint32_t Mips32Iss::m_reset_address = 0xbfc00000;
+int Mips32Iss::m_bootstrap_cpu_id = -1;
 
 #ifdef SOCVIEW3
 void Mips32Iss::register_debugger(tracer &t)

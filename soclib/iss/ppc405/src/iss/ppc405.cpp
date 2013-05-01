@@ -89,6 +89,8 @@ void Ppc405Iss::reset()
         r_gp[i] = 0;
     r_dcr[DCR_PROCNUM] = m_ident;
     r_dcr[DCR_EXEC_CYCLES] = 0;
+
+    m_reset_wait_irq = m_bootstrap_cpu_id >= 0 && m_bootstrap_cpu_id != (int)m_ident;
 }
 
 void Ppc405Iss::dump() const
@@ -126,8 +128,10 @@ uint32_t Ppc405Iss::executeNCycles(
     const struct Iss2::DataResponse &drsp,
     uint32_t irq_bit_field )
 {
-    bool saved_ee = r_msr.ee;
-    bool saved_ce = r_msr.ce;
+    if (m_reset_wait_irq && !irq_bit_field)
+        return ncycle;
+    else
+        m_reset_wait_irq = false;
 
     if ( drsp.valid )
         setDataResponse(drsp);
@@ -479,6 +483,8 @@ void Ppc405Iss::debugSetRegisterValue(unsigned int reg, uint32_t value)
             break;
         }
 }
+
+int Ppc405Iss::m_bootstrap_cpu_id = -1;
 
 }}
 

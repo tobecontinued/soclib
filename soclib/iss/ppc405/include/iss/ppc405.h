@@ -303,6 +303,9 @@ private:
     uint32_t r_esr;
     uint32_t r_dear;
 
+    static int m_bootstrap_cpu_id;
+    bool m_reset_wait_irq;
+
 public:
 
 	Ppc405Iss(const std::string &name, uint32_t ident);
@@ -318,7 +321,7 @@ public:
     inline void getRequests( struct InstructionRequest &ireq,
                              struct DataRequest &dreq ) const
     {
-        ireq.valid = (m_microcode_func == NULL) && (r_msr.we == 0);
+        ireq.valid = (m_microcode_func == NULL) && (r_msr.we == 0) && !m_reset_wait_irq;
 		ireq.addr = r_pc;
 
         dreq = m_dreq;
@@ -349,6 +352,11 @@ public:
     void debugSetRegisterValue(unsigned int reg, uint32_t value);
     static const Iss2::debugCpuEndianness s_endianness = Iss2::ISS_BIG_ENDIAN;
     void dump() const;
+
+    static inline void setBoostrapCpuId(int id = -1)
+    {
+        m_bootstrap_cpu_id = id;
+    }
 
 protected:
     void exceptionProcess( uint32_t cause );

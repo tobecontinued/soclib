@@ -300,7 +300,8 @@ void ArmIss::reset()
 	m_current_pc = r_gp[15] = ARM_RESET_ADDR;
 	m_ins_error = false;
 	m_data_error = false;
-	m_microcode_func = NULL;
+	m_microcode_func = m_bootstrap_cpu_id < 0 || m_bootstrap_cpu_id == (int)m_ident
+                                            ? NULL : &ArmIss::do_sleep;
     m_ldstm_sp_offset = 0;
 	m_cycle_count = 0;
 	m_run_count = 0;
@@ -419,6 +420,8 @@ ArmIss::ArmIss( const std::string &name, uint32_t cpuid )
 {
 	reset();
 }
+
+int ArmIss::m_bootstrap_cpu_id = -1;
 
 }}
 

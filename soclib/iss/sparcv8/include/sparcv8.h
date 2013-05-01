@@ -271,6 +271,9 @@ private:
     bool        m_hazard;               // true if there is a hazard between previous load/store and the current instruction
     bool        m_wait_irq;             // processor in idle state, waiting for irq
 
+    static int  m_bootstrap_cpu_id;
+    bool        m_reset_wait_irq;       // procrssor in idle state after reset
+
     bool        m_exception;            // true if a trap is generated
     trap_t      m_exception_cause;      // explain which trap it is
 
@@ -327,6 +330,11 @@ public:
     debug_register_t debugGetRegisterValue(unsigned int reg) const;
     void debugSetRegisterValue(unsigned int reg, debug_register_t value);
     size_t debugGetRegisterSize(unsigned int reg) const;
+
+    static inline void setBoostrapCpuId(int id = -1)
+    {
+        m_bootstrap_cpu_id = id;
+    }
 
     static const unsigned int s_sp_register_no = 14; // o6
     static const unsigned int s_fp_register_no = 30; // i6

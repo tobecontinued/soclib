@@ -95,6 +95,7 @@ tmpl(void)::reset()
     std::memset(r_f, 0, sizeof(r_f));
 
     r_error_mode = false;
+    m_reset_wait_irq = m_bootstrap_cpu_id >= 0 && m_bootstrap_cpu_id != (int)m_ident;
   }
 
 // The processor always asks for an instruction.
@@ -103,7 +104,7 @@ tmpl(void)::reset()
 tmpl(void)::getRequests( struct InstructionRequest &ireq,
                          struct DataRequest &dreq ) const
 {
-    ireq.valid = !m_wait_irq;
+    ireq.valid = !m_wait_irq && !m_reset_wait_irq;
     ireq.addr = r_pc;
     ireq.mode = r_psr.s ? MODE_KERNEL : MODE_USER;
 
@@ -126,6 +127,11 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
               << ", " << irq_bit_field
               << ')' << std::endl;
 #endif
+
+    if (m_reset_wait_irq && !irq_bit_field)
+        return ncycle;
+    else
+        m_reset_wait_irq = false;
 
     {
         // Is there a response ?
@@ -439,6 +445,8 @@ tmpl(uint32_t)::executeNCycles( uint32_t ncycle,
 tmpl()::~Sparcv8Iss()
 {
 }
+
+tmpl(int)::m_bootstrap_cpu_id = -1;
 
 }}
 
