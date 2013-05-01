@@ -252,6 +252,12 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
         std::cout << "[" << name() << "] Read XICU_PRIO[" << std::dec << idx << "] = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
 #endif
         return true;
+    case XICU_CONFIG:
+        data = (m_irq_count << 24) | (m_wti_count << 16) | (m_hwi_count << 8) | m_pti_count;
+#if SOCLIB_MODULE_DEBUG
+        std::cout << "[" << name() << "] Read XICU_CONFIG = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
+#endif
+        return true;
 	}
 	return false;
 }

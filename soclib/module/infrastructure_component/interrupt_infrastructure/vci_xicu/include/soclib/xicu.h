@@ -49,6 +49,8 @@ enum SoclibXicuFunc {
     XICU_WTI_ACTIVE = 14,
 
     XICU_PRIO = 15,
+
+    XICU_CONFIG = 16,
 };
 
 #define XICU_REG(func, idx) (((func)<<5)|(idx))

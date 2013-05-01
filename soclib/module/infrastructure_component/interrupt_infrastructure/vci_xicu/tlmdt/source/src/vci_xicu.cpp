@@ -285,6 +285,15 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw
                 payload.set_response_status(tlm::TLM_OK_RESPONSE);
                 break;
 
+            case XICU_CONFIG:
+                data = (m_irq_count << 24) | (m_wti_count << 16) | (m_hwi_count << 8) | m_pti_count;
+                utoa(data, payload.get_data_ptr(),(i * vci_param::nbytes));
+#if SOCLIB_MODULE_DEBUG
+                std::cout << "[" << name() << "] Read XICU_CONFIG = " << std::hex << (int)data << std::dec << " time = " << m_clock_cycles << std::endl;
+#endif
+                payload.set_response_status(tlm::TLM_OK_RESPONSE);
+                break;
+
              default:
                 //send error message
                 payload.set_response_status(tlm::TLM_COMMAND_ERROR_RESPONSE);
