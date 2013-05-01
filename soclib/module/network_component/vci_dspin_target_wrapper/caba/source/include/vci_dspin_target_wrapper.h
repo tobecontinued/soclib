@@ -35,7 +35,9 @@
 
 namespace soclib { namespace caba {
 
-template<typename vci_param , size_t dspin_cmd_width, size_t dspin_rsp_width>
+template<typename vci_param , 
+         size_t dspin_cmd_width, 
+         size_t dspin_rsp_width>
 class VciDspinTargetWrapper
 : public soclib::caba::BaseModule
 {

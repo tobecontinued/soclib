@@ -1,8 +1,5 @@
 # -*- python -*-
 
-__id__ = "$Id$"
-__version__ = "$Revision$"
-
 Module('caba:vci_dspin_target_wrapper',
 	classname = 'soclib::caba::VciDspinTargetWrapper',
 	tmpl_parameters = [

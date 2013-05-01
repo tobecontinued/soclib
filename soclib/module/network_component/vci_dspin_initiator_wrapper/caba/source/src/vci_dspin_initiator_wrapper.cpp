@@ -84,15 +84,32 @@ tmpl(/**/)::VciDspinInitiatorWrapper( sc_module_name name,
     sensitive << p_clk.neg();
     sensitive << p_vci.rspack;
 
-    assert( (dspin_cmd_width == 40) && "The DSPIN CMD flit width must have 40 bits");
-    assert( (dspin_rsp_width == 33) && "The DSPIN RSP flit width must have 33 bits");
-    assert( (vci_param::N    <= 40) && "The VCI ADDRESS field cannot have more than 40 bits");
-    assert( (vci_param::B    == 4 ) && "The VCI DATA filds must have 32 bits");
-    assert( (vci_param::K    == 8 ) && "The VCI PLEN field cannot have more than 8 bits");
-    assert( (vci_param::S    <= 14) && "The VCI SRCID field cannot have more than 14 bits");
-    assert( (vci_param::T    <= 4 ) && "The VCI TRDID field cannot have more than 4 bits");
-    assert( (vci_param::P    <= 4 ) && "The VCI PKTID field cannot have more than 4 bits");
-    assert( (vci_param::E    <= 2 ) && "The VCI RERROR field cannot have more than 2 bits");
+    if ( vci_param::B == 4 )    // 32 bits
+    {
+        assert( (dspin_cmd_width == 40) and "DSPIN CMD flit width must have 40 bits");
+        assert( (dspin_rsp_width == 33) and "DSPIN RSP flit width must have 33 bits");
+        assert( (vci_param::N    <= 40) and "VCI ADDRESS cannot have more than 40 bits");
+        assert( (vci_param::K    <= 8 ) and "VCI PLEN cannot have more than 8 bits");
+        assert( (vci_param::S    <= 14) and "VCI SRCID cannot have more than 14 bits");
+        assert( (vci_param::T    <= 4 ) and "VCI TRDID cannot have more than 4 bits");
+        assert( (vci_param::P    <= 4 ) and "VCI PKTID cannot have more than 4 bits");
+        assert( (vci_param::E    <= 2 ) and "VCI RERROR cannot have more than 2 bits");
+    }
+    else if ( vci_param::B == 8 )   // 64 bits
+    {
+        assert( (dspin_cmd_width == 65) and "DSPIN CMD flit width must have 40 bits");
+        assert( (dspin_rsp_width == 65) and "DSPIN RSP flit width must have 33 bits");
+        assert( (vci_param::N    <= 40) and "VCI ADDRESS cannot have more than 40 bits");
+        assert( (vci_param::K    <= 8 ) and "VCI PLEN cannot have more than 8 bits");
+        assert( (vci_param::S    <= 14) and "VCI SRCID cannot have more than 14 bits");
+        assert( (vci_param::T    <= 4 ) and "VCI TRDID cannot have more than 4 bits");
+        assert( (vci_param::P    <= 4 ) and "VCI PKTID cannot have more than 4 bits");
+        assert( (vci_param::E    <= 2 ) and "VCI RERROR cannot have more than 2 bits");
+    }
+    else
+    {
+        assert( false and "VCI DATA should be 32 or 64 bits");
+    }
 
 }; //  end constructor
 

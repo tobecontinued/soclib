@@ -1,7 +1,5 @@
 # -*- python -*-
 
-__id__ = "$Id$"
-__version__ = "$Revision$"
 
 Module('caba:vci_dspin_initiator_wrapper',
 	classname = 'soclib::caba::VciDspinInitiatorWrapper',

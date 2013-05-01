@@ -10,8 +10,10 @@ Module('caba:dspin_local_crossbar',
 	ports = [
 		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
 		Port('caba:clock_in', 'p_clk', auto = 'clock'),
-		Port('caba:dspin_output', 'p_out', 5, dspin_data_size = parameter.Reference('flit_width')), 
-		Port('caba:dspin_input', 'p_in', 5, dspin_data_size = parameter.Reference('flit_width')),
+		Port('caba:dspin_output', 'p_out', 5, 
+              dspin_data_size = parameter.Reference('flit_width')), 
+		Port('caba:dspin_input', 'p_in', 5, 
+              dspin_data_size = parameter.Reference('flit_width')),
 	],
 	instance_parameters = [
                 parameter.Module('mt', typename = 'common:mapping_table'),
