@@ -39,7 +39,7 @@ int _main(int argc, char *argv[])
 	// Avoid repeating these everywhere
 	using soclib::common::IntTab;
 	using soclib::common::Segment;
-	const size_t ncpu = 1;
+	const size_t ncpu = 4;
 	const size_t xicu_n_irq = 2;
 
 	// Define VCI parameters
@@ -72,6 +72,8 @@ int _main(int argc, char *argv[])
 	maptabp.add(Segment("mem",   0x7f000000, 0x01000000, IntTab(2), false));
 	maptabp.add(Segment("xicu",  0xd2200000, 0x00001000, IntTab(3), false));
 	maptabp.add(Segment("bdev0", 0xd1200000, 0x00000020, IntTab(4), false));
+
+    iss_t::setBoostrapCpuId(0);      /* Only processor 0 starts execution on reset */
 
     soclib::common::GdbServer<
         soclib::common::IssMemchecker<

@@ -67,6 +67,7 @@
 
 	aliases {
 		timer = "timer@0";
+		console = "tty@0[0]";
 	};
 
 };

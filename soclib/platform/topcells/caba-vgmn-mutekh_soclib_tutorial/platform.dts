@@ -87,5 +87,10 @@
 		reg = <0x7f000000 0x01000000>;
 	};
 
+	aliases {
+		timer = "timer@0";
+		console = "tty@0[0]";
+	};
+
 };
 

@@ -112,6 +112,8 @@ CPU_CONNECT(cpu_connect)
 template <class Iss>
 INIT_TOOLS(initialize_tools)
 {
+  Iss::setBoostrapCpuId(0);      /* Only processor 0 starts execution on reset */
+
 #if defined(CONFIG_GDB_SERVER)
   ISS_NEST(Iss)::set_loader(ldr);
 #endif
