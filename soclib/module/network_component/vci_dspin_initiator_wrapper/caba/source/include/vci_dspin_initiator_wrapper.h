@@ -29,6 +29,7 @@
 #define VCI_DSPIN_INITIATOR_WRAPPER_H_
 
 #include <systemc>
+#include <cassert>
 #include "caba_base_module.h"
 #include "vci_target.h"
 #include "dspin_interface.h"
