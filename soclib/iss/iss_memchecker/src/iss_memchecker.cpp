@@ -267,43 +267,40 @@ public:
 
     bool new_state_valid( enum State new_state )
     {
-        int valid_new_states = 0;
+        int valid_new_states = new_state;
         switch(m_state) {
         case REGION_INVALID:
-            valid_new_states = 0;
             break;
         case REGION_STATE_GLOBAL:
-            valid_new_states =
+            valid_new_states |=
                 REGION_STATE_FREE |
                 REGION_STATE_STACK;
             break;
         case REGION_STATE_GLOBAL_READ_ONLY:
-            valid_new_states = 0;
             break;
         case REGION_STATE_ALLOCATED:
-            valid_new_states =
+            valid_new_states |=
                 REGION_STATE_FREE |
                 REGION_STATE_STACK;
             break;
         case REGION_STATE_FREE:
-            valid_new_states =
+            valid_new_states |=
                 REGION_STATE_FREE |
                 REGION_STATE_ALLOCATED;
             break;
         case REGION_STATE_PERIPHERAL:
-            valid_new_states = 0;
             break;
         case REGION_STATE_STACK:
-            valid_new_states =
+            valid_new_states |=
                 REGION_STATE_WAS_STACK;
             break;
         case REGION_STATE_WAS_STACK:
-            valid_new_states =
+            valid_new_states |=
                 REGION_STATE_FREE |
                 REGION_STATE_STACK;
             break;
         case REGION_STATE_RAW:
-            valid_new_states =
+            valid_new_states |=
                 REGION_STATE_PERIPHERAL |
                 REGION_STATE_GLOBAL |
                 REGION_STATE_FREE;
