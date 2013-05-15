@@ -38,7 +38,7 @@ namespace soclib { namespace common {
 class BinaryFileSymbol
 {
     std::string m_name;
-    uintptr_t m_address;
+    uint64_t m_address;
     size_t m_size;
 public:
     const std::string &name() const
@@ -46,7 +46,7 @@ public:
         return m_name;
     }
 
-    const uintptr_t address() const
+    const uint64_t address() const
     {
         return m_address;
     }
@@ -56,7 +56,7 @@ public:
         return m_size;
     }
 
-    BinaryFileSymbol( const std::string &name, uintptr_t address, size_t size );
+    BinaryFileSymbol( const std::string &name, uint64_t address, size_t size );
 
     BinaryFileSymbol( const BinaryFileSymbol &ref );
 
@@ -64,7 +64,7 @@ public:
 
     const BinaryFileSymbol& operator=( const BinaryFileSymbol &ref );
 
-    bool contains( uintptr_t addr ) const;
+    bool contains( uint64_t addr ) const;
 
     bool operator==(const BinaryFileSymbol &s) const
     {

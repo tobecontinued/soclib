@@ -98,12 +98,12 @@ const std::string & BinaryFileSection::name() const
 	return m_name;
 }
 
-uintptr_t BinaryFileSection::vma() const
+uint64_t BinaryFileSection::vma() const
 {
 	return m_vma;
 }
 
-uintptr_t BinaryFileSection::lma() const
+uint64_t BinaryFileSection::lma() const
 {
 	return m_lma;
 }
@@ -139,7 +139,7 @@ bool BinaryFileSection::flag_data() const
 }
 
 BinaryFileSection::BinaryFileSection( const std::string &name,
-                        uintptr_t vma, uintptr_t lma,
+                        uint64_t vma, uint64_t lma,
                         uint32_t flags, size_t size,
 						void *blob )
     : m_data( blob ? new BinarySectionData( size, blob ) : 0 ),
@@ -159,7 +159,7 @@ BinaryFileSection::BinaryFileSection( const std::string &name,
 
 bool BinaryFileSection::load_overlap_in_buffer( 
     void *buffer,
-    uintptr_t buffer_base_address,
+    uint64_t buffer_base_address,
     size_t buffer_size ) const
 {
 	if ( !m_data )
@@ -170,7 +170,7 @@ bool BinaryFileSection::load_overlap_in_buffer(
     if ( buffer_base_address < m_lma ) {
         size_t dest_buffer_offset = m_lma - buffer_base_address;
 
-        dst = (void*)((uintptr_t)buffer + dest_buffer_offset);
+        dst = (void*)((uint64_t)buffer + dest_buffer_offset);
         src = m_data->data();
         if ( dest_buffer_offset > buffer_size )
             copy_size = 0;
@@ -182,7 +182,7 @@ bool BinaryFileSection::load_overlap_in_buffer(
         size_t src_data_offset = buffer_base_address - m_lma;
 
         dst = buffer;
-        src = (void*)((uintptr_t)m_data->data() + src_data_offset);
+        src = (void*)((uint64_t)m_data->data() + src_data_offset);
         if ( src_data_offset > m_data->size() )
             copy_size = 0;
         else
@@ -206,7 +206,7 @@ bool BinaryFileSection::load_overlap_in_buffer(
 
 bool BinaryFileSection::load_match_in_buffer( 
     void *buffer,
-    uintptr_t buffer_base_address,
+    uint64_t buffer_base_address,
     size_t buffer_size ) const
 {
 	if ( !m_data )
