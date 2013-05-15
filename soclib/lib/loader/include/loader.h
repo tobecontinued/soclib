@@ -48,7 +48,7 @@ private:
 	typedef std::map<std::string, binary_loader_t> loader_registry_t;
 
     section_list_t m_sections;
-    std::map<uint64_t, BinaryFileSymbol> m_symbol_table;
+    std::map<uintptr_t, BinaryFileSymbol> m_symbol_table;
     static const uint32_t DONT_TOUCH = (uint32_t)-1;
     uint32_t m_memory_init_value;
 
@@ -76,13 +76,13 @@ public:
         );
 	~Loader();
 
-	virtual void load( void *buffer, uint64_t address, size_t length ) const;
+	virtual void load( void *buffer, uintptr_t address, size_t length ) const;
 
-	void match_load( void *buffer, uint64_t address, size_t length );//used by the VLoader to load a specific section
+	void match_load( void *buffer, uintptr_t address, size_t length );//used by the VLoader to load a specific section
 
     void print( std::ostream &o ) const;
 
-    BinaryFileSymbolOffset get_symbol_by_addr( uint64_t addr ) const;
+    BinaryFileSymbolOffset get_symbol_by_addr( uintptr_t addr ) const;
     const BinaryFileSymbol *get_symbol_by_name( const std::string & ) const;
 
     friend std::ostream &operator << (std::ostream &o, const Loader &el)

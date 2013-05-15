@@ -80,7 +80,7 @@ void Loader::memory_default(uint8_t value)
         << std::endl;
 }
 
-void Loader::load( void *buffer, uint64_t address, size_t length) const
+void Loader::load( void *buffer, uintptr_t address, size_t length) const
 {
     if ( m_memory_init_value != DONT_TOUCH )
         memset(buffer, m_memory_init_value, length);
@@ -104,7 +104,7 @@ void Loader::load( void *buffer, uint64_t address, size_t length) const
     std::cout << std::endl;
 }
 
-void Loader::match_load( void *buffer, uint64_t address, size_t length)
+void Loader::match_load( void *buffer, uintptr_t address, size_t length)
 {
     // it's the VLoader who handle the memset of the buffer...
     std::cout
@@ -147,9 +147,9 @@ std::vector<BinaryFileSection> Loader::sections() const
     return m_sections;
 }
 
-BinaryFileSymbolOffset Loader::get_symbol_by_addr( uint64_t addr ) const
+BinaryFileSymbolOffset Loader::get_symbol_by_addr( uintptr_t addr ) const
 {
-    std::map<uint64_t, BinaryFileSymbol>::const_iterator i =
+    std::map<uintptr_t, BinaryFileSymbol>::const_iterator i =
         m_symbol_table.lower_bound( addr );
 
     while ( i != m_symbol_table.end()
@@ -166,7 +166,7 @@ BinaryFileSymbolOffset Loader::get_symbol_by_addr( uint64_t addr ) const
 
 const BinaryFileSymbol *Loader::get_symbol_by_name( const std::string &sym ) const
 {
-    std::map<uint64_t, BinaryFileSymbol>::const_iterator i;
+    std::map<uintptr_t, BinaryFileSymbol>::const_iterator i;
     for ( i = m_symbol_table.begin();
           i != m_symbol_table.end();
           ++i ) {
