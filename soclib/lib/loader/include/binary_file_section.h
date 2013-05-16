@@ -47,8 +47,8 @@ class BinaryFileSection
     BinarySectionData *m_data;
     uint32_t m_flags;
     std::string m_name;
-    uintptr_t m_vma;
-    uintptr_t m_lma;
+    uint64_t m_vma;
+    uint64_t m_lma;
     size_t m_size;
 
 public:
@@ -60,12 +60,12 @@ public:
 	};
 
     bool load_overlap_in_buffer( void *buffer,
-                                 uintptr_t buffer_base_address,
-                                 uintptr_t buffer_size ) const;
+                                 uint64_t buffer_base_address,
+                                 size_t buffer_size ) const;
     
     bool load_match_in_buffer( void *buffer,
-                                 uintptr_t buffer_base_address,
-                                 uintptr_t buffer_size ) const;
+                                 uint64_t buffer_base_address,
+                                 size_t buffer_size ) const;
 
     void get_data( void *buffer ) const;
 
@@ -76,8 +76,8 @@ public:
     bool flag_code() const;
     bool flag_data() const;
     const std::string& name() const;
-    uintptr_t vma() const;
-    uintptr_t lma() const;
+    uint64_t vma() const;
+    uint64_t lma() const;
     size_t size() const;
 
     BinaryFileSection( const BinaryFileSection & );
@@ -94,7 +94,7 @@ public:
     }
 
     BinaryFileSection( const std::string &name,
-				   uintptr_t vma, uintptr_t lma,
+				   uint64_t vma, uint64_t lma,
 				   uint32_t flags,
 				   size_t data_size, void *given_data_ptr );
 };
