@@ -32,23 +32,30 @@ namespace soclib { namespace common {
 
 #define tmpl(x) template<typename data_t> x AddressMaskingTable<data_t>
 
-tmpl(void)::init( int use_bits, int drop_bits )
+/////////////////////////////////////////////////////
+tmpl(void)::init( size_t use_bits, size_t drop_bits )
 {
+    assert( ((use_bits + drop_bits) <= (sizeof(data_t)*8) ) and
+    "Error in AddressMaskingTable : use_bits + drop_bits too large");
+ 
 	m_use_bits = use_bits;
 	m_drop_bits = drop_bits;
-	m_low_mask = (1<<use_bits)-1;
+	m_low_mask = (((data_t)1)<<use_bits)-1;
 }
 
+/////////////////////////////////
 tmpl(/**/)::AddressMaskingTable()
 {
 	init(0,0);
 }
 
-tmpl(/**/)::AddressMaskingTable( int use_bits, int drop_bits )
+////////////////////////////////////////////////////////////////////
+tmpl(/**/)::AddressMaskingTable( size_t use_bits, size_t drop_bits )
 {
 	init(use_bits, drop_bits);
 }
 
+//////////////////////////////////////////////
 tmpl(/**/)::AddressMaskingTable( data_t mask )
 {
 	size_t use_bits = 0, drop_bits = 0;
@@ -69,11 +76,13 @@ tmpl(/**/)::AddressMaskingTable( data_t mask )
 	assert(this->mask() == mask);
 }
 
+/////////////////////////////////////////////////////////////////
 tmpl(/**/)::AddressMaskingTable( const AddressMaskingTable &ref )
 {
 	init(ref.m_use_bits, ref.m_drop_bits);
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
 tmpl(const AddressMaskingTable<data_t> &)::operator=( const AddressMaskingTable &ref )
 {
 	if ( this == &ref )
@@ -83,6 +92,7 @@ tmpl(const AddressMaskingTable<data_t> &)::operator=( const AddressMaskingTable 
     return *this;
 }
 
+//////////////////////////////////////////
 tmpl(void)::print( std::ostream &o ) const
 {
     o << "<AMT: use=" << std::dec << m_use_bits << ", drop=" << m_drop_bits

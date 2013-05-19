@@ -39,20 +39,25 @@ class AddressMaskingTable
     size_t m_use_bits, m_drop_bits;
     data_t m_low_mask;
 
-    void init( int use_bits, int drop_bits );
+    void init( size_t use_bits, size_t drop_bits );
+
+public:
+    AddressMaskingTable();
+    AddressMaskingTable( size_t use_bits, size_t drop_bits);
+    AddressMaskingTable( data_t mask );
+    AddressMaskingTable( const AddressMaskingTable &ref );
+    const AddressMaskingTable<data_t> &operator=( const AddressMaskingTable &ref );
 
     inline data_t mask() const
     {
         return m_low_mask<<m_drop_bits;
     }
 
-public:
-    AddressMaskingTable();
-    AddressMaskingTable( int use_bits, int drop_bits);
-    AddressMaskingTable( data_t mask );
-    AddressMaskingTable( const AddressMaskingTable &ref );
-    const AddressMaskingTable<data_t> &operator=( const AddressMaskingTable &ref );
-
+    inline size_t getUse() const
+    {
+        return m_use_bits;
+    }
+    
     inline size_t getDrop() const
     {
         return m_drop_bits;
