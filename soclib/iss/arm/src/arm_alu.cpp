@@ -187,6 +187,9 @@ template uint32_t ArmIss::arm_shifter_shift<false>();
                                                                         \
     ARM_OPS_PROTO(ArmIss::arm_##n##s)                                    \
     {                                                                   \
+        if (!cond_eval())                                            \
+            return;                                                     \
+                                                                        \
         uint32_t shifted = (m_opcode.dp.rd == 15)                       \
             ? arm_shifter<false>()                                      \
             : arm_shifter<true>();                                      \
@@ -221,6 +224,9 @@ template uint32_t ArmIss::arm_shifter_shift<false>();
                                                                         \
     ARM_OPS_PROTO(ArmIss::arm_##n)                                       \
     {                                                                   \
+        if (!cond_eval())                                            \
+            return;                                                     \
+                                                                        \
         uint32_t op1 = r_gp[m_opcode.dp.rn];                            \
         if (m_opcode.dp.rn == 15) {                                     \
             op1 += 4 - 2 * r_cpsr.thumb;                                                   \
@@ -277,6 +283,9 @@ ARM_DATA_LOGICAL_INS(mvn, mvn)
                                                                         \
     ARM_OPS_PROTO(ArmIss::arm_##n##s)                                    \
     {                                                                   \
+        if (!cond_eval())                                            \
+            return;                                                     \
+                                                                        \
         bool cout = r_cpsr.carry, vout;                                 \
                                                                         \
         uint32_t op1 = r_gp[m_opcode.dp.rn];                            \
@@ -311,6 +320,9 @@ ARM_DATA_LOGICAL_INS(mvn, mvn)
                                                                         \
     ARM_OPS_PROTO(ArmIss::arm_##n)                                       \
     {                                                                   \
+        if (!cond_eval())                                            \
+            return;                                                     \
+                                                                        \
         bool cout = r_cpsr.carry, vout;                                 \
                                                                         \
         uint32_t op1 = r_gp[m_opcode.dp.rn];                            \
@@ -374,6 +386,9 @@ ARM_DATA_ARITH_INS_S(cmn, add, false)
 
 void ArmIss::arm_mul()
 {
+    if (!cond_eval())
+        return;
+
     data_t res =
         r_gp[m_opcode.mul.rm] * r_gp[m_opcode.mul.rs];
 
@@ -386,6 +401,9 @@ void ArmIss::arm_mul()
 
 void ArmIss::arm_smul_xy()
 {
+    if (!cond_eval())
+        return;
+
     int16_t x = r_gp[m_opcode.mul.rm] >> (16*m_opcode.mul.x);
     int16_t y = r_gp[m_opcode.mul.rs] >> (16*m_opcode.mul.y);
     data_t res = (int32_t)x * (int32_t)y;
@@ -395,6 +413,9 @@ void ArmIss::arm_smul_xy()
 
 void ArmIss::arm_smla_xy()
 {
+    if (!cond_eval())
+        return;
+
     int16_t x = r_gp[m_opcode.mul.rm] >> (16*m_opcode.mul.x);
     int16_t y = r_gp[m_opcode.mul.rs] >> (16*m_opcode.mul.y);
     data_t res = (int32_t)x * (int32_t)y;
@@ -404,6 +425,9 @@ void ArmIss::arm_smla_xy()
 
 void ArmIss::arm_smlaw_y()
 {
+    if (!cond_eval())
+        return;
+
     int16_t y = r_gp[m_opcode.mul.rs] >> (16*m_opcode.mul.y);
     uint64_t res64 = (int64_t)y * (int64_t)(int32_t)r_gp[m_opcode.mul.rm];
     uint32_t res = (uint32_t)(res64>>16);
@@ -413,6 +437,9 @@ void ArmIss::arm_smlaw_y()
 
 void ArmIss::arm_smulw_y()
 {
+    if (!cond_eval())
+        return;
+
     int16_t y = r_gp[m_opcode.mul.rs] >> (16*m_opcode.mul.y);
     uint64_t res64 = (int64_t)y * (int64_t)(int32_t)r_gp[m_opcode.mul.rm];
     uint32_t res = (uint32_t)(res64>>16);
@@ -422,6 +449,9 @@ void ArmIss::arm_smulw_y()
 
 void ArmIss::arm_mla()
 {
+    if (!cond_eval())
+        return;
+
     data_t res =
         r_gp[m_opcode.mul.rm] * r_gp[m_opcode.mul.rs]
         + r_gp[m_opcode.mul.rn];
@@ -435,6 +465,9 @@ void ArmIss::arm_mla()
 
 void ArmIss::arm_umaal()
 {
+    if (!cond_eval())
+        return;
+
     uint64_t res = 
         (uint64_t)r_gp[m_opcode.mul.rm] * (uint64_t)r_gp[m_opcode.mul.rs]
         + r_gp[m_opcode.mul.rd]
@@ -446,6 +479,9 @@ void ArmIss::arm_umaal()
 
 void ArmIss::arm_umull()
 {
+    if (!cond_eval())
+        return;
+
     uint64_t res = 
         (uint64_t)r_gp[m_opcode.mul.rm] * (uint64_t)r_gp[m_opcode.mul.rs];
 
@@ -459,6 +495,9 @@ void ArmIss::arm_umull()
 
 void ArmIss::arm_umlal()
 {
+    if (!cond_eval())
+        return;
+
     uint64_t res =
         (uint64_t)r_gp[m_opcode.mul.rm] * (uint64_t)r_gp[m_opcode.mul.rs]
         + (((uint64_t)r_gp[m_opcode.mul.rd] << 32) | r_gp[m_opcode.mul.rn]);
@@ -473,6 +512,9 @@ void ArmIss::arm_umlal()
 
 void ArmIss::arm_smull()
 {
+    if (!cond_eval())
+        return;
+
     int64_t res =
         (int64_t)(int32_t)r_gp[m_opcode.mul.rm] * (int64_t)(int32_t)r_gp[m_opcode.mul.rs];
 
@@ -486,6 +528,9 @@ void ArmIss::arm_smull()
 
 void ArmIss::arm_smlal()
 {
+    if (!cond_eval())
+        return;
+
     int64_t res =
         ((int64_t)(int32_t)r_gp[m_opcode.mul.rm] * (int64_t)(int32_t)r_gp[m_opcode.mul.rs])
         + (int64_t)(((uint64_t)r_gp[m_opcode.mul.rd] << 32) | r_gp[m_opcode.mul.rn]);

@@ -62,9 +62,8 @@ void ArmIss::do_mem_access( addr_t address,
 {
     int byte_le = address&3;
 
-//     if ( ! m_little_endian ) {
-//         wdata = soclib::endian::uint32_swap(wdata) >> (8 * (4-byte_count));
-//     }
+    if ( r_cpsr.endian )
+        wdata = soclib::endian::uint32_swap(wdata) >> (8 * (4-byte_count));
 
     m_dreq.addr = address & (~3);
 
@@ -136,6 +135,9 @@ bool ArmIss::handle_data_response( const struct DataResponse &drsp )
         data = (data == Iss2::SC_ATOMIC) ? 0 : 1;
 		break;
 	}
+
+    if ( r_cpsr.endian )
+        data = soclib::endian::uint32_swap(data) >> (8 * (4-r_mem_byte_count));
 
 	*r_mem_dest_addr = data;
 	return r_mem_dest_addr == &r_gp[15];

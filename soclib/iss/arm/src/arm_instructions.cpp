@@ -42,6 +42,9 @@ using namespace soclib::common;
 
 void ArmIss::arm_bx()
 {
+	if (!cond_eval())
+		return;
+
     addr_t dest = r_gp[m_opcode.brx.rn];
 	r_gp[15] = dest & ~1;
     r_cpsr.thumb = dest & 1;
@@ -49,6 +52,9 @@ void ArmIss::arm_bx()
 
 void ArmIss::arm_blx()
 {
+	if (!cond_eval())
+		return;
+
     addr_t dest = r_gp[m_opcode.brx.rn];
     r_gp[14] = r_gp[15];
 	r_gp[15] = dest & ~1;
@@ -57,11 +63,17 @@ void ArmIss::arm_blx()
 
 void ArmIss::arm_b()
 {
+	if (!cond_eval())
+		return;
+
 	r_gp[15] += sign_ext(m_opcode.brl.offset << 2, 26) + 4;
 }
 
 void ArmIss::arm_bl()
 {
+	if (!cond_eval())
+		return;
+
     r_gp[14] = r_gp[15];
 	r_gp[15] += sign_ext(m_opcode.brl.offset << 2, 26) + 4;
 }
@@ -144,6 +156,9 @@ void ArmIss::do_sleep()
 
 void ArmIss::arm_ldstm()
 {
+	if (!cond_eval() || !m_opcode.bdt.reg_list)
+		return;
+
 	m_microcode_opcode = m_opcode;
 
 	addr_t offset = popcount(m_opcode.bdt.reg_list) * 4;
@@ -183,6 +198,9 @@ void ArmIss::arm_ldstm()
 // to coproc
 void ArmIss::arm_mcr()
 {
+	if (!cond_eval())
+		return;
+
 #ifdef SOCLIB_MODULE_DEBUG
     std::cout << name()
               << " mcr " << m_opcode.coproc.crn
@@ -213,6 +231,9 @@ void ArmIss::arm_mcr()
 // from coproc
 void ArmIss::arm_mrc()
 {
+	if (!cond_eval())
+		return;
+
 #if defined(SOCLIB_MODULE_DEBUG)
     std::cout << name()
               << " mrc " << m_opcode.coproc.crn
@@ -242,6 +263,9 @@ void ArmIss::arm_mrc()
 
 void ArmIss::arm_mrs()
 {
+	if (!cond_eval())
+		return;
+
     if ( m_opcode.dp.rn != 0xf )
         return arm_ill();
 
@@ -253,6 +277,9 @@ void ArmIss::arm_mrs()
 
 void ArmIss::arm_msr()
 {
+	if (!cond_eval())
+		return;
+
     if ( m_opcode.ms.p && r_cpsr.mode == MOD_PSR_USER32 )
         return arm_ill();
 
@@ -299,6 +326,9 @@ void ArmIss::arm_msr()
 
 void ArmIss::arm_clz()
 {
+	if (!cond_eval())
+		return;
+
     data_t d = r_gp[m_opcode.dp.rm];
     if ( d )
         r_gp[m_opcode.dp.rd] = soclib::common::clz<data_t>(d);
@@ -314,6 +344,9 @@ void ArmIss::arm_stc()
 template<size_t byte_count, bool pre, bool load, bool signed_>
 void ArmIss::arm_ldstrh()
 {
+	if (!cond_eval())
+		return;
+
 	addr_t addr = r_gp[m_opcode.sdth.rn];
 
 	if ( m_opcode.sdth.rn == 15 )
@@ -351,6 +384,9 @@ void ArmIss::arm_ldstrh()
 template<bool reg, bool pre, bool load>
 void ArmIss::arm_ldstr()
 {
+	if (!cond_eval())
+		return;
+
 	addr_t addr = r_gp[m_opcode.sdt.rn];
 
 	if ( m_opcode.sdt.rn == 15 )
@@ -391,11 +427,17 @@ void ArmIss::arm_ldstr()
 
 void ArmIss::arm_swi()
 {
+	if (!cond_eval())
+		return;
+
     m_exception = EXCEPT_SWI;
 }
 
 void ArmIss::arm_bkpt()
 {
+	if (!cond_eval())
+		return;
+
     m_exception = EXCEPT_SWI;
 }
 
@@ -445,6 +487,9 @@ void ArmIss::do_microcoded_swp_decide()
 
 void ArmIss::arm_swp()
 {
+	if (!cond_eval())
+		return;
+
 	m_microcode_opcode = m_opcode;
 	m_microcode_status.swp.address = r_gp[m_opcode.swp.rn];
 	do_microcoded_swp_ll();
@@ -452,6 +497,9 @@ void ArmIss::arm_swp()
 
 void ArmIss::arm_strex()
 {
+	if (!cond_eval())
+		return;
+
 	do_mem_access(r_gp[m_opcode.atomic.rn], DATA_SC,
 				  4, r_gp[m_opcode.atomic.rm],
                   &r_gp[m_opcode.atomic.rd],
@@ -460,6 +508,9 @@ void ArmIss::arm_strex()
 
 void ArmIss::arm_ldrex()
 {
+	if (!cond_eval())
+		return;
+
 	do_mem_access(r_gp[m_opcode.atomic.rn], DATA_LL,
 				  4, 0, &r_gp[m_opcode.atomic.rd],
 				  POST_OP_WB_UNSIGNED );
@@ -474,29 +525,44 @@ ArmIss::data_t ArmIss::x_get_rot() const
 
 void ArmIss::arm_rev()
 {
+	if (!cond_eval())
+		return;
+
     r_gp[m_opcode.dp.rd] = soclib::endian::uint32_swap(r_gp[m_opcode.dp.rm]);
 }
 
 void ArmIss::arm_sxtb()
 {
+	if (!cond_eval())
+		return;
+
     data_t rm = x_get_rot() & 0xff;
     r_gp[m_opcode.dp.rd] = sign_ext(rm, 8);
 }
 
 void ArmIss::arm_uxtb()
 {
+	if (!cond_eval())
+		return;
+
     data_t rm = x_get_rot() & 0xff;
     r_gp[m_opcode.dp.rd] = rm;
 }
 
 void ArmIss::arm_rev16()
 {
+	if (!cond_eval())
+		return;
+
     data_t rm = soclib::endian::uint32_swap(r_gp[m_opcode.dp.rm]);
     r_gp[m_opcode.dp.rd] = (rm<<16) | (rm>>16);
 }
 
 void ArmIss::arm_uxtb16()
 {
+	if (!cond_eval())
+		return;
+
     data_t rm = x_get_rot();
     rm &= 0x00ff00ff;
     r_gp[m_opcode.dp.rd] = rm;
@@ -504,24 +570,36 @@ void ArmIss::arm_uxtb16()
 
 void ArmIss::arm_sxth()
 {
+	if (!cond_eval())
+		return;
+
     data_t rm = x_get_rot();
     r_gp[m_opcode.dp.rd] = sign_ext(rm, 16);
 }
 
 void ArmIss::arm_uxth()
 {
+	if (!cond_eval())
+		return;
+
     data_t rm = x_get_rot();
     r_gp[m_opcode.dp.rd] = rm & 0xffff;
 }
 
 void ArmIss::arm_revsh()
 {
+	if (!cond_eval())
+		return;
+
     uint16_t rm = soclib::endian::uint16_swap(r_gp[m_opcode.dp.rm]);
     r_gp[m_opcode.dp.rd] = sign_ext(rm, 16);
 }
 
 void ArmIss::arm_sxtb16()
 {
+	if (!cond_eval())
+		return;
+
     data_t rm = x_get_rot();
     rm &= 0x00ff00ff;
     rm |= (rm & 0x00000080) ? 0x0000ff00 : 0;
@@ -550,6 +628,101 @@ template void ArmIss::arm_ldstr<false, false, true>();
 template void ArmIss::arm_ldstr<false, true, true>();
 template void ArmIss::arm_ldstr<true, false, true>();
 template void ArmIss::arm_ldstr<true, true, true>();
+
+
+void ArmIss::arm_uncond_ill()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_cps_setend()
+{
+    if (m_opcode.setend.is_setend) {
+        r_cpsr.endian = m_opcode.setend.be;
+
+    } else {  // cps
+        arm_ill();
+    }
+}
+
+void ArmIss::arm_uncond_avsimd_data()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_avsimd_ldst()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_nop()
+{
+}
+
+void ArmIss::arm_uncond_pli()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_pld()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_clrex()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_dsb()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_dmb()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_isb()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_srs()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_rfe()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_blx()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_ldci()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_stci()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_mcrr()
+{
+    arm_ill();
+}
+
+void ArmIss::arm_uncond_mrrc()
+{
+    arm_ill();
+}
 
 }}
 

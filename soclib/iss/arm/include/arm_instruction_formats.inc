@@ -207,6 +207,15 @@ typedef union {
 		uint32_t opcode:4,
 		uint32_t dummy:24,
 		) si;
+	/* setend */
+	PACKED_BITFIELD(
+		uint32_t is111100010000:12,
+		uint32_t dummy1:3,
+		uint32_t is_setend:1,
+		uint32_t dummy2:6,
+		uint32_t be:1,
+		uint32_t dummy3:9,
+		) setend;
 
 	uint32_t ins;
 }  arm_ins_t;

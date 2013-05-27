@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 from op_decoder import decoder
 from op_decoder import codegen

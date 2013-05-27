@@ -34,21 +34,18 @@
 
 namespace soclib { namespace common {
 
-bool ArmIss::cond_eval() const
-{
-	uint16_t cond_word = cond_table[m_opcode.dp.cond];
-	return (cond_word >> r_cpsr.flags) & 1;
-}
-
 void ArmIss::run()
 {
-	if ( ! cond_eval() )
-		return;
-
     data_t r15 = r_gp[15];
+    func_t func;
 
-	int8_t id = arm_func_main(m_opcode.ins);
-	func_t func = arm_funcs[id];
+    if ((m_opcode.ins & 0xf0000000) == 0xf0000000) {
+        int8_t id = arm_uncond_func_main(m_opcode.ins & 0x0ff000f0);
+        func = arm_uncond_funcs[id];
+    } else {
+        int8_t id = arm_func_main(m_opcode.ins & 0x0ff000f0);
+        func = arm_funcs[id];
+    }
 	(this->*func)();
 
 	if (r_gp[15] == ARM_RESET_ADDR) {

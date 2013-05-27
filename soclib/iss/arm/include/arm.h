@@ -145,6 +145,7 @@ private:
 
 # include "arm_instruction_formats.inc"
 # include "arm_ops.inc"
+# include "arm_uncond_ops.inc"
 # include "thumb_instruction_formats.inc"
 # include "thumb_ops.inc"
 
@@ -154,7 +155,9 @@ private:
 			uint32_t zero:1,
 			uint32_t carry:1,
 			uint32_t overflow:1,
-			uint32_t reserved1:20,
+			uint32_t reserved1:18,
+            uint32_t endian:1,
+			uint32_t imprecise_abort:1,
 			uint32_t irq_disabled:1,
 			uint32_t fiq_disabled:1,
 			uint32_t thumb:1,
@@ -280,7 +283,12 @@ private:
 		);
 
 
-	bool cond_eval() const;
+	bool cond_eval() const
+    {
+        uint16_t cond_word = cond_table[m_opcode.dp.cond];
+        return (cond_word >> r_cpsr.flags) & 1;
+    }
+
     void run();
     void run_thumb();
     void do_microcoded_ldstm_user();

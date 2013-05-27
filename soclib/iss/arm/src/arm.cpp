@@ -350,10 +350,10 @@ void ArmIss::dump() const
             << " [" << flag_code[r_cpsr.flags] << "]"
             << " + " << cond_code[m_opcode.dp.cond]
             << " = ";
-        if ( ! cond_eval() )
+        if (!cond_eval())
             std::cout << " NO (";
         std::cout << arm_func_names[id];
-        if ( ! cond_eval() )
+        if (!cond_eval())
             std::cout << ")";
     }
 	std::cout
