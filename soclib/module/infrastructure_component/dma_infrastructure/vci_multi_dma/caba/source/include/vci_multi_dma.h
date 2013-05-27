@@ -61,12 +61,12 @@ private:
     sc_signal<bool>*				        r_channel_activate;      // channel[k] activated
     sc_signal<size_t>*                      r_channel_src_offset;    // non aligned bytes [k]
     sc_signal<size_t>*                      r_channel_dst_offset;    // non aligned bytes [k]
-    sc_signal<size_t>*                      r_channel_nbytes_first;  // requested first burst length [k]
-    sc_signal<size_t>*                      r_channel_nbytes_second; // requested second burst length [k]
-    sc_signal<typename vci_param::addr_t>* 	r_channel_src_addr;      // source address [k]
-    sc_signal<typename vci_param::addr_t>* 	r_channel_dst_addr;      // dest address [k]
+    sc_signal<size_t>*                      r_channel_nbytes_first;  // first burst length [k]
+    sc_signal<size_t>*                      r_channel_nbytes_second; // second burst length [k]
+    sc_signal<uint64_t>*                    r_channel_src_addr;      // source address [k]
+    sc_signal<uint64_t>*                    r_channel_dst_addr;      // destination address [k]
     sc_signal<size_t>*				        r_channel_length;        // buffer length (bytes) [k]	
-    sc_signal<typename vci_param::data_t>**	r_channel_buf;           // local buffer [k]
+    sc_signal<uint32_t>**	                r_channel_buf;           // local buffer [k]
     sc_signal<bool>*				        r_channel_last;          // last transaction [k]
     sc_signal<bool>*				        r_channel_done;          // transfer completed [k]
     sc_signal<bool>*				        r_channel_error;         // VCI error signaled [k]
@@ -81,7 +81,6 @@ private:
     sc_signal<size_t>				        r_rsp_index;	         // channel index for a response
     sc_signal<size_t>				        r_rsp_nbytes;            // VCI packet length
 
-
     // sructural parametert
     soclib::common::Segment			        m_segment;
     const size_t				            m_burst_max_length;	   // number of bytes
@@ -93,13 +92,15 @@ protected:
 
 public:
     // FSM states
-    enum tgt_fsm_state_e {
+    enum tgt_fsm_state_e 
+    {
         TGT_IDLE,
         TGT_READ,
         TGT_WRITE,
         TGT_ERROR,
     };
-    enum channel_fsm_state_e {
+    enum channel_fsm_state_e 
+    {
         CHANNEL_DONE              = 0,
         CHANNEL_READ_ERROR        = 1,
         CHANNEL_IDLE              = 2,
@@ -115,12 +116,14 @@ public:
         CHANNEL_WRITE_REQ_SECOND  = 12,
         CHANNEL_WRITE_WAIT_SECOND = 13,
     };
-    enum cmd_fsm_state_e {
+    enum cmd_fsm_state_e 
+    {
         CMD_IDLE,
         CMD_READ,
         CMD_WRITE,
     };
-    enum rsp_fsm_state_e {
+    enum rsp_fsm_state_e 
+    {
         RSP_IDLE,
         RSP_READ,
         RSP_WRITE,

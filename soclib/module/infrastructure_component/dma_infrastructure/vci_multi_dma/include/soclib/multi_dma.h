@@ -27,14 +27,26 @@
 #ifndef DMA_REGS_H
 #define DMA_REGS_H
 
-enum SoclibDmaRegisters {
-    DMA_SRC		= 0,
-    DMA_DST		= 1,
-    DMA_LEN		= 2,
-    DMA_RESET		= 3,
-    DMA_IRQ_DISABLED	= 4,
+enum SoclibDmaRegisters 
+{
+    DMA_SRC		     = 0,
+    DMA_DST		     = 1,
+    DMA_LEN		     = 2,
+    DMA_RESET		 = 3,
+    DMA_IRQ_DISABLED = 4,
+    DMA_SRC_EXT      = 5,
+    DMA_DST_EXT      = 6,
     /****/
-    DMA_SPAN		= 8,
+    DMA_SPAN		 = 8,
+};
+
+enum SoclibDmaStatus 
+{
+    DMA_SUCCESS      = 0,
+    DMA_READ_ERROR   = 1,
+    DMA_IDLE         = 2,
+    DMA_WRITE_ERROR  = 3,
+    DMA_BUSY         = 4,
 };
 
 #endif /* DMA_REGS_H */
