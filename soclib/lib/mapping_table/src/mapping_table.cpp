@@ -44,7 +44,7 @@ MappingTable::MappingTable(
           m_cacheability_mask(cacheability_mask),
           m_used(false)
 {
-    m_rt_size = 1<<(addr_width-m_level_addr_bits.sum());
+    m_rt_size = 1ULL << (addr_width-m_level_addr_bits.sum());
     addr64_t cm_rt_size = 1 << AddressMaskingTable<addr64_t>(m_cacheability_mask).getDrop();
     m_rt_size = std::min<addr64_t>(cm_rt_size, m_rt_size);
 }
@@ -74,14 +74,17 @@ const MappingTable &MappingTable::operator=( const MappingTable &ref )
     return *this;
 }
 
+////////////////////////////////////////////
 void MappingTable::add( const Segment &_seg )
 {
     Segment seg = _seg.masked(m_addr_mask);
     std::list<Segment>::iterator i;
 
-    assert(m_used == false && "You must not add segments inside a mapping table once it is used.");
+    assert(m_used == false && 
+    "You must not add segments inside a mapping table once it is used.");
 
-    if ( seg.index().level() != m_level_addr_bits.level() ) {
+    if ( seg.index().level() != m_level_addr_bits.level() ) 
+    {
         std::ostringstream o;
         o << seg << " is not the same level as the mapping table.";
         throw soclib::exception::ValueError(o.str());
@@ -89,26 +92,32 @@ void MappingTable::add( const Segment &_seg )
 
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
-          i++ ) {
+          i++ ) 
+    {
         Segment &s = *i;
         if ( s.isOverlapping(seg) ) {
             std::ostringstream o;
             o << seg << " bumps in " << s;
             throw soclib::exception::Collision(o.str());
         }
+
         for ( addr64_t address = s.baseAddress() & ~(m_rt_size-1);
               (address < s.baseAddress()+s.size()) &&
                   (address >= (s.baseAddress() & ~(m_rt_size-1)));
-              address += m_rt_size ) {
+              address += m_rt_size ) 
+        {
             for ( addr64_t segaddress = seg.baseAddress() & ~(m_rt_size-1);
                   (segaddress < seg.baseAddress()+seg.size()) &&
                       (segaddress >= (seg.baseAddress() & ~(m_rt_size-1)));
-                  segaddress += m_rt_size ) {
-                if ( (m_cacheability_mask & address) == (m_cacheability_mask & segaddress) &&
-                     s.cacheable() != seg.cacheable() ) {
+                  segaddress += m_rt_size ) 
+            {
+                if ( (m_cacheability_mask & address) == (m_cacheability_mask & segaddress)
+                    && s.cacheable() != seg.cacheable() ) 
+                {
                     std::ostringstream oss;
                     oss << "Segment " << s
-                        << " has a different cacheability attribute with same MSBs than " << seg << std::endl;
+                        << " has a different cacheability attribute with same MSBs than " 
+                        << seg << std::endl;
                     throw soclib::exception::RunTimeError(oss.str());
                 }
             }
