@@ -41,39 +41,47 @@ class VciXicu
 	: public caba::BaseModule
 {
 private:
-    soclib::caba::VciTargetFsm<vci_param, true> m_vci_fsm;
+    soclib::caba::VciTargetFsm<vci_param, true>     m_vci_fsm;
 
-    bool on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be);
-    bool on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data);
+    const size_t                                    m_pti_count;
+    const size_t                                    m_hwi_count;
+    const size_t                                    m_wti_count;
+    const size_t                                    m_irq_count;
+
+    uint32_t*                                       r_msk_pti;
+    uint32_t*                                       r_msk_wti;
+    uint32_t*                                       r_msk_hwi;
+    uint32_t                                        r_pti_pending;
+    uint32_t                                        r_wti_pending;
+    uint32_t                                        r_hwi_pending;
+    uint32_t                                        *r_pti_per;
+    uint32_t                                        *r_pti_val;
+    uint32_t                                        *r_wti_reg;
+
+    uint32_t                                        m_clock_cycles;
+
+
+    bool on_write( int                        seg, 
+                   typename vci_param::addr_t addr, 
+                   typename vci_param::data_t data, 
+                   int                        be );
+    bool on_read(  int                        seg, 
+                   typename vci_param::addr_t addr, 
+                   typename vci_param::data_t &data );
+
     void transition();
     void genMoore();
 
-    const size_t m_pti_count;
-    const size_t m_hwi_count;
-    const size_t m_wti_count;
-    const size_t m_irq_count;
-
-    uint32_t *r_msk_pti;
-    uint32_t *r_msk_wti;
-    uint32_t *r_msk_hwi;
-    uint32_t r_pti_pending;
-    uint32_t r_wti_pending;
-    uint32_t r_hwi_pending;
-    uint32_t *r_pti_per;
-    uint32_t *r_pti_val;
-    uint32_t *r_wti_reg;
-
-    uint32_t m_clock_cycles;
 
 protected:
     SC_HAS_PROCESS(VciXicu);
 
 public:
-    sc_core::sc_in<bool> p_clk;
-    sc_core::sc_in<bool> p_resetn;
-    soclib::caba::VciTarget<vci_param> p_vci;
-    sc_core::sc_out<bool> *p_irq;
-    sc_core::sc_in<bool> *p_hwi;
+    sc_core::sc_in<bool>                           p_clk;
+    sc_core::sc_in<bool>                           p_resetn;
+    soclib::caba::VciTarget<vci_param>             p_vci;
+    sc_core::sc_out<bool>*                         p_irq;
+    sc_core::sc_in<bool>*                          p_hwi;
 
 	~VciXicu();
 
