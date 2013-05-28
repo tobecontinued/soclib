@@ -91,7 +91,7 @@ protected:
         X_CPU,      // b Coproc unusable
         X_OV,       // c Overflow
         X_TR,       // d Trap
-        X_reserved,     // e Reserved
+        X_reserved, // e Reserved
         X_FPE,      // f Floating point
         NO_EXCEPTION,
     };
@@ -418,7 +418,7 @@ protected:
     addr_t r_error_epc;
     uint32_t r_cycle_count;
     uint32_t r_compare;
-    uint32_t r_scheduler_paddr;
+    uint32_t r_scheduler_addr;
 
     uint32_t m_irqs;
     

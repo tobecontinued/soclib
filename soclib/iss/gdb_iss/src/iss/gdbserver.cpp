@@ -1118,6 +1118,10 @@ uint32_t GdbServer<CpuIss>::executeNCycles(
     bool satisfied = (! pending_ins_request_ || irsp.valid)
         && (! pending_data_request_ || drsp.valid);
 
+#if defined(SOCLIB_MODULE_DEBUG)
+    std::cout << CpuIss::name() << " gdb " << state_ << std::endl;
+#endif
+
     switch (state_)
         {
         case WaitGdbMem:
