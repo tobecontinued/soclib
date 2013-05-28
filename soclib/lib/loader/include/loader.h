@@ -76,9 +76,7 @@ public:
         );
 	~Loader();
 
-	virtual void load( void *buffer, uint64_t address, size_t length ) const;
-
-	void match_load( void *buffer, uint64_t address, size_t length );//used by the VLoader to load a specific section
+	virtual void load( void *buffer, uint64_t address, uint64_t length ) const;
 
     void print( std::ostream &o ) const;
 

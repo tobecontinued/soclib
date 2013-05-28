@@ -80,7 +80,8 @@ void Loader::memory_default(uint8_t value)
         << std::endl;
 }
 
-void Loader::load( void *buffer, uint64_t address, size_t length) const
+/////////////////////////////////////////////////////////////////////////
+void Loader::load( void *buffer, uint64_t address, uint64_t length) const
 {
     if ( m_memory_init_value != DONT_TOUCH )
         memset(buffer, m_memory_init_value, length);
@@ -88,7 +89,7 @@ void Loader::load( void *buffer, uint64_t address, size_t length) const
     std::cout
         << std::showbase << std::hex
         << "Loading at " << address
-        << " size " << std::dec << length
+        << " size " << std::hex << length
         << ": ";
     bool one = false;
     for ( section_list_t::const_iterator i = m_sections.begin();
@@ -104,30 +105,7 @@ void Loader::load( void *buffer, uint64_t address, size_t length) const
     std::cout << std::endl;
 }
 
-void Loader::match_load( void *buffer, uint64_t address, size_t length)
-{
-    // it's the VLoader who handle the memset of the buffer...
-    std::cout
-        << " address = 0x"
-        << std::noshowbase << std::hex
-        << std::setw (8) << std::setfill('0') 
-        << address
-        << " / size " << std::dec << length
-        << " / ";
-    bool one = false;
-    for ( section_list_t::const_iterator i = m_sections.begin();
-          i != m_sections.end();
-          ++i ) {
-        if ( i->load_match_in_buffer( buffer, address, length ) ) {
-            one = true;
-            std::cout << i->name() << " ";
-        }
-    }
-    if ( !one )
-        std::cout << "nothing ";
-    //std::cout << std::endl;
-}
-
+///////////////////////////////////////////
 void Loader::print( std::ostream &o ) const
 {
 	o << "<Loader " << std::endl;
