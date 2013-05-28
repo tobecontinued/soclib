@@ -138,7 +138,7 @@ using namespace soclib::caba;
         {
             if ( m_use_routing_table )
             {
-                output = m_routing_table[address>>8];
+                output = m_routing_table[address];
             }
             else
             {
