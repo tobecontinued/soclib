@@ -115,7 +115,10 @@ public:
     template<typename desired_addr_t>
     desired_addr_t *getCoherenceTable() const;
 
-
+    size_t getAddressWidth() const
+    {
+        return m_addr_width;
+    }
 
     void print( std::ostream &o ) const;
 

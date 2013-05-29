@@ -79,6 +79,7 @@ using namespace soclib::caba;
       m_l_mask( (0x1 << l_width) - 1 ),
       m_local_inputs( nb_local_inputs ),
       m_local_outputs( nb_local_outputs ),
+      m_effective_bits(mt.getAddressWidth()),
       m_use_routing_table( use_routing_table ),
       m_broadcast_supported( broadcast_supported )
     {
@@ -138,7 +139,7 @@ using namespace soclib::caba;
         {
             if ( m_use_routing_table )
             {
-                output = m_routing_table[address];
+                output = m_routing_table[address >> (flit_width - m_effective_bits)];
             }
             else
             {

@@ -113,6 +113,7 @@ namespace soclib { namespace caba {
 	    const size_t     m_l_mask;
         const size_t     m_local_inputs;
         const size_t     m_local_outputs;
+        const size_t     m_effective_bits;
         const bool       m_use_routing_table;
         const bool       m_broadcast_supported;
 
