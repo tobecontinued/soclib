@@ -265,6 +265,7 @@ uint32_t ArmIss::executeNCycles(
         new_psr.fiq_disabled |= info.disable_fiq;
         new_psr.irq_disabled = true;
         new_psr.mode = info.new_mode;
+        new_psr.endian = r_sctlr.ee; 
 
         cpsr_update(new_psr);
 
@@ -311,6 +312,7 @@ void ArmIss::reset()
 	DataRequest dreq = ISS_DREQ_INITIALIZER;
 	m_dreq = dreq;
 	r_bus_mode = Iss2::MODE_KERNEL;
+    r_sctlr.whole = 0;
 }
 
 static const char * const cond_code[16] = {

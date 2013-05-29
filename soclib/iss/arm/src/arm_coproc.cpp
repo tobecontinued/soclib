@@ -49,6 +49,9 @@ bool ArmIss::coproc_put(
         return false;
 
     switch (REG_ID(crn, opcode1, crm, opcode2)) {
+    case REG_ID(1, 0, 0, 0):
+        r_sctlr.whole = val;
+        return true;
     case REG_ID(7, 0, 0, 4):
 #if defined(SOCLIB_MODULE_DEBUG)
     std::cout << name() << " sleeping" << std::endl;
@@ -94,6 +97,9 @@ bool ArmIss::coproc_get(
     switch (REG_ID(crn, opcode1, crm, opcode2)) {
     case REG_ID(0, 0, 0, 0):
         val = 0x9d170000;
+    return true;
+    case REG_ID(1, 0, 0, 0):
+        val = r_sctlr.whole;
     return true;
     case REG_ID(0, 0, 0, 1):
 		val = m_cache_info.whole;

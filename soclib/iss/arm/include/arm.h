@@ -129,6 +129,34 @@ private:
         uint32_t icache_len:2,
         ) m_cache_info;
 
+    REG32_BITFIELD(
+                   uint32_t ie:1,
+                   uint32_t te:1,
+                   uint32_t afe:1,
+                   uint32_t tre:1,
+                   uint32_t nmfi:1,
+                   uint32_t sbz:1,
+                   uint32_t ee:1,
+                   uint32_t ve:1,
+                   uint32_t sbo:2,
+                   uint32_t fi:1,
+                   uint32_t sbz2:1,
+                   uint32_t dz:1,
+                   uint32_t sbo2:1,
+                   uint32_t br:1,
+                   uint32_t sbo3:1,
+                   uint32_t sbz4:1,
+                   uint32_t rr:1,
+                   uint32_t v:1,
+                   uint32_t i:1,
+                   uint32_t z:1,
+                   uint32_t sbz5:4,
+                   uint32_t sbo4:4,
+                   uint32_t c:1,
+                   uint32_t a:1,
+                   uint32_t m:1,
+        ) r_sctlr;
+
 	typedef void (ArmIss::*func_t)();
 
     typedef int8_t (*decod_func_t)(data_t);
