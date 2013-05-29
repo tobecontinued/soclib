@@ -828,9 +828,9 @@ tmpl(void)::print_trace()
         "  CHANNEL_READ_WAIT_SECOND",
         "  CHANNEL_WRITE_START",
         "  CHANNEL_WRITE_REQ_FIRST",
-        "  CHANNEL_WRITE_WAIT_FIRST"
+        "  CHANNEL_WRITE_WAIT_FIRST",
         "  CHANNEL_WRITE_REQ_SECOND",
-        "  CHANNEL_WRITE_WAIT_SECOND",
+        "  CHANNEL_WRITE_WAIT_SECOND"
     };
 
     std::cout << "MULTI_DMA " << name() << " : " << tgt_state_str[r_tgt_fsm.read()] << std::endl;
