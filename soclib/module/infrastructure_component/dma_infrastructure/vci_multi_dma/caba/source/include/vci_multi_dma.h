@@ -73,6 +73,7 @@ private:
 
     sc_signal<int>				            r_cmd_fsm;
     sc_signal<size_t>				        r_cmd_count;	         // bytes counter for a command
+    sc_signal<size_t>				        r_cmd_curr;	             // current byte in a write burst
     sc_signal<size_t>				        r_cmd_index;	         // channel index for a command
     sc_signal<size_t>				        r_cmd_nbytes;            // VCI packet length
 

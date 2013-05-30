@@ -73,8 +73,9 @@
 //  - the cmd_fsm controls the read and write data transfer commands 
 //    on the VCI initiator port.
 //    It uses four registers : r_cmd fsm (state), r_cmd_count
-//    (counter of bytes in a burst), r_cmd_index (selected channel)
-//    and r_cmd_nbytes (VCI PLEN).
+//    (counter of bytes in a write burst), r_cmd_index (selected channel),
+//    r_cmd_nbytes (VCI PLEN) and r_cmd_curr (current byte in the internal
+//    buffer during write burst).
 //  - the rsp_fsm controls the read and write data transfer responses 
 //    on the VCI initiator port.
 //    It uses four registers : r_rsp fsm (state), r_rsp_count
@@ -117,10 +118,10 @@ tmpl(void)::transition()
         r_rsp_index  = 0;
         for ( size_t k = 0 ; k < m_channels ; k++ )
         {
-            r_channel_fsm[k] 	= CHANNEL_IDLE;
-            r_channel_activate[k]	    = false;
-            r_channel_done[k] 		    = false;
-            r_channel_error[k] 		    = false;
+            r_channel_fsm[k]      = CHANNEL_IDLE;
+            r_channel_activate[k] = false;
+            r_channel_done[k] 	  = false;
+            r_channel_error[k] 	  = false;
         }
         return;
     }
@@ -144,9 +145,9 @@ tmpl(void)::transition()
                 typename vci_param::cmd_t	    cmd     = p_vci_target.cmd.read();
                 uint32_t	                    wdata   = p_vci_target.wdata.read();
                
-                r_srcid					= p_vci_target.srcid.read();
-                r_trdid					= p_vci_target.trdid.read();
-                r_pktid					= p_vci_target.pktid.read();
+                r_srcid = p_vci_target.srcid.read();
+                r_trdid = p_vci_target.trdid.read();
+                r_pktid = p_vci_target.pktid.read();
                 
                 int 	cell    = (int)((address & 0x1C) >> 2);
                 size_t	channel = (size_t)((address & 0x7000) >> 12);
@@ -305,23 +306,20 @@ tmpl(void)::transition()
                 size_t second = r_channel_src_offset[k].read();
                 size_t length = r_channel_length[k].read();
 
-                if ( length > (first + second) ) 
+                if ( length > m_burst_max_length ) 
                 {
-                    r_channel_nbytes_first[k] = first;
+                    r_channel_nbytes_first[k]  = first;
                     r_channel_nbytes_second[k] = second;
-                    r_channel_last[k]   = false;
                 }
                 else if ( length > first  )
                 {
-                    r_channel_nbytes_first[k] = first;
+                    r_channel_nbytes_first[k]  = first;
                     r_channel_nbytes_second[k] = length - first;
-                    r_channel_last[k]   = true;
                 }
                 else   // length <= first
                 {
-                    r_channel_nbytes_first[k] = length;
+                    r_channel_nbytes_first[k]  = length;
                     r_channel_nbytes_second[k] = 0;
-                    r_channel_last[k]   = true;
                 }
                 r_channel_fsm[k] = CHANNEL_READ_REQ_FIRST;
                 break;
@@ -393,23 +391,23 @@ tmpl(void)::transition()
                 size_t second = r_channel_dst_offset[k].read();
                 size_t length = r_channel_length[k].read();
 
-                if ( length > (first + second) ) 
+                if ( length > m_burst_max_length ) 
                 {
-                    r_channel_nbytes_first[k] = first;
+                    r_channel_nbytes_first[k]  = first;
                     r_channel_nbytes_second[k] = second;
-                    r_channel_last[k]   = false;
+                    r_channel_last[k]          = false;
                 }
                 else if ( length > first  )
                 {
-                    r_channel_nbytes_first[k] = first;
+                    r_channel_nbytes_first[k]  = first;
                     r_channel_nbytes_second[k] = length - first;
-                    r_channel_last[k]   = true;
+                    r_channel_last[k]          = true;
                 }
                 else   // length <= first
                 {
-                    r_channel_nbytes_first[k] = length;
+                    r_channel_nbytes_first[k]  = length;
                     r_channel_nbytes_second[k] = 0;
-                    r_channel_last[k]   = true;
+                    r_channel_last[k]          = true;
                 }
                 r_channel_fsm[k] = CHANNEL_WRITE_REQ_FIRST;
                 break;
@@ -516,33 +514,36 @@ tmpl(void)::transition()
                 if ( r_channel_fsm[k] == CHANNEL_READ_REQ_FIRST )
                 { 
                     not_found    = false;
+
                     r_cmd_index  = k;
-                    r_cmd_count  = 0;
                     r_cmd_nbytes = r_channel_nbytes_first[k].read();
                     r_cmd_fsm    = CMD_READ;
                 }
                 else if ( r_channel_fsm[k] == CHANNEL_READ_REQ_SECOND )
                 {
                     not_found    = false;
+
                     r_cmd_index  = k;
-                    r_cmd_count  = 0;
                     r_cmd_nbytes = r_channel_nbytes_second[k].read();
                     r_cmd_fsm    = CMD_READ;
                 }
                 else if ( r_channel_fsm[k] == CHANNEL_WRITE_REQ_FIRST )
                 {
                     not_found    = false;
+
                     r_cmd_index  = k;
-                    r_cmd_count  = 0;
                     r_cmd_nbytes = r_channel_nbytes_first[k].read();
+                    r_cmd_count  = 0;
+                    r_cmd_curr   = 0;
                     r_cmd_fsm    = CMD_WRITE;
                 }
                 else if (r_channel_fsm[k] == CHANNEL_WRITE_REQ_SECOND )
                 {
                     not_found    = false;
+                    
                     r_cmd_index  = k;
-                    r_cmd_count  = 0;
                     r_cmd_nbytes = r_channel_nbytes_second[k].read();
+                    r_cmd_count  = 0;
                     r_cmd_fsm    = CMD_WRITE;
                 }
             }
@@ -571,6 +572,7 @@ tmpl(void)::transition()
                     r_cmd_fsm = CMD_IDLE;
                 }
                 r_cmd_count = r_cmd_count.read() + 4;
+                r_cmd_curr  = r_cmd_curr.read() + 1;
             }
             break;
         }
@@ -595,27 +597,24 @@ tmpl(void)::transition()
                 {
                     r_rsp_count  = 0;
                     r_rsp_index  = k;
-                    r_rsp_nbytes = r_channel_nbytes_first[k].read();
                     r_rsp_fsm    = RSP_READ;
                 }
                 else if ( r_channel_fsm[k].read() == CHANNEL_READ_WAIT_SECOND ) 
                 {
                     r_rsp_index  = k;
-                    r_rsp_nbytes = r_channel_nbytes_second[k].read();
                     r_rsp_fsm    = RSP_READ;
                 }
                 else if ( r_channel_fsm[k].read() == CHANNEL_WRITE_WAIT_FIRST ) 
                 {
-                    r_rsp_count  = 0;
                     r_rsp_index  = k;
                     r_rsp_nbytes = r_channel_nbytes_first[k].read();
-                    r_rsp_fsm   = RSP_WRITE;
+                    r_rsp_fsm    = RSP_WRITE;
                 }
                 else if ( r_channel_fsm[k].read() == CHANNEL_WRITE_WAIT_SECOND )
                 {
                     r_rsp_index  = k;
                     r_rsp_nbytes = r_channel_nbytes_second[k].read();
-                    r_rsp_fsm   = RSP_WRITE;
+                    r_rsp_fsm    = RSP_WRITE;
                 }
                 else
                 {
@@ -693,7 +692,8 @@ tmpl(void)::genMoore()
         }
         case CMD_READ:
         {
-            size_t k    = r_cmd_index.read();
+            size_t k = r_cmd_index.read();
+
             p_vci_initiator.cmdval  = true;
             p_vci_initiator.address = r_channel_src_addr[k].read(); 
             p_vci_initiator.wdata   = 0;
@@ -713,8 +713,9 @@ tmpl(void)::genMoore()
         }
         case CMD_WRITE:
         {
-            size_t k    = r_cmd_index.read();
-            size_t n    = r_cmd_count.read() / 4;
+            size_t k = r_cmd_index.read();
+            size_t n = r_cmd_curr.read();
+
             p_vci_initiator.cmdval  = true;
             p_vci_initiator.address = r_channel_dst_addr[k].read() + r_cmd_count.read();
             p_vci_initiator.wdata   = r_channel_buf[k][n].read();
