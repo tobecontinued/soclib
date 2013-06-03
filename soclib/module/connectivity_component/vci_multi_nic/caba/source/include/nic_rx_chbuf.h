@@ -253,6 +253,15 @@ public:
         return r_cont[r_ptr_cont][r_ptr_word];
     }
 
+    //////////////////////////////////////////////////////////////////////////
+    // This method is analogous to the above, but returns 64 bit word 
+    //////////////////////////////////////////////////////////////////////////
+    uint64_t data64()
+    { 
+        return  ((uint64_t)r_cont[r_ptr_cont][r_ptr_word+1]<<32)|
+                ((uint64_t)r_cont[r_ptr_cont][r_ptr_word]);
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // This method returns the number of free bytes in the container
     // currently written. It does not modify the chbuf state.
