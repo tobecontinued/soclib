@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <systemc>
 #include "vci_target.h"
+#include "vci_initiator.h"
 #include "caba_base_module.h"
 #include "mapping_table.h"
 

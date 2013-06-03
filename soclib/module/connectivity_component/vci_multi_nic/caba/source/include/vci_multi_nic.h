@@ -93,6 +93,7 @@ class VciMultiNic
     sc_signal<typename vci_param::trdid_t>	r_vci_trdid;   // for rtrdid
     sc_signal<typename vci_param::pktid_t>	r_vci_pktid;   // for rpktid
     sc_signal<typename vci_param::data_t>	r_vci_wdata;   // for write burst
+    sc_signal<typename vci_param::be_t>	    r_vci_be;      // for write burst in 64 bits data
     sc_signal<size_t>           r_vci_nwords;              // word counter 
     sc_signal<uint32_t>         r_vci_address;             // used for bursts
 

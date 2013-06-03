@@ -355,8 +355,8 @@ tmpl(void)::transition()
         {
             r_channel_rx_run[k]         = false;
             r_channel_tx_run[k]         = false;
-            r_channel_mac_4[k]          = DEFAULT_MAC_4;
-            r_channel_mac_2[k]          = DEFAULT_MAC_2 + k;
+            r_channel_mac_4[k]          = DEFAULT_MAC_4 + k;
+            r_channel_mac_2[k]          = DEFAULT_MAC_2;
         }
         
         r_vci_fsm                       = VCI_IDLE;
@@ -422,6 +422,7 @@ tmpl(void)::transition()
     // rx_chbuf and tx_chbuf commands
     tx_chbuf_wcmd_t tx_chbuf_wcmd[m_channels];
     uint32_t        tx_chbuf_wdata   = 0;
+    uint32_t        tx_chbuf_wdata2  = 0;   //used when data field has 64 bits
     uint32_t        tx_chbuf_cont    = 0;
     uint32_t        tx_chbuf_word    = 0;
     tx_chbuf_rcmd_t tx_chbuf_rcmd[m_channels];
@@ -493,6 +494,11 @@ tmpl(void)::transition()
                 assert ( (m_segment.contains(address)) and
                 "ERROR in VCI_MULTI_NIC : ADDRESS is out of segment");
 
+                assert( (vci_param::B == 8 and (p_vci.be.read()==0x0F or p_vci.be.read()==0xFF)
+                         and "ERROR in VCI_MULTI_NIC : BE must be either 0x0F or 0xFF") or
+                        (vci_param::B == 4 and p_vci.be.read()==0xF
+                         and "ERROR in VCI_MULTI_NIC : BE must be 0xF") );
+                
                 uint32_t channel = (uint32_t)((address & 0x00038000) >> 15);
                 bool     hyper   =            (address & 0x00040000);
                 bool     write   =            (address & 0x00002000);
@@ -506,6 +512,7 @@ tmpl(void)::transition()
                 r_vci_pktid	   = p_vci.pktid.read();
                 r_vci_wdata    = p_vci.wdata.read();
                 r_vci_nwords   = (uint32_t)plen >> 2;
+                if(vci_param::B == 8) r_vci_be = p_vci.be.read(); 
 
                 // checking channel index
                 if (not hyper)
@@ -518,8 +525,11 @@ tmpl(void)::transition()
                 if (hyper and (cmd==vci_param::CMD_WRITE))
                 {
                     assert( p_vci.eop.read() and
-                    "ERROR in VCI_MULTI_NIC : RX_REG read access must be one flit");
-
+                    "ERROR in VCI_MULTI_NIC : WRITE_REG write access must be one flit");
+                    
+                    assert( ((vci_param::B == 8 and p_vci.be.read()==0x0F) or vci_param::B == 4)
+                    and "ERROR in VCI_MULTI_NIC : WRITE_REG write access must be 32 bits only");
+                    
                     r_vci_fsm = VCI_WRITE_HYPER_REG;
                 }
 
@@ -528,6 +538,9 @@ tmpl(void)::transition()
                 {
                     assert( p_vci.eop.read() and
                     "ERROR in VCI_MULTI_NIC : RX_REG read access must be one flit");
+                    
+                    assert( ((vci_param::B == 8 and p_vci.be.read()==0x0F) or vci_param::B == 4)
+                    and "ERROR in VCI_MULTI_NIC : RX_REG read access must be 32 bits only");
 
                     r_vci_fsm = VCI_READ_HYPER_REG;
                 }
@@ -539,6 +552,7 @@ tmpl(void)::transition()
                     assert( not r_tx_chbuf[channel].full(cont) and
                     "ERROR in VCI_MULTI_NIC : TX_BURST write access in full container");
 
+                    if(vci_param::B == 8) r_vci_be = p_vci.be.read(); 
                     if ( p_vci.eop.read() ) r_vci_fsm = VCI_WRITE_TX_LAST;
                     else                    r_vci_fsm = VCI_WRITE_TX_BURST;
                 }
@@ -552,6 +566,7 @@ tmpl(void)::transition()
                     rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_READ;
                     rx_chbuf_cont          = cont;
                     rx_chbuf_word          = word;
+                    if(vci_param::B == 8) r_vci_be = p_vci.be.read(); 
                     r_vci_fsm              = VCI_READ_RX_BURST;
                 }
                 // channel register read 
@@ -559,6 +574,9 @@ tmpl(void)::transition()
                 {
                     assert( p_vci.eop.read() and
                     "ERROR in VCI_MULTI_NIC : RX_REG read access must be one flit");
+                    
+                    assert( ((vci_param::B == 8 and p_vci.be.read()==0x0F) or vci_param::B == 4)
+                    and "ERROR in VCI_MULTI_NIC : RX_REG read access must be 32 bits only");
 
                     r_vci_fsm = VCI_READ_CHANNEL_REG;
                 }
@@ -567,6 +585,9 @@ tmpl(void)::transition()
                 {
                     assert ( p_vci.eop.read() and
                     "ERROR in VCI_MULTI_NIC : WRITE_REG write access must be one flit");
+                    
+                    assert( ((vci_param::B == 8 and p_vci.be.read()==0x0F) or vci_param::B == 4)
+                    and "ERROR in VCI_MULTI_NIC : WRITE_REG write access must be 32 bits only");
 
                     r_vci_fsm = VCI_WRITE_CHANNEL_REG;
                 }
@@ -588,7 +609,15 @@ tmpl(void)::transition()
                 uint32_t address       = r_vci_address.read();
                 uint32_t channel       = (address & 0x00038000) >> 15;
                 tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_WRITE;
-                tx_chbuf_wdata         = r_vci_wdata.read();
+                if ( vci_param::B == 4 )
+                {
+                    tx_chbuf_wdata  = r_vci_wdata.read();
+                }
+                else
+                {
+                    tx_chbuf_wdata  = (uint32_t)(r_vci_wdata.read() & 0x00000000FFFFFFFF);
+                    tx_chbuf_wdata2 = (uint32_t)((r_vci_wdata.read()>>32) & 0x00000000FFFFFFFF);
+                }
                 tx_chbuf_cont          = (address & 0x00001000) >> 12;
                 tx_chbuf_word          = (address & 0x00000FFF) >> 2;
 
@@ -596,10 +625,11 @@ tmpl(void)::transition()
                 address       = p_vci.address.read();
                 r_vci_address = address;
                 r_vci_wdata   = p_vci.wdata.read();
+                if(vci_param::B == 8) r_vci_be = p_vci.be.read(); 
 
-                assert( (address == r_vci_address.read()+4) and
-                "ERROR in VCI_MULTI_NIC : address must be contiguous in VCI_WRITE_TX_BURST");
-  
+                //assert( (address == r_vci_address.read()+vci_param::B) and
+                //"ERROR in VCI_MULTI_NIC : address must be contiguous in VCI_WRITE_TX_BURST");
+
                 if ( p_vci.eop.read() ) r_vci_fsm = VCI_WRITE_TX_LAST;
             }
             break;
@@ -613,7 +643,15 @@ tmpl(void)::transition()
                 uint32_t address       = r_vci_address.read();
                 uint32_t channel       = (address & 0x00038000) >> 15;
                 tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_WRITE;
-                tx_chbuf_wdata         = r_vci_wdata.read();
+                if ( vci_param::B == 4 )
+                {
+                    tx_chbuf_wdata     = r_vci_wdata.read();
+                }
+                else
+                {
+                    tx_chbuf_wdata     = (uint32_t)(r_vci_wdata.read() & 0x00000000FFFFFFFF);
+                    tx_chbuf_wdata2    = (uint32_t)((r_vci_wdata.read()>>32) & 0x00000000FFFFFFFF);
+                }
                 tx_chbuf_cont          = (address & 0x00001000) >> 12;
                 tx_chbuf_word          = (address & 0x00000FFF) >> 2;
                 r_vci_fsm              = VCI_IDLE;
@@ -627,7 +665,20 @@ tmpl(void)::transition()
         {
             if ( p_vci.rspack.read() )
             {
-                if ( r_vci_nwords.read() > 1 )
+                if ( vci_param::B == 8  and (r_vci_be.read() == 0xFF) 
+                    and r_vci_nwords.read() > 2 )   // sends 64 data bits on each flit
+                {
+                    // read command for data[i+1]
+                    uint32_t address       = r_vci_address.read() + 8;
+                    uint32_t channel       = (address & 0x00038000) >> 15;
+                    rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_READ;
+                    rx_chbuf_cont          = (size_t)((address & 0x00001000) >> 12); 
+                    rx_chbuf_word          = (size_t)((address & 0x00000FFF) >> 2); 
+                    r_vci_address          = address;
+                    r_vci_nwords           = r_vci_nwords.read() - 2;
+                }
+                else if ( (vci_param::B == 4 or (vci_param::B == 8 and (r_vci_be.read() == 0x0F))) 
+                         and r_vci_nwords.read() > 1 )  // sends 32 data bits on each flit
                 {
                     // read command for data[i+1]
                     uint32_t address       = r_vci_address.read() + 4;
@@ -641,7 +692,7 @@ tmpl(void)::transition()
                 else
                 {
                     r_vci_fsm = VCI_IDLE;
-                }
+                } 
             }
             break;
         }
@@ -652,97 +703,102 @@ tmpl(void)::transition()
             {
                 uint32_t address = r_vci_address.read();
                 uint32_t word    = (address & 0x00000FFF) >> 2;
+                uint32_t wdata;
+                if ( vci_param::B == 4 )
+                    wdata = r_vci_wdata.read();
+                else
+                    wdata = (uint32_t)(r_vci_wdata.read() & 0x00000000FFFFFFFF);
 
                 if ( (word < (NIC_G_MAC_4 + 8) ) and (word >= NIC_G_MAC_4 ) )
                 {
                     uint32_t channel = word - NIC_G_MAC_4;
-                    r_channel_mac_4[channel] = r_vci_wdata.read();
+                    r_channel_mac_4[channel] = wdata;
                 }
 
                 else if ( (word < (NIC_G_MAC_2 + 8) ) and (word >= NIC_G_MAC_2 ) )
                 {
                     uint32_t channel = word - NIC_G_MAC_2;
-                    r_channel_mac_2[channel] = r_vci_wdata.read();
+                    r_channel_mac_2[channel] = wdata;
                 }
                 else
                 {
                     switch(word)
                     {
                         case NIC_G_TDM_ENABLE :
-                            r_global_tdm_enable = r_vci_wdata.read();
+                            r_global_tdm_enable = wdata;
                             break;
                         case NIC_G_TDM_PERIOD :
-                            r_global_tdm_period = r_vci_wdata.read();
+                            r_global_tdm_period = wdata;
                             break;
                         case NIC_G_BC_ENABLE :
-                            r_global_bc_enable = r_vci_wdata.read();
+                            r_global_bc_enable = wdata;
                             break;
                         case NIC_G_ON :
-                            r_global_nic_on = r_vci_wdata.read();
+                            r_global_nic_on = wdata;
                             break;
                         case NIC_G_VIS :
-                            r_global_active_channels = r_vci_wdata.read();
+                            r_global_active_channels = wdata;
                             break;
                         case NIC_G_BYPASS_ENABLE :
-                            r_global_bypass_enable = r_vci_wdata.read();
+                            r_global_bypass_enable = wdata;
                             break;
 
                         case NIC_G_NPKT_RX_G2S_RECEIVED :
-                            r_rx_g2s_npkt_received = r_vci_wdata.read();
+                            r_rx_g2s_npkt_received = wdata;
                             break;
                         case NIC_G_NPKT_RX_G2S_DISCARDED :
-                            r_rx_g2s_npkt_discarded = r_vci_wdata.read();
+                            r_rx_g2s_npkt_discarded = wdata;
                             break;
 
                         case NIC_G_NPKT_RX_DES_SUCCESS :
-                            r_rx_des_npkt_success = r_vci_wdata.read();
+                            r_rx_des_npkt_success = wdata;
                             break;
                         case NIC_G_NPKT_RX_DES_TOO_SMALL : 
-                            r_rx_des_npkt_too_small = r_vci_wdata.read();
+                            r_rx_des_npkt_too_small = wdata;
                             break;
                         case NIC_G_NPKT_RX_DES_TOO_BIG :
-                            r_rx_des_npkt_too_big = r_vci_wdata.read();
+                            r_rx_des_npkt_too_big = wdata;
                             break;
                         case NIC_G_NPKT_RX_DES_MFIFO_FULL :
-                            r_rx_des_npkt_mfifo_full = r_vci_wdata.read();
+                            r_rx_des_npkt_mfifo_full = wdata;
                             break;
                         case NIC_G_NPKT_RX_DES_CS_FAIL :
-                            r_rx_des_npkt_cs_fail = r_vci_wdata.read();
+                            r_rx_des_npkt_cs_fail = wdata;
                             break;
 
                         case NIC_G_NPKT_RX_DISPATCH_RECEIVED :
-                            r_rx_dispatch_npkt_received = r_vci_wdata.read();
+                            r_rx_dispatch_npkt_received = wdata;
                             break;
                         case NIC_G_NPKT_RX_DISPATCH_BROADCAST :
-                            r_rx_dispatch_npkt_broadcast = r_vci_wdata.read();
+                            r_rx_dispatch_npkt_broadcast = wdata;
                             break;
                         case NIC_G_NPKT_RX_DISPATCH_DST_FAIL :
-                            r_rx_dispatch_npkt_dst_fail = r_vci_wdata.read();
+                            r_rx_dispatch_npkt_dst_fail = wdata;
                             break;
                         case NIC_G_NPKT_RX_DISPATCH_CH_FULL :
-                            r_rx_dispatch_npkt_channel_full = r_vci_wdata.read();
+                            r_rx_dispatch_npkt_channel_full = wdata;
                             break;
 
                         case NIC_G_NPKT_TX_DISPATCH_RECEIVED :
-                            r_tx_dispatch_npkt_received = r_vci_wdata.read();
+                            r_tx_dispatch_npkt_received = wdata;
                             break;
                         case NIC_G_NPKT_TX_DISPATCH_TOO_SMALL :
-                            r_tx_dispatch_npkt_too_small = r_vci_wdata.read();
+                            r_tx_dispatch_npkt_too_small = wdata;
                             break;
                         case NIC_G_NPKT_TX_DISPATCH_TOO_BIG :
-                            r_tx_dispatch_npkt_too_big = r_vci_wdata.read();
+                            r_tx_dispatch_npkt_too_big = wdata;
                             break;
                         case NIC_G_NPKT_TX_DISPATCH_SRC_FAIL :
-                            r_tx_dispatch_npkt_src_fail = r_vci_wdata.read();
+                            r_tx_dispatch_npkt_src_fail = wdata;
                             break;
                         case NIC_G_NPKT_TX_DISPATCH_BROADCAST :
-                            r_tx_dispatch_npkt_broadcast = r_vci_wdata.read();
+                            r_tx_dispatch_npkt_broadcast = wdata;
                             break;
                         case NIC_G_NPKT_TX_DISPATCH_BYPASS :
-                            r_tx_dispatch_npkt_bypass = r_vci_wdata.read();
+                            r_tx_dispatch_npkt_bypass = wdata;
                             break;
                         case NIC_G_NPKT_TX_DISPATCH_TRANSMIT :
-                            r_tx_dispatch_npkt_transmit = r_vci_wdata.read();
+                            r_tx_dispatch_npkt_transmit = wdata;
                             break;
 
                         default:
@@ -762,6 +818,11 @@ tmpl(void)::transition()
                 uint32_t address = r_vci_address.read();
                 uint32_t word    = (address & 0x00000FFF) >> 2;
                 uint32_t channel = (address & 0x00038000) >> 15;
+                uint32_t wdata;
+                if ( vci_param::B == 4 )
+                    wdata = r_vci_wdata.read();
+                else
+                    wdata = (uint32_t)(r_vci_wdata.read() & 0x00000000FFFFFFFF);
 
                 switch(word)
                 {
@@ -782,29 +843,29 @@ tmpl(void)::transition()
                         tx_chbuf_cont          = 1;
                         break;
                     case NIC_RX_PBUF_0:    // set base address of RX[channel][0]
-                        r_channel_rx_bufaddr_0[channel] = r_vci_wdata.read();   
+                        r_channel_rx_bufaddr_0[channel] = wdata;   
                         break;
                     case NIC_RX_PBUF_1:    // set base address of RX[channel][1]
-                        r_channel_rx_bufaddr_1[channel] = r_vci_wdata.read();   
+                        r_channel_rx_bufaddr_1[channel] = wdata;   
                         break;
                     case NIC_TX_PBUF_0:    // set base address of TX[channel][0]
-                        r_channel_tx_bufaddr_0[channel] = r_vci_wdata.read();   
+                        r_channel_tx_bufaddr_0[channel] = wdata;   
                         break;
                     case NIC_TX_PBUF_1:    // set base address of TX[channel][1]
-                        r_channel_tx_bufaddr_1[channel] = r_vci_wdata.read();   
+                        r_channel_tx_bufaddr_1[channel] = wdata;   
                         break;
                     case NIC_RX_RUN:       // activate/desactivate RX[channel]
-                        r_channel_rx_run[channel] = r_vci_wdata.read();
+                        r_channel_rx_run[channel] = wdata;
                         break;
                     case NIC_TX_RUN:       // activate/desactivate TX[channel]
-                        r_channel_tx_run[channel] = r_vci_wdata.read();
+                        r_channel_tx_run[channel] = wdata;
                         break;
                     default:
                         assert( false and 
                         "ERROR in VCI_MULTI_NIC : illegal channel register in VCI read");
                 }
+                r_vci_fsm = VCI_IDLE;
             }
-            r_vci_fsm = VCI_IDLE;
             break;
         }
         ////////////////////////
@@ -896,12 +957,11 @@ tmpl(void)::transition()
             if ( gmii_rx_dv and not gmii_rx_er ) // data valid / no error
             {
                 //compute CRC
-                uint32_t checksum_tmp;      //stores the checksum partial result
-                checksum_tmp      = (r_rx_g2s_checksum.read() >> 4) 
+                r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
                                     ^ crc_table[(r_rx_g2s_checksum.read() 
                                     ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
-                r_rx_g2s_checksum = (checksum_tmp >> 4) 
-                                    ^ crc_table[(checksum_tmp 
+                r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
+                                    ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
                                     ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
                 r_rx_g2s_fsm      = RX_G2S_SOS;
             }
@@ -921,12 +981,11 @@ tmpl(void)::transition()
                 rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_SOS << 8);
 
                 //compute CRC
-                uint32_t checksum_tmp;      //stores the checksum partial result
-                checksum_tmp      = (r_rx_g2s_checksum.read() >> 4) 
+                r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
                                     ^ crc_table[(r_rx_g2s_checksum.read() 
                                     ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
-                r_rx_g2s_checksum = (checksum_tmp >> 4) 
-                                    ^ crc_table[(checksum_tmp 
+                r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
+                                    ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
                                     ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
                 r_rx_g2s_fsm      = RX_G2S_LOOP;
 
@@ -948,12 +1007,11 @@ r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
             rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_NEV << 8);
 
             //compute CRC
-            uint32_t checksum_tmp;      //stores the checksum partial result
-            checksum_tmp      = (r_rx_g2s_checksum.read() >> 4) 
+            r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
                                 ^ crc_table[(r_rx_g2s_checksum.read() 
                                 ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
-            r_rx_g2s_checksum = (checksum_tmp >> 4) 
-                                ^ crc_table[(checksum_tmp 
+            r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
+                                ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
                                 ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
 #ifdef SOCLIB_PERF_NIC
 r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
@@ -1165,16 +1223,14 @@ if ( r_rx_g2s_checksum.read() != check )
 		    // Read new byte
             uint16_t data = r_rx_fifo_stream.read();
             uint32_t type = (data >> 8) & 0x3;
-            uint32_t counter_bytes;
 
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
 		    {
 		        r_rx_des_data[0]	   = (uint8_t)(data & 0xFF);
-		        counter_bytes = r_rx_des_counter_bytes.read() + 1;		
-		        r_rx_des_counter_bytes = counter_bytes;		
+                r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;
 		        r_rx_des_padding	   = 3;
 
-    		    if ( counter_bytes > (1518-4) )
+    		    if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
 	    	    {
                     r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
 				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1190,7 +1246,7 @@ if ( r_rx_g2s_checksum.read() != check )
                         r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
 				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
                     }
-                    else if ( counter_bytes < (64-4) )
+                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
                     {
                         r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
                         r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1214,16 +1270,14 @@ if ( r_rx_g2s_checksum.read() != check )
     	{
             uint16_t data = r_rx_fifo_stream.read();
 		    uint32_t type = (data >> 8) & 0x3;
-            uint32_t counter_bytes;	
-	
+		
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
             {
 		        r_rx_des_data[1]	= (uint8_t)(data & 0xFF);
-		        counter_bytes = r_rx_des_counter_bytes.read() + 1;		
-		        r_rx_des_counter_bytes = counter_bytes;		
+		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
 		        r_rx_des_padding	= 2;
 		        
-                if ( counter_bytes > (1518-4) )
+                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
 		        {
                     r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
 				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1239,7 +1293,7 @@ if ( r_rx_g2s_checksum.read() != check )
                         r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
 				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
                     }
-                    else if ( counter_bytes < (64-4) )
+                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
                     {
                         r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
                         r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1263,16 +1317,14 @@ if ( r_rx_g2s_checksum.read() != check )
     	{
 	    	uint16_t data = r_rx_fifo_stream.read();
 		    uint32_t type = (data >> 8) & 0x3;
-            uint32_t counter_bytes;
 		    		
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
             {
 		        r_rx_des_data[2]	   = (uint8_t)(data & 0xFF);
-		        counter_bytes = r_rx_des_counter_bytes.read() + 1;		
-		        r_rx_des_counter_bytes = counter_bytes;		
+		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
 		        r_rx_des_padding	   = 1;
 		        
-                if ( counter_bytes > (1518-4) )
+                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
 		        {
                     r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
 				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1288,7 +1340,7 @@ if ( r_rx_g2s_checksum.read() != check )
                         r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
 				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
                     }
-                    else if ( counter_bytes < (64-4) )
+                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
                     {
                         r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
                         r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1312,16 +1364,14 @@ if ( r_rx_g2s_checksum.read() != check )
     	{
             uint16_t data = r_rx_fifo_stream.read();
 		    uint32_t type = (data >> 8) & 0x3;
-            uint32_t counter_bytes;
 
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
             {
 		        r_rx_des_data[3]	= (uint8_t)(data & 0xFF);
-		        counter_bytes = r_rx_des_counter_bytes.read() + 1;		
-		        r_rx_des_counter_bytes = counter_bytes;		
+		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
 		        r_rx_des_padding	= 0;
 		        
-                if ( counter_bytes > (1518-4) )
+                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
 		        {
                     r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
 				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1337,7 +1387,7 @@ if ( r_rx_g2s_checksum.read() != check )
                         r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
 				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
                     }
-                    else if ( counter_bytes < (64-4) )
+                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
                     {
                         r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
                         r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1737,6 +1787,7 @@ if ( r_rx_g2s_checksum.read() != check )
             if ( (plen & 0x3) == 0 ) r_tx_dispatch_words = plen >> 2;
             else                     r_tx_dispatch_words = (plen >> 2) + 1;
 
+            r_tx_dispatch_npkt_received = r_tx_dispatch_npkt_received.read()+1;
             if (plen < 60 ) // pkt too small
             {
                 r_tx_dispatch_fsm            = TX_DISPATCH_SKIP_PKT;
@@ -2182,12 +2233,11 @@ if ( r_rx_g2s_checksum.read() != check )
                 r_tx_s2g_data       = data & 0xFF;
 
                 //compute CRC
-                uint32_t checksum_tmp;      //stores the checksum partial result
-                checksum_tmp      = (r_tx_s2g_checksum.read() >> 4) ^ 
+                r_tx_s2g_checksum = (r_tx_s2g_checksum.read() >> 4) ^ 
                                     crc_table[(r_tx_s2g_checksum.read() ^ 
                                     (r_tx_s2g_data.read() >> 0)) & 0x0F];
-                r_tx_s2g_checksum = (checksum_tmp >> 4) ^ 
-                                    crc_table[(checksum_tmp ^ 
+                r_tx_s2g_checksum = (r_tx_s2g_checksum.get_new_value() >> 4) ^ 
+                                    crc_table[(r_tx_s2g_checksum.get_new_value() ^ 
                                     (r_tx_s2g_data.read() >> 4)) & 0x0F];
 #ifdef SOCLIB_PERF_NIC
             r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1;
@@ -2211,12 +2261,11 @@ if ( r_rx_g2s_checksum.read() != check )
             r_gmii_tx.put( true, r_tx_s2g_data.read() );
 
             // compute CRC
-            uint32_t checksum_tmp;      //stores the checksum partial result
-            checksum_tmp      = (r_tx_s2g_checksum.read() >> 4) ^ 
+            r_tx_s2g_checksum = (r_tx_s2g_checksum.read() >> 4) ^ 
                                 crc_table[(r_tx_s2g_checksum.read() ^ 
                                 (r_tx_s2g_data.read() >> 0)) & 0x0F];
-            r_tx_s2g_checksum = (checksum_tmp >> 4) ^ 
-                                crc_table[(checksum_tmp ^ 
+            r_tx_s2g_checksum = (r_tx_s2g_checksum.get_new_value() >> 4) ^ 
+                                crc_table[(r_tx_s2g_checksum.get_new_value() ^ 
                                 (r_tx_s2g_data.read() >> 4)) & 0x0F];
 
 #ifdef SOCLIB_PERF_NIC
@@ -2305,6 +2354,15 @@ if ( r_rx_g2s_checksum.read() != check )
                                tx_chbuf_cont,
                                tx_chbuf_word, 
                                tx_chbuf_rcmd[k] );
+
+        if ( vci_param::B == 8 and r_vci_be.read() & 0xF0)
+        {
+            r_tx_chbuf[k].update( tx_chbuf_wcmd[k],
+                                   tx_chbuf_wdata2,
+                                   tx_chbuf_cont,
+                                   tx_chbuf_word+1, 
+                                   TX_CHBUF_RCMD_NOP );
+        }
     }
 } // end transition
 
@@ -2332,16 +2390,25 @@ tmpl(void)::genMoore()
         case VCI_READ_RX_BURST:
         {
             uint32_t channel = (r_vci_address.read() & 0x00038000) >> 15;
-
+            
             p_vci.cmdack = false;
             p_vci.rspval = true;
-            p_vci.rdata  = r_rx_chbuf[channel].data();
+            if ( vci_param::B == 8 and (r_vci_be.read() == 0xFF) ) 
+                p_vci.rdata  = r_rx_chbuf[channel].data64();
+            else    
+                p_vci.rdata  = (typename vci_param::data_t) r_rx_chbuf[channel].data(); 
             p_vci.rerror = vci_param::ERR_NORMAL;
             p_vci.rsrcid = r_vci_srcid.read();
             p_vci.rtrdid = r_vci_trdid.read();
             p_vci.rpktid = r_vci_pktid.read();
-            if ( r_vci_nwords == 1 ) p_vci.reop = true;
-            else                     p_vci.reop = false;
+            
+            if ( r_vci_nwords <= 1 or
+                (r_vci_nwords == 2 and vci_param::B == 8 and (r_vci_be.read() == 0xFF)) ) 
+                    p_vci.reop = true;
+            else    p_vci.reop = false;
+            
+            ///**/if ( r_vci_nwords <= vci_param::B/4 ) p_vci.reop = true;
+            /**///else                                  p_vci.reop = false;
             break;
         }
         case VCI_WRITE_TX_LAST:
@@ -2364,12 +2431,13 @@ tmpl(void)::genMoore()
         {
             uint32_t rdata;
             if ( r_vci_fsm.read() == VCI_READ_HYPER_REG )
-                rdata  = read_hyper_register((uint32_t)p_vci.address.read());
+                rdata  = read_hyper_register((uint32_t)r_vci_address);
             else
-                rdata  = read_channel_register((uint32_t)p_vci.address.read());
+                rdata  = read_channel_register((uint32_t)r_vci_address);
             p_vci.cmdack = false;
             p_vci.rspval = true;
-            p_vci.rdata   = rdata;
+            p_vci.rdata   = (typename vci_param::data_t)rdata; //if data is 64 bits, rdata will
+                                                        //be completed with zeros on MSB
             p_vci.rerror = vci_param::ERR_NORMAL;
             p_vci.rsrcid = r_vci_srcid.read();
             p_vci.rtrdid = r_vci_trdid.read();
@@ -2645,6 +2713,7 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
           r_vci_trdid("r_vci_trdid"),
           r_vci_pktid("r_vci_pktid"),
           r_vci_wdata("r_vci_wdata"),
+          r_vci_be("r_vci_be"), //only used for 64 bits data
           r_vci_nwords("r_vci_nwords"),
           r_vci_address("r_vci_address"),
 
@@ -2737,8 +2806,8 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
           p_rx_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_rx_irq", channels)),
           p_tx_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_tx_irq", channels))
 {
-    assert( (vci_param::B == 4) and 
-    "VCI_MULTI_NIC error : The VCI DATA field must be 32 bits");
+    assert( ((vci_param::B == 4) or (vci_param::B == 8)) and 
+    "VCI_MULTI_NIC error : The VCI DATA field must be 32 or 64 bits");
 
     assert( (channels <= 8)  and
     "VCI_MULTI_NIC error : The number of channels cannot be larger than 8");

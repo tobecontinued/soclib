@@ -183,7 +183,7 @@ tmpl(void)::transition()
             if (p_vci_target.cmdval.read() )
             {
                 typename vci_param::addr_t	address = p_vci_target.address.read();
-                typename vci_param::data_t	wdata   = p_vci_target.wdata.read();
+                typename vci_param::data_t	wdata   = (uint32_t)p_vci_target.wdata.read();
                 typename vci_param::cmd_t	cmd     = p_vci_target.cmd.read();
                
                 r_tgt_srcid					= p_vci_target.srcid.read();
@@ -197,8 +197,11 @@ tmpl(void)::transition()
                 "VCI_CHBUF_DMA error : The channel index (ADDR[14:12] is too large");
 
                 assert( p_vci_target.eop.read() and
-                "VCI_CHBUF_DMA error : A configuration request mut be one single VCI flit");
+                "VCI_CHBUF_DMA error : A configuration request must be one single VCI flit");
 
+                assert( (vci_param::B == 4 ) or (vci_param::B == 8 and p_vci_target.be.read() == 0x0f)  and
+                "VCI_CHBUF_DMA error : A data in configuration request must be on 32 bits");
+                
                 //////////////////////////////////////////////////////////
 	            if ( (cell == CHBUF_RUN) and (cmd == vci_param::CMD_WRITE) )
                 {
@@ -522,19 +525,16 @@ tmpl(void)::transition()
                 {
                     r_channel_bytes_first[k] = first;
                     r_channel_bytes_second[k] = second;
-                    r_channel_last[k]   = false;
                 }
                 else if ( length > first  )
                 {
                     r_channel_bytes_first[k] = first;
                     r_channel_bytes_second[k] = length - first;
-                    r_channel_last[k]   = true;
                 }
                 else   // length <= first
                 {
                     r_channel_bytes_first[k] = length;
                     r_channel_bytes_second[k] = 0;
-                    r_channel_last[k]   = true;
                 }
                 r_channel_fsm[k] = CHANNEL_READ_REQ_FIRST;
                 break;
@@ -605,7 +605,6 @@ tmpl(void)::transition()
                 uint32_t first  = m_burst_max_length - r_channel_dst_offset[k].read();
                 uint32_t second = r_channel_dst_offset[k].read();
                 uint32_t length = (r_channel_todo_words[k].read() << 2);
-
                 if ( length > (first + second) ) 
                 {
                     r_channel_bytes_first[k] = first;
@@ -626,7 +625,7 @@ tmpl(void)::transition()
                 }
                 r_channel_fsm[k] = CHANNEL_WRITE_REQ_FIRST;
                 break;
-            }
+              }
             /////////////////////////////
             case CHANNEL_WRITE_REQ_FIRST:	// request first VCI WRITE transaction
             {
@@ -914,12 +913,31 @@ tmpl(void)::transition()
         {
             if ( p_vci_initiator.cmdack.read() )
             {
-                if ( r_cmd_count.read() == (r_cmd_bytes.read() - 4) )
-                {
-                    r_cmd_fsm = CMD_IDLE;
+                if(vci_param::B==4){
+                    if ( r_cmd_count.read() == (r_cmd_bytes.read() - 4) )
+                    {
+                        r_cmd_fsm = CMD_IDLE;
+                    }
+                    r_cmd_count = r_cmd_count.read() + 4;
                 }
-                r_cmd_count = r_cmd_count.read() + 4;
-            }
+                else
+                {
+                    if ( r_cmd_count.read() == (r_cmd_bytes.read() - 4) )
+                    {
+                        r_cmd_fsm = CMD_IDLE;
+                        r_cmd_count = r_cmd_count.read() + 4;
+                    }
+                    else
+                    {
+                        if ( r_cmd_count.read() == (r_cmd_bytes.read() - 8))
+                        { 
+                           r_cmd_fsm = CMD_IDLE; 
+                        }
+                        r_cmd_count = r_cmd_count.read() + 8;
+                    }
+                    
+                }
+             }
             break;
         }
     } // end switch cmd_fsm
@@ -982,7 +1000,7 @@ tmpl(void)::transition()
             uint32_t k              = r_rsp_channel.read();
             r_channel_src_full[k]   = (p_vci_initiator.rdata.read() != 0);
             r_channel_vci_rsp[k]    = true;
-            r_channel_vci_error[k]  = (p_vci_initiator.rerror.read()&0x1 != 0);
+            r_channel_vci_error[k]  = ((p_vci_initiator.rerror.read()&0x1) != 0);
             r_rsp_fsm               = RSP_IDLE;
             break;
         }
@@ -990,11 +1008,12 @@ tmpl(void)::transition()
         case RSP_READ_SRC_BUFADDR:
         {
             uint32_t k              = r_rsp_channel.read();
-            uint32_t rdata          = p_vci_initiator.rdata.read();
+            
+            uint32_t rdata          = (uint32_t)p_vci_initiator.rdata.read();
             r_channel_src_addr[k]   = rdata;
             r_channel_src_offset[k] = rdata % m_burst_max_length;
             r_channel_vci_rsp[k]    = true;
-            r_channel_vci_error[k]  = (p_vci_initiator.rerror.read()&0x1 != 0);
+            r_channel_vci_error[k]  = ((p_vci_initiator.rerror.read()&0x1) != 0);
             r_rsp_fsm               = RSP_IDLE;
             break;
         }
@@ -1004,7 +1023,7 @@ tmpl(void)::transition()
             uint32_t k              = r_rsp_channel.read();
             r_channel_dst_full[k]   = (p_vci_initiator.rdata.read() != 0);
             r_channel_vci_rsp[k]    = true;
-            r_channel_vci_error[k]  = (p_vci_initiator.rerror.read()&0x1 != 0);
+            r_channel_vci_error[k]  = ((p_vci_initiator.rerror.read()&0x1) != 0);
             r_rsp_fsm               = RSP_IDLE;
             break;
         }
@@ -1012,11 +1031,11 @@ tmpl(void)::transition()
         case RSP_READ_DST_BUFADDR:
         {
             uint32_t k              = r_rsp_channel.read();
-            uint32_t rdata          = p_vci_initiator.rdata.read();
+            uint32_t rdata          = (uint32_t)p_vci_initiator.rdata.read();
             r_channel_dst_addr[k]   = rdata;
             r_channel_dst_offset[k] = rdata % m_burst_max_length;
             r_channel_vci_rsp[k]    = true;
-            r_channel_vci_error[k]  = (p_vci_initiator.rerror.read()&0x1 != 0);
+            r_channel_vci_error[k]  = ((p_vci_initiator.rerror.read()&0x1) != 0);
             r_rsp_fsm               = RSP_IDLE;
         }
         ///////////////////
@@ -1026,8 +1045,17 @@ tmpl(void)::transition()
             {
                 uint32_t k    = r_rsp_channel.read();
                 uint32_t word = r_rsp_count.read()>>2;
-                r_channel_buf[k][word] = p_vci_initiator.rdata.read(); 
-                r_rsp_count = r_rsp_count.read() + 4;
+                if(vci_param::B==4)
+                {
+                    r_channel_buf[k][word] = p_vci_initiator.rdata.read(); 
+                    r_rsp_count = r_rsp_count.read() + 4;
+                }
+                else 
+                {
+                    r_channel_buf[k][word]   = (uint32_t)p_vci_initiator.rdata.read();
+                    r_channel_buf[k][word+1] = (uint32_t)(p_vci_initiator.rdata.read()>>32); 
+                    r_rsp_count = r_rsp_count.read() + 8;
+                }
 
                 if ( p_vci_initiator.reop.read() )
                 {
@@ -1035,7 +1063,7 @@ tmpl(void)::transition()
                     "VCI_CHBUF_DMA error : wrong number of flits for a read response");
 
                     r_channel_vci_rsp[k]    = true;
-                    r_channel_vci_error[k] = (p_vci_initiator.rerror.read()&0x1 != 0);
+                    r_channel_vci_error[k] = ((p_vci_initiator.rerror.read()&0x1) != 0);
                     r_rsp_fsm = RSP_IDLE;
                 } 
             }
@@ -1049,7 +1077,7 @@ tmpl(void)::transition()
 
             uint32_t k             = r_rsp_channel.read();
             r_channel_vci_rsp[k]   = true;
-            r_channel_vci_error[k] = (p_vci_initiator.rerror.read()&0x1 != 0);
+            r_channel_vci_error[k] = ((p_vci_initiator.rerror.read()&0x1) != 0);
             r_rsp_fsm              = RSP_IDLE;
             break;
         } 
@@ -1062,7 +1090,7 @@ tmpl(void)::genMoore()
     /////// VCI INIT CMD ports ////// 
     switch( r_cmd_fsm.read() ) {
         case CMD_IDLE:
-        {
+        {   
             p_vci_initiator.cmdval  = false;
             p_vci_initiator.address = 0;
             p_vci_initiator.wdata   = 0;
@@ -1081,11 +1109,22 @@ tmpl(void)::genMoore()
             break;
         }
         case CMD_READ:
-        {
+        {   
+            uint32_t k    = r_cmd_channel.read();
+            typename vci_param::be_t r_be;
+            if(vci_param::B == 4) r_be  = 0xF;
+            else 
+            {
+                if       ( (r_channel_vci_type[k] == REQ_READ_SRC_STATUS) or (r_channel_vci_type[k] == REQ_READ_DST_STATUS) or (r_channel_vci_type[k] == REQ_READ_SRC_BUFADDR) or (r_channel_vci_type[k] == REQ_READ_DST_BUFADDR) ) r_be = 0x0F;
+               
+                else  if ( r_cmd_bytes.read() - r_cmd_count.read() == 4)  r_be = 0x0F;
+                      else                                                r_be = 0xFF;
+ 
+            }    
             p_vci_initiator.cmdval  = true;
             p_vci_initiator.address = r_cmd_address.read();
             p_vci_initiator.wdata   = 0;
-            p_vci_initiator.be      = 0xF;
+            p_vci_initiator.be      = r_be;      
             p_vci_initiator.plen    = r_cmd_bytes.read();
             p_vci_initiator.cmd     = vci_param::CMD_READ;
             p_vci_initiator.trdid   = r_cmd_channel.read()<<1;	
@@ -1104,26 +1143,81 @@ tmpl(void)::genMoore()
             uint32_t k    = r_cmd_channel.read();
             uint32_t n    = r_cmd_count.read() / 4;
             uint32_t wdata;
-            if      ( r_channel_vci_type[k] == REQ_WRITE_SRC_STATUS ) wdata = 0;
-            else if ( r_channel_vci_type[k] == REQ_WRITE_DST_STATUS ) wdata = 1;
-            else    wdata = r_channel_buf[k][n].read();
+            if (vci_param::B ==4)     // Data width 32 bits
+            {  
+                if      ( r_channel_vci_type[k] == REQ_WRITE_SRC_STATUS ) wdata = 0;
+                else if ( r_channel_vci_type[k] == REQ_WRITE_DST_STATUS ) wdata = 1;
+                else   wdata = r_channel_buf[k][n].read();
 
-            p_vci_initiator.cmdval  = true;
-            p_vci_initiator.address = r_cmd_address.read() + r_cmd_count.read();
-            p_vci_initiator.wdata   = wdata;
-            p_vci_initiator.be      = 0xF;
-            p_vci_initiator.plen    = r_cmd_bytes.read();
-            p_vci_initiator.cmd     = vci_param::CMD_WRITE;
-            p_vci_initiator.trdid   = r_cmd_channel.read()<<1;	
-            p_vci_initiator.pktid   = 0;
-            p_vci_initiator.srcid   = m_srcid;
-            p_vci_initiator.cons    = false;
-            p_vci_initiator.wrap    = false;
-            p_vci_initiator.contig  = true;
-            p_vci_initiator.clen    = 0;
-            p_vci_initiator.cfixed  = false;
-            p_vci_initiator.eop     = ( r_cmd_count.read() == r_cmd_bytes.read() - 4 );
+                p_vci_initiator.cmdval  = true;
+                p_vci_initiator.address = r_cmd_address.read() + r_cmd_count.read();
+                p_vci_initiator.wdata   = wdata;
+                p_vci_initiator.be      = 0xF;
+                p_vci_initiator.plen    = r_cmd_bytes.read();
+                p_vci_initiator.cmd     = vci_param::CMD_WRITE;
+                p_vci_initiator.trdid   = r_cmd_channel.read()<<1;	
+                p_vci_initiator.pktid   = 0;
+                p_vci_initiator.srcid   = m_srcid;
+                p_vci_initiator.cons    = false;
+                p_vci_initiator.wrap    = false;
+                p_vci_initiator.contig  = true;
+                p_vci_initiator.clen    = 0;
+                p_vci_initiator.cfixed  = false;
+                p_vci_initiator.eop     = ( r_cmd_count.read() == r_cmd_bytes.read() - 4 );
+                
+            }
+            else          // Data width 64 bits
+            {
+                uint32_t wdata_low;
+                uint32_t wdata_high;
+                typename vci_param::be_t r_be;
+                if       ( r_channel_vci_type[k] == REQ_WRITE_SRC_STATUS )
+                {   
+                    r_be = 0x0F;
+                    wdata_low  = 0;
+                    wdata_high = 0;
+                }
+                else if ( r_channel_vci_type[k] == REQ_WRITE_DST_STATUS ) 
+                {   
+                    r_be = 0x0F;
+                    wdata_low  = 1;
+                    wdata_high = 0;
+                }
+                else  
+                {
+                    if ( r_cmd_bytes.read() - r_cmd_count.read() == 4){
+                        r_be = 0x0F;
+                        wdata_low  = r_channel_buf[k][n].read();
+                        wdata_high = 0;                   
+                    }
+                    else 
+                    {
+                        r_be = 0xFF;
+                        wdata_low  = r_channel_buf[k][n].read();
+                        wdata_high = r_channel_buf[k][n+1].read();
+                    } 
+                }
+                
+                p_vci_initiator.cmdval  = true;
+                p_vci_initiator.address = r_cmd_address.read() + r_cmd_count.read();
+                p_vci_initiator.wdata   = ((uint64_t)wdata_high)<<32 | wdata_low ;
+                p_vci_initiator.be      = r_be;
+                p_vci_initiator.plen    = r_cmd_bytes.read();
+                p_vci_initiator.cmd     = vci_param::CMD_WRITE;
+                p_vci_initiator.trdid   = r_cmd_channel.read()<<1;	
+                p_vci_initiator.pktid   = 0;
+                p_vci_initiator.srcid   = m_srcid;
+                p_vci_initiator.cons    = false;
+                p_vci_initiator.wrap    = false;
+                p_vci_initiator.contig  = true;
+                p_vci_initiator.clen    = 0;
+                p_vci_initiator.cfixed  = false;
+                p_vci_initiator.eop     = (( r_cmd_count.read() == r_cmd_bytes.read() - 4 ) || ( r_cmd_count.read() == r_cmd_bytes.read() - 8 ));
             break;
+           
+            }
+
+            
         }
     } // end switch cmd_fsm
 
@@ -1376,14 +1470,14 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
     assert( (vci_param::T >= 4) and 
     "VCI_CHBUF_DMA error : The VCI TRDID field must be at least 4 bits");
 
-    assert( (vci_param::B == 4) and 
-    "VCI_CHBUF_DMA error : The VCI DATA field must be 32 bits");
+    assert( ((vci_param::B == 4) or ( vci_param::B == 8 ) ) and 
+    "VCI_CHBUF_DMA error : The VCI DATA field must be 32 or 64 bits");
 
     assert( (burst_max_length < (1<<vci_param::K)) and 
     "VCI_CHBUF_DMA error : The VCI PLEN size is too small for requested burst length");
 
-    assert( ((burst_max_length==4) or (burst_max_length==8) or (burst_max_length==16) or 
-             (burst_max_length==32) or (burst_max_length==64)) or (burst_max_length==128) and
+    assert( (((burst_max_length==4) or (burst_max_length==8) or (burst_max_length==16) or 
+             (burst_max_length==32) or (burst_max_length==64)) or (burst_max_length==128)) and
     "VCI_CHBUF_DMA error : The requested burst length must be 4, 8, 16, 32, 64, or 128 bytes");
     
     assert( (channels <= 8)  and
