@@ -957,11 +957,12 @@ tmpl(void)::transition()
             if ( gmii_rx_dv and not gmii_rx_er ) // data valid / no error
             {
                 //compute CRC
-                r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
+                uint32_t checksum_tmp;      //stores the checksum partial result
+                checksum_tmp      = (r_rx_g2s_checksum.read() >> 4) 
                                     ^ crc_table[(r_rx_g2s_checksum.read() 
                                     ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
-                r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
-                                    ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
+                r_rx_g2s_checksum = (checksum_tmp >> 4) 
+                                    ^ crc_table[(checksum_tmp 
                                     ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
                 r_rx_g2s_fsm      = RX_G2S_SOS;
             }
@@ -981,11 +982,12 @@ tmpl(void)::transition()
                 rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_SOS << 8);
 
                 //compute CRC
-                r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
+                uint32_t checksum_tmp;      //stores the checksum partial result
+                checksum_tmp      = (r_rx_g2s_checksum.read() >> 4) 
                                     ^ crc_table[(r_rx_g2s_checksum.read() 
                                     ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
-                r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
-                                    ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
+                r_rx_g2s_checksum = (checksum_tmp >> 4) 
+                                    ^ crc_table[(checksum_tmp 
                                     ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
                 r_rx_g2s_fsm      = RX_G2S_LOOP;
 
@@ -1007,11 +1009,12 @@ r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
             rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_NEV << 8);
 
             //compute CRC
-            r_rx_g2s_checksum = (r_rx_g2s_checksum.read() >> 4) 
+            uint32_t checksum_tmp;      //stores the checksum partial result
+            checksum_tmp      = (r_rx_g2s_checksum.read() >> 4) 
                                 ^ crc_table[(r_rx_g2s_checksum.read() 
                                 ^ (r_rx_g2s_dt4.read() >> 0)) & 0x0F];
-            r_rx_g2s_checksum = (r_rx_g2s_checksum.get_new_value() >> 4) 
-                                ^ crc_table[(r_rx_g2s_checksum.get_new_value() 
+            r_rx_g2s_checksum = (checksum_tmp >> 4) 
+                                ^ crc_table[(checksum_tmp 
                                 ^ (r_rx_g2s_dt4.read() >> 4)) & 0x0F];
 #ifdef SOCLIB_PERF_NIC
 r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
@@ -1223,14 +1226,16 @@ if ( r_rx_g2s_checksum.read() != check )
 		    // Read new byte
             uint16_t data = r_rx_fifo_stream.read();
             uint32_t type = (data >> 8) & 0x3;
+            uint32_t counter_bytes;
 
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
 		    {
 		        r_rx_des_data[0]	   = (uint8_t)(data & 0xFF);
-                r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;
+		        counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        r_rx_des_counter_bytes = counter_bytes;		
 		        r_rx_des_padding	   = 3;
 
-    		    if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
+    		    if ( counter_bytes > (1518-4) )
 	    	    {
                     r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
 				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1246,7 +1251,7 @@ if ( r_rx_g2s_checksum.read() != check )
                         r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
 				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
                     }
-                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
+                    else if ( counter_bytes < (64-4) )
                     {
                         r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
                         r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1270,14 +1275,16 @@ if ( r_rx_g2s_checksum.read() != check )
     	{
             uint16_t data = r_rx_fifo_stream.read();
 		    uint32_t type = (data >> 8) & 0x3;
+            uint32_t counter_bytes;	
 		
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
             {
 		        r_rx_des_data[1]	= (uint8_t)(data & 0xFF);
-		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        r_rx_des_counter_bytes = counter_bytes;		
 		        r_rx_des_padding	= 2;
 		        
-                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
+                if ( counter_bytes > (1518-4) )
 		        {
                     r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
 				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1293,7 +1300,7 @@ if ( r_rx_g2s_checksum.read() != check )
                         r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
 				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
                     }
-                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
+                    else if ( counter_bytes < (64-4) )
                     {
                         r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
                         r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1317,14 +1324,16 @@ if ( r_rx_g2s_checksum.read() != check )
     	{
 	    	uint16_t data = r_rx_fifo_stream.read();
 		    uint32_t type = (data >> 8) & 0x3;
+            uint32_t counter_bytes;
 		    		
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
             {
 		        r_rx_des_data[2]	   = (uint8_t)(data & 0xFF);
-		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        r_rx_des_counter_bytes = counter_bytes;		
 		        r_rx_des_padding	   = 1;
 		        
-                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
+                if ( counter_bytes > (1518-4) )
 		        {
                     r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
 				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1340,7 +1349,7 @@ if ( r_rx_g2s_checksum.read() != check )
                         r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
 				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
                     }
-                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
+                    else if ( counter_bytes < (64-4) )
                     {
                         r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
                         r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1364,14 +1373,16 @@ if ( r_rx_g2s_checksum.read() != check )
     	{
             uint16_t data = r_rx_fifo_stream.read();
 		    uint32_t type = (data >> 8) & 0x3;
+            uint32_t counter_bytes;
 
 		    if ( r_rx_fifo_stream.rok() )     // do nothing if we cannot read
             {
 		        r_rx_des_data[3]	= (uint8_t)(data & 0xFF);
-		        r_rx_des_counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        counter_bytes = r_rx_des_counter_bytes.read() + 1;		
+		        r_rx_des_counter_bytes = counter_bytes;		
 		        r_rx_des_padding	= 0;
 		        
-                if ( r_rx_des_counter_bytes.get_new_value() > (1518-4) )
+                if ( counter_bytes > (1518-4) )
 		        {
                     r_rx_des_npkt_too_big = r_rx_des_npkt_too_big.read() + 1;
 				    r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -1387,7 +1398,7 @@ if ( r_rx_g2s_checksum.read() != check )
                         r_rx_des_npkt_mfifo_full = r_rx_des_npkt_mfifo_full.read() + 1;
 				        r_rx_des_fsm = RX_DES_WRITE_CLEAR;
                     }
-                    else if ( r_rx_des_counter_bytes.get_new_value() < (64-4) )
+                    else if ( counter_bytes < (64-4) )
                     {
                         r_rx_des_npkt_too_small = r_rx_des_npkt_too_small.read() + 1;
                         r_rx_des_fsm = RX_DES_WRITE_CLEAR;
@@ -2233,11 +2244,12 @@ if ( r_rx_g2s_checksum.read() != check )
                 r_tx_s2g_data       = data & 0xFF;
 
                 //compute CRC
-                r_tx_s2g_checksum = (r_tx_s2g_checksum.read() >> 4) ^ 
+                uint32_t checksum_tmp;      //stores the checksum partial result
+                checksum_tmp      = (r_tx_s2g_checksum.read() >> 4) ^ 
                                     crc_table[(r_tx_s2g_checksum.read() ^ 
                                     (r_tx_s2g_data.read() >> 0)) & 0x0F];
-                r_tx_s2g_checksum = (r_tx_s2g_checksum.get_new_value() >> 4) ^ 
-                                    crc_table[(r_tx_s2g_checksum.get_new_value() ^ 
+                r_tx_s2g_checksum = (checksum_tmp >> 4) ^ 
+                                    crc_table[(checksum_tmp ^ 
                                     (r_tx_s2g_data.read() >> 4)) & 0x0F];
 #ifdef SOCLIB_PERF_NIC
             r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1;
@@ -2261,11 +2273,12 @@ if ( r_rx_g2s_checksum.read() != check )
             r_gmii_tx.put( true, r_tx_s2g_data.read() );
 
             // compute CRC
-            r_tx_s2g_checksum = (r_tx_s2g_checksum.read() >> 4) ^ 
+            uint32_t checksum_tmp;      //stores the checksum partial result
+            checksum_tmp      = (r_tx_s2g_checksum.read() >> 4) ^ 
                                 crc_table[(r_tx_s2g_checksum.read() ^ 
                                 (r_tx_s2g_data.read() >> 0)) & 0x0F];
-            r_tx_s2g_checksum = (r_tx_s2g_checksum.get_new_value() >> 4) ^ 
-                                crc_table[(r_tx_s2g_checksum.get_new_value() ^ 
+            r_tx_s2g_checksum = (checksum_tmp >> 4) ^ 
+                                crc_table[(checksum_tmp ^ 
                                 (r_tx_s2g_data.read() >> 4)) & 0x0F];
 
 #ifdef SOCLIB_PERF_NIC
