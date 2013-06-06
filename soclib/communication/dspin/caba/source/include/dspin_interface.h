@@ -29,73 +29,80 @@ namespace soclib { namespace caba {
 using namespace sc_core;
 using namespace sc_dt;
 
-enum{
-	DSPIN_BOP 	= 0x1,
-	DSPIN_EOP 	= 0x2
-};
-
-enum{
-    	DSPINPLUS_EOP   = 0x1,
-};
 
 /***  DSPIN SIGNALS  ***/
 template<int dspin_data_size>
-class DspinSignals {
+class DspinSignals 
+{
     public:
-        sc_signal<sc_uint<dspin_data_size> >  		data;    // data
+        sc_signal<sc_uint<dspin_data_size> >    data;    // data
+        sc_signal<bool>                 		eop;     // end of packet
         sc_signal<bool>                 		write;   // write command 
         sc_signal<bool>                 		read;    // read command
 
 #define __ren(x) x((insname+"_" #x).c_str())
         DspinSignals(std::string insname = sc_gen_unique_name("dspin_signals"))
             : __ren(data),
-            __ren(write),
-            __ren(read)
+              __ren(eop),
+              __ren(write),
+              __ren(read)
         {}
 #undef __ren
 
+        /////////////////////////////////////////////////////////////////
         void trace( sc_core::sc_trace_file* tf, const std::string &name )
         {
 #define __trace(x) sc_core::sc_trace(tf, x, name+"_"+#x)
             __trace(data);
+            __trace(eop); 
             __trace(write);
             __trace(read); 
 #undef __trace
         }
 
+        //////////////////////////////////
         void print_trace(std::string name)
         {
             if ( write )
-            std::cout << name << " DSPIN : data = " << std::hex << data << " | ack = " << read << std::endl;
+            std::cout << name << " DSPIN"
+                      << " : data = " << std::hex << data 
+                      << " | eop = " << eop
+                      << " | ack = " << read << std::endl;
         }
 };
 
 
 /***  DSPIN OUT Ports ***/
 template<int dspin_data_size>
-struct DspinOutput {
+struct DspinOutput 
+{
     sc_out<sc_uint<dspin_data_size> >   data;    // data
+    sc_out<bool>                     	eop;     // end of packet
     sc_out<bool>                    	write;   // valid data
     sc_in<bool>                     	read;    // data accepted
 
-    void operator () (DspinSignals<dspin_data_size> &sig) {
-	data         (sig.data);
-	write        (sig.write);
-	read         (sig.read);
+    void operator () (DspinSignals<dspin_data_size> &sig) 
+    {
+	    data         (sig.data);
+        eop          (sig.eop);
+	    write        (sig.write);
+	    read         (sig.read);
     };
 
-    void operator () (DspinOutput<dspin_data_size> &port) {
-	data         (port.data);
-	write        (port.write);
-	read         (port.read);
+    void operator () (DspinOutput<dspin_data_size> &port) 
+    {
+	    data         (port.data);
+        eop          (port.eop);
+	    write        (port.write);
+	    read         (port.read);
     };
-
 
 #define __ren(x) x((name+"_" #x).c_str())
     DspinOutput(const std::string &name = sc_gen_unique_name("dspin_output"))
 	: __ren(data),
-	__ren(write),
-	__ren(read)
+	  __ren(eop),
+	  __ren(write),
+	  __ren(read)
     {}
 #undef __ren
 
@@ -104,28 +111,35 @@ struct DspinOutput {
 
 /*** DSPIN IN Ports ***/
 template<int dspin_data_size>
-struct DspinInput {
-    sc_in<sc_uint<dspin_data_size> >     	data;     // data
+struct DspinInput 
+{
+    sc_in<sc_uint<dspin_data_size> >    data;     // data
+    sc_in<bool>                     	eop;      // end of packet
     sc_in<bool>                    		write;    // valid data
     sc_out<bool>                   		read;     // data accepted
 
-    void operator () (DspinSignals<dspin_data_size> &sig) {
-	data         (sig.data);
-	write        (sig.write);
-	read         (sig.read);
+    void operator () (DspinSignals<dspin_data_size> &sig) 
+    {
+	    data         (sig.data);
+        eop          (sig.eop);
+	    write        (sig.write);
+	    read         (sig.read);
     };
 
-    void operator () (DspinInput<dspin_data_size> &port) {
-	data         (port.data);
-	write        (port.write);
-	read         (port.read);
+    void operator () (DspinInput<dspin_data_size> &port) 
+    {
+	    data         (port.data);
+        eop          (port.eop);
+	    write        (port.write);
+	    read         (port.read);
     };
 
 #define __ren(x) x((name+"_" #x).c_str())
     DspinInput(const std::string &name = sc_gen_unique_name("dspin_input"))
 	: __ren(data),
-	__ren(write),
-	__ren(read)
+	  __ren(eop),
+	  __ren(write),
+	  __ren(read)
     {}
 #undef __ren
 };
