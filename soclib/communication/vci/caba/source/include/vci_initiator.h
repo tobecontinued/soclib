@@ -99,6 +99,62 @@ public:
 	}
 #undef __ren
 
+    void bind( VciSignals<vci_param> &sig )
+    {
+		cmdack  (sig.cmdack);
+		address (sig.address);
+		be      (sig.be);
+		cfixed  (sig.cfixed);
+		clen    (sig.clen);
+		cmd     (sig.cmd);
+		cmdval  (sig.cmdval);
+		cons    (sig.cons);
+		contig  (sig.contig);
+		eop     (sig.eop);
+		pktid   (sig.pktid);
+		plen    (sig.plen);
+		rdata   (sig.rdata);
+		reop    (sig.reop);
+		rerror  (sig.rerror);
+		rpktid  (sig.rpktid);
+		rsrcid  (sig.rsrcid);
+		rspack  (sig.rspack);
+		rspval  (sig.rspval);
+		rtrdid  (sig.rtrdid);
+		srcid   (sig.srcid);
+		trdid   (sig.trdid);
+		wdata   (sig.wdata);
+		wrap    (sig.wrap);
+    }
+
+    void bind( VciInitiator<vci_param> &ports )
+    {
+		cmdack  (ports.cmdack);
+		address (ports.address);
+		be      (ports.be);
+		cfixed  (ports.cfixed);
+		clen    (ports.clen);
+		cmd     (ports.cmd);
+		cmdval  (ports.cmdval);
+		cons    (ports.cons);
+		contig  (ports.contig);
+		eop     (ports.eop);
+		pktid   (ports.pktid);
+		plen    (ports.plen);
+		rdata   (ports.rdata);
+		reop    (ports.reop);
+		rerror  (ports.rerror);
+		rpktid  (ports.rpktid);
+		rsrcid  (ports.rsrcid);
+		rspack  (ports.rspack);
+		rspval  (ports.rspval);
+		rtrdid  (ports.rtrdid);
+		srcid   (ports.srcid);
+		trdid   (ports.trdid);
+		wdata   (ports.wdata);
+		wrap    (ports.wrap);
+    }
+
 	void operator()(VciSignals<vci_param> &sig)
 	{
 		cmdack  (sig.cmdack);
