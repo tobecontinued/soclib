@@ -26,10 +26,10 @@
 
 //////////////////////////////////////////////////////////////////////////////////
 //  This component is a multi-channels DMA controller supporting chained buffers.
-//  It can be used to move a stream from one set of haîned buffers (src_chbuf) 
+//  It can be used to move a stream from one set of chained buffers (src_chbuf) 
 //  to another set of chained buffers (dst_chbuf), without involving software.
 //
-//  A "chbuf descriptor" is an array of "buffer descriptor", stored in main
+//  A "chbuf descriptor" is an array of "buffer descriptors", stored in main
 //  memory. Each buffer descriptor contains two 32 bits words:
 //  - STATUS[31:0] : buffer status (buffer full when STATUS non zero)
 //  - PADDR[31:0]  : buffer base address
@@ -70,7 +70,9 @@
 //  - CHANNEL_BUSY           : > 4 / channel running
 // 
 //  There is one private IRQ line for each channel, that is only used
-//  for bus error signaling.
+//  for bus error signaling, and is activated when channel[k] enters
+//  an error state. The channel can be reset by writing a nul value
+//  in register CHBUF_RUN[k], focing channel[k] to IDLE state.
 //
 //  In order to support multiple simultaneous transactions, the channel
 //  index is transmited in the VCI TRDID field.
@@ -185,22 +187,33 @@ tmpl(void)::transition()
                 typename vci_param::addr_t	address = p_vci_target.address.read();
                 typename vci_param::data_t	wdata   = (uint32_t)p_vci_target.wdata.read();
                 typename vci_param::cmd_t	cmd     = p_vci_target.cmd.read();
+
+                bool found = false;
+                std::list<soclib::common::Segment>::iterator seg;
+                for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
+                {
+                    if ( seg->contains(address) ) found = true;
+                }
+
+                assert ( found  and
+                "ERROR in VCI_CHBUF_DMA : VCI address is out of segment");
                
                 r_tgt_srcid					= p_vci_target.srcid.read();
                 r_tgt_trdid					= p_vci_target.trdid.read();
                 r_tgt_pktid					= p_vci_target.pktid.read();
                 
-                int 	cell    = (int)((address & 0x1C) >> 2);
-                uint32_t	channel = (uint32_t)((address & 0x7000) >> 12);
+                int 	  cell    = (int)((address & 0x1C) >> 2);
+                uint32_t  channel = (uint32_t)((address & 0x7000) >> 12);
 
                 assert( (channel < m_channels) and 
                 "VCI_CHBUF_DMA error : The channel index (ADDR[14:12] is too large");
 
                 assert( p_vci_target.eop.read() and
-                "VCI_CHBUF_DMA error : A configuration request must be one single VCI flit");
+                "VCI_CHBUF_DMA error : A configuration request must be one single flit");
 
-                assert( (vci_param::B == 4 ) or (vci_param::B == 8 and p_vci_target.be.read() == 0x0f)  and
-                "VCI_CHBUF_DMA error : A data in configuration request must be on 32 bits");
+                assert( (vci_param::B == 4 ) or 
+                        (vci_param::B == 8 and p_vci_target.be.read() == 0x0f)  and
+                "VCI_CHBUF_DMA error : In configuration request data must be on 32 bits");
                 
                 //////////////////////////////////////////////////////////
 	            if ( (cell == CHBUF_RUN) and (cmd == vci_param::CMD_WRITE) )
@@ -1456,7 +1469,7 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
           r_rsp_channel("r_rsp_channel"),
           r_rsp_bytes("r_rsp_bytes"),
 
-          m_segment(mt.getSegment(tgtid)),
+          m_seglist(mt.getSegmentList(tgtid)),
           m_burst_max_length(burst_max_length),
           m_channels(channels),
           m_srcid(mt.indexForId(srcid)),
@@ -1467,6 +1480,21 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
           p_vci_initiator("p_vci_initiator"),
           p_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_irq", channels))
 {
+    size_t nbsegs = 0;
+    std::list<soclib::common::Segment>::iterator seg;
+    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
+    {
+        nbsegs++;
+	    assert( ( (seg->baseAddress() & 0xFFF) == 0 ) and 
+		"VCI_CHBUF_DMA Error : The segment base address must be multiple of 4 Kbytes"); 
+
+	    assert( ( seg->size() >= (m_channels<<12) ) and 
+		"VCI_CHBUF_DMA Error : The segment size cannot be smaller than 4K * channels"); 
+    }
+
+    assert( (nbsegs != 0) and 
+    "VCI_CHBUF_DMA error : No segment allocated");
+
     assert( (vci_param::T >= 4) and 
     "VCI_CHBUF_DMA error : The VCI TRDID field must be at least 4 bits");
 
@@ -1476,9 +1504,9 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
     assert( (burst_max_length < (1<<vci_param::K)) and 
     "VCI_CHBUF_DMA error : The VCI PLEN size is too small for requested burst length");
 
-    assert( (((burst_max_length==4) or (burst_max_length==8) or (burst_max_length==16) or 
-             (burst_max_length==32) or (burst_max_length==64)) or (burst_max_length==128)) and
-    "VCI_CHBUF_DMA error : The requested burst length must be 4, 8, 16, 32, 64, or 128 bytes");
+    assert( (((burst_max_length==4)or(burst_max_length==8)or(burst_max_length==16)or 
+             (burst_max_length==32)or(burst_max_length==64))) and
+    "VCI_CHBUF_DMA error : The burst length must be 4, 8, 16, 32, 64 bytes");
     
     assert( (channels <= 8)  and
     "VCI_CHBUF_DMA error : The number of channels cannot be larger than 8");

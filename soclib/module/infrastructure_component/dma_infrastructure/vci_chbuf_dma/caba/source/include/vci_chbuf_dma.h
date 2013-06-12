@@ -99,10 +99,10 @@ private:
     sc_signal<uint32_t>		r_rsp_bytes;            // VCI packet length
 
     // sructural parameters
-    soclib::common::Segment	m_segment;
-    const uint32_t			m_burst_max_length;	    // number of bytes
-    const uint32_t			m_channels;		        // no more than 8
-    const uint32_t			m_srcid;                // DMA component SRCID
+    std::list<soclib::common::Segment>	m_seglist;
+    const uint32_t			            m_burst_max_length;	// number of bytes
+    const uint32_t			            m_channels;		    // no more than 8
+    const uint32_t			            m_srcid;            // DMA component SRCID
 
     enum vci_req_type_e 
     {
