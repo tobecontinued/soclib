@@ -185,10 +185,10 @@ class VciMultiNic
     NicTxGmii                   r_gmii_tx;
 
     // sructural parameters
-    soclib::common::Segment		m_segment;
-    const size_t				m_channels;		            // no more than 8
-    const uint32_t              m_default_mac_4;            // MAC address 32 LSB bits
-    const uint32_t              m_default_mac_2;            // MAC address 16 MSB bits
+    std::list<soclib::common::Segment>  m_seglist;          // allocated segment(s)
+    const size_t				        m_channels;		    // no more than 8 channels
+    const uint32_t                      m_default_mac_4;    // MAC address 32 LSB bits
+    const uint32_t                      m_default_mac_2;    // MAC address 16 MSB bits
 
 protected:
 

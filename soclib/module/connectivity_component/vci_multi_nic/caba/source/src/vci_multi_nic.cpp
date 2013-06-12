@@ -488,10 +488,17 @@ tmpl(void)::transition()
                 typename vci_param::cmd_t	cmd     = p_vci.cmd.read();
                 typename vci_param::plen_t  plen    = p_vci.plen.read();
 
+                bool found = false;
+                std::list<soclib::common::Segment>::iterator seg;
+                for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
+                {
+                    if ( seg->contains(address) ) found = true;
+                }
+
                 assert ( ((plen & 0x3) == 0) and
                 "ERROR in VCI_MULTI_NIC : PLEN field must be multiple of 4 bytes");
 
-                assert ( (m_segment.contains(address)) and
+                assert ( found  and
                 "ERROR in VCI_MULTI_NIC : ADDRESS is out of segment");
 
                 assert( (vci_param::B == 8 and (p_vci.be.read()==0x0F or p_vci.be.read()==0xFF)
@@ -2407,9 +2414,10 @@ tmpl(void)::genMoore()
             p_vci.cmdack = false;
             p_vci.rspval = true;
             if ( vci_param::B == 8 and (r_vci_be.read() == 0xFF) ) 
-                p_vci.rdata  = r_rx_chbuf[channel].data64();
+                p_vci.rdata  = r_rx_chbuf[channel].data();
             else    
                 p_vci.rdata  = (typename vci_param::data_t) r_rx_chbuf[channel].data(); 
+
             p_vci.rerror = vci_param::ERR_NORMAL;
             p_vci.rsrcid = r_vci_srcid.read();
             p_vci.rtrdid = r_vci_trdid.read();
@@ -2808,7 +2816,7 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
           r_gmii_rx("r_gmii_rx", rx_file_pathname, INTER_FRAME_GAP), 
           r_gmii_tx("r_gmii_tx", tx_file_pathname),
 
-          m_segment(mt.getSegment(tgtid)),
+          m_seglist(mt.getSegmentList(tgtid)),
           m_channels(channels),
           m_default_mac_4(mac_4),
           m_default_mac_2(mac_2),
@@ -2819,6 +2827,21 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
           p_rx_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_rx_irq", channels)),
           p_tx_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_tx_irq", channels))
 {
+    size_t nbsegs = 0;
+    std::list<soclib::common::Segment>::iterator seg;
+    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
+    {
+        nbsegs++;
+	    assert( ( (seg->baseAddress() & 0x7FFFF) == 0 ) and 
+		"VCI_MULTI_NIC Error : The segment base address must be multiple of 512 Kbytes"); 
+
+	    assert(  ( seg->size() < 0x80000 ) and 
+		"VCI_MULTI_NIC Error : The segment size cannot be smaller than 512 Kbytes"); 
+    }
+
+    assert ( (nbsegs != 0) and
+    "VCI_MULTI_NIC error : no segment allocated");
+    
     assert( ((vci_param::B == 4) or (vci_param::B == 8)) and 
     "VCI_MULTI_NIC error : The VCI DATA field must be 32 or 64 bits");
 
