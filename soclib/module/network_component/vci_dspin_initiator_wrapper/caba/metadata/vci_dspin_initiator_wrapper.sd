@@ -3,13 +3,20 @@
 
 Module('caba:vci_dspin_initiator_wrapper',
 	classname = 'soclib::caba::VciDspinInitiatorWrapper',
+
 	tmpl_parameters = [
 	    parameter.Module('vci_param',  default = 'caba:vci_param'),
 	    parameter.Int('dspin_cmd_width'),
 	    parameter.Int('dspin_rsp_width'),
 	],
-	header_files = ['../source/include/vci_dspin_initiator_wrapper.h',],
-	implementation_files = ['../source/src/vci_dspin_initiator_wrapper.cpp',],
+
+	header_files = [
+        '../source/include/vci_dspin_initiator_wrapper.h',
+    ],
+
+	implementation_files = ['../source/src/vci_dspin_initiator_wrapper.cpp',
+    ],
+
 	ports = [
 		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
 		Port('caba:clock_in', 'p_clk', auto = 'clock'),
@@ -19,5 +26,8 @@ Module('caba:vci_dspin_initiator_wrapper',
              dspin_data_size = parameter.Reference('dspin_rsp_width')),
 	    Port('caba:vci_target', 'p_vci'),
 	],
-	uses = [ Uses('caba:base_module'), ],
+
+	uses = [ 
+        Uses('caba:base_module'), 
+    ],
 )
