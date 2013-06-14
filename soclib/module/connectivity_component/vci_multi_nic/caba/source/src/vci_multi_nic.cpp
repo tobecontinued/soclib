@@ -2827,6 +2827,8 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
           p_rx_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_rx_irq", channels)),
           p_tx_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_tx_irq", channels))
 {
+    std::cout << "  - Building VciMultiNic " << name << std::endl;
+
     size_t nbsegs = 0;
     std::list<soclib::common::Segment>::iterator seg;
     for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
@@ -2835,8 +2837,12 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
 	    assert( ( (seg->baseAddress() & 0x7FFFF) == 0 ) and 
 		"VCI_MULTI_NIC Error : The segment base address must be multiple of 512 Kbytes"); 
 
-	    assert(  ( seg->size() < 0x80000 ) and 
+	    assert(  ( seg->size() >= 0x80000 ) and 
 		"VCI_MULTI_NIC Error : The segment size cannot be smaller than 512 Kbytes"); 
+
+        std::cout << "    => segment " << seg->name()
+                  << " / base = " << std::hex << seg->baseAddress()
+                  << " / size = " << seg->size() << std::endl; 
     }
 
     assert ( (nbsegs != 0) and
