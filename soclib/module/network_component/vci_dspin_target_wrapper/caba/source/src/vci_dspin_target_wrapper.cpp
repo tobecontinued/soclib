@@ -72,6 +72,8 @@ tmpl(/**/)::VciDspinTargetWrapper( sc_module_name name,
 
        m_srcid_width( srcid_width )
 {
+    std::cout << "  - Building VciDspinTargetWrapper " << name << std::endl;
+
 	SC_METHOD (transition);
 	dont_initialize();
 	sensitive << p_clk.pos();

@@ -78,7 +78,7 @@ tmpl(/**/)::DspinPacketGenerator( sc_module_name name,
     "DSPIN PACKET GENERATOR ERROR: CMD flit width smaller than 33 bits");
 
     assert( (length > 1 ) and
-    "DSPIN PACKET GENERATOR ERROR: The packet smaller than 2 flits");
+    "DSPIN PACKET GENERATOR ERROR: Packet length smaller than 2 flits");
 
     SC_METHOD (transition);
     dont_initialize();
@@ -186,12 +186,12 @@ tmpl(void)::transition()
                 r_receive_latency = r_receive_latency.read() + 
                                     r_cycles.read() - (uint32_t)p_in.data.read();
 
-                if ( (p_in.data.read() >> (rsp_width-1)) ) r_receive_fsm = RECEIVE_IDLE;
-                else                                       r_receive_fsm = RECEIVE_WAIT_EOP;
+                if ( p_in.eop.read() ) r_receive_fsm = RECEIVE_IDLE;
+                else                   r_receive_fsm = RECEIVE_WAIT_EOP;
             }
         break;
         case RECEIVE_WAIT_EOP:
-            if ( p_in.write.read() and  (p_in.data.read() >> (rsp_width-1)) )
+            if ( p_in.write.read() and  p_in.eop.read() )
             {
                 r_receive_fsm = RECEIVE_IDLE;
             }
@@ -212,12 +212,15 @@ tmpl(void)::genMoore()
     // p_out
     sc_uint<cmd_width>	data;
     bool                write;
+    bool                eop;
 
     if ( r_send_fsm.read() == SEND_IDLE )
     {
+        data  = 0;
+        eop   = false;
         write = false;
     }
-    else if ( r_send_fsm.read() == SEND_UNICAST )
+    else if ( r_send_fsm.read() == SEND_UNICAST )    // N+2 flits
     {
         write = true;
         if ( r_send_length.read() == m_length )  // first flit
@@ -233,24 +236,27 @@ tmpl(void)::genMoore()
             data = 0;
         }
 
-        if( r_send_length.read() == 1 ) 
-                data |= sc_uint<cmd_width>(1) << (cmd_width - 1);
+        if( r_send_length.read() == 1 ) eop = true;
+        else                            eop = false;
     }
-    else  // SEND_BROADCAST
+    else  // SEND_BROADCAST  (two flits)
     {
         write = true;
         if ( r_send_length.read() == 2 )  // first flit
         {
             data = sc_uint<cmd_width>(0x07C1F) << (cmd_width - 21) | 
                        sc_uint<cmd_width>(1);	 
+            eop  = false;
         }
         else                              // second flit
         {
             data = (sc_uint<cmd_width>)r_send_date.read() |
                        (sc_uint<cmd_width>(1)<<(cmd_width-1));
+            eop  = true;
         }
     }
     p_out.data  = data;
+    p_out.eop   = eop;
     p_out.write = write;
 
     // p_in

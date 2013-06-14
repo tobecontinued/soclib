@@ -258,6 +258,7 @@ public:
         return m_rand_state;
     }
 
+    /////////////////////////////////////////////////////////////////////
     void transition( const std::string &name, const output_port_t &port )
     {
         if (port.iProposed() && ! port.peerAccepted())
@@ -294,6 +295,7 @@ DEBUG_END;
             m_in_transaction = !pkt->eop();
     }
 
+    /////////////////////////////////////////////////////////////
     void genMoore( const std::string &name, output_port_t &port )
     {
         typename dpp::ref<vci_pkt_t> pkt = m_output_delay_line.head();
@@ -528,6 +530,7 @@ tmpl(void)::genMoore()
     m_rsp_mn->genMoore( name(), p_to_target, p_to_initiator );
 }
 
+////////////////////
 tmpl(/**/)::VciVgmn(
     sc_module_name name,
     const soclib::common::MappingTable &mt,
@@ -539,16 +542,25 @@ tmpl(/**/)::VciVgmn(
            m_nb_initiat(nb_attached_initiat),
            m_nb_target(nb_attached_target)
 {
-    assert(min_latency >= 1 && "How good is a network, if you are unable to forward packets ?");
-    assert(fifo_depth  >= 1 && "How good is a network, if you are unable to forward packets ?");
+    std::cout << "  - Building VciVgmn : " << name << std::endl;
 
-    p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >("to_initiator", nb_attached_initiat);
-    p_to_target = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >("to_target", nb_attached_target);
+    assert( (min_latency >= 1) and
+    "VCI_VGMN error : min_latency must be larger than 0");
+
+    assert( (fifo_depth  >= 1) and
+    "VCI_VGMN error : fifo_depth must be larger than 0");
+
+    p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >(
+                     "to_initiator", nb_attached_initiat);
+    p_to_target = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >(
+                     "to_target", nb_attached_target);
+
     m_cmd_mn = new _vgmn::MicroNetwork<cmd_router_t,cmd_queue_t>(
         nb_attached_initiat, nb_attached_target,
         min_latency, fifo_depth,
         mt.getRoutingTable(soclib::common::IntTab(), 0)
         );
+
     m_rsp_mn = new _vgmn::MicroNetwork<rsp_router_t,rsp_queue_t>(
         nb_attached_target, nb_attached_initiat,
         min_latency, fifo_depth,

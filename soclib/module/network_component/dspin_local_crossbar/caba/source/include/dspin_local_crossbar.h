@@ -88,16 +88,23 @@ namespace soclib { namespace caba {
 
 	    private:
 
+        // define the FIFO flit
+        typedef struct internal_flit_s 
+        {
+            sc_uint<flit_width>  data;
+            bool                 eop;
+        } internal_flit_t;
+
 	    // internal registers
 	    sc_signal<bool>			        *r_alloc_out;  // output port allocated
 	    sc_signal<size_t>               *r_index_out;  // owner input port index
-        sc_signal<sc_uint<flit_width> > *r_buf_in;     // input port fifo extension
+        internal_flit_t                 *r_buf_in;     // input port fifo extension
         sc_signal<int>                  *r_fsm_in;     // input port state
 	    sc_signal<size_t>               *r_index_in;   // requested output port index
 
 	    // fifos
-	    soclib::caba::GenericFifo<sc_uint<flit_width> >*  r_fifo_in;
-	    soclib::caba::GenericFifo<sc_uint<flit_width> >*  r_fifo_out;
+	    soclib::caba::GenericFifo<internal_flit_t>*  r_fifo_in;
+	    soclib::caba::GenericFifo<internal_flit_t>*  r_fifo_out;
 
 	    // structural parameters
 	    const size_t     m_local_x;
@@ -124,7 +131,6 @@ namespace soclib { namespace caba {
 	    void      transition();
 	    void      genMoore();
         size_t    route( sc_uint<flit_width> data, size_t index );
-        bool      is_eop( sc_uint<flit_width> data );
         bool      is_broadcast( sc_uint<flit_width> data );
 	};
 

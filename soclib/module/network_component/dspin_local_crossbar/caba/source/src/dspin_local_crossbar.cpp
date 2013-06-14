@@ -62,7 +62,6 @@ using namespace soclib::caba;
 
       r_alloc_out(alloc_elems<sc_signal<bool> > ("r_alloc_out", nb_local_outputs + 1)),
 	  r_index_out(alloc_elems<sc_signal<size_t> > ("r_index_out", nb_local_outputs + 1)),
-	  r_buf_in(alloc_elems<sc_signal<sc_uint<flit_width> > > ("r_buf_in", nb_local_inputs + 1)),
 	  r_fsm_in(alloc_elems<sc_signal<int> > ("r_fsm_in", nb_local_inputs + 1)),
 	  r_index_in(alloc_elems<sc_signal<size_t> > ("r_index_in", nb_local_inputs + 1)),
 
@@ -83,6 +82,8 @@ using namespace soclib::caba;
       m_use_routing_table( use_routing_table ),
       m_broadcast_supported( broadcast_supported )
     {
+        std::cout << "  - Building DspinLocalCrossbar " << name << std::endl;
+
 	    SC_METHOD (transition);
 	    dont_initialize();
 	    sensitive << p_clk.pos();
@@ -91,6 +92,8 @@ using namespace soclib::caba;
 	    dont_initialize();
 	    sensitive  << p_clk.neg();
 
+	    r_buf_in = new internal_flit_t[nb_local_inputs + 1];
+
         // routing table
         if ( use_routing_table )
         {
@@ -98,24 +101,24 @@ using namespace soclib::caba;
         }
 
         // construct FIFOs
-	    r_fifo_in  = (GenericFifo<sc_uint<flit_width> >*)
-	    malloc(sizeof(GenericFifo<sc_uint<flit_width> >)*(m_local_inputs+1));
+	    r_fifo_in  = (GenericFifo<internal_flit_t>*)
+	    malloc(sizeof(GenericFifo<internal_flit_t>)*(m_local_inputs+1));
 	    
-        r_fifo_out = (GenericFifo<sc_uint<flit_width> >*)
-	    malloc(sizeof(GenericFifo<sc_uint<flit_width> >)*(m_local_outputs+1));
+        r_fifo_out = (GenericFifo<internal_flit_t>*)
+	    malloc(sizeof(GenericFifo<internal_flit_t>)*(m_local_outputs+1));
 
 	    for( size_t i = 0 ; i <= m_local_inputs ; i++ )
         {
 		    std::ostringstream stri;
 		    stri << "r_in_fifo_" << i;
-	        new(&r_fifo_in[i])  GenericFifo<sc_uint<flit_width> >(stri.str(), in_fifo_depth);
+	        new(&r_fifo_in[i])  GenericFifo<internal_flit_t>(stri.str(), in_fifo_depth);
         }
 
 	    for( size_t j = 0 ; j <= m_local_outputs ; j++ )
         {
 		    std::ostringstream stro;
 		    stro << "r_out_fifo_" << j;
-	        new(&r_fifo_out[j]) GenericFifo<sc_uint<flit_width> >(stro.str(), out_fifo_depth);
+	        new(&r_fifo_out[j]) GenericFifo<internal_flit_t>(stro.str(), out_fifo_depth);
 	    }
 
         assert( (flit_width >= x_width + y_width + l_width) and
@@ -127,13 +130,10 @@ using namespace soclib::caba;
     tmpl(size_t)::route( sc_uint<flit_width> data,     // first flit
                          size_t              input )   // input port index 
     {
-        size_t output;                          // selected output port
 
-        // extract address from first flit        
-        uint64_t address = (uint64_t)(data << 1);
-
-        size_t x_dest = (size_t)(address >> m_x_shift) & m_x_mask;
-        size_t y_dest = (size_t)(address >> m_y_shift) & m_y_mask;
+        size_t output;   // selected output port
+        size_t x_dest = (size_t)(data >> m_x_shift) & m_x_mask;
+        size_t y_dest = (size_t)(data >> m_y_shift) & m_y_mask;
 
         if ( (x_dest == m_local_x) and (y_dest == m_local_y) )          // local dest
         {
@@ -143,7 +143,7 @@ using namespace soclib::caba;
             }
             else
             {
-                output = (size_t)(address >> m_l_shift) & m_l_mask;
+                output = (size_t)(data >> m_l_shift) & m_l_mask;
  
                 assert( (output < m_local_outputs) and
                 "ERROR in DSPIN_LOCAL_CROSSBAR: illegal local destination");
@@ -157,12 +157,6 @@ using namespace soclib::caba;
             output = m_local_outputs;
         }
         return output;
-    }
-
-    ///////////////////////////////////////////////////
-    tmpl(inline bool)::is_eop(sc_uint<flit_width> data)
-    {
-        return ( ((data>>(flit_width-1)) & 0x1) != 0);
     }
 
     /////////////////////////////////////////////////////////
@@ -201,17 +195,17 @@ using namespace soclib::caba;
         size_t              req_in[m_local_inputs+1];   // input ports  -> output ports
         size_t              get_out[m_local_outputs+1]; // output ports -> input ports
         bool                put_in[m_local_inputs+1];   // input ports  -> output ports
-        sc_uint<flit_width> data_in[m_local_inputs+1];  // input ports  -> output ports
+        internal_flit_t     data_in[m_local_inputs+1];  // input ports  -> output ports
 
         // control signals for the input fifos
 	    bool                fifo_in_write[m_local_inputs+1];
 	    bool                fifo_in_read[m_local_inputs+1];	
-	    sc_uint<flit_width> fifo_in_data[m_local_inputs+1];
+	    internal_flit_t     fifo_in_wdata[m_local_inputs+1];
 
         // control signals for the output fifos
 	    bool                fifo_out_write[m_local_outputs+1];
 	    bool                fifo_out_read[m_local_outputs+1];
-	    sc_uint<flit_width> fifo_out_data[m_local_outputs+1];
+	    internal_flit_t     fifo_out_wdata[m_local_outputs+1];
 
 	    // reset 
 	    if ( p_resetn.read() == false ) 
@@ -231,27 +225,27 @@ using namespace soclib::caba;
             return;
         }
 
-	    // fifo_in control signals
+	    // fifo_in signals default values
 	    for(size_t i = 0 ; i < m_local_inputs ; i++) 
         {
-		    fifo_in_read[i]  = false;   // default value
-		    fifo_in_write[i] = p_local_in[i].write.read();
-		    fifo_in_data[i]  = p_local_in[i].data.read();
+		    fifo_in_read[i]        = false;   
+		    fifo_in_write[i]       = p_local_in[i].write.read();
+		    fifo_in_wdata[i].data  = p_local_in[i].data.read();
+		    fifo_in_wdata[i].eop   = p_local_in[i].eop.read();
 	    }
-        fifo_in_read[m_local_inputs]  = false; // default value
-        fifo_in_write[m_local_inputs] = p_global_in.write.read();
-        fifo_in_data[m_local_inputs]  = p_global_in.data.read();
+        fifo_in_read[m_local_inputs]       = false; // default value
+        fifo_in_write[m_local_inputs]      = p_global_in.write.read();
+        fifo_in_wdata[m_local_inputs].data = p_global_in.data.read();
+        fifo_in_wdata[m_local_inputs].eop  = p_global_in.eop.read();
 
-	    // fifo_out control signals
+	    // fifo_out signals default values
 	    for(size_t j = 0 ; j < m_local_outputs ; j++) 
         {
 		    fifo_out_read[j]  = p_local_out[j].read.read();
-		    fifo_out_write[j] = false;  // default value
-		    fifo_out_data[j]  = 0;      // default value
+		    fifo_out_write[j] = false;  
 	    }
         fifo_out_read[m_local_outputs]  = p_global_out.read.read();
-        fifo_out_write[m_local_outputs] = false;  // default value    
-        fifo_out_data[m_local_outputs]  = 0;      // default value
+        fifo_out_write[m_local_outputs] = false;     
 
         // loop on the output ports:
         // compute get_out[j] depending on the output port state
@@ -283,10 +277,11 @@ using namespace soclib::caba;
                     put_in[i] = false;
                     if ( r_fifo_in[i].rok() ) // packet available in input fifo
                     {
-                        if ( is_broadcast(r_fifo_in[i].read()) and 
+                        if ( is_broadcast(r_fifo_in[i].read().data ) and 
                              m_broadcast_supported )   // broadcast required
                         {
-                            r_buf_in[i]     = r_fifo_in[i].read();
+                            r_buf_in[i] = r_fifo_in[i].read();
+
                             if ( i == m_local_inputs ) // global input port
                             {
                                 req_in[i]     = m_local_outputs - 1;
@@ -300,7 +295,7 @@ using namespace soclib::caba;
                         }
                         else                           // unicast routing
                         {
-                            req_in[i]     = route( r_fifo_in[i].read(), i );
+                            req_in[i]     = route( r_fifo_in[i].read().data, i );
                             r_index_in[i] = req_in[i];
                             r_fsm_in[i]   = INFSM_REQ;
                         }
@@ -318,8 +313,8 @@ using namespace soclib::caba;
                     req_in[i]  = r_index_in[i];
                     if ( get_out[r_index_in[i].read()] == i ) // first flit transfered
                     {
-                        if ( is_eop( r_fifo_in[i].read() ) )  r_fsm_in[i] = INFSM_IDLE;
-                        else                                  r_fsm_in[i] = INFSM_ALLOC;
+                        if ( r_fifo_in[i].read().eop )  r_fsm_in[i] = INFSM_IDLE;
+                        else                            r_fsm_in[i] = INFSM_ALLOC;
                     }
                     break;
                 }
@@ -328,9 +323,9 @@ using namespace soclib::caba;
                     data_in[i] = r_fifo_in[i].read();
                     put_in[i]  = r_fifo_in[i].rok();
                     req_in[i]  = 0xFFFFFFFF;                // no request
-                    if ( is_eop( r_fifo_in[i].read() ) and
+                    if ( r_fifo_in[i].read().eop and
                          r_fifo_in[i].rok() and 
-                         get_out[r_index_in[i].read()] == i )  // last flit transfered
+                         (get_out[r_index_in[i].read()] == i) )  // last flit transfered
                     {
                         r_fsm_in[i] = INFSM_IDLE;
                     }
@@ -338,7 +333,7 @@ using namespace soclib::caba;
                 }
                 case INFSM_REQ_BC:  // waiting output port allocation
                 {
-                    data_in[i] = r_buf_in[i].read();
+                    data_in[i] = r_buf_in[i];
                     put_in[i]  = true;
                     req_in[i]  = r_index_in[i];
                     if ( get_out[r_index_in[i].read()] == i ) // first flit transfered
@@ -356,7 +351,7 @@ using namespace soclib::caba;
                     if ( r_fifo_in[i].rok() and 
                          get_out[r_index_in[i].read()] == i )  // last flit transfered
                     {
-                        assert( is_eop( r_fifo_in[i].read() ) and 
+                        assert( r_fifo_in[i].read().eop and 
                         "ERROR in DSPIN_LOCAL_CROSSBAR : broadcast packets must have 2 flits");
 
                         if ( r_index_in[i].read() == 0 ) r_fsm_in[i] = INFSM_IDLE;
@@ -393,7 +388,7 @@ using namespace soclib::caba;
 		    } 
             else                            // allocated: possible desallocation
             {
-		        if ( is_eop( data_in[r_index_out[j]] ) and
+		        if ( data_in[r_index_out[j]].eop and
                      r_fifo_out[j].wok() and 
                      put_in[r_index_out[j]] ) 
                 {
@@ -414,7 +409,7 @@ using namespace soclib::caba;
                 fifo_in_read[i] = (get_out[r_index_in[i].read()] == i);
             }
             if ( (r_fsm_in[i].read() == INFSM_IDLE) and
-                 is_broadcast( r_fifo_in[i].read() ) and 
+                 is_broadcast( r_fifo_in[i].read().data ) and 
                  m_broadcast_supported )   
             {
                 fifo_in_read[i] = true;
@@ -429,7 +424,7 @@ using namespace soclib::caba;
 		    if( r_alloc_out[j] )  // output port allocated
             {
 		        fifo_out_write[j] = put_in[r_index_out[j]];
-		        fifo_out_data[j]  = data_in[r_index_out[j]];
+		        fifo_out_wdata[j] = data_in[r_index_out[j]];
             }
         }  // end loop on the output ports
 
@@ -438,7 +433,7 @@ using namespace soclib::caba;
         {
 		    r_fifo_in[i].update(fifo_in_read[i],
                                 fifo_in_write[i],
-                                fifo_in_data[i]);
+                                fifo_in_wdata[i]);
         }
 
 	    //  output FIFOs update
@@ -446,26 +441,30 @@ using namespace soclib::caba;
         { 
 		    r_fifo_out[j].update(fifo_out_read[j],
                                  fifo_out_write[j],
-                                 fifo_out_data[j]);
+                                 fifo_out_wdata[j]);
 	    }
     } // end transition
 
     ///////////////////////
     tmpl(void)::genMoore()
     {
+        // input ports
         for(size_t i = 0 ; i < m_local_inputs ; i++) 
         { 
 	        p_local_in[i].read = r_fifo_in[i].wok();
         }
         p_global_in.read = r_fifo_in[m_local_inputs].wok();
 
+        // output ports
         for(size_t j = 0 ; j < m_local_outputs ; j++) 
         { 
 	        p_local_out[j].write = r_fifo_out[j].rok();
-	        p_local_out[j].data  = r_fifo_out[j].read();
+	        p_local_out[j].data  = r_fifo_out[j].read().data;
+	        p_local_out[j].eop   = r_fifo_out[j].read().eop;
         }
         p_global_out.write = r_fifo_out[m_local_outputs].rok();
-        p_global_out.data  = r_fifo_out[m_local_outputs].read();
+        p_global_out.data  = r_fifo_out[m_local_outputs].read().data;
+        p_global_out.eop   = r_fifo_out[m_local_outputs].read().eop;
 
     } // end genMoore
 

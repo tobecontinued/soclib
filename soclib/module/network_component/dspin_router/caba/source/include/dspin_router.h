@@ -39,6 +39,10 @@ namespace soclib { namespace caba {
 
 using namespace sc_core;
 
+template<int flit_width>
+class DspinRouter
+: public soclib::caba::BaseModule
+{
 	// Port indexing
 	enum 
     {
@@ -57,10 +61,6 @@ using namespace sc_core;
         INFSM_ALLOC,
     };
 
-template<int flit_width>
-class DspinRouter
-: public soclib::caba::BaseModule
-{
     protected:
     SC_HAS_PROCESS(DspinRouter);
 
@@ -83,15 +83,22 @@ class DspinRouter
 
     private:
 
-    // internal registers
+    // define the FIFO flit
+    typedef struct internal_flit_s 
+    {
+        sc_uint<flit_width>  data;
+        bool                 eop;
+    } internal_flit_t;
+    
+    // registers
 	sc_signal<bool>				*r_alloc_out;
 	sc_signal<size_t>           *r_index_out;
     sc_signal<int>              *r_fsm_in;
 	sc_signal<size_t>           *r_index_in;
 
 	// fifos
-	soclib::caba::GenericFifo<sc_uint<flit_width> >*  r_fifo_in;
-	soclib::caba::GenericFifo<sc_uint<flit_width> >*  r_fifo_out;
+	soclib::caba::GenericFifo<internal_flit_t>*  r_fifo_in;
+	soclib::caba::GenericFifo<internal_flit_t>*  r_fifo_out;
 
 	// structural parameters
 	size_t	                    m_local_x;
@@ -107,7 +114,6 @@ class DspinRouter
     void    transition();
     void    genMoore();
     size_t  xfirst_route( sc_uint<flit_width> data );
-    bool    is_eop( sc_uint<flit_width> data );
 
     public:
 

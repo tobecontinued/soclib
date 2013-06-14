@@ -66,6 +66,8 @@ tmpl(/**/)::VciDspinInitiatorWrapper( sc_module_name name,
 
         m_srcid_width( srcid_width )
 {
+    std::cout << "  - Building VciDspinInitiatorWrapper " << name << std::endl;
+
 	SC_METHOD (transition);
 	dont_initialize();
 	sensitive << p_clk.pos();
@@ -272,6 +274,7 @@ tmpl(void)::transition()
 //////////////////////////////
 tmpl(void)::genMealy_vci_cmd()
 {
+    // TODO  ce comportement est faux en 64 bits: problèbe des VCI READ single flit...
     if ( (r_cmd_fsm.read() == CMD_IDLE) or
          (r_cmd_fsm.read() == CMD_WRITE) ) p_vci.cmdack = false;
     else                                   p_vci.cmdack = p_dspin_cmd.read.read();

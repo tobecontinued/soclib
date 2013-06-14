@@ -34,13 +34,14 @@
 
 namespace soclib { namespace caba {
 
-enum{  // port indexing
-	NORTH	= 0,
-	SOUTH	= 1,
-	EAST	= 2,
-	WEST	= 3,
-	LOCAL	= 4,
-};
+template<int flit_width>
+class VirtualDspinRouter: public soclib::caba::BaseModule
+{			
+
+protected:
+	SC_HAS_PROCESS(VirtualDspinRouter);
+
+public:
 
 enum{   // request type (six values, can be encoded on 3 bits)
     REQ_NORTH,
@@ -51,8 +52,7 @@ enum{   // request type (six values, can be encoded on 3 bits)
     REQ_NOP,
 };
 
-enum{	// INFSM States : In the REQ states, the request and the corresponding
-        // data are sent simultaneously, which means two cycles in this state
+enum{	// INFSM States 
 	INFSM_IDLE,
     INFSM_REQ,
     INFSM_DT,
@@ -66,18 +66,17 @@ enum{	// INFSM States : In the REQ states, the request and the corresponding
 	INFSM_DT_FOURTH,
 	};
 
-template<int flit_width>
-class VirtualDspinRouter: public soclib::caba::BaseModule
-{			
-
-protected:
-	SC_HAS_PROCESS(VirtualDspinRouter);
-
-public:
+enum{  // port indexing
+	NORTH	= 0,
+	SOUTH	= 1,
+	EAST	= 2,
+	WEST	= 3,
+	LOCAL	= 4,
+};
 
 	// ports
-	sc_core::sc_in<bool>             	p_clk;
-	sc_core::sc_in<bool>             	p_resetn;
+	sc_core::sc_in<bool>             	    p_clk;
+	sc_core::sc_in<bool>             	    p_resetn;
 	soclib::caba::DspinOutput<flit_width>	**p_out;
 	soclib::caba::DspinInput<flit_width>	**p_in;
 
@@ -99,18 +98,26 @@ public:
 
 private:
 
-	// input port registers & fifos
-	sc_core::sc_signal<bool>                 r_tdm[5];              // Time Multiplexing
-	sc_core::sc_signal<int>			         r_input_fsm[2][5];	    // FSM state
-	sc_core::sc_signal<sc_uint<flit_width> > r_buf[2][5];           // fifo extension
+    // define FIFO flit
+    typedef struct internal_flit_s 
+    {
+        sc_uint<flit_width>  data;
+        bool                 eop;
+    } internal_flit_t;
+    
 
-	soclib::caba::GenericFifo<sc_uint<flit_width> > **in_fifo;      // input fifos
+	// input port registers & fifos
+	sc_core::sc_signal<bool>              r_tdm[5];              // Time Multiplexing
+	sc_core::sc_signal<int>			      r_input_fsm[2][5];	 // FSM state
+	internal_flit_t                       r_buf[2][5];           // fifo extension
+
 
 	// output port registers & fifos
-	sc_core::sc_signal<int>                  r_output_index[2][5];  // allocated input index 
-	sc_core::sc_signal<bool>			     r_output_alloc[2][5];	// allocation status 
+	sc_core::sc_signal<int>              r_output_index[2][5];  // allocated input  
+	sc_core::sc_signal<bool>			 r_output_alloc[2][5];	// allocation status 
 
-	soclib::caba::GenericFifo<sc_uint<flit_width> > **out_fifo;		// output fifos
+	soclib::caba::GenericFifo<internal_flit_t>**   in_fifo;     // input fifos
+	soclib::caba::GenericFifo<internal_flit_t>**   out_fifo;    // output fifos
 
 	// structural variables
 	int	m_local_x;					// router x coordinate
@@ -129,7 +136,6 @@ private:
 	// Utility functions
 	int 	xfirst_route(sc_uint<flit_width> data);			
 	int 	broadcast_route(int dst, int src, sc_uint<flit_width> data);	
-	bool 	is_eop(sc_uint<flit_width> data);			
 	bool 	is_broadcast(sc_uint<flit_width> data);
 
 }; // end class VirtualDspinRouter
