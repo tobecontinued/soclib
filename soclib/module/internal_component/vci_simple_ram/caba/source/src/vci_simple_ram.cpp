@@ -79,12 +79,12 @@ using namespace soclib;
 
 //////////////////////////
 tmpl(/**/)::VciSimpleRam(
-    sc_module_name insname,
+    sc_module_name name,
     const soclib::common::IntTab index,
     const soclib::common::MappingTable &mt,
     const soclib::common::Loader &loader,
     const uint32_t latency)
-	: caba::BaseModule(insname),
+	: caba::BaseModule(name),
       m_loader(loader),
       m_seglist(mt.getSegmentList(index)),
       m_latency(latency),
@@ -103,26 +103,32 @@ tmpl(/**/)::VciSimpleRam(
       r_contig("r_contig"),
       r_latency_count("r_latency_count"),
 
-      m_nbseg(0),
-
       p_resetn("p_resetn"),
       p_clk("p_clk"),
       p_vci("p_vci")
 {
+    std::cout << "  - Building SimpleRam " << name << std::endl;
+
+    size_t nsegs = 0;
+
+    assert( (m_seglist.empty() == false) and
+    "VCI_MULTI_RAM error : no segment allocated");
+
+    std::list<soclib::common::Segment>::iterator seg;
+    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
+    {
+        std::cout << "    => segment " << seg->name()
+                  << " / base = " << std::hex << seg->baseAddress()
+                  << " / size = " << seg->size() << std::endl; 
+        nsegs++;
+    }
+
+    m_nbseg = nsegs;
+
     assert( ((vci_param::B == 4) or (vci_param::B == 8)) and
     "VCI_SIMPLE_RAM ERROR : The VCI DATA field must be 32 or 64 bits");
 
-    SC_METHOD(transition);
-    dont_initialize();
-    sensitive << p_clk.pos();
-
-    SC_METHOD(genMoore);
-    dont_initialize();
-    sensitive << p_clk.neg();
-
-    std::list<soclib::common::Segment>::iterator seg;
-    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )  m_nbseg++;
- 
+    // actual memory allocation
     m_ram = new uint32_t*[m_nbseg];
     m_seg = new soclib::common::Segment*[m_nbseg];
 
@@ -133,6 +139,14 @@ tmpl(/**/)::VciSimpleRam(
         m_seg[i] = &(*seg);
         i++;
     }
+
+    SC_METHOD(transition);
+    dont_initialize();
+    sensitive << p_clk.pos();
+
+    SC_METHOD(genMoore);
+    dont_initialize();
+    sensitive << p_clk.neg();
 }
 
 ///////////////////////////

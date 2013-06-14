@@ -7,7 +7,8 @@ __version__ = "$Revision$"
 Module('caba:vci_simple_ram',
 	classname = 'soclib::caba::VciSimpleRam',
 	   tmpl_parameters = [
-	parameter.Module('vci_param',  default = 'caba:vci_param'),
+	         parameter.Module('vci_param', default = 'caba:vci_param'),
+#                               cell_size = parameter.Reference('ram_data_width')),
 	],
 	header_files = ['../source/include/vci_simple_ram.h',],
 	implementation_files = ['../source/src/vci_simple_ram.cpp',],
