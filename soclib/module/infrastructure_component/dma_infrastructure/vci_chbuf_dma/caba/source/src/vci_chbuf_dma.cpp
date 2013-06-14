@@ -1480,20 +1480,24 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
           p_vci_initiator("p_vci_initiator"),
           p_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_irq", channels))
 {
-    size_t nbsegs = 0;
+    std::cout << "  - Building VciChbufDma : " << name << std::endl;
+
+    assert( (m_seglist.empty() == false) and 
+    "VCI_CHBUF_DMA error : No segment allocated");
+
     std::list<soclib::common::Segment>::iterator seg;
     for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
     {
-        nbsegs++;
 	    assert( ( (seg->baseAddress() & 0xFFF) == 0 ) and 
 		"VCI_CHBUF_DMA Error : The segment base address must be multiple of 4 Kbytes"); 
 
 	    assert( ( seg->size() >= (m_channels<<12) ) and 
 		"VCI_CHBUF_DMA Error : The segment size cannot be smaller than 4K * channels"); 
-    }
 
-    assert( (nbsegs != 0) and 
-    "VCI_CHBUF_DMA error : No segment allocated");
+        std::cout << "    => segment " << seg->name()
+                  << " / base = " << std::hex << seg->baseAddress()
+                  << " / size = " << seg->size() << std::endl; 
+    }
 
     assert( (vci_param::T >= 4) and 
     "VCI_CHBUF_DMA error : The VCI TRDID field must be at least 4 bits");

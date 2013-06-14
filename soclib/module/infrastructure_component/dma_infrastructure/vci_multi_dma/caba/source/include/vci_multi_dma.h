@@ -83,9 +83,9 @@ private:
     sc_signal<size_t>				        r_rsp_nbytes;            // VCI packet length
 
     // sructural parametert
-    soclib::common::Segment			        m_segment;
-    const size_t				            m_burst_max_length;	   // number of bytes
-    const size_t				            m_channels;		       // no more than 8
+    std::list<soclib::common::Segment>		m_seglist;
+    const size_t				            m_burst_max_length;	     // number of bytes
+    const size_t				            m_channels;		         // no more than 8
     const size_t				            m_srcid;
 
 protected:

@@ -41,6 +41,7 @@ class VciXicu
 	: public caba::BaseModule
 {
 private:
+    std::list<soclib::common::Segment>              m_seglist;
     soclib::caba::VciTargetFsm<vci_param, true>     m_vci_fsm;
 
     const size_t                                    m_pti_count;

@@ -91,6 +91,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	}
 }
 
+////////////////////////
 tmpl(void)::transition()
 {
     m_cpt_cycles++;
@@ -109,6 +110,7 @@ tmpl(void)::transition()
 	m_vci_fsm.transition();
 }
 
+//////////////////////
 tmpl(void)::genMoore()
 {
 	m_vci_fsm.genMoore();
@@ -164,17 +166,29 @@ tmpl(/**/)::VciMultiTty(
     init(args);
 }
 
+////////////////////////
 tmpl(/**/)::VciMultiTty(
     sc_module_name name,
     const IntTab &index,
     const MappingTable &mt,
     const std::vector<std::string> &names )
     : soclib::caba::BaseModule(name),
-      m_vci_fsm(p_vci, mt.getSegmentList(index)),
+      m_seglist(mt.getSegmentList(index)),
+      m_vci_fsm(p_vci, m_seglist),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci")
 {
+    std::cout << "  - Building VciMultiTTy " << name << std::endl;
+
+    std::list<soclib::common::Segment>::iterator seg;
+    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
+    {
+        std::cout << "    => segment " << seg->name()
+                  << " / base = " << std::hex << seg->baseAddress()
+                  << " / size = " << seg->size() << std::endl; 
+    }
+
     init(names);
 }
 

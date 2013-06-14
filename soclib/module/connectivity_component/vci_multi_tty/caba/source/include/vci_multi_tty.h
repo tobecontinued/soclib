@@ -44,12 +44,18 @@ class VciMultiTty
 	: public soclib::caba::BaseModule
 {
 private:
-    /* Internal states */
-    std::vector<soclib::common::TtyWrapper*> m_term;
+    std::vector<soclib::common::TtyWrapper*>    m_term;
+    std::list<soclib::common::Segment>          m_seglist;
     soclib::caba::VciTargetFsm<vci_param, true> m_vci_fsm;
 
-    bool on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be);
-    bool on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data);
+    bool on_write(int seg,
+                  typename vci_param::addr_t addr, 
+                  typename vci_param::data_t data, int be);
+
+    bool on_read(int seg, 
+                 typename vci_param::addr_t addr, 
+                 typename vci_param::data_t &data);
+
     void transition();
     void genMoore();
 

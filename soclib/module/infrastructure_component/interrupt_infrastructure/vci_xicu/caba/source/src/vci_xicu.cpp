@@ -414,7 +414,7 @@ if ( b ) std::cout << "p_irq[" << i << "] = " << b << std::endl;
     }
 }
 
-////////////////////
+//////////////////////////////////////////////////
 tmpl(/**/)::VciXicu( sc_core::sc_module_name name,
                      const MappingTable      &mt,
                      const                   IntTab &index,
@@ -423,7 +423,8 @@ tmpl(/**/)::VciXicu( sc_core::sc_module_name name,
                      size_t                  wti_count,
                      size_t                  irq_count )
            : caba::BaseModule(name),
-           m_vci_fsm(p_vci, mt.getSegmentList(index)),
+           m_seglist(mt.getSegmentList(index)),
+           m_vci_fsm(p_vci, m_seglist),
            m_pti_count(pti_count),
            m_hwi_count(hwi_count),
            m_wti_count(wti_count),
@@ -444,6 +445,16 @@ tmpl(/**/)::VciXicu( sc_core::sc_module_name name,
            p_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("irq", irq_count)),
            p_hwi(soclib::common::alloc_elems<sc_core::sc_in<bool> >("hwi", hwi_count))
 {
+    std::cout << "  - Building VciXicu " << name << std::endl;
+
+    std::list<soclib::common::Segment>::iterator seg;
+    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
+    {
+        std::cout << "    => segment " << seg->name()
+                  << " / base = " << std::hex << seg->baseAddress()
+                  << " / size = " << seg->size() << std::endl; 
+    }
+ 
 	m_vci_fsm.on_read_write( on_read, on_write );
 
 	SC_METHOD(transition);

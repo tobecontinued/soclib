@@ -145,12 +145,22 @@ tmpl(void)::transition()
                 typename vci_param::cmd_t	    cmd     = p_vci_target.cmd.read();
                 uint32_t	                    wdata   = p_vci_target.wdata.read();
                
-                r_srcid = p_vci_target.srcid.read();
-                r_trdid = p_vci_target.trdid.read();
-                r_pktid = p_vci_target.pktid.read();
+                bool found = false;
+                std::list<soclib::common::Segment>::iterator seg;
+                for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
+                {
+                    if ( seg->contains(address) ) found = true;
+                }
+ 
+                r_srcid					= p_vci_target.srcid.read();
+                r_trdid					= p_vci_target.trdid.read();
+                r_pktid					= p_vci_target.pktid.read();
                 
                 int 	cell    = (int)((address & 0x1C) >> 2);
                 size_t	channel = (size_t)((address & 0x7000) >> 12);
+
+                assert( found and
+                "VCI_MULTI_DMA error : Out of segment address in configuration");
 
                 assert( (channel < m_channels) and 
                 "VCI_MULTI_DMA error : The channel index (ADDR[14:12] is too large");
@@ -653,7 +663,7 @@ tmpl(void)::transition()
             if ( p_vci_initiator.rspval.read() )
             {
                  assert( (p_vci_initiator.reop.read() == true) and
-                 "VCI_MULTI_DMA error : a write response packed cannot contain more than one flit");  
+                 "VCI_MULTI_DMA error : write response packed must contain one flit");  
 
                 size_t k  = r_rsp_index.read();
                 r_channel_length[k] = r_channel_length[k].read() - r_rsp_nbytes.read();
@@ -903,7 +913,7 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
           r_rsp_index("r_rsp_index"),
           r_rsp_nbytes("r_rsp_nbytes"),
 
-          m_segment(mt.getSegment(tgtid)),
+          m_seglist(mt.getSegmentList(tgtid)),
           m_burst_max_length(burst_max_length),
           m_channels(channels),
           m_srcid(mt.indexForId(srcid)),
@@ -914,6 +924,19 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
           p_vci_initiator("p_vci_initiator"),
           p_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("p_irq", channels))
 {
+    std::cout << "  - Building VciMultiDma " << name << std::endl;
+
+    assert( (m_seglist.empty() == false) and
+    "VCI_MULTI_DMA error : no segment allocated");
+
+    std::list<soclib::common::Segment>::iterator seg;
+    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
+    {
+        std::cout << "    => segment " << seg->name()
+                  << " / base = " << std::hex << seg->baseAddress()
+                  << " / size = " << seg->size() << std::endl; 
+    }
+
     assert( (vci_param::T >= 4) and 
     "VCI_MULTI_DMA error : The VCI TRDID field must be at least 4 bits");
 
@@ -921,11 +944,11 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
     "VCI_MULTI_DMA error : The VCI DATA field must be 32 bits");
 
     assert( (burst_max_length < (1<<vci_param::K)) and 
-    "VCI_MULTI_DMA error : The requested burst length is not possible with the VCI PLEN size");
+    "VCI_MULTI_DMA error : Burst length is not possible with the VCI PLEN size");
 
     assert( ((burst_max_length==4) or (burst_max_length==8) or (burst_max_length==16) or 
-             (burst_max_length==32) or (burst_max_length==64) or (burst_max_length==128)) and
-    "VCI_MULTI_DMA error : The requested burst length must be 4, 8, 16, 32, 64, or 128 bytes");
+             (burst_max_length==32) or (burst_max_length==64)) and
+    "VCI_MULTI_DMA error : The burst length must be 4, 8, 16, 32, 64 bytes");
     
     assert( (channels <= 16)  and
     "VCI_MULTI_DMA error : The number of channels cannot be larger than 16");

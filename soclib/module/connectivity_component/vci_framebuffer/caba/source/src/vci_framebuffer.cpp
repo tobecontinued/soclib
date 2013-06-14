@@ -69,6 +69,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	return true;
 }
 
+////////////////////////
 tmpl(void)::transition()
 {
 	if (!p_resetn) {
@@ -87,11 +88,13 @@ tmpl(void)::transition()
 	m_vci_fsm.transition();
 }
 
+//////////////////////
 tmpl(void)::genMoore()
 {
 	m_vci_fsm.genMoore();
 }
 
+///////////////////////////
 tmpl(/**/)::VciFrameBuffer(
     sc_module_name name,
     const IntTab &index,
@@ -100,12 +103,26 @@ tmpl(/**/)::VciFrameBuffer(
     unsigned long height,
     int subsampling)
 	: caba::BaseModule(name),
-	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
+      m_seglist(mt.getSegmentList(index)),
+	  m_vci_fsm(p_vci, m_seglist),
            m_fb_controller((const char *)name, width, height, subsampling),
       p_clk("clk"),
       p_resetn("resetn"),
       p_vci("vci")
 {
+    std::cout << "  - Building VciFramebuffer : " << name << std::endl;
+
+    assert( (m_seglist.empty() == false) and
+    "VCI_FRAMEBUFFER error : no segment allocated");
+
+    std::list<soclib::common::Segment>::iterator seg;
+    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
+    {
+        std::cout << "    => segment " << seg->name()
+                  << " / base = " << std::hex << seg->baseAddress()
+                  << " / size = " << seg->size() << std::endl; 
+    }
+
 	m_defered_timeout = 0;
 
 	SC_METHOD(transition);
