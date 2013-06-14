@@ -78,7 +78,7 @@ using namespace soclib::caba;
       m_l_mask( (0x1 << l_width) - 1 ),
       m_local_inputs( nb_local_inputs ),
       m_local_outputs( nb_local_outputs ),
-      m_effective_bits(mt.getAddressWidth()),
+      m_address_width(mt.getAddressWidth()),
       m_use_routing_table( use_routing_table ),
       m_broadcast_supported( broadcast_supported )
     {
@@ -130,16 +130,21 @@ using namespace soclib::caba;
     tmpl(size_t)::route( sc_uint<flit_width> data,     // first flit
                          size_t              input )   // input port index 
     {
-
-        size_t output;   // selected output port
-        size_t x_dest = (size_t)(data >> m_x_shift) & m_x_mask;
-        size_t y_dest = (size_t)(data >> m_y_shift) & m_y_mask;
+        uint64_t address;  // address
+        size_t   output;   // selected output port
+        size_t   x_dest  = (size_t)(data >> m_x_shift) & m_x_mask;
+        size_t   y_dest  = (size_t)(data >> m_y_shift) & m_y_mask;
 
         if ( (x_dest == m_local_x) and (y_dest == m_local_y) )          // local dest
         {
             if ( m_use_routing_table )
             {
-                output = m_routing_table[data >> (flit_width - m_effective_bits)];
+                if (flit_width >= m_address_width) 
+                    address = data >> (flit_width - m_address_width);
+                else
+                    address = data << (m_address_width - flit_width);
+
+                output = m_routing_table[address];
             }
             else
             {
@@ -174,7 +179,8 @@ using namespace soclib::caba;
 
         for( size_t i = 0 ; i <= m_local_inputs ; i++)  // loop on input ports
         {
-            std::cout << " / infsm[" << i << "] = " << infsm_str[r_fsm_in[i].read()];
+            std::cout << " / infsm[" << std::hex << i 
+                      << "] = " << infsm_str[r_fsm_in[i].read()];
         }
 
         for( size_t out = 0 ; out <= m_local_outputs ; out++)  // loop on output ports
