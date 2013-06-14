@@ -139,7 +139,7 @@ using namespace soclib::caba;
         {
             if ( m_use_routing_table )
             {
-                output = m_routing_table[address >> (flit_width - m_effective_bits)];
+                output = m_routing_table[data >> (flit_width - m_effective_bits)];
             }
             else
             {
