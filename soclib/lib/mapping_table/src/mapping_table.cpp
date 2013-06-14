@@ -126,15 +126,15 @@ void MappingTable::add( const Segment &_seg )
     m_segment_list.push_back(seg);
 }
 
-const std::list<Segment> &
-MappingTable::getAllSegmentList() const
+////////////////////////////////////////////////////////////////////
+const std::list<Segment> & MappingTable::getAllSegmentList() const
 {
     const_cast<MappingTable*>(this)->m_used = true;
     return m_segment_list;
 }
 
-std::list<Segment>
-MappingTable::getSegmentList( const IntTab &index ) const
+////////////////////////////////////////////////////////////////////////////
+std::list<Segment> MappingTable::getSegmentList( const IntTab &index ) const
 {
     std::list<Segment> ret;
     std::list<Segment>::const_iterator i;
@@ -150,8 +150,8 @@ MappingTable::getSegmentList( const IntTab &index ) const
     return ret;
 }
 
-Segment
-MappingTable::getSegment( const IntTab &index ) const
+/////////////////////////////////////////////////////////////
+Segment MappingTable::getSegment( const IntTab &index ) const
 {
     std::list<Segment> list = getSegmentList(index);
 
@@ -161,9 +161,9 @@ MappingTable::getSegment( const IntTab &index ) const
     return list.front();
 }
 
+/////////////////////////////////////////////////////////////////////////////////////
 template<typename desired_addr_t>
-AddressDecodingTable<desired_addr_t, bool>
-MappingTable::getCacheabilityTable() const
+AddressDecodingTable<desired_addr_t, bool> MappingTable::getCacheabilityTable() const
 {
     AddressDecodingTable<desired_addr_t, bool> adt(m_cacheability_mask);
 	adt.reset(false);
@@ -183,7 +183,9 @@ MappingTable::getCacheabilityTable() const
             if ( done[addr] && adt[addr] != i->cacheable() ) {
                 std::ostringstream oss;
                 oss << "Incoherent Mapping Table:" << std::endl
-                    << "Segment " << *i << " has different cacheability than other segment with same masked address" << std::endl
+                    << "Segment " << *i 
+                    << " has different cacheability than other segment with same mask"
+                    << std::endl
                     << "Mapping table:" << std::endl
                     << *this;
                 throw soclib::exception::RunTimeError(oss.str());
@@ -195,8 +197,8 @@ MappingTable::getCacheabilityTable() const
     return adt;
 }
 
-template<typename desired_addr_t>
-AddressDecodingTable<desired_addr_t, bool>
+////////////////////////////////////////////////////////////////////////////////////
+template<typename desired_addr_t> AddressDecodingTable<desired_addr_t, bool>
 MappingTable::getLocalityTable( const IntTab &index ) const
 {
 	size_t nbits = m_level_addr_bits.sum(index.level());
@@ -221,7 +223,9 @@ MappingTable::getLocalityTable( const IntTab &index ) const
             if ( done[addr] && adt[addr] != val ) {
                 std::ostringstream oss;
                 oss << "Incoherent Mapping Table:" << std::endl
-                    << "Segment " << *i << " targets different component than other segments with same MSBs" << std::endl
+                    << "Segment " << *i 
+                    << " targets different component than other segments with same MSBs" 
+                    << std::endl
                     << "Mapping table:" << std::endl
                     << *this;
                 throw soclib::exception::RunTimeError(oss.str());
@@ -233,6 +237,7 @@ MappingTable::getLocalityTable( const IntTab &index ) const
     return adt;
 }
 
+/////////////////////////////////////////////////////////////////////////////////
 template<typename desired_addr_t>
 AddressDecodingTable<desired_addr_t, int>
 MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
@@ -303,6 +308,7 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
     return adt;
 }
 
+///////////////////////////////////////////////////////////////////////////////
 template<typename desired_addr_t>
 desired_addr_t *MappingTable::getCoherenceTable() const
 {
@@ -322,7 +328,7 @@ desired_addr_t *MappingTable::getCoherenceTable() const
     return ret;
 }
 
-
+//////////////////////////////////////////////////
 void MappingTable::print( std::ostream &o ) const
 {
     std::list<Segment>::const_iterator i;
@@ -338,8 +344,8 @@ void MappingTable::print( std::ostream &o ) const
     }
 }
 
-AddressMaskingTable<uint32_t>
-MappingTable::getIdMaskingTable( const int level ) const
+//////////////////////////////////////////////////////////////////////////////////////
+AddressMaskingTable<uint32_t> MappingTable::getIdMaskingTable( const int level ) const
 {
     int use = m_level_id_bits[level];
     int drop = 0;
@@ -350,7 +356,8 @@ MappingTable::getIdMaskingTable( const int level ) const
     return AddressMaskingTable<uint32_t>( use, drop );
 }
 
-AddressDecodingTable<uint32_t, bool>
+/////////////////////////////////////
+AddressDecodingTable<uint32_t, bool> 
 MappingTable::getIdLocalityTable( const IntTab &index ) const
 {
     size_t 	nbits = m_level_id_bits.sum(index.level());
