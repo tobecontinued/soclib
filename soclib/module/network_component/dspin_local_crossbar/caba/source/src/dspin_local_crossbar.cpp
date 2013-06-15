@@ -82,7 +82,7 @@ using namespace soclib::caba;
       m_use_routing_table( use_routing_table ),
       m_broadcast_supported( broadcast_supported )
     {
-        std::cout << "  - Building DspinLocalCrossbar " << name << std::endl;
+        std::cout << "  - Building DspinLocalCrossbar : " << name << std::endl;
 
 	    SC_METHOD (transition);
 	    dont_initialize();
@@ -179,7 +179,7 @@ using namespace soclib::caba;
 
         for( size_t i = 0 ; i <= m_local_inputs ; i++)  // loop on input ports
         {
-            std::cout << " / infsm[" << std::hex << i 
+            std::cout << " / infsm[" << std::dec << i 
                       << "] = " << infsm_str[r_fsm_in[i].read()];
         }
 

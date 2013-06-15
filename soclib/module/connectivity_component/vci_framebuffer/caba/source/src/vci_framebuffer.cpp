@@ -40,7 +40,11 @@ using namespace soclib;
 
 #define tmpl(t) template<typename vci_param> t VciFrameBuffer<vci_param>
 
-tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
+////////////////////////////
+tmpl(bool)::on_write(int seg, 
+                     typename vci_param::addr_t addr, 
+                     typename vci_param::data_t data, 
+                     int be)
 {
     if (addr>m_fb_controller.surface_size())
         return false;
@@ -60,7 +64,10 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
     return true;
 }
 
-tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
+////////////////////////////
+tmpl(bool)::on_read(int seg, 
+                    typename vci_param::addr_t addr, 
+                    typename vci_param::data_t &data)
 {
     if (addr>m_fb_controller.surface_size())
         return false;
@@ -134,6 +141,7 @@ tmpl(/**/)::VciFrameBuffer(
 	sensitive << p_clk.neg();
 
 	m_vci_fsm.on_read_write(on_read, on_write);
+
 }
 
 tmpl(/**/)::~VciFrameBuffer()
