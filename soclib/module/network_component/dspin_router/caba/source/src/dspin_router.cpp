@@ -66,7 +66,7 @@ using namespace soclib::caba;
       m_y_shift(flit_width - x_width - y_width ),
       m_y_mask( (0x1 << y_width) - 1 )
     {
-        std::cout << "  - Building DspinRouter " << name << std::endl;
+        std::cout << "  - Building DspinRouter : " << name << std::endl;
 
 	    SC_METHOD (transition);
 	    dont_initialize();

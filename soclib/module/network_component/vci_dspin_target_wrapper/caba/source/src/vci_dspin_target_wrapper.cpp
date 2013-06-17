@@ -72,7 +72,7 @@ tmpl(/**/)::VciDspinTargetWrapper( sc_module_name name,
 
        m_srcid_width( srcid_width )
 {
-    std::cout << "  - Building VciDspinTargetWrapper " << name << std::endl;
+    std::cout << "  - Building VciDspinTargetWrapper : " << name << std::endl;
 
 	SC_METHOD (transition);
 	dont_initialize();
@@ -223,6 +223,8 @@ tmpl(void)::transition()
                     ((p_dspin_cmd.data.read() & 0x0001800000LL) >> 23);
                     r_cmd_srcid   = (sc_uint<vci_param::S>)
                     ((p_dspin_cmd.data.read() & 0x7FFE000000LL) >> (39-m_srcid_width));
+                    r_cmd_be      = (sc_uint<vci_param::B>)
+                    ((p_dspin_cmd.data.read() & 0x000000001ELL) >> 1);
                     r_cmd_pktid   = (sc_uint<vci_param::P>)
                     ((p_dspin_cmd.data.read() & 0x00000001E0LL) >> 5);
                     r_cmd_trdid   = (sc_uint<vci_param::T>)
@@ -345,13 +347,13 @@ tmpl(void)::genMealy_vci_cmd()
         {
             p_vci.cmdval  = p_dspin_cmd.write.read() and p_dspin_cmd.eop.read();
             p_vci.address = r_cmd_addr.read();
-            p_vci.cmd     = (sc_uint<2>)((p_dspin_cmd.data.read()            & 0x01800000) >> 23);
             p_vci.wdata   = 0;
-            p_vci.be      = 0;
             p_vci.srcid   = (sc_uint<vci_param::S>)(p_dspin_cmd.data.read()>> (39-m_srcid_width));
+            p_vci.be      = (sc_uint<vci_param::B>)((p_dspin_cmd.data.read() & 0x0000001E) >> 1);
             p_vci.pktid   = (sc_uint<vci_param::P>)((p_dspin_cmd.data.read() & 0x000001E0) >> 5);
             p_vci.trdid   = (sc_uint<vci_param::T>)((p_dspin_cmd.data.read() & 0x00001E00) >> 9);
             p_vci.plen    = (sc_uint<vci_param::K>)((p_dspin_cmd.data.read() & 0x001FE000) >> 13);
+            p_vci.cmd     = (sc_uint<2>)           ((p_dspin_cmd.data.read() & 0x01800000) >> 23);
             p_vci.contig  = ((p_dspin_cmd.data.read() & 0x00400000) != 0);
             p_vci.cons    = ((p_dspin_cmd.data.read() & 0x00200000) != 0);
             p_vci.eop     = p_dspin_cmd.eop.read();
@@ -362,7 +364,7 @@ tmpl(void)::genMealy_vci_cmd()
             p_vci.address = r_cmd_addr.read();
             p_vci.cmd     = r_cmd_cmd.read();
             p_vci.wdata   = 0;
-            p_vci.be      = 0;
+            p_vci.be      = r_cmd_be.read();
             p_vci.srcid   = r_cmd_srcid.read();
             p_vci.pktid   = r_cmd_pktid.read();
             p_vci.trdid   = r_cmd_trdid.read();

@@ -66,7 +66,7 @@ tmpl(/**/)::VciDspinInitiatorWrapper( sc_module_name name,
 
         m_srcid_width( srcid_width )
 {
-    std::cout << "  - Building VciDspinInitiatorWrapper " << name << std::endl;
+    std::cout << "  - Building VciDspinInitiatorWrapper : " << name << std::endl;
 
 	SC_METHOD (transition);
 	dont_initialize();
@@ -162,10 +162,10 @@ tmpl(void)::transition()
     //   to a N+1 flits DSPIN command.
     // - A single flit VCI read command packet is translated
     //   to a singles DSPIN command.
-    // The FSM has only two states: IDLE and WDATA.
+    // The FSM has only three states: IDLE, READ and WDATA.
     //////////////////////////////////////////////////////////////
 
-    if ( vci_param::B == 4 ) ////////////////  VCI DATA = 32 bits
+    if ( vci_param::B == 4 ) ////////////////  VCI DATA = 32 bits //////////
     {
 	    switch( r_cmd_fsm.read() )
         {
@@ -203,26 +203,34 @@ tmpl(void)::transition()
                 r_cmd_fsm = CMD_IDLE;
             } 
         break;
-        }       // end switch
+        }       // end switch 32 bits
     }
-    else          ///////////////////////////// VCI DATA = 64 bits
+    else ////////////////////////////////////// VCI DATA = 64 bits //////////
     {
         switch( r_cmd_fsm.read() )
         {
 	    case CMD_IDLE:        // transmit first DSPIN CMD flit 
 		    if ( p_vci.cmdval.read() and p_dspin_cmd.read.read() )
             {
-                if ( (p_vci.cmd.read() == vci_param::CMD_LOCKED_READ) or
-                     (p_vci.cmd.read() == vci_param::CMD_STORE_COND) )
+                assert( ((p_vci.cmd.read() != vci_param::CMD_LOCKED_READ) and
+                         (p_vci.cmd.read() != vci_param::CMD_STORE_COND)) and
+                "ERROR in VCI/DSPIN wrapper 64 bit:  LL and SC not supported");
+
+                if ( p_vci.cmd.read() == vci_param::CMD_WRITE )
                 {
-                    std::cout << "ERROR in VCI/DSPIN wrapper 64 bit: "
-                              << "VCI LL and VCI SC not supported" << std::endl;
-                    exit(0); 
+                    r_cmd_fsm = CMD_WDATA;
                 }
-                else if ( p_vci.cmd.read() == vci_param::CMD_WRITE )
+                else // cmd = vci_param::CMD_READ
                 {
-                     r_cmd_fsm = CMD_WDATA;
+                    r_cmd_fsm = CMD_READ;
                 }
+
+            }
+        break;
+        case CMD_READ:        // send CMDACK on VCI port in case of READ
+		    if ( p_dspin_cmd.read.read() )
+            {
+                r_cmd_fsm = CMD_IDLE;
             }
         break;
         case CMD_WDATA:      // transmit DSPIN DATA flits for a WRITE
@@ -233,7 +241,7 @@ tmpl(void)::transition()
                 r_cmd_fsm = CMD_IDLE;
             } 
         break;
-        }      // end switch
+        }      // end switch 64 bits
     }  
 
     /////////////////////////////////////////////////////////////////
@@ -274,7 +282,6 @@ tmpl(void)::transition()
 //////////////////////////////
 tmpl(void)::genMealy_vci_cmd()
 {
-    // TODO  ce comportement est faux en 64 bits: problèbe des VCI READ single flit...
     if ( (r_cmd_fsm.read() == CMD_IDLE) or
          (r_cmd_fsm.read() == CMD_WRITE) ) p_vci.cmdack = false;
     else                                   p_vci.cmdack = p_dspin_cmd.read.read();
@@ -319,7 +326,7 @@ tmpl(void)::genMealy_dspin_cmd()
             p_dspin_cmd.data  = dspin_data;
             p_dspin_cmd.eop   = ( r_cmd_fsm.read() == CMD_READ );
         }
-        else             // data flit
+        else    // r_cmd_fsm == CMD_WDATA  =>  data flit
         {
             sc_uint<39> wdata = (sc_uint<39>)p_vci.wdata.read();
             sc_uint<39> be    = (sc_uint<39>)p_vci.be.read();

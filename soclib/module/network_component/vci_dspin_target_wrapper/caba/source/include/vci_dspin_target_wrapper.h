@@ -84,6 +84,7 @@ class VciDspinTargetWrapper
     sc_signal<sc_uint<vci_param::P> >           r_cmd_pktid;
     sc_signal<sc_uint<vci_param::S> >           r_cmd_srcid;
     sc_signal<sc_uint<vci_param::K> >           r_cmd_plen;
+    sc_signal<sc_uint<vci_param::B> >           r_cmd_be;
     sc_signal<sc_uint<2> >                      r_cmd_cmd;
     sc_signal<sc_uint<1> >                      r_cmd_contig;
     sc_signal<sc_uint<1> >                      r_cmd_cons;

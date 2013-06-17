@@ -51,8 +51,10 @@ using namespace sc_core;
 
 namespace _vgmn {
 
+////////////////////////////////
 template<typename data_t>
 class DelayLine
+////////////////////////////////
 {
     typename dpp::ref<data_t> *m_line;
     size_t m_size;
@@ -101,8 +103,10 @@ public:
     }
 };
 
+////////////////////////////////
 template<typename data_t>
 class AdHocFifo
+////////////////////////////////
 {
     size_t m_size;
     typename dpp::ref<data_t> *m_data;
@@ -187,29 +191,34 @@ DEBUG_END;
     }
 };
 
+////////////////////////////////
 template<typename _vci_pkt_t>
 class OutputPortQueue
+////////////////////////////////
 {
 public:
-    typedef _vci_pkt_t vci_pkt_t;
-    typedef AdHocFifo<vci_pkt_t> input_fifo_t;
-    typedef DelayLine<vci_pkt_t> output_delay_line_t;
-    typedef typename vci_pkt_t::output_port_t output_port_t;
+    typedef _vci_pkt_t                         vci_pkt_t;
+    typedef AdHocFifo<vci_pkt_t>               input_fifo_t;
+    typedef DelayLine<vci_pkt_t>               output_delay_line_t;
+    typedef typename vci_pkt_t::output_port_t  output_port_t;
 
 private:
-    input_fifo_t *m_input_queues;
-    output_delay_line_t m_output_delay_line;
-    uint32_t m_rand_state;
-    size_t m_n_inputs;
-    size_t m_current_input;
-    size_t m_inputpackets;
-    bool m_in_transaction;
+    input_fifo_t*         m_input_queues;
+    output_delay_line_t   m_output_delay_line;
+    uint32_t              m_rand_state;
+    size_t                m_n_inputs;
+    size_t                m_current_input;
+    size_t                m_inputpackets;
+    bool                  m_in_transaction;
 
 public:
     OutputPortQueue()
     {}
     
-    void init( size_t n_inputs, size_t min_delay, size_t fifo_size )
+    ///////////////////////////
+    void init( size_t n_inputs, 
+               size_t min_delay, 
+               size_t fifo_size )
     {
         m_input_queues = new input_fifo_t[n_inputs];
         for ( size_t i=0; i<n_inputs; ++i )
@@ -228,23 +237,24 @@ public:
         delete [] m_input_queues;
     }
 
+    ////////////
     void reset()
     {
-        for ( size_t i=0; i<m_n_inputs; ++i )
-            m_input_queues[i].reset();
+        for ( size_t i=0; i<m_n_inputs; ++i ) m_input_queues[i].reset();
         m_output_delay_line.reset();
         m_current_input = 0;
         m_in_transaction = false;
-	m_inputpackets = 0;
-        for (size_t i=0; i<42; ++i)
-            next_rand();
+	    m_inputpackets = 0;
+        for (size_t i=0; i<42; ++i) next_rand();
     }
 
+    ////////////////////////////////////////
     inline input_fifo_t *getFifo( size_t n )
     {
         return &m_input_queues[n];
     }
     
+    ////////////////////
     uint32_t next_rand()
     {
         m_rand_state = (
@@ -258,30 +268,43 @@ public:
         return m_rand_state;
     }
 
-    /////////////////////////////////////////////////////////////////////
-    void transition( const std::string &name, const output_port_t &port )
+    ///////////////////////////////
+    void print_trace(size_t output)
+    {
+        if ( m_in_transaction )
+            std::cout << std::dec << "in[" << m_current_input 
+                      << "] => out[" << output << "] / ";
+    }
+
+    ///////////////////////////////////////////////
+    void transition( const std::string      &name, 
+                     const output_port_t    &port )
     {
         if (port.iProposed() && ! port.peerAccepted())
             return;
 
         typename dpp::ref<vci_pkt_t> pkt;
-        if ( m_in_transaction ) {
+        if ( m_in_transaction ) 
+        {
             if ( !m_input_queues[m_current_input].empty() )
                 pkt = m_input_queues[m_current_input].pop();
-        } else if (m_inputpackets > 0) {
-	    size_t next_input = m_current_input + 1;
-	    if (next_input == m_n_inputs)
-		next_input = 0;
+        } 
+        else if (m_inputpackets > 0) 
+        {
+	        size_t next_input = m_current_input + 1;
+	        if (next_input == m_n_inputs)
+		    next_input = 0;
 
-	    size_t i = next_input;
-	    do {
-                if ( ! m_input_queues[i].empty() ) {
+	        size_t i = next_input;
+	        do 
+            {
+                if ( ! m_input_queues[i].empty() ) 
+                {
                     m_current_input = i;
                     pkt = m_input_queues[m_current_input].pop();
                     break;
                 }
-		if (++i == m_n_inputs)
-		    i = 0;
+		        if (++i == m_n_inputs) i = 0;
             } while (i != next_input);
         }
 
@@ -295,12 +318,14 @@ DEBUG_END;
             m_in_transaction = !pkt->eop();
     }
 
-    /////////////////////////////////////////////////////////////
-    void genMoore( const std::string &name, output_port_t &port )
+    ////////////////////////////////////////
+    void genMoore( const std::string &name, 
+                   output_port_t     &port )
     {
         typename dpp::ref<vci_pkt_t> pkt = m_output_delay_line.head();
 
-        if ( pkt.valid() ) {
+        if ( pkt.valid() ) 
+        {
 DEBUG_BEGIN;
             std::cout << name << " packet on VCI " << *pkt << std::endl;
 DEBUG_END;
@@ -308,10 +333,12 @@ DEBUG_END;
         } else
             port.setVal(false);
     }
-};
+};    // end class OutpuPortQueue
 
+///////////////////////////////////////
 template<typename output_queue_t>
 class InputRouter
+///////////////////////////////////////
 {
     typedef typename output_queue_t::input_fifo_t dest_fifo_t;
     typedef typename output_queue_t::vci_pkt_t vci_pkt_t;
@@ -336,6 +363,7 @@ public:
         delete [] m_output_fifos;
     }
 
+    ////////////////////////////
     void init( size_t n_outputs,
                dest_fifo_t **dest_fifos,
                const routing_table_t &rt )
@@ -345,57 +373,67 @@ public:
         m_dest = NULL;
         m_output_fifos = new dest_fifo_t*[m_n_outputs];
         m_broadcast_waiting.resize(m_n_outputs, false);
-        for ( size_t i=0; i<m_n_outputs; ++i ) {
+        for ( size_t i=0; i<m_n_outputs; ++i ) 
+        {
             m_output_fifos[i] = dest_fifos[i];
             m_broadcast_waiting[i] = false;
         }
     }
 
+    ////////////
     void reset()
     {
         m_waiting_packet.invalidate();
-        for ( size_t i=0; i<m_n_outputs; ++i )
-            m_broadcast_waiting[i] = false;
+        for ( size_t i=0; i<m_n_outputs; ++i ) m_broadcast_waiting[i] = false;
         m_dest = NULL;
     }
 
+    ////////////////////////
     ssize_t next_broadcast()
     {
         for ( size_t i=0; i<m_n_outputs; ++i )
-            if ( m_broadcast_waiting[i] )
-                return i;
+            if ( m_broadcast_waiting[i] ) return i;
         return -1;
     }
 
-    void transition( const std::string &name, const input_port_t &port )
+    /////////////////////////////////////////////
+    void transition( const std::string    &name, 
+                     const input_port_t   &port )
     {
-        if ( m_waiting_packet.valid() ) {
-            if ( next_broadcast() != -1 ) {
-                for ( size_t i=0; i<m_n_outputs; ++i ) {
-                    if ( ! m_broadcast_waiting[i] )
-                        continue;
+        if ( m_waiting_packet.valid() ) 
+        {
+            if ( next_broadcast() != -1 ) 
+            {
+                for ( size_t i=0; i<m_n_outputs; ++i ) 
+                {
+                    if ( ! m_broadcast_waiting[i] ) continue;
 
                     dest_fifo_t *dest = m_output_fifos[i];
-                    if ( ! dest->full() ) {
+                    if ( ! dest->full() ) 
+                    {
                         dest->push( name, m_waiting_packet );
                         m_broadcast_waiting[i] = false;
                     }
                 }
-                if ( next_broadcast() == -1 ) {
+                if ( next_broadcast() == -1 ) 
+                {
                     m_waiting_packet.invalidate();
                 }
-            } else {
+            } 
+            else 
+            {
                 assert(m_dest != NULL);
-                if ( ! m_dest->full() ) {
+                if ( ! m_dest->full() ) 
+                {
                     m_dest->push( name, m_waiting_packet );
-                    if ( m_waiting_packet->eop() )
-                        m_dest = NULL;
+                    if ( m_waiting_packet->eop() ) m_dest = NULL;
                     m_waiting_packet.invalidate();
                 }
             }
         }
 
-        if ( port.iAccepted() ) {
+        if ( port.iAccepted() ) 
+        {
             bool broadcasted = false;
             assert( ! m_waiting_packet.valid() );
             m_waiting_packet = DPP_REFNEW(vci_pkt_t, );
@@ -405,13 +443,16 @@ DEBUG_BEGIN;
             // std::cout << name << " routing_table : " << m_routing_table << std::endl;
             std::cout << name << " routing       : " << m_waiting_packet->route( m_routing_table) << std::endl;
 DEBUG_END;
-            if ( m_dest == NULL ) {
-                if ( m_waiting_packet->is_broadcast() ) {
-                    for ( size_t i = 0; i<m_n_outputs; ++i )
-                        m_broadcast_waiting[i] = true;
+            if ( m_dest == NULL ) 
+            {
+                if ( m_waiting_packet->is_broadcast() ) 
+                {
+                    for ( size_t i = 0; i<m_n_outputs; ++i ) m_broadcast_waiting[i] = true;
                     broadcasted = true;
                     assert( m_waiting_packet->eop() );
-                } else {
+                } 
+                else 
+                {
                     m_dest = m_output_fifos[m_waiting_packet->route( m_routing_table )];
                 }
 DEBUG_BEGIN;
@@ -421,29 +462,32 @@ DEBUG_BEGIN;
                     std::cout << name << " routed to port " << m_waiting_packet->route( m_routing_table ) << std::endl;
 DEBUG_END;
             }
-        } else {
+        } 
+        else 
+        {
             // No packet locally waiting nor on port, no need to
             // go further
             return;
         }
-    }
+    }  // end transition
 
+    ////////////////////////////////////////////////////////////
     void genMoore( const std::string &name, input_port_t &port )
     {
         bool can_take = !m_waiting_packet.valid();
 
         // If we know where we go, we may pipeline
-        // If we are in a broadcast, m_dest is NULL and no pipelining
-        // occurs.
-        if (m_dest != NULL)
-            can_take |= !m_dest->full();
+        // If we are in a broadcast, m_dest is NULL and no pipelining occurs.
+        if (m_dest != NULL) can_take |= !m_dest->full();
 
         port.setAck(can_take);
     }
-};
+};    // end class InputRouter
 
+////////////////////////////////////////////////
 template<typename router_t,typename queue_t>
 class MicroNetwork
+////////////////////////////////////////////////
 {
     typedef typename queue_t::vci_pkt_t::input_port_t input_port_t;
     typedef typename queue_t::vci_pkt_t::output_port_t output_port_t;
@@ -456,6 +500,8 @@ class MicroNetwork
     router_t *m_router;
 
 public:
+
+    /////////////
     MicroNetwork(
         const size_t in_size, const size_t out_size,
         size_t min_latency, size_t fifo_size,
@@ -476,12 +522,14 @@ public:
         }
     }
 
+    ///////////////
     ~MicroNetwork()
     {
         delete [] m_router;
         delete [] m_queue;
     }
 
+    ////////////
     void reset()
     {
         for ( size_t i=0; i<m_in_size; ++i )
@@ -490,7 +538,17 @@ public:
             m_queue[i].reset();
     }
 
-    void transition( const std::string &name, const input_port_t *input_port, const output_port_t *output_port )
+    //////////////////
+    void print_trace()
+    {
+        for ( size_t i=0; i<m_out_size; ++i )
+            m_queue[i].print_trace(i);
+    }
+
+    ////////////////////////////////////////
+    void transition( const std::string &name, 
+                     const input_port_t *input_port, 
+                     const output_port_t *output_port )
     {
         for ( size_t i=0; i<m_in_size; ++i )
             m_router[i].transition( name, input_port[i] );
@@ -498,7 +556,10 @@ public:
             m_queue[i].transition( name, output_port[i] );
     }
 
-    void genMoore( const std::string &name, input_port_t *input_port, output_port_t *output_port )
+    //////////////////////////////////////
+    void genMoore( const std::string &name, 
+                   input_port_t *input_port, 
+                   output_port_t *output_port )
     {
         for ( size_t i=0; i<m_in_size; ++i )
             m_router[i].genMoore( name, input_port[i] );
@@ -512,9 +573,11 @@ public:
 
 #define tmpl(x) template<typename vci_param> x VciVgmn<vci_param>
 
+////////////////////////
 tmpl(void)::transition()
 {
-    if ( ! p_resetn.read() ) {
+    if ( ! p_resetn.read() ) 
+    {
         m_cmd_mn->reset();
         m_rsp_mn->reset();
         return;
@@ -524,10 +587,23 @@ tmpl(void)::transition()
     m_rsp_mn->transition( name(), p_to_target, p_to_initiator );
 }
 
+//////////////////////
 tmpl(void)::genMoore()
 {
     m_cmd_mn->genMoore( name(), p_to_initiator, p_to_target );
     m_rsp_mn->genMoore( name(), p_to_target, p_to_initiator );
+}
+
+/////////////////////////
+tmpl(void)::print_trace()
+{
+    std::cout << "VGMN " << name() << std::endl;
+    std::cout << "  CMD network : ";
+    m_cmd_mn->print_trace();
+    std::cout << std::endl;
+    std::cout << "  RSP network : ";
+    m_rsp_mn->print_trace();
+    std::cout << std::endl;
 }
 
 ////////////////////

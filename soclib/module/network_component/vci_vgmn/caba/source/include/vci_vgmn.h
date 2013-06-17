@@ -81,6 +81,8 @@ protected:
     SC_HAS_PROCESS(VciVgmn);
 
 public:
+    void print_trace();
+
     VciVgmn( sc_module_name name,
               const soclib::common::MappingTable &mt,
               size_t nb_initiat,

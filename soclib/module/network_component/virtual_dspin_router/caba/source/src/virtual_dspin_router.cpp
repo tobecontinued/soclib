@@ -175,7 +175,7 @@ using namespace soclib::common;
       p_clk("clk"),
       p_resetn("resetn")
     {
-        std::cout << "  - Building VirtualDspinRouter " << name << std::endl;
+        std::cout << "  - Building VirtualDspinRouter : " << name << std::endl;
 
         SC_METHOD (transition);
         dont_initialize();
