@@ -253,6 +253,13 @@ Some common command lines:
         print config.path
         return 0
 
+    # options for which it would be safer to remove the current directory, so
+    # that it doesn't scan .sd files that don't belong to soclib
+    if ( opts.list_descs
+            or opts.list_files
+            or opts.complete_name):
+        config.desc_paths.remove(os.getcwd())
+
     config = setup_config(opts)
 
     if opts.dump_config:
