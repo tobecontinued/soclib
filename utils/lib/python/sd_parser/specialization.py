@@ -242,6 +242,9 @@ class Specialization:
     def get_interface_files(self):
         return self.__module.get_info('abs_interface_files')
 
+    def get_implementation_files(self):
+        return self.__module.get_info('abs_implementation_files')
+
     def __get_cxx_type(self):
         tmpl_parameters = map(
             lambda x:parameter.value(x, self.__passed_params, 'tmpl'),

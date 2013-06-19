@@ -169,6 +169,13 @@ Run soclib-cc --examples to see some common command-line examples.
     group.add_option('-F', '--format', dest = 'formatter',
                       action = 'store', nargs = 1, type = 'string',
                       help = 'Use a given formatter class name to format build actions')
+    group.add_option('--tags', dest = 'tags',
+                      action='store_true',
+                      help="Ouput tags database, only compatible with -p")
+    group.add_option('--tags-type', dest = 'tags_type', metavar = "FORMAT",
+                      action='store', nargs = 1, choices = ("cscope", "ctags"),
+                      default = "cscope",
+                      help="Tags database format: cscope or ctags [default is %default]")
 
     group.add_option('-p', '--platform', dest = 'platform', metavar="PLATFORM_DESC",
                       action='store', type = 'string',
@@ -345,6 +352,25 @@ def list_descs(mode):
         return 1
     return 0
 
+def build_tags(todo, opts):
+    list_files = []
+    for m in todo.get_used_modules():
+        for h in m.get_header_files():
+            list_files.append(h)
+        for i in m.get_implementation_files():
+            list_files.append(i)
+    list_files = list(set(list_files)) # remove duplicates
+
+    import subprocess
+    if opts.tags_type == "cscope":
+        p = subprocess.Popen(["cscope", "-b", "-i-"], stdin = subprocess.PIPE)
+    else:
+        p = subprocess.Popen(["ctags", "-L -"], stdin = subprocess.PIPE)
+
+    p.communicate("\n".join(list_files))
+    p.wait()
+    return 0
+
 def compile_platform(platform, opts):
     import sd_parser.platform as pf
     from soclib_cc.config import config
@@ -363,6 +389,8 @@ def todo_do(todo, opts):
         soclib_desc.description_files.cleanup()
     elif opts.embedded_cflags:
         print todo.embedded_code_cflags()
+    elif opts.tags:
+        build_tags(todo, opts)
     else:
         from soclib_builder.action import ActionFailed
         try:

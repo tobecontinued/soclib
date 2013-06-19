@@ -83,6 +83,9 @@ class Platform(ToDo):
                     paths.add(os.path.dirname(d))
         return ' '.join(map(lambda x: '-I'+x, paths))
 
+    def get_used_modules(self):
+        return self.__spec.get_used_modules()
+
 def Source(mode, source_file, uses = [], defines = {}, **params):
     from sd_parser import module
 
