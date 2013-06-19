@@ -338,7 +338,7 @@ def list_descs(mode):
             for f in desc.related_files():
                 print ' -', f
     elif mode == 'names':
-        for module in soclib_desc.description_files.get_all_modules():
+        for desc in soclib_desc.description_files.get_all_modules():
             print desc.name
     else:
         print "Please give arg 'long' or 'names'"
