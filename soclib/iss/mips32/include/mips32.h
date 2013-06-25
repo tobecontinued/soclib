@@ -410,9 +410,15 @@ protected:
         uint32_t tl:1
         ) config3_t;
 
+    typedef REG32_BITFIELD(
+        uint32_t exception_base:20,
+        uint32_t reserved:2,
+        uint32_t cpunum:10
+        ) ebase_t;
+
     status_t r_status;
     cause_t r_cause;
-    addr_t r_ebase;
+    ebase_t r_ebase;
     addr_t r_bar;
     addr_t r_epc;
     addr_t r_error_epc;

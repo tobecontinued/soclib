@@ -69,7 +69,9 @@ Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_littl
 void Mips32Iss::reset()
 {
     struct DataRequest null_dreq = ISS_DREQ_INITIALIZER;
-    r_ebase = 0x80000000 | m_ident;
+    r_ebase.whole = 0;
+    r_ebase.exception_base = 0x80000; // will be expanded to 0x80000000
+    r_ebase.cpunum = m_ident;
     r_pc = m_reset_address;
     r_npc = m_reset_address + 4;
     m_ifetch_addr = m_reset_address;
@@ -574,7 +576,7 @@ Mips32Iss::addr_t Mips32Iss::exceptBaseAddr() const
     if ( r_status.bev )
         return m_reset_address + 0x200;
     else
-        return r_ebase & 0xfffff000;
+        return r_ebase.whole & 0xfffff000;
 }
 
 void Mips32Iss::do_microcoded_sleep()

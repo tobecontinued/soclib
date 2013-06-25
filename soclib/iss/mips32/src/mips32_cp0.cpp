@@ -105,7 +105,7 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
     case CPUID:
         return MIPS32_CPUID;
     case EBASE:
-        return r_ebase;
+        return r_ebase.whole;
     case INS_CYCLES:
         return m_instruction_count;
     case PIPE_CYCLES:
@@ -154,7 +154,7 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
         update_mode();
         return;
     case EBASE:
-        r_ebase = merge(r_ebase, val, EBASE_WRITE_MASK);
+        r_ebase.whole = merge(r_ebase.whole, val, EBASE_WRITE_MASK);
         break;
     case INTCTL:
         r_intctl.whole = merge(r_intctl.whole, val, INTCTL_WRITE_MASK);
