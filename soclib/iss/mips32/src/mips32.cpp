@@ -43,20 +43,20 @@ Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_littl
       m_little_endian(default_little_endian)
 {
     r_config.whole = 0;
-    r_config.m = 1;
+    r_config.m = 1; // presence of Config1 register
     r_config.be = m_little_endian ? 0 : 1;
-    r_config.ar = 1;
-    r_config.mt = 7; // Reserved, let's say it's soclib generic MMU :)
+    r_config.ar = 1; // MIPS32R2
+    r_config.mt = 7; // reserved, let's say it's soclib generic MMU :)
 
     r_config1.whole = 0;
-    r_config1.m = 1;
-    r_config1.c2 = 1; // Advertize for Cop2 presence, i.e. generic MMU access
+    r_config1.m = 1; // presence of Config2 register
+    r_config1.c2 = 1; // Cop2 presence, i.e. generic MMU access
 
     r_config2.whole = 0;
-    r_config2.m = 1;
+    r_config2.m = 1; // presence of Config3 register
 
     r_config3.whole = 0;
-    r_config3.ulri = 1; // Advertize for TLS register
+    r_config3.ulri = 1; // presence of UserLocal registers
 
     m_cache_info.has_mmu = false;
 
@@ -79,7 +79,9 @@ void Mips32Iss::reset()
     m_dreq = null_dreq;
     r_mem_dest = NULL;
     m_ins_delay = 0;
-    r_status.whole = 0x00400004;
+    r_status.whole = 0;
+    r_status.bev = 1; // BEV (Bootstrap Exception Vector mode)
+    r_status.erl = 1; // ERL (ERror Level set when reset)
     r_cause.whole = 0;
     m_instruction_count = 0;
     m_pipeline_use_count = 0;

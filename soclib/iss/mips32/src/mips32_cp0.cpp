@@ -157,7 +157,7 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
         r_ebase = merge(r_ebase, val, EBASE_WRITE_MASK);
         break;
     case INTCTL:
-        r_intctl.whole = merge(r_intctl.whole, val, 0xfc0);
+        r_intctl.whole = merge(r_intctl.whole, val, INTCTL_WRITE_MASK);
         break;
     case EPC:
         r_epc = val;
