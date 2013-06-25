@@ -572,7 +572,7 @@ Mips32Iss::addr_t Mips32Iss::exceptOffsetAddr( enum ExceptCause cause ) const
 Mips32Iss::addr_t Mips32Iss::exceptBaseAddr() const
 {
     if ( r_status.bev )
-        return 0xbfc00200;
+        return m_reset_address + 0x200;
     else
         return r_ebase & 0xfffff000;
 }
