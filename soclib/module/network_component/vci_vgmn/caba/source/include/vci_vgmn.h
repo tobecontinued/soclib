@@ -88,7 +88,8 @@ public:
               size_t nb_initiat,
               size_t nb_target,
               size_t min_latency,
-              size_t fifo_depth );
+              size_t fifo_depth,
+              const soclib::common::IntTab &default_index = 0);
 
     ~VciVgmn();
 };

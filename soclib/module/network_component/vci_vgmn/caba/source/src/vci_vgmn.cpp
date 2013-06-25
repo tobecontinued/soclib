@@ -613,7 +613,8 @@ tmpl(/**/)::VciVgmn(
     size_t nb_attached_initiat,
     size_t nb_attached_target,
     size_t min_latency,
-    size_t fifo_depth )
+    size_t fifo_depth,
+    const soclib::common::IntTab &default_index)
            : soclib::caba::BaseModule(name),
            m_nb_initiat(nb_attached_initiat),
            m_nb_target(nb_attached_target)
@@ -634,7 +635,7 @@ tmpl(/**/)::VciVgmn(
     m_cmd_mn = new _vgmn::MicroNetwork<cmd_router_t,cmd_queue_t>(
         nb_attached_initiat, nb_attached_target,
         min_latency, fifo_depth,
-        mt.getRoutingTable(soclib::common::IntTab(), 0)
+        mt.getRoutingTable(soclib::common::IntTab(), mt.indexForId(default_index))
         );
 
     m_rsp_mn = new _vgmn::MicroNetwork<rsp_router_t,rsp_queue_t>(
