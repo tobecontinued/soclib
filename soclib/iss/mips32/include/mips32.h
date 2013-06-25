@@ -412,8 +412,7 @@ protected:
 
     typedef REG32_BITFIELD(
         uint32_t exception_base:20,
-        uint32_t reserved:2,
-        uint32_t cpunum:10
+        uint32_t cpunum:12
         ) ebase_t;
 
     status_t r_status;
