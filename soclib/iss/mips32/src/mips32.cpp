@@ -57,6 +57,7 @@ Mips32Iss::Mips32Iss(const std::string &name, uint32_t ident, bool default_littl
 
     r_config3.whole = 0;
     r_config3.ulri = 1; // presence of UserLocal registers
+    r_config3.vint = 1; // vectored interrupts implemented
 
     m_cache_info.has_mmu = false;
 
@@ -555,9 +556,9 @@ Mips32Iss::addr_t Mips32Iss::exceptOffsetAddr( enum ExceptCause cause ) const
             if ( r_config3.veic )
                 vn = r_cause.ip>>2;
             else {
-                // TODO
-                SOCLIB_WARNING("Handling exception offset address when iv and !bev is still to do !");
-                vn = 0;
+                int ip = r_cause.ip >> 2;
+                assert(ip && "r_cause.ip should be not null!");
+                vn = soclib::common::fls(ip) - 1;
             }
             return 0x200 + vn * (r_intctl.vs<<5);
         }
