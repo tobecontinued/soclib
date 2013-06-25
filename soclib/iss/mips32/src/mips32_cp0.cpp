@@ -36,7 +36,10 @@
 
 namespace soclib { namespace common {
 
-#define MIPS32_CPUID 0x00163200
+/* PRID_COMP[23:16] = 0x00 (legacy - Not a "legal" MIPS32/MIPS64 implementation) */
+/* PRID_IMP[15:8]   = 0x70 (TSAR - seems to available) */
+/* PRID_REV[7:0]    = 0x00 */
+#define MIPS32_CPUID 0x00007000
 
 #define COPROC_REGNUM(no, sel) (((no)<<3)+sel)
 
