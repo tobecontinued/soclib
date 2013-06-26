@@ -107,7 +107,7 @@ tmpl(/**/)::VciSimpleRam(
       p_clk("p_clk"),
       p_vci("p_vci")
 {
-    std::cout << "  - Building SimpleRam " << name << std::endl;
+    std::cout << "  - Building SimpleRam : " << name << std::endl;
 
     size_t nsegs = 0;
 
@@ -188,8 +188,11 @@ tmpl(void)::reset()
     r_llsc_buf.clearAll();
 }
 
-/////////////////////////////////////////////////////////////////////////////
-tmpl(bool)::write(size_t seg, vci_addr_t addr, vci_data_t wdata, vci_be_t be)
+///////////////////////////////////
+tmpl(bool)::write(size_t      seg, 
+                  vci_addr_t  addr, 
+                  vci_data_t  wdata, 
+                  vci_be_t    be)
 {
     if ( m_monitor_ok )
     {
@@ -224,6 +227,7 @@ tmpl(bool)::write(size_t seg, vci_addr_t addr, vci_data_t wdata, vci_be_t be)
             current = m_ram[seg][index];
             input   = (uint32_t)(wdata);
             m_ram[seg][index] = (current & ~mask) | (input & mask);
+
             // second 32 bits word
             mask    = (uint32_t)vci_param::be2mask(be >> 4);
             current = m_ram[seg][index+1];
@@ -236,8 +240,10 @@ tmpl(bool)::write(size_t seg, vci_addr_t addr, vci_data_t wdata, vci_be_t be)
     return false;
 }
 
-/////////////////////////////////////////////////////////////////
-tmpl(bool)::read(size_t seg, vci_addr_t addr, vci_data_t &rdata )
+//////////////////////////////////
+tmpl(bool)::read(size_t       seg, 
+                 vci_addr_t   addr, 
+                 vci_data_t   &rdata )
 {
     if ( m_seg[seg]->contains(addr) ) 
     {
