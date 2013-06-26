@@ -36,93 +36,143 @@ namespace caba {
 
 #define tmpl(typ) template<typename vci_param> typ VciMultiTty<vci_param>
 
-tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
-{
-    int cell = (int)addr / vci_param::B;
-	int reg = cell % TTY_SPAN;
-	int term_no = cell / TTY_SPAN;
-	char _data = data;
-
-    if (term_no>=(int)m_term.size())
-        return false;
-
-	switch (reg) {
-	case TTY_WRITE:
-        m_term[term_no]->putc( _data );
-        m_cpt_write++;
-#if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] term_no=" << term_no << " TTY_WRITE  data = " << std::hex << data << std::dec << " time = " << m_cpt_cycles << std::endl;
-#endif
-		return true;
-	default:
-		return false;
-	}
-}
-
-tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
-{
-    int cell = (int)addr / vci_param::B;
-	int reg = cell % TTY_SPAN;
-	int term_no = cell / TTY_SPAN;
-
-    if (term_no>=(int)m_term.size())
-        return false;
-
-	switch (reg) {
-	case TTY_STATUS:
-		data = m_term[term_no]->hasData();
-#if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] term_no=" << term_no << " TTY_STATUS data = " << std::hex << data << std::dec << " time = " << m_cpt_cycles << std::endl;
-#endif
-		return true;
-	case TTY_READ:
-        m_cpt_read++;
-        if ( m_term[term_no]->hasData() ) {
-            char tmp = m_term[term_no]->getc();
-            data = tmp;
-        }
-
-#if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] term_no=" << term_no << " TTY_READ   data = " << std::hex << data << std::dec << " time = " << m_cpt_cycles << std::endl;
-#endif
-        return true;
- 	default:
-		return false;
-	}
-}
-
 ////////////////////////
 tmpl(void)::transition()
 {
-    m_cpt_cycles++;
-
-	if (!p_resetn) {
-		m_vci_fsm.reset();
-        m_cpt_read = 0;
-        m_cpt_write = 0;
-        m_cpt_cycles = 0;
-		r_counter = 0;
+	if (!p_resetn) 
+    {
+		r_fsm_state  = IDLE;
+        r_cpt_read   = 0;
+        r_cpt_write  = 0;
 		return;
 	}
 
-	r_counter++;
+    switch ( r_fsm_state.read() )
+    {
+        //////////////
+        case IDLE:   // waiting a VCI command
+        {
+            if ( not p_vci.cmdval.read() ) break;
 
-	m_vci_fsm.transition();
+            vci_addr_t address = p_vci.address.read();
+            size_t     cell      = (size_t)((address & 0xFFF)>>2);
+            size_t     reg       = cell % TTY_SPAN;
+            size_t     channel   = cell / TTY_SPAN;
+            bool       seg_error = true;
+
+            r_srcid = p_vci.srcid.read();
+            r_trdid = p_vci.trdid.read();
+            r_pktid = p_vci.pktid.read();
+
+            std::list<soclib::common::Segment>::iterator seg;
+            for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
+            {
+                if ( seg->contains( address ) and p_vci.eop.read() )
+                {
+                    seg_error   = false;
+                    break;
+                }
+            }
+
+            if      ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_WRITE) and
+                      (reg == TTY_WRITE ) and channel < m_term.size() )
+            {
+                m_term[channel]->putc( p_vci.wdata.read() );
+                r_cpt_write = r_cpt_write.read() + 1; 
+                r_fsm_state = RSP_WRITE;
+            }     
+            else if ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_WRITE) and
+                     (reg == TTY_CONFIG) and channel < m_term.size() )
+            {
+                // no action
+                r_fsm_state = RSP_WRITE;
+            }
+            else if ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_READ) and
+                     (reg == TTY_READ) and channel < m_term.size() )
+            {
+                r_rdata     = m_term[channel]->getc();
+                r_cpt_read  = r_cpt_read.read() + 1; 
+                r_fsm_state = RSP_READ;
+            }
+            else if ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_READ) and
+                     (reg == TTY_STATUS) and channel < m_term.size() )
+            {
+                r_rdata = m_term[channel]->hasData();
+                r_fsm_state = RSP_READ;
+            }
+            else if ( p_vci.eop.read() )
+            {
+                r_fsm_state = RSP_ERROR;
+            }
+            break;
+        }
+        ///////////////
+        case RSP_ERROR:   // return an error response
+        case RSP_READ:    // return a valid read response
+        case RSP_WRITE:   // return a valid write response
+        {
+            if ( p_vci.rspack.read() ) r_fsm_state = IDLE;
+            break;
+        }
+    }  // end switch r_fsm_state
 }
 
 //////////////////////
 tmpl(void)::genMoore()
 {
-	m_vci_fsm.genMoore();
+    if ( r_fsm_state.read() == IDLE )
+    {
+        p_vci.cmdack  = true;
+        p_vci.rspval  = false;
+        p_vci.rdata   = 0;
+        p_vci.rsrcid  = 0;
+        p_vci.rtrdid  = 0;
+        p_vci.rpktid  = 0;
+        p_vci.rerror  = vci_param::ERR_NORMAL;
+        p_vci.reop    = true;
 
+    }
+    else if ( r_fsm_state.read() == RSP_WRITE )
+    {
+        p_vci.cmdack  = false;
+        p_vci.rspval  = true;
+        p_vci.rdata   = 0;
+        p_vci.rsrcid  = r_srcid.read();
+        p_vci.rtrdid  = r_trdid.read();
+        p_vci.rpktid  = r_pktid.read();
+        p_vci.rerror  = vci_param::ERR_NORMAL;
+        p_vci.reop    = true;
+    }
+    else if ( r_fsm_state.read() == RSP_READ )
+    {
+        p_vci.cmdack  = false;
+        p_vci.rspval  = true;
+        p_vci.rdata   = r_rdata.read();
+        p_vci.rsrcid  = r_srcid.read();
+        p_vci.rtrdid  = r_trdid.read();
+        p_vci.rpktid  = r_pktid.read();
+        p_vci.rerror  = vci_param::ERR_NORMAL;
+        p_vci.reop    = true;
+    }
+    else if ( r_fsm_state.read() == RSP_ERROR )
+    {
+        p_vci.cmdack  = false;
+        p_vci.rspval  = true;
+        p_vci.rdata   = 0;
+        p_vci.rsrcid  = r_srcid.read();
+        p_vci.rtrdid  = r_trdid.read();
+        p_vci.rpktid  = r_pktid.read();
+        p_vci.rerror  = vci_param::ERR_GENERAL_DATA_ERROR;
+        p_vci.reop    = true;
+    }
+        
     for ( size_t i=0; i<m_term.size(); i++ )
         p_irq[i] = m_term[i]->hasData();
 }
 
+///////////////////////////////////////////////////////
 tmpl(void)::init(const std::vector<std::string> &names)
 {
-	m_vci_fsm.on_read_write(on_read, on_write);
-
     for ( std::vector<std::string>::const_iterator i = names.begin();
           i != names.end();
           ++i )
@@ -139,24 +189,34 @@ tmpl(void)::init(const std::vector<std::string> &names)
 	sensitive << p_clk.neg();
 }
 
-tmpl(/**/)::VciMultiTty(
-    sc_module_name name,
-    const IntTab &index,
-    const MappingTable &mt,
-    const char *first_name,
-    ...)
+//////////////////////////////////////////////////
+tmpl(/**/)::VciMultiTty( sc_module_name     name,
+                         const IntTab       &index,
+                         const MappingTable &mt,
+                         const char *first_name, ...)
     : soclib::caba::BaseModule(name),
-      m_vci_fsm(p_vci, mt.getSegmentList(index)),
       p_clk("clk"),
       p_resetn("resetn"),
-      p_vci("vci")
+      p_vci("vci"),
+      m_seglist(mt.getSegmentList(index))
 {
+    std::cout << "  - Building VciMultiTTy " << name << std::endl;
+
+    std::list<soclib::common::Segment>::iterator seg;
+    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
+    {
+        std::cout << "    => segment " << seg->name()
+                  << " / base = " << std::hex << seg->baseAddress()
+                  << " / size = " << seg->size() << std::endl; 
+    }
+
 	va_list va_tty;
 
 	va_start (va_tty, first_name);
     std::vector<std::string> args;
 	const char *cur_tty = first_name;
-	while (cur_tty) {
+	while (cur_tty) 
+    {
         args.push_back(cur_tty);
 
 		cur_tty = va_arg( va_tty, char * );
@@ -166,18 +226,16 @@ tmpl(/**/)::VciMultiTty(
     init(args);
 }
 
-////////////////////////
-tmpl(/**/)::VciMultiTty(
-    sc_module_name name,
-    const IntTab &index,
-    const MappingTable &mt,
-    const std::vector<std::string> &names )
+//////////////////////////////////////////////////////////////
+tmpl(/**/)::VciMultiTty( sc_module_name                  name,
+                         const IntTab                    &index,
+                         const MappingTable              &mt,
+                         const std::vector<std::string>  &names )
     : soclib::caba::BaseModule(name),
-      m_seglist(mt.getSegmentList(index)),
-      m_vci_fsm(p_vci, m_seglist),
       p_clk("clk"),
       p_resetn("resetn"),
-      p_vci("vci")
+      p_vci("vci"),
+      m_seglist(mt.getSegmentList(index))
 {
     std::cout << "  - Building VciMultiTTy " << name << std::endl;
 
@@ -192,6 +250,7 @@ tmpl(/**/)::VciMultiTty(
     init(names);
 }
 
+//////////////////////////
 tmpl(/**/)::~VciMultiTty()
 {
 	for (unsigned int i=0; i<m_term.size(); i++ )
@@ -200,12 +259,25 @@ tmpl(/**/)::~VciMultiTty()
 	delete[] p_irq;
 }
 
-tmpl(void)::print_stats(){
+/////////////////////////
+tmpl(void)::print_stats()
+{
     std::cout << name() << std::endl;
-    std::cout << "- READ               = " << m_cpt_read << std::endl;
-    std::cout << "- WRITE              = " << m_cpt_write << std::endl;
+    std::cout << "- READ    = " << r_cpt_read.read() << std::endl;
+    std::cout << "- WRITE   = " << r_cpt_write.read() << std::endl;
 }
 
+/////////////////////////
+tmpl(void)::print_trace()
+{
+    const char* state_str[] = { "IDLE",
+                                "RSP_WRITE",
+                                "RSP_READ",
+                                "RSP_ERROR", };
+
+    std::cout << "MULTI_TTY " << name()
+              << " : state = " << state_str[r_fsm_state.read()] << std::endl; 
+}
 
 }}
 

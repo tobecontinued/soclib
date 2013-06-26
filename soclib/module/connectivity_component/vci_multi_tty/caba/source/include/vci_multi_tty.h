@@ -29,68 +29,87 @@
 #define SOCLIB_VCI_MULTI_TTY_H
 
 #include <systemc>
-#include "vci_target_fsm.h"
 #include "caba_base_module.h"
 #include "tty_wrapper.h"
 #include "mapping_table.h"
+#include "int_tab.h"
+#include "vci_target.h"
 
 namespace soclib {
 namespace caba {
 
 using namespace sc_core;
+using namespace soclib::common;
 
+///////////////////////////////////////////
 template<typename vci_param>
 class VciMultiTty
+///////////////////////////////////////////
 	: public soclib::caba::BaseModule
 {
+public:
+
+    typedef typename vci_param::fast_addr_t  vci_addr_t;
+    typedef typename vci_param::fast_data_t  vci_data_t;
+    typedef typename vci_param::srcid_t      vci_srcid_t;
+    typedef typename vci_param::trdid_t      vci_trdid_t;
+    typedef typename vci_param::pktid_t      vci_pktid_t;
+
+    enum fsm_state_e
+    {
+        IDLE,
+        RSP_WRITE,
+        RSP_READ,
+        RSP_ERROR,
+    };
+
+    // Ports
+    sc_in<bool>                                 p_clk;
+    sc_in<bool>                                 p_resetn;
+    soclib::caba::VciTarget<vci_param>          p_vci;
+    sc_out<bool>*                               p_irq;
+
+	VciMultiTty( sc_module_name                 name,
+		         const IntTab                   &index,
+		         const MappingTable             &mt,
+                 const std::vector<std::string> &names );
+
+	VciMultiTty( sc_module_name                 name, 
+                 const IntTab                   &index,
+		         const MappingTable             &mt,
+                 const char*                    first_name, ...);
+
+
+    ~VciMultiTty();
+    
+
 private:
+
+    // Registers
+    sc_signal<int>                              r_fsm_state;
+    sc_signal<vci_data_t>                       r_rdata;
+    sc_signal<vci_srcid_t>                      r_srcid;
+    sc_signal<vci_trdid_t>                      r_trdid;
+    sc_signal<vci_pktid_t>                      r_pktid;
+    sc_signal<uint32_t>                         r_cpt_read;
+    sc_signal<uint32_t>                         r_cpt_write;
+      
     std::vector<soclib::common::TtyWrapper*>    m_term;
     std::list<soclib::common::Segment>          m_seglist;
-    soclib::caba::VciTargetFsm<vci_param, true> m_vci_fsm;
-
-    bool on_write(int seg,
-                  typename vci_param::addr_t addr, 
-                  typename vci_param::data_t data, int be);
-
-    bool on_read(int seg, 
-                 typename vci_param::addr_t addr, 
-                 typename vci_param::data_t &data);
 
     void transition();
     void genMoore();
 
-    unsigned long r_counter;
-
 	void init(const std::vector<std::string> &names );
 
-    // Activity counters
-    uint32_t m_cpt_read;   // READ access
-    uint32_t m_cpt_write;  // WRITE access
-    uint32_t m_cpt_cycles; // clock cycles counter
-
 protected:
+
     SC_HAS_PROCESS(VciMultiTty);
 
 public:
-    sc_in<bool> p_clk;
-    sc_in<bool> p_resetn;
-    soclib::caba::VciTarget<vci_param> p_vci;
-    sc_out<bool> *p_irq;
 
-	VciMultiTty(
-		sc_module_name name,
-		const IntTab &index,
-		const MappingTable &mt,
-        const char *first_name,
-        ...);
-	VciMultiTty(
-		sc_module_name name,
-		const IntTab &index,
-		const MappingTable &mt,
-        const std::vector<std::string> &names );
-
-    ~VciMultiTty();
     void print_stats();
+    void print_trace();
 };
 
 }}

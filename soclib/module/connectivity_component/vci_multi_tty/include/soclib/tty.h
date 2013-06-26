@@ -29,11 +29,12 @@
 
 
 enum SoclibTtyRegisters {
-    TTY_WRITE = 0,
+    TTY_WRITE  = 0,
     TTY_STATUS = 1,
-    TTY_READ  = 2,
+    TTY_READ   = 2,
+    TTY_CONFIG = 3,
     /**/
-    TTY_SPAN  = 4,
+    TTY_SPAN   = 4,
 };
 
 #endif /* TTY_REGS_H */
