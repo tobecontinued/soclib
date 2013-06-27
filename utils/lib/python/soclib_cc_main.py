@@ -175,7 +175,10 @@ Run soclib-cc --examples to see some common command-line examples.
     group.add_option('--tags-type', dest = 'tags_type', metavar = "FORMAT",
                       action='store', nargs = 1, choices = ("cscope", "ctags"),
                       default = "cscope",
-                      help="Tags database format: cscope or ctags [default is %default]")
+                      help="Specify tags format: cscope or ctags [default is %default]")
+    group.add_option('--tags-output', dest = 'tags_output', metavar = "FILE",
+                      action='store', nargs = 1, type = "string",
+                      help="Specify tags filename (e.g. 'cscope.out', 'tags', etc.)")
 
     group.add_option('-p', '--platform', dest = 'platform', metavar="PLATFORM_DESC",
                       action='store', type = 'string',
@@ -369,10 +372,13 @@ def build_tags(todo, opts):
     list_files = list(set(list_files)) # remove duplicates
 
     import subprocess
+    tags_extra_arg = ""
+    if opts.tags_output != None:
+        tags_extra_arg = "-f" + opts.tags_output
     if opts.tags_type == "cscope":
-        p = subprocess.Popen(["cscope", "-b", "-i-"], stdin = subprocess.PIPE)
+        p = subprocess.Popen(["cscope", "-b", "-i-", tags_extra_arg], stdin = subprocess.PIPE)
     else:
-        p = subprocess.Popen(["ctags", "-L -"], stdin = subprocess.PIPE)
+        p = subprocess.Popen(["ctags", "-L -", tags_extra_arg], stdin = subprocess.PIPE)
 
     p.communicate("\n".join(list_files))
     p.wait()
