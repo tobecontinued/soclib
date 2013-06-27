@@ -54,7 +54,7 @@ using namespace soclib::common;
     // defined below are used to decode the DSPIN first flit format:
     // - In case of a non-broadcast packet :
     //  |   X     |   Y     |---------------------------------------|BC |
-    //  | x_width | y_width |  flit_width - (x_width + y_width + 2) | 1 |
+    //  | x_width | y_width |  flit_width - (x_width + y_width + 2) | 0 |
     //
     //  - In case of a broacast 
     //  |  XMIN   |  XMAX   |  YMIN   |  YMAX   |-------------------|BC |
@@ -113,10 +113,10 @@ using namespace soclib::common;
     tmpl(int)::broadcast_route(int iter, int source, sc_uint<flit_width> data)
     {
         int sel = REQ_NOP;
-        int xmin = (data >> (flit_width - 6 )) & 0x1F;
-        int xmax = (data >> (flit_width - 11)) & 0x1F;
-        int ymin = (data >> (flit_width - 16)) & 0x1F;
-        int ymax = (data >> (flit_width - 21)) & 0x1F;
+        int xmin = (data >> (flit_width - 5 )) & 0x1F;
+        int xmax = (data >> (flit_width - 10)) & 0x1F;
+        int ymin = (data >> (flit_width - 15)) & 0x1F;
+        int ymax = (data >> (flit_width - 20)) & 0x1F;
 
         switch(source) {
         case LOCAL :
@@ -154,6 +154,7 @@ using namespace soclib::common;
         else if ( (sel == REQ_SOUTH) && !(m_local_y > ymin) ) 	sel = REQ_NOP;
         else if ( (sel == REQ_EAST ) && !(m_local_x < xmax) ) 	sel = REQ_NOP;
         else if ( (sel == REQ_WEST ) && !(m_local_x > xmin) ) 	sel = REQ_NOP;
+
         return sel;
     }
 
