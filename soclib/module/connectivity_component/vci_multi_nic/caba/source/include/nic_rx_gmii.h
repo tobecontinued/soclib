@@ -52,6 +52,7 @@
 
 #include <string>
 #include <iostream>
+#include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
