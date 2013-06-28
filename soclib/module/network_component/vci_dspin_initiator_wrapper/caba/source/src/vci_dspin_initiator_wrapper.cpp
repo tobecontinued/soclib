@@ -289,6 +289,10 @@ tmpl(void)::genMealy_vci_cmd()
 ////////////////////////////////
 tmpl(void)::genMealy_dspin_cmd()
 {
+
+if ( p_vci.address.read() == 0xf100 )
+std::cout << std::endl << "entering genMealy_dspin_cmd" << std::endl;
+
     if ( vci_param::B == 4 ) //////////////// dspin flit = 39 bits
     {
         sc_uint<39> dspin_data;
@@ -357,15 +361,20 @@ tmpl(void)::genMealy_dspin_cmd()
                          (address & 0xFFFFFFFFFC000000LL) ;
 
             p_dspin_cmd.write = p_vci.cmdval.read();
-            p_dspin_cmd.data  = dspin_data;
+            p_dspin_cmd.data  = (sc_uint<64>)dspin_data;
             p_dspin_cmd.eop   = ( p_vci.cmd.read() == vci_param::CMD_READ );
         }
-        else       //  data flit
+        else if ( r_cmd_fsm.read() == CMD_WDATA )     //  data flit
         {
-            dspin_data = 
             p_dspin_cmd.write = p_vci.cmdval.read();
             p_dspin_cmd.data  = (sc_uint<64>)p_vci.wdata.read();
             p_dspin_cmd.eop   = p_vci.eop.read();
+        }
+        else    // CMD_READ => no flit transmited
+        {
+            p_dspin_cmd.write = false;
+            p_dspin_cmd.data  = 0;
+            p_dspin_cmd.eop   = false;
         }
     }
 }
