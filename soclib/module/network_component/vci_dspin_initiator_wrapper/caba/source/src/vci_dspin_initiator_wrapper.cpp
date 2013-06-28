@@ -291,7 +291,6 @@ tmpl(void)::genMealy_dspin_cmd()
 {
 
 if ( p_vci.address.read() == 0xf100 )
-std::cout << std::endl << "entering genMealy_dspin_cmd" << std::endl;
 
     if ( vci_param::B == 4 ) //////////////// dspin flit = 39 bits
     {
