@@ -77,14 +77,14 @@ class VciMultiNic
     sc_signal<bool>             r_global_bypass_enable;    // current channel for TDM
 
     // Channel CONFIGURATION registers
-    sc_signal<uint32_t>         *r_channel_mac_4;          // MAC address (first 4 bytes)
-    sc_signal<uint32_t>         *r_channel_mac_2;          // MAC address (last 2 bytes)
-    sc_signal<uint32_t>         *r_channel_rx_bufaddr_0;   // base address of RX buffer[0]
-    sc_signal<uint32_t>         *r_channel_rx_bufaddr_1;   // base address of RX buffer[1]
-    sc_signal<bool>             *r_channel_rx_run;         // RX chbuf activated          
-    sc_signal<uint32_t>         *r_channel_tx_bufaddr_0;   // base address of TX buffer[0]
-    sc_signal<uint32_t>         *r_channel_tx_bufaddr_1;   // base address of TX buffer[1]
-    sc_signal<bool>             *r_channel_tx_run;         // TX chbuf activated          
+    sc_signal<uint32_t>                     *r_channel_mac_4;        // MAC address (first 4 bytes)
+    sc_signal<uint32_t>                     *r_channel_mac_2;        // MAC address (last 2 bytes)
+    sc_signal<typename vci_param::addr_t>   *r_channel_rx_bufaddr_0; // base address of RX buffer[0]
+    sc_signal<typename vci_param::addr_t>   *r_channel_rx_bufaddr_1; // base address of RX buffer[1]
+    sc_signal<bool>                         *r_channel_rx_run;       // RX chbuf activated          
+    sc_signal<typename vci_param::addr_t>   *r_channel_tx_bufaddr_0; // base address of TX buffer[0]
+    sc_signal<typename vci_param::addr_t>   *r_channel_tx_bufaddr_1; // base address of TX buffer[1]
+    sc_signal<bool>                         *r_channel_tx_run;       // TX chbuf activated          
 
     
     // VCI FSM registers
@@ -277,6 +277,10 @@ public:
         STREAM_TYPE_EOS,     // end of stream
         STREAM_TYPE_ERR,     // corrupted end of stream
         STREAM_TYPE_NEV,     // no special event
+    };
+
+    enum masks {
+        DESC_STATUS_MASK = 0x80000000,  // most significant bit of the DESC_HI word
     };
 
     // ports

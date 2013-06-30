@@ -71,18 +71,23 @@
 // 	- The next  4 Kbytes contain the TX_0 container data
 // 	- The next  4 Kbytes contain the TX_1 container data
 // 	- The next  4 Kbytes contain the channel addressable registers
-// 		* NIC_RX_FULL_0  : RX_0 container status       (read/write)
-// 		* NIC_RX_PBUF_0  : RX_0 container base address (read/write)  
-// 		* NIC_RX_FULL_1  : RX_1 container status       (read/write)
-// 		* NIC_RX_PBUF_1  : RX_1 container base address (read/write)
+//      * NIC_RX_DESC_LO_0  : RX_0 descriptor low word  (read/write)
+//      * NIC_RX_DESC_HI_0  : RX_0 descriptor high word (read/write)
+//      * NIC_RX_DESC_LO_1  : RX_1 descriptor low word  (read/write)
+//      * NIC_RX_DESC_HI_1  : RX_1 descriptor high word (read/write) 
+//      * NIC_TX_DESC_LO_0  : TX_0 descriptor low word  (read/write)
+//      * NIC_TX_DESC_HI_0  : TX_0 descriptor high word (read/write) 
+//      * NIC_TX_DESC_LO_1  : TX_1 descriptor low word  (read/write)
+//      * NIC_TX_DESC_HI_1  : TX_1 descriptor high word (read/write) 
+// 		* NIC_MAC_4      : MAC @ 32 LSB bits           (read_only)
+// 		* NIC_MAC_2      : MAC @ 16 MSB bits           (read_only)
 //      * NIC_RX_RUN     : RX chbuf activated          (write_only)
-// 		* NIC_TX_FULL_0  : TX_0 container status       (read/write)
-// 		* NIC_TX_PBUF_0  : TX_0 container base address (read/write)
-// 		* NIC_TX_FULL_1  : TX_1 container status       (read/write)
-// 		* NIC_TX_PBUF_1  : TX_1 container base address (read/write)
 //      * NIC_TX_RUN     : TX chbuf activated          (write_only)
-// 		* NIC_MAC_4      : MAC @ 32 MSB bits           (read_only)
-// 		* NIC_MAC_2      : MAC @ 16 LSB bits           (read_only)
+// 
+// A container descriptor has the following form:
+// LOW WORD : Container LSB base address
+// HIGH WORD: Container status (leftmost bit), '1' means full
+//            Base address MSB extension, if needed (right aligned)
 //
 // On top of the channels segments is the hypervisor segment, taking 4 Kbytes:
 // It cannot be accessed by the virtual machines.
@@ -282,7 +287,7 @@ tmpl(uint32_t)::read_hyper_register(uint32_t addr)
 
         default:
             assert ( false and
-            "ERROR in VCI_MULTI_NIC : illegal global register index in VCI write");
+            "ERROR in VCI_MULTI_NIC : illegal global register index in VCI read");
     }
     return data;
 } // end read_hyper_register()
@@ -295,33 +300,37 @@ tmpl(uint32_t)::read_channel_register(uint32_t addr)
 
     uint32_t channel = (addr & 0x00038000) >> 15;
     uint32_t word    = (addr & 0x00000FFF) >> 2;
-    uint32_t data;
+    uint32_t data    = 0;
 
     switch(word)
     {
-        case NIC_RX_FULL_0:
-            data = r_rx_chbuf[channel].full(0);
+        case NIC_RX_DESC_LO_0:
+            data = (uint32_t)r_channel_rx_bufaddr_0[channel].read();
             break;
-        case NIC_RX_FULL_1:
-            data = r_rx_chbuf[channel].full(1);
+        case NIC_RX_DESC_LO_1:
+            data = (uint32_t)r_channel_rx_bufaddr_1[channel].read();
             break;
-        case NIC_TX_FULL_0:
-            data = r_tx_chbuf[channel].full(0);
+        case NIC_TX_DESC_LO_0:
+            data = (uint32_t)r_channel_tx_bufaddr_0[channel].read();
             break;
-        case NIC_TX_FULL_1:
-            data = r_tx_chbuf[channel].full(1);
+        case NIC_TX_DESC_LO_1:
+            data = (uint32_t)r_channel_tx_bufaddr_1[channel].read();
             break;
-        case NIC_RX_PBUF_0:
-            data = r_channel_rx_bufaddr_0[channel].read();
+        case NIC_RX_DESC_HI_0:
+            if(r_rx_chbuf[channel].full(0)) data = (1 << 31);
+            data += (uint32_t)(r_channel_rx_bufaddr_0[channel].read() >> 32);
             break;
-        case NIC_RX_PBUF_1:
-            data = r_channel_rx_bufaddr_1[channel].read();
+        case NIC_RX_DESC_HI_1:
+            if(r_rx_chbuf[channel].full(1)) data = (1 << 31);
+            data += (uint32_t)(r_channel_rx_bufaddr_1[channel].read() >> 32);
             break;
-        case NIC_TX_PBUF_0:
-            data = r_channel_tx_bufaddr_0[channel].read();
+        case NIC_TX_DESC_HI_0:
+            if(r_tx_chbuf[channel].full(0)) data = (1 << 31);
+            data += (uint32_t)(r_channel_tx_bufaddr_0[channel].read() >> 32);
             break;
-        case NIC_TX_PBUF_1:
-            data = r_channel_tx_bufaddr_1[channel].read();
+        case NIC_TX_DESC_HI_1:
+            if(r_tx_chbuf[channel].full(1)) data = (1 << 31);
+            data += (uint32_t)(r_channel_tx_bufaddr_1[channel].read() >> 32);
             break;
         case NIC_MAC_4:
             data = r_channel_mac_4[channel].read();
@@ -331,7 +340,7 @@ tmpl(uint32_t)::read_channel_register(uint32_t addr)
             break;
         default:
             assert ( false and
-            "ERROR in VCI_MULTI_NIC : illegal channel register index in VCI write");
+            "ERROR in VCI_MULTI_NIC : illegal channel register index in VCI read");
     } 
     return data;
 } // end read_channel_register()
@@ -503,9 +512,8 @@ tmpl(void)::transition()
 
                 assert( (vci_param::B == 8 and (p_vci.be.read()==0x0F or p_vci.be.read()==0xFF)
                          and "ERROR in VCI_MULTI_NIC : BE must be either 0x0F or 0xFF") or
-                        (vci_param::B == 4 and p_vci.be.read()==0xF
-                         and "ERROR in VCI_MULTI_NIC : BE must be 0xF") );
-                
+                        (vci_param::B == 4) );
+
                 uint32_t channel = (uint32_t)((address & 0x00038000) >> 15);
                 bool     hyper   =            (address & 0x00040000);
                 bool     write   =            (address & 0x00002000);
@@ -559,7 +567,6 @@ tmpl(void)::transition()
                     assert( not r_tx_chbuf[channel].full(cont) and
                     "ERROR in VCI_MULTI_NIC : TX_BURST write access in full container");
 
-                    if(vci_param::B == 8) r_vci_be = p_vci.be.read(); 
                     if ( p_vci.eop.read() ) r_vci_fsm = VCI_WRITE_TX_LAST;
                     else                    r_vci_fsm = VCI_WRITE_TX_BURST;
                 }
@@ -573,7 +580,6 @@ tmpl(void)::transition()
                     rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_READ;
                     rx_chbuf_cont          = cont;
                     rx_chbuf_word          = word;
-                    if(vci_param::B == 8) r_vci_be = p_vci.be.read(); 
                     r_vci_fsm              = VCI_READ_RX_BURST;
                 }
                 // channel register read 
@@ -813,8 +819,8 @@ tmpl(void)::transition()
                             "ERROR in VCI_MULTI_NIC : illegal global register in VCI read");
                     }
                 }
+                r_vci_fsm = VCI_IDLE;
             }
-            r_vci_fsm = VCI_IDLE;
             break;
         }
         ///////////////////////////
@@ -833,33 +839,62 @@ tmpl(void)::transition()
 
                 switch(word)
                 {
-                    case NIC_RX_FULL_0:    // release container RX[channel][0]
-                        rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
-                        rx_chbuf_cont          = 0;
+                    case NIC_RX_DESC_LO_0:   // set LSB base address of RX[channel][0]
+                        // replacing only the 32 less significant bits
+                        r_channel_rx_bufaddr_0[channel] = ((r_channel_rx_bufaddr_0[channel].read() >> 32) << 32)
+                                                          + (typename vci_param::addr_t)wdata;   
                         break;
-                    case NIC_RX_FULL_1:    // release container RX[channel][1]
-                        rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
-                        rx_chbuf_cont          = 1;
+                    case NIC_RX_DESC_LO_1:    // set LSB base address of RX[channel][1]
+                        r_channel_rx_bufaddr_1[channel] = ((r_channel_rx_bufaddr_1[channel].read() >> 32) << 32)
+                                                          + (typename vci_param::addr_t)wdata;   
                         break;
-                    case NIC_TX_FULL_0:    // release container TX[channel][0]
-                        tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
-                        tx_chbuf_cont          = 0;
+                    case NIC_TX_DESC_LO_0:    // set LSB base address of TX[channel][0]
+                        r_channel_tx_bufaddr_0[channel] = ((r_channel_tx_bufaddr_0[channel].read() >> 32) << 32)
+                                                          + (typename vci_param::addr_t)wdata;   
                         break;
-                    case NIC_TX_FULL_1:    // release container TX[channel][1]
-                        tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
-                        tx_chbuf_cont          = 1;
+                    case NIC_TX_DESC_LO_1:    // set LSB base address of TX[channel][1]
+                        r_channel_tx_bufaddr_1[channel] = ((r_channel_tx_bufaddr_1[channel].read() >> 32) << 32)
+                                                          + (typename vci_param::addr_t)wdata;   
                         break;
-                    case NIC_RX_PBUF_0:    // set base address of RX[channel][0]
-                        r_channel_rx_bufaddr_0[channel] = wdata;   
+                    case NIC_RX_DESC_HI_0:    // set status and an eventual address extension 
+                                              // of RX[channel][0]
+                        r_channel_rx_bufaddr_0[channel] = (r_channel_rx_bufaddr_0[channel].read() & 0xFFFFFFFF) + 
+                                                          ((typename vci_param::addr_t)wdata << 32); 
+                        if( ((wdata & DESC_STATUS_MASK) == 0) and r_channel_rx_run[channel].read())
+                        {
+                            rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
+                            rx_chbuf_cont          = 0;
+                        }
                         break;
-                    case NIC_RX_PBUF_1:    // set base address of RX[channel][1]
-                        r_channel_rx_bufaddr_1[channel] = wdata;   
+                    case NIC_RX_DESC_HI_1:    // set status and an eventual address extension 
+                                              // of RX[channel][1]
+                        r_channel_rx_bufaddr_1[channel] = (r_channel_rx_bufaddr_1[channel].read() & 0xFFFFFFFF) + 
+                                                          ((typename vci_param::addr_t)wdata << 32); 
+                        if( ((wdata & DESC_STATUS_MASK) == 0) and r_channel_rx_run[channel].read())
+                        {
+                            rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
+                            rx_chbuf_cont          = 1;
+                        }
                         break;
-                    case NIC_TX_PBUF_0:    // set base address of TX[channel][0]
-                        r_channel_tx_bufaddr_0[channel] = wdata;   
+                    case NIC_TX_DESC_HI_0:    // set status and an eventual address extension
+                                              // of TX[channel][0]
+                        r_channel_tx_bufaddr_0[channel] = (r_channel_tx_bufaddr_0[channel].read() & 0xFFFFFFFF) + 
+                                                          ((typename vci_param::addr_t)wdata << 32); 
+                        if( (wdata & DESC_STATUS_MASK) != 0)
+                        {
+                            tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
+                            tx_chbuf_cont          = 0;
+                        }
                         break;
-                    case NIC_TX_PBUF_1:    // set base address of TX[channel][1]
-                        r_channel_tx_bufaddr_1[channel] = wdata;   
+                    case NIC_TX_DESC_HI_1:    // set status and an eventual address extension
+                                              // of TX[channel][1]
+                        r_channel_tx_bufaddr_1[channel] = (r_channel_tx_bufaddr_1[channel].read() & 0xFFFFFFFF) + 
+                                                          ((typename vci_param::addr_t)wdata << 32); 
+                        if( ((wdata & DESC_STATUS_MASK) != 0) and r_channel_tx_run[channel].read())
+                        {
+                            tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
+                            tx_chbuf_cont          = 1;
+                        }
                         break;
                     case NIC_RX_RUN:       // activate/desactivate RX[channel]
                         r_channel_rx_run[channel] = wdata;
@@ -2414,10 +2449,9 @@ tmpl(void)::genMoore()
             p_vci.cmdack = false;
             p_vci.rspval = true;
             if ( vci_param::B == 8 and (r_vci_be.read() == 0xFF) ) 
-                p_vci.rdata  = r_rx_chbuf[channel].data();
+                p_vci.rdata  = r_rx_chbuf[channel].data64();
             else    
                 p_vci.rdata  = (typename vci_param::data_t) r_rx_chbuf[channel].data(); 
-
             p_vci.rerror = vci_param::ERR_NORMAL;
             p_vci.rsrcid = r_vci_srcid.read();
             p_vci.rtrdid = r_vci_trdid.read();
@@ -2454,7 +2488,7 @@ tmpl(void)::genMoore()
             if ( r_vci_fsm.read() == VCI_READ_HYPER_REG )
                 rdata  = read_hyper_register((uint32_t)r_vci_address);
             else
-                rdata  = read_channel_register((uint32_t)r_vci_address);
+                rdata  = read_channel_register((uint32_t)r_vci_address); //address MSB are unecessary
             p_vci.cmdack = false;
             p_vci.rspval = true;
             p_vci.rdata   = (typename vci_param::data_t)rdata; //if data is 64 bits, rdata will
@@ -2716,15 +2750,15 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
                 ("r_channel_mac_4", 8)),
           r_channel_mac_2(soclib::common::alloc_elems<sc_signal<uint32_t> >
                 ("r_channel_mac_2", 8)),
-          r_channel_rx_bufaddr_0(soclib::common::alloc_elems<sc_signal<uint32_t> >
+          r_channel_rx_bufaddr_0(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
                 ("r_channel_rx_bufaddr_0", 8)),
-          r_channel_rx_bufaddr_1(soclib::common::alloc_elems<sc_signal<uint32_t> >
+          r_channel_rx_bufaddr_1(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
                 ("r_channel_rx_bufaddr_1", 8)),
           r_channel_rx_run(soclib::common::alloc_elems<sc_signal<bool> >
                 ("r_channel_rx_run", 8)),
-          r_channel_tx_bufaddr_0(soclib::common::alloc_elems<sc_signal<uint32_t> >
+          r_channel_tx_bufaddr_0(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
                 ("r_channel_tx_bufaddr_0", 8)),
-          r_channel_tx_bufaddr_1(soclib::common::alloc_elems<sc_signal<uint32_t> >
+          r_channel_tx_bufaddr_1(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
                 ("r_channel_tx_bufaddr_1", 8)),
           r_channel_tx_run(soclib::common::alloc_elems<sc_signal<bool> >
                 ("r_channel_tx_run", 8)),

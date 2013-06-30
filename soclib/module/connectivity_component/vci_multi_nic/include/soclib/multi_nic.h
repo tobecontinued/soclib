@@ -69,14 +69,21 @@ enum SoclibMultiNicHyperviseurRegisters
 
 enum SoclibMultiNicChannelRegisters 
 {
-    NIC_RX_FULL_0             = 0,   // RX_0 container status            (Read/Write)
-    NIC_RX_PBUF_0             = 1,   // RX_0 container base address      (Read/Write) 
-    NIC_RX_FULL_1             = 2,   // RX_1 container status            (Read/Write)
-    NIC_RX_PBUF_1             = 3,   // RX_1 container base address      (Read/Write) 
-    NIC_TX_FULL_0             = 4,   // RX_0 container status            (Read/Write)
-    NIC_TX_PBUF_0             = 5,   // RX_0 container base address      (Read/Write) 
-    NIC_TX_FULL_1             = 6,   // RX_1 container status            (Read/Write)
-    NIC_TX_PBUF_1             = 7,   // RX_1 container base address      (Read/Write) 
+    //////////////////////////////////////////////////////////////////////
+    // A container descriptor has the following form:                   //
+    // LOW WORD : Container LSB base address                            //
+    // HIGH WORD: Container status (leftmost bit), '1' means full       //
+    //            Base address MSB extension, if needed (right aligned) //
+    //////////////////////////////////////////////////////////////////////
+
+    NIC_RX_DESC_LO_0          = 0,   // RX_0 descriptor low word         (Read/Write)
+    NIC_RX_DESC_HI_0          = 1,   // RX_0 descriptor high word        (Read/Write)
+    NIC_RX_DESC_LO_1          = 2,   // RX_1 descriptor low word         (Read/Write)
+    NIC_RX_DESC_HI_1          = 3,   // RX_1 descriptor high word        (Read/Write) 
+    NIC_TX_DESC_LO_0          = 4,   // TX_0 descriptor low word         (Read/Write)
+    NIC_TX_DESC_HI_0          = 5,   // TX_0 descriptor high word        (Read/Write) 
+    NIC_TX_DESC_LO_1          = 6,   // TX_1 descriptor low word         (Read/Write)
+    NIC_TX_DESC_HI_1          = 7,   // TX_1 descriptor high word        (Read/Write) 
     NIC_MAC_4                 = 8,   // channel mac address 32 LSB bits  (Read Only)
     NIC_MAC_2                 = 9,   // channel mac address 16 LSB bits  (Read Only)
     NIC_RX_RUN                = 10,  // RX packets can be received       (write_only)
