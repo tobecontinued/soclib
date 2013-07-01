@@ -19,7 +19,7 @@ extern _ld_symbol_t pseg_dma_base;
 extern _ld_symbol_t pseg_nic_base;
 
 //////////////////////////////////////////////////////////////////////////////
-// boot_procid() 
+// boot_procid()
 //////////////////////////////////////////////////////////////////////////////
 inline unsigned int boot_procid()
 {
@@ -28,7 +28,7 @@ inline unsigned int boot_procid()
     return (ret & 0x3FF);
 }
 //////////////////////////////////////////////////////////////////////////////
-// boot_proctime() 
+// boot_proctime()
 //////////////////////////////////////////////////////////////////////////////
 inline unsigned int boot_proctime()
 {
@@ -37,7 +37,7 @@ inline unsigned int boot_proctime()
     return ret;
 }
 //////////////////////////////////////////////////////////////////////////////
-// boot_exit() 
+// boot_exit()
 //////////////////////////////////////////////////////////////////////////////
 void boot_exit()
 {
@@ -53,7 +53,7 @@ void boot_eret()
     asm volatile("eret");
 }
 //////////////////////////////////////////////////////////////////////////////
-// boot_set_mmu_mode() 
+// boot_set_mmu_mode()
 // This function set a new value for the MMU MODE register.
 //////////////////////////////////////////////////////////////////////////////
 inline void boot_set_mmu_mode( unsigned int val )
@@ -64,7 +64,7 @@ inline void boot_set_mmu_mode( unsigned int val )
 // boot_puts()
 // (it uses TTY0)
 ////////////////////////////////////////////////////////////////////////////
-void boot_puts(const char *buffer) 
+void boot_puts(const char *buffer)
 {
     unsigned int* tty_address = (unsigned int*)(&pseg_tty_base);
     unsigned int n;
@@ -74,9 +74,9 @@ void boot_puts(const char *buffer)
         if (buffer[n] == 0) break;
         tty_address[TTY_WRITE] = (unsigned int)buffer[n];
     }
-} 
+}
 ////////////////////////////////////////////////////////////////////////////
-// boot_putx() 
+// boot_putx()
 // (it uses TTY0)
 ////////////////////////////////////////////////////////////////////////////
 void boot_putx(unsigned int val)
@@ -90,14 +90,14 @@ void boot_putx(unsigned int val)
     buf[10] = 0;
 
     for ( c = 0 ; c < 8 ; c++ )
-    { 
+    {
         buf[9-c] = HexaTab[val&0xF];
         val = val >> 4;
     }
     boot_puts(buf);
 }
 ////////////////////////////////////////////////////////////////////////////
-// boot_putd() 
+// boot_putd()
 // (it uses TTY0)
 ////////////////////////////////////////////////////////////////////////////
 void boot_putd(unsigned int val)
@@ -134,50 +134,58 @@ void boot_activate_nic(unsigned int channels)
     unsigned int*    nic_channel_base;
     unsigned int     k;
     unsigned int     active;
+    unsigned int     nb_chan = 0;
+    unsigned int     i = 0;
 
     boot_puts( "NIC activation at cycle ");
     boot_putd( boot_proctime() );
     boot_puts( "\n" );
 
-    if      ( channels == 1) active = 0x01;
-    else if ( channels == 2) active = 0x03;
-    else if ( channels == 3) active = 0x07;
-    else if ( channels == 4) active = 0x0F;
-    else if ( channels == 5) active = 0x1F;
-    else if ( channels == 6) active = 0x3F;
-    else if ( channels == 7) active = 0x7F;
-    else if ( channels == 8) active = 0xFF;
-    else return;
+    // set channels registers (configuring channels)
+    for ( k = 0 ; k < channels ; k++)
+        {
+            nic_channel_base = (unsigned int*)(&pseg_nic_base) + NIC_CHANNEL_SPAN*k;
+            nic_channel_base[NIC_RX_DESC_LO_0 + 4096] = (unsigned int)(nic_channel_base);
+            nic_channel_base[NIC_RX_DESC_LO_1 + 4096] = (unsigned int)(nic_channel_base + 1024);
+            nic_channel_base[NIC_TX_DESC_LO_0 + 4096] = (unsigned int)(nic_channel_base + 2048);
+            nic_channel_base[NIC_TX_DESC_LO_1 + 4096] = (unsigned int)(nic_channel_base + 3072);
+            nic_channel_base[NIC_RX_RUN    + 4096] = 1;
+            nic_channel_base[NIC_TX_RUN    + 4096] = 1;
+        }
 
-    // set channels registers
-    for ( k = 0 ; k<channels ; k++)
-    {
-        nic_channel_base = (unsigned int*)(&pseg_nic_base) + NIC_CHANNEL_SPAN*k;
-        nic_channel_base[NIC_RX_DESC_LO_0 + 4096] = (unsigned int)(nic_channel_base);
-        nic_channel_base[NIC_RX_DESC_LO_1 + 4096] = (unsigned int)(nic_channel_base + 1024);
-        nic_channel_base[NIC_TX_DESC_LO_0 + 4096] = (unsigned int)(nic_channel_base + 2048);
-        nic_channel_base[NIC_TX_DESC_LO_1 + 4096] = (unsigned int)(nic_channel_base + 3072);
-        nic_channel_base[NIC_RX_RUN    + 4096] = 1;
-        nic_channel_base[NIC_TX_RUN    + 4096] = 1;
-    }
-    
     // set global registers
-    nic_hyper_base = (unsigned int*)(&pseg_nic_base) + NIC_CHANNEL_SPAN*8;
-    for ( k = 0 ; k<channels ; k++)
-    {
-        nic_hyper_base[NIC_G_MAC_4 + k]   = 0x00000001 + k;
-        nic_hyper_base[NIC_G_MAC_2 + k]   = 0x0000FFFF;
-    }
-    nic_hyper_base[NIC_G_VIS]             = active;
+    nic_hyper_base = (unsigned int*)(&pseg_nic_base) + NIC_CHANNEL_SPAN * 8;
+
+    for ( k = 0 ; k < channels ; k++)
+        {
+            nic_hyper_base[NIC_G_MAC_4 + k]   = 0x00000001 + k;
+            nic_hyper_base[NIC_G_MAC_2 + k]   = 0x0000FFFF;
+        }
+    
+    boot_puts("[NIC] channels from param = ");
+    boot_putd( channels );
+    boot_puts( "\n" );
+
+    nb_chan = nic_hyper_base[NIC_G_NB_CHAN];
+
+    boot_puts("[NIC] channels from NIC = ");
+    boot_putd( nb_chan );
+    boot_puts( "\n" );
+
+    for (i = 0; i < channels; i++)
+        active |= (0x1 << i);
+
+    // Activate NIC
     nic_hyper_base[NIC_G_BYPASS_ENABLE]   = 0x0;
     nic_hyper_base[NIC_G_BC_ENABLE]       = 0x1;
+    nic_hyper_base[NIC_G_VIS]             = active;
     nic_hyper_base[NIC_G_ON]              = 0x1;
 
 } // end boot_activate_nic()
 
 //////////////////////////////////////////////////////////////////////////////
 // This function initialises the vci_chbuf_dma component.
-// One DMA channel activated for each NIC channel RX_PBUF => TX_PBUF 
+// One DMA channel activated for each NIC channel RX_PBUF => TX_PBUF
 //////////////////////////////////////////////////////////////////////////////
 void boot_activate_dma(unsigned int channels)
 {
@@ -191,7 +199,7 @@ void boot_activate_dma(unsigned int channels)
 
     for( k = 0 ; k < channels ; k++ )
     {
-        dma_channel_base = (unsigned int*)(&pseg_dma_base) + CHBUF_CHANNEL_SPAN*k; 
+        dma_channel_base = (unsigned int*)(&pseg_dma_base) + CHBUF_CHANNEL_SPAN*k;
         nic_channel_base = (unsigned int*)(&pseg_nic_base) + NIC_CHANNEL_SPAN*k;
 
         // source chbuf descriptor address and number of buffers
