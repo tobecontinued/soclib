@@ -23,6 +23,8 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         alain.greiner@lip6.fr
  *         Clement Devigne <clement.devigne@etu.upmc.fr>
+ *         Sylvain Leroy <sylvain.leroy@lip6.fr>
+ *         Cassio Fraga <cassio.fraga@lip6.fr>
  *
  * Maintainers: alain
  */
@@ -53,12 +55,13 @@ template<typename vci_param>
 class VciMultiNic
 	: public caba::BaseModule
 {
-   private:
+private:
 
     // methods
-    void transition();
-    void genMoore();
-    uint32_t read_register(uint32_t addr); 
+    void        transition();
+    void        genMoore();
+    uint32_t    read_register(uint32_t addr);
+    // int32_t     open_tap_fd();
 
     // Instrumentation registers
     sc_signal<uint32_t>         r_total_len_rx_gmii;       // Bytes receive by RX_GMII
@@ -68,10 +71,11 @@ class VciMultiNic
 
     // Global registers
     sc_signal<bool>             r_global_bc_enable;        // broadcast enabled
-    sc_signal<bool>             r_global_nic_on;           // NIC component activated 
+    sc_signal<bool>             r_global_nic_on;           // NIC component activated
+    sc_signal<uint32_t>         r_global_nic_nb_chan;      // number of channel present in this NIC
     sc_signal<uint32_t>         r_global_active_channels;  // bitfield: disabled if 0
     sc_signal<bool>             r_global_tdm_enable;       // TDM scheduling enabled
-    sc_signal<uint32_t>         r_global_tdm_period;       // TDM time slot
+    sc_signal<uint32_t>         r_global_tdm_period;       // TDM time slot (hardcoded as a define)
     sc_signal<uint32_t>         r_global_tdm_timer;        // TDM timer (all cycles)
     sc_signal<uint32_t>         r_global_tdm_channel;      // current channel for TDM
     sc_signal<bool>             r_global_bypass_enable;    // current channel for TDM
@@ -86,7 +90,7 @@ class VciMultiNic
     sc_signal<typename vci_param::addr_t>   *r_channel_tx_bufaddr_1; // base address of TX buffer[1]
     sc_signal<bool>                         *r_channel_tx_run;       // TX chbuf activated          
 
-    
+
     // VCI FSM registers
     sc_signal<int>			    r_vci_fsm;
     sc_signal<typename vci_param::srcid_t>	r_vci_srcid;   // for rsrcid
@@ -94,7 +98,7 @@ class VciMultiNic
     sc_signal<typename vci_param::pktid_t>	r_vci_pktid;   // for rpktid
     sc_signal<typename vci_param::data_t>	r_vci_wdata;   // for write burst
     sc_signal<typename vci_param::be_t>	    r_vci_be;      // for write burst in 64 bits data
-    sc_signal<size_t>           r_vci_nwords;              // word counter 
+    sc_signal<size_t>           r_vci_nwords;              // word counter
     sc_signal<uint32_t>         r_vci_address;             // used for bursts
 
     // RX_G2S FSM registers
@@ -117,10 +121,10 @@ class VciMultiNic
     sc_signal<uint32_t>         r_rx_des_padding;          // padding
     sc_signal<uint8_t>*         r_rx_des_data;             // array[4]
 
-    sc_signal<uint32_t>         r_rx_des_npkt_success;           // transmit packets  
+    sc_signal<uint32_t>         r_rx_des_npkt_success;           // transmit packets
     sc_signal<uint32_t>         r_rx_des_npkt_too_small;         // discarded packets
     sc_signal<uint32_t>         r_rx_des_npkt_too_big;           // discarded packets
-    sc_signal<uint32_t>         r_rx_des_npkt_mfifo_full;        // discarded packets 
+    sc_signal<uint32_t>         r_rx_des_npkt_mfifo_full;        // discarded packets
     sc_signal<uint32_t>         r_rx_des_npkt_cs_fail;           // discarded packets
 
     // RX_DISPATCH registers
@@ -132,7 +136,7 @@ class VciMultiNic
 
     sc_signal<uint32_t>         r_rx_dispatch_npkt_received;     // received packets
     sc_signal<uint32_t>         r_rx_dispatch_npkt_broadcast;    // broadcast packets
-    sc_signal<uint32_t>         r_rx_dispatch_npkt_dst_fail;     // discarded packets 
+    sc_signal<uint32_t>         r_rx_dispatch_npkt_dst_fail;     // discarded packets
     sc_signal<uint32_t>         r_rx_dispatch_npkt_channel_full; // discarded packets
 
     // TX_DISPATCH registers
@@ -158,11 +162,11 @@ class VciMultiNic
     sc_signal<int>              r_tx_ser_fsm;
     sc_signal<uint32_t>         r_tx_ser_words;            // number of words
     sc_signal<uint32_t>         r_tx_ser_bytes;            // bytes in last word
-    sc_signal<bool>             r_tx_ser_first;            // first word 
+    sc_signal<bool>             r_tx_ser_first;            // first word
     sc_signal<uint32_t>         r_tx_ser_ifg;              // inter-frame-gap counter
     sc_signal<uint32_t>         r_tx_ser_data;             // 32 bits buffer
 
-    
+
     // TX_S2G registers
     sc_signal<int>              r_tx_s2g_fsm;
     sc_signal<uint32_t>         r_tx_s2g_checksum;         // packet checksum
@@ -183,12 +187,15 @@ class VciMultiNic
     // Packets in and out
     NicRxGmii                   r_gmii_rx;
     NicTxGmii                   r_gmii_tx;
+    // RX                                      r_backend_rx;
+    // TX                                      r_backend_tx;
 
     // sructural parameters
     std::list<soclib::common::Segment>  m_seglist;          // allocated segment(s)
     const size_t				        m_channels;		    // no more than 8 channels
     const uint32_t                      m_default_mac_4;    // MAC address 32 LSB bits
     const uint32_t                      m_default_mac_2;    // MAC address 16 MSB bits
+    // struct ifreq                            m_tap_ifr;
 
 protected:
 
@@ -246,7 +253,7 @@ public:
         TX_DISPATCH_IDLE,
         TX_DISPATCH_GET_NPKT,
         TX_DISPATCH_GET_PLEN,
-        TX_DISPATCH_SKIP_PKT, 
+        TX_DISPATCH_SKIP_PKT,
         TX_DISPATCH_READ_FIRST,
         TX_DISPATCH_READ_SECOND,
         TX_DISPATCH_FIFO_SELECT,
@@ -291,6 +298,7 @@ public:
     sc_out<bool>* 				            p_tx_irq;
 
     void print_trace(uint32_t option = 1);
+
     uint32_t get_total_len_gmii();
     uint32_t get_total_len_rx_chan();
     uint32_t get_total_len_tx_chan();
@@ -299,14 +307,14 @@ public:
     uint32_t read_hyper_register(uint32_t);
     uint32_t read_channel_register(uint32_t);
 
-    VciMultiNic( sc_module_name 			name,
-		const soclib::common::IntTab 		&tgtid,
-		const soclib::common::MappingTable 	&mt,
-        const size_t				        channels,           // number of channels
-        const char*                         rx_file_pathname,   // received packets
-        const char*                         tx_file_pathname,   // transmitted packets
-        const uint32_t                      mac_4,              // default mac address
-        const uint32_t                      mac_2 );            // default mac address
+    VciMultiNic(sc_module_name           			name,
+                const soclib::common::IntTab 		&tgtid,
+                const soclib::common::MappingTable 	&mt,
+                const size_t				        channels,           // number of channels
+                const char*                         rx_file_pathname,   // received packets
+                const char*                         tx_file_pathname,   // transmitted packets
+                const uint32_t                      mac_4,              // default mac address
+                const uint32_t                      mac_2);             // default mac address
 };
 
 }}

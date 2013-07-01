@@ -23,6 +23,8 @@
  * Copyright (c) UPMC, Lip6
  *         Alain Greiner <alain.greiner@lip6.fr> July 2008
  *         Clement Devigne <clement.devigne@etu.upmc.fr>
+ *         Sylvain Leroy <sylvain.leroy@lip6.fr>
+ *         Cassio Fraga <cassio.fraga@lip6.fr>
  *
  * Maintainers: alain 
  */
@@ -55,8 +57,15 @@
 #include <fstream>
 #include <iomanip>
 
+/*!
+ * \def PREAMBLE_SIZE
+ * \brief Use to write preamble before writing packet
+ * \def PREAMBLE
+ * \brief Preamble value
+ */
 #define PREAMBLE_SIZE 8
 #define PREAMBLE "55555555555555D5"
+
 namespace soclib { 
 namespace caba {
 
@@ -78,13 +87,18 @@ class NicTxGmii
     ///////////////////////////////////////////////////////////////////
     void write_one_packet()
     { 
-        m_file << std::dec << r_counter + PREAMBLE_SIZE << ' ';
-        m_file << PREAMBLE;
-        for ( size_t cpt = 0; cpt < r_counter ; cpt++ )
-        {
-            m_file <<std::setfill('0')<<std::setw(2)<< std::hex << (uint32_t)r_buffer[cpt];
-        }
-        m_file << std::dec << std::endl;
+        if (m_file)
+            {
+                m_file << std::dec << r_counter + PREAMBLE_SIZE << ' ';
+                m_file << PREAMBLE;
+
+                for ( size_t cpt = 0; cpt < r_counter ; cpt++ )
+                    {
+                        m_file << std::setfill('0') << std::setw(2) << std::hex << (uint32_t)r_buffer[cpt];
+                    }
+
+                m_file << std::dec << std::endl;
+            }
     }
 
 public:
@@ -99,21 +113,22 @@ public:
     // To reach the 1 Gbyte/s throughput, this method must be called 
     // at all cycles of a 125MHz clock.
     ///////////////////////////////////////////////////////////////////
-    void put( bool     dv,          // data valid
-              uint8_t  dt )         // data value
+    void put(bool     dv,          // data valid
+             uint8_t  dt)          // data value
     {
         if ( not dv and (r_counter != 0) )    // end of packet
-        {
-            write_one_packet();
-            r_counter = 0;
-        }
+            {
+                write_one_packet();
+                r_counter = 0;
+            }
         else if ( dv )    // running packet
-        {
-            r_buffer[r_counter] = dt;
-            r_counter           = r_counter + 1;
-        }
+            {
+                r_buffer[r_counter] = dt;
+                r_counter           = r_counter + 1;
+            }
     } // end put()
     
+
     //////////////////////////////////////////////////////////////
     // This method returns true if the TX chain is to be frozen.
     //////////////////////////////////////////////////////////////
@@ -125,20 +140,17 @@ public:
     //////////////////////////////////////////////////////////////
     // constructor 
     //////////////////////////////////////////////////////////////
-    NicTxGmii( const std::string  &name,
-               const std::string  &path )
-    : m_name(name),
-      m_file(path.c_str(),std::ios::out)
+    NicTxGmii(const std::string  &name,
+              const std::string  &path)
+        : m_name(name),
+          m_file(path.c_str(),std::ios::out)
     {
         r_buffer    = new uint8_t[2048];
-        if ( m_file )
-        {
+
+        if (m_file)
             std::cout << "output file = " << path << std::endl;
-        }
         else
-        {
             std::cout << "ERROR in TX_GMII : cannot open file " << path << std::endl;
-        }
     } 
 
     //////////////////
