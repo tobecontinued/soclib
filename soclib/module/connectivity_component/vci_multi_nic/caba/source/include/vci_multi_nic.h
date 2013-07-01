@@ -37,7 +37,6 @@
 #include "vci_target.h"
 #include "caba_base_module.h"
 #include "mapping_table.h"
-#include "vci_multi_nic.h"
 #include "fifo_multi_buffer.h"
 #include "nic_rx_chbuf.h"
 #include "nic_tx_chbuf.h"

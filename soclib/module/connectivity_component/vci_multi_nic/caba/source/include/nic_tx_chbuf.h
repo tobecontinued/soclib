@@ -231,9 +231,9 @@ public:
         bool        odd     = (r_pkt_index & 0x1);
         uint32_t    word    = (r_pkt_index / 2) + 1;
 
-// #ifdef SOCLIB_NIC_DEBUG
+#ifdef SOCLIB_NIC_DEBUG
         printf("[NIC][TX_CHBUF][%s] r_pkt_index = %d\n", __func__, r_pkt_index);
-// #endif
+#endif
 
         if (odd) // odd
             return (r_cont[r_ptr_cont][word] >> 16);
@@ -246,7 +246,7 @@ public:
     ////////////////////////////////////////////////////////////////////////////
     uint32_t npkt()
     {
-// #ifdef SOCLIB_NIC_DEBUG
+#ifdef SOCLIB_NIC_DEBUG
         printf("\n");
         printf("***\n");
         printf("\n");
@@ -262,7 +262,7 @@ public:
                 printf("%08x", r_cont[r_ptr_cont][i]);
             }
         printf("\n");
-// #endif
+#endif
 
         return r_cont[r_ptr_cont][0] & 0x0000FFFF;
     }
