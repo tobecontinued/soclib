@@ -41,6 +41,8 @@ enum SoclibChbufDmaRegisters
     CHBUF_DST_NBUFS     = 5,    // read/write : destination chbuf : number of buffers,
     CHBUF_BUF_SIZE      = 6,    // read/write : buffer size for both source & destination  
     CHBUF_PERIOD        = 7,    // read/write : period for status polling 
+    CHBUF_SRC_EXT       = 8,    // read/write : source chbuf : descriptor base address
+    CHBUF_DST_EXT       = 9,    // read/write : destination chbuf : descriptor base address,
     /****/
     CHBUF_CHANNEL_SPAN	= 1024,
 };
