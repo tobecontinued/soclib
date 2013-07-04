@@ -129,7 +129,8 @@ private:
     // RX_DISPATCH registers
     sc_signal<int>              r_rx_dispatch_fsm;
     sc_signal<bool>             r_rx_dispatch_bp;          // previouly allocated to bp
-    sc_signal<uint32_t>         r_rx_dispatch_data;        // first word mac address
+    sc_signal<uint32_t>         r_rx_dispatch_data0;       // first word mac address
+    sc_signal<uint32_t>         r_rx_dispatch_data1;       // second word mac address
     sc_signal<uint32_t>         r_rx_dispatch_nbytes;      // number of bytes to be written
     sc_signal<uint32_t>         r_rx_dispatch_dest;        // bit vector: 1 bit per channel
 
@@ -240,11 +241,13 @@ public:
         RX_DISPATCH_IDLE,
         RX_DISPATCH_GET_PLEN,
         RX_DISPATCH_READ_FIRST,
+        RX_DISPATCH_READ_SECOND,
         RX_DISPATCH_CHECK_BC,
         RX_DISPATCH_SELECT,
         RX_DISPATCH_SELECT_BC,
         RX_DISPATCH_PACKET_SKIP,
         RX_DISPATCH_CLOSE_CONT,
+        RX_DISPATCH_WRITE_FIRST,
         RX_DISPATCH_READ_WRITE,
         RX_DISPATCH_WRITE_LAST,
     };

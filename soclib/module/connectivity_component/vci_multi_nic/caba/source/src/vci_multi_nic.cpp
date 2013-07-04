@@ -1582,12 +1582,29 @@ tmpl(void)::transition()
                 if ( r_rx_dispatch_bp.read() )
                     {
                         bp_fifo_multi_rcmd   = FIFO_MULTI_RCMD_READ;
-                        r_rx_dispatch_data   = r_bp_fifo_multi.data();
+                        r_rx_dispatch_data0   = r_bp_fifo_multi.data();
                     }
                 else
                     {
                         rx_fifo_multi_rcmd   = FIFO_MULTI_RCMD_READ;
-                        r_rx_dispatch_data   = r_rx_fifo_multi.data();
+                        r_rx_dispatch_data0   = r_rx_fifo_multi.data();
+                    }
+                r_rx_dispatch_nbytes     = r_rx_dispatch_nbytes.read() - 4;
+                r_rx_dispatch_fsm        = RX_DISPATCH_READ_SECOND;
+                break;
+            }
+            /////////////////////////////
+        case RX_DISPATCH_READ_SECOND: // read second word from fifo_multi
+            {
+                if ( r_rx_dispatch_bp.read() )
+                    {
+                        bp_fifo_multi_rcmd   = FIFO_MULTI_RCMD_READ;
+                        r_rx_dispatch_data1   = r_bp_fifo_multi.data();
+                    }
+                else
+                    {
+                        rx_fifo_multi_rcmd   = FIFO_MULTI_RCMD_READ;
+                        r_rx_dispatch_data1   = r_rx_fifo_multi.data();
                     }
                 r_rx_dispatch_nbytes     = r_rx_dispatch_nbytes.read() - 4;
                 r_rx_dispatch_fsm        = RX_DISPATCH_CHECK_BC;
@@ -1598,10 +1615,9 @@ tmpl(void)::transition()
                                       // in source fifo) to get the MAC extension
                                       // and analyse broadcast
             {
-                uint32_t data0 = r_rx_dispatch_data.read(); // dst_addr 4 MSB bytes
-                uint32_t data1;                            // dst_addr 2 LSB bytes
-                if ( r_rx_dispatch_bp.read() ) data1 = r_bp_fifo_multi.data() & 0xFFFF0000;
-                else                           data1 = r_rx_fifo_multi.data() & 0xFFFF0000;
+                uint32_t data0 = r_rx_dispatch_data0.read();     // dst_addr 4 MSB bytes
+                uint32_t data1 = r_rx_dispatch_data1.read();    // dst_addr 2 LSB bytes
+                                                                // and src_addr 2 MSB bytes
 
                 if ( (data0 == 0xFFFFFFFF) and (data1 == 0xFFFF0000)
                      and r_global_bc_enable.read() )          // broadcast
@@ -1626,21 +1642,16 @@ tmpl(void)::transition()
             {
                 bool found = false;
 
-                uint32_t data0 = r_rx_dispatch_data.read();     // dst_addr 4 MSB bytes
-                uint32_t dst_mac_2 = (data0 & 0xFFFF0000)>>16;  // 2 MSB bytes
-                uint32_t dst_mac_4;                             // 4 LSB bytes
-                if ( r_rx_dispatch_bp.read() )
-                    dst_mac_4 = ((data0 & 0x0000FFFF)<<16) |
-                        ((r_bp_fifo_multi.data() & 0xFFFF0000)>>16);
-                else
-                    dst_mac_4 = ((data0 & 0x0000FFFF)<<16) |
-                        ((r_rx_fifo_multi.data() & 0xFFFF0000)>>16);
+                uint32_t data0 = r_rx_dispatch_data0.read();     // dst_addr 4 MSB bytes
+                uint32_t dst_mac_2 = (data0 & 0xFFFF0000)>>16;      // 2 MSB bytes
+                uint32_t dst_mac_4 = ((data0 & 0x0000FFFF)<<16) |   // 4 LSB bytes         
+                        ((r_rx_dispatch_data1.read() & 0xFFFF0000)>>16);
 
                 for ( size_t k=0 ; (k<m_channels) && not found ; k++ )
                     {
                         bool run   = ((r_global_active_channels.read()>>k) & 0x1) && r_channel_rx_run[k];
                         bool wok   = r_rx_chbuf[k].wok();
-                        bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 4) );
+                        bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 8) );
                         bool time  = ( r_rx_chbuf[k].time() > (r_rx_dispatch_nbytes.read()>>2) );
                         bool mac   = ( (dst_mac_4 == r_channel_mac_4[k].read()) and
                                        (dst_mac_2 == r_channel_mac_2[k].read()) );
@@ -1657,7 +1668,7 @@ tmpl(void)::transition()
                                     }
                                 else if (space and time)    // transfer possible
                                     {
-                                        r_rx_dispatch_fsm  = RX_DISPATCH_READ_WRITE;
+                                        r_rx_dispatch_fsm  = RX_DISPATCH_WRITE_FIRST;
                                     }
                                 else    // not enough space or time => close container and retry
                                     {
@@ -1682,16 +1693,21 @@ tmpl(void)::transition()
                                      // Several channels can be selected for broadcast
             {
                 uint32_t    channels = 0;
+                uint32_t    src_mac_2 = (r_rx_dispatch_data0.read() & 0xFFFF);  // 2 MSB bytes
+                uint32_t    src_mac_4;                             // 4 LSB bytes
+                if ( r_rx_dispatch_bp.read() )  src_mac_4 = r_bp_fifo_multi.data();
+                else                            src_mac_4 = r_rx_fifo_multi.data();
 
                 for ( size_t k=0 ; (k<m_channels) ; k++ )
                     {
                         bool run   = ((r_global_active_channels.read()>>k) & 0x1) && r_channel_rx_run[k];
                         bool wok   = r_rx_chbuf[k].wok();
-                        bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 4) );
+                        bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 8) );
                         bool time  = ( r_rx_chbuf[k].time() > (r_rx_dispatch_nbytes.read()>>2) );
-
-                        // In this version the sender also receives the broadcast
-                        if ( run and wok and space and time ) // transfer possible
+                        bool mac   = ( (src_mac_4 == r_channel_mac_4[k].read()) and 
+                                        (src_mac_2 == r_channel_mac_2[k].read()) );
+                        // the sender does not receive the packet
+                        if ( run and wok and space and time and not mac) // transfer possible
                             {
                                 channels = channels | (1<<k);
                             }
@@ -1699,7 +1715,7 @@ tmpl(void)::transition()
                 if ( channels )         // at least one channel selected
                     {
                         r_rx_dispatch_dest = channels;
-                        r_rx_dispatch_fsm  = RX_DISPATCH_READ_WRITE;
+                        r_rx_dispatch_fsm  = RX_DISPATCH_WRITE_FIRST;
                     }
                 else                    // no channel selected => discard packet
                     {
@@ -1732,6 +1748,21 @@ tmpl(void)::transition()
                     }
                 break;
             }
+            /////////////////////////////
+        case RX_DISPATCH_WRITE_FIRST: // write first word (data0) in multi_fifos
+            {
+                // write data0 to one or several chbufs
+                for ( size_t k = 0 ; (k < m_channels); k++ )
+                    {
+                        if ( (r_rx_dispatch_dest.read() >> k) & 0x1 )
+                            {
+                                rx_chbuf_wcmd[k] = RX_CHBUF_WCMD_WRITE;
+                                rx_chbuf_wdata    = r_rx_dispatch_data0.read();
+                            }
+                    }
+                r_rx_dispatch_fsm = RX_DISPATCH_READ_WRITE;
+                break;
+            }
             ////////////////////////////
         case RX_DISPATCH_READ_WRITE: // read a new word from fifo and write previous word
                                      // to selected channel(s) for both unicast and broadcast
@@ -1742,19 +1773,19 @@ tmpl(void)::transition()
                         if ( (r_rx_dispatch_dest.read() >> k) & 0x1 )
                             {
                                 rx_chbuf_wcmd[k] = RX_CHBUF_WCMD_WRITE;
-                                rx_chbuf_wdata    = r_rx_dispatch_data.read();
+                                rx_chbuf_wdata    = r_rx_dispatch_data1.read();
                             }
                     }
                 // read data[i]
                 if ( r_rx_dispatch_bp.read() ) // read from bp_fifo
                     {
-                        r_rx_dispatch_data   = r_bp_fifo_multi.data();
+                        r_rx_dispatch_data1   = r_bp_fifo_multi.data();
                         if (r_rx_dispatch_nbytes.read() <= 4) bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
                         else                                  bp_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
                     }
                 else                          // read from rx_fifo
                     {
-                        r_rx_dispatch_data   = r_rx_fifo_multi.data();
+                        r_rx_dispatch_data1   = r_rx_fifo_multi.data();
                         if (r_rx_dispatch_nbytes.read() <= 4) rx_fifo_multi_rcmd = FIFO_MULTI_RCMD_LAST;
                         else                                  rx_fifo_multi_rcmd = FIFO_MULTI_RCMD_READ;
                     }
@@ -1778,7 +1809,7 @@ tmpl(void)::transition()
                         if ( ( r_rx_dispatch_dest.read() >> k) & 0x1 )
                             {
                                 rx_chbuf_wcmd[k] = RX_CHBUF_WCMD_LAST;
-                                rx_chbuf_wdata   = r_rx_dispatch_data.read();
+                                rx_chbuf_wdata   = r_rx_dispatch_data1.read();
                                 rx_chbuf_padding = 4 - r_rx_dispatch_nbytes.read();
                             }
                     }
@@ -2596,11 +2627,13 @@ tmpl(void)::print_trace(uint32_t mode)
             "RX_DISPATCH_IDLE",
             "RX_DISPATCH_GET_PLEN",
             "RX_DISPATCH_READ_FIRST",
+            "RX_DISPATCH_READ_SECOND",
             "RX_DISPATCH_CHECK_BC",
             "RX_DISPATCH_SELECT",
             "RX_DISPATCH_SELECT_BC",
             "RX_DISPATCH_PACKET_SKIP",
             "RX_DISPATCH_CLOSE_CONT",
+            "RX_DISPATCH_WRITE_FIRST",
             "RX_DISPATCH_READ_WRITE",
             "RX_DISPATCH_WRITE_LAST",
         };
@@ -2710,7 +2743,8 @@ tmpl(void)::print_trace(uint32_t mode)
         {
             std::cout << "---- RX_DISPATCH Registers" << std::hex << std::endl;
             std::cout << "r_rx_dispatch_bp     : " << r_rx_dispatch_bp.read() << std::endl;
-            std::cout << "r_rx_dispatch_data   : " << r_rx_dispatch_data.read() << std::endl;
+            std::cout << "r_rx_dispatch_data0  : " << r_rx_dispatch_data0.read() << std::endl;
+            std::cout << "r_rx_dispatch_data1  : " << r_rx_dispatch_data1.read() << std::endl;
             std::cout << "r_rx_dispatch_nbytes : " << r_rx_dispatch_nbytes.read() << std::endl;
             std::cout << "r_rx_dispatch_dest   : " << r_rx_dispatch_dest.read() << std::endl;
         }
@@ -2835,7 +2869,8 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
 
            r_rx_dispatch_fsm("r_rx_dispatch_fsm"),
            r_rx_dispatch_bp("r_rx_dispatch_bp"),
-           r_rx_dispatch_data("r_rx_dispatch_data"),
+           r_rx_dispatch_data0("r_rx_dispatch_data0"),
+           r_rx_dispatch_data1("r_rx_dispatch_data1"),
            r_rx_dispatch_nbytes("r_rx_dispatch_nbytes"),
            r_rx_dispatch_dest("r_rx_dispatch_dest"),
 
