@@ -1615,11 +1615,10 @@ tmpl(void)::transition()
                                       // in source fifo) to get the MAC extension
                                       // and analyse broadcast
             {
-                uint32_t data0 = r_rx_dispatch_data0.read();     // dst_addr 4 MSB bytes
-                uint32_t data1 = r_rx_dispatch_data1.read();    // dst_addr 2 LSB bytes
-                                                                // and src_addr 2 MSB bytes
+                uint32_t data0 = r_rx_dispatch_data0.read();              // dst_addr 4 MSB bytes
+                uint32_t data1 = (r_rx_dispatch_data1.read() >> 16) & 0xFFFF; // dst_addr 2 LSB bytes
 
-                if ( (data0 == 0xFFFFFFFF) and (data1 == 0xFFFF0000)
+                if ( (data0 == 0xFFFFFFFF) and (data1 == 0xFFFF)
                      and r_global_bc_enable.read() )          // broadcast
                     {
                         r_rx_dispatch_dest           = 0;
