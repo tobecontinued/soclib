@@ -49,6 +49,7 @@ using namespace soclib::caba;
                                     const size_t         nb_local_outputs,
                                     const size_t         in_fifo_depth,
                                     const size_t         out_fifo_depth,
+                                    const bool           is_cmd,
                                     const bool           use_routing_table,
                                     const bool           broadcast_supported )
 	: BaseModule(name),
@@ -78,7 +79,8 @@ using namespace soclib::caba;
       m_l_mask( (0x1 << l_width) - 1 ),
       m_local_inputs( nb_local_inputs ),
       m_local_outputs( nb_local_outputs ),
-      m_address_width(mt.getAddressWidth()),
+      m_addr_width( mt.getAddressWidth() ),
+      m_is_cmd( is_cmd ),
       m_use_routing_table( use_routing_table ),
       m_broadcast_supported( broadcast_supported )
     {
@@ -94,10 +96,16 @@ using namespace soclib::caba;
 
 	    r_buf_in = new internal_flit_t[nb_local_inputs + 1];
 
-        // routing table
-        if ( use_routing_table )
+        // routing table for CMD crossbar (from address)
+        if ( use_routing_table and is_cmd )        
         {
-            m_routing_table = mt.getRoutingTable<uint64_t>(IntTab((x << x_width) + y));
+            m_routing_table = mt.getPortidFromAddress( (x << y_width) + y );
+        }
+
+        // routing table for RSP crossbar (from srcid)
+        if ( use_routing_table and not is_cmd ) 
+        {
+            m_routing_table = mt.getPortidFromSrcid( (x << y_width) + y );
         }
 
         // construct FIFOs
@@ -130,7 +138,6 @@ using namespace soclib::caba;
     tmpl(size_t)::route( sc_uint<flit_width> data,     // first flit
                          size_t              input )   // input port index 
     {
-        uint64_t address;  // address
         size_t   output;   // selected output port
         size_t   x_dest  = (size_t)(data >> m_x_shift) & m_x_mask;
         size_t   y_dest  = (size_t)(data >> m_y_shift) & m_y_mask;
@@ -139,25 +146,42 @@ using namespace soclib::caba;
         {
             if ( m_use_routing_table )
             {
-                if (flit_width >= m_address_width) 
-                    address = data >> (flit_width - m_address_width);
+                // address (for CMD) or srcid (for RSP) must be right-aligned
+                if ( m_is_cmd )
+                {
+                    uint64_t address;
+                    if (flit_width >= m_addr_width) 
+                        address = data>>(flit_width - m_addr_width);
+                    else                          
+                        address = data<<(m_addr_width - flit_width);
+                    output = m_routing_table[address];
+                }
                 else
-                    address = data << (m_address_width - flit_width);
-
-                output = m_routing_table[address];
+                {   
+                    uint64_t srcid = data >> m_l_shift;
+                    output = m_routing_table[srcid];
+                }
             }
             else
             {
                 output = (size_t)(data >> m_l_shift) & m_l_mask;
  
-                assert( (output < m_local_outputs) and
-                "ERROR in DSPIN_LOCAL_CROSSBAR: illegal local destination");
+                if ( output >= m_local_outputs )
+                {
+                    std::cout << "ERROR in DSPIN_LOCAL_CROSSBAR: " << name()
+                              << " illegal local destination" << std::endl;
+                    exit(0);
+                }
             }
         }
         else                                                            // global dest
         {
-            assert( (input < m_local_inputs) and
-            "ERROR in DSPIN_LOCAL_CROSSBAR : illegal global to global request");
+            if ( input  == m_local_inputs )
+            {
+                std::cout << "ERROR in DSPIN_LOCAL_CROSSBAR: " << name()
+                          << " illegal global to global request" << std::endl;
+                exit(0);
+            }
 
             output = m_local_outputs;
         }

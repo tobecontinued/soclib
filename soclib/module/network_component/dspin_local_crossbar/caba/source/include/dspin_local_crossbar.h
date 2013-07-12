@@ -83,6 +83,7 @@ namespace soclib { namespace caba {
                             const size_t        nb_local_outputs,
                             const size_t        in_fifo_depth,
                             const size_t        out_fifo_depth,
+                            const bool          is_cmd,
                             const bool          use_routing_table,
                             const bool          broadcast_supported );
 
@@ -107,25 +108,24 @@ namespace soclib { namespace caba {
 	    soclib::caba::GenericFifo<internal_flit_t>*  r_fifo_out;
 
 	    // structural parameters
-	    const size_t     m_local_x;
-	    const size_t     m_local_y;
-	    const size_t     m_x_width;
-	    const size_t     m_x_shift;
-	    const size_t     m_x_mask;
-	    const size_t     m_y_width;
-	    const size_t     m_y_shift;
-	    const size_t     m_y_mask;
-	    const size_t     m_l_width;
-	    const size_t     m_l_shift;
-	    const size_t     m_l_mask;
-        const size_t     m_local_inputs;
-        const size_t     m_local_outputs;
-        const size_t     m_address_width;
-        const bool       m_use_routing_table;
-        const bool       m_broadcast_supported;
-
-        // using uint64_t to support both 32 bits and 40 bits addresses
-        AddressDecodingTable<uint64_t, int>       m_routing_table;
+	    const size_t                             m_local_x;
+	    const size_t                             m_local_y;
+	    const size_t                             m_x_width;
+	    const size_t                             m_x_shift;
+	    const size_t                             m_x_mask;
+	    const size_t                             m_y_width;
+	    const size_t                             m_y_shift;
+	    const size_t                             m_y_mask;
+	    const size_t                             m_l_width;
+	    const size_t                             m_l_shift;
+	    const size_t                             m_l_mask;
+        const size_t                             m_local_inputs;
+        const size_t                             m_local_outputs;
+        const size_t                             m_addr_width;
+        const bool                               m_is_cmd;
+        const bool                               m_use_routing_table;
+        const bool                               m_broadcast_supported;
+        AddressDecodingTable<uint64_t, size_t>   m_routing_table;
 
 	    // methods 
 	    void      transition();
