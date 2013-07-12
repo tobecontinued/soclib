@@ -32,34 +32,40 @@ namespace soclib { namespace common {
 
 #define tmpl(...) template<typename input_t, typename output_t> __VA_ARGS__ AddressDecodingTable<input_t, output_t>
 
+///////////////////////////////////////////////
 tmpl(void)::init( int use_bits, int drop_bits )
 {
-	m_table = new output_t[1<<use_bits];
-	m_use_bits = use_bits;
+	m_table     = new output_t[1<<use_bits];
+	m_use_bits  = use_bits;
 	m_drop_bits = drop_bits;
-	m_low_mask = (1<<use_bits)-1;
+	m_low_mask  = (1<<use_bits)-1;
 }
 
+//////////////////////////////
 tmpl()::AddressDecodingTable()
 {
 	init(0,0);
 }
 
+///////////////////////////////////////////////////////////
 tmpl()::AddressDecodingTable( int use_bits, int drop_bits )
 {
 	init(use_bits, drop_bits);
 }
 
+////////////////////////////////////////////
 tmpl()::AddressDecodingTable( input_t mask )
 {
 	int use_bits = 0, drop_bits = 0;
 	input_t m = mask;
 	
-	while ( !(m & 1) ) {
+	while ( !(m & 1) ) 
+    {
 		++drop_bits;
 		m >>= 1;
 	}
-	while ( (m & 1) && (use_bits+drop_bits <= (int)(8*sizeof(input_t))) ) {
+	while ( (m & 1) && (use_bits+drop_bits <= (int)(8*sizeof(input_t))) ) 
+    {
 		++use_bits;
 		m >>= 1;
 	}
@@ -67,18 +73,21 @@ tmpl()::AddressDecodingTable( input_t mask )
 	init(use_bits, drop_bits);
 	assert(this->mask() == mask);
 }
-    
+
+///////////////////////////////////    
 tmpl(void)::reset( output_t value )
 {
 	for ( int i=0; i<(1<<m_use_bits); ++i )
 		m_table[i] = value;
 }
 
+////////////////////////////////////////////////
 tmpl(void)::set( input_t where, output_t value )
 {
 	m_table[id(where)] = value;
 }
 
+///////////////////////////////////////////////////////////////
 tmpl()::AddressDecodingTable( const AddressDecodingTable &ref )
 {
 	init(ref.m_use_bits, ref.m_drop_bits);
@@ -86,8 +95,9 @@ tmpl()::AddressDecodingTable( const AddressDecodingTable &ref )
 		m_table[i] = ref.m_table[i];
 }
 
-tmpl(const AddressDecodingTable<input_t, output_t> &)
-::operator=( const AddressDecodingTable &ref )
+/////////////////////////////////////////////////////////////////
+tmpl(const AddressDecodingTable<input_t, output_t> &)::operator=( 
+     const AddressDecodingTable &ref )
 {
 	if ( this == &ref )
 		return *this;
@@ -100,11 +110,13 @@ tmpl(const AddressDecodingTable<input_t, output_t> &)
     return *this;
 }
 
+///////////////////////////////
 tmpl()::~AddressDecodingTable()
 {
 	delete [] m_table;
 }
 
+//////////////////////////////////////////
 tmpl(void)::print( std::ostream &o ) const
 {
     o << "<ADT: use=" << std::dec << m_use_bits << ", drop=" << m_drop_bits
@@ -114,6 +126,7 @@ tmpl(void)::print( std::ostream &o ) const
     o << '>' << std::dec;
 }
 
+////////////////////////////////////////////
 tmpl(bool)::isAllBelow( output_t val ) const
 {
     for ( size_t i=0; i<(size_t)(1<<m_use_bits); ++i )
