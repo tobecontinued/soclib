@@ -32,20 +32,25 @@
 
 namespace soclib { namespace common {
 
+/////////////////////////////////////////////////
 template <typename input_t, typename output_t>
 class AddressDecodingTable
+/////////////////////////////////////////////////
 {
-    int m_use_bits, m_drop_bits;
-    input_t m_low_mask;
-    output_t *m_table;
+    int          m_use_bits; 
+    int          m_drop_bits;
+    input_t      m_low_mask;
+    output_t*    m_table;
 
     void init( int use_bits, int drop_bits );
 
+    ///////////////////////////
     inline input_t mask() const
     {
         return m_low_mask<<m_drop_bits;
     }
 
+    //////////////////////////////////
     inline int id( input_t val ) const
     {
         return (val>>m_drop_bits)&m_low_mask;
@@ -64,11 +69,20 @@ public:
 
 	void print( std::ostream &o ) const;
 
+    ////////////////////////////////////////////////
+    inline output_t get_value( input_t where ) const
+    {
+        return m_table[id(where)];
+
+    }
+
+    /////////////////////////////////////////////////
     inline output_t operator[]( input_t where ) const
     {
         return m_table[id(where)];
     }
 
+    /////////////////////////////////////////////////////////////////////////////////
     friend std::ostream &operator << (std::ostream &o, const AddressDecodingTable &t)
     {
         t.print(o);
