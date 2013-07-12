@@ -25,6 +25,27 @@
  *
  * Maintainers: nipo
  */
+
+/////////////////////////////////////////////////////////////////////////////////////
+// This component implements a Frame Buffer, supporting various pixel encoding.
+// It can handle only 32 bits or 64 bits VCI DATA interface.
+//
+// For 32 bits VCI DATA width:
+// - in case of READ burst, both the VCI ADDRESS and PLEN must be multiple of 4,
+//   and the VCI BE field must be equal to 0xF.
+// - in case of WRITE burst, the VCI ADDRESS must be multiple of 4, successive
+//   addresses must be contiguous, and the VCI BE field must be 0xF for all flits.
+//
+// For 64 bits VCI DATA width:
+// - in case of READ burst, the VCI BE field can be 0xFF or 0x0F. 
+//   If BE == 0x0F, the VCI ADDRESS and PLEN must be multiple of 4, and the response
+//   contains only 4 bytes per flit.
+//   If BE == 0xFF, the VCI ADDRESS and PLEN must be multiple of 8, and the response
+//   contains 8 bytes per flit.
+// - in case or WRITE burst, the VCI BE field can be 0xFF or Ox0F, and must be
+//   constant for all flits in the burst. Successive addresses must be contiguous.
+/////////////////////////////////////////////////////////////////////////////////////
+
 #ifndef SOCLIB_VCI_FRAMEBUFFER_H
 #define SOCLIB_VCI_FRAMEBUFFER_H
 
@@ -40,45 +61,70 @@ namespace caba {
 
 using namespace sc_core;
 
+/////////////////////////////////////////
 template<typename vci_param>
 class VciFrameBuffer
+/////////////////////////////////////////
 	: public caba::BaseModule
 {
+public:
+     
+    typedef typename vci_param::fast_addr_t  vci_addr_t; 
+    typedef typename vci_param::be_t         vci_be_t; 
+    typedef typename vci_param::srcid_t      vci_srcid_t;
+    typedef typename vci_param::trdid_t      vci_trdid_t;
+    typedef typename vci_param::pktid_t      vci_pktid_t;
+
+    enum fsm_state_e
+    {
+        IDLE,
+        READ_32,
+        READ_64,
+        WRITE_32,
+        WRITE_64,
+        WRITE_RSP,
+        ERROR,
+    };
+
+    // Ports
+    sc_in<bool>                          p_clk;
+    sc_in<bool>                          p_resetn;
+    soclib::caba::VciTarget<vci_param>   p_vci;
+
+	VciFrameBuffer(
+		sc_module_name                   name,
+		const IntTab                     &index,
+		const MappingTable               &mt,
+		unsigned long                    width,
+		unsigned long                    height,
+        int                              subsampling = 420);
+
+    ~VciFrameBuffer();
+
+    void print_trace();
+ 
 private:
-    std::list<soclib::common::Segment>  m_seglist;
-    caba::VciTargetFsm<vci_param, true> m_vci_fsm;
 
-    bool on_write(int seg, 
-                  typename vci_param::addr_t addr, 
-                  typename vci_param::data_t data, int be);
+    // Registers
+    sc_signal<int>                       r_fsm_state;
+    sc_signal<size_t>                    r_flit_count;
+    sc_signal<size_t>                    r_index;
+    sc_signal<vci_addr_t>                r_seg_base;
+    sc_signal<vci_srcid_t>               r_srcid;
+    sc_signal<vci_trdid_t>               r_trdid;
+    sc_signal<vci_pktid_t>               r_pktid;
+      
+    std::list<soclib::common::Segment>   m_seglist;
+	soclib::common::FbController         m_fb_controller;
+	int                                  m_defered_timeout;
 
-    bool on_read(int seg, 
-                 typename vci_param::addr_t addr, 
-                 typename vci_param::data_t &data);
-
+    // Methods
     void transition();
     void genMoore();
 
-	int m_defered_timeout;
-
-	common::FbController m_fb_controller;
 protected:
     SC_HAS_PROCESS(VciFrameBuffer);
 
-public:
-    sc_in<bool> p_clk;
-    sc_in<bool> p_resetn;
-    caba::VciTarget<vci_param> p_vci;
-
-	VciFrameBuffer(
-		sc_module_name name,
-		const IntTab &index,
-		const MappingTable &mt,
-		unsigned long width,
-		unsigned long height,
-        int subsampling = 420);
-
-    ~VciFrameBuffer();
 };
 
 }}
