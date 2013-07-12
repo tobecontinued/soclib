@@ -445,7 +445,7 @@ tmpl(/**/)::VciXicu( sc_core::sc_module_name name,
            p_irq(soclib::common::alloc_elems<sc_core::sc_out<bool> >("irq", irq_count)),
            p_hwi(soclib::common::alloc_elems<sc_core::sc_in<bool> >("hwi", hwi_count))
 {
-    std::cout << "  - Building VciXicu " << name << std::endl;
+    std::cout << "  - Building VciXicu : " << name << std::endl;
 
     std::list<soclib::common::Segment>::iterator seg;
     for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
