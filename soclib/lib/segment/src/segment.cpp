@@ -29,6 +29,7 @@
 
 namespace soclib { namespace common {
 
+/////////////////////////////////////////////////////////
 bool Segment::isOverlapping( const Segment &other ) const
 {
     addr_t this_end = m_base_address+m_size;
@@ -40,15 +41,15 @@ bool Segment::isOverlapping( const Segment &other ) const
     return true;
 }
 
+////////////////////////////////////////////
 void Segment::print( std::ostream &o ) const
 {
     o << "<Segment \""<<m_name<<"\": "
       << "base = " << std::hex << m_base_address 
       << " / size = " << m_size 
-      << " / tgtid = " << std::dec << m_target_index << " / "
-      << (m_cacheability?"cached":"uncached");
-    if ( m_initiator )
-        o << " / init = " << m_initiator_index;
+      << " / tgtid = " << m_target_index 
+      << " / " << (m_cacheable?"cached":"uncached");
+    if ( m_special ) o << " / special";
     o << ">";
 }
 

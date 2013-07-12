@@ -37,87 +37,93 @@
 
 namespace soclib { namespace common {
 
+////////////////
 class Segment
+////////////////
 {
     typedef uint64_t addr_t;
     
     std::string m_name;
-    addr_t m_base_address;
-    size_t m_size;
-    IntTab m_target_index;
-    bool   m_cacheability;
-    bool   m_initiator;
-    IntTab m_initiator_index;
+    addr_t      m_base_address;
+    size_t      m_size;
+    IntTab      m_target_index;
+    bool        m_cacheable;
+    bool        m_special;
 
 public:
-    Segment( const std::string &name,
-             addr_t base_address,
-             size_t size,
-             const IntTab &target_index,
-             bool cacheability,
-             bool initiator = false,
-             const IntTab &initiator_index = soclib::common::IntTab() )
-            : m_name(name), m_base_address(base_address),
-              m_size(size), m_target_index(target_index),
-              m_cacheability(cacheability),
-              m_initiator(initiator),
-              m_initiator_index(initiator_index)
+
+    /////////////////////////////////
+    Segment( const std::string &name,               // segment name
+             addr_t            base_address,        // segment base address
+             size_t            size,                // segment size (bytes)
+             const IntTab      &target_index,       // VCI target composite index
+             bool              cacheable,           // cacheable if true
+             bool              special = false )    // context dependant
+            : m_name(name), 
+              m_base_address(base_address),
+              m_size(size), 
+              m_target_index(target_index),
+              m_cacheable(cacheable),
+              m_special( special )
     {
     }
 
+    //////////////////////////////////////////////
     const Segment &operator=( const Segment &ref )
     {
         if ( &ref == this )
             return *this;
 
-        m_name = ref.m_name;
+        m_name         = ref.m_name;
         m_base_address = ref.m_base_address;
-        m_size = ref.m_size;
+        m_size         = ref.m_size;
         m_target_index = ref.m_target_index;
-        m_cacheability = ref.m_cacheability;
-        m_initiator = ref.m_initiator;
-        m_initiator_index = ref.m_initiator_index;
+        m_cacheable = ref.m_cacheable;
+        m_special      = ref.m_special;
 
         return *this;
     }
 
+    /////////////////////////////////
     inline addr_t baseAddress() const
     {
         return m_base_address;
     }
 
+    //////////////////////////
     inline size_t size() const
     {
         return m_size;
     }
 
+    /////////////////////////////
     inline bool cacheable() const
     {
-        return m_cacheability;
+        return m_cacheable;
     }
 
-    inline bool initiator() const
+    ///////////////////////////
+    inline bool special() const
     {
-        return m_initiator;
+        return m_special;
     }
 
+    //////////////////////////////////////
     inline const std::string &name() const
     {
         return m_name;
     }
 
+    //////////////////////////////////
     inline const IntTab &index() const
     {
         return m_target_index;
     }
 
-    inline const IntTab &initiator_index() const
-    {
-        return m_initiator_index;
-    }
-
+    /////////////////////////////////////////////////
     bool isOverlapping( const Segment &other ) const;
 
+    ////////////////////////////////////
     void print( std::ostream &o ) const;
 
     friend std::ostream &operator << (std::ostream &o, const Segment &s)
@@ -126,6 +132,7 @@ public:
         return o;
     }
 
+    /////////////////////////////////////////
     inline bool contains( addr_t addr ) const
     {
         return ( addr >= m_base_address &&
@@ -133,12 +140,14 @@ public:
                    || m_base_address+m_size < m_base_address) );
     }
 
+    //////////////////////////////////////////
     inline Segment masked( addr_t addr ) const
     {
         Segment s = *this;
         s.m_base_address &= addr;
         return s;
     }
+
 };
 
 }}
