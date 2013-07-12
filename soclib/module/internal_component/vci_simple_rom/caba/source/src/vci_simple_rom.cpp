@@ -263,12 +263,12 @@ tmpl(void)::genMoore()
 
             if ( r_nb_words.read() == 1 )
             {
-                rdata = (vci_data_t)m_rom[seg_index][rom_index];
+                rdata = (uint32_t)m_rom[seg_index][rom_index];
             }
             else  // r_nb_words == 2
             {
-                rdata = (vci_data_t)m_rom[seg_index][rom_index] | 
-                        (((vci_data_t)m_rom[seg_index][rom_index+1]) << 32);
+                rdata = (uint64_t)m_rom[seg_index][rom_index] | 
+                        (((uint64_t)m_rom[seg_index][rom_index+1]) << 32);
             }
             
             p_vci.cmdack  = false;
