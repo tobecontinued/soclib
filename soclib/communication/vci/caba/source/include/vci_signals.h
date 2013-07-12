@@ -137,30 +137,27 @@ public:
             if ( cmd.read() == 2 )      std::cout << " WR";
             if ( cmd.read() == 3 )      std::cout << " LL";
             if ( cmd.read() == 0 )      std::cout << " SC";
-            if ( address.read()&0x3 )   std::cout << " /@ = BROADCAST";
-            else                        std::cout << " /@ = " << address;
-            std::cout << std::hex 
-                      << "/wdata = " << wdata
-                      << "/be = " << be
+            std::cout << " | @ = " << address
+                      << " | wdata = " << wdata
+                      << " | be = " << be
+                      << " | srcid = " << srcid
+                      << " | trdid = " << trdid
+                      << " | pktid = " << pktid
                       << std::dec
-                      << "/srcid = " << srcid
-                      << "/trdid = " << trdid
-                      << "/pktid = " << pktid
-                      << "/plen = " << plen 
-                      << "/eop = "   << eop
-                      << "/ack = "   << cmdack << std::endl;
+                      << " | plen = " << plen 
+                      << " | eop = "   << eop
+                      << " | ack = "   << cmdack << std::endl;
         }
         if ( rspval )
         {
-            std::cout << name << std::hex << " RSP VCI :";
-            std::cout << " rerror = "   << rerror
-                      << "/rdata = "  << rdata
-                      << std::dec
-                      << "/rsrcid = " << rsrcid
-                      << "/rtrdid = " << rtrdid
-                      << "/rpktid = " << rpktid
-                      << "/reop = "   << reop
-                      << "/ack = "    << rspack << std::endl;
+            std::cout << name << std::hex << " RSP VCI :"
+                      << " rerror = "   << rerror
+                      << " | rdata = "  << rdata
+                      << " | rsrcid = " << rsrcid
+                      << " | rtrdid = " << rtrdid
+                      << " | rpktid = " << rpktid
+                      << " | reop = "   << reop
+                      << " | ack = "    << rspack << std::endl;
         }
     } // end print_trace()
     
