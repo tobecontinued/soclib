@@ -41,32 +41,38 @@
 
 namespace soclib { namespace common {
 
+//////////////////////////////////////
 class MappingTable
+//////////////////////////////////////
 {
 public:
     typedef uint64_t addr64_t;
     typedef uint32_t addr32_t;
 
 private:
-    std::list<soclib::common::Segment> m_segment_list;
-    size_t m_addr_width;
-    addr64_t m_addr_mask;
-    IntTab m_level_addr_bits;
-    IntTab m_level_id_bits;
-    addr64_t m_cacheability_mask;
-    addr64_t m_rt_size;
-    bool m_used;
+    std::list<soclib::common::Segment> m_segment_list;     // list of all segments
+    size_t                             m_addr_width;       // address width 
+    addr64_t                           m_addr_mask;
+    IntTab                             m_level_addr_bits;  // number of bits per level (addr)
+    IntTab                             m_level_id_bits;    // number of bits per level (srcid)
+    addr64_t                           m_cacheability_mask;
+    addr64_t                           m_rt_size;          // max segment size for 1 target
+    bool                               m_used;             // no more modif when true
+    size_t*                            m_srcid_array;      // array indexed by srcid,
+                                                           // and containing local port index
 
 public:
     MappingTable( const MappingTable& );
     const MappingTable &operator=( const MappingTable & );
 
-    MappingTable( size_t addr_width,
-                  const IntTab &level_addr_bits,
-                  const IntTab &level_id_bits,
-                  const addr64_t cacheability_mask );
+    MappingTable( size_t           addr_width,
+                  const IntTab     &level_addr_bits,
+                  const IntTab     &level_id_bits,
+                  const addr64_t   cacheability_mask );
     
     void add( const soclib::common::Segment &seg );
+
+    void srcid_map( const IntTab &srcid, size_t portid );
 
     std::list<Segment> getSegmentList( const IntTab &index ) const;
 
@@ -74,47 +80,31 @@ public:
 
     soclib::common::Segment getSegment( const IntTab &index ) const;
 
-//    __attribute__((deprecated))
-    AddressDecodingTable<addr32_t, bool> getCacheabilityTable() const
-    {
-        return getCacheabilityTable<addr32_t>();
-    }
-
-//    __attribute__((deprecated))
-    AddressDecodingTable<addr32_t, bool> getLocalityTable( const IntTab &index ) const
-    {
-        return getLocalityTable<addr32_t>( index );
-    }
-
-//    __attribute__((deprecated))
-    AddressDecodingTable<addr32_t, int> getRoutingTable( const IntTab &index, int default_index = 0 ) const
-    {
-        return getRoutingTable<addr32_t>( index, default_index );
-    }
-
-    AddressDecodingTable<uint32_t, bool> getIdLocalityTable( const IntTab &index ) const;
-
-    AddressMaskingTable<uint32_t> getIdMaskingTable( const int level ) const;
-
-//    __attribute__((deprecated))
-    addr32_t *getCoherenceTable() const
-    {
-        return getCoherenceTable<addr32_t>();
-    }
-
+    template<typename desired_addr_t>
+    AddressDecodingTable<desired_addr_t, bool> 
+    getCacheabilityTable() const;
 
     template<typename desired_addr_t>
-    AddressDecodingTable<desired_addr_t, bool> getCacheabilityTable() const;
+    AddressDecodingTable<desired_addr_t, bool> 
+    getLocalityTable( const IntTab &index ) const;
 
     template<typename desired_addr_t>
-    AddressDecodingTable<desired_addr_t, bool> getLocalityTable( const IntTab &index ) const;
-
-    template<typename desired_addr_t>
-    AddressDecodingTable<desired_addr_t, int> getRoutingTable( const IntTab &index, int default_index = 0 ) const;
+    AddressDecodingTable<desired_addr_t, int> 
+    getRoutingTable( const IntTab &index, int default_index = 0 ) const;
     
-    template<typename desired_addr_t>
-    desired_addr_t *getCoherenceTable() const;
+    AddressDecodingTable<uint64_t, size_t>
+    getPortidFromAddress( const size_t cluster_id, const size_t default_id = 0 ) const;
 
+    AddressDecodingTable<uint64_t, size_t>
+    getPortidFromSrcid( const size_t cluster_id ) const;
+
+    AddressDecodingTable<uint32_t, bool> 
+    getIdLocalityTable( const IntTab &index ) const;
+
+    AddressMaskingTable<uint32_t> 
+    getIdMaskingTable( const int level ) const;
+
+    //////////////////////////////
     size_t getAddressWidth() const
     {
         return m_addr_width;
@@ -122,21 +112,45 @@ public:
 
     void print( std::ostream &o ) const;
 
+    //////////////////////////////////////////////////////////////////////////
     friend std::ostream &operator << (std::ostream &o, const MappingTable &mt)
     {
         mt.print(o);
         return o;
     }
 
+    ///////////////////////////////////////////////////////////
     inline unsigned int indexForId( const IntTab &index ) const
     {
         return index*m_level_id_bits;
     }
-    
+
+    ///////////////////////////
     inline size_t level() const
     {
         return m_level_addr_bits.level();
     }
+
+    //////////////////// simpler variants ///////////////////////////
+
+    AddressDecodingTable<addr32_t, bool> 
+    getCacheabilityTable() const
+    {
+        return getCacheabilityTable<addr32_t>();
+    }
+
+    AddressDecodingTable<addr32_t, bool> 
+    getLocalityTable( const IntTab &index ) const
+    {
+        return getLocalityTable<addr32_t>( index );
+    }
+
+    AddressDecodingTable<addr32_t, int> 
+    getRoutingTable( const IntTab &index, int default_index = 0 ) const
+    {
+        return getRoutingTable<addr32_t>( index, default_index );
+    }
+
 };
 
 }}

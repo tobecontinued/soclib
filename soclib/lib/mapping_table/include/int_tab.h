@@ -33,17 +33,20 @@
 
 namespace soclib { namespace common {
 
+//////////////
 class IntTab
+//////////////
 {
 public:
     typedef int value_t;
 
 private:
     static const size_t s_max_level = 10;
-    value_t m_values[s_max_level];
-    size_t m_level;
+    value_t             m_values[s_max_level];
+    size_t              m_level;
 
 public:
+    /////////////////////////
     IntTab( value_t val0 = -1,
             value_t val1 = -1,
             value_t val2 = -1,
@@ -69,11 +72,13 @@ public:
         init(vals);
     }
 
+    ///////////////////////////
     IntTab( const IntTab &ref )
     {
         init(&ref.m_values[0]);
     }
 
+    ///////////////////////////////////////
     IntTab( const IntTab &ref, int nindex )
     {
         init(&ref.m_values[0]);
@@ -109,11 +114,14 @@ public:
     }
 
 private:
+    ////////////////////////////////
     void init( const value_t *vals )
     {
-        for ( size_t i=0; i<s_max_level; ++i ) {
+        for ( size_t i=0; i<s_max_level; ++i ) 
+        {
             m_values[i] = vals[i];
-            if ( vals[i] == -1 ) {
+            if ( vals[i] == -1 ) 
+            {
                 m_level = i;
                 return;
             }
@@ -122,6 +130,7 @@ private:
     }
 
 public:
+    ////////////////////////////////////////
     value_t operator[]( size_t level ) const
     {
         if ( level > m_level )
@@ -129,6 +138,7 @@ public:
         return m_values[level];
     }
 
+    ///////////////////////////////////////////////
     value_t operator*( const IntTab &widths ) const
     {
         if ( widths.level() != m_level )
@@ -142,21 +152,23 @@ public:
         return ret;
     }
 
+    ///////////////////////////////////////////////
     value_t sum( size_t level = s_max_level ) const
     {
-		if ( m_level < level )
-			level = m_level;
+		if ( m_level < level ) level = m_level;
         value_t s = 0;
         for ( size_t i=0; i<level; ++i )
             s += m_values[i];
         return s;        
     }
 
+    ///////////////////////////
     inline size_t level() const
     {
         return m_level;
     }
 
+    ////////////////////////////////////////////
     bool operator==( const IntTab &other ) const
     {
         if ( m_level != other.m_level )
@@ -164,11 +176,13 @@ public:
         return idMatches(other);
     }
 
+    ////////////////////////////////////////////
     bool operator!=( const IntTab &other ) const
     {
         return !(*this == other);
     }
 
+    ///////////////////////////////////////////
     bool idMatches( const IntTab &other ) const
     {
         size_t m = (m_level < other.m_level)?m_level:other.m_level;
@@ -179,6 +193,7 @@ public:
         return true;
     }
 
+    ///////////////////////////////////
     void print( std::ostream &o ) const
     {
         o << '(';

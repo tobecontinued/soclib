@@ -31,6 +31,7 @@
 
 namespace soclib { namespace common {
 
+///////////////////////////
 MappingTable::MappingTable(
     size_t addr_width,
     const IntTab &level_addr_bits,
@@ -44,11 +45,14 @@ MappingTable::MappingTable(
           m_cacheability_mask(cacheability_mask),
           m_used(false)
 {
-    m_rt_size = 1ULL << (addr_width-m_level_addr_bits.sum());
+    m_rt_size = 1ULL << (addr_width - m_level_addr_bits.sum());
     addr64_t cm_rt_size = 1 << AddressMaskingTable<addr64_t>(m_cacheability_mask).getDrop();
     m_rt_size = std::min<addr64_t>(cm_rt_size, m_rt_size);
+
+    m_srcid_array = new size_t[1<<m_level_id_bits.sum()];
 }
 
+/////////////////////////////////////////////////////
 MappingTable::MappingTable( const MappingTable &ref )
         : m_segment_list(ref.m_segment_list),
           m_addr_width(ref.m_addr_width),
@@ -61,6 +65,7 @@ MappingTable::MappingTable( const MappingTable &ref )
 {
 }
 
+//////////////////////////////////////////////////////////////////////
 const MappingTable &MappingTable::operator=( const MappingTable &ref )
 {
     m_segment_list = ref.m_segment_list;
@@ -74,7 +79,14 @@ const MappingTable &MappingTable::operator=( const MappingTable &ref )
     return *this;
 }
 
-////////////////////////////////////////////
+/////////////////////////////////////////////////////
+void MappingTable::srcid_map( const IntTab   &srcid,
+                              size_t         portid )
+{
+    m_srcid_array[indexForId(srcid)] = portid;
+}
+ 
+/////////////////////////////////////////////
 void MappingTable::add( const Segment &_seg )
 {
     Segment seg = _seg.masked(m_addr_mask);
@@ -161,12 +173,123 @@ Segment MappingTable::getSegment( const IntTab &index ) const
     return list.front();
 }
 
-/////////////////////////////////////////////////////////////////////////////////////
-template<typename desired_addr_t>
-AddressDecodingTable<desired_addr_t, bool> MappingTable::getCacheabilityTable() const
+///////////////////////////////////////////////////////////////////////////
+// This function returns an ADT that can be used to get
+// the local port_id for a target identified by a VCI address
+// in a clusterized architecture (two levels interconnect).
+// Only the local bits in the address are decoded.
+// This ADT can depend on the cluster_id.
+///////////////////////////////////////////////////////////////////////////
+AddressDecodingTable<uint64_t,size_t> 
+MappingTable::getPortidFromAddress( const size_t cluster_id, 
+                                    const size_t default_tgt_id ) const
 {
+    // checking mapping table (two levels interconnect)
+    if ( m_level_addr_bits.level() != 2 )
+    {
+        std::cout << "ERROR in Mapping Table : the getPortidfromAddress() function"
+                  << " requires a two levels interconnect" << std::endl;
+        std::cout << *this << std::endl;
+        exit(0);
+    }
+
+    size_t global_bits  = m_level_addr_bits[0];   // number of address global bits
+    size_t local_bits   = m_level_addr_bits[1];   // number of address local bits
+
+    // ADT to be returned
+    AddressDecodingTable<uint64_t,size_t> 
+    adt( local_bits, m_addr_width - global_bits - local_bits );
+	adt.reset( default_tgt_id );
+
+    // temporary ADT for checking
+    AddressDecodingTable<uint64_t,bool>
+    done( local_bits, m_addr_width - global_bits - local_bits );
+	done.reset( false );
+
+    const_cast<MappingTable*>(this)->m_used = true;
+
+    // loop on all segments
+    std::list<Segment>::const_iterator seg;
+    for ( seg = m_segment_list.begin();
+          seg != m_segment_list.end();
+          seg++ ) 
+    {
+        // skip segment if cluster_id does not match
+        if ( (size_t)seg->index()[0] != cluster_id )    continue; 
+
+        uint64_t base = seg->baseAddress() & ~(m_rt_size-1);
+
+        // loop on all possible values for the address local bits
+        for ( uint64_t addr = base ;
+              (addr < base + seg->size()) and (addr >= base);
+              addr += m_rt_size ) 
+        {
+            size_t port_id = seg->index()[1];
+
+            if ( done[addr] and (adt[addr] != port_id) ) 
+            {
+                std::cout << "ERROR in Mapping Table : segment " << *seg
+                          << " allocated to a different target than another segment"
+                          << " with the same routing bits" << std::endl;
+                std::cout << *this << std::endl;
+            }
+            adt.set( addr, port_id );
+            done.set( addr, true );
+        }
+	}
+
+    return adt;
+}
+
+///////////////////////////////////////////////////////////////////////////
+// This function returns an ADT that can be used to get
+// the local port_id for an initiator identified by the VCI srcid
+// in a clusterized architecture (two levels interconnect).
+// Only the local bits in the srcid are decoded.
+// This ADT can depend on the cluster_id.
+///////////////////////////////////////////////////////////////////////////
+AddressDecodingTable<uint64_t, size_t> 
+MappingTable::getPortidFromSrcid( const size_t cluster_id ) const
+{
+    // checking mapping table (two levels interconnect)
+    if ( m_level_addr_bits.level() != 2 )
+    {
+        std::cout << "ERROR in Mapping Table : the getPortidfromSrcid() function"
+                  << " requires a two levels interconnect" << std::endl;
+        std::cout << *this << std::endl;
+        exit(0);
+    }
+
+    size_t local_id_bits  = m_level_id_bits[1];   // number of local bits in SRCID 
+    size_t local_id_max   = 1<<local_id_bits;     // adt size
+
+    const_cast<MappingTable*>(this)->m_used = true;
+
+    // ADT to be returned
+    AddressDecodingTable<uint64_t, size_t> adt(local_id_bits, 0);
+
+    for ( size_t loc = 0 ; loc < local_id_max ; loc++ )
+    {
+        uint64_t srcid = (cluster_id<<local_id_bits) + loc;
+        adt.set( srcid , m_srcid_array[srcid] );
+    }
+
+    return adt;
+}
+
+////////////////////////////////////////////////////////////
+// This function returns an ADT that can be used to get
+// the cacheability attribute from a physical address
+////////////////////////////////////////////////////////////
+template<typename desired_addr_t>
+AddressDecodingTable<desired_addr_t, bool> 
+MappingTable::getCacheabilityTable() const
+{
+    // ADT to be returned
     AddressDecodingTable<desired_addr_t, bool> adt(m_cacheability_mask);
 	adt.reset(false);
+
+    // temporary ADT for checking
     AddressDecodingTable<desired_addr_t, bool> done(m_cacheability_mask);
 	done.reset(false);
 
@@ -175,12 +298,15 @@ AddressDecodingTable<desired_addr_t, bool> MappingTable::getCacheabilityTable() 
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
-          i++ ) {
+          i++ ) 
+    {
         for ( desired_addr_t addr = i->baseAddress() & ~(m_rt_size-1);
               (addr < i->baseAddress()+i->size()) &&
                   (addr >= (i->baseAddress() & ~(m_rt_size-1)));
-              addr += m_rt_size ) {
-            if ( done[addr] && adt[addr] != i->cacheable() ) {
+              addr += m_rt_size ) 
+        {
+            if ( done[addr] && adt[addr] != i->cacheable() ) 
+            {
                 std::ostringstream oss;
                 oss << "Incoherent Mapping Table:" << std::endl
                     << "Segment " << *i 
@@ -197,15 +323,22 @@ AddressDecodingTable<desired_addr_t, bool> MappingTable::getCacheabilityTable() 
     return adt;
 }
 
-////////////////////////////////////////////////////////////////////////////////////
-template<typename desired_addr_t> AddressDecodingTable<desired_addr_t, bool>
+////////////////////////////////////////////////////////////
+/// This function returns an ADT that can be used to get
+// the local condition from a physical address
+////////////////////////////////////////////////////////////
+template<typename desired_addr_t> 
+AddressDecodingTable<desired_addr_t, bool>
 MappingTable::getLocalityTable( const IntTab &index ) const
 {
 	size_t nbits = m_level_addr_bits.sum(index.level());
-    AddressDecodingTable<desired_addr_t, bool> adt(nbits, m_addr_width-nbits);
+
+    // ADT to be returned
+    AddressDecodingTable<desired_addr_t, bool> adt(nbits, m_addr_width - nbits);
 	adt.reset(true);
 
-    AddressDecodingTable<desired_addr_t, bool> done(nbits, m_addr_width-nbits);
+    // temporary ADT for checking
+    AddressDecodingTable<desired_addr_t, bool> done(nbits, m_addr_width - nbits);
 	done.reset(false);
 
     const_cast<MappingTable*>(this)->m_used = true;
@@ -213,14 +346,17 @@ MappingTable::getLocalityTable( const IntTab &index ) const
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
-          i++ ) {
+          i++ ) 
+    {
         for ( desired_addr_t addr = i->baseAddress() & ~(m_rt_size-1);
               (addr < i->baseAddress()+i->size()) &&
                   (addr >= (i->baseAddress() & ~(m_rt_size-1)));
-              addr += m_rt_size ) {
+              addr += m_rt_size ) 
+        {
             bool val = (i->index().idMatches(index) );
 
-            if ( done[addr] && adt[addr] != val ) {
+            if ( done[addr] && adt[addr] != val ) 
+            {
                 std::ostringstream oss;
                 oss << "Incoherent Mapping Table:" << std::endl
                     << "Segment " << *i 
@@ -237,7 +373,10 @@ MappingTable::getLocalityTable( const IntTab &index ) const
     return adt;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+// This function returns an ADT that can be used to get
+// the target port index from a physical address
+///////////////////////////////////////////////////////////
 template<typename desired_addr_t>
 AddressDecodingTable<desired_addr_t, int>
 MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
@@ -246,11 +385,14 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
     std::cout << __FUNCTION__ << std::endl;
 #endif
 	size_t before = m_level_addr_bits.sum(index.level());
-	size_t at = m_level_addr_bits[index.level()];
-    AddressDecodingTable<desired_addr_t, int> adt(at, m_addr_width-at-before);
+	size_t at     = m_level_addr_bits[index.level()];
+
+    //  ADT to be returned 
+    AddressDecodingTable<desired_addr_t, int> adt(at, m_addr_width - at - before);
 	adt.reset(default_index);
 
-    AddressDecodingTable<desired_addr_t, bool> done(at, m_addr_width-at-before);
+    // temporary ADT for checking
+    AddressDecodingTable<desired_addr_t, bool> done(at, m_addr_width - at - before);
 	done.reset(false);
 
     const_cast<MappingTable*>(this)->m_used = true;
@@ -258,14 +400,16 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
     std::list<Segment>::const_iterator i;
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
-          i++ ) {
+          i++ ) 
+    {
 #ifdef SOCLIB_MODULE_DEBUG
         std::cout << *i
                   << ", m_rt_size=" << m_rt_size
                   << ", m_rt_mask=" << ~(m_rt_size-1)
                   << std::endl;
 #endif
-        if ( ! i->index().idMatches(index) ) {
+        if ( ! i->index().idMatches(index) ) 
+        {
 #ifdef SOCLIB_MODULE_DEBUG
 			std::cout << i->index() << " does not match " << index << std::endl;
 #endif
@@ -284,13 +428,16 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
         for ( desired_addr_t addr = i->baseAddress() & ~(m_rt_size-1);
               (addr < i->baseAddress()+i->size()) &&
                   (addr >= (i->baseAddress() & ~(m_rt_size-1)));
-              addr += m_rt_size ) {
+              addr += m_rt_size ) 
+        {
             int val = i->index()[index.level()];
+
 #ifdef SOCLIB_MODULE_DEBUG
 			std::cout << addr << " -> " << val << std::endl;
 #endif
 
-            if ( done[addr] && adt[addr] != val ) {
+            if ( done[addr] && adt[addr] != val ) 
+            {
                 std::ostringstream oss;
                 oss << "Incoherent Mapping Table: for " << index << std::endl
                     << "Segment " << *i << " targets different target (or cluster) than other segments with same routing bits" << std::endl
@@ -306,26 +453,6 @@ MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
 #endif
 	}
     return adt;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-template<typename desired_addr_t>
-desired_addr_t *MappingTable::getCoherenceTable() const
-{
-    desired_addr_t *ret = new desired_addr_t[1<<m_level_id_bits.sum()];
-    std::list<Segment>::const_iterator i;
-    const_cast<MappingTable*>(this)->m_used = true;
-
-    for ( i = m_segment_list.begin();
-          i != m_segment_list.end();
-          i++ ) {
-        if( i->initiator() ) {
-            int val = i->initiator_index()*m_level_id_bits;
-            assert( val < (1<<m_level_id_bits.sum()) );
-            ret[val] = i->baseAddress();
-        }
-    }
-    return ret;
 }
 
 //////////////////////////////////////////////////
@@ -344,8 +471,9 @@ void MappingTable::print( std::ostream &o ) const
     }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////
-AddressMaskingTable<uint32_t> MappingTable::getIdMaskingTable( const int level ) const
+/////////////////////////////////////////////////////////
+AddressMaskingTable<uint32_t> 
+MappingTable::getIdMaskingTable( const int level ) const
 {
     int use = m_level_id_bits[level];
     int drop = 0;
@@ -385,10 +513,6 @@ AddressDecodingTable<uint64_t, int>
 MappingTable::getRoutingTable<uint64_t>( const IntTab &index, int default_index ) const;
     
 template
-uint64_t *
-MappingTable::getCoherenceTable<uint64_t>() const;
-
-template
 AddressDecodingTable<uint32_t, bool>
 MappingTable::getCacheabilityTable<uint32_t>() const;
 
@@ -400,11 +524,6 @@ template
 AddressDecodingTable<uint32_t, int>
 MappingTable::getRoutingTable<uint32_t>( const IntTab &index, int default_index ) const;
     
-template
-uint32_t *
-MappingTable::getCoherenceTable<uint32_t>() const;
-
-
 }}
 
 // Local Variables:
