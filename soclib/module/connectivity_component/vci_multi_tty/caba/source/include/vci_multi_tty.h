@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
- * Maintainers: nipo
+ * Maintainers: alain
  */
 #ifndef SOCLIB_VCI_MULTI_TTY_H
 #define SOCLIB_VCI_MULTI_TTY_H
@@ -54,6 +54,7 @@ public:
     typedef typename vci_param::srcid_t      vci_srcid_t;
     typedef typename vci_param::trdid_t      vci_trdid_t;
     typedef typename vci_param::pktid_t      vci_pktid_t;
+
 
     enum fsm_state_e
     {

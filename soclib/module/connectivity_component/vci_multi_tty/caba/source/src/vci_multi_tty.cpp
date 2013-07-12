@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
- * Maintainers: nipo
+ * Maintainers: alain
  */
 
 #include "../include/vci_multi_tty.h"
@@ -49,7 +49,7 @@ tmpl(void)::transition()
 
     switch ( r_fsm_state.read() )
     {
-        //////////////
+        //////////
         case IDLE:   // waiting a VCI command
         {
             if ( not p_vci.cmdval.read() ) break;
@@ -130,7 +130,6 @@ tmpl(void)::genMoore()
         p_vci.rpktid  = 0;
         p_vci.rerror  = vci_param::ERR_NORMAL;
         p_vci.reop    = true;
-
     }
     else if ( r_fsm_state.read() == RSP_WRITE )
     {
