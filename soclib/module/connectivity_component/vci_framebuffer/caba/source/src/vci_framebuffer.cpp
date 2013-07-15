@@ -67,7 +67,7 @@ tmpl(void)::transition()
         {
             if ( not p_vci.cmdval.read() ) break;
 
-            vci_addr_t seg_base;
+            vci_addr_t seg_base  = 0;
             vci_addr_t address   = p_vci.address.read();
             vci_be_t   be        = p_vci.be.read();
             bool       seg_error = true;
