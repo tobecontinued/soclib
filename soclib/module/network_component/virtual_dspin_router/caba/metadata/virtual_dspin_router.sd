@@ -18,6 +18,7 @@ Module('caba:virtual_dspin_router',
                 parameter.Int('y'),
                 parameter.Int('x_width'),
                 parameter.Int('y_width'),
+                parameter.Int('nb_chan'),
                 parameter.Int('in_fifo_depth'),
                 parameter.Int('out_fifo_depth'),
 
