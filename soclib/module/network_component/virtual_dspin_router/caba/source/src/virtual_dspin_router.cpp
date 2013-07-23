@@ -28,6 +28,7 @@
 #include "alloc_elems.h"
 #include "virtual_dspin_router.h"
 #include <cstdlib>
+#include <cstring>
 #include <sstream>
 
 namespace soclib { namespace caba {
