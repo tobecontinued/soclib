@@ -490,7 +490,7 @@ using namespace soclib::common;
         {
             // Virtual channel has priority when r_tdm is true
             // The r_tdm[i][k] flip-flop toggle each time the owner uses the physical channel
-            size_t token_pos;
+            size_t token_pos = 0;
             bool tdm_ok[m_nb_chan];
             memset(tdm_ok, false, m_nb_chan * sizeof(bool));
             // compute current priority token position
