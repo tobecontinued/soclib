@@ -89,14 +89,14 @@
 //  The cmd_fsm controls the read and write data transfer commands 
 //  on the VCI initiator port. It uses four registers : 
 //  - r_cmd fsm 
-//  - r_cmd_count                counter of bytes in a burst (per channel)
+//  - r_cmd_count                counter of bytes in VCI transaction (shared)
 //  - r_cmd_channel              selected channel
 //  - r_cmd_bytes                VCI PLEN
 //
 //  The rsp_fsm controls the read and write data transfer responses 
 //  on the VCI initiator port. It uses four registers : 
 //  - r_rsp fsm 
-//  - r_rsp_count                counter of bytes in a burst (per channel)
+//  - r_rsp_count                counter of bytes in local buffer (one per channel)
 //  - r_rsp_channel              selected channel
 //  - r_rsp_bytes                VCI PLEN
 //
@@ -855,12 +855,12 @@ tmpl(void)::transition()
                 {
                     not_found      = false;
                     r_cmd_channel  = k;
+                    r_cmd_count    = 0;
 
                     switch ( r_channel_vci_type[k].read() )
                     {
                         case REQ_READ_SRC_STATUS:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address = r_channel_src_desc[k].read() + 4 + 
                                             (r_channel_src_index[k].read() << 3);
                             r_cmd_bytes   = 4;
@@ -869,7 +869,6 @@ tmpl(void)::transition()
                         }
                         case REQ_READ_DST_STATUS:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address = r_channel_dst_desc[k].read() + 4 +
                                             (r_channel_dst_index[k].read() << 3);
                             r_cmd_bytes   = 4;
@@ -878,7 +877,6 @@ tmpl(void)::transition()
                         }
                         case REQ_READ_SRC_BUFADDR:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address = r_channel_src_desc[k].read() + 
                                             (r_channel_src_index[k].read() << 3);
                             r_cmd_bytes   = 4;
@@ -887,7 +885,6 @@ tmpl(void)::transition()
                         }
                         case REQ_READ_DST_BUFADDR:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address = r_channel_dst_desc[k].read() +
                                             (r_channel_dst_index[k].read() << 3);
                             r_cmd_bytes   = 4;
@@ -896,7 +893,6 @@ tmpl(void)::transition()
                         }
                         case REQ_READ_FIRST_DATA:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address         = r_channel_src_addr[k].read();
                             r_cmd_bytes           = r_channel_bytes_first[k].read();
                             r_cmd_fsm             = CMD_READ;
@@ -904,7 +900,6 @@ tmpl(void)::transition()
                         }
                         case REQ_READ_SECOND_DATA:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address         = r_channel_src_addr[k].read();
                             r_cmd_bytes           = r_channel_bytes_second[k].read();
                             r_cmd_fsm             = CMD_READ;
@@ -912,7 +907,6 @@ tmpl(void)::transition()
                         }
                         case REQ_WRITE_FIRST_DATA:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address         = r_channel_dst_addr[k].read();
                             r_cmd_bytes           = r_channel_bytes_first[k].read();
                             r_cmd_fsm             = CMD_WRITE;
@@ -920,7 +914,6 @@ tmpl(void)::transition()
                         }
                         case REQ_WRITE_SECOND_DATA:
                         {
-                            // don't initialize r_cmd_count[k]
                             r_cmd_address         = r_channel_dst_addr[k].read();
                             r_cmd_bytes           = r_channel_bytes_second[k].read();
                             r_cmd_fsm             = CMD_WRITE;
@@ -928,7 +921,6 @@ tmpl(void)::transition()
                         }
                         case REQ_WRITE_SRC_STATUS:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address = r_channel_src_desc[k].read() + 4 +
                                             (r_channel_src_index[k].read() << 3);
                             r_cmd_bytes   = 4;
@@ -937,7 +929,6 @@ tmpl(void)::transition()
                         }
                         case REQ_WRITE_DST_STATUS:
                         {
-                            r_cmd_count[k] = 0;
                             r_cmd_address = r_channel_dst_desc[k].read() + 4 +
                                             (r_channel_dst_index[k].read() << 3);
                             r_cmd_bytes   = 4;
@@ -967,26 +958,26 @@ tmpl(void)::transition()
                 size_t k = r_cmd_channel.read();
                 if(vci_param::B==4)
                 {
-                    if ( r_cmd_count[k].read() == (r_cmd_bytes.read() - 4) )
+                    if ( r_cmd_count.read() == (r_cmd_bytes.read() - 4) )
                     {
                         r_cmd_fsm = CMD_IDLE;
                     }
-                    r_cmd_count[k] = r_cmd_count[k].read() + 4;
+                    r_cmd_count = r_cmd_count.read() + 4;
                 }
                 else
                 {
-                    if ( r_cmd_count[k].read() == (r_cmd_bytes.read() - 4) )
+                    if ( r_cmd_count.read() == (r_cmd_bytes.read() - 4) )
                     {
                         r_cmd_fsm = CMD_IDLE;
-                        r_cmd_count[k] = r_cmd_count[k].read() + 4;
+                        r_cmd_count = r_cmd_count.read() + 4;
                     }
                     else
                     {
-                        if ( r_cmd_count[k].read() == (r_cmd_bytes.read() - 8))
+                        if ( r_cmd_count.read() == (r_cmd_bytes.read() - 8))
                         { 
                            r_cmd_fsm = CMD_IDLE; 
                         }
-                        r_cmd_count[k] = r_cmd_count[k].read() + 8;
+                        r_cmd_count = r_cmd_count.read() + 8;
                     }
                     
                 }
@@ -1176,7 +1167,7 @@ tmpl(void)::genMoore()
                            (r_channel_vci_type[k] == REQ_READ_DST_STATUS) or 
                            (r_channel_vci_type[k] == REQ_READ_SRC_BUFADDR) or 
                            (r_channel_vci_type[k] == REQ_READ_DST_BUFADDR) ) r_be = 0x0F;
-                else  if ( r_cmd_bytes.read() - r_cmd_count[k].read() == 4)  r_be = 0x0F;
+                else  if ( r_cmd_bytes.read() - r_cmd_count.read() == 4)     r_be = 0x0F;
                 else                                                         r_be = 0xFF;
             }    
             p_vci_initiator.cmdval  = true;
@@ -1199,20 +1190,32 @@ tmpl(void)::genMoore()
         case CMD_WRITE:
         {
             uint32_t k    = r_cmd_channel.read();
-            uint32_t n    = r_cmd_count[k].read() / 4;
-            uint32_t wdata;
+
             if (vci_param::B ==4)     // Data width 32 bits
             {  
+                uint32_t wdata;
+
                 if      ( r_channel_vci_type[k] == REQ_WRITE_SRC_STATUS ) 
+                {
                     wdata = (uint32_t)(r_channel_src_addr[k].read()>>32);
+                }
                 else if ( r_channel_vci_type[k] == REQ_WRITE_DST_STATUS ) 
+                {
                     wdata = (1<<31) + (uint32_t)(r_channel_src_addr[k].read()>>32);
+                }
                 else   
+                {
+                    size_t n; // word index in local buffer
+                    if ( r_channel_vci_type[k].read() == REQ_WRITE_SECOND_DATA )
+                        n = (r_cmd_count.read() / 4) + r_channel_bytes_second[k].read();
+                    else
+                        n = (r_cmd_count.read() / 4);
                     wdata = r_channel_buf[k][n].read();
+                }
 
                 p_vci_initiator.cmdval  = true;
                 p_vci_initiator.address = (typename vci_param::fast_addr_t)r_cmd_address.read() + 
-                                             r_cmd_count[k].read();
+                                             r_cmd_count.read();
                 p_vci_initiator.wdata   = wdata;
                 p_vci_initiator.be      = 0xF;
                 p_vci_initiator.plen    = r_cmd_bytes.read();
@@ -1225,36 +1228,44 @@ tmpl(void)::genMoore()
                 p_vci_initiator.contig  = true;
                 p_vci_initiator.clen    = 0;
                 p_vci_initiator.cfixed  = false;
-                p_vci_initiator.eop     = ( r_cmd_count[k].read() == r_cmd_bytes.read() - 4 );
+                p_vci_initiator.eop     = ( r_cmd_count.read() == r_cmd_bytes.read() - 4 );
                 
             }
             else          // Data width 64 bits
             {
                 uint32_t wdata_low;
                 uint32_t wdata_high;
-                typename vci_param::be_t r_be;
+                typename vci_param::be_t be;
+
                 if       ( r_channel_vci_type[k] == REQ_WRITE_SRC_STATUS )
                 {   
-                    r_be = 0x0F;
+                    be         = 0x0F;
                     wdata_low  = (uint32_t)(r_channel_src_addr[k].read()>>32);
                     wdata_high = 0;
                 }
                 else if ( r_channel_vci_type[k] == REQ_WRITE_DST_STATUS ) 
                 {   
-                    r_be = 0x0F;
+                    be         = 0x0F;
                     wdata_low  = (1<<31) + (uint32_t)(r_channel_src_addr[k].read()>>32);
                     wdata_high = 0;
                 }
                 else  
                 {
-                    if ( r_cmd_bytes.read() - r_cmd_count[k].read() == 4){
-                        r_be = 0x0F;
+                    size_t n; // word index in local buffer
+                    if ( r_channel_vci_type[k].read() == REQ_WRITE_SECOND_DATA )
+                        n = (r_cmd_count.read() / 4) + r_channel_bytes_second[k].read();
+                    else
+                        n = (r_cmd_count.read() / 4);
+
+                    if ( r_cmd_bytes.read() - r_cmd_count.read() == 4)
+                    {
+                        be = 0x0F;
                         wdata_low  = r_channel_buf[k][n].read();
                         wdata_high = 0;                   
                     }
                     else 
                     {
-                        r_be = 0xFF;
+                        be         = 0xFF;
                         wdata_low  = r_channel_buf[k][n].read();
                         wdata_high = r_channel_buf[k][n+1].read();
                     } 
@@ -1262,9 +1273,9 @@ tmpl(void)::genMoore()
                 
                 p_vci_initiator.cmdval  = true;
                 p_vci_initiator.address = (typename vci_param::fast_addr_t)r_cmd_address.read() 
-                                           + r_cmd_count[k].read();
+                                           + r_cmd_count.read();
                 p_vci_initiator.wdata   = ((uint64_t)wdata_high)<<32 | wdata_low ;
-                p_vci_initiator.be      = r_be;
+                p_vci_initiator.be      = be;
                 p_vci_initiator.plen    = r_cmd_bytes.read();
                 p_vci_initiator.cmd     = vci_param::CMD_WRITE;
                 p_vci_initiator.trdid   = r_cmd_channel.read()<<1;	
@@ -1275,13 +1286,11 @@ tmpl(void)::genMoore()
                 p_vci_initiator.contig  = true;
                 p_vci_initiator.clen    = 0;
                 p_vci_initiator.cfixed  = false;
-                p_vci_initiator.eop     = (( r_cmd_count[k].read() == r_cmd_bytes.read() - 4 ) 
-                                         || ( r_cmd_count[k].read() == r_cmd_bytes.read() - 8 ));
+                p_vci_initiator.eop     = (( r_cmd_count.read() == r_cmd_bytes.read() - 4 ) 
+                                         || ( r_cmd_count.read() == r_cmd_bytes.read() - 8 ));
             break;
            
             }
-
-            
         }
     } // end switch cmd_fsm
 
@@ -1431,7 +1440,7 @@ tmpl(void)::print_trace()
     std::cout << cmd_state_str[r_cmd_fsm.read()] << std::dec 
               << " / channel = " << r_cmd_channel.read()
               << " / length = " << r_cmd_bytes.read()
-              << " / count = " << r_cmd_count[r_cmd_channel.read()].read()/4 << std::endl;
+              << " / count = " << r_cmd_count.read()/4 << std::endl;
     std::cout << rsp_state_str[r_rsp_fsm.read()] << std::dec 
               << " / channel = " << r_rsp_channel.read()
               << " / length = " << r_rsp_bytes.read()

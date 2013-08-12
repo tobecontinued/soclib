@@ -88,13 +88,13 @@ private:
     sc_signal<uint32_t>**   r_channel_buf;          // local buffer
 
     sc_signal<int>			r_cmd_fsm;
-    sc_signal<size_t>*	    r_cmd_count;	        // bytes counter (per channel)
+    sc_signal<size_t>	    r_cmd_count;	        // bytes counter (shared)
     sc_signal<uint32_t>	    r_cmd_address;	        // VCI address for a command
     sc_signal<uint32_t>		r_cmd_channel;          // channel index for a command
     sc_signal<uint32_t>		r_cmd_bytes;            // VCI packet length
 
     sc_signal<int>			r_rsp_fsm;
-    sc_signal<size_t>*	    r_rsp_count;	        // bytes counter (per channel)
+    sc_signal<size_t>*	    r_rsp_count;	        // bytes counter (one per channel)
     sc_signal<uint32_t>		r_rsp_channel;	        // channel index for a response
     sc_signal<uint32_t>		r_rsp_bytes;            // VCI packet length
 
