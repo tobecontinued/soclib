@@ -1207,7 +1207,7 @@ tmpl(void)::genMoore()
                 {
                     size_t n; // word index in local buffer
                     if ( r_channel_vci_type[k].read() == REQ_WRITE_SECOND_DATA )
-                        n = (r_cmd_count.read() / 4) + r_channel_bytes_second[k].read();
+                        n = (r_cmd_count.read() + r_channel_bytes_first[k].read()) / 4;
                     else
                         n = (r_cmd_count.read() / 4);
                     wdata = r_channel_buf[k][n].read();
@@ -1221,7 +1221,7 @@ tmpl(void)::genMoore()
                 p_vci_initiator.plen    = r_cmd_bytes.read();
                 p_vci_initiator.cmd     = vci_param::CMD_WRITE;
                 p_vci_initiator.trdid   = r_cmd_channel.read()<<1;	
-                p_vci_initiator.pktid   = 0;
+                p_vci_initiator.pktid   = 0x4;
                 p_vci_initiator.srcid   = m_srcid;
                 p_vci_initiator.cons    = false;
                 p_vci_initiator.wrap    = false;
@@ -1253,7 +1253,7 @@ tmpl(void)::genMoore()
                 {
                     size_t n; // word index in local buffer
                     if ( r_channel_vci_type[k].read() == REQ_WRITE_SECOND_DATA )
-                        n = (r_cmd_count.read() / 4) + r_channel_bytes_second[k].read();
+                        n = (r_cmd_count.read() + r_channel_bytes_first[k].read()) / 4;
                     else
                         n = (r_cmd_count.read() / 4);
 
@@ -1279,7 +1279,7 @@ tmpl(void)::genMoore()
                 p_vci_initiator.plen    = r_cmd_bytes.read();
                 p_vci_initiator.cmd     = vci_param::CMD_WRITE;
                 p_vci_initiator.trdid   = r_cmd_channel.read()<<1;	
-                p_vci_initiator.pktid   = 0;
+                p_vci_initiator.pktid   = 0x4;
                 p_vci_initiator.srcid   = m_srcid;
                 p_vci_initiator.cons    = false;
                 p_vci_initiator.wrap    = false;
