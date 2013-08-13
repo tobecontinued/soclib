@@ -57,46 +57,46 @@ private:
     sc_signal<typename vci_param::pktid_t>	r_tgt_pktid;
     sc_signal<typename vci_param::data_t>	r_tgt_rdata;
 
-    sc_signal<int>*			r_channel_fsm;          // channel state
-    sc_signal<bool>*	    r_channel_run;          // channel running
-    sc_signal<uint32_t>*	r_channel_buf_size;     // single buffer size (bytes)
+    sc_signal<int>*	        r_channel_fsm;          // channel state
+    sc_signal<bool>*        r_channel_run;          // channel running
+    sc_signal<uint32_t>*    r_channel_buf_size;     // single buffer size (bytes)
 
-    sc_signal<uint32_t>*    r_channel_src_desc;     // SRC descriptor base address
+    sc_signal<uint64_t>*    r_channel_src_desc;     // SRC descriptor base address
     sc_signal<uint32_t>*    r_channel_src_nbufs;    // number of SRC buffers
-    sc_signal<uint32_t>* 	r_channel_src_addr;     // current SRC buffer address
+    sc_signal<uint64_t>*    r_channel_src_addr;     // current SRC buffer address
     sc_signal<uint32_t>*    r_channel_src_index;    // current SRC buffer index
     sc_signal<uint32_t>*    r_channel_src_offset;   // non aligned bytes
     sc_signal<bool>*        r_channel_src_full;     // current SRC buffer status
 
-    sc_signal<uint32_t>*    r_channel_dst_desc;     // DST descriptor address
+    sc_signal<uint64_t>*    r_channel_dst_desc;     // DST descriptor address
     sc_signal<uint32_t>*    r_channel_dst_nbufs;    // number of DST buffers
-    sc_signal<uint32_t>* 	r_channel_dst_addr;     // current DST buffer address
+    sc_signal<uint64_t>*    r_channel_dst_addr;     // current DST buffer address
     sc_signal<uint32_t>*    r_channel_dst_index;    // current DST buffer index
     sc_signal<uint32_t>*    r_channel_dst_offset;   // non aligned bytes
     sc_signal<bool>*        r_channel_dst_full;     // current DST buffer status 
 
     sc_signal<uint32_t>*    r_channel_timer;        // cycle counter for polling
     sc_signal<uint32_t>*    r_channel_period;       // status polling period    
-    sc_signal<uint32_t>*	r_channel_todo_words;   // number of words to transfer
+    sc_signal<uint32_t>*    r_channel_todo_words;   // number of words to transfer
     sc_signal<uint32_t>*    r_channel_bytes_first;  // first SRC or DST burst length
     sc_signal<uint32_t>*    r_channel_bytes_second; // second SRC or DST burst length
-    sc_signal<bool>*		r_channel_vci_req;      // valid request to CMD FSM
-    sc_signal<int>*		    r_channel_vci_type;     // request type  to CMD FSM
-    sc_signal<bool>*		r_channel_vci_rsp;      // valid response from RSP FSM
-    sc_signal<bool>*		r_channel_vci_error;    // error signaled from RSP FSM 
-    sc_signal<bool>*		r_channel_last;         // last transaction
+    sc_signal<bool>*        r_channel_vci_req;      // valid request to CMD FSM
+    sc_signal<int>*	        r_channel_vci_type;     // request type  to CMD FSM
+    sc_signal<bool>*        r_channel_vci_rsp;      // valid response from RSP FSM
+    sc_signal<bool>*        r_channel_vci_error;    // error signaled from RSP FSM 
+    sc_signal<bool>*        r_channel_last;         // last transaction
     sc_signal<uint32_t>**   r_channel_buf;          // local buffer
 
-    sc_signal<int>			r_cmd_fsm;
-    sc_signal<size_t>	    r_cmd_count;	        // bytes counter (shared)
-    sc_signal<uint32_t>	    r_cmd_address;	        // VCI address for a command
-    sc_signal<uint32_t>		r_cmd_channel;          // channel index for a command
-    sc_signal<uint32_t>		r_cmd_bytes;            // VCI packet length
+    sc_signal<int>          r_cmd_fsm;
+    sc_signal<size_t>       r_cmd_count;	        // bytes counter (shared)
+    sc_signal<uint64_t>	    r_cmd_address;	        // VCI address for a command
+    sc_signal<uint32_t>     r_cmd_channel;          // channel index for a command
+    sc_signal<uint32_t>     r_cmd_bytes;            // VCI packet length
 
-    sc_signal<int>			r_rsp_fsm;
-    sc_signal<size_t>*	    r_rsp_count;	        // bytes counter (one per channel)
-    sc_signal<uint32_t>		r_rsp_channel;	        // channel index for a response
-    sc_signal<uint32_t>		r_rsp_bytes;            // VCI packet length
+    sc_signal<int>          r_rsp_fsm;
+    sc_signal<size_t>*      r_rsp_count;	        // bytes counter (one per channel)
+    sc_signal<uint32_t>     r_rsp_channel;	        // channel index for a response
+    sc_signal<uint32_t>     r_rsp_bytes;            // VCI packet length
 
     // sructural parameters
     std::list<soclib::common::Segment>	m_seglist;
