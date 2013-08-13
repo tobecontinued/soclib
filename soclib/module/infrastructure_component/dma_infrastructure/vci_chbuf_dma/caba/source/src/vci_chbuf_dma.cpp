@@ -1519,8 +1519,7 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
                     ("r_channel_buf", channels, burst_max_length/4)),
 
           r_cmd_fsm("r_cmd_fsm"),
-          r_cmd_count(soclib::common::alloc_elems<sc_signal<size_t> >
-                    ("r_cmd_count", channels)),
+          r_cmd_count("r_cmd_count"),
           r_cmd_address("r_cmd_address"),
           r_cmd_channel("r_cmd_channel"),
           r_cmd_bytes("r_cmd_bytes"),
