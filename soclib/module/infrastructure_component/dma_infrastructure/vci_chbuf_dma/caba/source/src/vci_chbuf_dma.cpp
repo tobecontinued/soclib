@@ -955,7 +955,6 @@ tmpl(void)::transition()
         {
             if ( p_vci_initiator.cmdack.read() )
             {
-                size_t k = r_cmd_channel.read();
                 if(vci_param::B==4)
                 {
                     if ( r_cmd_count.read() == (r_cmd_bytes.read() - 4) )
