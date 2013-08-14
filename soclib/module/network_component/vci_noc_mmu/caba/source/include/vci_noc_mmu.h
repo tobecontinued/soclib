@@ -112,8 +112,8 @@ class VciNocMmu
 
     enum nmu_pt_access_type
     {
-        NMU_PT_ACCESS_PTD = 0x8,
-        NMU_PT_ACCESS_PTE = 0x9,
+        NMU_PT_ACCESS_PTD = 0x4,
+        NMU_PT_ACCESS_PTE = 0x5,
     };
 
     enum nmu_error_type

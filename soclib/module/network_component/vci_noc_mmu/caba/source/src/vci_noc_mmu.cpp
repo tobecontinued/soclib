@@ -344,8 +344,7 @@ tmpl(void)::transition()
             for ( size_t vm = 0 ; vm < m_vms ; vm++ )
                 {
                     r_tlb[vm]->reset();
-                    // r_mode[vm]        = NMU_MODE_BLOCKED;
-                    r_mode[vm]        = NMU_MODE_IDENTITY;
+                    r_mode[vm]        = NMU_MODE_BLOCKED;
                     r_xcode[vm]       = NO_ERROR;
                     r_rsp_buf_val[vm] = false;
                 }
@@ -568,7 +567,14 @@ tmpl(void)::transition()
                                                     {
                                                         std::cout << "  <NMU[" << name()
                                                                   << "] CMD_IDLE> VCI command from VM " << std::dec << vm
-                                                                  << " : TLB HIT, but writable violation" << std::endl;
+                                                                  << " : TLB HIT, but writable violation"
+                                                                  << " vci_tgt " << std::hex << p_vci_tgt.address.read()
+                                                                  << " paddr " << paddr
+                                                                  << " flags.c " << flags.c
+                                                                  << " flags.x " << flags.x
+                                                                  << " flags.w " << flags.w
+                                                                  << " flags.u " << flags.u
+                                                                  << std::dec <<std::endl;
                                                     }
 #endif
                                                 //  a VCI response error must be returned by the RSP FSM
@@ -622,6 +628,8 @@ tmpl(void)::transition()
             {
                 if ( p_vci_tgt.cmdval && r_cmd_fifo_address.wok() )
                     {
+                        // If we are writing a contiguous word, we have to increase the paddr to write
+                        // to the next word in memory
                         r_cmd_paddr = r_cmd_paddr.read() + (p_vci_tgt.contig.read() ? 4 : 0);
 
                         cmd_fifo_put     = true;
@@ -793,8 +801,8 @@ tmpl(void)::transition()
                         cmd_fifo_put     = true;
                         cmd_fifo_address = (r_ptpr[vm].read() << PTPR_SHIFT) | (ix1 << 2);
                         cmd_fifo_srcid   = m_srcid;
-                        cmd_fifo_trdid   = 0;
-                        cmd_fifo_pktid   = NMU_PT_ACCESS_PTD;
+                        cmd_fifo_trdid   = NMU_PT_ACCESS_PTD;
+                        cmd_fifo_pktid   = 0;
                         cmd_fifo_be      = 0xF;
                         cmd_fifo_cmd     = vci_param::CMD_READ;
                         cmd_fifo_wdata   = 0;
@@ -921,8 +929,8 @@ tmpl(void)::transition()
                         cmd_fifo_put      = true;
                         cmd_fifo_address  = paddr;
                         cmd_fifo_srcid    = m_srcid;
-                        cmd_fifo_trdid    = 0;
-                        cmd_fifo_pktid    = NMU_PT_ACCESS_PTE;
+                        cmd_fifo_trdid    = NMU_PT_ACCESS_PTE;
+                        cmd_fifo_pktid    = 0;
                         cmd_fifo_be       = 0xF;
                         cmd_fifo_cmd      = vci_param::CMD_READ;
                         cmd_fifo_wdata    = 0;
@@ -943,7 +951,7 @@ tmpl(void)::transition()
                                           << " srcid = "   << std::hex << cmd_fifo_srcid
                                           << " trdid = "   << std::hex << cmd_fifo_trdid
                                           << " pktid = "   << std::hex << cmd_fifo_pktid
-                                          << " wdata = "   << std::hex << cmd_fifo_wdata
+                                         << " wdata = "   << std::hex << cmd_fifo_wdata
                                           << " be = "      << std::hex << cmd_fifo_be
                                           << " cmd = "     << std::dec << cmd_fifo_cmd
                                           << " plen = "    << std::dec << cmd_fifo_plen
@@ -1088,11 +1096,11 @@ tmpl(void)::transition()
                     }
                 else if( p_vci_ini.rspval.read() )  // NoC response
                     {
-                        if( p_vci_ini.rpktid.read() == NMU_PT_ACCESS_PTD )
+                        if( p_vci_ini.rtrdid.read() == NMU_PT_ACCESS_PTD )
                             {
                                 r_rsp_fsm = RSP_PTD;
                             }
-                        else if( p_vci_ini.rpktid.read() == NMU_PT_ACCESS_PTE )
+                        else if( p_vci_ini.rtrdid.read() == NMU_PT_ACCESS_PTE )
                             {
                                 r_rsp_fsm       = RSP_PTE_FLAGS;
                                 r_rsp_pte_count = 0;
