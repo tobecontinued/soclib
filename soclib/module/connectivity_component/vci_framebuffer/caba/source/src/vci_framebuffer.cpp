@@ -142,7 +142,7 @@ tmpl(void)::transition()
             else if ( p_vci.eop.read() )
             {
                 std::cout << "VCI_FRAMEBUFFER ERROR " << name()
-                          << " : only VCI READ and WRITE command are supported" << std::endl; 
+                          << " : out of segment access" << std::endl; 
                 r_fsm_state = ERROR;
             }
             break;
