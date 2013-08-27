@@ -77,7 +77,7 @@ private:
 
     sc_signal<uint32_t>*    r_channel_timer;        // cycle counter for polling
     sc_signal<uint32_t>*    r_channel_period;       // status polling period    
-    sc_signal<uint32_t>*    r_channel_todo_words;   // number of words to transfer
+    sc_signal<uint32_t>*    r_channel_todo_bytes;   // number of bytes to transfer
     sc_signal<uint32_t>*    r_channel_bytes_first;  // first SRC or DST burst length
     sc_signal<uint32_t>*    r_channel_bytes_second; // second SRC or DST burst length
     sc_signal<bool>*        r_channel_vci_req;      // valid request to CMD FSM
