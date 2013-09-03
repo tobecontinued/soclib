@@ -134,6 +134,20 @@ using namespace soclib::caba;
 
 	} //  end constructor
 
+
+    tmpl(/**/)::~DspinLocalCrossbar() {
+        delete [] r_buf_in;
+        free(r_fifo_in);
+        free(r_fifo_out);
+        dealloc_elems<DspinInput<flit_width> >(p_local_in, m_local_inputs);
+        dealloc_elems<DspinOutput<flit_width> >(p_local_out, m_local_outputs);
+        dealloc_elems<sc_signal<bool> >(r_alloc_out, m_local_outputs + 1);
+	    dealloc_elems<sc_signal<size_t> >(r_index_out, m_local_outputs + 1);
+	    dealloc_elems<sc_signal<int> >(r_fsm_in, m_local_inputs + 1);
+	    dealloc_elems<sc_signal<size_t> >(r_index_in, m_local_inputs + 1);
+    }
+
+
     ////////////////////////////////////////////////////////////////////////////
     tmpl(size_t)::route( sc_uint<flit_width> data,     // first flit
                          size_t              input )   // input port index 

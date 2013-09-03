@@ -53,6 +53,7 @@
 #include <assert.h>
 
 #include <string>
+#include <cstring>
 #include <iostream>
 #include <cstring>
 #include <cstdio>

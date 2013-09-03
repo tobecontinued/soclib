@@ -374,6 +374,7 @@ tmpl(void)::genMealy_dspin_cmd()
         }
     }
 }
+
 ////////////////////////////////
 tmpl(void)::genMealy_dspin_rsp()
 {

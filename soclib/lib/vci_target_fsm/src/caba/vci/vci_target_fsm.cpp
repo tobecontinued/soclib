@@ -44,7 +44,8 @@ tmpl(/**/)::VciTargetFsm(
     const std::list<soclib::common::Segment>     &seglist )
     : p_vci(vci),
       m_atomic(support_llsc ? (1<<vci_param::S) : 0),
-      m_segments(seglist.begin(), seglist.end())
+      m_segments(seglist.begin(), seglist.end()),
+      m_mode(MODE_IDLE)
 {
 }
 

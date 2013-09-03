@@ -317,6 +317,8 @@ public:
                 const char*                         tx_file_pathname,   // transmitted packets
                 const uint32_t                      mac_4,              // default mac address
                 const uint32_t                      mac_2);             // default mac address
+    ~VciMultiNic();
+
 };
 
 }}

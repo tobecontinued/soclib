@@ -166,6 +166,8 @@ public:
 		const soclib::common::IntTab 		&tgtid,
 		const size_t 				        burst_max_length,
                 const size_t				channels);
+    ~VciMultiDma();
+
 };
 
 }}

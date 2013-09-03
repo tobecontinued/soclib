@@ -2505,6 +2505,8 @@ tmpl(void)::genMoore()
         {
             p_vci.cmdack = true;
             p_vci.rspval = false;
+            p_vci.reop   = false;
+            p_vci.rdata  = 0;
             break;
         }
     case VCI_READ_RX_BURST:
@@ -2966,6 +2968,26 @@ tmpl(/**/)::VciMultiNic( sc_core::sc_module_name 		        name,
     dont_initialize();
     sensitive << p_clk.neg();
 }
+
+
+tmpl(/**/)::~VciMultiNic() {
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_mac_4, 8);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_mac_2, 8);
+    soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_rx_bufaddr_0, 8);
+    soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_rx_bufaddr_1, 8);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_rx_run, 8);
+    soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_tx_bufaddr_0, 8);
+    soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_tx_bufaddr_1, 8);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_tx_run, 8);
+    soclib::common::dealloc_elems<sc_signal<uint8_t> >(r_rx_des_data, 4);
+    soclib::common::dealloc_elems<NicRxChbuf>(r_rx_chbuf, m_channels);
+    soclib::common::dealloc_elems<NicTxChbuf>(r_tx_chbuf, m_channels);
+    soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_rx_irq, m_channels);
+    soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_tx_irq, m_channels);
+}
+
+
+
 }}
 
 

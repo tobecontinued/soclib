@@ -755,6 +755,8 @@ tmpl(void)::genMoore()
         {
             p_vci_target.cmdack = true;
             p_vci_target.rspval = false;
+            p_vci_target.reop   = false;
+            p_vci_target.rdata  = 0;
             break;
         }
         case TGT_WRITE:
@@ -960,6 +962,24 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
     SC_METHOD(genMoore);
     dont_initialize();
     sensitive << p_clk.neg();
+}
+
+
+tmpl(/**/)::~VciMultiDma() {
+    soclib::common::dealloc_elems<sc_signal<int> >(r_channel_fsm, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_activate, m_channels);
+    soclib::common::dealloc_elems<sc_signal<size_t> >(r_channel_src_offset, m_channels);
+    soclib::common::dealloc_elems<sc_signal<size_t> >(r_channel_dst_offset, m_channels);
+    soclib::common::dealloc_elems<sc_signal<size_t> >(r_channel_nbytes_first, m_channels);
+    soclib::common::dealloc_elems<sc_signal<size_t> >(r_channel_nbytes_second, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_src_addr, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_dst_addr, m_channels);
+    soclib::common::dealloc_elems<sc_signal<size_t> >(r_channel_length, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_buf, m_channels, m_burst_max_length / 4);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_last, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_done, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_error, m_channels);
+    soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_irq, m_channels);
 }
 
 }}

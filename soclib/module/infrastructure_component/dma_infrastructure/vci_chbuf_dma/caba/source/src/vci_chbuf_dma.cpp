@@ -198,9 +198,9 @@ tmpl(void)::transition()
                 assert ( found  and
                 "ERROR in VCI_CHBUF_DMA : VCI address is out of segment");
                
-                r_tgt_srcid					= p_vci_target.srcid.read();
-                r_tgt_trdid					= p_vci_target.trdid.read();
-                r_tgt_pktid					= p_vci_target.pktid.read();
+                r_tgt_srcid	= p_vci_target.srcid.read();
+                r_tgt_trdid	= p_vci_target.trdid.read();
+                r_tgt_pktid	= p_vci_target.pktid.read();
                 
                 int 	  cell = (int)((address & 0x3C) >> 2);
                 uint32_t  k    = (uint32_t)((address & 0x7000) >> 12);
@@ -211,8 +211,7 @@ tmpl(void)::transition()
                 assert( p_vci_target.eop.read() and
                 "VCI_CHBUF_DMA error : A configuration request must be one single flit");
 
-                assert( ((vci_param::B == 4 ) or 
-                        (vci_param::B == 8 and p_vci_target.be.read() == 0x0f))  and
+                assert(((vci_param::B == 4) || (vci_param::B == 8 && p_vci_target.be.read() == 0x0f)) &&
                 "VCI_CHBUF_DMA error : In configuration request data must be on 32 bits");
                 
                 //////////////////////////////////////////////////////////
@@ -1306,6 +1305,8 @@ tmpl(void)::genMoore()
         {
             p_vci_target.cmdack = true;
             p_vci_target.rspval = false;
+            p_vci_target.reop   = false;
+            p_vci_target.rdata  = 0;
             break;
         }
         case TGT_WRITE:
@@ -1557,7 +1558,7 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
 	    assert( ( seg->size() >= (m_channels<<12) ) and 
 		"VCI_CHBUF_DMA Error : The segment size cannot be smaller than 4K * channels"); 
 
-        std::cout << "    => segment " << seg->name()
+        std::cout << "    => segmesnt " << seg->name()
                   << " / base = " << std::hex << seg->baseAddress()
                   << " / size = " << seg->size() << std::endl; 
     }
@@ -1586,6 +1587,40 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
     dont_initialize();
     sensitive << p_clk.neg();
 }
+
+
+tmpl(/**/)::~VciChbufDma() {
+    soclib::common::dealloc_elems<sc_signal<int> >(r_channel_fsm, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_run, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_buf_size, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_src_desc, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_src_nbufs, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_src_addr, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_src_index, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_src_offset, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_src_full, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_dst_desc, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_dst_nbufs, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_dst_addr, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_dst_index, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_dst_offset, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_dst_full, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_timer, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_period, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_todo_bytes, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_bytes_first, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_bytes_second, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_vci_req, m_channels);
+    soclib::common::dealloc_elems<sc_signal<int> >(r_channel_vci_type, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_vci_rsp, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_vci_error, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_last, m_channels);
+    soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_buf, m_channels, m_burst_max_length / 4);
+    soclib::common::dealloc_elems<sc_signal<size_t> >(r_rsp_count, m_channels);
+    soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_irq, m_channels);
+}
+
+
 
 }}
 

@@ -66,12 +66,12 @@ using namespace soclib::common;
     ////////////////////////////////////
     tmpl(void)::print_trace(size_t channel)
     {
-        const char* port_name[] = {"NORTH","SOUTH","EAST ","WEST ","LOCAL"};
+        const char * port_name[] = { "NORTH","SOUTH","EAST ","WEST ","LOCAL" };
         size_t k = channel%m_nb_chan;
         std::cout << "DSPIN_ROUTER " << name() << " : channel " << k;
-        for( size_t i=0 ; i<5 ; i++)  // loop on output ports
+        for (size_t i = 0; i < 5; i++)  // loop on output ports
         {
-            if ( r_output_alloc[i][k].read() )
+            if (r_output_alloc[i][k].read())
             {
                 int j = r_output_index[i][k];
                 std::cout << " / " << port_name[j] << " -> " << port_name[i] ;
@@ -135,40 +135,40 @@ using namespace soclib::common;
 
         switch(source) {
         case LOCAL :
-            if      ( iter == 1 )	sel = REQ_NORTH;
-            else if ( iter == 2 )	sel = REQ_SOUTH;
-            else if ( iter == 3 )	sel = REQ_EAST;
-            else if ( iter == 4 )	sel = REQ_WEST;
+            if      ( iter == 1 )    sel = REQ_NORTH;
+            else if ( iter == 2 )    sel = REQ_SOUTH;
+            else if ( iter == 3 )    sel = REQ_EAST;
+            else if ( iter == 4 )    sel = REQ_WEST;
         break;
         case NORTH :
-            if      ( iter == 1 )	sel = REQ_SOUTH;
-            else if ( iter == 2 )	sel = REQ_LOCAL;
-            else if ( iter == 3 )	sel = REQ_NOP;
-            else if ( iter == 4 )	sel = REQ_NOP;
+            if      ( iter == 1 )    sel = REQ_SOUTH;
+            else if ( iter == 2 )    sel = REQ_LOCAL;
+            else if ( iter == 3 )    sel = REQ_NOP;
+            else if ( iter == 4 )    sel = REQ_NOP;
         break;
         case SOUTH :
-            if      ( iter == 1 )	sel = REQ_NORTH;
-            else if ( iter == 2 )	sel = REQ_LOCAL;
-            else if ( iter == 3 )	sel = REQ_NOP;
-            else if ( iter == 4 )	sel = REQ_NOP;
+            if      ( iter == 1 )    sel = REQ_NORTH;
+            else if ( iter == 2 )    sel = REQ_LOCAL;
+            else if ( iter == 3 )    sel = REQ_NOP;
+            else if ( iter == 4 )    sel = REQ_NOP;
         break;
         case EAST :
-            if      ( iter == 1 )	sel = REQ_WEST;
-            else if ( iter == 2 )	sel = REQ_NORTH;
-            else if ( iter == 3 )	sel = REQ_SOUTH;
-            else if ( iter == 4 )	sel = REQ_LOCAL;
+            if      ( iter == 1 )    sel = REQ_WEST;
+            else if ( iter == 2 )    sel = REQ_NORTH;
+            else if ( iter == 3 )    sel = REQ_SOUTH;
+            else if ( iter == 4 )    sel = REQ_LOCAL;
         break;
         case WEST :
-            if      ( iter == 1 )	sel = REQ_EAST;
-            else if ( iter == 2 )	sel = REQ_NORTH;
-            else if ( iter == 3 )	sel = REQ_SOUTH;
-            else if ( iter == 4 )	sel = REQ_LOCAL;
+            if      ( iter == 1 )    sel = REQ_EAST;
+            else if ( iter == 2 )    sel = REQ_NORTH;
+            else if ( iter == 3 )    sel = REQ_SOUTH;
+            else if ( iter == 4 )    sel = REQ_LOCAL;
         break;
         }
-        if      ( (sel == REQ_NORTH) && !(m_local_y < ymax) ) 	sel = REQ_NOP;
-        else if ( (sel == REQ_SOUTH) && !(m_local_y > ymin) ) 	sel = REQ_NOP;
-        else if ( (sel == REQ_EAST ) && !(m_local_x < xmax) ) 	sel = REQ_NOP;
-        else if ( (sel == REQ_WEST ) && !(m_local_x > xmin) ) 	sel = REQ_NOP;
+        if      ( (sel == REQ_NORTH) && !(m_local_y < ymax) )     sel = REQ_NOP;
+        else if ( (sel == REQ_SOUTH) && !(m_local_y > ymin) )     sel = REQ_NOP;
+        else if ( (sel == REQ_EAST ) && !(m_local_x < xmax) )     sel = REQ_NOP;
+        else if ( (sel == REQ_WEST ) && !(m_local_x > xmin) )     sel = REQ_NOP;
 
         return sel;
     }
@@ -180,14 +180,14 @@ using namespace soclib::common;
     }
 
     ////////////////////////////////////////////////////////////
-    tmpl(/**/)::VirtualDspinRouter(	sc_module_name 	name,
-					                int             x,
-					                int             y,
-					                int             x_width,
-					                int             y_width,
-					                size_t          nb_chan,
-                                   	int	            in_fifo_depth,
-                                    int	            out_fifo_depth)
+    tmpl(/**/)::VirtualDspinRouter(    sc_module_name     name,
+                                    int             x,
+                                    int             y,
+                                    int             x_width,
+                                    int             y_width,
+                                    size_t          nb_chan,
+                                    int             in_fifo_depth,
+                                    int             out_fifo_depth)
     : BaseModule(name),
       p_clk("clk"),
       p_resetn("resetn")
@@ -275,14 +275,14 @@ using namespace soclib::common;
         {
             r_buf[i]  = (internal_flit_t*)
                          malloc(sizeof(internal_flit_t)*nb_chan);
-            for(size_t k=0; k<nb_chan; k++)
+            for (size_t k = 0; k < nb_chan; k++)
             {
                 new(&r_buf[i][k]) internal_flit_t();
             }
         }
 
         // output index & alloc
-        for(int i=0; i<5; i++)
+        for (int i = 0; i < 5; i++)
         {
             r_output_index[i]  = (sc_signal<int>*)
                          malloc(sizeof(sc_signal<int>)*nb_chan);
@@ -300,13 +300,13 @@ using namespace soclib::common;
         }
 
         // input & output fifos
-        for(int i=0; i<5; i++)
+        for (int i = 0; i < 5; i++)
         {
-            in_fifo[i]  = (GenericFifo<internal_flit_t>*)
-                         malloc(sizeof(GenericFifo<internal_flit_t>)*nb_chan);
-            out_fifo[i] = (GenericFifo<internal_flit_t>*)
-                         malloc(sizeof(GenericFifo<internal_flit_t>)*nb_chan);
-            for(size_t k=0; k<nb_chan; k++)
+            in_fifo[i]  = (GenericFifo<internal_flit_t> *)
+                         malloc(sizeof(GenericFifo<internal_flit_t>) * nb_chan);
+            out_fifo[i] = (GenericFifo<internal_flit_t> *)
+                         malloc(sizeof(GenericFifo<internal_flit_t>) * nb_chan);
+            for (size_t k = 0; k < nb_chan; k++)
             {
                 std::ostringstream stri;
                 stri << "in_fifo_" << name << "_" << i << "_" << k;
@@ -317,79 +317,120 @@ using namespace soclib::common;
             }
         }
 
-        m_local_x 		= x;
-        m_local_y 		= y;
-        m_x_width		= x_width;
-        m_y_width		= y_width;
-        m_x_shift		= flit_width - x_width;
-        m_y_shift		= flit_width - x_width - y_width;
-        m_x_mask		= (0x1 << x_width) - 1;
-        m_y_mask		= (0x1 << y_width) - 1;
-        m_nb_chan       = nb_chan;
+        m_local_x  = x;
+        m_local_y  = y;
+        m_x_width  = x_width;
+        m_y_width  = y_width;
+        m_x_shift  = flit_width - x_width;
+        m_y_shift  = flit_width - x_width - y_width;
+        m_x_mask   = (0x1 << x_width) - 1;
+        m_y_mask   = (0x1 << y_width) - 1;
+        m_nb_chan  = nb_chan;
 
     } //  end constructor
 
     /////////////////////////////////
     tmpl(/**/)::~VirtualDspinRouter()
     {
+        // ports
+        for (int i = 0; i < 5; i++)
+        {
+            free(p_in[i]);
+            free(p_out[i]);
+        }
+
+        // Time Multiplexing
+        for (int i = 0; i < 5; i++)
+        {
+            free(r_tdm[i]);
+        }
+
+        // FSM state registers
+        for (int i = 0; i < 5; i++)
+        {
+            free(r_input_fsm[i]);
+        }
+
+        // fifo extensions
+        for (int i = 0; i < 5; i++)
+        {
+            free(r_buf[i]);
+        }
+
+        // output index & alloc
+        for (int i = 0; i < 5; i++)
+        {
+            free(r_output_index[i]);
+            free(r_output_alloc[i]);
+        }
+
+        // input & output fifos
+        for (int i = 0; i < 5; i++)
+        {
+            free(in_fifo[i]);
+            free(out_fifo[i]);
+        }
     }
+
 
     ////////////////////////
     tmpl(void)::transition()
     {
-        if(!p_resetn.read())
+        if (!p_resetn.read())
         {
-            for(int i=0; i<5; i++) // both input & output ports
+            for (int i = 0; i < 5; i++) // both input & output ports
             {
-                for(size_t k=0 ; k<m_nb_chan ; k++)
+                for (size_t k = 0; k < m_nb_chan; k++)
                 {
-                    r_tdm[i][k]	= false;
-                    r_input_fsm[i][k]		= INFSM_IDLE;
-                    r_output_index[i][k] 	= 0;
-                    r_output_alloc[i][k]  	= false;
+                    r_tdm[i][k]          = false;
+                    r_input_fsm[i][k]    = INFSM_IDLE;
+                    r_output_index[i][k] = 0;
+                    r_output_alloc[i][k] = false;
                     in_fifo[i][k].init();
                     out_fifo[i][k].init();
                 }
-                r_tdm[i][0]	= true;
+                r_tdm[i][0] = true;
             }
             return;
         }
 
         // internal variables used in each input port module
         // they will not be implemented as inter-module signals in the RTL
-        bool	 		in_fifo_read[5][m_nb_chan];     // wishes to consume data in in_fifo
-        bool	       	in_fifo_write[5][m_nb_chan];    // writes data in in_fifo
+        bool            in_fifo_read[5][m_nb_chan];     // wishes to consume data in in_fifo
+        bool            in_fifo_write[5][m_nb_chan];    // writes data in in_fifo
         internal_flit_t in_fifo_wdata[5][m_nb_chan];    // data to be written in in_fifo
 
-        bool 			put[5][m_nb_chan];              // input port wishes to transmit data
-        bool			get[5][m_nb_chan];              // output port wishes to consume data
+        bool            put[5][m_nb_chan];              // input port wishes to transmit data
+        bool            get[5][m_nb_chan];              // output port wishes to consume data
 
         // internal variables used in each output port module
         // they will not be implemented as inter-module signals in the RTL
-        bool	       	out_fifo_write[5][m_nb_chan];   // write data in out_fifo
-        bool	        out_fifo_read[5][m_nb_chan];    // consume data in out_fifo
-	    internal_flit_t out_fifo_wdata[5][m_nb_chan];   // data to be written in out_fifo
+        bool            out_fifo_write[5][m_nb_chan];   // write data in out_fifo
+        bool            out_fifo_read[5][m_nb_chan];    // consume data in out_fifo
+        internal_flit_t out_fifo_wdata[5][m_nb_chan];   // data to be written in out_fifo
 
         // signals between input port modules & output port modules
         // They must be implemented as inter-modules signals in the RTL
-        bool           	output_get[5][5][m_nb_chan];    // output j consume data from input i in channel k
-        int	        	input_req[5][m_nb_chan];        // requested output port (NOP means no request)
+        bool            output_get[5][5][m_nb_chan];    // output j consume data from input i in channel k
+        int             input_req[5][m_nb_chan];        // requested output port (NOP means no request)
         internal_flit_t final_data[5];                  // per input : data value
         bool            final_put[5][m_nb_chan];        // per input : data valid
 
         ///////////////////////////////////////////////////////////////
         // fifo signals default values (both input & output)
-        for( size_t i=0 ; i<5 ; i++ )
+        for (size_t i = 0; i < 5; i++)
         {
-            for( size_t k=0 ; k<m_nb_chan ; k++ )
+            for (size_t k = 0; k < m_nb_chan; k++)
             {
-		        in_fifo_read[i][k]        = false;
-		        in_fifo_write[i][k]       = p_in[i][k].write.read();
-		        in_fifo_wdata[i][k].data  = p_in[i][k].data.read();
-		        in_fifo_wdata[i][k].eop   = p_in[i][k].eop.read();
+                in_fifo_read[i][k]        = false;
+                in_fifo_write[i][k]       = p_in[i][k].write.read();
+                in_fifo_wdata[i][k].data  = p_in[i][k].data.read();
+                in_fifo_wdata[i][k].eop   = p_in[i][k].eop.read();
 
-		        out_fifo_read[i][k]       = p_out[i][k].read.read();
-		        out_fifo_write[i][k]      = false;
+                out_fifo_read[i][k]       = p_out[i][k].read.read();
+                out_fifo_write[i][k]      = false;
+                out_fifo_wdata[i][k].data = 0;
+                out_fifo_wdata[i][k].eop  = false;
             }
         }
 
@@ -521,7 +562,7 @@ using namespace soclib::common;
             {
                 switch( r_input_fsm[i][k] )
                 {
-                case INFSM_IDLE:	// does not depend on tdm in IDLE state
+                case INFSM_IDLE:    // does not depend on tdm in IDLE state
                     final_put[i][k] = false;
                     if( in_fifo[i][k].rok() )
                     {
@@ -534,7 +575,7 @@ using namespace soclib::common;
                             if(input_req[i][k] == REQ_NOP) r_input_fsm[i][k] = INFSM_REQ_SECOND;
                             else                           r_input_fsm[i][k] = INFSM_REQ_FIRST;
                         }
-                        else 				// not a broadcast request
+                        else                 // not a broadcast request
                         {
                             in_fifo_read[i][k] = false;
                             r_input_fsm[i][k] = INFSM_REQ;
@@ -557,7 +598,7 @@ using namespace soclib::common;
                     if ( get[i][k] && put[i][k] && tdm_ok[k] )
                     {
                         final_data[i] = in_fifo[i][k].read();
-			            if(in_fifo[i][k].read().eop) r_input_fsm[i][k] = INFSM_IDLE;
+                        if(in_fifo[i][k].read().eop) r_input_fsm[i][k] = INFSM_IDLE;
                     }
                 break;
                 case INFSM_REQ_FIRST:
@@ -565,7 +606,7 @@ using namespace soclib::common;
                     if( input_req[i][k] == REQ_NOP )
                     {
                         final_put[i][k] = false;
-	                    r_input_fsm[i][k] = INFSM_REQ_SECOND;
+                        r_input_fsm[i][k] = INFSM_REQ_SECOND;
                     }
                     else
                     {
@@ -687,11 +728,11 @@ using namespace soclib::common;
                                        (output_get[4][j][k] && final_put[4][k]) ;
                 for(int i=0; i<5; i++)  // loop on input ports
                 {
-                    if( output_get[i][j][k] ) 	out_fifo_wdata[j][k] = final_data[i];
+                    if( output_get[i][j][k] )     out_fifo_wdata[j][k] = final_data[i];
                 }
                 // r_output_alloc[j][k] & r_output_index[j][k]
                 int index = r_output_index[j][k];
-                if( !r_output_alloc[j][k] ) 		// allocation
+                if( !r_output_alloc[j][k] )         // allocation
                 {
 
                     for(int n = index+1; n < index+6; n++) // loop on input ports
@@ -707,7 +748,7 @@ using namespace soclib::common;
                 }
                 else if( out_fifo_wdata[j][k].eop and
                          out_fifo_write[j][k] and
-                         out_fifo[j][k].wok() ) 	// de-allocation
+                         out_fifo[j][k].wok() )     // de-allocation
                 {
                     r_output_alloc[j][k] = false;
                 }

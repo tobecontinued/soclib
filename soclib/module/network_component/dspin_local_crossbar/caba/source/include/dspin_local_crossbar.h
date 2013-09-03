@@ -87,6 +87,8 @@ namespace soclib { namespace caba {
                             const bool          use_routing_table,
                             const bool          broadcast_supported );
 
+        ~DspinLocalCrossbar();
+
 	    private:
 
         // define the FIFO flit

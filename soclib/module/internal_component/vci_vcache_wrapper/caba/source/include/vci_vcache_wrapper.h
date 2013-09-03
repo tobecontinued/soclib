@@ -487,6 +487,7 @@ public:
     void print_cpi();
     void print_stats();
     void print_trace(size_t mode = 0);
+    void file_stats(FILE * file);
     void cache_monitor(paddr_t addr);
     inline void iss_set_debug_mask(uint v) {
 	r_iss.set_debug_mask(v);

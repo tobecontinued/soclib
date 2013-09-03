@@ -52,12 +52,12 @@ public:
         std::cout << "r_fill_state  : " << r_fill_state << std::endl;
         std::cout << "r_ptr/ptw/max : " << r_ptr << " - " << r_ptw << " - " << m_depth << std::endl;
         std::cout << "m_data        : " << std::hex;
-        int i=0;
-        while (i<r_fill_state)
-            {
-                std::cout << m_data[(r_ptr+i)%m_depth] <<", ";
-                i++;
-            }
+        int i = 0;
+        while (i < r_fill_state)
+        {
+            std::cout << m_data[(r_ptr+i)%m_depth] << ", ";
+            i++;
+        }
         std::cout << std::dec << "end" << std::endl;
     }
 
@@ -75,12 +75,12 @@ public:
 
     inline uint32_t filled_status() const
     {
-        return (uint32_t)r_fill_state;
+        return (uint32_t) r_fill_state;
     }
 
     inline bool empty() const
     {
-        return !(uint32_t)r_fill_state;
+        return !(uint32_t) r_fill_state;
     }
 
     inline bool full() const
@@ -110,11 +110,13 @@ public:
         if (r_fill_state == m_depth) {
             r_fill_state = r_fill_state - 1;
             r_ptr = (r_ptr + 1) % m_depth;
-        } else if (r_fill_state == 0) {
+        }
+        else if (r_fill_state == 0) {
             r_fill_state = r_fill_state + 1;
             r_ptw = (r_ptw + 1) % m_depth;
             m_data[r_ptw] = din; 
-        } else {
+        }
+        else {
             r_ptr = (r_ptr + 1) % m_depth;
             r_ptw = (r_ptw + 1) % m_depth;
             m_data[r_ptw] = din; 

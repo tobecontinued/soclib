@@ -308,6 +308,8 @@ public:
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
 
+        *dt_next = 0; // To avoid a gcc warning
+
         for ( size_t way = 0; way < m_ways; way++ ) 
         {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) 

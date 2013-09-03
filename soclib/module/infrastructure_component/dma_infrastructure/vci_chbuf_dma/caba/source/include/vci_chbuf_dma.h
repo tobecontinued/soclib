@@ -198,6 +198,7 @@ public:
 		const soclib::common::IntTab 		&tgtid,
 		const uint32_t 				        burst_max_length,
         const uint32_t				        channels);
+    ~VciChbufDma();
 };
 
 }}

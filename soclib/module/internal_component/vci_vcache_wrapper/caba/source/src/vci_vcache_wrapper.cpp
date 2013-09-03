@@ -313,6 +313,26 @@ tmpl(/**/)::~VciVcacheWrapper()
 {
 }
 
+//////////////////////////////////
+tmpl(void)::file_stats(FILE* file)
+//////////////////////////////////
+{
+    float imiss_rate = (float) r_cpt_icache_miss / (float) (r_cpt_exec_ins);
+    float dmiss_rate = (float) r_cpt_dcache_miss / (float) (r_cpt_read - r_cpt_read_uncacheable);
+    float cpi        = (float) r_cpt_total_cycles / (float) (r_cpt_exec_ins);
+
+    fprintf(file, "%8d %8d %8d %8d %8d    %f    %f    %f \n",
+            r_cpt_total_cycles,
+            r_cpt_exec_ins,
+            r_cpt_icache_miss,
+            r_cpt_read - r_cpt_read_uncacheable,
+            r_cpt_dcache_miss,
+            imiss_rate,
+            dmiss_rate,
+            cpi);
+}
+
+
 ////////////////////////
 tmpl(void)::print_cpi()
 ////////////////////////

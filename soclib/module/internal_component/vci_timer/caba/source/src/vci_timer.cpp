@@ -70,9 +70,9 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 		break;
 
 	case TIMER_RESETIRQ:
-		r_irq[timer] = false;
+            r_irq[timer] = false;
 #if SOCLIB_MODULE_DEBUG
-        std::cout << "[" << name() << "] Write Timer " << timer << " ResetIRQ time = " << m_cpt_cycles << std::endl;
+            std::cout << "[" << name() << "] Write Timer " << timer << " ResetIRQ time = " << m_cpt_cycles << std::endl;
 #endif
 		break;
 
