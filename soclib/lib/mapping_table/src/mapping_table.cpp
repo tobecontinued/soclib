@@ -52,6 +52,11 @@ MappingTable::MappingTable(
     m_srcid_array = new size_t[1<<m_level_id_bits.sum()];
 }
 
+
+MappingTable::~MappingTable() {
+    delete [] m_srcid_array;
+}
+
 /////////////////////////////////////////////////////
 MappingTable::MappingTable( const MappingTable &ref )
         : m_segment_list(ref.m_segment_list),

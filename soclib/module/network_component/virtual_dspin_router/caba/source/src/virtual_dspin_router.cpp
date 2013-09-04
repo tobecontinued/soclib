@@ -180,7 +180,7 @@ using namespace soclib::common;
     }
 
     ////////////////////////////////////////////////////////////
-    tmpl(/**/)::VirtualDspinRouter(    sc_module_name     name,
+    tmpl(/**/)::VirtualDspinRouter( sc_module_name  name,
                                     int             x,
                                     int             y,
                                     int             x_width,
@@ -227,13 +227,13 @@ using namespace soclib::common;
         }
 
         // ports
-        for(int i=0; i<5; i++)
+        for (int i = 0; i < 5; i++)
         {
             p_in[i]  = (DspinInput<flit_width>*)
                          malloc(sizeof(DspinInput<flit_width>)*nb_chan);
             p_out[i] = (DspinOutput<flit_width>*)
                          malloc(sizeof(DspinOutput<flit_width>)*nb_chan);
-            for(size_t k=0; k<nb_chan; k++)
+            for (size_t k = 0; k < nb_chan; k++)
             {
                 std::ostringstream stri;
                 stri << "p_in_" << name << "_" << i << "_" << k;
@@ -245,11 +245,11 @@ using namespace soclib::common;
         }
 
         // Time Multiplexing
-        for(int i=0; i<5; i++)
+        for (int i = 0; i < 5; i++)
         {
             r_tdm[i]  = (sc_signal<bool>*)
                          malloc(sizeof(sc_signal<bool>)*nb_chan);
-            for(size_t k=0; k<nb_chan; k++)
+            for (size_t k = 0; k < nb_chan; k++)
             {
                 std::ostringstream stri;
                 stri << "r_tdm_" << name << "_" << i << "_" << k;
@@ -258,11 +258,11 @@ using namespace soclib::common;
         }
 
         // FSM state registers
-        for(int i=0; i<5; i++)
+        for (int i = 0; i < 5; i++)
         {
             r_input_fsm[i]  = (sc_signal<int>*)
                          malloc(sizeof(sc_signal<int>)*nb_chan);
-            for(size_t k=0; k<nb_chan; k++)
+            for (size_t k = 0; k < nb_chan; k++)
             {
                 std::ostringstream stri;
                 stri << "r_input_fsm_" << name << "_" << i << "_" << k;
@@ -271,7 +271,7 @@ using namespace soclib::common;
         }
 
         // fifo extensions
-        for(int i=0; i<5; i++)
+        for (int i = 0; i < 5; i++)
         {
             r_buf[i]  = (internal_flit_t*)
                          malloc(sizeof(internal_flit_t)*nb_chan);
@@ -288,7 +288,7 @@ using namespace soclib::common;
                          malloc(sizeof(sc_signal<int>)*nb_chan);
             r_output_alloc[i]  = (sc_signal<bool>*)
                          malloc(sizeof(sc_signal<bool>)*nb_chan);
-            for(size_t k=0; k<nb_chan; k++)
+            for (size_t k = 0; k < nb_chan; k++)
             {
                 std::ostringstream stri;
                 stri << "r_output_index_" << name << "_" << i << "_" << k;
@@ -335,6 +335,11 @@ using namespace soclib::common;
         // ports
         for (int i = 0; i < 5; i++)
         {
+            for (size_t k = 0; k < m_nb_chan; k++)
+            {
+               p_in[i][k].~DspinInput<flit_width>();
+               p_out[i][k].~DspinOutput<flit_width>();
+            }
             free(p_in[i]);
             free(p_out[i]);
         }
@@ -342,24 +347,41 @@ using namespace soclib::common;
         // Time Multiplexing
         for (int i = 0; i < 5; i++)
         {
-            free(r_tdm[i]);
+           for (size_t k = 0; k < m_nb_chan; k++)
+           {
+              r_tdm[i][k].~sc_signal<bool>();
+           }
+           free(r_tdm[i]);
         }
 
         // FSM state registers
         for (int i = 0; i < 5; i++)
         {
+            for (size_t k = 0; k < m_nb_chan; k++)
+            {
+               r_input_fsm[i][k].~sc_signal<int>();
+            }
             free(r_input_fsm[i]);
         }
 
         // fifo extensions
         for (int i = 0; i < 5; i++)
         {
+            for (size_t k = 0; k < m_nb_chan; k++)
+            {
+               r_buf[i][k].~internal_flit_t();
+            }
             free(r_buf[i]);
         }
 
         // output index & alloc
         for (int i = 0; i < 5; i++)
         {
+            for (size_t k = 0; k < m_nb_chan; k++)
+            {
+               r_output_index[i][k].~sc_signal<int>();
+               r_output_alloc[i][k].~sc_signal<bool>();
+            }
             free(r_output_index[i]);
             free(r_output_alloc[i]);
         }
@@ -367,6 +389,11 @@ using namespace soclib::common;
         // input & output fifos
         for (int i = 0; i < 5; i++)
         {
+            for (size_t k = 0; k < m_nb_chan; k++)
+            {
+               in_fifo[i][k].~GenericFifo<internal_flit_t>();
+               out_fifo[i][k].~GenericFifo<internal_flit_t>();
+            }
             free(in_fifo[i]);
             free(out_fifo[i]);
         }

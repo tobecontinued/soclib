@@ -70,6 +70,8 @@ public:
                   const IntTab     &level_id_bits,
                   const addr64_t   cacheability_mask );
     
+    ~MappingTable();
+
     void add( const soclib::common::Segment &seg );
 
     void srcid_map( const IntTab &srcid, size_t portid );

@@ -2579,6 +2579,8 @@ tmpl(void)::genMoore()
             p_vci.reop   = true;
             break;
         }
+    default:
+        assert(false);
 
     } // end switch vci_fsm
 

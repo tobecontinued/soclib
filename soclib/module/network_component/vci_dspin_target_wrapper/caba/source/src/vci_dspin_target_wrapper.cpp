@@ -320,7 +320,7 @@ tmpl(void)::genMealy_dspin_rsp()
     {
         p_dspin_rsp.write = false;
     }
-    else //  r_rsp_fsm == RSP_MULTI 
+    else //  r_rsp_fsm == RSP_MULTI
     {
         p_dspin_rsp.write = p_vci.rspval.read();
         p_dspin_rsp.data  = (sc_uint<dspin_rsp_width>)p_vci.rdata.read();

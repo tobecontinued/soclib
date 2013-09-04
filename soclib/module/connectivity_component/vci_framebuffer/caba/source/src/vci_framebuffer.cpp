@@ -283,6 +283,10 @@ tmpl(void)::genMoore()
         p_vci.rerror  = vci_param::ERR_GENERAL_DATA_ERROR;
         p_vci.reop    = true;
     }
+    else
+    {
+        assert(false);
+    }
 }
 
 ///////////////////////////

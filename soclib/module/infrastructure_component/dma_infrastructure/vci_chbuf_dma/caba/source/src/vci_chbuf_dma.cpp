@@ -1345,6 +1345,10 @@ tmpl(void)::genMoore()
             p_vci_target.reop   = true;
             break;
         }
+        default:
+        {
+            assert(false);
+        }
     } // end switch rsp_fsm
 
     /////// IRQ ports //////////
