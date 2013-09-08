@@ -31,7 +31,6 @@
 #include <inttypes.h>
 #include <iostream>
 #include <systemc>
-#include <dpp/ref>
 #include "address_masking_table.h"
 #include "address_decoding_table.h"
 #include "vci_param.h"
@@ -48,7 +47,7 @@ template <typename vci_param> class VciLoggerElem;
 
 /////////////////////////////////////////////////////////////////////
 template <typename vci_param>
-class VciRspBuffer : public dpp::ref_base<VciRspBuffer<vci_param> >
+class VciRspBuffer 
 /////////////////////////////////////////////////////////////////////
 {
     friend class VciSnooper<vci_param>;
@@ -62,42 +61,38 @@ class VciRspBuffer : public dpp::ref_base<VciRspBuffer<vci_param> >
 	typename vci_param::trdid_t   rtrdid;
 	typename vci_param::pktid_t   rpktid;
 
-    template <class, class> friend class ::dpp::ref;
-
 public:
     VciRspBuffer()
     {}
 
-    typedef soclib::common::AddressDecodingTable<uint32_t,size_t> routing_table_t;
-    typedef soclib::common::AddressDecodingTable<uint32_t,bool>   locality_table_t;
-
-    typedef VciInitiator<vci_param>                               input_port_t;
-    typedef VciTarget<vci_param>                                  output_port_t;
+    typedef VciInitiator<vci_param>           input_port_t;
+    typedef VciTarget<vci_param>              output_port_t;
 
     ////////////////////////
     inline bool val() const
     {
         return rspval;
     }
-
+    /////////////////////////////////
+    inline void set_val( bool value )
+    {
+        rspval = value;
+    }
     ///////////////////////
     inline bool eop() const
     {
         return reop;
     }
-
+    ////////////////////////////////
+    inline bool is_broadcast() const
+    {
+        return false;  // no broacast for responses...
+    }
     ///////////////////////////////////////////////
     inline typename vci_param::srcid_t dest() const
     {
         return rsrcid;
     }
-
-    ////////////////////////////////
-//    inline bool is_broadcast() const
-//    {
-//        return false;
-//    }
-
     ////////////////////////////////////////////////
 	inline void writeTo( output_port_t &port ) const
 	{
@@ -109,7 +104,6 @@ public:
 		port.rtrdid = rtrdid;
 		port.rpktid = rpktid;
 	}
-
     ////////////////////////////////////////////////
 	inline void readFrom( const input_port_t &port )
 	{
@@ -121,7 +115,6 @@ public:
 		rtrdid = (typename vci_param::trdid_t)port.rtrdid;
 		rpktid = (typename vci_param::pktid_t)port.rpktid;
 	}
-
     ////////////////////////////////////////////////
 	inline void readFrom( const VciMonitor<vci_param> &port )
 	{
@@ -133,26 +126,12 @@ public:
 		rtrdid = (typename vci_param::trdid_t)port.rtrdid;
 		rpktid = (typename vci_param::pktid_t)port.rpktid;
 	}
-
-    ///////////////////////////////////////////////////
-//    inline int route( const routing_table_t &rt ) const
-//    {
-//        return rt[rsrcid];
-//    }
-
-    ///////////////////////////////////////////////////////
-//    inline bool isLocal( const locality_table_t &lt ) const
-//    {
-//        return lt[rsrcid];
-//    }
-
     /////////////////////////////////////////////////////////////////////////
     friend std::ostream &operator << (std::ostream &o, const VciRspBuffer &b)
     {
         b.print(o);
         return o;
     }
-
     ///////////////////////////////////
     void print( std::ostream &o ) const
     {
@@ -169,7 +148,7 @@ public:
 
 ////////////////////////////////////////////////////////////////////////
 template <typename vci_param>
-class VciCmdBuffer : public dpp::ref_base<VciCmdBuffer<vci_param> >
+class VciCmdBuffer 
 ////////////////////////////////////////////////////////////////////////
 {
     friend class VciSnooper<vci_param>;
@@ -191,44 +170,38 @@ class VciCmdBuffer : public dpp::ref_base<VciCmdBuffer<vci_param> >
 	typename vci_param::trdid_t        trdid;
 	typename vci_param::pktid_t        pktid;
 
-    template <class, class> friend class ::dpp::ref;
-
-//    static const typename vci_param::fast_addr_t s_broadcast_addr = 0x3;
-
 public:
     VciCmdBuffer()
     {}
 
-    typedef soclib::common::AddressDecodingTable<uint64_t,size_t> routing_table_t;
-    typedef soclib::common::AddressDecodingTable<uint64_t,bool>   locality_table_t;
-
-    typedef VciInitiator<vci_param>                               output_port_t;
-    typedef VciTarget<vci_param>                                  input_port_t;
+    typedef VciInitiator<vci_param>           output_port_t;
+    typedef VciTarget<vci_param>              input_port_t;
 
     ///////////////////////
     inline bool val() const
     {
         return cmdval;
     }
-
+    /////////////////////////////////
+    inline void set_val( bool value )
+    {
+        cmdval = value;
+    }
     ///////////////////////
     inline bool eop() const
     {
         return _eop;
     }
-
+    ////////////////////////////////
+    inline bool is_broadcast() const
+    {
+        return ( (address&0x3) != 0);
+    }
     //////////////////////////////////////////////
     inline typename vci_param::addr_t dest() const
     {
         return address;
     }
-
-    ////////////////////////////////
-//    inline bool is_broadcast() const
-//    {
-//        return (address & s_broadcast_addr) == s_broadcast_addr;
-//    }
-
     /////////////////////////////////////////////////////////
 	inline void readFrom( const VciMonitor<vci_param> &port )
 	{
@@ -248,7 +221,6 @@ public:
 		trdid   = (typename vci_param::trdid_t)port.trdid;
 		pktid   = (typename vci_param::pktid_t)port.pktid;
 	}
-
     ////////////////////////////////////////////////
 	inline void readFrom( const input_port_t &port )
 	{
@@ -268,7 +240,6 @@ public:
 		trdid   = (typename vci_param::trdid_t)port.trdid;
 		pktid   = (typename vci_param::pktid_t)port.pktid;
 	}
-
     ////////////////////////////////////////////////
 	inline void writeTo( output_port_t &port ) const
 	{
@@ -288,26 +259,12 @@ public:
 		port.trdid   = trdid;
 		port.pktid   = pktid;
 	}
-
-    ///////////////////////////////////////////////////
-//    inline int route( const routing_table_t &rt ) const
-//    {
-//        return rt[address];
-//    }
-
-    ///////////////////////////////////////////////////////
-//    inline bool isLocal( const locality_table_t &lt ) const
-//    {
-//        return lt[address];
-//    }
-
     /////////////////////////////////////////////////////////////////////////
     friend std::ostream &operator << (std::ostream &o, const VciCmdBuffer &b)
     {
         b.print(o);
         return o;
     }
-
     ///////////////////////////////////
     void print( std::ostream &o ) const
     {
