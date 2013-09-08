@@ -21,198 +21,180 @@
  *
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007-2009
+ *         Alain Greiner <alain.greiner@lip6.fr> 2005 & 2013
  *
- * Based on previous works by Laurent Mortiez & Alain Greiner, 2005
- *
- * Maintainers: nipo
+ * Maintainers: alain
  */
 
 #include <systemc>
 #include <vector>
 #include <cassert>
-#include <dpp/ref>
 #include "../include/vci_vgmn.h"
 #include "alloc_elems.h"
-
-// #define SOCLIB_MODULE_DEBUG
-#define DEBUG_VGMN false
-
-#ifdef SOCLIB_MODULE_DEBUG
-#define DEBUG_BEGIN do { do{} while(0)
-#define DEBUG_END } while(0)
-#else
-#define DEBUG_BEGIN do { if (DEBUG_VGMN) { do{} while(0)
-#define DEBUG_END } } while(0)
-#endif
 
 namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-namespace _vgmn {
-
-////////////////////////////////
-template<typename data_t>
-class DelayLine
-////////////////////////////////
+////////////////////////////////////////////
+template<typename data_t> class DelayLine
+////////////////////////////////////////////
 {
-    typename dpp::ref<data_t> *m_line;
-    size_t m_size;
-    size_t m_ptr;
+    data_t*  r_data;
+    size_t   r_ptr;
+    size_t   m_size;
+    data_t   m_default;     // invalid data value 
+
 public:
+
+    ///////////
     DelayLine()
     {}
 
-    inline size_t size() const
+    /////////////////////////////
+    void init( size_t line_depth, 
+               data_t default_data )
     {
-        return m_size;
+        m_size    = line_depth;
+        m_default = default_data;
+        r_ptr     = 0;
+        r_data    = new data_t[line_depth];
+        for ( size_t i=0 ; i<line_depth ; i++ ) r_data[i] = default_data;
     }
 
-    void init( size_t n_alloc )
-    {
-        m_line = new typename dpp::ref<data_t>[n_alloc];
-        m_size = n_alloc;
-        m_ptr = 0;
-    }
-
+    //////////// 
     ~DelayLine()
     {
-        delete [] m_line;
+        delete [] r_data;
     }
 
-    inline typename dpp::ref<data_t> shift( const typename dpp::ref<data_t> &input )
+    //////////////////////////////////////////
+    inline data_t shift( const data_t &input )
     {
-        typename dpp::ref<data_t> tmp = m_line[m_ptr];
-        m_line[m_ptr] = input;
-        // do {m_ptr = (m_ptr+1)%m_size;} without using %
-	if (++m_ptr == m_size)
-		m_ptr = 0;
+        data_t tmp    = r_data[r_ptr];
+        r_data[r_ptr] = input;
+	    if (++r_ptr == m_size) r_ptr = 0;
         return tmp;
     }
 
-    inline const typename dpp::ref<data_t> &head()
+    /////////////////////
+    inline data_t head( )
     {
-        return m_line[m_ptr];
+        return r_data[r_ptr];
     }
 
+    ////////////
     void reset()
     {
-        for ( size_t i=0; i<m_size; ++i )
-            m_line[i].invalidate();
-        m_ptr = 0;
+        for ( size_t i=0; i<m_size; i++ ) r_data[i] = m_default;
+        r_ptr = 0;
     }
-};
+};   // end class DelayLine
 
-////////////////////////////////
-template<typename data_t>
-class AdHocFifo
-////////////////////////////////
+////////////////////////////////////////////////
+template<typename data_t> class AdHocFifo
+////////////////////////////////////////////////
 {
-    size_t m_size;
-    typename dpp::ref<data_t> *m_data;
-    size_t m_rptr;
-    size_t m_wptr;
-    size_t m_usage;
-    size_t *m_globusage;
-
+    size_t    m_size;          // number of slots
+    data_t*   m_data;          // data array
+    size_t    m_rptr;          // read pointer
+    size_t    m_wptr;          // write pointer
+    size_t    m_usage;         // number of valid flits
+    size_t*   m_global_flits;  // pointer on a variable containing the total number 
+                               // flits in all mid FIFOs in the same output module
 public:
+
+    ///////////
     AdHocFifo()
     {}
 
-    inline size_t size() const
+    /////////////////////////////
+    void init( size_t fifo_size,
+               size_t *global_flits )
     {
-        return m_size;
+        m_data         = new data_t[fifo_size];
+        m_size         = fifo_size;
+        m_rptr         = 0;
+        m_wptr         = 0;
+        m_usage        = 0;
+        m_global_flits = global_flits;
     }
 
-    void init( size_t fifo_size, size_t *globusage )
-    {
-        m_size = fifo_size;
-	m_globusage = globusage;
-        m_data = new typename dpp::ref<data_t>[m_size];
-        m_rptr = 0;
-        m_wptr = 0;
-        m_usage = 0;
-    }
-
+    ////////////
     ~AdHocFifo()
     {
         delete [] m_data;
     }
 
+    ////////////
     void reset()
     {
-        for ( size_t i=0; i<m_size; ++i )
-            m_data[i].invalidate();
         m_rptr = 0;
         m_wptr = 0;
         m_usage = 0;
     }
 
-    inline typename dpp::ref<data_t> head() const
+    ///////////////////
+    inline data_t pop()
     {
-        return m_data[m_rptr];
-    }
-
-    inline typename dpp::ref<data_t> pop()
-    {
-        typename dpp::ref<data_t> tmp = head();
-        m_data[m_rptr].invalidate();
-        assert(!empty());
+        assert( not empty() );
+        data_t tmp = m_data[m_rptr];
         --m_usage;
-	--(*m_globusage);
+        --(*m_global_flits);
         // do {m_rptr = (m_rptr+1)%m_size;} without using %
-	if (++m_rptr == m_size)
-		m_rptr = 0;
+	    if (++m_rptr == m_size) m_rptr = 0;
         return tmp;
     }
 
-    inline void push( const std::string &name, const typename dpp::ref<data_t> data )
+    /////////////////////////////////////
+    inline void push( const data_t data )
     {
-        assert(!full());
+        assert( not full() );
         ++m_usage;
-	++(*m_globusage);
-DEBUG_BEGIN;
-        std::cout << name << " pushing data " << *data << " usage: " << m_usage << std::endl;
-DEBUG_END;
+        ++(*m_global_flits);
         m_data[m_wptr] = data;
         // do {m_wptr = (m_wptr+1)%m_size;} without using %
-	if (++m_wptr == m_size)
-		m_wptr = 0;
+	    if (++m_wptr == m_size) m_wptr = 0;
     }
 
+    /////////////////////////
     inline bool empty() const
     {
         return m_usage == 0;
     }
 
+    ////////////////////////
     inline bool full() const
     {
         return m_usage == m_size;
     }
-};
+};   // end class AdHocFifo
 
-////////////////////////////////
-template<typename _vci_pkt_t>
-class OutputPortQueue
-////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+// An output module is associated to each output port of a micro-network 
+// Each output module implements a separate allocation mechanism, and
+// contains as many intermediate FIFOs as the number of input ports, 
+// and one single output delay line.
+// For a CMD micro-network:  vci_flit_t   == VciCmdBuffer
+//                           vci_output_t == VciInitiator
+// For a RSP micro-network:  vci_flit_t   == VciRspBuffer
+//                           vci_output_t == VciTarget
+///////////////////////////////////////////////////////////////////////////
+template<typename vci_flit_t,
+         typename vci_output_t> class OutputModule
+///////////////////////////////////////////////////////////////////////////
 {
-public:
-    typedef _vci_pkt_t                         vci_pkt_t;
-    typedef AdHocFifo<vci_pkt_t>               input_fifo_t;
-    typedef DelayLine<vci_pkt_t>               output_delay_line_t;
-    typedef typename vci_pkt_t::output_port_t  output_port_t;
-
-private:
-    input_fifo_t*         m_input_queues;
-    output_delay_line_t   m_output_delay_line;
-    uint32_t              m_rand_state;
-    size_t                m_n_inputs;
-    size_t                m_current_input;
-    size_t                m_inputpackets;
-    bool                  m_in_transaction;
+    AdHocFifo<vci_flit_t>*   r_mid_fifos;          // array of FIFOs competing for output 
+    DelayLine<vci_flit_t>    r_out_delay_line;     // output delay line
+    size_t                   r_n_inputs;           // number of mid FIFOs
+    size_t                   r_total_flits;        // total number of flits in all FIFOs
+    bool                     r_allocated;          // output port allocated
+    size_t                   r_current_input;      // currently selected mid FIFO
 
 public:
-    OutputPortQueue()
+
+    /////////////////
+    OutputModule()
     {}
     
     ///////////////////////////
@@ -220,356 +202,389 @@ public:
                size_t min_delay, 
                size_t fifo_size )
     {
-        m_input_queues = new input_fifo_t[n_inputs];
-        for ( size_t i=0; i<n_inputs; ++i )
-            m_input_queues[i].init(fifo_size, &m_inputpackets);
-        m_output_delay_line.init(min_delay);
-        m_n_inputs = n_inputs;
-        m_rand_state = 0x55555555;
-        m_current_input = 0;
-        m_in_transaction = false;
-        m_output_delay_line.reset();
+        r_n_inputs      = n_inputs;
+        r_current_input = 0;
+        r_allocated     = false;
+
+        vci_flit_t default_flit;
+        default_flit.set_val( false );
+        r_out_delay_line.init( min_delay, default_flit );
+
+        r_mid_fifos = new AdHocFifo<vci_flit_t>[n_inputs];
+        for ( size_t i=0; i<n_inputs; ++i ) 
+        {
+            r_mid_fifos[i].init( fifo_size, &r_total_flits );
+        }
     }
 
-    ~OutputPortQueue()
+    /////////////
+    ~OutputModule()
     {
-        reset();
-        delete [] m_input_queues;
+        delete [] r_mid_fifos;
     }
+
 
     ////////////
     void reset()
     {
-        for ( size_t i=0; i<m_n_inputs; ++i ) m_input_queues[i].reset();
-        m_output_delay_line.reset();
-        m_current_input = 0;
-        m_in_transaction = false;
-	    m_inputpackets = 0;
-        for (size_t i=0; i<42; ++i) next_rand();
-    }
+        for ( size_t i=0; i<r_n_inputs; ++i ) r_mid_fifos[i].reset();
+        r_out_delay_line.reset();
+            r_current_input = 0;
+            r_allocated     = false;
+            r_total_flits   = 0;
+        }
 
-    ////////////////////////////////////////
-    inline input_fifo_t *getFifo( size_t n )
+        ////////////////////////////////////////////////
+        inline AdHocFifo<vci_flit_t>* getFifo( size_t n )
     {
-        return &m_input_queues[n];
+        return &r_mid_fifos[n];
     }
     
-    ////////////////////
-    uint32_t next_rand()
-    {
-        m_rand_state = (
-            (
-                (!!(m_rand_state & (1<<31))) ^
-                (!!(m_rand_state & (1<<21))) ^
-                (!!(m_rand_state & (1<<1))) ^
-                (!!(m_rand_state & (1<<0)))
-                ) << 31)
-            | ( (m_rand_state >> 1) & 0x7fffffff );
-        return m_rand_state;
-    }
-
     ///////////////////////////////
     void print_trace(size_t output)
     {
-        if ( m_in_transaction )
-            std::cout << std::dec << "in[" << m_current_input 
+        if ( r_allocated )
+            std::cout << std::dec << "in[" << r_current_input 
                       << "] => out[" << output << "] / ";
     }
 
-    ///////////////////////////////////////////////
-    void transition( const std::string      &name, 
-                     const output_port_t    &port )
+    ////////////////////////////////////////////
+    void transition( const vci_output_t  &port )
     {
-        if (port.iProposed() && ! port.peerAccepted())
-            return;
+        vci_flit_t out_flit;  // output flit from the delay line
 
-        typename dpp::ref<vci_pkt_t> pkt;
-        if ( m_in_transaction ) 
+        // frozen if a valid flit from delay line is not accepted on output port
+        if( r_out_delay_line.head().val() and not port.peerAccepted() )   return;
+
+        vci_flit_t in_flit;  // output flit from the selected input fifo
+
+        // default value for the flit to be writen in delay line
+        in_flit.set_val( false );
+
+        if ( r_allocated ) // output port allocated : possible flit transfer
         {
-            if ( !m_input_queues[m_current_input].empty() )
-                pkt = m_input_queues[m_current_input].pop();
+            if (  not r_mid_fifos[r_current_input].empty() )
+            {
+                in_flit     = r_mid_fifos[r_current_input].pop();
+                r_allocated = not (in_flit.eop() and in_flit.val() );
+            }
         } 
-        else if (m_inputpackets > 0) 
+        else if (r_total_flits > 0)  // output not allocated and flit available 
         {
-	        size_t next_input = m_current_input + 1;
-	        if (next_input == m_n_inputs)
-		    next_input = 0;
+            // round-robin allocation, but no flit transfer
+	        size_t prio = r_current_input + 1;
+	        if (prio == r_n_inputs) prio = 0;
 
-	        size_t i = next_input;
+	        size_t i = prio;
 	        do 
             {
-                if ( ! m_input_queues[i].empty() ) 
+                if ( not r_mid_fifos[i].empty() ) 
                 {
-                    m_current_input = i;
-                    pkt = m_input_queues[m_current_input].pop();
+                    r_current_input = i;
+                    r_allocated = true;;
                     break;
                 }
-		        if (++i == m_n_inputs) i = 0;
-            } while (i != next_input);
+		        if (++i == r_n_inputs) i = 0;
+            } while (i != prio);
         }
 
-DEBUG_BEGIN;
-        if ( pkt.valid() )
-            std::cout << name << " popped packet " << *pkt << std::endl;
-DEBUG_END;
-
-        m_output_delay_line.shift(pkt);
-        if ( pkt.valid() )
-            m_in_transaction = !pkt->eop();
+        // systematic shift of delay line
+        r_out_delay_line.shift( in_flit );
     }
 
-    ////////////////////////////////////////
-    void genMoore( const std::string &name, 
-                   output_port_t     &port )
+    ////////////////////////////////////
+    void genMoore( vci_output_t &port )
     {
-        typename dpp::ref<vci_pkt_t> pkt = m_output_delay_line.head();
-
-        if ( pkt.valid() ) 
-        {
-DEBUG_BEGIN;
-            std::cout << name << " packet on VCI " << *pkt << std::endl;
-DEBUG_END;
-            pkt->writeTo(port);
-        } else
-            port.setVal(false);
+        r_out_delay_line.head().writeTo( port );
     }
-};    // end class OutpuPortQueue
+};    // end class OutputModule
 
-///////////////////////////////////////
-template<typename output_queue_t>
-class InputRouter
-///////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+// An input module is associated to each input port of a micro-network.
+// It decode the VCI ADDRESS or the VCI RSRCID to select the requested 
+// output module, and push the packet in the proper mid FIFO.
+// For a CMD micro-network:  vci_flit_t  == VciCmdBuffer
+//                           vci_input_t == VciTarget
+// For a RSP micro-network:  vci_flit_t  == VciRspBuffer
+//                           vci_input_t == VciInitiator
+//////////////////////////////////////////////////////////////////////////
+template<typename vci_flit_t,
+         typename vci_input_t> class InputModule
+////////////////////////////////////////////////////////////////////////
 {
-    typedef typename output_queue_t::input_fifo_t dest_fifo_t;
-    typedef typename output_queue_t::vci_pkt_t vci_pkt_t;
-    typedef typename output_queue_t::vci_pkt_t::input_port_t input_port_t;
-    typedef typename output_queue_t::vci_pkt_t::routing_table_t routing_table_t;
-
-    routing_table_t m_routing_table;
-    dest_fifo_t **m_output_fifos;
-    size_t m_n_outputs;
-    dest_fifo_t *m_dest;
-    typename dpp::ref<vci_pkt_t> m_waiting_packet;
-    std::vector<bool> m_broadcast_waiting;
+    bool                       r_is_cmd;        // micro-network type (CMD/RSP)
+    size_t                     r_n_outputs;     // number of reachable output ports
+    GenericFifo<vci_flit_t>*   r_input_fifo;    // input FIFO
+    AdHocFifo<vci_flit_t>**    r_mid_fifos;     // array of pointers on the mid FIFOS 
+    AdHocFifo<vci_flit_t>*     r_dest;          // pointer on the selected mid FIFO
+    void*                      r_rt;            // pointer on routing/masking table
+    bool*                      r_bc_waiting;    // array of bool (one per output port) 
 
 public:
-    InputRouter()
-    {
-    }
 
-    ~InputRouter()
+    //////////////////////
+    InputModule()
     {
-        reset();
-        delete [] m_output_fifos;
-    }
-
-    ////////////////////////////
-    void init( size_t n_outputs,
-               dest_fifo_t **dest_fifos,
-               const routing_table_t &rt )
-    {
-        m_routing_table = rt;
-        m_n_outputs = n_outputs;
-        m_dest = NULL;
-        m_output_fifos = new dest_fifo_t*[m_n_outputs];
-        m_broadcast_waiting.resize(m_n_outputs, false);
-        for ( size_t i=0; i<m_n_outputs; ++i ) 
-        {
-            m_output_fifos[i] = dest_fifos[i];
-            m_broadcast_waiting[i] = false;
-        }
     }
 
     ////////////
-    void reset()
+    ~InputModule()
     {
-        m_waiting_packet.invalidate();
-        for ( size_t i=0; i<m_n_outputs; ++i ) m_broadcast_waiting[i] = false;
-        m_dest = NULL;
-    }
-
-    ////////////////////////
-    ssize_t next_broadcast()
-    {
-        for ( size_t i=0; i<m_n_outputs; ++i )
-            if ( m_broadcast_waiting[i] ) return i;
-        return -1;
+        delete [] r_mid_fifos; 
+        delete [] r_bc_waiting;
     }
 
     /////////////////////////////////////////////
-    void transition( const std::string    &name, 
-                     const input_port_t   &port )
+    void init( size_t                     index,        // input port index
+               size_t                     n_outputs,
+               AdHocFifo<vci_flit_t>**    mid_fifos,
+               void*                      rt,
+               bool                       is_cmd )
     {
-        if ( m_waiting_packet.valid() ) 
+        std::ostringstream in_fifo_name;
+        if( is_cmd ) in_fifo_name << "input_fifo_cmd_" << index;
+        else         in_fifo_name << "input_fifo_rsp_" << index;
+
+        r_is_cmd         = is_cmd;
+        r_input_fifo     = new GenericFifo<vci_flit_t>(in_fifo_name.str(), 2);
+        r_mid_fifos      = new AdHocFifo<vci_flit_t>*[n_outputs];
+        r_bc_waiting     = new bool[n_outputs];
+        r_rt             = rt;
+        r_n_outputs      = n_outputs;
+        r_dest           = NULL;
+
+        for ( size_t i=0; i<n_outputs; ++i ) 
         {
-            if ( next_broadcast() != -1 ) 
-            {
-                for ( size_t i=0; i<m_n_outputs; ++i ) 
-                {
-                    if ( ! m_broadcast_waiting[i] ) continue;
-
-                    dest_fifo_t *dest = m_output_fifos[i];
-                    if ( ! dest->full() ) 
-                    {
-                        dest->push( name, m_waiting_packet );
-                        m_broadcast_waiting[i] = false;
-                    }
-                }
-                if ( next_broadcast() == -1 ) 
-                {
-                    m_waiting_packet.invalidate();
-                }
-            } 
-            else 
-            {
-                assert(m_dest != NULL);
-                if ( ! m_dest->full() ) 
-                {
-                    m_dest->push( name, m_waiting_packet );
-                    if ( m_waiting_packet->eop() ) m_dest = NULL;
-                    m_waiting_packet.invalidate();
-                }
-            }
+            r_mid_fifos[i]  = mid_fifos[i];
+            r_bc_waiting[i] = false;
         }
-
-        if ( port.iAccepted() ) 
-        {
-            bool broadcasted = false;
-            assert( ! m_waiting_packet.valid() );
-            m_waiting_packet = DPP_REFNEW(vci_pkt_t, );
-            m_waiting_packet->readFrom( port );
-DEBUG_BEGIN;
-            std::cout << name << " accepting " << *m_waiting_packet << std::endl;
-            // std::cout << name << " routing_table : " << m_routing_table << std::endl;
-            std::cout << name << " routing       : " << m_waiting_packet->route( m_routing_table) << std::endl;
-DEBUG_END;
-            if ( m_dest == NULL ) 
-            {
-                if ( m_waiting_packet->is_broadcast() ) 
-                {
-                    for ( size_t i = 0; i<m_n_outputs; ++i ) m_broadcast_waiting[i] = true;
-                    broadcasted = true;
-                    assert( m_waiting_packet->eop() );
-                } 
-                else 
-                {
-                    m_dest = m_output_fifos[m_waiting_packet->route( m_routing_table )];
-                }
-DEBUG_BEGIN;
-                if ( broadcasted )
-                    std::cout << name << " broadcasted" << std::endl;
-                else
-                    std::cout << name << " routed to port " << m_waiting_packet->route( m_routing_table ) << std::endl;
-DEBUG_END;
-            }
-        } 
-        else 
-        {
-            // No packet locally waiting nor on port, no need to
-            // go further
-            return;
-        }
-    }  // end transition
-
-    ////////////////////////////////////////////////////////////
-    void genMoore( const std::string &name, input_port_t &port )
-    {
-        bool can_take = !m_waiting_packet.valid();
-
-        // If we know where we go, we may pipeline
-        // If we are in a broadcast, m_dest is NULL and no pipelining occurs.
-        if (m_dest != NULL) can_take |= !m_dest->full();
-
-        port.setAck(can_take);
-    }
-};    // end class InputRouter
-
-////////////////////////////////////////////////
-template<typename router_t,typename queue_t>
-class MicroNetwork
-////////////////////////////////////////////////
-{
-    typedef typename queue_t::vci_pkt_t::input_port_t input_port_t;
-    typedef typename queue_t::vci_pkt_t::output_port_t output_port_t;
-    typedef typename queue_t::vci_pkt_t::routing_table_t routing_table_t;
-    typedef typename queue_t::input_fifo_t mid_fifo_t;
-
-    const size_t m_in_size;
-    const size_t m_out_size;
-    queue_t *m_queue;
-    router_t *m_router;
-
-public:
-
-    /////////////
-    MicroNetwork(
-        const size_t in_size, const size_t out_size,
-        size_t min_latency, size_t fifo_size,
-        const routing_table_t &rt ) : 
-        m_in_size(in_size),
-        m_out_size(out_size)
-    {
-        mid_fifo_t *fifos[m_out_size];
-
-        m_router = new router_t[m_in_size];
-        m_queue = new queue_t[m_out_size];
-        for ( size_t i=0; i<m_out_size; ++i )
-            m_queue[i].init(m_in_size, min_latency, fifo_size);
-        for ( size_t i=0; i<m_in_size; ++i ) {
-            for ( size_t j=0; j<m_out_size; ++j )
-                fifos[j] = m_queue[j].getFifo(i);
-            m_router[i].init(m_out_size, &fifos[0], rt);
-        }
-    }
-
-    ///////////////
-    ~MicroNetwork()
-    {
-        delete [] m_router;
-        delete [] m_queue;
     }
 
     ////////////
     void reset()
     {
-        for ( size_t i=0; i<m_in_size; ++i )
-            m_router[i].reset();
-        for ( size_t i=0; i<m_out_size; ++i )
-            m_queue[i].reset();
+        for ( size_t i=0; i<r_n_outputs; ++i ) r_bc_waiting[i] = false;
+        r_input_fifo->init();
+        r_dest = NULL;
+    }
+
+    ///////////////////////////////
+    size_t route( vci_flit_t flit )
+    {
+        size_t out;
+        if( r_is_cmd )
+        {
+            soclib::common::AddressDecodingTable<uint32_t, int>* routing_table =
+                   (soclib::common::AddressDecodingTable<uint32_t, int>*)r_rt;
+            out = (size_t)(routing_table->get_value( (uint32_t)flit.dest() ));
+        }
+        else
+        {
+            soclib::common::AddressMaskingTable<uint32_t>*  masking_table =
+                   (soclib::common::AddressMaskingTable<uint32_t>*)r_rt;
+            out = (size_t)(masking_table->get_value( (uint32_t)flit.dest() ));
+        }  
+        return out;
+    }
+
+    //////////////////////////////////////
+    void transition( vci_input_t   &port )
+    {
+        // default value for input FIFO update
+        vci_flit_t   in_fifo_wdata;
+        vci_flit_t   in_fifo_rdata;
+        bool         in_fifo_put = false;
+        bool         in_fifo_get = false;
+
+        // writing into input FIFO if possible
+        if( port.getVal() ) // flit available
+        {
+            in_fifo_wdata.readFrom( port );
+            in_fifo_put = true;
+        }
+        // consuming from input FIFO if possible 
+        if ( r_input_fifo->rok() )                   // Flit available
+        {
+            in_fifo_rdata = r_input_fifo->read();
+
+            // testing pending broadcast
+            size_t next = r_n_outputs;
+            for ( size_t j=0; j<r_n_outputs; ++j )
+            {
+                if ( r_bc_waiting[j] )
+                {
+                    next = j;
+                    break;
+                }
+            }
+
+            if ( next < r_n_outputs )                // pending broadcast
+            {
+                r_dest = r_mid_fifos[next];
+                if( not r_dest->full() )      // transfer one flit if possible
+                {
+                    r_dest->push( in_fifo_rdata );
+                    r_bc_waiting[next] = false;
+                    if( next == r_n_outputs-1 ) 
+                    {
+                        r_dest      = NULL; 
+                        in_fifo_get = true;
+                    }
+                }
+            }
+            else                                    // no pending broadcast
+            {
+                if( r_dest == NULL )      // new packet => routing required
+                {
+                    if( in_fifo_rdata.is_broadcast() ) // broadcast : transfer one flit
+                    {
+                        assert( in_fifo_rdata.eop() );
+                        for( size_t j=0 ; j<r_n_outputs ; ++j ) r_bc_waiting[j] = true;
+                        r_dest = r_mid_fifos[0];
+                        if( not r_dest->full() )    // transfer one flit if possible
+                        {
+                            r_dest->push( in_fifo_rdata );
+                            r_bc_waiting[0] = false;
+                            if( r_n_outputs == 1 )
+                            {
+                                r_dest      = NULL; 
+                                in_fifo_get = true;
+                            }
+                        }
+                    }
+                    else                 // not broadcast : route and transfer one flit
+                    {
+                        size_t dest = route( in_fifo_rdata );
+                        r_dest = r_mid_fifos[dest];
+                        if( not r_dest->full() )    // transfer one flit if possible
+                        {
+                            r_dest->push( in_fifo_rdata );
+                            in_fifo_get = true;
+                            if ( in_fifo_rdata.eop() ) r_dest = NULL;
+                        }
+                    }
+                }
+                else                      // not a new packet
+                {
+                    if( not r_dest->full() )    // transfer one flit if possible
+                    {
+                        r_dest->push( in_fifo_rdata );
+                        in_fifo_get = true;
+                        if ( in_fifo_rdata.eop() ) r_dest = NULL;
+                    }
+                }
+            }
+        }
+
+        // update input FIFO
+        r_input_fifo->update( in_fifo_get, in_fifo_put, in_fifo_wdata );
+
+    }  // end transition
+
+    ///////////////////////////////////
+    void genMoore( vci_input_t &port )
+    {
+        port.setAck( r_input_fifo->wok() );
+    }
+};    // end class InputModule
+
+/////////////////////////////////////////////////////////////////////////////////
+// The VciVgmn component contains two independant micro-network for CMD & RSP
+// - CMD network: vci_flit_t   == VciCmdBuffer
+//                vci_input_t  == VciTarget
+//                vci_output_t == VciInitiator
+// - RSP network: vci_flit_t   == VciRspBuffer
+//                vci_input_t  == VciInitiator
+//                vci_output_t == VciTarget   
+/////////////////////////////////////////////////////////////////////////////////
+template<typename vci_flit_t,   
+         typename vci_input_t,
+         typename vci_output_t> class VgmnMicroNetwork
+/////////////////////////////////////////////////////////////////////////////////
+{
+    const size_t                             m_in_size;
+    const size_t                             m_out_size;
+    OutputModule<vci_flit_t, vci_output_t>*  m_outputs;      // array of output modules
+    InputModule<vci_flit_t, vci_input_t>*    m_inputs;       // array of input modules
+    const bool                               m_is_cmd;       // CMD micro-network if true
+
+public:
+
+    /////////////////////////////////
+    VgmnMicroNetwork( size_t in_size,         // number of input ports
+                      size_t out_size,        // number of output ports
+                      size_t min_latency, 
+                      size_t fifo_size,
+                      void*  rt,              // routing table or masking table
+                      bool   is_cmd )         // depending on is_cmd
+    :   m_in_size(in_size),
+        m_out_size(out_size),
+        m_is_cmd( is_cmd )
+    {
+        // array of pointers on all the mid FIFOS targeted by a single input port
+        AdHocFifo<vci_flit_t>*     fifos[out_size];
+
+        // building input modules
+        m_inputs  = new InputModule<vci_flit_t, vci_input_t>[m_in_size];
+
+        // building output modules
+        m_outputs = new OutputModule<vci_flit_t, vci_output_t>[m_out_size];
+
+        for ( size_t j=0; j<out_size; ++j )
+        {
+            m_outputs[j].init(in_size, min_latency, fifo_size);
+        }
+        for ( size_t i=0; i<in_size; ++i ) 
+        {
+            for ( size_t j=0; j<out_size; ++j ) 
+            {
+                fifos[j] = m_outputs[j].getFifo(i);
+            }
+            m_inputs[i].init( i, out_size, &fifos[0], rt, is_cmd );
+        }
+    }
+
+    ///////////////////
+    ~VgmnMicroNetwork()
+    {
+        delete [] m_inputs;
+        delete [] m_outputs;
+    }
+
+    ////////////
+    void reset()
+    {
+        for ( size_t i=0; i<m_in_size; ++i )  m_inputs[i].reset();
+        for ( size_t j=0; j<m_out_size; ++j ) m_outputs[j].reset();
     }
 
     //////////////////
     void print_trace()
     {
-        for ( size_t i=0; i<m_out_size; ++i )
-            m_queue[i].print_trace(i);
+        for ( size_t j=0; j<m_out_size; ++j )
+            m_outputs[j].print_trace(j);
     }
 
-    ////////////////////////////////////////
-    void transition( const std::string &name, 
-                     const input_port_t *input_port, 
-                     const output_port_t *output_port )
+    /////////////////////////////////////////
+    void transition( vci_input_t *input_port, 
+                     vci_output_t *output_port )
     {
-        for ( size_t i=0; i<m_in_size; ++i )
-            m_router[i].transition( name, input_port[i] );
-        for ( size_t i=0; i<m_out_size; ++i )
-            m_queue[i].transition( name, output_port[i] );
+        for ( size_t i=0; i<m_in_size; ++i )  m_inputs[i].transition( input_port[i] );
+        for ( size_t i=0; i<m_out_size; ++i ) m_outputs[i].transition( output_port[i] );
     }
 
     //////////////////////////////////////
-    void genMoore( const std::string &name, 
-                   input_port_t *input_port, 
-                   output_port_t *output_port )
+    void genMoore( vci_input_t *input_port, 
+                   vci_output_t *output_port )
     {
-        for ( size_t i=0; i<m_in_size; ++i )
-            m_router[i].genMoore( name, input_port[i] );
-        for ( size_t i=0; i<m_out_size; ++i )
-            m_queue[i].genMoore( name, output_port[i] );
+        for ( size_t i=0; i<m_in_size; ++i )  m_inputs[i].genMoore( input_port[i] );
+        for ( size_t i=0; i<m_out_size; ++i ) m_outputs[i].genMoore( output_port[i] );
     }
-};
+};   // end class VgmnMicroNetwork
 
-}
-
+////////////////////////////////////////////////////////////////////////
+// Methods for VciVgmn 
+////////////////////////////////////////////////////////////////////////
 
 #define tmpl(x) template<typename vci_param> x VciVgmn<vci_param>
 
@@ -583,15 +598,15 @@ tmpl(void)::transition()
         return;
     }
 
-    m_cmd_mn->transition( name(), p_to_initiator, p_to_target );
-    m_rsp_mn->transition( name(), p_to_target, p_to_initiator );
+    m_cmd_mn->transition( p_to_initiator, p_to_target );
+    m_rsp_mn->transition( p_to_target, p_to_initiator );
 }
 
 //////////////////////
 tmpl(void)::genMoore()
 {
-    m_cmd_mn->genMoore( name(), p_to_initiator, p_to_target );
-    m_rsp_mn->genMoore( name(), p_to_target, p_to_initiator );
+    m_cmd_mn->genMoore( p_to_initiator, p_to_target );
+    m_rsp_mn->genMoore( p_to_target, p_to_initiator );
 }
 
 /////////////////////////
@@ -606,43 +621,55 @@ tmpl(void)::print_trace()
     std::cout << std::endl;
 }
 
-////////////////////
-tmpl(/**/)::VciVgmn(
-    sc_module_name name,
-    const soclib::common::MappingTable &mt,
-    size_t nb_attached_initiat,
-    size_t nb_attached_target,
-    size_t min_latency,
-    size_t fifo_depth,
-    const soclib::common::IntTab &default_index)
-           : soclib::caba::BaseModule(name),
-           m_nb_initiat(nb_attached_initiat),
-           m_nb_target(nb_attached_target)
+//////////////////////////////////////////////////////////////
+tmpl(/**/)::VciVgmn( sc_module_name                     name,
+                     const soclib::common::MappingTable &mt,
+                     size_t                             nb_attached_initiat,
+                     size_t                             nb_attached_target,
+                     size_t                             min_latency,
+                     size_t                             fifo_depth,
+                     const soclib::common::IntTab       &default_index)
+   : soclib::caba::BaseModule(name),
+     m_nb_initiat(nb_attached_initiat),
+     m_nb_target(nb_attached_target)
 {
     std::cout << "  - Building VciVgmn : " << name << std::endl;
 
-    assert( (min_latency >= 1) and
-    "VCI_VGMN error : min_latency must be larger than 0");
+    assert( (min_latency > 2) and
+    "VCI_VGMN error : min_latency cannot be smaller than 3 cycles");
 
-    assert( (fifo_depth  >= 1) and
-    "VCI_VGMN error : fifo_depth must be larger than 0");
+    assert( (fifo_depth  > 1) and
+    "VCI_VGMN error : fifo_depth cannot be  smaller than 2 slots");
 
     p_to_initiator = soclib::common::alloc_elems<soclib::caba::VciTarget<vci_param> >(
                      "to_initiator", nb_attached_initiat);
     p_to_target = soclib::common::alloc_elems<soclib::caba::VciInitiator<vci_param> >(
                      "to_target", nb_attached_target);
 
-    m_cmd_mn = new _vgmn::MicroNetwork<cmd_router_t,cmd_queue_t>(
-        nb_attached_initiat, nb_attached_target,
-        min_latency, fifo_depth,
-        mt.getRoutingTable(soclib::common::IntTab(), mt.indexForId(default_index))
-        );
+    // build cmd routing table and cmd network
+    m_cmd_routing_table = mt.getRoutingTable( soclib::common::IntTab(), 
+                                              mt.indexForId(default_index) );
 
-    m_rsp_mn = new _vgmn::MicroNetwork<rsp_router_t,rsp_queue_t>(
-        nb_attached_target, nb_attached_initiat,
-        min_latency, fifo_depth,
-        mt.getIdMaskingTable(0)
-        );
+    m_cmd_mn = new VgmnMicroNetwork<VciCmdBuffer<vci_param>,
+                                    VciTarget<vci_param>,
+                                    VciInitiator<vci_param> >( nb_attached_initiat, 
+                                                               nb_attached_target,
+                                                               min_latency-2, 
+                                                               fifo_depth,
+                                                               (void*)(&m_cmd_routing_table),
+                                                               true );
+
+    // build rsp routing table and rsp network
+    m_rsp_routing_table = mt.getIdMaskingTable(0);
+    
+    m_rsp_mn = new VgmnMicroNetwork<VciRspBuffer<vci_param>, 
+                                    VciInitiator<vci_param>,
+                                    VciTarget<vci_param> >( nb_attached_target, 
+                                                            nb_attached_initiat,
+                                                            min_latency-2, 
+                                                            fifo_depth,
+                                                            (void*)(&m_rsp_routing_table),
+                                                            false );
 
     SC_METHOD(transition);
     dont_initialize();
@@ -653,6 +680,7 @@ tmpl(/**/)::VciVgmn(
     sensitive << p_clk.neg();
 }
 
+//////////////////////
 tmpl(/**/)::~VciVgmn()
 {
     delete m_rsp_mn;

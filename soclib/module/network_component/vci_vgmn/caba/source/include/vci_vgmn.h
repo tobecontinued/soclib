@@ -38,41 +38,43 @@
 #include "address_decoding_table.h"
 #include "address_masking_table.h"
 #include "mapping_table.h"
+#include "generic_fifo.h"
 
 namespace soclib { namespace caba {
 
 using namespace sc_core;
+using namespace soclib::caba;
+using namespace soclib::common;
 
-namespace _vgmn {
-
-template<typename vci_pkt_t> class OutputPortQueue;
-template<typename vci_pkt_t> class InputRouter;
-template<typename router_t, typename queue_t> class MicroNetwork;
-
-}
+template<typename vci_flit_t, 
+         typename vci_input_t,
+         typename vci_output_t> class VgmnMicroNetwork;
 
 template<typename vci_param>
 class VciVgmn
     : public soclib::caba::BaseModule
 {
 public:
-    sc_in<bool> p_clk;
-    sc_in<bool> p_resetn;
+    sc_in<bool>                                 p_clk;
+    sc_in<bool>                                 p_resetn;
 
-    soclib::caba::VciInitiator<vci_param> *p_to_target;
-    soclib::caba::VciTarget<vci_param> *p_to_initiator;
+    VciInitiator<vci_param>                     *p_to_target;
+    VciTarget<vci_param>                        *p_to_initiator;
 
 private:
-    const size_t m_nb_initiat;
-    const size_t m_nb_target;
+    const size_t                                m_nb_initiat;
+    const size_t                                m_nb_target;
 
-    typedef _vgmn::OutputPortQueue<soclib::caba::VciCmdBuffer<vci_param> > cmd_queue_t;
-    typedef _vgmn::OutputPortQueue<soclib::caba::VciRspBuffer<vci_param> > rsp_queue_t;
-    typedef _vgmn::InputRouter<cmd_queue_t> cmd_router_t;
-    typedef _vgmn::InputRouter<rsp_queue_t> rsp_router_t;
+    AddressDecodingTable<uint32_t, int>         m_cmd_routing_table;
+    AddressMaskingTable<uint32_t>               m_rsp_routing_table;
+ 
+    VgmnMicroNetwork<VciCmdBuffer<vci_param>,
+                     VciTarget<vci_param>,
+                     VciInitiator<vci_param> >  *m_cmd_mn;
 
-    _vgmn::MicroNetwork<cmd_router_t,cmd_queue_t> *m_cmd_mn;
-    _vgmn::MicroNetwork<rsp_router_t,rsp_queue_t> *m_rsp_mn;
+    VgmnMicroNetwork<VciRspBuffer<vci_param>,
+                     VciInitiator<vci_param>,
+                     VciTarget<vci_param> >     *m_rsp_mn;
 
     void transition();
     void genMoore();
