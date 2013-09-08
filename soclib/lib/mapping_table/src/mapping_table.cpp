@@ -143,13 +143,18 @@ void MappingTable::add( const Segment &_seg )
     m_segment_list.push_back(seg);
 }
 
-////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// This function returns a list of all segments defined in a mapping table.
+////////////////////////////////////////////////////////////////////////////
 const std::list<Segment> & MappingTable::getAllSegmentList() const
 {
     const_cast<MappingTable*>(this)->m_used = true;
     return m_segment_list;
 }
 
+////////////////////////////////////////////////////////////////////////////
+// This function returns a list containing all segments allocated
+// to a target identified by its target index.
 ////////////////////////////////////////////////////////////////////////////
 std::list<Segment> MappingTable::getSegmentList( const IntTab &index ) const
 {
@@ -160,14 +165,18 @@ std::list<Segment> MappingTable::getSegmentList( const IntTab &index ) const
 
     for ( i = m_segment_list.begin();
           i != m_segment_list.end();
-          i++ ) {
+          i++ ) 
+    {
         if ( i->index() == index )
             ret.push_back(*i);
     }
     return ret;
 }
 
-/////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+// This function checks that only one segment is allocated to a target
+// identified by its target index, ant returns this segment.
+///////////////////////////////////////////////////////////////////////////
 Segment MappingTable::getSegment( const IntTab &index ) const
 {
     std::list<Segment> list = getSegmentList(index);

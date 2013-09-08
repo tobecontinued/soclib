@@ -78,7 +78,7 @@ public:
         m_base_address = ref.m_base_address;
         m_size         = ref.m_size;
         m_target_index = ref.m_target_index;
-        m_cacheable = ref.m_cacheable;
+        m_cacheable    = ref.m_cacheable;
         m_special      = ref.m_special;
 
         return *this;

@@ -33,10 +33,13 @@
 
 namespace soclib { namespace common {
 
+////////////////////////////////
 template <typename data_t>
 class AddressMaskingTable
+////////////////////////////////
 {
-    size_t m_use_bits, m_drop_bits;
+    size_t m_use_bits; 
+    size_t m_drop_bits;
     data_t m_low_mask;
 
     void init( size_t use_bits, size_t drop_bits );
@@ -65,11 +68,19 @@ public:
 
 	void print( std::ostream &o ) const;
 
+    //////////////////////////////////////////////
+    inline data_t get_value( data_t where ) const 
+    {
+        return (where>>m_drop_bits)&m_low_mask;
+    }
+    
+    //////////////////////////////////////////////
     inline data_t operator[]( data_t where ) const
     {
         return (where>>m_drop_bits)&m_low_mask;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
     friend std::ostream &operator << (std::ostream &o, const AddressMaskingTable &t)
     {
         t.print(o);
