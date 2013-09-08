@@ -336,8 +336,6 @@ int _main(int argc, char *argv[])
                             from_cycle,     // debug_start_cycle
                             debug_ok );     //  detailed debug activation
 */
-    std::cout << "mp0 constructed" << std::endl;
-
     ////////////////////////////////////////////////////////////////////////
     VciXcacheWrapperMulti<vci_param, GdbServer<Mips32ElIss> >* mp1;
     mp1 = new VciXcacheWrapperMulti< vci_param, GdbServer<Mips32ElIss> >
@@ -353,8 +351,6 @@ int _main(int argc, char *argv[])
                             from_cycle,     // debug_start_cycle
                             debug_ok );     //  detailed debug activation
 */
-    std::cout << "mp1 constructed" << std::endl;
-
     ////////////////////////////////////////////////////////////////////////
     VciXcacheWrapperMulti<vci_param, GdbServer<Mips32ElIss> >* mp2;
     mp2 = new VciXcacheWrapperMulti< vci_param, GdbServer<Mips32ElIss> >
@@ -370,8 +366,6 @@ int _main(int argc, char *argv[])
                             from_cycle,     // debug_start_cycle
                             debug_ok );     //  detailed debug activation
 */
-    std::cout << "mp2 constructed" << std::endl;
-
     /////////////////////////////
     VciSimpleRam<vci_param>* ram;
     ram = new VciSimpleRam<vci_param>("ram",
@@ -379,27 +373,18 @@ int _main(int argc, char *argv[])
                                       maptab,
                                       loader,
                                       ram_latency);
-
-    std::cout << "ram constructed" << std::endl;
-    
     /////////////////////////////
     VciSimpleRam<vci_param>* rom;
     rom = new VciSimpleRam<vci_param>("rom",
                                       IntTab(ROM_TGTID),
                                       maptab,
                                       loader);
-
-    std::cout << "rom constructed" << std::endl;
-
     ////////////////////////////
     VciMultiTty<vci_param> *tty;
     tty = new VciMultiTty<vci_param>("tty",
                                      IntTab(TTY_TGTID),
                                      maptab,
                                      "HYPER", "VMA", "VMB", NULL);
-
-    std::cout << "tty constructed" << std::endl;
-
     ////////////////////////////
     VciMultiIcu<vci_param> *icu;
     icu = new VciMultiIcu<vci_param>("icu",
@@ -407,18 +392,12 @@ int _main(int argc, char *argv[])
                                      maptab,
                                      32,
                                      3);
-
-    std::cout << "icu constructed" << std::endl;
-
-    ///////////////////////////
-    VciTimer<vci_param>* timer;
-    timer = new VciTimer<vci_param>("timer",
+    /////////////////////////
+    VciTimer<vci_param>* tim;
+    tim = new VciTimer<vci_param>("timer",
                                     IntTab(TIM_TGTID),
                                     maptab,
                                     3);
-
-    std::cout << "timer constructed" << std::endl;
-
     ////////////////////////////
     VciChbufDma<vci_param>* cma;
     cma = new VciChbufDma<vci_param>("cma",
@@ -427,9 +406,6 @@ int _main(int argc, char *argv[])
                                      IntTab(CMA_TGTID),
                                      (cache_words << 2),
                                      4);                // 4 channels
-
-    std::cout << "cma constructed" << std::endl;
-
     ////////////////////////////
     VciMultiNic<vci_param>* nic;
     nic = new VciMultiNic<vci_param>("nic",
@@ -440,18 +416,12 @@ int _main(int argc, char *argv[])
                                      "./out_two_channels.txt",
                                      DEFAULT_MAC_4,
                                      DEFAULT_MAC_2);
-
-    std::cout << "nic constructed" << std::endl;
-
     ///////////////////////////////
     VciFrameBuffer<vci_param>* fbf;
     fbf = new VciFrameBuffer<vci_param>("fbf",
                                         IntTab(FBF_TGTID),
                                         maptab,
                                         fbf_size, fbf_size);
-
-    std::cout << "fbf constructed" << std::endl;
-
     ///////////////////////////////
     VciBlockDevice<vci_param>* ioc;
     ioc = new VciBlockDevice<vci_param>("ioc",
@@ -461,20 +431,14 @@ int _main(int argc, char *argv[])
                                         ioc_filename,
                                         512,
                                         200000);
-
-    std::cout << "ioc constructed" << std::endl;
-
     //////////////////////////
     VciVgmn<vci_param>* noc;
     noc = new VciVgmn<vci_param>("noc",
                                  maptab,
                                  5,
                                  13,
-                                 2,
-                                 8);
-
-    std::cout << "noc constructed" << std::endl;
-
+                                 4,            // NoC latency
+                                 8);           // fifo depth
     //////////////////////////
     VciNocMmu<vci_param>* p1x;
     p1x = new VciNocMmu<vci_param>("p1x",
@@ -487,9 +451,6 @@ int _main(int argc, char *argv[])
                                    tlb_sets,
                                    from_cycle,
                                    debug_ok );
-                                
-    std::cout << "p1x constructed" << std::endl;
-
     //////////////////////////
     VciNocMmu<vci_param>* p2x;
     p2x = new VciNocMmu<vci_param>("p2x",
@@ -502,9 +463,6 @@ int _main(int argc, char *argv[])
                                    tlb_sets,
                                    from_cycle,
                                    debug_ok );
-                                
-    std::cout << "p2x constructed" << std::endl;
-
     //////////////////////////
     VciNocMmu<vci_param>* cmx;
     cmx = new VciNocMmu<vci_param>("cmx",
@@ -517,9 +475,6 @@ int _main(int argc, char *argv[])
                                    tlb_sets,
                                    from_cycle,
                                    debug_ok );
-                                
-    std::cout << "cmx constructed" << std::endl;
-
     //////////////////////////
     VciNocMmu<vci_param>* iox;
     iox = new VciNocMmu<vci_param>("iox",
@@ -532,10 +487,6 @@ int _main(int argc, char *argv[])
                                    tlb_sets,
                                    from_cycle,
                                    debug_ok );
-                                
-    std::cout << "iox constructed" << std::endl;
-
-    std::cout << std::endl;
 
     //////////////////////////////////////////////////////////////////////////
     // Net-List
@@ -671,12 +622,12 @@ int _main(int argc, char *argv[])
     std::cout << "icu connected" << std::endl;
 
     //////////////////////////////////////////
-    timer->p_clk        (signal_clk);
-    timer->p_resetn     (signal_resetn);
-    timer->p_vci        (signal_vci_tgt_tim);
-    timer->p_irq[0]     (signal_irq_timer0);
-    timer->p_irq[1]     (signal_irq_timer1);
-    timer->p_irq[2]     (signal_irq_timer2);
+    tim->p_clk          (signal_clk);
+    tim->p_resetn       (signal_resetn);
+    tim->p_vci          (signal_vci_tgt_tim);
+    tim->p_irq[0]       (signal_irq_timer0);
+    tim->p_irq[1]       (signal_irq_timer1);
+    tim->p_irq[2]       (signal_irq_timer2);
 
     std::cout << "timer connected" << std::endl;
 
@@ -795,6 +746,11 @@ int _main(int argc, char *argv[])
             mp2->print_trace();
             signal_vci_ini_mp2.print_trace("signal_mp2");
 
+            noc->print_trace();
+
+            rom->print_trace();
+            signal_vci_tgt_rom.print_trace("signal_rom");
+
 //            nic->print_trace();
 //            signal_vci_tgt_nic.print_trace("signal_nic");
 
@@ -802,21 +758,21 @@ int _main(int argc, char *argv[])
 //            signal_vci_tgt_cma.print_trace("signal_tgt_cma");
 //            signal_vci_ini_cma.print_trace("signal_ini_cma");
 
-            p1x->print_trace();
-            signal_vci_tgt_p1x.print_trace("signal_tgt_p1x");
-            signal_vci_ini_p1x.print_trace("signal_ini_p1x");
+//            p1x->print_trace();
+//            signal_vci_tgt_p1x.print_trace("signal_tgt_p1x");
+//            signal_vci_ini_p1x.print_trace("signal_ini_p1x");
 
-            p2x->print_trace();
-            signal_vci_tgt_p2x.print_trace("signal_tgt_p2x");
-            signal_vci_ini_p2x.print_trace("signal_ini_p2x");
+//            p2x->print_trace();
+//            signal_vci_tgt_p2x.print_trace("signal_tgt_p2x");
+//            signal_vci_ini_p2x.print_trace("signal_ini_p2x");
 
-            iox->print_trace();
-            signal_vci_tgt_iox.print_trace("signal_tgt_iox");
-            signal_vci_ini_iox.print_trace("signal_ini_iox");
+//            iox->print_trace();
+//            signal_vci_tgt_iox.print_trace("signal_tgt_iox");
+//            signal_vci_ini_iox.print_trace("signal_ini_iox");
 
-            cmx->print_trace();
-            signal_vci_tgt_cmx.print_trace("signal_tgt_cmx");
-            signal_vci_ini_cmx.print_trace("signal_ini_cmx");
+//            cmx->print_trace();
+//            signal_vci_tgt_cmx.print_trace("signal_tgt_cmx");
+//            signal_vci_ini_cmx.print_trace("signal_ini_cmx");
 
         }
     }
