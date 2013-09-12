@@ -859,7 +859,7 @@ tmpl(void)::transition()
 
 #if DEBUG_CMD_FSM
                 std::cout << "  <NMU[" << name()
-                          << "] CMD_MISS_READ_PTD> set = " << r_cmd_tlb_set.read()
+                          << "] CMD_MISS_WAIT_PTD> set = " << r_cmd_tlb_set.read()
                           << std::endl;
 #endif
 
@@ -992,7 +992,7 @@ tmpl(void)::transition()
 
 #if DEBUG_CMD_FSM
                 std::cout << "  <NMU[" << name()
-                          << "] CMD_MISS_READ_PTD> set = " << r_cmd_tlb_set.read()
+                          << "] CMD_MISS_READ_PTE> set = " << r_cmd_tlb_set.read()
                           << std::endl;
 #endif
 
