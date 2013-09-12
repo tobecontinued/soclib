@@ -717,11 +717,14 @@ tmpl(void)::transition()
                                    &set );
 
 #if DEBUG_CMD_FSM
-                std::cout << "  <NMU[" << name()
-                          << "] CMD_MISS_CHECK> vaddr = "
-                          << std::hex << vaddr
-                          << " set = " << set
-                          << std::endl;
+                if( debug )
+                    {
+                        std::cout << "  <NMU[" << name()
+                                  << "] CMD_MISS_CHECK> vaddr = "
+                                  << std::hex << vaddr
+                                  << " set = " << set
+                                  << std::endl;
+                    }
 #endif
 
                 if ( buf_hit ) // hit in prefetch buffer
@@ -804,9 +807,12 @@ tmpl(void)::transition()
                 m_cost_tlb_miss[vm]++;
 
 #if DEBUG_CMD_FSM
-                std::cout << "  <NMU[" << name()
-                          << "] CMD_MISS_READ_PTD> set = " << r_cmd_tlb_set.read()
-                          << std::endl;
+                if( debug )
+                    {
+                        std::cout << "  <NMU[" << name()
+                                  << "] CMD_MISS_READ_PTD> set = " << r_cmd_tlb_set.read()
+                                  << std::endl;
+                    }
 #endif
 
                 if ( r_cmd_fifo_address.wok() )
@@ -858,9 +864,12 @@ tmpl(void)::transition()
                 uint32_t ptd   = r_rsp_ptd.read();
 
 #if DEBUG_CMD_FSM
-                std::cout << "  <NMU[" << name()
-                          << "] CMD_MISS_WAIT_PTD> set = " << r_cmd_tlb_set.read()
-                          << std::endl;
+                if( debug )
+                    {
+                        std::cout << "  <NMU[" << name()
+                                  << "] CMD_MISS_WAIT_PTD> set = " << r_cmd_tlb_set.read()
+                                  << std::endl;
+                    }
 #endif
 
                 m_cost_tlb_miss[vm]++;
@@ -991,9 +1000,12 @@ tmpl(void)::transition()
                 uint32_t vm    = r_cmd_pktid.read();
 
 #if DEBUG_CMD_FSM
-                std::cout << "  <NMU[" << name()
-                          << "] CMD_MISS_READ_PTE> set = " << r_cmd_tlb_set.read()
-                          << std::endl;
+                if( debug )
+                    {
+                        std::cout << "  <NMU[" << name()
+                                  << "] CMD_MISS_READ_PTE> set = " << r_cmd_tlb_set.read()
+                                  << std::endl;
+                    }
 #endif
 
                 m_cost_tlb_miss[vm]++;
@@ -1047,11 +1059,14 @@ tmpl(void)::transition()
                 uint32_t ppn   = r_rsp_buf_ppn[vm][index].read();
 
 #if DEBUG_CMD_FSM
-                std::cout << "  <NMU[" << name()
-                          << "] CMD_MISS_TLB_UPDT> vaddr = "
-                          << std::hex << vaddr
-                          << " set = " << r_cmd_tlb_set.read()
-                          << std::endl;
+                if( debug )
+                    {
+                        std::cout << "  <NMU[" << name()
+                                  << "] CMD_MISS_TLB_UPDT> vaddr = "
+                                  << std::hex << vaddr
+                                  << " set = " << r_cmd_tlb_set.read()
+                                  << std::endl;
+                    }
 #endif
 
                 m_cost_tlb_miss[vm]++;
