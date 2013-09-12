@@ -716,6 +716,14 @@ tmpl(void)::transition()
                                    &way,
                                    &set );
 
+#if DEBUG_CMD_FSM
+                std::cout << "  <NMU[" << name()
+                          << "] CMD_MISS_CHECK> vaddr = "
+                          << std::hex << vaddr
+                          << " set = " << set
+                          << std::endl;
+#endif
+
                 if ( buf_hit ) // hit in prefetch buffer
                     {
                         uint32_t pte_flags = r_rsp_buf_flags[vm][index].read();
@@ -730,8 +738,6 @@ tmpl(void)::transition()
                                     }
 #endif
                                 r_cmd_fsm = CMD_MISS_TLB_UPDT;
-                                r_cmd_tlb_way = way;
-                                r_cmd_tlb_set = set;
                             }
                         else                        // hit in prefetch buffer, but PTE unmapped
                             {
@@ -784,6 +790,10 @@ tmpl(void)::transition()
                                 r_cmd_fsm    = CMD_MISS_READ_PTD;
                             }
                     }
+
+                r_cmd_tlb_way = way;
+                r_cmd_tlb_set = set;
+
                 break;
             }
             ///////////////////////
@@ -792,6 +802,12 @@ tmpl(void)::transition()
                 uint32_t vm    = r_cmd_pktid.read();
 
                 m_cost_tlb_miss[vm]++;
+
+#if DEBUG_CMD_FSM
+                std::cout << "  <NMU[" << name()
+                          << "] CMD_MISS_READ_PTD> set = " << r_cmd_tlb_set.read()
+                          << std::endl;
+#endif
 
                 if ( r_cmd_fifo_address.wok() )
                     {
@@ -840,6 +856,12 @@ tmpl(void)::transition()
                 uint32_t xcode = NO_ERROR;
                 uint32_t vm    = r_cmd_pktid.read();
                 uint32_t ptd   = r_rsp_ptd.read();
+
+#if DEBUG_CMD_FSM
+                std::cout << "  <NMU[" << name()
+                          << "] CMD_MISS_READ_PTD> set = " << r_cmd_tlb_set.read()
+                          << std::endl;
+#endif
 
                 m_cost_tlb_miss[vm]++;
 
@@ -951,7 +973,7 @@ tmpl(void)::transition()
                                           << " srcid = "   << std::hex << cmd_fifo_srcid
                                           << " trdid = "   << std::hex << cmd_fifo_trdid
                                           << " pktid = "   << std::hex << cmd_fifo_pktid
-                                         << " wdata = "   << std::hex << cmd_fifo_wdata
+                                          << " wdata = "   << std::hex << cmd_fifo_wdata
                                           << " be = "      << std::hex << cmd_fifo_be
                                           << " cmd = "     << std::dec << cmd_fifo_cmd
                                           << " plen = "    << std::dec << cmd_fifo_plen
@@ -967,6 +989,12 @@ tmpl(void)::transition()
             // that is written by the RSP FSM
             {
                 uint32_t vm    = r_cmd_pktid.read();
+
+#if DEBUG_CMD_FSM
+                std::cout << "  <NMU[" << name()
+                          << "] CMD_MISS_READ_PTD> set = " << r_cmd_tlb_set.read()
+                          << std::endl;
+#endif
 
                 m_cost_tlb_miss[vm]++;
 
@@ -1017,6 +1045,14 @@ tmpl(void)::transition()
                 uint32_t index = vpn & ((m_words >> 1) - 1);
                 uint32_t flags = r_rsp_buf_flags[vm][index].read();
                 uint32_t ppn   = r_rsp_buf_ppn[vm][index].read();
+
+#if DEBUG_CMD_FSM
+                std::cout << "  <NMU[" << name()
+                          << "] CMD_MISS_TLB_UPDT> vaddr = "
+                          << std::hex << vaddr
+                          << " set = " << r_cmd_tlb_set.read()
+                          << std::endl;
+#endif
 
                 m_cost_tlb_miss[vm]++;
 
