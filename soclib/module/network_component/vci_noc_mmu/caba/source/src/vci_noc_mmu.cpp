@@ -512,6 +512,11 @@ tmpl(void)::transition()
                                                   << " : FAILURE" << std::endl;
                                     }
 #endif
+
+                                r_cmd_trdid = p_vci_tgt.trdid.read();
+                                r_cmd_pktid = p_vci_tgt.pktid.read();
+                                r_cmd_srcid = p_vci_tgt.srcid.read();
+
                                 if ( p_vci_tgt.eop.read() )
                                     {
                                         r_cmd2rsp_req = true;
