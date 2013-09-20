@@ -963,7 +963,7 @@ tmpl(void)::transition()
                             }
 
                         cmd_fifo_put      = true;
-                        cmd_fifo_address  = paddr;
+                        cmd_fifo_address  = (paddr & 0xFFFFFFC0);
                         cmd_fifo_srcid    = m_srcid;
                         cmd_fifo_trdid    = NMU_PT_ACCESS_PTE;
                         cmd_fifo_pktid    = 0;
