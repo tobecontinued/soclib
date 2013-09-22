@@ -70,6 +70,7 @@ class VciFrameBuffer
 public:
      
     typedef typename vci_param::fast_addr_t  vci_addr_t; 
+    typedef typename vci_param::fast_data_t  vci_data_t; 
     typedef typename vci_param::be_t         vci_be_t; 
     typedef typename vci_param::srcid_t      vci_srcid_t;
     typedef typename vci_param::trdid_t      vci_trdid_t;
@@ -78,12 +79,11 @@ public:
     enum fsm_state_e
     {
         IDLE,
-        READ_32,
-        READ_64,
-        WRITE_32,
-        WRITE_64,
+        READ_RSP,
+        WRITE_CMD,
         WRITE_RSP,
-        ERROR,
+        ERROR_CMD,
+        ERROR_RSP,
     };
 
     // Ports
@@ -121,6 +121,8 @@ private:
     // Methods
     void transition();
     void genMoore();
+
+    void write_fb(size_t index, vci_data_t wdata, vci_be_t be);
 
 protected:
     SC_HAS_PROCESS(VciFrameBuffer);
