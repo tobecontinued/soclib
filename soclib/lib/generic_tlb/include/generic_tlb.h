@@ -540,7 +540,7 @@ public:
             } 
         }
 
-        assert("all TLB ways can't be new at the same time");
+        assert(false && "all TLB ways can't be new at the same time");
     } // end select()
 
     ////////////////////////////////////////////////////////////////////////
