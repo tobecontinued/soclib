@@ -578,7 +578,6 @@ public:
         }
         m_nline[way*m_nsets+set]       = nline;
         m_valid[way*m_nsets+set]       = true;
-        m_recent[way*m_nsets+set]      = true;
         m_local[way*m_nsets+set]       = (((pte_flags & PTE_L_MASK) >> PTE_L_SHIFT) == 1) ? true : false;
         m_remote[way*m_nsets+set]      = (((pte_flags & PTE_R_MASK) >> PTE_R_SHIFT) == 1) ? true : false;
         m_cacheable[way*m_nsets+set]   = (((pte_flags & PTE_C_MASK) >> PTE_C_SHIFT) == 1) ? true : false;
@@ -587,6 +586,8 @@ public:
         m_unprotected[way*m_nsets+set] = (((pte_flags & PTE_U_MASK) >> PTE_U_SHIFT) == 1) ? true : false;
         m_global[way*m_nsets+set]      = (((pte_flags & PTE_G_MASK) >> PTE_G_SHIFT) == 1) ? true : false;
         m_dirty[way*m_nsets+set]       = (((pte_flags & PTE_D_MASK) >> PTE_D_SHIFT) == 1) ? true : false;
+
+        set_recent(way, set);
     }  // end write()
 
     //////////////////////////////////////////////////////////////
