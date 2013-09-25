@@ -1373,12 +1373,6 @@ tmpl(void)::transition()
                             }
                         else if ( m_segment.contains(address) )
                             {
-                                r_config_wdata   = p_vci_config.wdata.read();
-                                r_config_srcid   = p_vci_config.srcid.read();
-                                r_config_trdid   = p_vci_config.trdid.read();
-                                r_config_pktid   = p_vci_config.pktid.read();
-                                r_config_vm      = vm;
-
                                 if     (not read and (cell == NOC_MMU_PTPR))  r_config_fsm = CONFIG_PTPR_WRITE;
                                 else if(not read and (cell == NOC_MMU_MODE))  r_config_fsm = CONFIG_MODE_WRITE;
                                 else if(    read and (cell == NOC_MMU_PTPR))  r_config_fsm = CONFIG_PTPR_READ;
@@ -1409,7 +1403,7 @@ tmpl(void)::transition()
 
                 if ( p_vci_config.rspack.read() )
                     {
-                        r_ptpr[vm]    = (uint32_t)(p_vci_config.wdata.read());
+                        r_ptpr[vm]    = (uint32_t)(r_config_wdata);
                         r_config_fsm = CONFIG_IDLE;
 
 #if DEBUG_CONFIG_FSM
@@ -1417,7 +1411,7 @@ tmpl(void)::transition()
                             {
                                 std::cout << "  <NMU[" << name()
                                           << "] CONFIG_PTPR_WRITE> PTPR[" << std::dec << vm << "] = "
-                                          <<  std::hex << (p_vci_config.wdata.read()) <<std::endl;
+                                          <<  std::hex << (r_config_wdata) <<std::endl;
                             }
 #endif
                     }
@@ -1430,7 +1424,7 @@ tmpl(void)::transition()
 
                 if ( p_vci_config.rspack.read() )
                     {
-                        uint32_t mode = (uint32_t)(p_vci_config.wdata.read() & 0x3);
+                        uint32_t mode = (uint32_t)(r_config_wdata & 0x3);
                         r_mode[vm]    = mode;
                         r_config_fsm  = CONFIG_IDLE;
 
