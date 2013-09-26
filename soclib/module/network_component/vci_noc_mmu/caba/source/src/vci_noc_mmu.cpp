@@ -760,6 +760,7 @@ tmpl(void)::transition()
                                 r_xcode[vm]   = PT2_ENTRY_UNMAPPED;
                                 r_bvar[vm]    = p_vci_tgt.address.read();
                                 r_mode[vm]    = NMU_MODE_FAILURE;
+
                                 if ( p_vci_tgt.eop.read() )
                                     {
                                         r_cmd2rsp_req = true;
@@ -790,6 +791,7 @@ tmpl(void)::transition()
                         if (bypass)                               // PTD read bypass
                             {
                                 r_cmd_bypass = true;
+                                r_cmd_ptba = ptba;
                                 r_cmd_fsm    = CMD_MISS_READ_PTE;
                             }
                         else                                      // must read PTD
@@ -903,6 +905,7 @@ tmpl(void)::transition()
                                                   << std::hex << ptd << std::endl;
                                     }
 #endif
+
                                 // register bypass in TLB
                                 r_tlb[vm]->set_bypass( p_vci_tgt.address.read(),  // vaddr
                                                        r_rsp_ptd.read(),          // ptba
