@@ -97,34 +97,40 @@ public:
 	inline void writeTo( output_port_t &port ) const
 	{
 		port.rspval = rspval;
-		port.rdata  = rdata;
-		port.reop   = reop;
-		port.rerror = rerror;
-		port.rsrcid = rsrcid;
-		port.rtrdid = rtrdid;
-		port.rpktid = rpktid;
+		if (rspval) {
+			port.rdata  = rdata;
+			port.reop   = reop;
+			port.rerror = rerror;
+			port.rsrcid = rsrcid;
+			port.rtrdid = rtrdid;
+			port.rpktid = rpktid;
+		}
 	}
     ////////////////////////////////////////////////
 	inline void readFrom( const input_port_t &port )
 	{
 		rspval = port.rspval;
-		rdata  = (typename vci_param::data_t)port.rdata;
-		reop   = port.reop;
-		rerror = (typename vci_param::rerror_t)port.rerror;
-		rsrcid = (typename vci_param::srcid_t)port.rsrcid;
-		rtrdid = (typename vci_param::trdid_t)port.rtrdid;
-		rpktid = (typename vci_param::pktid_t)port.rpktid;
+		if (port.rspval) {
+			rdata  = (typename vci_param::data_t)port.rdata;
+			reop   = port.reop;
+			rerror = (typename vci_param::rerror_t)port.rerror;
+			rsrcid = (typename vci_param::srcid_t)port.rsrcid;
+			rtrdid = (typename vci_param::trdid_t)port.rtrdid;
+			rpktid = (typename vci_param::pktid_t)port.rpktid;
+		}
 	}
     ////////////////////////////////////////////////
 	inline void readFrom( const VciMonitor<vci_param> &port )
 	{
 		rspval = port.rspval;
-		rdata  = (typename vci_param::data_t)port.rdata;
-		reop   = port.reop;
-		rerror = (typename vci_param::rerror_t)port.rerror;
-		rsrcid = (typename vci_param::srcid_t)port.rsrcid;
-		rtrdid = (typename vci_param::trdid_t)port.rtrdid;
-		rpktid = (typename vci_param::pktid_t)port.rpktid;
+		if (port.rspval) {
+			rdata  = (typename vci_param::data_t)port.rdata;
+			reop   = port.reop;
+			rerror = (typename vci_param::rerror_t)port.rerror;
+			rsrcid = (typename vci_param::srcid_t)port.rsrcid;
+			rtrdid = (typename vci_param::trdid_t)port.rtrdid;
+			rpktid = (typename vci_param::pktid_t)port.rpktid;
+		}
 	}
     /////////////////////////////////////////////////////////////////////////
     friend std::ostream &operator << (std::ostream &o, const VciRspBuffer &b)
@@ -206,58 +212,64 @@ public:
 	inline void readFrom( const VciMonitor<vci_param> &port )
 	{
 		cmdval  = port.cmdval;
-		address = (typename vci_param::addr_t)port.address;
-		be      = (typename vci_param::be_t)port.be;
-		cmd     = (typename vci_param::cmd_t)port.cmd;
-		contig  = (typename vci_param::contig_t)port.contig;
-		wdata   = (typename vci_param::data_t)port.wdata;
-		_eop    = port.eop;
-		cons    = (typename vci_param::const_t)port.cons;
-		plen    = (typename vci_param::plen_t)port.plen;
-		wrap    = (typename vci_param::wrap_t)port.wrap;
-		cfixed  = (typename vci_param::cfixed_t)port.cfixed;
-		clen    = (typename vci_param::clen_t)port.clen;
-		srcid   = (typename vci_param::srcid_t)port.srcid;
-		trdid   = (typename vci_param::trdid_t)port.trdid;
-		pktid   = (typename vci_param::pktid_t)port.pktid;
+		if (port.cmdval) {
+			address = (typename vci_param::addr_t)port.address;
+			be      = (typename vci_param::be_t)port.be;
+			cmd     = (typename vci_param::cmd_t)port.cmd;
+			contig  = (typename vci_param::contig_t)port.contig;
+			wdata   = (typename vci_param::data_t)port.wdata;
+			_eop    = port.eop;
+			cons    = (typename vci_param::const_t)port.cons;
+			plen    = (typename vci_param::plen_t)port.plen;
+			wrap    = (typename vci_param::wrap_t)port.wrap;
+			cfixed  = (typename vci_param::cfixed_t)port.cfixed;
+			clen    = (typename vci_param::clen_t)port.clen;
+			srcid   = (typename vci_param::srcid_t)port.srcid;
+			trdid   = (typename vci_param::trdid_t)port.trdid;
+			pktid   = (typename vci_param::pktid_t)port.pktid;
+		}
 	}
     ////////////////////////////////////////////////
 	inline void readFrom( const input_port_t &port )
 	{
 		cmdval  = port.cmdval;
-		address = (typename vci_param::addr_t)port.address;
-		be      = (typename vci_param::be_t)port.be;
-		cmd     = (typename vci_param::cmd_t)port.cmd;
-		contig  = (typename vci_param::contig_t)port.contig;
-		wdata   = (typename vci_param::data_t)port.wdata;
-		_eop    = port.eop;
-		cons    = (typename vci_param::const_t)port.cons;
-		plen    = (typename vci_param::plen_t)port.plen;
-		wrap    = (typename vci_param::wrap_t)port.wrap;
-		cfixed  = (typename vci_param::cfixed_t)port.cfixed;
-		clen    = (typename vci_param::clen_t)port.clen;
-		srcid   = (typename vci_param::srcid_t)port.srcid;
-		trdid   = (typename vci_param::trdid_t)port.trdid;
-		pktid   = (typename vci_param::pktid_t)port.pktid;
+		if (port.cmdval) {
+			address = (typename vci_param::addr_t)port.address;
+			be      = (typename vci_param::be_t)port.be;
+			cmd     = (typename vci_param::cmd_t)port.cmd;
+			contig  = (typename vci_param::contig_t)port.contig;
+			wdata   = (typename vci_param::data_t)port.wdata;
+			_eop    = port.eop;
+			cons    = (typename vci_param::const_t)port.cons;
+			plen    = (typename vci_param::plen_t)port.plen;
+			wrap    = (typename vci_param::wrap_t)port.wrap;
+			cfixed  = (typename vci_param::cfixed_t)port.cfixed;
+			clen    = (typename vci_param::clen_t)port.clen;
+			srcid   = (typename vci_param::srcid_t)port.srcid;
+			trdid   = (typename vci_param::trdid_t)port.trdid;
+			pktid   = (typename vci_param::pktid_t)port.pktid;
+		}
 	}
     ////////////////////////////////////////////////
 	inline void writeTo( output_port_t &port ) const
 	{
 		port.cmdval  = cmdval;
-		port.address = address;
-		port.be      = be;
-		port.cmd     = cmd;
-		port.contig  = contig;
-		port.wdata   = wdata;
-		port.eop     = _eop;
-		port.cons    = cons;
-		port.plen    = plen;
-		port.wrap    = wrap;
-		port.cfixed  = cfixed;
-		port.clen    = clen;
-		port.srcid   = srcid;
-		port.trdid   = trdid;
-		port.pktid   = pktid;
+		if (cmdval) {
+			port.address = address;
+			port.be      = be;
+			port.cmd     = cmd;
+			port.contig  = contig;
+			port.wdata   = wdata;
+			port.eop     = _eop;
+			port.cons    = cons;
+			port.plen    = plen;
+			port.wrap    = wrap;
+			port.cfixed  = cfixed;
+			port.clen    = clen;
+			port.srcid   = srcid;
+			port.trdid   = trdid;
+			port.pktid   = pktid;
+		}
 	}
     /////////////////////////////////////////////////////////////////////////
     friend std::ostream &operator << (std::ostream &o, const VciCmdBuffer &b)
