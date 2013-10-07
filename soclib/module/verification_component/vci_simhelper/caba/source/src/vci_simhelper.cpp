@@ -26,6 +26,7 @@
 
 #include <cstdlib>
 #include <sstream>
+#include <signal.h>
 
 #include "simhelper.h"
 #include "register.h"
@@ -59,6 +60,11 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
         std::cout << "Simulation paused, press ENTER" << std::endl;
         std::string a;
         std::cin >> a;
+    }
+    case SIMHELPER_SIGINT:
+    {
+        std::cout << "Simulation interrupted with signal interrupt (SIGINT)" << std::endl;
+        raise(SIGINT);
     }
 	}
 	return true;
