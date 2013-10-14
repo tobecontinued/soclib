@@ -67,33 +67,34 @@
 //  
 //////////////////////////////////////////////////////////////////////////////////
 //  Implementation note:
-//  This component contains three FSMs :
+//  This component contains four FSM types:
 //  - the tgt_fsm controls the configuration commands and responses 
 //    on the VCI target ports.
 //  - the cmd_fsm controls the read and write data transfer commands 
 //    on the VCI initiator port.
-//    It uses four registers : r_cmd fsm (state), r_cmd_count
+//    It uses four registers : r_cmd_fsm (state), r_cmd_count
 //    (counter of bytes in a write burst), r_cmd_index (selected channel),
 //    r_cmd_nbytes (VCI PLEN) and r_cmd_curr (current byte in the internal
 //    buffer during write burst).
 //  - the rsp_fsm controls the read and write data transfer responses 
 //    on the VCI initiator port.
-//    It uses four registers : r_rsp fsm (state), r_rsp_count
+//    It uses four registers : r_rsp_fsm (state), r_rsp_count
 //    (counter of bytes in a burst), r_rsp_index (selected channel)
 //    and r_rsp_nbytes (VCI PLEN).
-//  Each channel [k] has a set of "state" registers: 
-//  - r_channel_activate[k]	     channel actived (a transfer has been requested)
-//  - r_channel_src_addr[k]	     address of the source memory buffer
-//  - r_channel_dst_addr[k]	     address of the destination memory buffer
-//  - r_channel_length[k]	     total length of the memory buffers (bytes)
-//  - r_channel_src_offset[k]    number of non aligned bytes for source buffer
-//  - r_channel_dst_offset[k]    number of non aligned bytes for dest buffer
-//  - r_channel_nbytes_first[k]  number of bytes for requested VCI transaction
-//  - r_channel_nbytes_second[k] number of bytes for requested VCI transaction
-//  - r_channel_last[k]          last read/write DMA transaction
-//  - r_channel_done[k]          transfer completion signaled by RSP FSM
-//  - r_channel_error[k]         error signaled by RSP FSM
-//  - r_channel_buf[k][word]	 local burst buffer 
+//  - Each channel_fsm [k] has a set of "state" registers: 
+//    r_channel_fsm[k]	         channel state
+//    r_channel_activate[k]	     channel actived (a transfer has been requested)
+//    r_channel_src_addr[k]	     address of the source memory buffer
+//    r_channel_dst_addr[k]	     address of the destination memory buffer
+//    r_channel_length[k]	     total length of the memory buffers (bytes)
+//    r_channel_src_offset[k]    number of non aligned bytes for source buffer
+//    r_channel_dst_offset[k]    number of non aligned bytes for dest buffer
+//    r_channel_nbytes_first[k]  number of bytes for requested VCI transaction
+//    r_channel_nbytes_second[k] number of bytes for requested VCI transaction
+//    r_channel_last[k]          last read/write DMA transaction
+//    r_channel_done[k]          transfer completion signaled by RSP FSM
+//    r_channel_error[k]         error signaled by RSP FSM
+//    r_channel_buf[k][word]	 local burst buffer 
 ///////////////////////////////////i///////////////////////////////////////////////
 
 #include <stdint.h>
@@ -163,7 +164,7 @@ tmpl(void)::transition()
                 "VCI_MULTI_DMA error : Out of segment address in configuration");
 
                 assert( (channel < m_channels) and 
-                "VCI_MULTI_DMA error : The channel index (ADDR[14:12] is too large");
+                "VCI_MULTI_DMA error : The channel index is too large");
 
                 assert( p_vci_target.eop.read() and
                 "VCI_MULTI_DMA error : A configuration or status request mut be one flit");
@@ -177,7 +178,7 @@ tmpl(void)::transition()
                     "VCI_MULTI_DMA error : Source buffer address mut be multiple of 4");
 
                     r_channel_src_offset[channel] = wdata%m_burst_max_length; 
-                    r_channel_src_addr[channel] = (typename vci_param::fast_addr_t)wdata;
+                    r_channel_src_addr[channel] = (uint64_t)wdata;
                     r_tgt_fsm = TGT_WRITE;
                 }
                 else if ( (cell == DMA_SRC) and (cmd == vci_param::CMD_READ) )
@@ -193,7 +194,7 @@ tmpl(void)::transition()
                     "VCI_MULTI_DMA error : Configuration request for an active channel");
 
                     r_channel_src_addr[channel] = r_channel_src_addr[channel].read() +
-                                                  ((typename vci_param::fast_addr_t)wdata << 32);
+                                                  ((uint64_t)wdata << 32);
                     r_tgt_fsm = TGT_WRITE;
                 }
                 else if ( (cell == DMA_SRC_EXT) and (cmd == vci_param::CMD_READ) )
@@ -211,7 +212,7 @@ tmpl(void)::transition()
                     "VCI_MULTI_DMA error : Destination buffer address must be multiple of 4");
 
                     r_channel_dst_offset[channel] = wdata%m_burst_max_length; 
-                    r_channel_dst_addr[channel] = (typename vci_param::fast_addr_t)wdata;
+                    r_channel_dst_addr[channel] = (uint64_t)wdata;
                     r_tgt_fsm = TGT_WRITE;
                 }
                 else if ( (cell == DMA_DST) and (cmd == vci_param::CMD_READ) )
@@ -227,7 +228,7 @@ tmpl(void)::transition()
                     "VCI_MULTI_DMA error : Configuration request for an active channel");
 
                     r_channel_dst_addr[channel] = r_channel_dst_addr[channel].read() +
-                                                  ((typename vci_param::fast_addr_t)wdata << 32);
+                                                  ((uint64_t)wdata << 32);
                     r_tgt_fsm = TGT_WRITE;
                 }
                 else if ( (cell == DMA_DST_EXT) and (cmd == vci_param::CMD_READ) )
