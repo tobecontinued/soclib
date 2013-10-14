@@ -282,21 +282,21 @@ int _main(int argc, char *argv[])
     //////////////////////////////////////////////////////////////////////////
     MappingTable maptab(32, IntTab(12), IntTab(12), 0xFFF00000);
 
-    maptab.add(Segment("seg_reset" , SEG_RESET_BASE , SEG_RESET_SIZE , IntTab(ROM_TGTID), icached));
+    maptab.add(Segment("seg_reset"  , SEG_RESET_BASE  , SEG_RESET_SIZE  , IntTab(ROM_TGTID) , icached));
 
-    maptab.add(Segment("seg_kernel" , SEG_KERNEL_BASE   , SEG_KERNEL_SIZE   , IntTab(RAM_TGTID) , icached));
-    maptab.add(Segment("seg_kdata"  , SEG_KDATA_BASE    , SEG_KDATA_SIZE    , IntTab(RAM_TGTID) , dcached));
-    maptab.add(Segment("seg_kunc"   , SEG_KUNC_BASE     , SEG_KUNC_SIZE     , IntTab(RAM_TGTID) , false));
-    maptab.add(Segment("seg_code"   , SEG_CODE_BASE     , SEG_CODE_SIZE     , IntTab(RAM_TGTID) , icached));
-    maptab.add(Segment("seg_data"   , SEG_DATA_BASE     , SEG_DATA_SIZE     , IntTab(RAM_TGTID) , dcached));
-    maptab.add(Segment("seg_stack"  , SEG_STACK_BASE    , SEG_STACK_SIZE    , IntTab(RAM_TGTID) , dcached));
+    maptab.add(Segment("seg_kernel" , SEG_KERNEL_BASE , SEG_KERNEL_SIZE , IntTab(RAM_TGTID) , icached));
+    maptab.add(Segment("seg_kdata"  , SEG_KDATA_BASE  , SEG_KDATA_SIZE  , IntTab(RAM_TGTID) , dcached));
+    maptab.add(Segment("seg_kunc"   , SEG_KUNC_BASE   , SEG_KUNC_SIZE   , IntTab(RAM_TGTID) , false));
+    maptab.add(Segment("seg_code"   , SEG_CODE_BASE   , SEG_CODE_SIZE   , IntTab(RAM_TGTID) , icached));
+    maptab.add(Segment("seg_data"   , SEG_DATA_BASE   , SEG_DATA_SIZE   , IntTab(RAM_TGTID) , dcached));
+    maptab.add(Segment("seg_stack"  , SEG_STACK_BASE  , SEG_STACK_SIZE  , IntTab(RAM_TGTID) , dcached));
 
-    maptab.add(Segment("seg_timer"  , SEG_TIM_BASE      , SEG_TIM_SIZE      , IntTab(TIM_TGTID) , false));
-    maptab.add(Segment("seg_dma"    , SEG_DMA_BASE      , SEG_DMA_SIZE      , IntTab(DMA_TGTID) , false));
-    maptab.add(Segment("seg_fb"     , SEG_FBF_BASE      , SEG_FBF_SIZE      , IntTab(FBF_TGTID) , false));
-    maptab.add(Segment("seg_io"     , SEG_IOC_BASE      , SEG_IOC_SIZE      , IntTab(IOC_TGTID) , false));
-    maptab.add(Segment("seg_tty"    , SEG_TTY_BASE      , SEG_TTY_SIZE      , IntTab(TTY_TGTID) , false));
-    maptab.add(Segment("seg_icu"    , SEG_ICU_BASE      , SEG_ICU_SIZE      , IntTab(ICU_TGTID) , false));
+    maptab.add(Segment("seg_timer"  , SEG_TIM_BASE    , SEG_TIM_SIZE    , IntTab(TIM_TGTID) , false));
+    maptab.add(Segment("seg_dma"    , SEG_DMA_BASE    , SEG_DMA_SIZE    , IntTab(DMA_TGTID) , false));
+    maptab.add(Segment("seg_fb"     , SEG_FBF_BASE    , SEG_FBF_SIZE    , IntTab(FBF_TGTID) , false));
+    maptab.add(Segment("seg_io"     , SEG_IOC_BASE    , SEG_IOC_SIZE    , IntTab(IOC_TGTID) , false));
+    maptab.add(Segment("seg_tty"    , SEG_TTY_BASE    , SEG_TTY_SIZE    , IntTab(TTY_TGTID) , false));
+    maptab.add(Segment("seg_icu"    , SEG_ICU_BASE    , SEG_ICU_SIZE    , IntTab(ICU_TGTID) , false));
 
     std::cout << std::endl << maptab << std::endl;
 
@@ -436,7 +436,7 @@ int _main(int argc, char *argv[])
             maptab,
             IntTab(DMA_SRCID),
             IntTab(DMA_TGTID),
-            128,
+            64,
             n_procs);
 
     VciFrameBuffer<vci_param>* fbf;
