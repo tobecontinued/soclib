@@ -323,7 +323,9 @@ tmpl(/**/)::VciFrameBuffer(
       m_seglist( mt.getSegmentList(index) ),
       m_fb_controller( (const char *)name, width, height, subsampling )
 {
-    std::cout << "  - Building VciFramebuffer : " << name << std::endl;
+    std::cout << "  - Building VciFramebuffer : " << name << std::endl
+              << "    => width  = " << std::dec << width << std::endl
+              << "    => heigth = " << std::dec << height << std::endl;
 
     assert( (m_seglist.empty() == false) and
     "VCI_FRAMEBUFFER error : no segment allocated");
