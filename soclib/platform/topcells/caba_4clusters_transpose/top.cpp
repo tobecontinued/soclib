@@ -323,48 +323,85 @@ std::cout << "signals declaration OK" << std::endl;
     VciBlockDevice<vci_param>* 				                    ioc;
     VciVgmn<vci_param>* 				                        noc;
 
-    char* proc_name[4] = { "proc0", "proc1", "proc2", "proc3" };
-    char* ram_name[4] = { "ram0", "ram1", "ram2", "ram3" };
-    char* tty_name[4] = { "tty0", "tty1", "tty2", "tty3" };
-    char* icu_name[4] = { "icuO", "icu1", "icu2", "icu3" };
-    char* timer_name[4] = { "timO", "tim1", "tim2", "tim3" };
-
     for ( size_t i=0 ; i<4 ; i++ )
     {
-        proc[i] = new VciXcacheWrapper<vci_param, GdbServer<Mips32ElIss> > (proc_name[i], 
-                                                              i,maptab,IntTab(i,SRCID_PROC),
-                                                              icache_ways, icache_sets, icache_words,
-                                                              dcache_ways, dcache_sets, dcache_words);
-        ram[i]   = new VciSimpleRam<vci_param>(ram_name[i], IntTab(i, TGTID_RAM), maptab, loader);
-        tty[i]   = new VciMultiTty<vci_param>(tty_name[i], IntTab(i, TGTID_TTY), maptab, tty_name[i], NULL);
-        timer[i] = new VciTimer<vci_param>(timer_name[i], IntTab(i, TGTID_TIM), maptab, 1);
-        icu[i]   = new VciIcu<vci_param>(icu_name[i], IntTab(i, TGTID_ICU), maptab, 4);
+        std::ostringstream proc_name;
+        proc_name << "proc_" << i;
+        proc[i] = new VciXcacheWrapper<vci_param, GdbServer<Mips32ElIss> > (
+                      proc_name.str().c_str(),
+                      i,
+                      maptab,
+                      IntTab(i,SRCID_PROC),
+                      icache_ways, icache_sets, icache_words,
+                      dcache_ways, dcache_sets, dcache_words);
+
+        std::ostringstream ram_name;
+        ram_name << "ram_" << i;
+        ram[i]   = new VciSimpleRam<vci_param>(
+                       ram_name.str().c_str(),
+                       IntTab(i, TGTID_RAM), 
+                       maptab, 
+                       loader);
+
+        std::ostringstream tty_name;
+        tty_name << "tty_" << i;
+        tty[i]   = new VciMultiTty<vci_param>(
+                       tty_name.str().c_str(), 
+                       IntTab(i, TGTID_TTY), 
+                       maptab, 
+                       tty_name.str().c_str(), NULL);
+
+        std::ostringstream timer_name;
+        timer_name << "timer_" << i;
+        timer[i] = new VciTimer<vci_param>(
+                       timer_name.str().c_str(),
+                       IntTab(i, TGTID_TIM), 
+                       maptab, 
+                       1);
+
+        std::ostringstream icu_name;
+        icu_name << "icu_" << i;
+        icu[i]   = new VciIcu<vci_param>(
+                       icu_name.str().c_str(), 
+                       IntTab(i, TGTID_ICU), 
+                       maptab, 
+                       4);
     }
 
-std::cout << "procs, rams, ttys, timers, and icus constructed" << std::endl;
+    xbar[0] = new VciLocalCrossbar<vci_param>("xbar_0", maptab, 0, 2, 5, TGTID_RAM);
+    xbar[1] = new VciLocalCrossbar<vci_param>("xbar_1", maptab, 1, 2, 5, TGTID_RAM);
+    xbar[2] = new VciLocalCrossbar<vci_param>("xbar_2", maptab, 2, 1, 5, TGTID_RAM);
+    xbar[3] = new VciLocalCrossbar<vci_param>("xbar_3", maptab, 3, 1, 5, TGTID_RAM);
 
-    xbar[0] = new VciLocalCrossbar<vci_param>("xbar0", maptab, 0, 0, 2, 5);
-    xbar[1] = new VciLocalCrossbar<vci_param>("xbar1", maptab, 1, 1, 2, 5);
-    xbar[2] = new VciLocalCrossbar<vci_param>("xbar2", maptab, 2, 2, 1, 5);
-    xbar[3] = new VciLocalCrossbar<vci_param>("xbar3", maptab, 3, 3, 1, 5);
+    ioc = new VciBlockDevice<vci_param>(
+              "ioc", 
+              maptab, 
+              IntTab(0,SRCID_IOC), 
+              IntTab(0,TGTID_IOC), 
+              ioc_filename, 
+              512, 
+              20);
 
-std::cout << "crossbars constructed" << std::endl;
+    dma = new VciDma<vci_param>(
+              "dma", 
+              maptab, 
+              IntTab(1,SRCID_DMA), 
+              IntTab(1,TGTID_DMA), 
+              128);
 
-    ioc = new VciBlockDevice<vci_param>("ioc", maptab, IntTab(0,SRCID_IOC), 
-                                         IntTab(0,TGTID_IOC), ioc_filename, 512, 200000);
+    fbf = new VciFrameBuffer<vci_param>(
+              "fbf", 
+              IntTab(2,TGTID_FBF), 
+              maptab, 
+              fbf_size, fbf_size);
 
-    dma = new VciDma<vci_param>("dma", maptab, IntTab(1,SRCID_DMA), 
-                                 IntTab(1,TGTID_DMA), 128);
-
-    fbf = new VciFrameBuffer<vci_param>("fbf", IntTab(2,TGTID_FBF), maptab, fbf_size, fbf_size);
-
-    rom = new VciSimpleRam<vci_param>("rom", IntTab(3,TGTID_ROM), maptab, loader);
-
-std::cout << "rom, dma, fbf, ioc constructed" << std::endl;
+    rom = new VciSimpleRam<vci_param>(
+              "rom", 
+              IntTab(3,TGTID_ROM), 
+              maptab, 
+              loader);
 
     noc = new VciVgmn<vci_param>("noc", maptab, 4, 4, 4, 8);
-
-std::cout << "noc constructed" << std::endl;
 
     //////////////////////////////////////////////////////////////////////////
     // Net-List
@@ -470,11 +507,23 @@ std::cout << "net-list completed" << std::endl;
     {
         if( debug_ok && (n > from_cycle) )
         {
-            std::cout << "***************** cycle " << std::dec << n << std::endl;
+            std::cout << "************************* cycle " << std::dec << n 
+                      << " ************************" << std::endl;
             proc[0]->print_trace();
-            proc[1]->print_trace();
-            proc[2]->print_trace();
-            proc[3]->print_trace();
+            signal_vci_proc[0].print_trace("[SIG] PROC_0 ");
+            xbar[0]->print_trace();
+            signal_vci_l2g[0].print_trace("[SIG] L2G_0 ");
+            signal_vci_l2g[1].print_trace("[SIG] L2G_1 ");
+            signal_vci_l2g[2].print_trace("[SIG] L2G_2 ");
+            signal_vci_l2g[3].print_trace("[SIG] L2G_3 ");
+            noc->print_trace();
+            signal_vci_g2l[0].print_trace("[SIG] G2L_0 ");
+            signal_vci_g2l[1].print_trace("[SIG] G2L_1 ");
+            signal_vci_g2l[2].print_trace("[SIG] G2L_2 ");
+            signal_vci_g2l[3].print_trace("[SIG] G2L_3 ");
+            xbar[3]->print_trace();
+            signal_vci_tgt_rom.print_trace("[SIG] ROM ");
+            rom->print_trace();
         }
         sc_start( sc_time( 1 , SC_NS ) ) ;
     }
