@@ -107,7 +107,7 @@ tmpl(/**/)::VciSimpleRam(
       p_clk("p_clk"),
       p_vci("p_vci")
 {
-    std::cout << "  - Building SimpleRam : " << name << std::endl;
+    std::cout << "  - Building VciSimpleRam : " << name << std::endl;
 
     size_t nsegs = 0;
 
@@ -199,8 +199,8 @@ tmpl(bool)::write(size_t      seg,
         if ( (addr >= m_monitor_base) and 
              (addr < m_monitor_base + m_monitor_length) )
         {
-            std::cout << " RAM Monitor " << name() << std::hex
-                      << " change : address = " << addr
+            std::cout << " Monitor RAM " << name() << std::hex
+                      << " : address = " << addr
                       << " / data = " << wdata
                       << " / be = " << be << std::endl;
         }
