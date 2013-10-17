@@ -186,6 +186,8 @@ tmpl(/**/)::VciXcacheWrapper(
       r_icache("icache", icache_ways, icache_sets, icache_words),
       r_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 {
+    std::cout << "  - Building VciXcacheWrapper " << name << std::endl;
+
     assert((icache_words*vci_param::B) < (1<<vci_param::K) and "I need more PLEN bits");
 
     SC_METHOD(transition);
@@ -446,7 +448,7 @@ tmpl(void)::transition()
 
             m_cpt_icache_read++;
 
-            bool    icache_cacheable = m_cacheability_table[m_ireq.addr];
+            bool    icache_cacheable = m_cacheability_table[(uint64_t)m_ireq.addr];
 
             if ( icache_cacheable )    // cacheable access
             {

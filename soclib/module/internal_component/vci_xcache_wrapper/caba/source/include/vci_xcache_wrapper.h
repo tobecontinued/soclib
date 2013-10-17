@@ -106,7 +106,7 @@ public:
 private:
 
     // STRUCTURAL PARAMETERS
-    const soclib::common::AddressDecodingTable<uint32_t, bool>  m_cacheability_table;
+    const soclib::common::AddressDecodingTable<uint64_t, bool>  m_cacheability_table;
     iss_t                                                       m_iss;
     const uint32_t                                              m_srcid;
 

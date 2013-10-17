@@ -796,7 +796,7 @@ r_cpt_itlb_read++;
             {
                 // cacheability
                 if ( not (r_mmu_mode.read() & INS_CACHE_MASK) ) cacheable = false;
-                else     cacheable = m_cacheability_table[m_ireq.addr];
+                else     cacheable = m_cacheability_table[(uint64_t)m_ireq.addr];
 
                 // physical address
                 paddr = (paddr_t)m_ireq.addr;
@@ -1714,7 +1714,7 @@ r_cpt_dtlb_read++;
                     }
                     else 
                     {
-                        cacheable = m_cacheability_table[m_dreq.addr];
+                        cacheable = m_cacheability_table[(uint64_t)m_dreq.addr];
                     }
 
                     // physical address
