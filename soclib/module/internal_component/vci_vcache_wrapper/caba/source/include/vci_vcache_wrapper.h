@@ -200,7 +200,7 @@ public:
 private:
 
     // STRUCTURAL PARAMETERS
-    soclib::common::AddressDecodingTable<uint32_t, bool>    	m_cacheability_table;
+    soclib::common::AddressDecodingTable<uint64_t, bool>    	m_cacheability_table;
     const vci_srcid_t                                       	m_srcid;
 
     const size_t  						m_tlb_ways;
