@@ -96,16 +96,15 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
 
         r_buf_in = new internal_flit_t[nb_local_inputs + 1];
 
-        // routing table for CMD crossbar (from address)
-        if ( use_routing_table and is_cmd )        
+        // build routing table
+        size_t cluster_id = (x << y_width) + y;
+        if ( use_routing_table and is_cmd )        // from ADDRESS
         {
-            m_routing_table = mt.getPortidFromAddress( (x << y_width) + y );
+            m_cmd_rt = mt.getLocalIndexFromAddress( cluster_id );
         }
-
-        // routing table for RSP crossbar (from srcid)
-        if ( use_routing_table and not is_cmd ) 
+        if ( use_routing_table and not is_cmd )    // from SRCID
         {
-            m_routing_table = mt.getPortidFromSrcid( (x << y_width) + y );
+            m_rsp_rt = mt.getLocalIndexFromSrcid( cluster_id );
         }
 
         // construct FIFOs
@@ -178,12 +177,12 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
                         address = data>>(flit_width - m_addr_width);
                     else                          
                         address = data<<(m_addr_width - flit_width);
-                    output = m_routing_table[address];
+                    output = m_cmd_rt[ address ];
                 }
                 else
                 {   
-                    uint64_t srcid = data >> m_l_shift;
-                    output = m_routing_table[srcid];
+                    uint32_t srcid = data >> m_l_shift;
+                    output = m_rsp_rt[ srcid ];
                 }
             }
             else
@@ -406,7 +405,7 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
                          get_out[r_index_in[i].read()] == i )  // last flit transfered
                     {
                         assert( r_fifo_in[i].read().eop and 
-                        "ERROR in DSPIN_LOCAL_CROSSBAR : broadcast packets must have 2 flits");
+                        "ERROR in DSPIN_LOCAL_CROSSBAR : broadcast must have 2 flits");
 
                         if ( r_index_in[i].read() == 0 ) r_fsm_in[i] = INFSM_IDLE;
                         else                             r_fsm_in[i] = INFSM_REQ_BC;
