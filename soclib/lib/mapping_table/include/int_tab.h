@@ -30,6 +30,7 @@
 
 #include <vector>
 #include "exception.h"
+#include <cstdlib>
 
 namespace soclib { namespace common {
 
