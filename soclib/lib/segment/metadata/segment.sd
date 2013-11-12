@@ -18,7 +18,6 @@ Module('common:segment',
 	parameter.IntTab('ident'),
 	parameter.Bool('cacheable'),
 	parameter.Bool('initiator', default = False),
-	parameter.IntTab('initiator_index', default = []),
 		],
 	   extensions = [
 	'dsx:configurator=segment',
