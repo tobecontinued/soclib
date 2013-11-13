@@ -467,8 +467,8 @@ MappingTable::getGlobalIndexFromSrcid() const
 {
     const_cast<MappingTable*>(this)->m_used = true;
 
-	size_t global_width = m_level_id_bits[0];
-	size_t local_width  = m_level_id_bits[1];
+    size_t global_width = m_level_id_bits[0];
+    size_t local_width  = m_srcid_width - global_width;
     size_t adt_size     = 1<<global_width;
 
     //  ADT to be returned 
