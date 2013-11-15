@@ -132,7 +132,7 @@ int _main(int argc, char *argv[])
 	soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(3), maptab, 4);
 	soclib::caba::VciLocks<vci_param> vcilocks("vcilocks", IntTab(4), maptab); 
 	
-	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 4, 5, 2, 8);
+	soclib::caba::VciVgmn<vci_param> vgmn("vgmn",maptab, 4, 5, 3, 8);
 
 	//	Net-List
  
