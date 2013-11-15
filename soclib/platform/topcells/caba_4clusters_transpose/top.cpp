@@ -492,15 +492,15 @@ std::cout << "signals declaration OK" << std::endl;
     dma->p_vci_target                       (signal_vci_tgt_dma);
     dma->p_irq                              (signal_irq_dma);
 
-std::cout << "net-list completed" << std::endl;
+    std::cout << "net-list completed" << std::endl;
 
     //////////////////////////////////////////////////////////////////////////
     // simulation
     //////////////////////////////////////////////////////////////////////////
 
+    sc_start( sc_time( 1, SC_NS ) ) ;
     signal_false = false;
     signal_resetn = false;
-    sc_start( sc_time( 1, SC_NS ) ) ;
 
     signal_resetn = true;
     for ( int n=1 ; n<ncycles ; n++ )
