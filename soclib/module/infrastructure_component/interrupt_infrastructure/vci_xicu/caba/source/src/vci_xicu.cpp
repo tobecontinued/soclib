@@ -395,6 +395,22 @@ tmpl(void)::transition()
 	m_vci_fsm.transition();
 }
 
+//////////////////////////////////////////
+tmpl(void)::print_trace( size_t channel )
+{
+    assert( (channel < m_irq_count) and
+    "ERROR in XICU print_trace() : channel larger than proc number");
+   
+    std::cout << "XICU " << name() << std::hex
+              << " / HWI_MASK = " << r_msk_hwi[channel]
+              << " / SWI_MASK = " << r_msk_wti[channel]
+              << " / PTI_MASK = " << r_msk_pti[channel] 
+              << " / HWI = " << r_hwi_pending
+              << " / WTI = " << r_wti_pending
+              << " / PTI = " << r_pti_pending
+              << std::endl;
+}
+
 ///////////////////////
 tmpl(void)::genMoore()
 {

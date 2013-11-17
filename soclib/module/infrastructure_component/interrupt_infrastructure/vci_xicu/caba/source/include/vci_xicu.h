@@ -84,6 +84,8 @@ public:
     sc_core::sc_out<bool>*                         p_irq;
     sc_core::sc_in<bool>*                          p_hwi;
 
+    void print_trace( size_t channel );
+
 	~VciXicu();
 
 	VciXicu(
