@@ -44,6 +44,7 @@ tmpl(void)::transition()
 		r_fsm_state  = IDLE;
         r_cpt_read   = 0;
         r_cpt_write  = 0;
+        r_lock       = false;
 		return;
 	}
 
@@ -74,30 +75,47 @@ tmpl(void)::transition()
                 }
             }
 
-            if      ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_WRITE) and
-                      (reg == TTY_WRITE ) and channel < m_term.size() )
+            if      ( not seg_error and            // read char
+                      (p_vci.cmd.read() == vci_param::CMD_WRITE) and
+                      (reg == TTY_WRITE ) and 
+                      channel < m_term.size() )
             {
                 m_term[channel]->putc( p_vci.wdata.read() );
                 r_cpt_write = r_cpt_write.read() + 1; 
                 r_fsm_state = RSP_WRITE;
             }     
-            else if ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_WRITE) and
-                     (reg == TTY_CONFIG) and channel < m_term.size() )
+            else if ( not seg_error and            // release lock
+                      (p_vci.cmd.read() == vci_param::CMD_WRITE) and
+                      (reg == TTY_CONFIG) and 
+                      channel < m_term.size() )
             {
-                // no action
+                r_lock      = false;
                 r_fsm_state = RSP_WRITE;
             }
-            else if ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_READ) and
-                     (reg == TTY_READ) and channel < m_term.size() )
+            else if ( not seg_error and            // try to get lock
+                      (p_vci.cmd.read() == vci_param::CMD_READ) and
+                      (reg == TTY_CONFIG) and 
+                      channel < m_term.size() )
+            {
+                r_rdata     = (vci_data_t)r_lock.read();
+                r_lock      = true;
+                r_fsm_state = RSP_READ;
+            }
+            else if ( not seg_error and            // read char 
+                      (p_vci.cmd.read() == vci_param::CMD_READ) and
+                      (reg == TTY_READ) and 
+                      channel < m_term.size() )
             {
                 r_rdata     = m_term[channel]->getc();
                 r_cpt_read  = r_cpt_read.read() + 1; 
                 r_fsm_state = RSP_READ;
             }
-            else if ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_READ) and
-                     (reg == TTY_STATUS) and channel < m_term.size() )
+            else if ( not seg_error and            // read status
+                      (p_vci.cmd.read() == vci_param::CMD_READ) and
+                      (reg == TTY_STATUS) and 
+                      channel < m_term.size() )
             {
-                r_rdata = m_term[channel]->hasData();
+                r_rdata     = m_term[channel]->hasData();
                 r_fsm_state = RSP_READ;
             }
             else if ( p_vci.eop.read() )

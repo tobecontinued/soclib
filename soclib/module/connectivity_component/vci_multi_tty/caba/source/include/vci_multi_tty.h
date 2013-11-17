@@ -94,6 +94,7 @@ private:
     sc_signal<vci_pktid_t>                      r_pktid;
     sc_signal<uint32_t>                         r_cpt_read;
     sc_signal<uint32_t>                         r_cpt_write;
+    sc_signal<bool>                             r_lock;
       
     std::vector<soclib::common::TtyWrapper*>    m_term;
     std::list<soclib::common::Segment>          m_seglist;
