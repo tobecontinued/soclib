@@ -232,7 +232,7 @@ public:
         uint32_t    word    = (r_pkt_index / 2) + 1;
 
 #ifdef SOCLIB_NIC_DEBUG
-        printf("[NIC][TX_CHBUF][%s] r_pkt_index = %d\n", __func__, r_pkt_index);
+        // printf("[NIC][TX_CHBUF][%s] r_pkt_index = %d\n", __func__, r_pkt_index);
 #endif
 
         if (odd) // odd
@@ -247,9 +247,6 @@ public:
     uint32_t npkt()
     {
 #ifdef SOCLIB_NIC_DEBUG
-        printf("\n");
-        printf("***\n");
-        printf("\n");
         // Printing the actuel buffer internals values
         for (size_t i = 0; i < NIC_CONTAINER_SIZE; i++)
             {
@@ -315,11 +312,14 @@ public:
                                 uint32_t word = 1 + (p>>1);
                                 uint32_t plen;
 
-                                if ( (p&0x1) == 0x1 ) plen = r_cont[cont][word] >> 16;
-                                else                plen = r_cont[cont][word] & 0x0000FFFF;
-// #ifdef SOCLIB_NIC_DEBUG
-                                std::cout << "[NIC][TX_CHBUF][" << __func__ << "] plen[" << p << "] = " << plen << std::endl;
-// #endif
+                                if ( (p & 0x1) == 0x1 )
+                                    plen = r_cont[cont][word] & 0x0000FFFF;
+                                else 
+                                    plen = r_cont[cont][word] >> 16;
+#ifdef SOCLIB_NIC_DEBUG
+                                if (p + 1 >= packets)
+                                    std::cout << "[NIC][TX_CHBUF][" << __func__ << "] plen[" << p << "] = " << plen << std::endl;
+#endif
                             }
                     }
             }

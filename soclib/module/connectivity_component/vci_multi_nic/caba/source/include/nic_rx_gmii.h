@@ -60,6 +60,7 @@
 #include <cstdlib>
 #include <fstream>
 
+#include "nic_rx_backend.h"
 
 namespace soclib {
 namespace caba {
@@ -67,12 +68,12 @@ namespace caba {
 using namespace sc_core;
 
 ////////////////
-class NicRxGmii
+class NicRxGmii : public NicRxBackend
 {
     // structure constants
     const std::string   m_name;
-    const uint32_t	    m_gap;
     std::ifstream       m_file;
+    const uint32_t	    m_gap;
 
     // registers
     bool                r_fsm_gap;      // inter_packet state when true
@@ -100,7 +101,7 @@ class NicRxGmii
     // This function is used to read one packet from the input file
     // It updates the r_buffer and the r_plen variables.
     ///////////////////////////////////////////////////////////////////
-    void read_one_packet()
+    virtual void read_one_packet()
     {
         uint32_t      data = 0;
         std::string   string;
@@ -108,7 +109,7 @@ class NicRxGmii
         // We check that the file is open
         if (m_file)
             {
-                // string contains one packet and r_plen contains number of byres
+                // string contains one packet and r_plen contains number of bytes
                 m_file >> r_plen >> string;
 
                 // check end of file and restart it
@@ -122,18 +123,18 @@ class NicRxGmii
                 // This version accepts packets containing preamble+SFD or only SFD
                 // Preamble consumption
                 /*!
-                 * \attention 0xD5 as preamble is mandatory, at least
+                 * \attention at least 0xD5 as preamble is mandatory
                  */
                 size_t preamb_cpt = 0;  //counts bytes on the preamble
 
                 while (atox(string[2*preamb_cpt])==0x5 and atox(string[2*preamb_cpt+1])==0x5)
                     {
-                        preamb_cpt ++;
+                        preamb_cpt++;
                     }
                 // SFD consumption
                 if (atox(string[2*preamb_cpt])==0xD and atox(string[2*preamb_cpt+1])==0x5)
                     {
-                        preamb_cpt ++;
+                        preamb_cpt++;
                     }
                 else
                     {
@@ -143,7 +144,7 @@ class NicRxGmii
                         exit(0);
                     }
                 // Because r_plen from the file adds preamble, we remove it from the value
-                r_plen = r_plen - preamb_cpt;
+                // r_plen = r_plen - preamb_cpt;
 
                 // convert two hexadecimal characters into one uint8_t
                 for (size_t n = 0; n < (r_plen << 1) ; n++)
@@ -166,7 +167,7 @@ class NicRxGmii
 public:
 
     /////////////
-    void reset()
+    virtual void reset()
     {
         r_fsm_gap   = true;
         r_counter   = m_gap;
@@ -179,9 +180,9 @@ public:
     // It is therefore written as a transition and contains a
     // two states FSM to introduce the inter-packet waiting cycles.
     ///////////////////////////////////////////////////////////////////
-    void get( bool*     dv,         // data valid
-              bool*     er,         // data error
-              uint8_t*  dt  )       // data value
+    virtual void get( bool*     dv,         // data valid
+                      bool*     er,         // data error
+                      uint8_t*  dt  )       // data value
     {
         if ( r_fsm_gap )    // inter-packet state
             {
@@ -215,8 +216,9 @@ public:
 
     /*!
      * \brief This method returns true if the RX chain is to be frozen.
+     * \attention This function is only here to reflect the VHDL version of the NIC
      */
-    bool frz()
+    virtual bool frz()
     {
         return false;
     }
@@ -228,21 +230,25 @@ public:
               const std::string  &path,
               uint32_t           gap)
         : m_name(name),
-          m_gap(gap),
-          m_file(path.c_str())
+          m_file(path.c_str()),
+          m_gap(gap)
     {
         r_buffer        = new uint8_t[2048];
 
+#ifdef SOCLIB_NIC_DEBUG
+        std::cout << "[NIC][" << __func__ << "] Entering constructor" << std::endl;
+#endif
+
         if (m_file)
-            std::cout << "input file = " << path << std::endl;
+            std::cout << "[NIC][" << __func__ << "] input file = " << path << std::endl;
         else
-            std::cout << "ERROR in RX_GMII : cannot open file " << path << std::endl;
+            std::cout << "[NIC][" << __func__ << "] ERROR in RX_GMII : cannot open file " << path << std::endl;
     } // end constructor
 
     //////////////////
     // destructor)
     //////////////////
-    ~NicRxGmii()
+    virtual ~NicRxGmii()
     {
         delete [] r_buffer;
         m_file.close();
