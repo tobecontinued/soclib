@@ -34,14 +34,15 @@
 //  - STATUS[31:0] : buffer status (buffer full when STATUS non zero)
 //  - PADDR[31:0]  : buffer base address
 //  The buffer size must be the same for src_chbuf and dst_chbuf.
-//
+//  The "chbuf descriptor" base address must be a multiple of 4 bytes.
+
 //  As this DMA controller uses a polling policy to access both the src_chbuf
-//  and the dst chbuf, it introduces a delay between to access to a chbuf.
+//  and the dst chbuf, it introduces a delay between two accesses to a chbuf.
 //  This delay is an optional constructor argument. Default value is 1000 cycles.
 //  
-//  This component makes the assumption that the VCI RDATA & WDATA fields
-//  have 32 bits. The number of channels and the max size of a data burst are
-//  constructor parameters. 
+//  This component supports both 32 bits and 64 bits VCI RDATA & WDATA fields.
+//
+//  The number of channels and the max burst size are constructor parameters. 
 //
 //  The chbuf descriptor address (CHBUF_DESC), and the number of chained 
 //  buffers (CHBUF_NBUFS), as well as the elementary buffer size (BUF_SIZE)
@@ -49,7 +50,7 @@
 //  when launching a transfer between two chbufs.
 //
 //  - The number of channels (simultaneous transfers) cannot be larger than 8.
-//  - The burst length (in bytes) must be a power of 2 no larger than 128,
+//  - The burst length (in bytes) must be a power of 2 no larger than 64,
 //    and is typically equal to the system cache line width.
 //  - The elementary buffer size and all buffers base addresses must be multiple 
 //    of 4 bytes. If the source and destination buffers are not aligned on a burst 
@@ -75,11 +76,7 @@
 //  in register CHBUF_RUN[k], focing channel[k] to IDLE state.
 //
 //  In order to support multiple simultaneous transactions, the channel
-//  index is transmited in the VCI TRDID field.
-//  As the LSB bit of the TRDID is used to indicate a non-cachable access,
-//  the channel index is encoded in the next 3 bits, and the TRDID width
-//  must be at least 4 bits.
-//  
+//  index is transmited in the VCI TRDID field.    
 //////////////////////////////////////////////////////////////////////////////////
 //  Implementation note:
 // 
@@ -185,8 +182,7 @@ tmpl(void)::transition()
             if (p_vci_target.cmdval.read() )
             {
                 typename vci_param::fast_addr_t	address = p_vci_target.address.read();
-                typename vci_param::data_t	wdata   = (uint32_t)p_vci_target.wdata.read();
-                typename vci_param::cmd_t	cmd     = p_vci_target.cmd.read();
+                typename vci_param::cmd_t	    cmd     = p_vci_target.cmd.read();
 
                 bool found = false;
                 std::list<soclib::common::Segment>::iterator seg;
@@ -211,14 +207,18 @@ tmpl(void)::transition()
                 assert( p_vci_target.eop.read() and
                 "VCI_CHBUF_DMA error : A configuration request must be one single flit");
 
-                assert(((vci_param::B == 4) || (vci_param::B == 8 && p_vci_target.be.read() == 0x0f)) &&
-                "VCI_CHBUF_DMA error : In configuration request data must be on 32 bits");
-                
+                // get write data value for both 32 bits and 64 bits data width
+                unsigned int wdata;
+                if( (vci_param::B == 8) and (p_vci_target.be.read() == 0xF0) ) 
+                    wdata = (uint32_t)(p_vci_target.wdata.read()>>32);
+                else
+                    wdata = p_vci_target.wdata.read();
+
                 //////////////////////////////////////////////////////////
 	            if ( (cell == CHBUF_RUN) and (cmd == vci_param::CMD_WRITE) )
                 {
                     r_channel_run[k] = (wdata != 0);
-                    r_tgt_fsm              = TGT_WRITE;
+                    r_tgt_fsm        = TGT_WRITE;
                 }
                 /////////////////////////////////////////////////////////////////
 	            else if ( (cell == CHBUF_STATUS) and (cmd == vci_param::CMD_READ) )
@@ -557,7 +557,7 @@ tmpl(void)::transition()
 
             // move data from SRC buffer to DST buffer (internal loop)
 
-            ///////////////////////////////
+            ////////////////////////
             case CHANNEL_READ_BURST:    // prepare the VCI READ burst
             {
                 uint32_t first  = m_burst_max_length - r_channel_src_offset[k].read();
@@ -1379,53 +1379,53 @@ tmpl(void)::print_trace()
     };
     const char* rsp_state_str[] = 
     {
-        "  RSP_IDLE",
-        "  RSP_READ_SRC_STATUS",
-        "  RSP_READ_SRC_BUFADDR",
-        "  RSP_READ_DST_STATUS",
-        "  RSP_READ_DST_BUFADDR",
-        "  RSP_READ_DATA",
-        "  RSP_WRITE"
+        " RSP_IDLE",
+        " RSP_READ_SRC_STATUS",
+        " RSP_READ_SRC_BUFADDR",
+        " RSP_READ_DST_STATUS",
+        " RSP_READ_DST_BUFADDR",
+        " RSP_READ_DATA",
+        " RSP_WRITE"
     };
     const char* channel_state_str[] = 
     {
-        "  CHANNEL_IDLE",
+        " CHANNEL_IDLE",
 
-        "  CHANNEL_SRC_DATA_ERROR",
-        "  CHANNEL_DST_DATA_ERROR",
-        "  CHANNEL_SRC_DESC_ERROR",
-        "  CHANNEL_DST_DESC_ERROR",
+        " CHANNEL_SRC_DATA_ERROR",
+        " CHANNEL_DST_DATA_ERROR",
+        " CHANNEL_SRC_DESC_ERROR",
+        " CHANNEL_DST_DESC_ERROR",
 
-        "  CHANNEL_READ_SRC_STATUS",
-        "  CHANNEL_READ_SRC_STATUS_WAIT",
-        "  CHANNEL_READ_SRC_STATUS_DELAY",
-        "  CHANNEL_READ_SRC_BUFADDR",
-        "  CHANNEL_READ_SRC_BUFADDR_WAIT",
+        " CHANNEL_READ_SRC_STATUS",
+        " CHANNEL_READ_SRC_STATUS_WAIT",
+        " CHANNEL_READ_SRC_STATUS_DELAY",
+        " CHANNEL_READ_SRC_BUFADDR",
+        " CHANNEL_READ_SRC_BUFADDR_WAIT",
 
-        "  CHANNEL_READ_DST_STATUS",
-        "  CHANNEL_READ_DST_STATUS_WAIT",
-        "  CHANNEL_READ_DST_STATUS_DELAY",
-        "  CHANNEL_READ_DST_BUFADDR",
-        "  CHANNEL_READ_DST_BUFADDR_WAIT",
+        " CHANNEL_READ_DST_STATUS",
+        " CHANNEL_READ_DST_STATUS_WAIT",
+        " CHANNEL_READ_DST_STATUS_DELAY",
+        " CHANNEL_READ_DST_BUFADDR",
+        " CHANNEL_READ_DST_BUFADDR_WAIT",
 
-        "  CHANNEL_READ_BURST",
-        "  CHANNEL_READ_REQ_FIRST",
-        "  CHANNEL_READ_WAIT_FIRST",
-        "  CHANNEL_READ_REQ_SECOND",
-        "  CHANNEL_READ_WAIT_SECOND",
+        " CHANNEL_READ_BURST",
+        " CHANNEL_READ_REQ_FIRST",
+        " CHANNEL_READ_WAIT_FIRST",
+        " CHANNEL_READ_REQ_SECOND",
+        " CHANNEL_READ_WAIT_SECOND",
 
-        "  CHANNEL_WRITE_BURST",
-        "  CHANNEL_WRITE_REQ_FIRST",
-        "  CHANNEL_WRITE_WAIT_FIRST",
-        "  CHANNEL_WRITE_REQ_SECOND",
-        "  CHANNEL_WRITE_WAIT_SECOND",
+        " CHANNEL_WRITE_BURST",
+        " CHANNEL_WRITE_REQ_FIRST",
+        " CHANNEL_WRITE_WAIT_FIRST",
+        " CHANNEL_WRITE_REQ_SECOND",
+        " CHANNEL_WRITE_WAIT_SECOND",
 
-        "  CHANNEL_SRC_STATUS_WRITE",
-        "  CHANNEL_SRC_STATUS_WRITE_WAIT",
-        "  CHANNEL_DST_STATUS_WRITE",
-        "  CHANNEL_DST_STATUS_WRITE_WAIT",
-        "  CHANNEL_SRC_NEXT_BUFFER",
-        "  CHANNEL_DST_NEXT_BUFFER",
+        " CHANNEL_SRC_STATUS_WRITE",
+        " CHANNEL_SRC_STATUS_WRITE_WAIT",
+        " CHANNEL_DST_STATUS_WRITE",
+        " CHANNEL_DST_STATUS_WRITE_WAIT",
+        " CHANNEL_SRC_NEXT_BUFFER",
+        " CHANNEL_DST_NEXT_BUFFER",
     };
 
     std::cout << "CHBUF_DMA " << name() << " : " 
@@ -1434,13 +1434,16 @@ tmpl(void)::print_trace()
     {
         if ( r_channel_run[k].read() )
         {
-            std::cout << "  CHANNEL[" << std::dec << k << "] : "
+            std::cout << "  CHANNEL[" << std::dec << k << "] :"
                       << channel_state_str[r_channel_fsm[k].read()]
                       << " / src_addr = " << std::hex << r_channel_src_addr[k].read()
                       << " / src_buf_id = " << std::dec << r_channel_src_index[k].read()
                       << " / dst_addr = " << std::hex << r_channel_dst_addr[k].read() 
                       << " / dst_buf_id = " << std::dec << r_channel_dst_index[k].read()
-                      << " / todo_bytes = " << std::dec << r_channel_todo_bytes[k].read()
+                      << std::endl
+                      << "            todo_bytes = " << r_channel_todo_bytes[k].read()
+                      << " / period = " << r_channel_period[k].read()
+                      << " / timer = " << r_channel_timer[k].read()
                       << std::endl;
         }
     }
