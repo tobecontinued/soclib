@@ -1069,7 +1069,8 @@ tmpl(void)::transition()
             uint32_t k              = r_rsp_channel.read();
             uint32_t rdata          = (uint32_t)p_vci_initiator.rdata.read();
             r_channel_dst_full[k]   = ((rdata >> 31) != 0);
-            r_channel_dst_addr[k]   = (r_channel_dst_addr[k].read() & 0xFFFFFFFF )+ ((typename vci_param::fast_addr_t)(rdata &0x7FFFFFFF) << 32);
+            r_channel_dst_addr[k]   = (r_channel_dst_addr[k].read() & 0xFFFFFFFF )+ 
+                                      ((uint64_t)(rdata &0x7FFFFFFF) << 32);
             r_channel_vci_rsp[k]    = true;
             r_channel_vci_error[k]  = ((p_vci_initiator.rerror.read()&0x1) != 0);
             r_rsp_fsm               = RSP_IDLE;
@@ -1202,7 +1203,7 @@ tmpl(void)::genMoore()
                 }
                 else if ( r_channel_vci_type[k] == REQ_WRITE_DST_STATUS ) 
                 {
-                    wdata = (1<<31) + (uint32_t)(r_channel_src_addr[k].read()>>32);
+                    wdata = (1<<31) + (uint32_t)(r_channel_dst_addr[k].read()>>32);
                 }
                 else   
                 {
@@ -1247,7 +1248,7 @@ tmpl(void)::genMoore()
                 else if ( r_channel_vci_type[k] == REQ_WRITE_DST_STATUS ) 
                 {   
                     be         = 0x0F;
-                    wdata_low  = (1<<31) + (uint32_t)(r_channel_src_addr[k].read()>>32);
+                    wdata_low  = (1<<31) + (uint32_t)(r_channel_dst_addr[k].read()>>32);
                     wdata_high = 0;
                 }
                 else  
@@ -1379,13 +1380,13 @@ tmpl(void)::print_trace()
     };
     const char* rsp_state_str[] = 
     {
-        " RSP_IDLE",
-        " RSP_READ_SRC_STATUS",
-        " RSP_READ_SRC_BUFADDR",
-        " RSP_READ_DST_STATUS",
-        " RSP_READ_DST_BUFADDR",
-        " RSP_READ_DATA",
-        " RSP_WRITE"
+        "  RSP_IDLE",
+        "  RSP_READ_SRC_STATUS",
+        "  RSP_READ_SRC_BUFADDR",
+        "  RSP_READ_DST_STATUS",
+        "  RSP_READ_DST_BUFADDR",
+        "  RSP_READ_DATA",
+        "  RSP_WRITE"
     };
     const char* channel_state_str[] = 
     {
