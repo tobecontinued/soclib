@@ -42,6 +42,7 @@ using namespace soclib;
 
 #define tmpl(t) template<typename vci_param> t VciFrameBuffer<vci_param>
 
+//////////////////////////////////////
 tmpl(void)::write_fb(size_t     index,
                      vci_data_t wdata, 
                      vci_be_t   be)
@@ -105,6 +106,7 @@ tmpl(void)::transition()
             r_trdid    = p_vci.trdid.read();
             r_pktid    = p_vci.pktid.read();
 
+            // compute buffer index
             size_t index; 
             if ( vci_param::B == 4 )            // VCI DATA == 32 bits
             {
@@ -115,6 +117,7 @@ tmpl(void)::transition()
                 index = (size_t)((address - seg_base)>>3);
             }
 
+            
             if ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_WRITE) )
             {
                 write_fb( index, 
@@ -146,13 +149,12 @@ tmpl(void)::transition()
             {
                 std::cout << "VCI_FRAMEBUFFER ERROR " << name()
                           << " : out of segment access" << std::endl; 
-
                 r_fsm_state = ERROR_RSP;
             }
             break;
         }
         /////////////
-        case READ_RSP:  // return a data word in case of read
+        case READ_RSP:  // return a flit in case of read
         { 
             if ( not p_vci.rspack.read() ) break;
 
@@ -163,7 +165,7 @@ tmpl(void)::transition()
             break;
         }
         //////////////
-        case WRITE_CMD:  // write another data word in buffer
+        case WRITE_CMD:  // write another flit in buffer
         {
             if ( not p_vci.cmdval.read() ) break;
 

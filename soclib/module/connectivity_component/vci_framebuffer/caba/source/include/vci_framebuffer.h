@@ -23,7 +23,7 @@
  * Copyright (c) UPMC, Lip6, Asim
  *         Nicolas Pouillon <nipo@ssji.net>, 2007
  *
- * Maintainers: nipo
+ * Maintainers: alain
  */
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -31,19 +31,14 @@
 // It can handle only 32 bits or 64 bits VCI DATA interface.
 //
 // For 32 bits VCI DATA width:
-// - in case of READ burst, both the VCI ADDRESS and PLEN must be multiple of 4,
-//   and the VCI BE field must be equal to 0xF.
-// - in case of WRITE burst, the VCI ADDRESS must be multiple of 4, successive
-//   addresses must be contiguous, and the VCI BE field must be 0xF for all flits.
+// - in case of READ burst, both the VCI ADDRESS and PLEN must be multiple of 4.
+// - in case of WRITE burst, the VCI ADDRESS must be multiple of 4. Successive
+//   addresses must be contiguous and the BE is taken into account.
 //
 // For 64 bits VCI DATA width:
-// - in case of READ burst, the VCI BE field can be 0xFF or 0x0F. 
-//   If BE == 0x0F, the VCI ADDRESS and PLEN must be multiple of 4, and the response
-//   contains only 4 bytes per flit.
-//   If BE == 0xFF, the VCI ADDRESS and PLEN must be multiple of 8, and the response
-//   contains 8 bytes per flit.
-// - in case or WRITE burst, the VCI BE field can be 0xFF or Ox0F, and must be
-//   constant for all flits in the burst. Successive addresses must be contiguous.
+// - in case of READ burst, both the VCI ADDRESS and PLEN must be multiple of 8.
+// - in case or WRITE burst, the VCI ADDRESS must be multiple of 8. Successive
+//   addresses must be contiguous, and the BE is taken into account.
 /////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_VCI_FRAMEBUFFER_H
