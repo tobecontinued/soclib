@@ -303,7 +303,7 @@ tmpl(void)::transition()
     if (!p_resetn) 
     {
         reset();
-        // reload();
+        reload();
         return;
     }
 
