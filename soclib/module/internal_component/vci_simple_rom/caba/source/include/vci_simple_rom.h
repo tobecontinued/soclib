@@ -28,18 +28,19 @@
 
 ////////////////////////////////////////////////////////////////////////////
 //  This component is a multi-segments ROM controller.
-//  The VCI DATA field must be 32 bits or 64 bits.
-//  The VCI ADDRESS and the PLEN fields should be multiple of vci_param::B.
+//  The VCI DATA can must be 32 bits or 64 bits.
+//  The VCI ADDRESS and the PLEN fields should be multiple of 4 bytes.
 //  It does not accept WRITE, LL, SC or CAS commands.
 //  A READ burst command packet (such a cache line request) 
 //  contains one single flit. The number of flits in the response packet 
-//  depends on both the PLEN and BE fields:
+//  depends on the PLEN field:
 //  - If VCI DATA width = 32 bits, each flit contains 4 bytes, and the 
 //    number of flits is PLEN/4.
-//  - If VCI DATA width = 64 bits and BE = 0x0F, each flit contains 4 bytes
-//    (in the LSB bytes of VCI DATA), and the number of flits is PLEN/4.
-//  - If VCI DATA width = 64 bits and BE = 0xFF, each flit contains 8 bytes,
-//    and the number of flits is PLEN/8.
+//  - If VCI DATA width = 64 bits, and PLEN define an even number of words,
+//    each flit contains 8 bytes, and the number of flits is PLEN/8.
+//  - If VCI DATA width = 64 bits, and PLEN define an odd number of words,
+//    the last flit contains only 4 bytes right justified,
+//    and the number of flits is PLEN/8 + 1.
 ////////////////////////////////////////////////////////////////////////////
 //  Implementation note: 
 //  The ROM segments are implemented as a set of uint32_t arrays
@@ -93,7 +94,7 @@ private:
 
     sc_signal<int>                          r_fsm_state;
     sc_signal<size_t>                       r_flit_count;
-    sc_signal<size_t>                       r_nb_words;
+    sc_signal<bool>                         r_odd_words;
     sc_signal<size_t>                       r_seg_index;
     sc_signal<size_t>                       r_rom_index;
     sc_signal<vci_srcid_t>                  r_srcid;

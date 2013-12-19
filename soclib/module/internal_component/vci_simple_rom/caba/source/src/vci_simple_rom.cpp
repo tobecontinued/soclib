@@ -50,7 +50,7 @@ tmpl(/**/)::VciSimpleRom(
 
       r_fsm_state("r_fsm_state"),
       r_flit_count("r_flit_count"),
-      r_nb_words("r_nb_words"),
+      r_odd_words("r_odd_words"),
       r_seg_index("r_seg_index"),
       r_rom_index("r_rom_index"),
       r_srcid("r_srcid"),
@@ -172,11 +172,6 @@ tmpl(void)::transition()
                 assert( p_vci.eop.read() and
                 "VCI_SIMPLE_ROM ERROR : The VCI command packet must be 1 flit");
 
-                assert( (((vci_param::B == 4) and (p_vci.be.read() == 0xF)) or 
-                         ((vci_param::B == 8) and (p_vci.be.read() == 0xFF)) or
-                         ((vci_param::B == 8) and (p_vci.be.read() == 0x0F))) and
-                "VCI_SIMPLE_ROM ERROR : The VCI BE field must be 0xF or 0xFF");
-            
                 for ( size_t index = 0 ; index<m_nbseg  && error ; ++index) 
                 {
                     if ( (m_seg[index]->contains(p_vci.address.read())) and
@@ -193,22 +188,31 @@ tmpl(void)::transition()
                 }
                 else
                 {
-                    r_fsm_state = FSM_RSP_READ;
-                    r_srcid     = p_vci.srcid.read();
-                    r_trdid     = p_vci.trdid.read();
-                    r_pktid     = p_vci.pktid.read();
-                    r_rom_index = (size_t)((p_vci.address.read() -
+                    unsigned int plen = p_vci.plen.read();
+
+                    r_fsm_state  = FSM_RSP_READ;
+                    r_srcid      = p_vci.srcid.read();
+                    r_trdid      = p_vci.trdid.read();
+                    r_pktid      = p_vci.pktid.read();
+                    r_rom_index  = (size_t)((p_vci.address.read() -
                                             m_seg[r_seg_index.read()]->baseAddress())>>2);
 
-                    if ( (vci_param::B == 8) and (p_vci.be.read() == 0xFF) )
+                    if ( vci_param::B == 8 )   // 64 bits data width
                     {
-                        r_flit_count = p_vci.plen.read()>>3;
-                        r_nb_words   = 2;
+                        if ( plen & 0x4 )      // odd number of words 
+                        {
+                            r_flit_count = plen>>3 + 1;
+                            r_odd_words  = true;
+                        }
+                        else                   // even number of words
+                        {
+                            r_flit_count = plen>>3;
+                            r_odd_words  = false;
+                        }
                     }
-                    else
+                    else                       // 32 bits data width
                     {
-                        r_flit_count = p_vci.plen.read()>>2;
-                        r_nb_words   = 1;
+                        r_flit_count = plen>>2;
                     }
                 }
             }
@@ -220,7 +224,7 @@ tmpl(void)::transition()
             if ( p_vci.rspack.read() )
             {
                 r_flit_count = r_flit_count - 1;
-                r_rom_index  = r_rom_index.read() + r_nb_words.read();
+                r_rom_index  = r_rom_index.read() + (vci_param::B>>2);
                 if ( r_flit_count.read() == 1) 	 r_fsm_state = FSM_IDLE;
             }
             break;
@@ -261,14 +265,15 @@ tmpl(void)::genMoore()
             size_t     seg_index = r_seg_index.read();
             size_t     rom_index = r_rom_index.read();
 
-            if ( r_nb_words.read() == 1 )
+            if ( (vci_param::B == 4) or                                  // 32 bits data
+                 ( r_odd_words.read() and (r_flit_count.read() == 1)) )  // last odd flit
             {
-                rdata = (uint32_t)m_rom[seg_index][rom_index];
+                rdata = (vci_data_t)m_rom[seg_index][rom_index];
             }
-            else  // r_nb_words == 2
+            else                                                         // 64 bits data
             {
-                rdata = (uint64_t)m_rom[seg_index][rom_index] | 
-                        (((uint64_t)m_rom[seg_index][rom_index+1]) << 32);
+                rdata = (vci_data_t)m_rom[seg_index][rom_index] | 
+                        (((vci_data_t)m_rom[seg_index][rom_index+1]) << 32);
             }
             
             p_vci.cmdack  = false;
