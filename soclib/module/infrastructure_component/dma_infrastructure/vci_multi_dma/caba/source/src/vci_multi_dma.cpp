@@ -31,8 +31,8 @@
 //  If the address is actually larger than 32 bits, the physical source and
 //  destination addresses must be loaded in two successive accesses, using
 //  DMA_SRC_EXT and DMA_DST_EXT addressable registers. 
-//  The number of channels and the max burst length (in bytes)
-//  are constructor parameters: 
+//  The number of channels and the max burst length (in bytes) are
+//  constructor parameters, wiyh the following constraints: 
 //  - The number of channels (simultaneous transfers) cannot be larger than 16.
 //  - The burst length (in bytes) must be a power of 2 no larger than 128,
 //    and is typically equal to the sytem cache line width.
@@ -43,11 +43,9 @@
 //  - The memory buffers length is not constrained to be a multiple of the
 //    burst length.
 //
-//  In order to support various protection mechanisms, each channel
-//  takes 4K bytes in the address space, and the segment size is 32 K bytes. 
-//  Only 8 address bits are decoded :
+//  Each channel takes 32 bytes, and only 7 address bits are decoded:
 //  - The 3 bits ADDRESS[4:2] define the target register (see dma.h)
-//  - The 3 bits ADDRESS[14:12] define the selected channel.
+//  - The 4 bits ADDRESS[8:5] define the selected channel.
 //
 //  For each channel, the DMA_LEN register is used as status register.
 //  A read command returns the channel_fsm state value. Relevant values are
@@ -157,8 +155,8 @@ tmpl(void)::transition()
                 r_trdid					= p_vci_target.trdid.read();
                 r_pktid					= p_vci_target.pktid.read();
                 
-                int 	cell    = (int)((address & 0x1C) >> 2);
-                size_t	channel = (size_t)((address & 0x7000) >> 12);
+                size_t 	cell    = (((size_t)address % (DMA_SPAN*4)) >> 2);
+                size_t	channel = (((size_t)address / (DMA_SPAN*4)) & 0xF);
 
                 assert( found and
                 "VCI_MULTI_DMA error : Out of segment address in configuration");
