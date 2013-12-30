@@ -462,6 +462,8 @@ int _main(int argc, char *argv[])
             n_procs+2,
             8);
 
+    std::cout << std::endl;
+
     //////////////////////////////////////////////////////////////////////////
     // Net-List
     //////////////////////////////////////////////////////////////////////////
@@ -478,13 +480,19 @@ int _main(int argc, char *argv[])
         proc[p]->p_irq[5]   (signal_false);
     }
 
+    std::cout << " - procs connected" << std::endl;
+
     ram->p_clk      (signal_clk);
     ram->p_resetn   (signal_resetn);
     ram->p_vci      (signal_vci_tgt_ram);
 
+    std::cout << " - ram connected" << std::endl;
+
     rom->p_clk      (signal_clk);
     rom->p_resetn   (signal_resetn);
     rom->p_vci      (signal_vci_tgt_rom);
+
+    std::cout << " - rom connected" << std::endl;
 
     tty->p_clk      (signal_clk);
     tty->p_resetn   (signal_resetn);
@@ -492,6 +500,8 @@ int _main(int argc, char *argv[])
     for (size_t p = 0 ; p < n_procs ; p++)
         for (size_t t = 0 ; t < n_tasks ; t++)
             tty->p_irq[p * n_tasks + t] (signal_irq_tty[p][t]);
+
+    std::cout << " - tty connected" << std::endl;
 
     icu->p_clk      (signal_clk);
     icu->p_resetn   (signal_resetn);
@@ -513,11 +523,15 @@ int _main(int argc, char *argv[])
     else
         icu->p_irq_in[0] (signal_false);
 
+    std::cout << " - icu connected" << std::endl;
+
     timer->p_clk    (signal_clk);
     timer->p_resetn (signal_resetn);
     timer->p_vci    (signal_vci_tgt_tim);
     for (size_t p = 0 ; p < n_procs ; p++)
         timer->p_irq[p] (signal_irq_tim[p]);
+
+    std::cout << " - timer connected" << std::endl;
 
     dma->p_clk          (signal_clk);
     dma->p_resetn       (signal_resetn);
@@ -526,12 +540,16 @@ int _main(int argc, char *argv[])
     for (size_t p = 0 ; p < n_procs ; p++)
         dma->p_irq[p] (signal_irq_dma[p]);
 
+    std::cout << " - dma connected" << std::endl;
+
     if( fbf_ok )
     {
         fbf->p_clk      (signal_clk);
         fbf->p_resetn   (signal_resetn);
         fbf->p_vci      (signal_vci_tgt_fbf);
     }
+
+    std::cout << " - fbf connected" << std::endl;
 
     if( ioc_ok )
     {
@@ -541,6 +559,8 @@ int _main(int argc, char *argv[])
         ioc->p_vci_target   (signal_vci_tgt_ioc);
         ioc->p_irq          (signal_irq_ioc);
     }
+
+    std::cout << " - ioc connected" << std::endl;
 
     bus->p_clk      (signal_clk);
     bus->p_resetn   (signal_resetn);
@@ -559,9 +579,13 @@ int _main(int argc, char *argv[])
     bus->p_to_target[TTY_TGTID]     (signal_vci_tgt_tty);
     bus->p_to_target[ICU_TGTID]     (signal_vci_tgt_icu);
 
+    std::cout << " - bus connected" << std::endl;
+
     //////////////////////////////////////////////////////////////////////////
     // simulation
     //////////////////////////////////////////////////////////////////////////
+
+    sc_start( sc_time( 1, SC_NS ) ) ;
 
     if( !ioc_ok ) signal_vci_init_ioc.cmdval = false;
     if( !ioc_ok ) signal_vci_tgt_ioc.rspval = false;
