@@ -42,8 +42,8 @@ tmpl (void)::send_write( size_t k )
     
     // send VCI command
     m_vci_payload[k].set_address(m_destination[k] & ~3);
-    m_vci_payload.set_byte_enable_length(m_burst_length[k]);
-    m_vci_payload.set_data_length(m_burst_length[k]);
+    m_vci_payload[k].set_byte_enable_length(m_burst_length[k]);
+    m_vci_payload[k].set_data_length(m_burst_length[k]);
     m_vci_extension[k].set_write();
     m_vci_time[k] = m_pdes_local_time->get();
 
