@@ -20,41 +20,37 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, alinevieiramello@hotmail.com
+ * Maintainers: alinevieiramello@hotmail.com, alain
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     François Pêcheux <francois.pecheux@lip6.fr>
+ *     François Pêcheux <francois.pecheux@lip6.fr> 
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
+ *     Alain Greiner <alain.greiner@lip6.fr> 
  */
 
 #ifndef __VCI_VGMN_H__ 
 #define __VCI_VGMN_H__
 
-#include <tlmdt>	                                        // TLM-DT headers
-#include "interconnect.h"                                       // interconnect
+#include <tlmdt>
+#include "interconnect.h"
 
 namespace soclib { namespace tlmdt {
 
-class VciVgmn                                                   // VciVgmn
-  : public Interconnect                  	                // inherit from SC module base clase
+////////////////////////
+class VciVgmn   
+////////////////////////
+  : public Interconnect       
 {
 public:  
 
-  VciVgmn(                                                // constructor
-	  sc_core::sc_module_name module_name             // SC module name
-	  , const soclib::common::MappingTable &mt        // mapping table
-	  , size_t n_inits                                // number of inits
-	  , size_t n_targets                              // number of targets
-	  , size_t min_latency                            // minimal latency
-	  , size_t fifo_depth);                           // parameter do not used
+  VciVgmn( sc_core::sc_module_name            name,              // module name
+	       const soclib::common::MappingTable &mt,               // mapping table
+	       const size_t                       n_inits,           // number of initiators
+	       const size_t                       n_targets,         // number of targets
+	       const size_t                       min_latency,       // minimal latency
+	       const size_t                       fifo_depth,        // not used in TLMDT
+           const size_t                       default_tgtid = 0) // default target index
   
-  VciVgmn(                                                // constructor
-	  sc_core::sc_module_name module_name             // SC module name
-	  , const soclib::common::MappingTable &mt        // mapping table
-	  , const soclib::common::IntTab &index           // mapping table index
-	  , int n_inits                                   // number of inits
-	  , int n_targets                                 // number of targets
-	  , sc_core::sc_time delay);                      // interconnect delay
 };
 
 }}

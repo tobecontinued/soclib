@@ -20,32 +20,36 @@
  * 
  * SOCLIB_LGPL_HEADER_END
  *
- * Maintainers: fpecheux, alinevieiramello@hotmail.com
+ * Maintainers: alinevieiramello@hotmail.com, alain
  *
  * Copyright (c) UPMC / Lip6, 2008
  *     François Pêcheux <francois.pecheux@lip6.fr>
  *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
+ *     Alain Greiner <alain.greiner@lip6.fr>
  */
 
-#include "vci_vgmn.h"                        // our header
+#include "vci_vgmn.h"       
                     
 namespace soclib { namespace tlmdt {
 
 #define tmpl(x) x VciVgmn
 
-/////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
-/////////////////////////////////////////////////////////////////////////////////////
-tmpl(/**/)::VciVgmn
-( sc_core::sc_module_name module_name               // module name
-  , const soclib::common::MappingTable &mt          // mapping table
-  , size_t n_inits                                  // number of inits
-  , size_t n_targets                                // number of targets
-  , size_t min_latency                              // minimal latency
-  , size_t fifo_depth                               // parameter do not used
-  ) 
-	   //: Interconnect(module_name,mt,soclib::common::IntTab(),n_inits,n_targets,min_latency)
-	   : Interconnect(module_name,mt.getRoutingTable(soclib::common::IntTab(),0),mt.getIdMaskingTable(0),n_inits,n_targets,min_latency/2)
+////////////////////////////////////////////////////////////////////////////////////////////
+tmpl(/**/)::VciVgmn ( sc_core::sc_module_name             name,           // module name
+                      const soclib::common::MappingTable  &mt,            // mapping table
+                      const size_t                        n_inits,        // number of initiators
+                      const size_t                        n_targets,      // number of targets
+                      const size_t                        min_latency,    // minimal latency
+                      const size_t                        fifo_depth,     // not used in TLMDT
+                      const size_t                        default_tgtid ) // default target index   
+	   : Interconnect( name,
+                       mt.getGlobalIndexFromAddress( default_tgtid ),
+                       mt.getGlobalIndexFrom Srcid(),
+                       n_inits,
+                       n_targets,
+                       min_latency )
 {
 }
 
