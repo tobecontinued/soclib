@@ -43,13 +43,13 @@ class VciVgmn
 {
 public:  
 
-  VciVgmn( sc_core::sc_module_name            name,              // module name
-	       const soclib::common::MappingTable &mt,               // mapping table
-	       const size_t                       n_inits,           // number of initiators
-	       const size_t                       n_targets,         // number of targets
-	       const size_t                       min_latency,       // minimal latency
-	       const size_t                       fifo_depth,        // not used in TLMDT
-           const size_t                       default_tgtid = 0) // default target index
+  VciVgmn( sc_core::sc_module_name            name,                // module name
+	       const soclib::common::MappingTable &mt,                 // mapping table
+	       const size_t                       n_inits,             // number of initiators
+	       const size_t                       n_targets,           // number of targets
+	       const size_t                       min_latency,         // minimal latency
+	       const size_t                       fifo_depth,          // not used in TLMDT
+           const size_t                       default_tgtid = 0);  // default target index
   
 };
 

@@ -46,7 +46,7 @@ tmpl(/**/)::VciVgmn ( sc_core::sc_module_name             name,           // mod
                       const size_t                        default_tgtid ) // default target index   
 	   : Interconnect( name,
                        mt.getGlobalIndexFromAddress( default_tgtid ),
-                       mt.getGlobalIndexFrom Srcid(),
+                       mt.getGlobalIndexFromSrcid(),
                        n_inits,
                        n_targets,
                        min_latency )
