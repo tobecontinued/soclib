@@ -44,7 +44,7 @@ centralized_buffer::centralized_buffer ( sc_core::sc_module_name   name,
     for(unsigned int i=0; i<nslots; i++)
     {
         std::ostringstream buf_name;
-        buf_name << name() << "_buf" << i;
+        buf_name << "slot_" << i;
         m_port_array[i].buffer.set_name(buf_name.str());
     }
 }
