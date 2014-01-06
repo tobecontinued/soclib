@@ -91,7 +91,7 @@ private:
 
     // structural constants
     const uint32_t 		m_srcid;                  // DMA SRCID
-    const size_t        m_max_burst_length;	      // local buffer length (bytes)
+    const size_t        m_max_burst;	          // local buffer length (bytes)
     const size_t        m_channels;               // number of parallel channels
 
     soclib::common::Segment 	m_segment;        // segment associated to DMA
@@ -104,25 +104,28 @@ private:
     bool                m_irq_disabled[8];        // no IRQ when true
     bool                m_stop[8];                // running when false
     uint8_t             m_irq_value[8];	          // IRQ current value
-    uint8_t*            m_vci_data_buf[8];        // local data buffer pointer  
+    uint8_t*            m_vci_data_buf[8];        // local data buffer pointers  
+    uint8_t*            m_vci_be_buf[8];          // local be buffer pointers  
+    bool                m_rsp_received[8];        // VCI response available
+    size_t              m_burst_length[8];        // actual burst length 
 
     pdes_local_time*	m_pdes_local_time;        // local time pointer
 
-    sc_core::sc_event   m_rsp_received;		      // event to wake-up the thread
+    sc_core::sc_event   m_channel_activated;      // event to wake-up the thread
 
-    // VCI TRANSACTION
-    tlm::tlm_generic_payload    m_vci_payload;
-    tlm::tlm_phase              m_vci_phase;
-    sc_core::sc_time            m_vci_time;
-    soclib_payload_extension	m_vci_extension;
+    // VCI TRANSACTIONS (one per channel)
+    tlm::tlm_generic_payload    m_vci_payload[8];
+    tlm::tlm_phase              m_vci_phase[8];
+    sc_core::sc_time            m_vci_time[8];
+    soclib_payload_extension	m_vci_extension[8];
     
     // NULL MESSAGE
-    tlm::tlm_generic_payload    m_null_payload;
-    tlm::tlm_phase              m_null_phase;
-    sc_core::sc_time            m_null_time;
-    soclib_payload_extension    m_null_extension;
+    tlm::tlm_generic_payload    m_null_payload[8];
+    tlm::tlm_phase              m_null_phase[8];
+    sc_core::sc_time            m_null_time[8];
+    soclib_payload_extension    m_null_extension[8];
     
-    // IRQ[channe] TRANSACTIONS
+    // IRQ TRANSACTIONS (one per channel)
     tlm::tlm_generic_payload    m_irq_payload[8];
     tlm::tlm_phase              m_irq_phase[8];
     sc_core::sc_time            m_irq_time[8];
@@ -135,8 +138,10 @@ public:
         STATE_SUCCESS,
         STATE_ERROR_READ,
         STATE_ERROR_WRITE,
-        STATE_READ,
-        STATE_WRITE,
+        STATE_READ_CMD,
+        STATE_READ_RSP,
+        STATE_WRITE_CMD,
+        STATE_WRITE_RSP,
     };
 
     // Functions
@@ -188,12 +193,12 @@ public:
     <VciMultiDma,32,tlm::tlm_base_protocol_types> *>                p_irq; 
 
 
-    VciDma( sc_module_name                     name,
-            const soclib::common::MappingTable &mt,
-            const soclib::common::IntTab       &srcid,
-            const soclib::common::IntTab       &tgtid,
-            const size_t                       max_burst_length,
-            const size_t                       channels );
+    VciMultiDma( sc_module_name                     name,
+                 const soclib::common::MappingTable &mt,
+                 const soclib::common::IntTab       &srcid,
+                 const soclib::common::IntTab       &tgtid,
+                 const size_t                       max_burst_length,
+                 const size_t                       channels );
 };
 
 }}

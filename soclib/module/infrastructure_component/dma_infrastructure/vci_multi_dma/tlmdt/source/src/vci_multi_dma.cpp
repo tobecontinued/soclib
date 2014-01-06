@@ -33,7 +33,7 @@
 
 namespace soclib { namespace tlmdt {
 
-#define tmpl(t) template<typename vci_param> t VciDma<vci_param>
+#define tmpl(t) template<typename vci_param> t VciMultiDma<vci_param>
 
 /////////////////////////////////////////
 tmpl (void)::send_write( size_t k )
@@ -219,16 +219,28 @@ tmpl (void)::execLoop ()
     } // end while
 } // end execLoop
 
-////////////////////////////////////////////////////////////////////////////////
-// Interface function executed when receiving a response on the initiator port
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+// Interface function executed when receiving a response on the VCI initiator port
+// The Boolean associated to the channel is set.
+/////////////////////////////////////////////////////////////////////////////////////
 tmpl (tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload, 
                                              tlm::tlm_phase           &phase,       
                                              sc_core::sc_time         &time)  
 {
     // update local time and notify
     if( time.value() > m_pdes_local_time->get().value()) m_pdes_local_time->set(time);
-    m_rsp_received.notify (sc_core::SC_ZERO_TIME);
+
+    // get channel index and signal response received
+    soclib_payload_extension *extension_pointer;
+    payload.get_extension(extension_pointer);
+    size_t channel = extension_pointer->get_trd_id();
+
+    assert( ((m_state[channel] == STATE_READ_RSP) or 
+             (m_state[channel] == STATE_WRITE_RSP)) and
+    "ERROR in VCI_MULTI_DMA : unexpected response received")
+
+    m_rsp_received[channel] = true;
+
     return tlm::TLM_COMPLETED;
 }
 
@@ -404,9 +416,9 @@ tmpl(void)::invalidate_direct_mem_ptr ( sc_dt::uint64 start_range,
 }
 */
 
-///////////////////
+///////////////////////////////////////////////////////////////////
 //  constructor
-///////////////////
+///////////////////////////////////////////////////////////////////
 tmpl(/**/)::VciMultiDma( sc_module_name                     name,
                          const soclib::common::MappingTable &mt,
                          const soclib::common::IntTab       &srcid,
