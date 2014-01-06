@@ -97,7 +97,8 @@ tmpl(void)::print_trace()
     std::cout << std::dec << name() << std::endl;
 
     for (unsigned i = 0; i < m_nirq_out; i++)
-        std::cout << std::hex << " r_mask = " << r_mask[i].read() << std::endl;
+        std::cout << std::hex << " r_mask = " << r_mask[i].read() 
+                  << " for channel " << std::dec << i << std::endl;
 
     std::cout << std::dec << " r_interrupt = " << r_interrupt.read() << std::endl;
 }
@@ -122,6 +123,7 @@ tmpl(void)::transition()
 	r_interrupt = tmp;
 }
 
+//////////////////////
 tmpl(void)::genMoore()
 {
 	m_vci_fsm.genMoore();
@@ -129,13 +131,12 @@ tmpl(void)::genMoore()
     for (unsigned int i = 0; i < m_nirq_out; i++)
         p_irq_out[i] = (bool)(unsigned long)(r_interrupt.read() & r_mask[i].read());
 }
-
-tmpl(/**/)::VciMultiIcu(
-    sc_module_name name,
-    const IntTab &index,
-    const MappingTable &mt,
-    size_t nirq_in,
-    size_t nirq_out)
+/////////////////////////////////////////////////
+tmpl(/**/)::VciMultiIcu( sc_module_name     name,
+                         const IntTab       &index,
+                         const MappingTable &mt,
+                         size_t             nirq_in,
+                         size_t             nirq_out)
 	: caba::BaseModule(name),
 	  m_vci_fsm(p_vci, mt.getSegmentList(index)),
       m_nirq_in(nirq_in),
@@ -149,6 +150,7 @@ tmpl(/**/)::VciMultiIcu(
       p_irq_out(soclib::common::alloc_elems<sc_out<bool> >("irq_out", nirq_out))
 {
     assert(nirq_in <= 32 );
+    assert(nirq_out <= 8 );
 
 	m_vci_fsm.on_read_write(on_read, on_write);
 
