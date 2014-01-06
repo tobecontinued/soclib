@@ -147,8 +147,8 @@ public:
     // Functions
     void execLoop();
     void send_null();
-    void send_write();
-    void send_read();
+    void send_write( size_t channel );
+    void send_read( size_t channel );
 
     // Interface function to receive response on the VCI initiator port
     tlm::tlm_sync_enum 	nb_transport_bw ( tlm::tlm_generic_payload   &payload,
