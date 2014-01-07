@@ -36,8 +36,8 @@
 // The target FSM is modeled as a purely reactive interface function.
 //
 // This component has a local time and require periodical NULL messages from the 
-// interconnect to be synchronized as the local time is only updated by
-// message received on the VCI port (normal VCI commands or NULL messages).
+// interconnect to be synchronized, as the local time is only updated by
+// message received on the VCI port (VCI commands or NULL messages).
 //
 // It contains one single sc_thread implementing a relaxed time filtering for
 // all IRQ_OUT channels:
@@ -77,7 +77,7 @@ private:
     // Member Variables
     //////////////////////////////////////////////////////////////////////////////
 
-    pdes_local_time*			m_pdes_local_time;   
+    pdes_local_time*			m_pdes_local_time;   // local time pointer
 
     uint32_t                    m_irq_mask[8];       // masks for each channel 
     unsigned char               m_irq_out_value[8];  // current IRQ_OUT values
@@ -101,7 +101,9 @@ private:
     //////////////////////////////////////////////////////////////////////////////
     //  Functions
     //////////////////////////////////////////////////////////////////////////////
-    bool     irqTransmissible(unsigned char* value, sc_core::sc_time* new_time);
+    bool     irqTransmissible( size_t             channel,
+                               unsigned char*     new_value, 
+                               sc_core::sc_time*  new_time );
     uint32_t getActiveIrqs();
     size_t   getIrqIndex();
     void     execLoop();

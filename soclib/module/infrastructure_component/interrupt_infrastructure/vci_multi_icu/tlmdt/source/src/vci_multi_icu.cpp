@@ -109,9 +109,9 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw ( tlm::tlm_generic_payload &payload,
                                             tlm::tlm_phase           &phase,  
                                             sc_core::sc_time         &time)   
 {
-    int 	cell;
-    int     reg;
-    int     channel;
+    size_t  cell;
+    size_t  reg;
+    size_t  channel;
 
     soclib_payload_extension *extension_pointer;
     payload.get_extension(extension_pointer);
@@ -131,12 +131,12 @@ std::cout << "[" << name() << "] time = "  << time.value()
     }
 
     // Checking address and packet length for a VCI command
-    bool	one_flit = (payload.get_data_length() == (unsigned int)vci_param::B);
+    bool	one_flit = (payload.get_data_length() == 4);
     addr_t	address  = payload.get_address();
 
     if ( m_segment.contains(address) && one_flit )
     {
-        cell    = (int)((address - m_segment.baseAddress()) / vci_param::B);
+        cell    = (size_t)((address - m_segment.baseAddress()) >> 2);
         reg     = cell % ICU_SPAN;
         channel = cell / ICU_SPAN;
 
@@ -280,7 +280,7 @@ std::cout << "  Send IRQ_OUT " << channel
         } // end for channel     
 
         // deschedule until next event on IRQ_IN[i]
-        wait( m_irq_received );
+        wait( m_irq_in_received );
 
     } // end while thread
 }
@@ -305,12 +305,12 @@ tmpl(bool)::irqTransmissible( size_t             channel,
         change_found = false;
         *new_value   = 1;
 
-        for(size_t i = 0 ; i<m_nirq ; i++) 
+        for(size_t i = 0 ; i<m_nirq_in ; i++) 
         {
             if ( m_irq_mask[channel] & (1 << i) ) // only enabled IRQ_IN are involved 
             {
                 if ( m_irq_in_value[i] and
-                     (m_irq_in_time[i].value() <= m_pdes_local_time.get().value()) ) 
+                     (m_irq_in_time[i].value() <= m_pdes_local_time->get().value()) ) 
                          change_found = true;
             }
         }
@@ -320,12 +320,12 @@ tmpl(bool)::irqTransmissible( size_t             channel,
         // initial value for loop on IRQ_IN[i]
         change_found = true;  
         *new_value   = 0;
-        for(size_t i = 0 ; i<m_nirq ; i++)
+        for(size_t i = 0 ; i<m_nirq_in ; i++)
         {
             if ( m_irq_mask[channel] & (1 << i) ) // only enabled IRQ_IN are involved 
             {
                 if ( m_irq_in_value[i] and 
-                     (m_irq_in_time[i].value() <= m_pdes_local_time.get().value()) ) 
+                     (m_irq_in_time[i].value() <= m_pdes_local_time->get().value()) ) 
                          change_found = false;
             }
         }
@@ -345,7 +345,7 @@ tmpl(uint32_t)::getActiveIrqs( int channel )
     {
         if ( (m_irq_mask[channel] & (1 << j)) and
              (m_irq_in_value[j] != 0) and 
-             (m_irq_in_time[j].value() <= m_pdes_local_time.get().value()) )
+             (m_irq_in_time[j].value() <= m_pdes_local_time->get().value()) )
                  irqs = irqs | (1 << j);
     }
     return irqs;
@@ -360,7 +360,7 @@ tmpl(size_t)::getIrqIndex( int channel )
     {
         if ( (m_irq_mask[channel] & (1 << j)) and 
              (m_irq_in_value[j] != 0) and
-             (m_irq_in_time[j].value() <= m_pdes_local_time.get().value()) )
+             (m_irq_in_time[j].value() <= m_pdes_local_time->get().value()) )
                  return j;
     }
     return 32;
