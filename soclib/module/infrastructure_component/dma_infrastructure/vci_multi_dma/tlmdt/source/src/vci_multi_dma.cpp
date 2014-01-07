@@ -135,7 +135,8 @@ tmpl (void)::send_irq( size_t channel )
     // send IRQ command
     m_irq_time[channel]  = m_pdes_local_time->get();
 
-    p_irq[channel].nb_transport_fw( m_irq_payload[channel], 
+    p_irq[channel].nb_transport_fw( channel,
+                                    m_irq_payload[channel], 
                                     m_irq_phase[channel], 
                                     m_irq_time[channel] );
 #ifdef SOCLIB_MODULE_DEBUG
@@ -545,7 +546,7 @@ tmpl(/**/)::VciMultiDma( sc_module_name                     name,
                                 <VciMultiDma,32,tlm::tlm_base_protocol_types>
                                 (name.str().c_str()));
 
-        p_irq[channel]->register_nb_transport_bw( this,
+        p_irq[channel]->register_nb_transport_fw( this,
                                                   &VciMultiDma::irq_nb_transport_bw, 
                                                   channel );
 
