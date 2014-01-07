@@ -35,6 +35,98 @@ namespace soclib { namespace tlmdt {
 
 #define tmpl(t) template<typename vci_param> t VciMultiDma<vci_param>
 
+///////////////////////////////////////////////////////////////////
+//  constructor
+///////////////////////////////////////////////////////////////////
+tmpl(/**/)::VciMultiDma( sc_module_name                     name,
+                         const soclib::common::MappingTable &mt,
+                         const soclib::common::IntTab       &srcid,
+                         const soclib::common::IntTab       &tgtid,
+                         const size_t                       max_burst_length,
+                         const size_t                       channels )
+          : sc_core::sc_module(name)
+          , m_srcid(mt.indexForId(srcid))
+          , m_max_burst(max_burst_length)
+          , m_channels(channels)
+          , m_segment(mt.getSegment(tgtid))
+          , p_vci_initiator("p_vci_init") 
+          , p_vci_target("p_vci_tgt")    
+{
+    // initialize PDES local time
+    m_pdes_local_time = new pdes_local_time(100*UNIT_TIME);
+    
+    assert( (channels <= 8) && "The number of channels cannot be larger than 8");
+    assert( (max_burst_length <= 64) && "The burst length cannot be larger than 64");
+
+    // bind vci initiator port
+    p_vci_initiator(*this);                     
+    
+    // bind vci target port
+    p_vci_target(*this);                     
+    
+    // initialize channels
+    for( size_t channel ; channel < channels ; channel++ )
+    {
+        // bind IRQ[channel] ports
+        std::ostringstream name;
+        name << "p_irq_" << channel;
+        p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged
+                                <VciMultiDma,32,tlm::tlm_base_protocol_types>
+                                (name.str().c_str()));
+
+        (*p_irq[channel]).register_nb_transport_bw( this,
+                                                    &VciMultiDma::irq_nb_transport_bw, 
+                                                    channel );
+
+        // initialize payload and phase for IRQ transaction
+        m_irq_payload[channel].set_data_ptr(&m_irq_value[channel]);
+        m_irq_phase[channel] = tlm::BEGIN_REQ;
+    
+        // create and initialize the local buffers for VCI transactions 
+        m_vci_data_buf[channel] = new unsigned char[max_burst_length];
+        m_vci_be_buf[channel]   = new unsigned char[max_burst_length];
+
+        // initialize payload, phase and extension for VCI transactions
+        m_vci_payload[channel].set_command(tlm::TLM_IGNORE_COMMAND);
+        m_vci_payload[channel].set_data_ptr(m_vci_data_buf[channel]);
+        m_vci_payload[channel].set_byte_enable_ptr(m_vci_be_buf[channel]);
+        m_vci_payload[channel].set_extension(&m_vci_extension[channel]);
+
+        m_vci_extension[channel].set_src_id(m_srcid);
+        m_vci_extension[channel].set_trd_id(channel);
+        m_vci_extension[channel].set_pkt_id(0);
+
+        m_vci_phase[channel] = tlm::BEGIN_REQ;
+
+        // initialize payload and phase for an irq message
+        m_irq_payload[channel].set_data_ptr(&m_irq_value[channel]);
+        m_irq_phase[channel] = tlm::BEGIN_REQ;
+
+        // channel state registers initialisation 
+        m_state[channel]        = STATE_IDLE;
+        m_stop[channel]         = true;
+        m_irq_disabled[channel] = false;
+        m_rsp_received[channel] = false;
+        m_irq_value[channel]    = 0;
+        for ( size_t i=0 ; i<max_burst_length ; i++) 
+        {
+            m_vci_data_buf[channel][i] = 0x0;
+            m_vci_be_buf[channel][i]   = 0xFF;
+        }
+    }
+
+    // initialize payload, phase and extension for a null message
+    m_null_payload.set_extension(&m_null_extension);
+    m_null_extension.set_null_message();
+    m_null_phase = tlm::BEGIN_REQ;
+
+    // initialize payload, and phase for an activity message
+    m_activity_payload.set_extension(&m_activity_extension);
+    m_activity_phase = tlm::BEGIN_REQ;
+
+    SC_THREAD(execLoop);
+}
+
 //////////////////////////////////////////
 tmpl (void)::send_write( size_t channel )
 //////////////////////////////////////////
@@ -507,97 +599,6 @@ tmpl(void)::invalidate_direct_mem_ptr ( sc_dt::uint64 start_range,
 }
 */
 
-///////////////////////////////////////////////////////////////////
-//  constructor
-///////////////////////////////////////////////////////////////////
-tmpl(/**/)::VciMultiDma( sc_module_name                     name,
-                         const soclib::common::MappingTable &mt,
-                         const soclib::common::IntTab       &srcid,
-                         const soclib::common::IntTab       &tgtid,
-                         const size_t                       max_burst_length,
-                         const size_t                       channels )
-          : sc_core::sc_module(name)
-          , m_srcid(mt.indexForId(srcid))
-          , m_max_burst(max_burst_length)
-          , m_channels(channels)
-          , m_segment(mt.getSegment(tgtid))
-          , p_vci_initiator("p_vci_init") 
-          , p_vci_target("p_vci_tgt")    
-{
-    // initialize PDES local time
-    m_pdes_local_time = new pdes_local_time(100*UNIT_TIME);
-    
-    assert( (channels <= 8) && "The number of channels cannot be larger than 8");
-    assert( (max_burst_length <= 64) && "The burst length cannot be larger than 64");
-
-    // bind vci initiator port
-    p_vci_initiator(*this);                     
-    
-    // bind vci target port
-    p_vci_target(*this);                     
-    
-    // initialize channels
-    for( size_t channel ; channel < channels ; channel++ )
-    {
-        // bind IRQ[channel] ports
-        std::ostringstream name;
-        name << "p_irq_" << channel;
-        p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged
-                                <VciMultiDma,32,tlm::tlm_base_protocol_types>
-                                (name.str().c_str()));
-
-        p_irq[channel]->register_nb_transport_fw( this,
-                                                  &VciMultiDma::irq_nb_transport_bw, 
-                                                  channel );
-
-        // initialize payload and phase for IRQ transaction
-        m_irq_payload[channel].set_data_ptr(&m_irq_value[channel]);
-        m_irq_phase[channel] = tlm::BEGIN_REQ;
-    
-        // create and initialize the local buffers for VCI transactions 
-        m_vci_data_buf[channel] = new unsigned char[max_burst_length];
-        m_vci_be_buf[channel]   = new unsigned char[max_burst_length];
-
-        // initialize payload, phase and extension for VCI transactions
-        m_vci_payload[channel].set_command(tlm::TLM_IGNORE_COMMAND);
-        m_vci_payload[channel].set_data_ptr(m_vci_data_buf[channel]);
-        m_vci_payload[channel].set_byte_enable_ptr(m_vci_be_buf[channel]);
-        m_vci_payload[channel].set_extension(&m_vci_extension[channel]);
-
-        m_vci_extension[channel].set_src_id(m_srcid);
-        m_vci_extension[channel].set_trd_id(channel);
-        m_vci_extension[channel].set_pkt_id(0);
-
-        m_vci_phase[channel] = tlm::BEGIN_REQ;
-
-        // initialize payload and phase for an irq message
-        m_irq_payload[channel].set_data_ptr(&m_irq_value[channel]);
-        m_irq_phase[channel] = tlm::BEGIN_REQ;
-
-        // channel state registers initialisation 
-        m_state[channel]        = STATE_IDLE;
-        m_stop[channel]         = true;
-        m_irq_disabled[channel] = false;
-        m_rsp_received[channel] = false;
-        m_irq_value[channel]    = 0;
-        for ( size_t i=0 ; i<max_burst_length ; i++) 
-        {
-            m_vci_data_buf[channel][i] = 0x0;
-            m_vci_be_buf[channel][i]   = 0xFF;
-        }
-    }
-
-    // initialize payload, phase and extension for a null message
-    m_null_payload.set_extension(&m_null_extension);
-    m_null_extension.set_null_message();
-    m_null_phase = tlm::BEGIN_REQ;
-
-    // initialize payload, and phase for an activity message
-    m_activity_payload.set_extension(&m_activity_extension);
-    m_activity_phase = tlm::BEGIN_REQ;
-
-    SC_THREAD(execLoop);
-}
 
 }}
 
