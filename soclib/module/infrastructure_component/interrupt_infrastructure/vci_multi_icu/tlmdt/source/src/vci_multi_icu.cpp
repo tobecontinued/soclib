@@ -86,9 +86,9 @@ tmpl(/**/)::VciMultiIcu ( sc_core::sc_module_name            name,
                                 <VciMultiIcu,32,tlm::tlm_base_protocol_types>
                                 (name.str().c_str()));
 
-        p_irq_out[channel]->register_nb_transport_bw( this,
-                                                &VciMultiIcu::irq_nb_transport_bw, 
-                                                channel );
+        (*p_irq_out[channel]).register_nb_transport_bw( this,
+                                                        &VciMultiIcu::irq_nb_transport_bw, 
+                                                        channel );
 
         m_irq_mask[channel] = 0;
         m_irq_out_payload[channel].set_data_ptr(&m_irq_out_value[channel]);
@@ -154,9 +154,18 @@ std::cout << "[" << name() << "] time = "  << time.value()
           << " / reg = "  << reg << std::endl;
 #endif
 
-            if     (reg == ICU_INT)       utoa(getActiveIrqs(), payload.get_data_ptr(), 0);
-            else if(reg == ICU_IT_VECTOR) utoa(getIrqIndex(), payload.get_data_ptr(), 0);
-            else if(reg == ICU_MASK)      utoa(m_irq_mask[channel], payload.get_data_ptr(), 0);
+            if (reg == ICU_INT)
+            {
+                utoa(getActiveIrqs( channel ), payload.get_data_ptr(), 0);
+            }
+            else if (reg == ICU_IT_VECTOR)
+            {
+                utoa(getIrqIndex( channel ), payload.get_data_ptr(), 0);
+            }
+            else if (reg == ICU_MASK)
+            {
+                utoa(m_irq_mask[channel], payload.get_data_ptr(), 0);
+            }
             else    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
         }
 
@@ -339,7 +348,7 @@ tmpl(bool)::irqTransmissible( size_t             channel,
 ///////////////////////////////////////////////////////////////////////////////
 // This function returns a bit vector containing the unmasked and active IRQs
 ////////////////////////////////////////////////////////////////////////////////
-tmpl(uint32_t)::getActiveIrqs( int channel )
+tmpl(uint32_t)::getActiveIrqs( size_t channel )
 {
     uint32_t irqs = 0;
     for ( size_t j=0 ; j<m_nirq_in ; j++) 
@@ -355,7 +364,7 @@ tmpl(uint32_t)::getActiveIrqs( int channel )
 ///////////////////////////////////////////////////////////////////////////////////
 // This function returns index of the hignest priority unmasked and active IRQ 
 ///////////////////////////////////////////////////////////////////////////////////
-tmpl(size_t)::getIrqIndex( int channel )
+tmpl(size_t)::getIrqIndex( size_t channel )
 {
     for (size_t j=0 ; j<m_nirq_in ; j++) 
     {
