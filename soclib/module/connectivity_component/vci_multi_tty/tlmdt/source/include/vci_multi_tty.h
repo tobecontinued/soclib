@@ -29,14 +29,12 @@
 /////////////////////////////////////////////////////////////////////////////////////
 // Implementation Note
 // This component is a VCI target. It has a variable number of IRQ ports,
-// asociated to a variable number of TTY termnals..
+// asociated to a variable number of TTY termnals.
 // It is modeled as a purely reactive interface function : no thread, no local time.
-// It sends periodically timed values on the IRQ ports, to support the PDES
-// time filtering in the ICU component. 
-// To synchronizes with the system, it uses the NULL message received on the VCI 
-// port : The IRQ values are transmitted on the IRQ ports each time a NULL message
-// is received on the VCI port.
-////////////////////////////////////////////////////////////////////////////////////
+// To synchronizes with the system, it uses the NULL messages received on the VCI 
+// port : to support the PDES time filtering on the ICU component, the IRQ values 
+// are transmitted on the IRQ ports each time a NULL message is received.
+/////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_TLMDT_VCI_MULTI_TTY_H
 #define SOCLIB_TLMDT_VCI_MULTI_TTY_H
@@ -62,30 +60,40 @@ private:
     typedef typename vci_param::data_t data_t;
 
     // Member Variables
-    std::vector<soclib::common::TtyWrapper*> 	m_term;			// terminals
-    soclib::common::Segment       		m_segment;		// associated segment
-    uint8_t*					m_irq_value; 		// interrupt values
+    std::vector<soclib::common::TtyWrapper*>    m_term;			// terminals
+    soclib::common::Segment       	            m_segment;		// associated segment
 
-    // IRQ transactions (one for each terminal
-    tlm::tlm_generic_payload*			m_irq_payload;
-    tlm::tlm_phase				m_irq_phase;
-    sc_core::sc_time 				m_irq_time;
+    // IRQ transactions (one per terminal)
+    uint8_t*					                m_irq_value; 	// interrupt value
+    tlm::tlm_generic_payload*                   m_irq_payload;
+    tlm::tlm_phase*                             m_irq_phase;
+    sc_core::sc_time*                           m_irq_time;
 
     // Instrumentation counters
-    size_t m_cpt_read;
-    size_t m_cpt_write;
-    
+    size_t                                      m_cpt_read;
+    size_t                                      m_cpt_write;
+
+    //////////////////////////////////////////////////////////////////////////////
     //  Functions
+    //////////////////////////////////////////////////////////////////////////////
     void init(const std::vector<std::string> &names);
 
+    //////////////////////////////////////////////////////////////////////////////
+    // Interface function executed when receiving a command on p_vci
+    //////////////////////////////////////////////////////////////////////////////
     tlm::tlm_sync_enum nb_transport_fw ( tlm::tlm_generic_payload &payload,
                                          tlm::tlm_phase           &phase,  
                                          sc_core::sc_time         &time);   
 
+    //////////////////////////////////////////////////////////////////////////////
+    // Interface function executed when receiving a response on p_irq[id]
+    //////////////////////////////////////////////////////////////////////////////
     tlm::tlm_sync_enum irq_nb_transport_bw ( int                      id,
                                              tlm::tlm_generic_payload &payload,
                                              tlm::tlm_phase           &phase,  
                                              sc_core::sc_time         &time);   
+
+/*
     // Not implemented but mandatory
     void b_transport ( tlm::tlm_generic_payload &payload,
                        sc_core::sc_time         &time);
@@ -101,31 +109,35 @@ private:
     tlm::tlm_sync_enum nb_transport_bw ( tlm::tlm_generic_payload &payload,
                                          tlm::tlm_phase           &phase,
                                          sc_core::sc_time         &time);
+*/
+
 protected:
+
     SC_HAS_PROCESS(VciMultiTty);
 
 public:
 
     // ports
-    tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types>						  p_vci;
-    std::vector<tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,tlm::tlm_base_protocol_types> *> p_irq; 
+    tlm::tlm_target_socket<32,tlm::tlm_base_protocol_types>	   p_vci;
+
+    std::vector<tlm_utils::simple_initiator_socket_tagged
+    <VciMultiTty,32,tlm::tlm_base_protocol_types> *>           p_irq; 
 
     // constructors
     VciMultiTty(sc_core::sc_module_name name,
-	      const soclib::common::IntTab &index,
-	      const soclib::common::MappingTable &mt,
-	      const char *first_name,
-	      ...);
+	            const soclib::common::IntTab &index,
+	            const soclib::common::MappingTable &mt,
+	            const char *first_name,
+	            ...);
 
     VciMultiTty(sc_core::sc_module_name name,
-	      const soclib::common::IntTab &index,
-	      const soclib::common::MappingTable &mt,
-	      const std::vector<std::string> &names);
+	            const soclib::common::IntTab &index,
+	            const soclib::common::MappingTable &mt,
+	            const std::vector<std::string> &names);
  
+    // Instrumentation functions
     size_t getNRead();
-
     size_t getNWrite();
-
     void print_stats();
 };
 
