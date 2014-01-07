@@ -120,10 +120,10 @@ private:
     soclib_payload_extension	m_vci_extension[8];
     
     // NULL MESSAGE
-    tlm::tlm_generic_payload    m_null_payload[8];
-    tlm::tlm_phase              m_null_phase[8];
-    sc_core::sc_time            m_null_time[8];
-    soclib_payload_extension    m_null_extension[8];
+    tlm::tlm_generic_payload    m_null_payload;
+    tlm::tlm_phase              m_null_phase;
+    sc_core::sc_time            m_null_time;
+    soclib_payload_extension    m_null_extension;
     
     // IRQ TRANSACTIONS (one per channel)
     tlm::tlm_generic_payload    m_irq_payload[8];
