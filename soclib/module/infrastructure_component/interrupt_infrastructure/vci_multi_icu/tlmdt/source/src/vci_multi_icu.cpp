@@ -267,7 +267,8 @@ std::cout << "    - " << i
             {
                 m_irq_out_value[channel] = new_value;
               	m_irq_out_time[channel]  = new_time;
-                p_irq_out[channel].nb_transport_fw( m_irq_out_payload[channel], 
+                p_irq_out[channel].nb_transport_fw( channel,
+                                                    m_irq_out_payload[channel], 
                                                     m_irq_out_phase[channel], 
                                                     m_irq_out_time[channel] );
 

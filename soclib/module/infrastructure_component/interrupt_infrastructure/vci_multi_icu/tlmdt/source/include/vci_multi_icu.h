@@ -104,8 +104,8 @@ private:
     bool     irqTransmissible( size_t             channel,
                                unsigned char*     new_value, 
                                sc_core::sc_time*  new_time );
-    uint32_t getActiveIrqs();
-    size_t   getIrqIndex();
+    uint32_t getActiveIrqs( size_t channel );
+    size_t   getIrqIndex( size_t channel );
     void     execLoop();
 
     //////////////////////////////////////////////////////////////////////////////////
