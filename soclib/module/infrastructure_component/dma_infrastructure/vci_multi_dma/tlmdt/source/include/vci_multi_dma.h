@@ -102,22 +102,30 @@ private:
     data_t              m_destination[8];         // destination buffer address
     data_t              m_length[8];              // tranfer length (bytes)
     bool                m_irq_disabled[8];        // no IRQ when true
-    bool                m_active[8];              // channel running when true
+    bool                m_stop[8];                // channel desactivation request
     uint8_t             m_irq_value[8];	          // IRQ current value
     uint8_t*            m_vci_data_buf[8];        // local data buffer pointers  
     uint8_t*            m_vci_be_buf[8];          // local be buffer pointers  
     bool                m_rsp_received[8];        // VCI response available
     size_t              m_burst_length[8];        // actual burst length 
 
+    bool                m_dma_activated;          // at least one channel active
+
     pdes_local_time*	m_pdes_local_time;        // local time pointer
 
-    sc_core::sc_event   m_dma_activated;          // event to wake-up the thread
+    sc_core::sc_event   m_event;                  // event to wake-up the thread
 
     // VCI TRANSACTIONS (one per channel)
     tlm::tlm_generic_payload    m_vci_payload[8];
     tlm::tlm_phase              m_vci_phase[8];
     sc_core::sc_time            m_vci_time[8];
     soclib_payload_extension	m_vci_extension[8];
+    
+    // ACTIVITY MESSAGE
+    tlm::tlm_generic_payload    m_activity_payload;
+    tlm::tlm_phase              m_activity_phase;
+    sc_core::sc_time            m_activity_time;
+    soclib_payload_extension    m_activity_extension;
     
     // NULL MESSAGE
     tlm::tlm_generic_payload    m_null_payload;
@@ -149,6 +157,10 @@ public:
     void send_null();
     void send_write( size_t channel );
     void send_read( size_t channel );
+    void send_activity();
+    void sned_irq( size_t channel );
+    bool all_channels_stopped();
+    bool all_channels_idle();
 
     // Interface function to receive response on the VCI initiator port
     tlm::tlm_sync_enum 	nb_transport_bw ( tlm::tlm_generic_payload   &payload,

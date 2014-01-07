@@ -115,7 +115,7 @@ tmpl (void)::send_activity( )
     m_pdes_local_time->reset_sync();
 
     // send ACTIVITY message
-    m_active_time = m_pdes_local_time->get();
+    m_activity_time = m_pdes_local_time->get();
 
     p_vci_initiator->nb_transport_fw( m_activity_payload, 
                                       m_activity_phase, 
@@ -274,10 +274,10 @@ tmpl (void)::execLoop ()
     } // end infinite while
 } // end execLoop
 
-////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
 // service functions
-////////////////////////////////////
-inline bool all_channel_stopped()
+///////////////////////////////////////////////////////////////////////////////////
+tmpl(bool)::all_channel_stopped()
 {
     for( size_t channel = 0 ; channel < m_channels ; channel++ )
     {
@@ -286,7 +286,7 @@ inline bool all_channel_stopped()
     return true;
 }
 
-inline bool all_channel_idle()
+tmpl(bool)::all_channel_idle()
 {
     for( size_t channel = 0 ; channel < m_channels ; channel++ )
     {
@@ -299,7 +299,7 @@ inline bool all_channel_idle()
 // Interface function executed when receiving a response on the VCI initiator port
 // If it is a VCI response, the Boolean associated to the channel is set.
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload, 
+tmpl(tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload, 
                                              tlm::tlm_phase           &phase,       
                                              sc_core::sc_time         &time)  
 {
@@ -446,7 +446,7 @@ std::cout << "[" << name() << "] time = "  << time.value()
                 {
                     m_length[channel] = data;
                     m_stop[channel]   = false;
-                    m_dma_activated.notify();
+                    m_event.notify();
                 }
                 else if ( cell == DMA_IRQ_DISABLED )  m_irq_disabled[channel] = (data != 0);
                 else    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
@@ -542,11 +542,11 @@ tmpl(/**/)::VciMultiDma( sc_module_name                     name,
         std::ostringstream name;
         name << "p_irq_" << channel;
         p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged
-                                <VciMultiIcu,32,tlm::tlm_base_protocol_types>
+                                <VciMultiDma,32,tlm::tlm_base_protocol_types>
                                 (name.str().c_str()));
 
         p_irq[channel]->register_nb_transport_bw( this,
-                                                  &VciMultiIcu::irq_nb_transport_bw, 
+                                                  &VciMultiDma::irq_nb_transport_bw, 
                                                   channel );
 
         // initialize payload and phase for IRQ transaction
