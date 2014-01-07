@@ -201,7 +201,7 @@ tmpl (void)::execLoop ()
                     {
                         m_state[k] = STATE_IDLE;
                     }
-                    else if( !m_vci_payload.is_response_error() )
+                    else if( not m_vci_payload[k].is_response_error() )
                     {
                         m_state[k] = STATE_WRITE_CMD;
                     }
@@ -232,7 +232,7 @@ tmpl (void)::execLoop ()
                     {
                         m_state[k] = STATE_IDLE;
                     }
-                    else if ( m_vci_payload.is_response_error() )
+                    else if ( m_vci_payload[k].is_response_error() )
                     {
                         m_state[k] = STATE_ERROR_WRITE;
                         m_irq_value[k] = 0xFF;
@@ -261,7 +261,7 @@ tmpl (void)::execLoop ()
             {
                 if ( not m_stop[k] ) 
                 {
-                    m_state = STATE_IDLE;
+                    m_state[k] = STATE_IDLE;
                     m_irq_value[k] = 0x00;
                     if ( not m_irq_disabled[k] ) send_irq( k );
                 }
@@ -277,7 +277,7 @@ tmpl (void)::execLoop ()
 ///////////////////////////////////////////////////////////////////////////////////
 // service functions
 ///////////////////////////////////////////////////////////////////////////////////
-tmpl(bool)::all_channel_stopped()
+tmpl(bool)::all_channels_stopped()
 {
     for( size_t channel = 0 ; channel < m_channels ; channel++ )
     {
@@ -286,7 +286,7 @@ tmpl(bool)::all_channel_stopped()
     return true;
 }
 
-tmpl(bool)::all_channel_idle()
+tmpl(bool)::all_channels_idle()
 {
     for( size_t channel = 0 ; channel < m_channels ; channel++ )
     {
@@ -317,7 +317,7 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload,
         // set signal response received
         assert( ((m_state[channel] == STATE_READ_RSP) or 
                  (m_state[channel] == STATE_WRITE_RSP)) and
-        "ERROR in VCI_MULTI_DMA : unexpected response received")
+        "ERROR in VCI_MULTI_DMA : unexpected response received");
 
         m_rsp_received[channel] = true;
     }
@@ -328,10 +328,10 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload,
 /////////////////////////////////////////////////////////////////////////////////////
 // Interface function executed when receiving a response to an IRQ transaction
 /////////////////////////////////////////////////////////////////////////////////////
-tmpl (tlm::tlm_sync_enum)::irq_nb_transport_bw ( int                         id,
-                                                 tlm::tlm_generic_payload    &payload,
-                                                 tlm::tlm_phase              &phase,
-                                                 sc_core::sc_time            &time ) 
+tmpl(tlm::tlm_sync_enum)::irq_nb_transport_bw ( int                         id,
+                                                tlm::tlm_generic_payload    &payload,
+                                                tlm::tlm_phase              &phase,
+                                                sc_core::sc_time            &time ) 
 {
     // no action
     return tlm::TLM_COMPLETED;
@@ -347,9 +347,9 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw ( tlm::tlm_generic_payload &payload,
                                             tlm::tlm_phase           &phase, 
                                             sc_core::sc_time         &time)   
 {
-    int 	cell;
-    int     reg;
-    int     channel;
+    size_t  cell;
+    size_t  reg;
+    size_t  channel;
 
     soclib_payload_extension* extension_pointer;
     payload.get_extension(extension_pointer);
@@ -379,12 +379,12 @@ std::cout << "[" << name() << "] time = "  << time.value()
     }
 
     // address and length checking for a VCI command
-    bool	one_flit = (payload.get_data_length() == (unsigned int)vci_param::B);
+    bool	one_flit = (payload.get_data_length() == 4);
     addr_t	address = payload.get_address();
 
     if ( m_segment.contains(address) && one_flit )
     {
-        cell    = (int)((address - m_segment.baseAddress()) / vci_param::B);
+        cell    = (size_t)((address - m_segment.baseAddress()) >> 2);
         reg     = cell % DMA_SPAN;
         channel = cell / DMA_SPAN;
 
@@ -571,7 +571,7 @@ tmpl(/**/)::VciMultiDma( sc_module_name                     name,
 
         // initialize payload and phase for an irq message
         m_irq_payload[channel].set_data_ptr(&m_irq_value[channel]);
-        m_irq_phase = tlm::BEGIN_REQ;
+        m_irq_phase[channel] = tlm::BEGIN_REQ;
 
         // channel state registers initialisation 
         m_state[channel]        = STATE_IDLE;

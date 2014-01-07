@@ -168,7 +168,8 @@ public:
                                           sc_core::sc_time           &time);   
     
     // Interface Function to receive response on the IRQ port
-    tlm::tlm_sync_enum 	irq_nb_transport_bw ( tlm::tlm_generic_payload  &payload, 
+    tlm::tlm_sync_enum 	irq_nb_transport_bw ( int                       id,
+                                              tlm::tlm_generic_payload  &payload, 
                                               tlm::tlm_phase            &phase,  
                                               sc_core::sc_time          &time);  
 
