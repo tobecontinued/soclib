@@ -102,7 +102,7 @@ private:
     data_t              m_destination[8];         // destination buffer address
     data_t              m_length[8];              // tranfer length (bytes)
     bool                m_irq_disabled[8];        // no IRQ when true
-    bool                m_stop[8];                // running when false
+    bool                m_active[8];              // channel running when true
     uint8_t             m_irq_value[8];	          // IRQ current value
     uint8_t*            m_vci_data_buf[8];        // local data buffer pointers  
     uint8_t*            m_vci_be_buf[8];          // local be buffer pointers  
@@ -111,7 +111,7 @@ private:
 
     pdes_local_time*	m_pdes_local_time;        // local time pointer
 
-    sc_core::sc_event   m_channel_activated;      // event to wake-up the thread
+    sc_core::sc_event   m_dma_activated;          // event to wake-up the thread
 
     // VCI TRANSACTIONS (one per channel)
     tlm::tlm_generic_payload    m_vci_payload[8];
