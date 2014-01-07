@@ -90,7 +90,7 @@ class VciMultiDma
 private:
 
     // structural constants
-    const uint32_t 		m_srcid;                  // DMA SRCID
+    const uint32_t      m_srcid;                  // DMA SRCID
     const size_t        m_max_burst;	          // local buffer length (bytes)
     const size_t        m_channels;               // number of parallel channels
 
@@ -158,7 +158,7 @@ public:
     void send_write( size_t channel );
     void send_read( size_t channel );
     void send_activity();
-    void sned_irq( size_t channel );
+    void send_irq( size_t channel );
     bool all_channels_stopped();
     bool all_channels_idle();
 
