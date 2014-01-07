@@ -227,8 +227,7 @@ tmpl (void)::send_irq( size_t channel )
     // send IRQ command
     m_irq_time[channel]  = m_pdes_local_time->get();
 
-    p_irq[channel].nb_transport_fw( channel,
-                                    m_irq_payload[channel], 
+    p_irq[channel].nb_transport_fw( m_irq_payload[channel], 
                                     m_irq_phase[channel], 
                                     m_irq_time[channel] );
 #ifdef SOCLIB_MODULE_DEBUG
