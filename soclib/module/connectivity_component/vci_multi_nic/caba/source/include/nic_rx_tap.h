@@ -39,6 +39,8 @@
 #ifndef SOCLIB_CABA_NIC_RX_TAP_H
 #define SOCLIB_CABA_NIC_RX_TAP_H
 
+#if !defined(__APPLE__) || !defined(__MACH__)
+
 #include <inttypes.h>
 #include <systemc>
 #include <assert.h>
@@ -301,6 +303,8 @@ public:
 }; // end NicRxTap
 
 }}
+
+#endif /* !defined(__darwin__) */
 
 #endif /* SOCLIB_CABA_NIC_RX_TAP_H */
 

@@ -146,6 +146,7 @@
 #include <cstdio>
 #include <fcntl.h>
 #include <errno.h>
+#include <arpa/inet.h>
 
 #include "alloc_elems.h"
 #include "../include/vci_multi_nic.h"
@@ -2068,11 +2069,11 @@ tmpl(void)::transition()
                 uint32_t data1         = r_tx_dispatch_data1.read();
                 uint32_t data2         = r_tx_chbuf[channel].data();
 
-                uint32_t mac_dst_4 = be32toh(data0);
-                uint32_t mac_dst_2 = (be32toh(data1) & 0xFFFF0000)>>16;
+                uint32_t mac_dst_4 = ntohl(data0);
+                uint32_t mac_dst_2 = (ntohl(data1) & 0xFFFF0000)>>16;
                 // mac_src_4 and mac_src_2 are swapped here to ease the SRC MAC addr check
-                uint32_t mac_src_4 = (be32toh(data1) & 0x0000FFFF) | ((be32toh(data2) & 0xFFFF0000) >> 16);  // 2 MSB bytes
-                uint32_t mac_src_2 = (be32toh(data2) & 0x0000FFFF);                                          // 4 LSB bytes
+                uint32_t mac_src_4 = (ntohl(data1) & 0x0000FFFF) | ((ntohl(data2) & 0xFFFF0000) >> 16);  // 2 MSB bytes
+                uint32_t mac_src_2 = (ntohl(data2) & 0x0000FFFF);                                          // 4 LSB bytes
 
 #ifdef SOCLIB_NIC_DEBUG
                 printf("[NIC][%s][TX_DISPATCH_FIFO_SELECT] mac_dst %08x %04x\n", __func__, mac_dst_4, mac_dst_2);
@@ -3091,6 +3092,7 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
     sensitive << p_clk.neg();
 }
 
+#if !defined(__APPLE__) || !defined(__MACH__)
 /////////////////////////
 tmpl(int32_t)::open_tap_fd()
 {
@@ -3337,6 +3339,8 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
     dont_initialize();
     sensitive << p_clk.neg();
 }
+
+#endif /* !defined(__APPLE__) || !defined(__MACH__) */
 
 tmpl(/**/)::~VciMultiNic() {
     soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_mac_4, 8);

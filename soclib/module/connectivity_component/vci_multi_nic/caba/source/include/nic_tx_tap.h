@@ -40,6 +40,8 @@
 #ifndef SOCLIB_CABA_TX_TAP_H
 #define SOCLIB_CABA_TX_TAP_H
 
+#if !defined(__APPLE__) || !defined(__MACH__)
+
 #include <inttypes.h>
 #include <systemc>
 #include <assert.h>
@@ -207,7 +209,8 @@ public:
 
 }}
 
-#endif 
+#endif /* !defined(__darwin__) */
+#endif /* SOCLIB_CABA_TX_TAP_H */
 
 // Local Variables:
 // tab-width: 4

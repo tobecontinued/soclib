@@ -73,7 +73,10 @@ private:
     void        transition();
     void        genMoore();
     uint32_t    read_register(uint32_t addr);
+
+#if !defined(__APPLE__) || !defined(__MACH__)
     int32_t     open_tap_fd();
+#endif
 
     // Instrumentation registers
     sc_signal<uint32_t>         r_total_len_rx_gmii;       /*!< Bytes receive by RX_GMII */
@@ -201,8 +204,10 @@ private:
     NicRxBackend*               r_backend_rx;
     NicTxBackend*               r_backend_tx;
 
+#if !defined(__APPLE__) || !defined(__MACH__)
     // For TAP backend
     struct ifreq                m_tap_ifr;
+#endif
 
 
     // sructural parameters
@@ -210,7 +215,6 @@ private:
     const size_t				        m_channels;		    /*!< no more than 8 channels */
     const uint32_t                      m_default_mac_4;    /*!< MAC address 32 LSB bits */
     const uint32_t                      m_default_mac_2;    /*!< MAC address 16 MSB bits */
-    // struct ifreq                            m_tap_ifr;
 
 protected:
 

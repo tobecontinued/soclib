@@ -419,6 +419,8 @@ public:
                                   << " / words = " << words
                                   << " / packets = " << packets << std::endl;
 
+                        
+#ifdef SOCLIB_NIC_DEBUG
                         for ( size_t p = 0 ; p < packets ; p++ )
                             {
                                 uint32_t word = 1 + (p>>1);
@@ -428,8 +430,10 @@ public:
                                     plen = r_cont[cont][word] >> 16;
                                 else
                                     plen = r_cont[cont][word] & 0x0000FFFF;
-                                // std::cout << "[NIC][RX_CHBUF][" << __func__ << "] plen[" << p << "] = " << plen << std::endl;
+
+                                std::cout << "[NIC][RX_CHBUF][" << __func__ << "] plen[" << p << "] = " << plen << std::endl;
                             }
+#endif
                     }
             }
     }

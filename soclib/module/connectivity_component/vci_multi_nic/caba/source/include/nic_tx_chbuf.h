@@ -307,6 +307,7 @@ public:
                                   << " / words = " << words
                                   << " / packets = " << packets << std::endl;
 
+#ifdef SOCLIB_NIC_DEBUG
                         for ( size_t p = 0 ; p < packets ; p++ )
                             {
                                 uint32_t word = 1 + (p>>1);
@@ -316,11 +317,10 @@ public:
                                     plen = r_cont[cont][word] & 0x0000FFFF;
                                 else 
                                     plen = r_cont[cont][word] >> 16;
-#ifdef SOCLIB_NIC_DEBUG
                                 if (p + 1 >= packets)
                                     std::cout << "[NIC][TX_CHBUF][" << __func__ << "] plen[" << p << "] = " << plen << std::endl;
-#endif
                             }
+#endif
                     }
             }
     }
