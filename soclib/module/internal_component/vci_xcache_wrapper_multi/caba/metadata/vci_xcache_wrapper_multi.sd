@@ -1,9 +1,6 @@
 
 # -*- python -*-
 
-__id__ = "$Id: vci_xcache_wrapper.sd 917 2009-03-12 10:10:06Z nipo $"
-__version__ = "$Revision: 917 $"
-
 Module('caba:vci_xcache_wrapper_multi',
 	classname = 'soclib::caba::VciXcacheWrapperMulti',
 	tmpl_parameters = [
@@ -19,6 +16,7 @@ Module('caba:vci_xcache_wrapper_multi',
 	uses = [
 		Uses('caba:base_module'),
 		Uses('caba:multi_write_buffer'),
+		Uses('caba:generic_fifo', addr_t = 'uint32_t'),
 		Uses('caba:generic_cache', addr_t = 'uint32_t'),
 		Uses('common:iss2'),
 		Uses('common:mapping_table'),
@@ -41,11 +39,11 @@ Module('caba:vci_xcache_wrapper_multi',
 		parameter.Int('dcache_words'),
 		parameter.Int('wbuf_nwords'),
 		parameter.Int('wbuf_nlines'),
+		parameter.Int('wbuf_timeout'),
 		],
 	extensions = [
 		'dsx:get_ident=index:p_vci:mt',
 		'dsx:cpu=wrapper:iss_t',
 		'dsx:mapping_type=processor:ident',
    		],
-#	   debug = True,
 )

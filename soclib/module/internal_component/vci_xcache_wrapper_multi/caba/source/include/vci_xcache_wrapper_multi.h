@@ -27,14 +27,15 @@
  * Maintainers: alain
  */
 
-#ifndef SOCLIB_CABA_VCI_XCACHE_WRAPPER_MULTI_H
-#define SOCLIB_CABA_VCI_XCACHE_WRAPPER_MULTI_H
+#ifndef _CABA_VCI_XCACHE_WRAPPER_MULTI_H
+#define _CABA_VCI_XCACHE_WRAPPER_MULTI_H
 
 #include <inttypes.h>
 #include <systemc>
 #include "caba_base_module.h"
 #include "multi_write_buffer.h"
 #include "generic_cache.h"
+#include "generic_fifo.h"
 #include "vci_initiator.h"
 #include "mapping_table.h"
 #include "static_assert.h"
@@ -43,10 +44,10 @@ namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-//////////////////////////////////////////////
+////////////////////////////////////////////
 template<typename vci_param, typename iss_t>
 class VciXcacheWrapperMulti
-//////////////////////////////////////////////
+///////////////////////////////////////////
     : public soclib::caba::BaseModule
 {
     typedef uint32_t    addr_t;
@@ -59,24 +60,20 @@ class VciXcacheWrapperMulti
         DCACHE_WRITE_UPDT,
         DCACHE_WRITE_REQ,
         DCACHE_MISS_SELECT,
+        DCACHE_MISS_INVAL,
         DCACHE_MISS_WAIT,
-        DCACHE_MISS_UPDT,
         DCACHE_UNC_WAIT,
-        DCACHE_UNC_GO,
-        DCACHE_INVAL,
-        DCACHE_INVAL_GO,
-        DCACHE_SYNC,
-        DCACHE_ERROR,
+        DCACHE_XTN_HIT,
+        DCACHE_XTN_INVAL,
+        DCACHE_XTN_SYNC,
     };
 
     enum icache_fsm_state_e {
         ICACHE_IDLE,
         ICACHE_MISS_SELECT,
+        ICACHE_MISS_INVAL,
         ICACHE_MISS_WAIT,
-        ICACHE_MISS_UPDT,
         ICACHE_UNC_WAIT,
-        ICACHE_UNC_GO,
-        ICACHE_ERROR,
     };
 
     enum cmd_fsm_state_e {
@@ -97,11 +94,11 @@ class VciXcacheWrapperMulti
         RSP_DATA_WRITE,
     };
 
-    enum transaction_type_e {
-        TYPE_DATA_UNC  = 0,
+    enum blocking_transaction_type_e {
+        TYPE_DATA_UNC = 0,
         TYPE_DATA_MISS = 1,
-        TYPE_INS_UNC   = 2,
-        TYPE_INS_MISS  = 3,
+        TYPE_INS_UNC = 2,
+        TYPE_INS_MISS = 3,
     };
 
 public:
@@ -115,7 +112,7 @@ public:
 private:
 
     // STRUCTURAL PARAMETERS
-    const soclib::common::AddressDecodingTable<uint32_t, bool>  m_cacheability_table;
+    const soclib::common::AddressDecodingTable<uint64_t, bool>  m_cacheability_table;
     const uint32_t                                              m_srcid;
 
     const size_t                                                m_dcache_ways;
@@ -128,92 +125,85 @@ private:
     // ISS 
     iss_t                                                       m_iss;
 
+    // Communication with ISS
+    typename iss_t::InstructionRequest                          m_ireq;
+    typename iss_t::InstructionResponse                         m_irsp;
+    typename iss_t::DataRequest                                 m_dreq;
+    typename iss_t::DataResponse                                m_drsp;
+
     // REGISTERS
-    sc_signal<int>          r_dcache_fsm;
-    sc_signal<addr_t>       r_dcache_addr_save;
-    sc_signal<data_t>       r_dcache_wdata_save;
-    sc_signal<data_t>       r_dcache_rdata_save;
-    sc_signal<int>          r_dcache_type_save;
-    sc_signal<be_t>         r_dcache_be_save;
-    sc_signal<size_t>       r_dcache_way_save;
-    sc_signal<size_t>       r_dcache_set_save;
-    sc_signal<size_t>       r_dcache_word_save;
-    sc_signal<bool>         r_dcache_miss_req;
-    sc_signal<bool>         r_dcache_unc_req;
-    sc_signal<bool> 	    r_dcache_updated;	// dcache modified at previous cycle
+    sc_signal<int>           r_dcache_fsm;
+    sc_signal<addr_t>        r_dcache_addr_save;
+    sc_signal<data_t>        r_dcache_wdata_save;
+    sc_signal<int>           r_dcache_type_save;
+    sc_signal<be_t>          r_dcache_be_save;
+    sc_signal<bool>          r_dcache_cacheable_save;
+    sc_signal<size_t>        r_dcache_way_save;
+    sc_signal<size_t>        r_dcache_set_save;
+    sc_signal<size_t>        r_dcache_word_save;
+    sc_signal<bool>          r_dcache_miss_req;
+    sc_signal<bool>          r_dcache_unc_req;
 
-    sc_signal<int>          r_icache_fsm;
-    sc_signal<addr_t>       r_icache_addr_save;
-    sc_signal<size_t>       r_icache_way_save;
-    sc_signal<size_t>       r_icache_set_save;
-    sc_signal<bool>         r_icache_miss_req;
-    sc_signal<bool>         r_icache_unc_req;
-    sc_signal<bool> 	    r_icache_updated;	// icache modified at previous cycle
+    sc_signal<int>           r_icache_fsm;
+    sc_signal<addr_t>        r_icache_addr_save;
+    sc_signal<size_t>        r_icache_way_save;
+    sc_signal<size_t>        r_icache_set_save;
+    sc_signal<size_t>        r_icache_word_save;
+    sc_signal<bool>          r_icache_miss_req;
+    sc_signal<bool>          r_icache_unc_req;
 
-    sc_signal<int>          r_cmd_fsm;
-    sc_signal<size_t>       r_cmd_min;
-    sc_signal<size_t>       r_cmd_max;
-    sc_signal<size_t>       r_cmd_cpt;
+    sc_signal<int>           r_vci_cmd_fsm;
+    sc_signal<size_t>        r_vci_cmd_min;
+    sc_signal<size_t>        r_vci_cmd_max;
+    sc_signal<size_t>        r_vci_cmd_cpt;
 
-    sc_signal<int>          r_rsp_fsm;
-    sc_signal<bool>         r_rsp_ins_error;
-    sc_signal<bool>         r_rsp_data_error;
-    sc_signal<size_t>       r_rsp_cpt;
-    sc_signal<bool>         r_rsp_ins_ok;
-    sc_signal<bool>         r_rsp_data_ok;
+    sc_signal<int>           r_vci_rsp_fsm;
+    sc_signal<bool>          r_vci_rsp_ins_error;
+    sc_signal<bool>          r_vci_rsp_data_error;
+    sc_signal<size_t>        r_vci_rsp_cpt;
 
-    data_t                  *r_icache_miss_buf;
-    data_t                  *r_dcache_miss_buf;
+    GenericFifo<uint32_t>    r_vci_rsp_fifo_ins;
+    GenericFifo<uint32_t>    r_vci_rsp_fifo_data;
 
-    MultiWriteBuffer<addr_t>	r_wbuf;
-    GenericCache<addr_t>    	r_icache;
-    GenericCache<addr_t>    	r_dcache;
+    MultiWriteBuffer<addr_t> r_wbuf;
+    GenericCache<addr_t>     r_icache;
+    GenericCache<addr_t>     r_dcache;
 
-    // Processor interface
-    typename iss_t::InstructionRequest   m_ireq;
-    typename iss_t::InstructionResponse  m_irsp;
-    typename iss_t::DataRequest          m_dreq;
-    typename iss_t::DataResponse         m_drsp;
+    // Debug variables
+    bool     m_debug_previous_d_hit;
+    uint32_t m_debug_previous_d_rdata;
+    bool     m_debug_previous_i_hit;
+    uint32_t m_debug_previous_i_rdata;
 
     // Activity counters 
-    uint32_t m_cpt_dcache_data_read;        // DCACHE DATA READ
-    uint32_t m_cpt_dcache_data_write;       // DCACHE DATA WRITE
-    uint32_t m_cpt_dcache_dir_read;         // DCACHE DIR READ
-    uint32_t m_cpt_dcache_dir_write;        // DCACHE DIR WRITE
+    uint32_t m_cpt_icache_read;        // ICACHE DATA READ
+    uint32_t m_cpt_icache_write;       // ICACHE DATA WRITE
+    uint32_t m_cpt_dcache_read;        // DCACHE DATA READ
+    uint32_t m_cpt_dcache_write;       // DCACHE DATA WRITE
 
-    uint32_t m_cpt_icache_data_read;        // ICACHE DATA READ
-    uint32_t m_cpt_icache_data_write;       // ICACHE DATA WRITE
-    uint32_t m_cpt_icache_dir_read;         // ICACHE DIR READ
-    uint32_t m_cpt_icache_dir_write;        // ICACHE DIR WRITE
-
-    addr_t   m_cpt_pc_previous;             // previous valid instruction address
-    uint32_t m_cpt_exec_ins;	            // number of executed instructions
+    // Instrumentation counters
+    uint32_t m_cpt_exec_ins;                // number of executed instructions
+    uint32_t m_pc_previous;                 // PC value at previous cycle
     uint32_t m_cpt_total_cycles;	        // total number of cycles
 
     uint32_t m_cpt_read;                    // total number of read requests
     uint32_t m_cpt_write;                   // total number of write requests
-    uint32_t m_cpt_write_cached;            // number of cached write
-    uint32_t m_cpt_data_unc;                // number of uncachable data requests
-    uint32_t m_cpt_ins_unc;                 // number of uncachable instruction requests
-    uint32_t m_cpt_ll;			            // number of ll requests
-    uint32_t m_cpt_sc;			            // number of sc requests
     uint32_t m_cpt_data_miss;               // number of data miss
     uint32_t m_cpt_ins_miss;                // number of instruction miss
+    uint32_t m_cpt_data_unc;                // number of uncacheable read/write requests
+    uint32_t m_cpt_write_cached;            // number of cached write
 
-    uint32_t m_cost_write_frz;              // frozen cycles related to write buffer
-    uint32_t m_cost_data_miss_frz;          // frozen cycles related to data miss
-    uint32_t m_cost_unc_frz;                // frozen cycles related to uncached data
-    uint32_t m_cost_ins_miss_frz;           // frozen cycles related to ins miss
+    uint32_t m_cost_write_frz;              // number of frozen cycles related to write buffer
+    uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss
+    uint32_t m_cost_data_unc_frz;           // number of frozen cycles related to uncached data
+    uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss
+    uint32_t m_cost_ins_unc_frz;            // number of frozen cycles related to uncached ins 
 
-    uint32_t m_cpt_imiss_transaction;       // VCI instruction miss transactions
-    uint32_t m_cpt_dmiss_transaction;       // VCI data miss transactions
-    uint32_t m_cpt_data_unc_transaction;    // VCI uncachable data transactions
-    uint32_t m_cpt_ins_unc_transaction;     // VCI uncachable instruction transactions
-    uint32_t m_cpt_write_transaction;       // VCI write transactions
-
-    uint32_t m_length_write_transaction;    // cumulated length VCI write transactions
+    uint32_t m_count_write_transaction;     // number of VCI write transactions
+    uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
 
 protected:
+
     SC_HAS_PROCESS(VciXcacheWrapperMulti);
 
 public:
@@ -235,10 +225,8 @@ public:
     ~VciXcacheWrapperMulti();
 
     void print_stats();
-    void print_trace(size_t mode = 0);
-
-    void file_stats(FILE* file);
-    void file_trace(FILE* file);
+    void print_trace( size_t mode = 0 );
+    void cache_monitor( addr_t addr );
 
 private:
 
@@ -251,7 +239,7 @@ private:
 
 }}
 
-#endif /* SOCLIB_CABA_VCI_XCACHE_WRAPPER_MULTI_H */
+#endif /* SOCLIB_CABA_VCI_XCACHE_WRAPPER_ADVANCED_H */
 
 // Local Variables:
 // tab-width: 4
