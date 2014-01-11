@@ -32,7 +32,7 @@
 #include <inttypes.h>
 
 #include "soclib_endian.h"
-#include "write_buffer.h"
+#include "multi_write_buffer.h"
 #include "generic_cache.h"
 #include "mapping_table.h"
 
