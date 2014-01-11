@@ -90,8 +90,8 @@ tmpl (/**/)::VciXcacheWrapperMulti
     const size_t                        dcache_ways,
     const size_t                        dcache_sets,
     const size_t                        dcache_words,
-    const size_t                        wbuf_lines,
     const size_t                        wbuf_words,
+    const size_t                        wbuf_lines,
     const size_t                        time_quantum,
     const size_t                        max_cycles )
        : sc_module(name)
@@ -106,7 +106,7 @@ tmpl (/**/)::VciXcacheWrapperMulti
 	   , m_dcache_sets(dcache_sets)
 	   , m_dcache_words(dcache_words)
 	   , m_dcache_yzmask((~0)<<(uint32_log2(dcache_words) + 2))
-	   , m_wbuf("wbuf", dcache_words)
+	   , m_wbuf("wbuf", wbuf_words, wbuf_lines, dcache_words)
 	   , m_icache("icache", icache_ways, icache_sets, icache_words)
 	   , m_dcache("dcache", dcache_ways, dcache_sets, dcache_words)
 	   , m_cacheability_table(mt.getCacheabilityTable())
@@ -168,7 +168,7 @@ tmpl (/**/)::VciXcacheWrapperMulti
     m_imiss_payload.set_data_length( 0 );
     m_imiss_payload.set_byte_enable_length( 0 );
 
-    m_imiss_extension.set_src_id( srcid );
+    m_imiss_extension.set_src_id( m_srcid );
     m_imiss_extension.set_pkt_id( 0 );
     m_imiss_payload.set_extension( &m_imiss_extension );
     m_imiss_phase = tlm::BEGIN_REQ;
@@ -184,7 +184,7 @@ tmpl (/**/)::VciXcacheWrapperMulti
     m_dmiss_payload.set_data_length( 0 );
     m_dmiss_payload.set_byte_enable_length( 0 );
 
-    m_dmiss_extension.set_src_id( srcid );
+    m_dmiss_extension.set_src_id( m_srcid );
     m_dmiss_extension.set_pkt_id( 0 );
     m_dmiss_payload.set_extension( &m_dmiss_extension );
     m_dmiss_phase = tlm::BEGIN_REQ;
@@ -203,7 +203,7 @@ tmpl (/**/)::VciXcacheWrapperMulti
         m_write_payload[k].set_byte_enable_length( 0 );
 
         m_write_extension[k].set_command(VCI_WRITE_COMMAND);
-        m_write_extension[k].set_src_id( srcid );
+        m_write_extension[k].set_src_id( m_srcid );
         m_write_extension[k].set_trd_id( 0x8 + k );
         m_write_extension[k].set_pkt_id( 0 );
         m_write_payload[k].set_extension( &m_write_extension );

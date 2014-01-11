@@ -165,7 +165,7 @@ private:
     uint32_t                  m_rsp_type;                // response type
     sc_core::sc_time          m_rsp_time;                // response date
 
-    WriteBuffer<addr_t>       m_wbuf;
+    MultiWriteBuffer<addr_t>  m_wbuf;
     GenericCache<addr_t>      m_icache;
     GenericCache<addr_t>      m_dcache;
 
@@ -177,8 +177,6 @@ private:
     unsigned char             m_data_buf[64];  // 64 bytes
 
     sc_core::sc_event         m_rsp_received;
-
-    sc_core::sc_time          m_rsp_time;
 
     // Fields for the VCI IMISS or IUNC transaction (only one)
     tlm::tlm_generic_payload  m_imiss_payload;
