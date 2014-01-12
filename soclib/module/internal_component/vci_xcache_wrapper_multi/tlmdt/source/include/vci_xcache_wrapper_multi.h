@@ -48,8 +48,6 @@ class VciXcacheWrapperMulti
 private:
   typedef typename vci_param::addr_t addr_t;
   typedef typename vci_param::data_t data_t;
-  typedef typename vci_param::data_t tag_t;
-  typedef typename vci_param::data_t be_t;
   
     enum dcache_fsm_state_e {
         DCACHE_IDLE,
@@ -132,8 +130,8 @@ private:
     addr_t                    m_dcache_addr_save;
     data_t                    m_dcache_wdata_save;
     data_t                    m_dcache_rdata_save;
+    data_t                    m_dcache_be_save;
     int                       m_dcache_type_save;
-    be_t                      m_dcache_be_save;
     size_t                    m_dcache_way_save;
     size_t                    m_dcache_set_save;
     size_t                    m_dcache_word_save;
@@ -257,6 +255,12 @@ private:
                                             tlm::tlm_generic_payload &payload, 
                                             tlm::tlm_phase           &phase,  
                                             sc_core::sc_time         &time );
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    // Not implemented but required by interface
+    ///////////////////////////////////////////////////////////////////////////////////
+    void invalidate_direct_mem_ptr ( sc_dt::uint64 start_range, 
+                                     sc_dt::uint64 end_range );
 
 protected:
 
