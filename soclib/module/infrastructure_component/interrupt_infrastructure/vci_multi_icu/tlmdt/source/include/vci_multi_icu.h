@@ -125,10 +125,10 @@ private:
     /////////////////////////////////////////////////////////////////////////////////////
     // Interface function executed when receiving and IRQ on p_irq_in[id]
     /////////////////////////////////////////////////////////////////////////////////////
-    tlm::tlm_sync_enum irq_nb_transport_fw ( int                      id,       
-                                             tlm::tlm_generic_payload &payload,   
-                                             tlm::tlm_phase           &phase,    
-                                             sc_core::sc_time         &time);  
+    tlm::tlm_sync_enum irq_nb_transport_fw ( int                       id,       
+                                             tlm::tlm_generic_payload  &payload,   
+                                             tlm::tlm_phase            &phase,    
+                                             sc_core::sc_time          &time );  
 
     /////////////////////////////////////////////////////////////////////////////////////
     // Not implemented but required by interface
@@ -143,6 +143,11 @@ private:
 
     void invalidate_direct_mem_ptr ( sc_dt::uint64 start_range, 
                                      sc_dt::uint64 end_range); 
+
+    /////////////////////////// No comprendo ///////////////////////////////
+    tlm::tlm_sync_enum nb_transport_bw ( tlm::tlm_generic_payload  &payload,
+                                         tlm::tlm_phase            &phase,
+                                         sc_core::sc_time          &time );
 
 protected:
 
