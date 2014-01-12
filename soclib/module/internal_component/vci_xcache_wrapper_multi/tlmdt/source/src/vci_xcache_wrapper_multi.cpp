@@ -118,11 +118,11 @@ tmpl (/**/)::VciXcacheWrapperMulti
     assert( (wbuf_words > 1) and (wbuf_words < 17) and
     "ERROR in VCI_XCACHE_WRAPPER_MULTI: wbuf_words must be in [1...16] range");
 
-    assert( ((dcache_words == 1) or (dcache_words == 2) or (dcache_words = 4) or
+    assert( ((dcache_words == 1) or (dcache_words == 2) or (dcache_words == 4) or
              (dcache_words == 8) or (dcache_words == 16)) and
     "ERROR in VCI_XCACHE_WRAPPER_MULTI: dcache_words must be in [1,2,4,8,16]");
 
-    assert( ((icache_words == 1) or (icache_words == 2) or (icache_words = 4) or
+    assert( ((icache_words == 1) or (icache_words == 2) or (icache_words == 4) or
              (icache_words == 8) or (icache_words == 16)) and
     "ERROR in VCI_XCACHE_WRAPPER_MULTI: icache_words must be in [1,2,4,8,16]");
 
@@ -1119,7 +1119,7 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
         else                                       m_vci_rsp_ins_rok   = true;
 
         // update local time
-        if ( m_rsp_time > m_pdes_local_time->get() ) m_pdes_local_time->set( time );
+        if ( m_rsp_time > m_pdes_local_time->get() ) m_pdes_local_time->set( m_rsp_time );
         m_rsp_valid = false;
         m_vci_rsp_fsm = RSP_IDLE;
         break;
@@ -1132,7 +1132,7 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
         else                                       m_vci_rsp_data_rok   = true;
 
         // update local time
-        if ( m_rsp_time > m_pdes_local_time->get() ) m_pdes_local_time->set( time );
+        if ( m_rsp_time > m_pdes_local_time->get() ) m_pdes_local_time->set( m_rsp_time );
         m_rsp_valid = false;
         m_vci_rsp_fsm = RSP_IDLE;
         break;
