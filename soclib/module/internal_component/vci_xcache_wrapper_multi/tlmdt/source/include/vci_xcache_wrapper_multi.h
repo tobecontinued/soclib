@@ -137,7 +137,7 @@ private:
     size_t                    m_dcache_way_save;
     size_t                    m_dcache_set_save;
     size_t                    m_dcache_word_save;
-    bool                      m_dcache_cached_save;
+    bool                      m_dcache_cacheable_save;
     bool                      m_dcache_miss_req;
     bool                      m_dcache_unc_req;
 
@@ -148,7 +148,6 @@ private:
     size_t                    m_icache_word_save;
     bool                      m_icache_miss_req;
     bool                      m_icache_unc_req;
-    uint32_t                  m_icache_time_save;
 
     int                       m_vci_cmd_fsm;
     size_t                    m_vci_cmd_min;             // min word index in WBUF

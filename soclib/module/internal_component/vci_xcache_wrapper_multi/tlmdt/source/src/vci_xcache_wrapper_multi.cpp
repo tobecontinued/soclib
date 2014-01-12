@@ -933,7 +933,7 @@ tmpl(void)::vci_cmd_fsm()
             size_t index  = m_wbuf.getIndex();
 
             // set WRITE transaction fields
-            m_write_payloadi[index].set_address( m_wbuf.getAddress( m_vci_cmd_min ) );
+            m_write_payload[index].set_address( m_wbuf.getAddress( m_vci_cmd_min ) );
             m_write_payload[index].set_data_length( length );
             m_write_extension[index].set_write();
             m_write_extension[index].set_trd_id( 0x8 + index );
@@ -968,7 +968,7 @@ tmpl(void)::vci_cmd_fsm()
 
             // consume icache request
             m_icache_unc_req = false;
-            m_vci_cmd_fsm = CMD_INC_UNC;
+            m_vci_cmd_fsm = CMD_INS_UNC;
         }
         break;
     }
@@ -983,7 +983,6 @@ tmpl(void)::vci_cmd_fsm()
                                 m_dmiss_phase, 
                                 m_dmiss_time);
 
-        m_cpt_dmiss_transaction++;
         m_vci_cmd_fsm = CMD_IDLE;
         break;
     }
@@ -998,7 +997,6 @@ tmpl(void)::vci_cmd_fsm()
                                 m_imiss_phase, 
                                 m_imiss_time );
        
-        m_cpt_imiss_transaction++;
         m_vci_cmd_fsm = CMD_IDLE;
         break;
     }
@@ -1013,7 +1011,6 @@ tmpl(void)::vci_cmd_fsm()
                                 m_dmiss_phase, 
                                 m_dmiss_time);
        
-        m_cpt_dunc_transaction++;
         m_vci_cmd_fsm = CMD_IDLE;
         break;
     }
@@ -1028,7 +1025,6 @@ tmpl(void)::vci_cmd_fsm()
                                 m_imiss_phase, 
                                 m_imiss_time);
 
-        m_cpt_iunc_transaction++;
         m_vci_cmd_fsm = CMD_IDLE;
         break;
     }
@@ -1048,17 +1044,16 @@ tmpl(void)::vci_cmd_fsm()
               m_write_be_buf[m_vci_cmd_index],
               m_vci_cmd_cpt*vci_param::nbytes );
         
-        if ( m_vci_cmd_min == m_vci_cpt_max )   // last flit
+        if ( m_vci_cmd_min == m_vci_cmd_max )   // last flit
         {
             // reset time quantum
             m_pdes_local_time->reset_sync();
 
-            m_imiss_time = m_pdes_local_time->get();
+            m_write_time[m_vci_cmd_index] = m_pdes_local_time->get();
             p_vci->nb_transport_fw( m_write_payload[m_vci_cmd_index], 
                                     m_write_phase[m_vci_cmd_index], 
-                                    m_imiss_time[m_vci_cmd_index] );
+                                    m_write_time[m_vci_cmd_index] );
 
-            m_cpt_write_transaction++;
             m_vci_cmd_fsm = CMD_IDLE;
         }
         m_vci_cmd_cpt++;
@@ -1092,22 +1087,22 @@ tmpl (void)::vci_rsp_fsm()
     {
         if ( m_rsp_valid )  // valid response received on VCI port
         {
-            if      ( m_rsp_type & 0x8 )            m_vci_rsp_fsm = RSP_WRITE;
+            if      ( m_rsp_type & 0x8 )            m_vci_rsp_fsm = RSP_DATA_WRITE;
             else if ( m_rsp_type == TYPE_INS_MISS)  m_vci_rsp_fsm = RSP_INS_MISS;
             else if ( m_rsp_type == TYPE_INS_UNC)   m_vci_rsp_fsm = RSP_INS_UNC;
             else if ( m_rsp_type == TYPE_DATA_MISS) m_vci_rsp_fsm = RSP_DATA_MISS;
             else if ( m_rsp_type == TYPE_DATA_UNC)  m_vci_rsp_fsm = RSP_DATA_UNC;
-            else
         }
         break;
     }
-    ///////////////
-    case RSP_WRITE:      // release WBUF entry if response is in past 
-                         // wait if response time is in future
+    /////////////////////
+    case RSP_DATA_WRITE:      // release WBUF entry if response is in past 
+                              // wait if response time is in future
     {
         if ( m_pdes_local_time->get() >= m_rsp_time ) 
         {
-            if ( m_vci_payload.is_response_error()) 
+            size_t index = m_rsp_type - 0x8;
+            if ( m_write_payload[index].is_response_error() ) 
             {
 
 #ifdef SOCLIB_MODULE_DEBUG
@@ -1115,7 +1110,7 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
 #endif
                  m_iss.setWriteBerr();
             }	
-            m_wbuf.completed( type - 0x8 );
+            m_wbuf.completed( index );
             m_rsp_valid = false;
             m_vci_rsp_fsm = RSP_IDLE;
         }                                             
@@ -1125,8 +1120,8 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
     case RSP_INS_MISS:   // signal data availability (or bus error) to ICACHE FSM
     case RSP_INS_UNC:    // Update local time 
     {
-        if ( payload.is_response_error() ) m_vci_rsp_ins_error = true;
-        else                               m_vci_rsp_ins_rok   = true;
+        if ( m_imiss_payload.is_response_error() ) m_vci_rsp_ins_error = true;
+        else                                       m_vci_rsp_ins_rok   = true;
 
         // update local time
         if ( time > m_pdes_local_time->get() ) m_pdes_local_time->set( time );
@@ -1138,8 +1133,8 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
     case RSP_DATA_MISS:   // signal data availability (or bus error) to DCACHE FSM
     case RSP_DATA_UNC:    // Update local time 
     {
-        if ( payload.is_response_error() ) m_vci_rsp_data_error = true;
-        else                               m_vci_rsp_data_rok   = true;
+        if ( m_dmiss_payload.is_response_error() ) m_vci_rsp_data_error = true;
+        else                                       m_vci_rsp_data_rok   = true;
 
         // update local time
         if ( time > m_pdes_local_time->get() ) m_pdes_local_time->set( time );
@@ -1203,7 +1198,7 @@ std::cout << "[" << name() << "] Receive VCI RSP / time = " << time.value() << s
     m_rsp_time  = time;
 
     // notify if this is not a write
-    if ( type < 0x8 )   m_rsp_received.notify( sc_core::SC_ZERO_TIME );
+    if ( m_rsp_type < 0x8 )   m_rsp_received.notify( sc_core::SC_ZERO_TIME );
 
     return tlm::TLM_COMPLETED;
 }  // end of VCI receive
