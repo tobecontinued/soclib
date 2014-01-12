@@ -169,7 +169,7 @@ private:
     GenericCache<addr_t>      m_icache;
     GenericCache<addr_t>      m_dcache;
 
-    soclib::common::AddressDecodingTable<addr_t, bool> m_cacheability_table;
+    soclib::common::AddressDecodingTable<uint64_t, bool> m_cacheability_table;
   
     // VCI COMMUNICATION
     unsigned int              m_nbytes;
@@ -178,7 +178,7 @@ private:
 
     sc_core::sc_event         m_rsp_received;
 
-    // Fields for the VCI IMISS or IUNC transaction (only one)
+    // Fields for the VCI IMISS or IUNC transaction (only one transaction)
     tlm::tlm_generic_payload  m_imiss_payload;
     soclib_payload_extension  m_imiss_extension;
     tlm::tlm_phase            m_imiss_phase;
@@ -186,7 +186,7 @@ private:
     unsigned char*            m_imiss_data_buf;
     unsigned char*            m_imiss_be_buf;
   
-    // Fields for the VCI DMISS or DUNC transaction (only one)
+    // Fields for the VCI DMISS or DUNC transaction (only one transaction)
     tlm::tlm_generic_payload  m_dmiss_payload;
     soclib_payload_extension  m_dmiss_extension;
     tlm::tlm_phase            m_dmiss_phase;
@@ -194,10 +194,10 @@ private:
     unsigned char*            m_dmiss_data_buf;
     unsigned char*            m_dmiss_be_buf;
 
-    // Fields for the VCI WRITE transaction (up to 8 simultaneous)
+    // Fields for the VCI WRITE transaction (up to 8 simultaneous transactions)
     tlm::tlm_generic_payload  m_write_payload[8];
     soclib_payload_extension  m_write_extension[8];
-    tlm::tlm_phase*           m_write_phase[8];
+    tlm::tlm_phase            m_write_phase[8];
     sc_core::sc_time          m_write_time[8];
     unsigned char*            m_write_data_buf[8];
     unsigned char*            m_write_be_buf[8];

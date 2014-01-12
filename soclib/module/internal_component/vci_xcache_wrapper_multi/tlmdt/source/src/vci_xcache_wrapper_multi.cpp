@@ -438,7 +438,6 @@ tmpl(void)::icache_fsm()
                     m_icache_addr_save = m_ireq.addr;
                     m_icache_word_save = 0;
                     m_icache_miss_req  = true;
-		            m_icache_time_save = m_pdes_local_time->get().value(); 
                 }
                 else                        // hit
                 {
@@ -453,7 +452,6 @@ tmpl(void)::icache_fsm()
                 m_icache_fsm       = ICACHE_UNC_WAIT;
                 m_icache_addr_save = m_ireq.addr; 
                 m_icache_unc_req   = true;
-		        m_icache_time_save = m_pdes_local_time->get().value();
             } 
         }
         break;
@@ -900,9 +898,6 @@ tmpl(void)::vci_cmd_fsm()
     //////////////
     case CMD_IDLE:
     {
-        size_t min;   // min word index for a write burst
-        size_t max;   // max word index for a write burst
-
         if ( m_dcache_miss_req and m_wbuf.miss( m_dcache_addr_save ) )  // IMISS
         {
             // set DMISS transaction fields
@@ -1124,7 +1119,7 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
         else                                       m_vci_rsp_ins_rok   = true;
 
         // update local time
-        if ( time > m_pdes_local_time->get() ) m_pdes_local_time->set( time );
+        if ( m_rsp_time > m_pdes_local_time->get() ) m_pdes_local_time->set( time );
         m_rsp_valid = false;
         m_vci_rsp_fsm = RSP_IDLE;
         break;
@@ -1137,7 +1132,7 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
         else                                       m_vci_rsp_data_rok   = true;
 
         // update local time
-        if ( time > m_pdes_local_time->get() ) m_pdes_local_time->set( time );
+        if ( m_rsp_time > m_pdes_local_time->get() ) m_pdes_local_time->set( time );
         m_rsp_valid = false;
         m_vci_rsp_fsm = RSP_IDLE;
         break;
