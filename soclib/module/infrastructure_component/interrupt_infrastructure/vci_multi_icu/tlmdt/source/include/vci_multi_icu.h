@@ -23,7 +23,6 @@
  * Maintainers: alain
  *
  * Copyright (c) UPMC / Lip6, 2008
- *     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
  *     Alain Greiner <alain.greiner@lip6.fr>
  */
 
@@ -116,7 +115,7 @@ private:
                                          sc_core::sc_time         &time);  
 
     //////////////////////////////////////////////////////////////////////////////////
-    // Interface function executed when receiving a response on p_irq_out[j]
+    // Interface function executed when receiving a response on p_irq_out[id]
     //////////////////////////////////////////////////////////////////////////////////
     tlm::tlm_sync_enum irq_nb_transport_bw ( int                      id,
                                              tlm::tlm_generic_payload &payload, 
