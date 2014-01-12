@@ -65,7 +65,7 @@ tmpl(/**/)::VciMultiDma( sc_module_name                     name,
     p_vci_target(*this);                     
     
     // initialize channels
-    for( size_t channel ; channel < channels ; channel++ )
+    for( size_t channel = 0 ; channel < channels ; channel++ )
     {
         // bind IRQ[channel] ports
         std::ostringstream name;
@@ -238,7 +238,7 @@ std::cout <<  "[" <<name() << "] time = " << std::dec << m_vci_time[channel].val
 }
 
 //////////////////////////////////////////////////////////////////////////
-// thread associated to the initiator FSMs
+//     PDES process
 //////////////////////////////////////////////////////////////////////////
 tmpl (void)::execLoop ()
 {
@@ -570,7 +570,6 @@ std::cout << "[" << name() << "] time = "  << time.value()
     return tlm::TLM_COMPLETED;
 }
 
-/*
 /////////////////////////////////////////////////////////////
 // Not implemented but required by interface
 /////////////////////////////////////////////////////////////
@@ -596,8 +595,6 @@ tmpl(void)::invalidate_direct_mem_ptr ( sc_dt::uint64 start_range,
 {
     return;
 }
-*/
-
 
 }}
 

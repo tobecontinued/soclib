@@ -162,23 +162,31 @@ public:
     bool all_channels_stopped();
     bool all_channels_idle();
 
+    /////////////////////////////////////////////////////////////////////////////
     // Interface function to receive response on the VCI initiator port
+    /////////////////////////////////////////////////////////////////////////////
     tlm::tlm_sync_enum 	nb_transport_bw ( tlm::tlm_generic_payload   &payload,
                                           tlm::tlm_phase             &phase,  
                                           sc_core::sc_time           &time);   
     
+    /////////////////////////////////////////////////////////////////////////////
     // Interface Function to receive response on the IRQ port
+    /////////////////////////////////////////////////////////////////////////////
     tlm::tlm_sync_enum 	irq_nb_transport_bw ( int                       id,
                                               tlm::tlm_generic_payload  &payload, 
                                               tlm::tlm_phase            &phase,  
                                               sc_core::sc_time          &time);  
 
+    /////////////////////////////////////////////////////////////////////////////
     // Interface function to receive command on the VCI target port
+    /////////////////////////////////////////////////////////////////////////////
     tlm::tlm_sync_enum 	nb_transport_fw ( tlm::tlm_generic_payload &payload,  
                                           tlm::tlm_phase           &phase,      
                                           sc_core::sc_time         &time);        
-/*    
-    // Not implemented but mandatory
+    
+    /////////////////////////////////////////////////////////////////////////////
+    // Not implemented but required by interface
+    /////////////////////////////////////////////////////////////////////////////
     void b_transport ( tlm::tlm_generic_payload &payload, 
                        sc_core::sc_time         &time); 
     
@@ -189,7 +197,7 @@ public:
     
     void invalidate_direct_mem_ptr ( sc_dt::uint64 start_range,  
                                      sc_dt::uint64 end_range); 
-*/
+
 
 protected:
 
