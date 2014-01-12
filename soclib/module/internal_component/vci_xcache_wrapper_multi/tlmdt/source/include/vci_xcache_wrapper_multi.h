@@ -134,11 +134,12 @@ private:
     data_t                    m_dcache_rdata_save;
     int                       m_dcache_type_save;
     be_t                      m_dcache_be_save;
+    size_t                    m_dcache_way_save;
+    size_t                    m_dcache_set_save;
+    size_t                    m_dcache_word_save;
     bool                      m_dcache_cached_save;
     bool                      m_dcache_miss_req;
     bool                      m_dcache_unc_req;
-    data_t                    m_dcache_write_time_req;
-    data_t                    m_dcache_read_time_req;
 
     int                       m_icache_fsm;
     addr_t                    m_icache_addr_save;
@@ -228,7 +229,8 @@ private:
     uint32_t m_cpt_write;                   // total number of write instructions
     uint32_t m_cpt_data_miss;               // number of read miss
     uint32_t m_cpt_ins_miss;                // number of instruction miss
-    uint32_t m_cpt_unc_read;                // number of read uncached
+    uint32_t m_cpt_data_unc;                // number of read uncached
+    uint32_t m_cpt_ins_unc;                 // number of read uncached
     uint32_t m_cpt_write_cached;            // number of cached write
   
 
@@ -240,7 +242,7 @@ private:
     void dcache_fsm();
     void vci_cmd_fsm();
     void vci_rsp_fsm();
-    void send_null_message();
+    void null_message();
   
     /////////////////////////////////////////////////////////////////////////////////////
     // Function executed when receiving a response on p_vci port

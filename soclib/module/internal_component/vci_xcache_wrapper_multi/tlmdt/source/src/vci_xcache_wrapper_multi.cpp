@@ -257,7 +257,8 @@ tmpl (/**/)::VciXcacheWrapperMulti
     m_cpt_write          = 0;
     m_cpt_data_miss      = 0;
     m_cpt_ins_miss       = 0;
-    m_cpt_unc_read       = 0;
+    m_cpt_data_unc       = 0;
+    m_cpt_ins_unc        = 0;
     m_cpt_write_cached   = 0;
   
     // Initialize FSM states
@@ -424,7 +425,7 @@ tmpl(void)::icache_fsm()
 
             m_cpt_icache_read++;
 
-            bool    icache_cacheable = m_cacheability_table[(uint64_t)m_ireq_paddr];
+            bool    icache_cacheable = m_cacheability_table[(uint64_t)m_ireq.addr];
 
             if ( icache_cacheable ) 
             {
@@ -465,8 +466,8 @@ tmpl(void)::icache_fsm()
 
         valid = m_icache.victim_select( m_icache_addr_save,
                                         &victim,
-                                        &m_icache_way,
-                                        &m_icache_set );
+                                        &m_icache_way_save,
+                                        &m_icache_set_save );
 
         if ( valid ) m_icache_fsm = ICACHE_MISS_INVAL;
         else         m_icache_fsm = ICACHE_MISS_WAIT;
@@ -501,16 +502,16 @@ tmpl(void)::icache_fsm()
             uint32_t data = atou( m_imiss_payload.get_data_ptr(),
                                   m_icache_word_save * vci_param::nbytes );
 
-            m_icache.write( m_icache_way_save.read(),
-                            m_icache_set_save.read(),
-                            m_icache_word_save.read(),
+            m_icache.write( m_icache_way_save,
+                            m_icache_set_save,
+                            m_icache_word_save,
                             data );
 
             if ( m_icache_word_save == m_icache_words - 1 )  // last word
             {
-                m_icache.victim_update_tag( m_icache_addr_save.read(),
-                                            m_icache_way_save.read(),
-                                            m_icache_set_save.read() );
+                m_icache.victim_update_tag( m_icache_addr_save,
+                                            m_icache_way_save,
+                                            m_icache_set_save );
 
                 m_icache_fsm      = ICACHE_IDLE;
                 m_vci_rsp_ins_rok = false;
@@ -740,11 +741,11 @@ tmpl(void)::dcache_fsm()
     {
         m_cpt_dcache_write++;
 
-        m_dcache.write( m_dcache_way_save.read(),
-                        m_dcache_set_save.read(),
-                        m_dcache_word_save.read(),
-                        m_dcache_wdata_save.read(),
-                        m_dcache_be_save.read() );
+        m_dcache.write( m_dcache_way_save,
+                        m_dcache_set_save,
+                        m_dcache_word_save,
+                        m_dcache_wdata_save,
+                        m_dcache_be_save );
 
         m_dcache_fsm = DCACHE_WRITE_REQ;
         break;
@@ -755,7 +756,7 @@ tmpl(void)::dcache_fsm()
         bool     valid;
         addr_t   victim;   // unused
 
-        valid = m_dcache.victim_select( m_dcache_addr_save.read(),
+        valid = m_dcache.victim_select( m_dcache_addr_save,
                                         &victim,
                                         &m_dcache_way_save,
                                         &m_dcache_set_save );
@@ -769,8 +770,8 @@ tmpl(void)::dcache_fsm()
     {
         addr_t   nline;  // unused
 
-        m_dcache.inval( m_dcache_way_save.read(),
-                        m_dcache_set_save.read(),
+        m_dcache.inval( m_dcache_way_save,
+                        m_dcache_set_save,
                         &nline );
 
         m_dcache_fsm = DCACHE_MISS_WAIT;
@@ -793,16 +794,16 @@ tmpl(void)::dcache_fsm()
             uint32_t data = atou( m_dmiss_payload.get_data_ptr(),
                                   m_dcache_word_save * vci_param::nbytes );
 
-            m_dcache.write( m_dcache_way_save.read(),
-                            m_dcache_set_save.read(),
-                            m_dcache_word_save.read(),
+            m_dcache.write( m_dcache_way_save,
+                            m_dcache_set_save,
+                            m_dcache_word_save,
                             data );
                             
             if ( m_dcache_word_save == m_dcache_words-1 )  // last word
             {
-                m_dcache.victim_update_tag( m_dcache_addr_save.read(),
-                                            m_dcache_way_save.read(),
-                                            m_dcache_set_save.read() );
+                m_dcache.victim_update_tag( m_dcache_addr_save,
+                                            m_dcache_way_save,
+                                            m_dcache_set_save );
            	    m_dcache_fsm       = DCACHE_IDLE;
                 m_vci_rsp_data_rok = false;
             }
@@ -840,7 +841,7 @@ tmpl(void)::dcache_fsm()
         uint32_t  data;    // unused
         size_t    word;    // unused
 
-        bool      hit = m_dcache.read( m_dcache_wdata_save.read(),
+        bool      hit = m_dcache.read( m_dcache_wdata_save,
                                        &data,
                                        &m_dcache_way_save,
                                        &m_dcache_set_save,
@@ -862,8 +863,8 @@ tmpl(void)::dcache_fsm()
     {
         addr_t nline;   // unused
 
-        m_dcache.inval( m_dcache_way_save.read(),
-                        m_dcache_set_save.read(),
+        m_dcache.inval( m_dcache_way_save,
+                        m_dcache_set_save,
                         &nline );
 
         m_dcache_fsm = DCACHE_IDLE;
@@ -1150,7 +1151,7 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
     
 
 ////////////////////////////////
-tmpl (void)::null_message()
+tmpl(void)::null_message()
 ////////////////////////////////
 {
     if (m_pdes_local_time->need_sync()) 
