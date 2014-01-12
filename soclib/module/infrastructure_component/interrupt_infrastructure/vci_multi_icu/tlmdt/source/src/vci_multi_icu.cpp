@@ -375,35 +375,29 @@ tmpl(size_t)::getIrqIndex( size_t channel )
     return 32;
 }
 
-/*
-///////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
 // Functions not implemented but required by interface
-tmpl(void)::b_transport
-( tlm::tlm_generic_payload &payload,
-  sc_core::sc_time         &_time) 
+/////////////////////////////////////////////////////////////////////////////
+tmpl(void)::b_transport( tlm::tlm_generic_payload &payload,
+                         sc_core::sc_time         &_time ) 
 { 
 }
 
-tmpl(bool)::get_direct_mem_ptr
-( tlm::tlm_generic_payload &payload, 
-  tlm::tlm_dmi             &dmi_data) 
+tmpl(bool)::get_direct_mem_ptr( tlm::tlm_generic_payload &payload, 
+                                tlm::tlm_dmi             &dmi_data ) 
 { 
   return false;
 }
 
-tmpl(unsigned int):: transport_dbg                            
-( tlm::tlm_generic_payload &payload)  
+tmpl(unsigned int):: transport_dbg( tlm::tlm_generic_payload &payload )  
 {
   return false;
 }
 
-tmpl(void)::invalidate_direct_mem_ptr 
-( sc_dt::uint64 start_range,   
-  sc_dt::uint64 end_range  
-) 
+tmpl(void)::invalidate_direct_mem_ptr( sc_dt::uint64 start_range,   
+                                       sc_dt::uint64 end_range ) 
 {
 }
-*/
 
 }}
 

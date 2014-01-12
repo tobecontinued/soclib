@@ -131,22 +131,19 @@ private:
                                              tlm::tlm_phase           &phase,    
                                              sc_core::sc_time         &time);  
 
-/*
+    /////////////////////////////////////////////////////////////////////////////////////
     // Not implemented but required by interface
+    /////////////////////////////////////////////////////////////////////////////////////
     void b_transport ( tlm::tlm_generic_payload &payload,
                        sc_core::sc_time         &time);
   
-    // Not implemented but required by interface
     bool get_direct_mem_ptr ( tlm::tlm_generic_payload &payload,
                               tlm::tlm_dmi             &dmi_data);
   
-    // Not implemented but required by interface
     unsigned int transport_dbg ( tlm::tlm_generic_payload &payload); 
 
-    // Not implemented for this example but required by interface
     void invalidate_direct_mem_ptr ( sc_dt::uint64 start_range, 
                                      sc_dt::uint64 end_range); 
-*/
 
 protected:
 
