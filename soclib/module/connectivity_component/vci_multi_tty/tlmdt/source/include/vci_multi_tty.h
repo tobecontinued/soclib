@@ -93,8 +93,9 @@ private:
                                              tlm::tlm_phase           &phase,  
                                              sc_core::sc_time         &time);   
 
-/*
-    // Not implemented but mandatory
+    //////////////////////////////////////////////////////////////////////////////
+    // Not implemented but required by the interface
+    //////////////////////////////////////////////////////////////////////////////
     void b_transport ( tlm::tlm_generic_payload &payload,
                        sc_core::sc_time         &time);
 
@@ -109,7 +110,6 @@ private:
     tlm::tlm_sync_enum nb_transport_bw ( tlm::tlm_generic_payload &payload,
                                          tlm::tlm_phase           &phase,
                                          sc_core::sc_time         &time);
-*/
 
 protected:
 

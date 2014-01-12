@@ -286,7 +286,6 @@ tmpl(void)::print_stats()
     std::cout << "- WRITE              = " << m_cpt_write << std::endl;
 }
 
-/*
 /////////////////////////////////////////////////////////////
 // Not implemented but required by interface
 /////////////////////////////////////////////////////////////
@@ -315,7 +314,6 @@ tmpl (tlm::tlm_sync_enum)::nb_transport_bw ( tlm::tlm_generic_payload &payload,
 {
     return tlm::TLM_COMPLETED;
 }
-*/
 
 }}
 
