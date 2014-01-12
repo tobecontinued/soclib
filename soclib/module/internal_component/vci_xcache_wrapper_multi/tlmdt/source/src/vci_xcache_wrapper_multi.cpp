@@ -206,7 +206,7 @@ tmpl (/**/)::VciXcacheWrapperMulti
         m_write_extension[k].set_src_id( m_srcid );
         m_write_extension[k].set_trd_id( 0x8 + k );
         m_write_extension[k].set_pkt_id( 0 );
-        m_write_payload[k].set_extension( &m_write_extension );
+        m_write_payload[k].set_extension( &m_write_extension[k] );
         m_write_phase[k] = tlm::BEGIN_REQ;
     }
 
