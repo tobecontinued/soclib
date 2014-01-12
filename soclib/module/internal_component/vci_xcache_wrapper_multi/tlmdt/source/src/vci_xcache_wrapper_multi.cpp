@@ -342,7 +342,10 @@ std::cout << " Data        Response: " << m_drsp << std::dec << std::endl;
         {
             if ( m_irq_value[i] && (m_irq_time[i] <= m_pdes_local_time->get()) ) irqs |= 1<<i;
         }
-        m_iss.executeNCycles( 1, m_irsp, m_drsp, irqs );
+        m_iss.executeNCycles( 1, 
+                              m_irsp, 
+                              m_drsp, 
+                              irqs );
 
         // Activate VCI_CMD FSM for one cycle
         vci_cmd_fsm();
@@ -350,7 +353,8 @@ std::cout << " Data        Response: " << m_drsp << std::dec << std::endl;
         // Activate VCI_RSP FSM for one cycle
         vci_rsp_fsm();
 
-        // deschedule if processor frozen and no VCI command to send
+        // deschedule and wait on vci response
+        // if processor frozen and no more VCI command to send
         if ( ((m_dcache_fsm == DCACHE_MISS_WAIT) or (m_dcache_fsm == DCACHE_UNC_WAIT) or 
               (m_icache_fsm == DCACHE_MISS_WAIT) or (m_dcache_fsm == DCACHE_UNC_WAIT)) and
              (not m_dcache_miss_req) and (not m_dcache_unc_req) and 
@@ -359,10 +363,19 @@ std::cout << " Data        Response: " << m_drsp << std::dec << std::endl;
         {
             before_time = m_pdes_local_time->get().value();
 
-            wait( m_rsp_received )
+            wait( m_rsp_received );
 
             after_time  = m_pdes_local_time->get().value();
-            if(after_time > before_time) frozen_iss(after_time - before_time);
+            if(after_time > before_time) 
+            {
+                struct iss_t::InstructionResponse 	meanwhile_irsp = ISS_IRSP_INITIALIZER;
+                struct iss_t::DataResponse 		    meanwhile_drsp = ISS_DRSP_INITIALIZER;
+
+                m_iss.executeNCycles( after_time - before_time,
+                                      meanwhile_irsp, 
+                                      meanwhile_drsp, 
+                                      0 );
+            }
         }
 
         // send NULL and deschedule if required
@@ -869,15 +882,6 @@ tmpl(void)::dcache_fsm()
     } } // end DCACHE_FSM switch
 } // end dcache_fsm()
 
-
-///////////////////////////////////
-tmpl(void)::frozen_iss(int cycles)
-{
-  struct iss_t::InstructionResponse 	meanwhile_irsp = ISS_IRSP_INITIALIZER;
-  struct iss_t::DataResponse 		    meanwhile_drsp = ISS_DRSP_INITIALIZER;
-
-  m_iss.executeNCycles(cycles, meanwhile_irsp, meanwhile_drsp, 0);
-}
 
 /////////////////////////////////////////////////////////////////////////////////
 // This function implement the VCI CMD FSM, that handles requests
