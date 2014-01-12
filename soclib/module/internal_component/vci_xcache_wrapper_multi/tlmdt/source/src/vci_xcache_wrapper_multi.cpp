@@ -191,10 +191,10 @@ tmpl (/**/)::VciXcacheWrapperMulti
 
     // create buffers for VCI WRITE transactions
     // Initialize constant values for the VCI DMISS transactions
-    for( size_t k=0 ; k<wbuf_nlines ; k++ )
+    for( size_t k=0 ; k<wbuf_lines ; k++ )
     {
-        m_write_data_buf[k] = new unsigned char[wbuf_nwords<<2];
-        m_write_be_buf[k]   = new unsigned char[wbuf_nwords<<2];
+        m_write_data_buf[k] = new unsigned char[wbuf_words<<2];
+        m_write_be_buf[k]   = new unsigned char[wbuf_words<<2];
 
         m_write_payload[k].set_command(tlm::TLM_IGNORE_COMMAND);
         m_write_payload[k].set_data_ptr(m_dmiss_data_buf);
