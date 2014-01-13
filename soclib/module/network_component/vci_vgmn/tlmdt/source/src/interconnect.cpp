@@ -151,7 +151,7 @@ tmpl(/**/)::~Interconnect(){ }
 tmpl(void)::init()
 {
     // bind VCI TARGET SOCKETS
-    for(int i=0;i<m_inits;i++)
+    for(size_t i=0;i<m_inits;i++)
     {
         std::ostringstream target_name;
         target_name << "target" << i;
@@ -162,7 +162,7 @@ tmpl(void)::init()
     }
 
     // bind VCI INITIATOR SOCKETS
-    for(int i=0;i<m_targets;i++)
+    for(size_t i=0;i<m_targets;i++)
     {
         std::ostringstream init_name;
         init_name << "init" << i;
@@ -446,7 +446,7 @@ printf("[%s] WHILE CONSUMER\n", name());
         {
             m_pdes_local_time->reset_sync();
             m_null_time = m_pdes_local_time->get();
-            for ( int i=0 ; i<(m_targets-1) ; i++ )
+            for ( size_t i=0 ; i<(m_targets-1) ; i++ )
             {
                 (*p_to_target[i])->nb_transport_fw(m_null_payload, 
                                                    m_null_phase, 

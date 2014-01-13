@@ -89,9 +89,9 @@ bool centralized_buffer::pop ( size_t                    &from,
                                tlm::tlm_phase*           &phase,
                                sc_core::sc_time*         &time )
 {
-    bool ok = false;
+    bool ok           = false;
     uint64_t min_time = MAX_TIME;
-    int sel_id;				        // currently selected port
+    int sel_id        = 0;			// currently selected port
     uint64_t time_value;            // date of the currently selected port
   
     for(unsigned int i=0; i<m_slots; i++)
