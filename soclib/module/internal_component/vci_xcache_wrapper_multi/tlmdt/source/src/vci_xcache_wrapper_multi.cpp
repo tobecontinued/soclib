@@ -380,8 +380,24 @@ std::cout << " Data        Response: " << m_drsp << std::dec << std::endl;
         }
 
         // send NULL and deschedule if required
-        null_message();
+        if ( m_pdes_local_time->need_sync() ) 
+        {
+            m_pdes_local_time->reset_sync();
+            m_null_time = m_pdes_local_time->get();
+            p_vci->nb_transport_fw( m_null_payload, 
+                                    m_null_phase, 
+                                    m_null_time );
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << name() << " Send NULL message / time = " << m_pdes_local_time->get().value() 
+          << std::endl;
+#endif
+            wait( sc_core::SC_ZERO_TIME );
 
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << name() << " Resume after NULL / time = " << m_pdes_local_time->get().value() 
+          << std::endl;
+#endif
+        }
     } // end while
 
     sc_core::sc_stop();
@@ -1139,36 +1155,6 @@ std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
     } } // end switch
 } // end vci_rsp_fsm()
     
-
-////////////////////////////////
-tmpl(void)::null_message()
-////////////////////////////////
-{
-    if (m_pdes_local_time->need_sync()) 
-    {
-   
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " Send NULL and DESCHEDULE / time = " << m_null_time.value() 
-          << std::endl;
-#endif
-        m_pdes_local_time->reset_sync();
-        m_null_time = m_pdes_local_time->get();
- 
-        // send NULL command
-        p_vci->nb_transport_fw( m_null_payload, 
-                                m_null_phase, 
-                                m_null_time );
-
-        // deschedule thread
-        wait( sc_core::SC_ZERO_TIME );
-
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " Resume after NULL / time = " << m_pdes_local_time->get().value() 
-          << std::endl;
-#endif
-    }
-} // end null_message()
-
 //////////////////////////////////////////////////////////////////////////////////////
 // Interface function called when receiving a VCI response
 //////////////////////////////////////////////////////////////////////////////////////

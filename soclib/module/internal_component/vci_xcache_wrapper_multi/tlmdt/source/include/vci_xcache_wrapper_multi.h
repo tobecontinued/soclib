@@ -239,7 +239,6 @@ private:
     void dcache_fsm();
     void vci_cmd_fsm();
     void vci_rsp_fsm();
-    void null_message();
   
     /////////////////////////////////////////////////////////////////////////////////////
     // Function executed when receiving a response on p_vci port
