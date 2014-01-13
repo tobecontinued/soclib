@@ -190,7 +190,7 @@ std::cout << "[" << name() << "] time = " << std::dec << time.value()
             term = cell / TTY_SPAN;
             payload.set_response_status(tlm::TLM_OK_RESPONSE);
 
-	        assert ( (term < (int)m_term.size() ) &&
+	        assert ( (term < m_term.size() ) &&
             " Illegal TTY access : terminal index larger than number of terminals");
 	    
             if ( extension_pointer->get_command() == VCI_READ_COMMAND )
