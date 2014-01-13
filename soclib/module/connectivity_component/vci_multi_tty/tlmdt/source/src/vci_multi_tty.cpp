@@ -45,6 +45,9 @@ tmpl(/**/)::VciMultiTty ( sc_core::sc_module_name name,
     , m_segment(mt.getSegment(index))
     , p_vci("p_vci")
 {
+
+std::cout << "@@@ enter TTY constructor" << std::endl;
+
     va_list va_tty;
     va_start (va_tty, first_name);
     std::vector<std::string> names;
