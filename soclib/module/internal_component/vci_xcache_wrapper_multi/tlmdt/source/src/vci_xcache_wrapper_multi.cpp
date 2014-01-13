@@ -1222,5 +1222,13 @@ std::cout << "[" << name() << "] Receive IRQ / time = " << std::dec << time.valu
     return tlm::TLM_COMPLETED;
 }  // end of IRQ receive
 
+///////////////////////////////////////////////////////////////////////////////////
+// Not implemented but required by interface
+///////////////////////////////////////////////////////////////////////////////////
+tmpl(void)::invalidate_direct_mem_ptr ( unsigned long long start_range, 
+                                        unsigned long long end_range ) 
+{
+}
+
 }}  // end name spaces
 

@@ -259,8 +259,8 @@ private:
     ///////////////////////////////////////////////////////////////////////////////////
     // Not implemented but required by interface
     ///////////////////////////////////////////////////////////////////////////////////
-    void invalidate_direct_mem_ptr ( sc_dt::uint64 start_range, 
-                                     sc_dt::uint64 end_range );
+    void invalidate_direct_mem_ptr ( unsigned long long start_range, 
+                                     unsigned long long end_range );
 
 protected:
 
