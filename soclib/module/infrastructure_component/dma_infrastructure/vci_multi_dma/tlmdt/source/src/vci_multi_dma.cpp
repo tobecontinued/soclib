@@ -56,7 +56,7 @@ tmpl(/**/)::VciMultiDma( sc_module_name                     name,
     m_pdes_local_time = new pdes_local_time(100*UNIT_TIME);
     
     assert( (channels <= 8) && "The number of channels cannot be larger than 8");
-    assert( (max_burst_length <= 64) && "The burst length cannot be larger than 64");
+    assert( (max_burst_length <= 256) && "The burst length cannot be larger than 64");
 
     // bind vci initiator port
     p_vci_initiator(*this);                     
@@ -263,9 +263,12 @@ tmpl (void)::execLoop ()
             m_dma_activated = true;
         }
         
-        // enters the loop on all channels
+        // enters the loop on all channels when activated
         for ( size_t k = 0 ; k < m_channels ; k++ )
         {
+            // update local time : one cycle
+            m_pdes_local_time->add(UNIT_TIME);
+
             switch ( m_state[k] ) {
             ////////////////
             case STATE_IDLE:
@@ -360,9 +363,13 @@ tmpl (void)::execLoop ()
             } } // end channel state switch
         }  // end loop on channels
 
-        // Initiator synchronization if DMA activated
-        if ( m_pdes_local_time->need_sync() and m_dma_activated ) send_null();
+        // send NULL and deschedule if required
+        if ( m_pdes_local_time->need_sync() and m_dma_activated ) 
+        {
+            send_null();
 
+            wait( sc_core::SC_ZERO_TIME );
+        }
     } // end infinite while
 } // end execLoop
 
