@@ -29,11 +29,11 @@
 /////////////////////////////////////////////////////////////////////////////////////
 // Implementation Note
 // This component is a VCI target. It has a variable number of IRQ ports,
-// asociated to a variable number of TTY termnals.
+// asociated to a variable number of TTY termnals (one IRQ per terminal).
 // It is modeled as a purely reactive interface function : no thread, no local time.
 // To synchronizes with the system, it uses the NULL messages received on the VCI 
-// port : to support the PDES time filtering on the ICU component, the IRQ values 
-// are transmitted on the IRQ ports each time a NULL message is received.
+// port : to support the relaxed PDES time filtering on the ICU component, the IRQ 
+// values are transmitted on the IRQ ports each time a NULL message is received.
 /////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_TLMDT_VCI_MULTI_TTY_H

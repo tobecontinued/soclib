@@ -83,7 +83,7 @@ tmpl(void)::init( const std::vector<std::string>  &names )
         m_term.push_back(soclib::common::allocateTty(*i));
 
         std::ostringstream irq_name;
-        irq_name << "irq" << j;
+        irq_name << "p_irq_" << j;
         p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged<VciMultiTty,32,
                             tlm::tlm_base_protocol_types> (irq_name.str().c_str()));
         j++;
@@ -104,12 +104,6 @@ tmpl(void)::init( const std::vector<std::string>  &names )
         m_irq_value[channel]   = 0; 
         m_irq_phase[channel]   = tlm::BEGIN_REQ;
         m_irq_payload[channel].set_data_ptr(&m_irq_value[channel]); 
-
-        std::ostringstream name;
-        name << "p_irq_" << channel;
-        p_irq.push_back(new tlm_utils::simple_initiator_socket_tagged
-                                <VciMultiTty,32,tlm::tlm_base_protocol_types>
-                                (name.str().c_str()));
 
         (*p_irq[channel]).register_nb_transport_bw( this, 
                                                     &VciMultiTty::irq_nb_transport_bw, 
