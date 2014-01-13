@@ -73,6 +73,9 @@ tmpl(/**/)::VciMultiTty ( sc_core::sc_module_name name,
 tmpl(void)::init( const std::vector<std::string>  &names )
 //////////////////////////////////////////////////////////
 {
+
+std::cout << "### enter TTY init()" << std::endl;
+
     int	j = 0;
 
     // allocate terminals and IRQ ports
@@ -88,6 +91,8 @@ tmpl(void)::init( const std::vector<std::string>  &names )
         j++;
     }
 
+std::cout << " - tty: coucou 0" << std::endl;
+
     // bind VCI target port
     p_vci(*this);
 
@@ -96,6 +101,8 @@ tmpl(void)::init( const std::vector<std::string>  &names )
     m_irq_payload = new tlm::tlm_generic_payload[m_term.size()];
     m_irq_phase   = new tlm::tlm_phase[m_term.size()];
     m_irq_time    = new sc_core::sc_time[m_term.size()];
+
+std::cout << " - tty: coucou 1" << std::endl;
 
     // initialise IRQ variables and bind IRQ ports
     for ( size_t channel=0 ; channel<m_term.size() ; channel++ ) 
@@ -114,6 +121,8 @@ tmpl(void)::init( const std::vector<std::string>  &names )
                                                     &VciMultiTty::irq_nb_transport_bw, 
                                                     channel );
     }
+
+std::cout << " - tty: coucou 2" << std::endl;
 
     // initialize instrumentation counters
     m_cpt_read  = 0;
