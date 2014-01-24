@@ -272,8 +272,8 @@ tmpl(void)::genMoore()
             }
             else                                                         // 64 bits data
             {
-                rdata = (vci_data_t)m_rom[seg_index][rom_index] | 
-                        (((vci_data_t)m_rom[seg_index][rom_index+1]) << 32);
+                rdata = (uint64_t)m_rom[seg_index][rom_index] | 
+                        (((uint64_t)m_rom[seg_index][rom_index+1]) << 32);
             }
             
             p_vci.cmdack  = false;
