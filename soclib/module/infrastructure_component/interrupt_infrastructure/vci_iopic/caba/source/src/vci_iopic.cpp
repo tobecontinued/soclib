@@ -147,7 +147,7 @@ tmpl(void)::transition()
                       (reg == IOPIC_EXTEND) and
                       (channel < m_channels) )        // read extend
             {
-                r_rdata           = r_address[channel].read();
+                r_rdata           = r_extend[channel].read();
                 r_tgt_fsm         = T_READ;
             }
             else if ( not seg_error and
