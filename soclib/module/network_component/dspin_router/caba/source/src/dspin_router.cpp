@@ -26,6 +26,19 @@
   *
   */
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Implementation Note :
+    // The xfirst_route(), broadcast_route() and is_broadcast() functions
+    // defined below are used to decode the DSPIN first flit format:
+    // - In case of a non-broadcast packet :
+    //  |   X     |   Y     |---------------------------------------|BC |
+    //  | x_width | y_width |  flit_width - (x_width + y_width + 2) | 0 |
+    //
+    //  - In case of a broacast
+    //  |  XMIN   |  XMAX   |  YMIN   |  YMAX   |-------------------|BC |
+    //  |   5     |   5     |   5     |   5     | flit_width - 22   | 1 |
+    ///////////////////////////////////////////////////////////////////////////
+
 #include "../include/dspin_router.h"
 
 namespace soclib { namespace caba {
@@ -44,7 +57,8 @@ using namespace soclib::caba;
                              const size_t   x_width,
                              const size_t   y_width,
                              const size_t   in_fifo_depth,
-                             const size_t   out_fifo_depth )
+                             const size_t   out_fifo_depth,
+                             const bool     broadcast_supported )
 	: soclib::caba::BaseModule(name),
 
       p_clk( "p_clk" ),
@@ -63,8 +77,9 @@ using namespace soclib::caba;
       m_x_shift( flit_width - x_width ),
       m_x_mask( (0x1 << x_width) - 1 ),
       m_y_width( y_width ),
-      m_y_shift(flit_width - x_width - y_width ),
-      m_y_mask( (0x1 << y_width) - 1 )
+      m_y_shift( flit_width - x_width - y_width ),
+      m_y_mask( (0x1 << y_width) - 1 ),
+      m_broadcast_supported( broadcast_supported )
     {
         std::cout << "  - Building DspinRouter : " << name << std::endl;
 
@@ -77,9 +92,13 @@ using namespace soclib::caba;
 	    sensitive  << p_clk.neg();
 
 	    r_fifo_in  = (GenericFifo<internal_flit_t>*)
-	                 malloc(sizeof(GenericFifo<internal_flit_t>)*5);
+	                 malloc(sizeof(GenericFifo<internal_flit_t>) * 5);
+
 	    r_fifo_out = (GenericFifo<internal_flit_t>*)
-	                 malloc(sizeof(GenericFifo<internal_flit_t>)*5);
+	                 malloc(sizeof(GenericFifo<internal_flit_t>) * 5);
+
+        r_buf_in   = (internal_flit_t*)
+                     malloc(sizeof(internal_flit_t) * 5);
 
 	    for( size_t i = 0 ; i < 5 ; i++ )
         {
@@ -95,23 +114,107 @@ using namespace soclib::caba;
 	    }
     } //  end constructor
 
-    //////////////////////////////////////////////////
-    tmpl(size_t)::xfirst_route( sc_uint<flit_width> data )
+    ///////////////////////////////////////////////////
+    tmpl(int)::xfirst_route( sc_uint<flit_width> data )
     {
         size_t xdest = (size_t)(data >> m_x_shift) & m_x_mask;
         size_t ydest = (size_t)(data >> m_y_shift) & m_y_mask;
-        return (xdest < m_local_x ? DSPIN_WEST : 
-               (xdest > m_local_x ? DSPIN_EAST : 
-               (ydest < m_local_y ? DSPIN_SOUTH : 
-               (ydest > m_local_y ? DSPIN_NORTH : DSPIN_LOCAL))));
+        return (xdest < m_local_x ? REQ_WEST : 
+               (xdest > m_local_x ? REQ_EAST : 
+               (ydest < m_local_y ? REQ_SOUTH : 
+               (ydest > m_local_y ? REQ_NORTH : REQ_LOCAL))));
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    tmpl(int)::broadcast_route(int step, int source, sc_uint<flit_width> data)
+    {
+        int    sel  = REQ_NOP;
+        size_t xmin = (data >> (flit_width - 5 )) & 0x1F;
+        size_t xmax = (data >> (flit_width - 10)) & 0x1F;
+        size_t ymin = (data >> (flit_width - 15)) & 0x1F;
+        size_t ymax = (data >> (flit_width - 20)) & 0x1F;
+
+        switch(source) {
+        case REQ_LOCAL :
+            if      ( step == 1 )	sel = REQ_NORTH;
+            else if ( step == 2 )	sel = REQ_SOUTH;
+            else if ( step == 3 )	sel = REQ_EAST;
+            else if ( step == 4 )	sel = REQ_WEST;
+        break;
+        case REQ_NORTH :
+            if      ( step == 1 )	sel = REQ_SOUTH;
+            else if ( step == 2 )	sel = REQ_LOCAL;
+            else if ( step == 3 )	sel = REQ_NOP;
+            else if ( step == 4 )	sel = REQ_NOP;
+        break;
+        case REQ_SOUTH :
+            if      ( step == 1 )	sel = REQ_NORTH;
+            else if ( step == 2 )	sel = REQ_LOCAL;
+            else if ( step == 3 )	sel = REQ_NOP;
+            else if ( step == 4 )	sel = REQ_NOP;
+        break;
+        case REQ_EAST :
+            if      ( step == 1 )	sel = REQ_WEST;
+            else if ( step == 2 )	sel = REQ_NORTH;
+            else if ( step == 3 )	sel = REQ_SOUTH;
+            else if ( step == 4 )	sel = REQ_LOCAL;
+        break;
+        case REQ_WEST :
+            if      ( step == 1 )	sel = REQ_EAST;
+            else if ( step == 2 )	sel = REQ_NORTH;
+            else if ( step == 3 )	sel = REQ_SOUTH;
+            else if ( step == 4 )	sel = REQ_LOCAL;
+        break;
+        }
+        if      ( (sel == REQ_NORTH) && !(m_local_y < ymax) ) 	sel = REQ_NOP;
+        else if ( (sel == REQ_SOUTH) && !(m_local_y > ymin) ) 	sel = REQ_NOP;
+        else if ( (sel == REQ_EAST ) && !(m_local_x < xmax) ) 	sel = REQ_NOP;
+        else if ( (sel == REQ_WEST ) && !(m_local_x > xmin) ) 	sel = REQ_NOP;
+
+        return sel;
+    }
+
+    /////////////////////////////////////////////////////////
+    tmpl(inline bool)::is_broadcast(sc_uint<flit_width> data)
+    {
+        return ( (data & 0x1) != 0);
     }
 
     /////////////////////////
     tmpl(void)::print_trace()
     {
-        const char* port_name[] = {"NORTH","SOUTH","EAST ","WEST ","LOCAL"};
+        const char* port_name[] = 
+        {
+            "N",
+            "S",
+            "E",
+            "W",
+            "L"
+        };
 
-        std::cout << "DSPIN_ROUTER " << name() << std::hex; 
+        const char* infsm_str[] =
+        {
+            "IDLE",
+            "REQ",
+            "ALLOC",
+            "REQ_FIRST",
+            "ALLOC_FIRST",
+            "REQ_SECOND",
+            "ALLOC_SECOND",
+            "REQ_THIRD",
+            "ALLOC_THIRD",
+            "REQ_FOURTH",
+            "ALLOC_FOURTH"
+        };
+
+        std::cout << "DSPIN_ROUTER " << name();
+
+        for( size_t i = 0 ; i < 5 ; i++)  // loop on input ports
+        {
+            std::cout << " / infsm[" << port_name[i] << "] "
+                      << infsm_str[r_fsm_in[i].read()];
+        }
+
         for ( size_t out=0 ; out<5 ; out++)  // loop on output ports
         {
             if ( r_alloc_out[out].read() )
@@ -130,7 +233,7 @@ using namespace soclib::caba;
         size_t              req_in[5];         // input ports  -> output ports
         size_t              get_out[5];        // output ports -> input ports
         bool                put_in[5];         // input ports  -> output ports
-        internal_flit_t     flit_in[5];        // input ports  -> output ports
+        internal_flit_t     data_in[5];        // input ports  -> output ports
 
         // control signals for the input fifos
 	    bool                fifo_in_write[5];
@@ -185,9 +288,10 @@ using namespace soclib::caba;
         }
 
         // loop on the input ports :
-        // The port state is defined by r_fsm_in[i], r_index_in[i] 
+        // The port state is defined by r_fsm_in[i], r_index_in[i] & r_buf_in[i]
         // The req_in[i] computation implements the X-FIRST algorithm.
-        // Both put_in[i] and req_in[i] depend on the input port state.
+        // data_in[i], put_in[i] and req_in[i] depend on the input port state.
+        // The fifo_in_read[i] is computed further...
 
         for ( size_t i = 0 ; i < 5 ; i++ )
         {
@@ -198,21 +302,35 @@ using namespace soclib::caba;
                     put_in[i] = false;
                     if ( r_fifo_in[i].rok() ) // packet available in input fifo
                     {
-                        req_in[i]       = xfirst_route( r_fifo_in[i].read().data );
-                        r_index_in[i]   = req_in[i];
-                        r_fsm_in[i]     = INFSM_REQ;
+                        if ( is_broadcast( r_fifo_in[i].read().data ) and
+                             m_broadcast_supported )          // broadcast
+                        { 
+                            fifo_in_read[i] = true;
+                            req_in[i]       = broadcast_route(1, i, r_fifo_in[i].read().data);
+                            r_buf_in[i]     = r_fifo_in[i].read();
+                            r_index_in[i]   = req_in[i];
+                            if( req_in[i] == REQ_NOP ) r_fsm_in[i] = INFSM_REQ_SECOND;
+                            else                       r_fsm_in[i] = INFSM_REQ_FIRST;
+                        }
+                        else                                  // unicast
+                        {
+                            req_in[i]       = xfirst_route(r_fifo_in[i].read().data);
+                            r_index_in[i]   = req_in[i];
+                            r_fsm_in[i]     = INFSM_REQ;
+                        }
                     }
                     else
                     {
-                        req_in[i] = 0xFFFFFFFF;  // no request
+                        req_in[i] = REQ_NOP;
                     }
                     break;
                 }
-                case INFSM_REQ:   // waiting output port allocation
+                case INFSM_REQ:   // not a broadcast / waiting output port allocation
                 {
-                    flit_in[i] = r_fifo_in[i].read();
-                    put_in[i]  = r_fifo_in[i].rok();
-                    req_in[i]  = r_index_in[i];
+                    data_in[i]      = r_fifo_in[i].read();
+                    put_in[i]       = r_fifo_in[i].rok();
+                    req_in[i]       = r_index_in[i];
+                    fifo_in_read[i] = (get_out[r_index_in[i].read()] == i);
                     if ( get_out[r_index_in[i].read()] == i ) // first flit transfered
                     {
                         if ( r_fifo_in[i].read().eop ) r_fsm_in[i] = INFSM_IDLE;
@@ -220,15 +338,163 @@ using namespace soclib::caba;
                     }
                     break;
                 }
-                case INFSM_ALLOC:  // output port allocated
+                case INFSM_ALLOC:   // not a broadcast / output port allocated
                 {
-                    flit_in[i] = r_fifo_in[i].read();
-                    put_in[i] = r_fifo_in[i].rok();
-                    req_in[i] = 0xFFFFFFFF;                 // no request
-                    if ( r_fifo_in[i].read().eop and r_fifo_in[i].rok() and 
+                    data_in[i]      = r_fifo_in[i].read();
+                    put_in[i]       = r_fifo_in[i].rok();
+                    req_in[i]       = REQ_NOP;                 // no request
+                    fifo_in_read[i] = (get_out[r_index_in[i].read()] == i);
+                    if ( r_fifo_in[i].read().eop and 
+                         r_fifo_in[i].rok() and 
                          (get_out[r_index_in[i].read()] == i) ) // last flit transfered 
                     {
                         r_fsm_in[i] = INFSM_IDLE;
+                    }
+                    break;
+                }
+                case INFSM_REQ_FIRST: // broacast / waiting first output port allocation
+                {
+                    data_in[i]    = r_buf_in[i];
+                    put_in[i]     = true;
+                    req_in[i]     = broadcast_route(1, i, r_buf_in[i].data);
+                    r_index_in[i] = req_in[i];
+                    if ( req_in[i] == REQ_NOP )   // no transfer for this step
+                    {
+                        r_fsm_in[i] = INFSM_REQ_SECOND;
+                    }
+                    else
+                    {
+                        if( get_out[r_index_in[i].read()] == i )  // header flit transfered
+                        {
+                            r_fsm_in[i] = INFSM_ALLOC_FIRST;
+                        }
+                    }
+                    break;
+                }
+                case INFSM_ALLOC_FIRST:  // broadcast / first output port allocated
+                {
+                    data_in[i] = r_fifo_in[i].read();
+                    put_in[i]  = r_fifo_in[i].rok();
+                    req_in[i]  = REQ_NOP;
+                    if( (get_out[r_index_in[i].read()] == i) 
+                         and r_fifo_in[i].rok() )                 // data flit transfered 
+                    {
+                        if ( not r_fifo_in[i].read().eop )
+                        {
+                            std::cout << "ERROR in DSPIN_ROUTER " << name()
+                                      << " : broadcast packet must be 2 flits" << std::endl;
+                        }
+                        r_fsm_in[i] = INFSM_REQ_SECOND;
+                    }
+                    break;
+                }
+                case INFSM_REQ_SECOND: // broacast / waiting second output port allocation
+                {
+                    data_in[i]    = r_buf_in[i];
+                    put_in[i]     = true;
+                    req_in[i]     = broadcast_route(2, i, r_buf_in[i].data);
+                    r_index_in[i] = req_in[i];
+                    if ( req_in[i] == REQ_NOP )  // no transfer for this step
+                    {
+                        r_fsm_in[i] = INFSM_REQ_THIRD;
+                    }
+                    else
+                    {
+                        if( get_out[r_index_in[i].read()] == i ) // header flit transfered
+                        {
+                            r_fsm_in[i] = INFSM_ALLOC_SECOND;
+                        }
+                    }
+                    break;
+                }
+                case INFSM_ALLOC_SECOND:  // broadcast / second output port allocated
+                {
+                    data_in[i] = r_fifo_in[i].read();
+                    put_in[i]  = r_fifo_in[i].rok();
+                    req_in[i]  = REQ_NOP;
+                    if( (get_out[r_index_in[i].read()] == i ) 
+                         and r_fifo_in[i].rok() )               // data flit transfered
+                    {
+                        if ( not r_fifo_in[i].read().eop )
+                        {
+                            std::cout << "ERROR in DSPIN_ROUTER " << name()
+                                      << " : broadcast packet must be 2 flits" << std::endl;
+                        }
+                        r_fsm_in[i] = INFSM_REQ_THIRD;
+                    }
+                    break;
+                }
+                case INFSM_REQ_THIRD: // broacast / waiting third output port allocation
+                {
+                    data_in[i]    = r_buf_in[i];
+                    put_in[i]     = true;
+                    req_in[i]     = broadcast_route(3, i, r_buf_in[i].data);
+                    r_index_in[i] = req_in[i];
+                    if ( req_in[i] == REQ_NOP )  // no transfer for this step
+                    {
+                        r_fsm_in[i] = INFSM_REQ_FOURTH;
+                    }
+                    else
+                    {
+                        if( get_out[r_index_in[i].read()] == i ) // header flit transfered
+                        {
+                            r_fsm_in[i] = INFSM_ALLOC_THIRD;
+                        }
+                    }
+                    break;
+                }
+                case INFSM_ALLOC_THIRD:  // broadcast / third output port allocated
+                {
+                    data_in[i] = r_fifo_in[i].read();
+                    put_in[i]  = r_fifo_in[i].rok();
+                    req_in[i]  = REQ_NOP;
+                    if( (get_out[r_index_in[i].read()] == i ) 
+                         and r_fifo_in[i].rok() )               // data flit transfered
+                    {
+                        if ( not r_fifo_in[i].read().eop )
+                        {
+                            std::cout << "ERROR in DSPIN_ROUTER " << name()
+                                      << " : broadcast packet must be 2 flits" << std::endl;
+                        }
+                        r_fsm_in[i] = INFSM_REQ_FOURTH;
+                    }
+                    break;
+                }
+                case INFSM_REQ_FOURTH: // broacast / waiting fourth output port allocation
+                {
+                    data_in[i]    = r_buf_in[i];
+                    put_in[i]     = true;
+                    req_in[i]     = broadcast_route(4, i, r_buf_in[i].data);
+                    r_index_in[i] = req_in[i];
+                    if ( req_in[i] == REQ_NOP )  // no transfer for this step
+                    {
+                        fifo_in_read[i] = true;
+                        r_fsm_in[i]     = INFSM_IDLE;
+                    }
+                    else
+                    {
+                        if( get_out[r_index_in[i].read()] == i )  // header flit transfered
+                        {
+                            r_fsm_in[i] = INFSM_ALLOC_FOURTH;
+                        }
+                    }
+                    break;
+                }
+                case INFSM_ALLOC_FOURTH:  // broadcast / fourth output port allocated
+                {
+                    data_in[i] = r_fifo_in[i].read();
+                    put_in[i]  = r_fifo_in[i].rok();
+                    req_in[i]  = REQ_NOP;
+                    if( (get_out[r_index_in[i].read()] == i ) 
+                         and r_fifo_in[i].rok() )                 // data flit transfered
+                    {
+                        if ( not r_fifo_in[i].read().eop )
+                        {
+                            std::cout << "ERROR in DSPIN_ROUTER " << name()
+                                      << " : broadcast packet must be 2 flits" << std::endl;
+                        }
+                        fifo_in_read[i] = true;
+                        r_fsm_in[i]     = INFSM_IDLE;
                     }
                     break;
                 }
@@ -258,7 +524,7 @@ using namespace soclib::caba;
 		    } 
             else                            // allocated: possible desallocation
             {
-		        if ( flit_in[r_index_out[j]].eop and
+		        if ( data_in[r_index_out[j]].eop and
                      r_fifo_out[j].wok() and 
                      put_in[r_index_out[j]] ) 
                 {
@@ -266,21 +532,6 @@ using namespace soclib::caba;
                 }
 		    }
 		} // end loop on output ports
-
-        // loop on input ports :
-	    // fifo_in_read[i] computation (get data from fifo_in[i]
-        // (computed here because it depends on get_out[])
-	    for( size_t i = 0 ; i < 5 ; i++ ) 
-        {
-		    if ( r_fsm_in[i].read() != INFSM_IDLE ) 
-            {
-                fifo_in_read[i] = (get_out[r_index_in[i].read()] == i);
-            }
-            else
-            {
-                fifo_in_read[i] = false;
-            }
-	    }  // end loop on input ports
 
         // loop on the output ports :
         // The fifo_out_write[j] and fifo_out_wdata[j] computation
@@ -290,7 +541,7 @@ using namespace soclib::caba;
 		    if( r_alloc_out[j] )  // output port allocated
             {
 		        fifo_out_write[j] = put_in[r_index_out[j]];
-		        fifo_out_wdata[j]  = flit_in[r_index_out[j]];
+		        fifo_out_wdata[j] = data_in[r_index_out[j]];
             }
         }  // end loop on the output ports
 

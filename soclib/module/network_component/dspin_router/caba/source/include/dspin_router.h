@@ -26,6 +26,19 @@
   *
   */
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Implementation Note :
+    // The xfirst_route(), broadcast_route() and is_broadcast() functions
+    // defined below are used to decode the DSPIN first flit format:
+    // - In case of a non-broadcast packet :
+    //  |   X     |   Y     |---------------------------------------|BC |
+    //  | x_width | y_width |  flit_width - (x_width + y_width + 2) | 0 |
+    //
+    //  - In case of a broacast
+    //  |  XMIN   |  XMAX   |  YMIN   |  YMAX   |-------------------|BC |
+    //  |   5     |   5     |   5     |   5     | flit_width - 22   | 1 |
+    ///////////////////////////////////////////////////////////////////////////
+
 #ifndef DSPIN_ROUTER_H_
 #define DSPIN_ROUTER_H_
 
@@ -46,11 +59,12 @@ class DspinRouter
 	// Port indexing
 	enum 
     {
-		DSPIN_NORTH	= 0,
-		DSPIN_SOUTH	= 1,
-		DSPIN_EAST	= 2,
-		DSPIN_WEST	= 3,
-		DSPIN_LOCAL	= 4,
+		REQ_NORTH	= 0,
+		REQ_SOUTH	= 1,
+		REQ_EAST	= 2,
+		REQ_WEST	= 3,
+		REQ_LOCAL	= 4,
+        REQ_NOP     = 5,
 	};
 
     // Input Port FSM
@@ -59,6 +73,14 @@ class DspinRouter
         INFSM_IDLE,
         INFSM_REQ,
         INFSM_ALLOC,
+        INFSM_REQ_FIRST,
+        INFSM_ALLOC_FIRST,
+        INFSM_REQ_SECOND,
+        INFSM_ALLOC_SECOND,
+        INFSM_REQ_THIRD,
+        INFSM_ALLOC_THIRD,
+        INFSM_REQ_FOURTH,
+        INFSM_ALLOC_FOURTH,
     };
 
     protected:
@@ -73,13 +95,14 @@ class DspinRouter
 	DspinOutput<flit_width>	    *p_out;
 
 	// constructor / destructor
-	DspinRouter(sc_module_name  name, 
-                size_t          x,
-                size_t          y,
-                size_t          x_width,
-                size_t          y_width,
-                size_t          in_fifo_depth,
-                size_t          out_fifo_depth );
+	DspinRouter( sc_module_name  name, 
+                 const size_t    x,
+                 const size_t    y,
+                 const size_t    x_width,
+                 const size_t    y_width,
+                 const size_t    in_fifo_depth,
+                 const size_t    out_fifo_depth,
+                 const bool      broadcast_supported = false );  // default value
 
     private:
 
@@ -91,10 +114,12 @@ class DspinRouter
     } internal_flit_t;
     
     // registers
-	sc_signal<bool>				*r_alloc_out;
-	sc_signal<size_t>           *r_index_out;
-    sc_signal<int>              *r_fsm_in;
-	sc_signal<size_t>           *r_index_in;
+	sc_signal<bool>				*r_alloc_out;   // output port is allocated
+	sc_signal<size_t>           *r_index_out;   // index of owner input port
+
+    sc_signal<int>              *r_fsm_in;      // input port state
+	sc_signal<size_t>           *r_index_in;    // index of requested output port
+    internal_flit_t             *r_buf_in;      // save first flit for a broadcast
 
 	// fifos
 	soclib::caba::GenericFifo<internal_flit_t>*  r_fifo_in;
@@ -109,11 +134,14 @@ class DspinRouter
 	size_t	                    m_y_width;
 	size_t	                    m_y_shift;
 	size_t	                    m_y_mask;
+    bool                        m_broadcast_supported;
 
     // methods 
     void    transition();
     void    genMoore();
-    size_t  xfirst_route( sc_uint<flit_width> data );
+    int     xfirst_route( sc_uint<flit_width> data );
+    int     broadcast_route( int iter, int source, sc_uint<flit_width> data );
+    bool    is_broadcast( sc_uint<flit_width> data );
 
     public:
 
@@ -122,7 +150,7 @@ class DspinRouter
 
 }} // end namespace
                
-#endif // DSPIN_ROUTER_H_
+#endif // DSPIN_ROUTER_BC_H_
 
 // Local Variables:
 // tab-width: 4
