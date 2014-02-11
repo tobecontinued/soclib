@@ -75,7 +75,7 @@ tmpl(void)::transition()
                 }
             }
 
-            if      ( not seg_error and            // read char
+            if      ( not seg_error and            // write char
                       (p_vci.cmd.read() == vci_param::CMD_WRITE) and
                       (reg == TTY_WRITE ) and 
                       channel < m_term.size() )
