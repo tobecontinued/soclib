@@ -364,7 +364,7 @@ using namespace soclib::caba;
                     }
                     else
                     {
-                        if( get_out[r_index_in[i].read()] == i )  // header flit transfered
+                        if( get_out[req_in[i]] == i )  // header flit transfered
                         {
                             r_fsm_in[i] = INFSM_ALLOC_FIRST;
                         }
@@ -400,7 +400,7 @@ using namespace soclib::caba;
                     }
                     else
                     {
-                        if( get_out[r_index_in[i].read()] == i ) // header flit transfered
+                        if( get_out[req_in[i]] == i ) // header flit transfered
                         {
                             r_fsm_in[i] = INFSM_ALLOC_SECOND;
                         }
@@ -436,7 +436,7 @@ using namespace soclib::caba;
                     }
                     else
                     {
-                        if( get_out[r_index_in[i].read()] == i ) // header flit transfered
+                        if( get_out[req_in[i]] == i ) // header flit transfered
                         {
                             r_fsm_in[i] = INFSM_ALLOC_THIRD;
                         }
@@ -473,7 +473,7 @@ using namespace soclib::caba;
                     }
                     else
                     {
-                        if( get_out[r_index_in[i].read()] == i )  // header flit transfered
+                        if( get_out[req_in[i]] == i )  // header flit transfered
                         {
                             r_fsm_in[i] = INFSM_ALLOC_FOURTH;
                         }
