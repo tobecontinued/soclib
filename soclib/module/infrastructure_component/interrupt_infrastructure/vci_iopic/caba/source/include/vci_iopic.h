@@ -33,6 +33,8 @@
 #include "caba_base_module.h"
 #include "mapping_table.h"
 
+#define IOPIC_PERIOD  5000
+
 namespace soclib {
 namespace caba {
 
@@ -57,6 +59,7 @@ private:
     const size_t                        m_srcid;          // SRCID
     const size_t                        m_channels;       // number of input HWI
     std::list<soclib::common::Segment>  m_seglist;        // segment list
+    const size_t                        m_period;         // delay between HWI
 
     enum ini_fsm_state_e 
     {
@@ -84,7 +87,8 @@ private:
     sc_core::sc_signal<size_t>      r_channel;        // selected channel for ini_fsm
 
     sc_core::sc_signal<bool>*       r_hwi;            // array: curent HWI values
-    sc_core::sc_signal<uint32_t>*   r_address;        // array: WTI address (32 LSB)
+    sc_core::sc_signal<uint32_t>*   r_counter;        // array: cycles counter
+    sc_core::sc_signal<uint32_t>*   r_address;        // array: WTI address   
     sc_core::sc_signal<uint32_t>*   r_extend;         // array: WTI address extension
     sc_core::sc_signal<bool>*       r_error;          // array: WTI error received
 
@@ -112,7 +116,8 @@ public:
 		const soclib::common::MappingTable &mt,
 		const soclib::common::IntTab &srcid,
 		const soclib::common::IntTab &tgtid,
-        const size_t                 channels );
+        const size_t                 channels,
+        const size_t                 period = IOPIC_PERIOD );
 };
 
 }}

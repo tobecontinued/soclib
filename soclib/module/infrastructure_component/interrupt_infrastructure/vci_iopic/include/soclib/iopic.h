@@ -27,7 +27,8 @@
 #ifndef IOPIC_REGS_H
 #define IOPIC_REGS_H
 
-enum SoclibIopicRegisters {
+enum SoclibIopicRegisters 
+{
     IOPIC_ADDRESS = 0,
     IOPIC_EXTEND  = 1,
     IOPIC_STATUS  = 2,

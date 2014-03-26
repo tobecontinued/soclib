@@ -46,6 +46,7 @@ tmpl(void)::transition()
         for ( size_t channel = 0 ; channel < m_channels ; channel++ )
         {
             r_hwi[channel]       = false;
+            r_counter[channel]   = 0;
             r_error[channel]     = false;
             r_address[channel]   = 0;
             r_extend[channel]    = 0;
@@ -53,10 +54,16 @@ tmpl(void)::transition()
         return;
     }
 
-    // update r_hwi[k] flip-flops
+    // This is done at all cycles for all channels
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
+        // update r_hwi[k] flip-flops 
         r_hwi[k] = p_hwi[k].read();
+
+        // decrement r_conter[k] if pending HWI
+        if ( r_hwi[k].read() and (r_counter[k].read() > 0) ) 
+            r_counter[k] = r_counter[k].read() - 1;
+            
     }
 
     // VCI initiator FSM
@@ -65,7 +72,13 @@ tmpl(void)::transition()
     {
         for( size_t k = 0 ; k < m_channels ; k++ )
         {
-            if ( p_hwi[k].read() and not r_hwi[k] and not r_error[k] ) 
+            // WTI transaction if 
+            // - the channel k is not in error state
+            // - a rising edge is detected on p_hwi[k] port,
+            // - or there is a pending r_hwi[k] and period elapsed
+            if ( not r_error[k].read() and
+                 ( (p_hwi[k].read() and not r_hwi[k].read()) or
+                   (r_hwi[k].read() and (r_counter[k].read() == 0)) ) ) 
             {
                 r_channel = k;
                 r_ini_fsm = I_SEND_CMD;
@@ -78,6 +91,7 @@ tmpl(void)::transition()
     {
         if ( p_vci_initiator.cmdack.read() )
         {
+            r_counter[r_channel.read()] = m_period;
             r_ini_fsm = I_WAIT_RSP;
         }
         break;
@@ -281,7 +295,8 @@ tmpl(void)::print_trace()
         if ( r_hwi[i].read() ) 
         std::cout << "  - HWI = " << std::dec << i
                   << " / address = " << std::hex << r_address[i].read()
-                  << " / extend  = " << r_extend[i].read() << std::endl;
+                  << " / extend  = " << r_extend[i].read() 
+                  << " / count = " << r_counter[i].read() << std::endl;
     }
 }
 
@@ -290,11 +305,13 @@ tmpl()::VciIopic( sc_core::sc_module_name             name,
                   const soclib::common::MappingTable  &mt,
                   const soclib::common::IntTab        &srcid,
                   const soclib::common::IntTab        &tgtid,
-                  const size_t                        channels )
+                  const size_t                        channels,
+                  const size_t                        period )
        : caba::BaseModule(name),
        m_srcid( mt.indexForId(srcid) ),
        m_channels( channels ),
        m_seglist( mt.getSegmentList(tgtid) ),
+       m_period( period ),
        p_clk("clk"),
        p_resetn("resetn"),
        p_vci_initiator("p_vci_initiator"),
@@ -303,6 +320,7 @@ tmpl()::VciIopic( sc_core::sc_module_name             name,
     std::cout << "  - Building VciIopic " << name << std::endl;
 
     r_hwi     = soclib::common::alloc_elems<sc_signal<bool> >("r_hwi", channels);
+    r_counter = soclib::common::alloc_elems<sc_signal<uint32_t> >("r_counter", channels);
     r_address = soclib::common::alloc_elems<sc_signal<uint32_t> >("r_address", channels);
     r_extend  = soclib::common::alloc_elems<sc_signal<uint32_t> >("r_extend", channels);
     r_error   = soclib::common::alloc_elems<sc_signal<bool> >("r_error", channels);
