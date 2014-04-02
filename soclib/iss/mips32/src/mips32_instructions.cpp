@@ -221,6 +221,7 @@ void Mips32Iss::op_cop0()
             r_gp[m_ins.coproc.rt] = cp0Get( m_ins.coproc.rd, m_ins.coproc.sel );
             break;
         case MFMC0:
+            /* instructions EI (Enable Interrupts) and DI (Disable Interrupts) */
             r_gp[m_ins.coproc.rt] = r_status.whole;
             r_status.ie = m_ins.coproc.sc;
             break;
