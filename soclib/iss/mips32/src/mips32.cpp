@@ -556,13 +556,13 @@ Mips32Iss::addr_t Mips32Iss::exceptOffsetAddr( enum ExceptCause cause ) const
             int vn;
 
             if ( r_config3.veic )
-                vn = r_cause.ip>>2;
+                vn = r_cause.ripl;
             else {
-                int ip = r_cause.ip >> 2;
+                int ip = r_cause.ip;
                 assert(ip && "r_cause.ip should be not null!");
                 vn = soclib::common::fls(ip) - 1;
             }
-            return 0x200 + vn * (r_intctl.vs<<5);
+            return 0x200 + vn * (r_intctl.vs << 5);
         }
     } else {
         return 0x180;
