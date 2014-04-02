@@ -177,6 +177,8 @@ public:
         XTN_MMU_DOUBLE_LL      = 22,
         XTN_MMU_DOUBLE_SC      = 23,
         XTN_DATA_PADDR_EXT     = 24,
+
+        XTN_DEBUG_MASK         = 30,
     };
 
     /**

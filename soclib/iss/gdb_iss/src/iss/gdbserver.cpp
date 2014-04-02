@@ -406,6 +406,20 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                 }
         }
 
+    if (i >= 2 && !strcmp(tokens[0], "cachedebug"))
+        {
+            unsigned int debug_mask = strtoul(tokens[1], NULL, 0);
+            /* prepare XTN request */
+            mem_req_ = true;
+            mem_type_ = CpuIss::XTN_WRITE;
+            mem_addr_ = CpuIss::XTN_DEBUG_MASK * 4;
+            mem_len_ = 4;
+            mem_data_ = debug_mask;
+            state_ = WaitGdbMem;
+
+            return;
+        }
+
     if (i >= 2 && !strcmp(tokens[0], "issdebug"))
         {
             unsigned int debug_mask = strtoul(tokens[1], NULL, 0);
@@ -868,6 +882,14 @@ bool GdbServer<CpuIss>::process_mem_access(
 
             break;
         }
+
+        case CpuIss::XTN_WRITE: {
+            write_packet("OK");
+            mem_req_ = false;
+
+            break;
+        }
+
 
         default:
             assert(0);
