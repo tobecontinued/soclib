@@ -52,6 +52,8 @@ private:
     static const uint32_t DONT_TOUCH = (uint32_t)-1;
     uint32_t m_memory_init_value;
 
+    uint64_t m_entry;
+
 	static loader_registry_t &registry();
 public:
 	static void register_loader( const std::string &name,
@@ -63,6 +65,8 @@ public:
 
 	void addSection( const BinaryFileSection &section );
 	void addSymbol( const BinaryFileSymbol &symbol );
+
+    void setupEntryPointAddress(uint64_t entry);
 
 	void load_file(const std::string &desc_str);
 
@@ -82,6 +86,7 @@ public:
 
     BinaryFileSymbolOffset get_symbol_by_addr( uint64_t addr ) const;
     const BinaryFileSymbol *get_symbol_by_name( const std::string & ) const;
+    uint64_t get_entry_point_address() const;
 
     friend std::ostream &operator << (std::ostream &o, const Loader &el)
     {

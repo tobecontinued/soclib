@@ -144,6 +144,8 @@ bool elf_load( const std::string &name, Loader &loader )
                 blob ));
     }
 
+    loader.setupEntryPointAddress(binary->get_entry_point_address());
+
     delete binary;
 
 	return true;

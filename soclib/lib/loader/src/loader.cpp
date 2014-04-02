@@ -67,7 +67,8 @@ Loader::Loader(
 Loader::Loader( const Loader &ref )
 	: m_sections(ref.m_sections),
       m_symbol_table(ref.m_symbol_table),
-      m_memory_init_value(ref.m_memory_init_value)
+      m_memory_init_value(ref.m_memory_init_value),
+      m_entry(0)
 {
 }
 
@@ -154,6 +155,11 @@ const BinaryFileSymbol *Loader::get_symbol_by_name( const std::string &sym ) con
     return NULL;
 }
 
+uint64_t Loader::get_entry_point_address() const
+{
+    return m_entry;
+}
+
 Loader::loader_registry_t &
 Loader::registry()
 {
@@ -218,6 +224,11 @@ void Loader::addSection( const BinaryFileSection &section )
 void Loader::addSymbol( const BinaryFileSymbol &symbol )
 {
 	m_symbol_table[symbol.address()] = symbol;
+}
+
+void Loader::setupEntryPointAddress(uint64_t entry)
+{
+    m_entry = entry;
 }
 
 }}
