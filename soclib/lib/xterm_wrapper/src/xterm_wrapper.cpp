@@ -57,13 +57,12 @@ XtermWrapper::XtermWrapper(const std::string &name)
 		// about it and we dont want it to get through to the
 		// simulated platform... Let's strip it.
 		char buf;
-		int r;
 
         ::close(fds[0]);
         m_fd = fds[1];
 
 		do {
-			r = ::read( m_fd, &buf, 1 );
+			::read( m_fd, &buf, 1 );
 		} while( buf != '\n' && buf != '\r' );
 
 		// Change xterm CR/LF mode
@@ -72,7 +71,7 @@ XtermWrapper::XtermWrapper(const std::string &name)
 		fcntl( m_fd, F_SETFL, O_NONBLOCK );
 		// The last char we want to strip is not always present,
 		// so dont block if not here
-		r = ::read( m_fd, &buf, 1 );
+		::read( m_fd, &buf, 1 );
 
         m_poller = FdPoller( m_fd, true );
     } else {
