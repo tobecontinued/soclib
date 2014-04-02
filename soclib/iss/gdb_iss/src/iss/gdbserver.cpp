@@ -406,6 +406,14 @@ void GdbServer<CpuIss>::process_monitor_packet(char *data)
                 }
         }
 
+    if (i >= 2 && !strcmp(tokens[0], "issdebug"))
+        {
+            unsigned int debug_mask = strtoul(tokens[1], NULL, 0);
+            CpuIss::set_debug_mask(debug_mask);
+            write_packet("OK");
+            return;
+        }
+
     if (i >= 2 && !strcmp(tokens[0], "debug"))
         {
             debug_ = atoi(tokens[1]) != 0;
