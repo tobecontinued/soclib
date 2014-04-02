@@ -61,6 +61,7 @@ enum Cp0Reg {
     CONFIG_1 = COPROC_REGNUM(16,1),
     CONFIG_2 = COPROC_REGNUM(16,2),
     CONFIG_3 = COPROC_REGNUM(16,3),
+    DEBUG = COPROC_REGNUM(23,0),
     ERROR_EPC = COPROC_REGNUM(30,0),
 
     // Implementation dependant,
@@ -118,6 +119,8 @@ uint32_t Mips32Iss::cp0Get( uint32_t reg, uint32_t sel ) const
         return r_config2.whole;
     case CONFIG_3:
         return r_config3.whole;
+    case DEBUG:
+        return m_debug_mask;
     case ERROR_EPC:
         return r_error_epc;
     case SCHED_ADDR:
@@ -165,6 +168,8 @@ void Mips32Iss::cp0Set( uint32_t reg, uint32_t sel, uint32_t val )
     case CAUSE:
         r_cause.whole = merge(r_cause.whole, val, CAUSE_WRITE_MASK);
         break;
+    case DEBUG:
+        m_debug_mask = val;
     case ERROR_EPC:
         r_error_epc = val;
         break;
