@@ -71,14 +71,14 @@ using namespace sc_core;
 
 template<typename vci_param>
 class VciSimpleRom
-	: public soclib::caba::BaseModule
+    : public soclib::caba::BaseModule
 {
 public:
 
-	typedef typename vci_param::fast_data_t  vci_data_t;
-	typedef typename vci_param::srcid_t      vci_srcid_t;
-	typedef typename vci_param::trdid_t      vci_trdid_t;
-	typedef typename vci_param::pktid_t      vci_pktid_t;
+    typedef typename vci_param::fast_data_t  vci_data_t;
+    typedef typename vci_param::srcid_t      vci_srcid_t;
+    typedef typename vci_param::trdid_t      vci_trdid_t;
+    typedef typename vci_param::pktid_t      vci_pktid_t;
 
     enum fsm_state_e 
     {
@@ -91,6 +91,7 @@ private:
 
     const soclib::common::Loader            &m_loader;
     std::list<soclib::common::Segment>      m_seglist;
+    int                                     m_drop_msb;
 
     sc_signal<int>                          r_fsm_state;
     sc_signal<size_t>                       r_flit_count;
@@ -107,7 +108,7 @@ private:
 
 protected:
 
-	SC_HAS_PROCESS(VciSimpleRom);
+    SC_HAS_PROCESS(VciSimpleRom);
 
 public:
 
@@ -119,7 +120,8 @@ public:
     VciSimpleRom(sc_module_name name,
                  const soclib::common::IntTab index,
                  const soclib::common::MappingTable &mt,
-                 const soclib::common::Loader &loader);
+                 const soclib::common::Loader &loader,
+                 const int nb_msb_drop = 0);
 
     ~VciSimpleRom();
 

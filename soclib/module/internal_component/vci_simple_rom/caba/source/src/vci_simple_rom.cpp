@@ -43,10 +43,12 @@ tmpl(/**/)::VciSimpleRom(
     sc_module_name name,
     const soclib::common::IntTab index,
     const soclib::common::MappingTable &mt,
-    const soclib::common::Loader &loader)
-	: caba::BaseModule(name),
+    const soclib::common::Loader &loader,
+    const int nb_msb_drop)
+    : caba::BaseModule(name),
       m_loader(loader),
       m_seglist(mt.getSegmentList(index)),
+      m_drop_msb(nb_msb_drop),
 
       r_fsm_state("r_fsm_state"),
       r_flit_count("r_flit_count"),
@@ -114,9 +116,11 @@ tmpl(/**/)::~VciSimpleRom()
 /////////////////////
 tmpl(void)::reload()
 {
+    uint64_t mask = (1ULL << (vci_param::N - m_drop_msb)) - 1;
     for ( size_t i=0 ; i<m_nbseg ; ++i ) 
     {
-        m_loader.load(&m_rom[i][0], m_seg[i]->baseAddress(), m_seg[i]->size());
+        uint64_t base_address = m_seg[i]->baseAddress() & mask; 
+        m_loader.load(&m_rom[i][0], base_address, m_seg[i]->size());
         for ( size_t addr = 0 ; addr < m_seg[i]->size()/vci_param::B ; ++addr )
             m_rom[i][addr] = le_to_machine(m_rom[i][addr]);
     }
@@ -126,7 +130,7 @@ tmpl(void)::reload()
 tmpl(void)::reset()
 {
     for ( size_t i=0 ; i<m_nbseg ; ++i ) std::memset(&m_rom[i][0], 0, m_seg[i]->size()); 
- 	r_fsm_state = FSM_IDLE;
+    r_fsm_state = FSM_IDLE;
 }
 
 //////////////////////////
@@ -151,7 +155,7 @@ tmpl(void)::transition()
     switch ( r_fsm_state ) 
     {
         //////////////
-        case FSM_IDLE: 	// waiting a VCI command 
+        case FSM_IDLE:  // waiting a VCI command 
         {
             if ( p_vci.cmdval.read() ) 
             {
@@ -201,7 +205,7 @@ tmpl(void)::transition()
                     {
                         if ( plen & 0x4 )      // odd number of words 
                         {
-                            r_flit_count = plen>>3 + 1;
+                            r_flit_count = (plen>>3) + 1;
                             r_odd_words  = true;
                         }
                         else                   // even number of words
@@ -225,7 +229,7 @@ tmpl(void)::transition()
             {
                 r_flit_count = r_flit_count - 1;
                 r_rom_index  = r_rom_index.read() + (vci_param::B>>2);
-                if ( r_flit_count.read() == 1) 	 r_fsm_state = FSM_IDLE;
+                if ( r_flit_count.read() == 1)   r_fsm_state = FSM_IDLE;
             }
             break;
         }
