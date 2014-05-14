@@ -33,7 +33,7 @@ namespace soclib { namespace common {
 
 #define tmpl(...) template<typename addr_t, typename id_t> __VA_ARGS__ LinkedAccessBuffer<addr_t, id_t>
 
-tmpl()::LinkedAccessBuffer( size_t n_entry = 0 )
+tmpl()::LinkedAccessBuffer( size_t n_entry )
        : m_access(n_entry ? (new entry_t[n_entry]) : NULL), m_n_entry(n_entry)
 {
 }

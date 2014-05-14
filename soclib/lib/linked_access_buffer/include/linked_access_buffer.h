@@ -79,7 +79,7 @@ class LinkedAccessBuffer
 	entry_t * const m_access;
 	const size_t m_n_entry;
 public:
-	LinkedAccessBuffer( size_t n_entry );
+	LinkedAccessBuffer( size_t n_entry = 0);
 	~LinkedAccessBuffer();
 
 	void clearAll()
