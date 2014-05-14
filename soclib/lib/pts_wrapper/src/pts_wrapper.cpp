@@ -54,6 +54,8 @@ PtsWrapper::PtsWrapper()
     grantpt(m_fd);
     unlockpt(m_fd);
 
+    fcntl( m_fd, F_SETFL, O_NONBLOCK );
+
     m_poller = FdPoller( m_fd );
 
     int fd = open(m_name.c_str(), O_RDWR);
