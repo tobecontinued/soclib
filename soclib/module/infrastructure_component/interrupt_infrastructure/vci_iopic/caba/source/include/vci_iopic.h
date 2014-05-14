@@ -32,6 +32,8 @@
 #include <systemc>
 #include "caba_base_module.h"
 #include "mapping_table.h"
+#include "vci_initiator.h"
+#include "vci_target.h"
 
 #define IOPIC_PERIOD  5000
 
