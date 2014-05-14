@@ -50,6 +50,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <unistd.h>
 
 #include <errno.h>
 
@@ -96,7 +97,7 @@ class NicRxTap : public NicRxBackend
 #ifdef SOCLIB_NIC_DEBUG
                 // printf("[NIC][%s] reading from fd : %d\n", __func__, m_tap_fd);
 #endif
-                r_plen = read(m_tap_fd, r_buffer, 2048);
+                r_plen = ::read(m_tap_fd, r_buffer, 2048);
 #ifdef SOCLIB_NIC_DEBUG
                 if (errno != EAGAIN)
                     {

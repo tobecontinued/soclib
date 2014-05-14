@@ -45,6 +45,7 @@
 #include <inttypes.h>
 #include <systemc>
 #include <assert.h>
+#include <unistd.h>
 
 #include <string>
 #include <iostream>
@@ -119,7 +120,7 @@ class NicTxTap : public NicTxBackend
                 // r_buffer[r_counter - 3] = 0x00;
                 // r_buffer[r_counter - 4] = 0x00;
                 // Writing to the TAP interface
-                write(m_tap_fd, r_buffer, r_counter - NIC_TX_CRC32_SIZE);
+                ::write(m_tap_fd, r_buffer, r_counter - NIC_TX_CRC32_SIZE);
             }
     }
 

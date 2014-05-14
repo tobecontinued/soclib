@@ -146,6 +146,7 @@
 #include <cstdio>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 
 #include "alloc_elems.h"
@@ -3122,7 +3123,7 @@ tmpl(int32_t)::open_tap_fd()
 
             if (ioctl(tap_fd, TUNSETIFF, (void *) &m_tap_ifr) < 0)
                 {
-                    close(tap_fd);
+                    ::close(tap_fd);
                     tap_fd = -1;
                     std::cerr << name() << ": Unable to setup tap interface, check privileges."
 #ifdef __linux__
