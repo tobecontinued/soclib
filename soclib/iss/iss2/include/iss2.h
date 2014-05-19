@@ -177,6 +177,7 @@ public:
         XTN_MMU_DOUBLE_LL      = 22,
         XTN_MMU_DOUBLE_SC      = 23,
         XTN_DATA_PADDR_EXT     = 24,
+        XTN_INST_PADDR_EXT     = 25,
 
         XTN_DEBUG_MASK         = 30,
     };
@@ -443,7 +444,7 @@ public:
 
     /** set debug mask */
     inline void set_debug_mask(uint v) {
-	m_debug_mask = v;
+        m_debug_mask = v;
     }
 
 protected:
