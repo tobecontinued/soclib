@@ -46,7 +46,6 @@ tmpl(void)::transition()
         for ( size_t channel = 0 ; channel < m_channels ; channel++ )
         {
             r_hwi[channel]       = false;
-            r_counter[channel]   = 0;
             r_error[channel]     = false;
             r_address[channel]   = 0;
             r_extend[channel]    = 0;
@@ -57,137 +56,154 @@ tmpl(void)::transition()
     // This is done at all cycles for all channels
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        // update r_hwi[k] flip-flops 
         r_hwi[k] = p_hwi[k].read();
-
-        // decrement r_conter[k] if pending HWI
-        if ( r_hwi[k].read() and (r_counter[k].read() > 0) ) 
-            r_counter[k] = r_counter[k].read() - 1;
-            
     }
 
+    ///////////////////////
     // VCI initiator FSM
-    switch ( r_ini_fsm.read() ) {
-    case I_IDLE:
+    ///////////////////////
+    switch ( r_ini_fsm.read() ) 
     {
-        for( size_t k = 0 ; k < m_channels ; k++ )
+        case I_IDLE:
         {
-            // WTI transaction if 
-            // - the channel k is not in error state
-            // - a rising edge is detected on p_hwi[k] port,
-            // - or there is a pending r_hwi[k] and period elapsed
-            if ( not r_error[k].read() and
-                 ( (p_hwi[k].read() and not r_hwi[k].read()) or
-                   (r_hwi[k].read() and (r_counter[k].read() == 0)) ) ) 
+            for( size_t k = 0 ; k < m_channels ; k++ )
             {
-                r_channel = k;
-                r_ini_fsm = I_SEND_CMD;
-                break;
-            }
-        }
-        break;
-    }
-    case I_SEND_CMD:
-    {
-        if ( p_vci_initiator.cmdack.read() )
-        {
-            r_counter[r_channel.read()] = m_period;
-            r_ini_fsm = I_WAIT_RSP;
-        }
-        break;
-    }
-    case I_WAIT_RSP:
-    {
-        if ( p_vci_initiator.rspval.read() ) 
-        {
-            if ( p_vci_initiator.rerror.read() & 0x1 ) r_error[r_channel.read()] = true;
-            r_ini_fsm = I_IDLE;
-        }
-        break;
-    } }  // end switch r_ini_fsm
-
-    // VCI target FSM
-    switch ( r_tgt_fsm.read() ) {
-    case T_IDLE:            
-    {
-        if ( p_vci_target.cmdval.read() )
-        {
-            r_srcid = p_vci_target.srcid.read();
-            r_trdid = p_vci_target.trdid.read();
-            r_pktid = p_vci_target.pktid.read();
-
-            uint64_t address = (uint64_t)p_vci_target.address.read();
-            size_t   cell    = (size_t)((address & 0xfff)>>2);
-            size_t   reg     = cell % IOPIC_SPAN;
-            size_t   channel = cell / IOPIC_SPAN;
-
-            bool     seg_error = true;
-            std::list<soclib::common::Segment>::iterator seg;
-            for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
-            {
-                if ( seg->contains( address ) and p_vci_target.eop.read() )
+                // WTI transaction if 
+                // - the channel k is not in error state and
+                // - a rising or falling edge is detected on p_hwi[k] port,
+                if ( not r_error[k].read() and
+                      (p_hwi[k].read() and not r_hwi[k].read()) )
                 {
-                    seg_error   = false;
+                    r_channel = k;
+                    r_ini_fsm = I_SET_CMD;
+                    break;
+                }
+
+                if ( not r_error[k].read() and
+                       (r_hwi[k].read() and not p_hwi[k].read()) ) 
+                {
+                    r_channel = k;
+                    r_ini_fsm = I_RESET_CMD;
                     break;
                 }
             }
-
-            if      ( not seg_error and
-                      (p_vci_target.cmd.read() == vci_param::CMD_WRITE) and
-                      (reg == IOPIC_ADDRESS) and
-                      (channel < m_channels) )        // write address
-            {
-                r_address[channel] = p_vci_target.wdata.read();
-                r_tgt_fsm          = T_WRITE;
-            }
-            else if ( not seg_error and
-                      (p_vci_target.cmd.read() == vci_param::CMD_READ) and
-                      (reg == IOPIC_ADDRESS) and
-                      (channel < m_channels) )        // read address
-            {
-                r_rdata            = r_address[channel].read();
-                r_tgt_fsm          = T_READ;
-            }
-            else if ( not seg_error and
-                      (p_vci_target.cmd.read() == vci_param::CMD_WRITE) and
-                      (reg == IOPIC_EXTEND) and
-                      (channel < m_channels) )        // write extend
-            {
-                r_extend[channel] = p_vci_target.wdata.read();
-                r_tgt_fsm         = T_WRITE;
-            }
-            else if ( not seg_error and
-                      (p_vci_target.cmd.read() == vci_param::CMD_READ) and
-                      (reg == IOPIC_EXTEND) and
-                      (channel < m_channels) )        // read extend
-            {
-                r_rdata           = r_extend[channel].read();
-                r_tgt_fsm         = T_READ;
-            }
-            else if ( not seg_error and
-                      (p_vci_target.cmd.read() == vci_param::CMD_READ) and
-                      (reg == IOPIC_STATUS) and
-                      (channel < m_channels) )        // read status
-            {
-                r_rdata          = (uint32_t)r_hwi[channel] | 
-                                   (((uint32_t)r_error[channel])<<1);
-                r_error[channel] = false;
-                r_tgt_fsm        = T_READ;
-            }
-            else if ( p_vci_target.eop.read() )
-            {
-                r_tgt_fsm  = T_ERROR;
-            }
+            break;
         }
-        break;
-    }
-    case T_WRITE:
-    case T_READ:
-    case T_ERROR:
+        case I_SET_CMD:     // send a WTI write command to set IRQ 
+        case I_RESET_CMD:   // send a WTI read command to reset IRQ
+        {
+            if ( p_vci_initiator.cmdack.read() ) r_ini_fsm = I_WAIT_RSP;
+            break;
+        }
+        case I_WAIT_RSP:
+        {
+            if ( p_vci_initiator.rspval.read() ) 
+            {
+                if ( p_vci_initiator.rerror.read() & 0x1 ) 
+                    r_error[r_channel.read()] = true;
+                r_ini_fsm = I_IDLE;
+            }
+            break;
+        } 
+    }  // end switch r_ini_fsm
+
+    //////////////////////////////////////////////
+    //     VCI target FSM
+    // Only single flit commands are accepted
+    //////////////////////////////////////////////
+    switch ( r_tgt_fsm.read() ) 
     {
-        if( p_vci_target.rspack.read() ) r_tgt_fsm = T_IDLE;
-        break;
-    } }  // end switch r_tgt_fsm
+        case T_IDLE:            
+        {
+            if ( p_vci_target.cmdval.read() )
+            {
+                r_srcid = p_vci_target.srcid.read();
+                r_trdid = p_vci_target.trdid.read();
+                r_pktid = p_vci_target.pktid.read();
+
+                uint64_t address = (uint64_t)p_vci_target.address.read();
+                size_t   cell    = (size_t)((address & 0xfff)>>2);
+                size_t   reg     = cell % IOPIC_SPAN;
+                size_t   channel = cell / IOPIC_SPAN;
+
+                bool     seg_error = true;
+
+                std::list<soclib::common::Segment>::iterator seg;
+                for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
+                {
+                    if ( seg->contains( address ) and p_vci_target.eop.read() )
+                    {
+                        seg_error   = false;
+                        break;
+                    }
+                }
+
+                if      ( not p_vci_target.eop.read() )
+                {
+                    r_tgt_fsm          = T_WAIT_EOP; 
+                }
+                else if ( not seg_error and
+                          (p_vci_target.cmd.read() == vci_param::CMD_WRITE) and
+                          (reg == IOPIC_ADDRESS) and
+                          (channel < m_channels) )        // write address
+                {
+                    r_address[channel] = (uint32_t)p_vci_target.wdata.read();
+                    r_tgt_fsm          = T_WRITE;
+                }
+                else if ( not seg_error and
+                          (p_vci_target.cmd.read() == vci_param::CMD_READ) and
+                          (reg == IOPIC_ADDRESS) and
+                          (channel < m_channels) )        // read address
+                {
+                    r_rdata            = r_address[channel].read();
+                    r_tgt_fsm          = T_READ;
+                }
+                else if ( not seg_error and
+                          (p_vci_target.cmd.read() == vci_param::CMD_WRITE) and
+                          (reg == IOPIC_EXTEND) and
+                          (channel < m_channels) )        // write extend
+                {
+                    r_extend[channel] = (uint32_t)p_vci_target.wdata.read();
+                    r_tgt_fsm         = T_WRITE;
+                }
+                else if ( not seg_error and
+                          (p_vci_target.cmd.read() == vci_param::CMD_READ) and
+                          (reg == IOPIC_EXTEND) and
+                          (channel < m_channels) )        // read extend
+                {
+                    r_rdata           = r_extend[channel].read();
+                    r_tgt_fsm         = T_READ;
+                }
+                else if ( not seg_error and
+                          (p_vci_target.cmd.read() == vci_param::CMD_READ) and
+                          (reg == IOPIC_STATUS) and
+                          (channel < m_channels) )        // read status
+                {
+                    r_rdata          = (uint32_t)r_hwi[channel] | 
+                                       (((uint32_t)r_error[channel])<<1);
+                    r_error[channel] = false;
+                    r_tgt_fsm        = T_READ;
+                }
+                else if ( p_vci_target.eop.read() )
+                {
+                    r_tgt_fsm  = T_ERROR;
+                }
+            }
+            break;
+        }
+        case T_WAIT_EOP:
+        {
+            if ( p_vci_target.eop.read() )  r_tgt_fsm = T_ERROR;
+            break;
+        }
+        case T_WRITE:
+        case T_READ:
+        case T_ERROR:
+        {
+            if( p_vci_target.rspack.read() ) r_tgt_fsm = T_IDLE;
+            break;
+        } 
+    }  // end switch r_tgt_fsm
 }  // end transition
 
 ////////////////////////////
@@ -195,7 +211,8 @@ tmpl(void)::genMoore()
 ////////////////////////////
 {
     //////// VCI target port
-    if ( r_tgt_fsm.read() == T_IDLE )
+    if ( (r_tgt_fsm.read() == T_IDLE) ||
+         (r_tgt_fsm.read() == T_WAIT_EOP ) )
     {
         p_vci_target.cmdack = true;
         p_vci_target.rspval = false;
@@ -204,7 +221,7 @@ tmpl(void)::genMoore()
     {           
         p_vci_target.cmdack = false;
         p_vci_target.rspval = true;
-        p_vci_target.rdata  = r_rdata.read();
+        p_vci_target.rdata  = (data_t)r_rdata.read();
         p_vci_target.rsrcid = r_srcid.read();
         p_vci_target.rtrdid = r_trdid.read();
         p_vci_target.rpktid = r_pktid.read();
@@ -240,13 +257,33 @@ tmpl(void)::genMoore()
         p_vci_initiator.cmdval  = false;
         p_vci_initiator.rspack  = false;
     }
-    else if ( r_ini_fsm.read() == I_SEND_CMD )
+    else if ( r_ini_fsm.read() == I_SET_CMD )
     {
         p_vci_initiator.cmdval  = true;
         p_vci_initiator.address = ((addr_t)r_extend[r_channel.read()].read()<<32) +
                                   ((addr_t)r_address[r_channel.read()].read());
         p_vci_initiator.cmd     = vci_param::CMD_WRITE;
         p_vci_initiator.wdata   = (data_t)r_channel.read();
+        p_vci_initiator.be      = 0xF;
+        p_vci_initiator.plen    = 4;
+        p_vci_initiator.srcid   = m_srcid;
+        p_vci_initiator.trdid   = 0;
+        p_vci_initiator.pktid   = 0;
+        p_vci_initiator.cons    = false;
+        p_vci_initiator.contig  = true;
+        p_vci_initiator.wrap    = false;
+        p_vci_initiator.cfixed  = false;
+        p_vci_initiator.clen    = 0;
+        p_vci_initiator.eop     = true;
+        p_vci_initiator.rspack  = false;
+    }
+    else if ( r_ini_fsm.read() == I_RESET_CMD )
+    {
+        p_vci_initiator.cmdval  = true;
+        p_vci_initiator.address = ((addr_t)r_extend[r_channel.read()].read()<<32) +
+                                  ((addr_t)r_address[r_channel.read()].read());
+        p_vci_initiator.cmd     = vci_param::CMD_READ;
+        p_vci_initiator.wdata   = 0;
         p_vci_initiator.be      = 0xF;
         p_vci_initiator.plen    = 4;
         p_vci_initiator.srcid   = m_srcid;
@@ -282,7 +319,8 @@ tmpl(void)::print_trace()
     const char* ini_fsm_str[] =
     {
         "INI_IDLE",
-        "INI_SEND_CMD",
+        "INI_SET_CMD",
+        "INI_RESET_CMD",
         "INI_WAIT_RSP",
     };
 
@@ -295,8 +333,7 @@ tmpl(void)::print_trace()
         if ( r_hwi[i].read() ) 
         std::cout << "  - HWI = " << std::dec << i
                   << " / address = " << std::hex << r_address[i].read()
-                  << " / extend  = " << r_extend[i].read() 
-                  << " / count = " << r_counter[i].read() << std::endl;
+                  << " / extend  = " << r_extend[i].read() << std::endl;
     }
 }
 
@@ -305,13 +342,11 @@ tmpl()::VciIopic( sc_core::sc_module_name             name,
                   const soclib::common::MappingTable  &mt,
                   const soclib::common::IntTab        &srcid,
                   const soclib::common::IntTab        &tgtid,
-                  const size_t                        channels,
-                  const size_t                        period )
+                  const size_t                        channels )
        : caba::BaseModule(name),
        m_srcid( mt.indexForId(srcid) ),
        m_channels( channels ),
        m_seglist( mt.getSegmentList(tgtid) ),
-       m_period( period ),
        p_clk("clk"),
        p_resetn("resetn"),
        p_vci_initiator("p_vci_initiator"),
@@ -320,7 +355,6 @@ tmpl()::VciIopic( sc_core::sc_module_name             name,
     std::cout << "  - Building VciIopic " << name << std::endl;
 
     r_hwi     = soclib::common::alloc_elems<sc_signal<bool> >("r_hwi", channels);
-    r_counter = soclib::common::alloc_elems<sc_signal<uint32_t> >("r_counter", channels);
     r_address = soclib::common::alloc_elems<sc_signal<uint32_t> >("r_address", channels);
     r_extend  = soclib::common::alloc_elems<sc_signal<uint32_t> >("r_extend", channels);
     r_error   = soclib::common::alloc_elems<sc_signal<bool> >("r_error", channels);
@@ -366,6 +400,14 @@ tmpl()::VciIopic( sc_core::sc_module_name             name,
 		          << " No segment allocated" << std::endl;
 		exit(1);
     }
+
+    if ( (vci_param::B != 4) and (vci_param::B != 8) )
+    {
+		std::cout << "Error in component VciIopic : " << name
+		          << " DATA width must be 32 or 64" << std::endl;
+		exit(1);
+    }
+
 } // end constructor
 
 ///////////////////

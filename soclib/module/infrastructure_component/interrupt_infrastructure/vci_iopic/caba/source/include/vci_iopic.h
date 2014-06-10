@@ -35,8 +35,6 @@
 #include "vci_initiator.h"
 #include "vci_target.h"
 
-#define IOPIC_PERIOD  5000
-
 namespace soclib {
 namespace caba {
 
@@ -61,12 +59,12 @@ private:
     const size_t                        m_srcid;          // SRCID
     const size_t                        m_channels;       // number of input HWI
     std::list<soclib::common::Segment>  m_seglist;        // segment list
-    const size_t                        m_period;         // delay between HWI
 
     enum ini_fsm_state_e 
     {
         I_IDLE,
-        I_SEND_CMD,
+        I_SET_CMD,
+        I_RESET_CMD,
         I_WAIT_RSP,
     };
 
@@ -76,6 +74,7 @@ private:
         T_WRITE,
         T_READ,
         T_ERROR,
+        T_WAIT_EOP,
     };
     
     // registers
@@ -83,13 +82,12 @@ private:
     sc_core::sc_signal<srcid_t>     r_srcid;  
     sc_core::sc_signal<trdid_t>     r_trdid;  
     sc_core::sc_signal<pktid_t>     r_pktid;  
-    sc_core::sc_signal<data_t>      r_rdata;
+    sc_core::sc_signal<uint32_t>    r_rdata;
 
     sc_core::sc_signal<int>         r_ini_fsm;
-    sc_core::sc_signal<size_t>      r_channel;        // selected channel for ini_fsm
+    sc_core::sc_signal<size_t>      r_channel;        // selected channel 
 
     sc_core::sc_signal<bool>*       r_hwi;            // array: curent HWI values
-    sc_core::sc_signal<uint32_t>*   r_counter;        // array: cycles counter
     sc_core::sc_signal<uint32_t>*   r_address;        // array: WTI address   
     sc_core::sc_signal<uint32_t>*   r_extend;         // array: WTI address extension
     sc_core::sc_signal<bool>*       r_error;          // array: WTI error received
@@ -118,8 +116,7 @@ public:
 		const soclib::common::MappingTable &mt,
 		const soclib::common::IntTab &srcid,
 		const soclib::common::IntTab &tgtid,
-        const size_t                 channels,
-        const size_t                 period = IOPIC_PERIOD );
+        const size_t                 channels );
 };
 
 }}
