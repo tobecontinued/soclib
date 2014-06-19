@@ -125,6 +125,7 @@ tmpl(void)::transition()
                 size_t   cell    = (size_t)((address & 0xfff)>>2);
                 size_t   reg     = cell % IOPIC_SPAN;
                 size_t   channel = cell / IOPIC_SPAN;
+                uint32_t wdata;
 
                 bool     seg_error = true;
 
@@ -138,6 +139,17 @@ tmpl(void)::transition()
                     }
                 }
 
+                // get write data value for both 32 bits and 64 bits data width
+                if( (vci_param::B == 8) and (p_vci_target.be.read() == 0xF0) ) 
+                {
+                    wdata = (uint32_t)(p_vci_target.wdata.read()>>32);
+                }
+                else
+                {
+                    wdata = p_vci_target.wdata.read();
+                }
+
+                // decode target register
                 if      ( not p_vci_target.eop.read() )
                 {
                     r_tgt_fsm          = T_WAIT_EOP; 
@@ -147,7 +159,7 @@ tmpl(void)::transition()
                           (reg == IOPIC_ADDRESS) and
                           (channel < m_channels) )        // write address
                 {
-                    r_address[channel] = (uint32_t)p_vci_target.wdata.read();
+                    r_address[channel] = wdata;
                     r_tgt_fsm          = T_WRITE;
                 }
                 else if ( not seg_error and
@@ -163,7 +175,7 @@ tmpl(void)::transition()
                           (reg == IOPIC_EXTEND) and
                           (channel < m_channels) )        // write extend
                 {
-                    r_extend[channel] = (uint32_t)p_vci_target.wdata.read();
+                    r_extend[channel] = wdata;
                     r_tgt_fsm         = T_WRITE;
                 }
                 else if ( not seg_error and
