@@ -58,8 +58,6 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
       p_resetn("p_resetn"),
       p_global_in("p_global_in"),
       p_global_out("p_global_out"),
-      p_local_in(alloc_elems<DspinInput<flit_width> >("p_local_in", nb_local_inputs)),
-      p_local_out(alloc_elems<DspinOutput<flit_width> >("p_local_out", nb_local_outputs)),
 
       r_alloc_out(alloc_elems<sc_signal<bool> > ("r_alloc_out", nb_local_outputs + 1)),
       r_index_out(alloc_elems<sc_signal<size_t> > ("r_index_out", nb_local_outputs + 1)),
@@ -97,21 +95,35 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
         r_buf_in = new internal_flit_t[nb_local_inputs + 1];
 
         // build routing table
-        size_t cluster_id = (x << y_width) + y;
-        if ( use_routing_table and is_cmd )        // from ADDRESS
+        if ( ( m_local_outputs > 0 ) and use_routing_table )
         {
-            m_cmd_rt = mt.getLocalIndexFromAddress( cluster_id );
+            size_t cluster_id = (x << y_width) + y;
+            if ( is_cmd )
+            {
+                m_cmd_rt = mt.getLocalIndexFromAddress( cluster_id );
+            }
+            else
+            {
+                m_rsp_rt = mt.getLocalIndexFromSrcid( cluster_id );
+            }
         }
-        if ( use_routing_table and not is_cmd )    // from SRCID
+
+        if ( m_local_inputs > 0 )
         {
-            m_rsp_rt = mt.getLocalIndexFromSrcid( cluster_id );
+            p_local_in = alloc_elems<DspinInput<flit_width> >(
+                    "p_local_in", nb_local_inputs );
+        }
+        if ( m_local_outputs > 0 )
+        {
+            p_local_out = alloc_elems<DspinOutput<flit_width> >(
+                    "p_local_out", nb_local_outputs );
         }
 
         // construct FIFOs
-        r_fifo_in  = (GenericFifo<internal_flit_t> *)
+        r_fifo_in  = (GenericFifo<internal_flit_t>*)
         malloc(sizeof(GenericFifo<internal_flit_t>) * (m_local_inputs + 1));
         
-        r_fifo_out = (GenericFifo<internal_flit_t> *)
+        r_fifo_out = (GenericFifo<internal_flit_t>*)
         malloc(sizeof(GenericFifo<internal_flit_t>) * (m_local_outputs + 1));
 
         for (size_t i = 0; i <= m_local_inputs; i++)
@@ -147,8 +159,15 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
 
         free(r_fifo_in);
         free(r_fifo_out);
-        dealloc_elems<DspinInput<flit_width> >(p_local_in, m_local_inputs);
-        dealloc_elems<DspinOutput<flit_width> >(p_local_out, m_local_outputs);
+
+        if ( m_local_inputs > 0 )
+        {
+            dealloc_elems<DspinInput<flit_width> >(p_local_in, m_local_inputs);
+        }
+        if ( m_local_outputs > 0 )
+        {
+            dealloc_elems<DspinOutput<flit_width> >(p_local_out, m_local_outputs);
+        }
         dealloc_elems<sc_signal<bool> >(r_alloc_out, m_local_outputs + 1);
         dealloc_elems<sc_signal<size_t> >(r_index_out, m_local_outputs + 1);
         dealloc_elems<sc_signal<int> >(r_fsm_in, m_local_inputs + 1);
@@ -165,7 +184,8 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
         size_t   x_dest  = (size_t)(data >> m_x_shift) & m_x_mask;
         size_t   y_dest  = (size_t)(data >> m_y_shift) & m_y_mask;
 
-        if ( (x_dest == m_local_x) and (y_dest == m_local_y) )          // local dest
+        if ( (x_dest == m_local_x) and (y_dest == m_local_y) and
+             (m_local_outputs > 0) )          // local dest
         {
             if ( m_use_routing_table )
             {
