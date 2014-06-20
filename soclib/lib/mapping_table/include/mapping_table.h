@@ -135,6 +135,11 @@ public:
         return m_addr_width;
     }
 
+    inline const IntTab& getSrcidLevelBits() const
+    {
+        return m_level_id_bits;
+    }
+
     //////////////////////////////////////////////////////////////////////////
     friend std::ostream &operator << (std::ostream &o, const MappingTable &mt)
     {
