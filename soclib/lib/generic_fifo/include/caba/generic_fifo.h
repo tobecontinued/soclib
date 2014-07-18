@@ -29,6 +29,7 @@
 #ifndef SOCLIB_CABA_GENERIC_FIFO_H
 #define SOCLIB_CABA_GENERIC_FIFO_H
 
+#include <cstring>
 #include <systemc>
 #include "register.h"
 
@@ -71,6 +72,8 @@ public:
         r_ptr = 0;
         r_ptw = 0;
         r_fill_state = 0;
+        // To avoid potential errors from memory checkers
+        std::memset(m_data, 0, sizeof(T) * m_depth);
     }
 
     inline uint32_t filled_status() const

@@ -56,6 +56,9 @@
 // The address can be larger than 32 bits, but the TAG field 
 // cannot be larger than 32 bits.
 /////////////////////////////////////////////////////////////////////////////////
+// Lines with the tag [memcheck] are present in order to avoid
+// potential errors from memory checkers like valgrind
+/////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_GENERIC_CACHE_H
 #define SOCLIB_GENERIC_CACHE_H
@@ -78,10 +81,10 @@ class GenericCache
     typedef uint32_t    tag_t;
     typedef uint32_t    be_t;
 
-    data_t              *r_data ;
-    tag_t               *r_tag ;
-    bool                *r_val ;
-    bool                *r_lru ;
+    data_t              *r_data;
+    tag_t               *r_tag;
+    bool                *r_val;
+    bool                *r_lru;
 
     size_t              m_ways;	
     size_t              m_sets;	
@@ -198,12 +201,17 @@ public:
     }
 
     ////////////////////
-    inline void reset( )
+    inline void reset()
     {
-        std::memset(r_data, 0, sizeof(*r_data)*m_ways*m_sets*m_words);
-        std::memset(r_tag, 0, sizeof(*r_tag)*m_ways*m_sets);
-        std::memset(r_val, 0, sizeof(*r_val)*m_ways*m_sets);
-        std::memset(r_lru, 0, sizeof(*r_lru)*m_ways*m_sets);
+        for (int i = 0; i < m_ways * m_sets; i++) {
+            r_tag[i] = 0;
+            r_val[i] = false;
+            r_lru[i] = false;
+        }
+
+        for (int i = 0; i < m_ways * m_sets * m_words; i++) {
+            r_data[i] = 0;
+        }
     }
 
     ///////////////////////////////////////////////////////////////
@@ -216,6 +224,8 @@ public:
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+        // [memcheck]
+        *dt = 0;
 
         for ( size_t way = 0; way < m_ways; way++ ) 
         {
@@ -243,6 +253,12 @@ public:
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+
+        // [memcheck]
+        *dt = 0;
+        *selway = 0;
+        *selset = 0;
+        *selword = 0;
 
         for ( size_t way = 0; way < m_ways; way++ ) 
         {
@@ -274,6 +290,12 @@ public:
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+
+        // [memcheck]
+        *dt = 0;
+        *selway = 0;
+        *selset = 0;
+        *selword = 0;
 
         for ( size_t way = 0; way < m_ways; way++ ) 
         {
@@ -309,6 +331,11 @@ public:
         const size_t      word = m_x[ad];
 
         *dt_next = 0; // To avoid a gcc warning
+        // [memcheck]
+        *dt = 0;
+        *selway = 0;
+        *selset = 0;
+        *selword = 0;
 
         for ( size_t way = 0; way < m_ways; way++ ) 
         {
@@ -426,6 +453,9 @@ public:
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
 
+        // [memcheck]
+        *nway = 0;
+
         for ( size_t way = 0; way < m_ways; way++ ) 
         {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) 
@@ -451,6 +481,9 @@ public:
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+
+        // [memcheck]
+        *nway = 0;
 
         for ( size_t way = 0; way < m_ways; way++ ) 
         {
@@ -504,6 +537,9 @@ public:
                       size_t 	set, 
                       addr_t* 	nline)
     {
+        // [memcheck]
+        *nline = 0;
+
         if ( cache_val(way,set) ) 
         {
             cache_val(way,set) = false;
@@ -547,6 +583,10 @@ public:
         const tag_t     tag = m_z[ad];
         const size_t    set = m_y[ad];
 
+        // [memcheck]
+        *selway = 0;
+        *selset = 0;
+
         for ( size_t way = 0 ; way < m_ways && !hit ; way++ ) 
         {
             if ( (tag == cache_tag(way, set)) && cache_val(way, set) ) 
@@ -571,6 +611,11 @@ public:
     {
         size_t set, way;
         bool   cleanup = victim_select(ad, victim, &way, &set);
+
+        // [memcheck]
+        *buf = 0;
+        *victim = 0;
+
         victim_update_tag (ad, way, set);
 
         for ( size_t word = 0 ; word < m_words ; word++ ) {
@@ -595,6 +640,9 @@ public:
         bool   cleanup = false;
         *set = m_y[ad];
         *way = 0;
+
+        // [memcheck]
+        *victim = 0;
 
         // Search and invalid slot
         for ( size_t _way = 0 ; _way < m_ways && !found ; _way++ )
@@ -649,6 +697,9 @@ public:
                        size_t 	set, 
                        data_t* 	buf)
     {
+        // [memcheck]
+        *buf = 0;
+
         tag_t tag = m_z[ad];
 
         cache_tag(way, set) = tag;

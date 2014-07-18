@@ -45,8 +45,16 @@ tmpl(/**/)::VciTargetFsm(
     : p_vci(vci),
       m_atomic(support_llsc ? (1<<vci_param::S) : 0),
       m_segments(seglist.begin(), seglist.end()),
-      m_mode(MODE_IDLE)
+      m_mode(MODE_IDLE),
+      m_send_rsp(false)
 {
+    // To avoid memcheck errors
+    m_current_cmd.srcid = 0;
+    m_current_cmd.trdid = 0;
+    m_current_cmd.pktid = 0;
+    m_current_cmd.eop = 0;
+    m_current_cmd.rdata = 0;
+    m_current_cmd.error = 0;
 }
 
 ///////////////////////////

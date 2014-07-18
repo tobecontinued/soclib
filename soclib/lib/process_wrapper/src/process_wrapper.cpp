@@ -66,7 +66,7 @@ ProcessWrapper::ProcessWrapper(
         m_fd_to_process = host_to_child[1];
         m_fd_from_process = child_to_host[0];
 
-        struct termios ts;
+        struct termios ts = {0};
         tcgetattr(m_fd_from_process, &ts);
         ts.c_lflag &= ~ICANON;
         ts.c_lflag &= ~ECHO;

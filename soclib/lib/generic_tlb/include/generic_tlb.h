@@ -268,7 +268,7 @@ public:
       m_nsets(nsets),
       m_paddr_nbits(paddr_nbits),
       m_sets_shift(uint32_log2(nsets)),
-      m_sets_mask((1<<(int)uint32_log2(nsets))-1)
+      m_sets_mask((1 << (int) uint32_log2(nsets)) - 1)
     {
         assert(IS_POW_OF_2(nsets));
         assert(IS_POW_OF_2(nways));
@@ -324,14 +324,29 @@ public:
     /////////////////////////////////////////////////////////////
     void reset() 
     {
-	    for (size_t way = 0 ; way < m_nways ; way++)
-        {
-            for (size_t set = 0 ; set < m_nsets ; set++)
-            {
-		        m_valid[m_nsets*way+set] = false;
-            }
-        }
+
         m_bypass_valid = false;
+        for (int i = 0; i < m_nways * m_nsets; i++) {
+            m_valid[i] = false;
+
+            // Following inits to avoid potential errors from memory checkers
+            m_nline[i] = 0;
+            m_ppn[i] = 0;
+            m_vpn[i] = 0;
+            m_local[i] = false;
+            m_remote[i] = false;
+            m_cacheable[i] = false;
+            m_writable[i] = false;
+            m_executable[i] = false;
+            m_unprotected[i] = false;
+            m_global[i] = false;
+            m_dirty[i] = false;
+            m_big[i] = false;
+            m_recent[i] = false;
+        }
+
+        // Following init to avoid potential errors from memory checkers
+        m_bypass_nline = 0x0;
     } 
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -732,6 +747,8 @@ public:
     void reset_bypass()
     {
         m_bypass_valid = false;
+        // Next affectation to avoid memory checker errors
+        m_bypass_nline = 0;
     }
     ///////////////////////////////////////////////////////////////////////
     //  The printTrace() method displays the TLB content

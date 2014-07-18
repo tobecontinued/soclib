@@ -247,8 +247,7 @@ using namespace soclib::common;
         // Time Multiplexing
         for (int i = 0; i < 5; i++)
         {
-            r_tdm[i]  = (sc_signal<bool>*)
-                         malloc(sizeof(sc_signal<bool>)*nb_chan);
+            r_tdm[i]  = (sc_signal<bool>*) malloc(sizeof(sc_signal<bool>)*nb_chan);
             for (size_t k = 0; k < nb_chan; k++)
             {
                 std::ostringstream stri;
@@ -260,8 +259,7 @@ using namespace soclib::common;
         // FSM state registers
         for (int i = 0; i < 5; i++)
         {
-            r_input_fsm[i]  = (sc_signal<int>*)
-                         malloc(sizeof(sc_signal<int>)*nb_chan);
+            r_input_fsm[i]  = (sc_signal<int>*) malloc(sizeof(sc_signal<int>)*nb_chan);
             for (size_t k = 0; k < nb_chan; k++)
             {
                 std::ostringstream stri;
@@ -273,8 +271,7 @@ using namespace soclib::common;
         // fifo extensions
         for (int i = 0; i < 5; i++)
         {
-            r_buf[i]  = (internal_flit_t*)
-                         malloc(sizeof(internal_flit_t)*nb_chan);
+            r_buf[i]  = (internal_flit_t*) malloc(sizeof(internal_flit_t)*nb_chan);
             for (size_t k = 0; k < nb_chan; k++)
             {
                 new(&r_buf[i][k]) internal_flit_t();
@@ -284,10 +281,8 @@ using namespace soclib::common;
         // output index & alloc
         for (int i = 0; i < 5; i++)
         {
-            r_output_index[i]  = (sc_signal<int>*)
-                         malloc(sizeof(sc_signal<int>)*nb_chan);
-            r_output_alloc[i]  = (sc_signal<bool>*)
-                         malloc(sizeof(sc_signal<bool>)*nb_chan);
+            r_output_index[i] = (sc_signal<int>*) malloc(sizeof(sc_signal<int>)*nb_chan);
+            r_output_alloc[i] = (sc_signal<bool>*) malloc(sizeof(sc_signal<bool>)*nb_chan);
             for (size_t k = 0; k < nb_chan; k++)
             {
                 std::ostringstream stri;
@@ -492,8 +487,6 @@ using namespace soclib::common;
                             ( output_get[i][3][k]) ||
                             ( output_get[i][4][k]);
 
-                in_fifo_write[i][k] = p_in[i][k].write.read();
-
                 switch( r_input_fsm[i][k] ) {
                 case INFSM_IDLE:
                     put[i][k] = false;
@@ -573,13 +566,13 @@ using namespace soclib::common;
             // select channel to be accepted
             for(size_t k=token_pos ; k < m_nb_chan + token_pos; k++)
             {
-                if(put[i][k%m_nb_chan])
+                if(put[i][k % m_nb_chan])
                 {
-                    tdm_ok[k%m_nb_chan] = true;
+                    tdm_ok[k % m_nb_chan] = true;
 
                     // compute next priority token position
                     r_tdm[i][token_pos] = false;
-                    r_tdm[i][(token_pos+1)%m_nb_chan] = true;
+                    r_tdm[i][(token_pos + 1) % m_nb_chan] = true;
 
                     break;
                 }
@@ -755,7 +748,7 @@ using namespace soclib::common;
                                        (output_get[4][j][k] && final_put[4][k]) ;
                 for(int i=0; i<5; i++)  // loop on input ports
                 {
-                    if( output_get[i][j][k] )     out_fifo_wdata[j][k] = final_data[i];
+                    if( output_get[i][j][k] && final_put[i][k] )     out_fifo_wdata[j][k] = final_data[i];
                 }
                 // r_output_alloc[j][k] & r_output_index[j][k]
                 int index = r_output_index[j][k];
@@ -773,8 +766,8 @@ using namespace soclib::common;
                         }
                     }
                 }
-                else if( out_fifo_wdata[j][k].eop and
-                         out_fifo_write[j][k] and
+                else if( out_fifo_write[j][k] and
+                         out_fifo_wdata[j][k].eop and
                          out_fifo[j][k].wok() )     // de-allocation
                 {
                     r_output_alloc[j][k] = false;

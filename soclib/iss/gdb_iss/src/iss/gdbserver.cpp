@@ -963,24 +963,22 @@ bool GdbServer<CpuIss>::check_break_points()
     uint32_t pc = CpuIss::debugGetRegisterValue(CpuIss::s_pc_register_no);
     int sig;
 
-    if (call_trace_)
-        {
-            BinaryFileSymbolOffset sym = loader_->get_symbol_by_addr(pc);
+    if (call_trace_) {
+        BinaryFileSymbolOffset sym = loader_->get_symbol_by_addr(pc);
+        if (strcmp(sym.symbol().name().c_str(), "Unknown") != 0) {
             uintptr_t symaddr = sym.symbol().address();
 
-            if (symaddr != cur_func_)
-                {
+            if (symaddr != cur_func_) {
+                //std::cerr << *this << "symaddr : " << std::hex << symaddr << " - name : " << sym.symbol().name() << std::endl;
                     cur_func_ = symaddr;
-
-                    if ( (!call_trace_zero_ || pc == symaddr) &&
-
-                         (sym.symbol().size() >= 4 || pc != cur_addr_ + 4) ) // avoid display pc+4 when out of symbol
-
+                    if ( (!call_trace_zero_ || pc == symaddr) && (sym.symbol().size() >= 4 || pc != cur_addr_ + 4)) {
+                        // avoid display pc+4 when out of symbol
                         std::cerr << *this << "jumped from " << std::hex << cur_addr_ << " to " << sym << std::endl;
-                }
-
-            cur_addr_ = pc;
+                    }
+            }
         }
+        cur_addr_ = pc;
+    }
 
     if (cycles_bp_ && cycles_bp_ <= cycles_)
         {
@@ -1294,7 +1292,7 @@ void GdbServer<CpuIss>::init_state()
         std::cerr << "[GDB] SOCLIB_GDB env variable may contain the following flag letters: " << std::endl
                   << "  X (dont break on except),      S (wait connect on except),  F (start frozen)" << std::endl
                   << "  C (functions branch trace),    Z (functions entry trace),   D (gdb protocol debug)," << std::endl
-                  << "  W (dont break on watchpoints), T (exit sumilation on trap), E (exit on fault)" << std::endl
+                  << "  W (dont break on watchpoints), T (exit simulation on trap), E (exit on fault)" << std::endl
                   << "  => See http://www.soclib.fr/trac/dev/wiki/Tools/GdbServer" << std::endl;
 
     if ( env_val ) {
