@@ -32,6 +32,7 @@ enum SoclibIopicRegisters
     IOPIC_ADDRESS = 0,
     IOPIC_EXTEND  = 1,
     IOPIC_STATUS  = 2,
+    IOPIC_MASK    = 3,
     /**/
     IOPIC_SPAN    = 4,
 };

@@ -49,14 +49,9 @@ tmpl(void)::transition()
             r_error[channel]     = false;
             r_address[channel]   = 0;
             r_extend[channel]    = 0;
+            r_mask[channel]      = false;
         }
         return;
-    }
-
-    // This is done at all cycles for all channels
-    for ( size_t k = 0 ; k < m_channels ; k++ )
-    {
-        r_hwi[k] = p_hwi[k].read();
     }
 
     ///////////////////////
@@ -64,24 +59,27 @@ tmpl(void)::transition()
     ///////////////////////
     switch ( r_ini_fsm.read() ) 
     {
-        case I_IDLE:
+        case I_IDLE:    // scan all channels to detect an HWI event
         {
             for( size_t k = 0 ; k < m_channels ; k++ )
             {
-                // WTI transaction if 
+                // WTI transaction and r_hwi[k] update if 
                 // - the channel k is not in error state and
+                // - the channel k is not masked and
                 // - a rising or falling edge is detected on p_hwi[k] port,
-                if ( not r_error[k].read() and
-                      (p_hwi[k].read() and not r_hwi[k].read()) )
+                if ( not r_error[k].read() and r_mask[k] and
+                     (p_hwi[k].read() and not r_hwi[k].read()) )
                 {
+                    r_hwi[k]  = p_hwi[k].read();
                     r_channel = k;
                     r_ini_fsm = I_SET_CMD;
                     break;
                 }
 
-                if ( not r_error[k].read() and
-                       (r_hwi[k].read() and not p_hwi[k].read()) ) 
+                else if ( not r_error[k].read() and r_mask[k] and
+                     (r_hwi[k].read() and not p_hwi[k].read()) ) 
                 {
+                    r_hwi[k]  = p_hwi[k].read();
                     r_channel = k;
                     r_ini_fsm = I_RESET_CMD;
                     break;
@@ -187,12 +185,28 @@ tmpl(void)::transition()
                     r_tgt_fsm         = T_READ;
                 }
                 else if ( not seg_error and
+                          (p_vci_target.cmd.read() == vci_param::CMD_WRITE) and
+                          (reg == IOPIC_MASK) and
+                          (channel < m_channels) )        // write mask  
+                {
+                    r_mask[channel]   = (bool)wdata;
+                    r_tgt_fsm         = T_WRITE;
+                }
+                else if ( not seg_error and
+                          (p_vci_target.cmd.read() == vci_param::CMD_READ) and
+                          (reg == IOPIC_MASK) and
+                          (channel < m_channels) )        // read mask  
+                {
+                    r_rdata           = (uint32_t)r_mask[channel].read();
+                    r_tgt_fsm         = T_READ;
+                }
+                else if ( not seg_error and
                           (p_vci_target.cmd.read() == vci_param::CMD_READ) and
                           (reg == IOPIC_STATUS) and
                           (channel < m_channels) )        // read status
                 {
-                    r_rdata          = (uint32_t)r_hwi[channel] | 
-                                       (((uint32_t)r_error[channel])<<1);
+                    r_rdata          = (uint32_t)r_hwi[channel].read() | 
+                                       (((uint32_t)r_error[channel].read())<<1);
                     r_error[channel] = false;
                     r_tgt_fsm        = T_READ;
                 }
@@ -370,6 +384,7 @@ tmpl()::VciIopic( sc_core::sc_module_name             name,
     r_address = soclib::common::alloc_elems<sc_signal<uint32_t> >("r_address", channels);
     r_extend  = soclib::common::alloc_elems<sc_signal<uint32_t> >("r_extend", channels);
     r_error   = soclib::common::alloc_elems<sc_signal<bool> >("r_error", channels);
+    r_mask    = soclib::common::alloc_elems<sc_signal<bool> >("r_mask", channels);
 
     p_hwi     = soclib::common::alloc_elems<sc_in<bool> >("p_hwi", channels);
 

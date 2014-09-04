@@ -88,6 +88,7 @@ private:
     sc_core::sc_signal<size_t>      r_channel;        // selected channel 
 
     sc_core::sc_signal<bool>*       r_hwi;            // array: curent HWI values
+    sc_core::sc_signal<bool>*       r_mask;           // array: transmitted if true
     sc_core::sc_signal<uint32_t>*   r_address;        // array: WTI address   
     sc_core::sc_signal<uint32_t>*   r_extend;         // array: WTI address extension
     sc_core::sc_signal<bool>*       r_error;          // array: WTI error received
