@@ -199,9 +199,9 @@ tmpl(bool)::write(size_t      seg,
         if ( (addr >= m_monitor_base) and 
              (addr < m_monitor_base + m_monitor_length) )
         {
-            std::cout << "Monitor RAM  " << name() << std::dec
-                      << " at cycle " << m_cpt_cycles
-                      << " : address = " << addr << std::hex
+            std::cout << "Monitor RAM  " << name()
+                      << " at cycle " << std::dec << m_cpt_cycles
+                      << " : address = " << std::hex << addr
                       << " / data = " << wdata
                       << " / be = " << be << std::endl;
         }
