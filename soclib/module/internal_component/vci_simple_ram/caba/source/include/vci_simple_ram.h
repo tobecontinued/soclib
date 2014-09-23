@@ -105,6 +105,7 @@ private:
     // Activity counters
     uint32_t 				m_cpt_read;   // Count READ access
     uint32_t 				m_cpt_write;  // Count WRITE access
+    uint32_t 				m_cpt_cycles; // Count cycles
 
 protected:
 
@@ -121,7 +122,7 @@ public:
                  const soclib::common::IntTab index,
                  const soclib::common::MappingTable &mt,
                  const soclib::common::Loader &loader,
-                 const uint32_t latency = 0);
+                 const uint32_t latency = 1);
 
     ~VciSimpleRam();
 

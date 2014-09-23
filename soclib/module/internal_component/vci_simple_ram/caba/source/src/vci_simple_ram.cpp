@@ -199,8 +199,9 @@ tmpl(bool)::write(size_t      seg,
         if ( (addr >= m_monitor_base) and 
              (addr < m_monitor_base + m_monitor_length) )
         {
-            std::cout << " Monitor RAM " << name() << std::hex
-                      << " : address = " << addr
+            std::cout << "Monitor RAM  " << name() << std::dec
+                      << " at cycle " << m_cpt_cycles
+                      << " : address = " << addr << std::hex
                       << " / data = " << wdata
                       << " / be = " << be << std::endl;
         }
@@ -304,6 +305,7 @@ tmpl(void)::transition()
     {
         reset();
         reload();
+        m_cpt_cycles = 0;
         return;
     }
 
@@ -312,6 +314,8 @@ std::cout << "Simple_ram : " << name() << std::endl;
 std::cout << " fsm_state = " << r_fsm_state 
           << " latency_count = " << r_latency_count << std::endl;
 #endif
+
+    m_cpt_cycles++;
 
     switch ( r_fsm_state ) {
     /////////////
