@@ -326,7 +326,7 @@ public:
     {
 
         m_bypass_valid = false;
-        for (int i = 0; i < m_nways * m_nsets; i++) {
+        for (size_t i = 0; i < m_nways * m_nsets; i++) {
             m_valid[i] = false;
 
             // Following inits to avoid potential errors from memory checkers
