@@ -47,25 +47,15 @@
 #include "nic_rx_tap.h"
 #include "nic_tx_tap.h"
 #include "generic_fifo.h"
+#include "ethernet_crc.h"
 
-/*!
- * \brief Namespace specific to SoClib
- */
 namespace soclib {
-/*!
- * \brief Namespace specific to CABA implementations from SoClib
- */
 namespace caba {
 
-/*! \namespace sc_core
- * \brief SystemC Core functions' namespace
- */
 using namespace sc_core;
 
-
 template<typename vci_param>
-class VciMultiNic
-	: public caba::BaseModule
+class VciMultiNic : public caba::BaseModule
 {
 private:
 
@@ -107,14 +97,14 @@ private:
 
 
     // VCI FSM registers
-    sc_signal<int>			    r_vci_fsm;
-    sc_signal<typename vci_param::srcid_t>	r_vci_srcid;   /*!< for rsrcid */
-    sc_signal<typename vci_param::trdid_t>	r_vci_trdid;   /*!< for rtrdid */
-    sc_signal<typename vci_param::pktid_t>	r_vci_pktid;   /*!< for rpktid */
-    sc_signal<typename vci_param::data_t>	r_vci_wdata;   /*!< for write burst */
-    sc_signal<typename vci_param::be_t>	    r_vci_be;      /*!< for write burst in 64 bits data */
-    sc_signal<size_t>           r_vci_nwords;              /*!< word counter */
-    sc_signal<uint32_t>         r_vci_address;             /*!< used for bursts */
+    sc_signal<int>			                r_vci_fsm;
+    sc_signal<typename vci_param::srcid_t>	r_vci_srcid;             /*!< for rsrcid */
+    sc_signal<typename vci_param::trdid_t>	r_vci_trdid;             /*!< for rtrdid */
+    sc_signal<typename vci_param::pktid_t>	r_vci_pktid;             /*!< for rpktid */
+    sc_signal<typename vci_param::data_t>	r_vci_wdata;             /*!< for write burst */
+    sc_signal<typename vci_param::be_t>	    r_vci_be;                /*!< for write burst */
+    sc_signal<size_t>                       r_vci_nwords;            /*!< number of 32 bits word */
+    sc_signal<uint32_t>                     r_vci_address;           /*!< vci_address */
 
     // RX_G2S FSM registers
     sc_signal<int>              r_rx_g2s_fsm;
@@ -149,6 +139,8 @@ private:
     sc_signal<uint32_t>         r_rx_dispatch_data1;       /*!< second word mac address */
     sc_signal<uint32_t>         r_rx_dispatch_nbytes;      /*!< number of bytes to be written */
     sc_signal<uint32_t>         r_rx_dispatch_dest;        /*!< bit vector: 1 bit per channel */
+
+uint32_t  r_rx_dispatch_npackets;
 
     sc_signal<uint32_t>         r_rx_dispatch_npkt_received;     /*!< received packets */
     sc_signal<uint32_t>         r_rx_dispatch_npkt_broadcast;    /*!< broadcast packets */
@@ -215,6 +207,7 @@ private:
     const size_t				        m_channels;		    /*!< no more than 8 channels */
     const uint32_t                      m_default_mac_4;    /*!< MAC address 32 LSB bits */
     const uint32_t                      m_default_mac_2;    /*!< MAC address 16 MSB bits */
+    EthernetChecksum                    m_crc;              /*!< Ethernet checksum computer */
 
 protected:
 
@@ -222,10 +215,8 @@ protected:
 
 public:
 
-    /*!
-     * \brief TGT FSM states
-     */
-    enum vci_tgt_fsm_state_e {
+    enum vci_tgt_fsm_state_e 
+    {
         VCI_IDLE,
         VCI_WRITE_TX_BURST,
         VCI_WRITE_TX_LAST,
@@ -237,10 +228,8 @@ public:
         VCI_ERROR,
     };
 
-    /*!
-     * \brief ???
-     */
-    enum rx_g2s_fsm_state_e {
+    enum rx_g2s_fsm_state_e 
+    {
         RX_G2S_IDLE,
         RX_G2S_DELAY,
         RX_G2S_LOAD,
@@ -251,10 +240,8 @@ public:
         RX_G2S_FAIL,
     };
 
-    /*!
-     * \brief ???
-     */
-    enum rx_des_fsm_state_e {
+    enum rx_des_fsm_state_e 
+    {
     	RX_DES_IDLE,
 	    RX_DES_READ_1,
 	    RX_DES_READ_2,
@@ -267,10 +254,8 @@ public:
 	    RX_DES_WRITE_CLEAR,
     };
 
-    /*!
-     * \brief ???
-     */
-    enum rx_dispatch_fsm_state_e {
+    enum rx_dispatch_fsm_state_e 
+    {
         RX_DISPATCH_IDLE,
         RX_DISPATCH_GET_PLEN,
         RX_DISPATCH_READ_FIRST,
@@ -285,10 +270,8 @@ public:
         RX_DISPATCH_WRITE_LAST,
     };
 
-    /*!
-     * \brief ???
-     */
-    enum tx_dispatch_fsm_state_e {
+    enum tx_dispatch_fsm_state_e 
+    {
         TX_DISPATCH_IDLE,
         TX_DISPATCH_GET_NPKT,
         TX_DISPATCH_GET_PLEN,
@@ -302,10 +285,8 @@ public:
         TX_DISPATCH_RELEASE_CONT,
     };
 
-    /*!
-     * \brief ???
-     */
-    enum tx_ser_fsm_state_e {
+    enum tx_ser_fsm_state_e 
+    {
         TX_SER_IDLE,
         TX_SER_READ_FIRST,
         TX_SER_WRITE_B0,
@@ -315,9 +296,6 @@ public:
         TX_SER_GAP,
     };
 
-    /*!
-     * \brief ???
-     */
     enum tx_s2g_fsm_state_e {
         TX_S2G_IDLE,
         TX_S2G_WRITE_DATA,
@@ -325,21 +303,24 @@ public:
         TX_S2G_WRITE_CS,
     };
 
-    /*!
-     * \brief Stream types
-     */
-    enum stream_type_e{
+    enum stream_type_e
+    {
         STREAM_TYPE_SOS,     /*!< start of stream */
         STREAM_TYPE_EOS,     /*!< end of stream */
         STREAM_TYPE_ERR,     /*!< corrupted end of stream */
         STREAM_TYPE_NEV,     /*!< no special event */
     };
 
-    /*!
-     * \brief ???
-     */
-    enum masks {
+    enum nic_masks 
+    {
         DESC_STATUS_MASK = 0x80000000,  /*!<  most significant bit of the DESC_HI word */
+    };
+
+    enum nic_operation_modes 
+    {
+        NIC_MODE_FILE      = 0,
+        NIC_MODE_SYNTHESIS = 1,
+        NIC_MODE_TAP       = 2,
     };
 
 
@@ -387,10 +368,9 @@ public:
      * \param tgtid Target ID on VCI (This component is a target only component)
      * \param mt Mapping Table
      * \param channels Number of channel this controller must have (Value must be between 1 and 8)
-     * \param rx_file_pathname Name of the input file to read packets from
-     * \param tx_file_pathname Name of the output file to write packets to
      * \param mac_4 High part of the Ethernet MAC address ([00:11:22:33]:44:55)
      * \param mac_2 Low part of the Ethernet MAC address (00:11:22:33:[44:55])
+     * \param mode  Back-end type : NIC_MODE_FILE / NIC_MODE_SYNTHESIS / NIC_MODE_TAP
      */
     VciMultiNic(sc_core::sc_module_name 		        name,
                 const soclib::common::IntTab 		    &tgtid,
@@ -398,15 +378,8 @@ public:
                 const size_t 				            channels,
                 const uint32_t                          mac_4,
                 const uint32_t                          mac_2,
-                const char*                             rx_file_pathname,
-                const char*                             tx_file_pathname);
+                const int                               mode );
 
-    VciMultiNic(sc_core::sc_module_name   		        name,
-                const soclib::common::IntTab 		    &tgtid,
-                const soclib::common::MappingTable      &mt,
-                const size_t 				            channels,
-                const uint32_t                          mac_4,
-                const uint32_t                          mac_2);
     ~VciMultiNic();
 
 };

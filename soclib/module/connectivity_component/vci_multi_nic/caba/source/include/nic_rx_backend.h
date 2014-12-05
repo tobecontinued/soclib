@@ -44,36 +44,17 @@
 namespace soclib {
 namespace caba {
 
-////////////////
+//////////////////
 class NicRxBackend
 {
-    /*!
-     * \brief This function is used to read one packet from the input fill.
-     *        It updates the r_buffer and the r_plen variables.
-     */
     virtual void read_one_packet() = 0;
 
 public:
 
-    /*!
-     * \brief ???
-     */
     virtual void reset() = 0;
 
-    /*!
-     * \brief ???
-     */
     virtual void get( bool* dv, bool* er, uint8_t* dt) = 0;
 
-    /*!
-     * \brief This method returns true if the RX chain is to be frozen.
-     */
-    virtual bool frz() = 0;
-
-    /*!
-     * \brief destructor
-     */
-    // virtual ~NicRxBackend();
 
 }; // end NicRxBackend
 

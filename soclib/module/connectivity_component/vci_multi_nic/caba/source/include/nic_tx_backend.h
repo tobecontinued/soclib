@@ -40,47 +40,24 @@
 #include <fstream>
 #include <iomanip>
 
-/*!
- * \def PREAMBLE_SIZE
- * \brief Use to write preamble before writing packet
- * \def PREAMBLE
- * \brief Preamble value
- */
 #define PREAMBLE_SIZE 8
 #define PREAMBLE "55555555555555D5"
 
 namespace soclib {
 namespace caba {
 
-///////////////
+//////////////////
 class NicTxBackend
 {
-    ///////////////////////////////////////////////////////////////////
-    // This function is used to write one packet to the input file
-    ///////////////////////////////////////////////////////////////////
     virtual void write_one_packet() = 0;
 
 public:
 
     virtual void reset() = 0;
 
-    ///////////////////////////////////////////////////////////////////
-    // To reach the 1 Gbyte/s throughput, this method must be called
-    // at all cycles of a 125MHz clock.
-    ///////////////////////////////////////////////////////////////////
     virtual void put(bool dv, uint8_t dt) = 0;
 
-    //////////////////////////////////////////////////////////////
-    // This method returns true if the TX chain is to be frozen.
-    //////////////////////////////////////////////////////////////
-    virtual bool frz() = 0;
-
-    //////////////////
-    // destructor
-    //////////////////
-    // virtual ~NicTxBackend();
-
-}; // end BackendTx
+}; // end NicBackendTx
 
 } /* caba */
 } /* soclib */

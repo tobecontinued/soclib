@@ -29,19 +29,19 @@
  * Maintainers: alain 
  */
 
-/*************************************************************************
- * File         : nic_tx_gmii.h
- * Date         : 01/06/2012
- * Authors      : Alain Greiner
- *************************************************************************
- * This object implements a packet transmitter, acting as a PHY component,
- * and respecting the GMII protocol (one byte per cycle).
- * It writes packets in a file defined by the "path" constructor argument.
- *************************************************************************
- * This object has 2 constructor parameters:
- * - string   name    : module name
- * - string   path    : file pathname.
- *************************************************************************/
+//////////////////////////////////////////////////////////////////////////////////
+// File         : nic_tx_gmii.h
+// Date         : 01/06/2012
+// Authors      : Alain Greiner
+//////////////////////////////////////////////////////////////////////////////////
+// This class implements a packet transmitter, acting as a PHY component,
+// and respecting the GMII protocol (one byte per cycle).
+// It implements the NIC_MODE_FILE & NIC_MODE_SYNTHESIS TX backend.
+// In both modes, it writes packets in the file "nic_tx_file.txt",
+// that must be stored in the same directory as the "top.ccp" file.
+//////////////////////////////////////////////////////////////////////////////////
+// It has 0 constructor parameter.
+//////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_CABA_GMII_TX_H
 #define SOCLIB_CABA_GMII_TX_H
@@ -59,12 +59,6 @@
 
 #include "nic_tx_backend.h"
 
-/*!
- * \def PREAMBLE_SIZE
- * \brief Use to write preamble before writing packet
- * \def PREAMBLE
- * \brief Preamble value
- */
 #define PREAMBLE_SIZE 8
 #define PREAMBLE "55555555555555D5"
 
@@ -73,16 +67,16 @@ namespace caba {
 
 using namespace sc_core;
 
-///////////////
+/////////////////////////////////////
 class NicTxGmii : public NicTxBackend
 {
     // structure constants
-    const std::string   m_name;
-    std::ofstream       m_file;
+    const std::string   m_name;          // Component name
+    std::ofstream       m_file;          // output file descriptor
 
     // registers
-    uint32_t            r_counter;      // cycles counter (used for both gap and plen)
-    uint8_t*	        r_buffer;       // local buffer containing one packet
+    uint32_t            r_counter;       // cycles counter (used for both gap and plen)
+    uint8_t	            r_buffer[2048];  // local buffer containing one packet
 
     ///////////////////////////////////////////////////////////////////
     // This function is used to write one packet to the input file
@@ -90,25 +84,25 @@ class NicTxGmii : public NicTxBackend
     virtual void write_one_packet()
     { 
         if (m_file)
-            {
+        {
 #ifdef SOCLIB_NIC_DEBUG
-                std::cout << "[NIC][" << __func__ << "] Writing one packet" << std::endl;
+std::cout << "[NIC][" << __func__ << "] Writing one packet" << std::endl;
 #endif
-                m_file << std::dec << r_counter + PREAMBLE_SIZE << ' ';
-                m_file << PREAMBLE;
+            m_file << std::dec << r_counter + PREAMBLE_SIZE << ' ';
+            m_file << PREAMBLE;
 
-                for ( size_t cpt = 0; cpt < r_counter ; cpt++ )
-                    {
-                        m_file << std::setfill('0') << std::setw(2) << std::hex << (uint32_t)r_buffer[cpt];
-                    }
-
-                m_file << std::dec << std::endl;
+            for ( size_t cpt = 0; cpt < r_counter ; cpt++ )
+            {
+                m_file << std::setfill('0') << std::setw(2) << std::hex 
+                       << (uint32_t)r_buffer[cpt];
             }
-    }
+            m_file << std::dec << std::endl;
+        }
+    } // end write_one_paclet()
 
 public:
 
-    /////////////
+    ////////////////////
     virtual void reset()
     {
         r_counter = 0;
@@ -122,18 +116,18 @@ public:
                      uint8_t  dt)          // data value
     {
         if ( not dv and (r_counter != 0) )    // end of packet
-            {
+        {
 #ifdef SOCLIB_NIC_DEBUG
-                std::cout << "[NIC][" << __func__ << "] Putting " << std::hex << dt << std::dec << std::endl;
+std::cout << "[NIC][" << __func__ << "] Putting " << std::hex << dt << std::dec << std::endl;
 #endif
-                write_one_packet();
-                r_counter = 0;
-            }
+            write_one_packet();
+            r_counter = 0;
+        }
         else if ( dv )    // running packet
-            {
-                r_buffer[r_counter] = dt;
-                r_counter           = r_counter + 1;
-            }
+        {
+            r_buffer[r_counter] = dt;
+            r_counter           = r_counter + 1;
+        }
     } // end put()
     
 
@@ -146,36 +140,29 @@ public:
         return false;
     }
                 
-    //////////////////////////////////////////////////////////////
-    // constructor 
-    //////////////////////////////////////////////////////////////
-    NicTxGmii(const std::string  &name,
-              const std::string  &path)
-        : m_name(name),
-          m_file(path.c_str(),std::ios::out)
+    /////////////////////////////////////
+    //    constructor 
+    /////////////////////////////////////
+    NicTxGmii( )
+        : m_file( "nic_tx_file.txt", std::ios::out )
     {
-        r_buffer    = new uint8_t[2048];
+        if ( m_file == 0 )
+        {
+            std::cout << "[NIC ERROR] in NicTxGmii : cannot open file nic_tx_file.txt" 
+                      << std::endl;
+            exit(0);
+        }
+    }
 
-#ifdef SOCLIB_NIC_DEBUG
-        std::cout << "[NIC][" << __func__ << "] Entering constructor" << std::endl;
-#endif
-
-        if (m_file)
-            std::cout << "[NIC][" << __func__ << "] output file = " << path << std::endl;
-        else
-            std::cout << "[NIC][" << __func__ << "] ERROR in TX_GMII : cannot open file " << path << std::endl;
-    } 
-
-    //////////////////
+    ////////////////////
     // destructor
-    //////////////////
+    ////////////////////
     virtual ~NicTxGmii()
     {
-        delete [] r_buffer;
         m_file.close();
     }
 
-}; // end GmiiTx
+}; // end NicTxGmii
 
 }}
 

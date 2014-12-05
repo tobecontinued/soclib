@@ -26,16 +26,18 @@
  * Maintainers: sylvain
  */
 
-/*************************************************************************
- * This object implements a packet transmitter, acting as a PHY component,
- * and respecting the GMII protocol (one byte per cycle).
- * It writes packets in a file defined by the "path" constructor argument.
- *************************************************************************
- * This object has 3 constructor parameters:
- * - string   name    : module name
- * - string   path    : file pathname.
- * - uint32_t gap     : number of cycles between packets
- *************************************************************************/
+//////////////////////////////////////////////////////////////////////////////////
+// File         : nic_tx_tap.h
+// Date         : 01/06/2013
+// Authors      : Sylvain Leroy
+//////////////////////////////////////////////////////////////////////////////////
+// This class implements a packet transmitter, acting as a PHY component,
+// and respecting the GMII protocol (one byte per cycle).
+// It implements the NIC_MODE_TAP RX backend.
+// It writes packets to a TAP interface.
+//////////////////////////////////////////////////////////////////////////////////
+// It has 0 constructor parameter.
+//////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_CABA_TX_TAP_H
 #define SOCLIB_CABA_TX_TAP_H
@@ -61,67 +63,43 @@ namespace caba {
 
 using namespace sc_core;
 
-
-///////////////
-#define NIC_TX_TAP_BUFSIZE      2048
-
-// If this define is set to true, NO CRC32 will be sent through the TAP interface
-// If this define is set to false, CRC32 will be sent through the TAP interface
-#define NIC_TX_NO_CRC32         false
-
-#ifdef NIC_TX_NO_CRC32
-#define NIC_TX_CRC32_SIZE     4
-#else
-#define NIC_TX_CRC32_SIZE     0
-#endif
-
-///////////////
+////////////////////////////////////
 class NicTxTap : public NicTxBackend
 {
     // structure constants
-    const std::string   m_name;
-    // std::ofstream       m_file;
-    int32_t             m_tap_fd;       // File descriptor for the TAP interface
+    int32_t             m_tap_fd;        // File descriptor for the TAP interface
     struct ifreq        *m_tap_ifr;      // TAP interface
 
     // registers
-    uint32_t            r_counter;      // cycles counter (used for both gap and plen)
-    uint8_t*	        r_buffer;       // local buffer containing one packet
+    uint32_t            r_counter;       // cycles counter (used for both gap and plen)
+    uint8_t	            r_buffer[2048];  // local buffer containing one packet
     
 
     ///////////////////////////////////////////////////////////////////
     // This function is used to write one packet to the input file
+    // The CRC is removed...
     ///////////////////////////////////////////////////////////////////
     void write_one_packet()
     {
         if (m_tap_fd)
-            {
+        {
+
 #ifdef SOCLIB_NIC_DEBUG
-                printf("[NIC][NicTxTap][%s] writing 1 packet of %u bytes on TAP fd %d :\n", __func__, r_counter, m_tap_fd);
+printf("[NIC_TX_TAP] sent packet : %u bytes on TAP fd %d\n", r_counter, m_tap_fd);
+for (size_t i = 0; i < r_counter ; i++ ) 
+{
+    if (i != 0)
+    {
+        if ((i % 4) == 0)   printf(" ");
+        if ((i % 72) == 0)  printf("\n");
+    }
+    printf("%02x", r_buffer[i]);
+}
+printf("\n");
 #endif
-#ifdef SOCLIB_NIC_DEBUG
-                // Printing the actuel buffer internals values
-                // -4 is there to remove the Ethernet CRC32
-                for (size_t i = 0; i < r_counter - NIC_TX_CRC32_SIZE; i++) // NIC_TX_TAP_BUFSIZE here if we want to see full buffer
-                    {
-                        if (i != 0)
-                            {
-                                if ((i % 4) == 0)
-                                    printf(" ");
-                                if ((i % 72) == 0)
-                                    printf("\n");
-                            }
-                        printf("%02x", r_buffer[i]);
-                    }
-                printf("\n");
-#endif
-                // r_buffer[r_counter - 1] = 0x00;
-                // r_buffer[r_counter - 2] = 0x00;
-                // r_buffer[r_counter - 3] = 0x00;
-                // r_buffer[r_counter - 4] = 0x00;
-                // Writing to the TAP interface
-                ::write(m_tap_fd, r_buffer, r_counter - NIC_TX_CRC32_SIZE);
-            }
+
+            ::write(m_tap_fd, r_buffer, r_counter - 4);
+        }
     }
 
 public:
@@ -142,75 +120,52 @@ public:
         m_tap_ifr = ifr;
     }
 
-    /////////////
+    ////////////////////
     virtual void reset()
     {
-#ifdef SOCLIB_NIC_DEBUG
-        printf("[NIC][NicTxTap][%s] resetting\n", __func__);
-#endif
         r_counter = 0;
-        memset(r_buffer, 0, NIC_TX_TAP_BUFSIZE);
+        memset( r_buffer, 0, 2048 );
     }
 
     ///////////////////////////////////////////////////////////////////
     // To reach the 1 Gbyte/s throughput, this method must be called 
     // at all cycles of a 125MHz clock.
     ///////////////////////////////////////////////////////////////////
-    virtual void put(bool     dv,          // data valid
+    virtual void put(bool     dv,         // data valid
                      uint8_t  dt)         // data value
     {
         if (not dv and (r_counter != 0))    // end of packet
-            {
-                write_one_packet();
-                r_counter = 0;
-            }
+        {
+            write_one_packet();
+            r_counter = 0;
+        }
         else
+        {
+            if (dv)    // start or running packet
             {
-                if (dv)    // start or running packet
-                    {
-#ifdef SOCLIB_NIC_DEBUG
-                        printf("[NIC][NicTxTap][%s] writing 0x%02x in r_buffer[%u]\n", __func__, dt, r_counter);
-#endif
-                        r_buffer[r_counter] = dt;
-                        r_counter           = r_counter + 1;
-                    }
+                r_buffer[r_counter] = dt;
+                r_counter           = r_counter + 1;
             }
+        }
     } // end put()
 
-    /*!
-     * \brief This method returns true if the RX chain is to be frozen.
-     * \attention This function is only here to reflect the VHDL version of the NIC
-     */
-    virtual bool frz()
-    {
-        return false;
-    }
     
-    //////////////////////////////////////////////////////////////
-    // constructor
-    //////////////////////////////////////////////////////////////
-    NicTxTap( const std::string  &name)
-        : m_name(name)
-    {
-#ifdef SOCLIB_NIC_DEBUG
-        printf("[NIC][%s] Entering constructor\n", __func__);
-#endif
-        r_buffer        = new uint8_t[NIC_TX_TAP_BUFSIZE];
-    } 
+    ///////////////////////////////////
+    //     constructor
+    ///////////////////////////////////
+    NicTxTap() { } 
 
-    //////////////////
+    ///////////////////////////////////
     // destructor
-    //////////////////
-    virtual ~NicTxTap()
-    {
-        delete [] r_buffer;
-    }
+    ///////////////////////////////////
+    virtual ~NicTxTap() { }
 
 }; // end NicTxTap
 
 }}
 
-#endif /* !defined(__darwin__) */
+#endif /* !defined(__APPLE__) || !defined(__MACH__) */
+
 #endif /* SOCLIB_CABA_TX_TAP_H */
 
 // Local Variables:

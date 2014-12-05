@@ -26,15 +26,19 @@
  * Maintainers: sylvain
  */
 
-/*************************************************************************
- * This object implements a packet receiver, acting as a PHY component.
- * It reads packets from a TAP interface named by the "ifname" constructor argument.
- *************************************************************************
- * This object has 3 constructor parameters:
- * - string   name    : module name
- * - uint32_t gap     : number of cycles between packets
- * - string   ifname  : TAP interface name (optionnal)
- *************************************************************************/
+//////////////////////////////////////////////////////////////////////////////////
+// File         : nic_rx_tap.h
+// Date         : 01/06/2013
+// Authors      : Sylvain Leroy
+//////////////////////////////////////////////////////////////////////////////////
+// This class implements a packet receiver, acting as a PHY component,
+// and respecting the GMII protocol (one byte per cycle).
+// It implements the NIC_MODE_TAP TX backend.
+// It reads packets from a TAP interface.
+//////////////////////////////////////////////////////////////////////////////////
+// It has 1 constructor parameters
+// - uint32_t gap     : number of cycles between packets
+//////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_CABA_NIC_RX_TAP_H
 #define SOCLIB_CABA_NIC_RX_TAP_H
@@ -54,7 +58,6 @@
 
 #include <errno.h>
 
-// #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -68,22 +71,19 @@ namespace caba {
 
 using namespace sc_core;
 
-////////////////
+////////////////////////////////////
 class NicRxTap : public NicRxBackend
 {
     // structure constants
-    const std::string   m_name;
     const uint32_t	    m_gap;
-    // std::ifstream       m_ifp;          // named path | NOT USED HERE |
-    int                 m_tap_fd;       // File descriptor for the TAP interface
+    int                 m_tap_fd;        // File descriptor for the TAP interface
     struct ifreq        *m_tap_ifr;      // TAP interface
 
     // registers
-    bool                r_fsm_gap;      // inter_packet state when true
-    int32_t             r_counter;      // cycles counter (used for both gap and plen)
-    uint8_t*	        r_buffer;       // local buffer containing one packet
-    // uint8_t*	        r_buffer_tmp;   // local buffer containing one packet
-    int32_t             r_plen;         // packet length (in bytes)
+    bool                r_fsm_gap;       // inter_packet state when true
+    int32_t             r_counter;       // cycles counter (used for both gap and plen)
+    uint8_t 	        r_buffer[2048];  // local buffer containing one packet
+    int32_t             r_plen;          // packet length (in bytes)
 
 
     ///////////////////////////////////////////////////////////////////
@@ -93,86 +93,16 @@ class NicRxTap : public NicRxBackend
     void read_one_packet()
     {
         if (m_tap_fd > 0)
+        {
+            r_plen = ::read(m_tap_fd, r_buffer, 2048);
+
+            if (r_plen < 0) // Error during reading
             {
-#ifdef SOCLIB_NIC_DEBUG
-                // printf("[NIC][%s] reading from fd : %d\n", __func__, m_tap_fd);
-#endif
-                r_plen = ::read(m_tap_fd, r_buffer, 2048);
-#ifdef SOCLIB_NIC_DEBUG
-                if (errno != EAGAIN)
-                    {
-                        if (r_plen < 0) // Error during reading
-                            {
-                                std::cerr << "[NIC]"
-                                          << "["
-                                          << m_name
-                                          << "]["
-                                          << __func__
-                                          << "] Error reading from TAP";
-                                perror(":");
-                            }
-                        else // Read OK
-                            printf("[NIC][NicRxTap][%s] reading plen = %d\n", __func__, r_plen);
-                    }
-#endif
-                // uint32_t cpt = 0;
-                // uint32_t data = 0;
-                // uint32_t nb_words = 0;
-                // uint32_t nb_bytes_available;
-                // //string contains a packet
-                // std::string string;
-                // uint32_t i = 0;
+                std::cout << "[NIC ERROR] in nic_rx_tap" << m_name << std::endl;
+                exit(0);
+            }          
+        }
 
-                // m_ifp >> r_plen >> string;
-                // nb_bytes_available = r_plen-4;
-
-                // // check end of file and restart it
-                // if (m_ifp.eof())
-                //     {
-                //         m_ifp.clear();
-                //         m_ifp.seekg(0, std::ios::beg);
-                //         m_ifp >> r_plen >> string;
-                //     }
-                // convert all the char in string into a hexa
-                // for (cpt = 0; cpt < (r_plen << 1) ; cpt++)
-                //     {
-                //         string[cpt] = atox(string[cpt]);
-                //         data = (data << 4)|string[cpt];
-                //         if(cpt%2)
-                //             {
-                //                 r_buffer_tmp[cpt>>1]    = data;
-                //                 data = 0;
-                //             }
-                //     }
-                // cpt = 0;
-
-
-                // while (nb_bytes_available)
-                //     {
-                //         if (nb_bytes_available > 3)
-                //             i = ((nb_words + 1)<<2) - 1;
-                //         else
-                //             i = ((nb_words + 1)<<2) - (4 - nb_bytes_available) - 1;
-                //         while ( i >= (nb_words << 2) )
-                //             {
-                //                 r_buffer[i] = r_buffer_tmp[cpt];
-                //                 nb_bytes_available -- ;
-                //                 cpt ++ ;
-                //                 if ( i%4 == 0 )
-                //                     {
-                //                         nb_words ++ ;
-                //                         break;
-                //                     }
-                //                 else i--;
-                //             }
-                //     }
-
-                // // Return CRC32 because of reverse endianness
-                // r_buffer[r_plen-4] = r_buffer_tmp[r_plen-1];
-                // r_buffer[r_plen-3] = r_buffer_tmp[r_plen-2];
-                // r_buffer[r_plen-2] = r_buffer_tmp[r_plen-3];
-                // r_buffer[r_plen-1] = r_buffer_tmp[r_plen-4];
-            }
     }
 
 public:
@@ -182,9 +112,6 @@ public:
     ///////////////////////////////////////////////////////////////////
     void set_fd(int     fd)
     {
-#ifdef SOCLIB_NIC_DEBUG
-        printf("[NIC][NicRxTap][%s] fd is : %d\n", __func__, fd);
-#endif
         m_tap_fd = fd;
     }
 
@@ -193,9 +120,6 @@ public:
     ///////////////////////////////////////////////////////////////////
     int get_fd()
     {
-#ifdef SOCLIB_NIC_DEBUG
-        printf("[NIC][NicRxTap][%s]\n", __func__);
-#endif
         return m_tap_fd;
     }
 
@@ -204,22 +128,15 @@ public:
     ///////////////////////////////////////////////////////////////////
     void set_ifr(struct ifreq     *ifr)
     {
-#ifdef SOCLIB_NIC_DEBUG
-        printf("[NIC][NicRxTap][%s]\n", __func__);
-#endif
         m_tap_ifr = ifr;
     }
 
-    /////////////
+    ////////////////////
     virtual void reset()
     {
-#ifdef SOCLIB_NIC_DEBUG
-        printf("[NIC][NicRxTap][%s] resetting\n", __func__);
-#endif
         r_fsm_gap   = true;
         r_counter   = m_gap;
         memset(r_buffer,0,2048);
-        // memset(r_buffer_tmp,0,2048);
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -233,79 +150,60 @@ public:
                      uint8_t*  dt)        // data value
     {
         if (r_fsm_gap)    // inter-packet state (IFG or waiting for the next trame)
+        {
+            *dv = false;
+            *er = false;
+            *dt = 0;
+
+            if (r_counter == 0) // end of gap - wait for a packet
             {
-                *dv = false;
-                *er = false;
-                *dt = 0;
+                read_one_packet();
+                if (r_plen <= 0) r_fsm_gap = true;
+                else             r_fsm_gap = false;
 
-                if (r_counter == 0) // end of gap - we now wait for the trame to be available
-                    {
-                        read_one_packet();
-                        if (r_plen <= 0) // no trame available on the media
-                            r_fsm_gap = true;
-                        else
-                            r_fsm_gap = false;
-
-                    }
-                else
-                    r_counter--;
             }
+            else
+            {
+                r_counter--;
+            }
+        }
         else    // start or running packet
+        {
+            *dv = true;
+            *er = false;
+            *dt = r_buffer[r_counter];
+
+            r_counter++;
+
+            if ( r_counter == r_plen ) // end of packet
             {
-                *dv = true;
-                *er = false;
-                *dt = r_buffer[r_counter];
-
-                r_counter++;
-
-                if ( r_counter == r_plen ) // end of packet
-                    {
-                        r_counter   = m_gap;
-                        r_fsm_gap   = true;
-                    }
+                r_counter   = m_gap;
+                r_fsm_gap   = true;
             }
+        }
     } // end get()
 
-    /*!
-     * \brief This method returns true if the RX chain is to be frozen.
-     * \attention This function is only here to reflect the VHDL version of the NIC
-     */
-    virtual bool frz()
+    ///////////////////////////////////
+    //    Constructor
+    ///////////////////////////////////
+    NicRxTap( uint32_t gap)
+        : m_gap( gap ),
+          m_tap_fd( -1 )
     {
-        return false;
-    }
-
-    //////////////////////////////////////////////////////////////
-    // Constructor
-    // Create the TAP interface with name specified by user
-    NicRxTap(const std::string  &name,
-             uint32_t           gap)
-        : m_name(name),
-          m_gap(gap),
-          m_tap_fd(-1)
-    {
-#ifdef SOCLIB_NIC_DEBUG
-        printf("[NIC][%s] Entering constructor\n", __func__);
-#endif
-        // r_buffer_tmp    = new uint8_t[2048];
-        r_buffer        = new uint8_t[2048];
-    } // end constructor
+    } 
 
     //////////////////
     // destructor
     //////////////////
     virtual ~NicRxTap()
     {
-        delete [] r_buffer;
-        // delete [] r_buffer_tmp;
-        // m_ifp.close();
     }
 
 }; // end NicRxTap
 
 }}
 
-#endif /* !defined(__darwin__) */
+#endif /* !defined(__APPLE__) || !defined(__MACH__) */
 
 #endif /* SOCLIB_CABA_NIC_RX_TAP_H */
 

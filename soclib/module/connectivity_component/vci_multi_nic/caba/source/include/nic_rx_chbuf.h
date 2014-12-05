@@ -107,7 +107,7 @@ class NicRxChbuf
 {
     // structure constants
     const std::string   m_name;
-    uint32_t      m_timeout;           // max waiting cycles
+    uint32_t            m_timeout;           // max waiting cycles
 
     // internal registers
     uint32_t            r_ptw_word;          // word write pointer (in container)
@@ -154,155 +154,107 @@ public:
     {
         // update registers depending on cmd_w
 
-#ifdef SOCLIB_NIC_DEBUG
-        // if (cmd_w != 0 or cmd_r != 0)
-        //     std::cout << "[NIC][NicRxChbuf][" << __func__
-        //               << "] cmd_w = " << cmd_w
-        //               << " wdata = " << wdata
-        //               << " padding = " << padding
-        //               << " cmd_r = " << cmd_r
-        //               << std::endl;
-#endif
-
         if ( cmd_w == RX_CHBUF_WCMD_WRITE )      // write one packet word
-            {
-                assert( (r_full[r_ptw_cont] == false )
-                        and "ERROR in NIX_RX_CHBUF : WRITE request in a full container");
+        {
+            assert( (r_full[r_ptw_cont] == false ) and 
+            "ERROR in NIX_RX_CHBUF : WRITE request in a full container");
 
-                assert( (r_ptw_word < NIC_CONTAINER_SIZE) and
-                        "ERROR in NIC_RX_CHBUF : write pointer overflow" );
+            assert( (r_ptw_word < NIC_CONTAINER_SIZE) and
+            "ERROR in NIC_RX_CHBUF : write pointer overflow" );
 
-                r_cont[r_ptw_cont][r_ptw_word] = wdata;
-                r_ptw_word                     = r_ptw_word + 1;
-                r_pkt_length                   = r_pkt_length + 4;
-            }
+            r_cont[r_ptw_cont][r_ptw_word] = wdata;
+            r_ptw_word                     = r_ptw_word + 1;
+            r_pkt_length                   = r_pkt_length + 4;
+        }
         else if ( cmd_w == RX_CHBUF_WCMD_LAST )  // write last word in packet
                                                  // and write packet length
+        {
+            assert( (r_full[r_ptw_cont] == false ) and 
+            "ERROR in NIX_RX_CHBUF : WRITE request in a full container");
+
+            assert( (r_ptw_word < NIC_CONTAINER_SIZE) and
+            "ERROR in NIC_RX_CHBUF : write pointer overflow" );
+
+            assert( (r_pkt_index < MAX_PACKET) and
+            "ERROR in NIC_RX_CHBUF : packet index larger than MAX_PACKET-1" );
+
+            uint32_t    plen         = r_pkt_length + 4 - padding;  // final packet size 
+            bool        odd          = (r_pkt_index & 0x1);         // odd packet index
+            uint32_t    word         = (r_pkt_index >> 1) + 1;      // for container header 
+
+            r_cont[r_ptw_cont][r_ptw_word] = wdata;
+            r_ptw_word                     = r_ptw_word + 1;
+            if (odd)
             {
-                assert( (r_full[r_ptw_cont] == false )
-                        and "ERROR in NIX_RX_CHBUF : WRITE request in a full container");
-
-                assert( (r_ptw_word < NIC_CONTAINER_SIZE) and
-                        "ERROR in NIC_RX_CHBUF : write pointer overflow" );
-
-                assert( (r_pkt_index < MAX_PACKET) and
-                        "ERROR in NIC_RX_CHBUF : packet index larger than MAX_PACKET-1" );
-
-                uint32_t    plen         = r_pkt_length + 4 - padding;  // final size of the packet
-                bool        odd          = (r_pkt_index & 0x1);         // Used to know if we write the 16bits MSB or LSB of a 32bits words
-                uint32_t    word         = (r_pkt_index >> 1) + 1;      // word to write in the container metadata
-
-                r_cont[r_ptw_cont][r_ptw_word] = wdata;
-                r_ptw_word                     = r_ptw_word + 1;
-                // We choose if we write the left or right 16bits part of the 32bits words
-                if (odd)
-                    {
-                        r_cont[r_ptw_cont][word] = (r_cont[r_ptw_cont][word] & 0xFFFF0000)
-                            | plen;
-                    }
-                else
-                    {
-                        r_cont[r_ptw_cont][word] = (r_cont[r_ptw_cont][word] & 0x0000FFFF)
-                            | plen<<16;
-                    }
-                r_pkt_index                    = r_pkt_index + 1;
-                r_pkt_length                   = 0;
-
-#ifdef SOCLIB_NIC_DEBUG
-                // std::cout << "[NIC][NicRxChbuf][RX_CHBUF_WCMD_LAST]"
-                //           << " odd = " << odd << std::hex
-                //           << " word = " << word
-                //           << " plen = " << plen
-                //           << " data writen = " << r_cont[r_ptw_cont][word]
-                //           << std::dec << std::endl;
-#endif
-
+                r_cont[r_ptw_cont][word]   = (r_cont[r_ptw_cont][word] & 0xFFFF0000) | plen;
             }
+            else
+            {
+                r_cont[r_ptw_cont][word]   = (r_cont[r_ptw_cont][word] & 0x0000FFFF) | plen<<16;
+            }
+            r_pkt_index                    = r_pkt_index + 1;
+            r_pkt_length                   = 0;
+        }
         else if ( cmd_w == RX_CHBUF_WCMD_RELEASE ) // release the current container
                                                    // and update packet number & word number
+        {
+            assert( (r_full[r_ptw_cont] == false ) and 
+            "ERROR in NIX_RX_CHBUF : RELEASE request on a full container");
+
+            r_full[r_ptw_cont]     = true;
+            r_cont[r_ptw_cont][0]  = (r_ptw_word << 16) | (r_pkt_index & 0x0000FFFF);
+
+            // reset to default values
+            r_ptw_word             = ((MAX_PACKET>>1)+1);
+            r_ptw_cont             = (r_ptw_cont + 1) % 2;
+            r_pkt_index            = 0;
+            r_timer                = RX_TIMEOUT_VALUE;
+        }
+        else // cmd_w == RX_CHBUF_WCMD_NOP
+        {
+            if ( r_timer <= 0 ) // time_out : release the current container
+                                // and update packet number
             {
-                assert( (r_full[r_ptw_cont] == false )
-                        and "ERROR in NIX_RX_CHBUF : RELEASE request on a full container");
-
                 r_full[r_ptw_cont]     = true;
-                r_cont[r_ptw_cont][0]  = (r_ptw_word << 16) | (r_pkt_index & 0x0000FFFF);
-
-// #ifdef SOCLIB_NIC_DEBUG
-//                 std::cout << "[NIC][NicRxChbuf][RX_CHBUF_WCMD_RELEASE]"
-//                           << " container = " << r_ptw_cont << std::hex
-//                           << " nb_words = " << r_ptw_word
-//                           << " nb_pkt = " << r_pkt_index
-//                           << std::dec 
-//                           << " timer = " << r_timer
-//                           << std::endl;
-// #endif
-
-                // reset to default values
-                r_ptw_word             = ((MAX_PACKET>>1)+1);
+                r_cont[r_ptw_cont][0]  = (r_ptw_word<<16) | r_pkt_index;
+                r_ptw_word             =((MAX_PACKET>>1)+1);
                 r_ptw_cont             = (r_ptw_cont + 1) % 2;
                 r_pkt_index            = 0;
                 r_timer                = RX_TIMEOUT_VALUE;
-            }
-        else // cmd_w == RX_CHBUF_WCMD_NOP
-            {
-                if ( r_timer <= 0 ) // time_out : release the current container
-                    // and update packet number
-                    {
-#ifdef SOCLIB_NIC_DEBUG
-                        std::cout << "[NIC][NicRxChbuf][RX_CHBUF_WCMD_NOP]" << std::hex
-                                  << " container timeout : "
-                                  << " nb_words = " << r_ptw_word
-                                  << " nb_pkt = " << r_pkt_index
-                                  << std::dec 
-                                  << " timer = " << r_timer
-                                  << std::endl;
-#endif
-                        r_full[r_ptw_cont]     = true;
-                        r_cont[r_ptw_cont][0]  = (r_ptw_word<<16) | r_pkt_index;
-                        r_ptw_word             =((MAX_PACKET>>1)+1);
-                        r_ptw_cont             = (r_ptw_cont + 1) % 2;
-                        r_pkt_index            = 0;
-                        r_timer                = RX_TIMEOUT_VALUE;
-                    }
-                else if ( r_ptw_word > ((MAX_PACKET>>1)+1) ) // decrement timer after first word
-                    {
-                        r_timer                = r_timer - 1;
-                    }
+                }
+                else if ( r_ptw_word > ((MAX_PACKET>>1)+1) ) // decrement after first word
+                {
+                    r_timer                = r_timer - 1;
+                }
             }
 
         // update registers depending on cmd_r
 
         if ( cmd_r == RX_CHBUF_RCMD_READ )       // register a read request
-            {
-                assert( (ptr_cont < 2)
-                        and "ERROR in NIX_RX_CHBUF : READ request with container index > 2");
+        {
+            assert( (ptr_cont < 2) and 
+            "ERROR in NIX_RX_CHBUF : READ request with container index > 2");
 
-                assert( (r_full[ptr_cont] == true )
-                        and "ERROR in NIX_RX_CHBUF : READ request in a container not full");
+            assert( (r_full[ptr_cont] == true ) and
+            "ERROR in NIX_RX_CHBUF : READ request in a container not full");
 
-                assert( (ptr_word < NIC_CONTAINER_SIZE) and
-                        "ERROR in NIC_RX_CHBUF : READ pointer overflow" );
+            assert( (ptr_word < NIC_CONTAINER_SIZE) and
+            "ERROR in NIC_RX_CHBUF : READ pointer overflow" );
 
-                r_ptr_word = ptr_word;
-                r_ptr_cont = ptr_cont;
-            }
+            r_ptr_word = ptr_word;
+            r_ptr_cont = ptr_cont;
+        }
         else if ( cmd_r == RX_CHBUF_RCMD_RELEASE ) // release a full container
-            {
-                assert( (ptr_cont < 2)
-                        and "ERROR in NIX_RX_CHBUF : RELEASE request with container index > 2");
+        {
+            assert( (ptr_cont < 2) and 
+            "ERROR in NIX_RX_CHBUF : RELEASE request with container index > 2");
 
-                assert( (r_full[ptr_cont] == true )
-                        and "ERROR in NIX_RX_CHBUF : RELEASE request on a container not full");
+            assert( (r_full[ptr_cont] == true ) and
+            "ERROR in NIX_RX_CHBUF : RELEASE request on a container not full");
 
-// #ifdef SOCLIB_NIC_DEBUG
-//                 std::cout << "[NIC][NicRxChbuf][RX_CHBUF_RCMD_RELEASE]"
-//                           << " container index is " << ptr_cont
-//                           << std::endl;
-// #endif
-
-                r_full[ptr_cont]    = false;
-                r_cont[ptr_cont][0] = 0;
-            }
+            r_full[ptr_cont]    = false;
+            r_cont[ptr_cont][0] = 0;
+        }
     } // end update()
 
     //////////////////////////////////////////////////////////////////////////
