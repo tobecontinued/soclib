@@ -110,10 +110,9 @@
 //      * NIC_RX_RUN        : RX channel X activated    (write_only)
 //      * NIC_TX_RUN        : TX channel X activated    (write_only)
 //
-// A container descriptor has the following form:
-// LOW WORD : Container LSB base address
-// HIGH WORD: Container status (leftmost bit), '1' means full
-//            Base address MSB extension, if needed (right aligned)
+// A container descriptor occupies 64 bits (one unsigned long long):
+// - bits [47:0] : Container physical base address
+// - bit 63      : Container status (O when empty)
 //
 // On top of the channels segments is the hypervisor segment, taking 4 Kbytes:
 // It cannot be accessed by the virtual machines.
@@ -136,13 +135,13 @@
 //      * NIC_G_NPKT_RX_DES_SUCCESS        : number of RX packets transmited by RX_DES FSM
 //      * NIC_G_NPKT_RX_DES_TOO_SMALL      : number of discarded too small RX packets
 //      * NIC_G_NPKT_RX_DES_TOO_BIG        : number of discarded too big RX packets
-//      * NIC_G_NPKT_RX_DES_MFIFO_FULL     : number of discarded RX packets because fifo full
-//      * NIC_G_NPKT_RX_DES_CRC_FAIL       : number of discarded RX packets because checksum
+//      * NIC_G_NPKT_RX_DES_MFIFO_FULL     : number of discarded RX packets for fifo full
+//      * NIC_G_NPKT_RX_DES_CRC_FAIL       : number of discarded RX packets for checksum
 //
 //      * NIC_G_NPKT_RX_DISPATCH_RECEIVED  : number of packets received by RX_DISPATCH FSM
 //      * NIC_G_NPKT_RX_DISPATCH_BROADCAST : number of broadcast RX packets received
-//      * NIC_G_NPKT_RX_DISPATCH_DST_FAIL  : number of discarded RX packets because DST MAC
-//      * NIC_G_NPKT_RX_DISPATCH_CH_FULL   : number of discarded RX packets because channel full
+//      * NIC_G_NPKT_RX_DISPATCH_DST_FAIL  : number of discarded RX packets for DST MAC
+//      * NIC_G_NPKT_RX_DISPATCH_CH_FULL   : number of discarded RX packets for channel full
 //
 //      * NIC_G_NPKT_TX_DISPATCH_RECEIVED  : number of packets received by TX_DISPATCH FSM
 //      * NIC_G_NPKT_TX_DISPATCH_TOO_SMALL : number of discarded too small TX packets
@@ -170,12 +169,27 @@
 namespace soclib {
 namespace caba {
 
-#define INTER_FRAME_GAP                12
-#define DEFAULT_TDM_PERIOD             50000
 
-#define SOCLIB_NIC_RX_G2S_DEBUG        0
-#define SOCLIB_NIC_RX_DISPATCH_DEBUG   0
-#define SOCLIB_NIC_TX_DISPATCH_DEBUG   0
+////////////////////////////////////////////////////////////////
+//   Hidden hardware parameters
+////////////////////////////////////////////////////////////////
+
+#define INTER_FRAME_GAP                500
+#define DEFAULT_TDM_PERIOD             50000
+#define RX_TIMEOUT                     100000
+
+////////////////////////////////////////////////////////////////
+//   Detailed debug parameters
+////////////////////////////////////////////////////////////////
+
+#define RX_G2S_DEBUG        0
+#define RX_DISPATCH_DEBUG   0
+#define RX_CHBUF_DEBUG      0
+
+#define TX_DISPATCH_DEBUG   0
+#define TX_CHBUF_DEBUG      0
+
+////////////////////////////////////////////////////////////////
 
 #define tmpl(t) template<typename vci_param> t VciMultiNic<vci_param>
 
@@ -345,19 +359,19 @@ tmpl(uint32_t)::read_channel_register(uint32_t addr)
             data = (uint32_t)r_channel_tx_bufaddr_1[channel].read();
             break;
         case NIC_RX_DESC_HI_0:
-            if(r_rx_chbuf[channel].full(0)) data = (1 << 31);
+            if(r_rx_chbuf[channel]->full(0)) data = (1 << 31);
             data += (uint32_t)(r_channel_rx_bufaddr_0[channel].read() >> 32);
             break;
         case NIC_RX_DESC_HI_1:
-            if(r_rx_chbuf[channel].full(1)) data = (1 << 31);
+            if(r_rx_chbuf[channel]->full(1)) data = (1 << 31);
             data += (uint32_t)(r_channel_rx_bufaddr_1[channel].read() >> 32);
             break;
         case NIC_TX_DESC_HI_0:
-            if(r_tx_chbuf[channel].full(0)) data = (1 << 31);
+            if(r_tx_chbuf[channel]->full(0)) data = (1 << 31);
             data += (uint32_t)(r_channel_tx_bufaddr_0[channel].read() >> 32);
             break;
         case NIC_TX_DESC_HI_1:
-            if(r_tx_chbuf[channel].full(1)) data = (1 << 31);
+            if(r_tx_chbuf[channel]->full(1)) data = (1 << 31);
             data += (uint32_t)(r_channel_tx_bufaddr_1[channel].read() >> 32);
             break;
         case NIC_MAC_4:
@@ -444,10 +458,11 @@ tmpl(void)::transition()
 
         for ( size_t k = 0 ; k < m_channels ; k++ )
         {
-            r_rx_chbuf[k].reset();
-            r_tx_chbuf[k].reset();
+            r_rx_chbuf[k]->reset();
+            r_tx_chbuf[k]->reset();
         }
 
+        r_total_cycles      = 0;
         r_total_len_rx_gmii = 0;
         r_total_len_rx_chan = 0;
         r_total_len_tx_chan = 0;
@@ -455,6 +470,8 @@ tmpl(void)::transition()
 
         return;
     } // end reset
+
+    r_total_cycles = r_total_cycles.read() + 1;
 
     // rx_chbuf and tx_chbuf commands
     tx_chbuf_wcmd_t tx_chbuf_wcmd[m_channels];
@@ -618,7 +635,7 @@ tmpl(void)::transition()
                     assert( (cmd==vci_param::CMD_WRITE) and
                     "ERROR in VCI_MULTI_NIC : TX buffer access must be write");
 
-                    assert( not r_tx_chbuf[channel].full(cont) and
+                    assert( not r_tx_chbuf[channel]->full(cont) and
                     "ERROR in VCI_MULTI_NIC : TX_BURST write access in full container");
 
                     assert( ( ((vci_param::B==8) and ((be==0x0F) or (be==0xF0) or (be==0xFF)))
@@ -637,7 +654,7 @@ tmpl(void)::transition()
                               or ((vci_param::B==4) and (be==0xF)) ) and 
                     "ERROR in VCI_MULTI_NIC : RX buffer access must be 32 bits words");
 
-                    assert( r_rx_chbuf[channel].full(cont) and
+                    assert( r_rx_chbuf[channel]->full(cont) and
                     "ERROR in VCI_MULTI_NIC : RX_BURST read access in container not full");
 
                     rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_READ;
@@ -1040,7 +1057,7 @@ tmpl(void)::transition()
     // The output is the rx_fifo_stream, but this fifo is only used for
     // clock boundary handling, and should never be full, as the consumer
     // (RX_DES module) read all available bytes at all cycles.
-    ///////////////////////////////////////////////////////////i////////////////
+    ///////////////////////////////////////////////////////////////////////////
 
     assert( r_rx_fifo_stream.wok() and
             "ERROR in VCI_MULTI_NIC : the rs_fifo_stream should never be full");
@@ -1052,7 +1069,6 @@ tmpl(void)::transition()
         {
             if (r_global_nic_on.read() and gmii_rx_dv and not gmii_rx_er ) // start of packet
             {
-                r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
                 r_rx_g2s_fsm           = RX_G2S_DELAY;
                 r_rx_g2s_delay         = 0;
             }
@@ -1112,6 +1128,11 @@ tmpl(void)::transition()
 
                 r_rx_g2s_fsm        = RX_G2S_LOOP;
                 r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
+
+#if RX_G2S_DEBUG
+r_rx_g2s_nbytes = 1;
+r_rx_g2s_pktid  = 0;
+#endif
             }
             else
             {
@@ -1126,6 +1147,12 @@ tmpl(void)::transition()
             rx_fifo_stream_write = true;
             rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_NEV << 8);
 
+#if RX_G2S_DEBUG
+unsigned int byte = (unsigned int)r_rx_g2s_dt5.read();
+if ( r_rx_g2s_nbytes.read() == 6 ) r_rx_g2s_pktid = r_rx_g2s_pktid.read() | (byte<<8);
+if ( r_rx_g2s_nbytes.read() == 7 ) r_rx_g2s_pktid = r_rx_g2s_pktid.read() | (byte   );
+r_rx_g2s_nbytes = r_rx_g2s_nbytes.read() + 1;
+#endif
             // update CRC
             r_rx_g2s_checksum   = m_crc.update( r_rx_g2s_checksum.read(),
                                                 (uint32_t)r_rx_g2s_dt4.read() );
@@ -1156,26 +1183,31 @@ tmpl(void)::transition()
 
             r_total_len_rx_gmii = r_total_len_rx_gmii.read() + 1;
 
-#if SOCLIB_NIC_RX_G2S_DEBUG
-std::cout << std::endl;
-std::cout << std::hex << "Computed checksum = " << r_rx_g2s_checksum.read() << std::endl;
-std::cout << std::hex << "Received checksum = " << check << std::endl;
-std::cout << std::endl;
-#endif
             if ( r_rx_g2s_checksum.read() == check )
             {
+
+#if RX_G2S_DEBUG
+printf("<NIC RX_G2S_END> : good packet at cycle %d / length = %d / index = %d\n",
+       r_total_cycles.read(), r_rx_g2s_nbytes.read()+1 , r_rx_g2s_pktid.read() );
+#endif
                 rx_fifo_stream_write = true;
                 rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_EOS << 8);
             }
             else
             {
+#if RX_G2S_DEBUG
+printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / received crc = %x\n",
+       r_total_cycles.read(), r_rx_g2s_checksum.read(), check );
+#endif
                 rx_fifo_stream_write = true;
                 rx_fifo_stream_wdata = r_rx_g2s_dt5.read() | (STREAM_TYPE_ERR << 8);
             }
 
-            if ( gmii_rx_dv and not gmii_rx_er ) // start (end?) of packet / no error
+            // increment number of received packets
+            r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
+
+            if ( gmii_rx_dv and not gmii_rx_er ) // start of packet / no error
             {
-                r_rx_g2s_npkt_received = r_rx_g2s_npkt_received.read() + 1;
                 r_rx_g2s_fsm           = RX_G2S_DELAY;
                 r_rx_g2s_delay         = 0;
             }
@@ -1682,9 +1714,9 @@ std::cout << std::endl;
             for ( size_t k=0 ; (k<m_channels) && not found ; k++ )
             {
                 bool run   = ((r_global_active_channels.read() >> k) & 0x1) && r_channel_rx_run[k];
-                bool wok   = r_rx_chbuf[k].wok();
-                bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 8) );
-                bool time  = ( r_rx_chbuf[k].time() > (r_rx_dispatch_nbytes.read()>>2) );
+                bool wok   = r_rx_chbuf[k]->wok();
+                bool space = ( r_rx_chbuf[k]->space() > (r_rx_dispatch_nbytes.read() + 8) );
+                bool time  = ( r_rx_chbuf[k]->time() > (r_rx_dispatch_nbytes.read()>>2) );
                 bool mac   = ( (dst_mac_4 == r_channel_mac_4[k].read()) and
                                (dst_mac_2 == r_channel_mac_2[k].read()) );
 
@@ -1694,24 +1726,31 @@ std::cout << std::endl;
                     r_rx_dispatch_dest = 1<<k;
                     if ( not wok )  // container full => discard packet
                     {
+
+#if RX_DISPATCH_DEBUG
+printf("<NIC RX_DISPATCH_SELECT> at cycle %d : channel %d full / skip packet"
+       " / plen = %d / index = %d\n",
+       r_total_cycles.read(),
+       (int)k, 
+       r_rx_dispatch_nbytes.read() + 8,
+       r_rx_dispatch_data1.read() & 0x0000FFFF );
+#endif
                         r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
                         r_rx_dispatch_npkt_channel_full = r_rx_dispatch_npkt_channel_full.read() + 1;
+
                     }
                     else if (space and time)    // transfer possible
                     {
 
-#if SOCLIB_NIC_RX_DISPATCH_DEBUG
-if ( r_rx_dispatch_npackets < 50 )
-printf("<NIC RX_DISPATCH_SELECT> : packet written for channel %d / plen = %d"
-       " / word0 = %x / word1 = %x\n",
+#if RX_DISPATCH_DEBUG
+printf("<NIC RX_DISPATCH_SELECT> at cycle %d : write packet to channel %d"
+       " / plen = %d / index = %d\n",
+       r_total_cycles.read(),
        (int)k, 
        r_rx_dispatch_nbytes.read() + 8,
-       r_rx_dispatch_data0.read(), 
-       r_rx_dispatch_data1.read() );
+       r_rx_dispatch_data1.read() & 0x0000FFFF );
 #endif
                         r_rx_dispatch_fsm  = RX_DISPATCH_WRITE_FIRST;
-
-r_rx_dispatch_npackets++;
                     }
                     else    // not enough space or time => close container and retry
                     {
@@ -1719,8 +1758,17 @@ r_rx_dispatch_npackets++;
                     }
                 }
             } // end for channels
-            if ( not found )
+
+            if ( not found )    // no active channel found => discard packet
             {
+
+#if RX_DISPATCH_DEBUG
+printf("<NIC RX_DISPATCH_SELECT> at cycle %d : no active channel / skip packet"
+       " / plen = %d / index = %d\n",
+       r_total_cycles.read(),
+       r_rx_dispatch_nbytes.read() + 8,
+       r_rx_dispatch_data1.read() & 0x0000FFFF );
+#endif
                 r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
                 r_rx_dispatch_npkt_dst_fail = r_rx_dispatch_npkt_dst_fail.read() + 1;
             }
@@ -1743,9 +1791,9 @@ r_rx_dispatch_npackets++;
             for ( size_t k=0 ; (k<m_channels) ; k++ )
             {
                 bool run   = ((r_global_active_channels.read()>>k) & 0x1) && r_channel_rx_run[k];
-                bool wok   = r_rx_chbuf[k].wok();
-                bool space = ( r_rx_chbuf[k].space() > (r_rx_dispatch_nbytes.read() + 8) );
-                bool time  = ( r_rx_chbuf[k].time() > (r_rx_dispatch_nbytes.read()>>2) );
+                bool wok   = r_rx_chbuf[k]->wok();
+                bool space = ( r_rx_chbuf[k]->space() > (r_rx_dispatch_nbytes.read() + 8) );
+                bool time  = ( r_rx_chbuf[k]->time() > (r_rx_dispatch_nbytes.read()>>2) );
                 bool mac   = ( (src_mac_4 == r_channel_mac_4[k].read()) and
                                (src_mac_2 == r_channel_mac_2[k].read()) );
 
@@ -1901,7 +1949,7 @@ r_rx_dispatch_npackets++;
             if ( r_global_tdm_enable.read() ) // TDM scheduler
             {
                 uint32_t channel = r_global_tdm_channel.read();
-                if( r_tx_chbuf[channel].rok() and
+                if( r_tx_chbuf[channel]->rok() and
                     r_global_nic_on.read() and
                     ((r_global_active_channels.read()>>channel)&0x1) and
                     r_channel_tx_run[channel] )
@@ -1915,7 +1963,7 @@ r_rx_dispatch_npackets++;
                 for ( size_t x = 0 ; x < m_channels ; x++ )
                 {
                     uint32_t channel = (x + 1 + r_tx_dispatch_channel.read()) % m_channels;
-                    if ( r_tx_chbuf[channel].rok() and
+                    if ( r_tx_chbuf[channel]->rok() and
                          r_global_nic_on.read() and
                          ((r_global_active_channels.read()>>channel)&0x1) and
                          r_channel_tx_run[channel] )
@@ -1932,7 +1980,7 @@ r_rx_dispatch_npackets++;
         case TX_DISPATCH_GET_NPKT: // get packet number from tx_chbuf
         {
             uint32_t    channel   = r_tx_dispatch_channel.read();
-            uint32_t    npkt      = r_tx_chbuf[channel].npkt();
+            uint32_t    npkt      = r_tx_chbuf[channel]->npkt();
             r_tx_dispatch_packets = npkt;
 
             if ((npkt == 0) or (npkt > 66))  r_tx_dispatch_fsm = TX_DISPATCH_RELEASE_CONT; 
@@ -1943,7 +1991,7 @@ r_rx_dispatch_npackets++;
         case TX_DISPATCH_GET_PLEN: // get packet length from tx_chbuf
         {
             uint32_t channel    = r_tx_dispatch_channel.read();
-            uint32_t plen       = r_tx_chbuf[channel].plen();
+            uint32_t plen       = r_tx_chbuf[channel]->plen();
 
             r_tx_dispatch_bytes = plen & 0x3;
             if ( (plen & 0x3) == 0 ) r_tx_dispatch_words = plen >> 2;
@@ -1990,7 +2038,7 @@ r_rx_dispatch_npackets++;
         {
             uint32_t  channel = r_tx_dispatch_channel.read();
 
-            r_tx_dispatch_data0    = r_tx_chbuf[channel].data();
+            r_tx_dispatch_data0    = r_tx_chbuf[channel]->data();
             tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_READ;
             r_tx_dispatch_words    = r_tx_dispatch_words.read() - 1;
             r_tx_dispatch_fsm      = TX_DISPATCH_READ_SECOND;
@@ -2001,7 +2049,7 @@ r_rx_dispatch_npackets++;
         {
             uint32_t  channel = r_tx_dispatch_channel.read();
 
-            r_tx_dispatch_data1    = r_tx_chbuf[channel].data();
+            r_tx_dispatch_data1    = r_tx_chbuf[channel]->data();
             tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_READ;
             r_tx_dispatch_words    = r_tx_dispatch_words.read() - 1;
             r_tx_dispatch_fsm      = TX_DISPATCH_FIFO_SELECT;
@@ -2016,7 +2064,7 @@ r_rx_dispatch_npackets++;
 
             uint32_t data0         = r_tx_dispatch_data0.read();
             uint32_t data1         = r_tx_dispatch_data1.read();
-            uint32_t data2         = r_tx_chbuf[channel].data();
+            uint32_t data2         = r_tx_chbuf[channel]->data();
 
             uint32_t mac_dst_4 = ntohl(data0);
             uint32_t mac_dst_2 = (ntohl(data1) & 0xFFFF0000)>>16;
@@ -2025,7 +2073,7 @@ r_rx_dispatch_npackets++;
                                  ((ntohl(data2) & 0xFFFF0000) >> 16);  // 2 MSB bytes
             uint32_t mac_src_2 = (ntohl(data2) & 0x0000FFFF);          // 4 LSB bytes 
 
-#ifdef SOCLIB_NIC_TX_DISPATCH_DEBUG
+#ifdef TX_DISPATCH_DEBUG
 printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n", 
        mac_dst_4, mac_dst_2, mac_src_4, mac_src_2);
 #endif
@@ -2132,13 +2180,13 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n",
                 if ( r_tx_dispatch_words.read() == 1 )  // last word in packet
                 {
                     tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_LAST;
-                    r_tx_dispatch_data1    = r_tx_chbuf[channel].data();
+                    r_tx_dispatch_data1    = r_tx_chbuf[channel]->data();
                     r_tx_dispatch_fsm      = TX_DISPATCH_WRITE_LAST;
                 }
                 else                                   // not the last word
                 {
                     tx_chbuf_rcmd[channel] = TX_CHBUF_RCMD_READ;
-                    r_tx_dispatch_data1    = r_tx_chbuf[channel].data();
+                    r_tx_dispatch_data1    = r_tx_chbuf[channel]->data();
                     r_tx_dispatch_words    = r_tx_dispatch_words.read() - 1;
                 }
             }
@@ -2492,12 +2540,12 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n",
 
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        r_rx_chbuf[k].update( rx_chbuf_wcmd[k],
-                              rx_chbuf_wdata,
-                              rx_chbuf_padding,
-                              rx_chbuf_rcmd[k],
-                              rx_chbuf_cont,
-                              rx_chbuf_word );
+        r_rx_chbuf[k]->update( rx_chbuf_wcmd[k],
+                               rx_chbuf_wdata,
+                               rx_chbuf_padding,
+                               rx_chbuf_rcmd[k],
+                               rx_chbuf_cont,
+                               rx_chbuf_word );
     }
 
     // update tx_chbuf for all channels
@@ -2506,19 +2554,19 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n",
 
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        r_tx_chbuf[k].update( tx_chbuf_wcmd[k],
-                              tx_chbuf_wdata,
-                              tx_chbuf_cont,
-                              tx_chbuf_word,
-                              tx_chbuf_rcmd[k] );
+        r_tx_chbuf[k]->update( tx_chbuf_wcmd[k],
+                               tx_chbuf_wdata,
+                               tx_chbuf_cont,
+                               tx_chbuf_word,
+                               tx_chbuf_rcmd[k] );
 
         if ( tx_chbuf_two_words )
         {
-            r_tx_chbuf[k].update( tx_chbuf_wcmd[k],
-                                  tx_chbuf_wdata2,
-                                  tx_chbuf_cont,
-                                  tx_chbuf_word+1,
-                                  TX_CHBUF_RCMD_NOP );
+            r_tx_chbuf[k]->update( tx_chbuf_wcmd[k],
+                                   tx_chbuf_wdata2,
+                                   tx_chbuf_cont,
+                                   tx_chbuf_word+1,
+                                   TX_CHBUF_RCMD_NOP );
         }
     }
 } // end transition
@@ -2530,9 +2578,9 @@ tmpl(void)::genMoore()
 
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        // p_rx_irq[k] =     ( r_rx_chbuf[k].full(0) and r_rx_chbuf[k].full(1) );
+        // p_rx_irq[k] =     ( r_rx_chbuf[k]->full(0) and r_rx_chbuf[k]->full(1) );
         p_rx_irq[k] = 0;
-        // p_tx_irq[k] = not ( r_tx_chbuf[k].full(0) and r_tx_chbuf[k].full(1) );
+        // p_tx_irq[k] = not ( r_tx_chbuf[k]->full(0) and r_tx_chbuf[k]->full(1) );
         p_tx_irq[k] = 0;
     }
 
@@ -2557,9 +2605,9 @@ tmpl(void)::genMoore()
             p_vci.rspval = true;
 
             if ( (vci_param::B == 8) and (r_vci_nwords.read() > 1) )
-                p_vci.rdata  = (typename vci_param::data_t)r_rx_chbuf[channel].data64();
+                p_vci.rdata  = (typename vci_param::data_t)r_rx_chbuf[channel]->data64();
             else
-                p_vci.rdata  = (typename vci_param::data_t)r_rx_chbuf[channel].data();
+                p_vci.rdata  = (typename vci_param::data_t)r_rx_chbuf[channel]->data();
 
             p_vci.rerror = vci_param::ERR_NORMAL;
             p_vci.rsrcid = r_vci_srcid.read();
@@ -2706,125 +2754,114 @@ tmpl(void)::print_trace(uint32_t mode)
             "TX_S2G_WRITE_CS",
     };
 
-    if ( mode & 0x001 ) // display FSM states
+    std::cout << "MULTI_NIC " << name() << " : "
+              << vci_state_str[r_vci_fsm.read()]                 << " | "
+              << rx_g2s_state_str[r_rx_g2s_fsm.read()]           << " | "
+              << rx_des_state_str[r_rx_des_fsm.read()]           << " | "
+              << rx_dispatch_state_str[r_rx_dispatch_fsm.read()] << " | "
+              << tx_dispatch_state_str[r_tx_dispatch_fsm.read()] << " | "
+              << tx_ser_state_str[r_tx_ser_fsm.read()]           << " | "
+              << tx_s2g_state_str[r_tx_s2g_fsm.read()]           << std::endl;
+
+    if ( mode & 0x001 ) // configuration & instrumentation registers
     {
-        std::cout << "MULTI_NIC " << name() << " : "
-                  << vci_state_str[r_vci_fsm.read()]                 << " | "
-                  << rx_g2s_state_str[r_rx_g2s_fsm.read()]           << " | "
-                  << rx_des_state_str[r_rx_des_fsm.read()]           << " | "
-                  << rx_dispatch_state_str[r_rx_dispatch_fsm.read()] << " | "
-                  << tx_dispatch_state_str[r_tx_dispatch_fsm.read()] << " | "
-                  << tx_ser_state_str[r_tx_ser_fsm.read()]           << " | "
-                  << tx_s2g_state_str[r_tx_s2g_fsm.read()]           << std::endl;
-    }
+        std::cout << "---- Instrumentation Registers" << std::dec           << std::endl
+                  << "r_total_len_rx_gmii : " << r_total_len_rx_gmii.read() << std::endl
+                  << "r_total_len_rx_chan : " << r_total_len_rx_chan.read() << std::endl
+                  << "r_total_len_tx_chan : " << r_total_len_tx_chan.read() << std::endl
+                  << "r_total_len_tx_gmii : " << r_total_len_tx_gmii.read() << std::endl;
 
+        std::cout << "---- Global config Registers" << std::hex                     << std::endl
+                  << "r_global_nic_on        : " << r_global_nic_on.read()          << std::endl
+                  << "r_global_active        : " << r_global_active_channels.read() << std::endl
+                  << "r_global_bc_enable     : " << r_global_bc_enable.read()       << std::endl
+                  << "r_global_bypass_enable : " << r_global_bypass_enable.read()   << std::endl
+                  << "r_global_tdm_enable    : " << r_global_tdm_enable.read()      << std::endl;
 
-    if ( mode & 0x002 ) // display instrumentation registers
-    {
-        std::cout << "---- Instrumentation Registers" << std::dec << std::endl;
-        std::cout << "r_total_len_rx_gmii : " << r_total_len_rx_gmii.read() << std::endl;
-        std::cout << "r_total_len_rx_chan : " << r_total_len_rx_chan.read() << std::endl;
-        std::cout << "r_total_len_tx_chan : " << r_total_len_tx_chan.read() << std::endl;
-        std::cout << "r_total_len_tx_gmii : " << r_total_len_tx_gmii.read() << std::endl;
-    }
-
-
-    if ( mode & 0x004 ) // display global configuration registers
-    {
-        std::cout << "---- Global Registers" << std::hex << std::endl;
-        std::cout << "r_global_nic_on        : " << r_global_nic_on.read()          << std::endl;
-        std::cout << "r_global_active        : " << r_global_active_channels.read() << std::endl;
-        std::cout << "r_global_bc_enable     : " << r_global_bc_enable.read()       << std::endl;
-        std::cout << "r_global_bypass_enable : " << r_global_bypass_enable.read()   << std::endl;
-        std::cout << "r_global_tdm_enable    : " << r_global_tdm_enable.read()      << std::endl;
-    }
-
-    if ( mode & 0x008 ) // display channels configuration registers
-    {
         for (size_t k = 0; k < m_channels; k++)
         {
-            std::cout << "---- Channel " << k << std::hex << std::endl;
-            std::cout << "r_channel_mac_4    : " << r_channel_mac_4[k].read()        << std::endl;
-            std::cout << "r_channel_mac_2    : " << r_channel_mac_2[k].read()        << std::endl;
-            std::cout << "r_channel_rx_buf0  : " << r_channel_rx_bufaddr_0[k].read() << std::endl;
-            std::cout << "r_channel_rx_buf1  : " << r_channel_rx_bufaddr_1[k].read() << std::endl;
-            std::cout << "r_channel_tx_buf0  : " << r_channel_tx_bufaddr_0[k].read() << std::endl;
-            std::cout << "r_channel_tx_buf1  : " << r_channel_tx_bufaddr_1[k].read() << std::endl;
-            std::cout << "r_channel_rx_run   : " << r_channel_rx_run[k].read()       << std::endl;
-            std::cout << "r_channel_tx_run   : " << r_channel_tx_run[k].read()       << std::endl;
+            std::cout << "---- Channel[" << std::hex << k << "] config registers"    << std::endl
+                      << "r_channel_mac_4    : " << r_channel_mac_4[k].read()        << std::endl
+                      << "r_channel_mac_2    : " << r_channel_mac_2[k].read()        << std::endl
+                      << "r_channel_rx_buf0  : " << r_channel_rx_bufaddr_0[k].read() << std::endl
+                      << "r_channel_rx_buf1  : " << r_channel_rx_bufaddr_1[k].read() << std::endl
+                      << "r_channel_tx_buf0  : " << r_channel_tx_bufaddr_0[k].read() << std::endl
+                      << "r_channel_tx_buf1  : " << r_channel_tx_bufaddr_1[k].read() << std::endl
+                      << "r_channel_rx_run   : " << r_channel_rx_run[k].read()       << std::endl
+                      << "r_channel_tx_run   : " << r_channel_tx_run[k].read()       << std::endl;
         }
     }
 
-    if ( mode & 0x010 ) // display RX_G2S registers
+    if ( mode & 0x010 ) // display RX registers
     {
-        std::cout << "---- RX_G2S Registers" << std::hex << std::endl;
-        std::cout << "r_rx_g2s_checksum      : " << r_rx_g2s_checksum.read()      << std::endl;
-        std::cout << "r_rx_g2s_dt0           : " << (uint32_t)r_rx_g2s_dt0.read() << std::endl;
-        std::cout << "r_rx_g2s_dt1           : " << (uint32_t)r_rx_g2s_dt1.read() << std::endl;
-        std::cout << "r_rx_g2s_dt2           : " << (uint32_t)r_rx_g2s_dt2.read() << std::endl;
-        std::cout << "r_rx_g2s_dt3           : " << (uint32_t)r_rx_g2s_dt3.read() << std::endl;
-        std::cout << "r_rx_g2s_dt4           : " << (uint32_t)r_rx_g2s_dt4.read() << std::endl;
-        std::cout << "r_rx_g2s_dt5           : " << (uint32_t)r_rx_g2s_dt5.read() << std::endl;
-        std::cout << "r_rx_g2s_delay         : " << r_rx_g2s_delay.read()         << std::endl;
+        std::cout << "---- RX_G2S Registers" << std::hex                          << std::endl
+                  << "r_rx_g2s_checksum      : " << r_rx_g2s_checksum.read()      << std::endl
+                  << "r_rx_g2s_dt0           : " << (uint32_t)r_rx_g2s_dt0.read() << std::endl
+                  << "r_rx_g2s_dt1           : " << (uint32_t)r_rx_g2s_dt1.read() << std::endl
+                  << "r_rx_g2s_dt2           : " << (uint32_t)r_rx_g2s_dt2.read() << std::endl
+                  << "r_rx_g2s_dt3           : " << (uint32_t)r_rx_g2s_dt3.read() << std::endl
+                  << "r_rx_g2s_dt4           : " << (uint32_t)r_rx_g2s_dt4.read() << std::endl
+                  << "r_rx_g2s_dt5           : " << (uint32_t)r_rx_g2s_dt5.read() << std::endl
+                  << "r_rx_g2s_delay         : " << r_rx_g2s_delay.read()         << std::endl;
+
+        std::cout << "---- RX_DES Registers" << std::hex                              << std::endl
+                  << "r_rx_des_counter       : " << r_rx_des_counter_bytes.read()     << std::endl
+                  << "r_rx_des_padding       : " << r_rx_des_padding.read()           << std::endl
+                  << "r_rx_des_data[0]       : " << (uint32_t)r_rx_des_data[0].read() << std::endl
+                  << "r_rx_des_data[1]       : " << (uint32_t)r_rx_des_data[1].read() << std::endl
+                  << "r_rx_des_data[2]       : " << (uint32_t)r_rx_des_data[2].read() << std::endl
+                  << "r_rx_des_data[3]       : " << (uint32_t)r_rx_des_data[3].read() << std::endl;
+
+        std::cout << "---- RX_MULTI_FIFO" << std::endl;
+        r_rx_fifo_multi.print_trace( 1 );
+
+        std::cout << "---- RX_DISPATCH Registers" << std::hex                   << std::endl
+                  << "r_rx_dispatch_bp       : " << r_rx_dispatch_bp.read()     << std::endl
+                  << "r_rx_dispatch_data0    : " << r_rx_dispatch_data0.read()  << std::endl
+                  << "r_rx_dispatch_data1    : " << r_rx_dispatch_data1.read()  << std::endl
+                  << "r_rx_dispatch_nbytes   : " << r_rx_dispatch_nbytes.read() << std::endl
+                  << "r_rx_dispatch_dest     : " << r_rx_dispatch_dest.read()   << std::endl;
+
+        for ( size_t k = 0 ; k < m_channels ; k++ )
+        {
+            std::cout << "---- RX_CHBUF[" << std::dec << k << "] state" << std::endl;
+            r_rx_chbuf[k]->print_trace( k , 0 );
+        }
     }
 
-    if ( mode & 0x020 ) // display RX_DES registers
+    if ( mode & 0x100 ) // display TX registers
     {
-        std::cout << "---- RX_DES Registers" << std::hex << std::endl;
-        std::cout << "r_rx_des_counter       : " << r_rx_des_counter_bytes.read()     << std::endl;
-        std::cout << "r_rx_des_padding       : " << r_rx_des_padding.read()           << std::endl;
-        std::cout << "r_rx_des_data[0]       : " << (uint32_t)r_rx_des_data[0].read() << std::endl;
-        std::cout << "r_rx_des_data[1]       : " << (uint32_t)r_rx_des_data[1].read() << std::endl;
-        std::cout << "r_rx_des_data[2]       : " << (uint32_t)r_rx_des_data[2].read() << std::endl;
-        std::cout << "r_rx_des_data[3]       : " << (uint32_t)r_rx_des_data[3].read() << std::endl;
+        for ( size_t k = 0 ; k < m_channels ; k++ )
+        {
+            std::cout << "---- TX_CHBUF[" << std::dec << k << "] state" << std::endl;
+            r_tx_chbuf[k]->print_trace( k , 0 );
+        }
+
+        std::cout << "---- TX_DISPATCH Registers" << std::hex                     << std::endl
+                  << "r_tx_dispatch_channel  : " << r_tx_dispatch_channel.read()  << std::endl
+                  << "r_tx_dispatch_data0    : " << r_tx_dispatch_data0.read()    << std::endl
+                  << "r_tx_dispatch_data1    : " << r_tx_dispatch_data1.read()    << std::endl
+                  << "r_tx_dispatch_packets  : " << r_tx_dispatch_packets.read()  << std::endl
+                  << "r_tx_dispatch_words    : " << r_tx_dispatch_words.read()    << std::endl
+                  << "r_tx_dispatch_bytes    : " << r_tx_dispatch_bytes.read()    << std::endl
+                  << "r_tx_dispatch_write_bp : " << r_tx_dispatch_write_bp.read() << std::endl
+                  << "r_tx_dispatch_write_tx : " << r_tx_dispatch_write_tx.read() << std::endl;
+
+        std::cout << "---- TX_MULTI_FIFO" << std::endl;
+        r_tx_fifo_multi.print_trace( 1 );
+
+        std::cout << "---- TX_SER Registers" << std::hex                          << std::endl
+                  << "r_tx_ser_words         : " << r_tx_ser_words.read()         << std::endl
+                  << "r_tx_ser_bytes         : " << r_tx_ser_bytes.read()         << std::endl
+                  << "r_tx_ser_first         : " << r_tx_ser_first.read()         << std::endl
+                  << "r_tx_ser_ifg           : " << r_tx_ser_ifg.read()           << std::endl
+                  << "r_tx_ser_data          : " << r_tx_ser_data.read()          << std::endl;
+
+        std::cout << "---- TX_S2G Registers" << std::hex                           << std::endl
+                  << "r_tx_s2g_checksum      : " << r_tx_s2g_checksum.read()       << std::endl
+                  << "r_tx_s2g_data          : " << (uint32_t)r_tx_s2g_data.read() << std::endl
+                  << "r_tx_s2g_index         : " << r_tx_s2g_index.read()          << std::endl;
     }
-
-    if ( mode & 0x040 ) // display RX_DISPATCH registers
-    {
-        std::cout << "---- RX_DISPATCH Registers" << std::hex << std::endl;
-        std::cout << "r_rx_dispatch_bp       : " << r_rx_dispatch_bp.read()     << std::endl;
-        std::cout << "r_rx_dispatch_data0    : " << r_rx_dispatch_data0.read()  << std::endl;
-        std::cout << "r_rx_dispatch_data1    : " << r_rx_dispatch_data1.read()  << std::endl;
-        std::cout << "r_rx_dispatch_nbytes   : " << r_rx_dispatch_nbytes.read() << std::endl;
-        std::cout << "r_rx_dispatch_dest     : " << r_rx_dispatch_dest.read()   << std::endl;
-    }
-
-    if ( mode & 0x080 ) // display TX_DISPATCH registers
-    {
-        std::cout << "---- TX_DISPATCH Registers" << std::hex << std::endl;
-        std::cout << "r_tx_dispatch_channel  : " << r_tx_dispatch_channel.read()  << std::endl;
-        std::cout << "r_tx_dispatch_data0    : " << r_tx_dispatch_data0.read()    << std::endl;
-        std::cout << "r_tx_dispatch_data1    : " << r_tx_dispatch_data1.read()    << std::endl;
-        std::cout << "r_tx_dispatch_packets  : " << r_tx_dispatch_packets.read()  << std::endl;
-        std::cout << "r_tx_dispatch_words    : " << r_tx_dispatch_words.read()    << std::endl;
-        std::cout << "r_tx_dispatch_bytes    : " << r_tx_dispatch_bytes.read()    << std::endl;
-        std::cout << "r_tx_dispatch_write_bp : " << r_tx_dispatch_write_bp.read() << std::endl;
-        std::cout << "r_tx_dispatch_write_tx : " << r_tx_dispatch_write_tx.read() << std::endl;
-    }
-
-    if ( mode & 0x100 ) // display TX_SER registers
-    {
-        std::cout << "---- TX_SER Registers" << std::hex << std::endl;
-        std::cout << "r_tx_ser_words   : " << r_tx_ser_words.read() << std::endl;
-        std::cout << "r_tx_ser_bytes   : " << r_tx_ser_bytes.read() << std::endl;
-        std::cout << "r_tx_ser_first   : " << r_tx_ser_first.read() << std::endl;
-        std::cout << "r_tx_ser_ifg     : " << r_tx_ser_ifg.read() << std::endl;
-        std::cout << "r_tx_ser_data    : " << r_tx_ser_data.read() << std::endl;
-    }
-
-    if ( mode & 0x200 ) // display TX_S2G registers
-    {
-        std::cout << "---- TX_S2G Registers" << std::hex << std::endl;
-        std::cout << "r_tx_s2g_checksum : " << r_tx_s2g_checksum.read() << std::endl;
-        std::cout << "r_tx_s2g_data     : " << (unsigned int)r_tx_s2g_data.read() << std::endl;
-        std::cout << "r_tx_s2g_index    : " << r_tx_s2g_index.read() << std::endl;
-    }
-    if ( mode & 0x1000 ) // display RX_CHBUF state
-        for ( size_t k = 0 ; k < m_channels ; k++ ) r_rx_chbuf[k].print_trace( k );
-
-    if ( mode & 0x2000 ) // display TX_CHBUF state
-        for ( size_t k = 0 ; k < m_channels ; k++ ) r_tx_chbuf[k].print_trace( k );
-
 } // end print_trace()
 
 ////////////////////////////////////////////////////////////////////
@@ -2912,8 +2949,6 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
            r_rx_dispatch_nbytes("r_rx_dispatch_nbytes"),
            r_rx_dispatch_dest("r_rx_dispatch_dest"),
 
-r_rx_dispatch_npackets( 0 ),
-
            r_rx_dispatch_npkt_received("r_rx_dispatch_npkt_received"),
            r_rx_dispatch_npkt_broadcast("r_rx_dispatch_npkt_broadcast"),
            r_rx_dispatch_npkt_dst_fail("r_rx_dispatch_npkt_dst_fail"),
@@ -2949,8 +2984,8 @@ r_rx_dispatch_npackets( 0 ),
            r_tx_s2g_data("r_tx_s2g_data"),
            r_tx_s2g_index("r_tx_s2g_index"),
 
-           r_rx_chbuf(soclib::common::alloc_elems<NicRxChbuf>("r_rx_chbuf", channels)),
-           r_tx_chbuf(soclib::common::alloc_elems<NicTxChbuf>("r_tx_chbuf", channels)),
+//         r_rx_chbuf(soclib::common::alloc_elems<NicRxChbuf>("r_rx_chbuf", channels)),
+//         r_tx_chbuf(soclib::common::alloc_elems<NicTxChbuf>("r_tx_chbuf", channels)),
 
            r_rx_fifo_stream("r_rx_fifo_stream", 2),      // 2 slots of one byte
            r_tx_fifo_stream("r_tx_fifo_stream", 2),      // 2 slots of one byte
@@ -2972,6 +3007,9 @@ r_rx_dispatch_npackets( 0 ),
     assert( ((mode == NIC_MODE_FILE) || (mode == NIC_MODE_SYNTHESIS) || (mode == NIC_MODE_TAP)) and
             "VCI_MULTI_NIC error : Illegal mode for backend");
 
+    assert( (channels <= 8 ) and
+            "VCI_MULTI_NIC error : No more than 8 channels");
+
     if ( mode == NIC_MODE_FILE )
     {
         std::cout << "  - Building VciMultiNic - File version " << name << std::endl;
@@ -2980,6 +3018,14 @@ r_rx_dispatch_npackets( 0 ),
         r_backend_tx = new NicTxGmii();
     }
 
+    // allocating one RX_CHBUF and one TX_CHBUF per channel
+    for ( size_t k = 0 ; k < channels ; k++ )
+    {
+        r_rx_chbuf[k] = (NicRxChbuf*)new NicRxChbuf( RX_TIMEOUT, RX_CHBUF_DEBUG );
+        r_tx_chbuf[k] = (NicTxChbuf*)new NicTxChbuf( TX_CHBUF_DEBUG );
+    }
+
+    // allocating RX and TX backend
     if ( mode == NIC_MODE_SYNTHESIS )
     {
         std::cout << "  - Building VciMultiNic - Synthesis version " << name << std::endl;
@@ -3108,8 +3154,8 @@ tmpl(/**/)::~VciMultiNic()
     soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_tx_bufaddr_1, 8);
     soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_tx_run, 8);
     soclib::common::dealloc_elems<sc_signal<uint8_t> >(r_rx_des_data, 4);
-    soclib::common::dealloc_elems<NicRxChbuf>(r_rx_chbuf, m_channels);
-    soclib::common::dealloc_elems<NicTxChbuf>(r_tx_chbuf, m_channels);
+//  soclib::common::dealloc_elems<NicRxChbuf>(r_rx_chbuf, m_channels);
+//  soclib::common::dealloc_elems<NicTxChbuf>(r_tx_chbuf, m_channels);
     soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_rx_irq, m_channels);
     soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_tx_irq, m_channels);
 }

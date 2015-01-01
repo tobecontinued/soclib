@@ -69,8 +69,9 @@ private:
 #endif
 
     // Instrumentation registers
+    sc_signal<uint32_t>         r_total_cycles;            /*!< cycle counter            */
     sc_signal<uint32_t>         r_total_len_rx_gmii;       /*!< Bytes receive by RX_GMII */
-    sc_signal<uint32_t>         r_total_len_rx_chan;       /*!<  Bytes receive by RX_CHAN */
+    sc_signal<uint32_t>         r_total_len_rx_chan;       /*!< Bytes receive by RX_CHAN */
     sc_signal<uint32_t>         r_total_len_tx_chan;       /*!< Bytes send    by TX_CHAN */
     sc_signal<uint32_t>         r_total_len_tx_gmii;       /*!< Bytes send    by TX_GMII */
 
@@ -116,6 +117,8 @@ private:
     sc_signal<uint8_t>          r_rx_g2s_dt4;              /*!< local data buffer */
     sc_signal<uint8_t>          r_rx_g2s_dt5;              /*!< local data buffer */
     sc_signal<size_t>           r_rx_g2s_delay;            /*!< delay cycle counter */
+    sc_signal<uint32_t>         r_rx_g2s_nbytes;           /*!< packet number of bytes */
+    sc_signal<uint32_t>         r_rx_g2s_pktid;            /*!< pktid (for debug) */
 
     sc_signal<uint32_t>         r_rx_g2s_npkt_received;    /*!< number of received packets */
     sc_signal<uint32_t>         r_rx_g2s_npkt_discarded;   /*!< number of discarded packets */
@@ -139,8 +142,6 @@ private:
     sc_signal<uint32_t>         r_rx_dispatch_data1;       /*!< second word mac address */
     sc_signal<uint32_t>         r_rx_dispatch_nbytes;      /*!< number of bytes to be written */
     sc_signal<uint32_t>         r_rx_dispatch_dest;        /*!< bit vector: 1 bit per channel */
-
-uint32_t  r_rx_dispatch_npackets;
 
     sc_signal<uint32_t>         r_rx_dispatch_npkt_received;     /*!< received packets */
     sc_signal<uint32_t>         r_rx_dispatch_npkt_broadcast;    /*!< broadcast packets */
@@ -182,8 +183,8 @@ uint32_t  r_rx_dispatch_npackets;
     sc_signal<size_t>           r_tx_s2g_index;            /*!< checksum byte index */
 
     // channels
-    NicRxChbuf*                 r_rx_chbuf;                /*!< array[m_channels] */
-    NicTxChbuf*                 r_tx_chbuf;                /*!< array[m_channels] */
+    NicRxChbuf*                 r_rx_chbuf[8]; 
+    NicTxChbuf*                 r_tx_chbuf[8];
 
     // fifos
     GenericFifo<uint16_t>       r_rx_fifo_stream;

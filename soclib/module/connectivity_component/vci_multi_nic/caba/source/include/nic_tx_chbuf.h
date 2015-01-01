@@ -65,7 +65,7 @@ namespace caba {
 
 using namespace sc_core;
 
-#define NIC_CONTAINER_SIZE      1024                            // Size in words
+#define NIC_CONTAINER_SIZE      1024                            // words
 #define MAX_PACKET              ((NIC_CONTAINER_SIZE*4-4)/62)
 
 // writer commands (software)
@@ -91,7 +91,7 @@ class NicTxChbuf
 //////////////////
 {
     // structure constants
-    const std::string   m_name;
+    const uint32_t   m_debug;
 
     // registers
     uint32_t            r_ptr_word;          // word read pointer (in container)
@@ -286,50 +286,49 @@ public:
     }
 
     /////////////////////////////////////////////////////////////
-    // This method prints the chbuf state, including the two
-    // containers headers, when the container is full.
+    // This method prints the chbuf state,
+    // including the two containers headers.
     /////////////////////////////////////////////////////////////
-    void print_trace(uint32_t channel)
+    void print_trace( uint32_t channel,
+                      uint32_t detail )
     {
         uint32_t packets;
         uint32_t words;
 
         for ( size_t cont=0 ; cont<2 ; cont++ )
+        {
+            if ( r_full[cont] )
             {
-                if ( r_full[cont] )
+                packets = r_cont[cont][0] & 0x0000FFFF;
+                words   = r_cont[cont][0] >> 16;
+
+                std::cout << std::dec << "TX_CHBUF[" << channel
+                          << "] / container[" << cont
+                          << "] / full = " << r_full[cont]
+                          << " / words = " << words
+                          << " / packets = " << packets << std::endl;
+
+                if ( detail )
+                {
+                    for ( size_t p = 0 ; p < packets ; p++ )
                     {
-                        packets = r_cont[cont][0] & 0x0000FFFF;
-                        words   = r_cont[cont][0] >> 16;
+                        uint32_t word = 1 + (p>>1);
+                        uint32_t plen;
 
-                        std::cout << std::dec << "TX_CHBUF[" << channel
-                                  << "] / container[" << cont
-                                  << "] / full = " << r_full[cont]
-                                  << " / words = " << words
-                                  << " / packets = " << packets << std::endl;
-
-#ifdef SOCLIB_NIC_DEBUG
-                        for ( size_t p = 0 ; p < packets ; p++ )
-                            {
-                                uint32_t word = 1 + (p>>1);
-                                uint32_t plen;
-
-                                if ( (p & 0x1) == 0x1 )
-                                    plen = r_cont[cont][word] & 0x0000FFFF;
-                                else 
-                                    plen = r_cont[cont][word] >> 16;
-                                if (p + 1 >= packets)
-                                    std::cout << "[NIC][TX_CHBUF][" << __func__ << "] plen[" << p << "] = " << plen << std::endl;
-                            }
-#endif
+                        if ( (p&0x1) == 0x1 ) plen = r_cont[cont][word] >> 16;
+                        else                  plen = r_cont[cont][word] & 0x0000FFFF;
+                        std::cout << "_ plen[" << p << "] = " << plen << std::endl;
                     }
+                }
             }
+        }
     }
 
     //////////////////////////////////////////////////////////////
     // constructor allocates the memory for the containers.
     //////////////////////////////////////////////////////////////
-    NicTxChbuf( const std::string  &name)
-        : m_name(name)
+    NicTxChbuf( const uint32_t debug )
+        : m_debug( debug )
     {
         r_cont    = new uint32_t*[2];
         r_cont[0] = new uint32_t[NIC_CONTAINER_SIZE];
