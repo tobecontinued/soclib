@@ -26,19 +26,26 @@
 
 //////////////////////////////////////////////////////////////////////////////////
 //  This component is a multi-channels DMA controller supporting chained buffers.
-//  It can be used to move a stream from one set of chained buffers (src_chbuf) 
-//  to another set of chained buffers (dst_chbuf), without involving software.
+//  It can be used to move a stream from one set of chained buffers (SRC chbuf) 
+//  to another set of chained buffers (DST chbuf), without involving software.
 //
-//  A "chbuf descriptor" is an array of "buffer descriptors", stored in main
-//  memory. Each buffer descriptor contains two 32 bits words:
-//  - STATUS[31:0] : buffer status (buffer full when STATUS non zero)
-//  - PADDR[31:0]  : buffer base address
-//  The buffer size must be the same for src_chbuf and dst_chbuf.
-//  The "chbuf descriptor" base address must be a multiple of 4 bytes.
-
-//  As this DMA controller uses a polling policy to access both the src_chbuf
-//  and the dst chbuf, it introduces a delay between two accesses to a chbuf.
-//  This delay is an optional constructor argument. Default value is 1000 cycles.
+//  A "chbuf descriptor" is a circular array of "buffer descriptors".
+//  Each buffer descriptor occupies 64 bytes, but only the first 8 bytes
+//  (64 bits unsigned long long) contain useful information:
+//  - The 48 LSB bits contain the buffer physical address
+//  - The MSB bit 63 defines the buffer state (empty if 0)
+//  The buffer length must be the same for src_chbuf and dst_chbuf.
+//  The "chbuf descriptor" base address must be a multiple of 64 bytes.
+//
+//  This DMA controller implements two "modes" to scan the SRC and DST chbufs:
+//
+//  - IN ORDER FIFO: The chained buffers are read and write in strict order,
+//    with a polling policy to access both the expected SRC chbuf and the 
+//    expected DST chbuf. The delay between two accesses is defined, for each
+//    channel, by the CHBUF_PERIOD addressable register, and must be non zero.
+//  - OUT OF ORDER: The first full SRC buffer found is read, the first empty
+//    DST buffer found is written, with a round robin priority for the search.
+//    This mode is activated when the CHBUF_PERIOD value is zero (default value°.
 //  
 //  This component supports both 32 bits and 64 bits VCI RDATA & WDATA fields.
 //
@@ -56,9 +63,9 @@
 //    of 4 bytes. If the source and destination buffers are not aligned on a burst 
 //    boundary, the DMA controler split the burst in two VCI transactions.
 //
-//  In order to support various protection mechanisms, each channel
-//  takes 4K bytes in the address space, and the segment size is 32 K bytes. 
-//  Only 8 address bits are decoded :
+//  In order to support various protection mechanisms, for each channel,
+//  the channel addressable registers takes 4K bytes in the address space. 
+//  Only 8 address bits are decoded .
 //  - The 5 bits ADDRESS[4:Ø] define the target register (see chbuf_dma.h)
 //  - The 3 bits ADDRESS[14:12] define the selected channel.
 //
@@ -168,9 +175,9 @@ tmpl(void)::transition()
     // It access the following registers:
     //  - r_channel_run[k]	         channel active => transfer requested    (W)
     //  - r_channel_buf_size[k]      buffer size (bytes) for both SRC & DST  (R/W)
-    //  - r_channel_src_desc[k]      address of source chbuf descriptor      (R/W)
+    //  - r_channel_src_desc[k]      source chbuf descriptor paddr           (R/W)
     //  - r_channel_src_nbufs[k]     number of buffers in source chbuf       (R/W)
-    //  - r_channel_dst_desc[k]      address of destination chbuf descriptor (R/W)
+    //  - r_channel_dst_desc[k]      dest chbuf descriptor paddr             (R/W)
     //  - r_channel_dst_nbufs[k]     number of buffers in dest chbuf         (R/W)
     //  - r_channel_period[k]        status polling period                   (R/W)
     ///////////////////////////////////////////////////////////////////////////////
@@ -237,7 +244,7 @@ tmpl(void)::transition()
 
                     r_channel_src_desc[k]  = wdata;
                     r_channel_src_index[k] = 0;
-                    r_tgt_fsm                    = TGT_WRITE;
+                    r_tgt_fsm              = TGT_WRITE;
                 }
                 ///////////////////////////////////////////////////////////////////
                 else if ( (cell == CHBUF_SRC_EXT) and (cmd == vci_param::CMD_WRITE) )
@@ -247,7 +254,7 @@ tmpl(void)::transition()
                    
                     r_channel_src_desc[k] = (r_channel_src_desc[k].read() & 0XFFFFFFFF) + 
                                       ((uint64_t)wdata << 32) ;
-                    r_tgt_fsm                    = TGT_WRITE;
+                    r_tgt_fsm             = TGT_WRITE;
                 }
                 ///////////////////////////////////////////////////////////////////
                 else if ( (cell == CHBUF_SRC_DESC) and (cmd == vci_param::CMD_READ) )
@@ -272,7 +279,7 @@ tmpl(void)::transition()
 
                     r_channel_dst_desc[k]  = wdata;
                     r_channel_dst_index[k] = 0;
-                    r_tgt_fsm                    = TGT_WRITE;
+                    r_tgt_fsm              = TGT_WRITE;
                 }
                 ///////////////////////////////////////////////////////////////////
                 else if ( (cell == CHBUF_DST_EXT) and (cmd == vci_param::CMD_WRITE) )
@@ -282,7 +289,7 @@ tmpl(void)::transition()
                    
                     r_channel_dst_desc[k] = (r_channel_dst_desc[k].read() & 0XFFFFFFFF) + 
                                       ((typename vci_param::fast_addr_t)wdata << 32);
-                    r_tgt_fsm                    = TGT_WRITE;
+                    r_tgt_fsm             = TGT_WRITE;
                 }
                 ///////////////////////////////////////////////////////////////////
                 else if ( (cell == CHBUF_DST_DESC) and (cmd == vci_param::CMD_READ) )
@@ -306,7 +313,7 @@ tmpl(void)::transition()
                     "VCI_CHBUF_DMA error : buffer size not multiple of 4");
 
                     r_channel_buf_size[k] = wdata;
-                    r_tgt_fsm                   = TGT_WRITE;
+                    r_tgt_fsm             = TGT_WRITE;
                 }
                 /////////////////////////////////////////////////////////////////////
                 else if ( (cell == CHBUF_BUF_SIZE) and (cmd == vci_param::CMD_READ) )
@@ -321,7 +328,7 @@ tmpl(void)::transition()
                     "VCI_CHBUF_DMA error : Configuration request for an active channel");
 
                     r_channel_src_nbufs[k] = wdata;
-                    r_tgt_fsm                     = TGT_WRITE;
+                    r_tgt_fsm              = TGT_WRITE;
                 }
                 /////////////////////////////////////////////////////////////////////
                 else if ( (cell == CHBUF_SRC_NBUFS) and (cmd == vci_param::CMD_READ) )
@@ -336,7 +343,7 @@ tmpl(void)::transition()
                     "VCI_CHBUF_DMA error : Configuration request for an active channel");
 
                     r_channel_dst_nbufs[k] = wdata;
-                    r_tgt_fsm                    = TGT_WRITE;
+                    r_tgt_fsm              = TGT_WRITE;
                 }
                 /////////////////////////////////////////////////////////////////////
                 else if ( (cell == CHBUF_DST_NBUFS) and (cmd == vci_param::CMD_READ) )
@@ -351,7 +358,7 @@ tmpl(void)::transition()
                     "VCI_CHBUF_DMA error : Configuration request for an active channel");
 
                     r_channel_period[k] = wdata;
-                    r_tgt_fsm                 = TGT_WRITE;
+                    r_tgt_fsm           = TGT_WRITE;
                 }
                 /////////////////////////////////////////////////////////////////////
                 else if ( (cell == CHBUF_PERIOD) and (cmd == vci_param::CMD_READ) )
@@ -434,12 +441,29 @@ tmpl(void)::transition()
                         break;
                     }
                     r_channel_vci_rsp[k] = false;
-                    if ( not r_channel_src_full[k].read() ) // buffer not full
+                    if ( not r_channel_src_full[k].read() ) // buffer not full: failure
                     {
-                        r_channel_fsm[k]   = CHANNEL_READ_SRC_STATUS_DELAY;
-                        r_channel_timer[k] = r_channel_period[k];
+                        if ( r_channel_period[k] )          // in order mode
+                        { 
+                            r_channel_fsm[k]   = CHANNEL_READ_SRC_STATUS_DELAY;
+                            r_channel_timer[k] = r_channel_period[k];
+                        }
+                        else                                // no order mode
+                        {
+                            // increment SRC buffer index
+                            if ( r_channel_src_index[k].read() == 
+                                 (r_channel_src_nbufs[k].read()-1) )
+                            {
+                                r_channel_src_index[k] = 0;
+                            }
+                            else
+                            {
+                                r_channel_src_index[k] = r_channel_src_index[k].read()+1;
+                            }
+                            r_channel_fsm[k]   = CHANNEL_READ_SRC_STATUS;
+                        }
                     }
-                    else                                  // buffer full
+                    else                                    // buffer full: success
                     {
                         r_channel_fsm[k] = CHANNEL_READ_SRC_BUFADDR;
                     }
@@ -505,12 +529,29 @@ tmpl(void)::transition()
                     }
                     r_channel_vci_rsp[k] = false;
 
-                    if ( r_channel_dst_full[k].read() ) // buffer full
+                    if ( r_channel_dst_full[k].read() )     // buffer full: failure
                     {
-                        r_channel_fsm[k]   = CHANNEL_READ_DST_STATUS_DELAY;
-                        r_channel_timer[k] = r_channel_period[k];
+                        if ( r_channel_period[k] )          // in order mode
+                        { 
+                            r_channel_fsm[k]   = CHANNEL_READ_DST_STATUS_DELAY;
+                            r_channel_timer[k] = r_channel_period[k];
+                        }
+                        else                                // no order mode
+                        {
+                            // increment DST buffer index
+                            if ( r_channel_dst_index[k].read() == 
+                                 (r_channel_dst_nbufs[k].read()-1) )
+                            {
+                                r_channel_dst_index[k] = 0;
+                            }
+                            else
+                            {
+                                r_channel_dst_index[k] = r_channel_dst_index[k].read()+1;
+                            }
+                            r_channel_fsm[k]   = CHANNEL_READ_DST_STATUS;
+                        }
                     }
-                    else                                  // buffer not full
+                    else                                    // buffer not full: success
                     {
                         r_channel_fsm[k] = CHANNEL_READ_DST_BUFADDR;
                     }
@@ -791,12 +832,12 @@ tmpl(void)::transition()
                     if ( r_channel_vci_error[k].read() ) 
                         r_channel_fsm[k] = CHANNEL_DST_DESC_ERROR;
                     else
-                        r_channel_fsm[k] = CHANNEL_SRC_NEXT_BUFFER;
+                        r_channel_fsm[k] = CHANNEL_NEXT_BUFFERS;
                 }
                 break;
             }
-            /////////////////////////////
-            case CHANNEL_SRC_NEXT_BUFFER:  // update SRC buffer descriptor index
+            //////////////////////////
+            case CHANNEL_NEXT_BUFFERS:  // update SRC & DST buffers index
             {
                 if ( r_channel_src_index[k].read() == (r_channel_src_nbufs[k].read()-1) )
                 {
@@ -806,12 +847,6 @@ tmpl(void)::transition()
                 {
                     r_channel_src_index[k] = r_channel_src_index[k].read()+1;
                 }
-                r_channel_fsm[k] = CHANNEL_DST_NEXT_BUFFER;
-                break;
-            }
-            /////////////////////////////
-            case CHANNEL_DST_NEXT_BUFFER:  // update DST buffer descriptor index
-            {
                 if ( r_channel_dst_index[k].read() == (r_channel_dst_nbufs[k].read()-1) )
                 {
                     r_channel_dst_index[k] = 0;
@@ -824,8 +859,7 @@ tmpl(void)::transition()
                 break;
             }
 
-            // errors states
-            ////////////////////////
+            ////////////////////////////
             case CHANNEL_SRC_DATA_ERROR:
             case CHANNEL_DST_DATA_ERROR:
             case CHANNEL_SRC_DESC_ERROR:
@@ -863,7 +897,7 @@ tmpl(void)::transition()
                         case REQ_READ_SRC_STATUS:
                         {
                             r_cmd_address = r_channel_src_desc[k].read() + 4 + 
-                                            (r_channel_src_index[k].read() << 3);
+                                            (r_channel_src_index[k].read() << 6);
                             r_cmd_bytes   = 4;
                             r_cmd_fsm     = CMD_READ;
                             break;
@@ -871,7 +905,7 @@ tmpl(void)::transition()
                         case REQ_READ_DST_STATUS:
                         {
                             r_cmd_address = r_channel_dst_desc[k].read() + 4 +
-                                            (r_channel_dst_index[k].read() << 3);
+                                            (r_channel_dst_index[k].read() << 6);
                             r_cmd_bytes   = 4;
                             r_cmd_fsm     = CMD_READ;
                             break;
@@ -879,7 +913,7 @@ tmpl(void)::transition()
                         case REQ_READ_SRC_BUFADDR:
                         {
                             r_cmd_address = r_channel_src_desc[k].read() + 
-                                            (r_channel_src_index[k].read() << 3);
+                                            (r_channel_src_index[k].read() << 6);
                             r_cmd_bytes   = 4;
                             r_cmd_fsm     = CMD_READ;
                             break;
@@ -887,7 +921,7 @@ tmpl(void)::transition()
                         case REQ_READ_DST_BUFADDR:
                         {
                             r_cmd_address = r_channel_dst_desc[k].read() +
-                                            (r_channel_dst_index[k].read() << 3);
+                                            (r_channel_dst_index[k].read() << 6);
                             r_cmd_bytes   = 4;
                             r_cmd_fsm     = CMD_READ;
                             break;
@@ -923,7 +957,7 @@ tmpl(void)::transition()
                         case REQ_WRITE_SRC_STATUS:
                         {
                             r_cmd_address = r_channel_src_desc[k].read() + 4 +
-                                            (r_channel_src_index[k].read() << 3);
+                                            (r_channel_src_index[k].read() << 6);
                             r_cmd_bytes   = 4;
                             r_cmd_fsm     = CMD_WRITE;
                             break;
@@ -931,7 +965,7 @@ tmpl(void)::transition()
                         case REQ_WRITE_DST_STATUS:
                         {
                             r_cmd_address = r_channel_dst_desc[k].read() + 4 +
-                                            (r_channel_dst_index[k].read() << 3);
+                                            (r_channel_dst_index[k].read() << 6);
                             r_cmd_bytes   = 4;
                             r_cmd_fsm     = CMD_WRITE;
                             break;
@@ -1056,7 +1090,8 @@ tmpl(void)::transition()
         {
             uint32_t k              = r_rsp_channel.read();
             uint32_t rdata          = (uint32_t)p_vci_initiator.rdata.read();
-            r_channel_src_addr[k]   = (((r_channel_src_addr[k].read()>>32) & 0xFFFFFFFF)<<32) + rdata;
+            r_channel_src_addr[k]   = (((r_channel_src_addr[k].read()>>32) 
+                                         & 0xFFFFFFFF)<<32) + rdata;
             r_channel_src_offset[k] = rdata % m_burst_max_length;
             r_channel_vci_rsp[k]    = true;
             r_channel_vci_error[k]  = ((p_vci_initiator.rerror.read()&0x1) != 0);
@@ -1081,7 +1116,8 @@ tmpl(void)::transition()
         {
             uint32_t k              = r_rsp_channel.read();
             uint32_t rdata          = (uint32_t)p_vci_initiator.rdata.read();
-            r_channel_dst_addr[k]   = (((r_channel_dst_addr[k].read()>>32) & 0xFFFFFFFF)<<32) + rdata;
+            r_channel_dst_addr[k]   = (((r_channel_dst_addr[k].read()>>32) 
+                                         & 0xFFFFFFFF)<<32) + rdata;
             r_channel_dst_offset[k] = rdata % m_burst_max_length;
             r_channel_vci_rsp[k]    = true;
             r_channel_vci_error[k]  = ((p_vci_initiator.rerror.read()&0x1) != 0);
@@ -1425,8 +1461,7 @@ tmpl(void)::print_trace()
         " CHANNEL_SRC_STATUS_WRITE_WAIT",
         " CHANNEL_DST_STATUS_WRITE",
         " CHANNEL_DST_STATUS_WRITE_WAIT",
-        " CHANNEL_SRC_NEXT_BUFFER",
-        " CHANNEL_DST_NEXT_BUFFER",
+        " CHANNEL_NEXT_BUFFERS",
     };
 
     std::cout << "CHBUF_DMA " << name() << " : " 

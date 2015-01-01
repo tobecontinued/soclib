@@ -165,8 +165,7 @@ public:
         CHANNEL_SRC_STATUS_WRITE_WAIT,
         CHANNEL_DST_STATUS_WRITE,
         CHANNEL_DST_STATUS_WRITE_WAIT,
-        CHANNEL_SRC_NEXT_BUFFER,
-        CHANNEL_DST_NEXT_BUFFER,
+        CHANNEL_NEXT_BUFFERS,
     };
     enum cmd_fsm_state_e {
         CMD_IDLE,
