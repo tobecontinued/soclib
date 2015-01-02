@@ -174,7 +174,7 @@ namespace caba {
 //   Hidden hardware parameters
 ////////////////////////////////////////////////////////////////
 
-#define INTER_FRAME_GAP                500
+#define INTER_FRAME_GAP                1000
 #define DEFAULT_TDM_PERIOD             50000
 #define RX_TIMEOUT                     100000
 
