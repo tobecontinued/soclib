@@ -98,7 +98,7 @@ class NicRxTap : public NicRxBackend
 
             if (r_plen < 0) // Error during reading
             {
-                std::cout << "[NIC ERROR] in nic_rx_tap" << m_name << std::endl;
+                std::cout << "[NIC ERROR] in nic_rx_tap" << std::endl;
                 exit(0);
             }          
         }
