@@ -28,17 +28,6 @@
  *         Cassio Fraga <cassio.fraga@lip6.fr>
  */
 
-/**
- * \file vci_multi_nic.cpp
- * \brief GenMoore(), transition() and core functions for the vci_multi_nic component
- * \author Alain Greiner <alain.greiner@lip6.fr> Juin 2012
- * \author Clement Devigne <clement.devigne@etu.upmc.fr>
- * \author Marc Kakou <marc.kakou@etu.upmc.fr>
- * \author Sylvain Leroy <sylvain.leroy@lip6.fr>
- * \author Cassio Fraga <cassio.fraga@lip6.fr>
- *
- */
-
 //////////////////////////////////////////////////////////////////////////////////
 // This component is a multi-channels, GMII compliant, NIC controller.
 // If the system clock frequency is larger or equal to the GMII clock
@@ -110,7 +99,8 @@
 //      * NIC_RX_RUN        : RX channel X activated    (write_only)
 //      * NIC_TX_RUN        : TX channel X activated    (write_only)
 //
-// A container descriptor occupies 64 bits (one unsigned long long):
+// A container descriptor occupies 64 bytes (to symplify L2/L3 cache coherence,
+// but only the 8 first bytes (one unsigned long long) contain useful information:
 // - bits [47:0] : Container physical base address
 // - bit 63      : Container status (O when empty)
 //
@@ -231,7 +221,7 @@ tmpl(uint32_t)::get_total_len_tx_chan()
 tmpl(uint32_t)::read_hyper_register(uint32_t addr)
 {
     uint32_t word = (addr & 0x00000FFF) >> 2;
-    uint32_t data;
+    uint32_t data = 0;
 
     if ( (word >= NIC_G_MAC_4) and (word < NIC_G_MAC_4 + 8) )
     {
@@ -328,8 +318,8 @@ tmpl(uint32_t)::read_hyper_register(uint32_t addr)
             break;
 
         default:
-            assert ( false and
-                     "ERROR in VCI_MULTI_NIC : illegal global register index in VCI read");
+            std::cout << "ERROR in VCI_MULTI_NIC : illegal hyper register read"
+                      << " : address = " << std::hex << addr << std::endl;
     }
     return data;
 } // end read_hyper_register()
@@ -381,8 +371,9 @@ tmpl(uint32_t)::read_channel_register(uint32_t addr)
             data = r_channel_mac_2[channel].read();
             break;
         default:
-            assert ( false and
-                     "ERROR in VCI_MULTI_NIC : illegal channel register access");
+            std::cout << "ERROR in VCI_MULTI_NIC : illegal channel register read"
+                      << " : address = " << std::hex << addr << std::endl;
+            exit(0);
         }
     return data;
 } // end read_channel_register()
@@ -909,8 +900,9 @@ tmpl(void)::transition()
                             break;
 
                         default:
-                            assert ( false and
-                            "ERROR in VCI_MULTI_NIC : illegal write_hyper_register");
+                            std::cout << "ERROR in VCI_MULTI_NIC : illegal hyper register write"
+                                      << " : address = " << std::hex << address << std::endl;
+                            exit(0);
                     }
                 }
                 r_vci_fsm = VCI_IDLE;
@@ -1006,8 +998,9 @@ tmpl(void)::transition()
                         r_channel_tx_run[channel] = wdata;
                         break;
                     default:
-                        assert( false and
-                        "ERROR in VCI_MULTI_NIC : illegal channel register in VCI read");
+                        std::cout << "ERROR in VCI_MULTI_NIC : illegal channel register write"
+                                  << " : address = " << std::hex << address << std::endl;
+                        exit(0);
                 }
                 r_vci_fsm = VCI_IDLE;
             }
@@ -1708,8 +1701,9 @@ printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / receiv
                                   // at most one channel is selected for unicast
         {
             bool            found = false;
-            uint32_t        dst_mac_4 = r_rx_dispatch_data0.read();     
-            uint32_t        dst_mac_2 = (r_rx_dispatch_data1.read() & 0xFFFF0000) >> 16; 
+            uint32_t        dst_mac_2 =  (r_rx_dispatch_data0.read() & 0xFFFF0000) >> 16; 
+            uint32_t        dst_mac_4 = ((r_rx_dispatch_data0.read() & 0x0000FFFF) << 16) |     
+                                        ((r_rx_dispatch_data1.read() & 0xFFFF0000) >> 16) ;     
 
             for ( size_t k=0 ; (k<m_channels) && not found ; k++ )
             {
@@ -1729,11 +1723,12 @@ printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / receiv
 
 #if RX_DISPATCH_DEBUG
 printf("<NIC RX_DISPATCH_SELECT> at cycle %d : channel %d full / skip packet"
-       " / plen = %d / index = %d\n",
+       " / plen = %d / mac_dst = %x|%x / mac_src_2 = %x\n",
        r_total_cycles.read(),
        (int)k, 
        r_rx_dispatch_nbytes.read() + 8,
-       r_rx_dispatch_data1.read() & 0x0000FFFF );
+       dst_mac_2, dst_mac_4,
+       r_rx_dispatch_data1.read() & 0x0000FFFF );     
 #endif
                         r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
                         r_rx_dispatch_npkt_channel_full = r_rx_dispatch_npkt_channel_full.read() + 1;
@@ -1744,11 +1739,12 @@ printf("<NIC RX_DISPATCH_SELECT> at cycle %d : channel %d full / skip packet"
 
 #if RX_DISPATCH_DEBUG
 printf("<NIC RX_DISPATCH_SELECT> at cycle %d : write packet to channel %d"
-       " / plen = %d / index = %d\n",
+       " / plen = %d / mac_dst = %x|%x / mac_src_2 = %x\n",
        r_total_cycles.read(),
        (int)k, 
        r_rx_dispatch_nbytes.read() + 8,
-       r_rx_dispatch_data1.read() & 0x0000FFFF );
+       dst_mac_2, dst_mac_4,
+       r_rx_dispatch_data1.read() & 0x0000FFFF );     
 #endif
                         r_rx_dispatch_fsm  = RX_DISPATCH_WRITE_FIRST;
                     }
@@ -1764,10 +1760,11 @@ printf("<NIC RX_DISPATCH_SELECT> at cycle %d : write packet to channel %d"
 
 #if RX_DISPATCH_DEBUG
 printf("<NIC RX_DISPATCH_SELECT> at cycle %d : no active channel / skip packet"
-       " / plen = %d / index = %d\n",
+       " / plen = %d / mac_dst = %x|%x / mac_src_2 = %x\n",
        r_total_cycles.read(),
        r_rx_dispatch_nbytes.read() + 8,
-       r_rx_dispatch_data1.read() & 0x0000FFFF );
+       dst_mac_2, dst_mac_4,
+       r_rx_dispatch_data1.read() & 0x0000FFFF );     
 #endif
                 r_rx_dispatch_fsm = RX_DISPATCH_PACKET_SKIP;
                 r_rx_dispatch_npkt_dst_fail = r_rx_dispatch_npkt_dst_fail.read() + 1;
@@ -2000,16 +1997,31 @@ printf("<NIC RX_DISPATCH_SELECT> at cycle %d : no active channel / skip packet"
             r_tx_dispatch_npkt_received = r_tx_dispatch_npkt_received.read()+1;
             if (plen < 60 ) // pkt too small
             {
+
+#if TX_DISPATCH_DEBUG
+printf("<NIC TX_DISPATCH_GET_PLEN> at cycle %d : packet too small for channel %d / length = %d\n",
+       r_total_cycles.read(), channel , plen );
+#endif
                 r_tx_dispatch_fsm            = TX_DISPATCH_SKIP_PKT;
                 r_tx_dispatch_npkt_too_small = r_tx_dispatch_npkt_too_small.read() + 1;
             }
             else if (plen > 1514) // pkt too long
             {
+
+#if TX_DISPATCH_DEBUG
+printf("<NIC TX_DISPATCH_GET_PLEN> at cycle %d : packet too long for channel %d / length = %d\n",
+       r_total_cycles.read(), channel , plen );
+#endif
                 r_tx_dispatch_fsm            = TX_DISPATCH_SKIP_PKT;
                 r_tx_dispatch_npkt_too_big   = r_tx_dispatch_npkt_too_big.read() + 1;
             }
             else
             {
+
+#if TX_DISPATCH_DEBUG
+printf("<NIC TX_DISPATCH_GET_PLEN> at cycle %d : get packet for channel %d / length = %d\n",
+       r_total_cycles.read(), channel , plen );
+#endif
                 r_tx_dispatch_fsm  = TX_DISPATCH_READ_FIRST;
             }
             break;
@@ -2066,22 +2078,22 @@ printf("<NIC RX_DISPATCH_SELECT> at cycle %d : no active channel / skip packet"
             uint32_t data1         = r_tx_dispatch_data1.read();
             uint32_t data2         = r_tx_chbuf[channel]->data();
 
-            uint32_t mac_dst_4 = ntohl(data0);
-            uint32_t mac_dst_2 = (ntohl(data1) & 0xFFFF0000)>>16;
-            // mac_src_4 and mac_src_2 are swapped here to ease the SRC MAC addr check
-            uint32_t mac_src_4 = (ntohl(data1) & 0x0000FFFF) | 
-                                 ((ntohl(data2) & 0xFFFF0000) >> 16);  // 2 MSB bytes
-            uint32_t mac_src_2 = (ntohl(data2) & 0x0000FFFF);          // 4 LSB bytes 
-
-#ifdef TX_DISPATCH_DEBUG
-printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n", 
-       mac_dst_4, mac_dst_2, mac_src_4, mac_src_2);
-#endif
+            uint32_t mac_dst_2 = ((data0 & 0xFFFF0000) >> 16);
+            uint32_t mac_dst_4 = ((data0 & 0x0000FFFF) << 16) |
+                                 ((data1 & 0xFFFF0000) >> 16) ;
+            uint32_t mac_src_2 =  (data1 & 0x0000FFFF);
+            uint32_t mac_src_4 =   data2;
 
             // check source mac address
             if ( not (mac_src_4 == r_channel_mac_4[channel]) or
                  not (mac_src_2 == r_channel_mac_2[channel]) )
             {
+
+#if TX_DISPATCH_DEBUG
+printf("<NIC TX_DISPATCH_FIFO_SELECT> Illegal MAC_SRC for channel %d"
+       " / mac_dst = %x|%x / mac_src %x|%x\n",
+       channel, mac_dst_2, mac_dst_4, mac_src_2, mac_src_4);
+#endif
                 r_tx_dispatch_fsm = TX_DISPATCH_SKIP_PKT;
                 r_tx_dispatch_npkt_src_fail = r_tx_dispatch_npkt_src_fail.read() + 1;
                 break;
@@ -2089,6 +2101,12 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n",
 
             if( (mac_dst_4 == 0xFFFFFFFF) and (mac_dst_2 == 0x0000FFFF) ) // broadcast
             {
+
+#if TX_DISPATCH_DEBUG
+printf("<NIC TX_DISPATCH_FIFO_SELECT> Broadcast packet for channel %d"
+       " / mac_dst = %x|%x / mac_src %x|%x\n", 
+       channel, mac_dst_2, mac_dst_4, mac_src_2, mac_src_4);
+#endif
                 r_tx_dispatch_npkt_broadcast  = r_tx_dispatch_npkt_broadcast.read() + 1;
                 r_tx_dispatch_write_bp = true;
                 r_tx_dispatch_write_tx = true;
@@ -2110,23 +2128,27 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n",
                 }
 
                 // test bypass condition
-                if ( bypass_found  and r_global_bypass_enable.read() )
+                if ( bypass_found  and r_global_bypass_enable.read() )   // BYPASS => to BP fifo
                 {
-                    if ( bypass_channel == channel ) // DST == SRC => skip packet
-                    {
-                        r_tx_dispatch_npkt_src_fail = r_tx_dispatch_npkt_src_fail.read() + 1;
-                        r_tx_dispatch_fsm = TX_DISPATCH_SKIP_PKT;
-                    }
-                    else                // BYPASS => to BP fifo
-                    {
-                        r_tx_dispatch_npkt_bypass = r_tx_dispatch_npkt_bypass.read() + 1;
-                        r_tx_dispatch_write_tx    = false;
-                        r_tx_dispatch_write_bp    = true;
-                        r_tx_dispatch_fsm         = TX_DISPATCH_WRITE_FIRST;
-                    }
+
+#if TX_DISPATCH_DEBUG
+printf("<NIC TX_DISPATCH_FIFO_SELECT> Bypass packet from channel %d to channel %d"
+       " / mac_dst = %x|%x / mac_src %x|%x\n", 
+       channel, bypass_channel, mac_dst_2, mac_dst_4, mac_src_2, mac_src_4 );
+#endif
+                    r_tx_dispatch_npkt_bypass = r_tx_dispatch_npkt_bypass.read() + 1;
+                    r_tx_dispatch_write_tx    = false;
+                    r_tx_dispatch_write_bp    = true;
+                    r_tx_dispatch_fsm         = TX_DISPATCH_WRITE_FIRST;
                 }
                 else                   // No BYPASS => to TX fifo
                 {
+
+#if TX_DISPATCH_DEBUG
+printf("<NIC TX_DISPATCH_FIFO_SELECT> Send packet for channel %d"
+       " / mac_dst = %x|%x / mac_src %x|%x\n", 
+       channel, mac_dst_2, mac_dst_4, mac_src_2, mac_src_4);
+#endif
                     r_tx_dispatch_npkt_transmit = r_tx_dispatch_npkt_transmit.read() + 1;
                     r_tx_dispatch_write_tx      = true;
                     r_tx_dispatch_write_bp      = false;
@@ -2419,7 +2441,7 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n",
                 tx_fifo_stream_read = true;
                 r_tx_s2g_fsm        = TX_S2G_WRITE_DATA;
                 r_tx_s2g_data       = data & 0xFF;
-                r_tx_s2g_checksum = 0x00000000;      // reset checksum
+                r_tx_s2g_checksum   = 0x00000000;      // reset checksum register
             }
 
             // no data written
@@ -2446,7 +2468,7 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n",
                 r_tx_s2g_data       = data & 0xFF;
 
                 // update CRC
-                r_rx_g2s_checksum   = m_crc.update( r_tx_s2g_checksum.read(),
+                r_tx_s2g_checksum   = m_crc.update( r_tx_s2g_checksum.read(),
                                                     (uint32_t)r_tx_s2g_data.read() );
 
                 r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1;
@@ -2470,7 +2492,7 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> mac_dst %08x %04x / mac_src %08x %04x\n",
             r_backend_tx->put( true, r_tx_s2g_data.read() );
 
             // update CRC
-            r_rx_g2s_checksum   = m_crc.update( r_tx_s2g_checksum.read(),
+            r_tx_s2g_checksum   = m_crc.update( r_tx_s2g_checksum.read(),
                                                 (uint32_t)r_tx_s2g_data.read() );
 
             r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1 + INTER_FRAME_GAP;
@@ -2983,9 +3005,6 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
            r_tx_s2g_checksum("r_tx_s2g_checksum"),
            r_tx_s2g_data("r_tx_s2g_data"),
            r_tx_s2g_index("r_tx_s2g_index"),
-
-//         r_rx_chbuf(soclib::common::alloc_elems<NicRxChbuf>("r_rx_chbuf", channels)),
-//         r_tx_chbuf(soclib::common::alloc_elems<NicTxChbuf>("r_tx_chbuf", channels)),
 
            r_rx_fifo_stream("r_rx_fifo_stream", 2),      // 2 slots of one byte
            r_tx_fifo_stream("r_tx_fifo_stream", 2),      // 2 slots of one byte

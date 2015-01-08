@@ -231,14 +231,8 @@ public:
         bool        odd     = (r_pkt_index & 0x1);
         uint32_t    word    = (r_pkt_index / 2) + 1;
 
-#ifdef SOCLIB_NIC_DEBUG
-        // printf("[NIC][TX_CHBUF][%s] r_pkt_index = %d\n", __func__, r_pkt_index);
-#endif
-
-        if (odd) // odd
-            return (r_cont[r_ptr_cont][word] >> 16);
-        else // even
-            return (r_cont[r_ptr_cont][word] & 0x0000FFFF);
+        if (odd) return (r_cont[r_ptr_cont][word] & 0x0000FFFF);
+        else     return (r_cont[r_ptr_cont][word] >> 16);
     }
     ////////////////////////////////////////////////////////////////////////////
     // This method returns the number of packets in the current container.
@@ -246,21 +240,6 @@ public:
     ////////////////////////////////////////////////////////////////////////////
     uint32_t npkt()
     {
-#ifdef SOCLIB_NIC_DEBUG
-        // Printing the actuel buffer internals values
-        for (size_t i = 0; i < NIC_CONTAINER_SIZE; i++)
-            {
-                if (i != 0)
-                    {
-                        printf(" ");
-                        if ((i % 18) == 0)
-                            printf("\n");
-                    }
-                printf("%08x", r_cont[r_ptr_cont][i]);
-            }
-        printf("\n");
-#endif
-
         return r_cont[r_ptr_cont][0] & 0x0000FFFF;
     }
 
@@ -279,10 +258,8 @@ public:
     /////////////////////////////////////////////////////////////
     bool full( uint32_t container )
     {
-        if (container)
-            return r_full[1];
-        else
-            return r_full[0];
+        if (container) return r_full[1];
+        else           return r_full[0];
     }
 
     /////////////////////////////////////////////////////////////

@@ -124,12 +124,12 @@ class NicRxGmii : public NicRxBackend
         r_plen = 64 + (rand & 0x3FC); 
 
         // store MAC destination
-        r_buffer[0]  = (uint8_t)(DST_MAC_4 >> 24);
-        r_buffer[1]  = (uint8_t)(DST_MAC_4 >> 16);
-        r_buffer[2]  = (uint8_t)(DST_MAC_4 >>  8);
-        r_buffer[3]  = (uint8_t)(DST_MAC_4      );
-        r_buffer[4]  = (uint8_t)(DST_MAC_2 >>  8);
-        r_buffer[5]  = (uint8_t)(DST_MAC_2      );
+        r_buffer[0]  = (uint8_t)(DST_MAC_2 >>  8);
+        r_buffer[1]  = (uint8_t)(DST_MAC_2      );
+        r_buffer[2]  = (uint8_t)(DST_MAC_4 >> 24);
+        r_buffer[3]  = (uint8_t)(DST_MAC_4 >> 16);
+        r_buffer[4]  = (uint8_t)(DST_MAC_4 >>  8);
+        r_buffer[5]  = (uint8_t)(DST_MAC_4      );
 
         // store MAC source
         r_buffer[6]  = (uint8_t)(r_pid>>8); 
