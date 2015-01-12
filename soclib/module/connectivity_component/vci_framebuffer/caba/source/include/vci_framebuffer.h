@@ -45,6 +45,7 @@
 #define SOCLIB_VCI_FRAMEBUFFER_H
 
 #include <systemc>
+#include <sys/time.h>
 #include "vci_target_fsm.h"
 #include "caba_base_module.h"
 #include "mapping_table.h"
@@ -112,6 +113,7 @@ private:
     std::list<soclib::common::Segment>   m_seglist;
 	soclib::common::FbController         m_fb_controller;
 	int                                  m_defered_timeout;
+	struct timeval                       m_last_update;
 
     // Methods
     void transition();

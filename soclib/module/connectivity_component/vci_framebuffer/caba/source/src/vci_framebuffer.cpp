@@ -74,7 +74,30 @@ tmpl(void)::transition()
 	switch ( m_defered_timeout ) 
     {
 	    case 0:   break;
-	    case 1:   m_fb_controller.update();
+	    case 1:
+	    {
+		struct timeval tv, diff_tv;
+		gettimeofday(&tv, NULL);
+		/* compute time since last update */
+		if (tv.tv_usec < m_last_update.tv_usec) {
+			diff_tv.tv_usec =
+			    1000000 + tv.tv_usec - m_last_update.tv_usec;
+			diff_tv.tv_sec = tv.tv_sec - m_last_update.tv_sec - 1;
+		} else {
+			diff_tv.tv_usec = tv.tv_usec - m_last_update.tv_usec;
+			diff_tv.tv_sec = tv.tv_sec - m_last_update.tv_sec;
+		}
+		/* 25 updates per second is enough */
+		if (diff_tv.tv_sec > 1 ||
+		    (diff_tv.tv_sec == 0 && diff_tv.tv_usec > 40000)) {
+			m_fb_controller.update();
+			m_defered_timeout = 0;
+			m_last_update = tv;
+		} else {
+			m_defered_timeout = 30;
+		}
+		break;
+	}
 	    default:  --m_defered_timeout;
 	}
 	
@@ -126,10 +149,13 @@ tmpl(void)::transition()
 
                 r_index = index + 1;
 
-                if ( not p_vci.eop.read() ) r_fsm_state = WRITE_CMD;
-                else                        r_fsm_state = WRITE_RSP;
+                if ( not p_vci.eop.read() )
+			r_fsm_state = WRITE_CMD;
+                else {
+			r_fsm_state = WRITE_RSP;
+			m_defered_timeout  = 30;
+		}
 
-                m_defered_timeout  = 30;
             }
             else if ( not seg_error and (p_vci.cmd.read() == vci_param::CMD_READ) )
             {
@@ -197,9 +223,10 @@ tmpl(void)::transition()
 
             r_index = index + 1;
 
-            if ( p_vci.eop.read() ) r_fsm_state = WRITE_RSP;
-
+            if ( p_vci.eop.read() ) {
+		r_fsm_state = WRITE_RSP;
 	        m_defered_timeout = 30;
+	    }
             break;
         }
         ///////////////
