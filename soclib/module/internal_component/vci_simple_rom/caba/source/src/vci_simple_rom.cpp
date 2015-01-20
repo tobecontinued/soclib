@@ -176,13 +176,15 @@ tmpl(void)::transition()
                 assert( p_vci.eop.read() and
                 "VCI_SIMPLE_ROM ERROR : The VCI command packet must be 1 flit");
 
-                for ( size_t index = 0 ; index<m_nbseg  && error ; ++index) 
+                size_t index;
+                for ( index = 0 ; index < m_nbseg ; ++index)
                 {
                     if ( (m_seg[index]->contains(p_vci.address.read())) and
                          (m_seg[index]->contains(p_vci.address.read()+p_vci.plen.read()-1)) ) 
                     {
                         error = false;
-                        r_seg_index  = index;
+                        r_seg_index = index;
+                        break;
                     }
                 } 
 
@@ -199,7 +201,8 @@ tmpl(void)::transition()
                     r_trdid      = p_vci.trdid.read();
                     r_pktid      = p_vci.pktid.read();
                     r_rom_index  = (size_t)((p_vci.address.read() -
-                                            m_seg[r_seg_index.read()]->baseAddress())>>2);
+                                             m_seg[index]->baseAddress())>>2);
+
 
                     if ( vci_param::B == 8 )   // 64 bits data width
                     {
@@ -219,6 +222,14 @@ tmpl(void)::transition()
                         r_flit_count = plen>>2;
                     }
                 }
+
+#ifdef SOCLIB_MODULE_DEBUG
+                std::cout << "<" << name() << " FSM_IDLE>"
+                    << " address = " << std::hex << p_vci.address.read()
+                    << " seg_index = " << std::dec << index
+                    << " seg_base = " << std::hex << m_seg[index]->baseAddress()
+                    << std::dec << std::endl;
+#endif
             }
             break;
         }
@@ -230,6 +241,14 @@ tmpl(void)::transition()
                 r_flit_count = r_flit_count - 1;
                 r_rom_index  = r_rom_index.read() + (vci_param::B>>2);
                 if ( r_flit_count.read() == 1)   r_fsm_state = FSM_IDLE;
+
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << "<" << name() << " FSM_RSP_READ>"
+                      << " flit_count = " << r_flit_count.read()
+                      << " / seg_index = " << r_seg_index.read()
+                      << " / rom_index = " << std::hex << r_rom_index.read()
+                      << std::dec << std::endl;
+#endif
             }
             break;
         }
