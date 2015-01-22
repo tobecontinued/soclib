@@ -403,7 +403,7 @@ tmpl(void)::print_trace( size_t channel )
    
     std::cout << "XICU " << name() << std::hex
               << " / HWI_MASK = " << r_msk_hwi[channel]
-              << " / SWI_MASK = " << r_msk_wti[channel]
+              << " / WTI_MASK = " << r_msk_wti[channel]
               << " / PTI_MASK = " << r_msk_pti[channel] 
               << " / HWI = " << r_hwi_pending
               << " / WTI = " << r_wti_pending
