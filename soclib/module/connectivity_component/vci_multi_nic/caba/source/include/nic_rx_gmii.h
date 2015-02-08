@@ -140,7 +140,7 @@ class NicRxGmii : public NicRxBackend
         r_buffer[11] = 0;
 
         // store payload
-        for ( n = 12 ; n < (r_plen - 4 ) ; n++ ) r_buffer[n] = 0xAA;
+        for ( n = 12 ; n < (r_plen - 4 ) ; n++ ) r_buffer[n] = 0xBE;
 
         // compute checksum
         uint32_t checksum = 0;
