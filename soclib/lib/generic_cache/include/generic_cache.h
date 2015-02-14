@@ -224,6 +224,7 @@ public:
         const tag_t       tag  = m_z[ad];
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
+
         // [memcheck]
         *dt = 0;
 
@@ -330,9 +331,9 @@ public:
         const size_t      set  = m_y[ad];
         const size_t      word = m_x[ad];
 
-        *dt_next = 0; // To avoid a gcc warning
         // [memcheck]
         *dt = 0;
+        *dt_next = 0; 
         *selway = 0;
         *selset = 0;
         *selword = 0;
@@ -609,12 +610,11 @@ public:
                         data_t* buf, 
                         addr_t* victim )
     {
+        // [memcheck]
+        *victim = 0;
+
         size_t set, way;
         bool   cleanup = victim_select(ad, victim, &way, &set);
-
-        // [memcheck]
-        *buf = 0;
-        *victim = 0;
 
         victim_update_tag (ad, way, set);
 
@@ -638,11 +638,12 @@ public:
     {
         bool   found   = false;
         bool   cleanup = false;
+
         *set = m_y[ad];
-        *way = 0;
 
         // [memcheck]
         *victim = 0;
+        *way = 0;
 
         // Search and invalid slot
         for ( size_t _way = 0 ; _way < m_ways && !found ; _way++ )
@@ -697,9 +698,6 @@ public:
                        size_t 	set, 
                        data_t* 	buf)
     {
-        // [memcheck]
-        *buf = 0;
-
         tag_t tag = m_z[ad];
 
         cache_tag(way, set) = tag;
