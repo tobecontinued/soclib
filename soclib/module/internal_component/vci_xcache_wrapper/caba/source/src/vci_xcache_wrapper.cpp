@@ -1140,15 +1140,15 @@ tmpl(void)::transition()
             {
                 if ( r_vci_rsp_fifo_ins.wok() )
                 {
-                    assert( (r_vci_rsp_cpt.read() < m_dcache_words) and
-                    "The VCI response packet for data miss is too long");
+                    assert( (r_vci_rsp_cpt.read() < m_icache_words) and
+                    "The VCI response packet for instruction miss is too long");
                     r_vci_rsp_cpt              = r_vci_rsp_cpt.read() + 1;
                     vci_rsp_fifo_ins_put       = true,
                     vci_rsp_fifo_ins_data      = p_vci.rdata.read();
                     if ( p_vci.reop.read() )
                     {
-                        assert( (r_vci_rsp_cpt.read() == m_dcache_words - 1) and
-                        "The VCI response packet for data miss is too short");
+                        assert( (r_vci_rsp_cpt.read() == (m_icache_words - 1)) and
+                        "The VCI response packet for instruction miss is too short");
                         r_vci_rsp_fsm     = RSP_IDLE;
                     }
                 }
