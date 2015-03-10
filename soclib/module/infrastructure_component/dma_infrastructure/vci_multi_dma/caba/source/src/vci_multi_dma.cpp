@@ -49,10 +49,10 @@
 //
 //  For each channel, the DMA_LEN register is used as status register.
 //  A read command returns the channel_fsm state value. Relevant values are
-//  - DMA_DONE        : 0
+//  - DMA_SUCCESS     : 0
 //  - DMA_IDLE        : 2
-//  - DMA_READ_ERROR  : 1
-//  - DMA_WRITE_ERROR : 3
+//  - DMA_ERROR_READ  : 1
+//  - DMA_ERROR_WRITE : 3
 //  - DMA_BUSY        : >3
 // 
 //  There is one private IRQ line for each channel.
@@ -519,7 +519,7 @@ tmpl(void)::transition()
 
             for( size_t n = 0 ; (n < m_channels) and not_found ; n++ )
             {
-                size_t k = (r_cmd_index.read() + n) % m_channels;
+                size_t k = (r_cmd_index.read() + n + 1) % m_channels;
                 if ( r_channel_fsm[k] == CHANNEL_READ_REQ_FIRST )
                 { 
                     not_found    = false;
@@ -796,14 +796,17 @@ tmpl(void)::genMoore()
         }
     } // end switch rsp_fsm
 
-    /////// IRQ ports //////////
+    /////// IRQ ports //////////////////////////
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-	p_irq[k] = (r_channel_fsm[k] == CHANNEL_DONE) || 
-               (r_channel_fsm[k] == CHANNEL_READ_ERROR) ||
-               (r_channel_fsm[k] == CHANNEL_WRITE_ERROR);
+
+        bool irq = ( r_channel_fsm[k].read() == CHANNEL_DONE )       || 
+                   ( r_channel_fsm[k].read() == CHANNEL_READ_ERROR ) ||
+                   ( r_channel_fsm[k].read() == CHANNEL_WRITE_ERROR );
+
+	    p_irq[k] = irq;
     }
-}
+}  // end genMoore()
 
 /////////////////////////
 tmpl(void)::print_trace()
