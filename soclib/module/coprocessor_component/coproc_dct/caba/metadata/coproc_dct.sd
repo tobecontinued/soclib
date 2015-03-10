@@ -3,7 +3,7 @@
 
 Module('caba:coproc_dct',
 
-	   classname = 'dsx::caba::CoprocDct'
+	   classname = 'dsx::caba::CoprocDct',
 
 	   header_files = [ "../source/include/coproc_dct.h" ],
 	   implementation_files = [ "../source/src/coproc_dct.cpp" ],
