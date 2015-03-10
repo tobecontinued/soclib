@@ -78,8 +78,8 @@
 // For each channel, the software addressable registers are:
 // - CHANNEL_BUFFER_LSB[k]     data buffer physical address 32 LSB bits    (MWMR or DMA)
 // - CHANNEL_BUFFER_MSB[k]     data buffer physical address extend bits    (MWMR or DMA)
-// - CHANNEL_DESC_LSB[k]       channel status physical address 32 LSB bits (MWMR   only)
-// - CHANNEL_DESC_MSB[k]       channel status physical address extend bits (MWMR   only)
+// - CHANNEL_MWMR_LSB[k]       channel status physical address 32 LSB bits (MWMR   only)
+// - CHANNEL_MWMR_MSB[k]       channel status physical address extend bits (MWMR   only)
 // - CHANNEL_LOCK_LSB[k]       channel lock physical address 32 LSB bits   (MWMR   only)
 // - CHANNEL_LOCK_MSB[k]       channel lock physical address extend bits   (MWMR   only)
 // - CHANNEL_WAY[k]            channel direction (TO_COPROC / FROM_COPROC) (MWMR or DMA)
@@ -241,11 +241,11 @@ tmpl(void)::transition()
                     {
 		                r_tgt_data = (uint32_t)(r_channel[k-1].buffer_paddr>>32); 
                     }
-                    else if ( cell == CHANNEL_DESC_LSB )
+                    else if ( cell == CHANNEL_MWMR_LSB )
                     {
 		                r_tgt_data = (uint32_t)r_channel[k-1].desc_paddr; 
                     }
-                    else if ( cell == CHANNEL_DESC_MSB )
+                    else if ( cell == CHANNEL_MWMR_MSB )
                     {
 		                r_tgt_data = (uint32_t)(r_channel[k-1].desc_paddr>>32); 
                     }
@@ -312,11 +312,11 @@ tmpl(void)::transition()
 		                r_channel[k-1].buffer_paddr = r_channel[k-1].buffer_paddr +
                                                       (((uint64_t)wdata)<<32);
                     }
-                    else if ( cell == CHANNEL_DESC_LSB )
+                    else if ( cell == CHANNEL_MWMR_LSB )
                     {
 		                r_channel[k-1].desc_paddr = (uint64_t)wdata;
                     }
-                    else if ( cell == CHANNEL_DESC_MSB )
+                    else if ( cell == CHANNEL_MWMR_MSB )
                     {
 		                r_channel[k-1].desc_paddr = r_channel[k-1].desc_paddr +
                                                       (((uint64_t)wdata)<<32);

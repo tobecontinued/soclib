@@ -32,8 +32,8 @@ enum MwmrDmaRegisters
 {
     CHANNEL_BUFFER_LSB   = 0,     // Data Buffer paddr 32 LSB bits
     CHANNEL_BUFFER_MSB   = 1,     // Data Buffer paddr extension
-    CHANNEL_DESC_LSB     = 2,     // MWMR descriptor paddr 32 LSB bits
-    CHANNEL_DESC_MSB     = 3,     // MWMR descriptor padr extension
+    CHANNEL_MWMR_LSB     = 2,     // MWMR descriptor paddr 32 LSB bits
+    CHANNEL_MWMR_MSB     = 3,     // MWMR descriptor padr extension
     CHANNEL_LOCK_LSB     = 4,     // MWMR lock paddr 32 LSB bits
     CHANNEL_LOCK_MSB     = 5,     // MWMR lock paddr extension
     CHANNEL_WAY          = 6,     // TO_COPROC / FROMCOPROC        (Read-only)
