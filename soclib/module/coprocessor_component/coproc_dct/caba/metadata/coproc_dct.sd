@@ -15,7 +15,7 @@ Module('caba:coproc_dct',
                  auto = 'resetn' ),
            Port( 'to_coproc_input', 'p_in',
                  word_t = 'uint32_t', cmd_t = 'uint8_t' ),
-           Port( 'from_coproc_output', p_out',
+           Port( 'from_coproc_output', 'p_out',
                  word_t = 'uint32_t', cmd_t = 'uint8_t' ),
 	   ],
 
