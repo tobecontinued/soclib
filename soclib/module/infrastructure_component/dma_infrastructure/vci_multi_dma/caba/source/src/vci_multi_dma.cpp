@@ -92,6 +92,7 @@
 //    r_channel_last[k]          last read/write DMA transaction
 //    r_channel_done[k]          transfer completion signaled by RSP FSM
 //    r_channel_error[k]         error signaled by RSP FSM
+//    r_channel_no_irq[k]        IRQ disabled when true
 //    r_channel_buf[k][word]	 local burst buffer 
 ///////////////////////////////////i///////////////////////////////////////////////
 
@@ -121,6 +122,7 @@ tmpl(void)::transition()
             r_channel_activate[k] = false;
             r_channel_done[k] 	  = false;
             r_channel_error[k] 	  = false;
+            r_channel_no_irq[k]   = false;
         }
         return;
     }
@@ -167,7 +169,7 @@ tmpl(void)::transition()
                 assert( p_vci_target.eop.read() and
                 "VCI_MULTI_DMA error : A configuration or status request mut be one flit");
 
-                //////////////////////
+                //////////////////////////////////////////////////////////
 	            if ( (cell == DMA_SRC) and (cmd == vci_param::CMD_WRITE) )
                 {
                     assert( !r_channel_activate[channel] and
@@ -185,7 +187,7 @@ tmpl(void)::transition()
                     r_tgt_fsm = TGT_READ;
                 }
 
-                ///////////////////////////////
+                ///////////////////////////////////////////////////////////////////
 	            else if ( (cell == DMA_SRC_EXT) and (cmd == vci_param::CMD_WRITE) )
                 {
                     assert( !r_channel_activate[channel] and
@@ -201,7 +203,7 @@ tmpl(void)::transition()
                     r_tgt_fsm = TGT_READ;
                 }
 
-                ///////////////////////////
+                ///////////////////////////////////////////////////////////////
                 else if ( (cell == DMA_DST) and (cmd == vci_param::CMD_WRITE) )
                 {
                     assert( !r_channel_activate[channel] and
@@ -219,7 +221,7 @@ tmpl(void)::transition()
                     r_tgt_fsm = TGT_READ;
                 }
 
-                ///////////////////////////////
+                ///////////////////////////////////////////////////////////////////
 	            else if ( (cell == DMA_DST_EXT) and (cmd == vci_param::CMD_WRITE) )
                 {
                     assert( !r_channel_activate[channel] and
@@ -235,7 +237,7 @@ tmpl(void)::transition()
                     r_tgt_fsm = TGT_READ;
                 }
 
-                //////////////////////////
+                ///////////////////////////////////////////////////////////////
                 else if ( (cell == DMA_LEN) and (cmd == vci_param::CMD_WRITE) )
                 {
                     assert( !r_channel_activate[channel] and
@@ -253,19 +255,25 @@ tmpl(void)::transition()
                     r_tgt_fsm = TGT_READ;
                 }
 
-                /////////////////////////////
+                /////////////////////////////////////////////////////////////////
                 else if ( (cell == DMA_RESET) and (cmd == vci_param::CMD_WRITE) )
                 {
                     r_channel_activate[channel] = false;
                     r_tgt_fsm = TGT_WRITE;
                 }
 
-                ////////////////////////////////////
+                ////////////////////////////////////////////////////////////////////////
                 else if ( (cell == DMA_IRQ_DISABLED) and (cmd == vci_param::CMD_WRITE) )
                 {
-                   // No action : this is just for compatibility with previous vci_dma 
+                    r_channel_no_irq[channel] = (wdata != 0);
                     r_tgt_fsm = TGT_WRITE;
                 }
+                else if ( (cell == DMA_IRQ_DISABLED) and (cmd == vci_param::CMD_READ) )
+                {
+                    r_rdata = r_channel_no_irq[channel].read();
+                    r_tgt_fsm = TGT_READ;
+                }
+                /////
                 else
                 {
                     r_tgt_fsm = TGT_ERROR;
@@ -800,11 +808,11 @@ tmpl(void)::genMoore()
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
 
-        bool irq = ( r_channel_fsm[k].read() == CHANNEL_DONE )       || 
-                   ( r_channel_fsm[k].read() == CHANNEL_READ_ERROR ) ||
+        bool irq = ( r_channel_fsm[k].read() == CHANNEL_DONE )       or 
+                   ( r_channel_fsm[k].read() == CHANNEL_READ_ERROR ) or
                    ( r_channel_fsm[k].read() == CHANNEL_WRITE_ERROR );
 
-	    p_irq[k] = irq;
+	    p_irq[k] = irq and not r_channel_no_irq[k];
     }
 }  // end genMoore()
 
@@ -813,10 +821,10 @@ tmpl(void)::print_trace()
 {
     const char* tgt_state_str[] = 
     {
-        "  TGT_IDLE ",
-        "  TGT_READ ",
-        "  TGT_WRITE",
-        "  TGT_ERROR"
+        "TGT_IDLE ",
+        "TGT_READ ",
+        "TGT_WRITE",
+        "TGT_ERROR"
     };
     const char* cmd_state_str[] = 
     {
@@ -832,26 +840,26 @@ tmpl(void)::print_trace()
     };
     const char* channel_state_str[] = 
     {
-        "  CHANNEL_DONE",
-        "  CHANNEL_READ_ERROR",
-        "  CHANNEL_IDLE",
-        "  CHANNEL_WRITE_ERROR",
-        "  CHANNEL_READ_START",
-        "  CHANNEL_READ_REQ_FIRST",
-        "  CHANNEL_READ_WAIT_FIRST",
-        "  CHANNEL_READ_REQ_SECOND",
-        "  CHANNEL_READ_WAIT_SECOND",
-        "  CHANNEL_WRITE_START",
-        "  CHANNEL_WRITE_REQ_FIRST",
-        "  CHANNEL_WRITE_WAIT_FIRST",
-        "  CHANNEL_WRITE_REQ_SECOND",
-        "  CHANNEL_WRITE_WAIT_SECOND"
+        "CHANNEL_DONE",
+        "CHANNEL_READ_ERROR",
+        "CHANNEL_IDLE",
+        "CHANNEL_WRITE_ERROR",
+        "CHANNEL_READ_START",
+        "CHANNEL_READ_REQ_FIRST",
+        "CHANNEL_READ_WAIT_FIRST",
+        "CHANNEL_READ_REQ_SECOND",
+        "CHANNEL_READ_WAIT_SECOND",
+        "CHANNEL_WRITE_START",
+        "CHANNEL_WRITE_REQ_FIRST",
+        "CHANNEL_WRITE_WAIT_FIRST",
+        "CHANNEL_WRITE_REQ_SECOND",
+        "CHANNEL_WRITE_WAIT_SECOND"
     };
 
     std::cout << "MULTI_DMA " << name() << " : " << tgt_state_str[r_tgt_fsm.read()] << std::endl;
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        std::cout << "  CHANNEL " << k << std::hex
+        std::cout << "CHANNEL " << k << std::hex
                   << " : active = " << r_channel_activate[k].read() 
                   << " : state = " << channel_state_str[r_channel_fsm[k].read()]
                   << " / src = " << r_channel_src_addr[k].read()
@@ -908,6 +916,8 @@ tmpl(/**/)::VciMultiDma( sc_core::sc_module_name 		        name,
                     ("r_channel_last", channels)),
           r_channel_error(soclib::common::alloc_elems<sc_signal<bool> >
                     ("r_channel_error", channels)),
+          r_channel_no_irq(soclib::common::alloc_elems<sc_signal<bool> >
+                    ("r_channel_no_irq", channels)),
           r_cmd_fsm("r_cmd_fsm"),
           r_cmd_count("r_cmd_count"),
           r_cmd_index("r_cmd_index"),

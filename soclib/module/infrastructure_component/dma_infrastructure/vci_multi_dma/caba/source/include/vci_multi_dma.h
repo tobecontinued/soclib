@@ -70,6 +70,7 @@ private:
     sc_signal<bool>*				        r_channel_last;          // last transaction [k]
     sc_signal<bool>*				        r_channel_done;          // transfer completed [k]
     sc_signal<bool>*				        r_channel_error;         // VCI error signaled [k]
+    sc_signal<bool>*                        r_channel_no_irq;        // No IRQ when true
 
     sc_signal<int>				            r_cmd_fsm;
     sc_signal<size_t>				        r_cmd_count;	         // bytes counter for a command
