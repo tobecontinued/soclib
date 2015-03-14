@@ -396,19 +396,28 @@ tmpl(void)::transition()
 }
 
 //////////////////////////////////////////
-tmpl(void)::print_trace( size_t channel )
+tmpl(void)::print_trace( size_t detail )
 {
-    assert( (channel < m_irq_count) and
-    "ERROR in XICU print_trace() : channel larger than proc number");
-   
     std::cout << "XICU " << name() << std::hex
-              << " / HWI_MASK = " << r_msk_hwi[channel]
-              << " / WTI_MASK = " << r_msk_wti[channel]
-              << " / PTI_MASK = " << r_msk_pti[channel] 
               << " / HWI = " << r_hwi_pending
               << " / WTI = " << r_wti_pending
               << " / PTI = " << r_pti_pending
               << std::endl;
+
+    if ( detail )
+    {
+        for ( size_t k = 0 ; k < m_irq_count ; k++ )
+        {
+            if ( r_msk_hwi[k] or r_msk_wti[k] or r_msk_pti[k] )
+            {
+                std::cout << "  - channel " << k
+                          << " : HWI_MASK = " << r_msk_hwi[k]
+                          << " / WTI_MASK = " << r_msk_wti[k]
+                          << " / PTI_MASK = " << r_msk_pti[k]
+                          << std::endl;
+            }
+        }
+    } 
 }
 
 ///////////////////////
@@ -423,9 +432,6 @@ tmpl(void)::genMoore()
                  (r_msk_wti[i] & r_wti_pending) ||
                  (r_msk_hwi[i] & r_hwi_pending);
 
-#if SOCLIB_MODULE_DEBUG
-if ( b ) std::cout << "p_irq[" << i << "] = " << b << std::endl;
-#endif
         p_irq[i] = b;
     }
 }
