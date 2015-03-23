@@ -1564,7 +1564,7 @@ printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / receiv
             {
                 rx_fifo_multi_wdata 	= (uint32_t)(r_rx_des_data[0].read() << 24) |
                                           (uint32_t)(r_rx_des_data[1].read() << 16) |
-                                          (uint32_t)(r_rx_des_data[3].read() << 8 ) ;
+                                          (uint32_t)(r_rx_des_data[2].read() << 8 ) ;
             }
             else if ( r_rx_des_padding.read() == 2 )
             {
