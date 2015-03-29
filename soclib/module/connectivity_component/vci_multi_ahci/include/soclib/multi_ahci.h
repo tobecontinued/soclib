@@ -24,6 +24,10 @@
 #define MULTI_HBA_REGS_H
 
 
+/////////////////////////////////////////////////////////////////////////////
+// Addressable Registers (for each channel)
+/////////////////////////////////////////////////////////////////////////////
+
 enum SoclibMultiAhciRegisters 
 {
   HBA_PXCLB            = 0,         // command list base address 32 LSB bits
@@ -35,7 +39,41 @@ enum SoclibMultiAhciRegisters
   HBA_SPAN             = 0x400,     // 4 Kbytes per channel => 1024 slots
 };
 
-/////// command table header  //////////////////////
+/////////////////////////////////////////////////////////////////////////////
+// C structures for Command List
+/////////////////////////////////////////////////////////////////////////////
+
+/////// command descriptor  ///////////////////////
+typedef struct hba_cmd_desc_s  // size = 16 bytes
+{
+	// WORD 0
+    unsigned char       flag[2];    // W in bit 6 of flag[0]
+    unsigned char       prdtl[2];	// Number of buffers
+
+    // WORD 1
+    unsigned int        prdbc;		// Number of bytes actually transfered
+
+    // WORD 2, WORD 3
+    unsigned int        ctba;		// Command Table base address 32 LSB bits
+    unsigned int        ctbau;		// Command Table base address 32 MSB bits
+
+} hba_cmd_desc_t;
+
+
+/////////////////////////////////////////////////////////////////////////////
+// C structures for Command Table
+/////////////////////////////////////////////////////////////////////////////
+
+/////// command table //////////////////////////////
+typedef struct hba_cmd_table_s  // size = 4 Kbytes
+{
+
+    hba_cmd_header_t   header;      // contains LBA
+    hba_cmd_buffer_t   buffer[248]; // 248 buffers max
+
+} hba_cmd_table_t;
+
+/////// command header  ///////////////////////////
 typedef struct hba_cmd_header_s // size = 128 bytes
 {
     // WORD 0
@@ -58,48 +96,15 @@ typedef struct hba_cmd_header_s // size = 128 bytes
 
 } hba_cmd_header_t;
 
-/////// command table entry  //////////////////////
-typedef struct hba_cmd_entry_s  // size = 16 bytes
+/////// command buffer  //////////////////////////
+typedef struct hba_cmd_buffer_s // size = 16 bytes
 {
     unsigned int        dba;	    // Buffer base address 32 LSB bits
     unsigned int        dbau;	    // Buffer base address 32 MSB bits
     unsigned int        res0;	    // reserved
     unsigned int        dbc;	    // Buffer byte count
 
-} hba_cmd_entry_t;
-
-/////// command table //////////////////////////////
-typedef struct hba_cmd_table_s  // size = 256 bytes
-{
-
-    hba_cmd_header_t   header;     // contains LBA
-    hba_cmd_entry_t    entry[248]; // 248 buffers max
-
-} hba_cmd_table_t;
-
-/////// command descriptor  ///////////////////////
-typedef struct hba_cmd_desc_s  // size = 16 bytes
-{
-	// WORD 0
-    unsigned char       flag[2];    // W in bit 6 of flag[0]
-    unsigned char       prdtl[2];	// Number of buffers
-
-    // WORD 1
-    unsigned int        prdbc;		// Number of bytes actually transfered
-
-    // WORD 2, WORD 3
-    unsigned int        ctba;		// Command Table base address 32 LSB bits
-    unsigned int        ctbau;		// Command Table base address 32 MSB bits
-
-} hba_cmd_desc_t;
-
-/////// command list //////////////////////////////
-typedef struct hba_cmd_list_s  // size = 512 bytes
-{
-    // 32 command descriptors
-    hba_cmd_desc_t desc[32];
-
-} hba_cmd_list_t;
+} hba_cmd_buffer_t;
 
 #endif
 
