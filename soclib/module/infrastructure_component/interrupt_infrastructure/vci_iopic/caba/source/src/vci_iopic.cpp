@@ -356,8 +356,10 @@ tmpl(void)::print_trace()
 
     for (unsigned i = 0; i < m_channels ; i++)
     {
-        if ( r_hwi[i].read() ) 
-        std::cout << "  - HWI = " << std::dec << i
+        if ( r_hwi[i].read() or r_mask[i].read() ) 
+        std::cout << "  - HWI " << std::dec << i 
+                  << " : mask = " << r_mask[i].read()
+                  << " / active = " << r_hwi[i].read()
                   << " / address = " << std::hex << r_address[i].read()
                   << " / extend  = " << r_extend[i].read() << std::endl;
     }
