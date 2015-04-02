@@ -49,8 +49,10 @@
 #include <stdint.h>
 #include <iostream>
 #include <fcntl.h>
+#include <assert.h>
 #include "alloc_elems.h"
-#include "../include/vci_multi_ahci.h"
+#include "vci_multi_ahci.h"
+#include "multi_ahci.h"
 
 namespace soclib { namespace caba {
 
@@ -93,12 +95,21 @@ tmpl(void)::transition()
             uint32_t pxci = r_channel_pxci[k].read();
             if ( pxci != 0 and r_channel_run[k].read() )  // Command List not empty
             {
-                unsigned int cmd_id = r_channel_slot[k].read();
+                // select a command with round-robin priority
+                // last served command has the lowest priority
+                unsigned int cmd_id;
 
-                assert( (pxci & (1 << cmd_id)) and
-                "VCI_MULTI_AHCI ERROR: illegal value in PXCI register" );
+                for ( size_t n = 0 ; n < 32 ; n++ )
+                {
+                    cmd_id = (r_channel_slot[k].read() + n + 1) % 32;
+                    if ( pxci & (1 << cmd_id) )
+                    {
+                        r_channel_slot[k] = cmd_id;
+                        break;
+                    }
+                }
 
-                // prepare VCI read for Command Descriptor
+                // request VCI read for Command Descriptor
                 r_channel_address[k] = ( ((uint64_t)(r_channel_pxclbu[k].read()))<<32 | 
                                           r_channel_pxclb[k].read() )
                                           + cmd_id * sizeof(hba_cmd_desc_t);
@@ -134,12 +145,9 @@ tmpl(void)::transition()
                     r_channel_write[k] = desc->flag[0] & 0x40;
                     r_channel_ctba[k]  = (((uint64_t)desc->ctbau)<<32) | desc->ctba;
                     
-                    assert( ((desc->ctba & 0x7f) == 0) and 
-                    "VCI_MULTI_AHCI ERROR: the ctba address must be 128-bytes aligned ");
-                    
                     // prepare VCI read for Command Table Header
                     r_channel_address[k] = (((uint64_t)desc->ctbau) <<32) | desc->ctba;
-                    r_channel_length[k]  = 12;   // only 3 first words are used
+                    r_channel_length[k]  = 16;  
                     r_channel_word[k]    = 0;
                     r_channel_fsm[k]     = CHANNEL_READ_LBA_CMD;
                 }
@@ -184,11 +192,11 @@ tmpl(void)::transition()
         case CHANNEL_READ_BUF_DESC_START:   // entering loop on buffer descriptors
         {
             // prepare VCI read for buffer descriptor read
-            r_channel_address[k] = r_channel_ctba[k].read() + (sizeof(hba_cmd_header_t)>>2) +
-                                   (sizeof(hba_cmd_entry_t)>>2)*r_channel_bufid[k].read();
-            r_channel_length[k]  =  sizeof(hba_cmd_entry_t);
-            r_channel_word[k]    =  0;
-            r_channel_fsm[k]     =  CHANNEL_READ_BUF_DESC_CMD;
+            r_channel_address[k] = r_channel_ctba[k].read() + sizeof(hba_cmd_header_t) +
+                                   sizeof(hba_cmd_buffer_t)*r_channel_bufid[k].read();
+            r_channel_length[k]  = sizeof(hba_cmd_buffer_t);
+            r_channel_word[k]    = 0;
+            r_channel_fsm[k]     = CHANNEL_READ_BUF_DESC_CMD;
             break;
         }
         ///////////////////////////////
@@ -211,16 +219,16 @@ tmpl(void)::transition()
                 }
                 else
                 {
-                    hba_cmd_entry_t* entry = (hba_cmd_entry_t*)r_channel_buffer[k];
+                    hba_cmd_buffer_t* pbuf = (hba_cmd_buffer_t*)r_channel_buffer[k];
 
-                    assert( ((entry->dba & ((m_words_per_block<<2)-1)) == 0) and 
-                    "VCI_MULTI_AHCI ERROR: the buffer address must be block aligned");
+                    assert( ((pbuf->dba & ((m_words_per_burst<<2)-1)) == 0) and 
+                    "VCI_MULTI_AHCI ERROR: buffer address not burst aligned");
 
-                    assert( ((entry->dbc & ((m_words_per_block<<2)-1)) == 0) and 
-                    "VCI_MULTI_AHCI ERROR: the buffer length must be block aligned");
+                    assert( ((pbuf->dbc & ((m_words_per_block<<2)-1)) == 0) and 
+                    "VCI_MULTI_AHCI ERROR: buffer length not multiple of block size");
 
-                    r_channel_dba[k]    = (((uint64_t)entry->dbau)<<32) | entry->dba;
-                    r_channel_dbc[k]    = entry->dbc;
+                    r_channel_dba[k]    = (((uint64_t)pbuf->dbau)<<32) | pbuf->dba;
+                    r_channel_dbc[k]    = pbuf->dbc;
                     r_channel_bursts[k] = 0;
                     r_channel_blocks[k] = 0;    
                     r_channel_word[k]   = 0;  
@@ -279,13 +287,13 @@ tmpl(void)::transition()
             {
                 r_channel_latency[k] = m_latency;
 
-                uint64_t seek = r_channel_lba[k].read() + 
-                                (r_channel_dbc[k].read() / (m_words_per_block<<2));
+                uint64_t seek = (r_channel_lba[k].read() + r_channel_blocks[k].read()) *
+                                (m_words_per_block<<2) ;
 
-                assert( (::lseek( m_fd[k], seek, SEEK_SET ) < 0 ) and
+                assert( (::lseek( m_fd[k], seek, SEEK_SET ) >= 0 ) and
                 "VCI_MULTI_AHCI ERROR: cannot access virtual disk");
 
-                assert( (::write( m_fd[k], r_channel_buffer[k], m_words_per_block<<2) < 0 ) and
+                assert( (::write( m_fd[k], r_channel_buffer[k], m_words_per_block<<2) >= 0 ) and
                 "VCI_MULTI_AHCI ERROR: cannot write on virtual disk");
 
                 if ( (r_channel_blocks[k].read()+1)*(m_words_per_block<<2) == r_channel_dbc[k] )
@@ -330,13 +338,15 @@ tmpl(void)::transition()
             {
                 r_channel_latency[k] = m_latency;
 
-                uint64_t seek = r_channel_lba[k].read() + 
-                                (r_channel_dbc[k].read() / (m_words_per_block<<2));
+                uint64_t seek = (r_channel_lba[k].read() + r_channel_blocks[k].read()) *
+                                (m_words_per_block<<2) ;
 
-                assert( (::lseek( m_fd[k], seek, SEEK_SET ) < 0 ) and
+                assert( ( ::lseek( m_fd[k], seek, SEEK_SET ) >= 0 ) and
                 "VCI_MULTI_AHCI ERROR: cannot access virtual disk");
 
-                assert( (::read( m_fd[k], r_channel_buffer[k], m_words_per_block<<2) < 0 ) and
+                assert( ( ::read( m_fd[k], 
+                                  r_channel_buffer[k],
+                                  m_words_per_block<<2 ) >= 0 ) and
                 "VCI_MULTI_AHCI ERROR: cannot read from virtual disk");
 
                 r_channel_word[k] = 0;  
@@ -369,7 +379,7 @@ tmpl(void)::transition()
         ///////////////////////
         case CHANNEL_WRITE_RSP:    // wait response from rsp_fsm for a VCI burst write
         {
-            if ( r_channel_done[k] ) 
+            if ( r_channel_done[k] )  // burst completed
             {
                 if ( r_channel_error[k] )
                 {
@@ -377,10 +387,10 @@ tmpl(void)::transition()
                 }
                 else 
                 {
-                    if  ( r_channel_bursts[k].read() == (m_bursts_per_block-1) )
+                    if  ( r_channel_bursts[k].read() == (m_bursts_per_block-1) )  // last burst
                     {
-                        if ((r_channel_blocks[k].read()+1)*m_words_per_block*vci_param::B ==
-                             r_channel_dbc[k].read() )
+                        if ( (r_channel_blocks[k].read()+1) * (m_words_per_block<<2)
+                                 == r_channel_dbc[k].read() )
                         {
                             r_channel_fsm[k] = CHANNEL_TEST_LENGTH;
                         }
@@ -408,22 +418,24 @@ tmpl(void)::transition()
         {
             if ( not p_vci_target.cmdval.read() )  // to avoid conflict with soft access
             {
-                r_channel_pxis[k] = 0x1;
-
                 uint32_t cmd_id   = r_channel_slot[k].read();
                 r_channel_slot[k] = (cmd_id + 1) % 32;
                 r_channel_pxci[k] = r_channel_pxci[k].read() & (~(1<<cmd_id));
+                r_channel_pxis[k] = 0x1;
                 r_channel_fsm[k]  = CHANNEL_IDLE;
             }
             break;
         }
         ///////////////////
         case CHANNEL_ERROR:   // set PXIS with faulty cmd_id and buf_id
+                              // and reset faulty command in PXCI
         {
             if ( not p_vci_target.cmdval.read() )  // to avoid conflict with soft access
             {
                 uint32_t cmd_id   = r_channel_slot[k].read();
                 uint32_t buf_id   = r_channel_bufid[k].read();
+                r_channel_slot[k] = (cmd_id + 1) % 32;
+                r_channel_pxci[k] = r_channel_pxci[k].read() & (~(1<<cmd_id));
                 r_channel_pxis[k] = 0x40000001 | cmd_id<<24 | buf_id<<8 ;
                 r_channel_fsm[k]  = CHANNEL_BLOCKED;
             }
@@ -455,6 +467,14 @@ tmpl(void)::transition()
           
             vci_addr_t address = p_vci_target.address.read();
             
+            // get wdata for both 32 bits and 64 bits data width
+            uint32_t    wdata;
+            if( (vci_param::B == 8) and (p_vci_target.be.read() == 0xF0) )
+                wdata = (uint32_t)(p_vci_target.wdata.read()>>32);
+            else
+                wdata = (uint32_t)(p_vci_target.wdata.read());
+
+            // check segment
             bool found = false;
             std::list<soclib::common::Segment>::iterator seg;
             for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
@@ -478,15 +498,15 @@ tmpl(void)::transition()
             {
                 if( cell == HBA_PXCLB )
                 {
-                    assert( (r_channel_pxclb[channel].read() & 0x3ff)==0 and 
-                    "VCI_MULTI_AHCI ERROR: command list address must be 1k-byte aligned");
+                    assert( (r_channel_pxclb[channel].read() & 0x3f)==0 and 
+                    "VCI_MULTI_AHCI ERROR: command list address must be 64 bytes aligned");
 
-                    r_channel_pxclb[channel]   = p_vci_target.wdata.read(); 
+                    r_channel_pxclb[channel] = wdata; 
                     r_tgt_fsm = T_WRITE_RSP;
                 }
                 else if( cell == HBA_PXCLBU )
                 {
-                    r_channel_pxclbu[channel]  = p_vci_target.wdata.read(); 
+                    r_channel_pxclbu[channel] = wdata; 
                     r_tgt_fsm = T_WRITE_RSP;
                 }
                 else if( cell == HBA_PXIS )
@@ -496,13 +516,12 @@ tmpl(void)::transition()
                 }
                 else if( cell == HBA_PXIE )
                 {
-                    r_channel_pxie[channel] = p_vci_target.wdata.read(); 
+                    r_channel_pxie[channel] = wdata; 
                     r_tgt_fsm = T_WRITE_RSP;
                 }
                 else if( cell == HBA_PXCI )    // should only set one bit
                 {
-                    r_channel_pxci[channel] = r_channel_pxci[channel].read() |
-                                              p_vci_target.wdata.read();
+                    r_channel_pxci[channel] = r_channel_pxci[channel].read() | wdata;
                     r_tgt_fsm = T_WRITE_RSP;
                 }
                 else if( cell == HBA_PXCMD )   
@@ -510,6 +529,7 @@ tmpl(void)::transition()
                     if( p_vci_target.wdata.read() == 0 ) // channel soft reset
                     {
                         r_channel_pxci[channel]  = 0;
+                        r_channel_pxis[channel]  = 0;
                         r_channel_slot[channel]  = 0;
                         r_channel_run[channel]   = false;
                     }
@@ -526,7 +546,6 @@ tmpl(void)::transition()
             }
             else           // read command
             {
-                
                 if     ( cell == HBA_PXCLB)
                 {
                     r_rdata   = r_channel_pxclb[channel];  
@@ -584,7 +603,7 @@ tmpl(void)::transition()
             bool not_found = true;
             for( size_t n = 0 ; (n < m_channels) and not_found ; n++ )
             {
-                size_t k = (r_cmd_index.read() + n) % m_channels;
+                size_t k = (r_cmd_index.read() + n + 1) % m_channels;
             
                 switch(r_channel_fsm[k])
                 {
@@ -600,7 +619,7 @@ tmpl(void)::transition()
                         not_found    = false;
                         r_cmd_index  = k;
                         r_cmd_fsm    = CMD_WRITE;
-                        r_cmd_count  = 0;
+                        r_cmd_words  = 0;
                     break;
                 }
             }
@@ -624,21 +643,21 @@ tmpl(void)::transition()
 
                 if( vci_param::B == 4 )    // one word per flit
                 {
-                    if( r_cmd_count.read()  == ((r_channel_length[k].read()>>2)-1) )
+                    if( r_cmd_words.read()  == ((r_channel_length[k].read()>>2)-1) )
                     {
                         r_cmd_fsm = CMD_IDLE;
                     }
-                    r_cmd_count          = r_cmd_count.read()+1;
+                    r_cmd_words          = r_cmd_words.read()+1;
                     r_channel_word[k]    = r_channel_word[k].read()+1;
                     r_channel_address[k] = r_channel_address[k].read()+4;
                 }
                 else                       // two words per flit
                 {
-                    if( r_cmd_count.read()  == ((r_channel_length[k].read()>>2)-2) )
+                    if( r_cmd_words.read()  == ((r_channel_length[k].read()>>2)-2) )
                     {
                         r_cmd_fsm = CMD_IDLE;
                     }
-                    r_cmd_count          = r_cmd_count.read()+2;
+                    r_cmd_words          = r_cmd_words.read()+2;
                     r_channel_word[k]    = r_channel_word[k].read()+2;
                     r_channel_address[k] = r_channel_address[k].read()+8;
                 }
@@ -802,7 +821,7 @@ tmpl(void)::genMoore()
             p_vci_initiator.cmdval  = true;
             p_vci_initiator.address = (sc_dt::sc_uint<vci_param::N>)r_channel_address[k].read(); 
             p_vci_initiator.wdata   = 0;
-            p_vci_initiator.be      = 0xF;
+            p_vci_initiator.be      = 0;
             p_vci_initiator.plen    = (sc_dt::sc_uint<vci_param::K>)r_channel_length[k].read();
             p_vci_initiator.cmd     = vci_param::CMD_READ;
             p_vci_initiator.trdid   = k;
@@ -821,8 +840,6 @@ tmpl(void)::genMoore()
             size_t k = r_cmd_index.read();
             p_vci_initiator.cmdval  = true;
             p_vci_initiator.address = (sc_dt::sc_uint<vci_param::N>)r_channel_address[k].read();
-            p_vci_initiator.wdata   = r_channel_buffer[k][r_channel_word[k].read()];
-            p_vci_initiator.be      = 0xF;
             p_vci_initiator.plen    = (sc_dt::sc_uint<vci_param::K>)r_channel_length[k].read();
             p_vci_initiator.cmd     = vci_param::CMD_WRITE;
             p_vci_initiator.trdid   = k;
@@ -833,7 +850,20 @@ tmpl(void)::genMoore()
             p_vci_initiator.contig  = true;
             p_vci_initiator.clen    = 0;
             p_vci_initiator.cfixed  = false;
-            p_vci_initiator.eop     = (r_cmd_count==((r_channel_length[k].read()>>2)-1));
+
+            if ( (vci_param::B == 8) and (((r_channel_length[k].read()>>2) - r_cmd_words.read()) > 1) )
+            {
+                p_vci_initiator.wdata =  ((uint64_t)r_channel_buffer[k][r_channel_word[k].read()  ]) +
+                                        (((uint64_t)r_channel_buffer[k][r_channel_word[k].read()+1]) << 32);
+                p_vci_initiator.be    = 0xFF;
+                p_vci_initiator.eop   = ( (r_channel_length[k].read()>>2) - r_cmd_words.read() <= 2 );
+            }
+            else
+            {
+                p_vci_initiator.wdata = (uint64_t)r_channel_buffer[k][r_channel_word[k].read()];
+                p_vci_initiator.be    = 0xF;
+                p_vci_initiator.eop   = ( (r_channel_length[k].read()>>2) - r_cmd_words.read() <= 1 );
+            }
             break;
         }
     }
@@ -846,9 +876,9 @@ tmpl(void)::genMoore()
     for ( size_t k=0 ; k<m_channels ; k++ )
     {
         p_channel_irq[k] = (((r_channel_pxis[k].read() & 0x1)!=0) and 
-                    ((r_channel_pxie[k].read() & 0x1)!=0)) or         //ok 
-                   (((r_channel_pxis[k].read() & 0x40000000)!=0) and 
-                    ((r_channel_pxie[k].read() & 0x40000000)!=0));    //error
+                            ((r_channel_pxie[k].read() & 0x1)!=0)) or         //ok 
+                           (((r_channel_pxis[k].read() & 0x40000000)!=0) and 
+                            ((r_channel_pxie[k].read() & 0x40000000)!=0));    //error
     }
     
 } // end GenMoore()
@@ -870,6 +900,7 @@ tmpl(/**/)::VciMultiAhci( sc_core::sc_module_name             name,
            m_words_per_burst(burst_size>>2),
            m_bursts_per_block(block_size/burst_size),
            m_latency(latency),
+           m_channels(filenames.size()),
            m_seglist(mt.getSegmentList(tgtid)),
            p_clk("p_clk"),
            p_resetn("p_resetn"),
@@ -886,6 +917,7 @@ tmpl(/**/)::VciMultiAhci( sc_core::sc_module_name             name,
     dont_initialize();
     sensitive << p_clk.neg();
     
+    
     size_t nbsegs = 0;
     std::list<soclib::common::Segment>::iterator seg;
     for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
@@ -898,11 +930,11 @@ tmpl(/**/)::VciMultiAhci( sc_core::sc_module_name             name,
                       << " must be multiple of 32 Kbytes" << std::endl;
 		    exit(1);
 	    }
-	    if ( seg->size() < 0x8000 ) 
+	    if ( seg->size() < (m_channels*0x1000) ) 
         {
 		    std::cout << "Error in component VciMultiAhci : " << name 
 	                  << " The size of segment " << seg->name()
-                      << " cannot be smaller than 32 Kbytes" << std::endl;
+                      << " is smaller than (channels * 4096)" << std::endl;
 		    exit(1);
 	    }
         
@@ -948,8 +980,6 @@ tmpl(/**/)::VciMultiAhci( sc_core::sc_module_name             name,
 		exit(1);
 	}
 
-    m_channels = filenames.size();
-    
     if( m_channels > 8 )
     {
         std::cout << "Error in component VciMultiAhci: " << name
@@ -991,9 +1021,10 @@ tmpl(/**/)::VciMultiAhci( sc_core::sc_module_name             name,
     r_channel_buffer   = new uint32_t*[m_channels];
     for( size_t k=0 ; k<m_channels ; k++ ) r_channel_buffer[k]=new uint32_t[block_size];
 
+    // open files containing virtual disks images
     std::vector<std::string>::iterator it;
     size_t index=0;
-    for( it=filenames.begin() ; it!=filenames.end() ; it++,index++ )
+    for( it=filenames.begin() ; it!=filenames.end() ; it++ , index++ )
     {
         m_fd[index] = ::open(it->c_str(), O_RDWR | O_CREAT,S_IRUSR|S_IWUSR |S_IXUSR);
         if ( m_fd[index] < 0 )
@@ -1012,6 +1043,7 @@ tmpl(/**/)::VciMultiAhci( sc_core::sc_module_name             name,
                       << " has more blocks than addressable with the VCI address" << std::endl;
             exit(1);
         }
+        std::cout << "    => disk image " << *it << " successfully open" << std::endl;
     }
 } // end constructor
 
@@ -1082,11 +1114,11 @@ tmpl(void)::print_trace()
 	};
 	const char* tgt_state_str[] = 
     {
-         "IDLE",
-         "WRITE_RSP",
-         "READ_RSP",
-         "WRITE_ERROR",
-         "READ_ERROR",
+         "TGT_IDLE",
+         "TGT_WRITE_RSP",
+         "TGT_READ_RSP",
+         "TGT_WRITE_ERROR",
+         "TGT_READ_ERROR",
 	};
     const char* cmd_state_str[] =
     {
@@ -1101,16 +1133,27 @@ tmpl(void)::print_trace()
         "RSP_WRITE"
     };
 
-    std::cout << "MULTI_AHCI" << name() << " : " 
-              << tgt_state_str[r_tgt_fsm.read()] << std::endl;
+    std::cout << "MULTI_AHCI " << name() << " : " 
+              << tgt_state_str[r_tgt_fsm.read()] 
+              << " / " << cmd_state_str[r_cmd_fsm.read()]    
+              << " / " << rsp_state_str[r_rsp_fsm.read()] << std::endl;
+
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
         std::cout << "  CHANNEL " << k << " : " 
-                  << channel_state_str[r_channel_fsm[k].read()] << std::endl;
+                  << channel_state_str[r_channel_fsm[k].read()] 
+                  << " / pxci = " << r_channel_pxci[k].read()
+                  << " / pxis = " << r_channel_pxis[k].read()
+                  << " / pxie = " << r_channel_pxie[k].read()
+                  << " / cmd_id = " << r_channel_slot[k].read()
+                  << std::endl
+                  << "              lba = " << r_channel_lba[k].read()
+                  << " / buf_paddr = " << r_channel_dba[k].read()
+                  << " / nbytes = " << r_channel_dbc[k].read()
+                  << " / blocks = " << r_channel_blocks[k].read()
+                  << " / bursts = " << r_channel_bursts[k].read()
+                  << std::endl;
     }
-    std::cout << "  CMD: "<< cmd_state_str[r_cmd_fsm.read()] << std::endl;    
-        
-    std::cout << "  RSP :"<< rsp_state_str[r_rsp_fsm.read()] << std::endl;
 }
 
 

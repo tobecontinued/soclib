@@ -2,21 +2,13 @@
 Module('caba:vci_multi_ahci',
     classname = 'soclib::caba::VciMultiAhci',
 
-    tmpl_parameters = [
-	    parameter.Module('vci_param',  default = 'caba:vci_param'),
-	],
+    tmpl_parameters = [ parameter.Module('vci_param',  default = 'caba:vci_param'), ],
 	   
-    header_files = [
-        '../source/include/vci_multi_ahci.h',
-    ],
+    header_files = [ '../source/include/vci_multi_ahci.h', ],
 
-    interface_files = [
-        '../../include/soclib/multi_ahci.h',
-    ],
+    interface_files = [ '../../include/soclib/multi_ahci.h', ],
 
-    implementation_files = [
-        '../source/src/vci_multi_ahci.cpp',
-    ],
+    implementation_files = [ '../source/src/vci_multi_ahci.cpp', ],
 
     ports = [
 	    Port('caba:vci_target'   , 'p_vci_target'),
@@ -40,11 +32,11 @@ Module('caba:vci_multi_ahci',
 	   parameter.Int('block_size',default=512),
 	   parameter.Int('burst_size',default=64),
 	   parameter.Int('latency',   default=0),
-        ],
+    ],
  
     extensions = [
         'dsx:addressable=tgtid',
       	'dsx:max_segments=1',
         'dsx:get_ident=tgtid:p_vci_target:mt,srcid:p_vci_initiator:mt',	
-       ],
+    ],
 )

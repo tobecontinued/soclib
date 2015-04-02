@@ -115,23 +115,23 @@ private:
 
     sc_signal<int>				   r_cmd_fsm;          // command fsm state register
     sc_signal<size_t>              r_cmd_index;        // selected channel index
-    sc_signal<size_t>              r_cmd_count;
+    sc_signal<size_t>              r_cmd_words;        // number of words for a write
 
     sc_signal<int>				   r_rsp_fsm;          // response fsm state register
     sc_signal<size_t>              r_rsp_index;        // received channel index
 
-    sc_signal<int>*                r_channel_fsm;      // initiator fsm state register
+    sc_signal<int>*                r_channel_fsm;      // channel fsm state register
     sc_signal<uint32_t>*           r_channel_pxclb;    // command list base address lsb
     sc_signal<uint32_t>*           r_channel_pxclbu;   // command list base address msb
     sc_signal<uint32_t>*           r_channel_pxis;     // interrupt status
     sc_signal<uint32_t>*           r_channel_pxie;     // interrupt enable
     sc_signal<uint32_t>*           r_channel_pxci;     // pending commands 
     sc_signal<bool>*               r_channel_run;      // channel running 
-    sc_signal<uint32_t>*           r_channel_slot;     // pointer on Command List
+    sc_signal<uint32_t>*           r_channel_slot;     // index in Command List
     sc_signal<uint32_t>*           r_channel_offset;   // offset if dba not aligned
-    sc_signal<uint64_t>*           r_channel_address;  // requested VCI address
-    sc_signal<uint32_t>*           r_channel_length;   // requested VCI length (in bytes) 
-    sc_signal<uint32_t>*           r_channel_word;     // first word index in local buffer
+    sc_signal<uint64_t>*           r_channel_address;  // requested VCI paddr
+    sc_signal<uint32_t>*           r_channel_length;   // requested VCI length (bytes) 
+    sc_signal<uint32_t>*           r_channel_word;     // word index in local buffer
     sc_signal<uint64_t>*           r_channel_ctba;     // Command Table Base Address
     sc_signal<uint64_t>*           r_channel_dba;      // Data Buffer Address
     sc_signal<uint32_t>*           r_channel_dbc;      // Data Buffer Count (bytes)
