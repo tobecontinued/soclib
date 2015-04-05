@@ -124,7 +124,7 @@
 //
 //      * NIC_G_NPKT_RX_DES_SUCCESS        : number of RX packets transmited by RX_DES FSM
 //      * NIC_G_NPKT_RX_DES_TOO_SMALL      : number of discarded too small RX packets
-//      * NIC_G_NPKT_RX_DES_TOO_BIG        : number of discarded too big RX packets
+//      * NIC_G_NPKT_RX_DES_TOO_BIG        : number of discarded too big Renforces locality and parallelismX packets
 //      * NIC_G_NPKT_RX_DES_MFIFO_FULL     : number of discarded RX packets for fifo full
 //      * NIC_G_NPKT_RX_DES_CRC_FAIL       : number of discarded RX packets for checksum
 //
@@ -2116,25 +2116,24 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> Broadcast packet for channel %d"
             {
                 // compute bypass condition
                 bool     bypass_found   = false;
-                uint32_t bypass_channel = 0;
-                for ( size_t k = 0 ; (k < m_channels) and (not bypass_found) ; k++ )
+                size_t   k;
+                for ( k = 0 ; (k < m_channels) and (not bypass_found) ; k++ )
                 {
                     if ( (mac_dst_4 == r_channel_mac_4[k]) and
                          (mac_dst_2 == r_channel_mac_2[k]) )
                     {
                         bypass_found   = true;
-                        bypass_channel = k;
                     }
                 }
 
-                // test bypass condition
+                // dispatch 
                 if ( bypass_found  and r_global_bypass_enable.read() )   // BYPASS => to BP fifo
                 {
 
 #if TX_DISPATCH_DEBUG
 printf("<NIC TX_DISPATCH_FIFO_SELECT> Bypass packet from channel %d to channel %d"
        " / mac_dst = %x|%x / mac_src %x|%x\n", 
-       channel, bypass_channel, mac_dst_2, mac_dst_4, mac_src_2, mac_src_4 );
+       channel , k , mac_dst_2 , mac_dst_4 , mac_src_2 , mac_src_4 );
 #endif
                     r_tx_dispatch_npkt_bypass = r_tx_dispatch_npkt_bypass.read() + 1;
                     r_tx_dispatch_write_tx    = false;
@@ -2600,10 +2599,8 @@ tmpl(void)::genMoore()
 
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        // p_rx_irq[k] =     ( r_rx_chbuf[k]->full(0) and r_rx_chbuf[k]->full(1) );
-        p_rx_irq[k] = 0;
-        // p_tx_irq[k] = not ( r_tx_chbuf[k]->full(0) and r_tx_chbuf[k]->full(1) );
-        p_tx_irq[k] = 0;
+        p_rx_irq[k] =  ( r_rx_chbuf[k]->full(0) and r_rx_chbuf[k]->full(1) );
+        p_tx_irq[k] =  ( r_tx_chbuf[k]->full(0) and r_tx_chbuf[k]->full(1) );
     }
 
     ////// VCI TARGET port ///////
