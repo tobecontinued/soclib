@@ -20,15 +20,13 @@
 # 
 # SOCLIB_LGPL_HEADER_END
 #
-# Maintainers: fpecheux, nipo, alinevieiramello@hotmail.com
+# Maintainers: fpecheux, nipo, alinevieiramello@hotmail.com, alain
 #
 # Copyright (c) UPMC / Lip6, 2008
 #     François Pêcheux <fancois.pecheux@lip6.fr>
 #     Nicolas Pouillon <nipo@ssji.net>
 #     Aline Vieira de Mello <aline.vieira-de-mello@lip6.fr>
-
-__id__ = "$Id: vci_ram.sd 917 2009-03-12 10:10:06Z nipo $"
-__version__ = "$Revision: 917 $"
+#     Alain Greiner <alain.greiner@lip6.fr>
 
 Module('tlmdt:vci_ram',
        classname = 'soclib::tlmdt::VciRam',
@@ -40,5 +38,4 @@ Module('tlmdt:vci_ram',
                 Uses('common:linked_access_buffer', id_t = 'uint32_t'),
                 Uses('common:mapping_table'),
 		],
-       #debug = True,
        )
