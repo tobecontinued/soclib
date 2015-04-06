@@ -196,7 +196,7 @@ std::cout << "[" << name() << "] time = " << time
 }
 
 ///////////////////////////////////////////////////////////////////////
-// thread implementing the PDES time filtering
+//     PDES process
 // Try to send an output IRQ value each time an input IRQ is updated.
 // The thread local time is equal to the time of the registered IRQ
 // that has the earliest time.
