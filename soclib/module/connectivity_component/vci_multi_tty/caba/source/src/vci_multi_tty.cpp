@@ -75,6 +75,7 @@ tmpl(void)::transition()
                 }
             }
 
+            /////////////////////////////////////////////////////////
             if      ( not seg_error and            // write char
                       (p_vci.cmd.read() == vci_param::CMD_WRITE) and
                       (reg == TTY_WRITE ) and 
@@ -84,6 +85,7 @@ tmpl(void)::transition()
                 r_cpt_write = r_cpt_write.read() + 1; 
                 r_fsm_state = RSP_WRITE;
             }     
+            /////////////////////////////////////////////////////////
             else if ( not seg_error and            // release lock
                       (p_vci.cmd.read() == vci_param::CMD_WRITE) and
                       (reg == TTY_CONFIG) and 
@@ -92,6 +94,7 @@ tmpl(void)::transition()
                 r_lock      = false;
                 r_fsm_state = RSP_WRITE;
             }
+            /////////////////////////////////////////////////////////
             else if ( not seg_error and            // try to get lock
                       (p_vci.cmd.read() == vci_param::CMD_READ) and
                       (reg == TTY_CONFIG) and 
@@ -101,15 +104,19 @@ tmpl(void)::transition()
                 r_lock      = true;
                 r_fsm_state = RSP_READ;
             }
+            /////////////////////////////////////////////////////////
             else if ( not seg_error and            // read char 
                       (p_vci.cmd.read() == vci_param::CMD_READ) and
                       (reg == TTY_READ) and 
                       channel < m_term.size() )
             {
-                r_rdata     = m_term[channel]->getc();
+                vci_data_t  byte = m_term[channel]->getc();
+                if ( byte == 0x0d ) r_rdata = m_term[channel]->getc();
+                else                r_rdata = byte;
                 r_cpt_read  = r_cpt_read.read() + 1; 
                 r_fsm_state = RSP_READ;
             }
+            /////////////////////////////////////////////////////////
             else if ( not seg_error and            // read status
                       (p_vci.cmd.read() == vci_param::CMD_READ) and
                       (reg == TTY_STATUS) and 
@@ -118,6 +125,7 @@ tmpl(void)::transition()
                 r_rdata     = m_term[channel]->hasData();
                 r_fsm_state = RSP_READ;
             }
+            /////////////////////////////////////////////////////////
             else if ( p_vci.eop.read() )
             {
                 r_fsm_state = RSP_ERROR;
