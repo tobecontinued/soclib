@@ -42,7 +42,11 @@ using namespace soclib;
 
 #define tmpl(t) template<typename vci_param> t VciMultiIcu<vci_param>
 
-tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_param::data_t data, int be)
+//////////////////////////////
+tmpl(bool)::on_write( int seg, 
+                      typename vci_param::addr_t addr, 
+                      typename vci_param::data_t data, 
+                      int be)
 {
 	int cell = (int)addr / vci_param::B;
     int reg = cell % ICU_SPAN;
@@ -63,7 +67,10 @@ tmpl(bool)::on_write(int seg, typename vci_param::addr_t addr, typename vci_para
 	return true;
 }
 
-tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param::data_t &data)
+/////////////////////////////
+tmpl(bool)::on_read( int seg, 
+                     typename vci_param::addr_t addr, 
+                     typename vci_param::data_t &data )
 {
 	int cell = (int)addr / vci_param::B;
     int reg = cell % ICU_SPAN;
@@ -92,6 +99,7 @@ tmpl(bool)::on_read(int seg, typename vci_param::addr_t addr, typename vci_param
 	return true;
 }
 
+/////////////////////////
 tmpl(void)::print_trace()
 {
     std::cout << std::dec << name() << std::endl;
@@ -103,6 +111,7 @@ tmpl(void)::print_trace()
     std::cout << std::dec << " r_interrupt = " << r_interrupt.read() << std::endl;
 }
 
+////////////////////////
 tmpl(void)::transition()
 {
 	if (!p_resetn.read()) {
