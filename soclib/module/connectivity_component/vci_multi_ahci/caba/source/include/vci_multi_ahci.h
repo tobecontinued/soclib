@@ -29,21 +29,21 @@
 
 //////////////////////////////////////////////////////////////////////////////////////
 // This component is a multi-channels disk controller with a VCI interface,
-// respecting the ahci software interface.
-// It supports up to 32 channels.
+// respecting the ahci software interface. It supports up to 8 channels.
+//
 // All addressable registers contain 32 bits words. 
 // It supports VCI addresss up to 64 bits.
 //
 // This component can perform data transfers between a virtual disk (implemented
 // as a file belonging to the host system) and a buffer in the memory of the 
-// virtual prototype.
-// There is on file per channel, but several channel can access the same virtual disk.
+// virtual prototype. There is on file (one disk image) per channel.
 // The filenames vector is an argument of the constructor.
-// The number of vector components define the number of channels.
+// The number of vector components defines the number of channels.
+//
 // This component has a DMA capability, and is both a target and an initiator.
 // The block size (bytes), and the burst size (bytes) must be power of 2.
 // The burst size is typically a cache line. 
-// The memory buffers are constrained to be aligned on a block size boundary,
+// The memory buffers are constrained to be aligned on a burst size boundary,
 // and the buffer length must be multiple of the block size.
 // Both read and write transfers are supported. An IRQ is optionally
 // asserted when a transfer is completed. 

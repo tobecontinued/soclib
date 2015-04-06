@@ -64,17 +64,8 @@ typedef struct hba_cmd_desc_s  // size = 16 bytes
 // C structures for Command Table
 /////////////////////////////////////////////////////////////////////////////
 
-/////// command table //////////////////////////////
-typedef struct hba_cmd_table_s  // size = 4 Kbytes
-{
-
-    hba_cmd_header_t   header;      // contains LBA
-    hba_cmd_buffer_t   buffer[248]; // 248 buffers max
-
-} hba_cmd_table_t;
-
 /////// command header  ///////////////////////////
-typedef struct hba_cmd_header_s // size = 128 bytes
+typedef struct hba_cmd_header_s     // size = 16 bytes
 {
     // WORD 0
     unsigned int        res0;       // reserved	
@@ -92,7 +83,7 @@ typedef struct hba_cmd_header_s // size = 128 bytes
     unsigned char	    res2;	    // reserved
   
     // WORD 3 to 31
-    unsigned int        res[29];    // reserved	
+    unsigned int        res3;       // reserved	
 
 } hba_cmd_header_t;
 
@@ -105,6 +96,15 @@ typedef struct hba_cmd_buffer_s // size = 16 bytes
     unsigned int        dbc;	    // Buffer byte count
 
 } hba_cmd_buffer_t;
+
+/////// command table //////////////////////////////
+typedef struct hba_cmd_table_s  // size = 4 Kbytes
+{
+
+    hba_cmd_header_t   header;      // contains LBA
+    hba_cmd_buffer_t   buffer[255]; // 255 buffers max
+
+} hba_cmd_table_t;
 
 #endif
 
