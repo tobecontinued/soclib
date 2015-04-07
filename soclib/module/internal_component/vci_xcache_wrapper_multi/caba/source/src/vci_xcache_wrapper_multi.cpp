@@ -30,7 +30,7 @@
 #include <limits>
 #include "iss2.h"
 #include "arithmetics.h"
-#include "../include/vci_xcache_wrapper_advanced.h"
+#include "../include/vci_xcache_wrapper_multi.h"
 
 namespace soclib {
 namespace caba {
@@ -73,12 +73,12 @@ const char *rsp_fsm_state_str[] = {
     };
 }
 
-#define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciXcacheWrapperAdvanced<vci_param, iss_t>
+#define tmpl(...)  template<typename vci_param, typename iss_t> __VA_ARGS__ VciXcacheWrapperMulti<vci_param, iss_t>
 
 using soclib::common::uint32_log2;
 
-/////////////////////////////////////
-tmpl(/**/)::VciXcacheWrapperAdvanced(
+//////////////////////////////////
+tmpl(/**/)::VciXcacheWrapperMulti(
     sc_module_name name,
     int proc_id,
     const soclib::common::MappingTable &mt,
@@ -169,8 +169,8 @@ tmpl(/**/)::VciXcacheWrapperAdvanced(
     m_iss.setCacheInfo(cache_info);
 }
 
-///////////////////////////////////////
-tmpl(/**/)::~VciXcacheWrapperAdvanced()
+////////////////////////////////////
+tmpl(/**/)::~VciXcacheWrapperMulti()
 {
 }
 
@@ -330,7 +330,6 @@ tmpl(void)::transition()
         m_cost_data_miss_frz = 0;
         m_cost_data_unc_frz  = 0;
         m_cost_ins_miss_frz  = 0;
-        m_cost_ins_unc_frz   = 0;
 
         m_length_write_transaction = 0;
         m_count_write_transaction  = 0;
@@ -377,8 +376,8 @@ tmpl(void)::transition()
     {
         if (m_ireq.valid ) 
         {
-            data_t  icache_ins;
-            bool    icache_hit;
+            data_t  icache_ins = 0;
+            bool    icache_hit = false;
 
             m_cpt_icache_read++;
             
@@ -405,8 +404,8 @@ tmpl(void)::transition()
             }
             else                         // non cacheable
             {
-                m_cpt_ins_unc++;
-                m_cost_ins_unc_frz++;
+                m_cpt_ins_miss++;
+                m_cost_ins_miss_frz++;
 
                 r_icache_addr_save = m_ireq.addr;
                 r_icache_fsm 	   = ICACHE_UNC_WAIT;
@@ -515,10 +514,10 @@ tmpl(void)::transition()
     //   or a cacheable write. 
     // - In WRITE_REQ state, the request is satisfied if it is a cacheable read hit,
     //   or a cacheable write, only if the write buffer is not full.
-    // - Both the uncacheable read and the uncachable write requests block the processor
-    //   until the corresponding VCI transaction is completed.
+    // - Both the uncacheable read and the uncachable write requests block the 
+    //   processor until the corresponding VCI transaction is completed.
     // 
-    // It uses an advanced Write buffer that supports several simultaneous write bursts.
+    // It uses an advanced Write buffer supporting simultaneous write bursts.
     //
     // In case of processor request, there is six conditions to exit the IDLE state:
     //   - CACHED READ MISS       => to the MISS_SELECT state,
@@ -538,7 +537,7 @@ tmpl(void)::transition()
     //   by the DCACHE FSM.
     // - If a Write Bus Error is detected, the VCI_RSP FSM  signals
     //   the asynchronous error using the setWriteBerr() method.
-    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
 
     // default value for m_drsp
    m_drsp.valid   = false;

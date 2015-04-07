@@ -197,7 +197,6 @@ private:
     uint32_t m_cost_data_miss_frz;          // number of frozen cycles related to data miss
     uint32_t m_cost_data_unc_frz;           // number of frozen cycles related to uncached data
     uint32_t m_cost_ins_miss_frz;           // number of frozen cycles related to ins miss
-    uint32_t m_cost_ins_unc_frz;            // number of frozen cycles related to uncached ins 
 
     uint32_t m_count_write_transaction;     // number of VCI write transactions
     uint32_t m_length_write_transaction;    // cumulated length for VCI WRITE transactions
