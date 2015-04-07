@@ -424,9 +424,11 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
                     if ( r_fifo_in[i].rok() and 
                          get_out[r_index_in[i].read()] == i )  // last flit transfered
                     {
-                        assert( r_fifo_in[i].read().eop and 
-                        "ERROR in DSPIN_LOCAL_CROSSBAR : broadcast must have 2 flits");
-
+                        if ( not r_fifo_in[i].read().eop ) 
+                        {
+                            std::cout << "ERROR in DSPIN_LOCAL_CROSSBAR " << name()
+                                      << " : broadcast packets must have 2 flits" << std::endl;
+                        }
                         if ( r_index_in[i].read() == 0 ) r_fsm_in[i] = INFSM_IDLE;
                         else                             r_fsm_in[i] = INFSM_REQ_BC;
                         r_index_in[i] = r_index_in[i].read() - 1;
