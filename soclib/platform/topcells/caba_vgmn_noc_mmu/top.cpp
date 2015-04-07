@@ -4,7 +4,7 @@
 // Author   : alain greiner
 // Copyright (c) UPMC-LIP6
 ///////////////////////////////////////////////////////////////////////////////////
-// This architecture implements the NOC MMU feature.
+// This architecture implements the NOC MMU infrastructure.
 //
 // It contains 3 processors MIPS32 (without internal MMU):
 // - MP0 is running the hypervisor (GIET-VM).
@@ -44,7 +44,7 @@
 //   NIC_RX[1]  : IRQ_IN[28]    (VM B       => IRQ_OUT[2])
 //   NIC_TX[1]  : IRQ_IN[29]    (VM B       => IRQ_OUT[2])
 // The routing (masking) from IRQ_IN[i] to IRQ_OUT[0] is not defined
-// by rhe harware, but must be defined by software.
+// by the harware, but must be defined by software.
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include <systemc>
@@ -412,10 +412,9 @@ int _main(int argc, char *argv[])
                                      IntTab(NIC_TGTID),
                                      maptab,
                                      2,                 // 2 channels
-                                     "./in_two_channels.txt",
-                                     "./out_two_channels.txt",
                                      DEFAULT_MAC_4,
-                                     DEFAULT_MAC_2);
+                                     DEFAULT_MAC_2,
+                                     1);                // NIC_MODE_SYNTHESIS
     ///////////////////////////////
     VciFrameBuffer<vci_param>* fbf;
     fbf = new VciFrameBuffer<vci_param>("fbf",
