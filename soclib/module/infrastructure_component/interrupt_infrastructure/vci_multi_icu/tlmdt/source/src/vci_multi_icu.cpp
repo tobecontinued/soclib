@@ -30,7 +30,7 @@
 #include <limits>
 #include "vci_multi_icu.h"
 
-//#define SOCLIB_MODULE_DEBUG 1
+#define SOCLIB_MODULE_DEBUG 1
 
 namespace soclib { namespace tlmdt {
 
@@ -60,7 +60,8 @@ tmpl(/**/)::VciMultiIcu ( sc_core::sc_module_name            name,
     // bind VCI port
     p_vci(*this);                     
 
-    // Initialize variables and bind IRQ_IN[i] ports
+    // Allocate and bind IRQ_IN[i] ports
+    // Initialize variables and registers for each IRQ_IN[i] ports
     for(size_t i=0; i<m_nirq_in; i++)
     {
         m_irq_in_value[i] = 0;
@@ -77,7 +78,8 @@ tmpl(/**/)::VciMultiIcu ( sc_core::sc_module_name            name,
                                                i );
     }
 
-    // Initialize variables and bind IRQ_OUT[channel] ports
+    // Allocate and bind IRQ_OUT[channel] ports
+    // Initialize variables and registers for each channel
     for(size_t channel=0; channel<m_nirq_out; channel++)
     {
         std::ostringstream name;
@@ -90,7 +92,8 @@ tmpl(/**/)::VciMultiIcu ( sc_core::sc_module_name            name,
                                                         &VciMultiIcu::irq_nb_transport_bw, 
                                                         channel );
 
-        m_irq_mask[channel] = 0;
+        m_irq_mask[channel]      = 0;
+        m_irq_out_value[channel] = 0;
         m_irq_out_payload[channel].set_data_ptr(&m_irq_out_value[channel]);
         m_irq_out_phase[channel] = tlm::BEGIN_REQ;
     }
@@ -140,7 +143,7 @@ std::cout << "[" << name() << "] time = "  << time.value()
         reg     = cell % ICU_SPAN;
         channel = cell / ICU_SPAN;
 
-        // checking channel overflow
+        // checking channel index overflow
         if ( channel < m_nirq_out ) payload.set_response_status(tlm::TLM_OK_RESPONSE);
         else             payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
 
@@ -257,11 +260,11 @@ tmpl (void)::execLoop()
     {
 
 #if SOCLIB_MODULE_DEBUG
-std::cout << "[" << name() << "] Thread activated at time = " 
-          << m_pdes_local_time->get().value()
-          << "  Pending IRQ_IN :" << std::endl; 
+std::cout << "######    [" << name() << "] wake up / time = "
+          << std::dec << m_pdes_local_time->get().value() << std::endl;
+        
 for(size_t i = 0 ; i < m_nirq_in ; i++) 
-std::cout << "    - " << i 
+std::cout << "    - IRQ_IN_" << i 
           << " / date = " << m_irq_in_time[i].value() 
           << " / value = " << (int)m_irq_in_value[i] << std::endl; 
 #endif
@@ -274,21 +277,25 @@ std::cout << "    - " << i
 
             if ( irqTransmissible( channel, &new_value, &new_time ) )
             {
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "    [" << name() << "] send IRQ_OUT " << channel 
+          << " / date = " << m_irq_out_time[channel].value()
+          << " / value = " << (int)m_irq_out_value[channel] << std::endl; 
+#endif
                 m_irq_out_value[channel] = new_value;
               	m_irq_out_time[channel]  = new_time;
                 (*p_irq_out[channel])->nb_transport_fw( m_irq_out_payload[channel], 
                                                         m_irq_out_phase[channel], 
                                                         m_irq_out_time[channel] );
 
-#if SOCLIB_MODULE_DEBUG
-std::cout << "  Send IRQ_OUT " << channel 
-          << " / date = " << m_irq_out_time[channel].value()
-          << " / value = " << (int)m_irq_out_value[channel] << std::endl; 
-#endif
             } // end if transmissible
         } // end for channel     
 
-        // deschedule until next event on IRQ_IN[i]
+#if SOCLIB_MODULE_DEBUG
+std::cout << "######    [" << name() << "] deschedule / time = "
+          << std::dec << m_pdes_local_time->get().value() << std::endl;
+#endif 
         wait( m_irq_in_received );
 
     } // end while thread
@@ -340,8 +347,8 @@ tmpl(bool)::irqTransmissible( size_t             channel,
         }
     }
 
-    if ( change_found ) *new_time    = m_pdes_local_time->get();
-    return ( change_found );
+    if ( change_found ) *new_time = m_pdes_local_time->get();
+    return ( false );
 }
 
 ///////////////////////////////////////////////////////////////////////////////

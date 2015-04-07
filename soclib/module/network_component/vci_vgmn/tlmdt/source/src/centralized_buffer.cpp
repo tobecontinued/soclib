@@ -40,6 +40,7 @@ centralized_buffer::centralized_buffer ( sc_core::sc_module_name   name,
   : sc_module(name)
   , m_slots(nslots)
   , m_port_array(new init_port_descriptor[nslots])
+  , m_previous( nslots - 1 )
 {
     for(unsigned int i=0; i<nslots; i++)
     {
@@ -68,77 +69,86 @@ bool centralized_buffer::push ( size_t                    from,
 std::cout << "[" << name() << "] PUSH [" << from <<"] " << std::endl;
 #endif
 
-    assert(!(time < m_port_array[from].delta_time) and
+    assert(!(time < m_port_array[from].port_time) and
     "PUSH transaction in a slot with a time smaller than precedent");
 
     return m_port_array[from].buffer.push(payload, phase, time);
 }
 
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // This function implements the PDES time filtering algorithm:
 // All active initiators are scanned, to select the earliest date.
-// - if there is no transaction for this initiator, (ok=false) is returned,
+// - if there is no transaction for this initiator, (false) is returned,
 //   and no transaction is consumed in the central buffer.
-// - if there is a transaction, (ok=true) is returned. The selected 
+// - if there is a transaction, (true) is returned. The selected 
 //   initiator index is returned in (from). The transaction parameters 
-//   are returned in (payload, phase, time), and the transaction is 
-//   removed from the central buffer.
-///////////////////////////////////////////////////////////////////////////
+//   are returned in (payload, phase, time), the transaction is 
+//   removed from the central buffer, and the selected port time is updated.
+///////////////////////////////////////////////////////////////////////////////
 bool centralized_buffer::pop ( size_t                    &from,
                                tlm::tlm_generic_payload* &payload,
                                tlm::tlm_phase*           &phase,
                                sc_core::sc_time*         &time )
 {
-    bool ok           = false;
     uint64_t min_time = MAX_TIME;
-    int sel_id        = 0;			// currently selected port
-    uint64_t time_value;            // date of the currently selected port
+    size_t sel_id = 0;              // selected port
+    uint64_t time_value;            // date of the port
   
-    for(unsigned int i=0; i<m_slots; i++)
+    // searching the earliest (smaller time) active port
+    // we implement a round-robin priority because,
+    // in case of equal times, the first found is selected
+    for( size_t k=0 ; k<m_slots ; k++ )
     {
+        size_t i = (m_previous + k + 1) % m_slots;
+
         if(m_port_array[i].active)   // only active ports are competing
         {
+            // get time
             if(m_port_array[i].buffer.is_empty())   // no transaction available
             {
-	            time       = &m_port_array[i].delta_time;
-	            time_value = (*time).value();
+	            time_value = m_port_array[i].port_time.value();
 
-                if(time_value < min_time)
-                {
-	                sel_id = i;
-	                min_time = time_value;
-	                ok = false;
-	            }
+std::cout << "@@@ port " << i << " / empty / time = " << std::dec << time_value << std::endl;
+
             }
-            else                             // transaction available for this port
+            else                                    // front transaction is earliest
             {
 	            m_port_array[i].buffer.get_front(payload, phase, time);
 	            time_value = (*time).value();
-	  
-	            if(time_value < min_time)
-                {
-	                sel_id = i;
-	                min_time = time_value;
-	                ok = true;
-	            }
+
+std::cout << "@@@ port " << i << " /  ok   / time = " << std::dec << time_value << std::endl;
+
             }
+
+            // test if it is the earliest
+            if(time_value < min_time)
+            {
+	            min_time = time_value;
+                sel_id   = i;
+	        }
         }
     }
 
-    from = sel_id;
-
-    if ( ok )  // The transaction is removed from central buffer
+    if( not m_port_array[sel_id].buffer.is_empty() )    // success
     {
-        m_port_array[sel_id].buffer.pop(payload, phase, time);
+        m_port_array[sel_id].buffer.pop( payload,
+                                         phase,
+                                         time);
+        from = sel_id;      
+        m_previous = sel_id;
+        set_port_time( sel_id, *time );
+        return true;
     }
-
-    return ok;
+    else                                                 // no eligible command
+    {
+        return false;
+    }
 } // end pop()
    
-/////////////////////////////////////////////////////
-circular_buffer centralized_buffer::get_buffer(int i)
+////////////////////////////////////////////////////////////
+circular_buffer centralized_buffer::get_buffer(size_t index)
 {
-    return m_port_array[i].buffer;
+    return m_port_array[index].buffer;
 }
 
 /////////////////////////////////////////////
@@ -147,16 +157,16 @@ const size_t centralized_buffer::get_nslots()
     return m_slots;
 }
 
-///////////////////////////////////////////////////////////////////////
-sc_core::sc_time centralized_buffer::get_delta_time(unsigned int index)
+////////////////////////////////////////////////////////////////
+sc_core::sc_time centralized_buffer::get_port_time(size_t index)
 {
-    return m_port_array[index].delta_time;
+    return m_port_array[index].port_time;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-void centralized_buffer::set_delta_time(unsigned int index, sc_core::sc_time t)
+////////////////////////////////////////////////////////////////////////
+void centralized_buffer::set_port_time(size_t index, sc_core::sc_time t)
 {
-    m_port_array[index].delta_time = t;
+    m_port_array[index].port_time = t;
 
 #if SOCLIB_MODULE_DEBUG
 std::cout << "[" << name() << "] DELTA_TIME[" << index <<"] = " << t.value() << std::endl;
@@ -164,8 +174,8 @@ std::cout << "[" << name() << "] DELTA_TIME[" << index <<"] = " << t.value() << 
 
 }
 
-////////////////////////////////////////////////////////////////
-void centralized_buffer::set_activity(unsigned int index, bool b)
+///////////////////////////////////////////////////////////
+void centralized_buffer::set_activity(size_t index, bool b)
 {
     m_port_array[index].active = b;
 

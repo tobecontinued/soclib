@@ -131,7 +131,7 @@ private:
                                              sc_core::sc_time          &time );  
 
     /////////////////////////////////////////////////////////////////////////////////////
-    // Not implemented but required by interface
+    // Not used but required by interface
     /////////////////////////////////////////////////////////////////////////////////////
     void b_transport ( tlm::tlm_generic_payload &payload,
                        sc_core::sc_time         &time);
@@ -144,7 +144,6 @@ private:
     void invalidate_direct_mem_ptr ( sc_dt::uint64 start_range, 
                                      sc_dt::uint64 end_range); 
 
-    /////////////////////////// No comprendo ///////////////////////////////
     tlm::tlm_sync_enum nb_transport_bw ( tlm::tlm_generic_payload  &payload,
                                          tlm::tlm_phase            &phase,
                                          sc_core::sc_time          &time );

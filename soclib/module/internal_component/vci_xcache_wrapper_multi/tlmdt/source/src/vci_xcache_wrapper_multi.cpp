@@ -26,12 +26,12 @@
  * Maintainers: alain 
  */
 
-#include "alloc_elems.h"
+//#include "alloc_elems.h"
 #include <limits>
 
 #include "vci_xcache_wrapper_multi.h"
 
-//#define SOCLIB_MODULE_DEBUG 1
+#define SOCLIB_MODULE_DEBUG 1
 
 namespace soclib{ namespace tlmdt {
 
@@ -243,6 +243,9 @@ tmpl (/**/)::VciXcacheWrapperMulti
     m_vci_rsp_data_error = false;
     m_vci_rsp_ins_error  = false;
   
+    // flip_flop between VCI RSP port and VCI_RSP FSM
+    m_rsp_valid          = false;
+
     // cache activity counters
     m_cpt_dcache_read    = 0;
     m_cpt_dcache_write   = 0;
@@ -270,9 +273,9 @@ tmpl (/**/)::VciXcacheWrapperMulti
     SC_THREAD(execLoop);
 }
 
-////////////////////////
+//////////////////////////
 tmpl(void)::print_stats()
-////////////////////////
+//////////////////////////
 {
     float nb_cycles    = (float)m_pdes_local_time->get().value();
     float nb_ins       = (float)m_cpt_exec_ins;
@@ -295,27 +298,27 @@ tmpl (void)::execLoop ()
     uint32_t before_time;
     uint32_t after_time;
 
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "######    [" << name() << "]" << " wake up / time = " 
+          << std::dec << m_pdes_local_time->get().value() << std::endl;
+#endif
+
     while( m_pdes_local_time->get() < m_simulation_time )
     {
         // update local time : one cycle
         m_pdes_local_time->add(UNIT_TIME);
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << "PROC " << name() 
-          << " : cycle = " << std::dec << ((int)m_pdes_local_time->get().value())
-          << " / " << dcache_fsm_state_str[m_dcache_fsm]
+std::cout << "-----------------------------------------------------------------" << std::endl;
+std::cout << name() << " / time = " << std::dec << m_pdes_local_time->get().value()
           << " / " << icache_fsm_state_str[m_icache_fsm]
+          << " / " << dcache_fsm_state_str[m_dcache_fsm]
           << " / " << cmd_fsm_state_str[m_vci_cmd_fsm]
           << " / " << rsp_fsm_state_str[m_vci_rsp_fsm] << std::endl;
 #endif
 
         // get processor requests
         m_iss.getRequests( m_ireq, m_dreq );
-
-#ifdef SOCLIB_MODULE_DEBUG
-std::cout << " Instruction Request : " << m_ireq << std::dec << std::endl;
-std::cout << " Data        Request : " << m_dreq << std::dec << std::endl;
-#endif
 
         // activate ICACHE FSM for one cycle
         icache_fsm();
@@ -324,8 +327,17 @@ std::cout << " Data        Request : " << m_dreq << std::dec << std::endl;
         dcache_fsm();
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << " Instruction Response: " << m_irsp << std::dec << std::endl;
-std::cout << " Data        Response: " << m_drsp << std::dec << std::endl;
+size_t min, max;  // unused
+std::cout << "Instruction Request : " << m_ireq << std::dec << std::endl;
+std::cout << "Instruction Response: " << m_irsp << std::dec << std::endl;
+std::cout << "Data        Request : " << m_dreq << std::dec << std::endl;
+std::cout << "Data        Response: " << m_drsp << std::dec << std::endl;
+std::cout << std::dec 
+          << "imiss_req = "  << m_icache_miss_req
+          << " / dmiss_req = "  << m_dcache_miss_req
+          << " / iunc_req = "   << m_icache_unc_req
+          << " / dunc_req = "   << m_dcache_unc_req
+          << " / wbuf_rok = "   << m_wbuf.rok( &min, &max ) << std::endl;
 #endif
 
         // compute number of executed instructions (for instrumentation)
@@ -357,21 +369,31 @@ std::cout << " Data        Response: " << m_drsp << std::dec << std::endl;
         // deschedule and wait on vci response
         // if processor frozen and no more VCI command to send
         if ( ((m_dcache_fsm == DCACHE_MISS_WAIT) or (m_dcache_fsm == DCACHE_UNC_WAIT) or 
-              (m_icache_fsm == DCACHE_MISS_WAIT) or (m_dcache_fsm == DCACHE_UNC_WAIT)) and
-             (not m_dcache_miss_req) and (not m_dcache_unc_req) and 
-             (not m_icache_miss_req) and (not m_icache_unc_req) and 
-             (m_wbuf.empty()) and (m_vci_cmd_fsm == CMD_IDLE) )
+              (m_icache_fsm == ICACHE_MISS_WAIT) or (m_icache_fsm == ICACHE_UNC_WAIT)) and
+             (not m_dcache_miss_req)     and (not m_dcache_unc_req)     and 
+             (not m_icache_miss_req)     and (not m_icache_unc_req)     and 
+             (m_wbuf.empty())            and (not m_rsp_valid )         and
+             (not m_vci_rsp_data_rok)    and (not m_vci_rsp_data_error) and
+             (not m_vci_rsp_ins_rok)     and (not m_vci_rsp_ins_error)  and
+             (m_vci_cmd_fsm == CMD_IDLE) and (m_vci_rsp_fsm == RSP_IDLE) )
         {
             before_time = m_pdes_local_time->get().value();
 
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "######    [" << name() << "]" << " blocked => deschedule / time = " 
+          << std::dec << m_pdes_local_time->get().value() << std::endl;
+#endif
             wait( m_rsp_received );
 
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "######    [" << name() << "]" << " wake up after blocked  / time = " 
+          << std::dec << m_pdes_local_time->get().value() << std::endl;
+#endif
             after_time  = m_pdes_local_time->get().value();
             if(after_time > before_time) 
             {
                 struct iss_t::InstructionResponse 	meanwhile_irsp = ISS_IRSP_INITIALIZER;
                 struct iss_t::DataResponse 		    meanwhile_drsp = ISS_DRSP_INITIALIZER;
-
                 m_iss.executeNCycles( after_time - before_time,
                                       meanwhile_irsp, 
                                       meanwhile_drsp, 
@@ -388,14 +410,14 @@ std::cout << " Data        Response: " << m_drsp << std::dec << std::endl;
                                     m_null_phase, 
                                     m_null_time );
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " Send NULL message / time = " << m_pdes_local_time->get().value() 
-          << std::endl;
+std::cout << "######    [" << name() << "] need sync => send NULL & deschedule / time = " 
+          << std::dec << m_pdes_local_time->get().value() << std::endl;
 #endif
             wait( sc_core::SC_ZERO_TIME );
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " Resume after NULL / time = " << m_pdes_local_time->get().value() 
-          << std::endl;
+std::cout << "######    [" << name() << "]" << " wake up after NULL / time = " 
+          << std::dec << m_pdes_local_time->get().value() << std::endl;
 #endif
         }
     } // end while
@@ -986,6 +1008,11 @@ tmpl(void)::vci_cmd_fsm()
     ///////////////////
     case CMD_DATA_MISS:    // send a DMISS transaction
     {   
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "    [" << name() << "]" << " send DMISS COMMAND / time = " << std::dec
+          << m_pdes_local_time->get().value() << " / address = " 
+          << std::hex << m_dmiss_payload.get_address() << std::endl;
+#endif
         // reset time quantum
         m_pdes_local_time->reset_sync();
 
@@ -993,13 +1020,17 @@ tmpl(void)::vci_cmd_fsm()
         p_vci->nb_transport_fw( m_dmiss_payload, 
                                 m_dmiss_phase, 
                                 m_dmiss_time);
-
         m_vci_cmd_fsm = CMD_IDLE;
         break;
     }
     //////////////////
     case CMD_INS_MISS:    // send a IMISS transaction
     {   
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "    [" << name() << "]" << " send IMISS COMMAND / time = " << std::dec
+          << m_pdes_local_time->get().value() << " / address = " 
+          << std::hex << m_imiss_payload.get_address() << std::endl;
+#endif
         // reset time quantum
         m_pdes_local_time->reset_sync();
 
@@ -1007,13 +1038,17 @@ tmpl(void)::vci_cmd_fsm()
         p_vci->nb_transport_fw( m_imiss_payload, 
                                 m_imiss_phase, 
                                 m_imiss_time );
-       
         m_vci_cmd_fsm = CMD_IDLE;
         break;
     }
     //////////////////
     case CMD_DATA_UNC:    // send a DUNC transaction
     {   
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "    [" << name() << "]" << " send DUNC COMMAND / time = " << std::dec
+          << m_pdes_local_time->get().value() << " / address = " 
+          << std::hex << m_dmiss_payload.get_address() << std::endl;
+#endif
         // reset time quantum
         m_pdes_local_time->reset_sync();
 
@@ -1021,13 +1056,17 @@ tmpl(void)::vci_cmd_fsm()
         p_vci->nb_transport_fw( m_dmiss_payload, 
                                 m_dmiss_phase, 
                                 m_dmiss_time);
-       
         m_vci_cmd_fsm = CMD_IDLE;
         break;
     }
     /////////////////
     case CMD_INS_UNC:    // send a IUNC transaction
     {   
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "    [" << name() << "]" << " send IUNC COMMAND / time = " << std::dec
+          << m_pdes_local_time->get().value() << " / address = " 
+          << std::hex << m_imiss_payload.get_address() << std::endl;
+#endif
         // reset time quantum
         m_pdes_local_time->reset_sync();
 
@@ -1035,7 +1074,6 @@ tmpl(void)::vci_cmd_fsm()
         p_vci->nb_transport_fw( m_imiss_payload, 
                                 m_imiss_phase, 
                                 m_imiss_time);
-
         m_vci_cmd_fsm = CMD_IDLE;
         break;
     }
@@ -1057,6 +1095,11 @@ tmpl(void)::vci_cmd_fsm()
         
         if ( m_vci_cmd_min == m_vci_cmd_max )   // last flit
         {
+#ifdef SOCLIB_MODULE_DEBUG
+std::cout << "    [" << name() << "]" << " send WRITE COMMAND / time = " << std::dec
+          << m_pdes_local_time->get().value() << " / address = " 
+          << std::hex << m_write_payload[m_vci_cmd_index].get_address() << std::endl;
+#endif
             // reset time quantum
             m_pdes_local_time->reset_sync();
 
@@ -1064,7 +1107,6 @@ tmpl(void)::vci_cmd_fsm()
             p_vci->nb_transport_fw( m_write_payload[m_vci_cmd_index], 
                                     m_write_phase[m_vci_cmd_index], 
                                     m_write_time[m_vci_cmd_index] );
-
             m_vci_cmd_fsm = CMD_IDLE;
         }
         m_vci_cmd_cpt++;
@@ -1117,7 +1159,8 @@ tmpl (void)::vci_rsp_fsm()
             {
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << name() << " WRITE BERR / time = " << time.value() << std::endl;
+std::cout << name() << "    !!! WRITE BERR / time = " << std::dec
+          << m_pdes_local_time->get().value() << std::endl;
 #endif
                  m_iss.setWriteBerr();
             }	
@@ -1164,7 +1207,7 @@ tmpl (tlm::tlm_sync_enum)::nb_transport_bw( tlm::tlm_generic_payload  &payload,
 {
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << "[" << name() << "] Receive VCI RSP / time = " << time.value() << std::endl;
+std::cout << "    [" << name() << "] receive VCI RSP / time = " << time.value() << std::endl;
 #endif
 
     soclib_payload_extension *extension_ptr;
@@ -1195,7 +1238,7 @@ tmpl (tlm::tlm_sync_enum)::irq_nb_transport_fw ( int                       id,
     uint8_t	value = payload.get_data_ptr()[0];
 
 #ifdef SOCLIB_MODULE_DEBUG
-std::cout << "[" << name() << "] Receive IRQ / time = " << std::dec << time.value()
+std::cout << "    [" << name() << "] receive IRQ / time = " << std::dec << time.value()
           << " / index = " << id << " / value = " << (int)value << std::endl;
 #endif
 

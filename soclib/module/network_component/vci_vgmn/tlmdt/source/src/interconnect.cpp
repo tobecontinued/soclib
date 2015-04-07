@@ -29,7 +29,7 @@
 
 #include "interconnect.h" 
                     
-//#define SOCLIB_MODULE_DEBUG 1
+#define SOCLIB_MODULE_DEBUG 1
 
 namespace soclib { namespace tlmdt {
 
@@ -150,26 +150,30 @@ tmpl(/**/)::~Interconnect(){ }
 ///////////////////
 tmpl(void)::init()
 {
-    // bind VCI TARGET SOCKETS
+    // allocate & bind p_to_initiator[i] VCI ports
     for(size_t i=0;i<m_inits;i++)
     {
-        std::ostringstream target_name;
-        target_name << "target" << i;
+        std::ostringstream name;
+        name << "p_to_initiator_" << i;
         p_to_initiator.push_back(new tlm_utils::simple_target_socket_tagged
-           <Interconnect,32,tlm::tlm_base_protocol_types>(target_name.str().c_str()));
+           <Interconnect,32,tlm::tlm_base_protocol_types>(name.str().c_str()));
 
-        p_to_initiator[i]->register_nb_transport_fw(this, &Interconnect::nb_transport_fw, i);
+        p_to_initiator[i]->register_nb_transport_fw( this, 
+                                                     &Interconnect::nb_transport_fw, 
+                                                     i );
     }
 
-    // bind VCI INITIATOR SOCKETS
+    // allocate & bind p_to_target[i] VCI ports
     for(size_t i=0;i<m_targets;i++)
     {
-        std::ostringstream init_name;
-        init_name << "init" << i;
+        std::ostringstream name;
+        name << "p_to_target_" << i;
         p_to_target.push_back(new tlm_utils::simple_initiator_socket_tagged
-           <Interconnect,32,tlm::tlm_base_protocol_types>(init_name.str().c_str()));
+           <Interconnect,32,tlm::tlm_base_protocol_types>(name.str().c_str()));
 
-        p_to_target[i]->register_nb_transport_bw(this, &Interconnect::nb_transport_bw, i);
+        p_to_target[i]->register_nb_transport_bw( this, 
+                                                  &Interconnect::nb_transport_bw, 
+                                                  i );
     }
 
     // minimal local latency
@@ -205,16 +209,19 @@ tmpl(uint32_t)::getLocalMsgCounter()
   return m_local_msg_count;
 }
 
+///////////////////////////////////////
 tmpl(uint32_t)::getNonLocalMsgCounter()
 {
   return m_non_local_msg_count;
 }
 
+////////////////////////////////////
 tmpl(uint32_t)::getTokenMsgCounter()
 {
   return m_token_msg_count;
 }
 
+///////////////////
 tmpl(void)::print()
 {
   uint32_t local_msg_count     = getLocalMsgCounter();
@@ -403,12 +410,12 @@ printf("[%s] send Token time = %d\n", name(), (int)m_time_token.value());
   m_centralized_buffer.push(m_inits-1, m_payload_token, m_phase_token, m_time_token);
 
 #ifdef SOCLIB_MODULE_DEBUG
-  printf("[%s] send Token time = %d\n", name(), (int)m_time_token.value());
+printf("[%s] send Token time = %d\n", name(), (int)m_time_token.value());
 #endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
-//  thread 
+//      PDES process 
 /////////////////////////////////////////////////////////////////////////////////////
 tmpl(void)::execLoop()  
 {
@@ -482,14 +489,14 @@ tmpl(tlm::tlm_sync_enum)::nb_transport_fw   (int                         id,
     {
 
 #ifdef SOCLIB_MODULE_DEBUG
-printf("[%s] / time = %d RECEIVE COMMAND from INITIATOR %d\n", 
-       name(), (int)time.value(), id);
+printf( "[%s] RECEIVE COMMAND from INITIATOR %d / time = %d \n", 
+       name(), id, (int)time.value() );
 #endif
 
-        //push a transaction in the centralized buffer
+        // push a transaction in the centralized buffer
         push = m_centralized_buffer.push(id, payload, phase, time);
 
-        if(!push)
+        if( not push )
         {
             try_push++;
 
@@ -497,9 +504,9 @@ printf("[%s] / time = %d RECEIVE COMMAND from INITIATOR %d\n",
 printf("[%s] INITIATOR %d <<<<<<<<< CANNOT PUSH >>>>>>>>\n", name(),id);
 #endif
 
-            sc_core::wait(sc_core::SC_ZERO_TIME);
+            sc_core::wait( sc_core::SC_ZERO_TIME );
         }
-    } while (!push);
+    } while ( not push );
 
     return  tlm::TLM_COMPLETED;
 

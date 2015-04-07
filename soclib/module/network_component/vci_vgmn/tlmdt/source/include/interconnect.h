@@ -37,8 +37,12 @@
 
 namespace soclib { namespace tlmdt {
 
+////////////////////
 class Interconnect 
+////////////////////
   : public sc_core::sc_module  
+  , virtual public tlm::tlm_fw_transport_if<tlm::tlm_base_protocol_types> 
+  , virtual public tlm::tlm_bw_transport_if<tlm::tlm_base_protocol_types> 
 {
 private:
  
