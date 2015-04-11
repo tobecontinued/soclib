@@ -30,20 +30,19 @@
 
 enum MwmrDmaRegisters 
 {
-    CHANNEL_BUFFER_LSB   = 0,     // Data Buffer paddr 32 LSB bits
-    CHANNEL_BUFFER_MSB   = 1,     // Data Buffer paddr extension
-    CHANNEL_MWMR_LSB     = 2,     // MWMR descriptor paddr 32 LSB bits
-    CHANNEL_MWMR_MSB     = 3,     // MWMR descriptor padr extension
-    CHANNEL_LOCK_LSB     = 4,     // MWMR lock paddr 32 LSB bits
-    CHANNEL_LOCK_MSB     = 5,     // MWMR lock paddr extension
-    CHANNEL_WAY          = 6,     // TO_COPROC / FROMCOPROC        (Read-only)
-    CHANNEL_MODE         = 7,     // MWMR / DMA / DMA_IRQ    
-    CHANNEL_SIZE         = 8,     // Data Buffer size (bytes)
-    CHANNEL_RUNNING      = 9,     // Channel running
-    CHANNEL_STATUS       = 10,    // channel FSM state             (Read-only)
-    CHANNEL_INFO         = 11,    // STX | CFG | FROM | TO         (Read-only)
+    MWR_CHANNEL_BUFFER_LSB   = 0,     // Data Buffer paddr 32 LSB bits
+    MWR_CHANNEL_BUFFER_MSB   = 1,     // Data Buffer paddr extension
+    MWR_CHANNEL_DESC_LSB     = 2,     // MWMR descriptor paddr 32 LSB bits
+    MWR_CHANNEL_DESC_MSB     = 3,     // MWMR descriptor padr extension
+    MWR_CHANNEL_LOCK_LSB     = 4,     // MWMR lock paddr 32 LSB bits
+    MWR_CHANNEL_LOCK_MSB     = 5,     // MWMR lock paddr extension
+    MWR_CHANNEL_WAY          = 6,     // TO_COPROC / FROMCOPROC        (Read-only)
+    MWR_CHANNEL_MODE         = 7,     // MWMR / DMA / DMA_IRQ    
+    MWR_CHANNEL_SIZE         = 8,     // Data Buffer size (bytes)
+    MWR_CHANNEL_RUNNING      = 9,     // Channel running
+    MWR_CHANNEL_STATUS       = 10,    // channel FSM state             (Read-only)
     //
-    CHANNEL_SPAN         = 16,
+    MWR_CHANNEL_SPAN         = 16,
 };
 
 typedef enum MwmrDmaModes 
@@ -58,6 +57,15 @@ typedef enum MwmrDmaWays
     TO_COPROC       = 0,
     FROM_COPROC     = 1,
 } channel_way_t;
+
+typedef enum MwmrChannelStatus
+{
+    MWR_CHANNEL_SUCCESS    = 0,
+    MWR_CHANNEL_ERROR_DATA = 1,
+    MWR_CHANNEL_ERROR_LOCK = 2,
+    MWR_CHANNEL_ERROR_DESC = 3,
+    MWR_CHANNEL_BUSY       = 4,
+} channel_status_t;
 
 #endif 
 

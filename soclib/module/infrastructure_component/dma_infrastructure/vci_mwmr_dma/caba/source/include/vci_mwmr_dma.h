@@ -55,7 +55,6 @@ typedef enum channel_fsm_states_e
     CHANNEL_IDLE,
     CHANNEL_ACK,
     CHANNEL_DMA_DATA_MOVE,
-    CHANNEL_DMA_IRQ,
     CHANNEL_MWMR_TICKET_READ,
     CHANNEL_MWMR_TICKET_CAS,
     CHANNEL_MWMR_LOCK_READ,
@@ -63,6 +62,10 @@ typedef enum channel_fsm_states_e
     CHANNEL_MWMR_STATUS_UPDT,
     CHANNEL_MWMR_LOCK_RELEASE,
     CHANNEL_MWMR_DATA_MOVE,
+    CHANNEL_SUCCESS,
+    CHANNEL_ERROR_LOCK,
+    CHANNEL_ERROR_DESC,
+    CHANNEL_ERROR_DATA,
 } ChannelFsmState;
 
 typedef enum cmd_fsm_states_e
@@ -145,12 +148,13 @@ typedef struct channel_state_s
     // communication between channel_fsm and cmd_fsm /rsp_fsm
     bool                    request;       // valid request (to CMD_FSM)
     mwmr_request_t          reqtype;       // request type (to CMD_FSM)
-    bool                    response;      // valid response (from CMD_FSM)
+    bool                    response;      // valid response (from RSP_FSM)
+    bool                    rerror;        // error reported (from RSP_FSM)
     uint32_t                data;          // returned data (from RSP_FSM)
 
     // registers defining memory buffer state (both MWMR mode and DMA mode)
-    uint32_t                ptr;           // next slot for read in buffer
-    uint32_t                ptw;           // next slot for write in buffer
+    uint32_t                ptr;           // word index for read
+    uint32_t                ptw;           // word index for write
     uint32_t                sts;           // buffer content (words) 
 } channel_state_t;
 
@@ -180,12 +184,12 @@ private:
     // registers for CMD FSM
     sc_signal<uint32_t>     r_cmd_fsm;              // CMD_FSM state
 	sc_signal<uint32_t>     r_cmd_word;             // word counter for CMD FSM
-	uint32_t                r_cmd_k;                // current channel index 
+	sc_signal<uint32_t>     r_cmd_k;                // current channel index 
     
     // registers for RSP FSM
 	sc_signal<uint32_t>     r_rsp_fsm;              // RSP_FSM state
 	sc_signal<uint32_t>     r_rsp_word;             // word counter for RSP_FSM
-	uint32_t                r_rsp_k;                // current channel index
+	sc_signal<uint32_t>     r_rsp_k;                // current channel index
 
     // registers for TGT FSM 
 	sc_signal<uint32_t>     r_tgt_fsm;              // TGT_FSM state

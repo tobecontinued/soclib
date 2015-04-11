@@ -47,7 +47,7 @@
 //   the coprocessor port and a MWMR channel (software FIFO in memory).
 //   The channel FSM implements the 7 steps MWMR protocol:
 //   1 - Read the ticket for queuing lock (1 flit VCI READ)
-//   2 - Increment atomically the ticket (VCI CAS)
+//   2 - Increment atomically the ticket (2 flits VCI CAS)
 //   3 - Read the lock current value (1 flit VCI READ)
 //   4 - Read the channel status (3 flits VCI READ)
 //   5 - Transfer the data (N flits VCI READ or WRITE)
@@ -55,14 +55,19 @@
 //   7 - Release the lock (1 flit VCI WRITE) 
 //   In this mode the software must write in the channel configuration registers
 //   the data buffer address, the channel descriptor address, the lock address, 
-//   and the channel size.
+//   and the channel size. The IRQ is only asserted if a VCI error is reported.
 //
-// - In DMA_MODE, the channel FSM transfer a single buffer between the memory
-//   and the coprocessor port. The number of VCI burst depends on both the
-//   memory buffer size, and the size of burst requested by the coprocessor
+// - In MODE_DMA_IRQ or MODE_DMA_NO_IRQ modes, the channel FSM transfer a single 
+//   buffer between the memory and the coprocessor port. 
+//   The number of VCI burst depends on both the memory buffer size, and the size 
+//   of burst defined by the coprocessor type.
 //   In this mode the software must define the channel configuration by writing 
 //   the data buffer address & the buffer size in the channel configuration registers.
-//   An optional interrupt can be activated when the requested transfer is completed.
+//   When the transfer is completed the channel FSM waits in a SUCCESS or ERROR state
+//   until the channel is reset by writing a zero value in the MWR_CHANNEL_RUN register.
+//   An optional interrupt can be activated when the requested transfer is completed
+//   (only in MODE_DMA_IRQ). In MODE_DMA_NO_IRQ, the software must poll the 
+//   MWR_CHANNEL_STATUS register.
 //
 // WARNING : In both modes the channel FSM uses read or write bursts to transfer
 // the data, and a constructor parameter define the max burst size (bytes).
@@ -76,17 +81,17 @@
 // transactions is equal to the number of channels. 
 //
 // For each channel, the software addressable registers are:
-// - CHANNEL_BUFFER_LSB[k]     data buffer physical address 32 LSB bits    (MWMR or DMA)
-// - CHANNEL_BUFFER_MSB[k]     data buffer physical address extend bits    (MWMR or DMA)
-// - CHANNEL_MWMR_LSB[k]       channel status physical address 32 LSB bits (MWMR   only)
-// - CHANNEL_MWMR_MSB[k]       channel status physical address extend bits (MWMR   only)
-// - CHANNEL_LOCK_LSB[k]       channel lock physical address 32 LSB bits   (MWMR   only)
-// - CHANNEL_LOCK_MSB[k]       channel lock physical address extend bits   (MWMR   only)
-// - CHANNEL_WAY[k]            channel direction (TO_COPROC / FROM_COPROC) (MWMR or DMA)
-// - CHANNEL_MODE[k]           MWMR / DMA_IRQ / DMA_NO_IRQ                 (MWMR or DMA)
-// - CHANNEL_SIZE[k]           data buffer size (bytes)                    (MWMR or DMA) 
-// - CHANNEL_RUN[k]            channel activation/deativation              (MWMR or DMA)
-// - CHANNEL_STATUS[k]                                                     (MWMR or DMA)
+// - MWR_CHANNEL_BUFFER_LSB[k]     data buffer physical address 32 LSB bits    (MWMR or DMA)
+// - MWR_CHANNEL_BUFFER_MSB[k]     data buffer physical address extend bits    (MWMR or DMA)
+// - MWR_CHANNEL_DESC_LSB[k]       channel status physical address 32 LSB bits (MWMR   only)
+// - MWR_CHANNEL_DESC_MSB[k]       channel status physical address extend bits (MWMR   only)
+// - MWR_CHANNEL_LOCK_LSB[k]       channel lock physical address 32 LSB bits   (MWMR   only)
+// - MWR_CHANNEL_LOCK_MSB[k]       channel lock physical address extend bits   (MWMR   only)
+// - MWR_CHANNEL_WAY[k]            channel direction (TO_COPROC / FROM_COPROC) (MWMR or DMA)
+// - MWR_CHANNEL_MODE[k]           MWMR / DMA_IRQ / DMA_NO_IRQ                 (MWMR or DMA)
+// - MWR_CHANNEL_SIZE[k]           data buffer size (bytes)                    (MWMR or DMA) 
+// - MWR_CHANNEL_RUN[k]            channel activation/deativation              (MWMR or DMA)
+// - MWR_CHANNEL_STATUS[k]                                                     (MWMR or DMA)
 //
 // Besides these channel registers, this component supports
 // up to 16 (R/W) coprocessor registers COPROC_REG[i].
@@ -136,6 +141,7 @@
 #include "alloc_elems.h"
 #include <cstring>
 #include <cassert>
+
 
 namespace soclib { namespace caba {
 
@@ -225,49 +231,58 @@ tmpl(void)::transition()
                         "VCI_MWMR_DMA error : coprocessor status register index too large");
                         r_tgt_data = p_status[cell].read();
                     }
-                    else if ( cell == CHANNEL_WAY )
+                    else if ( cell == MWR_CHANNEL_WAY )
                     {
 		                r_tgt_data = (uint32_t)r_channel[k-1].way;
                     }
-                    else if ( cell == CHANNEL_MODE )
+                    else if ( cell == MWR_CHANNEL_MODE )
                     {
 		                r_tgt_data = (uint32_t)r_channel[k-1].mode;
                     }
-                    else if ( cell == CHANNEL_BUFFER_LSB )
+                    else if ( cell == MWR_CHANNEL_BUFFER_LSB )
                     {
 		                r_tgt_data = (uint32_t)r_channel[k-1].buffer_paddr; 
                     }
-                    else if ( cell == CHANNEL_BUFFER_MSB )
+                    else if ( cell == MWR_CHANNEL_BUFFER_MSB )
                     {
 		                r_tgt_data = (uint32_t)(r_channel[k-1].buffer_paddr>>32); 
                     }
-                    else if ( cell == CHANNEL_MWMR_LSB )
+                    else if ( cell == MWR_CHANNEL_DESC_LSB )
                     {
 		                r_tgt_data = (uint32_t)r_channel[k-1].desc_paddr; 
                     }
-                    else if ( cell == CHANNEL_MWMR_MSB )
+                    else if ( cell == MWR_CHANNEL_DESC_MSB )
                     {
 		                r_tgt_data = (uint32_t)(r_channel[k-1].desc_paddr>>32); 
                     }
-                    else if ( cell == CHANNEL_LOCK_LSB )
+                    else if ( cell == MWR_CHANNEL_LOCK_LSB )
                     {
 		                r_tgt_data = (uint32_t)r_channel[k-1].lock_paddr; 
                     }
-                    else if ( cell == CHANNEL_LOCK_MSB )
+                    else if ( cell == MWR_CHANNEL_LOCK_MSB )
                     {
 		                r_tgt_data = (uint32_t)(r_channel[k-1].lock_paddr>>32); 
                     }
-                    else if ( cell == CHANNEL_SIZE )
+                    else if ( cell == MWR_CHANNEL_SIZE )
                     {
 		                r_tgt_data = r_channel[k-1].buffer_size;
                     }
-                    else if ( cell == CHANNEL_RUNNING )
+                    else if ( cell == MWR_CHANNEL_RUNNING )
                     {
 		                r_tgt_data = r_channel[k-1].running;
                     }
-                    else if ( cell == CHANNEL_STATUS )
+                    else if ( cell == MWR_CHANNEL_STATUS )
                     {
-		                r_tgt_data = (uint32_t)r_channel[k-1].fsm;
+                        if      ( r_channel[k-1].fsm.read() == CHANNEL_SUCCESS ) 
+                            r_tgt_data = MWR_CHANNEL_SUCCESS;
+                        else if ( r_channel[k-1].fsm.read() == CHANNEL_ERROR_DATA ) 
+                            r_tgt_data = MWR_CHANNEL_ERROR_DATA;
+                        else if ( r_channel[k-1].fsm.read() == CHANNEL_ERROR_DESC ) 
+                            r_tgt_data = MWR_CHANNEL_ERROR_DESC;
+                        else if ( r_channel[k-1].fsm.read() == CHANNEL_ERROR_LOCK ) 
+                            r_tgt_data = MWR_CHANNEL_ERROR_LOCK;
+                        else
+                            r_tgt_data = MWR_CHANNEL_BUSY;
                     }
                     else
                     {
@@ -287,12 +302,12 @@ tmpl(void)::transition()
                         "VCI_MWMR_DMA error: coprocessor config register index too large");
         		        r_coproc_config[cell] = wdata;
                     }
-                    else if ( cell == CHANNEL_WAY )
+                    else if ( cell == MWR_CHANNEL_WAY )
                     {
                         assert(false and 
                         "VCI_MWMR_DMA error in config : WAY not configurable by soft");
                     }
-                    else if ( cell == CHANNEL_MODE )
+                    else if ( cell == MWR_CHANNEL_MODE )
                     {
                         if      ( wdata == MODE_MWMR )       r_channel[k-1].mode = MODE_MWMR;
                         else if ( wdata == MODE_DMA_IRQ )    r_channel[k-1].mode = MODE_DMA_IRQ;
@@ -301,42 +316,42 @@ tmpl(void)::transition()
                              "VCI_MWMR_DMA error in config : undefined mode");
                     }
 
-                    else if ( cell == CHANNEL_BUFFER_LSB )
+                    else if ( cell == MWR_CHANNEL_BUFFER_LSB )
                     {
                         assert( ((wdata % m_burst_size) == 0) and
                         "VCI_MWMR_DMA error in config : buffer base not multiple of burst size");
 		                r_channel[k-1].buffer_paddr = (uint64_t)wdata;
                     }
-                    else if ( cell == CHANNEL_BUFFER_MSB )
+                    else if ( cell == MWR_CHANNEL_BUFFER_MSB )
                     {
 		                r_channel[k-1].buffer_paddr = r_channel[k-1].buffer_paddr +
                                                       (((uint64_t)wdata)<<32);
                     }
-                    else if ( cell == CHANNEL_MWMR_LSB )
+                    else if ( cell == MWR_CHANNEL_DESC_LSB )
                     {
 		                r_channel[k-1].desc_paddr = (uint64_t)wdata;
                     }
-                    else if ( cell == CHANNEL_MWMR_MSB )
+                    else if ( cell == MWR_CHANNEL_DESC_MSB )
                     {
 		                r_channel[k-1].desc_paddr = r_channel[k-1].desc_paddr +
                                                       (((uint64_t)wdata)<<32);
                     }
-                    else if ( cell == CHANNEL_LOCK_LSB )
+                    else if ( cell == MWR_CHANNEL_LOCK_LSB )
                     {
 		                r_channel[k-1].lock_paddr = (uint64_t)wdata;
                     }
-                    else if ( cell == CHANNEL_LOCK_MSB )
+                    else if ( cell == MWR_CHANNEL_LOCK_MSB )
                     {
 		                r_channel[k-1].lock_paddr = r_channel[k-1].lock_paddr +
                                                       (((uint64_t)wdata)<<32);
                     }
-                    else if ( cell == CHANNEL_SIZE )
+                    else if ( cell == MWR_CHANNEL_SIZE )
                     {
                         assert( ((wdata % m_burst_size) == 0) and
                         "VCI_MWMR_DMA error in config : buffer size not multiple of burst size");
 		                r_channel[k-1].buffer_size = wdata;
                     }
-                    else if ( cell == CHANNEL_RUNNING )
+                    else if ( cell == MWR_CHANNEL_RUNNING )
                     {
 		                r_channel[k-1].running = (wdata != 0);
                     }
@@ -386,7 +401,7 @@ tmpl(void)::transition()
 
 		    for ( size_t x = 0 ; x < m_all_channels ; x++ )
             {
-			    k = (r_cmd_k + x + 1) % m_all_channels;
+			    k = (r_cmd_k.read() + x + 1) % m_all_channels;
                 if ( r_channel[k].request )
                 {
                     found = true;
@@ -471,7 +486,9 @@ tmpl(void)::transition()
         {
 		    if ( p_vci_initiator.cmdack.read() )
             {
-                assert( r_channel[r_cmd_k].fifo->rok() and
+                size_t k = r_cmd_k.read();
+
+                assert( r_channel[k].fifo->rok() and
                         "Hardware fifo should not be empty in a Data Write transaction");
 
                 vci_fifo_get = true;
@@ -535,34 +552,52 @@ tmpl(void)::transition()
         /////////////////////
 	    case RSP_TICKET_READ:    // set the ticket value and signal completion
         {
-            assert( p_vci_initiator.reop.read() and
-                   "VCI_MWMR_DMA error: TICKET_READ VCI response should be one flit");
+		    if ( p_vci_initiator.rspval.read() )
+            {
+                assert( p_vci_initiator.reop.read() and
+                       "VCI_MWMR_DMA error: TICKET_READ VCI response should be one flit");
  
-            r_channel[r_rsp_k].response = true;      
-            r_channel[r_rsp_k].ticket   = p_vci_initiator.rdata.read();
-            r_rsp_fsm                   = RSP_IDLE;
+                size_t k = r_rsp_k.read();
+
+                r_channel[k].response = true;      
+                r_channel[k].rerror   = (bool)p_vci_initiator.rerror.read();
+                r_channel[k].ticket   = p_vci_initiator.rdata.read();
+                r_rsp_fsm             = RSP_IDLE;
+            }
 		    break;
         }
         ////////////////////
 	    case RSP_TICKET_CAS:   // set the data value and signal completion 
         {
-            assert( p_vci_initiator.reop.read() and
-                   "VCI_MWMR_DMA error: TICKET_CAS VCI response should be one flit");
+		    if ( p_vci_initiator.rspval.read() )
+            {
+                assert( p_vci_initiator.reop.read() and
+                       "VCI_MWMR_DMA error: TICKET_CAS VCI response should be one flit");
  
-            r_channel[r_rsp_k].response = true;      
-            r_channel[r_rsp_k].data     = (p_vci_initiator.rdata.read() == 0);
-            r_rsp_fsm                   = RSP_IDLE;
+                size_t k = r_rsp_k.read();
+
+                r_channel[k].response = true;      
+                r_channel[k].rerror   = (bool)p_vci_initiator.rerror.read();
+                r_channel[k].data     = (p_vci_initiator.rdata.read() == 0);
+                r_rsp_fsm             = RSP_IDLE;
+            }
 		    break;
         }
         ///////////////////
 	    case RSP_LOCK_READ:    // set the data value, and signal completion 
         {
-            assert( p_vci_initiator.reop.read() and
-                   "VCI_MWMR_DMA error: LOCK_READ VCI response should be one flit");
+		    if ( p_vci_initiator.rspval.read() )
+            {
+                assert( p_vci_initiator.reop.read() and
+                       "VCI_MWMR_DMA error: LOCK_READ VCI response should be one flit");
  
-            r_channel[r_rsp_k].response = true;      
-            r_channel[r_rsp_k].data     = (p_vci_initiator.rdata.read() == 0);
-            r_rsp_fsm                   = RSP_IDLE;
+                size_t k = r_rsp_k.read();
+
+                r_channel[k].response = true;      
+                r_channel[k].rerror   = (bool)p_vci_initiator.rerror.read();
+                r_channel[k].data     = (p_vci_initiator.rdata.read() == 0);
+                r_rsp_fsm             = RSP_IDLE;
+            }
             break;
         }
         /////////////////////////
@@ -573,21 +608,59 @@ tmpl(void)::transition()
                 assert( not p_vci_initiator.reop.read() and
                         "VCI_MWMR_DMA error: STATUS_READ VCI response should have 3 flits");
 
-                r_channel[r_rsp_k].sts  = p_vci_initiator.rdata.read();
-                r_rsp_fsm               = RSP_STATUS_READ_PTR;
+                size_t k = r_rsp_k.read();
+
+                if ( p_vci_initiator.rerror.read() )  // error reported
+                {
+                    if ( p_vci_initiator.reop.read() )  // last flit
+                    {
+                        r_channel[k].rerror   = true;
+                        r_channel[k].response = true;
+                        r_rsp_fsm             = RSP_IDLE;
+                    }
+                    else
+                    {
+                        assert( false and
+                        "VCI_MWMR_DMA error: illegal VCI error response format");
+                    }
+                }
+                else                                 // no error reported
+                {    
+                    r_channel[k].sts = p_vci_initiator.rdata.read();
+                    r_rsp_fsm        = RSP_STATUS_READ_PTR;
+                }
             }
             break;
         }
         /////////////////////////
-        case RSP_STATUS_READ_PTR:  // set the ptr value
+        case RSP_STATUS_READ_PTR:  // set the ptr value 
         {
 		    if ( p_vci_initiator.rspval.read() )
             {
                 assert( not p_vci_initiator.reop.read() and
                         "VCI_MWMR_DMA error: STATUS_READ VCI response should have 3 flits");
 
-                r_channel[r_rsp_k].ptr = p_vci_initiator.rdata.read();
-                r_rsp_fsm              = RSP_STATUS_READ_PTW;
+                size_t k = r_rsp_k.read();
+
+                if ( p_vci_initiator.rerror.read() )  // error reported
+                {
+                    if ( p_vci_initiator.reop.read() )  // last flit
+                    {
+                        r_channel[k].rerror   = true;
+                        r_channel[k].response = true;
+                        r_rsp_fsm             = RSP_IDLE;
+                    }
+                    else
+                    {
+                        assert( false and
+                        "VCI_MWMR_DMA error: illegal VCI error response format");
+                    }
+                }
+                else                                 // no error reported
+                {    
+                    r_channel[k].ptr = p_vci_initiator.rdata.read();
+                    r_rsp_fsm        = RSP_STATUS_READ_PTW;
+                }
             }
             break;
         }
@@ -599,20 +672,46 @@ tmpl(void)::transition()
                 assert(  p_vci_initiator.reop.read() and
                         "VCI_MWMR_DMA error: STATUS_READ VCI response should have 3 flits");
 
-                r_channel[r_rsp_k].response = true;      
-                r_channel[r_rsp_k].ptw      = p_vci_initiator.rdata.read();
-                r_rsp_fsm                   = RSP_IDLE;
+                size_t k = r_rsp_k.read();
+
+                if ( p_vci_initiator.rerror.read() )  // error reported
+                {
+                    if ( p_vci_initiator.reop.read() )  // last flit
+                    {
+                        r_channel[k].rerror   = true;
+                        r_channel[k].response = true;
+                        r_rsp_fsm             = RSP_IDLE;
+                    }
+                    else
+                    {
+                        assert( false and
+                        "VCI_MWMR_DMA error: illegal error respons format");
+                    }
+                }
+                else                                 // no error reported
+                { 
+                    r_channel[k].ptw      = p_vci_initiator.rdata.read();
+                    r_channel[k].response = true;      
+                    r_channel[k].rerror   = false;
+                    r_rsp_fsm             = RSP_IDLE;
+                }
             }
             break;
         }
         /////////////////////
 	    case RSP_STATUS_UPDT:    // signal completion
         {
-            assert( p_vci_initiator.reop.read() and
-                   "VCI_MWMR_DMA error: Write Status VCI response should be one flit");
+		    if ( p_vci_initiator.rspval.read() )
+            {
+                assert( p_vci_initiator.reop.read() and
+                       "VCI_MWMR_DMA error: Write Status VCI response should be one flit");
  
-            r_channel[r_rsp_k].response = true;
-            r_rsp_fsm                   = RSP_IDLE;
+                size_t k = r_rsp_k.read();
+
+                r_channel[k].response = true;
+                r_channel[k].rerror   = (bool)p_vci_initiator.rerror.read();
+                r_rsp_fsm             = RSP_IDLE;
+            }
             break;
         }
         ///////////////////
@@ -620,25 +719,42 @@ tmpl(void)::transition()
         {
 		    if ( p_vci_initiator.rspval.read() )
             {
-                assert( r_channel[r_rsp_k].fifo->wok() and
+                size_t k = r_rsp_k.read();
+
+                assert( r_channel[k].fifo->wok() and
                         "VCI_MWMR_DMA error: Hardware fifo should not be full");
 
-                vci_fifo_put   = true;
-                vci_fifo_wdata = p_vci_initiator.rdata.read();
-                if ( r_rsp_word.read() + 1 == (m_burst_size>>2) )
-                {
-                    assert( p_vci_initiator.reop.read() and
-                            "VCI°MWMR_DMA error: wrong READ_DATA VCI response");
 
-                    r_channel[r_rsp_k].response = true;
-                    r_rsp_fsm                   = RSP_IDLE;
+                if ( p_vci_initiator.rerror.read() )  // error reported
+                {
+                    r_channel[k].rerror = true;
+                    if ( p_vci_initiator.reop.read() )  // last flit
+                    {
+                        r_channel[k].response = true;
+                        r_rsp_fsm             = RSP_IDLE;
+                    }
+                        
                 }
-                else
+                else                                  // no error reported
                 {
-                    assert( not p_vci_initiator.reop.read() and
-                            "VCI_MWMR_DMA error: wrong READ_DATA VCI  response");
+                    vci_fifo_put   = true;
+                    vci_fifo_wdata = p_vci_initiator.rdata.read();
+                    if ( r_rsp_word.read() + 1 == (m_burst_size>>2) )  // last flit
+                    {
+                        assert( p_vci_initiator.reop.read() and
+                                "VCI_MWMR_DMA error: wrong READ_DATA VCI response");
 
-                    r_rsp_word = r_rsp_word.read() + 1;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].response = true;
+                        r_rsp_fsm             = RSP_IDLE;
+                    }
+                    else
+                    {
+                        assert( not p_vci_initiator.reop.read() and
+                                "VCI_MWMR_DMA error: wrong READ_DATA VCI  response");
+
+                        r_rsp_word = r_rsp_word.read() + 1;
+                    }
                 }
             }
             break;
@@ -646,11 +762,17 @@ tmpl(void)::transition()
         ////////////////////
         case RSP_DATA_WRITE:    // signal completion
         {
-            assert( p_vci_initiator.reop.read() and
-                   "VCI_MWMR_DMA error: wrong WRITE_DATA VCI response");
+		    if ( p_vci_initiator.rspval.read() )
+            {
+                assert( p_vci_initiator.reop.read() and
+                       "VCI_MWMR_DMA error: wrong WRITE_DATA VCI response");
  
-            r_channel[r_rsp_k].response = true;
-            r_rsp_fsm                   = RSP_IDLE;
+                size_t k = r_rsp_k.read();
+
+                r_channel[k].response = true;
+                r_channel[k].rerror   = (bool)p_vci_initiator.rerror.read();
+                r_rsp_fsm             = RSP_IDLE;
+            }
             break;
         }
     } // end switch r_rsp_fsm   
@@ -681,14 +803,8 @@ tmpl(void)::transition()
             case CHANNEL_IDLE:      // wait a coprocessor request
 		    {
                 bool req = false;
-                if ( is_to_coproc ) 
-                {
-                    req = p_to_coproc[k].req;
-                }
-                else
-                {
-                    req = p_from_coproc[k - m_to_coproc_channels].req;
-                }
+                if ( is_to_coproc )  req = p_to_coproc[k].req;
+                else  req = p_from_coproc[k - m_to_coproc_channels].req;
  
                 if ( r_channel[k].running and req )
                 {
@@ -734,48 +850,68 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )
                 {
-                    // reset synchro
-                    r_channel[k].response = false;
-
-                    // update number of bytes to be transfered for the current DMA transfer
-                    r_channel[k].buffer_size = r_channel[k].buffer_size - m_burst_size;
-
-                    // update number of bursts for the current coprocessor request
-                    r_channel[k].bursts      = r_channel[k].bursts - 1;
-
-                    // update offset in memory buffer
-                    if ( is_to_coproc ) r_channel[k].ptr = r_channel[k].ptr + (m_burst_size>>2);
-                    else                r_channel[k].ptw = r_channel[k].ptw + (m_burst_size>>2);
-
-                    // define next step
-                    if ( r_channel[k].bursts )                   // coproc request not completed
+                    if ( r_channel[k].rerror == false )  // No error reported
                     {
-                        if ( is_to_coproc ) r_channel[k].reqtype = DATA_READ;
-                        else                r_channel[k].reqtype = DATA_WRITE;
-                        r_channel[k].request = true;
+                        // reset synchro
+                        r_channel[k].response = false;
+
+                        // update number of bytes to be transfered and number of bursts
+                        r_channel[k].buffer_size = r_channel[k].buffer_size - m_burst_size;
+                        r_channel[k].bursts      = r_channel[k].bursts - 1;
+
+                        // define next step
+                        if ( r_channel[k].bursts )           // coproc request not completed
+                        {
+                            if ( is_to_coproc )
+                            {
+                               r_channel[k].reqtype = DATA_READ;
+                               r_channel[k].request = true;
+                               r_channel[k].ptr = r_channel[k].ptr + (m_burst_size>>2);
+                            }
+                            else
+                            {
+                               r_channel[k].reqtype = DATA_WRITE;
+                               r_channel[k].request = true;
+                               r_channel[k].ptw = r_channel[k].ptw + (m_burst_size>>2);
+                            }
+                        }
+                        else if (r_channel[k].buffer_size )  // DMA transfert not completed
+                        {
+                            if ( is_to_coproc )
+                            {
+                                r_channel[k].ptr = r_channel[k].ptr + (m_burst_size>>2);
+                                r_channel[k].fsm = CHANNEL_IDLE;
+                            }
+                            else
+                            {
+                                r_channel[k].ptw = r_channel[k].ptw + (m_burst_size>>2);
+                                r_channel[k].fsm = CHANNEL_IDLE;
+                            }
+                        }
+                        else                                 // DMA transfer completed
+                        {
+                            r_channel[k].ptr = 0;
+                            r_channel[k].ptw = 0;
+                            r_channel[k].fsm = CHANNEL_SUCCESS;
+                        }
                     }
-                    else if (r_channel[k].buffer_size )          // DMA transfert not completed
+                    else                              // error reported
                     {
-                        r_channel[k].fsm     = CHANNEL_IDLE;
-                    }
-                    else if (r_channel[k].mode == MODE_DMA_IRQ ) // DMA transfer completed / IRQ
-                    {
-                        if ( is_to_coproc ) r_channel[k].ptr = 0;
-                        else                r_channel[k].ptw = 0;
-                        r_channel[k].fsm     = CHANNEL_DMA_IRQ;
-                    }
-                    else                                         // DMA transfer completed / No IRQ
-                    {
-                        if ( is_to_coproc ) r_channel[k].ptr = 0;
-                        else                r_channel[k].ptw = 0;
-                        r_channel[k].running = false;
-                        r_channel[k].fsm     = CHANNEL_IDLE;
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].ptr      = 0;
+                        r_channel[k].ptw      = 0;
+                        r_channel[k].fsm    = CHANNEL_ERROR_DATA;
                     }
                 }
                 break;
             }
-            /////////////////////
-            case CHANNEL_DMA_IRQ:
+            /////////////////////////
+            case CHANNEL_SUCCESS:      // wait soft reset
+            case CHANNEL_ERROR_LOCK:   // wait soft reset
+            case CHANNEL_ERROR_DESC:   // wait soft reset
+            case CHANNEL_ERROR_DATA:   // wait soft reset
             {
                 if ( r_channel[k].running == false ) r_channel[k].fsm = CHANNEL_IDLE;
                 break;
@@ -786,12 +922,22 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )  // response available in ticket
                 {
-                    // reset synchro
-                    r_channel[k].response = false;
+                    if ( r_channel[k].rerror == false )   // No error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
 
-                    r_channel[k].reqtype = TICKET_CAS;
-                    r_channel[k].request = true;
-                    r_channel[k].fsm     = CHANNEL_MWMR_TICKET_CAS;
+                        r_channel[k].reqtype = TICKET_CAS;
+                        r_channel[k].request = true;
+                        r_channel[k].fsm     = CHANNEL_MWMR_TICKET_CAS;
+                    }
+                    else                                  // error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
+                    }
                 }
                 break;
             }
@@ -802,20 +948,30 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )   // response available in data
                 {
-                    // reset synchro
-                    r_channel[k].response = false;
+                    if ( r_channel[k].rerror == false )   // No error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
 
-                    if ( r_channel[k].data == 0 )      // success
-                    {
-                        r_channel[k].reqtype = LOCK_READ;
-                        r_channel[k].request = true;
-                        r_channel[k].fsm     = CHANNEL_MWMR_LOCK_READ;
+                        if ( r_channel[k].data == 0 )      // success
+                        {
+                            r_channel[k].reqtype = LOCK_READ;
+                            r_channel[k].request = true;
+                            r_channel[k].fsm     = CHANNEL_MWMR_LOCK_READ;
+                        }
+                        else                                   // failure
+                        {
+                            r_channel[k].reqtype = TICKET_READ;
+                            r_channel[k].request = true;
+                            r_channel[k].fsm     = CHANNEL_MWMR_TICKET_READ;
+                        }
                     }
-                    else                               // failure
+                    else                                  // error reported
                     {
-                        r_channel[k].reqtype = TICKET_READ;
-                        r_channel[k].request = true;
-                        r_channel[k].fsm     = CHANNEL_MWMR_TICKET_READ;
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
                     }
                 }
                 break;
@@ -827,68 +983,88 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )
                 {
-                    // reset synchro
-                    r_channel[k].response = false;
-
-                    if ( r_channel[k].data == r_channel[k].ticket ) // lock available 
+                    if ( r_channel[k].rerror == false )   // No error reported
                     {
-                        r_channel[k].reqtype = STATUS_READ;           
-                        r_channel[k].request = true;
-                        r_channel[k].fsm     = CHANNEL_MWMR_STATUS_READ;
+                        // reset synchro
+                        r_channel[k].response = false;
+
+                        if ( r_channel[k].data == r_channel[k].ticket ) // lock available 
+                        {
+                            r_channel[k].reqtype = STATUS_READ;           
+                            r_channel[k].request = true;
+                            r_channel[k].fsm     = CHANNEL_MWMR_STATUS_READ;
+                        }
+                        else                                           // lock not available yet
+                        {                            
+                            r_channel[k].reqtype = LOCK_READ;
+                            r_channel[k].request = true;
+                            r_channel[k].fsm     = CHANNEL_MWMR_LOCK_READ;
+                        }
                     }
-                    else                                           // lock not available yet
-                    {                            
-                        r_channel[k].reqtype = LOCK_READ;
-                        r_channel[k].request = true;
-                        r_channel[k].fsm     = CHANNEL_MWMR_LOCK_READ;
+                    else                                  // error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
                     }
                 }
                 break;
             }
             //////////////////////////////
             case CHANNEL_MWMR_STATUS_READ:   // wait a response to a STATUS_READ request
-                                             // (stored by rsp_fsm in sts, ptr, and ptw).
+                                             // (stored by rsp_fsm in ptr, pts, sts).
                                              // - makes a MWMR_DATA request if transfer possible
                                              // - makes a LOCK_RELEASE request if not possible
             {
                 if ( r_channel[k].response == true )
                 {
-                    // reset synchro
-                    r_channel[k].response = false;
-
-                    if ( r_channel[k].way == FROM_COPROC ) // FROM_COPROC 
+                    if ( r_channel[k].rerror == false )   // No error reported
                     {
-                        // space in memory buffer must be enough for coprocessor request
-                        if ( r_channel[k].buffer_size - r_channel[k].sts >=
-                               r_channel[k].bursts * m_burst_size )
+                        // reset synchro
+                        r_channel[k].response = false;
+
+                        if ( r_channel[k].way == FROM_COPROC ) // FROM_COPROC 
                         {
-                            r_channel[k].reqtype = DATA_WRITE;
-                            r_channel[k].request = true;
-                            r_channel[k].fsm     = CHANNEL_MWMR_DATA_MOVE;
+                            // space in memory buffer must be enough for coprocessor request
+                            if ( r_channel[k].buffer_size - (r_channel[k].sts<<2) >=
+                                 r_channel[k].bursts * m_burst_size )
+                            {
+                                r_channel[k].reqtype = DATA_WRITE;
+                                r_channel[k].request = true;
+                                r_channel[k].fsm     = CHANNEL_MWMR_DATA_MOVE;
+                            }
+                            else
+                            {
+                                r_channel[k].reqtype = LOCK_RELEASE;
+                                r_channel[k].request = true;
+                                r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
+                            }
                         }
-                        else
+                        else                                   // TO_COPROC 
                         {
-                            r_channel[k].reqtype = LOCK_RELEASE;
-                            r_channel[k].request = true;
-                            r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
+                            // data in memory buffer must be enough for coprocessor request
+                            if ( (r_channel[k].sts<<2) >=
+                                 r_channel[k].bursts * m_burst_size )
+                            {
+                                r_channel[k].reqtype = DATA_READ;
+                                r_channel[k].request = true;
+                                r_channel[k].fsm     = CHANNEL_MWMR_DATA_MOVE;
+                            }
+                            else
+                            {
+                                r_channel[k].reqtype = LOCK_RELEASE;
+                                r_channel[k].request = true;
+                                r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
+                            }
                         }
                     }
-                    else                                   // TO_COPROC 
+                    else                                // error reported
                     {
-                        // data in memory buffer must be enough for coprocessor request
-                        if ( r_channel[k].sts >=
-                               r_channel[k].bursts * m_burst_size )
-                        {
-                            r_channel[k].reqtype = DATA_READ;
-                            r_channel[k].request = true;
-                            r_channel[k].fsm     = CHANNEL_MWMR_DATA_MOVE;
-                        }
-                        else
-                        {
-                            r_channel[k].reqtype = LOCK_RELEASE;
-                            r_channel[k].request = true;
-                            r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
-                        }
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].fsm     = CHANNEL_ERROR_DESC;
                     }
                 }
                 break;
@@ -899,39 +1075,49 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )  // response available
                 {
-                    // reset synchro
-                    r_channel[k].response = false;
+                    if ( r_channel[k].rerror == false )   // No error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
+ 
+                        // update number of bursts for the current coprocessor request
+                        r_channel[k].bursts      = r_channel[k].bursts - 1;
 
-                    // update number of bursts for the current coprocessor request
-                    r_channel[k].bursts      = r_channel[k].bursts - 1;
+                        // update MWMR fifo local status (ptr, ptw, sts)
+                        if ( is_to_coproc )
+                        {
+                            r_channel[k].ptr = (r_channel[k].ptr + (m_burst_size>>2)) %
+                                               (r_channel[k].buffer_size>>2);
+                            r_channel[k].sts = r_channel[k].sts - (m_burst_size>>2); 
+                        }
+                        else
+                        {
+                            r_channel[k].ptw = (r_channel[k].ptw + (m_burst_size>>2)) %
+                                               (r_channel[k].buffer_size>>2);
+                            r_channel[k].sts = r_channel[k].sts + (m_burst_size>>2); 
+                        }
 
-                    // update MWMR fifo local status (sts/ptr/ptw)
-                    if ( is_to_coproc )
-                    {
-                        r_channel[k].sts = r_channel[k].sts - (m_burst_size>>2); 
-                        r_channel[k].ptr = (r_channel[k].ptr + (m_burst_size>>2)) %
-                                           (r_channel[k].buffer_size>>2);
+                        // compute next state
+                        if ( r_channel[k].bursts )                   // coproc request not completed
+                        {
+                            if ( is_to_coproc )  r_channel[k].reqtype = DATA_READ;
+                            else                 r_channel[k].reqtype = DATA_WRITE;
+                            r_channel[k].request = true;
+                            r_channel[k].fsm     = CHANNEL_MWMR_DATA_MOVE;
+                        }
+                        else                                        // request STATUS_UPDT
+                        {
+                            r_channel[k].reqtype = STATUS_UPDT;
+                            r_channel[k].request = true;
+                            r_channel[k].fsm     = CHANNEL_MWMR_STATUS_UPDT;
+                        }
                     }
-                    else
+                    else                                // error reported
                     {
-                        r_channel[k].sts = r_channel[k].sts + (m_burst_size>>2); 
-                        r_channel[k].ptw = (r_channel[k].ptw + (m_burst_size>>2)) %
-                                           (r_channel[k].buffer_size>>2);
-                    }
-
-                    // compute next state
-                    if ( r_channel[k].bursts )                   // coproc request not completed
-                    {
-                        if ( is_to_coproc )  r_channel[k].reqtype = DATA_READ;
-                        else                 r_channel[k].reqtype = DATA_WRITE;
-                        r_channel[k].request = true;
-                        r_channel[k].fsm     = CHANNEL_MWMR_DATA_MOVE;
-                    }
-                    else                                        // request STATUS_UPDT
-                    {
-                        r_channel[k].reqtype = STATUS_UPDT;
-                        r_channel[k].request = true;
-                        r_channel[k].fsm     = CHANNEL_MWMR_STATUS_UPDT;
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].fsm     = CHANNEL_ERROR_DATA;
                     }
                 }
                 break;
@@ -942,12 +1128,21 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )  
                 {
-                    // reset synchro
-                    r_channel[k].response = false;
-
-                    r_channel[k].reqtype = LOCK_RELEASE;
-                    r_channel[k].request = true;
-                    r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
+                    if ( r_channel[k].rerror == false )   // No error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].reqtype = LOCK_RELEASE;
+                        r_channel[k].request = true;
+                        r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
+                    }
+                    else                                  // error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].fsm     = CHANNEL_ERROR_DESC;
+                    }
                 }
                 break;
             }
@@ -957,10 +1152,20 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )
                 {
-                    // reset synchro
-                    r_channel[k].response = false;
+                    if ( r_channel[k].rerror == false )   // No error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
 
-                    r_channel[k].fsm = CHANNEL_IDLE;
+                        r_channel[k].fsm = CHANNEL_IDLE;
+                    }
+                    else                                  // error reported
+                    {
+                        // reset synchro
+                        r_channel[k].response = false;
+                        r_channel[k].rerror   = false;
+                        r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
+                    }
                 }
                 break;
             }
@@ -978,7 +1183,7 @@ tmpl(void)::transition()
 
         bool coproc_fifo_get = p_to_coproc[i].wok.read();
 
-        if ( k == r_rsp_k )
+        if ( k == r_rsp_k.read() )
         { 
             r_channel[k].fifo->update( coproc_fifo_get, 
                                        vci_fifo_put , 
@@ -1001,7 +1206,7 @@ tmpl(void)::transition()
 
         uint32_t k = i + m_to_coproc_channels;   // Ports and Fifos have different index
 
-        if ( k == r_cmd_k ) 
+        if ( k == r_cmd_k.read() ) 
         {
             r_channel[k].fifo->update( vci_fifo_get , 
                                        coproc_fifo_put , 
@@ -1022,13 +1227,15 @@ tmpl(void)::genMoore()
     bool found = false;
     for ( size_t k = 0 ; k < m_all_channels ; k++ )
     {
-        if ( r_channel[k].fsm == CHANNEL_DMA_IRQ )
+        if ( ((r_channel[k].fsm == CHANNEL_SUCCESS) and (r_channel[k].mode == MODE_DMA_IRQ)) or
+              (r_channel[k].fsm == CHANNEL_ERROR_LOCK) or
+              (r_channel[k].fsm == CHANNEL_ERROR_DESC) or
+              (r_channel[k].fsm == CHANNEL_ERROR_DATA) )
         {
             found = true;
             break;
         }
     }
-
     p_irq = found;
 
     // VCI target port
@@ -1071,113 +1278,113 @@ tmpl(void)::genMoore()
     else if ( r_cmd_fsm.read() == CMD_TICKET_READ )
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].lock_paddr + 4;  // &lock.free
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].lock_paddr + 4;  // &lock.free
         p_vci_initiator.cmd     = vci_param::CMD_READ;
         p_vci_initiator.wdata   = 0;
 		p_vci_initiator.eop     = true;
         p_vci_initiator.plen    = 4;
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_READ_DATA_UNC;
     }
     else if ( (r_cmd_fsm.read() == CMD_TICKET_CAS_OLD) or 
               (r_cmd_fsm.read() == CMD_TICKET_CAS_NEW) )
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].lock_paddr + 4;  // &lock.free
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].lock_paddr + 4;  // &lock.free
         p_vci_initiator.cmd     = vci_param::CMD_STORE_COND;
         if ( r_cmd_fsm.read() == CMD_TICKET_CAS_OLD ) 
         {
-            p_vci_initiator.wdata = r_channel[r_cmd_k].ticket;
+            p_vci_initiator.wdata = r_channel[r_cmd_k.read()].ticket;
             p_vci_initiator.eop   = false;
         }
         else
         {
-            p_vci_initiator.wdata = r_channel[r_cmd_k].ticket + 1;
+            p_vci_initiator.wdata = r_channel[r_cmd_k.read()].ticket + 1;
             p_vci_initiator.eop   = true;
         }
         p_vci_initiator.plen    = 8;
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_CAS;
     }
     else if ( r_cmd_fsm.read() == CMD_LOCK_READ )
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].lock_paddr + 4;  // &lock.current
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].lock_paddr + 4;  // &lock.current
         p_vci_initiator.cmd     = vci_param::CMD_READ;
         p_vci_initiator.wdata   = 0;
 		p_vci_initiator.eop     = true;
         p_vci_initiator.plen    = 4;
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_READ_DATA_UNC;
     }
     else if ( r_cmd_fsm.read() == CMD_STATUS_READ )
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].desc_paddr;  // &mwmr.sts
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].desc_paddr;  // &mwmr.sts
         p_vci_initiator.cmd     = vci_param::CMD_READ;
         p_vci_initiator.wdata   = 0;
 		p_vci_initiator.eop     = true;
         p_vci_initiator.plen    = 12;                               // 3 flits
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_READ_DATA_UNC;
     }
     else if ( r_cmd_fsm.read() == CMD_STATUS_UPDT_STS ) 
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].desc_paddr;  // &mwmr.sts
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].desc_paddr;  // &mwmr.sts
         p_vci_initiator.cmd     = vci_param::CMD_WRITE;
-        p_vci_initiator.wdata   = r_channel[r_cmd_k].sts;
+        p_vci_initiator.wdata   = r_channel[r_cmd_k.read()].sts;
 		p_vci_initiator.eop     = false;
         p_vci_initiator.plen    = 12;
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_WRITE;
     }
     else if ( r_cmd_fsm.read() == CMD_STATUS_UPDT_PTR ) 
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].desc_paddr + 4;  // &mwmr.ptr
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].desc_paddr + 4;  // &mwmr.ptr
         p_vci_initiator.cmd     = vci_param::CMD_WRITE;
-        p_vci_initiator.wdata   = r_channel[r_cmd_k].ptr;
+        p_vci_initiator.wdata   = r_channel[r_cmd_k.read()].ptr;
 		p_vci_initiator.eop     = false;
         p_vci_initiator.plen    = 12;
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_WRITE;
     }
     else if ( r_cmd_fsm.read() == CMD_STATUS_UPDT_PTW ) 
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].desc_paddr + 8;  // &mwmr.ptw
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].desc_paddr + 8;  // &mwmr.ptw
         p_vci_initiator.cmd     = vci_param::CMD_WRITE;
-        p_vci_initiator.wdata   = r_channel[r_cmd_k].ptw;
+        p_vci_initiator.wdata   = r_channel[r_cmd_k.read()].ptw;
 		p_vci_initiator.eop     = true;
         p_vci_initiator.plen    = 12;
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_WRITE;
     }
     else if ( r_cmd_fsm.read() == CMD_DATA_READ )
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].buffer_paddr + 
-                                  (r_channel[r_cmd_k].ptr<<2); 
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].buffer_paddr + 
+                                  (r_channel[r_cmd_k.read()].ptr<<2); 
         p_vci_initiator.cmd     = vci_param::CMD_READ;
         p_vci_initiator.wdata   = 0;
 		p_vci_initiator.eop     = true;
         p_vci_initiator.plen    = m_burst_size;
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_READ_DATA_UNC;
     }
     else if ( r_cmd_fsm.read() == CMD_DATA_WRITE )
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k].buffer_paddr + 
-                                  (r_channel[r_cmd_k].ptw<<2) + 
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].buffer_paddr + 
+                                  (r_channel[r_cmd_k.read()].ptw<<2) + 
                                   (r_cmd_word.read()<<2); 
         p_vci_initiator.cmd     = vci_param::CMD_WRITE;
-        p_vci_initiator.wdata   = r_channel[r_cmd_k].fifo->read();
+        p_vci_initiator.wdata   = r_channel[r_cmd_k.read()].fifo->read();
         if ( r_cmd_word.read() == ((m_burst_size>>2)-1) ) p_vci_initiator.eop   = true;
         else                                              p_vci_initiator.eop   = false;
         p_vci_initiator.plen    = m_burst_size;
-        p_vci_initiator.trdid   = r_cmd_k;
+        p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_WRITE;
     }
 
@@ -1214,7 +1421,6 @@ tmpl(void)::print_trace()
     "CHANNEL_IDLE",
     "CHANNEL_ACK",
     "CHANNEL_DMA_DATA_MOVE",
-    "CHANNEL_DMA_IRQ",
     "CHANNEL_MWMR_TICKET_READ",
     "CHANNEL_MWMR_TICKET_CAS",
     "CHANNEL_MWMR_LOCK_READ",
@@ -1222,6 +1428,10 @@ tmpl(void)::print_trace()
     "CHANNEL_MWMR_STATUS_UPDT",
     "CHANNEL_MWMR_LOCK_RELEASE",
     "CHANNEL_MWMR_DATA_MOVE",
+    "CHANNEL_SUCCESS",
+    "CHANNEL_ERROR_LOCK",
+    "CHANNEL_ERROR_DESC",
+    "CHANNEL_ERROR_DATA",
     };
 
     const char *cmd_states[] = 
@@ -1280,16 +1490,16 @@ tmpl(void)::print_trace()
     }
 }  // end print_trace()
 
-/////////////////////////
+/////////////////////////////////////////////////
 tmpl(/**/)::VciMwmrDma( sc_module_name      name,
-                        const MappingTable  &mt,
-                        const IntTab        &srcid,
-                        const IntTab        &tgtid,
-	                    const size_t        n_to_coproc,
-	                    const size_t        n_from_coproc,
-	                    const size_t        n_config,
-	                    const size_t        n_status,
-                        const size_t        burst_size )
+                      const MappingTable  &mt,
+                      const IntTab        &srcid,
+                      const IntTab        &tgtid,
+	                  const size_t        n_to_coproc,
+	                  const size_t        n_from_coproc,
+	                  const size_t        n_config,
+	                  const size_t        n_status,
+                      const size_t        burst_size )
 		   : caba::BaseModule(name),
 
            m_srcid( mt.indexForId(srcid) ),
@@ -1315,10 +1525,14 @@ tmpl(/**/)::VciMwmrDma( sc_module_name      name,
 		   p_resetn("p_resetn"),
 		   p_vci_target("p_vci_target"),
 		   p_vci_initiator("p_vci_initiator"),
-  		   p_to_coproc(alloc_elems<ToCoprocOutput<uint32_t, uint8_t> > ("p_to_coproc", n_to_coproc)),
-  		   p_from_coproc(alloc_elems<FromCoprocInput<uint32_t, uint8_t> > ("p_from_coproc", n_from_coproc)),
-           p_config(alloc_elems<sc_out<uint32_t> > ("p_config", n_config)),
-           p_status(alloc_elems<sc_in<uint32_t> > ("p_status", n_status)),
+  		   p_to_coproc(alloc_elems<ToCoprocOutput<uint32_t, uint8_t> > 
+               ("p_to_coproc", n_to_coproc)),
+  		   p_from_coproc(alloc_elems<FromCoprocInput<uint32_t, uint8_t> > 
+               ("p_from_coproc", n_from_coproc)),
+           p_config(alloc_elems<sc_out<uint32_t> >  
+               ("p_config", n_config)),
+           p_status(alloc_elems<sc_in<uint32_t> > 
+               ("p_status", n_status)),
            p_irq( "p_irq" )
 {
     std::cout << "  - Building VciMwmrDma : " << name << std::endl;
@@ -1387,6 +1601,7 @@ tmpl(/**/)::~VciMwmrDma()
 }
 
 }}
+
 
 // Local Variables:
 // tab-width: 4
