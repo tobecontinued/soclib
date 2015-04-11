@@ -53,7 +53,7 @@
 namespace soclib { namespace caba {
 
 ///////////////////////////////////////////////////
-class FifoIdct : public soclib::caba::BaseModule
+class CoprocDct : public soclib::caba::BaseModule
 ///////////////////////////////////////////////////
 {
 public:
@@ -65,9 +65,9 @@ public:
     sc_core::sc_in<uint32_t>                          p_config;
 
 private:
-	uint32_t m_exec_latency;
-	uint32_t m_nb_bursts;
-	uint32_t m_burst_size;
+	uint32_t m_exec_latency;        // cycles
+	uint32_t m_words_per_burst;     // number of words in a burst
+	uint32_t m_nb_bursts;           // number of requested bursts 
 
 	enum fsm_states
     {
@@ -90,14 +90,16 @@ protected:
     SC_HAS_PROCESS( CoprocDct );
 
 public:
-    CoprocDct( sc_core::sc_module_name insname,
-               uint32_t                burst_size, 
-               uint32_t                exec_latency );
+    CoprocDct( sc_core::sc_module_name  insname,
+               const uint32_t           burst_size, 
+               const uint32_t           exec_latency );
+
+    void print_trace();
 
 private:
+    void do_dct_8x8();
     void transition();
 	void genMoore();
-	void do_dct();
 
 };
 

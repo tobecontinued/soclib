@@ -47,7 +47,7 @@ CoprocGcd::CoprocGcd( sc_module_name name,
       p_res( "p_res" ),
       p_config( "p_config" ),
 
-      m_burst( burst_size>>2 ),
+      m_words_per_burst( burst_size>>2 ),
 
       r_fsm( "r_fsm" ),
       r_pta( "r_pta" ),
@@ -55,8 +55,8 @@ CoprocGcd::CoprocGcd( sc_module_name name,
 {
     std::cout << "  - Building CoprocGcd : " << name << std::endl;
 
-    r_bufa = new uint32_t[m_burst];
-    r_bufb = new uint32_t[m_burst];
+    r_bufa = new uint32_t[m_words_per_burst];
+    r_bufb = new uint32_t[m_words_per_burst];
 
 	SC_METHOD(transition);
 	dont_initialize();
@@ -99,6 +99,12 @@ void CoprocGcd::transition()
         ////////////
         case REQ_AB:   // request a burst for both A and B operands
         {
+            if ( p_config.read() == 0 )  // soft reset
+            {
+                r_fsm = IDLE;
+                break;
+            }
+
             if ( (p_opa.ack) == true and (p_opb.ack == true) ) 
             {
                 r_fsm = LOAD;
@@ -108,23 +114,29 @@ void CoprocGcd::transition()
         //////////
         case LOAD:    // load operands into buffers from DMA 
         {
+            if ( p_config.read() == 0 )  // soft reset
+            {
+                r_fsm = IDLE;
+                break;
+            }
+
             // get one word from opa fifo
-            if ( p_opa.rok  and (r_pta.read() < m_burst) )
+            if ( p_opa.rok  and (r_pta.read() < m_words_per_burst) )
             {
                 r_bufa[r_pta.read()] = p_opa.data.read();
                 r_pta = r_pta.read() + 1;
             }
 
             // get one word from opb fifo
-            if ( p_opb.rok  and (r_ptb.read() < m_burst) )
+            if ( p_opb.rok  and (r_ptb.read() < m_words_per_burst) )
             {
                 r_bufb[r_ptb.read()] = p_opb.data.read();
                 r_ptb = r_ptb.read() + 1;
             }
 
             // check load completion
-            if ( (r_pta.read() == m_burst)  and 
-                 (r_ptb.read() == m_burst) )
+            if ( (r_pta.read() == m_words_per_burst)  and 
+                 (r_ptb.read() == m_words_per_burst) )
             {
                 r_pta = 0;
                 r_ptb = 0;
@@ -136,6 +148,12 @@ void CoprocGcd::transition()
         case COMPARE:    // compare bufa[pta] and bufb[pta]   
                          // using only the pta pointer
         {
+            if ( p_config.read() == 0 )  // soft reset
+            {
+                r_fsm = IDLE;
+                break;
+            }
+
             if      ( r_bufa[r_pta.read()] < r_bufb[r_ptb.read()] )  // B > A
             {
                 r_fsm = DECR_B;
@@ -144,7 +162,7 @@ void CoprocGcd::transition()
             {
                 r_fsm = DECR_A;
             }
-            else if ( r_pta.read() == m_burst-1 )             // A = B / last 
+            else if ( r_pta.read() == m_words_per_burst-1 )             // A = B / last 
             {
                 r_pta = 0;
                 r_ptb = 0;
@@ -160,6 +178,12 @@ void CoprocGcd::transition()
         ////////////
         case DECR_A:    // decrement A
         {
+            if ( p_config.read() == 0 )  // soft reset
+            {
+                r_fsm = IDLE;
+                break;
+            }
+
             r_bufa[r_pta.read()] = r_bufa[r_pta.read()] - 
                                    r_bufb[r_ptb.read()] ;
             r_fsm = COMPARE;
@@ -168,6 +192,12 @@ void CoprocGcd::transition()
         ////////////   // decrement B
         case DECR_B:
         {
+            if ( p_config.read() == 0 )  // soft reset
+            {
+                r_fsm = IDLE;
+                break;
+            }
+
             r_bufb[r_pta.read()] = r_bufb[r_ptb.read()] - 
                                    r_bufa[r_pta.read()] ;
             r_fsm = COMPARE;
@@ -176,6 +206,12 @@ void CoprocGcd::transition()
         /////////////
         case REQ_RES:   // request a burst for result
         {
+            if ( p_config.read() == 0 )  // soft reset
+            {
+                r_fsm = IDLE;
+                break;
+            }
+
             if ( p_res.ack )
             {
                 r_fsm = STORE;
@@ -185,14 +221,20 @@ void CoprocGcd::transition()
         ///////////
         case STORE:     // store result into DMA
         {
+            if ( p_config.read() == 0 )  // soft reset
+            {
+                r_fsm = IDLE;
+                break;
+            }
+
             // put one word into res fifo
-            if ( p_res.wok and (r_pta.read() < m_burst) )
+            if ( p_res.wok and (r_pta.read() < m_words_per_burst) )
             {
                 r_pta = r_pta.read() + 1;
             }
 
             // check completion
-            if ( r_pta.read() == m_burst-1 )
+            if ( r_pta.read() == m_words_per_burst-1 )
             {
                 r_fsm = IDLE;
             }

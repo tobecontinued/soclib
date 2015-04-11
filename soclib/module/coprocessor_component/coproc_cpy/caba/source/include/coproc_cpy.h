@@ -27,19 +27,24 @@
  */
 
 /////////////////////////////////////////////////////////////////////////
-// This component implements a simple hardware coprocessor
-// performing the Greater Common Divider computation on two vectors
-// OPA & OPB containing 32 bits unsigned integers.
+// This component implements an MWMR compliant hardware coprocessor, 
+// emulating a single channel DMA controller: It move a burst (N words) 
+// from the input port to the output port, without modification. 
+// It can provide a better throughput than a "classical" single channel
+// DMA controller, because it contains two buffers acting as a two slots 
+// FIFO, and two separated FSMs : Load and Store.
+// As each buffer can store a complete burst, it supports parallel 
+// pipe-lined read and write transactions on the VCI network.
 // It should be connected to a vci_mwmr_dma component.
-// - It reads the two OPA & OPB vectors (N words) on two input ports.
-// - It returns the result vector (N words) on the output port.
+// - It reads a burst (N words) on the p_load port.
+// - It write a burst (N words) on the p_store port.
 // - It has only one configuration register: RUNNING
 // - It has no status register.
 // The N value is defined by the "burst_size" hardware parameter.
 //////////////////////////////////////////////////////////////////////
 
-#ifndef SOCLIB_COPROC_GCD_H_
-#define SOCLIB_COPROC_GCD_H_
+#ifndef SOCLIB_COPROC_CPY_H_
+#define SOCLIB_COPROC_CPY_H_
 
 #include <systemc>
 
@@ -49,49 +54,48 @@
 namespace soclib { namespace caba {
 
 ///////////////////////////////////////////////////
-class CoprocGcd : public soclib::caba::BaseModule
+class CoprocCpy : public soclib::caba::BaseModule
 ///////////////////////////////////////////////////
 {
 public:
     sc_core::sc_in<bool>                               p_clk;
     sc_core::sc_in<bool>                               p_resetn;
-  	soclib::caba::ToCoprocInput<uint32_t,uint8_t>      p_opa;
-  	soclib::caba::ToCoprocInput<uint32_t,uint8_t>      p_opb;
-  	soclib::caba::FromCoprocOutput<uint32_t,uint8_t>   p_res;
+  	soclib::caba::ToCoprocInput<uint32_t,uint8_t>      p_load;
+  	soclib::caba::FromCoprocOutput<uint32_t,uint8_t>   p_store;
     sc_core::sc_in<uint32_t>                           p_config;
 
 private:
 
-	enum fsm_states
+	enum fsm_states  // for both load and store FSMs
     {
 		IDLE,
-		REQ_AB,
-        LOAD,
-		COMPARE,
-		DECR_A,
-		DECR_B,
-		REQ_RES,
-        STORE,
+        WAIT,
+		REQ,
+        MOVE,
 	}; 
 
     // hardware constants
-    uint32_t                m_words_per_burst;    // number of words
+    const uint32_t          m_burst;         // number of words
 
     // registers
-    sc_signal<int>          r_fsm;      // FSM state
-	sc_signal<uint32_t>     r_pta;      // index in bufa
-	sc_signal<uint32_t>     r_ptb;      // index in bufb
-	uint32_t *              r_bufa;     // buffer[m_burst] for opa
-	uint32_t *              r_bufb;     // buffer[m_burst] for opb
+    sc_signal<int>          r_load_fsm;      // FSM state
+    sc_signal<size_t>       r_load_bufid;    // current buffer index for load
+    sc_signal<size_t>       r_load_word;     // current word index for load
+
+    sc_signal<int>          r_store_fsm;     // FSM state
+    sc_signal<size_t>       r_store_bufid;   // current buffer index for load
+    sc_signal<size_t>       r_store_word;    // current word index for load
+
+    sc_signal<bool>         r_full[2];       // set/reset flip-flop for the two buffers
+
+	uint32_t                r_buf[2][64];    // data buffers (two bursts)
 
 protected:
-    SC_HAS_PROCESS( CoprocGcd );
+    SC_HAS_PROCESS( CoprocCpy );
 
 public:
-    CoprocGcd( sc_core::sc_module_name name,
+    CoprocCpy( sc_core::sc_module_name name,
                const uint32_t          burst_size );
-
-    ~CoprocGcd();
 
     void print_trace();
 
