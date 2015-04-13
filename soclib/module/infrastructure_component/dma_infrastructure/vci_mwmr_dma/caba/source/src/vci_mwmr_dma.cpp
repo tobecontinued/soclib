@@ -1223,20 +1223,21 @@ tmpl(void)::transition()
 //////////////////////
 tmpl(void)::genMoore()
 {
-    // IRQ port
-    bool found = false;
+    // assert IRQ if (all channels completed) AND ((one error detected) OR (MODE_DMA_IRQ))
+    bool completed = true;
+    bool error     = false;
     for ( size_t k = 0 ; k < m_all_channels ; k++ )
     {
-        if ( ((r_channel[k].fsm == CHANNEL_SUCCESS) and (r_channel[k].mode == MODE_DMA_IRQ)) or
-              (r_channel[k].fsm == CHANNEL_ERROR_LOCK) or
-              (r_channel[k].fsm == CHANNEL_ERROR_DESC) or
-              (r_channel[k].fsm == CHANNEL_ERROR_DATA) )
-        {
-            found = true;
-            break;
-        }
+        completed = completed and ( (r_channel[k].fsm == CHANNEL_SUCCESS)    or
+                                    (r_channel[k].fsm == CHANNEL_ERROR_LOCK) or
+                                    (r_channel[k].fsm == CHANNEL_ERROR_DESC) or
+                                    (r_channel[k].fsm == CHANNEL_ERROR_DATA) );
+
+        error = error or ( (r_channel[k].fsm == CHANNEL_ERROR_LOCK) or
+                           (r_channel[k].fsm == CHANNEL_ERROR_DESC) or
+                           (r_channel[k].fsm == CHANNEL_ERROR_DATA) );
     }
-    p_irq = found;
+    p_irq = completed and ( error or (r_channel[0].mode == MODE_DMA_IRQ) );
 
     // VCI target port
     if ( r_tgt_fsm.read() == TGT_IDLE )
