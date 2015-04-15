@@ -70,6 +70,10 @@ tmpl(void)::transition()
                 if ( not r_error[k].read() and r_mask[k] and
                      (p_hwi[k].read() and not r_hwi[k].read()) )
                 {
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] send WTI / channel[" << k << "] / address = "
+    << std::hex << r_address[k] << std::dec << std::endl;
+#endif
                     r_hwi[k]  = p_hwi[k].read();
                     r_channel = k;
                     r_ini_fsm = I_SET_CMD;
@@ -79,6 +83,10 @@ tmpl(void)::transition()
                 else if ( not r_error[k].read() and r_mask[k] and
                      (r_hwi[k].read() and not p_hwi[k].read()) ) 
                 {
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] reset WTI / channel[" << k << "] / address = "
+    << std::hex << r_address[k] << std::dec << std::endl;
+#endif
                     r_hwi[k]  = p_hwi[k].read();
                     r_channel = k;
                     r_ini_fsm = I_RESET_CMD;
@@ -159,6 +167,11 @@ tmpl(void)::transition()
                 {
                     r_address[channel] = wdata;
                     r_tgt_fsm          = T_WRITE;
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] Write r_address[" << channel << "] = "
+    << std::hex << wdata << std::dec << std::endl;
+#endif
                 }
                 else if ( not seg_error and
                           (p_vci_target.cmd.read() == vci_param::CMD_READ) and
@@ -167,6 +180,11 @@ tmpl(void)::transition()
                 {
                     r_rdata            = r_address[channel].read();
                     r_tgt_fsm          = T_READ;
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] Read r_address[" << channel << "] = "
+    << std::hex << r_address[channel].read() << std::dec << std::endl;
+#endif
                 }
                 else if ( not seg_error and
                           (p_vci_target.cmd.read() == vci_param::CMD_WRITE) and
@@ -175,6 +193,11 @@ tmpl(void)::transition()
                 {
                     r_extend[channel] = wdata;
                     r_tgt_fsm         = T_WRITE;
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] Write r_extend[" << channel << "] = "
+    << std::hex << wdata << std::dec << std::endl;
+#endif
                 }
                 else if ( not seg_error and
                           (p_vci_target.cmd.read() == vci_param::CMD_READ) and
@@ -183,6 +206,11 @@ tmpl(void)::transition()
                 {
                     r_rdata           = r_extend[channel].read();
                     r_tgt_fsm         = T_READ;
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] Read r_extend[" << channel << "] = "
+    << std::hex << r_extend[channel].read() << std::dec << std::endl;
+#endif
                 }
                 else if ( not seg_error and
                           (p_vci_target.cmd.read() == vci_param::CMD_WRITE) and
@@ -191,6 +219,11 @@ tmpl(void)::transition()
                 {
                     r_mask[channel]   = (bool)wdata;
                     r_tgt_fsm         = T_WRITE;
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] Write r_mask[" << channel << "] = "
+    << std::hex << wdata << std::dec << std::endl;
+#endif
                 }
                 else if ( not seg_error and
                           (p_vci_target.cmd.read() == vci_param::CMD_READ) and
@@ -199,16 +232,28 @@ tmpl(void)::transition()
                 {
                     r_rdata           = (uint32_t)r_mask[channel].read();
                     r_tgt_fsm         = T_READ;
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] Read r_mask[" << channel << "] = "
+    << std::hex << r_mask[channel].read() << std::dec << std::endl;
+#endif
                 }
                 else if ( not seg_error and
                           (p_vci_target.cmd.read() == vci_param::CMD_READ) and
                           (reg == IOPIC_STATUS) and
                           (channel < m_channels) )        // read status
                 {
-                    r_rdata          = (uint32_t)r_hwi[channel].read() | 
-                                       (((uint32_t)r_error[channel].read())<<1);
+                    uint32_t rdata = (uint32_t)r_hwi[channel].read() |
+                                    ((uint32_t)r_error[channel].read())<<1;
+
+                    r_rdata          = rdata;
                     r_error[channel] = false;
                     r_tgt_fsm        = T_READ;
+
+#if SOCLIB_MODULE_DEBUG
+std::cout << "[" << name() << "] Read status[" << channel << "] = "
+    << std::hex << rdata << std::dec << std::endl;
+#endif
                 }
                 else if ( p_vci_target.eop.read() )
                 {
