@@ -75,12 +75,13 @@ class VciSimpleRom
 {
 public:
 
+    typedef typename vci_param::fast_addr_t  vci_addr_t;
     typedef typename vci_param::fast_data_t  vci_data_t;
     typedef typename vci_param::srcid_t      vci_srcid_t;
     typedef typename vci_param::trdid_t      vci_trdid_t;
     typedef typename vci_param::pktid_t      vci_pktid_t;
 
-    enum fsm_state_e 
+    enum fsm_state_e
     {
         FSM_IDLE,
         FSM_RSP_READ,
@@ -90,8 +91,7 @@ public:
 private:
 
     const soclib::common::Loader            &m_loader;
-    std::list<soclib::common::Segment>      m_seglist;
-    int                                     m_drop_msb;
+    vci_addr_t                              m_mask;
 
     sc_signal<int>                          r_fsm_state;
     sc_signal<size_t>                       r_flit_count;

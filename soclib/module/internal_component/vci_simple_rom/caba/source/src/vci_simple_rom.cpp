@@ -47,8 +47,7 @@ tmpl(/**/)::VciSimpleRom(
     const int nb_msb_drop)
     : caba::BaseModule(name),
       m_loader(loader),
-      m_seglist(mt.getSegmentList(index)),
-      m_drop_msb(nb_msb_drop),
+      m_mask((1ULL << (vci_param::N - nb_msb_drop)) - 1),
 
       r_fsm_state("r_fsm_state"),
       r_flit_count("r_flit_count"),
@@ -67,17 +66,14 @@ tmpl(/**/)::VciSimpleRom(
 
     size_t nsegs = 0;
 
-    assert( (m_seglist.empty() == false) and
+    // get segments list
+    std::list<soclib::common::Segment> seglist = mt.getSegmentList(index);
+
+    assert( (seglist.empty() == false) and
     "VCI_SIMPLE_ROM error : no segment allocated");
 
     std::list<soclib::common::Segment>::iterator seg;
-    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ )
-    {
-        std::cout << "    => segment " << seg->name()
-                  << " / base = " << std::hex << seg->baseAddress()
-                  << " / size = " << seg->size() << std::endl; 
-        nsegs++;
-    }
+    for ( seg = seglist.begin() ; seg != seglist.end() ; seg++ ) nsegs++;
 
     m_nbseg = nsegs;
 
@@ -88,12 +84,16 @@ tmpl(/**/)::VciSimpleRom(
     m_rom = new uint32_t*[m_nbseg];
     m_seg = new soclib::common::Segment*[m_nbseg];
 
-    size_t i = 0;
-    for ( seg = m_seglist.begin() ; seg != m_seglist.end() ; seg++ ) 
-    { 
+    int i = 0;
+    for ( seg = seglist.begin() ; seg != seglist.end() ; ++seg, ++i )
+    {
+        const soclib::common::Segment& s = seg->masked(m_mask);
         m_rom[i] = new uint32_t[ (seg->size()+3)/4 ];
-        m_seg[i] = &(*seg);
-        i++;
+        m_seg[i] = new soclib::common::Segment(s);
+
+        std::cout << "    => segment " << m_seg[i]->name()
+                  << " / base = " << std::hex << m_seg[i]->baseAddress()
+                  << " / size = " << m_seg[i]->size() << std::endl;
     }
 
     SC_METHOD(transition);
@@ -109,6 +109,7 @@ tmpl(/**/)::VciSimpleRom(
 tmpl(/**/)::~VciSimpleRom()
 {
     for (size_t i=0 ; i<m_nbseg ; ++i) delete [] m_rom[i];
+    for (size_t i=0 ; i<m_nbseg ; ++i) delete m_seg[i];
     delete [] m_rom;
     delete [] m_seg;
 }
@@ -116,11 +117,9 @@ tmpl(/**/)::~VciSimpleRom()
 /////////////////////
 tmpl(void)::reload()
 {
-    uint64_t mask = (1ULL << (vci_param::N - m_drop_msb)) - 1;
-    for ( size_t i=0 ; i<m_nbseg ; ++i ) 
+    for ( size_t i=0 ; i<m_nbseg ; ++i )
     {
-        uint64_t base_address = m_seg[i]->baseAddress() & mask; 
-        m_loader.load(&m_rom[i][0], base_address, m_seg[i]->size());
+        m_loader.load(&m_rom[i][0], m_seg[i]->baseAddress(), m_seg[i]->size());
         for ( size_t addr = 0 ; addr < m_seg[i]->size()/vci_param::B ; ++addr )
             m_rom[i][addr] = le_to_machine(m_rom[i][addr]);
     }
@@ -129,7 +128,7 @@ tmpl(void)::reload()
 ////////////////////
 tmpl(void)::reset()
 {
-    for ( size_t i=0 ; i<m_nbseg ; ++i ) std::memset(&m_rom[i][0], 0, m_seg[i]->size()); 
+    for ( size_t i=0 ; i<m_nbseg ; ++i ) std::memset(&m_rom[i][0], 0, m_seg[i]->size());
     r_fsm_state = FSM_IDLE;
 }
 
@@ -177,10 +176,13 @@ tmpl(void)::transition()
                 "VCI_SIMPLE_ROM ERROR : The VCI command packet must be 1 flit");
 
                 size_t index;
+                unsigned int plen = p_vci.plen.read();
+                vci_addr_t base = p_vci.address.read() & m_mask;
+                vci_addr_t last = base + plen - 1;
                 for ( index = 0 ; index < m_nbseg ; ++index)
                 {
-                    if ( (m_seg[index]->contains(p_vci.address.read())) and
-                         (m_seg[index]->contains(p_vci.address.read()+p_vci.plen.read()-1)) )
+                    if ( (m_seg[index]->contains(base)) and
+                         (m_seg[index]->contains(last)) )
                     {
                         error = false;
                         r_seg_index = index;
@@ -198,12 +200,8 @@ tmpl(void)::transition()
                 }
                 else
                 {
-                    unsigned int plen = p_vci.plen.read();
-
-                    r_fsm_state  = FSM_RSP_READ;
-                    r_rom_index  = (size_t)((p_vci.address.read() -
-                                             m_seg[index]->baseAddress())>>2);
-
+                    r_fsm_state = FSM_RSP_READ;
+                    r_rom_index = (size_t)((base - m_seg[index]->baseAddress())>>2);
 
                     if ( vci_param::B == 8 )   // 64 bits data width
                     {
@@ -226,7 +224,7 @@ tmpl(void)::transition()
 
 #ifdef SOCLIB_MODULE_DEBUG
                 std::cout << "<" << name() << " FSM_IDLE>"
-                    << " address = " << std::hex << p_vci.address.read()
+                    << " address = " << std::hex << base
                     << " seg_index = " << std::dec << index
                     << " seg_base = " << std::hex << m_seg[index]->baseAddress()
                     << std::dec << std::endl;
