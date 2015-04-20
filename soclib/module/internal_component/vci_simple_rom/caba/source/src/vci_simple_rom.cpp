@@ -172,7 +172,7 @@ tmpl(void)::transition()
 
                 assert( (p_vci.cmd.read() == vci_param::CMD_READ) and
                 "VCI_SIMPLE_ROM ERROR : The VCI command must be a READ");
-            
+
                 assert( p_vci.eop.read() and
                 "VCI_SIMPLE_ROM ERROR : The VCI command packet must be 1 flit");
 
@@ -180,15 +180,19 @@ tmpl(void)::transition()
                 for ( index = 0 ; index < m_nbseg ; ++index)
                 {
                     if ( (m_seg[index]->contains(p_vci.address.read())) and
-                         (m_seg[index]->contains(p_vci.address.read()+p_vci.plen.read()-1)) ) 
+                         (m_seg[index]->contains(p_vci.address.read()+p_vci.plen.read()-1)) )
                     {
                         error = false;
                         r_seg_index = index;
                         break;
                     }
-                } 
+                }
 
-                if ( error )   
+                r_srcid = p_vci.srcid.read();
+                r_trdid = p_vci.trdid.read();
+                r_pktid = p_vci.pktid.read();
+
+                if ( error )
                 {
                     r_fsm_state = FSM_RSP_ERROR;
                 }
@@ -197,9 +201,6 @@ tmpl(void)::transition()
                     unsigned int plen = p_vci.plen.read();
 
                     r_fsm_state  = FSM_RSP_READ;
-                    r_srcid      = p_vci.srcid.read();
-                    r_trdid      = p_vci.trdid.read();
-                    r_pktid      = p_vci.pktid.read();
                     r_rom_index  = (size_t)((p_vci.address.read() -
                                              m_seg[index]->baseAddress())>>2);
 
