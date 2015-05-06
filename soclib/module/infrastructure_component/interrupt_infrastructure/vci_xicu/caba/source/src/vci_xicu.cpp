@@ -316,14 +316,17 @@ std::cout << "[" << name() << "] Read XICU_WTI_ACTIVE[" << std::dec << idx << "]
         return true;
 
         case XICU_PRIO:
+        {
         CHECK_BOUNDS(irq);
-        data = 
+        uint32_t value =
             (((r_msk_pti[idx] & r_pti_pending) ? 1 : 0) << 0) |
             (((r_msk_hwi[idx] & r_hwi_pending) ? 1 : 0) << 1) |
             (((r_msk_wti[idx] & r_wti_pending) ? 1 : 0) << 2) |
             ((soclib::common::ctz<uint32_t>(r_msk_pti[idx] & r_pti_pending) & 0x1f) <<  8) |
             ((soclib::common::ctz<uint32_t>(r_msk_hwi[idx] & r_hwi_pending) & 0x1f) << 16) |
             ((soclib::common::ctz<uint32_t>(r_msk_wti[idx] & r_wti_pending) & 0x1f) << 24);
+        data = value;
+        }
 
 #if SOCLIB_MODULE_DEBUG
 std::cout << "[" << name() << "] Read XICU_PRIO[" << std::dec << idx << "] = " 
