@@ -29,29 +29,29 @@
 #define XICU_REGS_H
 
 enum SoclibXicuFunc {
-    XICU_WTI_REG = 0,
-    XICU_PTI_PER = 1,
-    XICU_PTI_VAL = 2,
-    XICU_PTI_ACK = 3,
+    XICU_WTI_REG         = 0,
+    XICU_PTI_PER         = 1,
+    XICU_PTI_VAL         = 2,
+    XICU_PTI_ACK         = 3,
 
-    XICU_MSK_PTI = 4,
-    XICU_MSK_PTI_ENABLE = 5,
+    XICU_MSK_PTI         = 4,
+    XICU_MSK_PTI_ENABLE  = 5,
     XICU_MSK_PTI_DISABLE = 6,
-    XICU_PTI_ACTIVE = 6,
+    XICU_PTI_ACTIVE      = 6,
 
-    XICU_MSK_HWI = 8,
-    XICU_MSK_HWI_ENABLE = 9,
+    XICU_MSK_HWI         = 8,
+    XICU_MSK_HWI_ENABLE  = 9,
     XICU_MSK_HWI_DISABLE = 10,
-    XICU_HWI_ACTIVE = 10,
+    XICU_HWI_ACTIVE      = 10,
 
-    XICU_MSK_WTI = 12,
-    XICU_MSK_WTI_ENABLE = 13,
+    XICU_MSK_WTI         = 12,
+    XICU_MSK_WTI_ENABLE  = 13,
     XICU_MSK_WTI_DISABLE = 14,
-    XICU_WTI_ACTIVE = 14,
+    XICU_WTI_ACTIVE      = 14,
 
-    XICU_PRIO = 15,
+    XICU_PRIO            = 15,
 
-    XICU_CONFIG = 16,
+    XICU_CONFIG          = 16,
 };
 
 #define XICU_REG(func, idx) (((func)<<5)|(idx))

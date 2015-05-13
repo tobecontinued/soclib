@@ -42,37 +42,38 @@ class VciXicu
 {
 private:
     std::list<soclib::common::Segment>              m_seglist;
-    soclib::caba::VciTargetFsm<vci_param, true>     m_vci_fsm;
 
     const size_t                                    m_pti_count;
     const size_t                                    m_hwi_count;
     const size_t                                    m_wti_count;
     const size_t                                    m_irq_count;
 
-    uint32_t*                                       r_msk_pti;
-    uint32_t*                                       r_msk_wti;
-    uint32_t*                                       r_msk_hwi;
-    uint32_t                                        r_pti_pending;
-    uint32_t                                        r_wti_pending;
-    uint32_t                                        r_hwi_pending;
-    uint32_t                                        *r_pti_per;
-    uint32_t                                        *r_pti_val;
-    uint32_t                                        *r_wti_reg;
+    sc_signal<int>                                  r_fsm;
+    sc_signal<typename vci_param::data_t>           r_data;
+    sc_signal<typename vci_param::srcid_t>          r_srcid; 
+    sc_signal<typename vci_param::trdid_t>          r_trdid; 
+    sc_signal<typename vci_param::pktid_t>          r_pktid; 
+    sc_signal<uint32_t>*                            r_msk_pti;
+    sc_signal<uint32_t>*                            r_msk_wti;
+    sc_signal<uint32_t>*                            r_msk_hwi;
+    sc_signal<uint32_t>                             r_pti_pending;
+    sc_signal<uint32_t>                             r_wti_pending;
+    sc_signal<uint32_t>                             r_hwi_pending;
+    sc_signal<uint32_t>*                            r_pti_per;
+    sc_signal<uint32_t>*                            r_pti_val;
+    sc_signal<uint32_t>*                            r_wti_reg;
 
-    uint32_t                                        m_clock_cycles;
-
-
-    bool on_write( int                        seg, 
-                   typename vci_param::addr_t addr, 
-                   typename vci_param::data_t data, 
-                   int                        be );
-    bool on_read(  int                        seg, 
-                   typename vci_param::addr_t addr, 
-                   typename vci_param::data_t &data );
 
     void transition();
     void genMoore();
 
+    enum fsm_state_e
+    {
+        IDLE,
+        RSP_READ,
+        RSP_WRITE,
+        RSP_ERROR
+    };
 
 protected:
     SC_HAS_PROCESS(VciXicu);
