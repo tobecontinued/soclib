@@ -25,6 +25,7 @@
  */
 
 #include "../include/dspin_packet_generator.h"
+#include <cassert>
 
 namespace soclib { namespace caba {
 
@@ -244,8 +245,8 @@ tmpl(void)::genMoore()
         write = true;
         if ( r_send_length.read() == 2 )  // first flit
         {
-            data = sc_uint<cmd_width>(0x07C1F) << (cmd_width - 21) | 
-                       sc_uint<cmd_width>(1);	 
+            data = sc_uint<cmd_width>(0x07C1F) << (cmd_width - 20) |
+                       sc_uint<cmd_width>(1);
             eop  = false;
         }
         else                              // second flit
