@@ -280,9 +280,9 @@ tmpl(void)::transition()
                     uint32_t hwi_set = ((hwi_vect) ? 1 : 0)<<1;
                     uint32_t wti_set = ((wti_vect) ? 1 : 0)<<2;
 
-                    uint32_t pti_id = (ctz<uint32_t>(pti_vect) & 0x1f)<< 8;
-                    uint32_t hwi_id = (ctz<uint32_t>(hwi_vect) & 0x1f)<<16;
-                    uint32_t wti_id = (ctz<uint32_t>(wti_vect) & 0x1f)<<24;
+                    uint32_t pti_id = pti_set ? ((ctz<uint32_t>(pti_vect) & 0x1f)<< 8) : 0;
+                    uint32_t hwi_id = hwi_set ? ((ctz<uint32_t>(hwi_vect) & 0x1f)<<16) : 0;
+                    uint32_t wti_id = wti_set ? ((ctz<uint32_t>(wti_vect) & 0x1f)<<24) : 0;
 
                     r_data = pti_set | hwi_set | wti_set | pti_id  | hwi_id  | wti_id  ;
                     r_fsm  = RSP_READ;
