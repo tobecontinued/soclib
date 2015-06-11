@@ -108,9 +108,12 @@ const MappingTable &MappingTable::operator=( const MappingTable &ref )
 void MappingTable::srcid_map( const IntTab   &srcid,
                               const IntTab   &portid )
 {
-    m_srcid_array[indexForId(srcid)] = indexForId(portid);
+    const int index = indexForId(srcid);
+    assert((index < (1 << m_srcid_width)) &&
+           "srcid do not fit the srcid width");
+    m_srcid_array[index] = indexForId(portid);
 }
- 
+
 /////////////////////////////////////////////
 void MappingTable::add( const Segment &_seg )
 {
