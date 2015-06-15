@@ -472,12 +472,12 @@ tmpl(/**/)::VciXicu( sc_core::sc_module_name name,
 //////////////////////
 tmpl(/**/)::~VciXicu()
 {
-    delete [] r_msk_pti;
-    delete [] r_msk_wti;
-    delete [] r_msk_hwi;
-    delete [] r_pti_per;
-    delete [] r_pti_val;
-    delete [] r_wti_reg;
+    soclib::common::dealloc_elems<sc_core::sc_signal<uint32_t> >(r_msk_pti, m_irq_count); 
+    soclib::common::dealloc_elems<sc_core::sc_signal<uint32_t> >(r_msk_wti, m_irq_count); 
+    soclib::common::dealloc_elems<sc_core::sc_signal<uint32_t> >(r_msk_hwi, m_irq_count); 
+    soclib::common::dealloc_elems<sc_core::sc_signal<uint32_t> >(r_pti_per, m_pti_count); 
+    soclib::common::dealloc_elems<sc_core::sc_signal<uint32_t> >(r_pti_val, m_pti_count); 
+    soclib::common::dealloc_elems<sc_core::sc_signal<uint32_t> >(r_wti_reg, m_wti_count); 
     soclib::common::dealloc_elems(p_irq, m_irq_count);
     soclib::common::dealloc_elems(p_hwi, m_hwi_count);
 }
