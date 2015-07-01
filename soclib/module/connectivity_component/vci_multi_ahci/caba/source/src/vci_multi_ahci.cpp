@@ -41,7 +41,7 @@
 //
 //  For all VCI bursts, the burst length is multiple of 8 bytes:
 //  - read Command Descriptor:    16 bytes
-//  - read Command Table Header:  32 bytes
+//  - read Command Table Header:  16 bytes
 //  - read Buffer Descriptor:     16 bytes
 //  - read or write Data:         burst size (8, 16, 32, or 64 bytes)
 //////////////////////////////////////////////////////////////////////////////////
@@ -1026,7 +1026,7 @@ tmpl(/**/)::VciMultiAhci( sc_core::sc_module_name             name,
     size_t index=0;
     for( it=filenames.begin() ; it!=filenames.end() ; it++ , index++ )
     {
-        m_fd[index] = ::open(it->c_str(), O_RDWR | O_CREAT,S_IRUSR|S_IWUSR |S_IXUSR);
+        m_fd[index] = ::open(it->c_str(), O_RDWR );
         if ( m_fd[index] < 0 )
         {
             std::cout << "Error in component VciMultiAhci : " << name 

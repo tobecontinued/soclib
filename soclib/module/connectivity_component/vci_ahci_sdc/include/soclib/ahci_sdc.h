@@ -20,91 +20,104 @@
  * SOCLIB_LGPL_HEADER_END
  *
  */
-#ifndef MULTI_HBA_REGS_H
-#define MULTI_HBA_REGS_H
 
+#ifndef AHCI_SDC_H
+#define AHCI_SDC_H
 
 /////////////////////////////////////////////////////////////////////////////
-// Addressable Registers (for each channel)
+// SDC Addressable Registers (up to 64 registers)
 /////////////////////////////////////////////////////////////////////////////
 
-enum SoclibMultiAhciRegisters 
+enum SoclibSdcRegisters
 {
-  HBA_PXCLB            = 0,         // command list base address 32 LSB bits
-  HBA_PXCLBU           = 1,         // command list base address 32 MSB bits
-  HBA_PXIS             = 4,         // interrupt status
-  HBA_PXIE             = 5,         // interrupt enable
-  HBA_PXCMD            = 6,         // run
-  HBA_PXCI             = 14,        // command bit-vector     
-  HBA_SPAN             = 0x400,     // 4 Kbytes per channel => 1024 slots
+    SDC_PERIOD       = 32,          // system cycles    / Write-Only
+    SDC_CMD_ID       = 33,          // command index    / Write-Only
+    SDC_CMD_ARG      = 34,          // command argument / Write-Only
+    SDC_RSP_STS      = 35,          // response status  / Read)Only
+};
+
+enum SoclibSdcCommands
+{
+    SDC_CMD0         = 0,           // Soft reset
+    SDC_CMD3         = 3,           // Relative Card Address
+    SDC_CMD7         = 7,           // Toggle mode
+    SDC_CMD8         = 8,           // Voltage info 
+    SDC_CMD17        = 17,          // RX single block (hidden command)
+    SDC_CMD24        = 24,          // TX single block (hidden command)
+    SDC_CMD41        = 41,          // Operation Condition
+};
+
+enum SoclibSdcErrorCodes
+{
+    SDC_ERROR_LBA    = 0x40000000,  // LBA larger tnan SD card capacity
+    SDC_ERROR_CRC    = 0x00800000,  // CRC error reported by SD card
+    SDC_ERROR_CMD    = 0x00400000,  // command notsupported by SD card
+};
+           
+/////////////////////////////////////////////////////////////////////////////
+// AHCI Addressable Registers 
+/////////////////////////////////////////////////////////////////////////////
+
+enum SoclibAhciRegisters 
+{
+    AHCI_PXCLB       = 0,           // command list base address 32 LSB bits
+    AHCI_PXCLBU      = 1,           // command list base address 32 MSB bits
+    AHCI_PXIS        = 4,           // interrupt status
+    AHCI_PXIE        = 5,           // interrupt enable
+    AHCI_PXCMD       = 6,           // run
+    AHCI_PXCI        = 14,          // command bit-vector     
 };
 
 /////////////////////////////////////////////////////////////////////////////
-// C structures for Command List
+// AHCI structures for Command List
 /////////////////////////////////////////////////////////////////////////////
 
 /////// command descriptor  ///////////////////////
-typedef struct hba_cmd_desc_s  // size = 16 bytes
+typedef struct ahci_cmd_desc_s  // size = 16 bytes
 {
-	// WORD 0
     unsigned char       flag[2];    // W in bit 6 of flag[0]
     unsigned char       prdtl[2];	// Number of buffers
-
-    // WORD 1
     unsigned int        prdbc;		// Number of bytes actually transfered
-
-    // WORD 2, WORD 3
     unsigned int        ctba;		// Command Table base address 32 LSB bits
     unsigned int        ctbau;		// Command Table base address 32 MSB bits
-
-} hba_cmd_desc_t;
+} ahci_cmd_desc_t;
 
 
 /////////////////////////////////////////////////////////////////////////////
-// C structures for Command Table
+// AHCI structures for Command Table
 /////////////////////////////////////////////////////////////////////////////
 
 /////// command header  ///////////////////////////
-typedef struct hba_cmd_header_s     // size = 16 bytes
+typedef struct ahci_cmd_header_s     // size = 16 bytes
 {
-    // WORD 0
     unsigned int        res0;       // reserved	
-  
-    // WORD 1
     unsigned char	    lba0;	    // LBA 7:0
     unsigned char	    lba1;	    // LBA 15:8
     unsigned char	    lba2;	    // LBA 23:16
     unsigned char	    res1;	    // reserved
-  
-    // WORD 2
     unsigned char	    lba3;	    // LBA 31:24
     unsigned char	    lba4;	    // LBA 39:32
     unsigned char	    lba5;	    // LBA 47:40
     unsigned char	    res2;	    // reserved
-  
-    // WORD 3 to 31
     unsigned int        res3;       // reserved	
-
-} hba_cmd_header_t;
+} ahci_cmd_header_t;
 
 /////// Buffer Descriptor ////////////////////////
-typedef struct hba_cmd_buffer_s // size = 16 bytes
+typedef struct ahci_cmd_buffer_s // size = 16 bytes
 {
     unsigned int        dba;	    // Buffer base address 32 LSB bits
     unsigned int        dbau;	    // Buffer base address 32 MSB bits
     unsigned int        res0;	    // reserved
     unsigned int        dbc;	    // Buffer bytes count
-
-} hba_cmd_buffer_t;
+} ahci_cmd_buffer_t;
 
 /////// command table //////////////////////////////
-typedef struct hba_cmd_table_s  // size = 4 Kbytes
+typedef struct ahci_cmd_table_s  // size = 4 Kbytes
 {
+    ahci_cmd_header_t   header;      // contains LBA
+    ahci_cmd_buffer_t   buffer[255]; // 255 buffers max
+} ahci_cmd_table_t;
 
-    hba_cmd_header_t   header;      // contains LBA
-    hba_cmd_buffer_t   buffer[255]; // 255 buffers max
-
-} hba_cmd_table_t;
 
 #endif
 
