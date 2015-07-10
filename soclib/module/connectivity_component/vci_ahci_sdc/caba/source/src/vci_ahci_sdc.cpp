@@ -1923,6 +1923,7 @@ tmpl(void)::print_trace(uint32_t mode)
     std::cout << " / " << sdc_cmd_type_str[r_sdc_cmd_type.read()];
     std::cout << " / CYCLE = " << std::dec << (uint32_t)r_sdc_cycles_count.read();
     std::cout << " / FLIT = " << std::dec << (uint32_t)r_sdc_flits_count.read();
+    std::cout << " / WORD = " << std::dec << (uint32_t)r_sdc_words_count.read(); //ajouté pour debug
     if ( p_sdc_cmd_enable_in.read() ) std::cout << " / CMD_IN = " << p_sdc_cmd_value_in.read();
     if ( p_sdc_dat_enable_in.read() ) std::cout << " / DAT_IN = " << std::hex << dat;
     if ( r_sdc_crc_error.read() )     std::cout << " / CRC_ERROR_DETECTED";
