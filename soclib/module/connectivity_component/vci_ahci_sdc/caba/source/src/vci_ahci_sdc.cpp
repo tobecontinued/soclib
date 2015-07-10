@@ -770,7 +770,7 @@ tmpl(void)::transition()
                 r_sdc_dat_crc[2]   = 0;
                 r_sdc_dat_crc[3]   = 0;
                 r_sdc_dat_enable   = false;
-                r_sdc_fsm = SDC_DMA_RX_DATA;
+                r_sdc_fsm = SDC_DMA_TX_DATA;
             }
             break;
         }
@@ -843,7 +843,7 @@ tmpl(void)::transition()
             {
                 r_sdc_cycles_count = 0;
                 r_sdc_flits_count  = 0;
-                r_sdc_fsm          = SDC_DMA_RX_CRC;
+                r_sdc_fsm          = SDC_DMA_TX_CRC;
             }
             break;
         }
