@@ -729,14 +729,15 @@ tmpl(void)::transition()
             break;
         }
         //////////////////////
-        case SDC_DMA_TX_START:  // get first word from FIFO / send start bit (one flit)
+        case SDC_DMA_TX_START:  // send start bit (one flit)
+                                // get first word from FIFO 
         {
-            // get first word from FIFO at first cycle
+            // get first word from FIFO at last cycle
             // break if FIFO empty (SDC clock will be stretched)
-            if ( first_cycle )
+            if ( last_cycle ) 
             {
                 if ( r_fifo->rok() == false )  break;
-                    
+
                 r_sdc_data = r_fifo->read();
                 fifo_get   = true;
             }
@@ -759,7 +760,7 @@ tmpl(void)::transition()
                 r_sdc_dat_value[3] = false;
             }
 
-            // next state
+            // next state 
             if ( last_cycle ) 
             {
                 r_sdc_cycles_count = 0;
@@ -769,7 +770,6 @@ tmpl(void)::transition()
                 r_sdc_dat_crc[1]   = 0;
                 r_sdc_dat_crc[2]   = 0;
                 r_sdc_dat_crc[3]   = 0;
-                r_sdc_dat_enable   = false;
                 r_sdc_fsm = SDC_DMA_TX_DATA;
             }
             break;
@@ -779,13 +779,14 @@ tmpl(void)::transition()
                                // consume 32 bits or 64 bits words in the DMA FIFO.
                                // - 32 bits word =>  8 flits per word / 128 words per block
                                // - 64 bits word => 16 flits per word /  64 words per block
-                               // => thee nested loops: on cycles [0 to sdc_period-1]
-                               //                       on flits  [0 to m_flit_max-1]
-                               //                       on words  [0 to m_word_max-1]
+                               // => three nested loops: on cycles [0 to sdc_period-1]
+                               //                        on flits  [0 to m_flit_max-1]
+                               //                        on words  [0 to m_word_max-1]
         {
-            // get one new word from FIFO at first cycle and flit 0 in a word
+            // get one word from FIFO at last cycle and last flit, 
+            // for each word but the last.
             // break if FIFO empty (SDC clock will be stretched)
-            if ( first_cycle and (flit == 0) )
+            if ( last_cycle and (flit == m_flit_max-1) and (word != m_word_max-1) )
             {
                 if ( r_fifo->rok() == false )  break;
                 
@@ -1923,13 +1924,15 @@ tmpl(void)::print_trace(uint32_t mode)
     std::cout << " / " << sdc_cmd_type_str[r_sdc_cmd_type.read()];
     std::cout << " / CYCLE = " << std::dec << (uint32_t)r_sdc_cycles_count.read();
     std::cout << " / FLIT = " << std::dec << (uint32_t)r_sdc_flits_count.read();
-    std::cout << " / WORD = " << std::dec << (uint32_t)r_sdc_words_count.read(); //ajouté pour debug
+    std::cout << " / WORD = " << std::dec << (uint32_t)r_sdc_words_count.read(); 
     if ( p_sdc_cmd_enable_in.read() ) std::cout << " / CMD_IN = " << p_sdc_cmd_value_in.read();
     if ( p_sdc_dat_enable_in.read() ) std::cout << " / DAT_IN = " << std::hex << dat;
     if ( r_sdc_crc_error.read() )     std::cout << " / CRC_ERROR_DETECTED";
     std::cout << std::endl;
 
     std::cout << "  " << aux_fsm_str[r_sdc_aux_fsm.read()] << std::endl;
+
+    std::cout << "  FIFO_STATE = " << r_fifo->filled_status() << std::endl;
 }
 
 }} // end namespace
