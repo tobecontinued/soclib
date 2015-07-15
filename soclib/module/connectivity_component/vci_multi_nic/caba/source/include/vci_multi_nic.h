@@ -87,14 +87,14 @@ private:
     sc_signal<bool>             r_global_bypass_enable;    /*!< current channel for TDM */
 
     // Channel CONFIGURATION registers
-    sc_signal<uint32_t>                     *r_channel_mac_4;        /*!< MAC address (first 4 bytes) */
-    sc_signal<uint32_t>                     *r_channel_mac_2;        /*!< MAC address (last 2 bytes) */
-    sc_signal<typename vci_param::addr_t>   *r_channel_rx_bufaddr_0; /*!< base address of RX buffer[0] */
-    sc_signal<typename vci_param::addr_t>   *r_channel_rx_bufaddr_1; /*!< base address of RX buffer[1] */
-    sc_signal<bool>                         *r_channel_rx_run;       /*!< RX chbuf activated */
-    sc_signal<typename vci_param::addr_t>   *r_channel_tx_bufaddr_0; /*!< base address of TX buffer[0] */
-    sc_signal<typename vci_param::addr_t>   *r_channel_tx_bufaddr_1; /*!< base address of TX buffer[1] */
-    sc_signal<bool>                         *r_channel_tx_run;       /*!< TX chbuf activated */
+    sc_signal<uint32_t>   *r_channel_mac_4;      /*!< MAC address (first 4 bytes) */
+    sc_signal<uint32_t>   *r_channel_mac_2;      /*!< MAC address (last 2 bytes) */
+    sc_signal<uint64_t>   *r_channel_rx_desc_0;  /*!< descriptor of RX buffer[0] */
+    sc_signal<uint64_t>   *r_channel_rx_desc_1;  /*!< descriptor of RX buffer[1] */
+    sc_signal<bool>       *r_channel_rx_run;     /*!< RX chbuf activated */
+    sc_signal<uint64_t>   *r_channel_tx_desc_0;  /*!< descriptor of TX buffer[0] */
+    sc_signal<uint64_t>   *r_channel_tx_desc_1;  /*!< descriptor of TX buffer[1] */
+    sc_signal<bool>       *r_channel_tx_run;     /*!< TX chbuf activated */
 
 
     // VCI FSM registers
@@ -208,6 +208,7 @@ private:
     const size_t				        m_channels;		    /*!< no more than 8 channels */
     const uint32_t                      m_default_mac_4;    /*!< MAC address 32 LSB bits */
     const uint32_t                      m_default_mac_2;    /*!< MAC address 16 MSB bits */
+    const uint32_t                      m_inter_frame_gap;  /*!< Inter frame gap */
     EthernetChecksum                    m_crc;              /*!< Ethernet checksum computer */
 
 protected:
@@ -312,11 +313,6 @@ public:
         STREAM_TYPE_NEV,     /*!< no special event */
     };
 
-    enum nic_masks 
-    {
-        DESC_STATUS_MASK = 0x80000000,  /*!<  most significant bit of the DESC_HI word */
-    };
-
     enum nic_operation_modes 
     {
         NIC_MODE_FILE      = 0,
@@ -372,6 +368,7 @@ public:
      * \param mac_4 High part of the Ethernet MAC address ([00:11:22:33]:44:55)
      * \param mac_2 Low part of the Ethernet MAC address (00:11:22:33:[44:55])
      * \param mode  Back-end type : NIC_MODE_FILE / NIC_MODE_SYNTHESIS / NIC_MODE_TAP
+     * \param inter_frame_gap : delay between two packets (cannot be smaller than 12 cycles)
      */
     VciMultiNic(sc_core::sc_module_name 		        name,
                 const soclib::common::IntTab 		    &tgtid,
@@ -379,7 +376,8 @@ public:
                 const size_t 				            channels,
                 const uint32_t                          mac_4,
                 const uint32_t                          mac_2,
-                const int                               mode );
+                const int                               mode,
+                const uint32_t                          inter_frame_gap = 12);
 
     ~VciMultiNic();
 

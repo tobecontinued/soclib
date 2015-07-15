@@ -70,25 +70,32 @@ enum SoclibMultiNicHyperRegisters {
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-// A buffer descriptor occupies 64 bytes, but only 8 bytes (two 32 bits words) are useful:
-// LOW WORD   contains the 32 LSB bits of the buffer paddr                
-// HIGH WORD  contains the 16 MSB bits of the buffer paddr, plus buffer status (leftmost bit)
+// A buffer descriptor occupies 8 bytes (two 32 bits words):
+// - the 26 LSB bits of LOW WORD contain bits[31:6] of the buffer satus paddr 
+// - bits[31:26] of LOW WORD and bits[19:0] of HIGH WORD contain bits[31:6] of the buffer paddr
+// - the 12 MSB bits of HIGH WORD contain the common address extension of the buffer and its status
+// The buffer status occupies 64 bytes but only the last bit is useful (1 for full and 0 for empty)
+// The buffer address and its status address must be 64 bytes aligned (bits[5:0] equal to 0)
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 enum SoclibMultiNicChannelRegisters 
 {
-    NIC_RX_DESC_LO_0          = 0,   // RX_0 descriptor low word         (Read/Write)
-    NIC_RX_DESC_HI_0          = 1,   // RX_0 descriptor high word        (Read/Write)
-    NIC_RX_DESC_LO_1          = 16,  // RX_1 descriptor low word         (Read/Write)
-    NIC_RX_DESC_HI_1          = 17,  // RX_1 descriptor high word        (Read/Write) 
-    NIC_TX_DESC_LO_0          = 32,  // TX_0 descriptor low word         (Read/Write)
-    NIC_TX_DESC_HI_0          = 33,  // TX_0 descriptor high word        (Read/Write) 
-    NIC_TX_DESC_LO_1          = 48,  // TX_1 descriptor low word         (Read/Write)
-    NIC_TX_DESC_HI_1          = 49,  // TX_1 descriptor high word        (Read/Write) 
-    NIC_MAC_4                 = 64,  // channel mac address 32 LSB bits  (Read Only)
-    NIC_MAC_2                 = 65,  // channel mac address 16 LSB bits  (Read Only)
-    NIC_RX_RUN                = 66,  // RX packets can be received       (write_only)
-    NIC_TX_RUN                = 67,  // TX packets can be transmitted    (write_only)
+    NIC_RX_STS_0              = 0,   // RX_0 status (full or empty)      (Read/Write)
+    NIC_RX_STS_1              = 16,  // RX_1 status (full or empty)      (Read/Write)
+    NIC_TX_STS_0              = 32,  // TX_0 status (full or empty)      (Read/Write)
+    NIC_TX_STS_1              = 48,  // TX_1 status (full or empty)      (Read/Write)
+    NIC_RX_DESC_LO_0          = 64,  // RX_0 descriptor low word         (Read/Write)
+    NIC_RX_DESC_HI_0          = 65,  // RX_0 descriptor high word        (Read/Write)
+    NIC_RX_DESC_LO_1          = 66,  // RX_1 descriptor low word         (Read/Write)
+    NIC_RX_DESC_HI_1          = 67,  // RX_1 descriptor high word        (Read/Write) 
+    NIC_TX_DESC_LO_0          = 68,  // TX_0 descriptor low word         (Read/Write)
+    NIC_TX_DESC_HI_0          = 69,  // TX_0 descriptor high word        (Read/Write) 
+    NIC_TX_DESC_LO_1          = 70,  // TX_1 descriptor low word         (Read/Write)
+    NIC_TX_DESC_HI_1          = 71,  // TX_1 descriptor high word        (Read/Write) 
+    NIC_MAC_4                 = 72,  // channel mac address 32 LSB bits  (Read Only)
+    NIC_MAC_2                 = 73,  // channel mac address 16 LSB bits  (Read Only)
+    NIC_RX_RUN                = 74,  // RX packets can be received       (write_only)
+    NIC_TX_RUN                = 75,  // TX packets can be transmitted    (write_only)
 };
 
 #endif

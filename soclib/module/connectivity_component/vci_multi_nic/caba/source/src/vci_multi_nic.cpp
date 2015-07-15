@@ -86,6 +86,10 @@
 // 	- The next  4 Kbytes contain the TX_0 container data
 // 	- The next  4 Kbytes contain the TX_1 container data
 // 	- The next  4 Kbytes contain the channel addressable registers
+//      * NIC_RX_STS_0      : RX_0 status               (read/write)
+//      * NIC_RX_STS_1      : RX_1 status               (read/write)
+//      * NIC_TX_STS_0      : TX_0 status               (read/write)
+//      * NIC_TX_STS_1      : TX_1 status               (read/write)
 //      * NIC_RX_DESC_LO_0  : RX_0 descriptor low word  (read/write)
 //      * NIC_RX_DESC_HI_0  : RX_0 descriptor high word (read/write)
 //      * NIC_RX_DESC_LO_1  : RX_1 descriptor low word  (read/write)
@@ -99,10 +103,14 @@
 //      * NIC_RX_RUN        : RX channel X activated    (write_only)
 //      * NIC_TX_RUN        : TX channel X activated    (write_only)
 //
-// A container descriptor occupies 64 bytes (to symplify L2/L3 cache coherence,
-// but only the 8 first bytes (one unsigned long long) contain useful information:
-// - bits [47:0] : Container physical base address
-// - bit 63      : Container status (O when empty)
+// A container descriptor occupies 8 bytes (unsigned long long):
+// - the 26 LSB bits of LOW WORD contain bits[6:31] of the buffer satus paddr 
+// - bits[26:31] of LOW WORD and bits[0:19] of HIGH WORD contain bits[6:31] of the
+//   buffer paddr
+// - the 12 MSB bits of HIGH WORD contain the common address extension of the buffer
+//   and its status
+// The buffer status occupies 64 bytes but only the last bit is useful (1 for full and 0 for empty)      
+// The buffer address and its status address must be 64 bytes aligned (bits[0:5] equal to 0)
 //
 // On top of the channels segments is the hypervisor segment, taking 4 Kbytes:
 // It cannot be accessed by the virtual machines.
@@ -164,7 +172,6 @@ namespace caba {
 //   Hidden hardware parameters
 ////////////////////////////////////////////////////////////////
 
-#define INTER_FRAME_GAP                1000
 #define DEFAULT_TDM_PERIOD             50000
 #define RX_TIMEOUT                     100000
 
@@ -336,33 +343,41 @@ tmpl(uint32_t)::read_channel_register(uint32_t addr)
 
     switch(word)
         {
+        case NIC_RX_STS_0:
+            data = (uint32_t)r_rx_chbuf[channel]->full(0);
+            break;
+        case NIC_RX_STS_1:
+            data = (uint32_t)r_rx_chbuf[channel]->full(1);
+            break;
+        case NIC_TX_STS_0:
+            data = (uint32_t)r_tx_chbuf[channel]->full(0);
+            break;            
+        case NIC_TX_STS_1:
+            data = (uint32_t)r_tx_chbuf[channel]->full(1);
+            break;
         case NIC_RX_DESC_LO_0:
-            data = (uint32_t)r_channel_rx_bufaddr_0[channel].read();
+            data = (uint32_t)(r_channel_rx_desc_0[channel].read() & 0xFFFFFFFF);
             break;
         case NIC_RX_DESC_LO_1:
-            data = (uint32_t)r_channel_rx_bufaddr_1[channel].read();
+            data = (uint32_t)(r_channel_rx_desc_1[channel].read() & 0xFFFFFFFF);
             break;
         case NIC_TX_DESC_LO_0:
-            data = (uint32_t)r_channel_tx_bufaddr_0[channel].read();
+            data = (uint32_t)(r_channel_tx_desc_0[channel].read() & 0xFFFFFFFF);
             break;
         case NIC_TX_DESC_LO_1:
-            data = (uint32_t)r_channel_tx_bufaddr_1[channel].read();
+            data = (uint32_t)(r_channel_tx_desc_1[channel].read() & 0xFFFFFFFF);
             break;
         case NIC_RX_DESC_HI_0:
-            if(r_rx_chbuf[channel]->full(0)) data = (1 << 31);
-            data += (uint32_t)(r_channel_rx_bufaddr_0[channel].read() >> 32);
+            data = (uint32_t)(r_channel_rx_desc_0[channel].read() >> 32);
             break;
         case NIC_RX_DESC_HI_1:
-            if(r_rx_chbuf[channel]->full(1)) data = (1 << 31);
-            data += (uint32_t)(r_channel_rx_bufaddr_1[channel].read() >> 32);
+            data = (uint32_t)(r_channel_rx_desc_1[channel].read() >> 32);
             break;
         case NIC_TX_DESC_HI_0:
-            if(r_tx_chbuf[channel]->full(0)) data = (1 << 31);
-            data += (uint32_t)(r_channel_tx_bufaddr_0[channel].read() >> 32);
+            data = (uint32_t)(r_channel_tx_desc_0[channel].read() >> 32);
             break;
         case NIC_TX_DESC_HI_1:
-            if(r_tx_chbuf[channel]->full(1)) data = (1 << 31);
-            data += (uint32_t)(r_channel_tx_bufaddr_1[channel].read() >> 32);
+            data = (uint32_t)(r_channel_tx_desc_1[channel].read() >> 32);
             break;
         case NIC_MAC_4:
             data = r_channel_mac_4[channel].read();
@@ -433,7 +448,7 @@ tmpl(void)::transition()
         r_tx_dispatch_npkt_transmit     = 0;
 
         r_tx_ser_fsm                    = TX_SER_IDLE;
-        r_tx_ser_ifg                    = INTER_FRAME_GAP;
+        r_tx_ser_ifg                    = m_inter_frame_gap;
 
         r_tx_s2g_fsm                    = TX_S2G_IDLE;
         r_tx_s2g_checksum               = 0;
@@ -584,8 +599,8 @@ tmpl(void)::transition()
                     assert( p_vci.eop.read() and
                     "ERROR in VCI_MULTI_NIC : global register access must be one flit");
 
-                    assert( (plen == 4) and
-                    "ERROR in VCI_MULTI_NIC : global register access must have plen = 4");
+                    assert( (plen == 4)  and
+                           "ERROR in VCI_MULTI_NIC : global register access must have plen = 4");
 
                     if ( cmd==vci_param::CMD_WRITE )
                     {
@@ -602,14 +617,14 @@ tmpl(void)::transition()
                 }
                 else if ( not burst )   // channel register read or write
                 {
-                    assert( p_vci.eop.read() and
-                    "ERROR in VCI_MULTI_NIC : channel register access must be one flit");
-
-                    assert( (plen == 4) and
-                    "ERROR in VCI_MULTI_NIC : channel register access must have plen = 4");
-
                     if (cmd==vci_param::CMD_WRITE)
                     {
+                        assert( p_vci.eop.read() and
+                        "ERROR in VCI_MULTI_NIC : channel register write access must be one flit");
+
+                        assert( (plen == 4) and
+                        "ERROR in VCI_MULTI_NIC : channel register write access must have plen = 4");
+
                         assert( ( ((vci_param::B==8) and ((be==0x0F) or (be==0xF0))) or 
                                   ((vci_param::B==4) and (be==0xF)) ) and 
                         "ERROR in VCI_MULTI_NIC : channel register write access must be 32 bits");
@@ -618,6 +633,13 @@ tmpl(void)::transition()
                     }
                     else
                     {
+                        assert( ((plen == 4 and p_vci.eop.read()) ||
+                                ( word == NIC_RX_DESC_LO_0 ||
+                                  word == NIC_RX_DESC_LO_1 ||
+                                  word == NIC_TX_DESC_LO_0 ||
+                                  word == NIC_TX_DESC_LO_1 )) and
+                        "ERROR in VCI_MULTI_NIC : channel register read access must have one flit and plen = 4 except for registers containing buffer descriptors");
+
                         r_vci_fsm = VCI_READ_CHANNEL_REG;
                     }
                 }
@@ -931,65 +953,74 @@ tmpl(void)::transition()
 
                 switch(word)
                 {
-                    case NIC_RX_DESC_LO_0:   // set LSB base address of RX[channel][0]
-                        r_channel_rx_bufaddr_0[channel] = 
-                           ((r_channel_rx_bufaddr_0[channel].read() >> 32) << 32)
-                           + (typename vci_param::addr_t)wdata;
-                        break;
-                    case NIC_RX_DESC_LO_1:    // set LSB base address of RX[channel][1]
-                        r_channel_rx_bufaddr_1[channel] = 
-                           ((r_channel_rx_bufaddr_1[channel].read() >> 32) << 32)
-                           + (typename vci_param::addr_t)wdata;
-                        break;
-                    case NIC_TX_DESC_LO_0:    // set LSB base address of TX[channel][0]
-                        r_channel_tx_bufaddr_0[channel] = 
-                           ((r_channel_tx_bufaddr_0[channel].read() >> 32) << 32)
-                           + (typename vci_param::addr_t)wdata;
-                        break;
-                    case NIC_TX_DESC_LO_1:    // set LSB base address of TX[channel][1]
-                        r_channel_tx_bufaddr_1[channel] = 
-                           ((r_channel_tx_bufaddr_1[channel].read() >> 32) << 32)
-                           + (typename vci_param::addr_t)wdata;
-                        break;
-                    case NIC_RX_DESC_HI_0:    // set address extension of RX[channel][0]
-                        r_channel_rx_bufaddr_0[channel] = 
-                           (r_channel_rx_bufaddr_0[channel].read() & 0xFFFFFFFF) 
-                           + ((typename vci_param::addr_t)wdata << 32);
-                        if( ((wdata & DESC_STATUS_MASK) == 0) and r_channel_rx_run[channel].read())
+
+                    case NIC_RX_STS_0:   // release container RX 0 if it has been emptied
+                        if( (wdata == 0) and r_channel_rx_run[channel].read())
                         {
                             rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
                             rx_chbuf_cont          = 0;
                         }
                         break;
-                    case NIC_RX_DESC_HI_1:    // set address extension of RX[channel][1]
-                        r_channel_rx_bufaddr_1[channel] = 
-                           (r_channel_rx_bufaddr_1[channel].read() & 0xFFFFFFFF) 
-                           + ((typename vci_param::addr_t)wdata << 32);
-                        if( ((wdata & DESC_STATUS_MASK) == 0) and r_channel_rx_run[channel].read())
+                    case NIC_RX_STS_1:  // release container RX 1 if it has been emptied
+                        if( (wdata == 0) and r_channel_rx_run[channel].read())
                         {
                             rx_chbuf_rcmd[channel] = RX_CHBUF_RCMD_RELEASE;
                             rx_chbuf_cont          = 1;
                         }
                         break;
-                    case NIC_TX_DESC_HI_0:    // set address extension of TX[channel][0]
-                        r_channel_tx_bufaddr_0[channel] = 
-                           (r_channel_tx_bufaddr_0[channel].read() & 0xFFFFFFFF)
-                           + ((typename vci_param::addr_t)wdata << 32);
-                        if( (wdata & DESC_STATUS_MASK) != 0)
+                    case NIC_TX_STS_0:  // release container TX 0 if it is full
+                        if( wdata == 0x1 )
                         {
                             tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
                             tx_chbuf_cont          = 0;
                         }
                         break;
-                    case NIC_TX_DESC_HI_1:    // set address extension of TX[channel][1]
-                        r_channel_tx_bufaddr_1[channel] = 
-                           (r_channel_tx_bufaddr_1[channel].read() & 0xFFFFFFFF)
-                           + ((typename vci_param::addr_t)wdata << 32);
-                        if( ((wdata & DESC_STATUS_MASK) != 0) and r_channel_tx_run[channel].read())
+                    case NIC_TX_STS_1:  // release container TX 1 if it is full
+                        if( wdata == 0x1 )
                         {
                             tx_chbuf_wcmd[channel] = TX_CHBUF_WCMD_RELEASE;
                             tx_chbuf_cont          = 1;
                         }
+                        break;
+                    case NIC_RX_DESC_LO_0:   // set LSB of RX[channel][0] descriptor
+                        r_channel_rx_desc_0[channel] = 
+                           ((r_channel_rx_desc_0[channel].read() >> 32) << 32)
+                           + (uint64_t)wdata;
+                        break;
+                    case NIC_RX_DESC_LO_1:    // set LSB of RX[channel][1] descriptor
+                        r_channel_rx_desc_1[channel] = 
+                           ((r_channel_rx_desc_1[channel].read() >> 32) << 32)
+                           + (uint64_t)wdata;
+                        break;
+                    case NIC_TX_DESC_LO_0:    // set LSB of TX[channel][0] descriptor
+                        r_channel_tx_desc_0[channel] = 
+                           ((r_channel_tx_desc_0[channel].read() >> 32) << 32)
+                           + (uint64_t)wdata;
+                        break;
+                    case NIC_TX_DESC_LO_1:    // set LSB of TX[channel][1] descriptor
+                        r_channel_tx_desc_1[channel] = 
+                           ((r_channel_tx_desc_1[channel].read() >> 32) << 32)
+                           + (uint64_t)wdata;
+                        break;
+                    case NIC_RX_DESC_HI_0:    // set MSB of RX[channel][0] descriptor
+                        r_channel_rx_desc_0[channel] = 
+                           (r_channel_rx_desc_0[channel].read() & 0xFFFFFFFF) 
+                           + ((uint64_t)wdata << 32);
+                        break;
+                    case NIC_RX_DESC_HI_1:    // set MSB of RX[channel][1] descriptor
+                        r_channel_rx_desc_1[channel] = 
+                           (r_channel_rx_desc_1[channel].read() & 0xFFFFFFFF) 
+                           + ((uint64_t)wdata << 32);
+                        break;
+                    case NIC_TX_DESC_HI_0:    // set MSB of TX[channel][0] descriptor
+                        r_channel_tx_desc_0[channel] = 
+                           (r_channel_tx_desc_0[channel].read() & 0xFFFFFFFF)
+                           + ((uint64_t)wdata << 32);
+                        break;
+                    case NIC_TX_DESC_HI_1:    // set MSB of TX[channel][1] descriptor
+                        r_channel_tx_desc_1[channel] = 
+                           (r_channel_tx_desc_1[channel].read() & 0xFFFFFFFF)
+                           + ((uint64_t)wdata << 32);
                         break;
                     case NIC_RX_RUN:       // activate/desactivate RX[channel]
                         r_channel_rx_run[channel] = wdata;
@@ -1007,12 +1038,46 @@ tmpl(void)::transition()
             break;
         }
         ////////////////////////
-        case VCI_READ_HYPER_REG:   // send REG value in VCI response
-        case VCI_READ_CHANNEL_REG:
+        case VCI_READ_HYPER_REG:   // send hyper REG value in VCI response
         {
             if ( p_vci.rspack.read() )
             {
                 r_vci_fsm = VCI_IDLE;
+            }
+            break;
+        }
+
+        /////////////////////////
+        case VCI_READ_CHANNEL_REG:  // send channel REG value(s) in VCI response
+        {
+            if ( p_vci.rspack.read() )
+            {
+                assert( (r_vci_nwords.read() <= 2) and
+                "ERROR in VCI_MULTI_NIC : Register read access must have plen = 4 or 8");
+
+                uint32_t address = r_vci_address.read();
+                uint32_t word    = (address & 0x00000FFF) >> 2;
+
+                if ( vci_param::B == 4 )
+                {
+                    if (r_vci_nwords.read() > 1 &&     // read first register of descriptor
+                        ( word == NIC_RX_DESC_LO_0 ||
+                          word == NIC_RX_DESC_LO_1 ||
+                          word == NIC_TX_DESC_LO_0 ||
+                          word == NIC_TX_DESC_LO_1 ) )
+                    {
+                        r_vci_address          = address + 4; // prepare to read DESC_HI values
+                        r_vci_nwords           = r_vci_nwords.read() - 1;
+                    }
+                    else
+                    {
+                        r_vci_fsm = VCI_IDLE;
+                    }
+                }
+                else  // vci_param::B == 8 )
+                {
+                    r_vci_fsm = VCI_IDLE;
+                }
             }
             break;
         }
@@ -2410,7 +2475,7 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> Send packet for channel %d"
             r_tx_ser_ifg = r_tx_ser_ifg.read() - 1;
             if (r_tx_ser_ifg.read() == 1)
             {
-                r_tx_ser_ifg = INTER_FRAME_GAP;
+                r_tx_ser_ifg = m_inter_frame_gap;
                 r_tx_ser_fsm = TX_SER_IDLE;
             }
             break;
@@ -2494,7 +2559,7 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> Send packet for channel %d"
             r_tx_s2g_checksum   = m_crc.update( r_tx_s2g_checksum.read(),
                                                 (uint32_t)r_tx_s2g_data.read() );
 
-            r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1 + INTER_FRAME_GAP;
+            r_total_len_tx_gmii = r_total_len_tx_gmii.read() + 1 + m_inter_frame_gap;
 
             r_tx_s2g_index = 0;
             r_tx_s2g_fsm   = TX_S2G_WRITE_CS;
@@ -2652,20 +2717,27 @@ tmpl(void)::genMoore()
         case VCI_READ_HYPER_REG:
         case VCI_READ_CHANNEL_REG:
         {
-            uint32_t rdata;
             if ( r_vci_fsm.read() == VCI_READ_HYPER_REG )
-                rdata  = read_hyper_register((uint32_t)r_vci_address);
+                p_vci.rdata  = (typename vci_param::data_t)read_hyper_register((uint32_t)r_vci_address);
             else
-                rdata  = read_channel_register((uint32_t)r_vci_address); 
+            {
+                // if two channel reg are read in the same transaction (low word and high word of buffer
+                // descritor), use successive addresses
+                if ( (vci_param::B == 8) and (r_vci_nwords.read() == 2) )
+                    p_vci.rdata  = (typename vci_param::data_t)
+                        (read_channel_register((uint32_t)r_vci_address) & 0xFFFFFFFF) +
+                        ((uint64_t)(read_channel_register((uint32_t)r_vci_address + 4) & 0xFFFFFFFF) << 32);
+                else
+                    p_vci.rdata  = (typename vci_param::data_t)read_channel_register((uint32_t)r_vci_address);
+            }
 
             p_vci.cmdack = false;
             p_vci.rspval = true;
-            p_vci.rdata  = (typename vci_param::data_t)rdata; 
             p_vci.rerror = vci_param::ERR_NORMAL;
             p_vci.rsrcid = r_vci_srcid.read();
             p_vci.rtrdid = r_vci_trdid.read();
             p_vci.rpktid = r_vci_pktid.read();
-            p_vci.reop   = true;
+            p_vci.reop   = (r_vci_nwords == 1) or ((r_vci_nwords == 2) and (vci_param::B == 8));
             break;
         }
         case VCI_ERROR:
@@ -2782,7 +2854,7 @@ tmpl(void)::print_trace(uint32_t mode)
               << tx_ser_state_str[r_tx_ser_fsm.read()]           << " | "
               << tx_s2g_state_str[r_tx_s2g_fsm.read()]           << std::endl;
 
-    if ( mode & 0x001 ) // configuration & instrumentation registers
+    if ( mode & 0x0001 ) // configuration & instrumentation registers
     {
         std::cout << "---- Instrumentation Registers" << std::dec           << std::endl
                   << "r_total_len_rx_gmii : " << r_total_len_rx_gmii.read() << std::endl
@@ -2799,19 +2871,19 @@ tmpl(void)::print_trace(uint32_t mode)
 
         for (size_t k = 0; k < m_channels; k++)
         {
-            std::cout << "---- Channel[" << std::hex << k << "] config registers"    << std::endl
-                      << "r_channel_mac_4    : " << r_channel_mac_4[k].read()        << std::endl
-                      << "r_channel_mac_2    : " << r_channel_mac_2[k].read()        << std::endl
-                      << "r_channel_rx_buf0  : " << r_channel_rx_bufaddr_0[k].read() << std::endl
-                      << "r_channel_rx_buf1  : " << r_channel_rx_bufaddr_1[k].read() << std::endl
-                      << "r_channel_tx_buf0  : " << r_channel_tx_bufaddr_0[k].read() << std::endl
-                      << "r_channel_tx_buf1  : " << r_channel_tx_bufaddr_1[k].read() << std::endl
-                      << "r_channel_rx_run   : " << r_channel_rx_run[k].read()       << std::endl
-                      << "r_channel_tx_run   : " << r_channel_tx_run[k].read()       << std::endl;
+            std::cout << "---- Channel[" << std::hex << k << "] config registers"     << std::endl
+                      << "r_channel_mac_4        : " << r_channel_mac_4[k].read()     << std::endl
+                      << "r_channel_mac_2        : " << r_channel_mac_2[k].read()     << std::endl
+                      << "r_channel_rx_buf0_desc : " << r_channel_rx_desc_0[k].read() << std::endl
+                      << "r_channel_rx_buf1_desc : " << r_channel_rx_desc_1[k].read() << std::endl
+                      << "r_channel_tx_buf0_desc : " << r_channel_tx_desc_0[k].read() << std::endl
+                      << "r_channel_tx_buf1_desc : " << r_channel_tx_desc_1[k].read() << std::endl
+                      << "r_channel_rx_run       : " << r_channel_rx_run[k].read()    << std::endl
+                      << "r_channel_tx_run       : " << r_channel_tx_run[k].read()    << std::endl;
         }
     }
 
-    if ( mode & 0x010 ) // display RX registers
+    if ( mode & 0x0010 ) // display RX registers
     {
         std::cout << "---- RX_G2S Registers" << std::hex                          << std::endl
                   << "r_rx_g2s_checksum      : " << r_rx_g2s_checksum.read()      << std::endl
@@ -2848,7 +2920,7 @@ tmpl(void)::print_trace(uint32_t mode)
         }
     }
 
-    if ( mode & 0x100 ) // display TX registers
+    if ( mode & 0x0100 ) // display TX registers
     {
         for ( size_t k = 0 ; k < m_channels ; k++ )
         {
@@ -2881,6 +2953,17 @@ tmpl(void)::print_trace(uint32_t mode)
                   << "r_tx_s2g_data          : " << (uint32_t)r_tx_s2g_data.read() << std::endl
                   << "r_tx_s2g_index         : " << r_tx_s2g_index.read()          << std::endl;
     }
+
+    if ( mode & 0x1000 ) // display RX and TX chbuf only
+    {
+        for ( size_t k = 0 ; k < m_channels ; k++ )
+        {
+            std::cout << "---- RX_CHBUF[" << std::dec << k << "] state" << std::endl;
+            r_rx_chbuf[k]->print_trace( k , 0 );
+            std::cout << "---- TX_CHBUF[" << std::dec << k << "] state" << std::endl;
+            r_tx_chbuf[k]->print_trace( k , 0 );
+        }
+    }
 } // end print_trace()
 
 ////////////////////////////////////////////////////////////////////
@@ -2892,7 +2975,8 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
                         const size_t 				            channels,
                         const uint32_t                          mac_4,
                         const uint32_t                          mac_2,
-                        const int                               mode)
+                        const int                               mode,
+                        const uint32_t                          inter_frame_gap)
            : caba::BaseModule(name),
 
            r_total_len_rx_gmii("r_total_len_rx_gmii"),
@@ -2914,15 +2998,15 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
                            ("r_channel_mac_4", 8)),
            r_channel_mac_2(soclib::common::alloc_elems<sc_signal<uint32_t> >
                            ("r_channel_mac_2", 8)),
-           r_channel_rx_bufaddr_0(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
-                                  ("r_channel_rx_bufaddr_0", 8)),
-           r_channel_rx_bufaddr_1(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
+           r_channel_rx_desc_0(soclib::common::alloc_elems<sc_signal<uint64_t> >
+                               ("r_channel_rx_bufaddr_0", 8)),
+           r_channel_rx_desc_1(soclib::common::alloc_elems<sc_signal<uint64_t> >
                                   ("r_channel_rx_bufaddr_1", 8)),
            r_channel_rx_run(soclib::common::alloc_elems<sc_signal<bool> >
                             ("r_channel_rx_run", 8)),
-           r_channel_tx_bufaddr_0(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
+           r_channel_tx_desc_0(soclib::common::alloc_elems<sc_signal<uint64_t> >
                                   ("r_channel_tx_bufaddr_0", 8)),
-           r_channel_tx_bufaddr_1(soclib::common::alloc_elems<sc_signal<typename vci_param::addr_t> >
+           r_channel_tx_desc_1(soclib::common::alloc_elems<sc_signal<uint64_t> >
                                   ("r_channel_tx_bufaddr_1", 8)),
            r_channel_tx_run(soclib::common::alloc_elems<sc_signal<bool> >
                             ("r_channel_tx_run", 8)),
@@ -3013,6 +3097,7 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
            m_channels(channels),
            m_default_mac_4(mac_4),
            m_default_mac_2(mac_2),
+           m_inter_frame_gap(inter_frame_gap),
 
            p_clk("p_clk"),
            p_resetn("p_resetn"),
@@ -3026,11 +3111,14 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
     assert( (channels <= 8 ) and
             "VCI_MULTI_NIC error : No more than 8 channels");
 
+    assert( (inter_frame_gap >= 12 ) and
+            "VCI_MULTI_NIC error : Inter frame gap cannot be smaller than 12 cycles");
+
     if ( mode == NIC_MODE_FILE )
     {
         std::cout << "  - Building VciMultiNic - File version " << name << std::endl;
 
-        r_backend_rx = new NicRxGmii( INTER_FRAME_GAP, true );
+        r_backend_rx = new NicRxGmii( inter_frame_gap, true );
         r_backend_tx = new NicTxGmii();
     }
 
@@ -3048,7 +3136,7 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
 
         srandom( 0xBABEF00D );  // for reproductible synthesis
 
-        r_backend_rx = new NicRxGmii( INTER_FRAME_GAP, false );
+        r_backend_rx = new NicRxGmii( inter_frame_gap, false );
         r_backend_tx = new NicTxGmii();
     }
     if ( mode == NIC_MODE_TAP )
@@ -3056,7 +3144,7 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
         std::cout << "  - Building VciMultiNic - TAP version " << name << std::endl;
 
 #if !defined(__APPLE__) || !defined(__MACH__)
-        r_backend_rx = new NicRxTap( INTER_FRAME_GAP );
+        r_backend_rx = new NicRxTap( inter_frame_gap );
         r_backend_tx = new NicTxTap();
 
         // get a TAP fd
@@ -3163,11 +3251,11 @@ tmpl(/**/)::~VciMultiNic()
 {
     soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_mac_4, 8);
     soclib::common::dealloc_elems<sc_signal<uint32_t> >(r_channel_mac_2, 8);
-    soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_rx_bufaddr_0, 8);
-    soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_rx_bufaddr_1, 8);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_rx_desc_0, 8);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_rx_desc_1, 8);
     soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_rx_run, 8);
-    soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_tx_bufaddr_0, 8);
-    soclib::common::dealloc_elems<sc_signal<typename vci_param::addr_t> >(r_channel_tx_bufaddr_1, 8);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_tx_desc_0, 8);
+    soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_tx_desc_1, 8);
     soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_tx_run, 8);
     soclib::common::dealloc_elems<sc_signal<uint8_t> >(r_rx_des_data, 4);
 //  soclib::common::dealloc_elems<NicRxChbuf>(r_rx_chbuf, m_channels);
