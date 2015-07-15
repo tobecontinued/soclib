@@ -1140,18 +1140,18 @@ tmpl(void)::print_trace()
 
     for ( size_t k = 0 ; k < m_channels ; k++ )
     {
-        std::cout << "  CHANNEL " << k << " : " 
+        std::cout << "  CHANNEL " << std::dec << k << " : " 
                   << channel_state_str[r_channel_fsm[k].read()] 
-                  << " / pxci = " << r_channel_pxci[k].read()
-                  << " / pxis = " << r_channel_pxis[k].read()
-                  << " / pxie = " << r_channel_pxie[k].read()
-                  << " / cmd_id = " << r_channel_slot[k].read()
+                  << " / pxci = " << std::hex << r_channel_pxci[k].read()
+                  << " / pxis = " << std::hex << r_channel_pxis[k].read()
+                  << " / pxie = " << std::hex << r_channel_pxie[k].read()
+                  << " / cmd_id = " << std::dec << r_channel_slot[k].read()
                   << std::endl
-                  << "              lba = " << r_channel_lba[k].read()
-                  << " / buf_paddr = " << r_channel_dba[k].read()
-                  << " / nbytes = " << r_channel_dbc[k].read()
-                  << " / blocks = " << r_channel_blocks[k].read()
-                  << " / bursts = " << r_channel_bursts[k].read()
+                  << "              lba = " << std::hex << r_channel_lba[k].read()
+                  << " / buf_paddr = " << std::hex << r_channel_dba[k].read()
+                  << " / nbytes = " << std::dec << r_channel_dbc[k].read()
+                  << " / blocks = " << std::dec << r_channel_blocks[k].read()
+                  << " / bursts = " << std::dec << r_channel_bursts[k].read()
                   << std::endl;
     }
 }
