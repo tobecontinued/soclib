@@ -34,6 +34,7 @@
 #include "vci_initiator.h"
 #include "caba_base_module.h"
 #include "mapping_table.h"
+#include "../../../../../../../lib/generic_fifo/include/caba/generic_fifo.h"
 
 namespace soclib {
 namespace caba {
@@ -63,29 +64,43 @@ private:
 
     sc_signal<uint64_t>*    r_channel_src_desc;     // SRC descriptor base address
     sc_signal<uint32_t>*    r_channel_src_nbufs;    // number of SRC buffers
-    sc_signal<uint64_t>*    r_channel_src_addr;     // current SRC buffer address
+    sc_signal<uint32_t>*    r_channel_src_buf_addr; // current SRC buffer 32 LSB address
+    sc_signal<uint32_t>*    r_channel_src_sts_addr; // current SRC buffer status 32 LSB address
+    sc_signal<uint32_t>*    r_channel_src_ext;      // current SRC buffer and status address extension
     sc_signal<uint32_t>*    r_channel_src_index;    // current SRC buffer index
-    sc_signal<uint32_t>*    r_channel_src_offset;   // non aligned bytes
     sc_signal<bool>*        r_channel_src_full;     // current SRC buffer status
 
     sc_signal<uint64_t>*    r_channel_dst_desc;     // DST descriptor address
     sc_signal<uint32_t>*    r_channel_dst_nbufs;    // number of DST buffers
-    sc_signal<uint64_t>*    r_channel_dst_addr;     // current DST buffer address
+    sc_signal<uint32_t>*    r_channel_dst_buf_addr; // current DST buffer 32 LSB address
+    sc_signal<uint32_t>*    r_channel_dst_sts_addr; // current DST buffer status 32 LSB address
+    sc_signal<uint32_t>*    r_channel_dst_ext;      // current SRC buffer and status address extension
     sc_signal<uint32_t>*    r_channel_dst_index;    // current DST buffer index
-    sc_signal<uint32_t>*    r_channel_dst_offset;   // non aligned bytes
     sc_signal<bool>*        r_channel_dst_full;     // current DST buffer status 
 
     sc_signal<uint32_t>*    r_channel_timer;        // cycle counter for polling
     sc_signal<uint32_t>*    r_channel_period;       // status polling period    
     sc_signal<uint32_t>*    r_channel_todo_bytes;   // number of bytes to transfer
-    sc_signal<uint32_t>*    r_channel_bytes_first;  // first SRC or DST burst length
-    sc_signal<uint32_t>*    r_channel_bytes_second; // second SRC or DST burst length
+    sc_signal<uint32_t>**   r_channel_bytes;        // burst length
+    sc_signal<uint32_t>*    r_channel_burst_id;     // current burst index
     sc_signal<bool>*        r_channel_vci_req;      // valid request to CMD FSM
-    sc_signal<int>*	        r_channel_vci_type;     // request type  to CMD FSM
-    sc_signal<bool>*        r_channel_vci_rsp;      // valid response from RSP FSM
+    sc_signal<int>*	        r_channel_vci_req_type; // request type  to CMD FSM
+
+    // valid response from RSP FSM
+    sc_signal<bool>*        r_channel_vci_rsp;      // valid complete response from RSP FSM
+
+    // specific response from RSP FSM for burst read transactions
+    // rsp_read[k][burst_id] = true if valid frist flit of response for READ transaction number burst_id
+    sc_signal<bool>**       r_channel_rsp_read;
+
+    // specific response from RSP FSM for burst write transactions
+    // rsp_write[k][burst_id] = true if valid response for WRITE transaction number burst_id
+    sc_signal<bool>**       r_channel_rsp_write;
+       
     sc_signal<bool>*        r_channel_vci_error;    // error signaled from RSP FSM 
     sc_signal<bool>*        r_channel_last;         // last transaction
-    sc_signal<uint32_t>**   r_channel_buf;          // local buffer
+
+    GenericFifo<uint64_t>*  r_channel_fifo;         // Hardware FIFO where data is stored
 
     sc_signal<int>          r_cmd_fsm;
     sc_signal<size_t>       r_cmd_count;	        // bytes counter (shared)
@@ -97,23 +112,24 @@ private:
     sc_signal<size_t>*      r_rsp_count;	        // bytes counter (one per channel)
     sc_signal<uint32_t>     r_rsp_channel;	        // channel index for a response
     sc_signal<uint32_t>     r_rsp_bytes;            // VCI packet length
+    sc_signal<uint32_t>*    r_rsp_next_read;        // next expected read response burst index
+    sc_signal<uint32_t>*    r_rsp_next_write;       // next expected write response burst index
 
     // sructural parameters
     std::list<soclib::common::Segment>	m_seglist;
     const uint32_t			            m_burst_max_length;	// number of bytes
+    const uint32_t                      m_pipelined_bursts; // number of pipelined bursts
     const uint32_t			            m_channels;		    // no more than 8
     const uint32_t			            m_srcid;            // DMA component SRCID
 
     enum vci_req_type_e 
     {
+        REQ_READ_SRC_DESC,
         REQ_READ_SRC_STATUS,
-        REQ_READ_SRC_BUFADDR,
+        REQ_READ_DST_DESC,
         REQ_READ_DST_STATUS,
-        REQ_READ_DST_BUFADDR,
-        REQ_READ_FIRST_DATA,
-        REQ_READ_SECOND_DATA, 
-        REQ_WRITE_FIRST_DATA,
-        REQ_WRITE_SECOND_DATA, 
+        REQ_READ_DATA,
+        REQ_WRITE_DATA,
         REQ_WRITE_SRC_STATUS,
         REQ_WRITE_DST_STATUS,
     };
@@ -132,34 +148,31 @@ public:
     enum channel_fsm_state_e {
         CHANNEL_IDLE,
 
-        CHANNEL_SRC_DATA_ERROR,
-        CHANNEL_DST_DATA_ERROR,
+        CHANNEL_DATA_ERROR,
         CHANNEL_SRC_DESC_ERROR,
         CHANNEL_DST_DESC_ERROR,
+        CHANNEL_SRC_STATUS_ERROR,
+        CHANNEL_DST_STATUS_ERROR,
 
+        CHANNEL_READ_SRC_DESC,
+        CHANNEL_READ_SRC_DESC_WAIT,
         CHANNEL_READ_SRC_STATUS,
         CHANNEL_READ_SRC_STATUS_WAIT,
         CHANNEL_READ_SRC_STATUS_DELAY,
-        CHANNEL_READ_SRC_BUFADDR,
-        CHANNEL_READ_SRC_BUFADDR_WAIT,
 
+        CHANNEL_READ_DST_DESC,
+        CHANNEL_READ_DST_DESC_WAIT,
         CHANNEL_READ_DST_STATUS,
         CHANNEL_READ_DST_STATUS_WAIT,
         CHANNEL_READ_DST_STATUS_DELAY,
-        CHANNEL_READ_DST_BUFADDR,
-        CHANNEL_READ_DST_BUFADDR_WAIT,
 
-        CHANNEL_READ_BURST,
-        CHANNEL_READ_REQ_FIRST,
-        CHANNEL_READ_WAIT_FIRST,
-        CHANNEL_READ_REQ_SECOND,
-        CHANNEL_READ_WAIT_SECOND,
-
-        CHANNEL_WRITE_BURST,
-        CHANNEL_WRITE_REQ_FIRST,
-        CHANNEL_WRITE_WAIT_FIRST,
-        CHANNEL_WRITE_REQ_SECOND,
-        CHANNEL_WRITE_WAIT_SECOND,
+        CHANNEL_BURST,
+        CHANNEL_READ_REQ,
+        CHANNEL_READ_REQ_WAIT,
+        CHANNEL_RSP_WAIT,
+        CHANNEL_WRITE_REQ,
+        CHANNEL_WRITE_REQ_WAIT,
+        CHANNEL_BURST_RSP_WAIT,
 
         CHANNEL_SRC_STATUS_WRITE,
         CHANNEL_SRC_STATUS_WRITE_WAIT,
@@ -174,10 +187,10 @@ public:
     };
     enum rsp_fsm_state_e {
         RSP_IDLE,
+        RSP_READ_SRC_DESC,
         RSP_READ_SRC_STATUS,
-        RSP_READ_SRC_BUFADDR,
+        RSP_READ_DST_DESC,
         RSP_READ_DST_STATUS,
-        RSP_READ_DST_BUFADDR,
         RSP_READ_DATA,
         RSP_WRITE,
     };
@@ -196,7 +209,8 @@ public:
 		const soclib::common::IntTab 		&srcid,
 		const soclib::common::IntTab 		&tgtid,
 		const uint32_t 				        burst_max_length,
-        const uint32_t				        channels);
+        const uint32_t				        channels,
+        const uint32_t                      pipelined_bursts = 4 );
     ~VciChbufDma();
 };
 
