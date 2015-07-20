@@ -316,14 +316,17 @@ tmpl(void)::transition()
     {
         uint32_t period = r_pti_per[i].read();
         uint32_t value  = r_pti_val[i].read();
-        if ( period && value == 1 ) 
+        if ( period )
         {
-            r_pti_pending = r_pti_pending.read() | 1<<i;
-            r_pti_val[i]  = period;
-        }
-        else
-        {
-            r_pti_val[i] = value - 1;
+            if ( value == 1 ) 
+            {
+                r_pti_pending = r_pti_pending.read() | 1<<i;
+                r_pti_val[i]  = period;
+            }
+            else
+            {
+                r_pti_val[i] = value - 1;
+            }
         }
     }
 
@@ -335,10 +338,9 @@ tmpl(void)::transition()
 
 }  // end transition()
 
-//////////////////////////////////////////
+////////////////////////////////////////
 tmpl(void)::print_trace( size_t detail )
 {
-
     const char* fsm_str[] =
     {
         "IDLE",
@@ -347,11 +349,17 @@ tmpl(void)::print_trace( size_t detail )
         "RSP_ERROR",
     };
  
-    std::cout << "XICU " << name() << std::hex
-              << " : "       << fsm_str[r_fsm.read()]
-              << " / HWI = " << r_hwi_pending.read()
-              << " / WTI = " << r_wti_pending.read()
-              << " / PTI = " << r_pti_pending.read()
+    std::cout << "XICU " << name() 
+              << " / NB_HWI = " << m_hwi_count
+              << " / NB_WTI = " << m_wti_count
+              << " / NB_PTI = " << m_pti_count
+              << " / NB_IRQ = " << m_irq_count
+              << std::endl;
+
+    std::cout << "  FSM = " << fsm_str[r_fsm.read()] << std::hex
+              << " / PENDING_HWI = " << r_hwi_pending.read()
+              << " / PENDING_WTI = " << r_wti_pending.read()
+              << " / PENDING_PTI = " << r_pti_pending.read()
               << std::endl;
 
     if ( detail )
