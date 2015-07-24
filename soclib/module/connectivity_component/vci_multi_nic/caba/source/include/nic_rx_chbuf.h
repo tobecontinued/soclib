@@ -136,7 +136,8 @@ public:
     /////////////////////////////////////////////////////////////////////////////
     void update(rx_chbuf_wcmd_t      cmd_w,      // writer command
                 uint32_t             wdata,      // data to be written
-                uint32_t             padding,    // number of padding bytes
+                //uint32_t             padding,    // number of padding bytes
+                uint32_t             pkt_length, // current packet number of bytes
                 rx_chbuf_rcmd_t      cmd_r,      // reader command
                 uint32_t             ptr_cont,   // container index for read
                 uint32_t             ptr_word)   // word index for read
@@ -153,7 +154,7 @@ public:
 
             r_cont[r_ptw_cont][r_ptw_word] = wdata;
             r_ptw_word                     = r_ptw_word + 1;
-            r_pkt_length                   = r_pkt_length + 4;
+            r_pkt_length                   = pkt_length;
         }
         else if ( cmd_w == RX_CHBUF_WCMD_LAST )  // write last word in packet
                                                  // and write packet length
@@ -167,7 +168,7 @@ public:
             assert( (r_pkt_index < MAX_PACKET) and
             "ERROR in NIC_RX_CHBUF : packet index larger than MAX_PACKET-1" );
 
-            uint32_t    plen         = r_pkt_length + 4 - padding;  // final packet size 
+            uint32_t    plen         = r_pkt_length;                // final packet size 
             bool        odd          = (r_pkt_index & 0x1);         // odd packet index
             uint32_t    word         = (r_pkt_index >> 1) + 1;      // for container header 
 

@@ -490,7 +490,7 @@ tmpl(void)::transition()
 
     rx_chbuf_wcmd_t rx_chbuf_wcmd[m_channels];
     uint32_t        rx_chbuf_wdata     = 0;
-    uint32_t        rx_chbuf_padding   = 0;
+    uint32_t        rx_chbuf_plen      = 0;
     rx_chbuf_rcmd_t rx_chbuf_rcmd[m_channels];
     uint32_t        rx_chbuf_cont      = 0;
     uint32_t        rx_chbuf_word      = 0;
@@ -1695,6 +1695,7 @@ printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / receiv
             if ( r_rx_dispatch_bp.read() ) nbytes = r_bp_fifo_multi.plen();
             else                           nbytes = r_rx_fifo_multi.plen();
             r_rx_dispatch_nbytes = nbytes;
+            r_rx_dispatch_plen   = nbytes;
             r_rx_dispatch_fsm    = RX_DISPATCH_READ_FIRST;
             break;
         }
@@ -1910,6 +1911,7 @@ printf("<NIC RX_DISPATCH_SELECT> at cycle %d : no active channel / skip packet"
                 {
                     rx_chbuf_wcmd[k] = RX_CHBUF_WCMD_WRITE;
                     rx_chbuf_wdata    = r_rx_dispatch_data0.read();
+                    rx_chbuf_plen    = r_rx_dispatch_plen.read();
                 }
             }
 
@@ -1967,7 +1969,6 @@ printf("<NIC RX_DISPATCH_SELECT> at cycle %d : no active channel / skip packet"
                 {
                     rx_chbuf_wcmd[k] = RX_CHBUF_WCMD_LAST;
                     rx_chbuf_wdata   = r_rx_dispatch_data1.read();
-                    rx_chbuf_padding = 4 - r_rx_dispatch_nbytes.read();
                 }
             }
 
@@ -2628,7 +2629,7 @@ printf("<NIC TX_DISPATCH_FIFO_SELECT> Send packet for channel %d"
     {
         r_rx_chbuf[k]->update( rx_chbuf_wcmd[k],
                                rx_chbuf_wdata,
-                               rx_chbuf_padding,
+                               rx_chbuf_plen,
                                rx_chbuf_rcmd[k],
                                rx_chbuf_cont,
                                rx_chbuf_word );

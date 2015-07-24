@@ -143,6 +143,8 @@ private:
     sc_signal<uint32_t>         r_rx_dispatch_nbytes;      /*!< number of bytes to be written */
     sc_signal<uint32_t>         r_rx_dispatch_dest;        /*!< bit vector: 1 bit per channel */
 
+    sc_signal<uint32_t>         r_rx_dispatch_plen;        /*!< number of bytes of current packet */
+
     sc_signal<uint32_t>         r_rx_dispatch_npkt_received;     /*!< received packets */
     sc_signal<uint32_t>         r_rx_dispatch_npkt_broadcast;    /*!< broadcast packets */
     sc_signal<uint32_t>         r_rx_dispatch_npkt_dst_fail;     /*!< discarded packets */
