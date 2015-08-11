@@ -31,16 +31,16 @@
 //
 //  A "chbuf descriptor" is a circular array of "buffer descriptors". A buffer
 //  descriptor contains the address of the buffer and the address of the buffer
-//  "status" (full or not). The buffer and the "status" have the same address
-//  extension (bits[43:32]). Both their address must be a multiple of 64 bytes.
+//  status (full or not). The buffer and the status have the same address
+//  extension (bits[43:32]). Both addresses must be a multiple of 64 bytes.
 //  Each buffer descriptor occupies 8 bytes (64 bits unsigned long long):
 //  - The 12 MSB bits contain the common extension of the buffer address and
 //    the buffer status address
 //  - The 26 following bits contain the bits [31:6] of the buffer address
 //  - The 26 LSB bits contain the bits [31:6] of the buffer status address
 //
-//  The status occupies 64 bytes but only the last bit contains useful
-//  information: equal to 0 if the buffer is empty, and equal to 1 if it is full
+//  The status occupies 64 bytes but only the LSB bit of first byte contains
+//  useful information: 0 if buffer empty / 1 if buffer full.
 //
 //  The buffer length must be the same for src_chbuf and dst_chbuf.
 //  The "chbuf descriptor" base address must be a multiple of 64 bytes.
@@ -147,9 +147,9 @@
 //  - r_channel_vci_rsp[k]      valid and complete response from RSP FSM to CHANNEL FSM
 //  - r_channel_rsp_read[k][i]  valid first flit of response from RSP FSM to CHANNEL FSM for a burst read transaction
 //  - r_channel_rsp_write[k][i] valid response from RSP FSM to CHANNEL FSM for a burst write transaction
-//  - r_channel_vci_error[k]     error signaled by RSP FSM to CHANNEL FSM
-//  - r_channel_last[k]          last read/write DMA transaction
-//  - r_channel_fifo[k]     	 local fifo where data is stored 
+//  - r_channel_vci_error[k]    error signaled by RSP FSM to CHANNEL FSM
+//  - r_channel_last[k]         last read/write DMA transaction
+//  - r_channel_fifo[k]     	local fifo where data is stored 
 //
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -392,6 +392,18 @@ tmpl(void)::transition()
                 else if ( (cell == CHBUF_PERIOD) and (cmd == vci_param::CMD_READ) )
                 {
                     r_tgt_rdata = r_channel_period[k].read();
+                    r_tgt_fsm   = TGT_READ;
+                }
+                /////////////////////////////////////////////////////////////////////
+                else if ( (cell == CHBUF_SRC_INDEX) and (cmd == vci_param::CMD_READ) )
+                {
+                    r_tgt_rdata = r_channel_src_index[k].read();
+                    r_tgt_fsm   = TGT_READ;
+                }
+                /////////////////////////////////////////////////////////////////////
+                else if ( (cell == CHBUF_DST_INDEX) and (cmd == vci_param::CMD_READ) )
+                {
+                    r_tgt_rdata = r_channel_dst_index[k].read();
                     r_tgt_fsm   = TGT_READ;
                 }
                 /////
@@ -834,6 +846,7 @@ tmpl(void)::transition()
                 {
                     r_channel_src_index[k] = r_channel_src_index[k].read()+1;
                 }
+
                 if ( r_channel_dst_index[k].read() == (r_channel_dst_nbufs[k].read()-1) )
                 {
                     r_channel_dst_index[k] = 0;
@@ -842,6 +855,7 @@ tmpl(void)::transition()
                 {
                     r_channel_dst_index[k] = r_channel_dst_index[k].read()+1;
                 }
+
                 r_rsp_next_read[k] = 0;
                 r_rsp_next_write[k] = 0;
                 r_channel_fsm[k] = CHANNEL_IDLE;

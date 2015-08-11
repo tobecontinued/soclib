@@ -43,6 +43,8 @@ enum SoclibChbufDmaRegisters
     CHBUF_PERIOD        = 7,    // read/write : period for status polling 
     CHBUF_SRC_EXT       = 8,    // read/write : source chbuf : descriptor base address
     CHBUF_DST_EXT       = 9,    // read/write : destination chbuf : descriptor base address,
+    CHBUF_SRC_INDEX     = 10,   // read-only  : source chbuf : buffer index,
+    CHBUF_DST_INDEX     = 11,   // read-only  : destination chbuf : buffer index,
     /****/
     CHBUF_CHANNEL_SPAN	= 1024,
 };
