@@ -95,7 +95,7 @@ private:
     sc_signal<int>         r_dma_fsm;             // DMA FSM state register
 
     sc_signal<bool>        r_dma_run;             // addressable: DMA running
-    sc_signal<bool>        r_dma_pxie;            // addressable: IRQ enabled
+    sc_signal<uint32_t>    r_dma_pxie;            // addressable: IRQ enabled
     sc_signal<uint32_t>	   r_dma_pxci;            // addressable: pending commands
     sc_signal<uint32_t>	   r_dma_pxis;            // addressable: IRQ status
     sc_signal<uint32_t>    r_dma_pxclb;           // addressable: command list paddr lsb
