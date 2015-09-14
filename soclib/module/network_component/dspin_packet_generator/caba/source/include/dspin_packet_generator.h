@@ -129,11 +129,12 @@ private:
 	sc_core::sc_signal<uint32_t>  r_send_packets;        // number of unicast packets
 	sc_core::sc_signal<uint32_t>  r_send_bc_packets;     // number of broadcast packets
 
-	sc_core::sc_signal<int>	      r_receive_fsm;         // RECEIVE FSM state
-	sc_core::sc_signal<size_t>    r_receive_packets;     // number of unicast packets
-	sc_core::sc_signal<size_t>    r_receive_latency;     // cululated unicast latency
-	sc_core::sc_signal<size_t>    r_receive_bc_packets;  // number of broadcast packets
-	sc_core::sc_signal<size_t>    r_receive_bc_latency;  // cumulated broadcast latency
+	sc_core::sc_signal<int>	      r_receive_fsm;            // RECEIVE FSM state
+	sc_core::sc_signal<size_t>    r_receive_packets;        // number of unicast packets
+	sc_core::sc_signal<size_t>    r_receive_latency;        // cumulated unicast latency
+	sc_core::sc_signal<size_t>    r_receive_bc_packets;     // number of broadcast packets
+	sc_core::sc_signal<size_t>    r_receive_bc_latency;     // cumulated broadcast latency
+	sc_core::sc_signal<size_t>    r_receive_bc_max_latency; // max broadcast latency
 
     // Fifo from GENERATOR FSM to SEND FSM
     GenericFifo<uint64_t>         r_date_fifo;

@@ -64,7 +64,8 @@ tmpl(/**/)::DspinPacketGenerator( sc_module_name name,
     r_receive_latency( "r_receive_latency" ),
     r_receive_bc_packets( "r_receive_bc_packets" ),
     r_receive_bc_latency( "r_receive_bc_latency" ),
- 
+    r_receive_bc_max_latency( "r_receive_bc_max_latency" ),
+
     r_date_fifo( "r_date_fifo", fifo_depth ),
 
     m_length( length ),
@@ -95,16 +96,17 @@ tmpl(void)::transition()
 {
     if ( not p_resetn.read() )
     {
-        r_send_fsm            = SEND_IDLE;
-        r_receive_fsm         = RECEIVE_IDLE;
-        r_cycles              = 0;
-        r_fifo_posted         = 0;
-        r_send_packets        = 0;
-        r_send_bc_packets     = 0;
-        r_receive_packets     = 0;
-        r_receive_latency     = 0;
-        r_receive_bc_packets  = 0;
-        r_receive_bc_latency  = 0;
+        r_send_fsm               = SEND_IDLE;
+        r_receive_fsm            = RECEIVE_IDLE;
+        r_cycles                 = 0;
+        r_fifo_posted            = 0;
+        r_send_packets           = 0;
+        r_send_bc_packets        = 0;
+        r_receive_packets        = 0;
+        r_receive_latency        = 0;
+        r_receive_bc_packets     = 0;
+        r_receive_bc_latency     = 0;
+        r_receive_bc_max_latency = 0;
         srandom( m_srcid + cmd_width );
         return;
     }
@@ -174,9 +176,12 @@ tmpl(void)::transition()
         case RECEIVE_BROADCAST:
             if ( p_in.write.read() )
             {
+                uint32_t latency = r_cycles.read() - (uint32_t)p_in.data.read();
                 r_receive_bc_packets  = r_receive_bc_packets.read() + 1;
-                r_receive_bc_latency  = r_receive_bc_latency.read() + 
-                                        r_cycles.read() - (uint32_t)p_in.data.read();
+                r_receive_bc_latency  = r_receive_bc_latency.read() + latency;
+                if (latency > r_receive_bc_max_latency.read())
+                    r_receive_bc_max_latency = latency;
+
                 r_receive_fsm = RECEIVE_IDLE;
             }
         break;
@@ -292,7 +297,8 @@ tmpl(void)::print_stats()
           << " - unicast received packets   = " << r_receive_packets.read() << std::endl
           << " - unicast latency            = " << latency << std::endl
           << " - broadcast received packets = " << r_receive_bc_packets.read() << std::endl
-          << " - broadcast latency          = " << bc_latency << std::endl;
+          << " - broadcast latency          = " << bc_latency << std::endl
+          << " - broadcast max latency      = " << r_receive_bc_max_latency.read() << std::endl;
 } // end print_stats
 
 
