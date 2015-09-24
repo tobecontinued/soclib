@@ -404,7 +404,7 @@ tmpl(void)::transition()
             //////////////////
             case CHANNEL_IDLE:
             {
-                if ( r_channel_run[k] ) r_channel_fsm[k] = CHANNEL_READ_SRC_DESC;
+                if ( r_channel_run[k].read() ) r_channel_fsm[k] = CHANNEL_READ_SRC_DESC;
                 break;
             }
 
@@ -412,7 +412,6 @@ tmpl(void)::transition()
 
            /////////////////////////////
             case CHANNEL_READ_SRC_DESC:   // request VCI READ for SRC buffer descriptor 
-                                          // on sub-channel 0
             {
                 r_channel_vci_req[k][0]      = true;
                 r_channel_vci_req_type[k][0] = REQ_READ_SRC_DESC;
@@ -421,7 +420,6 @@ tmpl(void)::transition()
             }
             ///////////////////////////////////
             case CHANNEL_READ_SRC_DESC_WAIT:  // wait response for SRC buffer descriptor
-                                              // on sub-channel 0
             {
                 if ( r_channel_vci_rsp[k][0].read() )
                 {
@@ -433,7 +431,15 @@ tmpl(void)::transition()
                         break;
                     }
                     r_channel_vci_rsp[k][0] = false;
-                    r_channel_fsm[k]        = CHANNEL_READ_SRC_STATUS;
+
+                    if ( r_channel_run[k].read() == false )      // soft reset
+                    {
+                        r_channel_fsm[k]   = CHANNEL_IDLE;
+                    }
+                    else
+                    {
+                        r_channel_fsm[k]   = CHANNEL_READ_SRC_STATUS;
+                    }
                 }
                 break;
             }
@@ -458,14 +464,19 @@ tmpl(void)::transition()
                         break;
                     }
                     r_channel_vci_rsp[k][0] = false;
-                    if ( not r_channel_src_full[k].read() ) // buffer not full: failure
+
+                    if ( r_channel_run[k].read() == false )      // soft reset
                     {
-                        if ( r_channel_period[k] )          // in order mode
+                        r_channel_fsm[k]   = CHANNEL_IDLE;
+                    }
+                    else if ( not r_channel_src_full[k].read() ) // buffer not full: failure
+                    {
+                        if ( r_channel_period[k] )  // in order mode
                         { 
                             r_channel_fsm[k]   = CHANNEL_READ_SRC_STATUS_DELAY;
                             r_channel_timer[k] = r_channel_period[k];
                         }
-                        else                                // no order mode
+                        else                        // no order mode
                         {
                             // increment SRC buffer index
                             if ( r_channel_src_index[k].read() == 
@@ -480,7 +491,7 @@ tmpl(void)::transition()
                             r_channel_fsm[k]   = CHANNEL_READ_SRC_DESC;
                         }
                     }
-                    else                                    // buffer full: success
+                    else                                         // buffer full: success
                     {
                         r_channel_fsm[k] = CHANNEL_READ_DST_DESC;
                     }
@@ -490,7 +501,11 @@ tmpl(void)::transition()
             ///////////////////////////////////
             case CHANNEL_READ_SRC_STATUS_DELAY:  // delay to access SRC buffer status
             {
-                if ( r_channel_timer[k].read() == 0 ) 
+                if ( r_channel_run[k].read() == false )      // soft reset
+                {
+                    r_channel_fsm[k]   = CHANNEL_IDLE;
+                }
+                else if ( r_channel_timer[k].read() == 0 ) 
                 {
                     r_channel_fsm[k]   = CHANNEL_READ_SRC_STATUS;
                 }
@@ -524,7 +539,15 @@ tmpl(void)::transition()
                         break;
                     }
                     r_channel_vci_rsp[k][0] = false;
-                    r_channel_fsm[k]        = CHANNEL_READ_DST_STATUS;
+
+                    if ( r_channel_run[k].read() == false )      // soft reset
+                    {
+                        r_channel_fsm[k]   = CHANNEL_IDLE;
+                    }
+                    else
+                    {
+                        r_channel_fsm[k]   = CHANNEL_READ_DST_STATUS;
+                    }
                 }
                 break;
             }
@@ -549,14 +572,19 @@ tmpl(void)::transition()
                         break;
                     }
                     r_channel_vci_rsp[k][0] = false;
-                    if ( r_channel_dst_full[k].read() ) // buffer full: failure
+
+                    if ( r_channel_run[k].read() == false )      // soft reset
                     {
-                        if ( r_channel_period[k] )          // in order mode
+                        r_channel_fsm[k]   = CHANNEL_IDLE;
+                    }
+                    else if ( r_channel_dst_full[k].read() )     // buffer full: failure
+                    {
+                        if ( r_channel_period[k] )   // in order mode
                         { 
                             r_channel_fsm[k]   = CHANNEL_READ_DST_STATUS_DELAY;
                             r_channel_timer[k] = r_channel_period[k];
                         }
-                        else                                // no order mode
+                        else                         // no order mode
                         {
                             // increment DST buffer index
                             if ( r_channel_dst_index[k].read() == 
@@ -571,7 +599,7 @@ tmpl(void)::transition()
                             r_channel_fsm[k]   = CHANNEL_READ_DST_DESC;
                         }
                     }
-                    else                                    // buffer not full: enter data loop
+                    else                                        // buffer not full: success
                     {
                         r_channel_todo_bytes[k]  = r_channel_buf_size[k].read();
                         r_channel_data_error[k]  = false;
@@ -584,8 +612,13 @@ tmpl(void)::transition()
             }
             ///////////////////////////////////
             case CHANNEL_READ_DST_STATUS_DELAY:  // delay to access DST buffer status
+                                                 // return to IDLE in case of soft reset
             {
-                if ( r_channel_timer[k].read() == 0 ) 
+                if ( not r_channel_run[k] )
+                {
+                    r_channel_fsm[k] = CHANNEL_IDLE;
+                }
+                else if ( r_channel_timer[k].read() == 0 ) 
                 {
                     r_channel_fsm[k]   = CHANNEL_READ_DST_STATUS;
                 }
@@ -596,7 +629,7 @@ tmpl(void)::transition()
                 break;
             }
 
-            // move data from SRC buffer to DST buffer (internal loo)
+            // move data from SRC buffer to DST buffer (internal loop)
             // in each iteration (2 * m_bursts) pipelined transactions
             // are running in parallel (one READ + one WRITE per sub-channel)
 
