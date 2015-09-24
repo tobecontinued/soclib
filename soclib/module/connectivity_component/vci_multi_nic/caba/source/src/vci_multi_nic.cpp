@@ -638,7 +638,7 @@ tmpl(void)::transition()
                                   word == NIC_RX_DESC_LO_1 ||
                                   word == NIC_TX_DESC_LO_0 ||
                                   word == NIC_TX_DESC_LO_1 )) and
-                        "ERROR in VCI_MULTI_NIC : channel register read access must have one flit and plen = 4 except for registers containing buffer descriptors");
+                        "ERROR in VCI_MULTI_NIC : channel register read access must be one flit");
 
                         r_vci_fsm = VCI_READ_CHANNEL_REG;
                     }
@@ -1024,9 +1024,11 @@ tmpl(void)::transition()
                         break;
                     case NIC_RX_RUN:       // activate/desactivate RX[channel]
                         r_channel_rx_run[channel] = wdata;
+                        if ( wdata == 0 ) r_rx_chbuf[channel]->reset();
                         break;
                     case NIC_TX_RUN:       // activate/desactivate TX[channel]
                         r_channel_tx_run[channel] = wdata;
+                        if ( wdata == 0 ) r_tx_chbuf[channel]->reset();
                         break;
                     default:
                         std::cout << "ERROR in VCI_MULTI_NIC : illegal channel register write"
