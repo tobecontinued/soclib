@@ -377,8 +377,7 @@ namespace elfpp
     symtab->set_info_last(i + 1);
 
     // generate symbol table section content
-
-    std::vector<reloc*> reloclist[shnum];
+    std::vector<reloc*> *reloclist = new std::vector<reloc*>[shnum];
     elf_sym_t symdata[table.size() + 1];
     i = 1;
 
@@ -421,6 +420,7 @@ namespace elfpp
 	  continue;
 
 	std::vector<reloc*> &rl = reloclist[sec->index_];
+	delete [] reloclist;
 
 	if (rl.empty())
 	  continue;

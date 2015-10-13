@@ -384,8 +384,9 @@ namespace dpp {
     */
     friend std::ostream & operator<<(std::ostream &o, const interval<X, Bound> &i)
     {
-      o << (i.low_inclusive() ? "[" : "(") << i.low_bound()
-	<< ", " << i.high_bound() << (i.high_inclusive() ? "]" : ")");
+      const std::string low = i.low_inclusive() ? "[" : "(";
+      const std::string high = i.high_inclusive() ? "]" : ")";
+      o << low << i.low_bound() << ", " << i.high_bound() << high;
       return o;
     }
   };

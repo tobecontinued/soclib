@@ -72,8 +72,6 @@ public:
         r_ptr = 0;
         r_ptw = 0;
         r_fill_state = 0;
-        // To avoid potential errors from memory checkers
-        std::memset(m_data, 0, sizeof(T) * m_depth);
     }
 
     inline uint32_t filled_status() const

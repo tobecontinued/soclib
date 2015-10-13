@@ -1443,7 +1443,7 @@ printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / receiv
                 {
                     r_rx_des_fsm = RX_DES_READ_WRITE_1;
                 }
-                else if ( (type == STREAM_TYPE_EOS) )
+                else if ( type == STREAM_TYPE_EOS )
                 {
                     if ( not r_rx_fifo_multi.wok() )
                     {
@@ -1492,7 +1492,7 @@ printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / receiv
                 {
                     r_rx_des_fsm = RX_DES_READ_WRITE_2;
                 }
-                else if ( (type == STREAM_TYPE_EOS) )
+                else if ( type == STREAM_TYPE_EOS )
                 {
                     if ( not r_rx_fifo_multi.wok() )
                     {
@@ -1541,7 +1541,7 @@ printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / receiv
                 {
                     r_rx_des_fsm = RX_DES_READ_WRITE_3;
                 }
-                else if ( (type == STREAM_TYPE_EOS) )
+                else if ( type == STREAM_TYPE_EOS )
                 {
                     if ( not r_rx_fifo_multi.wok() )
                     {
@@ -1590,7 +1590,7 @@ printf("<NIC RX_G2S_END> : error packet at cycle %d / expected crc = %x / receiv
                 {
                     r_rx_des_fsm = RX_DES_READ_WRITE_0;
                 }
-                else if ( (type == STREAM_TYPE_EOS) )
+                else if ( type == STREAM_TYPE_EOS )
                 {
                     if ( not r_rx_fifo_multi.wok() )
                     {

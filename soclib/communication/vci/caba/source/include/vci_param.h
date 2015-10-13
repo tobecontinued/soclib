@@ -38,7 +38,7 @@ namespace soclib { namespace caba {
 
 using namespace sc_core;
 
-static std::string VciParamsString(
+static inline std::string VciParamsString(
     int b, int k, int n, int e, int q,
     int f, int s, int p, int t, int w )
 {
@@ -149,7 +149,7 @@ public:
         STORE_COND_NOT_ATOMIC = 1,
     };
 
-    static std::string string( const std::string &name = "" )
+    static inline std::string string( const std::string &name = "" )
     {
         std::string vp = VciParamsString(B,K,N,E,Q,F,S,P,T,W);
         if ( name == "" )
@@ -267,7 +267,7 @@ public:
         STORE_COND_NOT_ATOMIC = 1,
     };
 
-    static std::string string( const std::string &name = "" )
+    static inline std::string string( const std::string &name = "" )
     {
         std::string vp = VciParamsString(B,K,N,E,Q,F,S,P,T,W);
         if ( name == "" )
@@ -385,7 +385,7 @@ public:
         STORE_COND_NOT_ATOMIC = 1,
     };
 
-    static std::string string( const std::string &name = "" )
+    static inline std::string string( const std::string &name = "" )
     {
         std::string vp = VciParamsString(B,K,N,E,Q,F,S,P,T,W);
         if ( name == "" )
