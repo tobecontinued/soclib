@@ -128,7 +128,7 @@ public:
     typedef typename ::soclib::common::fast_int_t<cell_size*8>::int_t fast_data_t;
     typedef typename ::soclib::common::fast_int_t<trdid_size>::int_t fast_trdid_t;
 
-    enum {
+    enum vci_cmd_type_e {
         CMD_NOP,
         CMD_READ,
         CMD_WRITE,
@@ -144,7 +144,7 @@ public:
         ERR_ABORT_DISCONNECT = 7 & _err_mask,
     } vci_error_e;
 
-    enum {
+    enum vci_sc_type_e {
         STORE_COND_ATOMIC = 0,
         STORE_COND_NOT_ATOMIC = 1,
     };
