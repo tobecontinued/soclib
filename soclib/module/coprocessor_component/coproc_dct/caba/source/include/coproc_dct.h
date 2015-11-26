@@ -22,7 +22,7 @@
  *
  * Copyright (c) UPMC, Lip6
  *         Alain Greiner <alain.greiner@lip6.fr>, 2015
- *         From a prvious work by Nicolas Pouillon (fifo_idct)
+ *         From a previous work by Nicolas Pouillon (fifo_idct)
  *
  * Maintainers: alain
  */
@@ -31,15 +31,15 @@
 // This component implements a simple hardware coprocessor
 // performing the 2D Discrete Cosinus Transform on a 8*8 block of pixels.
 // It should be connected to a vci_mwmr_dma component.
-// - It reads the input vector (64 32 bits words) on the input port.
-// - It returns the result vector (N words) on one output port.
+// - It reads the input vector (64 int32_t words) on the input port.
+// - It returns the result vector (64 uint8_t bytes) on the output port.
 // - It has only one configuration register: RUNNING
 // - It has no status register.
 // This component does no define a specific hardware architecture for
 // the DCT algorithm: The computation is done in zero cycles, 
 // and the execution latency can be emulated with the "exec_latency"
 // constructor parameter. The read and write latencies are accurately 
-// reprocduced by this component.
+// reproduced by this component.
 //////////////////////////////////////////////////////////////////////////
 
 #ifndef SOCLIB_COPROC_DCT_H_
@@ -66,8 +66,8 @@ public:
 
 private:
 	uint32_t m_exec_latency;        // cycles
-	uint32_t m_words_per_burst;     // number of words in a burst
-	uint32_t m_nb_bursts;           // number of requested bursts 
+	uint32_t m_nb_in_bursts;        // number of requested bursts on input port
+	uint32_t m_nb_out_bursts;       // number of requested bursts on output port
 
 	enum fsm_states
     {
@@ -84,15 +84,15 @@ private:
 	sc_signal<size_t>    r_ptr;
 	sc_signal<size_t>    r_exec_count;
 	int32_t              r_bufin[64];
-	int32_t              r_bufout[64];
+	uint8_t              r_bufout[64];
 
 protected:
     SC_HAS_PROCESS( CoprocDct );
 
 public:
     CoprocDct( sc_core::sc_module_name  insname,
-               const uint32_t           burst_size, 
-               const uint32_t           exec_latency );
+               const uint32_t           burst_size,       // number of bytes
+               const uint32_t           exec_latency );   // number of cycles
 
     void print_trace();
 

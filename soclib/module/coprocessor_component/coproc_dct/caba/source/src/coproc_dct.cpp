@@ -33,8 +33,6 @@
 #include <assert.h>
 #include "soclib_endian.h"
 
-#define DCT_VECTOR_SIZE  64   // 32 bits words
-
 namespace soclib { namespace caba {
 
 ////////////////////////////
@@ -45,6 +43,7 @@ void CoprocDct::do_dct_8x8()
 
 	double tab_a[8][8], tab_b[8][8];
 
+    // make uint32_t => double conversion
 	for ( int col=0; col<8; ++col )
     {
 		for ( int line=0; line<8; ++line )
@@ -53,6 +52,7 @@ void CoprocDct::do_dct_8x8()
         }
     }
 
+    // DCT on lines
 	for ( int line=0; line<8; ++line ) 
     {
 		for ( int col=0; col<8; ++col ) 
@@ -64,6 +64,7 @@ void CoprocDct::do_dct_8x8()
 		}
 	}
 
+    // DCT on columns
 	for ( int col=0; col<8; ++col ) 
     {
 		for ( int line=0; line<8; ++line ) 
@@ -75,6 +76,7 @@ void CoprocDct::do_dct_8x8()
 		}
 	}
 
+    // double => uint8_t
 	for ( int col=0; col<8; ++col )
     {
 		for ( int line=0; line<8; ++line ) 
@@ -126,18 +128,20 @@ void CoprocDct::transition()
         {
             if ( p_config.read() != 0 )
             {
-                if ( p_in.rok )
+                if ( p_in.rok ) // get one word from input fifo
                 {
-                    // get one word from input fifo
                     r_bufin[r_ptr.read()] = (int32_t)p_in.data.read();
-                    r_ptr = r_ptr.read() + 1;
 
                     // check load completion
-                    if ( r_ptr.read() == (DCT_VECTOR_SIZE - 1) ) 
+                    if ( r_ptr.read() == 63 ) 
                     {
                         r_ptr        = 0;
                         r_exec_count = m_exec_latency;
                         r_fsm        = EXEC;
+                    }
+                    else
+                    {
+                        r_ptr = r_ptr.read() + 1;
                     }
                 }
             }
@@ -186,16 +190,17 @@ void CoprocDct::transition()
         {
             if ( p_config.read() != 0 )
             {
-                // put one word into res fifo
-                if ( p_out.wok )
+                if ( p_out.wok )   // put one word into res fifo
                 {
-                    r_ptr = r_ptr.read() + 1;
-
                     // check store completion
-                    if ( r_ptr.read() == (DCT_VECTOR_SIZE) )
+                    if ( r_ptr.read() == 15 )
                     {
                         r_ptr = 0;
                         r_fsm = IDLE;
+                    }
+                    else
+                    {
+                        r_ptr = r_ptr.read() + 1;
                     }
                 }
             }
@@ -213,14 +218,27 @@ void CoprocDct::genMoore()
 {
     // p_in port
     p_in.req    = (r_fsm.read() == REQ_READ);
-    p_in.bursts = m_nb_bursts;
+    p_in.bursts = m_nb_in_bursts;
     p_in.r      = (r_fsm.read() == LOAD);
 
     // p_out port
     p_out.req    = (r_fsm.read() == REQ_WRITE);
-    p_out.bursts = m_nb_bursts;
+    p_out.bursts = m_nb_out_bursts;
     p_out.w      = (r_fsm.read() == STORE);
-    p_out.data   = (uint32_t)( r_bufout[r_ptr.read()] );
+
+    if ( r_fsm.read() == STORE )
+    {
+        size_t   index = (r_ptr.read()<<2);
+        uint32_t data  = (((uint32_t)r_bufout[index  ])    ) |
+                         (((uint32_t)r_bufout[index+1])<<8 ) |
+                         (((uint32_t)r_bufout[index+2])<<16) |
+                         (((uint32_t)r_bufout[index+3])<<24) ;
+        p_out.data     = data;
+    }
+    else
+    {
+        p_out.data     = 0;
+    }
 }
 
 /////////////////////////////
@@ -243,7 +261,7 @@ void CoprocDct::print_trace()
 
 ///////////////////////////////////////////////////
 CoprocDct::CoprocDct( sc_core::sc_module_name name,
-                      const uint32_t          burst_size,
+                      const uint32_t          burst_size, 
 	                  const uint32_t          exec_latency )
     : soclib::caba::BaseModule(name),
 
@@ -254,8 +272,8 @@ CoprocDct::CoprocDct( sc_core::sc_module_name name,
       p_config( "p_config" ),
 
       m_exec_latency( exec_latency ),
-      m_words_per_burst( burst_size>>2 ),
-      m_nb_bursts( DCT_VECTOR_SIZE / m_words_per_burst)
+      m_nb_in_bursts( 64 / (burst_size>>2) ),
+      m_nb_out_bursts( 16 / (burst_size>>2) )
 {     
     std::cout << "  - Building CoprocDct : " << name << std::endl;
 
