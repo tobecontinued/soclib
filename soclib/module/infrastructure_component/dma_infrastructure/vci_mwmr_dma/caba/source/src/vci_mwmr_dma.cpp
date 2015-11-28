@@ -451,6 +451,12 @@ tmpl(void)::transition()
 		    if ( p_vci_initiator.cmdack.read() ) r_cmd_fsm = CMD_IDLE;
             break;
 	    }
+        //////////////////////
+	    case CMD_LOCK_RELEASE:    // send lock release command (one flit)
+        {
+		    if ( p_vci_initiator.cmdack.read() ) r_cmd_fsm = CMD_IDLE;
+            break;
+	    }
         /////////////////////
         case CMD_STATUS_READ:  // send read command for status (one flit) 
         {
@@ -532,6 +538,8 @@ tmpl(void)::transition()
                     r_rsp_fsm = RSP_STATUS_UPDT;
                 else if ( state == CHANNEL_MWMR_LOCK_RELEASE ) 
                     r_rsp_fsm = RSP_LOCK_RELEASE;
+                else if ( state == CHANNEL_MWMR_RETRY ) 
+                    r_rsp_fsm = RSP_LOCK_RELEASE;
                 else if ( (state == CHANNEL_MWMR_DATA_MOVE) and is_to_coproc )
                     r_rsp_fsm = RSP_DATA_READ;
                 else if ( (state == CHANNEL_MWMR_DATA_MOVE) and not is_to_coproc ) 
@@ -578,7 +586,7 @@ tmpl(void)::transition()
 
                 r_channel[k].response = true;      
                 r_channel[k].rerror   = (bool)p_vci_initiator.rerror.read();
-                r_channel[k].data     = (p_vci_initiator.rdata.read() == 0);
+                r_channel[k].data     = p_vci_initiator.rdata.read();
                 r_rsp_fsm             = RSP_IDLE;
             }
 		    break;
@@ -595,7 +603,7 @@ tmpl(void)::transition()
 
                 r_channel[k].response = true;      
                 r_channel[k].rerror   = (bool)p_vci_initiator.rerror.read();
-                r_channel[k].data     = (p_vci_initiator.rdata.read() == 0);
+                r_channel[k].data     = p_vci_initiator.rdata.read();
                 r_rsp_fsm             = RSP_IDLE;
             }
             break;
@@ -699,12 +707,13 @@ tmpl(void)::transition()
             break;
         }
         /////////////////////
-	    case RSP_STATUS_UPDT:    // signal completion
+	    case RSP_STATUS_UPDT:     // signal completion
+	    case RSP_LOCK_RELEASE:    // signal completion 
         {
 		    if ( p_vci_initiator.rspval.read() )
             {
                 assert( p_vci_initiator.reop.read() and
-                       "VCI_MWMR_DMA error: Write Status VCI response should be one flit");
+                       "VCI_MWMR_DMA error: Write VCI response should be one flit");
  
                 size_t k = r_rsp_k.read();
 
@@ -783,14 +792,13 @@ tmpl(void)::transition()
     // As the MWMR software channel is protected by a ticket-based spin-lock,
     // it uses a CAS VCI transaction to take a ticket with atomic increment.
     // A MWMR transaction is split in (at least) 7 VCI requests to the CMD_FSM.
-    // corresponding to 7 VCI transactions.
     // As the VCI commands and responses are handled by two separated FSMs,
     // the VCI transactions corresponding to different MWMR channels are interleaved,
     // and there is up to (m_all_channels) simultaneous VCI transactions. 
     // If there is no data (or no space) in the MWMR channel a retry_delay is set.
     // The synchronisation between channel_fsm[k] and cmd_fsm / rsp_fsm is done by
-    // the set/reset flip-flops r_channel[k].request. It is set by the channel_fsm, 
-    // and it is reset by the rsp_fsm.
+    // the set/reset flip-flops r_channel[k].request. 
+    // It is set by the channel_fsm, and reset by the cmd_fsm.
     ////////////////////////////////////////////////////////////////////////////////////
 
     for ( size_t k=0 ; k<m_all_channels ; k++ )
@@ -922,19 +930,17 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )  // response available in ticket
                 {
+                    // reset synchro
+                    r_channel[k].response = false;
+
                     if ( r_channel[k].rerror == false )   // No error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
-
                         r_channel[k].reqtype = TICKET_CAS;
                         r_channel[k].request = true;
                         r_channel[k].fsm     = CHANNEL_MWMR_TICKET_CAS;
                     }
                     else                                  // error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
                         r_channel[k].rerror   = false;
                         r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
                     }
@@ -948,11 +954,11 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )   // response available in data
                 {
+                    // reset synchro
+                    r_channel[k].response = false;
+
                     if ( r_channel[k].rerror == false )   // No error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
-
                         if ( r_channel[k].data == 0 )      // success
                         {
                             r_channel[k].reqtype = LOCK_READ;
@@ -968,8 +974,6 @@ tmpl(void)::transition()
                     }
                     else                                  // error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
                         r_channel[k].rerror   = false;
                         r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
                     }
@@ -983,11 +987,11 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )
                 {
+                    // reset synchro
+                    r_channel[k].response = false;
+
                     if ( r_channel[k].rerror == false )   // No error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
-
                         if ( r_channel[k].data == r_channel[k].ticket ) // lock available 
                         {
                             r_channel[k].reqtype = STATUS_READ;           
@@ -1003,8 +1007,6 @@ tmpl(void)::transition()
                     }
                     else                                  // error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
                         r_channel[k].rerror   = false;
                         r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
                     }
@@ -1019,11 +1021,11 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )
                 {
+                    // reset synchro
+                    r_channel[k].response = false;
+
                     if ( r_channel[k].rerror == false )   // No error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
-
                         if ( r_channel[k].way == FROM_COPROC ) // FROM_COPROC 
                         {
                             // space in memory buffer must be enough for coprocessor request
@@ -1038,7 +1040,7 @@ tmpl(void)::transition()
                             {
                                 r_channel[k].reqtype = LOCK_RELEASE;
                                 r_channel[k].request = true;
-                                r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
+                                r_channel[k].fsm     = CHANNEL_MWMR_RETRY;
                             }
                         }
                         else                                   // TO_COPROC 
@@ -1055,31 +1057,52 @@ tmpl(void)::transition()
                             {
                                 r_channel[k].reqtype = LOCK_RELEASE;
                                 r_channel[k].request = true;
-                                r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
+                                r_channel[k].fsm     = CHANNEL_MWMR_RETRY;
                             }
                         }
                     }
                     else                                // error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
                         r_channel[k].rerror   = false;
                         r_channel[k].fsm     = CHANNEL_ERROR_DESC;
                     }
                 }
                 break;
             }
+            ////////////////////////
+            case CHANNEL_MWMR_RETRY:        // wait response to the LOCK_RELEASE VCI transaction
+                                            // makes a TICKET_READ request
+            {
+                if ( r_channel[k].response == true )
+                {
+                    // reset synchro
+                    r_channel[k].response = false;
+
+                    if ( r_channel[k].rerror == false )   // make a TICKET_READ request
+                    {
+                        r_channel[k].reqtype = TICKET_READ;
+                        r_channel[k].request = true;
+                        r_channel[k].fsm = CHANNEL_MWMR_TICKET_READ;
+                    }
+                    else                                  // error reported
+                    {
+                        r_channel[k].rerror   = false;
+                        r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
+                    }
+                }
+                break;
+            } 
             ////////////////////////////
             case CHANNEL_MWMR_DATA_MOVE:    // wait response to a DATA_MOVE VCI transaction
                                             // and makes a STATUS_UPDT request
             {
                 if ( r_channel[k].response == true )  // response available
                 {
+                    // reset synchro
+                    r_channel[k].response = false;
+ 
                     if ( r_channel[k].rerror == false )   // No error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
- 
                         // update number of bursts for the current coprocessor request
                         r_channel[k].bursts      = r_channel[k].bursts - 1;
 
@@ -1114,8 +1137,6 @@ tmpl(void)::transition()
                     }
                     else                                // error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
                         r_channel[k].rerror   = false;
                         r_channel[k].fsm     = CHANNEL_ERROR_DATA;
                     }
@@ -1128,18 +1149,17 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )  
                 {
-                    if ( r_channel[k].rerror == false )   // No error reported
+                    // reset synchro
+                    r_channel[k].response = false;
+
+                    if ( r_channel[k].rerror == false )   // request a LOCK_RELEASE
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
                         r_channel[k].reqtype = LOCK_RELEASE;
                         r_channel[k].request = true;
                         r_channel[k].fsm     = CHANNEL_MWMR_LOCK_RELEASE;
                     }
                     else                                  // error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
                         r_channel[k].rerror   = false;
                         r_channel[k].fsm     = CHANNEL_ERROR_DESC;
                     }
@@ -1152,17 +1172,15 @@ tmpl(void)::transition()
             {
                 if ( r_channel[k].response == true )
                 {
+                    // reset synchro
+                    r_channel[k].response = false;
+
                     if ( r_channel[k].rerror == false )   // No error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
-
                         r_channel[k].fsm = CHANNEL_IDLE;
                     }
                     else                                  // error reported
                     {
-                        // reset synchro
-                        r_channel[k].response = false;
                         r_channel[k].rerror   = false;
                         r_channel[k].fsm     = CHANNEL_ERROR_LOCK;
                     }
@@ -1310,7 +1328,7 @@ tmpl(void)::genMoore()
     else if ( r_cmd_fsm.read() == CMD_LOCK_READ )
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k.read()].lock_paddr + 4;  // &lock.current
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].lock_paddr;     // &lock.current
         p_vci_initiator.cmd     = vci_param::CMD_READ;
         p_vci_initiator.wdata   = 0;
 		p_vci_initiator.eop     = true;
@@ -1318,21 +1336,32 @@ tmpl(void)::genMoore()
         p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_READ_DATA_UNC;
     }
+    else if ( r_cmd_fsm.read() == CMD_LOCK_RELEASE )
+    {
+        p_vci_initiator.cmdval  = true;
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].lock_paddr;     // &lock.current
+        p_vci_initiator.cmd     = vci_param::CMD_WRITE;
+        p_vci_initiator.wdata   = r_channel[r_cmd_k.read()].ticket + 1;
+		p_vci_initiator.eop     = true;
+        p_vci_initiator.plen    = 4;
+        p_vci_initiator.trdid   = r_cmd_k.read();
+	    p_vci_initiator.pktid   = PKTID_WRITE;
+    }
     else if ( r_cmd_fsm.read() == CMD_STATUS_READ )
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k.read()].desc_paddr;  // &mwmr.sts
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].desc_paddr;     // &mwmr.sts
         p_vci_initiator.cmd     = vci_param::CMD_READ;
         p_vci_initiator.wdata   = 0;
 		p_vci_initiator.eop     = true;
-        p_vci_initiator.plen    = 12;                               // 3 flits
+        p_vci_initiator.plen    = 12;              // 3 flits
         p_vci_initiator.trdid   = r_cmd_k.read();
 	    p_vci_initiator.pktid   = PKTID_READ_DATA_UNC;
     }
     else if ( r_cmd_fsm.read() == CMD_STATUS_UPDT_STS ) 
     {
         p_vci_initiator.cmdval  = true;
-        p_vci_initiator.address = r_channel[r_cmd_k.read()].desc_paddr;  // &mwmr.sts
+        p_vci_initiator.address = r_channel[r_cmd_k.read()].desc_paddr;    // &mwmr.sts
         p_vci_initiator.cmd     = vci_param::CMD_WRITE;
         p_vci_initiator.wdata   = r_channel[r_cmd_k.read()].sts;
 		p_vci_initiator.eop     = false;
@@ -1429,6 +1458,7 @@ tmpl(void)::print_trace()
     "CHANNEL_MWMR_STATUS_UPDT",
     "CHANNEL_MWMR_LOCK_RELEASE",
     "CHANNEL_MWMR_DATA_MOVE",
+    "CHANNEL_MWMR_RETRY",
     "CHANNEL_SUCCESS",
     "CHANNEL_ERROR_LOCK",
     "CHANNEL_ERROR_DESC",
