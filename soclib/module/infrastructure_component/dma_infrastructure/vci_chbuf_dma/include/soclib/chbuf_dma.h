@@ -49,6 +49,16 @@ enum SoclibChbufDmaRegisters
     CHBUF_CHANNEL_SPAN	= 1024,
 };
 
+
+// This enum define the
+enum SocliChbufRunningModes
+{
+    MODE_IDLE           = 0,    // channel not running
+    MODE_NORMAL         = 1,    // check both source & destination buffers status
+    MODE_NO_DST_SYNC    = 2,    // does not check the destination buffer status
+    MODE_NO_SRC_SYNC    = 4,    // does not check the source buffer status,
+};
+
 #endif
 
 // Local Variables:

@@ -58,7 +58,7 @@ private:
     sc_signal<typename vci_param::data_t>	r_tgt_rdata;
 
     sc_signal<int> 	    r_channel_fsm[4];             // channel state
-    sc_signal<bool>     r_channel_run[4];             // channel running
+    sc_signal<uint32_t> r_channel_run[4];             // channel running mode
     sc_signal<uint32_t> r_channel_buf_size[4];        // single buffer size (bytes)
 
     sc_signal<uint64_t> r_channel_src_desc[4];        // SRC descriptor base address
