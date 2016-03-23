@@ -56,6 +56,11 @@
 #include <fstream>
 #include <iomanip>
 
+#include <linux/if_tun.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <net/if.h>
+#include <netinet/in.h>
 #include "nic_tx_backend.h"
 
 namespace soclib { 
