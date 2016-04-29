@@ -1,0 +1,31 @@
+# -*- python -*-
+
+Module('caba:dspin_router_3d',
+	classname = 'soclib::caba::DspinRouter3d',
+	tmpl_parameters = [ parameter.Int('flit_width'), ],
+	header_files = ['../source/include/dspin_router_3d.h',],
+	implementation_files = ['../source/src/dspin_router_3d.cpp',],
+	ports = [
+		Port('caba:bit_in', 'p_resetn', auto = 'resetn'),
+		Port('caba:clock_in', 'p_clk', auto = 'clock'),
+	    Port('caba:dspin_output', 'p_out', 7, dspin_data_size = parameter.Reference('flit_width')),
+	    Port('caba:dspin_input', 'p_in', 7, dspin_data_size = parameter.Reference('flit_width')),
+	],
+	instance_parameters = [
+	    parameter.Int('x'),
+	    parameter.Int('y'),
+	    parameter.Int('z'),
+	    parameter.Int('x_width'),
+	    parameter.Int('y_width'),
+	    parameter.Int('z_width'),
+	    parameter.Int('x_elevator'),
+	    parameter.Int('y_elevator'),
+	    parameter.Int('in_fifo_depth'),
+	    parameter.Int('out_fifo_depth'),
+        parameter.Bool('broadcast_supported'),
+	],
+	uses = [
+	    Uses('caba:base_module'),
+	    Uses('caba:generic_fifo'),
+	],
+)
