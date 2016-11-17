@@ -27,21 +27,19 @@
 //////////////////////////////////////////////////////////////////////////////////
 //  This component is a multi-channels DMA controller supporting chained buffers.
 //  It can be used to move a stream from one set of chained buffers (SRC chbuf) 
-//  to another set of chained buffers (DST chbuf), without involving software.
-//
+//  to another set of chained buffers (DST chbuf), with minimal software activity.
+//  
 //  A "chbuf descriptor" is a circular array of "buffer descriptors". A buffer
 //  descriptor contains the address of the buffer and the address of the
 //  status (full or not). The buffer and the status have the same address
-//  extension (bits[43:32]). Both addresses must be a multiple of 64 bytes.
+//  extension (bits[43:32]). Both addresses must be aligned on 64 bytes.
 //  Each buffer descriptor occupies 8 bytes (64 bits unsigned long long):
 //  - The 12 MSB bits contain the common extension of the buffer address and
 //    the buffer status address
 //  - The 26 following bits contain the bits [31:6] of the buffer address
 //  - The 26 LSB bits contain the bits [31:6] of the buffer status address
-//
 //  The status occupies 64 bytes but only the LSB bit of first byte contains
 //  useful information: 0 if buffer empty / 1 if buffer full.
-//
 //  The buffer length must be the same for src_chbuf and dst_chbuf.
 //  The "chbuf descriptor" base address must be a multiple of 4 bytes.
 //
@@ -55,7 +53,6 @@
 //    This mode is activated when the CHBUF_PERIOD value is zero (default value).
 //  
 //  This component supports both 32 bits and 64 bits VCI RDATA & WDATA fields.
-//
 //  
 //  To improve the throuput, this components supports pipelined bursts.
 //  The number of channels, the max burst size and the max number of pipelined
@@ -66,15 +63,23 @@
 //  are software parameters that must be  written in addressable registers 
 //  when launching a transfer between two chbufs.
 //
-//  - The number of channels (m_channels) cannot be larger than 4.
+//  - The number of channels (m_channels) cannot be larger than 32.
 //  - The number of pipelined bursts (m_bursts) cannot be larger than 4.
 //  - The burst length (m_burst_length) must be a power of 2 no larger than 64.
 //  - The buffer size must be multiple of (m_burst_length * m_bursts).
 //  - The buffer base address mut be multiple of  m_burst_length.
 //  - The status base address must be multiple of m_burst_length.
 //
-//  In order to support various protection mechanisms, for each channel,
-//  the channel addressable registers takes 4K bytes in the address space. 
+//  There is one IRQ per channel. It is activated each time a buffer has been
+//  sucessfully moved from source chbuf to destination chbuf, or when
+//  an address error has been reported. This IRQ is acknowledged by a read
+//  command to the channel status register.
+//  
+//  In case of error, the channel FSM is blocked, and must be reset before
+//  to be re-activated by the software. 
+//
+//  In order to support virtualisation mechanisms, the channes specific
+//  addressable registers takes 4K bytes in the address space. 
 //  Only 8 address bits are decoded .
 //  - The 5 bits ADDRESS[4:Ø] define the target register (see chbuf_dma.h)
 //  - The 3 bits ADDRESS[14:12] define the selected channel.
@@ -195,6 +200,7 @@ tmpl(void)::transition()
                 /////////////////////////////////////////////////////////////////
 	            else if ( (cell == CHBUF_STATUS) and (cmd == vci_param::CMD_READ) )
                 {
+                    if( r_channel_irq[K].read() == true ) r_channel_irq[k] = false;
                     r_tgt_rdata = r_channel_fsm[k].read();
                     r_tgt_fsm   = TGT_READ;
                 }
@@ -424,6 +430,8 @@ tmpl(void)::transition()
                     {
                         std::cout << "SRC_DESC_ERROR in VCI_CHBUF_DMA for channel "
                         << std::dec << k << " at cycle " << m_cycles << std::endl;
+
+                        r_channel_irq[k] = true;
                         r_channel_fsm[k] = CHANNEL_SRC_DESC_ERROR;
                         break;
                     }
@@ -462,6 +470,8 @@ tmpl(void)::transition()
                     {
                         std::cout << "SRC_STATUS_ERROR in VCI_CHBUF_DMA for channel "
                         << std::dec << k << " at cycle " << m_cycles << std::endl;
+
+                        r_channel_irq[k] = true;
                         r_channel_fsm[k] = CHANNEL_SRC_STATUS_ERROR;
                         break;
                     }
@@ -538,6 +548,8 @@ tmpl(void)::transition()
                     {
                         std::cout << "DST_DESC_ERROR in VCI_CHBUF_DMA for channel "
                         << std::dec << k << " at cycle " << m_cycles << std::endl;
+
+                        r_channel_irq[k] = true;
                         r_channel_fsm[k] = CHANNEL_DST_DESC_ERROR;
                         break;
                     }
@@ -580,6 +592,8 @@ tmpl(void)::transition()
                     {
                         std::cout << "DST_STATUS_ERROR in VCI_CHBUF_DMA for channel "
                         << std::dec << k << " at cycle " << m_cycles << std::endl;
+
+                        r_channel_irq[k] = true;
                         r_channel_fsm[k] = CHANNEL_DST_STATUS_ERROR;
                         break;
                     }
@@ -687,6 +701,7 @@ tmpl(void)::transition()
                         {
                             std::cout << "DATA_READ_ERROR in VCI_CHBUF_DMA for channel "
                             << std::dec << k << " at cycle " << m_cycles << std::endl;
+
                             r_channel_data_error[k] = true;
                         }
 
@@ -738,6 +753,7 @@ tmpl(void)::transition()
                         {
                             std::cout << "DATA_WRITE_ERROR in VCI_CHBUF_DMA for channel "
                             << std::dec << k << " at cycle " << m_cycles << std::endl;
+
                             r_channel_data_error[k] = true;
                         }
 
@@ -763,6 +779,7 @@ tmpl(void)::transition()
             {
                 if      ( r_channel_data_error[k].read() )        // error reported
                 {
+                    r_channel_irq[k] = true;
                     r_channel_fsm[k] = CHANNEL_DATA_ERROR;
                 }
                 else if ( r_channel_todo_bytes[k].read() == 0 )   // buffer completed
@@ -858,8 +875,10 @@ tmpl(void)::transition()
                 else
                 {
                     r_channel_dst_index[k] = r_channel_dst_index[k].read()+1;
-                }
+                } 
 
+                // signal buffer completion
+                r_channel_irq[k] = true;
                 r_channel_fsm[k] = CHANNEL_IDLE;
                 break;
             }
@@ -1461,14 +1480,10 @@ tmpl(void)::genMoore()
         }
     } // end switch rsp_fsm
 
-    /////// IRQ ports //////////
+    /////// IRQ ports ////////////////////////////
     for ( uint32_t k = 0 ; k < m_channels ; k++ )
     {
-	    p_irq[k] = (r_channel_fsm[k] == CHANNEL_SRC_DESC_ERROR)   || 
-                   (r_channel_fsm[k] == CHANNEL_DST_DESC_ERROR)   ||
-                   (r_channel_fsm[k] == CHANNEL_SRC_STATUS_ERROR) ||
-                   (r_channel_fsm[k] == CHANNEL_DST_STATUS_ERROR) ||
-                   (r_channel_fsm[k] == CHANNEL_DATA_ERROR);
+	    p_irq[k] = r_channel_irq[k].read();
     }
 } // end genMoore
 
@@ -1638,8 +1653,8 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
     assert( (bursts <= 4) and
             "VCI_CHBUF_DMA error : The number of pipelined bursts cannot be larger than 4");
     
-    assert( (channels <= 4)  and
-    "VCI_CHBUF_DMA error : The number of channels cannot be larger than 4");
+    assert( (channels <= 32)  and
+    "VCI_CHBUF_DMA error : The number of channels cannot be larger than 32");
 
     SC_METHOD(transition);
     dont_initialize();
