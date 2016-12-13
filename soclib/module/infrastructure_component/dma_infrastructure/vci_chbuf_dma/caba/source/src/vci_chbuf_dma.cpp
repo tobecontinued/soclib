@@ -200,7 +200,7 @@ tmpl(void)::transition()
                 /////////////////////////////////////////////////////////////////
 	            else if ( (cell == CHBUF_STATUS) and (cmd == vci_param::CMD_READ) )
                 {
-                    if( r_channel_irq[K].read() == true ) r_channel_irq[k] = false;
+                    if( r_channel_irq[k].read() == true ) r_channel_irq[k] = false;
                     r_tgt_rdata = r_channel_fsm[k].read();
                     r_tgt_fsm   = TGT_READ;
                 }
