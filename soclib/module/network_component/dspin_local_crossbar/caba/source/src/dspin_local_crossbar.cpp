@@ -185,7 +185,7 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
         size_t   y_dest  = (size_t)(data >> m_y_shift) & m_y_mask;
 
         if ( (x_dest == m_local_x) and (y_dest == m_local_y) and
-             (m_local_outputs > 0) )          // local dest
+             (m_local_outputs > 0) )                                // local dest
         {
             if ( m_use_routing_table )
             {
@@ -217,7 +217,7 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
                 }
             }
         }
-        else                                                            // global dest
+        else                                                         // global dest
         {
             if ( input  == m_local_inputs )
             {
@@ -246,8 +246,10 @@ tmpl(/**/)::DspinLocalCrossbar( sc_module_name       name,
 
         for( size_t i = 0 ; i <= m_local_inputs ; i++)  // loop on input ports
         {
-            std::cout << " / infsm[" << std::dec << i 
+            std::cout << " / in[" << std::dec << i 
                       << "] = " << infsm_str[r_fsm_in[i].read()];
+            if( r_fsm_in[i].read() == INFSM_REQ ) 
+               std::cout << " for out[" << r_index_in[i] << "] ";
         }
 
         for( size_t out = 0 ; out <= m_local_outputs ; out++)  // loop on output ports
