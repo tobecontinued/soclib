@@ -1665,7 +1665,9 @@ tmpl(/**/)::VciChbufDma( sc_core::sc_module_name 		        name,
     sensitive << p_clk.neg();
 }
 
-tmpl(/**/)::~VciChbufDma() { }
+tmpl(/**/)::~VciChbufDma() {
+    soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_irq, m_channels);
+}
 
 
 }}

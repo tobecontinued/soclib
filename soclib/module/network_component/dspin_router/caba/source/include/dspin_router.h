@@ -104,6 +104,8 @@ class DspinRouter
                  const size_t    out_fifo_depth,
                  const bool      broadcast_supported = false );  // default value
 
+    ~DspinRouter();
+
     private:
 
     // define the FIFO flit

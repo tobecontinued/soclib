@@ -3165,6 +3165,9 @@ tmpl(/**/)::VciMultiNic(sc_core::sc_module_name 		        name,
         dynamic_cast<NicTxTap*>(r_backend_tx)->set_fd(tmp_fd);
         dynamic_cast<NicTxTap*>(r_backend_tx)->set_ifr(&m_tap_ifr);
 #else
+        r_backend_rx = NULL;
+        r_backend_tx = NULL;
+
         std::cout << "     ... but the TAP backend is not supported" << std::endl;
         exit(0);
 #endif
@@ -3261,10 +3264,20 @@ tmpl(/**/)::~VciMultiNic()
     soclib::common::dealloc_elems<sc_signal<uint64_t> >(r_channel_tx_desc_1, 8);
     soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_tx_run, 8);
     soclib::common::dealloc_elems<sc_signal<uint8_t> >(r_rx_des_data, 4);
-//  soclib::common::dealloc_elems<NicRxChbuf>(r_rx_chbuf, m_channels);
-//  soclib::common::dealloc_elems<NicTxChbuf>(r_tx_chbuf, m_channels);
     soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_rx_irq, m_channels);
     soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_tx_irq, m_channels);
+    if (r_backend_rx != NULL) {
+        delete r_backend_rx;
+    }
+    if (r_backend_tx != NULL) {
+        delete r_backend_tx;
+    }
+    for ( size_t k = 0 ; k < m_channels ; k++ )
+    {
+        delete r_rx_chbuf[k];
+        delete r_tx_chbuf[k];
+    }
+
 }
 
 }}

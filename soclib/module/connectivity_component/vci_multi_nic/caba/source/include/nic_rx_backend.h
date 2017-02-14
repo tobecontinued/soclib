@@ -55,6 +55,7 @@ public:
 
     virtual void get( bool* dv, bool* er, uint8_t* dt) = 0;
 
+    virtual ~NicRxBackend() {}
 
 }; // end NicRxBackend
 

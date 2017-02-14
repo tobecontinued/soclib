@@ -67,7 +67,7 @@ using namespace soclib::caba;
       p_out( alloc_elems<DspinOutput<flit_width> >("p_out", 5) ),
 
 	  r_alloc_out( alloc_elems<sc_signal<bool> >("r_alloc_out", 5)),
-	  r_index_out( soclib::common::alloc_elems<sc_signal<size_t> >("r_index_out", 5)),
+	  r_index_out( alloc_elems<sc_signal<size_t> >("r_index_out", 5)),
 	  r_fsm_in( alloc_elems<sc_signal<int> >("r_fsm_in", 5)),
 	  r_index_in( alloc_elems<sc_signal<size_t> >("r_index_in", 5)),
 
@@ -113,6 +113,23 @@ using namespace soclib::caba;
                 GenericFifo<internal_flit_t >(stro.str(), out_fifo_depth);
 	    }
     } //  end constructor
+
+    tmpl(/**/)::~DspinRouter() {
+        dealloc_elems<DspinInput<flit_width> >(p_in, 5);
+        dealloc_elems<DspinOutput<flit_width> >(p_out, 5);
+	    dealloc_elems<sc_signal<bool> >(r_alloc_out, 5);
+    	dealloc_elems<sc_signal<size_t> >(r_index_out, 5);
+	    dealloc_elems<sc_signal<int> >(r_fsm_in, 5);
+	    dealloc_elems<sc_signal<size_t> >(r_index_in, 5);
+	    for( size_t i = 0 ; i < 5 ; i++ )
+        {
+            r_fifo_in[i].~GenericFifo<internal_flit_t>();
+            r_fifo_out[i].~GenericFifo<internal_flit_t>();
+        }
+        free(r_fifo_in);
+        free(r_fifo_out);
+        free(r_buf_in);
+    }
 
     ///////////////////////////////////////////////////
     tmpl(int)::xfirst_route( sc_uint<flit_width> data )

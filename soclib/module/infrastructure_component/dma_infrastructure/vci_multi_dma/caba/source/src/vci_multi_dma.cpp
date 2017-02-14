@@ -992,6 +992,7 @@ tmpl(/**/)::~VciMultiDma() {
     soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_done, m_channels);
     soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_error, m_channels);
     soclib::common::dealloc_elems<sc_core::sc_out<bool> >(p_irq, m_channels);
+    soclib::common::dealloc_elems<sc_signal<bool> >(r_channel_no_irq, m_channels);
 }
 
 }}

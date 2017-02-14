@@ -104,6 +104,13 @@ public:
 	    r_bc_count	= new sc_signal<size_t>[in_size];
 	} // end constructor 
 
+    ~SimpleCrossbar() {
+        delete [] r_allocated;
+        delete [] r_origin;
+        delete [] r_bc_state;
+        delete [] r_bc_count;
+    }
+
     ////////////
     void reset()
     {
@@ -406,6 +413,10 @@ tmpl(/**/)::~VciLocalCrossbar()
 {
     soclib::common::dealloc_elems(p_to_initiator, m_nb_attached_initiators);
     soclib::common::dealloc_elems(p_to_target, m_nb_attached_targets);
+    delete m_cmd_crossbar;
+    delete m_rsp_crossbar;
+    delete [] m_ports_to_initiator;
+    delete [] m_ports_to_target;
 }
 
 }}

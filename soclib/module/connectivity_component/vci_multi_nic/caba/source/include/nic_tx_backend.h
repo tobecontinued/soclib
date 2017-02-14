@@ -57,6 +57,8 @@ public:
 
     virtual void put(bool dv, uint8_t dt) = 0;
 
+    virtual ~NicTxBackend() {}
+
 }; // end NicBackendTx
 
 } /* caba */
