@@ -106,7 +106,7 @@ asm(
     "	move	$5,	$8				\n" /* execution pointer */
     "	mfc0	$6,	$8				\n" /* bad address if any */
     "	addiu	$7,	$sp,	0			\n" /* register table on stack */
-    "	addiu	$8,	$sp,				\n" /* stack pointer */
+    "	addiu	$8,	$sp,	0		  \n" /* stack pointer */
 
     "	sw	$8,	4*4($sp)			\n"
     "	la		$1,	interrupt_ex_handler	\n"
