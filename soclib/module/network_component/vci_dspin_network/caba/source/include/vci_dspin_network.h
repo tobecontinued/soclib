@@ -71,30 +71,30 @@ namespace soclib { namespace caba {
                 //
                 // signal between routers
                 //
-                soclib::caba::DspinSignals<38>** s_req_NS;
-                soclib::caba::DspinSignals<38>** s_req_EW;
-                soclib::caba::DspinSignals<38>** s_req_SN;
-                soclib::caba::DspinSignals<38>** s_req_WE;
+                soclib::caba::DspinSignals<39>** s_req_NS;
+                soclib::caba::DspinSignals<39>** s_req_EW;
+                soclib::caba::DspinSignals<39>** s_req_SN;
+                soclib::caba::DspinSignals<39>** s_req_WE;
 
-                soclib::caba::DspinSignals<34>** s_rsp_NS;
-                soclib::caba::DspinSignals<34>** s_rsp_EW;
-                soclib::caba::DspinSignals<34>** s_rsp_SN;
-                soclib::caba::DspinSignals<34>** s_rsp_WE;
+                soclib::caba::DspinSignals<32>** s_rsp_NS;
+                soclib::caba::DspinSignals<32>** s_rsp_EW;
+                soclib::caba::DspinSignals<32>** s_rsp_SN;
+                soclib::caba::DspinSignals<32>** s_rsp_WE;
 
                 //
                 // signal between router and wrapper
                 //
-                soclib::caba::DspinSignals<38>** s_req_RW;
-                soclib::caba::DspinSignals<38>** s_req_WR;
+                soclib::caba::DspinSignals<39>** s_req_RW;
+                soclib::caba::DspinSignals<39>** s_req_WR;
 
-                soclib::caba::DspinSignals<34>** s_rsp_RW;
-                soclib::caba::DspinSignals<34>** s_rsp_WR;
+                soclib::caba::DspinSignals<32>** s_rsp_RW;
+                soclib::caba::DspinSignals<32>** s_rsp_WR;
 
                 //dspin
-                soclib::caba::VciDspinInitiatorWrapper<vci_param, dspin_fifo_size, dspin_yx_size>*** t_initiator_wrapper;
-                soclib::caba::VciDspinTargetWrapper<vci_param, dspin_fifo_size, dspin_yx_size>*** t_target_wrapper;
-                soclib::caba::DspinRouter<38, dspin_fifo_size, dspin_yx_size>*** t_req_router;
-                soclib::caba::DspinRouter<34, dspin_fifo_size, dspin_yx_size>*** t_rsp_router;
+                soclib::caba::VciDspinInitiatorWrapper<vci_param, 39, 32>*** t_initiator_wrapper;
+                soclib::caba::VciDspinTargetWrapper<vci_param, 39, 32>*** t_target_wrapper;
+                soclib::caba::DspinRouter<39>*** t_req_router;
+                soclib::caba::DspinRouter<32>*** t_rsp_router;
 
                 //checker
                 soclib_static_assert(dspin_fifo_size <= 256 && dspin_fifo_size >= 1);

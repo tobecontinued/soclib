@@ -28,10 +28,10 @@ Module('caba:vci_dspin_network',
 	uses = [
 	    Uses('caba:base_module'),
 	    Uses('common:mapping_table'),
-	    Uses('caba:dspin_router', dspin_data_size = 38),
-	    Uses('caba:dspin_router', dspin_data_size = 34),
-	    Uses('caba:vci_dspin_initiator_wrapper', dspin_yx_size = 4),
-	    Uses('caba:vci_dspin_target_wrapper', dspin_yx_size = 4),
+	    Uses('caba:dspin_router', flit_width = 39),
+	    Uses('caba:dspin_router', flit_width = 32),
+	    Uses('caba:vci_dspin_initiator_wrapper', dspin_cmd_width = 39, dspin_rsp_width = 32),
+	    Uses('caba:vci_dspin_target_wrapper', dspin_cmd_width = 39, dspin_rsp_width = 32),
 	],
 	extensions = [
 		'dsx:interconnect=root'
