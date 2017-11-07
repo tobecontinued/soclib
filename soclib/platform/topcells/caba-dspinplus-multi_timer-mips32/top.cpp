@@ -142,10 +142,10 @@ int _main(int argc, char *argv[])
     soclib::caba::VciTimer<vci_param> vcitimer("vcittimer", IntTab(0x10,0), maptab, 4);
     soclib::caba::VciLocks<vci_param> vcilocks("vcilocks",  IntTab(0x11,0), maptab); 
 
-    soclib::caba::VciLocalCrossbar<vci_param> cluster00("cluster00",maptab, IntTab(0x00), IntTab(0x00), 1, 1 );
-    soclib::caba::VciLocalCrossbar<vci_param> cluster01("cluster01",maptab, IntTab(0x01), IntTab(0x01), 1, 1 );
-    soclib::caba::VciLocalCrossbar<vci_param> cluster10("cluster10",maptab, IntTab(0x10), IntTab(0x10), 1, 1 );
-    soclib::caba::VciLocalCrossbar<vci_param> cluster11("cluster11",maptab, IntTab(0x11), IntTab(0x11), 1, 1 );
+    soclib::caba::VciLocalCrossbar<vci_param> cluster00("cluster00",maptab, 0x00,  1, 1, 0 );
+    soclib::caba::VciLocalCrossbar<vci_param> cluster01("cluster01",maptab, 0x01,  1, 1, 0 );
+    soclib::caba::VciLocalCrossbar<vci_param> cluster10("cluster10",maptab, 0x10,  1, 1, 0 );
+    soclib::caba::VciLocalCrossbar<vci_param> cluster11("cluster11",maptab, 0x11,  1, 1, 0);
 
     soclib::caba::VciDspinPlusNetwork<vci_param, 4, 4> vciDspinPlusNetwork("vciDspinPlusNetwork", maptab, 2, 2);
 

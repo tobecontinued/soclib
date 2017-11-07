@@ -32,6 +32,8 @@
 #include "alloc_elems.h"
 #include <new>
 
+#define DSPINPLUS_EOP (0x00000001)
+
 namespace soclib { namespace caba {
 
 #define tmpl(x) template<int dspin_data_size, int dspin_fifo_size, int dspin_yx_size> x DspinPlusRouter<dspin_data_size, dspin_fifo_size, dspin_yx_size>

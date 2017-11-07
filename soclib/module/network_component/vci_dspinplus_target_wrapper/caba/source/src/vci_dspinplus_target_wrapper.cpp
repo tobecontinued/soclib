@@ -27,6 +27,8 @@
 #include "../include/vci_dspinplus_target_wrapper.h"
 #include "register.h"
 
+#define DSPINPLUS_EOP (0x00000001)
+
 namespace soclib { namespace caba {
 
 #define tmpl(x) template<typename vci_param, int dspin_fifo_size, int dspin_yx_size> x VciDspinPlusTargetWrapper<vci_param, dspin_fifo_size, dspin_yx_size>

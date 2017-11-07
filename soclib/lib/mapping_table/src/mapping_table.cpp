@@ -531,6 +531,108 @@ MappingTable::getCacheabilityTable() const
     return adt;
 } // end getCacheabilityFromAddress() 
 
+///////////////////////////////////////////////////////
+// This function returns an ADT that can be used to get
+// the target port index from a physical address
+///////////////////////////////////////////////////////////
+template<typename desired_addr_t>
+AddressDecodingTable<desired_addr_t, int>
+MappingTable::getRoutingTable( const IntTab &index, int default_index ) const
+{
+#ifdef SOCLIB_MODULE_DEBUG
+    std::cout << __FUNCTION__ << std::endl;
+#endif
+    size_t before = m_level_addr_bits.sum(index.level());
+    size_t at     = m_level_addr_bits[index.level()];
+
+    //  ADT to be returned
+    AddressDecodingTable<desired_addr_t, int> adt(at, m_addr_width - at - before);
+    adt.reset(default_index);
+
+    // temporary ADT for checking
+    AddressDecodingTable<desired_addr_t, bool> done(at, m_addr_width - at - before);
+    done.reset(false);
+
+    const_cast<MappingTable*>(this)->m_used = true;
+
+    std::list<Segment>::const_iterator i;
+    for ( i = m_segment_list.begin();
+          i != m_segment_list.end();
+          i++ ) 
+    {
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << *i
+                  << ", m_rt_size=" << m_rt_size
+                  << ", m_rt_mask=" << ~(m_rt_size-1)
+                  << std::endl;
+#endif
+        if ( ! i->index().idMatches(index) ) 
+        {
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << i->index() << " does not match " << index << std::endl;
+#endif
+            continue;
+        }
+
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout
+            << ' ' << (i->baseAddress() & ~(m_rt_size-1))
+            << ' ' << (i->baseAddress() + i->size())
+            << ' ' << (((i->baseAddress() & ~(m_rt_size-1)) < i->baseAddress()+i->size()))
+            << ' ' << (((i->baseAddress() & ~(m_rt_size-1)) >= (i->baseAddress() & ~(m_rt_size-1))))
+            << std::endl;
+#endif
+
+        for ( desired_addr_t addr = i->baseAddress() & ~(m_rt_size-1);
+              (addr < i->baseAddress()+i->size()) &&
+                  (addr >= (i->baseAddress() & ~(m_rt_size-1)));
+              addr += m_rt_size ) 
+        {
+            int val = i->index()[index.level()];
+
+#ifdef SOCLIB_MODULE_DEBUG
+            std::cout << addr << " -> " << val << std::endl;
+#endif
+
+            if ( done[addr] && adt[addr] != val ) 
+            {
+                std::ostringstream oss;
+                oss << "Incoherent Mapping Table: for " << index << std::endl
+                    << "Segment " << *i << " targets different target (or cluster) than other segments with same routing bits" << std::endl
+                    << "Mapping table:" << std::endl
+                    << *this;
+                throw soclib::exception::RunTimeError(oss.str());
+            }
+            adt.set( addr, val );
+            done.set( addr, true );
+        }
+#ifdef SOCLIB_MODULE_DEBUG
+        std::cout << std::endl;
+#endif
+    }
+    return adt;
+}
+
+/////////////////////////////////////////////////////////
+AddressMaskingTable<uint32_t> 
+MappingTable::getIdMaskingTable( const int level ) const
+{
+    int use = m_level_id_bits[level];
+    int drop = 0;
+    const_cast<MappingTable*>(this)->m_used = true;
+
+    for ( size_t i=level+1; i<m_level_id_bits.level(); ++i )
+        drop += m_level_id_bits[i];
+    return AddressMaskingTable<uint32_t>( use, drop );
+}
+
+//////////////////////////////////////////////////
+AddressDecodingTable<addr32_t, int>
+MappingTable::getRoutingTable( const IntTab &index, int default_index) const
+{
+    return getRoutingTable<addr32_t>( index, default_index );
+}
+
 //////////////////////////////////////////////////
 void MappingTable::print( std::ostream &o ) const
 //////////////////////////////////////////////////

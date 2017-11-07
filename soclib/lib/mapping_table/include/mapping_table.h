@@ -51,6 +51,8 @@
 
 namespace soclib { namespace common {
 
+typedef uint32_t addr32_t;
+
 //////////////////////////////////////
 class MappingTable
 //////////////////////////////////////
@@ -126,6 +128,17 @@ public:
     AddressDecodingTable<uint64_t, bool> 
     getCacheabilityTable() const;
 
+
+    ////////////////////////////////////
+    template<typename desired_addr_t>
+    AddressDecodingTable<desired_addr_t, int>
+    getRoutingTable( const IntTab &index, int default_index = 0 ) const;
+
+    ////////////////////////////////////
+    AddressMaskingTable<uint32_t> 
+    getIdMaskingTable( const int level ) const;
+
+
     ////////////////////////////////////
     void print( std::ostream &o ) const;
 
@@ -158,6 +171,16 @@ public:
     {
         return m_level_addr_bits.level();
     }
+
+    ///////////////////////////
+    AddressDecodingTable<addr32_t, int>
+    getRoutingTable( const IntTab &index, int default_index = 0 ) const;
+    /*
+    {
+        return getRoutingTable<addr32_t>( index, default_index );
+    }
+    */
+    
 };
 
 }}
