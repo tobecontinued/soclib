@@ -135,6 +135,10 @@ public:
     getRoutingTable( const IntTab &index, int default_index = 0 ) const;
 
     ////////////////////////////////////
+    AddressDecodingTable<addr32_t, int>
+    getRoutingTable( const IntTab &index, int default_index = 0 ) const;
+
+    ////////////////////////////////////
     AddressMaskingTable<uint32_t> 
     getIdMaskingTable( const int level ) const;
 
@@ -172,15 +176,6 @@ public:
         return m_level_addr_bits.level();
     }
 
-    ///////////////////////////
-    AddressDecodingTable<addr32_t, int>
-    getRoutingTable( const IntTab &index, int default_index = 0 ) const;
-    /*
-    {
-        return getRoutingTable<addr32_t>( index, default_index );
-    }
-    */
-    
 };
 
 }}
